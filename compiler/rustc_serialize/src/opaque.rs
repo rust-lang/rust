@@ -729,9 +729,7 @@ impl IntEncodedWithFixedSize {
 impl serialize::Encodable<Encoder> for IntEncodedWithFixedSize {
     fn encode(&self, e: &mut Encoder) -> EncodeResult {
         let start_pos = e.position();
-        for i in 0..IntEncodedWithFixedSize::ENCODED_SIZE {
-            ((self.0 >> (i * 8)) as u8).encode(e)?;
-        }
+        e.emit_raw_bytes(&self.0.to_le_bytes());
         let end_pos = e.position();
         assert_eq!((end_pos - start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
         Ok(())
@@ -741,9 +739,7 @@ impl serialize::Encodable<Encoder> for IntEncodedWithFixedSize {
 impl serialize::Encodable<FileEncoder> for IntEncodedWithFixedSize {
     fn encode(&self, e: &mut FileEncoder) -> FileEncodeResult {
         let start_pos = e.position();
-        for i in 0..IntEncodedWithFixedSize::ENCODED_SIZE {
-            ((self.0 >> (i * 8)) as u8).encode(e)?;
-        }
+        e.emit_raw_bytes(&self.0.to_le_bytes())?;
         let end_pos = e.position();
         assert_eq!((end_pos - start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
         Ok(())
@@ -752,17 +748,13 @@ impl serialize::Encodable<FileEncoder> for IntEncodedWithFixedSize {
 
 impl<'a> serialize::Decodable<Decoder<'a>> for IntEncodedWithFixedSize {
     fn decode(decoder: &mut Decoder<'a>) -> Result<IntEncodedWithFixedSize, String> {
-        let mut value: u64 = 0;
+        let mut bytes = MaybeUninit::uninit_array();
         let start_pos = decoder.position();
-
-        for i in 0..IntEncodedWithFixedSize::ENCODED_SIZE {
-            let byte: u8 = serialize::Decodable::decode(decoder)?;
-            value |= (byte as u64) << (i * 8);
-        }
-
+        decoder.read_raw_bytes(&mut bytes)?;
         let end_pos = decoder.position();
         assert_eq!((end_pos - start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
 
+        let value = u64::from_le_bytes(unsafe { MaybeUninit::array_assume_init(bytes) });
         Ok(IntEncodedWithFixedSize(value))
     }
 }
