@@ -68,6 +68,7 @@ rm -r src/test/run-pass-valgrind/unsized-locals
 
 rm src/test/ui/json-bom-plus-crlf-multifile.rs # differing warning
 rm src/test/ui/json-bom-plus-crlf.rs # same
+rm src/test/ui/type-alias-impl-trait/cross_crate_ice*.rs # requires removed aux dep
 
 rm src/test/ui/allocator/no_std-alloc-error-handler-default.rs # missing rust_oom definition
 rm src/test/ui/cfg/cfg-panic.rs
