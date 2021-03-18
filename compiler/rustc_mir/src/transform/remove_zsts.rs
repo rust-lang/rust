@@ -16,7 +16,7 @@ impl<'tcx> MirPass<'tcx> for RemoveZsts {
                     StatementKind::Assign(box (place, _)) => {
                         let place_ty = place.ty(local_decls, tcx).ty;
                         if let Ok(layout) = tcx.layout_of(param_env.and(place_ty)) {
-                            if layout.is_zst() && !layout.abi.is_uninhabited() {
+                            if layout.is_zst() {
                                 if tcx.consider_optimizing(|| {
                                     format!(
                                         "RemoveZsts - Place: {:?} SourceInfo: {:?}",
