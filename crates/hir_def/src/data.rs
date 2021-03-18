@@ -256,17 +256,17 @@ fn collect_items(
 
     let mut items = Vec::new();
     for item in assoc_items {
+        let attrs = item_tree.attrs(db, module.krate, ModItem::from(item).into());
+        if !attrs.is_cfg_enabled(&cfg_options) {
+            continue;
+        }
+
         match item {
             AssocItem::Function(id) => {
                 let item = &item_tree[id];
-                let attrs = item_tree.attrs(db, module.krate, ModItem::from(id).into());
-                if !attrs.is_cfg_enabled(&cfg_options) {
-                    continue;
-                }
                 let def = FunctionLoc { container, id: ItemTreeId::new(file_id, id) }.intern(db);
                 items.push((item.name.clone(), def.into()));
             }
-            // FIXME: cfg?
             AssocItem::Const(id) => {
                 let item = &item_tree[id];
                 let name = match item.name.clone() {

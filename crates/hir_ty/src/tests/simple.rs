@@ -2545,3 +2545,22 @@ fn test() {
         "#]],
     )
 }
+
+#[test]
+fn cfgd_out_assoc_items() {
+    check_types(
+        r#"
+struct S;
+
+impl S {
+    #[cfg(FALSE)]
+    const C: S = S;
+}
+
+fn f() {
+    S::C;
+  //^^^^ {unknown}
+}
+    "#,
+    )
+}
