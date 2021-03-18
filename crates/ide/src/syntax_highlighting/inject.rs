@@ -4,7 +4,7 @@ use std::{mem, ops::Range};
 
 use either::Either;
 use hir::{HasAttrs, InFile, Semantics};
-use ide_db::{call_info::ActiveParameter, defs::Definition};
+use ide_db::{call_info::ActiveParameter, defs::Definition, SymbolKind};
 use syntax::{
     ast::{self, AstNode, AttrsOwner, DocCommentsOwner},
     match_ast, AstToken, NodeOrToken, SyntaxNode, SyntaxToken, TextRange, TextSize,
@@ -225,13 +225,16 @@ pub(super) fn doc_comment(
                     intra_doc_links.extend(
                         extract_definitions_from_markdown(line)
                             .into_iter()
-                            .filter(|(link, ns, _)| {
-                                validate_intra_doc_link(sema.db, &def, link, *ns)
+                            .filter_map(|(link, ns, range)| {
+                                validate_intra_doc_link(sema.db, &def, &link, ns).zip(Some(range))
                             })
-                            .map(|(.., Range { start, end })| {
-                                TextRange::at(
-                                    prev_range_start + TextSize::from(start as u32),
-                                    TextSize::from((end - start) as u32),
+                            .map(|(def, Range { start, end })| {
+                                (
+                                    def,
+                                    TextRange::at(
+                                        prev_range_start + TextSize::from(start as u32),
+                                        TextSize::from((end - start) as u32),
+                                    ),
                                 )
                             }),
                     );
@@ -255,10 +258,13 @@ pub(super) fn doc_comment(
         }
     }
 
-    for range in intra_doc_links {
+    for (def, range) in intra_doc_links {
         hl.add(HlRange {
             range,
-            highlight: HlTag::IntraDocLink | HlMod::Documentation,
+            highlight: module_def_to_hl_tag(def)
+                | HlMod::Documentation
+                | HlMod::Injected
+                | HlMod::IntraDocLink,
             binding_hash: None,
         });
     }
@@ -317,7 +323,7 @@ fn validate_intra_doc_link(
     def: &Definition,
     link: &str,
     ns: Option<hir::Namespace>,
-) -> bool {
+) -> Option<hir::ModuleDef> {
     match def {
         Definition::ModuleDef(def) => match def {
             hir::ModuleDef::Module(it) => it.resolve_doc_path(db, &link, ns),
@@ -337,5 +343,21 @@ fn validate_intra_doc_link(
         | Definition::GenericParam(_)
         | Definition::Label(_) => None,
     }
-    .is_some()
+}
+
+fn module_def_to_hl_tag(def: hir::ModuleDef) -> HlTag {
+    let symbol = match def {
+        hir::ModuleDef::Module(_) => SymbolKind::Module,
+        hir::ModuleDef::Function(_) => SymbolKind::Function,
+        hir::ModuleDef::Adt(hir::Adt::Struct(_)) => SymbolKind::Struct,
+        hir::ModuleDef::Adt(hir::Adt::Enum(_)) => SymbolKind::Enum,
+        hir::ModuleDef::Adt(hir::Adt::Union(_)) => SymbolKind::Union,
+        hir::ModuleDef::Variant(_) => SymbolKind::Variant,
+        hir::ModuleDef::Const(_) => SymbolKind::Const,
+        hir::ModuleDef::Static(_) => SymbolKind::Static,
+        hir::ModuleDef::Trait(_) => SymbolKind::Trait,
+        hir::ModuleDef::TypeAlias(_) => SymbolKind::TypeAlias,
+        hir::ModuleDef::BuiltinType(_) => return HlTag::BuiltinType,
+    };
+    HlTag::Symbol(symbol)
 }

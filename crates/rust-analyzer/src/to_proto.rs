@@ -443,7 +443,6 @@ fn semantic_token_type_and_modifiers(
         HlTag::Comment => lsp_types::SemanticTokenType::COMMENT,
         HlTag::EscapeSequence => semantic_tokens::ESCAPE_SEQUENCE,
         HlTag::FormatSpecifier => semantic_tokens::FORMAT_SPECIFIER,
-        HlTag::IntraDocLink => semantic_tokens::INTRA_DOC_LINK,
         HlTag::Keyword => lsp_types::SemanticTokenType::KEYWORD,
         HlTag::None => semantic_tokens::GENERIC,
         HlTag::Operator => lsp_types::SemanticTokenType::OPERATOR,
@@ -474,6 +473,7 @@ fn semantic_token_type_and_modifiers(
             HlMod::Unsafe => semantic_tokens::UNSAFE,
             HlMod::Callable => semantic_tokens::CALLABLE,
             HlMod::Static => lsp_types::SemanticTokenModifier::STATIC,
+            HlMod::IntraDocLink => semantic_tokens::INTRA_DOC_LINK,
             HlMod::Associated => continue,
         };
         mods |= modifier;

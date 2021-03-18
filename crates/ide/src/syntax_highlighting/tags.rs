@@ -26,7 +26,6 @@ pub enum HlTag {
     Comment,
     EscapeSequence,
     FormatSpecifier,
-    IntraDocLink,
     Keyword,
     NumericLiteral,
     Operator,
@@ -57,6 +56,8 @@ pub enum HlMod {
     Static,
     /// Used for items in impls&traits.
     Associated,
+    /// Used for intra doc links in doc injection.
+    IntraDocLink,
 
     /// Keep this last!
     Unsafe,
@@ -117,7 +118,6 @@ impl HlTag {
             HlTag::Comment => "comment",
             HlTag::EscapeSequence => "escape_sequence",
             HlTag::FormatSpecifier => "format_specifier",
-            HlTag::IntraDocLink => "intra_doc_link",
             HlTag::Keyword => "keyword",
             HlTag::Punctuation(punct) => match punct {
                 HlPunct::Bracket => "bracket",
@@ -151,6 +151,7 @@ impl HlMod {
         HlMod::ControlFlow,
         HlMod::Definition,
         HlMod::Documentation,
+        HlMod::IntraDocLink,
         HlMod::Injected,
         HlMod::Mutable,
         HlMod::Consuming,
@@ -162,17 +163,18 @@ impl HlMod {
 
     fn as_str(self) -> &'static str {
         match self {
+            HlMod::Associated => "associated",
             HlMod::Attribute => "attribute",
+            HlMod::Callable => "callable",
+            HlMod::Consuming => "consuming",
             HlMod::ControlFlow => "control",
             HlMod::Definition => "declaration",
             HlMod::Documentation => "documentation",
             HlMod::Injected => "injected",
+            HlMod::IntraDocLink => "intra_doc_link",
             HlMod::Mutable => "mutable",
-            HlMod::Consuming => "consuming",
-            HlMod::Unsafe => "unsafe",
-            HlMod::Callable => "callable",
             HlMod::Static => "static",
-            HlMod::Associated => "associated",
+            HlMod::Unsafe => "unsafe",
         }
     }
 
