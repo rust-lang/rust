@@ -276,5 +276,6 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
         // simd_bitmask
         // simd_select
         // simd_rem
+        // simd_neg
     }
 }
