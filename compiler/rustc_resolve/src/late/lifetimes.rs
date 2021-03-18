@@ -540,7 +540,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 self.missing_named_lifetime_spots.pop();
                 self.is_in_fn_syntax = was_in_fn_syntax;
             }
-            hir::TyKind::TraitObject(bounds, ref lifetime) => {
+            hir::TyKind::TraitObject(bounds, ref lifetime, _) => {
                 debug!("visit_ty: TraitObject(bounds={:?}, lifetime={:?})", bounds, lifetime);
                 for bound in bounds {
                     self.visit_poly_trait_ref(bound, hir::TraitBoundModifier::None);
@@ -2299,7 +2299,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     self.outer_index.shift_in(1);
                 }
                 match ty.kind {
-                    hir::TyKind::TraitObject(bounds, ref lifetime) => {
+                    hir::TyKind::TraitObject(bounds, ref lifetime, _) => {
                         for bound in bounds {
                             self.visit_poly_trait_ref(bound, hir::TraitBoundModifier::None);
                         }

@@ -461,7 +461,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // are not, the expectation must have been caused by something else.
                 debug!("suggest_missing_return_type: return type {:?} node {:?}", ty, ty.kind);
                 let sp = ty.span;
-                let ty = AstConv::ast_ty_to_ty(self, ty);
+                let ty = <dyn AstConv<'_>>::ast_ty_to_ty(self, ty);
                 debug!("suggest_missing_return_type: return type {:?}", ty);
                 debug!("suggest_missing_return_type: expected type {:?}", ty);
                 if ty.kind() == expected.kind() {
@@ -486,7 +486,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         let found = self.resolve_vars_with_obligations(found);
         if let hir::FnRetTy::Return(ty) = fn_decl.output {
-            let ty = AstConv::ast_ty_to_ty(self, ty);
+            let ty = <dyn AstConv<'_>>::ast_ty_to_ty(self, ty);
             let ty = self.tcx.erase_late_bound_regions(Binder::bind(ty));
             let ty = self.normalize_associated_types_in(expr.span, ty);
             if self.can_coerce(found, ty) {

@@ -1396,7 +1396,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 if kind != TraitObjectSyntax::Dyn {
                     self.maybe_lint_bare_trait(t.span, t.id, false);
                 }
-                hir::TyKind::TraitObject(bounds, lifetime_bound)
+                hir::TyKind::TraitObject(bounds, lifetime_bound, kind)
             }
             TyKind::ImplTrait(def_node_id, ref bounds) => {
                 let span = t.span;
@@ -2648,6 +2648,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         hir::TyKind::TraitObject(
                             arena_vec![self; principal],
                             self.elided_dyn_bound(span),
+                            TraitObjectSyntax::None,
                         )
                     }
                     _ => hir::TyKind::Path(hir::QPath::Resolved(None, path)),

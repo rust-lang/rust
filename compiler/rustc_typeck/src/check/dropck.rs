@@ -77,7 +77,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
     tcx.infer_ctxt().enter(|ref infcx| {
         let impl_param_env = tcx.param_env(self_type_did);
         let tcx = infcx.tcx;
-        let mut fulfillment_cx = TraitEngine::new(tcx);
+        let mut fulfillment_cx = <dyn TraitEngine<'_>>::new(tcx);
 
         let named_type = tcx.type_of(self_type_did);
 

@@ -1554,7 +1554,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         if let hir::FnRetTy::Return(ty) = fn_output {
             // Get the return type.
             if let hir::TyKind::OpaqueDef(..) = ty.kind {
-                let ty = AstConv::ast_ty_to_ty(fcx, ty);
+                let ty = <dyn AstConv<'_>>::ast_ty_to_ty(fcx, ty);
                 // Get the `impl Trait`'s `DefId`.
                 if let ty::Opaque(def_id, _) = ty.kind() {
                     let hir_id = fcx.tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
@@ -1616,7 +1616,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
     fn is_return_ty_unsized(&self, fcx: &FnCtxt<'a, 'tcx>, blk_id: hir::HirId) -> bool {
         if let Some((fn_decl, _)) = fcx.get_fn_decl(blk_id) {
             if let hir::FnRetTy::Return(ty) = fn_decl.output {
-                let ty = AstConv::ast_ty_to_ty(fcx, ty);
+                let ty = <dyn AstConv<'_>>::ast_ty_to_ty(fcx, ty);
                 if let ty::Dynamic(..) = ty.kind() {
                     return true;
                 }

@@ -67,10 +67,10 @@ LL | use method::B;
    |
 
 error[E0624]: associated function `a` is private
-  --> $DIR/item-privacy.rs:84:8
+  --> $DIR/item-privacy.rs:84:14
    |
-LL |     C::a(&S);
-   |        ^ private associated function
+LL |     <dyn C>::a(&S);
+   |              ^ private associated function
 
 error[E0599]: no associated item named `A` found for struct `S` in the current scope
   --> $DIR/item-privacy.rs:97:8
@@ -104,16 +104,16 @@ LL | use assoc_const::B;
    |
 
 error[E0624]: associated constant `A` is private
-  --> $DIR/item-privacy.rs:101:8
+  --> $DIR/item-privacy.rs:101:14
    |
-LL |     C::A;
-   |        ^ private associated constant
+LL |     <dyn C>::A;
+   |              ^ private associated constant
 
 error[E0038]: the trait `assoc_const::C` cannot be made into an object
-  --> $DIR/item-privacy.rs:101:5
+  --> $DIR/item-privacy.rs:101:6
    |
-LL |     C::A;
-   |     ^ `assoc_const::C` cannot be made into an object
+LL |     <dyn C>::A;
+   |      ^^^^^ `assoc_const::C` cannot be made into an object
    |
    = help: consider moving `C` to another trait
    = help: consider moving `B` to another trait

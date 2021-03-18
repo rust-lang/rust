@@ -314,7 +314,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // variables.
         let generics = self.tcx.generics_of(pick.item.def_id);
 
-        let arg_count_correct = AstConv::check_generic_arg_count_for_call(
+        let arg_count_correct = <dyn AstConv<'_>>::check_generic_arg_count_for_call(
             self.tcx,
             self.span,
             pick.item.def_id,
@@ -352,7 +352,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             ) -> subst::GenericArg<'tcx> {
                 match (&param.kind, arg) {
                     (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
-                        AstConv::ast_region_to_region(self.cfcx.fcx, lt, Some(param)).into()
+                        <dyn AstConv<'_>>::ast_region_to_region(self.cfcx.fcx, lt, Some(param))
+                            .into()
                     }
                     (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
                         self.cfcx.to_ty(ty).into()
@@ -373,7 +374,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 self.cfcx.var_for_def(self.cfcx.span, param)
             }
         }
-        AstConv::create_substs_for_generic_args(
+        <dyn AstConv<'_>>::create_substs_for_generic_args(
             self.tcx,
             pick.item.def_id,
             parent_substs,
