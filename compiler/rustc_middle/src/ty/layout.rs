@@ -2327,24 +2327,7 @@ where
                             PointerKind::Shared
                         }
                     }
-                    hir::Mutability::Mut => {
-                        // Previously we would only emit noalias annotations for LLVM >= 6 or in
-                        // panic=abort mode. That was deemed right, as prior versions had many bugs
-                        // in conjunction with unwinding, but later versions didn’t seem to have
-                        // said issues. See issue #31681.
-                        //
-                        // Alas, later on we encountered a case where noalias would generate wrong
-                        // code altogether even with recent versions of LLVM in *safe* code with no
-                        // unwinding involved. See #54462.
-                        //
-                        // For now, do not enable mutable_noalias by default at all, while the
-                        // issue is being figured out.
-                        if tcx.sess.opts.debugging_opts.mutable_noalias {
-                            PointerKind::UniqueBorrowed
-                        } else {
-                            PointerKind::Shared
-                        }
-                    }
+                    hir::Mutability::Mut => PointerKind::UniqueBorrowed,
                 };
 
                 cx.layout_of(ty).to_result().ok().map(|layout| PointeeInfo {
@@ -2775,10 +2758,14 @@ where
                     // and can be marked as both `readonly` and `noalias`, as
                     // LLVM's definition of `noalias` is based solely on memory
                     // dependencies rather than pointer equality
+                    //
+                    // Due to miscompiles in LLVM < 12, we apply a separate NoAliasMutRef attribute
+                    // for UniqueBorrowed arguments, so that the codegen backend can decide
+                    // whether or not to actually emit the attribute.
                     let no_alias = match kind {
-                        PointerKind::Shared => false,
+                        PointerKind::Shared | PointerKind::UniqueBorrowed => false,
                         PointerKind::UniqueOwned => true,
-                        PointerKind::Frozen | PointerKind::UniqueBorrowed => !is_return,
+                        PointerKind::Frozen => !is_return,
                     };
                     if no_alias {
                         attrs.set(ArgAttribute::NoAlias);
@@ -2786,6 +2773,10 @@ where
 
                     if kind == PointerKind::Frozen && !is_return {
                         attrs.set(ArgAttribute::ReadOnly);
+                    }
+
+                    if kind == PointerKind::UniqueBorrowed && !is_return {
+                        attrs.set(ArgAttribute::NoAliasMutRef);
                     }
                 }
             }

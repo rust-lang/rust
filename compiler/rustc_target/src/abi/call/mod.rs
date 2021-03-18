@@ -65,7 +65,10 @@ mod attr_impl {
             const NoCapture = 1 << 2;
             const NonNull   = 1 << 3;
             const ReadOnly  = 1 << 4;
-            const InReg     = 1 << 8;
+            const InReg     = 1 << 5;
+            // NoAlias on &mut arguments can only be used with LLVM >= 12 due to miscompiles
+            // in earlier versions. FIXME: Remove this distinction once possible.
+            const NoAliasMutRef = 1 << 6;
         }
     }
 }
