@@ -1,6 +1,7 @@
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::QueryInvocationId;
+use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
@@ -241,6 +242,7 @@ impl<K: DepKind> DepGraph<K> {
 
             // Intern the new `DepNode`.
             let (dep_node_index, prev_and_color) = data.current.intern_node(
+                dcx.profiler(),
                 &data.previous,
                 key,
                 edges,
@@ -271,7 +273,12 @@ impl<K: DepKind> DepGraph<K> {
 
     /// Executes something within an "anonymous" task, that is, a task the
     /// `DepNode` of which is determined by the list of inputs it read from.
-    pub fn with_anon_task<OP, R>(&self, dep_kind: K, op: OP) -> (R, DepNodeIndex)
+    pub fn with_anon_task<Ctxt: DepContext<DepKind = K>, OP, R>(
+        &self,
+        cx: Ctxt,
+        dep_kind: K,
+        op: OP,
+    ) -> (R, DepNodeIndex)
     where
         OP: FnOnce() -> R,
     {
@@ -298,8 +305,12 @@ impl<K: DepKind> DepGraph<K> {
                 hash: data.current.anon_id_seed.combine(hasher.finish()).into(),
             };
 
-            let dep_node_index =
-                data.current.intern_new_node(target_dep_node, task_deps.reads, Fingerprint::ZERO);
+            let dep_node_index = data.current.intern_new_node(
+                cx.profiler(),
+                target_dep_node,
+                task_deps.reads,
+                Fingerprint::ZERO,
+            );
 
             (result, dep_node_index)
         } else {
@@ -628,8 +639,11 @@ impl<K: DepKind> DepGraph<K> {
 
         // We allocating an entry for the node in the current dependency graph and
         // adding all the appropriate edges imported from the previous graph
-        let dep_node_index =
-            data.current.promote_node_and_deps_to_current(&data.previous, prev_dep_node_index);
+        let dep_node_index = data.current.promote_node_and_deps_to_current(
+            tcx.dep_context().profiler(),
+            &data.previous,
+            prev_dep_node_index,
+        );
 
         // ... emitting any stored diagnostic ...
 
@@ -943,6 +957,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
     /// Assumes that this is a node that has no equivalent in the previous dep-graph.
     fn intern_new_node(
         &self,
+        profiler: &SelfProfilerRef,
         key: DepNode<K>,
         edges: EdgesVec,
         current_fingerprint: Fingerprint,
@@ -950,7 +965,8 @@ impl<K: DepKind> CurrentDepGraph<K> {
         match self.new_node_to_index.get_shard_by_value(&key).lock().entry(key) {
             Entry::Occupied(entry) => *entry.get(),
             Entry::Vacant(entry) => {
-                let dep_node_index = self.encoder.borrow().send(key, current_fingerprint, edges);
+                let dep_node_index =
+                    self.encoder.borrow().send(profiler, key, current_fingerprint, edges);
                 entry.insert(dep_node_index);
                 #[cfg(debug_assertions)]
                 self.record_edge(dep_node_index, key);
@@ -961,6 +977,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
 
     fn intern_node(
         &self,
+        profiler: &SelfProfilerRef,
         prev_graph: &PreviousDepGraph<K>,
         key: DepNode<K>,
         edges: EdgesVec,
@@ -985,7 +1002,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
                         Some(dep_node_index) => dep_node_index,
                         None => {
                             let dep_node_index =
-                                self.encoder.borrow().send(key, fingerprint, edges);
+                                self.encoder.borrow().send(profiler, key, fingerprint, edges);
                             prev_index_to_index[prev_index] = Some(dep_node_index);
                             dep_node_index
                         }
@@ -1007,7 +1024,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
                         Some(dep_node_index) => dep_node_index,
                         None => {
                             let dep_node_index =
-                                self.encoder.borrow().send(key, fingerprint, edges);
+                                self.encoder.borrow().send(profiler, key, fingerprint, edges);
                             prev_index_to_index[prev_index] = Some(dep_node_index);
                             dep_node_index
                         }
@@ -1032,7 +1049,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
                     Some(dep_node_index) => dep_node_index,
                     None => {
                         let dep_node_index =
-                            self.encoder.borrow().send(key, Fingerprint::ZERO, edges);
+                            self.encoder.borrow().send(profiler, key, Fingerprint::ZERO, edges);
                         prev_index_to_index[prev_index] = Some(dep_node_index);
                         dep_node_index
                     }
@@ -1050,7 +1067,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
             let fingerprint = fingerprint.unwrap_or(Fingerprint::ZERO);
 
             // This is a new node: it didn't exist in the previous compilation session.
-            let dep_node_index = self.intern_new_node(key, edges, fingerprint);
+            let dep_node_index = self.intern_new_node(profiler, key, edges, fingerprint);
 
             (dep_node_index, None)
         }
@@ -1058,6 +1075,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
 
     fn promote_node_and_deps_to_current(
         &self,
+        profiler: &SelfProfilerRef,
         prev_graph: &PreviousDepGraph<K>,
         prev_index: SerializedDepNodeIndex,
     ) -> DepNodeIndex {
@@ -1070,6 +1088,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
             None => {
                 let key = prev_graph.index_to_node(prev_index);
                 let dep_node_index = self.encoder.borrow().send(
+                    profiler,
                     key,
                     prev_graph.fingerprint_by_index(prev_index),
                     prev_graph

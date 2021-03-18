@@ -16,6 +16,7 @@ use super::query::DepGraphQuery;
 use super::{DepKind, DepNode, DepNodeIndex};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::Lock;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_serialize::opaque::{self, FileEncodeResult, FileEncoder, IntEncodedWithFixedSize};
@@ -293,10 +294,12 @@ impl<K: DepKind + Encodable<FileEncoder>> GraphEncoder<K> {
 
     pub(crate) fn send(
         &self,
+        profiler: &SelfProfilerRef,
         node: DepNode<K>,
         fingerprint: Fingerprint,
         edges: SmallVec<[DepNodeIndex; 8]>,
     ) -> DepNodeIndex {
+        let _prof_timer = profiler.generic_activity("incr_comp_encode_dep_graph");
         let node = NodeInfo { node, fingerprint, edges };
         self.status.lock().encode_node(&node, &self.record_graph)
     }

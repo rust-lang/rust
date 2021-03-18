@@ -449,9 +449,11 @@ where
 
         let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
             tcx.start_query(job.id, diagnostics, || {
-                tcx.dep_context()
-                    .dep_graph()
-                    .with_anon_task(query.dep_kind, || query.compute(tcx, key))
+                tcx.dep_context().dep_graph().with_anon_task(
+                    *tcx.dep_context(),
+                    query.dep_kind,
+                    || query.compute(tcx, key),
+                )
             })
         });
 
