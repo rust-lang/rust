@@ -650,7 +650,7 @@ fn macro_call_as_call_id(
 ) -> Result<Result<MacroCallId, ErrorEmitted>, UnresolvedMacro> {
     let def: MacroDefId = resolver(call.path.clone()).ok_or(UnresolvedMacro)?;
 
-    let res = if let MacroDefKind::BuiltInEager(_) = def.kind {
+    let res = if let MacroDefKind::BuiltInEager(..) = def.kind {
         let macro_call = InFile::new(call.ast_id.file_id, call.ast_id.to_node(db.upcast()));
         let hygiene = Hygiene::new(db.upcast(), call.ast_id.file_id);
 

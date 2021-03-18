@@ -143,7 +143,7 @@ impl HirFileId {
 
                 let arg_tt = loc.kind.arg(db)?;
 
-                let def = loc.def.ast_id.and_then(|id| {
+                let def = loc.def.ast_id().and_then(|id| {
                     let def_tt = match id.to_node(db) {
                         ast::Macro::MacroRules(mac) => mac.token_tree()?,
                         ast::Macro::MacroDef(_) => return None,
@@ -180,7 +180,7 @@ impl HirFileId {
                 };
                 let loc: MacroCallLoc = db.lookup_intern_macro(lazy_id);
                 let item = match loc.def.kind {
-                    MacroDefKind::BuiltInDerive(_) => loc.kind.node(db),
+                    MacroDefKind::BuiltInDerive(..) => loc.kind.node(db),
                     _ => return None,
                 };
                 Some(item.with_value(ast::Item::cast(item.value.clone())?))
@@ -224,7 +224,6 @@ impl From<EagerMacroId> for MacroCallId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MacroDefId {
     pub krate: CrateId,
-    pub ast_id: Option<AstId<ast::Macro>>,
     pub kind: MacroDefKind,
 
     pub local_inner: bool,
@@ -239,15 +238,26 @@ impl MacroDefId {
     ) -> LazyMacroId {
         db.intern_macro(MacroCallLoc { def: self, krate, kind })
     }
+
+    pub fn ast_id(&self) -> Option<AstId<ast::Macro>> {
+        let id = match &self.kind {
+            MacroDefKind::Declarative(id) => id,
+            MacroDefKind::BuiltIn(_, id) => id,
+            MacroDefKind::BuiltInDerive(_, id) => id,
+            MacroDefKind::BuiltInEager(_, id) => id,
+            MacroDefKind::ProcMacro(_) => return None,
+        };
+        Some(*id)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MacroDefKind {
-    Declarative,
-    BuiltIn(BuiltinFnLikeExpander),
+    Declarative(AstId<ast::Macro>),
+    BuiltIn(BuiltinFnLikeExpander, AstId<ast::Macro>),
     // FIXME: maybe just Builtin and rename BuiltinFnLikeExpander to BuiltinExpander
-    BuiltInDerive(BuiltinDeriveExpander),
-    BuiltInEager(EagerExpander),
+    BuiltInDerive(BuiltinDeriveExpander, AstId<ast::Macro>),
+    BuiltInEager(EagerExpander, AstId<ast::Macro>),
     ProcMacro(ProcMacroExpander),
 }
 

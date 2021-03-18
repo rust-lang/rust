@@ -71,14 +71,12 @@ pub fn find_builtin_macro(
     match kind {
         Either::Left(kind) => Some(MacroDefId {
             krate,
-            ast_id: Some(ast_id),
-            kind: MacroDefKind::BuiltIn(kind),
+            kind: MacroDefKind::BuiltIn(kind, ast_id),
             local_inner: false,
         }),
         Either::Right(kind) => Some(MacroDefId {
             krate,
-            ast_id: Some(ast_id),
-            kind: MacroDefKind::BuiltInEager(kind),
+            kind: MacroDefKind::BuiltInEager(kind, ast_id),
             local_inner: false,
         }),
     }
@@ -512,6 +510,7 @@ mod tests {
         let macro_call = macro_calls.pop().unwrap();
 
         let expander = find_by_name(&macro_rules.name().unwrap().as_name()).unwrap();
+        let ast_id = AstId::new(file_id.into(), ast_id_map.ast_id(&macro_rules));
 
         let krate = CrateId(0);
         let file_id = match expander {
@@ -519,8 +518,7 @@ mod tests {
                 // the first one should be a macro_rules
                 let def = MacroDefId {
                     krate: CrateId(0),
-                    ast_id: Some(AstId::new(file_id.into(), ast_id_map.ast_id(&macro_rules))),
-                    kind: MacroDefKind::BuiltIn(expander),
+                    kind: MacroDefKind::BuiltIn(expander, ast_id),
                     local_inner: false,
                 };
 
@@ -540,8 +538,7 @@ mod tests {
                 // the first one should be a macro_rules
                 let def = MacroDefId {
                     krate,
-                    ast_id: Some(AstId::new(file_id.into(), ast_id_map.ast_id(&macro_rules))),
-                    kind: MacroDefKind::BuiltInEager(expander),
+                    kind: MacroDefKind::BuiltInEager(expander, ast_id),
                     local_inner: false,
                 };
 

@@ -209,7 +209,7 @@ impl Attrs {
             },
             AttrDefId::TraitId(it) => attrs_from_item_tree(it.lookup(db).id, db),
             AttrDefId::MacroDefId(it) => {
-                it.ast_id.map_or_else(Default::default, |ast_id| attrs_from_ast(ast_id, db))
+                it.ast_id().map_or_else(Default::default, |ast_id| attrs_from_ast(ast_id, db))
             }
             AttrDefId::ImplId(it) => attrs_from_item_tree(it.lookup(db).id, db),
             AttrDefId::ConstId(it) => attrs_from_item_tree(it.lookup(db).id, db),

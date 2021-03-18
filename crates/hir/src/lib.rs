@@ -1154,7 +1154,8 @@ impl MacroDef {
 
     /// Indicate it is a derive macro
     pub fn is_derive_macro(&self) -> bool {
-        matches!(self.id.kind, MacroDefKind::ProcMacro(_) | MacroDefKind::BuiltInDerive(_))
+        // FIXME: wrong for `ProcMacro`
+        matches!(self.id.kind, MacroDefKind::ProcMacro(..) | MacroDefKind::BuiltInDerive(..))
     }
 }
 
