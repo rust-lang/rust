@@ -20,6 +20,7 @@
 #![cfg_attr(feature = "std_detect_file_io", feature(vec_spare_capacity))]
 #![no_std]
 
+#[cfg_attr(feature = "rustc-dep-of-std", allow(unused_extern_crates))]
 #[cfg(feature = "std_detect_file_io")]
 extern crate alloc;
 

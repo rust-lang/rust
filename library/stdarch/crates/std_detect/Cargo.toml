@@ -25,12 +25,22 @@ maintenance = { status = "experimental" }
 libc = { version = "0.2", optional = true, default-features = false }
 cfg-if = "0.1.10"
 
+# When built as part of libstd
+core = { version = "1.0.0", optional = true, package = "rustc-std-workspace-core" }
+compiler_builtins = { version = "0.1.2", optional = true }
+alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-alloc" }
+
 [dev-dependencies]
 auxv = "0.3.3"
 cupid = "0.6.0"
 
 [features]
 default = [ "std_detect_dlsym_getauxval", "std_detect_file_io" ]
-std_detect_file_io = []
+std_detect_file_io = [ "libc" ]
 std_detect_dlsym_getauxval = [ "libc" ]
-std_detect_env_override = []
+std_detect_env_override = [ "libc" ]
+rustc-dep-of-std = [
+    "core",
+    "compiler_builtins",
+    "alloc",
+]

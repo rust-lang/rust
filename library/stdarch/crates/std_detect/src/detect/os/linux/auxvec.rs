@@ -89,7 +89,7 @@ pub(crate) fn auxv() -> Result<AuxVec, ()> {
 
     #[cfg(not(feature = "std_detect_dlsym_getauxval"))]
     {
-        let hwcap = unsafe { libc::getauxval(AT_HWCAP) };
+        let hwcap = unsafe { libc::getauxval(AT_HWCAP as libc::c_ulong) as usize };
 
         // Targets with only AT_HWCAP:
         #[cfg(any(target_arch = "aarch64", target_arch = "mips", target_arch = "mips64"))]
@@ -106,7 +106,7 @@ pub(crate) fn auxv() -> Result<AuxVec, ()> {
             target_arch = "powerpc64"
         ))]
         {
-            let hwcap2 = unsafe { libc::getauxval(AT_HWCAP2) };
+            let hwcap2 = unsafe { libc::getauxval(AT_HWCAP2 as libc::c_ulong) as usize };
             if hwcap != 0 && hwcap2 != 0 {
                 return Ok(AuxVec { hwcap, hwcap2 });
             }
