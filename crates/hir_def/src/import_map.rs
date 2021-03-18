@@ -912,10 +912,10 @@ mod tests {
                 dep::fmt (t)
                 dep::format (f)
                 dep::Fmt (v)
-                dep::fmt::Display (t)
+                dep::Fmt (m)
                 dep::Fmt (t)
                 dep::fmt::Display::fmt (a)
-                dep::Fmt (m)
+                dep::fmt::Display (t)
             "#]],
         );
 
@@ -926,9 +926,9 @@ mod tests {
             expect![[r#"
                 dep::fmt (t)
                 dep::Fmt (v)
+                dep::Fmt (m)
                 dep::Fmt (t)
                 dep::fmt::Display::fmt (a)
-                dep::Fmt (m)
             "#]],
         );
 
@@ -939,10 +939,10 @@ mod tests {
             expect![[r#"
                 dep::fmt (t)
                 dep::Fmt (v)
-                dep::fmt::Display (t)
+                dep::Fmt (m)
                 dep::Fmt (t)
                 dep::fmt::Display::fmt (a)
-                dep::Fmt (m)
+                dep::fmt::Display (t)
             "#]],
         );
     }
@@ -980,10 +980,10 @@ mod tests {
             expect![[r#"
                 dep::fmt (t)
                 dep::Fmt (v)
-                dep::fmt::Display (t)
+                dep::Fmt (m)
                 dep::Fmt (t)
                 dep::fmt::Display::fmt (a)
-                dep::Fmt (m)
+                dep::fmt::Display (t)
             "#]],
         );
 
@@ -994,9 +994,9 @@ mod tests {
             expect![[r#"
                 dep::fmt (t)
                 dep::Fmt (v)
+                dep::Fmt (m)
                 dep::Fmt (t)
                 dep::fmt::Display::fmt (a)
-                dep::Fmt (m)
             "#]],
         );
     }
@@ -1058,8 +1058,8 @@ mod tests {
             Query::new("".to_string()).limit(2),
             expect![[r#"
                 dep::fmt (t)
-                dep::Fmt (t)
                 dep::Fmt (m)
+                dep::Fmt (t)
                 dep::Fmt (v)
             "#]],
         );

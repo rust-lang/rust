@@ -61,8 +61,7 @@ pub fn find_builtin_derive(
     let expander = BuiltinDeriveExpander::find_by_name(ident)?;
     Some(MacroDefId {
         krate,
-        ast_id: Some(ast_id),
-        kind: MacroDefKind::BuiltInDerive(expander),
+        kind: MacroDefKind::BuiltInDerive(expander, ast_id),
         local_inner: false,
     })
 }
@@ -314,8 +313,7 @@ $0
         let loc = MacroCallLoc {
             def: MacroDefId {
                 krate: CrateId(0),
-                ast_id: Some(macro_ast_id),
-                kind: MacroDefKind::BuiltInDerive(expander),
+                kind: MacroDefKind::BuiltInDerive(expander, macro_ast_id),
                 local_inner: false,
             },
             krate: CrateId(0),

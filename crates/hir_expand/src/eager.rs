@@ -140,7 +140,7 @@ pub fn expand_eager_macro(
     let subtree =
         diagnostic_sink.option(to_subtree(&result), || err("failed to parse macro result"))?;
 
-    if let MacroDefKind::BuiltInEager(eager) = def.kind {
+    if let MacroDefKind::BuiltInEager(eager, _) = def.kind {
         let res = eager.expand(db, arg_id, &subtree);
 
         let (subtree, fragment) = diagnostic_sink.expand_result_option(res)?;
@@ -193,7 +193,7 @@ fn eager_macro_recur(
         let def = diagnostic_sink
             .option_with(|| macro_resolver(child.path()?), || err("failed to resolve macro"))?;
         let insert = match def.kind {
-            MacroDefKind::BuiltInEager(_) => {
+            MacroDefKind::BuiltInEager(..) => {
                 let id: MacroCallId = expand_eager_macro(
                     db,
                     krate,
@@ -206,9 +206,9 @@ fn eager_macro_recur(
                 db.parse_or_expand(id.as_file())
                     .expect("successful macro expansion should be parseable")
             }
-            MacroDefKind::Declarative
-            | MacroDefKind::BuiltIn(_)
-            | MacroDefKind::BuiltInDerive(_)
+            MacroDefKind::Declarative(_)
+            | MacroDefKind::BuiltIn(..)
+            | MacroDefKind::BuiltInDerive(..)
             | MacroDefKind::ProcMacro(_) => {
                 let res = lazy_expand(db, &def, curr.with_value(child.clone()), krate);
                 let val = diagnostic_sink.expand_result_option(res)?;

@@ -145,7 +145,7 @@ fn make_hygiene_info(
 ) -> Option<HygieneInfo> {
     let arg_tt = loc.kind.arg(db)?;
 
-    let def_offset = loc.def.ast_id.and_then(|id| {
+    let def_offset = loc.def.ast_id().and_then(|id| {
         let def_tt = match id.to_node(db) {
             ast::Macro::MacroRules(mac) => mac.token_tree()?.syntax().text_range().start(),
             ast::Macro::MacroDef(_) => return None,
@@ -176,12 +176,12 @@ impl HygieneFrame {
                     let loc = db.lookup_intern_macro(id);
                     let info = make_hygiene_info(db, macro_file, &loc);
                     match loc.def.kind {
-                        MacroDefKind::Declarative => {
+                        MacroDefKind::Declarative(_) => {
                             (info, Some(loc.def.krate), loc.def.local_inner)
                         }
-                        MacroDefKind::BuiltIn(_) => (info, Some(loc.def.krate), false),
-                        MacroDefKind::BuiltInDerive(_) => (info, None, false),
-                        MacroDefKind::BuiltInEager(_) => (info, None, false),
+                        MacroDefKind::BuiltIn(..) => (info, Some(loc.def.krate), false),
+                        MacroDefKind::BuiltInDerive(..) => (info, None, false),
+                        MacroDefKind::BuiltInEager(..) => (info, None, false),
                         MacroDefKind::ProcMacro(_) => (info, None, false),
                     }
                 }

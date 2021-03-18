@@ -357,13 +357,11 @@ impl DefCollector<'_> {
         self.exports_proc_macros = true;
         let macro_def = match self.proc_macros.iter().find(|(n, _)| n == name) {
             Some((_, expander)) => MacroDefId {
-                ast_id: None,
                 krate: self.def_map.krate,
                 kind: MacroDefKind::ProcMacro(*expander),
                 local_inner: false,
             },
             None => MacroDefId {
-                ast_id: None,
                 krate: self.def_map.krate,
                 kind: MacroDefKind::ProcMacro(ProcMacroExpander::dummy(self.def_map.krate)),
                 local_inner: false,
@@ -1445,9 +1443,8 @@ impl ModCollector<'_, '_> {
 
         // Case 2: normal `macro_rules!` macro
         let macro_id = MacroDefId {
-            ast_id: Some(ast_id),
             krate: self.def_collector.def_map.krate,
-            kind: MacroDefKind::Declarative,
+            kind: MacroDefKind::Declarative(ast_id),
             local_inner: is_local_inner,
         };
         self.def_collector.define_macro(self.module_id, mac.name.clone(), macro_id, is_export);

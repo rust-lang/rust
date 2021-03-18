@@ -113,7 +113,7 @@ impl HasSource for TypeAlias {
 impl HasSource for MacroDef {
     type Ast = ast::Macro;
     fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
-        let ast_id = self.id.ast_id?;
+        let ast_id = self.id.ast_id()?;
         Some(InFile { file_id: ast_id.file_id, value: ast_id.to_node(db.upcast()) })
     }
 }

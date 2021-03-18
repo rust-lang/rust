@@ -195,12 +195,12 @@ impl SourceToDefCtx<'_, '_> {
         &mut self,
         src: InFile<ast::MacroRules>,
     ) -> Option<MacroDefId> {
-        let kind = MacroDefKind::Declarative;
+        let file_ast_id = self.db.ast_id_map(src.file_id).ast_id(&src.value);
+        let ast_id = AstId::new(src.file_id, file_ast_id.upcast());
+        let kind = MacroDefKind::Declarative(ast_id);
         let file_id = src.file_id.original_file(self.db.upcast());
         let krate = self.file_to_def(file_id).get(0).copied()?.krate();
-        let file_ast_id = self.db.ast_id_map(src.file_id).ast_id(&src.value);
-        let ast_id = Some(AstId::new(src.file_id, file_ast_id.upcast()));
-        Some(MacroDefId { krate, ast_id, kind, local_inner: false })
+        Some(MacroDefId { krate, kind, local_inner: false })
     }
 
     pub(super) fn find_container(&mut self, src: InFile<&SyntaxNode>) -> Option<ChildContainer> {

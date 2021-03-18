@@ -130,8 +130,8 @@ fn ast_id_map(db: &dyn AstDatabase, file_id: HirFileId) -> Arc<AstIdMap> {
 
 fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Option<Arc<(TokenExpander, mbe::TokenMap)>> {
     match id.kind {
-        MacroDefKind::Declarative => {
-            let macro_rules = match id.ast_id?.to_node(db) {
+        MacroDefKind::Declarative(ast_id) => {
+            let macro_rules = match ast_id.to_node(db) {
                 syntax::ast::Macro::MacroRules(mac) => mac,
                 syntax::ast::Macro::MacroDef(_) => return None,
             };
@@ -150,13 +150,13 @@ fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Option<Arc<(TokenExpander,
             };
             Some(Arc::new((TokenExpander::MacroRules(rules), tmap)))
         }
-        MacroDefKind::BuiltIn(expander) => {
+        MacroDefKind::BuiltIn(expander, _) => {
             Some(Arc::new((TokenExpander::Builtin(expander), mbe::TokenMap::default())))
         }
-        MacroDefKind::BuiltInDerive(expander) => {
+        MacroDefKind::BuiltInDerive(expander, _) => {
             Some(Arc::new((TokenExpander::BuiltinDerive(expander), mbe::TokenMap::default())))
         }
-        MacroDefKind::BuiltInEager(_) => None,
+        MacroDefKind::BuiltInEager(..) => None,
         MacroDefKind::ProcMacro(expander) => {
             Some(Arc::new((TokenExpander::ProcMacro(expander), mbe::TokenMap::default())))
         }
