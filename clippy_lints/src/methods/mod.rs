@@ -2348,10 +2348,10 @@ impl SelfKind {
     #[must_use]
     fn description(self) -> &'static str {
         match self {
-            Self::Value => "self by value",
-            Self::Ref => "self by reference",
-            Self::RefMut => "self by mutable reference",
-            Self::No => "no self",
+            Self::Value => "`self` by value",
+            Self::Ref => "`self` by reference",
+            Self::RefMut => "`self` by mutable reference",
+            Self::No => "no `self`",
         }
     }
 }

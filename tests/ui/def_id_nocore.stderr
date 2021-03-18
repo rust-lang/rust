@@ -1,4 +1,4 @@
-error: methods called `as_*` usually take self by reference or self by mutable reference
+error: methods called `as_*` usually take `self` by reference or `self` by mutable reference
   --> $DIR/def_id_nocore.rs:26:19
    |
 LL |     pub fn as_ref(self) -> &'static str {

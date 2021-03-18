@@ -51,13 +51,16 @@ impl Convention {
 impl fmt::Display for Convention {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         match *self {
-            Self::Eq(this) => this.fmt(f),
-            Self::StartsWith(this) => this.fmt(f).and_then(|_| '*'.fmt(f)),
-            Self::EndsWith(this) => '*'.fmt(f).and_then(|_| this.fmt(f)),
-            Self::NotEndsWith(this) => '~'.fmt(f).and_then(|_| this.fmt(f)),
-            Self::IsSelfTypeCopy(is_true) => format!("self type is {} Copy", if is_true { "" } else { "not" }).fmt(f),
+            Self::Eq(this) => format!("`{}`", this).fmt(f),
+            Self::StartsWith(this) => format!("`{}*`", this).fmt(f),
+            Self::EndsWith(this) => format!("`*{}`", this).fmt(f),
+            Self::NotEndsWith(this) => format!("`~{}`", this).fmt(f),
+            Self::IsSelfTypeCopy(is_true) => {
+                format!("`self` type is{} `Copy`", if is_true { "" } else { " not" }).fmt(f)
+            },
             Self::ImplementsTrait(is_true) => {
-                format!("Method {} implement a trait", if is_true { "" } else { "do not" }).fmt(f)
+                let (negation, s_suffix) = if is_true { ("", "s") } else { (" does not", "") };
+                format!("Method{} implement{} a trait", negation, s_suffix).fmt(f)
             },
         }
     }
@@ -99,7 +102,7 @@ pub(super) fn check<'tcx>(
                             {
                                 None
                             } else {
-                                Some(format!("`{}`", &conv.to_string()))
+                                Some(conv.to_string())
                             }
                         })
                         .collect::<Vec<_>>()
@@ -107,7 +110,7 @@ pub(super) fn check<'tcx>(
 
                     format!("methods with the following characteristics: ({})", &s)
                 } else {
-                    format!("methods called `{}`", &conventions[0])
+                    format!("methods called {}", &conventions[0])
                 }
             };
 
