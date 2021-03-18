@@ -1228,7 +1228,11 @@ pub trait Iterator {
 
     /// Creates an iterator that skips the first `n` elements.
     ///
-    /// After they have been consumed, the rest of the elements are yielded.
+    /// `skip(n)` skips elements until `n` elements are skipped or the end of the
+    /// iterator is reached (whichever happens first). After that, all the remaining
+    /// elements are yielded. In particular, if the original iterator is too short,
+    /// then the returned iterator is empty.
+    ///
     /// Rather than overriding this method directly, instead override the `nth` method.
     ///
     /// # Examples
@@ -1252,7 +1256,14 @@ pub trait Iterator {
         Skip::new(self, n)
     }
 
-    /// Creates an iterator that yields its first `n` elements.
+    /// Creates an iterator that yields the first `n` elements, or fewer
+    /// if the underlying iterator ends sooner.
+    ///
+    /// `take(n)` yields elements until `n` elements are yielded or the end of
+    /// the iterator is reached (whichever happens first).
+    /// The returned iterator is a prefix of length `n` if the original iterator
+    /// contains at least `n` elements, otherwise it contains all of the
+    /// (fewer than `n`) elements of the original iterator.
     ///
     /// # Examples
     ///
