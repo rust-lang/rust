@@ -232,6 +232,28 @@ fn expr_macro_expanded_in_stmts() {
 }
 
 #[test]
+fn recursive_inner_item_macro_rules() {
+    check_infer(
+        r#"
+        macro_rules! mac {
+            () => { mac!($)};
+            ($x:tt) => { macro_rules! blub { () => { 1 }; } };
+        }
+        fn foo() {
+            mac!();
+            let a = blub!();
+        }
+        "#,
+        expect![[r#"
+            !0..1 '1': i32
+            !0..7 'mac!($)': {unknown}
+            107..143 '{     ...!(); }': ()
+            129..130 'a': i32
+        "#]],
+    );
+}
+
+#[test]
 fn infer_type_value_macro_having_same_name() {
     check_infer(
         r#"
