@@ -7,7 +7,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .label              { color: #DFAF8F; font-style: italic; }
 .comment            { color: #7F9F7F; }
 .documentation      { color: #629755; }
-.intra_doc_link     { color: #A9C577; }
+.intra_doc_link     { font-style: italic; }
 .injected           { opacity: 0.65 ; }
 .struct, .enum      { color: #7CB8BB; }
 .enum_variant       { color: #BDE0F3; }
@@ -99,8 +99,8 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="brace">}</span>
 <span class="brace">}</span>
 
-<span class="comment documentation">/// </span><span class="intra_doc_link documentation">[`Foo`](Foo)</span><span class="comment documentation"> is a struct</span>
-<span class="comment documentation">/// </span><span class="intra_doc_link documentation">[`all_the_links`](all_the_links)</span><span class="comment documentation"> is this function</span>
+<span class="comment documentation">/// </span><span class="struct documentation intra_doc_link injected">[`Foo`](Foo)</span><span class="comment documentation"> is a struct</span>
+<span class="comment documentation">/// </span><span class="function documentation intra_doc_link injected">[`all_the_links`](all_the_links)</span><span class="comment documentation"> is this function</span>
 <span class="comment documentation">/// [`noop`](noop) is a macro below</span>
 <span class="keyword">pub</span> <span class="keyword">fn</span> <span class="function declaration">all_the_links</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
 

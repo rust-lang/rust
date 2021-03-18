@@ -52,7 +52,6 @@ define_semantic_token_types![
     (ESCAPE_SEQUENCE, "escapeSequence"),
     (FORMAT_SPECIFIER, "formatSpecifier"),
     (GENERIC, "generic"),
-    (INTRA_DOC_LINK, "intraDocLink"),
     (LABEL, "label"),
     (LIFETIME, "lifetime"),
     (PARENTHESIS, "parenthesis"),
@@ -90,6 +89,7 @@ define_semantic_token_modifiers![
     (UNSAFE, "unsafe"),
     (ATTRIBUTE_MODIFIER, "attribute"),
     (CALLABLE, "callable"),
+    (INTRA_DOC_LINK, "intraDocLink"),
 ];
 
 #[derive(Default)]
