@@ -76,7 +76,11 @@ use stdx::impl_from;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ModuleId {
     krate: CrateId,
+    /// If this `ModuleId` was derived from a `DefMap` for a block expression, this stores the
+    /// `BlockId` of that block expression. If `None`, this module is part of the crate-level
+    /// `DefMap` of `krate`.
     block: Option<BlockId>,
+    /// The module's ID in its originating `DefMap`.
     pub local_id: LocalModuleId,
 }
 
@@ -87,7 +91,7 @@ impl ModuleId {
                 db.block_def_map(block).unwrap_or_else(|| {
                     // NOTE: This should be unreachable - all `ModuleId`s come from their `DefMap`s,
                     // so the `DefMap` here must exist.
-                    panic!("no `block_def_map` for `ModuleId` {:?}", self);
+                    unreachable!("no `block_def_map` for `ModuleId` {:?}", self);
                 })
             }
             None => db.crate_def_map(self.krate),
