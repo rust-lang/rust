@@ -66,8 +66,8 @@ pub(crate) struct ModResolver<'ast, 'sess> {
 }
 
 /// Represents errors while trying to resolve modules.
-#[error("failed to resolve mod `{module}`: {kind}")]
 #[derive(Debug, Error)]
+#[error("failed to resolve mod `{module}`: {kind}")]
 pub struct ModuleResolutionError {
     pub(crate) module: String,
     pub(crate) kind: ModuleResolutionErrorKind,
