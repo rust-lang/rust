@@ -18,7 +18,6 @@ use hir_expand::{
 use hir_expand::{InFile, MacroCallLoc};
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::ast;
-use tt::{Leaf, TokenTree};
 
 use crate::{
     attr::Attrs,
@@ -41,6 +40,8 @@ use crate::{
     LocalModuleId, ModuleDefId, StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc,
     UnresolvedMacro,
 };
+
+use super::proc_macro::ProcMacroDef;
 
 const GLOB_RECURSION_LIMIT: usize = 100;
 const EXPANSION_DEPTH_LIMIT: usize = 128;
@@ -353,9 +354,9 @@ impl DefCollector<'_> {
     /// use a dummy expander that always errors. This comes with the drawback of macros potentially
     /// going out of sync with what the build system sees (since we resolve using VFS state, but
     /// Cargo builds only on-disk files). We could and probably should add diagnostics for that.
-    fn resolve_proc_macro(&mut self, name: &Name, ast_id: AstId<ast::Fn>) {
+    fn export_proc_macro(&mut self, def: ProcMacroDef, ast_id: AstId<ast::Fn>) {
         self.exports_proc_macros = true;
-        let macro_def = match self.proc_macros.iter().find(|(n, _)| n == name) {
+        let macro_def = match self.proc_macros.iter().find(|(n, _)| n == &def.name) {
             Some((_, expander)) => MacroDefId {
                 krate: self.def_map.krate,
                 kind: MacroDefKind::ProcMacro(*expander, ast_id),
@@ -368,7 +369,8 @@ impl DefCollector<'_> {
             },
         };
 
-        self.define_proc_macro(name.clone(), macro_def);
+        self.define_proc_macro(def.name.clone(), macro_def);
+        self.def_map.exported_proc_macros.insert(macro_def, def);
     }
 
     /// Define a macro with `macro_rules`.
@@ -1386,26 +1388,9 @@ impl ModCollector<'_, '_> {
     /// If `attrs` registers a procedural macro, collects its definition.
     fn collect_proc_macro_def(&mut self, func_name: &Name, ast_id: AstId<ast::Fn>, attrs: &Attrs) {
         // FIXME: this should only be done in the root module of `proc-macro` crates, not everywhere
-        // FIXME: distinguish the type of macro
-        let macro_name = if attrs.by_key("proc_macro").exists()
-            || attrs.by_key("proc_macro_attribute").exists()
-        {
-            func_name.clone()
-        } else {
-            let derive = attrs.by_key("proc_macro_derive");
-            if let Some(arg) = derive.tt_values().next() {
-                if let [TokenTree::Leaf(Leaf::Ident(trait_name)), ..] = &*arg.token_trees {
-                    trait_name.as_name()
-                } else {
-                    log::trace!("malformed `#[proc_macro_derive]`: {}", arg);
-                    return;
-                }
-            } else {
-                return;
-            }
-        };
-
-        self.def_collector.resolve_proc_macro(&macro_name, ast_id);
+        if let Some(proc_macro) = attrs.parse_proc_macro_decl(func_name) {
+            self.def_collector.export_proc_macro(proc_macro, ast_id);
+        }
     }
 
     fn collect_macro_rules(&mut self, id: FileItemTreeId<MacroRules>) {
