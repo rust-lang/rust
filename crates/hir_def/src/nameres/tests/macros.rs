@@ -1,4 +1,5 @@
 use super::*;
+use crate::nameres::proc_macro::{ProcMacroDef, ProcMacroKind};
 
 #[test]
 fn macro_rules_are_globally_visible() {
@@ -789,4 +790,29 @@ fn proc_macro_censoring() {
             function_like_macro: m
         "#]],
     );
+}
+
+#[test]
+fn collects_derive_helpers() {
+    let def_map = compute_crate_def_map(
+        r"
+        struct TokenStream;
+
+        #[proc_macro_derive(AnotherTrait, attributes(helper_attr))]
+        pub fn derive_macro_2(_item: TokenStream) -> TokenStream {
+            TokenStream
+        }
+        ",
+    );
+
+    assert_eq!(def_map.exported_proc_macros.len(), 1);
+    match def_map.exported_proc_macros.values().next() {
+        Some(ProcMacroDef { kind: ProcMacroKind::CustomDerive { helpers }, .. }) => {
+            match &**helpers {
+                [attr] => assert_eq!(attr.to_string(), "helper_attr"),
+                _ => unreachable!(),
+            }
+        }
+        _ => unreachable!(),
+    }
 }
