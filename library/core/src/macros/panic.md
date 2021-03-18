@@ -13,10 +13,11 @@ When using `panic!()` you can specify a string payload, that is built using
 the [`format!`] syntax. That payload is used when injecting the panic into
 the calling Rust thread, causing the thread to panic entirely.
 
-The default `std` panic handling strategy is to print the message payload to
-the `stderr` along with the file/line/column information of the `panic!()`
+The behavior of the default `std` hook, i.e. the code, that runs directy
+after the panic is invoked, is to print the message payload to the
+`stderr` along with the file/line/column information of the `panic!()`
 call. You can override the panic hook using [`std::panic::set_hook()`].
-Inside the hook a panic can be reaped as the [`Box`]`<`[`Any`]`>` type,
+Inside the hook a panic can be accessed as a `&dyn Any + Send`, which
 which contains either a `&str` or `String` for regular `panic!()` invocations.
 To panic with a value of another other type, [`panic_any`] can be used.
 
