@@ -344,7 +344,7 @@ impl HirDisplay for Ty {
                 };
 
                 if let [GenericPredicate::Implemented(trait_ref), _] = predicates.as_ref() {
-                    let trait_ = trait_ref.trait_;
+                    let trait_ = trait_ref.hir_trait_id();
                     if fn_traits(f.db.upcast(), trait_).any(|it| it == trait_) {
                         return write!(f, "{}", ty_display);
                     }
@@ -670,7 +670,7 @@ fn write_bounds_like_dyn_trait(
     for p in predicates.iter() {
         match p {
             GenericPredicate::Implemented(trait_ref) => {
-                let trait_ = trait_ref.trait_;
+                let trait_ = trait_ref.hir_trait_id();
                 if !is_fn_trait {
                     is_fn_trait = fn_traits(f.db.upcast(), trait_).any(|it| it == trait_);
                 }
@@ -685,7 +685,7 @@ fn write_bounds_like_dyn_trait(
                 // existential) here, which is the only thing that's
                 // possible in actual Rust, and hence don't print it
                 write!(f, "{}", f.db.trait_data(trait_).name)?;
-                if let [_, params @ ..] = &*trait_ref.substs.0 {
+                if let [_, params @ ..] = &*trait_ref.substitution.0 {
                     if is_fn_trait {
                         if let Some(args) = params.first().and_then(|it| it.as_tuple()) {
                             write!(f, "(")?;
@@ -745,16 +745,16 @@ impl TraitRef {
             return write!(f, "{}", TYPE_HINT_TRUNCATION);
         }
 
-        self.substs[0].hir_fmt(f)?;
+        self.substitution[0].hir_fmt(f)?;
         if use_as {
             write!(f, " as ")?;
         } else {
             write!(f, ": ")?;
         }
-        write!(f, "{}", f.db.trait_data(self.trait_).name)?;
-        if self.substs.len() > 1 {
+        write!(f, "{}", f.db.trait_data(self.hir_trait_id()).name)?;
+        if self.substitution.len() > 1 {
             write!(f, "<")?;
-            f.write_joined(&self.substs[1..], ", ")?;
+            f.write_joined(&self.substitution[1..], ", ")?;
             write!(f, ">")?;
         }
         Ok(())

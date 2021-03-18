@@ -27,7 +27,7 @@ use stdx::impl_from;
 
 use crate::{
     db::HirDatabase,
-    to_assoc_type_id, to_placeholder_idx,
+    to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
     traits::chalk::{Interner, ToChalk},
     utils::{
         all_super_trait_refs, associated_type_by_name_including_super_traits, generics,
@@ -360,7 +360,7 @@ impl<'a> TyLoweringContext<'a> {
                             // FIXME handle type parameters on the segment
                             TyKind::Alias(AliasTy::Projection(ProjectionTy {
                                 associated_ty_id: to_assoc_type_id(associated_ty),
-                                substitution: super_trait_ref.substs,
+                                substitution: super_trait_ref.substitution,
                             }))
                             .intern(&Interner)
                         }
@@ -470,9 +470,9 @@ impl<'a> TyLoweringContext<'a> {
                                         "there should be generics if there's a generic param",
                                     ),
                                 );
-                                t.substs.clone().subst_bound_vars(&s)
+                                t.substitution.clone().subst_bound_vars(&s)
                             }
-                            TypeParamLoweringMode::Variable => t.substs.clone(),
+                            TypeParamLoweringMode::Variable => t.substitution.clone(),
                         };
                         // We need to shift in the bound vars, since
                         // associated_type_shorthand_candidates does not do that
@@ -641,7 +641,7 @@ impl<'a> TyLoweringContext<'a> {
         if let Some(self_ty) = explicit_self_ty {
             substs.0[0] = self_ty;
         }
-        TraitRef { trait_: resolved, substs }
+        TraitRef { trait_id: to_chalk_trait_id(resolved), substitution: substs }
     }
 
     fn lower_trait_ref(
@@ -743,7 +743,7 @@ impl<'a> TyLoweringContext<'a> {
                 };
                 let projection_ty = ProjectionTy {
                     associated_ty_id: to_assoc_type_id(associated_ty),
-                    substitution: super_trait_ref.substs,
+                    substitution: super_trait_ref.substitution,
                 };
                 let mut preds = SmallVec::with_capacity(
                     binding.type_ref.as_ref().map_or(0, |_| 1) + binding.bounds.len(),
@@ -820,8 +820,8 @@ pub fn associated_type_shorthand_candidates<R>(
                     == TypeParamProvenance::TraitSelf
                 {
                     let trait_ref = TraitRef {
-                        trait_: trait_id,
-                        substs: Substitution::bound_vars(&generics, DebruijnIndex::INNERMOST),
+                        trait_id: to_chalk_trait_id(trait_id),
+                        substitution: Substitution::bound_vars(&generics, DebruijnIndex::INNERMOST),
                     };
                     traits_.push(trait_ref);
                 }
@@ -832,7 +832,7 @@ pub fn associated_type_shorthand_candidates<R>(
     };
 
     for t in traits_from_env.into_iter().flat_map(move |t| all_super_trait_refs(db, t)) {
-        let data = db.trait_data(t.trait_);
+        let data = db.trait_data(t.hir_trait_id());
 
         for (name, assoc_id) in &data.items {
             match assoc_id {
@@ -926,7 +926,7 @@ pub(crate) fn trait_environment_query(
                 continue;
             }
             if let GenericPredicate::Implemented(tr) = &pred {
-                traits_in_scope.push((tr.self_ty().clone(), tr.trait_));
+                traits_in_scope.push((tr.self_type_parameter().clone(), tr.hir_trait_id()));
             }
             let program_clause: chalk_ir::ProgramClause<Interner> =
                 pred.clone().to_chalk(db).cast(&Interner);
@@ -950,7 +950,7 @@ pub(crate) fn trait_environment_query(
         // inside consts or type aliases)
         cov_mark::hit!(trait_self_implements_self);
         let substs = Substitution::type_params(db, trait_id);
-        let trait_ref = TraitRef { trait_: trait_id, substs };
+        let trait_ref = TraitRef { trait_id: to_chalk_trait_id(trait_id), substitution: substs };
         let pred = GenericPredicate::Implemented(trait_ref);
         let program_clause: chalk_ir::ProgramClause<Interner> =
             pred.clone().to_chalk(db).cast(&Interner);

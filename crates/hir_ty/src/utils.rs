@@ -55,9 +55,9 @@ fn direct_super_trait_refs(db: &dyn HirDatabase, trait_ref: &TraitRef) -> Vec<Tr
     // lifetime problems, but since there usually shouldn't be more than a
     // few direct traits this should be fine (we could even use some kind of
     // SmallVec if performance is a concern)
-    let generic_params = db.generic_params(trait_ref.trait_.into());
+    let generic_params = db.generic_params(trait_ref.hir_trait_id().into());
     let trait_self = match generic_params.find_trait_self_param() {
-        Some(p) => TypeParamId { parent: trait_ref.trait_.into(), local_id: p },
+        Some(p) => TypeParamId { parent: trait_ref.hir_trait_id().into(), local_id: p },
         None => return Vec::new(),
     };
     db.generic_predicates_for_param(trait_self)
@@ -68,7 +68,7 @@ fn direct_super_trait_refs(db: &dyn HirDatabase, trait_ref: &TraitRef) -> Vec<Tr
                 _ => None,
             })
         })
-        .map(|pred| pred.subst(&trait_ref.substs))
+        .map(|pred| pred.subst(&trait_ref.substitution))
         .collect()
 }
 
@@ -108,7 +108,7 @@ pub(super) fn all_super_trait_refs(db: &dyn HirDatabase, trait_ref: TraitRef) ->
         // yeah this is quadratic, but trait hierarchies should be flat
         // enough that this doesn't matter
         for tt in direct_super_trait_refs(db, t) {
-            if !result.iter().any(|tr| tr.trait_ == tt.trait_) {
+            if !result.iter().any(|tr| tr.trait_id == tt.trait_id) {
                 result.push(tt);
             }
         }
@@ -123,7 +123,7 @@ pub(super) fn associated_type_by_name_including_super_traits(
     name: &Name,
 ) -> Option<(TraitRef, TypeAliasId)> {
     all_super_trait_refs(db, trait_ref).into_iter().find_map(|t| {
-        let assoc_type = db.trait_data(t.trait_).associated_type_by_name(name)?;
+        let assoc_type = db.trait_data(t.hir_trait_id()).associated_type_by_name(name)?;
         Some((t, assoc_type))
     })
 }

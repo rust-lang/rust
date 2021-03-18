@@ -9,7 +9,9 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 
-use crate::{method_resolution, Interner, Substitution, Ty, TyKind, ValueTyDefId};
+use crate::{
+    method_resolution, to_chalk_trait_id, Interner, Substitution, Ty, TyKind, ValueTyDefId,
+};
 
 use super::{ExprOrPatId, InferenceContext, TraitRef};
 
@@ -165,7 +167,7 @@ impl<'a> InferenceContext<'a> {
         segment: PathSegment<'_>,
         id: ExprOrPatId,
     ) -> Option<(ValueNs, Option<Substitution>)> {
-        let trait_ = trait_ref.trait_;
+        let trait_ = trait_ref.hir_trait_id();
         let item =
             self.db.trait_data(trait_).items.iter().map(|(_name, id)| (*id)).find_map(|item| {
                 match item {
@@ -200,7 +202,7 @@ impl<'a> InferenceContext<'a> {
         };
 
         self.write_assoc_resolution(id, item);
-        Some((def, Some(trait_ref.substs)))
+        Some((def, Some(trait_ref.substitution)))
     }
 
     fn resolve_ty_assoc_item(
@@ -255,8 +257,8 @@ impl<'a> InferenceContext<'a> {
                             .fill(std::iter::repeat_with(|| self.table.new_type_var()))
                             .build();
                         self.obligations.push(super::Obligation::Trait(TraitRef {
-                            trait_,
-                            substs: trait_substs.clone(),
+                            trait_id: to_chalk_trait_id(trait_),
+                            substitution: trait_substs.clone(),
                         }));
                         Some(trait_substs)
                     }

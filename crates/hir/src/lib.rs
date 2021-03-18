@@ -1462,7 +1462,7 @@ impl TypeParam {
             .into_iter()
             .filter_map(|pred| match &pred.value {
                 hir_ty::GenericPredicate::Implemented(trait_ref) => {
-                    Some(Trait::from(trait_ref.trait_))
+                    Some(Trait::from(trait_ref.hir_trait_id()))
                 }
                 _ => None,
             })
@@ -1757,8 +1757,8 @@ impl Type {
 
     pub fn impls_trait(&self, db: &dyn HirDatabase, trait_: Trait, args: &[Type]) -> bool {
         let trait_ref = hir_ty::TraitRef {
-            trait_: trait_.id,
-            substs: Substitution::build_for_def(db, trait_.id)
+            trait_id: hir_ty::to_chalk_trait_id(trait_.id),
+            substitution: Substitution::build_for_def(db, trait_.id)
                 .push(self.ty.value.clone())
                 .fill(args.iter().map(|t| t.ty.value.clone()))
                 .build(),
@@ -2023,7 +2023,7 @@ impl Type {
             it.into_iter()
                 .filter_map(|pred| match pred {
                     hir_ty::GenericPredicate::Implemented(trait_ref) => {
-                        Some(Trait::from(trait_ref.trait_))
+                        Some(Trait::from(trait_ref.hir_trait_id()))
                     }
                     _ => None,
                 })
@@ -2067,7 +2067,7 @@ impl Type {
                 match pred {
                     GenericPredicate::Implemented(trait_ref) => {
                         cb(type_.clone());
-                        walk_substs(db, type_, &trait_ref.substs, cb);
+                        walk_substs(db, type_, &trait_ref.substitution, cb);
                     }
                     _ => (),
                 }

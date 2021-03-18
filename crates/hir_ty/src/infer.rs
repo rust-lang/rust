@@ -42,7 +42,7 @@ use super::{
 };
 use crate::{
     db::HirDatabase, infer::diagnostics::InferenceDiagnostic, lower::ImplTraitLoweringMode,
-    to_assoc_type_id, AliasTy, Interner, TyKind,
+    to_assoc_type_id, to_chalk_trait_id, AliasTy, Interner, TyKind,
 };
 
 pub(crate) use unify::unify;
@@ -394,7 +394,8 @@ impl<'a> InferenceContext<'a> {
                     .push(inner_ty)
                     .fill(params.iter().cloned())
                     .build();
-                let trait_ref = TraitRef { trait_, substs: substs.clone() };
+                let trait_ref =
+                    TraitRef { trait_id: to_chalk_trait_id(trait_), substitution: substs.clone() };
                 let projection = ProjectionPredicate {
                     ty: ty.clone(),
                     projection_ty: ProjectionTy {

@@ -19,6 +19,7 @@ use crate::{
     db::HirDatabase,
     from_foreign_def_id,
     primitive::{self, FloatTy, IntTy, UintTy},
+    to_chalk_trait_id,
     utils::all_super_traits,
     AdtId, Canonical, DebruijnIndex, FnPointer, FnSig, ForeignDefId, InEnvironment, Interner,
     Scalar, Substitution, TraitEnvironment, TraitRef, Ty, TyKind, TypeWalk,
@@ -101,7 +102,7 @@ impl TraitImpls {
         for (_module_id, module_data) in crate_def_map.modules() {
             for impl_id in module_data.scope.impls() {
                 let target_trait = match db.impl_trait(impl_id) {
-                    Some(tr) => tr.value.trait_,
+                    Some(tr) => tr.value.hir_trait_id(),
                     None => continue,
                 };
                 let self_ty = db.impl_self_ty(impl_id);
@@ -773,7 +774,7 @@ fn generic_implements_goal(
         .fill_with_bound_vars(DebruijnIndex::INNERMOST, kinds.len())
         .build();
     kinds.extend(iter::repeat(chalk_ir::TyVariableKind::General).take(substs.len() - 1));
-    let trait_ref = TraitRef { trait_, substs };
+    let trait_ref = TraitRef { trait_id: to_chalk_trait_id(trait_), substitution: substs };
     let obligation = super::Obligation::Trait(trait_ref);
     Canonical { kinds: kinds.into(), value: InEnvironment::new(env, obligation) }
 }

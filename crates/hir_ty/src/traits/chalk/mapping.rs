@@ -239,15 +239,15 @@ impl ToChalk for TraitRef {
     type Chalk = chalk_ir::TraitRef<Interner>;
 
     fn to_chalk(self: TraitRef, db: &dyn HirDatabase) -> chalk_ir::TraitRef<Interner> {
-        let trait_id = self.trait_.to_chalk(db);
-        let substitution = self.substs.to_chalk(db);
+        let trait_id = self.trait_id;
+        let substitution = self.substitution.to_chalk(db);
         chalk_ir::TraitRef { trait_id, substitution }
     }
 
     fn from_chalk(db: &dyn HirDatabase, trait_ref: chalk_ir::TraitRef<Interner>) -> Self {
-        let trait_ = from_chalk(db, trait_ref.trait_id);
+        let trait_id = trait_ref.trait_id;
         let substs = from_chalk(db, trait_ref.substitution);
-        TraitRef { trait_, substs }
+        TraitRef { trait_id, substitution: substs }
     }
 }
 
@@ -515,17 +515,16 @@ pub(super) fn generic_predicate_to_inline_bound(
     // We don't have a special type for this, but Chalk does.
     match pred {
         GenericPredicate::Implemented(trait_ref) => {
-            if &trait_ref.substs[0] != self_ty {
+            if &trait_ref.substitution[0] != self_ty {
                 // we can only convert predicates back to type bounds if they
                 // have the expected self type
                 return None;
             }
-            let args_no_self = trait_ref.substs[1..]
+            let args_no_self = trait_ref.substitution[1..]
                 .iter()
                 .map(|ty| ty.clone().to_chalk(db).cast(&Interner))
                 .collect();
-            let trait_bound =
-                rust_ir::TraitBound { trait_id: trait_ref.trait_.to_chalk(db), args_no_self };
+            let trait_bound = rust_ir::TraitBound { trait_id: trait_ref.trait_id, args_no_self };
             Some(rust_ir::InlineBound::TraitBound(trait_bound))
         }
         GenericPredicate::Projection(proj) => {
