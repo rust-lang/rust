@@ -76,9 +76,7 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
     /// If not found, returns an `Err` with the leaf edge matching the entire
     /// range.
     ///
-    /// As a diagnostic service, panics if the range specifies impossible bounds
-    /// or if it witnesses that the `Ord` implementation of `Q` violates total
-    /// order or is inconsistent with the `Ord` implementation of `K`.
+    /// As a diagnostic service, panics if the range specifies impossible bounds.
     ///
     /// The result is meaningful only if the tree is ordered by key.
     pub fn search_tree_for_bifurcation<'r, Q: ?Sized, R>(
@@ -118,14 +116,8 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
         let mut upper_bound = SearchBound::from_range(end);
         loop {
             let (lower_edge_idx, lower_child_bound) = self.find_lower_bound_index(lower_bound);
-            let (upper_edge_idx, upper_child_bound) = self.find_upper_bound_index(upper_bound);
-            if lower_edge_idx > upper_edge_idx {
-                // Since we already checked the range bounds, this can only
-                // happen if `Q: Ord` does not implement a total order or does
-                // not correspond to the `K: Ord` implementation that is used
-                // while populating the tree.
-                panic!("Ord is ill-defined in BTreeMap range")
-            }
+            let (upper_edge_idx, upper_child_bound) =
+                unsafe { self.find_upper_bound_index(upper_bound, lower_edge_idx) };
             if lower_edge_idx < upper_edge_idx {
                 return Ok((
                     self,
@@ -135,6 +127,7 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
                     upper_child_bound,
                 ));
             }
+            debug_assert_eq!(lower_edge_idx, upper_edge_idx);
             let common_edge = unsafe { Handle::new_edge(self, lower_edge_idx) };
             match common_edge.force() {
                 Leaf(common_edge) => return Err(common_edge),
@@ -174,7 +167,7 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
         Q: ?Sized + Ord,
         K: Borrow<Q>,
     {
-        let (edge_idx, bound) = self.find_upper_bound_index(bound);
+        let (edge_idx, bound) = unsafe { self.find_upper_bound_index(bound, 0) };
         let edge = unsafe { Handle::new_edge(self, edge_idx) };
         (edge, bound)
     }
@@ -193,29 +186,33 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
         Q: Ord,
         K: Borrow<Q>,
     {
-        match self.find_key_index(key) {
+        match unsafe { self.find_key_index(key, 0) } {
             IndexResult::KV(idx) => Found(unsafe { Handle::new_kv(self, idx) }),
             IndexResult::Edge(idx) => GoDown(unsafe { Handle::new_edge(self, idx) }),
         }
     }
 
     /// Returns either the KV index in the node at which the key (or an equivalent)
-    /// exists, or the edge index where the key belongs.
+    /// exists, or the edge index where the key belongs, starting from a particular index.
     ///
     /// The result is meaningful only if the tree is ordered by key, like the tree
     /// in a `BTreeMap` is.
-    fn find_key_index<Q: ?Sized>(&self, key: &Q) -> IndexResult
+    ///
+    /// # Safety
+    /// `start_index` must be a valid edge index for the node.
+    unsafe fn find_key_index<Q: ?Sized>(&self, key: &Q, start_index: usize) -> IndexResult
     where
         Q: Ord,
         K: Borrow<Q>,
     {
         let node = self.reborrow();
         let keys = node.keys();
-        for (i, k) in keys.iter().enumerate() {
+        debug_assert!(start_index <= keys.len());
+        for (offset, k) in unsafe { keys.get_unchecked(start_index..) }.iter().enumerate() {
             match key.cmp(k.borrow()) {
                 Ordering::Greater => {}
-                Ordering::Equal => return IndexResult::KV(i),
-                Ordering::Less => return IndexResult::Edge(i),
+                Ordering::Equal => return IndexResult::KV(start_index + offset),
+                Ordering::Less => return IndexResult::Edge(start_index + offset),
             }
         }
         IndexResult::Edge(keys.len())
@@ -235,11 +232,11 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
         K: Borrow<Q>,
     {
         match bound {
-            Included(key) => match self.find_key_index(key) {
+            Included(key) => match unsafe { self.find_key_index(key, 0) } {
                 IndexResult::KV(idx) => (idx, AllExcluded),
                 IndexResult::Edge(idx) => (idx, bound),
             },
-            Excluded(key) => match self.find_key_index(key) {
+            Excluded(key) => match unsafe { self.find_key_index(key, 0) } {
                 IndexResult::KV(idx) => (idx + 1, AllIncluded),
                 IndexResult::Edge(idx) => (idx, bound),
             },
@@ -248,26 +245,31 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
         }
     }
 
-    /// Clone of `find_lower_bound_index` for the upper bound.
-    fn find_upper_bound_index<'r, Q>(
+    /// Mirror image of `find_lower_bound_index` for the upper bound,
+    /// with an additional parameter to skip part of the key array.
+    ///
+    /// # Safety
+    /// `start_index` must be a valid edge index for the node.
+    unsafe fn find_upper_bound_index<'r, Q>(
         &self,
         bound: SearchBound<&'r Q>,
+        start_index: usize,
     ) -> (usize, SearchBound<&'r Q>)
     where
         Q: ?Sized + Ord,
         K: Borrow<Q>,
     {
         match bound {
-            Included(key) => match self.find_key_index(key) {
+            Included(key) => match unsafe { self.find_key_index(key, start_index) } {
                 IndexResult::KV(idx) => (idx + 1, AllExcluded),
                 IndexResult::Edge(idx) => (idx, bound),
             },
-            Excluded(key) => match self.find_key_index(key) {
+            Excluded(key) => match unsafe { self.find_key_index(key, start_index) } {
                 IndexResult::KV(idx) => (idx, AllIncluded),
                 IndexResult::Edge(idx) => (idx, bound),
             },
             AllIncluded => (self.len(), AllIncluded),
-            AllExcluded => (0, AllExcluded),
+            AllExcluded => (start_index, AllExcluded),
         }
     }
 }

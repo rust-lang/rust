@@ -1018,9 +1018,6 @@ impl<K, V> BTreeMap<K, V> {
     ///
     /// Panics if range `start > end`.
     /// Panics if range `start == end` and both bounds are `Excluded`.
-    /// May panic if the [`Ord`] implementation of type `T` is ill-defined,
-    /// either because it does not form a total order or because it does not
-    /// correspond to the [`Ord`] implementation of type `K`.
     ///
     /// # Examples
     ///
@@ -1064,9 +1061,6 @@ impl<K, V> BTreeMap<K, V> {
     ///
     /// Panics if range `start > end`.
     /// Panics if range `start == end` and both bounds are `Excluded`.
-    /// May panic if the [`Ord`] implementation of type `T` is ill-defined,
-    /// either because it does not form a total order or because it does not
-    /// correspond to the [`Ord`] implementation of type `K`.
     ///
     /// # Examples
     ///
