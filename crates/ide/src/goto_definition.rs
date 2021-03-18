@@ -1176,4 +1176,21 @@ fn foo() { A { a$0: }; }
 "#,
         )
     }
+
+    #[test]
+    fn goto_proc_macro() {
+        check(
+            r#"
+//- /main.rs crate:main deps:mac
+use mac::fn_macro;
+
+fn_macro$0!();
+
+//- /mac.rs crate:mac
+#[proc_macro]
+fn fn_macro() {}
+ //^^^^^^^^
+            "#,
+        )
+    }
 }
