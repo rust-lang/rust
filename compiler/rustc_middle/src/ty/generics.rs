@@ -120,9 +120,11 @@ impl<'tcx> Generics {
         for param in &self.params {
             match param.kind {
                 GenericParamDefKind::Lifetime => (),
-                GenericParamDefKind::Type { has_default, .. }
-                | GenericParamDefKind::Const { has_default } => {
+                GenericParamDefKind::Type { has_default, .. } => {
                     own_defaults.types += has_default as usize;
+                }
+                GenericParamDefKind::Const { has_default } => {
+                    own_defaults.consts += has_default as usize;
                 }
             }
         }

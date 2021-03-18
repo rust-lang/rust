@@ -931,10 +931,7 @@ impl ReachEverythingInTheInterfaceVisitor<'_, 'tcx> {
                 GenericParamDefKind::Const { has_default, .. } => {
                     self.visit(self.ev.tcx.type_of(param.def_id));
                     if has_default {
-                        // FIXME(const_generic_defaults)
-                        // how should the error case be handled here?
-                        // let default_const = self.ev.tcx.const_eval_poly(param.def_id).unwrap();
-                        // self.visit(default_const);
+                        self.visit(self.ev.tcx.const_param_default(param.def_id));
                     }
                 }
             }
@@ -1747,6 +1744,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'tcx> {
                         self.visit(self.tcx.type_of(param.def_id));
                     }
                 }
+                // FIXME(const_evaluatable_checked): May want to look inside const here
                 GenericParamDefKind::Const { .. } => {
                     self.visit(self.tcx.type_of(param.def_id));
                 }

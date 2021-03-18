@@ -206,8 +206,7 @@ impl<'tcx> Const<'tcx> {
 pub fn const_param_default<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx Const<'tcx> {
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
     let default_def_id = match tcx.hir().get(hir_id) {
-        hir::Node::AnonConst(ac)
-        | hir::Node::GenericParam(hir::GenericParam {
+        hir::Node::GenericParam(hir::GenericParam {
             kind: hir::GenericParamKind::Const { ty: _, default: Some(ac) },
             ..
         }) => tcx.hir().local_def_id(ac.hir_id),
