@@ -268,14 +268,13 @@ fn partial_ord_expand(
 mod tests {
     use base_db::{fixture::WithFixture, CrateId, SourceDatabase};
     use expect_test::{expect, Expect};
-    use name::{known, Name};
+    use name::AsName;
 
     use crate::{test_db::TestDB, AstId, MacroCallId, MacroCallKind, MacroCallLoc};
 
     use super::*;
 
-    fn expand_builtin_derive(ra_fixture: &str, name: Name) -> String {
-        let expander = BuiltinDeriveExpander::find_by_name(&name).unwrap();
+    fn expand_builtin_derive(ra_fixture: &str) -> String {
         let fixture = format!(
             r#"//- /main.rs crate:main deps:core
 $0
@@ -288,18 +287,34 @@ $0
 
         let (db, file_pos) = TestDB::with_position(&fixture);
         let file_id = file_pos.file_id;
-        let parsed = db.parse(file_id);
-        let items: Vec<_> =
-            parsed.syntax_node().descendants().filter_map(ast::Item::cast).collect();
-
         let ast_id_map = db.ast_id_map(file_id.into());
+        let parsed = db.parse(file_id);
+        let macros: Vec<_> =
+            parsed.syntax_node().descendants().filter_map(ast::Macro::cast).collect();
+        let items: Vec<_> = parsed
+            .syntax_node()
+            .descendants()
+            .filter(|node| !ast::Macro::can_cast(node.kind()))
+            .filter_map(ast::Item::cast)
+            .collect();
+
+        assert_eq!(macros.len(), 1, "test must contain exactly 1 macro definition");
+        assert_eq!(items.len(), 1, "test must contain exactly 1 item");
+
+        let macro_ast_id = AstId::new(file_id.into(), ast_id_map.ast_id(&macros[0]));
+        let name = match &macros[0] {
+            ast::Macro::MacroRules(rules) => rules.name().unwrap().as_name(),
+            ast::Macro::MacroDef(def) => def.name().unwrap().as_name(),
+        };
+
+        let expander = BuiltinDeriveExpander::find_by_name(&name).unwrap();
 
         let attr_id = AstId::new(file_id.into(), ast_id_map.ast_id(&items[0]));
 
         let loc = MacroCallLoc {
             def: MacroDefId {
                 krate: CrateId(0),
-                ast_id: None,
+                ast_id: Some(macro_ast_id),
                 kind: MacroDefKind::BuiltInDerive(expander),
                 local_inner: false,
             },
@@ -315,8 +330,8 @@ $0
         parsed.text().to_string()
     }
 
-    fn check_derive(ra_fixture: &str, name: Name, expected: Expect) {
-        let expanded = expand_builtin_derive(ra_fixture, name);
+    fn check_derive(ra_fixture: &str, expected: Expect) {
+        let expanded = expand_builtin_derive(ra_fixture);
         expected.assert_eq(&expanded);
     }
 
@@ -324,10 +339,10 @@ $0
     fn test_copy_expand_simple() {
         check_derive(
             r#"
+            macro Copy {}
             #[derive(Copy)]
             struct Foo;
             "#,
-            known::Copy,
             expect![["impl< >core::marker::CopyforFoo< >{}"]],
         );
     }
@@ -336,10 +351,10 @@ $0
     fn test_copy_expand_with_type_params() {
         check_derive(
             r#"
+            macro Copy {}
             #[derive(Copy)]
             struct Foo<A, B>;
             "#,
-            known::Copy,
             expect![["impl<T0:core::marker::Copy,T1:core::marker::Copy>core::marker::CopyforFoo<T0,T1>{}"]],
         );
     }
@@ -348,10 +363,10 @@ $0
     fn test_copy_expand_with_lifetimes() {
         check_derive(
             r#"
+            macro Copy {}
             #[derive(Copy)]
             struct Foo<A, B, 'a, 'b>;
             "#,
-            known::Copy,
             // We currently just ignore lifetimes
             expect![["impl<T0:core::marker::Copy,T1:core::marker::Copy>core::marker::CopyforFoo<T0,T1>{}"]],
         );
@@ -361,10 +376,10 @@ $0
     fn test_clone_expand() {
         check_derive(
             r#"
+            macro Clone {}
             #[derive(Clone)]
             struct Foo<A, B>;
             "#,
-            known::Clone,
             expect![["impl<T0:core::clone::Clone,T1:core::clone::Clone>core::clone::CloneforFoo<T0,T1>{}"]],
         );
     }
