@@ -157,7 +157,7 @@ fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Option<Arc<(TokenExpander,
             Some(Arc::new((TokenExpander::BuiltinDerive(expander), mbe::TokenMap::default())))
         }
         MacroDefKind::BuiltInEager(..) => None,
-        MacroDefKind::ProcMacro(expander) => {
+        MacroDefKind::ProcMacro(expander, ..) => {
             Some(Arc::new((TokenExpander::ProcMacro(expander), mbe::TokenMap::default())))
         }
     }
@@ -269,7 +269,7 @@ fn expand_proc_macro(
     };
 
     let expander = match loc.def.kind {
-        MacroDefKind::ProcMacro(expander) => expander,
+        MacroDefKind::ProcMacro(expander, ..) => expander,
         _ => unreachable!(),
     };
 

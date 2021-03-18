@@ -1144,12 +1144,15 @@ impl MacroDef {
 
     /// XXX: this parses the file
     pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
-        self.source(db)?.value.name().map(|it| it.as_name())
+        match self.source(db)?.value {
+            Either::Left(it) => it.name().map(|it| it.as_name()),
+            Either::Right(it) => it.name().map(|it| it.as_name()),
+        }
     }
 
     /// Indicate it is a proc-macro
     pub fn is_proc_macro(&self) -> bool {
-        matches!(self.id.kind, MacroDefKind::ProcMacro(_))
+        matches!(self.id.kind, MacroDefKind::ProcMacro(..))
     }
 
     /// Indicate it is a derive macro

@@ -209,7 +209,7 @@ fn eager_macro_recur(
             MacroDefKind::Declarative(_)
             | MacroDefKind::BuiltIn(..)
             | MacroDefKind::BuiltInDerive(..)
-            | MacroDefKind::ProcMacro(_) => {
+            | MacroDefKind::ProcMacro(..) => {
                 let res = lazy_expand(db, &def, curr.with_value(child.clone()), krate);
                 let val = diagnostic_sink.expand_result_option(res)?;
 

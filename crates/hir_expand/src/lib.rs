@@ -245,7 +245,7 @@ impl MacroDefId {
             MacroDefKind::BuiltIn(_, id) => id,
             MacroDefKind::BuiltInDerive(_, id) => id,
             MacroDefKind::BuiltInEager(_, id) => id,
-            MacroDefKind::ProcMacro(_) => return None,
+            MacroDefKind::ProcMacro(..) => return None,
         };
         Some(*id)
     }
@@ -258,7 +258,7 @@ pub enum MacroDefKind {
     // FIXME: maybe just Builtin and rename BuiltinFnLikeExpander to BuiltinExpander
     BuiltInDerive(BuiltinDeriveExpander, AstId<ast::Macro>),
     BuiltInEager(EagerExpander, AstId<ast::Macro>),
-    ProcMacro(ProcMacroExpander),
+    ProcMacro(ProcMacroExpander, AstId<ast::Fn>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

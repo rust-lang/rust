@@ -331,10 +331,16 @@ fn hover_for_definition(
 ) -> Option<Markup> {
     let mod_path = definition_mod_path(db, &def);
     return match def {
-        Definition::Macro(it) => {
-            let label = macro_label(&it.source(db)?.value);
-            from_def_source_labeled(db, it, Some(label), mod_path)
-        }
+        Definition::Macro(it) => match &it.source(db)?.value {
+            Either::Left(mac) => {
+                let label = macro_label(&mac);
+                from_def_source_labeled(db, it, Some(label), mod_path)
+            }
+            Either::Right(_) => {
+                // FIXME
+                None
+            }
+        },
         Definition::Field(def) => from_hir_fmt(db, def, mod_path),
         Definition::ModuleDef(it) => match it {
             ModuleDef::Module(it) => from_hir_fmt(db, it, mod_path),
