@@ -156,12 +156,25 @@ export function moveItem(ctx: Ctx, direction: ra.Direction): Cmd {
 
         if (!edit) return;
 
+        let cursor: vscode.Position | null = null;
+
         await editor.edit((builder) => {
             client.protocol2CodeConverter.asTextEdits(edit.edits).forEach((edit: any) => {
                 builder.replace(edit.range, edit.newText);
+
+                if (direction === ra.Direction.Up) {
+                    if (!cursor || edit.range.end.isBeforeOrEqual(cursor)) {
+                        cursor = edit.range.end;
+                    }
+                } else {
+                    if (!cursor || edit.range.end.isAfterOrEqual(cursor)) {
+                        cursor = edit.range.end;
+                    }
+                }
             });
         }).then(() => {
-            editor.selection = new vscode.Selection(editor.selection.end, editor.selection.end);
+            const newPosition = cursor ?? editor.selection.start;
+            editor.selection = new vscode.Selection(newPosition, newPosition);
         });
     };
 }
