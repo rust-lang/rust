@@ -16,7 +16,7 @@ LL | #![cfg_attr(full_tait, feature(type_alias_impl_trait, impl_trait_in_binding
    = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
 
 error: fatal error triggered by #[rustc_error]
-  --> $DIR/metadata-sufficient-for-layout.rs:29:1
+  --> $DIR/metadata-sufficient-for-layout.rs:28:1
    |
 LL | fn main() {}
    | ^^^^^^^^^

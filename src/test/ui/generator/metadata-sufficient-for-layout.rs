@@ -23,7 +23,6 @@ static A: Option<F> = None;
 //[min_tait]~^ ERROR not permitted here
 
 fn f() -> F { metadata_sufficient_for_layout::g() }
-//[min_tait]~^ ERROR concrete type differs
 
 #[rustc_error]
 fn main() {} //[full_tait]~ ERROR

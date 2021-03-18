@@ -540,7 +540,10 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
                 }
 
                 if let Some((prev_span, prev_ty)) = self.found {
-                    if *concrete_type != prev_ty {
+                    if *concrete_type != prev_ty
+                        && !concrete_type.references_error()
+                        && !prev_ty.references_error()
+                    {
                         debug!("find_opaque_ty_constraints: span={:?}", span);
                         // Found different concrete types for the opaque type.
                         let mut err = self.tcx.sess.struct_span_err(

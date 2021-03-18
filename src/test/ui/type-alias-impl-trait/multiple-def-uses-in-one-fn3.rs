@@ -13,7 +13,6 @@ fn f<A: ToString + Clone, B: ToString + Clone>(a: A, b: B) -> (X<A, B>, X<B, A>)
 }
 
 fn g<A: ToString + Clone, B: ToString + Clone>(a: A, b: B) -> (X<A, B>, X<A, B>) {
-    //~^ ERROR concrete type differs from previous defining opaque type use
     (a, b) //~ ERROR mismatched types
 }
 

@@ -7,18 +7,6 @@ LL | static mut TEST: Option<Debuggable> = None;
    = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
    = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
 
-error: concrete type differs from previous defining opaque type use
-  --> $DIR/issue-60407.rs:16:1
-   |
-LL | fn foo() -> Debuggable {
-   | ^^^^^^^^^^^^^^^^^^^^^^ expected `[type error]`, got `u32`
-   |
-note: previous use here
-  --> $DIR/issue-60407.rs:9:1
-   |
-LL | static mut TEST: Option<Debuggable> = None;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0658`.

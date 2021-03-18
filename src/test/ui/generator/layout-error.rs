@@ -29,5 +29,4 @@ fn main() {
     // Check that statics are inhabited computes they layout.
     static POOL: Task<F> = Task::new(); //[min_tait]~ ERROR not permitted here
     Task::spawn(&POOL, || cb()); //[min_tait]~ ERROR type alias impl trait is not permitted here
-    //[min_tait]~^ ERROR concrete type differs from previous
 }

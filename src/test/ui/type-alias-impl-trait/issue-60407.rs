@@ -13,6 +13,6 @@ fn main() { //[full_tait]~ ERROR
     unsafe { TEST = Some(foo()) }
 }
 
-fn foo() -> Debuggable { //[min_tait]~ ERROR concrete type differs
+fn foo() -> Debuggable {
     0u32
 }

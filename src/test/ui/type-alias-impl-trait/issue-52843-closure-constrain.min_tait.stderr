@@ -7,18 +7,6 @@ LL |     let null = || -> Opaque { 0 };
    = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
-error: concrete type differs from previous defining opaque type use
-  --> $DIR/issue-52843-closure-constrain.rs:13:16
-   |
-LL |     let null = || -> Opaque { 0 };
-   |                ^^^^^^^^^^^^^^^^^^ expected `String`, got `[type error]`
-   |
-note: previous use here
-  --> $DIR/issue-52843-closure-constrain.rs:12:5
-   |
-LL |     fn _unused() -> Opaque { String::new() }
-   |     ^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0658`.
