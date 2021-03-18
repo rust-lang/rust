@@ -115,6 +115,10 @@ impl ItemTree {
                     // still need to collect inner items.
                     ctx.lower_inner_items(stmt.syntax())
                 },
+                ast::Item(item) => {
+                    // Macros can expand to stmt and other item, and we add it as top level item
+                    ctx.lower_single_item(item)
+                },
                 _ => {
                     panic!("cannot create item tree from {:?} {}", syntax, syntax);
                 },

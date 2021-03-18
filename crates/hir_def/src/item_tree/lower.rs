@@ -87,6 +87,14 @@ impl Ctx {
         self.tree
     }
 
+    pub(super) fn lower_single_item(mut self, item: ast::Item) -> ItemTree {
+        self.tree.top_level = self
+            .lower_mod_item(&item, false)
+            .map(|item| item.0)
+            .unwrap_or_else(|| Default::default());
+        self.tree
+    }
+
     pub(super) fn lower_inner_items(mut self, within: &SyntaxNode) -> ItemTree {
         self.collect_inner_items(within);
         self.tree
