@@ -1,6 +1,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+#![feature(assert_matches)]
 #![feature(bool_to_option)]
-#![feature(option_expect_none)]
 #![feature(box_patterns)]
 #![feature(drain_filter)]
 #![feature(try_blocks)]
