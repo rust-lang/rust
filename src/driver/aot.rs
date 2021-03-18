@@ -165,9 +165,8 @@ pub(super) fn run_aot(
 ) -> Box<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>)> {
     use rustc_span::symbol::sym;
 
-    let subsystem = tcx
-        .sess
-        .first_attr_value_str_by_name(&tcx.hir().krate().item.attrs, sym::windows_subsystem);
+    let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
+    let subsystem = tcx.sess.first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
     let windows_subsystem = subsystem.map(|subsystem| {
         if subsystem != sym::windows && subsystem != sym::console {
             tcx.sess.fatal(&format!(
