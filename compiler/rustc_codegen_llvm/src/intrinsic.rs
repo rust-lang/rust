@@ -1628,7 +1628,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
             out_elem
         );
     }
-    macro_rules! arith_bin {
+    macro_rules! arith_binary {
         ($($name: ident: $($($p: ident),* => $call: ident),*;)*) => {
             $(if name == sym::$name {
                 match in_elem.kind() {
@@ -1644,7 +1644,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
             })*
         }
     }
-    arith_bin! {
+    arith_binary! {
         simd_add: Uint, Int => add, Float => fadd;
         simd_sub: Uint, Int => sub, Float => fsub;
         simd_mul: Uint, Int => mul, Float => fmul;
@@ -1659,7 +1659,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
         simd_fmin: Float => minnum;
 
     }
-    macro_rules! arith_un {
+    macro_rules! arith_unary {
         ($($name: ident: $($($p: ident),* => $call: ident),*;)*) => {
             $(if name == sym::$name {
                 match in_elem.kind() {
@@ -1675,7 +1675,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
             })*
         }
     }
-    arith_un! {
+    arith_unary! {
         simd_neg: Int => neg, Float => fneg;
     }
 
