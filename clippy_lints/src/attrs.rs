@@ -430,7 +430,7 @@ fn is_relevant_block(cx: &LateContext<'_>, typeck_results: &ty::TypeckResults<'_
         |stmt| match &stmt.kind {
             StmtKind::Local(_) => true,
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => is_relevant_expr(cx, typeck_results, expr),
-            _ => false,
+            StmtKind::Item(_) => false,
         },
     )
 }
@@ -613,7 +613,7 @@ fn check_mismatched_target_os(cx: &EarlyContext<'_>, attr: &Attribute) {
                             }
                         }
                     },
-                    _ => {},
+                    MetaItemKind::NameValue(..) => {},
                 }
             }
         }

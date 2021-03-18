@@ -77,7 +77,7 @@ fn main() {
     let error_kind = ErrorKind::NotFound;
     match error_kind {
         ErrorKind::NotFound => {},
-        std::io::ErrorKind::PermissionDenied | std::io::ErrorKind::ConnectionRefused | std::io::ErrorKind::ConnectionReset | std::io::ErrorKind::ConnectionAborted | std::io::ErrorKind::NotConnected | std::io::ErrorKind::AddrInUse | std::io::ErrorKind::AddrNotAvailable | std::io::ErrorKind::BrokenPipe | std::io::ErrorKind::AlreadyExists | std::io::ErrorKind::WouldBlock | std::io::ErrorKind::InvalidInput | std::io::ErrorKind::InvalidData | std::io::ErrorKind::TimedOut | std::io::ErrorKind::WriteZero | std::io::ErrorKind::Interrupted | std::io::ErrorKind::Other | std::io::ErrorKind::UnexpectedEof | _ => {},
+        ErrorKind::PermissionDenied | ErrorKind::ConnectionRefused | ErrorKind::ConnectionReset | ErrorKind::ConnectionAborted | ErrorKind::NotConnected | ErrorKind::AddrInUse | ErrorKind::AddrNotAvailable | ErrorKind::BrokenPipe | ErrorKind::AlreadyExists | ErrorKind::WouldBlock | ErrorKind::InvalidInput | ErrorKind::InvalidData | ErrorKind::TimedOut | ErrorKind::WriteZero | ErrorKind::Interrupted | ErrorKind::Other | ErrorKind::UnexpectedEof | _ => {},
     }
     match error_kind {
         ErrorKind::NotFound => {},

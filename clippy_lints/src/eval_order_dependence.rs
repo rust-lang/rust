@@ -273,7 +273,7 @@ fn check_stmt<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, stmt: &'tcx Stmt<'_>) -
             .init
             .as_ref()
             .map_or(StopEarly::KeepGoing, |expr| check_expr(vis, expr)),
-        _ => StopEarly::KeepGoing,
+        StmtKind::Item(..) => StopEarly::KeepGoing,
     }
 }
 
