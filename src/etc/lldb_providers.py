@@ -563,7 +563,7 @@ class StdHashMapSyntheticProvider:
             # HashSet wraps either std HashMap or hashbrown::HashSet, which both
             # wrap hashbrown::HashMap, so either way we "unwrap" twice.
             hashbrown_hashmap = self.valobj.GetChildAtIndex(0).GetChildAtIndex(0)
-        return hashbrown_hashmap.GetChildMemberWithName("table")
+        return hashbrown_hashmap.GetChildMemberWithName("table").GetChildMemberWithName("table")
 
     def has_children(self):
         # type: () -> bool

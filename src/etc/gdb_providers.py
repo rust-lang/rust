@@ -349,17 +349,18 @@ class StdHashMapProvider:
         self.show_values = show_values
 
         table = self.table()
-        capacity = int(table["bucket_mask"]) + 1
-        ctrl = table["ctrl"]["pointer"]
+        table_inner = table["table"]
+        capacity = int(table_inner["bucket_mask"]) + 1
+        ctrl = table_inner["ctrl"]["pointer"]
 
-        self.size = int(table["items"])
+        self.size = int(table_inner["items"])
         self.pair_type = table.type.template_argument(0).strip_typedefs()
 
-        self.new_layout = not table.type.has_key("data")
+        self.new_layout = not table_inner.type.has_key("data")
         if self.new_layout:
             self.data_ptr = ctrl.cast(self.pair_type.pointer())
         else:
-            self.data_ptr = table["data"]["pointer"]
+            self.data_ptr = table_inner["data"]["pointer"]
 
         self.valid_indices = []
         for idx in range(capacity):
