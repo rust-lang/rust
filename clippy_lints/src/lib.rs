@@ -242,6 +242,7 @@ mod inherent_to_string;
 mod inline_fn_without_body;
 mod int_plus_one;
 mod integer_division;
+mod invalid_upcast_comparisons;
 mod items_after_statements;
 mod large_const_arrays;
 mod large_enum_variant;
@@ -697,6 +698,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &inline_fn_without_body::INLINE_FN_WITHOUT_BODY,
         &int_plus_one::INT_PLUS_ONE,
         &integer_division::INTEGER_DIVISION,
+        &invalid_upcast_comparisons::INVALID_UPCAST_COMPARISONS,
         &items_after_statements::ITEMS_AFTER_STATEMENTS,
         &large_const_arrays::LARGE_CONST_ARRAYS,
         &large_enum_variant::LARGE_ENUM_VARIANT,
@@ -960,7 +962,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &types::BORROWED_BOX,
         &types::BOX_VEC,
         &types::IMPLICIT_HASHER,
-        &types::INVALID_UPCAST_COMPARISONS,
         &types::LINKEDLIST,
         &types::OPTION_OPTION,
         &types::RC_BUFFER,
@@ -1114,7 +1115,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box drop_forget_ref::DropForgetRef);
     store.register_late_pass(|| box empty_enum::EmptyEnum);
     store.register_late_pass(|| box absurd_extreme_comparisons::AbsurdExtremeComparisons);
-    store.register_late_pass(|| box types::InvalidUpcastComparisons);
+    store.register_late_pass(|| box invalid_upcast_comparisons::InvalidUpcastComparisons);
     store.register_late_pass(|| box regex::Regex::default());
     store.register_late_pass(|| box copies::CopyAndPaste);
     store.register_late_pass(|| box copy_iterator::CopyIterator);
@@ -1374,6 +1375,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&if_not_else::IF_NOT_ELSE),
         LintId::of(&implicit_saturating_sub::IMPLICIT_SATURATING_SUB),
         LintId::of(&infinite_iter::MAYBE_INFINITE_ITER),
+        LintId::of(&invalid_upcast_comparisons::INVALID_UPCAST_COMPARISONS),
         LintId::of(&items_after_statements::ITEMS_AFTER_STATEMENTS),
         LintId::of(&large_stack_arrays::LARGE_STACK_ARRAYS),
         LintId::of(&let_underscore::LET_UNDERSCORE_DROP),
@@ -1413,7 +1415,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&trait_bounds::TRAIT_DUPLICATION_IN_BOUNDS),
         LintId::of(&trait_bounds::TYPE_REPETITION_IN_BOUNDS),
         LintId::of(&types::IMPLICIT_HASHER),
-        LintId::of(&types::INVALID_UPCAST_COMPARISONS),
         LintId::of(&types::LINKEDLIST),
         LintId::of(&types::OPTION_OPTION),
         LintId::of(&unicode::NON_ASCII_LITERAL),
