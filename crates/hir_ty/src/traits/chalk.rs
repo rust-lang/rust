@@ -19,7 +19,7 @@ use crate::{
     display::HirDisplay,
     from_assoc_type_id,
     method_resolution::{TyFingerprint, ALL_FLOAT_FPS, ALL_INT_FPS},
-    to_assoc_type_id,
+    to_assoc_type_id, to_chalk_trait_id,
     utils::generics,
     BoundVar, CallableDefId, CallableSig, DebruijnIndex, FnDefId, GenericPredicate,
     ProjectionPredicate, ProjectionTy, Substitution, TraitRef, Ty, TyKind,
@@ -219,9 +219,9 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                     // for<T> <Self> [Future<Self>, Future::Output<Self> = T]
                     //     ^1  ^0            ^0                    ^0      ^1
                     let impl_bound = GenericPredicate::Implemented(TraitRef {
-                        trait_: future_trait,
+                        trait_id: to_chalk_trait_id(future_trait),
                         // Self type as the first parameter.
-                        substs: Substitution::single(
+                        substitution: Substitution::single(
                             TyKind::BoundVar(BoundVar {
                                 debruijn: DebruijnIndex::INNERMOST,
                                 index: 0,
@@ -546,7 +546,7 @@ fn impl_def_datum(
 
     let generic_params = generics(db.upcast(), impl_id.into());
     let bound_vars = Substitution::bound_vars(&generic_params, DebruijnIndex::INNERMOST);
-    let trait_ = trait_ref.trait_;
+    let trait_ = trait_ref.hir_trait_id();
     let impl_type = if impl_id.lookup(db.upcast()).container.krate() == krate {
         rust_ir::ImplType::Local
     } else {
@@ -614,7 +614,7 @@ fn type_alias_associated_ty_value(
     let trait_ref = db.impl_trait(impl_id).expect("assoc ty value should not exist").value; // we don't return any assoc ty values if the impl'd trait can't be resolved
 
     let assoc_ty = db
-        .trait_data(trait_ref.trait_)
+        .trait_data(trait_ref.hir_trait_id())
         .associated_type_by_name(&type_alias_data.name)
         .expect("assoc ty value should not exist"); // validated when building the impl data as well
     let ty = db.ty(type_alias.into());

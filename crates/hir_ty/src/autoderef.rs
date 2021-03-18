@@ -12,7 +12,7 @@ use log::{info, warn};
 
 use crate::{
     db::HirDatabase,
-    to_assoc_type_id,
+    to_assoc_type_id, to_chalk_trait_id,
     traits::{InEnvironment, Solution},
     utils::generics,
     BoundVar, Canonical, DebruijnIndex, Interner, Obligation, Substitution, TraitRef, Ty, TyKind,
@@ -68,7 +68,8 @@ fn deref_by_trait(
         Substitution::build_for_generics(&generic_params).push(ty.value.value.clone()).build();
 
     // Check that the type implements Deref at all
-    let trait_ref = TraitRef { trait_: deref_trait, substs: parameters.clone() };
+    let trait_ref =
+        TraitRef { trait_id: to_chalk_trait_id(deref_trait), substitution: parameters.clone() };
     let implements_goal = Canonical {
         kinds: ty.value.kinds.clone(),
         value: InEnvironment {

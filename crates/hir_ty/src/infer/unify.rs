@@ -390,9 +390,9 @@ impl InferenceTable {
     ) -> bool {
         match (pred1, pred2) {
             (GenericPredicate::Implemented(tr1), GenericPredicate::Implemented(tr2))
-                if tr1.trait_ == tr2.trait_ =>
+                if tr1.trait_id == tr2.trait_id =>
             {
-                self.unify_substs(&tr1.substs, &tr2.substs, depth + 1)
+                self.unify_substs(&tr1.substitution, &tr2.substitution, depth + 1)
             }
             (GenericPredicate::Projection(proj1), GenericPredicate::Projection(proj2))
                 if proj1.projection_ty.associated_ty_id == proj2.projection_ty.associated_ty_id =>

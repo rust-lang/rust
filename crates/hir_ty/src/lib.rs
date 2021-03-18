@@ -58,6 +58,8 @@ pub type ClosureId = chalk_ir::ClosureId<Interner>;
 pub type OpaqueTyId = chalk_ir::OpaqueTyId<Interner>;
 pub type PlaceholderIndex = chalk_ir::PlaceholderIndex;
 
+pub type ChalkTraitId = chalk_ir::TraitId<Interner>;
+
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum Lifetime {
     Parameter(LifetimeParamId),
@@ -81,7 +83,10 @@ pub struct ProjectionTy {
 
 impl ProjectionTy {
     pub fn trait_ref(&self, db: &dyn HirDatabase) -> TraitRef {
-        TraitRef { trait_: self.trait_(db), substs: self.substitution.clone() }
+        TraitRef {
+            trait_id: to_chalk_trait_id(self.trait_(db)),
+            substitution: self.substitution.clone(),
+        }
     }
 
     fn trait_(&self, db: &dyn HirDatabase) -> TraitId {
@@ -493,23 +498,25 @@ impl<T: TypeWalk> TypeWalk for Binders<T> {
 }
 
 /// A trait with type parameters. This includes the `Self`, so this represents a concrete type implementing the trait.
-/// Name to be bikeshedded: TraitBound? TraitImplements?
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct TraitRef {
-    /// FIXME name?
-    pub trait_: TraitId,
-    pub substs: Substitution,
+    pub trait_id: ChalkTraitId,
+    pub substitution: Substitution,
 }
 
 impl TraitRef {
-    pub fn self_ty(&self) -> &Ty {
-        &self.substs[0]
+    pub fn self_type_parameter(&self) -> &Ty {
+        &self.substitution[0]
+    }
+
+    pub fn hir_trait_id(&self) -> TraitId {
+        from_chalk_trait_id(self.trait_id)
     }
 }
 
 impl TypeWalk for TraitRef {
     fn walk(&self, f: &mut impl FnMut(&Ty)) {
-        self.substs.walk(f);
+        self.substitution.walk(f);
     }
 
     fn walk_mut_binders(
@@ -517,7 +524,7 @@ impl TypeWalk for TraitRef {
         f: &mut impl FnMut(&mut Ty, DebruijnIndex),
         binders: DebruijnIndex,
     ) {
-        self.substs.walk_mut_binders(f, binders);
+        self.substitution.walk_mut_binders(f, binders);
     }
 }
 
@@ -784,7 +791,7 @@ impl Ty {
 
     /// If this is a `dyn Trait`, returns that trait.
     pub fn dyn_trait(&self) -> Option<TraitId> {
-        self.dyn_trait_ref().map(|it| it.trait_)
+        self.dyn_trait_ref().map(|it| it.trait_id).map(from_chalk_trait_id)
     }
 
     fn builtin_deref(&self) -> Option<Ty> {
@@ -868,8 +875,8 @@ impl Ty {
                             // Parameters will be walked outside, and projection predicate is not used.
                             // So just provide the Future trait.
                             let impl_bound = GenericPredicate::Implemented(TraitRef {
-                                trait_: future_trait,
-                                substs: Substitution::empty(),
+                                trait_id: to_chalk_trait_id(future_trait),
+                                substitution: Substitution::empty(),
                             });
                             Some(vec![impl_bound])
                         } else {
@@ -1157,4 +1164,12 @@ pub fn to_placeholder_idx(db: &dyn HirDatabase, id: TypeParamId) -> PlaceholderI
         ui: chalk_ir::UniverseIndex::ROOT,
         idx: salsa::InternKey::as_intern_id(&interned_id).as_usize(),
     }
+}
+
+pub fn to_chalk_trait_id(id: TraitId) -> ChalkTraitId {
+    chalk_ir::TraitId(salsa::InternKey::as_intern_id(&id))
+}
+
+pub fn from_chalk_trait_id(id: ChalkTraitId) -> TraitId {
+    salsa::InternKey::from_intern_id(id.0)
 }

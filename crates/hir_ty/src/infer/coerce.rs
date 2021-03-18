@@ -8,7 +8,8 @@ use chalk_ir::{Mutability, TyVariableKind};
 use hir_def::lang_item::LangItemTarget;
 
 use crate::{
-    autoderef, traits::Solution, Interner, Obligation, Substitution, TraitRef, Ty, TyKind,
+    autoderef, to_chalk_trait_id, traits::Solution, Interner, Obligation, Substitution, TraitRef,
+    Ty, TyKind,
 };
 
 use super::{InEnvironment, InferenceContext};
@@ -140,7 +141,8 @@ impl<'a> InferenceContext<'a> {
             .push(from_ty.clone())
             .push(to_ty.clone())
             .build();
-        let trait_ref = TraitRef { trait_: coerce_unsized_trait, substs };
+        let trait_ref =
+            TraitRef { trait_id: to_chalk_trait_id(coerce_unsized_trait), substitution: substs };
         let goal = InEnvironment::new(self.trait_env.clone(), Obligation::Trait(trait_ref));
 
         let canonicalizer = self.canonicalizer();

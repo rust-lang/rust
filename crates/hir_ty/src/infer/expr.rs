@@ -18,7 +18,7 @@ use crate::{
     lower::lower_to_chalk_mutability,
     method_resolution, op,
     primitive::{self, UintTy},
-    to_assoc_type_id,
+    to_assoc_type_id, to_chalk_trait_id,
     traits::{chalk::from_chalk, FnTrait, InEnvironment},
     utils::{generics, variant_data, Generics},
     AdtId, Binders, CallableDefId, FnPointer, FnSig, Interner, Obligation, Rawness, Scalar,
@@ -90,8 +90,10 @@ impl<'a> InferenceContext<'a> {
             Substitution::build_for_generics(&generic_params).push(ty.clone()).push(arg_ty).build();
 
         let trait_env = Arc::clone(&self.trait_env);
-        let implements_fn_trait =
-            Obligation::Trait(TraitRef { trait_: fn_once_trait, substs: substs.clone() });
+        let implements_fn_trait = Obligation::Trait(TraitRef {
+            trait_id: to_chalk_trait_id(fn_once_trait),
+            substitution: substs.clone(),
+        });
         let goal = self.canonicalizer().canonicalize_obligation(InEnvironment {
             value: implements_fn_trait.clone(),
             environment: trait_env,
@@ -948,7 +950,10 @@ impl<'a> InferenceContext<'a> {
                         // construct a TraitDef
                         let substs =
                             parameters.prefix(generics(self.db.upcast(), trait_.into()).len());
-                        self.obligations.push(Obligation::Trait(TraitRef { trait_, substs }));
+                        self.obligations.push(Obligation::Trait(TraitRef {
+                            trait_id: to_chalk_trait_id(trait_),
+                            substitution: substs,
+                        }));
                     }
                 }
                 CallableDefId::StructId(_) | CallableDefId::EnumVariantId(_) => {}
