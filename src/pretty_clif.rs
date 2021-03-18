@@ -224,10 +224,7 @@ pub(crate) fn write_ir_file(
 
     let clif_file_name = clif_output_dir.join(name);
 
-    let res: std::io::Result<()> = try {
-        let mut file = std::fs::File::create(clif_file_name)?;
-        write(&mut file)?;
-    };
+    let res = std::fs::File::create(clif_file_name).and_then(|mut file| write(&mut file));
     if let Err(err) = res {
         tcx.sess.warn(&format!("error writing ir file: {}", err));
     }

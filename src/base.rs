@@ -465,16 +465,16 @@ fn codegen_stmt<'tcx>(
                     let val = crate::constant::codegen_tls_ref(fx, def_id, lval.layout());
                     lval.write_cvalue(fx, val);
                 }
-                Rvalue::BinaryOp(bin_op, box (ref lhs, ref rhs)) => {
-                    let lhs = codegen_operand(fx, lhs);
-                    let rhs = codegen_operand(fx, rhs);
+                Rvalue::BinaryOp(bin_op, ref lhs_rhs) => {
+                    let lhs = codegen_operand(fx, &lhs_rhs.0);
+                    let rhs = codegen_operand(fx, &lhs_rhs.1);
 
                     let res = crate::num::codegen_binop(fx, bin_op, lhs, rhs);
                     lval.write_cvalue(fx, res);
                 }
-                Rvalue::CheckedBinaryOp(bin_op, box (ref lhs, ref rhs)) => {
-                    let lhs = codegen_operand(fx, lhs);
-                    let rhs = codegen_operand(fx, rhs);
+                Rvalue::CheckedBinaryOp(bin_op, ref lhs_rhs) => {
+                    let lhs = codegen_operand(fx, &lhs_rhs.0);
+                    let rhs = codegen_operand(fx, &lhs_rhs.1);
 
                     let res = if !fx.tcx.sess.overflow_checks() {
                         let val =
@@ -835,19 +835,15 @@ fn codegen_stmt<'tcx>(
             }
         }
         StatementKind::Coverage { .. } => fx.tcx.sess.fatal("-Zcoverage is unimplemented"),
-        StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping {
-          src,
-          dst,
-          count,
-        }) => {
-            let dst = codegen_operand(fx, dst);
+        StatementKind::CopyNonOverlapping(inner) => {
+            let dst = codegen_operand(fx, &inner.dst);
             let pointee = dst
               .layout()
               .pointee_info_at(fx, rustc_target::abi::Size::ZERO)
               .expect("Expected pointer");
             let dst = dst.load_scalar(fx);
-            let src = codegen_operand(fx, src).load_scalar(fx);
-            let count = codegen_operand(fx, count).load_scalar(fx);
+            let src = codegen_operand(fx, &inner.src).load_scalar(fx);
+            let count = codegen_operand(fx, &inner.count).load_scalar(fx);
             let elem_size: u64 = pointee.size.bytes();
             let bytes = if elem_size != 1 {
                fx.bcx.ins().imul_imm(count, elem_size as i64)
