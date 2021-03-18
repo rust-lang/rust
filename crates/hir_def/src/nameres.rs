@@ -53,11 +53,12 @@ mod path_resolution;
 
 #[cfg(test)]
 mod tests;
+mod proc_macro;
 
 use std::sync::Arc;
 
 use base_db::{CrateId, Edition, FileId};
-use hir_expand::{diagnostics::DiagnosticSink, name::Name, InFile};
+use hir_expand::{diagnostics::DiagnosticSink, name::Name, InFile, MacroDefId};
 use la_arena::Arena;
 use profile::Count;
 use rustc_hash::FxHashMap;
@@ -72,6 +73,8 @@ use crate::{
     per_ns::PerNs,
     AstId, BlockId, BlockLoc, LocalModuleId, ModuleDefId, ModuleId,
 };
+
+use self::proc_macro::ProcMacroDef;
 
 /// Contains the results of (early) name resolution.
 ///
@@ -94,6 +97,12 @@ pub struct DefMap {
     /// a dependency (`std` or `core`).
     prelude: Option<ModuleId>,
     extern_prelude: FxHashMap<Name, ModuleDefId>,
+
+    /// Side table with additional proc. macro info, for use by name resolution in downstream
+    /// crates.
+    ///
+    /// (the primary purpose is to resolve derive helpers)
+    exported_proc_macros: FxHashMap<MacroDefId, ProcMacroDef>,
 
     edition: Edition,
     diagnostics: Vec<DefDiagnostic>,
@@ -237,6 +246,7 @@ impl DefMap {
             krate,
             edition,
             extern_prelude: FxHashMap::default(),
+            exported_proc_macros: FxHashMap::default(),
             prelude: None,
             root,
             modules,
