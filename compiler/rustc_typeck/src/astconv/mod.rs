@@ -1608,6 +1608,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     // the whole path.
     // Will fail except for `T::A` and `Self::A`; i.e., if `qself_ty`/`qself_def` are not a type
     // parameter or `Self`.
+    // NOTE: When this function starts resolving `Trait::AssocTy` successfully
+    // it should also start reportint the `BARE_TRAIT_OBJECTS` lint.
     pub fn associated_path_to_ty(
         &self,
         hir_ref_id: hir::HirId,
