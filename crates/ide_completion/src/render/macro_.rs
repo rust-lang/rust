@@ -91,7 +91,7 @@ impl<'a> MacroRender<'a> {
     }
 
     fn detail(&self) -> Option<String> {
-        let ast_node = self.macro_.source(self.ctx.db())?.value;
+        let ast_node = self.macro_.source(self.ctx.db())?.value.left()?;
         Some(macro_label(&ast_node))
     }
 }

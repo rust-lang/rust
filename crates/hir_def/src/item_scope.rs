@@ -252,7 +252,7 @@ impl ItemScope {
             .for_each(|vis| *vis = Visibility::Module(this_module));
 
         for (mac, vis) in self.macros.values_mut() {
-            if let MacroDefKind::ProcMacro(_) = mac.kind {
+            if let MacroDefKind::ProcMacro(..) = mac.kind {
                 // FIXME: Technically this is insufficient since reexports of proc macros are also
                 // forbidden. Practically nobody does that.
                 continue;

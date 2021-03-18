@@ -339,10 +339,14 @@ impl TryToNav for hir::Field {
 impl TryToNav for hir::MacroDef {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
         let src = self.source(db)?;
-        log::debug!("nav target {:#?}", src.value.syntax());
+        let name_owner: &dyn ast::NameOwner = match &src.value {
+            Either::Left(it) => it,
+            Either::Right(it) => it,
+        };
+        log::debug!("nav target {:#?}", name_owner.syntax());
         let mut res = NavigationTarget::from_named(
             db,
-            src.as_ref().map(|it| it as &dyn ast::NameOwner),
+            src.as_ref().with_value(name_owner),
             SymbolKind::Macro,
         );
         res.docs = self.docs(db);

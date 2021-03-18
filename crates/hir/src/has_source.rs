@@ -6,7 +6,7 @@ use hir_def::{
     src::{HasChildSource, HasSource as _},
     Lookup, VariantId,
 };
-use hir_expand::InFile;
+use hir_expand::{InFile, MacroDefKind};
 use syntax::ast;
 
 use crate::{
@@ -111,10 +111,17 @@ impl HasSource for TypeAlias {
     }
 }
 impl HasSource for MacroDef {
-    type Ast = ast::Macro;
+    type Ast = Either<ast::Macro, ast::Fn>;
     fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
-        let ast_id = self.id.ast_id()?;
-        Some(InFile { file_id: ast_id.file_id, value: ast_id.to_node(db.upcast()) })
+        Some(match &self.id.kind {
+            MacroDefKind::Declarative(id)
+            | MacroDefKind::BuiltIn(_, id)
+            | MacroDefKind::BuiltInDerive(_, id)
+            | MacroDefKind::BuiltInEager(_, id) => {
+                id.with_value(Either::Left(id.to_node(db.upcast())))
+            }
+            MacroDefKind::ProcMacro(_, id) => id.map(|_| Either::Right(id.to_node(db.upcast()))),
+        })
     }
 }
 impl HasSource for Impl {

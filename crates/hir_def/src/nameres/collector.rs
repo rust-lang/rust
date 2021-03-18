@@ -353,17 +353,17 @@ impl DefCollector<'_> {
     /// use a dummy expander that always errors. This comes with the drawback of macros potentially
     /// going out of sync with what the build system sees (since we resolve using VFS state, but
     /// Cargo builds only on-disk files). We could and probably should add diagnostics for that.
-    fn resolve_proc_macro(&mut self, name: &Name) {
+    fn resolve_proc_macro(&mut self, name: &Name, ast_id: AstId<ast::Fn>) {
         self.exports_proc_macros = true;
         let macro_def = match self.proc_macros.iter().find(|(n, _)| n == name) {
             Some((_, expander)) => MacroDefId {
                 krate: self.def_map.krate,
-                kind: MacroDefKind::ProcMacro(*expander),
+                kind: MacroDefKind::ProcMacro(*expander, ast_id),
                 local_inner: false,
             },
             None => MacroDefId {
                 krate: self.def_map.krate,
-                kind: MacroDefKind::ProcMacro(ProcMacroExpander::dummy(self.def_map.krate)),
+                kind: MacroDefKind::ProcMacro(ProcMacroExpander::dummy(self.def_map.krate), ast_id),
                 local_inner: false,
             },
         };
@@ -1116,7 +1116,8 @@ impl ModCollector<'_, '_> {
                 ModItem::Function(id) => {
                     let func = &self.item_tree[id];
 
-                    self.collect_proc_macro_def(&func.name, &attrs);
+                    let ast_id = InFile::new(self.file_id, func.ast_id);
+                    self.collect_proc_macro_def(&func.name, ast_id, &attrs);
 
                     def = Some(DefData {
                         id: FunctionLoc {
@@ -1383,7 +1384,7 @@ impl ModCollector<'_, '_> {
     }
 
     /// If `attrs` registers a procedural macro, collects its definition.
-    fn collect_proc_macro_def(&mut self, func_name: &Name, attrs: &Attrs) {
+    fn collect_proc_macro_def(&mut self, func_name: &Name, ast_id: AstId<ast::Fn>, attrs: &Attrs) {
         // FIXME: this should only be done in the root module of `proc-macro` crates, not everywhere
         // FIXME: distinguish the type of macro
         let macro_name = if attrs.by_key("proc_macro").exists()
@@ -1404,7 +1405,7 @@ impl ModCollector<'_, '_> {
             }
         };
 
-        self.def_collector.resolve_proc_macro(&macro_name);
+        self.def_collector.resolve_proc_macro(&macro_name, ast_id);
     }
 
     fn collect_macro_rules(&mut self, id: FileItemTreeId<MacroRules>) {
