@@ -1,8 +1,5 @@
 use ide_db::helpers::insert_use::{try_merge_imports, try_merge_trees, MergeBehavior};
-use syntax::{
-    algo::{neighbor, SyntaxRewriter},
-    ast, AstNode,
-};
+use syntax::{algo::neighbor, ast, ted, AstNode};
 
 use crate::{
     assist_context::{AssistContext, Assists},
@@ -24,33 +21,29 @@ use crate::{
 // ```
 pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let tree: ast::UseTree = ctx.find_node_at_offset()?;
-    let mut rewriter = SyntaxRewriter::default();
+    let original_parent = tree.syntax().ancestors().last()?;
+
+    let tree = tree.clone_for_update();
+    let new_parent = tree.syntax().ancestors().last()?;
+
     let mut offset = ctx.offset();
 
+    let mut imports = None;
+    let mut uses = None;
     if let Some(use_item) = tree.syntax().parent().and_then(ast::Use::cast) {
-        let (merged, to_delete) =
+        let (merged, to_remove) =
             next_prev().filter_map(|dir| neighbor(&use_item, dir)).find_map(|use_item2| {
                 try_merge_imports(&use_item, &use_item2, MergeBehavior::Full).zip(Some(use_item2))
             })?;
 
-        rewriter.replace_ast(&use_item, &merged);
-        rewriter += to_delete.remove();
-
-        if to_delete.syntax().text_range().end() < offset {
-            offset -= to_delete.syntax().text_range().len();
-        }
+        imports = Some((use_item, merged, to_remove));
     } else {
-        let (merged, to_delete) =
+        let (merged, to_remove) =
             next_prev().filter_map(|dir| neighbor(&tree, dir)).find_map(|use_tree| {
                 try_merge_trees(&tree, &use_tree, MergeBehavior::Full).zip(Some(use_tree))
             })?;
 
-        rewriter.replace_ast(&tree, &merged);
-        rewriter += to_delete.remove();
-
-        if to_delete.syntax().text_range().end() < offset {
-            offset -= to_delete.syntax().text_range().len();
-        }
+        uses = Some((tree.clone(), merged, to_remove))
     };
 
     let target = tree.syntax().text_range();
@@ -59,7 +52,23 @@ pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext) -> Option<()
         "Merge imports",
         target,
         |builder| {
-            builder.rewrite(rewriter);
+            if let Some((to_replace, replacement, to_remove)) = imports {
+                if to_remove.syntax().text_range().end() < offset {
+                    offset -= to_remove.syntax().text_range().len();
+                }
+                ted::replace(to_replace.syntax().clone(), replacement.syntax().clone());
+                to_remove.remove();
+            }
+
+            if let Some((to_replace, replacement, to_remove)) = uses {
+                if to_remove.syntax().text_range().end() < offset {
+                    offset -= to_remove.syntax().text_range().len();
+                }
+                ted::replace(to_replace.syntax().clone(), replacement.syntax().clone());
+                to_remove.remove()
+            }
+
+            builder.replace(original_parent.text_range(), new_parent.to_string())
         },
     )
 }

@@ -1,6 +1,6 @@
 use syntax::{
-    algo::SyntaxRewriter,
-    ast::{self, edit::AstNodeEdit, VisibilityOwner},
+    ast::{self, VisibilityOwner},
+    ted::{self, Position},
     AstNode, SyntaxKind,
 };
 
@@ -22,7 +22,7 @@ use crate::{
 // use std::fmt::Display;
 // ```
 pub(crate) fn unmerge_use(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let tree: ast::UseTree = ctx.find_node_at_offset()?;
+    let tree: ast::UseTree = ctx.find_node_at_offset::<ast::UseTree>()?.clone_for_update();
 
     let tree_list = tree.syntax().parent().and_then(ast::UseTreeList::cast)?;
     if tree_list.use_trees().count() < 2 {
@@ -32,6 +32,9 @@ pub(crate) fn unmerge_use(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
 
     let use_: ast::Use = tree_list.syntax().ancestors().find_map(ast::Use::cast)?;
     let path = resolve_full_path(&tree)?;
+
+    let old_parent_range = use_.syntax().parent()?.text_range();
+    let new_parent = use_.syntax().parent()?;
 
     let target = tree.syntax().text_range();
     acc.add(
@@ -47,20 +50,13 @@ pub(crate) fn unmerge_use(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
                     tree.rename(),
                     tree.star_token().is_some(),
                 ),
-            );
+            )
+            .clone_for_update();
 
-            let mut rewriter = SyntaxRewriter::default();
-            rewriter += tree.remove();
-            rewriter.insert_after(use_.syntax(), &ast::make::tokens::single_newline());
-            if let ident_level @ 1..=usize::MAX = use_.indent_level().0 as usize {
-                rewriter.insert_after(
-                    use_.syntax(),
-                    &ast::make::tokens::whitespace(&" ".repeat(4 * ident_level)),
-                );
-            }
-            rewriter.insert_after(use_.syntax(), new_use.syntax());
+            tree.remove();
+            ted::insert(Position::after(use_.syntax()), new_use.syntax());
 
-            builder.rewrite(rewriter);
+            builder.replace(old_parent_range, new_parent.to_string());
         },
     )
 }

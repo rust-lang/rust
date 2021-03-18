@@ -2,13 +2,13 @@
 
 use std::iter::empty;
 
-use ast::{edit::AstNodeEdit, make, GenericParamsOwner, WhereClause};
 use parser::T;
 
 use crate::{
-    ast,
+    algo::neighbor,
+    ast::{self, edit::AstNodeEdit, make, GenericParamsOwner, WhereClause},
     ted::{self, Position},
-    AstNode, Direction,
+    AstNode, AstToken, Direction,
 };
 
 use super::NameOwner;
@@ -124,5 +124,43 @@ impl ast::TypeBoundList {
         } else {
             ted::remove(self.syntax())
         }
+    }
+}
+
+impl ast::UseTree {
+    pub fn remove(&self) {
+        for &dir in [Direction::Next, Direction::Prev].iter() {
+            if let Some(next_use_tree) = neighbor(self, dir) {
+                let separators = self
+                    .syntax()
+                    .siblings_with_tokens(dir)
+                    .skip(1)
+                    .take_while(|it| it.as_node() != Some(next_use_tree.syntax()));
+                ted::remove_all_iter(separators);
+                break;
+            }
+        }
+        ted::remove(self.syntax())
+    }
+}
+
+impl ast::Use {
+    pub fn remove(&self) {
+        let next_ws = self
+            .syntax()
+            .next_sibling_or_token()
+            .and_then(|it| it.into_token())
+            .and_then(ast::Whitespace::cast);
+        if let Some(next_ws) = next_ws {
+            let ws_text = next_ws.syntax().text();
+            if let Some(rest) = ws_text.strip_prefix('\n') {
+                if rest.is_empty() {
+                    ted::remove(next_ws.syntax())
+                } else {
+                    ted::replace(next_ws.syntax(), make::tokens::whitespace(rest))
+                }
+            }
+        }
+        ted::remove(self.syntax())
     }
 }
