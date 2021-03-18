@@ -232,6 +232,7 @@ mod if_let_mutex;
 mod if_let_some_result;
 mod if_not_else;
 mod if_then_some_else_none;
+mod implicit_hasher;
 mod implicit_return;
 mod implicit_saturating_sub;
 mod inconsistent_struct_constructor;
@@ -685,6 +686,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &if_let_some_result::IF_LET_SOME_RESULT,
         &if_not_else::IF_NOT_ELSE,
         &if_then_some_else_none::IF_THEN_SOME_ELSE_NONE,
+        &implicit_hasher::IMPLICIT_HASHER,
         &implicit_return::IMPLICIT_RETURN,
         &implicit_saturating_sub::IMPLICIT_SATURATING_SUB,
         &inconsistent_struct_constructor::INCONSISTENT_STRUCT_CONSTRUCTOR,
@@ -961,7 +963,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &try_err::TRY_ERR,
         &types::BORROWED_BOX,
         &types::BOX_VEC,
-        &types::IMPLICIT_HASHER,
         &types::LINKEDLIST,
         &types::OPTION_OPTION,
         &types::RC_BUFFER,
@@ -1159,7 +1160,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box infinite_iter::InfiniteIter);
     store.register_late_pass(|| box inline_fn_without_body::InlineFnWithoutBody);
     store.register_late_pass(|| box useless_conversion::UselessConversion::default());
-    store.register_late_pass(|| box types::ImplicitHasher);
+    store.register_late_pass(|| box implicit_hasher::ImplicitHasher);
     store.register_late_pass(|| box fallible_impl_from::FallibleImplFrom);
     store.register_late_pass(|| box double_comparison::DoubleComparisons);
     store.register_late_pass(|| box question_mark::QuestionMark);
@@ -1373,6 +1374,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&functions::MUST_USE_CANDIDATE),
         LintId::of(&functions::TOO_MANY_LINES),
         LintId::of(&if_not_else::IF_NOT_ELSE),
+        LintId::of(&implicit_hasher::IMPLICIT_HASHER),
         LintId::of(&implicit_saturating_sub::IMPLICIT_SATURATING_SUB),
         LintId::of(&infinite_iter::MAYBE_INFINITE_ITER),
         LintId::of(&invalid_upcast_comparisons::INVALID_UPCAST_COMPARISONS),
@@ -1414,7 +1416,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&strings::STRING_ADD_ASSIGN),
         LintId::of(&trait_bounds::TRAIT_DUPLICATION_IN_BOUNDS),
         LintId::of(&trait_bounds::TYPE_REPETITION_IN_BOUNDS),
-        LintId::of(&types::IMPLICIT_HASHER),
         LintId::of(&types::LINKEDLIST),
         LintId::of(&types::OPTION_OPTION),
         LintId::of(&unicode::NON_ASCII_LITERAL),
