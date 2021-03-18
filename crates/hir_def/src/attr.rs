@@ -283,8 +283,51 @@ impl Attrs {
     /// Constructs a map that maps the lowered `Attr`s in this `Attrs` back to its original syntax nodes.
     ///
     /// `owner` must be the original owner of the attributes.
-    pub fn source_map(&self, owner: &dyn ast::AttrsOwner) -> AttrSourceMap {
-        AttrSourceMap { attrs: collect_attrs(owner).collect() }
+    // FIXME: figure out a better api that doesnt require the for_module hack
+    pub fn source_map(&self, owner: InFile<&dyn ast::AttrsOwner>) -> AttrSourceMap {
+        // FIXME: This doesn't work correctly for modules, as the attributes there can have up to
+        // two different owners
+        AttrSourceMap {
+            attrs: collect_attrs(owner.value)
+                .map(|attr| InFile::new(owner.file_id, attr))
+                .collect(),
+        }
+    }
+
+    pub fn source_map_for_module(
+        &self,
+        db: &dyn DefDatabase,
+        module: crate::ModuleId,
+    ) -> AttrSourceMap {
+        let def_map = module.def_map(db);
+        let mod_data = &def_map[module.local_id];
+        let attrs = match mod_data.declaration_source(db) {
+            Some(it) => {
+                let mut attrs: Vec<_> = collect_attrs(&it.value as &dyn ast::AttrsOwner)
+                    .map(|attr| InFile::new(it.file_id, attr))
+                    .collect();
+                if let InFile { file_id, value: ModuleSource::SourceFile(file) } =
+                    mod_data.definition_source(db)
+                {
+                    attrs.extend(
+                        collect_attrs(&file as &dyn ast::AttrsOwner)
+                            .map(|attr| InFile::new(file_id, attr)),
+                    )
+                }
+                attrs
+            }
+            None => {
+                let InFile { file_id, value } = mod_data.definition_source(db);
+                match &value {
+                    ModuleSource::SourceFile(file) => collect_attrs(file as &dyn ast::AttrsOwner),
+                    ModuleSource::Module(module) => collect_attrs(module as &dyn ast::AttrsOwner),
+                    ModuleSource::BlockExpr(block) => collect_attrs(block as &dyn ast::AttrsOwner),
+                }
+                .map(|attr| InFile::new(file_id, attr))
+                .collect()
+            }
+        };
+        AttrSourceMap { attrs }
     }
 
     pub fn by_key(&self, key: &'static str) -> AttrQuery<'_> {
@@ -379,7 +422,7 @@ fn inner_attributes(
 }
 
 pub struct AttrSourceMap {
-    attrs: Vec<Either<ast::Attr, ast::Comment>>,
+    attrs: Vec<InFile<Either<ast::Attr, ast::Comment>>>,
 }
 
 impl AttrSourceMap {
@@ -389,10 +432,11 @@ impl AttrSourceMap {
     ///
     /// Note that the returned syntax node might be a `#[cfg_attr]`, or a doc comment, instead of
     /// the attribute represented by `Attr`.
-    pub fn source_of(&self, attr: &Attr) -> &Either<ast::Attr, ast::Comment> {
+    pub fn source_of(&self, attr: &Attr) -> InFile<&Either<ast::Attr, ast::Comment>> {
         self.attrs
             .get(attr.index as usize)
             .unwrap_or_else(|| panic!("cannot find `Attr` at index {}", attr.index))
+            .as_ref()
     }
 }
 
@@ -426,18 +470,6 @@ impl Attr {
             None
         };
         Some(Attr { index, path, input })
-    }
-
-    /// Maps this lowered `Attr` back to its original syntax node.
-    ///
-    /// `owner` must be the original owner of the attribute.
-    ///
-    /// Note that the returned syntax node might be a `#[cfg_attr]`, or a doc comment, instead of
-    /// the attribute represented by `Attr`.
-    pub fn to_src(&self, owner: &dyn ast::AttrsOwner) -> Either<ast::Attr, ast::Comment> {
-        collect_attrs(owner).nth(self.index as usize).unwrap_or_else(|| {
-            panic!("cannot find `Attr` at index {} in {}", self.index, owner.syntax())
-        })
     }
 
     /// Parses this attribute as a `#[derive]`, returns an iterator that yields all contained paths

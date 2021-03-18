@@ -3,7 +3,7 @@
 use std::{mem, ops::Range};
 
 use either::Either;
-use hir::{HasAttrs, Semantics};
+use hir::{HasAttrs, InFile, Semantics};
 use ide_db::{call_info::ActiveParameter, defs::Definition};
 use syntax::{
     ast::{self, AstNode, AttrsOwner, DocCommentsOwner},
@@ -148,8 +148,12 @@ fn doc_attributes<'node>(
 }
 
 /// Injection of syntax highlighting of doctests.
-pub(super) fn doc_comment(hl: &mut Highlights, sema: &Semantics<RootDatabase>, node: &SyntaxNode) {
-    let (owner, attributes, def) = match doc_attributes(sema, node) {
+pub(super) fn doc_comment(
+    hl: &mut Highlights,
+    sema: &Semantics<RootDatabase>,
+    node: InFile<&SyntaxNode>,
+) {
+    let (owner, attributes, def) = match doc_attributes(sema, node.value) {
         Some(it) => it,
         None => return,
     };
@@ -157,7 +161,12 @@ pub(super) fn doc_comment(hl: &mut Highlights, sema: &Semantics<RootDatabase>, n
     let mut inj = Injector::default();
     inj.add_unmapped("fn doctest() {\n");
 
-    let attrs_source_map = attributes.source_map(&owner);
+    let attrs_source_map = match def {
+        Definition::ModuleDef(hir::ModuleDef::Module(module)) => {
+            attributes.source_map_for_module(sema.db, module.into())
+        }
+        _ => attributes.source_map(node.with_value(&owner)),
+    };
 
     let mut is_codeblock = false;
     let mut is_doctest = false;
@@ -168,7 +177,10 @@ pub(super) fn doc_comment(hl: &mut Highlights, sema: &Semantics<RootDatabase>, n
     let mut intra_doc_links = Vec::new();
     let mut string;
     for attr in attributes.by_key("doc").attrs() {
-        let src = attrs_source_map.source_of(&attr);
+        let InFile { file_id, value: src } = attrs_source_map.source_of(&attr);
+        if file_id != node.file_id {
+            continue;
+        }
         let (line, range, prefix) = match &src {
             Either::Left(it) => {
                 string = match find_doc_string_in_attr(attr, it) {

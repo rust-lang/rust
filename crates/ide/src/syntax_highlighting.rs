@@ -12,7 +12,7 @@ mod html;
 #[cfg(test)]
 mod tests;
 
-use hir::{Name, Semantics};
+use hir::{InFile, Name, Semantics};
 use ide_db::{RootDatabase, SymbolKind};
 use rustc_hash::FxHashMap;
 use syntax::{
@@ -73,14 +73,20 @@ pub(crate) fn highlight(
     };
 
     let mut hl = highlights::Highlights::new(root.text_range());
-    traverse(&mut hl, &sema, &root, range_to_highlight, syntactic_name_ref_highlighting);
+    traverse(
+        &mut hl,
+        &sema,
+        InFile::new(file_id.into(), &root),
+        range_to_highlight,
+        syntactic_name_ref_highlighting,
+    );
     hl.to_vec()
 }
 
 fn traverse(
     hl: &mut Highlights,
     sema: &Semantics<RootDatabase>,
-    root: &SyntaxNode,
+    root: InFile<&SyntaxNode>,
     range_to_highlight: TextRange,
     syntactic_name_ref_highlighting: bool,
 ) {
@@ -93,7 +99,7 @@ fn traverse(
 
     // Walk all nodes, keeping track of whether we are inside a macro or not.
     // If in macro, expand it first and highlight the expanded code.
-    for event in root.preorder_with_tokens() {
+    for event in root.value.preorder_with_tokens() {
         let event_range = match &event {
             WalkEvent::Enter(it) | WalkEvent::Leave(it) => it.text_range(),
         };
@@ -150,7 +156,7 @@ fn traverse(
             WalkEvent::Enter(it) => it,
             WalkEvent::Leave(it) => {
                 if let Some(node) = it.as_node() {
-                    inject::doc_comment(hl, sema, node);
+                    inject::doc_comment(hl, sema, root.with_value(node));
                 }
                 continue;
             }
