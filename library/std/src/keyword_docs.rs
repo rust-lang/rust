@@ -1031,10 +1031,10 @@ mod mod_keyword {}
 /// };
 /// ```
 ///
-/// For more information on the `move` keyword, see the [closure]'s section
-/// of the Rust book or the [threads] section
+/// For more information on the `move` keyword, see the [closures] section
+/// of the Rust book or the [threads] section.
 ///
-/// [closure]: ../book/ch13-01-closures.html
+/// [closures]: ../book/ch13-01-closures.html
 /// [threads]: ../book/ch16-01-threads.html#using-move-closures-with-threads
 mod move_keyword {}
 
