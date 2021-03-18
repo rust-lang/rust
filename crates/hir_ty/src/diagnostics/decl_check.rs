@@ -102,7 +102,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
         let db = self.db;
         for block_def_map in body.block_scopes.iter().filter_map(|block| db.block_def_map(*block)) {
             for (_, module) in block_def_map.modules() {
-                for (def_id, _) in module.scope.values() {
+                for def_id in module.scope.declarations() {
                     let mut validator = DeclValidator::new(self.db, self.krate, self.sink);
                     validator.validate_item(def_id);
                 }
@@ -901,5 +901,18 @@ extern {
 }
             "#,
         );
+    }
+
+    #[test]
+    fn infinite_loop_inner_items() {
+        check_diagnostics(
+            r#"
+fn qualify() {
+    mod foo {
+        use super::*;
+    }
+}
+            "#,
+        )
     }
 }
