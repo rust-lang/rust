@@ -252,12 +252,13 @@ fn collect_items(
     }
 
     let item_tree = db.item_tree(file_id);
-    let cfg_options = db.crate_graph()[module.krate].cfg_options.clone();
+    let crate_graph = db.crate_graph();
+    let cfg_options = &crate_graph[module.krate].cfg_options;
 
     let mut items = Vec::new();
     for item in assoc_items {
         let attrs = item_tree.attrs(db, module.krate, ModItem::from(item).into());
-        if !attrs.is_cfg_enabled(&cfg_options) {
+        if !attrs.is_cfg_enabled(cfg_options) {
             continue;
         }
 
