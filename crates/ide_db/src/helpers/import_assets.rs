@@ -304,7 +304,11 @@ fn path_applicable_imports(
             return items_with_candidate_name
                 .into_iter()
                 .filter_map(|item| {
-                    Some(LocatedImport::new(mod_path(item)?, item, item, mod_path(item)))
+                    let mut mod_path = mod_path(item)?;
+                    if let Some(assoc_item) = item_as_assoc(db, item) {
+                        mod_path.push_segment(assoc_item.name(db)?);
+                    }
+                    Some(LocatedImport::new(mod_path.clone(), item, item, Some(mod_path)))
                 })
                 .collect();
         }

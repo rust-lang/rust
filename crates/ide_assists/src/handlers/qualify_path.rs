@@ -208,8 +208,10 @@ fn label(candidate: &ImportCandidate, import: &LocatedImport) -> String {
                 format!("Qualify as `{}`", import.import_path)
             }
         }
-        ImportCandidate::TraitAssocItem(_) => format!("Qualify `{}`", import.import_path),
-        ImportCandidate::TraitMethod(_) => format!("Qualify with cast as `{}`", import.import_path),
+        ImportCandidate::TraitAssocItem(_) => {
+            format!("Qualify with `{}`", import.import_path)
+        }
+        ImportCandidate::TraitMethod(_) => format!("Qualify with `{}`", import.import_path),
     }
 }
 
@@ -526,6 +528,37 @@ fn main() {
 
             fn main() {
                 TestStruct::TEST_CONST$0
+            }
+            ",
+            r"
+            mod test_mod {
+                pub struct TestStruct {}
+                impl TestStruct {
+                    const TEST_CONST: u8 = 42;
+                }
+            }
+
+            fn main() {
+                test_mod::TestStruct::TEST_CONST
+            }
+            ",
+        );
+    }
+
+    #[test]
+    fn associated_struct_const_unqualified() {
+        check_assist(
+            qualify_path,
+            r"
+            mod test_mod {
+                pub struct TestStruct {}
+                impl TestStruct {
+                    const TEST_CONST: u8 = 42;
+                }
+            }
+
+            fn main() {
+                TEST_CONST$0
             }
             ",
             r"
