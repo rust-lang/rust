@@ -993,6 +993,10 @@ rustc_queries! {
     query is_freeze_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is freeze", env.value }
     }
+    /// Query backing `TyS::is_unpin`.
+    query is_unpin_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+        desc { "computing whether `{}` is `Unpin`", env.value }
+    }
     /// Query backing `TyS::needs_drop`.
     query needs_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` needs drop", env.value }

@@ -2318,16 +2318,25 @@ where
             ty::Ref(_, ty, mt) if offset.bytes() == 0 => {
                 let address_space = addr_space_of_ty(ty);
                 let tcx = cx.tcx();
-                let is_freeze = ty.is_freeze(tcx.at(DUMMY_SP), cx.param_env());
                 let kind = match mt {
                     hir::Mutability::Not => {
-                        if is_freeze {
+                        if ty.is_freeze(tcx.at(DUMMY_SP), cx.param_env()) {
                             PointerKind::Frozen
                         } else {
                             PointerKind::Shared
                         }
                     }
-                    hir::Mutability::Mut => PointerKind::UniqueBorrowed,
+                    hir::Mutability::Mut => {
+                        // References to self-referential structures should not be considered
+                        // noalias, as another pointer to the structure can be obtained, that
+                        // is not based-on the original reference. We consider all !Unpin
+                        // types to be potentially self-referential here.
+                        if ty.is_unpin(tcx.at(DUMMY_SP), cx.param_env()) {
+                            PointerKind::UniqueBorrowed
+                        } else {
+                            PointerKind::Shared
+                        }
+                    }
                 };
 
                 cx.layout_of(ty).to_result().ok().map(|layout| PointeeInfo {
