@@ -87,14 +87,6 @@ case ${TARGET} in
         export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+avx"
         cargo_test "--release"
         ;;
-    wasm32*)
-        # TODO: need to re-enable simd testing for wasm32
-        # TODO: should enable atomics testing for wasm32
-        # prev="$RUSTFLAGS"
-        # export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+simd128,+unimplemented-simd128"
-        # cargo_test "--release"
-        # export RUSTFLAGS="$prev"
-        ;;
     # FIXME: don't build anymore
     #mips-*gnu* | mipsel-*gnu*)
     #    export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+msa,+fp64,+mips32r5"

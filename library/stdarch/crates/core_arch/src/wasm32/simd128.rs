@@ -19,71 +19,79 @@ use stdarch_test::assert_instr;
 
 types! {
     /// WASM-specific 128-bit wide SIMD vector type.
+    ///
+    /// This type corresponds to the `v128` type in the [WebAssembly SIMD
+    /// proposal](https://github.com/webassembly/simd). This type is 128-bits
+    /// large and the meaning of all the bits is defined within the context of
+    /// how this value is used.
+    ///
+    /// This same type is used simultaneously for all 128-bit-wide SIMD types,
+    /// for example:
+    ///
+    /// * sixteen 8-bit integers (both `i8` and `u8`)
+    /// * eight 16-bit integers (both `i16` and `u16`)
+    /// * four 32-bit integers (both `i32` and `u32`)
+    /// * two 64-bit integers (both `i64` and `u64`)
+    /// * four 32-bit floats (`f32`)
+    /// * two 64-bit floats (`f64`)
+    ///
+    /// The `v128` type in Rust is intended to be quite analagous to the `v128`
+    /// type in WebAssembly. Operations on `v128` can only be performed with the
+    /// functions in this module.
     // N.B., internals here are arbitrary.
     pub struct v128(i32, i32, i32, i32);
 }
 
 #[allow(non_camel_case_types)]
-#[unstable(feature = "stdsimd_internal", issue = "none")]
-pub(crate) trait v128Ext: Sized {
+trait v128Ext: Sized {
     unsafe fn as_v128(self) -> v128;
 
     #[inline]
-    #[target_feature(enable = "simd128")]
     unsafe fn as_u8x16(self) -> u8x16 {
         transmute(self.as_v128())
     }
 
     #[inline]
-    #[target_feature(enable = "simd128")]
     unsafe fn as_u16x8(self) -> u16x8 {
         transmute(self.as_v128())
     }
 
     #[inline]
-    #[target_feature(enable = "simd128")]
     unsafe fn as_u32x4(self) -> u32x4 {
         transmute(self.as_v128())
     }
 
     #[inline]
-    #[target_feature(enable = "simd128")]
     unsafe fn as_u64x2(self) -> u64x2 {
         transmute(self.as_v128())
     }
 
     #[inline]
-    #[target_feature(enable = "simd128")]
     unsafe fn as_i8x16(self) -> i8x16 {
         transmute(self.as_v128())
     }
 
     #[inline]
-    #[target_feature(enable = "simd128")]
     unsafe fn as_i16x8(self) -> i16x8 {
         transmute(self.as_v128())
     }
 
     #[inline]
-    #[target_feature(enable = "simd128")]
     unsafe fn as_i32x4(self) -> i32x4 {
         transmute(self.as_v128())
     }
 
     #[inline]
-    #[target_feature(enable = "simd128")]
     unsafe fn as_i64x2(self) -> i64x2 {
         transmute(self.as_v128())
     }
 
     #[inline]
-    #[target_feature(enable = "simd128")]
     unsafe fn as_f32x4(self) -> f32x4 {
         transmute(self.as_v128())
     }
 
     #[inline]
-    #[target_feature(enable = "simd128")]
     unsafe fn as_f64x2(self) -> f64x2 {
         transmute(self.as_v128())
     }
@@ -91,7 +99,6 @@ pub(crate) trait v128Ext: Sized {
 
 impl v128Ext for v128 {
     #[inline]
-    #[target_feature(enable = "simd128")]
     unsafe fn as_v128(self) -> Self {
         self
     }
@@ -122,8 +129,6 @@ extern "C" {
 
     #[link_name = "llvm.wasm.swizzle"]
     fn llvm_swizzle(a: i8x16, b: i8x16) -> i8x16;
-    #[link_name = "llvm.wasm.eq"]
-    fn llvm_eq(a: i64x2, b: i64x2) -> i64x2;
 
     #[link_name = "llvm.wasm.bitselect.v16i8"]
     fn llvm_bitselect(a: i8x16, b: i8x16, c: i8x16) -> i8x16;
@@ -144,9 +149,9 @@ extern "C" {
     fn llvm_i8x16_add_sat_s(a: i8x16, b: i8x16) -> i8x16;
     #[link_name = "llvm.uadd.sat.v16i8"]
     fn llvm_i8x16_add_sat_u(a: i8x16, b: i8x16) -> i8x16;
-    #[link_name = "llvm.wasm.sub.saturate.signed.v16i8"]
+    #[link_name = "llvm.wasm.sub.sat.signed.v16i8"]
     fn llvm_i8x16_sub_sat_s(a: i8x16, b: i8x16) -> i8x16;
-    #[link_name = "llvm.wasm.sub.saturate.unsigned.v16i8"]
+    #[link_name = "llvm.wasm.sub.sat.unsigned.v16i8"]
     fn llvm_i8x16_sub_sat_u(a: i8x16, b: i8x16) -> i8x16;
     #[link_name = "llvm.wasm.avgr.unsigned.v16i8"]
     fn llvm_avgr_u_i8x16(a: i8x16, b: i8x16) -> i8x16;
@@ -155,23 +160,23 @@ extern "C" {
     fn llvm_i16x8_extadd_pairwise_i8x16_s(x: i8x16) -> i16x8;
     #[link_name = "llvm.wasm.extadd.pairwise.unsigned.v8i16"]
     fn llvm_i16x8_extadd_pairwise_i8x16_u(x: i8x16) -> i16x8;
-    #[link_name = "llvm.wasm.q15mulr.saturate.signed"]
+    #[link_name = "llvm.wasm.q15mulr.sat.signed"]
     fn llvm_q15mulr(a: i16x8, b: i16x8) -> i16x8;
     #[link_name = "llvm.wasm.alltrue.v8i16"]
     fn llvm_i16x8_all_true(x: i16x8) -> i32;
     #[link_name = "llvm.wasm.bitmask.v8i16"]
     fn llvm_bitmask_i16x8(a: i16x8) -> i32;
-    #[link_name = "llvm.wasm.narrow.signed.v8i16.v8i16"]
+    #[link_name = "llvm.wasm.narrow.signed.v8i16.v4i32"]
     fn llvm_narrow_i16x8_s(a: i32x4, b: i32x4) -> i16x8;
-    #[link_name = "llvm.wasm.narrow.unsigned.v8i16.v8i16"]
+    #[link_name = "llvm.wasm.narrow.unsigned.v8i16.v4i32"]
     fn llvm_narrow_i16x8_u(a: i32x4, b: i32x4) -> i16x8;
     #[link_name = "llvm.sadd.sat.v8i16"]
     fn llvm_i16x8_add_sat_s(a: i16x8, b: i16x8) -> i16x8;
     #[link_name = "llvm.uadd.sat.v8i16"]
     fn llvm_i16x8_add_sat_u(a: i16x8, b: i16x8) -> i16x8;
-    #[link_name = "llvm.wasm.sub.saturate.signed.v8i16"]
+    #[link_name = "llvm.wasm.sub.sat.signed.v8i16"]
     fn llvm_i16x8_sub_sat_s(a: i16x8, b: i16x8) -> i16x8;
-    #[link_name = "llvm.wasm.sub.saturate.unsigned.v8i16"]
+    #[link_name = "llvm.wasm.sub.sat.unsigned.v8i16"]
     fn llvm_i16x8_sub_sat_u(a: i16x8, b: i16x8) -> i16x8;
     #[link_name = "llvm.wasm.avgr.unsigned.v8i16"]
     fn llvm_avgr_u_i16x8(a: i16x8, b: i16x8) -> i16x8;
@@ -207,6 +212,14 @@ extern "C" {
     fn llvm_i64x2_all_true(x: i64x2) -> i32;
     #[link_name = "llvm.wasm.bitmask.v2i64"]
     fn llvm_bitmask_i64x2(a: i64x2) -> i32;
+    #[link_name = "llvm.wasm.extend.low.signed"]
+    fn llvm_i64x2_extend_low_i32x4_s(a: i32x4) -> i64x2;
+    #[link_name = "llvm.wasm.extend.high.signed"]
+    fn llvm_i64x2_extend_high_i32x4_s(a: i32x4) -> i64x2;
+    #[link_name = "llvm.wasm.extend.low.unsigned"]
+    fn llvm_i64x2_extend_low_i32x4_u(a: i32x4) -> i64x2;
+    #[link_name = "llvm.wasm.extend.high.unsigned"]
+    fn llvm_i64x2_extend_high_i32x4_u(a: i32x4) -> i64x2;
     #[link_name = "llvm.wasm.extmul.low.signed.v2i64"]
     fn llvm_i64x2_extmul_low_i32x4_s(a: i32x4, b: i32x4) -> i64x2;
     #[link_name = "llvm.wasm.extmul.high.signed.v2i64"]
@@ -262,9 +275,9 @@ extern "C" {
     fn llvm_f64x2_convert_low_i32x4_s(x: i32x4) -> f64x2;
     #[link_name = "llvm.wasm.convert.low.unsigned"]
     fn llvm_f64x2_convert_low_i32x4_u(x: i32x4) -> f64x2;
-    #[link_name = "llvm.wasm.trunc.saturate.zero.signed"]
+    #[link_name = "llvm.wasm.trunc.sat.zero.signed"]
     fn llvm_i32x4_trunc_sat_f64x2_s_zero(x: f64x2) -> i32x4;
-    #[link_name = "llvm.wasm.trunc.saturate.zero.unsigned"]
+    #[link_name = "llvm.wasm.trunc.sat.zero.unsigned"]
     fn llvm_i32x4_trunc_sat_f64x2_u_zero(x: f64x2) -> i32x4;
     #[link_name = "llvm.wasm.demote.zero"]
     fn llvm_f32x4_demote_f64x2_zero(x: f64x2) -> f32x4;
@@ -363,7 +376,7 @@ pub unsafe fn v128_load64_splat(m: *const u64) -> v128 {
 /// Load a 32-bit element into the low bits of the vector and sets all other
 /// bits to zero.
 #[inline]
-// #[cfg_attr(test, assert_instr(v128.load32_zero))] // FIXME
+#[cfg_attr(test, assert_instr(v128.load32_zero))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn v128_load32_zero(m: *const u32) -> v128 {
     transmute(llvm_load32_zero(m))
@@ -372,7 +385,7 @@ pub unsafe fn v128_load32_zero(m: *const u32) -> v128 {
 /// Load a 64-bit element into the low bits of the vector and sets all other
 /// bits to zero.
 #[inline]
-// #[cfg_attr(test, assert_instr(v128.load64_zero))] // FIXME
+#[cfg_attr(test, assert_instr(v128.load64_zero))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn v128_load64_zero(m: *const u64) -> v128 {
     transmute(llvm_load64_zero(m))
@@ -388,115 +401,67 @@ pub unsafe fn v128_store(m: *mut v128, a: v128) {
 
 /// Loads an 8-bit value from `m` and sets lane `L` of `v` to that value.
 #[inline]
+#[cfg_attr(test, assert_instr(v128.load8_lane, L = 0))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn v128_load8_lane<const L: usize>(v: v128, m: *const u8) -> v128 {
     transmute(llvm_load8_lane(m, v.as_u8x16(), L))
 }
 
-// #[cfg(test)]
-// #[assert_instr(v128.load8_lane)]
-// #[target_feature(enable = "simd128")]
-// unsafe fn v128_load8_lane_test(v: v128, m: *const u8) -> v128 {
-//     v128_load8_lane::<0>(v, m)
-// }
-
 /// Loads a 16-bit value from `m` and sets lane `L` of `v` to that value.
 #[inline]
+#[cfg_attr(test, assert_instr(v128.load16_lane, L = 0))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn v128_load16_lane<const L: usize>(v: v128, m: *const u16) -> v128 {
     transmute(llvm_load16_lane(m, v.as_u16x8(), L))
 }
 
-// #[cfg(test)]
-// #[assert_instr(v128.load16_lane)]
-// #[target_feature(enable = "simd128")]
-// unsafe fn v128_load16_lane_test(v: v128, m: *const u16) -> v128 {
-//     v128_load16_lane::<0>(v, m)
-// }
-
 /// Loads a 32-bit value from `m` and sets lane `L` of `v` to that value.
 #[inline]
+#[cfg_attr(test, assert_instr(v128.load32_lane, L = 0))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn v128_load32_lane<const L: usize>(v: v128, m: *const u32) -> v128 {
     transmute(llvm_load32_lane(m, v.as_u32x4(), L))
 }
 
-// #[cfg(test)]
-// #[assert_instr(v128.load32_lane)]
-// #[target_feature(enable = "simd128")]
-// unsafe fn v128_load32_lane_test(v: v128, m: *const u32) -> v128 {
-//     v128_load32_lane::<0>(v, m)
-// }
-
 /// Loads a 64-bit value from `m` and sets lane `L` of `v` to that value.
 #[inline]
+#[cfg_attr(test, assert_instr(v128.load64_lane, L = 0))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn v128_load64_lane<const L: usize>(v: v128, m: *const u64) -> v128 {
     transmute(llvm_load64_lane(m, v.as_u64x2(), L))
 }
 
-// #[cfg(test)]
-// #[assert_instr(v128.load64_lane)]
-// #[target_feature(enable = "simd128")]
-// unsafe fn v128_load64_lane_test(v: v128, m: *const u64) -> v128 {
-//     v128_load64_lane::<0>(v, m)
-// }
-
 /// Stores the 8-bit value from lane `L` of `v` into `m`
 #[inline]
+#[cfg_attr(test, assert_instr(v128.store8_lane, L = 0))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn v128_store8_lane<const L: usize>(v: v128, m: *mut u8) {
     llvm_store8_lane(m, v.as_u8x16(), L);
 }
 
-// #[cfg(test)]
-// #[assert_instr(v128.store8_lane)]
-// #[target_feature(enable = "simd128")]
-// unsafe fn v128_store8_lane_test(v: v128, m: *mut u8) {
-//     v128_store8_lane::<0>(v, m)
-// }
-
 /// Stores the 16-bit value from lane `L` of `v` into `m`
 #[inline]
+#[cfg_attr(test, assert_instr(v128.store16_lane, L = 0))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn v128_store16_lane<const L: usize>(v: v128, m: *mut u16) {
     llvm_store16_lane(m, v.as_u16x8(), L)
 }
 
-//#[cfg(test)]
-//#[assert_instr(v128.store16_lane)]
-//#[target_feature(enable = "simd128")]
-//unsafe fn v128_store16_lane_test(v: v128, m: *mut u16) {
-//    v128_store16_lane::<0>(v, m)
-//}
-
 /// Stores the 32-bit value from lane `L` of `v` into `m`
 #[inline]
+#[cfg_attr(test, assert_instr(v128.store32_lane, L = 0))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn v128_store32_lane<const L: usize>(v: v128, m: *mut u32) {
     llvm_store32_lane(m, v.as_u32x4(), L)
 }
 
-// #[cfg(test)]
-// #[assert_instr(v128.store32_lane)]
-// #[target_feature(enable = "simd128")]
-// unsafe fn v128_store32_lane_test(v: v128, m: *mut u32) {
-//     v128_store32_lane::<0>(v, m)
-// }
-
 /// Stores the 64-bit value from lane `L` of `v` into `m`
 #[inline]
+#[cfg_attr(test, assert_instr(v128.store64_lane, L = 0))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn v128_store64_lane<const L: usize>(v: v128, m: *mut u64) {
     llvm_store64_lane(m, v.as_u64x2(), L)
 }
-
-// #[cfg(test)]
-// #[assert_instr(v128.store64_lane)]
-// #[target_feature(enable = "simd128")]
-// unsafe fn v128_store64_lane_test(v: v128, m: *mut u64) {
-//     v128_store64_lane::<0>(v, m)
-// }
 
 /// Materializes a constant SIMD value from the immediate operands.
 ///
@@ -504,28 +469,28 @@ pub unsafe fn v128_store64_lane<const L: usize>(v: v128, m: *mut u64) {
 /// vector was interpreted as sixteen 8-bit integers.
 #[inline]
 #[target_feature(enable = "simd128")]
-// #[cfg_attr(
-//     test,
-//     assert_instr(
-//         v128.const,
-//         a0 = 0,
-//         a1 = 1,
-//         a2 = 2,
-//         a3 = 3,
-//         a4 = 4,
-//         a5 = 5,
-//         a6 = 6,
-//         a7 = 7,
-//         a8 = 8,
-//         a9 = 9,
-//         a10 = 10,
-//         a11 = 11,
-//         a12 = 12,
-//         a13 = 13,
-//         a14 = 14,
-//         a15 = 15,
-//     )
-// )]
+#[cfg_attr(
+    test,
+    assert_instr(
+        v128.const,
+        a0 = 0,
+        a1 = 1,
+        a2 = 2,
+        a3 = 3,
+        a4 = 4,
+        a5 = 5,
+        a6 = 6,
+        a7 = 7,
+        a8 = 8,
+        a9 = 9,
+        a10 = 10,
+        a11 = 11,
+        a12 = 12,
+        a13 = 13,
+        a14 = 14,
+        a15 = 15,
+    )
+)]
 pub const unsafe fn v128_const(
     a0: i8,
     a1: i8,
@@ -555,20 +520,20 @@ pub const unsafe fn v128_const(
 /// vector was interpreted as eight 16-bit integers.
 #[inline]
 #[target_feature(enable = "simd128")]
-// #[cfg_attr(
-//     test,
-//     assert_instr(
-//         v128.const,
-//         a0 = 0,
-//         a1 = 1,
-//         a2 = 2,
-//         a3 = 3,
-//         a4 = 4,
-//         a5 = 5,
-//         a6 = 6,
-//         a7 = 7,
-//     )
-// )]
+#[cfg_attr(
+    test,
+    assert_instr(
+        v128.const,
+        a0 = 0,
+        a1 = 1,
+        a2 = 2,
+        a3 = 3,
+        a4 = 4,
+        a5 = 5,
+        a6 = 6,
+        a7 = 7,
+    )
+)]
 pub const unsafe fn i16x8_const(
     a0: i16,
     a1: i16,
@@ -588,7 +553,7 @@ pub const unsafe fn i16x8_const(
 /// vector was interpreted as four 32-bit integers.
 #[inline]
 #[target_feature(enable = "simd128")]
-// #[cfg_attr(test, assert_instr(v128.const, a0 = 0, a1 = 1, a2 = 2, a3 = 3))]
+#[cfg_attr(test, assert_instr(v128.const, a0 = 0, a1 = 1, a2 = 2, a3 = 3))]
 pub const unsafe fn i32x4_const(a0: i32, a1: i32, a2: i32, a3: i32) -> v128 {
     transmute(i32x4(a0, a1, a2, a3))
 }
@@ -599,7 +564,7 @@ pub const unsafe fn i32x4_const(a0: i32, a1: i32, a2: i32, a3: i32) -> v128 {
 /// vector was interpreted as two 64-bit integers.
 #[inline]
 #[target_feature(enable = "simd128")]
-// #[cfg_attr(test, assert_instr(v128.const, a0 = 0, a1 = 1))]
+#[cfg_attr(test, assert_instr(v128.const, a0 = 0, a1 = 1))]
 pub const unsafe fn i64x2_const(a0: i64, a1: i64) -> v128 {
     transmute(i64x2(a0, a1))
 }
@@ -610,7 +575,7 @@ pub const unsafe fn i64x2_const(a0: i64, a1: i64) -> v128 {
 /// vector was interpreted as four 32-bit floats.
 #[inline]
 #[target_feature(enable = "simd128")]
-// #[cfg_attr(test, assert_instr(v128.const, a0 = 0.0, a1 = 1.0, a2 = 2.0, a3 = 3.0))]
+#[cfg_attr(test, assert_instr(v128.const, a0 = 0.0, a1 = 1.0, a2 = 2.0, a3 = 3.0))]
 pub const unsafe fn f32x4_const(a0: f32, a1: f32, a2: f32, a3: f32) -> v128 {
     transmute(f32x4(a0, a1, a2, a3))
 }
@@ -621,7 +586,7 @@ pub const unsafe fn f32x4_const(a0: f32, a1: f32, a2: f32, a3: f32) -> v128 {
 /// vector was interpreted as two 64-bit floats.
 #[inline]
 #[target_feature(enable = "simd128")]
-// #[cfg_attr(test, assert_instr(v128.const, a0 = 0.0, a1 = 1.0))]
+#[cfg_attr(test, assert_instr(v128.const, a0 = 0.0, a1 = 1.0))]
 pub const unsafe fn f64x2_const(a0: f64, a1: f64) -> v128 {
     transmute(f64x2(a0, a1))
 }
@@ -641,6 +606,27 @@ pub const unsafe fn f64x2_const(a0: f64, a1: f64) -> v128 {
 ///
 /// All indexes `$i*` must have the type `u32`.
 #[inline]
+#[cfg_attr(test,
+    assert_instr(
+        i8x16.shuffle,
+        I0 = 0,
+        I1 = 2,
+        I2 = 4,
+        I3 = 6,
+        I4 = 8,
+        I5 = 10,
+        I6 = 12,
+        I7 = 14,
+        I8 = 16,
+        I9 = 18,
+        I10 = 20,
+        I11 = 22,
+        I12 = 24,
+        I13 = 26,
+        I14 = 28,
+        I15 = 30,
+    )
+)]
 #[target_feature(enable = "simd128")]
 pub unsafe fn i8x16_shuffle<
     const I0: usize,
@@ -675,13 +661,6 @@ pub unsafe fn i8x16_shuffle<
     transmute(shuf)
 }
 
-#[cfg(test)]
-#[assert_instr(i8x16.shuffle)]
-#[target_feature(enable = "simd128")]
-unsafe fn i8x16_shuffle_test(a: v128, b: v128) -> v128 {
-    i8x16_shuffle::<0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30>(a, b)
-}
-
 /// Same as [`i8x16_shuffle`], except operates as if the inputs were eight
 /// 16-bit integers, only taking 8 indices to shuffle.
 ///
@@ -690,6 +669,19 @@ unsafe fn i8x16_shuffle_test(a: v128, b: v128) -> v128 {
 /// is no native `i16x8.shuffle` instruction (there is no need for one since
 /// `i8x16.shuffle` suffices).
 #[inline]
+#[cfg_attr(test,
+    assert_instr(
+        i8x16.shuffle,
+        I0 = 0,
+        I1 = 2,
+        I2 = 4,
+        I3 = 6,
+        I4 = 8,
+        I5 = 10,
+        I6 = 12,
+        I7 = 14,
+    )
+)]
 #[target_feature(enable = "simd128")]
 pub unsafe fn i16x8_shuffle<
     const I0: usize,
@@ -714,13 +706,6 @@ pub unsafe fn i16x8_shuffle<
     transmute(shuf)
 }
 
-#[cfg(test)]
-#[assert_instr(i8x16.shuffle)]
-#[target_feature(enable = "simd128")]
-unsafe fn i16x8_shuffle_test(a: v128, b: v128) -> v128 {
-    i16x8_shuffle::<0, 2, 4, 6, 8, 10, 12, 14>(a, b)
-}
-
 /// Same as [`i8x16_shuffle`], except operates as if the inputs were four
 /// 32-bit integers, only taking 4 indices to shuffle.
 ///
@@ -729,6 +714,7 @@ unsafe fn i16x8_shuffle_test(a: v128, b: v128) -> v128 {
 /// is no native `i32x4.shuffle` instruction (there is no need for one since
 /// `i8x16.shuffle` suffices).
 #[inline]
+#[cfg_attr(test, assert_instr(i8x16.shuffle, I0 = 0, I1 = 2, I2 = 4, I3 = 6))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn i32x4_shuffle<const I0: usize, const I1: usize, const I2: usize, const I3: usize>(
     a: v128,
@@ -742,13 +728,6 @@ pub unsafe fn i32x4_shuffle<const I0: usize, const I1: usize, const I2: usize, c
     transmute(shuf)
 }
 
-#[cfg(test)]
-#[assert_instr(i8x16.shuffle)]
-#[target_feature(enable = "simd128")]
-unsafe fn i32x4_shuffle_test(a: v128, b: v128) -> v128 {
-    i32x4_shuffle::<0, 2, 4, 6>(a, b)
-}
-
 /// Same as [`i8x16_shuffle`], except operates as if the inputs were two
 /// 64-bit integers, only taking 2 indices to shuffle.
 ///
@@ -757,17 +736,11 @@ unsafe fn i32x4_shuffle_test(a: v128, b: v128) -> v128 {
 /// is no native `i64x2.shuffle` instruction (there is no need for one since
 /// `i8x16.shuffle` suffices).
 #[inline]
+#[cfg_attr(test, assert_instr(i8x16.shuffle, I0 = 0, I1 = 2))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn i64x2_shuffle<const I0: usize, const I1: usize>(a: v128, b: v128) -> v128 {
     let shuf = simd_shuffle2::<u64x2, u64x2>(a.as_u64x2(), b.as_u64x2(), [I0 as u32, I1 as u32]);
     transmute(shuf)
-}
-
-#[cfg(test)]
-#[assert_instr(i8x16.shuffle)]
-#[target_feature(enable = "simd128")]
-unsafe fn i64x2_shuffle_test(a: v128, b: v128) -> v128 {
-    i64x2_shuffle::<0, 2>(a, b)
 }
 
 /// Extracts a lane from a 128-bit vector interpreted as 16 packed i8 numbers.
@@ -775,23 +748,10 @@ unsafe fn i64x2_shuffle_test(a: v128, b: v128) -> v128 {
 /// Extracts the scalar value of lane specified in the immediate mode operand
 /// `N` from `a`. If `N` is out of bounds then it is a compile time error.
 #[inline]
+#[cfg_attr(test, assert_instr(i8x16.extract_lane_s, N = 3))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn i8x16_extract_lane<const N: usize>(a: v128) -> i8 {
     simd_extract(a.as_i8x16(), N as u32)
-}
-
-#[cfg(test)]
-#[assert_instr(i8x16.extract_lane_s)]
-#[target_feature(enable = "simd128")]
-unsafe fn i8x16_extract_lane_s(a: v128) -> i32 {
-    i8x16_extract_lane::<0>(a) as i32
-}
-
-#[cfg(test)]
-#[assert_instr(i8x16.extract_lane_u)]
-#[target_feature(enable = "simd128")]
-unsafe fn i8x16_extract_lane_u(a: v128) -> u32 {
-    i8x16_extract_lane::<0>(a) as u8 as u32
 }
 
 /// Replaces a lane from a 128-bit vector interpreted as 16 packed i8 numbers.
@@ -799,16 +759,10 @@ unsafe fn i8x16_extract_lane_u(a: v128) -> u32 {
 /// Replaces the scalar value of lane specified in the immediate mode operand
 /// `N` from `a`. If `N` is out of bounds then it is a compile time error.
 #[inline]
+#[cfg_attr(test, assert_instr(i8x16.replace_lane, N = 2))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn i8x16_replace_lane<const N: usize>(a: v128, val: i8) -> v128 {
     transmute(simd_insert(a.as_i8x16(), N as u32, val))
-}
-
-#[cfg(test)]
-#[assert_instr(i8x16.replace_lane)]
-#[target_feature(enable = "simd128")]
-unsafe fn i8x16_replace_lane_test(a: v128, val: i8) -> v128 {
-    i8x16_replace_lane::<0>(a, val)
 }
 
 /// Extracts a lane from a 128-bit vector interpreted as 8 packed i16 numbers.
@@ -816,23 +770,10 @@ unsafe fn i8x16_replace_lane_test(a: v128, val: i8) -> v128 {
 /// Extracts a the scalar value of lane specified in the immediate mode operand
 /// `N` from `a`. If `N` is out of bounds then it is a compile time error.
 #[inline]
+#[cfg_attr(test, assert_instr(i16x8.extract_lane_s, N = 2))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn i16x8_extract_lane<const N: usize>(a: v128) -> i16 {
     simd_extract(a.as_i16x8(), N as u32)
-}
-
-#[cfg(test)]
-#[assert_instr(i16x8.extract_lane_s)]
-#[target_feature(enable = "simd128")]
-unsafe fn i16x8_extract_lane_s(a: v128) -> i32 {
-    i16x8_extract_lane::<0>(a) as i32
-}
-
-#[cfg(test)]
-#[assert_instr(i16x8.extract_lane_u)]
-#[target_feature(enable = "simd128")]
-unsafe fn i16x8_extract_lane_u(a: v128) -> u32 {
-    i16x8_extract_lane::<0>(a) as u16 as u32
 }
 
 /// Replaces a lane from a 128-bit vector interpreted as 8 packed i16 numbers.
@@ -840,16 +781,10 @@ unsafe fn i16x8_extract_lane_u(a: v128) -> u32 {
 /// Replaces the scalar value of lane specified in the immediate mode operand
 /// `N` from `a`. If `N` is out of bounds then it is a compile time error.
 #[inline]
+#[cfg_attr(test, assert_instr(i16x8.replace_lane, N = 2))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn i16x8_replace_lane<const N: usize>(a: v128, val: i16) -> v128 {
     transmute(simd_insert(a.as_i16x8(), N as u32, val))
-}
-
-#[cfg(test)]
-#[assert_instr(i16x8.replace_lane)]
-#[target_feature(enable = "simd128")]
-unsafe fn i16x8_replace_lane_test(a: v128, val: i16) -> v128 {
-    i16x8_replace_lane::<0>(a, val)
 }
 
 /// Extracts a lane from a 128-bit vector interpreted as 4 packed i32 numbers.
@@ -857,16 +792,10 @@ unsafe fn i16x8_replace_lane_test(a: v128, val: i16) -> v128 {
 /// Extracts the scalar value of lane specified in the immediate mode operand
 /// `N` from `a`. If `N` is out of bounds then it is a compile time error.
 #[inline]
+#[cfg_attr(test, assert_instr(i32x4.extract_lane, N = 2))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn i32x4_extract_lane<const N: usize>(a: v128) -> i32 {
     simd_extract(a.as_i32x4(), N as u32)
-}
-
-#[cfg(test)]
-#[assert_instr(i32x4.extract_lane)]
-#[target_feature(enable = "simd128")]
-unsafe fn i32x4_extract_lane_test(a: v128) -> i32 {
-    i32x4_extract_lane::<0>(a)
 }
 
 /// Replaces a lane from a 128-bit vector interpreted as 4 packed i32 numbers.
@@ -874,16 +803,10 @@ unsafe fn i32x4_extract_lane_test(a: v128) -> i32 {
 /// Replaces the scalar value of lane specified in the immediate mode operand
 /// `N` from `a`. If `N` is out of bounds then it is a compile time error.
 #[inline]
+#[cfg_attr(test, assert_instr(i32x4.replace_lane, N = 2))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn i32x4_replace_lane<const N: usize>(a: v128, val: i32) -> v128 {
     transmute(simd_insert(a.as_i32x4(), N as u32, val))
-}
-
-#[cfg(test)]
-#[assert_instr(i32x4.replace_lane)]
-#[target_feature(enable = "simd128")]
-unsafe fn i32x4_replace_lane_test(a: v128, val: i32) -> v128 {
-    i32x4_replace_lane::<0>(a, val)
 }
 
 /// Extracts a lane from a 128-bit vector interpreted as 2 packed i64 numbers.
@@ -891,16 +814,10 @@ unsafe fn i32x4_replace_lane_test(a: v128, val: i32) -> v128 {
 /// Extracts the scalar value of lane specified in the immediate mode operand
 /// `N` from `a`. If `N` is out of bounds then it is a compile time error.
 #[inline]
+#[cfg_attr(test, assert_instr(i64x2.extract_lane, N = 1))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn i64x2_extract_lane<const N: usize>(a: v128) -> i64 {
     simd_extract(a.as_i64x2(), N as u32)
-}
-
-#[cfg(test)]
-#[assert_instr(i64x2.extract_lane)]
-#[target_feature(enable = "simd128")]
-unsafe fn i64x2_extract_lane_test(a: v128) -> i64 {
-    i64x2_extract_lane::<0>(a)
 }
 
 /// Replaces a lane from a 128-bit vector interpreted as 2 packed i64 numbers.
@@ -908,16 +825,10 @@ unsafe fn i64x2_extract_lane_test(a: v128) -> i64 {
 /// Replaces the scalar value of lane specified in the immediate mode operand
 /// `N` from `a`. If `N` is out of bounds then it is a compile time error.
 #[inline]
+#[cfg_attr(test, assert_instr(i64x2.replace_lane, N = 0))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn i64x2_replace_lane<const N: usize>(a: v128, val: i64) -> v128 {
     transmute(simd_insert(a.as_i64x2(), N as u32, val))
-}
-
-#[cfg(test)]
-#[assert_instr(i64x2.replace_lane)]
-#[target_feature(enable = "simd128")]
-unsafe fn i64x2_replace_lane_test(a: v128, val: i64) -> v128 {
-    i64x2_replace_lane::<0>(a, val)
 }
 
 /// Extracts a lane from a 128-bit vector interpreted as 4 packed f32 numbers.
@@ -925,16 +836,10 @@ unsafe fn i64x2_replace_lane_test(a: v128, val: i64) -> v128 {
 /// Extracts the scalar value of lane specified fn the immediate mode operand
 /// `N` from `a`. If `N` is out of bounds then it is a compile time error.
 #[inline]
+#[cfg_attr(test, assert_instr(f32x4.extract_lane, N = 1))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn f32x4_extract_lane<const N: usize>(a: v128) -> f32 {
     simd_extract(a.as_f32x4(), N as u32)
-}
-
-#[cfg(test)]
-#[assert_instr(f32x4.extract_lane)]
-#[target_feature(enable = "simd128")]
-unsafe fn f32x4_extract_lane_test(a: v128) -> f32 {
-    f32x4_extract_lane::<0>(a)
 }
 
 /// Replaces a lane from a 128-bit vector interpreted as 4 packed f32 numbers.
@@ -942,16 +847,10 @@ unsafe fn f32x4_extract_lane_test(a: v128) -> f32 {
 /// Replaces the scalar value of lane specified fn the immediate mode operand
 /// `N` from `a`. If `N` is out of bounds then it is a compile time error.
 #[inline]
+#[cfg_attr(test, assert_instr(f32x4.replace_lane, N = 1))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn f32x4_replace_lane<const N: usize>(a: v128, val: f32) -> v128 {
     transmute(simd_insert(a.as_f32x4(), N as u32, val))
-}
-
-#[cfg(test)]
-#[assert_instr(f32x4.replace_lane)]
-#[target_feature(enable = "simd128")]
-unsafe fn f32x4_replace_lane_test(a: v128, val: f32) -> v128 {
-    f32x4_replace_lane::<0>(a, val)
 }
 
 /// Extracts a lane from a 128-bit vector interpreted as 2 packed f64 numbers.
@@ -959,16 +858,10 @@ unsafe fn f32x4_replace_lane_test(a: v128, val: f32) -> v128 {
 /// Extracts the scalar value of lane specified fn the immediate mode operand
 /// `N` from `a`. If `N` fs out of bounds then it is a compile time error.
 #[inline]
+#[cfg_attr(test, assert_instr(f64x2.extract_lane, N = 1))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn f64x2_extract_lane<const N: usize>(a: v128) -> f64 {
     simd_extract(a.as_f64x2(), N as u32)
-}
-
-#[cfg(test)]
-#[assert_instr(f64x2.extract_lane)]
-#[target_feature(enable = "simd128")]
-unsafe fn f64x2_extract_lane_test(a: v128) -> f64 {
-    f64x2_extract_lane::<0>(a)
 }
 
 /// Replaces a lane from a 128-bit vector interpreted as 2 packed f64 numbers.
@@ -976,16 +869,10 @@ unsafe fn f64x2_extract_lane_test(a: v128) -> f64 {
 /// Replaces the scalar value of lane specified in the immediate mode operand
 /// `N` from `a`. If `N` is out of bounds then it is a compile time error.
 #[inline]
+#[cfg_attr(test, assert_instr(f64x2.replace_lane, N = 1))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn f64x2_replace_lane<const N: usize>(a: v128, val: f64) -> v128 {
     transmute(simd_insert(a.as_f64x2(), N as u32, val))
-}
-
-#[cfg(test)]
-#[assert_instr(f64x2.replace_lane)]
-#[target_feature(enable = "simd128")]
-unsafe fn f64x2_replace_lane_test(a: v128, val: f64) -> v128 {
-    f64x2_replace_lane::<0>(a, val)
 }
 
 /// Returns a new vector with lanes selected from the lanes of the first input
@@ -1426,10 +1313,10 @@ pub unsafe fn i32x4_ge_u(a: v128, b: v128) -> v128 {
 /// Returns a new vector where each lane is all ones if the pairwise elements
 /// were equal, or all zeros if the elements were not equal.
 #[inline]
-// #[cfg_attr(test, assert_instr(i64x2.eq))] // FIXME
+// #[cfg_attr(test, assert_instr(i64x2.eq))] // FIXME llvm
 #[target_feature(enable = "simd128")]
 pub unsafe fn i64x2_eq(a: v128, b: v128) -> v128 {
-    transmute(llvm_eq(a.as_i64x2(), b.as_i64x2()))
+    transmute(simd_eq::<_, i64x2>(a.as_i64x2(), b.as_i64x2()))
 }
 
 /// Compares two 128-bit vectors as if they were two vectors of 2 sixty-four-bit
@@ -1438,7 +1325,7 @@ pub unsafe fn i64x2_eq(a: v128, b: v128) -> v128 {
 /// Returns a new vector where each lane is all ones if the pairwise elements
 /// were not equal, or all zeros if the elements were equal.
 #[inline]
-// #[cfg_attr(test, assert_instr(i64x2.ne))] // FIXME
+// #[cfg_attr(test, assert_instr(i64x2.ne))] // FIXME llvm
 #[target_feature(enable = "simd128")]
 pub unsafe fn i64x2_ne(a: v128, b: v128) -> v128 {
     transmute(simd_ne::<_, i64x2>(a.as_i64x2(), b.as_i64x2()))
@@ -1450,7 +1337,7 @@ pub unsafe fn i64x2_ne(a: v128, b: v128) -> v128 {
 /// Returns a new vector where each lane is all ones if the pairwise left
 /// element is less than the pairwise right element, or all zeros otherwise.
 #[inline]
-// #[cfg_attr(test, assert_instr(i64x2.lt_s))] // FIXME
+// #[cfg_attr(test, assert_instr(i64x2.lt_s))] // FIXME llvm
 #[target_feature(enable = "simd128")]
 pub unsafe fn i64x2_lt_s(a: v128, b: v128) -> v128 {
     transmute(simd_lt::<_, i64x2>(a.as_i64x2(), b.as_i64x2()))
@@ -1462,7 +1349,7 @@ pub unsafe fn i64x2_lt_s(a: v128, b: v128) -> v128 {
 /// Returns a new vector where each lane is all ones if the pairwise left
 /// element is greater than the pairwise right element, or all zeros otherwise.
 #[inline]
-// #[cfg_attr(test, assert_instr(i64x2.gt_s))] // FIXME
+// #[cfg_attr(test, assert_instr(i64x2.gt_s))] // FIXME llvm
 #[target_feature(enable = "simd128")]
 pub unsafe fn i64x2_gt_s(a: v128, b: v128) -> v128 {
     transmute(simd_gt::<_, i64x2>(a.as_i64x2(), b.as_i64x2()))
@@ -1474,7 +1361,7 @@ pub unsafe fn i64x2_gt_s(a: v128, b: v128) -> v128 {
 /// Returns a new vector where each lane is all ones if the pairwise left
 /// element is less than the pairwise right element, or all zeros otherwise.
 #[inline]
-// #[cfg_attr(test, assert_instr(i64x2.le_s))] // FIXME
+// #[cfg_attr(test, assert_instr(i64x2.le_s))] // FIXME llvm
 #[target_feature(enable = "simd128")]
 pub unsafe fn i64x2_le_s(a: v128, b: v128) -> v128 {
     transmute(simd_le::<_, i64x2>(a.as_i64x2(), b.as_i64x2()))
@@ -1486,7 +1373,7 @@ pub unsafe fn i64x2_le_s(a: v128, b: v128) -> v128 {
 /// Returns a new vector where each lane is all ones if the pairwise left
 /// element is greater than the pairwise right element, or all zeros otherwise.
 #[inline]
-// #[cfg_attr(test, assert_instr(i64x2.ge_s))] // FIXME
+// #[cfg_attr(test, assert_instr(i64x2.ge_s))] // FIXME llvm
 #[target_feature(enable = "simd128")]
 pub unsafe fn i64x2_ge_s(a: v128, b: v128) -> v128 {
     transmute(simd_ge::<_, i64x2>(a.as_i64x2(), b.as_i64x2()))
@@ -1694,7 +1581,7 @@ pub unsafe fn v128_bitselect(v1: v128, v2: v128, c: v128) -> v128 {
 
 /// Returns true if any lane is nonzero or false if all lanes are zero.
 #[inline]
-// #[cfg_attr(test, assert_instr(v128.any_true))] // FIXME
+// #[cfg_attr(test, assert_instr(v128.any_true))] // FIXME llvm
 #[target_feature(enable = "simd128")]
 pub unsafe fn v128_any_true(a: v128) -> bool {
     llvm_any_true_i8x16(a.as_i8x16()) != 0
@@ -1724,7 +1611,7 @@ pub unsafe fn i8x16_neg(a: v128) -> v128 {
 
 /// Count the number of bits set to one within each lane.
 #[inline]
-// #[cfg_attr(test, assert_instr(i8x16.popcnt))] // FIXME
+// #[cfg_attr(test, assert_instr(i8x16.popcnt))] // FIXME llvm & wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn i8x16_popcnt(v: v128) -> v128 {
     transmute(llvm_popcnt(v.as_i8x16()))
@@ -1741,7 +1628,8 @@ pub unsafe fn i8x16_all_true(a: v128) -> bool {
 /// Extracts the high bit for each lane in `a` and produce a scalar mask with
 /// all bits concatenated.
 #[inline]
-// #[cfg_attr(test, assert_instr(i8x16.bitmask))] // FIXME
+#[cfg_attr(test, assert_instr(i8x16.bitmask))]
+#[target_feature(enable = "simd128")]
 pub unsafe fn i8x16_bitmask(a: v128) -> i32 {
     llvm_bitmask_i8x16(transmute(a))
 }
@@ -1912,7 +1800,7 @@ pub unsafe fn i8x16_avgr_u(a: v128, b: v128) -> v128 {
 /// Lane-wise integer extended pairwise addition producing extended results
 /// (twice wider results than the inputs).
 #[inline]
-// #[cfg_attr(test, assert_instr(i16x8.extadd_pairwise_i8x16_s))] // FIXME
+// #[cfg_attr(test, assert_instr(i16x8.extadd_pairwise_i8x16_s))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn i16x8_extadd_pairwise_i8x16_s(a: v128) -> v128 {
     transmute(llvm_i16x8_extadd_pairwise_i8x16_s(a.as_i8x16()))
@@ -1921,7 +1809,7 @@ pub unsafe fn i16x8_extadd_pairwise_i8x16_s(a: v128) -> v128 {
 /// Lane-wise integer extended pairwise addition producing extended results
 /// (twice wider results than the inputs).
 #[inline]
-// #[cfg_attr(test, assert_instr(i16x8.extadd_pairwise_i8x16_u))] // FIXME
+// #[cfg_attr(test, assert_instr(i16x8.extadd_pairwise_i8x16_u))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn i16x8_extadd_pairwise_i8x16_u(a: v128) -> v128 {
     transmute(llvm_i16x8_extadd_pairwise_i8x16_u(a.as_i8x16()))
@@ -1951,7 +1839,7 @@ pub unsafe fn i16x8_neg(a: v128) -> v128 {
 
 /// Lane-wise saturating rounding multiplication in Q15 format.
 #[inline]
-// #[cfg_attr(test, assert_instr(i16x8.qmulr_sat_s))] // FIXME
+// #[cfg_attr(test, assert_instr(i16x8.qmulr_sat_s))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn i16x8_q15mulr_sat_s(a: v128, b: v128) -> v128 {
     transmute(llvm_q15mulr(a.as_i16x8(), b.as_i16x8()))
@@ -1968,7 +1856,7 @@ pub unsafe fn i16x8_all_true(a: v128) -> bool {
 /// Extracts the high bit for each lane in `a` and produce a scalar mask with
 /// all bits concatenated.
 #[inline]
-// #[cfg_attr(test, assert_instr(i16x8.bitmask))] // FIXME
+#[cfg_attr(test, assert_instr(i16x8.bitmask))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn i16x8_bitmask(a: v128) -> i32 {
     llvm_bitmask_i16x8(transmute(a))
@@ -2203,7 +2091,7 @@ pub unsafe fn i16x8_avgr_u(a: v128, b: v128) -> v128 {
 ///
 /// Equivalent of `i16x8_mul(i16x8_extend_low_i8x16_s(a), i16x8_extend_low_i8x16_s(b))`
 #[inline]
-// #[cfg_attr(test, assert_instr(i16x8.avgr_u))] // FIXME
+// #[cfg_attr(test, assert_instr(i16x8.extmul_low_i8x16_s))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn i16x8_extmul_low_i8x16_s(a: v128, b: v128) -> v128 {
     transmute(llvm_i16x8_extmul_low_i8x16_s(a.as_i8x16(), b.as_i8x16()))
@@ -2214,7 +2102,7 @@ pub unsafe fn i16x8_extmul_low_i8x16_s(a: v128, b: v128) -> v128 {
 ///
 /// Equivalent of `i16x8_mul(i16x8_extend_high_i8x16_s(a), i16x8_extend_high_i8x16_s(b))`
 #[inline]
-// #[cfg_attr(test, assert_instr(i16x8.avgr_u))] // FIXME
+// #[cfg_attr(test, assert_instr(i16x8.extmul_high_i8x16_s))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn i16x8_extmul_high_i8x16_s(a: v128, b: v128) -> v128 {
     transmute(llvm_i16x8_extmul_high_i8x16_s(a.as_i8x16(), b.as_i8x16()))
@@ -2225,7 +2113,7 @@ pub unsafe fn i16x8_extmul_high_i8x16_s(a: v128, b: v128) -> v128 {
 ///
 /// Equivalent of `i16x8_mul(i16x8_extend_low_i8x16_u(a), i16x8_extend_low_i8x16_u(b))`
 #[inline]
-// #[cfg_attr(test, assert_instr(i16x8.avgr_u))] // FIXME
+// #[cfg_attr(test, assert_instr(i16x8.extmul_low_i8x16_u))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn i16x8_extmul_low_i8x16_u(a: v128, b: v128) -> v128 {
     transmute(llvm_i16x8_extmul_low_i8x16_u(a.as_i8x16(), b.as_i8x16()))
@@ -2236,7 +2124,7 @@ pub unsafe fn i16x8_extmul_low_i8x16_u(a: v128, b: v128) -> v128 {
 ///
 /// Equivalent of `i16x8_mul(i16x8_extend_high_i8x16_u(a), i16x8_extend_high_i8x16_u(b))`
 #[inline]
-// #[cfg_attr(test, assert_instr(i16x8.avgr_u))] // FIXME
+// #[cfg_attr(test, assert_instr(i16x8.extmul_high_i8x16_u))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn i16x8_extmul_high_i8x16_u(a: v128, b: v128) -> v128 {
     transmute(llvm_i16x8_extmul_high_i8x16_u(a.as_i8x16(), b.as_i8x16()))
@@ -2245,7 +2133,7 @@ pub unsafe fn i16x8_extmul_high_i8x16_u(a: v128, b: v128) -> v128 {
 /// Lane-wise integer extended pairwise addition producing extended results
 /// (twice wider results than the inputs).
 #[inline]
-// #[cfg_attr(test, assert_instr(i32x4.extadd_pairwise_i16x8_s))] // FIXME
+// #[cfg_attr(test, assert_instr(i32x4.extadd_pairwise_i16x8_s))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn i32x4_extadd_pairwise_i16x8_s(a: v128) -> v128 {
     transmute(llvm_i32x4_extadd_pairwise_i16x8_s(a.as_i16x8()))
@@ -2254,7 +2142,7 @@ pub unsafe fn i32x4_extadd_pairwise_i16x8_s(a: v128) -> v128 {
 /// Lane-wise integer extended pairwise addition producing extended results
 /// (twice wider results than the inputs).
 #[inline]
-// #[cfg_attr(test, assert_instr(i32x4.extadd_pairwise_i16x8_u))] // FIXME
+// #[cfg_attr(test, assert_instr(i32x4.extadd_pairwise_i16x8_u))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn i32x4_extadd_pairwise_i16x8_u(a: v128) -> v128 {
     transmute(llvm_i32x4_extadd_pairwise_i16x8_u(a.as_i16x8()))
@@ -2293,7 +2181,7 @@ pub unsafe fn i32x4_all_true(a: v128) -> bool {
 /// Extracts the high bit for each lane in `a` and produce a scalar mask with
 /// all bits concatenated.
 #[inline]
-// #[cfg_attr(test, assert_instr(i32x4.bitmask))] // FIXME
+#[cfg_attr(test, assert_instr(i32x4.bitmask))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn i32x4_bitmask(a: v128) -> i32 {
     llvm_bitmask_i32x4(transmute(a))
@@ -2469,7 +2357,7 @@ pub unsafe fn i32x4_dot_i16x8_s(a: v128, b: v128) -> v128 {
 ///
 /// Equivalent of `i32x4_mul(i32x4_extend_low_i16x8_s(a), i32x4_extend_low_i16x8_s(b))`
 #[inline]
-// #[cfg_attr(test, assert_instr(i32x4.extmul_low_i16x8_s))] // FIXME
+// #[cfg_attr(test, assert_instr(i32x4.extmul_low_i16x8_s))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn i32x4_extmul_low_i16x8_s(a: v128, b: v128) -> v128 {
     transmute(llvm_i32x4_extmul_low_i16x8_s(a.as_i16x8(), b.as_i16x8()))
@@ -2480,7 +2368,7 @@ pub unsafe fn i32x4_extmul_low_i16x8_s(a: v128, b: v128) -> v128 {
 ///
 /// Equivalent of `i32x4_mul(i32x4_extend_high_i16x8_s(a), i32x4_extend_high_i16x8_s(b))`
 #[inline]
-// #[cfg_attr(test, assert_instr(i32x4.extmul_high_i16x8_s))] // FIXME
+// #[cfg_attr(test, assert_instr(i32x4.extmul_high_i16x8_s))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn i32x4_extmul_high_i16x8_s(a: v128, b: v128) -> v128 {
     transmute(llvm_i32x4_extmul_high_i16x8_s(a.as_i16x8(), b.as_i16x8()))
@@ -2491,7 +2379,7 @@ pub unsafe fn i32x4_extmul_high_i16x8_s(a: v128, b: v128) -> v128 {
 ///
 /// Equivalent of `i32x4_mul(i32x4_extend_low_i16x8_u(a), i32x4_extend_low_i16x8_u(b))`
 #[inline]
-// #[cfg_attr(test, assert_instr(i32x4.extmul_low_i16x8_u))] // FIXME
+// #[cfg_attr(test, assert_instr(i32x4.extmul_low_i16x8_u))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn i32x4_extmul_low_i16x8_u(a: v128, b: v128) -> v128 {
     transmute(llvm_i32x4_extmul_low_i16x8_u(a.as_i16x8(), b.as_i16x8()))
@@ -2502,7 +2390,7 @@ pub unsafe fn i32x4_extmul_low_i16x8_u(a: v128, b: v128) -> v128 {
 ///
 /// Equivalent of `i32x4_mul(i32x4_extend_high_i16x8_u(a), i32x4_extend_high_i16x8_u(b))`
 #[inline]
-// #[cfg_attr(test, assert_instr(i32x4.extmul_high_i16x8_u))] // FIXME
+// #[cfg_attr(test, assert_instr(i32x4.extmul_high_i16x8_u))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn i32x4_extmul_high_i16x8_u(a: v128, b: v128) -> v128 {
     transmute(llvm_i32x4_extmul_high_i16x8_u(a.as_i16x8(), b.as_i16x8()))
@@ -2510,7 +2398,7 @@ pub unsafe fn i32x4_extmul_high_i16x8_u(a: v128, b: v128) -> v128 {
 
 /// Lane-wise wrapping absolute value.
 #[inline]
-// #[cfg_attr(test, assert_instr(i64x2.abs))] // FIXME
+// #[cfg_attr(test, assert_instr(i64x2.abs))] // FIXME llvm
 #[target_feature(enable = "simd128")]
 pub unsafe fn i64x2_abs(a: v128) -> v128 {
     let a = transmute::<_, i64x2>(a);
@@ -2541,7 +2429,7 @@ pub unsafe fn i64x2_all_true(a: v128) -> bool {
 /// Extracts the high bit for each lane in `a` and produce a scalar mask with
 /// all bits concatenated.
 #[inline]
-// #[cfg_attr(test, assert_instr(i64x2.bitmask))] // FIXME
+#[cfg_attr(test, assert_instr(i64x2.bitmask))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn i64x2_bitmask(a: v128) -> i32 {
     llvm_bitmask_i64x2(transmute(a))
@@ -2550,53 +2438,37 @@ pub unsafe fn i64x2_bitmask(a: v128) -> i32 {
 /// Converts low half of the smaller lane vector to a larger lane
 /// vector, sign extended.
 #[inline]
-// #[cfg_attr(test, assert_instr(i64x2.extend_low_i32x4_s))] // FIXME
+// #[cfg_attr(test, assert_instr(i64x2.extend_low_i32x4_s))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn i64x2_extend_low_i32x4_s(a: v128) -> v128 {
-    transmute(simd_cast::<_, i64x2>(simd_shuffle2::<_, i32x2>(
-        a.as_i32x4(),
-        a.as_i32x4(),
-        [0, 1],
-    )))
+    transmute(llvm_i64x2_extend_low_i32x4_s(a.as_i32x4()))
 }
 
 /// Converts high half of the smaller lane vector to a larger lane
 /// vector, sign extended.
 #[inline]
-// #[cfg_attr(test, assert_instr(i64x2.extend_high_i32x4_s))] // FIXME
+// #[cfg_attr(test, assert_instr(i64x2.extend_high_i32x4_s))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn i64x2_extend_high_i32x4_s(a: v128) -> v128 {
-    transmute(simd_cast::<_, i64x2>(simd_shuffle2::<_, i32x2>(
-        a.as_i32x4(),
-        a.as_i32x4(),
-        [2, 3],
-    )))
+    transmute(llvm_i64x2_extend_high_i32x4_s(a.as_i32x4()))
 }
 
 /// Converts low half of the smaller lane vector to a larger lane
 /// vector, zero extended.
 #[inline]
-// #[cfg_attr(test, assert_instr(i64x2.extend_low_i32x4_u))] // FIXME
+// #[cfg_attr(test, assert_instr(i64x2.extend_low_i32x4_u))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn i64x2_extend_low_i32x4_u(a: v128) -> v128 {
-    transmute(simd_cast::<_, u64x2>(simd_shuffle2::<_, u32x2>(
-        a.as_u32x4(),
-        a.as_u32x4(),
-        [0, 1],
-    )))
+    transmute(llvm_i64x2_extend_low_i32x4_u(a.as_i32x4()))
 }
 
 /// Converts high half of the smaller lane vector to a larger lane
 /// vector, zero extended.
 #[inline]
-// #[cfg_attr(test, assert_instr(i64x2.extend_high_i32x4_u))] // FIXME
+// #[cfg_attr(test, assert_instr(i64x2.extend_high_i32x4_u))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn i64x2_extend_high_i32x4_u(a: v128) -> v128 {
-    transmute(simd_cast::<_, u64x2>(simd_shuffle2::<_, u32x2>(
-        a.as_u32x4(),
-        a.as_u32x4(),
-        [2, 3],
-    )))
+    transmute(llvm_i64x2_extend_low_i32x4_u(a.as_i32x4()))
 }
 
 /// Shifts each lane to the left by the specified number of bits.
@@ -2663,7 +2535,7 @@ pub unsafe fn i64x2_mul(a: v128, b: v128) -> v128 {
 ///
 /// Equivalent of `i64x2_mul(i64x2_extend_low_i32x4_s(a), i64x2_extend_low_i32x4_s(b))`
 #[inline]
-// #[cfg_attr(test, assert_instr(i64x2.extmul_low_i32x4_s))] // FIXME
+// #[cfg_attr(test, assert_instr(i64x2.extmul_low_i32x4_s))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn i64x2_extmul_low_i32x4_s(a: v128, b: v128) -> v128 {
     transmute(llvm_i64x2_extmul_low_i32x4_s(a.as_i32x4(), b.as_i32x4()))
@@ -2674,7 +2546,7 @@ pub unsafe fn i64x2_extmul_low_i32x4_s(a: v128, b: v128) -> v128 {
 ///
 /// Equivalent of `i64x2_mul(i64x2_extend_high_i32x4_s(a), i64x2_extend_high_i32x4_s(b))`
 #[inline]
-// #[cfg_attr(test, assert_instr(i64x2.extmul_high_i32x4_s))] // FIXME
+// #[cfg_attr(test, assert_instr(i64x2.extmul_high_i32x4_s))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn i64x2_extmul_high_i32x4_s(a: v128, b: v128) -> v128 {
     transmute(llvm_i64x2_extmul_high_i32x4_s(a.as_i32x4(), b.as_i32x4()))
@@ -2685,7 +2557,7 @@ pub unsafe fn i64x2_extmul_high_i32x4_s(a: v128, b: v128) -> v128 {
 ///
 /// Equivalent of `i64x2_mul(i64x2_extend_low_i32x4_u(a), i64x2_extend_low_i32x4_u(b))`
 #[inline]
-// #[cfg_attr(test, assert_instr(i64x2.extmul_low_i32x4_u))] // FIXME
+// #[cfg_attr(test, assert_instr(i64x2.extmul_low_i32x4_u))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn i64x2_extmul_low_i32x4_u(a: v128, b: v128) -> v128 {
     transmute(llvm_i64x2_extmul_low_i32x4_u(a.as_i32x4(), b.as_i32x4()))
@@ -2696,7 +2568,7 @@ pub unsafe fn i64x2_extmul_low_i32x4_u(a: v128, b: v128) -> v128 {
 ///
 /// Equivalent of `i64x2_mul(i64x2_extend_high_i32x4_u(a), i64x2_extend_high_i32x4_u(b))`
 #[inline]
-// #[cfg_attr(test, assert_instr(i64x2.extmul_high_i32x4_u))] // FIXME
+// #[cfg_attr(test, assert_instr(i64x2.extmul_high_i32x4_u))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn i64x2_extmul_high_i32x4_u(a: v128, b: v128) -> v128 {
     transmute(llvm_i64x2_extmul_high_i32x4_u(a.as_i32x4(), b.as_i32x4()))
@@ -2704,7 +2576,7 @@ pub unsafe fn i64x2_extmul_high_i32x4_u(a: v128, b: v128) -> v128 {
 
 /// Lane-wise rounding to the nearest integral value not smaller than the input.
 #[inline]
-// #[cfg_attr(test, assert_instr(f32x4.ceil))] // FIXME
+#[cfg_attr(test, assert_instr(f32x4.ceil))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn f32x4_ceil(a: v128) -> v128 {
     transmute(llvm_f32x4_ceil(a.as_f32x4()))
@@ -2712,7 +2584,7 @@ pub unsafe fn f32x4_ceil(a: v128) -> v128 {
 
 /// Lane-wise rounding to the nearest integral value not greater than the input.
 #[inline]
-// #[cfg_attr(test, assert_instr(f32x4.floor))] // FIXME
+#[cfg_attr(test, assert_instr(f32x4.floor))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn f32x4_floor(a: v128) -> v128 {
     transmute(llvm_f32x4_floor(a.as_f32x4()))
@@ -2721,7 +2593,7 @@ pub unsafe fn f32x4_floor(a: v128) -> v128 {
 /// Lane-wise rounding to the nearest integral value with the magnitude not
 /// larger than the input.
 #[inline]
-// #[cfg_attr(test, assert_instr(f32x4.trunc))] // FIXME
+#[cfg_attr(test, assert_instr(f32x4.trunc))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn f32x4_trunc(a: v128) -> v128 {
     transmute(llvm_f32x4_trunc(a.as_f32x4()))
@@ -2730,7 +2602,7 @@ pub unsafe fn f32x4_trunc(a: v128) -> v128 {
 /// Lane-wise rounding to the nearest integral value; if two values are equally
 /// near, rounds to the even one.
 #[inline]
-// #[cfg_attr(test, assert_instr(f32x4.nearest))] // FIXME
+#[cfg_attr(test, assert_instr(f32x4.nearest))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn f32x4_nearest(a: v128) -> v128 {
     transmute(llvm_f32x4_nearest(a.as_f32x4()))
@@ -2819,7 +2691,7 @@ pub unsafe fn f32x4_max(a: v128, b: v128) -> v128 {
 
 /// Lane-wise minimum value, defined as `b < a ? b : a`
 #[inline]
-// #[cfg_attr(test, assert_instr(f32x4.pmin))] // FIXME
+#[cfg_attr(test, assert_instr(f32x4.pmin))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn f32x4_pmin(a: v128, b: v128) -> v128 {
     transmute(llvm_f32x4_pmin(a.as_f32x4(), b.as_f32x4()))
@@ -2827,7 +2699,7 @@ pub unsafe fn f32x4_pmin(a: v128, b: v128) -> v128 {
 
 /// Lane-wise maximum value, defined as `a < b ? b : a`
 #[inline]
-// #[cfg_attr(test, assert_instr(f32x4.pmax))] // FIXME
+#[cfg_attr(test, assert_instr(f32x4.pmax))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn f32x4_pmax(a: v128, b: v128) -> v128 {
     transmute(llvm_f32x4_pmax(a.as_f32x4(), b.as_f32x4()))
@@ -2835,7 +2707,7 @@ pub unsafe fn f32x4_pmax(a: v128, b: v128) -> v128 {
 
 /// Lane-wise rounding to the nearest integral value not smaller than the input.
 #[inline]
-// #[cfg_attr(test, assert_instr(f64x2.ceil))] // FIXME
+#[cfg_attr(test, assert_instr(f64x2.ceil))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn f64x2_ceil(a: v128) -> v128 {
     transmute(llvm_f64x2_ceil(a.as_f64x2()))
@@ -2843,7 +2715,7 @@ pub unsafe fn f64x2_ceil(a: v128) -> v128 {
 
 /// Lane-wise rounding to the nearest integral value not greater than the input.
 #[inline]
-// #[cfg_attr(test, assert_instr(f64x2.floor))] // FIXME
+#[cfg_attr(test, assert_instr(f64x2.floor))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn f64x2_floor(a: v128) -> v128 {
     transmute(llvm_f64x2_floor(a.as_f64x2()))
@@ -2852,7 +2724,7 @@ pub unsafe fn f64x2_floor(a: v128) -> v128 {
 /// Lane-wise rounding to the nearest integral value with the magnitude not
 /// larger than the input.
 #[inline]
-// #[cfg_attr(test, assert_instr(f64x2.trunc))] // FIXME
+#[cfg_attr(test, assert_instr(f64x2.trunc))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn f64x2_trunc(a: v128) -> v128 {
     transmute(llvm_f64x2_trunc(a.as_f64x2()))
@@ -2861,7 +2733,7 @@ pub unsafe fn f64x2_trunc(a: v128) -> v128 {
 /// Lane-wise rounding to the nearest integral value; if two values are equally
 /// near, rounds to the even one.
 #[inline]
-// #[cfg_attr(test, assert_instr(f64x2.nearest))] // FIXME
+#[cfg_attr(test, assert_instr(f64x2.nearest))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn f64x2_nearest(a: v128) -> v128 {
     transmute(llvm_f64x2_nearest(a.as_f64x2()))
@@ -2950,7 +2822,7 @@ pub unsafe fn f64x2_max(a: v128, b: v128) -> v128 {
 
 /// Lane-wise minimum value, defined as `b < a ? b : a`
 #[inline]
-// #[cfg_attr(test, assert_instr(f64x2.pmin))] // FIXME
+#[cfg_attr(test, assert_instr(f64x2.pmin))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn f64x2_pmin(a: v128, b: v128) -> v128 {
     transmute(llvm_f64x2_pmin(a.as_f64x2(), b.as_f64x2()))
@@ -2958,7 +2830,7 @@ pub unsafe fn f64x2_pmin(a: v128, b: v128) -> v128 {
 
 /// Lane-wise maximum value, defined as `a < b ? b : a`
 #[inline]
-// #[cfg_attr(test, assert_instr(f64x2.pmax))] // FIXME
+#[cfg_attr(test, assert_instr(f64x2.pmax))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn f64x2_pmax(a: v128, b: v128) -> v128 {
     transmute(llvm_f64x2_pmax(a.as_f64x2(), b.as_f64x2()))
@@ -3015,7 +2887,7 @@ pub unsafe fn f32x4_convert_i32x4_u(a: v128) -> v128 {
 /// lane is outside the range of the destination type, the result is saturated
 /// to the nearest representable integer value.
 #[inline]
-// #[cfg_attr(test, assert_instr(i32x4.trunc_sat_f64x2_s_zero))] // FIXME
+// #[cfg_attr(test, assert_instr(i32x4.trunc_sat_f64x2_s_zero))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn i32x4_trunc_sat_f64x2_s_zero(a: v128) -> v128 {
     transmute(llvm_i32x4_trunc_sat_f64x2_s_zero(a.as_f64x2()))
@@ -3030,7 +2902,7 @@ pub unsafe fn i32x4_trunc_sat_f64x2_s_zero(a: v128) -> v128 {
 /// lane is outside the range of the destination type, the result is saturated
 /// to the nearest representable integer value.
 #[inline]
-// #[cfg_attr(test, assert_instr(i32x4.trunc_sat_f64x2_u_zero))] // FIXME
+// #[cfg_attr(test, assert_instr(i32x4.trunc_sat_f64x2_u_zero))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn i32x4_trunc_sat_f64x2_u_zero(a: v128) -> v128 {
     transmute(llvm_i32x4_trunc_sat_f64x2_u_zero(a.as_f64x2()))
@@ -3038,7 +2910,7 @@ pub unsafe fn i32x4_trunc_sat_f64x2_u_zero(a: v128) -> v128 {
 
 /// Lane-wise conversion from integer to floating point.
 #[inline]
-// #[cfg_attr(test, assert_instr(f64x2.convert_low_i32x4_s))] // FIXME
+// #[cfg_attr(test, assert_instr(f64x2.convert_low_i32x4_s))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn f64x2_convert_low_i32x4_s(a: v128) -> v128 {
     transmute(llvm_f64x2_convert_low_i32x4_s(a.as_i32x4()))
@@ -3046,7 +2918,7 @@ pub unsafe fn f64x2_convert_low_i32x4_s(a: v128) -> v128 {
 
 /// Lane-wise conversion from integer to floating point.
 #[inline]
-// #[cfg_attr(test, assert_instr(f64x2.convert_low_i32x4_u))] // FIXME
+// #[cfg_attr(test, assert_instr(f64x2.convert_low_i32x4_u))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn f64x2_convert_low_i32x4_u(a: v128) -> v128 {
     transmute(llvm_f64x2_convert_low_i32x4_u(a.as_i32x4()))
@@ -3058,7 +2930,7 @@ pub unsafe fn f64x2_convert_low_i32x4_u(a: v128) -> v128 {
 /// single-precision floating point number, it is rounded to the nearest-even
 /// representable number.
 #[inline]
-// #[cfg_attr(test, assert_instr(f32x4.demote_f64x2_zero))] // FIXME
+// #[cfg_attr(test, assert_instr(f32x4.demote_f64x2_zero))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn f32x4_demote_f64x2_zero(a: v128) -> v128 {
     transmute(llvm_f32x4_demote_f64x2_zero(a.as_f64x2()))
@@ -3067,7 +2939,7 @@ pub unsafe fn f32x4_demote_f64x2_zero(a: v128) -> v128 {
 /// Conversion of the two lower single-precision floating point lanes to the two
 /// double-precision lanes of the result.
 #[inline]
-// #[cfg_attr(test, assert_instr(f64x2.promote_low_f32x4))] // FIXME
+// #[cfg_attr(test, assert_instr(f64x2.promote_low_f32x4))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn f64x2_promote_low_f32x4(a: v128) -> v128 {
     transmute(llvm_f64x2_promote_low_f32x4(a.as_f32x4()))
@@ -3076,6 +2948,7 @@ pub unsafe fn f64x2_promote_low_f32x4(a: v128) -> v128 {
 #[cfg(test)]
 pub mod tests {
     use super::*;
+    use core::ops::{Add, Div, Mul, Neg, Sub};
     use std;
     use std::mem;
     use std::num::Wrapping;
@@ -3129,7 +3002,13 @@ pub mod tests {
         }
     }
 
-    // TODO: v128_load{32,64}_zero
+    #[test]
+    fn test_load_zero() {
+        unsafe {
+            compare_bytes(v128_load32_zero(&10), i32x4_const(10, 0, 0, 0));
+            compare_bytes(v128_load64_zero(&11), i64x2_const(11, 0));
+        }
+    }
 
     #[test]
     fn test_store() {
@@ -3140,14 +3019,65 @@ pub mod tests {
         }
     }
 
-    // TODO: v128_load*_lane
-    // TODO: v128_store*_lane
+    #[test]
+    fn test_load_lane() {
+        unsafe {
+            let zero = i8x16_splat(0);
+            compare_bytes(
+                v128_load8_lane::<2>(zero, &1),
+                i8x16_replace_lane::<2>(zero, 1),
+            );
+
+            compare_bytes(
+                v128_load16_lane::<2>(zero, &1),
+                i16x8_replace_lane::<2>(zero, 1),
+            );
+
+            compare_bytes(
+                v128_load32_lane::<2>(zero, &1),
+                i32x4_replace_lane::<2>(zero, 1),
+            );
+
+            compare_bytes(
+                v128_load64_lane::<1>(zero, &1),
+                i64x2_replace_lane::<1>(zero, 1),
+            );
+        }
+    }
+
+    #[test]
+    fn test_store_lane() {
+        unsafe {
+            let mut spot = 0;
+            let zero = i8x16_splat(0);
+            v128_store8_lane::<5>(i8x16_replace_lane::<5>(zero, 7), &mut spot);
+            assert_eq!(spot, 7);
+
+            let mut spot = 0;
+            v128_store16_lane::<5>(i16x8_replace_lane::<5>(zero, 7), &mut spot);
+            assert_eq!(spot, 7);
+
+            let mut spot = 0;
+            v128_store32_lane::<3>(i32x4_replace_lane::<3>(zero, 7), &mut spot);
+            assert_eq!(spot, 7);
+
+            let mut spot = 0;
+            v128_store64_lane::<0>(i64x2_replace_lane::<0>(zero, 7), &mut spot);
+            assert_eq!(spot, 7);
+        }
+    }
 
     #[test]
     fn test_v128_const() {
         const A: v128 =
             unsafe { super::v128_const(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15) };
         compare_bytes(A, A);
+
+        const _: v128 = unsafe { i16x8_const(0, 1, 2, 3, 4, 5, 6, 7) };
+        const _: v128 = unsafe { i32x4_const(0, 1, 2, 3) };
+        const _: v128 = unsafe { i64x2_const(0, 1) };
+        const _: v128 = unsafe { f32x4_const(0., 1., 2., 3.) };
+        const _: v128 = unsafe { f64x2_const(0., 1.) };
     }
 
     #[test]
@@ -3308,10 +3238,188 @@ pub mod tests {
         test_splat!(f64x2_splat: 42. => 0, 0, 0, 0, 0, 0, 69, 64, 0, 0, 0, 0, 0, 0, 69, 64);
     }
 
+    #[test]
+    fn test_bitmasks() {
+        unsafe {
+            let zero = i8x16_splat(0);
+            let ones = i8x16_splat(!0);
+
+            assert_eq!(i8x16_bitmask(zero), 0);
+            assert_eq!(i8x16_bitmask(ones), (1 << 16) - 1);
+            assert_eq!(i8x16_bitmask(i8x16_splat(i8::MAX)), 0);
+            assert_eq!(i8x16_bitmask(i8x16_splat(i8::MIN)), (1 << 16) - 1);
+            assert_eq!(i8x16_bitmask(i8x16_replace_lane::<1>(zero, -1)), 0b10);
+
+            assert_eq!(i16x8_bitmask(zero), 0);
+            assert_eq!(i16x8_bitmask(ones), (1 << 8) - 1);
+            assert_eq!(i16x8_bitmask(i16x8_splat(i16::MAX)), 0);
+            assert_eq!(i16x8_bitmask(i16x8_splat(i16::MIN)), (1 << 8) - 1);
+            assert_eq!(i16x8_bitmask(i16x8_replace_lane::<1>(zero, -1)), 0b10);
+
+            assert_eq!(i32x4_bitmask(zero), 0);
+            assert_eq!(i32x4_bitmask(ones), (1 << 4) - 1);
+            assert_eq!(i32x4_bitmask(i32x4_splat(i32::MAX)), 0);
+            assert_eq!(i32x4_bitmask(i32x4_splat(i32::MIN)), (1 << 4) - 1);
+            assert_eq!(i32x4_bitmask(i32x4_replace_lane::<1>(zero, -1)), 0b10);
+
+            assert_eq!(i64x2_bitmask(zero), 0);
+            assert_eq!(i64x2_bitmask(ones), (1 << 2) - 1);
+            assert_eq!(i64x2_bitmask(i64x2_splat(i64::MAX)), 0);
+            assert_eq!(i64x2_bitmask(i64x2_splat(i64::MIN)), (1 << 2) - 1);
+            assert_eq!(i64x2_bitmask(i64x2_replace_lane::<1>(zero, -1)), 0b10);
+        }
+    }
+
+    #[test]
+    fn test_narrow() {
+        unsafe {
+            let zero = i8x16_splat(0);
+            let ones = i8x16_splat(!0);
+
+            compare_bytes(i8x16_narrow_i16x8_s(zero, zero), zero);
+            compare_bytes(i8x16_narrow_i16x8_u(zero, zero), zero);
+            compare_bytes(i8x16_narrow_i16x8_s(ones, ones), ones);
+            compare_bytes(i8x16_narrow_i16x8_u(ones, ones), zero);
+
+            compare_bytes(
+                i8x16_narrow_i16x8_s(
+                    i16x8_const(
+                        0,
+                        1,
+                        2,
+                        -1,
+                        i8::MIN.into(),
+                        i8::MAX.into(),
+                        u8::MIN.into(),
+                        u8::MAX.into(),
+                    ),
+                    i16x8_const(
+                        i16::MIN.into(),
+                        i16::MAX.into(),
+                        u16::MIN as i16,
+                        u16::MAX as i16,
+                        0,
+                        0,
+                        0,
+                        0,
+                    ),
+                ),
+                v128_const(0, 1, 2, -1, -128, 127, 0, 127, -128, 127, 0, -1, 0, 0, 0, 0),
+            );
+
+            compare_bytes(
+                i8x16_narrow_i16x8_u(
+                    i16x8_const(
+                        0,
+                        1,
+                        2,
+                        -1,
+                        i8::MIN.into(),
+                        i8::MAX.into(),
+                        u8::MIN.into(),
+                        u8::MAX.into(),
+                    ),
+                    i16x8_const(
+                        i16::MIN.into(),
+                        i16::MAX.into(),
+                        u16::MIN as i16,
+                        u16::MAX as i16,
+                        0,
+                        0,
+                        0,
+                        0,
+                    ),
+                ),
+                v128_const(0, 1, 2, 0, 0, 127, 0, -1, 0, -1, 0, 0, 0, 0, 0, 0),
+            );
+
+            compare_bytes(i16x8_narrow_i32x4_s(zero, zero), zero);
+            compare_bytes(i16x8_narrow_i32x4_u(zero, zero), zero);
+            compare_bytes(i16x8_narrow_i32x4_s(ones, ones), ones);
+            compare_bytes(i16x8_narrow_i32x4_u(ones, ones), zero);
+
+            compare_bytes(
+                i16x8_narrow_i32x4_s(
+                    i32x4_const(0, -1, i16::MIN.into(), i16::MAX.into()),
+                    i32x4_const(
+                        i32::MIN.into(),
+                        i32::MAX.into(),
+                        u32::MIN as i32,
+                        u32::MAX as i32,
+                    ),
+                ),
+                i16x8_const(0, -1, i16::MIN, i16::MAX, i16::MIN, i16::MAX, 0, -1),
+            );
+
+            compare_bytes(
+                i16x8_narrow_i32x4_u(
+                    i32x4_const(u16::MAX.into(), -1, i16::MIN.into(), i16::MAX.into()),
+                    i32x4_const(
+                        i32::MIN.into(),
+                        i32::MAX.into(),
+                        u32::MIN as i32,
+                        u32::MAX as i32,
+                    ),
+                ),
+                i16x8_const(-1, 0, 0, i16::MAX, 0, -1, 0, 0),
+            );
+        }
+    }
+
+    #[test]
+    fn test_extend() {
+        unsafe {
+            let zero = i8x16_splat(0);
+            let ones = i8x16_splat(!0);
+
+            compare_bytes(i16x8_extend_low_i8x16_s(zero), zero);
+            compare_bytes(i16x8_extend_high_i8x16_s(zero), zero);
+            compare_bytes(i16x8_extend_low_i8x16_u(zero), zero);
+            compare_bytes(i16x8_extend_high_i8x16_u(zero), zero);
+            compare_bytes(i16x8_extend_low_i8x16_s(ones), ones);
+            compare_bytes(i16x8_extend_high_i8x16_s(ones), ones);
+            let halves = i16x8_splat(u8::MAX.into());
+            compare_bytes(i16x8_extend_low_i8x16_u(ones), halves);
+            compare_bytes(i16x8_extend_high_i8x16_u(ones), halves);
+
+            compare_bytes(i32x4_extend_low_i16x8_s(zero), zero);
+            compare_bytes(i32x4_extend_high_i16x8_s(zero), zero);
+            compare_bytes(i32x4_extend_low_i16x8_u(zero), zero);
+            compare_bytes(i32x4_extend_high_i16x8_u(zero), zero);
+            compare_bytes(i32x4_extend_low_i16x8_s(ones), ones);
+            compare_bytes(i32x4_extend_high_i16x8_s(ones), ones);
+            let halves = i32x4_splat(u16::MAX.into());
+            compare_bytes(i32x4_extend_low_i16x8_u(ones), halves);
+            compare_bytes(i32x4_extend_high_i16x8_u(ones), halves);
+
+            // FIXME wasmtime
+            // compare_bytes(i64x2_extend_low_i32x4_s(zero), zero);
+            // compare_bytes(i64x2_extend_high_i32x4_s(zero), zero);
+            // compare_bytes(i64x2_extend_low_i32x4_u(zero), zero);
+            // compare_bytes(i64x2_extend_high_i32x4_u(zero), zero);
+            // compare_bytes(i64x2_extend_low_i32x4_s(ones), ones);
+            // compare_bytes(i64x2_extend_high_i32x4_s(ones), ones);
+            // let halves = i64x2_splat(u32::MAX.into());
+            // compare_bytes(i64x2_extend_low_i32x4_u(ones), halves);
+            // compare_bytes(i64x2_extend_high_i32x4_u(ones), halves);
+        }
+    }
+
+    #[test]
+    fn test_dot() {
+        unsafe {
+            let zero = i8x16_splat(0);
+            let ones = i8x16_splat(!0);
+            let two = i32x4_splat(2);
+            compare_bytes(i32x4_dot_i16x8_s(zero, zero), zero);
+            compare_bytes(i32x4_dot_i16x8_s(ones, ones), two);
+        }
+    }
+
     macro_rules! test_binop {
         (
             $($name:ident => {
-                $([$($vec1:tt)*] ($op:tt | $f:ident) [$($vec2:tt)*],)*
+                $([$($vec1:tt)*] ($op:ident | $f:ident) [$($vec2:tt)*],)*
             })*
         ) => ($(
             #[test]
@@ -3328,7 +3436,7 @@ pub mod tests {
                         v3 = mem::transmute(v3_v128);
 
                         for (i, actual) in v3.iter().enumerate() {
-                            let expected = (Wrapping(v1[i]) $op Wrapping(v2[i])).0;
+                            let expected = v1[i].$op(v2[i]);
                             assert_eq!(*actual, expected);
                         }
                     )*
@@ -3340,7 +3448,7 @@ pub mod tests {
     macro_rules! test_unop {
         (
             $($name:ident => {
-                $(($op:tt | $f:ident) [$($vec1:tt)*],)*
+                $(($op:ident | $f:ident) [$($vec1:tt)*],)*
             })*
         ) => ($(
             #[test]
@@ -3355,7 +3463,7 @@ pub mod tests {
                         v2 = mem::transmute(v2_v128);
 
                         for (i, actual) in v2.iter().enumerate() {
-                            let expected = ($op Wrapping(v1[i])).0;
+                            let expected = v1[i].$op();
                             assert_eq!(*actual, expected);
                         }
                     )*
@@ -3364,112 +3472,584 @@ pub mod tests {
         )*)
     }
 
+    trait Avgr: Sized {
+        fn avgr(self, other: Self) -> Self;
+    }
+
+    macro_rules! impl_avgr {
+        ($($i:ident)*) => ($(impl Avgr for $i {
+            fn avgr(self, other: Self) -> Self {
+                ((self as u64 + other as u64 + 1) / 2) as $i
+            }
+        })*)
+    }
+
+    impl_avgr!(u8 u16);
+
     test_binop! {
         test_i8x16_add => {
             [0i8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-                (+ | i8x16_add)
+                (wrapping_add | i8x16_add)
             [1i8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
 
             [1i8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
-                (+ | i8x16_add)
+                (wrapping_add | i8x16_add)
             [-2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -13, -14, -15, -16, -18],
 
             [1i8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
-                (+ | i8x16_add)
+                (wrapping_add | i8x16_add)
             [127, -44, 43, 126, 4, 2, 9, -3, -59, -43, 39, -69, 79, -3, 9, -24],
         }
-        test_i8x16_sub => {
+
+        test_i8x16_add_sat_s => {
             [0i8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-                (- | i8x16_sub)
+                (saturating_add | i8x16_add_sat_s)
             [1i8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
 
             [1i8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
-                (- | i8x16_sub)
+                (saturating_add | i8x16_add_sat_s)
             [-2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -13, -14, -15, -16, -18],
 
             [1i8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
-                (- | i8x16_sub)
+                (saturating_add | i8x16_add_sat_s)
+            [127, -44, 43, 126, 4, 2, 9, -3, -59, -43, 39, -69, 79, -3, 9, -24],
+        }
+
+        test_i8x16_add_sat_u => {
+            [0u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                (saturating_add | i8x16_add_sat_u)
+            [1u8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+
+            [1u8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+                (saturating_add | i8x16_add_sat_u)
+            [255, 254, 253, 252, 251, 250, 249, 248, 247, 246, 245, 244, 243, 242, 241, 240],
+
+            [1u8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+                (saturating_add | i8x16_add_sat_u)
+            [127, -44i8 as u8, 43, 126, 4, 2, 9, -3i8 as u8, -59i8 as u8, -43i8 as u8, 39, -69i8 as u8, 79, -3i8 as u8, 9, -24i8 as u8],
+        }
+
+        test_i8x16_sub => {
+            [0i8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                (wrapping_sub | i8x16_sub)
+            [1i8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+
+            [1i8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+                (wrapping_sub | i8x16_sub)
+            [-2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -13, -14, -15, -16, -18],
+
+            [1i8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+                (wrapping_sub | i8x16_sub)
             [-127, -44, 43, 126, 4, 2, 9, -3, -59, -43, 39, -69, 79, -3, 4, 8],
+        }
+
+        test_i8x16_sub_sat_s => {
+            [0i8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                (saturating_sub | i8x16_sub_sat_s)
+            [1i8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+
+            [1i8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+                (saturating_sub | i8x16_sub_sat_s)
+            [-2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -13, -14, -15, -16, -18],
+
+            [1i8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+                (saturating_sub | i8x16_sub_sat_s)
+            [-127, -44, 43, 126, 4, 2, 9, -3, -59, -43, 39, -69, 79, -3, 4, 8],
+        }
+
+        test_i8x16_sub_sat_u => {
+            [0u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                (saturating_sub | i8x16_sub_sat_u)
+            [1u8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+
+            [1u8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+                (saturating_sub | i8x16_sub_sat_u)
+            [255, 254, 253, 252, 251, 250, 249, 248, 247, 246, 245, 244, 243, 242, 241, 240],
+
+            [1u8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+                (saturating_sub | i8x16_sub_sat_u)
+            [127, -44i8 as u8, 43, 126, 4, 2, 9, -3i8 as u8, -59i8 as u8, -43i8 as u8, 39, -69i8 as u8, 79, -3i8 as u8, 9, -24i8 as u8],
+        }
+
+        test_i8x16_min_s => {
+            [0i8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                (min | i8x16_min_s)
+            [1i8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+
+            [1i8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+                (min | i8x16_min_s)
+            [-2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -13, -14, -15, -16, -18],
+
+            [1i8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+                (min | i8x16_min_s)
+            [-127, -44, 43, 126, 4, 2, 9, -3, -59, -43, 39, -69, 79, -3, 4, 8],
+        }
+
+        test_i8x16_min_u => {
+            [0u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                (min | i8x16_min_u)
+            [1u8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+
+            [1u8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+                (min | i8x16_min_u)
+            [255, 254, 253, 252, 251, 250, 249, 248, 247, 246, 245, 244, 243, 242, 241, 240],
+
+            [1u8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+                (min | i8x16_min_u)
+            [127, -44i8 as u8, 43, 126, 4, 2, 9, -3i8 as u8, -59i8 as u8, -43i8 as u8, 39, -69i8 as u8, 79, -3i8 as u8, 9, -24i8 as u8],
+        }
+
+        test_i8x16_max_s => {
+            [0i8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                (max | i8x16_max_s)
+            [1i8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+
+            [1i8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+                (max | i8x16_max_s)
+            [-2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -13, -14, -15, -16, -18],
+
+            [1i8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+                (max | i8x16_max_s)
+            [-127, -44, 43, 126, 4, 2, 9, -3, -59, -43, 39, -69, 79, -3, 4, 8],
+        }
+
+        test_i8x16_max_u => {
+            [0u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                (max | i8x16_max_u)
+            [1u8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+
+            [1u8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+                (max | i8x16_max_u)
+            [255, 254, 253, 252, 251, 250, 249, 248, 247, 246, 245, 244, 243, 242, 241, 240],
+
+            [1u8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+                (max | i8x16_max_u)
+            [127, -44i8 as u8, 43, 126, 4, 2, 9, -3i8 as u8, -59i8 as u8, -43i8 as u8, 39, -69i8 as u8, 79, -3i8 as u8, 9, -24i8 as u8],
+        }
+
+        test_i8x16_avgr_u => {
+            [0u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                (avgr | i8x16_avgr_u)
+            [1u8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+
+            [1u8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+                (avgr | i8x16_avgr_u)
+            [255, 254, 253, 252, 251, 250, 249, 248, 247, 246, 245, 244, 243, 242, 241, 240],
+
+            [1u8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+                (avgr | i8x16_avgr_u)
+            [127, -44i8 as u8, 43, 126, 4, 2, 9, -3i8 as u8, -59i8 as u8, -43i8 as u8, 39, -69i8 as u8, 79, -3i8 as u8, 9, -24i8 as u8],
         }
 
         test_i16x8_add => {
             [0i16, 0, 0, 0, 0, 0, 0, 0]
-                (+ | i16x8_add)
+                (wrapping_add | i16x8_add)
             [1i16, 1, 1, 1, 1, 1, 1, 1],
 
             [1i16, 2, 3, 4, 5, 6, 7, 8]
-                (+ | i16x8_add)
+                (wrapping_add | i16x8_add)
             [32767, 8, -2494,-4, 4882, -4, 848, 3830],
+        }
+
+        test_i16x8_add_sat_s => {
+            [0i16, 0, 0, 0, 0, 0, 0, 0]
+                (saturating_add | i16x8_add_sat_s)
+            [1i16, 1, 1, 1, 1, 1, 1, 1],
+
+            [1i16, 2, 3, 4, 5, 6, 7, 8]
+                (saturating_add | i16x8_add_sat_s)
+            [32767, 8, -2494,-4, 4882, -4, 848, 3830],
+        }
+
+        test_i16x8_add_sat_u => {
+            [0u16, 0, 0, 0, 0, 0, 0, 0]
+                (saturating_add | i16x8_add_sat_u)
+            [1u16, 1, 1, 1, 1, 1, 1, 1],
+
+            [1u16, 2, 3, 4, 5, 6, 7, 8]
+                (saturating_add | i16x8_add_sat_u)
+            [32767, 8, -2494i16 as u16,-4i16 as u16, 4882, -4i16 as u16, 848, 3830],
         }
 
         test_i16x8_sub => {
             [0i16, 0, 0, 0, 0, 0, 0, 0]
-                (- | i16x8_sub)
+                (wrapping_sub | i16x8_sub)
             [1i16, 1, 1, 1, 1, 1, 1, 1],
 
             [1i16, 2, 3, 4, 5, 6, 7, 8]
-                (- | i16x8_sub)
+                (wrapping_sub | i16x8_sub)
             [32767, 8, -2494,-4, 4882, -4, 848, 3830],
+        }
+
+        test_i16x8_sub_sat_s => {
+            [0i16, 0, 0, 0, 0, 0, 0, 0]
+                (saturating_sub | i16x8_sub_sat_s)
+            [1i16, 1, 1, 1, 1, 1, 1, 1],
+
+            [1i16, 2, 3, 4, 5, 6, 7, 8]
+                (saturating_sub | i16x8_sub_sat_s)
+            [32767, 8, -2494,-4, 4882, -4, 848, 3830],
+        }
+
+        test_i16x8_sub_sat_u => {
+            [0u16, 0, 0, 0, 0, 0, 0, 0]
+                (saturating_sub | i16x8_sub_sat_u)
+            [1u16, 1, 1, 1, 1, 1, 1, 1],
+
+            [1u16, 2, 3, 4, 5, 6, 7, 8]
+                (saturating_sub | i16x8_sub_sat_u)
+            [32767, 8, -2494i16 as u16,-4i16 as u16, 4882, -4i16 as u16, 848, 3830],
         }
 
         test_i16x8_mul => {
             [0i16, 0, 0, 0, 0, 0, 0, 0]
-                (* | i16x8_mul)
+                (wrapping_mul | i16x8_mul)
             [1i16, 1, 1, 1, 1, 1, 1, 1],
 
             [1i16, 2, 3, 4, 5, 6, 7, 8]
-                (* | i16x8_mul)
+                (wrapping_mul | i16x8_mul)
             [32767, 8, -2494,-4, 4882, -4, 848, 3830],
         }
 
+        test_i16x8_min_s => {
+            [0i16, 0, 0, 0, 0, 0, 0, 0]
+                (min | i16x8_min_s)
+            [1i16, 1, 1, 1, 1, 1, 1, 1],
+
+            [1i16, 2, 3, 4, 5, 6, 7, 8]
+                (min | i16x8_min_s)
+            [32767, 8, -2494,-4, 4882, -4, 848, 3830],
+        }
+
+        test_i16x8_min_u => {
+            [0u16, 0, 0, 0, 0, 0, 0, 0]
+                (min | i16x8_min_u)
+            [1u16, 1, 1, 1, 1, 1, 1, 1],
+
+            [1u16, 2, 3, 4, 5, 6, 7, 8]
+                (min | i16x8_min_u)
+            [32767, 8, -2494i16 as u16,-4i16 as u16, 4882, -4i16 as u16, 848, 3830],
+        }
+
+        test_i16x8_max_s => {
+            [0i16, 0, 0, 0, 0, 0, 0, 0]
+                (max | i16x8_max_s)
+            [1i16, 1, 1, 1, 1, 1, 1, 1],
+
+            [1i16, 2, 3, 4, 5, 6, 7, 8]
+                (max | i16x8_max_s)
+            [32767, 8, -2494,-4, 4882, -4, 848, 3830],
+        }
+
+        test_i16x8_max_u => {
+            [0u16, 0, 0, 0, 0, 0, 0, 0]
+                (max | i16x8_max_u)
+            [1u16, 1, 1, 1, 1, 1, 1, 1],
+
+            [1u16, 2, 3, 4, 5, 6, 7, 8]
+                (max | i16x8_max_u)
+            [32767, 8, -2494i16 as u16,-4i16 as u16, 4882, -4i16 as u16, 848, 3830],
+        }
+
+        test_i16x8_avgr_u => {
+            [0u16, 0, 0, 0, 0, 0, 0, 0]
+                (avgr | i16x8_avgr_u)
+            [1u16, 1, 1, 1, 1, 1, 1, 1],
+
+            [1u16, 2, 3, 4, 5, 6, 7, 8]
+                (avgr | i16x8_avgr_u)
+            [32767, 8, -2494i16 as u16,-4i16 as u16, 4882, -4i16 as u16, 848, 3830],
+        }
+
         test_i32x4_add => {
-            [0i32, 0, 0, 0] (+ | i32x4_add) [1, 2, 3, 4],
+            [0i32, 0, 0, 0] (wrapping_add | i32x4_add) [1, 2, 3, 4],
             [1i32, 1283, i32::MAX, i32::MIN]
-                (+ | i32x4_add)
+                (wrapping_add | i32x4_add)
             [i32::MAX; 4],
         }
 
         test_i32x4_sub => {
-            [0i32, 0, 0, 0] (- | i32x4_sub) [1, 2, 3, 4],
+            [0i32, 0, 0, 0] (wrapping_sub | i32x4_sub) [1, 2, 3, 4],
             [1i32, 1283, i32::MAX, i32::MIN]
-                (- | i32x4_sub)
+                (wrapping_sub | i32x4_sub)
             [i32::MAX; 4],
         }
 
         test_i32x4_mul => {
-            [0i32, 0, 0, 0] (* | i32x4_mul) [1, 2, 3, 4],
+            [0i32, 0, 0, 0] (wrapping_mul | i32x4_mul) [1, 2, 3, 4],
             [1i32, 1283, i32::MAX, i32::MIN]
-                (* | i32x4_mul)
+                (wrapping_mul | i32x4_mul)
             [i32::MAX; 4],
         }
 
-        // TODO: test_i64x2_add
-        // TODO: test_i64x2_sub
+        test_i32x4_min_s => {
+            [0i32, 0, 0, 0] (min | i32x4_min_s) [1, 2, 3, 4],
+            [1i32, 1283, i32::MAX, i32::MIN]
+                (min | i32x4_min_s)
+            [i32::MAX; 4],
+        }
+
+        test_i32x4_min_u => {
+            [0u32, 0, 0, 0] (min | i32x4_min_u) [1, 2, 3, 4],
+            [1u32, 1283, i32::MAX as u32, i32::MIN as u32]
+                (min | i32x4_min_u)
+            [i32::MAX as u32; 4],
+        }
+
+        test_i32x4_max_s => {
+            [0i32, 0, 0, 0] (max | i32x4_max_s) [1, 2, 3, 4],
+            [1i32, 1283, i32::MAX, i32::MIN]
+                (max | i32x4_max_s)
+            [i32::MAX; 4],
+        }
+
+        test_i32x4_max_u => {
+            [0u32, 0, 0, 0] (max | i32x4_max_u) [1, 2, 3, 4],
+            [1u32, 1283, i32::MAX as u32, i32::MIN as u32]
+                (max | i32x4_max_u)
+            [i32::MAX as u32; 4],
+        }
+
+        test_i64x2_add => {
+            [0i64, 0] (wrapping_add | i64x2_add) [1, 2],
+            [i64::MIN, i64::MAX] (wrapping_add | i64x2_add) [i64::MAX, i64::MIN],
+            [i64::MAX; 2] (wrapping_add | i64x2_add) [i64::MAX; 2],
+            [-4i64, -4] (wrapping_add | i64x2_add) [800, 939],
+        }
+
+        test_i64x2_sub => {
+            [0i64, 0] (wrapping_sub | i64x2_sub) [1, 2],
+            [i64::MIN, i64::MAX] (wrapping_sub | i64x2_sub) [i64::MAX, i64::MIN],
+            [i64::MAX; 2] (wrapping_sub | i64x2_sub) [i64::MAX; 2],
+            [-4i64, -4] (wrapping_sub | i64x2_sub) [800, 939],
+        }
+
+        test_i64x2_mul => {
+            [0i64, 0] (wrapping_mul | i64x2_mul) [1, 2],
+            [i64::MIN, i64::MAX] (wrapping_mul | i64x2_mul) [i64::MAX, i64::MIN],
+            [i64::MAX; 2] (wrapping_mul | i64x2_mul) [i64::MAX; 2],
+            [-4i64, -4] (wrapping_mul | i64x2_mul) [800, 939],
+        }
+
+        test_f32x4_add => {
+            [-1.0f32, 2.0, 3.0, 4.0] (add | f32x4_add) [1., 2., 0., 0.],
+            [f32::INFINITY, -0.0, f32::NEG_INFINITY, 3.0]
+                (add | f32x4_add)
+            [1., 2., 0., 0.],
+        }
+
+        test_f32x4_sub => {
+            [-1.0f32, 2.0, 3.0, 4.0] (sub | f32x4_sub) [1., 2., 0., 0.],
+            [f32::INFINITY, -0.0, f32::NEG_INFINITY, 3.0]
+                (sub | f32x4_sub)
+            [1., 2., 0., 0.],
+        }
+
+        test_f32x4_mul => {
+            [-1.0f32, 2.0, 3.0, 4.0] (mul | f32x4_mul) [1., 2., 0., 0.],
+            [f32::INFINITY, -0.0, f32::NEG_INFINITY, 3.0]
+                (mul | f32x4_mul)
+            [1., 2., 1., 0.],
+        }
+
+        test_f32x4_div => {
+            [-1.0f32, 2.0, 3.0, 4.0] (div | f32x4_div) [1., 2., 0., 0.],
+            [f32::INFINITY, -0.0, f32::NEG_INFINITY, 3.0]
+                (div | f32x4_div)
+            [1., 2., 0., 0.],
+        }
+
+        test_f32x4_min => {
+            [-1.0f32, 2.0, 3.0, 4.0] (min | f32x4_min) [1., 2., 0., 0.],
+            [f32::INFINITY, -0.0, f32::NEG_INFINITY, 3.0]
+                (min | f32x4_min)
+            [1., 2., 0., 0.],
+        }
+
+        test_f32x4_max => {
+            [-1.0f32, 2.0, 3.0, 4.0] (max | f32x4_max) [1., 2., 0., 0.],
+            [f32::INFINITY, -0.0, f32::NEG_INFINITY, 3.0]
+                (max | f32x4_max)
+            [1., 2., 0., 0.],
+        }
+
+        test_f32x4_pmin => {
+            [-1.0f32, 2.0, 3.0, 4.0] (min | f32x4_pmin) [1., 2., 0., 0.],
+            [f32::INFINITY, -0.0, f32::NEG_INFINITY, 3.0]
+                (min | f32x4_pmin)
+            [1., 2., 0., 0.],
+        }
+
+        test_f32x4_pmax => {
+            [-1.0f32, 2.0, 3.0, 4.0] (max | f32x4_pmax) [1., 2., 0., 0.],
+            [f32::INFINITY, -0.0, f32::NEG_INFINITY, 3.0]
+                (max | f32x4_pmax)
+            [1., 2., 0., 0.],
+        }
+
+        test_f64x2_add => {
+            [-1.0f64, 2.0] (add | f64x2_add) [1., 2.],
+            [f64::INFINITY, f64::NEG_INFINITY] (add | f64x2_add) [1., 2.],
+        }
+
+        test_f64x2_sub => {
+            [-1.0f64, 2.0] (sub | f64x2_sub) [1., 2.],
+            [f64::INFINITY, f64::NEG_INFINITY] (sub | f64x2_sub) [1., 2.],
+        }
+
+        test_f64x2_mul => {
+            [-1.0f64, 2.0] (mul | f64x2_mul) [1., 2.],
+            [f64::INFINITY, f64::NEG_INFINITY] (mul | f64x2_mul) [1., 2.],
+        }
+
+        test_f64x2_div => {
+            [-1.0f64, 2.0] (div | f64x2_div) [1., 2.],
+            [f64::INFINITY, f64::NEG_INFINITY] (div | f64x2_div) [1., 2.],
+        }
+
+        test_f64x2_min => {
+            [-1.0f64, 2.0] (min | f64x2_min) [1., 2.],
+            [f64::INFINITY, f64::NEG_INFINITY] (min | f64x2_min) [1., 2.],
+        }
+
+        test_f64x2_max => {
+            [-1.0f64, 2.0] (max | f64x2_max) [1., 2.],
+            [f64::INFINITY, f64::NEG_INFINITY] (max | f64x2_max) [1., 2.],
+        }
+
+        test_f64x2_pmin => {
+            [-1.0f64, 2.0] (min | f64x2_pmin) [1., 2.],
+            [f64::INFINITY, f64::NEG_INFINITY] (min | f64x2_pmin) [1., 2.],
+        }
+
+        test_f64x2_pmax => {
+            [-1.0f64, 2.0] (max | f64x2_pmax) [1., 2.],
+            [f64::INFINITY, f64::NEG_INFINITY] (max | f64x2_pmax) [1., 2.],
+        }
     }
 
     test_unop! {
-        test_i8x16_neg => {
-            (- | i8x16_neg)
+        test_i8x16_abs => {
+            (wrapping_abs | i8x16_abs)
             [1i8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
 
-            (- | i8x16_neg)
+            (wrapping_abs | i8x16_abs)
             [-2i8, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -13, -14, -15, -16, -18],
 
-            (- | i8x16_neg)
+            (wrapping_abs | i8x16_abs)
             [-127i8, -44, 43, 126, 4, -128, 127, -59, -43, 39, -69, 79, -3, 35, 83, 13],
         }
 
+        test_i8x16_neg => {
+            (wrapping_neg | i8x16_neg)
+            [1i8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+
+            (wrapping_neg | i8x16_neg)
+            [-2i8, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -13, -14, -15, -16, -18],
+
+            (wrapping_neg | i8x16_neg)
+            [-127i8, -44, 43, 126, 4, -128, 127, -59, -43, 39, -69, 79, -3, 35, 83, 13],
+        }
+
+        test_i16x8_abs => {
+            (wrapping_abs | i16x8_abs) [1i16, 1, 1, 1, 1, 1, 1, 1],
+            (wrapping_abs | i16x8_abs) [2i16, 0x7fff, !0, 4, 42, -5, 33, -4847],
+        }
+
         test_i16x8_neg => {
-            (- | i16x8_neg) [1i16, 1, 1, 1, 1, 1, 1, 1],
-            (- | i16x8_neg) [2i16, 0x7fff, !0, 4, 42, -5, 33, -4847],
+            (wrapping_neg | i16x8_neg) [1i16, 1, 1, 1, 1, 1, 1, 1],
+            (wrapping_neg | i16x8_neg) [2i16, 0x7fff, !0, 4, 42, -5, 33, -4847],
+        }
+
+        test_i32x4_abs => {
+            (wrapping_abs | i32x4_abs) [1i32, 2, 3, 4],
+            (wrapping_abs | i32x4_abs) [i32::MIN, i32::MAX, 0, 4],
         }
 
         test_i32x4_neg => {
-            (- | i32x4_neg) [1i32, 2, 3, 4],
-            (- | i32x4_neg) [i32::MIN, i32::MAX, 0, 4],
+            (wrapping_neg | i32x4_neg) [1i32, 2, 3, 4],
+            (wrapping_neg | i32x4_neg) [i32::MIN, i32::MAX, 0, 4],
         }
 
-        // TODO: test_i64x2_neg
+        test_i64x2_abs => {
+            (wrapping_abs | i64x2_abs) [1i64, 2],
+            (wrapping_abs | i64x2_abs) [i64::MIN, i64::MAX],
+        }
+
+        test_i64x2_neg => {
+            (wrapping_neg | i64x2_neg) [1i64, 2],
+            (wrapping_neg | i64x2_neg) [i64::MIN, i64::MAX],
+        }
+
+        test_f32x4_ceil => {
+            (ceil | f32x4_ceil) [1.0f32, 2., 2.5, 3.3],
+            (ceil | f32x4_ceil) [0.0, -0.3, f32::INFINITY, -0.0],
+        }
+
+        test_f32x4_floor => {
+            (floor | f32x4_floor) [1.0f32, 2., 2.5, 3.3],
+            (floor | f32x4_floor) [0.0, -0.3, f32::INFINITY, -0.0],
+        }
+
+        test_f32x4_trunc => {
+            (trunc | f32x4_trunc) [1.0f32, 2., 2.5, 3.3],
+            (trunc | f32x4_trunc) [0.0, -0.3, f32::INFINITY, -0.0],
+        }
+
+        test_f32x4_nearest => {
+            (round | f32x4_nearest) [1.0f32, 2., 2.6, 3.3],
+            (round | f32x4_nearest) [0.0, -0.3, f32::INFINITY, -0.0],
+        }
+
+        test_f32x4_abs => {
+            (abs | f32x4_abs) [1.0f32, 2., 2.6, 3.3],
+            (abs | f32x4_abs) [0.0, -0.3, f32::INFINITY, -0.0],
+        }
+
+        test_f32x4_neg => {
+            (neg | f32x4_neg) [1.0f32, 2., 2.6, 3.3],
+            (neg | f32x4_neg) [0.0, -0.3, f32::INFINITY, -0.0],
+        }
+
+        test_f32x4_sqrt => {
+            (sqrt | f32x4_sqrt) [1.0f32, 2., 2.6, 3.3],
+            (sqrt | f32x4_sqrt) [0.0, 0.3, f32::INFINITY, 0.1],
+        }
+
+        test_f64x2_ceil => {
+            (ceil | f64x2_ceil) [1.0f64, 2.3],
+            (ceil | f64x2_ceil) [f64::INFINITY, -0.1],
+        }
+
+        test_f64x2_floor => {
+            (floor | f64x2_floor) [1.0f64, 2.3],
+            (floor | f64x2_floor) [f64::INFINITY, -0.1],
+        }
+
+        test_f64x2_trunc => {
+            (trunc | f64x2_trunc) [1.0f64, 2.3],
+            (trunc | f64x2_trunc) [f64::INFINITY, -0.1],
+        }
+
+        test_f64x2_nearest => {
+            (round | f64x2_nearest) [1.0f64, 2.3],
+            (round | f64x2_nearest) [f64::INFINITY, -0.1],
+        }
+
+        test_f64x2_abs => {
+            (abs | f64x2_abs) [1.0f64, 2.3],
+            (abs | f64x2_abs) [f64::INFINITY, -0.1],
+        }
+
+        test_f64x2_neg => {
+            (neg | f64x2_neg) [1.0f64, 2.3],
+            (neg | f64x2_neg) [f64::INFINITY, -0.1],
+        }
+
+        test_f64x2_sqrt => {
+            (sqrt | f64x2_sqrt) [1.0f64, 2.3],
+            (sqrt | f64x2_sqrt) [f64::INFINITY, 0.1],
+        }
     }
 
     macro_rules! floating_point {
@@ -3624,6 +4204,12 @@ pub mod tests {
             compare_bytes(r, vec_a);
             let r: v128 = v128_and(vec_a, vec_b);
             compare_bytes(r, vec_a);
+            let r: v128 = v128_andnot(vec_a, vec_b);
+            compare_bytes(r, vec_c);
+            let r: v128 = v128_andnot(vec_a, vec_a);
+            compare_bytes(r, vec_c);
+            let r: v128 = v128_andnot(vec_a, vec_c);
+            compare_bytes(r, vec_a);
             let r: v128 = v128_or(vec_a, vec_b);
             compare_bytes(r, vec_b);
             let r: v128 = v128_not(vec_b);
@@ -3680,6 +4266,12 @@ pub mod tests {
             | [0_i32, 0, 0, 0]
             | [1_i32, 0, 1, 0]
     );
+    test_bool_red!(
+        [i64x2_boolean_reductions, v128_any_true, i64x2_all_true]
+            | [1_i64, 1]
+            | [0_i64, 0]
+            | [1_i64, 0]
+    );
 
     test_bop!(i8x16[i8; 16] | i8x16_eq[i8x16_eq_test]:
               ([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
@@ -3690,6 +4282,8 @@ pub mod tests {
                [-1, 0, -1, 0 ,-1, 0, -1, -1]);
     test_bop!(i32x4[i32; 4] | i32x4_eq[i32x4_eq_test]:
                ([0, 1, 2, 3], [0, 2, 2, 4]) => [-1, 0, -1, 0]);
+    test_bop!(i64x2[i64; 2] | i64x2_eq[i64x2_eq_test]:
+               ([0, 1], [0, 2]) => [-1, 0]);
     test_bop!(f32x4[f32; 4] => i32 | f32x4_eq[f32x4_eq_test]:
                ([0., 1., 2., 3.], [0., 2., 2., 4.]) => [-1, 0, -1, 0]);
     test_bop!(f64x2[f64; 2] => i64 | f64x2_eq[f64x2_eq_test]: ([0., 1.], [0., 2.]) => [-1, 0]);
@@ -3703,59 +4297,106 @@ pub mod tests {
                [0, -1, 0, -1 ,0, -1, 0, 0]);
     test_bop!(i32x4[i32; 4] | i32x4_ne[i32x4_ne_test]:
                ([0, 1, 2, 3], [0, 2, 2, 4]) => [0, -1, 0, -1]);
+    test_bop!(i64x2[i64; 2] | i64x2_ne[i64x2_ne_test]:
+               ([0, 1], [0, 2]) => [0, -1]);
     test_bop!(f32x4[f32; 4] => i32 | f32x4_ne[f32x4_ne_test]:
                ([0., 1., 2., 3.], [0., 2., 2., 4.]) => [0, -1, 0, -1]);
     test_bop!(f64x2[f64; 2] => i64 | f64x2_ne[f64x2_ne_test]: ([0., 1.], [0., 2.]) => [0, -1]);
 
-    test_bop!(i8x16[i8; 16] | i8x16_lt_s[i8x16_lt_test]:
-               ([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    test_bop!(i8x16[i8; 16] | i8x16_lt_s[i8x16_lt_s_test]:
+               ([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, -12, 13, 14, 15],
+                [0, 2, 2, 4, 4, 6, 6, 7, 8, 10, 10, 12, 12, 14, 14, 15]) =>
+               [0, -1, 0, -1 ,0, -1, 0, 0, 0, -1, 0, -1, -1, -1, 0, 0]);
+    test_bop!(i8x16[i8; 16] | i8x16_lt_u[i8x16_lt_u_test]:
+               ([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, -12, 13, 14, 15],
                 [0, 2, 2, 4, 4, 6, 6, 7, 8, 10, 10, 12, 12, 14, 14, 15]) =>
                [0, -1, 0, -1 ,0, -1, 0, 0, 0, -1, 0, -1 ,0, -1, 0, 0]);
-    test_bop!(i16x8[i16; 8] | i16x8_lt_s[i16x8_lt_test]:
-               ([0, 1, 2, 3, 4, 5, 6, 7], [0, 2, 2, 4, 4, 6, 6, 7]) =>
+    test_bop!(i16x8[i16; 8] | i16x8_lt_s[i16x8_lt_s_test]:
+               ([0, 1, 2, 3, 4, 5, 6, -7], [0, 2, 2, 4, 4, 6, 6, 7]) =>
+               [0, -1, 0, -1 ,0, -1, 0, -1]);
+    test_bop!(i16x8[i16; 8] | i16x8_lt_u[i16x8_lt_u_test]:
+               ([0, 1, 2, 3, 4, 5, 6, -7], [0, 2, 2, 4, 4, 6, 6, 7]) =>
                [0, -1, 0, -1 ,0, -1, 0, 0]);
-    test_bop!(i32x4[i32; 4] | i32x4_lt_s[i32x4_lt_test]:
-               ([0, 1, 2, 3], [0, 2, 2, 4]) => [0, -1, 0, -1]);
+    test_bop!(i32x4[i32; 4] | i32x4_lt_s[i32x4_lt_s_test]:
+               ([-1, 1, 2, 3], [0, 2, 2, 4]) => [-1, -1, 0, -1]);
+    test_bop!(i32x4[i32; 4] | i32x4_lt_u[i32x4_lt_u_test]:
+               ([-1, 1, 2, 3], [0, 2, 2, 4]) => [0, -1, 0, -1]);
+    test_bop!(i64x2[i64; 2] | i64x2_lt_s[i64x2_lt_s_test]:
+               ([-1, 3], [0, 2]) => [-1, 0]);
     test_bop!(f32x4[f32; 4] => i32 | f32x4_lt[f32x4_lt_test]:
                ([0., 1., 2., 3.], [0., 2., 2., 4.]) => [0, -1, 0, -1]);
     test_bop!(f64x2[f64; 2] => i64 | f64x2_lt[f64x2_lt_test]: ([0., 1.], [0., 2.]) => [0, -1]);
 
-    test_bop!(i8x16[i8; 16] | i8x16_gt_s[i8x16_gt_test]:
-           ([0, 2, 2, 4, 4, 6, 6, 7, 8, 10, 10, 12, 12, 14, 14, 15],
+    test_bop!(i8x16[i8; 16] | i8x16_gt_s[i8x16_gt_s_test]:
+           ([0, 2, 2, 4, 4, 6, 6, 7, 8, 10, 10, 12, 12, 14, 14, -15],
             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]) =>
                [0, -1, 0, -1 ,0, -1, 0, 0, 0, -1, 0, -1 ,0, -1, 0, 0]);
-    test_bop!(i16x8[i16; 8] | i16x8_gt_s[i16x8_gt_test]:
-               ([0, 2, 2, 4, 4, 6, 6, 7], [0, 1, 2, 3, 4, 5, 6, 7]) =>
+    test_bop!(i8x16[i8; 16] | i8x16_gt_u[i8x16_gt_u_test]:
+           ([0, 2, 2, 4, 4, 6, 6, 7, 8, 10, 10, 12, 12, 14, 14, -15],
+            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]) =>
+               [0, -1, 0, -1 ,0, -1, 0, 0, 0, -1, 0, -1 ,0, -1, 0, -1]);
+    test_bop!(i16x8[i16; 8] | i16x8_gt_s[i16x8_gt_s_test]:
+               ([0, 2, 2, 4, 4, 6, 6, -7], [0, 1, 2, 3, 4, 5, 6, 7]) =>
                [0, -1, 0, -1 ,0, -1, 0, 0]);
-    test_bop!(i32x4[i32; 4] | i32x4_gt_s[i32x4_gt_test]:
-               ([0, 2, 2, 4], [0, 1, 2, 3]) => [0, -1, 0, -1]);
+    test_bop!(i16x8[i16; 8] | i16x8_gt_u[i16x8_gt_u_test]:
+               ([0, 2, 2, 4, 4, 6, 6, -7], [0, 1, 2, 3, 4, 5, 6, 7]) =>
+               [0, -1, 0, -1 ,0, -1, 0, -1]);
+    test_bop!(i32x4[i32; 4] | i32x4_gt_s[i32x4_gt_s_test]:
+               ([0, 2, 2, -4], [0, 1, 2, 3]) => [0, -1, 0, 0]);
+    test_bop!(i32x4[i32; 4] | i32x4_gt_u[i32x4_gt_u_test]:
+               ([0, 2, 2, -4], [0, 1, 2, 3]) => [0, -1, 0, -1]);
+    test_bop!(i64x2[i64; 2] | i64x2_gt_s[i64x2_gt_s_test]:
+               ([-1, 2], [0, 1]) => [0, -1]);
     test_bop!(f32x4[f32; 4] => i32 | f32x4_gt[f32x4_gt_test]:
                ([0., 2., 2., 4.], [0., 1., 2., 3.]) => [0, -1, 0, -1]);
     test_bop!(f64x2[f64; 2] => i64 | f64x2_gt[f64x2_gt_test]: ([0., 2.], [0., 1.]) => [0, -1]);
 
-    test_bop!(i8x16[i8; 16] | i8x16_ge_s[i8x16_ge_test]:
-               ([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    test_bop!(i8x16[i8; 16] | i8x16_ge_s[i8x16_ge_s_test]:
+               ([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, -15],
+                [0, 2, 2, 4, 4, 6, 6, 7, 8, 10, 10, 12, 12, 14, 14, 15]) =>
+               [-1, 0, -1, 0 ,-1, 0, -1, -1, -1, 0, -1, 0 ,-1, 0, -1, 0]);
+    test_bop!(i8x16[i8; 16] | i8x16_ge_u[i8x16_ge_u_test]:
+               ([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, -15],
                 [0, 2, 2, 4, 4, 6, 6, 7, 8, 10, 10, 12, 12, 14, 14, 15]) =>
                [-1, 0, -1, 0 ,-1, 0, -1, -1, -1, 0, -1, 0 ,-1, 0, -1, -1]);
-    test_bop!(i16x8[i16; 8] | i16x8_ge_s[i16x8_ge_test]:
-               ([0, 1, 2, 3, 4, 5, 6, 7], [0, 2, 2, 4, 4, 6, 6, 7]) =>
+    test_bop!(i16x8[i16; 8] | i16x8_ge_s[i16x8_ge_s_test]:
+               ([0, 1, 2, 3, 4, 5, 6, -7], [0, 2, 2, 4, 4, 6, 6, 7]) =>
+               [-1, 0, -1, 0 ,-1, 0, -1, 0]);
+    test_bop!(i16x8[i16; 8] | i16x8_ge_u[i16x8_ge_u_test]:
+               ([0, 1, 2, 3, 4, 5, 6, -7], [0, 2, 2, 4, 4, 6, 6, 7]) =>
                [-1, 0, -1, 0 ,-1, 0, -1, -1]);
-    test_bop!(i32x4[i32; 4] | i32x4_ge_s[i32x4_ge_test]:
-               ([0, 1, 2, 3], [0, 2, 2, 4]) => [-1, 0, -1, 0]);
+    test_bop!(i32x4[i32; 4] | i32x4_ge_s[i32x4_ge_s_test]:
+               ([0, 1, 2, -3], [0, 2, 2, 4]) => [-1, 0, -1, 0]);
+    test_bop!(i32x4[i32; 4] | i32x4_ge_u[i32x4_ge_u_test]:
+               ([0, 1, 2, -3], [0, 2, 2, 4]) => [-1, 0, -1, -1]);
+    test_bop!(i64x2[i64; 2] | i64x2_ge_s[i64x2_ge_s_test]:
+               ([0, 1], [-1, 2]) => [-1, 0]);
     test_bop!(f32x4[f32; 4] => i32 | f32x4_ge[f32x4_ge_test]:
                ([0., 1., 2., 3.], [0., 2., 2., 4.]) => [-1, 0, -1, 0]);
     test_bop!(f64x2[f64; 2] => i64 | f64x2_ge[f64x2_ge_test]: ([0., 1.], [0., 2.]) => [-1, 0]);
 
-    test_bop!(i8x16[i8; 16] | i8x16_le_s[i8x16_le_test]:
-               ([0, 2, 2, 4, 4, 6, 6, 7, 8, 10, 10, 12, 12, 14, 14, 15],
+    test_bop!(i8x16[i8; 16] | i8x16_le_s[i8x16_le_s_test]:
+               ([0, 2, 2, 4, 4, 6, 6, 7, 8, 10, 10, 12, 12, 14, 14, -15],
                 [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
                ) =>
                [-1, 0, -1, 0 ,-1, 0, -1, -1, -1, 0, -1, 0 ,-1, 0, -1, -1]);
-    test_bop!(i16x8[i16; 8] | i16x8_le_s[i16x8_le_test]:
-               ([0, 2, 2, 4, 4, 6, 6, 7], [0, 1, 2, 3, 4, 5, 6, 7]) =>
+    test_bop!(i8x16[i8; 16] | i8x16_le_u[i8x16_le_u_test]:
+               ([0, 2, 2, 4, 4, 6, 6, 7, 8, 10, 10, 12, 12, 14, 14, -15],
+                [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+               ) =>
+               [-1, 0, -1, 0 ,-1, 0, -1, -1, -1, 0, -1, 0 ,-1, 0, -1, 0]);
+    test_bop!(i16x8[i16; 8] | i16x8_le_s[i16x8_le_s_test]:
+               ([0, 2, 2, 4, 4, 6, 6, -7], [0, 1, 2, 3, 4, 5, 6, 7]) =>
                [-1, 0, -1, 0 ,-1, 0, -1, -1]);
-    test_bop!(i32x4[i32; 4] | i32x4_le_s[i32x4_le_test]:
-               ([0, 2, 2, 4], [0, 1, 2, 3]) => [-1, 0, -1, 0]);
+    test_bop!(i16x8[i16; 8] | i16x8_le_u[i16x8_le_u_test]:
+               ([0, 2, 2, 4, 4, 6, 6, -7], [0, 1, 2, 3, 4, 5, 6, 7]) =>
+               [-1, 0, -1, 0 ,-1, 0, -1, 0]);
+    test_bop!(i32x4[i32; 4] | i32x4_le_s[i32x4_le_s_test]:
+               ([0, 2, 2, -4], [0, 1, 2, 3]) => [-1, 0, -1, -1]);
+    test_bop!(i32x4[i32; 4] | i32x4_le_u[i32x4_le_u_test]:
+               ([0, 2, 2, -4], [0, 1, 2, 3]) => [-1, 0, -1, 0]);
+    test_bop!(i64x2[i64; 2] | i64x2_le_s[i64x2_le_s_test]:
+               ([0, 2], [0, 1]) => [-1, 0]);
     test_bop!(f32x4[f32; 4] => i32 | f32x4_le[f32x4_le_test]:
                ([0., 2., 2., 4.], [0., 1., 2., 3.]) => [-1, 0, -1, -0]);
     test_bop!(f64x2[f64; 2] => i64 | f64x2_le[f64x2_le_test]: ([0., 2.], [0., 1.]) => [-1, 0]);
@@ -3827,13 +4468,27 @@ pub mod tests {
         [u32::MAX as f32, 2., 3., 4.]
     );
 
-    // FIXME: this fails, and produces 0 instead of saturating at i32::MAX
-    // test_conv!(
-    //     i32x4_trunc_s_f32x4_sat
-    //         | i32x4_trunc_sat_f32x4_s
-    //         | i32x4
-    //         | [f32::NAN, 2., (i32::MAX as f32 + 1.), 4.],
-    //     [0, 2, i32::MAX, 4]
-    // );
-    // FIXME: add other saturating tests
+    #[test]
+    fn test_conversions() {
+        unsafe {
+            compare_bytes(
+                i32x4_trunc_sat_f32x4_s(f32x4_const(
+                    1.,
+                    f32::NEG_INFINITY,
+                    f32::INFINITY,
+                    f32::NAN,
+                )),
+                i32x4_const(1, i32::MIN, i32::MAX, 0),
+            );
+            compare_bytes(
+                i32x4_trunc_sat_f32x4_u(f32x4_const(
+                    1.,
+                    f32::NEG_INFINITY,
+                    f32::INFINITY,
+                    f32::NAN,
+                )),
+                i32x4_const(1, 0, u32::MAX as i32, 0),
+            );
+        }
+    }
 }

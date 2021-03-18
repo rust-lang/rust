@@ -92,17 +92,13 @@ pub mod arch {
     /// The [simd proposal][simd] for WebAssembly adds a new `v128` type for a
     /// 128-bit SIMD register. It also adds a large array of instructions to
     /// operate on the `v128` type to perform data processing. The SIMD proposal
-    /// has been in progress for quite some time and many instructions have come
-    /// and gone. This module attempts to keep up with the proposal, but if you
-    /// notice anything awry please feel free to [open an
+    /// at the time of this writing is in [phase 4] which means that it's in the
+    /// standardization phase. It's expected that once some testing on nightly
+    /// has happened a stabilization proposal will be made for the Rust
+    /// intrinsics. If you notice anything awry please feel free to [open an
     /// issue](https://github.com/rust-lang/stdarch/issues/new).
     ///
-    /// It's important to be aware that the current state of development of SIMD
-    /// in WebAssembly is still somewhat early days. There's lots of pieces to
-    /// demo and prototype with, but discussions and support are still in
-    /// progress. There's a number of pitfalls and gotchas in various places,
-    /// which will attempt to be documented here, but there may be others
-    /// lurking!
+    /// [phase 4]: https://github.com/webassembly/proposals
     ///
     /// Using SIMD is intended to be similar to as you would on `x86_64`, for
     /// example. You'd write a function such as:
@@ -118,15 +114,17 @@ pub mod arch {
     ///
     /// Unlike `x86_64`, however, WebAssembly does not currently have dynamic
     /// detection at runtime as to whether SIMD is supported (this is one of the
-    /// motivators for the [conditional sections proposal][condsections], but
-    /// that is still pretty early days). This means that your binary will
-    /// either have SIMD and can only run on engines which support SIMD, or it
-    /// will not have SIMD at all. For compatibility the standard library itself
-    /// does not use any SIMD internally. Determining how best to ship your
-    /// WebAssembly binary with SIMD is largely left up to you as it can can be
-    /// pretty nuanced depending on your situation.
+    /// motivators for the [conditional sections][condsections] and [feature
+    /// detection] proposals, but that is still pretty early days). This means
+    /// that your binary will either have SIMD and can only run on engines
+    /// which support SIMD, or it will not have SIMD at all. For compatibility
+    /// the standard library itself does not use any SIMD internally.
+    /// Determining how best to ship your WebAssembly binary with SIMD is
+    /// largely left up to you as it can can be pretty nuanced depending on
+    /// your situation.
     ///
     /// [condsections]: https://github.com/webassembly/conditional-sections
+    /// [feature detection]: https://github.com/WebAssembly/feature-detection
     ///
     /// To enable SIMD support at compile time you need to do one of two things:
     ///
@@ -138,7 +136,9 @@ pub mod arch {
     /// * Second you can compile your program with `-Ctarget-feature=+simd128`.
     ///   This compilation flag blanket enables SIMD support for your entire
     ///   compilation. Note that this does not include the standard library
-    ///   unless you recompile the standard library.
+    ///   unless you [recompile the standard library][buildstd].
+    ///
+    /// [buildstd]: https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#build-std
     ///
     /// If you enable SIMD via either of these routes then you'll have a
     /// WebAssembly binary that uses SIMD instructions, and you'll need to ship
@@ -147,21 +147,6 @@ pub mod arch {
     /// generated in your program. This means to generate a binary without SIMD
     /// you'll need to avoid both options above plus calling into any intrinsics
     /// in this module.
-    ///
-    /// > **Note**: Due to
-    /// > [rust-lang/rust#74320](https://github.com/rust-lang/rust/issues/74320)
-    /// > it's recommended to compile your entire program with SIMD support
-    /// > (using `RUSTFLAGS`) or otherwise functions may not be inlined
-    /// > correctly.
-    ///
-    /// > **Note**: LLVM's SIMD support is actually split into two features:
-    /// > `simd128` and `unimplemented-simd128`. Rust code can enable `simd128`
-    /// > with `#[target_feature]` (and test for it with `#[cfg(target_feature =
-    /// > "simd128")]`, but it cannot enable `unimplemented-simd128`. The only
-    /// > way to enable this feature is to compile with
-    /// > `-Ctarget-feature=+simd128,+unimplemented-simd128`. This second
-    /// > feature enables more recent instructions implemented in LLVM which
-    /// > haven't always had enough time to make their way to runtimes.
     #[cfg(any(target_arch = "wasm32", doc))]
     #[doc(cfg(target_arch = "wasm32"))]
     #[stable(feature = "simd_wasm32", since = "1.33.0")]
