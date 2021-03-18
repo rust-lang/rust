@@ -676,7 +676,10 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
 #if LLVM_VERSION_MAJOR > 6
                                  *NewF,
 #endif
-                                 TLI, *AC, DT, LI
+                                 TLI, *AC, DT
+#if LLVM_VERSION_MAJOR <= 12
+                                 , LI
+#endif
 #if LLVM_VERSION_MAJOR > 6
                                  ,
                                  PV
@@ -754,7 +757,10 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
 #if LLVM_VERSION_MAJOR > 6
                       *NewF,
 #endif
-                      TLI, AC, &DT, &LI
+                      TLI, AC, &DT
+#if LLVM_VERSION_MAJOR <= 12
+                                 , &LI
+#endif
 #if LLVM_VERSION_MAJOR > 6
                       ,
                       &PV
@@ -1081,6 +1087,7 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
     {
       FunctionAnalysisManager AM;
       AM.registerPass([] { return TargetLibraryAnalysis(); });
+      AM.registerPass([] { return ScalarEvolutionAnalysis(); });
       LowerInvokePass().run(*NewF, AM);
 #if LLVM_VERSION_MAJOR >= 9
       llvm::EliminateUnreachableBlocks(*NewF);
@@ -1191,7 +1198,10 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
 #if LLVM_VERSION_MAJOR > 6
                                  *NewF,
 #endif
-                                 TLI, *AC, DT, LI
+                                 TLI, *AC, DT
+#if LLVM_VERSION_MAJOR <= 12
+                                 , LI
+#endif
 #if LLVM_VERSION_MAJOR > 6
                                  ,
                                  PV

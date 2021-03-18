@@ -43,6 +43,7 @@
 
 #include "llvm/Support/Debug.h"
 #include "llvm/Transforms/Scalar.h"
+#include "llvm/Analysis/ScalarEvolution.h"
 
 #include "llvm/Transforms/Utils/Cloning.h"
 #if LLVM_VERSION_MAJOR >= 11
@@ -60,6 +61,10 @@
 #include "Utils.h"
 
 #include "llvm/Transforms/Utils.h"
+
+#if LLVM_VERSION_MAJOR >= 13
+#include "llvm/Transforms/IPO/Attributor.h"
+#endif
 
 #include "CApi.h"
 using namespace llvm;
@@ -839,8 +844,18 @@ public:
       // dead internal functions, which invalidates Enzyme's cache
       // code left here to re-enable upon Attributor patch
 
-#if 0
-      AnalysisGetter AG;
+#if LLVM_VERSION_MAJOR >= 13
+      FunctionAnalysisManager FAM;
+      FAM.registerPass([] { return TargetLibraryAnalysis(); });
+      FAM.registerPass([] { return ScalarEvolutionAnalysis(); });
+      FAM.registerPass([] { return LoopAnalysis(); });
+      FAM.registerPass([] { return PassInstrumentationAnalysis(); });
+      FAM.registerPass([] { return DominatorTreeAnalysis(); });
+      FAM.registerPass([] { return AssumptionAnalysis(); });
+      FAM.registerPass([] { return PostDominatorTreeAnalysis(); });
+      FAM.registerPass([] { return AAManager(); });
+
+      AnalysisGetter AG(FAM);
       SetVector<Function *> Functions;
       for (Function &F2 : *F.getParent()) {
         Functions.insert(&F2);
@@ -851,9 +866,11 @@ public:
       InformationCache InfoCache(*F.getParent(), AG, Allocator, /* CGSCC */ nullptr);
 
       DenseSet< const char * > Allowed = {
+        &AAHeapToStack::ID,
+        &AANoCapture::ID,
+        
         &AAMemoryBehavior::ID,
         &AAMemoryLocation::ID,
-        
         &AANoUnwind::ID,
         &AANoSync::ID,
         &AANoRecurse::ID,
@@ -863,18 +880,25 @@ public:
         &AANoAlias::ID,
         &AADereferenceable::ID,
         &AAAlign::ID,
-        &AANoCapture::ID,
 
         &AAReturnedValues::ID,
         &AANoFree::ID,
         &AANoUndef::ID,
+        
         //&AAValueSimplify::ID,
         //&AAReachability::ID,
         //&AAValueConstantRange::ID,
         //&AAUndefinedBehavior::ID,
         //&AAPotentialValues::ID,
       };
-      Attributor(Functions, InfoCache, CGUpdater, &Allowed).run();
+
+      Attributor A(Functions, InfoCache, CGUpdater, &Allowed, /*DeleteFns*/false);
+      for (Function *F : Functions) {
+        // Populate the Attributor with abstract attribute opportunities in the
+        // function and the information cache with IR information.
+        A.identifyDefaultAbstractAttributes(*F);
+      }
+      A.run();
 #endif
     }
 
