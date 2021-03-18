@@ -247,7 +247,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let mut candidates = SelectionCandidateSet { vec: Vec::new(), ambiguous: false };
 
-        self.assemble_candidates_for_trait_alias(obligation, &mut candidates)?;
+        self.assemble_candidates_for_trait_alias(obligation, &mut candidates);
 
         // Other bounds. Consider both in-scope bounds from fn decl
         // and applicable impls. There is a certain set of precedence rules here.
@@ -259,19 +259,22 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             // User-defined copy impls are permitted, but only for
             // structs and enums.
-            self.assemble_candidates_from_impls(obligation, &mut candidates)?;
+            self.assemble_candidates_from_impls(obligation, &mut candidates);
 
             // For other types, we'll use the builtin rules.
             let copy_conditions = self.copy_clone_conditions(obligation);
-            self.assemble_builtin_bound_candidates(copy_conditions, &mut candidates)?;
+            self.assemble_builtin_bound_candidates(copy_conditions, &mut candidates);
         } else if lang_items.discriminant_kind_trait() == Some(def_id) {
             // `DiscriminantKind` is automatically implemented for every type.
             candidates.vec.push(DiscriminantKindCandidate);
+        } else if lang_items.pointee_trait() == Some(def_id) {
+            // `Pointee` is automatically implemented for every type.
+            candidates.vec.push(PointeeCandidate);
         } else if lang_items.sized_trait() == Some(def_id) {
             // Sized is never implementable by end-users, it is
             // always automatically computed.
             let sized_conditions = self.sized_conditions(obligation);
-            self.assemble_builtin_bound_candidates(sized_conditions, &mut candidates)?;
+            self.assemble_builtin_bound_candidates(sized_conditions, &mut candidates);
         } else if lang_items.unsize_trait() == Some(def_id) {
             self.assemble_candidates_for_unsizing(obligation, &mut candidates);
         } else {
@@ -280,13 +283,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // for `Copy` also has builtin support for `Clone`, and tuples/arrays of `Clone`
                 // types have builtin support for `Clone`.
                 let clone_conditions = self.copy_clone_conditions(obligation);
-                self.assemble_builtin_bound_candidates(clone_conditions, &mut candidates)?;
+                self.assemble_builtin_bound_candidates(clone_conditions, &mut candidates);
             }
 
-            self.assemble_generator_candidates(obligation, &mut candidates)?;
-            self.assemble_closure_candidates(obligation, &mut candidates)?;
-            self.assemble_fn_pointer_candidates(obligation, &mut candidates)?;
-            self.assemble_candidates_from_impls(obligation, &mut candidates)?;
+            self.assemble_generator_candidates(obligation, &mut candidates);
+            self.assemble_closure_candidates(obligation, &mut candidates);
+            self.assemble_fn_pointer_candidates(obligation, &mut candidates);
+            self.assemble_candidates_from_impls(obligation, &mut candidates);
             self.assemble_candidates_from_object_ty(obligation, &mut candidates);
         }
 
@@ -295,7 +298,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Auto implementations have lower priority, so we only
         // consider triggering a default if there is no other impl that can apply.
         if candidates.vec.is_empty() {
-            self.assemble_candidates_from_auto_impls(obligation, &mut candidates)?;
+            self.assemble_candidates_from_auto_impls(obligation, &mut candidates);
         }
         debug!("candidate list size: {}", candidates.vec.len());
         Ok(candidates)
@@ -367,9 +370,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
-    ) -> Result<(), SelectionError<'tcx>> {
+    ) {
         if self.tcx().lang_items().gen_trait() != Some(obligation.predicate.def_id()) {
-            return Ok(());
+            return;
         }
 
         // Okay to skip binder because the substs on generator types never
@@ -388,8 +391,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
             _ => {}
         }
-
-        Ok(())
     }
 
     /// Checks for the artificial impl that the compiler will create for an obligation like `X :
@@ -402,11 +403,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
-    ) -> Result<(), SelectionError<'tcx>> {
+    ) {
         let kind = match self.tcx().fn_trait_kind_from_lang_item(obligation.predicate.def_id()) {
             Some(k) => k,
             None => {
-                return Ok(());
+                return;
             }
         };
 
@@ -435,8 +436,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
             _ => {}
         }
-
-        Ok(())
     }
 
     /// Implements one of the `Fn()` family for a fn pointer.
@@ -444,10 +443,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
-    ) -> Result<(), SelectionError<'tcx>> {
+    ) {
         // We provide impl of all fn traits for fn pointers.
         if self.tcx().fn_trait_kind_from_lang_item(obligation.predicate.def_id()).is_none() {
-            return Ok(());
+            return;
         }
 
         // Okay to skip binder because what we are inspecting doesn't involve bound regions.
@@ -485,8 +484,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
             _ => {}
         }
-
-        Ok(())
     }
 
     /// Searches for impls that might apply to `obligation`.
@@ -494,7 +491,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
-    ) -> Result<(), SelectionError<'tcx>> {
+    ) {
         debug!(?obligation, "assemble_candidates_from_impls");
 
         // Essentially any user-written impl will match with an error type,
@@ -504,7 +501,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Since compilation is already guaranteed to fail, this is just
         // to try to show the 'nicest' possible errors to the user.
         if obligation.references_error() {
-            return Ok(());
+            return;
         }
 
         self.tcx().for_each_relevant_impl(
@@ -518,15 +515,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 });
             },
         );
-
-        Ok(())
     }
 
     fn assemble_candidates_from_auto_impls(
         &mut self,
         obligation: &TraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
-    ) -> Result<(), SelectionError<'tcx>> {
+    ) {
         // Okay to skip binder here because the tests we do below do not involve bound regions.
         let self_ty = obligation.self_ty().skip_binder();
         debug!(?self_ty, "assemble_candidates_from_auto_impls");
@@ -558,7 +553,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // where-clause or, in the case of an object type,
                     // it could be that the object type lists the
                     // trait (e.g., `Foo+Send : Send`). See
-                    // `compile-fail/typeck-default-trait-impl-send-param.rs`
+                    // `ui/typeck/typeck-default-trait-impl-send-param.rs`
                     // for an example of a test case that exercises
                     // this path.
                 }
@@ -585,8 +580,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 _ => candidates.vec.push(AutoImplCandidate(def_id)),
             }
         }
-
-        Ok(())
     }
 
     /// Searches for impls that might apply to `obligation`.
@@ -753,7 +746,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &TraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
-    ) -> Result<(), SelectionError<'tcx>> {
+    ) {
         // Okay to skip binder here because the tests we do below do not involve bound regions.
         let self_ty = obligation.self_ty().skip_binder();
         debug!(?self_ty, "assemble_candidates_for_trait_alias");
@@ -763,8 +756,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if self.tcx().is_trait_alias(def_id) {
             candidates.vec.push(TraitAliasCandidate(def_id));
         }
-
-        Ok(())
     }
 
     /// Assembles the trait which are built-in to the language itself:
@@ -773,7 +764,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         conditions: BuiltinImplConditions<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
-    ) -> Result<(), SelectionError<'tcx>> {
+    ) {
         match conditions {
             BuiltinImplConditions::Where(nested) => {
                 debug!(?nested, "builtin_bound");
@@ -787,7 +778,5 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 candidates.ambiguous = true;
             }
         }
-
-        Ok(())
     }
 }

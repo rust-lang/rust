@@ -171,7 +171,6 @@ impl Step for Llvm {
             .define("LLVM_TARGETS_TO_BUILD", llvm_targets)
             .define("LLVM_EXPERIMENTAL_TARGETS_TO_BUILD", llvm_exp_targets)
             .define("LLVM_INCLUDE_EXAMPLES", "OFF")
-            .define("LLVM_INCLUDE_TESTS", "OFF")
             .define("LLVM_INCLUDE_DOCS", "OFF")
             .define("LLVM_INCLUDE_BENCHMARKS", "OFF")
             .define("LLVM_ENABLE_TERMINFO", "OFF")
@@ -384,6 +383,8 @@ fn configure_cmake(
             cfg.define("CMAKE_SYSTEM_NAME", "Windows");
         } else if target.contains("haiku") {
             cfg.define("CMAKE_SYSTEM_NAME", "Haiku");
+        } else if target.contains("solaris") || target.contains("illumos") {
+            cfg.define("CMAKE_SYSTEM_NAME", "SunOS");
         }
         // When cross-compiling we should also set CMAKE_SYSTEM_VERSION, but in
         // that case like CMake we cannot easily determine system version either.
@@ -802,9 +803,10 @@ fn supported_sanitizers(
     };
 
     match &*target.triple {
+        "aarch64-apple-darwin" => darwin_libs("osx", &["asan", "lsan", "tsan"]),
         "aarch64-fuchsia" => common_libs("fuchsia", "aarch64", &["asan"]),
         "aarch64-unknown-linux-gnu" => {
-            common_libs("linux", "aarch64", &["asan", "lsan", "msan", "tsan"])
+            common_libs("linux", "aarch64", &["asan", "lsan", "msan", "tsan", "hwasan"])
         }
         "x86_64-apple-darwin" => darwin_libs("osx", &["asan", "lsan", "tsan"]),
         "x86_64-fuchsia" => common_libs("fuchsia", "x86_64", &["asan"]),

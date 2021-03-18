@@ -1,5 +1,5 @@
 error: constant expression depends on a generic parameter
-  --> $DIR/issue-64494.rs:16:53
+  --> $DIR/issue-64494.rs:15:53
    |
 LL | impl<T: Foo> MyTrait for T where Is<{T::VAL == 5}>: True {}
    |                                                     ^^^^
@@ -7,7 +7,7 @@ LL | impl<T: Foo> MyTrait for T where Is<{T::VAL == 5}>: True {}
    = note: this may fail depending on what value the parameter takes
 
 error: constant expression depends on a generic parameter
-  --> $DIR/issue-64494.rs:19:53
+  --> $DIR/issue-64494.rs:18:53
    |
 LL | impl<T: Foo> MyTrait for T where Is<{T::VAL == 6}>: True {}
    |                                                     ^^^^

@@ -347,6 +347,7 @@ impl<'tcx> Instance<'tcx> {
     }
 
     // This should be kept up to date with `resolve`.
+    #[instrument(level = "debug", skip(tcx))]
     pub fn resolve_opt_const_arg(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -498,7 +499,7 @@ impl<'tcx> Instance<'tcx> {
     }
 
     /// Returns a new `Instance` where generic parameters in `instance.substs` are replaced by
-    /// identify parameters if they are determined to be unused in `instance.def`.
+    /// identity parameters if they are determined to be unused in `instance.def`.
     pub fn polymorphize(self, tcx: TyCtxt<'tcx>) -> Self {
         debug!("polymorphize: running polymorphization analysis");
         if !tcx.sess.opts.debugging_opts.polymorphize {
@@ -535,7 +536,7 @@ fn polymorphize<'tcx>(
     } else {
         None
     };
-    let has_upvars = upvars_ty.map(|ty| ty.tuple_fields().count() > 0).unwrap_or(false);
+    let has_upvars = upvars_ty.map_or(false, |ty| ty.tuple_fields().count() > 0);
     debug!("polymorphize: upvars_ty={:?} has_upvars={:?}", upvars_ty, has_upvars);
 
     struct PolymorphizationFolder<'tcx> {

@@ -1,8 +1,8 @@
-error[E0004]: non-exhaustive patterns: `(T1(()), V2(_))` not covered
+error[E0004]: non-exhaustive patterns: `(T1(()), V2(_))` and `(T2(()), V1(_))` not covered
   --> $DIR/issue-15129.rs:12:11
    |
 LL |     match (T::T1(()), V::V2(true)) {
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^ pattern `(T1(()), V2(_))` not covered
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^ patterns `(T1(()), V2(_))` and `(T2(()), V1(_))` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `(T, V)`

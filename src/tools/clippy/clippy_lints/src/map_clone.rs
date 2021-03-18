@@ -53,7 +53,7 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
         if_chain! {
             if let hir::ExprKind::MethodCall(ref method, _, ref args, _) = e.kind;
             if args.len() == 2;
-            if method.ident.as_str() == "map";
+            if method.ident.name == sym::map;
             let ty = cx.typeck_results().expr_ty(&args[0]);
             if is_type_diagnostic_item(cx, ty, sym::option_type) || match_trait_method(cx, e, &paths::ITERATOR);
             if let hir::ExprKind::Closure(_, _, body_id, _, _) = args[1].kind;
@@ -70,7 +70,7 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
                     },
                     hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, .., name, None) => {
                         match closure_expr.kind {
-                            hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner) => {
+                            hir::ExprKind::Unary(hir::UnOp::Deref, ref inner) => {
                                 if ident_eq(name, inner) {
                                     if let ty::Ref(.., Mutability::Not) = cx.typeck_results().expr_ty(inner).kind() {
                                         lint(cx, e.span, args[0].span, true);
@@ -79,7 +79,9 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
                             },
                             hir::ExprKind::MethodCall(ref method, _, [obj], _) => if_chain! {
                                 if ident_eq(name, obj) && method.ident.name == sym::clone;
-                                if match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT);
+                                if let Some(fn_id) = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id);
+                                if let Some(trait_id) = cx.tcx.trait_of_item(fn_id);
+                                if cx.tcx.lang_items().clone_trait().map_or(false, |id| id == trait_id);
                                 // no autoderefs
                                 if !cx.typeck_results().expr_adjustments(obj).iter()
                                     .any(|a| matches!(a.kind, Adjust::Deref(Some(..))));

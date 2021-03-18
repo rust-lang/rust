@@ -2,7 +2,7 @@ error[E0499]: cannot borrow `foo` as mutable more than once at a time
   --> $DIR/two-phase-across-loop.rs:17:22
    |
 LL |         strings.push(foo.get_string());
-   |                      ^^^ mutable borrow starts here in previous iteration of loop
+   |                      ^^^ `foo` was mutably borrowed here in the previous iteration of the loop
 
 error: aborting due to previous error
 

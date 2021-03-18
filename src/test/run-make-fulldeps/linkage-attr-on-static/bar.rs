@@ -5,7 +5,7 @@
 static BAZ: i32 = 21;
 
 #[link(name = "foo", kind = "static")]
-extern {
+extern "C" {
     fn what() -> i32;
 }
 

@@ -1,4 +1,3 @@
-use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::Node;
@@ -6,67 +5,64 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::middle::resolve_lifetime as rl;
 use rustc_middle::ty::{self, Region, TyCtxt};
 
-impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
-    /// This function calls the `visit_ty` method for the parameters
-    /// corresponding to the anonymous regions. The `nested_visitor.found_type`
-    /// contains the anonymous type.
-    ///
-    /// # Arguments
-    /// region - the anonymous region corresponding to the anon_anon conflict
-    /// br - the bound region corresponding to the above region which is of type `BrAnon(_)`
-    ///
-    /// # Example
-    /// ```
-    /// fn foo(x: &mut Vec<&u8>, y: &u8)
-    ///    { x.push(y); }
-    /// ```
-    /// The function returns the nested type corresponding to the anonymous region
-    /// for e.g., `&u8` and Vec<`&u8`.
-    pub(super) fn find_anon_type(
-        &self,
-        region: Region<'tcx>,
-        br: &ty::BoundRegion,
-    ) -> Option<(&hir::Ty<'tcx>, &hir::FnDecl<'tcx>)> {
-        if let Some(anon_reg) = self.tcx().is_suitable_region(region) {
-            let hir_id = self.tcx().hir().local_def_id_to_hir_id(anon_reg.def_id);
-            let fndecl = match self.tcx().hir().get(hir_id) {
-                Node::Item(&hir::Item { kind: hir::ItemKind::Fn(ref m, ..), .. })
-                | Node::TraitItem(&hir::TraitItem {
-                    kind: hir::TraitItemKind::Fn(ref m, ..),
-                    ..
-                })
-                | Node::ImplItem(&hir::ImplItem {
-                    kind: hir::ImplItemKind::Fn(ref m, ..), ..
-                }) => &m.decl,
-                _ => return None,
-            };
-
-            fndecl
-                .inputs
-                .iter()
-                .find_map(|arg| self.find_component_for_bound_region(arg, br))
-                .map(|ty| (ty, &**fndecl))
-        } else {
-            None
-        }
-    }
-
-    // This method creates a FindNestedTypeVisitor which returns the type corresponding
-    // to the anonymous region.
-    fn find_component_for_bound_region(
-        &self,
-        arg: &'tcx hir::Ty<'tcx>,
-        br: &ty::BoundRegion,
-    ) -> Option<&'tcx hir::Ty<'tcx>> {
-        let mut nested_visitor = FindNestedTypeVisitor {
-            tcx: self.tcx(),
-            bound_region: *br,
-            found_type: None,
-            current_index: ty::INNERMOST,
+/// This function calls the `visit_ty` method for the parameters
+/// corresponding to the anonymous regions. The `nested_visitor.found_type`
+/// contains the anonymous type.
+///
+/// # Arguments
+/// region - the anonymous region corresponding to the anon_anon conflict
+/// br - the bound region corresponding to the above region which is of type `BrAnon(_)`
+///
+/// # Example
+/// ```
+/// fn foo(x: &mut Vec<&u8>, y: &u8)
+///    { x.push(y); }
+/// ```
+/// The function returns the nested type corresponding to the anonymous region
+/// for e.g., `&u8` and `Vec<&u8>`.
+pub(crate) fn find_anon_type(
+    tcx: TyCtxt<'tcx>,
+    region: Region<'tcx>,
+    br: &ty::BoundRegionKind,
+) -> Option<(&'tcx hir::Ty<'tcx>, &'tcx hir::FnDecl<'tcx>)> {
+    if let Some(anon_reg) = tcx.is_suitable_region(region) {
+        let hir_id = tcx.hir().local_def_id_to_hir_id(anon_reg.def_id);
+        let fndecl = match tcx.hir().get(hir_id) {
+            Node::Item(&hir::Item { kind: hir::ItemKind::Fn(ref m, ..), .. })
+            | Node::TraitItem(&hir::TraitItem {
+                kind: hir::TraitItemKind::Fn(ref m, ..), ..
+            })
+            | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(ref m, ..), .. }) => {
+                &m.decl
+            }
+            _ => return None,
         };
-        nested_visitor.visit_ty(arg);
-        nested_visitor.found_type
+
+        fndecl
+            .inputs
+            .iter()
+            .find_map(|arg| find_component_for_bound_region(tcx, arg, br))
+            .map(|ty| (ty, &**fndecl))
+    } else {
+        None
     }
+}
+
+// This method creates a FindNestedTypeVisitor which returns the type corresponding
+// to the anonymous region.
+fn find_component_for_bound_region(
+    tcx: TyCtxt<'tcx>,
+    arg: &'tcx hir::Ty<'tcx>,
+    br: &ty::BoundRegionKind,
+) -> Option<&'tcx hir::Ty<'tcx>> {
+    let mut nested_visitor = FindNestedTypeVisitor {
+        tcx,
+        bound_region: *br,
+        found_type: None,
+        current_index: ty::INNERMOST,
+    };
+    nested_visitor.visit_ty(arg);
+    nested_visitor.found_type
 }
 
 // The FindNestedTypeVisitor captures the corresponding `hir::Ty` of the
@@ -80,7 +76,7 @@ struct FindNestedTypeVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     // The bound_region corresponding to the Refree(freeregion)
     // associated with the anonymous region we are looking for.
-    bound_region: ty::BoundRegion,
+    bound_region: ty::BoundRegionKind,
     // The type where the anonymous lifetime appears
     // for e.g., Vec<`&u8`> and <`&u8`>
     found_type: Option<&'tcx hir::Ty<'tcx>>,
@@ -103,7 +99,7 @@ impl Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
                 return;
             }
 
-            hir::TyKind::TraitObject(bounds, _) => {
+            hir::TyKind::TraitObject(bounds, ..) => {
                 for bound in bounds {
                     self.current_index.shift_in(1);
                     self.visit_poly_trait_ref(bound, hir::TraitBoundModifier::None);
@@ -207,7 +203,7 @@ impl Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
 struct TyPathVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     found_it: bool,
-    bound_region: ty::BoundRegion,
+    bound_region: ty::BoundRegionKind,
     current_index: ty::DebruijnIndex,
 }
 

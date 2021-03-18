@@ -123,12 +123,12 @@ The `rustup` option is guaranteed to install a compatible version of the LLVM to
 ```shell
 $ rustup component add llvm-tools-preview
 $ cargo install cargo-binutils
-$ cargo profdata -- --help  # note the additional "--" preceeding the tool-specific arguments
+$ cargo profdata -- --help  # note the additional "--" preceding the tool-specific arguments
 ```
 
 ## Creating coverage reports
 
-Raw profiles have to be indexed before they can be used to generate coverage reports. This is done using [`llvm-profdata merge`] (or `cargo cov -- merge`), which can combine multiple raw profiles and index them at the same time:
+Raw profiles have to be indexed before they can be used to generate coverage reports. This is done using [`llvm-profdata merge`] (or `cargo profdata -- merge`), which can combine multiple raw profiles and index them at the same time:
 
 ```shell
 $ llvm-profdata merge -sparse formatjson5.profraw -o formatjson5.profdata

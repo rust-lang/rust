@@ -1,5 +1,5 @@
-#[link(name="foo", kind="static-nobundle")]
+#[link(name = "foo", kind = "static-nobundle")]
 //~^ ERROR: kind="static-nobundle" is unstable
-extern {}
+extern "C" {}
 
 fn main() {}

@@ -99,4 +99,37 @@ fn main() {
             unwrapped => unwrapped,
         })
         .collect::<Vec<u8>>();
+    // Ok
+    let x = 1;
+    match x {
+        #[cfg(disabled_feature)]
+        0 => println!("Disabled branch"),
+        _ => println!("Enabled branch"),
+    }
+    // Lint
+    let x = 1;
+    let y = 1;
+    match match y {
+        0 => 1,
+        _ => 2,
+    } {
+        _ => println!("Single branch"),
+    }
+    // Ok
+    let x = 1;
+    let y = 1;
+    match match y {
+        0 => 1,
+        _ => 2,
+    } {
+        #[cfg(disabled_feature)]
+        0 => println!("Array index start"),
+        _ => println!("Not an array index start"),
+    }
+    // False negative
+    let x = 1;
+    match x {
+        // =>
+        _ => println!("Not an array index start"),
+    }
 }

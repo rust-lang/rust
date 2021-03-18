@@ -77,10 +77,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // (i.e., if there are no placeholders).
         let next_universe = self.universe().next_universe();
 
-        let fld_r = |br| {
+        let fld_r = |br: ty::BoundRegion| {
             self.tcx.mk_region(ty::RePlaceholder(ty::PlaceholderRegion {
                 universe: next_universe,
-                name: br,
+                name: br.kind,
             }))
         };
 

@@ -1,5 +1,5 @@
 error: constant expression depends on a generic parameter
-  --> $DIR/issue-61522-array-len-succ.rs:7:40
+  --> $DIR/issue-61522-array-len-succ.rs:6:40
    |
 LL | pub struct MyArray<const COUNT: usize>([u8; COUNT + 1]);
    |                                        ^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL | pub struct MyArray<const COUNT: usize>([u8; COUNT + 1]);
    = note: this may fail depending on what value the parameter takes
 
 error: constant expression depends on a generic parameter
-  --> $DIR/issue-61522-array-len-succ.rs:12:24
+  --> $DIR/issue-61522-array-len-succ.rs:11:24
    |
 LL |     fn inner(&self) -> &[u8; COUNT + 1] {
    |                        ^^^^^^^^^^^^^^^^

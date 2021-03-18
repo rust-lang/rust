@@ -1,5 +1,5 @@
 error: cannot find attribute `C` in this scope
-  --> $DIR/proc-macro-attributes.rs:7:3
+  --> $DIR/proc-macro-attributes.rs:9:3
    |
 LL | #[C]
    |   ^ help: a derive helper attribute with a similar name exists: `B`
@@ -11,41 +11,7 @@ LL | #[B]
    |   ^ ambiguous name
    |
 note: `B` could refer to the derive helper attribute defined here
-  --> $DIR/proc-macro-attributes.rs:11:10
-   |
-LL | #[derive(B)]
-   |          ^
-note: `B` could also refer to the derive macro imported here
-  --> $DIR/proc-macro-attributes.rs:3:1
-   |
-LL | #[macro_use]
-   | ^^^^^^^^^^^^
-
-error[E0659]: `B` is ambiguous (derive helper attribute vs any other name)
-  --> $DIR/proc-macro-attributes.rs:8:3
-   |
-LL | #[B(D)]
-   |   ^ ambiguous name
-   |
-note: `B` could refer to the derive helper attribute defined here
-  --> $DIR/proc-macro-attributes.rs:11:10
-   |
-LL | #[derive(B)]
-   |          ^
-note: `B` could also refer to the derive macro imported here
-  --> $DIR/proc-macro-attributes.rs:3:1
-   |
-LL | #[macro_use]
-   | ^^^^^^^^^^^^
-
-error[E0659]: `B` is ambiguous (derive helper attribute vs any other name)
-  --> $DIR/proc-macro-attributes.rs:9:3
-   |
-LL | #[B(E = "foo")]
-   |   ^ ambiguous name
-   |
-note: `B` could refer to the derive helper attribute defined here
-  --> $DIR/proc-macro-attributes.rs:11:10
+  --> $DIR/proc-macro-attributes.rs:19:10
    |
 LL | #[derive(B)]
    |          ^
@@ -58,11 +24,11 @@ LL | #[macro_use]
 error[E0659]: `B` is ambiguous (derive helper attribute vs any other name)
   --> $DIR/proc-macro-attributes.rs:10:3
    |
-LL | #[B(arbitrary tokens)]
+LL | #[B(D)]
    |   ^ ambiguous name
    |
 note: `B` could refer to the derive helper attribute defined here
-  --> $DIR/proc-macro-attributes.rs:11:10
+  --> $DIR/proc-macro-attributes.rs:19:10
    |
 LL | #[derive(B)]
    |          ^
@@ -72,6 +38,89 @@ note: `B` could also refer to the derive macro imported here
 LL | #[macro_use]
    | ^^^^^^^^^^^^
 
-error: aborting due to 5 previous errors
+error[E0659]: `B` is ambiguous (derive helper attribute vs any other name)
+  --> $DIR/proc-macro-attributes.rs:13:3
+   |
+LL | #[B(E = "foo")]
+   |   ^ ambiguous name
+   |
+note: `B` could refer to the derive helper attribute defined here
+  --> $DIR/proc-macro-attributes.rs:19:10
+   |
+LL | #[derive(B)]
+   |          ^
+note: `B` could also refer to the derive macro imported here
+  --> $DIR/proc-macro-attributes.rs:3:1
+   |
+LL | #[macro_use]
+   | ^^^^^^^^^^^^
+
+error[E0659]: `B` is ambiguous (derive helper attribute vs any other name)
+  --> $DIR/proc-macro-attributes.rs:16:3
+   |
+LL | #[B(arbitrary tokens)]
+   |   ^ ambiguous name
+   |
+note: `B` could refer to the derive helper attribute defined here
+  --> $DIR/proc-macro-attributes.rs:19:10
+   |
+LL | #[derive(B)]
+   |          ^
+note: `B` could also refer to the derive macro imported here
+  --> $DIR/proc-macro-attributes.rs:3:1
+   |
+LL | #[macro_use]
+   | ^^^^^^^^^^^^
+
+warning: derive helper attribute is used before it is introduced
+  --> $DIR/proc-macro-attributes.rs:6:3
+   |
+LL | #[B]
+   |   ^
+...
+LL | #[derive(B)]
+   |          - the attribute is introduced here
+   |
+   = note: `#[warn(legacy_derive_helpers)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #79202 <https://github.com/rust-lang/rust/issues/79202>
+
+warning: derive helper attribute is used before it is introduced
+  --> $DIR/proc-macro-attributes.rs:10:3
+   |
+LL | #[B(D)]
+   |   ^
+...
+LL | #[derive(B)]
+   |          - the attribute is introduced here
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #79202 <https://github.com/rust-lang/rust/issues/79202>
+
+warning: derive helper attribute is used before it is introduced
+  --> $DIR/proc-macro-attributes.rs:13:3
+   |
+LL | #[B(E = "foo")]
+   |   ^
+...
+LL | #[derive(B)]
+   |          - the attribute is introduced here
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #79202 <https://github.com/rust-lang/rust/issues/79202>
+
+warning: derive helper attribute is used before it is introduced
+  --> $DIR/proc-macro-attributes.rs:16:3
+   |
+LL | #[B(arbitrary tokens)]
+   |   ^
+...
+LL | #[derive(B)]
+   |          - the attribute is introduced here
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #79202 <https://github.com/rust-lang/rust/issues/79202>
+
+error: aborting due to 5 previous errors; 4 warnings emitted
 
 For more information about this error, try `rustc --explain E0659`.

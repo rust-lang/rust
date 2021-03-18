@@ -1,5 +1,5 @@
 error[E0412]: cannot find type `UnknownStruct` in this scope
-  --> $DIR/unknown_adt.rs:8:12
+  --> $DIR/unknown_adt.rs:7:12
    |
 LL |     let _: UnknownStruct<7>;
    |            ^^^^^^^^^^^^^ not found in this scope

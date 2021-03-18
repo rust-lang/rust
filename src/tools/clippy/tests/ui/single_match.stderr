@@ -1,4 +1,4 @@
-error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
   --> $DIR/single_match.rs:8:5
    |
 LL | /     match x {
@@ -17,7 +17,7 @@ LL |         println!("{:?}", y);
 LL |     };
    |
 
-error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
   --> $DIR/single_match.rs:16:5
    |
 LL | /     match x {
@@ -29,7 +29,7 @@ LL | |         _ => (),
 LL | |     }
    | |_____^ help: try this: `if let Some(y) = x { println!("{:?}", y) }`
 
-error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
   --> $DIR/single_match.rs:25:5
    |
 LL | /     match z {
@@ -38,7 +38,7 @@ LL | |         _ => {},
 LL | |     };
    | |_____^ help: try this: `if let (2..=3, 7..=9) = z { dummy() }`
 
-error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
   --> $DIR/single_match.rs:54:5
    |
 LL | /     match x {
@@ -47,7 +47,7 @@ LL | |         None => (),
 LL | |     };
    | |_____^ help: try this: `if let Some(y) = x { dummy() }`
 
-error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
   --> $DIR/single_match.rs:59:5
    |
 LL | /     match y {
@@ -56,7 +56,7 @@ LL | |         Err(..) => (),
 LL | |     };
    | |_____^ help: try this: `if let Ok(y) = y { dummy() }`
 
-error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
   --> $DIR/single_match.rs:66:5
    |
 LL | /     match c {
@@ -65,5 +65,59 @@ LL | |         Cow::Owned(..) => (),
 LL | |     };
    | |_____^ help: try this: `if let Cow::Borrowed(..) = c { dummy() }`
 
-error: aborting due to 6 previous errors
+error: you seem to be trying to use `match` for an equality check. Consider using `if`
+  --> $DIR/single_match.rs:87:5
+   |
+LL | /     match x {
+LL | |         "test" => println!(),
+LL | |         _ => (),
+LL | |     }
+   | |_____^ help: try this: `if x == "test" { println!() }`
+
+error: you seem to be trying to use `match` for an equality check. Consider using `if`
+  --> $DIR/single_match.rs:100:5
+   |
+LL | /     match x {
+LL | |         Foo::A => println!(),
+LL | |         _ => (),
+LL | |     }
+   | |_____^ help: try this: `if x == Foo::A { println!() }`
+
+error: you seem to be trying to use `match` for an equality check. Consider using `if`
+  --> $DIR/single_match.rs:106:5
+   |
+LL | /     match x {
+LL | |         FOO_C => println!(),
+LL | |         _ => (),
+LL | |     }
+   | |_____^ help: try this: `if x == FOO_C { println!() }`
+
+error: you seem to be trying to use `match` for an equality check. Consider using `if`
+  --> $DIR/single_match.rs:111:5
+   |
+LL | /     match &&x {
+LL | |         Foo::A => println!(),
+LL | |         _ => (),
+LL | |     }
+   | |_____^ help: try this: `if x == Foo::A { println!() }`
+
+error: you seem to be trying to use `match` for an equality check. Consider using `if`
+  --> $DIR/single_match.rs:117:5
+   |
+LL | /     match &x {
+LL | |         Foo::A => println!(),
+LL | |         _ => (),
+LL | |     }
+   | |_____^ help: try this: `if x == &Foo::A { println!() }`
+
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> $DIR/single_match.rs:134:5
+   |
+LL | /     match x {
+LL | |         Bar::A => println!(),
+LL | |         _ => (),
+LL | |     }
+   | |_____^ help: try this: `if let Bar::A = x { println!() }`
+
+error: aborting due to 12 previous errors
 

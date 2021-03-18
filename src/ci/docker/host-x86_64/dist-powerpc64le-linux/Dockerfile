@@ -25,6 +25,9 @@ RUN ./build-powerpc64le-toolchain.sh
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
+COPY scripts/cmake.sh /scripts/
+RUN /scripts/cmake.sh
+
 ENV \
     AR_powerpc64le_unknown_linux_gnu=powerpc64le-linux-gnu-ar \
     CC_powerpc64le_unknown_linux_gnu=powerpc64le-linux-gnu-gcc \

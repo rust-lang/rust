@@ -44,7 +44,8 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
 
         // Process all of the #[link(..)]-style arguments
         let sess = &self.tcx.sess;
-        for m in it.attrs.iter().filter(|a| sess.check_name(a, sym::link)) {
+        for m in self.tcx.hir().attrs(it.hir_id()).iter().filter(|a| sess.check_name(a, sym::link))
+        {
             let items = match m.meta_item_list() {
                 Some(item) => item,
                 None => continue,
@@ -53,7 +54,7 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
                 name: None,
                 kind: NativeLibKind::Unspecified,
                 cfg: None,
-                foreign_module: Some(self.tcx.hir().local_def_id(it.hir_id).to_def_id()),
+                foreign_module: Some(it.def_id.to_def_id()),
                 wasm_import_module: None,
             };
             let mut kind_specified = false;
@@ -132,7 +133,7 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
 
 impl Collector<'tcx> {
     fn register_native_lib(&mut self, span: Option<Span>, lib: NativeLib) {
-        if lib.name.as_ref().map(|&s| s == kw::Invalid).unwrap_or(false) {
+        if lib.name.as_ref().map_or(false, |&s| s == kw::Empty) {
             match span {
                 Some(span) => {
                     struct_span_err!(
@@ -192,13 +193,13 @@ impl Collector<'tcx> {
     fn process_command_line(&mut self) {
         // First, check for errors
         let mut renames = FxHashSet::default();
-        for &(ref name, ref new_name, _) in &self.tcx.sess.opts.libs {
-            if let &Some(ref new_name) = new_name {
+        for (name, new_name, _) in &self.tcx.sess.opts.libs {
+            if let Some(ref new_name) = new_name {
                 let any_duplicate = self
                     .libs
                     .iter()
                     .filter_map(|lib| lib.name.as_ref())
-                    .any(|n| n.as_str() == *name);
+                    .any(|n| &n.as_str() == name);
                 if new_name.is_empty() {
                     self.tcx.sess.err(&format!(
                         "an empty renaming target was specified for library `{}`",
@@ -240,7 +241,7 @@ impl Collector<'tcx> {
                             if kind != NativeLibKind::Unspecified {
                                 lib.kind = kind;
                             }
-                            if let &Some(ref new_name) = new_name {
+                            if let Some(new_name) = new_name {
                                 lib.name = Some(Symbol::intern(new_name));
                             }
                             return true;

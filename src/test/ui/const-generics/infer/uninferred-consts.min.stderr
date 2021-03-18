@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/uninferred-consts.rs:14:9
+  --> $DIR/uninferred-consts.rs:13:9
    |
 LL |     Foo.foo();
    |         ^^^ cannot infer the value of const parameter `A` declared on the associated function `foo`

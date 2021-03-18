@@ -12,12 +12,11 @@
 //! sort of test: for example, testing which variant an enum is, or
 //! testing a value against a constant.
 
+use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::matches::{Ascription, Binding, Candidate, MatchPair};
 use crate::build::Builder;
 use crate::thir::{self, *};
-use rustc_attr::{SignedInt, UnsignedInt};
 use rustc_hir::RangeEnd;
-use rustc_middle::mir::Place;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_target::abi::{Integer, Size};
@@ -55,7 +54,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // * the bindings from the previous iteration of the loop is prepended to the bindings from
         // the current iteration (in the implementation this is done by mem::swap and extend)
         // * after all iterations, these new bindings are then appended to the bindings that were
-        // prexisting (i.e. `candidate.binding` when the function was called).
+        // preexisting (i.e. `candidate.binding` when the function was called).
         //
         // example:
         // candidate.bindings = [1, 2, 3]
@@ -69,11 +68,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let match_pairs = mem::take(&mut candidate.match_pairs);
 
             if let [MatchPair { pattern: Pat { kind: box PatKind::Or { pats }, .. }, place }] =
-                *match_pairs
+                &*match_pairs
             {
                 existing_bindings.extend_from_slice(&new_bindings);
                 mem::swap(&mut candidate.bindings, &mut existing_bindings);
-                candidate.subcandidates = self.create_or_subcandidates(candidate, place, pats);
+                candidate.subcandidates =
+                    self.create_or_subcandidates(candidate, place.clone(), pats);
                 return true;
             }
 
@@ -126,12 +126,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn create_or_subcandidates<'pat>(
         &mut self,
         candidate: &Candidate<'pat, 'tcx>,
-        place: Place<'tcx>,
+        place: PlaceBuilder<'tcx>,
         pats: &'pat [Pat<'tcx>],
     ) -> Vec<Candidate<'pat, 'tcx>> {
         pats.iter()
             .map(|pat| {
-                let mut candidate = Candidate::new(place, pat, candidate.has_guard);
+                let mut candidate = Candidate::new(place.clone(), pat, candidate.has_guard);
                 self.simplify_candidate(&mut candidate);
                 candidate
             })
@@ -148,18 +148,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match_pair: MatchPair<'pat, 'tcx>,
         candidate: &mut Candidate<'pat, 'tcx>,
     ) -> Result<(), MatchPair<'pat, 'tcx>> {
-        let tcx = self.hir.tcx();
+        let tcx = self.tcx;
         match *match_pair.pattern.kind {
             PatKind::AscribeUserType {
                 ref subpattern,
                 ascription: thir::pattern::Ascription { variance, user_ty, user_ty_span },
             } => {
                 // Apply the type ascription to the value at `match_pair.place`, which is the
-                // value being matched, taking the variance field into account.
                 candidate.ascriptions.push(Ascription {
                     span: user_ty_span,
                     user_ty,
-                    source: match_pair.place,
+                    source: match_pair.place.clone().into_place(self.tcx, self.typeck_results),
                     variance,
                 });
 
@@ -178,7 +177,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     name,
                     mutability,
                     span: match_pair.pattern.span,
-                    source: match_pair.place,
+                    source: match_pair.place.clone().into_place(self.tcx, self.typeck_results),
                     var_id: var,
                     var_ty: ty,
                     binding_mode: mode,
@@ -203,13 +202,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         (Some(('\u{0000}' as u128, '\u{10FFFF}' as u128, Size::from_bits(32))), 0)
                     }
                     ty::Int(ity) => {
-                        let size = Integer::from_attr(&tcx, SignedInt(ity)).size();
+                        let size = Integer::from_int_ty(&tcx, ity).size();
                         let max = size.truncate(u128::MAX);
                         let bias = 1u128 << (size.bits() - 1);
                         (Some((0, max, size)), bias)
                     }
                     ty::Uint(uty) => {
-                        let size = Integer::from_attr(&tcx, UnsignedInt(uty)).size();
+                        let size = Integer::from_uint_ty(&tcx, uty).size();
                         let max = size.truncate(u128::MAX);
                         (Some((0, max, size)), 0)
                     }
@@ -252,21 +251,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             PatKind::Variant { adt_def, substs, variant_index, ref subpatterns } => {
                 let irrefutable = adt_def.variants.iter_enumerated().all(|(i, v)| {
                     i == variant_index || {
-                        self.hir.tcx().features().exhaustive_patterns
+                        self.tcx.features().exhaustive_patterns
                             && !v
                                 .uninhabited_from(
-                                    self.hir.tcx(),
+                                    self.tcx,
                                     substs,
                                     adt_def.adt_kind(),
-                                    self.hir.param_env,
+                                    self.param_env,
                                 )
                                 .is_empty()
                     }
                 }) && (adt_def.did.is_local()
                     || !adt_def.is_variant_list_non_exhaustive());
                 if irrefutable {
-                    let place = tcx.mk_place_downcast(match_pair.place, adt_def, variant_index);
-                    candidate.match_pairs.extend(self.field_match_pairs(place, subpatterns));
+                    let place_builder = match_pair.place.downcast(adt_def, variant_index);
+                    candidate
+                        .match_pairs
+                        .extend(self.field_match_pairs(place_builder, subpatterns));
                     Ok(())
                 } else {
                     Err(match_pair)
@@ -291,8 +292,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             PatKind::Deref { ref subpattern } => {
-                let place = tcx.mk_place_deref(match_pair.place);
-                candidate.match_pairs.push(MatchPair::new(place, subpattern));
+                let place_builder = match_pair.place.deref();
+                candidate.match_pairs.push(MatchPair::new(place_builder, subpattern));
                 Ok(())
             }
 

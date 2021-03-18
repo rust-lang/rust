@@ -6,9 +6,9 @@ extern crate types;
 // This test checks that non-exhaustive types with `#[repr(C)]` from an extern crate are considered
 // improper.
 
-use types::{NonExhaustiveEnum, NormalStruct, UnitStruct, TupleStruct, NonExhaustiveVariants};
+use types::{NonExhaustiveEnum, NonExhaustiveVariants, NormalStruct, TupleStruct, UnitStruct};
 
-extern {
+extern "C" {
     pub fn non_exhaustive_enum(_: NonExhaustiveEnum);
     //~^ ERROR `extern` block uses type `NonExhaustiveEnum`, which is not FFI-safe
     pub fn non_exhaustive_normal_struct(_: NormalStruct);
@@ -21,4 +21,4 @@ extern {
     //~^ ERROR `extern` block uses type `NonExhaustiveVariants`, which is not FFI-safe
 }
 
-fn main() { }
+fn main() {}

@@ -15,8 +15,14 @@ LL |     for i in &a {
 LL |         for j in a {
    |                  ^
    |                  |
-   |                  value moved here, in previous iteration of loop
+   |                  `a` moved due to this implicit call to `.into_iter()`, in previous iteration of loop
    |                  help: consider borrowing to avoid moving into the for loop: `&a`
+   |
+note: this function takes ownership of the receiver `self`, which moves `a`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+   |
+LL |     fn into_iter(self) -> Self::IntoIter;
+   |                  ^^^^
 
 error: aborting due to 2 previous errors
 

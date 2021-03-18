@@ -1,8 +1,8 @@
-error[E0764]: mutable references are not allowed in statics
+error[E0764]: mutable references are not allowed in the final value of statics
   --> $DIR/issue-46604.rs:1:25
    |
 LL | static buf: &mut [u8] = &mut [1u8,2,3,4,5,7];
-   |                         ^^^^^^^^^^^^^^^^^^^^ `&mut` is only allowed in `const fn`
+   |                         ^^^^^^^^^^^^^^^^^^^^
 
 error[E0594]: cannot assign to `buf[_]`, as `buf` is an immutable static item
   --> $DIR/issue-46604.rs:6:5

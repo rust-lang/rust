@@ -1,9 +1,16 @@
 // aux-build:internal_unstable.rs
 
 #![feature(allow_internal_unstable)]
+#[allow(dead_code)]
 
 #[macro_use]
 extern crate internal_unstable;
+
+struct Baz {
+    #[allow_internal_unstable]
+    //^ WARN `#[allow_internal_unstable]` is ignored on struct fields and match arms
+    baz: u8,
+}
 
 macro_rules! foo {
     ($e: expr, $f: expr) => {{
@@ -40,4 +47,10 @@ fn main() {
     println!("{:?}", internal_unstable::unstable()); //~ ERROR use of unstable
 
     bar!(internal_unstable::unstable()); //~ ERROR use of unstable
+
+    match true {
+        #[allow_internal_unstable]
+        //^ WARN `#[allow_internal_unstable]` is ignored on struct fields and match arms
+        _ => {}
+    }
 }

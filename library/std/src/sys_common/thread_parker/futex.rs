@@ -49,7 +49,7 @@ impl Parker {
             // Wait for something to happen, assuming it's still set to PARKED.
             futex_wait(&self.state, PARKED, None);
             // Change NOTIFIED=>EMPTY and return in that case.
-            if self.state.compare_and_swap(NOTIFIED, EMPTY, Acquire) == NOTIFIED {
+            if self.state.compare_exchange(NOTIFIED, EMPTY, Acquire, Acquire).is_ok() {
                 return;
             } else {
                 // Spurious wake up. We loop to try again.

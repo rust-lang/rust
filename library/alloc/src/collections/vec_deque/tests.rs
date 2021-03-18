@@ -225,6 +225,21 @@ fn make_contiguous_head_to_end() {
 }
 
 #[test]
+fn make_contiguous_head_to_end_2() {
+    // Another test case for #79808, taken from #80293.
+
+    let mut dq = VecDeque::from_iter(0..6);
+    dq.pop_front();
+    dq.pop_front();
+    dq.push_back(6);
+    dq.push_back(7);
+    dq.push_back(8);
+    dq.make_contiguous();
+    let collected: Vec<_> = dq.iter().copied().collect();
+    assert_eq!(dq.as_slices(), (&collected[..], &[] as &[_]));
+}
+
+#[test]
 fn test_remove() {
     // This test checks that every single combination of tail position, length, and
     // removal position is tested. Capacity 15 should be large enough to cover every case.
@@ -583,4 +598,44 @@ fn issue_53529() {
     for a in dst {
         assert_eq!(*a, 2);
     }
+}
+
+#[test]
+fn issue_80303() {
+    use core::iter;
+    use core::num::Wrapping;
+
+    // This is a valid, albeit rather bad hash function implementation.
+    struct SimpleHasher(Wrapping<u64>);
+
+    impl Hasher for SimpleHasher {
+        fn finish(&self) -> u64 {
+            self.0.0
+        }
+
+        fn write(&mut self, bytes: &[u8]) {
+            // This particular implementation hashes value 24 in addition to bytes.
+            // Such an implementation is valid as Hasher only guarantees equivalence
+            // for the exact same set of calls to its methods.
+            for &v in iter::once(&24).chain(bytes) {
+                self.0 = Wrapping(31) * self.0 + Wrapping(u64::from(v));
+            }
+        }
+    }
+
+    fn hash_code(value: impl Hash) -> u64 {
+        let mut hasher = SimpleHasher(Wrapping(1));
+        value.hash(&mut hasher);
+        hasher.finish()
+    }
+
+    // This creates two deques for which values returned by as_slices
+    // method differ.
+    let vda: VecDeque<u8> = (0..10).collect();
+    let mut vdb = VecDeque::with_capacity(10);
+    vdb.extend(5..10);
+    (0..5).rev().for_each(|elem| vdb.push_front(elem));
+    assert_ne!(vda.as_slices(), vdb.as_slices());
+    assert_eq!(vda, vdb);
+    assert_eq!(hash_code(vda), hash_code(vdb));
 }

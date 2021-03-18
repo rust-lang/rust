@@ -87,6 +87,6 @@ where
             c => bug!("{:?} is a const but value is {:?}", bound_ct, c),
         };
 
-        tcx.replace_escaping_bound_vars(value, fld_r, fld_t, fld_c).0
+        tcx.replace_escaping_bound_vars(value, fld_r, fld_t, fld_c)
     }
 }

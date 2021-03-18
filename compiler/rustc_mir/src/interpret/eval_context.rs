@@ -226,6 +226,16 @@ impl<'mir, 'tcx, Tag> Frame<'mir, 'tcx, Tag> {
 }
 
 impl<'mir, 'tcx, Tag, Extra> Frame<'mir, 'tcx, Tag, Extra> {
+    /// Get the current location within the Frame.
+    ///
+    /// If this is `Err`, we are not currently executing any particular statement in
+    /// this frame (can happen e.g. during frame initialization, and during unwinding on
+    /// frames without cleanup code).
+    /// We basically abuse `Result` as `Either`.
+    pub fn current_loc(&self) -> Result<mir::Location, Span> {
+        self.loc
+    }
+
     /// Return the `SourceInfo` of the current instruction.
     pub fn current_source_info(&self) -> Option<&mir::SourceInfo> {
         self.loc.ok().map(|loc| self.body.source_info(loc))
@@ -370,7 +380,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     #[inline(always)]
     pub fn cur_span(&self) -> Span {
-        self.stack().last().map(|f| f.current_span()).unwrap_or(self.tcx.span)
+        self.stack().last().map_or(self.tcx.span, |f| f.current_span())
     }
 
     #[inline(always)]
@@ -477,16 +487,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if let Some(promoted) = promoted {
             return Ok(&self.tcx.promoted_mir_opt_const_arg(def)[promoted]);
         }
-        match instance {
-            ty::InstanceDef::Item(def) => {
-                if self.tcx.is_mir_available(def.did) {
-                    Ok(self.tcx.optimized_mir_opt_const_arg(def))
-                } else {
-                    throw_unsup!(NoMirFor(def.did))
-                }
-            }
-            _ => Ok(self.tcx.instance_mir(instance)),
-        }
+        M::load_mir(self, instance)
     }
 
     /// Call this on things you got out of the MIR (so it is as generic as the current
@@ -557,8 +558,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// This can fail to provide an answer for extern types.
     pub(super) fn size_and_align_of(
         &self,
-        metadata: MemPlaceMeta<M::PointerTag>,
-        layout: TyAndLayout<'tcx>,
+        metadata: &MemPlaceMeta<M::PointerTag>,
+        layout: &TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, Option<(Size, Align)>> {
         if !layout.is_unsized() {
             return Ok(Some((layout.size, layout.align.abi)));
@@ -586,24 +587,25 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // the last field).  Can't have foreign types here, how would we
                 // adjust alignment and size for them?
                 let field = layout.field(self, layout.fields.count() - 1)?;
-                let (unsized_size, unsized_align) = match self.size_and_align_of(metadata, field)? {
-                    Some(size_and_align) => size_and_align,
-                    None => {
-                        // A field with extern type.  If this field is at offset 0, we behave
-                        // like the underlying extern type.
-                        // FIXME: Once we have made decisions for how to handle size and alignment
-                        // of `extern type`, this should be adapted.  It is just a temporary hack
-                        // to get some code to work that probably ought to work.
-                        if sized_size == Size::ZERO {
-                            return Ok(None);
-                        } else {
-                            span_bug!(
-                                self.cur_span(),
-                                "Fields cannot be extern types, unless they are at offset 0"
-                            )
+                let (unsized_size, unsized_align) =
+                    match self.size_and_align_of(metadata, &field)? {
+                        Some(size_and_align) => size_and_align,
+                        None => {
+                            // A field with extern type.  If this field is at offset 0, we behave
+                            // like the underlying extern type.
+                            // FIXME: Once we have made decisions for how to handle size and alignment
+                            // of `extern type`, this should be adapted.  It is just a temporary hack
+                            // to get some code to work that probably ought to work.
+                            if sized_size == Size::ZERO {
+                                return Ok(None);
+                            } else {
+                                span_bug!(
+                                    self.cur_span(),
+                                    "Fields cannot be extern types, unless they are at offset 0"
+                                )
+                            }
                         }
-                    }
-                };
+                    };
 
                 // FIXME (#26403, #27023): We should be adding padding
                 // to `sized_size` (to accommodate the `unsized_align`
@@ -654,16 +656,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     #[inline]
     pub fn size_and_align_of_mplace(
         &self,
-        mplace: MPlaceTy<'tcx, M::PointerTag>,
+        mplace: &MPlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, Option<(Size, Align)>> {
-        self.size_and_align_of(mplace.meta, mplace.layout)
+        self.size_and_align_of(&mplace.meta, &mplace.layout)
     }
 
     pub fn push_stack_frame(
         &mut self,
         instance: ty::Instance<'tcx>,
         body: &'mir mir::Body<'tcx>,
-        return_place: Option<PlaceTy<'tcx, M::PointerTag>>,
+        return_place: Option<&PlaceTy<'tcx, M::PointerTag>>,
         return_to_block: StackPopCleanup,
     ) -> InterpResult<'tcx> {
         // first push a stack frame so we have access to the local substs
@@ -671,7 +673,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             body,
             loc: Err(body.span), // Span used for errors caused during preamble.
             return_to_block,
-            return_place,
+            return_place: return_place.copied(),
             // empty local array, we fill it in below, after we are inside the stack frame and
             // all methods actually know about the frame
             locals: IndexVec::new(),
@@ -687,7 +689,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             let span = const_.span;
             let const_ =
                 self.subst_from_current_frame_and_normalize_erasing_regions(const_.literal);
-            self.const_to_op(const_, None).map_err(|err| {
+            self.mir_const_to_op(&const_, None).map_err(|err| {
                 // If there was an error, set the span of the current frame to this constant.
                 // Avoiding doing this when evaluation succeeds.
                 self.frame_mut().loc = Err(span);
@@ -786,10 +788,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         if !unwinding {
             // Copy the return value to the caller's stack frame.
-            if let Some(return_place) = frame.return_place {
+            if let Some(ref return_place) = frame.return_place {
                 let op = self.access_local(&frame, mir::RETURN_PLACE, None)?;
-                self.copy_op_transmute(op, return_place)?;
-                trace!("{:?}", self.dump_place(*return_place));
+                self.copy_op_transmute(&op, return_place)?;
+                trace!("{:?}", self.dump_place(**return_place));
             } else {
                 throw_ub!(Unreachable);
             }

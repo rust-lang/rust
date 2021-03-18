@@ -5,7 +5,7 @@ use std::ops::Range;
 fn _if_let_guard() {
     match () {
         () if let 0 = 1 => {}
-        //~^ ERROR `if let` guard is not implemented
+        //~^ ERROR `if let` guards are experimental
 
         () if (let 0 = 1) => {}
         //~^ ERROR `let` expressions in this position are experimental
@@ -74,7 +74,7 @@ fn _macros() {
     match () {
         #[cfg(FALSE)]
         () if let 0 = 1 => {}
-        //~^ ERROR `if let` guard is not implemented
+        //~^ ERROR `if let` guards are experimental
         _ => {}
     }
     use_expr!(let 0 = 1);

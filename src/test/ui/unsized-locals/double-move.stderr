@@ -47,7 +47,7 @@ LL |         y.foo();
 LL |         y.foo();
    |         ^ value used here after move
    |
-note: this function consumes the receiver `self` by taking ownership of it, which moves `y`
+note: this function takes ownership of the receiver `self`, which moves `y`
   --> $DIR/double-move.rs:5:12
    |
 LL |     fn foo(self) -> String;

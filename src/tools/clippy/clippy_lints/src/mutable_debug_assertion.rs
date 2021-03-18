@@ -73,11 +73,7 @@ impl<'a, 'tcx> MutArgVisitor<'a, 'tcx> {
     }
 
     fn expr_span(&self) -> Option<Span> {
-        if self.found {
-            self.expr_span
-        } else {
-            None
-        }
+        if self.found { self.expr_span } else { None }
     }
 }
 
@@ -87,6 +83,10 @@ impl<'a, 'tcx> Visitor<'tcx> for MutArgVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         match expr.kind {
             ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, _) => {
+                self.found = true;
+                return;
+            },
+            ExprKind::If(..) => {
                 self.found = true;
                 return;
             },

@@ -1,13 +1,14 @@
-error: only path types can be used in associated type constraints
-  --> $DIR/issue-34334.rs:2:17
+error: expected one of `,`, `:`, or `>`, found `=`
+  --> $DIR/issue-34334.rs:2:29
    |
 LL |     let sr: Vec<(u32, _, _) = vec![];
-   |         --      ^^^^^^^^^^^
-   |         |
+   |         --                - ^ expected one of `,`, `:`, or `>`
+   |         |                 |
+   |         |                 maybe try to close unmatched angle bracket
    |         while parsing the type for `sr`
 
 error[E0277]: a value of type `Vec<(u32, _, _)>` cannot be built from an iterator over elements of type `()`
-  --> $DIR/issue-34334.rs:4:87
+  --> $DIR/issue-34334.rs:5:87
    |
 LL |     let sr2: Vec<(u32, _, _)> = sr.iter().map(|(faction, th_sender, th_receiver)| {}).collect();
    |                                                                                       ^^^^^^^ value of type `Vec<(u32, _, _)>` cannot be built from `std::iter::Iterator<Item=()>`

@@ -10,7 +10,7 @@ test = false
 [dependencies]
 bitflags = "1.2.1"
 cc = "1.0.1"
-num_cpus = "1.0"
+itertools = "0.9"
 memmap = "0.7"
 tracing = "0.1"
 libc = "0.2.50"

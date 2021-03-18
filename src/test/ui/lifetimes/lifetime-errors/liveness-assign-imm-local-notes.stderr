@@ -28,9 +28,6 @@ LL |     let x;
 ...
 LL |             x = 1;
    |             ^^^^^ cannot assign twice to immutable variable
-LL |         } else {
-LL |             x = 2;
-   |             ----- first assignment to `x`
 
 error[E0384]: cannot assign twice to immutable variable `x`
   --> $DIR/liveness-assign-imm-local-notes.rs:32:13
@@ -38,6 +35,9 @@ error[E0384]: cannot assign twice to immutable variable `x`
 LL |     let x;
    |         - help: make this binding mutable: `mut x`
 ...
+LL |             x = 1;
+   |             ----- first assignment to `x`
+LL |         } else {
 LL |             x = 2;
    |             ^^^^^ cannot assign twice to immutable variable
 

@@ -20,6 +20,7 @@ use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt};
 use rustc_session::Session;
+use rustc_span::symbol::Ident;
 use rustc_span::{self, Span};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
 
@@ -66,11 +67,11 @@ pub struct FnCtxt<'a, 'tcx> {
     pub(super) in_tail_expr: bool,
 
     /// First span of a return site that we find. Used in error messages.
-    pub(super) ret_coercion_span: RefCell<Option<Span>>,
+    pub(super) ret_coercion_span: Cell<Option<Span>>,
 
     pub(super) resume_yield_tys: Option<(Ty<'tcx>, Ty<'tcx>)>,
 
-    pub(super) ps: RefCell<UnsafetyState>,
+    pub(super) ps: Cell<UnsafetyState>,
 
     /// Whether the last checked node generates a divergence (e.g.,
     /// `return` will set this to `Always`). In general, when entering
@@ -127,9 +128,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ret_coercion_impl_trait: None,
             ret_type_span: None,
             in_tail_expr: false,
-            ret_coercion_span: RefCell::new(None),
+            ret_coercion_span: Cell::new(None),
             resume_yield_tys: None,
-            ps: RefCell::new(UnsafetyState::function(hir::Unsafety::Normal, hir::CRATE_HIR_ID)),
+            ps: Cell::new(UnsafetyState::function(hir::Unsafety::Normal, hir::CRATE_HIR_ID)),
             diverges: Cell::new(Diverges::Maybe),
             has_errors: Cell::new(false),
             enclosing_breakables: RefCell::new(EnclosingBreakables {
@@ -183,7 +184,12 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn get_type_parameter_bounds(&self, _: Span, def_id: DefId) -> ty::GenericPredicates<'tcx> {
+    fn get_type_parameter_bounds(
+        &self,
+        _: Span,
+        def_id: DefId,
+        _: Ident,
+    ) -> ty::GenericPredicates<'tcx> {
         let tcx = self.tcx;
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
         let item_id = tcx.hir().ty_param_owner(hir_id);
@@ -194,8 +200,8 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
             parent: None,
             predicates: tcx.arena.alloc_from_iter(
                 self.param_env.caller_bounds().iter().filter_map(|predicate| {
-                    match predicate.skip_binders() {
-                        ty::PredicateAtom::Trait(data, _) if data.self_ty().is_param(index) => {
+                    match predicate.kind().skip_binder() {
+                        ty::PredicateKind::Trait(data, _) if data.self_ty().is_param(index) => {
                             // HACK(eddyb) should get the original `Span`.
                             let span = tcx.def_span(def_id);
                             Some((predicate, span))

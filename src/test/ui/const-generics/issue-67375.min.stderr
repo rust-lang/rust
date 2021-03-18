@@ -1,5 +1,5 @@
 error: generic parameters may not be used in const operations
-  --> $DIR/issue-67375.rs:9:25
+  --> $DIR/issue-67375.rs:8:25
    |
 LL |     inner: [(); { [|_: &T| {}; 0].len() }],
    |                         ^ cannot perform const operation using `T`
@@ -8,7 +8,7 @@ LL |     inner: [(); { [|_: &T| {}; 0].len() }],
    = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error[E0392]: parameter `T` is never used
-  --> $DIR/issue-67375.rs:7:12
+  --> $DIR/issue-67375.rs:6:12
    |
 LL | struct Bug<T> {
    |            ^ unused parameter

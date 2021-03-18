@@ -1,5 +1,5 @@
 error: type parameters with a default must be trailing
-  --> $DIR/params-in-ct-in-ty-param-lazy-norm.rs:12:12
+  --> $DIR/params-in-ct-in-ty-param-lazy-norm.rs:11:12
    |
 LL | struct Bar<T = [u8; N], const N: usize>(T);
    |            ^
@@ -7,7 +7,7 @@ LL | struct Bar<T = [u8; N], const N: usize>(T);
    = note: using type defaults and const parameters in the same parameter list is currently not permitted
 
 error: generic parameters may not be used in const operations
-  --> $DIR/params-in-ct-in-ty-param-lazy-norm.rs:7:44
+  --> $DIR/params-in-ct-in-ty-param-lazy-norm.rs:6:44
    |
 LL | struct Foo<T, U = [u8; std::mem::size_of::<T>()]>(T, U);
    |                                            ^ cannot perform const operation using `T`
@@ -16,7 +16,7 @@ LL | struct Foo<T, U = [u8; std::mem::size_of::<T>()]>(T, U);
    = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: constant values inside of type parameter defaults must not depend on generic parameters
-  --> $DIR/params-in-ct-in-ty-param-lazy-norm.rs:12:21
+  --> $DIR/params-in-ct-in-ty-param-lazy-norm.rs:11:21
    |
 LL | struct Bar<T = [u8; N], const N: usize>(T);
    |                     ^ the anonymous constant must not depend on the parameter `N`

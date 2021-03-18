@@ -75,13 +75,13 @@ For revisions in Pull Requests (PR):
 4:10-4:15: @0[6]: _4 = &amp;((*_1).2: usize)
 4:10-4:15: @0[10]: _7 = &amp;(*_2)
 4:10-4:15: @0[11]: _6 = &amp;(*_7)
-4:10-4:15: @0.Call: _5 = &lt;usize as Clone&gt;::clone(move _6) -&gt; [return: bb1, unwind: bb4]
+4:10-4:15: @0.Call: _5 = &lt;usize as std::clone::Clone&gt;::clone(move _6) -&gt; [return: bb1, unwind: bb4]
 4:10-4:15: @1[4]: _10 = &amp;(*_3)
 4:10-4:15: @1[5]: _9 = &amp;(*_10)
-4:10-4:15: @1.Call: _8 = &lt;usize as Clone&gt;::clone(move _9) -&gt; [return: bb2, unwind: bb4]
+4:10-4:15: @1.Call: _8 = &lt;usize as std::clone::Clone&gt;::clone(move _9) -&gt; [return: bb2, unwind: bb4]
 4:10-4:15: @2[4]: _13 = &amp;(*_4)
 4:10-4:15: @2[5]: _12 = &amp;(*_13)
-4:10-4:15: @2.Call: _11 = &lt;usize as Clone&gt;::clone(move _12) -&gt; [return: bb3, unwind: bb4]
+4:10-4:15: @2.Call: _11 = &lt;usize as std::clone::Clone&gt;::clone(move _12) -&gt; [return: bb3, unwind: bb4]
 4:10-4:15: @3[1]: _0 = Version { major: move _5, minor: move _8, patch: move _11 }
 4:15-4:15: @3.Return: return"><span class="annotation">@0,1,2,3⦊</span>Clone<span class="annotation">⦉@0,1,2,3</span></span></span></span></div>
 </body>

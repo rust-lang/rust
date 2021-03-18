@@ -1,5 +1,5 @@
 use rustc_index::vec::IndexVec;
-use rustc_infer::infer::{InferCtxt, NLLRegionVariableOrigin};
+use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin};
 use rustc_middle::mir::visit::{MutVisitor, TyContext};
 use rustc_middle::mir::{Body, Location, PlaceElem, Promoted};
 use rustc_middle::ty::subst::SubstsRef;
@@ -15,7 +15,7 @@ pub fn renumber_mir<'tcx>(
     debug!("renumber_mir()");
     debug!("renumber_mir: body.arg_count={:?}", body.arg_count);
 
-    let mut visitor = NLLVisitor { infcx };
+    let mut visitor = NllVisitor { infcx };
 
     for body in promoted.iter_mut() {
         visitor.visit_body(body);
@@ -33,16 +33,16 @@ where
     debug!("renumber_regions(value={:?})", value);
 
     infcx.tcx.fold_regions(value, &mut false, |_region, _depth| {
-        let origin = NLLRegionVariableOrigin::Existential { from_forall: false };
+        let origin = NllRegionVariableOrigin::Existential { from_forall: false };
         infcx.next_nll_region_var(origin)
     })
 }
 
-struct NLLVisitor<'a, 'tcx> {
+struct NllVisitor<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
 }
 
-impl<'a, 'tcx> NLLVisitor<'a, 'tcx> {
+impl<'a, 'tcx> NllVisitor<'a, 'tcx> {
     fn renumber_regions<T>(&mut self, value: T) -> T
     where
         T: TypeFoldable<'tcx>,
@@ -51,7 +51,7 @@ impl<'a, 'tcx> NLLVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'tcx> {
+impl<'a, 'tcx> MutVisitor<'tcx> for NllVisitor<'a, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }

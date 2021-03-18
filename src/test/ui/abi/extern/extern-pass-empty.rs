@@ -27,7 +27,7 @@ struct ManyInts {
 struct Empty;
 
 #[link(name = "rust_test_helpers", kind = "static")]
-extern {
+extern "C" {
     fn rust_dbg_extern_empty_struct(v1: ManyInts, e: Empty, v2: ManyInts);
 }
 
@@ -39,7 +39,7 @@ pub fn main() {
             arg3: 4,
             arg4: 5,
             arg5: 6,
-            arg6: TwoU8s { one: 7, two: 8, }
+            arg6: TwoU8s { one: 7, two: 8 },
         };
         let y = ManyInts {
             arg1: 1,
@@ -47,7 +47,7 @@ pub fn main() {
             arg3: 3,
             arg4: 4,
             arg5: 5,
-            arg6: TwoU8s { one: 6, two: 7, }
+            arg6: TwoU8s { one: 6, two: 7 },
         };
         let empty = Empty;
         rust_dbg_extern_empty_struct(x, empty, y);

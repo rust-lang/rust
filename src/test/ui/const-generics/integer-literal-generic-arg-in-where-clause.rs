@@ -3,7 +3,6 @@
 
 #![cfg_attr(full, feature(const_generics))]
 #![cfg_attr(full, allow(incomplete_features))]
-#![cfg_attr(min, feature(min_const_generics))]
 
 fn takes_closure_of_array_3<F>(f: F) where F: Fn([i32; 3]) {
     f([1, 2, 3]);

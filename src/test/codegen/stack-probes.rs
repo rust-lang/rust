@@ -13,11 +13,12 @@
 // ignore-emscripten
 // ignore-windows
 // compile-flags: -C no-prepopulate-passes
+// min-llvm-version: 11.0.1
 
 #![crate_type = "lib"]
 
 #[no_mangle]
 pub fn foo() {
 // CHECK: @foo() unnamed_addr #0
-// CHECK: attributes #0 = { {{.*}}"probe-stack"="__rust_probestack"{{.*}} }
+// CHECK: attributes #0 = { {{.*}}"probe-stack"="inline-asm"{{.*}} }
 }

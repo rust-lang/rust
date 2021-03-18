@@ -1,7 +1,6 @@
 // revisions: full min
 #![cfg_attr(full, feature(const_generics))]
 #![cfg_attr(full, allow(incomplete_features))]
-#![cfg_attr(min, feature(min_const_generics))]
 
 fn ty_param<T>() -> [u8; std::mem::size_of::<T>()] {
     //[full]~^ ERROR constant expression depends on a generic parameter

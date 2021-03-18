@@ -1,6 +1,6 @@
 use crate::utils::{meets_msrv, snippet_opt, span_lint_and_then};
 use if_chain::if_chain;
-use rustc_ast::ast::{Attribute, Item, ItemKind, StructField, Variant, VariantData, VisibilityKind};
+use rustc_ast::ast::{Attribute, Item, ItemKind, FieldDef, Variant, VariantData, VisibilityKind};
 use rustc_attr as attr;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -142,11 +142,11 @@ fn check_manual_non_exhaustive_enum(cx: &EarlyContext<'_>, item: &Item, variants
 }
 
 fn check_manual_non_exhaustive_struct(cx: &EarlyContext<'_>, item: &Item, data: &VariantData) {
-    fn is_private(field: &StructField) -> bool {
+    fn is_private(field: &FieldDef) -> bool {
         matches!(field.vis.kind, VisibilityKind::Inherited)
     }
 
-    fn is_non_exhaustive_marker(field: &StructField) -> bool {
+    fn is_non_exhaustive_marker(field: &FieldDef) -> bool {
         is_private(field) && field.ty.kind.is_unit() && field.ident.map_or(true, |n| n.as_str().starts_with('_'))
     }
 

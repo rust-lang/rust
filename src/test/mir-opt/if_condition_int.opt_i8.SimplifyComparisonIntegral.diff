@@ -13,26 +13,26 @@
           _3 = _1;                         // scope 0 at $DIR/if-condition-int.rs:25:8: 25:9
 -         _2 = Eq(move _3, const 42_i8);   // scope 0 at $DIR/if-condition-int.rs:25:8: 25:15
 -         StorageDead(_3);                 // scope 0 at $DIR/if-condition-int.rs:25:14: 25:15
--         switchInt(_2) -> [false: bb1, otherwise: bb2]; // scope 0 at $DIR/if-condition-int.rs:25:5: 25:32
-+         _2 = Eq(_3, const 42_i8);        // scope 0 at $DIR/if-condition-int.rs:25:8: 25:15
+-         switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/if-condition-int.rs:25:5: 25:32
++         nop;                             // scope 0 at $DIR/if-condition-int.rs:25:8: 25:15
 +         nop;                             // scope 0 at $DIR/if-condition-int.rs:25:14: 25:15
-+         switchInt(move _3) -> [42_i8: bb2, otherwise: bb1]; // scope 0 at $DIR/if-condition-int.rs:25:5: 25:32
++         switchInt(move _3) -> [42_i8: bb1, otherwise: bb2]; // scope 0 at $DIR/if-condition-int.rs:25:5: 25:32
       }
   
       bb1: {
-+         StorageDead(_3);                 // scope 0 at $DIR/if-condition-int.rs:25:5: 25:32
-          _0 = const 1_u32;                // scope 0 at $DIR/if-condition-int.rs:25:29: 25:30
-          goto -> bb3;                     // scope 0 at $DIR/if-condition-int.rs:25:5: 25:32
-      }
-  
-      bb2: {
 +         StorageDead(_3);                 // scope 0 at $DIR/if-condition-int.rs:25:5: 25:32
           _0 = const 0_u32;                // scope 0 at $DIR/if-condition-int.rs:25:18: 25:19
           goto -> bb3;                     // scope 0 at $DIR/if-condition-int.rs:25:5: 25:32
       }
   
+      bb2: {
++         StorageDead(_3);                 // scope 0 at $DIR/if-condition-int.rs:25:5: 25:32
+          _0 = const 1_u32;                // scope 0 at $DIR/if-condition-int.rs:25:29: 25:30
+          goto -> bb3;                     // scope 0 at $DIR/if-condition-int.rs:25:5: 25:32
+      }
+  
       bb3: {
-          StorageDead(_2);                 // scope 0 at $DIR/if-condition-int.rs:26:1: 26:2
+          StorageDead(_2);                 // scope 0 at $DIR/if-condition-int.rs:25:31: 25:32
           return;                          // scope 0 at $DIR/if-condition-int.rs:26:2: 26:2
       }
   }

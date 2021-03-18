@@ -1,5 +1,5 @@
 error: generic parameters may not be used in const operations
-  --> $DIR/issue-72787.rs:11:17
+  --> $DIR/issue-72787.rs:10:17
    |
 LL |     Condition<{ LHS <= RHS }>: True
    |                 ^^^ cannot perform const operation using `LHS`
@@ -8,7 +8,7 @@ LL |     Condition<{ LHS <= RHS }>: True
    = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/issue-72787.rs:11:24
+  --> $DIR/issue-72787.rs:10:24
    |
 LL |     Condition<{ LHS <= RHS }>: True
    |                        ^^^ cannot perform const operation using `RHS`
@@ -17,7 +17,7 @@ LL |     Condition<{ LHS <= RHS }>: True
    = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/issue-72787.rs:26:25
+  --> $DIR/issue-72787.rs:25:25
    |
 LL |     IsLessOrEqual<{ 8 - I }, { 8 - J }>: True,
    |                         ^ cannot perform const operation using `I`
@@ -26,7 +26,7 @@ LL |     IsLessOrEqual<{ 8 - I }, { 8 - J }>: True,
    = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/issue-72787.rs:26:36
+  --> $DIR/issue-72787.rs:25:36
    |
 LL |     IsLessOrEqual<{ 8 - I }, { 8 - J }>: True,
    |                                    ^ cannot perform const operation using `J`
@@ -35,7 +35,7 @@ LL |     IsLessOrEqual<{ 8 - I }, { 8 - J }>: True,
    = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error[E0283]: type annotations needed
-  --> $DIR/issue-72787.rs:22:26
+  --> $DIR/issue-72787.rs:21:26
    |
 LL | pub trait True {}
    | -------------- required by this bound in `True`
@@ -46,7 +46,7 @@ LL |     IsLessOrEqual<I, 8>: True,
    = note: cannot satisfy `IsLessOrEqual<I, 8_u32>: True`
 
 error[E0283]: type annotations needed
-  --> $DIR/issue-72787.rs:22:26
+  --> $DIR/issue-72787.rs:21:26
    |
 LL | pub trait True {}
    | -------------- required by this bound in `True`

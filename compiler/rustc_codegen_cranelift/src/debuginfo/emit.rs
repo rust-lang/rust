@@ -14,10 +14,7 @@ impl DebugContext<'_> {
         let unit_range_list_id = self.dwarf.unit.ranges.add(self.unit_range_list.clone());
         let root = self.dwarf.unit.root();
         let root = self.dwarf.unit.get_mut(root);
-        root.set(
-            gimli::DW_AT_ranges,
-            AttributeValue::RangeListRef(unit_range_list_id),
-        );
+        root.set(gimli::DW_AT_ranges, AttributeValue::RangeListRef(unit_range_list_id));
 
         let mut sections = Sections::new(WriterRelocate::new(self.endian));
         self.dwarf.write(&mut sections).unwrap();
@@ -66,18 +63,12 @@ pub(super) struct WriterRelocate {
 
 impl WriterRelocate {
     pub(super) fn new(endian: RunTimeEndian) -> Self {
-        WriterRelocate {
-            relocs: Vec::new(),
-            writer: EndianVec::new(endian),
-        }
+        WriterRelocate { relocs: Vec::new(), writer: EndianVec::new(endian) }
     }
 
     /// Perform the collected relocations to be usable for JIT usage.
     #[cfg(feature = "jit")]
-    pub(super) fn relocate_for_jit(
-        mut self,
-        jit_module: &cranelift_simplejit::SimpleJITModule,
-    ) -> Vec<u8> {
+    pub(super) fn relocate_for_jit(mut self, jit_module: &cranelift_jit::JITModule) -> Vec<u8> {
         use std::convert::TryInto;
 
         for reloc in self.relocs.drain(..) {
@@ -88,9 +79,7 @@ impl WriterRelocate {
                         cranelift_module::FuncId::from_u32(sym.try_into().unwrap()),
                     );
                     let val = (addr as u64 as i64 + reloc.addend) as u64;
-                    self.writer
-                        .write_udata_at(reloc.offset as usize, val, reloc.size)
-                        .unwrap();
+                    self.writer.write_udata_at(reloc.offset as usize, val, reloc.size).unwrap();
                 }
             }
         }

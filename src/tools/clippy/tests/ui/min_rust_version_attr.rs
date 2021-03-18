@@ -2,7 +2,7 @@
 #![feature(custom_inner_attributes)]
 #![clippy::msrv = "1.0.0"]
 
-use std::ops::Deref;
+use std::ops::{Deref, RangeFrom};
 
 fn option_as_ref_deref() {
     let mut opt = Some(String::from("123"));
@@ -42,12 +42,102 @@ pub fn manual_strip_msrv() {
     }
 }
 
+pub fn redundant_fieldnames() {
+    let start = 0;
+    let _ = RangeFrom { start: start };
+}
+
+pub fn redundant_static_lifetime() {
+    const VAR_ONE: &'static str = "Test constant #1";
+}
+
+pub fn checked_conversion() {
+    let value: i64 = 42;
+    let _ = value <= (u32::max_value() as i64) && value >= 0;
+    let _ = value <= (u32::MAX as i64) && value >= 0;
+}
+
+pub struct FromOverInto(String);
+
+impl Into<FromOverInto> for String {
+    fn into(self) -> FromOverInto {
+        FromOverInto(self)
+    }
+}
+
+pub fn filter_map_next() {
+    let a = ["1", "lol", "3", "NaN", "5"];
+
+    #[rustfmt::skip]
+    let _: Option<u32> = vec![1, 2, 3, 4, 5, 6]
+        .into_iter()
+        .filter_map(|x| {
+            if x == 2 {
+                Some(x * 2)
+            } else {
+                None
+            }
+        })
+        .next();
+}
+
+#[allow(clippy::no_effect)]
+#[allow(clippy::short_circuit_statement)]
+#[allow(clippy::unnecessary_operation)]
+pub fn manual_range_contains() {
+    let x = 5;
+    x >= 8 && x < 12;
+}
+
+pub fn use_self() {
+    struct Foo {}
+
+    impl Foo {
+        fn new() -> Foo {
+            Foo {}
+        }
+        fn test() -> Foo {
+            Foo::new()
+        }
+    }
+}
+
+fn replace_with_default() {
+    let mut s = String::from("foo");
+    let _ = std::mem::replace(&mut s, String::default());
+}
+
+fn map_unwrap_or() {
+    let opt = Some(1);
+
+    // Check for `option.map(_).unwrap_or(_)` use.
+    // Single line case.
+    let _ = opt
+        .map(|x| x + 1)
+        // Should lint even though this call is on a separate line.
+        .unwrap_or(0);
+}
+
+// Could be const
+fn missing_const_for_fn() -> i32 {
+    1
+}
+
 fn main() {
+    filter_map_next();
+    checked_conversion();
+    redundant_fieldnames();
+    redundant_static_lifetime();
     option_as_ref_deref();
     match_like_matches();
     match_same_arms();
     match_same_arms2();
     manual_strip_msrv();
+    manual_range_contains();
+    use_self();
+    replace_with_default();
+    map_unwrap_or();
+    missing_const_for_fn();
 }
 
 mod meets_msrv {

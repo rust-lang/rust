@@ -2,7 +2,6 @@
 
 #![cfg_attr(full, feature(const_generics))]
 #![cfg_attr(full, allow(incomplete_features))]
-#![cfg_attr(min, feature(min_const_generics))]
 
 pub struct MyArray<const COUNT: usize>([u8; COUNT + 1]);
 //[full]~^ ERROR constant expression depends on a generic parameter

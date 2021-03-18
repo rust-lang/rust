@@ -8,15 +8,24 @@ edition = "2018"
 path = "lib.rs"
 
 [dependencies]
+arrayvec = { version = "0.5.1", default-features = false }
 pulldown-cmark = { version = "0.8", default-features = false }
-minifier = "0.0.33"
+minifier = "0.0.39"
 rayon = { version = "0.3.0", package = "rustc-rayon" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-smallvec = "1.0"
+smallvec = "1.6.1"
 tempfile = "3"
 itertools = "0.9"
 regex = "1"
+rustdoc-json-types = { path = "../rustdoc-json-types" }
+tracing = "0.1"
+tracing-tree = "0.1.9"
+
+[dependencies.tracing-subscriber]
+version = "0.2.13"
+default-features = false
+features = ["fmt", "env-filter", "smallvec", "parking_lot", "ansi"]
 
 [dev-dependencies]
 expect-test = "1.0"

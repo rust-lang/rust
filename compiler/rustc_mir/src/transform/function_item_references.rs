@@ -5,7 +5,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{
     self,
     subst::{GenericArgKind, Subst, SubstsRef},
-    PredicateAtom, Ty, TyCtxt, TyS,
+    PredicateKind, Ty, TyCtxt, TyS,
 };
 use rustc_session::lint::builtin::FUNCTION_ITEM_REFERENCES;
 use rustc_span::{symbol::sym, Span};
@@ -99,13 +99,13 @@ impl<'a, 'tcx> FunctionItemRefChecker<'a, 'tcx> {
         &self,
         def_id: DefId,
         substs_ref: SubstsRef<'tcx>,
-        args: &Vec<Operand<'tcx>>,
+        args: &[Operand<'tcx>],
         source_info: SourceInfo,
     ) {
         let param_env = self.tcx.param_env(def_id);
         let bounds = param_env.caller_bounds();
         for bound in bounds {
-            if let Some(bound_ty) = self.is_pointer_trait(&bound.skip_binders()) {
+            if let Some(bound_ty) = self.is_pointer_trait(&bound.kind().skip_binder()) {
                 // Get the argument types as they appear in the function signature.
                 let arg_defs = self.tcx.fn_sig(def_id).skip_binder().inputs();
                 for (arg_num, arg_def) in arg_defs.iter().enumerate() {
@@ -131,8 +131,8 @@ impl<'a, 'tcx> FunctionItemRefChecker<'a, 'tcx> {
     }
 
     /// If the given predicate is the trait `fmt::Pointer`, returns the bound parameter type.
-    fn is_pointer_trait(&self, bound: &PredicateAtom<'tcx>) -> Option<Ty<'tcx>> {
-        if let ty::PredicateAtom::Trait(predicate, _) = bound {
+    fn is_pointer_trait(&self, bound: &PredicateKind<'tcx>) -> Option<Ty<'tcx>> {
+        if let ty::PredicateKind::Trait(predicate, _) = bound {
             if self.tcx.is_diagnostic_item(sym::pointer_trait, predicate.def_id()) {
                 Some(predicate.trait_ref.self_ty())
             } else {
@@ -162,7 +162,7 @@ impl<'a, 'tcx> FunctionItemRefChecker<'a, 'tcx> {
             .unwrap_or(None)
     }
 
-    fn nth_arg_span(&self, args: &Vec<Operand<'tcx>>, n: usize) -> Span {
+    fn nth_arg_span(&self, args: &[Operand<'tcx>], n: usize) -> Span {
         match &args[n] {
             Operand::Copy(place) | Operand::Move(place) => {
                 self.body.local_decls[place.local].source_info.span

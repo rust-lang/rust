@@ -51,13 +51,13 @@ LL | |     fn foo_with_impl(&self) {}
 LL | | }
    | |_^
 
-error: missing documentation for a trait method
+error: missing documentation for an associated function
   --> $DIR/missing-doc-impl.rs:39:5
    |
 LL |     fn foo(&self);
    |     ^^^^^^^^^^^^^^
 
-error: missing documentation for a trait method
+error: missing documentation for an associated function
   --> $DIR/missing-doc-impl.rs:40:5
    |
 LL |     fn foo_with_impl(&self) {}
@@ -75,25 +75,25 @@ error: missing documentation for an associated type
 LL |     type AssociatedTypeDef = Self;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: missing documentation for a method
+error: missing documentation for an associated function
   --> $DIR/missing-doc-impl.rs:62:5
    |
 LL |     pub fn foo() {}
    |     ^^^^^^^^^^^^^^^
 
-error: missing documentation for a method
+error: missing documentation for an associated function
   --> $DIR/missing-doc-impl.rs:63:5
    |
 LL |     fn bar() {}
    |     ^^^^^^^^^^^
 
-error: missing documentation for a method
+error: missing documentation for an associated function
   --> $DIR/missing-doc-impl.rs:67:5
    |
 LL |     pub fn foo() {}
    |     ^^^^^^^^^^^^^^^
 
-error: missing documentation for a method
+error: missing documentation for an associated function
   --> $DIR/missing-doc-impl.rs:70:5
    |
 LL |     fn foo2() {}

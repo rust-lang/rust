@@ -1,6 +1,8 @@
 use crate::cmp;
 use crate::fmt;
-use crate::io::{self, BufRead, Initializer, IoSliceMut, Read, Seek, SeekFrom, DEFAULT_BUF_SIZE};
+use crate::io::{
+    self, BufRead, Initializer, IoSliceMut, Read, Seek, SeekFrom, SizeHint, DEFAULT_BUF_SIZE,
+};
 
 /// The `BufReader<R>` struct adds buffering to any reader.
 ///
@@ -90,10 +92,9 @@ impl<R: Read> BufReader<R> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: usize, inner: R) -> BufReader<R> {
         unsafe {
-            let mut buffer = Vec::with_capacity(capacity);
-            buffer.set_len(capacity);
-            inner.initializer().initialize(&mut buffer);
-            BufReader { inner, buf: buffer.into_boxed_slice(), pos: 0, cap: 0 }
+            let mut buf = Box::new_uninit_slice(capacity).assume_init();
+            inner.initializer().initialize(&mut buf);
+            BufReader { inner, buf, pos: 0, cap: 0 }
         }
     }
 }
@@ -271,6 +272,20 @@ impl<R: Read> Read for BufReader<R> {
         Ok(nread)
     }
 
+    // Small read_exacts from a BufReader are extremely common when used with a deserializer.
+    // The default implementation calls read in a loop, which results in surprisingly poor code
+    // generation for the common path where the buffer has enough bytes to fill the passed-in
+    // buffer.
+    fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
+        if self.buffer().len() >= buf.len() {
+            buf.copy_from_slice(&self.buffer()[..buf.len()]);
+            self.consume(buf.len());
+            return Ok(());
+        }
+
+        crate::io::default_read_exact(self, buf)
+    }
+
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         let total_len = bufs.iter().map(|b| b.len()).sum::<usize>();
         if self.pos == self.cap && total_len >= self.buf.len() {
@@ -396,7 +411,6 @@ impl<R: Seek> Seek for BufReader<R> {
     /// # Example
     ///
     /// ```no_run
-    /// #![feature(seek_convenience)]
     /// use std::{
     ///     io::{self, BufRead, BufReader, Seek},
     ///     fs::File,
@@ -420,5 +434,11 @@ impl<R: Seek> Seek for BufReader<R> {
                 "overflow when subtracting remaining buffer size from inner stream position",
             )
         })
+    }
+}
+
+impl<T> SizeHint for BufReader<T> {
+    fn lower_bound(&self) -> usize {
+        self.buffer().len()
     }
 }

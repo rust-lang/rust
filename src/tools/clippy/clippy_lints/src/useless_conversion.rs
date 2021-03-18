@@ -80,10 +80,10 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                         );
                     }
                 }
-                if match_trait_method(cx, e, &paths::INTO_ITERATOR) && &*name.ident.as_str() == "into_iter" {
+                if match_trait_method(cx, e, &paths::INTO_ITERATOR) && name.ident.name == sym::into_iter {
                     if let Some(parent_expr) = get_parent_expr(cx, e) {
                         if let ExprKind::MethodCall(ref parent_name, ..) = parent_expr.kind {
-                            if &*parent_name.ident.as_str() != "into_iter" {
+                            if parent_name.ident.name != sym::into_iter {
                                 return;
                             }
                         }

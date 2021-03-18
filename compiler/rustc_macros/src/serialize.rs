@@ -203,7 +203,7 @@ fn encodable_body(
                                 #field_name,
                                 #field_idx,
                                 |__encoder|
-                                ::rustc_serialize::Encodable::encode(#bind_ident, __encoder),
+                                ::rustc_serialize::Encodable::<#encoder_ty>::encode(#bind_ident, __encoder),
                             ) {
                                 ::std::result::Result::Ok(()) => (),
                                 ::std::result::Result::Err(__err)
@@ -237,7 +237,7 @@ fn encodable_body(
                                 __encoder,
                                 #field_idx,
                                 |__encoder|
-                                ::rustc_serialize::Encodable::encode(#bind_ident, __encoder),
+                                ::rustc_serialize::Encodable::<#encoder_ty>::encode(#bind_ident, __encoder),
                             ) {
                                 ::std::result::Result::Ok(()) => (),
                                 ::std::result::Result::Err(__err)

@@ -1,5 +1,5 @@
 error[E0632]: cannot provide explicit generic arguments when `impl Trait` is used in argument position
-  --> $DIR/impl-trait-with-const-arguments.rs:24:20
+  --> $DIR/impl-trait-with-const-arguments.rs:23:20
    |
 LL |     assert_eq!(f::<4usize>(Usizable), 20usize);
    |                    ^^^^^^ explicit generic argument not allowed

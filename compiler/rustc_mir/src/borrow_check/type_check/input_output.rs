@@ -39,10 +39,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             user_provided_sig = None;
         } else {
             let typeck_results = self.tcx().typeck(mir_def_id);
-            user_provided_sig = match typeck_results.user_provided_sigs.get(&mir_def_id.to_def_id())
-            {
-                None => None,
-                Some(user_provided_poly_sig) => {
+            user_provided_sig = typeck_results.user_provided_sigs.get(&mir_def_id.to_def_id()).map(
+                |user_provided_poly_sig| {
                     // Instantiate the canonicalized variables from
                     // user-provided signature (e.g., the `_` in the code
                     // above) with fresh variables.
@@ -54,18 +52,16 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     // Replace the bound items in the fn sig with fresh
                     // variables, so that they represent the view from
                     // "inside" the closure.
-                    Some(
-                        self.infcx
-                            .replace_bound_vars_with_fresh_vars(
-                                body.span,
-                                LateBoundRegionConversionTime::FnCall,
-                                poly_sig,
-                            )
-                            .0,
-                    )
-                }
-            }
-        };
+                    self.infcx
+                        .replace_bound_vars_with_fresh_vars(
+                            body.span,
+                            LateBoundRegionConversionTime::FnCall,
+                            poly_sig,
+                        )
+                        .0
+                },
+            );
+        }
 
         debug!(
             "equate_inputs_and_outputs: normalized_input_tys = {:?}, local_decls = {:?}",
@@ -107,11 +103,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
         }
 
-        assert!(
-            body.yield_ty.is_some() && universal_regions.yield_ty.is_some()
-                || body.yield_ty.is_none() && universal_regions.yield_ty.is_none()
-        );
-        if let Some(mir_yield_ty) = body.yield_ty {
+        assert!(body.yield_ty().is_some() == universal_regions.yield_ty.is_some());
+        if let Some(mir_yield_ty) = body.yield_ty() {
             let ur_yield_ty = universal_regions.yield_ty.unwrap();
             let yield_span = body.local_decls[RETURN_PLACE].source_info.span;
             self.equate_normalized_input_or_output(ur_yield_ty, mir_yield_ty, yield_span);

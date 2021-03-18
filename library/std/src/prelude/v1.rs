@@ -1,6 +1,6 @@
 //! The first version of the prelude of The Rust Standard Library.
 //!
-//! See the [module-level documentation](../index.html) for more.
+//! See the [module-level documentation](super) for more.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -41,18 +41,23 @@ pub use crate::result::Result::{self, Err, Ok};
 pub use core::prelude::v1::{
     asm, assert, cfg, column, compile_error, concat, concat_idents, env, file, format_args,
     format_args_nl, global_asm, include, include_bytes, include_str, line, llvm_asm, log_syntax,
-    module_path, option_env, stringify, trace_macros,
+    module_path, option_env, stringify, trace_macros, Clone, Copy, Debug, Default, Eq, Hash, Ord,
+    PartialEq, PartialOrd,
 };
 
-// FIXME: Attribute and derive macros are not documented because for them rustdoc generates
+// FIXME: Attribute and internal derive macros are not documented because for them rustdoc generates
 // dead links which fail link checker testing.
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-#[allow(deprecated)]
+#[allow(deprecated, deprecated_in_future)]
 #[doc(hidden)]
 pub use core::prelude::v1::{
-    bench, global_allocator, test, test_case, Clone, Copy, Debug, Default, Eq, Hash, Ord,
-    PartialEq, PartialOrd, RustcDecodable, RustcEncodable,
+    bench, global_allocator, test, test_case, RustcDecodable, RustcEncodable,
 };
+
+#[cfg(not(bootstrap))]
+#[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+#[doc(hidden)]
+pub use core::prelude::v1::derive;
 
 #[unstable(
     feature = "cfg_accessible",
@@ -61,6 +66,15 @@ pub use core::prelude::v1::{
 )]
 #[doc(hidden)]
 pub use core::prelude::v1::cfg_accessible;
+
+#[cfg(not(bootstrap))]
+#[unstable(
+    feature = "cfg_eval",
+    issue = "82679",
+    reason = "`cfg_eval` is a recently implemented feature"
+)]
+#[doc(hidden)]
+pub use core::prelude::v1::cfg_eval;
 
 // The file so far is equivalent to src/libcore/prelude/v1.rs,
 // and below to src/liballoc/prelude.rs.

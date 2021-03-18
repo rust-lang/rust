@@ -5,6 +5,8 @@ title: Tracking Issue for XXX
 labels: C-tracking-issue
 ---
 <!--
+NOTE: For library features, please use the "Library Tracking Issue" template instead.
+
 Thank you for creating a tracking issue! 📜 Tracking issues are for tracking a
 feature from implementation to stabilisation. Make sure to include the relevant
 RFC for the feature if it has one. Otherwise provide a short summary of the

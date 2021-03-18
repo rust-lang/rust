@@ -1,3 +1,4 @@
+// run-rustfix
 struct Foo;
 
 impl Drop for Foo {

@@ -160,7 +160,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         module: &ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> Result<(), FatalError> {
-        back::write::optimize(cgcx, diag_handler, module, config)
+        Ok(back::write::optimize(cgcx, diag_handler, module, config))
     }
     unsafe fn optimize_thin(
         cgcx: &CodegenContext<Self>,
@@ -298,21 +298,19 @@ impl CodegenBackend for LlvmCodegenBackend {
         codegen_results: CodegenResults,
         outputs: &OutputFilenames,
     ) -> Result<(), ErrorReported> {
+        use crate::back::archive::LlvmArchiveBuilder;
+        use rustc_codegen_ssa::back::link::link_binary;
+
         // Run the linker on any artifacts that resulted from the LLVM run.
         // This should produce either a finished executable or library.
-        sess.time("link_crate", || {
-            use crate::back::archive::LlvmArchiveBuilder;
-            use rustc_codegen_ssa::back::link::link_binary;
-
-            let target_cpu = crate::llvm_util::target_cpu(sess);
-            link_binary::<LlvmArchiveBuilder<'_>>(
-                sess,
-                &codegen_results,
-                outputs,
-                &codegen_results.crate_name.as_str(),
-                target_cpu,
-            );
-        });
+        let target_cpu = crate::llvm_util::target_cpu(sess);
+        link_binary::<LlvmArchiveBuilder<'_>>(
+            sess,
+            &codegen_results,
+            outputs,
+            &codegen_results.crate_name.as_str(),
+            target_cpu,
+        );
 
         Ok(())
     }
@@ -353,12 +351,7 @@ impl ModuleLlvm {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(cgcx.fewer_names);
             let llmod_raw = back::lto::parse_module(llcx, name, buffer, handler)?;
-
-            let split_dwarf_file = cgcx
-                .output_filenames
-                .split_dwarf_filename(cgcx.split_dwarf_kind, Some(name.to_str().unwrap()));
-            let tm_factory_config = TargetMachineFactoryConfig { split_dwarf_file };
-
+            let tm_factory_config = TargetMachineFactoryConfig::new(&cgcx, name.to_str().unwrap());
             let tm = match (cgcx.tm_factory)(tm_factory_config) {
                 Ok(m) => m,
                 Err(e) => {

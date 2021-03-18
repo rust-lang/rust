@@ -1,0 +1,52 @@
+error: expected one of `)`, `,`, `.`, `?`, or an operator, found `é`
+  --> $DIR/multibyte-char-use-seperator-issue-80134.rs:4:8
+   |
+LL |     (()é);
+   |        ^
+   |        |
+   |        expected one of `)`, `,`, `.`, `?`, or an operator
+   |        help: missing `,`
+
+error: expected one of `)`, `,`, `.`, `?`, or an operator, found `氷`
+  --> $DIR/multibyte-char-use-seperator-issue-80134.rs:8:8
+   |
+LL |     (()氷);
+   |        -^
+   |        |
+   |        expected one of `)`, `,`, `.`, `?`, or an operator
+   |        help: missing `,`
+
+error[E0425]: cannot find value `é` in this scope
+  --> $DIR/multibyte-char-use-seperator-issue-80134.rs:4:8
+   |
+LL |     (()é);
+   |        ^ not found in this scope
+
+error[E0425]: cannot find value `氷` in this scope
+  --> $DIR/multibyte-char-use-seperator-issue-80134.rs:8:8
+   |
+LL |     (()氷);
+   |        ^^ not found in this scope
+
+error[E0658]: non-ascii idents are not fully supported
+  --> $DIR/multibyte-char-use-seperator-issue-80134.rs:4:8
+   |
+LL |     (()é);
+   |        ^
+   |
+   = note: see issue #55467 <https://github.com/rust-lang/rust/issues/55467> for more information
+   = help: add `#![feature(non_ascii_idents)]` to the crate attributes to enable
+
+error[E0658]: non-ascii idents are not fully supported
+  --> $DIR/multibyte-char-use-seperator-issue-80134.rs:8:8
+   |
+LL |     (()氷);
+   |        ^^
+   |
+   = note: see issue #55467 <https://github.com/rust-lang/rust/issues/55467> for more information
+   = help: add `#![feature(non_ascii_idents)]` to the crate attributes to enable
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0425, E0658.
+For more information about an error, try `rustc --explain E0425`.

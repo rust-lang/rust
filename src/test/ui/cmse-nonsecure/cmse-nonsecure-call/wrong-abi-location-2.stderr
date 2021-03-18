@@ -1,0 +1,11 @@
+error[E0781]: the `"C-cmse-nonsecure-call"` ABI is only allowed on function pointers.
+  --> $DIR/wrong-abi-location-2.rs:6:1
+   |
+LL | / extern "C-cmse-nonsecure-call" {
+LL | |     fn test(); //~ ERROR [E0781]
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0781`.

@@ -8,6 +8,14 @@ use crate::utils::span_lint_and_help;
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `as` conversions.
     ///
+    /// Note that this lint is specialized in linting *every single* use of `as`
+    /// regardless of whether good alternatives exist or not.
+    /// If you want more precise lints for `as`, please consider using these separate lints:
+    /// `unnecessary_cast`, `cast_lossless/possible_truncation/possible_wrap/precision_loss/sign_loss`,
+    /// `fn_to_numeric_cast(_with_truncation)`, `char_lit_as_u8`, `ref_to_mut` and `ptr_as_ptr`.
+    /// There is a good explanation the reason why this lint should work in this way and how it is useful
+    /// [in this issue](https://github.com/rust-lang/rust-clippy/issues/5122).
+    ///
     /// **Why is this bad?** `as` conversions will perform many kinds of
     /// conversions, including silently lossy conversions and dangerous coercions.
     /// There are cases when it makes sense to use `as`, so the lint is

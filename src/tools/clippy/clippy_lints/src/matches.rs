@@ -1,20 +1,21 @@
 use crate::consts::{constant, miri_to_const, Constant};
 use crate::utils::sugg::Sugg;
-use crate::utils::usage::is_unused;
+use crate::utils::visitors::LocalUsedVisitor;
 use crate::utils::{
-    expr_block, get_arg_name, get_parent_expr, in_macro, indent_of, is_allowed, is_expn_of, is_refutable,
-    is_type_diagnostic_item, is_wild, match_qpath, match_type, match_var, meets_msrv, multispan_sugg, remove_blocks,
-    snippet, snippet_block, snippet_with_applicability, span_lint_and_help, span_lint_and_note, span_lint_and_sugg,
-    span_lint_and_then,
+    expr_block, get_parent_expr, implements_trait, in_macro, indent_of, is_allowed, is_expn_of, is_refutable,
+    is_type_diagnostic_item, is_wild, match_qpath, match_type, meets_msrv, multispan_sugg, path_to_local,
+    path_to_local_id, peel_hir_pat_refs, peel_mid_ty_refs, peel_n_hir_expr_refs, remove_blocks, snippet, snippet_block,
+    snippet_opt, snippet_with_applicability, span_lint_and_help, span_lint_and_note, span_lint_and_sugg,
+    span_lint_and_then, strip_pat_refs,
 };
 use crate::utils::{paths, search_same, SpanlessEq, SpanlessHash};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_hir::def::CtorKind;
 use rustc_hir::{
-    Arm, BindingAnnotation, Block, BorrowKind, Expr, ExprKind, Guard, Local, MatchSource, Mutability, Node, Pat,
+    Arm, BindingAnnotation, Block, BorrowKind, Expr, ExprKind, Guard, HirId, Local, MatchSource, Mutability, Node, Pat,
     PatKind, QPath, RangeEnd,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -23,10 +24,10 @@ use rustc_middle::ty::{self, Ty, TyS};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::{Span, Spanned};
-use rustc_span::{sym, Symbol};
+use rustc_span::sym;
 use std::cmp::Ordering;
 use std::collections::hash_map::Entry;
-use std::collections::Bound;
+use std::ops::Bound;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for matches with a single arm where an `if let`
@@ -616,9 +617,9 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
             if let PatKind::TupleStruct(
                 QPath::Resolved(None, ref variant_name), ref args, _) = arms[0].pat.kind;
             if args.len() == 1;
-            if let Some(arg) = get_arg_name(&args[0]);
+            if let PatKind::Binding(_, arg, ..) = strip_pat_refs(&args[0]).kind;
             let body = remove_blocks(&arms[0].body);
-            if match_var(body, arg);
+            if path_to_local_id(body, arg);
 
             then {
                 let mut applicability = Applicability::MachineApplicable;
@@ -689,10 +690,9 @@ fn check_single_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], exp
             if stmts.len() == 1 && block_expr.is_none() || stmts.is_empty() && block_expr.is_some() {
                 // single statement/expr "else" block, don't lint
                 return;
-            } else {
-                // block with 2+ statements or 1 expr and 1+ statement
-                Some(els)
             }
+            // block with 2+ statements or 1 expr and 1+ statement
+            Some(els)
         } else {
             // not a block, don't lint
             return;
@@ -729,20 +729,60 @@ fn report_single_match_single_pattern(
     let els_str = els.map_or(String::new(), |els| {
         format!(" else {}", expr_block(cx, els, None, "..", Some(expr.span)))
     });
+
+    let (msg, sugg) = if_chain! {
+        let (pat, pat_ref_count) = peel_hir_pat_refs(arms[0].pat);
+        if let PatKind::Path(_) | PatKind::Lit(_) = pat.kind;
+        let (ty, ty_ref_count) = peel_mid_ty_refs(cx.typeck_results().expr_ty(ex));
+        if let Some(trait_id) = cx.tcx.lang_items().structural_peq_trait();
+        if ty.is_integral() || ty.is_char() || ty.is_str() || implements_trait(cx, ty, trait_id, &[]);
+        then {
+            // scrutinee derives PartialEq and the pattern is a constant.
+            let pat_ref_count = match pat.kind {
+                // string literals are already a reference.
+                PatKind::Lit(Expr { kind: ExprKind::Lit(lit), .. }) if lit.node.is_str() => pat_ref_count + 1,
+                _ => pat_ref_count,
+            };
+            // References are only implicitly added to the pattern, so no overflow here.
+            // e.g. will work: match &Some(_) { Some(_) => () }
+            // will not: match Some(_) { &Some(_) => () }
+            let ref_count_diff = ty_ref_count - pat_ref_count;
+
+            // Try to remove address of expressions first.
+            let (ex, removed) = peel_n_hir_expr_refs(ex, ref_count_diff);
+            let ref_count_diff = ref_count_diff - removed;
+
+            let msg = "you seem to be trying to use `match` for an equality check. Consider using `if`";
+            let sugg = format!(
+                "if {} == {}{} {}{}",
+                snippet(cx, ex.span, ".."),
+                // PartialEq for different reference counts may not exist.
+                "&".repeat(ref_count_diff),
+                snippet(cx, arms[0].pat.span, ".."),
+                expr_block(cx, &arms[0].body, None, "..", Some(expr.span)),
+                els_str,
+            );
+            (msg, sugg)
+        } else {
+            let msg = "you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`";
+            let sugg = format!(
+                "if let {} = {} {}{}",
+                snippet(cx, arms[0].pat.span, ".."),
+                snippet(cx, ex.span, ".."),
+                expr_block(cx, &arms[0].body, None, "..", Some(expr.span)),
+                els_str,
+            );
+            (msg, sugg)
+        }
+    };
+
     span_lint_and_sugg(
         cx,
         lint,
         expr.span,
-        "you seem to be trying to use match for destructuring a single pattern. Consider using `if \
-         let`",
+        msg,
         "try this",
-        format!(
-            "if let {} = {} {}{}",
-            snippet(cx, arms[0].pat.span, ".."),
-            snippet(cx, ex.span, ".."),
-            expr_block(cx, &arms[0].body, None, "..", Some(expr.span)),
-            els_str,
-        ),
+        sugg,
         Applicability::HasPlaceholders,
     );
 }
@@ -871,7 +911,7 @@ fn check_overlapping_arms<'tcx>(cx: &LateContext<'tcx>, ex: &'tcx Expr<'_>, arms
     }
 }
 
-fn check_wild_err_arm(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
+fn check_wild_err_arm<'tcx>(cx: &LateContext<'tcx>, ex: &Expr<'tcx>, arms: &[Arm<'tcx>]) {
     let ex_ty = cx.typeck_results().expr_ty(ex).peel_refs();
     if is_type_diagnostic_item(cx, ex_ty, sym::result_type) {
         for arm in arms {
@@ -883,8 +923,10 @@ fn check_wild_err_arm(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
                     if !matching_wild {
                         // Looking for unused bindings (i.e.: `_e`)
                         inner.iter().for_each(|pat| {
-                            if let PatKind::Binding(.., ident, None) = &pat.kind {
-                                if ident.as_str().starts_with('_') && is_unused(ident, arm.body) {
+                            if let PatKind::Binding(_, id, ident, None) = pat.kind {
+                                if ident.as_str().starts_with('_')
+                                    && !LocalUsedVisitor::new(cx, id).check_expr(arm.body)
+                                {
                                     ident_bind_name = (&ident.name.as_str()).to_string();
                                     matching_wild = true;
                                 }
@@ -1131,9 +1173,9 @@ fn check_wild_in_or_pats(cx: &LateContext<'_>, arms: &[Arm<'_>]) {
                     cx,
                     WILDCARD_IN_OR_PATTERNS,
                     arm.pat.span,
-                    "wildcard pattern covers any other pattern as it will match anyway.",
+                    "wildcard pattern covers any other pattern as it will match anyway",
                     None,
-                    "Consider handling `_` separately.",
+                    "consider handling `_` separately",
                 );
             }
         }
@@ -1165,11 +1207,11 @@ fn find_matches_sugg(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr
         if b0 != b1;
         let if_guard = &b0_arms[0].guard;
         if if_guard.is_none() || b0_arms.len() == 1;
-        if b0_arms[0].attrs.is_empty();
+        if cx.tcx.hir().attrs(b0_arms[0].hir_id).is_empty();
         if b0_arms[1..].iter()
             .all(|arm| {
                 find_bool_lit(&arm.body.kind, desugared).map_or(false, |b| b == b0) &&
-                arm.guard.is_none() && arm.attrs.is_empty()
+                arm.guard.is_none() && cx.tcx.hir().attrs(arm.hir_id).is_empty()
             });
         then {
             // The suggestion may be incorrect, because some arms can have `cfg` attributes
@@ -1186,6 +1228,14 @@ fn find_matches_sugg(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr
             } else {
                 pat
             };
+
+            // strip potential borrows (#6503), but only if the type is a reference
+            let mut ex_new = ex;
+            if let ExprKind::AddrOf(BorrowKind::Ref, .., ex_inner) = ex.kind {
+                if let ty::Ref(..) = cx.typeck_results().expr_ty(&ex_inner).kind() {
+                    ex_new = ex_inner;
+                }
+            };
             span_lint_and_sugg(
                 cx,
                 MATCH_LIKE_MATCHES_MACRO,
@@ -1195,7 +1245,7 @@ fn find_matches_sugg(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr
                 format!(
                     "{}matches!({}, {})",
                     if b0 { "" } else { "!" },
-                    snippet_with_applicability(cx, ex.span, "..", &mut applicability),
+                    snippet_with_applicability(cx, ex_new.span, "..", &mut applicability),
                     pat_and_guard,
                 ),
                 applicability,
@@ -1238,6 +1288,24 @@ fn check_match_single_binding<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[A
     if in_macro(expr.span) || arms.len() != 1 || is_refutable(cx, arms[0].pat) {
         return;
     }
+
+    // HACK:
+    // This is a hack to deal with arms that are excluded by macros like `#[cfg]`. It is only used here
+    // to prevent false positives as there is currently no better way to detect if code was excluded by
+    // a macro. See PR #6435
+    if_chain! {
+        if let Some(match_snippet) = snippet_opt(cx, expr.span);
+        if let Some(arm_snippet) = snippet_opt(cx, arms[0].span);
+        if let Some(ex_snippet) = snippet_opt(cx, ex.span);
+        let rest_snippet = match_snippet.replace(&arm_snippet, "").replace(&ex_snippet, "");
+        if rest_snippet.contains("=>");
+        then {
+            // The code it self contains another thick arrow "=>"
+            // -> Either another arm or a comment
+            return;
+        }
+    }
+
     let matched_vars = ex.span;
     let bind_names = arms[0].pat.span;
     let match_body = remove_blocks(&arms[0].body);
@@ -1527,7 +1595,17 @@ where
                 }
             },
             (&Kind::End(a, _), &Kind::Start(b, _)) if a != Bound::Included(b) => (),
-            _ => return Some((a.range(), b.range())),
+            _ => {
+                // skip if the range `a` is completely included into the range `b`
+                if let Ordering::Equal | Ordering::Less = a.cmp(&b) {
+                    let kind_a = Kind::End(a.range().node.1, a.range());
+                    let kind_b = Kind::End(b.range().node.1, b.range());
+                    if let Ordering::Equal | Ordering::Greater = kind_a.cmp(&kind_b) {
+                        return None;
+                    }
+                }
+                return Some((a.range(), b.range()));
+            },
         }
     }
 
@@ -1795,13 +1873,6 @@ fn test_overlapping() {
 
 /// Implementation of `MATCH_SAME_ARMS`.
 fn lint_match_arms<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) {
-    fn same_bindings<'tcx>(lhs: &FxHashMap<Symbol, Ty<'tcx>>, rhs: &FxHashMap<Symbol, Ty<'tcx>>) -> bool {
-        lhs.len() == rhs.len()
-            && lhs
-                .iter()
-                .all(|(name, l_ty)| rhs.get(name).map_or(false, |r_ty| TyS::same_type(l_ty, r_ty)))
-    }
-
     if let ExprKind::Match(_, ref arms, MatchSource::Normal) = expr.kind {
         let hash = |&(_, arm): &(usize, &Arm<'_>)| -> u64 {
             let mut h = SpanlessHash::new(cx);
@@ -1813,12 +1884,38 @@ fn lint_match_arms<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) {
             let min_index = usize::min(lindex, rindex);
             let max_index = usize::max(lindex, rindex);
 
+            let mut local_map: FxHashMap<HirId, HirId> = FxHashMap::default();
+            let eq_fallback = |a: &Expr<'_>, b: &Expr<'_>| {
+                if_chain! {
+                    if let Some(a_id) = path_to_local(a);
+                    if let Some(b_id) = path_to_local(b);
+                    let entry = match local_map.entry(a_id) {
+                        Entry::Vacant(entry) => entry,
+                        // check if using the same bindings as before
+                        Entry::Occupied(entry) => return *entry.get() == b_id,
+                    };
+                    // the names technically don't have to match; this makes the lint more conservative
+                    if cx.tcx.hir().name(a_id) == cx.tcx.hir().name(b_id);
+                    if TyS::same_type(cx.typeck_results().expr_ty(a), cx.typeck_results().expr_ty(b));
+                    if pat_contains_local(lhs.pat, a_id);
+                    if pat_contains_local(rhs.pat, b_id);
+                    then {
+                        entry.insert(b_id);
+                        true
+                    } else {
+                        false
+                    }
+                }
+            };
             // Arms with a guard are ignored, those can’t always be merged together
             // This is also the case for arms in-between each there is an arm with a guard
-            (min_index..=max_index).all(|index| arms[index].guard.is_none()) &&
-                SpanlessEq::new(cx).eq_expr(&lhs.body, &rhs.body) &&
-                // all patterns should have the same bindings
-                same_bindings(&bindings(cx, &lhs.pat), &bindings(cx, &rhs.pat))
+            (min_index..=max_index).all(|index| arms[index].guard.is_none())
+                && SpanlessEq::new(cx)
+                    .expr_fallback(eq_fallback)
+                    .eq_expr(&lhs.body, &rhs.body)
+                // these checks could be removed to allow unused bindings
+                && bindings_eq(lhs.pat, local_map.keys().copied().collect())
+                && bindings_eq(rhs.pat, local_map.values().copied().collect())
         };
 
         let indexed_arms: Vec<(usize, &Arm<'_>)> = arms.iter().enumerate().collect();
@@ -1861,50 +1958,18 @@ fn lint_match_arms<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) {
     }
 }
 
-/// Returns the list of bindings in a pattern.
-fn bindings<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'_>) -> FxHashMap<Symbol, Ty<'tcx>> {
-    fn bindings_impl<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'_>, map: &mut FxHashMap<Symbol, Ty<'tcx>>) {
-        match pat.kind {
-            PatKind::Box(ref pat) | PatKind::Ref(ref pat, _) => bindings_impl(cx, pat, map),
-            PatKind::TupleStruct(_, pats, _) => {
-                for pat in pats {
-                    bindings_impl(cx, pat, map);
-                }
-            },
-            PatKind::Binding(.., ident, ref as_pat) => {
-                if let Entry::Vacant(v) = map.entry(ident.name) {
-                    v.insert(cx.typeck_results().pat_ty(pat));
-                }
-                if let Some(ref as_pat) = *as_pat {
-                    bindings_impl(cx, as_pat, map);
-                }
-            },
-            PatKind::Or(fields) | PatKind::Tuple(fields, _) => {
-                for pat in fields {
-                    bindings_impl(cx, pat, map);
-                }
-            },
-            PatKind::Struct(_, fields, _) => {
-                for pat in fields {
-                    bindings_impl(cx, &pat.pat, map);
-                }
-            },
-            PatKind::Slice(lhs, ref mid, rhs) => {
-                for pat in lhs {
-                    bindings_impl(cx, pat, map);
-                }
-                if let Some(ref mid) = *mid {
-                    bindings_impl(cx, mid, map);
-                }
-                for pat in rhs {
-                    bindings_impl(cx, pat, map);
-                }
-            },
-            PatKind::Lit(..) | PatKind::Range(..) | PatKind::Wild | PatKind::Path(..) => (),
-        }
-    }
-
-    let mut result = FxHashMap::default();
-    bindings_impl(cx, pat, &mut result);
+fn pat_contains_local(pat: &Pat<'_>, id: HirId) -> bool {
+    let mut result = false;
+    pat.walk_short(|p| {
+        result |= matches!(p.kind, PatKind::Binding(_, binding_id, ..) if binding_id == id);
+        !result
+    });
     result
+}
+
+/// Returns true if all the bindings in the `Pat` are in `ids` and vice versa
+fn bindings_eq(pat: &Pat<'_>, mut ids: FxHashSet<HirId>) -> bool {
+    let mut result = true;
+    pat.each_binding_or_first(&mut |_, id, _, _| result &= ids.remove(&id));
+    result && ids.is_empty()
 }

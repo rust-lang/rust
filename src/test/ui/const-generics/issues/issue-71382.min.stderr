@@ -1,5 +1,5 @@
 error: using function pointers as const generic parameters is forbidden
-  --> $DIR/issue-71382.rs:17:23
+  --> $DIR/issue-71382.rs:16:23
    |
 LL |     fn test<const FN: fn()>(&self) {
    |                       ^^^^

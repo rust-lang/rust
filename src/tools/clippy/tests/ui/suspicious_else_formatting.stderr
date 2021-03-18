@@ -1,0 +1,77 @@
+error: this looks like an `else {..}` but the `else` is missing
+  --> $DIR/suspicious_else_formatting.rs:11:6
+   |
+LL |     } {
+   |      ^
+   |
+   = note: `-D clippy::suspicious-else-formatting` implied by `-D warnings`
+   = note: to remove this lint, add the missing `else` or add a new line before the next block
+
+error: this looks like an `else if` but the `else` is missing
+  --> $DIR/suspicious_else_formatting.rs:15:6
+   |
+LL |     } if foo() {
+   |      ^
+   |
+   = note: to remove this lint, add the missing `else` or add a new line before the second `if`
+
+error: this looks like an `else if` but the `else` is missing
+  --> $DIR/suspicious_else_formatting.rs:22:10
+   |
+LL |         } if foo() {
+   |          ^
+   |
+   = note: to remove this lint, add the missing `else` or add a new line before the second `if`
+
+error: this looks like an `else if` but the `else` is missing
+  --> $DIR/suspicious_else_formatting.rs:30:10
+   |
+LL |         } if foo() {
+   |          ^
+   |
+   = note: to remove this lint, add the missing `else` or add a new line before the second `if`
+
+error: this is an `else {..}` but the formatting might hide it
+  --> $DIR/suspicious_else_formatting.rs:39:6
+   |
+LL |       } else
+   |  ______^
+LL | |     {
+   | |____^
+   |
+   = note: to remove this lint, remove the `else` or remove the new line between `else` and `{..}`
+
+error: this is an `else {..}` but the formatting might hide it
+  --> $DIR/suspicious_else_formatting.rs:44:6
+   |
+LL |       }
+   |  ______^
+LL | |     else
+LL | |     {
+   | |____^
+   |
+   = note: to remove this lint, remove the `else` or remove the new line between `else` and `{..}`
+
+error: this is an `else if` but the formatting might hide it
+  --> $DIR/suspicious_else_formatting.rs:50:6
+   |
+LL |       } else
+   |  ______^
+LL | |     if foo() { // the span of the above error should continue here
+   | |____^
+   |
+   = note: to remove this lint, remove the `else` or remove the new line between `else` and `if`
+
+error: this is an `else if` but the formatting might hide it
+  --> $DIR/suspicious_else_formatting.rs:55:6
+   |
+LL |       }
+   |  ______^
+LL | |     else
+LL | |     if foo() { // the span of the above error should continue here
+   | |____^
+   |
+   = note: to remove this lint, remove the `else` or remove the new line between `else` and `if`
+
+error: aborting due to 8 previous errors
+

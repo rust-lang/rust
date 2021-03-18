@@ -24,42 +24,42 @@ fn main() -> () {
 }
 
 alloc0 (static: FOO, size: 8, align: 4) {
-    ╾─alloc14─╼ 03 00 00 00                         │ ╾──╼....
+    ╾─alloc17─╼ 03 00 00 00                         │ ╾──╼....
 }
 
-alloc14 (size: 48, align: 4) {
+alloc17 (size: 48, align: 4) {
     0x00 │ 00 00 00 00 __ __ __ __ ╾─alloc4──╼ 00 00 00 00 │ ....░░░░╾──╼....
-    0x10 │ 00 00 00 00 __ __ __ __ ╾─alloc7──╼ 02 00 00 00 │ ....░░░░╾──╼....
-    0x20 │ 01 00 00 00 2a 00 00 00 ╾─alloc11─╼ 03 00 00 00 │ ....*...╾──╼....
+    0x10 │ 00 00 00 00 __ __ __ __ ╾─alloc8──╼ 02 00 00 00 │ ....░░░░╾──╼....
+    0x20 │ 01 00 00 00 2a 00 00 00 ╾─alloc13─╼ 03 00 00 00 │ ....*...╾──╼....
 }
 
 alloc4 (size: 0, align: 4) {}
 
-alloc7 (size: 16, align: 4) {
-    ╾─alloc6──╼ 03 00 00 00 ╾─alloc8──╼ 03 00 00 00 │ ╾──╼....╾──╼....
+alloc8 (size: 16, align: 4) {
+    ╾─alloc7──╼ 03 00 00 00 ╾─alloc9──╼ 03 00 00 00 │ ╾──╼....╾──╼....
 }
 
-alloc6 (size: 3, align: 1) {
+alloc7 (size: 3, align: 1) {
     66 6f 6f                                        │ foo
 }
 
-alloc8 (size: 3, align: 1) {
+alloc9 (size: 3, align: 1) {
     62 61 72                                        │ bar
 }
 
-alloc11 (size: 24, align: 4) {
-    0x00 │ ╾─alloc10─╼ 03 00 00 00 ╾─alloc12─╼ 03 00 00 00 │ ╾──╼....╾──╼....
-    0x10 │ ╾─alloc13─╼ 04 00 00 00                         │ ╾──╼....
-}
-
-alloc10 (size: 3, align: 1) {
-    6d 65 68                                        │ meh
+alloc13 (size: 24, align: 4) {
+    0x00 │ ╾─alloc12─╼ 03 00 00 00 ╾─alloc14─╼ 03 00 00 00 │ ╾──╼....╾──╼....
+    0x10 │ ╾─alloc15─╼ 04 00 00 00                         │ ╾──╼....
 }
 
 alloc12 (size: 3, align: 1) {
+    6d 65 68                                        │ meh
+}
+
+alloc14 (size: 3, align: 1) {
     6d 6f 70                                        │ mop
 }
 
-alloc13 (size: 4, align: 1) {
+alloc15 (size: 4, align: 1) {
     6d c3 b6 70                                     │ m..p
 }

@@ -4,7 +4,7 @@ error[E0277]: the size for values of type `[u8]` cannot be known at compilation 
 LL |     type Ty = Vec<[u8]>;
    |     ^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    | 
-  ::: $SRC_DIR/alloc/src/vec.rs:LL:COL
+  ::: $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
    |
 LL | pub struct Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> {
    |                - required by this bound in `Vec`

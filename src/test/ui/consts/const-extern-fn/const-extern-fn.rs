@@ -1,7 +1,7 @@
 // run-pass
 #![feature(const_extern_fn)]
 
-const extern fn foo1(val: u8) -> u8 {
+const extern "C" fn foo1(val: u8) -> u8 {
     val + 1
 }
 
@@ -9,7 +9,7 @@ const extern "C" fn foo2(val: u8) -> u8 {
     val + 1
 }
 
-const unsafe extern fn bar1(val: bool) -> bool {
+const unsafe extern "C" fn bar1(val: bool) -> bool {
     !val
 }
 
@@ -28,8 +28,8 @@ fn main() {
     assert!(bar1_res);
     assert_eq!(bar1_res, bar2_res);
 
-    let _foo1_cast: extern fn(u8) -> u8 = foo1;
-    let _foo2_cast: extern fn(u8) -> u8 = foo2;
-    let _bar1_cast: unsafe extern fn(bool) -> bool = bar1;
-    let _bar2_cast: unsafe extern fn(bool) -> bool = bar2;
+    let _foo1_cast: extern "C" fn(u8) -> u8 = foo1;
+    let _foo2_cast: extern "C" fn(u8) -> u8 = foo2;
+    let _bar1_cast: unsafe extern "C" fn(bool) -> bool = bar1;
+    let _bar2_cast: unsafe extern "C" fn(bool) -> bool = bar2;
 }

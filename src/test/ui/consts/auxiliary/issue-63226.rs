@@ -1,5 +1,5 @@
 pub struct VTable{
-    state:extern fn(),
+    state:extern "C" fn(),
 }
 
 impl VTable{
@@ -11,4 +11,4 @@ impl VTable{
         &VTable{state};
 }
 
-extern fn state() {}
+extern "C" fn state() {}

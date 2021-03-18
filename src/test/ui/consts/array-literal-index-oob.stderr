@@ -10,25 +10,5 @@ note: the lint level is defined here
 LL | #![warn(const_err, unconditional_panic)]
    |                    ^^^^^^^^^^^^^^^^^^^
 
-warning: reaching this expression at runtime will panic or abort
-  --> $DIR/array-literal-index-oob.rs:7:8
-   |
-LL |     &{ [1, 2, 3][4] };
-   |     ---^^^^^^^^^^^^--
-   |        |
-   |        indexing out of bounds: the len is 3 but the index is 4
-   |
-note: the lint level is defined here
-  --> $DIR/array-literal-index-oob.rs:4:9
-   |
-LL | #![warn(const_err, unconditional_panic)]
-   |         ^^^^^^^^^
-
-warning: erroneous constant used
-  --> $DIR/array-literal-index-oob.rs:7:5
-   |
-LL |     &{ [1, 2, 3][4] };
-   |     ^^^^^^^^^^^^^^^^^ referenced constant has errors
-
-warning: 3 warnings emitted
+warning: 1 warning emitted
 

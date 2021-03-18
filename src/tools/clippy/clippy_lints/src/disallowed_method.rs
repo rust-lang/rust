@@ -1,29 +1,47 @@
-use crate::utils::span_lint;
+use crate::utils::{fn_def_id, span_lint};
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::{Expr, ExprKind};
+use rustc_hir::Expr;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Symbol;
 
 declare_clippy_lint! {
-    /// **What it does:** Lints for specific trait methods defined in clippy.toml
+    /// **What it does:** Denies the configured methods and functions in clippy.toml
     ///
     /// **Why is this bad?** Some methods are undesirable in certain contexts,
-    /// and it would be beneficial to lint for them as needed.
+    /// and it's beneficial to lint for them as needed.
     ///
-    /// **Known problems:** None.
+    /// **Known problems:** Currently, you must write each function as a
+    /// fully-qualified path. This lint doesn't support aliases or reexported
+    /// names; be aware that many types in `std` are actually reexports.
+    ///
+    /// For example, if you want to disallow `Duration::as_secs`, your clippy.toml
+    /// configuration would look like
+    /// `disallowed-methods = ["core::time::Duration::as_secs"]` and not
+    /// `disallowed-methods = ["std::time::Duration::as_secs"]` as you might expect.
     ///
     /// **Example:**
     ///
-    /// ```rust,ignore
-    /// // example code where clippy issues a warning
-    /// foo.bad_method(); // Foo::bad_method is disallowed in the configuration
+    /// An example clippy.toml configuration:
+    /// ```toml
+    /// # clippy.toml
+    /// disallowed-methods = ["alloc::vec::Vec::leak", "std::time::Instant::now"]
     /// ```
+    ///
+    /// ```rust,ignore
+    /// // Example code where clippy issues a warning
+    /// let xs = vec![1, 2, 3, 4];
+    /// xs.leak(); // Vec::leak is disallowed in the config.
+    ///
+    /// let _now = Instant::now(); // Instant::now is disallowed in the config.
+    /// ```
+    ///
     /// Use instead:
     /// ```rust,ignore
-    /// // example code which does not raise clippy warning
-    /// goodStruct.bad_method(); // GoodStruct::bad_method is not disallowed
+    /// // Example code which does not raise clippy warning
+    /// let mut xs = Vec::new(); // Vec::new is _not_ disallowed in the config.
+    /// xs.push(123); // Vec::push is _not_ disallowed in the config.
     /// ```
     pub DISALLOWED_METHOD,
     nursery,
@@ -50,14 +68,12 @@ impl_lint_pass!(DisallowedMethod => [DISALLOWED_METHOD]);
 
 impl<'tcx> LateLintPass<'tcx> for DisallowedMethod {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let ExprKind::MethodCall(_path, _, _args, _) = &expr.kind {
-            let def_id = cx.typeck_results().type_dependent_def_id(expr.hir_id).unwrap();
-
-            let method_call = cx.get_def_path(def_id);
-            if self.disallowed.contains(&method_call) {
-                let method = method_call
-                    .iter()
-                    .map(|s| s.to_ident_string())
+        if let Some(def_id) = fn_def_id(cx, expr) {
+            let func_path = cx.get_def_path(def_id);
+            if self.disallowed.contains(&func_path) {
+                let func_path_string = func_path
+                    .into_iter()
+                    .map(Symbol::to_ident_string)
                     .collect::<Vec<_>>()
                     .join("::");
 
@@ -65,7 +81,7 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedMethod {
                     cx,
                     DISALLOWED_METHOD,
                     expr.span,
-                    &format!("use of a disallowed method `{}`", method),
+                    &format!("use of a disallowed method `{}`", func_path_string),
                 );
             }
         }

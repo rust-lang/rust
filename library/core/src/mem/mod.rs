@@ -151,9 +151,7 @@ pub const fn forget<T>(t: T) {
 #[inline]
 #[unstable(feature = "forget_unsized", issue = "none")]
 pub fn forget_unsized<T: ?Sized>(t: T) {
-    // SAFETY: the forget intrinsic could be safe, but there's no point in making it safe since
-    // we'll be implementing this function soon via `ManuallyDrop`
-    unsafe { intrinsics::forget(t) }
+    intrinsics::forget(t)
 }
 
 /// Returns the size of a type in bytes.
@@ -310,7 +308,6 @@ pub const fn size_of<T>() -> usize {
 /// statically-known size, e.g., a slice [`[T]`][slice] or a [trait object],
 /// then `size_of_val` can be used to get the dynamically-known size.
 ///
-/// [slice]: ../../std/primitive.slice.html
 /// [trait object]: ../../book/ch17-02-trait-objects.html
 ///
 /// # Examples
@@ -328,7 +325,8 @@ pub const fn size_of<T>() -> usize {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_size_of_val", issue = "46571")]
 pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
-    intrinsics::size_of_val(val)
+    // SAFETY: `val` is a reference, so it's a valid raw pointer
+    unsafe { intrinsics::size_of_val(val) }
 }
 
 /// Returns the size of the pointed-to value in bytes.
@@ -356,7 +354,6 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 ///       [`size_of_val`] on a reference to a type with an extern type tail.
 ///     - otherwise, it is conservatively not allowed to call this function.
 ///
-/// [slice]: ../../std/primitive.slice.html
 /// [trait object]: ../../book/ch17-02-trait-objects.html
 /// [extern type]: ../../unstable-book/language-features/extern-types.html
 ///
@@ -374,8 +371,10 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 /// ```
 #[inline]
 #[unstable(feature = "layout_for_ptr", issue = "69835")]
-pub unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
-    intrinsics::size_of_val(val)
+#[rustc_const_unstable(feature = "const_size_of_val_raw", issue = "46571")]
+pub const unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
+    // SAFETY: the caller must provide a valid raw pointer
+    unsafe { intrinsics::size_of_val(val) }
 }
 
 /// Returns the [ABI]-required minimum alignment of a type.
@@ -419,7 +418,8 @@ pub fn min_align_of<T>() -> usize {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_deprecated(reason = "use `align_of_val` instead", since = "1.2.0")]
 pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
-    intrinsics::min_align_of_val(val)
+    // SAFETY: val is a reference, so it's a valid raw pointer
+    unsafe { intrinsics::min_align_of_val(val) }
 }
 
 /// Returns the [ABI]-required minimum alignment of a type.
@@ -463,7 +463,8 @@ pub const fn align_of<T>() -> usize {
 #[rustc_const_unstable(feature = "const_align_of_val", issue = "46571")]
 #[allow(deprecated)]
 pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
-    intrinsics::min_align_of_val(val)
+    // SAFETY: val is a reference, so it's a valid raw pointer
+    unsafe { intrinsics::min_align_of_val(val) }
 }
 
 /// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to.
@@ -491,7 +492,6 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
 ///       [`align_of_val`] on a reference to a type with an extern type tail.
 ///     - otherwise, it is conservatively not allowed to call this function.
 ///
-/// [slice]: ../../std/primitive.slice.html
 /// [trait object]: ../../book/ch17-02-trait-objects.html
 /// [extern type]: ../../unstable-book/language-features/extern-types.html
 ///
@@ -505,8 +505,10 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
 /// ```
 #[inline]
 #[unstable(feature = "layout_for_ptr", issue = "69835")]
-pub unsafe fn align_of_val_raw<T: ?Sized>(val: *const T) -> usize {
-    intrinsics::min_align_of_val(val)
+#[rustc_const_unstable(feature = "const_align_of_val_raw", issue = "46571")]
+pub const unsafe fn align_of_val_raw<T: ?Sized>(val: *const T) -> usize {
+    // SAFETY: the caller must provide a valid raw pointer
+    unsafe { intrinsics::min_align_of_val(val) }
 }
 
 /// Returns `true` if dropping values of type `T` matters.
@@ -643,7 +645,6 @@ pub unsafe fn zeroed<T>() -> T {
 /// (Notice that the rules around uninitialized integers are not finalized yet, but
 /// until they are, it is advisable to avoid them.)
 ///
-/// [`MaybeUninit<T>`]: MaybeUninit
 /// [uninit]: MaybeUninit::uninit
 /// [assume_init]: MaybeUninit::assume_init
 /// [inv]: MaybeUninit#initialization-invariant
@@ -681,7 +682,8 @@ pub unsafe fn uninitialized<T>() -> T {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn swap<T>(x: &mut T, y: &mut T) {
+#[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+pub const fn swap<T>(x: &mut T, y: &mut T) {
     // SAFETY: the raw pointers have been created from safe mutable references satisfying all the
     // constraints on `ptr::swap_nonoverlapping_one`
     unsafe {
@@ -811,9 +813,16 @@ pub fn take<T: Default>(dest: &mut T) -> T {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[must_use = "if you don't need the old value, you can just assign the new value directly"]
-pub fn replace<T>(dest: &mut T, mut src: T) -> T {
-    swap(dest, &mut src);
-    src
+#[rustc_const_unstable(feature = "const_replace", issue = "83164")]
+pub const fn replace<T>(dest: &mut T, src: T) -> T {
+    // SAFETY: We read from `dest` but directly write `src` into it afterwards,
+    // such that the old value is not duplicated. Nothing is dropped and
+    // nothing here can panic.
+    unsafe {
+        let result = ptr::read(dest);
+        ptr::write(dest, src);
+        result
+    }
 }
 
 /// Disposes of a value.
@@ -877,6 +886,7 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 /// ```
 ///
 /// [`RefCell`]: crate::cell::RefCell
+#[doc(alias = "delete")]
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn drop<T>(_x: T) {}
@@ -923,7 +933,8 @@ pub fn drop<T>(_x: T) {}
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
+#[rustc_const_unstable(feature = "const_transmute_copy", issue = "83165")]
+pub const unsafe fn transmute_copy<T, U>(src: &T) -> U {
     // If U has a higher alignment requirement, src may not be suitably aligned.
     if align_of::<U>() > align_of::<T>() {
         // SAFETY: `src` is a reference which is guaranteed to be valid for reads.

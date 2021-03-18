@@ -3,7 +3,6 @@
 
 #![cfg_attr(full, feature(const_generics))]
 #![cfg_attr(full, allow(incomplete_features))]
-#![cfg_attr(min, feature(min_const_generics))]
 
 pub fn arr_len<const N: usize>() {
     let _: [u8; N + 1];

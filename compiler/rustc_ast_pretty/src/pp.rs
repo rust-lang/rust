@@ -75,7 +75,7 @@
 //! breaking inconsistently to become
 //!
 //! ```
-//! foo(hello, there
+//! foo(hello, there,
 //!     good, friends);
 //! ```
 //!
@@ -83,7 +83,7 @@
 //!
 //! ```
 //! foo(hello,
-//!     there
+//!     there,
 //!     good,
 //!     friends);
 //! ```

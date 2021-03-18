@@ -94,6 +94,5 @@ fn main() {
     'LOOP: for _ in 0 .. 9 {
         break LOOP;
         //~^ ERROR cannot find value `LOOP` in this scope
-        //~| ERROR `break` with value from a `for` loop
     }
 }

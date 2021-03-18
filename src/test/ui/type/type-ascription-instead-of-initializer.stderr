@@ -14,6 +14,12 @@ LL |     let x: Vec::with_capacity(10, 20);
    |            ^^^^^^^^^^^^^^^^^^ --  -- supplied 2 arguments
    |            |
    |            expected 1 argument
+   |
+note: associated function defined here
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+   |
+LL |     pub fn with_capacity(capacity: usize) -> Self {
+   |            ^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

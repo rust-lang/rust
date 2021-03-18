@@ -1,0 +1,23 @@
+error[E0277]: the trait bound `Option<Bar>: Copy` is not satisfied
+  --> $DIR/nll-fail.rs:12:37
+   |
+LL |         let arr: [Option<Bar>; 2] = [x; 2];
+   |                                     ^^^^^^ the trait `Copy` is not implemented for `Option<Bar>`
+   |
+   = help: the following implementations were found:
+             <Option<T> as Copy>
+   = note: the `Copy` trait is required because the repeated element will be copied
+
+error[E0277]: the trait bound `Option<Bar>: Copy` is not satisfied
+  --> $DIR/nll-fail.rs:18:37
+   |
+LL |         let arr: [Option<Bar>; 2] = [x; 2];
+   |                                     ^^^^^^ the trait `Copy` is not implemented for `Option<Bar>`
+   |
+   = help: the following implementations were found:
+             <Option<T> as Copy>
+   = note: the `Copy` trait is required because the repeated element will be copied
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -2,7 +2,7 @@
 name: Library Tracking Issue
 about: A tracking issue for an unstable library feature.
 title: Tracking Issue for XXX
-labels: C-tracking-issue T-libs
+labels: C-tracking-issue, T-libs
 ---
 <!--
 Thank you for creating a tracking issue!
@@ -33,20 +33,40 @@ For most library features, it'd be useful to include a summarized version of the
 -->
 
 ```rust
-...
+// core::magic
+
+pub struct Magic;
+
+impl Magic {
+    pub fn magic(self);
+}
 ```
 
 ### Steps / History
 
 <!--
-In the simplest case, this is a PR implementing the feature followed by a PR
-that stabilises the feature. However it's not uncommon for the feature to be
-changed before stabilization. For larger features, the implementation could be
-split up in multiple steps.
+For larger features, more steps might be involved.
+If the feature is changed later, please add those PRs here as well.
 -->
 
-- [ ] Implementation: ...
+- [ ] Implementation: #...
+- [ ] Final commenting period (FCP)
 - [ ] Stabilization PR
+
+<!--
+Once the feature has gone through a few release cycles and there are no
+unresolved questions left, the feature might be ready for stabilization.
+
+If this feature didn't go through the RFC process, a final commenting period
+(FCP) is always needed before stabilization. This works as follows:
+
+A library team member can kick off the stabilization process, at which point
+the rfcbot will ask all the team members to verify they agree with
+stabilization. Once enough members agree and there are no concerns, the final
+commenting period begins: this issue will be marked as such and will be listed
+in the next This Week in Rust newsletter. If no blocking concerns are raised in
+that period of 10 days, a stabilzation PR can be opened by anyone.
+-->
 
 ### Unresolved Questions
 

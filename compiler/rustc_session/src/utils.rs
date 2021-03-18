@@ -1,5 +1,6 @@
 use crate::session::Session;
 use rustc_data_structures::profiling::VerboseTimingGuard;
+use std::path::{Path, PathBuf};
 
 impl Session {
     pub fn timer<'a>(&'a self, what: &'static str) -> VerboseTimingGuard<'a> {
@@ -30,3 +31,25 @@ pub enum NativeLibKind {
 }
 
 rustc_data_structures::impl_stable_hash_via_hash!(NativeLibKind);
+
+/// A path that has been canonicalized along with its original, non-canonicalized form
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct CanonicalizedPath {
+    // Optional since canonicalization can sometimes fail
+    canonicalized: Option<PathBuf>,
+    original: PathBuf,
+}
+
+impl CanonicalizedPath {
+    pub fn new(path: &Path) -> Self {
+        Self { original: path.to_owned(), canonicalized: std::fs::canonicalize(path).ok() }
+    }
+
+    pub fn canonicalized(&self) -> &PathBuf {
+        self.canonicalized.as_ref().unwrap_or(self.original())
+    }
+
+    pub fn original(&self) -> &PathBuf {
+        &self.original
+    }
+}

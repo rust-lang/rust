@@ -1,40 +1,22 @@
 error: literal with an empty format string
-  --> $DIR/write_literal.rs:27:79
+  --> $DIR/write_literal.rs:30:32
    |
-LL |     writeln!(&mut v, "{} of {:b} people know binary, the other half doesn't", 1, 2);
-   |                                                                               ^
+LL |     write!(&mut v, "Hello {}", "world");
+   |                                ^^^^^^^
    |
    = note: `-D clippy::write-literal` implied by `-D warnings`
 
 error: literal with an empty format string
-  --> $DIR/write_literal.rs:28:32
-   |
-LL |     write!(&mut v, "Hello {}", "world");
-   |                                ^^^^^^^
-
-error: literal with an empty format string
-  --> $DIR/write_literal.rs:29:44
+  --> $DIR/write_literal.rs:31:44
    |
 LL |     writeln!(&mut v, "Hello {} {}", world, "world");
    |                                            ^^^^^^^
 
 error: literal with an empty format string
-  --> $DIR/write_literal.rs:30:34
+  --> $DIR/write_literal.rs:32:34
    |
 LL |     writeln!(&mut v, "Hello {}", "world");
    |                                  ^^^^^^^
-
-error: literal with an empty format string
-  --> $DIR/write_literal.rs:31:38
-   |
-LL |     writeln!(&mut v, "10 / 4 is {}", 2.5);
-   |                                      ^^^
-
-error: literal with an empty format string
-  --> $DIR/write_literal.rs:32:36
-   |
-LL |     writeln!(&mut v, "2 + 1 = {}", 3);
-   |                                    ^
 
 error: literal with an empty format string
   --> $DIR/write_literal.rs:37:33
@@ -84,5 +66,5 @@ error: literal with an empty format string
 LL |     writeln!(&mut v, "{bar} {foo}", foo = "hello", bar = "world");
    |                                                          ^^^^^^^
 
-error: aborting due to 14 previous errors
+error: aborting due to 11 previous errors
 

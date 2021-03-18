@@ -1,11 +1,12 @@
 extern crate a;
 
 #[link(name = "b", kind = "static")]
-extern {
+extern "C" {
     pub fn b();
 }
 
-
 fn main() {
-    unsafe { b(); }
+    unsafe {
+        b();
+    }
 }

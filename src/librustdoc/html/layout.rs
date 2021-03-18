@@ -1,5 +1,6 @@
-use std::collections::HashMap;
 use std::path::PathBuf;
+
+use rustc_data_structures::fx::FxHashMap;
 
 use crate::externalfiles::ExternalHtml;
 use crate::html::escape::Escape;
@@ -11,7 +12,7 @@ crate struct Layout {
     crate logo: String,
     crate favicon: String,
     crate external_html: ExternalHtml,
-    crate default_settings: HashMap<String, String>,
+    crate default_settings: FxHashMap<String, String>,
     crate krate: String,
     /// The given user css file which allow to customize the generated
     /// documentation theme.
@@ -57,6 +58,7 @@ crate fn render<T: Print, S: Print>(
     {style_files}\
     <script id=\"default-settings\"{default_settings}></script>\
     <script src=\"{static_root_path}storage{suffix}.js\"></script>\
+    <script src=\"{root_path}crates{suffix}.js\"></script>\
     <noscript><link rel=\"stylesheet\" href=\"{static_root_path}noscript{suffix}.css\"></noscript>\
     {css_extension}\
     {favicon}\
@@ -74,14 +76,14 @@ crate fn render<T: Print, S: Print>(
     <![endif]-->\
     {before_content}\
     <nav class=\"sidebar\">\
-        <div class=\"sidebar-menu\">&#9776;</div>\
+        <div class=\"sidebar-menu\" role=\"button\">&#9776;</div>\
         {logo}\
         {sidebar}\
     </nav>\
     <div class=\"theme-picker\">\
         <button id=\"theme-picker\" aria-label=\"Pick another theme!\" aria-haspopup=\"menu\">\
             <img src=\"{static_root_path}brush{suffix}.svg\" \
-                 width=\"18\" \
+                 width=\"18\" height=\"18\" \
                  alt=\"Pick another theme!\">\
         </button>\
         <div id=\"theme-choices\" role=\"menu\"></div>\
@@ -101,7 +103,7 @@ crate fn render<T: Print, S: Print>(
                 <button type=\"button\" class=\"help-button\">?</button>
                 <a id=\"settings-menu\" href=\"{root_path}settings.html\">\
                     <img src=\"{static_root_path}wheel{suffix}.svg\" \
-                         width=\"18\" \
+                         width=\"18\" height=\"18\" \
                          alt=\"Change settings\">\
                 </a>\
             </div>\
@@ -111,14 +113,10 @@ crate fn render<T: Print, S: Print>(
     <section id=\"search\" class=\"content hidden\"></section>\
     <section class=\"footer\"></section>\
     {after_content}\
-    <script>\
-        window.rootPath = \"{root_path}\";\
-        window.currentCrate = \"{krate}\";\
-    </script>\
+    <div id=\"rustdoc-vars\" data-root-path=\"{root_path}\" data-current-crate=\"{krate}\" \
+       data-search-js=\"{root_path}search-index{suffix}.js\"></div>
     <script src=\"{static_root_path}main{suffix}.js\"></script>\
-    {static_extra_scripts}\
     {extra_scripts}\
-    <script defer src=\"{root_path}search-index{suffix}.js\"></script>\
 </body>\
 </html>",
         css_extension = if layout.css_file_extension.is_some() {
@@ -137,22 +135,23 @@ crate fn render<T: Print, S: Print>(
         root_path = page.root_path,
         css_class = page.css_class,
         logo = {
-            let p = format!("{}{}", page.root_path, layout.krate);
-            let p = ensure_trailing_slash(&p);
             if layout.logo.is_empty() {
                 format!(
-                    "<a href='{path}index.html'>\
+                    "<a href='{root}{path}index.html'>\
                      <div class='logo-container rust-logo'>\
                      <img src='{static_root_path}rust-logo{suffix}.png' alt='logo'></div></a>",
-                    path = p,
+                    root = page.root_path,
+                    path = ensure_trailing_slash(&layout.krate),
                     static_root_path = static_root_path,
                     suffix = page.resource_suffix
                 )
             } else {
                 format!(
-                    "<a href='{}index.html'>\
-                     <div class='logo-container'><img src='{}' alt='logo'></div></a>",
-                    p, layout.logo
+                    "<a href='{root}{path}index.html'>\
+                     <div class='logo-container'><img src='{logo}' alt='logo'></div></a>",
+                    root = page.root_path,
+                    path = ensure_trailing_slash(&layout.krate),
+                    logo = layout.logo
                 )
             }
         },
@@ -196,7 +195,7 @@ crate fn render<T: Print, S: Print>(
             ))
             .collect::<String>(),
         suffix = page.resource_suffix,
-        static_extra_scripts = page
+        extra_scripts = page
             .static_extra_scripts
             .iter()
             .map(|e| {
@@ -206,17 +205,13 @@ crate fn render<T: Print, S: Print>(
                     extra_script = e
                 )
             })
-            .collect::<String>(),
-        extra_scripts = page
-            .extra_scripts
-            .iter()
-            .map(|e| {
+            .chain(page.extra_scripts.iter().map(|e| {
                 format!(
                     "<script src=\"{root_path}{extra_script}.js\"></script>",
                     root_path = page.root_path,
                     extra_script = e
                 )
-            })
+            }))
             .collect::<String>(),
         filter_crates = if layout.generate_search_filter {
             "<select id=\"crate-search\">\

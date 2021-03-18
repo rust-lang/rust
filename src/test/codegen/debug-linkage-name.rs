@@ -26,17 +26,17 @@ pub mod xyz {
     // CHECK: !DISubprogram(name: "e",
     // CHECK:               linkageName:
     // CHECK-SAME:          line: 29,
-    pub extern fn e() {}
+    pub extern "C" fn e() {}
 
     // CHECK: !DISubprogram(name: "f",
     // CHECK-NOT:           linkageName:
     // CHECK-SAME:          line: 35,
     #[no_mangle]
-    pub extern fn f() {}
+    pub extern "C" fn f() {}
 
     // CHECK: !DISubprogram(name: "g",
     // CHECK-NOT:           linkageName:
     // CHECK-SAME:          line: 41,
     #[export_name = "g"]
-    pub extern fn g() {}
+    pub extern "C" fn g() {}
 }

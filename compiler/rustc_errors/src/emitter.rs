@@ -644,6 +644,8 @@ impl EmitterWriter {
         code_offset: usize,
         margin: Margin,
     ) {
+        // Tabs are assumed to have been replaced by spaces in calling code.
+        debug_assert!(!source_string.contains('\t'));
         let line_len = source_string.len();
         // Create the source line we will highlight.
         let left = margin.left(line_len);
@@ -707,7 +709,7 @@ impl EmitterWriter {
         }
 
         let source_string = match file.get_line(line.line_index - 1) {
-            Some(s) => s,
+            Some(s) => replace_tabs(&*s),
             None => return Vec::new(),
         };
 
@@ -1376,8 +1378,17 @@ impl EmitterWriter {
                     let file = annotated_file.file.clone();
                     let line = &annotated_file.lines[line_idx];
                     if let Some(source_string) = file.get_line(line.line_index - 1) {
-                        let leading_whitespace =
-                            source_string.chars().take_while(|c| c.is_whitespace()).count();
+                        let leading_whitespace = source_string
+                            .chars()
+                            .take_while(|c| c.is_whitespace())
+                            .map(|c| {
+                                match c {
+                                    // Tabs are displayed as 4 spaces
+                                    '\t' => 4,
+                                    _ => 1,
+                                }
+                            })
+                            .sum();
                         if source_string.chars().any(|c| !c.is_whitespace()) {
                             whitespace_margin = min(whitespace_margin, leading_whitespace);
                         }
@@ -1502,7 +1513,7 @@ impl EmitterWriter {
 
                             self.draw_line(
                                 &mut buffer,
-                                &unannotated_line,
+                                &replace_tabs(&unannotated_line),
                                 annotated_file.lines[line_idx + 1].line_index - 1,
                                 last_buffer_line_num,
                                 width_offset,
@@ -1598,7 +1609,7 @@ impl EmitterWriter {
                 );
                 // print the suggestion
                 draw_col_separator(&mut buffer, row_num, max_line_num_len + 1);
-                buffer.append(row_num, line, Style::NoStyle);
+                buffer.append(row_num, &replace_tabs(line), Style::NoStyle);
                 row_num += 1;
             }
 
@@ -1702,7 +1713,8 @@ impl EmitterWriter {
         let max_line_num_len = if self.ui_testing {
             ANONYMIZED_LINE_NUM.len()
         } else {
-            self.get_max_line_num(span, children).to_string().len()
+            let n = self.get_max_line_num(span, children);
+            num_decimal_digits(n)
         };
 
         match self.emit_message_default(span, message, code, level, max_line_num_len, false) {
@@ -1928,6 +1940,34 @@ impl FileWithAnnotatedLines {
         }
         output
     }
+}
+
+// instead of taking the String length or dividing by 10 while > 0, we multiply a limit by 10 until
+// we're higher. If the loop isn't exited by the `return`, the last multiplication will wrap, which
+// is OK, because while we cannot fit a higher power of 10 in a usize, the loop will end anyway.
+// This is also why we need the max number of decimal digits within a `usize`.
+fn num_decimal_digits(num: usize) -> usize {
+    #[cfg(target_pointer_width = "64")]
+    const MAX_DIGITS: usize = 20;
+
+    #[cfg(target_pointer_width = "32")]
+    const MAX_DIGITS: usize = 10;
+
+    #[cfg(target_pointer_width = "16")]
+    const MAX_DIGITS: usize = 5;
+
+    let mut lim = 10;
+    for num_digits in 1..MAX_DIGITS {
+        if num < lim {
+            return num_digits;
+        }
+        lim = lim.wrapping_mul(10);
+    }
+    MAX_DIGITS
+}
+
+fn replace_tabs(str: &str) -> String {
+    str.replace('\t', "    ")
 }
 
 fn draw_col_separator(buffer: &mut StyledBuffer, line: usize, col: usize) {

@@ -38,15 +38,12 @@ fn is_within_packed<'tcx, L>(tcx: TyCtxt<'tcx>, local_decls: &L, place: Place<'t
 where
     L: HasLocalDecls<'tcx>,
 {
-    let mut cursor = place.projection.as_ref();
-    while let &[ref proj_base @ .., elem] = cursor {
-        cursor = proj_base;
-
+    for (place_base, elem) in place.iter_projections().rev() {
         match elem {
             // encountered a Deref, which is ABI-aligned
             ProjectionElem::Deref => break,
             ProjectionElem::Field(..) => {
-                let ty = Place::ty_from(place.local, proj_base, local_decls, tcx).ty;
+                let ty = place_base.ty(local_decls, tcx).ty;
                 match ty.kind() {
                     ty::Adt(def, _) if def.repr.packed() => return true,
                     _ => {}

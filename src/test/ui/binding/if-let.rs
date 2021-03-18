@@ -6,7 +6,7 @@ pub fn main() {
     if let Some(y) = x {
         assert_eq!(y, 3);
     } else {
-        panic!("if-let panicked");
+        panic!("`if let` panicked");
     }
     let mut worked = false;
     if let Some(_) = x {
@@ -54,7 +54,7 @@ pub fn main() {
         if let Foo::Two(b) = a {
             assert_eq!(b, 42_usize);
         } else {
-            panic!("panic in nested if-let");
+            panic!("panic in nested `if let`");
         }
     }
 }

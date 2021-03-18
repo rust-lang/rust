@@ -1,9 +1,6 @@
-// From rust:
-/* global ALIASES, currentCrate, rootPath */
-
 // Local js definitions:
-/* global addClass, getCurrentValue, hasClass */
-/* global onEachLazy, hasOwnProperty, removeClass, updateLocalStorage */
+/* global addClass, getSettingValue, hasClass */
+/* global onEach, onEachLazy, hasOwnProperty, removeClass, updateLocalStorage */
 /* global hideThemeButtonState, showThemeButtonState */
 
 if (!String.prototype.startsWith) {
@@ -40,6 +37,22 @@ if (!DOMTokenList.prototype.remove) {
     };
 }
 
+(function () {
+    var rustdocVars = document.getElementById("rustdoc-vars");
+    if (rustdocVars) {
+        window.rootPath = rustdocVars.attributes["data-root-path"].value;
+        window.currentCrate = rustdocVars.attributes["data-current-crate"].value;
+        window.searchJS = rustdocVars.attributes["data-search-js"].value;
+    }
+    var sidebarVars = document.getElementById("sidebar-vars");
+    if (sidebarVars) {
+        window.sidebarCurrent = {
+            name: sidebarVars.attributes["data-name"].value,
+            ty: sidebarVars.attributes["data-ty"].value,
+            relpath: sidebarVars.attributes["data-relpath"].value,
+        };
+    }
+}());
 
 // Gets the human-readable string for the virtual-key code of the
 // given KeyboardEvent, ev.
@@ -79,12 +92,17 @@ function getThemePickerElement() {
     return document.getElementById("theme-picker");
 }
 
+// Returns the current URL without any query parameter or hash.
+function getNakedUrl() {
+    return window.location.href.split("?")[0].split("#")[0];
+}
+
 // Sets the focus on the search bar at the top of the page
 function focusSearchBar() {
     getSearchInput().focus();
 }
 
-// Removes the focus from the search bar
+// Removes the focus from the search bar.
 function defocusSearchBar() {
     getSearchInput().blur();
 }
@@ -203,6 +221,11 @@ function defocusSearchBar() {
         addClass(search, "hidden");
         removeClass(main, "hidden");
         document.title = titleBeforeSearch;
+        // We also remove the query parameter from the URL.
+        if (browserSupportsHistoryApi()) {
+            history.replaceState("", window.currentCrate + " - Rust",
+                getNakedUrl() + window.location.hash);
+        }
     }
 
     // used for special search precedence
@@ -240,7 +263,9 @@ function defocusSearchBar() {
             hideSearchResults(search);
             var hash = ev.newURL.slice(ev.newURL.indexOf("#") + 1);
             if (browserSupportsHistoryApi()) {
-                history.replaceState(hash, "", "?search=#" + hash);
+                // `window.location.search`` contains all the query parameters, not just `search`.
+                history.replaceState(hash, "",
+                    getNakedUrl() + window.location.search + "#" + hash);
             }
             elem = document.getElementById(hash);
             if (elem) {
@@ -493,11 +518,7 @@ function defocusSearchBar() {
     document.addEventListener("keypress", handleShortcut);
     document.addEventListener("keydown", handleShortcut);
 
-    function resetMouseMoved(ev) {
-        mouseMovedAfterSearch = true;
-    }
-
-    document.addEventListener("mousemove", resetMouseMoved);
+    document.addEventListener("mousemove", function() { mouseMovedAfterSearch = true; });
 
     var handleSourceHighlight = (function() {
         var prev_line_id = 0;
@@ -569,7 +590,7 @@ function defocusSearchBar() {
                 var i, match,
                     url = document.location.href,
                     stripped = "",
-                    len = rootPath.match(/\.\.\//g).length + 1;
+                    len = window.rootPath.match(/\.\.\//g).length + 1;
 
                 for (i = 0; i < len; ++i) {
                     match = url.match(/\/[^\/]*$/);
@@ -652,8 +673,7 @@ function defocusSearchBar() {
          */
         function execQuery(query, searchWords, filterCrates) {
             function itemTypeFromName(typename) {
-                var length = itemTypes.length;
-                for (var i = 0; i < length; ++i) {
+                for (var i = 0, len = itemTypes.length; i < len; ++i) {
                     if (itemTypes[i] === typename) {
                         return i;
                     }
@@ -667,18 +687,11 @@ function defocusSearchBar() {
                 results = {}, results_in_args = {}, results_returned = {},
                 split = valLower.split("::");
 
-            var length = split.length;
-            for (var z = 0; z < length; ++z) {
-                if (split[z] === "") {
-                    split.splice(z, 1);
-                    z -= 1;
-                }
-            }
+            split = split.filter(function(segment) { return segment !== ""; });
 
             function transformResults(results, isType) {
                 var out = [];
-                var length = results.length;
-                for (var i = 0; i < length; ++i) {
+                for (var i = 0, len = results.length; i < len; ++i) {
                     if (results[i].id > -1) {
                         var obj = searchIndex[results[i].id];
                         obj.lev = results[i].lev;
@@ -707,11 +720,11 @@ function defocusSearchBar() {
                     }
                 }
                 results = ar;
-                var i;
-                var nresults = results.length;
-                for (i = 0; i < nresults; ++i) {
-                    results[i].word = searchWords[results[i].id];
-                    results[i].item = searchIndex[results[i].id] || {};
+                var i, len, result;
+                for (i = 0, len = results.length; i < len; ++i) {
+                    result = results[i];
+                    result.word = searchWords[result.id];
+                    result.item = searchIndex[result.id] || {};
                 }
                 // if there are no results then return to default and fail
                 if (results.length === 0) {
@@ -785,8 +798,7 @@ function defocusSearchBar() {
                     return 0;
                 });
 
-                var length = results.length;
-                for (i = 0; i < length; ++i) {
+                for (i = 0, len = results.length; i < len; ++i) {
                     var result = results[i];
 
                     // this validation does not make sense when searching by types
@@ -821,42 +833,52 @@ function defocusSearchBar() {
                 };
             }
 
-            function getObjectFromId(id) {
+            function getObjectNameFromId(id) {
                 if (typeof id === "number") {
-                    return searchIndex[id];
+                    return searchIndex[id].name;
                 }
-                return {'name': id};
+                return id;
             }
 
             function checkGenerics(obj, val) {
                 // The names match, but we need to be sure that all generics kinda
                 // match as well.
-                var lev_distance = MAX_LEV_DISTANCE + 1;
+                var tmp_lev, elem_name;
                 if (val.generics.length > 0) {
                     if (obj.length > GENERICS_DATA &&
                           obj[GENERICS_DATA].length >= val.generics.length) {
-                        var elems = obj[GENERICS_DATA].slice(0);
+                        var elems = Object.create(null);
+                        var elength = object[GENERICS_DATA].length;
+                        for (var x = 0; x < elength; ++x) {
+                            elems[getObjectNameFromId(obj[GENERICS_DATA][x])] += 1;
+                        }
                         var total = 0;
                         var done = 0;
                         // We need to find the type that matches the most to remove it in order
                         // to move forward.
                         var vlength = val.generics.length;
-                        for (var y = 0; y < vlength; ++y) {
-                            var lev = { pos: -1, lev: MAX_LEV_DISTANCE + 1};
-                            var elength = elems.length;
-                            var firstGeneric = getObjectFromId(val.generics[y]).name;
-                            for (var x = 0; x < elength; ++x) {
-                                var tmp_lev = levenshtein(getObjectFromId(elems[x]).name,
-                                                          firstGeneric);
-                                if (tmp_lev < lev.lev) {
-                                    lev.lev = tmp_lev;
-                                    lev.pos = x;
+                        for (x = 0; x < vlength; ++x) {
+                            var lev = MAX_LEV_DISTANCE + 1;
+                            var firstGeneric = getObjectNameFromId(val.generics[x]);
+                            var match = null;
+                            if (elems[firstGeneric]) {
+                                match = firstGeneric;
+                                lev = 0;
+                            } else {
+                                for (elem_name in elems) {
+                                    tmp_lev = levenshtein(elem_name, firstGeneric);
+                                    if (tmp_lev < lev) {
+                                        lev = tmp_lev;
+                                        match = elem_name;
+                                    }
                                 }
                             }
-                            if (lev.pos !== -1) {
-                                elems.splice(lev.pos, 1);
-                                lev_distance = Math.min(lev.lev, lev_distance);
-                                total += lev.lev;
+                            if (match !== null) {
+                                elems[match] -= 1;
+                                if (elems[match] == 0) {
+                                    delete elems[match];
+                                }
+                                total += lev;
                                 done += 1;
                             } else {
                                 return MAX_LEV_DISTANCE + 1;
@@ -871,23 +893,27 @@ function defocusSearchBar() {
             // Check for type name and type generics (if any).
             function checkType(obj, val, literalSearch) {
                 var lev_distance = MAX_LEV_DISTANCE + 1;
-                var x;
+                var len, x, firstGeneric;
                 if (obj[NAME] === val.name) {
                     if (literalSearch === true) {
                         if (val.generics && val.generics.length !== 0) {
                             if (obj.length > GENERICS_DATA &&
                                   obj[GENERICS_DATA].length >= val.generics.length) {
-                                var elems = obj[GENERICS_DATA].slice(0);
-                                var allFound = true;
+                                var elems = Object.create(null);
+                                len = obj[GENERICS_DATA].length;
+                                for (x = 0; x < len; ++x) {
+                                    elems[getObjectNameFromId(obj[GENERICS_DATA][x])] += 1;
+                                }
 
-                                for (var y = 0; allFound === true && y < val.generics.length; ++y) {
-                                    allFound = false;
-                                    var firstGeneric = getObjectFromId(val.generics[y]).name;
-                                    for (x = 0; allFound === false && x < elems.length; ++x) {
-                                        allFound = getObjectFromId(elems[x]).name === firstGeneric;
-                                    }
-                                    if (allFound === true) {
-                                        elems.splice(x - 1, 1);
+                                var allFound = true;
+                                len = val.generics.length;
+                                for (x = 0; x < len; ++x) {
+                                    firstGeneric = getObjectNameFromId(val.generics[x]);
+                                    if (elems[firstGeneric]) {
+                                        elems[firstGeneric] -= 1;
+                                    } else {
+                                        allFound = false;
+                                        break;
                                     }
                                 }
                                 if (allFound === true) {
@@ -913,12 +939,10 @@ function defocusSearchBar() {
                 // Names didn't match so let's check if one of the generic types could.
                 if (literalSearch === true) {
                      if (obj.length > GENERICS_DATA && obj[GENERICS_DATA].length > 0) {
-                        var length = obj[GENERICS_DATA].length;
-                        for (x = 0; x < length; ++x) {
-                            if (obj[GENERICS_DATA][x] === val.name) {
-                                return true;
-                            }
-                        }
+                        return obj[GENERICS_DATA].some(
+                            function(name) {
+                                return name === val.name;
+                            });
                     }
                     return false;
                 }
@@ -975,7 +999,7 @@ function defocusSearchBar() {
                     if (typeof ret[0] === "string") {
                         ret = [ret];
                     }
-                    for (var x = 0; x < ret.length; ++x) {
+                    for (var x = 0, len = ret.length; x < len; ++x) {
                         var tmp = ret[x];
                         if (typePassesFilter(typeFilter, tmp[1]) === false) {
                             continue;
@@ -1057,13 +1081,6 @@ function defocusSearchBar() {
                 return false;
             }
 
-            function generateId(ty) {
-                if (ty.parent && ty.parent.name) {
-                    return itemTypes[ty.ty] + ty.path + ty.parent.name + ty.name;
-                }
-                return itemTypes[ty.ty] + ty.path + ty.name;
-            }
-
             function createAliasFromItem(item) {
                 return {
                     crate: item.crate,
@@ -1082,23 +1099,22 @@ function defocusSearchBar() {
                 // aliases to be before the others in the displayed results.
                 var aliases = [];
                 var crateAliases = [];
-                var i;
                 if (filterCrates !== undefined) {
                     if (ALIASES[filterCrates] && ALIASES[filterCrates][query.search]) {
-                        for (i = 0; i < ALIASES[filterCrates][query.search].length; ++i) {
-                            aliases.push(
-                                createAliasFromItem(
-                                    searchIndex[ALIASES[filterCrates][query.search][i]]));
+                        var query_aliases = ALIASES[filterCrates][query.search];
+                        var len = query_aliases.length;
+                        for (var i = 0; i < len; ++i) {
+                            aliases.push(createAliasFromItem(searchIndex[query_aliases[i]]));
                         }
                     }
                 } else {
                     Object.keys(ALIASES).forEach(function(crate) {
                         if (ALIASES[crate][query.search]) {
                             var pushTo = crate === window.currentCrate ? crateAliases : aliases;
-                            for (i = 0; i < ALIASES[crate][query.search].length; ++i) {
-                                pushTo.push(
-                                    createAliasFromItem(
-                                        searchIndex[ALIASES[crate][query.search][i]]));
+                            var query_aliases = ALIASES[crate][query.search];
+                            var len = query_aliases.length;
+                            for (var i = 0; i < len; ++i) {
+                                pushTo.push(createAliasFromItem(searchIndex[query_aliases[i]]));
                             }
                         }
                     });
@@ -1133,11 +1149,12 @@ function defocusSearchBar() {
 
             // quoted values mean literal search
             var nSearchWords = searchWords.length;
-            var i;
+            var i, it;
             var ty;
             var fullId;
             var returned;
             var in_args;
+            var len;
             if ((val.charAt(0) === "\"" || val.charAt(0) === "'") &&
                 val.charAt(val.length - 1) === val.charAt(0))
             {
@@ -1149,7 +1166,7 @@ function defocusSearchBar() {
                     in_args = findArg(searchIndex[i], val, true, typeFilter);
                     returned = checkReturned(searchIndex[i], val, true, typeFilter);
                     ty = searchIndex[i];
-                    fullId = generateId(ty);
+                    fullId = ty.id;
 
                     if (searchWords[i] === val.name
                         && typePassesFilter(typeFilter, searchIndex[i].ty)
@@ -1185,7 +1202,7 @@ function defocusSearchBar() {
                 var input = parts[0];
                 // sort inputs so that order does not matter
                 var inputs = input.split(",").map(trimmer).sort();
-                for (i = 0; i < inputs.length; ++i) {
+                for (i = 0, len = inputs.length; i < len; ++i) {
                     inputs[i] = extractGenerics(inputs[i]);
                 }
                 var output = extractGenerics(parts[1]);
@@ -1199,7 +1216,7 @@ function defocusSearchBar() {
                     if (!type) {
                         continue;
                     }
-                    fullId = generateId(ty);
+                    fullId = ty.id;
 
                     returned = checkReturned(ty, output, true, NO_TYPE_FILTER);
                     if (output.name === "*" || returned === true) {
@@ -1210,7 +1227,7 @@ function defocusSearchBar() {
                             is_module = true;
                         } else {
                             var allFound = true;
-                            for (var it = 0; allFound === true && it < inputs.length; it++) {
+                            for (it = 0, len = inputs.length; allFound === true && it < len; it++) {
                                 allFound = checkType(type, inputs[it], true);
                             }
                             in_args = allFound;
@@ -1253,7 +1270,7 @@ function defocusSearchBar() {
 
                 var paths = valLower.split("::");
                 var j;
-                for (j = 0; j < paths.length; ++j) {
+                for (j = 0, len = paths.length; j < len; ++j) {
                     if (paths[j] === "") {
                         paths.splice(j, 1);
                         j -= 1;
@@ -1283,15 +1300,15 @@ function defocusSearchBar() {
                     var index = -1;
                     // we want lev results to go lower than others
                     lev = MAX_LEV_DISTANCE + 1;
-                    fullId = generateId(ty);
+                    fullId = ty.id;
 
                     if (searchWords[j].indexOf(split[i]) > -1 ||
                         searchWords[j].indexOf(val) > -1 ||
-                        searchWords[j].replace(/_/g, "").indexOf(val) > -1)
+                        ty.normalizedName.indexOf(val) > -1)
                     {
                         // filter type: ... queries
                         if (typePassesFilter(typeFilter, ty.ty) && results[fullId] === undefined) {
-                            index = searchWords[j].replace(/_/g, "").indexOf(val);
+                            index = ty.normalizedName.indexOf(val);
                         }
                     }
                     if ((lev = levenshtein(searchWords[j], val)) <= MAX_LEV_DISTANCE) {
@@ -1375,7 +1392,7 @@ function defocusSearchBar() {
          * @return {[boolean]}       [Whether the result is valid or not]
          */
         function validateResult(name, path, keys, parent) {
-            for (var i = 0; i < keys.length; ++i) {
+            for (var i = 0, len = keys.length; i < len; ++i) {
                 // each check is for validation so we negate the conditions and invalidate
                 if (!(
                     // check for an exact name match
@@ -1518,15 +1535,15 @@ function defocusSearchBar() {
 
             if (type === "mod") {
                 displayPath = path + "::";
-                href = rootPath + path.replace(/::/g, "/") + "/" +
+                href = window.rootPath + path.replace(/::/g, "/") + "/" +
                        name + "/index.html";
             } else if (type === "primitive" || type === "keyword") {
                 displayPath = "";
-                href = rootPath + path.replace(/::/g, "/") +
+                href = window.rootPath + path.replace(/::/g, "/") +
                        "/" + type + "." + name + ".html";
             } else if (type === "externcrate") {
                 displayPath = "";
-                href = rootPath + name + "/index.html";
+                href = window.rootPath + name + "/index.html";
             } else if (item.parent !== undefined) {
                 var myparent = item.parent;
                 var anchor = "#" + type + "." + name;
@@ -1539,9 +1556,9 @@ function defocusSearchBar() {
                 } else if (type === "structfield" && parentType === "variant") {
                     // Structfields belonging to variants are special: the
                     // final path element is the enum name.
-                    var splitPath = item.path.split("::");
-                    var enumName = splitPath.pop();
-                    path = splitPath.join("::");
+                    var enumNameIdx = item.path.lastIndexOf("::");
+                    var enumName = item.path.substr(enumNameIdx + 2);
+                    path = item.path.substr(0, enumNameIdx);
                     displayPath = path + "::" + enumName + "::" + myparent.name + "::";
                     anchor = "#variant." + myparent.name + ".field." + name;
                     pageType = "enum";
@@ -1549,13 +1566,13 @@ function defocusSearchBar() {
                 } else {
                     displayPath = path + "::" + myparent.name + "::";
                 }
-                href = rootPath + path.replace(/::/g, "/") +
+                href = window.rootPath + path.replace(/::/g, "/") +
                        "/" + pageType +
                        "." + pageName +
                        ".html" + anchor;
             } else {
                 displayPath = item.path + "::";
-                href = rootPath + item.path.replace(/::/g, "/") +
+                href = window.rootPath + item.path.replace(/::/g, "/") +
                        "/" + type + "." + name + ".html";
             }
             return [displayPath, href];
@@ -1664,6 +1681,21 @@ function defocusSearchBar() {
             var ret_in_args = addTab(results.in_args, query, false);
             var ret_returned = addTab(results.returned, query, false);
 
+            // Navigate to the relevant tab if the current tab is empty, like in case users search
+            // for "-> String". If they had selected another tab previously, they have to click on
+            // it again.
+            if ((currentTab === 0 && ret_others[1] === 0) ||
+                    (currentTab === 1 && ret_in_args[1] === 0) ||
+                    (currentTab === 2 && ret_returned[1] === 0)) {
+                if (ret_others[1] !== 0) {
+                    currentTab = 0;
+                } else if (ret_in_args[1] !== 0) {
+                    currentTab = 1;
+                } else if (ret_returned[1] !== 0) {
+                    currentTab = 2;
+                }
+            }
+
             var output = "<h1>Results for " + escape(query.query) +
                 (query.type ? " (type: " + escape(query.type) + ")" : "") + "</h1>" +
                 "<div id=\"titles\">" +
@@ -1675,15 +1707,6 @@ function defocusSearchBar() {
 
             search.innerHTML = output;
             showSearchResults(search);
-            var tds = search.getElementsByTagName("td");
-            var td_width = 0;
-            if (tds.length > 0) {
-                td_width = tds[0].offsetWidth;
-            }
-            var width = search.offsetWidth - 40 - td_width;
-            onEachLazy(search.getElementsByClassName("desc"), function(e) {
-                e.style.width = width + "px";
-            });
             initSearchNav();
             var elems = document.getElementById("titles").childNodes;
             elems[0].onclick = function() { printTab(0); };
@@ -1696,7 +1719,7 @@ function defocusSearchBar() {
             function getSmallest(arrays, positions, notDuplicates) {
                 var start = null;
 
-                for (var it = 0; it < positions.length; ++it) {
+                for (var it = 0, len = positions.length; it < len; ++it) {
                     if (arrays[it].length > positions[it] &&
                         (start === null || start > arrays[it][positions[it]].lev) &&
                         !notDuplicates[arrays[it][positions[it]].fullPath]) {
@@ -1711,7 +1734,7 @@ function defocusSearchBar() {
                 var positions = [];
                 var notDuplicates = {};
 
-                for (var x = 0; x < arrays.length; ++x) {
+                for (var x = 0, arrays_len = arrays.length; x < arrays_len; ++x) {
                     positions.push(0);
                 }
                 while (ret.length < MAX_RESULTS) {
@@ -1720,7 +1743,7 @@ function defocusSearchBar() {
                     if (smallest === null) {
                         break;
                     }
-                    for (x = 0; x < arrays.length && ret.length < MAX_RESULTS; ++x) {
+                    for (x = 0; x < arrays_len && ret.length < MAX_RESULTS; ++x) {
                         if (arrays[x].length > positions[x] &&
                                 arrays[x][positions[x]].lev === smallest &&
                                 !notDuplicates[arrays[x][positions[x]].fullPath]) {
@@ -1740,7 +1763,7 @@ function defocusSearchBar() {
                 "others": [],
             };
 
-            for (var i = 0; i < queries.length; ++i) {
+            for (var i = 0, len = queries.length; i < len; ++i) {
                 query = queries[i].trim();
                 if (query.length !== 0) {
                     var tmp = execQuery(getQuery(query), searchWords, filterCrates);
@@ -1797,10 +1820,12 @@ function defocusSearchBar() {
             // Because searching is incremental by character, only the most
             // recent search query is added to the browser history.
             if (browserSupportsHistoryApi()) {
+                var newURL = getNakedUrl() + "?search=" + encodeURIComponent(query.raw) +
+                    window.location.hash;
                 if (!history.state && !params.search) {
-                    history.pushState(query, "", "?search=" + encodeURIComponent(query.raw));
+                    history.pushState(query, "", newURL);
                 } else {
-                    history.replaceState(query, "", "?search=" + encodeURIComponent(query.raw));
+                    history.replaceState(query, "", newURL);
                 }
             }
 
@@ -1811,8 +1836,9 @@ function defocusSearchBar() {
         function buildIndex(rawSearchIndex) {
             searchIndex = [];
             var searchWords = [];
-            var i;
+            var i, word;
             var currentIndex = 0;
+            var id = 0;
 
             for (var crate in rawSearchIndex) {
                 if (!hasOwnProperty(rawSearchIndex, crate)) { continue; }
@@ -1820,23 +1846,39 @@ function defocusSearchBar() {
                 var crateSize = 0;
 
                 searchWords.push(crate);
-                searchIndex.push({
+                var normalizedName = crate.indexOf("_") === -1
+                    ? crate
+                    : crate.replace(/_/g, "");
+                // This object should have exactly the same set of fields as the "row"
+                // object defined below. Your JavaScript runtime will thank you.
+                // https://mathiasbynens.be/notes/shapes-ics
+                var crateRow = {
                     crate: crate,
                     ty: 1, // == ExternCrate
                     name: crate,
                     path: "",
                     desc: rawSearchIndex[crate].doc,
+                    parent: undefined,
                     type: null,
-                });
+                    id: id,
+                    normalizedName: normalizedName,
+                };
+                id += 1;
+                searchIndex.push(crateRow);
                 currentIndex += 1;
 
-                // an array of [(Number) item type,
-                //              (String) name,
-                //              (String) full path or empty string for previous path,
-                //              (String) description,
-                //              (Number | null) the parent path index to `paths`]
-                //              (Object | null) the type of the function (if any)
-                var items = rawSearchIndex[crate].i;
+                // an array of (Number) item types
+                var itemTypes = rawSearchIndex[crate].t;
+                // an array of (String) item names
+                var itemNames = rawSearchIndex[crate].n;
+                // an array of (String) full paths (or empty string for previous path)
+                var itemPaths = rawSearchIndex[crate].q;
+                // an array of (String) descriptions
+                var itemDescs = rawSearchIndex[crate].d;
+                // an array of (Number) the parent path index + 1 to `paths`, or 0 if none
+                var itemParentIdxs = rawSearchIndex[crate].i;
+                // an array of (Object | null) the type of the function, if any
+                var itemFunctionSearchTypes = rawSearchIndex[crate].f;
                 // an array of [(Number) item type,
                 //              (String) name]
                 var paths = rawSearchIndex[crate].p;
@@ -1850,36 +1892,41 @@ function defocusSearchBar() {
                     paths[i] = {ty: paths[i][0], name: paths[i][1]};
                 }
 
-                // convert `items` into an object form, and construct word indices.
+                // convert `item*` into an object form, and construct word indices.
                 //
                 // before any analysis is performed lets gather the search terms to
                 // search against apart from the rest of the data.  This is a quick
                 // operation that is cached for the life of the page state so that
                 // all other search operations have access to this cached data for
                 // faster analysis operations
-                len = items.length;
+                len = itemTypes.length;
                 var lastPath = "";
                 for (i = 0; i < len; ++i) {
-                    var rawRow = items[i];
-                    if (!rawRow[2]) {
-                        rawRow[2] = lastPath;
-                    }
-                    var row = {
-                        crate: crate,
-                        ty: rawRow[0],
-                        name: rawRow[1],
-                        path: rawRow[2],
-                        desc: rawRow[3],
-                        parent: paths[rawRow[4]],
-                        type: rawRow[5],
-                    };
-                    searchIndex.push(row);
-                    if (typeof row.name === "string") {
-                        var word = row.name.toLowerCase();
+                    // This object should have exactly the same set of fields as the "crateRow"
+                    // object defined above.
+                    if (typeof itemNames[i] === "string") {
+                        word = itemNames[i].toLowerCase();
                         searchWords.push(word);
                     } else {
+                        word = "";
                         searchWords.push("");
                     }
+                    var normalizedName = word.indexOf("_") === -1
+                        ? word
+                        : word.replace(/_/g, "");
+                    var row = {
+                        crate: crate,
+                        ty: itemTypes[i],
+                        name: itemNames[i],
+                        path: itemPaths[i] ? itemPaths[i] : lastPath,
+                        desc: itemDescs[i],
+                        parent: itemParentIdxs[i] > 0 ? paths[itemParentIdxs[i] - 1] : undefined,
+                        type: itemFunctionSearchTypes[i],
+                        id: id,
+                        normalizedName: normalizedName,
+                    };
+                    id += 1;
+                    searchIndex.push(row);
                     lastPath = row.path;
                     crateSize += 1;
                 }
@@ -1894,7 +1941,7 @@ function defocusSearchBar() {
                             ALIASES[crate][alias_name] = [];
                         }
                         local_aliases = aliases[alias_name];
-                        for (j = 0; j < local_aliases.length; ++j) {
+                        for (j = 0, len = local_aliases.length; j < len; ++j) {
                             ALIASES[crate][alias_name].push(local_aliases[j] + currentIndex);
                         }
                     }
@@ -1904,20 +1951,21 @@ function defocusSearchBar() {
             return searchWords;
         }
 
-        function startSearch() {
-            var callback = function() {
+        function registerSearchEvents() {
+            var searchAfter500ms = function() {
                 clearInputTimeout();
                 if (search_input.value.length === 0) {
                     if (browserSupportsHistoryApi()) {
-                        history.replaceState("", window.currentCrate + " - Rust", "?search=");
+                        history.replaceState("", window.currentCrate + " - Rust",
+                            getNakedUrl() + window.location.hash);
                     }
                     hideSearchResults();
                 } else {
                     searchTimeout = setTimeout(search, 500);
                 }
             };
-            search_input.onkeyup = callback;
-            search_input.oninput = callback;
+            search_input.onkeyup = searchAfter500ms;
+            search_input.oninput = searchAfter500ms;
             document.getElementsByClassName("search-form")[0].onsubmit = function(e) {
                 e.preventDefault();
                 clearInputTimeout();
@@ -1980,14 +2028,33 @@ function defocusSearchBar() {
                     }
                 });
             }
-            search();
+
+            // This is required in firefox to avoid this problem: Navigating to a search result
+            // with the keyboard, hitting enter, and then hitting back would take you back to
+            // the doc page, rather than the search that should overlay it.
+            // This was an interaction between the back-forward cache and our handlers
+            // that try to sync state between the URL and the search input. To work around it,
+            // do a small amount of re-init on page show.
+            window.onpageshow = function(){
+                var qSearch = getQueryStringParams().search;
+                if (search_input.value === "" && qSearch) {
+                    search_input.value = qSearch;
+                }
+                search();
+            };
         }
 
         index = buildIndex(rawSearchIndex);
-        startSearch();
+        registerSearchEvents();
+        // If there's a search term in the URL, execute the search now.
+        if (getQueryStringParams().search) {
+            search();
+        }
+    };
 
+    function addSidebarCrates(crates) {
         // Draw a convenient sidebar of known crates if we have a listing
-        if (rootPath === "../" || rootPath === "./") {
+        if (window.rootPath === "../" || window.rootPath === "./") {
             var sidebar = document.getElementsByClassName("sidebar-elems")[0];
             if (sidebar) {
                 var div = document.createElement("div");
@@ -1996,24 +2063,13 @@ function defocusSearchBar() {
                 var ul = document.createElement("ul");
                 div.appendChild(ul);
 
-                var crates = [];
-                for (var crate in rawSearchIndex) {
-                    if (!hasOwnProperty(rawSearchIndex, crate)) {
-                        continue;
-                    }
-                    crates.push(crate);
-                }
-                crates.sort();
                 for (var i = 0; i < crates.length; ++i) {
                     var klass = "crate";
-                    if (rootPath !== "./" && crates[i] === window.currentCrate) {
+                    if (window.rootPath !== "./" && crates[i] === window.currentCrate) {
                         klass += " current";
                     }
                     var link = document.createElement("a");
-                    link.href = rootPath + crates[i] + "/index.html";
-                    // The summary in the search index has HTML, so we need to
-                    // dynamically render it as plaintext.
-                    link.title = convertHTMLToPlaintext(rawSearchIndex[crates[i]].doc);
+                    link.href = window.rootPath + crates[i] + "/index.html";
                     link.className = klass;
                     link.textContent = crates[i];
 
@@ -2024,25 +2080,7 @@ function defocusSearchBar() {
                 sidebar.appendChild(div);
             }
         }
-    };
-
-    /**
-     * Convert HTML to plaintext:
-     *
-     *   * Replace "<code>foo</code>" with "`foo`"
-     *   * Strip all other HTML tags
-     *
-     * Used by the dynamic sidebar crate list renderer.
-     *
-     * @param  {[string]} html [The HTML to convert]
-     * @return {[string]}      [The resulting plaintext]
-     */
-    function convertHTMLToPlaintext(html) {
-        var x = document.createElement("div");
-        x.innerHTML = html.replace('<code>', '`').replace('</code>', '`');
-        return x.innerText;
     }
-
 
     // delayed sidebar rendering.
     window.initSidebarItems = function(items) {
@@ -2062,8 +2100,7 @@ function defocusSearchBar() {
             div.appendChild(h3);
             var ul = document.createElement("ul");
 
-            var length = filtered.length;
-            for (var i = 0; i < length; ++i) {
+            for (var i = 0, len = filtered.length; i < len; ++i) {
                 var item = filtered[i];
                 var name = item[0];
                 var desc = item[1]; // can be null
@@ -2132,21 +2169,18 @@ function defocusSearchBar() {
         }
 
         var libs = Object.getOwnPropertyNames(imp);
-        var llength = libs.length;
-        for (var i = 0; i < llength; ++i) {
-            if (libs[i] === currentCrate) { continue; }
+        for (var i = 0, llength = libs.length; i < llength; ++i) {
+            if (libs[i] === window.currentCrate) { continue; }
             var structs = imp[libs[i]];
 
-            var slength = structs.length;
             struct_loop:
-            for (var j = 0; j < slength; ++j) {
+            for (var j = 0, slength = structs.length; j < slength; ++j) {
                 var struct = structs[j];
 
                 var list = struct.synthetic ? synthetic_implementors : implementors;
 
                 if (struct.synthetic) {
-                    var stlength = struct.types.length;
-                    for (var k = 0; k < stlength; k++) {
+                    for (var k = 0, stlength = struct.types.length; k < stlength; k++) {
                         if (inlined_types.has(struct.types[k])) {
                             continue struct_loop;
                         }
@@ -2157,14 +2191,14 @@ function defocusSearchBar() {
                 var code = document.createElement("code");
                 code.innerHTML = struct.text;
 
-                var x = code.getElementsByTagName("a");
-                var xlength = x.length;
-                for (var it = 0; it < xlength; it++) {
-                    var href = x[it].getAttribute("href");
+                onEachLazy(code.getElementsByTagName("a"), function(elem) {
+                    var href = elem.getAttribute("href");
+
                     if (href && href.indexOf("http") !== 0) {
-                        x[it].setAttribute("href", rootPath + href);
+                        elem.setAttribute("href", window.rootPath + href);
                     }
-                }
+                });
+
                 var display = document.createElement("h3");
                 addClass(display, "impl");
                 display.innerHTML = "<span class=\"in-band\"><table class=\"table-display\">" +
@@ -2184,7 +2218,7 @@ function defocusSearchBar() {
             return "+";
         }
         // button will collapse the section
-        // note that this text is also set in the HTML template in render.rs
+        // note that this text is also set in the HTML template in ../render/mod.rs
         return "\u2212"; // "\u2212" is "−" minus sign
     }
 
@@ -2202,7 +2236,7 @@ function defocusSearchBar() {
         }
     }
 
-    function toggleAllDocs(pageId, fromAutoCollapse) {
+    function toggleAllDocs(fromAutoCollapse) {
         var innerToggle = document.getElementById(toggleAllDocsId);
         if (!innerToggle) {
             return;
@@ -2245,14 +2279,14 @@ function defocusSearchBar() {
                     }
                     if (!parent || !superParent || superParent.id !== "main" ||
                         hasClass(parent, "impl") === false) {
-                        collapseDocs(e, "hide", pageId);
+                        collapseDocs(e, "hide");
                     }
                 });
             }
         }
     }
 
-    function collapseDocs(toggle, mode, pageId) {
+    function collapseDocs(toggle, mode) {
         if (!toggle || !toggle.parentNode) {
             return;
         }
@@ -2372,27 +2406,27 @@ function defocusSearchBar() {
         }
     }
 
-    function collapser(pageId, e, collapse) {
+    function collapser(e, collapse) {
         // inherent impl ids are like "impl" or impl-<number>'.
         // they will never be hidden by default.
         var n = e.parentElement;
         if (n.id.match(/^impl(?:-\d+)?$/) === null) {
             // Automatically minimize all non-inherent impls
             if (collapse || hasClass(n, "impl")) {
-                collapseDocs(e, "hide", pageId);
+                collapseDocs(e, "hide");
             }
         }
     }
 
-    function autoCollapse(pageId, collapse) {
+    function autoCollapse(collapse) {
         if (collapse) {
-            toggleAllDocs(pageId, true);
+            toggleAllDocs(true);
         } else if (getSettingValue("auto-hide-trait-implementations") !== "false") {
             var impl_list = document.getElementById("trait-implementations-list");
 
             if (impl_list !== null) {
                 onEachLazy(impl_list.getElementsByClassName("collapse-toggle"), function(e) {
-                    collapser(pageId, e, collapse);
+                    collapser(e, collapse);
                 });
             }
 
@@ -2400,7 +2434,7 @@ function defocusSearchBar() {
 
             if (blanket_list !== null) {
                 onEachLazy(blanket_list.getElementsByClassName("collapse-toggle"), function(e) {
-                    collapser(pageId, e, collapse);
+                    collapser(e, collapse);
                 });
             }
         }
@@ -2463,7 +2497,6 @@ function defocusSearchBar() {
         var toggle = createSimpleToggle(false);
         var hideMethodDocs = getSettingValue("auto-hide-method-docs") === "true";
         var hideImplementors = getSettingValue("auto-collapse-implementors") !== "false";
-        var pageId = getPageId();
 
         var func = function(e) {
             var next = e.nextElementSibling;
@@ -2477,7 +2510,7 @@ function defocusSearchBar() {
                 var newToggle = toggle.cloneNode(true);
                 insertAfter(newToggle, e.childNodes[e.childNodes.length - 1]);
                 if (hideMethodDocs === true && hasClass(e, "method") === true) {
-                    collapseDocs(newToggle, "hide", pageId);
+                    collapseDocs(newToggle, "hide");
                 }
             }
         };
@@ -2501,7 +2534,7 @@ function defocusSearchBar() {
                 // In case the option "auto-collapse implementors" is not set to false, we collapse
                 // all implementors.
                 if (hideImplementors === true && e.parentNode.id === "implementors-list") {
-                    collapseDocs(newToggle, "hide", pageId);
+                    collapseDocs(newToggle, "hide");
                 }
             }
         };
@@ -2515,7 +2548,7 @@ function defocusSearchBar() {
                 if (e.id.match(/^impl(?:-\d+)?$/) === null) {
                     // Automatically minimize all non-inherent impls
                     if (hasClass(e, "impl") === true) {
-                        collapseDocs(newToggle, "hide", pageId);
+                        collapseDocs(newToggle, "hide");
                     }
                 }
             };
@@ -2550,17 +2583,13 @@ function defocusSearchBar() {
         }
         onEachLazy(document.getElementsByClassName("impl-items"), function(e) {
             onEachLazy(e.getElementsByClassName("associatedconstant"), func);
-            var hiddenElems = e.getElementsByClassName("hidden");
-            var needToggle = false;
-
-            var hlength = hiddenElems.length;
-            for (var i = 0; i < hlength; ++i) {
-                if (hasClass(hiddenElems[i], "content") === false &&
-                    hasClass(hiddenElems[i], "docblock") === false) {
-                    needToggle = true;
-                    break;
-                }
-            }
+            // We transform the DOM iterator into a vec of DOM elements to prevent performance
+            // issues on webkit browsers.
+            var hiddenElems = Array.prototype.slice.call(e.getElementsByClassName("hidden"));
+            var needToggle = hiddenElems.some(function(hiddenElem) {
+                return hasClass(hiddenElem, "content") === false &&
+                    hasClass(hiddenElem, "docblock") === false;
+            });
             if (needToggle === true) {
                 var inner_toggle = newToggle.cloneNode(true);
                 inner_toggle.onclick = toggleClicked;
@@ -2662,10 +2691,10 @@ function defocusSearchBar() {
 
         onEachLazy(document.getElementsByClassName("docblock"), buildToggleWrapper);
         onEachLazy(document.getElementsByClassName("sub-variant"), buildToggleWrapper);
+
+        autoCollapse(getSettingValue("collapse") === "true");
+
         var pageId = getPageId();
-
-        autoCollapse(pageId, getSettingValue("collapse") === "true");
-
         if (pageId !== null) {
             expandSection(pageId);
         }
@@ -2775,9 +2804,9 @@ function defocusSearchBar() {
         if (search_input.value !== "" && hasClass(search, "hidden")) {
             showSearchResults(search);
             if (browserSupportsHistoryApi()) {
-                history.replaceState(search_input.value,
-                                     "",
-                                     "?search=" + encodeURIComponent(search_input.value));
+                var extra = "?search=" + encodeURIComponent(search_input.value);
+                history.replaceState(search_input.value, "",
+                    getNakedUrl() + extra + window.location.hash);
             }
             document.title = searchTitle;
         }
@@ -2832,43 +2861,17 @@ function defocusSearchBar() {
         });
     }
 
-    function enableSearchInput() {
-        if (search_input) {
-            search_input.removeAttribute('disabled');
-        }
-    }
-
-    window.addSearchOptions = function(crates) {
+    function addSearchOptions(crates) {
         var elem = document.getElementById("crate-search");
 
         if (!elem) {
-            enableSearchInput();
             return;
         }
-        var crates_text = [];
-        if (Object.keys(crates).length > 1) {
-            for (var crate in crates) {
-                if (hasOwnProperty(crates, crate)) {
-                    crates_text.push(crate);
-                }
-            }
-        }
-        crates_text.sort(function(a, b) {
-            var lower_a = a.toLowerCase();
-            var lower_b = b.toLowerCase();
-
-            if (lower_a < lower_b) {
-                return -1;
-            } else if (lower_a > lower_b) {
-                return 1;
-            }
-            return 0;
-        });
         var savedCrate = getSettingValue("saved-filter-crate");
-        for (var i = 0; i < crates_text.length; ++i) {
+        for (var i = 0, len = crates.length; i < len; ++i) {
             var option = document.createElement("option");
-            option.value = crates_text[i];
-            option.innerText = crates_text[i];
+            option.value = crates[i];
+            option.innerText = crates[i];
             elem.appendChild(option);
             // Set the crate filter from saved storage, if the current page has the saved crate
             // filter.
@@ -2876,11 +2879,10 @@ function defocusSearchBar() {
             // If not, ignore the crate filter -- we want to support filtering for crates on sites
             // like doc.rust-lang.org where the crates may differ from page to page while on the
             // same domain.
-            if (crates_text[i] === savedCrate) {
+            if (crates[i] === savedCrate) {
                 elem.value = savedCrate;
             }
         }
-        enableSearchInput();
     };
 
     function buildHelperPopup() {
@@ -2903,10 +2905,14 @@ function defocusSearchBar() {
             ["&#9166;", "Go to active search result"],
             ["+", "Expand all sections"],
             ["-", "Collapse all sections"],
-        ].map(x => "<dt>" +
-            x[0].split(" ")
-                .map((y, index) => (index & 1) === 0 ? "<kbd>" + y + "</kbd>" : y)
-                .join("") + "</dt><dd>" + x[1] + "</dd>").join("");
+        ].map(function(x) {
+            return "<dt>" +
+                x[0].split(" ")
+                    .map(function(y, index) {
+                        return (index & 1) === 0 ? "<kbd>" + y + "</kbd>" : " " + y + " ";
+                    })
+                    .join("") + "</dt><dd>" + x[1] + "</dd>";
+        }).join("");
         var div_shortcuts = document.createElement("div");
         addClass(div_shortcuts, "shortcuts");
         div_shortcuts.innerHTML = "<h2>Keyboard Shortcuts</h2><dl>" + shortcuts + "</dl></div>";
@@ -2924,7 +2930,9 @@ function defocusSearchBar() {
             "You can look for items with an exact name by putting double quotes around \
              your request: <code>\"string\"</code>",
             "Look for items inside another one by searching for a path: <code>vec::Vec</code>",
-        ].map(x => "<p>" + x + "</p>").join("");
+        ].map(function(x) {
+            return "<p>" + x + "</p>";
+        }).join("");
         var div_infos = document.createElement("div");
         addClass(div_infos, "infos");
         div_infos.innerHTML = "<h2>Search Tricks</h2>" + infos;
@@ -2939,12 +2947,48 @@ function defocusSearchBar() {
         buildHelperPopup = function() {};
     }
 
+    function loadScript(url) {
+        var script = document.createElement('script');
+        script.src = url;
+        document.head.append(script);
+    }
+
+    function setupSearchLoader() {
+        var searchLoaded = false;
+        function loadSearch() {
+            if (!searchLoaded) {
+                searchLoaded = true;
+                loadScript(window.searchJS);
+            }
+        }
+
+        // `crates{version}.js` should always be loaded before this script, so we can use it safely.
+        addSearchOptions(window.ALL_CRATES);
+        addSidebarCrates(window.ALL_CRATES);
+
+        search_input.addEventListener("focus", function() {
+            search_input.origPlaceholder = search_input.placeholder;
+            search_input.placeholder = "Type your search here.";
+            loadSearch();
+        });
+        search_input.addEventListener("blur", function() {
+            search_input.placeholder = search_input.origPlaceholder;
+        });
+        search_input.removeAttribute('disabled');
+
+        var crateSearchDropDown = document.getElementById("crate-search");
+        // `crateSearchDropDown` can be null in case there is only crate because in that case, the
+        // crate filter dropdown is removed.
+        if (crateSearchDropDown) {
+            crateSearchDropDown.addEventListener("focus", loadSearch);
+        }
+        var params = getQueryStringParams();
+        if (params.search !== undefined) {
+            loadSearch();
+        }
+    }
+
     onHashChange(null);
     window.onhashchange = onHashChange;
+    setupSearchLoader();
 }());
-
-// This is required in firefox. Explanations: when going back in the history, firefox doesn't re-run
-// the JS, therefore preventing rustdoc from setting a few things required to be able to reload the
-// previous search results (if you navigated to a search result with the keyboard, pressed enter on
-// it to navigate to that result, and then came back to this page).
-window.onunload = function(){};

@@ -1,26 +1,26 @@
 error: lifetime parameters must be declared prior to const parameters
-  --> $DIR/intermixed-lifetime.rs:7:28
+  --> $DIR/intermixed-lifetime.rs:6:28
    |
 LL | struct Foo<const N: usize, 'a, T = u32>(&'a (), T);
-   |           -----------------^^---------- help: reorder the parameters: lifetimes, then types, then consts: `<'a, T, const N: usize>`
+   |           -----------------^^---------- help: reorder the parameters: lifetimes, then types, then consts: `<'a, T = u32, const N: usize>`
 
 error: type parameters must be declared prior to const parameters
-  --> $DIR/intermixed-lifetime.rs:7:32
+  --> $DIR/intermixed-lifetime.rs:6:32
    |
 LL | struct Foo<const N: usize, 'a, T = u32>(&'a (), T);
-   |           ---------------------^------- help: reorder the parameters: lifetimes, then types, then consts: `<'a, T, const N: usize>`
+   |           ---------------------^------- help: reorder the parameters: lifetimes, then types, then consts: `<'a, T = u32, const N: usize>`
 
 error: lifetime parameters must be declared prior to const parameters
-  --> $DIR/intermixed-lifetime.rs:11:37
+  --> $DIR/intermixed-lifetime.rs:10:37
    |
 LL | struct Bar<const N: usize, T = u32, 'a>(&'a (), T);
-   |           --------------------------^^- help: reorder the parameters: lifetimes, then types, then consts: `<'a, T, const N: usize>`
+   |           --------------------------^^- help: reorder the parameters: lifetimes, then types, then consts: `<'a, T = u32, const N: usize>`
 
 error: type parameters must be declared prior to const parameters
-  --> $DIR/intermixed-lifetime.rs:11:28
+  --> $DIR/intermixed-lifetime.rs:10:28
    |
 LL | struct Bar<const N: usize, T = u32, 'a>(&'a (), T);
-   |           -----------------^----------- help: reorder the parameters: lifetimes, then types, then consts: `<'a, T, const N: usize>`
+   |           -----------------^----------- help: reorder the parameters: lifetimes, then types, then consts: `<'a, T = u32, const N: usize>`
 
 error: aborting due to 4 previous errors
 

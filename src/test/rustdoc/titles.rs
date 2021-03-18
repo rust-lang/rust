@@ -7,7 +7,7 @@ pub mod foo_mod {
     pub struct __Thing {}
 }
 
-extern {
+extern "C" {
     // @matches 'foo/fn.foo_ffn.html' '//h1' 'Function foo::foo_ffn'
     pub fn foo_ffn();
 }
@@ -30,7 +30,7 @@ pub type FooType = FooStruct;
 // @matches 'foo/macro.foo_macro.html' '//h1' 'Macro foo::foo_macro'
 #[macro_export]
 macro_rules! foo_macro {
-    () => ();
+    () => {};
 }
 
 // @matches 'foo/primitive.bool.html' '//h1' 'Primitive Type bool'
@@ -40,7 +40,7 @@ mod bool {}
 // @matches 'foo/static.FOO_STATIC.html' '//h1' 'Static foo::FOO_STATIC'
 pub static FOO_STATIC: FooStruct = FooStruct;
 
-extern {
+extern "C" {
     // @matches 'foo/static.FOO_FSTATIC.html' '//h1' 'Static foo::FOO_FSTATIC'
     pub static FOO_FSTATIC: FooStruct;
 }

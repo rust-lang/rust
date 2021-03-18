@@ -1,8 +1,11 @@
-error: constant values inside of type parameter defaults must not depend on generic parameters
+error: generic parameters may not be used in const operations
   --> $DIR/param-in-ct-in-ty-param-default.rs:1:44
    |
 LL | struct Foo<T, U = [u8; std::mem::size_of::<T>()]>(T, U);
-   |                                            ^ the anonymous constant must not depend on the parameter `T`
+   |                                            ^ cannot perform const operation using `T`
+   |
+   = note: type parameters may not be used in const expressions
+   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: aborting due to previous error
 

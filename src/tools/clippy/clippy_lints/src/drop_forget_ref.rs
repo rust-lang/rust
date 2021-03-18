@@ -1,4 +1,4 @@
-use crate::utils::{is_copy, match_def_path, paths, qpath_res, span_lint_and_note};
+use crate::utils::{is_copy, match_def_path, paths, span_lint_and_note};
 use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -98,13 +98,13 @@ declare_clippy_lint! {
 }
 
 const DROP_REF_SUMMARY: &str = "calls to `std::mem::drop` with a reference instead of an owned value. \
-                                Dropping a reference does nothing.";
+                                Dropping a reference does nothing";
 const FORGET_REF_SUMMARY: &str = "calls to `std::mem::forget` with a reference instead of an owned value. \
-                                  Forgetting a reference does nothing.";
+                                  Forgetting a reference does nothing";
 const DROP_COPY_SUMMARY: &str = "calls to `std::mem::drop` with a value that implements `Copy`. \
-                                 Dropping a copy leaves the original intact.";
+                                 Dropping a copy leaves the original intact";
 const FORGET_COPY_SUMMARY: &str = "calls to `std::mem::forget` with a value that implements `Copy`. \
-                                   Forgetting a copy leaves the original intact.";
+                                   Forgetting a copy leaves the original intact";
 
 declare_lint_pass!(DropForgetRef => [DROP_REF, FORGET_REF, DROP_COPY, FORGET_COPY]);
 
@@ -114,7 +114,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
             if let ExprKind::Call(ref path, ref args) = expr.kind;
             if let ExprKind::Path(ref qpath) = path.kind;
             if args.len() == 1;
-            if let Some(def_id) = qpath_res(cx, qpath, path.hir_id).opt_def_id();
+            if let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id();
             then {
                 let lint;
                 let msg;

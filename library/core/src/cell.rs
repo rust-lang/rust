@@ -11,12 +11,10 @@
 //! mutate it.
 //!
 //! Shareable mutable containers exist to permit mutability in a controlled manner, even in the
-//! presence of aliasing. Both `Cell<T>` and `RefCell<T>` allow doing this in a single-threaded
+//! presence of aliasing. Both [`Cell<T>`] and [`RefCell<T>`] allow doing this in a single-threaded
 //! way. However, neither `Cell<T>` nor `RefCell<T>` are thread safe (they do not implement
-//! `Sync`). If you need to do aliasing and mutation between multiple threads it is possible to
-//! use [`Mutex`](../../std/sync/struct.Mutex.html),
-//! [`RwLock`](../../std/sync/struct.RwLock.html) or
-//! [`atomic`](../../core/sync/atomic/index.html) types.
+//! [`Sync`]). If you need to do aliasing and mutation between multiple threads it is possible to
+//! use [`Mutex<T>`], [`RwLock<T>`] or [`atomic`] types.
 //!
 //! Values of the `Cell<T>` and `RefCell<T>` types may be mutated through shared references (i.e.
 //! the common `&T` type), whereas most Rust types can only be mutated through unique (`&mut T`)
@@ -28,13 +26,14 @@
 //! one must use the `RefCell<T>` type, acquiring a write lock before mutating. `Cell<T>` provides
 //! methods to retrieve and change the current interior value:
 //!
-//!  - For types that implement `Copy`, the `get` method retrieves the current interior value.
-//!  - For types that implement `Default`, the `take` method replaces the current interior value
-//!    with `Default::default()` and returns the replaced value.
-//!  - For all types, the `replace` method replaces the current interior value and returns the
-//!    replaced value and the `into_inner` method consumes the `Cell<T>` and returns the interior
-//!    value. Additionally, the `set` method replaces the interior value, dropping the replaced
-//!    value.
+//!  - For types that implement [`Copy`], the [`get`](Cell::get) method retrieves the current
+//!    interior value.
+//!  - For types that implement [`Default`], the [`take`](Cell::take) method replaces the current
+//!    interior value with [`Default::default()`] and returns the replaced value.
+//!  - For all types, the [`replace`](Cell::replace) method replaces the current interior value and
+//!    returns the replaced value and the [`into_inner`](Cell::into_inner) method consumes the
+//!    `Cell<T>` and returns the interior value. Additionally, the [`set`](Cell::set) method
+//!    replaces the interior value, dropping the replaced value.
 //!
 //! `RefCell<T>` uses Rust's lifetimes to implement 'dynamic borrowing', a process whereby one can
 //! claim temporary, exclusive, mutable access to the inner value. Borrows for `RefCell<T>`s are
@@ -54,12 +53,12 @@
 //!
 //! * Introducing mutability 'inside' of something immutable
 //! * Implementation details of logically-immutable methods.
-//! * Mutating implementations of `Clone`.
+//! * Mutating implementations of [`Clone`].
 //!
 //! ## Introducing mutability 'inside' of something immutable
 //!
-//! Many shared smart pointer types, including `Rc<T>` and `Arc<T>`, provide containers that can be
-//! cloned and shared between multiple parties. Because the contained values may be
+//! Many shared smart pointer types, including [`Rc<T>`] and [`Arc<T>`], provide containers that can
+//! be cloned and shared between multiple parties. Because the contained values may be
 //! multiply-aliased, they can only be borrowed with `&`, not `&mut`. Without cells it would be
 //! impossible to mutate data inside of these smart pointers at all.
 //!
@@ -91,7 +90,7 @@
 //! ```
 //!
 //! Note that this example uses `Rc<T>` and not `Arc<T>`. `RefCell<T>`s are for single-threaded
-//! scenarios. Consider using `RwLock<T>` or `Mutex<T>` if you need shared mutability in a
+//! scenarios. Consider using [`RwLock<T>`] or [`Mutex<T>`] if you need shared mutability in a
 //! multi-threaded situation.
 //!
 //! ## Implementation details of logically-immutable methods
@@ -127,10 +126,10 @@
 //! ## Mutating implementations of `Clone`
 //!
 //! This is simply a special - but common - case of the previous: hiding mutability for operations
-//! that appear to be immutable. The `clone` method is expected to not change the source value, and
-//! is declared to take `&self`, not `&mut self`. Therefore, any mutation that happens in the
-//! `clone` method must use cell types. For example, `Rc<T>` maintains its reference counts within a
-//! `Cell<T>`.
+//! that appear to be immutable. The [`clone`](Clone::clone) method is expected to not change the
+//! source value, and is declared to take `&self`, not `&mut self`. Therefore, any mutation that
+//! happens in the `clone` method must use cell types. For example, [`Rc<T>`] maintains its
+//! reference counts within a `Cell<T>`.
 //!
 //! ```
 //! use std::cell::Cell;
@@ -185,6 +184,11 @@
 //! }
 //! ```
 //!
+//! [`Arc<T>`]: ../../std/sync/struct.Arc.html
+//! [`Rc<T>`]: ../../std/rc/struct.Rc.html
+//! [`RwLock<T>`]: ../../std/sync/struct.RwLock.html
+//! [`Mutex<T>`]: ../../std/sync/struct.Mutex.html
+//! [`atomic`]: ../../core/sync/atomic/index.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -374,7 +378,7 @@ impl<T> Cell<T> {
         }
     }
 
-    /// Replaces the contained value, and returns it.
+    /// Replaces the contained value with `val`, and returns the old contained value.
     ///
     /// # Examples
     ///
@@ -1261,6 +1265,40 @@ impl<'b, T: ?Sized> Ref<'b, T> {
         Ref { value: f(orig.value), borrow: orig.borrow }
     }
 
+    /// Makes a new `Ref` for an optional component of the borrowed data. The
+    /// original guard is returned as an `Err(..)` if the closure returns
+    /// `None`.
+    ///
+    /// The `RefCell` is already immutably borrowed, so this cannot fail.
+    ///
+    /// This is an associated function that needs to be used as
+    /// `Ref::filter_map(...)`. A method would interfere with methods of the same
+    /// name on the contents of a `RefCell` used through `Deref`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(cell_filter_map)]
+    ///
+    /// use std::cell::{RefCell, Ref};
+    ///
+    /// let c = RefCell::new(vec![1, 2, 3]);
+    /// let b1: Ref<Vec<u32>> = c.borrow();
+    /// let b2: Result<Ref<u32>, _> = Ref::filter_map(b1, |v| v.get(1));
+    /// assert_eq!(*b2.unwrap(), 2);
+    /// ```
+    #[unstable(feature = "cell_filter_map", reason = "recently added", issue = "81061")]
+    #[inline]
+    pub fn filter_map<U: ?Sized, F>(orig: Ref<'b, T>, f: F) -> Result<Ref<'b, U>, Self>
+    where
+        F: FnOnce(&T) -> Option<&U>,
+    {
+        match f(orig.value) {
+            Some(value) => Ok(Ref { value, borrow: orig.borrow }),
+            None => Err(orig),
+        }
+    }
+
     /// Splits a `Ref` into multiple `Ref`s for different components of the
     /// borrowed data.
     ///
@@ -1370,6 +1408,58 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
         // FIXME(nll-rfc#40): fix borrow-check
         let RefMut { value, borrow } = orig;
         RefMut { value: f(value), borrow }
+    }
+
+    /// Makes a new `RefMut` for an optional component of the borrowed data. The
+    /// original guard is returned as an `Err(..)` if the closure returns
+    /// `None`.
+    ///
+    /// The `RefCell` is already mutably borrowed, so this cannot fail.
+    ///
+    /// This is an associated function that needs to be used as
+    /// `RefMut::filter_map(...)`. A method would interfere with methods of the
+    /// same name on the contents of a `RefCell` used through `Deref`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(cell_filter_map)]
+    ///
+    /// use std::cell::{RefCell, RefMut};
+    ///
+    /// let c = RefCell::new(vec![1, 2, 3]);
+    ///
+    /// {
+    ///     let b1: RefMut<Vec<u32>> = c.borrow_mut();
+    ///     let mut b2: Result<RefMut<u32>, _> = RefMut::filter_map(b1, |v| v.get_mut(1));
+    ///
+    ///     if let Ok(mut b2) = b2 {
+    ///         *b2 += 2;
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(*c.borrow(), vec![1, 4, 3]);
+    /// ```
+    #[unstable(feature = "cell_filter_map", reason = "recently added", issue = "81061")]
+    #[inline]
+    pub fn filter_map<U: ?Sized, F>(orig: RefMut<'b, T>, f: F) -> Result<RefMut<'b, U>, Self>
+    where
+        F: FnOnce(&mut T) -> Option<&mut U>,
+    {
+        // FIXME(nll-rfc#40): fix borrow-check
+        let RefMut { value, borrow } = orig;
+        let value = value as *mut T;
+        // SAFETY: function holds onto an exclusive reference for the duration
+        // of its call through `orig`, and the pointer is only de-referenced
+        // inside of the function call never allowing the exclusive reference to
+        // escape.
+        match f(unsafe { &mut *value }) {
+            Some(value) => Ok(RefMut { value, borrow }),
+            None => {
+                // SAFETY: same as above.
+                Err(RefMut { value: unsafe { &mut *value }, borrow })
+            }
+        }
     }
 
     /// Splits a `RefMut` into multiple `RefMut`s for different components of the
@@ -1529,17 +1619,18 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 
 /// The core primitive for interior mutability in Rust.
 ///
-/// `UnsafeCell<T>` is a type that wraps some `T` and indicates unsafe interior operations on the
-/// wrapped type. Types with an `UnsafeCell<T>` field are considered to have an 'unsafe interior'.
-/// The `UnsafeCell<T>` type is the only legal way to obtain aliasable data that is considered
-/// mutable. In general, transmuting an `&T` type into an `&mut T` is considered undefined behavior.
+/// If you have a reference `&T`, then normally in Rust the compiler performs optimizations based on
+/// the knowledge that `&T` points to immutable data. Mutating that data, for example through an
+/// alias or by transmuting an `&T` into an `&mut T`, is considered undefined behavior.
+/// `UnsafeCell<T>` opts-out of the immutability guarantee for `&T`: a shared reference
+/// `&UnsafeCell<T>` may point to data that is being mutated. This is called "interior mutability".
 ///
-/// If you have a reference `&SomeStruct`, then normally in Rust all fields of `SomeStruct` are
-/// immutable. The compiler makes optimizations based on the knowledge that `&T` is not mutably
-/// aliased or mutated, and that `&mut T` is unique. `UnsafeCell<T>` is the only core language
-/// feature to work around the restriction that `&T` may not be mutated. All other types that
-/// allow internal mutability, such as `Cell<T>` and `RefCell<T>`, use `UnsafeCell` to wrap their
-/// internal data. There is *no* legal way to obtain aliasing `&mut`, not even with `UnsafeCell<T>`.
+/// All other types that allow internal mutability, such as `Cell<T>` and `RefCell<T>`, internally
+/// use `UnsafeCell` to wrap their data.
+///
+/// Note that only the immutability guarantee for shared references is affected by `UnsafeCell`. The
+/// uniqueness guarantee for mutable references is unaffected. There is *no* legal way to obtain
+/// aliasing `&mut`, not even with `UnsafeCell<T>`.
 ///
 /// The `UnsafeCell` API itself is technically very simple: [`.get()`] gives you a raw pointer
 /// `*mut T` to its contents. It is up to _you_ as the abstraction designer to use that raw pointer
@@ -1580,7 +1671,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// `&UnsafeCell<_>` reference); there is no magic whatsoever when dealing with _exclusive_
 /// accesses (_e.g._, through an `&mut UnsafeCell<_>`): neither the cell nor the wrapped value
 /// may be aliased for the duration of that `&mut` borrow.
-/// This is showcased by the [`.get_mut()`] accessor, which is a non-`unsafe` getter that yields
+/// This is showcased by the [`.get_mut()`] accessor, which is a _safe_ getter that yields
 /// a `&mut T`.
 ///
 /// [`.get_mut()`]: `UnsafeCell::get_mut`
@@ -1618,7 +1709,6 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// implies exclusive access to its `T`:
 ///
 /// ```rust
-/// #![feature(unsafe_cell_get_mut)]
 /// #![forbid(unsafe_code)] // with exclusive accesses,
 ///                         // `UnsafeCell` is a transparent no-op wrapper,
 ///                         // so no need for `unsafe` here.
@@ -1722,7 +1812,6 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(unsafe_cell_get_mut)]
     /// use std::cell::UnsafeCell;
     ///
     /// let mut c = UnsafeCell::new(5);
@@ -1731,7 +1820,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// assert_eq!(*c.get_mut(), 6);
     /// ```
     #[inline]
-    #[unstable(feature = "unsafe_cell_get_mut", issue = "76943")]
+    #[stable(feature = "unsafe_cell_get_mut", since = "1.50.0")]
     pub fn get_mut(&mut self) -> &mut T {
         &mut self.value
     }

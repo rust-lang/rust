@@ -1,8 +1,18 @@
-error[E0107]: wrong number of type arguments: expected 1, found 0
+error[E0107]: missing generics for enum `Quux`
   --> $DIR/tag-type-args.rs:3:11
    |
 LL | fn foo(c: Quux) { assert!((false)); }
    |           ^^^^ expected 1 type argument
+   |
+note: enum defined here, with 1 type parameter: `T`
+  --> $DIR/tag-type-args.rs:1:6
+   |
+LL | enum Quux<T> { Bar }
+   |      ^^^^ -
+help: use angle brackets to add missing type argument
+   |
+LL | fn foo(c: Quux<T>) { assert!((false)); }
+   |               ^^^
 
 error: aborting due to previous error
 

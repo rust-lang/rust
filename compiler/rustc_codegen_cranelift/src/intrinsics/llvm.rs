@@ -6,7 +6,7 @@ use crate::prelude::*;
 use rustc_middle::ty::subst::SubstsRef;
 
 pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     intrinsic: &str,
     substs: SubstsRef<'tcx>,
     args: &[mir::Operand<'tcx>],
@@ -23,8 +23,8 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
 
         // Used by `_mm_movemask_epi8` and `_mm256_movemask_epi8`
         llvm.x86.sse2.pmovmskb.128 | llvm.x86.avx2.pmovmskb | llvm.x86.sse2.movmsk.pd, (c a) {
-            let (lane_layout, lane_count) = lane_type_and_count(fx.tcx, a.layout());
-            let lane_ty = fx.clif_type(lane_layout.ty).unwrap();
+            let (lane_count, lane_ty) = a.layout().ty.simd_size_and_type(fx.tcx);
+            let lane_ty = fx.clif_type(lane_ty).unwrap();
             assert!(lane_count <= 32);
 
             let mut res = fx.bcx.ins().iconst(types::I32, 0);
@@ -53,7 +53,7 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
         };
         llvm.x86.sse2.cmp.ps | llvm.x86.sse2.cmp.pd, (c x, c y, o kind) {
             let kind_const = crate::constant::mir_operand_get_const_val(fx, kind).expect("llvm.x86.sse2.cmp.* kind not const");
-            let flt_cc = match kind_const.val.try_to_bits(Size::from_bytes(1)).unwrap_or_else(|| panic!("kind not scalar: {:?}", kind_const)) {
+            let flt_cc = match kind_const.try_to_bits(Size::from_bytes(1)).unwrap_or_else(|| panic!("kind not scalar: {:?}", kind_const)) {
                 0 => FloatCC::Equal,
                 1 => FloatCC::LessThan,
                 2 => FloatCC::LessThanOrEqual,
@@ -84,7 +84,7 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
         llvm.x86.sse2.psrli.d, (c a, o imm8) {
             let imm8 = crate::constant::mir_operand_get_const_val(fx, imm8).expect("llvm.x86.sse2.psrli.d imm8 not const");
             simd_for_each_lane(fx, a, ret, |fx, _lane_layout, res_lane_layout, lane| {
-                let res_lane = match imm8.val.try_to_bits(Size::from_bytes(4)).unwrap_or_else(|| panic!("imm8 not scalar: {:?}", imm8)) {
+                let res_lane = match imm8.try_to_bits(Size::from_bytes(4)).unwrap_or_else(|| panic!("imm8 not scalar: {:?}", imm8)) {
                     imm8 if imm8 < 32 => fx.bcx.ins().ushr_imm(lane, i64::from(imm8 as u8)),
                     _ => fx.bcx.ins().iconst(types::I32, 0),
                 };
@@ -94,7 +94,7 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
         llvm.x86.sse2.pslli.d, (c a, o imm8) {
             let imm8 = crate::constant::mir_operand_get_const_val(fx, imm8).expect("llvm.x86.sse2.psrli.d imm8 not const");
             simd_for_each_lane(fx, a, ret, |fx, _lane_layout, res_lane_layout, lane| {
-                let res_lane = match imm8.val.try_to_bits(Size::from_bytes(4)).unwrap_or_else(|| panic!("imm8 not scalar: {:?}", imm8)) {
+                let res_lane = match imm8.try_to_bits(Size::from_bytes(4)).unwrap_or_else(|| panic!("imm8 not scalar: {:?}", imm8)) {
                     imm8 if imm8 < 32 => fx.bcx.ins().ishl_imm(lane, i64::from(imm8 as u8)),
                     _ => fx.bcx.ins().iconst(types::I32, 0),
                 };

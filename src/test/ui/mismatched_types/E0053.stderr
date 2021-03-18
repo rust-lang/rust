@@ -17,14 +17,13 @@ LL |     fn bar(&self);
    |            ----- type in trait
 ...
 LL |     fn bar(&mut self) { }
-   |            ^^^^^^^^^ types differ in mutability
+   |            ^^^^^^^^^
+   |            |
+   |            types differ in mutability
+   |            help: consider changing the mutability to match the trait: `&self`
    |
    = note: expected fn pointer `fn(&Bar)`
               found fn pointer `fn(&mut Bar)`
-help: consider change the type to match the mutability in trait
-   |
-LL |     fn bar(&self) { }
-   |            ^^^^^
 
 error: aborting due to 2 previous errors
 

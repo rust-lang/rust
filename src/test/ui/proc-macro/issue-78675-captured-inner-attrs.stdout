@@ -34,11 +34,11 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
                 stream: TokenStream [
                     Ident {
                         ident: "mod",
-                        span: $DIR/issue-78675-captured-inner-attrs.rs:22:13: 22:18 (#4),
+                        span: $DIR/issue-78675-captured-inner-attrs.rs:27:5: 29:6 (#0),
                     },
                     Ident {
                         ident: "bar",
-                        span: $DIR/issue-78675-captured-inner-attrs.rs:22:13: 22:18 (#4),
+                        span: $DIR/issue-78675-captured-inner-attrs.rs:27:5: 29:6 (#0),
                     },
                     Group {
                         delimiter: Brace,
@@ -46,36 +46,36 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
                             Punct {
                                 ch: '#',
                                 spacing: Joint,
-                                span: $DIR/issue-78675-captured-inner-attrs.rs:22:13: 22:18 (#4),
+                                span: $DIR/issue-78675-captured-inner-attrs.rs:27:5: 29:6 (#0),
                             },
                             Punct {
                                 ch: '!',
                                 spacing: Alone,
-                                span: $DIR/issue-78675-captured-inner-attrs.rs:22:13: 22:18 (#4),
+                                span: $DIR/issue-78675-captured-inner-attrs.rs:27:5: 29:6 (#0),
                             },
                             Group {
                                 delimiter: Bracket,
                                 stream: TokenStream [
                                     Ident {
                                         ident: "doc",
-                                        span: $DIR/issue-78675-captured-inner-attrs.rs:22:13: 22:18 (#4),
+                                        span: $DIR/issue-78675-captured-inner-attrs.rs:27:5: 29:6 (#0),
                                     },
                                     Punct {
                                         ch: '=',
                                         spacing: Alone,
-                                        span: $DIR/issue-78675-captured-inner-attrs.rs:22:13: 22:18 (#4),
+                                        span: $DIR/issue-78675-captured-inner-attrs.rs:27:5: 29:6 (#0),
                                     },
                                     Literal {
                                         kind: StrRaw(0),
                                         symbol: " Foo",
                                         suffix: None,
-                                        span: $DIR/issue-78675-captured-inner-attrs.rs:22:13: 22:18 (#4),
+                                        span: $DIR/issue-78675-captured-inner-attrs.rs:27:5: 29:6 (#0),
                                     },
                                 ],
-                                span: $DIR/issue-78675-captured-inner-attrs.rs:22:13: 22:18 (#4),
+                                span: $DIR/issue-78675-captured-inner-attrs.rs:27:5: 29:6 (#0),
                             },
                         ],
-                        span: $DIR/issue-78675-captured-inner-attrs.rs:22:13: 22:18 (#4),
+                        span: $DIR/issue-78675-captured-inner-attrs.rs:27:5: 29:6 (#0),
                     },
                 ],
                 span: $DIR/issue-78675-captured-inner-attrs.rs:22:13: 22:18 (#4),

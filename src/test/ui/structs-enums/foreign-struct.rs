@@ -6,14 +6,14 @@
 
 // pretty-expanded FIXME #23616
 
-pub enum void { }
+pub enum void {}
 
 mod bindgen {
     use super::void;
 
-    extern {
+    extern "C" {
         pub fn printf(v: void);
     }
 }
 
-pub fn main() { }
+pub fn main() {}

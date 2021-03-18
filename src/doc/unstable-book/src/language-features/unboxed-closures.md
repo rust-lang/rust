@@ -9,7 +9,7 @@ See Also: [`fn_traits`](../library-features/fn-traits.md)
 ----
 
 The `unboxed_closures` feature allows you to write functions using the `"rust-call"` ABI,
-required for implementing the [`Fn*`] family of traits. `"rust-call"` functions must have 
+required for implementing the [`Fn*`] family of traits. `"rust-call"` functions must have
 exactly one (non self) argument, a tuple representing the argument list.
 
 [`Fn*`]: https://doc.rust-lang.org/std/ops/trait.Fn.html

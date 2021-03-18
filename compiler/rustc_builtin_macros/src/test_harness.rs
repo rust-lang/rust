@@ -1,10 +1,10 @@
 // Code that generates a test runner to run all the tests in a crate
 
 use rustc_ast as ast;
-use rustc_ast::attr;
 use rustc_ast::entry::EntryPointType;
 use rustc_ast::mut_visit::{ExpectOne, *};
 use rustc_ast::ptr::P;
+use rustc_ast::{attr, ModKind};
 use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_feature::Features;
@@ -89,7 +89,7 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
         noop_visit_crate(c, self);
 
         // Create a main function to run our tests
-        c.module.items.push(mk_main(&mut self.cx));
+        c.items.push(mk_main(&mut self.cx));
     }
 
     fn flat_map_item(&mut self, i: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
@@ -103,9 +103,9 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
 
         // We don't want to recurse into anything other than mods, since
         // mods or tests inside of functions will break things
-        if let ast::ItemKind::Mod(mut module) = item.kind {
+        if let ast::ItemKind::Mod(..) = item.kind {
             let tests = mem::take(&mut self.tests);
-            noop_visit_mod(&mut module, self);
+            noop_visit_item_kind(&mut item.kind, self);
             let mut tests = mem::replace(&mut self.tests, tests);
 
             if !tests.is_empty() {
@@ -113,8 +113,12 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
                     if item.id == ast::DUMMY_NODE_ID { ast::CRATE_NODE_ID } else { item.id };
                 // Create an identifier that will hygienically resolve the test
                 // case name, even in another module.
+                let inner_span = match item.kind {
+                    ast::ItemKind::Mod(_, ModKind::Loaded(.., span)) => span,
+                    _ => unreachable!(),
+                };
                 let expn_id = self.cx.ext_cx.resolver.expansion_for_ast_pass(
-                    module.inner,
+                    inner_span,
                     AstPass::TestHarness,
                     &[],
                     Some(parent),
@@ -126,7 +130,6 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
                 }
                 self.cx.test_cases.extend(tests);
             }
-            item.kind = ast::ItemKind::Mod(module);
         }
         smallvec![P(item)]
     }
@@ -311,7 +314,8 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     let decl = ecx.fn_decl(vec![], ast::FnRetTy::Ty(main_ret_ty));
     let sig = ast::FnSig { decl, header: ast::FnHeader::default(), span: sp };
     let def = ast::Defaultness::Final;
-    let main = ast::ItemKind::Fn(def, sig, ast::Generics::default(), Some(main_body));
+    let main =
+        ast::ItemKind::Fn(box ast::FnKind(def, sig, ast::Generics::default(), Some(main_body)));
 
     // Honor the reexport_test_harness_main attribute
     let main_id = match cx.reexport_test_harness_main {

@@ -3,10 +3,9 @@
 // pretty-expanded FIXME #23616
 
 mod foo {
-    extern {
+    extern "C" {
         pub static errno: u32;
     }
 }
 
-pub fn main() {
-}
+pub fn main() {}

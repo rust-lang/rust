@@ -9,21 +9,21 @@
       bb0: {
           StorageLive(_2);                 // scope 0 at $DIR/if-condition-int.rs:17:8: 17:9
           _2 = _1;                         // scope 0 at $DIR/if-condition-int.rs:17:8: 17:9
-          switchInt(_2) -> [false: bb1, otherwise: bb2]; // scope 0 at $DIR/if-condition-int.rs:17:5: 17:26
+          switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/if-condition-int.rs:17:5: 17:26
       }
   
       bb1: {
-          _0 = const 1_u32;                // scope 0 at $DIR/if-condition-int.rs:17:23: 17:24
-          goto -> bb3;                     // scope 0 at $DIR/if-condition-int.rs:17:5: 17:26
-      }
-  
-      bb2: {
           _0 = const 0_u32;                // scope 0 at $DIR/if-condition-int.rs:17:12: 17:13
           goto -> bb3;                     // scope 0 at $DIR/if-condition-int.rs:17:5: 17:26
       }
   
+      bb2: {
+          _0 = const 1_u32;                // scope 0 at $DIR/if-condition-int.rs:17:23: 17:24
+          goto -> bb3;                     // scope 0 at $DIR/if-condition-int.rs:17:5: 17:26
+      }
+  
       bb3: {
-          StorageDead(_2);                 // scope 0 at $DIR/if-condition-int.rs:18:1: 18:2
+          StorageDead(_2);                 // scope 0 at $DIR/if-condition-int.rs:17:25: 17:26
           return;                          // scope 0 at $DIR/if-condition-int.rs:18:2: 18:2
       }
   }

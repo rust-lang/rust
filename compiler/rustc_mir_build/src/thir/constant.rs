@@ -1,3 +1,4 @@
+use rustc_apfloat::Float;
 use rustc_ast as ast;
 use rustc_middle::mir::interpret::{
     Allocation, ConstValue, LitToConstError, LitToConstInput, Scalar,
@@ -39,7 +40,7 @@ crate fn lit_to_const<'tcx>(
             let id = tcx.allocate_bytes(data);
             ConstValue::Scalar(Scalar::Ptr(id.into()))
         }
-        (ast::LitKind::Byte(n), ty::Uint(ast::UintTy::U8)) => {
+        (ast::LitKind::Byte(n), ty::Uint(ty::UintTy::U8)) => {
             ConstValue::Scalar(Scalar::from_uint(*n, Size::from_bytes(1)))
         }
         (ast::LitKind::Int(n, _), ty::Uint(_)) | (ast::LitKind::Int(n, _), ty::Int(_)) => {
@@ -56,25 +57,45 @@ crate fn lit_to_const<'tcx>(
     Ok(ty::Const::from_value(tcx, lit, ty))
 }
 
-fn parse_float<'tcx>(num: Symbol, fty: ast::FloatTy, neg: bool) -> Result<ConstValue<'tcx>, ()> {
+fn parse_float<'tcx>(num: Symbol, fty: ty::FloatTy, neg: bool) -> Result<ConstValue<'tcx>, ()> {
     let num = num.as_str();
     use rustc_apfloat::ieee::{Double, Single};
     let scalar = match fty {
-        ast::FloatTy::F32 => {
-            num.parse::<f32>().map_err(|_| ())?;
+        ty::FloatTy::F32 => {
+            let rust_f = num.parse::<f32>().map_err(|_| ())?;
             let mut f = num.parse::<Single>().unwrap_or_else(|e| {
                 panic!("apfloat::ieee::Single failed to parse `{}`: {:?}", num, e)
             });
+            assert!(
+                u128::from(rust_f.to_bits()) == f.to_bits(),
+                "apfloat::ieee::Single gave different result for `{}`: \
+                 {}({:#x}) vs Rust's {}({:#x})",
+                rust_f,
+                f,
+                f.to_bits(),
+                Single::from_bits(rust_f.to_bits().into()),
+                rust_f.to_bits()
+            );
             if neg {
                 f = -f;
             }
             Scalar::from_f32(f)
         }
-        ast::FloatTy::F64 => {
-            num.parse::<f64>().map_err(|_| ())?;
+        ty::FloatTy::F64 => {
+            let rust_f = num.parse::<f64>().map_err(|_| ())?;
             let mut f = num.parse::<Double>().unwrap_or_else(|e| {
                 panic!("apfloat::ieee::Double failed to parse `{}`: {:?}", num, e)
             });
+            assert!(
+                u128::from(rust_f.to_bits()) == f.to_bits(),
+                "apfloat::ieee::Double gave different result for `{}`: \
+                 {}({:#x}) vs Rust's {}({:#x})",
+                rust_f,
+                f,
+                f.to_bits(),
+                Double::from_bits(rust_f.to_bits().into()),
+                rust_f.to_bits()
+            );
             if neg {
                 f = -f;
             }

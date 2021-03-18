@@ -1,12 +1,49 @@
+// ignore-tidy-filelength
+
 //! Some lints that are built in to the compiler.
 //!
 //! These are the built-in lints that are emitted direct in the main
 //! compiler code, rather than using their own custom pass. Those
 //! lints are all available in `rustc_lint::builtin`.
 
-use crate::{declare_lint, declare_lint_pass, declare_tool_lint};
+use crate::{declare_lint, declare_lint_pass, FutureBreakage};
 use rustc_span::edition::Edition;
-use rustc_span::symbol::sym;
+
+declare_lint! {
+    /// The `forbidden_lint_groups` lint detects violations of
+    /// `forbid` applied to a lint group. Due to a bug in the compiler,
+    /// these used to be overlooked entirely. They now generate a warning.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #![forbid(warnings)]
+    /// #![deny(bad_style)]
+    ///
+    /// fn main() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Recommended fix
+    ///
+    /// If your crate is using `#![forbid(warnings)]`,
+    /// we recommend that you change to `#![deny(warnings)]`.
+    ///
+    /// ### Explanation
+    ///
+    /// Due to a compiler bug, applying `forbid` to lint groups
+    /// previously had no effect. The bug is now fixed but instead of
+    /// enforcing `forbid` we issue this future-compatibility warning
+    /// to avoid breaking existing crates.
+    pub FORBIDDEN_LINT_GROUPS,
+    Warn,
+    "applying forbid to lint-groups",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #81670 <https://github.com/rust-lang/rust/issues/81670>",
+        edition: None,
+    };
+}
 
 declare_lint! {
     /// The `ill_formed_attribute_input` lint detects ill-formed attribute
@@ -221,14 +258,10 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// This lint detects code that is very likely incorrect. When possible,
-    /// the compiler will attempt to detect situations where code can be
-    /// evaluated at compile-time to generate more efficient code. While
-    /// evaluating such code, if it detects that the code will unconditionally
-    /// panic, this usually indicates that it is doing something incorrectly.
-    /// If this lint is allowed, then the code will not be evaluated at
-    /// compile-time, and instead continue to generate code to evaluate at
-    /// runtime, which may panic during runtime.
+    /// This lint detects code that is very likely incorrect because it will
+    /// always panic, such as division by zero and out-of-bounds array
+    /// accesses. Consider adjusting your code if this is a bug, or using the
+    /// `panic!` or `unreachable!` macro instead in case the panic is intended.
     pub UNCONDITIONAL_PANIC,
     Deny,
     "operation will cause a panic at runtime"
@@ -242,41 +275,26 @@ declare_lint! {
     ///
     /// ```rust,compile_fail
     /// #![allow(unconditional_panic)]
-    /// let x: &'static i32 = &(1 / 0);
+    /// const C: i32 = 1/0;
     /// ```
     ///
     /// {{produces}}
     ///
     /// ### Explanation
     ///
-    /// This lint detects code that is very likely incorrect. If this lint is
-    /// allowed, then the code will not be evaluated at compile-time, and
-    /// instead continue to generate code to evaluate at runtime, which may
-    /// panic during runtime.
+    /// This lint detects constants that fail to evaluate. Allowing the lint will accept the
+    /// constant declaration, but any use of this constant will still lead to a hard error. This is
+    /// a future incompatibility lint; the plan is to eventually entirely forbid even declaring
+    /// constants that cannot be evaluated.  See [issue #71800] for more details.
     ///
-    /// Note that this lint may trigger in either inside or outside of a
-    /// [const context]. Outside of a [const context], the compiler can
-    /// sometimes evaluate an expression at compile-time in order to generate
-    /// more efficient code. As the compiler becomes better at doing this, it
-    /// needs to decide what to do when it encounters code that it knows for
-    /// certain will panic or is otherwise incorrect. Making this a hard error
-    /// would prevent existing code that exhibited this behavior from
-    /// compiling, breaking backwards-compatibility. However, this is almost
-    /// certainly incorrect code, so this is a deny-by-default lint. For more
-    /// details, see [RFC 1229] and [issue #28238].
-    ///
-    /// Note that there are several other more specific lints associated with
-    /// compile-time evaluation, such as [`arithmetic_overflow`],
-    /// [`unconditional_panic`].
-    ///
-    /// [const context]: https://doc.rust-lang.org/reference/const_eval.html#const-context
-    /// [RFC 1229]: https://github.com/rust-lang/rfcs/blob/master/text/1229-compile-time-asserts.md
-    /// [issue #28238]: https://github.com/rust-lang/rust/issues/28238
-    /// [`arithmetic_overflow`]: deny-by-default.html#arithmetic-overflow
-    /// [`unconditional_panic`]: deny-by-default.html#unconditional-panic
+    /// [issue #71800]: https://github.com/rust-lang/rust/issues/71800
     pub CONST_ERR,
     Deny,
-    "constant evaluation detected erroneous expression",
+    "constant evaluation encountered erroneous expression",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #71800 <https://github.com/rust-lang/rust/issues/71800>",
+        edition: None,
+    };
     report_in_external_macro
 }
 
@@ -588,8 +606,8 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `overlapping_patterns` lint detects `match` arms that have
-    /// [range patterns] that overlap.
+    /// The `overlapping_range_endpoints` lint detects `match` arms that have [range patterns] that
+    /// overlap on their endpoints.
     ///
     /// [range patterns]: https://doc.rust-lang.org/nightly/reference/patterns.html#range-patterns
     ///
@@ -607,13 +625,12 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// It is likely a mistake to have range patterns in a match expression
-    /// that overlap. Check that the beginning and end values are what you
-    /// expect, and keep in mind that with `..=` the left and right bounds are
-    /// inclusive.
-    pub OVERLAPPING_PATTERNS,
+    /// It is likely a mistake to have range patterns in a match expression that overlap in this
+    /// way. Check that the beginning and end values are what you expect, and keep in mind that
+    /// with `..=` the left and right bounds are inclusive.
+    pub OVERLAPPING_RANGE_ENDPOINTS,
     Warn,
-    "detects overlapping patterns"
+    "detects range patterns with overlapping endpoints"
 }
 
 declare_lint! {
@@ -1062,6 +1079,7 @@ declare_lint! {
     pub UNALIGNED_REFERENCES,
     Allow,
     "detects unaligned references to fields of packed structs",
+    report_in_external_macro
 }
 
 declare_lint! {
@@ -1224,6 +1242,50 @@ declare_lint! {
     "patterns in functions without body were erroneously allowed",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #35203 <https://github.com/rust-lang/rust/issues/35203>",
+        edition: None,
+    };
+}
+
+declare_lint! {
+    /// The `missing_fragment_specifier` lint is issued when an unused pattern in a
+    /// `macro_rules!` macro definition has a meta-variable (e.g. `$e`) that is not
+    /// followed by a fragment specifier (e.g. `:expr`).
+    ///
+    /// This warning can always be fixed by removing the unused pattern in the
+    /// `macro_rules!` macro definition.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// macro_rules! foo {
+    ///    () => {};
+    ///    ($name) => { };
+    /// }
+    ///
+    /// fn main() {
+    ///    foo!();
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// To fix this, remove the unused pattern from the `macro_rules!` macro definition:
+    ///
+    /// ```rust
+    /// macro_rules! foo {
+    ///     () => {};
+    /// }
+    /// fn main() {
+    ///     foo!();
+    /// }
+    /// ```
+    pub MISSING_FRAGMENT_SPECIFIER,
+    Deny,
+    "detects missing fragment specifiers in unused `macro_rules!` patterns",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #40107 <https://github.com/rust-lang/rust/issues/40107>",
         edition: None,
     };
 }
@@ -1752,14 +1814,12 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `irrefutable_let_patterns` lint detects detects [irrefutable
-    /// patterns] in [if-let] and [while-let] statements.
-    ///
-    ///
+    /// The `irrefutable_let_patterns` lint detects [irrefutable patterns]
+    /// in [`if let`]s, [`while let`]s, and `if let` guards.
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```
     /// if let _ = 123 {
     ///     println!("always runs!");
     /// }
@@ -1770,7 +1830,7 @@ declare_lint! {
     /// ### Explanation
     ///
     /// There usually isn't a reason to have an irrefutable pattern in an
-    /// if-let or while-let statement, because the pattern will always match
+    /// `if let` or `while let` statement, because the pattern will always match
     /// successfully. A [`let`] or [`loop`] statement will suffice. However,
     /// when generating code with a macro, forbidding irrefutable patterns
     /// would require awkward workarounds in situations where the macro
@@ -1781,14 +1841,14 @@ declare_lint! {
     /// See [RFC 2086] for more details.
     ///
     /// [irrefutable patterns]: https://doc.rust-lang.org/reference/patterns.html#refutability
-    /// [if-let]: https://doc.rust-lang.org/reference/expressions/if-expr.html#if-let-expressions
-    /// [while-let]: https://doc.rust-lang.org/reference/expressions/loop-expr.html#predicate-pattern-loops
+    /// [`if let`]: https://doc.rust-lang.org/reference/expressions/if-expr.html#if-let-expressions
+    /// [`while let`]: https://doc.rust-lang.org/reference/expressions/loop-expr.html#predicate-pattern-loops
     /// [`let`]: https://doc.rust-lang.org/reference/statements.html#let-statements
     /// [`loop`]: https://doc.rust-lang.org/reference/expressions/loop-expr.html#infinite-loops
     /// [RFC 2086]: https://github.com/rust-lang/rfcs/blob/master/text/2086-allow-if-let-irrefutables.md
     pub IRREFUTABLE_LET_PATTERNS,
     Warn,
-    "detects irrefutable patterns in if-let and while-let statements"
+    "detects irrefutable patterns in `if let` and `while let` statements"
 }
 
 declare_lint! {
@@ -1812,93 +1872,6 @@ declare_lint! {
     pub UNUSED_LABELS,
     Warn,
     "detects labels that are never used"
-}
-
-declare_lint! {
-    /// The `broken_intra_doc_links` lint detects failures in resolving
-    /// intra-doc link targets. This is a `rustdoc` only lint, see the
-    /// documentation in the [rustdoc book].
-    ///
-    /// [rustdoc book]: ../../../rustdoc/lints.html#broken_intra_doc_links
-    pub BROKEN_INTRA_DOC_LINKS,
-    Warn,
-    "failures in resolving intra-doc link targets"
-}
-
-declare_lint! {
-    /// This is a subset of `broken_intra_doc_links` that warns when linking from
-    /// a public item to a private one. This is a `rustdoc` only lint, see the
-    /// documentation in the [rustdoc book].
-    ///
-    /// [rustdoc book]: ../../../rustdoc/lints.html#private_intra_doc_links
-    pub PRIVATE_INTRA_DOC_LINKS,
-    Warn,
-    "linking from a public item to a private one"
-}
-
-declare_lint! {
-    /// The `invalid_codeblock_attributes` lint detects code block attributes
-    /// in documentation examples that have potentially mis-typed values. This
-    /// is a `rustdoc` only lint, see the documentation in the [rustdoc book].
-    ///
-    /// [rustdoc book]: ../../../rustdoc/lints.html#invalid_codeblock_attributes
-    pub INVALID_CODEBLOCK_ATTRIBUTES,
-    Warn,
-    "codeblock attribute looks a lot like a known one"
-}
-
-declare_lint! {
-    /// The `missing_crate_level_docs` lint detects if documentation is
-    /// missing at the crate root. This is a `rustdoc` only lint, see the
-    /// documentation in the [rustdoc book].
-    ///
-    /// [rustdoc book]: ../../../rustdoc/lints.html#missing_crate_level_docs
-    pub MISSING_CRATE_LEVEL_DOCS,
-    Allow,
-    "detects crates with no crate-level documentation"
-}
-
-declare_lint! {
-    /// The `missing_doc_code_examples` lint detects publicly-exported items
-    /// without code samples in their documentation. This is a `rustdoc` only
-    /// lint, see the documentation in the [rustdoc book].
-    ///
-    /// [rustdoc book]: ../../../rustdoc/lints.html#missing_doc_code_examples
-    pub MISSING_DOC_CODE_EXAMPLES,
-    Allow,
-    "detects publicly-exported items without code samples in their documentation"
-}
-
-declare_lint! {
-    /// The `private_doc_tests` lint detects code samples in docs of private
-    /// items not documented by `rustdoc`. This is a `rustdoc` only lint, see
-    /// the documentation in the [rustdoc book].
-    ///
-    /// [rustdoc book]: ../../../rustdoc/lints.html#private_doc_tests
-    pub PRIVATE_DOC_TESTS,
-    Allow,
-    "detects code samples in docs of private items not documented by rustdoc"
-}
-
-declare_lint! {
-    /// The `invalid_html_tags` lint detects invalid HTML tags. This is a
-    /// `rustdoc` only lint, see the documentation in the [rustdoc book].
-    ///
-    /// [rustdoc book]: ../../../rustdoc/lints.html#invalid_html_tags
-    pub INVALID_HTML_TAGS,
-    Allow,
-    "detects invalid HTML tags in doc comments"
-}
-
-declare_lint! {
-    /// The `non_autolinks` lint detects when a URL could be written using
-    /// only angle brackets. This is a `rustdoc` only lint, see the
-    /// documentation in the [rustdoc book].
-    ///
-    /// [rustdoc book]: ../../../rustdoc/lints.html#non_autolinks
-    pub NON_AUTOLINKS,
-    Warn,
-    "detects URLs that could be written using only angle brackets"
 }
 
 declare_lint! {
@@ -2515,16 +2488,11 @@ declare_lint! {
 
 declare_lint! {
     /// The `unsafe_op_in_unsafe_fn` lint detects unsafe operations in unsafe
-    /// functions without an explicit unsafe block. This lint only works on
-    /// the [**nightly channel**] with the
-    /// `#![feature(unsafe_block_in_unsafe_fn)]` feature.
-    ///
-    /// [**nightly channel**]: https://doc.rust-lang.org/book/appendix-07-nightly-rust.html
+    /// functions without an explicit unsafe block.
     ///
     /// ### Example
     ///
     /// ```rust,compile_fail
-    /// #![feature(unsafe_block_in_unsafe_fn)]
     /// #![deny(unsafe_op_in_unsafe_fn)]
     ///
     /// unsafe fn foo() {}
@@ -2562,7 +2530,6 @@ declare_lint! {
     pub UNSAFE_OP_IN_UNSAFE_FN,
     Allow,
     "unsafe operations in unsafe functions without an explicit unsafe block are deprecated",
-    @feature_gate = sym::unsafe_block_in_unsafe_fn;
 }
 
 declare_lint! {
@@ -2786,16 +2753,130 @@ declare_lint! {
     };
 }
 
-declare_tool_lint! {
-    pub rustc::INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
+declare_lint! {
+    /// The `ineffective_unstable_trait_impl` lint detects `#[unstable]` attributes which are not used.
+    ///
+    /// ### Example
+    ///
+    /// ```compile_fail
+    /// #![feature(staged_api)]
+    ///
+    /// #[derive(Clone)]
+    /// #[stable(feature = "x", since = "1")]
+    /// struct S {}
+    ///
+    /// #[unstable(feature = "y", issue = "none")]
+    /// impl Copy for S {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// `staged_api` does not currently support using a stability attribute on `impl` blocks.
+    /// `impl`s are always stable if both the type and trait are stable, and always unstable otherwise.
+    pub INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
     Deny,
     "detects `#[unstable]` on stable trait implementations for stable types"
+}
+
+declare_lint! {
+    /// The `semicolon_in_expressions_from_macros` lint detects trailing semicolons
+    /// in macro bodies when the macro is invoked in expression position.
+    /// This was previous accepted, but is being phased out.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(semicolon_in_expressions_from_macros)]
+    /// macro_rules! foo {
+    ///     () => { true; }
+    /// }
+    ///
+    /// fn main() {
+    ///     let val = match true {
+    ///         true => false,
+    ///         _ => foo!()
+    ///     };
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Previous, Rust ignored trailing semicolon in a macro
+    /// body when a macro was invoked in expression position.
+    /// However, this makes the treatment of semicolons in the language
+    /// inconsistent, and could lead to unexpected runtime behavior
+    /// in some circumstances (e.g. if the macro author expects
+    /// a value to be dropped).
+    ///
+    /// This is a [future-incompatible] lint to transition this
+    /// to a hard error in the future. See [issue #79813] for more details.
+    ///
+    /// [issue #79813]: https://github.com/rust-lang/rust/issues/79813
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
+    Allow,
+    "trailing semicolon in macro body used as expression",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #79813 <https://github.com/rust-lang/rust/issues/79813>",
+        edition: None,
+    };
+}
+
+declare_lint! {
+    /// The `legacy_derive_helpers` lint detects derive helper attributes
+    /// that are used before they are introduced.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (needs extern crate)
+    /// #[serde(rename_all = "camelCase")]
+    /// #[derive(Deserialize)]
+    /// struct S { /* fields */ }
+    /// ```
+    ///
+    /// produces:
+    ///
+    /// ```text
+    /// warning: derive helper attribute is used before it is introduced
+    ///   --> $DIR/legacy-derive-helpers.rs:1:3
+    ///    |
+    ///  1 | #[serde(rename_all = "camelCase")]
+    ///    |   ^^^^^
+    /// ...
+    ///  2 | #[derive(Deserialize)]
+    ///    |          ----------- the attribute is introduced here
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// Attributes like this work for historical reasons, but attribute expansion works in
+    /// left-to-right order in general, so, to resolve `#[serde]`, compiler has to try to "look
+    /// into the future" at not yet expanded part of the item , but such attempts are not always
+    /// reliable.
+    ///
+    /// To fix the warning place the helper attribute after its corresponding derive.
+    /// ```rust,ignore (needs extern crate)
+    /// #[derive(Deserialize)]
+    /// #[serde(rename_all = "camelCase")]
+    /// struct S { /* fields */ }
+    /// ```
+    pub LEGACY_DERIVE_HELPERS,
+    Warn,
+    "detects derive helper attributes that are used before they are introduced",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #79202 <https://github.com/rust-lang/rust/issues/79202>",
+    };
 }
 
 declare_lint_pass! {
     /// Does nothing as a lint pass, but registers some `Lint`s
     /// that are used by other parts of the compiler.
     HardwiredLints => [
+        FORBIDDEN_LINT_GROUPS,
         ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
         ARITHMETIC_OVERFLOW,
         UNCONDITIONAL_PANIC,
@@ -2809,7 +2890,7 @@ declare_lint_pass! {
         DEAD_CODE,
         UNREACHABLE_CODE,
         UNREACHABLE_PATTERNS,
-        OVERLAPPING_PATTERNS,
+        OVERLAPPING_RANGE_ENDPOINTS,
         BINDINGS_WITH_VARIANT_NAME,
         UNUSED_MACROS,
         WARNINGS,
@@ -2828,6 +2909,7 @@ declare_lint_pass! {
         CONST_ITEM_MUTATION,
         SAFE_PACKED_BORROWS,
         PATTERNS_IN_FNS_WITHOUT_BODY,
+        MISSING_FRAGMENT_SPECIFIER,
         LATE_BOUND_LIFETIME_ARGUMENTS,
         ORDER_DEPENDENT_TRAIT_OBJECTS,
         COHERENCE_LEAK_CHECK,
@@ -2844,14 +2926,6 @@ declare_lint_pass! {
         ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
         UNSTABLE_NAME_COLLISIONS,
         IRREFUTABLE_LET_PATTERNS,
-        BROKEN_INTRA_DOC_LINKS,
-        PRIVATE_INTRA_DOC_LINKS,
-        INVALID_CODEBLOCK_ATTRIBUTES,
-        MISSING_CRATE_LEVEL_DOCS,
-        MISSING_DOC_CODE_EXAMPLES,
-        INVALID_HTML_TAGS,
-        PRIVATE_DOC_TESTS,
-        NON_AUTOLINKS,
         WHERE_CLAUSES_OBJECT_SAFETY,
         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
         MACRO_USE_EXTERN_CRATE,
@@ -2877,6 +2951,11 @@ declare_lint_pass! {
         FUNCTION_ITEM_REFERENCES,
         USELESS_DEPRECATED,
         UNSUPPORTED_NAKED_FUNCTIONS,
+        MISSING_ABI,
+        SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
+        DISJOINT_CAPTURE_DROP_REORDER,
+        LEGACY_DERIVE_HELPERS,
+        PROC_MACRO_BACK_COMPAT,
     ]
 }
 
@@ -2903,4 +2982,154 @@ declare_lint! {
     "detects doc comments that aren't used by rustdoc"
 }
 
+declare_lint! {
+    /// The `disjoint_capture_drop_reorder` lint detects variables that aren't completely
+    /// captured when the feature `capture_disjoint_fields` is enabled and it affects the Drop
+    /// order of at least one path starting at this variable.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// # #![deny(disjoint_capture_drop_reorder)]
+    /// # #![allow(unused)]
+    /// struct FancyInteger(i32);
+    ///
+    /// impl Drop for FancyInteger {
+    ///     fn drop(&mut self) {
+    ///         println!("Just dropped {}", self.0);
+    ///     }
+    /// }
+    ///
+    /// struct Point { x: FancyInteger, y: FancyInteger }
+    ///
+    /// fn main() {
+    ///   let p = Point { x: FancyInteger(10), y: FancyInteger(20) };
+    ///
+    ///   let c = || {
+    ///      let x = p.x;
+    ///   };
+    ///
+    ///   c();
+    ///
+    ///   // ... More code ...
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// In the above example `p.y` will be dropped at the end of `f` instead of with `c` if
+    /// the feature `capture_disjoint_fields` is enabled.
+    pub DISJOINT_CAPTURE_DROP_REORDER,
+    Allow,
+    "Drop reorder because of `capture_disjoint_fields`"
+
+}
+
 declare_lint_pass!(UnusedDocComment => [UNUSED_DOC_COMMENTS]);
+
+declare_lint! {
+    /// The `missing_abi` lint detects cases where the ABI is omitted from
+    /// extern declarations.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(missing_abi)]
+    ///
+    /// extern fn foo() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Historically, Rust implicitly selected C as the ABI for extern
+    /// declarations. We expect to add new ABIs, like `C-unwind`, in the future,
+    /// though this has not yet happened, and especially with their addition
+    /// seeing the ABI easily will make code review easier.
+    pub MISSING_ABI,
+    Allow,
+    "No declared ABI for extern declaration"
+}
+
+declare_lint! {
+    /// The `invalid_doc_attributes` lint detects when the `#[doc(...)]` is
+    /// misused.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(warnings)]
+    ///
+    /// pub mod submodule {
+    ///     #![doc(test(no_crate_inject))]
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Previously, there were very like checks being performed on `#[doc(..)]`
+    /// unlike the other attributes. It'll now catch all the issues that it
+    /// silently ignored previously.
+    pub INVALID_DOC_ATTRIBUTES,
+    Warn,
+    "detects invalid `#[doc(...)]` attributes",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #82730 <https://github.com/rust-lang/rust/issues/82730>",
+        edition: None,
+    };
+}
+
+declare_lint! {
+    /// The `proc_macro_back_compat` lint detects uses of old versions of certain
+    /// proc-macro crates, which have hardcoded workarounds in the compiler.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (needs-dependency)
+    ///
+    /// use time_macros_impl::impl_macros;
+    /// struct Foo;
+    /// impl_macros!(Foo);
+    /// ```
+    ///
+    /// This will produce:
+    ///
+    /// ```text
+    /// warning: using an old version of `time-macros-impl`
+    ///   ::: $DIR/group-compat-hack.rs:27:5
+    ///    |
+    /// LL |     impl_macros!(Foo);
+    ///    |     ------------------ in this macro invocation
+    ///    |
+    ///    = note: `#[warn(proc_macro_back_compat)]` on by default
+    ///    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    ///    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
+    ///    = note: the `time-macros-impl` crate will stop compiling in futures version of Rust. Please update to the latest version of the `time` crate to avoid breakage
+    ///    = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// Eventually, the backwards-compatibility hacks present in the compiler will be removed,
+    /// causing older versions of certain crates to stop compiling.
+    /// This is a [future-incompatible] lint to ease the transition to an error.
+    /// See [issue #83125] for more details.
+    ///
+    /// [issue #83125]: https://github.com/rust-lang/rust/issues/83125
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub PROC_MACRO_BACK_COMPAT,
+    Warn,
+    "detects usage of old versions of certain proc-macro crates",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #83125 <https://github.com/rust-lang/rust/issues/83125>",
+        edition: None,
+        future_breakage: Some(FutureBreakage {
+            date: None
+        })
+    };
+}

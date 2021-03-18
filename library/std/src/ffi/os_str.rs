@@ -5,6 +5,7 @@ use crate::borrow::{Borrow, Cow};
 use crate::cmp;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
+use crate::iter::{Extend, FromIterator};
 use crate::ops;
 use crate::rc::Rc;
 use crate::str::FromStr;
@@ -71,10 +72,15 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// [`CStr`]: crate::ffi::CStr
 /// [conversions]: super#conversions
 #[derive(Clone)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "OsString")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OsString {
     inner: Buf,
 }
+
+/// Allows extension traits within `std`.
+#[unstable(feature = "sealed", issue = "none")]
+impl crate::sealed::Sealed for OsString {}
 
 /// Borrowed reference to an OS string (see [`OsString`]).
 ///
@@ -89,6 +95,7 @@ pub struct OsString {
 ///
 /// [`&str`]: str
 /// [conversions]: super#conversions
+#[cfg_attr(not(test), rustc_diagnostic_item = "OsStr")]
 #[stable(feature = "rust1", since = "1.0.0")]
 // FIXME:
 // `OsStr::from_inner` current implementation relies
@@ -99,6 +106,10 @@ pub struct OsString {
 pub struct OsStr {
     inner: Slice,
 }
+
+/// Allows extension traits within `std`.
+#[unstable(feature = "sealed", issue = "none")]
+impl crate::sealed::Sealed for OsStr {}
 
 impl OsString {
     /// Constructs a new empty `OsString`.
@@ -111,6 +122,7 @@ impl OsString {
     /// let os_string = OsString::new();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn new() -> OsString {
         OsString { inner: Buf::from_string(String::new()) }
     }
@@ -127,6 +139,7 @@ impl OsString {
     /// assert_eq!(os_string.as_os_str(), os_str);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn as_os_str(&self) -> &OsStr {
         self
     }
@@ -145,6 +158,7 @@ impl OsString {
     /// assert_eq!(string, Ok(String::from("foo")));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn into_string(self) -> Result<String, OsString> {
         self.inner.into_string().map_err(|buf| OsString { inner: buf })
     }
@@ -163,6 +177,7 @@ impl OsString {
     /// assert_eq!(&os_string, "foobar");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn push<T: AsRef<OsStr>>(&mut self, s: T) {
         self.inner.push_slice(&s.as_ref().inner)
     }
@@ -189,6 +204,7 @@ impl OsString {
     /// assert_eq!(capacity, os_string.capacity());
     /// ```
     #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
+    #[inline]
     pub fn with_capacity(capacity: usize) -> OsString {
         OsString { inner: Buf::with_capacity(capacity) }
     }
@@ -207,6 +223,7 @@ impl OsString {
     /// assert_eq!(&os_string, "");
     /// ```
     #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
+    #[inline]
     pub fn clear(&mut self) {
         self.inner.clear()
     }
@@ -224,6 +241,7 @@ impl OsString {
     /// assert!(os_string.capacity() >= 10);
     /// ```
     #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
+    #[inline]
     pub fn capacity(&self) -> usize {
         self.inner.capacity()
     }
@@ -243,6 +261,7 @@ impl OsString {
     /// assert!(s.capacity() >= 10);
     /// ```
     #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
+    #[inline]
     pub fn reserve(&mut self, additional: usize) {
         self.inner.reserve(additional)
     }
@@ -265,6 +284,7 @@ impl OsString {
     /// assert!(s.capacity() >= 10);
     /// ```
     #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
+    #[inline]
     pub fn reserve_exact(&mut self, additional: usize) {
         self.inner.reserve_exact(additional)
     }
@@ -285,6 +305,7 @@ impl OsString {
     /// assert_eq!(3, s.capacity());
     /// ```
     #[stable(feature = "osstring_shrink_to_fit", since = "1.19.0")]
+    #[inline]
     pub fn shrink_to_fit(&mut self) {
         self.inner.shrink_to_fit()
     }
@@ -294,8 +315,7 @@ impl OsString {
     /// The capacity will remain at least as large as both the length
     /// and the supplied value.
     ///
-    /// Panics if the current capacity is smaller than the supplied
-    /// minimum capacity.
+    /// If the current capacity is less than the lower limit, this is a no-op.
     ///
     /// # Examples
     ///
@@ -342,6 +362,7 @@ impl From<String> for OsString {
     /// Converts a [`String`] into a [`OsString`].
     ///
     /// The conversion copies the data, and includes an allocation on the heap.
+    #[inline]
     fn from(s: String) -> OsString {
         OsString { inner: Buf::from_string(s) }
     }
@@ -408,6 +429,7 @@ impl fmt::Debug for OsString {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq for OsString {
+    #[inline]
     fn eq(&self, other: &OsString) -> bool {
         &**self == &**other
     }
@@ -415,6 +437,7 @@ impl PartialEq for OsString {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq<str> for OsString {
+    #[inline]
     fn eq(&self, other: &str) -> bool {
         &**self == other
     }
@@ -422,6 +445,7 @@ impl PartialEq<str> for OsString {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq<OsString> for str {
+    #[inline]
     fn eq(&self, other: &OsString) -> bool {
         &**other == self
     }
@@ -429,6 +453,7 @@ impl PartialEq<OsString> for str {
 
 #[stable(feature = "os_str_str_ref_eq", since = "1.29.0")]
 impl PartialEq<&str> for OsString {
+    #[inline]
     fn eq(&self, other: &&str) -> bool {
         **self == **other
     }
@@ -436,6 +461,7 @@ impl PartialEq<&str> for OsString {
 
 #[stable(feature = "os_str_str_ref_eq", since = "1.29.0")]
 impl<'a> PartialEq<OsString> for &'a str {
+    #[inline]
     fn eq(&self, other: &OsString) -> bool {
         **other == **self
     }
@@ -539,6 +565,7 @@ impl OsStr {
     /// assert_eq!(os_str.to_str(), Some("foo"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn to_str(&self) -> Option<&str> {
         self.inner.to_str()
     }
@@ -589,6 +616,7 @@ impl OsStr {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn to_string_lossy(&self) -> Cow<'_, str> {
         self.inner.to_string_lossy()
     }
@@ -605,6 +633,7 @@ impl OsStr {
     /// assert_eq!(os_string, OsString::from("foo"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn to_os_string(&self) -> OsString {
         OsString { inner: self.inner.to_owned() }
     }
@@ -653,7 +682,9 @@ impl OsStr {
     /// let os_str = OsStr::new("foo");
     /// assert_eq!(os_str.len(), 3);
     /// ```
+    #[doc(alias = "length")]
     #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
+    #[inline]
     pub fn len(&self) -> usize {
         self.inner.inner.len()
     }
@@ -695,6 +726,7 @@ impl OsStr {
     /// assert_eq!("grÜße, jÜrgen ❤", s);
     /// ```
     #[unstable(feature = "osstring_ascii", issue = "70516")]
+    #[inline]
     pub fn make_ascii_lowercase(&mut self) {
         self.inner.make_ascii_lowercase()
     }
@@ -720,6 +752,7 @@ impl OsStr {
     /// assert_eq!("GRüßE, JüRGEN ❤", s);
     /// ```
     #[unstable(feature = "osstring_ascii", issue = "70516")]
+    #[inline]
     pub fn make_ascii_uppercase(&mut self) {
         self.inner.make_ascii_uppercase()
     }
@@ -783,6 +816,7 @@ impl OsStr {
     /// assert!(!non_ascii.is_ascii());
     /// ```
     #[unstable(feature = "osstring_ascii", issue = "70516")]
+    #[inline]
     pub fn is_ascii(&self) -> bool {
         self.inner.is_ascii()
     }
@@ -803,13 +837,14 @@ impl OsStr {
     /// assert!(!OsString::from("Ferrös").eq_ignore_ascii_case("FERRÖS"));
     /// ```
     #[unstable(feature = "osstring_ascii", issue = "70516")]
-    pub fn eq_ignore_ascii_case<S: ?Sized + AsRef<OsStr>>(&self, other: &S) -> bool {
+    pub fn eq_ignore_ascii_case<S: AsRef<OsStr>>(&self, other: S) -> bool {
         self.inner.eq_ignore_ascii_case(&other.as_ref().inner)
     }
 }
 
 #[stable(feature = "box_from_os_str", since = "1.17.0")]
 impl From<&OsStr> for Box<OsStr> {
+    #[inline]
     fn from(s: &OsStr) -> Box<OsStr> {
         let rw = Box::into_raw(s.inner.into_box()) as *mut OsStr;
         unsafe { Box::from_raw(rw) }
@@ -831,6 +866,7 @@ impl From<Cow<'_, OsStr>> for Box<OsStr> {
 impl From<Box<OsStr>> for OsString {
     /// Converts a [`Box`]`<`[`OsStr`]`>` into a `OsString` without copying or
     /// allocating.
+    #[inline]
     fn from(boxed: Box<OsStr>) -> OsString {
         boxed.into_os_string()
     }
@@ -839,6 +875,7 @@ impl From<Box<OsStr>> for OsString {
 #[stable(feature = "box_from_os_string", since = "1.20.0")]
 impl From<OsString> for Box<OsStr> {
     /// Converts a [`OsString`] into a [`Box`]`<OsStr>` without copying or allocating.
+    #[inline]
     fn from(s: OsString) -> Box<OsStr> {
         s.into_boxed_os_str()
     }
@@ -924,6 +961,7 @@ impl<'a> From<Cow<'a, OsStr>> for OsString {
 
 #[stable(feature = "box_default_extra", since = "1.17.0")]
 impl Default for Box<OsStr> {
+    #[inline]
     fn default() -> Box<OsStr> {
         let rw = Box::into_raw(Slice::empty_box()) as *mut OsStr;
         unsafe { Box::from_raw(rw) }
@@ -1074,6 +1112,7 @@ impl OsStr {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Borrow<OsStr> for OsString {
+    #[inline]
     fn borrow(&self) -> &OsStr {
         &self[..]
     }
@@ -1082,9 +1121,11 @@ impl Borrow<OsStr> for OsString {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ToOwned for OsStr {
     type Owned = OsString;
+    #[inline]
     fn to_owned(&self) -> OsString {
         self.to_os_string()
     }
+    #[inline]
     fn clone_into(&self, target: &mut OsString) {
         self.inner.clone_into(&mut target.inner)
     }
@@ -1092,6 +1133,7 @@ impl ToOwned for OsStr {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<OsStr> for OsStr {
+    #[inline]
     fn as_ref(&self) -> &OsStr {
         self
     }
@@ -1122,12 +1164,14 @@ impl AsRef<OsStr> for String {
 }
 
 impl FromInner<Buf> for OsString {
+    #[inline]
     fn from_inner(buf: Buf) -> OsString {
         OsString { inner: buf }
     }
 }
 
 impl IntoInner<Buf> for OsString {
+    #[inline]
     fn into_inner(self) -> Buf {
         self.inner
     }
@@ -1144,7 +1188,93 @@ impl AsInner<Slice> for OsStr {
 impl FromStr for OsString {
     type Err = core::convert::Infallible;
 
+    #[inline]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(OsString::from(s))
+    }
+}
+
+#[stable(feature = "osstring_extend", since = "1.52.0")]
+impl Extend<OsString> for OsString {
+    #[inline]
+    fn extend<T: IntoIterator<Item = OsString>>(&mut self, iter: T) {
+        for s in iter {
+            self.push(&s);
+        }
+    }
+}
+
+#[stable(feature = "osstring_extend", since = "1.52.0")]
+impl<'a> Extend<&'a OsStr> for OsString {
+    #[inline]
+    fn extend<T: IntoIterator<Item = &'a OsStr>>(&mut self, iter: T) {
+        for s in iter {
+            self.push(s);
+        }
+    }
+}
+
+#[stable(feature = "osstring_extend", since = "1.52.0")]
+impl<'a> Extend<Cow<'a, OsStr>> for OsString {
+    #[inline]
+    fn extend<T: IntoIterator<Item = Cow<'a, OsStr>>>(&mut self, iter: T) {
+        for s in iter {
+            self.push(&s);
+        }
+    }
+}
+
+#[stable(feature = "osstring_extend", since = "1.52.0")]
+impl FromIterator<OsString> for OsString {
+    #[inline]
+    fn from_iter<I: IntoIterator<Item = OsString>>(iter: I) -> Self {
+        let mut iterator = iter.into_iter();
+
+        // Because we're iterating over `OsString`s, we can avoid at least
+        // one allocation by getting the first string from the iterator
+        // and appending to it all the subsequent strings.
+        match iterator.next() {
+            None => OsString::new(),
+            Some(mut buf) => {
+                buf.extend(iterator);
+                buf
+            }
+        }
+    }
+}
+
+#[stable(feature = "osstring_extend", since = "1.52.0")]
+impl<'a> FromIterator<&'a OsStr> for OsString {
+    #[inline]
+    fn from_iter<I: IntoIterator<Item = &'a OsStr>>(iter: I) -> Self {
+        let mut buf = Self::new();
+        for s in iter {
+            buf.push(s);
+        }
+        buf
+    }
+}
+
+#[stable(feature = "osstring_extend", since = "1.52.0")]
+impl<'a> FromIterator<Cow<'a, OsStr>> for OsString {
+    #[inline]
+    fn from_iter<I: IntoIterator<Item = Cow<'a, OsStr>>>(iter: I) -> Self {
+        let mut iterator = iter.into_iter();
+
+        // Because we're iterating over `OsString`s, we can avoid at least
+        // one allocation by getting the first owned string from the iterator
+        // and appending to it all the subsequent strings.
+        match iterator.next() {
+            None => OsString::new(),
+            Some(Cow::Owned(mut buf)) => {
+                buf.extend(iterator);
+                buf
+            }
+            Some(Cow::Borrowed(buf)) => {
+                let mut buf = OsString::from(buf);
+                buf.extend(iterator);
+                buf
+            }
+        }
     }
 }

@@ -1,5 +1,5 @@
 error[E0283]: type annotations needed
-  --> $DIR/E0283.rs:18:21
+  --> $DIR/E0283.rs:30:21
    |
 LL |     fn create() -> u32;
    |     ------------------- required by `Generator::create`
@@ -9,6 +9,18 @@ LL |     let cont: u32 = Generator::create();
    |
    = note: cannot satisfy `_: Generator`
 
-error: aborting due to previous error
+error[E0283]: type annotations needed
+  --> $DIR/E0283.rs:35:24
+   |
+LL |     let bar = foo_impl.into() * 1u32;
+   |               ---------^^^^--
+   |               |        |
+   |               |        cannot infer type for type parameter `T` declared on the trait `Into`
+   |               this method call resolves to `T`
+   |               help: use the fully qualified path for the potential candidate: `<Impl as Into<u32>>::into(foo_impl)`
+   |
+   = note: cannot satisfy `Impl: Into<_>`
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0283`.

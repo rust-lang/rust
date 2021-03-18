@@ -1,3 +1,4 @@
+// run-rustfix
 fn main() {
     let foo = 100;
 

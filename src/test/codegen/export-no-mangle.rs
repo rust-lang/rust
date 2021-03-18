@@ -13,19 +13,19 @@ mod private {
 
     // CHECK: void @a()
     #[no_mangle]
-    pub extern fn a() {}
+    pub extern "C" fn a() {}
 
     // CHECK: void @b()
     #[export_name = "b"]
-    extern fn b() {}
+    extern "C" fn b() {}
 
     // CHECK: void @c()
     #[export_name = "c"]
     #[inline]
-    extern fn c() {}
+    extern "C" fn c() {}
 
     // CHECK: void @d()
     #[export_name = "d"]
     #[inline(always)]
-    extern fn d() {}
+    extern "C" fn d() {}
 }

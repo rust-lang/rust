@@ -1,4 +1,4 @@
-// Verifies that no_sanitze attribute can be used to
+// Verifies that no_sanitize attribute can be used to
 // selectively disable sanitizer instrumentation.
 //
 // needs-sanitizer-address

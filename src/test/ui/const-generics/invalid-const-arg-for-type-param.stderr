@@ -1,11 +1,19 @@
-error[E0107]: wrong number of const arguments: expected 0, found 1
-  --> $DIR/invalid-const-arg-for-type-param.rs:6:34
+error[E0107]: this associated function takes 0 const arguments but 1 const argument was supplied
+  --> $DIR/invalid-const-arg-for-type-param.rs:6:23
    |
 LL |     let _: u32 = 5i32.try_into::<32>().unwrap();
-   |                                  ^^ unexpected const argument
+   |                       ^^^^^^^^------ help: remove these generics
+   |                       |
+   |                       expected 0 const arguments
+   |
+note: associated function defined here, with 0 const parameters
+  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
+   |
+LL |     fn try_into(self) -> Result<T, Self::Error>;
+   |        ^^^^^^^^
 
 error[E0599]: no method named `f` found for struct `S` in the current scope
-  --> $DIR/invalid-const-arg-for-type-param.rs:7:7
+  --> $DIR/invalid-const-arg-for-type-param.rs:9:7
    |
 LL | struct S;
    | --------- method `f` not found for this
@@ -13,11 +21,19 @@ LL | struct S;
 LL |     S.f::<0>();
    |       ^ method not found in `S`
 
-error[E0107]: wrong number of const arguments: expected 0, found 1
-  --> $DIR/invalid-const-arg-for-type-param.rs:8:9
+error[E0107]: this struct takes 0 const arguments but 1 const argument was supplied
+  --> $DIR/invalid-const-arg-for-type-param.rs:12:5
    |
 LL |     S::<0>;
-   |         ^ unexpected const argument
+   |     ^----- help: remove these generics
+   |     |
+   |     expected 0 const arguments
+   |
+note: struct defined here, with 0 const parameters
+  --> $DIR/invalid-const-arg-for-type-param.rs:3:8
+   |
+LL | struct S;
+   |        ^
 
 error: aborting due to 3 previous errors
 

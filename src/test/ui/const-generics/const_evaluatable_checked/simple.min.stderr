@@ -1,5 +1,5 @@
 error: generic parameters may not be used in const operations
-  --> $DIR/simple.rs:8:53
+  --> $DIR/simple.rs:7:53
    |
 LL | fn test<const N: usize>() -> [u8; N - 1] where [u8; N - 1]: Default {
    |                                                     ^ cannot perform const operation using `N`
@@ -8,7 +8,7 @@ LL | fn test<const N: usize>() -> [u8; N - 1] where [u8; N - 1]: Default {
    = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/simple.rs:8:35
+  --> $DIR/simple.rs:7:35
    |
 LL | fn test<const N: usize>() -> [u8; N - 1] where [u8; N - 1]: Default {
    |                                   ^ cannot perform const operation using `N`

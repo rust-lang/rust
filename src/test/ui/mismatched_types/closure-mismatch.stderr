@@ -2,10 +2,20 @@ error[E0308]: mismatched types
   --> $DIR/closure-mismatch.rs:8:5
    |
 LL |     baz(|_| ());
-   |     ^^^ one type is more general than the other
+   |     ^^^ lifetime mismatch
    |
    = note: expected type `for<'r> Fn<(&'r (),)>`
               found type `Fn<(&(),)>`
+note: this closure does not fulfill the lifetime requirements
+  --> $DIR/closure-mismatch.rs:8:9
+   |
+LL |     baz(|_| ());
+   |         ^^^^^^
+note: the lifetime requirement is introduced here
+  --> $DIR/closure-mismatch.rs:5:11
+   |
+LL | fn baz<T: Foo>(_: T) {}
+   |           ^^^
 
 error: aborting due to previous error
 

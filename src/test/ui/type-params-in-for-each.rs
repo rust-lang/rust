@@ -14,7 +14,7 @@ fn range_<F>(lo: usize, hi: usize, mut it: F) where F: FnMut(usize) {
     while lo_ < hi { it(lo_); lo_ += 1; }
 }
 
-fn create_index<T>(_index: Vec<S<T>> , _hash_fn: extern fn(T) -> usize) {
+fn create_index<T>(_index: Vec<S<T>> , _hash_fn: extern "C" fn(T) -> usize) {
     range_(0, 256, |_i| {
         let _bucket: Vec<T> = Vec::new();
     })

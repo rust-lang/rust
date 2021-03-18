@@ -318,6 +318,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             StatementKind::Retag { .. }
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
+            | StatementKind::CopyNonOverlapping(..)
             | StatementKind::Nop => {}
         }
     }
@@ -329,8 +330,8 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             | Rvalue::Repeat(ref operand, _)
             | Rvalue::Cast(_, ref operand, _)
             | Rvalue::UnaryOp(_, ref operand) => self.gather_operand(operand),
-            Rvalue::BinaryOp(ref _binop, ref lhs, ref rhs)
-            | Rvalue::CheckedBinaryOp(ref _binop, ref lhs, ref rhs) => {
+            Rvalue::BinaryOp(ref _binop, box (ref lhs, ref rhs))
+            | Rvalue::CheckedBinaryOp(ref _binop, box (ref lhs, ref rhs)) => {
                 self.gather_operand(lhs);
                 self.gather_operand(rhs);
             }
@@ -518,14 +519,10 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
 
         // Check if we are assigning into a field of a union, if so, lookup the place
         // of the union so it is marked as initialized again.
-        if let [proj_base @ .., ProjectionElem::Field(_, _)] = place.projection {
-            if let ty::Adt(def, _) =
-                Place::ty_from(place.local, proj_base, self.builder.body, self.builder.tcx)
-                    .ty
-                    .kind()
-            {
+        if let Some((place_base, ProjectionElem::Field(_, _))) = place.last_projection() {
+            if let ty::Adt(def, _) = place_base.ty(self.builder.body, self.builder.tcx).ty.kind() {
                 if def.is_union() {
-                    place = PlaceRef { local: place.local, projection: proj_base }
+                    place = place_base;
                 }
             }
         }

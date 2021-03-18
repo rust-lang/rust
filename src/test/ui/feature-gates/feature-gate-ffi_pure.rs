@@ -1,6 +1,6 @@
 #![crate_type = "lib"]
 
-extern {
+extern "C" {
     #[ffi_pure] //~ ERROR the `#[ffi_pure]` attribute is an experimental feature
     pub fn foo();
 }

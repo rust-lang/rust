@@ -8,6 +8,7 @@ use crate::html::layout;
 use crate::html::render::{SharedContext, BASIC_KEYWORDS};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_session::Session;
+use rustc_span::edition::Edition;
 use rustc_span::source_map::FileName;
 use std::ffi::OsStr;
 use std::fs;
@@ -15,7 +16,7 @@ use std::path::{Component, Path, PathBuf};
 
 crate fn render(
     dst: &Path,
-    scx: &mut SharedContext,
+    scx: &mut SharedContext<'_>,
     krate: clean::Crate,
 ) -> Result<clean::Crate, Error> {
     info!("emitting source files");
@@ -26,14 +27,14 @@ crate fn render(
 }
 
 /// Helper struct to render all source code to HTML pages
-struct SourceCollector<'a> {
-    scx: &'a mut SharedContext,
+struct SourceCollector<'a, 'tcx> {
+    scx: &'a mut SharedContext<'tcx>,
 
     /// Root destination to place all HTML output into
     dst: PathBuf,
 }
 
-impl<'a> DocFolder for SourceCollector<'a> {
+impl DocFolder for SourceCollector<'_, '_> {
     fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
         // If we're not rendering sources, there's nothing to do.
         // If we're including source files, and we haven't seen this file yet,
@@ -69,9 +70,9 @@ impl<'a> DocFolder for SourceCollector<'a> {
     }
 }
 
-impl<'a> SourceCollector<'a> {
-    fn sess(&self) -> &Session {
-        &self.scx.sess
+impl SourceCollector<'_, 'tcx> {
+    fn sess(&self) -> &'tcx Session {
+        &self.scx.tcx.sess
     }
 
     /// Renders the given filename into its corresponding HTML source file.
@@ -85,7 +86,7 @@ impl<'a> SourceCollector<'a> {
             return Ok(());
         }
 
-        let mut contents = match fs::read_to_string(&p) {
+        let contents = match fs::read_to_string(&p) {
             Ok(contents) => contents,
             Err(e) => {
                 return Err(Error::new(e, &p));
@@ -93,9 +94,7 @@ impl<'a> SourceCollector<'a> {
         };
 
         // Remove the utf-8 BOM if any
-        if contents.starts_with('\u{feff}') {
-            contents.drain(..3);
-        }
+        let contents = if contents.starts_with('\u{feff}') { &contents[3..] } else { &contents };
 
         // Create the intermediate directories
         let mut cur = self.dst.clone();
@@ -132,7 +131,7 @@ impl<'a> SourceCollector<'a> {
             &self.scx.layout,
             &page,
             "",
-            |buf: &mut _| print_src(buf, contents),
+            |buf: &mut _| print_src(buf, contents, self.scx.edition),
             &self.scx.style_files,
         );
         self.scx.fs.write(&cur, v.as_bytes())?;
@@ -170,7 +169,7 @@ where
 
 /// Wrapper struct to render the source code of a file. This will do things like
 /// adding line numbers to the left-hand side.
-fn print_src(buf: &mut Buffer, s: String) {
+fn print_src(buf: &mut Buffer, s: &str, edition: Edition) {
     let lines = s.lines().count();
     let mut cols = 0;
     let mut tmp = lines;
@@ -178,10 +177,10 @@ fn print_src(buf: &mut Buffer, s: String) {
         cols += 1;
         tmp /= 10;
     }
-    write!(buf, "<pre class=\"line-numbers\">");
+    buf.write_str("<pre class=\"line-numbers\">");
     for i in 1..=lines {
         write!(buf, "<span id=\"{0}\">{0:1$}</span>\n", i, cols);
     }
-    write!(buf, "</pre>");
-    write!(buf, "{}", highlight::render_with_highlighting(s, None, None, None));
+    buf.write_str("</pre>");
+    highlight::render_with_highlighting(s, buf, None, None, None, edition);
 }

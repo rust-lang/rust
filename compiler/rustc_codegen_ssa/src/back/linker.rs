@@ -314,6 +314,10 @@ impl<'a> Linker for GccLinker<'a> {
                 self.cmd.arg("-static");
                 self.build_dylib(out_filename);
             }
+            LinkOutputKind::WasiReactorExe => {
+                self.linker_arg("--entry");
+                self.linker_arg("_initialize");
+            }
         }
         // VxWorks compiler driver introduced `--static-crt` flag specifically for rustc,
         // it switches linking for libc and similar system libraries to static without using
@@ -661,6 +665,9 @@ impl<'a> Linker for MsvcLinker<'a> {
                 let mut arg: OsString = "/IMPLIB:".into();
                 arg.push(out_filename.with_extension("dll.lib"));
                 self.cmd.arg(arg);
+            }
+            LinkOutputKind::WasiReactorExe => {
+                panic!("can't link as reactor on non-wasi target");
             }
         }
     }
@@ -1084,6 +1091,10 @@ impl<'a> Linker for WasmLd<'a> {
             | LinkOutputKind::StaticPicExe => {}
             LinkOutputKind::DynamicDylib | LinkOutputKind::StaticDylib => {
                 self.cmd.arg("--no-entry");
+            }
+            LinkOutputKind::WasiReactorExe => {
+                self.cmd.arg("--entry");
+                self.cmd.arg("_initialize");
             }
         }
     }

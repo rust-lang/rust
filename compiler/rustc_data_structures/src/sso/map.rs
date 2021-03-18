@@ -40,7 +40,7 @@ const SSO_ARRAY_SIZE: usize = 8;
 //   into_keys/into_values (unstable)
 //   all raw_entry-related
 //   PartialEq/Eq (requires sorting the array)
-//   Entry::or_insert_with_key (unstable)
+//   Entry::or_insert_with_key
 //   Vacant/Occupied entries and related
 //
 // FIXME: In HashMap most methods accepting key reference

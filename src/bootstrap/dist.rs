@@ -19,6 +19,7 @@ use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
 use crate::compile;
 use crate::config::TargetSelection;
+use crate::tarball::{GeneratedTarball, OverlayKind, Tarball};
 use crate::tool::{self, Tool};
 use crate::util::{exe, is_dylib, timeit};
 use crate::{Compiler, DependencyType, Mode, LLVM_TOOLS};
@@ -36,10 +37,6 @@ pub fn tmpdir(builder: &Builder<'_>) -> PathBuf {
     builder.out.join("tmp/dist")
 }
 
-fn rust_installer(builder: &Builder<'_>) -> Command {
-    builder.tool_cmd(Tool::RustInstaller)
-}
-
 fn missing_tool(tool_name: &str, skip: bool) {
     if skip {
         println!("Unable to build {}, skipping dist", tool_name)
@@ -54,7 +51,7 @@ pub struct Docs {
 }
 
 impl Step for Docs {
-    type Output = PathBuf;
+    type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -66,48 +63,20 @@ impl Step for Docs {
     }
 
     /// Builds the `rust-docs` installer component.
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let host = self.host;
-
-        let name = pkgname(builder, "rust-docs");
-
         if !builder.config.docs {
-            return distdir(builder).join(format!("{}-{}.tar.gz", name, host.triple));
+            return None;
         }
+        builder.default_doc(&[]);
 
-        builder.default_doc(None);
+        let dest = "share/doc/rust/html";
 
-        builder.info(&format!("Dist docs ({})", host));
-        let _time = timeit(builder);
-
-        let image = tmpdir(builder).join(format!("{}-{}-image", name, host.triple));
-        let _ = fs::remove_dir_all(&image);
-
-        let dst = image.join("share/doc/rust/html");
-        t!(fs::create_dir_all(&dst));
-        let src = builder.doc_out(host);
-        builder.cp_r(&src, &dst);
-        builder.install(&builder.src.join("src/doc/robots.txt"), &dst, 0o644);
-
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust-Documentation")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=Rust-documentation-is-installed.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg(format!("--package-name={}-{}", name, host.triple))
-            .arg("--component-name=rust-docs")
-            .arg("--legacy-manifest-dirs=rustlib,cargo")
-            .arg("--bulk-dirs=share/doc/rust/html");
-        builder.run(&mut cmd);
-        builder.remove_dir(&image);
-
-        distdir(builder).join(format!("{}-{}.tar.gz", name, host.triple))
+        let mut tarball = Tarball::new(builder, "rust-docs", &host.triple);
+        tarball.set_product_name("Rust Documentation");
+        tarball.add_dir(&builder.doc_out(host), dest);
+        tarball.add_file(&builder.src.join("src/doc/robots.txt"), dest, 0o644);
+        Some(tarball.generate())
     }
 }
 
@@ -117,7 +86,7 @@ pub struct RustcDocs {
 }
 
 impl Step for RustcDocs {
-    type Output = PathBuf;
+    type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -129,47 +98,17 @@ impl Step for RustcDocs {
     }
 
     /// Builds the `rustc-docs` installer component.
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let host = self.host;
-
-        let name = pkgname(builder, "rustc-docs");
-
         if !builder.config.compiler_docs {
-            return distdir(builder).join(format!("{}-{}.tar.gz", name, host.triple));
+            return None;
         }
+        builder.default_doc(&[]);
 
-        builder.default_doc(None);
-
-        let image = tmpdir(builder).join(format!("{}-{}-image", name, host.triple));
-        let _ = fs::remove_dir_all(&image);
-
-        let dst = image.join("share/doc/rust/html/rustc");
-        t!(fs::create_dir_all(&dst));
-        let src = builder.compiler_doc_out(host);
-        builder.cp_r(&src, &dst);
-
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rustc-Documentation")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=Rustc-documentation-is-installed.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg(format!("--package-name={}-{}", name, host.triple))
-            .arg("--component-name=rustc-docs")
-            .arg("--legacy-manifest-dirs=rustlib,cargo")
-            .arg("--bulk-dirs=share/doc/rust/html/rustc");
-
-        builder.info(&format!("Dist compiler docs ({})", host));
-        let _time = timeit(builder);
-        builder.run(&mut cmd);
-        builder.remove_dir(&image);
-
-        distdir(builder).join(format!("{}-{}.tar.gz", name, host.triple))
+        let mut tarball = Tarball::new(builder, "rustc-docs", &host.triple);
+        tarball.set_product_name("Rustc Documentation");
+        tarball.add_dir(&builder.compiler_doc_out(host), "share/doc/rust/html/rustc");
+        Some(tarball.generate())
     }
 }
 
@@ -328,7 +267,7 @@ pub struct Mingw {
 }
 
 impl Step for Mingw {
-    type Output = Option<PathBuf>;
+    type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -343,43 +282,22 @@ impl Step for Mingw {
     ///
     /// This contains all the bits and pieces to run the MinGW Windows targets
     /// without any extra installed software (e.g., we bundle gcc, libraries, etc).
-    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let host = self.host;
-
         if !host.contains("pc-windows-gnu") {
             return None;
         }
 
-        builder.info(&format!("Dist mingw ({})", host));
-        let _time = timeit(builder);
-        let name = pkgname(builder, "rust-mingw");
-        let image = tmpdir(builder).join(format!("{}-{}-image", name, host.triple));
-        let _ = fs::remove_dir_all(&image);
-        t!(fs::create_dir_all(&image));
+        let mut tarball = Tarball::new(builder, "rust-mingw", &host.triple);
+        tarball.set_product_name("Rust MinGW");
 
         // The first argument is a "temporary directory" which is just
         // thrown away (this contains the runtime DLLs included in the rustc package
         // above) and the second argument is where to place all the MinGW components
         // (which is what we want).
-        make_win_dist(&tmpdir(builder), &image, host, &builder);
+        make_win_dist(&tmpdir(builder), tarball.image_dir(), host, &builder);
 
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust-MinGW")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=Rust-MinGW-is-installed.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg(format!("--package-name={}-{}", name, host.triple))
-            .arg("--component-name=rust-mingw")
-            .arg("--legacy-manifest-dirs=rustlib,cargo");
-        builder.run(&mut cmd);
-        t!(fs::remove_dir_all(&image));
-        Some(distdir(builder).join(format!("{}-{}.tar.gz", name, host.triple)))
+        Some(tarball.generate())
     }
 }
 
@@ -389,7 +307,7 @@ pub struct Rustc {
 }
 
 impl Step for Rustc {
-    type Output = PathBuf;
+    type Output = GeneratedTarball;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
@@ -403,34 +321,14 @@ impl Step for Rustc {
     }
 
     /// Creates the `rustc` installer component.
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
         let compiler = self.compiler;
         let host = self.compiler.host;
 
-        let name = pkgname(builder, "rustc");
-        let image = tmpdir(builder).join(format!("{}-{}-image", name, host.triple));
-        let _ = fs::remove_dir_all(&image);
-        let overlay = tmpdir(builder).join(format!("{}-{}-overlay", name, host.triple));
-        let _ = fs::remove_dir_all(&overlay);
+        let tarball = Tarball::new(builder, "rustc", &host.triple);
 
         // Prepare the rustc "image", what will actually end up getting installed
-        prepare_image(builder, compiler, &image);
-
-        // Prepare the overlay which is part of the tarball but won't actually be
-        // installed
-        let cp = |file: &str| {
-            builder.install(&builder.src.join(file), &overlay, 0o644);
-        };
-        cp("COPYRIGHT");
-        cp("LICENSE-APACHE");
-        cp("LICENSE-MIT");
-        cp("README.md");
-        // tiny morsel of metadata is used by rust-packaging
-        let version = builder.rust_version();
-        builder.create(&overlay.join("version"), &version);
-        if let Some(sha) = builder.rust_sha() {
-            builder.create(&overlay.join("git-commit-hash"), &sha);
-        }
+        prepare_image(builder, compiler, tarball.image_dir());
 
         // On MinGW we've got a few runtime DLL dependencies that we need to
         // include. The first argument to this script is where to put these DLLs
@@ -443,38 +341,11 @@ impl Step for Rustc {
         // install will *also* include the rust-mingw package, which also needs
         // licenses, so to be safe we just include it here in all MinGW packages.
         if host.contains("pc-windows-gnu") {
-            make_win_dist(&image, &tmpdir(builder), host, builder);
-
-            let dst = image.join("share/doc");
-            t!(fs::create_dir_all(&dst));
-            builder.cp_r(&builder.src.join("src/etc/third-party"), &dst);
+            make_win_dist(tarball.image_dir(), &tmpdir(builder), host, builder);
+            tarball.add_dir(builder.src.join("src/etc/third-party"), "share/doc");
         }
 
-        // Finally, wrap everything up in a nice tarball!
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=Rust-is-ready-to-roll.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg("--non-installed-overlay")
-            .arg(&overlay)
-            .arg(format!("--package-name={}-{}", name, host.triple))
-            .arg("--component-name=rustc")
-            .arg("--legacy-manifest-dirs=rustlib,cargo");
-
-        builder.info(&format!("Dist rustc stage{} ({})", compiler.stage, host.triple));
-        let _time = timeit(builder);
-        builder.run(&mut cmd);
-        builder.remove_dir(&image);
-        builder.remove_dir(&overlay);
-
-        return distdir(builder).join(format!("{}-{}.tar.gz", name, host.triple));
+        return tarball.generate();
 
         fn prepare_image(builder: &Builder<'_>, compiler: Compiler, image: &Path) {
             let host = compiler.host;
@@ -684,7 +555,7 @@ pub struct Std {
 }
 
 impl Step for Std {
-    type Output = PathBuf;
+    type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -702,46 +573,24 @@ impl Step for Std {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let compiler = self.compiler;
         let target = self.target;
 
-        let name = pkgname(builder, "rust-std");
-        let archive = distdir(builder).join(format!("{}-{}.tar.gz", name, target.triple));
         if skip_host_target_lib(builder, compiler) {
-            return archive;
+            return None;
         }
 
         builder.ensure(compile::Std { compiler, target });
 
-        let image = tmpdir(builder).join(format!("{}-{}-image", name, target.triple));
-        let _ = fs::remove_dir_all(&image);
+        let mut tarball = Tarball::new(builder, "rust-std", &target.triple);
+        tarball.include_target_in_component_name(true);
 
         let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
         let stamp = compile::libstd_stamp(builder, compiler_to_use, target);
-        copy_target_libs(builder, target, &image, &stamp);
+        copy_target_libs(builder, target, &tarball.image_dir(), &stamp);
 
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=std-is-standing-at-the-ready.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg(format!("--package-name={}-{}", name, target.triple))
-            .arg(format!("--component-name=rust-std-{}", target.triple))
-            .arg("--legacy-manifest-dirs=rustlib,cargo");
-
-        builder
-            .info(&format!("Dist std stage{} ({} -> {})", compiler.stage, &compiler.host, target));
-        let _time = timeit(builder);
-        builder.run(&mut cmd);
-        builder.remove_dir(&image);
-        archive
+        Some(tarball.generate())
     }
 }
 
@@ -752,7 +601,7 @@ pub struct RustcDev {
 }
 
 impl Step for RustcDev {
-    type Output = PathBuf;
+    type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
@@ -771,60 +620,44 @@ impl Step for RustcDev {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let compiler = self.compiler;
         let target = self.target;
-
-        let name = pkgname(builder, "rustc-dev");
-        let archive = distdir(builder).join(format!("{}-{}.tar.gz", name, target.triple));
         if skip_host_target_lib(builder, compiler) {
-            return archive;
+            return None;
         }
 
         builder.ensure(compile::Rustc { compiler, target });
 
-        let image = tmpdir(builder).join(format!("{}-{}-image", name, target.triple));
-        let _ = fs::remove_dir_all(&image);
+        let tarball = Tarball::new(builder, "rustc-dev", &target.triple);
 
         let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
         let stamp = compile::librustc_stamp(builder, compiler_to_use, target);
-        copy_target_libs(builder, target, &image, &stamp);
+        copy_target_libs(builder, target, tarball.image_dir(), &stamp);
 
-        // Copy compiler sources.
-        let dst_src = image.join("lib/rustlib/rustc-src/rust");
-        t!(fs::create_dir_all(&dst_src));
-
-        let src_files = ["Cargo.lock"];
+        let src_files = &["Cargo.lock"];
         // This is the reduced set of paths which will become the rustc-dev component
         // (essentially the compiler crates and all of their path dependencies).
-        copy_src_dirs(builder, &builder.src, &["compiler"], &[], &dst_src);
-        for file in src_files.iter() {
-            builder.copy(&builder.src.join(file), &dst_src.join(file));
+        copy_src_dirs(
+            builder,
+            &builder.src,
+            &["compiler"],
+            &[],
+            &tarball.image_dir().join("lib/rustlib/rustc-src/rust"),
+        );
+        // This particular crate is used as a build dependency of the above.
+        copy_src_dirs(
+            builder,
+            &builder.src,
+            &["src/build_helper"],
+            &[],
+            &tarball.image_dir().join("lib/rustlib/rustc-src/rust"),
+        );
+        for file in src_files {
+            tarball.add_file(builder.src.join(file), "lib/rustlib/rustc-src/rust", 0o644);
         }
 
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=Rust-is-ready-to-develop.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg(format!("--package-name={}-{}", name, target.triple))
-            .arg(format!("--component-name=rustc-dev-{}", target.triple))
-            .arg("--legacy-manifest-dirs=rustlib,cargo");
-
-        builder.info(&format!(
-            "Dist rustc-dev stage{} ({} -> {})",
-            compiler.stage, &compiler.host, target
-        ));
-        let _time = timeit(builder);
-        builder.run(&mut cmd);
-        builder.remove_dir(&image);
-        archive
+        Some(tarball.generate())
     }
 }
 
@@ -835,7 +668,7 @@ pub struct Analysis {
 }
 
 impl Step for Analysis {
-    type Output = PathBuf;
+    type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -858,52 +691,26 @@ impl Step for Analysis {
     }
 
     /// Creates a tarball of save-analysis metadata, if available.
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let compiler = self.compiler;
         let target = self.target;
         assert!(builder.config.extended);
-        let name = pkgname(builder, "rust-analysis");
-
         if compiler.host != builder.config.build {
-            return distdir(builder).join(format!("{}-{}.tar.gz", name, target.triple));
+            return None;
         }
 
         builder.ensure(compile::Std { compiler, target });
-
-        let image = tmpdir(builder).join(format!("{}-{}-image", name, target.triple));
-
         let src = builder
             .stage_out(compiler, Mode::Std)
             .join(target.triple)
             .join(builder.cargo_dir())
-            .join("deps");
+            .join("deps")
+            .join("save-analysis");
 
-        let image_src = src.join("save-analysis");
-        let dst = image.join("lib/rustlib").join(target.triple).join("analysis");
-        t!(fs::create_dir_all(&dst));
-        builder.info(&format!("image_src: {:?}, dst: {:?}", image_src, dst));
-        builder.cp_r(&image_src, &dst);
-
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=save-analysis-saved.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg(format!("--package-name={}-{}", name, target.triple))
-            .arg(format!("--component-name=rust-analysis-{}", target.triple))
-            .arg("--legacy-manifest-dirs=rustlib,cargo");
-
-        builder.info("Dist analysis");
-        let _time = timeit(builder);
-        builder.run(&mut cmd);
-        builder.remove_dir(&image);
-        distdir(builder).join(format!("{}-{}.tar.gz", name, target.triple))
+        let mut tarball = Tarball::new(builder, "rust-analysis", &target.triple);
+        tarball.include_target_in_component_name(true);
+        tarball.add_dir(src, format!("lib/rustlib/{}/analysis", target.triple));
+        Some(tarball.generate())
     }
 }
 
@@ -997,7 +804,7 @@ pub struct Src;
 
 impl Step for Src {
     /// The output path of the src installer tarball
-    type Output = PathBuf;
+    type Output = GeneratedTarball;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
@@ -1010,10 +817,8 @@ impl Step for Src {
     }
 
     /// Creates the `rust-src` installer component
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
-        let name = pkgname(builder, "rust-src");
-        let image = tmpdir(builder).join(format!("{}-image", name));
-        let _ = fs::remove_dir_all(&image);
+    fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
+        let tarball = Tarball::new_targetless(builder, "rust-src");
 
         // A lot of tools expect the rust-src component to be entirely in this directory, so if you
         // change that (e.g. by adding another directory `lib/rustlib/src/foo` or
@@ -1022,8 +827,7 @@ impl Step for Src {
         //
         // NOTE: if you update the paths here, you also should update the "virtual" path
         // translation code in `imported_source_files` in `src/librustc_metadata/rmeta/decoder.rs`
-        let dst_src = image.join("lib/rustlib/src/rust");
-        t!(fs::create_dir_all(&dst_src));
+        let dst_src = tarball.image_dir().join("lib/rustlib/src/rust");
 
         let src_files = ["Cargo.lock"];
         // This is the reduced set of paths which will become the rust-src component
@@ -1043,28 +847,7 @@ impl Step for Src {
             builder.copy(&builder.src.join(file), &dst_src.join(file));
         }
 
-        // Create source tarball in rust-installer format
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=Awesome-Source.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg(format!("--package-name={}", name))
-            .arg("--component-name=rust-src")
-            .arg("--legacy-manifest-dirs=rustlib,cargo");
-
-        builder.info("Dist src");
-        let _time = timeit(builder);
-        builder.run(&mut cmd);
-
-        builder.remove_dir(&image);
-        distdir(builder).join(&format!("{}.tar.gz", name))
+        tarball.generate()
     }
 }
 
@@ -1073,7 +856,7 @@ pub struct PlainSourceTarball;
 
 impl Step for PlainSourceTarball {
     /// Produces the location of the tarball generated
-    type Output = PathBuf;
+    type Output = GeneratedTarball;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
@@ -1087,12 +870,9 @@ impl Step for PlainSourceTarball {
     }
 
     /// Creates the plain source tarball
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
-        // Make sure that the root folder of tarball has the correct name
-        let plain_name = format!("{}-src", pkgname(builder, "rustc"));
-        let plain_dst_src = tmpdir(builder).join(&plain_name);
-        let _ = fs::remove_dir_all(&plain_dst_src);
-        t!(fs::create_dir_all(&plain_dst_src));
+    fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
+        let tarball = Tarball::new(builder, "rustc", "src");
+        let plain_dst_src = tarball.image_dir();
 
         // This is the set of root paths which will become part of the source package
         let src_files = [
@@ -1135,28 +915,7 @@ impl Step for PlainSourceTarball {
             builder.run(&mut cmd);
         }
 
-        // Create plain source tarball
-        let plain_name = format!("rustc-{}-src", builder.rust_package_vers());
-        let mut tarball = distdir(builder).join(&format!("{}.tar.gz", plain_name));
-        tarball.set_extension(""); // strip .gz
-        tarball.set_extension(""); // strip .tar
-        if let Some(dir) = tarball.parent() {
-            builder.create_dir(&dir);
-        }
-        builder.info("running installer");
-        let mut cmd = rust_installer(builder);
-        cmd.arg("tarball")
-            .arg("--input")
-            .arg(&plain_name)
-            .arg("--output")
-            .arg(&tarball)
-            .arg("--work-dir=.")
-            .current_dir(tmpdir(builder));
-
-        builder.info("Create plain source tarball");
-        let _time = timeit(builder);
-        builder.run(&mut cmd);
-        distdir(builder).join(&format!("{}.tar.gz", plain_name))
+        tarball.bare()
     }
 }
 
@@ -1190,7 +949,7 @@ pub struct Cargo {
 }
 
 impl Step for Cargo {
-    type Output = PathBuf;
+    type Output = GeneratedTarball;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1208,70 +967,32 @@ impl Step for Cargo {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
         let compiler = self.compiler;
         let target = self.target;
 
+        let cargo = builder.ensure(tool::Cargo { compiler, target });
         let src = builder.src.join("src/tools/cargo");
         let etc = src.join("src/etc");
-        let release_num = builder.release_num("cargo");
-        let name = pkgname(builder, "cargo");
-        let version = builder.cargo_info.version(builder, &release_num);
-
-        let tmp = tmpdir(builder);
-        let image = tmp.join("cargo-image");
-        drop(fs::remove_dir_all(&image));
-        builder.create_dir(&image);
 
         // Prepare the image directory
-        builder.create_dir(&image.join("share/zsh/site-functions"));
-        builder.create_dir(&image.join("etc/bash_completion.d"));
-        let cargo = builder.ensure(tool::Cargo { compiler, target });
-        builder.install(&cargo, &image.join("bin"), 0o755);
-        for man in t!(etc.join("man").read_dir()) {
-            let man = t!(man);
-            builder.install(&man.path(), &image.join("share/man/man1"), 0o644);
+        let mut tarball = Tarball::new(builder, "cargo", &target.triple);
+        tarball.set_overlay(OverlayKind::Cargo);
+
+        tarball.add_file(&cargo, "bin", 0o755);
+        tarball.add_file(etc.join("_cargo"), "share/zsh/site-functions", 0o644);
+        tarball.add_renamed_file(etc.join("cargo.bashcomp.sh"), "etc/bash_completion.d", "cargo");
+        tarball.add_dir(etc.join("man"), "share/man/man1");
+        tarball.add_legal_and_readme_to("share/doc/cargo");
+
+        for dirent in fs::read_dir(cargo.parent().unwrap()).expect("read_dir") {
+            let dirent = dirent.expect("read dir entry");
+            if dirent.file_name().to_str().expect("utf8").starts_with("cargo-credential-") {
+                tarball.add_file(&dirent.path(), "libexec", 0o755);
+            }
         }
-        builder.install(&etc.join("_cargo"), &image.join("share/zsh/site-functions"), 0o644);
-        builder.copy(&etc.join("cargo.bashcomp.sh"), &image.join("etc/bash_completion.d/cargo"));
-        let doc = image.join("share/doc/cargo");
-        builder.install(&src.join("README.md"), &doc, 0o644);
-        builder.install(&src.join("LICENSE-MIT"), &doc, 0o644);
-        builder.install(&src.join("LICENSE-APACHE"), &doc, 0o644);
-        builder.install(&src.join("LICENSE-THIRD-PARTY"), &doc, 0o644);
 
-        // Prepare the overlay
-        let overlay = tmp.join("cargo-overlay");
-        drop(fs::remove_dir_all(&overlay));
-        builder.create_dir(&overlay);
-        builder.install(&src.join("README.md"), &overlay, 0o644);
-        builder.install(&src.join("LICENSE-MIT"), &overlay, 0o644);
-        builder.install(&src.join("LICENSE-APACHE"), &overlay, 0o644);
-        builder.install(&src.join("LICENSE-THIRD-PARTY"), &overlay, 0o644);
-        builder.create(&overlay.join("version"), &version);
-
-        // Generate the installer tarball
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=Rust-is-ready-to-roll.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg("--non-installed-overlay")
-            .arg(&overlay)
-            .arg(format!("--package-name={}-{}", name, target.triple))
-            .arg("--component-name=cargo")
-            .arg("--legacy-manifest-dirs=rustlib,cargo");
-
-        builder.info(&format!("Dist cargo stage{} ({})", compiler.stage, target));
-        let _time = timeit(builder);
-        builder.run(&mut cmd);
-        distdir(builder).join(format!("{}-{}.tar.gz", name, target.triple))
+        tarball.generate()
     }
 }
 
@@ -1282,7 +1003,7 @@ pub struct Rls {
 }
 
 impl Step for Rls {
-    type Output = Option<PathBuf>;
+    type Output = Option<GeneratedTarball>;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1300,24 +1021,11 @@ impl Step for Rls {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let compiler = self.compiler;
         let target = self.target;
         assert!(builder.config.extended);
 
-        let src = builder.src.join("src/tools/rls");
-        let release_num = builder.release_num("rls");
-        let name = pkgname(builder, "rls");
-        let version = builder.rls_info.version(builder, &release_num);
-
-        let tmp = tmpdir(builder);
-        let image = tmp.join("rls-image");
-        drop(fs::remove_dir_all(&image));
-        t!(fs::create_dir_all(&image));
-
-        // Prepare the image directory
-        // We expect RLS to build, because we've exited this step above if tool
-        // state for RLS isn't testing.
         let rls = builder
             .ensure(tool::Rls { compiler, target, extra_features: Vec::new() })
             .or_else(|| {
@@ -1325,43 +1033,12 @@ impl Step for Rls {
                 None
             })?;
 
-        builder.install(&rls, &image.join("bin"), 0o755);
-        let doc = image.join("share/doc/rls");
-        builder.install(&src.join("README.md"), &doc, 0o644);
-        builder.install(&src.join("LICENSE-MIT"), &doc, 0o644);
-        builder.install(&src.join("LICENSE-APACHE"), &doc, 0o644);
-
-        // Prepare the overlay
-        let overlay = tmp.join("rls-overlay");
-        drop(fs::remove_dir_all(&overlay));
-        t!(fs::create_dir_all(&overlay));
-        builder.install(&src.join("README.md"), &overlay, 0o644);
-        builder.install(&src.join("LICENSE-MIT"), &overlay, 0o644);
-        builder.install(&src.join("LICENSE-APACHE"), &overlay, 0o644);
-        builder.create(&overlay.join("version"), &version);
-
-        // Generate the installer tarball
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=RLS-ready-to-serve.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg("--non-installed-overlay")
-            .arg(&overlay)
-            .arg(format!("--package-name={}-{}", name, target.triple))
-            .arg("--legacy-manifest-dirs=rustlib,cargo")
-            .arg("--component-name=rls-preview");
-
-        builder.info(&format!("Dist RLS stage{} ({})", compiler.stage, target.triple));
-        let _time = timeit(builder);
-        builder.run(&mut cmd);
-        Some(distdir(builder).join(format!("{}-{}.tar.gz", name, target.triple)))
+        let mut tarball = Tarball::new(builder, "rls", &target.triple);
+        tarball.set_overlay(OverlayKind::RLS);
+        tarball.is_preview(true);
+        tarball.add_file(rls, "bin", 0o755);
+        tarball.add_legal_and_readme_to("share/doc/rls");
+        Some(tarball.generate())
     }
 }
 
@@ -1372,7 +1049,7 @@ pub struct RustAnalyzer {
 }
 
 impl Step for RustAnalyzer {
-    type Output = Option<PathBuf>;
+    type Output = Option<GeneratedTarball>;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1390,7 +1067,7 @@ impl Step for RustAnalyzer {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let compiler = self.compiler;
         let target = self.target;
         assert!(builder.config.extended);
@@ -1401,60 +1078,16 @@ impl Step for RustAnalyzer {
             return None;
         }
 
-        let src = builder.src.join("src/tools/rust-analyzer");
-        let release_num = builder.release_num("rust-analyzer/crates/rust-analyzer");
-        let name = pkgname(builder, "rust-analyzer");
-        let version = builder.rust_analyzer_info.version(builder, &release_num);
-
-        let tmp = tmpdir(builder);
-        let image = tmp.join("rust-analyzer-image");
-        drop(fs::remove_dir_all(&image));
-        builder.create_dir(&image);
-
-        // Prepare the image directory
-        // We expect rust-analyer to always build, as it doesn't depend on rustc internals
-        // and doesn't have associated toolstate.
         let rust_analyzer = builder
             .ensure(tool::RustAnalyzer { compiler, target, extra_features: Vec::new() })
             .expect("rust-analyzer always builds");
 
-        builder.install(&rust_analyzer, &image.join("bin"), 0o755);
-        let doc = image.join("share/doc/rust-analyzer");
-        builder.install(&src.join("README.md"), &doc, 0o644);
-        builder.install(&src.join("LICENSE-APACHE"), &doc, 0o644);
-        builder.install(&src.join("LICENSE-MIT"), &doc, 0o644);
-
-        // Prepare the overlay
-        let overlay = tmp.join("rust-analyzer-overlay");
-        drop(fs::remove_dir_all(&overlay));
-        t!(fs::create_dir_all(&overlay));
-        builder.install(&src.join("README.md"), &overlay, 0o644);
-        builder.install(&src.join("LICENSE-APACHE"), &doc, 0o644);
-        builder.install(&src.join("LICENSE-MIT"), &doc, 0o644);
-        builder.create(&overlay.join("version"), &version);
-
-        // Generate the installer tarball
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=rust-analyzer-ready-to-serve.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg("--non-installed-overlay")
-            .arg(&overlay)
-            .arg(format!("--package-name={}-{}", name, target.triple))
-            .arg("--legacy-manifest-dirs=rustlib,cargo")
-            .arg("--component-name=rust-analyzer-preview");
-
-        builder.info(&format!("Dist rust-analyzer stage{} ({})", compiler.stage, target));
-        let _time = timeit(builder);
-        builder.run(&mut cmd);
-        Some(distdir(builder).join(format!("{}-{}.tar.gz", name, target.triple)))
+        let mut tarball = Tarball::new(builder, "rust-analyzer", &target.triple);
+        tarball.set_overlay(OverlayKind::RustAnalyzer);
+        tarball.is_preview(true);
+        tarball.add_file(rust_analyzer, "bin", 0o755);
+        tarball.add_legal_and_readme_to("share/doc/rust-analyzer");
+        Some(tarball.generate())
     }
 }
 
@@ -1465,7 +1098,7 @@ pub struct Clippy {
 }
 
 impl Step for Clippy {
-    type Output = PathBuf;
+    type Output = GeneratedTarball;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1483,20 +1116,10 @@ impl Step for Clippy {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
         let compiler = self.compiler;
         let target = self.target;
         assert!(builder.config.extended);
-
-        let src = builder.src.join("src/tools/clippy");
-        let release_num = builder.release_num("clippy");
-        let name = pkgname(builder, "clippy");
-        let version = builder.clippy_info.version(builder, &release_num);
-
-        let tmp = tmpdir(builder);
-        let image = tmp.join("clippy-image");
-        drop(fs::remove_dir_all(&image));
-        builder.create_dir(&image);
 
         // Prepare the image directory
         // We expect clippy to build, because we've exited this step above if tool
@@ -1508,44 +1131,13 @@ impl Step for Clippy {
             .ensure(tool::CargoClippy { compiler, target, extra_features: Vec::new() })
             .expect("clippy expected to build - essential tool");
 
-        builder.install(&clippy, &image.join("bin"), 0o755);
-        builder.install(&cargoclippy, &image.join("bin"), 0o755);
-        let doc = image.join("share/doc/clippy");
-        builder.install(&src.join("README.md"), &doc, 0o644);
-        builder.install(&src.join("LICENSE-APACHE"), &doc, 0o644);
-        builder.install(&src.join("LICENSE-MIT"), &doc, 0o644);
-
-        // Prepare the overlay
-        let overlay = tmp.join("clippy-overlay");
-        drop(fs::remove_dir_all(&overlay));
-        t!(fs::create_dir_all(&overlay));
-        builder.install(&src.join("README.md"), &overlay, 0o644);
-        builder.install(&src.join("LICENSE-APACHE"), &doc, 0o644);
-        builder.install(&src.join("LICENSE-MIT"), &doc, 0o644);
-        builder.create(&overlay.join("version"), &version);
-
-        // Generate the installer tarball
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=clippy-ready-to-serve.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg("--non-installed-overlay")
-            .arg(&overlay)
-            .arg(format!("--package-name={}-{}", name, target.triple))
-            .arg("--legacy-manifest-dirs=rustlib,cargo")
-            .arg("--component-name=clippy-preview");
-
-        builder.info(&format!("Dist clippy stage{} ({})", compiler.stage, target));
-        let _time = timeit(builder);
-        builder.run(&mut cmd);
-        distdir(builder).join(format!("{}-{}.tar.gz", name, target.triple))
+        let mut tarball = Tarball::new(builder, "clippy", &target.triple);
+        tarball.set_overlay(OverlayKind::Clippy);
+        tarball.is_preview(true);
+        tarball.add_file(clippy, "bin", 0o755);
+        tarball.add_file(cargoclippy, "bin", 0o755);
+        tarball.add_legal_and_readme_to("share/doc/clippy");
+        tarball.generate()
     }
 }
 
@@ -1556,7 +1148,7 @@ pub struct Miri {
 }
 
 impl Step for Miri {
-    type Output = Option<PathBuf>;
+    type Output = Option<GeneratedTarball>;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1574,24 +1166,11 @@ impl Step for Miri {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let compiler = self.compiler;
         let target = self.target;
         assert!(builder.config.extended);
 
-        let src = builder.src.join("src/tools/miri");
-        let release_num = builder.release_num("miri");
-        let name = pkgname(builder, "miri");
-        let version = builder.miri_info.version(builder, &release_num);
-
-        let tmp = tmpdir(builder);
-        let image = tmp.join("miri-image");
-        drop(fs::remove_dir_all(&image));
-        builder.create_dir(&image);
-
-        // Prepare the image directory
-        // We expect miri to build, because we've exited this step above if tool
-        // state for miri isn't testing.
         let miri = builder
             .ensure(tool::Miri { compiler, target, extra_features: Vec::new() })
             .or_else(|| {
@@ -1605,44 +1184,13 @@ impl Step for Miri {
                 None
             })?;
 
-        builder.install(&miri, &image.join("bin"), 0o755);
-        builder.install(&cargomiri, &image.join("bin"), 0o755);
-        let doc = image.join("share/doc/miri");
-        builder.install(&src.join("README.md"), &doc, 0o644);
-        builder.install(&src.join("LICENSE-APACHE"), &doc, 0o644);
-        builder.install(&src.join("LICENSE-MIT"), &doc, 0o644);
-
-        // Prepare the overlay
-        let overlay = tmp.join("miri-overlay");
-        drop(fs::remove_dir_all(&overlay));
-        t!(fs::create_dir_all(&overlay));
-        builder.install(&src.join("README.md"), &overlay, 0o644);
-        builder.install(&src.join("LICENSE-APACHE"), &doc, 0o644);
-        builder.install(&src.join("LICENSE-MIT"), &doc, 0o644);
-        builder.create(&overlay.join("version"), &version);
-
-        // Generate the installer tarball
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=miri-ready-to-serve.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg("--non-installed-overlay")
-            .arg(&overlay)
-            .arg(format!("--package-name={}-{}", name, target.triple))
-            .arg("--legacy-manifest-dirs=rustlib,cargo")
-            .arg("--component-name=miri-preview");
-
-        builder.info(&format!("Dist miri stage{} ({})", compiler.stage, target));
-        let _time = timeit(builder);
-        builder.run(&mut cmd);
-        Some(distdir(builder).join(format!("{}-{}.tar.gz", name, target.triple)))
+        let mut tarball = Tarball::new(builder, "miri", &target.triple);
+        tarball.set_overlay(OverlayKind::Miri);
+        tarball.is_preview(true);
+        tarball.add_file(miri, "bin", 0o755);
+        tarball.add_file(cargomiri, "bin", 0o755);
+        tarball.add_legal_and_readme_to("share/doc/miri");
+        Some(tarball.generate())
     }
 }
 
@@ -1653,7 +1201,7 @@ pub struct Rustfmt {
 }
 
 impl Step for Rustfmt {
-    type Output = Option<PathBuf>;
+    type Output = Option<GeneratedTarball>;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1671,21 +1219,10 @@ impl Step for Rustfmt {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let compiler = self.compiler;
         let target = self.target;
 
-        let src = builder.src.join("src/tools/rustfmt");
-        let release_num = builder.release_num("rustfmt");
-        let name = pkgname(builder, "rustfmt");
-        let version = builder.rustfmt_info.version(builder, &release_num);
-
-        let tmp = tmpdir(builder);
-        let image = tmp.join("rustfmt-image");
-        drop(fs::remove_dir_all(&image));
-        builder.create_dir(&image);
-
-        // Prepare the image directory
         let rustfmt = builder
             .ensure(tool::Rustfmt { compiler, target, extra_features: Vec::new() })
             .or_else(|| {
@@ -1699,44 +1236,13 @@ impl Step for Rustfmt {
                 None
             })?;
 
-        builder.install(&rustfmt, &image.join("bin"), 0o755);
-        builder.install(&cargofmt, &image.join("bin"), 0o755);
-        let doc = image.join("share/doc/rustfmt");
-        builder.install(&src.join("README.md"), &doc, 0o644);
-        builder.install(&src.join("LICENSE-MIT"), &doc, 0o644);
-        builder.install(&src.join("LICENSE-APACHE"), &doc, 0o644);
-
-        // Prepare the overlay
-        let overlay = tmp.join("rustfmt-overlay");
-        drop(fs::remove_dir_all(&overlay));
-        builder.create_dir(&overlay);
-        builder.install(&src.join("README.md"), &overlay, 0o644);
-        builder.install(&src.join("LICENSE-MIT"), &overlay, 0o644);
-        builder.install(&src.join("LICENSE-APACHE"), &overlay, 0o644);
-        builder.create(&overlay.join("version"), &version);
-
-        // Generate the installer tarball
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=rustfmt-ready-to-fmt.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg("--non-installed-overlay")
-            .arg(&overlay)
-            .arg(format!("--package-name={}-{}", name, target.triple))
-            .arg("--legacy-manifest-dirs=rustlib,cargo")
-            .arg("--component-name=rustfmt-preview");
-
-        builder.info(&format!("Dist Rustfmt stage{} ({})", compiler.stage, target));
-        let _time = timeit(builder);
-        builder.run(&mut cmd);
-        Some(distdir(builder).join(format!("{}-{}.tar.gz", name, target.triple)))
+        let mut tarball = Tarball::new(builder, "rustfmt", &target.triple);
+        tarball.set_overlay(OverlayKind::Rustfmt);
+        tarball.is_preview(true);
+        tarball.add_file(rustfmt, "bin", 0o755);
+        tarball.add_file(cargofmt, "bin", 0o755);
+        tarball.add_legal_and_readme_to("share/doc/rustfmt");
+        Some(tarball.generate())
     }
 }
 
@@ -1785,24 +1291,14 @@ impl Step for Extended {
         let analysis_installer = builder.ensure(Analysis { compiler, target });
 
         let docs_installer = builder.ensure(Docs { host: target });
-        let std_installer =
-            builder.ensure(Std { compiler: builder.compiler(stage, target), target });
+        let std_installer = builder.ensure(Std { compiler, target });
 
-        let tmp = tmpdir(builder);
-        let overlay = tmp.join("extended-overlay");
         let etc = builder.src.join("src/etc/installer");
-        let work = tmp.join("work");
 
-        let _ = fs::remove_dir_all(&overlay);
-        builder.install(&builder.src.join("COPYRIGHT"), &overlay, 0o644);
-        builder.install(&builder.src.join("LICENSE-APACHE"), &overlay, 0o644);
-        builder.install(&builder.src.join("LICENSE-MIT"), &overlay, 0o644);
-        let version = builder.rust_version();
-        builder.create(&overlay.join("version"), &version);
-        if let Some(sha) = builder.rust_sha() {
-            builder.create(&overlay.join("git-commit-hash"), &sha);
+        // Avoid producing tarballs during a dry run.
+        if builder.config.dry_run {
+            return;
         }
-        builder.install(&etc.join("README.md"), &overlay, 0o644);
 
         // When rust-std package split from rustc, we needed to ensure that during
         // upgrades rustc was upgraded before rust-std. To avoid rustc clobbering
@@ -1817,55 +1313,38 @@ impl Step for Extended {
         tarballs.extend(miri_installer.clone());
         tarballs.extend(rustfmt_installer.clone());
         tarballs.extend(llvm_tools_installer);
-        tarballs.push(analysis_installer);
-        tarballs.push(std_installer);
-        if builder.config.docs {
+        if let Some(analysis_installer) = analysis_installer {
+            tarballs.push(analysis_installer);
+        }
+        tarballs.push(std_installer.expect("missing std"));
+        if let Some(docs_installer) = docs_installer {
             tarballs.push(docs_installer);
         }
         if target.contains("pc-windows-gnu") {
             tarballs.push(mingw_installer.unwrap());
         }
-        let mut input_tarballs = tarballs[0].as_os_str().to_owned();
-        for tarball in &tarballs[1..] {
-            input_tarballs.push(",");
-            input_tarballs.push(tarball);
-        }
 
-        builder.info("building combined installer");
-        let mut cmd = rust_installer(builder);
-        cmd.arg("combine")
-            .arg("--product-name=Rust")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=Rust-is-ready-to-roll.")
-            .arg("--work-dir")
-            .arg(&work)
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg(format!("--package-name={}-{}", pkgname(builder, "rust"), target.triple))
-            .arg("--legacy-manifest-dirs=rustlib,cargo")
-            .arg("--input-tarballs")
-            .arg(input_tarballs)
-            .arg("--non-installed-overlay")
-            .arg(&overlay);
-        let time = timeit(&builder);
-        builder.run(&mut cmd);
-        drop(time);
+        let tarball = Tarball::new(builder, "rust", &target.triple);
+        let generated = tarball.combine(&tarballs);
+
+        let tmp = tmpdir(builder).join("combined-tarball");
+        let work = generated.work_dir();
 
         let mut license = String::new();
         license += &builder.read(&builder.src.join("COPYRIGHT"));
         license += &builder.read(&builder.src.join("LICENSE-APACHE"));
         license += &builder.read(&builder.src.join("LICENSE-MIT"));
-        license.push_str("\n");
-        license.push_str("\n");
+        license.push('\n');
+        license.push('\n');
 
         let rtf = r"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil\fcharset0 Arial;}}\nowwrap\fs18";
         let mut rtf = rtf.to_string();
-        rtf.push_str("\n");
+        rtf.push('\n');
         for line in license.lines() {
             rtf.push_str(line);
             rtf.push_str("\\line ");
         }
-        rtf.push_str("}");
+        rtf.push('}');
 
         fn filter(contents: &str, marker: &str) -> String {
             let start = format!("tool-{}-start", marker);
@@ -2329,19 +1808,11 @@ fn add_env(builder: &Builder<'_>, cmd: &mut Command, target: TargetSelection) {
     }
 }
 
-/// Maybe add libLLVM.so to the given destination lib-dir. It will only have
-/// been built if LLVM tools are linked dynamically.
+/// Maybe add LLVM object files to the given destination lib-dir. Allows either static or dynamic linking.
 ///
-/// Note: This function does not yet support Windows, but we also don't support
-///       linking LLVM tools dynamically on Windows yet.
-fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir: &Path) {
-    if !builder.config.llvm_link_shared {
-        // We do not need to copy LLVM files into the sysroot if it is not
-        // dynamically linked; it is already included into librustc_llvm
-        // statically.
-        return;
-    }
 
+/// Returns whether the files were actually copied.
+fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir: &Path) -> bool {
     if let Some(config) = builder.config.target_config.get(&target) {
         if config.llvm_config.is_some() && !builder.config.llvm_from_ci {
             // If the LLVM was externally provided, then we don't currently copy
@@ -2357,7 +1828,7 @@ fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir
             //
             // If the LLVM is coming from ourselves (just from CI) though, we
             // still want to install it, as it otherwise won't be available.
-            return;
+            return false;
         }
     }
 
@@ -2366,31 +1837,48 @@ fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir
     // clear why this is the case, though. llvm-config will emit the versioned
     // paths and we don't want those in the sysroot (as we're expecting
     // unversioned paths).
-    if target.contains("apple-darwin") {
+    if target.contains("apple-darwin") && builder.config.llvm_link_shared {
         let src_libdir = builder.llvm_out(target).join("lib");
         let llvm_dylib_path = src_libdir.join("libLLVM.dylib");
         if llvm_dylib_path.exists() {
             builder.install(&llvm_dylib_path, dst_libdir, 0o644);
         }
+        !builder.config.dry_run
     } else if let Ok(llvm_config) = crate::native::prebuilt_llvm_config(builder, target) {
-        let files = output(Command::new(llvm_config).arg("--libfiles"));
-        for file in files.lines() {
+        let mut cmd = Command::new(llvm_config);
+        cmd.arg("--libfiles");
+        builder.verbose(&format!("running {:?}", cmd));
+        let files = output(&mut cmd);
+        for file in files.trim_end().split(' ') {
             builder.install(Path::new(file), dst_libdir, 0o644);
         }
+        !builder.config.dry_run
+    } else {
+        false
     }
 }
 
 /// Maybe add libLLVM.so to the target lib-dir for linking.
 pub fn maybe_install_llvm_target(builder: &Builder<'_>, target: TargetSelection, sysroot: &Path) {
     let dst_libdir = sysroot.join("lib/rustlib").join(&*target.triple).join("lib");
-    maybe_install_llvm(builder, target, &dst_libdir);
+    // We do not need to copy LLVM files into the sysroot if it is not
+    // dynamically linked; it is already included into librustc_llvm
+    // statically.
+    if builder.config.llvm_link_shared {
+        maybe_install_llvm(builder, target, &dst_libdir);
+    }
 }
 
 /// Maybe add libLLVM.so to the runtime lib-dir for rustc itself.
 pub fn maybe_install_llvm_runtime(builder: &Builder<'_>, target: TargetSelection, sysroot: &Path) {
     let dst_libdir =
         sysroot.join(builder.sysroot_libdir_relative(Compiler { stage: 1, host: target }));
-    maybe_install_llvm(builder, target, &dst_libdir);
+    // We do not need to copy LLVM files into the sysroot if it is not
+    // dynamically linked; it is already included into librustc_llvm
+    // statically.
+    if builder.config.llvm_link_shared {
+        maybe_install_llvm(builder, target, &dst_libdir);
+    }
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -2399,7 +1887,7 @@ pub struct LlvmTools {
 }
 
 impl Step for LlvmTools {
-    type Output = Option<PathBuf>;
+    type Output = Option<GeneratedTarball>;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -2410,7 +1898,7 @@ impl Step for LlvmTools {
         run.builder.ensure(LlvmTools { target: run.target });
     }
 
-    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let target = self.target;
         assert!(builder.config.extended);
 
@@ -2422,58 +1910,25 @@ impl Step for LlvmTools {
             }
         }
 
-        builder.info(&format!("Dist LlvmTools ({})", target));
-        let _time = timeit(builder);
-        let src = builder.src.join("src/llvm-project/llvm");
-        let name = pkgname(builder, "llvm-tools");
-
-        let tmp = tmpdir(builder);
-        let image = tmp.join("llvm-tools-image");
-        drop(fs::remove_dir_all(&image));
+        let mut tarball = Tarball::new(builder, "llvm-tools", &target.triple);
+        tarball.set_overlay(OverlayKind::LLVM);
+        tarball.is_preview(true);
 
         // Prepare the image directory
         let src_bindir = builder.llvm_out(target).join("bin");
-        let dst_bindir = image.join("lib/rustlib").join(&*target.triple).join("bin");
-        t!(fs::create_dir_all(&dst_bindir));
+        let dst_bindir = format!("lib/rustlib/{}/bin", target.triple);
         for tool in LLVM_TOOLS {
             let exe = src_bindir.join(exe(tool, target));
-            builder.install(&exe, &dst_bindir, 0o755);
+            tarball.add_file(&exe, &dst_bindir, 0o755);
         }
 
         // Copy libLLVM.so to the target lib dir as well, so the RPATH like
         // `$ORIGIN/../lib` can find it. It may also be used as a dependency
         // of `rustc-dev` to support the inherited `-lLLVM` when using the
         // compiler libraries.
-        maybe_install_llvm_target(builder, target, &image);
+        maybe_install_llvm_target(builder, target, tarball.image_dir());
 
-        // Prepare the overlay
-        let overlay = tmp.join("llvm-tools-overlay");
-        drop(fs::remove_dir_all(&overlay));
-        builder.create_dir(&overlay);
-        builder.install(&src.join("README.txt"), &overlay, 0o644);
-        builder.install(&src.join("LICENSE.TXT"), &overlay, 0o644);
-        builder.create(&overlay.join("version"), &builder.llvm_tools_vers());
-
-        // Generate the installer tarball
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=llvm-tools-installed.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg("--non-installed-overlay")
-            .arg(&overlay)
-            .arg(format!("--package-name={}-{}", name, target.triple))
-            .arg("--legacy-manifest-dirs=rustlib,cargo")
-            .arg("--component-name=llvm-tools-preview");
-
-        builder.run(&mut cmd);
-        Some(distdir(builder).join(format!("{}-{}.tar.gz", name, target.triple)))
+        Some(tarball.generate())
     }
 }
 
@@ -2486,7 +1941,7 @@ pub struct RustDev {
 }
 
 impl Step for RustDev {
-    type Output = Option<PathBuf>;
+    type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
@@ -2498,7 +1953,7 @@ impl Step for RustDev {
         run.builder.ensure(RustDev { target: run.target });
     }
 
-    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let target = self.target;
 
         /* run only if llvm-config isn't used */
@@ -2509,70 +1964,38 @@ impl Step for RustDev {
             }
         }
 
-        builder.info(&format!("Dist RustDev ({})", target));
-        let _time = timeit(builder);
-        let src = builder.src.join("src/llvm-project/llvm");
-        let name = pkgname(builder, "rust-dev");
-
-        let tmp = tmpdir(builder);
-        let image = tmp.join("rust-dev-image");
-        drop(fs::remove_dir_all(&image));
-
-        // Prepare the image directory
-        let dst_bindir = image.join("bin");
-        t!(fs::create_dir_all(&dst_bindir));
+        let mut tarball = Tarball::new(builder, "rust-dev", &target.triple);
+        tarball.set_overlay(OverlayKind::LLVM);
 
         let src_bindir = builder.llvm_out(target).join("bin");
-        let install_bin =
-            |name| builder.install(&src_bindir.join(exe(name, target)), &dst_bindir, 0o755);
-        install_bin("llvm-config");
-        install_bin("llvm-ar");
-        install_bin("llvm-objdump");
-        install_bin("llvm-profdata");
-        install_bin("llvm-bcanalyzer");
-        install_bin("llvm-cov");
-        install_bin("llvm-dwp");
-        builder.install(&builder.llvm_filecheck(target), &dst_bindir, 0o755);
+        for bin in &[
+            "llvm-config",
+            "llvm-ar",
+            "llvm-objdump",
+            "llvm-profdata",
+            "llvm-bcanalyzer",
+            "llvm-cov",
+            "llvm-dwp",
+        ] {
+            tarball.add_file(src_bindir.join(exe(bin, target)), "bin", 0o755);
+        }
+        tarball.add_file(&builder.llvm_filecheck(target), "bin", 0o755);
 
         // Copy the include directory as well; needed mostly to build
         // librustc_llvm properly (e.g., llvm-config.h is in here). But also
         // just broadly useful to be able to link against the bundled LLVM.
-        builder.cp_r(&builder.llvm_out(target).join("include"), &image.join("include"));
+        tarball.add_dir(&builder.llvm_out(target).join("include"), "include");
 
         // Copy libLLVM.so to the target lib dir as well, so the RPATH like
         // `$ORIGIN/../lib` can find it. It may also be used as a dependency
         // of `rustc-dev` to support the inherited `-lLLVM` when using the
         // compiler libraries.
-        maybe_install_llvm(builder, target, &image.join("lib"));
+        let dst_libdir = tarball.image_dir().join("lib");
+        maybe_install_llvm(builder, target, &dst_libdir);
+        let link_type = if builder.config.llvm_link_shared { "dynamic" } else { "static" };
+        t!(std::fs::write(tarball.image_dir().join("link-type.txt"), link_type), dst_libdir);
 
-        // Prepare the overlay
-        let overlay = tmp.join("rust-dev-overlay");
-        drop(fs::remove_dir_all(&overlay));
-        builder.create_dir(&overlay);
-        builder.install(&src.join("README.txt"), &overlay, 0o644);
-        builder.install(&src.join("LICENSE.TXT"), &overlay, 0o644);
-        builder.create(&overlay.join("version"), &builder.rust_version());
-
-        // Generate the installer tarball
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=rust-dev-installed.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg("--non-installed-overlay")
-            .arg(&overlay)
-            .arg(format!("--package-name={}-{}", name, target.triple))
-            .arg("--legacy-manifest-dirs=rustlib,cargo")
-            .arg("--component-name=rust-dev");
-
-        builder.run(&mut cmd);
-        Some(distdir(builder).join(format!("{}-{}.tar.gz", name, target.triple)))
+        Some(tarball.generate())
     }
 }
 
@@ -2586,7 +2009,7 @@ pub struct BuildManifest {
 }
 
 impl Step for BuildManifest {
-    type Output = PathBuf;
+    type Output = GeneratedTarball;
     const DEFAULT: bool = false;
     const ONLY_HOSTS: bool = true;
 
@@ -2598,47 +2021,43 @@ impl Step for BuildManifest {
         run.builder.ensure(BuildManifest { target: run.target });
     }
 
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
         let build_manifest = builder.tool_exe(Tool::BuildManifest);
 
-        let name = pkgname(builder, "build-manifest");
-        let tmp = tmpdir(builder);
+        let tarball = Tarball::new(builder, "build-manifest", &self.target.triple);
+        tarball.add_file(&build_manifest, "bin", 0o755);
+        tarball.generate()
+    }
+}
 
-        // Prepare the image.
-        let image = tmp.join("build-manifest-image");
-        let image_bin = image.join("bin");
-        let _ = fs::remove_dir_all(&image);
-        t!(fs::create_dir_all(&image_bin));
-        builder.install(&build_manifest, &image_bin, 0o755);
+/// Tarball containing artifacts necessary to reproduce the build of rustc.
+///
+/// Currently this is the PGO profile data.
+///
+/// Should not be considered stable by end users.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct ReproducibleArtifacts {
+    pub target: TargetSelection,
+}
 
-        // Prepare the overlay.
-        let overlay = tmp.join("build-manifest-overlay");
-        let _ = fs::remove_dir_all(&overlay);
-        builder.create_dir(&overlay);
-        builder.create(&overlay.join("version"), &builder.rust_version());
-        for file in &["COPYRIGHT", "LICENSE-APACHE", "LICENSE-MIT", "README.md"] {
-            builder.install(&builder.src.join(file), &overlay, 0o644);
-        }
+impl Step for ReproducibleArtifacts {
+    type Output = Option<GeneratedTarball>;
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
 
-        // Create the final tarball.
-        let mut cmd = rust_installer(builder);
-        cmd.arg("generate")
-            .arg("--product-name=Rust")
-            .arg("--rel-manifest-dir=rustlib")
-            .arg("--success-message=build-manifest installed.")
-            .arg("--image-dir")
-            .arg(&image)
-            .arg("--work-dir")
-            .arg(&tmpdir(builder))
-            .arg("--output-dir")
-            .arg(&distdir(builder))
-            .arg("--non-installed-overlay")
-            .arg(&overlay)
-            .arg(format!("--package-name={}-{}", name, self.target.triple))
-            .arg("--legacy-manifest-dirs=rustlib,cargo")
-            .arg("--component-name=build-manifest");
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("reproducible")
+    }
 
-        builder.run(&mut cmd);
-        distdir(builder).join(format!("{}-{}.tar.gz", name, self.target.triple))
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(ReproducibleArtifacts { target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let path = builder.config.rust_profile_use.as_ref()?;
+
+        let tarball = Tarball::new(builder, "reproducible-artifacts", &self.target.triple);
+        tarball.add_file(path, ".", 0o644);
+        Some(tarball.generate())
     }
 }

@@ -19,7 +19,7 @@ impl<'a> X for fn(&'a ()) {
 }
 
 fn g() {
-    let x = <fn (&())>::make_g(); //~ ERROR no function or associated item
+    let x = <fn (&())>::make_g(); //~ ERROR the function
 }
 
 fn main() {}

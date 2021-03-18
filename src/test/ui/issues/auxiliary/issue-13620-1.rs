@@ -1,8 +1,8 @@
 pub struct Foo {
-    pub foo: extern fn()
+    pub foo: extern "C" fn()
 }
 
-extern fn the_foo() {}
+extern "C" fn the_foo() {}
 
 pub const FOO: Foo = Foo {
     foo: the_foo

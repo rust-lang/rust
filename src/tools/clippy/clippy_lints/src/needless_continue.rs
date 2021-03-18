@@ -221,7 +221,7 @@ where
 {
     if let ast::ExprKind::While(_, loop_block, label)
     | ast::ExprKind::ForLoop(_, _, loop_block, label)
-    | ast::ExprKind::Loop(loop_block, label) = &expr.kind
+    | ast::ExprKind::Loop(loop_block, label, ..) = &expr.kind
     {
         func(loop_block, label.as_ref());
     }
@@ -416,11 +416,7 @@ fn erode_from_back(s: &str) -> String {
             break;
         }
     }
-    if ret.is_empty() {
-        s.to_string()
-    } else {
-        ret
-    }
+    if ret.is_empty() { s.to_string() } else { ret }
 }
 
 fn span_of_first_expr_in_block(block: &ast::Block) -> Option<Span> {

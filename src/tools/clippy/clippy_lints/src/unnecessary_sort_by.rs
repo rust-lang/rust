@@ -183,7 +183,7 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<LintTrigger> {
             Param { pat: Pat { kind: PatKind::Binding(_, _, right_ident, _), .. }, .. }
         ] = &closure_body.params;
         if let ExprKind::MethodCall(method_path, _, [ref left_expr, ref right_expr], _) = &closure_body.value.kind;
-        if method_path.ident.name.to_ident_string() == "cmp";
+        if method_path.ident.name == sym::cmp;
         then {
             let (closure_body, closure_arg, reverse) = if mirrored_exprs(
                 &cx,
@@ -212,10 +212,10 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<LintTrigger> {
             if !expr_borrows(cx, left_expr) {
                 return Some(LintTrigger::SortByKey(SortByKeyDetection {
                     vec_name,
-                    unstable,
                     closure_arg,
                     closure_body,
-                    reverse
+                    reverse,
+                    unstable,
                 }));
             }
         }

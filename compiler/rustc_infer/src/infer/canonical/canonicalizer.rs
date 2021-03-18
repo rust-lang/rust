@@ -353,10 +353,8 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
                     // `TyVar(vid)` is unresolved, track its universe index in the canonicalized
                     // result.
                     Err(mut ui) => {
-                        if !self.infcx.unwrap().tcx.sess.opts.debugging_opts.chalk {
-                            // FIXME: perf problem described in #55921.
-                            ui = ty::UniverseIndex::ROOT;
-                        }
+                        // FIXME: perf problem described in #55921.
+                        ui = ty::UniverseIndex::ROOT;
                         self.canonicalize_ty_var(
                             CanonicalVarInfo {
                                 kind: CanonicalVarKind::Ty(CanonicalTyVarKind::General(ui)),
@@ -440,10 +438,8 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
                     // `ConstVar(vid)` is unresolved, track its universe index in the
                     // canonicalized result
                     Err(mut ui) => {
-                        if !self.infcx.unwrap().tcx.sess.opts.debugging_opts.chalk {
-                            // FIXME: perf problem described in #55921.
-                            ui = ty::UniverseIndex::ROOT;
-                        }
+                        // FIXME: perf problem described in #55921.
+                        ui = ty::UniverseIndex::ROOT;
                         return self.canonicalize_const_var(
                             CanonicalVarInfo { kind: CanonicalVarKind::Const(ui) },
                             ct,
@@ -625,7 +621,8 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         r: ty::Region<'tcx>,
     ) -> ty::Region<'tcx> {
         let var = self.canonical_var(info, r.into());
-        let region = ty::ReLateBound(self.binder_index, ty::BoundRegion::BrAnon(var.as_u32()));
+        let br = ty::BoundRegion { kind: ty::BrAnon(var.as_u32()) };
+        let region = ty::ReLateBound(self.binder_index, br);
         self.tcx().mk_region(region)
     }
 

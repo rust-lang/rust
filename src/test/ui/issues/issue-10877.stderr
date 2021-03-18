@@ -1,26 +1,26 @@
 error[E0130]: patterns aren't allowed in foreign function declarations
-  --> $DIR/issue-10877.rs:3:12
+  --> $DIR/issue-10877.rs:5:12
    |
 LL |     fn foo(1: ());
    |            ^ pattern not allowed in foreign function
 
 error[E0130]: patterns aren't allowed in foreign function declarations
-  --> $DIR/issue-10877.rs:5:12
+  --> $DIR/issue-10877.rs:7:12
    |
 LL |     fn bar((): isize);
    |            ^^ pattern not allowed in foreign function
 
 error[E0130]: patterns aren't allowed in foreign function declarations
-  --> $DIR/issue-10877.rs:7:12
+  --> $DIR/issue-10877.rs:9:12
    |
 LL |     fn baz(Foo { x }: isize);
    |            ^^^^^^^^^ pattern not allowed in foreign function
 
 error[E0130]: patterns aren't allowed in foreign function declarations
-  --> $DIR/issue-10877.rs:9:12
+  --> $DIR/issue-10877.rs:11:12
    |
-LL |     fn qux((x,y): ());
-   |            ^^^^^ pattern not allowed in foreign function
+LL |     fn qux((x, y): ());
+   |            ^^^^^^ pattern not allowed in foreign function
 
 error: aborting due to 4 previous errors
 

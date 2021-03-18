@@ -1,7 +1,4 @@
-// check-pass
-
 #![feature(stmt_expr_attributes)]
-#![warn(unused_attributes)] //~ NOTE the lint level is defined here
 
 fn main() {
     // fold_stmt (Item)
@@ -10,26 +7,24 @@ fn main() {
     struct Foo;
 
     // fold_stmt (Mac)
-    #[derive(Debug)]
-    //~^ WARN `#[derive]` does nothing on macro invocations
-    //~| NOTE this may become a hard error in a future release
+    #[derive(Debug)] //~ ERROR `derive` may only be applied to structs, enums and unions
     println!("Hello, world!");
 
     // fold_stmt (Semi)
-    #[derive(Debug)] //~ WARN unused attribute
+    #[derive(Debug)] //~ ERROR `derive` may only be applied to structs, enums and unions
     "Hello, world!";
 
     // fold_stmt (Local)
-    #[derive(Debug)] //~ WARN unused attribute
+    #[derive(Debug)] //~ ERROR `derive` may only be applied to structs, enums and unions
     let _ = "Hello, world!";
 
     // visit_expr
     let _ = #[derive(Debug)] "Hello, world!";
-    //~^ WARN unused attribute
+    //~^ ERROR `derive` may only be applied to structs, enums and unions
 
     let _ = [
         // filter_map_expr
-        #[derive(Debug)] //~ WARN unused attribute
-        "Hello, world!"
+        #[derive(Debug)] //~ ERROR `derive` may only be applied to structs, enums and unions
+        "Hello, world!",
     ];
 }

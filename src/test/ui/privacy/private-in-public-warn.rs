@@ -29,7 +29,7 @@ mod types {
         fn f2() -> Priv { panic!() } //~ ERROR private type `types::Priv` in public interface
         //~^ WARNING hard error
     }
-    extern {
+    extern "C" {
         pub static ES: Priv; //~ ERROR private type `types::Priv` in public interface
         //~^ WARNING hard error
         pub fn ef1(arg: Priv); //~ ERROR private type `types::Priv` in public interface

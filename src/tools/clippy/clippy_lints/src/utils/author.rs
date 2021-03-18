@@ -1,8 +1,8 @@
 //! A group of attributes that can be attached to Rust code in order
 //! to generate a clippy lint detecting said code automatically.
 
-use crate::utils::{get_attr, higher};
-use rustc_ast::ast::{Attribute, LitFloatType, LitKind};
+use crate::utils::get_attr;
+use rustc_ast::ast::{LitFloatType, LitKind};
 use rustc_ast::walk_list;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
@@ -10,7 +10,6 @@ use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, Pat, PatKind, QPath, Stmt, StmtKind, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
-use rustc_session::Session;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
@@ -66,7 +65,7 @@ fn done() {
 
 impl<'tcx> LateLintPass<'tcx> for Author {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
-        if !has_attr(cx.sess(), &item.attrs) {
+        if !has_attr(cx, item.hir_id()) {
             return;
         }
         prelude();
@@ -75,7 +74,7 @@ impl<'tcx> LateLintPass<'tcx> for Author {
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'_>) {
-        if !has_attr(cx.sess(), &item.attrs) {
+        if !has_attr(cx, item.hir_id()) {
             return;
         }
         prelude();
@@ -84,7 +83,7 @@ impl<'tcx> LateLintPass<'tcx> for Author {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
-        if !has_attr(cx.sess(), &item.attrs) {
+        if !has_attr(cx, item.hir_id()) {
             return;
         }
         prelude();
@@ -93,7 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for Author {
     }
 
     fn check_variant(&mut self, cx: &LateContext<'tcx>, var: &'tcx hir::Variant<'_>) {
-        if !has_attr(cx.sess(), &var.attrs) {
+        if !has_attr(cx, var.id) {
             return;
         }
         prelude();
@@ -102,17 +101,17 @@ impl<'tcx> LateLintPass<'tcx> for Author {
         done();
     }
 
-    fn check_struct_field(&mut self, cx: &LateContext<'tcx>, field: &'tcx hir::StructField<'_>) {
-        if !has_attr(cx.sess(), &field.attrs) {
+    fn check_field_def(&mut self, cx: &LateContext<'tcx>, field: &'tcx hir::FieldDef<'_>) {
+        if !has_attr(cx, field.hir_id) {
             return;
         }
         prelude();
-        PrintVisitor::new("field").visit_struct_field(field);
+        PrintVisitor::new("field").visit_field_def(field);
         done();
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
-        if !has_attr(cx.sess(), &expr.attrs) {
+        if !has_attr(cx, expr.hir_id) {
             return;
         }
         prelude();
@@ -121,7 +120,7 @@ impl<'tcx> LateLintPass<'tcx> for Author {
     }
 
     fn check_arm(&mut self, cx: &LateContext<'tcx>, arm: &'tcx hir::Arm<'_>) {
-        if !has_attr(cx.sess(), &arm.attrs) {
+        if !has_attr(cx, arm.hir_id) {
             return;
         }
         prelude();
@@ -130,7 +129,7 @@ impl<'tcx> LateLintPass<'tcx> for Author {
     }
 
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx hir::Stmt<'_>) {
-        if !has_attr(cx.sess(), stmt.kind.attrs(|id| cx.tcx.hir().item(id.id))) {
+        if !has_attr(cx, stmt.hir_id) {
             return;
         }
         prelude();
@@ -139,7 +138,7 @@ impl<'tcx> LateLintPass<'tcx> for Author {
     }
 
     fn check_foreign_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ForeignItem<'_>) {
-        if !has_attr(cx.sess(), &item.attrs) {
+        if !has_attr(cx, item.hir_id()) {
             return;
         }
         prelude();
@@ -201,32 +200,6 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
 
     #[allow(clippy::too_many_lines)]
     fn visit_expr(&mut self, expr: &Expr<'_>) {
-        // handle if desugarings
-        // TODO add more desugarings here
-        if let Some((cond, then, opt_else)) = higher::if_block(&expr) {
-            let cond_pat = self.next("cond");
-            let then_pat = self.next("then");
-            if let Some(else_) = opt_else {
-                let else_pat = self.next("else_");
-                println!(
-                    "    if let Some((ref {}, ref {}, Some({}))) = higher::if_block(&{});",
-                    cond_pat, then_pat, else_pat, self.current
-                );
-                self.current = else_pat;
-                self.visit_expr(else_);
-            } else {
-                println!(
-                    "    if let Some((ref {}, ref {}, None)) = higher::if_block(&{});",
-                    cond_pat, then_pat, self.current
-                );
-            }
-            self.current = cond_pat;
-            self.visit_expr(cond);
-            self.current = then_pat;
-            self.visit_expr(then);
-            return;
-        }
-
         print!("    if let ExprKind::");
         let current = format!("{}.kind", self.current);
         match expr.kind {
@@ -343,13 +316,32 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 self.current = cast_pat;
                 self.visit_expr(expr);
             },
-            ExprKind::Loop(ref body, _, desugaring) => {
+            ExprKind::Loop(ref body, _, desugaring, _) => {
                 let body_pat = self.next("body");
                 let des = loop_desugaring_name(desugaring);
                 let label_pat = self.next("label");
                 println!("Loop(ref {}, ref {}, {}) = {};", body_pat, label_pat, des, current);
                 self.current = body_pat;
                 self.visit_block(body);
+            },
+            ExprKind::If(ref cond, ref then, ref opt_else) => {
+                let cond_pat = self.next("cond");
+                let then_pat = self.next("then");
+                if let Some(ref else_) = *opt_else {
+                    let else_pat = self.next("else_");
+                    println!(
+                        "If(ref {}, ref {}, Some(ref {})) = {};",
+                        cond_pat, then_pat, else_pat, current
+                    );
+                    self.current = else_pat;
+                    self.visit_expr(else_);
+                } else {
+                    println!("If(ref {}, ref {}, None) = {};", cond_pat, then_pat, current);
+                }
+                self.current = cond_pat;
+                self.visit_expr(cond);
+                self.current = then_pat;
+                self.visit_expr(then);
             },
             ExprKind::Match(ref expr, ref arms, desugaring) => {
                 let des = desugaring_name(desugaring);
@@ -726,8 +718,9 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
     }
 }
 
-fn has_attr(sess: &Session, attrs: &[Attribute]) -> bool {
-    get_attr(sess, attrs, "author").count() > 0
+fn has_attr(cx: &LateContext<'_>, hir_id: hir::HirId) -> bool {
+    let attrs = cx.tcx.hir().attrs(hir_id);
+    get_attr(cx.sess(), attrs, "author").count() > 0
 }
 
 #[must_use]
@@ -743,10 +736,6 @@ fn desugaring_name(des: hir::MatchSource) -> String {
             contains_else_clause
         ),
         hir::MatchSource::IfLetGuardDesugar => "MatchSource::IfLetGuardDesugar".to_string(),
-        hir::MatchSource::IfDesugar { contains_else_clause } => format!(
-            "MatchSource::IfDesugar {{ contains_else_clause: {} }}",
-            contains_else_clause
-        ),
         hir::MatchSource::AwaitDesugar => "MatchSource::AwaitDesugar".to_string(),
     }
 }

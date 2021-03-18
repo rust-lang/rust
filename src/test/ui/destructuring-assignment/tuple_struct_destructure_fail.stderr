@@ -31,6 +31,15 @@ LL | struct TupleStruct<S, T>(S, T);
 ...
 LL |     TupleStruct(_) = TupleStruct(1, 2);
    |     ^^^^^^^^^^^^^^ expected 2 fields, found 1
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |     TupleStruct(_, _) = TupleStruct(1, 2);
+   |                  ^^^
+help: use `..` to ignore all fields
+   |
+LL |     TupleStruct(..) = TupleStruct(1, 2);
+   |                 ^^
 
 error[E0023]: this pattern has 3 fields, but the corresponding tuple variant has 2 fields
   --> $DIR/tuple_struct_destructure_fail.rs:34:5
@@ -49,6 +58,15 @@ LL |     SingleVariant(S, T)
 ...
 LL |     Enum::SingleVariant(_) = Enum::SingleVariant(1, 2);
    |     ^^^^^^^^^^^^^^^^^^^^^^ expected 2 fields, found 1
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |     Enum::SingleVariant(_, _) = Enum::SingleVariant(1, 2);
+   |                          ^^^
+help: use `..` to ignore all fields
+   |
+LL |     Enum::SingleVariant(..) = Enum::SingleVariant(1, 2);
+   |                         ^^
 
 error[E0070]: invalid left-hand side of assignment
   --> $DIR/tuple_struct_destructure_fail.rs:40:12

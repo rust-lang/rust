@@ -3,11 +3,11 @@
 struct Foo {
     a: i8,
     b: i16,
-    c: i8
+    c: i8,
 }
 
 #[link(name = "test", kind = "static")]
-extern {
+extern "C" {
     fn foo(f: Foo) -> Foo;
 }
 

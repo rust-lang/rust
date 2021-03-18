@@ -55,7 +55,10 @@ note: Min Capture p[] -> MutBorrow
   --> $DIR/simple-struct-min-capture.rs:33:9
    |
 LL |         p.x += 10;
-   |         ^^^
+   |         ^^^ p[] captured as MutBorrow here
+...
+LL |         println!("{:?}", p);
+   |                          ^ p[] used here
 
 error: aborting due to 3 previous errors; 1 warning emitted
 

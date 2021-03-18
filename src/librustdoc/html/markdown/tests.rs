@@ -1,7 +1,6 @@
 use super::{plain_text_summary, short_markdown_summary};
 use super::{ErrorCodes, IdMap, Ignore, LangString, Markdown, MarkdownHtml};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
-use std::cell::RefCell;
 
 #[test]
 fn test_unique_id() {
@@ -38,15 +37,9 @@ fn test_unique_id() {
         "assoc_type.Item-1",
     ];
 
-    let map = RefCell::new(IdMap::new());
-    let test = || {
-        let mut map = map.borrow_mut();
-        let actual: Vec<String> = input.iter().map(|s| map.derive(s.to_string())).collect();
-        assert_eq!(&actual[..], expected);
-    };
-    test();
-    map.borrow_mut().reset();
-    test();
+    let mut map = IdMap::new();
+    let actual: Vec<String> = input.iter().map(|s| map.derive(s.to_string())).collect();
+    assert_eq!(&actual[..], expected);
 }
 
 #[test]
@@ -56,72 +49,98 @@ fn test_lang_string_parse() {
         assert_eq!(LangString::parse(s, ErrorCodes::Yes, true, None), lg)
     }
 
-    t(LangString::all_false());
-    t(LangString { original: "rust".into(), ..LangString::all_false() });
-    t(LangString { original: "sh".into(), rust: false, ..LangString::all_false() });
-    t(LangString { original: "ignore".into(), ignore: Ignore::All, ..LangString::all_false() });
+    t(Default::default());
+    t(LangString { original: "rust".into(), ..Default::default() });
+    t(LangString { original: ".rust".into(), ..Default::default() });
+    t(LangString { original: "{rust}".into(), ..Default::default() });
+    t(LangString { original: "{.rust}".into(), ..Default::default() });
+    t(LangString { original: "sh".into(), rust: false, ..Default::default() });
+    t(LangString { original: "ignore".into(), ignore: Ignore::All, ..Default::default() });
     t(LangString {
         original: "ignore-foo".into(),
         ignore: Ignore::Some(vec!["foo".to_string()]),
-        ..LangString::all_false()
+        ..Default::default()
     });
-    t(LangString {
-        original: "should_panic".into(),
-        should_panic: true,
-        ..LangString::all_false()
-    });
-    t(LangString { original: "no_run".into(), no_run: true, ..LangString::all_false() });
-    t(LangString {
-        original: "test_harness".into(),
-        test_harness: true,
-        ..LangString::all_false()
-    });
+    t(LangString { original: "should_panic".into(), should_panic: true, ..Default::default() });
+    t(LangString { original: "no_run".into(), no_run: true, ..Default::default() });
+    t(LangString { original: "test_harness".into(), test_harness: true, ..Default::default() });
     t(LangString {
         original: "compile_fail".into(),
         no_run: true,
         compile_fail: true,
-        ..LangString::all_false()
+        ..Default::default()
     });
-    t(LangString { original: "allow_fail".into(), allow_fail: true, ..LangString::all_false() });
+    t(LangString { original: "allow_fail".into(), allow_fail: true, ..Default::default() });
+    t(LangString { original: "no_run,example".into(), no_run: true, ..Default::default() });
     t(LangString {
-        original: "{.no_run .example}".into(),
-        no_run: true,
-        ..LangString::all_false()
-    });
-    t(LangString {
-        original: "{.sh .should_panic}".into(),
+        original: "sh,should_panic".into(),
         should_panic: true,
         rust: false,
-        ..LangString::all_false()
+        ..Default::default()
     });
-    t(LangString { original: "{.example .rust}".into(), ..LangString::all_false() });
+    t(LangString { original: "example,rust".into(), ..Default::default() });
     t(LangString {
-        original: "{.test_harness .rust}".into(),
+        original: "test_harness,.rust".into(),
         test_harness: true,
-        ..LangString::all_false()
+        ..Default::default()
     });
     t(LangString {
         original: "text, no_run".into(),
         no_run: true,
         rust: false,
-        ..LangString::all_false()
+        ..Default::default()
     });
     t(LangString {
         original: "text,no_run".into(),
         no_run: true,
         rust: false,
-        ..LangString::all_false()
+        ..Default::default()
+    });
+    t(LangString {
+        original: "text,no_run, ".into(),
+        no_run: true,
+        rust: false,
+        ..Default::default()
+    });
+    t(LangString {
+        original: "text,no_run,".into(),
+        no_run: true,
+        rust: false,
+        ..Default::default()
     });
     t(LangString {
         original: "edition2015".into(),
         edition: Some(Edition::Edition2015),
-        ..LangString::all_false()
+        ..Default::default()
     });
     t(LangString {
         original: "edition2018".into(),
         edition: Some(Edition::Edition2018),
-        ..LangString::all_false()
+        ..Default::default()
     });
+}
+
+#[test]
+fn test_lang_string_tokenizer() {
+    fn case(lang_string: &str, want: &[&str]) {
+        let have = LangString::tokens(lang_string).collect::<Vec<&str>>();
+        assert_eq!(have, want, "Unexpected lang string split for `{}`", lang_string);
+    }
+
+    case("", &[]);
+    case("foo", &["foo"]);
+    case("foo,bar", &["foo", "bar"]);
+    case(".foo,.bar", &["foo", "bar"]);
+    case("{.foo,.bar}", &["foo", "bar"]);
+    case("  {.foo,.bar}  ", &["foo", "bar"]);
+    case("foo bar", &["foo", "bar"]);
+    case("foo\tbar", &["foo", "bar"]);
+    case("foo\t, bar", &["foo", "bar"]);
+    case(" foo , bar ", &["foo", "bar"]);
+    case(",,foo,,bar,,", &["foo", "bar"]);
+    case("foo=bar", &["foo=bar"]);
+    case("a-b-c", &["a-b-c"]);
+    case("a_b_c", &["a_b_c"]);
 }
 
 #[test]
@@ -213,9 +232,10 @@ fn test_short_markdown_summary() {
     t("Hard-break  \nsummary", "Hard-break summary");
     t("hello [Rust] :)\n\n[Rust]: https://www.rust-lang.org", "hello Rust :)");
     t("hello [Rust](https://www.rust-lang.org \"Rust\") :)", "hello Rust :)");
-    t("code `let x = i32;` ...", "code <code>let x = i32;</code> ...");
-    t("type `Type<'static>` ...", "type <code>Type<'static></code> ...");
+    t("code `let x = i32;` ...", "code <code>let x = i32;</code> …");
+    t("type `Type<'static>` ...", "type <code>Type<'static></code> …");
     t("# top header", "top header");
+    t("# top header\n\nfollowed by a paragraph", "top header");
     t("## header", "header");
     t("first paragraph\n\nsecond paragraph", "first paragraph");
     t("```\nfn main() {}\n```", "");
@@ -239,9 +259,10 @@ fn test_plain_text_summary() {
     t("Hard-break  \nsummary", "Hard-break summary");
     t("hello [Rust] :)\n\n[Rust]: https://www.rust-lang.org", "hello Rust :)");
     t("hello [Rust](https://www.rust-lang.org \"Rust\") :)", "hello Rust :)");
-    t("code `let x = i32;` ...", "code `let x = i32;` ...");
-    t("type `Type<'static>` ...", "type `Type<'static>` ...");
+    t("code `let x = i32;` ...", "code `let x = i32;` …");
+    t("type `Type<'static>` ...", "type `Type<'static>` …");
     t("# top header", "top header");
+    t("# top header\n\nfollowed by some text", "top header");
     t("## header", "header");
     t("first paragraph\n\nsecond paragraph", "first paragraph");
     t("```\nfn main() {}\n```", "");
@@ -262,6 +283,6 @@ fn test_markdown_html_escape() {
     }
 
     t("`Struct<'a, T>`", "<p><code>Struct&lt;'a, T&gt;</code></p>\n");
-    t("Struct<'a, T>", "<p>Struct&lt;'a, T&gt;</p>\n");
+    t("Struct<'a, T>", "<p>Struct&lt;’a, T&gt;</p>\n");
     t("Struct<br>", "<p>Struct&lt;br&gt;</p>\n");
 }

@@ -4,6 +4,7 @@
 #![crate_type = "proc-macro"]
 #![feature(repr128, proc_macro_quote)]
 #![allow(incomplete_features)]
+#![allow(clippy::field_reassign_with_default)]
 #![allow(clippy::eq_op)]
 
 extern crate proc_macro;
@@ -22,4 +23,33 @@ pub fn derive(_: TokenStream) -> TokenStream {
         extern crate rustc_middle;
     };
     output
+}
+
+#[proc_macro_derive(FieldReassignWithDefault)]
+pub fn derive_foo(_input: TokenStream) -> TokenStream {
+    quote! {
+        #[derive(Default)]
+        struct A {
+            pub i: i32,
+            pub j: i64,
+        }
+        #[automatically_derived]
+        fn lint() {
+            let mut a: A = Default::default();
+            a.i = 42;
+            a;
+        }
+    }
+}
+
+#[proc_macro_derive(StructAUseSelf)]
+pub fn derive_use_self(_input: TokenStream) -> proc_macro::TokenStream {
+    quote! {
+        struct A;
+        impl A {
+            fn new() -> A {
+                A
+            }
+        }
+    }
 }

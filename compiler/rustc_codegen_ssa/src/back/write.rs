@@ -1,4 +1,4 @@
-use super::link::{self, remove};
+use super::link::{self, ensure_removed};
 use super::linker::LinkerInfo;
 use super::lto::{self, SerializedModule};
 use super::symbol_export::symbol_name_for_instance_in_crate;
@@ -282,6 +282,20 @@ pub struct TargetMachineFactoryConfig {
     pub split_dwarf_file: Option<PathBuf>,
 }
 
+impl TargetMachineFactoryConfig {
+    pub fn new(
+        cgcx: &CodegenContext<impl WriteBackendMethods>,
+        module_name: &str,
+    ) -> TargetMachineFactoryConfig {
+        let split_dwarf_file = if cgcx.target_can_use_split_dwarf {
+            cgcx.output_filenames.split_dwarf_path(cgcx.split_debuginfo, Some(module_name))
+        } else {
+            None
+        };
+        TargetMachineFactoryConfig { split_dwarf_file }
+    }
+}
+
 pub type TargetMachineFactoryFn<B> = Arc<
     dyn Fn(TargetMachineFactoryConfig) -> Result<<B as WriteBackendMethods>::TargetMachine, String>
         + Send
@@ -311,10 +325,11 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub tm_factory: TargetMachineFactoryFn<B>,
     pub msvc_imps_needed: bool,
     pub is_pe_coff: bool,
+    pub target_can_use_split_dwarf: bool,
     pub target_pointer_width: u32,
     pub target_arch: String,
     pub debuginfo: config::DebugInfo,
-    pub split_dwarf_kind: config::SplitDwarfKind,
+    pub split_debuginfo: rustc_target::spec::SplitDebuginfo,
 
     // Number of cgus excluding the allocator/metadata modules
     pub total_cgus: usize,
@@ -418,12 +433,10 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     let sess = tcx.sess;
 
     let crate_name = tcx.crate_name(LOCAL_CRATE);
-    let no_builtins = tcx.sess.contains_name(&tcx.hir().krate().item.attrs, sym::no_builtins);
-    let is_compiler_builtins =
-        tcx.sess.contains_name(&tcx.hir().krate().item.attrs, sym::compiler_builtins);
-    let subsystem = tcx
-        .sess
-        .first_attr_value_str_by_name(&tcx.hir().krate().item.attrs, sym::windows_subsystem);
+    let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
+    let no_builtins = tcx.sess.contains_name(crate_attrs, sym::no_builtins);
+    let is_compiler_builtins = tcx.sess.contains_name(crate_attrs, sym::compiler_builtins);
+    let subsystem = tcx.sess.first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
     let windows_subsystem = subsystem.map(|subsystem| {
         if subsystem != sym::windows && subsystem != sym::console {
             tcx.sess.fatal(&format!(
@@ -528,7 +541,7 @@ fn produce_final_output_artifacts(
             copy_gracefully(&path, &crate_output.path(output_type));
             if !sess.opts.cg.save_temps && !keep_numbered {
                 // The user just wants `foo.x`, not `foo.#module-name#.x`.
-                remove(sess, &path);
+                ensure_removed(sess.diagnostic(), &path);
             }
         } else {
             let ext = crate_output
@@ -627,19 +640,19 @@ fn produce_final_output_artifacts(
         for module in compiled_modules.modules.iter() {
             if let Some(ref path) = module.object {
                 if !keep_numbered_objects {
-                    remove(sess, path);
+                    ensure_removed(sess.diagnostic(), path);
                 }
             }
 
             if let Some(ref path) = module.dwarf_object {
                 if !keep_numbered_objects {
-                    remove(sess, path);
+                    ensure_removed(sess.diagnostic(), path);
                 }
             }
 
             if let Some(ref path) = module.bytecode {
                 if !keep_numbered_bitcode {
-                    remove(sess, path);
+                    ensure_removed(sess.diagnostic(), path);
                 }
             }
         }
@@ -647,13 +660,13 @@ fn produce_final_output_artifacts(
         if !user_wants_bitcode {
             if let Some(ref metadata_module) = compiled_modules.metadata_module {
                 if let Some(ref path) = metadata_module.bytecode {
-                    remove(sess, &path);
+                    ensure_removed(sess.diagnostic(), &path);
                 }
             }
 
             if let Some(ref allocator_module) = compiled_modules.allocator_module {
                 if let Some(ref path) = allocator_module.bytecode {
-                    remove(sess, path);
+                    ensure_removed(sess.diagnostic(), path);
                 }
             }
         }
@@ -697,6 +710,33 @@ impl<B: WriteBackendMethods> WorkItem<B> {
             }
         }
     }
+
+    /// Generate a short description of this work item suitable for use as a thread name.
+    fn short_description(&self) -> String {
+        // `pthread_setname()` on *nix is limited to 15 characters and longer names are ignored.
+        // Use very short descriptions in this case to maximize the space available for the module name.
+        // Windows does not have that limitation so use slightly more descriptive names there.
+        match self {
+            WorkItem::Optimize(m) => {
+                #[cfg(windows)]
+                return format!("optimize module {}", m.name);
+                #[cfg(not(windows))]
+                return format!("opt {}", m.name);
+            }
+            WorkItem::CopyPostLtoArtifacts(m) => {
+                #[cfg(windows)]
+                return format!("copy LTO artifacts for {}", m.name);
+                #[cfg(not(windows))]
+                return format!("copy {}", m.name);
+            }
+            WorkItem::LTO(m) => {
+                #[cfg(windows)]
+                return format!("LTO module {}", m.name());
+                #[cfg(not(windows))]
+                return format!("LTO {}", m.name());
+            }
+        }
+    }
 }
 
 enum WorkItemResult<B: WriteBackendMethods> {
@@ -720,7 +760,7 @@ fn execute_work_item<B: ExtraBackendMethods>(
     match work_item {
         WorkItem::Optimize(module) => execute_optimize_work_item(cgcx, module, module_config),
         WorkItem::CopyPostLtoArtifacts(module) => {
-            execute_copy_from_cache_work_item(cgcx, module, module_config)
+            Ok(execute_copy_from_cache_work_item(cgcx, module, module_config))
         }
         WorkItem::LTO(module) => execute_lto_work_item(cgcx, module, module_config),
     }
@@ -829,7 +869,7 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
     cgcx: &CodegenContext<B>,
     module: CachedModuleCodegen,
     module_config: &ModuleConfig,
-) -> Result<WorkItemResult<B>, FatalError> {
+) -> WorkItemResult<B> {
     let incr_comp_session_dir = cgcx.incr_comp_session_dir.as_ref().unwrap();
     let mut object = None;
     if let Some(saved_file) = module.source.saved_file {
@@ -855,13 +895,13 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
 
     assert_eq!(object.is_some(), module_config.emit_obj != EmitObj::None);
 
-    Ok(WorkItemResult::Compiled(CompiledModule {
+    WorkItemResult::Compiled(CompiledModule {
         name: module.name,
         kind: ModuleKind::Regular,
         object,
         dwarf_object: None,
         bytecode: None,
-    }))
+    })
 }
 
 fn execute_lto_work_item<B: ExtraBackendMethods>(
@@ -1035,10 +1075,11 @@ fn start_executing_work<B: ExtraBackendMethods>(
         total_cgus,
         msvc_imps_needed: msvc_imps_needed(tcx),
         is_pe_coff: tcx.sess.target.is_like_windows,
+        target_can_use_split_dwarf: tcx.sess.target_can_use_split_dwarf(),
         target_pointer_width: tcx.sess.target.pointer_width,
         target_arch: tcx.sess.target.arch.clone(),
         debuginfo: tcx.sess.opts.debuginfo,
-        split_dwarf_kind: tcx.sess.opts.debugging_opts.split_dwarf,
+        split_debuginfo: tcx.sess.split_debuginfo(),
     };
 
     // This is the "main loop" of parallel work happening for parallel codegen.
@@ -1177,7 +1218,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
     // necessary. There's already optimizations in place to avoid sending work
     // back to the coordinator if LTO isn't requested.
     return thread::spawn(move || {
-        let max_workers = num_cpus::get();
         let mut worker_id_counter = 0;
         let mut free_worker_ids = Vec::new();
         let mut get_worker_id = |free_worker_ids: &mut Vec<usize>| {
@@ -1237,7 +1277,17 @@ fn start_executing_work<B: ExtraBackendMethods>(
             // For codegenning more CGU or for running them through LLVM.
             if !codegen_done {
                 if main_thread_worker_state == MainThreadWorkerState::Idle {
-                    if !queue_full_enough(work_items.len(), running, max_workers) {
+                    // Compute the number of workers that will be running once we've taken as many
+                    // items from the work queue as we can, plus one for the main thread. It's not
+                    // critically important that we use this instead of just `running`, but it
+                    // prevents the `queue_full_enough` heuristic from fluctuating just because a
+                    // worker finished up and we decreased the `running` count, even though we're
+                    // just going to increase it right after this when we put a new worker to work.
+                    let extra_tokens = tokens.len().checked_sub(running).unwrap();
+                    let additional_running = std::cmp::min(extra_tokens, work_items.len());
+                    let anticipated_running = running + additional_running + 1;
+
+                    if !queue_full_enough(work_items.len(), anticipated_running) {
                         // The queue is not full enough, codegen more items:
                         if codegen_worker_send.send(Message::CodegenItem).is_err() {
                             panic!("Could not send Message::CodegenItem to main thread")
@@ -1513,13 +1563,59 @@ fn start_executing_work<B: ExtraBackendMethods>(
 
     // A heuristic that determines if we have enough LLVM WorkItems in the
     // queue so that the main thread can do LLVM work instead of codegen
-    fn queue_full_enough(
-        items_in_queue: usize,
-        workers_running: usize,
-        max_workers: usize,
-    ) -> bool {
-        // Tune me, plz.
-        items_in_queue > 0 && items_in_queue >= max_workers.saturating_sub(workers_running / 2)
+    fn queue_full_enough(items_in_queue: usize, workers_running: usize) -> bool {
+        // This heuristic scales ahead-of-time codegen according to available
+        // concurrency, as measured by `workers_running`. The idea is that the
+        // more concurrency we have available, the more demand there will be for
+        // work items, and the fuller the queue should be kept to meet demand.
+        // An important property of this approach is that we codegen ahead of
+        // time only as much as necessary, so as to keep fewer LLVM modules in
+        // memory at once, thereby reducing memory consumption.
+        //
+        // When the number of workers running is less than the max concurrency
+        // available to us, this heuristic can cause us to instruct the main
+        // thread to work on an LLVM item (that is, tell it to "LLVM") instead
+        // of codegen, even though it seems like it *should* be codegenning so
+        // that we can create more work items and spawn more LLVM workers.
+        //
+        // But this is not a problem. When the main thread is told to LLVM,
+        // according to this heuristic and how work is scheduled, there is
+        // always at least one item in the queue, and therefore at least one
+        // pending jobserver token request. If there *is* more concurrency
+        // available, we will immediately receive a token, which will upgrade
+        // the main thread's LLVM worker to a real one (conceptually), and free
+        // up the main thread to codegen if necessary. On the other hand, if
+        // there isn't more concurrency, then the main thread working on an LLVM
+        // item is appropriate, as long as the queue is full enough for demand.
+        //
+        // Speaking of which, how full should we keep the queue? Probably less
+        // full than you'd think. A lot has to go wrong for the queue not to be
+        // full enough and for that to have a negative effect on compile times.
+        //
+        // Workers are unlikely to finish at exactly the same time, so when one
+        // finishes and takes another work item off the queue, we often have
+        // ample time to codegen at that point before the next worker finishes.
+        // But suppose that codegen takes so long that the workers exhaust the
+        // queue, and we have one or more workers that have nothing to work on.
+        // Well, it might not be so bad. Of all the LLVM modules we create and
+        // optimize, one has to finish last. It's not necessarily the case that
+        // by losing some concurrency for a moment, we delay the point at which
+        // that last LLVM module is finished and the rest of compilation can
+        // proceed. Also, when we can't take advantage of some concurrency, we
+        // give tokens back to the job server. That enables some other rustc to
+        // potentially make use of the available concurrency. That could even
+        // *decrease* overall compile time if we're lucky. But yes, if no other
+        // rustc can make use of the concurrency, then we've squandered it.
+        //
+        // However, keeping the queue full is also beneficial when we have a
+        // surge in available concurrency. Then items can be taken from the
+        // queue immediately, without having to wait for codegen.
+        //
+        // So, the heuristic below tries to keep one item in the queue for every
+        // four running workers. Based on limited benchmarking, this appears to
+        // be more than sufficient to avoid increasing compilation times.
+        let quarter_of_workers = workers_running - 3 * workers_running / 4;
+        items_in_queue > 0 && items_in_queue >= quarter_of_workers
     }
 
     fn maybe_start_llvm_timer<'a>(
@@ -1538,56 +1634,59 @@ fn start_executing_work<B: ExtraBackendMethods>(
 pub struct WorkerFatalError;
 
 fn spawn_work<B: ExtraBackendMethods>(cgcx: CodegenContext<B>, work: WorkItem<B>) {
-    thread::spawn(move || {
-        // Set up a destructor which will fire off a message that we're done as
-        // we exit.
-        struct Bomb<B: ExtraBackendMethods> {
-            coordinator_send: Sender<Box<dyn Any + Send>>,
-            result: Option<Result<WorkItemResult<B>, FatalError>>,
-            worker_id: usize,
-        }
-        impl<B: ExtraBackendMethods> Drop for Bomb<B> {
-            fn drop(&mut self) {
-                let worker_id = self.worker_id;
-                let msg = match self.result.take() {
-                    Some(Ok(WorkItemResult::Compiled(m))) => {
-                        Message::Done::<B> { result: Ok(m), worker_id }
-                    }
-                    Some(Ok(WorkItemResult::NeedsLink(m))) => {
-                        Message::NeedsLink::<B> { module: m, worker_id }
-                    }
-                    Some(Ok(WorkItemResult::NeedsFatLTO(m))) => {
-                        Message::NeedsFatLTO::<B> { result: m, worker_id }
-                    }
-                    Some(Ok(WorkItemResult::NeedsThinLTO(name, thin_buffer))) => {
-                        Message::NeedsThinLTO::<B> { name, thin_buffer, worker_id }
-                    }
-                    Some(Err(FatalError)) => {
-                        Message::Done::<B> { result: Err(Some(WorkerFatalError)), worker_id }
-                    }
-                    None => Message::Done::<B> { result: Err(None), worker_id },
-                };
-                drop(self.coordinator_send.send(Box::new(msg)));
+    let builder = thread::Builder::new().name(work.short_description());
+    builder
+        .spawn(move || {
+            // Set up a destructor which will fire off a message that we're done as
+            // we exit.
+            struct Bomb<B: ExtraBackendMethods> {
+                coordinator_send: Sender<Box<dyn Any + Send>>,
+                result: Option<Result<WorkItemResult<B>, FatalError>>,
+                worker_id: usize,
             }
-        }
+            impl<B: ExtraBackendMethods> Drop for Bomb<B> {
+                fn drop(&mut self) {
+                    let worker_id = self.worker_id;
+                    let msg = match self.result.take() {
+                        Some(Ok(WorkItemResult::Compiled(m))) => {
+                            Message::Done::<B> { result: Ok(m), worker_id }
+                        }
+                        Some(Ok(WorkItemResult::NeedsLink(m))) => {
+                            Message::NeedsLink::<B> { module: m, worker_id }
+                        }
+                        Some(Ok(WorkItemResult::NeedsFatLTO(m))) => {
+                            Message::NeedsFatLTO::<B> { result: m, worker_id }
+                        }
+                        Some(Ok(WorkItemResult::NeedsThinLTO(name, thin_buffer))) => {
+                            Message::NeedsThinLTO::<B> { name, thin_buffer, worker_id }
+                        }
+                        Some(Err(FatalError)) => {
+                            Message::Done::<B> { result: Err(Some(WorkerFatalError)), worker_id }
+                        }
+                        None => Message::Done::<B> { result: Err(None), worker_id },
+                    };
+                    drop(self.coordinator_send.send(Box::new(msg)));
+                }
+            }
 
-        let mut bomb = Bomb::<B> {
-            coordinator_send: cgcx.coordinator_send.clone(),
-            result: None,
-            worker_id: cgcx.worker,
-        };
+            let mut bomb = Bomb::<B> {
+                coordinator_send: cgcx.coordinator_send.clone(),
+                result: None,
+                worker_id: cgcx.worker,
+            };
 
-        // Execute the work itself, and if it finishes successfully then flag
-        // ourselves as a success as well.
-        //
-        // Note that we ignore any `FatalError` coming out of `execute_work_item`,
-        // as a diagnostic was already sent off to the main thread - just
-        // surface that there was an error in this worker.
-        bomb.result = {
-            let _prof_timer = work.start_profiling(&cgcx);
-            Some(execute_work_item(&cgcx, work))
-        };
-    });
+            // Execute the work itself, and if it finishes successfully then flag
+            // ourselves as a success as well.
+            //
+            // Note that we ignore any `FatalError` coming out of `execute_work_item`,
+            // as a diagnostic was already sent off to the main thread - just
+            // surface that there was an error in this worker.
+            bomb.result = {
+                let _prof_timer = work.start_profiling(&cgcx);
+                Some(execute_work_item(&cgcx, work))
+            };
+        })
+        .expect("failed to spawn thread");
 }
 
 enum SharedEmitterMessage {

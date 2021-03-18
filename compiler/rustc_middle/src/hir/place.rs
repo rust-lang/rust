@@ -17,13 +17,13 @@ use rustc_target::abi::VariantIdx;
     HashStable
 )]
 pub enum PlaceBase {
-    /// A temporary variable
+    /// A temporary variable.
     Rvalue,
-    /// A named `static` item
+    /// A named `static` item.
     StaticItem,
-    /// A named local variable
+    /// A named local variable.
     Local(HirId),
-    /// An upvar referenced by closure env
+    /// An upvar referenced by closure env.
     Upvar(ty::UpvarId),
 }
 
@@ -40,7 +40,7 @@ pub enum PlaceBase {
     HashStable
 )]
 pub enum ProjectionKind {
-    /// A dereference of a pointer, reference or `Box<T>` of the given type
+    /// A dereference of a pointer, reference or `Box<T>` of the given type.
     Deref,
 
     /// `B.F` where `B` is the base expression and `F` is
@@ -71,16 +71,16 @@ pub enum ProjectionKind {
     HashStable
 )]
 pub struct Projection<'tcx> {
-    /// Type after the projection is being applied.
+    /// Type after the projection is applied.
     pub ty: Ty<'tcx>,
 
-    /// Defines the type of access
+    /// Defines the kind of access made by the projection.
     pub kind: ProjectionKind,
 }
 
 /// A `Place` represents how a value is located in memory.
 ///
-/// This is an HIR version of `mir::Place`
+/// This is an HIR version of [`rustc_middle::mir::Place`].
 #[derive(Clone, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, TypeFoldable, HashStable)]
 pub struct Place<'tcx> {
     /// The type of the `PlaceBase`
@@ -93,13 +93,13 @@ pub struct Place<'tcx> {
 
 /// A `PlaceWithHirId` represents how a value is located in memory.
 ///
-/// This is an HIR version of `mir::Place`
+/// This is an HIR version of [`rustc_middle::mir::Place`].
 #[derive(Clone, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, TypeFoldable, HashStable)]
 pub struct PlaceWithHirId<'tcx> {
     /// `HirId` of the expression or pattern producing this value.
     pub hir_id: HirId,
 
-    /// Information about the `Place`
+    /// Information about the `Place`.
     pub place: Place<'tcx>,
 }
 
@@ -110,10 +110,7 @@ impl<'tcx> PlaceWithHirId<'tcx> {
         base: PlaceBase,
         projections: Vec<Projection<'tcx>>,
     ) -> PlaceWithHirId<'tcx> {
-        PlaceWithHirId {
-            hir_id: hir_id,
-            place: Place { base_ty: base_ty, base: base, projections: projections },
-        }
+        PlaceWithHirId { hir_id, place: Place { base_ty, base, projections } }
     }
 }
 

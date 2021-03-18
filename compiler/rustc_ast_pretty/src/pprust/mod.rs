@@ -8,11 +8,6 @@ use rustc_ast as ast;
 use rustc_ast::token::{Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 
-pub fn nonterminal_to_string_no_extra_parens(nt: &Nonterminal) -> String {
-    let state = State::without_insert_extra_parens();
-    state.nonterminal_to_string(nt)
-}
-
 pub fn nonterminal_to_string(nt: &Nonterminal) -> String {
     State::new().nonterminal_to_string(nt)
 }

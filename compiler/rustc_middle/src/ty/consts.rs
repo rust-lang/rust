@@ -10,9 +10,11 @@ use rustc_macros::HashStable;
 
 mod int;
 mod kind;
+mod valtree;
 
 pub use int::*;
 pub use kind::*;
+pub use valtree::*;
 
 /// Typed constant value.
 #[derive(Copy, Clone, Debug, Hash, TyEncodable, TyDecodable, Eq, PartialEq, Ord, PartialOrd)]
@@ -23,7 +25,7 @@ pub struct Const<'tcx> {
     pub val: ConstKind<'tcx>,
 }
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(Const<'_>, 48);
 
 impl<'tcx> Const<'tcx> {
@@ -55,7 +57,7 @@ impl<'tcx> Const<'tcx> {
 
         let lit_input = match expr.kind {
             hir::ExprKind::Lit(ref lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: false }),
-            hir::ExprKind::Unary(hir::UnOp::UnNeg, ref expr) => match expr.kind {
+            hir::ExprKind::Unary(hir::UnOp::Neg, ref expr) => match expr.kind {
                 hir::ExprKind::Lit(ref lit) => {
                     Some(LitToConstInput { lit: &lit.node, ty, neg: true })
                 }
@@ -92,8 +94,7 @@ impl<'tcx> Const<'tcx> {
                 let item_id = tcx.hir().get_parent_node(hir_id);
                 let item_def_id = tcx.hir().local_def_id(item_id);
                 let generics = tcx.generics_of(item_def_id.to_def_id());
-                let index =
-                    generics.param_def_id_to_index[&tcx.hir().local_def_id(hir_id).to_def_id()];
+                let index = generics.param_def_id_to_index[&def_id];
                 let name = tcx.hir().name(hir_id);
                 ty::ConstKind::Param(ty::ParamConst::new(index, name))
             }

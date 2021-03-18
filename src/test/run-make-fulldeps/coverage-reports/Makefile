@@ -1,5 +1,6 @@
 # needs-profiler-support
 # ignore-windows-gnu
+# min-llvm-version: 11.0
 
 # FIXME(mati865): MinGW GCC miscompiles compiler-rt profiling library but with Clang it works
 # properly. Since we only have GCC on the CI ignore the test for now.
@@ -67,12 +68,7 @@ ifdef RUSTC_BLESS_TEST
 DEBUG_FLAG=--debug
 endif
 
-ifeq ($(LLVM_VERSION_11_PLUS),true)
 all: $(patsubst $(SOURCEDIR)/lib/%.rs,%,$(wildcard $(SOURCEDIR)/lib/*.rs)) $(patsubst $(SOURCEDIR)/%.rs,%,$(wildcard $(SOURCEDIR)/*.rs))
-else
-$(info Rust option `-Z instrument-coverage` requires LLVM 11 or higher. Test skipped.)
-all:
-endif
 
 # Ensure there are no `expected` results for tests that may have been removed or renamed
 .PHONY: clear_expected_if_blessed
@@ -86,19 +82,19 @@ endif
 %: $(SOURCEDIR)/lib/%.rs
 	# Compile the test library with coverage instrumentation
 	$(RUSTC) $(SOURCEDIR)/lib/$@.rs \
-			$$( grep -q '^\/\/ require-rust-edition-2018' $(SOURCEDIR)/lib/$@.rs && echo "--edition=2018" ) \
+			$$( sed -nE 's#^// compile-flags:(.*)#\1# p' $(SOURCEDIR)/lib/$@.rs) \
 			--crate-type rlib -Zinstrument-coverage
 
 %: $(SOURCEDIR)/%.rs
 	# Compile the test program with coverage instrumentation
 	$(RUSTC) $(SOURCEDIR)/$@.rs \
-			$$( grep -q '^\/\/ require-rust-edition-2018' $(SOURCEDIR)/$@.rs && echo "--edition=2018" ) \
+			$$( sed -nE 's#^// compile-flags:(.*)#\1# p' $(SOURCEDIR)/$@.rs) \
 			-L "$(TMPDIR)" -Zinstrument-coverage
 
 	# Run it in order to generate some profiling data,
 	# with `LLVM_PROFILE_FILE=<profdata_file>` environment variable set to
 	# output the coverage stats for this run.
-	LLVM_PROFILE_FILE="$(TMPDIR)"/$@.profraw \
+	LLVM_PROFILE_FILE="$(TMPDIR)"/$@-%p.profraw \
 			$(call RUN,$@) || \
 			( \
 				status=$$?; \
@@ -108,9 +104,16 @@ endif
 				) \
 			)
 
+	# Run it through rustdoc as well to cover doctests
+	LLVM_PROFILE_FILE="$(TMPDIR)"/$@-%p.profraw \
+			$(RUSTDOC) --crate-name workaround_for_79771 --test $(SOURCEDIR)/$@.rs \
+			$$( sed -nE 's#^// compile-flags:(.*)#\1# p' $(SOURCEDIR)/$@.rs) \
+			-L "$(TMPDIR)" -Zinstrument-coverage \
+			-Z unstable-options --persist-doctests=$(TMPDIR)/rustdoc-$@
+
 	# Postprocess the profiling data so it can be used by the llvm-cov tool
 	"$(LLVM_BIN_DIR)"/llvm-profdata merge --sparse \
-			"$(TMPDIR)"/$@.profraw \
+			"$(TMPDIR)"/$@-*.profraw \
 			-o "$(TMPDIR)"/$@.profdata
 
 	# Generate a coverage report using `llvm-cov show`.
@@ -121,8 +124,15 @@ endif
 			--show-line-counts-or-regions \
 			--instr-profile="$(TMPDIR)"/$@.profdata \
 			$(call BIN,"$(TMPDIR)"/$@) \
-		> "$(TMPDIR)"/actual_show_coverage.$@.txt \
-		2> "$(TMPDIR)"/show_coverage_stderr.$@.txt || \
+			$$( \
+				for file in $(TMPDIR)/rustdoc-$@/*/rust_out; \
+				do \
+				[ -x "$$file" ] && printf "%s %s " -object $$file; \
+				done \
+			) \
+		2> "$(TMPDIR)"/show_coverage_stderr.$@.txt \
+		| "$(PYTHON)" $(BASEDIR)/normalize_paths.py \
+		> "$(TMPDIR)"/actual_show_coverage.$@.txt || \
 	( status=$$? ; \
 		>&2 cat "$(TMPDIR)"/show_coverage_stderr.$@.txt ; \
 		exit $$status \
@@ -158,7 +168,7 @@ else
 	# files are redundant, so there is no need to generate `expected_*.json` files or
 	# compare actual JSON results.)
 
-	$(DIFF) --ignore-matching-lines='::<.*>.*:$$' \
+	$(DIFF) --ignore-matching-lines='^  | .*::<.*>.*:$$' --ignore-matching-lines='^  | <.*>::.*:$$' \
 		expected_show_coverage.$@.txt "$(TMPDIR)"/actual_show_coverage.$@.txt || \
 		( grep -q '^\/\/ ignore-llvm-cov-show-diffs' $(SOURCEDIR)/$@.rs && \
 			>&2 echo 'diff failed, but suppressed with `// ignore-llvm-cov-show-diffs` in $(SOURCEDIR)/$@.rs' \

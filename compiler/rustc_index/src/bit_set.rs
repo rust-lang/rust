@@ -27,7 +27,6 @@ pub const WORD_BITS: usize = WORD_BYTES * 8;
 /// to or greater than the domain size. All operations that involve two bitsets
 /// will panic if the bitsets have differing domain sizes.
 ///
-/// [`GrowableBitSet`]: struct.GrowableBitSet.html
 #[derive(Eq, PartialEq, Decodable, Encodable)]
 pub struct BitSet<T> {
     domain_size: usize,
@@ -706,6 +705,18 @@ impl<T: Idx> GrowableBitSet<T> {
     pub fn insert(&mut self, elem: T) -> bool {
         self.ensure(elem.index() + 1);
         self.bit_set.insert(elem)
+    }
+
+    /// Returns `true` if the set has changed.
+    #[inline]
+    pub fn remove(&mut self, elem: T) -> bool {
+        self.ensure(elem.index() + 1);
+        self.bit_set.remove(elem)
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.bit_set.is_empty()
     }
 
     #[inline]

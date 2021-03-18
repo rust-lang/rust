@@ -23,13 +23,6 @@ macro_rules! unlikely {
     };
 }
 
-macro_rules! doc_comment {
-    ($x:expr, $($tt:tt)*) => {
-        #[doc = $x]
-        $($tt)*
-    };
-}
-
 // All these modules are technically private and only exposed for coretests:
 pub mod bignum;
 pub mod dec2flt;
@@ -95,26 +88,26 @@ depending on the target pointer size.
 
 #[lang = "i8"]
 impl i8 {
-    int_impl! { i8, i8, u8, 8, -128, 127, "", "", 2, "-0x7e", "0xa", "0x12", "0x12", "0x48",
+    int_impl! { i8, i8, u8, 8, -128, 127, 2, "-0x7e", "0xa", "0x12", "0x12", "0x48",
     "[0x12]", "[0x12]", "", "" }
 }
 
 #[lang = "i16"]
 impl i16 {
-    int_impl! { i16, i16, u16, 16, -32768, 32767, "", "", 4, "-0x5ffd", "0x3a", "0x1234", "0x3412",
+    int_impl! { i16, i16, u16, 16, -32768, 32767, 4, "-0x5ffd", "0x3a", "0x1234", "0x3412",
     "0x2c48", "[0x34, 0x12]", "[0x12, 0x34]", "", "" }
 }
 
 #[lang = "i32"]
 impl i32 {
-    int_impl! { i32, i32, u32, 32, -2147483648, 2147483647, "", "", 8, "0x10000b3", "0xb301",
+    int_impl! { i32, i32, u32, 32, -2147483648, 2147483647, 8, "0x10000b3", "0xb301",
     "0x12345678", "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]",
     "[0x12, 0x34, 0x56, 0x78]", "", "" }
 }
 
 #[lang = "i64"]
 impl i64 {
-    int_impl! { i64, i64, u64, 64, -9223372036854775808, 9223372036854775807, "", "", 12,
+    int_impl! { i64, i64, u64, 64, -9223372036854775808, 9223372036854775807, 12,
     "0xaa00000000006e1", "0x6e10aa", "0x1234567890123456", "0x5634129078563412",
     "0x6a2c48091e6a2c48", "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
     "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]", "", "" }
@@ -123,7 +116,7 @@ impl i64 {
 #[lang = "i128"]
 impl i128 {
     int_impl! { i128, i128, u128, 128, -170141183460469231731687303715884105728,
-    170141183460469231731687303715884105727, "", "", 16,
+    170141183460469231731687303715884105727, 16,
     "0x13f40000000000000000000000004f76", "0x4f7613f4", "0x12345678901234567890123456789012",
     "0x12907856341290785634129078563412", "0x48091e6a2c48091e6a2c48091e6a2c48",
     "[0x12, 0x90, 0x78, 0x56, 0x34, 0x12, 0x90, 0x78, \
@@ -135,7 +128,7 @@ impl i128 {
 #[cfg(target_pointer_width = "16")]
 #[lang = "isize"]
 impl isize {
-    int_impl! { isize, i16, usize, 16, -32768, 32767, "", "", 4, "-0x5ffd", "0x3a", "0x1234",
+    int_impl! { isize, i16, usize, 16, -32768, 32767, 4, "-0x5ffd", "0x3a", "0x1234",
     "0x3412", "0x2c48", "[0x34, 0x12]", "[0x12, 0x34]",
     usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
 }
@@ -143,7 +136,7 @@ impl isize {
 #[cfg(target_pointer_width = "32")]
 #[lang = "isize"]
 impl isize {
-    int_impl! { isize, i32, usize, 32, -2147483648, 2147483647, "", "", 8, "0x10000b3", "0xb301",
+    int_impl! { isize, i32, usize, 32, -2147483648, 2147483647, 8, "0x10000b3", "0xb301",
     "0x12345678", "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]",
     "[0x12, 0x34, 0x56, 0x78]",
     usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
@@ -152,16 +145,19 @@ impl isize {
 #[cfg(target_pointer_width = "64")]
 #[lang = "isize"]
 impl isize {
-    int_impl! { isize, i64, usize, 64, -9223372036854775808, 9223372036854775807, "", "",
+    int_impl! { isize, i64, usize, 64, -9223372036854775808, 9223372036854775807,
     12, "0xaa00000000006e1", "0x6e10aa",  "0x1234567890123456", "0x5634129078563412",
      "0x6a2c48091e6a2c48", "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
      "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
      usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
 }
 
+/// If 6th bit set ascii is upper case.
+const ASCII_CASE_MASK: u8 = 0b0010_0000;
+
 #[lang = "u8"]
 impl u8 {
-    uint_impl! { u8, u8, 8, 255, "", "", 2, "0x82", "0xa", "0x12", "0x12", "0x48", "[0x12]",
+    uint_impl! { u8, u8, 8, 255, 2, "0x82", "0xa", "0x12", "0x12", "0x48", "[0x12]",
     "[0x12]", "", "" }
 
     /// Checks if the value is within the ASCII range.
@@ -197,12 +193,13 @@ impl u8 {
     /// assert_eq!(65, lowercase_a.to_ascii_uppercase());
     /// ```
     ///
-    /// [`make_ascii_uppercase`]: #method.make_ascii_uppercase
+    /// [`make_ascii_uppercase`]: Self::make_ascii_uppercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
+    #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.52.0")]
     #[inline]
-    pub fn to_ascii_uppercase(&self) -> u8 {
+    pub const fn to_ascii_uppercase(&self) -> u8 {
         // Unset the fifth bit if this is a lowercase letter
-        *self & !((self.is_ascii_lowercase() as u8) << 5)
+        *self & !((self.is_ascii_lowercase() as u8) * ASCII_CASE_MASK)
     }
 
     /// Makes a copy of the value in its ASCII lower case equivalent.
@@ -220,12 +217,19 @@ impl u8 {
     /// assert_eq!(97, uppercase_a.to_ascii_lowercase());
     /// ```
     ///
-    /// [`make_ascii_lowercase`]: #method.make_ascii_lowercase
+    /// [`make_ascii_lowercase`]: Self::make_ascii_lowercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
+    #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.52.0")]
     #[inline]
-    pub fn to_ascii_lowercase(&self) -> u8 {
+    pub const fn to_ascii_lowercase(&self) -> u8 {
         // Set the fifth bit if this is an uppercase letter
-        *self | ((self.is_ascii_uppercase() as u8) << 5)
+        *self | (self.is_ascii_uppercase() as u8 * ASCII_CASE_MASK)
+    }
+
+    /// Assumes self is ascii
+    #[inline]
+    pub(crate) const fn ascii_change_case_unchecked(&self) -> u8 {
+        *self ^ ASCII_CASE_MASK
     }
 
     /// Checks that two values are an ASCII case-insensitive match.
@@ -241,8 +245,9 @@ impl u8 {
     /// assert!(lowercase_a.eq_ignore_ascii_case(&uppercase_a));
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
+    #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.52.0")]
     #[inline]
-    pub fn eq_ignore_ascii_case(&self, other: &u8) -> bool {
+    pub const fn eq_ignore_ascii_case(&self, other: &u8) -> bool {
         self.to_ascii_lowercase() == other.to_ascii_lowercase()
     }
 
@@ -264,7 +269,7 @@ impl u8 {
     /// assert_eq!(b'A', byte);
     /// ```
     ///
-    /// [`to_ascii_uppercase`]: #method.to_ascii_uppercase
+    /// [`to_ascii_uppercase`]: Self::to_ascii_uppercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn make_ascii_uppercase(&mut self) {
@@ -289,7 +294,7 @@ impl u8 {
     /// assert_eq!(b'a', byte);
     /// ```
     ///
-    /// [`to_ascii_lowercase`]: #method.to_ascii_lowercase
+    /// [`to_ascii_lowercase`]: Self::to_ascii_lowercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn make_ascii_lowercase(&mut self) {
@@ -660,19 +665,19 @@ impl u8 {
 
 #[lang = "u16"]
 impl u16 {
-    uint_impl! { u16, u16, 16, 65535, "", "", 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
+    uint_impl! { u16, u16, 16, 65535, 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
     "[0x34, 0x12]", "[0x12, 0x34]", "", "" }
 }
 
 #[lang = "u32"]
 impl u32 {
-    uint_impl! { u32, u32, 32, 4294967295, "", "", 8, "0x10000b3", "0xb301", "0x12345678",
+    uint_impl! { u32, u32, 32, 4294967295, 8, "0x10000b3", "0xb301", "0x12345678",
     "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]", "[0x12, 0x34, 0x56, 0x78]", "", "" }
 }
 
 #[lang = "u64"]
 impl u64 {
-    uint_impl! { u64, u64, 64, 18446744073709551615, "", "", 12, "0xaa00000000006e1", "0x6e10aa",
+    uint_impl! { u64, u64, 64, 18446744073709551615, 12, "0xaa00000000006e1", "0x6e10aa",
     "0x1234567890123456", "0x5634129078563412", "0x6a2c48091e6a2c48",
     "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
     "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
@@ -681,7 +686,7 @@ impl u64 {
 
 #[lang = "u128"]
 impl u128 {
-    uint_impl! { u128, u128, 128, 340282366920938463463374607431768211455, "", "", 16,
+    uint_impl! { u128, u128, 128, 340282366920938463463374607431768211455, 16,
     "0x13f40000000000000000000000004f76", "0x4f7613f4", "0x12345678901234567890123456789012",
     "0x12907856341290785634129078563412", "0x48091e6a2c48091e6a2c48091e6a2c48",
     "[0x12, 0x90, 0x78, 0x56, 0x34, 0x12, 0x90, 0x78, \
@@ -694,14 +699,14 @@ impl u128 {
 #[cfg(target_pointer_width = "16")]
 #[lang = "usize"]
 impl usize {
-    uint_impl! { usize, u16, 16, 65535, "", "", 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
+    uint_impl! { usize, u16, 16, 65535, 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
     "[0x34, 0x12]", "[0x12, 0x34]",
     usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
 }
 #[cfg(target_pointer_width = "32")]
 #[lang = "usize"]
 impl usize {
-    uint_impl! { usize, u32, 32, 4294967295, "", "", 8, "0x10000b3", "0xb301", "0x12345678",
+    uint_impl! { usize, u32, 32, 4294967295, 8, "0x10000b3", "0xb301", "0x12345678",
     "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]", "[0x12, 0x34, 0x56, 0x78]",
     usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
 }
@@ -709,7 +714,7 @@ impl usize {
 #[cfg(target_pointer_width = "64")]
 #[lang = "usize"]
 impl usize {
-    uint_impl! { usize, u64, 64, 18446744073709551615, "", "", 12, "0xaa00000000006e1", "0x6e10aa",
+    uint_impl! { usize, u64, 64, 18446744073709551615, 12, "0xaa00000000006e1", "0x6e10aa",
     "0x1234567890123456", "0x5634129078563412", "0x6a2c48091e6a2c48",
     "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
      "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
@@ -720,9 +725,6 @@ impl usize {
 ///
 /// This `enum` is used as the return type for [`f32::classify`] and [`f64::classify`]. See
 /// their documentation for more.
-///
-/// [`f32::classify`]: ../../std/primitive.f32.html#method.classify
-/// [`f64::classify`]: ../../std/primitive.f64.html#method.classify
 ///
 /// # Examples
 ///

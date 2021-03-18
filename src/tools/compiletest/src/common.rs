@@ -10,8 +10,6 @@ use test::ColorConfig;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Mode {
-    CompileFail,
-    RunFail,
     RunPassValgrind,
     Pretty,
     DebugInfo,
@@ -42,8 +40,6 @@ impl FromStr for Mode {
     type Err = ();
     fn from_str(s: &str) -> Result<Mode, ()> {
         match s {
-            "compile-fail" => Ok(CompileFail),
-            "run-fail" => Ok(RunFail),
             "run-pass-valgrind" => Ok(RunPassValgrind),
             "pretty" => Ok(Pretty),
             "debuginfo" => Ok(DebugInfo),
@@ -65,8 +61,6 @@ impl FromStr for Mode {
 impl fmt::Display for Mode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match *self {
-            CompileFail => "compile-fail",
-            RunFail => "run-fail",
             RunPassValgrind => "run-pass-valgrind",
             Pretty => "pretty",
             DebugInfo => "debuginfo",
@@ -180,7 +174,7 @@ impl fmt::Display for Debugger {
 /// Configuration for compiletest
 #[derive(Debug, Clone)]
 pub struct Config {
-    /// `true` to to overwrite stderr/stdout files instead of complaining about changes in output.
+    /// `true` to overwrite stderr/stdout files instead of complaining about changes in output.
     pub bless: bool,
 
     /// The library paths required for running the compiler.
@@ -203,6 +197,9 @@ pub struct Config {
 
     /// The Python executable to use for htmldocck.
     pub docck_python: String,
+
+    /// The jsondocck executable.
+    pub jsondocck_path: Option<String>,
 
     /// The LLVM `FileCheck` binary path.
     pub llvm_filecheck: Option<PathBuf>,
@@ -230,7 +227,7 @@ pub struct Config {
     /// The name of the stage being built (stage1, etc)
     pub stage_id: String,
 
-    /// The test mode, compile-fail, run-fail, ui
+    /// The test mode, e.g. ui or debuginfo.
     pub mode: Mode,
 
     /// The test suite (essentially which directory is running, but without the
@@ -243,8 +240,8 @@ pub struct Config {
     /// Run ignored tests
     pub run_ignored: bool,
 
-    /// Only run tests that match this filter
-    pub filter: Option<String>,
+    /// Only run tests that match these filters
+    pub filters: Vec<String>,
 
     /// Exactly match the filter, rather than a substring
     pub filter_exact: bool,
@@ -347,6 +344,8 @@ pub struct Config {
 
     /// Path to a NodeJS executable. Used for JS doctests, emscripten and WASM tests
     pub nodejs: Option<String>,
+    /// Path to a npm executable. Used for rustdoc GUI tests
+    pub npm: Option<String>,
 }
 
 #[derive(Debug, Clone)]

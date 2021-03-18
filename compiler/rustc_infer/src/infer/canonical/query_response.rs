@@ -14,7 +14,7 @@ use crate::infer::canonical::{
 };
 use crate::infer::nll_relate::{NormalizationStrategy, TypeRelating, TypeRelatingDelegate};
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
-use crate::infer::{InferCtxt, InferOk, InferResult, NLLRegionVariableOrigin};
+use crate::infer::{InferCtxt, InferOk, InferResult, NllRegionVariableOrigin};
 use crate::traits::query::{Fallible, NoSolution};
 use crate::traits::TraitEngine;
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
@@ -507,12 +507,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
 
         // Unify the original value for each variable with the value
         // taken from `query_response` (after applying `result_subst`).
-        Ok(self.unify_canonical_vars(
-            cause,
-            param_env,
-            original_values,
-            substituted_query_response,
-        )?)
+        self.unify_canonical_vars(cause, param_env, original_values, substituted_query_response)
     }
 
     /// Converts the region constraints resulting from a query into an
@@ -525,23 +520,23 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         result_subst: &'a CanonicalVarValues<'tcx>,
     ) -> impl Iterator<Item = PredicateObligation<'tcx>> + 'a + Captures<'tcx> {
         unsubstituted_region_constraints.iter().map(move |&constraint| {
-            let ty::OutlivesPredicate(k1, r2) =
-                substitute_value(self.tcx, result_subst, constraint).skip_binder();
+            let predicate = substitute_value(self.tcx, result_subst, constraint);
+            let ty::OutlivesPredicate(k1, r2) = predicate.skip_binder();
 
-            let predicate = match k1.unpack() {
+            let atom = match k1.unpack() {
                 GenericArgKind::Lifetime(r1) => {
-                    ty::PredicateAtom::RegionOutlives(ty::OutlivesPredicate(r1, r2))
+                    ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(r1, r2))
                 }
                 GenericArgKind::Type(t1) => {
-                    ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(t1, r2))
+                    ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(t1, r2))
                 }
                 GenericArgKind::Const(..) => {
                     // Consts cannot outlive one another, so we don't expect to
                     // encounter this branch.
                     span_bug!(cause.span, "unexpected const outlives {:?}", constraint);
                 }
-            }
-            .potentially_quantified(self.tcx, ty::PredicateKind::ForAll);
+            };
+            let predicate = predicate.rebind(atom).to_predicate(self.tcx);
 
             Obligation::new(cause.clone(), param_env, predicate)
         })
@@ -639,12 +634,16 @@ struct QueryTypeRelatingDelegate<'a, 'tcx> {
 }
 
 impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        self.param_env
+    }
+
     fn create_next_universe(&mut self) -> ty::UniverseIndex {
         self.infcx.create_next_universe()
     }
 
     fn next_existential_region_var(&mut self, from_forall: bool) -> ty::Region<'tcx> {
-        let origin = NLLRegionVariableOrigin::Existential { from_forall };
+        let origin = NllRegionVariableOrigin::Existential { from_forall };
         self.infcx.next_nll_region_var(origin)
     }
 
@@ -654,7 +653,7 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
 
     fn generalize_existential(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx> {
         self.infcx.next_nll_region_var_in_universe(
-            NLLRegionVariableOrigin::Existential { from_forall: false },
+            NllRegionVariableOrigin::Existential { from_forall: false },
             universe,
         )
     }
@@ -663,7 +662,7 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
         self.obligations.push(Obligation {
             cause: self.cause.clone(),
             param_env: self.param_env,
-            predicate: ty::PredicateAtom::RegionOutlives(ty::OutlivesPredicate(sup, sub))
+            predicate: ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(sup, sub))
                 .to_predicate(self.infcx.tcx),
             recursion_depth: 0,
         });

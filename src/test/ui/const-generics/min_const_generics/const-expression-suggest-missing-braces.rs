@@ -1,5 +1,3 @@
-#![feature(min_const_generics)]
-
 fn foo<const C: usize>() {}
 
 const BAR: usize = 42;

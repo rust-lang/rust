@@ -74,9 +74,9 @@ impl GitInfo {
         if let Some(ref inner) = self.inner {
             version.push_str(" (");
             version.push_str(&inner.short_sha);
-            version.push_str(" ");
+            version.push(' ');
             version.push_str(&inner.commit_date);
-            version.push_str(")");
+            version.push(')');
         }
         version
     }

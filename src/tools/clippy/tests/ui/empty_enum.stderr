@@ -1,5 +1,5 @@
 error: enum with no variants
-  --> $DIR/empty_enum.rs:4:1
+  --> $DIR/empty_enum.rs:5:1
    |
 LL | enum Empty {}
    | ^^^^^^^^^^^^^

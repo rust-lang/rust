@@ -5,7 +5,7 @@ use crate::html::markdown::{find_testable_code, ErrorCodes};
 use crate::passes::doc_test_lints::{should_have_doc_example, Tests};
 use crate::passes::Pass;
 use rustc_lint::builtin::MISSING_DOCS;
-use rustc_middle::lint::LintSource;
+use rustc_middle::lint::LintLevelSource;
 use rustc_session::lint;
 use rustc_span::symbol::sym;
 use rustc_span::FileName;
@@ -20,8 +20,8 @@ crate const CALCULATE_DOC_COVERAGE: Pass = Pass {
     description: "counts the number of items with and without documentation",
 };
 
-fn calculate_doc_coverage(krate: clean::Crate, ctx: &DocContext<'_>) -> clean::Crate {
-    let mut calc = CoverageCalculator::new(ctx);
+fn calculate_doc_coverage(krate: clean::Crate, ctx: &mut DocContext<'_>) -> clean::Crate {
+    let mut calc = CoverageCalculator { items: Default::default(), ctx };
     let krate = calc.fold_crate(krate);
 
     calc.print_results();
@@ -101,7 +101,7 @@ impl ops::AddAssign for ItemCount {
 
 struct CoverageCalculator<'a, 'b> {
     items: BTreeMap<FileName, ItemCount>,
-    ctx: &'a DocContext<'b>,
+    ctx: &'a mut DocContext<'b>,
 }
 
 fn limit_filename_len(filename: String) -> String {
@@ -115,10 +115,6 @@ fn limit_filename_len(filename: String) -> String {
 }
 
 impl<'a, 'b> CoverageCalculator<'a, 'b> {
-    fn new(ctx: &'a DocContext<'b>) -> CoverageCalculator<'a, 'b> {
-        CoverageCalculator { items: Default::default(), ctx }
-    }
-
     fn to_json(&self) -> String {
         serde_json::to_string(
             &self
@@ -131,8 +127,8 @@ impl<'a, 'b> CoverageCalculator<'a, 'b> {
     }
 
     fn print_results(&self) {
-        let output_format = self.ctx.renderinfo.borrow().output_format;
-        if output_format.map(|o| o.is_json()).unwrap_or_else(|| false) {
+        let output_format = self.ctx.output_format;
+        if output_format.is_json() {
             println!("{}", self.to_json());
             return;
         }
@@ -187,7 +183,7 @@ impl<'a, 'b> CoverageCalculator<'a, 'b> {
 
 impl<'a, 'b> fold::DocFolder for CoverageCalculator<'a, 'b> {
     fn fold_item(&mut self, i: clean::Item) -> Option<clean::Item> {
-        match i.kind {
+        match *i.kind {
             _ if !i.def_id.is_local() => {
                 // non-local items are skipped because they can be out of the users control,
                 // especially in the case of trait impls, which rustdoc eagerly inlines
@@ -197,7 +193,7 @@ impl<'a, 'b> fold::DocFolder for CoverageCalculator<'a, 'b> {
                 // don't count items in stripped modules
                 return Some(i);
             }
-            clean::ImportItem(..) | clean::ExternCrateItem(..) => {
+            clean::ImportItem(..) | clean::ExternCrateItem { .. } => {
                 // docs on `use` and `extern crate` statements are not displayed, so they're not
                 // worth counting
                 return Some(i);
@@ -218,7 +214,12 @@ impl<'a, 'b> fold::DocFolder for CoverageCalculator<'a, 'b> {
             clean::ImplItem(ref impl_) => {
                 let filename = i.source.filename(self.ctx.sess());
                 if let Some(ref tr) = impl_.trait_ {
-                    debug!("impl {:#} for {:#} in {}", tr.print(), impl_.for_.print(), filename,);
+                    debug!(
+                        "impl {:#} for {:#} in {}",
+                        tr.print(&self.ctx.cache),
+                        impl_.for_.print(&self.ctx.cache),
+                        filename,
+                    );
 
                     // don't count trait impls, the missing-docs lint doesn't so we shouldn't
                     // either
@@ -227,7 +228,7 @@ impl<'a, 'b> fold::DocFolder for CoverageCalculator<'a, 'b> {
                     // inherent impls *can* be documented, and those docs show up, but in most
                     // cases it doesn't make sense, as all methods on a type are in one single
                     // impl block
-                    debug!("impl {:#} in {}", impl_.for_.print(), filename);
+                    debug!("impl {:#} in {}", impl_.for_.print(&self.ctx.cache), filename);
                 }
             }
             _ => {
@@ -235,12 +236,7 @@ impl<'a, 'b> fold::DocFolder for CoverageCalculator<'a, 'b> {
                 let mut tests = Tests { found_tests: 0 };
 
                 find_testable_code(
-                    &i.attrs
-                        .doc_strings
-                        .iter()
-                        .map(|d| d.doc.as_str())
-                        .collect::<Vec<_>>()
-                        .join("\n"),
+                    &i.attrs.collapsed_doc_value().unwrap_or_default(),
                     &mut tests,
                     ErrorCodes::No,
                     false,
@@ -254,7 +250,7 @@ impl<'a, 'b> fold::DocFolder for CoverageCalculator<'a, 'b> {
                 // `missing_docs` is allow-by-default, so don't treat this as ignoring the item
                 // unless the user had an explicit `allow`
                 let should_have_docs =
-                    level != lint::Level::Allow || matches!(source, LintSource::Default);
+                    level != lint::Level::Allow || matches!(source, LintLevelSource::Default);
                 debug!("counting {:?} {:?} in {}", i.type_(), i.name, filename);
                 self.items.entry(filename).or_default().count_item(
                     has_docs,

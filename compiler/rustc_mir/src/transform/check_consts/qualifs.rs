@@ -168,20 +168,16 @@ where
         | Rvalue::UnaryOp(_, operand)
         | Rvalue::Cast(_, operand, _) => in_operand::<Q, _>(cx, in_local, operand),
 
-        Rvalue::BinaryOp(_, lhs, rhs) | Rvalue::CheckedBinaryOp(_, lhs, rhs) => {
+        Rvalue::BinaryOp(_, box (lhs, rhs)) | Rvalue::CheckedBinaryOp(_, box (lhs, rhs)) => {
             in_operand::<Q, _>(cx, in_local, lhs) || in_operand::<Q, _>(cx, in_local, rhs)
         }
 
         Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
             // Special-case reborrows to be more like a copy of the reference.
-            if let &[ref proj_base @ .., ProjectionElem::Deref] = place.projection.as_ref() {
-                let base_ty = Place::ty_from(place.local, proj_base, cx.body, cx.tcx).ty;
+            if let Some((place_base, ProjectionElem::Deref)) = place.as_ref().last_projection() {
+                let base_ty = place_base.ty(cx.body, cx.tcx).ty;
                 if let ty::Ref(..) = base_ty.kind() {
-                    return in_place::<Q, _>(
-                        cx,
-                        in_local,
-                        PlaceRef { local: place.local, projection: proj_base },
-                    );
+                    return in_place::<Q, _>(cx, in_local, place_base);
                 }
             }
 
@@ -209,9 +205,9 @@ where
     Q: Qualif,
     F: FnMut(Local) -> bool,
 {
-    let mut projection = place.projection;
-    while let &[ref proj_base @ .., proj_elem] = projection {
-        match proj_elem {
+    let mut place = place;
+    while let Some((place_base, elem)) = place.last_projection() {
+        match elem {
             ProjectionElem::Index(index) if in_local(index) => return true,
 
             ProjectionElem::Deref
@@ -222,16 +218,16 @@ where
             | ProjectionElem::Index(_) => {}
         }
 
-        let base_ty = Place::ty_from(place.local, proj_base, cx.body, cx.tcx);
-        let proj_ty = base_ty.projection_ty(cx.tcx, proj_elem).ty;
+        let base_ty = place_base.ty(cx.body, cx.tcx);
+        let proj_ty = base_ty.projection_ty(cx.tcx, elem).ty;
         if !Q::in_any_value_of_ty(cx, proj_ty) {
             return false;
         }
 
-        projection = proj_base;
+        place = place_base;
     }
 
-    assert!(projection.is_empty());
+    assert!(place.projection.is_empty());
     in_local(place.local)
 }
 
@@ -250,25 +246,27 @@ where
     };
 
     // Check the qualifs of the value of `const` items.
-    if let ty::ConstKind::Unevaluated(def, _, promoted) = constant.literal.val {
-        assert!(promoted.is_none());
-        // Don't peek inside trait associated constants.
-        if cx.tcx.trait_of_item(def.did).is_none() {
-            let qualifs = if let Some((did, param_did)) = def.as_const_arg() {
-                cx.tcx.at(constant.span).mir_const_qualif_const_arg((did, param_did))
-            } else {
-                cx.tcx.at(constant.span).mir_const_qualif(def.did)
-            };
+    if let Some(ct) = constant.literal.const_for_ty() {
+        if let ty::ConstKind::Unevaluated(def, _, promoted) = ct.val {
+            assert!(promoted.is_none());
+            // Don't peek inside trait associated constants.
+            if cx.tcx.trait_of_item(def.did).is_none() {
+                let qualifs = if let Some((did, param_did)) = def.as_const_arg() {
+                    cx.tcx.at(constant.span).mir_const_qualif_const_arg((did, param_did))
+                } else {
+                    cx.tcx.at(constant.span).mir_const_qualif(def.did)
+                };
 
-            if !Q::in_qualifs(&qualifs) {
-                return false;
+                if !Q::in_qualifs(&qualifs) {
+                    return false;
+                }
+
+                // Just in case the type is more specific than
+                // the definition, e.g., impl associated const
+                // with type parameters, take it into account.
             }
-
-            // Just in case the type is more specific than
-            // the definition, e.g., impl associated const
-            // with type parameters, take it into account.
         }
     }
     // Otherwise use the qualifs of the type.
-    Q::in_any_value_of_ty(cx, constant.literal.ty)
+    Q::in_any_value_of_ty(cx, constant.literal.ty())
 }

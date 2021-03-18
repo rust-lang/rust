@@ -35,6 +35,7 @@ impl StableHasher {
         StableHasher { state: SipHasher128::new_with_keys(0, 0) }
     }
 
+    #[inline]
     pub fn finish<W: StableHasherResult>(self) -> W {
         W::finish(self)
     }
@@ -552,6 +553,7 @@ pub fn hash_stable_hashmap<HCX, K, V, R, SK, F>(
 
 /// A vector container that makes sure that its items are hashed in a stable
 /// order.
+#[derive(Debug)]
 pub struct StableVec<T>(Vec<T>);
 
 impl<T> StableVec<T> {

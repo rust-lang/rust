@@ -3,12 +3,12 @@ use crate::clean::*;
 crate struct StripItem(pub Item);
 
 impl StripItem {
-    crate fn strip(self) -> Option<Item> {
+    crate fn strip(self) -> Item {
         match self.0 {
-            Item { kind: StrippedItem(..), .. } => Some(self.0),
+            Item { kind: box StrippedItem(..), .. } => self.0,
             mut i => {
-                i.kind = StrippedItem(box i.kind);
-                Some(i)
+                i.kind = box StrippedItem(i.kind);
+                i
             }
         }
     }
@@ -55,13 +55,13 @@ crate trait DocFolder: Sized {
             }
             VariantItem(i) => {
                 let i2 = i.clone(); // this clone is small
-                match i.kind {
-                    VariantKind::Struct(mut j) => {
+                match i {
+                    Variant::Struct(mut j) => {
                         let num_fields = j.fields.len();
                         j.fields = j.fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
                         j.fields_stripped |= num_fields != j.fields.len()
                             || j.fields.iter().any(|f| f.is_stripped());
-                        VariantItem(Variant { kind: VariantKind::Struct(j), ..i2 })
+                        VariantItem(Variant::Struct(j))
                     }
                     _ => VariantItem(i2),
                 }
@@ -72,9 +72,9 @@ crate trait DocFolder: Sized {
 
     /// don't override!
     fn fold_item_recur(&mut self, mut item: Item) -> Item {
-        item.kind = match item.kind {
+        item.kind = box match *item.kind {
             StrippedItem(box i) => StrippedItem(box self.fold_inner_recur(i)),
-            _ => self.fold_inner_recur(item.kind),
+            _ => self.fold_inner_recur(*item.kind),
         };
         item
     }
@@ -92,7 +92,8 @@ crate trait DocFolder: Sized {
         {
             let external_traits = { std::mem::take(&mut *c.external_traits.borrow_mut()) };
             for (k, mut v) in external_traits {
-                v.items = v.items.into_iter().filter_map(|i| self.fold_item(i)).collect();
+                v.trait_.items =
+                    v.trait_.items.into_iter().filter_map(|i| self.fold_item(i)).collect();
                 c.external_traits.borrow_mut().insert(k, v);
             }
         }

@@ -2,6 +2,6 @@
 
 fn main() {}
 
-extern {
+extern "C" {
     #[cfg(stage37)] //~ ERROR expected item after attributes
 }

@@ -1,7 +1,6 @@
 //! The Rust AST Visitor. Extracts useful information and massages it into a form
 //! usable for `clean`.
 
-use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -28,6 +27,16 @@ fn def_id_to_path(tcx: TyCtxt<'_>, did: DefId) -> Vec<String> {
         if !s.is_empty() { Some(s) } else { None }
     });
     std::iter::once(crate_name).chain(relative).collect()
+}
+
+crate fn inherits_doc_hidden(tcx: TyCtxt<'_>, mut node: hir::HirId) -> bool {
+    while let Some(id) = tcx.hir().get_enclosing_scope(node) {
+        node = id;
+        if tcx.hir().attrs(node).lists(sym::doc).has_word(sym::hidden) {
+            return true;
+        }
+    }
+    false
 }
 
 // Also, is there some reason that this doesn't use the 'visit'
@@ -62,41 +71,79 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     }
 
     crate fn visit(mut self, krate: &'tcx hir::Crate<'_>) -> Module<'tcx> {
-        let mut module = self.visit_mod_contents(
+        let mut top_level_module = self.visit_mod_contents(
             krate.item.span,
-            krate.item.attrs,
             &Spanned { span: rustc_span::DUMMY_SP, node: hir::VisibilityKind::Public },
             hir::CRATE_HIR_ID,
             &krate.item.module,
             None,
         );
-        // Attach the crate's exported macros to the top-level module:
-        module.macros.extend(krate.exported_macros.iter().map(|def| (def, None)));
-        module.is_crate = true;
-
-        self.cx.renderinfo.get_mut().exact_paths = self.exact_paths;
-
-        module
+        top_level_module.is_crate = true;
+        // Attach the crate's exported macros to the top-level module.
+        // In the case of macros 2.0 (`pub macro`), and for built-in `derive`s or attributes as
+        // well (_e.g._, `Copy`), these are wrongly bundled in there too, so we need to fix that by
+        // moving them back to their correct locations.
+        'exported_macros: for def in krate.exported_macros {
+            // The `def` of a macro in `exported_macros` should correspond to either:
+            //  - a `#[macro_export] macro_rules!` macro,
+            //  - a built-in `derive` (or attribute) macro such as the ones in `::core`,
+            //  - a `pub macro`.
+            // Only the last two need to be fixed, thus:
+            if def.ast.macro_rules {
+                top_level_module.macros.push((def, None));
+                continue 'exported_macros;
+            }
+            let tcx = self.cx.tcx;
+            // Note: this is not the same as `.parent_module()`. Indeed, the latter looks
+            // for the closest module _ancestor_, which is not necessarily a direct parent
+            // (since a direct parent isn't necessarily a module, c.f. #77828).
+            let macro_parent_def_id = {
+                use rustc_middle::ty::DefIdTree;
+                tcx.parent(def.def_id.to_def_id()).unwrap()
+            };
+            let macro_parent_path = tcx.def_path(macro_parent_def_id);
+            // HACK: rustdoc has no way to lookup `doctree::Module`s by their HirId. Instead,
+            // lookup the module by its name, by looking at each path segment one at a time.
+            let mut cur_mod = &mut top_level_module;
+            for path_segment in macro_parent_path.data {
+                // Path segments may refer to a module (in which case they belong to the type
+                // namespace), which is _necessary_ for the macro to be accessible outside it
+                // (no "associated macros" as of yet). Else we bail with an outer `continue`.
+                let path_segment_ty_ns = match path_segment.data {
+                    rustc_hir::definitions::DefPathData::TypeNs(symbol) => symbol,
+                    _ => continue 'exported_macros,
+                };
+                // Descend into the child module that matches this path segment (if any).
+                match cur_mod.mods.iter_mut().find(|child| child.name == Some(path_segment_ty_ns)) {
+                    Some(child_mod) => cur_mod = &mut *child_mod,
+                    None => continue 'exported_macros,
+                }
+            }
+            let cur_mod_def_id = tcx.hir().local_def_id(cur_mod.id).to_def_id();
+            assert_eq!(cur_mod_def_id, macro_parent_def_id);
+            cur_mod.macros.push((def, None));
+        }
+        self.cx.cache.exact_paths = self.exact_paths;
+        top_level_module
     }
 
     fn visit_mod_contents(
         &mut self,
         span: Span,
-        attrs: &'tcx [ast::Attribute],
         vis: &'tcx hir::Visibility<'_>,
         id: hir::HirId,
         m: &'tcx hir::Mod<'tcx>,
         name: Option<Symbol>,
     ) -> Module<'tcx> {
-        let mut om = Module::new(name, attrs);
+        let mut om = Module::new(name);
         om.where_outer = span;
         om.where_inner = m.inner;
         om.id = id;
         // Keep track of if there were any private modules in the path.
         let orig_inside_public_path = self.inside_public_path;
         self.inside_public_path &= vis.node.is_pub();
-        for i in m.item_ids {
-            let item = self.cx.tcx.hir().expect_item(i.id);
+        for &i in m.item_ids {
+            let item = self.cx.tcx.hir().item(i);
             self.visit_item(item, None, &mut om);
         }
         self.inside_public_path = orig_inside_public_path;
@@ -121,19 +168,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         om: &mut Module<'tcx>,
         please_inline: bool,
     ) -> bool {
-        fn inherits_doc_hidden(cx: &core::DocContext<'_>, mut node: hir::HirId) -> bool {
-            while let Some(id) = cx.tcx.hir().get_enclosing_scope(node) {
-                node = id;
-                if cx.tcx.hir().attrs(node).lists(sym::doc).has_word(sym::hidden) {
-                    return true;
-                }
-                if node == hir::CRATE_HIR_ID {
-                    break;
-                }
-            }
-            false
-        }
-
         debug!("maybe_inline_local res: {:?}", res);
 
         let tcx = self.cx.tcx;
@@ -162,12 +196,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     } else {
                         // All items need to be handled here in case someone wishes to link
                         // to them with intra-doc links
-                        self.cx
-                            .renderinfo
-                            .get_mut()
-                            .access_levels
-                            .map
-                            .insert(did, AccessLevel::Public);
+                        self.cx.cache.access_levels.map.insert(did, AccessLevel::Public);
                     }
                 }
             }
@@ -179,8 +208,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             None => return false,
         };
 
-        let is_private = !self.cx.renderinfo.borrow().access_levels.is_public(res_did);
-        let is_hidden = inherits_doc_hidden(self.cx, res_hir_id);
+        let is_private = !self.cx.cache.access_levels.is_public(res_did);
+        let is_hidden = inherits_doc_hidden(self.cx.tcx, res_hir_id);
 
         // Only inline if requested or if the item would otherwise be stripped.
         if (!please_inline && !is_private && !is_hidden) || is_no_inline {
@@ -194,8 +223,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let ret = match tcx.hir().get(res_hir_id) {
             Node::Item(&hir::Item { kind: hir::ItemKind::Mod(ref m), .. }) if glob => {
                 let prev = mem::replace(&mut self.inlining, true);
-                for i in m.item_ids {
-                    let i = self.cx.tcx.hir().expect_item(i.id);
+                for &i in m.item_ids {
+                    let i = self.cx.tcx.hir().item(i);
                     self.visit_item(i, None, om);
                 }
                 self.inlining = prev;
@@ -233,8 +262,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let name = renamed.unwrap_or(item.ident.name);
 
         if item.vis.node.is_pub() {
-            let def_id = self.cx.tcx.hir().local_def_id(item.hir_id);
-            self.store_path(def_id.to_def_id());
+            self.store_path(item.def_id.to_def_id());
         }
 
         match item.kind {
@@ -257,10 +285,12 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     return;
                 }
 
+                let attrs = self.cx.tcx.hir().attrs(item.hir_id());
+
                 // If there was a private module in the current path then don't bother inlining
                 // anything as it will probably be stripped anyway.
                 if item.vis.node.is_pub() && self.inside_public_path {
-                    let please_inline = item.attrs.iter().any(|item| match item.meta_item_list() {
+                    let please_inline = attrs.iter().any(|item| match item.meta_item_list() {
                         Some(ref list) if item.has_name(sym::doc) => {
                             list.iter().any(|i| i.has_name(sym::inline))
                         }
@@ -268,7 +298,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     });
                     let ident = if is_glob { None } else { Some(name) };
                     if self.maybe_inline_local(
-                        item.hir_id,
+                        item.hir_id(),
                         path.res,
                         ident,
                         is_glob,
@@ -279,22 +309,13 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     }
                 }
 
-                om.imports.push(Import {
-                    name,
-                    id: item.hir_id,
-                    vis: &item.vis,
-                    attrs: &item.attrs,
-                    path,
-                    glob: is_glob,
-                    span: item.span,
-                });
+                om.items.push((item, renamed))
             }
             hir::ItemKind::Mod(ref m) => {
                 om.mods.push(self.visit_mod_contents(
                     item.span,
-                    &item.attrs,
                     &item.vis,
-                    item.hir_id,
+                    item.hir_id(),
                     m,
                     Some(name),
                 ));
@@ -316,10 +337,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     om.items.push((item, renamed));
                 }
             }
-            hir::ItemKind::Impl { ref of_trait, .. } => {
+            hir::ItemKind::Impl(ref impl_) => {
                 // Don't duplicate impls when inlining or if it's implementing a trait, we'll pick
                 // them up regardless of where they're located.
-                if !self.inlining && of_trait.is_none() {
+                if !self.inlining && impl_.of_trait.is_none() {
                     om.items.push((item, None));
                 }
             }

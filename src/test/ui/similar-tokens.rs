@@ -1,5 +1,3 @@
-// run-rustfix
-
 #![allow(unused_imports)]
 
 pub mod x {

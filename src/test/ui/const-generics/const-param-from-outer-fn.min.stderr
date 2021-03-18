@@ -1,5 +1,5 @@
 error[E0401]: can't use generic parameters from outer function
-  --> $DIR/const-param-from-outer-fn.rs:9:9
+  --> $DIR/const-param-from-outer-fn.rs:8:9
    |
 LL | fn foo<const X: u32>() {
    |              - const parameter from outer function

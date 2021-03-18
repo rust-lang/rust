@@ -11,7 +11,7 @@ LL | pub struct AssertParamIsCopy<T: Copy + ?Sized> {
    |
    = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0599]: no method named `clone` found for union `U5<CloneNoCopy>` in the current scope
+error[E0599]: the method `clone` exists for union `U5<CloneNoCopy>`, but its trait bounds were not satisfied
   --> $DIR/union-derive-clone.rs:35:15
    |
 LL | union U5<T> {
@@ -24,7 +24,7 @@ LL | struct CloneNoCopy;
    | ------------------- doesn't satisfy `CloneNoCopy: Copy`
 ...
 LL |     let w = u.clone();
-   |               ^^^^^ method not found in `U5<CloneNoCopy>`
+   |               ^^^^^ method cannot be called on `U5<CloneNoCopy>` due to unsatisfied trait bounds
    | 
   ::: $SRC_DIR/core/src/clone.rs:LL:COL
    |
@@ -34,7 +34,7 @@ LL |     fn clone(&self) -> Self;
    |        the method is available for `Arc<U5<CloneNoCopy>>` here
    |        the method is available for `Rc<U5<CloneNoCopy>>` here
    |
-   = note: the method `clone` exists but the following trait bounds were not satisfied:
+   = note: the following trait bounds were not satisfied:
            `CloneNoCopy: Copy`
            which is required by `U5<CloneNoCopy>: Clone`
 

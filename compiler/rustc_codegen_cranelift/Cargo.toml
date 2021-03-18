@@ -9,25 +9,26 @@ crate-type = ["dylib"]
 
 [dependencies]
 # These have to be in sync with each other
-cranelift-codegen = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main", features = ["unwind"] }
+cranelift-codegen = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main", features = ["unwind", "x64"] }
 cranelift-frontend = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main" }
 cranelift-module = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main" }
-cranelift-simplejit = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main", optional = true }
+cranelift-jit = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main", optional = true }
 cranelift-object = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main" }
 target-lexicon = "0.11.0"
 gimli = { version = "0.23.0", default-features = false, features = ["write"]}
-object = { version = "0.22.0", default-features = false, features = ["std", "read_core", "write", "coff", "elf", "macho", "pe"] }
+object = { version = "0.23.0", default-features = false, features = ["std", "read_core", "write", "coff", "elf", "macho", "pe"] }
 
 ar = { git = "https://github.com/bjorn3/rust-ar.git", branch = "do_not_remove_cg_clif_ranlib" }
 indexmap = "1.0.2"
 libloading = { version = "0.6.0", optional = true }
+smallvec = "1.6.1"
 
 # Uncomment to use local checkout of cranelift
 #[patch."https://github.com/bytecodealliance/wasmtime/"]
 #cranelift-codegen = { path = "../wasmtime/cranelift/codegen" }
 #cranelift-frontend = { path = "../wasmtime/cranelift/frontend" }
 #cranelift-module = { path = "../wasmtime/cranelift/module" }
-#cranelift-simplejit = { path = "../wasmtime/cranelift/simplejit" }
+#cranelift-jit = { path = "../wasmtime/cranelift/jit" }
 #cranelift-object = { path = "../wasmtime/cranelift/object" }
 
 #[patch.crates-io]
@@ -35,7 +36,7 @@ libloading = { version = "0.6.0", optional = true }
 
 [features]
 default = ["jit", "inline_asm"]
-jit = ["cranelift-simplejit", "libloading"]
+jit = ["cranelift-jit", "libloading"]
 inline_asm = []
 
 [profile.dev]

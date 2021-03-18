@@ -1,6 +1,6 @@
 //! Unicode string slices.
 //!
-//! *[See also the `str` primitive type](../../std/primitive.str.html).*
+//! *[See also the `str` primitive type](str).*
 //!
 //! The `&str` type is one of the two main string types, the other being `String`.
 //! Unlike its `String` counterpart, its contents are borrowed.
@@ -450,8 +450,6 @@ impl str {
     }
 
     /// Converts a [`Box<str>`] into a [`String`] without copying or allocating.
-    ///
-    /// [`Box<str>`]: Box
     ///
     /// # Examples
     ///

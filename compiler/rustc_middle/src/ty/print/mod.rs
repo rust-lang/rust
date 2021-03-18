@@ -203,7 +203,7 @@ pub trait Printer<'tcx>: Sized {
                                     self.tcx().type_of(param.def_id).subst(self.tcx(), substs),
                                 )
                     }
-                    ty::GenericParamDefKind::Const => false, // FIXME(const_generics:defaults)
+                    ty::GenericParamDefKind::Const => false, // FIXME(const_generics_defaults)
                 }
             })
             .count();

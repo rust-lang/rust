@@ -53,22 +53,10 @@
           StorageDead(_10);                // scope 4 at $DIR/inst_combine_deref.rs:60:20: 60:21
           _8 = Not(move _9);               // scope 4 at $DIR/inst_combine_deref.rs:60:5: 60:23
           StorageDead(_9);                 // scope 4 at $DIR/inst_combine_deref.rs:60:22: 60:23
-          switchInt(_8) -> [false: bb1, otherwise: bb2]; // scope 4 at $DIR/inst_combine_deref.rs:60:5: 60:23
+          switchInt(move _8) -> [false: bb2, otherwise: bb1]; // scope 4 at $DIR/inst_combine_deref.rs:60:5: 60:23
       }
   
       bb1: {
-          _7 = const ();                   // scope 4 at $DIR/inst_combine_deref.rs:60:23: 60:23
-          StorageDead(_8);                 // scope 4 at $DIR/inst_combine_deref.rs:60:22: 60:23
-          StorageDead(_7);                 // scope 4 at $DIR/inst_combine_deref.rs:60:22: 60:23
-          _0 = const ();                   // scope 0 at $DIR/inst_combine_deref.rs:54:24: 61:2
-          StorageDead(_4);                 // scope 3 at $DIR/inst_combine_deref.rs:61:1: 61:2
-          StorageDead(_3);                 // scope 2 at $DIR/inst_combine_deref.rs:61:1: 61:2
-          StorageDead(_2);                 // scope 1 at $DIR/inst_combine_deref.rs:61:1: 61:2
-          StorageDead(_1);                 // scope 0 at $DIR/inst_combine_deref.rs:61:1: 61:2
-          return;                          // scope 0 at $DIR/inst_combine_deref.rs:61:2: 61:2
-      }
-  
-      bb2: {
           StorageLive(_11);                // scope 4 at $DIR/inst_combine_deref.rs:60:5: 60:23
           core::panicking::panic(const "assertion failed: *y == 99"); // scope 4 at $DIR/inst_combine_deref.rs:60:5: 60:23
                                            // mir::Constant
@@ -80,6 +68,18 @@
                                            // mir::Constant
                                            // + span: $DIR/inst_combine_deref.rs:1:1: 1:1
                                            // + literal: Const { ty: &str, val: Value(Slice { data: Allocation { bytes: [97, 115, 115, 101, 114, 116, 105, 111, 110, 32, 102, 97, 105, 108, 101, 100, 58, 32, 42, 121, 32, 61, 61, 32, 57, 57], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [67108863], len: Size { raw: 26 } }, size: Size { raw: 26 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 26 }) }
+      }
+  
+      bb2: {
+          _7 = const ();                   // scope 4 at $DIR/inst_combine_deref.rs:60:23: 60:23
+          StorageDead(_8);                 // scope 4 at $DIR/inst_combine_deref.rs:60:22: 60:23
+          StorageDead(_7);                 // scope 4 at $DIR/inst_combine_deref.rs:60:22: 60:23
+          _0 = const ();                   // scope 0 at $DIR/inst_combine_deref.rs:54:24: 61:2
+          StorageDead(_4);                 // scope 3 at $DIR/inst_combine_deref.rs:61:1: 61:2
+          StorageDead(_3);                 // scope 2 at $DIR/inst_combine_deref.rs:61:1: 61:2
+          StorageDead(_2);                 // scope 1 at $DIR/inst_combine_deref.rs:61:1: 61:2
+          StorageDead(_1);                 // scope 0 at $DIR/inst_combine_deref.rs:61:1: 61:2
+          return;                          // scope 0 at $DIR/inst_combine_deref.rs:61:2: 61:2
       }
   }
   

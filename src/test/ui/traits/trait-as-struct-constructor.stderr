@@ -1,9 +1,0 @@
-error[E0574]: expected struct, variant or union type, found trait `TraitNotAStruct`
-  --> $DIR/trait-as-struct-constructor.rs:4:5
-   |
-LL |     TraitNotAStruct{ value: 0 };
-   |     ^^^^^^^^^^^^^^^ not a struct, variant or union type
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0574`.

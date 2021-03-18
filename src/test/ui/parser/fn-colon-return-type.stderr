@@ -1,8 +1,8 @@
-error: expected one of `->`, `;`, `where`, or `{`, found `:`
+error: return types are denoted using `->`
   --> $DIR/fn-colon-return-type.rs:1:15
    |
 LL | fn foo(x: i32): i32 {
-   |               ^ expected one of `->`, `;`, `where`, or `{`
+   |               ^ help: use `->` instead
 
 error: aborting due to previous error
 

@@ -6,9 +6,12 @@ use rustc_errors::Applicability;
 use rustc_hir::{BinOp, BinOpKind, Expr, ExprKind, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_semver::RustcVersion;
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 
-use crate::utils::{snippet_with_applicability, span_lint_and_sugg, SpanlessEq};
+use crate::utils::{meets_msrv, snippet_with_applicability, span_lint_and_sugg, SpanlessEq};
+
+const CHECKED_CONVERSIONS_MSRV: RustcVersion = RustcVersion::new(1, 34, 0);
 
 declare_clippy_lint! {
     /// **What it does:** Checks for explicit bounds checking when casting.
@@ -39,10 +42,25 @@ declare_clippy_lint! {
     "`try_from` could replace manual bounds checking when casting"
 }
 
-declare_lint_pass!(CheckedConversions => [CHECKED_CONVERSIONS]);
+pub struct CheckedConversions {
+    msrv: Option<RustcVersion>,
+}
+
+impl CheckedConversions {
+    #[must_use]
+    pub fn new(msrv: Option<RustcVersion>) -> Self {
+        Self { msrv }
+    }
+}
+
+impl_lint_pass!(CheckedConversions => [CHECKED_CONVERSIONS]);
 
 impl<'tcx> LateLintPass<'tcx> for CheckedConversions {
     fn check_expr(&mut self, cx: &LateContext<'_>, item: &Expr<'_>) {
+        if !meets_msrv(self.msrv.as_ref(), &CHECKED_CONVERSIONS_MSRV) {
+            return;
+        }
+
         let result = if_chain! {
             if !in_external_macro(cx.sess(), item.span);
             if let ExprKind::Binary(op, ref left, ref right) = &item.kind;
@@ -74,6 +92,8 @@ impl<'tcx> LateLintPass<'tcx> for CheckedConversions {
             }
         }
     }
+
+    extract_msrv_attr!(LateContext);
 }
 
 /// Searches for a single check from unsigned to _ is done

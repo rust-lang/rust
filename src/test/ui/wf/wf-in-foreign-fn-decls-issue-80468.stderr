@@ -1,0 +1,24 @@
+error[E0726]: implicit elided lifetime not allowed here
+  --> $DIR/wf-in-foreign-fn-decls-issue-80468.rs:13:16
+   |
+LL | impl Trait for Ref {}
+   |                ^^^- help: indicate the anonymous lifetime: `<'_>`
+
+error[E0308]: mismatched types
+  --> $DIR/wf-in-foreign-fn-decls-issue-80468.rs:16:21
+   |
+LL |     pub fn repro(_: Wrapper<Ref>);
+   |                     ^^^^^^^^^^^^ lifetime mismatch
+   |
+   = note: expected trait `Trait`
+              found trait `Trait`
+note: the anonymous lifetime #1 defined on the method body at 16:5...
+  --> $DIR/wf-in-foreign-fn-decls-issue-80468.rs:16:5
+   |
+LL |     pub fn repro(_: Wrapper<Ref>);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...does not necessarily outlive the static lifetime
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

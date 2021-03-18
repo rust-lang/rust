@@ -1,0 +1,26 @@
+warning: the feature `capture_disjoint_fields` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/closure-origin-struct-diagnostics.rs:1:12
+   |
+LL | #![feature(capture_disjoint_fields)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
+
+error[E0382]: use of moved value: `hello`
+  --> $DIR/closure-origin-struct-diagnostics.rs:24:13
+   |
+LL |     let b = hello;
+   |             ----- value moved here
+LL |     let c = hello;
+   |             ^^^^^ value used here after move
+   |
+note: closure cannot be moved more than once as it is not `Copy` due to moving the variable `x.y.a` out of its environment
+  --> $DIR/closure-origin-struct-diagnostics.rs:20:9
+   |
+LL |         x.y.a += 1;
+   |         ^^^^^
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0382`.

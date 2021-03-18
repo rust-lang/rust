@@ -1,5 +1,5 @@
 error: constant expression depends on a generic parameter
-  --> $DIR/issue-62504.rs:19:25
+  --> $DIR/issue-62504.rs:18:25
    |
 LL |         ArrayHolder([0; Self::SIZE])
    |                         ^^^^^^^^^^

@@ -10,11 +10,5 @@ error: name `cfg_attr` is reserved in attribute namespace
 LL | pub fn cfg_attr(_: TokenStream, input: TokenStream) -> TokenStream {
    |        ^^^^^^^^
 
-error: name `derive` is reserved in attribute namespace
-  --> $DIR/reserved-macro-names.rs:22:8
-   |
-LL | pub fn derive(_: TokenStream, input: TokenStream) -> TokenStream {
-   |        ^^^^^^
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 

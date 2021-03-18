@@ -113,6 +113,13 @@ pub fn check(build: &mut Build) {
         .or_else(|| cmd_finder.maybe_have("node"))
         .or_else(|| cmd_finder.maybe_have("nodejs"));
 
+    build.config.npm = build
+        .config
+        .npm
+        .take()
+        .map(|p| cmd_finder.must_have(p))
+        .or_else(|| cmd_finder.maybe_have("npm"));
+
     build.config.gdb = build
         .config
         .gdb
@@ -163,7 +170,11 @@ pub fn check(build: &mut Build) {
             panic!("the iOS target is only supported on macOS");
         }
 
-        build.config.target_config.entry(*target).or_insert(Target::from_triple(&target.triple));
+        build
+            .config
+            .target_config
+            .entry(*target)
+            .or_insert_with(|| Target::from_triple(&target.triple));
 
         if target.contains("-none-") || target.contains("nvptx") {
             if build.no_std(*target) == Some(false) {

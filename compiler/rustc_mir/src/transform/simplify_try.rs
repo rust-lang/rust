@@ -113,7 +113,7 @@ fn get_arm_identity_info<'a, 'tcx>(
         test: impl Fn(&'a Statement<'tcx>) -> bool,
         mut action: impl FnMut(usize, &'a Statement<'tcx>),
     ) {
-        while stmt_iter.peek().map(|(_, stmt)| test(stmt)).unwrap_or(false) {
+        while stmt_iter.peek().map_or(false, |(_, stmt)| test(stmt)) {
             let (idx, stmt) = stmt_iter.next().unwrap();
 
             action(idx, stmt);
@@ -306,7 +306,7 @@ fn optimization_applies<'tcx>(
         return false;
     }
 
-    // Verify the assigment chain consists of the form b = a; c = b; d = c; etc...
+    // Verify the assignment chain consists of the form b = a; c = b; d = c; etc...
     if opt_info.field_tmp_assignments.is_empty() {
         trace!("NO: no assignments found");
         return false;
@@ -635,7 +635,7 @@ impl<'a, 'tcx> SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
                     })
                     .peekable();
 
-                let bb_first = iter_bbs_reachable.peek().map(|(idx, _)| *idx).unwrap_or(&targets_and_values[0]);
+                let bb_first = iter_bbs_reachable.peek().map_or(&targets_and_values[0], |(idx, _)| *idx);
                 let mut all_successors_equivalent = StatementEquality::TrivialEqual;
 
                 // All successor basic blocks must be equal or contain statements that are pairwise considered equal.
@@ -696,8 +696,8 @@ impl<'a, 'tcx> SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
     /// _0 = move _1;           // bb2
     /// ```
     /// In this case the two statements are equal iff
-    /// 1: _0 is an enum where the variant index 0 is fieldless, and
-    /// 2:  bb1 was targeted by a switch where the discriminant of _1 was switched on
+    /// - `_0` is an enum where the variant index 0 is fieldless, and
+    /// -  bb1 was targeted by a switch where the discriminant of `_1` was switched on
     fn statement_equality(
         &self,
         adt_matched_on: Place<'tcx>,

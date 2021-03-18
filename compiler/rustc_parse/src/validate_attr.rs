@@ -2,7 +2,7 @@
 
 use crate::parse_in;
 
-use rustc_ast::tokenstream::DelimSpan;
+use rustc_ast::tokenstream::{DelimSpan, TokenTree};
 use rustc_ast::{self as ast, Attribute, MacArgs, MacDelimiter, MetaItem, MetaItemKind};
 use rustc_errors::{Applicability, PResult};
 use rustc_feature::{AttributeTemplate, BUILTIN_ATTRIBUTE_MAP};
@@ -45,7 +45,8 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
         kind: match &item.args {
             MacArgs::Empty => MetaItemKind::Word,
             MacArgs::Eq(_, t) => {
-                let v = parse_in(sess, t.clone(), "name value", |p| p.parse_unsuffixed_lit())?;
+                let t = TokenTree::Token(t.clone()).into();
+                let v = parse_in(sess, t, "name value", |p| p.parse_unsuffixed_lit())?;
                 MetaItemKind::NameValue(v)
             }
             MacArgs::Delimited(dspan, delim, t) => {

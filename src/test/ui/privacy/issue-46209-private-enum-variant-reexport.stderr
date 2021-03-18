@@ -1,0 +1,51 @@
+error[E0364]: `JuniorGrade` is private, and cannot be re-exported
+  --> $DIR/issue-46209-private-enum-variant-reexport.rs:7:32
+   |
+LL |     pub use self::Lieutenant::{JuniorGrade, Full};
+   |                                ^^^^^^^^^^^
+   |
+note: consider marking `JuniorGrade` as `pub` in the imported module
+  --> $DIR/issue-46209-private-enum-variant-reexport.rs:7:32
+   |
+LL |     pub use self::Lieutenant::{JuniorGrade, Full};
+   |                                ^^^^^^^^^^^
+
+error[E0364]: `Full` is private, and cannot be re-exported
+  --> $DIR/issue-46209-private-enum-variant-reexport.rs:7:45
+   |
+LL |     pub use self::Lieutenant::{JuniorGrade, Full};
+   |                                             ^^^^
+   |
+note: consider marking `Full` as `pub` in the imported module
+  --> $DIR/issue-46209-private-enum-variant-reexport.rs:7:45
+   |
+LL |     pub use self::Lieutenant::{JuniorGrade, Full};
+   |                                             ^^^^
+
+error: glob import doesn't reexport anything because no candidate is public enough
+  --> $DIR/issue-46209-private-enum-variant-reexport.rs:5:13
+   |
+LL |     pub use self::Professor::*;
+   |             ^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/issue-46209-private-enum-variant-reexport.rs:3:8
+   |
+LL | #[deny(unused_imports)]
+   |        ^^^^^^^^^^^^^^
+
+error: glob import doesn't reexport anything because no candidate is public enough
+  --> $DIR/issue-46209-private-enum-variant-reexport.rs:10:13
+   |
+LL |     pub use self::PettyOfficer::*;
+   |             ^^^^^^^^^^^^^^^^^^^^^
+
+error: glob import doesn't reexport anything because no candidate is public enough
+  --> $DIR/issue-46209-private-enum-variant-reexport.rs:12:13
+   |
+LL |     pub use self::Crewman::*;
+   |             ^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0364`.

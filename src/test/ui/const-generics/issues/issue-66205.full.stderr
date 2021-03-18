@@ -1,5 +1,5 @@
 error: constant expression depends on a generic parameter
-  --> $DIR/issue-66205.rs:8:12
+  --> $DIR/issue-66205.rs:7:12
    |
 LL |     fact::<{ N - 1 }>();
    |            ^^^^^^^^^

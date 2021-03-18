@@ -2,9 +2,7 @@
 // Regression test for issue #79269.
 //
 // build-pass
-// compile-flags: -Zmir-opt-level=2 -Zvalidate-mir
-#![feature(min_const_generics)]
-
+// compile-flags: -Zmir-opt-level=3 -Zvalidate-mir
 #[derive(Clone)]
 struct Array<T, const N: usize>([T; N]);
 

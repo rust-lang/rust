@@ -8,7 +8,7 @@ use rustc_middle::mir::coverage::{
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::TyCtxt;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Expression {
     lhs: ExpressionOperandId,
     op: Op,
@@ -64,7 +64,9 @@ impl<'tcx> FunctionCoverage<'tcx> {
 
     /// Adds a code region to be counted by an injected counter intrinsic.
     pub fn add_counter(&mut self, id: CounterValueReference, region: CodeRegion) {
-        self.counters[id].replace(region).expect_none("add_counter called with duplicate `id`");
+        if let Some(previous_region) = self.counters[id].replace(region.clone()) {
+            assert_eq!(previous_region, region, "add_counter: code region for id changed");
+        }
     }
 
     /// Both counters and "counter expressions" (or simply, "expressions") can be operands in other
@@ -94,9 +96,18 @@ impl<'tcx> FunctionCoverage<'tcx> {
             expression_id, lhs, op, rhs, region
         );
         let expression_index = self.expression_index(u32::from(expression_id));
-        self.expressions[expression_index]
-            .replace(Expression { lhs, op, rhs, region })
-            .expect_none("add_counter_expression called with duplicate `id_descending_from_max`");
+        if let Some(previous_expression) = self.expressions[expression_index].replace(Expression {
+            lhs,
+            op,
+            rhs,
+            region: region.clone(),
+        }) {
+            assert_eq!(
+                previous_expression,
+                Expression { lhs, op, rhs, region },
+                "add_counter_expression: expression for id changed"
+            );
+        }
     }
 
     /// Add a region that will be marked as "unreachable", with a constant "zero counter".
@@ -170,30 +181,30 @@ impl<'tcx> FunctionCoverage<'tcx> {
         // `expression_index`s lower than the referencing `Expression`. Therefore, it is
         // reasonable to look up the new index of an expression operand while the `new_indexes`
         // vector is only complete up to the current `ExpressionIndex`.
-        let id_to_counter =
-            |new_indexes: &IndexVec<InjectedExpressionIndex, Option<MappedExpressionIndex>>,
-             id: ExpressionOperandId| {
-                if id == ExpressionOperandId::ZERO {
-                    Some(Counter::zero())
-                } else if id.index() < self.counters.len() {
-                    // Note: Some codegen-injected Counters may be only referenced by `Expression`s,
-                    // and may not have their own `CodeRegion`s,
-                    let index = CounterValueReference::from(id.index());
-                    Some(Counter::counter_value_reference(index))
-                } else {
-                    let index = self.expression_index(u32::from(id));
-                    self.expressions
-                        .get(index)
-                        .expect("expression id is out of range")
-                        .as_ref()
-                        // If an expression was optimized out, assume it would have produced a count
-                        // of zero. This ensures that expressions dependent on optimized-out
-                        // expressions are still valid.
-                        .map_or(Some(Counter::zero()), |_| {
-                            new_indexes[index].map(|new_index| Counter::expression(new_index))
-                        })
-                }
-            };
+        let id_to_counter = |new_indexes: &IndexVec<
+            InjectedExpressionIndex,
+            Option<MappedExpressionIndex>,
+        >,
+                             id: ExpressionOperandId| {
+            if id == ExpressionOperandId::ZERO {
+                Some(Counter::zero())
+            } else if id.index() < self.counters.len() {
+                // Note: Some codegen-injected Counters may be only referenced by `Expression`s,
+                // and may not have their own `CodeRegion`s,
+                let index = CounterValueReference::from(id.index());
+                Some(Counter::counter_value_reference(index))
+            } else {
+                let index = self.expression_index(u32::from(id));
+                self.expressions
+                    .get(index)
+                    .expect("expression id is out of range")
+                    .as_ref()
+                    // If an expression was optimized out, assume it would have produced a count
+                    // of zero. This ensures that expressions dependent on optimized-out
+                    // expressions are still valid.
+                    .map_or(Some(Counter::zero()), |_| new_indexes[index].map(Counter::expression))
+            }
+        };
 
         for (original_index, expression) in
             self.expressions.iter_enumerated().filter_map(|(original_index, entry)| {

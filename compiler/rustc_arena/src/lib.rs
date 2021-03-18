@@ -11,15 +11,13 @@
     html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
     test(no_crate_inject, attr(deny(warnings)))
 )]
-#![feature(array_value_iter_slice)]
 #![feature(dropck_eyepatch)]
 #![feature(new_uninit)]
 #![feature(maybe_uninit_slice)]
-#![feature(array_value_iter)]
-#![feature(min_const_generics)]
 #![feature(min_specialization)]
 #![cfg_attr(test, feature(test))]
 
+use rustc_data_structures::sync;
 use smallvec::SmallVec;
 
 use std::alloc::Layout;
@@ -32,7 +30,7 @@ use std::slice;
 
 #[inline(never)]
 #[cold]
-pub fn cold_path<F: FnOnce() -> R, R>(f: F) -> R {
+fn cold_path<F: FnOnce() -> R, R>(f: F) -> R {
     f()
 }
 
@@ -559,8 +557,19 @@ struct DropType {
     obj: *mut u8,
 }
 
-unsafe fn drop_for_type<T>(to_drop: *mut u8) {
-    std::ptr::drop_in_place(to_drop as *mut T)
+// SAFETY: we require `T: Send` before type-erasing into `DropType`.
+#[cfg(parallel_compiler)]
+unsafe impl sync::Send for DropType {}
+
+impl DropType {
+    #[inline]
+    unsafe fn new<T: sync::Send>(obj: *mut T) -> Self {
+        unsafe fn drop_for_type<T>(to_drop: *mut u8) {
+            std::ptr::drop_in_place(to_drop as *mut T)
+        }
+
+        DropType { drop_fn: drop_for_type::<T>, obj: obj as *mut u8 }
+    }
 }
 
 impl Drop for DropType {
@@ -570,10 +579,13 @@ impl Drop for DropType {
 }
 
 /// An arena which can be used to allocate any type.
+///
+/// # Safety
+///
 /// Allocating in this arena is unsafe since the type system
 /// doesn't know which types it contains. In order to
-/// allocate safely, you must store a PhantomData<T>
-/// alongside this arena for each type T you allocate.
+/// allocate safely, you must store a `PhantomData<T>`
+/// alongside this arena for each type `T` you allocate.
 #[derive(Default)]
 pub struct DropArena {
     /// A list of destructors to run when the arena drops.
@@ -585,21 +597,26 @@ pub struct DropArena {
 
 impl DropArena {
     #[inline]
-    pub unsafe fn alloc<T>(&self, object: T) -> &mut T {
+    pub unsafe fn alloc<T>(&self, object: T) -> &mut T
+    where
+        T: sync::Send,
+    {
         let mem = self.arena.alloc_raw(Layout::new::<T>()) as *mut T;
         // Write into uninitialized memory.
         ptr::write(mem, object);
         let result = &mut *mem;
         // Record the destructor after doing the allocation as that may panic
-        // and would cause `object`'s destructor to run twice if it was recorded before
-        self.destructors
-            .borrow_mut()
-            .push(DropType { drop_fn: drop_for_type::<T>, obj: result as *mut T as *mut u8 });
+        // and would cause `object`'s destructor to run twice if it was recorded before.
+        self.destructors.borrow_mut().push(DropType::new(result));
         result
     }
 
     #[inline]
-    pub unsafe fn alloc_from_iter<T, I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
+    pub unsafe fn alloc_from_iter<T, I>(&self, iter: I) -> &mut [T]
+    where
+        T: sync::Send,
+        I: IntoIterator<Item = T>,
+    {
         let mut vec: SmallVec<[_; 8]> = iter.into_iter().collect();
         if vec.is_empty() {
             return &mut [];
@@ -609,19 +626,18 @@ impl DropArena {
         let start_ptr = self.arena.alloc_raw(Layout::array::<T>(len).unwrap()) as *mut T;
 
         let mut destructors = self.destructors.borrow_mut();
-        // Reserve space for the destructors so we can't panic while adding them
+        // Reserve space for the destructors so we can't panic while adding them.
         destructors.reserve(len);
 
         // Move the content to the arena by copying it and then forgetting
-        // the content of the SmallVec
+        // the content of the SmallVec.
         vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
         mem::forget(vec.drain(..));
 
         // Record the destructors after doing the allocation as that may panic
-        // and would cause `object`'s destructor to run twice if it was recorded before
+        // and would cause `object`'s destructor to run twice if it was recorded before.
         for i in 0..len {
-            destructors
-                .push(DropType { drop_fn: drop_for_type::<T>, obj: start_ptr.add(i) as *mut u8 });
+            destructors.push(DropType::new(start_ptr.add(i)));
         }
 
         slice::from_raw_parts_mut(start_ptr, len)

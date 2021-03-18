@@ -77,7 +77,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
     tcx.infer_ctxt().enter(|ref infcx| {
         let impl_param_env = tcx.param_env(self_type_did);
         let tcx = infcx.tcx;
-        let mut fulfillment_cx = TraitEngine::new(tcx);
+        let mut fulfillment_cx = <dyn TraitEngine<'_>>::new(tcx);
 
         let named_type = tcx.type_of(self_type_did);
 
@@ -226,13 +226,13 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
         // could be extended easily also to the other `Predicate`.
         let predicate_matches_closure = |p: Predicate<'tcx>| {
             let mut relator: SimpleEqRelation<'tcx> = SimpleEqRelation::new(tcx, self_param_env);
-            let predicate = predicate.bound_atom();
-            let p = p.bound_atom();
+            let predicate = predicate.kind();
+            let p = p.kind();
             match (predicate.skip_binder(), p.skip_binder()) {
-                (ty::PredicateAtom::Trait(a, _), ty::PredicateAtom::Trait(b, _)) => {
+                (ty::PredicateKind::Trait(a, _), ty::PredicateKind::Trait(b, _)) => {
                     relator.relate(predicate.rebind(a), p.rebind(b)).is_ok()
                 }
-                (ty::PredicateAtom::Projection(a), ty::PredicateAtom::Projection(b)) => {
+                (ty::PredicateKind::Projection(a), ty::PredicateKind::Projection(b)) => {
                     relator.relate(predicate.rebind(a), p.rebind(b)).is_ok()
                 }
                 _ => predicate == p,
@@ -267,15 +267,13 @@ crate fn check_drop_obligations<'a, 'tcx>(
     ty: Ty<'tcx>,
     span: Span,
     body_id: hir::HirId,
-) -> Result<(), ErrorReported> {
+) {
     debug!("check_drop_obligations typ: {:?}", ty);
 
     let cause = &ObligationCause::misc(span, body_id);
     let infer_ok = rcx.infcx.at(cause, rcx.fcx.param_env).dropck_outlives(ty);
     debug!("dropck_outlives = {:#?}", infer_ok);
     rcx.fcx.register_infer_ok_obligations(infer_ok);
-
-    Ok(())
 }
 
 // This is an implementation of the TypeRelation trait with the

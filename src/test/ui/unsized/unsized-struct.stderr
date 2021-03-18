@@ -13,7 +13,7 @@ help: you could relax the implicit `Sized` bound on `T` if it were used through 
   --> $DIR/unsized-struct.rs:4:12
    |
 LL | struct Foo<T> { data: T }
-   |            ^          - ...if indirection was used here: `Box<T>`
+   |            ^          - ...if indirection were used here: `Box<T>`
    |            |
    |            this could be changed to `T: ?Sized`...
 

@@ -1,5 +1,6 @@
 use core::mem::*;
 
+#[cfg(panic = "unwind")]
 use std::rc::Rc;
 
 #[test]
@@ -133,11 +134,26 @@ fn test_discriminant_send_sync() {
 }
 
 #[test]
-#[cfg(not(bootstrap))]
 fn assume_init_good() {
     const TRUE: bool = unsafe { MaybeUninit::<bool>::new(true).assume_init() };
 
     assert!(TRUE);
+}
+
+#[test]
+fn uninit_array_assume_init() {
+    let mut array: [MaybeUninit<i16>; 5] = MaybeUninit::uninit_array();
+    array[0].write(3);
+    array[1].write(1);
+    array[2].write(4);
+    array[3].write(1);
+    array[4].write(5);
+
+    let array = unsafe { MaybeUninit::array_assume_init(array) };
+
+    assert_eq!(array, [3, 1, 4, 1, 5]);
+
+    let [] = unsafe { MaybeUninit::<!>::array_assume_init([]) };
 }
 
 #[test]
@@ -250,14 +266,25 @@ fn uninit_write_slice_cloned_mid_panic() {
 
 #[test]
 fn uninit_write_slice_cloned_no_drop() {
-    let rc = Rc::new(());
+    #[derive(Clone)]
+    struct Bomb;
+
+    impl Drop for Bomb {
+        fn drop(&mut self) {
+            panic!("dropped a bomb! kaboom")
+        }
+    }
 
     let mut dst = [MaybeUninit::uninit()];
-    let src = [rc.clone()];
+    let src = [Bomb];
 
     MaybeUninit::write_slice_cloned(&mut dst, &src);
 
-    drop(src);
+    forget(src);
+}
 
-    assert_eq!(Rc::strong_count(&rc), 2);
+#[test]
+fn uninit_const_assume_init_read() {
+    const FOO: u32 = unsafe { MaybeUninit::new(42).assume_init_read() };
+    assert_eq!(FOO, 42);
 }

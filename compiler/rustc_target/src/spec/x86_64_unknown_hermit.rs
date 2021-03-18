@@ -1,11 +1,11 @@
-use crate::spec::Target;
+use crate::spec::{StackProbeType, Target};
 
 pub fn target() -> Target {
     let mut base = super::hermit_base::opts();
     base.cpu = "x86-64".to_string();
     base.max_atomic_width = Some(64);
     base.features = "+rdrnd,+rdseed".to_string();
-    base.stack_probes = true;
+    base.stack_probes = StackProbeType::InlineOrCall { min_llvm_version_for_inline: (11, 0, 1) };
 
     Target {
         llvm_target: "x86_64-unknown-hermit".to_string(),

@@ -89,7 +89,7 @@ pub fn setup(src_path: &Path, profile: Profile) {
         std::process::exit(1);
     }
 
-    let path = cfg_file.unwrap_or("config.toml".into());
+    let path = cfg_file.unwrap_or_else(|| "config.toml".into());
     let settings = format!(
         "# Includes one of the default files in src/bootstrap/defaults\n\
     profile = \"{}\"\n\
@@ -156,7 +156,7 @@ pub fn interactive_path() -> io::Result<Profile> {
         io::stdout().flush()?;
         let mut input = String::new();
         io::stdin().read_line(&mut input)?;
-        if input == "" {
+        if input.is_empty() {
             eprintln!("EOF on stdin, when expecting answer to question.  Giving up.");
             std::process::exit(1);
         }

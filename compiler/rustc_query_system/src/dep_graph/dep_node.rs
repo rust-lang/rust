@@ -60,9 +60,8 @@ pub struct DepNode<K> {
     // * When a `DepNode::construct` is called, `arg.to_fingerprint()`
     //   is responsible for calling `OnDiskCache::store_foreign_def_id_hash`
     //   if needed
-    // * When a `DepNode` is loaded from the `PreviousDepGraph`,
-    //   then `PreviousDepGraph::index_to_node` is responsible for calling
-    //   `tcx.register_reused_dep_path_hash`
+    // * When we serialize the on-disk cache, `OnDiskCache::serialize` is
+    //   responsible for calling `DepGraph::register_reused_dep_nodes`.
     //
     // FIXME: Enforce this by preventing manual construction of `DefNode`
     // (e.g. add a `_priv: ()` field)
@@ -80,7 +79,7 @@ impl<K: DepKind> DepNode<K> {
 
     pub fn construct<Ctxt, Key>(tcx: Ctxt, kind: K, arg: &Key) -> DepNode<K>
     where
-        Ctxt: crate::query::QueryContext<DepKind = K>,
+        Ctxt: super::DepContext<DepKind = K>,
         Key: DepNodeParams<Ctxt>,
     {
         let hash = arg.to_fingerprint(tcx);
@@ -88,7 +87,10 @@ impl<K: DepKind> DepNode<K> {
 
         #[cfg(debug_assertions)]
         {
-            if !kind.can_reconstruct_query_key() && tcx.debug_dep_node() {
+            if !kind.can_reconstruct_query_key()
+                && (tcx.sess().opts.debugging_opts.incremental_info
+                    || tcx.sess().opts.debugging_opts.query_dep_graph)
+            {
                 tcx.dep_graph().register_dep_node_debug_str(dep_node, || arg.to_debug_str(tcx));
             }
         }
@@ -151,12 +153,6 @@ where
 
     default fn recover(_: Ctxt, _: &DepNode<Ctxt::DepKind>) -> Option<Self> {
         None
-    }
-}
-
-impl<Ctxt: DepContext> DepNodeParams<Ctxt> for () {
-    fn to_fingerprint(&self, _: Ctxt) -> Fingerprint {
-        Fingerprint::ZERO
     }
 }
 

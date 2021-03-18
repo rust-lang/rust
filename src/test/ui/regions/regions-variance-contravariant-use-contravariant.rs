@@ -4,7 +4,7 @@
 // Test that a type which is contravariant with respect to its region
 // parameter compiles successfully when used in a contravariant way.
 //
-// Note: see compile-fail/variance-regions-*.rs for the tests that check that the
+// Note: see ui/variance/variance-regions-*.rs for the tests that check that the
 // variance inference works in the first place.
 
 // pretty-expanded FIXME #23616

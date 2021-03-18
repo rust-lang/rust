@@ -15,7 +15,7 @@ usage would be:
 #![feature(link_args)]
 
 #[link_args = "-foo -bar -baz"]
-extern {}
+extern "C" {}
 # fn main() {}
 ```
 

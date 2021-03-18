@@ -112,7 +112,7 @@
 //! assert success with [`expect`]. This will panic if the
 //! write fails, providing a marginally useful message indicating why:
 //!
-//! ```{.no_run}
+//! ```no_run
 //! use std::fs::File;
 //! use std::io::prelude::*;
 //!
@@ -122,7 +122,7 @@
 //!
 //! You might also simply assert success:
 //!
-//! ```{.no_run}
+//! ```no_run
 //! # use std::fs::File;
 //! # use std::io::prelude::*;
 //! # let mut file = File::create("valuable_data.txt").unwrap();
@@ -229,7 +229,7 @@
 
 use crate::iter::{self, FromIterator, FusedIterator, TrustedLen};
 use crate::ops::{self, Deref, DerefMut};
-use crate::{convert, fmt};
+use crate::{convert, fmt, hint};
 
 /// `Result` is a type that represents either success ([`Ok`]) or failure ([`Err`]).
 ///
@@ -368,8 +368,6 @@ impl<T, E> Result<T, E> {
     /// Converts `self` into an [`Option<T>`], consuming `self`,
     /// and discarding the error, if any.
     ///
-    /// [`Option<T>`]: Option
-    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -394,8 +392,6 @@ impl<T, E> Result<T, E> {
     ///
     /// Converts `self` into an [`Option<E>`], consuming `self`,
     /// and discarding the success value, if any.
-    ///
-    /// [`Option<E>`]: Option
     ///
     /// # Examples
     ///
@@ -825,6 +821,74 @@ impl<T, E> Result<T, E> {
             Err(e) => op(e),
         }
     }
+
+    /// Returns the contained [`Ok`] value, consuming the `self` value,
+    /// without checking that the value is not an [`Err`].
+    ///
+    /// # Safety
+    ///
+    /// Calling this method on an [`Err`] is *[undefined behavior]*.
+    ///
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_result_unwrap_unchecked)]
+    /// let x: Result<u32, &str> = Ok(2);
+    /// assert_eq!(unsafe { x.unwrap_unchecked() }, 2);
+    /// ```
+    ///
+    /// ```no_run
+    /// #![feature(option_result_unwrap_unchecked)]
+    /// let x: Result<u32, &str> = Err("emergency failure");
+    /// unsafe { x.unwrap_unchecked(); } // Undefined behavior!
+    /// ```
+    #[inline]
+    #[track_caller]
+    #[unstable(feature = "option_result_unwrap_unchecked", reason = "newly added", issue = "81383")]
+    pub unsafe fn unwrap_unchecked(self) -> T {
+        debug_assert!(self.is_ok());
+        match self {
+            Ok(t) => t,
+            // SAFETY: the safety contract must be upheld by the caller.
+            Err(_) => unsafe { hint::unreachable_unchecked() },
+        }
+    }
+
+    /// Returns the contained [`Err`] value, consuming the `self` value,
+    /// without checking that the value is not an [`Ok`].
+    ///
+    /// # Safety
+    ///
+    /// Calling this method on an [`Ok`] is *[undefined behavior]*.
+    ///
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(option_result_unwrap_unchecked)]
+    /// let x: Result<u32, &str> = Ok(2);
+    /// unsafe { x.unwrap_err_unchecked() }; // Undefined behavior!
+    /// ```
+    ///
+    /// ```
+    /// #![feature(option_result_unwrap_unchecked)]
+    /// let x: Result<u32, &str> = Err("emergency failure");
+    /// assert_eq!(unsafe { x.unwrap_err_unchecked() }, "emergency failure");
+    /// ```
+    #[inline]
+    #[track_caller]
+    #[unstable(feature = "option_result_unwrap_unchecked", reason = "newly added", issue = "81383")]
+    pub unsafe fn unwrap_err_unchecked(self) -> E {
+        debug_assert!(self.is_err());
+        match self {
+            // SAFETY: the safety contract must be upheld by the caller.
+            Ok(_) => unsafe { hint::unreachable_unchecked() },
+            Err(e) => e,
+        }
+    }
 }
 
 impl<T: Copy, E> Result<&T, E> {
@@ -920,7 +984,7 @@ impl<T, E: fmt::Debug> Result<T, E> {
     ///
     /// Basic usage:
     ///
-    /// ```{.should_panic}
+    /// ```should_panic
     /// let x: Result<u32, &str> = Err("emergency failure");
     /// x.expect("Testing expect"); // panics with `Testing expect: emergency failure`
     /// ```
@@ -960,7 +1024,7 @@ impl<T, E: fmt::Debug> Result<T, E> {
     /// assert_eq!(x.unwrap(), 2);
     /// ```
     ///
-    /// ```{.should_panic}
+    /// ```should_panic
     /// let x: Result<u32, &str> = Err("emergency failure");
     /// x.unwrap(); // panics with `emergency failure`
     /// ```
@@ -988,7 +1052,7 @@ impl<T: fmt::Debug, E> Result<T, E> {
     ///
     /// Basic usage:
     ///
-    /// ```{.should_panic}
+    /// ```should_panic
     /// let x: Result<u32, &str> = Ok(10);
     /// x.expect_err("Testing expect_err"); // panics with `Testing expect_err: 10`
     /// ```
@@ -1009,11 +1073,9 @@ impl<T: fmt::Debug, E> Result<T, E> {
     /// Panics if the value is an [`Ok`], with a custom panic message provided
     /// by the [`Ok`]'s value.
     ///
-    ///
-    ///
     /// # Examples
     ///
-    /// ```{.should_panic}
+    /// ```should_panic
     /// let x: Result<u32, &str> = Ok(2);
     /// x.unwrap_err(); // panics with `2`
     /// ```
@@ -1171,7 +1233,8 @@ impl<T, E> Result<Option<T>, E> {
     /// ```
     #[inline]
     #[stable(feature = "transpose_result", since = "1.33.0")]
-    pub fn transpose(self) -> Option<Result<T, E>> {
+    #[rustc_const_unstable(feature = "const_result", issue = "82814")]
+    pub const fn transpose(self) -> Option<Result<T, E>> {
         match self {
             Ok(Some(x)) => Some(Ok(x)),
             Ok(None) => None,
@@ -1211,6 +1274,40 @@ impl<T, E> Result<Result<T, E>, E> {
     #[unstable(feature = "result_flattening", issue = "70142")]
     pub fn flatten(self) -> Result<T, E> {
         self.and_then(convert::identity)
+    }
+}
+
+impl<T> Result<T, T> {
+    /// Returns the [`Ok`] value if `self` is `Ok`, and the [`Err`] value if
+    /// `self` is `Err`.
+    ///
+    /// In other words, this function returns the value (the `T`) of a
+    /// `Result<T, T>`, regardless of whether or not that result is `Ok` or
+    /// `Err`.
+    ///
+    /// This can be useful in conjunction with APIs such as
+    /// [`Atomic*::compare_exchange`], or [`slice::binary_search`], but only in
+    /// cases where you don't care if the result was `Ok` or not.
+    ///
+    /// [`Atomic*::compare_exchange`]: crate::sync::atomic::AtomicBool::compare_exchange
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(result_into_ok_or_err)]
+    /// let ok: Result<u32, u32> = Ok(3);
+    /// let err: Result<u32, u32> = Err(4);
+    ///
+    /// assert_eq!(ok.into_ok_or_err(), 3);
+    /// assert_eq!(err.into_ok_or_err(), 4);
+    /// ```
+    #[inline]
+    #[unstable(feature = "result_into_ok_or_err", reason = "newly added", issue = "82223")]
+    pub const fn into_ok_or_err(self) -> T {
+        match self {
+            Ok(v) => v,
+            Err(v) => v,
+        }
     }
 }
 

@@ -49,6 +49,7 @@ use core::iter::{FromIterator, FusedIterator};
 use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::{self, Add, AddAssign, Index, IndexMut, Range, RangeBounds};
 use core::ptr;
+use core::slice;
 use core::str::{lossy, pattern::Pattern};
 
 use crate::borrow::{Cow, ToOwned};
@@ -403,6 +404,8 @@ impl String {
     /// s.push('a');
     /// ```
     #[inline]
+    #[doc(alias = "alloc")]
+    #[doc(alias = "malloc")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: usize) -> String {
         String { vec: Vec::with_capacity(capacity) }
@@ -492,7 +495,7 @@ impl String {
     /// `from_utf8_lossy()` will replace any invalid UTF-8 sequences with
     /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD], which looks like this: �
     ///
-    /// [byteslice]: ../../std/primitive.slice.html
+    /// [byteslice]: prim@slice
     /// [U+FFFD]: core::char::REPLACEMENT_CHARACTER
     ///
     /// If you are sure that the byte slice is valid UTF-8, and you don't want
@@ -970,7 +973,7 @@ impl String {
         self.vec.try_reserve(additional)
     }
 
-    /// Tries to reserves the minimum capacity for exactly `additional` more elements to
+    /// Tries to reserve the minimum capacity for exactly `additional` more elements to
     /// be inserted in the given `String`. After calling `reserve_exact`,
     /// capacity will be greater than or equal to `self.len() + additional`.
     /// Does nothing if the capacity is already sufficient.
@@ -1034,8 +1037,7 @@ impl String {
     /// The capacity will remain at least as large as both the length
     /// and the supplied value.
     ///
-    /// Panics if the current capacity is smaller than the supplied
-    /// minimum capacity.
+    /// If the current capacity is less than the lower limit, this is a no-op.
     ///
     /// # Examples
     ///
@@ -1388,6 +1390,7 @@ impl String {
     /// assert_eq!(fancy_f.len(), 4);
     /// assert_eq!(fancy_f.chars().count(), 3);
     /// ```
+    #[doc(alias = "length")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> usize {
@@ -1508,14 +1511,14 @@ impl String {
         // of the vector version. The data is just plain bytes.
         // Because the range removal happens in Drop, if the Drain iterator is leaked,
         // the removal will not happen.
-        let Range { start, end } = range.assert_len(self.len());
+        let Range { start, end } = slice::range(range, ..self.len());
         assert!(self.is_char_boundary(start));
         assert!(self.is_char_boundary(end));
 
         // Take out two simultaneous borrows. The &mut String won't be accessed
         // until iteration is over, in Drop.
         let self_ptr = self as *mut _;
-        // SAFETY: `assert_len` and `is_char_boundary` do the appropriate bounds checks.
+        // SAFETY: `slice::range` and `is_char_boundary` do the appropriate bounds checks.
         let chars_iter = unsafe { self.get_unchecked(start..end) }.chars();
 
         Drain { start, end, iter: chars_iter, string: self_ptr }
@@ -1552,18 +1555,25 @@ impl String {
         // Replace_range does not have the memory safety issues of a vector Splice.
         // of the vector version. The data is just plain bytes.
 
-        match range.start_bound() {
+        // WARNING: Inlining this variable would be unsound (#81138)
+        let start = range.start_bound();
+        match start {
             Included(&n) => assert!(self.is_char_boundary(n)),
             Excluded(&n) => assert!(self.is_char_boundary(n + 1)),
             Unbounded => {}
         };
-        match range.end_bound() {
+        // WARNING: Inlining this variable would be unsound (#81138)
+        let end = range.end_bound();
+        match end {
             Included(&n) => assert!(self.is_char_boundary(n + 1)),
             Excluded(&n) => assert!(self.is_char_boundary(n)),
             Unbounded => {}
         };
 
-        unsafe { self.as_mut_vec() }.splice(range, replace_with.bytes());
+        // Using `range` again would be unsound (#81138)
+        // We assume the bounds reported by `range` remain the same, but
+        // an adversarial implementation could change between calls
+        unsafe { self.as_mut_vec() }.splice((start, end), replace_with.bytes());
     }
 
     /// Converts this `String` into a [`Box`]`<`[`str`]`>`.
@@ -2165,6 +2175,7 @@ impl FromStr for String {
 /// implementation for free.
 ///
 /// [`Display`]: fmt::Display
+#[cfg_attr(not(test), rustc_diagnostic_item = "ToString")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ToString {
     /// Converts the given value to a `String`.
@@ -2341,6 +2352,16 @@ impl<'a> From<Cow<'a, str>> for String {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> From<&'a str> for Cow<'a, str> {
+    /// Converts a string slice into a Borrowed variant.
+    /// No heap allocation is performed, and the string
+    /// is not copied.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::borrow::Cow;
+    /// assert_eq!(Cow::from("eggplant"), Cow::Borrowed("eggplant"));
+    /// ```
     #[inline]
     fn from(s: &'a str) -> Cow<'a, str> {
         Cow::Borrowed(s)
@@ -2349,6 +2370,18 @@ impl<'a> From<&'a str> for Cow<'a, str> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> From<String> for Cow<'a, str> {
+    /// Converts a String into an Owned variant.
+    /// No heap allocation is performed, and the string
+    /// is not copied.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::borrow::Cow;
+    /// let s = "eggplant".to_string();
+    /// let s2 = "eggplant".to_string();
+    /// assert_eq!(Cow::from(s), Cow::<'static, str>::Owned(s2));
+    /// ```
     #[inline]
     fn from(s: String) -> Cow<'a, str> {
         Cow::Owned(s)
@@ -2357,6 +2390,17 @@ impl<'a> From<String> for Cow<'a, str> {
 
 #[stable(feature = "cow_from_string_ref", since = "1.28.0")]
 impl<'a> From<&'a String> for Cow<'a, str> {
+    /// Converts a String reference into a Borrowed variant.
+    /// No heap allocation is performed, and the string
+    /// is not copied.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::borrow::Cow;
+    /// let s = "eggplant".to_string();
+    /// assert_eq!(Cow::from(&s), Cow::Borrowed("eggplant"));
+    /// ```
     #[inline]
     fn from(s: &'a String) -> Cow<'a, str> {
         Cow::Borrowed(s.as_str())

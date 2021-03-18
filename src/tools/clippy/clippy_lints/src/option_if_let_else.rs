@@ -66,7 +66,7 @@ declare_lint_pass!(OptionIfLetElse => [OPTION_IF_LET_ELSE]);
 /// Returns true iff the given expression is the result of calling `Result::ok`
 fn is_result_ok(cx: &LateContext<'_>, expr: &'_ Expr<'_>) -> bool {
     if let ExprKind::MethodCall(ref path, _, &[ref receiver], _) = &expr.kind {
-        path.ident.name.to_ident_string() == "ok"
+        path.ident.name.as_str() == "ok"
             && is_type_diagnostic_item(cx, &cx.typeck_results().expr_ty(&receiver), sym::result_type)
     } else {
         false
@@ -109,25 +109,30 @@ fn extract_body_from_arm<'a>(arm: &'a Arm<'a>) -> Option<&'a Expr<'a>> {
 /// it in curly braces. Otherwise, we don't.
 fn should_wrap_in_braces(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     utils::get_enclosing_block(cx, expr.hir_id).map_or(false, |parent| {
+        let mut should_wrap = false;
+
         if let Some(Expr {
             kind:
                 ExprKind::Match(
                     _,
                     arms,
-                    MatchSource::IfDesugar {
-                        contains_else_clause: true,
-                    }
-                    | MatchSource::IfLetDesugar {
+                    MatchSource::IfLetDesugar {
                         contains_else_clause: true,
                     },
                 ),
             ..
         }) = parent.expr
         {
-            expr.hir_id == arms[1].body.hir_id
-        } else {
-            false
+            should_wrap = expr.hir_id == arms[1].body.hir_id;
+        } else if let Some(Expr {
+            kind: ExprKind::If(_, _, Some(else_clause)),
+            ..
+        }) = parent.expr
+        {
+            should_wrap = expr.hir_id == else_clause.hir_id;
         }
+
+        should_wrap
     })
 }
 
@@ -176,7 +181,7 @@ fn detect_option_if_let_else<'tcx>(
             };
             let cond_expr = match &cond_expr.kind {
                 // Pointer dereferencing happens automatically, so we can omit it in the suggestion
-                ExprKind::Unary(UnOp::UnDeref, expr) | ExprKind::AddrOf(_, _, expr) => expr,
+                ExprKind::Unary(UnOp::Deref, expr) | ExprKind::AddrOf(_, _, expr) => expr,
                 _ => cond_expr,
             };
             Some(OptionIfLetElseOccurence {

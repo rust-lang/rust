@@ -42,6 +42,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{Coercion, InferOk, InferResult};
+use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
 };
@@ -583,9 +584,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         while !queue.is_empty() {
             let obligation = queue.remove(0);
             debug!("coerce_unsized resolve step: {:?}", obligation);
-            let bound_predicate = obligation.predicate.bound_atom();
+            let bound_predicate = obligation.predicate.kind();
             let trait_pred = match bound_predicate.skip_binder() {
-                ty::PredicateAtom::Trait(trait_pred, _)
+                ty::PredicateKind::Trait(trait_pred, _)
                     if traits.contains(&trait_pred.def_id()) =>
                 {
                     if unsize_did == trait_pred.def_id() {
@@ -926,11 +927,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     false
                 }
             };
-            if is_capturing_closure(&prev_ty.kind()) || is_capturing_closure(&new_ty.kind()) {
+            if is_capturing_closure(prev_ty.kind()) || is_capturing_closure(new_ty.kind()) {
                 (None, None)
             } else {
-                match (&prev_ty.kind(), &new_ty.kind()) {
-                    (&ty::FnDef(..), &ty::FnDef(..)) => {
+                match (prev_ty.kind(), new_ty.kind()) {
+                    (ty::FnDef(..), ty::FnDef(..)) => {
                         // Don't reify if the function types have a LUB, i.e., they
                         // are the same function and their parameters have a LUB.
                         match self
@@ -943,21 +944,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                         }
                     }
-                    (&ty::Closure(_, substs), &ty::FnDef(..)) => {
+                    (ty::Closure(_, substs), ty::FnDef(..)) => {
                         let b_sig = new_ty.fn_sig(self.tcx);
                         let a_sig = self
                             .tcx
                             .signature_unclosure(substs.as_closure().sig(), b_sig.unsafety());
                         (Some(a_sig), Some(b_sig))
                     }
-                    (&ty::FnDef(..), &ty::Closure(_, substs)) => {
+                    (ty::FnDef(..), ty::Closure(_, substs)) => {
                         let a_sig = prev_ty.fn_sig(self.tcx);
                         let b_sig = self
                             .tcx
                             .signature_unclosure(substs.as_closure().sig(), a_sig.unsafety());
                         (Some(a_sig), Some(b_sig))
                     }
-                    (&ty::Closure(_, substs_a), &ty::Closure(_, substs_b)) => (
+                    (ty::Closure(_, substs_a), ty::Closure(_, substs_b)) => (
                         Some(self.tcx.signature_unclosure(
                             substs_a.as_closure().sig(),
                             hir::Unsafety::Normal,
@@ -1236,7 +1237,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
     /// The inner coercion "engine". If `expression` is `None`, this
     /// is a forced-unit case, and hence `expression_ty` must be
     /// `Nil`.
-    fn coerce_inner<'a>(
+    crate fn coerce_inner<'a>(
         &mut self,
         fcx: &FnCtxt<'a, 'tcx>,
         cause: &ObligationCause<'tcx>,
@@ -1443,14 +1444,21 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 &mut err, expr, expected, found, cause.span, blk_id,
             );
             let parent = fcx.tcx.hir().get(parent_id);
-            if let (Some(match_expr), true, false) = (
-                fcx.tcx.hir().get_match_if_cause(expr.hir_id),
+            if let (Some(cond_expr), true, false) = (
+                fcx.tcx.hir().get_if_cause(expr.hir_id),
                 expected.is_unit(),
                 pointing_at_return_type,
             ) {
-                if match_expr.span.desugaring_kind().is_none() {
-                    err.span_label(match_expr.span, "expected this to be `()`");
-                    fcx.suggest_semicolon_at_end(match_expr.span, &mut err);
+                // If the block is from an external macro, then do not suggest
+                // adding a semicolon, because there's nowhere to put it.
+                // See issue #81943.
+                if cond_expr.span.desugaring_kind().is_none()
+                    && !in_external_macro(fcx.tcx.sess, cond_expr.span)
+                {
+                    err.span_label(cond_expr.span, "expected this to be `()`");
+                    if expr.can_have_side_effects() {
+                        fcx.suggest_semicolon_at_end(cond_expr.span, &mut err);
+                    }
                 }
             }
             fcx.get_node_fn_decl(parent).map(|(fn_decl, _, is_main)| (fn_decl, is_main))
@@ -1458,7 +1466,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             fcx.get_fn_decl(parent_id)
         };
 
-        if let (Some((fn_decl, can_suggest)), _) = (fn_decl, pointing_at_return_type) {
+        if let Some((fn_decl, can_suggest)) = fn_decl {
             if expression.is_none() {
                 pointing_at_return_type |= fcx.suggest_missing_return_type(
                     &mut err,
@@ -1472,22 +1480,32 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 fn_output = Some(&fn_decl.output); // `impl Trait` return type
             }
         }
-        if let (Some(sp), Some(fn_output)) = (fcx.ret_coercion_span.borrow().as_ref(), fn_output) {
-            self.add_impl_trait_explanation(&mut err, cause, fcx, expected, *sp, fn_output);
+
+        let parent_id = fcx.tcx.hir().get_parent_item(id);
+        let parent_item = fcx.tcx.hir().get(parent_id);
+
+        if let (Some((expr, _)), Some((fn_decl, _, _))) =
+            (expression, fcx.get_node_fn_decl(parent_item))
+        {
+            fcx.suggest_missing_return_expr(&mut err, expr, fn_decl, expected, found);
         }
 
-        if let Some(sp) = fcx.ret_coercion_span.borrow().as_ref() {
+        if let (Some(sp), Some(fn_output)) = (fcx.ret_coercion_span.get(), fn_output) {
+            self.add_impl_trait_explanation(&mut err, cause, fcx, expected, sp, fn_output);
+        }
+
+        if let Some(sp) = fcx.ret_coercion_span.get() {
             // If the closure has an explicit return type annotation,
             // then a type error may occur at the first return expression we
             // see in the closure (if it conflicts with the declared
             // return type). Skip adding a note in this case, since it
             // would be incorrect.
-            if !err.span.primary_spans().iter().any(|span| span == sp) {
+            if !err.span.primary_spans().iter().any(|&span| span == sp) {
                 let hir = fcx.tcx.hir();
                 let body_owner = hir.body_owned_by(hir.enclosing_body_owner(fcx.body_id));
                 if fcx.tcx.is_closure(hir.body_owner_def_id(body_owner).to_def_id()) {
                     err.span_note(
-                        *sp,
+                        sp,
                         &format!(
                             "return type inferred to be `{}` here",
                             fcx.resolve_vars_if_possible(expected)
@@ -1536,7 +1554,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         if let hir::FnRetTy::Return(ty) = fn_output {
             // Get the return type.
             if let hir::TyKind::OpaqueDef(..) = ty.kind {
-                let ty = AstConv::ast_ty_to_ty(fcx, ty);
+                let ty = <dyn AstConv<'_>>::ast_ty_to_ty(fcx, ty);
                 // Get the `impl Trait`'s `DefId`.
                 if let ty::Opaque(def_id, _) = ty.kind() {
                     let hir_id = fcx.tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
@@ -1598,7 +1616,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
     fn is_return_ty_unsized(&self, fcx: &FnCtxt<'a, 'tcx>, blk_id: hir::HirId) -> bool {
         if let Some((fn_decl, _)) = fcx.get_fn_decl(blk_id) {
             if let hir::FnRetTy::Return(ty) = fn_decl.output {
-                let ty = AstConv::ast_ty_to_ty(fcx, ty);
+                let ty = <dyn AstConv<'_>>::ast_ty_to_ty(fcx, ty);
                 if let ty::Dynamic(..) = ty.kind() {
                     return true;
                 }

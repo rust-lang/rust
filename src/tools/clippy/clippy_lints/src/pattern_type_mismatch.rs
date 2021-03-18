@@ -1,6 +1,6 @@
 use crate::utils::{last_path_segment, span_lint_and_help};
 use rustc_hir::{
-    intravisit, Body, Expr, ExprKind, FieldPat, FnDecl, HirId, LocalSource, MatchSource, Mutability, Pat, PatKind,
+    intravisit, Body, Expr, ExprKind, PatField, FnDecl, HirId, LocalSource, MatchSource, Mutability, Pat, PatKind,
     QPath, Stmt, StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -281,7 +281,7 @@ where
 
 fn find_first_mismatch_in_struct<'tcx>(
     cx: &LateContext<'tcx>,
-    field_pats: &[FieldPat<'_>],
+    field_pats: &[PatField<'_>],
     field_defs: &[FieldDef],
     substs_ref: SubstsRef<'tcx>,
 ) -> Option<(Span, Mutability, Level)> {

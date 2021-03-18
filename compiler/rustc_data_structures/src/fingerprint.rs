@@ -1,16 +1,22 @@
 use crate::stable_hasher;
 use rustc_serialize::{
-    opaque::{self, EncodeResult},
+    opaque::{self, EncodeResult, FileEncodeResult},
     Decodable, Encodable,
 };
 use std::hash::{Hash, Hasher};
-use std::mem;
+use std::mem::{self, MaybeUninit};
 
 #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Clone, Copy)]
+#[repr(C)]
 pub struct Fingerprint(u64, u64);
 
 impl Fingerprint {
     pub const ZERO: Fingerprint = Fingerprint(0, 0);
+
+    #[inline]
+    pub fn new(_0: u64, _1: u64) -> Fingerprint {
+        Fingerprint(_0, _1)
+    }
 
     #[inline]
     pub fn from_smaller_hash(hash: u64) -> Fingerprint {
@@ -19,7 +25,12 @@ impl Fingerprint {
 
     #[inline]
     pub fn to_smaller_hash(&self) -> u64 {
-        self.0
+        // Even though both halves of the fingerprint are expected to be good
+        // quality hash values, let's still combine the two values because the
+        // Fingerprints in DefPathHash have the StableCrateId portion which is
+        // the same for all DefPathHashes from the same crate. Combining the
+        // two halfs makes sure we get a good quality hash in such cases too.
+        self.0.wrapping_mul(3).wrapping_add(self.1)
     }
 
     #[inline]
@@ -53,15 +64,8 @@ impl Fingerprint {
         format!("{:x}{:x}", self.0, self.1)
     }
 
-    pub fn encode_opaque(&self, encoder: &mut opaque::Encoder) -> EncodeResult {
-        let bytes: [u8; 16] = unsafe { mem::transmute([self.0.to_le(), self.1.to_le()]) };
-
-        encoder.emit_raw_bytes(&bytes);
-        Ok(())
-    }
-
     pub fn decode_opaque(decoder: &mut opaque::Decoder<'_>) -> Result<Fingerprint, String> {
-        let mut bytes = [0; 16];
+        let mut bytes: [MaybeUninit<u8>; 16] = MaybeUninit::uninit_array();
 
         decoder.read_raw_bytes(&mut bytes)?;
 
@@ -99,8 +103,19 @@ impl<H: Hasher> FingerprintHasher for H {
 impl FingerprintHasher for crate::unhash::Unhasher {
     #[inline]
     fn write_fingerprint(&mut self, fingerprint: &Fingerprint) {
-        // `Unhasher` only wants a single `u64`
-        self.write_u64(fingerprint.0);
+        // Even though both halves of the fingerprint are expected to be good
+        // quality hash values, let's still combine the two values because the
+        // Fingerprints in DefPathHash have the StableCrateId portion which is
+        // the same for all DefPathHashes from the same crate. Combining the
+        // two halfs makes sure we get a good quality hash in such cases too.
+        //
+        // Since `Unhasher` is used only in the context of HashMaps, it is OK
+        // to combine the two components in an order-independent way (which is
+        // cheaper than the more robust Fingerprint::to_smaller_hash()). For
+        // HashMaps we don't really care if Fingerprint(x,y) and
+        // Fingerprint(y, x) result in the same hash value. Collision
+        // probability will still be much better than with FxHash.
+        self.write_u64(fingerprint.0.wrapping_add(fingerprint.1));
     }
 }
 
@@ -142,7 +157,16 @@ impl<E: rustc_serialize::Encoder> FingerprintEncoder for E {
 
 impl FingerprintEncoder for opaque::Encoder {
     fn encode_fingerprint(&mut self, f: &Fingerprint) -> EncodeResult {
-        f.encode_opaque(self)
+        let bytes: [u8; 16] = unsafe { mem::transmute([f.0.to_le(), f.1.to_le()]) };
+        self.emit_raw_bytes(&bytes);
+        Ok(())
+    }
+}
+
+impl FingerprintEncoder for opaque::FileEncoder {
+    fn encode_fingerprint(&mut self, f: &Fingerprint) -> FileEncodeResult {
+        let bytes: [u8; 16] = unsafe { mem::transmute([f.0.to_le(), f.1.to_le()]) };
+        self.emit_raw_bytes(&bytes)
     }
 }
 
@@ -198,7 +222,7 @@ impl<E: rustc_serialize::Encoder> Encodable<E> for PackedFingerprint {
 impl<D: rustc_serialize::Decoder> Decodable<D> for PackedFingerprint {
     #[inline]
     fn decode(d: &mut D) -> Result<Self, D::Error> {
-        Fingerprint::decode(d).map(|f| PackedFingerprint(f))
+        Fingerprint::decode(d).map(PackedFingerprint)
     }
 }
 

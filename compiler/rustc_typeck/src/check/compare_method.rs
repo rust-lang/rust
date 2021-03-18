@@ -296,7 +296,7 @@ fn compare_predicate_entailment<'tcx>(
                     {
                         diag.span_suggestion(
                             impl_err_span,
-                            "consider change the type to match the mutability in trait",
+                            "consider changing the mutability to match the trait",
                             trait_err_str,
                             Applicability::MachineApplicable,
                         );
@@ -364,13 +364,12 @@ fn check_region_bounds_on_impl_item<'tcx>(
     if trait_params != impl_params {
         let item_kind = assoc_item_kind_str(impl_m);
         let def_span = tcx.sess.source_map().guess_head_span(span);
-        let span = tcx.hir().get_generics(impl_m.def_id).map(|g| g.span).unwrap_or(def_span);
-        let generics_span = if let Some(sp) = tcx.hir().span_if_local(trait_m.def_id) {
+        let span = tcx.hir().get_generics(impl_m.def_id).map_or(def_span, |g| g.span);
+        let generics_span = tcx.hir().span_if_local(trait_m.def_id).map(|sp| {
             let def_sp = tcx.sess.source_map().guess_head_span(sp);
-            Some(tcx.hir().get_generics(trait_m.def_id).map(|g| g.span).unwrap_or(def_sp))
-        } else {
-            None
-        };
+            tcx.hir().get_generics(trait_m.def_id).map_or(def_sp, |g| g.span)
+        });
+
         tcx.sess.emit_err(LifetimesOrBoundsMismatchOnTrait {
             span,
             item_kind,
@@ -494,12 +493,11 @@ fn compare_self_type<'tcx>(
             ty::ImplContainer(_) => impl_trait_ref.self_ty(),
             ty::TraitContainer(_) => tcx.types.self_param,
         };
-        let self_arg_ty = tcx.fn_sig(method.def_id).input(0).skip_binder();
+        let self_arg_ty = tcx.fn_sig(method.def_id).input(0);
         let param_env = ty::ParamEnv::reveal_all();
 
         tcx.infer_ctxt().enter(|infcx| {
-            let self_arg_ty =
-                tcx.liberate_late_bound_regions(method.def_id, ty::Binder::bind(self_arg_ty));
+            let self_arg_ty = tcx.liberate_late_bound_regions(method.def_id, self_arg_ty);
             let can_eq_self = |ty| infcx.can_eq(param_env, untransformed_self_ty, ty).is_ok();
             match ExplicitSelf::determine(self_arg_ty, can_eq_self) {
                 ExplicitSelf::ByValue => "self".to_owned(),
@@ -825,11 +823,11 @@ fn compare_synthetic_generics<'tcx>(
                         // FIXME: this is obviously suboptimal since the name can already be used
                         // as another generic argument
                         let new_name = tcx.sess.source_map().span_to_snippet(trait_span).ok()?;
-                        let trait_m = tcx.hir().local_def_id_to_hir_id(trait_m.def_id.as_local()?);
-                        let trait_m = tcx.hir().trait_item(hir::TraitItemId { hir_id: trait_m });
+                        let trait_m = trait_m.def_id.as_local()?;
+                        let trait_m = tcx.hir().trait_item(hir::TraitItemId { def_id: trait_m });
 
-                        let impl_m = tcx.hir().local_def_id_to_hir_id(impl_m.def_id.as_local()?);
-                        let impl_m = tcx.hir().impl_item(hir::ImplItemId { hir_id: impl_m });
+                        let impl_m = impl_m.def_id.as_local()?;
+                        let impl_m = tcx.hir().impl_item(hir::ImplItemId { def_id: impl_m });
 
                         // in case there are no generics, take the spot between the function name
                         // and the opening paren of the argument list
@@ -862,8 +860,8 @@ fn compare_synthetic_generics<'tcx>(
                 (None, Some(hir::SyntheticTyParamKind::ImplTrait)) => {
                     err.span_label(impl_span, "expected `impl Trait`, found generic parameter");
                     (|| {
-                        let impl_m = tcx.hir().local_def_id_to_hir_id(impl_m.def_id.as_local()?);
-                        let impl_m = tcx.hir().impl_item(hir::ImplItemId { hir_id: impl_m });
+                        let impl_m = impl_m.def_id.as_local()?;
+                        let impl_m = tcx.hir().impl_item(hir::ImplItemId { def_id: impl_m });
                         let input_tys = match impl_m.kind {
                             hir::ImplItemKind::Fn(ref sig, _) => sig.decl.inputs,
                             _ => unreachable!(),

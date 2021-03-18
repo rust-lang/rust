@@ -34,11 +34,12 @@ impl Drop for Handler {
     target_os = "freebsd",
     target_os = "solaris",
     target_os = "illumos",
-    all(target_os = "netbsd", not(target_vendor = "rumprun")),
+    target_os = "netbsd",
     target_os = "openbsd"
 ))]
 mod imp {
     use super::Handler;
+    use crate::io;
     use crate::mem;
     use crate::ptr;
 
@@ -149,11 +150,11 @@ mod imp {
             0,
         );
         if stackp == MAP_FAILED {
-            panic!("failed to allocate an alternative stack");
+            panic!("failed to allocate an alternative stack: {}", io::Error::last_os_error());
         }
         let guard_result = libc::mprotect(stackp, page_size(), PROT_NONE);
         if guard_result != 0 {
-            panic!("failed to set up alternative stack guard page");
+            panic!("failed to set up alternative stack guard page: {}", io::Error::last_os_error());
         }
         stackp.add(page_size())
     }
@@ -218,7 +219,7 @@ mod imp {
     target_os = "freebsd",
     target_os = "solaris",
     target_os = "illumos",
-    all(target_os = "netbsd", not(target_vendor = "rumprun")),
+    target_os = "netbsd",
     target_os = "openbsd",
 )))]
 mod imp {

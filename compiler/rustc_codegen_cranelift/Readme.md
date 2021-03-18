@@ -1,8 +1,6 @@
-# WIP Cranelift codegen backend for rust
+# Cranelift codegen backend for rust
 
-> ⚠⚠⚠ Certain kinds of FFI don't work yet. ⚠⚠⚠
-
-The goal of this project is to create an alternative codegen backend for the rust compiler based on [Cranelift](https://github.com/bytecodealliance/wasmtime/blob/master/cranelift).
+The goal of this project is to create an alternative codegen backend for the rust compiler based on [Cranelift](https://github.com/bytecodealliance/wasmtime/blob/main/cranelift).
 This has the potential to improve compilation times in debug mode.
 If your project doesn't use any of the things listed under "Not yet supported", it should work fine.
 If not please open an issue.
@@ -68,7 +66,15 @@ $ $cg_clif_dir/build/cargo.sh jit
 or
 
 ```bash
-$ $cg_clif_dir/build/bin/cg_clif --jit my_crate.rs
+$ $cg_clif_dir/build/bin/cg_clif -Cllvm-args=mode=jit -Cprefer-dynamic my_crate.rs
+```
+
+There is also an experimental lazy jit mode. In this mode functions are only compiled once they are
+first called. It currently does not work with multi-threaded programs. When a not yet compiled
+function is called from another thread than the main thread, you will get an ICE.
+
+```bash
+$ $cg_clif_dir/build/cargo.sh lazy-jit
 ```
 
 ### Shell
@@ -77,7 +83,7 @@ These are a few functions that allow you to easily run rust code from the shell 
 
 ```bash
 function jit_naked() {
-    echo "$@" | $cg_clif_dir/build/bin/cg_clif - --jit
+    echo "$@" | $cg_clif_dir/build/bin/cg_clif - -Cllvm-args=mode=jit -Cprefer-dynamic
 }
 
 function jit() {
@@ -95,8 +101,7 @@ function jit_calc() {
 
 ## Not yet supported
 
-* Good non-rust abi support ([several problems](https://github.com/bjorn3/rustc_codegen_cranelift/issues/10))
-* Inline assembly ([no cranelift support](https://github.com/bytecodealliance/wasmtime/issues/1041)
+* Inline assembly ([no cranelift support](https://github.com/bytecodealliance/wasmtime/issues/1041))
     * On Linux there is support for invoking an external assembler for `global_asm!` and `asm!`.
       `llvm_asm!` will remain unimplemented forever. `asm!` doesn't yet support reg classes. You
       have to specify specific registers instead.

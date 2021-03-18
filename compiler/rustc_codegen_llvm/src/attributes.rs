@@ -2,8 +2,8 @@
 
 use std::ffi::CString;
 
+use cstr::cstr;
 use rustc_codegen_ssa::traits::*;
-use rustc_data_structures::const_cstr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
@@ -13,6 +13,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::{OptLevel, SanitizerSet};
 use rustc_session::Session;
+use rustc_target::spec::StackProbeType;
 
 use crate::attributes;
 use crate::llvm::AttributePlace::Function;
@@ -52,6 +53,9 @@ pub fn sanitize(cx: &CodegenCx<'ll, '_>, no_sanitize: SanitizerSet, llfn: &'ll V
     if enabled.contains(SanitizerSet::THREAD) {
         llvm::Attribute::SanitizeThread.apply_llfn(Function, llfn);
     }
+    if enabled.contains(SanitizerSet::HWADDRESS) {
+        llvm::Attribute::SanitizeHWAddress.apply_llfn(Function, llfn);
+    }
 }
 
 /// Tell LLVM to emit or not emit the information necessary to unwind the stack for the function.
@@ -71,8 +75,8 @@ pub fn set_frame_pointer_elimination(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) 
         llvm::AddFunctionAttrStringValue(
             llfn,
             llvm::AttributePlace::Function,
-            const_cstr!("frame-pointer"),
-            const_cstr!("all"),
+            cstr!("frame-pointer"),
+            cstr!("all"),
         );
     }
 }
@@ -91,19 +95,13 @@ fn set_instrument_function(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
         llvm::AddFunctionAttrStringValue(
             llfn,
             llvm::AttributePlace::Function,
-            const_cstr!("instrument-function-entry-inlined"),
+            cstr!("instrument-function-entry-inlined"),
             &mcount_name,
         );
     }
 }
 
 fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
-    // Only use stack probes if the target specification indicates that we
-    // should be using stack probes
-    if !cx.sess().target.stack_probes {
-        return;
-    }
-
     // Currently stack probes seem somewhat incompatible with the address
     // sanitizer and thread sanitizer. With asan we're already protected from
     // stack overflow anyway so we don't really need stack probes regardless.
@@ -127,26 +125,31 @@ fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
         return;
     }
 
-    // Flag our internal `__rust_probestack` function as the stack probe symbol.
-    // This is defined in the `compiler-builtins` crate for each architecture.
-    llvm::AddFunctionAttrStringValue(
-        llfn,
-        llvm::AttributePlace::Function,
-        const_cstr!("probe-stack"),
-        const_cstr!("__rust_probestack"),
-    );
-}
-
-pub fn llvm_target_features(sess: &Session) -> impl Iterator<Item = &str> {
-    const RUSTC_SPECIFIC_FEATURES: &[&str] = &["crt-static"];
-
-    let cmdline = sess
-        .opts
-        .cg
-        .target_feature
-        .split(',')
-        .filter(|f| !RUSTC_SPECIFIC_FEATURES.iter().any(|s| f.contains(s)));
-    sess.target.features.split(',').chain(cmdline).filter(|l| !l.is_empty())
+    let attr_value = match cx.sess().target.stack_probes {
+        StackProbeType::None => None,
+        // Request LLVM to generate the probes inline. If the given LLVM version does not support
+        // this, no probe is generated at all (even if the attribute is specified).
+        StackProbeType::Inline => Some(cstr!("inline-asm")),
+        // Flag our internal `__rust_probestack` function as the stack probe symbol.
+        // This is defined in the `compiler-builtins` crate for each architecture.
+        StackProbeType::Call => Some(cstr!("__rust_probestack")),
+        // Pick from the two above based on the LLVM version.
+        StackProbeType::InlineOrCall { min_llvm_version_for_inline } => {
+            if llvm_util::get_version() < min_llvm_version_for_inline {
+                Some(cstr!("__rust_probestack"))
+            } else {
+                Some(cstr!("inline-asm"))
+            }
+        }
+    };
+    if let Some(attr_value) = attr_value {
+        llvm::AddFunctionAttrStringValue(
+            llfn,
+            llvm::AttributePlace::Function,
+            cstr!("probe-stack"),
+            attr_value,
+        );
+    }
 }
 
 pub fn apply_target_cpu_attr(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
@@ -154,7 +157,7 @@ pub fn apply_target_cpu_attr(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     llvm::AddFunctionAttrStringValue(
         llfn,
         llvm::AttributePlace::Function,
-        const_cstr!("target-cpu"),
+        cstr!("target-cpu"),
         target_cpu.as_c_str(),
     );
 }
@@ -165,7 +168,7 @@ pub fn apply_tune_cpu_attr(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
         llvm::AddFunctionAttrStringValue(
             llfn,
             llvm::AttributePlace::Function,
-            const_cstr!("tune-cpu"),
+            cstr!("tune-cpu"),
             tune_cpu.as_c_str(),
         );
     }
@@ -274,7 +277,7 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
         Attribute::NoAlias.apply_llfn(llvm::AttributePlace::ReturnValue, llfn);
     }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::CMSE_NONSECURE_ENTRY) {
-        llvm::AddFunctionAttrString(llfn, Function, const_cstr!("cmse_nonsecure_entry"));
+        llvm::AddFunctionAttrString(llfn, Function, cstr!("cmse_nonsecure_entry"));
     }
     sanitize(cx, codegen_fn_attrs.no_sanitize, llfn);
 
@@ -286,25 +289,27 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
     // The target doesn't care; the subtarget reads our attribute.
     apply_tune_cpu_attr(cx, llfn);
 
-    let features = llvm_target_features(cx.tcx.sess)
-        .map(|s| s.to_string())
-        .chain(codegen_fn_attrs.target_features.iter().map(|f| {
+    let function_features = codegen_fn_attrs
+        .target_features
+        .iter()
+        .map(|f| {
             let feature = &f.as_str();
             format!("+{}", llvm_util::to_llvm_feature(cx.tcx.sess, feature))
-        }))
+        })
         .chain(codegen_fn_attrs.instruction_set.iter().map(|x| match x {
             InstructionSetAttr::ArmA32 => "-thumb-mode".to_string(),
             InstructionSetAttr::ArmT32 => "+thumb-mode".to_string(),
         }))
-        .collect::<Vec<String>>()
-        .join(",");
-
-    if !features.is_empty() {
+        .collect::<Vec<String>>();
+    if !function_features.is_empty() {
+        let mut global_features = llvm_util::llvm_global_features(cx.tcx.sess);
+        global_features.extend(function_features.into_iter());
+        let features = global_features.join(",");
         let val = CString::new(features).unwrap();
         llvm::AddFunctionAttrStringValue(
             llfn,
             llvm::AttributePlace::Function,
-            const_cstr!("target-features"),
+            cstr!("target-features"),
             &val,
         );
     }
@@ -317,7 +322,7 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
             llvm::AddFunctionAttrStringValue(
                 llfn,
                 llvm::AttributePlace::Function,
-                const_cstr!("wasm-import-module"),
+                cstr!("wasm-import-module"),
                 &module,
             );
 
@@ -327,7 +332,7 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
             llvm::AddFunctionAttrStringValue(
                 llfn,
                 llvm::AttributePlace::Function,
-                const_cstr!("wasm-import-name"),
+                cstr!("wasm-import-name"),
                 &name,
             );
         }

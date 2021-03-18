@@ -1,0 +1,16 @@
+// run-rustfix
+#![feature(rustc_private)]
+#![deny(clippy::internal)]
+#![allow(clippy::unnecessary_operation, unused_must_use)]
+
+extern crate rustc_span;
+
+use rustc_span::symbol::{Ident, Symbol};
+
+fn main() {
+    Symbol::intern("foo") == rustc_span::sym::clippy;
+    Symbol::intern("foo") == rustc_span::symbol::kw::SelfLower;
+    Symbol::intern("foo") != rustc_span::symbol::kw::SelfUpper;
+    Ident::invalid().name == rustc_span::sym::clippy;
+    rustc_span::sym::clippy == Ident::invalid().name;
+}

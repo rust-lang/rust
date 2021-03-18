@@ -1,5 +1,5 @@
 use crate::utils::{get_trait_def_id, paths, span_lint};
-use rustc_hir::{Item, ItemKind};
+use rustc_hir::{Impl, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -18,15 +18,15 @@ declare_clippy_lint! {
     "various things that will negatively affect your serde experience"
 }
 
-declare_lint_pass!(SerdeAPI => [SERDE_API_MISUSE]);
+declare_lint_pass!(SerdeApi => [SERDE_API_MISUSE]);
 
-impl<'tcx> LateLintPass<'tcx> for SerdeAPI {
+impl<'tcx> LateLintPass<'tcx> for SerdeApi {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if let ItemKind::Impl {
+        if let ItemKind::Impl(Impl {
             of_trait: Some(ref trait_ref),
             items,
             ..
-        } = item.kind
+        }) = item.kind
         {
             let did = trait_ref.path.res.def_id();
             if let Some(visit_did) = get_trait_def_id(cx, &paths::SERDE_DE_VISITOR) {

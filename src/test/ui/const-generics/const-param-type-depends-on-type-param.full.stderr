@@ -1,11 +1,11 @@
 error[E0770]: the type of const parameters must not depend on other generic parameters
-  --> $DIR/const-param-type-depends-on-type-param.rs:12:34
+  --> $DIR/const-param-type-depends-on-type-param.rs:11:34
    |
 LL | pub struct Dependent<T, const X: T>([(); X]);
    |                                  ^ the type must not depend on the parameter `T`
 
 error[E0392]: parameter `T` is never used
-  --> $DIR/const-param-type-depends-on-type-param.rs:12:22
+  --> $DIR/const-param-type-depends-on-type-param.rs:11:22
    |
 LL | pub struct Dependent<T, const X: T>([(); X]);
    |                      ^ unused parameter

@@ -302,7 +302,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             .find_map(|p| self.is_upvar_field_projection(p));
 
         let deref_base = match deref_target_place.projection.as_ref() {
-            &[ref proj_base @ .., ProjectionElem::Deref] => {
+            [proj_base @ .., ProjectionElem::Deref] => {
                 PlaceRef { local: deref_target_place.local, projection: &proj_base }
             }
             _ => bug!("deref_target_place is not a deref projection"),
@@ -345,7 +345,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 };
 
                 let upvar = &self.upvars[upvar_field.unwrap().index()];
-                let upvar_hir_id = upvar.var_hir_id;
+                // FIXME(project-rfc-2229#8): Improve borrow-check diagnostics in case of precise
+                //                            capture.
+                let upvar_hir_id = upvar.place.get_root_variable();
                 let upvar_name = upvar.name;
                 let upvar_span = self.infcx.tcx.hir().span(upvar_hir_id);
 

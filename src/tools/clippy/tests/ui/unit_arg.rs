@@ -5,7 +5,8 @@
     unused_variables,
     clippy::unused_unit,
     clippy::unnecessary_wraps,
-    clippy::or_fun_call
+    clippy::or_fun_call,
+    clippy::needless_question_mark
 )]
 
 use std::fmt::Debug;
@@ -23,6 +24,30 @@ struct Bar;
 impl Bar {
     fn bar<T: Debug>(&self, t: T) {
         println!("{:?}", t);
+    }
+}
+
+fn baz<T: Debug>(t: T) {
+    foo(t);
+}
+
+trait Tr {
+    type Args;
+    fn do_it(args: Self::Args);
+}
+
+struct A;
+impl Tr for A {
+    type Args = ();
+    fn do_it(_: Self::Args) {}
+}
+
+struct B;
+impl Tr for B {
+    type Args = <A as Tr>::Args;
+
+    fn do_it(args: Self::Args) {
+        A::do_it(args)
     }
 }
 
@@ -58,7 +83,7 @@ fn bad() {
     None.or(Some(foo(2)));
     // in this case, the suggestion can be inlined, no need for a surrounding block
     // foo(()); foo(()) instead of { foo(()); foo(()) }
-    foo(foo(()))
+    foo(foo(()));
 }
 
 fn ok() {
@@ -70,6 +95,10 @@ fn ok() {
     b.bar({ 1 });
     b.bar(());
     question_mark();
+    let named_unit_arg = ();
+    foo(named_unit_arg);
+    baz(());
+    B::do_it(());
 }
 
 fn question_mark() -> Result<(), ()> {

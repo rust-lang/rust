@@ -168,7 +168,7 @@ impl StaticKey {
             return key;
         }
 
-        // POSIX allows the key created here to be 0, but the compare_and_swap
+        // POSIX allows the key created here to be 0, but the compare_exchange
         // below relies on using 0 as a sentinel value to check who won the
         // race to set the shared TLS key. As far as I know, there is no
         // guaranteed value that cannot be returned as a posix_key_create key,
@@ -186,11 +186,11 @@ impl StaticKey {
             key2
         };
         rtassert!(key != 0);
-        match self.key.compare_and_swap(0, key as usize, Ordering::SeqCst) {
+        match self.key.compare_exchange(0, key as usize, Ordering::SeqCst, Ordering::SeqCst) {
             // The CAS succeeded, so we've created the actual key
-            0 => key as usize,
+            Ok(_) => key as usize,
             // If someone beat us to the punch, use their key instead
-            n => {
+            Err(n) => {
                 imp::destroy(key);
                 n
             }

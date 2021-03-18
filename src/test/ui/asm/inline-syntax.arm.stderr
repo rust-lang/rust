@@ -1,0 +1,14 @@
+error: att syntax is the default syntax on this target, and trying to use this directive may cause issues
+  --> $DIR/inline-syntax.rs:22:15
+   |
+LL |         asm!(".att_syntax noprefix", "nop");
+   |               ^^^^^^^^^^^^^^^^^^^^ help: remove this assembler directive
+
+error: att syntax is the default syntax on this target, and trying to use this directive may cause issues
+  --> $DIR/inline-syntax.rs:25:15
+   |
+LL |         asm!(".att_syntax bbb noprefix", "nop");
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this assembler directive
+
+error: aborting due to 2 previous errors
+

@@ -3,7 +3,7 @@
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_infer::infer::{
     error_reporting::nice_region_error::NiceRegionError,
-    error_reporting::unexpected_hidden_region_diagnostic, NLLRegionVariableOrigin,
+    error_reporting::unexpected_hidden_region_diagnostic, NllRegionVariableOrigin,
 };
 use rustc_middle::mir::{ConstraintCategory, ReturnConstraint};
 use rustc_middle::ty::subst::Subst;
@@ -75,13 +75,13 @@ crate enum RegionErrorKind<'tcx> {
         /// The region element that erroneously must be outlived by `longer_fr`.
         error_element: RegionElement,
         /// The origin of the placeholder region.
-        fr_origin: NLLRegionVariableOrigin,
+        fr_origin: NllRegionVariableOrigin,
     },
 
     /// Any other lifetime error.
     RegionError {
         /// The origin of the region.
-        fr_origin: NLLRegionVariableOrigin,
+        fr_origin: NllRegionVariableOrigin,
         /// The region that should outlive `shorter_fr`.
         longer_fr: RegionVid,
         /// The region that should be shorter, but we can't prove it.
@@ -138,7 +138,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     /// Returns `true` if a closure is inferred to be an `FnMut` closure.
     fn is_closure_fn_mut(&self, fr: RegionVid) -> bool {
         if let Some(ty::ReFree(free_region)) = self.to_error_region(fr) {
-            if let ty::BoundRegion::BrEnv = free_region.bound_region {
+            if let ty::BoundRegionKind::BrEnv = free_region.bound_region {
                 if let DefiningTy::Closure(_, substs) =
                     self.regioncx.universal_regions().defining_ty
                 {
@@ -269,7 +269,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     pub(in crate::borrow_check) fn report_region_error(
         &mut self,
         fr: RegionVid,
-        fr_origin: NLLRegionVariableOrigin,
+        fr_origin: NllRegionVariableOrigin,
         outlived_fr: RegionVid,
         outlives_suggestion: &mut OutlivesSuggestionBuilder,
     ) {
@@ -590,8 +590,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                     let mut found = false;
                     for (bound, _) in bounds {
-                        if let ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(_, r)) =
-                            bound.skip_binders()
+                        if let ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(_, r)) =
+                            bound.kind().skip_binder()
                         {
                             let r = r.subst(self.infcx.tcx, substs);
                             if let ty::RegionKind::ReStatic = r {

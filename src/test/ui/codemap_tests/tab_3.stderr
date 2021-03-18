@@ -9,7 +9,7 @@ LL |     {
 LL |         println!("{:?}", some_vec);
    |                          ^^^^^^^^ value borrowed here after move
    |
-note: this function consumes the receiver `self` by taking ownership of it, which moves `some_vec`
+note: this function takes ownership of the receiver `self`, which moves `some_vec`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
    |
 LL |     fn into_iter(self) -> Self::IntoIter;

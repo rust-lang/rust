@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 // pretty-expanded FIXME #23616
 
-extern fn f() {
+extern "C" fn f() {
 }
 
 pub fn main() {

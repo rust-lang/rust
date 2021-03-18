@@ -1,5 +1,4 @@
 #[link(name = "")] //~ ERROR: given with empty name
-extern {
-}
+extern "C" {}
 
 fn main() {}

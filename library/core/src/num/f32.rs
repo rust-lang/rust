@@ -1,12 +1,13 @@
-//! This module provides constants which are specific to the implementation
-//! of the `f32` floating point data type.
+//! Constants specific to the `f32` single-precision floating point type.
 //!
-//! *[See also the `f32` primitive type](../../std/primitive.f32.html).*
+//! *[See also the `f32` primitive type][f32].*
 //!
 //! Mathematically significant numbers are provided in the `consts` sub-module.
 //!
-//! Although using these constants won’t cause compilation warnings,
-//! new code should use the associated constants directly on the primitive type.
+//! For the constants defined directly in this module
+//! (as distinct from those defined in the `consts` sub-module),
+//! new code should instead use the associated constants
+//! defined directly on the `f32` type.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -17,52 +18,61 @@ use crate::mem;
 use crate::num::FpCategory;
 
 /// The radix or base of the internal representation of `f32`.
-/// Use [`f32::RADIX`](../../std/primitive.f32.html#associatedconstant.RADIX) instead.
+/// Use [`f32::RADIX`] instead.
 ///
 /// # Examples
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let r = std::f32::RADIX;
 ///
 /// // intended way
 /// let r = f32::RADIX;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_deprecated(since = "TBD", reason = "replaced by the `RADIX` associated constant on `f32`")]
 pub const RADIX: u32 = f32::RADIX;
 
 /// Number of significant digits in base 2.
-/// Use [`f32::MANTISSA_DIGITS`](../../std/primitive.f32.html#associatedconstant.MANTISSA_DIGITS) instead.
+/// Use [`f32::MANTISSA_DIGITS`] instead.
 ///
 /// # Examples
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let d = std::f32::MANTISSA_DIGITS;
 ///
 /// // intended way
 /// let d = f32::MANTISSA_DIGITS;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_deprecated(
+    since = "TBD",
+    reason = "replaced by the `MANTISSA_DIGITS` associated constant on `f32`"
+)]
 pub const MANTISSA_DIGITS: u32 = f32::MANTISSA_DIGITS;
 
 /// Approximate number of significant digits in base 10.
-/// Use [`f32::DIGITS`](../../std/primitive.f32.html#associatedconstant.DIGITS) instead.
+/// Use [`f32::DIGITS`] instead.
 ///
 /// # Examples
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let d = std::f32::DIGITS;
 ///
 /// // intended way
 /// let d = f32::DIGITS;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_deprecated(since = "TBD", reason = "replaced by the `DIGITS` associated constant on `f32`")]
 pub const DIGITS: u32 = f32::DIGITS;
 
 /// [Machine epsilon] value for `f32`.
-/// Use [`f32::EPSILON`](../../std/primitive.f32.html#associatedconstant.EPSILON) instead.
+/// Use [`f32::EPSILON`] instead.
 ///
 /// This is the difference between `1.0` and the next larger representable number.
 ///
@@ -72,162 +82,208 @@ pub const DIGITS: u32 = f32::DIGITS;
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let e = std::f32::EPSILON;
 ///
 /// // intended way
 /// let e = f32::EPSILON;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_deprecated(
+    since = "TBD",
+    reason = "replaced by the `EPSILON` associated constant on `f32`"
+)]
 pub const EPSILON: f32 = f32::EPSILON;
 
 /// Smallest finite `f32` value.
-/// Use [`f32::MIN`](../../std/primitive.f32.html#associatedconstant.MIN) instead.
+/// Use [`f32::MIN`] instead.
 ///
 /// # Examples
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let min = std::f32::MIN;
 ///
 /// // intended way
 /// let min = f32::MIN;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_deprecated(since = "TBD", reason = "replaced by the `MIN` associated constant on `f32`")]
 pub const MIN: f32 = f32::MIN;
 
 /// Smallest positive normal `f32` value.
-/// Use [`f32::MIN_POSITIVE`](../../std/primitive.f32.html#associatedconstant.MIN_POSITIVE) instead.
+/// Use [`f32::MIN_POSITIVE`] instead.
 ///
 /// # Examples
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let min = std::f32::MIN_POSITIVE;
 ///
 /// // intended way
 /// let min = f32::MIN_POSITIVE;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_deprecated(
+    since = "TBD",
+    reason = "replaced by the `MIN_POSITIVE` associated constant on `f32`"
+)]
 pub const MIN_POSITIVE: f32 = f32::MIN_POSITIVE;
 
 /// Largest finite `f32` value.
-/// Use [`f32::MAX`](../../std/primitive.f32.html#associatedconstant.MAX) instead.
+/// Use [`f32::MAX`] instead.
 ///
 /// # Examples
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let max = std::f32::MAX;
 ///
 /// // intended way
 /// let max = f32::MAX;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_deprecated(since = "TBD", reason = "replaced by the `MAX` associated constant on `f32`")]
 pub const MAX: f32 = f32::MAX;
 
 /// One greater than the minimum possible normal power of 2 exponent.
-/// Use [`f32::MIN_EXP`](../../std/primitive.f32.html#associatedconstant.MIN_EXP) instead.
+/// Use [`f32::MIN_EXP`] instead.
 ///
 /// # Examples
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let min = std::f32::MIN_EXP;
 ///
 /// // intended way
 /// let min = f32::MIN_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_deprecated(
+    since = "TBD",
+    reason = "replaced by the `MIN_EXP` associated constant on `f32`"
+)]
 pub const MIN_EXP: i32 = f32::MIN_EXP;
 
 /// Maximum possible power of 2 exponent.
-/// Use [`f32::MAX_EXP`](../../std/primitive.f32.html#associatedconstant.MAX_EXP) instead.
+/// Use [`f32::MAX_EXP`] instead.
 ///
 /// # Examples
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let max = std::f32::MAX_EXP;
 ///
 /// // intended way
 /// let max = f32::MAX_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_deprecated(
+    since = "TBD",
+    reason = "replaced by the `MAX_EXP` associated constant on `f32`"
+)]
 pub const MAX_EXP: i32 = f32::MAX_EXP;
 
 /// Minimum possible normal power of 10 exponent.
-/// Use [`f32::MIN_10_EXP`](../../std/primitive.f32.html#associatedconstant.MIN_10_EXP) instead.
+/// Use [`f32::MIN_10_EXP`] instead.
 ///
 /// # Examples
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let min = std::f32::MIN_10_EXP;
 ///
 /// // intended way
 /// let min = f32::MIN_10_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_deprecated(
+    since = "TBD",
+    reason = "replaced by the `MIN_10_EXP` associated constant on `f32`"
+)]
 pub const MIN_10_EXP: i32 = f32::MIN_10_EXP;
 
 /// Maximum possible power of 10 exponent.
-/// Use [`f32::MAX_10_EXP`](../../std/primitive.f32.html#associatedconstant.MAX_10_EXP) instead.
+/// Use [`f32::MAX_10_EXP`] instead.
 ///
 /// # Examples
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let max = std::f32::MAX_10_EXP;
 ///
 /// // intended way
 /// let max = f32::MAX_10_EXP;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_deprecated(
+    since = "TBD",
+    reason = "replaced by the `MAX_10_EXP` associated constant on `f32`"
+)]
 pub const MAX_10_EXP: i32 = f32::MAX_10_EXP;
 
 /// Not a Number (NaN).
-/// Use [`f32::NAN`](../../std/primitive.f32.html#associatedconstant.NAN) instead.
+/// Use [`f32::NAN`] instead.
 ///
 /// # Examples
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let nan = std::f32::NAN;
 ///
 /// // intended way
 /// let nan = f32::NAN;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_deprecated(since = "TBD", reason = "replaced by the `NAN` associated constant on `f32`")]
 pub const NAN: f32 = f32::NAN;
 
 /// Infinity (∞).
-/// Use [`f32::INFINITY`](../../std/primitive.f32.html#associatedconstant.INFINITY) instead.
+/// Use [`f32::INFINITY`] instead.
 ///
 /// # Examples
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let inf = std::f32::INFINITY;
 ///
 /// // intended way
 /// let inf = f32::INFINITY;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_deprecated(
+    since = "TBD",
+    reason = "replaced by the `INFINITY` associated constant on `f32`"
+)]
 pub const INFINITY: f32 = f32::INFINITY;
 
 /// Negative infinity (−∞).
-/// Use [`f32::NEG_INFINITY`](../../std/primitive.f32.html#associatedconstant.NEG_INFINITY) instead.
+/// Use [`f32::NEG_INFINITY`] instead.
 ///
 /// # Examples
 ///
 /// ```rust
 /// // deprecated way
+/// # #[allow(deprecated, deprecated_in_future)]
 /// let ninf = std::f32::NEG_INFINITY;
 ///
 /// // intended way
 /// let ninf = f32::NEG_INFINITY;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_deprecated(
+    since = "TBD",
+    reason = "replaced by the `NEG_INFINITY` associated constant on `f32`"
+)]
 pub const NEG_INFINITY: f32 = f32::NEG_INFINITY;
 
 /// Basic mathematical constants.
@@ -776,8 +832,8 @@ impl f32 {
     /// As the target platform's native endianness is used, portable code
     /// should use [`to_be_bytes`] or [`to_le_bytes`], as appropriate, instead.
     ///
-    /// [`to_be_bytes`]: #method.to_be_bytes
-    /// [`to_le_bytes`]: #method.to_le_bytes
+    /// [`to_be_bytes`]: f32::to_be_bytes
+    /// [`to_le_bytes`]: f32::to_le_bytes
     ///
     /// # Examples
     ///
@@ -804,7 +860,7 @@ impl f32 {
     ///
     /// [`to_ne_bytes`] should be preferred over this whenever possible.
     ///
-    /// [`to_ne_bytes`]: #method.to_ne_bytes
+    /// [`to_ne_bytes`]: f32::to_ne_bytes
     ///
     /// # Examples
     ///
@@ -864,8 +920,8 @@ impl f32 {
     /// likely wants to use [`from_be_bytes`] or [`from_le_bytes`], as
     /// appropriate instead.
     ///
-    /// [`from_be_bytes`]: #method.from_be_bytes
-    /// [`from_le_bytes`]: #method.from_le_bytes
+    /// [`from_be_bytes`]: f32::from_be_bytes
+    /// [`from_le_bytes`]: f32::from_le_bytes
     ///
     /// # Examples
     ///
@@ -960,5 +1016,40 @@ impl f32 {
         right ^= (((right >> 31) as u32) >> 1) as i32;
 
         left.cmp(&right)
+    }
+
+    /// Restrict a value to a certain interval unless it is NaN.
+    ///
+    /// Returns `max` if `self` is greater than `max`, and `min` if `self` is
+    /// less than `min`. Otherwise this returns `self`.
+    ///
+    /// Note that this function returns NaN if the initial value was NaN as
+    /// well.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `min > max`, `min` is NaN, or `max` is NaN.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert!((-3.0f32).clamp(-2.0, 1.0) == -2.0);
+    /// assert!((0.0f32).clamp(-2.0, 1.0) == 0.0);
+    /// assert!((2.0f32).clamp(-2.0, 1.0) == 1.0);
+    /// assert!((f32::NAN).clamp(-2.0, 1.0).is_nan());
+    /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[stable(feature = "clamp", since = "1.50.0")]
+    #[inline]
+    pub fn clamp(self, min: f32, max: f32) -> f32 {
+        assert!(min <= max);
+        let mut x = self;
+        if x < min {
+            x = min;
+        }
+        if x > max {
+            x = max;
+        }
+        x
     }
 }

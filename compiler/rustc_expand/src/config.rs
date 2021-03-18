@@ -1,13 +1,9 @@
 //! Conditional compilation stripping.
 
-use crate::base::Annotatable;
-
-use rustc_ast::attr::HasAttrs;
-use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{DelimToken, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, LazyTokenStream, Spacing, TokenStream, TokenTree};
-use rustc_ast::{self as ast, AttrItem, Attribute, MetaItem};
+use rustc_ast::{self as ast, AstLike, AttrItem, Attribute, MetaItem};
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::map_in_place::MapInPlace;
@@ -23,12 +19,11 @@ use rustc_span::edition::{Edition, ALL_EDITIONS};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
-use smallvec::SmallVec;
-
 /// A folder that strips out items that do not belong in the current configuration.
 pub struct StripUnconfigured<'a> {
     pub sess: &'a Session,
     pub features: Option<&'a Features>,
+    pub modified: bool,
 }
 
 fn get_features(
@@ -199,16 +194,16 @@ fn get_features(
 
 // `cfg_attr`-process the crate's attributes and compute the crate's features.
 pub fn features(sess: &Session, mut krate: ast::Crate) -> (ast::Crate, Features) {
-    let mut strip_unconfigured = StripUnconfigured { sess, features: None };
+    let mut strip_unconfigured = StripUnconfigured { sess, features: None, modified: false };
 
     let unconfigured_attrs = krate.attrs.clone();
     let diag = &sess.parse_sess.span_diagnostic;
     let err_count = diag.err_count();
-    let features = match strip_unconfigured.configure(krate.attrs) {
+    let features = match strip_unconfigured.configure_krate_attrs(krate.attrs) {
         None => {
             // The entire crate is unconfigured.
             krate.attrs = Vec::new();
-            krate.module.items = Vec::new();
+            krate.items = Vec::new();
             Features::default()
         }
         Some(attrs) => {
@@ -217,7 +212,9 @@ pub fn features(sess: &Session, mut krate: ast::Crate) -> (ast::Crate, Features)
             if err_count == diag.err_count() {
                 // Avoid reconfiguring malformed `cfg_attr`s.
                 strip_unconfigured.features = Some(&features);
-                strip_unconfigured.configure(unconfigured_attrs);
+                // Run configuration again, this time with features available
+                // so that we can perform feature-gating.
+                strip_unconfigured.configure_krate_attrs(unconfigured_attrs);
             }
             features
         }
@@ -241,9 +238,27 @@ const CFG_ATTR_NOTE_REF: &str = "for more information, visit \
     #the-cfg_attr-attribute>";
 
 impl<'a> StripUnconfigured<'a> {
-    pub fn configure<T: HasAttrs>(&mut self, mut node: T) -> Option<T> {
+    pub fn configure<T: AstLike>(&mut self, mut node: T) -> Option<T> {
         self.process_cfg_attrs(&mut node);
-        self.in_cfg(node.attrs()).then_some(node)
+        if self.in_cfg(node.attrs()) {
+            Some(node)
+        } else {
+            self.modified = true;
+            None
+        }
+    }
+
+    fn configure_krate_attrs(
+        &mut self,
+        mut attrs: Vec<ast::Attribute>,
+    ) -> Option<Vec<ast::Attribute>> {
+        attrs.flat_map_in_place(|attr| self.process_cfg_attr(attr));
+        if self.in_cfg(&attrs) {
+            Some(attrs)
+        } else {
+            self.modified = true;
+            None
+        }
     }
 
     /// Parse and expand all `cfg_attr` attributes into a list of attributes
@@ -252,7 +267,7 @@ impl<'a> StripUnconfigured<'a> {
     /// Gives compiler warnings if any `cfg_attr` does not contain any
     /// attributes and is in the original source code. Gives compiler errors if
     /// the syntax of any `cfg_attr` is incorrect.
-    pub fn process_cfg_attrs<T: HasAttrs>(&mut self, node: &mut T) {
+    fn process_cfg_attrs<T: AstLike>(&mut self, node: &mut T) {
         node.visit_attrs(|attrs| {
             attrs.flat_map_in_place(|attr| self.process_cfg_attr(attr));
         });
@@ -269,6 +284,9 @@ impl<'a> StripUnconfigured<'a> {
         if !attr.has_name(sym::cfg_attr) {
             return vec![attr];
         }
+
+        // A `#[cfg_attr]` either gets removed, or replaced with a new attribute
+        self.modified = true;
 
         let (cfg_predicate, expanded_attrs) = match self.parse_cfg_attr(&attr) {
             None => return vec![],
@@ -364,7 +382,7 @@ impl<'a> StripUnconfigured<'a> {
     }
 
     /// Determines if a node with the given attributes should be included in this configuration.
-    pub fn in_cfg(&self, attrs: &[Attribute]) -> bool {
+    fn in_cfg(&self, attrs: &[Attribute]) -> bool {
         attrs.iter().all(|attr| {
             if !is_cfg(self.sess, attr) {
                 return true;
@@ -404,17 +422,9 @@ impl<'a> StripUnconfigured<'a> {
         })
     }
 
-    /// Visit attributes on expression and statements (but not attributes on items in blocks).
-    fn visit_expr_attrs(&mut self, attrs: &[Attribute]) {
-        // flag the offending attributes
-        for attr in attrs.iter() {
-            self.maybe_emit_expr_attr_err(attr);
-        }
-    }
-
     /// If attributes are not allowed on expressions, emit an error for `attr`
-    pub fn maybe_emit_expr_attr_err(&self, attr: &Attribute) {
-        if !self.features.map(|features| features.stmt_expr_attributes).unwrap_or(true) {
+    crate fn maybe_emit_expr_attr_err(&self, attr: &Attribute) {
+        if !self.features.map_or(true, |features| features.stmt_expr_attributes) {
             let mut err = feature_err(
                 &self.sess.parse_sess,
                 sym::stmt_expr_attributes,
@@ -430,49 +440,10 @@ impl<'a> StripUnconfigured<'a> {
         }
     }
 
-    pub fn configure_foreign_mod(&mut self, foreign_mod: &mut ast::ForeignMod) {
-        let ast::ForeignMod { unsafety: _, abi: _, items } = foreign_mod;
-        items.flat_map_in_place(|item| self.configure(item));
-    }
-
-    fn configure_variant_data(&mut self, vdata: &mut ast::VariantData) {
-        match vdata {
-            ast::VariantData::Struct(fields, ..) | ast::VariantData::Tuple(fields, _) => {
-                fields.flat_map_in_place(|field| self.configure(field))
-            }
-            ast::VariantData::Unit(_) => {}
-        }
-    }
-
-    pub fn configure_item_kind(&mut self, item: &mut ast::ItemKind) {
-        match item {
-            ast::ItemKind::Struct(def, _generics) | ast::ItemKind::Union(def, _generics) => {
-                self.configure_variant_data(def)
-            }
-            ast::ItemKind::Enum(ast::EnumDef { variants }, _generics) => {
-                variants.flat_map_in_place(|variant| self.configure(variant));
-                for variant in variants {
-                    self.configure_variant_data(&mut variant.data);
-                }
-            }
-            _ => {}
-        }
-    }
-
-    pub fn configure_expr_kind(&mut self, expr_kind: &mut ast::ExprKind) {
-        match expr_kind {
-            ast::ExprKind::Match(_m, arms) => {
-                arms.flat_map_in_place(|arm| self.configure(arm));
-            }
-            ast::ExprKind::Struct(_path, fields, _base) => {
-                fields.flat_map_in_place(|field| self.configure(field));
-            }
-            _ => {}
-        }
-    }
-
     pub fn configure_expr(&mut self, expr: &mut P<ast::Expr>) {
-        self.visit_expr_attrs(expr.attrs());
+        for attr in expr.attrs.iter() {
+            self.maybe_emit_expr_attr_err(attr);
+        }
 
         // If an expr is valid to cfg away it will have been removed by the
         // outer stmt or expression folder before descending in here.
@@ -487,117 +458,6 @@ impl<'a> StripUnconfigured<'a> {
         }
 
         self.process_cfg_attrs(expr)
-    }
-
-    pub fn configure_pat(&mut self, pat: &mut P<ast::Pat>) {
-        if let ast::PatKind::Struct(_path, fields, _etc) = &mut pat.kind {
-            fields.flat_map_in_place(|field| self.configure(field));
-        }
-    }
-
-    pub fn configure_fn_decl(&mut self, fn_decl: &mut ast::FnDecl) {
-        fn_decl.inputs.flat_map_in_place(|arg| self.configure(arg));
-    }
-
-    pub fn fully_configure(&mut self, item: Annotatable) -> Annotatable {
-        // Since the item itself has already been configured by the InvocationCollector,
-        // we know that fold result vector will contain exactly one element
-        match item {
-            Annotatable::Item(item) => Annotatable::Item(self.flat_map_item(item).pop().unwrap()),
-            Annotatable::TraitItem(item) => {
-                Annotatable::TraitItem(self.flat_map_trait_item(item).pop().unwrap())
-            }
-            Annotatable::ImplItem(item) => {
-                Annotatable::ImplItem(self.flat_map_impl_item(item).pop().unwrap())
-            }
-            Annotatable::ForeignItem(item) => {
-                Annotatable::ForeignItem(self.flat_map_foreign_item(item).pop().unwrap())
-            }
-            Annotatable::Stmt(stmt) => {
-                Annotatable::Stmt(stmt.map(|stmt| self.flat_map_stmt(stmt).pop().unwrap()))
-            }
-            Annotatable::Expr(mut expr) => Annotatable::Expr({
-                self.visit_expr(&mut expr);
-                expr
-            }),
-            Annotatable::Arm(arm) => Annotatable::Arm(self.flat_map_arm(arm).pop().unwrap()),
-            Annotatable::Field(field) => {
-                Annotatable::Field(self.flat_map_field(field).pop().unwrap())
-            }
-            Annotatable::FieldPat(fp) => {
-                Annotatable::FieldPat(self.flat_map_field_pattern(fp).pop().unwrap())
-            }
-            Annotatable::GenericParam(param) => {
-                Annotatable::GenericParam(self.flat_map_generic_param(param).pop().unwrap())
-            }
-            Annotatable::Param(param) => {
-                Annotatable::Param(self.flat_map_param(param).pop().unwrap())
-            }
-            Annotatable::StructField(sf) => {
-                Annotatable::StructField(self.flat_map_struct_field(sf).pop().unwrap())
-            }
-            Annotatable::Variant(v) => {
-                Annotatable::Variant(self.flat_map_variant(v).pop().unwrap())
-            }
-        }
-    }
-}
-
-impl<'a> MutVisitor for StripUnconfigured<'a> {
-    fn visit_foreign_mod(&mut self, foreign_mod: &mut ast::ForeignMod) {
-        self.configure_foreign_mod(foreign_mod);
-        noop_visit_foreign_mod(foreign_mod, self);
-    }
-
-    fn visit_item_kind(&mut self, item: &mut ast::ItemKind) {
-        self.configure_item_kind(item);
-        noop_visit_item_kind(item, self);
-    }
-
-    fn visit_expr(&mut self, expr: &mut P<ast::Expr>) {
-        self.configure_expr(expr);
-        self.configure_expr_kind(&mut expr.kind);
-        noop_visit_expr(expr, self);
-    }
-
-    fn filter_map_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
-        let mut expr = configure!(self, expr);
-        self.configure_expr_kind(&mut expr.kind);
-        noop_visit_expr(&mut expr, self);
-        Some(expr)
-    }
-
-    fn flat_map_generic_param(
-        &mut self,
-        param: ast::GenericParam,
-    ) -> SmallVec<[ast::GenericParam; 1]> {
-        noop_flat_map_generic_param(configure!(self, param), self)
-    }
-
-    fn flat_map_stmt(&mut self, stmt: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
-        noop_flat_map_stmt(configure!(self, stmt), self)
-    }
-
-    fn flat_map_item(&mut self, item: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
-        noop_flat_map_item(configure!(self, item), self)
-    }
-
-    fn flat_map_impl_item(&mut self, item: P<ast::AssocItem>) -> SmallVec<[P<ast::AssocItem>; 1]> {
-        noop_flat_map_assoc_item(configure!(self, item), self)
-    }
-
-    fn flat_map_trait_item(&mut self, item: P<ast::AssocItem>) -> SmallVec<[P<ast::AssocItem>; 1]> {
-        noop_flat_map_assoc_item(configure!(self, item), self)
-    }
-
-    fn visit_pat(&mut self, pat: &mut P<ast::Pat>) {
-        self.configure_pat(pat);
-        noop_visit_pat(pat, self)
-    }
-
-    fn visit_fn_decl(&mut self, mut fn_decl: &mut P<ast::FnDecl>) {
-        self.configure_fn_decl(&mut fn_decl);
-        noop_visit_fn_decl(fn_decl, self);
     }
 }
 

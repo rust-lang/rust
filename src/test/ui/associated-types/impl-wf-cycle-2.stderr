@@ -1,0 +1,25 @@
+error[E0275]: overflow evaluating the requirement `<(T,) as Grault>::A == _`
+  --> $DIR/impl-wf-cycle-2.rs:7:1
+   |
+LL | / impl<T: Grault> Grault for (T,)
+LL | | where
+LL | |     Self::A: Copy,
+LL | | {
+LL | |     type A = ();
+LL | |
+LL | | }
+   | |_^
+   |
+   = note: required because of the requirements on the impl of `Grault` for `(T,)`
+
+error[E0275]: overflow evaluating the requirement `<(T,) as Grault>::A == _`
+  --> $DIR/impl-wf-cycle-2.rs:11:5
+   |
+LL |     type A = ();
+   |     ^^^^^^^^^^^^
+   |
+   = note: required because of the requirements on the impl of `Grault` for `(T,)`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0275`.

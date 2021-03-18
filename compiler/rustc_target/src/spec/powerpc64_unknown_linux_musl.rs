@@ -1,3 +1,4 @@
+use crate::abi::Endian;
 use crate::spec::{LinkerFlavor, Target, TargetOptions};
 
 pub fn target() -> Target {
@@ -9,8 +10,8 @@ pub fn target() -> Target {
     Target {
         llvm_target: "powerpc64-unknown-linux-musl".to_string(),
         pointer_width: 64,
-        data_layout: "E-m:e-i64:64-n32:64".to_string(),
+        data_layout: "E-m:e-i64:64-n32:64-v256:256:256-v512:512:512".to_string(),
         arch: "powerpc64".to_string(),
-        options: TargetOptions { endian: "big".to_string(), mcount: "_mcount".to_string(), ..base },
+        options: TargetOptions { endian: Endian::Big, mcount: "_mcount".to_string(), ..base },
     }
 }

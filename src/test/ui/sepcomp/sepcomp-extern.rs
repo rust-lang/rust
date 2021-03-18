@@ -6,7 +6,7 @@
 
 extern crate sepcomp_extern_lib;
 
-extern {
+extern "C" {
     fn foo() -> usize;
 }
 

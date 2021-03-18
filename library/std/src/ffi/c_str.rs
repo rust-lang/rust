@@ -62,20 +62,18 @@ use crate::sys;
 /// u8` argument which is not necessarily nul-terminated, plus another
 /// argument with the length of the string — like C's `strndup()`.
 /// You can of course get the slice's length with its
-/// [`len`][slice.len] method.
+/// [`len`][slice::len] method.
 ///
 /// If you need a `&[`[`u8`]`]` slice *with* the nul terminator, you
 /// can use [`CString::as_bytes_with_nul`] instead.
 ///
 /// Once you have the kind of slice you need (with or without a nul
 /// terminator), you can call the slice's own
-/// [`as_ptr`][slice.as_ptr] method to get a read-only raw pointer to pass to
+/// [`as_ptr`][slice::as_ptr] method to get a read-only raw pointer to pass to
 /// extern functions. See the documentation for that function for a
 /// discussion on ensuring the lifetime of the raw pointer.
 ///
 /// [`&str`]: prim@str
-/// [slice.as_ptr]: ../primitive.slice.html#method.as_ptr
-/// [slice.len]: ../primitive.slice.html#method.len
 /// [`Deref`]: ops::Deref
 /// [`&CStr`]: CStr
 ///
@@ -86,7 +84,7 @@ use crate::sys;
 /// use std::ffi::CString;
 /// use std::os::raw::c_char;
 ///
-/// extern {
+/// extern "C" {
 ///     fn my_printer(s: *const c_char);
 /// }
 ///
@@ -144,7 +142,7 @@ pub struct CString {
 /// use std::ffi::CStr;
 /// use std::os::raw::c_char;
 ///
-/// extern { fn my_string() -> *const c_char; }
+/// extern "C" { fn my_string() -> *const c_char; }
 ///
 /// unsafe {
 ///     let slice = CStr::from_ptr(my_string());
@@ -159,7 +157,7 @@ pub struct CString {
 /// use std::os::raw::c_char;
 ///
 /// fn work(data: &CStr) {
-///     extern { fn work_with(data: *const c_char); }
+///     extern "C" { fn work_with(data: *const c_char); }
 ///
 ///     unsafe { work_with(data.as_ptr()) }
 /// }
@@ -174,7 +172,7 @@ pub struct CString {
 /// use std::ffi::CStr;
 /// use std::os::raw::c_char;
 ///
-/// extern { fn my_string() -> *const c_char; }
+/// extern "C" { fn my_string() -> *const c_char; }
 ///
 /// fn my_string_safe() -> String {
 ///     unsafe {
@@ -359,7 +357,7 @@ impl CString {
     /// use std::ffi::CString;
     /// use std::os::raw::c_char;
     ///
-    /// extern { fn puts(s: *const c_char); }
+    /// extern "C" { fn puts(s: *const c_char); }
     ///
     /// let to_print = CString::new("Hello!").expect("CString::new failed");
     /// unsafe {
@@ -465,7 +463,7 @@ impl CString {
     /// use std::ffi::CString;
     /// use std::os::raw::c_char;
     ///
-    /// extern {
+    /// extern "C" {
     ///     fn some_extern_function(s: *mut c_char);
     /// }
     ///
@@ -1147,7 +1145,7 @@ impl CStr {
     /// use std::ffi::CStr;
     /// use std::os::raw::c_char;
     ///
-    /// extern {
+    /// extern "C" {
     ///     fn my_string() -> *const c_char;
     /// }
     ///

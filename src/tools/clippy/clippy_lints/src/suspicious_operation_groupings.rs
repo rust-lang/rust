@@ -261,8 +261,8 @@ fn emit_suggestion(cx: &EarlyContext<'_>, span: Span, sugg: String, applicabilit
         cx,
         SUSPICIOUS_OPERATION_GROUPINGS,
         span,
-        "This sequence of operators looks suspiciously like a bug.",
-        "I think you meant",
+        "this sequence of operators looks suspiciously like a bug",
+        "did you mean",
         sugg,
         applicability,
     )
@@ -564,7 +564,7 @@ fn ident_difference_expr_with_base_location(
         | (Try(_), Try(_))
         | (Paren(_), Paren(_))
         | (Repeat(_, _), Repeat(_, _))
-        | (Struct(_, _, _), Struct(_, _, _))
+        | (Struct(_), Struct(_))
         | (MacCall(_), MacCall(_))
         | (LlvmInlineAsm(_), LlvmInlineAsm(_))
         | (InlineAsm(_), InlineAsm(_))

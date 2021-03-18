@@ -177,7 +177,10 @@ impl<T> SyncOnceCell<T> {
 
     /// Sets the contents of this cell to `value`.
     ///
-    /// Returns `Ok(())` if the cell's value was updated.
+    /// May block if another thread is currently attempting to initialize the cell. The cell is
+    /// guaranteed to contain a value when set returns, though not necessarily the one provided.
+    ///
+    /// Returns `Ok(())` if the cell's value was set by this call.
     ///
     /// # Examples
     ///
@@ -440,13 +443,17 @@ impl<T> SyncOnceCell<T> {
         res
     }
 
-    /// Safety: The value must be initialized
+    /// # Safety
+    ///
+    /// The value must be initialized
     unsafe fn get_unchecked(&self) -> &T {
         debug_assert!(self.is_initialized());
         (&*self.value.get()).assume_init_ref()
     }
 
-    /// Safety: The value must be initialized
+    /// # Safety
+    ///
+    /// The value must be initialized
     unsafe fn get_unchecked_mut(&mut self) -> &mut T {
         debug_assert!(self.is_initialized());
         (&mut *self.value.get()).assume_init_mut()
@@ -456,7 +463,7 @@ impl<T> SyncOnceCell<T> {
 unsafe impl<#[may_dangle] T> Drop for SyncOnceCell<T> {
     fn drop(&mut self) {
         if self.is_initialized() {
-            // Safety: The cell is initialized and being dropped, so it can't
+            // SAFETY: The cell is initialized and being dropped, so it can't
             // be accessed again. We also don't touch the `T` other than
             // dropping it, which validates our usage of #[may_dangle].
             unsafe { (&mut *self.value.get()).assume_init_drop() };

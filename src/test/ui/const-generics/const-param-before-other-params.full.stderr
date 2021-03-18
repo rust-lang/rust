@@ -1,5 +1,5 @@
 error: lifetime parameters must be declared prior to const parameters
-  --> $DIR/const-param-before-other-params.rs:6:21
+  --> $DIR/const-param-before-other-params.rs:5:21
    |
 LL | fn bar<const X: (), 'a>(_: &'a ()) {
    |       --------------^^- help: reorder the parameters: lifetimes, then consts and types: `<'a, const X: ()>`

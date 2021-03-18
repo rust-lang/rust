@@ -1,3 +1,283 @@
+Version 1.50.0 (2021-02-11)
+============================
+
+Language
+-----------------------
+- [You can now use `const` values for `x` in `[x; N]` array expressions.][79270]
+  This has been technically possible since 1.38.0, as it was unintentionally stabilized.
+- [Assignments to `ManuallyDrop<T>` union fields are now considered safe.][78068]
+
+Compiler
+-----------------------
+- [Added tier 3\* support for the `armv5te-unknown-linux-uclibceabi` target.][78142]
+- [Added tier 3 support for the `aarch64-apple-ios-macabi` target.][77484]
+- [The `x86_64-unknown-freebsd` is now built with the full toolset.][79484]
+- [Dropped support for all cloudabi targets.][78439]
+
+\* Refer to Rust's [platform support page][forge-platform-support] for more
+information on Rust's tiered platform support.
+
+Libraries
+-----------------------
+
+- [`proc_macro::Punct` now implements `PartialEq<char>`.][78636]
+- [`ops::{Index, IndexMut}` are now implemented for fixed sized arrays of any length.][74989]
+- [On Unix platforms, the `std::fs::File` type now has a "niche" of `-1`.][74699]
+  This value cannot be a valid file descriptor, and now means `Option<File>` takes
+  up the same amount of space as `File`.
+
+Stabilized APIs
+---------------
+
+- [`bool::then`]
+- [`btree_map::Entry::or_insert_with_key`]
+- [`f32::clamp`]
+- [`f64::clamp`]
+- [`hash_map::Entry::or_insert_with_key`]
+- [`Ord::clamp`]
+- [`RefCell::take`]
+- [`slice::fill`]
+- [`UnsafeCell::get_mut`]
+
+The following previously stable methods are now `const`.
+
+- [`IpAddr::is_ipv4`]
+- [`IpAddr::is_ipv6`]
+- [`IpAddr::is_unspecified`]
+- [`IpAddr::is_loopback`]
+- [`IpAddr::is_multicast`]
+- [`Ipv4Addr::octets`]
+- [`Ipv4Addr::is_loopback`]
+- [`Ipv4Addr::is_private`]
+- [`Ipv4Addr::is_link_local`]
+- [`Ipv4Addr::is_multicast`]
+- [`Ipv4Addr::is_broadcast`]
+- [`Ipv4Addr::is_documentation`]
+- [`Ipv4Addr::to_ipv6_compatible`]
+- [`Ipv4Addr::to_ipv6_mapped`]
+- [`Ipv6Addr::segments`]
+- [`Ipv6Addr::is_unspecified`]
+- [`Ipv6Addr::is_loopback`]
+- [`Ipv6Addr::is_multicast`]
+- [`Ipv6Addr::to_ipv4`]
+- [`Layout::size`]
+- [`Layout::align`]
+- [`Layout::from_size_align`]
+- `pow` for all integer types.
+- `checked_pow` for all integer types.
+- `saturating_pow` for all integer types.
+- `wrapping_pow` for all integer types.
+- `next_power_of_two` for all unsigned integer types.
+- `checked_next_power_of_two` for all unsigned integer types.
+
+Cargo
+-----------------------
+
+- [Added the `[build.rustc-workspace-wrapper]` option.][cargo/8976]
+  This option sets a wrapper to execute instead of `rustc`, for workspace members only.
+- [`cargo:rerun-if-changed` will now, if provided a directory, scan the entire
+  contents of that directory for changes.][cargo/8973]
+- [Added the `--workspace` flag to the `cargo update` command.][cargo/8725]
+
+Misc
+----
+
+- [The search results tab and the help button are focusable with keyboard in rustdoc.][79896]
+- [Running tests will now print the total time taken to execute.][75752]
+
+Compatibility Notes
+-------------------
+
+- [The `compare_and_swap` method on atomics has been deprecated.][79261] It's
+  recommended to use the `compare_exchange` and `compare_exchange_weak` methods instead.
+- [Changes in how `TokenStream`s are checked have fixed some cases where you could write
+  unhygenic `macro_rules!` macros.][79472]
+- [`#![test]` as an inner attribute is now considered unstable like other inner macro
+  attributes, and reports an error by default through the `soft_unstable` lint.][79003]
+- [Overriding a `forbid` lint at the same level that it was set is now a hard error.][78864]
+- [You can no longer intercept `panic!` calls by supplying your own macro.][78343] It's
+  recommended to use the `#[panic_handler]` attribute to provide your own implementation.
+- [Semi-colons after item statements (e.g. `struct Foo {};`) now produce a warning.][78296]
+
+[74989]: https://github.com/rust-lang/rust/pull/74989
+[79261]: https://github.com/rust-lang/rust/pull/79261
+[79896]: https://github.com/rust-lang/rust/pull/79896
+[79484]: https://github.com/rust-lang/rust/pull/79484
+[79472]: https://github.com/rust-lang/rust/pull/79472
+[79270]: https://github.com/rust-lang/rust/pull/79270
+[79003]: https://github.com/rust-lang/rust/pull/79003
+[78864]: https://github.com/rust-lang/rust/pull/78864
+[78636]: https://github.com/rust-lang/rust/pull/78636
+[78439]: https://github.com/rust-lang/rust/pull/78439
+[78343]: https://github.com/rust-lang/rust/pull/78343
+[78296]: https://github.com/rust-lang/rust/pull/78296
+[78068]: https://github.com/rust-lang/rust/pull/78068
+[75752]: https://github.com/rust-lang/rust/pull/75752
+[74699]: https://github.com/rust-lang/rust/pull/74699
+[78142]: https://github.com/rust-lang/rust/pull/78142
+[77484]: https://github.com/rust-lang/rust/pull/77484
+[cargo/8976]: https://github.com/rust-lang/cargo/pull/8976
+[cargo/8973]: https://github.com/rust-lang/cargo/pull/8973
+[cargo/8725]: https://github.com/rust-lang/cargo/pull/8725
+[`IpAddr::is_ipv4`]: https://doc.rust-lang.org/stable/std/net/enum.IpAddr.html#method.is_ipv4
+[`IpAddr::is_ipv6`]: https://doc.rust-lang.org/stable/std/net/enum.IpAddr.html#method.is_ipv6
+[`IpAddr::is_unspecified`]: https://doc.rust-lang.org/stable/std/net/enum.IpAddr.html#method.is_unspecified
+[`IpAddr::is_loopback`]: https://doc.rust-lang.org/stable/std/net/enum.IpAddr.html#method.is_loopback
+[`IpAddr::is_multicast`]: https://doc.rust-lang.org/stable/std/net/enum.IpAddr.html#method.is_multicast
+[`Ipv4Addr::octets`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv4Addr.html#method.octets
+[`Ipv4Addr::is_loopback`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv4Addr.html#method.is_loopback
+[`Ipv4Addr::is_private`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv4Addr.html#method.is_private
+[`Ipv4Addr::is_link_local`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv4Addr.html#method.is_link_local
+[`Ipv4Addr::is_multicast`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv4Addr.html#method.is_multicast
+[`Ipv4Addr::is_broadcast`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv4Addr.html#method.is_broadcast
+[`Ipv4Addr::is_documentation`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv4Addr.html#method.is_documentation
+[`Ipv4Addr::to_ipv6_compatible`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv4Addr.html#method.to_ipv6_compatible
+[`Ipv4Addr::to_ipv6_mapped`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv4Addr.html#method.to_ipv6_mapped
+[`Ipv6Addr::segments`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv6Addr.html#method.segments
+[`Ipv6Addr::is_unspecified`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv6Addr.html#method.is_unspecified
+[`Ipv6Addr::is_loopback`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv6Addr.html#method.is_loopback
+[`Ipv6Addr::is_multicast`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv6Addr.html#method.is_multicast
+[`Ipv6Addr::to_ipv4`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv6Addr.html#method.to_ipv4
+[`Layout::align`]: https://doc.rust-lang.org/stable/std/alloc/struct.Layout.html#method.align
+[`Layout::from_size_align`]: https://doc.rust-lang.org/stable/std/alloc/struct.Layout.html#method.from_size_align
+[`Layout::size`]: https://doc.rust-lang.org/stable/std/alloc/struct.Layout.html#method.size
+[`Ord::clamp`]: https://doc.rust-lang.org/stable/std/cmp/trait.Ord.html#method.clamp
+[`RefCell::take`]: https://doc.rust-lang.org/stable/std/cell/struct.RefCell.html#method.take
+[`UnsafeCell::get_mut`]: https://doc.rust-lang.org/stable/std/cell/struct.UnsafeCell.html#method.get_mut
+[`bool::then`]: https://doc.rust-lang.org/stable/std/primitive.bool.html#method.then
+[`btree_map::Entry::or_insert_with_key`]: https://doc.rust-lang.org/stable/std/collections/btree_map/enum.Entry.html#method.or_insert_with_key
+[`f32::clamp`]: https://doc.rust-lang.org/stable/std/primitive.f32.html#method.clamp
+[`f64::clamp`]: https://doc.rust-lang.org/stable/std/primitive.f64.html#method.clamp
+[`hash_map::Entry::or_insert_with_key`]: https://doc.rust-lang.org/stable/std/collections/hash_map/enum.Entry.html#method.or_insert_with_key
+[`slice::fill`]: https://doc.rust-lang.org/stable/std/primitive.slice.html#method.fill
+
+
+Version 1.49.0 (2020-12-31)
+============================
+
+Language
+-----------------------
+
+- [Unions can now implement `Drop`, and you can now have a field in a union
+  with `ManuallyDrop<T>`.][77547]
+- [You can now cast uninhabited enums to integers.][76199]
+- [You can now bind by reference and by move in patterns.][76119] This
+  allows you to selectively borrow individual components of a type. E.g.
+  ```rust
+  #[derive(Debug)]
+  struct Person {
+      name: String,
+      age: u8,
+  }
+
+  let person = Person {
+      name: String::from("Alice"),
+      age: 20,
+  };
+
+  // `name` is moved out of person, but `age` is referenced.
+  let Person { name, ref age } = person;
+  println!("{} {}", name, age);
+  ```
+
+Compiler
+-----------------------
+
+- [Added tier 1\* support for `aarch64-unknown-linux-gnu`.][78228]
+- [Added tier 2 support for `aarch64-apple-darwin`.][75991]
+- [Added tier 2 support for `aarch64-pc-windows-msvc`.][75914]
+- [Added tier 3 support for `mipsel-unknown-none`.][78676]
+- [Raised the minimum supported LLVM version to LLVM 9.][78848]
+- [Output from threads spawned in tests is now captured.][78227]
+- [Change os and vendor values to "none" and "unknown" for some targets][78951]
+
+\* Refer to Rust's [platform support page][forge-platform-support] for more
+information on Rust's tiered platform support.
+
+Libraries
+-----------------------
+
+- [`RangeInclusive` now checks for exhaustion when calling `contains` and indexing.][78109]
+- [`ToString::to_string` now no longer shrinks the internal buffer in the default implementation.][77997]
+
+Stabilized APIs
+---------------
+
+- [`slice::select_nth_unstable`]
+- [`slice::select_nth_unstable_by`]
+- [`slice::select_nth_unstable_by_key`]
+
+The following previously stable methods are now `const`.
+
+- [`Poll::is_ready`]
+- [`Poll::is_pending`]
+
+Cargo
+-----------------------
+- [Building a crate with `cargo-package` should now be independently reproducible.][cargo/8864]
+- [`cargo-tree` now marks proc-macro crates.][cargo/8765]
+- [Added `CARGO_PRIMARY_PACKAGE` build-time environment variable.][cargo/8758] This
+  variable will be set if the crate being built is one the user selected to build, either
+  with `-p` or through defaults.
+- [You can now use glob patterns when specifying packages & targets.][cargo/8752]
+
+
+Compatibility Notes
+-------------------
+
+- [Demoted `i686-unknown-freebsd` from host tier 2 to target tier 2 support.][78746]
+- [Macros that end with a semi-colon are now treated as statements even if they expand to nothing.][78376]
+- [Rustc will now check for the validity of some built-in attributes on enum variants.][77015]
+  Previously such invalid or unused attributes could be ignored.
+- Leading whitespace is stripped more uniformly in documentation comments, which may change behavior. You
+  read [this post about the changes][rustdoc-ws-post] for more details.
+- [Trait bounds are no longer inferred for associated types.][79904]
+
+Internal Only
+-------------
+These changes provide no direct user facing benefits, but represent significant
+improvements to the internals and overall performance of rustc and
+related tools.
+
+- [rustc's internal crates are now compiled using the `initial-exec` Thread
+  Local Storage model.][78201]
+- [Calculate visibilities once in resolve.][78077]
+- [Added `system` to the `llvm-libunwind` bootstrap config option.][77703]
+- [Added `--color` for configuring terminal color support to bootstrap.][79004]
+
+
+[75991]: https://github.com/rust-lang/rust/pull/75991
+[78951]: https://github.com/rust-lang/rust/pull/78951
+[78848]: https://github.com/rust-lang/rust/pull/78848
+[78746]: https://github.com/rust-lang/rust/pull/78746
+[78376]: https://github.com/rust-lang/rust/pull/78376
+[78228]: https://github.com/rust-lang/rust/pull/78228
+[78227]: https://github.com/rust-lang/rust/pull/78227
+[78201]: https://github.com/rust-lang/rust/pull/78201
+[78109]: https://github.com/rust-lang/rust/pull/78109
+[78077]: https://github.com/rust-lang/rust/pull/78077
+[77997]: https://github.com/rust-lang/rust/pull/77997
+[77703]: https://github.com/rust-lang/rust/pull/77703
+[77547]: https://github.com/rust-lang/rust/pull/77547
+[77015]: https://github.com/rust-lang/rust/pull/77015
+[76199]: https://github.com/rust-lang/rust/pull/76199
+[76119]: https://github.com/rust-lang/rust/pull/76119
+[75914]: https://github.com/rust-lang/rust/pull/75914
+[79004]: https://github.com/rust-lang/rust/pull/79004
+[78676]: https://github.com/rust-lang/rust/pull/78676
+[79904]: https://github.com/rust-lang/rust/issues/79904
+[cargo/8864]: https://github.com/rust-lang/cargo/pull/8864
+[cargo/8765]: https://github.com/rust-lang/cargo/pull/8765
+[cargo/8758]: https://github.com/rust-lang/cargo/pull/8758
+[cargo/8752]: https://github.com/rust-lang/cargo/pull/8752
+[`slice::select_nth_unstable`]: https://doc.rust-lang.org/nightly/std/primitive.slice.html#method.select_nth_unstable
+[`slice::select_nth_unstable_by`]: https://doc.rust-lang.org/nightly/std/primitive.slice.html#method.select_nth_unstable_by
+[`slice::select_nth_unstable_by_key`]: https://doc.rust-lang.org/nightly/std/primitive.slice.html#method.select_nth_unstable_by_key
+[`hint::spin_loop`]: https://doc.rust-lang.org/stable/std/hint/fn.spin_loop.html
+[`Poll::is_ready`]: https://doc.rust-lang.org/stable/std/task/enum.Poll.html#method.is_ready
+[`Poll::is_pending`]: https://doc.rust-lang.org/stable/std/task/enum.Poll.html#method.is_pending
+[rustdoc-ws-post]: https://blog.guillaume-gomez.fr/articles/2020-11-11+New+doc+comment+handling+in+rustdoc
+
 Version 1.48.0 (2020-11-19)
 ==========================
 
@@ -10,7 +290,7 @@ Language
 Compiler
 --------
 - [Stabilised the `-C link-self-contained=<yes|no>` compiler flag.][76158] This tells
-  `rustc` whether to link its own C runtime and libraries or to rely on a external 
+  `rustc` whether to link its own C runtime and libraries or to rely on a external
   linker to find them. (Supported only on `windows-gnu`, `linux-musl`, and `wasi` platforms.)
 - [You can now use `-C target-feature=+crt-static` on `linux-gnu` targets.][77386]
   Note: If you're using cargo you must explicitly pass the `--target` flag.
@@ -82,7 +362,7 @@ Compatibility Notes
 - [Foreign exceptions are now caught by `catch_unwind` and will cause an abort.][70212]
   Note: This behaviour is not guaranteed and is still considered undefined behaviour,
   see the [`catch_unwind`] documentation for further information.
-  
+
 
 
 Internal Only
@@ -102,7 +382,7 @@ related tools.
 [76030]: https://github.com/rust-lang/rust/pull/76030/
 [70212]: https://github.com/rust-lang/rust/pull/70212/
 [27675]: https://github.com/rust-lang/rust/issues/27675/
-[54121]: https://github.com/rust-lang/rust/issues/54121/  
+[54121]: https://github.com/rust-lang/rust/issues/54121/
 [71274]: https://github.com/rust-lang/rust/pull/71274/
 [77386]: https://github.com/rust-lang/rust/pull/77386/
 [77153]: https://github.com/rust-lang/rust/pull/77153/

@@ -408,7 +408,7 @@ pub enum SubregionOrigin<'tcx> {
 }
 
 // `SubregionOrigin` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(SubregionOrigin<'_>, 32);
 
 /// Times when we replace late-bound regions with variables:
@@ -450,7 +450,7 @@ pub enum RegionVariableOrigin {
 
     /// Region variables created for bound regions
     /// in a function or method that is called
-    LateBoundRegion(Span, ty::BoundRegion, LateBoundRegionConversionTime),
+    LateBoundRegion(Span, ty::BoundRegionKind, LateBoundRegionConversionTime),
 
     UpvarRegion(ty::UpvarId, Span),
 
@@ -458,11 +458,11 @@ pub enum RegionVariableOrigin {
 
     /// This origin is used for the inference variables that we create
     /// during NLL region processing.
-    NLL(NLLRegionVariableOrigin),
+    Nll(NllRegionVariableOrigin),
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum NLLRegionVariableOrigin {
+pub enum NllRegionVariableOrigin {
     /// During NLL region processing, we create variables for free
     /// regions that we encounter in the function signature and
     /// elsewhere. This origin indices we've got one of those.
@@ -1078,17 +1078,17 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     /// Just a convenient wrapper of `next_region_var` for using during NLL.
-    pub fn next_nll_region_var(&self, origin: NLLRegionVariableOrigin) -> ty::Region<'tcx> {
-        self.next_region_var(RegionVariableOrigin::NLL(origin))
+    pub fn next_nll_region_var(&self, origin: NllRegionVariableOrigin) -> ty::Region<'tcx> {
+        self.next_region_var(RegionVariableOrigin::Nll(origin))
     }
 
     /// Just a convenient wrapper of `next_region_var` for using during NLL.
     pub fn next_nll_region_var_in_universe(
         &self,
-        origin: NLLRegionVariableOrigin,
+        origin: NllRegionVariableOrigin,
         universe: ty::UniverseIndex,
     ) -> ty::Region<'tcx> {
-        self.next_region_var_in_universe(RegionVariableOrigin::NLL(origin), universe)
+        self.next_region_var_in_universe(RegionVariableOrigin::Nll(origin), universe)
     }
 
     pub fn var_for_def(&self, span: Span, param: &ty::GenericParamDef) -> GenericArg<'tcx> {
@@ -1317,7 +1317,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         T: TypeFoldable<'tcx>,
     {
         if !value.needs_infer() {
-            return value.clone(); // Avoid duplicated subst-folding.
+            return value; // Avoid duplicated subst-folding.
         }
         let mut r = resolve::OpportunisticVarResolver::new(self);
         value.fold_with(&mut r)
@@ -1421,7 +1421,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        let fld_r = |br| self.next_region_var(LateBoundRegion(span, br, lbrct));
+        let fld_r =
+            |br: ty::BoundRegion| self.next_region_var(LateBoundRegion(span, br.kind, lbrct));
         let fld_t = |_| {
             self.next_ty_var(TypeVariableOrigin {
                 kind: TypeVariableOriginKind::MiscVariable,
@@ -1532,7 +1533,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 // Note: if these two lines are combined into one we get
                 // dynamic borrow errors on `self.inner`.
                 let known = self.inner.borrow_mut().type_variables().probe(v).known();
-                known.map(|t| self.shallow_resolve_ty(t)).unwrap_or(typ)
+                known.map_or(typ, |t| self.shallow_resolve_ty(t))
             }
 
             ty::Infer(ty::IntVar(v)) => self
@@ -1769,7 +1770,7 @@ impl RegionVariableOrigin {
             | LateBoundRegion(a, ..)
             | UpvarRegion(_, a) => a,
             BoundRegionInCoherence(_) => rustc_span::DUMMY_SP,
-            NLL(..) => bug!("NLL variable used with `span`"),
+            Nll(..) => bug!("NLL variable used with `span`"),
         }
     }
 }

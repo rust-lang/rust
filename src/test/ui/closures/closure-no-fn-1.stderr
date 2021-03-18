@@ -8,6 +8,11 @@ LL |     let foo: fn(u8) -> u8 = |v: u8| { a += v; a };
    |
    = note: expected fn pointer `fn(u8) -> u8`
                  found closure `[closure@$DIR/closure-no-fn-1.rs:6:29: 6:50]`
+note: closures can only be coerced to `fn` types if they do not capture any variables
+  --> $DIR/closure-no-fn-1.rs:6:39
+   |
+LL |     let foo: fn(u8) -> u8 = |v: u8| { a += v; a };
+   |                                       ^ `a` captured here
 
 error: aborting due to previous error
 

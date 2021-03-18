@@ -1,5 +1,5 @@
 error: generic parameters may not be used in const operations
-  --> $DIR/const-argument-if-length.rs:19:24
+  --> $DIR/const-argument-if-length.rs:18:24
    |
 LL |     pad: [u8; is_zst::<T>()],
    |                        ^ cannot perform const operation using `T`
@@ -8,7 +8,7 @@ LL |     pad: [u8; is_zst::<T>()],
    = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
-  --> $DIR/const-argument-if-length.rs:17:12
+  --> $DIR/const-argument-if-length.rs:16:12
    |
 LL | pub struct AtLeastByte<T: ?Sized> {
    |                        - this type parameter needs to be `Sized`

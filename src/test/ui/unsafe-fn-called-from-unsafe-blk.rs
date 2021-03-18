@@ -2,7 +2,7 @@
 
 #![allow(dead_code)]
 //
-// See also: compile-fail/unsafe-fn-called-from-safe.rs
+// See also: ui/unsafe/unsafe-fn-called-from-safe.rs
 
 // pretty-expanded FIXME #23616
 

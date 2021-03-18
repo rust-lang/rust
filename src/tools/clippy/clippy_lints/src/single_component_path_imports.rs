@@ -40,7 +40,7 @@ impl EarlyLintPass for SingleComponentPathImports {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
         if_chain! {
             if !in_macro(item.span);
-            if cx.sess.opts.edition == Edition::Edition2018;
+            if cx.sess.opts.edition >= Edition::Edition2018;
             if !item.vis.kind.is_pub();
             if let ItemKind::Use(use_tree) = &item.kind;
             if let segments = &use_tree.prefix.segments;

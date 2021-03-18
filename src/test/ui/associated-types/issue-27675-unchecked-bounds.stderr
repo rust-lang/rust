@@ -1,0 +1,17 @@
+error[E0277]: the trait bound `T: Copy` is not satisfied
+  --> $DIR/issue-27675-unchecked-bounds.rs:15:31
+   |
+LL | fn copy<U: Setup + ?Sized>(from: &U::From) -> U::From {
+   |            ----- required by this bound in `copy`
+...
+LL |     copy::<dyn Setup<From=T>>(t)
+   |                               ^ the trait `Copy` is not implemented for `T`
+   |
+help: consider restricting type parameter `T`
+   |
+LL | pub fn copy_any<T: Copy>(t: &T) -> T {
+   |                  ^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

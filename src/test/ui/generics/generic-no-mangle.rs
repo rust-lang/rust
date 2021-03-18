@@ -6,7 +6,7 @@
 pub fn foo<T>() {} //~ ERROR functions generic over types or consts must be mangled
 
 #[no_mangle]
-pub extern fn bar<T>() {} //~ ERROR functions generic over types or consts must be mangled
+pub extern "C" fn bar<T>() {} //~ ERROR functions generic over types or consts must be mangled
 
 #[no_mangle]
 pub fn baz(x: &i32) -> &i32 { x }

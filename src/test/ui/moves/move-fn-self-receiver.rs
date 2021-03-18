@@ -69,6 +69,11 @@ fn move_out(val: Container) {
     let container = Container(vec![]);
     for _val in container.custom_into_iter() {}
     container; //~ ERROR use of moved
+
+    let foo2 = Foo;
+    loop {
+        foo2.use_self(); //~ ERROR use of moved
+    }
 }
 
 fn main() {}

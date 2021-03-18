@@ -1,3 +1,6 @@
 [package]
 name = "subcrate"
 version = "0.1.0"
+
+[dependencies]
+path_dep = { path = "../path_dep" }

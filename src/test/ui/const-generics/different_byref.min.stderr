@@ -1,11 +1,11 @@
 error: `[usize; 1]` is forbidden as the type of a const generic parameter
-  --> $DIR/different_byref.rs:8:23
+  --> $DIR/different_byref.rs:7:23
    |
 LL | struct Const<const V: [usize; 1]> {}
    |                       ^^^^^^^^^^
    |
    = note: the only supported types are integers, `bool` and `char`
-   = help: more complex types are supported with `#[feature(const_generics)]`
+   = help: more complex types are supported with `#![feature(const_generics)]`
 
 error: aborting due to previous error
 

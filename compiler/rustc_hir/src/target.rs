@@ -10,6 +10,13 @@ use crate::{Item, ItemKind, TraitItem, TraitItemKind};
 use std::fmt::{self, Display};
 
 #[derive(Copy, Clone, PartialEq, Debug)]
+pub enum GenericParamKind {
+    Type,
+    Lifetime,
+    Const,
+}
+
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum MethodKind {
     Trait { body: bool },
     Inherent,
@@ -31,18 +38,23 @@ pub enum Target {
     Enum,
     Variant,
     Struct,
+    Field,
     Union,
     Trait,
     TraitAlias,
     Impl,
     Expression,
     Statement,
+    Arm,
     AssocConst,
     Method(MethodKind),
     AssocTy,
     ForeignFn,
     ForeignStatic,
     ForeignTy,
+    GenericParam(GenericParamKind),
+    MacroDef,
+    Param,
 }
 
 impl Display for Target {
@@ -65,18 +77,27 @@ impl Display for Target {
                 Target::Enum => "enum",
                 Target::Variant => "enum variant",
                 Target::Struct => "struct",
+                Target::Field => "struct field",
                 Target::Union => "union",
                 Target::Trait => "trait",
                 Target::TraitAlias => "trait alias",
                 Target::Impl => "item",
                 Target::Expression => "expression",
                 Target::Statement => "statement",
+                Target::Arm => "match arm",
                 Target::AssocConst => "associated const",
                 Target::Method(_) => "method",
                 Target::AssocTy => "associated type",
                 Target::ForeignFn => "foreign function",
                 Target::ForeignStatic => "foreign static item",
                 Target::ForeignTy => "foreign type",
+                Target::GenericParam(kind) => match kind {
+                    GenericParamKind::Type => "type parameter",
+                    GenericParamKind::Lifetime => "lifetime parameter",
+                    GenericParamKind::Const => "const parameter",
+                },
+                Target::MacroDef => "macro def",
+                Target::Param => "function param",
             }
         )
     }
@@ -122,6 +143,16 @@ impl Target {
             hir::ForeignItemKind::Fn(..) => Target::ForeignFn,
             hir::ForeignItemKind::Static(..) => Target::ForeignStatic,
             hir::ForeignItemKind::Type => Target::ForeignTy,
+        }
+    }
+
+    pub fn from_generic_param(generic_param: &hir::GenericParam<'_>) -> Target {
+        match generic_param.kind {
+            hir::GenericParamKind::Type { .. } => Target::GenericParam(GenericParamKind::Type),
+            hir::GenericParamKind::Lifetime { .. } => {
+                Target::GenericParam(GenericParamKind::Lifetime)
+            }
+            hir::GenericParamKind::Const { .. } => Target::GenericParam(GenericParamKind::Const),
         }
     }
 }

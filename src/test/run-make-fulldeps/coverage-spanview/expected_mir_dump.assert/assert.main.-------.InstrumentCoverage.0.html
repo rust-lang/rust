@@ -77,22 +77,20 @@ For revisions in Pull Requests (PR):
 11:11-11:24: @2[3]: _4 = Gt(move _5, const 0_i32)
 11:11-11:24: @2[5]: FakeRead(ForMatchedPlace, _4)"><span class="annotation">@1,2⦊</span>countdown &gt; 0<span class="annotation">⦉@1,2</span></span></span><span class="code" style="--layer: 0"> {</span></span>
 <span class="line"><span class="code" style="--layer: 0">        if </span><span><span class="code even" style="--layer: 1" title="12:12-12:21: @5[3]: _8 = _1
-12:12-12:26: @5[4]: _7 = Eq(move _8, const 1_i32)
-12:12-12:26: @5[6]: FakeRead(ForMatchedPlace, _7)"><span class="annotation">@3,5⦊</span>countdown == 1<span class="annotation">⦉@3,5</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="13:13-13:33: @8.Call: _9 = might_fail_assert(const 3_u32) -&gt; [return: bb9, unwind: bb17]
-12:27-14:10: @9[1]: _6 = const ()"><span class="annotation">@6,8,9⦊</span>{</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="13:13-13:33: @8.Call: _9 = might_fail_assert(const 3_u32) -&gt; [return: bb9, unwind: bb17]
-12:27-14:10: @9[1]: _6 = const ()">            might_fail_assert(3);</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="13:13-13:33: @8.Call: _9 = might_fail_assert(const 3_u32) -&gt; [return: bb9, unwind: bb17]
-12:27-14:10: @9[1]: _6 = const ()">        }<span class="annotation">⦉@6,8,9</span></span></span><span class="code" style="--layer: 0"> else if </span><span><span class="code even" style="--layer: 1" title="14:19-14:28: @7[2]: _11 = _1
-14:19-14:32: @7[3]: _10 = Lt(move _11, const 5_i32)
-14:19-14:32: @7[5]: FakeRead(ForMatchedPlace, _10)"><span class="annotation">@7⦊</span>countdown &lt; 5<span class="annotation">⦉@7</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="15:13-15:33: @12.Call: _12 = might_fail_assert(const 2_u32) -&gt; [return: bb13, unwind: bb17]
-14:33-16:10: @13[1]: _6 = const ()"><span class="annotation">@10,12,13⦊</span>{</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="15:13-15:33: @12.Call: _12 = might_fail_assert(const 2_u32) -&gt; [return: bb13, unwind: bb17]
-14:33-16:10: @13[1]: _6 = const ()">            might_fail_assert(2);</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="15:13-15:33: @12.Call: _12 = might_fail_assert(const 2_u32) -&gt; [return: bb13, unwind: bb17]
-14:33-16:10: @13[1]: _6 = const ()">        }<span class="annotation">⦉@10,12,13</span></span></span><span><span class="code even" style="--layer: 1" title="16:10-16:10: @11[0]: _6 = const ()"><span class="annotation">@11⦊</span>‸<span class="annotation">⦉@11</span></span></span><span class="code" style="--layer: 0"></span></span>
-<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code odd" style="--layer: 1" title="17:9-17:23: @15[2]: _13 = CheckedSub(_1, const 1_i32)
-17:9-17:23: @16[0]: _1 = move (_13.0: i32)"><span class="annotation">@15,16⦊</span>countdown -= 1<span class="annotation">⦉@15,16</span></span></span><span class="code" style="--layer: 0">;</span></span>
+12:12-12:26: @5[4]: _7 = Eq(move _8, const 1_i32)"><span class="annotation">@3,5⦊</span>countdown == 1<span class="annotation">⦉@3,5</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="13:13-13:33: @6.Call: _9 = might_fail_assert(const 3_u32) -&gt; [return: bb8, unwind: bb15]
+12:27-14:10: @8[1]: _6 = const ()"><span class="annotation">@6,8⦊</span>{</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="13:13-13:33: @6.Call: _9 = might_fail_assert(const 3_u32) -&gt; [return: bb8, unwind: bb15]
+12:27-14:10: @8[1]: _6 = const ()">            might_fail_assert(3);</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="13:13-13:33: @6.Call: _9 = might_fail_assert(const 3_u32) -&gt; [return: bb8, unwind: bb15]
+12:27-14:10: @8[1]: _6 = const ()">        }<span class="annotation">⦉@6,8</span></span></span><span class="code" style="--layer: 0"> else if </span><span><span class="code even" style="--layer: 1" title="14:19-14:28: @7[2]: _11 = _1
+14:19-14:32: @7[3]: _10 = Lt(move _11, const 5_i32)"><span class="annotation">@7⦊</span>countdown &lt; 5<span class="annotation">⦉@7</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="15:13-15:33: @9.Call: _12 = might_fail_assert(const 2_u32) -&gt; [return: bb11, unwind: bb15]
+14:33-16:10: @11[1]: _6 = const ()"><span class="annotation">@9,11⦊</span>{</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="15:13-15:33: @9.Call: _12 = might_fail_assert(const 2_u32) -&gt; [return: bb11, unwind: bb15]
+14:33-16:10: @11[1]: _6 = const ()">            might_fail_assert(2);</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="15:13-15:33: @9.Call: _12 = might_fail_assert(const 2_u32) -&gt; [return: bb11, unwind: bb15]
+14:33-16:10: @11[1]: _6 = const ()">        }<span class="annotation">⦉@9,11</span></span></span><span><span class="code even" style="--layer: 1" title="16:10-16:10: @10[0]: _6 = const ()"><span class="annotation">@10⦊</span>‸<span class="annotation">⦉@10</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code odd" style="--layer: 1" title="17:9-17:23: @13[2]: _13 = CheckedSub(_1, const 1_i32)
+17:9-17:23: @14[0]: _1 = move (_13.0: i32)"><span class="annotation">@13,14⦊</span>countdown -= 1<span class="annotation">⦉@13,14</span></span></span><span class="code" style="--layer: 0">;</span></span>
 <span class="line"><span class="code" style="--layer: 0">    }</span></span>
 <span class="line"><span class="code" style="--layer: 0">    </span><span><span class="code even" style="--layer: 1" title="19:8-19:10: @4[4]: _15 = ()
 19:5-19:11: @4[5]: _0 = std::result::Result::&lt;(), u8&gt;::Ok(move _15)

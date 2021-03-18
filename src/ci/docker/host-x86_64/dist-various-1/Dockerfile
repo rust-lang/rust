@@ -1,6 +1,6 @@
-FROM ubuntu:16.04
+FROM ubuntu:20.04
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
   g++ \
   automake \
   bison \
@@ -30,6 +30,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   g++-aarch64-linux-gnu \
   g++-mips64-linux-gnuabi64 \
   g++-mips64el-linux-gnuabi64 \
+  gcc-arm-none-eabi \
   gcc-sparc64-linux-gnu \
   libc6-dev-sparc64-cross \
   bzip2 \
@@ -42,14 +43,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   software-properties-common
 
 WORKDIR /build
-
-# Use the team-gcc-arm-embedded PPA for a newer version of Arm GCC
-RUN add-apt-repository ppa:team-gcc-arm-embedded/ppa && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends gcc-arm-embedded
-
-COPY host-x86_64/dist-various-1/build-rumprun.sh /build
-RUN ./build-rumprun.sh
 
 COPY host-x86_64/dist-various-1/install-x86_64-redox.sh /build
 RUN ./install-x86_64-redox.sh
@@ -116,7 +109,6 @@ ENV RUN_MAKE_TARGETS=$RUN_MAKE_TARGETS,thumbv7em-none-eabihf
 
 ENV TARGETS=asmjs-unknown-emscripten
 ENV TARGETS=$TARGETS,wasm32-unknown-emscripten
-ENV TARGETS=$TARGETS,x86_64-rumprun-netbsd
 ENV TARGETS=$TARGETS,mips-unknown-linux-musl
 ENV TARGETS=$TARGETS,mipsel-unknown-linux-musl
 ENV TARGETS=$TARGETS,mips64-unknown-linux-muslabi64

@@ -1,9 +1,9 @@
-use crate::utils::{match_def_path, match_trait_method, paths, qpath_res, span_lint};
+use crate::utils::{is_diagnostic_assoc_item, match_def_path, path_to_local_id, paths, span_lint};
 use if_chain::if_chain;
-use rustc_hir::def::Res;
-use rustc_hir::{Expr, ExprKind, HirId, ImplItem, ImplItemKind, Item, ItemKind};
+use rustc_hir::{Expr, ExprKind, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::symbol::sym;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for uses of `to_string()` in `Display` traits.
@@ -89,14 +89,13 @@ impl LateLintPass<'_> for ToStringInDisplay {
 
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if_chain! {
+            if self.in_display_impl;
+            if let Some(self_hir_id) = self.self_hir_id;
             if let ExprKind::MethodCall(ref path, _, args, _) = expr.kind;
             if path.ident.name == sym!(to_string);
-            if match_trait_method(cx, expr, &paths::TO_STRING);
-            if self.in_display_impl;
-            if let ExprKind::Path(ref qpath) = args[0].kind;
-            if let Res::Local(hir_id) = qpath_res(cx, qpath, args[0].hir_id);
-            if let Some(self_hir_id) = self.self_hir_id;
-            if hir_id == self_hir_id;
+            if let Some(expr_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
+            if is_diagnostic_assoc_item(cx, expr_def_id, sym::ToString);
+            if path_to_local_id(&args[0], self_hir_id);
             then {
                 span_lint(
                     cx,
@@ -111,7 +110,7 @@ impl LateLintPass<'_> for ToStringInDisplay {
 
 fn is_display_impl(cx: &LateContext<'_>, item: &Item<'_>) -> bool {
     if_chain! {
-        if let ItemKind::Impl { of_trait: Some(trait_ref), .. } = &item.kind;
+        if let ItemKind::Impl(Impl { of_trait: Some(trait_ref), .. }) = &item.kind;
         if let Some(did) = trait_ref.trait_def_id();
         then {
             match_def_path(cx, did, &paths::DISPLAY_TRAIT)

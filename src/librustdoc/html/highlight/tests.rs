@@ -1,5 +1,7 @@
 use super::write_code;
+use crate::html::format::Buffer;
 use expect_test::expect_file;
+use rustc_span::edition::Edition;
 
 const STYLE: &str = r#"
 <style>
@@ -17,9 +19,9 @@ const STYLE: &str = r#"
 fn test_html_highlighting() {
     let src = include_str!("fixtures/sample.rs");
     let html = {
-        let mut out = String::new();
-        write_code(&mut out, src);
-        format!("{}<pre><code>{}</code></pre>\n", STYLE, out)
+        let mut out = Buffer::new();
+        write_code(&mut out, src, Edition::Edition2018);
+        format!("{}<pre><code>{}</code></pre>\n", STYLE, out.into_inner())
     };
     expect_file!["fixtures/sample.html"].assert_eq(&html);
 }
@@ -29,7 +31,7 @@ fn test_dos_backline() {
     let src = "pub fn foo() {\r\n\
     println!(\"foo\");\r\n\
 }\r\n";
-    let mut html = String::new();
-    write_code(&mut html, src);
-    expect_file!["fixtures/dos_line.html"].assert_eq(&html);
+    let mut html = Buffer::new();
+    write_code(&mut html, src, Edition::Edition2018);
+    expect_file!["fixtures/dos_line.html"].assert_eq(&html.into_inner());
 }

@@ -9,21 +9,21 @@
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/simplify_if.rs:6:8: 6:13
           _1 = const false;                // scope 0 at $DIR/simplify_if.rs:6:8: 6:13
--         switchInt(const false) -> [false: bb1, otherwise: bb2]; // scope 0 at $DIR/simplify_if.rs:6:5: 8:6
-+         goto -> bb1;                     // scope 0 at $DIR/simplify_if.rs:6:5: 8:6
+-         switchInt(const false) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/simplify_if.rs:6:5: 8:6
++         goto -> bb2;                     // scope 0 at $DIR/simplify_if.rs:6:5: 8:6
       }
   
       bb1: {
-          _0 = const ();                   // scope 0 at $DIR/simplify_if.rs:8:6: 8:6
-          goto -> bb4;                     // scope 0 at $DIR/simplify_if.rs:6:5: 8:6
-      }
-  
-      bb2: {
           StorageLive(_2);                 // scope 0 at $DIR/simplify_if.rs:7:9: 7:15
           _2 = noop() -> bb3;              // scope 0 at $DIR/simplify_if.rs:7:9: 7:15
                                            // mir::Constant
                                            // + span: $DIR/simplify_if.rs:7:9: 7:13
                                            // + literal: Const { ty: fn() {noop}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb2: {
+          _0 = const ();                   // scope 0 at $DIR/simplify_if.rs:8:6: 8:6
+          goto -> bb4;                     // scope 0 at $DIR/simplify_if.rs:6:5: 8:6
       }
   
       bb3: {
@@ -33,7 +33,7 @@
       }
   
       bb4: {
-          StorageDead(_1);                 // scope 0 at $DIR/simplify_if.rs:9:1: 9:2
+          StorageDead(_1);                 // scope 0 at $DIR/simplify_if.rs:8:5: 8:6
           return;                          // scope 0 at $DIR/simplify_if.rs:9:2: 9:2
       }
   }

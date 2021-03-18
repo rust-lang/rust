@@ -1,7 +1,13 @@
 //! Generic hashing support.
 //!
-//! This module provides a generic way to compute the hash of a value. The
-//! simplest way to make a type hashable is to use `#[derive(Hash)]`:
+//! This module provides a generic way to compute the [hash] of a value.
+//! Hashes are most commonly used with [`HashMap`] and [`HashSet`].
+//!
+//! [hash]: https://en.wikipedia.org/wiki/Hash_function
+//! [`HashMap`]: ../../std/collections/struct.HashMap.html
+//! [`HashSet`]: ../../std/collections/struct.HashSet.html
+//!
+//! The simplest way to make a type hashable is to use `#[derive(Hash)]`:
 //!
 //! # Examples
 //!
@@ -548,10 +554,12 @@ mod impls {
         ($(($ty:ident, $meth:ident),)*) => {$(
             #[stable(feature = "rust1", since = "1.0.0")]
             impl Hash for $ty {
+                #[inline]
                 fn hash<H: Hasher>(&self, state: &mut H) {
                     state.$meth(*self)
                 }
 
+                #[inline]
                 fn hash_slice<H: Hasher>(data: &[$ty], state: &mut H) {
                     let newlen = data.len() * mem::size_of::<$ty>();
                     let ptr = data.as_ptr() as *const u8;
@@ -582,6 +590,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl Hash for bool {
+        #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
             state.write_u8(*self as u8)
         }
@@ -589,6 +598,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl Hash for char {
+        #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
             state.write_u32(*self as u32)
         }
@@ -596,6 +606,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl Hash for str {
+        #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
             state.write(self.as_bytes());
             state.write_u8(0xff)
@@ -604,6 +615,7 @@ mod impls {
 
     #[stable(feature = "never_hash", since = "1.29.0")]
     impl Hash for ! {
+        #[inline]
         fn hash<H: Hasher>(&self, _: &mut H) {
             *self
         }
@@ -613,6 +625,7 @@ mod impls {
         () => (
             #[stable(feature = "rust1", since = "1.0.0")]
             impl Hash for () {
+                #[inline]
                 fn hash<H: Hasher>(&self, _state: &mut H) {}
             }
         );
@@ -621,6 +634,7 @@ mod impls {
             #[stable(feature = "rust1", since = "1.0.0")]
             impl<$($name: Hash),+> Hash for ($($name,)+) where last_type!($($name,)+): ?Sized {
                 #[allow(non_snake_case)]
+                #[inline]
                 fn hash<S: Hasher>(&self, state: &mut S) {
                     let ($(ref $name,)+) = *self;
                     $($name.hash(state);)+
@@ -650,6 +664,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: Hash> Hash for [T] {
+        #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
             self.len().hash(state);
             Hash::hash_slice(self, state)
@@ -658,6 +673,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: ?Sized + Hash> Hash for &T {
+        #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
             (**self).hash(state);
         }
@@ -665,6 +681,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: ?Sized + Hash> Hash for &mut T {
+        #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
             (**self).hash(state);
         }
@@ -672,40 +689,60 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: ?Sized> Hash for *const T {
+        #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
-            if mem::size_of::<Self>() == mem::size_of::<usize>() {
-                // Thin pointer
-                state.write_usize(*self as *const () as usize);
-            } else {
-                // Fat pointer
-                // SAFETY: we are accessing the memory occupied by `self`
-                // which is guaranteed to be valid.
-                // This assumes a fat pointer can be represented by a `(usize, usize)`,
-                // which is safe to do in `std` because it is shipped and kept in sync
-                // with the implementation of fat pointers in `rustc`.
-                let (a, b) = unsafe { *(self as *const Self as *const (usize, usize)) };
-                state.write_usize(a);
-                state.write_usize(b);
+            #[cfg(not(bootstrap))]
+            {
+                let (address, metadata) = self.to_raw_parts();
+                state.write_usize(address as usize);
+                metadata.hash(state);
+            }
+            #[cfg(bootstrap)]
+            {
+                if mem::size_of::<Self>() == mem::size_of::<usize>() {
+                    // Thin pointer
+                    state.write_usize(*self as *const () as usize);
+                } else {
+                    // Fat pointer
+                    // SAFETY: we are accessing the memory occupied by `self`
+                    // which is guaranteed to be valid.
+                    // This assumes a fat pointer can be represented by a `(usize, usize)`,
+                    // which is safe to do in `std` because it is shipped and kept in sync
+                    // with the implementation of fat pointers in `rustc`.
+                    let (a, b) = unsafe { *(self as *const Self as *const (usize, usize)) };
+                    state.write_usize(a);
+                    state.write_usize(b);
+                }
             }
         }
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: ?Sized> Hash for *mut T {
+        #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
-            if mem::size_of::<Self>() == mem::size_of::<usize>() {
-                // Thin pointer
-                state.write_usize(*self as *const () as usize);
-            } else {
-                // Fat pointer
-                // SAFETY: we are accessing the memory occupied by `self`
-                // which is guaranteed to be valid.
-                // This assumes a fat pointer can be represented by a `(usize, usize)`,
-                // which is safe to do in `std` because it is shipped and kept in sync
-                // with the implementation of fat pointers in `rustc`.
-                let (a, b) = unsafe { *(self as *const Self as *const (usize, usize)) };
-                state.write_usize(a);
-                state.write_usize(b);
+            #[cfg(not(bootstrap))]
+            {
+                let (address, metadata) = self.to_raw_parts();
+                state.write_usize(address as usize);
+                metadata.hash(state);
+            }
+            #[cfg(bootstrap)]
+            {
+                if mem::size_of::<Self>() == mem::size_of::<usize>() {
+                    // Thin pointer
+                    state.write_usize(*self as *const () as usize);
+                } else {
+                    // Fat pointer
+                    // SAFETY: we are accessing the memory occupied by `self`
+                    // which is guaranteed to be valid.
+                    // This assumes a fat pointer can be represented by a `(usize, usize)`,
+                    // which is safe to do in `std` because it is shipped and kept in sync
+                    // with the implementation of fat pointers in `rustc`.
+                    let (a, b) = unsafe { *(self as *const Self as *const (usize, usize)) };
+                    state.write_usize(a);
+                    state.write_usize(b);
+                }
             }
         }
     }

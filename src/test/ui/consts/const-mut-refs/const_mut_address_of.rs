@@ -1,3 +1,4 @@
+// check-pass
 #![feature(const_mut_refs)]
 #![feature(const_fn)]
 #![feature(raw_ref_op)]
@@ -22,9 +23,7 @@ const fn baz(foo: &mut Foo)-> *mut usize {
 
 const _: () = {
     foo().bar();
-    //~^ ERROR mutable references are not allowed in constants
     baz(&mut foo());
-    //~^ ERROR mutable references are not allowed in constants
 };
 
 fn main() {}

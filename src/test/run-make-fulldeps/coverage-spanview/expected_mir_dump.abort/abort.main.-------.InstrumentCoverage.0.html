@@ -77,27 +77,24 @@ For revisions in Pull Requests (PR):
 16:11-16:24: @2[3]: _4 = Gt(move _5, const 0_i32)
 16:11-16:24: @2[5]: FakeRead(ForMatchedPlace, _4)"><span class="annotation">@1,2⦊</span>countdown &gt; 0<span class="annotation">⦉@1,2</span></span></span><span class="code" style="--layer: 0"> {</span></span>
 <span class="line"><span class="code" style="--layer: 0">        if </span><span><span class="code even" style="--layer: 1" title="17:12-17:21: @5[3]: _8 = _1
-17:12-17:25: @5[4]: _7 = Lt(move _8, const 5_i32)
-17:12-17:25: @5[6]: FakeRead(ForMatchedPlace, _7)"><span class="annotation">@3,5⦊</span>countdown &lt; 5<span class="annotation">⦉@3,5</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="18:13-18:31: @8.Call: _9 = might_abort(const false) -&gt; [return: bb9, unwind: bb22]
-17:26-19:10: @9[1]: _6 = const ()"><span class="annotation">@6,8,9⦊</span>{</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="18:13-18:31: @8.Call: _9 = might_abort(const false) -&gt; [return: bb9, unwind: bb22]
-17:26-19:10: @9[1]: _6 = const ()">            might_abort(false);</span></span>
-<span class="line"><span class="code odd" style="--layer: 1" title="18:13-18:31: @8.Call: _9 = might_abort(const false) -&gt; [return: bb9, unwind: bb22]
-17:26-19:10: @9[1]: _6 = const ()">        }<span class="annotation">⦉@6,8,9</span></span></span><span><span class="code even" style="--layer: 1" title="19:10-19:10: @7[0]: _6 = const ()"><span class="annotation">@7⦊</span>‸<span class="annotation">⦉@7</span></span></span><span class="code" style="--layer: 0"></span></span>
+17:12-17:25: @5[4]: _7 = Lt(move _8, const 5_i32)"><span class="annotation">@3,5⦊</span>countdown &lt; 5<span class="annotation">⦉@3,5</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="18:13-18:31: @6.Call: _9 = might_abort(const false) -&gt; [return: bb8, unwind: bb19]
+17:26-19:10: @8[1]: _6 = const ()"><span class="annotation">@6,8⦊</span>{</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="18:13-18:31: @6.Call: _9 = might_abort(const false) -&gt; [return: bb8, unwind: bb19]
+17:26-19:10: @8[1]: _6 = const ()">            might_abort(false);</span></span>
+<span class="line"><span class="code odd" style="--layer: 1" title="18:13-18:31: @6.Call: _9 = might_abort(const false) -&gt; [return: bb8, unwind: bb19]
+17:26-19:10: @8[1]: _6 = const ()">        }<span class="annotation">⦉@6,8</span></span></span><span><span class="code even" style="--layer: 1" title="19:10-19:10: @7[0]: _6 = const ()"><span class="annotation">@7⦊</span>‸<span class="annotation">⦉@7</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">        // See discussion (below the `Notes` section) on coverage results for the closing brace.</span></span>
-<span class="line"><span class="code" style="--layer: 0">        if </span><span><span class="code odd" style="--layer: 1" title="21:12-21:21: @10[5]: _12 = _1
-21:12-21:25: @10[6]: _11 = Lt(move _12, const 5_i32)
-21:12-21:25: @10[8]: FakeRead(ForMatchedPlace, _11)"><span class="annotation">@10⦊</span>countdown &lt; 5<span class="annotation">⦉@10</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code even" style="--layer: 1" title="21:28-21:46: @13.Call: _13 = might_abort(const false) -&gt; [return: bb14, unwind: bb22]
-21:26-21:49: @14[1]: _10 = const ()"><span class="annotation">@11,13,14⦊</span>{ might_abort(false); }<span class="annotation">⦉@11,13,14</span></span></span><span><span class="code odd" style="--layer: 1" title="21:49-21:49: @12[0]: _10 = const ()"><span class="annotation">@12⦊</span>‸<span class="annotation">⦉@12</span></span></span><span class="code" style="--layer: 0"> // Counts for different regions on one line.</span></span>
+<span class="line"><span class="code" style="--layer: 0">        if </span><span><span class="code odd" style="--layer: 1" title="21:12-21:21: @9[5]: _12 = _1
+21:12-21:25: @9[6]: _11 = Lt(move _12, const 5_i32)"><span class="annotation">@9⦊</span>countdown &lt; 5<span class="annotation">⦉@9</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code even" style="--layer: 1" title="21:28-21:46: @10.Call: _13 = might_abort(const false) -&gt; [return: bb12, unwind: bb19]
+21:26-21:49: @12[1]: _10 = const ()"><span class="annotation">@10,12⦊</span>{ might_abort(false); }<span class="annotation">⦉@10,12</span></span></span><span><span class="code odd" style="--layer: 1" title="21:49-21:49: @11[0]: _10 = const ()"><span class="annotation">@11⦊</span>‸<span class="annotation">⦉@11</span></span></span><span class="code" style="--layer: 0"> // Counts for different regions on one line.</span></span>
 <span class="line"><span class="code" style="--layer: 0">        // For the following example, the closing brace is the last character on the line.</span></span>
 <span class="line"><span class="code" style="--layer: 0">        // This shows the character after the closing brace is highlighted, even if that next</span></span>
 <span class="line"><span class="code" style="--layer: 0">        // character is a newline.</span></span>
-<span class="line"><span class="code" style="--layer: 0">        if </span><span><span class="code even" style="--layer: 1" title="25:12-25:21: @15[5]: _16 = _1
-25:12-25:25: @15[6]: _15 = Lt(move _16, const 5_i32)
-25:12-25:25: @15[8]: FakeRead(ForMatchedPlace, _15)"><span class="annotation">@15⦊</span>countdown &lt; 5<span class="annotation">⦉@15</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="25:28-25:46: @18.Call: _17 = might_abort(const false) -&gt; [return: bb19, unwind: bb22]
-25:26-25:49: @19[1]: _14 = const ()"><span class="annotation">@16,18,19⦊</span>{ might_abort(false); }<span class="annotation">⦉@16,18,19</span></span></span><span><span class="code even" style="--layer: 1" title="25:49-25:49: @17[0]: _14 = const ()"><span class="annotation">@17⦊</span>‸<span class="annotation">⦉@17</span></span></span><span class="code" style="--layer: 0"></span></span>
-<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code odd" style="--layer: 1" title="26:9-26:23: @20[2]: _18 = CheckedSub(_1, const 1_i32)
-26:9-26:23: @21[0]: _1 = move (_18.0: i32)"><span class="annotation">@20,21⦊</span>countdown -= 1<span class="annotation">⦉@20,21</span></span></span><span class="code" style="--layer: 0">;</span></span>
+<span class="line"><span class="code" style="--layer: 0">        if </span><span><span class="code even" style="--layer: 1" title="25:12-25:21: @13[5]: _16 = _1
+25:12-25:25: @13[6]: _15 = Lt(move _16, const 5_i32)"><span class="annotation">@13⦊</span>countdown &lt; 5<span class="annotation">⦉@13</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="25:28-25:46: @14.Call: _17 = might_abort(const false) -&gt; [return: bb16, unwind: bb19]
+25:26-25:49: @16[1]: _14 = const ()"><span class="annotation">@14,16⦊</span>{ might_abort(false); }<span class="annotation">⦉@14,16</span></span></span><span><span class="code even" style="--layer: 1" title="25:49-25:49: @15[0]: _14 = const ()"><span class="annotation">@15⦊</span>‸<span class="annotation">⦉@15</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code odd" style="--layer: 1" title="26:9-26:23: @17[2]: _18 = CheckedSub(_1, const 1_i32)
+26:9-26:23: @18[0]: _1 = move (_18.0: i32)"><span class="annotation">@17,18⦊</span>countdown -= 1<span class="annotation">⦉@17,18</span></span></span><span class="code" style="--layer: 0">;</span></span>
 <span class="line"><span class="code" style="--layer: 0">    }</span></span>
 <span class="line"><span class="code" style="--layer: 0">    </span><span><span class="code even" style="--layer: 1" title="28:8-28:10: @4[4]: _20 = ()
 28:5-28:11: @4[5]: _0 = std::result::Result::&lt;(), u8&gt;::Ok(move _20)

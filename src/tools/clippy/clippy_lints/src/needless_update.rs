@@ -8,6 +8,9 @@ declare_clippy_lint! {
     /// **What it does:** Checks for needlessly including a base struct on update
     /// when all fields are changed anyway.
     ///
+    /// This lint is not applied to structs marked with
+    /// [non_exhaustive](https://doc.rust-lang.org/reference/attributes/type_system.html).
+    ///
     /// **Why is this bad?** This will cost resources (because the base has to be
     /// somewhere), and make the code less readable.
     ///
@@ -49,7 +52,9 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessUpdate {
         if let ExprKind::Struct(_, ref fields, Some(ref base)) = expr.kind {
             let ty = cx.typeck_results().expr_ty(expr);
             if let ty::Adt(def, _) = ty.kind() {
-                if fields.len() == def.non_enum_variant().fields.len() {
+                if fields.len() == def.non_enum_variant().fields.len()
+                    && !def.variants[0_usize.into()].is_field_list_non_exhaustive()
+                {
                     span_lint(
                         cx,
                         NEEDLESS_UPDATE,

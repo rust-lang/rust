@@ -34,7 +34,7 @@ pub struct RenameReturnPlace;
 
 impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut mir::Body<'tcx>) {
-        if tcx.sess.opts.debugging_opts.mir_opt_level == 0 {
+        if tcx.sess.mir_opt_level() == 0 {
             return;
         }
 

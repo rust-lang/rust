@@ -15,11 +15,18 @@
 // padding and overall computed sizes can be quite different.
 
 #![feature(start)]
+#![feature(rustc_attrs)]
 #![allow(dead_code)]
 
 use std::num::NonZeroU32;
 
 pub enum MyOption<T> { None, Some(T) }
+
+#[rustc_layout_scalar_valid_range_start(0)]
+#[rustc_layout_scalar_valid_range_end(0xFF_FF_FF_FE)]
+pub struct MyNotNegativeOne {
+  _i: i32,
+}
 
 impl<T> Default for MyOption<T> {
     fn default() -> Self { MyOption::None }
@@ -77,17 +84,18 @@ fn start(_: isize, _: *const *const u8) -> isize {
     let _a: MyOption<bool> = Default::default();
     let _b: MyOption<char> = Default::default();
     let _c: MyOption<std::cmp::Ordering> = Default::default();
-    let _b: MyOption<MyOption<u8>> = Default::default();
+    let _d: MyOption<MyOption<u8>> = Default::default();
     let _e: Enum4<(), char, (), ()> = Enum4::One(());
     let _f: Enum4<(), (), bool, ()> = Enum4::One(());
     let _g: Enum4<(), (), (), MyOption<u8>> = Enum4::One(());
+    let _h: MyOption<MyNotNegativeOne> = Default::default();
 
     // Unions do not currently participate in niche filling.
-    let _h: MyOption<Union2<NonZeroU32, u32>> = Default::default();
+    let _i: MyOption<Union2<NonZeroU32, u32>> = Default::default();
 
     // ...even when theoretically possible.
-    let _i: MyOption<Union1<NonZeroU32>> = Default::default();
-    let _j: MyOption<Union2<NonZeroU32, NonZeroU32>> = Default::default();
+    let _j: MyOption<Union1<NonZeroU32>> = Default::default();
+    let _k: MyOption<Union2<NonZeroU32, NonZeroU32>> = Default::default();
 
     0
 }

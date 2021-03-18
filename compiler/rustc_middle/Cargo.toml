@@ -11,7 +11,7 @@ doctest = false
 rustc_arena = { path = "../rustc_arena" }
 bitflags = "1.2.1"
 tracing = "0.1"
-rustc-rayon-core = "0.3.0"
+rustc-rayon-core = "0.3.1"
 polonius-engine = "0.12.0"
 rustc_apfloat = { path = "../rustc_apfloat" }
 rustc_attr = { path = "../rustc_attr" }
@@ -26,8 +26,8 @@ rustc_index = { path = "../rustc_index" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_span = { path = "../rustc_span" }
-chalk-ir = "0.36.0"
-smallvec = { version = "1.0", features = ["union", "may_dangle"] }
-measureme = "9.0.0"
+chalk-ir = "0.55.0"
+smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
+measureme = "9.1.0"
 rustc_session = { path = "../rustc_session" }
 rustc_type_ir = { path = "../rustc_type_ir" }

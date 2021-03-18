@@ -1,21 +1,17 @@
 use smallvec::smallvec;
 
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_middle::ty::outlives::Component;
 use rustc_middle::ty::{self, ToPredicate, TyCtxt, WithConstness};
+use rustc_span::symbol::Ident;
 
 pub fn anonymize_predicate<'tcx>(
     tcx: TyCtxt<'tcx>,
     pred: ty::Predicate<'tcx>,
 ) -> ty::Predicate<'tcx> {
-    match *pred.kind() {
-        ty::PredicateKind::ForAll(binder) => {
-            let new = ty::PredicateKind::ForAll(tcx.anonymize_late_bound_regions(binder));
-            tcx.reuse_or_mk_predicate(pred, new)
-        }
-        ty::PredicateKind::Atom(_) => pred,
-    }
+    let new = tcx.anonymize_late_bound_regions(pred.kind());
+    tcx.reuse_or_mk_predicate(pred, new)
 }
 
 struct PredicateSet<'tcx> {
@@ -126,9 +122,9 @@ impl Elaborator<'tcx> {
     fn elaborate(&mut self, obligation: &PredicateObligation<'tcx>) {
         let tcx = self.visited.tcx;
 
-        let bound_predicate = obligation.predicate.bound_atom();
+        let bound_predicate = obligation.predicate.kind();
         match bound_predicate.skip_binder() {
-            ty::PredicateAtom::Trait(data, _) => {
+            ty::PredicateKind::Trait(data, _) => {
                 // Get predicates declared on the trait.
                 let predicates = tcx.super_predicates_of(data.def_id());
 
@@ -150,36 +146,36 @@ impl Elaborator<'tcx> {
 
                 self.stack.extend(obligations);
             }
-            ty::PredicateAtom::WellFormed(..) => {
+            ty::PredicateKind::WellFormed(..) => {
                 // Currently, we do not elaborate WF predicates,
                 // although we easily could.
             }
-            ty::PredicateAtom::ObjectSafe(..) => {
+            ty::PredicateKind::ObjectSafe(..) => {
                 // Currently, we do not elaborate object-safe
                 // predicates.
             }
-            ty::PredicateAtom::Subtype(..) => {
+            ty::PredicateKind::Subtype(..) => {
                 // Currently, we do not "elaborate" predicates like `X <: Y`,
                 // though conceivably we might.
             }
-            ty::PredicateAtom::Projection(..) => {
+            ty::PredicateKind::Projection(..) => {
                 // Nothing to elaborate in a projection predicate.
             }
-            ty::PredicateAtom::ClosureKind(..) => {
+            ty::PredicateKind::ClosureKind(..) => {
                 // Nothing to elaborate when waiting for a closure's kind to be inferred.
             }
-            ty::PredicateAtom::ConstEvaluatable(..) => {
+            ty::PredicateKind::ConstEvaluatable(..) => {
                 // Currently, we do not elaborate const-evaluatable
                 // predicates.
             }
-            ty::PredicateAtom::ConstEquate(..) => {
+            ty::PredicateKind::ConstEquate(..) => {
                 // Currently, we do not elaborate const-equate
                 // predicates.
             }
-            ty::PredicateAtom::RegionOutlives(..) => {
+            ty::PredicateKind::RegionOutlives(..) => {
                 // Nothing to elaborate from `'a: 'b`.
             }
-            ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(ty_max, r_min)) => {
+            ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty_max, r_min)) => {
                 // We know that `T: 'a` for some type `T`. We can
                 // often elaborate this. For example, if we know that
                 // `[U]: 'a`, that implies that `U: 'a`. Similarly, if
@@ -209,7 +205,7 @@ impl Elaborator<'tcx> {
                                 if r.is_late_bound() {
                                     None
                                 } else {
-                                    Some(ty::PredicateAtom::RegionOutlives(ty::OutlivesPredicate(
+                                    Some(ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(
                                         r, r_min,
                                     )))
                                 }
@@ -217,7 +213,7 @@ impl Elaborator<'tcx> {
 
                             Component::Param(p) => {
                                 let ty = tcx.mk_ty_param(p.index, p.name);
-                                Some(ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(
+                                Some(ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(
                                     ty, r_min,
                                 )))
                             }
@@ -242,7 +238,7 @@ impl Elaborator<'tcx> {
                         }),
                 );
             }
-            ty::PredicateAtom::TypeWellFormedFromEnv(..) => {
+            ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                 // Nothing to elaborate
             }
         }
@@ -285,6 +281,44 @@ pub fn transitive_bounds<'tcx>(
     bounds: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
 ) -> Supertraits<'tcx> {
     elaborate_trait_refs(tcx, bounds).filter_to_traits()
+}
+
+/// A specialized variant of `elaborate_trait_refs` that only elaborates trait references that may
+/// define the given associated type `assoc_name`. It uses the
+/// `super_predicates_that_define_assoc_type` query to avoid enumerating super-predicates that
+/// aren't related to `assoc_item`.  This is used when resolving types like `Self::Item` or
+/// `T::Item` and helps to avoid cycle errors (see e.g. #35237).
+pub fn transitive_bounds_that_define_assoc_type<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    bounds: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
+    assoc_name: Ident,
+) -> impl Iterator<Item = ty::PolyTraitRef<'tcx>> {
+    let mut stack: Vec<_> = bounds.collect();
+    let mut visited = FxIndexSet::default();
+
+    std::iter::from_fn(move || {
+        while let Some(trait_ref) = stack.pop() {
+            let anon_trait_ref = tcx.anonymize_late_bound_regions(trait_ref);
+            if visited.insert(anon_trait_ref) {
+                let super_predicates = tcx.super_predicates_that_define_assoc_type((
+                    trait_ref.def_id(),
+                    Some(assoc_name),
+                ));
+                for (super_predicate, _) in super_predicates.predicates {
+                    let bound_predicate = super_predicate.kind();
+                    let subst_predicate = super_predicate
+                        .subst_supertrait(tcx, &bound_predicate.rebind(trait_ref.skip_binder()));
+                    if let Some(binder) = subst_predicate.to_opt_poly_trait_ref() {
+                        stack.push(binder.value);
+                    }
+                }
+
+                return Some(trait_ref);
+            }
+        }
+
+        return None;
+    })
 }
 
 ///////////////////////////////////////////////////////////////////////////

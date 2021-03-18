@@ -3,7 +3,7 @@
 //! # Problem statement
 //!
 //! We are given a decimal string such as `12.34e56`. This string consists of integral (`12`),
-//! fractional (`45`), and exponent (`56`) parts. All parts are optional and interpreted as zero
+//! fractional (`34`), and exponent (`56`) parts. All parts are optional and interpreted as zero
 //! when missing.
 //!
 //! We seek the IEEE 754 floating point number that is closest to the exact value of the decimal
@@ -332,7 +332,7 @@ fn bound_intermediate_digits(decimal: &Decimal<'_>, e: i64) -> u64 {
         // It tries to find a positive number k such that `f << k / 10^e` is an in-range
         // significand. This will result in about `2^53 * f * 10^e` < `10^17 * f * 10^e`.
         // One input that triggers this is 0.33...33 (375 x 3).
-        f_len + (e.abs() as u64) + 17
+        f_len + e.unsigned_abs() + 17
     }
 }
 

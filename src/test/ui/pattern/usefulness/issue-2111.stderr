@@ -1,8 +1,8 @@
-error[E0004]: non-exhaustive patterns: `(None, None)` not covered
-  --> $DIR/issue-2111.rs:2:9
+error[E0004]: non-exhaustive patterns: `(None, None)` and `(Some(_), Some(_))` not covered
+  --> $DIR/issue-2111.rs:2:11
    |
-LL |   match (a,b) {
-   |         ^^^^^ pattern `(None, None)` not covered
+LL |     match (a, b) {
+   |           ^^^^^^ patterns `(None, None)` and `(Some(_), Some(_))` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `(Option<usize>, Option<usize>)`

@@ -7,7 +7,7 @@
 extern crate proc_macro;
 
 #[proc_macro_derive(A)]
-pub unsafe extern fn foo(a: i32, b: u32) -> u32 {
+pub unsafe extern "C" fn foo(a: i32, b: u32) -> u32 {
     //~^ ERROR: mismatched types
     loop {}
 }

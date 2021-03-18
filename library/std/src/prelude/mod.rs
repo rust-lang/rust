@@ -1,4 +1,4 @@
-//! The Rust Prelude.
+//! # The Rust Prelude
 //!
 //! Rust comes with a variety of things in its standard library. However, if
 //! you had to manually import every single thing that you used, it would be
@@ -26,38 +26,37 @@
 //! # Prelude contents
 //!
 //! The current version of the prelude (version 1) lives in
-//! [`std::prelude::v1`], and re-exports the following.
+//! [`std::prelude::v1`], and re-exports the following:
 //!
-//! * [`std::marker`]::{[`Copy`], [`Send`], [`Sized`], [`Sync`], [`Unpin`]}. The
-//!   marker traits indicate fundamental properties of types.
-//! * [`std::ops`]::{[`Drop`], [`Fn`], [`FnMut`], [`FnOnce`]}. Various
+//! * [`std::marker`]::{[`Copy`], [`Send`], [`Sized`], [`Sync`], [`Unpin`]}:
+//!   marker traits that indicate fundamental properties of types.
+//! * [`std::ops`]::{[`Drop`], [`Fn`], [`FnMut`], [`FnOnce`]}: various
 //!   operations for both destructors and overloading `()`.
-//! * [`std::mem`]::[`drop`][`mem::drop`], a convenience function for explicitly
+//! * [`std::mem`]::[`drop`][`mem::drop`]: a convenience function for explicitly
 //!   dropping a value.
-//! * [`std::boxed`]::[`Box`], a way to allocate values on the heap.
-//! * [`std::borrow`]::[`ToOwned`], The conversion trait that defines
+//! * [`std::boxed`]::[`Box`]: a way to allocate values on the heap.
+//! * [`std::borrow`]::[`ToOwned`]: the conversion trait that defines
 //!   [`to_owned`], the generic method for creating an owned type from a
 //!   borrowed type.
-//! * [`std::clone`]::[`Clone`], the ubiquitous trait that defines
+//! * [`std::clone`]::[`Clone`]: the ubiquitous trait that defines
 //!   [`clone`][`Clone::clone`], the method for producing a copy of a value.
-//! * [`std::cmp`]::{[`PartialEq`], [`PartialOrd`], [`Eq`], [`Ord`] }. The
+//! * [`std::cmp`]::{[`PartialEq`], [`PartialOrd`], [`Eq`], [`Ord`]}: the
 //!   comparison traits, which implement the comparison operators and are often
 //!   seen in trait bounds.
-//! * [`std::convert`]::{[`AsRef`], [`AsMut`], [`Into`], [`From`]}. Generic
+//! * [`std::convert`]::{[`AsRef`], [`AsMut`], [`Into`], [`From`]}: generic
 //!   conversions, used by savvy API authors to create overloaded methods.
 //! * [`std::default`]::[`Default`], types that have default values.
 //! * [`std::iter`]::{[`Iterator`], [`Extend`], [`IntoIterator`],
-//!   [`DoubleEndedIterator`], [`ExactSizeIterator`]}. Iterators of various
+//!   [`DoubleEndedIterator`], [`ExactSizeIterator`]}: iterators of various
 //!   kinds.
-//! * [`std::option`]::[`Option`]::{[`self`][`Option`], [`Some`], [`None`]}. A
+//! * [`std::option`]::[`Option`]::{[`self`][`Option`], [`Some`], [`None`]}, a
 //!   type which expresses the presence or absence of a value. This type is so
 //!   commonly used, its variants are also exported.
-//! * [`std::result`]::[`Result`]::{[`self`][`Result`], [`Ok`], [`Err`]}. A type
+//! * [`std::result`]::[`Result`]::{[`self`][`Result`], [`Ok`], [`Err`]}: a type
 //!   for functions that may succeed or fail. Like [`Option`], its variants are
 //!   exported as well.
-//! * [`std::string`]::{[`String`], [`ToString`]}, heap allocated strings.
-//! * [`std::vec`]::[`Vec`], a growable, heap-allocated
-//!   vector.
+//! * [`std::string`]::{[`String`], [`ToString`]}: heap-allocated strings.
+//! * [`std::vec`]::[`Vec`]: a growable, heap-allocated vector.
 //!
 //! [`mem::drop`]: crate::mem::drop
 //! [`std::borrow`]: crate::borrow
@@ -85,3 +84,37 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 pub mod v1;
+
+/// The 2015 version of the prelude of The Rust Standard Library.
+///
+/// See the [module-level documentation](self) for more.
+#[unstable(feature = "prelude_2015", issue = "none")]
+pub mod rust_2015 {
+    #[unstable(feature = "prelude_2015", issue = "none")]
+    #[doc(no_inline)]
+    pub use super::v1::*;
+}
+
+/// The 2018 version of the prelude of The Rust Standard Library.
+///
+/// See the [module-level documentation](self) for more.
+#[unstable(feature = "prelude_2018", issue = "none")]
+pub mod rust_2018 {
+    #[unstable(feature = "prelude_2018", issue = "none")]
+    #[doc(no_inline)]
+    pub use super::v1::*;
+}
+
+/// The 2021 version of the prelude of The Rust Standard Library.
+///
+/// See the [module-level documentation](self) for more.
+#[unstable(feature = "prelude_2021", issue = "none")]
+pub mod rust_2021 {
+    #[unstable(feature = "prelude_2021", issue = "none")]
+    #[doc(no_inline)]
+    pub use super::v1::*;
+
+    #[unstable(feature = "prelude_2021", issue = "none")]
+    #[doc(no_inline)]
+    pub use core::prelude::rust_2021::*;
+}

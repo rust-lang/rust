@@ -71,7 +71,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
         match item.kind {
             hir::ItemKind::Struct(ref struct_def, _) | hir::ItemKind::Union(ref struct_def, _) => {
-                self.visit_node_helper(item.hir_id);
+                self.visit_node_helper(item.hir_id());
 
                 if let hir::VariantData::Tuple(..) = *struct_def {
                     self.visit_node_helper(struct_def.ctor_hir_id().unwrap());
@@ -79,7 +79,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
             }
 
             hir::ItemKind::Enum(ref enum_def, _) => {
-                self.visit_node_helper(item.hir_id);
+                self.visit_node_helper(item.hir_id());
 
                 for variant in enum_def.variants {
                     if let hir::VariantData::Tuple(..) = variant.data {
@@ -89,7 +89,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
             }
 
             hir::ItemKind::Fn(..) => {
-                self.visit_node_helper(item.hir_id);
+                self.visit_node_helper(item.hir_id());
             }
 
             _ => {}
@@ -98,19 +98,19 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
 
     fn visit_trait_item(&mut self, trait_item: &hir::TraitItem<'_>) {
         if let hir::TraitItemKind::Fn(..) = trait_item.kind {
-            self.visit_node_helper(trait_item.hir_id);
+            self.visit_node_helper(trait_item.hir_id());
         }
     }
 
     fn visit_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) {
         if let hir::ImplItemKind::Fn(..) = impl_item.kind {
-            self.visit_node_helper(impl_item.hir_id);
+            self.visit_node_helper(impl_item.hir_id());
         }
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &hir::ForeignItem<'_>) {
         if let hir::ForeignItemKind::Fn(..) = foreign_item.kind {
-            self.visit_node_helper(foreign_item.hir_id);
+            self.visit_node_helper(foreign_item.hir_id());
         }
     }
 }
@@ -207,27 +207,13 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         }
     }
 
-    fn add_constraints_from_trait_ref(
-        &mut self,
-        current: &CurrentItem,
-        trait_ref: ty::TraitRef<'tcx>,
-        variance: VarianceTermPtr<'a>,
-    ) {
-        debug!("add_constraints_from_trait_ref: trait_ref={:?} variance={:?}", trait_ref, variance);
-        self.add_constraints_from_invariant_substs(current, trait_ref.substs, variance);
-    }
-
+    #[instrument(level = "debug", skip(self, current))]
     fn add_constraints_from_invariant_substs(
         &mut self,
         current: &CurrentItem,
         substs: SubstsRef<'tcx>,
         variance: VarianceTermPtr<'a>,
     ) {
-        debug!(
-            "add_constraints_from_invariant_substs: substs={:?} variance={:?}",
-            substs, variance
-        );
-
         // Trait are always invariant so we can take advantage of that.
         let variance_i = self.invariant(variance);
 
@@ -300,8 +286,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::Projection(ref data) => {
-                let tcx = self.tcx();
-                self.add_constraints_from_trait_ref(current, data.trait_ref(tcx), variance);
+                self.add_constraints_from_invariant_substs(current, data.substs, variance);
             }
 
             ty::Opaque(_, substs) => {

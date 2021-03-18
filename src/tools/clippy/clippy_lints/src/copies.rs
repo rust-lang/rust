@@ -1,6 +1,6 @@
 use crate::utils::{eq_expr_value, in_macro, search_same, SpanlessEq, SpanlessHash};
-use crate::utils::{get_parent_expr, higher, if_sequence, span_lint_and_note};
-use rustc_hir::{Block, Expr};
+use crate::utils::{get_parent_expr, if_sequence, span_lint_and_note};
+use rustc_hir::{Block, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -109,11 +109,13 @@ impl<'tcx> LateLintPass<'tcx> for CopyAndPaste {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if !expr.span.from_expansion() {
             // skip ifs directly in else, it will be checked in the parent if
-            if let Some(expr) = get_parent_expr(cx, expr) {
-                if let Some((_, _, Some(ref else_expr))) = higher::if_block(&expr) {
-                    if else_expr.hir_id == expr.hir_id {
-                        return;
-                    }
+            if let Some(&Expr {
+                kind: ExprKind::If(_, _, Some(ref else_expr)),
+                ..
+            }) = get_parent_expr(cx, expr)
+            {
+                if else_expr.hir_id == expr.hir_id {
+                    return;
                 }
             }
 

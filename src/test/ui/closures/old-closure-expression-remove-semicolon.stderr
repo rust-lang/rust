@@ -1,0 +1,14 @@
+error[E0308]: mismatched types
+  --> $DIR/old-closure-expression-remove-semicolon.rs:8:19
+   |
+LL |       let _x: i32 = {
+   |  ___________________^
+LL | |
+LL | |         foo();
+   | |              - help: consider removing this semicolon
+LL | |     };
+   | |_____^ expected `i32`, found `()`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

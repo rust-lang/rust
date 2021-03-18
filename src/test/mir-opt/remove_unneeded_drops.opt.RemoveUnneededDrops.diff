@@ -14,7 +14,6 @@
           StorageLive(_2);                 // scope 0 at $DIR/remove_unneeded_drops.rs:4:5: 4:12
           StorageLive(_3);                 // scope 0 at $DIR/remove_unneeded_drops.rs:4:10: 4:11
           _3 = _1;                         // scope 0 at $DIR/remove_unneeded_drops.rs:4:10: 4:11
-          _2 = const ();                   // scope 1 at $DIR/remove_unneeded_drops.rs:4:5: 4:12
 -         drop(_3) -> bb1;                 // scope 1 at $DIR/remove_unneeded_drops.rs:4:5: 4:12
 -     }
 - 

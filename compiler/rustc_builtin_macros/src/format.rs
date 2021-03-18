@@ -270,7 +270,7 @@ impl<'a, 'b> Context<'a, 'b> {
                     parse::ArgumentNamed(s) => Named(s),
                 };
 
-                let ty = Placeholder(match &arg.format.ty[..] {
+                let ty = Placeholder(match arg.format.ty {
                     "" => "Display",
                     "?" => "Debug",
                     "e" => "LowerExp",
@@ -1044,10 +1044,7 @@ pub fn expand_preparsed_format_args(
 
     let numbered_position_args = pieces.iter().any(|arg: &parse::Piece<'_>| match *arg {
         parse::String(_) => false,
-        parse::NextArgument(arg) => match arg.position {
-            parse::Position::ArgumentIs(_) => true,
-            _ => false,
-        },
+        parse::NextArgument(arg) => matches!(arg.position, parse::Position::ArgumentIs(_)),
     });
 
     cx.build_index_map();

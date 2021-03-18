@@ -1,6 +1,5 @@
-use super::map::MIN_LEN;
 use super::merge_iter::MergeIterInner;
-use super::node::{self, ForceResult::*, Root};
+use super::node::{self, Root};
 use core::iter::FusedIterator;
 
 impl<K, V> Root<K, V> {
@@ -30,7 +29,7 @@ impl<K, V> Root<K, V> {
     /// Pushes all key-value pairs to the end of the tree, incrementing a
     /// `length` variable along the way. The latter makes it easier for the
     /// caller to avoid a leak when the iterator panicks.
-    fn bulk_push<I>(&mut self, iter: I, length: &mut usize)
+    pub fn bulk_push<I>(&mut self, iter: I, length: &mut usize)
     where
         I: Iterator<Item = (K, V)>,
     {
@@ -81,24 +80,7 @@ impl<K, V> Root<K, V> {
             // the appended elements even if advancing the iterator panicks.
             *length += 1;
         }
-        self.fix_right_edge();
-    }
-
-    fn fix_right_edge(&mut self) {
-        // Handle underfull nodes, start from the top.
-        let mut cur_node = self.borrow_mut();
-        while let Internal(internal) = cur_node.force() {
-            // Check if right-most child is underfull.
-            let mut last_kv = internal.last_kv().consider_for_balancing();
-            let right_child_len = last_kv.right_child_len();
-            if right_child_len < MIN_LEN {
-                // We need to steal.
-                last_kv.bulk_steal_left(MIN_LEN - right_child_len);
-            }
-
-            // Go further down.
-            cur_node = last_kv.into_right_child();
-        }
+        self.fix_right_border_of_plentiful();
     }
 }
 

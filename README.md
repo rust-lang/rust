@@ -1,6 +1,4 @@
-<a href = "https://www.rust-lang.org/">
-<img width = "90%" height = "auto" src = "https://img.shields.io/badge/Rust-Programming%20Language-black?style=flat&logo=rust" alt = "The Rust Programming Language">
-</a>
+# The Rust Programming Language
 
 This is the main source code repository for [Rust]. It contains the compiler,
 standard library, and documentation.
@@ -33,7 +31,7 @@ by running `./x.py --help` or reading the [rustc dev guide][rustcguidebuild].
    * `g++` 5.1 or later or `clang++` 3.5 or later
    * `python` 3 or 2.7
    * GNU `make` 3.81 or later
-   * `cmake` 3.4.3 or later
+   * `cmake` 3.13.4 or later
    * `ninja`
    * `curl`
    * `git`
@@ -92,7 +90,7 @@ build.
 
 [MSYS2][msys2] can be used to easily build Rust on Windows:
 
-[msys2]: https://msys2.github.io/
+[msys2]: https://www.msys2.org/
 
 1. Grab the latest [MSYS2 installer][msys2] and go through the installer.
 

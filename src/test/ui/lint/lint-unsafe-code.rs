@@ -12,13 +12,27 @@ mod allowed_unsafe {
     unsafe fn also_allowed() {}
     unsafe trait AllowedUnsafe { }
     unsafe impl AllowedUnsafe for super::Bar {}
+    #[no_mangle] fn allowed2() {}
+    #[export_name = "foo"] fn allowed3() {}
 }
 
 macro_rules! unsafe_in_macro {
-    () => {
+    () => {{
+        #[no_mangle] fn foo() {} //~ ERROR: declaration of a `no_mangle` function
+        #[no_mangle] static FOO: u32 = 5; //~ ERROR: declaration of a `no_mangle` static
+        #[export_name = "bar"] fn bar() {}
+        //~^ ERROR: declaration of a function with `export_name`
+        #[export_name = "BAR"] static BAR: u32 = 5;
+        //~^ ERROR: declaration of a static with `export_name`
         unsafe {} //~ ERROR: usage of an `unsafe` block
-    }
+    }}
 }
+
+#[no_mangle] fn foo() {} //~ ERROR: declaration of a `no_mangle` function
+#[no_mangle] static FOO: u32 = 5; //~ ERROR: declaration of a `no_mangle` static
+
+#[export_name = "bar"] fn bar() {} //~ ERROR: declaration of a function with `export_name`
+#[export_name = "BAR"] static BAR: u32 = 5; //~ ERROR: declaration of a static with `export_name`
 
 unsafe fn baz() {} //~ ERROR: declaration of an `unsafe` function
 unsafe trait Foo {} //~ ERROR: declaration of an `unsafe` trait

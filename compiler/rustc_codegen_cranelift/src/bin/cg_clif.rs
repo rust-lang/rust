@@ -6,7 +6,7 @@ extern crate rustc_interface;
 extern crate rustc_session;
 extern crate rustc_target;
 
-use rustc_data_structures::profiling::print_time_passes_entry;
+use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_interface::interface;
 use rustc_session::config::ErrorOutputType;
 use rustc_session::early_error;
@@ -27,26 +27,19 @@ impl rustc_driver::Callbacks for CraneliftPassesCallbacks {
         config.opts.cg.panic = Some(PanicStrategy::Abort);
         config.opts.debugging_opts.panic_abort_tests = true;
         config.opts.maybe_sysroot = Some(config.opts.maybe_sysroot.clone().unwrap_or_else(|| {
-            std::env::current_exe()
-                .unwrap()
-                .parent()
-                .unwrap()
-                .parent()
-                .unwrap()
-                .to_owned()
+            std::env::current_exe().unwrap().parent().unwrap().parent().unwrap().to_owned()
         }));
     }
 }
 
 fn main() {
-    let start = std::time::Instant::now();
+    let start_time = std::time::Instant::now();
+    let start_rss = get_resident_set_size();
     rustc_driver::init_rustc_env_logger();
     let mut callbacks = CraneliftPassesCallbacks::default();
     rustc_driver::install_ice_hook();
     let exit_code = rustc_driver::catch_with_exit_code(|| {
-        let mut use_jit = false;
-
-        let mut args = std::env::args_os()
+        let args = std::env::args_os()
             .enumerate()
             .map(|(i, arg)| {
                 arg.into_string().unwrap_or_else(|arg| {
@@ -56,27 +49,18 @@ fn main() {
                     )
                 })
             })
-            .filter(|arg| {
-                if arg == "--jit" {
-                    use_jit = true;
-                    false
-                } else {
-                    true
-                }
-            })
             .collect::<Vec<_>>();
-        if use_jit {
-            args.push("-Cprefer-dynamic".to_string());
-        }
         let mut run_compiler = rustc_driver::RunCompiler::new(&args, &mut callbacks);
         run_compiler.set_make_codegen_backend(Some(Box::new(move |_| {
-            Box::new(rustc_codegen_cranelift::CraneliftCodegenBackend {
-                config: rustc_codegen_cranelift::BackendConfig { use_jit },
-            })
+            Box::new(rustc_codegen_cranelift::CraneliftCodegenBackend { config: None })
         })));
         run_compiler.run()
     });
-    // The extra `\t` is necessary to align this label with the others.
-    print_time_passes_entry(callbacks.time_passes, "\ttotal", start.elapsed());
+
+    if callbacks.time_passes {
+        let end_rss = get_resident_set_size();
+        print_time_passes_entry("total", start_time.elapsed(), start_rss, end_rss);
+    }
+
     std::process::exit(exit_code)
 }

@@ -1,7 +1,10 @@
 // Make sure that we check that impl trait types implement the traits that they
 // claim to.
 
-#![feature(type_alias_impl_trait)]
+// revisions: min_tait full_tait
+#![feature(min_type_alias_impl_trait)]
+#![cfg_attr(full_tait, feature(type_alias_impl_trait))]
+//[full_tait]~^ WARN incomplete
 
 type X<T> = impl Clone;
 //~^ ERROR the trait bound `T: Clone` is not satisfied

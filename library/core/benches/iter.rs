@@ -276,7 +276,29 @@ bench_sums! {
 bench_sums! {
     bench_cycle_take_sum,
     bench_cycle_take_ref_sum,
-    (0i64..10000).cycle().take(1000000)
+    (0..10000).cycle().take(1000000)
+}
+
+bench_sums! {
+    bench_cycle_skip_take_sum,
+    bench_cycle_skip_take_ref_sum,
+    (0..100000).cycle().skip(1000000).take(1000000)
+}
+
+bench_sums! {
+    bench_cycle_take_skip_sum,
+    bench_cycle_take_skip_ref_sum,
+    (0..100000).cycle().take(1000000).skip(100000)
+}
+
+bench_sums! {
+    bench_skip_cycle_skip_zip_add_sum,
+    bench_skip_cycle_skip_zip_add_ref_sum,
+    (0..100000).skip(100).cycle().skip(100)
+      .zip((0..100000).cycle().skip(10))
+      .map(|(a,b)| a+b)
+      .skip(100000)
+      .take(1000000)
 }
 
 // Checks whether Skip<Zip<A,B>> is as fast as Zip<Skip<A>, Skip<B>>, from

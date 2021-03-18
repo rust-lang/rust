@@ -29,8 +29,8 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
 
             // process predicates and convert to `RequiredPredicates` entry, see below
             for &(predicate, span) in predicates.predicates {
-                match predicate.skip_binders() {
-                    ty::PredicateAtom::TypeOutlives(OutlivesPredicate(ref ty, ref reg)) => {
+                match predicate.kind().skip_binder() {
+                    ty::PredicateKind::TypeOutlives(OutlivesPredicate(ref ty, ref reg)) => {
                         insert_outlives_predicate(
                             tcx,
                             (*ty).into(),
@@ -40,7 +40,7 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
                         )
                     }
 
-                    ty::PredicateAtom::RegionOutlives(OutlivesPredicate(ref reg1, ref reg2)) => {
+                    ty::PredicateKind::RegionOutlives(OutlivesPredicate(ref reg1, ref reg2)) => {
                         insert_outlives_predicate(
                             tcx,
                             (*reg1).into(),
@@ -50,15 +50,15 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
                         )
                     }
 
-                    ty::PredicateAtom::Trait(..)
-                    | ty::PredicateAtom::Projection(..)
-                    | ty::PredicateAtom::WellFormed(..)
-                    | ty::PredicateAtom::ObjectSafe(..)
-                    | ty::PredicateAtom::ClosureKind(..)
-                    | ty::PredicateAtom::Subtype(..)
-                    | ty::PredicateAtom::ConstEvaluatable(..)
-                    | ty::PredicateAtom::ConstEquate(..)
-                    | ty::PredicateAtom::TypeWellFormedFromEnv(..) => (),
+                    ty::PredicateKind::Trait(..)
+                    | ty::PredicateKind::Projection(..)
+                    | ty::PredicateKind::WellFormed(..)
+                    | ty::PredicateKind::ObjectSafe(..)
+                    | ty::PredicateKind::ClosureKind(..)
+                    | ty::PredicateKind::Subtype(..)
+                    | ty::PredicateKind::ConstEvaluatable(..)
+                    | ty::PredicateKind::ConstEquate(..)
+                    | ty::PredicateKind::TypeWellFormedFromEnv(..) => (),
                 }
             }
 

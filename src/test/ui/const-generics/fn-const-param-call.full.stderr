@@ -1,11 +1,11 @@
 error: using function pointers as const generic parameters is forbidden
-  --> $DIR/fn-const-param-call.rs:12:25
+  --> $DIR/fn-const-param-call.rs:11:25
    |
 LL | struct Wrapper<const F: fn() -> u32>;
    |                         ^^^^^^^^^^^
 
 error: using function pointers as const generic parameters is forbidden
-  --> $DIR/fn-const-param-call.rs:14:15
+  --> $DIR/fn-const-param-call.rs:13:15
    |
 LL | impl<const F: fn() -> u32> Wrapper<F> {
    |               ^^^^^^^^^^^

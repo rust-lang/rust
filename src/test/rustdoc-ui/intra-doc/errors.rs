@@ -1,4 +1,4 @@
-#![deny(broken_intra_doc_links)]
+#![deny(rustdoc::broken_intra_doc_links)]
 //~^ NOTE lint level is defined
 
 // FIXME: this should say that it was skipped (maybe an allowed by default lint?)

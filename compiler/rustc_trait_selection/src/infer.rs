@@ -124,7 +124,7 @@ impl<'tcx> InferCtxtBuilderExt<'tcx> for InferCtxtBuilder<'tcx> {
             DUMMY_SP,
             canonical_key,
             |ref infcx, key, canonical_inference_vars| {
-                let mut fulfill_cx = TraitEngine::new(infcx.tcx);
+                let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
                 let value = operation(infcx, &mut *fulfill_cx, key)?;
                 infcx.make_canonicalized_query_response(
                     canonical_inference_vars,
@@ -162,7 +162,7 @@ impl<'tcx> OutlivesEnvironmentExt<'tcx> for OutlivesEnvironment<'tcx> {
     /// 'b` (and hence, transitively, that `T: 'a`). This method would
     /// add those assumptions into the outlives-environment.
     ///
-    /// Tests: `src/test/compile-fail/regions-free-region-ordering-*.rs`
+    /// Tests: `src/test/ui/regions/regions-free-region-ordering-*.rs`
     fn add_implied_bounds(
         &mut self,
         infcx: &InferCtxt<'a, 'tcx>,

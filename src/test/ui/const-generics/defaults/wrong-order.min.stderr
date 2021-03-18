@@ -1,5 +1,5 @@
 error: type parameters with a default must be trailing
-  --> $DIR/wrong-order.rs:5:10
+  --> $DIR/wrong-order.rs:4:10
    |
 LL | struct A<T = u32, const N: usize> {
    |          ^

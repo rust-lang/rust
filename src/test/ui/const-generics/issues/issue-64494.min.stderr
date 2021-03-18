@@ -1,5 +1,5 @@
 error: generic parameters may not be used in const operations
-  --> $DIR/issue-64494.rs:16:38
+  --> $DIR/issue-64494.rs:15:38
    |
 LL | impl<T: Foo> MyTrait for T where Is<{T::VAL == 5}>: True {}
    |                                      ^^^^^^ cannot perform const operation using `T`
@@ -8,7 +8,7 @@ LL | impl<T: Foo> MyTrait for T where Is<{T::VAL == 5}>: True {}
    = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/issue-64494.rs:19:38
+  --> $DIR/issue-64494.rs:18:38
    |
 LL | impl<T: Foo> MyTrait for T where Is<{T::VAL == 6}>: True {}
    |                                      ^^^^^^ cannot perform const operation using `T`
@@ -17,7 +17,7 @@ LL | impl<T: Foo> MyTrait for T where Is<{T::VAL == 6}>: True {}
    = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error[E0119]: conflicting implementations of trait `MyTrait`:
-  --> $DIR/issue-64494.rs:19:1
+  --> $DIR/issue-64494.rs:18:1
    |
 LL | impl<T: Foo> MyTrait for T where Is<{T::VAL == 5}>: True {}
    | ------------------------------------ first implementation here

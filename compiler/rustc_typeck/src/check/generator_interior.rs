@@ -186,7 +186,8 @@ pub fn resolve_interior<'a, 'tcx>(
                 // which means that none of the regions inside relate to any other, even if
                 // typeck had previously found constraints that would cause them to be related.
                 let folded = fcx.tcx.fold_regions(erased, &mut false, |_, current_depth| {
-                    let r = fcx.tcx.mk_region(ty::ReLateBound(current_depth, ty::BrAnon(counter)));
+                    let br = ty::BoundRegion { kind: ty::BrAnon(counter) };
+                    let r = fcx.tcx.mk_region(ty::ReLateBound(current_depth, br));
                     counter += 1;
                     r
                 });
@@ -204,7 +205,8 @@ pub fn resolve_interior<'a, 'tcx>(
     let witness = fcx.tcx.mk_generator_witness(ty::Binder::bind(type_list));
 
     // Store the generator types and spans into the typeck results for this generator.
-    visitor.fcx.inh.typeck_results.borrow_mut().generator_interior_types = type_causes;
+    visitor.fcx.inh.typeck_results.borrow_mut().generator_interior_types =
+        ty::Binder::bind(type_causes);
 
     debug!(
         "types in generator after region replacement {:?}, span = {:?}",

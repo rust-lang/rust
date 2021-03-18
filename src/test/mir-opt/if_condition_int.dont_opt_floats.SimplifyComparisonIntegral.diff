@@ -16,21 +16,21 @@
                                            // + span: $DIR/if-condition-int.rs:53:13: 53:18
                                            // + literal: Const { ty: f32, val: Value(Scalar(0xc2280000)) }
           StorageDead(_3);                 // scope 0 at $DIR/if-condition-int.rs:53:17: 53:18
-          switchInt(_2) -> [false: bb1, otherwise: bb2]; // scope 0 at $DIR/if-condition-int.rs:53:5: 53:35
+          switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/if-condition-int.rs:53:5: 53:35
       }
   
       bb1: {
-          _0 = const 1_i32;                // scope 0 at $DIR/if-condition-int.rs:53:32: 53:33
-          goto -> bb3;                     // scope 0 at $DIR/if-condition-int.rs:53:5: 53:35
-      }
-  
-      bb2: {
           _0 = const 0_i32;                // scope 0 at $DIR/if-condition-int.rs:53:21: 53:22
           goto -> bb3;                     // scope 0 at $DIR/if-condition-int.rs:53:5: 53:35
       }
   
+      bb2: {
+          _0 = const 1_i32;                // scope 0 at $DIR/if-condition-int.rs:53:32: 53:33
+          goto -> bb3;                     // scope 0 at $DIR/if-condition-int.rs:53:5: 53:35
+      }
+  
       bb3: {
-          StorageDead(_2);                 // scope 0 at $DIR/if-condition-int.rs:54:1: 54:2
+          StorageDead(_2);                 // scope 0 at $DIR/if-condition-int.rs:53:34: 53:35
           return;                          // scope 0 at $DIR/if-condition-int.rs:54:2: 54:2
       }
   }

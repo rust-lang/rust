@@ -36,7 +36,7 @@ impl StabilityLevel {
 }
 
 /// An entry in the `depr_map`.
-#[derive(Clone, HashStable)]
+#[derive(Clone, HashStable, Debug)]
 pub struct DeprecationEntry {
     /// The metadata of the attribute associated with this entry.
     pub attr: Deprecation,
@@ -63,7 +63,7 @@ impl DeprecationEntry {
 }
 
 /// A stability index, giving the stability level for items and methods.
-#[derive(HashStable)]
+#[derive(HashStable, Debug)]
 pub struct Index<'tcx> {
     /// This is mostly a cache, except the stabilities of local items
     /// are filled by the annotator.

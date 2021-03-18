@@ -5,14 +5,15 @@ use crate::common::{output_base_dir, output_base_name, output_testname_unique};
 use crate::common::{Assembly, Incremental, JsDocTest, MirOpt, RunMake, RustdocJson, Ui};
 use crate::common::{Codegen, CodegenUnits, DebugInfo, Debugger, Rustdoc};
 use crate::common::{CompareMode, FailMode, PassMode};
-use crate::common::{CompileFail, Pretty, RunFail, RunPassValgrind};
 use crate::common::{Config, TestPaths};
+use crate::common::{Pretty, RunPassValgrind};
 use crate::common::{UI_RUN_STDERR, UI_RUN_STDOUT};
 use crate::errors::{self, Error, ErrorKind};
 use crate::header::TestProps;
 use crate::json;
 use crate::util::get_pointer_width;
 use crate::util::{logv, PathBufExt};
+use crate::ColorConfig;
 use regex::{Captures, Regex};
 use rustfix::{apply_suggestions, get_suggestions_from_json, Filter};
 
@@ -330,13 +331,11 @@ impl<'test> TestCx<'test> {
     /// revisions, exactly once, with revision == None).
     fn run_revision(&self) {
         if self.props.should_ice {
-            if self.config.mode != CompileFail && self.config.mode != Incremental {
+            if self.config.mode != Incremental {
                 self.fatal("cannot use should-ice in a test that is not cfail");
             }
         }
         match self.config.mode {
-            CompileFail => self.run_cfail_test(),
-            RunFail => self.run_rfail_test(),
             RunPassValgrind => self.run_valgrind_test(),
             Pretty => self.run_pretty_test(),
             DebugInfo => self.run_debuginfo_test(),
@@ -377,7 +376,6 @@ impl<'test> TestCx<'test> {
 
     fn should_compile_successfully(&self, pm: Option<PassMode>) -> bool {
         match self.config.mode {
-            CompileFail => false,
             JsDocTest => true,
             Ui => pm.is_some() || self.props.fail_mode > Some(FailMode::Build),
             Incremental => {
@@ -1537,8 +1535,8 @@ impl<'test> TestCx<'test> {
         };
 
         let allow_unused = match self.config.mode {
-            CompileFail | Ui => {
-                // compile-fail and ui tests tend to have tons of unused code as
+            Ui => {
+                // UI tests tend to have tons of unused code as
                 // it's just testing various pieces of the compile, but we don't
                 // want to actually assert warnings about all this code. Instead
                 // let's just ignore unused code warnings by defaults and tests
@@ -1588,7 +1586,7 @@ impl<'test> TestCx<'test> {
 
         let aux_dir = self.aux_output_dir_name();
 
-        let rustdoc_path = self.config.rustdoc_path.as_ref().expect("--rustdoc-path passed");
+        let rustdoc_path = self.config.rustdoc_path.as_ref().expect("--rustdoc-path not passed");
         let mut rustdoc = Command::new(rustdoc_path);
 
         rustdoc
@@ -1940,7 +1938,7 @@ impl<'test> TestCx<'test> {
         }
 
         match self.config.mode {
-            CompileFail | Incremental => {
+            Incremental => {
                 // If we are extracting and matching errors in the new
                 // fashion, then you want JSON mode. Old-skool error
                 // patterns still match the raw compiler output.
@@ -1960,8 +1958,9 @@ impl<'test> TestCx<'test> {
             }
             MirOpt => {
                 rustc.args(&[
+                    "-Copt-level=1",
                     "-Zdump-mir=all",
-                    "-Zmir-opt-level=3",
+                    "-Zmir-opt-level=4",
                     "-Zvalidate-mir",
                     "-Zdump-mir-exclude-pass-number",
                 ]);
@@ -1975,8 +1974,8 @@ impl<'test> TestCx<'test> {
 
                 rustc.arg(dir_opt);
             }
-            RunFail | RunPassValgrind | Pretty | DebugInfo | Codegen | Rustdoc | RustdocJson
-            | RunMake | CodegenUnits | JsDocTest | Assembly => {
+            RunPassValgrind | Pretty | DebugInfo | Codegen | Rustdoc | RustdocJson | RunMake
+            | CodegenUnits | JsDocTest | Assembly => {
                 // do not use JSON output
             }
         }
@@ -2018,10 +2017,10 @@ impl<'test> TestCx<'test> {
                 rustc.args(&["-Zchalk"]);
             }
             Some(CompareMode::SplitDwarf) => {
-                rustc.args(&["-Zsplit-dwarf=split"]);
+                rustc.args(&["-Csplit-debuginfo=unpacked", "-Zunstable-options"]);
             }
             Some(CompareMode::SplitDwarfSingle) => {
-                rustc.args(&["-Zsplit-dwarf=single"]);
+                rustc.args(&["-Csplit-debuginfo=packed", "-Zunstable-options"]);
             }
             None => {}
         }
@@ -2070,6 +2069,8 @@ impl<'test> TestCx<'test> {
             f = f.with_extra_extension("js");
         } else if self.config.target.contains("wasm32") {
             f = f.with_extra_extension("wasm");
+        } else if self.config.target.contains("spirv") {
+            f = f.with_extra_extension("spv");
         } else if !env::consts::EXE_SUFFIX.is_empty() {
             f = f.with_extra_extension(env::consts::EXE_SUFFIX);
         }
@@ -2366,6 +2367,9 @@ impl<'test> TestCx<'test> {
     }
 
     fn compare_to_default_rustdoc(&mut self, out_dir: &Path) {
+        if !self.config.has_tidy {
+            return;
+        }
         println!("info: generating a diff against nightly rustdoc");
 
         let suffix =
@@ -2427,10 +2431,8 @@ impl<'test> TestCx<'test> {
                 }
             }
         };
-        if self.config.has_tidy {
-            tidy_dir(out_dir);
-            tidy_dir(&compare_dir);
-        }
+        tidy_dir(out_dir);
+        tidy_dir(&compare_dir);
 
         let pager = {
             let output = Command::new("git").args(&["config", "--get", "core.pager"]).output().ok();
@@ -2442,12 +2444,43 @@ impl<'test> TestCx<'test> {
                 }
             })
         };
-        let mut diff = Command::new("diff");
-        // diff recursively, showing context, and excluding .css files
-        diff.args(&["-u", "-r", "-x", "*.css"]).args(&[&compare_dir, out_dir]);
 
-        let output = if let Some(pager) = pager {
-            let diff_pid = diff.stdout(Stdio::piped()).spawn().expect("failed to run `diff`");
+        let diff_filename = format!("build/tmp/rustdoc-compare-{}.diff", std::process::id());
+
+        {
+            let mut diff_output = File::create(&diff_filename).unwrap();
+            for entry in walkdir::WalkDir::new(out_dir) {
+                let entry = entry.expect("failed to read file");
+                let extension = entry.path().extension().and_then(|p| p.to_str());
+                if entry.file_type().is_file()
+                    && (extension == Some("html".into()) || extension == Some("js".into()))
+                {
+                    let expected_path =
+                        compare_dir.join(entry.path().strip_prefix(&out_dir).unwrap());
+                    let expected =
+                        if let Ok(s) = std::fs::read(&expected_path) { s } else { continue };
+                    let actual_path = entry.path();
+                    let actual = std::fs::read(&actual_path).unwrap();
+                    diff_output
+                        .write_all(&unified_diff::diff(
+                            &expected,
+                            &expected_path.to_string_lossy(),
+                            &actual,
+                            &actual_path.to_string_lossy(),
+                            3,
+                        ))
+                        .unwrap();
+                }
+            }
+        }
+
+        match self.config.color {
+            ColorConfig::AlwaysColor => colored::control::set_override(true),
+            ColorConfig::NeverColor => colored::control::set_override(false),
+            _ => {}
+        }
+
+        if let Some(pager) = pager {
             let pager = pager.trim();
             if self.config.verbose {
                 eprintln!("using pager {}", pager);
@@ -2455,24 +2488,48 @@ impl<'test> TestCx<'test> {
             let output = Command::new(pager)
                 // disable paging; we want this to be non-interactive
                 .env("PAGER", "")
-                .stdin(diff_pid.stdout.unwrap())
+                .stdin(File::open(&diff_filename).unwrap())
                 // Capture output and print it explicitly so it will in turn be
                 // captured by libtest.
                 .output()
                 .unwrap();
             assert!(output.status.success());
-            output
+            println!("{}", String::from_utf8_lossy(&output.stdout));
+            eprintln!("{}", String::from_utf8_lossy(&output.stderr));
         } else {
-            eprintln!("warning: no pager configured, falling back to `diff --color`");
+            use colored::Colorize;
+            eprintln!("warning: no pager configured, falling back to unified diff");
             eprintln!(
                 "help: try configuring a git pager (e.g. `delta`) with `git config --global core.pager delta`"
             );
-            let output = diff.arg("--color").output().unwrap();
-            assert!(output.status.success() || output.status.code() == Some(1));
-            output
+            let mut out = io::stdout();
+            let mut diff = BufReader::new(File::open(&diff_filename).unwrap());
+            let mut line = Vec::new();
+            loop {
+                line.truncate(0);
+                match diff.read_until(b'\n', &mut line) {
+                    Ok(0) => break,
+                    Ok(_) => {}
+                    Err(e) => eprintln!("ERROR: {:?}", e),
+                }
+                match String::from_utf8(line.clone()) {
+                    Ok(line) => {
+                        if line.starts_with("+") {
+                            write!(&mut out, "{}", line.green()).unwrap();
+                        } else if line.starts_with("-") {
+                            write!(&mut out, "{}", line.red()).unwrap();
+                        } else if line.starts_with("@") {
+                            write!(&mut out, "{}", line.blue()).unwrap();
+                        } else {
+                            out.write_all(line.as_bytes()).unwrap();
+                        }
+                    }
+                    Err(_) => {
+                        write!(&mut out, "{}", String::from_utf8_lossy(&line).reversed()).unwrap();
+                    }
+                }
+            }
         };
-        println!("{}", String::from_utf8_lossy(&output.stdout));
-        eprintln!("{}", String::from_utf8_lossy(&output.stderr));
     }
 
     fn run_rustdoc_json_test(&self) {
@@ -2493,27 +2550,27 @@ impl<'test> TestCx<'test> {
         let mut json_out = out_dir.join(self.testpaths.file.file_stem().unwrap());
         json_out.set_extension("json");
         let res = self.cmd2procres(
+            Command::new(self.config.jsondocck_path.as_ref().unwrap())
+                .arg("--doc-dir")
+                .arg(root.join(&out_dir))
+                .arg("--template")
+                .arg(&self.testpaths.file),
+        );
+
+        if !res.status.success() {
+            self.fatal_proc_rec("jsondocck failed!", &res)
+        }
+
+        let mut json_out = out_dir.join(self.testpaths.file.file_stem().unwrap());
+        json_out.set_extension("json");
+        let res = self.cmd2procres(
             Command::new(&self.config.docck_python)
-                .arg(root.join("src/test/rustdoc-json/check_missing_items.py"))
+                .arg(root.join("src/etc/check_missing_items.py"))
                 .arg(&json_out),
         );
 
         if !res.status.success() {
             self.fatal_proc_rec("check_missing_items failed!", &res);
-        }
-
-        let mut expected = self.testpaths.file.clone();
-        expected.set_extension("expected");
-        let res = self.cmd2procres(
-            Command::new(&self.config.docck_python)
-                .arg(root.join("src/test/rustdoc-json/compare.py"))
-                .arg(&expected)
-                .arg(&json_out)
-                .arg(&expected.parent().unwrap()),
-        );
-
-        if !res.status.success() {
-            self.fatal_proc_rec("compare failed!", &res);
         }
     }
 
@@ -3127,7 +3184,12 @@ impl<'test> TestCx<'test> {
                     errors += self.compare_output("stdout", &normalized_stdout, &expected_stdout);
                 }
                 if !self.props.dont_check_compiler_stderr {
-                    errors += self.compare_output("stderr", &normalized_stderr, &expected_stderr);
+                    let kind = if self.props.stderr_per_bitwidth {
+                        format!("{}bit.stderr", get_pointer_width(&self.config.target))
+                    } else {
+                        String::from("stderr")
+                    };
+                    errors += self.compare_output(&kind, &normalized_stderr, &expected_stderr);
                 }
             }
             TestOutput::Run => {
@@ -3700,6 +3762,13 @@ impl<'test> TestCx<'test> {
 
         let mut files = vec![output_file];
         if self.config.bless {
+            // Delete non-revision .stderr/.stdout file if revisions are used.
+            // Without this, we'd just generate the new files and leave the old files around.
+            if self.revision.is_some() {
+                let old =
+                    expected_output_path(self.testpaths, None, &self.config.compare_mode, kind);
+                self.delete_file(&old);
+            }
             files.push(expected_output_path(
                 self.testpaths,
                 self.revision,

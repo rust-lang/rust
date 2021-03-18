@@ -36,7 +36,7 @@ macro_rules! declare_features {
             ),+];
 
         /// A set of features to be used by later passes.
-        #[derive(Clone, Default)]
+        #[derive(Clone, Default, Debug)]
         pub struct Features {
             /// `#![feature]` attrs for language features, for error reporting.
             pub declared_lang_features: Vec<(Symbol, Span, Option<Symbol>)>,
@@ -485,9 +485,6 @@ declare_features! (
     /// Allows `async || body` closures.
     (active, async_closure, "1.37.0", Some(62290), None),
 
-    /// Allows `[x; N]` where `x` is a constant (RFC 2203).
-    (active, const_in_array_repeat_expressions, "1.37.0", Some(49147), None),
-
     /// Allows `impl Trait` to be used inside type aliases (RFC 2515).
     (active, type_alias_impl_trait, "1.38.0", Some(63063), None),
 
@@ -560,9 +557,6 @@ declare_features! (
     /// Allows the use of `#[ffi_const]` on foreign functions.
     (active, ffi_const, "1.45.0", Some(58328), None),
 
-    /// No longer treat an unsafe function as an unsafe block.
-    (active, unsafe_block_in_unsafe_fn, "1.45.0", Some(71668), None),
-
     /// Allows `extern "avr-interrupt" fn()` and `extern "avr-non-blocking-interrupt" fn()`.
     (active, abi_avr_interrupt, "1.45.0", Some(69664), None),
 
@@ -578,13 +572,10 @@ declare_features! (
     /// Allows calling `transmute` in const fn
     (active, const_fn_transmute, "1.46.0", Some(53605), None),
 
-    /// The smallest useful subset of `const_generics`.
-    (active, min_const_generics, "1.47.0", Some(74878), None),
-
     /// Allows `if let` guard in match arms.
     (active, if_let_guard, "1.47.0", Some(51114), None),
 
-    /// Allows non-trivial generic constants which have to be manually propageted upwards.
+    /// Allows non-trivial generic constants which have to be manually propagated upwards.
     (active, const_evaluatable_checked, "1.48.0", Some(76560), None),
 
     /// Allows basic arithmetic on floating point types in a `const fn`.
@@ -623,6 +614,39 @@ declare_features! (
     /// Allows arbitrary expressions in key-value attributes at parse time.
     (active, extended_key_value_attributes, "1.50.0", Some(78835), None),
 
+    /// `:pat2018` and `:pat2021` macro matchers.
+    (active, edition_macro_pats, "1.51.0", Some(54883), None),
+
+    /// Allows const generics to have default values (e.g. `struct Foo<const N: usize = 3>(...);`).
+    (active, const_generics_defaults, "1.51.0", Some(44580), None),
+
+    /// Allows references to types with interior mutability within constants
+    (active, const_refs_to_cell, "1.51.0", Some(80384), None),
+
+    /// Allows using `pointer` and `reference` in intra-doc links
+    (active, intra_doc_pointers, "1.51.0", Some(80896), None),
+
+    /// Allows `extern "C-cmse-nonsecure-call" fn()`.
+    (active, abi_c_cmse_nonsecure_call, "1.51.0", Some(81391), None),
+
+    /// Lessens the requirements for structs to implement `Unsize`.
+    (active, relaxed_struct_unsize, "1.51.0", Some(81793), None),
+
+    /// Allows macro attributes to observe output of `#[derive]`.
+    (active, macro_attributes_in_derive_output, "1.51.0", Some(81119), None),
+
+    /// Allows `pub` on `macro_rules` items.
+    (active, pub_macro_rules, "1.52.0", Some(78855), None),
+
+    /// Allows the use of type alias impl trait in function return positions
+    (active, min_type_alias_impl_trait, "1.52.0", Some(63063), None),
+
+    /// Allows associated types in inherent impls.
+    (active, inherent_associated_types, "1.52.0", Some(8995), None),
+
+    /// Allows `extern "C-unwind" fn` to enable unwinding across ABI boundaries.
+    (active, c_unwind, "1.52.0", Some(74990), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
@@ -647,9 +671,14 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::repr128,
     sym::unsized_locals,
     sym::capture_disjoint_fields,
+    sym::const_generics_defaults,
+    sym::inherent_associated_types,
+    sym::type_alias_impl_trait,
 ];
 
 /// Some features are not allowed to be used together at the same time, if
 /// the two are present, produce an error.
-pub const INCOMPATIBLE_FEATURES: &[(Symbol, Symbol)] =
-    &[(sym::const_generics, sym::min_const_generics)];
+///
+/// Currently empty, but we will probably need this again in the future,
+/// so let's keep it in for now.
+pub const INCOMPATIBLE_FEATURES: &[(Symbol, Symbol)] = &[];

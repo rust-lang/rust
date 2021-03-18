@@ -1,11 +1,23 @@
-error[E0107]: wrong number of type arguments: expected 2, found 1
+error[E0107]: this enum takes 2 type arguments but only 1 type argument was supplied
   --> $DIR/issue-65159.rs:5:20
    |
 LL | async fn copy() -> Result<()>
-   |                    ^^^^^^^^^^ expected 2 type arguments
+   |                    ^^^^^^ -- supplied 1 type argument
+   |                    |
+   |                    expected 2 type arguments
+   |
+note: enum defined here, with 2 type parameters: `T`, `E`
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+   |
+LL | pub enum Result<T, E> {
+   |          ^^^^^^ -  -
+help: add missing type argument
+   |
+LL | async fn copy() -> Result<(), E>
+   |                             ^^^
 
 error[E0282]: type annotations needed
-  --> $DIR/issue-65159.rs:7:5
+  --> $DIR/issue-65159.rs:8:5
    |
 LL |     Ok(())
    |     ^^ cannot infer type for type parameter `E` declared on the enum `Result`

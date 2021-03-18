@@ -3,6 +3,6 @@
 extern crate upstream;
 
 #[no_mangle]
-pub extern fn bar() {
+pub extern "C" fn bar() {
     upstream::foo();
 }

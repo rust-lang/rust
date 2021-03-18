@@ -1,5 +1,5 @@
 error: expressions must be enclosed in braces to be used as const generic arguments
-  --> $DIR/macro_rules-braces.rs:49:17
+  --> $DIR/macro_rules-braces.rs:48:17
    |
 LL |     let _: baz!(m::P);
    |                 ^^^^
@@ -10,7 +10,7 @@ LL |     let _: baz!({ m::P });
    |                 ^      ^
 
 error: expressions must be enclosed in braces to be used as const generic arguments
-  --> $DIR/macro_rules-braces.rs:69:17
+  --> $DIR/macro_rules-braces.rs:68:17
    |
 LL |     let _: baz!(10 + 7);
    |                 ^^^^^^
@@ -21,7 +21,7 @@ LL |     let _: baz!({ 10 + 7 });
    |                 ^        ^
 
 error: constant expression depends on a generic parameter
-  --> $DIR/macro_rules-braces.rs:16:13
+  --> $DIR/macro_rules-braces.rs:15:13
    |
 LL |             [u8; $x]
    |             ^^^^^^^^
@@ -33,7 +33,7 @@ LL |     let _: foo!({{ N }});
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: constant expression depends on a generic parameter
-  --> $DIR/macro_rules-braces.rs:21:13
+  --> $DIR/macro_rules-braces.rs:20:13
    |
 LL |             [u8; { $x }]
    |             ^^^^^^^^^^^^
@@ -45,7 +45,7 @@ LL |     let _: bar!({ N });
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: constant expression depends on a generic parameter
-  --> $DIR/macro_rules-braces.rs:26:13
+  --> $DIR/macro_rules-braces.rs:25:13
    |
 LL |             Foo<$x>
    |             ^^^^^^^
@@ -57,7 +57,7 @@ LL |     let _: baz!({{ N }});
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: constant expression depends on a generic parameter
-  --> $DIR/macro_rules-braces.rs:31:13
+  --> $DIR/macro_rules-braces.rs:30:13
    |
 LL |             Foo<{ $x }>
    |             ^^^^^^^^^^^

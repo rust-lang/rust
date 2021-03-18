@@ -96,7 +96,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let trait_def = self.tcx().trait_def(trait_def_id);
 
         if !self.tcx().features().unboxed_closures
-            && trait_segment.generic_args().parenthesized != trait_def.paren_sugar
+            && trait_segment.args().parenthesized != trait_def.paren_sugar
         {
             let sess = &self.tcx().sess.parse_sess;
             // For now, require that parenthetical notation be used only with `Fn()` etc.
@@ -126,7 +126,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             })
                             .unwrap_or_else(|| "()".to_string()),
                         trait_segment
-                            .generic_args()
+                            .args()
                             .bindings
                             .iter()
                             .find_map(|b| match (b.ident.name == sym::Output, &b.kind) {
@@ -237,7 +237,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
         if let ([], [bound]) = (&potential_assoc_types[..], &trait_bounds) {
-            match &bound.trait_ref.path.segments[..] {
+            match bound.trait_ref.path.segments {
                 // FIXME: `trait_ref.path.span` can point to a full path with multiple
                 // segments, even though `trait_ref.path.segments` is of length `1`. Work
                 // around that bug here, even though it should be fixed elsewhere.

@@ -1,5 +1,5 @@
 error[E0747]: constant provided when a type was expected
-  --> $DIR/const-arg-type-arg-misordered.rs:8:35
+  --> $DIR/const-arg-type-arg-misordered.rs:7:35
    |
 LL | fn foo<const N: usize>() -> Array<N, ()> {
    |                                   ^

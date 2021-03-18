@@ -31,82 +31,47 @@ LL |     bar::<IntStruct>();
 error: implementation of `TheTrait` is not general enough
   --> $DIR/associated-types-eq-hr.rs:96:5
    |
-LL | / pub trait TheTrait<T> {
-LL | |     type A;
-LL | |
-LL | |     fn get(&self, t: T) -> Self::A;
-LL | | }
-   | |_- trait `TheTrait` defined here
-...
-LL |       tuple_one::<Tuple>();
-   |       ^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
+LL |     tuple_one::<Tuple>();
+   |     ^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
    |
    = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
-   = note: ...but `Tuple` actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
+   = note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
 
 error: implementation of `TheTrait` is not general enough
   --> $DIR/associated-types-eq-hr.rs:96:5
    |
-LL | / pub trait TheTrait<T> {
-LL | |     type A;
-LL | |
-LL | |     fn get(&self, t: T) -> Self::A;
-LL | | }
-   | |_- trait `TheTrait` defined here
-...
-LL |       tuple_one::<Tuple>();
-   |       ^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
+LL |     tuple_one::<Tuple>();
+   |     ^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
    |
    = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
-   = note: ...but `Tuple` actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
+   = note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
 
 error: implementation of `TheTrait` is not general enough
   --> $DIR/associated-types-eq-hr.rs:102:5
    |
-LL | / pub trait TheTrait<T> {
-LL | |     type A;
-LL | |
-LL | |     fn get(&self, t: T) -> Self::A;
-LL | | }
-   | |_- trait `TheTrait` defined here
-...
-LL |       tuple_two::<Tuple>();
-   |       ^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
+LL |     tuple_two::<Tuple>();
+   |     ^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
    |
    = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
-   = note: ...but `Tuple` actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
+   = note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
 
 error: implementation of `TheTrait` is not general enough
   --> $DIR/associated-types-eq-hr.rs:102:5
    |
-LL | / pub trait TheTrait<T> {
-LL | |     type A;
-LL | |
-LL | |     fn get(&self, t: T) -> Self::A;
-LL | | }
-   | |_- trait `TheTrait` defined here
-...
-LL |       tuple_two::<Tuple>();
-   |       ^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
+LL |     tuple_two::<Tuple>();
+   |     ^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
    |
    = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
-   = note: ...but `Tuple` actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
+   = note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
 
 error: implementation of `TheTrait` is not general enough
   --> $DIR/associated-types-eq-hr.rs:112:5
    |
-LL | / pub trait TheTrait<T> {
-LL | |     type A;
-LL | |
-LL | |     fn get(&self, t: T) -> Self::A;
-LL | | }
-   | |_- trait `TheTrait` defined here
-...
-LL |       tuple_four::<Tuple>();
-   |       ^^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
+LL |     tuple_four::<Tuple>();
+   |     ^^^^^^^^^^^^^^^^^^^ implementation of `TheTrait` is not general enough
    |
    = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
-   = note: ...but `Tuple` actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
+   = note: ...but it actually implements `TheTrait<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
 
 error: aborting due to 7 previous errors
 

@@ -5,7 +5,7 @@ LL | fn assignment_to_field_projection<'a, T>(
    |                                   -- lifetime `'a` defined here
 ...
 LL |         result.push(&mut (list.0).value);
-   |                     ^^^^^^^^^^^^^^^^^^^ mutable borrow starts here in previous iteration of loop
+   |                     ^^^^^^^^^^^^^^^^^^^ `list.0.value` was mutably borrowed here in the previous iteration of the loop
 ...
 LL |             return result;
    |                    ------ returning this value requires that `list.0.value` is borrowed for `'a`
@@ -19,7 +19,7 @@ LL | fn assignment_to_field_projection<'a, T>(
 LL |         if let Some(n) = (list.0).next.as_mut() {
    |                          ^^^^^^^^^^^^^---------
    |                          |
-   |                          mutable borrow starts here in previous iteration of loop
+   |                          `list.0.next` was mutably borrowed here in the previous iteration of the loop
    |                          argument requires that `list.0.next` is borrowed for `'a`
 
 error[E0499]: cannot borrow `list.0.0.0.0.0.value` as mutable more than once at a time
@@ -29,7 +29,7 @@ LL | fn assignment_through_projection_chain<'a, T>(
    |                                        -- lifetime `'a` defined here
 ...
 LL |         result.push(&mut ((((list.0).0).0).0).0.value);
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ mutable borrow starts here in previous iteration of loop
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `list.0.0.0.0.0.value` was mutably borrowed here in the previous iteration of the loop
 ...
 LL |             return result;
    |                    ------ returning this value requires that `list.0.0.0.0.0.value` is borrowed for `'a`
@@ -43,7 +43,7 @@ LL | fn assignment_through_projection_chain<'a, T>(
 LL |         if let Some(n) = ((((list.0).0).0).0).0.next.as_mut() {
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^---------
    |                          |
-   |                          mutable borrow starts here in previous iteration of loop
+   |                          `list.0.0.0.0.0.next` was mutably borrowed here in the previous iteration of the loop
    |                          argument requires that `list.0.0.0.0.0.next` is borrowed for `'a`
 
 error: aborting due to 4 previous errors

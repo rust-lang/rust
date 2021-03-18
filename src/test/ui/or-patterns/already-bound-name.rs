@@ -18,10 +18,10 @@ fn main() {
     let (A(a, _) | B(a), a) = (A(0, 1), 2);
     //~^ ERROR identifier `a` is bound more than once in the same pattern
 
-    let A(a, a) | B(a) = A(0, 1);
+    let (A(a, a) | B(a)) = A(0, 1);
     //~^ ERROR identifier `a` is bound more than once in the same pattern
 
-    let B(a) | A(a, a) = A(0, 1);
+    let (B(a) | A(a, a)) = A(0, 1);
     //~^ ERROR identifier `a` is bound more than once in the same pattern
 
     match A(0, 1) {
@@ -29,17 +29,17 @@ fn main() {
         //~^ ERROR identifier `a` is bound more than once in the same pattern
     }
 
-    let B(A(a, _) | B(a)) | A(a, A(a, _) | B(a)) = B(B(1));
+    let (B(A(a, _) | B(a)) | A(a, A(a, _) | B(a))) = B(B(1));
     //~^ ERROR identifier `a` is bound more than once in the same pattern
     //~| ERROR identifier `a` is bound more than once in the same pattern
     //~| ERROR mismatched types
 
-    let B(_) | A(A(a, _) | B(a), A(a, _) | B(a)) = B(B(1));
+    let (B(_) | A(A(a, _) | B(a), A(a, _) | B(a))) = B(B(1));
     //~^ ERROR identifier `a` is bound more than once in the same pattern
     //~| ERROR identifier `a` is bound more than once in the same pattern
     //~| ERROR variable `a` is not bound in all patterns
 
-    let B(A(a, _) | B(a)) | A(A(a, _) | B(a), A(a, _) | B(a)) = B(B(1));
+    let (B(A(a, _) | B(a)) | A(A(a, _) | B(a), A(a, _) | B(a))) = B(B(1));
     //~^ ERROR identifier `a` is bound more than once in the same pattern
     //~| ERROR identifier `a` is bound more than once in the same pattern
 }

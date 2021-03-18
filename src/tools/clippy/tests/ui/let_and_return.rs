@@ -117,7 +117,11 @@ mod no_lint_if_stmt_borrows {
             fn drop(&mut self) {}
         }
 
-        impl Foo<'_> {
+        impl<'a> Foo<'a> {
+            fn new(inner: &'a Inner) -> Self {
+                Self { inner }
+            }
+
             fn value(&self) -> i32 {
                 42
             }
@@ -130,6 +134,12 @@ mod no_lint_if_stmt_borrows {
         fn test() -> i32 {
             let x = Inner {};
             let value = some_foo(&x).value();
+            value
+        }
+
+        fn test2() -> i32 {
+            let x = Inner {};
+            let value = Foo::new(&x).value();
             value
         }
     }

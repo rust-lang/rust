@@ -94,27 +94,27 @@ fn compute_implied_outlives_bounds<'tcx>(
         // region relationships.
         implied_bounds.extend(obligations.into_iter().flat_map(|obligation| {
             assert!(!obligation.has_escaping_bound_vars());
-            match obligation.predicate.kind() {
-                &ty::PredicateKind::ForAll(..) => vec![],
-                &ty::PredicateKind::Atom(atom) => match atom {
-                    ty::PredicateAtom::Trait(..)
-                    | ty::PredicateAtom::Subtype(..)
-                    | ty::PredicateAtom::Projection(..)
-                    | ty::PredicateAtom::ClosureKind(..)
-                    | ty::PredicateAtom::ObjectSafe(..)
-                    | ty::PredicateAtom::ConstEvaluatable(..)
-                    | ty::PredicateAtom::ConstEquate(..)
-                    | ty::PredicateAtom::TypeWellFormedFromEnv(..) => vec![],
-                    ty::PredicateAtom::WellFormed(arg) => {
+            match obligation.predicate.kind().no_bound_vars() {
+                None => vec![],
+                Some(pred) => match pred {
+                    ty::PredicateKind::Trait(..)
+                    | ty::PredicateKind::Subtype(..)
+                    | ty::PredicateKind::Projection(..)
+                    | ty::PredicateKind::ClosureKind(..)
+                    | ty::PredicateKind::ObjectSafe(..)
+                    | ty::PredicateKind::ConstEvaluatable(..)
+                    | ty::PredicateKind::ConstEquate(..)
+                    | ty::PredicateKind::TypeWellFormedFromEnv(..) => vec![],
+                    ty::PredicateKind::WellFormed(arg) => {
                         wf_args.push(arg);
                         vec![]
                     }
 
-                    ty::PredicateAtom::RegionOutlives(ty::OutlivesPredicate(r_a, r_b)) => {
+                    ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(r_a, r_b)) => {
                         vec![OutlivesBound::RegionSubRegion(r_b, r_a)]
                     }
 
-                    ty::PredicateAtom::TypeOutlives(ty::OutlivesPredicate(ty_a, r_b)) => {
+                    ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty_a, r_b)) => {
                         let ty_a = infcx.resolve_vars_if_possible(ty_a);
                         let mut components = smallvec![];
                         tcx.push_outlives_components(ty_a, &mut components);

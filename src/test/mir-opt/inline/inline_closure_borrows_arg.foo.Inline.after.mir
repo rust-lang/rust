@@ -40,7 +40,7 @@ fn foo(_1: T, _2: &i32) -> i32 {
         _9 = move (_5.1: &i32);          // scope 1 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12
         StorageLive(_10);                // scope 2 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12
         _10 = _8;                        // scope 2 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12
-        _0 = (*_8);                      // scope 3 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12
+        _0 = (*_10);                     // scope 3 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12
         StorageDead(_10);                // scope 2 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12
         StorageDead(_9);                 // scope 1 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12
         StorageDead(_8);                 // scope 1 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:12

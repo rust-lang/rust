@@ -38,8 +38,7 @@ impl<'tcx> Checker<'tcx> {
         F: FnMut(TyCtxt<'tcx>, LocalDefId),
     {
         if Some(self.trait_def_id) == trait_def_id {
-            for &impl_id in self.tcx.hir().trait_impls(self.trait_def_id) {
-                let impl_def_id = self.tcx.hir().local_def_id(impl_id);
+            for &impl_def_id in self.tcx.hir().trait_impls(self.trait_def_id) {
                 f(self.tcx, impl_def_id);
             }
         }
@@ -55,7 +54,7 @@ fn visit_implementation_of_drop(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
 
     let impl_hir_id = tcx.hir().local_def_id_to_hir_id(impl_did);
     let sp = match tcx.hir().expect_item(impl_hir_id).kind {
-        ItemKind::Impl { self_ty, .. } => self_ty.span,
+        ItemKind::Impl(ref impl_) => impl_.self_ty.span,
         _ => bug!("expected Drop impl item"),
     };
 
@@ -80,7 +79,7 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
         Ok(()) => {}
         Err(CopyImplementationError::InfrigingFields(fields)) => {
             let item = tcx.hir().expect_item(impl_hir_id);
-            let span = if let ItemKind::Impl { of_trait: Some(ref tr), .. } = item.kind {
+            let span = if let ItemKind::Impl(hir::Impl { of_trait: Some(ref tr), .. }) = item.kind {
                 tr.path.span
             } else {
                 span
@@ -100,7 +99,7 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
         Err(CopyImplementationError::NotAnAdt) => {
             let item = tcx.hir().expect_item(impl_hir_id);
             let span =
-                if let ItemKind::Impl { self_ty, .. } = item.kind { self_ty.span } else { span };
+                if let ItemKind::Impl(ref impl_) = item.kind { impl_.self_ty.span } else { span };
 
             tcx.sess.emit_err(CopyImplOnNonAdt { span });
         }
@@ -247,7 +246,7 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
                     ))
                     .emit();
                 } else {
-                    let mut fulfill_cx = TraitEngine::new(infcx.tcx);
+                    let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
 
                     for field in coerced_fields {
                         let predicate = predicate_for_trait_def(
@@ -453,7 +452,9 @@ pub fn coerce_unsized_info(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedI
                     return err_info;
                 } else if diff_fields.len() > 1 {
                     let item = tcx.hir().expect_item(impl_hir_id);
-                    let span = if let ItemKind::Impl { of_trait: Some(ref t), .. } = item.kind {
+                    let span = if let ItemKind::Impl(hir::Impl { of_trait: Some(ref t), .. }) =
+                        item.kind
+                    {
                         t.path.span
                     } else {
                         tcx.hir().span(impl_hir_id)
@@ -505,7 +506,7 @@ pub fn coerce_unsized_info(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedI
             }
         };
 
-        let mut fulfill_cx = TraitEngine::new(infcx.tcx);
+        let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
 
         // Register an obligation for `A: Trait<B>`.
         let cause = traits::ObligationCause::misc(span, impl_hir_id);

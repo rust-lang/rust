@@ -2,7 +2,7 @@ error: lifetime parameters must be declared prior to type parameters
   --> $DIR/issue-14303-struct.rs:1:17
    |
 LL | struct X<'a, T, 'b> {
-   |         --------^^- help: reorder the parameters: lifetimes, then types: `<'a, 'b, T>`
+   |         --------^^- help: reorder the parameters: lifetimes, then types, then consts: `<'a, 'b, T>`
 
 error: aborting due to previous error
 

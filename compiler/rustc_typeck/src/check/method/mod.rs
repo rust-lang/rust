@@ -102,6 +102,7 @@ pub enum CandidateSource {
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Determines whether the type `self_ty` supports a method name `method_name` or not.
+    #[instrument(level = "debug", skip(self))]
     pub fn method_exists(
         &self,
         method_name: Ident,
@@ -129,6 +130,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Adds a suggestion to call the given method to the provided diagnostic.
+    #[instrument(level = "debug", skip(self, err, call_expr))]
     crate fn suggest_method_call(
         &self,
         err: &mut DiagnosticBuilder<'a>,
@@ -177,6 +179,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// * `span`:                  the span for the method call
     /// * `call_expr`:             the complete method call: (`foo.bar::<T1,...Tn>(...)`)
     /// * `self_expr`:             the self expression (`foo`)
+    #[instrument(level = "debug", skip(self, call_expr, self_expr))]
     pub fn lookup_method(
         &self,
         self_ty: Ty<'tcx>,
@@ -204,6 +207,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let result =
             self.confirm_method(span, self_expr, call_expr, self_ty, pick.clone(), segment);
+        debug!("result = {:?}", result);
 
         if let Some(span) = result.illegal_sized_bound {
             let mut needs_mut = false;
@@ -256,6 +260,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         Ok(result.callee)
     }
 
+    #[instrument(level = "debug", skip(self, call_expr))]
     pub fn lookup_probe(
         &self,
         span: Span,
@@ -286,6 +291,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // FIXME(#18741): it seems likely that we can consolidate some of this
     // code with the other method-lookup code. In particular, the second half
     // of this method is basically the same as confirmation.
+    #[instrument(level = "debug", skip(self, span, opt_input_types))]
     pub fn lookup_method_in_trait(
         &self,
         span: Span,
@@ -399,7 +405,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         obligations.push(traits::Obligation::new(
             cause,
             self.param_env,
-            ty::PredicateAtom::WellFormed(method_ty.into()).to_predicate(tcx),
+            ty::PredicateKind::WellFormed(method_ty.into()).to_predicate(tcx),
         ));
 
         let callee = MethodCallee { def_id, substs: trait_ref.substs, sig: fn_sig };
@@ -409,6 +415,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         Some(InferOk { obligations, value: callee })
     }
 
+    #[instrument(level = "debug", skip(self))]
     pub fn resolve_ufcs(
         &self,
         span: Span,

@@ -4,8 +4,10 @@ extern crate rustc_macros;
 pub use self::Level::*;
 use rustc_ast::node_id::{NodeId, NodeMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use rustc_serialize::json::Json;
 use rustc_span::edition::Edition;
 use rustc_span::{sym, symbol::Ident, MultiSpan, Span, Symbol};
+use rustc_target::spec::abi::Abi;
 
 pub mod builtin;
 
@@ -238,6 +240,13 @@ impl<HCX> ToStableHashKey<HCX> for LintId {
     }
 }
 
+// Duplicated from rustc_session::config::ExternDepSpec to avoid cyclic dependency
+#[derive(PartialEq)]
+pub enum ExternDepSpec {
+    Json(Json),
+    Raw(String),
+}
+
 // This could be a closure, but then implementing derive trait
 // becomes hacky (and it gets allocated).
 #[derive(PartialEq)]
@@ -252,7 +261,12 @@ pub enum BuiltinLintDiagnostics {
     UnusedImports(String, Vec<(Span, String)>),
     RedundantImport(Vec<(Span, bool)>, Ident),
     DeprecatedMacro(Option<Symbol>, Span),
+    MissingAbi(Span, Abi),
     UnusedDocComment(Span),
+    PatternsInFnsWithoutBody(Span, Ident),
+    LegacyDeriveHelpers(Span),
+    ExternDepSpec(String, ExternDepSpec),
+    ProcMacroBackCompat(String),
 }
 
 /// Lints that are buffered up early on in the `Session` before the

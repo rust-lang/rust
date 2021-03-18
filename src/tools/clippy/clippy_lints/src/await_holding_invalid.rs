@@ -18,7 +18,7 @@ declare_clippy_lint! {
     /// other solution is to ensure the mutex is unlocked before calling await,
     /// either by introducing a scope or an explicit call to Drop::drop.
     ///
-    /// **Known problems:** None.
+    /// **Known problems:** Will report false positive for explicitly dropped guards ([#6446](https://github.com/rust-lang/rust-clippy/issues/6446)).
     ///
     /// **Example:**
     ///
@@ -57,7 +57,7 @@ declare_clippy_lint! {
     /// at runtime. Holding onto a `RefCell` ref across an `await` suspension point
     /// risks panics from a mutable ref shared while other refs are outstanding.
     ///
-    /// **Known problems:** None.
+    /// **Known problems:** Will report false positive for explicitly dropped refs ([#6353](https://github.com/rust-lang/rust-clippy/issues/6353)).
     ///
     /// **Example:**
     ///
@@ -97,9 +97,12 @@ impl LateLintPass<'_> for AwaitHolding {
             let body_id = BodyId {
                 hir_id: body.value.hir_id,
             };
-            let def_id = cx.tcx.hir().body_owner_def_id(body_id);
-            let typeck_results = cx.tcx.typeck(def_id);
-            check_interior_types(cx, &typeck_results.generator_interior_types, body.value.span);
+            let typeck_results = cx.tcx.typeck_body(body_id);
+            check_interior_types(
+                cx,
+                &typeck_results.generator_interior_types.as_ref().skip_binder(),
+                body.value.span,
+            );
         }
     }
 }
@@ -112,20 +115,20 @@ fn check_interior_types(cx: &LateContext<'_>, ty_causes: &[GeneratorInteriorType
                     cx,
                     AWAIT_HOLDING_LOCK,
                     ty_cause.span,
-                    "this MutexGuard is held across an 'await' point. Consider using an async-aware Mutex type or ensuring the MutexGuard is dropped before calling await.",
+                    "this MutexGuard is held across an 'await' point. Consider using an async-aware Mutex type or ensuring the MutexGuard is dropped before calling await",
                     ty_cause.scope_span.or(Some(span)),
                     "these are all the await points this lock is held through",
                 );
             }
             if is_refcell_ref(cx, adt.did) {
                 span_lint_and_note(
-                        cx,
-                        AWAIT_HOLDING_REFCELL_REF,
-                        ty_cause.span,
-                        "this RefCell Ref is held across an 'await' point. Consider ensuring the Ref is dropped before calling await.",
-                        ty_cause.scope_span.or(Some(span)),
-                        "these are all the await points this ref is held through",
-                    );
+                    cx,
+                    AWAIT_HOLDING_REFCELL_REF,
+                    ty_cause.span,
+                    "this RefCell Ref is held across an 'await' point. Consider ensuring the Ref is dropped before calling await",
+                    ty_cause.scope_span.or(Some(span)),
+                    "these are all the await points this ref is held through",
+                );
             }
         }
     }

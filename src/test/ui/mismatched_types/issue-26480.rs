@@ -1,4 +1,4 @@
-extern {
+extern "C" {
     fn write(fildes: i32, buf: *const i8, nbyte: u64) -> i64;
 }
 

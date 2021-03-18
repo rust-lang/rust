@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-This script creates a pile of compile-fail tests check that all the
+This script creates a pile of UI tests check that all the
 derives have spans that point to the fields, rather than the
 #[derive(...)] line.
 

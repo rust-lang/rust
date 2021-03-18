@@ -91,7 +91,7 @@ pub fn codegen_fulfill_obligation<'tcx>(
         });
         let impl_source = drain_fulfillment_cx_or_panic(&infcx, &mut fulfill_cx, impl_source);
 
-        info!("Cache miss: {:?} => {:?}", trait_ref, impl_source);
+        debug!("Cache miss: {:?} => {:?}", trait_ref, impl_source);
         Ok(impl_source)
     })
 }

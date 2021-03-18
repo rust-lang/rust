@@ -34,7 +34,6 @@ use super::{InferCtxt, MiscVariable, TypeTrace};
 
 use crate::traits::{Obligation, PredicateObligations};
 
-use rustc_ast as ast;
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_middle::traits::ObligationCause;
@@ -222,6 +221,7 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
     /// As `3 + 4` contains `N` in its substs, this must not succeed.
     ///
     /// See `src/test/ui/const-generics/occurs-check/` for more examples where this is relevant.
+    #[instrument(level = "debug", skip(self))]
     fn unify_const_variable(
         &self,
         param_env: ty::ParamEnv<'tcx>,
@@ -281,7 +281,7 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
         &self,
         vid_is_expected: bool,
         vid: ty::FloatVid,
-        val: ast::FloatTy,
+        val: ty::FloatTy,
     ) -> RelateResult<'tcx, Ty<'tcx>> {
         self.inner
             .borrow_mut()
@@ -358,7 +358,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
             self.obligations.push(Obligation::new(
                 self.trace.cause.clone(),
                 self.param_env,
-                ty::PredicateAtom::WellFormed(b_ty.into()).to_predicate(self.infcx.tcx),
+                ty::PredicateKind::WellFormed(b_ty.into()).to_predicate(self.infcx.tcx),
             ));
         }
 
@@ -451,9 +451,9 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         b: &'tcx ty::Const<'tcx>,
     ) {
         let predicate = if a_is_expected {
-            ty::PredicateAtom::ConstEquate(a, b)
+            ty::PredicateKind::ConstEquate(a, b)
         } else {
-            ty::PredicateAtom::ConstEquate(b, a)
+            ty::PredicateKind::ConstEquate(b, a)
         };
         self.obligations.push(Obligation::new(
             self.trace.cause.clone(),
@@ -543,6 +543,10 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
         true
     }
 
+    fn visit_ct_substs(&self) -> bool {
+        true
+    }
+
     fn binders<T>(
         &mut self,
         a: ty::Binder<T>,
@@ -551,7 +555,7 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
     where
         T: Relate<'tcx>,
     {
-        Ok(ty::Binder::bind(self.relate(a.skip_binder(), b.skip_binder())?))
+        Ok(a.rebind(self.relate(a.skip_binder(), b.skip_binder())?))
     }
 
     fn relate_item_substs(
@@ -716,7 +720,10 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                 let variable_table = &mut inner.const_unification_table();
                 let var_value = variable_table.probe_value(vid);
                 match var_value.val {
-                    ConstVariableValue::Known { value: u } => self.relate(u, u),
+                    ConstVariableValue::Known { value: u } => {
+                        drop(inner);
+                        self.relate(u, u)
+                    }
                     ConstVariableValue::Unknown { universe } => {
                         if self.for_universe.can_name(universe) {
                             Ok(c)
@@ -815,6 +822,10 @@ impl TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
         true
     }
 
+    fn visit_ct_substs(&self) -> bool {
+        true
+    }
+
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
         _variance: ty::Variance,
@@ -833,7 +844,7 @@ impl TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
     where
         T: Relate<'tcx>,
     {
-        Ok(ty::Binder::bind(self.relate(a.skip_binder(), b.skip_binder())?))
+        Ok(a.rebind(self.relate(a.skip_binder(), b.skip_binder())?))
     }
 
     fn tys(&mut self, t: Ty<'tcx>, _t: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
@@ -870,6 +881,7 @@ impl TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
                     }
                 }
             }
+            ty::Infer(ty::IntVar(_) | ty::FloatVar(_)) => Ok(t),
             _ => relate::super_relate_tys(self, t, t),
         }
     }

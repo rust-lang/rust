@@ -1,4 +1,5 @@
 use rustc_ast as ast;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{ColorConfig, ErrorReported};
 use rustc_hir as hir;
@@ -16,7 +17,6 @@ use rustc_span::{BytePos, FileName, Pos, Span, DUMMY_SP};
 use rustc_target::spec::TargetTriple;
 use tempfile::Builder as TempFileBuilder;
 
-use std::collections::HashMap;
 use std::env;
 use std::io::{self, Write};
 use std::panic;
@@ -26,8 +26,8 @@ use std::str;
 
 use crate::clean::Attributes;
 use crate::config::Options;
-use crate::core::init_lints;
 use crate::html::markdown::{self, ErrorCodes, Ignore, LangString};
+use crate::lint::init_lints;
 use crate::passes::span_of_attrs;
 
 #[derive(Clone, Default)]
@@ -44,11 +44,14 @@ crate struct TestOptions {
 crate fn run(options: Options) -> Result<(), ErrorReported> {
     let input = config::Input::File(options.input.clone());
 
-    let invalid_codeblock_attributes_name = rustc_lint::builtin::INVALID_CODEBLOCK_ATTRIBUTES.name;
+    let invalid_codeblock_attributes_name = crate::lint::INVALID_CODEBLOCK_ATTRIBUTES.name;
 
-    // In addition to those specific lints, we also need to allow those given through
-    // command line, otherwise they'll get ignored and we don't want that.
-    let allowed_lints = vec![invalid_codeblock_attributes_name.to_owned()];
+    // See core::create_config for what's going on here.
+    let allowed_lints = vec![
+        invalid_codeblock_attributes_name.to_owned(),
+        lint::builtin::UNKNOWN_LINTS.name.to_owned(),
+        lint::builtin::RENAMED_AND_REMOVED_LINTS.name.to_owned(),
+    ];
 
     let (lint_opts, lint_caps) = init_lints(allowed_lints, options.lint_opts.clone(), |lint| {
         if lint.name == invalid_codeblock_attributes_name {
@@ -92,7 +95,8 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
         diagnostic_output: DiagnosticOutput::Default,
         stderr: None,
         lint_caps,
-        register_lints: None,
+        parse_sess_created: None,
+        register_lints: Some(box crate::lint::register_lints),
         override_queries: None,
         make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
@@ -103,25 +107,27 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
 
     let tests = interface::run_compiler(config, |compiler| {
         compiler.enter(|queries| {
-            let lower_to_hir = queries.lower_to_hir()?;
+            let _lower_to_hir = queries.lower_to_hir()?;
 
-            let mut opts = scrape_test_config(lower_to_hir.peek().0);
-            opts.display_warnings |= options.display_warnings;
-            let enable_per_target_ignores = options.enable_per_target_ignores;
-            let mut collector = Collector::new(
-                queries.crate_name()?.peek().to_string(),
-                options,
-                false,
-                opts,
-                Some(compiler.session().parse_sess.clone_source_map()),
-                None,
-                enable_per_target_ignores,
-            );
-
+            let crate_name = queries.crate_name()?.peek().to_string();
             let mut global_ctxt = queries.global_ctxt()?.take();
 
-            global_ctxt.enter(|tcx| {
+            let collector = global_ctxt.enter(|tcx| {
                 let krate = tcx.hir().krate();
+                let crate_attrs = tcx.hir().attrs(CRATE_HIR_ID);
+
+                let mut opts = scrape_test_config(crate_attrs);
+                opts.display_warnings |= options.display_warnings;
+                let enable_per_target_ignores = options.enable_per_target_ignores;
+                let mut collector = Collector::new(
+                    crate_name,
+                    options,
+                    false,
+                    opts,
+                    Some(compiler.session().parse_sess.clone_source_map()),
+                    None,
+                    enable_per_target_ignores,
+                );
 
                 let mut hir_collector = HirCollector {
                     sess: compiler.session(),
@@ -134,13 +140,14 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
                 };
                 hir_collector.visit_testable(
                     "".to_string(),
-                    &krate.item.attrs,
                     CRATE_HIR_ID,
                     krate.item.span,
                     |this| {
                         intravisit::walk_crate(this, krate);
                     },
                 );
+
+                collector
             });
             compiler.session().abort_if_errors();
 
@@ -165,15 +172,13 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
 }
 
 // Look for `#![doc(test(no_crate_inject))]`, used by crates in the std facade.
-fn scrape_test_config(krate: &::rustc_hir::Crate<'_>) -> TestOptions {
+fn scrape_test_config(attrs: &[ast::Attribute]) -> TestOptions {
     use rustc_ast_pretty::pprust;
 
     let mut opts =
         TestOptions { no_crate_inject: false, display_warnings: false, attrs: Vec::new() };
 
-    let test_attrs: Vec<_> = krate
-        .item
-        .attrs
+    let test_attrs: Vec<_> = attrs
         .iter()
         .filter(|a| a.has_name(sym::doc))
         .flat_map(|a| a.meta_item_list().unwrap_or_else(Vec::new))
@@ -247,9 +252,10 @@ fn run_test(
     edition: Edition,
     outdir: DirState,
     path: PathBuf,
+    test_id: &str,
 ) -> Result<(), TestFailure> {
     let (test, line_offset, supports_color) =
-        make_test(test, Some(cratename), as_test_harness, opts, edition);
+        make_test(test, Some(cratename), as_test_harness, opts, edition, Some(test_id));
 
     let output_file = outdir.path().join("rust_out");
 
@@ -295,7 +301,12 @@ fn run_test(
         }
     });
     if let ErrorOutputType::HumanReadable(kind) = options.error_format {
-        let (_, color_config) = kind.unzip();
+        let (short, color_config) = kind.unzip();
+
+        if short {
+            compiler.arg("--error-format").arg("short");
+        }
+
         match color_config {
             ColorConfig::Never => {
                 compiler.arg("--color").arg("never");
@@ -364,6 +375,9 @@ fn run_test(
     } else {
         cmd = Command::new(output_file);
     }
+    if let Some(run_directory) = options.test_run_directory {
+        cmd.current_dir(run_directory);
+    }
 
     match cmd.output() {
         Err(e) => return Err(TestFailure::ExecutionError(e)),
@@ -387,6 +401,7 @@ crate fn make_test(
     dont_insert_main: bool,
     opts: &TestOptions,
     edition: Edition,
+    test_id: Option<&str>,
 ) -> (String, usize, bool) {
     let (crate_attrs, everything_else, crates) = partition_source(s);
     let everything_else = everything_else.trim();
@@ -421,6 +436,7 @@ crate fn make_test(
             use rustc_errors::emitter::{Emitter, EmitterWriter};
             use rustc_errors::Handler;
             use rustc_parse::maybe_new_parser_from_source_str;
+            use rustc_parse::parser::ForceCollect;
             use rustc_session::parse::ParseSess;
             use rustc_span::source_map::FilePathMapping;
 
@@ -457,7 +473,7 @@ crate fn make_test(
             };
 
             loop {
-                match parser.parse_item() {
+                match parser.parse_item(ForceCollect::No) {
                     Ok(Some(item)) => {
                         if !found_main {
                             if let ast::ItemKind::Fn(..) = item.kind {
@@ -498,6 +514,12 @@ crate fn make_test(
                 }
             }
 
+            // Reset errors so that they won't be reported as compiler bugs when dropping the
+            // handler. Any errors in the tests will be reported when the test file is compiled,
+            // Note that we still need to cancel the errors above otherwise `DiagnosticBuilder`
+            // will panic on drop.
+            sess.span_diagnostic.reset_err_count();
+
             (found_main, found_extern_crate, found_macro)
         })
     });
@@ -529,9 +551,12 @@ crate fn make_test(
     // compiler.
     if !already_has_extern_crate && !opts.no_crate_inject && cratename != Some("std") {
         if let Some(cratename) = cratename {
-            // Make sure its actually used if not included.
+            // Don't inject `extern crate` if the crate is never used.
+            // NOTE: this is terribly inaccurate because it doesn't actually
+            // parse the source, but only has false positives, not false
+            // negatives.
             if s.contains(cratename) {
-                prog.push_str(&format!("extern crate {};\n", cratename));
+                prog.push_str(&format!("extern crate r#{};\n", cratename));
                 line_offset += 1;
             }
         }
@@ -542,16 +567,41 @@ crate fn make_test(
         prog.push_str(everything_else);
     } else {
         let returns_result = everything_else.trim_end().ends_with("(())");
+        // Give each doctest main function a unique name.
+        // This is for example needed for the tooling around `-Z instrument-coverage`.
+        let inner_fn_name = if let Some(test_id) = test_id {
+            format!("_doctest_main_{}", test_id)
+        } else {
+            "_inner".into()
+        };
+        let inner_attr = if test_id.is_some() { "#[allow(non_snake_case)] " } else { "" };
         let (main_pre, main_post) = if returns_result {
             (
-                "fn main() { fn _inner() -> Result<(), impl core::fmt::Debug> {",
-                "}\n_inner().unwrap() }",
+                format!(
+                    "fn main() {{ {}fn {}() -> Result<(), impl core::fmt::Debug> {{\n",
+                    inner_attr, inner_fn_name
+                ),
+                format!("\n}} {}().unwrap() }}", inner_fn_name),
+            )
+        } else if test_id.is_some() {
+            (
+                format!("fn main() {{ {}fn {}() {{\n", inner_attr, inner_fn_name),
+                format!("\n}} {}() }}", inner_fn_name),
             )
         } else {
-            ("fn main() {\n", "\n}")
+            ("fn main() {\n".into(), "\n}".into())
         };
-        prog.extend([main_pre, everything_else, main_post].iter().cloned());
+        // Note on newlines: We insert a line/newline *before*, and *after*
+        // the doctest and adjust the `line_offset` accordingly.
+        // In the case of `-Z instrument-coverage`, this means that the generated
+        // inner `main` function spans from the doctest opening codeblock to the
+        // closing one. For example
+        // /// ``` <- start of the inner main
+        // /// <- code under doctest
+        // /// ``` <- end of the inner main
         line_offset += 1;
+
+        prog.extend([&main_pre, everything_else, &main_post].iter().cloned());
     }
 
     debug!("final doctest:\n{}", prog);
@@ -609,15 +659,15 @@ fn partition_source(s: &str) -> (String, String, String) {
         match state {
             PartitionState::Attrs => {
                 before.push_str(line);
-                before.push_str("\n");
+                before.push('\n');
             }
             PartitionState::Crates => {
                 crates.push_str(line);
-                crates.push_str("\n");
+                crates.push('\n');
             }
             PartitionState::Other => {
                 after.push_str(line);
-                after.push_str("\n");
+                after.push('\n');
             }
         }
     }
@@ -670,7 +720,7 @@ crate struct Collector {
     position: Span,
     source_map: Option<Lrc<SourceMap>>,
     filename: Option<PathBuf>,
-    visited_tests: HashMap<(String, usize), usize>,
+    visited_tests: FxHashMap<(String, usize), usize>,
 }
 
 impl Collector {
@@ -694,7 +744,7 @@ impl Collector {
             position: DUMMY_SP,
             source_map,
             filename,
-            visited_tests: HashMap::new(),
+            visited_tests: FxHashMap::default(),
         }
     }
 
@@ -749,28 +799,24 @@ impl Tester for Collector {
             _ => PathBuf::from(r"doctest.rs"),
         };
 
+        // For example `module/file.rs` would become `module_file_rs`
+        let file = filename
+            .to_string()
+            .chars()
+            .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
+            .collect::<String>();
+        let test_id = format!(
+            "{file}_{line}_{number}",
+            file = file,
+            line = line,
+            number = {
+                // Increases the current test number, if this file already
+                // exists or it creates a new entry with a test number of 0.
+                self.visited_tests.entry((file.clone(), line)).and_modify(|v| *v += 1).or_insert(0)
+            },
+        );
         let outdir = if let Some(mut path) = options.persist_doctests.clone() {
-            // For example `module/file.rs` would become `module_file_rs`
-            let folder_name = filename
-                .to_string()
-                .chars()
-                .map(|c| if c == '\\' || c == '/' || c == '.' { '_' } else { c })
-                .collect::<String>();
-
-            path.push(format!(
-                "{krate}_{file}_{line}_{number}",
-                krate = cratename,
-                file = folder_name,
-                line = line,
-                number = {
-                    // Increases the current test number, if this file already
-                    // exists or it creates a new entry with a test number of 0.
-                    self.visited_tests
-                        .entry((folder_name.clone(), line))
-                        .and_modify(|v| *v += 1)
-                        .or_insert(0)
-                },
-            ));
+            path.push(&test_id);
 
             std::fs::create_dir_all(&path)
                 .expect("Couldn't create directory for doctest executables");
@@ -817,6 +863,7 @@ impl Tester for Collector {
                     edition,
                     outdir,
                     path,
+                    &test_id,
                 );
 
                 if let Err(err) = res {
@@ -946,11 +993,11 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
     fn visit_testable<F: FnOnce(&mut Self)>(
         &mut self,
         name: String,
-        attrs: &[ast::Attribute],
         hir_id: HirId,
         sp: Span,
         nested: F,
     ) {
+        let attrs = self.tcx.hir().attrs(hir_id);
         let mut attrs = Attributes::from_ast(self.sess.diagnostic(), attrs, None);
         if let Some(ref cfg) = attrs.cfg {
             if !cfg.matches(&self.sess.parse_sess, Some(&self.sess.features_untracked())) {
@@ -963,7 +1010,6 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
             self.collector.names.push(name);
         }
 
-        attrs.collapse_doc_comments();
         attrs.unindent_doc_comments();
         // The collapse-docs pass won't combine sugared/raw doc attributes, or included files with
         // anything else, this will combine them for us.
@@ -980,7 +1026,7 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
                 self.codes,
                 self.collector.enable_per_target_ignores,
                 Some(&crate::html::markdown::ExtraInfo::new(
-                    &self.tcx,
+                    self.tcx,
                     hir_id,
                     span_of_attrs(&attrs).unwrap_or(sp),
                 )),
@@ -1003,31 +1049,31 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
     }
 
     fn visit_item(&mut self, item: &'hir hir::Item<'_>) {
-        let name = if let hir::ItemKind::Impl { ref self_ty, .. } = item.kind {
-            rustc_hir_pretty::id_to_string(&self.map, self_ty.hir_id)
+        let name = if let hir::ItemKind::Impl(impl_) = &item.kind {
+            rustc_hir_pretty::id_to_string(&self.map, impl_.self_ty.hir_id)
         } else {
             item.ident.to_string()
         };
 
-        self.visit_testable(name, &item.attrs, item.hir_id, item.span, |this| {
+        self.visit_testable(name, item.hir_id(), item.span, |this| {
             intravisit::walk_item(this, item);
         });
     }
 
     fn visit_trait_item(&mut self, item: &'hir hir::TraitItem<'_>) {
-        self.visit_testable(item.ident.to_string(), &item.attrs, item.hir_id, item.span, |this| {
+        self.visit_testable(item.ident.to_string(), item.hir_id(), item.span, |this| {
             intravisit::walk_trait_item(this, item);
         });
     }
 
     fn visit_impl_item(&mut self, item: &'hir hir::ImplItem<'_>) {
-        self.visit_testable(item.ident.to_string(), &item.attrs, item.hir_id, item.span, |this| {
+        self.visit_testable(item.ident.to_string(), item.hir_id(), item.span, |this| {
             intravisit::walk_impl_item(this, item);
         });
     }
 
     fn visit_foreign_item(&mut self, item: &'hir hir::ForeignItem<'_>) {
-        self.visit_testable(item.ident.to_string(), &item.attrs, item.hir_id, item.span, |this| {
+        self.visit_testable(item.ident.to_string(), item.hir_id(), item.span, |this| {
             intravisit::walk_foreign_item(this, item);
         });
     }
@@ -1038,22 +1084,21 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
         g: &'hir hir::Generics<'_>,
         item_id: hir::HirId,
     ) {
-        self.visit_testable(v.ident.to_string(), &v.attrs, v.id, v.span, |this| {
+        self.visit_testable(v.ident.to_string(), v.id, v.span, |this| {
             intravisit::walk_variant(this, v, g, item_id);
         });
     }
 
-    fn visit_struct_field(&mut self, f: &'hir hir::StructField<'_>) {
-        self.visit_testable(f.ident.to_string(), &f.attrs, f.hir_id, f.span, |this| {
-            intravisit::walk_struct_field(this, f);
+    fn visit_field_def(&mut self, f: &'hir hir::FieldDef<'_>) {
+        self.visit_testable(f.ident.to_string(), f.hir_id, f.span, |this| {
+            intravisit::walk_field_def(this, f);
         });
     }
 
     fn visit_macro_def(&mut self, macro_def: &'hir hir::MacroDef<'_>) {
         self.visit_testable(
             macro_def.ident.to_string(),
-            &macro_def.attrs,
-            macro_def.hir_id,
+            macro_def.hir_id(),
             macro_def.span,
             |_| (),
         );

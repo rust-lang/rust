@@ -16,12 +16,14 @@ fn main() -> () {
         StorageLive(_1);                 // scope 0 at $DIR/loop_test.rs:10:5: 12:6
         StorageLive(_2);                 // scope 0 at $DIR/loop_test.rs:10:8: 10:12
         _2 = const true;                 // scope 0 at $DIR/loop_test.rs:10:8: 10:12
-        FakeRead(ForMatchedPlace, _2);   // scope 0 at $DIR/loop_test.rs:10:8: 10:12
-        switchInt(_2) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/loop_test.rs:10:5: 12:6
+        switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/loop_test.rs:10:5: 12:6
     }
 
     bb1: {
-        falseEdge -> [real: bb3, imaginary: bb2]; // scope 0 at $DIR/loop_test.rs:10:5: 12:6
+        _0 = const ();                   // scope 0 at $DIR/loop_test.rs:11:9: 11:15
+        StorageDead(_2);                 // scope 0 at $DIR/loop_test.rs:12:5: 12:6
+        StorageDead(_1);                 // scope 0 at $DIR/loop_test.rs:12:5: 12:6
+        return;                          // scope 0 at $DIR/loop_test.rs:17:2: 17:2
     }
 
     bb2: {
@@ -29,29 +31,22 @@ fn main() -> () {
         StorageDead(_2);                 // scope 0 at $DIR/loop_test.rs:12:5: 12:6
         StorageDead(_1);                 // scope 0 at $DIR/loop_test.rs:12:5: 12:6
         StorageLive(_4);                 // scope 0 at $DIR/loop_test.rs:13:5: 16:6
-        goto -> bb4;                     // scope 0 at $DIR/loop_test.rs:13:5: 16:6
+        goto -> bb3;                     // scope 0 at $DIR/loop_test.rs:13:5: 16:6
     }
 
     bb3: {
-        _0 = const ();                   // scope 0 at $DIR/loop_test.rs:11:9: 11:15
-        StorageDead(_2);                 // scope 0 at $DIR/loop_test.rs:12:5: 12:6
-        StorageDead(_1);                 // scope 0 at $DIR/loop_test.rs:12:5: 12:6
-        return;                          // scope 0 at $DIR/loop_test.rs:17:2: 17:2
+        falseUnwind -> [real: bb4, cleanup: bb5]; // scope 0 at $DIR/loop_test.rs:13:5: 16:6
     }
 
     bb4: {
-        falseUnwind -> [real: bb5, cleanup: bb6]; // scope 0 at $DIR/loop_test.rs:13:5: 16:6
-    }
-
-    bb5: {
         StorageLive(_6);                 // scope 0 at $DIR/loop_test.rs:14:13: 14:14
         _6 = const 1_i32;                // scope 0 at $DIR/loop_test.rs:14:17: 14:18
         FakeRead(ForLet, _6);            // scope 0 at $DIR/loop_test.rs:14:13: 14:14
         StorageDead(_6);                 // scope 0 at $DIR/loop_test.rs:16:5: 16:6
-        goto -> bb4;                     // scope 0 at $DIR/loop_test.rs:1:1: 1:1
+        goto -> bb3;                     // scope 0 at $DIR/loop_test.rs:1:1: 1:1
     }
 
-    bb6 (cleanup): {
+    bb5 (cleanup): {
         resume;                          // scope 0 at $DIR/loop_test.rs:6:1: 17:2
     }
 }

@@ -1,5 +1,5 @@
 // check-pass
-#![feature(c_variadic, min_const_generics)]
+#![feature(c_variadic)]
 #![warn(function_item_references)]
 use std::fmt::Pointer;
 use std::fmt::Formatter;

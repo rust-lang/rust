@@ -1,6 +1,6 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
   g++ \
   make \
   ninja-build \
@@ -44,7 +44,6 @@ ENV WASM_TARGETS=wasm32-unknown-unknown
 ENV WASM_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $WASM_TARGETS \
   src/test/run-make \
   src/test/ui \
-  src/test/compile-fail \
   src/test/mir-opt \
   src/test/codegen-units \
   library/core

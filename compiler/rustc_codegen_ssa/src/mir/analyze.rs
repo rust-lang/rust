@@ -104,7 +104,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
     ) {
         let cx = self.fx.cx;
 
-        if let &[ref proj_base @ .., elem] = place_ref.projection {
+        if let Some((place_base, elem)) = place_ref.last_projection() {
             let mut base_context = if context.is_mutating_use() {
                 PlaceContext::MutatingUse(MutatingUseContext::Projection)
             } else {
@@ -112,15 +112,14 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
             };
 
             // Allow uses of projections that are ZSTs or from scalar fields.
-            let is_consume = match context {
+            let is_consume = matches!(
+                context,
                 PlaceContext::NonMutatingUse(
                     NonMutatingUseContext::Copy | NonMutatingUseContext::Move,
-                ) => true,
-                _ => false,
-            };
+                )
+            );
             if is_consume {
-                let base_ty =
-                    mir::Place::ty_from(place_ref.local, proj_base, self.fx.mir, cx.tcx());
+                let base_ty = place_base.ty(self.fx.mir, cx.tcx());
                 let base_ty = self.fx.monomorphize(base_ty);
 
                 // ZSTs don't require any actual memory access.
@@ -175,11 +174,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
                 base_context = context;
             }
 
-            self.process_place(
-                &mir::PlaceRef { local: place_ref.local, projection: proj_base },
-                base_context,
-                location,
-            );
+            self.process_place(&place_base, base_context, location);
             // HACK(eddyb) this emulates the old `visit_projection_elem`, this
             // entire `visit_place`-like `process_place` method should be rewritten,
             // now that we have moved to the "slice of projections" representation.
@@ -204,7 +199,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
             }
 
             self.visit_local(&place_ref.local, context, location);
-            self.visit_projection(place_ref.local, place_ref.projection, context, location);
+            self.visit_projection(*place_ref, context, location);
         }
     }
 }
@@ -236,7 +231,7 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
     fn visit_terminator(&mut self, terminator: &mir::Terminator<'tcx>, location: Location) {
         let check = match terminator.kind {
             mir::TerminatorKind::Call { func: mir::Operand::Constant(ref c), ref args, .. } => {
-                match *c.literal.ty.kind() {
+                match *c.ty().kind() {
                     ty::FnDef(did, _) => Some((did, args)),
                     _ => None,
                 }
@@ -286,7 +281,18 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
                     Some(assignment_location) => {
                         assignment_location.dominates(location, &self.dominators)
                     }
-                    None => false,
+                    None => {
+                        debug!("No first assignment found for {:?}", local);
+                        // We have not seen any assignment to the local yet,
+                        // but before marking not_ssa, check if it is a ZST,
+                        // in which case we don't need to initialize the local.
+                        let ty = self.fx.mir.local_decls[local].ty;
+                        let ty = self.fx.monomorphize(ty);
+
+                        let is_zst = self.fx.cx.layout_of(ty).is_zst();
+                        debug!("is_zst: {}", is_zst);
+                        is_zst
+                    }
                 };
                 if !ssa_read {
                     self.not_ssa(local);

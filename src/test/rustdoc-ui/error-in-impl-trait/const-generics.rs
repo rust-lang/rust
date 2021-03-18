@@ -1,6 +1,5 @@
 // check-pass
 // edition:2018
-#![feature(min_const_generics)]
 trait ValidTrait {}
 
 /// This has docs

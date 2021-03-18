@@ -1,8 +1,8 @@
-error[E0492]: cannot borrow a constant which may contain interior mutability, create a static instead
+error[E0492]: constants cannot refer to interior mutable data
   --> $DIR/qualif_overwrite_2.rs:8:5
    |
 LL |     &{a.0}
-   |     ^^^^^^
+   |     ^^^^^^ this borrow of an interior mutable value may end up in the final value
 
 error: aborting due to previous error
 

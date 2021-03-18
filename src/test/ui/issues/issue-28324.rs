@@ -1,4 +1,4 @@
-extern {
+extern "C" {
     static error_message_count: u32;
 }
 

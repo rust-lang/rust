@@ -11,7 +11,7 @@ use crate::dataflow::{AnalysisDomain, Backward, GenKill, GenKillAnalysis};
 /// exist. See [this `mir-dataflow` test][flow-test] for an example. You almost never want to use
 /// this analysis without also looking at the results of [`MaybeBorrowedLocals`].
 ///
-/// [`MaybeBorrowedLocals`]: ../struct.MaybeBorrowedLocals.html
+/// [`MaybeBorrowedLocals`]: super::MaybeBorrowedLocals
 /// [flow-test]: https://github.com/rust-lang/rust/blob/a08c47310c7d49cbdc5d7afb38408ba519967ecd/src/test/ui/mir-dataflow/liveness-ptr.rs
 /// [liveness]: https://en.wikipedia.org/wiki/Live_variable_analysis
 pub struct MaybeLiveLocals;
@@ -95,7 +95,7 @@ where
 
         // We purposefully do not call `super_place` here to avoid calling `visit_local` for this
         // place with one of the `Projection` variants of `PlaceContext`.
-        self.visit_projection(local, projection, context, location);
+        self.visit_projection(place.as_ref(), context, location);
 
         match DefUse::for_place(context) {
             // Treat derefs as a use of the base local. `*p = 4` is not a def of `p` but a use.

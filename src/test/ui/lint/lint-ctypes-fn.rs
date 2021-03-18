@@ -27,7 +27,7 @@ pub struct ZeroSize;
 
 pub type RustFn = fn();
 
-pub type RustBadRet = extern fn() -> Box<u32>;
+pub type RustBadRet = extern "C" fn() -> Box<u32>;
 
 pub type CVoidRet = ();
 
@@ -116,7 +116,7 @@ pub extern "C" fn transparent_str(p: TransparentStr) { }
 
 pub extern "C" fn transparent_fn(p: TransparentBadFn) { }
 
-pub extern "C" fn good3(fptr: Option<extern fn()>) { }
+pub extern "C" fn good3(fptr: Option<extern "C" fn()>) { }
 
 pub extern "C" fn good4(aptr: &[u8; 4 as usize]) { }
 
@@ -124,9 +124,9 @@ pub extern "C" fn good5(s: StructWithProjection) { }
 
 pub extern "C" fn good6(s: StructWithProjectionAndLifetime) { }
 
-pub extern "C" fn good7(fptr: extern fn() -> ()) { }
+pub extern "C" fn good7(fptr: extern "C" fn() -> ()) { }
 
-pub extern "C" fn good8(fptr: extern fn() -> !) { }
+pub extern "C" fn good8(fptr: extern "C" fn() -> !) { }
 
 pub extern "C" fn good9() -> () { }
 

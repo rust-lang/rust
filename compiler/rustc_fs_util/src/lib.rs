@@ -62,8 +62,10 @@ pub enum LinkOrCopy {
 pub fn link_or_copy<P: AsRef<Path>, Q: AsRef<Path>>(p: P, q: Q) -> io::Result<LinkOrCopy> {
     let p = p.as_ref();
     let q = q.as_ref();
-    if q.exists() {
-        fs::remove_file(&q)?;
+    match fs::remove_file(&q) {
+        Ok(()) => (),
+        Err(err) if err.kind() == io::ErrorKind::NotFound => (),
+        Err(err) => return Err(err),
     }
 
     match fs::hard_link(p, q) {

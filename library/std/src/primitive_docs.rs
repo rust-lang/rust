@@ -11,8 +11,9 @@
 /// `bool` implements various traits, such as [`BitAnd`], [`BitOr`], [`Not`], etc.,
 /// which allow us to perform boolean operations using `&`, `|` and `!`.
 ///
-/// `if` always demands a `bool` value. [`assert!`], which is an important macro in testing,
-/// checks whether an expression returns `true` and panics if it isn't.
+/// `if` requires a `bool` value as its conditional. [`assert!`], which is an
+/// important macro in testing, checks whether an expression is `true` and panics
+/// if it isn't.
 ///
 /// ```
 /// let bool_val = true & false | false;
@@ -25,7 +26,7 @@
 ///
 /// # Examples
 ///
-/// A trivial example of the usage of `bool`,
+/// A trivial example of the usage of `bool`:
 ///
 /// ```
 /// let praise_the_borrow_checker = true;
@@ -122,9 +123,9 @@ mod prim_bool {}
 /// `!`, if we have to call [`String::from_str`] for some reason the result will be a
 /// [`Result<String, !>`] which we can unpack like this:
 ///
-/// ```ignore (string-from-str-error-type-is-not-never-yet)
-/// #[feature(exhaustive_patterns)]
-/// // NOTE: this does not work today!
+/// ```
+/// #![feature(exhaustive_patterns)]
+/// use std::str::FromStr;
 /// let Ok(s) = String::from_str("hello");
 /// ```
 ///
@@ -184,9 +185,6 @@ mod prim_bool {}
 /// because `!` coerces to `Result<!, ConnectionError>` automatically.
 ///
 /// [`String::from_str`]: str::FromStr::from_str
-/// [`Result<String, !>`]: Result
-/// [`Result<T, !>`]: Result
-/// [`Result<!, E>`]: Result
 /// [`String`]: string::String
 /// [`FromStr`]: str::FromStr
 ///
@@ -470,16 +468,18 @@ mod prim_unit {}
 ///
 /// [`null`]: ptr::null
 /// [`null_mut`]: ptr::null_mut
-/// [`is_null`]: ../std/primitive.pointer.html#method.is_null
-/// [`offset`]: ../std/primitive.pointer.html#method.offset
+/// [`is_null`]: pointer::is_null
+/// [`offset`]: pointer::offset
 /// [`into_raw`]: Box::into_raw
 /// [`drop`]: mem::drop
 /// [`write`]: ptr::write
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_pointer {}
 
+#[doc(alias = "[]")]
+#[doc(alias = "[T;N]")] // unfortunately, rustdoc doesn't have fuzzy search for aliases
+#[doc(alias = "[T; N]")]
 #[doc(primitive = "array")]
-//
 /// A fixed-size array, denoted `[T; N]`, for the element type, `T`, and the
 /// non-negative compile-time constant size, `N`.
 ///
@@ -564,7 +564,7 @@ mod prim_pointer {}
 /// move_away(roa);
 /// ```
 ///
-/// [slice]: primitive.slice.html
+/// [slice]: prim@slice
 /// [`Debug`]: fmt::Debug
 /// [`Hash`]: hash::Hash
 /// [`Borrow`]: borrow::Borrow
@@ -924,6 +924,7 @@ mod prim_usize {}
 
 #[doc(primitive = "reference")]
 #[doc(alias = "&")]
+#[doc(alias = "&mut")]
 //
 /// References, both shared and mutable.
 ///

@@ -26,9 +26,9 @@ macro_rules! wrapping_assignment {
 }
 
 macro_rules! wrapping_test {
-    ($type:ty, $min:expr, $max:expr) => {
+    ($fn_name:ident, $type:ty, $min:expr, $max:expr) => {
         #[test]
-        fn wrapping_$type() {
+        fn $fn_name() {
             let zero: Wrapping<$type> = Wrapping(0);
             let one: Wrapping<$type> = Wrapping(1);
             let min: Wrapping<$type> = Wrapping($min);
@@ -60,23 +60,24 @@ macro_rules! wrapping_test {
     };
 }
 
-wrapping_test!(i8, i8::MIN, i8::MAX);
-wrapping_test!(i16, i16::MIN, i16::MAX);
-wrapping_test!(i32, i32::MIN, i32::MAX);
-wrapping_test!(i64, i64::MIN, i64::MAX);
+wrapping_test!(test_wrapping_i8, i8, i8::MIN, i8::MAX);
+wrapping_test!(test_wrapping_i16, i16, i16::MIN, i16::MAX);
+wrapping_test!(test_wrapping_i32, i32, i32::MIN, i32::MAX);
+wrapping_test!(test_wrapping_i64, i64, i64::MIN, i64::MAX);
 #[cfg(not(target_os = "emscripten"))]
-wrapping_test!(i128, i128::MIN, i128::MAX);
-wrapping_test!(isize, isize::MIN, isize::MAX);
-wrapping_test!(u8, u8::MIN, u8::MAX);
-wrapping_test!(u16, u16::MIN, u16::MAX);
-wrapping_test!(u32, u32::MIN, u32::MAX);
-wrapping_test!(u64, u64::MIN, u64::MAX);
+wrapping_test!(test_wrapping_i128, i128, i128::MIN, i128::MAX);
+wrapping_test!(test_wrapping_isize, isize, isize::MIN, isize::MAX);
+wrapping_test!(test_wrapping_u8, u8, u8::MIN, u8::MAX);
+wrapping_test!(test_wrapping_u16, u16, u16::MIN, u16::MAX);
+wrapping_test!(test_wrapping_u32, u32, u32::MIN, u32::MAX);
+wrapping_test!(test_wrapping_u64, u64, u64::MIN, u64::MAX);
 #[cfg(not(target_os = "emscripten"))]
-wrapping_test!(u128, u128::MIN, u128::MAX);
-wrapping_test!(usize, usize::MIN, usize::MAX);
+wrapping_test!(test_wrapping_u128, u128, u128::MIN, u128::MAX);
+wrapping_test!(test_wrapping_usize, usize, usize::MIN, usize::MAX);
 
 // Don't warn about overflowing ops on 32-bit platforms
 #[cfg_attr(target_pointer_width = "32", allow(const_err))]
+#[test]
 fn wrapping_int_api() {
     assert_eq!(i8::MAX.wrapping_add(1), i8::MIN);
     assert_eq!(i16::MAX.wrapping_add(1), i16::MIN);

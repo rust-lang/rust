@@ -30,7 +30,8 @@ use crate::traits::{BuiltinDerivedObligation, ImplDerivedObligation};
 use crate::traits::{
     ImplSourceAutoImplData, ImplSourceBuiltinData, ImplSourceClosureData,
     ImplSourceDiscriminantKindData, ImplSourceFnPointerData, ImplSourceGeneratorData,
-    ImplSourceObjectData, ImplSourceTraitAliasData, ImplSourceUserDefinedData,
+    ImplSourceObjectData, ImplSourcePointeeData, ImplSourceTraitAliasData,
+    ImplSourceUserDefinedData,
 };
 use crate::traits::{ObjectCastObligation, PredicateObligation, TraitObligation};
 use crate::traits::{Obligation, ObligationCause};
@@ -98,6 +99,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             DiscriminantKindCandidate => {
                 Ok(ImplSource::DiscriminantKind(ImplSourceDiscriminantKindData))
             }
+
+            PointeeCandidate => Ok(ImplSource::Pointee(ImplSourcePointeeData)),
 
             TraitAliasCandidate(alias_def_id) => {
                 let data = self.confirm_trait_alias_candidate(obligation, alias_def_id);
@@ -259,10 +262,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> ImplSourceAutoImplData<PredicateObligation<'tcx>> {
         debug!(?obligation, ?trait_def_id, "confirm_auto_impl_candidate");
 
-        let types = obligation.predicate.map_bound(|inner| {
-            let self_ty = self.infcx.shallow_resolve(inner.self_ty());
-            self.constituent_types_for_ty(self_ty)
-        });
+        let self_ty = self.infcx.shallow_resolve(obligation.predicate.self_ty());
+        let types = self.constituent_types_for_ty(self_ty);
         self.vtable_auto_impl(obligation, trait_def_id, types)
     }
 
@@ -336,7 +337,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn vtable_impl(
         &mut self,
         impl_def_id: DefId,
-        mut substs: Normalized<'tcx, SubstsRef<'tcx>>,
+        substs: Normalized<'tcx, SubstsRef<'tcx>>,
         cause: ObligationCause<'tcx>,
         recursion_depth: usize,
         param_env: ty::ParamEnv<'tcx>,
@@ -358,9 +359,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // relying on projections in the impl-trait-ref.
         //
         // e.g., `impl<U: Tr, V: Iterator<Item=U>> Foo<<U as Tr>::T> for V`
-        substs.obligations.append(&mut impl_obligations);
+        impl_obligations.extend(substs.obligations);
 
-        ImplSourceUserDefinedData { impl_def_id, substs: substs.value, nested: substs.obligations }
+        ImplSourceUserDefinedData { impl_def_id, substs: substs.value, nested: impl_obligations }
     }
 
     fn confirm_object_candidate(
@@ -434,7 +435,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .predicates
             .into_iter()
         {
-            if let ty::PredicateAtom::Trait(..) = super_trait.skip_binders() {
+            if let ty::PredicateKind::Trait(..) = super_trait.kind().skip_binder() {
                 let normalized_super_trait = normalize_with_depth_to(
                     self,
                     obligation.param_env,
@@ -643,7 +644,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             obligations.push(Obligation::new(
                 obligation.cause.clone(),
                 obligation.param_env,
-                ty::PredicateAtom::ClosureKind(closure_def_id, substs, kind)
+                ty::PredicateKind::ClosureKind(closure_def_id, substs, kind)
                     .to_predicate(self.tcx()),
             ));
         }
@@ -825,33 +826,59 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     },
                 };
 
+                // FIXME(eddyb) cache this (including computing `unsizing_params`)
+                // by putting it in a query; it would only need the `DefId` as it
+                // looks at declared field types, not anything substituted.
+
                 // The last field of the structure has to exist and contain type/const parameters.
                 let (tail_field, prefix_fields) =
                     def.non_enum_variant().fields.split_last().ok_or(Unimplemented)?;
                 let tail_field_ty = tcx.type_of(tail_field.did);
 
                 let mut unsizing_params = GrowableBitSet::new_empty();
-                let mut found = false;
-                for arg in tail_field_ty.walk() {
-                    if let Some(i) = maybe_unsizing_param_idx(arg) {
-                        unsizing_params.insert(i);
-                        found = true;
-                    }
-                }
-                if !found {
-                    return Err(Unimplemented);
-                }
-
-                // Ensure none of the other fields mention the parameters used
-                // in unsizing.
-                // FIXME(eddyb) cache this (including computing `unsizing_params`)
-                // by putting it in a query; it would only need the `DefId` as it
-                // looks at declared field types, not anything substituted.
-                for field in prefix_fields {
-                    for arg in tcx.type_of(field.did).walk() {
+                if tcx.features().relaxed_struct_unsize {
+                    for arg in tail_field_ty.walk() {
                         if let Some(i) = maybe_unsizing_param_idx(arg) {
-                            if unsizing_params.contains(i) {
-                                return Err(Unimplemented);
+                            unsizing_params.insert(i);
+                        }
+                    }
+
+                    // Ensure none of the other fields mention the parameters used
+                    // in unsizing.
+                    for field in prefix_fields {
+                        for arg in tcx.type_of(field.did).walk() {
+                            if let Some(i) = maybe_unsizing_param_idx(arg) {
+                                unsizing_params.remove(i);
+                            }
+                        }
+                    }
+
+                    if unsizing_params.is_empty() {
+                        return Err(Unimplemented);
+                    }
+                } else {
+                    let mut found = false;
+                    for arg in tail_field_ty.walk() {
+                        if let Some(i) = maybe_unsizing_param_idx(arg) {
+                            unsizing_params.insert(i);
+                            found = true;
+                        }
+                    }
+                    if !found {
+                        return Err(Unimplemented);
+                    }
+
+                    // Ensure none of the other fields mention the parameters used
+                    // in unsizing.
+                    // FIXME(eddyb) cache this (including computing `unsizing_params`)
+                    // by putting it in a query; it would only need the `DefId` as it
+                    // looks at declared field types, not anything substituted.
+                    for field in prefix_fields {
+                        for arg in tcx.type_of(field.did).walk() {
+                            if let Some(i) = maybe_unsizing_param_idx(arg) {
+                                if unsizing_params.contains(i) {
+                                    return Err(Unimplemented);
+                                }
                             }
                         }
                     }

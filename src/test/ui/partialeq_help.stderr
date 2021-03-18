@@ -5,6 +5,10 @@ LL |     a == b;
    |       ^^ no implementation for `&T == T`
    |
    = help: the trait `PartialEq<T>` is not implemented for `&T`
+help: consider introducing a `where` bound, but there might be an alternative better way to express this requirement
+   |
+LL | fn foo<T: PartialEq>(a: &T, b: T) where &T: PartialEq<T> {
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

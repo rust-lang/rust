@@ -1,17 +1,17 @@
 error: cannot use a derive helper attribute through an import
-  --> $DIR/derive-helper-shadowing.rs:40:15
+  --> $DIR/derive-helper-shadowing.rs:42:15
    |
 LL |             #[renamed]
    |               ^^^^^^^
    |
 note: the derive helper attribute imported here
-  --> $DIR/derive-helper-shadowing.rs:39:17
+  --> $DIR/derive-helper-shadowing.rs:41:17
    |
 LL |             use empty_helper as renamed;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: cannot find attribute `empty_helper` in this scope
-  --> $DIR/derive-helper-shadowing.rs:36:22
+  --> $DIR/derive-helper-shadowing.rs:38:22
    |
 LL |             #[derive(GenHelperUse)]
    |                      ^^^^^^^^^^^^
@@ -30,13 +30,13 @@ LL |             gen_helper_use!();
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0659]: `empty_helper` is ambiguous (name vs any other name during import resolution)
-  --> $DIR/derive-helper-shadowing.rs:24:13
+  --> $DIR/derive-helper-shadowing.rs:26:13
    |
 LL |         use empty_helper;
    |             ^^^^^^^^^^^^ ambiguous name
    |
 note: `empty_helper` could refer to the derive helper attribute defined here
-  --> $DIR/derive-helper-shadowing.rs:20:10
+  --> $DIR/derive-helper-shadowing.rs:22:10
    |
 LL | #[derive(Empty)]
    |          ^^^^^
@@ -54,7 +54,7 @@ LL | #[empty_helper]
    |   ^^^^^^^^^^^^ ambiguous name
    |
 note: `empty_helper` could refer to the derive helper attribute defined here
-  --> $DIR/derive-helper-shadowing.rs:20:10
+  --> $DIR/derive-helper-shadowing.rs:22:10
    |
 LL | #[derive(Empty)]
    |          ^^^^^
@@ -65,6 +65,19 @@ LL | use test_macros::empty_attr as empty_helper;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: use `crate::empty_helper` to refer to this attribute macro unambiguously
 
-error: aborting due to 5 previous errors
+warning: derive helper attribute is used before it is introduced
+  --> $DIR/derive-helper-shadowing.rs:19:3
+   |
+LL | #[empty_helper]
+   |   ^^^^^^^^^^^^
+...
+LL | #[derive(Empty)]
+   |          ----- the attribute is introduced here
+   |
+   = note: `#[warn(legacy_derive_helpers)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #79202 <https://github.com/rust-lang/rust/issues/79202>
+
+error: aborting due to 5 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0659`.

@@ -65,12 +65,14 @@ byteorder = { version = "1", features = ['default', 'std'] }
 curl-sys = { version = "0.4.13", features = ["http2", "libnghttp2-sys"], optional = true }
 crossbeam-utils = { version = "0.7.2", features = ["nightly"] }
 libc = { version = "0.2.79", features = ["align"] }
+# Ensure default features of libz-sys, which are disabled in some scenarios.
+libz-sys = { version = "1.1.2" }
 proc-macro2 = { version = "1", features = ["default"] }
 quote = { version = "1", features = ["default"] }
 serde = { version = "1.0.82", features = ['derive'] }
 serde_json = { version = "1.0.31", features = ["raw_value", "unbounded_depth"] }
-smallvec-0_6 = { package = "smallvec", version = "0.6", features = ['union', 'may_dangle'] }
-smallvec = { version = "1.0", features = ['union', 'may_dangle'] }
+smallvec-0_6 = { package = "smallvec", version = "0.6.14", features = ['union', 'may_dangle'] }
+smallvec = { version = "1.6.1", features = ['union', 'may_dangle'] }
 syn = { version = "1", features = ['fold', 'full', 'extra-traits', 'visit', 'visit-mut'] }
 url = { version = "2.0", features = ['serde'] }
 

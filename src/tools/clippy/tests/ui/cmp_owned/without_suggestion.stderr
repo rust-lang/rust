@@ -1,5 +1,5 @@
 error: this creates an owned instance just for comparison
-  --> $DIR/without_suggestion.rs:6:5
+  --> $DIR/without_suggestion.rs:7:5
    |
 LL |     y.to_owned() == *x;
    |     ^^^^^^^^^^^^^^^^^^ try implementing the comparison without allocating
@@ -7,13 +7,13 @@ LL |     y.to_owned() == *x;
    = note: `-D clippy::cmp-owned` implied by `-D warnings`
 
 error: this creates an owned instance just for comparison
-  --> $DIR/without_suggestion.rs:10:5
+  --> $DIR/without_suggestion.rs:11:5
    |
 LL |     y.to_owned() == **x;
    |     ^^^^^^^^^^^^^^^^^^^ try implementing the comparison without allocating
 
 error: this creates an owned instance just for comparison
-  --> $DIR/without_suggestion.rs:17:9
+  --> $DIR/without_suggestion.rs:18:9
    |
 LL |         self.to_owned() == *other
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ try implementing the comparison without allocating

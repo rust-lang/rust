@@ -2,7 +2,6 @@
 // revisions: full min
 #![cfg_attr(full, feature(const_generics))]
 #![cfg_attr(full, allow(incomplete_features))]
-#![cfg_attr(min, feature(min_const_generics))]
 
 trait ConstChunksExactTrait<T> {
     fn const_chunks_exact<const N: usize>(&self) -> ConstChunksExact<'_, T, {N}>;

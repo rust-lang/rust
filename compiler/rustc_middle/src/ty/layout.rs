@@ -4,7 +4,7 @@ use crate::mir::{GeneratorLayout, GeneratorSavedLocal};
 use crate::ty::subst::Subst;
 use crate::ty::{self, subst::SubstsRef, ReprOptions, Ty, TyCtxt, TypeFoldable};
 
-use rustc_ast::{self as ast, IntTy, UintTy};
+use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir as hir;
@@ -30,6 +30,8 @@ use std::ops::Bound;
 pub trait IntegerExt {
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>, signed: bool) -> Ty<'tcx>;
     fn from_attr<C: HasDataLayout>(cx: &C, ity: attr::IntType) -> Integer;
+    fn from_int_ty<C: HasDataLayout>(cx: &C, ity: ty::IntTy) -> Integer;
+    fn from_uint_ty<C: HasDataLayout>(cx: &C, uty: ty::UintTy) -> Integer;
     fn repr_discr<'tcx>(
         tcx: TyCtxt<'tcx>,
         ty: Ty<'tcx>,
@@ -60,14 +62,35 @@ impl IntegerExt for Integer {
         let dl = cx.data_layout();
 
         match ity {
-            attr::SignedInt(IntTy::I8) | attr::UnsignedInt(UintTy::U8) => I8,
-            attr::SignedInt(IntTy::I16) | attr::UnsignedInt(UintTy::U16) => I16,
-            attr::SignedInt(IntTy::I32) | attr::UnsignedInt(UintTy::U32) => I32,
-            attr::SignedInt(IntTy::I64) | attr::UnsignedInt(UintTy::U64) => I64,
-            attr::SignedInt(IntTy::I128) | attr::UnsignedInt(UintTy::U128) => I128,
-            attr::SignedInt(IntTy::Isize) | attr::UnsignedInt(UintTy::Usize) => {
+            attr::SignedInt(ast::IntTy::I8) | attr::UnsignedInt(ast::UintTy::U8) => I8,
+            attr::SignedInt(ast::IntTy::I16) | attr::UnsignedInt(ast::UintTy::U16) => I16,
+            attr::SignedInt(ast::IntTy::I32) | attr::UnsignedInt(ast::UintTy::U32) => I32,
+            attr::SignedInt(ast::IntTy::I64) | attr::UnsignedInt(ast::UintTy::U64) => I64,
+            attr::SignedInt(ast::IntTy::I128) | attr::UnsignedInt(ast::UintTy::U128) => I128,
+            attr::SignedInt(ast::IntTy::Isize) | attr::UnsignedInt(ast::UintTy::Usize) => {
                 dl.ptr_sized_integer()
             }
+        }
+    }
+
+    fn from_int_ty<C: HasDataLayout>(cx: &C, ity: ty::IntTy) -> Integer {
+        match ity {
+            ty::IntTy::I8 => I8,
+            ty::IntTy::I16 => I16,
+            ty::IntTy::I32 => I32,
+            ty::IntTy::I64 => I64,
+            ty::IntTy::I128 => I128,
+            ty::IntTy::Isize => cx.data_layout().ptr_sized_integer(),
+        }
+    }
+    fn from_uint_ty<C: HasDataLayout>(cx: &C, ity: ty::UintTy) -> Integer {
+        match ity {
+            ty::UintTy::U8 => I8,
+            ty::UintTy::U16 => I16,
+            ty::UintTy::U32 => I32,
+            ty::UintTy::U64 => I64,
+            ty::UintTy::U128 => I128,
+            ty::UintTy::Usize => cx.data_layout().ptr_sized_integer(),
         }
     }
 
@@ -107,6 +130,7 @@ impl IntegerExt for Integer {
 
         if repr.c() {
             match &tcx.sess.target.arch[..] {
+                "hexagon" => min_from_extern = Some(I8),
                 // WARNING: the ARM EABI has two variants; the one corresponding
                 // to `at_least == I32` appears to be used on Linux and NetBSD,
                 // but some systems may use the variant corresponding to no
@@ -165,6 +189,13 @@ pub const FAT_PTR_ADDR: usize = 0;
 /// - For a slice, this is the length.
 pub const FAT_PTR_EXTRA: usize = 1;
 
+/// The maximum supported number of lanes in a SIMD vector.
+///
+/// This value is selected based on backend support:
+/// * LLVM does not appear to have a vector width limit.
+/// * Cranelift stores the base-2 log of the lane count in a 4 bit integer.
+pub const MAX_SIMD_LANES: u64 = 1 << 0xF;
+
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable)]
 pub enum LayoutError<'tcx> {
     Unknown(Ty<'tcx>),
@@ -201,7 +232,7 @@ fn layout_raw<'tcx>(
             let layout = cx.layout_raw_uncached(ty);
             // Type-level uninhabitedness should always imply ABI uninhabitedness.
             if let Ok(layout) = layout {
-                if ty.conservative_is_privately_uninhabited(tcx) {
+                if tcx.conservative_is_privately_uninhabited(param_env.and(ty)) {
                     assert!(layout.abi.is_uninhabited());
                 }
             }
@@ -487,11 +518,11 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 self,
                 Scalar { value: Int(I32, false), valid_range: 0..=0x10FFFF },
             )),
-            ty::Int(ity) => scalar(Int(Integer::from_attr(dl, attr::SignedInt(ity)), true)),
-            ty::Uint(ity) => scalar(Int(Integer::from_attr(dl, attr::UnsignedInt(ity)), false)),
+            ty::Int(ity) => scalar(Int(Integer::from_int_ty(dl, ity), true)),
+            ty::Uint(ity) => scalar(Int(Integer::from_uint_ty(dl, ity), false)),
             ty::Float(fty) => scalar(match fty {
-                ast::FloatTy::F32 => F32,
-                ast::FloatTy::F64 => F64,
+                ty::FloatTy::F32 => F32,
+                ty::FloatTy::F64 => F64,
             }),
             ty::FnPtr(_) => {
                 let mut ptr = scalar_unit(Pointer);
@@ -553,11 +584,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 let size =
                     element.size.checked_mul(count, dl).ok_or(LayoutError::SizeOverflow(ty))?;
 
-                let abi = if count != 0 && ty.conservative_is_privately_uninhabited(tcx) {
-                    Abi::Uninhabited
-                } else {
-                    Abi::Aggregate { sized: true }
-                };
+                let abi =
+                    if count != 0 && tcx.conservative_is_privately_uninhabited(param_env.and(ty)) {
+                        Abi::Uninhabited
+                    } else {
+                        Abi::Aggregate { sized: true }
+                    };
 
                 let largest_niche = if count != 0 { element.largest_niche.clone() } else { None };
 
@@ -694,10 +726,17 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 };
 
                 // SIMD vectors of zero length are not supported.
+                // Additionally, lengths are capped at 2^16 as a fixed maximum backends must
+                // support.
                 //
                 // Can't be caught in typeck if the array length is generic.
                 if e_len == 0 {
                     tcx.sess.fatal(&format!("monomorphising SIMD type `{}` of zero length", ty));
+                } else if e_len > MAX_SIMD_LANES {
+                    tcx.sess.fatal(&format!(
+                        "monomorphising SIMD type `{}` of length greater than {}",
+                        ty, MAX_SIMD_LANES,
+                    ));
                 }
 
                 // Compute the ABI of the element type:
@@ -1466,10 +1505,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
     ) -> Result<&'tcx Layout, LayoutError<'tcx>> {
         use SavedLocalEligibility::*;
         let tcx = self.tcx;
-
         let subst_field = |ty: Ty<'tcx>| ty.subst(tcx, substs);
 
-        let info = tcx.generator_layout(def_id);
+        let info = match tcx.generator_layout(def_id) {
+            None => return Err(LayoutError::Unknown(ty)),
+            Some(info) => info,
+        };
         let (ineligible_locals, assignments) = self.generator_saved_local_eligibility(&info);
 
         // Build a prefix layout, including "promoting" all ineligible
@@ -1634,7 +1675,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
         let layout = tcx.intern_layout(Layout {
             variants: Variants::Multiple {
-                tag: tag,
+                tag,
                 tag_encoding: TagEncoding::Direct,
                 tag_field: tag_index,
                 variants,
@@ -2455,7 +2496,8 @@ impl<'tcx> ty::Instance<'tcx> {
             ty::Generator(_, substs, _) => {
                 let sig = substs.as_generator().poly_sig();
 
-                let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
+                let br = ty::BoundRegion { kind: ty::BrEnv };
+                let env_region = ty::ReLateBound(ty::INNERMOST, br);
                 let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);
 
                 let pin_did = tcx.require_lang_item(LangItem::Pin, None);
@@ -2511,7 +2553,7 @@ where
         extra_args: &[Ty<'tcx>],
         caller_location: Option<Ty<'tcx>>,
         codegen_fn_attr_flags: CodegenFnAttrFlags,
-        mk_arg_type: impl Fn(Ty<'tcx>, Option<usize>) -> ArgAbi<'tcx, Ty<'tcx>>,
+        make_self_ptr_thin: bool,
     ) -> Self;
     fn adjust_for_abi(&mut self, cx: &C, abi: SpecAbi);
 }
@@ -2520,6 +2562,7 @@ fn fn_can_unwind(
     panic_strategy: PanicStrategy,
     codegen_fn_attr_flags: CodegenFnAttrFlags,
     call_conv: Conv,
+    abi: SpecAbi,
 ) -> bool {
     if panic_strategy != PanicStrategy::Unwind {
         // In panic=abort mode we assume nothing can unwind anywhere, so
@@ -2544,17 +2587,34 @@ fn fn_can_unwind(
             //
             //  2. A Rust item using a non-Rust ABI (like `extern "C" fn foo() { ... }`).
             //
-            // Foreign items (case 1) are assumed to not unwind; it is
-            // UB otherwise. (At least for now; see also
-            // rust-lang/rust#63909 and Rust RFC 2753.)
-            //
-            // Items defined in Rust with non-Rust ABIs (case 2) are also
-            // not supposed to unwind. Whether this should be enforced
-            // (versus stating it is UB) and *how* it would be enforced
-            // is currently under discussion; see rust-lang/rust#58794.
-            //
-            // In either case, we mark item as explicitly nounwind.
-            false
+            // In both of these cases, we should refer to the ABI to determine whether or not we
+            // should unwind. See Rust RFC 2945 for more information on this behavior, here:
+            // https://github.com/rust-lang/rfcs/blob/master/text/2945-c-unwind-abi.md
+            use SpecAbi::*;
+            match abi {
+                C { unwind } | Stdcall { unwind } | System { unwind } | Thiscall { unwind } => {
+                    unwind
+                }
+                Cdecl
+                | Fastcall
+                | Vectorcall
+                | Aapcs
+                | Win64
+                | SysV64
+                | PtxKernel
+                | Msp430Interrupt
+                | X86Interrupt
+                | AmdGpuKernel
+                | EfiApi
+                | AvrInterrupt
+                | AvrNonBlockingInterrupt
+                | CCmseNonSecureCall
+                | RustIntrinsic
+                | PlatformIntrinsic
+                | Unadjusted => false,
+                // In the `if` above, we checked for functions with the Rust calling convention.
+                Rust | RustCall => unreachable!(),
+            }
         }
     }
 }
@@ -2571,9 +2631,7 @@ where
         // Assume that fn pointers may always unwind
         let codegen_fn_attr_flags = CodegenFnAttrFlags::UNWIND;
 
-        call::FnAbi::new_internal(cx, sig, extra_args, None, codegen_fn_attr_flags, |ty, _| {
-            ArgAbi::new(cx.layout_of(ty))
-        })
+        call::FnAbi::new_internal(cx, sig, extra_args, None, codegen_fn_attr_flags, false)
     }
 
     fn of_instance(cx: &C, instance: ty::Instance<'tcx>, extra_args: &[Ty<'tcx>]) -> Self {
@@ -2587,55 +2645,14 @@ where
 
         let attrs = cx.tcx().codegen_fn_attrs(instance.def_id()).flags;
 
-        call::FnAbi::new_internal(cx, sig, extra_args, caller_location, attrs, |ty, arg_idx| {
-            let mut layout = cx.layout_of(ty);
-            // Don't pass the vtable, it's not an argument of the virtual fn.
-            // Instead, pass just the data pointer, but give it the type `*const/mut dyn Trait`
-            // or `&/&mut dyn Trait` because this is special-cased elsewhere in codegen
-            if let (ty::InstanceDef::Virtual(..), Some(0)) = (&instance.def, arg_idx) {
-                let fat_pointer_ty = if layout.is_unsized() {
-                    // unsized `self` is passed as a pointer to `self`
-                    // FIXME (mikeyhew) change this to use &own if it is ever added to the language
-                    cx.tcx().mk_mut_ptr(layout.ty)
-                } else {
-                    match layout.abi {
-                        Abi::ScalarPair(..) => (),
-                        _ => bug!("receiver type has unsupported layout: {:?}", layout),
-                    }
-
-                    // In the case of Rc<Self>, we need to explicitly pass a *mut RcBox<Self>
-                    // with a Scalar (not ScalarPair) ABI. This is a hack that is understood
-                    // elsewhere in the compiler as a method on a `dyn Trait`.
-                    // To get the type `*mut RcBox<Self>`, we just keep unwrapping newtypes until we
-                    // get a built-in pointer type
-                    let mut fat_pointer_layout = layout;
-                    'descend_newtypes: while !fat_pointer_layout.ty.is_unsafe_ptr()
-                        && !fat_pointer_layout.ty.is_region_ptr()
-                    {
-                        for i in 0..fat_pointer_layout.fields.count() {
-                            let field_layout = fat_pointer_layout.field(cx, i);
-
-                            if !field_layout.is_zst() {
-                                fat_pointer_layout = field_layout;
-                                continue 'descend_newtypes;
-                            }
-                        }
-
-                        bug!("receiver has no non-zero-sized fields {:?}", fat_pointer_layout);
-                    }
-
-                    fat_pointer_layout.ty
-                };
-
-                // we now have a type like `*mut RcBox<dyn Trait>`
-                // change its layout to that of `*mut ()`, a thin pointer, but keep the same type
-                // this is understood as a special case elsewhere in the compiler
-                let unit_pointer_ty = cx.tcx().mk_mut_ptr(cx.tcx().mk_unit());
-                layout = cx.layout_of(unit_pointer_ty);
-                layout.ty = fat_pointer_ty;
-            }
-            ArgAbi::new(layout)
-        })
+        call::FnAbi::new_internal(
+            cx,
+            sig,
+            extra_args,
+            caller_location,
+            attrs,
+            matches!(instance.def, ty::InstanceDef::Virtual(..)),
+        )
     }
 
     fn new_internal(
@@ -2644,7 +2661,7 @@ where
         extra_args: &[Ty<'tcx>],
         caller_location: Option<Ty<'tcx>>,
         codegen_fn_attr_flags: CodegenFnAttrFlags,
-        mk_arg_type: impl Fn(Ty<'tcx>, Option<usize>) -> ArgAbi<'tcx, Ty<'tcx>>,
+        force_thin_self_ptr: bool,
     ) -> Self {
         debug!("FnAbi::new_internal({:?}, {:?})", sig, extra_args);
 
@@ -2655,18 +2672,19 @@ where
             RustIntrinsic | PlatformIntrinsic | Rust | RustCall => Conv::Rust,
 
             // It's the ABI's job to select this, not ours.
-            System => bug!("system abi should be selected elsewhere"),
+            System { .. } => bug!("system abi should be selected elsewhere"),
             EfiApi => bug!("eficall abi should be selected elsewhere"),
 
-            Stdcall => Conv::X86Stdcall,
+            Stdcall { .. } => Conv::X86Stdcall,
             Fastcall => Conv::X86Fastcall,
             Vectorcall => Conv::X86VectorCall,
-            Thiscall => Conv::X86ThisCall,
-            C => Conv::C,
+            Thiscall { .. } => Conv::X86ThisCall,
+            C { .. } => Conv::C,
             Unadjusted => Conv::C,
             Win64 => Conv::X86_64Win64,
             SysV64 => Conv::X86_64SysV,
             Aapcs => Conv::ArmAapcs,
+            CCmseNonSecureCall => Conv::CCmseNonSecureCall,
             PtxKernel => Conv::PtxKernel,
             Msp430Interrupt => Conv::Msp430Intr,
             X86Interrupt => Conv::X86Intr,
@@ -2775,7 +2793,23 @@ where
 
         let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| {
             let is_return = arg_idx.is_none();
-            let mut arg = mk_arg_type(ty, arg_idx);
+
+            let layout = cx.layout_of(ty);
+            let layout = if force_thin_self_ptr && arg_idx == Some(0) {
+                // Don't pass the vtable, it's not an argument of the virtual fn.
+                // Instead, pass just the data pointer, but give it the type `*const/mut dyn Trait`
+                // or `&/&mut dyn Trait` because this is special-cased elsewhere in codegen
+                make_thin_self_ptr(cx, layout)
+            } else {
+                layout
+            };
+
+            let mut arg = ArgAbi::new(cx, layout, |layout, scalar, offset| {
+                let mut attrs = ArgAttributes::new();
+                adjust_for_rust_scalar(&mut attrs, scalar, *layout, offset, is_return);
+                attrs
+            });
+
             if arg.layout.is_zst() {
                 // For some forsaken reason, x86_64-pc-windows-gnu
                 // doesn't ignore zero-sized struct arguments.
@@ -2788,30 +2822,6 @@ where
                         && !linux_powerpc_gnu_like)
                 {
                     arg.mode = PassMode::Ignore;
-                }
-            }
-
-            // FIXME(eddyb) other ABIs don't have logic for scalar pairs.
-            if !is_return && rust_abi {
-                if let Abi::ScalarPair(ref a, ref b) = arg.layout.abi {
-                    let mut a_attrs = ArgAttributes::new();
-                    let mut b_attrs = ArgAttributes::new();
-                    adjust_for_rust_scalar(&mut a_attrs, a, arg.layout, Size::ZERO, false);
-                    adjust_for_rust_scalar(
-                        &mut b_attrs,
-                        b,
-                        arg.layout,
-                        a.value.size(cx).align_to(b.value.align(cx).abi),
-                        false,
-                    );
-                    arg.mode = PassMode::Pair(a_attrs, b_attrs);
-                    return arg;
-                }
-            }
-
-            if let Abi::Scalar(ref scalar) = arg.layout.abi {
-                if let PassMode::Direct(ref mut attrs) = arg.mode {
-                    adjust_for_rust_scalar(attrs, scalar, arg.layout, Size::ZERO, is_return);
                 }
             }
 
@@ -2831,7 +2841,12 @@ where
             c_variadic: sig.c_variadic,
             fixed_count: inputs.len(),
             conv,
-            can_unwind: fn_can_unwind(cx.tcx().sess.panic_strategy(), codegen_fn_attr_flags, conv),
+            can_unwind: fn_can_unwind(
+                cx.tcx().sess.panic_strategy(),
+                codegen_fn_attr_flags,
+                conv,
+                sig.abi,
+            ),
         };
         fn_abi.adjust_for_abi(cx, sig.abi);
         debug!("FnAbi::new_internal = {:?}", fn_abi);
@@ -2911,4 +2926,53 @@ where
             cx.tcx().sess.fatal(&msg);
         }
     }
+}
+
+fn make_thin_self_ptr<'tcx, C>(cx: &C, mut layout: TyAndLayout<'tcx>) -> TyAndLayout<'tcx>
+where
+    C: LayoutOf<Ty = Ty<'tcx>, TyAndLayout = TyAndLayout<'tcx>>
+        + HasTyCtxt<'tcx>
+        + HasParamEnv<'tcx>,
+{
+    let fat_pointer_ty = if layout.is_unsized() {
+        // unsized `self` is passed as a pointer to `self`
+        // FIXME (mikeyhew) change this to use &own if it is ever added to the language
+        cx.tcx().mk_mut_ptr(layout.ty)
+    } else {
+        match layout.abi {
+            Abi::ScalarPair(..) => (),
+            _ => bug!("receiver type has unsupported layout: {:?}", layout),
+        }
+
+        // In the case of Rc<Self>, we need to explicitly pass a *mut RcBox<Self>
+        // with a Scalar (not ScalarPair) ABI. This is a hack that is understood
+        // elsewhere in the compiler as a method on a `dyn Trait`.
+        // To get the type `*mut RcBox<Self>`, we just keep unwrapping newtypes until we
+        // get a built-in pointer type
+        let mut fat_pointer_layout = layout;
+        'descend_newtypes: while !fat_pointer_layout.ty.is_unsafe_ptr()
+            && !fat_pointer_layout.ty.is_region_ptr()
+        {
+            for i in 0..fat_pointer_layout.fields.count() {
+                let field_layout = fat_pointer_layout.field(cx, i);
+
+                if !field_layout.is_zst() {
+                    fat_pointer_layout = field_layout;
+                    continue 'descend_newtypes;
+                }
+            }
+
+            bug!("receiver has no non-zero-sized fields {:?}", fat_pointer_layout);
+        }
+
+        fat_pointer_layout.ty
+    };
+
+    // we now have a type like `*mut RcBox<dyn Trait>`
+    // change its layout to that of `*mut ()`, a thin pointer, but keep the same type
+    // this is understood as a special case elsewhere in the compiler
+    let unit_pointer_ty = cx.tcx().mk_mut_ptr(cx.tcx().mk_unit());
+    layout = cx.layout_of(unit_pointer_ty);
+    layout.ty = fat_pointer_ty;
+    layout
 }

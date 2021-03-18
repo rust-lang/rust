@@ -1,5 +1,5 @@
 error: expressions must be enclosed in braces to be used as const generic arguments
-  --> $DIR/const-expression-parameter.rs:16:20
+  --> $DIR/const-expression-parameter.rs:15:20
    |
 LL |     i32_identity::<1 + 2>();
    |                    ^^^^^

@@ -24,8 +24,7 @@ impl UnsafetyChecker<'tcx> {
         unsafety: hir::Unsafety,
         polarity: hir::ImplPolarity,
     ) {
-        let local_did = self.tcx.hir().local_def_id(item.hir_id);
-        if let Some(trait_ref) = self.tcx.impl_trait_ref(local_did) {
+        if let Some(trait_ref) = self.tcx.impl_trait_ref(item.def_id) {
             let trait_def = self.tcx.trait_def(trait_ref.def_id);
             let unsafe_attr = impl_generics.and_then(|generics| {
                 generics.params.iter().find(|p| p.pure_wrt_drop).map(|_| "may_dangle")
@@ -86,8 +85,13 @@ impl UnsafetyChecker<'tcx> {
 
 impl ItemLikeVisitor<'v> for UnsafetyChecker<'tcx> {
     fn visit_item(&mut self, item: &'v hir::Item<'v>) {
-        if let hir::ItemKind::Impl { unsafety, polarity, ref generics, .. } = item.kind {
-            self.check_unsafety_coherence(item, Some(generics), unsafety, polarity);
+        if let hir::ItemKind::Impl(ref impl_) = item.kind {
+            self.check_unsafety_coherence(
+                item,
+                Some(&impl_.generics),
+                impl_.unsafety,
+                impl_.polarity,
+            );
         }
     }
 

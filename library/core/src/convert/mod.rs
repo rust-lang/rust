@@ -135,8 +135,6 @@ pub const fn identity<T>(x: T) -> T {
 /// Since both [`String`] and [`&str`] implement `AsRef<str>` we can accept both as input argument.
 ///
 /// [`&str`]: primitive@str
-/// [`Option<T>`]: Option
-/// [`Result<T, E>`]: Result
 /// [`Borrow`]: crate::borrow::Borrow
 /// [`Eq`]: crate::cmp::Eq
 /// [`Ord`]: crate::cmp::Ord
@@ -168,9 +166,6 @@ pub trait AsRef<T: ?Sized> {
 ///
 /// **Note: This trait must not fail**. If the conversion can fail, use a
 /// dedicated method which returns an [`Option<T>`] or a [`Result<T, E>`].
-///
-/// [`Option<T>`]: Option
-/// [`Result<T, E>`]: Result
 ///
 /// # Generic Implementations
 ///
@@ -270,10 +265,9 @@ pub trait AsMut<T: ?Sized> {
 /// is_hello(s);
 /// ```
 ///
-/// [`Option<T>`]: Option
-/// [`Result<T, E>`]: Result
 /// [`String`]: ../../std/string/struct.String.html
 /// [`Vec`]: ../../std/vec/struct.Vec.html
+#[rustc_diagnostic_item = "into_trait"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Into<T>: Sized {
     /// Performs the conversion.
@@ -359,8 +353,6 @@ pub trait Into<T>: Sized {
 /// }
 /// ```
 ///
-/// [`Option<T>`]: Option
-/// [`Result<T, E>`]: Result
 /// [`String`]: ../../std/string/struct.String.html
 /// [`from`]: From::from
 /// [book]: ../../book/ch09-00-error-handling.html
@@ -391,6 +383,7 @@ pub trait From<T>: Sized {
 ///
 /// This suffers the same restrictions and reasoning as implementing
 /// [`Into`], see there for details.
+#[rustc_diagnostic_item = "try_into_trait"]
 #[stable(feature = "try_from", since = "1.34.0")]
 pub trait TryInto<T>: Sized {
     /// The type returned in the event of a conversion error.
@@ -469,9 +462,8 @@ pub trait TryInto<T>: Sized {
 /// assert!(try_successful_smaller_number.is_ok());
 /// ```
 ///
-/// [`i32::MAX`]: crate::i32::MAX
 /// [`try_from`]: TryFrom::try_from
-/// [`!`]: ../../std/primitive.never.html
+#[rustc_diagnostic_item = "try_from_trait"]
 #[stable(feature = "try_from", since = "1.34.0")]
 pub trait TryFrom<T>: Sized {
     /// The type returned in the event of a conversion error.
@@ -623,6 +615,14 @@ impl AsRef<str> for str {
     }
 }
 
+#[stable(feature = "as_mut_str_for_str", since = "1.51.0")]
+impl AsMut<str> for str {
+    #[inline]
+    fn as_mut(&mut self) -> &mut str {
+        self
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // THE NO-ERROR ERROR TYPE
 ////////////////////////////////////////////////////////////////////////////////
@@ -672,8 +672,6 @@ impl AsRef<str> for str {
 /// However when `Infallible` becomes an alias for the never type,
 /// the two `impl`s will start to overlap
 /// and therefore will be disallowed by the language’s trait coherence rules.
-///
-/// [never]: ../../std/primitive.never.html
 #[stable(feature = "convert_infallible", since = "1.34.0")]
 #[derive(Copy)]
 pub enum Infallible {}

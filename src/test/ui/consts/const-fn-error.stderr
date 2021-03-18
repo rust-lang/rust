@@ -1,0 +1,49 @@
+error[E0744]: `for` is not allowed in a `const fn`
+  --> $DIR/const-fn-error.rs:7:5
+   |
+LL | /     for i in 0..x {
+LL | |
+LL | |
+LL | |
+...  |
+LL | |         sum += i;
+LL | |     }
+   | |_____^
+
+error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+  --> $DIR/const-fn-error.rs:7:14
+   |
+LL |     for i in 0..x {
+   |              ^^^^
+
+error[E0658]: mutable references are not allowed in constant functions
+  --> $DIR/const-fn-error.rs:7:14
+   |
+LL |     for i in 0..x {
+   |              ^^^^
+   |
+   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+
+error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+  --> $DIR/const-fn-error.rs:7:14
+   |
+LL |     for i in 0..x {
+   |              ^^^^
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-fn-error.rs:7:14
+   |
+LL |     for i in 0..x {
+   |              ^^^^
+   |              |
+   |              calling non-const function `<std::ops::Range<usize> as IntoIterator>::into_iter`
+   |              inside `f` at $DIR/const-fn-error.rs:7:14
+...
+LL |     let a : [i32; f(X)];
+   |                   ---- inside `main::{constant#0}` at $DIR/const-fn-error.rs:20:19
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0015, E0080, E0658, E0744.
+For more information about an error, try `rustc --explain E0015`.

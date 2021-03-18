@@ -1,5 +1,3 @@
-#![feature(min_const_generics)]
-
 use std::convert::TryInto;
 
 fn take_array_from_mut<T, const N: usize>(data: &mut [T], start: usize) -> &mut [T; N] {

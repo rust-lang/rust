@@ -14,6 +14,7 @@ use rustc_lint::LintStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::ty::{GlobalCtxt, ResolverOutputs, TyCtxt};
+use rustc_query_impl::Queries as TcxQueries;
 use rustc_serialize::json;
 use rustc_session::config::{self, OutputFilenames, OutputType};
 use rustc_session::{output::find_crate_name, Session};
@@ -23,7 +24,11 @@ use std::cell::{Ref, RefCell, RefMut};
 use std::rc::Rc;
 
 /// Represent the result of a query.
-/// This result can be stolen with the `take` method and generated with the `compute` method.
+///
+/// This result can be stolen with the [`take`] method and generated with the [`compute`] method.
+///
+/// [`take`]: Self::take
+/// [`compute`]: Self::compute
 pub struct Query<T> {
     result: RefCell<Option<Result<T>>>,
 }
@@ -67,6 +72,7 @@ impl<T> Default for Query<T> {
 pub struct Queries<'tcx> {
     compiler: &'tcx Compiler,
     gcx: OnceCell<GlobalCtxt<'tcx>>,
+    queries: OnceCell<TcxQueries<'tcx>>,
 
     arena: WorkerLocal<Arena<'tcx>>,
     hir_arena: WorkerLocal<rustc_ast_lowering::Arena<'tcx>>,
@@ -88,6 +94,7 @@ impl<'tcx> Queries<'tcx> {
         Queries {
             compiler,
             gcx: OnceCell::new(),
+            queries: OnceCell::new(),
             arena: WorkerLocal::new(|_| Arena::default()),
             hir_arena: WorkerLocal::new(|_| rustc_ast_lowering::Arena::default()),
             dep_graph_future: Default::default(),
@@ -261,6 +268,7 @@ impl<'tcx> Queries<'tcx> {
                 resolver_outputs.steal(),
                 outputs,
                 &crate_name,
+                &self.queries,
                 &self.gcx,
                 &self.arena,
             ))
@@ -276,7 +284,7 @@ impl<'tcx> Queries<'tcx> {
                 // Don't do code generation if there were any errors
                 self.session().compile_status()?;
 
-                // Hook for compile-fail tests.
+                // Hook for UI tests.
                 Self::check_for_rustc_errors_attr(tcx);
 
                 Ok(passes::start_codegen(&***self.codegen_backend(), tcx, &*outputs.peek()))
@@ -285,7 +293,7 @@ impl<'tcx> Queries<'tcx> {
     }
 
     /// Check for the `#[rustc_error]` annotation, which forces an error in codegen. This is used
-    /// to write compile-fail tests that actually test that compilation succeeds without reporting
+    /// to write UI tests that actually test that compilation succeeds without reporting
     /// an error.
     fn check_for_rustc_errors_attr(tcx: TyCtxt<'_>) {
         let def_id = match tcx.entry_fn(LOCAL_CRATE) {
@@ -399,6 +407,7 @@ impl Linker {
             return Ok(());
         }
 
+        let _timer = sess.prof.verbose_generic_activity("link_crate");
         self.codegen_backend.link(&self.sess, codegen_results, &self.prepare_outputs)
     }
 }
@@ -412,9 +421,19 @@ impl Compiler {
         let queries = Queries::new(&self);
         let ret = f(&queries);
 
-        if self.session().opts.debugging_opts.query_stats {
-            if let Ok(gcx) = queries.global_ctxt() {
-                gcx.peek_mut().print_stats();
+        // NOTE: intentionally does not compute the global context if it hasn't been built yet,
+        // since that likely means there was a parse error.
+        if let Some(Ok(gcx)) = &mut *queries.global_ctxt.result.borrow_mut() {
+            // We assume that no queries are run past here. If there are new queries
+            // after this point, they'll show up as "<unknown>" in self-profiling data.
+            {
+                let _prof_timer =
+                    queries.session().prof.generic_activity("self_profile_alloc_query_strings");
+                gcx.enter(rustc_query_impl::alloc_self_profile_query_strings);
+            }
+
+            if self.session().opts.debugging_opts.query_stats {
+                gcx.enter(rustc_query_impl::print_stats);
             }
         }
 

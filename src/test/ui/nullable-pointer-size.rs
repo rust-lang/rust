@@ -31,5 +31,5 @@ macro_rules! check_type {
 pub fn main() {
     check_type!(&'static isize);
     check_type!(Box<isize>);
-    check_type!(extern fn());
+    check_type!(extern "C" fn());
 }

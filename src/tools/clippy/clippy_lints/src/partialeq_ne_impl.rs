@@ -1,6 +1,6 @@
 use crate::utils::{is_automatically_derived, span_lint_hir};
 use if_chain::if_chain;
-use rustc_hir::{Item, ItemKind};
+use rustc_hir::{Impl, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
@@ -34,8 +34,9 @@ declare_lint_pass!(PartialEqNeImpl => [PARTIALEQ_NE_IMPL]);
 impl<'tcx> LateLintPass<'tcx> for PartialEqNeImpl {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if_chain! {
-            if let ItemKind::Impl{ of_trait: Some(ref trait_ref), items: impl_items, .. } = item.kind;
-            if !is_automatically_derived(&*item.attrs);
+            if let ItemKind::Impl(Impl { of_trait: Some(ref trait_ref), items: impl_items, .. }) = item.kind;
+            let attrs = cx.tcx.hir().attrs(item.hir_id());
+            if !is_automatically_derived(attrs);
             if let Some(eq_trait) = cx.tcx.lang_items().eq_trait();
             if trait_ref.path.res.def_id() == eq_trait;
             then {
@@ -44,7 +45,7 @@ impl<'tcx> LateLintPass<'tcx> for PartialEqNeImpl {
                         span_lint_hir(
                             cx,
                             PARTIALEQ_NE_IMPL,
-                            impl_item.id.hir_id,
+                            impl_item.id.hir_id(),
                             impl_item.span,
                             "re-implementing `PartialEq::ne` is unnecessary",
                         );

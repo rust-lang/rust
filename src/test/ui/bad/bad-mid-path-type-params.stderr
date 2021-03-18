@@ -1,27 +1,73 @@
-error[E0107]: wrong number of type arguments: expected 1, found 2
-  --> $DIR/bad-mid-path-type-params.rs:30:28
+error[E0107]: this associated function takes 1 type argument but 2 type arguments were supplied
+  --> $DIR/bad-mid-path-type-params.rs:30:16
    |
 LL |     let _ = S::new::<isize,f64>(1, 1.0);
-   |                            ^^^ unexpected type argument
+   |                ^^^        ---- help: remove this type argument
+   |                |
+   |                expected 1 type argument
+   |
+note: associated function defined here, with 1 type parameter: `U`
+  --> $DIR/bad-mid-path-type-params.rs:6:8
+   |
+LL |     fn new<U>(x: T, _: U) -> S<T> {
+   |        ^^^ -
 
-error[E0107]: wrong number of lifetime arguments: expected 0, found 1
-  --> $DIR/bad-mid-path-type-params.rs:33:17
+error[E0107]: this struct takes 0 lifetime arguments but 1 lifetime argument was supplied
+  --> $DIR/bad-mid-path-type-params.rs:33:13
    |
 LL |     let _ = S::<'a,isize>::new::<f64>(1, 1.0);
-   |                 ^^ unexpected lifetime argument
+   |             ^   --- help: remove this lifetime argument
+   |             |
+   |             expected 0 lifetime arguments
+   |
+note: struct defined here, with 0 lifetime parameters
+  --> $DIR/bad-mid-path-type-params.rs:1:8
+   |
+LL | struct S<T> {
+   |        ^
 
-error[E0107]: wrong number of type arguments: expected 1, found 2
-  --> $DIR/bad-mid-path-type-params.rs:36:36
+error[E0107]: this associated function takes 1 type argument but 2 type arguments were supplied
+  --> $DIR/bad-mid-path-type-params.rs:36:24
    |
 LL |     let _: S2 = Trait::new::<isize,f64>(1, 1.0);
-   |                                    ^^^ unexpected type argument
-
-error[E0107]: wrong number of lifetime arguments: expected 0, found 1
-  --> $DIR/bad-mid-path-type-params.rs:39:25
+   |                        ^^^        ---- help: remove this type argument
+   |                        |
+   |                        expected 1 type argument
    |
-LL |     let _: S2 = Trait::<'a,isize>::new::<f64>(1, 1.0);
-   |                         ^^ unexpected lifetime argument
+note: associated function defined here, with 1 type parameter: `U`
+  --> $DIR/bad-mid-path-type-params.rs:14:8
+   |
+LL |     fn new<U>(x: T, y: U) -> Self;
+   |        ^^^ -
 
-error: aborting due to 4 previous errors
+error[E0107]: this trait takes 0 lifetime arguments but 1 lifetime argument was supplied
+  --> $DIR/bad-mid-path-type-params.rs:39:17
+   |
+LL |     let _: S2 = Trait::<'a,isize>::new::<f64,f64>(1, 1.0);
+   |                 ^^^^^   --- help: remove this lifetime argument
+   |                 |
+   |                 expected 0 lifetime arguments
+   |
+note: trait defined here, with 0 lifetime parameters
+  --> $DIR/bad-mid-path-type-params.rs:13:7
+   |
+LL | trait Trait<T> {
+   |       ^^^^^
+
+error[E0107]: this associated function takes 1 type argument but 2 type arguments were supplied
+  --> $DIR/bad-mid-path-type-params.rs:39:36
+   |
+LL |     let _: S2 = Trait::<'a,isize>::new::<f64,f64>(1, 1.0);
+   |                                    ^^^      ---- help: remove this type argument
+   |                                    |
+   |                                    expected 1 type argument
+   |
+note: associated function defined here, with 1 type parameter: `U`
+  --> $DIR/bad-mid-path-type-params.rs:14:8
+   |
+LL |     fn new<U>(x: T, y: U) -> Self;
+   |        ^^^ -
+
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0107`.

@@ -81,12 +81,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let terminator = self.body[location.block].terminator();
         debug!("add_moved_or_invoked_closure_note: terminator={:?}", terminator);
         if let TerminatorKind::Call {
-            func: Operand::Constant(box Constant { literal: ty::Const { ty: const_ty, .. }, .. }),
+            func: Operand::Constant(box Constant { literal, .. }),
             args,
             ..
         } = &terminator.kind
         {
-            if let ty::FnDef(id, _) = *const_ty.kind() {
+            if let ty::FnDef(id, _) = *literal.ty().kind() {
                 debug!("add_moved_or_invoked_closure_note: id={:?}", id);
                 if self.infcx.tcx.parent(id) == self.infcx.tcx.lang_items().fn_once_trait() {
                     let closure = match args.first() {
@@ -103,7 +103,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         let did = did.expect_local();
                         let hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(did);
 
-                        if let Some((span, name)) =
+                        if let Some((span, hir_place)) =
                             self.infcx.tcx.typeck(did).closure_kind_origins().get(hir_id)
                         {
                             diag.span_note(
@@ -111,7 +111,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 &format!(
                                     "closure cannot be invoked more than once because it moves the \
                                     variable `{}` out of its environment",
-                                    name,
+                                    ty::place_to_string_for_capture(self.infcx.tcx, hir_place)
                                 ),
                             );
                             return;
@@ -127,7 +127,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let did = did.expect_local();
                 let hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(did);
 
-                if let Some((span, name)) =
+                if let Some((span, hir_place)) =
                     self.infcx.tcx.typeck(did).closure_kind_origins().get(hir_id)
                 {
                     diag.span_note(
@@ -135,7 +135,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         &format!(
                             "closure cannot be moved more than once as it is not `Copy` due to \
                              moving the variable `{}` out of its environment",
-                            name
+                            ty::place_to_string_for_capture(self.infcx.tcx, hir_place)
                         ),
                     );
                 }
@@ -215,6 +215,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             PlaceRef { local, projection: [proj_base @ .., elem] } => {
                 match elem {
                     ProjectionElem::Deref => {
+                        // FIXME(project-rfc_2229#36): print capture precisely here.
                         let upvar_field_projection = self.is_upvar_field_projection(place);
                         if let Some(field) = upvar_field_projection {
                             let var_index = field.index();
@@ -259,6 +260,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     ProjectionElem::Field(field, _ty) => {
                         autoderef = true;
 
+                        // FIXME(project-rfc_2229#36): print capture precisely here.
                         let upvar_field_projection = self.is_upvar_field_projection(place);
                         if let Some(field) = upvar_field_projection {
                             let var_index = field.index();
@@ -338,8 +340,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     self.describe_field(PlaceRef { local, projection: proj_base }, field)
                 }
                 ProjectionElem::Downcast(_, variant_index) => {
-                    let base_ty =
-                        Place::ty_from(place.local, place.projection, self.body, self.infcx.tcx).ty;
+                    let base_ty = place.ty(self.body, self.infcx.tcx).ty;
                     self.describe_field_from_ty(&base_ty, field, Some(*variant_index))
                 }
                 ProjectionElem::Field(_, field_type) => {
@@ -473,7 +474,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         // If we didn't find an overloaded deref or index, then assume it's a
         // built in deref and check the type of the base.
-        let base_ty = Place::ty_from(deref_base.local, deref_base.projection, self.body, tcx).ty;
+        let base_ty = deref_base.ty(self.body, tcx).ty;
         if base_ty.is_unsafe_ptr() {
             BorrowedContentSource::DerefRawPointer
         } else if base_ty.is_mutable_ptr() {
@@ -496,7 +497,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // lifetimes without names with the value `'0`.
         match ty.kind() {
             ty::Ref(
-                ty::RegionKind::ReLateBound(_, br)
+                ty::RegionKind::ReLateBound(_, ty::BoundRegion { kind: br })
                 | ty::RegionKind::RePlaceholder(ty::PlaceholderRegion { name: br, .. }),
                 _,
                 _,
@@ -517,7 +518,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let region = match ty.kind() {
             ty::Ref(region, _, _) => {
                 match region {
-                    ty::RegionKind::ReLateBound(_, br)
+                    ty::RegionKind::ReLateBound(_, ty::BoundRegion { kind: br })
                     | ty::RegionKind::RePlaceholder(ty::PlaceholderRegion { name: br, .. }) => {
                         printer.region_highlight_mode.highlighting_bound_region(*br, counter)
                     }
@@ -954,7 +955,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &self,
         def_id: DefId,
         target_place: PlaceRef<'tcx>,
-        places: &Vec<Operand<'tcx>>,
+        places: &[Operand<'tcx>],
     ) -> Option<(Span, Option<GeneratorKind>, Span)> {
         debug!(
             "closure_span: def_id={:?} target_place={:?} places={:?}",

@@ -29,16 +29,20 @@ use self::Ordering::*;
 ///
 /// This trait allows for partial equality, for types that do not have a full
 /// equivalence relation. For example, in floating point numbers `NaN != NaN`,
-/// so floating point types implement `PartialEq` but not [`Eq`].
+/// so floating point types implement `PartialEq` but not [`trait@Eq`].
 ///
-/// Formally, the equality must be (for all `a`, `b` and `c`):
+/// Formally, the equality must be (for all `a`, `b`, `c` of type `A`, `B`,
+/// `C`):
 ///
-/// - symmetric: `a == b` implies `b == a`; and
-/// - transitive: `a == b` and `b == c` implies `a == c`.
+/// - **Symmetric**: if `A: PartialEq<B>` and `B: PartialEq<A>`, then **`a == b`
+///   implies `b == a`**; and
 ///
-/// Note that these requirements mean that the trait itself must be implemented
-/// symmetrically and transitively: if `T: PartialEq<U>` and `U: PartialEq<V>`
-/// then `U: PartialEq<T>` and `T: PartialEq<V>`.
+/// - **Transitive**: if `A: PartialEq<B>` and `B: PartialEq<C>` and `A:
+///   PartialEq<C>`, then **`a == b` and `b == c` implies `a == c`**.
+///
+/// Note that the `B: PartialEq<A>` (symmetric) and `A: PartialEq<C>`
+/// (transitive) impls are not forced to exist, but these requirements apply
+/// whenever they do exist.
 ///
 /// ## Derivable
 ///
@@ -541,7 +545,7 @@ impl Ordering {
     /// assert_eq!(result, Ordering::Equal);
     ///
     /// let x: (i64, i64, i64) = (1, 2, 7);
-    /// let y: (i64, i64, i64)  = (1, 5, 3);
+    /// let y: (i64, i64, i64) = (1, 5, 3);
     /// let result = x.0.cmp(&y.0).then_with(|| x.1.cmp(&y.1)).then_with(|| x.2.cmp(&y.2));
     ///
     /// assert_eq!(result, Ordering::Less);
@@ -575,6 +579,7 @@ impl Ordering {
 /// ```
 #[derive(PartialEq, Eq, Debug, Copy, Clone, Default, Hash)]
 #[stable(feature = "reverse_cmp_key", since = "1.19.0")]
+#[repr(transparent)]
 pub struct Reverse<T>(#[stable(feature = "reverse_cmp_key", since = "1.19.0")] pub T);
 
 #[stable(feature = "reverse_cmp_key", since = "1.19.0")]

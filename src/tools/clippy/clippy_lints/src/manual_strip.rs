@@ -1,7 +1,7 @@
 use crate::consts::{constant, Constant};
 use crate::utils::usage::mutated_variables;
 use crate::utils::{
-    eq_expr_value, higher, match_def_path, meets_msrv, multispan_sugg, paths, qpath_res, snippet, span_lint_and_then,
+    eq_expr_value, higher, match_def_path, meets_msrv, multispan_sugg, paths, snippet, span_lint_and_then,
 };
 
 use if_chain::if_chain;
@@ -80,7 +80,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
         }
 
         if_chain! {
-            if let Some((cond, then, _)) = higher::if_block(&expr);
+            if let ExprKind::If(cond, then, _) = &expr.kind;
             if let ExprKind::MethodCall(_, _, [target_arg, pattern], _) = cond.kind;
             if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(cond.hir_id);
             if let ExprKind::Path(target_path) = &target_arg.kind;
@@ -92,7 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
                 } else {
                     return;
                 };
-                let target_res = qpath_res(cx, &target_path, target_arg.hir_id);
+                let target_res = cx.qpath_res(&target_path, target_arg.hir_id);
                 if target_res == Res::Err {
                     return;
                 };
@@ -221,7 +221,7 @@ fn find_stripping<'tcx>(
                 if let ExprKind::Index(indexed, index) = &unref.kind;
                 if let Some(higher::Range { start, end, .. }) = higher::range(index);
                 if let ExprKind::Path(path) = &indexed.kind;
-                if qpath_res(self.cx, path, ex.hir_id) == self.target;
+                if self.cx.qpath_res(path, ex.hir_id) == self.target;
                 then {
                     match (self.strip_kind, start, end) {
                         (StripKind::Prefix, Some(start), None) => {
@@ -235,7 +235,7 @@ fn find_stripping<'tcx>(
                                 if let ExprKind::Binary(Spanned { node: BinOpKind::Sub, .. }, left, right) = end.kind;
                                 if let Some(left_arg) = len_arg(self.cx, left);
                                 if let ExprKind::Path(left_path) = &left_arg.kind;
-                                if qpath_res(self.cx, left_path, left_arg.hir_id) == self.target;
+                                if self.cx.qpath_res(left_path, left_arg.hir_id) == self.target;
                                 if eq_pattern_length(self.cx, self.pattern, right);
                                 then {
                                     self.results.push(ex.span);

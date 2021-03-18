@@ -1,12 +1,13 @@
-//! This module provides constants which are specific to the implementation
-//! of the `f64` floating point data type.
+//! Constants specific to the `f64` double-precision floating point type.
 //!
 //! *[See also the `f64` primitive type](primitive@f64).*
 //!
 //! Mathematically significant numbers are provided in the `consts` sub-module.
 //!
-//! Although using these constants won’t cause compilation warnings,
-//! new code should use the associated constants directly on the primitive type.
+//! For the constants defined directly in this module
+//! (as distinct from those defined in the `consts` sub-module),
+//! new code should instead use the associated constants
+//! defined directly on the `f64` type.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
@@ -20,15 +21,11 @@ use crate::intrinsics;
 use crate::sys::cmath;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::f64::consts;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::f64::{DIGITS, EPSILON, MANTISSA_DIGITS, RADIX};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::f64::{INFINITY, MAX_10_EXP, NAN, NEG_INFINITY};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::f64::{MAX, MIN, MIN_POSITIVE};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::f64::{MAX_EXP, MIN_10_EXP, MIN_EXP};
+#[allow(deprecated, deprecated_in_future)]
+pub use core::f64::{
+    consts, DIGITS, EPSILON, INFINITY, MANTISSA_DIGITS, MAX, MAX_10_EXP, MAX_EXP, MIN, MIN_10_EXP,
+    MIN_EXP, MIN_POSITIVE, NAN, NEG_INFINITY, RADIX,
+};
 
 #[cfg(not(test))]
 #[lang = "f64_runtime"]
@@ -508,7 +505,7 @@ impl f64 {
         unsafe { cmath::fdim(self, other) }
     }
 
-    /// Returns the cubic root of a number.
+    /// Returns the cube root of a number.
     ///
     /// # Examples
     ///
@@ -880,41 +877,6 @@ impl f64 {
     #[inline]
     pub fn atanh(self) -> f64 {
         0.5 * ((2.0 * self) / (1.0 - self)).ln_1p()
-    }
-
-    /// Restrict a value to a certain interval unless it is NaN.
-    ///
-    /// Returns `max` if `self` is greater than `max`, and `min` if `self` is
-    /// less than `min`. Otherwise this returns `self`.
-    ///
-    /// Note that this function returns NaN if the initial value was NaN as
-    /// well.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `min > max`, `min` is NaN, or `max` is NaN.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// assert!((-3.0f64).clamp(-2.0, 1.0) == -2.0);
-    /// assert!((0.0f64).clamp(-2.0, 1.0) == 0.0);
-    /// assert!((2.0f64).clamp(-2.0, 1.0) == 1.0);
-    /// assert!((f64::NAN).clamp(-2.0, 1.0).is_nan());
-    /// ```
-    #[must_use = "method returns a new number and does not mutate the original value"]
-    #[stable(feature = "clamp", since = "1.50.0")]
-    #[inline]
-    pub fn clamp(self, min: f64, max: f64) -> f64 {
-        assert!(min <= max);
-        let mut x = self;
-        if x < min {
-            x = min;
-        }
-        if x > max {
-            x = max;
-        }
-        x
     }
 
     // Solaris/Illumos requires a wrapper around log, log2, and log10 functions

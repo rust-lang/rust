@@ -1,8 +1,8 @@
 error: must have type `*const T` or `*mut T` due to `#[linkage]` attribute
-  --> $DIR/linkage2.rs:11:32
+  --> $DIR/linkage2.rs:12:5
    |
-LL |     #[linkage = "extern_weak"] static foo: i32;
-   |                                ^^^^^^^^^^^^^^^^
+LL |     static foo: i32;
+   |     ^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

@@ -1,8 +1,16 @@
-error[E0107]: wrong number of generic arguments: expected 1, found 2
-  --> $DIR/invalid-constant-in-args.rs:4:23
+error[E0107]: this struct takes 1 generic argument but 2 generic arguments were supplied
+  --> $DIR/invalid-constant-in-args.rs:4:12
    |
 LL |     let _: Cell<&str, "a"> = Cell::new("");
-   |                       ^^^ unexpected const argument
+   |            ^^^^     ----- help: remove this generic argument
+   |            |
+   |            expected 1 generic argument
+   |
+note: struct defined here, with 1 generic parameter: `T`
+  --> $SRC_DIR/core/src/cell.rs:LL:COL
+   |
+LL | pub struct Cell<T: ?Sized> {
+   |            ^^^^ -
 
 error: aborting due to previous error
 

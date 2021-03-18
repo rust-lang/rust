@@ -1,11 +1,11 @@
-error[E0599]: no associated item named `LINKS` found for type parameter `A` in the current scope
-  --> $DIR/associated-item-duplicate-bounds.rs:7:21
+error: generic parameters may not be used in const operations
+  --> $DIR/associated-item-duplicate-bounds.rs:7:18
    |
 LL |     links: [u32; A::LINKS], // Shouldn't suggest bounds already there.
-   |                     ^^^^^ associated item not found in `A`
+   |                  ^^^^^^^^ cannot perform const operation using `A`
    |
-   = help: items from traits can only be used if the type parameter is bounded by the trait
+   = note: type parameters may not be used in const expressions
+   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0599`.

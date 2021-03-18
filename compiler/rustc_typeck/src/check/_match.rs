@@ -1,16 +1,52 @@
-use crate::check::coercion::CoerceMany;
+use crate::check::coercion::{AsCoercionSite, CoerceMany};
 use crate::check::{Diverges, Expectation, FnCtxt, Needs};
+use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir::{self as hir, ExprKind};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::traits::Obligation;
-use rustc_middle::ty::{self, ToPredicate, Ty};
-use rustc_span::Span;
+use rustc_middle::ty::{self, ToPredicate, Ty, TyS};
+use rustc_span::{MultiSpan, Span};
 use rustc_trait_selection::opaque_types::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
     StatementAsExpression,
 };
+
+macro_rules! create_maybe_get_coercion_reason {
+    ($fn_name:ident, $node:expr) => {
+        pub(crate) fn $fn_name(&self, hir_id: hir::HirId, sp: Span) -> Option<(Span, String)> {
+            let node = $node(self.tcx.hir(), hir_id);
+            if let hir::Node::Block(block) = node {
+                // check that the body's parent is an fn
+                let parent = self.tcx.hir().get(
+                    self.tcx.hir().get_parent_node(self.tcx.hir().get_parent_node(block.hir_id)),
+                );
+                if let (
+                    Some(expr),
+                    hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(..), .. }),
+                ) = (&block.expr, parent)
+                {
+                    // check that the `if` expr without `else` is the fn body's expr
+                    if expr.span == sp {
+                        return self.get_fn_decl(hir_id).and_then(|(fn_decl, _)| {
+                            let span = fn_decl.output.span();
+                            let snippet = self.tcx.sess.source_map().span_to_snippet(span).ok()?;
+                            Some((
+                                span,
+                                format!("expected `{}` because of this return type", snippet),
+                            ))
+                        });
+                    }
+                }
+            }
+            if let hir::Node::Local(hir::Local { ty: Some(_), pat, .. }) = node {
+                return Some((pat.span, "expected because of this assignment".to_string()));
+            }
+            None
+        }
+    };
+}
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn check_match(
@@ -25,13 +61,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         use hir::MatchSource::*;
         let (source_if, if_no_else, force_scrutinee_bool) = match match_src {
-            IfDesugar { contains_else_clause } => (true, !contains_else_clause, true),
             IfLetDesugar { contains_else_clause, .. } => (true, !contains_else_clause, false),
             WhileDesugar => (false, false, true),
             _ => (false, false, false),
         };
 
-        // Type check the descriminant and get its type.
+        // Type check the discriminant and get its type.
         let scrutinee_ty = if force_scrutinee_bool {
             // Here we want to ensure:
             //
@@ -115,8 +150,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let arm_ty = if source_if
                 && if_no_else
                 && i != 0
-                && self.if_fallback_coercion(expr.span, &arms[0].body, &mut coercion)
-            {
+                && self.if_fallback_coercion(
+                    expr.span,
+                    &arms[0].body,
+                    &mut coercion,
+                    |hir_id, span| self.maybe_get_coercion_reason(hir_id, span),
+                ) {
                 tcx.ty_error()
             } else {
                 // Only call this if this is not an `if` expr with an expected type and no `else`
@@ -125,58 +164,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             all_arms_diverge &= self.diverges.get();
 
-            // When we have a `match` as a tail expression in a `fn` with a returned `impl Trait`
-            // we check if the different arms would work with boxed trait objects instead and
-            // provide a structured suggestion in that case.
-            let opt_suggest_box_span = match (
-                orig_expected,
-                self.ret_coercion_impl_trait.map(|ty| (self.body_id.owner, ty)),
-            ) {
-                (Expectation::ExpectHasType(expected), Some((id, ty)))
-                    if self.in_tail_expr && self.can_coerce(arm_ty, expected) =>
-                {
-                    let impl_trait_ret_ty = self.infcx.instantiate_opaque_types(
-                        id,
-                        self.body_id,
-                        self.param_env,
-                        ty,
-                        arm.body.span,
-                    );
-                    let mut suggest_box = !impl_trait_ret_ty.obligations.is_empty();
-                    for o in impl_trait_ret_ty.obligations {
-                        match o.predicate.skip_binders_unchecked() {
-                            ty::PredicateAtom::Trait(t, constness) => {
-                                let pred = ty::PredicateAtom::Trait(
-                                    ty::TraitPredicate {
-                                        trait_ref: ty::TraitRef {
-                                            def_id: t.def_id(),
-                                            substs: self.infcx.tcx.mk_substs_trait(arm_ty, &[]),
-                                        },
-                                    },
-                                    constness,
-                                );
-                                let obl = Obligation::new(
-                                    o.cause.clone(),
-                                    self.param_env,
-                                    pred.to_predicate(self.infcx.tcx),
-                                );
-                                suggest_box &= self.infcx.predicate_must_hold_modulo_regions(&obl);
-                                if !suggest_box {
-                                    // We've encountered some obligation that didn't hold, so the
-                                    // return expression can't just be boxed. We don't need to
-                                    // evaluate the rest of the obligations.
-                                    break;
-                                }
-                            }
-                            _ => {}
-                        }
-                    }
-                    // If all the obligations hold (or there are no obligations) the tail expression
-                    // we can suggest to return a boxed trait object instead of an opaque type.
-                    if suggest_box { self.ret_type_span } else { None }
-                }
-                _ => None,
-            };
+            let opt_suggest_box_span =
+                self.opt_suggest_box_span(arm.body.span, arm_ty, orig_expected);
 
             if source_if {
                 let then_expr = &arms[0].body;
@@ -218,7 +207,64 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ),
                 };
                 let cause = self.cause(span, code);
-                coercion.coerce(self, &cause, &arm.body, arm_ty);
+
+                // This is the moral equivalent of `coercion.coerce(self, cause, arm.body, arm_ty)`.
+                // We use it this way to be able to expand on the potential error and detect when a
+                // `match` tail statement could be a tail expression instead. If so, we suggest
+                // removing the stray semicolon.
+                coercion.coerce_inner(
+                    self,
+                    &cause,
+                    Some(&arm.body),
+                    arm_ty,
+                    Some(&mut |err: &mut DiagnosticBuilder<'_>| {
+                        let can_coerce_to_return_ty = match self.ret_coercion.as_ref() {
+                            Some(ret_coercion) if self.in_tail_expr => {
+                                let ret_ty = ret_coercion.borrow().expected_ty();
+                                let ret_ty = self.inh.infcx.shallow_resolve(ret_ty);
+                                self.can_coerce(arm_ty, ret_ty)
+                                    && prior_arm_ty.map_or(true, |t| self.can_coerce(t, ret_ty))
+                                    // The match arms need to unify for the case of `impl Trait`.
+                                    && !matches!(ret_ty.kind(), ty::Opaque(..))
+                            }
+                            _ => false,
+                        };
+                        if let (Expectation::IsLast(stmt), Some(ret), true) =
+                            (orig_expected, self.ret_type_span, can_coerce_to_return_ty)
+                        {
+                            let semi_span = expr.span.shrink_to_hi().with_hi(stmt.hi());
+                            let mut ret_span: MultiSpan = semi_span.into();
+                            ret_span.push_span_label(
+                                expr.span,
+                                "this could be implicitly returned but it is a statement, not a \
+                                 tail expression"
+                                    .to_owned(),
+                            );
+                            ret_span.push_span_label(
+                                ret,
+                                "the `match` arms can conform to this return type".to_owned(),
+                            );
+                            ret_span.push_span_label(
+                                semi_span,
+                                "the `match` is a statement because of this semicolon, consider \
+                                 removing it"
+                                    .to_owned(),
+                            );
+                            err.span_note(
+                                ret_span,
+                                "you might have meant to return the `match` expression",
+                            );
+                            err.tool_only_span_suggestion(
+                                semi_span,
+                                "remove this semicolon",
+                                String::new(),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                    }),
+                    false,
+                );
+
                 other_arms.push(arm_span);
                 if other_arms.len() > 5 {
                     other_arms.remove(0);
@@ -279,7 +325,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         use hir::MatchSource::*;
         let msg = match source {
-            IfDesugar { .. } | IfLetDesugar { .. } => "block in `if` expression",
+            IfLetDesugar { .. } => "block in `if` expression",
             WhileDesugar { .. } | WhileLetDesugar { .. } => "block in `while` expression",
             _ => "arm",
         };
@@ -291,15 +337,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Handle the fallback arm of a desugared if(-let) like a missing else.
     ///
     /// Returns `true` if there was an error forcing the coercion to the `()` type.
-    fn if_fallback_coercion(
+    pub(crate) fn if_fallback_coercion<F, T>(
         &self,
         span: Span,
         then_expr: &'tcx hir::Expr<'tcx>,
-        coercion: &mut CoerceMany<'tcx, '_, rustc_hir::Arm<'tcx>>,
-    ) -> bool {
+        coercion: &mut CoerceMany<'tcx, '_, T>,
+        ret_reason: F,
+    ) -> bool
+    where
+        F: Fn(hir::HirId, Span) -> Option<(Span, String)>,
+        T: AsCoercionSite,
+    {
         // If this `if` expr is the parent's function return expr,
         // the cause of the type coercion is the return type, point at it. (#25228)
-        let ret_reason = self.maybe_get_coercion_reason(then_expr.hir_id, span);
+        let ret_reason = ret_reason(then_expr.hir_id, span);
         let cause = self.cause(span, ObligationCauseCode::IfExpressionWithNoElse);
         let mut error = false;
         coercion.coerce_forced_unit(
@@ -322,38 +373,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         error
     }
 
-    fn maybe_get_coercion_reason(&self, hir_id: hir::HirId, span: Span) -> Option<(Span, String)> {
-        use hir::Node::{Block, Item, Local};
-
-        let hir = self.tcx.hir();
-        let arm_id = hir.get_parent_node(hir_id);
-        let match_id = hir.get_parent_node(arm_id);
-        let containing_id = hir.get_parent_node(match_id);
-
-        let node = hir.get(containing_id);
-        if let Block(block) = node {
-            // check that the body's parent is an fn
-            let parent = hir.get(hir.get_parent_node(hir.get_parent_node(block.hir_id)));
-            if let (Some(expr), Item(hir::Item { kind: hir::ItemKind::Fn(..), .. })) =
-                (&block.expr, parent)
-            {
-                // check that the `if` expr without `else` is the fn body's expr
-                if expr.span == span {
-                    return self.get_fn_decl(hir_id).and_then(|(fn_decl, _)| {
-                        let span = fn_decl.output.span();
-                        let snippet = self.tcx.sess.source_map().span_to_snippet(span).ok()?;
-                        Some((span, format!("expected `{}` because of this return type", snippet)))
-                    });
-                }
-            }
+    create_maybe_get_coercion_reason!(
+        maybe_get_coercion_reason,
+        |hir: rustc_middle::hir::map::Map<'a>, id| {
+            let arm_id = hir.get_parent_node(id);
+            let match_id = hir.get_parent_node(arm_id);
+            let containing_id = hir.get_parent_node(match_id);
+            hir.get(containing_id)
         }
-        if let Local(hir::Local { ty: Some(_), pat, .. }) = node {
-            return Some((pat.span, "expected because of this assignment".to_string()));
-        }
-        None
-    }
+    );
 
-    fn if_cause(
+    create_maybe_get_coercion_reason!(
+        maybe_get_coercion_reason_if,
+        |hir: rustc_middle::hir::map::Map<'a>, id| {
+            let rslt = hir.get_parent_node(hir.get_parent_node(id));
+            hir.get(rslt)
+        }
+    );
+
+    pub(crate) fn if_cause(
         &self,
         span: Span,
         then_expr: &'tcx hir::Expr<'tcx>,
@@ -544,6 +582,58 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             // empty block; point at its entirety
             (block.span, None)
+        }
+    }
+
+    // When we have a `match` as a tail expression in a `fn` with a returned `impl Trait`
+    // we check if the different arms would work with boxed trait objects instead and
+    // provide a structured suggestion in that case.
+    pub(crate) fn opt_suggest_box_span(
+        &self,
+        span: Span,
+        outer_ty: &'tcx TyS<'tcx>,
+        orig_expected: Expectation<'tcx>,
+    ) -> Option<Span> {
+        match (orig_expected, self.ret_coercion_impl_trait.map(|ty| (self.body_id.owner, ty))) {
+            (Expectation::ExpectHasType(expected), Some((id, ty)))
+                if self.in_tail_expr && self.can_coerce(outer_ty, expected) =>
+            {
+                let impl_trait_ret_ty =
+                    self.infcx.instantiate_opaque_types(id, self.body_id, self.param_env, ty, span);
+                let mut suggest_box = !impl_trait_ret_ty.obligations.is_empty();
+                for o in impl_trait_ret_ty.obligations {
+                    match o.predicate.kind().skip_binder() {
+                        ty::PredicateKind::Trait(t, constness) => {
+                            let pred = ty::PredicateKind::Trait(
+                                ty::TraitPredicate {
+                                    trait_ref: ty::TraitRef {
+                                        def_id: t.def_id(),
+                                        substs: self.infcx.tcx.mk_substs_trait(outer_ty, &[]),
+                                    },
+                                },
+                                constness,
+                            );
+                            let obl = Obligation::new(
+                                o.cause.clone(),
+                                self.param_env,
+                                pred.to_predicate(self.infcx.tcx),
+                            );
+                            suggest_box &= self.infcx.predicate_must_hold_modulo_regions(&obl);
+                            if !suggest_box {
+                                // We've encountered some obligation that didn't hold, so the
+                                // return expression can't just be boxed. We don't need to
+                                // evaluate the rest of the obligations.
+                                break;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                // If all the obligations hold (or there are no obligations) the tail expression
+                // we can suggest to return a boxed trait object instead of an opaque type.
+                if suggest_box { self.ret_type_span } else { None }
+            }
+            _ => None,
         }
     }
 }
