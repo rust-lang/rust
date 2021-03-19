@@ -742,15 +742,15 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
         debug!("assemble_inherent_impl_probe {:?}", impl_def_id);
 
-        let (impl_ty, impl_substs) = self.impl_ty_and_substs(impl_def_id);
-        let impl_ty = impl_ty.subst(self.tcx, impl_substs);
-
         for item in self.impl_or_trait_item(impl_def_id) {
             if !self.has_applicable_self(&item) {
                 // No receiver declared. Not a candidate.
                 self.record_static_candidate(ImplSource(impl_def_id));
                 continue;
             }
+
+            let (impl_ty, impl_substs) = self.impl_ty_and_substs(impl_def_id);
+            let impl_ty = impl_ty.subst(self.tcx, impl_substs);
 
             // Determine the receiver type that the method itself expects.
             let xform_tys = self.xform_self_ty(&item, impl_ty, impl_substs);
