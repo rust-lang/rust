@@ -10,6 +10,7 @@ use crate::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_hir as ast;
 use rustc_hir::def_id::DefId;
+use rustc_span::DUMMY_SP;
 use rustc_target::spec::abi;
 use std::iter;
 
@@ -499,11 +500,14 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
 
     // FIXME(oli-obk): once const generics can have generic types, this assertion
     // will likely get triggered. Move to `normalize_erasing_regions` at that point.
-    assert_eq!(
-        tcx.erase_regions(a.ty),
-        tcx.erase_regions(b.ty),
-        "cannot relate constants of different types"
-    );
+    let a_ty = tcx.erase_regions(a.ty);
+    let b_ty = tcx.erase_regions(b.ty);
+    if a_ty != b_ty {
+        relation.tcx().sess.delay_span_bug(
+            DUMMY_SP,
+            &format!("cannot relate constants of different types: {} != {}", a_ty, b_ty),
+        );
+    }
 
     let eagerly_eval = |x: &'tcx ty::Const<'tcx>| x.eval(tcx, relation.param_env());
     let a = eagerly_eval(a);
