@@ -14,10 +14,9 @@ use syntax::{
 
 use crate::{
     assist_context::{AssistContext, Assists},
+    handlers::auto_import::find_importable_node,
     AssistId, AssistKind, GroupLabel,
 };
-
-use super::auto_import::find_importable_node;
 
 // Assist: qualify_path
 //
@@ -43,22 +42,20 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
         return None;
     }
 
-    let candidate = import_assets.import_candidate();
     let range = ctx.sema.original_range(&syntax_under_caret).range;
-
+    let candidate = import_assets.import_candidate();
     let qualify_candidate = match candidate {
-        ImportCandidate::Path(candidate) => {
-            if candidate.qualifier.is_some() {
-                cov_mark::hit!(qualify_path_qualifier_start);
-                let path = ast::Path::cast(syntax_under_caret)?;
-                let (prev_segment, segment) = (path.qualifier()?.segment()?, path.segment()?);
-                QualifyCandidate::QualifierStart(segment, prev_segment.generic_arg_list())
-            } else {
-                cov_mark::hit!(qualify_path_unqualified_name);
-                let path = ast::Path::cast(syntax_under_caret)?;
-                let generics = path.segment()?.generic_arg_list();
-                QualifyCandidate::UnqualifiedName(generics)
-            }
+        ImportCandidate::Path(candidate) if candidate.qualifier.is_some() => {
+            cov_mark::hit!(qualify_path_qualifier_start);
+            let path = ast::Path::cast(syntax_under_caret)?;
+            let (prev_segment, segment) = (path.qualifier()?.segment()?, path.segment()?);
+            QualifyCandidate::QualifierStart(segment, prev_segment.generic_arg_list())
+        }
+        ImportCandidate::Path(_) => {
+            cov_mark::hit!(qualify_path_unqualified_name);
+            let path = ast::Path::cast(syntax_under_caret)?;
+            let generics = path.segment()?.generic_arg_list();
+            QualifyCandidate::UnqualifiedName(generics)
         }
         ImportCandidate::TraitAssocItem(_) => {
             cov_mark::hit!(qualify_path_trait_assoc_item);
@@ -119,7 +116,7 @@ impl QualifyCandidate<'_> {
             QualifyCandidate::TraitAssocItem(qualifier, segment) => {
                 replacer(format!("<{} as {}>::{}", qualifier, import, segment));
             }
-            &QualifyCandidate::TraitMethod(db, ref mcall_expr) => {
+            QualifyCandidate::TraitMethod(db, mcall_expr) => {
                 Self::qualify_trait_method(db, mcall_expr, replacer, import, item);
             }
         }
@@ -201,17 +198,10 @@ fn group_label(candidate: &ImportCandidate) -> GroupLabel {
 
 fn label(candidate: &ImportCandidate, import: &LocatedImport) -> String {
     match candidate {
-        ImportCandidate::Path(candidate) => {
-            if candidate.qualifier.is_some() {
-                format!("Qualify with `{}`", import.import_path)
-            } else {
-                format!("Qualify as `{}`", import.import_path)
-            }
+        ImportCandidate::Path(candidate) if candidate.qualifier.is_none() => {
+            format!("Qualify as `{}`", import.import_path)
         }
-        ImportCandidate::TraitAssocItem(_) => {
-            format!("Qualify with `{}`", import.import_path)
-        }
-        ImportCandidate::TraitMethod(_) => format!("Qualify with `{}`", import.import_path),
+        _ => format!("Qualify with `{}`", import.import_path),
     }
 }
 
