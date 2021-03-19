@@ -30,15 +30,6 @@ struct DiagnosticBuilderInner<'a> {
     allow_suggestions: bool,
 }
 
-/// This is a helper macro for [`forward!`] that allows automatically adding documentation
-/// that uses tokens from [`forward!`]'s input.
-macro_rules! forward_inner_docs {
-    ($e:expr => $i:item) => {
-        #[doc = $e]
-        $i
-    };
-}
-
 /// In general, the `DiagnosticBuilder` uses deref to allow access to
 /// the fields and methods of the embedded `diagnostic` in a
 /// transparent way. *However,* many of the methods are intended to
@@ -54,11 +45,11 @@ macro_rules! forward {
         pub fn $n:ident(&self, $($name:ident: $ty:ty),* $(,)?) -> &Self
     ) => {
         $(#[$attrs])*
-        forward_inner_docs!(concat!("See [`Diagnostic::", stringify!($n), "()`].") =>
+        #[doc = concat!("See [`Diagnostic::", stringify!($n), "()`].")]
         pub fn $n(&self, $($name: $ty),*) -> &Self {
             self.diagnostic.$n($($name),*);
             self
-        });
+        }
     };
 
     // Forward pattern for &mut self -> &mut Self
@@ -67,11 +58,11 @@ macro_rules! forward {
         pub fn $n:ident(&mut self, $($name:ident: $ty:ty),* $(,)?) -> &mut Self
     ) => {
         $(#[$attrs])*
-        forward_inner_docs!(concat!("See [`Diagnostic::", stringify!($n), "()`].") =>
+        #[doc = concat!("See [`Diagnostic::", stringify!($n), "()`].")]
         pub fn $n(&mut self, $($name: $ty),*) -> &mut Self {
             self.0.diagnostic.$n($($name),*);
             self
-        });
+        }
     };
 
     // Forward pattern for &mut self -> &mut Self, with generic parameters.
@@ -84,11 +75,11 @@ macro_rules! forward {
         ) -> &mut Self
     ) => {
         $(#[$attrs])*
-        forward_inner_docs!(concat!("See [`Diagnostic::", stringify!($n), "()`].") =>
+        #[doc = concat!("See [`Diagnostic::", stringify!($n), "()`].")]
         pub fn $n<$($generic: $bound),*>(&mut self, $($name: $ty),*) -> &mut Self {
             self.0.diagnostic.$n($($name),*);
             self
-        });
+        }
     };
 }
 
