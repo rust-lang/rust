@@ -819,3 +819,22 @@ pub mod hash { pub trait Hash {} }
         "#]],
     );
 }
+
+#[test]
+fn cfg_in_module_file() {
+    // Inner `#![cfg]` in a module file makes the whole module disappear.
+    check(
+        r#"
+//- /main.rs
+mod module;
+
+//- /module.rs
+#![cfg(NEVER)]
+
+struct AlsoShoulntAppear;
+        "#,
+        expect![[r#"
+            crate
+        "#]],
+    )
+}

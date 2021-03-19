@@ -1294,29 +1294,37 @@ impl ModCollector<'_, '_> {
                 let db = self.def_collector.db;
                 match self.mod_dir.resolve_declaration(db, self.file_id, &module.name, path_attr) {
                     Ok((file_id, is_mod_rs, mod_dir)) => {
-                        let module_id = self.push_child_module(
-                            module.name.clone(),
-                            ast_id,
-                            Some((file_id, is_mod_rs)),
-                            &self.item_tree[module.visibility],
-                        );
                         let item_tree = db.file_item_tree(file_id.into());
-                        ModCollector {
-                            def_collector: &mut *self.def_collector,
-                            macro_depth: self.macro_depth,
-                            module_id,
-                            file_id: file_id.into(),
-                            item_tree: &item_tree,
-                            mod_dir,
-                        }
-                        .collect(item_tree.top_level_items());
-                        if is_macro_use
-                            || item_tree
-                                .top_level_attrs(db, self.def_collector.def_map.krate)
-                                .by_key("macro_use")
-                                .exists()
+                        if item_tree
+                            .top_level_attrs(db, self.def_collector.def_map.krate)
+                            .cfg()
+                            .map_or(true, |cfg| {
+                                self.def_collector.cfg_options.check(&cfg) != Some(false)
+                            })
                         {
-                            self.import_all_legacy_macros(module_id);
+                            let module_id = self.push_child_module(
+                                module.name.clone(),
+                                ast_id,
+                                Some((file_id, is_mod_rs)),
+                                &self.item_tree[module.visibility],
+                            );
+                            ModCollector {
+                                def_collector: &mut *self.def_collector,
+                                macro_depth: self.macro_depth,
+                                module_id,
+                                file_id: file_id.into(),
+                                item_tree: &item_tree,
+                                mod_dir,
+                            }
+                            .collect(item_tree.top_level_items());
+                            if is_macro_use
+                                || item_tree
+                                    .top_level_attrs(db, self.def_collector.def_map.krate)
+                                    .by_key("macro_use")
+                                    .exists()
+                            {
+                                self.import_all_legacy_macros(module_id);
+                            }
                         }
                     }
                     Err(candidate) => {
