@@ -53,11 +53,11 @@ impl ToInternal<token::DelimToken> for Delimiter {
     }
 }
 
-impl FromInternal<(TreeAndSpacing, &'_ ParseSess, &'_ mut Vec<Self>)>
+impl FromInternal<(TreeAndSpacing, &'_ mut Vec<Self>, &mut Rustc<'_>)>
     for TokenTree<Group, Punct, Ident, Literal>
 {
     fn from_internal(
-        ((tree, spacing), sess, stack): (TreeAndSpacing, &ParseSess, &mut Vec<Self>),
+        ((tree, spacing), stack, rustc): (TreeAndSpacing, &mut Vec<Self>, &mut Rustc<'_>),
     ) -> Self {
         use rustc_ast::token::*;
 
@@ -146,10 +146,10 @@ impl FromInternal<(TreeAndSpacing, &'_ ParseSess, &'_ mut Vec<Self>)>
             SingleQuote => op!('\''),
 
             Ident(name, false) if name == kw::DollarCrate => tt!(Ident::dollar_crate()),
-            Ident(name, is_raw) => tt!(Ident::new(sess, name, is_raw)),
+            Ident(name, is_raw) => tt!(Ident::new(rustc.sess, name, is_raw)),
             Lifetime(name) => {
                 let ident = symbol::Ident::new(name, span).without_first_quote();
-                stack.push(tt!(Ident::new(sess, ident.name, false)));
+                stack.push(tt!(Ident::new(rustc.sess, ident.name, false)));
                 tt!(Punct::new('\'', true))
             }
             Literal(lit) => tt!(Literal { lit }),
@@ -179,15 +179,15 @@ impl FromInternal<(TreeAndSpacing, &'_ ParseSess, &'_ mut Vec<Self>)>
             }
 
             Interpolated(nt) => {
-                if let Some((name, is_raw)) = ident_name_compatibility_hack(&nt, span, sess) {
-                    TokenTree::Ident(Ident::new(sess, name.name, is_raw, name.span))
+                if let Some((name, is_raw)) = ident_name_compatibility_hack(&nt, span, rustc) {
+                    TokenTree::Ident(Ident::new(rustc.sess, name.name, is_raw, name.span))
                 } else {
-                    let stream = nt_to_tokenstream(&nt, sess, CanSynthesizeMissingTokens::No);
+                    let stream = nt_to_tokenstream(&nt, rustc.sess, CanSynthesizeMissingTokens::No);
                     TokenTree::Group(Group {
                         delimiter: Delimiter::None,
                         stream,
                         span: DelimSpan::from_single(span),
-                        flatten: crate::base::pretty_printing_compatibility_hack(&nt, sess),
+                        flatten: crate::base::pretty_printing_compatibility_hack(&nt, rustc.sess),
                     })
                 }
             }
@@ -449,7 +449,7 @@ impl server::TokenStreamIter for Rustc<'_> {
         loop {
             let tree = iter.stack.pop().or_else(|| {
                 let next = iter.cursor.next_with_spacing()?;
-                Some(TokenTree::from_internal((next, self.sess, &mut iter.stack)))
+                Some(TokenTree::from_internal((next, &mut iter.stack, self)))
             })?;
             // A hack used to pass AST fragments to attribute and derive macros
             // as a single nonterminal token instead of a token stream.
@@ -719,11 +719,11 @@ impl server::Span for Rustc<'_> {
 fn ident_name_compatibility_hack(
     nt: &Nonterminal,
     orig_span: Span,
-    sess: &ParseSess,
+    rustc: &mut Rustc<'_>,
 ) -> Option<(rustc_span::symbol::Ident, bool)> {
     if let NtIdent(ident, is_raw) = nt {
         if let ExpnKind::Macro(_, macro_name) = orig_span.ctxt().outer_expn_data().kind {
-            let source_map = sess.source_map();
+            let source_map = rustc.sess.source_map();
             let filename = source_map.span_to_filename(orig_span);
             if let FileName::Real(RealFileName::Named(path)) = filename {
                 let matches_prefix = |prefix, filename| {
@@ -745,7 +745,7 @@ fn ident_name_compatibility_hack(
                     let snippet = source_map.span_to_snippet(orig_span);
                     if snippet.as_deref() == Ok("$name") {
                         if time_macros_impl {
-                            sess.buffer_lint_with_diagnostic(
+                            rustc.sess.buffer_lint_with_diagnostic(
                                 &PROC_MACRO_BACK_COMPAT,
                                 orig_span,
                                 ast::CRATE_NODE_ID,
@@ -759,13 +759,25 @@ fn ident_name_compatibility_hack(
                     }
                 }
 
-                if macro_name == sym::tuple_from_req
-                    && (matches_prefix("actix-web", "extract.rs")
-                        || matches_prefix("actori-web", "extract.rs"))
-                {
+                if macro_name == sym::tuple_from_req && matches_prefix("actix-web", "extract.rs") {
                     let snippet = source_map.span_to_snippet(orig_span);
                     if snippet.as_deref() == Ok("$T") {
-                        return Some((*ident, *is_raw));
+                        if let FileName::Real(RealFileName::Named(macro_path)) =
+                            source_map.span_to_filename(rustc.def_site)
+                        {
+                            if macro_path.to_string_lossy().contains("pin-project-internal-0.") {
+                                rustc.sess.buffer_lint_with_diagnostic(
+                                    &PROC_MACRO_BACK_COMPAT,
+                                    orig_span,
+                                    ast::CRATE_NODE_ID,
+                                    "using an old version of `actix-web`",
+                                    BuiltinLintDiagnostics::ProcMacroBackCompat(
+                                    "the version of `actix-web` you are using might stop compiling in future versions of Rust; \
+                                    please update to the latest version of the `actix-web` crate to avoid breakage".to_string())
+                                );
+                                return Some((*ident, *is_raw));
+                            }
+                        }
                     }
                 }
             }
