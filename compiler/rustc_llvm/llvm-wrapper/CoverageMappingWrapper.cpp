@@ -23,7 +23,7 @@ extern "C" void LLVMRustCoverageWriteFilenamesSectionToBuffer(
     const char* const Filenames[],
     size_t FilenamesLen,
     RustStringRef BufferOut) {
-#if LLVM_VERSION_GE(12,0)
+#if LLVM_VERSION_GE(13,0)
   SmallVector<std::string,32> FilenameRefs;
   for (size_t i = 0; i < FilenamesLen; i++) {
     FilenameRefs.push_back(std::string(Filenames[i]));

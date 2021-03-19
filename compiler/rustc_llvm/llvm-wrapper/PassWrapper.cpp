@@ -1437,7 +1437,7 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
     Ret->ResolvedODR[ModuleIdentifier][GUID] = NewLinkage;
   };
 
-#if LLVM_VERSION_GE(12,0)
+#if LLVM_VERSION_GE(13,0)
   lto::Config conf;
   thinLTOResolvePrevailingInIndex(conf, Ret->Index, isPrevailing, recordNewLinkage,
                                   Ret->GUIDPreservedSymbols);
