@@ -5,15 +5,15 @@ fn main() { }
 #[cfg(FALSE)]
 fn syntax() {
     let _ = #[attr] box 0;
-    let _ = #[attr] [#![attr] ];
-    let _ = #[attr] [#![attr] 0];
-    let _ = #[attr] [#![attr] 0; 0];
-    let _ = #[attr] [#![attr] 0, 0, 0];
+    let _ = #[attr] [];
+    let _ = #[attr] [0];
+    let _ = #[attr] [0; 0];
+    let _ = #[attr] [0, 0, 0];
     let _ = #[attr] foo();
     let _ = #[attr] x.foo();
-    let _ = #[attr] (#![attr] );
-    let _ = #[attr] (#![attr] #[attr] 0,);
-    let _ = #[attr] (#![attr] #[attr] 0, 0);
+    let _ = #[attr] ();
+    let _ = #[attr] (#[attr] 0,);
+    let _ = #[attr] (#[attr] 0, 0);
     let _ = #[attr] 0 + #[attr] 0;
     let _ = #[attr] 0 / #[attr] 0;
     let _ = #[attr] 0 & #[attr] 0;
@@ -43,10 +43,10 @@ fn syntax() {
                     #![attr]
                 };
     let _ =
-        #[attr] match true {
-                    #![attr]
-                            #[attr]
-                            _ => false,
+        #[attr] match true
+                    {
+                     #[attr]
+                     _ => false,
                 };
     let _ = #[attr] || #[attr] foo;
     let _ = #[attr] move || #[attr] foo;
@@ -119,10 +119,10 @@ fn syntax() {
     let _ = #[attr] foo![# ! [attr]];
     let _ = #[attr] foo! { };
     let _ = #[attr] foo! { # ! [attr] };
-    let _ = #[attr] Foo{#![attr] bar: baz,};
-    let _ = #[attr] Foo{#![attr] ..foo};
-    let _ = #[attr] Foo{#![attr] bar: baz, ..foo};
-    let _ = #[attr] (#![attr] 0);
+    let _ = #[attr] Foo{bar: baz,};
+    let _ = #[attr] Foo{..foo};
+    let _ = #[attr] Foo{bar: baz, ..foo};
+    let _ = #[attr] (0);
 
     {
         #[attr]

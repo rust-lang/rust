@@ -1216,10 +1216,9 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_tuple_parens_expr(&mut self, mut attrs: AttrVec) -> PResult<'a, P<Expr>> {
+    fn parse_tuple_parens_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let lo = self.token.span;
         self.expect(&token::OpenDelim(token::Paren))?;
-        attrs.extend(self.parse_inner_attributes()?); // `(#![foo] a, b, ...)` is OK.
         let (es, trailing_comma) = match self.parse_seq_to_end(
             &token::CloseDelim(token::Paren),
             SeqSep::trailing_allowed(token::Comma),
@@ -1239,11 +1238,9 @@ impl<'a> Parser<'a> {
         self.maybe_recover_from_bad_qpath(expr, true)
     }
 
-    fn parse_array_or_repeat_expr(&mut self, mut attrs: AttrVec) -> PResult<'a, P<Expr>> {
+    fn parse_array_or_repeat_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let lo = self.token.span;
         self.bump(); // `[`
-
-        attrs.extend(self.parse_inner_attributes()?);
 
         let close = &token::CloseDelim(token::Bracket);
         let kind = if self.eat(close) {
@@ -1950,7 +1947,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a `match ... { ... }` expression (`match` token already eaten).
-    fn parse_match_expr(&mut self, mut attrs: AttrVec) -> PResult<'a, P<Expr>> {
+    fn parse_match_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let match_span = self.prev_token.span;
         let lo = self.prev_token.span;
         let scrutinee = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
@@ -1965,7 +1962,6 @@ impl<'a> Parser<'a> {
             }
             return Err(e);
         }
-        attrs.extend(self.parse_inner_attributes()?);
 
         let mut arms: Vec<Arm> = Vec::new();
         while self.token != token::CloseDelim(token::Brace) {
@@ -2293,14 +2289,12 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_struct_expr(
         &mut self,
         pth: ast::Path,
-        mut attrs: AttrVec,
+        attrs: AttrVec,
         recover: bool,
     ) -> PResult<'a, P<Expr>> {
         let mut fields = Vec::new();
         let mut base = ast::StructRest::None;
         let mut recover_async = false;
-
-        attrs.extend(self.parse_inner_attributes()?);
 
         let mut async_block_err = |e: &mut DiagnosticBuilder<'_>, span: Span| {
             recover_async = true;

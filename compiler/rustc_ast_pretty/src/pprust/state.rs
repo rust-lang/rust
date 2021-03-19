@@ -366,10 +366,6 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         self.print_either_attributes(attrs, ast::AttrStyle::Inner, false, true)
     }
 
-    fn print_inner_attributes_no_trailing_hardbreak(&mut self, attrs: &[ast::Attribute]) {
-        self.print_either_attributes(attrs, ast::AttrStyle::Inner, false, false)
-    }
-
     fn print_outer_attributes(&mut self, attrs: &[ast::Attribute]) {
         self.print_either_attributes(attrs, ast::AttrStyle::Outer, false, true)
     }
@@ -1675,32 +1671,24 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_expr_vec(&mut self, exprs: &[P<ast::Expr>], attrs: &[ast::Attribute]) {
+    fn print_expr_vec(&mut self, exprs: &[P<ast::Expr>]) {
         self.ibox(INDENT_UNIT);
         self.s.word("[");
-        self.print_inner_attributes_inline(attrs);
         self.commasep_exprs(Inconsistent, exprs);
         self.s.word("]");
         self.end();
     }
 
-    fn print_expr_anon_const(&mut self, expr: &ast::AnonConst, attrs: &[ast::Attribute]) {
+    fn print_expr_anon_const(&mut self, expr: &ast::AnonConst) {
         self.ibox(INDENT_UNIT);
         self.s.word("const");
-        self.print_inner_attributes_inline(attrs);
         self.print_expr(&expr.value);
         self.end();
     }
 
-    fn print_expr_repeat(
-        &mut self,
-        element: &ast::Expr,
-        count: &ast::AnonConst,
-        attrs: &[ast::Attribute],
-    ) {
+    fn print_expr_repeat(&mut self, element: &ast::Expr, count: &ast::AnonConst) {
         self.ibox(INDENT_UNIT);
         self.s.word("[");
-        self.print_inner_attributes_inline(attrs);
         self.print_expr(element);
         self.word_space(";");
         self.print_expr(&count.value);
@@ -1713,11 +1701,9 @@ impl<'a> State<'a> {
         path: &ast::Path,
         fields: &[ast::ExprField],
         rest: &ast::StructRest,
-        attrs: &[ast::Attribute],
     ) {
         self.print_path(path, true, 0);
         self.s.word("{");
-        self.print_inner_attributes_inline(attrs);
         self.commasep_cmnt(
             Consistent,
             fields,
@@ -1752,9 +1738,8 @@ impl<'a> State<'a> {
         self.s.word("}");
     }
 
-    fn print_expr_tup(&mut self, exprs: &[P<ast::Expr>], attrs: &[ast::Attribute]) {
+    fn print_expr_tup(&mut self, exprs: &[P<ast::Expr>]) {
         self.popen();
-        self.print_inner_attributes_inline(attrs);
         self.commasep_exprs(Inconsistent, exprs);
         if exprs.len() == 1 {
             self.s.word(",");
@@ -1865,19 +1850,19 @@ impl<'a> State<'a> {
                 self.print_expr_maybe_paren(expr, parser::PREC_PREFIX);
             }
             ast::ExprKind::Array(ref exprs) => {
-                self.print_expr_vec(&exprs[..], attrs);
+                self.print_expr_vec(exprs);
             }
             ast::ExprKind::ConstBlock(ref anon_const) => {
-                self.print_expr_anon_const(anon_const, attrs);
+                self.print_expr_anon_const(anon_const);
             }
             ast::ExprKind::Repeat(ref element, ref count) => {
-                self.print_expr_repeat(element, count, attrs);
+                self.print_expr_repeat(element, count);
             }
             ast::ExprKind::Struct(ref se) => {
-                self.print_expr_struct(&se.path, &se.fields, &se.rest, attrs);
+                self.print_expr_struct(&se.path, &se.fields, &se.rest);
             }
             ast::ExprKind::Tup(ref exprs) => {
-                self.print_expr_tup(&exprs[..], attrs);
+                self.print_expr_tup(exprs);
             }
             ast::ExprKind::Call(ref func, ref args) => {
                 self.print_expr_call(func, &args[..]);
@@ -1955,7 +1940,6 @@ impl<'a> State<'a> {
                 self.print_expr_as_cond(expr);
                 self.s.space();
                 self.bopen();
-                self.print_inner_attributes_no_trailing_hardbreak(attrs);
                 for arm in arms {
                     self.print_arm(arm);
                 }
@@ -2253,7 +2237,6 @@ impl<'a> State<'a> {
             ast::ExprKind::MacCall(ref m) => self.print_mac(m),
             ast::ExprKind::Paren(ref e) => {
                 self.popen();
-                self.print_inner_attributes_inline(attrs);
                 self.print_expr(e);
                 self.pclose();
             }
