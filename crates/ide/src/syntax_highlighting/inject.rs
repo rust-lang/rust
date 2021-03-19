@@ -6,7 +6,7 @@ use either::Either;
 use hir::{HasAttrs, InFile, Semantics};
 use ide_db::{call_info::ActiveParameter, defs::Definition, SymbolKind};
 use syntax::{
-    ast::{self, AstNode, AttrsOwner, DocCommentsOwner},
+    ast::{self, AstNode, AttrsOwner, AttrsOwnerNode, DocCommentsOwner},
     match_ast, AstToken, NodeOrToken, SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
 
@@ -88,36 +88,6 @@ const RUSTDOC_FENCE_TOKENS: &[&'static str] = &[
     "edition2018",
     "edition2021",
 ];
-
-// Basically an owned dyn AttrsOwner without extra Boxing
-struct AttrsOwnerNode {
-    node: SyntaxNode,
-}
-
-impl AttrsOwnerNode {
-    fn new<N: DocCommentsOwner>(node: N) -> Self {
-        AttrsOwnerNode { node: node.syntax().clone() }
-    }
-}
-
-impl AttrsOwner for AttrsOwnerNode {}
-impl AstNode for AttrsOwnerNode {
-    fn can_cast(_: syntax::SyntaxKind) -> bool
-    where
-        Self: Sized,
-    {
-        false
-    }
-    fn cast(_: SyntaxNode) -> Option<Self>
-    where
-        Self: Sized,
-    {
-        None
-    }
-    fn syntax(&self) -> &SyntaxNode {
-        &self.node
-    }
-}
 
 fn doc_attributes<'node>(
     sema: &Semantics<RootDatabase>,
