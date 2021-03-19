@@ -2,7 +2,10 @@ use std::iter::once;
 
 use hir::Semantics;
 use ide_db::{base_db::FileRange, RootDatabase};
-use syntax::{algo, AstNode, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode};
+use itertools::Itertools;
+use syntax::{
+    algo, ast, match_ast, AstNode, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode, TextRange,
+};
 use text_edit::{TextEdit, TextEditBuilder};
 
 pub enum Direction {
@@ -29,16 +32,17 @@ pub(crate) fn move_item(
     let file = sema.parse(range.file_id);
 
     let item = file.syntax().covering_element(range.range);
-    find_ancestors(item, direction)
+    find_ancestors(item, direction, range.range)
 }
 
-fn find_ancestors(item: SyntaxElement, direction: Direction) -> Option<TextEdit> {
+fn find_ancestors(item: SyntaxElement, direction: Direction, range: TextRange) -> Option<TextEdit> {
     let root = match item {
         NodeOrToken::Node(node) => node,
         NodeOrToken::Token(token) => token.parent()?,
     };
 
     let movable = [
+        SyntaxKind::ARG_LIST,
         SyntaxKind::MATCH_ARM,
         SyntaxKind::PARAM,
         SyntaxKind::LET_STMT,
@@ -64,16 +68,39 @@ fn find_ancestors(item: SyntaxElement, direction: Direction) -> Option<TextEdit>
         .chain(root.ancestors())
         .find(|ancestor| movable.contains(&ancestor.kind()))?;
 
-    move_in_direction(&ancestor, direction)
+    move_in_direction(&ancestor, direction, range)
 }
 
-fn move_in_direction(node: &SyntaxNode, direction: Direction) -> Option<TextEdit> {
-    let sibling = match direction {
-        Direction::Up => node.prev_sibling(),
-        Direction::Down => node.next_sibling(),
-    }?;
+fn move_in_direction(
+    node: &SyntaxNode,
+    direction: Direction,
+    range: TextRange,
+) -> Option<TextEdit> {
+    match_ast! {
+        match node {
+            ast::ArgList(it) => swap_sibling_in_list(it.args(), range, direction),
+            _ => Some(replace_nodes(node, &match direction {
+                Direction::Up => node.prev_sibling(),
+                Direction::Down => node.next_sibling(),
+            }?))
+        }
+    }
+}
 
-    Some(replace_nodes(node, &sibling))
+fn swap_sibling_in_list<'i, A: AstNode + Clone, I: Iterator<Item = A>>(
+    list: I,
+    range: TextRange,
+    direction: Direction,
+) -> Option<TextEdit> {
+    let (l, r) = list
+        .tuple_windows()
+        .filter(|(l, r)| match direction {
+            Direction::Up => r.syntax().text_range().contains_range(range),
+            Direction::Down => l.syntax().text_range().contains_range(range),
+        })
+        .next()?;
+
+    Some(replace_nodes(l.syntax(), r.syntax()))
 }
 
 fn replace_nodes(first: &SyntaxNode, second: &SyntaxNode) -> TextEdit {
@@ -304,7 +331,7 @@ use std::vec::Vec;
     }
 
     #[test]
-    fn moves_match_expr_up() {
+    fn test_moves_match_expr_up() {
         check(
             r#"
 fn main() {
@@ -331,7 +358,7 @@ fn main() {
     }
 
     #[test]
-    fn moves_param_up() {
+    fn test_moves_param_up() {
         check(
             r#"
 fn test(one: i32, two$0$0: u32) {}
@@ -342,6 +369,69 @@ fn main() {
             "#,
             expect![[r#"
 fn test(two: u32, one: i32) {}
+
+fn main() {
+    test(123, 456);
+}
+            "#]],
+            Direction::Up,
+        );
+    }
+
+    #[test]
+    fn test_moves_arg_up() {
+        check(
+            r#"
+fn test(one: i32, two: u32) {}
+
+fn main() {
+    test(123, 456$0$0);
+}
+            "#,
+            expect![[r#"
+fn test(one: i32, two: u32) {}
+
+fn main() {
+    test(456, 123);
+}
+            "#]],
+            Direction::Up,
+        );
+    }
+
+    #[test]
+    fn test_moves_arg_down() {
+        check(
+            r#"
+fn test(one: i32, two: u32) {}
+
+fn main() {
+    test(123$0$0, 456);
+}
+            "#,
+            expect![[r#"
+fn test(one: i32, two: u32) {}
+
+fn main() {
+    test(456, 123);
+}
+            "#]],
+            Direction::Down,
+        );
+    }
+
+    #[test]
+    fn test_nowhere_to_move_arg() {
+        check(
+            r#"
+fn test(one: i32, two: u32) {}
+
+fn main() {
+    test(123$0$0, 456);
+}
+            "#,
+            expect![[r#"
+fn test(one: i32, two: u32) {}
 
 fn main() {
     test(123, 456);
