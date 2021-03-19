@@ -1,5 +1,5 @@
 // check-pass
-// aux-build:group-compat-hack.rs
+// aux-build:pin-project-internal-0.4.0.rs
 // compile-flags: -Z span-debug
 
 #![no_std] // Don't load unnecessary hygiene information from std
@@ -51,14 +51,16 @@ mod actix_web_test {
     include!("actix-web/src/extract.rs");
 
     struct Foo;
-    tuple_from_req!(Foo);
+    tuple_from_req!(Foo); //~ WARN using an old version
+    //~| WARN this was previously
 }
 
 mod actix_web_version_test {
     include!("actix-web-2.0.0/src/extract.rs");
 
     struct Foo;
-    tuple_from_req!(Foo);
+    tuple_from_req!(Foo); //~ WARN using an old version
+    //~| WARN this was previously
 }
 
 mod actori_web_test {

@@ -2165,6 +2165,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "memmap2"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04e3e85b970d650e2ae6d70592474087051c11c54da7f7b4949725c5735fbcc6"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "memoffset"
 version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3782,7 +3791,7 @@ dependencies = [
  "itertools 0.9.0",
  "jobserver",
  "libc",
- "memmap",
+ "memmap2",
  "pathdiff",
  "rustc_apfloat",
  "rustc_ast",
@@ -4116,7 +4125,7 @@ name = "rustc_metadata"
 version = "0.0.0"
 dependencies = [
  "libc",
- "memmap",
+ "memmap2",
  "rustc_ast",
  "rustc_attr",
  "rustc_data_structures",
