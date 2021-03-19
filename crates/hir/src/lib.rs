@@ -89,7 +89,7 @@ pub use crate::{
 pub use {
     hir_def::{
         adt::StructKind,
-        attr::{Attr, Attrs, Documentation},
+        attr::{Attr, Attrs, AttrsWithOwner, Documentation},
         body::scope::ExprScopes,
         find_path::PrefixKind,
         import_map,

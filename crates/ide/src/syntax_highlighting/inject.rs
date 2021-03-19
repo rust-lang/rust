@@ -6,7 +6,7 @@ use either::Either;
 use hir::{HasAttrs, InFile, Semantics};
 use ide_db::{call_info::ActiveParameter, defs::Definition, SymbolKind};
 use syntax::{
-    ast::{self, AstNode, AttrsOwner, AttrsOwnerNode, DocCommentsOwner},
+    ast::{self, AstNode},
     match_ast, AstToken, NodeOrToken, SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
 
@@ -92,24 +92,24 @@ const RUSTDOC_FENCE_TOKENS: &[&'static str] = &[
 fn doc_attributes<'node>(
     sema: &Semantics<RootDatabase>,
     node: &'node SyntaxNode,
-) -> Option<(AttrsOwnerNode, hir::Attrs, Definition)> {
+) -> Option<(hir::AttrsWithOwner, Definition)> {
     match_ast! {
         match node {
-            ast::SourceFile(it)  => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Module(def)))),
-            ast::Module(it)      => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Module(def)))),
-            ast::Fn(it)          => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Function(def)))),
-            ast::Struct(it)      => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Struct(def))))),
-            ast::Union(it)       => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Union(def))))),
-            ast::Enum(it)        => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Enum(def))))),
-            ast::Variant(it)     => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Variant(def)))),
-            ast::Trait(it)       => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Trait(def)))),
-            ast::Static(it)      => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Static(def)))),
-            ast::Const(it)       => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Const(def)))),
-            ast::TypeAlias(it)   => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::TypeAlias(def)))),
-            ast::Impl(it)        => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db), Definition::SelfType(def))),
-            ast::RecordField(it) => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db), Definition::Field(def))),
-            ast::TupleField(it)  => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db), Definition::Field(def))),
-            ast::MacroRules(it)  => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db), Definition::Macro(def))),
+            ast::SourceFile(it)  => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Module(def)))),
+            ast::Module(it)      => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Module(def)))),
+            ast::Fn(it)          => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Function(def)))),
+            ast::Struct(it)      => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Struct(def))))),
+            ast::Union(it)       => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Union(def))))),
+            ast::Enum(it)        => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Enum(def))))),
+            ast::Variant(it)     => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Variant(def)))),
+            ast::Trait(it)       => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Trait(def)))),
+            ast::Static(it)      => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Static(def)))),
+            ast::Const(it)       => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Const(def)))),
+            ast::TypeAlias(it)   => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::TypeAlias(def)))),
+            ast::Impl(it)        => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::SelfType(def))),
+            ast::RecordField(it) => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::Field(def))),
+            ast::TupleField(it)  => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::Field(def))),
+            ast::MacroRules(it)  => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::Macro(def))),
             // ast::MacroDef(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
             // ast::Use(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
             _ => return None
@@ -123,7 +123,7 @@ pub(super) fn doc_comment(
     sema: &Semantics<RootDatabase>,
     node: InFile<&SyntaxNode>,
 ) {
-    let (owner, attributes, def) = match doc_attributes(sema, node.value) {
+    let (attributes, def) = match doc_attributes(sema, node.value) {
         Some(it) => it,
         None => return,
     };
@@ -131,12 +131,7 @@ pub(super) fn doc_comment(
     let mut inj = Injector::default();
     inj.add_unmapped("fn doctest() {\n");
 
-    let attrs_source_map = match def {
-        Definition::ModuleDef(hir::ModuleDef::Module(module)) => {
-            attributes.source_map_for_module(sema.db, module.into())
-        }
-        _ => attributes.source_map(node.with_value(&owner)),
-    };
+    let attrs_source_map = attributes.source_map(sema.db);
 
     let mut is_codeblock = false;
     let mut is_doctest = false;

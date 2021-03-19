@@ -21,7 +21,7 @@ use crate::{
     item_tree::{ItemTreeId, ItemTreeNode},
     nameres::ModuleSource,
     path::{ModPath, PathKind},
-    src::HasChildSource,
+    src::{HasChildSource, HasSource},
     AdtId, AttrDefId, EnumId, GenericParamId, HasModule, LocalEnumVariantId, LocalFieldId, Lookup,
     VariantId,
 };
@@ -51,6 +51,12 @@ pub(crate) struct RawAttrs {
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct Attrs(RawAttrs);
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AttrsWithOwner {
+    attrs: Attrs,
+    owner: AttrDefId,
+}
+
 impl ops::Deref for RawAttrs {
     type Target = [Attr];
 
@@ -70,6 +76,14 @@ impl ops::Deref for Attrs {
             Some(it) => &*it,
             None => &[],
         }
+    }
+}
+
+impl ops::Deref for AttrsWithOwner {
+    type Target = Attrs;
+
+    fn deref(&self) -> &Attrs {
+        &self.attrs
     }
 }
 
@@ -169,78 +183,6 @@ impl RawAttrs {
 impl Attrs {
     pub const EMPTY: Self = Self(RawAttrs::EMPTY);
 
-    pub(crate) fn attrs_query(db: &dyn DefDatabase, def: AttrDefId) -> Attrs {
-        let raw_attrs = match def {
-            AttrDefId::ModuleId(module) => {
-                let def_map = module.def_map(db);
-                let mod_data = &def_map[module.local_id];
-                match mod_data.declaration_source(db) {
-                    Some(it) => {
-                        let raw_attrs = RawAttrs::from_attrs_owner(
-                            db,
-                            it.as_ref().map(|it| it as &dyn ast::AttrsOwner),
-                        );
-                        match mod_data.definition_source(db) {
-                            InFile { file_id, value: ModuleSource::SourceFile(file) } => raw_attrs
-                                .merge(RawAttrs::from_attrs_owner(db, InFile::new(file_id, &file))),
-                            _ => raw_attrs,
-                        }
-                    }
-                    None => RawAttrs::from_attrs_owner(
-                        db,
-                        mod_data.definition_source(db).as_ref().map(|src| match src {
-                            ModuleSource::SourceFile(file) => file as &dyn ast::AttrsOwner,
-                            ModuleSource::Module(module) => module as &dyn ast::AttrsOwner,
-                            ModuleSource::BlockExpr(block) => block as &dyn ast::AttrsOwner,
-                        }),
-                    ),
-                }
-            }
-            AttrDefId::FieldId(it) => {
-                return db.fields_attrs(it.parent)[it.local_id].clone();
-            }
-            AttrDefId::EnumVariantId(it) => {
-                return db.variants_attrs(it.parent)[it.local_id].clone();
-            }
-            AttrDefId::AdtId(it) => match it {
-                AdtId::StructId(it) => attrs_from_item_tree(it.lookup(db).id, db),
-                AdtId::EnumId(it) => attrs_from_item_tree(it.lookup(db).id, db),
-                AdtId::UnionId(it) => attrs_from_item_tree(it.lookup(db).id, db),
-            },
-            AttrDefId::TraitId(it) => attrs_from_item_tree(it.lookup(db).id, db),
-            AttrDefId::MacroDefId(it) => it
-                .ast_id()
-                .left()
-                .map_or_else(Default::default, |ast_id| attrs_from_ast(ast_id, db)),
-            AttrDefId::ImplId(it) => attrs_from_item_tree(it.lookup(db).id, db),
-            AttrDefId::ConstId(it) => attrs_from_item_tree(it.lookup(db).id, db),
-            AttrDefId::StaticId(it) => attrs_from_item_tree(it.lookup(db).id, db),
-            AttrDefId::FunctionId(it) => attrs_from_item_tree(it.lookup(db).id, db),
-            AttrDefId::TypeAliasId(it) => attrs_from_item_tree(it.lookup(db).id, db),
-            AttrDefId::GenericParamId(it) => match it {
-                GenericParamId::TypeParamId(it) => {
-                    let src = it.parent.child_source(db);
-                    RawAttrs::from_attrs_owner(
-                        db,
-                        src.with_value(
-                            src.value[it.local_id].as_ref().either(|it| it as _, |it| it as _),
-                        ),
-                    )
-                }
-                GenericParamId::LifetimeParamId(it) => {
-                    let src = it.parent.child_source(db);
-                    RawAttrs::from_attrs_owner(db, src.with_value(&src.value[it.local_id]))
-                }
-                GenericParamId::ConstParamId(it) => {
-                    let src = it.parent.child_source(db);
-                    RawAttrs::from_attrs_owner(db, src.with_value(&src.value[it.local_id]))
-                }
-            },
-        };
-
-        raw_attrs.filter(db, def.krate(db))
-    }
-
     pub(crate) fn variants_attrs_query(
         db: &dyn DefDatabase,
         e: EnumId,
@@ -279,56 +221,6 @@ impl Attrs {
         }
 
         Arc::new(res)
-    }
-
-    /// Constructs a map that maps the lowered `Attr`s in this `Attrs` back to its original syntax nodes.
-    ///
-    /// `owner` must be the original owner of the attributes.
-    // FIXME: figure out a better api that doesnt require the for_module hack
-    pub fn source_map(&self, owner: InFile<&dyn ast::AttrsOwner>) -> AttrSourceMap {
-        // FIXME: This doesn't work correctly for modules, as the attributes there can have up to
-        // two different owners
-        AttrSourceMap {
-            attrs: collect_attrs(owner.value)
-                .map(|attr| InFile::new(owner.file_id, attr))
-                .collect(),
-        }
-    }
-
-    pub fn source_map_for_module(
-        &self,
-        db: &dyn DefDatabase,
-        module: crate::ModuleId,
-    ) -> AttrSourceMap {
-        let def_map = module.def_map(db);
-        let mod_data = &def_map[module.local_id];
-        let attrs = match mod_data.declaration_source(db) {
-            Some(it) => {
-                let mut attrs: Vec<_> = collect_attrs(&it.value as &dyn ast::AttrsOwner)
-                    .map(|attr| InFile::new(it.file_id, attr))
-                    .collect();
-                if let InFile { file_id, value: ModuleSource::SourceFile(file) } =
-                    mod_data.definition_source(db)
-                {
-                    attrs.extend(
-                        collect_attrs(&file as &dyn ast::AttrsOwner)
-                            .map(|attr| InFile::new(file_id, attr)),
-                    )
-                }
-                attrs
-            }
-            None => {
-                let InFile { file_id, value } = mod_data.definition_source(db);
-                match &value {
-                    ModuleSource::SourceFile(file) => collect_attrs(file as &dyn ast::AttrsOwner),
-                    ModuleSource::Module(module) => collect_attrs(module as &dyn ast::AttrsOwner),
-                    ModuleSource::BlockExpr(block) => collect_attrs(block as &dyn ast::AttrsOwner),
-                }
-                .map(|attr| InFile::new(file_id, attr))
-                .collect()
-            }
-        };
-        AttrSourceMap { attrs }
     }
 
     pub fn by_key(&self, key: &'static str) -> AttrQuery<'_> {
@@ -383,6 +275,180 @@ impl Attrs {
             None
         } else {
             Some(Documentation(buf))
+        }
+    }
+}
+
+impl AttrsWithOwner {
+    pub(crate) fn attrs_query(db: &dyn DefDatabase, def: AttrDefId) -> Self {
+        // FIXME: this should use `Trace` to avoid duplication in `source_map` below
+        let raw_attrs = match def {
+            AttrDefId::ModuleId(module) => {
+                let def_map = module.def_map(db);
+                let mod_data = &def_map[module.local_id];
+                match mod_data.declaration_source(db) {
+                    Some(it) => {
+                        let raw_attrs = RawAttrs::from_attrs_owner(
+                            db,
+                            it.as_ref().map(|it| it as &dyn ast::AttrsOwner),
+                        );
+                        match mod_data.definition_source(db) {
+                            InFile { file_id, value: ModuleSource::SourceFile(file) } => raw_attrs
+                                .merge(RawAttrs::from_attrs_owner(db, InFile::new(file_id, &file))),
+                            _ => raw_attrs,
+                        }
+                    }
+                    None => RawAttrs::from_attrs_owner(
+                        db,
+                        mod_data.definition_source(db).as_ref().map(|src| match src {
+                            ModuleSource::SourceFile(file) => file as &dyn ast::AttrsOwner,
+                            ModuleSource::Module(module) => module as &dyn ast::AttrsOwner,
+                            ModuleSource::BlockExpr(block) => block as &dyn ast::AttrsOwner,
+                        }),
+                    ),
+                }
+            }
+            AttrDefId::FieldId(it) => {
+                return Self { attrs: db.fields_attrs(it.parent)[it.local_id].clone(), owner: def };
+            }
+            AttrDefId::EnumVariantId(it) => {
+                return Self {
+                    attrs: db.variants_attrs(it.parent)[it.local_id].clone(),
+                    owner: def,
+                };
+            }
+            AttrDefId::AdtId(it) => match it {
+                AdtId::StructId(it) => attrs_from_item_tree(it.lookup(db).id, db),
+                AdtId::EnumId(it) => attrs_from_item_tree(it.lookup(db).id, db),
+                AdtId::UnionId(it) => attrs_from_item_tree(it.lookup(db).id, db),
+            },
+            AttrDefId::TraitId(it) => attrs_from_item_tree(it.lookup(db).id, db),
+            AttrDefId::MacroDefId(it) => it
+                .ast_id()
+                .left()
+                .map_or_else(Default::default, |ast_id| attrs_from_ast(ast_id, db)),
+            AttrDefId::ImplId(it) => attrs_from_item_tree(it.lookup(db).id, db),
+            AttrDefId::ConstId(it) => attrs_from_item_tree(it.lookup(db).id, db),
+            AttrDefId::StaticId(it) => attrs_from_item_tree(it.lookup(db).id, db),
+            AttrDefId::FunctionId(it) => attrs_from_item_tree(it.lookup(db).id, db),
+            AttrDefId::TypeAliasId(it) => attrs_from_item_tree(it.lookup(db).id, db),
+            AttrDefId::GenericParamId(it) => match it {
+                GenericParamId::TypeParamId(it) => {
+                    let src = it.parent.child_source(db);
+                    RawAttrs::from_attrs_owner(
+                        db,
+                        src.with_value(
+                            src.value[it.local_id].as_ref().either(|it| it as _, |it| it as _),
+                        ),
+                    )
+                }
+                GenericParamId::LifetimeParamId(it) => {
+                    let src = it.parent.child_source(db);
+                    RawAttrs::from_attrs_owner(db, src.with_value(&src.value[it.local_id]))
+                }
+                GenericParamId::ConstParamId(it) => {
+                    let src = it.parent.child_source(db);
+                    RawAttrs::from_attrs_owner(db, src.with_value(&src.value[it.local_id]))
+                }
+            },
+        };
+
+        let attrs = raw_attrs.filter(db, def.krate(db));
+        Self { attrs, owner: def }
+    }
+
+    pub fn source_map(&self, db: &dyn DefDatabase) -> AttrSourceMap {
+        let owner = match self.owner {
+            AttrDefId::ModuleId(module) => {
+                // Modules can have 2 attribute owners (the `mod x;` item, and the module file itself).
+
+                let def_map = module.def_map(db);
+                let mod_data = &def_map[module.local_id];
+                let attrs = match mod_data.declaration_source(db) {
+                    Some(it) => {
+                        let mut attrs: Vec<_> = collect_attrs(&it.value as &dyn ast::AttrsOwner)
+                            .map(|attr| InFile::new(it.file_id, attr))
+                            .collect();
+                        if let InFile { file_id, value: ModuleSource::SourceFile(file) } =
+                            mod_data.definition_source(db)
+                        {
+                            attrs.extend(
+                                collect_attrs(&file as &dyn ast::AttrsOwner)
+                                    .map(|attr| InFile::new(file_id, attr)),
+                            )
+                        }
+                        attrs
+                    }
+                    None => {
+                        let InFile { file_id, value } = mod_data.definition_source(db);
+                        match &value {
+                            ModuleSource::SourceFile(file) => {
+                                collect_attrs(file as &dyn ast::AttrsOwner)
+                            }
+                            ModuleSource::Module(module) => {
+                                collect_attrs(module as &dyn ast::AttrsOwner)
+                            }
+                            ModuleSource::BlockExpr(block) => {
+                                collect_attrs(block as &dyn ast::AttrsOwner)
+                            }
+                        }
+                        .map(|attr| InFile::new(file_id, attr))
+                        .collect()
+                    }
+                };
+                return AttrSourceMap { attrs };
+            }
+            AttrDefId::FieldId(id) => {
+                id.parent.child_source(db).map(|source| match &source[id.local_id] {
+                    Either::Left(field) => ast::AttrsOwnerNode::new(field.clone()),
+                    Either::Right(field) => ast::AttrsOwnerNode::new(field.clone()),
+                })
+            }
+            AttrDefId::AdtId(adt) => match adt {
+                AdtId::StructId(id) => id.lookup(db).source(db).map(ast::AttrsOwnerNode::new),
+                AdtId::UnionId(id) => id.lookup(db).source(db).map(ast::AttrsOwnerNode::new),
+                AdtId::EnumId(id) => id.lookup(db).source(db).map(ast::AttrsOwnerNode::new),
+            },
+            AttrDefId::FunctionId(id) => id.lookup(db).source(db).map(ast::AttrsOwnerNode::new),
+            AttrDefId::EnumVariantId(id) => id
+                .parent
+                .child_source(db)
+                .map(|source| ast::AttrsOwnerNode::new(source[id.local_id].clone())),
+            AttrDefId::StaticId(id) => id.lookup(db).source(db).map(ast::AttrsOwnerNode::new),
+            AttrDefId::ConstId(id) => id.lookup(db).source(db).map(ast::AttrsOwnerNode::new),
+            AttrDefId::TraitId(id) => id.lookup(db).source(db).map(ast::AttrsOwnerNode::new),
+            AttrDefId::TypeAliasId(id) => id.lookup(db).source(db).map(ast::AttrsOwnerNode::new),
+            AttrDefId::MacroDefId(id) => match id.ast_id() {
+                Either::Left(it) => {
+                    it.with_value(ast::AttrsOwnerNode::new(it.to_node(db.upcast())))
+                }
+                Either::Right(it) => {
+                    it.with_value(ast::AttrsOwnerNode::new(it.to_node(db.upcast())))
+                }
+            },
+            AttrDefId::ImplId(id) => id.lookup(db).source(db).map(ast::AttrsOwnerNode::new),
+            AttrDefId::GenericParamId(id) => match id {
+                GenericParamId::TypeParamId(id) => {
+                    id.parent.child_source(db).map(|source| match &source[id.local_id] {
+                        Either::Left(id) => ast::AttrsOwnerNode::new(id.clone()),
+                        Either::Right(id) => ast::AttrsOwnerNode::new(id.clone()),
+                    })
+                }
+                GenericParamId::LifetimeParamId(id) => id
+                    .parent
+                    .child_source(db)
+                    .map(|source| ast::AttrsOwnerNode::new(source[id.local_id].clone())),
+                GenericParamId::ConstParamId(id) => id
+                    .parent
+                    .child_source(db)
+                    .map(|source| ast::AttrsOwnerNode::new(source[id.local_id].clone())),
+            },
+        };
+
+        AttrSourceMap {
+            attrs: collect_attrs(&owner.value)
+                .map(|attr| InFile::new(owner.file_id, attr))
+                .collect(),
         }
     }
 }
