@@ -29,3 +29,5 @@ pub mod json;
 
 pub mod leb128;
 pub mod opaque;
+
+pub mod raw;
