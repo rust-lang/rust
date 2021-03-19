@@ -90,6 +90,36 @@ impl NameOwner for Macro {
 
 impl AttrsOwner for Macro {}
 
+/// Basically an owned `dyn AttrsOwner` without extra boxing.
+pub struct AttrsOwnerNode {
+    node: SyntaxNode,
+}
+
+impl AttrsOwnerNode {
+    pub fn new<N: AttrsOwner>(node: N) -> Self {
+        AttrsOwnerNode { node: node.syntax().clone() }
+    }
+}
+
+impl AttrsOwner for AttrsOwnerNode {}
+impl AstNode for AttrsOwnerNode {
+    fn can_cast(_: SyntaxKind) -> bool
+    where
+        Self: Sized,
+    {
+        false
+    }
+    fn cast(_: SyntaxNode) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        None
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.node
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AttrKind {
     Inner,

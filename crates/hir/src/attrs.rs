@@ -1,6 +1,6 @@
 //! Attributes & documentation for hir types.
 use hir_def::{
-    attr::{Attrs, Documentation},
+    attr::{AttrsWithOwner, Documentation},
     path::ModPath,
     per_ns::PerNs,
     resolver::HasResolver,
@@ -16,7 +16,7 @@ use crate::{
 };
 
 pub trait HasAttrs {
-    fn attrs(self, db: &dyn HirDatabase) -> Attrs;
+    fn attrs(self, db: &dyn HirDatabase) -> AttrsWithOwner;
     fn docs(self, db: &dyn HirDatabase) -> Option<Documentation>;
     fn resolve_doc_path(
         self,
@@ -36,7 +36,7 @@ pub enum Namespace {
 macro_rules! impl_has_attrs {
     ($(($def:ident, $def_id:ident),)*) => {$(
         impl HasAttrs for $def {
-            fn attrs(self, db: &dyn HirDatabase) -> Attrs {
+            fn attrs(self, db: &dyn HirDatabase) -> AttrsWithOwner {
                 let def = AttrDefId::$def_id(self.into());
                 db.attrs(def)
             }
@@ -70,7 +70,7 @@ impl_has_attrs![
 macro_rules! impl_has_attrs_enum {
     ($($variant:ident),* for $enum:ident) => {$(
         impl HasAttrs for $variant {
-            fn attrs(self, db: &dyn HirDatabase) -> Attrs {
+            fn attrs(self, db: &dyn HirDatabase) -> AttrsWithOwner {
                 $enum::$variant(self).attrs(db)
             }
             fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {

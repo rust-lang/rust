@@ -8,7 +8,7 @@ use syntax::SmolStr;
 
 use crate::{
     adt::{EnumData, StructData},
-    attr::Attrs,
+    attr::{Attrs, AttrsWithOwner},
     body::{scope::ExprScopes, Body, BodySourceMap},
     data::{ConstData, FunctionData, ImplData, StaticData, TraitData, TypeAliasData},
     generics::GenericParams,
@@ -120,8 +120,8 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
     #[salsa::invoke(Attrs::fields_attrs_query)]
     fn fields_attrs(&self, def: VariantId) -> Arc<ArenaMap<LocalFieldId, Attrs>>;
 
-    #[salsa::invoke(Attrs::attrs_query)]
-    fn attrs(&self, def: AttrDefId) -> Attrs;
+    #[salsa::invoke(AttrsWithOwner::attrs_query)]
+    fn attrs(&self, def: AttrDefId) -> AttrsWithOwner;
 
     #[salsa::invoke(LangItems::crate_lang_items_query)]
     fn crate_lang_items(&self, krate: CrateId) -> Arc<LangItems>;
