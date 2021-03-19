@@ -910,12 +910,23 @@ impl Attributes {
     }
 
     crate fn get_doc_aliases(&self) -> FxHashSet<String> {
-        self.other_attrs
-            .lists(sym::doc)
-            .filter(|a| a.has_name(sym::alias))
-            .filter_map(|a| a.value_str().map(|s| s.to_string()))
-            .filter(|v| !v.is_empty())
-            .collect::<FxHashSet<_>>()
+        let mut aliases = FxHashSet::default();
+
+        for attr in self.other_attrs.lists(sym::doc).filter(|a| a.has_name(sym::alias)) {
+            if let Some(values) = attr.meta_item_list() {
+                for l in values {
+                    match l.literal().unwrap().kind {
+                        ast::LitKind::Str(s, _) => {
+                            aliases.insert(s.as_str().to_string());
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+            } else {
+                aliases.insert(attr.value_str().map(|s| s.to_string()).unwrap());
+            }
+        }
+        aliases
     }
 }
 
