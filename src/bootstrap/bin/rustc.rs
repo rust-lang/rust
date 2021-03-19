@@ -17,7 +17,7 @@
 
 use std::env;
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{Child, Command};
 use std::str::FromStr;
 use std::time::Instant;
 
@@ -163,9 +163,11 @@ fn main() {
     }
 
     let start = Instant::now();
-    let status = {
+    let (child, status) = {
         let errmsg = format!("\nFailed to run:\n{:?}\n-------------", cmd);
-        cmd.status().expect(&errmsg)
+        let mut child = cmd.spawn().expect(&errmsg);
+        let status = child.wait().expect(&errmsg);
+        (child, status)
     };
 
     if env::var_os("RUSTC_PRINT_STEP_TIMINGS").is_some()
@@ -176,7 +178,7 @@ fn main() {
             // If the user requested resource usage data, then
             // include that in addition to the timing output.
             let rusage_data =
-                env::var_os("RUSTC_PRINT_STEP_RUSAGE").and_then(|_| format_rusage_data());
+                env::var_os("RUSTC_PRINT_STEP_RUSAGE").and_then(|_| format_rusage_data(child));
             eprintln!(
                 "[RUSTC-TIMING] {} test:{} {}.{:03}{}{}",
                 crate_name,
@@ -213,11 +215,75 @@ fn main() {
     }
 }
 
-#[cfg(not(unix))]
-/// getrusage is not available on non-unix platforms. So for now, we do not
-/// bother trying to make a shim for it.
-fn format_rusage_data() -> Option<String> {
+#[cfg(all(not(unix), not(windows)))]
+// In the future we can add this for more platforms
+fn format_rusage_data(_child: Child) -> Option<String> {
     None
+}
+
+#[cfg(windows)]
+fn format_rusage_data(child: Child) -> Option<String> {
+    use std::os::windows::io::AsRawHandle;
+    use winapi::um::{processthreadsapi, psapi, timezoneapi};
+    let handle = child.as_raw_handle();
+    macro_rules! try_bool {
+        ($e:expr) => {
+            if $e != 1 {
+                return None;
+            }
+        };
+    }
+
+    let mut user_filetime = Default::default();
+    let mut user_time = Default::default();
+    let mut kernel_filetime = Default::default();
+    let mut kernel_time = Default::default();
+    let mut memory_counters = psapi::PROCESS_MEMORY_COUNTERS::default();
+
+    unsafe {
+        try_bool!(processthreadsapi::GetProcessTimes(
+            handle,
+            &mut Default::default(),
+            &mut Default::default(),
+            &mut kernel_filetime,
+            &mut user_filetime,
+        ));
+        try_bool!(timezoneapi::FileTimeToSystemTime(&user_filetime, &mut user_time));
+        try_bool!(timezoneapi::FileTimeToSystemTime(&kernel_filetime, &mut kernel_time));
+
+        // Unlike on Linux with RUSAGE_CHILDREN, this will only return memory information for the process
+        // with the given handle and none of that process's children.
+        try_bool!(psapi::GetProcessMemoryInfo(
+            handle as _,
+            &mut memory_counters as *mut _ as _,
+            std::mem::size_of::<psapi::PROCESS_MEMORY_COUNTERS_EX>() as u32,
+        ));
+    }
+
+    // Guide on interpreting these numbers:
+    // https://docs.microsoft.com/en-us/windows/win32/psapi/process-memory-usage-information
+    let peak_working_set = memory_counters.PeakWorkingSetSize / 1024;
+    let peak_page_file = memory_counters.PeakPagefileUsage / 1024;
+    let peak_paged_pool = memory_counters.QuotaPeakPagedPoolUsage / 1024;
+    let peak_nonpaged_pool = memory_counters.QuotaPeakNonPagedPoolUsage / 1024;
+    Some(format!(
+        "user: {USER_SEC}.{USER_USEC:03} \
+         sys: {SYS_SEC}.{SYS_USEC:03} \
+         peak working set (kb): {PEAK_WORKING_SET} \
+         peak page file usage (kb): {PEAK_PAGE_FILE} \
+         peak paged pool usage (kb): {PEAK_PAGED_POOL} \
+         peak non-paged pool usage (kb): {PEAK_NONPAGED_POOL} \
+         page faults: {PAGE_FAULTS}",
+        USER_SEC = user_time.wSecond + (user_time.wMinute * 60),
+        USER_USEC = user_time.wMilliseconds,
+        SYS_SEC = kernel_time.wSecond + (kernel_time.wMinute * 60),
+        SYS_USEC = kernel_time.wMilliseconds,
+        PEAK_WORKING_SET = peak_working_set,
+        PEAK_PAGE_FILE = peak_page_file,
+        PEAK_PAGED_POOL = peak_paged_pool,
+        PEAK_NONPAGED_POOL = peak_nonpaged_pool,
+        PAGE_FAULTS = memory_counters.PageFaultCount,
+    ))
 }
 
 #[cfg(unix)]
@@ -225,7 +291,7 @@ fn format_rusage_data() -> Option<String> {
 /// fields. Note that we are focusing mainly on data that we believe to be
 /// supplied on Linux (the `rusage` struct has other fields in it but they are
 /// currently unsupported by Linux).
-fn format_rusage_data() -> Option<String> {
+fn format_rusage_data(_child: Child) -> Option<String> {
     let rusage: libc::rusage = unsafe {
         let mut recv = std::mem::zeroed();
         // -1 is RUSAGE_CHILDREN, which means to get the rusage for all children
