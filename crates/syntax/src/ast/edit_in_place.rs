@@ -8,7 +8,7 @@ use parser::T;
 use crate::{
     ast,
     ted::{self, Position},
-    AstNode, Direction, SyntaxElement,
+    AstNode, Direction,
 };
 
 use super::NameOwner;
@@ -21,11 +21,11 @@ impl GenericParamsOwnerEdit for ast::Fn {
     fn get_or_create_where_clause(&self) -> WhereClause {
         if self.where_clause().is_none() {
             let position = if let Some(ty) = self.ret_type() {
-                Position::after(ty.syntax().clone())
+                Position::after(ty.syntax())
             } else if let Some(param_list) = self.param_list() {
-                Position::after(param_list.syntax().clone())
+                Position::after(param_list.syntax())
             } else {
-                Position::last_child_of(self.syntax().clone())
+                Position::last_child_of(self.syntax())
             };
             create_where_clause(position)
         }
@@ -37,9 +37,9 @@ impl GenericParamsOwnerEdit for ast::Impl {
     fn get_or_create_where_clause(&self) -> WhereClause {
         if self.where_clause().is_none() {
             let position = if let Some(items) = self.assoc_item_list() {
-                Position::before(items.syntax().clone())
+                Position::before(items.syntax())
             } else {
-                Position::last_child_of(self.syntax().clone())
+                Position::last_child_of(self.syntax())
             };
             create_where_clause(position)
         }
@@ -51,9 +51,9 @@ impl GenericParamsOwnerEdit for ast::Trait {
     fn get_or_create_where_clause(&self) -> WhereClause {
         if self.where_clause().is_none() {
             let position = if let Some(items) = self.assoc_item_list() {
-                Position::before(items.syntax().clone())
+                Position::before(items.syntax())
             } else {
-                Position::last_child_of(self.syntax().clone())
+                Position::last_child_of(self.syntax())
             };
             create_where_clause(position)
         }
@@ -69,13 +69,13 @@ impl GenericParamsOwnerEdit for ast::Struct {
                 ast::FieldList::TupleFieldList(it) => Some(it),
             });
             let position = if let Some(tfl) = tfl {
-                Position::after(tfl.syntax().clone())
+                Position::after(tfl.syntax())
             } else if let Some(gpl) = self.generic_param_list() {
-                Position::after(gpl.syntax().clone())
+                Position::after(gpl.syntax())
             } else if let Some(name) = self.name() {
-                Position::after(name.syntax().clone())
+                Position::after(name.syntax())
             } else {
-                Position::last_child_of(self.syntax().clone())
+                Position::last_child_of(self.syntax())
             };
             create_where_clause(position)
         }
@@ -87,11 +87,11 @@ impl GenericParamsOwnerEdit for ast::Enum {
     fn get_or_create_where_clause(&self) -> WhereClause {
         if self.where_clause().is_none() {
             let position = if let Some(gpl) = self.generic_param_list() {
-                Position::after(gpl.syntax().clone())
+                Position::after(gpl.syntax())
             } else if let Some(name) = self.name() {
-                Position::after(name.syntax().clone())
+                Position::after(name.syntax())
             } else {
-                Position::last_child_of(self.syntax().clone())
+                Position::last_child_of(self.syntax())
             };
             create_where_clause(position)
         }
@@ -100,19 +100,18 @@ impl GenericParamsOwnerEdit for ast::Enum {
 }
 
 fn create_where_clause(position: Position) {
-    let where_clause: SyntaxElement =
-        make::where_clause(empty()).clone_for_update().syntax().clone().into();
-    ted::insert(position, where_clause);
+    let where_clause = make::where_clause(empty()).clone_for_update();
+    ted::insert(position, where_clause.syntax());
 }
 
 impl ast::WhereClause {
     pub fn add_predicate(&self, predicate: ast::WherePred) {
         if let Some(pred) = self.predicates().last() {
             if !pred.syntax().siblings_with_tokens(Direction::Next).any(|it| it.kind() == T![,]) {
-                ted::append_child_raw(self.syntax().clone(), make::token(T![,]));
+                ted::append_child_raw(self.syntax(), make::token(T![,]));
             }
         }
-        ted::append_child(self.syntax().clone(), predicate.syntax().clone())
+        ted::append_child(self.syntax(), predicate.syntax())
     }
 }
 
@@ -123,7 +122,7 @@ impl ast::TypeBoundList {
         {
             ted::remove_all(colon..=self.syntax().clone().into())
         } else {
-            ted::remove(self.syntax().clone())
+            ted::remove(self.syntax())
         }
     }
 }
