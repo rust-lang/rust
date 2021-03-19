@@ -46,7 +46,7 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::struct_span_err;
+use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, CRATE_DEF_ID};
@@ -2785,9 +2785,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 )
             } else {
                 let msg = "trait objects must include the `dyn` keyword";
-                let label = "`dyn` keyword should be added before this trait";
+                let label = "add `dyn` keyword before this trait";
                 let mut err = struct_span_err!(self.sess, span, E0782, "{}", msg,);
-                err.span_label(span, label);
+                err.span_suggestion_verbose(
+                    span.shrink_to_lo(),
+                    label,
+                    String::from("dyn "),
+                    Applicability::MachineApplicable,
+                );
                 err.emit();
             }
         }
