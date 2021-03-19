@@ -123,6 +123,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "measureme",
     "memchr",
     "memmap",
+    "memmap2",
     "memoffset",
     "miniz_oxide",
     "num_cpus",
