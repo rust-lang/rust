@@ -84,5 +84,16 @@ error: question mark operator is useless here
 LL |         Ok(to.magic?) // should be triggered
    |         ^^^^^^^^^^^^^ help: try: `to.magic`
 
-error: aborting due to 14 previous errors
+error: question mark operator is useless here
+  --> $DIR/needless_question_mark.rs:187:27
+   |
+LL |         || -> Option<_> { Some(Some($expr)?) }()
+   |                           ^^^^^^^^^^^^^^^^^^ help: try: `Some($expr)`
+...
+LL |     let _x = some_and_qmark_in_macro!(x?);
+   |              ---------------------------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 15 previous errors
 
