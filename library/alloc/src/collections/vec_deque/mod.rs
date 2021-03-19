@@ -2783,27 +2783,26 @@ impl<T> From<Vec<T>> for VecDeque<T> {
     /// This avoids reallocating where possible, but the conditions for that are
     /// strict, and subject to change, and so shouldn't be relied upon unless the
     /// `Vec<T>` came from `From<VecDeque<T>>` and hasn't been reallocated.
-    fn from(other: Vec<T>) -> Self {
-        unsafe {
-            let mut other = ManuallyDrop::new(other);
-            let other_buf = other.as_mut_ptr();
-            let mut buf = RawVec::from_raw_parts(other_buf, other.capacity());
-            let len = other.len();
-
-            // We need to extend the buf if it's not a power of two, too small
-            // or doesn't have at least one free space.
-            // We check if `T` is a ZST in the first condition,
-            // because `usize::MAX` (the capacity returned by `capacity()` for ZST)
-            // is not a power of two and thus it'll always try
-            // to reserve more memory which will panic for ZST (rust-lang/rust#78532)
-            if (!buf.capacity().is_power_of_two() && mem::size_of::<T>() != 0)
-                || (buf.capacity() < (MINIMUM_CAPACITY + 1))
-                || (buf.capacity() == len)
-            {
-                let cap = cmp::max(buf.capacity() + 1, MINIMUM_CAPACITY + 1).next_power_of_two();
-                buf.reserve_exact(len, cap - len);
+    fn from(mut other: Vec<T>) -> Self {
+        let len = other.len();
+        if mem::size_of::<T>() == 0 {
+            // There's no actual allocation for ZSTs to worry about capacity,
+            // but `VecDeque` can't handle as much length as `Vec`.
+            assert!(len < MAXIMUM_ZST_CAPACITY, "capacity overflow");
+        } else {
+            // We need to resize if the capacity is not a power of two, too small or
+            // doesn't have at least one free space. We do this while it's still in
+            // the `Vec` so the items will drop on panic.
+            let min_cap = cmp::max(MINIMUM_CAPACITY, len) + 1;
+            let cap = cmp::max(min_cap, other.capacity()).next_power_of_two();
+            if other.capacity() != cap {
+                other.reserve_exact(cap - len);
             }
+        }
 
+        unsafe {
+            let (other_buf, len, capacity) = other.into_raw_parts();
+            let buf = RawVec::from_raw_parts(other_buf, capacity);
             VecDeque { tail: 0, head: len, buf }
         }
     }
