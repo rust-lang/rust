@@ -1012,7 +1012,7 @@ pub trait Iterator {
     ///
     /// Because the closure passed to `skip_while()` takes a reference, and many
     /// iterators iterate over references, this leads to a possibly confusing
-    /// situation, where the type of the closure is a double reference:
+    /// situation, where the type of the closure argument is a double reference:
     ///
     /// ```
     /// let a = [-1, 0, 1];
