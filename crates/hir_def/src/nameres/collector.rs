@@ -22,7 +22,7 @@ use syntax::ast;
 use crate::{
     attr::Attrs,
     db::DefDatabase,
-    item_attr_as_call_id,
+    derive_macro_as_call_id,
     item_scope::{ImportType, PerNsGlobImports},
     item_tree::{
         self, FileItemTreeId, ItemTree, ItemTreeId, MacroCall, MacroRules, Mod, ModItem, ModKind,
@@ -820,8 +820,8 @@ impl DefCollector<'_> {
             true
         });
         attribute_macros.retain(|directive| {
-            match item_attr_as_call_id(&directive.ast_id, self.db, self.def_map.krate, |path| {
-                self.resolve_attribute_macro(&directive, &path)
+            match derive_macro_as_call_id(&directive.ast_id, self.db, self.def_map.krate, |path| {
+                self.resolve_derive_macro(&directive, &path)
             }) {
                 Ok(call_id) => {
                     resolved.push((directive.module_id, call_id, 0));
@@ -844,7 +844,7 @@ impl DefCollector<'_> {
         res
     }
 
-    fn resolve_attribute_macro(
+    fn resolve_derive_macro(
         &self,
         directive: &DeriveDirective,
         path: &ModPath,

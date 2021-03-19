@@ -317,7 +317,7 @@ $0
                 local_inner: false,
             },
             krate: CrateId(0),
-            kind: MacroCallKind::Attr(attr_id, name.to_string()),
+            kind: MacroCallKind::Derive(attr_id, name.to_string()),
         };
 
         let id: MacroCallId = db.intern_macro(loc).into();
