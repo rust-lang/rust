@@ -50,8 +50,8 @@ pub(crate) fn move_bounds_to_where_clause(acc: &mut Assists, ctx: &AssistContext
 
             for type_param in type_param_list.type_params() {
                 if let Some(tbl) = type_param.type_bound_list() {
-                    if let Some(predicate) = build_predicate(type_param.clone()) {
-                        where_clause.add_predicate(predicate.clone_for_update())
+                    if let Some(predicate) = build_predicate(type_param) {
+                        where_clause.add_predicate(predicate)
                     }
                     tbl.remove()
                 }
@@ -69,7 +69,7 @@ fn build_predicate(param: ast::TypeParam) -> Option<ast::WherePred> {
         make::path_unqualified(segment)
     };
     let predicate = make::where_pred(path, param.type_bound_list()?.bounds());
-    Some(predicate)
+    Some(predicate.clone_for_update())
 }
 
 #[cfg(test)]
