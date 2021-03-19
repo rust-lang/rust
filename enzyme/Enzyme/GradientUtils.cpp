@@ -56,6 +56,10 @@ llvm::cl::opt<bool>
     EnzymeNewCache("enzyme-new-cache", cl::init(true), cl::Hidden,
                    cl::desc("Use new cache decision algorithm"));
 
+llvm::cl::opt<bool> EnzymeLoopInvariantCache(
+    "enzyme-loop-invariant-cache", cl::init(true), cl::Hidden,
+    cl::desc("Attempt to hoist cache outside of loop"));
+
 bool isPotentialLastLoopValue(Value *val, const BasicBlock *loc,
                               const LoopInfo &LI) {
   if (Instruction *inst = dyn_cast<Instruction>(val)) {
@@ -2688,7 +2692,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
 
       // this is guarded because havent told cacheForReverse how to move
       if (mode == DerivativeMode::Both)
-        if (!li->isVolatile()) {
+        if (!li->isVolatile() && EnzymeLoopInvariantCache) {
           if (auto AI = dyn_cast<AllocaInst>(liobj)) {
             assert(isa<AllocaInst>(orig_liobj));
             if (auto AT = dyn_cast<ArrayType>(AI->getAllocatedType()))
