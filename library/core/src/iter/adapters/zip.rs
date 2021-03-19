@@ -149,14 +149,13 @@ where
             // of `next_back` does this, otherwise we will break the restriction
             // on calls to `self.next_back()` after calling `get_unchecked()`.
             if sz_a != sz_b {
-                let sz_a = self.a.size();
                 if A::MAY_HAVE_SIDE_EFFECT && sz_a > self.len {
                     for _ in 0..sz_a - self.len {
                         self.a.next_back();
                     }
                     self.a_len = self.len;
                 }
-                let sz_b = self.b.size();
+
                 if B::MAY_HAVE_SIDE_EFFECT && sz_b > self.len {
                     for _ in 0..sz_b - self.len {
                         self.b.next_back();
