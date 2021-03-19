@@ -1,4 +1,4 @@
-// compile-flags: -Z mir-opt-level=4
+// compile-flags: -Z mir-opt-level=4 -Z unsound-mir-opts
 // EMIT_MIR early_otherwise_branch.opt1.EarlyOtherwiseBranch.diff
 fn opt1(x: Option<u32>, y: Option<u32>) -> u32 {
     match (x, y) {

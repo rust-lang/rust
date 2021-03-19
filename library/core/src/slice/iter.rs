@@ -335,9 +335,11 @@ pub struct Split<'a, T: 'a, P>
 where
     P: FnMut(&T) -> bool,
 {
-    v: &'a [T],
+    // Used for `SplitWhitespace` and `SplitAsciiWhitespace` `as_str` methods
+    pub(crate) v: &'a [T],
     pred: P,
-    finished: bool,
+    // Used for `SplitAsciiWhitespace` `as_str` method
+    pub(crate) finished: bool,
 }
 
 impl<'a, T: 'a, P: FnMut(&T) -> bool> Split<'a, T, P> {

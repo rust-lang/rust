@@ -401,9 +401,10 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(reason = "moved to `std::ops::Bound`", since = "1.52.0")]
+// FIXME(#82080) The deprecation here is only theoretical, and does not actually produce a warning.
+#[rustc_deprecated(reason = "moved to `std::ops::Bound`", since = "1.26.0")]
 #[doc(hidden)]
-pub type Bound<T> = crate::ops::Bound<T>;
+pub use crate::ops::Bound;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::collections::{binary_heap, btree_map, btree_set};

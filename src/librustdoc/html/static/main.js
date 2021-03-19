@@ -1,3 +1,4 @@
+// ignore-tidy-filelength
 // Local js definitions:
 /* global addClass, getSettingValue, hasClass */
 /* global onEach, onEachLazy, hasOwnProperty, removeClass, updateLocalStorage */
@@ -374,28 +375,35 @@ function defocusSearchBar() {
         }
     }
 
-    function getHelpElement() {
-        buildHelperPopup();
+    function getHelpElement(build) {
+        if (build !== false) {
+            buildHelperPopup();
+        }
         return document.getElementById("help");
     }
 
     function displayHelp(display, ev, help) {
-        help = help ? help : getHelpElement();
         if (display === true) {
+            help = help ? help : getHelpElement(true);
             if (hasClass(help, "hidden")) {
                 ev.preventDefault();
                 removeClass(help, "hidden");
                 addClass(document.body, "blur");
             }
-        } else if (hasClass(help, "hidden") === false) {
-            ev.preventDefault();
-            addClass(help, "hidden");
-            removeClass(document.body, "blur");
+        } else {
+            // No need to build the help popup if we want to hide it in case it hasn't been
+            // built yet...
+            help = help ? help : getHelpElement(false);
+            if (help && hasClass(help, "hidden") === false) {
+                ev.preventDefault();
+                addClass(help, "hidden");
+                removeClass(document.body, "blur");
+            }
         }
     }
 
     function handleEscape(ev) {
-        var help = getHelpElement();
+        var help = getHelpElement(false);
         var search = getSearchElement();
         if (hasClass(help, "hidden") === false) {
             displayHelp(false, ev, help);
@@ -558,6 +566,7 @@ function defocusSearchBar() {
     }());
 
     document.addEventListener("click", function(ev) {
+        var helpElem = getHelpElement(false);
         if (hasClass(ev.target, "help-button")) {
             displayHelp(true, ev);
         } else if (hasClass(ev.target, "collapse-toggle")) {
@@ -566,11 +575,10 @@ function defocusSearchBar() {
             collapseDocs(ev.target.parentNode, "toggle");
         } else if (ev.target.tagName === "SPAN" && hasClass(ev.target.parentNode, "line-numbers")) {
             handleSourceHighlight(ev);
-        } else if (hasClass(getHelpElement(), "hidden") === false) {
-            var help = getHelpElement();
-            var is_inside_help_popup = ev.target !== help && help.contains(ev.target);
+        } else if (helpElem && hasClass(helpElem, "hidden") === false) {
+            var is_inside_help_popup = ev.target !== helpElem && helpElem.contains(ev.target);
             if (is_inside_help_popup === false) {
-                addClass(help, "hidden");
+                addClass(helpElem, "hidden");
                 removeClass(document.body, "blur");
             }
         } else {
