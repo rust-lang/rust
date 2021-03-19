@@ -43,7 +43,8 @@ mod with_version {
     struct Foo;
     impl_macros!(Foo); //~  WARN using an old version
                        //~| WARN this was previously
-    arrays!(Foo);
+    arrays!(Foo); //~  WARN using an old version
+                  //~| WARN this was previously
     other!(Foo);
 }
 
@@ -75,6 +76,12 @@ mod actori_web_version_test {
 
     struct Foo;
     tuple_from_req!(Foo);
+}
+
+mod with_good_js_sys_version {
+    include!("js-sys-0.3.40/src/lib.rs");
+    struct Foo;
+    arrays!(Foo);
 }
 
 
