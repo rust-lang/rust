@@ -15,6 +15,7 @@ pub mod proc_macro;
 pub mod quote;
 pub mod eager;
 
+use either::Either;
 pub use mbe::{ExpandError, ExpandResult};
 
 use std::hash::Hash;
@@ -143,7 +144,7 @@ impl HirFileId {
 
                 let arg_tt = loc.kind.arg(db)?;
 
-                let def = loc.def.ast_id().and_then(|id| {
+                let def = loc.def.ast_id().left().and_then(|id| {
                     let def_tt = match id.to_node(db) {
                         ast::Macro::MacroRules(mac) => mac.token_tree()?,
                         ast::Macro::MacroDef(_) => return None,
@@ -239,15 +240,15 @@ impl MacroDefId {
         db.intern_macro(MacroCallLoc { def: self, krate, kind })
     }
 
-    pub fn ast_id(&self) -> Option<AstId<ast::Macro>> {
+    pub fn ast_id(&self) -> Either<AstId<ast::Macro>, AstId<ast::Fn>> {
         let id = match &self.kind {
             MacroDefKind::Declarative(id) => id,
             MacroDefKind::BuiltIn(_, id) => id,
             MacroDefKind::BuiltInDerive(_, id) => id,
             MacroDefKind::BuiltInEager(_, id) => id,
-            MacroDefKind::ProcMacro(..) => return None,
+            MacroDefKind::ProcMacro(_, id) => return Either::Right(*id),
         };
-        Some(*id)
+        Either::Left(*id)
     }
 }
 
