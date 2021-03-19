@@ -249,6 +249,14 @@ impl<'tcx> LateLintPass<'tcx> for Types {
         self.check_fn_decl(cx, decl);
     }
 
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
+        match item.kind {
+            ItemKind::Static(ref ty, _, _) | ItemKind::Const(ref ty, _) => self.check_ty(cx, ty, false),
+            // functions, enums, structs, impls and traits are covered
+            _ => (),
+        }
+    }
+
     fn check_field_def(&mut self, cx: &LateContext<'_>, field: &hir::FieldDef<'_>) {
         self.check_ty(cx, &field.ty, false);
     }
