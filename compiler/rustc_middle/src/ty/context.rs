@@ -705,7 +705,7 @@ impl<'tcx> TypeckResults<'tcx> {
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckResults<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let ty::TypeckResults {
-            hir_owner: _,
+            hir_owner,
             ref type_dependent_defs,
             ref field_indices,
             ref user_provided_types,
@@ -729,6 +729,8 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckResults<'tcx> {
         } = *self;
 
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
+            hcx.local_def_path_hash(hir_owner);
+
             type_dependent_defs.hash_stable(hcx, hasher);
             field_indices.hash_stable(hcx, hasher);
             user_provided_types.hash_stable(hcx, hasher);
