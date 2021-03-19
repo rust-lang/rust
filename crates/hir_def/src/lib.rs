@@ -673,7 +673,7 @@ fn macro_call_as_call_id(
     Ok(res)
 }
 
-fn item_attr_as_call_id(
+fn derive_macro_as_call_id(
     item_attr: &AstIdWithPath<ast::Item>,
     db: &dyn db::DefDatabase,
     krate: CrateId,
@@ -685,7 +685,7 @@ fn item_attr_as_call_id(
         .as_lazy_macro(
             db.upcast(),
             krate,
-            MacroCallKind::Attr(item_attr.ast_id, last_segment.to_string()),
+            MacroCallKind::Derive(item_attr.ast_id, last_segment.to_string()),
         )
         .into();
     Ok(res)
