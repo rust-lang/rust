@@ -21,7 +21,6 @@
 #![feature(negative_impls)]
 #![feature(nll)]
 #![feature(min_specialization)]
-#![feature(option_expect_none)]
 
 #[macro_use]
 extern crate rustc_macros;
@@ -1996,7 +1995,8 @@ impl<CTX: HashStableContext> HashStable<CTX> for ExpnId {
                 if cache.len() < new_len {
                     cache.resize(new_len, None);
                 }
-                cache[index].replace(sub_hash).expect_none("Cache slot was filled");
+                let prev = cache[index].replace(sub_hash);
+                assert_eq!(prev, None, "Cache slot was filled");
             });
             sub_hash.hash_stable(ctx, hasher);
         }
