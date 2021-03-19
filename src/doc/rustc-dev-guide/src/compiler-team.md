@@ -30,32 +30,38 @@ who are experts on each one.
 ## Rust compiler meeting
 
 The compiler team has a weekly meeting where we do triage and try to
-generally stay on top of new bugs, regressions, and other things.
-They are held on [Zulip][zulip]. It works roughly as follows:
+generally stay on top of new bugs, regressions, and discuss important
+things in general.
+They are held on [Zulip][zulip-meetings]. It works roughly as follows:
 
-- **Review P-high bugs:** P-high bugs are those that are sufficiently
-  important for us to actively track progress. P-high bugs should
-  ideally always have an assignee.
-- **Look over new regressions:** we then look for new cases where the
-  compiler broke previously working code in the wild. Regressions are
-  almost always marked as P-high; the major exception would be bug
-  fixes (though even there we often [aim to give warnings first][procedure]).
-- **Check I-nominated issues:** These are issues where feedback from
+- **Announcements, MCPs/FCPs, and WG-check-ins:** We share some
+  announcements with the rest of the team about important things we want
+  everyone to be aware of. We also share the status of MCPs and FCPs and we
+  use the opportunity to have a couple of WGs giving us an update about
+  their work.
+- **Check for beta and stable nominations:** These are nominations of things to
+  backport to beta and stable respectively.
+  We then look for new cases where the compiler broke previously working
+  code in the wild. Regressions are important issues to fix, so it's
+  likely that they are tagged as P-critical or P-high; the major
+  exception would be bug fixes (though even there we often [aim to give
+  warnings first][procedure]).
+- **Review P-critical and P-high bugs:** P-critical and P-high bugs are
+  those that are sufficiently important for us to actively track
+  progress. P-critical and P-high bugs should ideally always have an
+  assignee.
+- **Check S-waiting-on-team and I-nominated issues:** These are issues where feedback from
   the team is desired.
-- **Check for beta nominations:** These are nominations of things to
-  backport to beta.
-- **Possibly WG checking:** A WG may give an update at this point, if there is
-  time.
+- **Look over the performance triage report:** We check for PRs that made the
+    performance worse and try to decide if it's worth reverting the performance regression or if
+    the regression can be addressed in a future PR.
 
 The meeting currently takes place on Thursdays at 10am Boston time
 (UTC-4 typically, but daylight savings time sometimes makes things
 complicated).
 
-The meeting is held over a "chat medium", currently on [zulip].
 
-[etherpad]: https://public.etherpad-mozilla.org/p/rust-compiler-meeting
 [procedure]: ./bug-fix-procedure.md
-[zulip]: https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler
 [zulip-help]: https://rust-lang.zulipchat.com/#narrow/stream/182449-t-compiler.2Fhelp
 [zulip-meetings]: https://rust-lang.zulipchat.com/#narrow/stream/238009-t-compiler.2Fmeetings
 
