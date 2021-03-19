@@ -514,8 +514,8 @@ pub trait Read {
     /// waiting for data, but if an object needs to block for a read and cannot,
     /// it will typically signal this via an [`Err`] return value.
     ///
-    /// If the return value of this method is [`Ok(n)`], then it must be
-    /// guaranteed that `0 <= n <= buf.len()`. A nonzero `n` value indicates
+    /// If the return value of this method is [`Ok(n)`], then implementations must
+    /// guarantee that `0 <= n <= buf.len()`. A nonzero `n` value indicates
     /// that the buffer `buf` has been filled in with `n` bytes of data from this
     /// source. If `n` is `0`, then it can indicate one of two scenarios:
     ///
@@ -528,6 +528,11 @@ pub trait Read {
     /// even when the reader is not at the end of the stream yet.
     /// This may happen for example because fewer bytes are actually available right now
     /// (e. g. being close to end-of-file) or because read() was interrupted by a signal.
+    ///
+    /// As this trait is safe to implement, callers cannot rely on `n <= buf.len()` for safety.
+    /// Extra care needs to be taken when `unsafe` functions are used to access the read bytes.
+    /// Callers have to ensure that no unchecked out-of-bounds accesses are possible even if
+    /// `n > buf.len()`.
     ///
     /// No guarantees are provided about the contents of `buf` when this
     /// function is called, implementations cannot rely on any property of the
