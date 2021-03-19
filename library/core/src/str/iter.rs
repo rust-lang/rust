@@ -1200,6 +1200,30 @@ impl<'a> DoubleEndedIterator for SplitWhitespace<'a> {
 #[stable(feature = "fused", since = "1.26.0")]
 impl FusedIterator for SplitWhitespace<'_> {}
 
+impl<'a> SplitWhitespace<'a> {
+    /// Returns remainder of the splitted string
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(str_split_whitespace_as_str)]
+    ///
+    /// let mut split = "Mary had a little lamb".split_whitespace();
+    /// assert_eq!(split.as_str(), "Mary had a little lamb");
+    ///
+    /// split.next();
+    /// assert_eq!(split.as_str(), "had a little lamb");
+    ///
+    /// split.by_ref().for_each(drop);
+    /// assert_eq!(split.as_str(), "");
+    /// ```
+    #[inline]
+    #[unstable(feature = "str_split_whitespace_as_str", issue = "77998")]
+    pub fn as_str(&self) -> &'a str {
+        self.inner.iter.as_str()
+    }
+}
+
 #[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
 impl<'a> Iterator for SplitAsciiWhitespace<'a> {
     type Item = &'a str;
@@ -1230,6 +1254,35 @@ impl<'a> DoubleEndedIterator for SplitAsciiWhitespace<'a> {
 
 #[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
 impl FusedIterator for SplitAsciiWhitespace<'_> {}
+
+impl<'a> SplitAsciiWhitespace<'a> {
+    /// Returns remainder of the splitted string
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(str_split_whitespace_as_str)]
+    ///
+    /// let mut split = "Mary had a little lamb".split_ascii_whitespace();
+    /// assert_eq!(split.as_str(), "Mary had a little lamb");
+    ///
+    /// split.next();
+    /// assert_eq!(split.as_str(), "had a little lamb");
+    ///
+    /// split.by_ref().for_each(drop);
+    /// assert_eq!(split.as_str(), "");
+    /// ```
+    #[inline]
+    #[unstable(feature = "str_split_whitespace_as_str", issue = "77998")]
+    pub fn as_str(&self) -> &'a str {
+        if self.inner.iter.iter.finished {
+            return "";
+        }
+
+        // SAFETY: Slice is created from str.
+        unsafe { crate::str::from_utf8_unchecked(&self.inner.iter.iter.v) }
+    }
+}
 
 #[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<'a, P: Pattern<'a>> Iterator for SplitInclusive<'a, P> {
