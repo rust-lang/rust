@@ -771,21 +771,39 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         debug!("link_upvar_region(borrorw_region={:?}, upvar_id={:?}", borrow_region, upvar_id);
         // A by-reference upvar can't be borrowed for longer than the
         // upvar is borrowed from the environment.
-        match self.typeck_results.borrow().upvar_capture(upvar_id) {
-            ty::UpvarCapture::ByRef(upvar_borrow) => {
-                self.sub_regions(
-                    infer::ReborrowUpvar(span, upvar_id),
-                    borrow_region,
-                    upvar_borrow.region,
-                );
-                if let ty::ImmBorrow = upvar_borrow.kind {
-                    debug!("link_upvar_region: capture by shared ref");
-                    return;
+        let closure_local_def_id = upvar_id.closure_expr_id;
+        let mut all_captures_are_imm_borrow = true;
+        for captured_place in self
+            .typeck_results
+            .borrow()
+            .closure_min_captures
+            .get(&closure_local_def_id.to_def_id())
+            .and_then(|root_var_min_cap| root_var_min_cap.get(&upvar_id.var_path.hir_id))
+            .into_iter()
+            .flatten()
+        {
+            match captured_place.info.capture_kind {
+                ty::UpvarCapture::ByRef(upvar_borrow) => {
+                    self.sub_regions(
+                        infer::ReborrowUpvar(span, upvar_id),
+                        borrow_region,
+                        upvar_borrow.region,
+                    );
+                    if let ty::ImmBorrow = upvar_borrow.kind {
+                        debug!("link_upvar_region: capture by shared ref");
+                    } else {
+                        all_captures_are_imm_borrow = false;
+                    }
+                }
+                ty::UpvarCapture::ByValue(_) => {
+                    all_captures_are_imm_borrow = false;
                 }
             }
-            ty::UpvarCapture::ByValue(_) => {}
         }
-        let fn_hir_id = self.tcx.hir().local_def_id_to_hir_id(upvar_id.closure_expr_id);
+        if all_captures_are_imm_borrow {
+            return;
+        }
+        let fn_hir_id = self.tcx.hir().local_def_id_to_hir_id(closure_local_def_id);
         let ty = self.resolve_node_type(fn_hir_id);
         debug!("link_upvar_region: ty={:?}", ty);
 

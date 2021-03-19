@@ -222,8 +222,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.log_closure_min_capture_info(closure_def_id, span);
 
-        self.min_captures_to_closure_captures_bridge(closure_def_id);
-
         // Now that we've analyzed the closure, we know how each
         // variable is borrowed, and we know what traits the closure
         // implements (Fn vs FnMut etc). We now have some updates to do
@@ -291,80 +289,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             })
             .collect()
-    }
-
-    /// Bridge for closure analysis
-    /// ----------------------------
-    ///
-    /// For closure with DefId `c`, the bridge converts structures required for supporting RFC 2229,
-    /// to structures currently used in the compiler for handling closure captures.
-    ///
-    /// For example the following structure will be converted:
-    ///
-    /// closure_min_captures
-    /// foo -> [ {foo.x, ImmBorrow}, {foo.y, MutBorrow} ]
-    /// bar -> [ {bar.z, ByValue}, {bar.q, MutBorrow} ]
-    ///
-    /// to
-    ///
-    /// 1. closure_captures
-    /// foo -> UpvarId(foo, c), bar -> UpvarId(bar, c)
-    ///
-    /// 2. upvar_capture_map
-    /// UpvarId(foo,c) -> MutBorrow, UpvarId(bar, c) -> ByValue
-    fn min_captures_to_closure_captures_bridge(&self, closure_def_id: DefId) {
-        let mut closure_captures: FxIndexMap<hir::HirId, ty::UpvarId> = Default::default();
-        let mut upvar_capture_map = ty::UpvarCaptureMap::default();
-
-        if let Some(min_captures) =
-            self.typeck_results.borrow().closure_min_captures.get(&closure_def_id)
-        {
-            for (var_hir_id, min_list) in min_captures.iter() {
-                for captured_place in min_list {
-                    let place = &captured_place.place;
-                    let capture_info = captured_place.info;
-
-                    let upvar_id = match place.base {
-                        PlaceBase::Upvar(upvar_id) => upvar_id,
-                        base => bug!("Expected upvar, found={:?}", base),
-                    };
-
-                    assert_eq!(upvar_id.var_path.hir_id, *var_hir_id);
-                    assert_eq!(upvar_id.closure_expr_id, closure_def_id.expect_local());
-
-                    closure_captures.insert(*var_hir_id, upvar_id);
-
-                    let new_capture_kind =
-                        if let Some(capture_kind) = upvar_capture_map.get(&upvar_id) {
-                            // upvar_capture_map only stores the UpvarCapture (CaptureKind),
-                            // so we create a fake capture info with no expression.
-                            let fake_capture_info = ty::CaptureInfo {
-                                capture_kind_expr_id: None,
-                                path_expr_id: None,
-                                capture_kind: *capture_kind,
-                            };
-                            determine_capture_info(fake_capture_info, capture_info).capture_kind
-                        } else {
-                            capture_info.capture_kind
-                        };
-                    upvar_capture_map.insert(upvar_id, new_capture_kind);
-                }
-            }
-        }
-        debug!("For closure_def_id={:?}, closure_captures={:#?}", closure_def_id, closure_captures);
-        debug!(
-            "For closure_def_id={:?}, upvar_capture_map={:#?}",
-            closure_def_id, upvar_capture_map
-        );
-
-        if !closure_captures.is_empty() {
-            self.typeck_results
-                .borrow_mut()
-                .closure_captures
-                .insert(closure_def_id, closure_captures);
-
-            self.typeck_results.borrow_mut().upvar_capture_map.extend(upvar_capture_map);
-        }
     }
 
     /// Analyzes the information collected by `InferBorrowKind` to compute the min number of

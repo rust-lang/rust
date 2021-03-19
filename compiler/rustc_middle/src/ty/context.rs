@@ -30,9 +30,7 @@ use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
-use rustc_data_structures::stable_hasher::{
-    hash_stable_hashmap, HashStable, StableHasher, StableVec,
-};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableVec};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{self, Lock, Lrc, WorkerLocal};
 use rustc_errors::ErrorReported;
@@ -386,9 +384,6 @@ pub struct TypeckResults<'tcx> {
     /// <https://github.com/rust-lang/rfcs/blob/master/text/2005-match-ergonomics.md#definitions>
     pat_adjustments: ItemLocalMap<Vec<Ty<'tcx>>>,
 
-    /// Borrows
-    pub upvar_capture_map: ty::UpvarCaptureMap<'tcx>,
-
     /// Records the reasons that we picked the kind of each closure;
     /// not all closures are present in the map.
     closure_kind_origins: ItemLocalMap<(Span, HirPlace<'tcx>)>,
@@ -423,12 +418,6 @@ pub struct TypeckResults<'tcx> {
     /// All the opaque types that are restricted to concrete types
     /// by this function.
     pub concrete_opaque_types: FxHashMap<DefId, ResolvedOpaqueTy<'tcx>>,
-
-    /// Given the closure ID this map provides the list of UpvarIDs used by it.
-    /// The upvarID contains the HIR node ID and it also contains the full path
-    /// leading to the member of the struct or tuple that is used instead of the
-    /// entire variable.
-    pub closure_captures: ty::UpvarListMap,
 
     /// Tracks the minimum captures required for a closure;
     /// see `MinCaptureInformationMap` for more details.
@@ -482,7 +471,6 @@ impl<'tcx> TypeckResults<'tcx> {
             adjustments: Default::default(),
             pat_binding_modes: Default::default(),
             pat_adjustments: Default::default(),
-            upvar_capture_map: Default::default(),
             closure_kind_origins: Default::default(),
             liberated_fn_sigs: Default::default(),
             fru_field_types: Default::default(),
@@ -490,7 +478,6 @@ impl<'tcx> TypeckResults<'tcx> {
             used_trait_imports: Lrc::new(Default::default()),
             tainted_by_errors: None,
             concrete_opaque_types: Default::default(),
-            closure_captures: Default::default(),
             closure_min_captures: Default::default(),
             closure_fake_reads: Default::default(),
             generator_interior_types: ty::Binder::dummy(Default::default()),
@@ -675,10 +662,6 @@ impl<'tcx> TypeckResults<'tcx> {
             .flatten()
     }
 
-    pub fn upvar_capture(&self, upvar_id: ty::UpvarId) -> ty::UpvarCapture<'tcx> {
-        self.upvar_capture_map[&upvar_id]
-    }
-
     pub fn closure_kind_origins(&self) -> LocalTableInContext<'_, (Span, HirPlace<'tcx>)> {
         LocalTableInContext { hir_owner: self.hir_owner, data: &self.closure_kind_origins }
     }
@@ -732,17 +715,13 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckResults<'tcx> {
             ref adjustments,
             ref pat_binding_modes,
             ref pat_adjustments,
-            ref upvar_capture_map,
             ref closure_kind_origins,
             ref liberated_fn_sigs,
             ref fru_field_types,
-
             ref coercion_casts,
-
             ref used_trait_imports,
             tainted_by_errors,
             ref concrete_opaque_types,
-            ref closure_captures,
             ref closure_min_captures,
             ref closure_fake_reads,
             ref generator_interior_types,
@@ -750,6 +729,8 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckResults<'tcx> {
         } = *self;
 
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
+            hcx.local_def_path_hash(hir_owner);
+
             type_dependent_defs.hash_stable(hcx, hasher);
             field_indices.hash_stable(hcx, hasher);
             user_provided_types.hash_stable(hcx, hasher);
@@ -759,17 +740,6 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckResults<'tcx> {
             adjustments.hash_stable(hcx, hasher);
             pat_binding_modes.hash_stable(hcx, hasher);
             pat_adjustments.hash_stable(hcx, hasher);
-            hash_stable_hashmap(hcx, hasher, upvar_capture_map, |up_var_id, hcx| {
-                let ty::UpvarId { var_path, closure_expr_id } = *up_var_id;
-
-                assert_eq!(var_path.hir_id.owner, hir_owner);
-
-                (
-                    hcx.local_def_path_hash(var_path.hir_id.owner),
-                    var_path.hir_id.local_id,
-                    hcx.local_def_path_hash(closure_expr_id),
-                )
-            });
 
             closure_kind_origins.hash_stable(hcx, hasher);
             liberated_fn_sigs.hash_stable(hcx, hasher);
@@ -778,7 +748,6 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckResults<'tcx> {
             used_trait_imports.hash_stable(hcx, hasher);
             tainted_by_errors.hash_stable(hcx, hasher);
             concrete_opaque_types.hash_stable(hcx, hasher);
-            closure_captures.hash_stable(hcx, hasher);
             closure_min_captures.hash_stable(hcx, hasher);
             closure_fake_reads.hash_stable(hcx, hasher);
             generator_interior_types.hash_stable(hcx, hasher);
