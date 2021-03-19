@@ -8,6 +8,33 @@ use parser::T;
 
 use crate::{ast::make, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken};
 
+/// Utility trait to allow calling `ted` functions with references or owned
+/// nodes. Do not use outside of this module.
+pub trait Element {
+    fn syntax_element(self) -> SyntaxElement;
+}
+
+impl<E: Element + Clone> Element for &'_ E {
+    fn syntax_element(self) -> SyntaxElement {
+        self.clone().syntax_element()
+    }
+}
+impl Element for SyntaxElement {
+    fn syntax_element(self) -> SyntaxElement {
+        self
+    }
+}
+impl Element for SyntaxNode {
+    fn syntax_element(self) -> SyntaxElement {
+        self.into()
+    }
+}
+impl Element for SyntaxToken {
+    fn syntax_element(self) -> SyntaxElement {
+        self.into()
+    }
+}
+
 #[derive(Debug)]
 pub struct Position {
     repr: PositionRepr,
@@ -20,24 +47,24 @@ enum PositionRepr {
 }
 
 impl Position {
-    pub fn after(elem: impl Into<SyntaxElement>) -> Position {
-        let repr = PositionRepr::After(elem.into());
+    pub fn after(elem: impl Element) -> Position {
+        let repr = PositionRepr::After(elem.syntax_element());
         Position { repr }
     }
-    pub fn before(elem: impl Into<SyntaxElement>) -> Position {
-        let elem = elem.into();
+    pub fn before(elem: impl Element) -> Position {
+        let elem = elem.syntax_element();
         let repr = match elem.prev_sibling_or_token() {
             Some(it) => PositionRepr::After(it),
             None => PositionRepr::FirstChild(elem.parent().unwrap()),
         };
         Position { repr }
     }
-    pub fn first_child_of(node: impl Into<SyntaxNode>) -> Position {
-        let repr = PositionRepr::FirstChild(node.into());
+    pub fn first_child_of(node: &(impl Into<SyntaxNode> + Clone)) -> Position {
+        let repr = PositionRepr::FirstChild(node.clone().into());
         Position { repr }
     }
-    pub fn last_child_of(node: impl Into<SyntaxNode>) -> Position {
-        let node = node.into();
+    pub fn last_child_of(node: &(impl Into<SyntaxNode> + Clone)) -> Position {
+        let node = node.clone().into();
         let repr = match node.last_child_or_token() {
             Some(it) => PositionRepr::After(it),
             None => PositionRepr::FirstChild(node),
@@ -46,11 +73,11 @@ impl Position {
     }
 }
 
-pub fn insert(position: Position, elem: impl Into<SyntaxElement>) {
-    insert_all(position, vec![elem.into()])
+pub fn insert(position: Position, elem: impl Element) {
+    insert_all(position, vec![elem.syntax_element()])
 }
-pub fn insert_raw(position: Position, elem: impl Into<SyntaxElement>) {
-    insert_all_raw(position, vec![elem.into()])
+pub fn insert_raw(position: Position, elem: impl Element) {
+    insert_all_raw(position, vec![elem.syntax_element()])
 }
 pub fn insert_all(position: Position, mut elements: Vec<SyntaxElement>) {
     if let Some(first) = elements.first() {
@@ -73,17 +100,17 @@ pub fn insert_all_raw(position: Position, elements: Vec<SyntaxElement>) {
     parent.splice_children(index..index, elements);
 }
 
-pub fn remove(elem: impl Into<SyntaxElement>) {
-    let elem = elem.into();
+pub fn remove(elem: impl Element) {
+    let elem = elem.syntax_element();
     remove_all(elem.clone()..=elem)
 }
 pub fn remove_all(range: RangeInclusive<SyntaxElement>) {
     replace_all(range, Vec::new())
 }
 
-pub fn replace(old: impl Into<SyntaxElement>, new: impl Into<SyntaxElement>) {
-    let old = old.into();
-    replace_all(old.clone()..=old, vec![new.into()])
+pub fn replace(old: impl Element, new: impl Element) {
+    let old = old.syntax_element();
+    replace_all(old.clone()..=old, vec![new.syntax_element()])
 }
 pub fn replace_all(range: RangeInclusive<SyntaxElement>, new: Vec<SyntaxElement>) {
     let start = range.start().index();
@@ -92,11 +119,11 @@ pub fn replace_all(range: RangeInclusive<SyntaxElement>, new: Vec<SyntaxElement>
     parent.splice_children(start..end + 1, new)
 }
 
-pub fn append_child(node: impl Into<SyntaxNode>, child: impl Into<SyntaxElement>) {
+pub fn append_child(node: &(impl Into<SyntaxNode> + Clone), child: impl Element) {
     let position = Position::last_child_of(node);
     insert(position, child)
 }
-pub fn append_child_raw(node: impl Into<SyntaxNode>, child: impl Into<SyntaxElement>) {
+pub fn append_child_raw(node: &(impl Into<SyntaxNode> + Clone), child: impl Element) {
     let position = Position::last_child_of(node);
     insert_raw(position, child)
 }
