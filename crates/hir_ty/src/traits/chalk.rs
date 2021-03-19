@@ -21,8 +21,8 @@ use crate::{
     method_resolution::{TyFingerprint, ALL_FLOAT_FPS, ALL_INT_FPS},
     to_assoc_type_id, to_chalk_trait_id,
     utils::generics,
-    BoundVar, CallableDefId, CallableSig, DebruijnIndex, FnDefId, GenericPredicate,
-    ProjectionPredicate, ProjectionTy, Substitution, TraitRef, Ty, TyKind,
+    AliasEq, AliasTy, BoundVar, CallableDefId, CallableSig, DebruijnIndex, FnDefId,
+    GenericPredicate, ProjectionTy, Substitution, TraitRef, Ty, TyKind,
 };
 use mapping::{
     convert_where_clauses, generic_predicate_to_inline_bound, make_binders, TypeAliasAsValue,
@@ -229,18 +229,18 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                             .intern(&Interner),
                         ),
                     });
-                    let proj_bound = GenericPredicate::Projection(ProjectionPredicate {
-                        // The parameter of the opaque type.
-                        ty: TyKind::BoundVar(BoundVar { debruijn: DebruijnIndex::ONE, index: 0 })
-                            .intern(&Interner),
-                        projection_ty: ProjectionTy {
+                    let proj_bound = GenericPredicate::AliasEq(AliasEq {
+                        alias: AliasTy::Projection(ProjectionTy {
                             associated_ty_id: to_assoc_type_id(future_output),
                             // Self type as the first parameter.
                             substitution: Substitution::single(
                                 TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0))
                                     .intern(&Interner),
                             ),
-                        },
+                        }),
+                        // The parameter of the opaque type.
+                        ty: TyKind::BoundVar(BoundVar { debruijn: DebruijnIndex::ONE, index: 0 })
+                            .intern(&Interner),
                     });
                     let bound = OpaqueTyDatumBound {
                         bounds: make_binders(

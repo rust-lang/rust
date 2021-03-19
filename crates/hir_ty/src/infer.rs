@@ -37,12 +37,12 @@ use stdx::impl_from;
 use syntax::SmolStr;
 
 use super::{
-    traits::{Guidance, Obligation, ProjectionPredicate, Solution},
+    traits::{Guidance, Obligation, Solution},
     InEnvironment, ProjectionTy, Substitution, TraitEnvironment, TraitRef, Ty, TypeWalk,
 };
 use crate::{
     db::HirDatabase, infer::diagnostics::InferenceDiagnostic, lower::ImplTraitLoweringMode,
-    to_assoc_type_id, to_chalk_trait_id, AliasTy, Interner, TyKind,
+    to_assoc_type_id, to_chalk_trait_id, AliasEq, AliasTy, Interner, TyKind,
 };
 
 pub(crate) use unify::unify;
@@ -396,15 +396,15 @@ impl<'a> InferenceContext<'a> {
                     .build();
                 let trait_ref =
                     TraitRef { trait_id: to_chalk_trait_id(trait_), substitution: substs.clone() };
-                let projection = ProjectionPredicate {
-                    ty: ty.clone(),
-                    projection_ty: ProjectionTy {
+                let alias_eq = AliasEq {
+                    alias: AliasTy::Projection(ProjectionTy {
                         associated_ty_id: to_assoc_type_id(res_assoc_ty),
                         substitution: substs,
-                    },
+                    }),
+                    ty: ty.clone(),
                 };
                 self.obligations.push(Obligation::Trait(trait_ref));
-                self.obligations.push(Obligation::Projection(projection));
+                self.obligations.push(Obligation::AliasEq(alias_eq));
                 self.resolve_ty_as_possible(ty)
             }
             None => self.err_ty(),
@@ -429,8 +429,8 @@ impl<'a> InferenceContext<'a> {
 
     fn normalize_projection_ty(&mut self, proj_ty: ProjectionTy) -> Ty {
         let var = self.table.new_type_var();
-        let predicate = ProjectionPredicate { projection_ty: proj_ty, ty: var.clone() };
-        let obligation = Obligation::Projection(predicate);
+        let alias_eq = AliasEq { alias: AliasTy::Projection(proj_ty), ty: var.clone() };
+        let obligation = Obligation::AliasEq(alias_eq);
         self.obligations.push(obligation);
         var
     }

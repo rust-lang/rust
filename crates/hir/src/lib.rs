@@ -56,9 +56,9 @@ use hir_ty::{
     primitive::UintTy,
     to_assoc_type_id,
     traits::{FnTrait, Solution, SolutionVariables},
-    AliasTy, BoundVar, CallableDefId, CallableSig, Canonical, DebruijnIndex, GenericPredicate,
-    InEnvironment, Interner, Obligation, ProjectionPredicate, ProjectionTy, Scalar, Substitution,
-    Ty, TyDefId, TyKind, TyVariableKind,
+    AliasEq, AliasTy, BoundVar, CallableDefId, CallableSig, Canonical, DebruijnIndex,
+    GenericPredicate, InEnvironment, Interner, Obligation, ProjectionTy, Scalar, Substitution, Ty,
+    TyDefId, TyKind, TyVariableKind,
 };
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
@@ -1786,17 +1786,17 @@ impl Type {
             .push(self.ty.value.clone())
             .fill(args.iter().map(|t| t.ty.value.clone()))
             .build();
-        let predicate = ProjectionPredicate {
-            projection_ty: ProjectionTy {
-                associated_ty_id: to_assoc_type_id(alias.id),
-                substitution: subst,
-            },
-            ty: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0)).intern(&Interner),
-        };
         let goal = Canonical {
             value: InEnvironment::new(
                 self.ty.environment.clone(),
-                Obligation::Projection(predicate),
+                Obligation::AliasEq(AliasEq {
+                    alias: AliasTy::Projection(ProjectionTy {
+                        associated_ty_id: to_assoc_type_id(alias.id),
+                        substitution: subst,
+                    }),
+                    ty: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0))
+                        .intern(&Interner),
+                }),
             ),
             kinds: Arc::new([TyVariableKind::General]),
         };

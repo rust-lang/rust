@@ -14,8 +14,8 @@ use crate::{
     from_assoc_type_id,
     primitive::UintTy,
     traits::{Canonical, Obligation},
-    AliasTy, CallableDefId, FnPointer, GenericPredicate, InEnvironment, OpaqueTy,
-    ProjectionPredicate, ProjectionTy, Scalar, Substitution, TraitRef, Ty,
+    AliasTy, CallableDefId, FnPointer, GenericPredicate, InEnvironment, OpaqueTy, ProjectionTy,
+    Scalar, Substitution, TraitRef, Ty,
 };
 
 use super::interner::*;
@@ -314,12 +314,10 @@ impl ToChalk for GenericPredicate {
                 let chalk_trait_ref = chalk_trait_ref.shifted_in(&Interner);
                 make_binders(chalk_ir::WhereClause::Implemented(chalk_trait_ref), 0)
             }
-            GenericPredicate::Projection(projection_pred) => {
-                let ty = projection_pred.ty.to_chalk(db).shifted_in(&Interner);
-                let projection = projection_pred.projection_ty.to_chalk(db).shifted_in(&Interner);
-                let alias = chalk_ir::AliasTy::Projection(projection);
-                make_binders(chalk_ir::WhereClause::AliasEq(chalk_ir::AliasEq { alias, ty }), 0)
-            }
+            GenericPredicate::AliasEq(alias_eq) => make_binders(
+                chalk_ir::WhereClause::AliasEq(alias_eq.to_chalk(db).shifted_in(&Interner)),
+                0,
+            ),
             GenericPredicate::Error => panic!("tried passing GenericPredicate::Error to Chalk"),
         }
     }
@@ -338,16 +336,8 @@ impl ToChalk for GenericPredicate {
             chalk_ir::WhereClause::Implemented(tr) => {
                 GenericPredicate::Implemented(from_chalk(db, tr))
             }
-            chalk_ir::WhereClause::AliasEq(projection_eq) => {
-                let projection_ty = from_chalk(
-                    db,
-                    match projection_eq.alias {
-                        chalk_ir::AliasTy::Projection(p) => p,
-                        _ => unimplemented!(),
-                    },
-                );
-                let ty = from_chalk(db, projection_eq.ty);
-                GenericPredicate::Projection(ProjectionPredicate { projection_ty, ty })
+            chalk_ir::WhereClause::AliasEq(alias_eq) => {
+                GenericPredicate::AliasEq(from_chalk(db, alias_eq))
             }
 
             chalk_ir::WhereClause::LifetimeOutlives(_) => {
@@ -383,19 +373,55 @@ impl ToChalk for ProjectionTy {
         }
     }
 }
+impl ToChalk for OpaqueTy {
+    type Chalk = chalk_ir::OpaqueTy<Interner>;
 
-impl ToChalk for ProjectionPredicate {
-    type Chalk = chalk_ir::AliasEq<Interner>;
-
-    fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::AliasEq<Interner> {
-        chalk_ir::AliasEq {
-            alias: chalk_ir::AliasTy::Projection(self.projection_ty.to_chalk(db)),
-            ty: self.ty.to_chalk(db),
+    fn to_chalk(self, db: &dyn HirDatabase) -> Self::Chalk {
+        chalk_ir::OpaqueTy {
+            opaque_ty_id: self.opaque_ty_id,
+            substitution: self.substitution.to_chalk(db),
         }
     }
 
-    fn from_chalk(_db: &dyn HirDatabase, _normalize: chalk_ir::AliasEq<Interner>) -> Self {
-        unimplemented!()
+    fn from_chalk(db: &dyn HirDatabase, chalk: Self::Chalk) -> Self {
+        OpaqueTy {
+            opaque_ty_id: chalk.opaque_ty_id,
+            substitution: from_chalk(db, chalk.substitution),
+        }
+    }
+}
+
+impl ToChalk for AliasTy {
+    type Chalk = chalk_ir::AliasTy<Interner>;
+
+    fn to_chalk(self, db: &dyn HirDatabase) -> Self::Chalk {
+        match self {
+            AliasTy::Projection(projection_ty) => {
+                chalk_ir::AliasTy::Projection(projection_ty.to_chalk(db))
+            }
+            AliasTy::Opaque(opaque_ty) => chalk_ir::AliasTy::Opaque(opaque_ty.to_chalk(db)),
+        }
+    }
+
+    fn from_chalk(db: &dyn HirDatabase, chalk: Self::Chalk) -> Self {
+        match chalk {
+            chalk_ir::AliasTy::Projection(projection_ty) => {
+                AliasTy::Projection(from_chalk(db, projection_ty))
+            }
+            chalk_ir::AliasTy::Opaque(opaque_ty) => AliasTy::Opaque(from_chalk(db, opaque_ty)),
+        }
+    }
+}
+
+impl ToChalk for AliasEq {
+    type Chalk = chalk_ir::AliasEq<Interner>;
+
+    fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::AliasEq<Interner> {
+        chalk_ir::AliasEq { alias: self.alias.to_chalk(db), ty: self.ty.to_chalk(db) }
+    }
+
+    fn from_chalk(db: &dyn HirDatabase, alias_eq: chalk_ir::AliasEq<Interner>) -> Self {
+        AliasEq { alias: from_chalk(db, alias_eq.alias), ty: from_chalk(db, alias_eq.ty) }
     }
 }
 
@@ -405,7 +431,7 @@ impl ToChalk for Obligation {
     fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::DomainGoal<Interner> {
         match self {
             Obligation::Trait(tr) => tr.to_chalk(db).cast(&Interner),
-            Obligation::Projection(pr) => pr.to_chalk(db).cast(&Interner),
+            Obligation::AliasEq(alias_eq) => alias_eq.to_chalk(db).cast(&Interner),
         }
     }
 
@@ -527,29 +553,29 @@ pub(super) fn generic_predicate_to_inline_bound(
             let trait_bound = rust_ir::TraitBound { trait_id: trait_ref.trait_id, args_no_self };
             Some(rust_ir::InlineBound::TraitBound(trait_bound))
         }
-        GenericPredicate::Projection(proj) => {
-            if &proj.projection_ty.substitution[0] != self_ty {
+        GenericPredicate::AliasEq(AliasEq { alias: AliasTy::Projection(projection_ty), ty }) => {
+            if &projection_ty.substitution[0] != self_ty {
                 return None;
             }
-            let trait_ = match from_assoc_type_id(proj.projection_ty.associated_ty_id)
+            let trait_ = match from_assoc_type_id(projection_ty.associated_ty_id)
                 .lookup(db.upcast())
                 .container
             {
                 AssocContainerId::TraitId(t) => t,
                 _ => panic!("associated type not in trait"),
             };
-            let args_no_self = proj.projection_ty.substitution[1..]
+            let args_no_self = projection_ty.substitution[1..]
                 .iter()
                 .map(|ty| ty.clone().to_chalk(db).cast(&Interner))
                 .collect();
             let alias_eq_bound = rust_ir::AliasEqBound {
-                value: proj.ty.clone().to_chalk(db),
+                value: ty.clone().to_chalk(db),
                 trait_bound: rust_ir::TraitBound { trait_id: trait_.to_chalk(db), args_no_self },
-                associated_ty_id: proj.projection_ty.associated_ty_id,
+                associated_ty_id: projection_ty.associated_ty_id,
                 parameters: Vec::new(), // FIXME we don't support generic associated types yet
             };
             Some(rust_ir::InlineBound::AliasEqBound(alias_eq_bound))
         }
-        GenericPredicate::Error => None,
+        _ => None,
     }
 }

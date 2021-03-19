@@ -18,9 +18,9 @@ use hir_expand::name::Name;
 
 use crate::{
     db::HirDatabase, from_assoc_type_id, from_foreign_def_id, from_placeholder_idx, primitive,
-    to_assoc_type_id, traits::chalk::from_chalk, utils::generics, AdtId, AliasTy, CallableDefId,
-    CallableSig, GenericPredicate, ImplTraitId, Interner, Lifetime, Obligation, OpaqueTy,
-    ProjectionTy, Scalar, Substitution, TraitRef, Ty, TyKind,
+    to_assoc_type_id, traits::chalk::from_chalk, utils::generics, AdtId, AliasEq, AliasTy,
+    CallableDefId, CallableSig, GenericPredicate, ImplTraitId, Interner, Lifetime, Obligation,
+    OpaqueTy, ProjectionTy, Scalar, Substitution, TraitRef, Ty, TyKind,
 };
 
 pub struct HirFormatter<'a> {
@@ -265,6 +265,16 @@ impl HirDisplay for ProjectionTy {
         }
         write!(f, ">::{}", f.db.type_alias_data(from_assoc_type_id(self.associated_ty_id)).name)?;
         Ok(())
+    }
+}
+
+impl HirDisplay for OpaqueTy {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+        if f.should_truncate() {
+            return write!(f, "{}", TYPE_HINT_TRUNCATION);
+        }
+
+        self.substitution[0].hir_fmt(f)
     }
 }
 
@@ -700,12 +710,12 @@ fn write_bounds_like_dyn_trait(
                     }
                 }
             }
-            GenericPredicate::Projection(projection_pred) if is_fn_trait => {
+            GenericPredicate::AliasEq(alias_eq) if is_fn_trait => {
                 is_fn_trait = false;
                 write!(f, " -> ")?;
-                projection_pred.ty.hir_fmt(f)?;
+                alias_eq.ty.hir_fmt(f)?;
             }
-            GenericPredicate::Projection(projection_pred) => {
+            GenericPredicate::AliasEq(AliasEq { ty, alias }) => {
                 // in types in actual Rust, these will always come
                 // after the corresponding Implemented predicate
                 if angle_open {
@@ -714,11 +724,12 @@ fn write_bounds_like_dyn_trait(
                     write!(f, "<")?;
                     angle_open = true;
                 }
-                let type_alias = f.db.type_alias_data(from_assoc_type_id(
-                    projection_pred.projection_ty.associated_ty_id,
-                ));
-                write!(f, "{} = ", type_alias.name)?;
-                projection_pred.ty.hir_fmt(f)?;
+                if let AliasTy::Projection(proj) = alias {
+                    let type_alias =
+                        f.db.type_alias_data(from_assoc_type_id(proj.associated_ty_id));
+                    write!(f, "{} = ", type_alias.name)?;
+                }
+                ty.hir_fmt(f)?;
             }
             GenericPredicate::Error => {
                 if angle_open {
@@ -775,20 +786,20 @@ impl HirDisplay for GenericPredicate {
 
         match self {
             GenericPredicate::Implemented(trait_ref) => trait_ref.hir_fmt(f)?,
-            GenericPredicate::Projection(projection_pred) => {
+            GenericPredicate::AliasEq(AliasEq {
+                alias: AliasTy::Projection(projection_ty),
+                ty,
+            }) => {
                 write!(f, "<")?;
-                projection_pred.projection_ty.trait_ref(f.db).hir_fmt_ext(f, true)?;
+                projection_ty.trait_ref(f.db).hir_fmt_ext(f, true)?;
                 write!(
                     f,
                     ">::{} = ",
-                    f.db.type_alias_data(from_assoc_type_id(
-                        projection_pred.projection_ty.associated_ty_id
-                    ))
-                    .name,
+                    f.db.type_alias_data(from_assoc_type_id(projection_ty.associated_ty_id)).name,
                 )?;
-                projection_pred.ty.hir_fmt(f)?;
+                ty.hir_fmt(f)?;
             }
-            GenericPredicate::Error => write!(f, "{{error}}")?,
+            GenericPredicate::AliasEq(_) | GenericPredicate::Error => write!(f, "{{error}}")?,
         }
         Ok(())
     }
@@ -815,11 +826,14 @@ impl HirDisplay for Obligation {
                 tr.hir_fmt(f)?;
                 write!(f, ")")
             }
-            Obligation::Projection(proj) => {
+            Obligation::AliasEq(AliasEq { alias, ty }) => {
                 write!(f, "Normalize(")?;
-                proj.projection_ty.hir_fmt(f)?;
+                match alias {
+                    AliasTy::Projection(projection_ty) => projection_ty.hir_fmt(f)?,
+                    AliasTy::Opaque(opaque) => opaque.hir_fmt(f)?,
+                }
                 write!(f, " => ")?;
-                proj.ty.hir_fmt(f)?;
+                ty.hir_fmt(f)?;
                 write!(f, ")")
             }
         }
