@@ -162,7 +162,7 @@ impl Command {
         // we will fall through this block to a call to `fork()`
         if HAS_CLONE3.load(Ordering::Relaxed) {
             let mut flags = 0;
-            if self.create_pidfd {
+            if self.get_create_pidfd() {
                 flags |= CLONE_PIDFD;
             }
 
@@ -387,7 +387,7 @@ impl Command {
             || (self.env_saw_path() && !self.program_is_path())
             || !self.get_closures().is_empty()
             || self.get_groups().is_some()
-            || self.create_pidfd
+            || self.get_create_pidfd()
         {
             return Ok(None);
         }

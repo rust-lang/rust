@@ -80,7 +80,7 @@ pub struct Command {
     stdout: Option<Stdio>,
     stderr: Option<Stdio>,
     #[cfg(target_os = "linux")]
-    pub(crate) create_pidfd: bool,
+    create_pidfd: bool,
 }
 
 // Create a new type for argv, so that we can make it `Send` and `Sync`
@@ -205,6 +205,17 @@ impl Command {
     #[cfg(target_os = "linux")]
     pub fn create_pidfd(&mut self, val: bool) {
         self.create_pidfd = val;
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    #[allow(dead_code)]
+    pub fn get_create_pidfd(&self) -> bool {
+        false
+    }
+
+    #[cfg(target_os = "linux")]
+    pub fn get_create_pidfd(&self) -> bool {
+        self.create_pidfd
     }
 
     pub fn saw_nul(&self) -> bool {
