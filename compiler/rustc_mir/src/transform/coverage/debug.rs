@@ -285,10 +285,8 @@ impl DebugCounters {
                 ),
             };
             counters
-                .insert(id, DebugCounter::new(counter_kind.clone(), some_block_label))
-                .expect_none(
-                    "attempt to add the same counter_kind to DebugCounters more than once",
-                );
+                .try_insert(id, DebugCounter::new(counter_kind.clone(), some_block_label))
+                .expect("attempt to add the same counter_kind to DebugCounters more than once");
         }
     }
 
@@ -479,9 +477,9 @@ impl GraphvizData {
         counter_kind: &CoverageKind,
     ) {
         if let Some(edge_to_counter) = self.some_edge_to_counter.as_mut() {
-            edge_to_counter.insert((from_bcb, to_bb), counter_kind.clone()).expect_none(
-                "invalid attempt to insert more than one edge counter for the same edge",
-            );
+            edge_to_counter
+                .try_insert((from_bcb, to_bb), counter_kind.clone())
+                .expect("invalid attempt to insert more than one edge counter for the same edge");
         }
     }
 
