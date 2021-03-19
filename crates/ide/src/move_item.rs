@@ -43,6 +43,10 @@ fn find_ancestors(item: SyntaxElement, direction: Direction, range: TextRange) -
 
     let movable = [
         SyntaxKind::ARG_LIST,
+        SyntaxKind::GENERIC_PARAM_LIST,
+        SyntaxKind::GENERIC_ARG_LIST,
+        SyntaxKind::VARIANT_LIST,
+        SyntaxKind::TYPE_BOUND_LIST,
         SyntaxKind::MATCH_ARM,
         SyntaxKind::PARAM,
         SyntaxKind::LET_STMT,
@@ -79,6 +83,10 @@ fn move_in_direction(
     match_ast! {
         match node {
             ast::ArgList(it) => swap_sibling_in_list(it.args(), range, direction),
+            ast::GenericParamList(it) => swap_sibling_in_list(it.generic_params(), range, direction),
+            ast::GenericArgList(it) => swap_sibling_in_list(it.generic_args(), range, direction),
+            ast::VariantList(it) => swap_sibling_in_list(it.variants(), range, direction),
+            ast::TypeBoundList(it) => swap_sibling_in_list(it.bounds(), range, direction),
             _ => Some(replace_nodes(node, &match direction {
                 Direction::Up => node.prev_sibling(),
                 Direction::Down => node.next_sibling(),
@@ -302,7 +310,7 @@ struct Yay;
 
 trait Wow {}
 
-impl Wow for Yay {}$0$0
+impl Wow for Yay $0$0{}
             "#,
             expect![[r#"
 struct Yay;
@@ -436,6 +444,92 @@ fn test(one: i32, two: u32) {}
 fn main() {
     test(123, 456);
 }
+            "#]],
+            Direction::Up,
+        );
+    }
+
+    #[test]
+    fn test_moves_generic_param_up() {
+        check(
+            r#"
+struct Test<A, B$0$0>(A, B);
+
+fn main() {}
+            "#,
+            expect![[r#"
+struct Test<B, A>(A, B);
+
+fn main() {}
+            "#]],
+            Direction::Up,
+        );
+    }
+
+    #[test]
+    fn test_moves_generic_arg_up() {
+        check(
+            r#"
+struct Test<A, B>(A, B);
+
+fn main() {
+    let t = Test::<i32, &str$0$0>(123, "yay");
+}
+            "#,
+            expect![[r#"
+struct Test<A, B>(A, B);
+
+fn main() {
+    let t = Test::<&str, i32>(123, "yay");
+}
+            "#]],
+            Direction::Up,
+        );
+    }
+
+    #[test]
+    fn test_moves_variant_up() {
+        check(
+            r#"
+enum Hello {
+    One,
+    Two$0$0
+}
+
+fn main() {}
+            "#,
+            expect![[r#"
+enum Hello {
+    Two,
+    One
+}
+
+fn main() {}
+            "#]],
+            Direction::Up,
+        );
+    }
+
+    #[test]
+    fn test_moves_type_bound_up() {
+        check(
+            r#"
+trait One {}
+
+trait Two {}
+
+fn test<T: One + Two$0$0>(t: T) {}
+
+fn main() {}
+            "#,
+            expect![[r#"
+trait One {}
+
+trait Two {}
+
+fn test<T: Two + One>(t: T) {}
+
+fn main() {}
             "#]],
             Direction::Up,
         );
