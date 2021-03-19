@@ -95,7 +95,7 @@ fn move_in_direction(
     }
 }
 
-fn swap_sibling_in_list<'i, A: AstNode + Clone, I: Iterator<Item = A>>(
+fn swap_sibling_in_list<A: AstNode + Clone, I: Iterator<Item = A>>(
     list: I,
     range: TextRange,
     direction: Direction,
