@@ -4,7 +4,6 @@
 
 use crate::cell::{Cell, Ref, RefCell, RefMut, UnsafeCell};
 use crate::char::EscapeDebugExtArgs;
-use crate::iter;
 use crate::marker::PhantomData;
 use crate::mem;
 use crate::num::fmt as numfmt;
@@ -347,6 +346,7 @@ impl<'a> Arguments<'a> {
     #[inline]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
     pub fn new_v1(pieces: &'a [&'static str], args: &'a [ArgumentV1<'a>]) -> Arguments<'a> {
+        assert!((args.len()..=args.len() + 1).contains(&pieces.len()));
         Arguments { pieces, fmt: None, args }
     }
 
@@ -1129,7 +1129,10 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
     match args.fmt {
         None => {
             // We can use default formatting parameters for all arguments.
-            for (arg, piece) in iter::zip(args.args, args.pieces) {
+            for (i, arg) in args.args.iter().enumerate() {
+                // SAFETY: args.args and args.pieces come from the same Arguments,
+                // which guarantees the indexes are always within bounds.
+                let piece = unsafe { args.pieces.get_unchecked(i) };
                 if !piece.is_empty() {
                     formatter.buf.write_str(*piece)?;
                 }
@@ -1140,7 +1143,10 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
         Some(fmt) => {
             // Every spec has a corresponding argument that is preceded by
             // a string piece.
-            for (arg, piece) in iter::zip(fmt, args.pieces) {
+            for (i, arg) in fmt.iter().enumerate() {
+                // SAFETY: fmt and args.pieces come from the same Arguments,
+                // which guarantees the indexes are always within bounds.
+                let piece = unsafe { args.pieces.get_unchecked(i) };
                 if !piece.is_empty() {
                     formatter.buf.write_str(*piece)?;
                 }
