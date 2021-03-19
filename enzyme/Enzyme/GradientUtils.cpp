@@ -1666,9 +1666,10 @@ bool GradientUtils::shouldRecompute(const Value *val,
 }
 
 GradientUtils *GradientUtils::CreateFromClone(
-    Function *todiff, TargetLibraryInfo &TLI, TypeAnalysis &TA, AAResults &AA,
-    DIFFE_TYPE retType, const std::vector<DIFFE_TYPE> &constant_args,
-    bool returnUsed, std::map<AugmentedStruct, int> &returnMapping) {
+    EnzymeLogic &Logic, Function *todiff, TargetLibraryInfo &TLI,
+    TypeAnalysis &TA, DIFFE_TYPE retType,
+    const std::vector<DIFFE_TYPE> &constant_args, bool returnUsed,
+    std::map<AugmentedStruct, int> &returnMapping) {
   assert(!todiff->empty());
 
   // Since this is forward pass this should always return the tape (at index 0)
@@ -1712,23 +1713,24 @@ GradientUtils *GradientUtils::CreateFromClone(
   SmallPtrSet<Value *, 4> constant_values;
   SmallPtrSet<Value *, 4> nonconstant_values;
 
-  auto newFunc = CloneFunctionWithReturns(
-      /*topLevel*/ false, todiff, AA, TLI, invertedPointers, constant_args,
+  auto newFunc = Logic.PPC.CloneFunctionWithReturns(
+      /*topLevel*/ false, todiff, invertedPointers, constant_args,
       constant_values, nonconstant_values, returnvals,
       /*returnValue*/ returnValue, "fakeaugmented_" + todiff->getName(),
       &originalToNew,
       /*diffeReturnArg*/ false, /*additionalArg*/ nullptr);
 
-  auto res = new GradientUtils(newFunc, todiff, TLI, TA, AA, invertedPointers,
-                               constant_values, nonconstant_values,
-                               /*ActiveValues*/ retType != DIFFE_TYPE::CONSTANT,
-                               originalToNew, DerivativeMode::Forward);
+  auto res =
+      new GradientUtils(Logic, newFunc, todiff, TLI, TA, invertedPointers,
+                        constant_values, nonconstant_values,
+                        /*ActiveValues*/ retType != DIFFE_TYPE::CONSTANT,
+                        originalToNew, DerivativeMode::Forward);
   return res;
 }
 
 DiffeGradientUtils *DiffeGradientUtils::CreateFromClone(
-    bool topLevel, Function *todiff, TargetLibraryInfo &TLI, TypeAnalysis &TA,
-    AAResults &AA, DIFFE_TYPE retType,
+    EnzymeLogic &Logic, bool topLevel, Function *todiff, TargetLibraryInfo &TLI,
+    TypeAnalysis &TA, DIFFE_TYPE retType,
     const std::vector<DIFFE_TYPE> &constant_args, ReturnType returnValue,
     Type *additionalArg) {
   assert(!todiff->empty());
@@ -1742,13 +1744,13 @@ DiffeGradientUtils *DiffeGradientUtils::CreateFromClone(
   SmallPtrSet<Value *, 4> nonconstant_values;
 
   bool diffeReturnArg = retType == DIFFE_TYPE::OUT_DIFF;
-  auto newFunc = CloneFunctionWithReturns(
-      topLevel, todiff, AA, TLI, invertedPointers, constant_args,
-      constant_values, nonconstant_values, returnvals, returnValue,
-      "diffe" + todiff->getName(), &originalToNew,
+  auto newFunc = Logic.PPC.CloneFunctionWithReturns(
+      topLevel, todiff, invertedPointers, constant_args, constant_values,
+      nonconstant_values, returnvals, returnValue, "diffe" + todiff->getName(),
+      &originalToNew,
       /*diffeReturnArg*/ diffeReturnArg, additionalArg);
   auto res = new DiffeGradientUtils(
-      newFunc, todiff, TLI, TA, AA, invertedPointers, constant_values,
+      Logic, newFunc, todiff, TLI, TA, invertedPointers, constant_values,
       nonconstant_values, /*ActiveValues*/ retType != DIFFE_TYPE::CONSTANT,
       originalToNew, topLevel ? DerivativeMode::Both : DerivativeMode::Reverse);
   return res;
@@ -2014,14 +2016,14 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
 
     // TODO re atomic add consider forcing it to be atomic always as fallback if
     // used in a parallel context
-    auto &augdata = CreateAugmentedPrimal(
-        fn, retType, /*constant_args*/ types, TLI, TA, OrigAA,
+    auto &augdata = Logic.CreateAugmentedPrimal(
+        fn, retType, /*constant_args*/ types, TLI, TA,
         /*returnUsed*/ !fn->getReturnType()->isEmptyTy() &&
             !fn->getReturnType()->isVoidTy(),
         type_args, uncacheable_args, /*forceAnonymousTape*/ true, AtomicAdd,
         /*PostOpt*/ false);
-    Constant *newf = CreatePrimalAndGradient(
-        fn, retType, /*constant_args*/ types, TLI, TA, OrigAA,
+    Constant *newf = Logic.CreatePrimalAndGradient(
+        fn, retType, /*constant_args*/ types, TLI, TA,
         /*returnValue*/ false, /*dretPtr*/ false, /*topLevel*/ false,
         /*additionalArg*/ Type::getInt8PtrTy(fn->getContext()), type_args,
         uncacheable_args,

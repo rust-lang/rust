@@ -94,14 +94,15 @@ static inline std::string to_string(DerivativeMode mode) {
 enum class AugmentedStruct;
 class GradientUtils : public CacheUtility {
 public:
+  EnzymeLogic &Logic;
   bool AtomicAdd;
   DerivativeMode mode;
   llvm::Function *oldFunc;
   ValueToValueMapTy invertedPointers;
-  DominatorTree OrigDT;
-  PostDominatorTree OrigPDT;
+  DominatorTree &OrigDT;
+  PostDominatorTree &OrigPDT;
+  LoopInfo &OrigLI;
   std::shared_ptr<ActivityAnalyzer> ATA;
-  LoopInfo OrigLI;
   SmallVector<BasicBlock *, 12> originalBlocks;
   ValueMap<BasicBlock *, BasicBlock *> reverseBlocks;
   SmallVector<PHINode *, 4> fictiousPHIs;
@@ -437,6 +438,9 @@ public:
 
   ValueToValueMapTy unwrappedLoads;
   void replaceAWithB(Value *A, Value *B, bool storeInCache = false) override {
+    if (A == B)
+      return;
+    assert(A->getType() == B->getType());
     for (unsigned i = 0; i < addedTapeVals.size(); ++i) {
       if (addedTapeVals[i] == A) {
         addedTapeVals[i] = B;
@@ -710,22 +714,22 @@ public:
 public:
   AAResults &OrigAA;
   TypeAnalysis &TA;
-  GradientUtils(Function *newFunc_, Function *oldFunc_, TargetLibraryInfo &TLI_,
-                TypeAnalysis &TA_, AAResults &AA_,
+  GradientUtils(EnzymeLogic &Logic, Function *newFunc_, Function *oldFunc_,
+                TargetLibraryInfo &TLI_, TypeAnalysis &TA_,
                 ValueToValueMapTy &invertedPointers_,
                 const SmallPtrSetImpl<Value *> &constantvalues_,
                 const SmallPtrSetImpl<Value *> &activevals_, bool ActiveReturn,
                 ValueToValueMapTy &originalToNewFn_, DerivativeMode mode)
-      : CacheUtility(TLI_, newFunc_), mode(mode), oldFunc(oldFunc_),
-        invertedPointers(), OrigDT(*oldFunc_),
-#if LLVM_VERSION_MAJOR >= 7
-        OrigPDT(*oldFunc_),
-#else
-        OrigPDT(),
-#endif
-        ATA(new ActivityAnalyzer(AA_, TLI_, constantvalues_, activevals_,
+      : CacheUtility(TLI_, newFunc_), Logic(Logic), mode(mode),
+        oldFunc(oldFunc_), invertedPointers(),
+        OrigDT(Logic.PPC.FAM.getResult<llvm::DominatorTreeAnalysis>(*oldFunc_)),
+        OrigPDT(Logic.PPC.FAM.getResult<llvm::PostDominatorTreeAnalysis>(
+            *oldFunc_)),
+        OrigLI(Logic.PPC.FAM.getResult<llvm::LoopAnalysis>(*oldFunc_)),
+        ATA(new ActivityAnalyzer(Logic.PPC.getAAResultsFromFunction(oldFunc_),
+                                 TLI_, constantvalues_, activevals_,
                                  ActiveReturn)),
-        OrigLI(OrigDT), OrigAA(AA_), TA(TA_) {
+        OrigAA(Logic.PPC.getAAResultsFromFunction(oldFunc_)), TA(TA_) {
     if (oldFunc_->getSubprogram()) {
       assert(originalToNewFn_.hasMD());
     }
@@ -758,8 +762,8 @@ public:
 
 public:
   static GradientUtils *
-  CreateFromClone(Function *todiff, TargetLibraryInfo &TLI, TypeAnalysis &TA,
-                  AAResults &AA, DIFFE_TYPE retType,
+  CreateFromClone(EnzymeLogic &Logic, Function *todiff, TargetLibraryInfo &TLI,
+                  TypeAnalysis &TA, DIFFE_TYPE retType,
                   const std::vector<DIFFE_TYPE> &constant_args, bool returnUsed,
                   std::map<AugmentedStruct, int> &returnMapping);
 
@@ -1113,14 +1117,14 @@ public:
 };
 
 class DiffeGradientUtils : public GradientUtils {
-  DiffeGradientUtils(Function *newFunc_, Function *oldFunc_,
+  DiffeGradientUtils(EnzymeLogic &Logic, Function *newFunc_, Function *oldFunc_,
                      TargetLibraryInfo &TLI, TypeAnalysis &TA,
-                     AAResults &OrigAA, ValueToValueMapTy &invertedPointers_,
+                     ValueToValueMapTy &invertedPointers_,
                      const SmallPtrSetImpl<Value *> &constantvalues_,
                      const SmallPtrSetImpl<Value *> &returnvals_,
                      bool ActiveReturn, ValueToValueMapTy &origToNew_,
                      DerivativeMode mode)
-      : GradientUtils(newFunc_, oldFunc_, TLI, TA, OrigAA, invertedPointers_,
+      : GradientUtils(Logic, newFunc_, oldFunc_, TLI, TA, invertedPointers_,
                       constantvalues_, returnvals_, ActiveReturn, origToNew_,
                       mode) {
     assert(reverseBlocks.size() == 0);
@@ -1136,8 +1140,8 @@ class DiffeGradientUtils : public GradientUtils {
 public:
   ValueToValueMapTy differentials;
   static DiffeGradientUtils *
-  CreateFromClone(bool topLevel, Function *todiff, TargetLibraryInfo &TLI,
-                  TypeAnalysis &TA, AAResults &AA, DIFFE_TYPE retType,
+  CreateFromClone(EnzymeLogic &Logic, bool topLevel, Function *todiff,
+                  TargetLibraryInfo &TLI, TypeAnalysis &TA, DIFFE_TYPE retType,
                   const std::vector<DIFFE_TYPE> &constant_args,
                   ReturnType returnValue, Type *additionalArg);
 

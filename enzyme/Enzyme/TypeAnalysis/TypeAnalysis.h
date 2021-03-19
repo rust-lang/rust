@@ -357,6 +357,9 @@ public:
     analyzeFunction(fn);
     return analyzedFunctions.find(fn)->second.getReturnAnalysis();
   }
+
+  /// Clear existing analyses
+  void clear();
 };
 
 #endif

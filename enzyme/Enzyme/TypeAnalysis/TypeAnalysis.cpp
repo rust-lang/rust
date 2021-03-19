@@ -3186,6 +3186,10 @@ std::set<int64_t> FnTypeInfo::knownIntegralValues(
     return {constant->getSExtValue()};
   }
 
+  if (auto IP = dyn_cast<ConstantPointerNull>(val)) {
+    return {0};
+  }
+
   assert(KnownValues.size() == Function->getFunctionType()->getNumParams());
 
   if (auto arg = dyn_cast<llvm::Argument>(val)) {
@@ -3328,6 +3332,16 @@ std::set<int64_t> FnTypeInfo::knownIntegralValues(
         for (auto val0 : inset0) {
           for (auto val1 : inset1) {
             insert(val0 - val1);
+          }
+        }
+      }
+    }
+
+    if (bo->getOpcode() == BinaryOperator::SDiv) {
+      if (inset0.size() == 1 || inset1.size() == 1) {
+        for (auto val0 : inset0) {
+          for (auto val1 : inset1) {
+            insert(val0 / val1);
           }
         }
       }
@@ -3780,3 +3794,5 @@ std::set<int64_t> TypeResults::knownIntegralValues(Value *val) const {
 std::set<int64_t> TypeAnalyzer::knownIntegralValues(Value *val) {
   return fntypeinfo.knownIntegralValues(val, *DT, intseen);
 }
+
+void TypeAnalysis::clear() { analyzedFunctions.clear(); }

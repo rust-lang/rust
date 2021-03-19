@@ -36,11 +36,10 @@ TargetLibraryInfo eunwrap(LLVMTargetLibraryInfoRef P) {
   return TargetLibraryInfo(*reinterpret_cast<TargetLibraryInfoImpl *>(P));
 }
 
+EnzymeLogic &eunwrap(EnzymeLogicRef LR) { return *(EnzymeLogic *)LR; }
+
 TypeAnalysis &eunwrap(EnzymeTypeAnalysisRef TAR) {
   return *(TypeAnalysis *)TAR;
-}
-llvm::AAResults &eunwrap(EnzymeAAResultsRef AAR) {
-  return *(llvm::AAResults *)AAR.AA;
 }
 AugmentedReturn *eunwrap(EnzymeAugmentedReturnPtr ARP) {
   return (AugmentedReturn *)ARP;
@@ -140,6 +139,14 @@ FnTypeInfo eunwrap(CFnTypeInfo CTI, llvm::Function *F) {
 
 extern "C" {
 
+EnzymeLogicRef CreateEnzymeLogic() {
+  return (EnzymeLogicRef)(new EnzymeLogic());
+}
+
+void ClearEnzymeLogic(EnzymeLogicRef Ref) { eunwrap(Ref).clear(); }
+
+void FreeEnzymeLogic(EnzymeLogicRef Ref) { delete (EnzymeLogic *)Ref; }
+
 EnzymeTypeAnalysisRef CreateTypeAnalysis(char *TripleStr,
                                          char **customRuleNames,
                                          CustomRuleType *customRules,
@@ -178,6 +185,9 @@ EnzymeTypeAnalysisRef CreateTypeAnalysis(char *TripleStr,
   }
   return (EnzymeTypeAnalysisRef)TA;
 }
+
+void ClearTypeAnalysis(EnzymeTypeAnalysisRef TAR) { eunwrap(TAR).clear(); }
+
 void FreeTypeAnalysis(EnzymeTypeAnalysisRef TAR) {
   TypeAnalysis *TA = (TypeAnalysis *)TAR;
   delete &TA->TLI.Impl;
@@ -203,9 +213,9 @@ void EnzymeRegisterAllocationHandler(char *Name, CustomShadowAlloc AHandle,
 }
 
 LLVMValueRef EnzymeCreatePrimalAndGradient(
-    LLVMValueRef todiff, CDIFFE_TYPE retType, CDIFFE_TYPE *constant_args,
-    size_t constant_args_size, EnzymeTypeAnalysisRef TA,
-    EnzymeAAResultsRef global_AA, uint8_t returnValue, uint8_t dretUsed,
+    EnzymeLogicRef Logic, LLVMValueRef todiff, CDIFFE_TYPE retType,
+    CDIFFE_TYPE *constant_args, size_t constant_args_size,
+    EnzymeTypeAnalysisRef TA, uint8_t returnValue, uint8_t dretUsed,
     uint8_t topLevel, LLVMTypeRef additionalArg, CFnTypeInfo typeInfo,
     uint8_t *_uncacheable_args, size_t uncacheable_args_size,
     EnzymeAugmentedReturnPtr augmented, uint8_t AtomicAdd, uint8_t PostOpt) {
@@ -219,17 +229,16 @@ LLVMValueRef EnzymeCreatePrimalAndGradient(
     uncacheable_args[&arg] = _uncacheable_args[argnum];
     argnum++;
   }
-  return wrap(CreatePrimalAndGradient(
+  return wrap(eunwrap(Logic).CreatePrimalAndGradient(
       cast<Function>(unwrap(todiff)), (DIFFE_TYPE)retType, nconstant_args,
-      eunwrap(TA).TLI, eunwrap(TA), eunwrap(global_AA), returnValue, dretUsed,
-      topLevel, unwrap(additionalArg),
-      eunwrap(typeInfo, cast<Function>(unwrap(todiff))), uncacheable_args,
-      eunwrap(augmented), AtomicAdd, PostOpt));
+      eunwrap(TA).TLI, eunwrap(TA), returnValue, dretUsed, topLevel,
+      unwrap(additionalArg), eunwrap(typeInfo, cast<Function>(unwrap(todiff))),
+      uncacheable_args, eunwrap(augmented), AtomicAdd, PostOpt));
 }
 EnzymeAugmentedReturnPtr EnzymeCreateAugmentedPrimal(
-    LLVMValueRef todiff, CDIFFE_TYPE retType, CDIFFE_TYPE *constant_args,
-    size_t constant_args_size, EnzymeTypeAnalysisRef TA,
-    EnzymeAAResultsRef global_AA, uint8_t returnUsed, CFnTypeInfo typeInfo,
+    EnzymeLogicRef Logic, LLVMValueRef todiff, CDIFFE_TYPE retType,
+    CDIFFE_TYPE *constant_args, size_t constant_args_size,
+    EnzymeTypeAnalysisRef TA, uint8_t returnUsed, CFnTypeInfo typeInfo,
     uint8_t *_uncacheable_args, size_t uncacheable_args_size,
     uint8_t forceAnonymousTape, uint8_t AtomicAdd, uint8_t PostOpt) {
 
@@ -243,50 +252,11 @@ EnzymeAugmentedReturnPtr EnzymeCreateAugmentedPrimal(
     uncacheable_args[&arg] = _uncacheable_args[argnum];
     argnum++;
   }
-  return ewrap(CreateAugmentedPrimal(
+  return ewrap(eunwrap(Logic).CreateAugmentedPrimal(
       cast<Function>(unwrap(todiff)), (DIFFE_TYPE)retType, nconstant_args,
-      eunwrap(TA).TLI, eunwrap(TA), eunwrap(global_AA), returnUsed,
+      eunwrap(TA).TLI, eunwrap(TA), returnUsed,
       eunwrap(typeInfo, cast<Function>(unwrap(todiff))), uncacheable_args,
       forceAnonymousTape, AtomicAdd, PostOpt));
-}
-
-EnzymeAAResultsRef EnzymeGetGlobalAA(LLVMModuleRef M) {
-  ModuleAnalysisManager *AM = new ModuleAnalysisManager();
-  AM->registerPass([] { return CallGraphAnalysis(); });
-  FunctionAnalysisManager *FAM = new FunctionAnalysisManager();
-  AM->registerPass([=] { return FunctionAnalysisManagerModuleProxy(*FAM); });
-  FAM->registerPass([=] { return ModuleAnalysisManagerFunctionProxy(*AM); });
-  FAM->registerPass([] { return TargetLibraryAnalysis(); });
-#if LLVM_VERSION_MAJOR >= 8
-  AM->registerPass([] { return PassInstrumentationAnalysis(); });
-  FAM->registerPass([] { return PassInstrumentationAnalysis(); });
-#endif
-
-#if LLVM_VERSION_MAJOR >= 10
-  auto GetTLI = [=](Function &F) -> TargetLibraryInfo & {
-    return FAM->getResult<TargetLibraryAnalysis>(F);
-  };
-  return (EnzymeAAResultsRef){
-      (struct EnzymeOpaqueAAResults *)(new GlobalsAAResult(
-          GlobalsAAResult::analyzeModule(
-              *unwrap(M), GetTLI,
-              AM->getResult<CallGraphAnalysis>(*unwrap(M))))),
-      AM, FAM};
-#else
-  AM->registerPass([] { return TargetLibraryAnalysis(); });
-  return (EnzymeAAResultsRef){
-      (struct EnzymeOpaqueAAResults *)(new GlobalsAAResult(
-          GlobalsAAResult::analyzeModule(
-              *unwrap(M), AM->getResult<TargetLibraryAnalysis>(*unwrap(M)),
-              AM->getResult<CallGraphAnalysis>(*unwrap(M))))),
-      AM, FAM};
-
-#endif
-}
-void EnzymeFreeGlobalAA(EnzymeAAResultsRef AA) {
-  delete ((GlobalsAAResult *)AA.AA);
-  delete ((ModuleAnalysisManager *)AA.AM);
-  delete ((FunctionAnalysisManager *)AA.FAM);
 }
 
 LLVMValueRef

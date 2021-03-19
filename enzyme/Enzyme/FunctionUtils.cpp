@@ -47,6 +47,8 @@
 #include "llvm/Analysis/MemorySSA.h"
 #include "llvm/Analysis/OptimizationRemarkEmitter.h"
 
+#include "llvm/CodeGen/UnreachableBlockElim.h"
+
 #include "llvm/Analysis/TypeBasedAliasAnalysis.h"
 
 #if LLVM_VERSION_MAJOR > 6
@@ -57,13 +59,13 @@
 #include "llvm/Analysis/TargetTransformInfo.h"
 
 #include "llvm/Transforms/IPO/FunctionAttrs.h"
+#include "llvm/Transforms/Utils/Mem2Reg.h"
 
 #if LLVM_VERSION_MAJOR > 6
 #include "llvm/Transforms/Utils.h"
 #endif
 
 #include "llvm/Transforms/Utils/Cloning.h"
-#include "llvm/Transforms/Utils/PromoteMemToReg.h"
 
 #if LLVM_VERSION_MAJOR > 6
 #include "llvm/Transforms/Scalar/InstSimplifyPass.h"
@@ -167,42 +169,15 @@ bool couldFunctionArgumentCapture(llvm::CallInst *CI, llvm::Value *val) {
   return false;
 }
 
-// Locally run mem2reg on F, if ASsumptionCache AC is given it will
-// be updated
-static bool PromoteMemoryToRegister(Function &F, DominatorTree &DT,
-                                    AssumptionCache *AC = nullptr) {
-  std::vector<AllocaInst *> Allocas;
-  BasicBlock &BB = F.getEntryBlock(); // Get the entry node for the function
-  bool Changed = false;
-
-  while (true) {
-    Allocas.clear();
-
-    // Find allocas that are safe to promote, by looking at all instructions in
-    // the entry node
-    for (BasicBlock::iterator I = BB.begin(), E = --BB.end(); I != E; ++I)
-      if (AllocaInst *AI = dyn_cast<AllocaInst>(I)) // Is it an alloca?
-        if (isAllocaPromotable(AI))
-          Allocas.push_back(AI);
-
-    if (Allocas.empty())
-      break;
-
-    PromoteMemToReg(Allocas, DT, AC);
-    Changed = true;
-  }
-  return Changed;
-}
-
+enum RecurType {
+  MaybeRecursive = 1,
+  NotRecursive = 2,
+  DefinitelyRecursive = 3,
+};
 /// Return whether this function eventually calls itself
-static bool IsFunctionRecursive(Function *F) {
-  enum RecurType {
-    MaybeRecursive = 1,
-    NotRecursive = 2,
-    DefinitelyRecursive = 3,
-  };
-
-  static std::map<const Function *, RecurType> Results;
+static bool
+IsFunctionRecursive(Function *F,
+                    std::map<const Function *, RecurType> &Results) {
 
   // If we haven't seen this function before, look at all callers
   // and mark this as potentially recursive. If we see this function
@@ -218,14 +193,14 @@ static bool IsFunctionRecursive(Function *F) {
             continue;
           if (call->getCalledFunction()->empty())
             continue;
-          IsFunctionRecursive(call->getCalledFunction());
+          IsFunctionRecursive(call->getCalledFunction(), Results);
         }
         if (auto call = dyn_cast<InvokeInst>(&I)) {
           if (call->getCalledFunction() == nullptr)
             continue;
           if (call->getCalledFunction()->empty())
             continue;
-          IsFunctionRecursive(call->getCalledFunction());
+          IsFunctionRecursive(call->getCalledFunction(), Results);
         }
       }
     }
@@ -491,10 +466,10 @@ OldAllocationSize(Value *Ptr, CallInst *Loc, Function *NewF, IntegerType *T,
 }
 
 /// Calls to realloc with an appropriate implementation
-void ReplaceReallocs(Function *NewF, bool mem2reg) {
+void PreProcessCache::ReplaceReallocs(Function *NewF, bool mem2reg) {
   if (mem2reg) {
-    DominatorTree DT(*NewF);
-    PromoteMemoryToRegister(*NewF, DT);
+    auto PA = PromotePass().run(*NewF, FAM);
+    FAM.invalidate(*NewF, PA);
   }
 
   std::vector<CallInst *> ToConvert;
@@ -593,12 +568,16 @@ void ReplaceReallocs(Function *NewF, bool mem2reg) {
     CI->eraseFromParent();
   }
 
-  DominatorTree DT(*NewF);
-  PromoteMemToReg(memoryLocations, DT, /*AC*/ nullptr);
+  PreservedAnalyses PA;
+  FAM.invalidate(*NewF, PA);
+
+  PA = PromotePass().run(*NewF, FAM);
+  FAM.invalidate(*NewF, PA);
 }
 
 /// Perform recursive inlinining on NewF up to the given limit
 static void ForceRecursiveInlining(Function *NewF, size_t Limit) {
+  std::map<const Function *, RecurType> RecurResults;
   for (size_t count = 0; count < Limit; count++) {
     for (auto &BB : *NewF) {
       for (auto &I : BB) {
@@ -616,7 +595,7 @@ static void ForceRecursiveInlining(Function *NewF, size_t Limit) {
                   Attribute::ReturnsTwice) ||
               CI->getCalledFunction()->hasFnAttribute(Attribute::NoInline))
             continue;
-          if (IsFunctionRecursive(CI->getCalledFunction())) {
+          if (IsFunctionRecursive(CI->getCalledFunction(), RecurResults)) {
             LLVM_DEBUG(llvm::dbgs()
                        << "not inlining recursive "
                        << CI->getCalledFunction()->getName() << "\n");
@@ -640,13 +619,14 @@ static void ForceRecursiveInlining(Function *NewF, size_t Limit) {
   }
 }
 
-void CanonicalizeLoops(Function *F, TargetLibraryInfo &TLI) {
+void CanonicalizeLoops(Function *F, FunctionAnalysisManager &FAM) {
 
-  DominatorTree DT(*F);
-  LoopInfo LI(DT);
-  AssumptionCache AC(*F);
+  DominatorTree &DT = FAM.getResult<DominatorTreeAnalysis>(*F);
+  LoopInfo &LI = FAM.getResult<LoopAnalysis>(*F);
+  AssumptionCache &AC = FAM.getResult<AssumptionAnalysis>(*F);
+  TargetLibraryInfo &TLI = FAM.getResult<TargetLibraryAnalysis>(*F);
   MustExitScalarEvolution SE(*F, TLI, AC, DT, LI);
-  for (auto &L : LI) {
+  for (Loop *L : LI) {
     auto pair =
         InsertNewCanonicalIV(L, Type::getInt64Ty(F->getContext()), "tiv");
     PHINode *CanonicalIV = pair.first;
@@ -656,37 +636,73 @@ void CanonicalizeLoops(Function *F, TargetLibraryInfo &TLI) {
         [&](Instruction *I, Value *V) { I->replaceAllUsesWith(V); },
         [&](Instruction *I) { I->eraseFromParent(); });
   }
+  PreservedAnalyses PA;
+  PA.preserve<AssumptionAnalysis>();
+  PA.preserve<TargetLibraryAnalysis>();
+  PA.preserve<LoopAnalysis>();
+  PA.preserve<DominatorTreeAnalysis>();
+  PA.preserve<PostDominatorTreeAnalysis>();
+  PA.preserve<TypeBasedAA>();
+  PA.preserve<BasicAA>();
+  FAM.invalidate(*F, PA);
 }
 
-Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
-                             bool topLevel) {
-  static std::map<std::pair<Function *, bool>, Function *> cache;
+PreProcessCache::PreProcessCache() {
+  MAM.registerPass([&] { return FunctionAnalysisManagerModuleProxy(FAM); });
+  FAM.registerPass([&] { return ModuleAnalysisManagerFunctionProxy(MAM); });
+  FAM.registerPass([] { return AssumptionAnalysis(); });
+  FAM.registerPass([] { return TargetLibraryAnalysis(); });
+  FAM.registerPass([] { return LoopAnalysis(); });
+  FAM.registerPass([] { return DominatorTreeAnalysis(); });
+#if LLVM_VERSION_MAJOR > 6
+  FAM.registerPass([] { return PhiValuesAnalysis(); });
+#endif
+
+  // Explicitly chose AA passes that are stateless
+  // and will not be invalidated
+  FAM.registerPass([] { return TypeBasedAA(); });
+  FAM.registerPass([] { return BasicAA(); });
+  MAM.registerPass([] { return GlobalsAA(); });
+  // SCEVAA causes some breakage/segfaults
+  // disable for now, consider enabling in future
+  // FAM.registerPass([] { return SCEVAA(); });
+
+  FAM.registerPass([] {
+    auto AM = AAManager();
+    AM.registerFunctionAnalysis<BasicAA>();
+    AM.registerFunctionAnalysis<TypeBasedAA>();
+    // AM.registerFunctionAnalysis<SCEVAA>();
+    AM.registerModuleAnalysis<GlobalsAA>();
+    return AM;
+  });
+
+  // used in optimizeintermediate
+  FAM.registerPass([] { return ScalarEvolutionAnalysis(); });
+
+  FAM.registerPass([] { return TargetIRAnalysis(); });
+  FAM.registerPass([] { return MemorySSAAnalysis(); });
+  FAM.registerPass([] { return MemoryDependenceAnalysis(); });
+  FAM.registerPass([] { return OptimizationRemarkEmitterAnalysis(); });
+  FAM.registerPass([] { return LazyValueAnalysis(); });
+#if LLVM_VERSION_MAJOR >= 8
+  FAM.registerPass([] { return PassInstrumentationAnalysis(); });
+#endif
+
+  // Used by GradientUtils
+  FAM.registerPass([] { return PostDominatorTreeAnalysis(); });
+}
+
+llvm::AAResults &
+PreProcessCache::getAAResultsFromFunction(llvm::Function *NewF) {
+  return FAM.getResult<AAManager>(*NewF);
+}
+
+Function *PreProcessCache::preprocessForClone(Function *F, bool topLevel) {
 
   // If we've already processed this, return the previous version
   // and derive aliasing information
   if (cache.find(std::make_pair(F, topLevel)) != cache.end()) {
     Function *NewF = cache[std::make_pair(F, topLevel)];
-    AssumptionCache *AC = new AssumptionCache(*NewF);
-    DominatorTree *DT = new DominatorTree(*NewF);
-    LoopInfo *LI = new LoopInfo(*DT);
-#if LLVM_VERSION_MAJOR > 6
-    PhiValues *PV = new PhiValues(*NewF);
-#endif
-    auto BAA = new BasicAAResult(NewF->getParent()->getDataLayout(),
-#if LLVM_VERSION_MAJOR > 6
-                                 *NewF,
-#endif
-                                 TLI, *AC, DT
-#if LLVM_VERSION_MAJOR <= 12
-                                 , LI
-#endif
-#if LLVM_VERSION_MAJOR > 6
-                                 ,
-                                 PV
-#endif
-    );
-    AA.addAAResult(*BAA);
-    AA.addAAResult(*(new TypeBasedAAResult()));
     return NewF;
   }
 
@@ -728,6 +744,8 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
   if (EnzymePreopt) {
     if (EnzymeInline) {
       ForceRecursiveInlining(NewF, /*Limit*/ EnzymeInlineCount);
+      PreservedAnalyses PA;
+      FAM.invalidate(*NewF, PA);
     }
   }
 
@@ -747,29 +765,9 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
 
     // TODO consider using TBAA and globals as well
     // instead of just BasicAA
-    AssumptionCache AC(*NewF);
-    DominatorTree DT(*NewF);
-    LoopInfo LI(DT);
-#if LLVM_VERSION_MAJOR > 6
-    PhiValues PV(*NewF);
-#endif
-    BasicAAResult BAA(NewF->getParent()->getDataLayout(),
-#if LLVM_VERSION_MAJOR > 6
-                      *NewF,
-#endif
-                      TLI, AC, &DT
-#if LLVM_VERSION_MAJOR <= 12
-                                 , &LI
-#endif
-#if LLVM_VERSION_MAJOR > 6
-                      ,
-                      &PV
-#endif
-    );
-    AAResults AA2(TLI);
-    AA2.addAAResult(BAA);
-    // TypeBasedAAResult TBAA();
-    // AA2.addAAResult(TBAA);
+    AAResults AA2(FAM.getResult<TargetLibraryAnalysis>(*NewF));
+    AA2.addAAResult(FAM.getResult<BasicAA>(*NewF));
+    AA2.addAAResult(FAM.getResult<TypeBasedAA>(*NewF));
 
     for (auto &g : NewF->getParent()->globals()) {
       bool inF = false;
@@ -1045,6 +1043,10 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
     legacy::FunctionPassManager PM(NewF->getParent());
     Builder.populateFunctionPassManager(PM);
     PM.run(*NewF);
+    {
+      PreservedAnalyses PA;
+      FAM.invalidate(*NewF, PA);
+    }
   }
 
   {
@@ -1063,14 +1065,17 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
           {
             if (castinst->isCast()) {
               if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-                if (isDeallocationFunction(*fn, TLI)) {
+                if (isDeallocationFunction(
+                        *fn, FAM.getResult<TargetLibraryAnalysis>(*NewF))) {
                   called = fn;
                 }
               }
             }
           }
 
-          if (called && isDeallocationFunction(*called, TLI)) {
+          if (called &&
+              isDeallocationFunction(
+                  *called, FAM.getResult<TargetLibraryAnalysis>(*NewF))) {
             FreesToErase.push_back(CI);
           }
         }
@@ -1081,137 +1086,112 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
     for (auto Free : FreesToErase) {
       Free->eraseFromParent();
     }
+    PreservedAnalyses PA;
+    PA.preserve<AssumptionAnalysis>();
+    PA.preserve<TargetLibraryAnalysis>();
+    PA.preserve<LoopAnalysis>();
+    PA.preserve<DominatorTreeAnalysis>();
+    PA.preserve<PostDominatorTreeAnalysis>();
+    PA.preserve<TypeBasedAA>();
+    PA.preserve<BasicAA>();
+    PA.preserve<ScalarEvolutionAnalysis>();
+#if LLVM_VERSION_MAJOR > 6
+    PA.preserve<PhiValuesAnalysis>();
+#endif
+    FAM.invalidate(*NewF, PA);
   }
 
   if (EnzymePreopt) {
     {
-      FunctionAnalysisManager AM;
-      AM.registerPass([] { return TargetLibraryAnalysis(); });
-      AM.registerPass([] { return ScalarEvolutionAnalysis(); });
-      LowerInvokePass().run(*NewF, AM);
-#if LLVM_VERSION_MAJOR >= 9
-      llvm::EliminateUnreachableBlocks(*NewF);
-#else
-      removeUnreachableBlocks(*NewF);
-#endif
+      auto PA = LowerInvokePass().run(*NewF, FAM);
+      FAM.invalidate(*NewF, PA);
+    }
+    {
+      auto PA = UnreachableBlockElimPass().run(*NewF, FAM);
+      FAM.invalidate(*NewF, PA);
     }
 
     {
-      DominatorTree DT(*NewF);
-      PromoteMemoryToRegister(*NewF, DT);
+      auto PA = PromotePass().run(*NewF, FAM);
+      FAM.invalidate(*NewF, PA);
     }
 
     {
-      FunctionAnalysisManager AM;
-      AM.registerPass([] { return AAManager(); });
-      AM.registerPass([] { return ScalarEvolutionAnalysis(); });
-      AM.registerPass([] { return AssumptionAnalysis(); });
-      AM.registerPass([] { return TargetLibraryAnalysis(); });
-      AM.registerPass([] { return TargetIRAnalysis(); });
-      AM.registerPass([] { return MemorySSAAnalysis(); });
-      AM.registerPass([] { return DominatorTreeAnalysis(); });
-      AM.registerPass([] { return MemoryDependenceAnalysis(); });
-      AM.registerPass([] { return LoopAnalysis(); });
-      AM.registerPass([] { return OptimizationRemarkEmitterAnalysis(); });
-#if LLVM_VERSION_MAJOR > 6
-      AM.registerPass([] { return PhiValuesAnalysis(); });
-#endif
-      AM.registerPass([] { return LazyValueAnalysis(); });
-#if LLVM_VERSION_MAJOR >= 8
-      AM.registerPass([] { return PassInstrumentationAnalysis(); });
-#endif
 #if LLVM_VERSION_MAJOR <= 7
-      GVN().run(*NewF, AM);
+      auto PA = GVN().run(*NewF, FAM);
+      FAM.invalidate(*NewF, PA);
 #endif
-      SROA().run(*NewF, AM);
+    }
+
+    {
+      auto PA = SROA().run(*NewF, FAM);
+      FAM.invalidate(*NewF, PA);
     }
 
     ReplaceReallocs(NewF);
 
     {
-      FunctionAnalysisManager AM;
-      AM.registerPass([] { return AAManager(); });
-      AM.registerPass([] { return ScalarEvolutionAnalysis(); });
-      AM.registerPass([] { return AssumptionAnalysis(); });
-      AM.registerPass([] { return TargetLibraryAnalysis(); });
-      AM.registerPass([] { return TargetIRAnalysis(); });
-      AM.registerPass([] { return MemorySSAAnalysis(); });
-      AM.registerPass([] { return DominatorTreeAnalysis(); });
-      AM.registerPass([] { return MemoryDependenceAnalysis(); });
-      AM.registerPass([] { return LoopAnalysis(); });
-      AM.registerPass([] { return OptimizationRemarkEmitterAnalysis(); });
-#if LLVM_VERSION_MAJOR > 6
-      AM.registerPass([] { return PhiValuesAnalysis(); });
-#endif
-#if LLVM_VERSION_MAJOR >= 8
-      AM.registerPass([] { return PassInstrumentationAnalysis(); });
-#endif
-      AM.registerPass([] { return LazyValueAnalysis(); });
-      SROA().run(*NewF, AM);
+      auto PA = SROA().run(*NewF, FAM);
+      FAM.invalidate(*NewF, PA);
+    }
 
 #if LLVM_VERSION_MAJOR >= 12
-      SimplifyCFGOptions scfgo;
+    SimplifyCFGOptions scfgo;
 #else
-      SimplifyCFGOptions scfgo(
-          /*unsigned BonusThreshold=*/1, /*bool ForwardSwitchCond=*/false,
-          /*bool SwitchToLookup=*/false, /*bool CanonicalLoops=*/true,
-          /*bool SinkCommon=*/true, /*AssumptionCache *AssumpCache=*/nullptr);
+    SimplifyCFGOptions scfgo(
+        /*unsigned BonusThreshold=*/1, /*bool ForwardSwitchCond=*/false,
+        /*bool SwitchToLookup=*/false, /*bool CanonicalLoops=*/true,
+        /*bool SinkCommon=*/true, /*AssumptionCache *AssumpCache=*/nullptr);
 #endif
-      SimplifyCFGPass(scfgo).run(*NewF, AM);
+    {
+      auto PA = SimplifyCFGPass(scfgo).run(*NewF, FAM);
+      FAM.invalidate(*NewF, PA);
     }
   }
 
   ReplaceReallocs(NewF);
 
   // Run LoopSimplifyPass to ensure preheaders exist on all loops
-  {
-    FunctionAnalysisManager AM;
-    AM.registerPass([] { return LoopAnalysis(); });
-    AM.registerPass([] { return DominatorTreeAnalysis(); });
-    AM.registerPass([] { return ScalarEvolutionAnalysis(); });
-    AM.registerPass([] { return AssumptionAnalysis(); });
-#if LLVM_VERSION_MAJOR >= 8
-    AM.registerPass([] { return PassInstrumentationAnalysis(); });
-#endif
-#if LLVM_VERSION_MAJOR >= 8
-    AM.registerPass([] { return MemorySSAAnalysis(); });
-#endif
-    LoopSimplifyPass().run(*NewF, AM);
-  }
+  auto PA = LoopSimplifyPass().run(*NewF, FAM);
+  FAM.invalidate(*NewF, PA);
 
   // For subfunction calls upgrade stack allocations to mallocs
   // to ensure availability in the reverse pass
-  // TODO we should ensure these are kept to avoid accidentially creating
-  // a memory leak
   UpgradeAllocasToMallocs(NewF, topLevel);
 
-  {
-    // Alias analysis is necessary to ensure can query whether we can move a
-    // forward pass function
-    AssumptionCache *AC = new AssumptionCache(*NewF);
-    DominatorTree *DT = new DominatorTree(*NewF);
-    LoopInfo *LI = new LoopInfo(*DT);
-#if LLVM_VERSION_MAJOR > 6
-    PhiValues *PV = new PhiValues(*NewF);
-#endif
-    auto BAA = new BasicAAResult(NewF->getParent()->getDataLayout(),
-#if LLVM_VERSION_MAJOR > 6
-                                 *NewF,
-#endif
-                                 TLI, *AC, DT
-#if LLVM_VERSION_MAJOR <= 12
-                                 , LI
-#endif
-#if LLVM_VERSION_MAJOR > 6
-                                 ,
-                                 PV
-#endif
-    );
-    AA.addAAResult(*BAA);
-    AA.addAAResult(*(new TypeBasedAAResult()));
-  }
+  CanonicalizeLoops(NewF, FAM);
 
-  CanonicalizeLoops(NewF, TLI);
+  {
+    std::vector<Instruction *> ToErase;
+    for (auto &BB : *NewF) {
+      for (auto &I : BB) {
+        if (auto MTI = dyn_cast<MemTransferInst>(&I)) {
+
+          if (auto CI = dyn_cast<ConstantInt>(MTI->getOperand(2))) {
+            if (CI->getValue() == 0) {
+              ToErase.push_back(MTI);
+            }
+          }
+        }
+      }
+    }
+    for (auto E : ToErase) {
+      E->eraseFromParent();
+    }
+    PreservedAnalyses PA;
+    PA.preserve<AssumptionAnalysis>();
+    PA.preserve<TargetLibraryAnalysis>();
+    PA.preserve<LoopAnalysis>();
+    PA.preserve<DominatorTreeAnalysis>();
+    PA.preserve<PostDominatorTreeAnalysis>();
+    PA.preserve<TypeBasedAA>();
+    PA.preserve<BasicAA>();
+    PA.preserve<ScalarEvolutionAnalysis>();
+#if LLVM_VERSION_MAJOR > 6
+    PA.preserve<PhiValuesAnalysis>();
+#endif
+    FAM.invalidate(*NewF, PA);
+  }
 
   if (EnzymePrint)
     llvm::errs() << "after simplification :\n" << *NewF << "\n";
@@ -1224,14 +1204,14 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
   return NewF;
 }
 
-Function *CloneFunctionWithReturns(
-    bool topLevel, Function *&F, AAResults &AA, TargetLibraryInfo &TLI,
-    ValueToValueMapTy &ptrInputs, const std::vector<DIFFE_TYPE> &constant_args,
+Function *PreProcessCache::CloneFunctionWithReturns(
+    bool topLevel, Function *&F, ValueToValueMapTy &ptrInputs,
+    const std::vector<DIFFE_TYPE> &constant_args,
     SmallPtrSetImpl<Value *> &constants, SmallPtrSetImpl<Value *> &nonconstant,
     SmallPtrSetImpl<Value *> &returnvals, ReturnType returnValue, Twine name,
     ValueToValueMapTy *VMapO, bool diffeReturnArg, llvm::Type *additionalArg) {
   assert(!F->empty());
-  F = preprocessForClone(F, AA, TLI, topLevel);
+  F = preprocessForClone(F, topLevel);
   std::vector<Type *> RetTypes;
   if (returnValue == ReturnType::ArgsWithReturn ||
       returnValue == ReturnType::ArgsWithTwoReturns)
@@ -1402,35 +1382,12 @@ Function *CloneFunctionWithReturns(
   return NewF;
 }
 
-void optimizeIntermediate(GradientUtils *gutils, bool topLevel, Function *F) {
-  {
-    DominatorTree DT(*F);
-    PromoteMemoryToRegister(*F, DT);
-  }
-
-  FunctionAnalysisManager AM;
-  AM.registerPass([] { return AAManager(); });
-  AM.registerPass([] { return ScalarEvolutionAnalysis(); });
-  AM.registerPass([] { return AssumptionAnalysis(); });
-  AM.registerPass([] { return TargetLibraryAnalysis(); });
-  AM.registerPass([] { return TargetIRAnalysis(); });
-  AM.registerPass([] { return MemorySSAAnalysis(); });
-  AM.registerPass([] { return DominatorTreeAnalysis(); });
-  AM.registerPass([] { return MemoryDependenceAnalysis(); });
-  AM.registerPass([] { return LoopAnalysis(); });
-  AM.registerPass([] { return OptimizationRemarkEmitterAnalysis(); });
-#if LLVM_VERSION_MAJOR > 6
-  AM.registerPass([] { return PhiValuesAnalysis(); });
-#endif
-  AM.registerPass([] { return LazyValueAnalysis(); });
-  LoopAnalysisManager LAM;
-  AM.registerPass([&] { return LoopAnalysisManagerFunctionProxy(LAM); });
-  LAM.registerPass([&] { return FunctionAnalysisManagerLoopProxy(AM); });
-
+void PreProcessCache::optimizeIntermediate(Function *F) {
+  PromotePass().run(*F, FAM);
 #if LLVM_VERSION_MAJOR <= 7
-  GVN().run(*F, AM);
-  SROA().run(*F, AM);
-  EarlyCSEPass(/*memoryssa*/ true).run(*F, AM);
+  GVN().run(*F, FAM);
+  SROA().run(*F, FAM);
+  EarlyCSEPass(/*memoryssa*/ true).run(*F, FAM);
 #endif
 
   for (Function &Impl : *F->getParent()) {
@@ -1474,6 +1431,14 @@ void optimizeIntermediate(GradientUtils *gutils, bool topLevel, Function *F) {
   legacy::FunctionPassManager PM(F->getParent());
   Builder.populateFunctionPassManager(PM);
   PM.run(*F);
-
+  {
+    PreservedAnalyses PA;
+    FAM.invalidate(*F, PA);
+  }
   // DCEPass().run(*F, AM);
+}
+
+void PreProcessCache::clear() {
+  FAM.clear();
+  cache.clear();
 }

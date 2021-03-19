@@ -88,7 +88,7 @@ attributes #6 = { nounwind }
 ; CHECK-NEXT:   store double %x, double* %1, align 8, !tbaa !2: {}
 ; CHECK-NEXT:   tail call void @copy(double* %0, double* null, i64 3): {}
 ; CHECK-NEXT:   ret void: {}
-; CHECK-NEXT: copy - {} |{[-1]:Pointer, [-1,32]:Float@double}:{} {[-1]:Pointer, [-1,-1]:Anything}:{} {[-1]:Integer}:{3,} 
+; CHECK-NEXT: copy - {} |{[-1]:Pointer, [-1,32]:Float@double}:{} {[-1]:Pointer, [-1,-1]:Anything}:{0,} {[-1]:Integer}:{3,} 
 ; CHECK-NEXT: double* %dst: {[-1]:Pointer, [-1,32]:Float@double}
 ; CHECK-NEXT: double* %src: {[-1]:Pointer, [-1,-1]:Anything}
 ; CHECK-NEXT: i64 %n: {[-1]:Integer}

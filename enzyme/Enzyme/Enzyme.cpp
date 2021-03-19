@@ -41,9 +41,9 @@
 #include "llvm/IR/MDBuilder.h"
 #include "llvm/IR/Metadata.h"
 
+#include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Transforms/Scalar.h"
-#include "llvm/Analysis/ScalarEvolution.h"
 
 #include "llvm/Transforms/Utils/Cloning.h"
 #if LLVM_VERSION_MAJOR >= 11
@@ -81,6 +81,7 @@ namespace {
 
 class Enzyme : public ModulePass {
 public:
+  EnzymeLogic Logic;
   bool PostOpt;
   static char ID;
   Enzyme(bool PostOpt = false) : ModulePass(ID), PostOpt(PostOpt) {
@@ -90,7 +91,6 @@ public:
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<TargetLibraryInfoWrapperPass>();
-    AU.addRequired<GlobalsAAWrapperPass>();
 
     // AU.addRequiredID(LCSSAID);
 
@@ -102,8 +102,7 @@ public:
 
   /// Return whether successful
   template <typename T>
-  bool HandleAutoDiff(T *CI, TargetLibraryInfo &TLI, AAResults &AA,
-                      bool PostOpt) {
+  bool HandleAutoDiff(T *CI, TargetLibraryInfo &TLI, bool PostOpt) {
 
     Value *fn = CI->getArgOperand(0);
 
@@ -445,8 +444,8 @@ public:
     TypeAnalysis TA(TLI);
     type_args = TA.analyzeFunction(type_args).getAnalyzedTypeInfo();
 
-    auto newFunc = CreatePrimalAndGradient(
-        cast<Function>(fn), retType, constants, TLI, TA, AA,
+    auto newFunc = Logic.CreatePrimalAndGradient(
+        cast<Function>(fn), retType, constants, TLI, TA,
         /*should return*/ false, /*dretPtr*/ false, /*topLevel*/ true,
         /*addedType*/ nullptr, type_args, volatile_args,
         /*index mapping*/ nullptr, AtomicAdd, PostOpt);
@@ -572,13 +571,6 @@ public:
 #else
     auto &TLI = getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
 #endif
-
-    AAResults AA(TLI);
-    // auto &B_AA = getAnalysis<BasicAAWrapperPass>().getResult();
-    // AA.addAAResult(B_AA);
-
-    auto &G_AA = getAnalysis<GlobalsAAWrapperPass>().getResult();
-    AA.addAAResult(G_AA);
 
     bool Changed = false;
 
@@ -827,13 +819,13 @@ public:
       Changed = true;
     }
     for (auto CI : toLower) {
-      successful &= HandleAutoDiff(CI, TLI, AA, PostOpt);
+      successful &= HandleAutoDiff(CI, TLI, PostOpt);
       Changed = true;
       if (!successful)
         break;
     }
     for (auto CI : toLowerI) {
-      successful &= HandleAutoDiff(CI, TLI, AA, PostOpt);
+      successful &= HandleAutoDiff(CI, TLI, PostOpt);
       Changed = true;
       if (!successful)
         break;
@@ -843,56 +835,40 @@ public:
       // TODO consider enabling when attributor does not delete
       // dead internal functions, which invalidates Enzyme's cache
       // code left here to re-enable upon Attributor patch
+      Logic.PPC.FAM.clear(F, F.getName());
 
 #if LLVM_VERSION_MAJOR >= 13
-      FunctionAnalysisManager FAM;
-      FAM.registerPass([] { return TargetLibraryAnalysis(); });
-      FAM.registerPass([] { return ScalarEvolutionAnalysis(); });
-      FAM.registerPass([] { return LoopAnalysis(); });
-      FAM.registerPass([] { return PassInstrumentationAnalysis(); });
-      FAM.registerPass([] { return DominatorTreeAnalysis(); });
-      FAM.registerPass([] { return AssumptionAnalysis(); });
-      FAM.registerPass([] { return PostDominatorTreeAnalysis(); });
-      FAM.registerPass([] { return AAManager(); });
 
-      AnalysisGetter AG(FAM);
+      AnalysisGetter AG(Logic.PPC.FAM);
       SetVector<Function *> Functions;
       for (Function &F2 : *F.getParent()) {
         Functions.insert(&F2);
       }
-    
+
       CallGraphUpdater CGUpdater;
       BumpPtrAllocator Allocator;
-      InformationCache InfoCache(*F.getParent(), AG, Allocator, /* CGSCC */ nullptr);
+      InformationCache InfoCache(*F.getParent(), AG, Allocator,
+                                 /* CGSCC */ nullptr);
 
-      DenseSet< const char * > Allowed = {
-        &AAHeapToStack::ID,
-        &AANoCapture::ID,
-        
-        &AAMemoryBehavior::ID,
-        &AAMemoryLocation::ID,
-        &AANoUnwind::ID,
-        &AANoSync::ID,
-        &AANoRecurse::ID,
-        &AAWillReturn::ID,
-        &AANoReturn::ID,
-        &AANonNull::ID,
-        &AANoAlias::ID,
-        &AADereferenceable::ID,
-        &AAAlign::ID,
+      DenseSet<const char *> Allowed = {
+          &AAHeapToStack::ID,     &AANoCapture::ID,
 
-        &AAReturnedValues::ID,
-        &AANoFree::ID,
-        &AANoUndef::ID,
-        
-        //&AAValueSimplify::ID,
-        //&AAReachability::ID,
-        //&AAValueConstantRange::ID,
-        //&AAUndefinedBehavior::ID,
-        //&AAPotentialValues::ID,
+          &AAMemoryBehavior::ID,  &AAMemoryLocation::ID, &AANoUnwind::ID,
+          &AANoSync::ID,          &AANoRecurse::ID,      &AAWillReturn::ID,
+          &AANoReturn::ID,        &AANonNull::ID,        &AANoAlias::ID,
+          &AADereferenceable::ID, &AAAlign::ID,
+
+          &AAReturnedValues::ID,  &AANoFree::ID,         &AANoUndef::ID,
+
+          //&AAValueSimplify::ID,
+          //&AAReachability::ID,
+          //&AAValueConstantRange::ID,
+          //&AAUndefinedBehavior::ID,
+          //&AAPotentialValues::ID,
       };
 
-      Attributor A(Functions, InfoCache, CGUpdater, &Allowed, /*DeleteFns*/false);
+      Attributor A(Functions, InfoCache, CGUpdater, &Allowed,
+                   /*DeleteFns*/ false);
       for (Function *F : Functions) {
         // Populate the Attributor with abstract attribute opportunities in the
         // function and the information cache with IR information.
@@ -906,10 +882,9 @@ public:
   }
 
   bool runOnModule(Module &M) override {
-    // auto &AA = getAnalysis<AAResultsWrapperPass>().getAAResults();
+    Logic.clear();
 
     bool changed = false;
-
     std::vector<GlobalVariable *> globalsToErase;
     for (GlobalVariable &g : M.globals()) {
       if (g.getName().contains("__enzyme_register_gradient")) {
@@ -1094,6 +1069,8 @@ public:
     for (auto I : toErase) {
       I->eraseFromParent();
     }
+
+    Logic.clear();
     return changed;
   }
 };

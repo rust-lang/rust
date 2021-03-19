@@ -34,15 +34,11 @@
 extern "C" {
 #endif
 
-struct EnzymeOpaqueAAResults;
-typedef struct {
-  struct EnzymeOpaqueAAResults *AA;
-  void *AM;
-  void *FAM;
-} EnzymeAAResultsRef;
-
 struct EnzymeOpaqueTypeAnalysis;
 typedef struct EnzymeOpaqueTypeAnalysis *EnzymeTypeAnalysisRef;
+
+struct EnzymeOpaqueLogic;
+typedef struct EnzymeOpaqueLogic *EnzymeLogicRef;
 
 struct EnzymeOpaqueAugmentedReturn;
 typedef struct EnzymeOpaqueAugmentedReturn *EnzymeAugmentedReturnPtr;
@@ -110,24 +106,20 @@ typedef enum {
                      // but don't need the forward
 } CDIFFE_TYPE;
 
-EnzymeAAResultsRef EnzymeGetGlobalAA(LLVMModuleRef);
-void EnzymeFreeGlobalAA(EnzymeAAResultsRef);
-
 LLVMValueRef EnzymeCreatePrimalAndGradient(
-    LLVMValueRef todiff, CDIFFE_TYPE retType, CDIFFE_TYPE *constant_args,
-    size_t constant_args_size, EnzymeTypeAnalysisRef TA,
-    EnzymeAAResultsRef global_AA, uint8_t returnValue, uint8_t dretUsed,
+    EnzymeLogicRef, LLVMValueRef todiff, CDIFFE_TYPE retType,
+    CDIFFE_TYPE *constant_args, size_t constant_args_size,
+    EnzymeTypeAnalysisRef TA, uint8_t returnValue, uint8_t dretUsed,
     uint8_t topLevel, LLVMTypeRef additionalArg, struct CFnTypeInfo typeInfo,
     uint8_t *_uncacheable_args, size_t uncacheable_args_size,
     EnzymeAugmentedReturnPtr augmented, uint8_t AtomicAdd, uint8_t PostOpt);
 
 EnzymeAugmentedReturnPtr EnzymeCreateAugmentedPrimal(
-    LLVMValueRef todiff, CDIFFE_TYPE retType, CDIFFE_TYPE *constant_args,
-    size_t constant_args_size, EnzymeTypeAnalysisRef TA,
-    EnzymeAAResultsRef global_AA, uint8_t returnUsed,
-    struct CFnTypeInfo typeInfo, uint8_t *_uncacheable_args,
-    size_t uncacheable_args_size, uint8_t forceAnonymousTape, uint8_t AtomicAdd,
-    uint8_t PostOpt);
+    EnzymeLogicRef, LLVMValueRef todiff, CDIFFE_TYPE retType,
+    CDIFFE_TYPE *constant_args, size_t constant_args_size,
+    EnzymeTypeAnalysisRef TA, uint8_t returnUsed, struct CFnTypeInfo typeInfo,
+    uint8_t *_uncacheable_args, size_t uncacheable_args_size,
+    uint8_t forceAnonymousTape, uint8_t AtomicAdd, uint8_t PostOpt);
 
 typedef uint8_t (*CustomRuleType)(int /*direction*/, CTypeTreeRef /*return*/,
                                   CTypeTreeRef * /*args*/,
@@ -136,7 +128,12 @@ typedef uint8_t (*CustomRuleType)(int /*direction*/, CTypeTreeRef /*return*/,
 EnzymeTypeAnalysisRef CreateTypeAnalysis(char *Triple, char **customRuleNames,
                                          CustomRuleType *customRules,
                                          size_t numRules);
+void ClearTypeAnalysis(EnzymeTypeAnalysisRef);
 void FreeTypeAnalysis(EnzymeTypeAnalysisRef);
+
+EnzymeLogicRef CreateEnzymeLogic();
+void ClearEnzymeLogic(EnzymeLogicRef);
+void FreeEnzymeLogic(EnzymeLogicRef);
 
 void EnzymeExtractReturnInfo(EnzymeAugmentedReturnPtr ret, int64_t *data,
                              uint8_t *existed, size_t len);

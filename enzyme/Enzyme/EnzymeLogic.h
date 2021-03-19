@@ -44,6 +44,7 @@
 #include "llvm/Analysis/AliasAnalysis.h"
 
 #include "ActivityAnalysis.h"
+#include "FunctionUtils.h"
 #include "TypeAnalysis/TypeAnalysis.h"
 #include "Utils.h"
 
@@ -123,49 +124,71 @@ public:
         can_modref_map(can_modref_map) {}
 };
 
-/// Create an augmented forward pass.
-///  \p todiff is the function to differentiate
-///  \p retType is the activity info of the return
-///  \p constant_args is the activity info of the arguments
-///  \p returnUsed is whether the primal's return should also be returned
-///  \p typeInfo is the type info information about the calling context
-///  \p _uncacheable_args marks whether an argument may be rewritten before
-///  loads in the generated function (and thus cannot be cached). \p
-///  forceAnonymousTape forces the tape to be an i8* rather than the true tape
-///  structure \p AtomicAdd is whether to perform all adjoint updates to memory
-///  in an atomic way \p PostOpt is whether to perform basic optimization of the
-///  function after synthesis
-const AugmentedReturn &CreateAugmentedPrimal(
-    llvm::Function *todiff, DIFFE_TYPE retType,
-    const std::vector<DIFFE_TYPE> &constant_args, llvm::TargetLibraryInfo &TLI,
-    TypeAnalysis &TA, llvm::AAResults &global_AA, bool returnUsed,
-    const FnTypeInfo &typeInfo,
-    const std::map<llvm::Argument *, bool> _uncacheable_args,
-    bool forceAnonymousTape, bool AtomicAdd, bool PostOpt, bool omp = false);
+class EnzymeLogic {
+public:
+  PreProcessCache PPC;
+  using AugmentedCacheKey =
+      std::tuple<llvm::Function *, DIFFE_TYPE /*retType*/,
+                 std::vector<DIFFE_TYPE> /*constant_args*/,
+                 std::map<llvm::Argument *, bool> /*uncacheable_args*/,
+                 bool /*returnUsed*/, const FnTypeInfo, bool, bool, bool, bool>;
+  std::map<AugmentedCacheKey, AugmentedReturn> AugmentedCachedFunctions;
+  std::map<AugmentedCacheKey, bool> AugmentedCachedFinished;
 
-/// Create the derivative function itself.
-///  \p todiff is the function to differentiate
-///  \p retType is the activity info of the return
-///  \p constant_args is the activity info of the arguments
-///  \p returnValue is whether the primal's return should also be returned
-///  \p dretUsed is whether the shadow return value should also be returned
-///  \p additionalArg is the type (or null) of an additional type in the
-///  signature to hold the tape. \p typeInfo is the type info information about
-///  the calling context \p _uncacheable_args marks whether an argument may be
-///  rewritten before loads in the generated function (and thus cannot be
-///  cached). \p augmented is the data structure created by prior call to an
-///  augmented forward pass \p AtomicAdd is whether to perform all adjoint
-///  updates to memory in an atomic way \p PostOpt is whether to perform basic
-///  optimization of the function after synthesis
-llvm::Function *CreatePrimalAndGradient(
-    llvm::Function *todiff, DIFFE_TYPE retType,
-    const std::vector<DIFFE_TYPE> &constant_args, llvm::TargetLibraryInfo &TLI,
-    TypeAnalysis &TA, llvm::AAResults &global_AA, bool returnValue,
-    bool dretUsed, bool topLevel, llvm::Type *additionalArg,
-    const FnTypeInfo &typeInfo,
-    const std::map<llvm::Argument *, bool> _uncacheable_args,
-    const AugmentedReturn *augmented, bool AtomicAdd, bool PostOpt = false,
-    bool omp = false);
+  /// Create an augmented forward pass.
+  ///  \p todiff is the function to differentiate
+  ///  \p retType is the activity info of the return
+  ///  \p constant_args is the activity info of the arguments
+  ///  \p returnUsed is whether the primal's return should also be returned
+  ///  \p typeInfo is the type info information about the calling context
+  ///  \p _uncacheable_args marks whether an argument may be rewritten before
+  ///  loads in the generated function (and thus cannot be cached). \p
+  ///  forceAnonymousTape forces the tape to be an i8* rather than the true tape
+  ///  structure \p AtomicAdd is whether to perform all adjoint updates to
+  ///  memory in an atomic way \p PostOpt is whether to perform basic
+  ///  optimization of the function after synthesis
+  const AugmentedReturn &CreateAugmentedPrimal(
+      llvm::Function *todiff, DIFFE_TYPE retType,
+      const std::vector<DIFFE_TYPE> &constant_args,
+      llvm::TargetLibraryInfo &TLI, TypeAnalysis &TA, bool returnUsed,
+      const FnTypeInfo &typeInfo,
+      const std::map<llvm::Argument *, bool> _uncacheable_args,
+      bool forceAnonymousTape, bool AtomicAdd, bool PostOpt, bool omp = false);
+
+  using ReverseCacheKey =
+      std::tuple<llvm::Function *, DIFFE_TYPE /*retType*/,
+                 std::vector<DIFFE_TYPE> /*constant_args*/,
+                 std::map<llvm::Argument *, bool> /*uncacheable_args*/,
+                 bool /*retval*/, bool /*dretPtr*/, bool /*topLevel*/,
+                 llvm::Type *, const FnTypeInfo>;
+  std::map<ReverseCacheKey, llvm::Function *> ReverseCachedFunctions;
+
+  /// Create the derivative function itself.
+  ///  \p todiff is the function to differentiate
+  ///  \p retType is the activity info of the return
+  ///  \p constant_args is the activity info of the arguments
+  ///  \p returnValue is whether the primal's return should also be returned
+  ///  \p dretUsed is whether the shadow return value should also be returned
+  ///  \p additionalArg is the type (or null) of an additional type in the
+  ///  signature to hold the tape. \p typeInfo is the type info information
+  ///  about the calling context \p _uncacheable_args marks whether an argument
+  ///  may be rewritten before loads in the generated function (and thus cannot
+  ///  be cached). \p augmented is the data structure created by prior call to
+  ///  an augmented forward pass \p AtomicAdd is whether to perform all adjoint
+  ///  updates to memory in an atomic way \p PostOpt is whether to perform basic
+  ///  optimization of the function after synthesis
+  llvm::Function *CreatePrimalAndGradient(
+      llvm::Function *todiff, DIFFE_TYPE retType,
+      const std::vector<DIFFE_TYPE> &constant_args,
+      llvm::TargetLibraryInfo &TLI, TypeAnalysis &TA, bool returnValue,
+      bool dretUsed, bool topLevel, llvm::Type *additionalArg,
+      const FnTypeInfo &typeInfo,
+      const std::map<llvm::Argument *, bool> _uncacheable_args,
+      const AugmentedReturn *augmented, bool AtomicAdd, bool PostOpt = false,
+      bool omp = false);
+
+  void clear();
+};
 
 extern llvm::cl::opt<bool> looseTypeAnalysis;
 

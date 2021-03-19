@@ -89,18 +89,18 @@ struct CacheAnalysis {
   AAResults &AA;
   Function *oldFunc;
   LoopInfo &OrigLI;
-  DominatorTree DT;
+  DominatorTree &DT;
   TargetLibraryInfo &TLI;
   const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions;
   const std::map<Argument *, bool> &uncacheable_args;
   bool topLevel;
   std::map<Value *, bool> seen;
   CacheAnalysis(
-      AAResults &AA, Function *oldFunc, LoopInfo &OrigLI,
+      AAResults &AA, Function *oldFunc, LoopInfo &OrigLI, DominatorTree &OrigDT,
       TargetLibraryInfo &TLI,
       const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
       const std::map<Argument *, bool> &uncacheable_args, bool topLevel)
-      : AA(AA), oldFunc(oldFunc), OrigLI(OrigLI), DT(*oldFunc), TLI(TLI),
+      : AA(AA), oldFunc(oldFunc), OrigLI(OrigLI), DT(OrigDT), TLI(TLI),
         unnecessaryInstructions(unnecessaryInstructions),
         uncacheable_args(uncacheable_args), topLevel(topLevel) {}
 
@@ -1129,11 +1129,10 @@ bool legalCombinedForwardReverse(
 }
 
 //! return structtype if recursive function
-const AugmentedReturn &CreateAugmentedPrimal(
+const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
     Function *todiff, DIFFE_TYPE retType,
     const std::vector<DIFFE_TYPE> &constant_args, TargetLibraryInfo &TLI,
-    TypeAnalysis &TA, AAResults &global_AA, bool returnUsed,
-    const FnTypeInfo &oldTypeInfo_,
+    TypeAnalysis &TA, bool returnUsed, const FnTypeInfo &oldTypeInfo_,
     const std::map<Argument *, bool> _uncacheable_args, bool forceAnonymousTape,
     bool AtomicAdd, bool PostOpt, bool omp) {
   if (returnUsed)
@@ -1167,20 +1166,13 @@ const AugmentedReturn &CreateAugmentedPrimal(
     }
   }
   assert(constant_args.size() == todiff->getFunctionType()->getNumParams());
-  using CacheKey =
-      std::tuple<Function *, DIFFE_TYPE /*retType*/,
-                 std::vector<DIFFE_TYPE> /*constant_args*/,
-                 std::map<Argument *, bool> /*uncacheable_args*/,
-                 bool /*returnUsed*/, const FnTypeInfo, bool, bool, bool, bool>;
-  static std::map<CacheKey, AugmentedReturn> cachedfunctions;
-  static std::map<CacheKey, bool> cachedfinished;
-  CacheKey tup = std::make_tuple(
+  AugmentedCacheKey tup = std::make_tuple(
       todiff, retType, constant_args,
       std::map<Argument *, bool>(_uncacheable_args.begin(),
                                  _uncacheable_args.end()),
       returnUsed, oldTypeInfo, forceAnonymousTape, AtomicAdd, PostOpt, omp);
-  auto found = cachedfunctions.find(tup);
-  if (found != cachedfunctions.end()) {
+  auto found = AugmentedCachedFunctions.find(tup);
+  if (found != AugmentedCachedFunctions.end()) {
     return found->second;
   }
 
@@ -1210,8 +1202,8 @@ const AugmentedReturn &CreateAugmentedPrimal(
     if (foundcalled->getReturnType() == todiff->getReturnType()) {
       std::map<AugmentedStruct, int> returnMapping;
       returnMapping[AugmentedStruct::Return] = -1;
-      return insert_or_assign<CacheKey, AugmentedReturn>(
-                 cachedfunctions, tup,
+      return insert_or_assign<AugmentedCacheKey, AugmentedReturn>(
+                 AugmentedCachedFunctions, tup,
                  AugmentedReturn(foundcalled, nullptr, {}, returnMapping, {},
                                  {}))
           ->second;
@@ -1223,8 +1215,8 @@ const AugmentedReturn &CreateAugmentedPrimal(
         returnMapping[AugmentedStruct::Tape] = 0;
         returnMapping[AugmentedStruct::Return] = 1;
         returnMapping[AugmentedStruct::DifferentialReturn] = 2;
-        return insert_or_assign<CacheKey, AugmentedReturn>(
-                   cachedfunctions, tup,
+        return insert_or_assign<AugmentedCacheKey, AugmentedReturn>(
+                   AugmentedCachedFunctions, tup,
                    AugmentedReturn(foundcalled, nullptr, {}, returnMapping, {},
                                    {}))
             ->second;
@@ -1234,8 +1226,8 @@ const AugmentedReturn &CreateAugmentedPrimal(
         std::map<AugmentedStruct, int> returnMapping;
         returnMapping[AugmentedStruct::Return] = 0;
         returnMapping[AugmentedStruct::DifferentialReturn] = 1;
-        return insert_or_assign<CacheKey, AugmentedReturn>(
-                   cachedfunctions, tup,
+        return insert_or_assign<AugmentedCacheKey, AugmentedReturn>(
+                   AugmentedCachedFunctions, tup,
                    AugmentedReturn(foundcalled, nullptr, {}, returnMapping, {},
                                    {}))
             ->second;
@@ -1244,8 +1236,8 @@ const AugmentedReturn &CreateAugmentedPrimal(
         std::map<AugmentedStruct, int> returnMapping;
         returnMapping[AugmentedStruct::Tape] = 0;
         returnMapping[AugmentedStruct::Return] = 1;
-        return insert_or_assign<CacheKey, AugmentedReturn>(
-                   cachedfunctions, tup,
+        return insert_or_assign<AugmentedCacheKey, AugmentedReturn>(
+                   AugmentedCachedFunctions, tup,
                    AugmentedReturn(foundcalled, nullptr, {}, returnMapping, {},
                                    {}))
             ->second;
@@ -1255,8 +1247,8 @@ const AugmentedReturn &CreateAugmentedPrimal(
     std::map<AugmentedStruct, int> returnMapping;
     returnMapping[AugmentedStruct::Tape] = -1;
 
-    return insert_or_assign<CacheKey, AugmentedReturn>(
-               cachedfunctions, tup,
+    return insert_or_assign<AugmentedCacheKey, AugmentedReturn>(
+               AugmentedCachedFunctions, tup,
                AugmentedReturn(foundcalled, nullptr, {}, returnMapping, {}, {}))
         ->second; // dyn_cast<StructType>(st->getElementType(0)));
   }
@@ -1268,12 +1260,10 @@ const AugmentedReturn &CreateAugmentedPrimal(
     llvm_unreachable("attempting to differentiate function without definition");
   }
   std::map<AugmentedStruct, int> returnMapping;
-  AAResults AA(TLI);
-  // AA.addAAResult(global_AA);
 
   GradientUtils *gutils = GradientUtils::CreateFromClone(
-      todiff, TLI, TA, AA, retType, constant_args, /*returnUsed*/ returnUsed,
-      returnMapping);
+      *this, todiff, TLI, TA, retType, constant_args,
+      /*returnUsed*/ returnUsed, returnMapping);
   if (omp)
     gutils->setupOMPFor();
   gutils->AtomicAdd = AtomicAdd;
@@ -1300,8 +1290,9 @@ const AugmentedReturn &CreateAugmentedPrimal(
     for (auto &I : *BB)
       unnecessaryInstructionsTmp.insert(&I);
   }
-  CacheAnalysis CA(AA, gutils->oldFunc, gutils->OrigLI, TLI,
-                   unnecessaryInstructionsTmp, _uncacheable_argsPP,
+  CacheAnalysis CA(gutils->OrigAA, gutils->oldFunc, gutils->OrigLI,
+                   gutils->OrigDT, TLI, unnecessaryInstructionsTmp,
+                   _uncacheable_argsPP,
                    /*topLevel*/ false);
   const std::map<CallInst *, const std::map<Argument *, bool>>
       uncacheable_args_map = CA.compute_uncacheable_args_for_callsites();
@@ -1351,16 +1342,15 @@ const AugmentedReturn &CreateAugmentedPrimal(
   calculateUnusedStoresInFunction(*gutils->oldFunc, unnecessaryStores,
                                   unnecessaryInstructions, gutils);
 
-  insert_or_assign(cachedfunctions, tup,
+  insert_or_assign(AugmentedCachedFunctions, tup,
                    AugmentedReturn(gutils->newFunc, nullptr, {}, returnMapping,
                                    uncacheable_args_map, can_modref_map));
-  cachedfinished[tup] = false;
+  AugmentedCachedFinished[tup] = false;
 
   auto getIndex = [&](Instruction *I, CacheType u) -> unsigned {
-    // std::map<std::pair<Instruction*,std::string>,unsigned>& mapping =
-    // cachedfunctions[tup].tapeIndices;
-    return gutils->getIndex(std::make_pair(I, u),
-                            cachedfunctions.find(tup)->second.tapeIndices);
+    return gutils->getIndex(
+        std::make_pair(I, u),
+        AugmentedCachedFunctions.find(tup)->second.tapeIndices);
   };
 
   //! Explicitly handle all returns first to ensure that all instructions know
@@ -1396,9 +1386,10 @@ const AugmentedReturn &CreateAugmentedPrimal(
 
   AdjointGenerator<AugmentedReturn *> maker(
       DerivativeMode::Forward, gutils, constant_args, retType, TR, getIndex,
-      uncacheable_args_map, &returnuses, &cachedfunctions.find(tup)->second,
-      nullptr, unnecessaryValues, unnecessaryInstructions, unnecessaryStores,
-      guaranteedUnreachable, nullptr);
+      uncacheable_args_map, &returnuses,
+      &AugmentedCachedFunctions.find(tup)->second, nullptr, unnecessaryValues,
+      unnecessaryInstructions, unnecessaryStores, guaranteedUnreachable,
+      nullptr);
 
   for (BasicBlock &oBB : *gutils->oldFunc) {
     auto term = oBB.getTerminator();
@@ -1529,13 +1520,14 @@ const AugmentedReturn &CreateAugmentedPrimal(
   if (removeTapeStruct) {
     tapeType = MallocTypes[0];
 
-    for (auto &a : cachedfunctions.find(tup)->second.tapeIndices) {
+    for (auto &a : AugmentedCachedFunctions.find(tup)->second.tapeIndices) {
       a.second = -1;
     }
   }
 
-  bool recursive = cachedfunctions.find(tup)->second.fn->getNumUses() > 0 ||
-                   forceAnonymousTape;
+  bool recursive =
+      AugmentedCachedFunctions.find(tup)->second.fn->getNumUses() > 0 ||
+      forceAnonymousTape;
   bool noTape = MallocTypes.size() == 0 && !forceAnonymousTape;
 
   int oldretIdx = -1;
@@ -1548,16 +1540,18 @@ const AugmentedReturn &CreateAugmentedPrimal(
     if (noTape)
       returnMapping.erase(AugmentedStruct::Tape);
     if (noTape)
-      cachedfunctions.find(tup)->second.returns.erase(AugmentedStruct::Tape);
+      AugmentedCachedFunctions.find(tup)->second.returns.erase(
+          AugmentedStruct::Tape);
     if (returnMapping.find(AugmentedStruct::Return) != returnMapping.end()) {
-      cachedfunctions.find(tup)->second.returns[AugmentedStruct::Return] -=
+      AugmentedCachedFunctions.find(tup)
+          ->second.returns[AugmentedStruct::Return] -=
           (returnMapping[AugmentedStruct::Return] > tidx) ? 1 : 0;
       returnMapping[AugmentedStruct::Return] -=
           (returnMapping[AugmentedStruct::Return] > tidx) ? 1 : 0;
     }
     if (returnMapping.find(AugmentedStruct::DifferentialReturn) !=
         returnMapping.end()) {
-      cachedfunctions.find(tup)
+      AugmentedCachedFunctions.find(tup)
           ->second.returns[AugmentedStruct::DifferentialReturn] -=
           (returnMapping[AugmentedStruct::DifferentialReturn] > tidx) ? 1 : 0;
       returnMapping[AugmentedStruct::DifferentialReturn] -=
@@ -1585,7 +1579,7 @@ const AugmentedReturn &CreateAugmentedPrimal(
     for (auto &a : returnMapping) {
       a.second = -1;
     }
-    for (auto &a : cachedfunctions.find(tup)->second.returns) {
+    for (auto &a : AugmentedCachedFunctions.find(tup)->second.returns) {
       a.second = -1;
     }
   }
@@ -1800,9 +1794,13 @@ const AugmentedReturn &CreateAugmentedPrimal(
     llvm::errs() << *NewF << "\n";
     report_fatal_error("augmented function failed verification (3)");
   }
+  {
+    PreservedAnalyses PA;
+    PPC.FAM.invalidate(*NewF, PA);
+  }
 
   SmallVector<CallInst *, 4> fnusers;
-  for (auto user : cachedfunctions.find(tup)->second.fn->users()) {
+  for (auto user : AugmentedCachedFunctions.find(tup)->second.fn->users()) {
     fnusers.push_back(cast<CallInst>(user));
   }
   for (auto user : fnusers) {
@@ -1831,28 +1829,32 @@ const AugmentedReturn &CreateAugmentedPrimal(
       }
       user->eraseFromParent();
     } else {
-      cast<CallInst>(user)->setCalledFunction(NewF);
+      user->setCalledFunction(NewF);
     }
   }
   if (llvm::Triple(NewF->getParent()->getTargetTriple()).getArch() ==
           Triple::nvptx ||
       llvm::Triple(NewF->getParent()->getTargetTriple()).getArch() ==
           Triple::nvptx64)
-    ReplaceReallocs(NewF, /*mem2reg*/ true);
+    PPC.ReplaceReallocs(NewF, /*mem2reg*/ true);
   if (PostOpt)
-    optimizeIntermediate(gutils, /*topLevel*/ false, NewF);
+    PPC.optimizeIntermediate(NewF);
 
-  cachedfunctions.find(tup)->second.fn = NewF;
+  AugmentedCachedFunctions.find(tup)->second.fn = NewF;
   if (recursive || (omp && !noTape))
-    cachedfunctions.find(tup)->second.tapeType = tapeType;
-  insert_or_assign(cachedfinished, tup, true);
+    AugmentedCachedFunctions.find(tup)->second.tapeType = tapeType;
+  insert_or_assign(AugmentedCachedFinished, tup, true);
 
+  {
+    PreservedAnalyses PA;
+    PPC.FAM.invalidate(*gutils->newFunc, PA);
+  }
   gutils->newFunc->eraseFromParent();
 
   delete gutils;
   if (EnzymePrint)
     llvm::errs() << *NewF << "\n";
-  return cachedfunctions.find(tup)->second;
+  return AugmentedCachedFunctions.find(tup)->second;
 }
 
 void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
@@ -2220,11 +2222,11 @@ void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
   }
 }
 
-Function *CreatePrimalAndGradient(
+Function *EnzymeLogic::CreatePrimalAndGradient(
     Function *todiff, DIFFE_TYPE retType,
     const std::vector<DIFFE_TYPE> &constant_args, TargetLibraryInfo &TLI,
-    TypeAnalysis &TA, AAResults &global_AA, bool returnUsed, bool dretPtr,
-    bool topLevel, llvm::Type *additionalArg, const FnTypeInfo &oldTypeInfo_,
+    TypeAnalysis &TA, bool returnUsed, bool dretPtr, bool topLevel,
+    llvm::Type *additionalArg, const FnTypeInfo &oldTypeInfo_,
     const std::map<Argument *, bool> _uncacheable_args,
     const AugmentedReturn *augmenteddata, bool AtomicAdd, bool PostOpt,
     bool omp) {
@@ -2257,20 +2259,13 @@ Function *CreatePrimalAndGradient(
   if (retType != DIFFE_TYPE::CONSTANT)
     assert(!todiff->getReturnType()->isVoidTy());
 
-  using CacheKey =
-      std::tuple<Function *, DIFFE_TYPE /*retType*/,
-                 std::vector<DIFFE_TYPE> /*constant_args*/,
-                 std::map<Argument *, bool> /*uncacheable_args*/,
-                 bool /*retval*/, bool /*dretPtr*/, bool /*topLevel*/,
-                 llvm::Type *, const FnTypeInfo>;
-  static std::map<CacheKey, Function *> cachedfunctions;
-  CacheKey tup = std::make_tuple(
+  ReverseCacheKey tup = std::make_tuple(
       todiff, retType, constant_args,
       std::map<Argument *, bool>(_uncacheable_args.begin(),
                                  _uncacheable_args.end()),
       returnUsed, dretPtr, topLevel, additionalArg, oldTypeInfo);
-  if (cachedfunctions.find(tup) != cachedfunctions.end()) {
-    return cachedfunctions.find(tup)->second;
+  if (ReverseCachedFunctions.find(tup) != ReverseCachedFunctions.end()) {
+    return ReverseCachedFunctions.find(tup)->second;
   }
 
   // Whether we shuold actually return the value
@@ -2376,17 +2371,15 @@ Function *CreatePrimalAndGradient(
       bb.CreateRet(val);
       foundcalled = NewF;
     }
-    return insert_or_assign2<CacheKey, Function *>(cachedfunctions, tup,
-                                                   foundcalled)
+    return insert_or_assign2<ReverseCacheKey, Function *>(
+               ReverseCachedFunctions, tup, foundcalled)
         ->second;
   }
 
   assert(!todiff->empty());
 
-  AAResults AA(TLI);
-  // AA.addAAResult(global_AA);
   DiffeGradientUtils *gutils = DiffeGradientUtils::CreateFromClone(
-      topLevel, todiff, TLI, TA, AA, retType, constant_args,
+      *this, topLevel, todiff, TLI, TA, retType, constant_args,
       returnValue ? (dretPtr ? ReturnType::ArgsWithTwoReturns
                              : ReturnType::ArgsWithReturn)
                   : (dretPtr ? ReturnType::ArgsWithReturn : ReturnType::Args),
@@ -2394,8 +2387,8 @@ Function *CreatePrimalAndGradient(
   if (omp)
     gutils->setupOMPFor();
   gutils->AtomicAdd = AtomicAdd;
-  insert_or_assign2<CacheKey, Function *>(cachedfunctions, tup,
-                                          gutils->newFunc);
+  insert_or_assign2<ReverseCacheKey, Function *>(ReverseCachedFunctions, tup,
+                                                 gutils->newFunc);
 
   const SmallPtrSet<BasicBlock *, 4> guaranteedUnreachable =
       getGuaranteedUnreachable(gutils->oldFunc);
@@ -2419,8 +2412,9 @@ Function *CreatePrimalAndGradient(
     for (auto &I : *BB)
       unnecessaryInstructionsTmp.insert(&I);
   }
-  CacheAnalysis CA(AA, gutils->oldFunc, gutils->OrigLI, TLI,
-                   unnecessaryInstructionsTmp, _uncacheable_argsPP, topLevel);
+  CacheAnalysis CA(gutils->OrigAA, gutils->oldFunc, gutils->OrigLI,
+                   gutils->OrigDT, TLI, unnecessaryInstructionsTmp,
+                   _uncacheable_argsPP, topLevel);
   const std::map<CallInst *, const std::map<Argument *, bool>>
       uncacheable_args_map =
           (augmenteddata) ? augmenteddata->uncacheable_args_map
@@ -2664,11 +2658,6 @@ Function *CreatePrimalAndGradient(
         continue;
 
       if (auto bi = dyn_cast<BranchInst>(BB.getTerminator())) {
-        IRBuilder<> B(&gutils->newFunc->getEntryBlock().front());
-
-        if (auto inst = dyn_cast<Instruction>(bi->getCondition())) {
-          B.SetInsertPoint(gutils->getNewFromOriginal(inst)->getNextNode());
-        }
 
         Value *vals[1] = {gutils->getNewFromOriginal(bi->getCondition())};
         if (bi->getSuccessor(0) == unreachables[0]) {
@@ -2678,7 +2667,6 @@ Function *CreatePrimalAndGradient(
           gutils->replaceAWithB(vals[0],
                                 ConstantInt::getTrue(vals[0]->getContext()));
         }
-        // B.CreateCall(Intrinsic::getDeclaration(M, Intrinsic::assume), vals);
       }
     }
   }
@@ -2762,13 +2750,17 @@ Function *CreatePrimalAndGradient(
     report_fatal_error("function failed verification (4)");
   }
 
+  {
+    PreservedAnalyses PA;
+    PPC.FAM.invalidate(*gutils->newFunc, PA);
+  }
   if (llvm::Triple(gutils->newFunc->getParent()->getTargetTriple()).getArch() ==
           Triple::nvptx ||
       llvm::Triple(gutils->newFunc->getParent()->getTargetTriple()).getArch() ==
           Triple::nvptx64)
-    ReplaceReallocs(gutils->newFunc, /*mem2reg*/ true);
+    PPC.ReplaceReallocs(gutils->newFunc, /*mem2reg*/ true);
   if (PostOpt)
-    optimizeIntermediate(gutils, topLevel, gutils->newFunc);
+    PPC.optimizeIntermediate(gutils->newFunc);
 
   auto nf = gutils->newFunc;
   delete gutils;
@@ -2776,4 +2768,11 @@ Function *CreatePrimalAndGradient(
     llvm::errs() << *nf << "\n";
   }
   return nf;
+}
+
+void EnzymeLogic::clear() {
+  PPC.clear();
+  AugmentedCachedFunctions.clear();
+  AugmentedCachedFinished.clear();
+  ReverseCachedFunctions.clear();
 }

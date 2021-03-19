@@ -1590,7 +1590,10 @@ public:
 
     // llvm::errs() << *gutils->oldFunc << "\n";
     // TR.dump();
-
+    if (size == 0) {
+      llvm::errs() << MTI << "\n";
+    }
+    assert(size != 0);
     auto vd = TR.query(orig_op0).Data0().AtMost(size);
     vd |= TR.query(orig_op1).Data0().AtMost(size);
 
@@ -2402,9 +2405,9 @@ public:
 
     if (Mode == DerivativeMode::Forward || Mode == DerivativeMode::Both) {
       if (called) {
-        subdata = &CreateAugmentedPrimal(
+        subdata = &gutils->Logic.CreateAugmentedPrimal(
             cast<Function>(called), subretType, argsInverted, gutils->TLI,
-            TR.analysis, gutils->OrigAA, /*return is used*/ false, nextTypeInfo,
+            TR.analysis, /*return is used*/ false, nextTypeInfo,
             uncacheable_args, false, /*AtomicAdd*/ true, /*PostOpt*/ false,
             /*OpenMP*/ true);
         if (Mode == DerivativeMode::Forward) {
@@ -2567,9 +2570,9 @@ public:
           args.push_back(alloc);
         }
 
-        newcalled = CreatePrimalAndGradient(
+        newcalled = gutils->Logic.CreatePrimalAndGradient(
             cast<Function>(called), subretType, argsInverted, gutils->TLI,
-            TR.analysis, gutils->OrigAA, /*returnValue*/ false,
+            TR.analysis, /*returnValue*/ false,
             /*subdretptr*/ false, /*topLevel*/ false,
             tape ? PointerType::getUnqual(tape->getType()) : nullptr,
             nextTypeInfo, uncacheable_args, subdata, /*AtomicAdd*/ true,
@@ -3837,10 +3840,10 @@ public:
 
       } else {
         if (Mode == DerivativeMode::Forward || Mode == DerivativeMode::Both) {
-          subdata = &CreateAugmentedPrimal(
+          subdata = &gutils->Logic.CreateAugmentedPrimal(
               cast<Function>(called), subretType, argsInverted, gutils->TLI,
-              TR.analysis, gutils->OrigAA, /*return is used*/ subretused,
-              nextTypeInfo, uncacheable_args, false, gutils->AtomicAdd,
+              TR.analysis, /*return is used*/ subretused, nextTypeInfo,
+              uncacheable_args, false, gutils->AtomicAdd,
               /*PostOpt*/ false);
           if (Mode == DerivativeMode::Forward) {
             assert(augmentedReturn);
@@ -4133,9 +4136,9 @@ public:
                       replaceFunction && (call.getNumUses() != 0);
     bool subtopLevel = replaceFunction || !modifyPrimal;
     if (called) {
-      newcalled = CreatePrimalAndGradient(
+      newcalled = gutils->Logic.CreatePrimalAndGradient(
           cast<Function>(called), subretType, argsInverted, gutils->TLI,
-          TR.analysis, gutils->OrigAA, /*returnValue*/ retUsed,
+          TR.analysis, /*returnValue*/ retUsed,
           /*subdretptr*/ subdretptr, /*topLevel*/ subtopLevel,
           tape ? tape->getType() : nullptr, nextTypeInfo, uncacheable_args,
           subdata, gutils->AtomicAdd); //, LI, DT);

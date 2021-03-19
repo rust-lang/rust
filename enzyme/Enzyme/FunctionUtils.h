@@ -43,23 +43,37 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/Transforms/Utils/ValueMapper.h"
 
-llvm::Function *preprocessForClone(llvm::Function *F, llvm::AAResults &AA,
-                                   llvm::TargetLibraryInfo &TLI, bool topLevel);
+//;
 
-llvm::Function *CloneFunctionWithReturns(
-    bool topLevel, llvm::Function *&F, llvm::AAResults &AA,
-    llvm::TargetLibraryInfo &TLI, llvm::ValueToValueMapTy &ptrInputs,
-    const std::vector<DIFFE_TYPE> &constant_args,
-    llvm::SmallPtrSetImpl<llvm::Value *> &constants,
-    llvm::SmallPtrSetImpl<llvm::Value *> &nonconstant,
-    llvm::SmallPtrSetImpl<llvm::Value *> &returnvals, ReturnType returnValue,
-    llvm::Twine name, llvm::ValueToValueMapTy *VMapO, bool diffeReturnArg,
-    llvm::Type *additionalArg = nullptr);
+class PreProcessCache {
+public:
+  PreProcessCache();
+
+  llvm::FunctionAnalysisManager FAM;
+  llvm::ModuleAnalysisManager MAM;
+
+  std::map<std::pair<llvm::Function *, bool>, llvm::Function *> cache;
+
+  llvm::Function *preprocessForClone(llvm::Function *F, bool topLevel);
+
+  llvm::AAResults &getAAResultsFromFunction(llvm::Function *NewF);
+
+  llvm::Function *CloneFunctionWithReturns(
+      bool topLevel, llvm::Function *&F, llvm::ValueToValueMapTy &ptrInputs,
+      const std::vector<DIFFE_TYPE> &constant_args,
+      llvm::SmallPtrSetImpl<llvm::Value *> &constants,
+      llvm::SmallPtrSetImpl<llvm::Value *> &nonconstant,
+      llvm::SmallPtrSetImpl<llvm::Value *> &returnvals, ReturnType returnValue,
+      llvm::Twine name, llvm::ValueToValueMapTy *VMapO, bool diffeReturnArg,
+      llvm::Type *additionalArg = nullptr);
+
+  void ReplaceReallocs(llvm::Function *NewF, bool mem2reg = false);
+  void optimizeIntermediate(llvm::Function *F);
+
+  void clear();
+};
 
 class GradientUtils;
-
-void optimizeIntermediate(GradientUtils *gutils, bool topLevel,
-                          llvm::Function *F);
 
 static inline void
 getExitBlocks(const llvm::Loop *L,
@@ -317,8 +331,6 @@ static inline void calculateUnusedStores(
     unnecessaryStores.insert(inst);
   }
 }
-
-void ReplaceReallocs(llvm::Function *NewF, bool mem2reg = false);
 
 /// Is the use of value val as an argument of call CI potentially captured
 bool couldFunctionArgumentCapture(llvm::CallInst *CI, llvm::Value *val);
