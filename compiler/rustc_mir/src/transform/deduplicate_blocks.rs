@@ -86,7 +86,7 @@ fn find_duplicates<'a, 'tcx>(body: &'a Body<'tcx>) -> FxHashMap<BasicBlock, Basi
                 // The basic block was already in the hashmap, which means we have a duplicate
                 let value = *occupied.get();
                 debug!("Inserting {:?} -> {:?}", bb, value);
-                duplicates.insert(bb, value).expect_none("key was already inserted");
+                duplicates.try_insert(bb, value).expect("key was already inserted");
             }
             Entry::Vacant(vacant) => {
                 vacant.insert(bb);
