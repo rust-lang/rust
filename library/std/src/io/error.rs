@@ -181,9 +181,11 @@ pub enum ErrorKind {
     #[stable(feature = "read_exact", since = "1.6.0")]
     UnexpectedEof,
 
-    /// This operation is not supported on this platform.
-    #[stable(feature = "not_supported_error", since = "1.52.0")]
-    NotSupported,
+    /// This operation is unsupported on this platform.
+    ///
+    /// This means that the operation can never succeed.
+    #[stable(feature = "unsupported_error", since = "1.52.0")]
+    Unsupported,
 }
 
 impl ErrorKind {
@@ -207,7 +209,7 @@ impl ErrorKind {
             ErrorKind::Interrupted => "operation interrupted",
             ErrorKind::Other => "other os error",
             ErrorKind::UnexpectedEof => "unexpected end of file",
-            ErrorKind::NotSupported => "not supported",
+            ErrorKind::Unsupported => "unsupported",
         }
     }
 }
