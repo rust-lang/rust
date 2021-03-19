@@ -34,9 +34,12 @@ macro_rules! rustc_attr {
     };
 }
 
-/// Attributes that have a special meaning to rustc or rustdoc.
+/// Built-in macro-like attributes.
+pub const EXTRA_ATTRIBUTES: &[BuiltinAttribute] = &["test", "bench"];
+
+/// "Inert" built-in attributes that have a special meaning to rustc or rustdoc.
 #[rustfmt::skip]
-pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
+pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
     // Stable attributes:
     // ==========================================================================
