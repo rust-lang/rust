@@ -458,7 +458,7 @@ pub enum AttrInput {
 impl Attr {
     fn from_src(ast: ast::Attr, hygiene: &Hygiene, index: u32) -> Option<Attr> {
         let path = ModPath::from_src(ast.path()?, hygiene)?;
-        let input = if let Some(lit) = ast.literal() {
+        let input = if let Some(ast::Expr::Literal(lit)) = ast.expr() {
             let value = match lit.kind() {
                 ast::LiteralKind::String(string) => string.value()?.into(),
                 _ => lit.syntax().first_token()?.text().trim_matches('"').into(),

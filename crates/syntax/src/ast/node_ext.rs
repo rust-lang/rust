@@ -109,16 +109,6 @@ impl ast::Attr {
         Some((self.simple_name()?, tt))
     }
 
-    pub fn as_simple_key_value(&self) -> Option<(SmolStr, SmolStr)> {
-        let lit = self.literal()?;
-        let key = self.simple_name()?;
-        let value_token = lit.syntax().first_token()?;
-
-        let value: SmolStr = ast::String::cast(value_token)?.value()?.into();
-
-        Some((key, value))
-    }
-
     pub fn simple_name(&self) -> Option<SmolStr> {
         let path = self.path()?;
         match (path.segment(), path.qualifier()) {
