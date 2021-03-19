@@ -22,6 +22,7 @@
 #![feature(slice_partition_dedup)]
 #![feature(vec_extend_from_within)]
 #![feature(vec_spare_capacity)]
+#![feature(string_remove_matches)]
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
