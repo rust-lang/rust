@@ -33,8 +33,8 @@ use crate::{
         all_super_trait_refs, associated_type_by_name_including_super_traits, generics,
         variant_data,
     },
-    AliasTy, Binders, BoundVar, CallableSig, DebruijnIndex, FnPointer, FnSig, GenericPredicate,
-    ImplTraitId, OpaqueTy, PolyFnSig, ProjectionPredicate, ProjectionTy, ReturnTypeImplTrait,
+    AliasEq, AliasTy, Binders, BoundVar, CallableSig, DebruijnIndex, FnPointer, FnSig,
+    GenericPredicate, ImplTraitId, OpaqueTy, PolyFnSig, ProjectionTy, ReturnTypeImplTrait,
     ReturnTypeImplTraits, Substitution, TraitEnvironment, TraitRef, Ty, TyKind, TypeWalk,
 };
 
@@ -750,9 +750,9 @@ impl<'a> TyLoweringContext<'a> {
                 );
                 if let Some(type_ref) = &binding.type_ref {
                     let ty = self.lower_ty(type_ref);
-                    let projection_predicate =
-                        ProjectionPredicate { projection_ty: projection_ty.clone(), ty };
-                    preds.push(GenericPredicate::Projection(projection_predicate));
+                    let alias_eq =
+                        AliasEq { alias: AliasTy::Projection(projection_ty.clone()), ty };
+                    preds.push(GenericPredicate::AliasEq(alias_eq));
                 }
                 for bound in &binding.bounds {
                     preds.extend(self.lower_type_bound(

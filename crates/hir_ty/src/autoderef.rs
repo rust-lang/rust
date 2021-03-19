@@ -15,7 +15,8 @@ use crate::{
     to_assoc_type_id, to_chalk_trait_id,
     traits::{InEnvironment, Solution},
     utils::generics,
-    BoundVar, Canonical, DebruijnIndex, Interner, Obligation, Substitution, TraitRef, Ty, TyKind,
+    AliasEq, AliasTy, BoundVar, Canonical, DebruijnIndex, Interner, Obligation, ProjectionTy,
+    Substitution, TraitRef, Ty, TyKind,
 };
 
 const AUTODEREF_RECURSION_LIMIT: usize = 10;
@@ -82,16 +83,16 @@ fn deref_by_trait(
     }
 
     // Now do the assoc type projection
-    let projection = super::traits::ProjectionPredicate {
-        ty: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, ty.value.kinds.len()))
-            .intern(&Interner),
-        projection_ty: super::ProjectionTy {
+    let projection = AliasEq {
+        alias: AliasTy::Projection(ProjectionTy {
             associated_ty_id: to_assoc_type_id(target),
             substitution: parameters,
-        },
+        }),
+        ty: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, ty.value.kinds.len()))
+            .intern(&Interner),
     };
 
-    let obligation = super::Obligation::Projection(projection);
+    let obligation = super::Obligation::AliasEq(projection);
 
     let in_env = InEnvironment { value: obligation, environment: ty.environment };
 

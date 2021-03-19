@@ -8,10 +8,9 @@ use chalk_solve::{logging_db::LoggingRustIrDatabase, Solver};
 use hir_def::{lang_item::LangItemTarget, TraitId};
 use stdx::panic_context;
 
-use crate::{db::HirDatabase, DebruijnIndex, Substitution};
-
-use super::{
-    Canonical, GenericPredicate, HirDisplay, ProjectionTy, TraitRef, Ty, TyKind, TypeWalk,
+use crate::{
+    db::HirDatabase, AliasTy, Canonical, DebruijnIndex, GenericPredicate, HirDisplay, Substitution,
+    TraitRef, Ty, TyKind, TypeWalk,
 };
 
 use self::chalk::{from_chalk, Interner, ToChalk};
@@ -93,31 +92,32 @@ pub enum Obligation {
     /// Prove that a certain type implements a trait (the type is the `Self` type
     /// parameter to the `TraitRef`).
     Trait(TraitRef),
-    Projection(ProjectionPredicate),
+    AliasEq(AliasEq),
 }
 
 impl Obligation {
     pub fn from_predicate(predicate: GenericPredicate) -> Option<Obligation> {
         match predicate {
             GenericPredicate::Implemented(trait_ref) => Some(Obligation::Trait(trait_ref)),
-            GenericPredicate::Projection(projection_pred) => {
-                Some(Obligation::Projection(projection_pred))
-            }
+            GenericPredicate::AliasEq(alias_eq) => Some(Obligation::AliasEq(alias_eq)),
             GenericPredicate::Error => None,
         }
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct ProjectionPredicate {
-    pub projection_ty: ProjectionTy,
+pub struct AliasEq {
+    pub alias: AliasTy,
     pub ty: Ty,
 }
 
-impl TypeWalk for ProjectionPredicate {
+impl TypeWalk for AliasEq {
     fn walk(&self, f: &mut impl FnMut(&Ty)) {
-        self.projection_ty.walk(f);
         self.ty.walk(f);
+        match &self.alias {
+            AliasTy::Projection(projection_ty) => projection_ty.walk(f),
+            AliasTy::Opaque(opaque) => opaque.walk(f),
+        }
     }
 
     fn walk_mut_binders(
@@ -125,8 +125,11 @@ impl TypeWalk for ProjectionPredicate {
         f: &mut impl FnMut(&mut Ty, DebruijnIndex),
         binders: DebruijnIndex,
     ) {
-        self.projection_ty.walk_mut_binders(f, binders);
         self.ty.walk_mut_binders(f, binders);
+        match &mut self.alias {
+            AliasTy::Projection(projection_ty) => projection_ty.walk_mut_binders(f, binders),
+            AliasTy::Opaque(opaque) => opaque.walk_mut_binders(f, binders),
+        }
     }
 }
 
@@ -138,12 +141,14 @@ pub(crate) fn trait_solve_query(
 ) -> Option<Solution> {
     let _p = profile::span("trait_solve_query").detail(|| match &goal.value.value {
         Obligation::Trait(it) => db.trait_data(it.hir_trait_id()).name.to_string(),
-        Obligation::Projection(_) => "projection".to_string(),
+        Obligation::AliasEq(_) => "alias_eq".to_string(),
     });
     log::info!("trait_solve_query({})", goal.value.value.display(db));
 
-    if let Obligation::Projection(pred) = &goal.value.value {
-        if let TyKind::BoundVar(_) = &pred.projection_ty.substitution[0].interned(&Interner) {
+    if let Obligation::AliasEq(AliasEq { alias: AliasTy::Projection(projection_ty), .. }) =
+        &goal.value.value
+    {
+        if let TyKind::BoundVar(_) = &projection_ty.substitution[0].interned(&Interner) {
             // Hack: don't ask Chalk to normalize with an unknown self type, it'll say that's impossible
             return Some(Solution::Ambig(Guidance::Unknown));
         }

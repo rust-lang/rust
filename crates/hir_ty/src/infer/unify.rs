@@ -7,8 +7,8 @@ use ena::unify::{InPlaceUnificationTable, NoError, UnifyKey, UnifyValue};
 
 use super::{InferenceContext, Obligation};
 use crate::{
-    BoundVar, Canonical, DebruijnIndex, FnPointer, GenericPredicate, InEnvironment, InferenceVar,
-    Interner, Scalar, Substitution, Ty, TyKind, TypeWalk,
+    AliasEq, AliasTy, BoundVar, Canonical, DebruijnIndex, FnPointer, GenericPredicate,
+    InEnvironment, InferenceVar, Interner, Scalar, Substitution, Ty, TyKind, TypeWalk,
 };
 
 impl<'a> InferenceContext<'a> {
@@ -93,8 +93,8 @@ impl<'a, 'b> Canonicalizer<'a, 'b> {
             Obligation::Trait(tr) => {
                 Obligation::Trait(self.do_canonicalize(tr, DebruijnIndex::INNERMOST))
             }
-            Obligation::Projection(pr) => {
-                Obligation::Projection(self.do_canonicalize(pr, DebruijnIndex::INNERMOST))
+            Obligation::AliasEq(alias_eq) => {
+                Obligation::AliasEq(self.do_canonicalize(alias_eq, DebruijnIndex::INNERMOST))
             }
         };
         self.into_canonicalized(InEnvironment {
@@ -394,14 +394,25 @@ impl InferenceTable {
             {
                 self.unify_substs(&tr1.substitution, &tr2.substitution, depth + 1)
             }
-            (GenericPredicate::Projection(proj1), GenericPredicate::Projection(proj2))
-                if proj1.projection_ty.associated_ty_id == proj2.projection_ty.associated_ty_id =>
-            {
-                self.unify_substs(
-                    &proj1.projection_ty.substitution,
-                    &proj2.projection_ty.substitution,
-                    depth + 1,
-                ) && self.unify_inner(&proj1.ty, &proj2.ty, depth + 1)
+            (
+                GenericPredicate::AliasEq(AliasEq { alias: alias1, ty: ty1 }),
+                GenericPredicate::AliasEq(AliasEq { alias: alias2, ty: ty2 }),
+            ) => {
+                let (substitution1, substitution2) = match (alias1, alias2) {
+                    (AliasTy::Projection(projection_ty1), AliasTy::Projection(projection_ty2))
+                        if projection_ty1.associated_ty_id == projection_ty2.associated_ty_id =>
+                    {
+                        (&projection_ty1.substitution, &projection_ty2.substitution)
+                    }
+                    (AliasTy::Opaque(opaque1), AliasTy::Opaque(opaque2))
+                        if opaque1.opaque_ty_id == opaque2.opaque_ty_id =>
+                    {
+                        (&opaque1.substitution, &opaque2.substitution)
+                    }
+                    _ => return false,
+                };
+                self.unify_substs(&substitution1, &substitution2, depth + 1)
+                    && self.unify_inner(&ty1, &ty2, depth + 1)
             }
             _ => false,
         }

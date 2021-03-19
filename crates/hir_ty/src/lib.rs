@@ -45,7 +45,7 @@ pub use lower::{
     associated_type_shorthand_candidates, callable_item_sig, CallableDefId, ImplTraitLoweringMode,
     TyDefId, TyLoweringContext, ValueTyDefId,
 };
-pub use traits::{InEnvironment, Obligation, ProjectionPredicate, TraitEnvironment};
+pub use traits::{AliasEq, InEnvironment, Obligation, TraitEnvironment};
 
 pub use chalk_ir::{AdtId, BoundVar, DebruijnIndex, Mutability, Safety, Scalar, TyVariableKind};
 
@@ -70,6 +70,20 @@ pub enum Lifetime {
 pub struct OpaqueTy {
     pub opaque_ty_id: OpaqueTyId,
     pub substitution: Substitution,
+}
+
+impl TypeWalk for OpaqueTy {
+    fn walk(&self, f: &mut impl FnMut(&Ty)) {
+        self.substitution.walk(f);
+    }
+
+    fn walk_mut_binders(
+        &mut self,
+        f: &mut impl FnMut(&mut Ty, DebruijnIndex),
+        binders: DebruijnIndex,
+    ) {
+        self.substitution.walk_mut_binders(f, binders);
+    }
 }
 
 /// A "projection" type corresponds to an (unnormalized)
@@ -133,6 +147,25 @@ pub enum AliasTy {
     Opaque(OpaqueTy),
 }
 
+impl TypeWalk for AliasTy {
+    fn walk(&self, f: &mut impl FnMut(&Ty)) {
+        match self {
+            AliasTy::Projection(it) => it.walk(f),
+            AliasTy::Opaque(it) => it.walk(f),
+        }
+    }
+
+    fn walk_mut_binders(
+        &mut self,
+        f: &mut impl FnMut(&mut Ty, DebruijnIndex),
+        binders: DebruijnIndex,
+    ) {
+        match self {
+            AliasTy::Projection(it) => it.walk_mut_binders(f, binders),
+            AliasTy::Opaque(it) => it.walk_mut_binders(f, binders),
+        }
+    }
+}
 /// A type.
 ///
 /// See also the `TyKind` enum in rustc (librustc/ty/sty.rs), which represents
@@ -535,7 +568,7 @@ pub enum GenericPredicate {
     /// The given trait needs to be implemented for its type parameters.
     Implemented(TraitRef),
     /// An associated type bindings like in `Iterator<Item = T>`.
-    Projection(ProjectionPredicate),
+    AliasEq(AliasEq),
     /// We couldn't resolve the trait reference. (If some type parameters can't
     /// be resolved, they will just be Unknown).
     Error,
@@ -553,8 +586,10 @@ impl GenericPredicate {
     pub fn trait_ref(&self, db: &dyn HirDatabase) -> Option<TraitRef> {
         match self {
             GenericPredicate::Implemented(tr) => Some(tr.clone()),
-            GenericPredicate::Projection(proj) => Some(proj.projection_ty.trait_ref(db)),
-            GenericPredicate::Error => None,
+            GenericPredicate::AliasEq(AliasEq { alias: AliasTy::Projection(proj), .. }) => {
+                Some(proj.trait_ref(db))
+            }
+            GenericPredicate::AliasEq(_) | GenericPredicate::Error => None,
         }
     }
 }
@@ -563,7 +598,7 @@ impl TypeWalk for GenericPredicate {
     fn walk(&self, f: &mut impl FnMut(&Ty)) {
         match self {
             GenericPredicate::Implemented(trait_ref) => trait_ref.walk(f),
-            GenericPredicate::Projection(projection_pred) => projection_pred.walk(f),
+            GenericPredicate::AliasEq(alias_eq) => alias_eq.walk(f),
             GenericPredicate::Error => {}
         }
     }
@@ -575,9 +610,7 @@ impl TypeWalk for GenericPredicate {
     ) {
         match self {
             GenericPredicate::Implemented(trait_ref) => trait_ref.walk_mut_binders(f, binders),
-            GenericPredicate::Projection(projection_pred) => {
-                projection_pred.walk_mut_binders(f, binders)
-            }
+            GenericPredicate::AliasEq(alias_eq) => alias_eq.walk_mut_binders(f, binders),
             GenericPredicate::Error => {}
         }
     }
