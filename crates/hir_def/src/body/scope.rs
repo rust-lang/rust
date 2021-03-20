@@ -8,7 +8,7 @@ use rustc_hash::FxHashMap;
 use crate::{
     body::Body,
     db::DefDatabase,
-    expr::{Expr, ExprId, Pat, PatId, Statement},
+    expr::{Expr, ExprId, LabelId, Pat, PatId, Statement},
     BlockId, DefWithBodyId,
 };
 
@@ -40,6 +40,7 @@ impl ScopeEntry {
 pub struct ScopeData {
     parent: Option<ScopeId>,
     block: Option<BlockId>,
+    label: Option<(LabelId, Name)>,
     entries: Vec<ScopeEntry>,
 }
 
@@ -67,6 +68,11 @@ impl ExprScopes {
         self.scopes[scope].block
     }
 
+    /// If `scope` refers to a labeled expression scope, returns the corresponding `Label`.
+    pub fn label(&self, scope: ScopeId) -> Option<(LabelId, Name)> {
+        self.scopes[scope].label.clone()
+    }
+
     pub fn scope_chain(&self, scope: Option<ScopeId>) -> impl Iterator<Item = ScopeId> + '_ {
         std::iter::successors(scope, move |&scope| self.scopes[scope].parent)
     }
@@ -85,15 +91,34 @@ impl ExprScopes {
     }
 
     fn root_scope(&mut self) -> ScopeId {
-        self.scopes.alloc(ScopeData { parent: None, block: None, entries: vec![] })
+        self.scopes.alloc(ScopeData { parent: None, block: None, label: None, entries: vec![] })
     }
 
     fn new_scope(&mut self, parent: ScopeId) -> ScopeId {
-        self.scopes.alloc(ScopeData { parent: Some(parent), block: None, entries: vec![] })
+        self.scopes.alloc(ScopeData {
+            parent: Some(parent),
+            block: None,
+            label: None,
+            entries: vec![],
+        })
     }
 
-    fn new_block_scope(&mut self, parent: ScopeId, block: BlockId) -> ScopeId {
-        self.scopes.alloc(ScopeData { parent: Some(parent), block: Some(block), entries: vec![] })
+    fn new_labeled_scope(&mut self, parent: ScopeId, label: Option<(LabelId, Name)>) -> ScopeId {
+        self.scopes.alloc(ScopeData { parent: Some(parent), block: None, label, entries: vec![] })
+    }
+
+    fn new_block_scope(
+        &mut self,
+        parent: ScopeId,
+        block: BlockId,
+        label: Option<(LabelId, Name)>,
+    ) -> ScopeId {
+        self.scopes.alloc(ScopeData {
+            parent: Some(parent),
+            block: Some(block),
+            label,
+            entries: vec![],
+        })
     }
 
     fn add_bindings(&mut self, body: &Body, scope: ScopeId, pat: PatId) {
@@ -144,19 +169,31 @@ fn compute_block_scopes(
 }
 
 fn compute_expr_scopes(expr: ExprId, body: &Body, scopes: &mut ExprScopes, scope: ScopeId) {
+    let make_label =
+        |label: &Option<_>| label.map(|label| (label, body.labels[label].name.clone()));
+
     scopes.set_scope(expr, scope);
     match &body[expr] {
-        Expr::Block { statements, tail, id, .. } => {
-            let scope = scopes.new_block_scope(scope, *id);
+        Expr::Block { statements, tail, id, label } => {
+            let scope = scopes.new_block_scope(scope, *id, make_label(label));
             // Overwrite the old scope for the block expr, so that every block scope can be found
             // via the block itself (important for blocks that only contain items, no expressions).
             scopes.set_scope(expr, scope);
-            compute_block_scopes(&statements, *tail, body, scopes, scope);
+            compute_block_scopes(statements, *tail, body, scopes, scope);
         }
-        Expr::For { iterable, pat, body: body_expr, .. } => {
+        Expr::For { iterable, pat, body: body_expr, label } => {
             compute_expr_scopes(*iterable, body, scopes, scope);
-            let scope = scopes.new_scope(scope);
+            let scope = scopes.new_labeled_scope(scope, make_label(label));
             scopes.add_bindings(body, scope, *pat);
+            compute_expr_scopes(*body_expr, body, scopes, scope);
+        }
+        Expr::While { condition, body: body_expr, label } => {
+            compute_expr_scopes(*condition, body, scopes, scope);
+            let scope = scopes.new_labeled_scope(scope, make_label(label));
+            compute_expr_scopes(*body_expr, body, scopes, scope);
+        }
+        Expr::Loop { body: body_expr, label } => {
+            let scope = scopes.new_labeled_scope(scope, make_label(label));
             compute_expr_scopes(*body_expr, body, scopes, scope);
         }
         Expr::Lambda { args, body: body_expr, .. } => {

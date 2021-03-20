@@ -12,7 +12,7 @@ use crate::{
     body::scope::{ExprScopes, ScopeId},
     builtin_type::BuiltinType,
     db::DefDatabase,
-    expr::{ExprId, PatId},
+    expr::{ExprId, LabelId, PatId},
     generics::GenericParams,
     item_scope::{BuiltinShadowMode, BUILTIN_SCOPE},
     nameres::DefMap,
@@ -409,6 +409,7 @@ pub enum ScopeDef {
     AdtSelfType(AdtId),
     GenericParam(GenericParamId),
     Local(PatId),
+    Label(LabelId),
 }
 
 impl Scope {
@@ -470,6 +471,9 @@ impl Scope {
                 f(name![Self], ScopeDef::AdtSelfType(*i));
             }
             Scope::ExprScope(scope) => {
+                if let Some((label, name)) = scope.expr_scopes.label(scope.scope_id) {
+                    f(name.clone(), ScopeDef::Label(label))
+                }
                 scope.expr_scopes.entries(scope.scope_id).iter().for_each(|e| {
                     f(e.name().clone(), ScopeDef::Local(e.pat()));
                 });
