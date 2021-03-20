@@ -276,7 +276,7 @@ pub enum TyKind {
     /// represents the `Self` type inside the bounds. This is currently
     /// implicit; Chalk has the `Binders` struct to make it explicit, but it
     /// didn't seem worth the overhead yet.
-    Dyn(Arc<[GenericPredicate]>),
+    Dyn(Arc<[WhereClause]>),
 
     /// A placeholder for a type which could not be computed; this is propagated
     /// to avoid useless error messages. Doubles as a placeholder where type
@@ -564,7 +564,7 @@ impl TypeWalk for TraitRef {
 /// Like `generics::WherePredicate`, but with resolved types: A condition on the
 /// parameters of a generic item.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum GenericPredicate {
+pub enum WhereClause {
     /// The given trait needs to be implemented for its type parameters.
     Implemented(TraitRef),
     /// An associated type bindings like in `Iterator<Item = T>`.
@@ -574,32 +574,32 @@ pub enum GenericPredicate {
     Error,
 }
 
-impl GenericPredicate {
+impl WhereClause {
     pub fn is_error(&self) -> bool {
-        matches!(self, GenericPredicate::Error)
+        matches!(self, WhereClause::Error)
     }
 
     pub fn is_implemented(&self) -> bool {
-        matches!(self, GenericPredicate::Implemented(_))
+        matches!(self, WhereClause::Implemented(_))
     }
 
     pub fn trait_ref(&self, db: &dyn HirDatabase) -> Option<TraitRef> {
         match self {
-            GenericPredicate::Implemented(tr) => Some(tr.clone()),
-            GenericPredicate::AliasEq(AliasEq { alias: AliasTy::Projection(proj), .. }) => {
+            WhereClause::Implemented(tr) => Some(tr.clone()),
+            WhereClause::AliasEq(AliasEq { alias: AliasTy::Projection(proj), .. }) => {
                 Some(proj.trait_ref(db))
             }
-            GenericPredicate::AliasEq(_) | GenericPredicate::Error => None,
+            WhereClause::AliasEq(_) | WhereClause::Error => None,
         }
     }
 }
 
-impl TypeWalk for GenericPredicate {
+impl TypeWalk for WhereClause {
     fn walk(&self, f: &mut impl FnMut(&Ty)) {
         match self {
-            GenericPredicate::Implemented(trait_ref) => trait_ref.walk(f),
-            GenericPredicate::AliasEq(alias_eq) => alias_eq.walk(f),
-            GenericPredicate::Error => {}
+            WhereClause::Implemented(trait_ref) => trait_ref.walk(f),
+            WhereClause::AliasEq(alias_eq) => alias_eq.walk(f),
+            WhereClause::Error => {}
         }
     }
 
@@ -609,9 +609,9 @@ impl TypeWalk for GenericPredicate {
         binders: DebruijnIndex,
     ) {
         match self {
-            GenericPredicate::Implemented(trait_ref) => trait_ref.walk_mut_binders(f, binders),
-            GenericPredicate::AliasEq(alias_eq) => alias_eq.walk_mut_binders(f, binders),
-            GenericPredicate::Error => {}
+            WhereClause::Implemented(trait_ref) => trait_ref.walk_mut_binders(f, binders),
+            WhereClause::AliasEq(alias_eq) => alias_eq.walk_mut_binders(f, binders),
+            WhereClause::Error => {}
         }
     }
 }
@@ -815,7 +815,7 @@ impl Ty {
     pub fn dyn_trait_ref(&self) -> Option<&TraitRef> {
         match self.interned(&Interner) {
             TyKind::Dyn(bounds) => bounds.get(0).and_then(|b| match b {
-                GenericPredicate::Implemented(trait_ref) => Some(trait_ref),
+                WhereClause::Implemented(trait_ref) => Some(trait_ref),
                 _ => None,
             }),
             _ => None,
@@ -894,7 +894,7 @@ impl Ty {
         }
     }
 
-    pub fn impl_trait_bounds(&self, db: &dyn HirDatabase) -> Option<Vec<GenericPredicate>> {
+    pub fn impl_trait_bounds(&self, db: &dyn HirDatabase) -> Option<Vec<WhereClause>> {
         match self.interned(&Interner) {
             TyKind::OpaqueType(opaque_ty_id, ..) => {
                 match db.lookup_intern_impl_trait_id((*opaque_ty_id).into()) {
@@ -907,7 +907,7 @@ impl Ty {
                             // This is only used by type walking.
                             // Parameters will be walked outside, and projection predicate is not used.
                             // So just provide the Future trait.
-                            let impl_bound = GenericPredicate::Implemented(TraitRef {
+                            let impl_bound = WhereClause::Implemented(TraitRef {
                                 trait_id: to_chalk_trait_id(future_trait),
                                 substitution: Substitution::empty(),
                             });
@@ -1166,7 +1166,7 @@ pub struct ReturnTypeImplTraits {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) struct ReturnTypeImplTrait {
-    pub(crate) bounds: Binders<Vec<GenericPredicate>>,
+    pub(crate) bounds: Binders<Vec<WhereClause>>,
 }
 
 pub fn to_foreign_def_id(id: TypeAliasId) -> ForeignDefId {

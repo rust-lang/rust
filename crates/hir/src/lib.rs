@@ -57,8 +57,8 @@ use hir_ty::{
     to_assoc_type_id,
     traits::{FnTrait, Solution, SolutionVariables},
     AliasEq, AliasTy, BoundVar, CallableDefId, CallableSig, Canonical, DebruijnIndex,
-    GenericPredicate, InEnvironment, Interner, Obligation, ProjectionTy, Scalar, Substitution, Ty,
-    TyDefId, TyKind, TyVariableKind,
+    InEnvironment, Interner, Obligation, ProjectionTy, Scalar, Substitution, Ty, TyDefId, TyKind,
+    TyVariableKind, WhereClause,
 };
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
@@ -1461,7 +1461,7 @@ impl TypeParam {
         db.generic_predicates_for_param(self.id)
             .into_iter()
             .filter_map(|pred| match &pred.value {
-                hir_ty::GenericPredicate::Implemented(trait_ref) => {
+                hir_ty::WhereClause::Implemented(trait_ref) => {
                     Some(Trait::from(trait_ref.hir_trait_id()))
                 }
                 _ => None,
@@ -2022,7 +2022,7 @@ impl Type {
         self.ty.value.impl_trait_bounds(db).map(|it| {
             it.into_iter()
                 .filter_map(|pred| match pred {
-                    hir_ty::GenericPredicate::Implemented(trait_ref) => {
+                    hir_ty::WhereClause::Implemented(trait_ref) => {
                         Some(Trait::from(trait_ref.hir_trait_id()))
                     }
                     _ => None,
@@ -2060,12 +2060,12 @@ impl Type {
         fn walk_bounds(
             db: &dyn HirDatabase,
             type_: &Type,
-            bounds: &[GenericPredicate],
+            bounds: &[WhereClause],
             cb: &mut impl FnMut(Type),
         ) {
             for pred in bounds {
                 match pred {
-                    GenericPredicate::Implemented(trait_ref) => {
+                    WhereClause::Implemented(trait_ref) => {
                         cb(type_.clone());
                         walk_substs(db, type_, &trait_ref.substitution, cb);
                     }

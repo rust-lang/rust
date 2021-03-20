@@ -19,8 +19,8 @@ use hir_expand::name::Name;
 use crate::{
     db::HirDatabase, from_assoc_type_id, from_foreign_def_id, from_placeholder_idx, primitive,
     to_assoc_type_id, traits::chalk::from_chalk, utils::generics, AdtId, AliasEq, AliasTy,
-    CallableDefId, CallableSig, GenericPredicate, ImplTraitId, Interner, Lifetime, Obligation,
-    OpaqueTy, ProjectionTy, Scalar, Substitution, TraitRef, Ty, TyKind,
+    CallableDefId, CallableSig, ImplTraitId, Interner, Lifetime, Obligation, OpaqueTy,
+    ProjectionTy, Scalar, Substitution, TraitRef, Ty, TyKind, WhereClause,
 };
 
 pub struct HirFormatter<'a> {
@@ -353,7 +353,7 @@ impl HirDisplay for Ty {
                     _ => Cow::Borrowed(&[][..]),
                 };
 
-                if let [GenericPredicate::Implemented(trait_ref), _] = predicates.as_ref() {
+                if let [WhereClause::Implemented(trait_ref), _] = predicates.as_ref() {
                     let trait_ = trait_ref.hir_trait_id();
                     if fn_traits(f.db.upcast(), trait_).any(|it| it == trait_) {
                         return write!(f, "{}", ty_display);
@@ -652,7 +652,7 @@ fn fn_traits(db: &dyn DefDatabase, trait_: TraitId) -> impl Iterator<Item = Trai
 
 pub fn write_bounds_like_dyn_trait_with_prefix(
     prefix: &str,
-    predicates: &[GenericPredicate],
+    predicates: &[WhereClause],
     f: &mut HirFormatter,
 ) -> Result<(), HirDisplayError> {
     write!(f, "{}", prefix)?;
@@ -665,7 +665,7 @@ pub fn write_bounds_like_dyn_trait_with_prefix(
 }
 
 fn write_bounds_like_dyn_trait(
-    predicates: &[GenericPredicate],
+    predicates: &[WhereClause],
     f: &mut HirFormatter,
 ) -> Result<(), HirDisplayError> {
     // Note: This code is written to produce nice results (i.e.
@@ -679,7 +679,7 @@ fn write_bounds_like_dyn_trait(
     let mut is_fn_trait = false;
     for p in predicates.iter() {
         match p {
-            GenericPredicate::Implemented(trait_ref) => {
+            WhereClause::Implemented(trait_ref) => {
                 let trait_ = trait_ref.hir_trait_id();
                 if !is_fn_trait {
                     is_fn_trait = fn_traits(f.db.upcast(), trait_).any(|it| it == trait_);
@@ -710,12 +710,12 @@ fn write_bounds_like_dyn_trait(
                     }
                 }
             }
-            GenericPredicate::AliasEq(alias_eq) if is_fn_trait => {
+            WhereClause::AliasEq(alias_eq) if is_fn_trait => {
                 is_fn_trait = false;
                 write!(f, " -> ")?;
                 alias_eq.ty.hir_fmt(f)?;
             }
-            GenericPredicate::AliasEq(AliasEq { ty, alias }) => {
+            WhereClause::AliasEq(AliasEq { ty, alias }) => {
                 // in types in actual Rust, these will always come
                 // after the corresponding Implemented predicate
                 if angle_open {
@@ -731,7 +731,7 @@ fn write_bounds_like_dyn_trait(
                 }
                 ty.hir_fmt(f)?;
             }
-            GenericPredicate::Error => {
+            WhereClause::Error => {
                 if angle_open {
                     // impl Trait<X, {error}>
                     write!(f, ", ")?;
@@ -778,18 +778,15 @@ impl HirDisplay for TraitRef {
     }
 }
 
-impl HirDisplay for GenericPredicate {
+impl HirDisplay for WhereClause {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         if f.should_truncate() {
             return write!(f, "{}", TYPE_HINT_TRUNCATION);
         }
 
         match self {
-            GenericPredicate::Implemented(trait_ref) => trait_ref.hir_fmt(f)?,
-            GenericPredicate::AliasEq(AliasEq {
-                alias: AliasTy::Projection(projection_ty),
-                ty,
-            }) => {
+            WhereClause::Implemented(trait_ref) => trait_ref.hir_fmt(f)?,
+            WhereClause::AliasEq(AliasEq { alias: AliasTy::Projection(projection_ty), ty }) => {
                 write!(f, "<")?;
                 projection_ty.trait_ref(f.db).hir_fmt_ext(f, true)?;
                 write!(
@@ -799,7 +796,7 @@ impl HirDisplay for GenericPredicate {
                 )?;
                 ty.hir_fmt(f)?;
             }
-            GenericPredicate::AliasEq(_) | GenericPredicate::Error => write!(f, "{{error}}")?,
+            WhereClause::AliasEq(_) | WhereClause::Error => write!(f, "{{error}}")?,
         }
         Ok(())
     }

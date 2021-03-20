@@ -15,7 +15,7 @@ use hir_def::{
 };
 use hir_expand::name::{name, Name};
 
-use crate::{db::HirDatabase, GenericPredicate, TraitRef};
+use crate::{db::HirDatabase, TraitRef, WhereClause};
 
 fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> Vec<TraitId> {
     let resolver = trait_.resolver(db);
@@ -64,7 +64,7 @@ fn direct_super_trait_refs(db: &dyn HirDatabase, trait_ref: &TraitRef) -> Vec<Tr
         .iter()
         .filter_map(|pred| {
             pred.as_ref().filter_map(|pred| match pred {
-                GenericPredicate::Implemented(tr) => Some(tr.clone()),
+                WhereClause::Implemented(tr) => Some(tr.clone()),
                 _ => None,
             })
         })
