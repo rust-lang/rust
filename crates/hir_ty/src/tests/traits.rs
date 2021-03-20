@@ -1412,8 +1412,8 @@ fn weird_bounds() {
             50..51 'b': impl
             69..70 'c': impl Trait
             86..87 'd': impl
-            107..108 'e': impl {error}
-            123..124 'f': impl Trait + {error}
+            107..108 'e': impl
+            123..124 'f': impl Trait
             147..149 '{}': ()
         "#]],
     );
