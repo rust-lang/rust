@@ -27,6 +27,7 @@ pub fn autoderef<'a>(
     krate: Option<CrateId>,
     ty: InEnvironment<Canonical<Ty>>,
 ) -> impl Iterator<Item = Canonical<Ty>> + 'a {
+    // from_chalk
     let InEnvironment { value: ty, environment } = ty;
     successors(Some(ty), move |ty| {
         deref(db, krate?, InEnvironment { value: ty, environment: environment.clone() })

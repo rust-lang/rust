@@ -304,10 +304,12 @@ fn path_applicable_imports(
             return items_with_candidate_name
                 .into_iter()
                 .filter_map(|item| {
-                    let mut mod_path = mod_path(item)?;
-                    if let Some(assoc_item) = item_as_assoc(db, item) {
-                        mod_path.push_segment(assoc_item.name(db)?);
+                    if item_as_assoc(db, item).is_some() {
+                        // unqualified assoc items are not valid syntax
+                        return None;
                     }
+
+                    let mod_path = mod_path(item)?;
                     Some(LocatedImport::new(mod_path.clone(), item, item, Some(mod_path)))
                 })
                 .collect();
