@@ -149,7 +149,7 @@ pub enum UnavailableMutError {
 /// the `allocator-api` feature of the `bumpalo` crate.
 #[cfg(feature = "bumpalo")]
 #[derive(Clone, Copy, Debug)]
-pub struct BumpWrapper<'a>(&'a bumpalo::Bump);
+pub struct BumpWrapper<'a>(pub &'a bumpalo::Bump);
 
 #[cfg(feature = "bumpalo")]
 #[test]
