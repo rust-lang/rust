@@ -67,23 +67,10 @@ impl CoverageInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             let mut pgo_func_name_var_map = coverage_context.pgo_func_name_var_map.borrow_mut();
             pgo_func_name_var_map
                 .entry(instance)
-                .or_insert_with(|| self.create_pgo_func_name_var(instance))
+                .or_insert_with(|| create_pgo_func_name_var(self, instance))
         } else {
             bug!("Could not get the `coverage_context`");
         }
-    }
-
-    /// Calls llvm::createPGOFuncNameVar() with the given function instance's
-    /// mangled function name. The LLVM API returns an llvm::GlobalVariable
-    /// containing the function name, with the specific variable name and
-    /// linkage required by LLVM InstrProf source-based coverage
-    /// instrumentation. Use `bx.get_pgo_func_name_var()` to ensure the variable
-    /// is only created once per `Instance`.
-    fn create_pgo_func_name_var(&self, instance: Instance<'tcx>) -> &'ll llvm::Value {
-        let mangled_fn_name = CString::new(self.tcx.symbol_name(instance).name)
-            .expect("error converting function name to C string");
-        let llfn = self.get_fn(instance);
-        unsafe { llvm::LLVMRustCoverageCreatePGOFuncNameVar(llfn, mangled_fn_name.as_ptr()) }
     }
 
     fn define_unused_fn(&self, def_id: DefId) {
@@ -210,10 +197,8 @@ fn declare_unused_fn(cx: &CodegenCx<'ll, 'tcx>, def_id: &DefId) -> Instance<'tcx
         ),
     );
 
-    unsafe {
-        llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::ExternalLinkage);
-        llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
-    }
+    llvm::set_linkage(llfn, llvm::Linkage::WeakAnyLinkage);
+    llvm::set_visibility(llfn, llvm::Visibility::Hidden);
 
     cx.instances.borrow_mut().insert(instance, llfn);
 
@@ -259,6 +244,22 @@ fn add_function_coverage(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>, de
     } else {
         bug!("Could not get the `coverage_context`");
     }
+}
+
+/// Calls llvm::createPGOFuncNameVar() with the given function instance's
+/// mangled function name. The LLVM API returns an llvm::GlobalVariable
+/// containing the function name, with the specific variable name and linkage
+/// required by LLVM InstrProf source-based coverage instrumentation. Use
+/// `bx.get_pgo_func_name_var()` to ensure the variable is only created once per
+/// `Instance`.
+fn create_pgo_func_name_var(
+    cx: &CodegenCx<'ll, 'tcx>,
+    instance: Instance<'tcx>,
+) -> &'ll llvm::Value {
+    let mangled_fn_name = CString::new(cx.tcx.symbol_name(instance).name)
+        .expect("error converting function name to C string");
+    let llfn = cx.get_fn(instance);
+    unsafe { llvm::LLVMRustCoverageCreatePGOFuncNameVar(llfn, mangled_fn_name.as_ptr()) }
 }
 
 pub(crate) fn write_filenames_section_to_buffer<'a>(

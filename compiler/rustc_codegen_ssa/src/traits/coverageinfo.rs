@@ -29,10 +29,6 @@ pub trait CoverageInfoMethods<'tcx>: BackendTypes {
     /// `instrprof.increment()`. The `Value` is only created once per instance.
     /// Multiple invocations with the same instance return the same `Value`.
     fn get_pgo_func_name_var(&self, instance: Instance<'tcx>) -> Self::Value;
-
-    /// Creates a new PGO function name variable. This should only be called
-    /// to fill in the unused function names array.
-    fn create_pgo_func_name_var(&self, instance: Instance<'tcx>) -> Self::Value;
 }
 
 pub trait CoverageInfoBuilderMethods<'tcx>: BackendTypes {
