@@ -1549,34 +1549,6 @@ pub trait Iterator {
     /// let of_rust: Vec<_> = words.collect();
     /// assert_eq!(of_rust, vec!["of", "Rust"]);
     /// ```
-    ///
-    /// This demonstrates a use case that needs `by_ref`:
-    ///
-    /// ```compile_fail,E0382
-    /// let a = [1, 2, 3, 4, 5];
-    /// let mut iter = a.iter();
-    ///
-    /// let sum: i32 = iter.take(3).fold(0, |acc, i| acc + i);
-    /// assert_eq!(sum, 6);
-    ///
-    /// // Error! We can't use `iter` again because it was moved
-    /// // by `take`.
-    /// assert_eq!(iter.next(), Some(&4));
-    /// ```
-    ///
-    /// Now, let's use `by_ref` to make this work:
-    ///
-    /// ```
-    /// let a = [1, 2, 3, 4, 5];
-    /// let mut iter = a.iter();
-    ///
-    /// // We add in a call to `by_ref` here so `iter` isn't moved.
-    /// let sum: i32 = iter.by_ref().take(3).fold(0, |acc, i| acc + i);
-    /// assert_eq!(sum, 6);
-    ///
-    /// // And now we can use `iter` again because we still own it.
-    /// assert_eq!(iter.next(), Some(&4));
-    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn by_ref(&mut self) -> &mut Self
     where
