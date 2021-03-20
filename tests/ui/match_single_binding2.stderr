@@ -1,0 +1,34 @@
+error: this match could be written as a `let` statement
+  --> $DIR/match_single_binding2.rs:18:36
+   |
+LL |               Some((iter, _item)) => match iter.size_hint() {
+   |  ____________________________________^
+LL | |                 (min, max) => (min.saturating_add(1), max.and_then(|max| max.checked_add(1))),
+LL | |             },
+   | |_____________^
+   |
+   = note: `-D clippy::match-single-binding` implied by `-D warnings`
+help: consider using `let` statement
+   |
+LL |             Some((iter, _item)) => {
+LL |                 let (min, max) = iter.size_hint();
+LL |                 (min.saturating_add(1), max.and_then(|max| max.checked_add(1)))
+LL |             },
+   |
+
+error: this match could be written as a `let` statement
+  --> $DIR/match_single_binding2.rs:31:13
+   |
+LL | /             match get_tup() {
+LL | |                 (a, b) => println!("a {:?} and b {:?}", a, b),
+LL | |             }
+   | |_____________^
+   |
+help: consider using `let` statement
+   |
+LL |             let (a, b) = get_tup();
+LL |             println!("a {:?} and b {:?}", a, b);
+   |
+
+error: aborting due to 2 previous errors
+
