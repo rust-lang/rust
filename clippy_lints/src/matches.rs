@@ -1353,6 +1353,7 @@ fn find_bool_lit(ex: &ExprKind<'_>, desugared: bool) -> Option<bool> {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 fn check_match_single_binding<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], expr: &Expr<'_>) {
     if in_macro(expr.span) || arms.len() != 1 || is_refutable(cx, arms[0].pat) {
         return;
@@ -1427,7 +1428,18 @@ fn check_match_single_binding<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[A
                         indent = " ".repeat(indent_of(cx, bind_names).unwrap_or(0));
                         cbrace_start = format!("{{\n{}", indent);
                     }
-                };
+                }
+                // If the parent is already an arm, and the body is another match statement,
+                // we need curly braces around suggestion
+                let parent_node_id = cx.tcx.hir().get_parent_node(expr.hir_id);
+                if let Node::Arm(arm) = &cx.tcx.hir().get(parent_node_id) {
+                    if let ExprKind::Match(..) = arm.body.kind {
+                        cbrace_end = format!("\n{}}}", indent);
+                        // Fix body indent due to the match
+                        indent = " ".repeat(indent_of(cx, bind_names).unwrap_or(0));
+                        cbrace_start = format!("{{\n{}", indent);
+                    }
+                }
                 (
                     expr.span,
                     format!(
