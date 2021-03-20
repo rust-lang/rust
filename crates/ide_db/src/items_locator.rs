@@ -40,7 +40,7 @@ pub fn items_with_name<'a>(
 ) -> impl Iterator<Item = ItemInNs> + 'a {
     let _p = profile::span("items_with_name").detail(|| {
         format!(
-            "Name: {} ({:?}), crate: {:?}, limit: {:?}",
+            "Name: {}, crate: {:?}, assoc items: {:?}, limit: {:?}",
             name.text(),
             assoc_item_search,
             krate.display_name(sema.db).map(|name| name.to_string()),
