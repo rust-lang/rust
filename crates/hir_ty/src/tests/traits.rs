@@ -2273,8 +2273,7 @@ fn test<T, U>() where T: Trait<U::Item>, U: Trait<T::Item> {
 
 #[test]
 fn unselected_projection_in_trait_env_cycle_3() {
-    // this is a cycle, although it would be possible to handle if we didn't go
-    // into bindings when looking for traits
+    // this is a cycle for rustc; we currently accept it
     check_types(
         r#"
 //- /main.rs
@@ -2285,7 +2284,7 @@ trait Trait {
 
 fn test<T>() where T: Trait<OtherItem = T::Item> {
     let x: T::Item = no_matter;
-}                   //^ {unknown}
+}                   //^ Trait::Item<T>
 "#,
     );
 }

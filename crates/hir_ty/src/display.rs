@@ -571,13 +571,22 @@ impl HirDisplay for Ty {
                         write!(f, "{}", param_data.name.clone().unwrap_or_else(Name::missing))?
                     }
                     TypeParamProvenance::ArgumentImplTrait => {
-                        let bounds = f.db.generic_predicates_for_param(id);
                         let substs = Substitution::type_params_for_generics(f.db, &generics);
-                        write_bounds_like_dyn_trait_with_prefix(
-                            "impl",
-                            &bounds.iter().map(|b| b.clone().subst(&substs)).collect::<Vec<_>>(),
-                            f,
-                        )?;
+                        let bounds = f
+                            .db
+                            .generic_predicates(id.parent)
+                            .into_iter()
+                            .map(|pred| pred.clone().subst(&substs))
+                            .filter(|wc| match &wc {
+                                WhereClause::Implemented(tr) => tr.self_type_parameter() == self,
+                                WhereClause::AliasEq(AliasEq {
+                                    alias: AliasTy::Projection(proj),
+                                    ty: _,
+                                }) => proj.self_type_parameter() == self,
+                                _ => false,
+                            })
+                            .collect::<Vec<_>>();
+                        write_bounds_like_dyn_trait_with_prefix("impl", &bounds, f)?;
                     }
                 }
             }

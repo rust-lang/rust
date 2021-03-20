@@ -940,10 +940,19 @@ impl Ty {
                 let param_data = &generic_params.types[id.local_id];
                 match param_data.provenance {
                     hir_def::generics::TypeParamProvenance::ArgumentImplTrait => {
+                        let substs = Substitution::type_params(db, id.parent);
                         let predicates = db
-                            .generic_predicates_for_param(id)
+                            .generic_predicates(id.parent)
                             .into_iter()
-                            .map(|pred| pred.value.clone())
+                            .map(|pred| pred.clone().subst(&substs))
+                            .filter(|wc| match &wc {
+                                WhereClause::Implemented(tr) => tr.self_type_parameter() == self,
+                                WhereClause::AliasEq(AliasEq {
+                                    alias: AliasTy::Projection(proj),
+                                    ty: _,
+                                }) => proj.self_type_parameter() == self,
+                                _ => false,
+                            })
                             .collect_vec();
 
                         Some(predicates)
