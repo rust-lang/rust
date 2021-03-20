@@ -41,12 +41,15 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) expected_name: Option<NameOrNameRef>,
     pub(super) expected_type: Option<Type>,
     pub(super) name_ref_syntax: Option<ast::NameRef>,
+    pub(super) lifetime_syntax: Option<ast::Lifetime>,
+    pub(super) lifetime_param_syntax: Option<ast::LifetimeParam>,
     pub(super) function_syntax: Option<ast::Fn>,
     pub(super) use_item_syntax: Option<ast::Use>,
     pub(super) record_lit_syntax: Option<ast::RecordExpr>,
     pub(super) record_pat_syntax: Option<ast::RecordPat>,
     pub(super) record_field_syntax: Option<ast::RecordExprField>,
     pub(super) impl_def: Option<ast::Impl>,
+    pub(super) lifetime_allowed: bool,
     /// FIXME: `ActiveParameter` is string-based, which is very very wrong
     pub(super) active_parameter: Option<ActiveParameter>,
     pub(super) is_param: bool,
@@ -139,9 +142,12 @@ impl<'a> CompletionContext<'a> {
             original_token,
             token,
             krate,
+            lifetime_allowed: false,
             expected_name: None,
             expected_type: None,
             name_ref_syntax: None,
+            lifetime_syntax: None,
+            lifetime_param_syntax: None,
             function_syntax: None,
             use_item_syntax: None,
             record_lit_syntax: None,
@@ -244,7 +250,7 @@ impl<'a> CompletionContext<'a> {
     pub(crate) fn source_range(&self) -> TextRange {
         // check kind of macro-expanded token, but use range of original token
         let kind = self.token.kind();
-        if kind == IDENT || kind == UNDERSCORE || kind.is_keyword() {
+        if kind == IDENT || kind == LIFETIME_IDENT || kind == UNDERSCORE || kind.is_keyword() {
             cov_mark::hit!(completes_if_prefix_is_keyword);
             self.original_token.text_range()
         } else {
@@ -390,6 +396,11 @@ impl<'a> CompletionContext<'a> {
         self.expected_name = expected_name;
         self.attribute_under_caret = find_node_at_offset(&file_with_fake_ident, offset);
 
+        if let Some(lifetime) = find_node_at_offset::<ast::Lifetime>(&file_with_fake_ident, offset)
+        {
+            self.classify_lifetime(original_file, lifetime, offset);
+        }
+
         // First, let's try to complete a reference to some declaration.
         if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(&file_with_fake_ident, offset) {
             // Special case, `trait T { fn foo(i_am_a_name_ref) {} }`.
@@ -449,6 +460,23 @@ impl<'a> CompletionContext<'a> {
         }
     }
 
+    fn classify_lifetime(
+        &mut self,
+        original_file: &SyntaxNode,
+        lifetime: ast::Lifetime,
+        offset: TextSize,
+    ) {
+        self.lifetime_syntax =
+            find_node_at_offset(original_file, lifetime.syntax().text_range().start());
+        if lifetime.syntax().parent().map_or(false, |p| p.kind() != syntax::SyntaxKind::ERROR) {
+            self.lifetime_allowed = true;
+        }
+        if let Some(_) = lifetime.syntax().parent().and_then(ast::LifetimeParam::cast) {
+            self.lifetime_param_syntax =
+                self.sema.find_node_at_offset_with_macros(original_file, offset);
+        }
+    }
+
     fn classify_name_ref(
         &mut self,
         original_file: &SyntaxNode,
@@ -456,11 +484,11 @@ impl<'a> CompletionContext<'a> {
         offset: TextSize,
     ) {
         self.name_ref_syntax =
-            find_node_at_offset(&original_file, name_ref.syntax().text_range().start());
+            find_node_at_offset(original_file, name_ref.syntax().text_range().start());
         let name_range = name_ref.syntax().text_range();
         if ast::RecordExprField::for_field_name(&name_ref).is_some() {
             self.record_lit_syntax =
-                self.sema.find_node_at_offset_with_macros(&original_file, offset);
+                self.sema.find_node_at_offset_with_macros(original_file, offset);
         }
 
         self.fill_impl_def();

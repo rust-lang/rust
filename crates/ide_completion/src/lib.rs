@@ -130,6 +130,7 @@ pub fn completions(
     completions::trait_impl::complete_trait_impl(&mut acc, &ctx);
     completions::mod_::complete_mod(&mut acc, &ctx);
     completions::flyimport::import_on_the_fly(&mut acc, &ctx);
+    completions::lifetime::complete_lifetime(&mut acc, &ctx);
 
     Some(acc)
 }
