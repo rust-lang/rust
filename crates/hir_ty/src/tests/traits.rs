@@ -187,8 +187,8 @@ mod iter {
 mod collections {
     struct Vec<T> {}
     impl<T> Vec<T> {
-        fn new() -> Self { Vec {} }
-        fn push(&mut self, t: T) { }
+        pub fn new() -> Self { Vec {} }
+        pub fn push(&mut self, t: T) { }
     }
 
     impl<T> IntoIterator for Vec<T> {

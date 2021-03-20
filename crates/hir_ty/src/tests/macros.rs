@@ -31,12 +31,12 @@ struct S;
 
 #[cfg(not(test))]
 impl S {
-    fn foo3(&self) -> i32 { 0 }
+    pub fn foo3(&self) -> i32 { 0 }
 }
 
 #[cfg(test)]
 impl S {
-    fn foo4(&self) -> i32 { 0 }
+    pub fn foo4(&self) -> i32 { 0 }
 }
 "#,
     );
