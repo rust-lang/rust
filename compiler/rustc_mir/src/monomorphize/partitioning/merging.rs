@@ -39,7 +39,11 @@ pub fn merge_codegen_units<'tcx>(
 
         // Move the mono-items from `smallest` to `second_smallest`
         second_smallest.modify_size_estimate(smallest.size_estimate());
-        second_smallest.items_mut().extend(smallest.items_mut().drain());
+
+        second_smallest.items_mut().reserve(smallest.items().len());
+        for (k, v) in smallest.items_mut().drain() {
+            second_smallest.items_mut().insert(k, v);
+        }
 
         // Record that `second_smallest` now contains all the stuff that was in
         // `smallest` before.

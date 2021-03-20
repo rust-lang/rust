@@ -208,12 +208,10 @@ impl<'tcx> Partitioner<'tcx> for DefaultPartitioning {
             // can internalize all candidates, since there is nowhere else they
             // could be accessed from.
             for cgu in &mut partitioning.codegen_units {
-                cgu.items_mut().extend(
-                    partitioning
-                        .internalization_candidates
-                        .iter()
-                        .map(|&candidate| (candidate, (Linkage::Internal, Visibility::Default))),
-                );
+                cgu.items_mut().reserve(partitioning.internalization_candidates.len());
+                for candidate in &partitioning.internalization_candidates {
+                    cgu.items_mut().insert(*candidate, (Linkage::Internal, Visibility::Default));
+                }
             }
 
             return;

@@ -988,9 +988,11 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 Some(Arc::new(exported_symbols))
             }
             Lto::Fat | Lto::Thin => {
+                exported_symbols.reserve(tcx.crates().len() + 1);
                 exported_symbols.insert(LOCAL_CRATE, copy_symbols(LOCAL_CRATE));
-                exported_symbols
-                    .extend(tcx.crates().iter().map(|&cnum| (cnum, copy_symbols(cnum))));
+                for &cnum in tcx.crates() {
+                    exported_symbols.insert(cnum, copy_symbols(cnum));
+                }
                 Some(Arc::new(exported_symbols))
             }
         }
