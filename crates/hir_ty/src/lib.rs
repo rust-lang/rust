@@ -106,6 +106,10 @@ impl ProjectionTy {
         }
     }
 
+    pub fn self_type_parameter(&self) -> &Ty {
+        &self.substitution[0]
+    }
+
     fn trait_(&self, db: &dyn HirDatabase) -> TraitId {
         match from_assoc_type_id(self.associated_ty_id).lookup(db.upcast()).container {
             AssocContainerId::TraitId(it) => it,
