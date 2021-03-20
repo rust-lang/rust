@@ -66,4 +66,15 @@ union Z {
     i: i32,
 }
 
+#[repr(packed, align(0x100))]
+pub struct S(u16); //~ ERROR type has conflicting packed and align representation hints
+
+#[repr(packed, align(0x100))]
+pub union U { //~ ERROR type has conflicting packed and align representation hints
+    u: u16
+}
+
+static B: U = U { u: 0 };
+static A: S = S(0);
+
 fn main() {}
