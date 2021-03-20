@@ -1,4 +1,4 @@
-//! Completes constats and paths in patterns.
+//! Completes constants and paths in patterns.
 
 use crate::{CompletionContext, Completions};
 

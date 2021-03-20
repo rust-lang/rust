@@ -2,25 +2,27 @@
 
 pub(crate) mod attribute;
 pub(crate) mod dot;
-pub(crate) mod record;
-pub(crate) mod pattern;
+pub(crate) mod flyimport;
 pub(crate) mod fn_param;
 pub(crate) mod keyword;
-pub(crate) mod snippet;
-pub(crate) mod qualified_path;
-pub(crate) mod unqualified_path;
-pub(crate) mod postfix;
+pub(crate) mod lifetime;
 pub(crate) mod macro_in_item_position;
-pub(crate) mod trait_impl;
 pub(crate) mod mod_;
-pub(crate) mod flyimport;
+pub(crate) mod pattern;
+pub(crate) mod postfix;
+pub(crate) mod qualified_path;
+pub(crate) mod record;
+pub(crate) mod snippet;
+pub(crate) mod trait_impl;
+pub(crate) mod unqualified_path;
 
 use std::iter;
 
 use hir::{known, ModPath, ScopeDef, Type};
+use ide_db::SymbolKind;
 
 use crate::{
-    item::Builder,
+    item::{Builder, CompletionKind},
     render::{
         const_::render_const,
         enum_variant::render_variant,
@@ -31,7 +33,7 @@ use crate::{
         type_alias::render_type_alias,
         RenderContext,
     },
-    CompletionContext, CompletionItem,
+    CompletionContext, CompletionItem, CompletionItemKind,
 };
 
 /// Represents an in-progress set of completions being built.
@@ -75,6 +77,13 @@ impl Completions {
     pub(crate) fn add_tuple_field(&mut self, ctx: &CompletionContext, field: usize, ty: &Type) {
         let item = render_tuple_field(RenderContext::new(ctx), field, ty);
         self.add(item);
+    }
+
+    pub(crate) fn add_static_lifetime(&mut self, ctx: &CompletionContext) {
+        let mut item =
+            CompletionItem::new(CompletionKind::Reference, ctx.source_range(), "'static");
+        item.kind(CompletionItemKind::SymbolKind(SymbolKind::LifetimeParam));
+        self.add(item.build());
     }
 
     pub(crate) fn add_resolution(
