@@ -1880,7 +1880,6 @@ impl EncodeContext<'a, 'tcx> {
                     let def_id = def_id.to_def_id();
                     self.encode_info_for_generic_param(def_id, EntryKind::ConstParam, true);
                     if default.is_some() {
-                        self.encode_stability(def_id);
                         record!(self.tables.const_defaults[def_id] <- self.tcx.const_param_default(def_id))
                     }
                 }

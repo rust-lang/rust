@@ -94,7 +94,7 @@ rustc_queries! {
     }
 
     /// Given the def_id of a const-generic parameter, computes the associated default const
-    /// parameter. i.e. `fn example<const N: usize=3>` called on N would return 3.
+    /// parameter. e.g. `fn example<const N: usize=3>` called on `N` would return `3`.
     query const_param_default(param: DefId) -> &'tcx ty::Const<'tcx> {
         desc { |tcx| "compute const default for a given parameter `{}`", tcx.def_path_str(param)  }
     }

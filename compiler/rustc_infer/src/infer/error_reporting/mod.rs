@@ -957,34 +957,45 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ) -> SubstsRef<'tcx> {
         let generics = self.tcx.generics_of(def_id);
         let mut num_supplied_defaults = 0;
-        let mut type_params = generics
-            .params
-            .iter()
-            .rev()
-            .filter_map(|param| match param.kind {
-                ty::GenericParamDefKind::Lifetime => None,
-                ty::GenericParamDefKind::Type { has_default, .. } => {
-                    Some((param.def_id, has_default))
-                }
-                // FIXME(const_generics:defaults)
-                ty::GenericParamDefKind::Const { has_default: _has_default } => None,
-            })
-            .peekable();
-        let has_default = {
-            let has_default = type_params.peek().map(|(_, has_default)| has_default);
-            *has_default.unwrap_or(&false)
-        };
-        if has_default {
-            let types = substs.types().rev();
-            for ((def_id, has_default), actual) in type_params.zip(types) {
-                if !has_default {
-                    break;
-                }
-                if self.tcx.type_of(def_id).subst(self.tcx, substs) != actual {
-                    break;
-                }
-                num_supplied_defaults += 1;
+
+        #[derive(PartialEq, Eq, Copy, Clone)]
+        enum Kind {
+            Const,
+            Type,
+        }
+        let default_params = generics.params.iter().rev().filter_map(|param| match param.kind {
+            ty::GenericParamDefKind::Type { has_default: true, .. } => {
+                Some((param.def_id, Kind::Type))
             }
+            ty::GenericParamDefKind::Const { has_default: true } => {
+                Some((param.def_id, Kind::Const))
+            }
+            _ => None,
+        });
+        let mut types = substs.types().rev();
+        let mut consts = substs.consts().rev();
+        for (def_id, kind) in default_params {
+            match kind {
+                Kind::Const => {
+                    if let Some(actual) = consts.next() {
+                        if ty::Const::from_anon_const(self.tcx, def_id.expect_local()) != actual {
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
+                }
+                Kind::Type => {
+                    if let Some(actual) = types.next() {
+                        if self.tcx.type_of(def_id).subst(self.tcx, substs) != actual {
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
+                }
+            }
+            num_supplied_defaults += 1;
         }
         let len = generics.params.len();
         let mut generics = generics.clone();

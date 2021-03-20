@@ -212,7 +212,7 @@ pub fn const_param_default<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx Cons
         }) => tcx.hir().local_def_id(ac.hir_id),
         _ => span_bug!(
             tcx.def_span(def_id),
-            "const_param_defaults expected a generic parameter with a constant"
+            "`const_param_default` expected a generic parameter with a constant"
         ),
     };
     Const::from_anon_const(tcx, default_def_id)

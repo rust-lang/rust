@@ -775,7 +775,7 @@ fn check_where_clauses<'tcx, 'fcx>(
             GenericParamDefKind::Const { .. } => {
                 if is_our_default(param) {
                     let default_ct = tcx.const_param_default(param.def_id);
-                    // Const params have to currently be concrete.
+                    // Const params currently have to be concrete.
                     assert!(!default_ct.needs_subst());
                     default_ct.into()
                 } else {
