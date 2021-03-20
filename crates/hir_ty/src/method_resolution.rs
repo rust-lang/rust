@@ -420,6 +420,7 @@ fn iterate_method_candidates_impl(
                 env,
                 krate,
                 traits_in_scope,
+                visible_from_module,
                 name,
                 callback,
             )
@@ -537,10 +538,12 @@ fn iterate_method_candidates_for_self_ty(
     env: Arc<TraitEnvironment>,
     krate: CrateId,
     traits_in_scope: &FxHashSet<TraitId>,
+    visible_from_module: Option<ModuleId>,
     name: Option<&Name>,
     mut callback: &mut dyn FnMut(&Ty, AssocItemId) -> bool,
 ) -> bool {
-    if iterate_inherent_methods(self_ty, db, name, None, krate, None, &mut callback) {
+    if iterate_inherent_methods(self_ty, db, name, None, krate, visible_from_module, &mut callback)
+    {
         return true;
     }
     iterate_trait_method_candidates(self_ty, db, env, krate, traits_in_scope, name, None, callback)
@@ -577,6 +580,8 @@ fn iterate_trait_method_candidates(
         // iteration
         let mut known_implemented = false;
         for (_name, item) in data.items.iter() {
+            // Don't pass a `visible_from_module` down to `is_valid_candidate`,
+            // since only inherent methods should be included into visibility checking.
             if !is_valid_candidate(db, name, receiver_ty, *item, self_ty, None) {
                 continue;
             }
