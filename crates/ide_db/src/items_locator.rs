@@ -62,6 +62,8 @@ pub fn items_with_name(
             (local_query, external_query)
         }
         NameToImport::Fuzzy(fuzzy_search_string) => {
+            let mut local_query = symbol_index::Query::new(fuzzy_search_string.clone());
+
             let mut external_query = import_map::Query::new(fuzzy_search_string.clone())
                 .search_mode(import_map::SearchMode::Fuzzy)
                 .name_only();
@@ -75,7 +77,12 @@ pub fn items_with_name(
                 }
             }
 
-            (symbol_index::Query::new(fuzzy_search_string), external_query)
+            if fuzzy_search_string.to_lowercase() != fuzzy_search_string {
+                local_query.case_sensitive();
+                external_query = external_query.case_sensitive();
+            }
+
+            (local_query, external_query)
         }
     };
 

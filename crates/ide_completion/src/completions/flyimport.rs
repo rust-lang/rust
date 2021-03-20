@@ -1,8 +1,10 @@
 //! Feature: completion with imports-on-the-fly
 //!
 //! When completing names in the current scope, proposes additional imports from other modules or crates,
-//! if they can be qualified in the scope and their name contains all symbols from the completion input
-//! (case-insensitive, in any order or places).
+//! if they can be qualified in the scope and their name contains all symbols from the completion input.
+//!
+//! To be considered applicable, the name must contain all input symbols in the given order, not necessarily adjacent.
+//! If any input symbol is not lowercased, the name must contain all symbols in exact case; otherwise the contaning is checked case-insensitively.
 //!
 //! ```
 //! fn main() {
@@ -942,7 +944,7 @@ mod foo {
 }
 
 fn main() {
-    bar::Ass$0
+    bar::ASS$0
 }"#,
             expect![[]],
         )
@@ -978,5 +980,58 @@ fn main() {
 }"#,
             expect![[]],
         )
+    }
+
+    #[test]
+    fn case_matters() {
+        check(
+            r#"
+mod foo {
+    pub const TEST_CONST: usize = 3;
+    pub fn test_function() -> i32 {
+        4
+    }
+}
+
+fn main() {
+    TE$0
+}"#,
+            expect![[r#"
+        ct foo::TEST_CONST
+    "#]],
+        );
+
+        check(
+            r#"
+mod foo {
+    pub const TEST_CONST: usize = 3;
+    pub fn test_function() -> i32 {
+        4
+    }
+}
+
+fn main() {
+    te$0
+}"#,
+            expect![[r#"
+        ct foo::TEST_CONST
+        fn test_function() (foo::test_function) fn() -> i32
+    "#]],
+        );
+
+        check(
+            r#"
+mod foo {
+    pub const TEST_CONST: usize = 3;
+    pub fn test_function() -> i32 {
+        4
+    }
+}
+
+fn main() {
+    Te$0
+}"#,
+            expect![[]],
+        );
     }
 }
