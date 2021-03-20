@@ -2361,6 +2361,38 @@ vqsubq_u32_(a, b)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqsub.u64"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqsub))]
+pub unsafe fn vqsub_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqsubu.v1i64")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqsub.v1i64")]
+        fn vqsub_u64_(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t;
+    }
+vqsub_u64_(a, b)
+}
+
+/// Saturating subtract
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqsub.u64"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqsub))]
+pub unsafe fn vqsubq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqsubu.v2i64")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqsub.v2i64")]
+        fn vqsubq_u64_(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t;
+    }
+vqsubq_u64_(a, b)
+}
+
+/// Saturating subtract
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqsub.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqsub))]
 pub unsafe fn vqsub_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
@@ -2451,6 +2483,38 @@ pub unsafe fn vqsubq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
         fn vqsubq_s32_(a: int32x4_t, b: int32x4_t) -> int32x4_t;
     }
 vqsubq_s32_(a, b)
+}
+
+/// Saturating subtract
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqsub.s64"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqsub))]
+pub unsafe fn vqsub_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqsubs.v1i64")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqsub.v1i64")]
+        fn vqsub_s64_(a: int64x1_t, b: int64x1_t) -> int64x1_t;
+    }
+vqsub_s64_(a, b)
+}
+
+/// Saturating subtract
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqsub.s64"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqsub))]
+pub unsafe fn vqsubq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqsubs.v2i64")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqsub.v2i64")]
+        fn vqsubq_s64_(a: int64x2_t, b: int64x2_t) -> int64x2_t;
+    }
+vqsubq_s64_(a, b)
 }
 
 /// Halving add
@@ -2937,6 +3001,38 @@ vqaddq_u32_(a, b)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqadd.u64"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqadd))]
+pub unsafe fn vqadd_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqaddu.v1i64")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqadd.v1i64")]
+        fn vqadd_u64_(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t;
+    }
+vqadd_u64_(a, b)
+}
+
+/// Saturating add
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqadd.u64"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqadd))]
+pub unsafe fn vqaddq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqaddu.v2i64")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqadd.v2i64")]
+        fn vqaddq_u64_(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t;
+    }
+vqaddq_u64_(a, b)
+}
+
+/// Saturating add
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqadd.s8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqadd))]
 pub unsafe fn vqadd_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
@@ -3027,6 +3123,38 @@ pub unsafe fn vqaddq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
         fn vqaddq_s32_(a: int32x4_t, b: int32x4_t) -> int32x4_t;
     }
 vqaddq_s32_(a, b)
+}
+
+/// Saturating add
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqadd.s64"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqadd))]
+pub unsafe fn vqadd_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqadds.v1i64")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqadd.v1i64")]
+        fn vqadd_s64_(a: int64x1_t, b: int64x1_t) -> int64x1_t;
+    }
+vqadd_s64_(a, b)
+}
+
+/// Saturating add
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqadd.s64"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqadd))]
+pub unsafe fn vqaddq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqadds.v2i64")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqadd.v2i64")]
+        fn vqaddq_s64_(a: int64x2_t, b: int64x2_t) -> int64x2_t;
+    }
+vqaddq_s64_(a, b)
 }
 
 /// Multiply
@@ -6172,6 +6300,24 @@ mod test {
     }
 
     #[simd_test(enable = "neon")]
+    unsafe fn test_vqsub_u64() {
+        let a: u64x1 = u64x1::new(42);
+        let b: u64x1 = u64x1::new(1);
+        let e: u64x1 = u64x1::new(41);
+        let r: u64x1 = transmute(vqsub_u64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vqsubq_u64() {
+        let a: u64x2 = u64x2::new(42, 42);
+        let b: u64x2 = u64x2::new(1, 2);
+        let e: u64x2 = u64x2::new(41, 40);
+        let r: u64x2 = transmute(vqsubq_u64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
     unsafe fn test_vqsub_s8() {
         let a: i8x8 = i8x8::new(42, 42, 42, 42, 42, 42, 42, 42);
         let b: i8x8 = i8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
@@ -6222,6 +6368,24 @@ mod test {
         let b: i32x4 = i32x4::new(1, 2, 3, 4);
         let e: i32x4 = i32x4::new(41, 40, 39, 38);
         let r: i32x4 = transmute(vqsubq_s32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vqsub_s64() {
+        let a: i64x1 = i64x1::new(42);
+        let b: i64x1 = i64x1::new(1);
+        let e: i64x1 = i64x1::new(41);
+        let r: i64x1 = transmute(vqsub_s64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vqsubq_s64() {
+        let a: i64x2 = i64x2::new(42, 42);
+        let b: i64x2 = i64x2::new(1, 2);
+        let e: i64x2 = i64x2::new(41, 40);
+        let r: i64x2 = transmute(vqsubq_s64(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -6496,6 +6660,24 @@ mod test {
     }
 
     #[simd_test(enable = "neon")]
+    unsafe fn test_vqadd_u64() {
+        let a: u64x1 = u64x1::new(42);
+        let b: u64x1 = u64x1::new(1);
+        let e: u64x1 = u64x1::new(43);
+        let r: u64x1 = transmute(vqadd_u64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vqaddq_u64() {
+        let a: u64x2 = u64x2::new(42, 42);
+        let b: u64x2 = u64x2::new(1, 2);
+        let e: u64x2 = u64x2::new(43, 44);
+        let r: u64x2 = transmute(vqaddq_u64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
     unsafe fn test_vqadd_s8() {
         let a: i8x8 = i8x8::new(42, 42, 42, 42, 42, 42, 42, 42);
         let b: i8x8 = i8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
@@ -6546,6 +6728,24 @@ mod test {
         let b: i32x4 = i32x4::new(1, 2, 3, 4);
         let e: i32x4 = i32x4::new(43, 44, 45, 46);
         let r: i32x4 = transmute(vqaddq_s32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vqadd_s64() {
+        let a: i64x1 = i64x1::new(42);
+        let b: i64x1 = i64x1::new(1);
+        let e: i64x1 = i64x1::new(43);
+        let r: i64x1 = transmute(vqadd_s64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vqaddq_s64() {
+        let a: i64x2 = i64x2::new(42, 42);
+        let b: i64x2 = i64x2::new(1, 2);
+        let e: i64x2 = i64x2::new(43, 44);
+        let r: i64x2 = transmute(vqaddq_s64(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 

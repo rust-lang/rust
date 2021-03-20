@@ -820,13 +820,13 @@ arm = vqsub.s
 aarch64 = uqsub
 link-arm = vqsubu._EXT_
 link-aarch64 = uqsub._EXT_
-generate uint*_t
+generate uint*_t, uint64x*_t
 
 arm = vqsub.s
 aarch64 = sqsub
 link-arm = vqsubs._EXT_
 link-aarch64 = sqsub._EXT_
-generate int*_t
+generate int*_t, int64x*_t
 
 /// Halving add
 name = vhadd
@@ -876,13 +876,13 @@ arm = vqadd.s
 aarch64 = uqadd
 link-arm = vqaddu._EXT_
 link-aarch64 = uqadd._EXT_
-generate uint*_t
+generate uint*_t, uint64x*_t
 
 arm = vqadd.s
 aarch64 = sqadd
 link-arm = vqadds._EXT_
 link-aarch64 = sqadd._EXT_
-generate int*_t
+generate int*_t, int64x*_t
 
 /// Multiply
 name = vmul
