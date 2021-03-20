@@ -97,7 +97,7 @@ pub fn save_work_product_index(
     debug!("save_work_product_index()");
     dep_graph.assert_ignored();
     let path = work_products_path(sess);
-    file_format::save_in(sess, path, "work product index", |e| {
+    file_format::save_in_raw(sess, path, "work product index", |e| {
         encode_work_product_index(&new_work_products, e)
     });
 
@@ -128,8 +128,8 @@ pub fn save_work_product_index(
 
 fn encode_work_product_index(
     work_products: &FxHashMap<WorkProductId, WorkProduct>,
-    encoder: &mut opaque::FileEncoder,
-) -> opaque::FileEncodeResult {
+    encoder: &mut raw::FileEncoder,
+) -> raw::FileEncodeResult {
     let serialized_products: Vec<_> = work_products
         .iter()
         .map(|(id, work_product)| SerializedWorkProduct {

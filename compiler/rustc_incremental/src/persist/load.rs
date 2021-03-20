@@ -4,7 +4,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::memmap::Mmap;
 use rustc_middle::dep_graph::{SerializedDepGraph, WorkProduct, WorkProductId};
 use rustc_middle::ty::OnDiskCache;
-use rustc_serialize::{opaque, raw, Decodable};
+use rustc_serialize::{raw, Decodable};
 use rustc_session::config::IncrementalStateAssertion;
 use rustc_session::Session;
 use std::path::Path;
@@ -155,7 +155,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
 
         if let LoadResult::Ok { data: (work_products_data, start_pos) } = load_result {
             // Decode the list of work_products
-            let mut work_product_decoder = opaque::Decoder::new(&work_products_data[..], start_pos);
+            let mut work_product_decoder = raw::Decoder::new(&work_products_data[..], start_pos);
             let work_products: Vec<SerializedWorkProduct> =
                 Decodable::decode(&mut work_product_decoder);
 
