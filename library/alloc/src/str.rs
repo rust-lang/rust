@@ -163,7 +163,7 @@ where
         })
         .expect("attempt to join into collection with len > usize::MAX");
 
-    // crucial for safety
+    // prepare an uninitialized buffer
     let mut result = Vec::with_capacity(reserved_len);
     debug_assert!(result.capacity() >= reserved_len);
 
@@ -178,9 +178,9 @@ where
         // massive improvements possible (~ x2)
         let remain = specialize_for_lengths!(sep, target, iter; 0, 1, 2, 3, 4);
 
-        // issue #80335: A weird borrow implementation can return different
-        // slices for the length calculation and the actual copy, so
-        // `remain.len()` might be non-zero.
+        // A weird borrow implementation may return different
+        // slices for the length calculation and the actual copy.
+        // Make sure we don't expose uninitialized bytes to the caller.
         let result_len = reserved_len - remain.len();
         result.set_len(result_len);
     }
