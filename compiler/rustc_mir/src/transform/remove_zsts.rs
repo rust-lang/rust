@@ -2,7 +2,7 @@
 
 use crate::transform::MirPass;
 use rustc_middle::mir::{Body, StatementKind};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, Ty, TyCtxt};
 
 pub struct RemoveZsts;
 
@@ -15,22 +15,40 @@ impl<'tcx> MirPass<'tcx> for RemoveZsts {
                 match statement.kind {
                     StatementKind::Assign(box (place, _)) => {
                         let place_ty = place.ty(local_decls, tcx).ty;
-                        if let Ok(layout) = tcx.layout_of(param_env.and(place_ty)) {
-                            if layout.is_zst() {
-                                if tcx.consider_optimizing(|| {
-                                    format!(
-                                        "RemoveZsts - Place: {:?} SourceInfo: {:?}",
-                                        place, statement.source_info
-                                    )
-                                }) {
-                                    statement.make_nop();
-                                }
-                            }
+                        if !maybe_zst(place_ty) {
+                            continue;
+                        }
+                        let layout = match tcx.layout_of(param_env.and(place_ty)) {
+                            Ok(layout) => layout,
+                            Err(_) => continue,
+                        };
+                        if !layout.is_zst() {
+                            continue;
+                        }
+                        if tcx.consider_optimizing(|| {
+                            format!(
+                                "RemoveZsts - Place: {:?} SourceInfo: {:?}",
+                                place, statement.source_info
+                            )
+                        }) {
+                            statement.make_nop();
                         }
                     }
                     _ => {}
                 }
             }
         }
+    }
+}
+
+/// A cheap, approximate check to avoid unnecessary `layout_of` calls.
+fn maybe_zst(ty: Ty<'_>) -> bool {
+    match ty.kind() {
+        // maybe ZST (could be more precise)
+        ty::Adt(..) | ty::Array(..) | ty::Closure(..) | ty::Tuple(..) | ty::Opaque(..) => true,
+        // definitely ZST
+        ty::FnDef(..) | ty::Never => true,
+        // unreachable or can't be ZST
+        _ => false,
     }
 }
