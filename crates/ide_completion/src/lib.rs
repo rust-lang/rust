@@ -152,12 +152,12 @@ pub fn resolve_completion_edits(
     let current_module = ctx.sema.scope(position_for_import).module()?;
     let current_crate = current_module.krate();
 
-    let (import_path, item_to_import) = items_locator::locate_for_name(
+    let (import_path, item_to_import) = items_locator::items_with_name(
         &ctx.sema,
         current_crate,
         NameToImport::Exact(imported_name),
         items_locator::AssocItemSearch::Include,
-        None,
+        Some(items_locator::DEFAULT_QUERY_SEARCH_LIMIT),
     )
     .into_iter()
     .filter_map(|candidate| {

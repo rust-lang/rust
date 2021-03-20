@@ -1,6 +1,7 @@
-//! This module contains an import search functionality that is provided to the assists module.
-//! Later, this should be moved away to a separate crate that is accessible from the assists module.
-
+//! This module has the functionality to search the project and its dependencies for a certain item,
+//! by its name and a few criteria.
+//! The main reason for this module to exist is the fact that project's items and dependencies' items
+//! are located in different caches, with different APIs.
 use either::Either;
 use hir::{
     import_map::{self, ImportKind},
@@ -16,24 +17,29 @@ use crate::{
 };
 use rustc_hash::FxHashSet;
 
-pub(crate) const DEFAULT_QUERY_SEARCH_LIMIT: usize = 40;
+/// A value to use, when uncertain which limit to pick.
+pub const DEFAULT_QUERY_SEARCH_LIMIT: usize = 40;
 
-/// TODO kb docs here and around + update the module doc
+/// Three possible ways to search for the name in associated and/or other items.
 #[derive(Debug, Clone, Copy)]
 pub enum AssocItemSearch {
+    /// Search for the name in both associated and other items.
     Include,
+    /// Search for the name in other items only.
     Exclude,
+    /// Search for the name in the associated items only.
     AssocItemsOnly,
 }
 
-pub fn locate_for_name(
+/// Searches for importable items with the given name in the crate and its dependencies.
+pub fn items_with_name(
     sema: &Semantics<'_, RootDatabase>,
     krate: Crate,
     name: NameToImport,
     assoc_item_search: AssocItemSearch,
     limit: Option<usize>,
 ) -> FxHashSet<ItemInNs> {
-    let _p = profile::span("locate_for_name").detail(|| {
+    let _p = profile::span("items_with_name").detail(|| {
         format!(
             "Name: {} ({:?}), crate: {:?}, limit: {:?}",
             name.text(),

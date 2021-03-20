@@ -65,12 +65,12 @@ pub(crate) fn replace_derive_with_manual_impl(
     let current_module = ctx.sema.scope(annotated_name.syntax()).module()?;
     let current_crate = current_module.krate();
 
-    let found_traits = items_locator::locate_for_name(
+    let found_traits = items_locator::items_with_name(
         &ctx.sema,
         current_crate,
         NameToImport::Exact(trait_token.text().to_string()),
         items_locator::AssocItemSearch::Exclude,
-        None,
+        Some(items_locator::DEFAULT_QUERY_SEARCH_LIMIT),
     )
     .into_iter()
     .filter_map(|item| match ModuleDef::from(item.as_module_def_id()?) {

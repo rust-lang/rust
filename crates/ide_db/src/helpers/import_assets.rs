@@ -252,7 +252,7 @@ fn path_applicable_imports(
 
     match &path_candidate.qualifier {
         None => {
-            items_locator::locate_for_name(
+            items_locator::items_with_name(
                 sema,
                 current_crate,
                 path_candidate.name.clone(),
@@ -271,7 +271,7 @@ fn path_applicable_imports(
             let unresolved_qualifier =
                 path_to_string_stripping_turbo_fish(&first_segment_unresolved.full_qualifier);
             let unresolved_first_segment = first_segment_unresolved.fist_segment.text();
-            items_locator::locate_for_name(
+            items_locator::items_with_name(
                 sema,
                 current_crate,
                 path_candidate.name.clone(),
@@ -416,7 +416,7 @@ fn trait_applicable_items(
     let db = sema.db;
 
     let mut required_assoc_items = FxHashSet::default();
-    let trait_candidates = items_locator::locate_for_name(
+    let trait_candidates = items_locator::items_with_name(
         sema,
         current_crate,
         trait_candidate.assoc_item_name.clone(),
