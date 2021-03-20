@@ -21,8 +21,8 @@ use crate::{
     method_resolution::{TyFingerprint, ALL_FLOAT_FPS, ALL_INT_FPS},
     to_assoc_type_id, to_chalk_trait_id,
     utils::generics,
-    AliasEq, AliasTy, BoundVar, CallableDefId, CallableSig, DebruijnIndex, FnDefId,
-    GenericPredicate, ProjectionTy, Substitution, TraitRef, Ty, TyKind,
+    AliasEq, AliasTy, BoundVar, CallableDefId, CallableSig, DebruijnIndex, FnDefId, ProjectionTy,
+    Substitution, TraitRef, Ty, TyKind, WhereClause,
 };
 use mapping::{
     convert_where_clauses, generic_predicate_to_inline_bound, make_binders, TypeAliasAsValue,
@@ -218,7 +218,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                     //        |-------------OpaqueTyDatumBound--------------|
                     // for<T> <Self> [Future<Self>, Future::Output<Self> = T]
                     //     ^1  ^0            ^0                    ^0      ^1
-                    let impl_bound = GenericPredicate::Implemented(TraitRef {
+                    let impl_bound = WhereClause::Implemented(TraitRef {
                         trait_id: to_chalk_trait_id(future_trait),
                         // Self type as the first parameter.
                         substitution: Substitution::single(
@@ -229,7 +229,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                             .intern(&Interner),
                         ),
                     });
-                    let proj_bound = GenericPredicate::AliasEq(AliasEq {
+                    let proj_bound = WhereClause::AliasEq(AliasEq {
                         alias: AliasTy::Projection(ProjectionTy {
                             associated_ty_id: to_assoc_type_id(future_output),
                             // Self type as the first parameter.

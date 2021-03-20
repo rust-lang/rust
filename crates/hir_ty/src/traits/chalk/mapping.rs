@@ -14,8 +14,8 @@ use crate::{
     from_assoc_type_id,
     primitive::UintTy,
     traits::{Canonical, Obligation},
-    AliasTy, CallableDefId, FnPointer, GenericPredicate, InEnvironment, OpaqueTy, ProjectionTy,
-    Scalar, Substitution, TraitRef, Ty,
+    AliasTy, CallableDefId, FnPointer, InEnvironment, OpaqueTy, ProjectionTy, Scalar, Substitution,
+    TraitRef, Ty, WhereClause,
 };
 
 use super::interner::*;
@@ -304,28 +304,28 @@ impl ToChalk for TypeAliasAsValue {
     }
 }
 
-impl ToChalk for GenericPredicate {
+impl ToChalk for WhereClause {
     type Chalk = chalk_ir::QuantifiedWhereClause<Interner>;
 
     fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::QuantifiedWhereClause<Interner> {
         match self {
-            GenericPredicate::Implemented(trait_ref) => {
+            WhereClause::Implemented(trait_ref) => {
                 let chalk_trait_ref = trait_ref.to_chalk(db);
                 let chalk_trait_ref = chalk_trait_ref.shifted_in(&Interner);
                 make_binders(chalk_ir::WhereClause::Implemented(chalk_trait_ref), 0)
             }
-            GenericPredicate::AliasEq(alias_eq) => make_binders(
+            WhereClause::AliasEq(alias_eq) => make_binders(
                 chalk_ir::WhereClause::AliasEq(alias_eq.to_chalk(db).shifted_in(&Interner)),
                 0,
             ),
-            GenericPredicate::Error => panic!("tried passing GenericPredicate::Error to Chalk"),
+            WhereClause::Error => panic!("tried passing GenericPredicate::Error to Chalk"),
         }
     }
 
     fn from_chalk(
         db: &dyn HirDatabase,
         where_clause: chalk_ir::QuantifiedWhereClause<Interner>,
-    ) -> GenericPredicate {
+    ) -> WhereClause {
         // we don't produce any where clauses with binders and can't currently deal with them
         match where_clause
             .skip_binders()
@@ -333,11 +333,9 @@ impl ToChalk for GenericPredicate {
             .shifted_out(&Interner)
             .expect("unexpected bound vars in where clause")
         {
-            chalk_ir::WhereClause::Implemented(tr) => {
-                GenericPredicate::Implemented(from_chalk(db, tr))
-            }
+            chalk_ir::WhereClause::Implemented(tr) => WhereClause::Implemented(from_chalk(db, tr)),
             chalk_ir::WhereClause::AliasEq(alias_eq) => {
-                GenericPredicate::AliasEq(from_chalk(db, alias_eq))
+                WhereClause::AliasEq(from_chalk(db, alias_eq))
             }
 
             chalk_ir::WhereClause::LifetimeOutlives(_) => {
@@ -534,13 +532,13 @@ pub(super) fn convert_where_clauses(
 
 pub(super) fn generic_predicate_to_inline_bound(
     db: &dyn HirDatabase,
-    pred: &GenericPredicate,
+    pred: &WhereClause,
     self_ty: &Ty,
 ) -> Option<rust_ir::InlineBound<Interner>> {
     // An InlineBound is like a GenericPredicate, except the self type is left out.
     // We don't have a special type for this, but Chalk does.
     match pred {
-        GenericPredicate::Implemented(trait_ref) => {
+        WhereClause::Implemented(trait_ref) => {
             if &trait_ref.substitution[0] != self_ty {
                 // we can only convert predicates back to type bounds if they
                 // have the expected self type
@@ -553,7 +551,7 @@ pub(super) fn generic_predicate_to_inline_bound(
             let trait_bound = rust_ir::TraitBound { trait_id: trait_ref.trait_id, args_no_self };
             Some(rust_ir::InlineBound::TraitBound(trait_bound))
         }
-        GenericPredicate::AliasEq(AliasEq { alias: AliasTy::Projection(projection_ty), ty }) => {
+        WhereClause::AliasEq(AliasEq { alias: AliasTy::Projection(projection_ty), ty }) => {
             if &projection_ty.substitution[0] != self_ty {
                 return None;
             }

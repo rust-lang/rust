@@ -9,8 +9,8 @@ use hir_def::{lang_item::LangItemTarget, TraitId};
 use stdx::panic_context;
 
 use crate::{
-    db::HirDatabase, AliasTy, Canonical, DebruijnIndex, GenericPredicate, HirDisplay, Substitution,
-    TraitRef, Ty, TyKind, TypeWalk,
+    db::HirDatabase, AliasTy, Canonical, DebruijnIndex, HirDisplay, Substitution, TraitRef, Ty,
+    TyKind, TypeWalk, WhereClause,
 };
 
 use self::chalk::{from_chalk, Interner, ToChalk};
@@ -96,11 +96,11 @@ pub enum Obligation {
 }
 
 impl Obligation {
-    pub fn from_predicate(predicate: GenericPredicate) -> Option<Obligation> {
+    pub fn from_predicate(predicate: WhereClause) -> Option<Obligation> {
         match predicate {
-            GenericPredicate::Implemented(trait_ref) => Some(Obligation::Trait(trait_ref)),
-            GenericPredicate::AliasEq(alias_eq) => Some(Obligation::AliasEq(alias_eq)),
-            GenericPredicate::Error => None,
+            WhereClause::Implemented(trait_ref) => Some(Obligation::Trait(trait_ref)),
+            WhereClause::AliasEq(alias_eq) => Some(Obligation::AliasEq(alias_eq)),
+            WhereClause::Error => None,
         }
     }
 }

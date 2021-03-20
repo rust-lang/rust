@@ -7,8 +7,8 @@ use ena::unify::{InPlaceUnificationTable, NoError, UnifyKey, UnifyValue};
 
 use super::{InferenceContext, Obligation};
 use crate::{
-    AliasEq, AliasTy, BoundVar, Canonical, DebruijnIndex, FnPointer, GenericPredicate,
-    InEnvironment, InferenceVar, Interner, Scalar, Substitution, Ty, TyKind, TypeWalk,
+    AliasEq, AliasTy, BoundVar, Canonical, DebruijnIndex, FnPointer, InEnvironment, InferenceVar,
+    Interner, Scalar, Substitution, Ty, TyKind, TypeWalk, WhereClause,
 };
 
 impl<'a> InferenceContext<'a> {
@@ -382,21 +382,16 @@ impl InferenceTable {
         }
     }
 
-    fn unify_preds(
-        &mut self,
-        pred1: &GenericPredicate,
-        pred2: &GenericPredicate,
-        depth: usize,
-    ) -> bool {
+    fn unify_preds(&mut self, pred1: &WhereClause, pred2: &WhereClause, depth: usize) -> bool {
         match (pred1, pred2) {
-            (GenericPredicate::Implemented(tr1), GenericPredicate::Implemented(tr2))
+            (WhereClause::Implemented(tr1), WhereClause::Implemented(tr2))
                 if tr1.trait_id == tr2.trait_id =>
             {
                 self.unify_substs(&tr1.substitution, &tr2.substitution, depth + 1)
             }
             (
-                GenericPredicate::AliasEq(AliasEq { alias: alias1, ty: ty1 }),
-                GenericPredicate::AliasEq(AliasEq { alias: alias2, ty: ty2 }),
+                WhereClause::AliasEq(AliasEq { alias: alias1, ty: ty1 }),
+                WhereClause::AliasEq(AliasEq { alias: alias2, ty: ty2 }),
             ) => {
                 let (substitution1, substitution2) = match (alias1, alias2) {
                     (AliasTy::Projection(projection_ty1), AliasTy::Projection(projection_ty2))
