@@ -850,9 +850,9 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
 
     let mut result = T::from_u32(0);
     if mem::size_of::<T>() <= mem::size_of::<u32>() && radix == 10 {
-        // The cpu can reorder these adds as each mul isn't dependent
-        // on the previous answer.
-        let factors = &MULTIPLIER[MULTIPLIER.len() - src.len()..];
+        // The ALU can reorder these adds and do more in parallel
+        // as each mul isn't dependent on the previous answer.
+        let factors = &MULTIPLIER[MULTIPLIER.len() - digits.len()..];
         let mut idx = 0;
         if is_positive {
             // The number is positive
