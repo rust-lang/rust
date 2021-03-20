@@ -849,6 +849,7 @@ impl<'a> InferenceContext<'a> {
                 self.trait_env.clone(),
                 krate,
                 &traits_in_scope,
+                self.resolver.module(),
                 method_name,
             )
         });

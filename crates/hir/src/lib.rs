@@ -1967,12 +1967,18 @@ impl Type {
         let env = self.ty.environment.clone();
         let krate = krate.id;
 
+        let from_module = match self.as_adt() {
+            Some(adt) => Some(adt.module(db).id),
+            None => None,
+        };
+
         method_resolution::iterate_method_candidates(
             &canonical,
             db,
             env,
             krate,
             traits_in_scope,
+            from_module,
             name,
             method_resolution::LookupMode::MethodCall,
             |ty, it| match it {
@@ -2004,6 +2010,7 @@ impl Type {
             env,
             krate,
             traits_in_scope,
+            None,
             name,
             method_resolution::LookupMode::Path,
             |ty, it| callback(ty, it.into()),
