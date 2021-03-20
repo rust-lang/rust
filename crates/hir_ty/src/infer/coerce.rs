@@ -4,12 +4,11 @@
 //!
 //! See: https://doc.rust-lang.org/nomicon/coercions.html
 
-use chalk_ir::{Mutability, TyVariableKind};
+use chalk_ir::{cast::Cast, Mutability, TyVariableKind};
 use hir_def::lang_item::LangItemTarget;
 
 use crate::{
-    autoderef, to_chalk_trait_id, traits::Solution, Interner, Obligation, Substitution, TraitRef,
-    Ty, TyKind,
+    autoderef, to_chalk_trait_id, traits::Solution, Interner, Substitution, TraitRef, Ty, TyKind,
 };
 
 use super::{InEnvironment, InferenceContext};
@@ -143,7 +142,7 @@ impl<'a> InferenceContext<'a> {
             .build();
         let trait_ref =
             TraitRef { trait_id: to_chalk_trait_id(coerce_unsized_trait), substitution: substs };
-        let goal = InEnvironment::new(self.trait_env.clone(), Obligation::Trait(trait_ref));
+        let goal = InEnvironment::new(self.trait_env.clone(), trait_ref.cast(&Interner));
 
         let canonicalizer = self.canonicalizer();
         let canonicalized = canonicalizer.canonicalize_obligation(goal);

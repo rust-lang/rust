@@ -6,7 +6,7 @@ use std::{iter, sync::Arc};
 
 use arrayvec::ArrayVec;
 use base_db::CrateId;
-use chalk_ir::Mutability;
+use chalk_ir::{cast::Cast, Mutability};
 use hir_def::{
     lang_item::LangItemTarget, AssocContainerId, AssocItemId, FunctionId, GenericDefId, HasModule,
     ImplId, Lookup, ModuleId, TraitId,
@@ -767,7 +767,7 @@ fn generic_implements_goal(
     env: Arc<TraitEnvironment>,
     trait_: TraitId,
     self_ty: Canonical<Ty>,
-) -> Canonical<InEnvironment<super::Obligation>> {
+) -> Canonical<InEnvironment<super::DomainGoal>> {
     let mut kinds = self_ty.kinds.to_vec();
     let substs = super::Substitution::build_for_def(db, trait_)
         .push(self_ty.value)
@@ -775,7 +775,7 @@ fn generic_implements_goal(
         .build();
     kinds.extend(iter::repeat(chalk_ir::TyVariableKind::General).take(substs.len() - 1));
     let trait_ref = TraitRef { trait_id: to_chalk_trait_id(trait_), substitution: substs };
-    let obligation = super::Obligation::Trait(trait_ref);
+    let obligation = trait_ref.cast(&Interner);
     Canonical { kinds: kinds.into(), value: InEnvironment::new(env, obligation) }
 }
 

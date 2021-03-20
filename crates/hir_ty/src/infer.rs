@@ -18,7 +18,7 @@ use std::mem;
 use std::ops::Index;
 use std::sync::Arc;
 
-use chalk_ir::Mutability;
+use chalk_ir::{cast::Cast, Mutability};
 use hir_def::{
     body::Body,
     data::{ConstData, FunctionData, StaticData},
@@ -37,7 +37,7 @@ use stdx::impl_from;
 use syntax::SmolStr;
 
 use super::{
-    traits::{Guidance, Obligation, Solution},
+    traits::{DomainGoal, Guidance, Solution},
     InEnvironment, ProjectionTy, Substitution, TraitEnvironment, TraitRef, Ty, TypeWalk,
 };
 use crate::{
@@ -204,7 +204,7 @@ struct InferenceContext<'a> {
     resolver: Resolver,
     table: unify::InferenceTable,
     trait_env: Arc<TraitEnvironment>,
-    obligations: Vec<Obligation>,
+    obligations: Vec<DomainGoal>,
     result: InferenceResult,
     /// The return type of the function being inferred, or the closure if we're
     /// currently within one.
@@ -403,8 +403,8 @@ impl<'a> InferenceContext<'a> {
                     }),
                     ty: ty.clone(),
                 };
-                self.obligations.push(Obligation::Trait(trait_ref));
-                self.obligations.push(Obligation::AliasEq(alias_eq));
+                self.obligations.push(trait_ref.cast(&Interner));
+                self.obligations.push(alias_eq.cast(&Interner));
                 self.resolve_ty_as_possible(ty)
             }
             None => self.err_ty(),
@@ -430,7 +430,7 @@ impl<'a> InferenceContext<'a> {
     fn normalize_projection_ty(&mut self, proj_ty: ProjectionTy) -> Ty {
         let var = self.table.new_type_var();
         let alias_eq = AliasEq { alias: AliasTy::Projection(proj_ty), ty: var.clone() };
-        let obligation = Obligation::AliasEq(alias_eq);
+        let obligation = alias_eq.cast(&Interner);
         self.obligations.push(obligation);
         var
     }

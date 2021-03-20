@@ -5,7 +5,7 @@ use std::borrow::Cow;
 use chalk_ir::{FloatTy, IntTy, TyVariableKind};
 use ena::unify::{InPlaceUnificationTable, NoError, UnifyKey, UnifyValue};
 
-use super::{InferenceContext, Obligation};
+use super::{DomainGoal, InferenceContext};
 use crate::{
     AliasEq, AliasTy, BoundVar, Canonical, DebruijnIndex, FnPointer, InEnvironment, InferenceVar,
     Interner, Scalar, Substitution, Ty, TyKind, TypeWalk, WhereClause,
@@ -87,14 +87,11 @@ impl<'a, 'b> Canonicalizer<'a, 'b> {
 
     pub(crate) fn canonicalize_obligation(
         mut self,
-        obligation: InEnvironment<Obligation>,
-    ) -> Canonicalized<InEnvironment<Obligation>> {
+        obligation: InEnvironment<DomainGoal>,
+    ) -> Canonicalized<InEnvironment<DomainGoal>> {
         let result = match obligation.value {
-            Obligation::Trait(tr) => {
-                Obligation::Trait(self.do_canonicalize(tr, DebruijnIndex::INNERMOST))
-            }
-            Obligation::AliasEq(alias_eq) => {
-                Obligation::AliasEq(self.do_canonicalize(alias_eq, DebruijnIndex::INNERMOST))
+            DomainGoal::Holds(wc) => {
+                DomainGoal::Holds(self.do_canonicalize(wc, DebruijnIndex::INNERMOST))
             }
         };
         self.into_canonicalized(InEnvironment {

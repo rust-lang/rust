@@ -119,7 +119,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn trait_solve(
         &self,
         krate: CrateId,
-        goal: crate::Canonical<crate::InEnvironment<crate::Obligation>>,
+        goal: crate::Canonical<crate::InEnvironment<crate::DomainGoal>>,
     ) -> Option<crate::traits::Solution>;
 
     #[salsa::invoke(crate::traits::chalk::program_clauses_for_chalk_env_query)]
