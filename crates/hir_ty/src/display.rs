@@ -19,7 +19,7 @@ use hir_expand::name::Name;
 use crate::{
     db::HirDatabase, from_assoc_type_id, from_foreign_def_id, from_placeholder_idx, primitive,
     to_assoc_type_id, traits::chalk::from_chalk, utils::generics, AdtId, AliasEq, AliasTy,
-    CallableDefId, CallableSig, ImplTraitId, Interner, Lifetime, Obligation, OpaqueTy,
+    CallableDefId, CallableSig, DomainGoal, ImplTraitId, Interner, Lifetime, OpaqueTy,
     ProjectionTy, Scalar, Substitution, TraitRef, Ty, TyKind, WhereClause,
 };
 
@@ -805,22 +805,12 @@ impl HirDisplay for Lifetime {
     }
 }
 
-impl HirDisplay for Obligation {
+impl HirDisplay for DomainGoal {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         match self {
-            Obligation::Trait(tr) => {
-                write!(f, "Implements(")?;
-                tr.hir_fmt(f)?;
-                write!(f, ")")
-            }
-            Obligation::AliasEq(AliasEq { alias, ty }) => {
-                write!(f, "Normalize(")?;
-                match alias {
-                    AliasTy::Projection(projection_ty) => projection_ty.hir_fmt(f)?,
-                    AliasTy::Opaque(opaque) => opaque.hir_fmt(f)?,
-                }
-                write!(f, " => ")?;
-                ty.hir_fmt(f)?;
+            DomainGoal::Holds(wc) => {
+                write!(f, "Holds(")?;
+                wc.hir_fmt(f)?;
                 write!(f, ")")
             }
         }

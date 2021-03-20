@@ -2,6 +2,7 @@
 
 use std::iter;
 
+use chalk_ir::cast::Cast;
 use hir_def::{
     path::{Path, PathSegment},
     resolver::{ResolveValueResult, Resolver, TypeNs, ValueNs},
@@ -256,10 +257,13 @@ impl<'a> InferenceContext<'a> {
                             .push(ty.clone())
                             .fill(std::iter::repeat_with(|| self.table.new_type_var()))
                             .build();
-                        self.obligations.push(super::Obligation::Trait(TraitRef {
-                            trait_id: to_chalk_trait_id(trait_),
-                            substitution: trait_substs.clone(),
-                        }));
+                        self.obligations.push(
+                            TraitRef {
+                                trait_id: to_chalk_trait_id(trait_),
+                                substitution: trait_substs.clone(),
+                            }
+                            .cast(&Interner),
+                        );
                         Some(trait_substs)
                     }
                     AssocContainerId::ModuleId(_) => None,

@@ -13,6 +13,7 @@ mod op;
 mod lower;
 pub(crate) mod infer;
 pub(crate) mod utils;
+mod chalk_cast;
 
 pub mod display;
 pub mod db;
@@ -45,9 +46,11 @@ pub use lower::{
     associated_type_shorthand_candidates, callable_item_sig, CallableDefId, ImplTraitLoweringMode,
     TyDefId, TyLoweringContext, ValueTyDefId,
 };
-pub use traits::{AliasEq, InEnvironment, Obligation, TraitEnvironment};
+pub use traits::{AliasEq, DomainGoal, InEnvironment, TraitEnvironment};
 
-pub use chalk_ir::{AdtId, BoundVar, DebruijnIndex, Mutability, Safety, Scalar, TyVariableKind};
+pub use chalk_ir::{
+    cast::Cast, AdtId, BoundVar, DebruijnIndex, Mutability, Safety, Scalar, TyVariableKind,
+};
 
 pub use crate::traits::chalk::Interner;
 

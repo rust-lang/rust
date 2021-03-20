@@ -9,8 +9,8 @@ use hir_def::{lang_item::LangItemTarget, TraitId};
 use stdx::panic_context;
 
 use crate::{
-    db::HirDatabase, AliasTy, Canonical, DebruijnIndex, HirDisplay, Substitution, TraitRef, Ty,
-    TyKind, TypeWalk, WhereClause,
+    db::HirDatabase, AliasTy, Canonical, DebruijnIndex, HirDisplay, Substitution, Ty, TyKind,
+    TypeWalk, WhereClause,
 };
 
 use self::chalk::{from_chalk, Interner, ToChalk};
@@ -88,20 +88,8 @@ impl<T> InEnvironment<T> {
 /// a certain type implements a certain trait. Proving the Obligation might
 /// result in additional information about inference variables.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum Obligation {
-    /// Prove that a certain type implements a trait (the type is the `Self` type
-    /// parameter to the `TraitRef`).
-    Trait(TraitRef),
-    AliasEq(AliasEq),
-}
-
-impl Obligation {
-    pub fn from_predicate(predicate: WhereClause) -> Option<Obligation> {
-        match predicate {
-            WhereClause::Implemented(trait_ref) => Some(Obligation::Trait(trait_ref)),
-            WhereClause::AliasEq(alias_eq) => Some(Obligation::AliasEq(alias_eq)),
-        }
-    }
+pub enum DomainGoal {
+    Holds(WhereClause),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -136,16 +124,20 @@ impl TypeWalk for AliasEq {
 pub(crate) fn trait_solve_query(
     db: &dyn HirDatabase,
     krate: CrateId,
-    goal: Canonical<InEnvironment<Obligation>>,
+    goal: Canonical<InEnvironment<DomainGoal>>,
 ) -> Option<Solution> {
     let _p = profile::span("trait_solve_query").detail(|| match &goal.value.value {
-        Obligation::Trait(it) => db.trait_data(it.hir_trait_id()).name.to_string(),
-        Obligation::AliasEq(_) => "alias_eq".to_string(),
+        DomainGoal::Holds(WhereClause::Implemented(it)) => {
+            db.trait_data(it.hir_trait_id()).name.to_string()
+        }
+        DomainGoal::Holds(WhereClause::AliasEq(_)) => "alias_eq".to_string(),
     });
     log::info!("trait_solve_query({})", goal.value.value.display(db));
 
-    if let Obligation::AliasEq(AliasEq { alias: AliasTy::Projection(projection_ty), .. }) =
-        &goal.value.value
+    if let DomainGoal::Holds(WhereClause::AliasEq(AliasEq {
+        alias: AliasTy::Projection(projection_ty),
+        ..
+    })) = &goal.value.value
     {
         if let TyKind::BoundVar(_) = &projection_ty.substitution[0].interned(&Interner) {
             // Hack: don't ask Chalk to normalize with an unknown self type, it'll say that's impossible

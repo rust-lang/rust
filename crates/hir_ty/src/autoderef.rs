@@ -6,6 +6,7 @@
 use std::iter::successors;
 
 use base_db::CrateId;
+use chalk_ir::cast::Cast;
 use hir_def::lang_item::LangItemTarget;
 use hir_expand::name::name;
 use log::{info, warn};
@@ -15,8 +16,8 @@ use crate::{
     to_assoc_type_id, to_chalk_trait_id,
     traits::{InEnvironment, Solution},
     utils::generics,
-    AliasEq, AliasTy, BoundVar, Canonical, DebruijnIndex, Interner, Obligation, ProjectionTy,
-    Substitution, TraitRef, Ty, TyKind,
+    AliasEq, AliasTy, BoundVar, Canonical, DebruijnIndex, Interner, ProjectionTy, Substitution,
+    TraitRef, Ty, TyKind,
 };
 
 const AUTODEREF_RECURSION_LIMIT: usize = 10;
@@ -74,7 +75,7 @@ fn deref_by_trait(
     let implements_goal = Canonical {
         kinds: ty.value.kinds.clone(),
         value: InEnvironment {
-            value: Obligation::Trait(trait_ref),
+            value: trait_ref.cast(&Interner),
             environment: ty.environment.clone(),
         },
     };
@@ -92,7 +93,7 @@ fn deref_by_trait(
             .intern(&Interner),
     };
 
-    let obligation = super::Obligation::AliasEq(projection);
+    let obligation = projection.cast(&Interner);
 
     let in_env = InEnvironment { value: obligation, environment: ty.environment };
 

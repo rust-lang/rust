@@ -56,8 +56,8 @@ use hir_ty::{
     primitive::UintTy,
     to_assoc_type_id,
     traits::{FnTrait, Solution, SolutionVariables},
-    AliasEq, AliasTy, BoundVar, CallableDefId, CallableSig, Canonical, DebruijnIndex,
-    InEnvironment, Interner, Obligation, ProjectionTy, Scalar, Substitution, Ty, TyDefId, TyKind,
+    AliasEq, AliasTy, BoundVar, CallableDefId, CallableSig, Canonical, Cast, DebruijnIndex,
+    InEnvironment, Interner, ProjectionTy, Scalar, Substitution, Ty, TyDefId, TyKind,
     TyVariableKind, WhereClause,
 };
 use itertools::Itertools;
@@ -1767,7 +1767,7 @@ impl Type {
         let goal = Canonical {
             value: hir_ty::InEnvironment::new(
                 self.ty.environment.clone(),
-                hir_ty::Obligation::Trait(trait_ref),
+                trait_ref.cast(&Interner),
             ),
             kinds: Arc::new([]),
         };
@@ -1789,14 +1789,15 @@ impl Type {
         let goal = Canonical {
             value: InEnvironment::new(
                 self.ty.environment.clone(),
-                Obligation::AliasEq(AliasEq {
+                AliasEq {
                     alias: AliasTy::Projection(ProjectionTy {
                         associated_ty_id: to_assoc_type_id(alias.id),
                         substitution: subst,
                     }),
                     ty: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0))
                         .intern(&Interner),
-                }),
+                }
+                .cast(&Interner),
             ),
             kinds: Arc::new([TyVariableKind::General]),
         };

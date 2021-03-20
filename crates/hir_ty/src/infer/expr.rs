@@ -3,7 +3,7 @@
 use std::iter::{repeat, repeat_with};
 use std::{mem, sync::Arc};
 
-use chalk_ir::{Mutability, TyVariableKind};
+use chalk_ir::{cast::Cast, Mutability, TyVariableKind};
 use hir_def::{
     expr::{Array, BinaryOp, Expr, ExprId, Literal, Statement, UnaryOp},
     path::{GenericArg, GenericArgs},
@@ -21,7 +21,7 @@ use crate::{
     to_assoc_type_id, to_chalk_trait_id,
     traits::{chalk::from_chalk, FnTrait, InEnvironment},
     utils::{generics, variant_data, Generics},
-    AdtId, Binders, CallableDefId, FnPointer, FnSig, Interner, Obligation, Rawness, Scalar,
+    AdtId, Binders, CallableDefId, DomainGoal, FnPointer, FnSig, Interner, Rawness, Scalar,
     Substitution, TraitRef, Ty, TyKind,
 };
 
@@ -90,10 +90,9 @@ impl<'a> InferenceContext<'a> {
             Substitution::build_for_generics(&generic_params).push(ty.clone()).push(arg_ty).build();
 
         let trait_env = Arc::clone(&self.trait_env);
-        let implements_fn_trait = Obligation::Trait(TraitRef {
-            trait_id: to_chalk_trait_id(fn_once_trait),
-            substitution: substs.clone(),
-        });
+        let implements_fn_trait: DomainGoal =
+            TraitRef { trait_id: to_chalk_trait_id(fn_once_trait), substitution: substs.clone() }
+                .cast(&Interner);
         let goal = self.canonicalizer().canonicalize_obligation(InEnvironment {
             value: implements_fn_trait.clone(),
             environment: trait_env,
@@ -938,22 +937,20 @@ impl<'a> InferenceContext<'a> {
             let generic_predicates = self.db.generic_predicates(def.into());
             for predicate in generic_predicates.iter() {
                 let predicate = predicate.clone().subst(parameters);
-                if let Some(obligation) = Obligation::from_predicate(predicate) {
-                    self.obligations.push(obligation);
-                }
+                self.obligations.push(predicate.cast(&Interner));
             }
             // add obligation for trait implementation, if this is a trait method
             match def {
                 CallableDefId::FunctionId(f) => {
                     if let AssocContainerId::TraitId(trait_) = f.lookup(self.db.upcast()).container
                     {
-                        // construct a TraitDef
+                        // construct a TraitRef
                         let substs =
                             parameters.prefix(generics(self.db.upcast(), trait_.into()).len());
-                        self.obligations.push(Obligation::Trait(TraitRef {
-                            trait_id: to_chalk_trait_id(trait_),
-                            substitution: substs,
-                        }));
+                        self.obligations.push(
+                            TraitRef { trait_id: to_chalk_trait_id(trait_), substitution: substs }
+                                .cast(&Interner),
+                        );
                     }
                 }
                 CallableDefId::StructId(_) | CallableDefId::EnumVariantId(_) => {}

@@ -13,7 +13,7 @@ use crate::{
     db::HirDatabase,
     from_assoc_type_id,
     primitive::UintTy,
-    traits::{Canonical, Obligation},
+    traits::{Canonical, DomainGoal},
     AliasTy, CallableDefId, FnPointer, InEnvironment, OpaqueTy, ProjectionTy, Scalar, Substitution,
     TraitRef, Ty, WhereClause,
 };
@@ -422,13 +422,15 @@ impl ToChalk for AliasEq {
     }
 }
 
-impl ToChalk for Obligation {
+impl ToChalk for DomainGoal {
     type Chalk = chalk_ir::DomainGoal<Interner>;
 
     fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::DomainGoal<Interner> {
         match self {
-            Obligation::Trait(tr) => tr.to_chalk(db).cast(&Interner),
-            Obligation::AliasEq(alias_eq) => alias_eq.to_chalk(db).cast(&Interner),
+            DomainGoal::Holds(WhereClause::Implemented(tr)) => tr.to_chalk(db).cast(&Interner),
+            DomainGoal::Holds(WhereClause::AliasEq(alias_eq)) => {
+                alias_eq.to_chalk(db).cast(&Interner)
+            }
         }
     }
 
