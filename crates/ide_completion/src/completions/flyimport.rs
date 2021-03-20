@@ -949,7 +949,7 @@ fn main() {
     }
 
     #[test]
-    fn local_assoc_items_are_omitted() {
+    fn unqualified_assoc_items_are_omitted() {
         check(
             r#"
 mod something {

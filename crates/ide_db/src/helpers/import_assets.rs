@@ -256,7 +256,14 @@ fn path_applicable_imports(
                 sema,
                 current_crate,
                 path_candidate.name.clone(),
-                // unqualified assoc items are not valid syntax
+                // FIXME: we could look up assoc items by the input and propose those in completion,
+                // but that requries more preparation first:
+                // * store non-trait assoc items in import_map to fully enable this lookup
+                // * ensure that does not degrade the performance (bencmark it)
+                // * write more logic to check for corresponding trait presence requirement (we're unable to flyimport multiple item right now)
+                // * improve the associated completion item matching and/or scoring to ensure no noisy completions appear
+                //
+                // see also an ignored test under FIXME comment in the qualify_path.rs module
                 AssocItemSearch::Exclude,
                 Some(DEFAULT_QUERY_SEARCH_LIMIT),
             )
