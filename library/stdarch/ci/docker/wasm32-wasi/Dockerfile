@@ -20,5 +20,7 @@ COPY --from=0 /usr/local/cargo/bin/wasmtime /usr/local/bin/wasmtime
 
 ENV CARGO_TARGET_WASM32_WASI_RUNNER="wasmtime \
   --enable-simd \
+  --enable-threads \
+  --opt-level 0 \
   --mapdir .::/checkout/target/wasm32-wasi/release/deps \
   --"

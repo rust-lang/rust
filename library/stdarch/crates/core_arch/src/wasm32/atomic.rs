@@ -1,13 +1,3 @@
-//! Intrinsics associated with WebAssembly's upcoming threads proposal.
-//!
-//! These intrinsics are all unstable because they're not actually stable in
-//! WebAssembly itself yet. The signatures may change as [the
-//! specification][spec] is updated.
-//!
-//! [spec]: https://github.com/WebAssembly/threads
-
-#![cfg(any(target_feature = "atomics", doc))]
-
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
@@ -41,16 +31,10 @@ extern "C" {
 ///   didn't block
 /// * 2 - the thread blocked, but the timeout expired.
 ///
-/// # Availability
-///
-/// This intrinsic is only available **when the standard library itself is
-/// compiled with the `atomics` target feature**. This version of the standard
-/// library is not obtainable via `rustup`, but rather will require the
-/// standard library to be compiled from source.
-///
 /// [instr]: https://webassembly.github.io/threads/syntax/instructions.html#syntax-instr-atomic-memory
 #[inline]
-#[cfg_attr(test, assert_instr("i32.atomic.wait"))]
+#[cfg_attr(test, assert_instr(memory.atomic.wait32))]
+#[target_feature(enable = "atomics")]
 pub unsafe fn memory_atomic_wait32(ptr: *mut i32, expression: i32, timeout_ns: i64) -> i32 {
     llvm_atomic_wait_i32(ptr, expression, timeout_ns)
 }
@@ -76,16 +60,10 @@ pub unsafe fn memory_atomic_wait32(ptr: *mut i32, expression: i32, timeout_ns: i
 ///   didn't block
 /// * 2 - the thread blocked, but the timeout expired.
 ///
-/// # Availability
-///
-/// This intrinsic is only available **when the standard library itself is
-/// compiled with the `atomics` target feature**. This version of the standard
-/// library is not obtainable via `rustup`, but rather will require the
-/// standard library to be compiled from source.
-///
 /// [instr]: https://webassembly.github.io/threads/syntax/instructions.html#syntax-instr-atomic-memory
 #[inline]
-#[cfg_attr(test, assert_instr("i64.atomic.wait"))]
+#[cfg_attr(test, assert_instr(memory.atomic.wait64))]
+#[target_feature(enable = "atomics")]
 pub unsafe fn memory_atomic_wait64(ptr: *mut i64, expression: i64, timeout_ns: i64) -> i32 {
     llvm_atomic_wait_i64(ptr, expression, timeout_ns)
 }
@@ -103,16 +81,10 @@ pub unsafe fn memory_atomic_wait64(ptr: *mut i64, expression: i64, timeout_ns: i
 ///
 /// Returns the number of waiters which were actually notified.
 ///
-/// # Availability
-///
-/// This intrinsic is only available **when the standard library itself is
-/// compiled with the `atomics` target feature**. This version of the standard
-/// library is not obtainable via `rustup`, but rather will require the
-/// standard library to be compiled from source.
-///
 /// [instr]: https://webassembly.github.io/threads/syntax/instructions.html#syntax-instr-atomic-memory
 #[inline]
-#[cfg_attr(test, assert_instr("atomic.wake"))]
+#[cfg_attr(test, assert_instr(memory.atomic.notify))]
+#[target_feature(enable = "atomics")]
 pub unsafe fn memory_atomic_notify(ptr: *mut i32, waiters: u32) -> u32 {
     llvm_atomic_notify(ptr, waiters as i32) as u32
 }

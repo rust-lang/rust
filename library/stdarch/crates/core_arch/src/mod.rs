@@ -59,11 +59,23 @@ pub mod arch {
     /// Platform-specific intrinsics for the `wasm32` platform.
     ///
     /// This module provides intrinsics specific to the WebAssembly
-    /// architecture. Here you'll find intrinsics necessary for leveraging
-    /// WebAssembly proposals such as [atomics] and [simd]. These proposals are
-    /// evolving over time and as such the support here is unstable and requires
-    /// the nightly channel. As WebAssembly proposals stabilize these functions
-    /// will also become stable.
+    /// architecture. Here you'll find intrinsics specific to WebAssembly that
+    /// aren't otherwise surfaced somewhere in a cross-platform abstraction of
+    /// `std`, and you'll also find functions for leveraging WebAssembly
+    /// proposals such as [atomics] and [simd].
+    ///
+    /// Intrinsics in the `wasm32` module are modeled after the WebAssembly
+    /// instructions that they represent. All functions are named after the
+    /// instruction they intend to correspond to, and the arguments/results
+    /// correspond to the type signature of the instruction itself. Stable
+    /// WebAssembly instructions are [documented online][instrdoc].
+    ///
+    /// [instrdoc]: https://webassembly.github.io/spec/core/valid/instructions.html
+    ///
+    /// If a proposal is not yet stable in WebAssembly itself then the functions
+    /// within this function may be unstable and require the nightly channel of
+    /// Rust to use. As the proposal itself stabilizes the intrinsics in this
+    /// module should stabilize as well.
     ///
     /// [atomics]: https://github.com/webassembly/threads
     /// [simd]: https://github.com/webassembly/simd
@@ -74,18 +86,22 @@ pub mod arch {
     /// ## Atomics
     ///
     /// The [threads proposal][atomics] for WebAssembly adds a number of
-    /// instructions for dealing with multithreaded programs. Atomic
-    /// instructions can all be generated through `std::sync::atomic` types, but
-    /// some instructions have no equivalent in Rust such as
-    /// `memory.atomic.notify` so this module will provide these intrinsics.
+    /// instructions for dealing with multithreaded programs. Most instructions
+    /// added in the [atomics] proposal are exposed in Rust through the
+    /// `std::sync::atomic` module. Some instructions, however, don't have
+    /// direct equivalents in Rust so they're exposed here instead.
     ///
-    /// At this time, however, these intrinsics are only available **when the
-    /// standard library itself is compiled with atomics**. Compiling with
-    /// atomics is not enabled by default and requires passing
-    /// `-Ctarget-feature=+atomics` to rustc. The standard library shipped via
-    /// `rustup` is not compiled with atomics. To get access to these intrinsics
-    /// you'll need to compile the standard library from source with the
-    /// requisite compiler flags.
+    /// Note that the instructions added in the [atomics] proposal can work in
+    /// either a context with a shared wasm memory and without. These intrinsics
+    /// are always available in the standard library, but you likely won't be
+    /// able to use them too productively unless you recompile the standard
+    /// library (and all your code) with `-Ctarget-feature=+atomics`.
+    ///
+    /// It's also worth pointing out that multi-threaded WebAssembly and its
+    /// story in Rust is still in a somewhat "early days" phase as of the time
+    /// of this writing. Pieces should mostly work but it generally requires a
+    /// good deal of manual setup. At this time it's not as simple as "just call
+    /// `std::thread::spawn`", but it will hopefully get there one day!
     ///
     /// ## SIMD
     ///
