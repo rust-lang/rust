@@ -12,6 +12,9 @@ fn test_valid_arms() {
     }
 
     check("($i:ident) => ()");
+    check("($(x),*) => ()");
+    check("($(x)_*) => ()");
+    check("($(x)i*) => ()");
     check("($($i:ident)*) => ($_)");
     check("($($true:ident)*) => ($true)");
     check("($($false:ident)*) => ($false)");
@@ -32,6 +35,7 @@ fn test_invalid_arms() {
 
     check("($i) => ($i)", ParseError::UnexpectedToken("bad fragment specifier 1".into()));
     check("($i:) => ($i)", ParseError::UnexpectedToken("bad fragment specifier 1".into()));
+    check("($i:_) => ()", ParseError::UnexpectedToken("bad fragment specifier 1".into()));
 }
 
 fn parse_macro_arm(arm_definition: &str) -> Result<crate::MacroRules, ParseError> {
