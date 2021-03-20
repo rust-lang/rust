@@ -1227,6 +1227,7 @@ mod b {
 
 #[test]
 fn autoderef_visibility_method() {
+    cov_mark::check!(autoderef_candidate_not_visible);
     check_infer(
         r#"
 #[lang = "deref"]
