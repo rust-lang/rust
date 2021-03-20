@@ -1173,3 +1173,122 @@ fn main() {
 "#,
     );
 }
+
+#[test]
+fn autoderef_visibility_field() {
+    check_infer(
+        r#"
+#[lang = "deref"]
+pub trait Deref {
+    type Target;
+    fn deref(&self) -> &Self::Target;
+}
+mod a {
+    pub struct Foo(pub char);
+    pub struct Bar(i32);
+    impl Bar {
+        pub fn new() -> Self {
+            Self(0)
+        }
+    }
+    impl super::Deref for Bar {
+        type Target = Foo;
+        fn deref(&self) -> &Foo {
+            &Foo('z')
+        }
+    }
+}
+mod b {
+    fn foo() {
+        let x = super::a::Bar::new().0;
+    }
+}
+        "#,
+        expect![[r#"
+            67..71 'self': &Self
+            200..231 '{     ...     }': Bar
+            214..218 'Self': Bar(i32) -> Bar
+            214..221 'Self(0)': Bar
+            219..220 '0': i32
+            315..319 'self': &Bar
+            329..362 '{     ...     }': &Foo
+            343..352 '&Foo('z')': &Foo
+            344..347 'Foo': Foo(char) -> Foo
+            344..352 'Foo('z')': Foo
+            348..351 ''z'': char
+            392..439 '{     ...     }': ()
+            406..407 'x': char
+            410..428 'super:...r::new': fn new() -> Bar
+            410..430 'super:...:new()': Bar
+            410..432 'super:...ew().0': char
+        "#]],
+    )
+}
+
+#[test]
+fn autoderef_visibility_method() {
+    check_infer(
+        r#"
+#[lang = "deref"]
+pub trait Deref {
+    type Target;
+    fn deref(&self) -> &Self::Target;
+}
+mod a {
+    pub struct Foo(pub char);
+    
+    impl Foo {
+        pub fn mango(&self) -> char {
+            self.0
+        }
+    }
+    pub struct Bar(i32);
+    impl Bar {
+        pub fn new() -> Self {
+            Self(0)
+        }
+        fn mango(&self) -> i32 {
+            self.0
+        }
+    }
+    impl super::Deref for Bar {
+        type Target = Foo;
+        fn deref(&self) -> &Foo {
+            &Foo('z')
+        }
+    }
+}
+mod b {
+    fn foo() {
+        let x = super::a::Bar::new().mango();
+    }
+}
+        "#,
+        expect![[r#"
+            67..71 'self': &Self
+            173..177 'self': &Foo
+            187..217 '{     ...     }': char
+            201..205 'self': &Foo
+            201..207 'self.0': char
+            293..324 '{     ...     }': Bar
+            307..311 'Self': Bar(i32) -> Bar
+            307..314 'Self(0)': Bar
+            312..313 '0': i32
+            343..347 'self': &Bar
+            356..386 '{     ...     }': i32
+            370..374 'self': &Bar
+            370..376 'self.0': i32
+            470..474 'self': &Bar
+            484..517 '{     ...     }': &Foo
+            498..507 '&Foo('z')': &Foo
+            499..502 'Foo': Foo(char) -> Foo
+            499..507 'Foo('z')': Foo
+            503..506 ''z'': char
+            547..600 '{     ...     }': ()
+            561..562 'x': char
+            565..583 'super:...r::new': fn new() -> Bar
+            565..585 'super:...:new()': Bar
+            565..593 'super:...ango()': char
+        "#]],
+    )
+}
