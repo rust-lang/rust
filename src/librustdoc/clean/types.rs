@@ -81,19 +81,15 @@ crate struct ExternalCrate {
 /// directly to the AST's concept of an item; it's a strict superset.
 #[derive(Clone)]
 crate struct Item {
-    /// The [`Span`] of this item in the source code.
     crate span: Span,
     /// The name of this item.
     /// Optional because not every item has a name, e.g. impls.
     crate name: Option<Symbol>,
-    /// Attributes on this item, e.g. `#[derive(...)]` or `#[inline]`.
     crate attrs: Box<Attributes>,
-    /// The visibility of this item (private, `pub`, `pub(crate)`, etc.).
     crate visibility: Visibility,
     /// Information about this item that is specific to what kind of item it is.
     /// E.g., struct vs enum vs function.
     crate kind: Box<ItemKind>,
-    /// The [`DefId`] of this item.
     crate def_id: DefId,
 }
 
@@ -565,6 +561,8 @@ impl<'a> FromIterator<&'a DocFragment> for String {
     }
 }
 
+/// The attributes on an [`Item`], including attributes like `#[derive(...)]` and `#[inline]`,
+/// as well as doc comments.
 #[derive(Clone, Debug, Default)]
 crate struct Attributes {
     crate doc_strings: Vec<DocFragment>,
@@ -1804,8 +1802,11 @@ impl From<hir::PrimTy> for PrimitiveType {
 
 #[derive(Copy, Clone, Debug)]
 crate enum Visibility {
+    /// `pub`
     Public,
+    /// visibility inherited from parent (e.g. for enum variant fields)
     Inherited,
+    /// `pub(crate)`, `pub(super)`, or `pub(in path::to::somewhere)`
     Restricted(DefId),
 }
 
@@ -1854,7 +1855,8 @@ crate enum Variant {
     Struct(VariantStruct),
 }
 
-/// Small wrapper around `rustc_span::Span` that adds helper methods and enforces calling `source_callsite`.
+/// Small wrapper around [`rustc_span::Span]` that adds helper methods
+/// and enforces calling [`rustc_span::Span::source_callsite()`].
 #[derive(Clone, Debug)]
 crate struct Span(rustc_span::Span);
 
