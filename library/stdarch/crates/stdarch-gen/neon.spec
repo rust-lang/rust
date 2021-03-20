@@ -784,6 +784,60 @@ generate float64x*_t
 arm = vmla.
 generate float*_t
 
+/// Signed multiply-add long
+name = vmlal
+multi_fn = simd_add, a, {vmull-self-noext, b, c}
+a = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+c = 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
+validate 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21
+
+arm = vmlal.s
+aarch64 = smlal
+generate int16x8_t:int8x8_t:int8x8_t:int16x8_t, int32x4_t:int16x4_t:int16x4_t:int32x4_t, int64x2_t:int32x2_t:int32x2_t:int64x2_t
+
+/// Unsigned multiply-add long
+name = vmlal
+multi_fn = simd_add, a, {vmull-self-noext, b, c}
+a = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+c = 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
+validate 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21
+
+arm = vmlal.s
+aarch64 = umlal
+generate uint16x8_t:uint8x8_t:uint8x8_t:uint16x8_t, uint32x4_t:uint16x4_t:uint16x4_t:uint32x4_t, uint64x2_t:uint32x2_t:uint32x2_t:uint64x2_t
+
+/// Signed multiply-add long
+name = vmlal_high
+no-q
+multi_fn = simd_shuffle-out_len-noext, b:half, b, b, {fixed-half-right}
+multi_fn = simd_shuffle-out_len-noext, c:half, c, c, {fixed-half-right}
+multi_fn = vmlal-noqself-noext, a, b, c
+a = 8, 7, 6, 5, 4, 3, 2, 1
+b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+c = 3, 3, 0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 6, 7
+fixed = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+validate 8, 9, 10, 11, 12, 13, 14, 15
+
+aarch64 = smlal2
+generate int16x8_t:int8x16_t:int8x16_t:int16x8_t, int32x4_t:int16x8_t:int16x8_t:int32x4_t, int64x2_t:int32x4_t:int32x4_t:int64x2_t
+
+/// Unsigned multiply-add long
+name = vmlal_high
+no-q
+multi_fn = simd_shuffle-out_len-noext, b:half, b, b, {fixed-half-right}
+multi_fn = simd_shuffle-out_len-noext, c:half, c, c, {fixed-half-right}
+multi_fn = vmlal-noqself-noext, a, b, c
+a = 8, 7, 6, 5, 4, 3, 2, 1
+b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+c = 3, 3, 0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 6, 7
+fixed = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+validate 8, 9, 10, 11, 12, 13, 14, 15
+
+aarch64 = umlal2
+generate uint16x8_t:uint8x16_t:uint8x16_t:uint16x8_t, uint32x4_t:uint16x8_t:uint16x8_t:uint32x4_t, uint64x2_t:uint32x4_t:uint32x4_t:uint64x2_t
+
 /// Multiply-subtract from accumulator
 name = vmls
 multi_fn = simd_sub, a, {simd_mul, b, c}
@@ -809,6 +863,60 @@ generate float64x*_t
 
 arm = vmls.
 generate float*_t
+
+/// Signed multiply-subtract long
+name = vmlsl
+multi_fn = simd_sub, a, {vmull-self-noext, b, c}
+a = 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21
+b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+c = 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
+validate 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+
+arm = vmlsl.s
+aarch64 = smlsl
+generate int16x8_t:int8x8_t:int8x8_t:int16x8_t, int32x4_t:int16x4_t:int16x4_t:int32x4_t, int64x2_t:int32x2_t:int32x2_t:int64x2_t
+
+/// Signed multiply-subtract long
+name = vmlsl
+multi_fn = simd_sub, a, {vmull-self-noext, b, c}
+a = 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21
+b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+c = 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
+validate 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+
+arm = vmlsl.s
+aarch64 = umlsl
+generate uint16x8_t:uint8x8_t:uint8x8_t:uint16x8_t, uint32x4_t:uint16x4_t:uint16x4_t:uint32x4_t, uint64x2_t:uint32x2_t:uint32x2_t:uint64x2_t
+
+/// Signed multiply-subtract long
+name = vmlsl_high
+no-q
+multi_fn = simd_shuffle-out_len-noext, b:half, b, b, {fixed-half-right}
+multi_fn = simd_shuffle-out_len-noext, c:half, c, c, {fixed-half-right}
+multi_fn = vmlsl-noqself-noext, a, b, c
+a = 14, 15, 16, 17, 18, 19, 20, 21
+b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+c = 3, 3, 0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 6, 7
+fixed = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+validate 14, 13, 12, 11, 10, 9, 8, 7
+
+aarch64 = smlsl2
+generate int16x8_t:int8x16_t:int8x16_t:int16x8_t, int32x4_t:int16x8_t:int16x8_t:int32x4_t, int64x2_t:int32x4_t:int32x4_t:int64x2_t
+
+/// Unsigned multiply-subtract long
+name = vmlsl_high
+no-q
+multi_fn = simd_shuffle-out_len-noext, b:half, b, b, {fixed-half-right}
+multi_fn = simd_shuffle-out_len-noext, c:half, c, c, {fixed-half-right}
+multi_fn = vmlsl-noqself-noext, a, b, c
+a = 14, 15, 16, 17, 18, 19, 20, 21
+b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+c = 3, 3, 0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 6, 7
+fixed = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+validate 14, 13, 12, 11, 10, 9, 8, 7
+
+aarch64 = umlsl2
+generate uint16x8_t:uint8x16_t:uint8x16_t:uint16x8_t, uint32x4_t:uint16x8_t:uint16x8_t:uint32x4_t, uint64x2_t:uint32x4_t:uint32x4_t:uint64x2_t
 
 /// Saturating subtract
 name = vqsub
@@ -906,6 +1014,84 @@ generate float64x*_t
 
 arm = vmul.
 generate float*_t
+
+/// Signed multiply long
+name = vmull
+a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+b = 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2
+validate 1, 4, 3, 8, 5, 12, 7, 16, 9, 20, 11, 24, 13, 28, 15, 32
+
+arm = vmull.s
+aarch64 = smull
+link-arm = vmulls._EXT_
+link-aarch64 = smull._EXT_
+generate int8x8_t:int8x8_t:int16x8_t, int16x4_t:int16x4_t:int32x4_t, int32x2_t:int32x2_t:int64x2_t
+
+/// Signed multiply long
+name = vmull_high
+no-q
+multi_fn = simd_shuffle-out_len-noext, a:half, a, a, {fixed-half-right}
+multi_fn = simd_shuffle-out_len-noext, b:half, b, b, {fixed-half-right}
+multi_fn = vmull-noqself-noext, a, b
+a = 1, 2, 9, 10, 9, 10, 11, 12, 9, 10, 11, 12, 13, 14, 15, 16
+b = 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2
+fixed = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+validate 9, 20, 11, 24, 13, 28, 15, 32
+
+aarch64 = smull2
+generate int8x16_t:int8x16_t:int16x8_t, int16x8_t:int16x8_t:int32x4_t, int32x4_t:int32x4_t:int64x2_t
+
+/// Unsigned multiply long
+name = vmull
+a = 1, 2, 3, 4, 5, 6, 7, 8
+b = 1, 2, 1, 2, 1, 2, 1, 2
+validate 1, 4, 3, 8, 5, 12, 7, 16
+
+arm = vmull.s
+aarch64 = umull
+link-arm = vmullu._EXT_
+link-aarch64 = umull._EXT_
+generate uint8x8_t:uint8x8_t:uint16x8_t, uint16x4_t:uint16x4_t:uint32x4_t, uint32x2_t:uint32x2_t:uint64x2_t
+
+/// Unsigned multiply long
+name = vmull_high
+no-q
+multi_fn = simd_shuffle-out_len-noext, a:half, a, a, {fixed-half-right}
+multi_fn = simd_shuffle-out_len-noext, b:half, b, b, {fixed-half-right}
+multi_fn = vmull-noqself-noext, a, b
+a = 1, 2, 9, 10, 9, 10, 11, 12, 9, 10, 11, 12, 13, 14, 15, 16
+b = 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2
+fixed = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+validate 9, 20, 11, 24, 13, 28, 15, 32
+
+aarch64 = umull2
+generate uint8x16_t:uint8x16_t:uint16x8_t, uint16x8_t:uint16x8_t:uint32x4_t, uint32x4_t:uint32x4_t:uint64x2_t
+
+/// Polynomial multiply long
+name = vmull
+a = 1, 2, 3, 4, 5, 6, 7, 8
+b = 1, 3, 1, 3, 1, 3, 1, 3
+validate 1, 6, 3, 12, 5, 10, 7, 24
+
+arm = vmull.s
+aarch64 = pmull
+link-arm = vmullp._EXT_
+link-aarch64 = pmull._EXT_
+generate poly8x8_t:poly8x8_t:poly16x8_t
+
+/// Polynomial multiply long
+name = vmull_high
+no-q
+multi_fn = simd_shuffle-out_len-noext, a:half, a, a, {fixed-half-right}
+multi_fn = simd_shuffle-out_len-noext, b:half, b, b, {fixed-half-right}
+multi_fn = vmull-noqself-noext, a, b
+a = 1, 2, 9, 10, 9, 10, 11, 12, 9, 10, 11, 12, 13, 14, 15, 16
+b = 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3
+fixed = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+validate 9, 30, 11, 20, 13, 18, 15, 48
+
+aarch64 = pmull
+generate poly8x16_t:poly8x16_t:poly16x8_t
 
 /// Divide
 name = vdiv

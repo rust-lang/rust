@@ -75,6 +75,8 @@ fn type_len(t: &str) -> usize {
         "float64x2_t" => 2,
         "poly8x8_t" => 8,
         "poly8x16_t" => 16,
+        "poly16x4_t" => 4,
+        "poly16x8_t" => 8,
         "poly64x1_t" => 1,
         "poly64x2_t" => 2,
         _ => panic!("unknown type: {}", t),
@@ -231,6 +233,8 @@ fn type_to_global_type(t: &str) -> &str {
         "float64x2_t" => "f64x2",
         "poly8x8_t" => "i8x8",
         "poly8x16_t" => "i8x16",
+        "poly16x4_t" => "i16x4",
+        "poly16x8_t" => "i16x8",
         "poly64x1_t" => "i64x1",
         "poly64x2_t" => "i64x2",
         _ => panic!("unknown type: {}", t),
@@ -291,11 +295,33 @@ fn type_to_ext(t: &str) -> &str {
         "float32x4_t" => "v4f32",
         "float64x1_t" => "v1f64",
         "float64x2_t" => "v2f64",
+        "poly8x8_t" => "v8i8",
+        "poly8x16_t" => "v16i8",
+        "poly16x4_t" => "v4i16",
+        "poly16x8_t" => "v8i16",
         /*
         "poly64x1_t" => "i64x1",
         "poly64x2_t" => "i64x2",
         */
         _ => panic!("unknown type for extension: {}", t),
+    }
+}
+
+fn type_to_half(t: &str) -> &str {
+    match t {
+        "int8x16_t" => "int8x8_t",
+        "int16x8_t" => "int16x4_t",
+        "int32x4_t" => "int32x2_t",
+        "int64x2_t" => "int64x1_t",
+        "uint8x16_t" => "uint8x8_t",
+        "uint16x8_t" => "uint16x4_t",
+        "uint32x4_t" => "uint32x2_t",
+        "uint64x2_t" => "uint64x1_t",
+        "poly8x16_t" => "poly8x8_t",
+        "poly16x8_t" => "poly16x4_t",
+        "float32x4_t" => "float32x2_t",
+        "float64x2_t" => "float64x1_t",
+        _ => panic!("unknown half type for {}", t),
     }
 }
 
@@ -588,7 +614,7 @@ fn gen_aarch64(
         in_t,
         &out_t,
         current_tests,
-        [type_len(in_t[0]), type_len(in_t[0]), type_len(in_t[0])],
+        [type_len(in_t[0]), type_len(in_t[1]), type_len(in_t[2])],
         type_len(out_t),
         para_num,
     );
@@ -843,8 +869,8 @@ fn gen_arm(
 {}
 "#,
         current_comment,
-        expand_intrinsic(&current_arm, in_t[0]),
-        expand_intrinsic(&current_aarch64, in_t[0]),
+        expand_intrinsic(&current_arm, in_t[1]),
+        expand_intrinsic(&current_aarch64, in_t[1]),
         call,
     );
     let test = gen_test(
@@ -887,6 +913,8 @@ fn expand_intrinsic(intr: &str, t: &str) -> String {
             "float64x2_t" => "f64",
             "poly8x8_t" => "i8",
             "poly8x16_t" => "i8",
+            "poly16x4_t" => "i16",
+            "poly16x8_t" => "i16",
             /*
             "poly64x1_t" => "i64x1",
             "poly64x2_t" => "i64x2",
@@ -912,6 +940,10 @@ fn expand_intrinsic(intr: &str, t: &str) -> String {
             "uint32x4_t" => "u32",
             "uint64x1_t" => "u64",
             "uint64x2_t" => "u64",
+            "poly8x8_t" => "p8",
+            "poly8x16_t" => "p8",
+            "poly16x4_t" => "p16",
+            "poly16x8_t" => "p16",
             "float16x4_t" => "f16",
             "float16x8_t" => "f16",
             "float32x2_t" => "f32",
@@ -978,11 +1010,13 @@ fn get_call(
         } else if s.contains(':') {
             let re_params: Vec<_> = s.split(':').map(|v| v.to_string()).collect();
             if re_params[1] == "" {
-                re = Some((re_params[0].clone(), in_t[0].to_string()));
+                re = Some((re_params[0].clone(), in_t[1].to_string()));
             } else if re_params[1] == "in_t" {
-                re = Some((re_params[0].clone(), in_t[0].to_string()));
+                re = Some((re_params[0].clone(), in_t[1].to_string()));
             } else if re_params[1] == "out_t" {
                 re = Some((re_params[0].clone(), out_t.to_string()));
+            } else if re_params[1] == "half" {
+                re = Some((re_params[0].clone(), type_to_half(in_t[1]).to_string()));
             } else {
                 re = Some((re_params[0].clone(), re_params[1].clone()));
             }
@@ -996,8 +1030,19 @@ fn get_call(
     }
     if fn_name == "fixed" {
         let (re_name, re_type) = re.unwrap();
-        let fixed: Vec<String> = fixed.iter().take(type_len(in_t[0])).cloned().collect();
+        let fixed: Vec<String> = fixed.iter().take(type_len(in_t[1])).cloned().collect();
         return format!(r#"let {}{};"#, re_name, values(&re_type, &fixed));
+    }
+    if fn_name == "fixed-half-right" {
+        let fixed: Vec<String> = fixed.iter().take(type_len(in_t[1])).cloned().collect();
+        let half = fixed[type_len(in_t[1]) / 2..]
+            .iter()
+            .fold(String::new(), |mut s, fix| {
+                s.push_str(fix);
+                s.push_str(", ");
+                s
+            });
+        return format!(r#"[{}]"#, &half[..half.len() - 2]);
     }
     if fn_name.contains('-') {
         let fn_format: Vec<_> = fn_name.split('-').map(|v| v.to_string()).collect();
@@ -1018,6 +1063,10 @@ fn get_call(
         } else if fn_format[1] == "noqself" {
             fn_name.push_str(type_to_noq_suffix(in_t[1]));
         } else if fn_format[1] == "nosuffix" {
+        } else if fn_format[1] == "in_len" {
+            fn_name.push_str(&type_len(in_t[1]).to_string());
+        } else if fn_format[1] == "out_len" {
+            fn_name.push_str(&type_len(out_t).to_string());
         } else {
             fn_name.push_str(&fn_format[1]);
         };
