@@ -442,27 +442,49 @@ impl<'a> InferenceContext<'a> {
                     },
                 )
                 .find_map(|derefed_ty| {
+                    let def_db = self.db.upcast();
+                    let module = self.resolver.module();
+                    let is_visible = |field_id: &FieldId| {
+                        module
+                            .map(|mod_id| {
+                                self.db.field_visibilities(field_id.parent)[field_id.local_id]
+                                    .is_visible_from(def_db, mod_id)
+                            })
+                            .unwrap_or(true)
+                    };
                     match canonicalized.decanonicalize_ty(derefed_ty.value).interned(&Interner) {
                         TyKind::Tuple(_, substs) => {
                             name.as_tuple_index().and_then(|idx| substs.0.get(idx).cloned())
                         }
                         TyKind::Adt(AdtId(hir_def::AdtId::StructId(s)), parameters) => {
-                            self.db.struct_data(*s).variant_data.field(name).map(|local_id| {
-                                let field = FieldId { parent: (*s).into(), local_id };
-                                self.write_field_resolution(tgt_expr, field);
-                                self.db.field_types((*s).into())[field.local_id]
-                                    .clone()
-                                    .subst(&parameters)
-                            })
+                            let local_id = self.db.struct_data(*s).variant_data.field(name)?;
+                            let field = FieldId { parent: (*s).into(), local_id };
+                            let is_visible_in_ctx = is_visible(&field);
+                            self.write_field_resolution(tgt_expr, field);
+                            if is_visible_in_ctx {
+                                Some(
+                                    self.db.field_types((*s).into())[field.local_id]
+                                        .clone()
+                                        .subst(&parameters),
+                                )
+                            } else {
+                                None
+                            }
                         }
                         TyKind::Adt(AdtId(hir_def::AdtId::UnionId(u)), parameters) => {
-                            self.db.union_data(*u).variant_data.field(name).map(|local_id| {
-                                let field = FieldId { parent: (*u).into(), local_id };
-                                self.write_field_resolution(tgt_expr, field);
-                                self.db.field_types((*u).into())[field.local_id]
-                                    .clone()
-                                    .subst(&parameters)
-                            })
+                            let local_id = self.db.union_data(*u).variant_data.field(name)?;
+                            let field = FieldId { parent: (*u).into(), local_id };
+                            let is_visible_in_ctx = is_visible(&field);
+                            self.write_field_resolution(tgt_expr, field);
+                            if is_visible_in_ctx {
+                                Some(
+                                    self.db.field_types((*u).into())[field.local_id]
+                                        .clone()
+                                        .subst(&parameters),
+                                )
+                            } else {
+                                None
+                            }
                         }
                         _ => None,
                     }
