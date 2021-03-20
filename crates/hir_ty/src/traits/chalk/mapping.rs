@@ -98,7 +98,7 @@ impl ToChalk for Ty {
             TyKind::Dyn(predicates) => {
                 let where_clauses = chalk_ir::QuantifiedWhereClauses::from_iter(
                     &Interner,
-                    predicates.iter().filter(|p| !p.is_error()).cloned().map(|p| p.to_chalk(db)),
+                    predicates.iter().cloned().map(|p| p.to_chalk(db)),
                 );
                 let bounded_ty = chalk_ir::DynTy {
                     bounds: make_binders(where_clauses, 1),
@@ -318,7 +318,6 @@ impl ToChalk for WhereClause {
                 chalk_ir::WhereClause::AliasEq(alias_eq.to_chalk(db).shifted_in(&Interner)),
                 0,
             ),
-            WhereClause::Error => panic!("tried passing GenericPredicate::Error to Chalk"),
         }
     }
 
@@ -521,10 +520,6 @@ pub(super) fn convert_where_clauses(
     let generic_predicates = db.generic_predicates(def);
     let mut result = Vec::with_capacity(generic_predicates.len());
     for pred in generic_predicates.iter() {
-        if pred.value.is_error() {
-            // skip errored predicates completely
-            continue;
-        }
         result.push(pred.clone().subst(substs).to_chalk(db));
     }
     result

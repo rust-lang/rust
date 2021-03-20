@@ -569,16 +569,9 @@ pub enum WhereClause {
     Implemented(TraitRef),
     /// An associated type bindings like in `Iterator<Item = T>`.
     AliasEq(AliasEq),
-    /// We couldn't resolve the trait reference. (If some type parameters can't
-    /// be resolved, they will just be Unknown).
-    Error,
 }
 
 impl WhereClause {
-    pub fn is_error(&self) -> bool {
-        matches!(self, WhereClause::Error)
-    }
-
     pub fn is_implemented(&self) -> bool {
         matches!(self, WhereClause::Implemented(_))
     }
@@ -589,7 +582,7 @@ impl WhereClause {
             WhereClause::AliasEq(AliasEq { alias: AliasTy::Projection(proj), .. }) => {
                 Some(proj.trait_ref(db))
             }
-            WhereClause::AliasEq(_) | WhereClause::Error => None,
+            WhereClause::AliasEq(_) => None,
         }
     }
 }
@@ -599,7 +592,6 @@ impl TypeWalk for WhereClause {
         match self {
             WhereClause::Implemented(trait_ref) => trait_ref.walk(f),
             WhereClause::AliasEq(alias_eq) => alias_eq.walk(f),
-            WhereClause::Error => {}
         }
     }
 
@@ -611,7 +603,6 @@ impl TypeWalk for WhereClause {
         match self {
             WhereClause::Implemented(trait_ref) => trait_ref.walk_mut_binders(f, binders),
             WhereClause::AliasEq(alias_eq) => alias_eq.walk_mut_binders(f, binders),
-            WhereClause::Error => {}
         }
     }
 }

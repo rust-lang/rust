@@ -703,10 +703,10 @@ impl<'a> TyLoweringContext<'a> {
         let trait_ref = match bound {
             TypeBound::Path(path) => {
                 bindings = self.lower_trait_ref_from_path(path, Some(self_ty));
-                Some(bindings.clone().map_or(WhereClause::Error, WhereClause::Implemented))
+                bindings.clone().map(WhereClause::Implemented)
             }
             TypeBound::Lifetime(_) => None,
-            TypeBound::Error => Some(WhereClause::Error),
+            TypeBound::Error => None,
         };
         trait_ref.into_iter().chain(
             bindings
@@ -919,9 +919,6 @@ pub(crate) fn trait_environment_query(
     let mut clauses = Vec::new();
     for pred in resolver.where_predicates_in_scope() {
         for pred in ctx.lower_where_predicate(pred) {
-            if pred.is_error() {
-                continue;
-            }
             if let WhereClause::Implemented(tr) = &pred {
                 traits_in_scope.push((tr.self_type_parameter().clone(), tr.hir_trait_id()));
             }

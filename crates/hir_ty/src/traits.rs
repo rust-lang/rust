@@ -100,7 +100,6 @@ impl Obligation {
         match predicate {
             WhereClause::Implemented(trait_ref) => Some(Obligation::Trait(trait_ref)),
             WhereClause::AliasEq(alias_eq) => Some(Obligation::AliasEq(alias_eq)),
-            WhereClause::Error => None,
         }
     }
 }

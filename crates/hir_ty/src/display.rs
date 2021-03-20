@@ -731,16 +731,6 @@ fn write_bounds_like_dyn_trait(
                 }
                 ty.hir_fmt(f)?;
             }
-            WhereClause::Error => {
-                if angle_open {
-                    // impl Trait<X, {error}>
-                    write!(f, ", ")?;
-                } else if !first {
-                    // impl Trait + {error}
-                    write!(f, " + ")?;
-                }
-                p.hir_fmt(f)?;
-            }
         }
         first = false;
     }
@@ -796,7 +786,7 @@ impl HirDisplay for WhereClause {
                 )?;
                 ty.hir_fmt(f)?;
             }
-            WhereClause::AliasEq(_) | WhereClause::Error => write!(f, "{{error}}")?,
+            WhereClause::AliasEq(_) => write!(f, "{{error}}")?,
         }
         Ok(())
     }

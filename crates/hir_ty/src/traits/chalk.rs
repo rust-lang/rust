@@ -187,13 +187,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                 let data = &datas.value.impl_traits[idx as usize];
                 let bound = OpaqueTyDatumBound {
                     bounds: make_binders(
-                        data.bounds
-                            .value
-                            .iter()
-                            .cloned()
-                            .filter(|b| !b.is_error())
-                            .map(|b| b.to_chalk(self.db))
-                            .collect(),
+                        data.bounds.value.iter().cloned().map(|b| b.to_chalk(self.db)).collect(),
                         1,
                     ),
                     where_clauses: make_binders(vec![], 0),
