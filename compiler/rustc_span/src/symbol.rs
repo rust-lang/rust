@@ -1081,6 +1081,7 @@ symbols! {
         simd_lt,
         simd_mul,
         simd_ne,
+        simd_neg,
         simd_or,
         simd_reduce_add_ordered,
         simd_reduce_add_unordered,
