@@ -108,6 +108,9 @@ jobs:
       with:
         node-version: 12.x
 
+    - name: Print current revision
+      run: git describe --tags
+
     - name: Dist
       if: github.ref == 'refs/heads/release'
       run: cargo xtask dist --client 0.2.$GITHUB_RUN_NUMBER
