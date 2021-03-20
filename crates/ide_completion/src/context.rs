@@ -4,8 +4,11 @@ use hir::{Local, ScopeDef, Semantics, SemanticsScope, Type};
 use ide_db::base_db::{FilePosition, SourceDatabase};
 use ide_db::{call_info::ActiveParameter, RootDatabase};
 use syntax::{
-    algo::find_node_at_offset, ast, match_ast, AstNode, NodeOrToken, SyntaxKind::*, SyntaxNode,
-    SyntaxToken, TextRange, TextSize,
+    algo::find_node_at_offset,
+    ast::{self, NameOrNameRef, NameOwner},
+    match_ast, AstNode, NodeOrToken,
+    SyntaxKind::*,
+    SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
 
 use text_edit::Indel;
@@ -35,7 +38,7 @@ pub(crate) struct CompletionContext<'a> {
     /// The token before the cursor, in the macro-expanded file.
     pub(super) token: SyntaxToken,
     pub(super) krate: Option<hir::Crate>,
-    pub(super) expected_name: Option<String>,
+    pub(super) expected_name: Option<NameOrNameRef>,
     pub(super) expected_type: Option<Type>,
     pub(super) name_ref_syntax: Option<ast::NameRef>,
     pub(super) function_syntax: Option<ast::Fn>,
@@ -292,13 +295,13 @@ impl<'a> CompletionContext<'a> {
         file_with_fake_ident: SyntaxNode,
         offset: TextSize,
     ) {
-        let expected = {
+        let (expected_type, expected_name) = {
             let mut node = match self.token.parent() {
                 Some(it) => it,
                 None => return,
             };
             loop {
-                let ret = match_ast! {
+                break match_ast! {
                     match node {
                         ast::LetStmt(it) => {
                             cov_mark::hit!(expected_type_let_with_leading_char);
@@ -306,7 +309,7 @@ impl<'a> CompletionContext<'a> {
                             let ty = it.pat()
                                 .and_then(|pat| self.sema.type_of_pat(&pat));
                             let name = if let Some(ast::Pat::IdentPat(ident)) = it.pat() {
-                                Some(ident.syntax().text().to_string())
+                                ident.name().map(NameOrNameRef::Name)
                             } else {
                                 None
                             };
@@ -319,7 +322,10 @@ impl<'a> CompletionContext<'a> {
                             ActiveParameter::at_token(
                                 &self.sema,
                                 self.token.clone(),
-                            ).map(|ap| (Some(ap.ty), Some(ap.name)))
+                            ).map(|ap| {
+                                let name = ap.ident().map(NameOrNameRef::Name);
+                                (Some(ap.ty), name)
+                            })
                             .unwrap_or((None, None))
                         },
                         ast::RecordExprFieldList(_it) => {
@@ -327,10 +333,10 @@ impl<'a> CompletionContext<'a> {
                             self.token.prev_sibling_or_token()
                                 .and_then(|se| se.into_node())
                                 .and_then(|node| ast::RecordExprField::cast(node))
-                                .and_then(|rf| self.sema.resolve_record_field(&rf))
-                                .map(|f|(
+                                .and_then(|rf| self.sema.resolve_record_field(&rf).zip(Some(rf)))
+                                .map(|(f, rf)|(
                                     Some(f.0.signature_ty(self.db)),
-                                    Some(f.0.name(self.db).to_string()),
+                                    rf.field_name().map(NameOrNameRef::NameRef),
                                 ))
                                 .unwrap_or((None, None))
                         },
@@ -340,7 +346,7 @@ impl<'a> CompletionContext<'a> {
                                 .resolve_record_field(&it)
                                 .map(|f|(
                                     Some(f.0.signature_ty(self.db)),
-                                    Some(f.0.name(self.db).to_string()),
+                                    it.field_name().map(NameOrNameRef::NameRef),
                                 ))
                                 .unwrap_or((None, None))
                         },
@@ -378,12 +384,10 @@ impl<'a> CompletionContext<'a> {
                         },
                     }
                 };
-
-                break ret;
             }
         };
-        self.expected_type = expected.0;
-        self.expected_name = expected.1;
+        self.expected_type = expected_type;
+        self.expected_name = expected_name;
         self.attribute_under_caret = find_node_at_offset(&file_with_fake_ident, offset);
 
         // First, let's try to complete a reference to some declaration.
@@ -631,7 +635,9 @@ mod tests {
             .map(|t| t.display_test(&db).to_string())
             .unwrap_or("?".to_owned());
 
-        let name = completion_context.expected_name.unwrap_or("?".to_owned());
+        let name = completion_context
+            .expected_name
+            .map_or_else(|| "?".to_owned(), |name| name.to_string());
 
         expect.assert_eq(&format!("ty: {}, name: {}", ty, name));
     }

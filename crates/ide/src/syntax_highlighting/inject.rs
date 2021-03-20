@@ -23,7 +23,7 @@ pub(super) fn ra_fixture(
     expanded: SyntaxToken,
 ) -> Option<()> {
     let active_parameter = ActiveParameter::at_token(&sema, expanded)?;
-    if !active_parameter.name.starts_with("ra_fixture") {
+    if !active_parameter.ident().map_or(false, |name| name.text().starts_with("ra_fixture")) {
         return None;
     }
     let value = literal.value()?;

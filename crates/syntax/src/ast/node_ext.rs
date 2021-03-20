@@ -380,6 +380,15 @@ impl fmt::Display for NameOrNameRef {
     }
 }
 
+impl NameOrNameRef {
+    pub fn text(&self) -> &str {
+        match self {
+            NameOrNameRef::Name(name) => name.text(),
+            NameOrNameRef::NameRef(name_ref) => name_ref.text(),
+        }
+    }
+}
+
 impl ast::RecordPatField {
     pub fn for_field_name_ref(field_name: &ast::NameRef) -> Option<ast::RecordPatField> {
         let candidate = field_name.syntax().parent().and_then(ast::RecordPatField::cast)?;
