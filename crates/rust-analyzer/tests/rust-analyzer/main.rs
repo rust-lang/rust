@@ -838,9 +838,7 @@ fn main() {}
                 new_uri: base_path.join("src/from_mod/foo.rs").to_str().unwrap().to_string(),
             }],
         },
-        json!({
-          "documentChanges": []
-        }),
+        json!(null),
     );
 
     //rename file from foo.rs to mod.rs
@@ -851,9 +849,7 @@ fn main() {}
                 new_uri: base_path.join("src/to_mod/mod.rs").to_str().unwrap().to_string(),
             }],
         },
-        json!({
-          "documentChanges": []
-        }),
+        json!(null),
     );
 
     //rename same level file
