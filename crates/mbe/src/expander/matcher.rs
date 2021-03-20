@@ -710,6 +710,7 @@ fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragmen
             let tt_result = match kind {
                 "ident" => input
                     .expect_ident()
+                    .and_then(|ident| if ident.text == "_" { Err(()) } else { Ok(ident) })
                     .map(|ident| Some(tt::Leaf::from(ident.clone()).into()))
                     .map_err(|()| err!("expected ident")),
                 "tt" => input.expect_tt().map(Some).map_err(|()| err!()),

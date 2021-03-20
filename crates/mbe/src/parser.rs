@@ -177,16 +177,8 @@ fn next_op<'a>(first: &tt::TokenTree, src: &mut TtIter<'a>, mode: Mode) -> Resul
                     Op::Repeat { tokens: MetaTemplate(tokens), separator, kind }
                 }
                 tt::TokenTree::Leaf(leaf) => match leaf {
-                    tt::Leaf::Punct(punct) => {
-                        static UNDERSCORE: SmolStr = SmolStr::new_inline("_");
-
-                        if punct.char != '_' {
-                            return Err(ParseError::Expected("_".to_string()));
-                        }
-                        let name = UNDERSCORE.clone();
-                        let kind = eat_fragment_kind(src, mode)?;
-                        let id = punct.id;
-                        Op::Var { name, kind, id }
+                    tt::Leaf::Punct(_) => {
+                        return Err(ParseError::Expected("ident".to_string()));
                     }
                     tt::Leaf::Ident(ident) if ident.text == "crate" => {
                         // We simply produce identifier `$crate` here. And it will be resolved when lowering ast to Path.

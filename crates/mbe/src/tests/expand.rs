@@ -1080,6 +1080,12 @@ macro_rules! q {
 }
 
 #[test]
+fn test_underscore_lifetime() {
+    parse_macro(r#"macro_rules! q { ($a:lifetime) => {0}; }"#)
+        .assert_expand_items(r#"q!['_]"#, r#"0"#);
+}
+
+#[test]
 fn test_vertical_bar_with_pat() {
     parse_macro(
         r#"
