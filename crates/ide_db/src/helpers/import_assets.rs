@@ -267,7 +267,6 @@ fn path_applicable_imports(
                 AssocItemSearch::Exclude,
                 Some(DEFAULT_QUERY_SEARCH_LIMIT),
             )
-            .into_iter()
             .filter_map(|item| {
                 let mod_path = mod_path(item)?;
                 Some(LocatedImport::new(mod_path.clone(), item, item, Some(mod_path)))
@@ -285,7 +284,6 @@ fn path_applicable_imports(
                 AssocItemSearch::Include,
                 Some(DEFAULT_QUERY_SEARCH_LIMIT),
             )
-            .into_iter()
             .filter_map(|item| {
                 import_for_item(
                     sema.db,
@@ -430,7 +428,6 @@ fn trait_applicable_items(
         AssocItemSearch::AssocItemsOnly,
         Some(DEFAULT_QUERY_SEARCH_LIMIT),
     )
-    .into_iter()
     .filter_map(|input| item_as_assoc(db, input))
     .filter_map(|assoc| {
         let assoc_item_trait = assoc.containing_trait(db)?;
