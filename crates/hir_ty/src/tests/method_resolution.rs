@@ -1236,7 +1236,6 @@ pub trait Deref {
 }
 mod a {
     pub struct Foo(pub char);
-    
     impl Foo {
         pub fn mango(&self) -> char {
             self.0
@@ -1266,29 +1265,29 @@ mod b {
         "#,
         expect![[r#"
             67..71 'self': &Self
-            173..177 'self': &Foo
-            187..217 '{     ...     }': char
-            201..205 'self': &Foo
-            201..207 'self.0': char
-            293..324 '{     ...     }': Bar
-            307..311 'Self': Bar(i32) -> Bar
-            307..314 'Self(0)': Bar
-            312..313 '0': i32
-            343..347 'self': &Bar
-            356..386 '{     ...     }': i32
-            370..374 'self': &Bar
-            370..376 'self.0': i32
-            470..474 'self': &Bar
-            484..517 '{     ...     }': &Foo
-            498..507 '&Foo('z')': &Foo
-            499..502 'Foo': Foo(char) -> Foo
-            499..507 'Foo('z')': Foo
-            503..506 ''z'': char
-            547..600 '{     ...     }': ()
-            561..562 'x': char
-            565..583 'super:...r::new': fn new() -> Bar
-            565..585 'super:...:new()': Bar
-            565..593 'super:...ango()': char
+            168..172 'self': &Foo
+            182..212 '{     ...     }': char
+            196..200 'self': &Foo
+            196..202 'self.0': char
+            288..319 '{     ...     }': Bar
+            302..306 'Self': Bar(i32) -> Bar
+            302..309 'Self(0)': Bar
+            307..308 '0': i32
+            338..342 'self': &Bar
+            351..381 '{     ...     }': i32
+            365..369 'self': &Bar
+            365..371 'self.0': i32
+            465..469 'self': &Bar
+            479..512 '{     ...     }': &Foo
+            493..502 '&Foo('z')': &Foo
+            494..497 'Foo': Foo(char) -> Foo
+            494..502 'Foo('z')': Foo
+            498..501 ''z'': char
+            542..595 '{     ...     }': ()
+            556..557 'x': char
+            560..578 'super:...r::new': fn new() -> Bar
+            560..580 'super:...:new()': Bar
+            560..588 'super:...ango()': char
         "#]],
     )
 }
