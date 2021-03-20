@@ -465,8 +465,11 @@ pub(crate) fn handle_will_rename_files(
     source_change.file_system_edits.clear();
     // no collect here because we want to merge text edits on same file ids
     source_change.extend(source_changes.map(|it| it.source_file_edits).flatten());
-    let workspace_edit = to_proto::workspace_edit(&snap, source_change)?;
-    Ok(Some(workspace_edit))
+    if source_change.source_file_edits.is_empty() {
+        Ok(None)
+    } else {
+        to_proto::workspace_edit(&snap, source_change).map(Some)
+    }
 }
 
 pub(crate) fn handle_goto_definition(
