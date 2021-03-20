@@ -96,9 +96,9 @@ allow to map machine code locations back to source code locations in order
 to be useful. This functionality is also handled in this module. The
 following functions allow to control source mappings:
 
-+ set_source_location()
-+ clear_source_location()
-+ start_emitting_source_locations()
++ `set_source_location()`
++ `clear_source_location()`
++ `start_emitting_source_locations()`
 
 `set_source_location()` allows to set the current source location. All IR
 instructions created after a call to this function will be linked to the
@@ -142,21 +142,22 @@ type identifier that tells it across compilation units which types are the
 same as others. This type identifier is created by
 `TypeMap::get_unique_type_id_of_type()` using the following algorithm:
 
-(1) Primitive types have their name as ID
-(2) Structs, enums and traits have a multipart identifier
+1. Primitive types have their name as ID
 
-    (1) The first part is the SVH (strict version hash) of the crate they
-         were originally defined in
+2. Structs, enums and traits have a multipart identifier
 
-    (2) The second part is the ast::NodeId of the definition in their
-         original crate
+  1. The first part is the SVH (strict version hash) of the crate they
+     were originally defined in
 
-    (3) The final part is a concatenation of the type IDs of their concrete
-         type arguments if they are generic types.
+  2. The second part is the ast::NodeId of the definition in their
+     original crate
 
-(3) Tuple-, pointer and function types are structurally identified, which
-    means that they are equivalent if their component types are equivalent
-    (i.e., (i32, i32) is the same regardless in which crate it is used).
+  3. The final part is a concatenation of the type IDs of their concrete
+     type arguments if they are generic types.
+
+3. Tuple-, pointer-, and function types are structurally identified, which
+   means that they are equivalent if their component types are equivalent
+   (i.e., `(i32, i32)` is the same regardless in which crate it is used).
 
 This algorithm also provides a stable ID for types that are defined in one
 crate but instantiated from metadata within another crate. We just have to
