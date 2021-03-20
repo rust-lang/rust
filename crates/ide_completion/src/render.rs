@@ -243,7 +243,7 @@ impl<'a> Render<'a> {
 
             item.set_relevance(CompletionRelevance {
                 exact_type_match: compute_exact_type_match(self.ctx.completion, &ty),
-                exact_name_match: compute_exact_name_match(self.ctx.completion, local_name.clone()),
+                exact_name_match: compute_exact_name_match(self.ctx.completion, &local_name),
                 is_local: true,
                 ..CompletionRelevance::default()
             });
@@ -319,8 +319,7 @@ fn compute_exact_type_match(ctx: &CompletionContext, completion_ty: &hir::Type) 
 
 fn compute_exact_name_match(ctx: &CompletionContext, completion_name: impl Into<String>) -> bool {
     let completion_name = completion_name.into();
-
-    Some(&completion_name) == ctx.expected_name.as_ref()
+    ctx.expected_name.as_ref().map_or(false, |name| name.text() == completion_name)
 }
 
 fn compute_ref_match(ctx: &CompletionContext, completion_ty: &hir::Type) -> Option<Mutability> {

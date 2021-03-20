@@ -4,7 +4,7 @@ use either::Either;
 use hir::{HasAttrs, HirDisplay, Semantics, Type};
 use stdx::format_to;
 use syntax::{
-    ast::{self, ArgListOwner},
+    ast::{self, ArgListOwner, NameOwner},
     match_ast, AstNode, SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
 
@@ -142,7 +142,7 @@ fn call_info_impl(
 #[derive(Debug)]
 pub struct ActiveParameter {
     pub ty: Type,
-    pub name: String,
+    pub pat: Either<ast::SelfParam, ast::Pat>,
 }
 
 impl ActiveParameter {
@@ -165,8 +165,14 @@ impl ActiveParameter {
             return None;
         }
         let (pat, ty) = params.swap_remove(idx);
-        let name = pat?.to_string();
-        Some(ActiveParameter { ty, name })
+        pat.map(|pat| ActiveParameter { ty, pat })
+    }
+
+    pub fn ident(&self) -> Option<ast::Name> {
+        self.pat.as_ref().right().and_then(|param| match param {
+            ast::Pat::IdentPat(ident) => ident.name(),
+            _ => None,
+        })
     }
 }
 
