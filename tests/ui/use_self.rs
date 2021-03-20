@@ -75,13 +75,13 @@ mod lifetimes {
 
 mod issue2894 {
     trait IntoBytes {
-        fn to_bytes(&self) -> Vec<u8>;
+        fn to_bytes(self) -> Vec<u8>;
     }
 
     // This should not be linted
     impl IntoBytes for u8 {
-        fn to_bytes(&self) -> Vec<u8> {
-            vec![*self]
+        fn to_bytes(self) -> Vec<u8> {
+            vec![self]
         }
     }
 }
