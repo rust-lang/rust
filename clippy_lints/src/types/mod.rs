@@ -4,21 +4,19 @@ mod linked_list;
 mod option_option;
 mod rc_buffer;
 mod redundant_allocation;
+mod type_complexity;
 mod utils;
 mod vec_box;
 
-use clippy_utils::diagnostics::span_lint;
 use rustc_hir as hir;
-use rustc_hir::intravisit::{walk_ty, FnKind, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    Body, FnDecl, FnRetTy, FnSig, GenericArg, GenericParamKind, HirId, ImplItem, ImplItemKind, Item, ItemKind, Local,
-    MutTy, QPath, TraitFn, TraitItem, TraitItemKind, TyKind,
+    Body, FnDecl, FnRetTy, GenericArg, HirId, ImplItem, ImplItemKind, Item, ItemKind, Local, MutTy, QPath, TraitItem,
+    TraitItemKind, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::hir::map::Map;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
-use rustc_target::spec::abi::Abi;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for use of `Box<Vec<_>>` anywhere in the code.
@@ -231,151 +229,6 @@ declare_clippy_lint! {
     "shared ownership of a buffer type"
 }
 
-pub struct Types {
-    vec_box_size_threshold: u64,
-}
-
-impl_lint_pass!(Types => [BOX_VEC, VEC_BOX, OPTION_OPTION, LINKEDLIST, BORROWED_BOX, REDUNDANT_ALLOCATION, RC_BUFFER]);
-
-impl<'tcx> LateLintPass<'tcx> for Types {
-    fn check_fn(&mut self, cx: &LateContext<'_>, _: FnKind<'_>, decl: &FnDecl<'_>, _: &Body<'_>, _: Span, id: HirId) {
-        // Skip trait implementations; see issue #605.
-        if let Some(hir::Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_item(id)) {
-            if let ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) = item.kind {
-                return;
-            }
-        }
-
-        self.check_fn_decl(cx, decl);
-    }
-
-    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        match item.kind {
-            ItemKind::Static(ref ty, _, _) | ItemKind::Const(ref ty, _) => self.check_ty(cx, ty, false),
-            // functions, enums, structs, impls and traits are covered
-            _ => (),
-        }
-    }
-
-    fn check_field_def(&mut self, cx: &LateContext<'_>, field: &hir::FieldDef<'_>) {
-        self.check_ty(cx, &field.ty, false);
-    }
-
-    fn check_trait_item(&mut self, cx: &LateContext<'_>, item: &TraitItem<'_>) {
-        match item.kind {
-            TraitItemKind::Const(ref ty, _) | TraitItemKind::Type(_, Some(ref ty)) => self.check_ty(cx, ty, false),
-            TraitItemKind::Fn(ref sig, _) => self.check_fn_decl(cx, &sig.decl),
-            TraitItemKind::Type(..) => (),
-        }
-    }
-
-    fn check_local(&mut self, cx: &LateContext<'_>, local: &Local<'_>) {
-        if let Some(ref ty) = local.ty {
-            self.check_ty(cx, ty, true);
-        }
-    }
-}
-
-impl Types {
-    pub fn new(vec_box_size_threshold: u64) -> Self {
-        Self { vec_box_size_threshold }
-    }
-
-    fn check_fn_decl(&mut self, cx: &LateContext<'_>, decl: &FnDecl<'_>) {
-        for input in decl.inputs {
-            self.check_ty(cx, input, false);
-        }
-
-        if let FnRetTy::Return(ref ty) = decl.output {
-            self.check_ty(cx, ty, false);
-        }
-    }
-
-    /// Recursively check for `TypePass` lints in the given type. Stop at the first
-    /// lint found.
-    ///
-    /// The parameter `is_local` distinguishes the context of the type.
-    fn check_ty(&mut self, cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, is_local: bool) {
-        if hir_ty.span.from_expansion() {
-            return;
-        }
-        match hir_ty.kind {
-            TyKind::Path(ref qpath) if !is_local => {
-                let hir_id = hir_ty.hir_id;
-                let res = cx.qpath_res(qpath, hir_id);
-                if let Some(def_id) = res.opt_def_id() {
-                    let mut triggered = false;
-                    triggered |= box_vec::check(cx, hir_ty, qpath, def_id);
-                    triggered |= redundant_allocation::check(cx, hir_ty, qpath, def_id);
-                    triggered |= rc_buffer::check(cx, hir_ty, qpath, def_id);
-                    triggered |= vec_box::check(cx, hir_ty, qpath, def_id, self.vec_box_size_threshold);
-                    triggered |= option_option::check(cx, hir_ty, qpath, def_id);
-                    triggered |= linked_list::check(cx, hir_ty, def_id);
-
-                    if triggered {
-                        return;
-                    }
-                }
-                match *qpath {
-                    QPath::Resolved(Some(ref ty), ref p) => {
-                        self.check_ty(cx, ty, is_local);
-                        for ty in p.segments.iter().flat_map(|seg| {
-                            seg.args
-                                .as_ref()
-                                .map_or_else(|| [].iter(), |params| params.args.iter())
-                                .filter_map(|arg| match arg {
-                                    GenericArg::Type(ty) => Some(ty),
-                                    _ => None,
-                                })
-                        }) {
-                            self.check_ty(cx, ty, is_local);
-                        }
-                    },
-                    QPath::Resolved(None, ref p) => {
-                        for ty in p.segments.iter().flat_map(|seg| {
-                            seg.args
-                                .as_ref()
-                                .map_or_else(|| [].iter(), |params| params.args.iter())
-                                .filter_map(|arg| match arg {
-                                    GenericArg::Type(ty) => Some(ty),
-                                    _ => None,
-                                })
-                        }) {
-                            self.check_ty(cx, ty, is_local);
-                        }
-                    },
-                    QPath::TypeRelative(ref ty, ref seg) => {
-                        self.check_ty(cx, ty, is_local);
-                        if let Some(ref params) = seg.args {
-                            for ty in params.args.iter().filter_map(|arg| match arg {
-                                GenericArg::Type(ty) => Some(ty),
-                                _ => None,
-                            }) {
-                                self.check_ty(cx, ty, is_local);
-                            }
-                        }
-                    },
-                    QPath::LangItem(..) => {},
-                }
-            },
-            TyKind::Rptr(ref lt, ref mut_ty) => {
-                if !borrowed_box::check(cx, hir_ty, lt, mut_ty) {
-                    self.check_ty(cx, &mut_ty.ty, is_local);
-                }
-            },
-            TyKind::Slice(ref ty) | TyKind::Array(ref ty, _) | TyKind::Ptr(MutTy { ref ty, .. }) => {
-                self.check_ty(cx, ty, is_local)
-            },
-            TyKind::Tup(tys) => {
-                for ty in tys {
-                    self.check_ty(cx, ty, is_local);
-                }
-            },
-            _ => {},
-        }
-    }
-}
-
 declare_clippy_lint! {
     /// **What it does:** Checks for types used in structs, parameters and `let`
     /// declarations above a certain complexity threshold.
@@ -397,146 +250,207 @@ declare_clippy_lint! {
     "usage of very complex types that might be better factored into `type` definitions"
 }
 
-pub struct TypeComplexity {
-    threshold: u64,
+pub struct Types {
+    vec_box_size_threshold: u64,
+    type_complexity_threshold: u64,
 }
 
-impl TypeComplexity {
-    #[must_use]
-    pub fn new(threshold: u64) -> Self {
-        Self { threshold }
-    }
-}
+impl_lint_pass!(Types => [BOX_VEC, VEC_BOX, OPTION_OPTION, LINKEDLIST, BORROWED_BOX, REDUNDANT_ALLOCATION, RC_BUFFER, TYPE_COMPLEXITY]);
 
-impl_lint_pass!(TypeComplexity => [TYPE_COMPLEXITY]);
+impl<'tcx> LateLintPass<'tcx> for Types {
+    fn check_fn(&mut self, cx: &LateContext<'_>, _: FnKind<'_>, decl: &FnDecl<'_>, _: &Body<'_>, _: Span, id: HirId) {
+        let is_in_trait_impl = if let Some(hir::Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_item(id))
+        {
+            matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
+        } else {
+            false
+        };
 
-impl<'tcx> LateLintPass<'tcx> for TypeComplexity {
-    fn check_fn(
-        &mut self,
-        cx: &LateContext<'tcx>,
-        _: FnKind<'tcx>,
-        decl: &'tcx FnDecl<'_>,
-        _: &'tcx Body<'_>,
-        _: Span,
-        _: HirId,
-    ) {
-        self.check_fndecl(cx, decl);
-    }
-
-    fn check_field_def(&mut self, cx: &LateContext<'tcx>, field: &'tcx hir::FieldDef<'_>) {
-        // enum variants are also struct fields now
-        self.check_type(cx, &field.ty);
+        self.check_fn_decl(
+            cx,
+            decl,
+            CheckTyContext {
+                is_in_trait_impl,
+                ..CheckTyContext::default()
+            },
+        );
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         match item.kind {
-            ItemKind::Static(ref ty, _, _) | ItemKind::Const(ref ty, _) => self.check_type(cx, ty),
+            ItemKind::Static(ref ty, _, _) | ItemKind::Const(ref ty, _) => {
+                self.check_ty(cx, ty, CheckTyContext::default())
+            },
             // functions, enums, structs, impls and traits are covered
             _ => (),
         }
     }
 
-    fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
-        match item.kind {
-            TraitItemKind::Const(ref ty, _) | TraitItemKind::Type(_, Some(ref ty)) => self.check_type(cx, ty),
-            TraitItemKind::Fn(FnSig { ref decl, .. }, TraitFn::Required(_)) => self.check_fndecl(cx, decl),
-            // methods with default impl are covered by check_fn
-            TraitItemKind::Type(..) | TraitItemKind::Fn(_, TraitFn::Provided(_)) => (),
-        }
-    }
-
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
         match item.kind {
-            ImplItemKind::Const(ref ty, _) | ImplItemKind::TyAlias(ref ty) => self.check_type(cx, ty),
+            ImplItemKind::Const(ref ty, _) | ImplItemKind::TyAlias(ref ty) => self.check_ty(
+                cx,
+                ty,
+                CheckTyContext {
+                    is_in_trait_impl: true,
+                    ..CheckTyContext::default()
+                },
+            ),
             // methods are covered by check_fn
             ImplItemKind::Fn(..) => (),
         }
     }
 
-    fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'_>) {
+    fn check_field_def(&mut self, cx: &LateContext<'_>, field: &hir::FieldDef<'_>) {
+        self.check_ty(cx, &field.ty, CheckTyContext::default());
+    }
+
+    fn check_trait_item(&mut self, cx: &LateContext<'_>, item: &TraitItem<'_>) {
+        match item.kind {
+            TraitItemKind::Const(ref ty, _) | TraitItemKind::Type(_, Some(ref ty)) => {
+                self.check_ty(cx, ty, CheckTyContext::default())
+            },
+            TraitItemKind::Fn(ref sig, _) => self.check_fn_decl(cx, &sig.decl, CheckTyContext::default()),
+            TraitItemKind::Type(..) => (),
+        }
+    }
+
+    fn check_local(&mut self, cx: &LateContext<'_>, local: &Local<'_>) {
         if let Some(ref ty) = local.ty {
-            self.check_type(cx, ty);
-        }
-    }
-}
-
-impl<'tcx> TypeComplexity {
-    fn check_fndecl(&self, cx: &LateContext<'tcx>, decl: &'tcx FnDecl<'_>) {
-        for arg in decl.inputs {
-            self.check_type(cx, arg);
-        }
-        if let FnRetTy::Return(ref ty) = decl.output {
-            self.check_type(cx, ty);
-        }
-    }
-
-    fn check_type(&self, cx: &LateContext<'_>, ty: &hir::Ty<'_>) {
-        if ty.span.from_expansion() {
-            return;
-        }
-        let score = {
-            let mut visitor = TypeComplexityVisitor { score: 0, nest: 1 };
-            visitor.visit_ty(ty);
-            visitor.score
-        };
-
-        if score > self.threshold {
-            span_lint(
+            self.check_ty(
                 cx,
-                TYPE_COMPLEXITY,
-                ty.span,
-                "very complex type used. Consider factoring parts into `type` definitions",
+                ty,
+                CheckTyContext {
+                    is_local: true,
+                    ..CheckTyContext::default()
+                },
             );
         }
     }
 }
 
-/// Walks a type and assigns a complexity score to it.
-struct TypeComplexityVisitor {
-    /// total complexity score of the type
-    score: u64,
-    /// current nesting level
-    nest: u64,
-}
+impl Types {
+    pub fn new(vec_box_size_threshold: u64, type_complexity_threshold: u64) -> Self {
+        Self {
+            vec_box_size_threshold,
+            type_complexity_threshold,
+        }
+    }
 
-impl<'tcx> Visitor<'tcx> for TypeComplexityVisitor {
-    type Map = Map<'tcx>;
+    fn check_fn_decl(&mut self, cx: &LateContext<'_>, decl: &FnDecl<'_>, context: CheckTyContext) {
+        for input in decl.inputs {
+            self.check_ty(cx, input, context);
+        }
 
-    fn visit_ty(&mut self, ty: &'tcx hir::Ty<'_>) {
-        let (add_score, sub_nest) = match ty.kind {
-            // _, &x and *x have only small overhead; don't mess with nesting level
-            TyKind::Infer | TyKind::Ptr(..) | TyKind::Rptr(..) => (1, 0),
+        if let FnRetTy::Return(ref ty) = decl.output {
+            self.check_ty(cx, ty, context);
+        }
+    }
 
-            // the "normal" components of a type: named types, arrays/tuples
-            TyKind::Path(..) | TyKind::Slice(..) | TyKind::Tup(..) | TyKind::Array(..) => (10 * self.nest, 1),
+    /// Recursively check for `TypePass` lints in the given type. Stop at the first
+    /// lint found.
+    ///
+    /// The parameter `is_local` distinguishes the context of the type.
+    fn check_ty(&mut self, cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, mut context: CheckTyContext) {
+        if hir_ty.span.from_expansion() {
+            return;
+        }
 
-            // function types bring a lot of overhead
-            TyKind::BareFn(ref bare) if bare.abi == Abi::Rust => (50 * self.nest, 1),
+        if !context.is_nested_call && type_complexity::check(cx, hir_ty, self.type_complexity_threshold) {
+            return;
+        }
 
-            TyKind::TraitObject(ref param_bounds, _, _) => {
-                let has_lifetime_parameters = param_bounds.iter().any(|bound| {
-                    bound
-                        .bound_generic_params
-                        .iter()
-                        .any(|gen| matches!(gen.kind, GenericParamKind::Lifetime { .. }))
-                });
-                if has_lifetime_parameters {
-                    // complex trait bounds like A<'a, 'b>
-                    (50 * self.nest, 1)
-                } else {
-                    // simple trait bounds like A + B
-                    (20 * self.nest, 0)
+        // Skip trait implementations; see issue #605.
+        if context.is_in_trait_impl {
+            return;
+        }
+
+        match hir_ty.kind {
+            TyKind::Path(ref qpath) if !context.is_local => {
+                let hir_id = hir_ty.hir_id;
+                let res = cx.qpath_res(qpath, hir_id);
+                if let Some(def_id) = res.opt_def_id() {
+                    let mut triggered = false;
+                    triggered |= box_vec::check(cx, hir_ty, qpath, def_id);
+                    triggered |= redundant_allocation::check(cx, hir_ty, qpath, def_id);
+                    triggered |= rc_buffer::check(cx, hir_ty, qpath, def_id);
+                    triggered |= vec_box::check(cx, hir_ty, qpath, def_id, self.vec_box_size_threshold);
+                    triggered |= option_option::check(cx, hir_ty, qpath, def_id);
+                    triggered |= linked_list::check(cx, hir_ty, def_id);
+
+                    if triggered {
+                        return;
+                    }
+                }
+                match *qpath {
+                    QPath::Resolved(Some(ref ty), ref p) => {
+                        context.is_nested_call = true;
+                        self.check_ty(cx, ty, context);
+                        for ty in p.segments.iter().flat_map(|seg| {
+                            seg.args
+                                .as_ref()
+                                .map_or_else(|| [].iter(), |params| params.args.iter())
+                                .filter_map(|arg| match arg {
+                                    GenericArg::Type(ty) => Some(ty),
+                                    _ => None,
+                                })
+                        }) {
+                            self.check_ty(cx, ty, context);
+                        }
+                    },
+                    QPath::Resolved(None, ref p) => {
+                        context.is_nested_call = true;
+                        for ty in p.segments.iter().flat_map(|seg| {
+                            seg.args
+                                .as_ref()
+                                .map_or_else(|| [].iter(), |params| params.args.iter())
+                                .filter_map(|arg| match arg {
+                                    GenericArg::Type(ty) => Some(ty),
+                                    _ => None,
+                                })
+                        }) {
+                            self.check_ty(cx, ty, context);
+                        }
+                    },
+                    QPath::TypeRelative(ref ty, ref seg) => {
+                        context.is_nested_call = true;
+                        self.check_ty(cx, ty, context);
+                        if let Some(ref params) = seg.args {
+                            for ty in params.args.iter().filter_map(|arg| match arg {
+                                GenericArg::Type(ty) => Some(ty),
+                                _ => None,
+                            }) {
+                                self.check_ty(cx, ty, context);
+                            }
+                        }
+                    },
+                    QPath::LangItem(..) => {},
                 }
             },
+            TyKind::Rptr(ref lt, ref mut_ty) => {
+                context.is_nested_call = true;
+                if !borrowed_box::check(cx, hir_ty, lt, mut_ty) {
+                    self.check_ty(cx, &mut_ty.ty, context);
+                }
+            },
+            TyKind::Slice(ref ty) | TyKind::Array(ref ty, _) | TyKind::Ptr(MutTy { ref ty, .. }) => {
+                context.is_nested_call = true;
+                self.check_ty(cx, ty, context)
+            },
+            TyKind::Tup(tys) => {
+                context.is_nested_call = true;
+                for ty in tys {
+                    self.check_ty(cx, ty, context);
+                }
+            },
+            _ => {},
+        }
+    }
+}
 
-            _ => (0, 0),
-        };
-        self.score += add_score;
-        self.nest += sub_nest;
-        walk_ty(self, ty);
-        self.nest -= sub_nest;
-    }
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
+#[derive(Clone, Copy, Default)]
+struct CheckTyContext {
+    is_in_trait_impl: bool,
+    is_local: bool,
+    is_nested_call: bool,
 }
