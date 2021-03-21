@@ -97,6 +97,7 @@ fn test_unwrap_or() {
 
 #[test]
 fn test_unwrap_err_or() {
+    #![feature(option_result_unwrap_err_or)]
     let err: Result<isize, &'static str> = Err("Err");
     let err_ok: Result<isize, &'static str> = Ok(100);
 
