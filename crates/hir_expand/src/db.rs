@@ -173,7 +173,7 @@ fn macro_arg_text(db: &dyn AstDatabase, id: MacroCallId) -> Option<GreenNode> {
     };
     let loc = db.lookup_intern_macro(id);
     let arg = loc.kind.arg(db)?;
-    Some(arg.green().to_owned())
+    Some(arg.green())
 }
 
 fn macro_arg(db: &dyn AstDatabase, id: MacroCallId) -> Option<Arc<(tt::Subtree, mbe::TokenMap)>> {
