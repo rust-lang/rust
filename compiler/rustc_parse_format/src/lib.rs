@@ -213,11 +213,13 @@ impl<'a> Iterator for Parser<'a> {
                         Some(String(self.string(pos + 1)))
                     } else {
                         let arg = self.argument();
-                        if let Some(end) = self.must_consume('}') {
-                            let start = self.to_span_index(pos);
-                            let end = self.to_span_index(end + 1);
+                        if let Some(rbrace_byte_idx) = self.must_consume('}') {
+                            let lbrace_inner_offset = self.to_span_index(pos);
+                            let rbrace_inner_offset = self.to_span_index(rbrace_byte_idx);
                             if self.is_literal {
-                                self.arg_places.push(start.to(end));
+                                self.arg_places.push(
+                                    lbrace_inner_offset.to(InnerOffset(rbrace_inner_offset.0 + 1)),
+                                );
                             }
                         }
                         Some(NextArgument(arg))
