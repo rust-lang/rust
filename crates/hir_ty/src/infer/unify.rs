@@ -98,15 +98,12 @@ impl<'a, 'b> Canonicalizer<'a, 'b> {
         mut self,
         obligation: InEnvironment<DomainGoal>,
     ) -> Canonicalized<InEnvironment<DomainGoal>> {
-        let result = match obligation.value {
+        let result = match obligation.goal {
             DomainGoal::Holds(wc) => {
                 DomainGoal::Holds(self.do_canonicalize(wc, DebruijnIndex::INNERMOST))
             }
         };
-        self.into_canonicalized(InEnvironment {
-            value: result,
-            environment: obligation.environment,
-        })
+        self.into_canonicalized(InEnvironment { goal: result, environment: obligation.environment })
     }
 }
 

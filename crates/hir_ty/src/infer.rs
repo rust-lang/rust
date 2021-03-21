@@ -331,7 +331,7 @@ impl<'a> InferenceContext<'a> {
     fn resolve_obligations_as_possible(&mut self) {
         let obligations = mem::replace(&mut self.obligations, Vec::new());
         for obligation in obligations {
-            let in_env = InEnvironment::new(self.trait_env.clone(), obligation.clone());
+            let in_env = InEnvironment::new(self.trait_env.env.clone(), obligation.clone());
             let canonicalized = self.canonicalizer().canonicalize_obligation(in_env);
             let solution =
                 self.db.trait_solve(self.resolver.krate().unwrap(), canonicalized.value.clone());

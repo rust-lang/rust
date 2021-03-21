@@ -376,7 +376,7 @@ fn iterate_method_candidates_impl(
             // Also note that when we've got a receiver like &S, even if the method we
             // find in the end takes &self, we still do the autoderef step (just as
             // rustc does an autoderef and then autoref again).
-            let ty = InEnvironment { value: ty.clone(), environment: env.clone() };
+            let ty = InEnvironment { goal: ty.clone(), environment: env.env.clone() };
 
             // We have to be careful about the order we're looking at candidates
             // in here. Consider the case where we're resolving `x.clone()`
@@ -622,7 +622,7 @@ pub fn resolve_indexing_op(
     krate: CrateId,
     index_trait: TraitId,
 ) -> Option<Canonical<Ty>> {
-    let ty = InEnvironment { value: ty.clone(), environment: env.clone() };
+    let ty = InEnvironment { goal: ty.clone(), environment: env.env.clone() };
     let deref_chain = autoderef_method_receiver(db, krate, ty);
     for ty in deref_chain {
         let goal = generic_implements_goal(db, env.clone(), index_trait, ty.clone());
@@ -794,7 +794,7 @@ fn generic_implements_goal(
     let obligation = trait_ref.cast(&Interner);
     Canonical {
         binders: CanonicalVarKinds::from_iter(&Interner, kinds),
-        value: InEnvironment::new(env, obligation),
+        value: InEnvironment::new(env.env.clone(), obligation),
     }
 }
 

@@ -455,10 +455,7 @@ where
     type Chalk = chalk_ir::InEnvironment<T::Chalk>;
 
     fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::InEnvironment<T::Chalk> {
-        chalk_ir::InEnvironment {
-            environment: self.environment.env.clone(),
-            goal: self.value.to_chalk(db),
-        }
+        chalk_ir::InEnvironment { environment: self.environment, goal: self.goal.to_chalk(db) }
     }
 
     fn from_chalk(

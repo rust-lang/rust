@@ -217,7 +217,7 @@ impl HirDisplay for Variant {
 
 impl HirDisplay for Type {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
-        self.ty.value.hir_fmt(f)
+        self.ty.hir_fmt(f)
     }
 }
 
