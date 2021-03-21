@@ -67,7 +67,7 @@ macro_rules! static_assert_imm16 {
 
 #[allow(unused)]
 macro_rules! static_assert {
-    ($imm:ident : $ty:ty where $e:expr) => {
+    ($imm:ident : $ty:ty where $e:expr) => {{
         struct Validate<const $imm: $ty>();
         impl<const $imm: $ty> Validate<$imm> {
             const VALID: () = {
@@ -75,7 +75,7 @@ macro_rules! static_assert {
             };
         }
         let _ = Validate::<$imm>::VALID;
-    };
+    }};
 }
 
 #[allow(unused)]

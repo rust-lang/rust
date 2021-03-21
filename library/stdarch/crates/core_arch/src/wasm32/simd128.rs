@@ -404,6 +404,7 @@ pub unsafe fn v128_store(m: *mut v128, a: v128) {
 #[cfg_attr(test, assert_instr(v128.load8_lane, L = 0))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn v128_load8_lane<const L: usize>(v: v128, m: *const u8) -> v128 {
+    static_assert!(L: usize where L < 16);
     transmute(llvm_load8_lane(m, v.as_u8x16(), L))
 }
 
@@ -412,6 +413,7 @@ pub unsafe fn v128_load8_lane<const L: usize>(v: v128, m: *const u8) -> v128 {
 #[cfg_attr(test, assert_instr(v128.load16_lane, L = 0))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn v128_load16_lane<const L: usize>(v: v128, m: *const u16) -> v128 {
+    static_assert!(L: usize where L < 8);
     transmute(llvm_load16_lane(m, v.as_u16x8(), L))
 }
 
@@ -420,6 +422,7 @@ pub unsafe fn v128_load16_lane<const L: usize>(v: v128, m: *const u16) -> v128 {
 #[cfg_attr(test, assert_instr(v128.load32_lane, L = 0))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn v128_load32_lane<const L: usize>(v: v128, m: *const u32) -> v128 {
+    static_assert!(L: usize where L < 4);
     transmute(llvm_load32_lane(m, v.as_u32x4(), L))
 }
 
@@ -428,6 +431,7 @@ pub unsafe fn v128_load32_lane<const L: usize>(v: v128, m: *const u32) -> v128 {
 #[cfg_attr(test, assert_instr(v128.load64_lane, L = 0))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn v128_load64_lane<const L: usize>(v: v128, m: *const u64) -> v128 {
+    static_assert!(L: usize where L < 2);
     transmute(llvm_load64_lane(m, v.as_u64x2(), L))
 }
 
@@ -436,6 +440,7 @@ pub unsafe fn v128_load64_lane<const L: usize>(v: v128, m: *const u64) -> v128 {
 #[cfg_attr(test, assert_instr(v128.store8_lane, L = 0))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn v128_store8_lane<const L: usize>(v: v128, m: *mut u8) {
+    static_assert!(L: usize where L < 16);
     llvm_store8_lane(m, v.as_u8x16(), L);
 }
 
@@ -444,6 +449,7 @@ pub unsafe fn v128_store8_lane<const L: usize>(v: v128, m: *mut u8) {
 #[cfg_attr(test, assert_instr(v128.store16_lane, L = 0))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn v128_store16_lane<const L: usize>(v: v128, m: *mut u16) {
+    static_assert!(L: usize where L < 8);
     llvm_store16_lane(m, v.as_u16x8(), L)
 }
 
@@ -452,6 +458,7 @@ pub unsafe fn v128_store16_lane<const L: usize>(v: v128, m: *mut u16) {
 #[cfg_attr(test, assert_instr(v128.store32_lane, L = 0))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn v128_store32_lane<const L: usize>(v: v128, m: *mut u32) {
+    static_assert!(L: usize where L < 4);
     llvm_store32_lane(m, v.as_u32x4(), L)
 }
 
@@ -460,6 +467,7 @@ pub unsafe fn v128_store32_lane<const L: usize>(v: v128, m: *mut u32) {
 #[cfg_attr(test, assert_instr(v128.store64_lane, L = 0))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn v128_store64_lane<const L: usize>(v: v128, m: *mut u64) {
+    static_assert!(L: usize where L < 2);
     llvm_store64_lane(m, v.as_u64x2(), L)
 }
 
@@ -649,6 +657,22 @@ pub unsafe fn i8x16_shuffle<
     a: v128,
     b: v128,
 ) -> v128 {
+    static_assert!(I0: usize where I0 < 32);
+    static_assert!(I1: usize where I1 < 32);
+    static_assert!(I2: usize where I2 < 32);
+    static_assert!(I3: usize where I3 < 32);
+    static_assert!(I4: usize where I4 < 32);
+    static_assert!(I5: usize where I5 < 32);
+    static_assert!(I6: usize where I6 < 32);
+    static_assert!(I7: usize where I7 < 32);
+    static_assert!(I8: usize where I8 < 32);
+    static_assert!(I9: usize where I9 < 32);
+    static_assert!(I10: usize where I10 < 32);
+    static_assert!(I11: usize where I11 < 32);
+    static_assert!(I12: usize where I12 < 32);
+    static_assert!(I13: usize where I13 < 32);
+    static_assert!(I14: usize where I14 < 32);
+    static_assert!(I15: usize where I15 < 32);
     let shuf = simd_shuffle16::<u8x16, u8x16>(
         a.as_u8x16(),
         b.as_u8x16(),
@@ -696,6 +720,14 @@ pub unsafe fn i16x8_shuffle<
     a: v128,
     b: v128,
 ) -> v128 {
+    static_assert!(I0: usize where I0 < 16);
+    static_assert!(I1: usize where I1 < 16);
+    static_assert!(I2: usize where I2 < 16);
+    static_assert!(I3: usize where I3 < 16);
+    static_assert!(I4: usize where I4 < 16);
+    static_assert!(I5: usize where I5 < 16);
+    static_assert!(I6: usize where I6 < 16);
+    static_assert!(I7: usize where I7 < 16);
     let shuf = simd_shuffle8::<u16x8, u16x8>(
         a.as_u16x8(),
         b.as_u16x8(),
@@ -720,6 +752,10 @@ pub unsafe fn i32x4_shuffle<const I0: usize, const I1: usize, const I2: usize, c
     a: v128,
     b: v128,
 ) -> v128 {
+    static_assert!(I0: usize where I0 < 8);
+    static_assert!(I1: usize where I1 < 8);
+    static_assert!(I2: usize where I2 < 8);
+    static_assert!(I3: usize where I3 < 8);
     let shuf = simd_shuffle4::<u32x4, u32x4>(
         a.as_u32x4(),
         b.as_u32x4(),
@@ -739,6 +775,8 @@ pub unsafe fn i32x4_shuffle<const I0: usize, const I1: usize, const I2: usize, c
 #[cfg_attr(test, assert_instr(i8x16.shuffle, I0 = 0, I1 = 2))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn i64x2_shuffle<const I0: usize, const I1: usize>(a: v128, b: v128) -> v128 {
+    static_assert!(I0: usize where I0 < 4);
+    static_assert!(I1: usize where I1 < 4);
     let shuf = simd_shuffle2::<u64x2, u64x2>(a.as_u64x2(), b.as_u64x2(), [I0 as u32, I1 as u32]);
     transmute(shuf)
 }
@@ -751,6 +789,7 @@ pub unsafe fn i64x2_shuffle<const I0: usize, const I1: usize>(a: v128, b: v128) 
 #[cfg_attr(test, assert_instr(i8x16.extract_lane_s, N = 3))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn i8x16_extract_lane<const N: usize>(a: v128) -> i8 {
+    static_assert!(N: usize where N < 16);
     simd_extract(a.as_i8x16(), N as u32)
 }
 
@@ -762,6 +801,7 @@ pub unsafe fn i8x16_extract_lane<const N: usize>(a: v128) -> i8 {
 #[cfg_attr(test, assert_instr(i8x16.replace_lane, N = 2))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn i8x16_replace_lane<const N: usize>(a: v128, val: i8) -> v128 {
+    static_assert!(N: usize where N < 16);
     transmute(simd_insert(a.as_i8x16(), N as u32, val))
 }
 
@@ -773,6 +813,7 @@ pub unsafe fn i8x16_replace_lane<const N: usize>(a: v128, val: i8) -> v128 {
 #[cfg_attr(test, assert_instr(i16x8.extract_lane_s, N = 2))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn i16x8_extract_lane<const N: usize>(a: v128) -> i16 {
+    static_assert!(N: usize where N < 8);
     simd_extract(a.as_i16x8(), N as u32)
 }
 
@@ -784,6 +825,7 @@ pub unsafe fn i16x8_extract_lane<const N: usize>(a: v128) -> i16 {
 #[cfg_attr(test, assert_instr(i16x8.replace_lane, N = 2))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn i16x8_replace_lane<const N: usize>(a: v128, val: i16) -> v128 {
+    static_assert!(N: usize where N < 8);
     transmute(simd_insert(a.as_i16x8(), N as u32, val))
 }
 
@@ -795,6 +837,7 @@ pub unsafe fn i16x8_replace_lane<const N: usize>(a: v128, val: i16) -> v128 {
 #[cfg_attr(test, assert_instr(i32x4.extract_lane, N = 2))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn i32x4_extract_lane<const N: usize>(a: v128) -> i32 {
+    static_assert!(N: usize where N < 4);
     simd_extract(a.as_i32x4(), N as u32)
 }
 
@@ -806,6 +849,7 @@ pub unsafe fn i32x4_extract_lane<const N: usize>(a: v128) -> i32 {
 #[cfg_attr(test, assert_instr(i32x4.replace_lane, N = 2))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn i32x4_replace_lane<const N: usize>(a: v128, val: i32) -> v128 {
+    static_assert!(N: usize where N < 4);
     transmute(simd_insert(a.as_i32x4(), N as u32, val))
 }
 
@@ -817,6 +861,7 @@ pub unsafe fn i32x4_replace_lane<const N: usize>(a: v128, val: i32) -> v128 {
 #[cfg_attr(test, assert_instr(i64x2.extract_lane, N = 1))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn i64x2_extract_lane<const N: usize>(a: v128) -> i64 {
+    static_assert!(N: usize where N < 2);
     simd_extract(a.as_i64x2(), N as u32)
 }
 
@@ -828,6 +873,7 @@ pub unsafe fn i64x2_extract_lane<const N: usize>(a: v128) -> i64 {
 #[cfg_attr(test, assert_instr(i64x2.replace_lane, N = 0))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn i64x2_replace_lane<const N: usize>(a: v128, val: i64) -> v128 {
+    static_assert!(N: usize where N < 2);
     transmute(simd_insert(a.as_i64x2(), N as u32, val))
 }
 
@@ -839,6 +885,7 @@ pub unsafe fn i64x2_replace_lane<const N: usize>(a: v128, val: i64) -> v128 {
 #[cfg_attr(test, assert_instr(f32x4.extract_lane, N = 1))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn f32x4_extract_lane<const N: usize>(a: v128) -> f32 {
+    static_assert!(N: usize where N < 4);
     simd_extract(a.as_f32x4(), N as u32)
 }
 
@@ -850,6 +897,7 @@ pub unsafe fn f32x4_extract_lane<const N: usize>(a: v128) -> f32 {
 #[cfg_attr(test, assert_instr(f32x4.replace_lane, N = 1))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn f32x4_replace_lane<const N: usize>(a: v128, val: f32) -> v128 {
+    static_assert!(N: usize where N < 4);
     transmute(simd_insert(a.as_f32x4(), N as u32, val))
 }
 
@@ -861,6 +909,7 @@ pub unsafe fn f32x4_replace_lane<const N: usize>(a: v128, val: f32) -> v128 {
 #[cfg_attr(test, assert_instr(f64x2.extract_lane, N = 1))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn f64x2_extract_lane<const N: usize>(a: v128) -> f64 {
+    static_assert!(N: usize where N < 2);
     simd_extract(a.as_f64x2(), N as u32)
 }
 
@@ -872,6 +921,7 @@ pub unsafe fn f64x2_extract_lane<const N: usize>(a: v128) -> f64 {
 #[cfg_attr(test, assert_instr(f64x2.replace_lane, N = 1))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn f64x2_replace_lane<const N: usize>(a: v128, val: f64) -> v128 {
+    static_assert!(N: usize where N < 2);
     transmute(simd_insert(a.as_f64x2(), N as u32, val))
 }
 

@@ -3,9 +3,9 @@ use stdarch_test::assert_instr;
 
 extern "C" {
     #[link_name = "llvm.wasm.memory.grow.i32"]
-    fn llvm_memory_grow(mem: i32, pages: i32) -> i32;
+    fn llvm_memory_grow(mem: u32, pages: i32) -> i32;
     #[link_name = "llvm.wasm.memory.size.i32"]
-    fn llvm_memory_size(mem: i32) -> i32;
+    fn llvm_memory_size(mem: u32) -> i32;
 }
 
 /// Corresponding intrinsic to wasm's [`memory.size` instruction][instr]
@@ -25,13 +25,8 @@ extern "C" {
 #[rustc_legacy_const_generics(0)]
 #[stable(feature = "simd_wasm32", since = "1.33.0")]
 pub fn memory_size<const MEM: u32>() -> usize {
-    unsafe {
-        // FIXME: Consider replacing with a static_assert!
-        if MEM != 0 {
-            crate::intrinsics::abort();
-        }
-        llvm_memory_size(0) as usize
-    }
+    static_assert!(MEM: u32 where MEM == 0);
+    unsafe { llvm_memory_size(MEM) as usize }
 }
 
 /// Corresponding intrinsic to wasm's [`memory.grow` instruction][instr]
@@ -55,10 +50,7 @@ pub fn memory_size<const MEM: u32>() -> usize {
 #[stable(feature = "simd_wasm32", since = "1.33.0")]
 pub fn memory_grow<const MEM: u32>(delta: usize) -> usize {
     unsafe {
-        // FIXME: Consider replacing with a static_assert!
-        if MEM != 0 {
-            crate::intrinsics::abort();
-        }
-        llvm_memory_grow(0, delta as i32) as isize as usize
+        static_assert!(MEM: u32 where MEM == 0);
+        llvm_memory_grow(MEM, delta as i32) as isize as usize
     }
 }
