@@ -150,6 +150,7 @@ fn convert_ident(ident: &tt::Ident) -> TtToken {
     let kind = match ident.text.as_ref() {
         "true" => T![true],
         "false" => T![false],
+        "_" => UNDERSCORE,
         i if i.starts_with('\'') => LIFETIME_IDENT,
         _ => SyntaxKind::from_keyword(ident.text.as_str()).unwrap_or(IDENT),
     };

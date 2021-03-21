@@ -762,7 +762,7 @@ impl<'a> TtIter<'a> {
     fn expect_separator(&mut self, separator: &Separator, idx: usize) -> bool {
         let mut fork = self.clone();
         let ok = match separator {
-            Separator::Ident(lhs) if idx == 0 => match fork.expect_ident() {
+            Separator::Ident(lhs) if idx == 0 => match fork.expect_ident_or_underscore() {
                 Ok(rhs) => rhs.text == lhs.text,
                 _ => false,
             },
@@ -852,7 +852,7 @@ impl<'a> TtIter<'a> {
         if punct.char != '\'' {
             return Err(());
         }
-        let ident = self.expect_ident()?;
+        let ident = self.expect_ident_or_underscore()?;
 
         Ok(tt::Subtree {
             delimiter: None,

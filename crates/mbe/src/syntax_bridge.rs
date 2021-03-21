@@ -350,7 +350,7 @@ trait TokenConvertor {
             return;
         }
 
-        result.push(if k.is_punct() {
+        result.push(if k.is_punct() && k != UNDERSCORE {
             assert_eq!(range.len(), TextSize::of('.'));
             let delim = match k {
                 T!['('] => Some((tt::DelimiterKind::Parenthesis, T![')'])),
@@ -395,7 +395,9 @@ trait TokenConvertor {
                     {
                         tt::Spacing::Alone
                     }
-                    Some(next) if next.kind().is_punct() => tt::Spacing::Joint,
+                    Some(next) if next.kind().is_punct() && next.kind() != UNDERSCORE => {
+                        tt::Spacing::Joint
+                    }
                     _ => tt::Spacing::Alone,
                 };
                 let char = match token.to_char() {
@@ -415,6 +417,7 @@ trait TokenConvertor {
             let leaf: tt::Leaf = match k {
                 T![true] | T![false] => make_leaf!(Ident),
                 IDENT => make_leaf!(Ident),
+                UNDERSCORE => make_leaf!(Ident),
                 k if k.is_keyword() => make_leaf!(Ident),
                 k if k.is_literal() => make_leaf!(Literal),
                 LIFETIME_IDENT => {

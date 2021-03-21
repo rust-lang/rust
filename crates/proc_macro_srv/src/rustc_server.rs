@@ -805,5 +805,14 @@ mod tests {
         let t2 = TokenStream::from_str("(a);").unwrap();
         assert_eq!(t2.token_trees.len(), 2);
         assert_eq!(t2.token_trees[0], subtree_paren_a);
+
+        let underscore = TokenStream::from_str("_").unwrap();
+        assert_eq!(
+            underscore.token_trees[0],
+            tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
+                text: "_".into(),
+                id: tt::TokenId::unspecified(),
+            }))
+        );
     }
 }

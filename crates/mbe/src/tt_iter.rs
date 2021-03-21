@@ -50,6 +50,13 @@ impl<'a> TtIter<'a> {
 
     pub(crate) fn expect_ident(&mut self) -> Result<&'a tt::Ident, ()> {
         match self.expect_leaf()? {
+            tt::Leaf::Ident(it) if it.text != "_" => Ok(it),
+            _ => Err(()),
+        }
+    }
+
+    pub(crate) fn expect_ident_or_underscore(&mut self) -> Result<&'a tt::Ident, ()> {
+        match self.expect_leaf()? {
             tt::Leaf::Ident(it) => Ok(it),
             _ => Err(()),
         }
