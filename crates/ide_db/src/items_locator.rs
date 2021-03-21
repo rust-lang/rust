@@ -15,7 +15,6 @@ use crate::{
     symbol_index::{self, FileSymbol},
     RootDatabase,
 };
-use rustc_hash::FxHashSet;
 
 /// A value to use, when uncertain which limit to pick.
 pub const DEFAULT_QUERY_SEARCH_LIMIT: usize = 40;
@@ -32,16 +31,16 @@ pub enum AssocItemSearch {
 }
 
 /// Searches for importable items with the given name in the crate and its dependencies.
-pub fn items_with_name(
-    sema: &Semantics<'_, RootDatabase>,
+pub fn items_with_name<'a>(
+    sema: &'a Semantics<'_, RootDatabase>,
     krate: Crate,
     name: NameToImport,
     assoc_item_search: AssocItemSearch,
     limit: Option<usize>,
-) -> FxHashSet<ItemInNs> {
+) -> impl Iterator<Item = ItemInNs> + 'a {
     let _p = profile::span("items_with_name").detail(|| {
         format!(
-            "Name: {} ({:?}), crate: {:?}, limit: {:?}",
+            "Name: {}, crate: {:?}, assoc items: {:?}, limit: {:?}",
             name.text(),
             assoc_item_search,
             krate.display_name(sema.db).map(|name| name.to_string()),
@@ -62,6 +61,8 @@ pub fn items_with_name(
             (local_query, external_query)
         }
         NameToImport::Fuzzy(fuzzy_search_string) => {
+            let mut local_query = symbol_index::Query::new(fuzzy_search_string.clone());
+
             let mut external_query = import_map::Query::new(fuzzy_search_string.clone())
                 .search_mode(import_map::SearchMode::Fuzzy)
                 .name_only();
@@ -75,7 +76,12 @@ pub fn items_with_name(
                 }
             }
 
-            (symbol_index::Query::new(fuzzy_search_string), external_query)
+            if fuzzy_search_string.to_lowercase() != fuzzy_search_string {
+                local_query.case_sensitive();
+                external_query = external_query.case_sensitive();
+            }
+
+            (local_query, external_query)
         }
     };
 
@@ -87,13 +93,13 @@ pub fn items_with_name(
     find_items(sema, krate, assoc_item_search, local_query, external_query)
 }
 
-fn find_items(
-    sema: &Semantics<'_, RootDatabase>,
+fn find_items<'a>(
+    sema: &'a Semantics<'_, RootDatabase>,
     krate: Crate,
     assoc_item_search: AssocItemSearch,
     local_query: symbol_index::Query,
     external_query: import_map::Query,
-) -> FxHashSet<ItemInNs> {
+) -> impl Iterator<Item = ItemInNs> + 'a {
     let _p = profile::span("find_items");
     let db = sema.db;
 
@@ -108,21 +114,18 @@ fn find_items(
     // Query the local crate using the symbol index.
     let local_results = symbol_index::crate_symbols(db, krate.into(), local_query)
         .into_iter()
-        .filter_map(|local_candidate| get_name_definition(sema, &local_candidate))
+        .filter_map(move |local_candidate| get_name_definition(sema, &local_candidate))
         .filter_map(|name_definition_to_import| match name_definition_to_import {
             Definition::ModuleDef(module_def) => Some(ItemInNs::from(module_def)),
             Definition::Macro(macro_def) => Some(ItemInNs::from(macro_def)),
             _ => None,
         });
 
-    external_importables
-        .chain(local_results)
-        .filter(move |&item| match assoc_item_search {
-            AssocItemSearch::Include => true,
-            AssocItemSearch::Exclude => !is_assoc_item(item, sema.db),
-            AssocItemSearch::AssocItemsOnly => is_assoc_item(item, sema.db),
-        })
-        .collect()
+    external_importables.chain(local_results).filter(move |&item| match assoc_item_search {
+        AssocItemSearch::Include => true,
+        AssocItemSearch::Exclude => !is_assoc_item(item, sema.db),
+        AssocItemSearch::AssocItemsOnly => is_assoc_item(item, sema.db),
+    })
 }
 
 fn get_name_definition(

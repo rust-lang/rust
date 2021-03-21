@@ -72,7 +72,6 @@ pub(crate) fn replace_derive_with_manual_impl(
         items_locator::AssocItemSearch::Exclude,
         Some(items_locator::DEFAULT_QUERY_SEARCH_LIMIT),
     )
-    .into_iter()
     .filter_map(|item| match ModuleDef::from(item.as_module_def_id()?) {
         ModuleDef::Trait(trait_) => Some(trait_),
         _ => None,

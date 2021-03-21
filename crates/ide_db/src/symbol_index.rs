@@ -52,6 +52,7 @@ pub struct Query {
     only_types: bool,
     libs: bool,
     exact: bool,
+    case_sensitive: bool,
     limit: usize,
 }
 
@@ -64,6 +65,7 @@ impl Query {
             only_types: false,
             libs: false,
             exact: false,
+            case_sensitive: false,
             limit: usize::max_value(),
         }
     }
@@ -78,6 +80,10 @@ impl Query {
 
     pub fn exact(&mut self) {
         self.exact = true;
+    }
+
+    pub fn case_sensitive(&mut self) {
+        self.case_sensitive = true;
     }
 
     pub fn limit(&mut self, limit: usize) {
@@ -326,8 +332,14 @@ impl Query {
                     if self.only_types && !symbol.kind.is_type() {
                         continue;
                     }
-                    if self.exact && symbol.name != self.query {
-                        continue;
+                    if self.exact {
+                        if symbol.name != self.query {
+                            continue;
+                        }
+                    } else if self.case_sensitive {
+                        if self.query.chars().any(|c| !symbol.name.contains(c)) {
+                            continue;
+                        }
                     }
 
                     res.push(symbol.clone());

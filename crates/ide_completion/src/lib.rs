@@ -161,7 +161,6 @@ pub fn resolve_completion_edits(
         items_locator::AssocItemSearch::Include,
         Some(items_locator::DEFAULT_QUERY_SEARCH_LIMIT),
     )
-    .into_iter()
     .filter_map(|candidate| {
         current_module
             .find_use_path_prefixed(db, candidate, config.insert_use.prefix_kind)
