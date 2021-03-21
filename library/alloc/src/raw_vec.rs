@@ -321,8 +321,12 @@ impl<T, A: Allocator> RawVec<T, A> {
         // Therefore, we move all the resizing and error-handling logic from grow_amortized and
         // handle_reserve behind a call, while making sure that the this function is likely to be
         // inlined as just a comparison and a call if the comparison fails.
-        #[inline(never)]
-        fn do_reserve_and_handle<T, A: Allocator>(slf: &mut RawVec<T,A>, len: usize, additional: usize) {
+        #[cold]
+        fn do_reserve_and_handle<T, A: Allocator>(
+            slf: &mut RawVec<T, A>,
+            len: usize,
+            additional: usize,
+        ) {
             handle_reserve(slf.grow_amortized(len, additional));
         }
 
