@@ -11,6 +11,7 @@ use hir_def::{
     AssocContainerId, FieldId, Lookup,
 };
 use hir_expand::name::{name, Name};
+use stdx::always;
 use syntax::ast::RangeOp;
 
 use crate::{
@@ -936,7 +937,9 @@ impl<'a> InferenceContext<'a> {
             let def: CallableDefId = from_chalk(self.db, *fn_def);
             let generic_predicates = self.db.generic_predicates(def.into());
             for predicate in generic_predicates.iter() {
-                let predicate = predicate.clone().subst(parameters);
+                let (predicate, binders) =
+                    predicate.clone().subst(parameters).into_value_and_skipped_binders();
+                always!(binders == 0); // quantified where clauses not yet handled
                 self.obligations.push(predicate.cast(&Interner));
             }
             // add obligation for trait implementation, if this is a trait method

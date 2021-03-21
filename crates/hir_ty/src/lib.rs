@@ -518,6 +518,10 @@ impl<T> Binders<T> {
     pub fn skip_binders(&self) -> &T {
         &self.value
     }
+
+    pub fn into_value_and_skipped_binders(self) -> (T, usize) {
+        (self.value, self.num_binders)
+    }
 }
 
 impl<T: Clone> Binders<&T> {
@@ -985,7 +989,7 @@ impl Ty {
                             .generic_predicates(id.parent)
                             .into_iter()
                             .map(|pred| pred.clone().subst(&substs))
-                            .filter(|wc| match &wc {
+                            .filter(|wc| match &wc.skip_binders() {
                                 WhereClause::Implemented(tr) => tr.self_type_parameter() == self,
                                 WhereClause::AliasEq(AliasEq {
                                     alias: AliasTy::Projection(proj),
@@ -993,7 +997,6 @@ impl Ty {
                                 }) => proj.self_type_parameter() == self,
                                 _ => false,
                             })
-                            .map(Binders::wrap_empty)
                             .collect_vec();
 
                         Some(predicates)

@@ -825,7 +825,7 @@ pub fn associated_type_shorthand_candidates<R>(
             let predicates = db.generic_predicates_for_param(param_id);
             let mut traits_: Vec<_> = predicates
                 .iter()
-                .filter_map(|pred| match &pred.value {
+                .filter_map(|pred| match &pred.value.value {
                     WhereClause::Implemented(tr) => Some(tr.clone()),
                     _ => None,
                 })
@@ -898,10 +898,7 @@ pub(crate) fn field_types_query(
 pub(crate) fn generic_predicates_for_param_query(
     db: &dyn HirDatabase,
     param_id: TypeParamId,
-) -> Arc<[Binders<WhereClause>]> {
-    // FIXME: these binders are for the type parameters of the def. We need to
-    // introduce another level of binders for quantified where clauses (for<'a>
-    // ...)
+) -> Arc<[Binders<QuantifiedWhereClause>]> {
     let resolver = param_id.parent.resolver(db.upcast());
     let ctx =
         TyLoweringContext::new(db, &resolver).with_type_param_mode(TypeParamLoweringMode::Variable);
@@ -920,7 +917,7 @@ pub(crate) fn generic_predicates_for_param_query(
             WherePredicate::Lifetime { .. } => false,
         })
         .flat_map(|pred| {
-            ctx.lower_where_predicate(pred, true).map(|p| Binders::new(generics.len(), p.value))
+            ctx.lower_where_predicate(pred, true).map(|p| Binders::new(generics.len(), p))
         })
         .collect()
 }
@@ -929,7 +926,7 @@ pub(crate) fn generic_predicates_for_param_recover(
     _db: &dyn HirDatabase,
     _cycle: &[String],
     _param_id: &TypeParamId,
-) -> Arc<[Binders<WhereClause>]> {
+) -> Arc<[Binders<QuantifiedWhereClause>]> {
     Arc::new([])
 }
 
@@ -984,10 +981,7 @@ pub(crate) fn trait_environment_query(
 pub(crate) fn generic_predicates_query(
     db: &dyn HirDatabase,
     def: GenericDefId,
-) -> Arc<[Binders<WhereClause>]> {
-    // FIXME: these binders are for the type parameters of the def. We need to
-    // introduce another level of binders for quantified where clauses (for<'a>
-    // ...)
+) -> Arc<[Binders<QuantifiedWhereClause>]> {
     let resolver = def.resolver(db.upcast());
     let ctx =
         TyLoweringContext::new(db, &resolver).with_type_param_mode(TypeParamLoweringMode::Variable);
@@ -995,7 +989,7 @@ pub(crate) fn generic_predicates_query(
     resolver
         .where_predicates_in_scope()
         .flat_map(|pred| {
-            ctx.lower_where_predicate(pred, false).map(|p| Binders::new(generics.len(), p.value))
+            ctx.lower_where_predicate(pred, false).map(|p| Binders::new(generics.len(), p))
         })
         .collect()
 }

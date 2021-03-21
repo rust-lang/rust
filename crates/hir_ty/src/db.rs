@@ -12,8 +12,8 @@ use la_arena::ArenaMap;
 use crate::{
     method_resolution::{InherentImpls, TraitImpls},
     traits::chalk,
-    Binders, CallableDefId, FnDefId, ImplTraitId, InferenceResult, PolyFnSig, ReturnTypeImplTraits,
-    TraitRef, Ty, TyDefId, ValueTyDefId, WhereClause,
+    Binders, CallableDefId, FnDefId, ImplTraitId, InferenceResult, PolyFnSig,
+    QuantifiedWhereClause, ReturnTypeImplTraits, TraitRef, Ty, TyDefId, ValueTyDefId,
 };
 use hir_expand::name::Name;
 
@@ -57,10 +57,13 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
 
     #[salsa::invoke(crate::lower::generic_predicates_for_param_query)]
     #[salsa::cycle(crate::lower::generic_predicates_for_param_recover)]
-    fn generic_predicates_for_param(&self, param_id: TypeParamId) -> Arc<[Binders<WhereClause>]>;
+    fn generic_predicates_for_param(
+        &self,
+        param_id: TypeParamId,
+    ) -> Arc<[Binders<QuantifiedWhereClause>]>;
 
     #[salsa::invoke(crate::lower::generic_predicates_query)]
-    fn generic_predicates(&self, def: GenericDefId) -> Arc<[Binders<WhereClause>]>;
+    fn generic_predicates(&self, def: GenericDefId) -> Arc<[Binders<QuantifiedWhereClause>]>;
 
     #[salsa::invoke(crate::lower::trait_environment_query)]
     fn trait_environment(&self, def: GenericDefId) -> Arc<crate::TraitEnvironment>;

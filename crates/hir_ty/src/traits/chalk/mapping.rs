@@ -537,7 +537,7 @@ pub(super) fn convert_where_clauses(
     let generic_predicates = db.generic_predicates(def);
     let mut result = Vec::with_capacity(generic_predicates.len());
     for pred in generic_predicates.iter() {
-        result.push(crate::Binders::wrap_empty(pred.clone().subst(substs)).to_chalk(db));
+        result.push(pred.clone().subst(substs).to_chalk(db));
     }
     result
 }

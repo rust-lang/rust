@@ -581,7 +581,7 @@ impl HirDisplay for Ty {
                             .generic_predicates(id.parent)
                             .into_iter()
                             .map(|pred| pred.clone().subst(&substs))
-                            .filter(|wc| match &wc {
+                            .filter(|wc| match &wc.skip_binders() {
                                 WhereClause::Implemented(tr) => tr.self_type_parameter() == self,
                                 WhereClause::AliasEq(AliasEq {
                                     alias: AliasTy::Projection(proj),
@@ -590,15 +590,7 @@ impl HirDisplay for Ty {
                                 _ => false,
                             })
                             .collect::<Vec<_>>();
-                        write_bounds_like_dyn_trait_with_prefix(
-                            "impl",
-                            &bounds
-                                .iter()
-                                .cloned()
-                                .map(crate::Binders::wrap_empty)
-                                .collect::<Vec<_>>(),
-                            f,
-                        )?;
+                        write_bounds_like_dyn_trait_with_prefix("impl", &bounds, f)?;
                     }
                 }
             }
