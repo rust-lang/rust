@@ -82,6 +82,7 @@
 #![cfg_attr(bootstrap, feature(unsafe_block_in_unsafe_fn))]
 #![cfg_attr(not(bootstrap), feature(unsize))]
 #![deny(unsafe_op_in_unsafe_fn)]
+#![feature(option_result_unwrap_err_or)]
 
 extern crate test;
 
