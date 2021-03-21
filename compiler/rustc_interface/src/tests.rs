@@ -566,7 +566,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(merge_functions, Some(MergeFunctions::Disabled));
     tracked!(mir_emit_retag, true);
     tracked!(mir_opt_level, Some(4));
-    tracked!(mutable_noalias, true);
+    tracked!(mutable_noalias, Some(true));
     tracked!(new_llvm_pass_manager, true);
     tracked!(no_codegen, true);
     tracked!(no_generate_arange_section, true);

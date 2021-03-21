@@ -741,6 +741,46 @@ impl<'tcx> ty::TyS<'tcx> {
         }
     }
 
+    /// Checks whether values of this type `T` implement the `Unpin` trait.
+    pub fn is_unpin(&'tcx self, tcx_at: TyCtxtAt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
+        self.is_trivially_unpin() || tcx_at.is_unpin_raw(param_env.and(self))
+    }
+
+    /// Fast path helper for testing if a type is `Unpin`.
+    ///
+    /// Returning true means the type is known to be `Unpin`. Returning
+    /// `false` means nothing -- could be `Unpin`, might not be.
+    fn is_trivially_unpin(&self) -> bool {
+        match self.kind() {
+            ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Bool
+            | ty::Char
+            | ty::Str
+            | ty::Never
+            | ty::Ref(..)
+            | ty::RawPtr(_)
+            | ty::FnDef(..)
+            | ty::Error(_)
+            | ty::FnPtr(_) => true,
+            ty::Tuple(_) => self.tuple_fields().all(Self::is_trivially_unpin),
+            ty::Slice(elem_ty) | ty::Array(elem_ty, _) => elem_ty.is_trivially_unpin(),
+            ty::Adt(..)
+            | ty::Bound(..)
+            | ty::Closure(..)
+            | ty::Dynamic(..)
+            | ty::Foreign(_)
+            | ty::Generator(..)
+            | ty::GeneratorWitness(_)
+            | ty::Infer(_)
+            | ty::Opaque(..)
+            | ty::Param(_)
+            | ty::Placeholder(_)
+            | ty::Projection(_) => false,
+        }
+    }
+
     /// If `ty.needs_drop(...)` returns `true`, then `ty` is definitely
     /// non-copy and *might* have a destructor attached; if it returns
     /// `false`, then `ty` definitely has no destructor (i.e., no drop glue).

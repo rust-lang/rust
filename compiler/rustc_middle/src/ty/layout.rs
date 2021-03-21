@@ -11,7 +11,7 @@ use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_session::{DataTypeKind, FieldInfo, SizeKind, VariantInfo};
+use rustc_session::{config::OptLevel, DataTypeKind, FieldInfo, SizeKind, VariantInfo};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::call::{
@@ -2318,31 +2318,30 @@ where
             ty::Ref(_, ty, mt) if offset.bytes() == 0 => {
                 let address_space = addr_space_of_ty(ty);
                 let tcx = cx.tcx();
-                let is_freeze = ty.is_freeze(tcx.at(DUMMY_SP), cx.param_env());
-                let kind = match mt {
-                    hir::Mutability::Not => {
-                        if is_freeze {
-                            PointerKind::Frozen
-                        } else {
-                            PointerKind::Shared
+                let kind = if tcx.sess.opts.optimize == OptLevel::No {
+                    // Use conservative pointer kind if not optimizing. This saves us the
+                    // Freeze/Unpin queries, and can save time in the codegen backend (noalias
+                    // attributes in LLVM have compile-time cost even in unoptimized builds).
+                    PointerKind::Shared
+                } else {
+                    match mt {
+                        hir::Mutability::Not => {
+                            if ty.is_freeze(tcx.at(DUMMY_SP), cx.param_env()) {
+                                PointerKind::Frozen
+                            } else {
+                                PointerKind::Shared
+                            }
                         }
-                    }
-                    hir::Mutability::Mut => {
-                        // Previously we would only emit noalias annotations for LLVM >= 6 or in
-                        // panic=abort mode. That was deemed right, as prior versions had many bugs
-                        // in conjunction with unwinding, but later versions didn’t seem to have
-                        // said issues. See issue #31681.
-                        //
-                        // Alas, later on we encountered a case where noalias would generate wrong
-                        // code altogether even with recent versions of LLVM in *safe* code with no
-                        // unwinding involved. See #54462.
-                        //
-                        // For now, do not enable mutable_noalias by default at all, while the
-                        // issue is being figured out.
-                        if tcx.sess.opts.debugging_opts.mutable_noalias {
-                            PointerKind::UniqueBorrowed
-                        } else {
-                            PointerKind::Shared
+                        hir::Mutability::Mut => {
+                            // References to self-referential structures should not be considered
+                            // noalias, as another pointer to the structure can be obtained, that
+                            // is not based-on the original reference. We consider all !Unpin
+                            // types to be potentially self-referential here.
+                            if ty.is_unpin(tcx.at(DUMMY_SP), cx.param_env()) {
+                                PointerKind::UniqueBorrowed
+                            } else {
+                                PointerKind::Shared
+                            }
                         }
                     }
                 };
@@ -2775,10 +2774,14 @@ where
                     // and can be marked as both `readonly` and `noalias`, as
                     // LLVM's definition of `noalias` is based solely on memory
                     // dependencies rather than pointer equality
+                    //
+                    // Due to miscompiles in LLVM < 12, we apply a separate NoAliasMutRef attribute
+                    // for UniqueBorrowed arguments, so that the codegen backend can decide
+                    // whether or not to actually emit the attribute.
                     let no_alias = match kind {
-                        PointerKind::Shared => false,
+                        PointerKind::Shared | PointerKind::UniqueBorrowed => false,
                         PointerKind::UniqueOwned => true,
-                        PointerKind::Frozen | PointerKind::UniqueBorrowed => !is_return,
+                        PointerKind::Frozen => !is_return,
                     };
                     if no_alias {
                         attrs.set(ArgAttribute::NoAlias);
@@ -2786,6 +2789,10 @@ where
 
                     if kind == PointerKind::Frozen && !is_return {
                         attrs.set(ArgAttribute::ReadOnly);
+                    }
+
+                    if kind == PointerKind::UniqueBorrowed && !is_return {
+                        attrs.set(ArgAttribute::NoAliasMutRef);
                     }
                 }
             }

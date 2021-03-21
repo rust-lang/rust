@@ -1,4 +1,4 @@
-// compile-flags: -C no-prepopulate-passes
+// compile-flags: -O -C no-prepopulate-passes
 // ignore-tidy-linelength
 // min-system-llvm-version: 12.0
 
@@ -43,13 +43,13 @@ pub fn named_borrow<'r>(_: &'r i32) {
 pub fn unsafe_borrow(_: &UnsafeInner) {
 }
 
-// CHECK: @mutable_unsafe_borrow(i16* align 2 dereferenceable(2) %_1)
+// CHECK: @mutable_unsafe_borrow(i16* noalias align 2 dereferenceable(2) %_1)
 // ... unless this is a mutable borrow, those never alias
 #[no_mangle]
 pub fn mutable_unsafe_borrow(_: &mut UnsafeInner) {
 }
 
-// CHECK: @mutable_borrow(i32* align 4 dereferenceable(4) %_1)
+// CHECK: @mutable_borrow(i32* noalias align 4 dereferenceable(4) %_1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn mutable_borrow(_: &mut i32) {
@@ -94,7 +94,7 @@ pub fn helper(_: usize) {
 pub fn slice(_: &[u8]) {
 }
 
-// CHECK: @mutable_slice([0 x i8]* nonnull align 1 %_1.0, [[USIZE]] %_1.1)
+// CHECK: @mutable_slice([0 x i8]* noalias nonnull align 1 %_1.0, [[USIZE]] %_1.1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn mutable_slice(_: &mut [u8]) {
