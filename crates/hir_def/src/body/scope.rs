@@ -188,8 +188,8 @@ fn compute_expr_scopes(expr: ExprId, body: &Body, scopes: &mut ExprScopes, scope
             compute_expr_scopes(*body_expr, body, scopes, scope);
         }
         Expr::While { condition, body: body_expr, label } => {
-            compute_expr_scopes(*condition, body, scopes, scope);
             let scope = scopes.new_labeled_scope(scope, make_label(label));
+            compute_expr_scopes(*condition, body, scopes, scope);
             compute_expr_scopes(*body_expr, body, scopes, scope);
         }
         Expr::Loop { body: body_expr, label } => {

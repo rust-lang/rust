@@ -253,4 +253,33 @@ fn foo() {
             "#]],
         );
     }
+
+    #[test]
+    fn complete_label_in_while_cond() {
+        check(
+            r#"
+fn foo() {
+    'outer: while { 'inner: loop { break '$0 } } {}
+}
+"#,
+            expect![[r#"
+                lb 'inner
+                lb 'outer
+            "#]],
+        );
+    }
+
+    #[test]
+    fn complete_label_in_for_iterable() {
+        check(
+            r#"
+fn foo() {
+    'outer: for _ in [{ 'inner: loop { break '$0 } }] {}
+}
+"#,
+            expect![[r#"
+                lb 'inner
+            "#]],
+        );
+    }
 }

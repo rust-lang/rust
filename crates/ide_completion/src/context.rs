@@ -475,19 +475,17 @@ impl<'a> CompletionContext<'a> {
                 return;
             }
 
-            if parent.kind() != syntax::SyntaxKind::LABEL {
-                match_ast! {
-                    match parent {
-                        ast::LifetimeParam(_it) => {
-                            self.lifetime_allowed = true;
-                            self.lifetime_param_syntax =
-                                self.sema.find_node_at_offset_with_macros(original_file, offset);
-                        },
-                        ast::BreakExpr(_it) => self.is_label_ref = true,
-                        ast::ContinueExpr(_it) => self.is_label_ref = true,
-                        ast::Label(_it) => (),
-                        _ => self.lifetime_allowed = true,
-                    }
+            match_ast! {
+                match parent {
+                    ast::LifetimeParam(_it) => {
+                        self.lifetime_allowed = true;
+                        self.lifetime_param_syntax =
+                            self.sema.find_node_at_offset_with_macros(original_file, offset);
+                    },
+                    ast::BreakExpr(_it) => self.is_label_ref = true,
+                    ast::ContinueExpr(_it) => self.is_label_ref = true,
+                    ast::Label(_it) => (),
+                    _ => self.lifetime_allowed = true,
                 }
             }
         }
