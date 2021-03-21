@@ -184,7 +184,7 @@ pub enum ErrorKind {
     /// This operation is unsupported on this platform.
     ///
     /// This means that the operation can never succeed.
-    #[stable(feature = "unsupported_error", since = "1.52.0")]
+    #[stable(feature = "unsupported_error", since = "1.53.0")]
     Unsupported,
 }
 
