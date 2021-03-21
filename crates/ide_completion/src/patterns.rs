@@ -71,7 +71,7 @@ fn test_has_block_expr_parent() {
 }
 
 pub(crate) fn has_bind_pat_parent(element: SyntaxElement) -> bool {
-    element.ancestors().find(|it| it.kind() == IDENT_PAT).is_some()
+    element.ancestors().any(|it| it.kind() == IDENT_PAT)
 }
 #[test]
 fn test_has_bind_pat_parent() {

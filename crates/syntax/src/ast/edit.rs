@@ -461,8 +461,7 @@ impl ast::MatchArmList {
         let end = if let Some(comma) = start
             .siblings_with_tokens(Direction::Next)
             .skip(1)
-            .skip_while(|it| it.kind().is_trivia())
-            .next()
+            .find(|it| !it.kind().is_trivia())
             .filter(|it| it.kind() == T![,])
         {
             comma

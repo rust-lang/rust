@@ -67,7 +67,7 @@ impl ParsedRule {
     ) -> Result<Vec<ParsedRule>, SsrError> {
         let raw_pattern = pattern.as_rust_code();
         let raw_template = template.map(|t| t.as_rust_code());
-        let raw_template = raw_template.as_ref().map(|s| s.as_str());
+        let raw_template = raw_template.as_deref();
         let mut builder = RuleBuilder {
             placeholders_by_stand_in: pattern.placeholders_by_stand_in(),
             rules: Vec::new(),

@@ -38,7 +38,7 @@ impl<'a> InferenceContext<'a> {
         let field_tys = def.map(|it| self.db.field_types(it)).unwrap_or_default();
         let (pre, post) = match ellipsis {
             Some(idx) => subpats.split_at(idx),
-            None => (&subpats[..], &[][..]),
+            None => (subpats, &[][..]),
         };
         let post_idx_offset = field_tys.iter().count() - post.len();
 

@@ -213,7 +213,7 @@ impl Crate {
                 Some(TokenTree::Leaf(Leaf::Literal(Literal{ref text, ..}))) => Some(text),
                 _ => None
             }
-        }).flat_map(|t| t).next();
+        }).flatten().next();
 
         doc_url.map(|s| s.trim_matches('"').trim_end_matches('/').to_owned() + "/")
     }

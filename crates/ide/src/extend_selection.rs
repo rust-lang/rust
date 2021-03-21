@@ -263,11 +263,10 @@ fn extend_list_item(node: &SyntaxNode) -> Option<TextRange> {
     ) -> Option<SyntaxToken> {
         node.siblings_with_tokens(dir)
             .skip(1)
-            .skip_while(|node| match node {
-                NodeOrToken::Node(_) => false,
-                NodeOrToken::Token(it) => is_single_line_ws(it),
+            .find(|node| match node {
+                NodeOrToken::Node(_) => true,
+                NodeOrToken::Token(it) => !is_single_line_ws(it),
             })
-            .next()
             .and_then(|it| it.into_token())
             .filter(|node| node.kind() == delimiter_kind)
     }
