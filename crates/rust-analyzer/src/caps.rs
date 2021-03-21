@@ -33,7 +33,7 @@ pub fn server_capabilities(client_caps: &ClientCapabilities) -> ServerCapabiliti
         hover_provider: Some(HoverProviderCapability::Simple(true)),
         completion_provider: Some(CompletionOptions {
             resolve_provider: completions_resolve_provider(client_caps),
-            trigger_characters: Some(vec![":".to_string(), ".".to_string()]),
+            trigger_characters: Some(vec![":".to_string(), ".".to_string(), "'".to_string()]),
             all_commit_characters: None,
             completion_item: None,
             work_done_progress_options: WorkDoneProgressOptions { work_done_progress: None },

@@ -70,6 +70,16 @@ fn func<'lifetime>(foo: &'li$0) {}
 fn func<'lifetime>(foo: &'lifetime) {}
 "#,
         );
+        cov_mark::check!(completes_if_lifetime_without_idents);
+        check_edit(
+            "'lifetime",
+            r#"
+fn func<'lifetime>(foo: &'$0) {}
+"#,
+            r#"
+fn func<'lifetime>(foo: &'lifetime) {}
+"#,
+        );
     }
 
     #[test]
@@ -188,6 +198,27 @@ fn foo<'footime, 'lifetime: 'a$0>() {}
             expect![[r#"
                 lt 'footime
             "#]],
+        );
+    }
+
+    #[test]
+    fn check_label_edit() {
+        check_edit(
+            "'label",
+            r#"
+fn foo() {
+    'label: loop {
+        break '$0
+    }
+}
+"#,
+            r#"
+fn foo() {
+    'label: loop {
+        break 'label
+    }
+}
+"#,
         );
     }
 
