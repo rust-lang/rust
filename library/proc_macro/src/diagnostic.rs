@@ -1,4 +1,5 @@
 use crate::Span;
+use std::iter;
 
 /// An enum representing a diagnostic level.
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
@@ -15,33 +16,98 @@ pub enum Level {
     Help,
 }
 
-/// Trait implemented by types that can be converted into a set of `Span`s.
+/// Trait implemented by types that can be converted into an iterator of [`Span`]s.
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-pub trait MultiSpan {
-    /// Converts `self` into a `Vec<Span>`.
-    fn into_spans(self) -> Vec<Span>;
-}
+pub trait Spanned {
+    /// The concrete iterator type returned by `spans`.
+    type Iter: Iterator<Item = Span>;
 
-#[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-impl MultiSpan for Span {
-    fn into_spans(self) -> Vec<Span> {
-        vec![self]
+    /// Converts `self` into an iterator of `Span`.
+    fn spans(self) -> Self::Iter;
+
+    /// Best-effort join of all `Span`s in the iterator.
+    fn span(self) -> Span
+    where
+        Self: Sized,
+    {
+        self.spans()
+            .reduce(|a, b| match a.join(b) {
+                Some(joined) => joined,
+                // Skip any bad joins.
+                None => a,
+            })
+            .unwrap_or_else(Span::call_site)
+    }
+
+    /// Create an error attached to the `Span`.
+    fn error(self, msg: &str) -> Diagnostic
+    where
+        Self: Sized,
+    {
+        Diagnostic::error(msg).mark_all(self.spans())
+    }
+
+    // FIXME lint-associated warnings
+    // /// Create a warning attached to the `Span`.
+    // fn warning(self, lint: &Lint, msg: &str) -> Diagnostic {
+    //     Diagnostic::warning(lint, msg).mark(self.span())
+    // }
+
+    /// Create an note attached to the `Span`.
+    fn note(self, msg: &str) -> Diagnostic
+    where
+        Self: Sized,
+    {
+        Diagnostic::note(msg).mark_all(self.spans())
     }
 }
 
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-impl MultiSpan for Vec<Span> {
-    fn into_spans(self) -> Vec<Span> {
+impl<I: IntoIterator<Item = impl Spanned>> Spanned for I {
+    type Iter = impl Iterator<Item = Span>;
+
+    fn spans(self) -> Self::Iter {
+        self.into_iter().flat_map(Spanned::spans)
+    }
+}
+
+#[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
+impl Spanned for Span {
+    type Iter = impl Iterator<Item = Span>;
+
+    fn spans(self) -> Self::Iter {
+        iter::once(self)
+    }
+
+    fn span(self) -> Span {
         self
     }
 }
 
-#[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-impl<'a> MultiSpan for &'a [Span] {
-    fn into_spans(self) -> Vec<Span> {
-        self.to_vec()
-    }
+macro_rules! impl_span_passthrough {
+    ($($type:ty)*) => {$(
+        #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
+        impl Spanned for $type {
+            type Iter = impl Iterator<Item = Span>;
+
+            fn spans(self) -> Self::Iter {
+                iter::once(self.span())
+            }
+
+            fn span(self) -> Span {
+                Self::span(&self)
+            }
+        }
+    )*}
 }
+
+impl_span_passthrough![
+    crate::Group
+    crate::Ident
+    crate::Literal
+    crate::Punct
+    crate::TokenTree
+];
 
 /// A structure representing a diagnostic message and associated children
 /// messages.
