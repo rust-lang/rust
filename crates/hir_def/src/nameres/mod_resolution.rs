@@ -62,8 +62,7 @@ impl ModDir {
         name: &Name,
         attr_path: Option<&SmolStr>,
     ) -> Result<(FileId, bool, ModDir), String> {
-        let is_include_macro = file_id.is_include_macro(db.upcast());
-        let file_id = file_id.original_file(db.upcast());
+        let orig_file_id = file_id.original_file(db.upcast());
 
         let mut candidate_files = Vec::new();
         match attr_path {
@@ -71,7 +70,7 @@ impl ModDir {
                 candidate_files.push(self.dir_path.join_attr(attr_path, self.root_non_dir_owner))
             }
             None => {
-                if is_include_macro {
+                if file_id.is_include_macro(db.upcast()) {
                     candidate_files.push(format!("{}.rs", name));
                     candidate_files.push(format!("{}/mod.rs", name));
                 } else {
@@ -82,7 +81,7 @@ impl ModDir {
         };
 
         for candidate in candidate_files.iter() {
-            let path = AnchoredPath { anchor: file_id, path: candidate.as_str() };
+            let path = AnchoredPath { anchor: orig_file_id, path: candidate.as_str() };
             if let Some(file_id) = db.resolve_path(path) {
                 let is_mod_rs = candidate.ends_with("/mod.rs");
 
