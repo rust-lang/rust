@@ -1059,7 +1059,7 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 }
 
 /* for enum and struct fields */
-.enum > .toggle-wrapper + .docblock, .struct > .toggle-wrapper + .docblock {
+.enum > .toggle-wrapper + .docblock, .struct > .toggle-wrapper + .docblock, .union > .toggle-wrapper + .docblock {
 	margin-left: 0px;
 }
 
