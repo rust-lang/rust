@@ -486,6 +486,7 @@ fn settings(root_path: &str, suffix: &str, themes: &[StylePath]) -> Result<Strin
             ],
         )
             .into(),
+        ("auto-hide-large-items", "Auto-hide item contents for large items.", true).into(),
         ("auto-hide-attributes", "Auto-hide item attributes.", true).into(),
         ("auto-hide-method-docs", "Auto-hide item methods' documentation", false).into(),
         ("auto-hide-trait-implementations", "Auto-hide trait implementation documentation", true)

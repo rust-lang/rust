@@ -2705,8 +2705,12 @@ function hideThemeButtonState() {
                 }
             } else if (hasClass(e, "type-contents-toggle")) {
                 let text = e.getAttribute("data-toggle-text");
-                let tog = createToggle(toggle, `Show ${text}`, null, "", true);
+                let hideItemContents = getSettingValue("auto-hide-large-items") !== "false";
+                let tog = createToggle(toggle, `Show ${text}`, null, "", !hideItemContents);
                 e.parentNode.insertBefore(tog,  e);
+                if (hideItemContents) {
+                    collapseDocs(e.previousSibling.childNodes[0], "toggle");
+                }
             }
             if (e.parentNode.id === "main") {
                 var otherMessage = "";
