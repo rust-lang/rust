@@ -80,6 +80,10 @@ html {
 	}
 }
 
+div {
+	position: relative;
+}
+
 /* General structure and fonts */
 
 body {
@@ -1767,4 +1771,43 @@ div.name.expand::before {
 }
 .type-decl > pre > .docblock.attributes {
 	margin-left: 4em;
+}
+
+input.toggle {
+	display: none;
+}
+input.toggle + label {
+	position: absolute;
+	top: 0;
+	font-family: "Fira Sans", Arial, sans-serif;
+	font-weight: 300;
+	cursor: pointer;
+}
+input.toggle + label:before {
+	content: "[+]";
+}
+input.toggle:checked + label:before {
+	content: "[-]";
+}
+input.toggle:not(:checked) + label + .docblock {
+	display: none;
+}
+h4 + input.toggle + label {
+	font-size: 0.8em;
+	top: 5px;
+}
+.type-decl + input.toggle + label {
+	top: initial;
+}
+.type-decl + input.toggle:not(:checked) + label {
+	margin-bottom: .6em;
+	height: 25px;
+	position: initial;
+}
+.type-decl + input.toggle:not(:checked) + label:before {
+	content: "[+]";
+}
+.type-decl + input.toggle:not(:checked) + label:after {
+	content: "Expand description";
+	margin-left: 6px;
 }

@@ -626,9 +626,14 @@ fn render_markdown(
     is_hidden: bool,
 ) {
     let mut ids = cx.id_map.borrow_mut();
+    let label_id_count = w.label_id_count;
+    w.label_id_count += 1;
     write!(
         w,
-        "<div class=\"docblock{}\">{}{}</div>",
+        "<input id=\"{0}i\" type=checkbox class=\"toggle\"{1}><label for=\"{0}i\"></label>\
+         <div class=\"docblock{2}\">{3}{4}</div>",
+        label_id_count,
+        if is_hidden { "" } else { " checked" },
         if is_hidden { " hidden" } else { "" },
         prefix,
         Markdown(
@@ -1519,12 +1524,12 @@ fn render_impl(
             } else {
                 (true, " hidden")
             };
-        match *item.kind {
+        let need_close = match *item.kind {
             clean::MethodItem(..) | clean::TyMethodItem(_) => {
                 // Only render when the method is not static or we allow static methods
                 if render_method_item {
                     let id = cx.derive_id(format!("{}.{}", item_type, name));
-                    write!(w, "<h4 id=\"{}\" class=\"{}{}\">", id, item_type, extra_class);
+                    write!(w, "<div><h4 id=\"{}\" class=\"{}{}\">", id, item_type, extra_class);
                     w.write_str("<code>");
                     render_assoc_item(w, item, link.anchor(&id), ItemType::Impl, cx);
                     w.write_str("</code>");
@@ -1538,10 +1543,11 @@ fn render_impl(
                     write_srclink(cx, item, w);
                     w.write_str("</h4>");
                 }
+                render_method_item
             }
             clean::TypedefItem(ref tydef, _) => {
                 let id = cx.derive_id(format!("{}.{}", ItemType::AssocType, name));
-                write!(w, "<h4 id=\"{}\" class=\"{}{}\"><code>", id, item_type, extra_class);
+                write!(w, "<div><h4 id=\"{}\" class=\"{}{}\"><code>", id, item_type, extra_class);
                 assoc_type(
                     w,
                     item,
@@ -1552,10 +1558,11 @@ fn render_impl(
                     cx.cache(),
                 );
                 w.write_str("</code></h4>");
+                true
             }
             clean::AssocConstItem(ref ty, ref default) => {
                 let id = cx.derive_id(format!("{}.{}", item_type, name));
-                write!(w, "<h4 id=\"{}\" class=\"{}{}\"><code>", id, item_type, extra_class);
+                write!(w, "<div><h4 id=\"{}\" class=\"{}{}\"><code>", id, item_type, extra_class);
                 assoc_const(w, item, ty, default.as_ref(), link.anchor(&id), "", cx);
                 w.write_str("</code>");
                 render_stability_since_raw(
@@ -1567,16 +1574,18 @@ fn render_impl(
                 );
                 write_srclink(cx, item, w);
                 w.write_str("</h4>");
+                true
             }
             clean::AssocTypeItem(ref bounds, ref default) => {
                 let id = cx.derive_id(format!("{}.{}", item_type, name));
-                write!(w, "<h4 id=\"{}\" class=\"{}{}\"><code>", id, item_type, extra_class);
+                write!(w, "<div><h4 id=\"{}\" class=\"{}{}\"><code>", id, item_type, extra_class);
                 assoc_type(w, item, bounds, default.as_ref(), link.anchor(&id), "", cx.cache());
                 w.write_str("</code></h4>");
+                true
             }
             clean::StrippedItem(..) => return,
             _ => panic!("can't make docs for trait item with name {:?}", item.name),
-        }
+        };
 
         if render_method_item {
             if !is_default_item {
@@ -1613,6 +1622,9 @@ fn render_impl(
             } else {
                 document_short(w, item, cx, link, "", is_hidden, Some(parent), show_def_docs);
             }
+        }
+        if need_close {
+            w.write_str("</div>");
         }
     }
 

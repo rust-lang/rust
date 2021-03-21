@@ -186,7 +186,7 @@ a.test-arrow {
 	color: #dedede;
 }
 
-.collapse-toggle {
+.collapse-toggle, input.toggle + label {
 	color: #999;
 }
 

@@ -2249,8 +2249,13 @@ function defocusSearchBar() {
             });
             innerToggle.title = "collapse all docs";
             if (fromAutoCollapse !== true) {
+                // Old toggle handling.
                 onEachLazy(document.getElementsByClassName("collapse-toggle"), function(e) {
                     collapseDocs(e, "show");
+                });
+                // New toggle handling.
+                onEachLazy(document.getElementsByClassName("toggle"), function(e) {
+                    e.checked = true;
                 });
             }
         } else {
@@ -2270,6 +2275,7 @@ function defocusSearchBar() {
             });
             innerToggle.title = "expand all docs";
             if (fromAutoCollapse !== true) {
+                // Old toggle handling.
                 onEachLazy(document.getElementsByClassName("collapse-toggle"), function(e) {
                     var parent = e.parentNode;
                     var superParent = null;
@@ -2280,6 +2286,19 @@ function defocusSearchBar() {
                     if (!parent || !superParent || superParent.id !== "main" ||
                         hasClass(parent, "impl") === false) {
                         collapseDocs(e, "hide");
+                    }
+                });
+                // New toggle handling.
+                onEachLazy(document.getElementsByClassName("toggle"), function(e) {
+                    var parent = e.parentNode;
+                    var superParent = null;
+
+                    if (parent) {
+                        superParent = parent.parentNode;
+                    }
+                    if (!parent || !superParent || superParent.id !== "main" ||
+                        hasClass(parent, "impl") === false) {
+                        e.checked = false;
                     }
                 });
             }
@@ -2460,7 +2479,7 @@ function defocusSearchBar() {
             span.style.display = "none";
         }
         if (!otherMessage) {
-            span.innerHTML = "&nbsp;Expand&nbsp;description";
+           return null;
         } else {
             span.innerHTML = otherMessage;
         }
@@ -2506,11 +2525,9 @@ function defocusSearchBar() {
             if (!next) {
                 return;
             }
-            if (hasClass(next, "docblock")) {
-                var newToggle = toggle.cloneNode(true);
-                insertAfter(newToggle, e.childNodes[e.childNodes.length - 1]);
+            if (hasClass(next, "toggle")) {
                 if (hideMethodDocs === true && hasClass(e, "method") === true) {
-                    collapseDocs(newToggle, "hide");
+                    next.checked = true;
                 }
             }
         };
@@ -2672,14 +2689,15 @@ function defocusSearchBar() {
                     extraClass = "marg-left";
                 }
 
-                e.parentNode.insertBefore(
-                    createToggle(
+                var t = createToggle(
                         toggle,
                         otherMessage,
                         fontSize,
                         extraClass,
-                        hasClass(e, "type-decl") === false || showItemDeclarations === true),
-                    e);
+                        hasClass(e, "type-decl") === false || showItemDeclarations === true);
+                if (t) {
+                    e.parentNode.insertBefore(t, e);
+                }
                 if (hasClass(e, "type-decl") === true && showItemDeclarations === true) {
                     collapseDocs(e.previousSibling.childNodes[0], "toggle");
                 }

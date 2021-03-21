@@ -51,19 +51,20 @@ impl Print for &'_ str {
 crate struct Buffer {
     for_html: bool,
     buffer: String,
+    crate label_id_count: usize,
 }
 
 impl Buffer {
     crate fn empty_from(v: &Buffer) -> Buffer {
-        Buffer { for_html: v.for_html, buffer: String::new() }
+        Buffer { for_html: v.for_html, buffer: String::new(), label_id_count: 0 }
     }
 
     crate fn html() -> Buffer {
-        Buffer { for_html: true, buffer: String::new() }
+        Buffer { for_html: true, buffer: String::new(), label_id_count: 0 }
     }
 
     crate fn new() -> Buffer {
-        Buffer { for_html: false, buffer: String::new() }
+        Buffer { for_html: false, buffer: String::new(), label_id_count: 0 }
     }
 
     crate fn is_empty(&self) -> bool {
