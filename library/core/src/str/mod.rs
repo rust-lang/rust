@@ -140,7 +140,7 @@ impl str {
     /// ```
     #[doc(alias = "length")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_str_len", since = "1.32.0")]
+    #[rustc_const_stable(feature = "const_str_len", since = "1.39.0")]
     #[inline]
     pub const fn len(&self) -> usize {
         self.as_bytes().len()
@@ -161,7 +161,7 @@ impl str {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_str_is_empty", since = "1.32.0")]
+    #[rustc_const_stable(feature = "const_str_is_empty", since = "1.39.0")]
     pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }
@@ -217,7 +217,7 @@ impl str {
     /// assert_eq!(b"bors", bytes);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "str_as_bytes", since = "1.32.0")]
+    #[rustc_const_stable(feature = "str_as_bytes", since = "1.39.0")]
     #[inline(always)]
     #[allow(unused_attributes)]
     #[rustc_allow_const_fn_unstable(const_fn_transmute)]

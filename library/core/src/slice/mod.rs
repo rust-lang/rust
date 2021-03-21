@@ -94,7 +94,7 @@ impl<T> [T] {
     /// ```
     #[doc(alias = "length")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_slice_len", since = "1.32.0")]
+    #[rustc_const_stable(feature = "const_slice_len", since = "1.39.0")]
     #[inline]
     // SAFETY: const sound because we transmute out the length field as a usize (which it must be)
     #[rustc_allow_const_fn_unstable(const_fn_union)]
@@ -127,7 +127,7 @@ impl<T> [T] {
     /// assert!(!a.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_slice_is_empty", since = "1.32.0")]
+    #[rustc_const_stable(feature = "const_slice_is_empty", since = "1.39.0")]
     #[inline]
     pub const fn is_empty(&self) -> bool {
         self.len() == 0
