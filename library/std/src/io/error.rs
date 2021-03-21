@@ -264,11 +264,11 @@ impl Error {
     /// Creates a new I/O error from a known kind of error as well as a
     /// constant message.
     ///
-    /// This function not allocate.
+    /// This function does not allocate.
     ///
     /// This function should maybe change to
     /// `new_const<const MSG: &'static str>(kind: ErrorKind)`
-    /// in the future, when const generics allows that.
+    /// in the future, when const generics allow that.
     pub(crate) const fn new_const(kind: ErrorKind, message: &'static &'static str) -> Error {
         Self { repr: Repr::SimpleMessage(kind, message) }
     }
