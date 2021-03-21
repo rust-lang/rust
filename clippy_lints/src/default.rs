@@ -104,6 +104,7 @@ impl LateLintPass<'_> for Default {
         }
     }
 
+    #[allow(clippy::too_many_lines)]
     fn check_block<'tcx>(&mut self, cx: &LateContext<'tcx>, block: &Block<'tcx>) {
         // start from the `let mut _ = _::default();` and look at all the following
         // statements, see if they re-assign the fields of the binding
@@ -196,6 +197,24 @@ impl LateLintPass<'_> for Default {
                     })
                     .collect::<Vec<String>>()
                     .join(", ");
+
+                // give correct suggestion if generics are involved (see #6944)
+                let binding_type = if_chain! {
+                    if let ty::Adt(adt_def, substs) = binding_type.kind();
+                    if !substs.is_empty();
+                    let adt_def_ty_name = cx.tcx.item_name(adt_def.did);
+                    let generic_args = substs.iter().collect::<Vec<_>>();
+                    let tys_str = generic_args
+                        .iter()
+                        .map(ToString::to_string)
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    then {
+                        format!("{}::<{}>", adt_def_ty_name, &tys_str)
+                    } else {
+                        binding_type.to_string()
+                    }
+                };
 
                 let sugg = if ext_with_default {
                     if field_list.is_empty() {
