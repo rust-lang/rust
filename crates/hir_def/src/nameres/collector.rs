@@ -1467,12 +1467,13 @@ impl ModCollector<'_, '_> {
             },
         ) {
             Ok(Ok(macro_call_id)) => {
-                self.def_collector.unexpanded_macros.push(MacroDirective {
-                    module_id: self.module_id,
-                    ast_id,
-                    legacy: Some(macro_call_id),
-                    depth: self.macro_depth + 1,
-                });
+                // Legacy macros need to be expanded immediately, so that any macros they produce
+                // are in scope.
+                self.def_collector.collect_macro_expansion(
+                    self.module_id,
+                    macro_call_id,
+                    self.macro_depth + 1,
+                );
 
                 return;
             }
