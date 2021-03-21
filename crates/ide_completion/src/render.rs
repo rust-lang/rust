@@ -219,6 +219,7 @@ impl<'a> Render<'a> {
                 hir::GenericParam::ConstParam(_) => SymbolKind::ConstParam,
             }),
             ScopeDef::Local(..) => CompletionItemKind::SymbolKind(SymbolKind::Local),
+            ScopeDef::Label(..) => CompletionItemKind::SymbolKind(SymbolKind::Label),
             ScopeDef::AdtSelfType(..) | ScopeDef::ImplSelfType(..) => {
                 CompletionItemKind::SymbolKind(SymbolKind::SelfParam)
             }

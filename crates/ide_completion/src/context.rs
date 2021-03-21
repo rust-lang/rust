@@ -53,6 +53,7 @@ pub(crate) struct CompletionContext<'a> {
     /// FIXME: `ActiveParameter` is string-based, which is very very wrong
     pub(super) active_parameter: Option<ActiveParameter>,
     pub(super) is_param: bool,
+    pub(super) is_label_ref: bool,
     /// If a name-binding or reference to a const in a pattern.
     /// Irrefutable patterns (like let) are excluded.
     pub(super) is_pat_binding_or_const: bool,
@@ -155,6 +156,7 @@ impl<'a> CompletionContext<'a> {
             record_field_syntax: None,
             impl_def: None,
             active_parameter: ActiveParameter::at(db, position),
+            is_label_ref: false,
             is_param: false,
             is_pat_binding_or_const: false,
             is_irrefutable_pat_binding: false,
@@ -468,12 +470,26 @@ impl<'a> CompletionContext<'a> {
     ) {
         self.lifetime_syntax =
             find_node_at_offset(original_file, lifetime.syntax().text_range().start());
-        if lifetime.syntax().parent().map_or(false, |p| p.kind() != syntax::SyntaxKind::ERROR) {
-            self.lifetime_allowed = true;
-        }
-        if let Some(_) = lifetime.syntax().parent().and_then(ast::LifetimeParam::cast) {
-            self.lifetime_param_syntax =
-                self.sema.find_node_at_offset_with_macros(original_file, offset);
+        if let Some(parent) = lifetime.syntax().parent() {
+            if parent.kind() == syntax::SyntaxKind::ERROR {
+                return;
+            }
+
+            if parent.kind() != syntax::SyntaxKind::LABEL {
+                match_ast! {
+                    match parent {
+                        ast::LifetimeParam(_it) => {
+                            self.lifetime_allowed = true;
+                            self.lifetime_param_syntax =
+                                self.sema.find_node_at_offset_with_macros(original_file, offset);
+                        },
+                        ast::BreakExpr(_it) => self.is_label_ref = true,
+                        ast::ContinueExpr(_it) => self.is_label_ref = true,
+                        ast::Label(_it) => (),
+                        _ => self.lifetime_allowed = true,
+                    }
+                }
+            }
         }
     }
 
