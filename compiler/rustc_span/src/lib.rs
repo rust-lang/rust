@@ -215,7 +215,11 @@ impl std::fmt::Display for FileName {
 impl From<PathBuf> for FileName {
     fn from(p: PathBuf) -> Self {
         assert!(!p.to_string_lossy().ends_with('>'));
-        FileName::Real(RealFileName::Named(p))
+        if cfg!(not(windows)) {
+            FileName::Real(RealFileName::Named(p.canonicalize().unwrap_or(p)))
+        } else {
+            FileName::Real(RealFileName::Named(p))
+        }
     }
 }
 
