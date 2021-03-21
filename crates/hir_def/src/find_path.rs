@@ -18,7 +18,8 @@ use crate::{
 /// *from where* you're referring to the item, hence the `from` parameter.
 pub fn find_path(db: &dyn DefDatabase, item: ItemInNs, from: ModuleId) -> Option<ModPath> {
     let _p = profile::span("find_path");
-    find_path_inner(db, item, from, MAX_PATH_LEN, None)
+    let mut visited_modules = FxHashSet::default();
+    find_path_inner(db, item, from, MAX_PATH_LEN, None, &mut visited_modules)
 }
 
 pub fn find_path_prefixed(
@@ -28,7 +29,8 @@ pub fn find_path_prefixed(
     prefix_kind: PrefixKind,
 ) -> Option<ModPath> {
     let _p = profile::span("find_path_prefixed");
-    find_path_inner(db, item, from, MAX_PATH_LEN, Some(prefix_kind))
+    let mut visited_modules = FxHashSet::default();
+    find_path_inner(db, item, from, MAX_PATH_LEN, Some(prefix_kind), &mut visited_modules)
 }
 
 const MAX_PATH_LEN: usize = 15;
@@ -97,6 +99,7 @@ fn find_path_inner(
     from: ModuleId,
     max_len: usize,
     mut prefixed: Option<PrefixKind>,
+    visited_modules: &mut FxHashSet<ModuleId>,
 ) -> Option<ModPath> {
     if max_len == 0 {
         return None;
@@ -176,15 +179,17 @@ fn find_path_inner(
     if item.krate(db) == Some(from.krate) {
         // Item was defined in the same crate that wants to import it. It cannot be found in any
         // dependency in this case.
-
-        let local_imports = find_local_import_locations(db, item, from);
-        for (module_id, name) in local_imports {
+        for (module_id, name) in find_local_import_locations(db, item, from) {
+            if !visited_modules.insert(module_id) {
+                continue;
+            }
             if let Some(mut path) = find_path_inner(
                 db,
                 ItemInNs::Types(ModuleDefId::ModuleId(module_id)),
                 from,
                 best_path_len - 1,
                 prefixed,
+                visited_modules,
             ) {
                 path.push_segment(name);
 
@@ -213,6 +218,7 @@ fn find_path_inner(
                     from,
                     best_path_len - 1,
                     prefixed,
+                    visited_modules,
                 )?;
                 cov_mark::hit!(partially_imported);
                 path.push_segment(info.path.segments.last().unwrap().clone());
@@ -391,8 +397,15 @@ mod tests {
             .take_types()
             .unwrap();
 
-        let found_path =
-            find_path_inner(&db, ItemInNs::Types(resolved), module, MAX_PATH_LEN, prefix_kind);
+        let mut visited_modules = FxHashSet::default();
+        let found_path = find_path_inner(
+            &db,
+            ItemInNs::Types(resolved),
+            module,
+            MAX_PATH_LEN,
+            prefix_kind,
+            &mut visited_modules,
+        );
         assert_eq!(found_path, Some(mod_path), "{:?}", prefix_kind);
     }
 
@@ -877,5 +890,32 @@ mod tests {
             "crate::module::CompleteMe",
             "self::module::CompleteMe",
         )
+    }
+
+    #[test]
+    fn recursive_pub_mod_reexport() {
+        check_found_path(
+            r#"
+fn main() {
+    let _ = 22_i32.as_name$0();
+}
+
+pub mod name {
+    pub trait AsName {
+        fn as_name(&self) -> String;
+    }
+    impl AsName for i32 {
+        fn as_name(&self) -> String {
+            format!("Name: {}", self)
+        }
+    }
+    pub use crate::name;
+}
+"#,
+            "name::AsName",
+            "name::AsName",
+            "crate::name::AsName",
+            "self::name::AsName",
+        );
     }
 }
