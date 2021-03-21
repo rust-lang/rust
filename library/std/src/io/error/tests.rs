@@ -57,3 +57,13 @@ fn test_downcasting() {
     let extracted = err.into_inner().unwrap();
     extracted.downcast::<TestError>().unwrap();
 }
+
+#[test]
+fn test_const() {
+    const E: Error = Error::new_const(ErrorKind::NotFound, &"hello");
+
+    assert_eq!(E.kind(), ErrorKind::NotFound);
+    assert_eq!(E.to_string(), "hello");
+    assert!(format!("{:?}", E).contains("\"hello\""));
+    assert!(format!("{:?}", E).contains("NotFound"));
+}
