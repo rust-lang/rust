@@ -2272,6 +2272,56 @@ fn test<T, U>() where T: Trait<U::Item>, U: Trait<T::Item> {
 }
 
 #[test]
+fn unselected_projection_in_trait_env_cycle_3() {
+    // this is a cycle for rustc; we currently accept it
+    check_types(
+        r#"
+//- /main.rs
+trait Trait {
+    type Item;
+    type OtherItem;
+}
+
+fn test<T>() where T: Trait<OtherItem = T::Item> {
+    let x: T::Item = no_matter;
+}                   //^ Trait::Item<T>
+"#,
+    );
+}
+
+#[test]
+fn unselected_projection_in_trait_env_no_cycle() {
+    // this is not a cycle
+    check_types(
+        r#"
+//- /main.rs
+trait Index {
+    type Output;
+}
+
+type Key<S: UnificationStoreBase> = <S as UnificationStoreBase>::Key;
+
+pub trait UnificationStoreBase: Index<Output = Key<Self>> {
+    type Key;
+
+    fn len(&self) -> usize;
+}
+
+pub trait UnificationStoreMut: UnificationStoreBase {
+    fn push(&mut self, value: Self::Key);
+}
+
+fn test<T>(t: T) where T: UnificationStoreMut {
+    let x;
+    t.push(x);
+    let y: Key<T>;
+    (x, y);
+}      //^ (UnificationStoreBase::Key<T>, UnificationStoreBase::Key<T>)
+"#,
+    );
+}
+
+#[test]
 fn inline_assoc_type_bounds_1() {
     check_types(
         r#"

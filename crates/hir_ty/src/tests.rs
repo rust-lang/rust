@@ -369,3 +369,72 @@ fn check_infer_with_mismatches(ra_fixture: &str, expect: Expect) {
     actual.push('\n');
     expect.assert_eq(&actual);
 }
+
+#[test]
+fn salsa_bug() {
+    let (mut db, pos) = TestDB::with_position(
+        "
+        //- /lib.rs
+        trait Index {
+            type Output;
+        }
+
+        type Key<S: UnificationStoreBase> = <S as UnificationStoreBase>::Key;
+
+        pub trait UnificationStoreBase: Index<Output = Key<Self>> {
+            type Key;
+
+            fn len(&self) -> usize;
+        }
+
+        pub trait UnificationStoreMut: UnificationStoreBase {
+            fn push(&mut self, value: Self::Key);
+        }
+
+        fn main() {
+            let x = 1;
+            x.push(1);$0
+        }
+    ",
+    );
+
+    let module = db.module_for_file(pos.file_id);
+    let crate_def_map = module.def_map(&db);
+    visit_module(&db, &crate_def_map, module.local_id, &mut |def| {
+        db.infer(def);
+    });
+
+    let new_text = "
+        //- /lib.rs
+        trait Index {
+            type Output;
+        }
+
+        type Key<S: UnificationStoreBase> = <S as UnificationStoreBase>::Key;
+
+        pub trait UnificationStoreBase: Index<Output = Key<Self>> {
+            type Key;
+
+            fn len(&self) -> usize;
+        }
+
+        pub trait UnificationStoreMut: UnificationStoreBase {
+            fn push(&mut self, value: Self::Key);
+        }
+
+        fn main() {
+
+            let x = 1;
+            x.push(1);
+        }
+    "
+    .to_string();
+
+    db.set_file_text(pos.file_id, Arc::new(new_text));
+
+    let module = db.module_for_file(pos.file_id);
+    let crate_def_map = module.def_map(&db);
+    visit_module(&db, &crate_def_map, module.local_id, &mut |def| {
+        db.infer(def);
+    });
+}

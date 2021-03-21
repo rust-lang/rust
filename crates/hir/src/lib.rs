@@ -2068,7 +2068,10 @@ impl Type {
                 match pred {
                     WhereClause::Implemented(trait_ref) => {
                         cb(type_.clone());
-                        walk_substs(db, type_, &trait_ref.substitution, cb);
+                        // skip the self type. it's likely the type we just got the bounds from
+                        for ty in trait_ref.substitution.iter().skip(1) {
+                            walk_type(db, &type_.derived(ty.clone()), cb);
+                        }
                     }
                     _ => (),
                 }

@@ -189,7 +189,10 @@ impl<'a> TyLoweringContext<'a> {
                 let self_ty =
                     TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0)).intern(&Interner);
                 let predicates = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
-                    bounds.iter().flat_map(|b| ctx.lower_type_bound(b, self_ty.clone())).collect()
+                    bounds
+                        .iter()
+                        .flat_map(|b| ctx.lower_type_bound(b, self_ty.clone(), false))
+                        .collect()
                 });
                 TyKind::Dyn(predicates).intern(&Interner)
             }
@@ -666,6 +669,7 @@ impl<'a> TyLoweringContext<'a> {
     pub(crate) fn lower_where_predicate(
         &'a self,
         where_predicate: &'a WherePredicate,
+        ignore_bindings: bool,
     ) -> impl Iterator<Item = WhereClause> + 'a {
         match where_predicate {
             WherePredicate::ForLifetime { target, bound, .. }
@@ -688,7 +692,9 @@ impl<'a> TyLoweringContext<'a> {
                         .intern(&Interner)
                     }
                 };
-                self.lower_type_bound(bound, self_ty).collect::<Vec<_>>().into_iter()
+                self.lower_type_bound(bound, self_ty, ignore_bindings)
+                    .collect::<Vec<_>>()
+                    .into_iter()
             }
             WherePredicate::Lifetime { .. } => vec![].into_iter(),
         }
@@ -698,6 +704,7 @@ impl<'a> TyLoweringContext<'a> {
         &'a self,
         bound: &'a TypeBound,
         self_ty: Ty,
+        ignore_bindings: bool,
     ) -> impl Iterator<Item = WhereClause> + 'a {
         let mut bindings = None;
         let trait_ref = match bound {
@@ -711,6 +718,7 @@ impl<'a> TyLoweringContext<'a> {
         trait_ref.into_iter().chain(
             bindings
                 .into_iter()
+                .filter(move |_| !ignore_bindings)
                 .flat_map(move |tr| self.assoc_type_bindings_from_type_bound(bound, tr)),
         )
     }
@@ -755,6 +763,7 @@ impl<'a> TyLoweringContext<'a> {
                     preds.extend(self.lower_type_bound(
                         bound,
                         TyKind::Alias(AliasTy::Projection(projection_ty.clone())).intern(&Interner),
+                        false,
                     ));
                 }
                 preds
@@ -766,7 +775,7 @@ impl<'a> TyLoweringContext<'a> {
         let self_ty =
             TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0)).intern(&Interner);
         let predicates = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
-            bounds.iter().flat_map(|b| ctx.lower_type_bound(b, self_ty.clone())).collect()
+            bounds.iter().flat_map(|b| ctx.lower_type_bound(b, self_ty.clone(), false)).collect()
         });
         ReturnTypeImplTrait { bounds: Binders::new(1, predicates) }
     }
@@ -896,7 +905,9 @@ pub(crate) fn generic_predicates_for_param_query(
             },
             WherePredicate::Lifetime { .. } => false,
         })
-        .flat_map(|pred| ctx.lower_where_predicate(pred).map(|p| Binders::new(generics.len(), p)))
+        .flat_map(|pred| {
+            ctx.lower_where_predicate(pred, true).map(|p| Binders::new(generics.len(), p))
+        })
         .collect()
 }
 
@@ -918,7 +929,7 @@ pub(crate) fn trait_environment_query(
     let mut traits_in_scope = Vec::new();
     let mut clauses = Vec::new();
     for pred in resolver.where_predicates_in_scope() {
-        for pred in ctx.lower_where_predicate(pred) {
+        for pred in ctx.lower_where_predicate(pred, false) {
             if let WhereClause::Implemented(tr) = &pred {
                 traits_in_scope.push((tr.self_type_parameter().clone(), tr.hir_trait_id()));
             }
@@ -966,7 +977,9 @@ pub(crate) fn generic_predicates_query(
     let generics = generics(db.upcast(), def);
     resolver
         .where_predicates_in_scope()
-        .flat_map(|pred| ctx.lower_where_predicate(pred).map(|p| Binders::new(generics.len(), p)))
+        .flat_map(|pred| {
+            ctx.lower_where_predicate(pred, false).map(|p| Binders::new(generics.len(), p))
+        })
         .collect()
 }
 
