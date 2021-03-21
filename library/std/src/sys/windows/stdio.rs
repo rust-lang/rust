@@ -144,9 +144,9 @@ fn write(
                 incomplete_utf8.len = 1;
                 return Ok(1);
             } else {
-                return Err(io::Error::new_const(
+                return Err(io::Error::new(
                     io::ErrorKind::InvalidData,
-                    &"Windows stdio in console mode does not support writing non-UTF-8 byte sequences",
+                    "Windows stdio in console mode does not support writing non-UTF-8 byte sequences",
                 ));
             }
         }
