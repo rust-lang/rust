@@ -110,7 +110,7 @@ impl<T: Sized> NonNull<T> {
     /// [the module documentation]: crate::ptr#safety
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
-    pub unsafe fn as_uninit_ref(&self) -> &MaybeUninit<T> {
+    pub unsafe fn as_uninit_ref<'a>(&self) -> &'a MaybeUninit<T> {
         // SAFETY: the caller must guarantee that `self` meets all the
         // requirements for a reference.
         unsafe { &*self.cast().as_ptr() }
@@ -142,7 +142,7 @@ impl<T: Sized> NonNull<T> {
     /// [the module documentation]: crate::ptr#safety
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
-    pub unsafe fn as_uninit_mut(&mut self) -> &mut MaybeUninit<T> {
+    pub unsafe fn as_uninit_mut<'a>(&mut self) -> &'a mut MaybeUninit<T> {
         // SAFETY: the caller must guarantee that `self` meets all the
         // requirements for a reference.
         unsafe { &mut *self.cast().as_ptr() }
@@ -244,7 +244,7 @@ impl<T: ?Sized> NonNull<T> {
     /// [the module documentation]: crate::ptr#safety
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[inline]
-    pub unsafe fn as_ref(&self) -> &T {
+    pub unsafe fn as_ref<'a>(&self) -> &'a T {
         // SAFETY: the caller must guarantee that `self` meets all the
         // requirements for a reference.
         unsafe { &*self.as_ptr() }
@@ -280,7 +280,7 @@ impl<T: ?Sized> NonNull<T> {
     /// [the module documentation]: crate::ptr#safety
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[inline]
-    pub unsafe fn as_mut(&mut self) -> &mut T {
+    pub unsafe fn as_mut<'a>(&mut self) -> &'a mut T {
         // SAFETY: the caller must guarantee that `self` meets all the
         // requirements for a mutable reference.
         unsafe { &mut *self.as_ptr() }
@@ -427,7 +427,7 @@ impl<T> NonNull<[T]> {
     /// [valid]: crate::ptr#safety
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
-    pub unsafe fn as_uninit_slice(&self) -> &[MaybeUninit<T>] {
+    pub unsafe fn as_uninit_slice<'a>(&self) -> &'a [MaybeUninit<T>] {
         // SAFETY: the caller must uphold the safety contract for `as_uninit_slice`.
         unsafe { slice::from_raw_parts(self.cast().as_ptr(), self.len()) }
     }
@@ -488,7 +488,7 @@ impl<T> NonNull<[T]> {
     /// ```
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
-    pub unsafe fn as_uninit_slice_mut(&self) -> &mut [MaybeUninit<T>] {
+    pub unsafe fn as_uninit_slice_mut<'a>(&self) -> &'a mut [MaybeUninit<T>] {
         // SAFETY: the caller must uphold the safety contract for `as_uninit_slice_mut`.
         unsafe { slice::from_raw_parts_mut(self.cast().as_ptr(), self.len()) }
     }
