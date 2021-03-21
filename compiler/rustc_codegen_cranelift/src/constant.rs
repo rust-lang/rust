@@ -45,9 +45,9 @@ pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, '_>) -> bool {
         };
         match const_.val {
             ConstKind::Value(_) => {}
-            ConstKind::Unevaluated(def, ref substs, promoted) => {
+            ConstKind::Unevaluated(unevaluated) => {
                 if let Err(err) =
-                    fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), def, substs, promoted, None)
+                    fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), unevaluated, None)
                 {
                     all_constants_ok = false;
                     match err {
@@ -122,14 +122,14 @@ pub(crate) fn codegen_constant<'tcx>(
     };
     let const_val = match const_.val {
         ConstKind::Value(const_val) => const_val,
-        ConstKind::Unevaluated(def, ref substs, promoted) if fx.tcx.is_static(def.did) => {
+        ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted }) if fx.tcx.is_static(def.did) => {
             assert!(substs.is_empty());
             assert!(promoted.is_none());
 
             return codegen_static_ref(fx, def.did, fx.layout_of(const_.ty)).to_cvalue(fx);
         }
-        ConstKind::Unevaluated(def, ref substs, promoted) => {
-            match fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), def, substs, promoted, None) {
+        ConstKind::Unevaluated(unevaluated) => {
+            match fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), unevaluated, None) {
                 Ok(const_val) => const_val,
                 Err(_) => {
                     span_bug!(constant.span, "erroneous constant not captured by required_consts");

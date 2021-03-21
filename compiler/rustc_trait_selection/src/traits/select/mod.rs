@@ -34,6 +34,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::Constness;
 use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_middle::dep_graph::{DepKind, DepNodeIndex};
+use rustc_middle::mir::abstract_const::NotConstEvaluatable;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::fast_reject;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -547,7 +548,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         obligation.cause.span,
                     ) {
                         Ok(()) => Ok(EvaluatedToOk),
-                        Err(ErrorHandled::TooGeneric) => Ok(EvaluatedToAmbig),
+                        Err(NotConstEvaluatable::MentionsInfer) => Ok(EvaluatedToAmbig),
+                        Err(NotConstEvaluatable::MentionsParam) => Ok(EvaluatedToErr),
                         Err(_) => Ok(EvaluatedToErr),
                     }
                 }
@@ -556,13 +558,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     debug!(?c1, ?c2, "evaluate_predicate_recursively: equating consts");
 
                     let evaluate = |c: &'tcx ty::Const<'tcx>| {
-                        if let ty::ConstKind::Unevaluated(def, substs, promoted) = c.val {
+                        if let ty::ConstKind::Unevaluated(unevaluated) = c.val {
                             self.infcx
                                 .const_eval_resolve(
                                     obligation.param_env,
-                                    def,
-                                    substs,
-                                    promoted,
+                                    unevaluated,
                                     Some(obligation.cause.span),
                                 )
                                 .map(|val| ty::Const::from_value(self.tcx(), val, c.ty))

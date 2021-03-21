@@ -98,18 +98,18 @@ impl<'tcx> Const<'tcx> {
                 let name = tcx.hir().name(hir_id);
                 ty::ConstKind::Param(ty::ParamConst::new(index, name))
             }
-            _ => ty::ConstKind::Unevaluated(
-                def.to_global(),
-                InternalSubsts::identity_for_item(tcx, def.did.to_def_id()),
-                None,
-            ),
+            _ => ty::ConstKind::Unevaluated(ty::Unevaluated {
+                def: def.to_global(),
+                substs: InternalSubsts::identity_for_item(tcx, def.did.to_def_id()),
+                promoted: None,
+            }),
         };
 
         tcx.mk_const(ty::Const { val, ty })
     }
 
-    #[inline]
     /// Interns the given value as a constant.
+    #[inline]
     pub fn from_value(tcx: TyCtxt<'tcx>, val: ConstValue<'tcx>, ty: Ty<'tcx>) -> &'tcx Self {
         tcx.mk_const(Self { val: ConstKind::Value(val), ty })
     }

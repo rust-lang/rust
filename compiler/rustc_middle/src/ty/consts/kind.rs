@@ -12,10 +12,18 @@ use rustc_macros::HashStable;
 use rustc_target::abi::Size;
 
 use super::ScalarInt;
+/// An unevaluated, potentially generic, constant.
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable)]
+#[derive(Hash, HashStable)]
+pub struct Unevaluated<'tcx> {
+    pub def: ty::WithOptConstParam<DefId>,
+    pub substs: SubstsRef<'tcx>,
+    pub promoted: Option<Promoted>,
+}
 
 /// Represents a constant in Rust.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Hash)]
-#[derive(HashStable)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable)]
+#[derive(Hash, HashStable)]
 pub enum ConstKind<'tcx> {
     /// A const generic parameter.
     Param(ty::ParamConst),
@@ -31,7 +39,7 @@ pub enum ConstKind<'tcx> {
 
     /// Used in the HIR by using `Unevaluated` everywhere and later normalizing to one of the other
     /// variants when the code is monomorphic enough for that.
-    Unevaluated(ty::WithOptConstParam<DefId>, SubstsRef<'tcx>, Option<Promoted>),
+    Unevaluated(Unevaluated<'tcx>),
 
     /// Used to hold computed value.
     Value(ConstValue<'tcx>),
@@ -102,7 +110,7 @@ impl<'tcx> ConstKind<'tcx> {
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
     ) -> Option<Result<ConstValue<'tcx>, ErrorReported>> {
-        if let ConstKind::Unevaluated(def, substs, promoted) = self {
+        if let ConstKind::Unevaluated(Unevaluated { def, substs, promoted }) = self {
             use crate::mir::interpret::ErrorHandled;
 
             // HACK(eddyb) this erases lifetimes even though `const_eval_resolve`
@@ -132,7 +140,8 @@ impl<'tcx> ConstKind<'tcx> {
             let (param_env, substs) = param_env_and_substs.into_parts();
             // try to resolve e.g. associated constants to their definition on an impl, and then
             // evaluate the const.
-            match tcx.const_eval_resolve(param_env, def, substs, promoted, None) {
+            match tcx.const_eval_resolve(param_env, ty::Unevaluated { def, substs, promoted }, None)
+            {
                 // NOTE(eddyb) `val` contains no lifetimes/types/consts,
                 // and we use the original type, so nothing from `substs`
                 // (which may be identity substs, see above),

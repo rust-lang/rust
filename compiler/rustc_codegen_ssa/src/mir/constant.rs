@@ -30,10 +30,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::ConstantKind::Val(val, _) => return Ok(val),
         };
         match ct.val {
-            ty::ConstKind::Unevaluated(def, substs, promoted) => self
+            ty::ConstKind::Unevaluated(ct) => self
                 .cx
                 .tcx()
-                .const_eval_resolve(ty::ParamEnv::reveal_all(), def, substs, promoted, None)
+                .const_eval_resolve(ty::ParamEnv::reveal_all(), ct, None)
                 .map_err(|err| {
                     self.cx.tcx().sess.span_err(constant.span, "erroneous constant encountered");
                     err

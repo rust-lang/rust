@@ -646,8 +646,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
 
         match substituted_constant.val {
             ty::ConstKind::Value(val) => collect_const_value(self.tcx, val, self.output),
-            ty::ConstKind::Unevaluated(def, substs, promoted) => {
-                match self.tcx.const_eval_resolve(param_env, def, substs, promoted, None) {
+            ty::ConstKind::Unevaluated(unevaluated) => {
+                match self.tcx.const_eval_resolve(param_env, unevaluated, None) {
                     Ok(val) => collect_const_value(self.tcx, val, self.output),
                     Err(ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted) => {}
                     Err(ErrorHandled::TooGeneric) => span_bug!(

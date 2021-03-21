@@ -739,9 +739,8 @@ fn ident_name_compatibility_hack(
 
                 let time_macros_impl =
                     macro_name == sym::impl_macros && matches_prefix("time-macros-impl", "lib.rs");
-                if time_macros_impl
-                    || (macro_name == sym::arrays && matches_prefix("js-sys", "lib.rs"))
-                {
+                let js_sys = macro_name == sym::arrays && matches_prefix("js-sys", "lib.rs");
+                if time_macros_impl || js_sys {
                     let snippet = source_map.span_to_snippet(orig_span);
                     if snippet.as_deref() == Ok("$name") {
                         if time_macros_impl {
@@ -754,8 +753,35 @@ fn ident_name_compatibility_hack(
                                 "the `time-macros-impl` crate will stop compiling in futures version of Rust. \
                                 Please update to the latest version of the `time` crate to avoid breakage".to_string())
                             );
+                            return Some((*ident, *is_raw));
                         }
-                        return Some((*ident, *is_raw));
+                        if js_sys {
+                            if let Some(c) = path
+                                .components()
+                                .flat_map(|c| c.as_os_str().to_str())
+                                .find(|c| c.starts_with("js-sys"))
+                            {
+                                let mut version = c.trim_start_matches("js-sys-").split(".");
+                                if version.next() == Some("0")
+                                    && version.next() == Some("3")
+                                    && version
+                                        .next()
+                                        .and_then(|c| c.parse::<u32>().ok())
+                                        .map_or(false, |v| v < 40)
+                                {
+                                    rustc.sess.buffer_lint_with_diagnostic(
+                                        &PROC_MACRO_BACK_COMPAT,
+                                        orig_span,
+                                        ast::CRATE_NODE_ID,
+                                        "using an old version of `js-sys`",
+                                        BuiltinLintDiagnostics::ProcMacroBackCompat(
+                                        "older versions of the `js-sys` crate will stop compiling in future versions of Rust; \
+                                        please update to `js-sys` v0.3.40 or above".to_string())
+                                    );
+                                    return Some((*ident, *is_raw));
+                                }
+                            }
+                        }
                     }
                 }
 
