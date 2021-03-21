@@ -2,11 +2,11 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use super::platform::fs::MetadataExt as _;
 use crate::fs::{self, OpenOptions, Permissions};
 use crate::io;
 use crate::path::Path;
 use crate::sys;
-use crate::sys::platform::fs::MetadataExt as UnixMetadataExt;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner};
 // Used for `File::read` on intra-doc links
 #[allow(unused_imports)]
