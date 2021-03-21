@@ -132,6 +132,12 @@ impl TypeWalk for ProjectionTy {
     }
 }
 
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub struct DynTy {
+    /// The unknown self type.
+    pub bounds: Binders<QuantifiedWhereClauses>,
+}
+
 pub type FnSig = chalk_ir::FnSig<Interner>;
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -283,7 +289,7 @@ pub enum TyKind {
     /// represents the `Self` type inside the bounds. This is currently
     /// implicit; Chalk has the `Binders` struct to make it explicit, but it
     /// didn't seem worth the overhead yet.
-    Dyn(Arc<[WhereClause]>),
+    Dyn(DynTy),
 
     /// A placeholder for a type which could not be computed; this is propagated
     /// to avoid useless error messages. Doubles as a placeholder where type
@@ -490,6 +496,13 @@ impl<T> Binders<T> {
         Self { num_binders, value }
     }
 
+    pub fn wrap_empty(value: T) -> Self
+    where
+        T: TypeWalk,
+    {
+        Self { num_binders: 0, value: value.shift_bound_vars(DebruijnIndex::ONE) }
+    }
+
     pub fn as_ref(&self) -> Binders<&T> {
         Binders { num_binders: self.num_binders, value: &self.value }
     }
@@ -500,6 +513,10 @@ impl<T> Binders<T> {
 
     pub fn filter_map<U>(self, f: impl FnOnce(T) -> Option<U>) -> Option<Binders<U>> {
         Some(Binders { num_binders: self.num_binders, value: f(self.value)? })
+    }
+
+    pub fn skip_binders(&self) -> &T {
+        &self.value
     }
 }
 
@@ -611,6 +628,24 @@ impl TypeWalk for WhereClause {
             WhereClause::Implemented(trait_ref) => trait_ref.walk_mut_binders(f, binders),
             WhereClause::AliasEq(alias_eq) => alias_eq.walk_mut_binders(f, binders),
         }
+    }
+}
+
+pub type QuantifiedWhereClause = Binders<WhereClause>;
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct QuantifiedWhereClauses(Arc<[QuantifiedWhereClause]>);
+
+impl QuantifiedWhereClauses {
+    pub fn from_iter(
+        _interner: &Interner,
+        elements: impl IntoIterator<Item = QuantifiedWhereClause>,
+    ) -> Self {
+        QuantifiedWhereClauses(elements.into_iter().collect())
+    }
+
+    pub fn interned(&self) -> &Arc<[QuantifiedWhereClause]> {
+        &self.0
     }
 }
 
@@ -810,12 +845,14 @@ impl Ty {
     }
 
     /// If this is a `dyn Trait` type, this returns the `Trait` part.
-    pub fn dyn_trait_ref(&self) -> Option<&TraitRef> {
+    fn dyn_trait_ref(&self) -> Option<&TraitRef> {
         match self.interned(&Interner) {
-            TyKind::Dyn(bounds) => bounds.get(0).and_then(|b| match b {
-                WhereClause::Implemented(trait_ref) => Some(trait_ref),
-                _ => None,
-            }),
+            TyKind::Dyn(dyn_ty) => {
+                dyn_ty.bounds.value.interned().get(0).and_then(|b| match b.skip_binders() {
+                    WhereClause::Implemented(trait_ref) => Some(trait_ref),
+                    _ => None,
+                })
+            }
             _ => None,
         }
     }
@@ -892,7 +929,7 @@ impl Ty {
         }
     }
 
-    pub fn impl_trait_bounds(&self, db: &dyn HirDatabase) -> Option<Vec<WhereClause>> {
+    pub fn impl_trait_bounds(&self, db: &dyn HirDatabase) -> Option<Vec<QuantifiedWhereClause>> {
         match self.interned(&Interner) {
             TyKind::OpaqueType(opaque_ty_id, ..) => {
                 match db.lookup_intern_impl_trait_id((*opaque_ty_id).into()) {
@@ -905,10 +942,13 @@ impl Ty {
                             // This is only used by type walking.
                             // Parameters will be walked outside, and projection predicate is not used.
                             // So just provide the Future trait.
-                            let impl_bound = WhereClause::Implemented(TraitRef {
-                                trait_id: to_chalk_trait_id(future_trait),
-                                substitution: Substitution::empty(),
-                            });
+                            let impl_bound = Binders::new(
+                                0,
+                                WhereClause::Implemented(TraitRef {
+                                    trait_id: to_chalk_trait_id(future_trait),
+                                    substitution: Substitution::empty(),
+                                }),
+                            );
                             Some(vec![impl_bound])
                         } else {
                             None
@@ -953,6 +993,7 @@ impl Ty {
                                 }) => proj.self_type_parameter() == self,
                                 _ => false,
                             })
+                            .map(Binders::wrap_empty)
                             .collect_vec();
 
                         Some(predicates)
@@ -1094,8 +1135,8 @@ impl TypeWalk for Ty {
                     t.walk(f);
                 }
             }
-            TyKind::Dyn(predicates) => {
-                for p in predicates.iter() {
+            TyKind::Dyn(dyn_ty) => {
+                for p in dyn_ty.bounds.value.interned().iter() {
                     p.walk(f);
                 }
             }
@@ -1122,8 +1163,8 @@ impl TypeWalk for Ty {
             TyKind::Alias(AliasTy::Projection(p_ty)) => {
                 p_ty.substitution.walk_mut_binders(f, binders);
             }
-            TyKind::Dyn(predicates) => {
-                for p in make_mut_slice(predicates) {
+            TyKind::Dyn(dyn_ty) => {
+                for p in make_mut_slice(&mut dyn_ty.bounds.value.0) {
                     p.walk_mut_binders(f, binders.shifted_in());
                 }
             }
@@ -1173,7 +1214,7 @@ pub struct ReturnTypeImplTraits {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) struct ReturnTypeImplTrait {
-    pub(crate) bounds: Binders<Vec<WhereClause>>,
+    pub(crate) bounds: Binders<Vec<QuantifiedWhereClause>>,
 }
 
 pub fn to_foreign_def_id(id: TypeAliasId) -> ForeignDefId {

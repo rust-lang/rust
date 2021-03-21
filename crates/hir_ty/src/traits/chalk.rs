@@ -238,7 +238,10 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                     });
                     let bound = OpaqueTyDatumBound {
                         bounds: make_binders(
-                            vec![impl_bound.to_chalk(self.db), proj_bound.to_chalk(self.db)],
+                            vec![
+                                wrap_in_empty_binders(impl_bound).to_chalk(self.db),
+                                wrap_in_empty_binders(proj_bound).to_chalk(self.db),
+                            ],
                             1,
                         ),
                         where_clauses: make_binders(vec![], 0),
@@ -397,7 +400,6 @@ pub(crate) fn associated_ty_data_query(
         .iter()
         .flat_map(|bound| ctx.lower_type_bound(bound, self_ty.clone(), false))
         .filter_map(|pred| generic_predicate_to_inline_bound(db, &pred, &self_ty))
-        .map(|bound| make_binders(bound.shifted_in(&Interner), 0))
         .collect();
 
     let where_clauses = convert_where_clauses(db, type_alias.into(), &bound_vars);
@@ -719,4 +721,8 @@ impl From<crate::db::InternedClosureId> for chalk_ir::ClosureId<Interner> {
     fn from(id: crate::db::InternedClosureId) -> Self {
         chalk_ir::ClosureId(id.as_intern_id())
     }
+}
+
+fn wrap_in_empty_binders<T: crate::TypeWalk>(value: T) -> crate::Binders<T> {
+    crate::Binders::wrap_empty(value)
 }

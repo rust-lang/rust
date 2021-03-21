@@ -57,8 +57,8 @@ use hir_ty::{
     to_assoc_type_id,
     traits::{FnTrait, Solution, SolutionVariables},
     AliasEq, AliasTy, BoundVar, CallableDefId, CallableSig, Canonical, Cast, DebruijnIndex,
-    InEnvironment, Interner, ProjectionTy, Scalar, Substitution, Ty, TyDefId, TyKind,
-    TyVariableKind, WhereClause,
+    InEnvironment, Interner, ProjectionTy, QuantifiedWhereClause, Scalar, Substitution, Ty,
+    TyDefId, TyKind, TyVariableKind, WhereClause,
 };
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
@@ -2022,7 +2022,7 @@ impl Type {
     pub fn as_impl_traits(&self, db: &dyn HirDatabase) -> Option<Vec<Trait>> {
         self.ty.value.impl_trait_bounds(db).map(|it| {
             it.into_iter()
-                .filter_map(|pred| match pred {
+                .filter_map(|pred| match pred.skip_binders() {
                     hir_ty::WhereClause::Implemented(trait_ref) => {
                         Some(Trait::from(trait_ref.hir_trait_id()))
                     }
@@ -2061,11 +2061,11 @@ impl Type {
         fn walk_bounds(
             db: &dyn HirDatabase,
             type_: &Type,
-            bounds: &[WhereClause],
+            bounds: &[QuantifiedWhereClause],
             cb: &mut impl FnMut(Type),
         ) {
             for pred in bounds {
-                match pred {
+                match pred.skip_binders() {
                     WhereClause::Implemented(trait_ref) => {
                         cb(type_.clone());
                         // skip the self type. it's likely the type we just got the bounds from
@@ -2107,7 +2107,12 @@ impl Type {
                     }
                 }
                 TyKind::Dyn(bounds) => {
-                    walk_bounds(db, &type_.derived(ty.clone()), bounds.as_ref(), cb);
+                    walk_bounds(
+                        db,
+                        &type_.derived(ty.clone()),
+                        bounds.bounds.skip_binders().interned(),
+                        cb,
+                    );
                 }
 
                 TyKind::Ref(_, ty) | TyKind::Raw(_, ty) | TyKind::Array(ty) | TyKind::Slice(ty) => {

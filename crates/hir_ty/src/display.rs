@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use std::{borrow::Cow, fmt};
+use std::fmt;
 
 use arrayvec::ArrayVec;
 use chalk_ir::Mutability;
@@ -20,7 +20,7 @@ use crate::{
     db::HirDatabase, from_assoc_type_id, from_foreign_def_id, from_placeholder_idx, primitive,
     to_assoc_type_id, traits::chalk::from_chalk, utils::generics, AdtId, AliasEq, AliasTy,
     CallableDefId, CallableSig, DomainGoal, ImplTraitId, Interner, Lifetime, OpaqueTy,
-    ProjectionTy, Scalar, Substitution, TraitRef, Ty, TyKind, WhereClause,
+    ProjectionTy, QuantifiedWhereClause, Scalar, Substitution, TraitRef, Ty, TyKind, WhereClause,
 };
 
 pub struct HirFormatter<'a> {
@@ -328,9 +328,9 @@ impl HirDisplay for Ty {
 
                 // FIXME: all this just to decide whether to use parentheses...
                 let datas;
-                let predicates = match t.interned(&Interner) {
-                    TyKind::Dyn(predicates) if predicates.len() > 1 => {
-                        Cow::Borrowed(predicates.as_ref())
+                let predicates: Vec<_> = match t.interned(&Interner) {
+                    TyKind::Dyn(dyn_ty) if dyn_ty.bounds.skip_binders().interned().len() > 1 => {
+                        dyn_ty.bounds.skip_binders().interned().iter().cloned().collect()
                     }
                     &TyKind::Alias(AliasTy::Opaque(OpaqueTy {
                         opaque_ty_id,
@@ -345,17 +345,21 @@ impl HirDisplay for Ty {
                                 .as_ref()
                                 .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
                             let bounds = data.subst(parameters);
-                            Cow::Owned(bounds.value)
+                            bounds.value
                         } else {
-                            Cow::Borrowed(&[][..])
+                            Vec::new()
                         }
                     }
-                    _ => Cow::Borrowed(&[][..]),
+                    _ => Vec::new(),
                 };
 
-                if let [WhereClause::Implemented(trait_ref), _] = predicates.as_ref() {
+                if let Some(WhereClause::Implemented(trait_ref)) =
+                    predicates.get(0).map(|b| b.skip_binders())
+                {
                     let trait_ = trait_ref.hir_trait_id();
-                    if fn_traits(f.db.upcast(), trait_).any(|it| it == trait_) {
+                    if fn_traits(f.db.upcast(), trait_).any(|it| it == trait_)
+                        && predicates.len() <= 2
+                    {
                         return write!(f, "{}", ty_display);
                     }
                 }
@@ -586,13 +590,25 @@ impl HirDisplay for Ty {
                                 _ => false,
                             })
                             .collect::<Vec<_>>();
-                        write_bounds_like_dyn_trait_with_prefix("impl", &bounds, f)?;
+                        write_bounds_like_dyn_trait_with_prefix(
+                            "impl",
+                            &bounds
+                                .iter()
+                                .cloned()
+                                .map(crate::Binders::wrap_empty)
+                                .collect::<Vec<_>>(),
+                            f,
+                        )?;
                     }
                 }
             }
             TyKind::BoundVar(idx) => write!(f, "?{}.{}", idx.debruijn.depth(), idx.index)?,
-            TyKind::Dyn(predicates) => {
-                write_bounds_like_dyn_trait_with_prefix("dyn", predicates, f)?;
+            TyKind::Dyn(dyn_ty) => {
+                write_bounds_like_dyn_trait_with_prefix(
+                    "dyn",
+                    dyn_ty.bounds.skip_binders().interned(),
+                    f,
+                )?;
             }
             TyKind::Alias(AliasTy::Projection(p_ty)) => p_ty.hir_fmt(f)?,
             TyKind::Alias(AliasTy::Opaque(opaque_ty)) => {
@@ -661,7 +677,7 @@ fn fn_traits(db: &dyn DefDatabase, trait_: TraitId) -> impl Iterator<Item = Trai
 
 pub fn write_bounds_like_dyn_trait_with_prefix(
     prefix: &str,
-    predicates: &[WhereClause],
+    predicates: &[QuantifiedWhereClause],
     f: &mut HirFormatter,
 ) -> Result<(), HirDisplayError> {
     write!(f, "{}", prefix)?;
@@ -674,7 +690,7 @@ pub fn write_bounds_like_dyn_trait_with_prefix(
 }
 
 fn write_bounds_like_dyn_trait(
-    predicates: &[WhereClause],
+    predicates: &[QuantifiedWhereClause],
     f: &mut HirFormatter,
 ) -> Result<(), HirDisplayError> {
     // Note: This code is written to produce nice results (i.e.
@@ -687,7 +703,7 @@ fn write_bounds_like_dyn_trait(
     let mut angle_open = false;
     let mut is_fn_trait = false;
     for p in predicates.iter() {
-        match p {
+        match p.skip_binders() {
             WhereClause::Implemented(trait_ref) => {
                 let trait_ = trait_ref.hir_trait_id();
                 if !is_fn_trait {
