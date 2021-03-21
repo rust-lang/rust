@@ -2199,6 +2199,7 @@ pub enum ScopeDef {
     ImplSelfType(Impl),
     AdtSelfType(Adt),
     Local(Local),
+    Label(Label),
     Unknown,
 }
 

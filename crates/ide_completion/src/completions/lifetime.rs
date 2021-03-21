@@ -1,4 +1,4 @@
-//! Completes lifetimes.
+//! Completes lifetimes and labels.
 use hir::ScopeDef;
 
 use crate::{completions::Completions, context::CompletionContext};
@@ -27,6 +27,18 @@ pub(crate) fn complete_lifetime(acc: &mut Completions, ctx: &CompletionContext) 
     if param_lifetime.is_none() {
         acc.add_static_lifetime(ctx);
     }
+}
+
+/// Completes labels.
+pub(crate) fn complete_label(acc: &mut Completions, ctx: &CompletionContext) {
+    if !ctx.is_label_ref {
+        return;
+    }
+    ctx.scope.process_all_names(&mut |name, res| {
+        if let ScopeDef::Label(_) = res {
+            acc.add_resolution(ctx, name.to_string(), &res);
+        }
+    });
 }
 
 #[cfg(test)]
@@ -175,6 +187,98 @@ fn foo<'footime, 'lifetime: 'a$0>() {}
 "#,
             expect![[r#"
                 lt 'footime
+            "#]],
+        );
+    }
+
+    #[test]
+    fn complete_label_in_loop() {
+        check(
+            r#"
+fn foo() {
+    'foop: loop {
+        break '$0
+    }
+}
+"#,
+            expect![[r#"
+                lb 'foop
+            "#]],
+        );
+        check(
+            r#"
+fn foo() {
+    'foop: loop {
+        continue '$0
+    }
+}
+"#,
+            expect![[r#"
+                lb 'foop
+            "#]],
+        );
+    }
+
+    #[test]
+    fn complete_label_in_block_nested() {
+        check(
+            r#"
+fn foo() {
+    'foop: {
+        'baap: {
+            break '$0
+        }
+    }
+}
+"#,
+            expect![[r#"
+                lb 'baap
+                lb 'foop
+            "#]],
+        );
+    }
+
+    #[test]
+    fn complete_label_in_loop_with_value() {
+        check(
+            r#"
+fn foo() {
+    'foop: loop {
+        break '$0 i32;
+    }
+}
+"#,
+            expect![[r#"
+                lb 'foop
+            "#]],
+        );
+    }
+
+    #[test]
+    fn complete_label_in_while_cond() {
+        check(
+            r#"
+fn foo() {
+    'outer: while { 'inner: loop { break '$0 } } {}
+}
+"#,
+            expect![[r#"
+                lb 'inner
+                lb 'outer
+            "#]],
+        );
+    }
+
+    #[test]
+    fn complete_label_in_for_iterable() {
+        check(
+            r#"
+fn foo() {
+    'outer: for _ in [{ 'inner: loop { break '$0 } }] {}
+}
+"#,
+            expect![[r#"
+                lb 'inner
             "#]],
         );
     }

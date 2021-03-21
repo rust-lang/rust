@@ -839,6 +839,10 @@ impl<'a> SemanticsScope<'a> {
                     let parent = resolver.body_owner().unwrap();
                     ScopeDef::Local(Local { parent, pat_id })
                 }
+                resolver::ScopeDef::Label(label_id) => {
+                    let parent = resolver.body_owner().unwrap();
+                    ScopeDef::Label(Label { parent, label_id })
+                }
             };
             f(name, def)
         })
