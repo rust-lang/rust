@@ -56,9 +56,9 @@ use hir_ty::{
     primitive::UintTy,
     to_assoc_type_id,
     traits::{FnTrait, Solution, SolutionVariables},
-    AliasEq, AliasTy, BoundVar, CallableDefId, CallableSig, Canonical, Cast, DebruijnIndex,
-    InEnvironment, Interner, ProjectionTy, QuantifiedWhereClause, Scalar, Substitution, Ty,
-    TyDefId, TyKind, TyVariableKind, WhereClause,
+    AliasEq, AliasTy, BoundVar, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast,
+    DebruijnIndex, InEnvironment, Interner, ProjectionTy, QuantifiedWhereClause, Scalar,
+    Substitution, Ty, TyDefId, TyKind, TyVariableKind, WhereClause,
 };
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
@@ -1723,7 +1723,10 @@ impl Type {
             None => return false,
         };
 
-        let canonical_ty = Canonical { value: self.ty.value.clone(), kinds: Arc::new([]) };
+        let canonical_ty = Canonical {
+            value: self.ty.value.clone(),
+            binders: CanonicalVarKinds::empty(&Interner),
+        };
         method_resolution::implements_trait(
             &canonical_ty,
             db,
@@ -1745,7 +1748,10 @@ impl Type {
             None => return false,
         };
 
-        let canonical_ty = Canonical { value: self.ty.value.clone(), kinds: Arc::new([]) };
+        let canonical_ty = Canonical {
+            value: self.ty.value.clone(),
+            binders: CanonicalVarKinds::empty(&Interner),
+        };
         method_resolution::implements_trait_unique(
             &canonical_ty,
             db,
@@ -1769,7 +1775,7 @@ impl Type {
                 self.ty.environment.clone(),
                 trait_ref.cast(&Interner),
             ),
-            kinds: Arc::new([]),
+            binders: CanonicalVarKinds::empty(&Interner),
         };
 
         db.trait_solve(self.krate, goal).is_some()
@@ -1786,8 +1792,8 @@ impl Type {
             .push(self.ty.value.clone())
             .fill(args.iter().map(|t| t.ty.value.clone()))
             .build();
-        let goal = Canonical {
-            value: InEnvironment::new(
+        let goal = Canonical::new(
+            InEnvironment::new(
                 self.ty.environment.clone(),
                 AliasEq {
                     alias: AliasTy::Projection(ProjectionTy {
@@ -1799,8 +1805,8 @@ impl Type {
                 }
                 .cast(&Interner),
             ),
-            kinds: Arc::new([TyVariableKind::General]),
-        };
+            [TyVariableKind::General].iter().copied(),
+        );
 
         match db.trait_solve(self.krate, goal)? {
             Solution::Unique(SolutionVariables(subst)) => {
@@ -1911,7 +1917,10 @@ impl Type {
     pub fn autoderef<'a>(&'a self, db: &'a dyn HirDatabase) -> impl Iterator<Item = Type> + 'a {
         // There should be no inference vars in types passed here
         // FIXME check that?
-        let canonical = Canonical { value: self.ty.value.clone(), kinds: Arc::new([]) };
+        let canonical = Canonical {
+            value: self.ty.value.clone(),
+            binders: CanonicalVarKinds::empty(&Interner),
+        };
         let environment = self.ty.environment.clone();
         let ty = InEnvironment { value: canonical, environment };
         autoderef(db, Some(self.krate), ty)
@@ -1962,7 +1971,10 @@ impl Type {
         // There should be no inference vars in types passed here
         // FIXME check that?
         // FIXME replace Unknown by bound vars here
-        let canonical = Canonical { value: self.ty.value.clone(), kinds: Arc::new([]) };
+        let canonical = Canonical {
+            value: self.ty.value.clone(),
+            binders: CanonicalVarKinds::empty(&Interner),
+        };
 
         let env = self.ty.environment.clone();
         let krate = krate.id;
@@ -1993,7 +2005,10 @@ impl Type {
         // There should be no inference vars in types passed here
         // FIXME check that?
         // FIXME replace Unknown by bound vars here
-        let canonical = Canonical { value: self.ty.value.clone(), kinds: Arc::new([]) };
+        let canonical = Canonical {
+            value: self.ty.value.clone(),
+            binders: CanonicalVarKinds::empty(&Interner),
+        };
 
         let env = self.ty.environment.clone();
         let krate = krate.id;

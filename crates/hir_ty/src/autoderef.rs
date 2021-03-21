@@ -16,8 +16,8 @@ use crate::{
     to_assoc_type_id, to_chalk_trait_id,
     traits::{InEnvironment, Solution},
     utils::generics,
-    AliasEq, AliasTy, BoundVar, Canonical, DebruijnIndex, Interner, ProjectionTy, Substitution,
-    TraitRef, Ty, TyKind,
+    AliasEq, AliasTy, BoundVar, Canonical, CanonicalVarKinds, DebruijnIndex, Interner,
+    ProjectionTy, Substitution, TraitRef, Ty, TyKind,
 };
 
 const AUTODEREF_RECURSION_LIMIT: usize = 10;
@@ -40,7 +40,7 @@ pub(crate) fn deref(
     ty: InEnvironment<&Canonical<Ty>>,
 ) -> Option<Canonical<Ty>> {
     if let Some(derefed) = ty.value.value.builtin_deref() {
-        Some(Canonical { value: derefed, kinds: ty.value.kinds.clone() })
+        Some(Canonical { value: derefed, binders: ty.value.binders.clone() })
     } else {
         deref_by_trait(db, krate, ty)
     }
@@ -73,7 +73,7 @@ fn deref_by_trait(
     let trait_ref =
         TraitRef { trait_id: to_chalk_trait_id(deref_trait), substitution: parameters.clone() };
     let implements_goal = Canonical {
-        kinds: ty.value.kinds.clone(),
+        binders: ty.value.binders.clone(),
         value: InEnvironment {
             value: trait_ref.cast(&Interner),
             environment: ty.environment.clone(),
@@ -89,18 +89,27 @@ fn deref_by_trait(
             associated_ty_id: to_assoc_type_id(target),
             substitution: parameters,
         }),
-        ty: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, ty.value.kinds.len()))
-            .intern(&Interner),
+        ty: TyKind::BoundVar(BoundVar::new(
+            DebruijnIndex::INNERMOST,
+            ty.value.binders.len(&Interner),
+        ))
+        .intern(&Interner),
     };
 
     let obligation = projection.cast(&Interner);
 
     let in_env = InEnvironment { value: obligation, environment: ty.environment };
 
-    let canonical = Canonical::new(
-        in_env,
-        ty.value.kinds.iter().copied().chain(Some(chalk_ir::TyVariableKind::General)),
-    );
+    let canonical = Canonical {
+        value: in_env,
+        binders: CanonicalVarKinds::from_iter(
+            &Interner,
+            ty.value.binders.iter(&Interner).cloned().chain(Some(chalk_ir::WithKind::new(
+                chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General),
+                chalk_ir::UniverseIndex::ROOT,
+            ))),
+        ),
+    };
 
     let solution = db.trait_solve(krate, canonical)?;
 
@@ -121,7 +130,7 @@ fn deref_by_trait(
             // assumptions will be broken. We would need to properly introduce
             // new variables in that case
 
-            for i in 1..vars.0.kinds.len() {
+            for i in 1..vars.0.binders.len(&Interner) {
                 if vars.0.value[i - 1].interned(&Interner)
                     != &TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, i - 1))
                 {
@@ -131,7 +140,7 @@ fn deref_by_trait(
             }
             Some(Canonical {
                 value: vars.0.value[vars.0.value.len() - 1].clone(),
-                kinds: vars.0.kinds.clone(),
+                binders: vars.0.binders.clone(),
             })
         }
         Solution::Ambig(_) => {
