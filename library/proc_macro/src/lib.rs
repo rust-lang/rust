@@ -40,7 +40,7 @@ pub mod bridge;
 mod diagnostic;
 
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-pub use diagnostic::{Diagnostic, Level, MultiSpan};
+pub use diagnostic::{Diagnostic, Level, Spanned};
 
 use std::cmp::Ordering;
 use std::ops::RangeBounds;
@@ -323,12 +323,12 @@ impl !Send for Span {}
 impl !Sync for Span {}
 
 macro_rules! diagnostic_method {
-    ($name:ident, $level:expr) => {
+    ($name:ident) => {
         /// Creates a new `Diagnostic` with the given `message` at the span
         /// `self`.
         #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
-        pub fn $name<T: Into<String>>(self, message: T) -> Diagnostic {
-            Diagnostic::spanned(self, $level, message)
+        pub fn $name(self, message: &str) -> Diagnostic {
+            Diagnostic::$name(message).mark(self)
         }
     };
 }
@@ -457,10 +457,8 @@ impl Span {
         Span(bridge::client::Span::recover_proc_macro_span(id))
     }
 
-    diagnostic_method!(error, Level::Error);
-    diagnostic_method!(warning, Level::Warning);
-    diagnostic_method!(note, Level::Note);
-    diagnostic_method!(help, Level::Help);
+    diagnostic_method!(error);
+    diagnostic_method!(note);
 }
 
 /// Prints a span in a form convenient for debugging.

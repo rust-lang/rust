@@ -21,7 +21,8 @@ fn parse(input: TokenStream) -> Result<(), Diagnostic> {
     if !hi_spans.is_empty() {
         return Err(Span::def_site()
                        .error("hello to you, too!")
-                       .span_note(hi_spans, "found these 'hi's"));
+                       .with_note("found these hi's")
+                       .mark(hi_spans));
     }
 
     Ok(())

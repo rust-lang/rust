@@ -6,13 +6,12 @@
 
 extern crate proc_macro;
 
-use proc_macro::{TokenStream, TokenTree, Span};
+use proc_macro::{Span, TokenStream, TokenTree};
 
 fn lit_span(tt: TokenTree) -> (Span, String) {
     match tt {
-        TokenTree::Literal(..) |
-        TokenTree::Group(..) => (tt.span(), tt.to_string().trim().into()),
-        _ => panic!("expected a literal in token tree, got: {:?}", tt)
+        TokenTree::Literal(..) | TokenTree::Group(..) => (tt.span(), tt.to_string().trim().into()),
+        _ => panic!("expected a literal in token tree, got: {:?}", tt),
     }
 }
 
@@ -28,9 +27,11 @@ pub fn assert_span_pos(input: TokenStream) -> TokenStream {
 
     let sp1s = sp1.start();
     if (line, col) != (sp1s.line, sp1s.column) {
-        let msg = format!("line/column mismatch: ({}, {}) != ({}, {})", line, col,
-            sp1s.line, sp1s.column);
-        sp1.error(msg).emit();
+        let msg = format!(
+            "line/column mismatch: ({}, {}) != ({}, {})",
+            line, col, sp1s.line, sp1s.column
+        );
+        sp1.error(&msg).emit();
     }
 
     "".parse().unwrap()

@@ -39,7 +39,7 @@ error: `code` not specified
 LL | struct ErrorCodeNotProvided {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: use the [code = "..."] attribute to set this diagnostic's error code 
+   = help: use the [code = "..."] attribute to set this diagnostic's error code
 
 error: the `#[message = "..."]` attribute can only be applied to fields of type Span
   --> $DIR/session-derive-errors.rs:101:5

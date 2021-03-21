@@ -14,9 +14,10 @@ fn parse(input: TokenStream) -> Result<(), Diagnostic> {
     for tree in input {
         let span = tree.span();
         if count >= 3 {
-            return Err(span.error(format!("expected EOF, found `{}`.", tree))
-                           .span_note(last_span, "last good input was here")
-                           .help("input must be: `===`"))
+            return Err(span.error(&format!("expected EOF, found `{}`.", tree))
+                           .with_note("last good input was here")
+                           .mark(last_span)
+                           .with_help("input must be: `===`"))
         }
 
         if let TokenTree::Punct(ref tt) = tree {
@@ -26,13 +27,13 @@ fn parse(input: TokenStream) -> Result<(), Diagnostic> {
                 continue
             }
         }
-        return Err(span.error(format!("expected `=`, found `{}`.", tree)));
+        return Err(span.error(&format!("expected `=`, found `{}`.", tree)));
     }
 
     if count < 3 {
         return Err(Span::def_site()
-                       .error(format!("found {} equal signs, need exactly 3", count))
-                       .help("input must be: `===`"))
+                       .error(&format!("found {} equal signs, need exactly 3", count))
+                       .with_help("input must be: `===`"))
     }
 
     Ok(())
