@@ -1,5 +1,6 @@
 //! Codegen of a single function
 
+use cranelift_codegen::binemit::{NullStackMapSink, NullTrapSink};
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::layout::FnAbiExt;
@@ -131,7 +132,7 @@ pub(crate) fn codegen_fn<'tcx>(
     let module = &mut cx.module;
     tcx.sess.time("define function", || {
         module
-            .define_function(func_id, context, &mut cranelift_codegen::binemit::NullTrapSink {})
+            .define_function(func_id, context, &mut NullTrapSink {}, &mut NullStackMapSink {})
             .unwrap()
     });
 

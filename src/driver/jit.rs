@@ -5,6 +5,7 @@ use std::cell::RefCell;
 use std::ffi::CString;
 use std::os::raw::{c_char, c_int};
 
+use cranelift_codegen::binemit::{NullStackMapSink, NullTrapSink};
 use rustc_codegen_ssa::CrateInfo;
 use rustc_middle::mir::mono::MonoItem;
 use rustc_session::config::EntryFnType;
@@ -297,7 +298,8 @@ fn codegen_shim<'tcx>(cx: &mut CodegenCx<'_, 'tcx>, inst: Instance<'tcx>) {
         .define_function(
             func_id,
             &mut Context::for_function(trampoline),
-            &mut cranelift_codegen::binemit::NullTrapSink {},
+            &mut NullTrapSink {},
+            &mut NullStackMapSink {},
         )
         .unwrap();
 }
