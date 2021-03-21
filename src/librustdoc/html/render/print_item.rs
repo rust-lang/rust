@@ -131,6 +131,23 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer)
     }
 }
 
+/// For large structs, enums, unions, etc, determine whether to hide their fields
+fn should_hide_fields(n_fields: usize) -> bool {
+    // todo: figure out what this should be
+    n_fields > 5
+}
+
+fn toggle_open(w: &mut Buffer, text: &str)
+{
+    write!(w, "<div class=\"docblock type-contents-toggle\" data-toggle-text=\"{}\">", text);
+}
+
+fn toggle_close(w: &mut Buffer)
+{
+    w.write_str("</div>");
+}
+
+
 fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) {
     document(w, cx, item, None);
 
@@ -816,6 +833,10 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
             w.write_str(" {}");
         } else {
             w.write_str(" {\n");
+            let toggle = should_hide_fields(e.variants.len());
+            if toggle {
+                toggle_open(w, "variants");
+            }
             for v in &e.variants {
                 w.write_str("    ");
                 let name = v.name.as_ref().unwrap();
@@ -843,6 +864,9 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
 
             if e.variants_stripped {
                 w.write_str("    // some variants omitted\n");
+            }
+            if toggle {
+                toggle_close(w);
             }
             w.write_str("}");
         }

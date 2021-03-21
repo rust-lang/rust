@@ -2703,6 +2703,10 @@ function hideThemeButtonState() {
                         }
                     });
                 }
+            } else if (hasClass(e, "type-contents-toggle")) {
+                let text = e.getAttribute("data-toggle-text");
+                let tog = createToggle(toggle, `Show ${text}`, null, "", true);
+                e.parentNode.insertBefore(tog,  e);
             }
             if (e.parentNode.id === "main") {
                 var otherMessage = "";

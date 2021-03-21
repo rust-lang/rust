@@ -970,6 +970,10 @@ a.test-arrow:hover{
 	position: absolute;
 	left: -23px;
 	top: 0;
+
+	/* The click event for this is defined on the document,
+	   so bubbling does not work. See https://github.com/rust-lang/rust/issues/83332 */
+	z-index: 10;
 }
 
 h3 > .collapse-toggle, h4 > .collapse-toggle {
@@ -1054,10 +1058,9 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	margin-top: 3px;
 }
 
+/* for enum and struct fields */
 .enum > .toggle-wrapper + .docblock, .struct > .toggle-wrapper + .docblock {
-	margin-left: 30px;
-	margin-bottom: 20px;
-	margin-top: 5px;
+	margin-left: 0px;
 }
 
 .docblock > .section-header:first-child {
@@ -1067,10 +1070,6 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 
 .docblock > .section-header:first-child:hover > a:before {
 	left: -10px;
-}
-
-.enum > .collapsed, .struct > .collapsed {
-	margin-bottom: 25px;
 }
 
 #main > .variant, #main > .structfield {
