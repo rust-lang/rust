@@ -333,8 +333,7 @@ impl ast::Use {
             .and_then(ast::Whitespace::cast);
         if let Some(next_ws) = next_ws {
             let ws_text = next_ws.syntax().text();
-            if ws_text.starts_with('\n') {
-                let rest = &ws_text[1..];
+            if let Some(rest) = ws_text.strip_prefix('\n') {
                 if rest.is_empty() {
                     res.delete(next_ws.syntax())
                 } else {
