@@ -713,6 +713,27 @@ b! { static = #[] ();}
 }
 
 #[test]
+fn macros_defining_macros() {
+    check(
+        r#"
+macro_rules! item {
+    ($item:item) => { $item }
+}
+
+item! {
+    macro_rules! indirect_macro { () => { struct S {} } }
+}
+
+indirect_macro!();
+    "#,
+        expect![[r#"
+            crate
+            S: t
+        "#]],
+    );
+}
+
+#[test]
 fn resolves_proc_macros() {
     check(
         r"
