@@ -84,7 +84,11 @@ impl HirFileId {
                     }
                     MacroCallId::EagerMacro(id) => {
                         let loc = db.lookup_intern_eager_expansion(id);
-                        loc.call.file_id
+                        if let Some(included_file) = loc.included_file {
+                            return included_file;
+                        } else {
+                            loc.call.file_id
+                        }
                     }
                 };
                 file_id.original_file(db)
@@ -187,6 +191,21 @@ impl HirFileId {
                 Some(item.with_value(ast::Item::cast(item.value.clone())?))
             }
         }
+    }
+
+    /// Return whether this file is an include macro
+    pub fn is_include_macro(&self, db: &dyn db::AstDatabase) -> bool {
+        match self.0 {
+            HirFileIdRepr::MacroFile(macro_file) => match macro_file.macro_call_id {
+                MacroCallId::EagerMacro(id) => {
+                    let loc = db.lookup_intern_eager_expansion(id);
+                    return loc.included_file.is_some();
+                }
+                _ => {}
+            },
+            _ => {}
+        }
+        false
     }
 }
 
@@ -315,6 +334,8 @@ pub struct EagerCallLoc {
     pub(crate) subtree: Arc<tt::Subtree>,
     pub(crate) krate: CrateId,
     pub(crate) call: AstId<ast::MacroCall>,
+    // The included file ID of the include macro.
+    pub(crate) included_file: Option<FileId>,
 }
 
 /// ExpansionInfo mainly describes how to map text range between src and expanded macro

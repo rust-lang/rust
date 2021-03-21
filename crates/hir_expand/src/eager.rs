@@ -124,6 +124,7 @@ pub fn expand_eager_macro(
             subtree: Arc::new(parsed_args.clone()),
             krate,
             call: call_id,
+            included_file: None,
         }
     });
     let arg_file_id: MacroCallId = arg_id.into();
@@ -143,9 +144,15 @@ pub fn expand_eager_macro(
     if let MacroDefKind::BuiltInEager(eager, _) = def.kind {
         let res = eager.expand(db, arg_id, &subtree);
 
-        let (subtree, fragment) = diagnostic_sink.expand_result_option(res)?;
-        let eager =
-            EagerCallLoc { def, fragment, subtree: Arc::new(subtree), krate, call: call_id };
+        let expanded = diagnostic_sink.expand_result_option(res)?;
+        let eager = EagerCallLoc {
+            def,
+            fragment: expanded.fragment,
+            subtree: Arc::new(expanded.subtree),
+            krate,
+            call: call_id,
+            included_file: expanded.included_file,
+        };
 
         Ok(db.intern_eager_expansion(eager))
     } else {
