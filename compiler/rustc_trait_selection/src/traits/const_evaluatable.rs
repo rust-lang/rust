@@ -13,7 +13,7 @@ use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::InferCtxt;
-use rustc_middle::mir::abstract_const::{Node, NodeId};
+use rustc_middle::mir::abstract_const::{Node, NodeId, NotConstEvaluatable};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::mir::{self, Rvalue, StatementKind, TerminatorKind};
 use rustc_middle::ty::subst::{Subst, SubstsRef};
@@ -32,7 +32,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
     substs: SubstsRef<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     span: Span,
-) -> Result<(), ErrorHandled> {
+) -> Result<(), NotConstEvaluatable> {
     debug!("is_const_evaluatable({:?}, {:?})", def, substs);
     if infcx.tcx.features().const_evaluatable_checked {
         let tcx = infcx.tcx;
@@ -103,29 +103,10 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
 
                 match failure_kind {
                     FailureKind::MentionsInfer => {
-                        return Err(ErrorHandled::TooGeneric);
+                        return Err(NotConstEvaluatable::MentionsInfer);
                     }
                     FailureKind::MentionsParam => {
-                        // FIXME(const_evaluatable_checked): Better error message.
-                        let mut err =
-                            infcx.tcx.sess.struct_span_err(span, "unconstrained generic constant");
-                        let const_span = tcx.def_span(def.did);
-                        // FIXME(const_evaluatable_checked): Update this suggestion once
-                        // explicit const evaluatable bounds are implemented.
-                        if let Ok(snippet) = infcx.tcx.sess.source_map().span_to_snippet(const_span)
-                        {
-                            err.span_help(
-                                tcx.def_span(def.did),
-                                &format!("try adding a `where` bound using this expression: `where [u8; {}]: Sized`", snippet),
-                            );
-                        } else {
-                            err.span_help(
-                                const_span,
-                                "consider adding a `where` bound for this expression",
-                            );
-                        }
-                        err.emit();
-                        return Err(ErrorHandled::Reported(ErrorReported));
+                        return Err(NotConstEvaluatable::MentionsParam);
                     }
                     FailureKind::Concrete => {
                         // Dealt with below by the same code which handles this
@@ -180,34 +161,16 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
 
     debug!(?concrete, "is_const_evaluatable");
     match concrete {
-        Err(ErrorHandled::TooGeneric) if !substs.has_infer_types_or_consts() => {
-            // FIXME(const_evaluatable_checked): We really should move
-            // emitting this error message to fulfill instead. For
-            // now this is easier.
-            //
-            // This is not a problem without `const_evaluatable_checked` as
-            // all `ConstEvaluatable` predicates have to be fulfilled for compilation
-            // to succeed.
-            //
-            // @lcnr: We already emit an error for things like
-            // `fn test<const N: usize>() -> [0 - N]` eagerly here,
-            // so until we fix this I don't really care.
-
-            let mut err = infcx
-                .tcx
-                .sess
-                .struct_span_err(span, "constant expression depends on a generic parameter");
-            // FIXME(const_generics): we should suggest to the user how they can resolve this
-            // issue. However, this is currently not actually possible
-            // (see https://github.com/rust-lang/rust/issues/66962#issuecomment-575907083).
-            //
-            // Note that with `feature(const_evaluatable_checked)` this case should not
-            // be reachable.
-            err.note("this may fail depending on what value the parameter takes");
-            err.emit();
-            Err(ErrorHandled::Reported(ErrorReported))
+        Err(ErrorHandled::TooGeneric) => Err(match substs.has_infer_types_or_consts() {
+            true => NotConstEvaluatable::MentionsInfer,
+            false => NotConstEvaluatable::MentionsParam,
+        }),
+        Err(ErrorHandled::Linted) => {
+            infcx.tcx.sess.delay_span_bug(span, "constant in type had error reported as lint");
+            Err(NotConstEvaluatable::Error(ErrorReported))
         }
-        c => c.map(drop),
+        Err(ErrorHandled::Reported(e)) => Err(NotConstEvaluatable::Error(e)),
+        Ok(_) => Ok(()),
     }
 }
 

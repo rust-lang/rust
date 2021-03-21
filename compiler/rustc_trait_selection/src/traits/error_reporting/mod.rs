@@ -2,10 +2,10 @@ pub mod on_unimplemented;
 pub mod suggestions;
 
 use super::{
-    ConstEvalFailure, EvaluationResult, FulfillmentError, FulfillmentErrorCode,
-    MismatchedProjectionTypes, Obligation, ObligationCause, ObligationCauseCode,
-    OnUnimplementedDirective, OnUnimplementedNote, OutputTypeParameterMismatch, Overflow,
-    PredicateObligation, SelectionContext, SelectionError, TraitNotObjectSafe,
+    EvaluationResult, FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes,
+    Obligation, ObligationCause, ObligationCauseCode, OnUnimplementedDirective,
+    OnUnimplementedNote, OutputTypeParameterMismatch, Overflow, PredicateObligation,
+    SelectionContext, SelectionError, TraitNotObjectSafe,
 };
 
 use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCode};
@@ -17,7 +17,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::Node;
-use rustc_middle::mir::interpret::ErrorHandled;
+use rustc_middle::mir::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::{
@@ -738,21 +738,56 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let violations = self.tcx.object_safety_violations(did);
                 report_object_safety_error(self.tcx, span, did, violations)
             }
-            ConstEvalFailure(ErrorHandled::TooGeneric) => {
-                bug!("too generic should have been handled in `is_const_evaluatable`");
+
+            SelectionError::NotConstEvaluatable(NotConstEvaluatable::MentionsInfer) => {
+                bug!(
+                    "MentionsInfer should have been handled in `traits/fulfill.rs` or `traits/select/mod.rs`"
+                )
             }
-            // Already reported in the query.
-            ConstEvalFailure(ErrorHandled::Reported(ErrorReported)) => {
-                // FIXME(eddyb) remove this once `ErrorReported` becomes a proof token.
-                self.tcx.sess.delay_span_bug(span, "`ErrorReported` without an error");
-                return;
+            SelectionError::NotConstEvaluatable(NotConstEvaluatable::MentionsParam) => {
+                if !self.tcx.features().const_evaluatable_checked {
+                    let mut err = self.tcx.sess.struct_span_err(
+                        span,
+                        "constant expression depends on a generic parameter",
+                    );
+                    // FIXME(const_generics): we should suggest to the user how they can resolve this
+                    // issue. However, this is currently not actually possible
+                    // (see https://github.com/rust-lang/rust/issues/66962#issuecomment-575907083).
+                    //
+                    // Note that with `feature(const_evaluatable_checked)` this case should not
+                    // be reachable.
+                    err.note("this may fail depending on what value the parameter takes");
+                    err.emit();
+                    return;
+                }
+
+                match obligation.predicate.kind().skip_binder() {
+                    ty::PredicateKind::ConstEvaluatable(def, _) => {
+                        let mut err =
+                            self.tcx.sess.struct_span_err(span, "unconstrained generic constant");
+                        let const_span = self.tcx.def_span(def.did);
+                        match self.tcx.sess.source_map().span_to_snippet(const_span) {
+                            Ok(snippet) => err.help(&format!(
+                                "try adding a `where` bound using this expression: `where [(); {}]:`",
+                                snippet
+                            )),
+                            _ => err.help("consider adding a `where` bound using this expression"),
+                        };
+                        err
+                    }
+                    _ => {
+                        span_bug!(
+                            span,
+                            "unexpected non-ConstEvaluatable predicate, this should not be reachable"
+                        )
+                    }
+                }
             }
 
-            // Already reported in the query, but only as a lint.
-            // This shouldn't actually happen for constants used in types, modulo
-            // bugs. The `delay_span_bug` here ensures it won't be ignored.
-            ConstEvalFailure(ErrorHandled::Linted) => {
-                self.tcx.sess.delay_span_bug(span, "constant in type had error reported as lint");
+            // Already reported in the query.
+            SelectionError::NotConstEvaluatable(NotConstEvaluatable::Error(ErrorReported)) => {
+                // FIXME(eddyb) remove this once `ErrorReported` becomes a proof token.
+                self.tcx.sess.delay_span_bug(span, "`ErrorReported` without an error");
                 return;
             }
 

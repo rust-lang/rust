@@ -3,7 +3,8 @@ use rustc_data_structures::obligation_forest::ProcessResult;
 use rustc_data_structures::obligation_forest::{Error, ForestObligation, Outcome};
 use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProcessor};
 use rustc_errors::ErrorReported;
-use rustc_infer::traits::{TraitEngine, TraitEngineExt as _, TraitObligation};
+use rustc_infer::traits::{SelectionError, TraitEngine, TraitEngineExt as _, TraitObligation};
+use rustc_middle::mir::abstract_const::NotConstEvaluatable;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::subst::SubstsRef;
@@ -18,7 +19,7 @@ use super::wf;
 use super::CodeAmbiguity;
 use super::CodeProjectionError;
 use super::CodeSelectionError;
-use super::{ConstEvalFailure, Unimplemented};
+use super::Unimplemented;
 use super::{FulfillmentError, FulfillmentErrorCode};
 use super::{ObligationCause, PredicateObligation};
 
@@ -498,14 +499,19 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                         obligation.cause.span,
                     ) {
                         Ok(()) => ProcessResult::Changed(vec![]),
-                        Err(ErrorHandled::TooGeneric) => {
+                        Err(NotConstEvaluatable::MentionsInfer) => {
                             pending_obligation.stalled_on.clear();
                             pending_obligation.stalled_on.extend(
                                 substs.iter().filter_map(TyOrConstInferVar::maybe_from_generic_arg),
                             );
                             ProcessResult::Unchanged
                         }
-                        Err(e) => ProcessResult::Error(CodeSelectionError(ConstEvalFailure(e))),
+                        Err(
+                            e @ NotConstEvaluatable::MentionsParam
+                            | e @ NotConstEvaluatable::Error(_),
+                        ) => ProcessResult::Error(CodeSelectionError(
+                            SelectionError::NotConstEvaluatable(e),
+                        )),
                     }
                 }
 
@@ -576,11 +582,11 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                             }
                         }
                         (Err(ErrorHandled::Reported(ErrorReported)), _)
-                        | (_, Err(ErrorHandled::Reported(ErrorReported))) => {
-                            ProcessResult::Error(CodeSelectionError(ConstEvalFailure(
-                                ErrorHandled::Reported(ErrorReported),
-                            )))
-                        }
+                        | (_, Err(ErrorHandled::Reported(ErrorReported))) => ProcessResult::Error(
+                            CodeSelectionError(SelectionError::NotConstEvaluatable(
+                                NotConstEvaluatable::Error(ErrorReported),
+                            )),
+                        ),
                         (Err(ErrorHandled::Linted), _) | (_, Err(ErrorHandled::Linted)) => {
                             span_bug!(
                                 obligation.cause.span(self.selcx.tcx()),
