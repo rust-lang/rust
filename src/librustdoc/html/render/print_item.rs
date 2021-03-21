@@ -1171,7 +1171,7 @@ fn wrap_into_docblock<F>(w: &mut Buffer, f: F)
 where
     F: FnOnce(&mut Buffer),
 {
-    w.write_str("<div class=\"docblock type-decl hidden-by-usual-hider\">");
+    w.write_str("<div class=\"docblock type-decl\">");
     f(w);
     w.write_str("</div>")
 }

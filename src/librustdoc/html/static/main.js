@@ -2683,18 +2683,7 @@ function hideThemeButtonState() {
                 });
             }
         }
-        var showItemDeclarations = getSettingValue("auto-hide-" + className);
-        if (showItemDeclarations === null) {
-            if (className === "enum" || className === "macro") {
-                showItemDeclarations = "false";
-            } else if (className === "struct" || className === "union" || className === "trait") {
-                showItemDeclarations = "true";
-            } else {
-                // In case we found an unknown type, we just use the "parent" value.
-                showItemDeclarations = getSettingValue("auto-hide-declarations");
-            }
-        }
-        showItemDeclarations = showItemDeclarations === "false";
+
         function buildToggleWrapper(e) {
             if (hasClass(e, "autohide")) {
                 var wrap = e.previousElementSibling;
@@ -2721,11 +2710,8 @@ function hideThemeButtonState() {
                 var extraClass;
 
                 if (hasClass(e, "type-decl")) {
-                    fontSize = "20px";
-                    otherMessage = "&nbsp;Show&nbsp;declaration";
-                    if (showItemDeclarations === false) {
-                        extraClass = "collapsed";
-                    }
+                    // We do something special for these
+                    return;
                 } else if (hasClass(e, "sub-variant")) {
                     otherMessage = "&nbsp;Show&nbsp;fields";
                 } else if (hasClass(e, "non-exhaustive")) {
@@ -2750,11 +2736,8 @@ function hideThemeButtonState() {
                         otherMessage,
                         fontSize,
                         extraClass,
-                        hasClass(e, "type-decl") === false || showItemDeclarations === true),
+                        false),
                     e);
-                if (hasClass(e, "type-decl") === true && showItemDeclarations === true) {
-                    collapseDocs(e.previousSibling.childNodes[0], "toggle");
-                }
                 if (hasClass(e, "non-exhaustive") === true) {
                     collapseDocs(e.previousSibling.childNodes[0], "toggle");
                 }
