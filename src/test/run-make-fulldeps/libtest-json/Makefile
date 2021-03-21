@@ -5,6 +5,9 @@
 OUTPUT_FILE_DEFAULT := $(TMPDIR)/libtest-json-output-default.json
 OUTPUT_FILE_STDOUT_SUCCESS := $(TMPDIR)/libtest-json-output-stdout-success.json
 
+CANONIZED_FILE_DEFAULT := $(TMPDIR)/libtest-json-output-default-canonized.json
+CANONIZED_FILE_STDOUT_SUCCESS := $(TMPDIR)/libtest-json-output-stdout-success-canonized.json
+
 all:
 	$(RUSTC) --test f.rs
 	RUST_BACKTRACE=0 $(call RUN,f) -Z unstable-options --test-threads=1 --format=json > $(OUTPUT_FILE_DEFAULT) || true
@@ -13,6 +16,9 @@ all:
 	cat $(OUTPUT_FILE_DEFAULT) | "$(PYTHON)" validate_json.py
 	cat $(OUTPUT_FILE_STDOUT_SUCCESS) | "$(PYTHON)" validate_json.py
 
+	cat output-default.json | "$(PYTHON)" canonicalize_path.py > $(CANONIZED_FILE_DEFAULT) || true
+	cat output-stdout-success.json | "$(PYTHON)" canonicalize_path.py > $(CANONIZED_FILE_STDOUT_SUCCESS) || true
+
 	# Normalize the actual output and compare to expected output file
-	cat $(OUTPUT_FILE_DEFAULT) | sed 's/"exec_time": [0-9.]*/"exec_time": $$TIME/' | diff output-default.json -
-	cat $(OUTPUT_FILE_STDOUT_SUCCESS) | sed 's/"exec_time": [0-9.]*/"exec_time": $$TIME/' | diff output-stdout-success.json -
+	cat $(OUTPUT_FILE_DEFAULT) | sed 's/"exec_time": [0-9.]*/"exec_time": $/"IGNORED"/' | diff $(CANONIZED_FILE_DEFAULT) -
+	cat $(OUTPUT_FILE_STDOUT_SUCCESS) | sed 's/"exec_time": [0-9.]*/"exec_time": $/"IGNORED"/' | diff $(CANONIZED_FILE_STDOUT_SUCCESS) -
