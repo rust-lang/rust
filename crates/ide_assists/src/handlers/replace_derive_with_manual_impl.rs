@@ -1,5 +1,5 @@
 use hir::ModuleDef;
-use ide_db::helpers::mod_path_to_ast;
+use ide_db::helpers::{import_assets::NameToImport, mod_path_to_ast};
 use ide_db::items_locator;
 use itertools::Itertools;
 use syntax::{
@@ -65,20 +65,25 @@ pub(crate) fn replace_derive_with_manual_impl(
     let current_module = ctx.sema.scope(annotated_name.syntax()).module()?;
     let current_crate = current_module.krate();
 
-    let found_traits =
-        items_locator::with_exact_name(&ctx.sema, current_crate, trait_token.text().to_string())
-            .into_iter()
-            .filter_map(|item| match ModuleDef::from(item.as_module_def_id()?) {
-                ModuleDef::Trait(trait_) => Some(trait_),
-                _ => None,
-            })
-            .flat_map(|trait_| {
-                current_module
-                    .find_use_path(ctx.sema.db, hir::ModuleDef::Trait(trait_))
-                    .as_ref()
-                    .map(mod_path_to_ast)
-                    .zip(Some(trait_))
-            });
+    let found_traits = items_locator::items_with_name(
+        &ctx.sema,
+        current_crate,
+        NameToImport::Exact(trait_token.text().to_string()),
+        items_locator::AssocItemSearch::Exclude,
+        Some(items_locator::DEFAULT_QUERY_SEARCH_LIMIT),
+    )
+    .into_iter()
+    .filter_map(|item| match ModuleDef::from(item.as_module_def_id()?) {
+        ModuleDef::Trait(trait_) => Some(trait_),
+        _ => None,
+    })
+    .flat_map(|trait_| {
+        current_module
+            .find_use_path(ctx.sema.db, hir::ModuleDef::Trait(trait_))
+            .as_ref()
+            .map(mod_path_to_ast)
+            .zip(Some(trait_))
+    });
 
     let mut no_traits_found = true;
     for (trait_path, trait_) in found_traits.inspect(|_| no_traits_found = false) {

@@ -947,4 +947,36 @@ fn main() {
             expect![[]],
         )
     }
+
+    #[test]
+    fn unqualified_assoc_items_are_omitted() {
+        check(
+            r#"
+mod something {
+    pub trait BaseTrait {
+        fn test_function() -> i32;
+    }
+
+    pub struct Item1;
+    pub struct Item2;
+
+    impl BaseTrait for Item1 {
+        fn test_function() -> i32 {
+            1
+        }
+    }
+
+    impl BaseTrait for Item2 {
+        fn test_function() -> i32 {
+            2
+        }
+    }
+}
+
+fn main() {
+    test_f$0
+}"#,
+            expect![[]],
+        )
+    }
 }

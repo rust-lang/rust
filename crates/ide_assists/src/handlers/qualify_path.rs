@@ -536,6 +536,7 @@ fn main() {
     }
 
     #[test]
+    #[ignore = "FIXME: non-trait assoc items completion is unsupported yet, see FIXME in the import_assets.rs for more details"]
     fn associated_struct_const_unqualified() {
         check_assist(
             qualify_path,
