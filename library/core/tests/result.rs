@@ -96,6 +96,15 @@ fn test_unwrap_or() {
 }
 
 #[test]
+fn test_unwrap_err_or() {
+    let err: Result<isize, &'static str> = Err("Err");
+    let err_ok: Result<isize, &'static str> = Ok(100);
+
+    assert_eq!(err.unwrap_err_or("Other Err"), "Err");
+    assert_eq!(err_ok.unwrap_err_or("Other Err"), "Other Err");
+}
+
+#[test]
 fn test_ok_or_err() {
     let ok: Result<isize, isize> = Ok(100);
     let err: Result<isize, isize> = Err(200);

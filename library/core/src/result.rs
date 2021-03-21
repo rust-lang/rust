@@ -800,6 +800,26 @@ impl<T, E> Result<T, E> {
         }
     }
 
+    /// Returns the contained [`Err`] value or a provided default.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(option_result_unwrap_err_or)]
+    /// let x: Result<u32, &str> = Ok(9);
+    /// assert_eq!(x.unwrap_err_or("emergency failure"), "emergency failure");
+    /// ```
+    #[inline]
+    #[unstable(feature = "option_result_unwrap_err_or", reason = "newly added", issue = "none")]
+    pub fn unwrap_err_or(self, default: E) -> E {
+        match self {
+            Ok(_) => default,
+            Err(e) => e,
+        }
+    }
+
     /// Returns the contained [`Ok`] value or computes it from a closure.
     ///
     ///
