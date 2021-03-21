@@ -522,15 +522,13 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                         // if the constants depend on generic parameters.
                         //
                         // Let's just see where this breaks :shrug:
-                        if let (
-                            ty::ConstKind::Unevaluated(a_def, a_substs, None),
-                            ty::ConstKind::Unevaluated(b_def, b_substs, None),
-                        ) = (c1.val, c2.val)
+                        if let (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b)) =
+                            (c1.val, c2.val)
                         {
                             if self
                                 .selcx
                                 .tcx()
-                                .try_unify_abstract_consts(((a_def, a_substs), (b_def, b_substs)))
+                                .try_unify_abstract_consts(((a.def, a.substs), (b.def, b.substs)))
                             {
                                 return ProcessResult::Changed(vec![]);
                             }
@@ -540,18 +538,17 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                     let stalled_on = &mut pending_obligation.stalled_on;
 
                     let mut evaluate = |c: &'tcx Const<'tcx>| {
-                        if let ty::ConstKind::Unevaluated(def, substs, promoted) = c.val {
+                        if let ty::ConstKind::Unevaluated(unevaluated) = c.val {
                             match self.selcx.infcx().const_eval_resolve(
                                 obligation.param_env,
-                                def,
-                                substs,
-                                promoted,
+                                unevaluated,
                                 Some(obligation.cause.span),
                             ) {
                                 Ok(val) => Ok(Const::from_value(self.selcx.tcx(), val, c.ty)),
                                 Err(ErrorHandled::TooGeneric) => {
                                     stalled_on.extend(
-                                        substs
+                                        unevaluated
+                                            .substs
                                             .iter()
                                             .filter_map(TyOrConstInferVar::maybe_from_generic_arg),
                                     );
