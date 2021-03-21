@@ -14,8 +14,18 @@ use crate::sys::handle::Handle;
 pub struct Stdin {
     surrogate: u16,
 }
-pub struct Stdout;
-pub struct Stderr;
+pub struct Stdout {
+    incomplete_utf8: IncompleteUtf8,
+}
+
+pub struct Stderr {
+    incomplete_utf8: IncompleteUtf8,
+}
+
+struct IncompleteUtf8 {
+    bytes: [u8; 4],
+    len: u8,
+}
 
 // Apparently Windows doesn't handle large reads on stdin or writes to stdout/stderr well (see
 // #13304 for details).
@@ -50,7 +60,27 @@ fn is_console(handle: c::HANDLE) -> bool {
     unsafe { c::GetConsoleMode(handle, &mut mode) != 0 }
 }
 
-fn write(handle_id: c::DWORD, data: &[u8]) -> io::Result<usize> {
+// Simple reimplementation of std::str::utf8_char_width() which is feature-gated
+fn utf8_char_width(b: u8) -> usize {
+    match b {
+        0x00..=0x7F => 1,
+        0x80..=0xC1 => 0,
+        0xC2..=0xDF => 2,
+        0xE0..=0xEF => 3,
+        0xF0..=0xF4 => 4,
+        0xF5..=0xFF => 0,
+    }
+}
+
+fn write(
+    handle_id: c::DWORD,
+    data: &[u8],
+    incomplete_utf8: &mut IncompleteUtf8,
+) -> io::Result<usize> {
+    if data.is_empty() {
+        return Ok(0);
+    }
+
     let handle = get_handle(handle_id)?;
     if !is_console(handle) {
         let handle = Handle::new(handle);
@@ -59,22 +89,74 @@ fn write(handle_id: c::DWORD, data: &[u8]) -> io::Result<usize> {
         return ret;
     }
 
-    // As the console is meant for presenting text, we assume bytes of `data` come from a string
-    // and are encoded as UTF-8, which needs to be encoded as UTF-16.
+    match incomplete_utf8.len {
+        0 => {}
+        1..=3 => {
+            if data[0] >> 6 != 0b10 {
+                incomplete_utf8.len = 0;
+                // not a continuation byte - reject
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "Windows stdio in console mode does not support writing non-UTF-8 byte sequences",
+                ));
+            }
+            incomplete_utf8.bytes[incomplete_utf8.len as usize] = data[0];
+            incomplete_utf8.len += 1;
+            let char_width = utf8_char_width(incomplete_utf8.bytes[0]);
+            if (incomplete_utf8.len as usize) < char_width {
+                // more bytes needed
+                return Ok(1);
+            }
+            let s = str::from_utf8(&incomplete_utf8.bytes[0..incomplete_utf8.len as usize]);
+            incomplete_utf8.len = 0;
+            match s {
+                Ok(s) => {
+                    assert_eq!(char_width, s.len());
+                    let written = write_valid_utf8(handle, s)?;
+                    assert_eq!(written, s.len()); // guaranteed by write0() for single codepoint writes
+                    return Ok(1);
+                }
+                Err(_) => {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "Windows stdio in console mode does not support writing non-UTF-8 byte sequences",
+                    ));
+                }
+            }
+        }
+        _ => {
+            panic!("Unexpected number of incomplete UTF-8 chars.");
+        }
+    }
+
+    // As the console is meant for presenting text, we assume bytes of `data` are encoded as UTF-8,
+    // which needs to be encoded as UTF-16.
     //
     // If the data is not valid UTF-8 we write out as many bytes as are valid.
-    // Only when there are no valid bytes (which will happen on the next call), return an error.
+    // If the first byte is invalid it is either first byte of a multi-byte sequence but the
+    // provided byte slice is too short or it is the first byte of an invalide multi-byte sequence.
     let len = cmp::min(data.len(), MAX_BUFFER_SIZE / 2);
     let utf8 = match str::from_utf8(&data[..len]) {
         Ok(s) => s,
         Err(ref e) if e.valid_up_to() == 0 => {
-            return Err(io::Error::new_const(
-                io::ErrorKind::InvalidData,
-                &"Windows stdio in console mode does not support writing non-UTF-8 byte sequences",
-            ));
+            if data.len() < utf8_char_width(data[0]) {
+                incomplete_utf8.bytes[0] = data[0];
+                incomplete_utf8.len = 1;
+                return Ok(1);
+            } else {
+                return Err(io::Error::new_const(
+                    io::ErrorKind::InvalidData,
+                    &"Windows stdio in console mode does not support writing non-UTF-8 byte sequences",
+                ));
+            }
         }
         Err(e) => str::from_utf8(&data[..e.valid_up_to()]).unwrap(),
     };
+
+    write_valid_utf8(handle, utf8)
+}
+
+fn write_valid_utf8(handle: c::HANDLE, utf8: &str) -> io::Result<usize> {
     let mut utf16 = [0u16; MAX_BUFFER_SIZE / 2];
     let mut len_utf16 = 0;
     for (chr, dest) in utf8.encode_utf16().zip(utf16.iter_mut()) {
@@ -254,15 +336,21 @@ fn utf16_to_utf8(utf16: &[u16], utf8: &mut [u8]) -> io::Result<usize> {
     Ok(written)
 }
 
+impl IncompleteUtf8 {
+    pub const fn new() -> IncompleteUtf8 {
+        IncompleteUtf8 { bytes: [0; 4], len: 0 }
+    }
+}
+
 impl Stdout {
     pub const fn new() -> Stdout {
-        Stdout
+        Stdout { incomplete_utf8: IncompleteUtf8::new() }
     }
 }
 
 impl io::Write for Stdout {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        write(c::STD_OUTPUT_HANDLE, buf)
+        write(c::STD_ERROR_HANDLE, buf, &mut self.incomplete_utf8)
     }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -272,13 +360,13 @@ impl io::Write for Stdout {
 
 impl Stderr {
     pub const fn new() -> Stderr {
-        Stderr
+        Stderr { incomplete_utf8: IncompleteUtf8::new() }
     }
 }
 
 impl io::Write for Stderr {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        write(c::STD_ERROR_HANDLE, buf)
+        write(c::STD_ERROR_HANDLE, buf, &mut self.incomplete_utf8)
     }
 
     fn flush(&mut self) -> io::Result<()> {
