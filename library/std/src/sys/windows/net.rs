@@ -136,9 +136,9 @@ impl Socket {
         }
 
         if timeout.as_secs() == 0 && timeout.subsec_nanos() == 0 {
-            return Err(io::Error::new(
+            return Err(io::Error::new_const(
                 io::ErrorKind::InvalidInput,
-                "cannot set a 0 duration timeout",
+                &"cannot set a 0 duration timeout",
             ));
         }
 
@@ -164,7 +164,7 @@ impl Socket {
             unsafe { cvt(c::select(1, ptr::null_mut(), &mut writefds, &mut errorfds, &timeout))? };
 
         match n {
-            0 => Err(io::Error::new(io::ErrorKind::TimedOut, "connection timed out")),
+            0 => Err(io::Error::new_const(io::ErrorKind::TimedOut, &"connection timed out")),
             _ => {
                 if writefds.fd_count != 1 {
                     if let Some(e) = self.take_error()? {
@@ -339,9 +339,9 @@ impl Socket {
             Some(dur) => {
                 let timeout = sys::dur2timeout(dur);
                 if timeout == 0 {
-                    return Err(io::Error::new(
+                    return Err(io::Error::new_const(
                         io::ErrorKind::InvalidInput,
-                        "cannot set a 0 duration timeout",
+                        &"cannot set a 0 duration timeout",
                     ));
                 }
                 timeout
@@ -370,7 +370,7 @@ impl Socket {
 
     #[cfg(target_vendor = "uwp")]
     fn set_no_inherit(&self) -> io::Result<()> {
-        Err(io::Error::new(io::ErrorKind::Other, "Unavailable on UWP"))
+        Err(io::Error::new_const(io::ErrorKind::Other, &"Unavailable on UWP"))
     }
 
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
