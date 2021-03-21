@@ -513,10 +513,10 @@ impl<'a> InferenceContext<'a> {
                 let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
                 if let Some(box_) = self.resolve_boxed_box() {
                     let mut sb =
-                        Substitution::builder(generics(self.db.upcast(), box_.into()).len());
+                        Substitution::build_for_generics(&generics(self.db.upcast(), box_.into()));
                     sb = sb.push(inner_ty);
-                    match self.db.generic_defaults(box_.into()).as_ref() {
-                        [_, alloc_ty, ..] if !alloc_ty.value.is_unknown() => {
+                    match self.db.generic_defaults(box_.into()).get(1) {
+                        Some(alloc_ty) if !alloc_ty.value.is_unknown() && sb.remaining() > 0 => {
                             sb = sb.push(alloc_ty.value.clone());
                         }
                         _ => (),
