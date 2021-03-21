@@ -1150,6 +1150,11 @@ impl MacroDef {
         // FIXME: wrong for `ProcMacro`
         matches!(self.id.kind, MacroDefKind::ProcMacro(..) | MacroDefKind::BuiltInDerive(..))
     }
+
+    /// Indicate it is a declarative macro
+    pub fn is_declarative(&self) -> bool {
+        matches!(self.id.kind, MacroDefKind::Declarative(..))
+    }
 }
 
 /// Invariant: `inner.as_assoc_item(db).is_some()`

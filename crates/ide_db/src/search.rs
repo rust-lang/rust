@@ -7,7 +7,7 @@
 use std::{convert::TryInto, mem};
 
 use base_db::{FileId, FileRange, SourceDatabase, SourceDatabaseExt};
-use hir::{DefWithBody, HasSource, Module, ModuleSource, Semantics, Visibility};
+use hir::{DefWithBody, HasAttrs, HasSource, Module, ModuleSource, Semantics, Visibility};
 use once_cell::unsync::Lazy;
 use rustc_hash::FxHashMap;
 use syntax::{ast, match_ast, AstNode, TextRange, TextSize};
@@ -244,9 +244,8 @@ impl Definition {
             return SearchScope::new(res);
         }
 
-        if let Some(Visibility::Public) = vis {
+        let rev_dep_scope = || {
             let mut res = FxHashMap::default();
-
             let krate = module.krate();
             for rev_dep in krate.transitive_reverse_dependencies(db) {
                 let root_file = rev_dep.root_file(db);
@@ -254,7 +253,25 @@ impl Definition {
                 let source_root = db.source_root(source_root_id);
                 res.extend(source_root.iter().map(|id| (id, None)));
             }
-            return SearchScope::new(res);
+            SearchScope::new(res)
+        };
+
+        if let Definition::Macro(macro_def) = self {
+            if macro_def.is_declarative() {
+                return if macro_def.attrs(db).by_key("macro_export").exists() {
+                    rev_dep_scope()
+                } else {
+                    let source_root_id = db.file_source_root(file_id);
+                    let source_root = db.source_root(source_root_id);
+                    SearchScope::new(
+                        source_root.iter().map(|id| (id, None)).collect::<FxHashMap<_, _>>(),
+                    )
+                };
+            }
+        }
+
+        if let Some(Visibility::Public) = vis {
+            return rev_dep_scope();
         }
 
         let mut res = FxHashMap::default();
