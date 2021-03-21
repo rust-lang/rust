@@ -8,6 +8,7 @@ use crate::str;
 use crate::sys::c;
 use crate::sys::cvt;
 use crate::sys::handle::Handle;
+use core::str::utf8_char_width;
 
 // Don't cache handles but get them fresh for every read/write. This allows us to track changes to
 // the value over time (such as if a process calls `SetStdHandle` while it's running). See #40490.
@@ -58,18 +59,6 @@ fn is_console(handle: c::HANDLE) -> bool {
     // MSYS. Which is exactly what we need, as only Windows Console needs a conversion to UTF-16.
     let mut mode = 0;
     unsafe { c::GetConsoleMode(handle, &mut mode) != 0 }
-}
-
-// Simple reimplementation of std::str::utf8_char_width() which is feature-gated
-fn utf8_char_width(b: u8) -> usize {
-    match b {
-        0x00..=0x7F => 1,
-        0x80..=0xC1 => 0,
-        0xC2..=0xDF => 2,
-        0xE0..=0xEF => 3,
-        0xF0..=0xF4 => 4,
-        0xF5..=0xFF => 0,
-    }
 }
 
 fn write(
