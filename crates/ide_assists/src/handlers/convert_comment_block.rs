@@ -1,5 +1,4 @@
 use itertools::Itertools;
-use std::convert::identity;
 use syntax::{
     ast::{
         self,
@@ -140,7 +139,7 @@ fn relevant_line_comments(comment: &ast::Comment) -> Vec<Comment> {
         .filter(|s| !skippable(s))
         .map(|not| not.into_token().and_then(Comment::cast).filter(same_prefix))
         .take_while(|opt_com| opt_com.is_some())
-        .filter_map(identity)
+        .flatten()
         .skip(1); // skip the first element so we don't duplicate it in next_comments
 
     let next_comments = comment
@@ -149,7 +148,7 @@ fn relevant_line_comments(comment: &ast::Comment) -> Vec<Comment> {
         .filter(|s| !skippable(s))
         .map(|not| not.into_token().and_then(Comment::cast).filter(same_prefix))
         .take_while(|opt_com| opt_com.is_some())
-        .filter_map(identity);
+        .flatten();
 
     let mut comments: Vec<_> = prev_comments.collect();
     comments.reverse();

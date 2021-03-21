@@ -297,7 +297,7 @@ fn validate_path_keywords(segment: ast::PathSegment, errors: &mut Vec<SyntaxErro
                 }
             };
         }
-        return None;
+        None
     }
 
     fn all_supers(path: &ast::Path) -> bool {
@@ -314,7 +314,7 @@ fn validate_path_keywords(segment: ast::PathSegment, errors: &mut Vec<SyntaxErro
             return all_supers(subpath);
         }
 
-        return true;
+        true
     }
 }
 

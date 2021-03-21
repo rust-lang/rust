@@ -95,7 +95,7 @@ fn compute_method_ranks(path: &ast::Path, ctx: &AssistContext) -> Option<FxHashM
                 _ => None,
             })
             .enumerate()
-            .map(|(idx, func)| ((func.name(ctx.db()).to_string(), idx)))
+            .map(|(idx, func)| (func.name(ctx.db()).to_string(), idx))
             .collect(),
     )
 }

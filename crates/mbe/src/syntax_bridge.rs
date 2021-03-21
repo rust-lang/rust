@@ -362,7 +362,7 @@ trait TokenConvertor {
             if let Some((kind, closed)) = delim {
                 let mut subtree = tt::Subtree::default();
                 let (id, idx) = self.id_alloc().open_delim(range);
-                subtree.delimiter = Some(tt::Delimiter { kind, id });
+                subtree.delimiter = Some(tt::Delimiter { id, kind });
 
                 while self.peek().map(|it| it.kind() != closed).unwrap_or(false) {
                     self.collect_leaf(&mut subtree.token_trees);

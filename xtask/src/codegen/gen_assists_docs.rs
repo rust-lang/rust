@@ -154,8 +154,8 @@ fn hide_hash_comments(text: &str) -> String {
 fn reveal_hash_comments(text: &str) -> String {
     text.split('\n') // want final newline
         .map(|it| {
-            if it.starts_with("# ") {
-                &it[2..]
+            if let Some(stripped) = it.strip_prefix("# ") {
+                stripped
             } else if it == "#" {
                 ""
             } else {

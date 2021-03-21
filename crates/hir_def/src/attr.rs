@@ -638,7 +638,7 @@ fn collect_attrs(
     owner: &dyn ast::AttrsOwner,
 ) -> impl Iterator<Item = Either<ast::Attr, ast::Comment>> {
     let (inner_attrs, inner_docs) = inner_attributes(owner.syntax())
-        .map_or((None, None), |(attrs, docs)| ((Some(attrs), Some(docs))));
+        .map_or((None, None), |(attrs, docs)| (Some(attrs), Some(docs)));
 
     let outer_attrs = owner.attrs().filter(|attr| attr.excl_token().is_none());
     let attrs = outer_attrs

@@ -60,12 +60,10 @@ fn collect_tests(s: &str) -> Vec<Test> {
     let mut res = Vec::new();
     for comment_block in extract_comment_blocks(s) {
         let first_line = &comment_block[0];
-        let (name, ok) = if first_line.starts_with("test ") {
-            let name = first_line["test ".len()..].to_string();
-            (name, true)
-        } else if first_line.starts_with("test_err ") {
-            let name = first_line["test_err ".len()..].to_string();
-            (name, false)
+        let (name, ok) = if let Some(name) = first_line.strip_prefix("test ") {
+            (name.to_string(), true)
+        } else if let Some(name) = first_line.strip_prefix("test_err ") {
+            (name.to_string(), false)
         } else {
             continue;
         };

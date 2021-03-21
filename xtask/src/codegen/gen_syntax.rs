@@ -707,7 +707,7 @@ fn extract_struct_trait(node: &mut AstNodeSrc, trait_name: &str, methods: &[&str
     let mut to_remove = Vec::new();
     for (i, field) in node.fields.iter().enumerate() {
         let method_name = field.method_name().to_string();
-        if methods.iter().any(|&it| it == &method_name) {
+        if methods.iter().any(|&it| it == method_name) {
             to_remove.push(i);
         }
     }

@@ -333,8 +333,7 @@ impl ast::Use {
             .and_then(ast::Whitespace::cast);
         if let Some(next_ws) = next_ws {
             let ws_text = next_ws.syntax().text();
-            if ws_text.starts_with('\n') {
-                let rest = &ws_text[1..];
+            if let Some(rest) = ws_text.strip_prefix('\n') {
                 if rest.is_empty() {
                     res.delete(next_ws.syntax())
                 } else {
@@ -462,8 +461,7 @@ impl ast::MatchArmList {
         let end = if let Some(comma) = start
             .siblings_with_tokens(Direction::Next)
             .skip(1)
-            .skip_while(|it| it.kind().is_trivia())
-            .next()
+            .find(|it| !it.kind().is_trivia())
             .filter(|it| it.kind() == T![,])
         {
             comma
@@ -597,7 +595,7 @@ impl IndentLevel {
     pub fn from_node(node: &SyntaxNode) -> IndentLevel {
         match node.first_token() {
             Some(it) => Self::from_token(&it),
-            None => return IndentLevel(0),
+            None => IndentLevel(0),
         }
     }
 

@@ -242,11 +242,8 @@ impl GlobalState {
                                 }
                                 BuildDataProgress::End(collector) => {
                                     self.fetch_build_data_completed();
-                                    let workspaces = (*self.workspaces)
-                                        .clone()
-                                        .into_iter()
-                                        .map(|it| Ok(it))
-                                        .collect();
+                                    let workspaces =
+                                        (*self.workspaces).clone().into_iter().map(Ok).collect();
                                     self.switch_workspaces(workspaces, Some(collector));
                                     (Some(Progress::End), None)
                                 }

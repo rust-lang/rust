@@ -472,7 +472,7 @@ impl Scope {
             }
             Scope::ExprScope(scope) => {
                 if let Some((label, name)) = scope.expr_scopes.label(scope.scope_id) {
-                    f(name.clone(), ScopeDef::Label(label))
+                    f(name, ScopeDef::Label(label))
                 }
                 scope.expr_scopes.entries(scope.scope_id).iter().for_each(|e| {
                     f(e.name().clone(), ScopeDef::Local(e.pat()));

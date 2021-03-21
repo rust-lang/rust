@@ -946,8 +946,7 @@ pub(crate) fn trait_environment_query(
         let substs = Substitution::type_params(db, trait_id);
         let trait_ref = TraitRef { trait_id: to_chalk_trait_id(trait_id), substitution: substs };
         let pred = WhereClause::Implemented(trait_ref);
-        let program_clause: chalk_ir::ProgramClause<Interner> =
-            pred.clone().to_chalk(db).cast(&Interner);
+        let program_clause: chalk_ir::ProgramClause<Interner> = pred.to_chalk(db).cast(&Interner);
         clauses.push(program_clause.into_from_env_clause(&Interner));
     }
 

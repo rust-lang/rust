@@ -239,9 +239,8 @@ impl Subtree {
 
         let mut res = String::new();
         res.push_str(delim.0);
-        let mut iter = self.token_trees.iter();
         let mut last = None;
-        while let Some(child) = iter.next() {
+        for child in &self.token_trees {
             let s = match child {
                 TokenTree::Leaf(it) => {
                     let s = match it {

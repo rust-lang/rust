@@ -356,6 +356,6 @@ impl<T> ExpandResult<T> {
 
 impl<T: Default> From<Result<T, ExpandError>> for ExpandResult<T> {
     fn from(result: Result<T, ExpandError>) -> Self {
-        result.map_or_else(|e| Self::only_err(e), |it| Self::ok(it))
+        result.map_or_else(Self::only_err, Self::ok)
     }
 }

@@ -37,7 +37,7 @@ fn main() -> Result<()> {
     match flags.subcommand {
         flags::XtaskCmd::Help(_) => {
             println!("{}", flags::Xtask::HELP);
-            return Ok(());
+            Ok(())
         }
         flags::XtaskCmd::Install(cmd) => cmd.run(),
         flags::XtaskCmd::FuzzTests(_) => run_fuzzer(),

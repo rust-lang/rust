@@ -136,18 +136,13 @@ impl Refs {
                 .into_iter()
                 .filter(|r| {
                     if let Def::ModuleDef(ModuleDef::Trait(tr)) = r.def {
-                        if tr
-                            .items(ctx.db())
-                            .into_iter()
-                            .find(|ai| {
-                                if let AssocItem::Function(f) = *ai {
-                                    Def::ModuleDef(ModuleDef::Function(f)).is_referenced_in(ctx)
-                                } else {
-                                    false
-                                }
-                            })
-                            .is_some()
-                        {
+                        if tr.items(ctx.db()).into_iter().any(|ai| {
+                            if let AssocItem::Function(f) = ai {
+                                Def::ModuleDef(ModuleDef::Function(f)).is_referenced_in(ctx)
+                            } else {
+                                false
+                            }
+                        }) {
                             return true;
                         }
                     }

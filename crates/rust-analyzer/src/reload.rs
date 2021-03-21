@@ -237,7 +237,7 @@ impl GlobalState {
             None => None,
         };
 
-        if &*self.workspaces == &workspaces && self.workspace_build_data == workspace_build_data {
+        if *self.workspaces == workspaces && self.workspace_build_data == workspace_build_data {
             return;
         }
 

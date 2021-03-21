@@ -567,7 +567,7 @@ impl<'a> SyntaxRewriter<'a> {
 
 fn element_to_green(element: SyntaxElement) -> NodeOrToken<rowan::GreenNode, rowan::GreenToken> {
     match element {
-        NodeOrToken::Node(it) => NodeOrToken::Node(it.green().to_owned()),
+        NodeOrToken::Node(it) => NodeOrToken::Node(it.green()),
         NodeOrToken::Token(it) => NodeOrToken::Token(it.green().to_owned()),
     }
 }
@@ -625,7 +625,7 @@ fn position_of_child(parent: &SyntaxNode, child: SyntaxElement) -> usize {
 
 fn to_green_element(element: SyntaxElement) -> NodeOrToken<rowan::GreenNode, rowan::GreenToken> {
     match element {
-        NodeOrToken::Node(it) => it.green().to_owned().into(),
+        NodeOrToken::Node(it) => it.green().into(),
         NodeOrToken::Token(it) => it.green().to_owned().into(),
     }
 }

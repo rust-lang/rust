@@ -494,9 +494,8 @@ pub trait HasFormatSpecifier: AstToken {
                 }
                 _ => {
                     while let Some((_, Ok(next_char))) = chars.peek() {
-                        match next_char {
-                            '{' => break,
-                            _ => {}
+                        if next_char == &'{' {
+                            break;
                         }
                         chars.next();
                     }

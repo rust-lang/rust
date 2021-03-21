@@ -58,10 +58,7 @@ impl From<ast::MacroDef> for Macro {
 
 impl AstNode for Macro {
     fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            SyntaxKind::MACRO_RULES | SyntaxKind::MACRO_DEF => true,
-            _ => false,
-        }
+        matches!(kind, SyntaxKind::MACRO_RULES | SyntaxKind::MACRO_DEF)
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
@@ -462,10 +459,8 @@ impl ast::FieldExpr {
     pub fn field_access(&self) -> Option<FieldKind> {
         if let Some(nr) = self.name_ref() {
             Some(FieldKind::Name(nr))
-        } else if let Some(tok) = self.index_token() {
-            Some(FieldKind::Index(tok))
         } else {
-            None
+            self.index_token().map(FieldKind::Index)
         }
     }
 }
@@ -482,16 +477,10 @@ impl ast::SlicePat {
         let prefix = args
             .peeking_take_while(|p| match p {
                 ast::Pat::RestPat(_) => false,
-                ast::Pat::IdentPat(bp) => match bp.pat() {
-                    Some(ast::Pat::RestPat(_)) => false,
-                    _ => true,
-                },
+                ast::Pat::IdentPat(bp) => !matches!(bp.pat(), Some(ast::Pat::RestPat(_))),
                 ast::Pat::RefPat(rp) => match rp.pat() {
                     Some(ast::Pat::RestPat(_)) => false,
-                    Some(ast::Pat::IdentPat(bp)) => match bp.pat() {
-                        Some(ast::Pat::RestPat(_)) => false,
-                        _ => true,
-                    },
+                    Some(ast::Pat::IdentPat(bp)) => !matches!(bp.pat(), Some(ast::Pat::RestPat(_))),
                     _ => true,
                 },
                 _ => true,

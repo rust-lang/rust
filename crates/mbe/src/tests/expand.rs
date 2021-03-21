@@ -1225,8 +1225,7 @@ macro_rules! m {
     )
     .expand_statements(r#"m!(C("0"))"#)
     .descendants()
-    .find(|token| token.kind() == ERROR)
-    .is_some());
+    .any(|token| token.kind() == ERROR));
 }
 
 #[test]

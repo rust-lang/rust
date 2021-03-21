@@ -167,7 +167,7 @@ impl Host {
 
         return Ok(Host { os, cpu, mem });
 
-        fn read_field<'a>(path: &str, field: &str) -> Result<String> {
+        fn read_field(path: &str, field: &str) -> Result<String> {
             let text = read_file(path)?;
 
             let line = text
