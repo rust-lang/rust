@@ -43,7 +43,7 @@ macro_rules! register_builtin {
                 db: &dyn AstDatabase,
                 arg_id: EagerMacroId,
                 tt: &tt::Subtree,
-            ) -> ExpandResult<Option<(tt::Subtree, FragmentKind)>> {
+            ) -> ExpandResult<Option<ExpandedEager>> {
                 let expander = match *self {
                     $( EagerExpander::$e_kind => $e_expand, )*
                 };
@@ -59,6 +59,20 @@ macro_rules! register_builtin {
             }
         }
     };
+}
+
+#[derive(Debug)]
+pub struct ExpandedEager {
+    pub(crate) subtree: tt::Subtree,
+    pub(crate) fragment: FragmentKind,
+    /// The included file ID of the include macro.
+    pub(crate) included_file: Option<FileId>,
+}
+
+impl ExpandedEager {
+    fn new(subtree: tt::Subtree, fragment: FragmentKind) -> Self {
+        ExpandedEager { subtree, fragment, included_file: None }
+    }
 }
 
 pub fn find_builtin_macro(
@@ -280,7 +294,7 @@ fn compile_error_expand(
     _db: &dyn AstDatabase,
     _id: EagerMacroId,
     tt: &tt::Subtree,
-) -> ExpandResult<Option<(tt::Subtree, FragmentKind)>> {
+) -> ExpandResult<Option<ExpandedEager>> {
     let err = match &*tt.token_trees {
         [tt::TokenTree::Leaf(tt::Leaf::Literal(it))] => {
             let text = it.text.as_str();
@@ -294,14 +308,14 @@ fn compile_error_expand(
         _ => mbe::ExpandError::BindingError("`compile_error!` argument must be a string".into()),
     };
 
-    ExpandResult { value: Some((quote! {}, FragmentKind::Items)), err: Some(err) }
+    ExpandResult { value: Some(ExpandedEager::new(quote! {}, FragmentKind::Items)), err: Some(err) }
 }
 
 fn concat_expand(
     _db: &dyn AstDatabase,
     _arg_id: EagerMacroId,
     tt: &tt::Subtree,
-) -> ExpandResult<Option<(tt::Subtree, FragmentKind)>> {
+) -> ExpandResult<Option<ExpandedEager>> {
     let mut err = None;
     let mut text = String::new();
     for (i, t) in tt.token_trees.iter().enumerate() {
@@ -325,7 +339,7 @@ fn concat_expand(
             }
         }
     }
-    ExpandResult { value: Some((quote!(#text), FragmentKind::Expr)), err }
+    ExpandResult { value: Some(ExpandedEager::new(quote!(#text), FragmentKind::Expr)), err }
 }
 
 fn relative_file(
@@ -361,21 +375,27 @@ fn include_expand(
     db: &dyn AstDatabase,
     arg_id: EagerMacroId,
     tt: &tt::Subtree,
-) -> ExpandResult<Option<(tt::Subtree, FragmentKind)>> {
+) -> ExpandResult<Option<ExpandedEager>> {
     let res = (|| {
         let path = parse_string(tt)?;
         let file_id = relative_file(db, arg_id.into(), &path, false)?;
 
-        Ok(parse_to_token_tree(&db.file_text(file_id))
+        let subtree = parse_to_token_tree(&db.file_text(file_id))
             .ok_or_else(|| mbe::ExpandError::ConversionError)?
-            .0)
+            .0;
+        Ok((subtree, file_id))
     })();
 
     match res {
-        Ok(res) => {
+        Ok((subtree, file_id)) => {
             // FIXME:
             // Handle include as expression
-            ExpandResult::ok(Some((res, FragmentKind::Items)))
+
+            ExpandResult::ok(Some(ExpandedEager {
+                subtree,
+                fragment: FragmentKind::Items,
+                included_file: Some(file_id),
+            }))
         }
         Err(e) => ExpandResult::only_err(e),
     }
@@ -385,7 +405,7 @@ fn include_bytes_expand(
     _db: &dyn AstDatabase,
     _arg_id: EagerMacroId,
     tt: &tt::Subtree,
-) -> ExpandResult<Option<(tt::Subtree, FragmentKind)>> {
+) -> ExpandResult<Option<ExpandedEager>> {
     if let Err(e) = parse_string(tt) {
         return ExpandResult::only_err(e);
     }
@@ -398,14 +418,14 @@ fn include_bytes_expand(
             id: tt::TokenId::unspecified(),
         }))],
     };
-    ExpandResult::ok(Some((res, FragmentKind::Expr)))
+    ExpandResult::ok(Some(ExpandedEager::new(res, FragmentKind::Expr)))
 }
 
 fn include_str_expand(
     db: &dyn AstDatabase,
     arg_id: EagerMacroId,
     tt: &tt::Subtree,
-) -> ExpandResult<Option<(tt::Subtree, FragmentKind)>> {
+) -> ExpandResult<Option<ExpandedEager>> {
     let path = match parse_string(tt) {
         Ok(it) => it,
         Err(e) => return ExpandResult::only_err(e),
@@ -418,14 +438,14 @@ fn include_str_expand(
     let file_id = match relative_file(db, arg_id.into(), &path, true) {
         Ok(file_id) => file_id,
         Err(_) => {
-            return ExpandResult::ok(Some((quote!(""), FragmentKind::Expr)));
+            return ExpandResult::ok(Some(ExpandedEager::new(quote!(""), FragmentKind::Expr)));
         }
     };
 
     let text = db.file_text(file_id);
     let text = &*text;
 
-    ExpandResult::ok(Some((quote!(#text), FragmentKind::Expr)))
+    ExpandResult::ok(Some(ExpandedEager::new(quote!(#text), FragmentKind::Expr)))
 }
 
 fn get_env_inner(db: &dyn AstDatabase, arg_id: EagerMacroId, key: &str) -> Option<String> {
@@ -437,7 +457,7 @@ fn env_expand(
     db: &dyn AstDatabase,
     arg_id: EagerMacroId,
     tt: &tt::Subtree,
-) -> ExpandResult<Option<(tt::Subtree, FragmentKind)>> {
+) -> ExpandResult<Option<ExpandedEager>> {
     let key = match parse_string(tt) {
         Ok(it) => it,
         Err(e) => return ExpandResult::only_err(e),
@@ -461,14 +481,14 @@ fn env_expand(
     });
     let expanded = quote! { #s };
 
-    ExpandResult { value: Some((expanded, FragmentKind::Expr)), err }
+    ExpandResult { value: Some(ExpandedEager::new(expanded, FragmentKind::Expr)), err }
 }
 
 fn option_env_expand(
     db: &dyn AstDatabase,
     arg_id: EagerMacroId,
     tt: &tt::Subtree,
-) -> ExpandResult<Option<(tt::Subtree, FragmentKind)>> {
+) -> ExpandResult<Option<ExpandedEager>> {
     let key = match parse_string(tt) {
         Ok(it) => it,
         Err(e) => return ExpandResult::only_err(e),
@@ -479,7 +499,7 @@ fn option_env_expand(
         Some(s) => quote! { std::option::Some(#s) },
     };
 
-    ExpandResult::ok(Some((expanded, FragmentKind::Expr)))
+    ExpandResult::ok(Some(ExpandedEager::new(expanded, FragmentKind::Expr)))
 }
 
 #[cfg(test)]
@@ -553,16 +573,18 @@ mod tests {
                         subtree: Arc::new(parsed_args.clone()),
                         krate,
                         call: call_id,
+                        included_file: None,
                     }
                 });
 
-                let (subtree, fragment) = expander.expand(&db, arg_id, &parsed_args).value.unwrap();
+                let expanded = expander.expand(&db, arg_id, &parsed_args).value.unwrap();
                 let eager = EagerCallLoc {
                     def,
-                    fragment,
-                    subtree: Arc::new(subtree),
+                    fragment: expanded.fragment,
+                    subtree: Arc::new(expanded.subtree),
                     krate,
                     call: call_id,
+                    included_file: expanded.included_file,
                 };
 
                 let id: MacroCallId = db.intern_eager_expansion(eager).into();

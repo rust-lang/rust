@@ -607,6 +607,29 @@ fn bar() -> u32 {0}
 }
 
 #[test]
+fn infer_builtin_macros_include_child_mod() {
+    check_types(
+        r#"
+//- /main.rs
+#[rustc_builtin_macro]
+macro_rules! include {() => {}}
+
+include!("f/foo.rs");
+
+fn main() {
+    bar::bar();
+}          //^ u32
+
+//- /f/foo.rs
+pub mod bar;
+
+//- /f/bar.rs
+pub fn bar() -> u32 {0}
+"#,
+    );
+}
+
+#[test]
 fn infer_builtin_macros_include_str() {
     check_types(
         r#"
