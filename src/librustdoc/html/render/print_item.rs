@@ -443,9 +443,24 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         } else {
             // FIXME: we should be using a derived_id for the Anchors here
             w.write_str("{\n");
+            let mut toggle = false;
+
+            // If there are too many associated types, hide _everything_
+            if should_hide_fields(types.len()) {
+                toggle = true;
+                toggle_open(w, "associated items");
+            }
             for t in &types {
                 render_assoc_item(w, t, AssocItemLink::Anchor(None), ItemType::Trait, cx);
                 w.write_str(";\n");
+            }
+            // If there are too many associated constants, hide everything after them
+            // We also do this if the types + consts is large because otherwise we could
+            // render a bunch of types and _then_ a bunch of consts just because both were
+            // _just_ under the limit
+            if !toggle & should_hide_fields(types.len() + consts.len()) {
+                toggle = true;
+                toggle_open(w, "associated constants and methods");
             }
             if !types.is_empty() && !consts.is_empty() {
                 w.write_str("\n");
@@ -453,6 +468,10 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
             for t in &consts {
                 render_assoc_item(w, t, AssocItemLink::Anchor(None), ItemType::Trait, cx);
                 w.write_str(";\n");
+            }
+            if !toggle & should_hide_fields(required.len() + provided.len()) {
+                toggle = true;
+                toggle_open(w, "methods");
             }
             if !consts.is_empty() && !required.is_empty() {
                 w.write_str("\n");
@@ -483,6 +502,9 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                 if pos < provided.len() - 1 {
                     w.write_str("<div class=\"item-spacer\"></div>");
                 }
+            }
+            if toggle {
+                toggle_close(w);
             }
             w.write_str("}");
         }
@@ -1284,9 +1306,7 @@ fn render_union(
     write!(w, " {{\n{}", tab);
     let count_fields = fields
         .iter()
-        .filter(
-            |f| if let clean::StructFieldItem(..) = *f.kind { true } else { false },
-        )
+        .filter(|f| if let clean::StructFieldItem(..) = *f.kind { true } else { false })
         .count();
     let toggle = should_hide_fields(count_fields);
     if toggle {
@@ -1343,9 +1363,7 @@ fn render_struct(
             w.write_str(" {");
             let count_fields = fields
                 .iter()
-                .filter(
-                    |f| if let clean::StructFieldItem(..) = *f.kind { true } else { false },
-                )
+                .filter(|f| if let clean::StructFieldItem(..) = *f.kind { true } else { false })
                 .count();
             let has_visible_fields = count_fields > 0;
             let toggle = should_hide_fields(count_fields);

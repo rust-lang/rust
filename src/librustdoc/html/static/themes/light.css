@@ -174,7 +174,7 @@ a {
 	color: #000;
 }
 
-.docblock:not(.type-decl) a:not(.srclink):not(.test-arrow),
+.docblock:not(.type-decl) a:not(.srclink):not(.test-arrow):not(.collapse-toggle),
 .docblock-short a:not(.srclink):not(.test-arrow), .item-info a,
 #help a {
 	color: #3873AD;

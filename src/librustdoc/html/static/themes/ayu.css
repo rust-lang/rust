@@ -218,7 +218,7 @@ a {
 	color: #c5c5c5;
 }
 
-.docblock:not(.type-decl) a:not(.srclink):not(.test-arrow),
+.docblock:not(.type-decl) a:not(.srclink):not(.test-arrow):not(.collapse-toggle),
 .docblock-short a:not(.srclink):not(.test-arrow), .item-info a,
 #help a {
 	color: #39AFD7;

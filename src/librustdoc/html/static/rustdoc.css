@@ -1058,8 +1058,8 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	margin-top: 3px;
 }
 
-/* for enum and struct fields */
-.enum > .toggle-wrapper + .docblock, .struct > .toggle-wrapper + .docblock, .union > .toggle-wrapper + .docblock {
+/* for hiding fields/variants/associated items */
+.enum > .toggle-wrapper + .docblock, .struct > .toggle-wrapper + .docblock, .union > .toggle-wrapper + .docblock, .trait > .toggle-wrapper + .docblock {
 	margin-left: 0px;
 }
 
@@ -1785,7 +1785,7 @@ div.name.expand::before {
 .type-decl > pre > .docblock.attributes.top-attr {
 	margin-left: 1.8em !important;
 }
-.type-decl > pre > .toggle-attributes {
+.type-decl > pre .toggle-attributes {
 	margin-left: 2.2em;
 }
 .type-decl > pre > .docblock.attributes {
