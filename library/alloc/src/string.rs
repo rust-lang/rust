@@ -1289,37 +1289,44 @@ impl String {
     where
         F: FnMut(char) -> bool,
     {
-        let len = self.len();
-        let mut del_bytes = 0;
-        let mut idx = 0;
-
-        unsafe {
-            self.vec.set_len(0);
+        struct SetLenOnDrop<'a> {
+            s: &'a mut String,
+            idx: usize,
+            del_bytes: usize,
         }
 
-        while idx < len {
-            let ch = unsafe { self.get_unchecked(idx..len).chars().next().unwrap() };
+        impl<'a> Drop for SetLenOnDrop<'a> {
+            fn drop(&mut self) {
+                let new_len = self.idx - self.del_bytes;
+                debug_assert!(new_len <= self.s.len());
+                unsafe { self.s.vec.set_len(new_len) };
+            }
+        }
+
+        let len = self.len();
+        let mut guard = SetLenOnDrop { s: self, idx: 0, del_bytes: 0 };
+
+        while guard.idx < len {
+            let ch = unsafe { guard.s.get_unchecked(guard.idx..len).chars().next().unwrap() };
             let ch_len = ch.len_utf8();
 
             if !f(ch) {
-                del_bytes += ch_len;
-            } else if del_bytes > 0 {
+                guard.del_bytes += ch_len;
+            } else if guard.del_bytes > 0 {
                 unsafe {
                     ptr::copy(
-                        self.vec.as_ptr().add(idx),
-                        self.vec.as_mut_ptr().add(idx - del_bytes),
+                        guard.s.vec.as_ptr().add(guard.idx),
+                        guard.s.vec.as_mut_ptr().add(guard.idx - guard.del_bytes),
                         ch_len,
                     );
                 }
             }
 
             // Point idx to the next char
-            idx += ch_len;
+            guard.idx += ch_len;
         }
 
-        unsafe {
-            self.vec.set_len(len - del_bytes);
-        }
+        drop(guard);
     }
 
     /// Inserts a character into this `String` at a byte position.
