@@ -463,6 +463,8 @@ class RustBuild(object):
                 "--",
                 "{}/src/llvm-project".format(top_level),
                 "{}/src/bootstrap/download-ci-llvm-stamp".format(top_level),
+                # the LLVM shared object file is named `LLVM-12-rust-{version}-nightly`
+                "{}/src/version".format(top_level)
             ]).decode(sys.getdefaultencoding()).strip()
             llvm_assertions = self.get_toml('assertions', 'llvm') == 'true'
             llvm_root = self.llvm_root()
