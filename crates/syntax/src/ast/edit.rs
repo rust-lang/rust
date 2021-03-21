@@ -595,7 +595,7 @@ impl IndentLevel {
     pub fn from_node(node: &SyntaxNode) -> IndentLevel {
         match node.first_token() {
             Some(it) => Self::from_token(&it),
-            None => return IndentLevel(0),
+            None => IndentLevel(0),
         }
     }
 

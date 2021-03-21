@@ -255,9 +255,9 @@ impl Builder {
 fn make_dnf(expr: CfgExpr) -> CfgExpr {
     match expr {
         CfgExpr::Invalid | CfgExpr::Atom(_) | CfgExpr::Not(_) => expr,
-        CfgExpr::Any(e) => CfgExpr::Any(e.into_iter().map(|expr| make_dnf(expr)).collect()),
+        CfgExpr::Any(e) => CfgExpr::Any(e.into_iter().map(make_dnf).collect()),
         CfgExpr::All(e) => {
-            let e = e.into_iter().map(|expr| make_nnf(expr)).collect::<Vec<_>>();
+            let e = e.into_iter().map(make_nnf).collect::<Vec<_>>();
 
             CfgExpr::Any(distribute_conj(&e))
         }
@@ -300,8 +300,8 @@ fn distribute_conj(conj: &[CfgExpr]) -> Vec<CfgExpr> {
 fn make_nnf(expr: CfgExpr) -> CfgExpr {
     match expr {
         CfgExpr::Invalid | CfgExpr::Atom(_) => expr,
-        CfgExpr::Any(expr) => CfgExpr::Any(expr.into_iter().map(|expr| make_nnf(expr)).collect()),
-        CfgExpr::All(expr) => CfgExpr::All(expr.into_iter().map(|expr| make_nnf(expr)).collect()),
+        CfgExpr::Any(expr) => CfgExpr::Any(expr.into_iter().map(make_nnf).collect()),
+        CfgExpr::All(expr) => CfgExpr::All(expr.into_iter().map(make_nnf).collect()),
         CfgExpr::Not(operand) => match *operand {
             CfgExpr::Invalid | CfgExpr::Atom(_) => CfgExpr::Not(operand.clone()), // Original negated expr
             CfgExpr::Not(expr) => {

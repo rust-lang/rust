@@ -57,7 +57,7 @@ impl<'a> Iterator for OpDelimitedIter<'a> {
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         let len = self.inner.len() + if self.delimited.is_some() { 2 } else { 0 };
-        let remain = len.checked_sub(self.idx).unwrap_or(0);
+        let remain = len.saturating_sub(self.idx);
         (remain, Some(remain))
     }
 }

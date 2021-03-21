@@ -304,7 +304,7 @@ impl BindingsBuilder {
         link_nodes: &'a Vec<LinkNode<Rc<BindingKind>>>,
         nodes: &mut Vec<&'a Rc<BindingKind>>,
     ) {
-        link_nodes.into_iter().for_each(|it| match it {
+        link_nodes.iter().for_each(|it| match it {
             LinkNode::Node(it) => nodes.push(it),
             LinkNode::Parent { idx, len } => self.collect_nodes_ref(*idx, *len, nodes),
         });
@@ -713,10 +713,9 @@ fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragmen
                     .map(|ident| Some(tt::Leaf::from(ident.clone()).into()))
                     .map_err(|()| err!("expected ident")),
                 "tt" => input.expect_tt().map(Some).map_err(|()| err!()),
-                "lifetime" => input
-                    .expect_lifetime()
-                    .map(|tt| Some(tt))
-                    .map_err(|()| err!("expected lifetime")),
+                "lifetime" => {
+                    input.expect_lifetime().map(Some).map_err(|()| err!("expected lifetime"))
+                }
                 "literal" => {
                     let neg = input.eat_char('-');
                     input

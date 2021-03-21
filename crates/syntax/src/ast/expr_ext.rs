@@ -11,16 +11,16 @@ impl ast::AttrsOwner for ast::Expr {}
 
 impl ast::Expr {
     pub fn is_block_like(&self) -> bool {
-        match self {
+        matches!(
+            self,
             ast::Expr::IfExpr(_)
-            | ast::Expr::LoopExpr(_)
-            | ast::Expr::ForExpr(_)
-            | ast::Expr::WhileExpr(_)
-            | ast::Expr::BlockExpr(_)
-            | ast::Expr::MatchExpr(_)
-            | ast::Expr::EffectExpr(_) => true,
-            _ => false,
-        }
+                | ast::Expr::LoopExpr(_)
+                | ast::Expr::ForExpr(_)
+                | ast::Expr::WhileExpr(_)
+                | ast::Expr::BlockExpr(_)
+                | ast::Expr::MatchExpr(_)
+                | ast::Expr::EffectExpr(_)
+        )
     }
 
     pub fn name_ref(&self) -> Option<ast::NameRef> {
@@ -151,20 +151,20 @@ pub enum BinOp {
 
 impl BinOp {
     pub fn is_assignment(self) -> bool {
-        match self {
+        matches!(
+            self,
             BinOp::Assignment
-            | BinOp::AddAssign
-            | BinOp::DivAssign
-            | BinOp::MulAssign
-            | BinOp::RemAssign
-            | BinOp::ShrAssign
-            | BinOp::ShlAssign
-            | BinOp::SubAssign
-            | BinOp::BitOrAssign
-            | BinOp::BitAndAssign
-            | BinOp::BitXorAssign => true,
-            _ => false,
-        }
+                | BinOp::AddAssign
+                | BinOp::DivAssign
+                | BinOp::MulAssign
+                | BinOp::RemAssign
+                | BinOp::ShrAssign
+                | BinOp::ShlAssign
+                | BinOp::SubAssign
+                | BinOp::BitOrAssign
+                | BinOp::BitAndAssign
+                | BinOp::BitXorAssign
+        )
     }
 }
 
