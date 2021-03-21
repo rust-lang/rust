@@ -255,6 +255,10 @@ impl<'a> CompletionContext<'a> {
         if kind == IDENT || kind == LIFETIME_IDENT || kind == UNDERSCORE || kind.is_keyword() {
             cov_mark::hit!(completes_if_prefix_is_keyword);
             self.original_token.text_range()
+        } else if kind == CHAR {
+            // assume we are completing a lifetime but the user has only typed the '
+            cov_mark::hit!(completes_if_lifetime_without_idents);
+            TextRange::at(self.original_token.text_range().start(), TextSize::from(1))
         } else {
             TextRange::empty(self.position.offset)
         }
@@ -471,7 +475,7 @@ impl<'a> CompletionContext<'a> {
         self.lifetime_syntax =
             find_node_at_offset(original_file, lifetime.syntax().text_range().start());
         if let Some(parent) = lifetime.syntax().parent() {
-            if parent.kind() == syntax::SyntaxKind::ERROR {
+            if parent.kind() == ERROR {
                 return;
             }
 
