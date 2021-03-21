@@ -15,6 +15,18 @@ pub fn is_builtin_attr(attr: &Attribute) -> bool {
     attr.is_doc_comment() || attr.ident().filter(|ident| is_builtin_attr_name(ident.name)).is_some()
 }
 
+pub fn is_inert_builtin_attr(attr: &Attribute) -> bool {
+    attr.is_doc_comment()
+        || attr
+            .ident()
+            .filter(|ident| {
+                ident.name != sym::cfg
+                    && ident.name != sym::cfg_attr
+                    && is_builtin_attr_name(ident.name)
+            })
+            .is_some()
+}
+
 enum AttrError {
     MultipleItem(String),
     UnknownMetaItem(String, &'static [&'static str]),

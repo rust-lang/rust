@@ -3,7 +3,7 @@
 macro_rules! compiles_fine {
     (#[$at:meta]) => {
         // test that the different types of attributes work
-        #[attribute]
+        #[rustfmt::attribute]
         /// Documentation!
         #[$at]
 
@@ -15,9 +15,9 @@ macro_rules! compiles_fine {
 }
 
 // item
-compiles_fine!(#[foo]);
+compiles_fine!(#[doc = "foo"]);
 
 pub fn main() {
     // statement
-    compiles_fine!(#[bar]);
+    compiles_fine!(#[doc = "bar"]);
 }

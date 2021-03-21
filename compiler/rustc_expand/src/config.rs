@@ -415,6 +415,66 @@ impl<'a> StripUnconfigured<'a> {
             .collect()
     }
 
+    crate fn expand_cfg_attr(&mut self, attr: Attribute) -> Vec<Attribute> {
+        let (cfg_predicate, expanded_attrs) = match self.parse_cfg_attr(&attr) {
+            None => return vec![],
+            Some(r) => r,
+        };
+
+        if !attr::cfg_matches(&cfg_predicate, &self.sess.parse_sess, self.features) {
+            return vec![];
+        }
+
+        // We call `process_cfg_attr` recursively in case there's a
+        // `cfg_attr` inside of another `cfg_attr`. E.g.
+        //  `#[cfg_attr(false, cfg_attr(true, some_attr))]`.
+        expanded_attrs
+            .into_iter()
+            .map(|(item, span)| {
+                let orig_tokens = attr.tokens().to_tokenstream();
+
+                // We are taking an attribute of the form `#[cfg_attr(pred, attr)]`
+                // and producing an attribute of the form `#[attr]`. We
+                // have captured tokens for `attr` itself, but we need to
+                // synthesize tokens for the wrapper `#` and `[]`, which
+                // we do below.
+
+                // Use the `#` in `#[cfg_attr(pred, attr)]` as the `#` token
+                // for `attr` when we expand it to `#[attr]`
+                let mut orig_trees = orig_tokens.trees();
+                let pound_token = match orig_trees.next().unwrap() {
+                    TokenTree::Token(token @ Token { kind: TokenKind::Pound, .. }) => token,
+                    _ => panic!("Bad tokens for attribute {:?}", attr),
+                };
+                let pound_span = pound_token.span;
+
+                let mut trees = vec![(AttrAnnotatedTokenTree::Token(pound_token), Spacing::Alone)];
+                if attr.style == AttrStyle::Inner {
+                    // For inner attributes, we do the same thing for the `!` in `#![some_attr]`
+                    let bang_token = match orig_trees.next().unwrap() {
+                        TokenTree::Token(token @ Token { kind: TokenKind::Not, .. }) => token,
+                        _ => panic!("Bad tokens for attribute {:?}", attr),
+                    };
+                    trees.push((AttrAnnotatedTokenTree::Token(bang_token), Spacing::Alone));
+                }
+                // We don't really have a good span to use for the syntheized `[]`
+                // in `#[attr]`, so just use the span of the `#` token.
+                let bracket_group = AttrAnnotatedTokenTree::Delimited(
+                    DelimSpan::from_single(pound_span),
+                    DelimToken::Bracket,
+                    item.tokens
+                        .as_ref()
+                        .unwrap_or_else(|| panic!("Missing tokens for {:?}", item))
+                        .create_token_stream(),
+                );
+                trees.push((bracket_group, Spacing::Alone));
+                let tokens = Some(LazyTokenStream::new(AttrAnnotatedTokenStream::new(trees)));
+
+                attr::mk_attr_from_item(item, tokens, attr.style, span)
+            })
+            .collect()
+    }
+
     fn parse_cfg_attr(&self, attr: &Attribute) -> Option<(MetaItem, Vec<(AttrItem, Span)>)> {
         match attr.get_normal_item().args {
             ast::MacArgs::Delimited(dspan, delim, ref tts) if !tts.is_empty() => {
@@ -453,43 +513,42 @@ impl<'a> StripUnconfigured<'a> {
 
     /// Determines if a node with the given attributes should be included in this configuration.
     fn in_cfg(&self, attrs: &[Attribute]) -> bool {
-        attrs.iter().all(|attr| {
-            if !is_cfg(self.sess, attr) {
+        attrs.iter().all(|attr| !is_cfg(self.sess, attr) || self.cfg_true(attr))
+    }
+
+    crate fn cfg_true(&self, attr: &Attribute) -> bool {
+        let meta_item = match validate_attr::parse_meta(&self.sess.parse_sess, attr) {
+            Ok(meta_item) => meta_item,
+            Err(mut err) => {
+                err.emit();
                 return true;
             }
-            let meta_item = match validate_attr::parse_meta(&self.sess.parse_sess, attr) {
-                Ok(meta_item) => meta_item,
-                Err(mut err) => {
-                    err.emit();
-                    return true;
-                }
-            };
-            let error = |span, msg, suggestion: &str| {
-                let mut err = self.sess.parse_sess.span_diagnostic.struct_span_err(span, msg);
-                if !suggestion.is_empty() {
-                    err.span_suggestion(
-                        span,
-                        "expected syntax is",
-                        suggestion.into(),
-                        Applicability::MaybeIncorrect,
-                    );
-                }
-                err.emit();
-                true
-            };
-            let span = meta_item.span;
-            match meta_item.meta_item_list() {
-                None => error(span, "`cfg` is not followed by parentheses", "cfg(/* predicate */)"),
-                Some([]) => error(span, "`cfg` predicate is not specified", ""),
-                Some([_, .., l]) => error(l.span(), "multiple `cfg` predicates are specified", ""),
-                Some([single]) => match single.meta_item() {
-                    Some(meta_item) => {
-                        attr::cfg_matches(meta_item, &self.sess.parse_sess, self.features)
-                    }
-                    None => error(single.span(), "`cfg` predicate key cannot be a literal", ""),
-                },
+        };
+        let error = |span, msg, suggestion: &str| {
+            let mut err = self.sess.parse_sess.span_diagnostic.struct_span_err(span, msg);
+            if !suggestion.is_empty() {
+                err.span_suggestion(
+                    span,
+                    "expected syntax is",
+                    suggestion.into(),
+                    Applicability::MaybeIncorrect,
+                );
             }
-        })
+            err.emit();
+            true
+        };
+        let span = meta_item.span;
+        match meta_item.meta_item_list() {
+            None => error(span, "`cfg` is not followed by parentheses", "cfg(/* predicate */)"),
+            Some([]) => error(span, "`cfg` predicate is not specified", ""),
+            Some([_, .., l]) => error(l.span(), "multiple `cfg` predicates are specified", ""),
+            Some([single]) => match single.meta_item() {
+                Some(meta_item) => {
+                    attr::cfg_matches(meta_item, &self.sess.parse_sess, self.features)
+                }
+                None => error(single.span(), "`cfg` predicate key cannot be a literal", ""),
+            },
+        }
     }
 
     /// If attributes are not allowed on expressions, emit an error for `attr`

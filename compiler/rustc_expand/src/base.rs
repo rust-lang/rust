@@ -3,7 +3,7 @@ use crate::module::DirOwnership;
 
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Nonterminal};
-use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, TokenStream};
+use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, LazyTokenStream, TokenStream};
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AstLike, Attribute, Item, NodeId, PatKind};
 use rustc_attr::{self as attr, Deprecation, Stability};
@@ -44,6 +44,64 @@ pub enum Annotatable {
     Param(ast::Param),
     FieldDef(ast::FieldDef),
     Variant(ast::Variant),
+}
+
+impl AstLike for Annotatable {
+    const SUPPORTS_CUSTOM_INNER_ATTRS: bool = true;
+
+    fn attrs(&self) -> &[Attribute] {
+        match *self {
+            Annotatable::Item(ref item) => &item.attrs,
+            Annotatable::TraitItem(ref trait_item) => &trait_item.attrs,
+            Annotatable::ImplItem(ref impl_item) => &impl_item.attrs,
+            Annotatable::ForeignItem(ref foreign_item) => &foreign_item.attrs,
+            Annotatable::Stmt(ref stmt) => stmt.attrs(),
+            Annotatable::Expr(ref expr) => &expr.attrs,
+            Annotatable::Arm(ref arm) => &arm.attrs,
+            Annotatable::ExprField(ref field) => &field.attrs,
+            Annotatable::PatField(ref fp) => &fp.attrs,
+            Annotatable::GenericParam(ref gp) => &gp.attrs,
+            Annotatable::Param(ref p) => &p.attrs,
+            Annotatable::FieldDef(ref sf) => &sf.attrs,
+            Annotatable::Variant(ref v) => &v.attrs(),
+        }
+    }
+
+    fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
+        match self {
+            Annotatable::Item(item) => item.visit_attrs(f),
+            Annotatable::TraitItem(trait_item) => trait_item.visit_attrs(f),
+            Annotatable::ImplItem(impl_item) => impl_item.visit_attrs(f),
+            Annotatable::ForeignItem(foreign_item) => foreign_item.visit_attrs(f),
+            Annotatable::Stmt(stmt) => stmt.visit_attrs(f),
+            Annotatable::Expr(expr) => expr.visit_attrs(f),
+            Annotatable::Arm(arm) => arm.visit_attrs(f),
+            Annotatable::ExprField(field) => field.visit_attrs(f),
+            Annotatable::PatField(fp) => fp.visit_attrs(f),
+            Annotatable::GenericParam(gp) => gp.visit_attrs(f),
+            Annotatable::Param(p) => p.visit_attrs(f),
+            Annotatable::FieldDef(sf) => sf.visit_attrs(f),
+            Annotatable::Variant(v) => v.visit_attrs(f),
+        }
+    }
+
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
+        match self {
+            Annotatable::Item(item) => item.tokens_mut(),
+            Annotatable::TraitItem(trait_item) => trait_item.tokens_mut(),
+            Annotatable::ImplItem(impl_item) => impl_item.tokens_mut(),
+            Annotatable::ForeignItem(foreign_item) => foreign_item.tokens_mut(),
+            Annotatable::Stmt(stmt) => stmt.tokens_mut(),
+            Annotatable::Expr(expr) => expr.tokens_mut(),
+            Annotatable::Arm(arm) => arm.tokens_mut(),
+            Annotatable::ExprField(field) => field.tokens_mut(),
+            Annotatable::PatField(fp) => fp.tokens_mut(),
+            Annotatable::GenericParam(gp) => gp.tokens_mut(),
+            Annotatable::Param(p) => p.tokens_mut(),
+            Annotatable::FieldDef(sf) => sf.tokens_mut(),
+            Annotatable::Variant(v) => v.tokens_mut(),
+        }
+    }
 }
 
 impl Annotatable {

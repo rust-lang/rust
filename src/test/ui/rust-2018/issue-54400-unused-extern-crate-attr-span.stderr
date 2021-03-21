@@ -1,11 +1,8 @@
 error: unused extern crate
   --> $DIR/issue-54400-unused-extern-crate-attr-span.rs:12:1
    |
-LL | / #[cfg(blandiloquence)]
-LL | | extern crate edition_lint_paths;
-   | | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
-   | |________________________________|
-   |                                  help: remove it
+LL | extern crate edition_lint_paths;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove it
    |
 note: the lint level is defined here
   --> $DIR/issue-54400-unused-extern-crate-attr-span.rs:6:9

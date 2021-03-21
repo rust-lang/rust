@@ -8,7 +8,8 @@
 
 // The suggestion span should include the attribute.
 
-
+#[cfg(blandiloquence)]
+ //~ HELP remove it
 //~^ ERROR unused extern crate
 
 fn main() {}

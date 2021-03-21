@@ -35,3 +35,7 @@ fn main() {
     let _ = #[cfg_eval] #[print_attr] #[cfg_attr(not(FALSE), rustc_dummy)]
     (#[cfg(FALSE)] 0, #[cfg(all(/*true*/))] 1,);
 }
+
+#[derive(Clone)]
+#[cfg(FALSE)]
+struct S3 {}

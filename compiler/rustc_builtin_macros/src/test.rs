@@ -7,6 +7,7 @@ use rustc_ast::attr;
 use rustc_ast::ptr::P;
 use rustc_ast_pretty::pprust;
 use rustc_expand::base::*;
+use rustc_expand::config::StripUnconfigured;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
@@ -55,6 +56,12 @@ pub fn expand_test(
     item: Annotatable,
 ) -> Vec<Annotatable> {
     check_builtin_macro_attribute(cx, meta_item, sym::test);
+    let mut cfg =
+        StripUnconfigured { sess: cx.sess, features: cx.ecfg.features, config_tokens: true };
+    let item = match cfg.configure(item) {
+        Some(item) => item,
+        None => return Vec::new(),
+    };
     expand_test_or_bench(cx, attr_sp, item, false)
 }
 

@@ -8,8 +8,8 @@
 
 // The suggestion span should include the attribute.
 
-#[cfg(blandiloquence)] //~ HELP remove it
-extern crate edition_lint_paths;
+#[cfg(blandiloquence)]
+extern crate edition_lint_paths; //~ HELP remove it
 //~^ ERROR unused extern crate
 
 fn main() {}
