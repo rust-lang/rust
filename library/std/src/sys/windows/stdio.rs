@@ -339,7 +339,7 @@ impl Stdout {
 
 impl io::Write for Stdout {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        write(c::STD_ERROR_HANDLE, buf, &mut self.incomplete_utf8)
+        write(c::STD_OUTPUT_HANDLE, buf, &mut self.incomplete_utf8)
     }
 
     fn flush(&mut self) -> io::Result<()> {
