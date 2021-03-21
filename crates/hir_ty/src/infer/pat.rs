@@ -13,7 +13,9 @@ use hir_expand::name::Name;
 
 use super::{BindingMode, Expectation, InferenceContext};
 use crate::{
-    lower::lower_to_chalk_mutability, utils::variant_data, Interner, Substitution, Ty, TyKind,
+    lower::lower_to_chalk_mutability,
+    utils::{generics, variant_data},
+    Interner, Substitution, Ty, TyKind,
 };
 
 impl<'a> InferenceContext<'a> {
@@ -233,13 +235,31 @@ impl<'a> InferenceContext<'a> {
             Pat::Lit(expr) => self.infer_expr(*expr, &Expectation::has_type(expected.clone())),
             Pat::Box { inner } => match self.resolve_boxed_box() {
                 Some(box_adt) => {
-                    let inner_expected = match expected.as_adt() {
-                        Some((adt, substs)) if adt == box_adt => substs.as_single().clone(),
-                        _ => self.result.standard_types.unknown.clone(),
+                    let (inner_ty, alloc_ty) = match expected.as_adt() {
+                        Some((adt, subst)) if adt == box_adt => {
+                            (subst[0].clone(), subst.get(1).cloned())
+                        }
+                        _ => (self.result.standard_types.unknown.clone(), None),
                     };
 
-                    let inner_ty = self.infer_pat(*inner, &inner_expected, default_bm);
-                    Ty::adt_ty(box_adt, Substitution::single(inner_ty))
+                    let inner_ty = self.infer_pat(*inner, &inner_ty, default_bm);
+                    let mut sb = Substitution::build_for_generics(&generics(
+                        self.db.upcast(),
+                        box_adt.into(),
+                    ));
+                    sb = sb.push(inner_ty);
+                    if sb.remaining() == 1 {
+                        sb = sb.push(match alloc_ty {
+                            Some(alloc_ty) if !alloc_ty.is_unknown() => alloc_ty,
+                            _ => match self.db.generic_defaults(box_adt.into()).get(1) {
+                                Some(alloc_ty) if !alloc_ty.value.is_unknown() => {
+                                    alloc_ty.value.clone()
+                                }
+                                _ => self.table.new_type_var(),
+                            },
+                        });
+                    }
+                    Ty::adt_ty(box_adt, sb.build())
                 }
                 None => self.err_ty(),
             },
