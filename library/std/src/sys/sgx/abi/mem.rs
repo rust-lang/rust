@@ -38,8 +38,7 @@ pub fn image_base() -> u64 {
         asm!(
             "lea IMAGE_BASE(%rip), {}",
             lateout(reg) base,
-            // NOTE(#76738): ATT syntax is used to support LLVM 8 and 9.
-            options(att_syntax, nostack, preserves_flags, nomem, pure),
+            options(nostack, preserves_flags, nomem, pure),
         )
     };
     base
