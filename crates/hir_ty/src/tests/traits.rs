@@ -3324,3 +3324,49 @@ fn f() {
         "#]],
     )
 }
+
+#[test]
+fn infer_default_trait_type_parameter() {
+    check_infer(
+        r#"
+struct A;
+
+trait Op<RHS=Self> {
+    type Output;
+
+    fn do_op(self, rhs: RHS) -> Self::Output;
+}
+
+impl Op for A {
+    type Output = bool;
+
+    fn do_op(self, rhs: Self) -> Self::Output {
+        true
+    }
+}
+
+fn test() {
+    let x = A;
+    let y = A;
+    let r = x.do_op(y);
+}
+        "#,
+        expect![[r#"
+            63..67 'self': Self
+            69..72 'rhs': RHS
+            153..157 'self': A
+            159..162 'rhs': A
+            186..206 '{     ...     }': bool
+            196..200 'true': bool
+            220..277 '{     ...(y); }': ()
+            230..231 'x': A
+            234..235 'A': A
+            245..246 'y': A
+            249..250 'A': A
+            260..261 'r': bool
+            264..265 'x': A
+            264..274 'x.do_op(y)': bool
+            272..273 'y': A
+        "#]],
+    )
+}
