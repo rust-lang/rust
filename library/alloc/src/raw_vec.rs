@@ -1,4 +1,4 @@
-#![unstable(feature = "raw_vec_internals", reason = "implementation detail", issue = "none")]
+wwwwwww#![unstable(feature = "raw_vec_internals", reason = "implementation detail", issue = "none")]
 #![doc(hidden)]
 
 use core::alloc::LayoutError;
@@ -138,6 +138,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// Like `with_capacity`, but parameterized over the choice of
     /// allocator for the returned `RawVec`.
     #[inline]
+    #[track_caller]
     pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
         Self::allocate_in(capacity, AllocInit::Uninitialized, alloc)
     }
@@ -145,6 +146,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// Like `with_capacity_zeroed`, but parameterized over the choice
     /// of allocator for the returned `RawVec`.
     #[inline]
+    #[track_caller]
     pub fn with_capacity_zeroed_in(capacity: usize, alloc: A) -> Self {
         Self::allocate_in(capacity, AllocInit::Zeroed, alloc)
     }
@@ -183,6 +185,7 @@ impl<T, A: Allocator> RawVec<T, A> {
         }
     }
 
+    #[track_caller]
     fn allocate_in(capacity: usize, init: AllocInit, alloc: A) -> Self {
         if mem::size_of::<T>() == 0 {
             Self::new_in(alloc)
@@ -315,6 +318,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// #   vector.push_all(&[1, 3, 5, 7, 9]);
     /// # }
     /// ```
+    #[track_caller]
     pub fn reserve(&mut self, len: usize, additional: usize) {
         handle_reserve(self.try_reserve(len, additional));
     }
@@ -345,6 +349,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// # Aborts
     ///
     /// Aborts on OOM.
+    #[track_caller]
     pub fn reserve_exact(&mut self, len: usize, additional: usize) {
         handle_reserve(self.try_reserve_exact(len, additional));
     }
@@ -368,6 +373,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// # Aborts
     ///
     /// Aborts on OOM.
+    #[track_caller]
     pub fn shrink_to_fit(&mut self, amount: usize) {
         handle_reserve(self.shrink(amount));
     }
@@ -503,6 +509,7 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for RawVec<T, A> {
 
 // Central function for reserve error handling.
 #[inline]
+#[track_caller]
 fn handle_reserve(result: Result<(), TryReserveError>) {
     match result {
         Err(CapacityOverflow) => capacity_overflow(),
@@ -532,6 +539,7 @@ fn alloc_guard(alloc_size: usize) -> Result<(), TryReserveError> {
 // One central function responsible for reporting capacity overflows. This'll
 // ensure that the code generation related to these panics is minimal as there's
 // only one location which panics rather than a bunch throughout the module.
+#[track_caller]
 fn capacity_overflow() -> ! {
     panic!("capacity overflow");
 }
