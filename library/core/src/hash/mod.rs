@@ -175,6 +175,21 @@ pub trait Hash {
 
     /// Feeds a slice of this type into the given [`Hasher`].
     ///
+    /// This method is meant as a convenience, but its implementation is
+    /// also explicitly left unspecified. It isn't guaranteed to be
+    /// equivalent to repeated calls of [`hash`] and implementations of
+    /// [`Hash`] should keep that in mind and call [`hash`] themselves
+    /// if the slice isn't treated as a whole unit in the [`PartialEq`]
+    /// implementation.
+    ///
+    /// For example, a [`VecDeque`] implementation might naïvely call
+    /// [`as_slices`] and then [`hash_slice`] on each slice, but this
+    /// is wrong since the two slices can change with a call to
+    /// [`make_contiguous`] without affecting the [`PartialEq`]
+    /// result. Since these slices aren't treated as singular
+    /// units, and instead part of a larger deque, this method cannot
+    /// be used.
+    ///
     /// # Examples
     ///
     /// ```
@@ -186,6 +201,12 @@ pub trait Hash {
     /// Hash::hash_slice(&numbers, &mut hasher);
     /// println!("Hash is {:x}!", hasher.finish());
     /// ```
+    ///
+    /// [`VecDeque`]: ../../std/collections/struct.VecDeque.html
+    /// [`as_slices`]: ../../std/collections/struct.VecDeque.html#method.as_slices
+    /// [`make_contiguous`]: ../../std/collections/struct.VecDeque.html#method.make_contiguous
+    /// [`hash`]: Hash::hash
+    /// [`hash_slice`]: Hash::hash_slice
     #[stable(feature = "hash_slice", since = "1.3.0")]
     fn hash_slice<H: Hasher>(data: &[Self], state: &mut H)
     where
@@ -221,6 +242,11 @@ pub use macros::Hash;
 /// instance (with [`write`] and [`write_u8`] etc.). Most of the time, `Hasher`
 /// instances are used in conjunction with the [`Hash`] trait.
 ///
+/// This trait makes no assumptions about how the various `write_*` methods are
+/// defined and implementations of [`Hash`] should not assume that they work one
+/// way or another. You cannot assume, for example, that a [`write_u32`] call is
+/// equivalent to four calls of [`write_u8`].
+///
 /// # Examples
 ///
 /// ```
@@ -240,6 +266,7 @@ pub use macros::Hash;
 /// [`finish`]: Hasher::finish
 /// [`write`]: Hasher::write
 /// [`write_u8`]: Hasher::write_u8
+/// [`write_u32`]: Hasher::write_u32
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Hasher {
     /// Returns the hash value for the values written so far.
