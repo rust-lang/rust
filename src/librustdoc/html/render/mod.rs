@@ -1009,18 +1009,25 @@ fn render_assoc_item(
                 href(did, cx.cache()).map(|p| format!("{}#{}.{}", p.0, ty, name)).unwrap_or(anchor)
             }
         };
-        let mut header_len = format!(
-            "{}{}{}{}{}{:#}fn {}{:#}",
-            meth.visibility.print_with_space(cx.tcx(), meth.def_id, cx.cache()),
-            header.constness.print_with_space(),
-            header.asyncness.print_with_space(),
-            header.unsafety.print_with_space(),
-            print_default_space(meth.is_default()),
-            print_abi_with_space(header.abi),
-            name,
-            g.print(cx.cache())
-        )
-        .len();
+        let tcx = cx.tcx();
+        let vis = meth.visibility.print_with_space(tcx, meth.def_id, cx.cache()).to_string();
+        let constness = header.constness.print_with_space();
+        let asyncness = header.asyncness.print_with_space();
+        let unsafety = header.unsafety.print_with_space();
+        let defaultness = print_default_space(meth.is_default());
+        let abi = print_abi_with_space(header.abi).to_string();
+        // NOTE: `{:#}` does not print HTML formatting, `{}` does. So `g.print` can't be reused between the length calculation and `write!`.
+        let generics_len = format!("{:#}", g.print(cx.cache())).len();
+        let mut header_len = "fn ".len()
+            + vis.len()
+            + constness.len()
+            + asyncness.len()
+            + unsafety.len()
+            + defaultness.len()
+            + abi.len()
+            + name.as_str().len()
+            + generics_len;
+
         let (indent, end_newline) = if parent == ItemType::Trait {
             header_len += 4;
             (4, false)
@@ -1028,17 +1035,18 @@ fn render_assoc_item(
             (0, true)
         };
         render_attributes(w, meth, false);
+        w.reserve(header_len + "<a href=\"\" class=\"fnname\">{".len() + "</a>".len());
         write!(
             w,
             "{}{}{}{}{}{}{}fn <a href=\"{href}\" class=\"fnname\">{name}</a>\
              {generics}{decl}{spotlight}{where_clause}",
             if parent == ItemType::Trait { "    " } else { "" },
-            meth.visibility.print_with_space(cx.tcx(), meth.def_id, cx.cache()),
-            header.constness.print_with_space(),
-            header.asyncness.print_with_space(),
-            header.unsafety.print_with_space(),
-            print_default_space(meth.is_default()),
-            print_abi_with_space(header.abi),
+            vis,
+            constness,
+            asyncness,
+            unsafety,
+            defaultness,
+            abi,
             href = href,
             name = name,
             generics = g.print(cx.cache()),
