@@ -79,6 +79,8 @@ extern std::map<std::string, std::function<llvm::Value *(
                                  IRBuilder<> &, CallInst *, ArrayRef<Value *>)>>
     shadowHandlers;
 
+extern llvm::cl::opt<bool> EnzymeInactiveDynamic;
+
 static inline std::string to_string(DerivativeMode mode) {
   switch (mode) {
   case DerivativeMode::Forward:
@@ -261,6 +263,8 @@ public:
   }
 
   bool assumeDynamicLoopOfSizeOne(llvm::Loop *L) const override {
+    if (!EnzymeInactiveDynamic)
+      return false;
     auto OL = OrigLI.getLoopFor(isOriginal(L->getHeader()));
     assert(OL);
     for (auto OB : OL->getBlocks()) {
@@ -845,9 +849,9 @@ public:
         internal_isConstantValue[&I] = const_value;
         internal_isConstantInstruction[&I] = const_inst;
 
-        // if (printconst)
-        // llvm::errs() << I << " cv=" << const_value << " ci=" << const_inst <<
-        // "\n";
+        if (printconst)
+          llvm::errs() << I << " cv=" << const_value << " ci=" << const_inst
+                       << "\n";
       }
     }
   }
@@ -1019,7 +1023,8 @@ public:
   }
 
   std::map<Instruction *, ValueMap<BasicBlock *, WeakTrackingVH>> lcssaFixes;
-  Value *fixLCSSA(Instruction *inst, BasicBlock *forwardBlock) {
+  Value *fixLCSSA(Instruction *inst, BasicBlock *forwardBlock,
+                  bool mergeIfTrue = false) {
     assert(inst->getName() != "<badref>");
     LoopContext lc;
     bool inLoop = getContext(inst->getParent(), lc);
@@ -1087,11 +1092,32 @@ public:
             }
           }
           if (val == nullptr) {
-            val = fixLCSSA(inst, pred);
+            val = fixLCSSA(inst, pred, /*mergeIfPossible*/ true);
             assert(val->getType() == inst->getType());
           }
           assert(val->getType() == inst->getType());
           lcssaPHI->addIncoming(val, pred);
+        }
+
+        if (mergeIfTrue) {
+          Value *val = lcssaPHI;
+          for (auto &v : lcssaPHI->incoming_values()) {
+            if (v == lcssaPHI)
+              continue;
+            if (val == lcssaPHI)
+              val = v;
+            if (v != val) {
+              val = nullptr;
+              break;
+            }
+          }
+          if (val && val != lcssaPHI) {
+            if (lcssaPHI->hasNUses(0)) {
+              lcssaFixes[inst].erase(forwardBlock);
+              lcssaPHI->eraseFromParent();
+            }
+            return val;
+          }
         }
 
         return lcssaPHI;

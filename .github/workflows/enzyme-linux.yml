@@ -46,5 +46,7 @@ jobs:
       run: cd enzyme/build && make -j`nproc`
     - name: make check-typeanalysis
       run: cd enzyme/build && make check-typeanalysis -j`nproc`
+    - name: make check-activityanalysis
+      run: cd enzyme/build && make check-activityanalysis -j`nproc`
     - name: make check-enzyme
       run: cd enzyme/build && make check-enzyme -j`nproc`

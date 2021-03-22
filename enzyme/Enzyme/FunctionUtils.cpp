@@ -51,6 +51,8 @@
 
 #include "llvm/Analysis/TypeBasedAliasAnalysis.h"
 
+#include "llvm/Analysis/CFLSteensAliasAnalysis.h"
+
 #if LLVM_VERSION_MAJOR > 6
 #include "llvm/Analysis/PhiValues.h"
 #endif
@@ -120,6 +122,12 @@ static cl::opt<bool> EnzymeLowerGlobals(
 static cl::opt<int>
     EnzymeInlineCount("enzyme-inline-count", cl::init(10000), cl::Hidden,
                       cl::desc("Limit of number of functions to inline"));
+
+#if LLVM_VERSION_MAJOR >= 8
+static cl::opt<bool> EnzymePHIRestructure(
+    "enzyme-phi-restructure", cl::init(false), cl::Hidden,
+    cl::desc("Whether to restructure phi's to have better unwrap behavior"));
+#endif
 
 /// Is the use of value val as an argument of call CI potentially captured
 bool couldFunctionArgumentCapture(llvm::CallInst *CI, llvm::Value *val) {
@@ -411,8 +419,6 @@ OldAllocationSize(Value *Ptr, CallInst *Loc, Function *NewF, IntegerType *T,
         continue;
     }
 
-    // llvm::errs() << *NewF->getParent() << "\n";
-    // llvm::errs() << *NewF << "\n";
     EmitFailure("DynamicReallocSize", Loc->getDebugLoc(), Loc,
                 "could not statically determine size of realloc ", *Loc,
                 " - because of - ", *next.first);
@@ -667,12 +673,17 @@ PreProcessCache::PreProcessCache() {
   // disable for now, consider enabling in future
   // FAM.registerPass([] { return SCEVAA(); });
 
+  // FAM.registerPass([] { return CFLSteensAA(); });
+
   FAM.registerPass([] {
     auto AM = AAManager();
     AM.registerFunctionAnalysis<BasicAA>();
     AM.registerFunctionAnalysis<TypeBasedAA>();
-    // AM.registerFunctionAnalysis<SCEVAA>();
     AM.registerModuleAnalysis<GlobalsAA>();
+
+    // broken for different reasons
+    // AM.registerFunctionAnalysis<SCEVAA>();
+    // AM.registerFunctionAnalysis<CFLSteensAA>();
     return AM;
   });
 
@@ -1192,6 +1203,130 @@ Function *PreProcessCache::preprocessForClone(Function *F, bool topLevel) {
 #endif
     FAM.invalidate(*NewF, PA);
   }
+
+#if LLVM_VERSION_MAJOR >= 8
+  if (EnzymePHIRestructure) {
+    if (false) {
+    reset:;
+      PreservedAnalyses PA;
+      FAM.invalidate(*NewF, PA);
+    }
+
+    SmallVector<BasicBlock *, 4> MultiBlocks;
+    for (auto &B : *NewF) {
+      if (B.hasNPredecessorsOrMore(3))
+        MultiBlocks.push_back(&B);
+    }
+
+    LoopInfo &LI = FAM.getResult<LoopAnalysis>(*NewF);
+    for (BasicBlock *B : MultiBlocks) {
+
+      // Map of function edges to list of values possible
+      std::map<std::pair</*pred*/ BasicBlock *, /*successor*/ BasicBlock *>,
+               std::set<BasicBlock *>>
+          done;
+      {
+        std::deque<std::tuple<
+            std::pair</*pred*/ BasicBlock *, /*successor*/ BasicBlock *>,
+            BasicBlock *>>
+            Q; // newblock, target
+
+        for (auto P : predecessors(B)) {
+          Q.emplace_back(std::make_pair(P, B), P);
+        }
+
+        for (std::tuple<
+                 std::pair</*pred*/ BasicBlock *, /*successor*/ BasicBlock *>,
+                 BasicBlock *>
+                 trace;
+             Q.size() > 0;) {
+          trace = Q.front();
+          Q.pop_front();
+          auto edge = std::get<0>(trace);
+          auto block = edge.first;
+          auto target = std::get<1>(trace);
+
+          if (done[edge].count(target))
+            continue;
+          done[edge].insert(target);
+
+          Loop *blockLoop = LI.getLoopFor(block);
+
+          for (BasicBlock *Pred : predecessors(block)) {
+            // Don't go up the backedge as we can use the last value if desired
+            // via lcssa
+            if (blockLoop && blockLoop->getHeader() == block &&
+                blockLoop == LI.getLoopFor(Pred))
+              continue;
+
+            Q.push_back(
+                std::tuple<std::pair<BasicBlock *, BasicBlock *>, BasicBlock *>(
+                    std::make_pair(Pred, block), target));
+          }
+        }
+      }
+
+      SmallPtrSet<BasicBlock *, 4> Preds;
+      for (auto &pair : done) {
+        Preds.insert(pair.first.first);
+      }
+
+      for (auto BB : Preds) {
+        bool illegal = false;
+        SmallPtrSet<BasicBlock *, 2> UnionSet;
+        size_t numSuc = 0;
+        for (BasicBlock *sucI : successors(BB)) {
+          numSuc++;
+          const auto &SI = done[std::make_pair(BB, sucI)];
+          if (SI.size() == 0) {
+            // sucI->getName();
+            illegal = true;
+            break;
+          }
+          for (auto si : SI) {
+            UnionSet.insert(si);
+
+            for (BasicBlock *sucJ : successors(BB)) {
+              if (sucI == sucJ)
+                continue;
+              if (done[std::make_pair(BB, sucJ)].count(si)) {
+                illegal = true;
+                goto endIllegal;
+              }
+            }
+          }
+        }
+      endIllegal:;
+
+        if (!illegal && numSuc > 1 && !B->hasNPredecessors(UnionSet.size())) {
+          BasicBlock *Ins =
+              BasicBlock::Create(BB->getContext(), "tmpblk", BB->getParent());
+          IRBuilder<> Builder(Ins);
+          for (auto &phi : B->phis()) {
+            auto nphi = Builder.CreatePHI(phi.getType(), 2);
+            SmallVector<BasicBlock *, 4> Blocks;
+
+            for (auto blk : UnionSet) {
+              nphi->addIncoming(phi.getIncomingValueForBlock(blk), blk);
+              phi.removeIncomingValue(blk, /*deleteifempty*/ false);
+            }
+
+            phi.addIncoming(nphi, Ins);
+          }
+          Builder.CreateBr(B);
+          for (auto blk : UnionSet) {
+            auto term = blk->getTerminator();
+            for (unsigned Idx = 0, NumSuccessors = term->getNumSuccessors();
+                 Idx != NumSuccessors; ++Idx)
+              if (term->getSuccessor(Idx) == B)
+                term->setSuccessor(Idx, Ins);
+          }
+          goto reset;
+        }
+      }
+    }
+  }
+#endif
 
   if (EnzymePrint)
     llvm::errs() << "after simplification :\n" << *NewF << "\n";

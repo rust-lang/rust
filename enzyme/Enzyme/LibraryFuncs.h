@@ -340,7 +340,7 @@ static inline bool writesToMemoryReadBy(llvm::AAResults &AA,
         }
       }
     }
-    if (called && isCertainMallocOrFree(called)) {
+    if (called && isCertainPrintMallocOrFree(called)) {
       return false;
     }
     if (called && isMemFreeLibMFunction(called->getName())) {

@@ -1,4 +1,4 @@
-//===- ActivityAnalysisPrinter.cpp - Printer utility pass for Type Analysis
+//===- TypeAnalysisPrinter.cpp - Printer utility pass for Type Analysis
 //----===//
 //
 //                             Enzyme Project
@@ -19,11 +19,14 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file contains a utility LLVM pass for printing derived Activity Analysis
+// This file contains a utility LLVM pass for printing derived Type Analysis
 // results of a given function.
 //
 //===----------------------------------------------------------------------===//
 #include <llvm/Config/llvm-config.h>
+
+#include "SCEV/ScalarEvolution.h"
+#include "SCEV/ScalarEvolutionExpander.h"
 
 #include "llvm/ADT/SmallVector.h"
 
@@ -46,26 +49,28 @@
 
 #include "llvm/Support/CommandLine.h"
 
-#include "../Utils.h"
-#include "TypeAnalysis.h"
+#include "ActivityAnalysis.h"
+#include "FunctionUtils.h"
+#include "TypeAnalysis/TypeAnalysis.h"
+#include "Utils.h"
 
 using namespace llvm;
 #ifdef DEBUG_TYPE
 #undef DEBUG_TYPE
 #endif
-#define DEBUG_TYPE "type-analysis-results"
+#define DEBUG_TYPE "activity-analysis-results"
 
-/// Function ActivityAnalysis will be starting its run from
-llvm::cl::opt<std::string>
-    FunctionToAnalyze("type-analysis-func", cl::init(""), cl::Hidden,
+/// Function TypeAnalysis will be starting its run from
+static llvm::cl::opt<std::string>
+    FunctionToAnalyze("activity-analysis-func", cl::init(""), cl::Hidden,
                       cl::desc("Which function to analyze/print"));
 
 namespace {
 
-class TypeAnalysisPrinter : public FunctionPass {
+class ActivityAnalysisPrinter : public FunctionPass {
 public:
   static char ID;
-  TypeAnalysisPrinter() : FunctionPass(ID) {}
+  ActivityAnalysisPrinter() : FunctionPass(ID) {}
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<TargetLibraryInfoWrapperPass>();
@@ -120,32 +125,37 @@ public:
     type_args.Return = dt.Only(-1);
 
     TypeAnalysis TA(TLI);
-    TA.analyzeFunction(type_args);
-    for (Function &f : *F.getParent()) {
+    TypeResults TR = TA.analyzeFunction(type_args);
 
-      for (auto &analysis : TA.analyzedFunctions) {
-        if (analysis.first.Function != &f)
-          continue;
-        auto &ta = analysis.second;
-        llvm::outs() << f.getName() << " - " << analysis.first.Return.str()
-                     << " |";
+    llvm::SmallPtrSet<llvm::Value *, 4> ConstantValues;
+    llvm::SmallPtrSet<llvm::Value *, 4> ActiveValues;
+    for (auto &a : type_args.Function->args()) {
+      if (a.getType()->isIntOrIntVectorTy()) {
+        ConstantValues.insert(&a);
+      } else {
+        ActiveValues.insert(&a);
+      }
+    }
 
-        for (auto &a : f.args()) {
-          llvm::outs() << analysis.first.Arguments.find(&a)->second.str() << ":"
-                       << to_string(analysis.first.KnownValues.find(&a)->second)
-                       << " ";
-        }
-        llvm::outs() << "\n";
+    PreProcessCache PPC;
+    bool ActiveReturns = F.getReturnType()->isFPOrFPVectorTy();
+    ActivityAnalyzer ATA(PPC.FAM.getResult<AAManager>(F), TLI, ConstantValues,
+                         ActiveValues, ActiveReturns);
 
-        for (auto &a : f.args()) {
-          llvm::outs() << a << ": " << ta.getAnalysis(&a).str() << "\n";
-        }
-        for (auto &BB : f) {
-          llvm::outs() << BB.getName() << "\n";
-          for (auto &I : BB) {
-            llvm::outs() << I << ": " << ta.getAnalysis(&I).str() << "\n";
-          }
-        }
+    for (auto &a : F.args()) {
+      bool icv = ATA.isConstantValue(TR, &a);
+      llvm::errs().flush();
+      llvm::outs() << a << ": icv:" << icv << "\n";
+      llvm::outs().flush();
+    }
+    for (auto &BB : F) {
+      llvm::outs() << BB.getName() << "\n";
+      for (auto &I : BB) {
+        bool ici = ATA.isConstantInstruction(TR, &I);
+        bool icv = ATA.isConstantValue(TR, &I);
+        llvm::errs().flush();
+        llvm::outs() << I << ": icv:" << icv << " ici:" << ici << "\n";
+        llvm::outs().flush();
       }
     }
     return /*changed*/ false;
@@ -154,7 +164,7 @@ public:
 
 } // namespace
 
-char TypeAnalysisPrinter::ID = 0;
+char ActivityAnalysisPrinter::ID = 0;
 
-static RegisterPass<TypeAnalysisPrinter> X("print-type-analysis",
-                                           "Print Type Analysis Results");
+static RegisterPass<ActivityAnalysisPrinter>
+    X("print-activity-analysis", "Print Activity Analysis Results");

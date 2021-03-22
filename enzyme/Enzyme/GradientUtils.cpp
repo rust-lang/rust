@@ -60,6 +60,10 @@ llvm::cl::opt<bool> EnzymeLoopInvariantCache(
     "enzyme-loop-invariant-cache", cl::init(true), cl::Hidden,
     cl::desc("Attempt to hoist cache outside of loop"));
 
+llvm::cl::opt<bool> EnzymeInactiveDynamic(
+    "enzyme-inactive-dynamic", cl::init(true), cl::Hidden,
+    cl::desc("Force wholy inactive dynamic loops to have 0 iter reverse pass"));
+
 bool isPotentialLastLoopValue(Value *val, const BasicBlock *loc,
                               const LoopInfo &LI) {
   if (Instruction *inst = dyn_cast<Instruction>(val)) {
@@ -144,9 +148,10 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
 #define getOpFullest(vtmp, frominst, check)                                    \
   ({                                                                           \
     Value *v = vtmp;                                                           \
-    if (auto originst = dyn_cast<Instruction>(frominst))                       \
+    BasicBlock *origParent = frominst;                                         \
+    if (origParent)                                                            \
       if (auto opinst = dyn_cast<Instruction>(v)) {                            \
-        v = fixLCSSA(opinst, originst->getParent());                           \
+        v = fixLCSSA(opinst, origParent);                                      \
         if (check)                                                             \
           assert(v != val);                                                    \
       }                                                                        \
@@ -175,8 +180,20 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     ___res;                                                                    \
   })
 #define getOpFull(vtmp, frominst) getOpFullest(vtmp, frominst, true)
-#define getOpUnchecked(vtmp) getOpFullest(vtmp, val, false)
-#define getOp(vtmp) getOpFullest(vtmp, val, true)
+#define getOpUnchecked(vtmp)                                                   \
+  ({                                                                           \
+    BasicBlock *parent = nullptr;                                              \
+    if (auto originst = dyn_cast<Instruction>(val))                            \
+      parent = originst->getParent();                                          \
+    getOpFullest(vtmp, parent, false);                                         \
+  })
+#define getOp(vtmp)                                                            \
+  ({                                                                           \
+    BasicBlock *parent = nullptr;                                              \
+    if (auto originst = dyn_cast<Instruction>(val))                            \
+      parent = originst->getParent();                                          \
+    getOpFullest(vtmp, parent, true);                                          \
+  })
 
   if (isa<Argument>(val) || isa<Constant>(val)) {
     unwrap_cache[std::make_pair(val, BuilderM.GetInsertBlock())] = val;
@@ -803,6 +820,49 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
       auto toret = BuilderM.CreateSelect(cond, vals[0], vals[1]);
       assert(val->getType() == toret->getType());
       return toret;
+    }
+    if (auto SI = dyn_cast<SwitchInst>(equivalentTerminator)) {
+      // llvm::errs() << *SI << "\n";
+
+      auto cond = getOp(SI->getCondition());
+      if (cond == nullptr) {
+        // llvm::errs() << " +nc " << *cond << "\n";
+        goto endCheck;
+      }
+
+      Value *val =
+          getOpFull(phi->getIncomingValueForBlock(
+                        *done[std::make_pair(equivalentTerminator->getParent(),
+                                             SI->getDefaultDest())]
+                             .begin()),
+                    *done[std::make_pair(equivalentTerminator->getParent(),
+                                         SI->getDefaultDest())]
+                         .begin());
+      if (val == nullptr) {
+        // llvm::errs() << " +ndv " << *cond << "\n";
+        goto endCheck;
+      }
+
+      for (auto scase : SI->cases()) {
+        auto NC = getOpFull(
+            phi->getIncomingValueForBlock(
+                *done[std::make_pair(equivalentTerminator->getParent(),
+                                     scase.getCaseSuccessor())]
+                     .begin()),
+            *done[std::make_pair(equivalentTerminator->getParent(),
+                                 scase.getCaseSuccessor())]
+                 .begin());
+
+        if (NC == nullptr) {
+          // llvm::errs() << " +nc " << *cond << "\n";
+          goto endCheck;
+        }
+
+        val = BuilderM.CreateSelect(
+            BuilderM.CreateICmpEQ(cond, scase.getCaseValue()), NC, val);
+      }
+      unwrap_cache[cidx] = val;
+      return val;
     }
     goto endCheck;
   }
