@@ -7,7 +7,7 @@
 use std::{convert::TryInto, mem};
 
 use base_db::{FileId, FileRange, SourceDatabase, SourceDatabaseExt};
-use hir::{DefWithBody, HasAttrs, HasSource, Module, ModuleSource, Semantics, Visibility};
+use hir::{DefWithBody, HasAttrs, HasSource, InFile, ModuleSource, Semantics, Visibility};
 use once_cell::unsync::Lazy;
 use rustc_hash::FxHashMap;
 use syntax::{ast, match_ast, AstNode, TextRange, TextSize};
@@ -78,6 +78,76 @@ impl SearchScope {
         SearchScope { entries }
     }
 
+    fn crate_graph(db: &RootDatabase) -> SearchScope {
+        let mut entries = FxHashMap::default();
+
+        let graph = db.crate_graph();
+        for krate in graph.iter() {
+            let root_file = graph[krate].root_file_id;
+            let source_root_id = db.file_source_root(root_file);
+            let source_root = db.source_root(source_root_id);
+            entries.extend(source_root.iter().map(|id| (id, None)));
+        }
+        SearchScope { entries }
+    }
+
+    fn reverse_dependencies(db: &RootDatabase, of: hir::Crate) -> SearchScope {
+        let mut entries = FxHashMap::default();
+        for rev_dep in of.transitive_reverse_dependencies(db) {
+            let root_file = rev_dep.root_file(db);
+            let source_root_id = db.file_source_root(root_file);
+            let source_root = db.source_root(source_root_id);
+            entries.extend(source_root.iter().map(|id| (id, None)));
+        }
+        SearchScope { entries }
+    }
+
+    fn krate(db: &RootDatabase, of: hir::Crate) -> SearchScope {
+        let root_file = of.root_file(db);
+        let source_root_id = db.file_source_root(root_file);
+        let source_root = db.source_root(source_root_id);
+        SearchScope {
+            entries: source_root.iter().map(|id| (id, None)).collect::<FxHashMap<_, _>>(),
+        }
+    }
+
+    fn module(db: &RootDatabase, module: hir::Module) -> SearchScope {
+        let mut entries = FxHashMap::default();
+
+        let mut to_visit = vec![module];
+        let mut is_first = true;
+        while let Some(module) = to_visit.pop() {
+            let src = module.definition_source(db);
+            let file_id = src.file_id.original_file(db);
+            match src.value {
+                ModuleSource::Module(m) => {
+                    if is_first {
+                        let range = Some(m.syntax().text_range());
+                        entries.insert(file_id, range);
+                    } else {
+                        // We have already added the enclosing file to the search scope,
+                        // so do nothing.
+                    }
+                }
+                ModuleSource::BlockExpr(b) => {
+                    if is_first {
+                        let range = Some(b.syntax().text_range());
+                        entries.insert(file_id, range);
+                    } else {
+                        // We have already added the enclosing file to the search scope,
+                        // so do nothing.
+                    }
+                }
+                ModuleSource::SourceFile(_) => {
+                    entries.insert(file_id, None);
+                }
+            };
+            is_first = false;
+            to_visit.extend(module.children(db));
+        }
+        SearchScope { entries }
+    }
+
     pub fn empty() -> SearchScope {
         SearchScope::new(FxHashMap::default())
     }
@@ -140,24 +210,15 @@ impl Definition {
         let _p = profile::span("search_scope");
 
         if let Definition::ModuleDef(hir::ModuleDef::BuiltinType(_)) = self {
-            let mut res = FxHashMap::default();
-
-            let graph = db.crate_graph();
-            for krate in graph.iter() {
-                let root_file = graph[krate].root_file_id;
-                let source_root_id = db.file_source_root(root_file);
-                let source_root = db.source_root(source_root_id);
-                res.extend(source_root.iter().map(|id| (id, None)));
-            }
-            return SearchScope::new(res);
+            return SearchScope::crate_graph(db);
         }
 
         let module = match self.module(db) {
             Some(it) => it,
             None => return SearchScope::empty(),
         };
-        let module_src = module.definition_source(db);
-        let file_id = module_src.file_id.original_file(db);
+        let InFile { file_id, value: module_source } = module.definition_source(db);
+        let file_id = file_id.original_file(db);
 
         if let Definition::Local(var) = self {
             let range = match var.parent(db) {
@@ -165,9 +226,10 @@ impl Definition {
                 DefWithBody::Const(c) => c.source(db).map(|src| src.value.syntax().text_range()),
                 DefWithBody::Static(s) => s.source(db).map(|src| src.value.syntax().text_range()),
             };
-            let mut res = FxHashMap::default();
-            res.insert(file_id, range);
-            return SearchScope::new(res);
+            return match range {
+                Some(range) => SearchScope::file_range(FileRange { file_id, range }),
+                None => SearchScope::single_file(file_id),
+            };
         }
 
         if let Definition::GenericParam(hir::GenericParam::LifetimeParam(param)) = self {
@@ -198,90 +260,39 @@ impl Definition {
                     it.source(db).map(|src| src.value.syntax().text_range())
                 }
             };
-            let mut res = FxHashMap::default();
-            res.insert(file_id, range);
-            return SearchScope::new(res);
+            return match range {
+                Some(range) => SearchScope::file_range(FileRange { file_id, range }),
+                None => SearchScope::single_file(file_id),
+            };
         }
-
-        let vis = self.visibility(db);
-
-        if let Some(Visibility::Module(module)) = vis.and_then(|it| it.into()) {
-            let module: Module = module.into();
-            let mut res = FxHashMap::default();
-
-            let mut to_visit = vec![module];
-            let mut is_first = true;
-            while let Some(module) = to_visit.pop() {
-                let src = module.definition_source(db);
-                let file_id = src.file_id.original_file(db);
-                match src.value {
-                    ModuleSource::Module(m) => {
-                        if is_first {
-                            let range = Some(m.syntax().text_range());
-                            res.insert(file_id, range);
-                        } else {
-                            // We have already added the enclosing file to the search scope,
-                            // so do nothing.
-                        }
-                    }
-                    ModuleSource::BlockExpr(b) => {
-                        if is_first {
-                            let range = Some(b.syntax().text_range());
-                            res.insert(file_id, range);
-                        } else {
-                            // We have already added the enclosing file to the search scope,
-                            // so do nothing.
-                        }
-                    }
-                    ModuleSource::SourceFile(_) => {
-                        res.insert(file_id, None);
-                    }
-                };
-                is_first = false;
-                to_visit.extend(module.children(db));
-            }
-
-            return SearchScope::new(res);
-        }
-
-        let rev_dep_scope = || {
-            let mut res = FxHashMap::default();
-            let krate = module.krate();
-            for rev_dep in krate.transitive_reverse_dependencies(db) {
-                let root_file = rev_dep.root_file(db);
-                let source_root_id = db.file_source_root(root_file);
-                let source_root = db.source_root(source_root_id);
-                res.extend(source_root.iter().map(|id| (id, None)));
-            }
-            SearchScope::new(res)
-        };
 
         if let Definition::Macro(macro_def) = self {
             if macro_def.kind() == hir::MacroKind::Declarative {
                 return if macro_def.attrs(db).by_key("macro_export").exists() {
-                    rev_dep_scope()
+                    SearchScope::reverse_dependencies(db, module.krate())
                 } else {
-                    let source_root_id = db.file_source_root(file_id);
-                    let source_root = db.source_root(source_root_id);
-                    SearchScope::new(
-                        source_root.iter().map(|id| (id, None)).collect::<FxHashMap<_, _>>(),
-                    )
+                    SearchScope::krate(db, module.krate())
                 };
             }
         }
 
+        let vis = self.visibility(db);
         if let Some(Visibility::Public) = vis {
-            return rev_dep_scope();
+            return SearchScope::reverse_dependencies(db, module.krate());
+        }
+        if let Some(Visibility::Module(module)) = vis {
+            return SearchScope::module(db, module.into());
         }
 
-        let mut res = FxHashMap::default();
-        let range = match module_src.value {
+        let range = match module_source {
             ModuleSource::Module(m) => Some(m.syntax().text_range()),
             ModuleSource::BlockExpr(b) => Some(b.syntax().text_range()),
             ModuleSource::SourceFile(_) => None,
         };
-        res.insert(file_id, range);
-        SearchScope::new(res)
+        match range {
+            Some(range) => SearchScope::file_range(FileRange { file_id, range }),
+            None => SearchScope::single_file(file_id),
+        }
     }
 
     pub fn usages<'a>(&'a self, sema: &'a Semantics<RootDatabase>) -> FindUsages<'a> {
