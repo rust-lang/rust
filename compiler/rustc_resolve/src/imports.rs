@@ -955,14 +955,14 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 }
                 return None;
             }
-            PathResult::NonModule(path_res) if path_res.base_res() == Res::Err => {
+            PathResult::NonModule(_) => {
                 if no_ambiguity {
                     assert!(import.imported_module.get().is_none());
                 }
                 // The error was already reported earlier.
                 return None;
             }
-            PathResult::Indeterminate | PathResult::NonModule(..) => unreachable!(),
+            PathResult::Indeterminate => unreachable!(),
         };
 
         let (ident, target, source_bindings, target_bindings, type_ns_only) = match import.kind {
