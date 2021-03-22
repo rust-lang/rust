@@ -18,5 +18,7 @@ fn main() {
         fill(&mut x);
         _y = x;
     }
+    // Now we use a pointer to `x` which is no longer in scope, and thus dead (even though the
+    // `main` stack frame still exists).
     evil();
 }
