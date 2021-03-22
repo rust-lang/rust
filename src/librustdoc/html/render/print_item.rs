@@ -846,6 +846,7 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
     });
 
     document(w, cx, it, None);
+
     let mut fields = s
         .fields
         .iter()
@@ -880,7 +881,9 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
             document(w, cx, field, Some(it));
         }
     }
-    render_assoc_items(w, cx, it, it.def_id.expect_real(), AssocItemRender::All)
+    let def_id = it.def_id.expect_real();
+    render_assoc_items(w, cx, it, def_id, AssocItemRender::All);
+    document_ty_layout(w, cx, def_id);
 }
 
 fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum) {
@@ -940,6 +943,7 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
     });
 
     document(w, cx, it, None);
+
     if !e.variants.is_empty() {
         write!(
             w,
@@ -1014,7 +1018,9 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
             render_stability_since(w, variant, it, cx.tcx());
         }
     }
-    render_assoc_items(w, cx, it, it.def_id.expect_real(), AssocItemRender::All)
+    let def_id = it.def_id.expect_real();
+    render_assoc_items(w, cx, it, def_id, AssocItemRender::All);
+    document_ty_layout(w, cx, def_id);
 }
 
 fn item_macro(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Macro) {
@@ -1114,6 +1120,7 @@ fn item_struct(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::St
     });
 
     document(w, cx, it, None);
+
     let mut fields = s
         .fields
         .iter()
@@ -1152,7 +1159,9 @@ fn item_struct(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::St
             }
         }
     }
-    render_assoc_items(w, cx, it, it.def_id.expect_real(), AssocItemRender::All)
+    let def_id = it.def_id.expect_real();
+    render_assoc_items(w, cx, it, def_id, AssocItemRender::All);
+    document_ty_layout(w, cx, def_id);
 }
 
 fn item_static(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Static) {
@@ -1520,5 +1529,29 @@ fn document_non_exhaustive(w: &mut Buffer, item: &clean::Item) {
         }
 
         w.write_str("</div></details>");
+    }
+}
+
+fn document_ty_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
+    let param_env = cx.tcx().param_env(ty_def_id);
+    let ty = cx.tcx().type_of(ty_def_id);
+    match cx.tcx().layout_of(param_env.and(ty)) {
+        Ok(ty_layout) => {
+            writeln!(w, r#"<h2 class="small-section-header">Layout</h2>"#);
+            writeln!(w, "<div>");
+            if ty_layout.layout.abi.is_unsized() {
+                writeln!(w, "<strong>Sized:</strong> (unsized)");
+            } else {
+                writeln!(
+                    w,
+                    "<strong>Size:</strong> {size} byte{pl}",
+                    size = ty_layout.layout.size.bytes(),
+                    pl = if ty_layout.layout.size.bytes() == 1 { "" } else { "s" },
+                );
+            }
+            writeln!(w, "</div>");
+        }
+        // FIXME: should we crash instead? or report an error?
+        Err(_layout_err) => {}
     }
 }
