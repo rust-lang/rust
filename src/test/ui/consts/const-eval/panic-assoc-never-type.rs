@@ -15,5 +15,5 @@ impl PrintName {
 
 fn main() {
     let _ = PrintName::VOID;
-    //~^ ERROR erroneous constant encountered
+    //~^ ERROR erroneous constant used
 }

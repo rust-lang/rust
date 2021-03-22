@@ -11,5 +11,5 @@ const VOID: ! = panic!();
 
 fn main() {
     let _ = VOID;
-    //~^ ERROR erroneous constant encountered
+    //~^ ERROR erroneous constant used
 }

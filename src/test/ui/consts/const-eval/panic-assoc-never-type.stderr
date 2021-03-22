@@ -15,11 +15,12 @@ LL | #![warn(const_err)]
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
    = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: erroneous constant encountered
+error[E0080]: erroneous constant used
   --> $DIR/panic-assoc-never-type.rs:17:13
    |
 LL |     let _ = PrintName::VOID;
-   |             ^^^^^^^^^^^^^^^
+   |             ^^^^^^^^^^^^^^^ referenced constant has errors
 
 error: aborting due to previous error; 1 warning emitted
 
+For more information about this error, try `rustc --explain E0080`.

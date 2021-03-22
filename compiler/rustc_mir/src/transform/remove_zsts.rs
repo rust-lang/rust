@@ -8,6 +8,9 @@ pub struct RemoveZsts;
 
 impl<'tcx> MirPass<'tcx> for RemoveZsts {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        if tcx.sess.mir_opt_level() < 3 {
+            return;
+        }
         let param_env = tcx.param_env(body.source.def_id());
         let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
         for block in basic_blocks.iter_mut() {
