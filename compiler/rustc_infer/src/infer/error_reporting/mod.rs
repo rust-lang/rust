@@ -67,7 +67,7 @@ use rustc_hir::{Item, ItemKind, Node};
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{
     self,
-    subst::{Subst, SubstsRef},
+    subst::{GenericArgKind, Subst, SubstsRef},
     Region, Ty, TyCtxt, TypeFoldable,
 };
 use rustc_span::{sym, BytePos, DesugaringKind, Pos, Span};
@@ -958,42 +958,24 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let generics = self.tcx.generics_of(def_id);
         let mut num_supplied_defaults = 0;
 
-        #[derive(PartialEq, Eq, Copy, Clone)]
-        enum Kind {
-            Const,
-            Type,
-        }
         let default_params = generics.params.iter().rev().filter_map(|param| match param.kind {
-            ty::GenericParamDefKind::Type { has_default: true, .. } => {
-                Some((param.def_id, Kind::Type))
-            }
-            ty::GenericParamDefKind::Const { has_default: true } => {
-                Some((param.def_id, Kind::Const))
-            }
+            ty::GenericParamDefKind::Type { has_default: true, .. } => Some(param.def_id),
+            ty::GenericParamDefKind::Const { has_default: true } => Some(param.def_id),
             _ => None,
         });
-        let mut types = substs.types().rev();
-        let mut consts = substs.consts().rev();
-        for (def_id, kind) in default_params {
-            match kind {
-                Kind::Const => {
-                    if let Some(actual) = consts.next() {
-                        if ty::Const::from_anon_const(self.tcx, def_id.expect_local()) != actual {
-                            break;
-                        }
-                    } else {
+        for (def_id, actual) in default_params.zip(substs.iter().rev()) {
+            match actual.unpack() {
+                GenericArgKind::Const(c) => {
+                    if self.tcx.const_param_default(def_id).subst(self.tcx, substs) != c {
                         break;
                     }
                 }
-                Kind::Type => {
-                    if let Some(actual) = types.next() {
-                        if self.tcx.type_of(def_id).subst(self.tcx, substs) != actual {
-                            break;
-                        }
-                    } else {
+                GenericArgKind::Type(ty) => {
+                    if self.tcx.type_of(def_id).subst(self.tcx, substs) != ty {
                         break;
                     }
                 }
+                _ => break,
             }
             num_supplied_defaults += 1;
         }
