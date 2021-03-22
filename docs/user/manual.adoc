@@ -527,8 +527,8 @@ Here is a **non-exhaustive** list of ways to make rust-analyzer execute arbitrar
 * rust-analyzer's syntax trees library uses a lot of `unsafe` and hasn't been properly audited for memory safety.
 
 rust-analyzer itself doesn't access the network.
-VS Code plugin doesn't access the network unless the nightly channel is selected in the settings.
-In that case, the plugin uses GitHub API to check for and download updates.
+The VS Code plugin doesn't access the network unless the nightly channel is selected in the settings.
+In that case, the plugin uses the GitHub API to check for and download updates.
 
 == Features
 
