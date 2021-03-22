@@ -63,7 +63,7 @@ fn direct_super_trait_refs(db: &dyn HirDatabase, trait_ref: &TraitRef) -> Vec<Tr
     db.generic_predicates_for_param(trait_self)
         .iter()
         .filter_map(|pred| {
-            pred.as_ref().filter_map(|pred| match pred {
+            pred.as_ref().filter_map(|pred| match pred.skip_binders() {
                 WhereClause::Implemented(tr) => Some(tr.clone()),
                 _ => None,
             })

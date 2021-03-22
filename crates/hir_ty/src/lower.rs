@@ -33,9 +33,10 @@ use crate::{
         all_super_trait_refs, associated_type_by_name_including_super_traits, generics,
         variant_data,
     },
-    AliasEq, AliasTy, Binders, BoundVar, CallableSig, DebruijnIndex, FnPointer, FnSig, ImplTraitId,
-    OpaqueTy, PolyFnSig, ProjectionTy, ReturnTypeImplTrait, ReturnTypeImplTraits, Substitution,
-    TraitEnvironment, TraitRef, Ty, TyKind, TypeWalk, WhereClause,
+    AliasEq, AliasTy, Binders, BoundVar, CallableSig, DebruijnIndex, DynTy, FnPointer, FnSig,
+    ImplTraitId, OpaqueTy, PolyFnSig, ProjectionTy, QuantifiedWhereClause, QuantifiedWhereClauses,
+    ReturnTypeImplTrait, ReturnTypeImplTraits, Substitution, TraitEnvironment, TraitRef, Ty,
+    TyKind, TypeWalk, WhereClause,
 };
 
 #[derive(Debug)]
@@ -188,13 +189,14 @@ impl<'a> TyLoweringContext<'a> {
             TypeRef::DynTrait(bounds) => {
                 let self_ty =
                     TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0)).intern(&Interner);
-                let predicates = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
-                    bounds
-                        .iter()
-                        .flat_map(|b| ctx.lower_type_bound(b, self_ty.clone(), false))
-                        .collect()
+                let bounds = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
+                    QuantifiedWhereClauses::from_iter(
+                        &Interner,
+                        bounds.iter().flat_map(|b| ctx.lower_type_bound(b, self_ty.clone(), false)),
+                    )
                 });
-                TyKind::Dyn(predicates).intern(&Interner)
+                let bounds = Binders::new(1, bounds);
+                TyKind::Dyn(DynTy { bounds }).intern(&Interner)
             }
             TypeRef::ImplTrait(bounds) => {
                 match self.impl_trait_mode {
@@ -376,7 +378,16 @@ impl<'a> TyLoweringContext<'a> {
                     // FIXME report error (ambiguous associated type)
                     TyKind::Unknown.intern(&Interner)
                 } else {
-                    TyKind::Dyn(Arc::new([WhereClause::Implemented(trait_ref)])).intern(&Interner)
+                    let dyn_ty = DynTy {
+                        bounds: Binders::new(
+                            1,
+                            QuantifiedWhereClauses::from_iter(
+                                &Interner,
+                                Some(Binders::wrap_empty(WhereClause::Implemented(trait_ref))),
+                            ),
+                        ),
+                    };
+                    TyKind::Dyn(dyn_ty).intern(&Interner)
                 };
                 return (ty, None);
             }
@@ -670,7 +681,7 @@ impl<'a> TyLoweringContext<'a> {
         &'a self,
         where_predicate: &'a WherePredicate,
         ignore_bindings: bool,
-    ) -> impl Iterator<Item = WhereClause> + 'a {
+    ) -> impl Iterator<Item = QuantifiedWhereClause> + 'a {
         match where_predicate {
             WherePredicate::ForLifetime { target, bound, .. }
             | WherePredicate::TypeBound { target, bound } => {
@@ -705,12 +716,12 @@ impl<'a> TyLoweringContext<'a> {
         bound: &'a TypeBound,
         self_ty: Ty,
         ignore_bindings: bool,
-    ) -> impl Iterator<Item = WhereClause> + 'a {
+    ) -> impl Iterator<Item = QuantifiedWhereClause> + 'a {
         let mut bindings = None;
         let trait_ref = match bound {
             TypeBound::Path(path) => {
                 bindings = self.lower_trait_ref_from_path(path, Some(self_ty));
-                bindings.clone().map(WhereClause::Implemented)
+                bindings.clone().map(WhereClause::Implemented).map(|b| Binders::wrap_empty(b))
             }
             TypeBound::Lifetime(_) => None,
             TypeBound::Error => None,
@@ -727,7 +738,7 @@ impl<'a> TyLoweringContext<'a> {
         &'a self,
         bound: &'a TypeBound,
         trait_ref: TraitRef,
-    ) -> impl Iterator<Item = WhereClause> + 'a {
+    ) -> impl Iterator<Item = QuantifiedWhereClause> + 'a {
         let last_segment = match bound {
             TypeBound::Path(path) => path.segments().last(),
             TypeBound::Error | TypeBound::Lifetime(_) => None,
@@ -743,7 +754,7 @@ impl<'a> TyLoweringContext<'a> {
                     &binding.name,
                 );
                 let (super_trait_ref, associated_ty) = match found {
-                    None => return SmallVec::<[WhereClause; 1]>::new(),
+                    None => return SmallVec::<[QuantifiedWhereClause; 1]>::new(),
                     Some(t) => t,
                 };
                 let projection_ty = ProjectionTy {
@@ -757,7 +768,7 @@ impl<'a> TyLoweringContext<'a> {
                     let ty = self.lower_ty(type_ref);
                     let alias_eq =
                         AliasEq { alias: AliasTy::Projection(projection_ty.clone()), ty };
-                    preds.push(WhereClause::AliasEq(alias_eq));
+                    preds.push(Binders::wrap_empty(WhereClause::AliasEq(alias_eq)));
                 }
                 for bound in &binding.bounds {
                     preds.extend(self.lower_type_bound(
@@ -814,7 +825,7 @@ pub fn associated_type_shorthand_candidates<R>(
             let predicates = db.generic_predicates_for_param(param_id);
             let mut traits_: Vec<_> = predicates
                 .iter()
-                .filter_map(|pred| match &pred.value {
+                .filter_map(|pred| match &pred.value.value {
                     WhereClause::Implemented(tr) => Some(tr.clone()),
                     _ => None,
                 })
@@ -887,7 +898,7 @@ pub(crate) fn field_types_query(
 pub(crate) fn generic_predicates_for_param_query(
     db: &dyn HirDatabase,
     param_id: TypeParamId,
-) -> Arc<[Binders<WhereClause>]> {
+) -> Arc<[Binders<QuantifiedWhereClause>]> {
     let resolver = param_id.parent.resolver(db.upcast());
     let ctx =
         TyLoweringContext::new(db, &resolver).with_type_param_mode(TypeParamLoweringMode::Variable);
@@ -915,7 +926,7 @@ pub(crate) fn generic_predicates_for_param_recover(
     _db: &dyn HirDatabase,
     _cycle: &[String],
     _param_id: &TypeParamId,
-) -> Arc<[Binders<WhereClause>]> {
+) -> Arc<[Binders<QuantifiedWhereClause>]> {
     Arc::new([])
 }
 
@@ -930,7 +941,7 @@ pub(crate) fn trait_environment_query(
     let mut clauses = Vec::new();
     for pred in resolver.where_predicates_in_scope() {
         for pred in ctx.lower_where_predicate(pred, false) {
-            if let WhereClause::Implemented(tr) = &pred {
+            if let WhereClause::Implemented(tr) = &pred.skip_binders() {
                 traits_in_scope.push((tr.self_type_parameter().clone(), tr.hir_trait_id()));
             }
             let program_clause: chalk_ir::ProgramClause<Interner> =
@@ -970,7 +981,7 @@ pub(crate) fn trait_environment_query(
 pub(crate) fn generic_predicates_query(
     db: &dyn HirDatabase,
     def: GenericDefId,
-) -> Arc<[Binders<WhereClause>]> {
+) -> Arc<[Binders<QuantifiedWhereClause>]> {
     let resolver = def.resolver(db.upcast());
     let ctx =
         TyLoweringContext::new(db, &resolver).with_type_param_mode(TypeParamLoweringMode::Variable);

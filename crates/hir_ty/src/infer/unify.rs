@@ -310,9 +310,18 @@ impl InferenceTable {
 
             (TyKind::Placeholder(p1), TyKind::Placeholder(p2)) if *p1 == *p2 => true,
 
-            (TyKind::Dyn(dyn1), TyKind::Dyn(dyn2)) if dyn1.len() == dyn2.len() => {
-                for (pred1, pred2) in dyn1.iter().zip(dyn2.iter()) {
-                    if !self.unify_preds(pred1, pred2, depth + 1) {
+            (TyKind::Dyn(dyn1), TyKind::Dyn(dyn2))
+                if dyn1.bounds.skip_binders().interned().len()
+                    == dyn2.bounds.skip_binders().interned().len() =>
+            {
+                for (pred1, pred2) in dyn1
+                    .bounds
+                    .skip_binders()
+                    .interned()
+                    .iter()
+                    .zip(dyn2.bounds.skip_binders().interned().iter())
+                {
+                    if !self.unify_preds(pred1.skip_binders(), pred2.skip_binders(), depth + 1) {
                         return false;
                     }
                 }
