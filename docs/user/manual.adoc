@@ -519,7 +519,7 @@ You can set `RA_LOG` environmental variable to `rust_analyzer=info` to inspect h
 == Security
 
 At the moment, rust-analyzer assumes that all code is trusted.
-Here is a **no-exhaustive** list of ways to make rust-analyzer execute arbitrary code:
+Here is a **non-exhaustive** list of ways to make rust-analyzer execute arbitrary code:
 
 * proc macros and build scripts are executed by default
 * `.cargo/config` can override `rustc` with an arbitrary executable
