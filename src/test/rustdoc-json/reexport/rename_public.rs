@@ -13,5 +13,5 @@ pub mod inner {
 // @set import_id = - "$.index[*][?(@.inner.name=='NewName')].id"
 // @!has - "$.index[*][?(@.inner.name=='Public')]"
 // @has - "$.index[*][?(@.name=='rename_public')].inner.items[*]" $import_id
-// @is - "$.index[*][?(@.inner.name=='NewName')].inner.span" \"inner::Public\"
+// @is - "$.index[*][?(@.inner.name=='NewName')].inner.source" \"inner::Public\"
 pub use inner::Public as NewName;
