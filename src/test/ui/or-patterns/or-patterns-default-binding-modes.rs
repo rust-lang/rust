@@ -2,7 +2,6 @@
 
 // check-pass
 
-#![feature(or_patterns)]
 #![allow(irrefutable_let_patterns)]
 
 fn main() {

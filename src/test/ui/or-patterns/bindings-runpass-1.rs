@@ -1,7 +1,5 @@
 // run-pass
 
-#![feature(or_patterns)]
-
 fn two_bindings(x: &((bool, bool), u8)) -> u8 {
     match x {
         &((true, y) | (y, true), z @ (0 | 4)) => (y as u8) + z,

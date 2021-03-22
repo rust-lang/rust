@@ -126,7 +126,7 @@
 #![feature(exhaustive_patterns)]
 #![feature(no_core)]
 #![feature(auto_traits)]
-#![feature(or_patterns)]
+#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(prelude_import)]
 #![cfg_attr(not(bootstrap), feature(ptr_metadata))]
 #![feature(repr_simd, platform_intrinsics)]

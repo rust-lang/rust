@@ -1,6 +1,6 @@
 #![feature(box_patterns)]
 #![feature(in_band_lifetimes)]
-#![feature(or_patterns)]
+#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(rustc_private)]
 #![recursion_limit = "512"]
 #![allow(clippy::missing_errors_doc, clippy::missing_panics_doc, clippy::must_use_candidate)]

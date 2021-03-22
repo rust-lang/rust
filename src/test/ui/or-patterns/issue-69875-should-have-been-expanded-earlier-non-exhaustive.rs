@@ -1,5 +1,3 @@
-#![feature(or_patterns)]
-
 fn main() {
     let (0 | (1 | 2)) = 0; //~ ERROR refutable pattern in local binding
     match 0 {

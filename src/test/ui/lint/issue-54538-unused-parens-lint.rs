@@ -1,7 +1,6 @@
 // run-rustfix
 
 #![feature(box_patterns, stmt_expr_attributes)]
-#![feature(or_patterns)]
 
 #![allow(
     dead_code,

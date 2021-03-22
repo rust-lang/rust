@@ -3,8 +3,6 @@
 
 // check-pass
 
-#![feature(or_patterns)]
-
 fn main() {}
 
 // Test the `pat` macro fragment parser:

@@ -2,7 +2,6 @@
 
 #![warn(clippy::while_let_on_iterator)]
 #![allow(clippy::never_loop, unreachable_code, unused_mut)]
-#![feature(or_patterns)]
 
 fn base() {
     let mut iter = 1..20;

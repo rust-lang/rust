@@ -1,8 +1,6 @@
 // This test ensures that the "already bound identifier in a product pattern"
 // correctly accounts for or-patterns.
 
-#![feature(or_patterns)]
-
 enum E<T> { A(T, T), B(T) }
 
 use E::*;

@@ -686,7 +686,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
         "to use an async block, remove the `||`: `async {`"
     );
     gate_all!(generators, "yield syntax is experimental");
-    gate_all!(or_patterns, "or-patterns syntax is experimental");
     gate_all!(raw_ref_op, "raw address of syntax is experimental");
     gate_all!(const_trait_bound_opt_out, "`?const` on trait bounds is experimental");
     gate_all!(const_trait_impl, "const trait impls are experimental");
