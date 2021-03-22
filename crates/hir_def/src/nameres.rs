@@ -322,6 +322,23 @@ impl DefMap {
         (res.resolved_def, res.segment_index)
     }
 
+    pub(crate) fn resolve_path_locally(
+        &self,
+        db: &dyn DefDatabase,
+        original_module: LocalModuleId,
+        path: &ModPath,
+        shadow: BuiltinShadowMode,
+    ) -> (PerNs, Option<usize>) {
+        let res = self.resolve_path_fp_with_macro_single(
+            db,
+            ResolveMode::Other,
+            original_module,
+            path,
+            shadow,
+        );
+        (res.resolved_def, res.segment_index)
+    }
+
     /// Ascends the `DefMap` hierarchy and calls `f` with every `DefMap` and containing module.
     ///
     /// If `f` returns `Some(val)`, iteration is stopped and `Some(val)` is returned. If `f` returns

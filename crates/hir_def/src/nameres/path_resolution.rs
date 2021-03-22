@@ -156,7 +156,7 @@ impl DefMap {
         }
     }
 
-    fn resolve_path_fp_with_macro_single(
+    pub(super) fn resolve_path_fp_with_macro_single(
         &self,
         db: &dyn DefDatabase,
         mode: ResolveMode,
