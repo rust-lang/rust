@@ -109,6 +109,8 @@ fn type_to_suffix(t: &str) -> &str {
         "float64x2_t" => "q_f64",
         "poly8x8_t" => "_p8",
         "poly8x16_t" => "q_p8",
+        "poly16x4_t" => "_p16",
+        "poly16x8_t" => "q_p16",
         "poly64x1_t" => "_p64",
         "poly64x2_t" => "q_p64",
         _ => panic!("unknown type: {}", t),
@@ -322,6 +324,26 @@ fn type_to_half(t: &str) -> &str {
         "float32x4_t" => "float32x2_t",
         "float64x2_t" => "float64x1_t",
         _ => panic!("unknown half type for {}", t),
+    }
+}
+
+fn transpose1(x: usize) -> &'static str {
+    match x {
+        2 => "[0, 2]",
+        4 => "[0, 4, 2, 6]",
+        8 => "[0, 8, 2, 10, 4, 12, 6, 14]",
+        16 => "[0, 16, 2, 18, 4, 20, 6, 22, 8, 24, 10, 26, 12, 28, 14, 30]",
+        _ => panic!("unknown transpose order of len {}", x),
+    }
+}
+
+fn transpose2(x: usize) -> &'static str {
+    match x {
+        2 => "[1, 3]",
+        4 => "[1, 5, 3, 7]",
+        8 => "[1, 9, 3, 11, 5, 13, 7, 15]",
+        16 => "[1, 17, 3, 19, 5, 21, 7, 23, 9, 25, 11, 27, 13, 29, 15, 31]",
+        _ => panic!("unknown transpose order of len {}", x),
     }
 }
 
@@ -1044,6 +1066,12 @@ fn get_call(
             });
         return format!(r#"[{}]"#, &half[..half.len() - 2]);
     }
+    if fn_name == "transpose-1-in_len" {
+        return transpose1(type_len(in_t[1])).to_string();
+    }
+    if fn_name == "transpose-2-in_len" {
+        return transpose2(type_len(in_t[1])).to_string();
+    }
     if fn_name.contains('-') {
         let fn_format: Vec<_> = fn_name.split('-').map(|v| v.to_string()).collect();
         assert_eq!(fn_format.len(), 3);
@@ -1302,7 +1330,7 @@ mod test {
     tests_aarch64.push('}');
     tests_aarch64.push('\n');
 
-    let arm_out_path: PathBuf = PathBuf::from(env::var("OUT_DIR").unwrap())
+    let arm_out_path: PathBuf = PathBuf::from("./crates/core_arch")
         .join("src")
         .join("arm")
         .join("neon");
@@ -1312,7 +1340,8 @@ mod test {
     file_arm.write_all(out_arm.as_bytes())?;
     file_arm.write_all(tests_arm.as_bytes())?;
 
-    let aarch64_out_path: PathBuf = PathBuf::from(env::var("OUT_DIR").unwrap())
+    //let aarch64_out_path: PathBuf = PathBuf::from(env::var("OUT_DIR").unwrap())
+    let aarch64_out_path: PathBuf = PathBuf::from("./crates/core_arch")
         .join("src")
         .join("aarch64")
         .join("neon");

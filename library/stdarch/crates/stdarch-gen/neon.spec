@@ -1247,3 +1247,43 @@ generate float64x*_t
 arm = vrecpe
 link-arm = vrecpe._EXT_
 generate float*_t
+
+/// Transpose vectors
+name = vtrn1
+multi_fn = simd_shuffle-in_len-noext, a, b, {transpose-1-in_len}
+a = 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30
+b = 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31
+validate 0, 1, 4, 5, 8, 9, 12, 13, 16, 17, 20, 21, 24, 25, 28, 29
+
+aarch64 = trn1
+generate int*_t, int64x2_t, uint*_t, uint64x2_t, poly8x8_t:poly8x8_t, poly8x16_t:poly8x16_t, poly16x4_t:poly16x4_t, poly16x8_t:poly16x8_t, poly64x2_t:poly64x2_t
+
+/// Transpose vectors
+name = vtrn1
+multi_fn = simd_shuffle-in_len-noext, a, b, {transpose-1-in_len}
+a = 0., 2., 4., 6., 8., 10., 12., 14.
+b = 1., 3., 5., 7., 9., 11., 13., 15.
+validate 0., 1., 4., 5., 8., 9., 12., 13.
+
+aarch64 = trn1
+generate float32x2_t:float32x2_t, float32x4_t:float32x4_t, float64x2_t:float64x2_t
+
+/// Transpose vectors
+name = vtrn2
+multi_fn = simd_shuffle-in_len-noext, a, b, {transpose-2-in_len}
+a = 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30
+b = 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31
+validate 2, 3, 6, 7, 10, 11, 14, 15, 18, 19, 22, 23, 26, 27, 30, 31
+
+aarch64 = trn2
+generate int*_t, int64x2_t, uint*_t, uint64x2_t, poly8x8_t:poly8x8_t, poly8x16_t:poly8x16_t, poly16x4_t:poly16x4_t, poly16x8_t:poly16x8_t, poly64x2_t:poly64x2_t
+
+/// Transpose vectors
+name = vtrn2
+multi_fn = simd_shuffle-in_len-noext, a, b, {transpose-2-in_len}
+a = 0., 2., 4., 6., 8., 10., 12., 14.
+b = 1., 3., 5., 7., 9., 11., 13., 15.
+validate 2., 3., 6., 7., 10., 11., 14., 15.
+
+aarch64 = trn2
+generate float32x2_t:float32x2_t, float32x4_t:float32x4_t, float64x2_t:float64x2_t
