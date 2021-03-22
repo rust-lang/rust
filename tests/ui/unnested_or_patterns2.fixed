@@ -1,6 +1,5 @@
 // run-rustfix
 
-#![feature(or_patterns)]
 #![feature(box_patterns)]
 #![warn(clippy::unnested_or_patterns)]
 #![allow(clippy::cognitive_complexity, clippy::match_ref_pats)]
