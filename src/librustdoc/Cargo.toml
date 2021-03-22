@@ -29,3 +29,6 @@ features = ["fmt", "env-filter", "smallvec", "parking_lot", "ansi"]
 
 [dev-dependencies]
 expect-test = "1.0"
+
+[package.metadata.rust-analyzer]
+rustc_private = true
