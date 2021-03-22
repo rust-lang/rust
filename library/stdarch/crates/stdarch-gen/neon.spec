@@ -1299,3 +1299,43 @@ generate float32x4_t
 
 aarch64 = zip2
 generate float32x2_t, float64x2_t
+
+/// Zip vectors
+name = vzip1
+multi_fn = simd_shuffle-in_len-noext, a, b, {zip-1-in_len}
+a = 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30
+b = 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31
+validate 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+
+aarch64 = zip1
+generate int*_t, int64x2_t, uint*_t, uint64x2_t, poly8x8_t, poly8x16_t, poly16x4_t, poly16x8_t, poly64x2_t
+
+/// Zip vectors
+name = vzip1
+multi_fn = simd_shuffle-in_len-noext, a, b, {zip-1-in_len}
+a = 0., 2., 4., 6., 8., 10., 12., 14.
+b = 1., 3., 5., 7., 9., 11., 13., 15.
+validate 0., 1., 2., 3., 4., 5., 6., 7.
+
+aarch64 = zip1
+generate float32x2_t, float32x4_t, float64x2_t
+
+/// Zip vectors
+name = vzip2
+multi_fn = simd_shuffle-in_len-noext, a, b, {zip-2-in_len}
+a = 0, 16, 16, 18, 16, 18, 20, 22, 16, 18, 20, 22, 24, 26, 28, 30
+b = 1, 17, 17, 19, 17, 19, 21, 23, 17, 19, 21, 23, 25, 27, 29, 31
+validate 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
+
+aarch64 = zip2
+generate int*_t, int64x2_t, uint*_t, uint64x2_t, poly8x8_t, poly8x16_t, poly16x4_t, poly16x8_t, poly64x2_t
+
+/// Zip vectors
+name = vzip2
+multi_fn = simd_shuffle-in_len-noext, a, b, {zip-2-in_len}
+a = 0., 8., 8., 10., 8., 10., 12., 14.
+b = 1., 9., 9., 11., 9., 11., 13., 15.
+validate 8., 9., 10., 11., 12., 13., 14., 15.
+
+aarch64 = zip2
+generate float32x2_t, float32x4_t, float64x2_t

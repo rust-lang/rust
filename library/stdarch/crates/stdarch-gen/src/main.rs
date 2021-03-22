@@ -347,6 +347,26 @@ fn transpose2(x: usize) -> &'static str {
     }
 }
 
+fn zip1(x: usize) -> &'static str {
+    match x {
+        2 => "[0, 2]",
+        4 => "[0, 4, 1, 5]",
+        8 => "[0, 8, 1, 9, 2, 10, 3, 11]",
+        16 => "[0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23]",
+        _ => panic!("unknown zip order of len {}", x),
+    }
+}
+
+fn zip2(x: usize) -> &'static str {
+    match x {
+        2 => "[1, 3]",
+        4 => "[2, 6, 3, 7]",
+        8 => "[4, 12, 5, 13, 6, 14, 7, 15]",
+        16 => "[8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31]",
+        _ => panic!("unknown zip order of len {}", x),
+    }
+}
+
 fn values(t: &str, vs: &[String]) -> String {
     if vs.len() == 1 && !t.contains('x') {
         format!(": {} = {}", t, vs[0])
@@ -1071,6 +1091,12 @@ fn get_call(
     }
     if fn_name == "transpose-2-in_len" {
         return transpose2(type_len(in_t[1])).to_string();
+    }
+    if fn_name == "zip-1-in_len" {
+        return zip1(type_len(in_t[1])).to_string();
+    }
+    if fn_name == "zip-2-in_len" {
+        return zip2(type_len(in_t[1])).to_string();
     }
     if fn_name.contains('-') {
         let fn_format: Vec<_> = fn_name.split('-').map(|v| v.to_string()).collect();
