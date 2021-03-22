@@ -1330,7 +1330,7 @@ mod test {
     tests_aarch64.push('}');
     tests_aarch64.push('\n');
 
-    let arm_out_path: PathBuf = PathBuf::from("./crates/core_arch")
+    let arm_out_path: PathBuf = PathBuf::from(env::var("OUT_DIR").unwrap())
         .join("src")
         .join("arm")
         .join("neon");
@@ -1340,8 +1340,7 @@ mod test {
     file_arm.write_all(out_arm.as_bytes())?;
     file_arm.write_all(tests_arm.as_bytes())?;
 
-    //let aarch64_out_path: PathBuf = PathBuf::from(env::var("OUT_DIR").unwrap())
-    let aarch64_out_path: PathBuf = PathBuf::from("./crates/core_arch")
+    let aarch64_out_path: PathBuf = PathBuf::from(env::var("OUT_DIR").unwrap())
         .join("src")
         .join("aarch64")
         .join("neon");

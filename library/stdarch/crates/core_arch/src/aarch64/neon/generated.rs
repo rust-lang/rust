@@ -2059,24 +2059,8 @@ pub unsafe fn vtrn1q_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn1))]
-pub unsafe fn vtrn1_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
-    simd_shuffle2(a, b, [0, 2])
-}
-
-/// Transpose vectors
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn1))]
 pub unsafe fn vtrn1q_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     simd_shuffle4(a, b, [0, 4, 2, 6])
-}
-
-/// Transpose vectors
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn1))]
-pub unsafe fn vtrn1q_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
-    simd_shuffle2(a, b, [0, 2])
 }
 
 /// Transpose vectors
@@ -2115,24 +2099,8 @@ pub unsafe fn vtrn1q_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn1))]
-pub unsafe fn vtrn1_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
-    simd_shuffle2(a, b, [0, 2])
-}
-
-/// Transpose vectors
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn1))]
 pub unsafe fn vtrn1q_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     simd_shuffle4(a, b, [0, 4, 2, 6])
-}
-
-/// Transpose vectors
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn1))]
-pub unsafe fn vtrn1q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
-    simd_shuffle2(a, b, [0, 2])
 }
 
 /// Transpose vectors
@@ -2170,16 +2138,40 @@ pub unsafe fn vtrn1q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
 /// Transpose vectors
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn1))]
-pub unsafe fn vtrn1q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
+#[cfg_attr(test, assert_instr(zip1))]
+pub unsafe fn vtrn1_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     simd_shuffle2(a, b, [0, 2])
 }
 
 /// Transpose vectors
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn1))]
-pub unsafe fn vtrn1_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
+#[cfg_attr(test, assert_instr(zip1))]
+pub unsafe fn vtrn1q_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
+    simd_shuffle2(a, b, [0, 2])
+}
+
+/// Transpose vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(zip1))]
+pub unsafe fn vtrn1_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
+    simd_shuffle2(a, b, [0, 2])
+}
+
+/// Transpose vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(zip1))]
+pub unsafe fn vtrn1q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
+    simd_shuffle2(a, b, [0, 2])
+}
+
+/// Transpose vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(zip1))]
+pub unsafe fn vtrn1q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
     simd_shuffle2(a, b, [0, 2])
 }
 
@@ -2194,7 +2186,15 @@ pub unsafe fn vtrn1q_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 /// Transpose vectors
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn1))]
+#[cfg_attr(test, assert_instr(zip1))]
+pub unsafe fn vtrn1_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
+    simd_shuffle2(a, b, [0, 2])
+}
+
+/// Transpose vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vtrn1q_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     simd_shuffle2(a, b, [0, 2])
 }
@@ -2235,24 +2235,8 @@ pub unsafe fn vtrn2q_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn2))]
-pub unsafe fn vtrn2_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
-    simd_shuffle2(a, b, [1, 3])
-}
-
-/// Transpose vectors
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn2))]
 pub unsafe fn vtrn2q_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     simd_shuffle4(a, b, [1, 5, 3, 7])
-}
-
-/// Transpose vectors
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn2))]
-pub unsafe fn vtrn2q_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
-    simd_shuffle2(a, b, [1, 3])
 }
 
 /// Transpose vectors
@@ -2291,24 +2275,8 @@ pub unsafe fn vtrn2q_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn2))]
-pub unsafe fn vtrn2_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
-    simd_shuffle2(a, b, [1, 3])
-}
-
-/// Transpose vectors
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn2))]
 pub unsafe fn vtrn2q_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     simd_shuffle4(a, b, [1, 5, 3, 7])
-}
-
-/// Transpose vectors
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn2))]
-pub unsafe fn vtrn2q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
-    simd_shuffle2(a, b, [1, 3])
 }
 
 /// Transpose vectors
@@ -2346,16 +2314,40 @@ pub unsafe fn vtrn2q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
 /// Transpose vectors
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn2))]
-pub unsafe fn vtrn2q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
+#[cfg_attr(test, assert_instr(zip2))]
+pub unsafe fn vtrn2_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     simd_shuffle2(a, b, [1, 3])
 }
 
 /// Transpose vectors
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn2))]
-pub unsafe fn vtrn2_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
+#[cfg_attr(test, assert_instr(zip2))]
+pub unsafe fn vtrn2q_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
+    simd_shuffle2(a, b, [1, 3])
+}
+
+/// Transpose vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(zip2))]
+pub unsafe fn vtrn2_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
+    simd_shuffle2(a, b, [1, 3])
+}
+
+/// Transpose vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(zip2))]
+pub unsafe fn vtrn2q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
+    simd_shuffle2(a, b, [1, 3])
+}
+
+/// Transpose vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(zip2))]
+pub unsafe fn vtrn2q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
     simd_shuffle2(a, b, [1, 3])
 }
 
@@ -2370,7 +2362,15 @@ pub unsafe fn vtrn2q_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 /// Transpose vectors
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(trn2))]
+#[cfg_attr(test, assert_instr(zip2))]
+pub unsafe fn vtrn2_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
+    simd_shuffle2(a, b, [1, 3])
+}
+
+/// Transpose vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vtrn2q_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     simd_shuffle2(a, b, [1, 3])
 }
@@ -4212,29 +4212,11 @@ mod test {
     }
 
     #[simd_test(enable = "neon")]
-    unsafe fn test_vtrn1_s32() {
-        let a: i32x2 = i32x2::new(0, 2);
-        let b: i32x2 = i32x2::new(1, 3);
-        let e: i32x2 = i32x2::new(0, 1);
-        let r: i32x2 = transmute(vtrn1_s32(transmute(a), transmute(b)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
     unsafe fn test_vtrn1q_s32() {
         let a: i32x4 = i32x4::new(0, 2, 4, 6);
         let b: i32x4 = i32x4::new(1, 3, 5, 7);
         let e: i32x4 = i32x4::new(0, 1, 4, 5);
         let r: i32x4 = transmute(vtrn1q_s32(transmute(a), transmute(b)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vtrn1q_s64() {
-        let a: i64x2 = i64x2::new(0, 2);
-        let b: i64x2 = i64x2::new(1, 3);
-        let e: i64x2 = i64x2::new(0, 1);
-        let r: i64x2 = transmute(vtrn1q_s64(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -4275,29 +4257,11 @@ mod test {
     }
 
     #[simd_test(enable = "neon")]
-    unsafe fn test_vtrn1_u32() {
-        let a: u32x2 = u32x2::new(0, 2);
-        let b: u32x2 = u32x2::new(1, 3);
-        let e: u32x2 = u32x2::new(0, 1);
-        let r: u32x2 = transmute(vtrn1_u32(transmute(a), transmute(b)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
     unsafe fn test_vtrn1q_u32() {
         let a: u32x4 = u32x4::new(0, 2, 4, 6);
         let b: u32x4 = u32x4::new(1, 3, 5, 7);
         let e: u32x4 = u32x4::new(0, 1, 4, 5);
         let r: u32x4 = transmute(vtrn1q_u32(transmute(a), transmute(b)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vtrn1q_u64() {
-        let a: u64x2 = u64x2::new(0, 2);
-        let b: u64x2 = u64x2::new(1, 3);
-        let e: u64x2 = u64x2::new(0, 1);
-        let r: u64x2 = transmute(vtrn1q_u64(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -4338,6 +4302,42 @@ mod test {
     }
 
     #[simd_test(enable = "neon")]
+    unsafe fn test_vtrn1_s32() {
+        let a: i32x2 = i32x2::new(0, 2);
+        let b: i32x2 = i32x2::new(1, 3);
+        let e: i32x2 = i32x2::new(0, 1);
+        let r: i32x2 = transmute(vtrn1_s32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vtrn1q_s64() {
+        let a: i64x2 = i64x2::new(0, 2);
+        let b: i64x2 = i64x2::new(1, 3);
+        let e: i64x2 = i64x2::new(0, 1);
+        let r: i64x2 = transmute(vtrn1q_s64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vtrn1_u32() {
+        let a: u32x2 = u32x2::new(0, 2);
+        let b: u32x2 = u32x2::new(1, 3);
+        let e: u32x2 = u32x2::new(0, 1);
+        let r: u32x2 = transmute(vtrn1_u32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vtrn1q_u64() {
+        let a: u64x2 = u64x2::new(0, 2);
+        let b: u64x2 = u64x2::new(1, 3);
+        let e: u64x2 = u64x2::new(0, 1);
+        let r: u64x2 = transmute(vtrn1q_u64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
     unsafe fn test_vtrn1q_p64() {
         let a: i64x2 = i64x2::new(0, 2);
         let b: i64x2 = i64x2::new(1, 3);
@@ -4347,20 +4347,20 @@ mod test {
     }
 
     #[simd_test(enable = "neon")]
-    unsafe fn test_vtrn1_f32() {
-        let a: f32x2 = f32x2::new(0., 2.);
-        let b: f32x2 = f32x2::new(1., 3.);
-        let e: f32x2 = f32x2::new(0., 1.);
-        let r: f32x2 = transmute(vtrn1_f32(transmute(a), transmute(b)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
     unsafe fn test_vtrn1q_f32() {
         let a: f32x4 = f32x4::new(0., 2., 4., 6.);
         let b: f32x4 = f32x4::new(1., 3., 5., 7.);
         let e: f32x4 = f32x4::new(0., 1., 4., 5.);
         let r: f32x4 = transmute(vtrn1q_f32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vtrn1_f32() {
+        let a: f32x2 = f32x2::new(0., 2.);
+        let b: f32x2 = f32x2::new(1., 3.);
+        let e: f32x2 = f32x2::new(0., 1.);
+        let r: f32x2 = transmute(vtrn1_f32(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -4410,29 +4410,11 @@ mod test {
     }
 
     #[simd_test(enable = "neon")]
-    unsafe fn test_vtrn2_s32() {
-        let a: i32x2 = i32x2::new(0, 2);
-        let b: i32x2 = i32x2::new(1, 3);
-        let e: i32x2 = i32x2::new(2, 3);
-        let r: i32x2 = transmute(vtrn2_s32(transmute(a), transmute(b)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
     unsafe fn test_vtrn2q_s32() {
         let a: i32x4 = i32x4::new(0, 2, 4, 6);
         let b: i32x4 = i32x4::new(1, 3, 5, 7);
         let e: i32x4 = i32x4::new(2, 3, 6, 7);
         let r: i32x4 = transmute(vtrn2q_s32(transmute(a), transmute(b)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vtrn2q_s64() {
-        let a: i64x2 = i64x2::new(0, 2);
-        let b: i64x2 = i64x2::new(1, 3);
-        let e: i64x2 = i64x2::new(2, 3);
-        let r: i64x2 = transmute(vtrn2q_s64(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -4473,29 +4455,11 @@ mod test {
     }
 
     #[simd_test(enable = "neon")]
-    unsafe fn test_vtrn2_u32() {
-        let a: u32x2 = u32x2::new(0, 2);
-        let b: u32x2 = u32x2::new(1, 3);
-        let e: u32x2 = u32x2::new(2, 3);
-        let r: u32x2 = transmute(vtrn2_u32(transmute(a), transmute(b)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
     unsafe fn test_vtrn2q_u32() {
         let a: u32x4 = u32x4::new(0, 2, 4, 6);
         let b: u32x4 = u32x4::new(1, 3, 5, 7);
         let e: u32x4 = u32x4::new(2, 3, 6, 7);
         let r: u32x4 = transmute(vtrn2q_u32(transmute(a), transmute(b)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vtrn2q_u64() {
-        let a: u64x2 = u64x2::new(0, 2);
-        let b: u64x2 = u64x2::new(1, 3);
-        let e: u64x2 = u64x2::new(2, 3);
-        let r: u64x2 = transmute(vtrn2q_u64(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -4536,6 +4500,42 @@ mod test {
     }
 
     #[simd_test(enable = "neon")]
+    unsafe fn test_vtrn2_s32() {
+        let a: i32x2 = i32x2::new(0, 2);
+        let b: i32x2 = i32x2::new(1, 3);
+        let e: i32x2 = i32x2::new(2, 3);
+        let r: i32x2 = transmute(vtrn2_s32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vtrn2q_s64() {
+        let a: i64x2 = i64x2::new(0, 2);
+        let b: i64x2 = i64x2::new(1, 3);
+        let e: i64x2 = i64x2::new(2, 3);
+        let r: i64x2 = transmute(vtrn2q_s64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vtrn2_u32() {
+        let a: u32x2 = u32x2::new(0, 2);
+        let b: u32x2 = u32x2::new(1, 3);
+        let e: u32x2 = u32x2::new(2, 3);
+        let r: u32x2 = transmute(vtrn2_u32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vtrn2q_u64() {
+        let a: u64x2 = u64x2::new(0, 2);
+        let b: u64x2 = u64x2::new(1, 3);
+        let e: u64x2 = u64x2::new(2, 3);
+        let r: u64x2 = transmute(vtrn2q_u64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
     unsafe fn test_vtrn2q_p64() {
         let a: i64x2 = i64x2::new(0, 2);
         let b: i64x2 = i64x2::new(1, 3);
@@ -4545,20 +4545,20 @@ mod test {
     }
 
     #[simd_test(enable = "neon")]
-    unsafe fn test_vtrn2_f32() {
-        let a: f32x2 = f32x2::new(0., 2.);
-        let b: f32x2 = f32x2::new(1., 3.);
-        let e: f32x2 = f32x2::new(2., 3.);
-        let r: f32x2 = transmute(vtrn2_f32(transmute(a), transmute(b)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
     unsafe fn test_vtrn2q_f32() {
         let a: f32x4 = f32x4::new(0., 2., 4., 6.);
         let b: f32x4 = f32x4::new(1., 3., 5., 7.);
         let e: f32x4 = f32x4::new(2., 3., 6., 7.);
         let r: f32x4 = transmute(vtrn2q_f32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vtrn2_f32() {
+        let a: f32x2 = f32x2::new(0., 2.);
+        let b: f32x2 = f32x2::new(1., 3.);
+        let e: f32x2 = f32x2::new(2., 3.);
+        let r: f32x2 = transmute(vtrn2_f32(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
