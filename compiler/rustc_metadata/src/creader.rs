@@ -350,15 +350,12 @@ impl<'a> CrateLoader<'a> {
         let Library { source, metadata } = lib;
         let crate_root = metadata.get_root();
         let host_hash = host_lib.as_ref().map(|lib| lib.metadata.get_root().hash());
-        self.verify_no_symbol_conflicts(&crate_root)?;
 
         let private_dep =
             self.sess.opts.externs.get(&name.as_str()).map_or(false, |e| e.is_private_dep);
 
         // Claim this crate number and cache it
         let cnum = self.cstore.alloc_new_crate_num();
-
-        self.verify_no_stable_crate_id_hash_conflicts(&crate_root, cnum)?;
 
         info!(
             "register crate `{}` (cnum = {}. private_dep = {})",
@@ -393,6 +390,14 @@ impl<'a> CrateLoader<'a> {
         } else {
             None
         };
+
+        // Perform some verification *after* resolve_crate_deps() above is
+        // known to have been successful. It seems that - in error cases - the
+        // cstore can be in a temporarily invalid state between cnum allocation
+        // and dependency resolution and the verification code would produce
+        // ICEs in that case (see #83045).
+        self.verify_no_symbol_conflicts(&crate_root)?;
+        self.verify_no_stable_crate_id_hash_conflicts(&crate_root, cnum)?;
 
         let crate_metadata = CrateMetadata::new(
             self.sess,
