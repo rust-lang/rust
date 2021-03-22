@@ -638,8 +638,10 @@ class RustBuild(object):
     # Return the stage1 compiler to download, if any.
     def maybe_download_rustc(self):
         # If `download-rustc` is not set, default to rebuilding.
-        if self.get_toml("download-rustc", section="rust") != "true":
+        download_rustc = self.get_toml("download-rustc", section="rust")
+        if download_rustc is None or download_rustc == "false":
             return None
+        assert download_rustc == "true" or download_rustc == "if-unchanged", download_rustc
 
         # Handle running from a directory other than the top level
         rev_parse = ["git", "rev-parse", "--show-toplevel"]
@@ -654,6 +656,8 @@ class RustBuild(object):
         # Warn if there were changes to the compiler since the ancestor commit.
         status = subprocess.call(["git", "diff-index", "--quiet", commit, "--", compiler])
         if status != 0:
+            if download_rustc == "if-unchanged":
+                return None
             print("warning: `download-rustc` is enabled, but there are changes to compiler/")
 
         return commit
@@ -1158,6 +1162,8 @@ def bootstrap(help_triggered):
     env["RUSTC_BOOTSTRAP"] = '1'
     if toml_path:
         env["BOOTSTRAP_CONFIG"] = toml_path
+    if build.rustc_commit is not None:
+        env["BOOTSTRAP_DOWNLOAD_RUSTC"] = '1'
     run(args, env=env, verbose=build.verbose)
 
 
