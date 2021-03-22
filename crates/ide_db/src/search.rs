@@ -257,7 +257,7 @@ impl Definition {
         };
 
         if let Definition::Macro(macro_def) = self {
-            if macro_def.is_declarative() {
+            if macro_def.kind() == hir::MacroKind::Declarative {
                 return if macro_def.attrs(db).by_key("macro_export").exists() {
                     rev_dep_scope()
                 } else {
