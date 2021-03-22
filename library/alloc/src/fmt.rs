@@ -167,7 +167,7 @@
 //! * `-` - Currently not used
 //! * `#` - This flag indicates that the "alternate" form of printing should
 //!         be used. The alternate forms are:
-//!     * `#?` - pretty-print the [`Debug`] formatting (newline and indent)
+//!     * `#?` - pretty-print the [`Debug`] formatting (adds linebreaks and indentation)
 //!     * `#x` - precedes the argument with a `0x`
 //!     * `#X` - precedes the argument with a `0x`
 //!     * `#b` - precedes the argument with a `0b`
