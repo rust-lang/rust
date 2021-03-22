@@ -62,7 +62,7 @@ mod fpu_precision {
         // any `u16`
         unsafe {
             asm!(
-                "fldcw ({})",
+                "fldcw word ptr [{}]",
                 in(reg) &cw,
                 options(nostack),
             )
@@ -86,7 +86,7 @@ mod fpu_precision {
         // any `u16`
         unsafe {
             asm!(
-                "fnstcw ({})",
+                "fnstcw word ptr [{}]",
                 in(reg) &mut cw,
                 options(nostack),
             )

@@ -36,7 +36,7 @@ pub fn image_base() -> u64 {
     let base: u64;
     unsafe {
         asm!(
-            "lea IMAGE_BASE(%rip), {}",
+            "lea {}, qword ptr [rip + IMAGE_BASE]",
             lateout(reg) base,
             options(nostack, preserves_flags, nomem, pure),
         )
