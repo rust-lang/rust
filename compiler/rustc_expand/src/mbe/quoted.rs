@@ -62,19 +62,16 @@ pub(super) fn parse(
                                 Some((frag, _)) => {
                                     let span = token.span.with_lo(start_sp.lo());
 
-                                    match frag.name {
-                                        sym::pat2015 | sym::pat2021 => {
-                                            if !features.edition_macro_pats {
-                                                feature_err(
-                                                    sess,
-                                                    sym::edition_macro_pats,
-                                                    frag.span,
-                                                    "`pat2015` and `pat2021` are unstable.",
-                                                )
-                                                .emit();
-                                            }
-                                        }
-                                        _ => {}
+                                    if matches!(frag.name, sym::pat2021)
+                                        && !features.edition_macro_pats
+                                    {
+                                        feature_err(
+                                            sess,
+                                            sym::edition_macro_pats,
+                                            frag.span,
+                                            "`pat2021` is unstable.",
+                                        )
+                                        .emit();
                                     }
 
                                     let kind =
