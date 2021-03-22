@@ -148,13 +148,15 @@ unsafe impl GlobalAlloc for System {
     #[inline]
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         // SAFETY: pointers returned by `allocate` satisfy the guarantees of `System`
-        unsafe { allocate(layout, false) }
+        let zeroed = false;
+        unsafe { allocate(layout, zeroed) }
     }
 
     #[inline]
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
         // SAFETY: pointers returned by `allocate` satisfy the guarantees of `System`
-        unsafe { allocate(layout, true) }
+        let zeroed = true;
+        unsafe { allocate(layout, zeroed) }
     }
 
     #[inline]
