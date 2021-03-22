@@ -1438,6 +1438,9 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
   };
 
 #if LLVM_VERSION_GE(13,0)
+  // Uses FromPrevailing visibility scheme which works for many binary
+  // formats. We probably could and should use ELF visibility scheme for many of
+  // our targets, however.
   lto::Config conf;
   thinLTOResolvePrevailingInIndex(conf, Ret->Index, isPrevailing, recordNewLinkage,
                                   Ret->GUIDPreservedSymbols);
