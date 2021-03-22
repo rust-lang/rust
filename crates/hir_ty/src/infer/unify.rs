@@ -2,13 +2,13 @@
 
 use std::borrow::Cow;
 
-use chalk_ir::{FloatTy, IntTy, TyVariableKind};
+use chalk_ir::{FloatTy, IntTy, TyVariableKind, UniverseIndex, VariableKind};
 use ena::unify::{InPlaceUnificationTable, NoError, UnifyKey, UnifyValue};
 
 use super::{DomainGoal, InferenceContext};
 use crate::{
-    AliasEq, AliasTy, BoundVar, Canonical, DebruijnIndex, FnPointer, InEnvironment, InferenceVar,
-    Interner, Scalar, Substitution, Ty, TyKind, TypeWalk, WhereClause,
+    AliasEq, AliasTy, BoundVar, Canonical, CanonicalVarKinds, DebruijnIndex, FnPointer,
+    InEnvironment, InferenceVar, Interner, Scalar, Substitution, Ty, TyKind, TypeWalk, WhereClause,
 };
 
 impl<'a> InferenceContext<'a> {
@@ -76,8 +76,17 @@ impl<'a, 'b> Canonicalizer<'a, 'b> {
     }
 
     fn into_canonicalized<T>(self, result: T) -> Canonicalized<T> {
-        let kinds = self.free_vars.iter().map(|&(_, k)| k).collect();
-        Canonicalized { value: Canonical { value: result, kinds }, free_vars: self.free_vars }
+        let kinds = self
+            .free_vars
+            .iter()
+            .map(|&(_, k)| chalk_ir::WithKind::new(VariableKind::Ty(k), UniverseIndex::ROOT));
+        Canonicalized {
+            value: Canonical {
+                value: result,
+                binders: CanonicalVarKinds::from_iter(&Interner, kinds),
+            },
+            free_vars: self.free_vars,
+        }
     }
 
     pub(crate) fn canonicalize_ty(mut self, ty: Ty) -> Canonicalized<Ty> {
@@ -89,15 +98,12 @@ impl<'a, 'b> Canonicalizer<'a, 'b> {
         mut self,
         obligation: InEnvironment<DomainGoal>,
     ) -> Canonicalized<InEnvironment<DomainGoal>> {
-        let result = match obligation.value {
+        let result = match obligation.goal {
             DomainGoal::Holds(wc) => {
                 DomainGoal::Holds(self.do_canonicalize(wc, DebruijnIndex::INNERMOST))
             }
         };
-        self.into_canonicalized(InEnvironment {
-            value: result,
-            environment: obligation.environment,
-        })
+        self.into_canonicalized(InEnvironment { goal: result, environment: obligation.environment })
     }
 }
 
@@ -125,12 +131,19 @@ impl<T> Canonicalized<T> {
         // the solution may contain new variables, which we need to convert to new inference vars
         let new_vars = Substitution(
             solution
-                .kinds
-                .iter()
-                .map(|k| match k {
-                    TyVariableKind::General => ctx.table.new_type_var(),
-                    TyVariableKind::Integer => ctx.table.new_integer_var(),
-                    TyVariableKind::Float => ctx.table.new_float_var(),
+                .binders
+                .iter(&Interner)
+                .map(|k| match k.kind {
+                    VariableKind::Ty(TyVariableKind::General) => ctx.table.new_type_var(),
+                    VariableKind::Ty(TyVariableKind::Integer) => ctx.table.new_integer_var(),
+                    VariableKind::Ty(TyVariableKind::Float) => ctx.table.new_float_var(),
+                    // HACK: Chalk can sometimes return new lifetime variables. We
+                    // want to just skip them, but to not mess up the indices of
+                    // other variables, we'll just create a new type variable in
+                    // their place instead. This should not matter (we never see the
+                    // actual *uses* of the lifetime variable).
+                    VariableKind::Lifetime => ctx.table.new_type_var(),
+                    _ => panic!("const variable in solution"),
                 })
                 .collect(),
         );
@@ -147,8 +160,8 @@ impl<T> Canonicalized<T> {
 pub(crate) fn unify(tys: &Canonical<(Ty, Ty)>) -> Option<Substitution> {
     let mut table = InferenceTable::new();
     let vars = Substitution(
-        tys.kinds
-            .iter()
+        tys.binders
+            .iter(&Interner)
             // we always use type vars here because we want everything to
             // fallback to Unknown in the end (kind of hacky, as below)
             .map(|_| table.new_type_var())
@@ -170,7 +183,7 @@ pub(crate) fn unify(tys: &Canonical<(Ty, Ty)>) -> Option<Substitution> {
         }
     }
     Some(
-        Substitution::builder(tys.kinds.len())
+        Substitution::builder(tys.binders.len(&Interner))
             .fill(vars.iter().map(|v| table.resolve_ty_completely(v.clone())))
             .build(),
     )

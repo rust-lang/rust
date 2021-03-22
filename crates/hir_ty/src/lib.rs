@@ -61,6 +61,8 @@ pub type ClosureId = chalk_ir::ClosureId<Interner>;
 pub type OpaqueTyId = chalk_ir::OpaqueTyId<Interner>;
 pub type PlaceholderIndex = chalk_ir::PlaceholderIndex;
 
+pub type CanonicalVarKinds = chalk_ir::CanonicalVarKinds<Interner>;
+
 pub type ChalkTraitId = chalk_ir::TraitId<Interner>;
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -662,12 +664,18 @@ impl QuantifiedWhereClauses {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Canonical<T> {
     pub value: T,
-    pub kinds: Arc<[TyVariableKind]>,
+    pub binders: CanonicalVarKinds,
 }
 
 impl<T> Canonical<T> {
     pub fn new(value: T, kinds: impl IntoIterator<Item = TyVariableKind>) -> Self {
-        Self { value, kinds: kinds.into_iter().collect() }
+        let kinds = kinds.into_iter().map(|tk| {
+            chalk_ir::CanonicalVarKind::new(
+                chalk_ir::VariableKind::Ty(tk),
+                chalk_ir::UniverseIndex::ROOT,
+            )
+        });
+        Self { value, binders: chalk_ir::CanonicalVarKinds::from_iter(&Interner, kinds) }
     }
 }
 

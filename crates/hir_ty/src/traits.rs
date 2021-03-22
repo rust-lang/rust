@@ -1,6 +1,5 @@
 //! Trait solving using Chalk.
 use std::env::var;
-use std::sync::Arc;
 
 use base_db::CrateId;
 use chalk_ir::cast::Cast;
@@ -44,7 +43,7 @@ pub struct TraitEnvironment {
     // When we're using Chalk's Ty we can make this a BTreeMap since it's Ord,
     // but for now it's too annoying...
     pub(crate) traits_from_clauses: Vec<(Ty, TraitId)>,
-    pub(crate) env: chalk_ir::Environment<Interner>,
+    pub env: chalk_ir::Environment<Interner>,
 }
 
 impl TraitEnvironment {
@@ -74,13 +73,13 @@ impl Default for TraitEnvironment {
 /// Something (usually a goal), along with an environment.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct InEnvironment<T> {
-    pub environment: Arc<TraitEnvironment>,
-    pub value: T,
+    pub environment: chalk_ir::Environment<Interner>,
+    pub goal: T,
 }
 
 impl<T> InEnvironment<T> {
-    pub fn new(environment: Arc<TraitEnvironment>, value: T) -> InEnvironment<T> {
-        InEnvironment { environment, value }
+    pub fn new(environment: chalk_ir::Environment<Interner>, value: T) -> InEnvironment<T> {
+        InEnvironment { environment, goal: value }
     }
 }
 
@@ -126,18 +125,18 @@ pub(crate) fn trait_solve_query(
     krate: CrateId,
     goal: Canonical<InEnvironment<DomainGoal>>,
 ) -> Option<Solution> {
-    let _p = profile::span("trait_solve_query").detail(|| match &goal.value.value {
+    let _p = profile::span("trait_solve_query").detail(|| match &goal.value.goal {
         DomainGoal::Holds(WhereClause::Implemented(it)) => {
             db.trait_data(it.hir_trait_id()).name.to_string()
         }
         DomainGoal::Holds(WhereClause::AliasEq(_)) => "alias_eq".to_string(),
     });
-    log::info!("trait_solve_query({})", goal.value.value.display(db));
+    log::info!("trait_solve_query({})", goal.value.goal.display(db));
 
     if let DomainGoal::Holds(WhereClause::AliasEq(AliasEq {
         alias: AliasTy::Projection(projection_ty),
         ..
-    })) = &goal.value.value
+    })) = &goal.value.goal
     {
         if let TyKind::BoundVar(_) = &projection_ty.substitution[0].interned(&Interner) {
             // Hack: don't ask Chalk to normalize with an unknown self type, it'll say that's impossible

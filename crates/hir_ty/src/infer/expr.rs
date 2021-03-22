@@ -90,12 +90,12 @@ impl<'a> InferenceContext<'a> {
         let substs =
             Substitution::build_for_generics(&generic_params).push(ty.clone()).push(arg_ty).build();
 
-        let trait_env = Arc::clone(&self.trait_env);
+        let trait_env = self.trait_env.env.clone();
         let implements_fn_trait: DomainGoal =
             TraitRef { trait_id: to_chalk_trait_id(fn_once_trait), substitution: substs.clone() }
                 .cast(&Interner);
         let goal = self.canonicalizer().canonicalize_obligation(InEnvironment {
-            value: implements_fn_trait.clone(),
+            goal: implements_fn_trait.clone(),
             environment: trait_env,
         });
         if self.db.trait_solve(krate, goal.value).is_some() {
@@ -299,8 +299,8 @@ impl<'a> InferenceContext<'a> {
                     self.db,
                     self.resolver.krate(),
                     InEnvironment {
-                        value: canonicalized.value.clone(),
-                        environment: self.trait_env.clone(),
+                        goal: canonicalized.value.clone(),
+                        environment: self.trait_env.env.clone(),
                     },
                 );
                 let (param_tys, ret_ty): (Vec<Ty>, Ty) = derefs
@@ -438,8 +438,8 @@ impl<'a> InferenceContext<'a> {
                     self.db,
                     self.resolver.krate(),
                     InEnvironment {
-                        value: canonicalized.value.clone(),
-                        environment: self.trait_env.clone(),
+                        goal: canonicalized.value.clone(),
+                        environment: self.trait_env.env.clone(),
                     },
                 )
                 .find_map(|derefed_ty| {
@@ -538,8 +538,8 @@ impl<'a> InferenceContext<'a> {
                                 self.db,
                                 krate,
                                 InEnvironment {
-                                    value: &canonicalized.value,
-                                    environment: self.trait_env.clone(),
+                                    goal: &canonicalized.value,
+                                    environment: self.trait_env.env.clone(),
                                 },
                             ) {
                                 Some(derefed_ty) => {

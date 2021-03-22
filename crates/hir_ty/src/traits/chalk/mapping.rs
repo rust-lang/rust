@@ -439,35 +439,12 @@ where
     type Chalk = chalk_ir::Canonical<T::Chalk>;
 
     fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::Canonical<T::Chalk> {
-        let kinds = self.kinds.iter().map(|&tk| {
-            chalk_ir::CanonicalVarKind::new(
-                chalk_ir::VariableKind::Ty(tk),
-                chalk_ir::UniverseIndex::ROOT,
-            )
-        });
         let value = self.value.to_chalk(db);
-        chalk_ir::Canonical {
-            value,
-            binders: chalk_ir::CanonicalVarKinds::from_iter(&Interner, kinds),
-        }
+        chalk_ir::Canonical { value, binders: self.binders }
     }
 
     fn from_chalk(db: &dyn HirDatabase, canonical: chalk_ir::Canonical<T::Chalk>) -> Canonical<T> {
-        let kinds = canonical
-            .binders
-            .iter(&Interner)
-            .map(|k| match k.kind {
-                chalk_ir::VariableKind::Ty(tk) => tk,
-                // HACK: Chalk can sometimes return new lifetime variables. We
-                // want to just skip them, but to not mess up the indices of
-                // other variables, we'll just create a new type variable in
-                // their place instead. This should not matter (we never see the
-                // actual *uses* of the lifetime variable).
-                chalk_ir::VariableKind::Lifetime => chalk_ir::TyVariableKind::General,
-                chalk_ir::VariableKind::Const(_) => panic!("unexpected const from Chalk"),
-            })
-            .collect();
-        Canonical { kinds, value: from_chalk(db, canonical.value) }
+        Canonical { binders: canonical.binders, value: from_chalk(db, canonical.value) }
     }
 }
 
@@ -478,10 +455,7 @@ where
     type Chalk = chalk_ir::InEnvironment<T::Chalk>;
 
     fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::InEnvironment<T::Chalk> {
-        chalk_ir::InEnvironment {
-            environment: self.environment.env.clone(),
-            goal: self.value.to_chalk(db),
-        }
+        chalk_ir::InEnvironment { environment: self.environment, goal: self.goal.to_chalk(db) }
     }
 
     fn from_chalk(

@@ -142,7 +142,7 @@ impl<'a> InferenceContext<'a> {
             .build();
         let trait_ref =
             TraitRef { trait_id: to_chalk_trait_id(coerce_unsized_trait), substitution: substs };
-        let goal = InEnvironment::new(self.trait_env.clone(), trait_ref.cast(&Interner));
+        let goal = InEnvironment::new(self.trait_env.env.clone(), trait_ref.cast(&Interner));
 
         let canonicalizer = self.canonicalizer();
         let canonicalized = canonicalizer.canonicalize_obligation(goal);
@@ -170,8 +170,8 @@ impl<'a> InferenceContext<'a> {
             self.db,
             self.resolver.krate(),
             InEnvironment {
-                value: canonicalized.value.clone(),
-                environment: self.trait_env.clone(),
+                goal: canonicalized.value.clone(),
+                environment: self.trait_env.env.clone(),
             },
         ) {
             let derefed_ty = canonicalized.decanonicalize_ty(derefed_ty.value);

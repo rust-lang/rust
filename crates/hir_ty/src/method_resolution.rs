@@ -6,7 +6,7 @@ use std::{iter, sync::Arc};
 
 use arrayvec::ArrayVec;
 use base_db::CrateId;
-use chalk_ir::{cast::Cast, Mutability};
+use chalk_ir::{cast::Cast, Mutability, UniverseIndex};
 use hir_def::{
     lang_item::LangItemTarget, AssocContainerId, AssocItemId, FunctionId, GenericDefId, HasModule,
     ImplId, Lookup, ModuleId, TraitId,
@@ -21,8 +21,9 @@ use crate::{
     primitive::{self, FloatTy, IntTy, UintTy},
     to_chalk_trait_id,
     utils::all_super_traits,
-    AdtId, Canonical, DebruijnIndex, FnPointer, FnSig, ForeignDefId, InEnvironment, Interner,
-    Scalar, Substitution, TraitEnvironment, TraitRef, Ty, TyKind, TypeWalk,
+    AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, FnPointer, FnSig, ForeignDefId,
+    InEnvironment, Interner, Scalar, Substitution, TraitEnvironment, TraitRef, Ty, TyKind,
+    TypeWalk,
 };
 
 /// This is used as a key for indexing impls.
@@ -375,7 +376,7 @@ fn iterate_method_candidates_impl(
             // Also note that when we've got a receiver like &S, even if the method we
             // find in the end takes &self, we still do the autoderef step (just as
             // rustc does an autoderef and then autoref again).
-            let ty = InEnvironment { value: ty.clone(), environment: env.clone() };
+            let ty = InEnvironment { goal: ty.clone(), environment: env.env.clone() };
 
             // We have to be careful about the order we're looking at candidates
             // in here. Consider the case where we're resolving `x.clone()`
@@ -443,7 +444,7 @@ fn iterate_method_candidates_with_autoref(
         return true;
     }
     let refed = Canonical {
-        kinds: deref_chain[0].kinds.clone(),
+        binders: deref_chain[0].binders.clone(),
         value: TyKind::Ref(Mutability::Not, deref_chain[0].value.clone()).intern(&Interner),
     };
     if iterate_method_candidates_by_receiver(
@@ -459,7 +460,7 @@ fn iterate_method_candidates_with_autoref(
         return true;
     }
     let ref_muted = Canonical {
-        kinds: deref_chain[0].kinds.clone(),
+        binders: deref_chain[0].binders.clone(),
         value: TyKind::Ref(Mutability::Mut, deref_chain[0].value.clone()).intern(&Interner),
     };
     if iterate_method_candidates_by_receiver(
@@ -621,7 +622,7 @@ pub fn resolve_indexing_op(
     krate: CrateId,
     index_trait: TraitId,
 ) -> Option<Canonical<Ty>> {
-    let ty = InEnvironment { value: ty.clone(), environment: env.clone() };
+    let ty = InEnvironment { goal: ty.clone(), environment: env.env.clone() };
     let deref_chain = autoderef_method_receiver(db, krate, ty);
     for ty in deref_chain {
         let goal = generic_implements_goal(db, env.clone(), index_trait, ty.clone());
@@ -677,19 +678,28 @@ pub(crate) fn inherent_impl_substs(
     // we create a var for each type parameter of the impl; we need to keep in
     // mind here that `self_ty` might have vars of its own
     let vars = Substitution::build_for_def(db, impl_id)
-        .fill_with_bound_vars(DebruijnIndex::INNERMOST, self_ty.kinds.len())
+        .fill_with_bound_vars(DebruijnIndex::INNERMOST, self_ty.binders.len(&Interner))
         .build();
     let self_ty_with_vars = db.impl_self_ty(impl_id).subst(&vars);
-    let mut kinds = self_ty.kinds.to_vec();
-    kinds.extend(iter::repeat(chalk_ir::TyVariableKind::General).take(vars.len()));
-    let tys = Canonical { kinds: kinds.into(), value: (self_ty_with_vars, self_ty.value.clone()) };
+    let mut kinds = self_ty.binders.interned().to_vec();
+    kinds.extend(
+        iter::repeat(chalk_ir::WithKind::new(
+            chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General),
+            UniverseIndex::ROOT,
+        ))
+        .take(vars.len()),
+    );
+    let tys = Canonical {
+        binders: CanonicalVarKinds::from_iter(&Interner, kinds),
+        value: (self_ty_with_vars, self_ty.value.clone()),
+    };
     let substs = super::infer::unify(&tys);
     // We only want the substs for the vars we added, not the ones from self_ty.
     // Also, if any of the vars we added are still in there, we replace them by
     // Unknown. I think this can only really happen if self_ty contained
     // Unknown, and in that case we want the result to contain Unknown in those
     // places again.
-    substs.map(|s| fallback_bound_vars(s.suffix(vars.len()), self_ty.kinds.len()))
+    substs.map(|s| fallback_bound_vars(s.suffix(vars.len()), self_ty.binders.len(&Interner)))
 }
 
 /// This replaces any 'free' Bound vars in `s` (i.e. those with indices past
@@ -768,15 +778,24 @@ fn generic_implements_goal(
     trait_: TraitId,
     self_ty: Canonical<Ty>,
 ) -> Canonical<InEnvironment<super::DomainGoal>> {
-    let mut kinds = self_ty.kinds.to_vec();
+    let mut kinds = self_ty.binders.interned().to_vec();
     let substs = super::Substitution::build_for_def(db, trait_)
         .push(self_ty.value)
         .fill_with_bound_vars(DebruijnIndex::INNERMOST, kinds.len())
         .build();
-    kinds.extend(iter::repeat(chalk_ir::TyVariableKind::General).take(substs.len() - 1));
+    kinds.extend(
+        iter::repeat(chalk_ir::WithKind::new(
+            chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General),
+            UniverseIndex::ROOT,
+        ))
+        .take(substs.len() - 1),
+    );
     let trait_ref = TraitRef { trait_id: to_chalk_trait_id(trait_), substitution: substs };
     let obligation = trait_ref.cast(&Interner);
-    Canonical { kinds: kinds.into(), value: InEnvironment::new(env, obligation) }
+    Canonical {
+        binders: CanonicalVarKinds::from_iter(&Interner, kinds),
+        value: InEnvironment::new(env.env.clone(), obligation),
+    }
 }
 
 fn autoderef_method_receiver(
@@ -789,9 +808,9 @@ fn autoderef_method_receiver(
     if let Some(TyKind::Array(parameters)) =
         deref_chain.last().map(|ty| ty.value.interned(&Interner))
     {
-        let kinds = deref_chain.last().unwrap().kinds.clone();
+        let kinds = deref_chain.last().unwrap().binders.clone();
         let unsized_ty = TyKind::Slice(parameters.clone()).intern(&Interner);
-        deref_chain.push(Canonical { value: unsized_ty, kinds })
+        deref_chain.push(Canonical { value: unsized_ty, binders: kinds })
     }
     deref_chain
 }
