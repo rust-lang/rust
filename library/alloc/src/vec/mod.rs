@@ -2628,9 +2628,9 @@ impl<T, A: Allocator> Vec<T, A> {
 /// append the entire slice at once.
 ///
 /// [`copy_from_slice`]: slice::copy_from_slice
-#[track_caller]
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: Copy + 'a, A: Allocator + 'a> Extend<&'a T> for Vec<T, A> {
+    #[track_caller]
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.spec_extend(iter.into_iter())
     }
