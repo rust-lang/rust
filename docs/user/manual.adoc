@@ -516,6 +516,20 @@ See https://github.com/rust-analyzer/rust-project.json-example for a small examp
 
 You can set `RA_LOG` environmental variable to `rust_analyzer=info` to inspect how rust-analyzer handles config and project loading.
 
+== Security
+
+At the moment, rust-analyzer assumes that all code is trusted.
+Here is a **no-exhaustive** list of ways to make rust-analyzer execute arbitrary code:
+
+* proc macros and build scripts are executed by default
+* `.cargo/config` can override `rustc` with an arbitrary executable
+* VS Code plugin reads configuration from project directory, and that can be used to override paths to various executables, like `rustfmt` or `rust-analyzer` itself.
+* rust-analyzer's syntax trees library uses a lot of `unsafe` and hasn't been properly audited for memory safety.
+
+rust-analyzer itself doesn't access the network.
+VS Code plugin doesn't access the network unless the nightly channel is selected in the settings.
+In that case, the plugin uses GitHub API to check for and download updates.
+
 == Features
 
 include::./generated_features.adoc[]
