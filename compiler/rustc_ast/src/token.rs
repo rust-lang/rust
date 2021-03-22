@@ -688,13 +688,13 @@ pub enum NonterminalKind {
     Item,
     Block,
     Stmt,
-    Pat2018 {
-        /// Keep track of whether the user used `:pat2018` or `:pat` and we inferred it from the
+    Pat2015 {
+        /// Keep track of whether the user used `:pat2015` or `:pat` and we inferred it from the
         /// edition of the span. This is used for diagnostics.
         inferred: bool,
     },
     Pat2021 {
-        /// Keep track of whether the user used `:pat2018` or `:pat` and we inferred it from the
+        /// Keep track of whether the user used `:pat2015` or `:pat` and we inferred it from the
         /// edition of the span. This is used for diagnostics.
         inferred: bool,
     },
@@ -722,11 +722,11 @@ impl NonterminalKind {
             sym::stmt => NonterminalKind::Stmt,
             sym::pat => match edition() {
                 Edition::Edition2015 | Edition::Edition2018 => {
-                    NonterminalKind::Pat2018 { inferred: true }
+                    NonterminalKind::Pat2015 { inferred: true }
                 }
                 Edition::Edition2021 => NonterminalKind::Pat2021 { inferred: true },
             },
-            sym::pat2018 => NonterminalKind::Pat2018 { inferred: false },
+            sym::pat2015 => NonterminalKind::Pat2015 { inferred: false },
             sym::pat2021 => NonterminalKind::Pat2021 { inferred: false },
             sym::expr => NonterminalKind::Expr,
             sym::ty => NonterminalKind::Ty,
@@ -745,9 +745,9 @@ impl NonterminalKind {
             NonterminalKind::Item => sym::item,
             NonterminalKind::Block => sym::block,
             NonterminalKind::Stmt => sym::stmt,
-            NonterminalKind::Pat2018 { inferred: false } => sym::pat2018,
+            NonterminalKind::Pat2015 { inferred: false } => sym::pat2015,
             NonterminalKind::Pat2021 { inferred: false } => sym::pat2021,
-            NonterminalKind::Pat2018 { inferred: true }
+            NonterminalKind::Pat2015 { inferred: true }
             | NonterminalKind::Pat2021 { inferred: true } => sym::pat,
             NonterminalKind::Expr => sym::expr,
             NonterminalKind::Ty => sym::ty,
