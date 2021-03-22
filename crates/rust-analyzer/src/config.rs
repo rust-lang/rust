@@ -10,10 +10,9 @@
 use std::{ffi::OsString, iter, path::PathBuf};
 
 use flycheck::FlycheckConfig;
-use hir::PrefixKind;
 use ide::{AssistConfig, CompletionConfig, DiagnosticsConfig, HoverConfig, InlayHintsConfig};
 use ide_db::helpers::{
-    insert_use::{InsertUseConfig, MergeBehavior},
+    insert_use::{InsertUseConfig, MergeBehavior, PrefixKind},
     SnippetCap,
 };
 use lsp_types::{ClientCapabilities, MarkupKind};

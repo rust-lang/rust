@@ -1073,9 +1073,11 @@ pub(crate) fn rename_error(err: RenameError) -> crate::LspError {
 mod tests {
     use std::sync::Arc;
 
-    use hir::PrefixKind;
     use ide::Analysis;
-    use ide_db::helpers::{insert_use::InsertUseConfig, SnippetCap};
+    use ide_db::helpers::{
+        insert_use::{InsertUseConfig, PrefixKind},
+        SnippetCap,
+    };
 
     use super::*;
 

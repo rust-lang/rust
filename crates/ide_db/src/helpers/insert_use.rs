@@ -14,10 +14,12 @@ use syntax::{
     AstToken, InsertPosition, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxToken,
 };
 
+pub use hir::PrefixKind;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct InsertUseConfig {
     pub merge: Option<MergeBehavior>,
-    pub prefix_kind: hir::PrefixKind,
+    pub prefix_kind: PrefixKind,
     pub group: bool,
 }
 
