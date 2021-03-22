@@ -521,7 +521,7 @@ impl<'a> TyLoweringContext<'a> {
             TyDefId::AdtId(it) => Some(it.into()),
             TyDefId::TypeAliasId(it) => Some(it.into()),
         };
-        let substs = self.substs_from_path_segment(segment, generic_def, infer_args);
+        let substs = self.substs_from_path_segment(segment, generic_def, infer_args, None);
         self.db.ty(typeable).subst(&substs)
     }
 
@@ -558,7 +558,7 @@ impl<'a> TyLoweringContext<'a> {
                 (segment, Some(var.parent.into()))
             }
         };
-        self.substs_from_path_segment(segment, generic_def, infer_args)
+        self.substs_from_path_segment(segment, generic_def, infer_args, None)
     }
 
     fn substs_from_path_segment(
@@ -566,6 +566,7 @@ impl<'a> TyLoweringContext<'a> {
         segment: PathSegment<'_>,
         def_generic: Option<GenericDefId>,
         infer_args: bool,
+        explicit_self_ty: Option<Ty>,
     ) -> Substitution {
         let mut substs = Vec::new();
         let def_generics = def_generic.map(|def| generics(self.db.upcast(), def));
@@ -576,11 +577,19 @@ impl<'a> TyLoweringContext<'a> {
 
         substs.extend(iter::repeat(TyKind::Unknown.intern(&Interner)).take(parent_params));
 
+        let fill_self_params = || {
+            substs.extend(
+                explicit_self_ty
+                    .into_iter()
+                    .chain(iter::repeat(TyKind::Unknown.intern(&Interner)))
+                    .take(self_params),
+            )
+        };
         let mut had_explicit_type_args = false;
 
         if let Some(generic_args) = &segment.args_and_bindings {
             if !generic_args.has_self_type {
-                substs.extend(iter::repeat(TyKind::Unknown.intern(&Interner)).take(self_params));
+                fill_self_params();
             }
             let expected_num =
                 if generic_args.has_self_type { self_params + type_params } else { type_params };
@@ -602,6 +611,8 @@ impl<'a> TyLoweringContext<'a> {
                     GenericArg::Lifetime(_) => {}
                 }
             }
+        } else {
+            fill_self_params();
         }
 
         // handle defaults. In expression or pattern path segments without
@@ -650,10 +661,7 @@ impl<'a> TyLoweringContext<'a> {
         segment: PathSegment<'_>,
         explicit_self_ty: Option<Ty>,
     ) -> TraitRef {
-        let mut substs = self.trait_ref_substs_from_path(segment, resolved);
-        if let Some(self_ty) = explicit_self_ty {
-            substs.0[0] = self_ty;
-        }
+        let substs = self.trait_ref_substs_from_path(segment, resolved, explicit_self_ty);
         TraitRef { trait_id: to_chalk_trait_id(resolved), substitution: substs }
     }
 
@@ -673,8 +681,9 @@ impl<'a> TyLoweringContext<'a> {
         &self,
         segment: PathSegment<'_>,
         resolved: TraitId,
+        explicit_self_ty: Option<Ty>,
     ) -> Substitution {
-        self.substs_from_path_segment(segment, Some(resolved.into()), false)
+        self.substs_from_path_segment(segment, Some(resolved.into()), false, explicit_self_ty)
     }
 
     pub(crate) fn lower_where_predicate(
