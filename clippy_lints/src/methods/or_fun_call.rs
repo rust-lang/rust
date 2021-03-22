@@ -91,7 +91,7 @@ pub(super) fn check<'tcx>(
                 let ty = cx.typeck_results().expr_ty(&args[0]).peel_refs();
 
                 match ty.kind() {
-                    ty::Slice(_) | ty::Array(_, _) => return,
+                    ty::Slice(_) | ty::Array(_, _) | ty::Str => return,
                     _ => (),
                 }
 

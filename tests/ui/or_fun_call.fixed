@@ -120,6 +120,9 @@ fn test_or_with_ctors() {
 
     let slice = &["foo"][..];
     let _ = opt.ok_or(slice.len());
+
+    let string = "foo";
+    let _ = opt.ok_or(string.len());
 }
 
 // Issue 4514 - early return
