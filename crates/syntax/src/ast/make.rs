@@ -560,7 +560,7 @@ pub mod tokens {
     pub fn whitespace(text: &str) -> SyntaxToken {
         assert!(text.trim().is_empty());
         let sf = SourceFile::parse(text).ok().unwrap();
-        sf.syntax().first_child_or_token().unwrap().into_token().unwrap()
+        sf.syntax().clone_for_update().first_child_or_token().unwrap().into_token().unwrap()
     }
 
     pub fn doc_comment(text: &str) -> SyntaxToken {

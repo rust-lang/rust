@@ -9,7 +9,7 @@ use std::{
 use arrayvec::ArrayVec;
 
 use crate::{
-    algo::{self, neighbor, SyntaxRewriter},
+    algo::{self, SyntaxRewriter},
     ast::{
         self,
         make::{self, tokens},
@@ -322,27 +322,6 @@ impl ast::Use {
         }
         self.clone()
     }
-
-    pub fn remove(&self) -> SyntaxRewriter<'static> {
-        let mut res = SyntaxRewriter::default();
-        res.delete(self.syntax());
-        let next_ws = self
-            .syntax()
-            .next_sibling_or_token()
-            .and_then(|it| it.into_token())
-            .and_then(ast::Whitespace::cast);
-        if let Some(next_ws) = next_ws {
-            let ws_text = next_ws.syntax().text();
-            if let Some(rest) = ws_text.strip_prefix('\n') {
-                if rest.is_empty() {
-                    res.delete(next_ws.syntax())
-                } else {
-                    res.replace(next_ws.syntax(), &make::tokens::whitespace(rest));
-                }
-            }
-        }
-        res
-    }
 }
 
 impl ast::UseTree {
@@ -395,22 +374,6 @@ impl ast::UseTree {
             }
             Some(res)
         }
-    }
-
-    pub fn remove(&self) -> SyntaxRewriter<'static> {
-        let mut res = SyntaxRewriter::default();
-        res.delete(self.syntax());
-        for &dir in [Direction::Next, Direction::Prev].iter() {
-            if let Some(nb) = neighbor(self, dir) {
-                self.syntax()
-                    .siblings_with_tokens(dir)
-                    .skip(1)
-                    .take_while(|it| it.as_node() != Some(nb.syntax()))
-                    .for_each(|el| res.delete(&el));
-                return res;
-            }
-        }
-        res
     }
 }
 
@@ -592,6 +555,13 @@ impl ops::Add<u8> for IndentLevel {
 }
 
 impl IndentLevel {
+    pub fn from_element(element: &SyntaxElement) -> IndentLevel {
+        match element {
+            rowan::NodeOrToken::Node(it) => IndentLevel::from_node(it),
+            rowan::NodeOrToken::Token(it) => IndentLevel::from_token(it),
+        }
+    }
+
     pub fn from_node(node: &SyntaxNode) -> IndentLevel {
         match node.first_token() {
             Some(it) => Self::from_token(&it),

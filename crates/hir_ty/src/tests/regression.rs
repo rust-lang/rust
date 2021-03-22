@@ -961,3 +961,16 @@ fn issue_6852() {
         "#]],
     );
 }
+
+#[test]
+fn param_overrides_fn() {
+    check_types(
+        r#"
+        fn example(example: i32) {
+            fn f() {}
+            example;
+          //^^^^^^^ i32
+        }
+        "#,
+    )
+}

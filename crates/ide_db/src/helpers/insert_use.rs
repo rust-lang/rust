@@ -213,7 +213,7 @@ pub fn try_merge_imports(
     let lhs_tree = lhs.use_tree()?;
     let rhs_tree = rhs.use_tree()?;
     let merged = try_merge_trees(&lhs_tree, &rhs_tree, merge_behavior)?;
-    Some(lhs.with_use_tree(merged))
+    Some(lhs.with_use_tree(merged).clone_for_update())
 }
 
 pub fn try_merge_trees(
@@ -234,7 +234,7 @@ pub fn try_merge_trees(
     } else {
         (lhs.split_prefix(&lhs_prefix), rhs.split_prefix(&rhs_prefix))
     };
-    recursive_merge(&lhs, &rhs, merge)
+    recursive_merge(&lhs, &rhs, merge).map(|it| it.clone_for_update())
 }
 
 /// Recursively "zips" together lhs and rhs.

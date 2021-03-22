@@ -2,11 +2,14 @@
 //!
 //! The `_raw`-suffixed functions insert elements as is, unsuffixed versions fix
 //! up elements around the edges.
-use std::ops::RangeInclusive;
+use std::{mem, ops::RangeInclusive};
 
 use parser::T;
 
-use crate::{ast::make, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken};
+use crate::{
+    ast::{edit::IndentLevel, make},
+    SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken,
+};
 
 /// Utility trait to allow calling `ted` functions with references or owned
 /// nodes. Do not use outside of this module.
@@ -101,11 +104,24 @@ pub fn insert_all_raw(position: Position, elements: Vec<SyntaxElement>) {
 }
 
 pub fn remove(elem: impl Element) {
-    let elem = elem.syntax_element();
-    remove_all(elem.clone()..=elem)
+    elem.syntax_element().detach()
 }
 pub fn remove_all(range: RangeInclusive<SyntaxElement>) {
     replace_all(range, Vec::new())
+}
+pub fn remove_all_iter(range: impl IntoIterator<Item = SyntaxElement>) {
+    let mut it = range.into_iter();
+    if let Some(mut first) = it.next() {
+        match it.last() {
+            Some(mut last) => {
+                if first.index() > last.index() {
+                    mem::swap(&mut first, &mut last)
+                }
+                remove_all(first..=last)
+            }
+            None => remove(first),
+        }
+    }
 }
 
 pub fn replace(old: impl Element, new: impl Element) {
@@ -148,6 +164,10 @@ fn ws_between(left: &SyntaxElement, right: &SyntaxElement) -> Option<SyntaxToken
     }
     if right.kind() == T![;] || right.kind() == T![,] {
         return None;
+    }
+    if right.kind() == SyntaxKind::USE {
+        let indent = IndentLevel::from_element(left);
+        return Some(make::tokens::whitespace(&format!("\n{}", indent)));
     }
     Some(make::tokens::single_space())
 }
