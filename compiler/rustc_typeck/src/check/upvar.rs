@@ -30,7 +30,6 @@
 //! then mean that all later passes would have to check for these figments
 //! and report an error, and it just seems like more mess in the end.)
 
-use super::writeback::Resolver;
 use super::FnCtxt;
 
 use crate::expr_use_visitor as euv;
@@ -42,7 +41,6 @@ use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_infer::infer::UpvarRegion;
 use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection, ProjectionKind};
 use rustc_middle::mir::FakeReadCause;
-use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeckResults, UpvarSubsts};
 use rustc_session::lint;
 use rustc_span::sym;
@@ -167,7 +165,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let closure_hir_id = self.tcx.hir().local_def_id_to_hir_id(local_def_id);
         if should_do_migration_analysis(self.tcx, closure_hir_id) {
-            self.perform_2229_migration_anaysis(closure_def_id, capture_clause, span, body);
+            self.perform_2229_migration_anaysis(closure_def_id, capture_clause, span);
         }
 
         // We now fake capture information for all variables that are mentioned within the closure
@@ -467,13 +465,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         closure_def_id: DefId,
         capture_clause: hir::CaptureBy,
         span: Span,
-        body: &'tcx hir::Body<'tcx>,
     ) {
         let need_migrations = self.compute_2229_migrations(
             closure_def_id,
             span,
             capture_clause,
-            body,
             self.typeck_results.borrow().closure_min_captures.get(&closure_def_id),
         );
 
@@ -511,19 +507,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         closure_def_id: DefId,
         closure_span: Span,
         closure_clause: hir::CaptureBy,
-        body: &'tcx hir::Body<'tcx>,
         min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
     ) -> Vec<hir::HirId> {
-        fn resolve_ty<T: TypeFoldable<'tcx>>(
-            fcx: &FnCtxt<'_, 'tcx>,
-            span: Span,
-            body: &'tcx hir::Body<'tcx>,
-            ty: T,
-        ) -> T {
-            let mut resolver = Resolver::new(fcx, &span, body);
-            ty.fold_with(&mut resolver)
-        }
-
         let upvars = if let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) {
             upvars
         } else {
@@ -533,7 +518,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut need_migrations = Vec::new();
 
         for (&var_hir_id, _) in upvars.iter() {
-            let ty = resolve_ty(self, closure_span, body, self.node_ty(var_hir_id));
+            let ty = self.infcx.resolve_vars_if_possible(self.node_ty(var_hir_id));
 
             if !ty.needs_drop(self.tcx, self.tcx.param_env(closure_def_id.expect_local())) {
                 continue;
