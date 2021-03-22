@@ -1,4 +1,4 @@
-use crate::methods::derefs_to_slice;
+use super::utils::derefs_to_slice;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
@@ -47,12 +47,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, ite
                 );
             }
         }
-    } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(caller_expr), sym::vec_type)
-        || matches!(
-            &cx.typeck_results().expr_ty(caller_expr).peel_refs().kind(),
-            ty::Array(_, _)
-        )
-    {
+    } else if is_vec_or_array(cx, caller_expr) {
         // caller is a Vec or an Array
         let mut applicability = Applicability::MachineApplicable;
         span_lint_and_sugg(
@@ -68,4 +63,9 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, ite
             applicability,
         );
     }
+}
+
+fn is_vec_or_array<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) -> bool {
+    is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(expr), sym::vec_type)
+        || matches!(&cx.typeck_results().expr_ty(expr).peel_refs().kind(), ty::Array(_, _))
 }

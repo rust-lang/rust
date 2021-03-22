@@ -12,14 +12,13 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, skip_args: &[hir
     // lint if caller of skip is an Iterator
     if is_trait_method(cx, expr, sym::Iterator) {
         if let [caller, n] = skip_args {
-            let hint = format!(".nth({})", snippet(cx, n.span, ".."));
             span_lint_and_sugg(
                 cx,
                 ITER_SKIP_NEXT,
                 expr.span.trim_start(caller.span).unwrap(),
                 "called `skip(..).next()` on an iterator",
                 "use `nth` instead",
-                hint,
+                format!(".nth({})", snippet(cx, n.span, "..")),
                 Applicability::MachineApplicable,
             );
         }

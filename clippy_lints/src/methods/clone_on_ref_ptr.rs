@@ -6,11 +6,15 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::symbol::sym;
+use rustc_span::symbol::{sym, Symbol};
 
 use super::CLONE_ON_REF_PTR;
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Expr<'_>) {
+pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_name: Symbol, args: &[hir::Expr<'_>]) {
+    if !(args.len() == 1 && method_name == sym::clone) {
+        return;
+    }
+    let arg = &args[0];
     let obj_ty = cx.typeck_results().expr_ty(arg).peel_refs();
 
     if let ty::Adt(_, subst) = obj_ty.kind() {

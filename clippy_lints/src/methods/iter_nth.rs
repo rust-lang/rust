@@ -1,4 +1,4 @@
-use crate::methods::derefs_to_slice;
+use super::utils::derefs_to_slice;
 use crate::methods::iter_nth_zero;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::is_type_diagnostic_item;
