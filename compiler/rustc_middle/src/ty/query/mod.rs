@@ -217,8 +217,11 @@ macro_rules! define_callbacks {
             fn default() -> Self {
                 Providers {
                     $($name: |_, key| bug!(
-                        "`tcx.{}({:?})` unsupported by its crate",
-                         stringify!($name), key
+                        "`tcx.{}({:?})` unsupported by its crate; \
+                         perhaps the `{}` query was never assigned a provider function",
+                        stringify!($name),
+                        key,
+                        stringify!($name),
                     ),)*
                 }
             }
