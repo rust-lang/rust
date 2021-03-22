@@ -265,15 +265,8 @@ macro_rules! impl_float_tests {
             impl_binary_op_test!(Vector<LANES>, Scalar, Div::div, DivAssign::div_assign);
             impl_binary_op_test!(Vector<LANES>, Scalar, Rem::rem, RemAssign::rem_assign);
 
+            #[cfg(feature = "std")]
             test_helpers::test_lanes! {
-                fn abs<const LANES: usize>() {
-                    test_helpers::test_unary_elementwise(
-                        &Vector::<LANES>::abs,
-                        &Scalar::abs,
-                        &|_| true,
-                    )
-                }
-
                 fn ceil<const LANES: usize>() {
                     test_helpers::test_unary_elementwise(
                         &Vector::<LANES>::ceil,
@@ -286,6 +279,16 @@ macro_rules! impl_float_tests {
                     test_helpers::test_unary_elementwise(
                         &Vector::<LANES>::floor,
                         &Scalar::floor,
+                        &|_| true,
+                    )
+                }
+            }
+
+            test_helpers::test_lanes! {
+                fn abs<const LANES: usize>() {
+                    test_helpers::test_unary_elementwise(
+                        &Vector::<LANES>::abs,
+                        &Scalar::abs,
                         &|_| true,
                     )
                 }
