@@ -254,8 +254,9 @@ environment variable:
   help identify latent aliasing issues in code that Miri accepts by default. You
   can recognize false positives by `<untagged>` occurring in the message -- this
   indicates a pointer that was cast from an integer, so Miri was unable to track
-  this pointer. It does not have false negatives; code that works with
-  `-Zmiri-track-raw-pointers` will work without `-Zmiri-track-raw-pointers`.
+  this pointer. Note that it is not currently guaranteed that code that works
+  with `-Zmiri-track-raw-pointers` also works without
+  `-Zmiri-track-raw-pointers`.
 
 Some native rustc `-Z` flags are also very relevant for Miri:
 
