@@ -1,4 +1,4 @@
-[unstable(feature = "raw_vec_internals", reason = "implementation detail", issue = "none")]
+#![unstable(feature = "raw_vec_internals", reason = "implementation detail", issue = "none")]
 #![doc(hidden)]
 
 use core::alloc::LayoutError;
