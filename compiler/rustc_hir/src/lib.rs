@@ -4,7 +4,7 @@
 
 #![feature(crate_visibility_modifier)]
 #![feature(const_panic)]
-#![feature(extended_key_value_attributes)]
+#![cfg_attr(bootstrap, feature(extended_key_value_attributes))]
 #![feature(in_band_lifetimes)]
 #![feature(once_cell)]
 #![cfg_attr(bootstrap, feature(or_patterns))]

@@ -113,7 +113,7 @@
 #![cfg_attr(bootstrap, feature(doc_spotlight))]
 #![cfg_attr(not(bootstrap), feature(doc_notable_trait))]
 #![feature(duration_consts_2)]
-#![feature(extended_key_value_attributes)]
+#![cfg_attr(bootstrap, feature(extended_key_value_attributes))]
 #![feature(extern_types)]
 #![feature(fundamental)]
 #![feature(intra_doc_pointers)]

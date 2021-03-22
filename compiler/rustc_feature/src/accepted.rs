@@ -281,6 +281,8 @@ declare_features! (
     (accepted, or_patterns, "1.53.0", Some(54883), None),
     /// Allows defining identifiers beyond ASCII.
     (accepted, non_ascii_idents, "1.53.0", Some(55467), None),
+    /// Allows arbitrary expressions in key-value attributes at parse time.
+    (accepted, extended_key_value_attributes, "1.54.0", Some(78835), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features
