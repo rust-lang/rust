@@ -181,6 +181,7 @@ fn find_path_inner(
         // dependency in this case.
         for (module_id, name) in find_local_import_locations(db, item, from) {
             if !visited_modules.insert(module_id) {
+                cov_mark::hit!(recursive_imports);
                 continue;
             }
             if let Some(mut path) = find_path_inner(
@@ -894,6 +895,7 @@ mod tests {
 
     #[test]
     fn recursive_pub_mod_reexport() {
+        cov_mark::check!(recursive_imports);
         check_found_path(
             r#"
 fn main() {
