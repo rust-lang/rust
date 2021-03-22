@@ -286,7 +286,6 @@ impl<'a, T> IterMut<'a, T> {
     /// Basic usage:
     ///
     /// ```
-    /// # #![feature(slice_iter_mut_as_slice)]
     /// let mut slice: &mut [usize] = &mut [1, 2, 3];
     ///
     /// // First, we get the iterator:
@@ -299,9 +298,16 @@ impl<'a, T> IterMut<'a, T> {
     /// // Now `as_slice` returns "[2, 3]":
     /// assert_eq!(iter.as_slice(), &[2, 3]);
     /// ```
-    #[unstable(feature = "slice_iter_mut_as_slice", reason = "recently added", issue = "58957")]
+    #[stable(feature = "slice_iter_mut_as_slice", since = "1.53.0")]
     pub fn as_slice(&self) -> &[T] {
         self.make_slice()
+    }
+}
+
+#[stable(feature = "slice_iter_mut_as_slice", since = "1.53.0")]
+impl<T> AsRef<[T]> for IterMut<'_, T> {
+    fn as_ref(&self) -> &[T] {
+        self.as_slice()
     }
 }
 

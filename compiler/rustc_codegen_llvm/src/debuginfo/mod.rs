@@ -1,5 +1,4 @@
-// See doc.rs for documentation.
-mod doc;
+#![doc = include_str!("doc.md")]
 
 use rustc_codegen_ssa::mir::debuginfo::VariableKind::*;
 
