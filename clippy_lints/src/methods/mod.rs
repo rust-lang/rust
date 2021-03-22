@@ -588,26 +588,31 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// **What it does:** Checks for an iterator or string search (such as `find()`,
-    /// `position()`, or `rposition()`) followed by a call to `is_some()`.
+    /// `position()`, or `rposition()`) followed by a call to `is_some()` or `is_none()`.
     ///
-    /// **Why is this bad?** Readability, this can be written more concisely as
-    /// `_.any(_)` or `_.contains(_)`.
+    /// **Why is this bad?** Readability, this can be written more concisely as:
+    /// * `_.any(_)`, or `_.contains(_)` for `is_some()`,
+    /// * `!_.any(_)`, or `!_.contains(_)` for `is_none()`.
     ///
     /// **Known problems:** None.
     ///
     /// **Example:**
     /// ```rust
-    /// # let vec = vec![1];
+    /// let vec = vec![1];
     /// vec.iter().find(|x| **x == 0).is_some();
+    ///
+    /// let _ = "hello world".find("world").is_none();
     /// ```
     /// Could be written as
     /// ```rust
-    /// # let vec = vec![1];
+    /// let vec = vec![1];
     /// vec.iter().any(|x| *x == 0);
+    ///
+    /// let _ = !"hello world".contains("world");
     /// ```
     pub SEARCH_IS_SOME,
     complexity,
-    "using an iterator or string search followed by `is_some()`, which is more succinctly expressed as a call to `any()` or `contains()`"
+    "using an iterator or string search followed by `is_some()` or `is_none()`, which is more succinctly expressed as a call to `any()` or `contains()` (with negation in case of `is_none()`)"
 }
 
 declare_clippy_lint! {
@@ -1720,12 +1725,42 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["flat_map", "filter_map"] => filter_map_flat_map::check(cx, expr, arg_lists[1], arg_lists[0]),
             ["flat_map", ..] => flat_map_identity::check(cx, expr, arg_lists[0], method_spans[0]),
             ["flatten", "map"] => map_flatten::check(cx, expr, arg_lists[1]),
-            ["is_some", "find"] => search_is_some::check(cx, expr, "find", arg_lists[1], arg_lists[0], method_spans[1]),
-            ["is_some", "position"] => {
-                search_is_some::check(cx, expr, "position", arg_lists[1], arg_lists[0], method_spans[1])
+            [option_check_method, "find"] if "is_some" == *option_check_method || "is_none" == *option_check_method => {
+                search_is_some::check(
+                    cx,
+                    expr,
+                    "find",
+                    option_check_method,
+                    arg_lists[1],
+                    arg_lists[0],
+                    method_spans[1],
+                )
             },
-            ["is_some", "rposition"] => {
-                search_is_some::check(cx, expr, "rposition", arg_lists[1], arg_lists[0], method_spans[1])
+            [option_check_method, "position"]
+                if "is_some" == *option_check_method || "is_none" == *option_check_method =>
+            {
+                search_is_some::check(
+                    cx,
+                    expr,
+                    "position",
+                    option_check_method,
+                    arg_lists[1],
+                    arg_lists[0],
+                    method_spans[1],
+                )
+            },
+            [option_check_method, "rposition"]
+                if "is_some" == *option_check_method || "is_none" == *option_check_method =>
+            {
+                search_is_some::check(
+                    cx,
+                    expr,
+                    "rposition",
+                    option_check_method,
+                    arg_lists[1],
+                    arg_lists[0],
+                    method_spans[1],
+                )
             },
             ["extend", ..] => string_extend_chars::check(cx, expr, arg_lists[0]),
             ["count", "into_iter"] => iter_count::check(cx, expr, &arg_lists[1], "into_iter"),
