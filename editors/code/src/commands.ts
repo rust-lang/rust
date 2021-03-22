@@ -134,6 +134,51 @@ export function joinLines(ctx: Ctx): Cmd {
     };
 }
 
+export function moveItemUp(ctx: Ctx): Cmd {
+    return moveItem(ctx, ra.Direction.Up);
+}
+
+export function moveItemDown(ctx: Ctx): Cmd {
+    return moveItem(ctx, ra.Direction.Down);
+}
+
+export function moveItem(ctx: Ctx, direction: ra.Direction): Cmd {
+    return async () => {
+        const editor = ctx.activeRustEditor;
+        const client = ctx.client;
+        if (!editor || !client) return;
+
+        const edit = await client.sendRequest(ra.moveItem, {
+            range: client.code2ProtocolConverter.asRange(editor.selection),
+            textDocument: ctx.client.code2ProtocolConverter.asTextDocumentIdentifier(editor.document),
+            direction
+        });
+
+        if (!edit) return;
+
+        let cursor: vscode.Position | null = null;
+
+        await editor.edit((builder) => {
+            client.protocol2CodeConverter.asTextEdits(edit.edits).forEach((edit: any) => {
+                builder.replace(edit.range, edit.newText);
+
+                if (direction === ra.Direction.Up) {
+                    if (!cursor || edit.range.end.isBeforeOrEqual(cursor)) {
+                        cursor = edit.range.end;
+                    }
+                } else {
+                    if (!cursor || edit.range.end.isAfterOrEqual(cursor)) {
+                        cursor = edit.range.end;
+                    }
+                }
+            });
+        }).then(() => {
+            const newPosition = cursor ?? editor.selection.start;
+            editor.selection = new vscode.Selection(newPosition, newPosition);
+        });
+    };
+}
+
 export function onEnter(ctx: Ctx): Cmd {
     async function handleKeypress() {
         const editor = ctx.activeRustEditor;

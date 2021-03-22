@@ -658,6 +658,18 @@ pub(crate) fn goto_definition_response(
     }
 }
 
+pub(crate) fn text_document_edit(
+    snap: &GlobalStateSnapshot,
+    file_id: FileId,
+    edit: TextEdit,
+) -> Result<lsp_types::TextDocumentEdit> {
+    let text_document = optional_versioned_text_document_identifier(snap, file_id);
+    let line_index = snap.file_line_index(file_id)?;
+    let edits =
+        edit.into_iter().map(|it| lsp_types::OneOf::Left(text_edit(&line_index, it))).collect();
+    Ok(lsp_types::TextDocumentEdit { text_document, edits })
+}
+
 pub(crate) fn snippet_text_document_edit(
     snap: &GlobalStateSnapshot,
     is_snippet: bool,
