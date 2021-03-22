@@ -1306,7 +1306,7 @@ fn render_union(
     write!(w, " {{\n{}", tab);
     let count_fields = fields
         .iter()
-        .filter(|f| if let clean::StructFieldItem(..) = *f.kind { true } else { false })
+        .filter(|f| matches!(clean::StructFieldItem(..), *f.kind))
         .count();
     let toggle = should_hide_fields(count_fields);
     if toggle {
