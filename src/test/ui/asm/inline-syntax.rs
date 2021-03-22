@@ -1,3 +1,4 @@
+// needs-llvm-components: arm
 // revisions: x86_64 arm
 //[x86_64] compile-flags: --target x86_64-unknown-linux-gnu
 //[arm] compile-flags: --target armv7-unknown-linux-gnueabihf
