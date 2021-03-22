@@ -226,6 +226,9 @@ If the GitHub Actions release fails because of a transient problem like a timeou
 If it fails because of something that needs to be fixed, remove the release tag (if needed), fix the problem, then start over.
 Make sure to remove the new changelog post created when running `cargo xtask release` a second time.
 
+We release "nightly" every night automatically and "stable" every week manually.
+We don't do "patch" releases, unless something truly egregious comes up.
+
 # Permissions
 
 There are three sets of people with extra permissions:
