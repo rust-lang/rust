@@ -12,6 +12,7 @@ Compiler
 - [Added tier 3\* support for the `armv5te-unknown-linux-uclibceabi` target.][78142]
 - [Added tier 3 support for the `aarch64-apple-ios-macabi` target.][77484]
 - [The `x86_64-unknown-freebsd` is now built with the full toolset.][79484]
+- [Dropped support for all cloudabi targets.][78439]
 
 \* Refer to Rust's [platform support page][forge-platform-support] for more
 information on Rust's tiered platform support.
@@ -42,6 +43,23 @@ The following previously stable methods are now `const`.
 
 - [`IpAddr::is_ipv4`]
 - [`IpAddr::is_ipv6`]
+- [`IpAddr::is_unspecified`]
+- [`IpAddr::is_loopback`]
+- [`IpAddr::is_multicast`]
+- [`Ipv4Addr::octets`]
+- [`Ipv4Addr::is_loopback`]
+- [`Ipv4Addr::is_private`]
+- [`Ipv4Addr::is_link_local`]
+- [`Ipv4Addr::is_multicast`]
+- [`Ipv4Addr::is_broadcast`]
+- [`Ipv4Addr::is_documentation`]
+- [`Ipv4Addr::to_ipv6_compatible`]
+- [`Ipv4Addr::to_ipv6_mapped`]
+- [`Ipv6Addr::segments`]
+- [`Ipv6Addr::is_unspecified`]
+- [`Ipv6Addr::is_loopback`]
+- [`Ipv6Addr::is_multicast`]
+- [`Ipv6Addr::to_ipv4`]
 - [`Layout::size`]
 - [`Layout::align`]
 - [`Layout::from_size_align`]
@@ -50,7 +68,7 @@ The following previously stable methods are now `const`.
 - `saturating_pow` for all integer types.
 - `wrapping_pow` for all integer types.
 - `next_power_of_two` for all unsigned integer types.
-- `checked_power_of_two` for all unsigned integer types.
+- `checked_next_power_of_two` for all unsigned integer types.
 
 Cargo
 -----------------------
@@ -77,7 +95,6 @@ Compatibility Notes
 - [`#![test]` as an inner attribute is now considered unstable like other inner macro
   attributes, and reports an error by default through the `soft_unstable` lint.][79003]
 - [Overriding a `forbid` lint at the same level that it was set is now a hard error.][78864]
-- [Dropped support for all cloudabi targets.][78439]
 - [You can no longer intercept `panic!` calls by supplying your own macro.][78343] It's
   recommended to use the `#[panic_handler]` attribute to provide your own implementation.
 - [Semi-colons after item statements (e.g. `struct Foo {};`) now produce a warning.][78296]
@@ -104,6 +121,23 @@ Compatibility Notes
 [cargo/8725]: https://github.com/rust-lang/cargo/pull/8725
 [`IpAddr::is_ipv4`]: https://doc.rust-lang.org/stable/std/net/enum.IpAddr.html#method.is_ipv4
 [`IpAddr::is_ipv6`]: https://doc.rust-lang.org/stable/std/net/enum.IpAddr.html#method.is_ipv6
+[`IpAddr::is_unspecified`]: https://doc.rust-lang.org/stable/std/net/enum.IpAddr.html#method.is_unspecified
+[`IpAddr::is_loopback`]: https://doc.rust-lang.org/stable/std/net/enum.IpAddr.html#method.is_loopback
+[`IpAddr::is_multicast`]: https://doc.rust-lang.org/stable/std/net/enum.IpAddr.html#method.is_multicast
+[`Ipv4Addr::octets`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv4Addr.html#method.octets
+[`Ipv4Addr::is_loopback`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv4Addr.html#method.is_loopback
+[`Ipv4Addr::is_private`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv4Addr.html#method.is_private
+[`Ipv4Addr::is_link_local`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv4Addr.html#method.is_link_local
+[`Ipv4Addr::is_multicast`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv4Addr.html#method.is_multicast
+[`Ipv4Addr::is_broadcast`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv4Addr.html#method.is_broadcast
+[`Ipv4Addr::is_documentation`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv4Addr.html#method.is_documentation
+[`Ipv4Addr::to_ipv6_compatible`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv4Addr.html#method.to_ipv6_compatible
+[`Ipv4Addr::to_ipv6_mapped`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv4Addr.html#method.to_ipv6_mapped
+[`Ipv6Addr::segments`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv6Addr.html#method.segments
+[`Ipv6Addr::is_unspecified`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv6Addr.html#method.is_unspecified
+[`Ipv6Addr::is_loopback`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv6Addr.html#method.is_loopback
+[`Ipv6Addr::is_multicast`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv6Addr.html#method.is_multicast
+[`Ipv6Addr::to_ipv4`]: https://doc.rust-lang.org/stable/std/net/struct.Ipv6Addr.html#method.to_ipv4
 [`Layout::align`]: https://doc.rust-lang.org/stable/std/alloc/struct.Layout.html#method.align
 [`Layout::from_size_align`]: https://doc.rust-lang.org/stable/std/alloc/struct.Layout.html#method.from_size_align
 [`Layout::size`]: https://doc.rust-lang.org/stable/std/alloc/struct.Layout.html#method.size
