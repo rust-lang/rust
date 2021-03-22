@@ -190,6 +190,7 @@ impl DisplayTarget {
 pub enum DisplaySourceCodeError {
     PathNotFound,
     UnknownType,
+    Closure,
 }
 
 pub enum HirDisplayError {
@@ -543,6 +544,11 @@ impl HirDisplay for Ty {
                 }
             }
             TyKind::Closure(.., substs) => {
+                if f.display_target.is_source_code() {
+                    return Err(HirDisplayError::DisplaySourceCodeError(
+                        DisplaySourceCodeError::Closure,
+                    ));
+                }
                 let sig = substs[0].callable_sig(f.db);
                 if let Some(sig) = sig {
                     if sig.params().is_empty() {
