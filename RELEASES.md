@@ -1,3 +1,174 @@
+Version 1.51.0 (2021-03-25)
+============================
+
+Language
+--------
+- [You can now parameterize items such as functions, traits, and `struct`s by constant
+  values in addition to by types and lifetimes.][79135] Also known as "const generics"
+  E.g. you can now write the following. Note: Only values of primitive integers, 
+  `bool`, or `char` types are currently permitted.
+  ```rust
+  struct GenericArray<T, const LENGTH: usize> {
+      inner: [T; LENGTH]
+  }
+
+  impl<T, const LENGTH: usize> GenericArray<T, LENGTH> {
+      const fn last(&self) -> Option<&T> {
+          if LENGTH == 0 {
+              None
+          } else {
+              Some(&self.inner[LENGTH - 1])
+          }
+      }
+  }
+  ```
+
+
+Compiler
+--------
+
+- [Added the `-Csplit-debuginfo` codegen option for macOS platforms.][79570]
+  This option controls whether debug information is split across multiple files
+  or packed into a single file. **Note** This option is unstable on other platforms.
+- [Added tier 3\* support for `aarch64_be-unknown-linux-gnu`,
+  `aarch64-unknown-linux-gnu_ilp32`, and `aarch64_be-unknown-linux-gnu_ilp32` targets.][81455]
+- [Added tier 3 support for `i386-unknown-linux-gnu` and `i486-unknown-linux-gnu` targets.][80662]
+- [The `target-cpu=native` option will now detect individual features of CPUs.][80749]
+- [Rust now uses `inline-asm` for stack probes when used with LLVM 11.0.1+][77885]
+
+\* Refer to Rust's [platform support page][forge-platform-support] for more
+information on Rust's tiered platform support.
+
+Libraries
+---------
+
+- [`Box::downcast` is now also implemented for any `dyn Any + Send + Sync` object.][80945]
+- [`str` now implements `AsMut<str>`.][80279]
+- [`u64` and `u128` now implement `From<char>`.][79502]
+- [`Error` is now implemented for `&T` where `T` implements `Error`.][75180]
+- [`Poll::{map_ok, map_err}` are now implemented for `Poll<Option<Result<T, E>>>`.][80968]
+- [`unsigned_abs` is now implemented for all signed integer types.][80959]
+- [`io::Empty` now implements `io::Seek`.][78044]
+- [`rc::Weak<T>` and `sync::Weak<T>`'s methods such as `as_ptr` are now implemented for
+  `T: ?Sized` types.][80764]
+
+Stabilized APIs
+---------------
+
+- [`Arc::decrement_strong_count`]
+- [`Arc::increment_strong_count`]
+- [`Once::call_once_force`]
+- [`Peekable::next_if_eq`]
+- [`Peekable::next_if`]
+- [`Seek::stream_position`]
+- [`array::IntoIter`]
+- [`panic::panic_any`]
+- [`ptr::addr_of!`]
+- [`ptr::addr_of_mut!`]
+- [`slice::fill_with`]
+- [`slice::split_inclusive_mut`]
+- [`slice::split_inclusive`]
+- [`slice::strip_prefix`]
+- [`slice::strip_suffix`]
+- [`str::split_inclusive`]
+- [`sync::OnceState`]
+- [`task::Wake`]
+
+Cargo
+-----
+- [Added the `split-debuginfo` profile option to control the -Csplit-debuginfo
+  codegen option.][cargo/9112]
+- [Added the `resolver` field to `Cargo.toml` to enable the new feature resolver
+  and CLI option behavior.][cargo/8997] Version 2 of the feature resolver will try
+  to avoid unifying features of dependencies where that unification could be unwanted.
+  Such as using the same dependency with a `std` feature in a build scripts and
+  proc-macros, while using the `no-std` feature in the final binary. See the
+  [Cargo book documentation][feature-resolver@2.0] for more information on the feature.
+
+Rustdoc
+-------
+
+- [Rustdoc will now include documentation for methods available from `Deref` traits.][80653]
+- [You can now provide a `--default-theme` flag which sets the default theme to use for
+  documentation.][79642]
+
+Various improvements to intra-doc links:
+
+- [You can link to non-path primitives such as `slice`.][80181]
+- [You can link to associated items.][74489]
+- [You can now include generic parameters when linking to items, like `Vec<T>`.][76934]
+
+Misc
+----
+- [You can now pass `--include-ignored` to tests (e.g. with
+  `cargo test -- --include-ignored`) to include testing tests marked `#[ignore]`.][80053]
+
+Compatibility Notes
+-------------------
+
+- [WASI platforms no longer use the `wasm-bindgen` ABI, and instead use the wasm32 ABI.][79998]
+- [`rustc` no longer promotes division, modulo and indexing operations to `const` that
+  could fail.][80579]
+- [The minimum version of glibc for the following platforms has been bumped to version 2.31
+  for the distributed artifacts.][81521]
+    - `armv5te-unknown-linux-gnueabi`
+    - `sparc64-unknown-linux-gnu`
+    - `thumbv7neon-unknown-linux-gnueabihf`
+    - `armv7-unknown-linux-gnueabi`
+    - `x86_64-unknown-linux-gnux32`
+
+Internal Only
+-------------
+
+- [Consistently avoid constructing optimized MIR when not doing codegen][80718]
+
+[79135]: https://github.com/rust-lang/rust/pull/79135
+[74489]: https://github.com/rust-lang/rust/pull/74489
+[76934]: https://github.com/rust-lang/rust/pull/76934
+[79570]: https://github.com/rust-lang/rust/pull/79570
+[80181]: https://github.com/rust-lang/rust/pull/80181
+[79642]: https://github.com/rust-lang/rust/pull/79642
+[80945]: https://github.com/rust-lang/rust/pull/80945
+[80279]: https://github.com/rust-lang/rust/pull/80279
+[80053]: https://github.com/rust-lang/rust/pull/80053
+[79502]: https://github.com/rust-lang/rust/pull/79502
+[75180]: https://github.com/rust-lang/rust/pull/75180
+[79135]: https://github.com/rust-lang/rust/pull/79135
+[81521]: https://github.com/rust-lang/rust/pull/81521
+[80968]: https://github.com/rust-lang/rust/pull/80968
+[80959]: https://github.com/rust-lang/rust/pull/80959
+[80718]: https://github.com/rust-lang/rust/pull/80718
+[80653]: https://github.com/rust-lang/rust/pull/80653
+[80579]: https://github.com/rust-lang/rust/pull/80579
+[79998]: https://github.com/rust-lang/rust/pull/79998
+[78044]: https://github.com/rust-lang/rust/pull/78044
+[81455]: https://github.com/rust-lang/rust/pull/81455
+[80764]: https://github.com/rust-lang/rust/pull/80764
+[80749]: https://github.com/rust-lang/rust/pull/80749
+[80662]: https://github.com/rust-lang/rust/pull/80662
+[77885]: https://github.com/rust-lang/rust/pull/77885
+[cargo/8997]: https://github.com/rust-lang/cargo/pull/8997
+[cargo/9112]: https://github.com/rust-lang/cargo/pull/9112
+[feature-resolver@2.0]: https://doc.rust-lang.org/nightly/cargo/reference/features.html#feature-resolver-version-2
+[`Once::call_once_force`]: https://doc.rust-lang.org/stable/std/sync/struct.Once.html#method.call_once_force
+[`sync::OnceState`]: https://doc.rust-lang.org/stable/std/sync/struct.OnceState.html
+[`panic::panic_any`]: https://doc.rust-lang.org/stable/std/panic/fn.panic_any.html
+[`slice::strip_prefix`]: https://doc.rust-lang.org/stable/std/primitive.slice.html#method.strip_prefix
+[`slice::strip_suffix`]: https://doc.rust-lang.org/stable/std/primitive.slice.html#method.strip_prefix
+[`Arc::increment_strong_count`]: https://doc.rust-lang.org/nightly/std/sync/struct.Arc.html#method.increment_strong_count
+[`Arc::decrement_strong_count`]: https://doc.rust-lang.org/nightly/std/sync/struct.Arc.html#method.decrement_strong_count
+[`slice::fill_with`]: https://doc.rust-lang.org/nightly/std/primitive.slice.html#method.fill_with
+[`ptr::addr_of!`]: https://doc.rust-lang.org/nightly/std/ptr/macro.addr_of.html
+[`ptr::addr_of_mut!`]: https://doc.rust-lang.org/nightly/std/ptr/macro.addr_of_mut.html
+[`array::IntoIter`]: https://doc.rust-lang.org/nightly/std/array/struct.IntoIter.html
+[`slice::split_inclusive`]: https://doc.rust-lang.org/nightly/std/primitive.slice.html#method.split_inclusive
+[`slice::split_inclusive_mut`]: https://doc.rust-lang.org/nightly/std/primitive.slice.html#method.split_inclusive_mut
+[`str::split_inclusive`]: https://doc.rust-lang.org/nightly/std/primitive.str.html#method.split_inclusive
+[`task::Wake`]: https://doc.rust-lang.org/nightly/std/task/trait.Wake.html
+[`Seek::stream_position`]: https://doc.rust-lang.org/nightly/std/io/trait.Seek.html#method.stream_position
+[`Peekable::next_if`]: https://doc.rust-lang.org/nightly/std/iter/struct.Peekable.html#method.next_if
+[`Peekable::next_if_eq`]: https://doc.rust-lang.org/nightly/std/iter/struct.Peekable.html#method.next_if_eq
+
 Version 1.50.0 (2021-02-11)
 ============================
 

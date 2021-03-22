@@ -66,7 +66,7 @@ pub use iter::{EscapeDebug, EscapeDefault, EscapeUnicode};
 pub use iter::SplitAsciiWhitespace;
 
 #[stable(feature = "split_inclusive", since = "1.51.0")]
-use iter::SplitInclusive;
+pub use iter::SplitInclusive;
 
 #[unstable(feature = "str_internals", issue = "none")]
 pub use validations::next_code_point;
