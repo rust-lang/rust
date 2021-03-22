@@ -7,7 +7,6 @@ use crate::rmeta::*;
 use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fingerprint::{Fingerprint, FingerprintDecoder};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{Lock, LockGuard, Lrc, OnceCell};
@@ -348,12 +347,6 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for CrateNum {
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for DefIndex {
     fn decode(d: &mut DecodeContext<'a, 'tcx>) -> Result<DefIndex, String> {
         Ok(DefIndex::from_u32(d.read_u32()?))
-    }
-}
-
-impl<'a, 'tcx> FingerprintDecoder for DecodeContext<'a, 'tcx> {
-    fn decode_fingerprint(&mut self) -> Result<Fingerprint, String> {
-        Fingerprint::decode_opaque(&mut self.opaque)
     }
 }
 

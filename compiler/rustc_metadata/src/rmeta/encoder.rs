@@ -1,7 +1,6 @@
 use crate::rmeta::table::{FixedSizeEncoding, TableBuilder};
 use crate::rmeta::*;
 
-use rustc_data_structures::fingerprint::{Fingerprint, FingerprintEncoder};
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{join, par_iter, Lrc, ParallelIterator};
@@ -116,6 +115,7 @@ impl<'a, 'tcx> Encoder for EncodeContext<'a, 'tcx> {
         emit_f32(f32);
         emit_char(char);
         emit_str(&str);
+        emit_raw_bytes(&[u8]);
     }
 }
 
@@ -304,12 +304,6 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
         }
 
         Ok(())
-    }
-}
-
-impl<'a, 'tcx> FingerprintEncoder for EncodeContext<'a, 'tcx> {
-    fn encode_fingerprint(&mut self, f: &Fingerprint) -> Result<(), Self::Error> {
-        self.opaque.encode_fingerprint(f)
     }
 }
 
@@ -2064,10 +2058,10 @@ pub(super) fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
 
 fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
     let mut encoder = opaque::Encoder::new(vec![]);
-    encoder.emit_raw_bytes(METADATA_HEADER);
+    encoder.emit_raw_bytes(METADATA_HEADER).unwrap();
 
     // Will be filled with the root position after encoding everything.
-    encoder.emit_raw_bytes(&[0, 0, 0, 0]);
+    encoder.emit_raw_bytes(&[0, 0, 0, 0]).unwrap();
 
     let source_map_files = tcx.sess.source_map().files();
     let source_file_cache = (source_map_files[0].clone(), 0);

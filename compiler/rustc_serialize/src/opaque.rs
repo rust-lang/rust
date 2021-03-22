@@ -1,5 +1,5 @@
 use crate::leb128::{self, max_leb128_len};
-use crate::serialize;
+use crate::serialize::{self, Decoder as _, Encoder as _};
 use std::borrow::Cow;
 use std::fs::File;
 use std::io::{self, Write};
@@ -29,11 +29,6 @@ impl Encoder {
     #[inline]
     pub fn position(&self) -> usize {
         self.data.len()
-    }
-
-    #[inline]
-    pub fn emit_raw_bytes(&mut self, s: &[u8]) {
-        self.data.extend_from_slice(s);
     }
 }
 
@@ -154,7 +149,12 @@ impl serialize::Encoder for Encoder {
     #[inline]
     fn emit_str(&mut self, v: &str) -> EncodeResult {
         self.emit_usize(v.len())?;
-        self.emit_raw_bytes(v.as_bytes());
+        self.emit_raw_bytes(v.as_bytes())
+    }
+
+    #[inline]
+    fn emit_raw_bytes(&mut self, s: &[u8]) -> EncodeResult {
+        self.data.extend_from_slice(s);
         Ok(())
     }
 }
@@ -206,11 +206,6 @@ impl FileEncoder {
         // Tracking position this way instead of having a `self.position` field
         // means that we don't have to update the position on every write call.
         self.flushed + self.buffered
-    }
-
-    #[inline]
-    pub fn emit_raw_bytes(&mut self, s: &[u8]) -> FileEncodeResult {
-        self.write_all(s)
     }
 
     pub fn flush(&mut self) -> FileEncodeResult {
@@ -508,6 +503,11 @@ impl serialize::Encoder for FileEncoder {
         self.emit_usize(v.len())?;
         self.emit_raw_bytes(v.as_bytes())
     }
+
+    #[inline]
+    fn emit_raw_bytes(&mut self, s: &[u8]) -> FileEncodeResult {
+        self.write_all(s)
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -538,26 +538,6 @@ impl<'a> Decoder<'a> {
     #[inline]
     pub fn advance(&mut self, bytes: usize) {
         self.position += bytes;
-    }
-
-    #[inline]
-    pub fn read_raw_bytes(&mut self, s: &mut [MaybeUninit<u8>]) -> Result<(), String> {
-        let start = self.position;
-        let end = start + s.len();
-        assert!(end <= self.data.len());
-
-        // SAFETY: Both `src` and `dst` point to at least `s.len()` elements:
-        // `src` points to at least `s.len()` elements by above assert, and
-        // `dst` points to `s.len()` elements by derivation from `s`.
-        unsafe {
-            let src = self.data.as_ptr().add(start);
-            let dst = s.as_mut_ptr() as *mut u8;
-            ptr::copy_nonoverlapping(src, dst, s.len());
-        }
-
-        self.position = end;
-
-        Ok(())
     }
 }
 
@@ -677,6 +657,26 @@ impl<'a> serialize::Decoder for Decoder<'a> {
     fn error(&mut self, err: &str) -> Self::Error {
         err.to_string()
     }
+
+    #[inline]
+    fn read_raw_bytes(&mut self, s: &mut [MaybeUninit<u8>]) -> Result<(), String> {
+        let start = self.position;
+        let end = start + s.len();
+        assert!(end <= self.data.len());
+
+        // SAFETY: Both `src` and `dst` point to at least `s.len()` elements:
+        // `src` points to at least `s.len()` elements by above assert, and
+        // `dst` points to `s.len()` elements by derivation from `s`.
+        unsafe {
+            let src = self.data.as_ptr().add(start);
+            let dst = s.as_mut_ptr() as *mut u8;
+            ptr::copy_nonoverlapping(src, dst, s.len());
+        }
+
+        self.position = end;
+
+        Ok(())
+    }
 }
 
 // Specializations for contiguous byte sequences follow. The default implementations for slices
@@ -689,8 +689,7 @@ impl<'a> serialize::Decoder for Decoder<'a> {
 impl serialize::Encodable<Encoder> for [u8] {
     fn encode(&self, e: &mut Encoder) -> EncodeResult {
         serialize::Encoder::emit_usize(e, self.len())?;
-        e.emit_raw_bytes(self);
-        Ok(())
+        e.emit_raw_bytes(self)
     }
 }
 
@@ -716,5 +715,48 @@ impl<'a> serialize::Decodable<Decoder<'a>> for Vec<u8> {
         }
 
         Ok(v)
+    }
+}
+
+// An integer that will always encode to 8 bytes.
+pub struct IntEncodedWithFixedSize(pub u64);
+
+impl IntEncodedWithFixedSize {
+    pub const ENCODED_SIZE: usize = 8;
+}
+
+impl serialize::Encodable<Encoder> for IntEncodedWithFixedSize {
+    #[inline]
+    fn encode(&self, e: &mut Encoder) -> EncodeResult {
+        let _start_pos = e.position();
+        e.emit_raw_bytes(&self.0.to_le_bytes())?;
+        let _end_pos = e.position();
+        debug_assert_eq!((_end_pos - _start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
+        Ok(())
+    }
+}
+
+impl serialize::Encodable<FileEncoder> for IntEncodedWithFixedSize {
+    #[inline]
+    fn encode(&self, e: &mut FileEncoder) -> FileEncodeResult {
+        let _start_pos = e.position();
+        e.emit_raw_bytes(&self.0.to_le_bytes())?;
+        let _end_pos = e.position();
+        debug_assert_eq!((_end_pos - _start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
+        Ok(())
+    }
+}
+
+impl<'a> serialize::Decodable<Decoder<'a>> for IntEncodedWithFixedSize {
+    #[inline]
+    fn decode(decoder: &mut Decoder<'a>) -> Result<IntEncodedWithFixedSize, String> {
+        let mut bytes = MaybeUninit::uninit_array();
+        let _start_pos = decoder.position();
+        decoder.read_raw_bytes(&mut bytes)?;
+        let _end_pos = decoder.position();
+        debug_assert_eq!((_end_pos - _start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
+
+        let value = u64::from_le_bytes(unsafe { MaybeUninit::array_assume_init(bytes) });
+        Ok(IntEncodedWithFixedSize(value))
     }
 }

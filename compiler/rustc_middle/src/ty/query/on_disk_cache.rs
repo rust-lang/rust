@@ -4,7 +4,6 @@ use crate::mir::{self, interpret};
 use crate::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
 use crate::ty::context::TyCtxt;
 use crate::ty::{self, Ty};
-use rustc_data_structures::fingerprint::{Fingerprint, FingerprintDecoder, FingerprintEncoder};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, OnceCell};
 use rustc_data_structures::thin_vec::ThinVec;
@@ -17,7 +16,7 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_query_system::dep_graph::DepContext;
 use rustc_query_system::query::QueryContext;
 use rustc_serialize::{
-    opaque::{self, FileEncodeResult, FileEncoder},
+    opaque::{self, FileEncodeResult, FileEncoder, IntEncodedWithFixedSize},
     Decodable, Decoder, Encodable, Encoder,
 };
 use rustc_session::{CrateDisambiguator, Session};
@@ -913,12 +912,6 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for DefId {
     }
 }
 
-impl<'a, 'tcx> FingerprintDecoder for CacheDecoder<'a, 'tcx> {
-    fn decode_fingerprint(&mut self) -> Result<Fingerprint, Self::Error> {
-        Fingerprint::decode_opaque(&mut self.opaque)
-    }
-}
-
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx FxHashSet<LocalDefId> {
     fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Result<Self, String> {
         RefDecodable::decode(d)
@@ -1008,12 +1001,6 @@ where
 
         let end_pos = self.position();
         ((end_pos - start_pos) as u64).encode(self)
-    }
-}
-
-impl<'a, 'tcx, E: OpaqueEncoder> FingerprintEncoder for CacheEncoder<'a, 'tcx, E> {
-    fn encode_fingerprint(&mut self, f: &Fingerprint) -> Result<(), E::Error> {
-        self.encoder.encode_fingerprint(f)
     }
 }
 
@@ -1167,6 +1154,7 @@ where
         emit_f32(f32);
         emit_char(char);
         emit_str(&str);
+        emit_raw_bytes(&[u8]);
     }
 }
 
@@ -1177,42 +1165,6 @@ where
 impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx, FileEncoder>> for [u8] {
     fn encode(&self, e: &mut CacheEncoder<'a, 'tcx, FileEncoder>) -> FileEncodeResult {
         self.encode(e.encoder)
-    }
-}
-
-// An integer that will always encode to 8 bytes.
-struct IntEncodedWithFixedSize(u64);
-
-impl IntEncodedWithFixedSize {
-    pub const ENCODED_SIZE: usize = 8;
-}
-
-impl<E: OpaqueEncoder> Encodable<E> for IntEncodedWithFixedSize {
-    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
-        let start_pos = e.position();
-        for i in 0..IntEncodedWithFixedSize::ENCODED_SIZE {
-            ((self.0 >> (i * 8)) as u8).encode(e)?;
-        }
-        let end_pos = e.position();
-        assert_eq!((end_pos - start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
-        Ok(())
-    }
-}
-
-impl<'a> Decodable<opaque::Decoder<'a>> for IntEncodedWithFixedSize {
-    fn decode(decoder: &mut opaque::Decoder<'a>) -> Result<IntEncodedWithFixedSize, String> {
-        let mut value: u64 = 0;
-        let start_pos = decoder.position();
-
-        for i in 0..IntEncodedWithFixedSize::ENCODED_SIZE {
-            let byte: u8 = Decodable::decode(decoder)?;
-            value |= (byte as u64) << (i * 8);
-        }
-
-        let end_pos = decoder.position();
-        assert_eq!((end_pos - start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
-
-        Ok(IntEncodedWithFixedSize(value))
     }
 }
 

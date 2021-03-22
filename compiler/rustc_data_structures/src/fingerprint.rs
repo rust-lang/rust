@@ -1,8 +1,5 @@
 use crate::stable_hasher;
-use rustc_serialize::{
-    opaque::{self, EncodeResult, FileEncodeResult},
-    Decodable, Encodable,
-};
+use rustc_serialize::{Decodable, Encodable};
 use std::hash::{Hash, Hasher};
 use std::mem::{self, MaybeUninit};
 
@@ -63,16 +60,6 @@ impl Fingerprint {
     pub fn to_hex(&self) -> String {
         format!("{:x}{:x}", self.0, self.1)
     }
-
-    pub fn decode_opaque(decoder: &mut opaque::Decoder<'_>) -> Result<Fingerprint, String> {
-        let mut bytes: [MaybeUninit<u8>; 16] = MaybeUninit::uninit_array();
-
-        decoder.read_raw_bytes(&mut bytes)?;
-
-        let [l, r]: [u64; 2] = unsafe { mem::transmute(bytes) };
-
-        Ok(Fingerprint(u64::from_le(l), u64::from_le(r)))
-    }
 }
 
 impl std::fmt::Display for Fingerprint {
@@ -130,55 +117,22 @@ impl stable_hasher::StableHasherResult for Fingerprint {
 impl_stable_hash_via_hash!(Fingerprint);
 
 impl<E: rustc_serialize::Encoder> Encodable<E> for Fingerprint {
+    #[inline]
     fn encode(&self, s: &mut E) -> Result<(), E::Error> {
-        s.encode_fingerprint(self)
-    }
-}
-
-impl<D: rustc_serialize::Decoder> Decodable<D> for Fingerprint {
-    fn decode(d: &mut D) -> Result<Self, D::Error> {
-        d.decode_fingerprint()
-    }
-}
-
-pub trait FingerprintEncoder: rustc_serialize::Encoder {
-    fn encode_fingerprint(&mut self, f: &Fingerprint) -> Result<(), Self::Error>;
-}
-
-pub trait FingerprintDecoder: rustc_serialize::Decoder {
-    fn decode_fingerprint(&mut self) -> Result<Fingerprint, Self::Error>;
-}
-
-impl<E: rustc_serialize::Encoder> FingerprintEncoder for E {
-    default fn encode_fingerprint(&mut self, _: &Fingerprint) -> Result<(), E::Error> {
-        panic!("Cannot encode `Fingerprint` with `{}`", std::any::type_name::<E>());
-    }
-}
-
-impl FingerprintEncoder for opaque::Encoder {
-    fn encode_fingerprint(&mut self, f: &Fingerprint) -> EncodeResult {
-        let bytes: [u8; 16] = unsafe { mem::transmute([f.0.to_le(), f.1.to_le()]) };
-        self.emit_raw_bytes(&bytes);
+        let bytes: [u8; 16] = unsafe { mem::transmute([self.0.to_le(), self.1.to_le()]) };
+        s.emit_raw_bytes(&bytes)?;
         Ok(())
     }
 }
 
-impl FingerprintEncoder for opaque::FileEncoder {
-    fn encode_fingerprint(&mut self, f: &Fingerprint) -> FileEncodeResult {
-        let bytes: [u8; 16] = unsafe { mem::transmute([f.0.to_le(), f.1.to_le()]) };
-        self.emit_raw_bytes(&bytes)
-    }
-}
+impl<D: rustc_serialize::Decoder> Decodable<D> for Fingerprint {
+    #[inline]
+    fn decode(d: &mut D) -> Result<Self, D::Error> {
+        let mut bytes: [MaybeUninit<u8>; 16] = MaybeUninit::uninit_array();
+        d.read_raw_bytes(&mut bytes)?;
 
-impl<D: rustc_serialize::Decoder> FingerprintDecoder for D {
-    default fn decode_fingerprint(&mut self) -> Result<Fingerprint, D::Error> {
-        panic!("Cannot decode `Fingerprint` with `{}`", std::any::type_name::<D>());
-    }
-}
-
-impl FingerprintDecoder for opaque::Decoder<'_> {
-    fn decode_fingerprint(&mut self) -> Result<Fingerprint, String> {
-        Fingerprint::decode_opaque(self)
+        let [l, r]: [u64; 2] = unsafe { mem::transmute(bytes) };
+        Ok(Fingerprint(u64::from_le(l), u64::from_le(r)))
     }
 }
 
