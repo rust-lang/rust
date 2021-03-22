@@ -26,7 +26,7 @@ use crate::{
     render::{
         const_::render_const,
         enum_variant::render_variant,
-        function::render_fn,
+        function::{render_fn, render_method},
         macro_::render_macro,
         pattern::{render_struct_pat, render_variant_pat},
         render_field, render_resolution, render_tuple_field,
@@ -119,6 +119,17 @@ impl Completions {
         local_name: Option<String>,
     ) {
         if let Some(item) = render_fn(RenderContext::new(ctx), None, local_name, func) {
+            self.add(item)
+        }
+    }
+
+    pub(crate) fn add_method(
+        &mut self,
+        ctx: &CompletionContext,
+        func: hir::Function,
+        local_name: Option<String>,
+    ) {
+        if let Some(item) = render_method(RenderContext::new(ctx), None, local_name, func) {
             self.add(item)
         }
     }

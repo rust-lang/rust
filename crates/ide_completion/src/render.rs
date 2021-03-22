@@ -148,8 +148,10 @@ impl<'a> Render<'a> {
             ..CompletionRelevance::default()
         });
 
-        if let Some(ref_match) = compute_ref_match(self.ctx.completion, ty) {
-            item.ref_match(ref_match);
+        if let Some(_ref_match) = compute_ref_match(self.ctx.completion, ty) {
+            // FIXME
+            // For now we don't properly calculate the edits for ref match
+            // completions on struct fields, so we've disabled them. See #8058.
         }
 
         item.build()
