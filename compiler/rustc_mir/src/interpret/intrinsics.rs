@@ -119,6 +119,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let substs = instance.substs;
         let intrinsic_name = self.tcx.item_name(instance.def_id());
 
+        let read_immediate = |this: &mut Self, op: &OpTy<'tcx, _>| {
+            this.with_extra_span(op.span, |this| this.read_immediate(op))
+        };
+
         // First handle intrinsics without return place.
         let (dest, ret) = match ret {
             None => match intrinsic_name {
@@ -188,31 +192,33 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | sym::bitreverse => {
                 let ty = substs.type_at(0);
                 let layout_of = self.layout_of(ty)?;
-                let val = self.read_scalar(&args[0])?.check_init()?;
-                let bits = self.force_bits(val, layout_of.size)?;
-                let kind = match layout_of.abi {
-                    Abi::Scalar(ref scalar) => scalar.value,
-                    _ => span_bug!(
-                        self.cur_span(),
-                        "{} called on invalid type {:?}",
-                        intrinsic_name,
-                        ty
-                    ),
-                };
-                let (nonzero, intrinsic_name) = match intrinsic_name {
-                    sym::cttz_nonzero => (true, sym::cttz),
-                    sym::ctlz_nonzero => (true, sym::ctlz),
-                    other => (false, other),
-                };
-                if nonzero && bits == 0 {
-                    throw_ub_format!("`{}_nonzero` called on 0", intrinsic_name);
-                }
-                let out_val = numeric_intrinsic(intrinsic_name, bits, kind);
+                let out_val = self.with_extra_span(args[0].span, |this| {
+                    let val = this.read_scalar(&args[0])?.check_init()?;
+                    let bits = this.force_bits(val, layout_of.size)?;
+                    let kind = match layout_of.abi {
+                        Abi::Scalar(ref scalar) => scalar.value,
+                        _ => span_bug!(
+                            this.cur_spans().0,
+                            "{} called on invalid type {:?}",
+                            intrinsic_name,
+                            ty
+                        ),
+                    };
+                    let (nonzero, intrinsic_name) = match intrinsic_name {
+                        sym::cttz_nonzero => (true, sym::cttz),
+                        sym::ctlz_nonzero => (true, sym::ctlz),
+                        other => (false, other),
+                    };
+                    if nonzero && bits == 0 {
+                        throw_ub_format!("`{}_nonzero` called on 0", intrinsic_name);
+                    }
+                    Ok(numeric_intrinsic(intrinsic_name, bits, kind))
+                })?;
                 self.write_scalar(out_val, dest)?;
             }
             sym::add_with_overflow | sym::sub_with_overflow | sym::mul_with_overflow => {
-                let lhs = self.read_immediate(&args[0])?;
-                let rhs = self.read_immediate(&args[1])?;
+                let lhs = read_immediate(self, &args[0])?;
+                let rhs = read_immediate(self, &args[1])?;
                 let bin_op = match intrinsic_name {
                     sym::add_with_overflow => BinOp::Add,
                     sym::sub_with_overflow => BinOp::Sub,
@@ -222,8 +228,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.binop_with_overflow(bin_op, &lhs, &rhs, dest)?;
             }
             sym::saturating_add | sym::saturating_sub => {
-                let l = self.read_immediate(&args[0])?;
-                let r = self.read_immediate(&args[1])?;
+                let l = read_immediate(self, &args[0])?;
+                let r = read_immediate(self, &args[1])?;
                 let is_add = intrinsic_name == sym::saturating_add;
                 let (val, overflowed, _ty) = self.overflowing_binary_op(
                     if is_add { BinOp::Add } else { BinOp::Sub },
@@ -271,8 +277,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_scalar(val, dest)?;
             }
             sym::discriminant_value => {
-                let place = self.deref_operand(&args[0])?;
-                let discr_val = self.read_discriminant(&place.into())?.0;
+                let discr_val = self.with_extra_span(args[0].span, |this| {
+                    let place = this.deref_operand(&args[0])?;
+                    Ok(this.read_discriminant(&place.into())?.0)
+                })?;
                 self.write_scalar(discr_val, dest)?;
             }
             sym::unchecked_shl
@@ -282,8 +290,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | sym::unchecked_mul
             | sym::unchecked_div
             | sym::unchecked_rem => {
-                let l = self.read_immediate(&args[0])?;
-                let r = self.read_immediate(&args[1])?;
+                let l = read_immediate(self, &args[0])?;
+                let r = read_immediate(self, &args[1])?;
                 let bin_op = match intrinsic_name {
                     sym::unchecked_shl => BinOp::Shl,
                     sym::unchecked_shr => BinOp::Shr,

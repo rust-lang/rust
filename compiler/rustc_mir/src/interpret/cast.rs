@@ -51,7 +51,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                         if self.tcx.has_attr(def_id, sym::rustc_args_required_const) {
                             span_bug!(
-                                self.cur_span(),
+                                self.cur_spans().0,
                                 "reifying a fn ptr that requires const arguments"
                             );
                         }
@@ -67,7 +67,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance));
                         self.write_scalar(fn_ptr, dest)?;
                     }
-                    _ => span_bug!(self.cur_span(), "reify fn pointer on {:?}", src.layout.ty),
+                    _ => span_bug!(self.cur_spans().0, "reify fn pointer on {:?}", src.layout.ty),
                 }
             }
 
@@ -78,7 +78,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         // No change to value
                         self.write_immediate(*src, dest)?;
                     }
-                    _ => span_bug!(self.cur_span(), "fn to unsafe fn cast on {:?}", cast_ty),
+                    _ => span_bug!(self.cur_spans().0, "fn to unsafe fn cast on {:?}", cast_ty),
                 }
             }
 
@@ -98,7 +98,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance));
                         self.write_scalar(fn_ptr, dest)?;
                     }
-                    _ => span_bug!(self.cur_span(), "closure fn pointer on {:?}", src.layout.ty),
+                    _ => span_bug!(self.cur_spans().0, "closure fn pointer on {:?}", src.layout.ty),
                 }
             }
         }
@@ -167,7 +167,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 return match **src {
                     Immediate::ScalarPair(data, _) => Ok(data.into()),
                     Immediate::Scalar(..) => span_bug!(
-                        self.cur_span(),
+                        self.cur_spans().0,
                         "{:?} input to a fat-to-thin cast ({:?} -> {:?})",
                         *src,
                         src.layout.ty,
@@ -221,7 +221,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             // Casts to bool are not permitted by rustc, no need to handle them here.
-            _ => span_bug!(self.cur_span(), "invalid int to {:?} cast", cast_ty),
+            _ => span_bug!(self.cur_spans().0, "invalid int to {:?} cast", cast_ty),
         }
     }
 
@@ -253,7 +253,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // float -> f64
             Float(FloatTy::F64) => Scalar::from_f64(f.convert(&mut false).value),
             // That's it.
-            _ => span_bug!(self.cur_span(), "invalid float to {:?} cast", dest_ty),
+            _ => span_bug!(self.cur_spans().0, "invalid float to {:?} cast", dest_ty),
         }
     }
 
@@ -293,7 +293,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             _ => {
-                span_bug!(self.cur_span(), "invalid unsizing {:?} -> {:?}", src.layout.ty, cast_ty)
+                span_bug!(
+                    self.cur_spans().0,
+                    "invalid unsizing {:?} -> {:?}",
+                    src.layout.ty,
+                    cast_ty
+                )
             }
         }
     }
@@ -315,7 +320,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 if def_a.is_box() || def_b.is_box() {
                     if !def_a.is_box() || !def_b.is_box() {
                         span_bug!(
-                            self.cur_span(),
+                            self.cur_spans().0,
                             "invalid unsizing between {:?} -> {:?}",
                             src.layout.ty,
                             cast_ty.ty
@@ -348,7 +353,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 Ok(())
             }
             _ => span_bug!(
-                self.cur_span(),
+                self.cur_spans().0,
                 "unsize_into: invalid conversion: {:?} -> {:?}",
                 src.layout,
                 dest.layout

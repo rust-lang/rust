@@ -15,6 +15,11 @@ LL | | };
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+note: for thingy here
+  --> $DIR/copy-intrinsic.rs:16:51
+   |
+LL |     ptr::copy_nonoverlapping(0x100 as *const i32, dangle, 0);
+   |                                                   ^^^^^^
 
 error: any use of this value will cause an error
   --> $DIR/copy-intrinsic.rs:24:5
@@ -32,6 +37,11 @@ LL | | };
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+note: for thingy here
+  --> $DIR/copy-intrinsic.rs:24:30
+   |
+LL |     ptr::copy_nonoverlapping(dangle, 0x100 as *mut i32, 0);
+   |                              ^^^^^^
 
 error: aborting due to 2 previous errors
 

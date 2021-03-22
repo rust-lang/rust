@@ -13,6 +13,7 @@ use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::traits::Reveal;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, subst::Subst, TyCtxt};
+use rustc_span::DUMMY_SP;
 use rustc_span::source_map::Span;
 use rustc_target::abi::{Abi, LayoutOf};
 use std::convert::TryInto;
@@ -230,7 +231,7 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
         };
         return eval_nullary_intrinsic(tcx, key.param_env, def_id, substs).map_err(|error| {
             let span = tcx.def_span(def_id);
-            let error = ConstEvalErr { error: error.into_kind(), stacktrace: vec![], span };
+            let error = ConstEvalErr { error: error.into_kind(), stacktrace: vec![], span, extra_span: DUMMY_SP };
             error.report_as_error(tcx.at(span), "could not evaluate nullary intrinsic")
         });
     }
@@ -330,7 +331,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                 } else {
                     "evaluation of constant value failed"
                 };
-                Err(err.report_as_error(ecx.tcx.at(ecx.cur_span()), msg))
+                Err(err.report_as_error(ecx.tcx.at(ecx.cur_spans().0), msg))
             }
         }
         Ok(mplace) => {

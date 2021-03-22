@@ -5,7 +5,7 @@ use rustc_errors::{DiagnosticBuilder, ErrorReported};
 use rustc_hir as hir;
 use rustc_middle::mir::AssertKind;
 use rustc_middle::ty::{layout::LayoutError, query::TyCtxtAt, ConstInt};
-use rustc_span::{Span, Symbol};
+use rustc_span::{Span, Symbol, DUMMY_SP};
 
 use super::InterpCx;
 use crate::interpret::{
@@ -66,6 +66,8 @@ impl Error for ConstEvalErrKind {}
 #[derive(Debug)]
 pub struct ConstEvalErr<'tcx> {
     pub span: Span,
+    /// Secondary span pointing to some location related to the issue.
+    pub extra_span: Span,
     pub error: InterpError<'tcx>,
     pub stacktrace: Vec<FrameInfo<'tcx>>,
 }
@@ -84,11 +86,12 @@ impl<'tcx> ConstEvalErr<'tcx> {
     {
         error.print_backtrace();
         let stacktrace = ecx.generate_stacktrace();
-        ConstEvalErr {
-            error: error.into_kind(),
-            stacktrace,
-            span: span.unwrap_or_else(|| ecx.cur_span()),
-        }
+        let (span, extra_span) = match span {
+            Some(sp) => (sp, DUMMY_SP),
+            None => ecx.cur_spans(),
+        };
+
+        ConstEvalErr { error: error.into_kind(), stacktrace, span, extra_span }
     }
 
     pub fn struct_error(
@@ -175,6 +178,9 @@ impl<'tcx> ConstEvalErr<'tcx> {
         let finish = |mut err: DiagnosticBuilder<'_>, span_msg: Option<String>| {
             if let Some(span_msg) = span_msg {
                 err.span_label(self.span, span_msg);
+            }
+            if !self.extra_span.is_dummy() {
+                err.span_note(self.extra_span, "for thingy here");
             }
             // Add spans for the stacktrace. Don't print a single-line backtrace though.
             if self.stacktrace.len() > 1 {

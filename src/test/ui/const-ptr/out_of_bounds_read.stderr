@@ -16,6 +16,11 @@ LL |     const _READ: u32 = unsafe { ptr::read(PAST_END_PTR) };
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+note: for thingy here
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+   |
+LL |         copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
+   |                             ^^^
 
 error: any use of this value will cause an error
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
@@ -35,6 +40,11 @@ LL |     const _CONST_READ: u32 = unsafe { PAST_END_PTR.read() };
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+note: for thingy here
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+   |
+LL |         copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
+   |                             ^^^
 
 error: any use of this value will cause an error
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
@@ -54,6 +64,11 @@ LL |     const _MUT_READ: u32 = unsafe { (PAST_END_PTR as *mut u32).read() };
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+note: for thingy here
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+   |
+LL |         copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
+   |                             ^^^
 
 error: aborting due to 3 previous errors
 

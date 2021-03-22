@@ -422,7 +422,7 @@ where
                     field_layout.align.abi
                 }
                 None => span_bug!(
-                    self.cur_span(),
+                    self.cur_spans().0,
                     "cannot compute offset for extern type field at non-0 offset"
                 ),
             };
@@ -461,7 +461,7 @@ where
                 base.offset(offset, MemPlaceMeta::None, field_layout, self)
             }
             _ => span_bug!(
-                self.cur_span(),
+                self.cur_spans().0,
                 "`mplace_index` called on non-array type {:?}",
                 base.layout.ty
             ),
@@ -478,7 +478,7 @@ where
         let len = base.len(self)?; // also asserts that we have a type where this makes sense
         let stride = match base.layout.fields {
             FieldsShape::Array { stride, .. } => stride,
-            _ => span_bug!(self.cur_span(), "mplace_array_fields: expected an array layout"),
+            _ => span_bug!(self.cur_spans().0, "mplace_array_fields: expected an array layout"),
         };
         let layout = base.layout.field(self, 0)?;
         let dl = &self.tcx.data_layout;
@@ -509,7 +509,11 @@ where
         let from_offset = match base.layout.fields {
             FieldsShape::Array { stride, .. } => stride * from, // `Size` multiplication is checked
             _ => {
-                span_bug!(self.cur_span(), "unexpected layout of index access: {:#?}", base.layout)
+                span_bug!(
+                    self.cur_spans().0,
+                    "unexpected layout of index access: {:#?}",
+                    base.layout
+                )
             }
         };
 
@@ -524,7 +528,11 @@ where
                 (MemPlaceMeta::Meta(len), base.layout.ty)
             }
             _ => {
-                span_bug!(self.cur_span(), "cannot subslice non-array type: `{:?}`", base.layout.ty)
+                span_bug!(
+                    self.cur_spans().0,
+                    "cannot subslice non-array type: `{:?}`",
+                    base.layout.ty
+                )
             }
         };
         let layout = self.layout_of(ty)?;
@@ -800,7 +808,7 @@ where
                 match dest.layout.abi {
                     Abi::Scalar(_) => {} // fine
                     _ => span_bug!(
-                        self.cur_span(),
+                        self.cur_spans().0,
                         "write_immediate_to_mplace: invalid Scalar layout: {:#?}",
                         dest.layout
                     ),
@@ -819,7 +827,7 @@ where
                 let (a, b) = match dest.layout.abi {
                     Abi::ScalarPair(ref a, ref b) => (&a.value, &b.value),
                     _ => span_bug!(
-                        self.cur_span(),
+                        self.cur_spans().0,
                         "write_immediate_to_mplace: invalid ScalarPair layout: {:#?}",
                         dest.layout
                     ),
@@ -869,7 +877,7 @@ where
         // actually "transmute" `&mut T` to `&T` in an assignment without a cast.
         if !mir_assign_valid_types(*self.tcx, self.param_env, src.layout, dest.layout) {
             span_bug!(
-                self.cur_span(),
+                self.cur_spans().0,
                 "type mismatch when copying!\nsrc: {:?},\ndest: {:?}",
                 src.layout.ty,
                 dest.layout.ty,
@@ -936,7 +944,7 @@ where
             // on `typeck_results().has_errors` at all const eval entry points.
             debug!("Size mismatch when transmuting!\nsrc: {:#?}\ndest: {:#?}", src, dest);
             self.tcx.sess.delay_span_bug(
-                self.cur_span(),
+                self.cur_spans().0,
                 "size-changing transmute, should have been caught by transmute checking",
             );
             throw_inval!(TransmuteSizeDiff(src.layout.ty, dest.layout.ty));

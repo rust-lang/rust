@@ -156,20 +156,24 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         count: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
         nonoverlapping: bool,
     ) -> InterpResult<'tcx> {
-        let count = self.read_scalar(&count)?.to_machine_usize(self)?;
-        let layout = self.layout_of(src.layout.ty.builtin_deref(true).unwrap().ty)?;
-        let (size, align) = (layout.size, layout.align.abi);
-        let size = size.checked_mul(count, self).ok_or_else(|| {
-            err_ub_format!("overflow computing total size of `copy_nonoverlapping`")
+        let (size, align) = self.with_extra_span(count.span, |this| {
+            let count = this.read_scalar(&count)?.to_machine_usize(this)?;
+            let layout = this.layout_of(src.layout.ty.builtin_deref(true).unwrap().ty)?;
+            let size = layout.size.checked_mul(count, this).ok_or_else(|| {
+                err_ub_format!("overflow computing total size of `copy_nonoverlapping`")
+            })?;
+            Ok((size, layout.align.abi))
         })?;
 
         // Make sure we check both pointers for an access of the total size and aligment,
         // *even if* the total size is 0.
-        let src =
-            self.memory.check_ptr_access(self.read_scalar(&src)?.check_init()?, size, align)?;
+        let src = self.with_extra_span(src.span, |this| {
+            this.memory.check_ptr_access(this.read_scalar(&src)?.check_init()?, size, align)
+        })?;
 
-        let dst =
-            self.memory.check_ptr_access(self.read_scalar(&dst)?.check_init()?, size, align)?;
+        let dst = self.with_extra_span(dst.span, |this| {
+            this.memory.check_ptr_access(this.read_scalar(&dst)?.check_init()?, size, align)
+        })?;
 
         if let (Some(src), Some(dst)) = (src, dst) {
             self.memory.copy(src, dst, size, nonoverlapping)?;
@@ -304,7 +308,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 if layout.is_unsized() {
                     // FIXME: This should be a span_bug (#80742)
                     self.tcx.sess.delay_span_bug(
-                        self.frame().current_span(),
+                        self.frame().current_spans().0,
                         &format!("SizeOf nullary MIR operator called for unsized type {}", ty),
                     );
                     throw_inval!(SizeOfUnsizedType(ty));

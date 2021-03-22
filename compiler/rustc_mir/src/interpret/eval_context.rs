@@ -14,7 +14,7 @@ use rustc_middle::ty::layout::{self, TyAndLayout};
 use rustc_middle::ty::{
     self, query::TyCtxtAt, subst::SubstsRef, ParamEnv, Ty, TyCtxt, TypeFoldable,
 };
-use rustc_span::{Pos, Span};
+use rustc_span::{Pos, Span, DUMMY_SP};
 use rustc_target::abi::{Align, HasDataLayout, LayoutOf, Size, TargetDataLayout};
 
 use super::{
@@ -124,6 +124,11 @@ pub struct Frame<'mir, 'tcx, Tag = (), Extra = ()> {
     /// frames without cleanup code).
     /// We basically abuse `Result` as `Either`.
     pub(super) loc: Result<mir::Location, Span>,
+
+    /// If this is not DUMMY_SP, the error message should additionally highlight this span.
+    /// This is useful if an error occurs during the evaluation of an intrinsic, so we can
+    /// point back to the argument instead of just the whole call.
+    pub(super) extra_span: Span,
 }
 
 /// What we store about a frame in an interpreter backtrace.
@@ -221,6 +226,7 @@ impl<'mir, 'tcx, Tag> Frame<'mir, 'tcx, Tag> {
             loc: self.loc,
             extra,
             tracing_span: self.tracing_span,
+            extra_span: DUMMY_SP,
         }
     }
 }
@@ -232,8 +238,10 @@ impl<'mir, 'tcx, Tag, Extra> Frame<'mir, 'tcx, Tag, Extra> {
     /// this frame (can happen e.g. during frame initialization, and during unwinding on
     /// frames without cleanup code).
     /// We basically abuse `Result` as `Either`.
-    pub fn current_loc(&self) -> Result<mir::Location, Span> {
-        self.loc
+    ///
+    /// Additionally returns the extra span for more precise diagnostics.
+    pub fn current_loc(&self) -> (Result<mir::Location, Span>, Span) {
+        (self.loc, self.extra_span)
     }
 
     /// Return the `SourceInfo` of the current instruction.
@@ -241,11 +249,12 @@ impl<'mir, 'tcx, Tag, Extra> Frame<'mir, 'tcx, Tag, Extra> {
         self.loc.ok().map(|loc| self.body.source_info(loc))
     }
 
-    pub fn current_span(&self) -> Span {
-        match self.loc {
+    pub fn current_spans(&self) -> (Span, Span) {
+        let span = match self.loc {
             Ok(loc) => self.body.source_info(loc).span,
             Err(span) => span,
-        }
+        };
+        (span, self.extra_span)
     }
 }
 
@@ -379,8 +388,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[inline(always)]
-    pub fn cur_span(&self) -> Span {
-        self.stack().last().map_or(self.tcx.span, |f| f.current_span())
+    pub fn cur_spans(&self) -> (Span, Span) {
+        self.stack().last().map_or((self.tcx.span, DUMMY_SP), |f| f.current_spans())
     }
 
     #[inline(always)]
@@ -600,7 +609,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                                 return Ok(None);
                             } else {
                                 span_bug!(
-                                    self.cur_span(),
+                                    self.cur_spans().0,
                                     "Fields cannot be extern types, unless they are at offset 0"
                                 )
                             }
@@ -650,7 +659,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             ty::Foreign(_) => Ok(None),
 
-            _ => span_bug!(self.cur_span(), "size_and_align_of::<{:?}> not supported", layout.ty),
+            _ => {
+                span_bug!(self.cur_spans().0, "size_and_align_of::<{:?}> not supported", layout.ty)
+            }
         }
     }
     #[inline]
@@ -672,6 +683,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let pre_frame = Frame {
             body,
             loc: Err(body.span), // Span used for errors caused during preamble.
+            extra_span: DUMMY_SP,
             return_to_block,
             return_place: return_place.copied(),
             // empty local array, we fill it in below, after we are inside the stack frame and
@@ -910,12 +922,25 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     mir::ClearCrossCrate::Clear => None,
                 }
             });
-            let span = frame.current_span();
+            let span = frame.current_spans().0;
 
             frames.push(FrameInfo { span, instance: frame.instance, lint_root });
         }
         trace!("generate stacktrace: {:#?}", frames);
         frames
+    }
+
+    /// Runs the given closure and uses the given span as the error span if the closure fails.
+    #[inline(always)]
+    pub(super) fn with_extra_span<R>(
+        &mut self,
+        span: Span,
+        f: impl FnOnce(&mut Self) -> InterpResult<'tcx, R>,
+    ) -> InterpResult<'tcx, R> {
+        f(self).map_err(|e| {
+            self.frame_mut().extra_span = span;
+            e
+        })
     }
 }
 
@@ -1006,6 +1031,7 @@ where
             loc,
             extra,
             tracing_span: _,
+            extra_span,
         } = self;
         body.hash_stable(hcx, hasher);
         instance.hash_stable(hcx, hasher);
@@ -1014,5 +1040,6 @@ where
         locals.hash_stable(hcx, hasher);
         loc.hash_stable(hcx, hasher);
         extra.hash_stable(hcx, hasher);
+        extra_span.hash_stable(hcx, hasher);
     }
 }
