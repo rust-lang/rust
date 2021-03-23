@@ -257,7 +257,8 @@ impl CrateGraph {
         self.arena.keys().copied()
     }
 
-    /// Returns an iterator over all transitive dependencies of the given crate.
+    /// Returns an iterator over all transitive dependencies of the given crate,
+    /// including the crate itself.
     pub fn transitive_deps(&self, of: CrateId) -> impl Iterator<Item = CrateId> + '_ {
         let mut worklist = vec![of];
         let mut deps = FxHashSet::default();
@@ -270,7 +271,6 @@ impl CrateGraph {
             worklist.extend(self[krate].dependencies.iter().map(|dep| dep.crate_id));
         }
 
-        deps.remove(&of);
         deps.into_iter()
     }
 
