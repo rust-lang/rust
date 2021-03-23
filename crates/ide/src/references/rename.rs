@@ -219,40 +219,44 @@ fn rename_reference(
 ) -> RenameResult<SourceChange> {
     let ident_kind = check_identifier(new_name)?;
 
-    let def_is_lbl_or_lt = matches!(
-        def,
+    if matches!(
+        def, // is target a lifetime?
         Definition::GenericParam(hir::GenericParam::LifetimeParam(_)) | Definition::Label(_)
-    );
-    match (ident_kind, def) {
-        (IdentifierKind::ToSelf, _)
-        | (IdentifierKind::Underscore, _)
-        | (IdentifierKind::Ident, _)
-            if def_is_lbl_or_lt =>
-        {
-            cov_mark::hit!(rename_not_a_lifetime_ident_ref);
-            bail!("Invalid name `{}`: not a lifetime identifier", new_name)
+    ) {
+        match ident_kind {
+            IdentifierKind::Ident | IdentifierKind::ToSelf | IdentifierKind::Underscore => {
+                cov_mark::hit!(rename_not_a_lifetime_ident_ref);
+                bail!("Invalid name `{}`: not a lifetime identifier", new_name);
+            }
+            IdentifierKind::Lifetime => cov_mark::hit!(rename_lifetime),
         }
-        (IdentifierKind::Lifetime, _) if def_is_lbl_or_lt => cov_mark::hit!(rename_lifetime),
-        (IdentifierKind::Lifetime, _) => {
-            cov_mark::hit!(rename_not_an_ident_ref);
-            bail!("Invalid name `{}`: not an identifier", new_name)
-        }
-        (IdentifierKind::ToSelf, Definition::Local(local)) if local.is_self(sema.db) => {
-            // no-op
-            cov_mark::hit!(rename_self_to_self);
-            return Ok(SourceChange::default());
-        }
-        (ident_kind, Definition::Local(local)) if local.is_self(sema.db) => {
-            cov_mark::hit!(rename_self_to_param);
-            return rename_self_to_param(sema, local, new_name, ident_kind);
-        }
-        (IdentifierKind::ToSelf, Definition::Local(local)) => {
-            cov_mark::hit!(rename_to_self);
-            return rename_to_self(sema, local);
-        }
-        (IdentifierKind::ToSelf, _) => bail!("Invalid name `{}`: not an identifier", new_name),
-        (IdentifierKind::Ident, _) | (IdentifierKind::Underscore, _) => {
-            cov_mark::hit!(rename_ident)
+    } else {
+        match (ident_kind, def) {
+            (IdentifierKind::Lifetime, _) => {
+                cov_mark::hit!(rename_not_an_ident_ref);
+                bail!("Invalid name `{}`: not an identifier", new_name);
+            }
+            (IdentifierKind::ToSelf, Definition::Local(local)) => {
+                if local.is_self(sema.db) {
+                    // no-op
+                    cov_mark::hit!(rename_self_to_self);
+                    return Ok(SourceChange::default());
+                } else {
+                    cov_mark::hit!(rename_to_self);
+                    return rename_to_self(sema, local);
+                }
+            }
+            (ident_kind, Definition::Local(local)) => {
+                if let Some(self_param) = local.as_self_param(sema.db) {
+                    cov_mark::hit!(rename_self_to_param);
+                    return rename_self_to_param(sema, local, self_param, new_name, ident_kind);
+                } else {
+                    cov_mark::hit!(rename_local);
+                }
+            }
+            (IdentifierKind::ToSelf, _) => bail!("Invalid name `{}`: not an identifier", new_name),
+            (IdentifierKind::Ident, _) => cov_mark::hit!(rename_non_local),
+            (IdentifierKind::Underscore, _) => (),
         }
     }
 
@@ -336,16 +340,12 @@ fn rename_to_self(sema: &Semantics<RootDatabase>, local: hir::Local) -> RenameRe
 fn rename_self_to_param(
     sema: &Semantics<RootDatabase>,
     local: hir::Local,
+    self_param: hir::SelfParam,
     new_name: &str,
     identifier_kind: IdentifierKind,
 ) -> RenameResult<SourceChange> {
-    let (file_id, self_param) = match local.source(sema.db) {
-        InFile { file_id, value: Either::Right(self_param) } => (file_id, self_param),
-        _ => {
-            never!(true, "rename_self_to_param invoked on a non-self local");
-            bail!("rename_self_to_param invoked on a non-self local");
-        }
-    };
+    let InFile { file_id, value: self_param } =
+        self_param.source(sema.db).ok_or_else(|| format_err!("cannot find function source"))?;
 
     let def = Definition::Local(local);
     let usages = def.usages(sema).all();
@@ -701,7 +701,7 @@ foo!(Foo$0);",
 
     #[test]
     fn test_rename_for_local() {
-        cov_mark::check!(rename_ident);
+        cov_mark::check!(rename_local);
         check(
             "k",
             r#"
@@ -1242,6 +1242,7 @@ pub mod foo$0;
 
     #[test]
     fn test_enum_variant_from_module_1() {
+        cov_mark::check!(rename_non_local);
         check(
             "Baz",
             r#"
