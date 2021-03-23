@@ -11,7 +11,7 @@ use rustc_hir::{TyKind, Unsafety};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
-use rustc_middle::ty::{self, IntTy, Ty, TypeFoldable, UintTy};
+use rustc_middle::ty::{self, AdtDef, IntTy, Ty, TypeFoldable, UintTy};
 use rustc_span::sym;
 use rustc_span::symbol::Symbol;
 use rustc_span::DUMMY_SP;
@@ -39,6 +39,15 @@ pub fn can_partially_move_ty(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
 pub fn contains_ty(ty: Ty<'_>, other_ty: Ty<'_>) -> bool {
     ty.walk().any(|inner| match inner.unpack() {
         GenericArgKind::Type(inner_ty) => ty::TyS::same_type(other_ty, inner_ty),
+        GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
+    })
+}
+
+/// Walks into `ty` and returns `true` if any inner type is any instance of the given abstract data
+/// type.`
+pub fn contains_adt(ty: Ty<'_>, adt: &AdtDef) -> bool {
+    ty.walk().any(|inner| match inner.unpack() {
+        GenericArgKind::Type(inner_ty) => inner_ty.ty_adt_def() == Some(adt),
         GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
     })
 }

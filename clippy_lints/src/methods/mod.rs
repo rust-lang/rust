@@ -61,7 +61,7 @@ mod zst_offset;
 
 use bind_instead_of_map::BindInsteadOfMap;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
-use clippy_utils::ty::{contains_ty, implements_trait, is_copy, is_type_diagnostic_item};
+use clippy_utils::ty::{contains_adt, contains_ty, implements_trait, is_copy, is_type_diagnostic_item};
 use clippy_utils::{contains_return, get_trait_def_id, in_macro, iter_input_pats, method_calls, paths, return_ty};
 use if_chain::if_chain;
 use rustc_hir as hir;
@@ -1916,7 +1916,11 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             let ret_ty = return_ty(cx, impl_item.hir_id());
 
             // walk the return type and check for Self (this does not check associated types)
-            if contains_ty(ret_ty, self_ty) {
+            if let Some(self_adt) = self_ty.ty_adt_def() {
+                if contains_adt(ret_ty, self_adt) {
+                    return;
+                }
+            } else if contains_ty(ret_ty, self_ty) {
                 return;
             }
 
@@ -1926,7 +1930,11 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 for &(predicate, _span) in cx.tcx.explicit_item_bounds(def_id) {
                     if let ty::PredicateKind::Projection(projection_predicate) = predicate.kind().skip_binder() {
                         // walk the associated type and check for Self
-                        if contains_ty(projection_predicate.ty, self_ty) {
+                        if let Some(self_adt) = self_ty.ty_adt_def() {
+                            if contains_adt(projection_predicate.ty, self_adt) {
+                                return;
+                            }
+                        } else if contains_ty(projection_predicate.ty, self_ty) {
                             return;
                         }
                     }
