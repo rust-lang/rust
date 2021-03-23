@@ -91,7 +91,6 @@ pub(super) fn collect_defs(
         resolved_imports: Vec::new(),
 
         unexpanded_macros: Vec::new(),
-        unexpanded_attribute_macros: Vec::new(),
         mod_dirs: FxHashMap::default(),
         cfg_options,
         proc_macros,
@@ -202,15 +201,14 @@ struct ImportDirective {
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct MacroDirective {
     module_id: LocalModuleId,
-    ast_id: AstIdWithPath<ast::MacroCall>,
-    legacy: Option<MacroCallId>,
     depth: usize,
+    kind: MacroDirectiveKind,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-struct DeriveDirective {
-    module_id: LocalModuleId,
-    ast_id: AstIdWithPath<ast::Item>,
+enum MacroDirectiveKind {
+    FnLike { ast_id: AstIdWithPath<ast::MacroCall>, legacy: Option<MacroCallId> },
+    Derive { ast_id: AstIdWithPath<ast::Item> },
 }
 
 struct DefData<'a> {
@@ -228,7 +226,6 @@ struct DefCollector<'a> {
     unresolved_imports: Vec<ImportDirective>,
     resolved_imports: Vec<ImportDirective>,
     unexpanded_macros: Vec<MacroDirective>,
-    unexpanded_attribute_macros: Vec<DeriveDirective>,
     mod_dirs: FxHashMap<LocalModuleId, ModDir>,
     cfg_options: &'a CfgOptions,
     /// List of procedural macros defined by this crate. This is read from the dynamic library
@@ -782,60 +779,58 @@ impl DefCollector<'_> {
 
     fn resolve_macros(&mut self) -> ReachedFixedPoint {
         let mut macros = std::mem::replace(&mut self.unexpanded_macros, Vec::new());
-        let mut attribute_macros =
-            std::mem::replace(&mut self.unexpanded_attribute_macros, Vec::new());
         let mut resolved = Vec::new();
         let mut res = ReachedFixedPoint::Yes;
         macros.retain(|directive| {
-            if let Some(call_id) = directive.legacy {
-                res = ReachedFixedPoint::No;
-                resolved.push((directive.module_id, call_id, directive.depth));
-                return false;
-            }
+            match &directive.kind {
+                MacroDirectiveKind::FnLike { ast_id, legacy } => {
+                    if let Some(call_id) = legacy {
+                        res = ReachedFixedPoint::No;
+                        resolved.push((directive.module_id, *call_id, directive.depth));
+                        return false;
+                    }
 
-            match macro_call_as_call_id(
-                &directive.ast_id,
-                self.db,
-                self.def_map.krate,
-                |path| {
-                    let resolved_res = self.def_map.resolve_path_fp_with_macro(
+                    match macro_call_as_call_id(
+                        ast_id,
                         self.db,
-                        ResolveMode::Other,
-                        directive.module_id,
-                        &path,
-                        BuiltinShadowMode::Module,
-                    );
-                    resolved_res.resolved_def.take_macros()
-                },
-                &mut |_err| (),
-            ) {
-                Ok(Ok(call_id)) => {
-                    resolved.push((directive.module_id, call_id, directive.depth));
-                    res = ReachedFixedPoint::No;
-                    return false;
+                        self.def_map.krate,
+                        |path| {
+                            let resolved_res = self.def_map.resolve_path_fp_with_macro(
+                                self.db,
+                                ResolveMode::Other,
+                                directive.module_id,
+                                &path,
+                                BuiltinShadowMode::Module,
+                            );
+                            resolved_res.resolved_def.take_macros()
+                        },
+                        &mut |_err| (),
+                    ) {
+                        Ok(Ok(call_id)) => {
+                            resolved.push((directive.module_id, call_id, directive.depth));
+                            res = ReachedFixedPoint::No;
+                            return false;
+                        }
+                        Err(UnresolvedMacro) | Ok(Err(_)) => {}
+                    }
                 }
-                Err(UnresolvedMacro) | Ok(Err(_)) => {}
+                MacroDirectiveKind::Derive { ast_id } => {
+                    match derive_macro_as_call_id(ast_id, self.db, self.def_map.krate, |path| {
+                        self.resolve_derive_macro(directive.module_id, &path)
+                    }) {
+                        Ok(call_id) => {
+                            resolved.push((directive.module_id, call_id, 0));
+                            res = ReachedFixedPoint::No;
+                            return false;
+                        }
+                        Err(UnresolvedMacro) => (),
+                    }
+                }
             }
 
             true
         });
-        attribute_macros.retain(|directive| {
-            match derive_macro_as_call_id(&directive.ast_id, self.db, self.def_map.krate, |path| {
-                self.resolve_derive_macro(&directive, &path)
-            }) {
-                Ok(call_id) => {
-                    resolved.push((directive.module_id, call_id, 0));
-                    res = ReachedFixedPoint::No;
-                    return false;
-                }
-                Err(UnresolvedMacro) => (),
-            }
-
-            true
-        });
-
         self.unexpanded_macros = macros;
-        self.unexpanded_attribute_macros = attribute_macros;
 
         for (module_id, macro_call_id, depth) in resolved {
             self.collect_macro_expansion(module_id, macro_call_id, depth);
@@ -844,15 +839,11 @@ impl DefCollector<'_> {
         res
     }
 
-    fn resolve_derive_macro(
-        &self,
-        directive: &DeriveDirective,
-        path: &ModPath,
-    ) -> Option<MacroDefId> {
+    fn resolve_derive_macro(&self, module: LocalModuleId, path: &ModPath) -> Option<MacroDefId> {
         let resolved_res = self.def_map.resolve_path_fp_with_macro(
             self.db,
             ResolveMode::Other,
-            directive.module_id,
+            module,
             &path,
             BuiltinShadowMode::Module,
         );
@@ -912,33 +903,35 @@ impl DefCollector<'_> {
         // Emit diagnostics for all remaining unexpanded macros.
 
         for directive in &self.unexpanded_macros {
-            let mut error = None;
-            match macro_call_as_call_id(
-                &directive.ast_id,
-                self.db,
-                self.def_map.krate,
-                |path| {
-                    let resolved_res = self.def_map.resolve_path_fp_with_macro(
-                        self.db,
-                        ResolveMode::Other,
-                        directive.module_id,
-                        &path,
-                        BuiltinShadowMode::Module,
-                    );
-                    resolved_res.resolved_def.take_macros()
+            match &directive.kind {
+                MacroDirectiveKind::FnLike { ast_id, .. } => match macro_call_as_call_id(
+                    ast_id,
+                    self.db,
+                    self.def_map.krate,
+                    |path| {
+                        let resolved_res = self.def_map.resolve_path_fp_with_macro(
+                            self.db,
+                            ResolveMode::Other,
+                            directive.module_id,
+                            &path,
+                            BuiltinShadowMode::Module,
+                        );
+                        resolved_res.resolved_def.take_macros()
+                    },
+                    &mut |_| (),
+                ) {
+                    Ok(_) => (),
+                    Err(UnresolvedMacro) => {
+                        self.def_map.diagnostics.push(DefDiagnostic::unresolved_macro_call(
+                            directive.module_id,
+                            ast_id.ast_id,
+                        ));
+                    }
                 },
-                &mut |e| {
-                    error.get_or_insert(e);
-                },
-            ) {
-                Ok(_) => (),
-                Err(UnresolvedMacro) => {
-                    self.def_map.diagnostics.push(DefDiagnostic::unresolved_macro_call(
-                        directive.module_id,
-                        directive.ast_id.ast_id,
-                    ));
+                MacroDirectiveKind::Derive { .. } => {
+                    // FIXME: we might want to diagnose this too
                 }
-            };
+            }
         }
 
         // Emit diagnostics for all remaining unresolved imports.
@@ -1380,9 +1373,11 @@ impl ModCollector<'_, '_> {
                 Some(derive_macros) => {
                     for path in derive_macros {
                         let ast_id = AstIdWithPath::new(self.file_id, ast_id, path);
-                        self.def_collector
-                            .unexpanded_attribute_macros
-                            .push(DeriveDirective { module_id: self.module_id, ast_id });
+                        self.def_collector.unexpanded_macros.push(MacroDirective {
+                            module_id: self.module_id,
+                            depth: self.macro_depth + 1,
+                            kind: MacroDirectiveKind::Derive { ast_id },
+                        });
                     }
                 }
                 None => {
@@ -1497,9 +1492,8 @@ impl ModCollector<'_, '_> {
 
         self.def_collector.unexpanded_macros.push(MacroDirective {
             module_id: self.module_id,
-            ast_id,
-            legacy: None,
             depth: self.macro_depth + 1,
+            kind: MacroDirectiveKind::FnLike { ast_id, legacy: None },
         });
     }
 
@@ -1542,7 +1536,6 @@ mod tests {
             unresolved_imports: Vec::new(),
             resolved_imports: Vec::new(),
             unexpanded_macros: Vec::new(),
-            unexpanded_attribute_macros: Vec::new(),
             mod_dirs: FxHashMap::default(),
             cfg_options: &CfgOptions::default(),
             proc_macros: Default::default(),
