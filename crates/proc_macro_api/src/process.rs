@@ -90,8 +90,10 @@ impl ProcMacroProcessSrv {
 fn client_loop(task_rx: Receiver<Task>, mut process: Process) {
     let (mut stdin, mut stdout) = process.stdio().expect("couldn't access child stdio");
 
+    let mut buf = String::new();
+
     for Task { req, result_tx } in task_rx {
-        match send_request(&mut stdin, &mut stdout, req) {
+        match send_request(&mut stdin, &mut stdout, req, &mut buf) {
             Ok(res) => result_tx.send(res).unwrap(),
             Err(err) => {
                 log::error!(
@@ -152,7 +154,8 @@ fn send_request(
     mut writer: &mut impl Write,
     mut reader: &mut impl BufRead,
     req: Request,
+    buf: &mut String,
 ) -> io::Result<Option<Response>> {
     req.write(&mut writer)?;
-    Response::read(&mut reader)
+    Response::read(&mut reader, buf)
 }
