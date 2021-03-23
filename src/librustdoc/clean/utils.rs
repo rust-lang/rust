@@ -76,7 +76,7 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
     Crate {
         name,
         src,
-        module: Some(module),
+        module,
         externs,
         primitives,
         external_traits: cx.external_traits.clone(),
