@@ -132,7 +132,7 @@ config_data! {
         /// Whether to show inlay type hints for method chains.
         inlayHints_chainingHints: bool      = "true",
         /// Maximum length for inlay hints. Set to null to have an unlimited length.
-        inlayHints_maxLength: Option<usize> = "20",
+        inlayHints_maxLength: Option<usize> = "25",
         /// Whether to show function parameter name inlay hints at the call
         /// site.
         inlayHints_parameterHints: bool     = "true",
