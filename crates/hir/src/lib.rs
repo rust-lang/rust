@@ -852,6 +852,7 @@ impl Function {
             })
             .collect()
     }
+
     pub fn method_params(self, db: &dyn HirDatabase) -> Option<Vec<Param>> {
         if self.self_param(db).is_none() {
             return None;
@@ -909,7 +910,7 @@ impl From<hir_ty::Mutability> for Access {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Param {
     func: Function,
     /// The index in parameter list, including self parameter.
@@ -922,13 +923,25 @@ impl Param {
         &self.ty
     }
 
+    pub fn as_local(&self, db: &dyn HirDatabase) -> Local {
+        let parent = DefWithBodyId::FunctionId(self.func.into());
+        let body = db.body(parent);
+        Local { parent, pat_id: body.params[self.idx] }
+    }
+
     pub fn pattern_source(&self, db: &dyn HirDatabase) -> Option<ast::Pat> {
-        let params = self.func.source(db)?.value.param_list()?;
+        self.source(db).and_then(|p| p.value.pat())
+    }
+
+    pub fn source(&self, db: &dyn HirDatabase) -> Option<InFile<ast::Param>> {
+        let InFile { file_id, value } = self.func.source(db)?;
+        let params = value.param_list()?;
         if params.self_param().is_some() {
-            params.params().nth(self.idx.checked_sub(1)?)?.pat()
+            params.params().nth(self.idx.checked_sub(1)?)
         } else {
-            params.params().nth(self.idx)?.pat()
+            params.params().nth(self.idx)
         }
+        .map(|value| InFile { file_id, value })
     }
 }
 
