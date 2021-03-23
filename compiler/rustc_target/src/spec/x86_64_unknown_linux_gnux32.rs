@@ -5,7 +5,8 @@ pub fn target() -> Target {
     base.cpu = "x86-64".to_string();
     base.max_atomic_width = Some(64);
     base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-mx32".to_string());
-    base.stack_probes = StackProbeType::InlineOrCall { min_llvm_version_for_inline: (11, 0, 1) };
+    // don't use probe-stack=inline-asm until rust-lang/rust#83139 is resolved.
+    base.stack_probes = StackProbeType::Call;
     base.has_elf_tls = false;
     // BUG(GabrielMajeri): disabling the PLT on x86_64 Linux with x32 ABI
     // breaks code gen. See LLVM bug 36743

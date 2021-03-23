@@ -12,7 +12,8 @@ pub fn target() -> Target {
     base.has_rpath = false;
     base.position_independent_executables = false;
     base.disable_redzone = true;
-    base.stack_probes = StackProbeType::InlineOrCall { min_llvm_version_for_inline: (11, 0, 1) };
+    // don't use probe-stack=inline-asm until rust-lang/rust#83139 is resolved.
+    base.stack_probes = StackProbeType::Call;
 
     Target {
         llvm_target: "x86_64-rumprun-netbsd".to_string(),
