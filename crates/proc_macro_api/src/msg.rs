@@ -55,8 +55,8 @@ pub enum ErrorCode {
 }
 
 pub trait Message: Serialize + DeserializeOwned {
-    fn read(inp: &mut impl BufRead) -> io::Result<Option<Self>> {
-        Ok(match read_json(inp)? {
+    fn read(inp: &mut impl BufRead, buf: &mut String) -> io::Result<Option<Self>> {
+        Ok(match read_json(inp, buf)? {
             None => None,
             Some(text) => {
                 let mut deserializer = serde_json::Deserializer::from_str(&text);
@@ -76,9 +76,13 @@ pub trait Message: Serialize + DeserializeOwned {
 impl Message for Request {}
 impl Message for Response {}
 
-fn read_json(inp: &mut impl BufRead) -> io::Result<Option<String>> {
+fn read_json<'a>(
+    inp: &mut impl BufRead,
+    mut buf: &'a mut String,
+) -> io::Result<Option<&'a String>> {
     loop {
-        let mut buf = String::new();
+        buf.clear();
+
         inp.read_line(&mut buf)?;
         buf.pop(); // Remove trailing '\n'
 

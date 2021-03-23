@@ -6,8 +6,9 @@ use std::io;
 
 pub fn run() -> io::Result<()> {
     let mut srv = ProcMacroSrv::default();
+    let mut buf = String::new();
 
-    while let Some(req) = read_request()? {
+    while let Some(req) = read_request(&mut buf)? {
         let res = match req {
             msg::Request::ListMacro(task) => srv.list_macros(&task).map(msg::Response::ListMacro),
             msg::Request::ExpansionMacro(task) => {
@@ -30,8 +31,8 @@ pub fn run() -> io::Result<()> {
     Ok(())
 }
 
-fn read_request() -> io::Result<Option<msg::Request>> {
-    msg::Request::read(&mut io::stdin().lock())
+fn read_request(buf: &mut String) -> io::Result<Option<msg::Request>> {
+    msg::Request::read(&mut io::stdin().lock(), buf)
 }
 
 fn write_response(msg: msg::Response) -> io::Result<()> {
