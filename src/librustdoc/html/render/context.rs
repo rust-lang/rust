@@ -228,15 +228,15 @@ impl<'tcx> Context<'tcx> {
     /// may happen, for example, with externally inlined items where the source
     /// of their crate documentation isn't known.
     pub(super) fn src_href(&self, item: &clean::Item) -> Option<String> {
-        if item.source.is_dummy() {
+        if item.span.is_dummy() {
             return None;
         }
         let mut root = self.root_path();
         let mut path = String::new();
-        let cnum = item.source.cnum(self.sess());
+        let cnum = item.span.cnum(self.sess());
 
         // We can safely ignore synthetic `SourceFile`s.
-        let file = match item.source.filename(self.sess()) {
+        let file = match item.span.filename(self.sess()) {
             FileName::Real(ref path) => path.local_path().to_path_buf(),
             _ => return None,
         };
@@ -270,8 +270,8 @@ impl<'tcx> Context<'tcx> {
             (&*symbol, &path)
         };
 
-        let loline = item.source.lo(self.sess()).line;
-        let hiline = item.source.hi(self.sess()).line;
+        let loline = item.span.lo(self.sess()).line;
+        let hiline = item.span.hi(self.sess()).line;
         let lines =
             if loline == hiline { loline.to_string() } else { format!("{}-{}", loline, hiline) };
         Some(format!(
