@@ -471,6 +471,36 @@ pub fn print_after_hir_lowering<'tcx>(
             format!("{:#?}", krate)
         }),
 
+        _ => unreachable!(),
+    };
+
+    write_or_print(&out, ofile);
+}
+
+// In an ideal world, this would be a public function called by the driver after
+// analysis is performed. However, we want to call `phase_3_run_analysis_passes`
+// with a different callback than the standard driver, so that isn't easy.
+// Instead, we call that function ourselves.
+fn print_with_analysis(
+    tcx: TyCtxt<'_>,
+    ppm: PpMode,
+    ofile: Option<&Path>,
+) -> Result<(), ErrorReported> {
+    tcx.analysis(LOCAL_CRATE)?;
+
+    let out = match ppm {
+        Mir => {
+            let mut out = Vec::new();
+            write_mir_pretty(tcx, None, &mut out).unwrap();
+            String::from_utf8(out).unwrap()
+        }
+
+        MirCFG => {
+            let mut out = Vec::new();
+            write_mir_graphviz(tcx, None, &mut out).unwrap();
+            String::from_utf8(out).unwrap()
+        }
+
         ThirTree => {
             let mut out = String::new();
             abort_on_err(rustc_typeck::check_crate(tcx), tcx.sess);
@@ -490,29 +520,6 @@ pub fn print_after_hir_lowering<'tcx>(
     };
 
     write_or_print(&out, ofile);
-}
-
-// In an ideal world, this would be a public function called by the driver after
-// analysis is performed. However, we want to call `phase_3_run_analysis_passes`
-// with a different callback than the standard driver, so that isn't easy.
-// Instead, we call that function ourselves.
-fn print_with_analysis(
-    tcx: TyCtxt<'_>,
-    ppm: PpMode,
-    ofile: Option<&Path>,
-) -> Result<(), ErrorReported> {
-    let mut out = Vec::new();
-
-    tcx.analysis(LOCAL_CRATE)?;
-
-    match ppm {
-        Mir => write_mir_pretty(tcx, None, &mut out).unwrap(),
-        MirCFG => write_mir_graphviz(tcx, None, &mut out).unwrap(),
-        _ => unreachable!(),
-    }
-
-    let out = std::str::from_utf8(&out).unwrap();
-    write_or_print(out, ofile);
 
     Ok(())
 }
