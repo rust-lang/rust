@@ -5,7 +5,7 @@ use rustc_span::symbol::{sym, Symbol};
 
 pub(crate) use self::drop_flag_effects::*;
 pub use self::framework::{
-    fmt, lattice, visit_results, Analysis, AnalysisDomain, Backward, BorrowckFlowState,
+    fmt, graphviz, lattice, visit_results, Analysis, AnalysisDomain, Backward, BorrowckFlowState,
     BorrowckResults, Engine, Forward, GenKill, GenKillAnalysis, JoinSemiLattice, Results,
     ResultsCursor, ResultsRefCursor, ResultsVisitor,
 };
@@ -18,10 +18,8 @@ pub mod impls;
 pub mod move_paths;
 
 pub(crate) mod indexes {
-    pub(crate) use super::{
-        impls::borrows::BorrowIndex,
-        move_paths::{InitIndex, MoveOutIndex, MovePathIndex},
-    };
+    pub(crate) use super::move_paths::{InitIndex, MoveOutIndex, MovePathIndex};
+    pub(crate) use rustc_middle::mir::borrows::BorrowIndex;
 }
 
 pub struct MoveDataParamEnv<'tcx> {

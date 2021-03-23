@@ -64,7 +64,7 @@ mod type_check;
 mod universal_regions;
 mod used_muts;
 
-crate use borrow_set::{BorrowData, BorrowSet};
+crate use borrow_set::{BorrowData, BorrowSet, BorrowSetExt};
 crate use nll::{PoloniusOutput, ToRegionVid};
 crate use place_ext::PlaceExt;
 crate use places_conflict::{places_conflict, PlaceConflictBias};
@@ -199,7 +199,7 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     let locals_are_invalidated_at_exit = tcx.hir().body_owner_kind(id).is_fn_or_closure();
     let borrow_set =
-        Rc::new(BorrowSet::build(tcx, body, locals_are_invalidated_at_exit, &mdpe.move_data));
+        Rc::new(BorrowSet::build(tcx, &body, locals_are_invalidated_at_exit, &mdpe.move_data));
 
     // Compute non-lexical lifetimes.
     let nll::NllOutput {
@@ -211,7 +211,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     } = nll::compute_regions(
         infcx,
         free_regions,
-        body,
+        &body,
         &promoted,
         location_table,
         param_env,
@@ -304,7 +304,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     let mut mbcx = MirBorrowckCtxt {
         infcx,
         param_env,
-        body,
+        body: &body,
         move_data: &mdpe.move_data,
         location_table,
         movable_generator,
@@ -443,10 +443,19 @@ fn do_mir_borrowck<'a, 'tcx>(
         }
     }
 
+    let borrows_out_of_scope_at_location =
+        results.borrows.analysis.borrows_out_of_scope_at_location;
+    let borrows_entry_sets = results.borrows.entry_sets;
+
+    drop(mbcx.borrow_set);
+
     let result = BorrowCheckResult {
         concrete_opaque_types: opaque_type_values,
         closure_requirements: opt_closure_req,
         used_mut_upvars: mbcx.used_mut_upvars,
+        borrow_set: Rc::try_unwrap(borrow_set).unwrap(),
+        borrows_out_of_scope_at_location,
+        borrows_entry_sets,
     };
 
     debug!("do_mir_borrowck: result = {:#?}", result);

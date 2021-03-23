@@ -28,7 +28,7 @@ where
     A: Analysis<'tcx>,
 {
     pub analysis: A,
-    pub(super) entry_sets: IndexVec<BasicBlock, A::Domain>,
+    pub entry_sets: IndexVec<BasicBlock, A::Domain>,
 }
 
 impl<A> Results<'tcx, A>

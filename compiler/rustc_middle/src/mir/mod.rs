@@ -2,6 +2,7 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/mir/index.html
 
+use crate::ich::StableHashingContext;
 use crate::mir::coverage::{CodeRegion, CoverageKind};
 use crate::mir::interpret::{Allocation, GlobalAlloc, Scalar};
 use crate::mir::visit::MirVisitable;
@@ -23,6 +24,7 @@ pub use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
 use rustc_data_structures::graph::{self, GraphSuccessors};
+use rustc_data_structures::stable_hasher::ToStableHashKey;
 use rustc_index::bit_set::BitMatrix;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_serialize::{Decodable, Encodable};
@@ -40,6 +42,7 @@ use self::predecessors::{PredecessorCache, Predecessors};
 pub use self::query::*;
 
 pub mod abstract_const;
+pub mod borrows;
 pub mod coverage;
 mod graph_cyclic_cache;
 pub mod interpret;
@@ -2616,7 +2619,7 @@ impl graph::WithPredecessors for Body<'tcx> {
 /// `Location` represents the position of the start of the statement; or, if
 /// `statement_index` equals the number of statements, then the start of the
 /// terminator.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Ord, PartialOrd, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Ord, PartialOrd, TyEncodable, TyDecodable, HashStable)]
 pub struct Location {
     /// The block that the location is within.
     pub block: BasicBlock,
@@ -2627,6 +2630,24 @@ pub struct Location {
 impl fmt::Debug for Location {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(fmt, "{:?}[{}]", self.block, self.statement_index)
+    }
+}
+
+impl<'a> ToStableHashKey<StableHashingContext<'a>> for Local {
+    type KeyType = Self;
+
+    #[inline]
+    fn to_stable_hash_key(&self, _: &StableHashingContext<'a>) -> Self {
+        *self
+    }
+}
+
+impl<'a> ToStableHashKey<StableHashingContext<'a>> for Location {
+    type KeyType = Self;
+
+    #[inline]
+    fn to_stable_hash_key(&self, _: &StableHashingContext<'a>) -> Self {
+        *self
     }
 }
 

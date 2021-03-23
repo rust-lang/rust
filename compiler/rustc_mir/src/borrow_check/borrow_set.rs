@@ -1,89 +1,26 @@
 use crate::borrow_check::nll::ToRegionVid;
 use crate::borrow_check::path_utils::allow_two_phase_borrow;
 use crate::borrow_check::place_ext::PlaceExt;
-use crate::dataflow::indexes::BorrowIndex;
 use crate::dataflow::move_paths::MoveData;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_index::bit_set::BitSet;
+pub use rustc_middle::mir::borrows::{
+    BorrowData, BorrowIndex, BorrowSet, LocalsStateAtExit, TwoPhaseActivation,
+};
 use rustc_middle::mir::traversal;
 use rustc_middle::mir::visit::{MutatingUseContext, NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, Body, Local, Location};
-use rustc_middle::ty::{RegionVid, TyCtxt};
-use std::fmt;
-use std::ops::Index;
+use rustc_middle::ty::TyCtxt;
 
-crate struct BorrowSet<'tcx> {
-    /// The fundamental map relating bitvector indexes to the borrows
-    /// in the MIR. Each borrow is also uniquely identified in the MIR
-    /// by the `Location` of the assignment statement in which it
-    /// appears on the right hand side. Thus the location is the map
-    /// key, and its position in the map corresponds to `BorrowIndex`.
-    crate location_map: FxIndexMap<Location, BorrowData<'tcx>>,
-
-    /// Locations which activate borrows.
-    /// NOTE: a given location may activate more than one borrow in the future
-    /// when more general two-phase borrow support is introduced, but for now we
-    /// only need to store one borrow index.
-    crate activation_map: FxHashMap<Location, Vec<BorrowIndex>>,
-
-    /// Map from local to all the borrows on that local.
-    crate local_map: FxHashMap<mir::Local, FxHashSet<BorrowIndex>>,
-
-    crate locals_state_at_exit: LocalsStateAtExit,
+pub trait LocalsStateAtExitExt {
+    fn build(
+        locals_are_invalidated_at_exit: bool,
+        body: &Body<'tcx>,
+        move_data: &MoveData<'tcx>,
+    ) -> Self;
 }
 
-impl<'tcx> Index<BorrowIndex> for BorrowSet<'tcx> {
-    type Output = BorrowData<'tcx>;
-
-    fn index(&self, index: BorrowIndex) -> &BorrowData<'tcx> {
-        &self.location_map[index.as_usize()]
-    }
-}
-
-/// Location where a two-phase borrow is activated, if a borrow
-/// is in fact a two-phase borrow.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-crate enum TwoPhaseActivation {
-    NotTwoPhase,
-    NotActivated,
-    ActivatedAt(Location),
-}
-
-#[derive(Debug, Clone)]
-crate struct BorrowData<'tcx> {
-    /// Location where the borrow reservation starts.
-    /// In many cases, this will be equal to the activation location but not always.
-    crate reserve_location: Location,
-    /// Location where the borrow is activated.
-    crate activation_location: TwoPhaseActivation,
-    /// What kind of borrow this is
-    crate kind: mir::BorrowKind,
-    /// The region for which this borrow is live
-    crate region: RegionVid,
-    /// Place from which we are borrowing
-    crate borrowed_place: mir::Place<'tcx>,
-    /// Place to which the borrow was stored
-    crate assigned_place: mir::Place<'tcx>,
-}
-
-impl<'tcx> fmt::Display for BorrowData<'tcx> {
-    fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let kind = match self.kind {
-            mir::BorrowKind::Shared => "",
-            mir::BorrowKind::Shallow => "shallow ",
-            mir::BorrowKind::Unique => "uniq ",
-            mir::BorrowKind::Mut { .. } => "mut ",
-        };
-        write!(w, "&{:?} {}{:?}", self.region, kind, self.borrowed_place)
-    }
-}
-
-crate enum LocalsStateAtExit {
-    AllAreInvalidated,
-    SomeAreInvalidated { has_storage_dead_or_moved: BitSet<Local> },
-}
-
-impl LocalsStateAtExit {
+impl LocalsStateAtExitExt for LocalsStateAtExit {
     fn build(
         locals_are_invalidated_at_exit: bool,
         body: &Body<'tcx>,
@@ -115,8 +52,17 @@ impl LocalsStateAtExit {
     }
 }
 
-impl<'tcx> BorrowSet<'tcx> {
-    pub fn build(
+pub trait BorrowSetExt<'tcx> {
+    fn build(
+        tcx: TyCtxt<'tcx>,
+        body: &Body<'tcx>,
+        locals_are_invalidated_at_exit: bool,
+        move_data: &MoveData<'tcx>,
+    ) -> Self;
+}
+
+impl<'tcx> BorrowSetExt<'tcx> for BorrowSet<'tcx> {
+    fn build(
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
         locals_are_invalidated_at_exit: bool,
@@ -146,30 +92,6 @@ impl<'tcx> BorrowSet<'tcx> {
             local_map: visitor.local_map,
             locals_state_at_exit: visitor.locals_state_at_exit,
         }
-    }
-
-    crate fn activations_at_location(&self, location: Location) -> &[BorrowIndex] {
-        self.activation_map.get(&location).map_or(&[], |activations| &activations[..])
-    }
-
-    crate fn len(&self) -> usize {
-        self.location_map.len()
-    }
-
-    crate fn indices(&self) -> impl Iterator<Item = BorrowIndex> {
-        BorrowIndex::from_usize(0)..BorrowIndex::from_usize(self.len())
-    }
-
-    crate fn iter_enumerated(&self) -> impl Iterator<Item = (BorrowIndex, &BorrowData<'tcx>)> {
-        self.indices().zip(self.location_map.values())
-    }
-
-    crate fn get_index_of(&self, location: &Location) -> Option<BorrowIndex> {
-        self.location_map.get_index_of(location).map(BorrowIndex::from)
-    }
-
-    crate fn contains(&self, location: &Location) -> bool {
-        self.location_map.contains_key(location)
     }
 }
 

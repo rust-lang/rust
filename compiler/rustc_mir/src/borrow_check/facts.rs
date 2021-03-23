@@ -88,12 +88,6 @@ impl AllFactsExt for AllFacts {
     }
 }
 
-impl Atom for BorrowIndex {
-    fn index(self) -> usize {
-        Idx::index(self)
-    }
-}
-
 impl Atom for LocationIndex {
     fn index(self) -> usize {
         Idx::index(self)

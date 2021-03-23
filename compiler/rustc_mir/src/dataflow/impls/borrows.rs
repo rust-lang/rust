@@ -1,4 +1,8 @@
-use rustc_middle::mir::{self, Body, Location, Place};
+use rustc_middle::mir::{
+    self,
+    borrows::{BorrowIndex, BorrowSet},
+    Body, BorrowCheckResult, Location, Place,
+};
 use rustc_middle::ty::RegionVid;
 use rustc_middle::ty::TyCtxt;
 
@@ -6,17 +10,11 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_index::bit_set::BitSet;
 
 use crate::borrow_check::{
-    places_conflict, BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext, ToRegionVid,
+    places_conflict, PlaceConflictBias, PlaceExt, RegionInferenceContext, ToRegionVid,
 };
 use crate::dataflow::{self, fmt::DebugWithContext, GenKill};
 
 use std::fmt;
-
-rustc_index::newtype_index! {
-    pub struct BorrowIndex {
-        DEBUG_FORMAT = "bw{}"
-    }
-}
 
 /// `Borrows` stores the data used in the analyses that track the flow
 /// of borrows.
@@ -30,7 +28,7 @@ pub struct Borrows<'a, 'tcx> {
     body: &'a Body<'tcx>,
 
     borrow_set: &'a BorrowSet<'tcx>,
-    borrows_out_of_scope_at_location: FxHashMap<Location, Vec<BorrowIndex>>,
+    pub borrows_out_of_scope_at_location: FxHashMap<Location, Vec<BorrowIndex>>,
 }
 
 struct StackEntry {
@@ -159,6 +157,20 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
             body,
             borrow_set,
             borrows_out_of_scope_at_location: prec.borrows_out_of_scope_at_location,
+        }
+    }
+
+    pub fn from_borrowck_output(
+        tcx: TyCtxt<'tcx>,
+        body: &'a Body<'tcx>,
+        borrow_set: &'a BorrowSet<'tcx>,
+        results: &BorrowCheckResult<'tcx>,
+    ) -> Self {
+        Borrows {
+            tcx,
+            body,
+            borrow_set,
+            borrows_out_of_scope_at_location: results.borrows_out_of_scope_at_location.clone(),
         }
     }
 
