@@ -102,8 +102,9 @@ impl CommentKind {
         kind
     }
 
-    fn prefix(&self) -> &'static str {
-        let &(prefix, _) = CommentKind::BY_PREFIX.iter().find(|(_, kind)| kind == self).unwrap();
+    pub fn prefix(&self) -> &'static str {
+        let &(prefix, _) =
+            CommentKind::BY_PREFIX.iter().rev().find(|(_, kind)| kind == self).unwrap();
         prefix
     }
 }
