@@ -1315,4 +1315,42 @@ fn main() {
             "#]],
         )
     }
+
+    #[test]
+    fn struct_field_method_ref() {
+        check(
+            r#"
+struct Foo { bar: u32 }
+impl Foo { fn baz(&self) -> u32 { 0 } }
+
+fn foo(f: Foo) { let _: &u32 = f.b$0 }
+"#,
+            // FIXME
+            // Ideally we'd also suggest &f.bar and &f.baz() as exact
+            // type matches. See #8058.
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "bar",
+                        source_range: 98..99,
+                        delete: 98..99,
+                        insert: "bar",
+                        kind: SymbolKind(
+                            Field,
+                        ),
+                        detail: "u32",
+                    },
+                    CompletionItem {
+                        label: "baz()",
+                        source_range: 98..99,
+                        delete: 98..99,
+                        insert: "baz()$0",
+                        kind: Method,
+                        lookup: "baz",
+                        detail: "fn(&self) -> u32",
+                    },
+                ]
+            "#]],
+        );
+    }
 }
