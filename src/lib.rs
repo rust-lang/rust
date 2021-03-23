@@ -2,7 +2,6 @@
 #![feature(map_first_last)]
 #![feature(map_try_insert)]
 #![feature(never_type)]
-#![feature(or_patterns)]
 #![feature(try_blocks)]
 
 #![warn(rust_2018_idioms)]
