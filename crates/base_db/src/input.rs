@@ -257,7 +257,8 @@ impl CrateGraph {
         self.arena.keys().copied()
     }
 
-    /// Returns an iterator over all transitive dependencies of the given crate.
+    /// Returns an iterator over all transitive dependencies of the given crate,
+    /// including the crate itself.
     pub fn transitive_deps(&self, of: CrateId) -> impl Iterator<Item = CrateId> + '_ {
         let mut worklist = vec![of];
         let mut deps = FxHashSet::default();
@@ -270,17 +271,16 @@ impl CrateGraph {
             worklist.extend(self[krate].dependencies.iter().map(|dep| dep.crate_id));
         }
 
-        deps.remove(&of);
         deps.into_iter()
     }
 
-    /// Returns an iterator over all transitive reverse dependencies of the given crate.
-    pub fn transitive_reverse_dependencies(
-        &self,
-        of: CrateId,
-    ) -> impl Iterator<Item = CrateId> + '_ {
+    /// Returns all transitive reverse dependencies of the given crate,
+    /// including the crate itself.
+    pub fn transitive_rev_deps(&self, of: CrateId) -> impl Iterator<Item = CrateId> + '_ {
         let mut worklist = vec![of];
         let mut rev_deps = FxHashSet::default();
+        rev_deps.insert(of);
+
         let mut inverted_graph = FxHashMap::<_, Vec<_>>::default();
         self.arena.iter().for_each(|(&krate, data)| {
             data.dependencies

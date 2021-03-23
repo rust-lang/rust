@@ -154,11 +154,7 @@ impl Crate {
     }
 
     pub fn transitive_reverse_dependencies(self, db: &dyn HirDatabase) -> Vec<Crate> {
-        db.crate_graph()
-            .transitive_reverse_dependencies(self.id)
-            .into_iter()
-            .map(|id| Crate { id })
-            .collect()
+        db.crate_graph().transitive_rev_deps(self.id).into_iter().map(|id| Crate { id }).collect()
     }
 
     pub fn root_module(self, db: &dyn HirDatabase) -> Module {
@@ -1572,8 +1568,7 @@ impl Impl {
     pub fn all_for_trait(db: &dyn HirDatabase, trait_: Trait) -> Vec<Impl> {
         let krate = trait_.module(db).krate();
         let mut all = Vec::new();
-        for Crate { id } in krate.transitive_reverse_dependencies(db).into_iter().chain(Some(krate))
-        {
+        for Crate { id } in krate.transitive_reverse_dependencies(db).into_iter() {
             let impls = db.trait_impls_in_crate(id);
             all.extend(impls.for_trait(trait_.id).map(Self::from))
         }
