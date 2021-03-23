@@ -148,8 +148,10 @@ impl<'a> Render<'a> {
             ..CompletionRelevance::default()
         });
 
-        if let Some(ref_match) = compute_ref_match(self.ctx.completion, ty) {
-            item.ref_match(ref_match);
+        if let Some(_ref_match) = compute_ref_match(self.ctx.completion, ty) {
+            // FIXME
+            // For now we don't properly calculate the edits for ref match
+            // completions on struct fields, so we've disabled them. See #8058.
         }
 
         item.build()
@@ -1312,5 +1314,43 @@ fn main() {
                 fn main() []
             "#]],
         )
+    }
+
+    #[test]
+    fn struct_field_method_ref() {
+        check(
+            r#"
+struct Foo { bar: u32 }
+impl Foo { fn baz(&self) -> u32 { 0 } }
+
+fn foo(f: Foo) { let _: &u32 = f.b$0 }
+"#,
+            // FIXME
+            // Ideally we'd also suggest &f.bar and &f.baz() as exact
+            // type matches. See #8058.
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "bar",
+                        source_range: 98..99,
+                        delete: 98..99,
+                        insert: "bar",
+                        kind: SymbolKind(
+                            Field,
+                        ),
+                        detail: "u32",
+                    },
+                    CompletionItem {
+                        label: "baz()",
+                        source_range: 98..99,
+                        delete: 98..99,
+                        insert: "baz()$0",
+                        kind: Method,
+                        lookup: "baz",
+                        detail: "fn(&self) -> u32",
+                    },
+                ]
+            "#]],
+        );
     }
 }

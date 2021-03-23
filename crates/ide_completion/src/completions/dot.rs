@@ -51,7 +51,7 @@ fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: &T
                 && ctx.scope.module().map_or(true, |m| func.is_visible_from(ctx.db, m))
                 && seen_methods.insert(func.name(ctx.db))
             {
-                acc.add_function(ctx, func, None);
+                acc.add_method(ctx, func, None);
             }
             None::<()>
         });

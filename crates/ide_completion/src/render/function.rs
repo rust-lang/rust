@@ -20,7 +20,17 @@ pub(crate) fn render_fn<'a>(
     fn_: hir::Function,
 ) -> Option<CompletionItem> {
     let _p = profile::span("render_fn");
-    Some(FunctionRender::new(ctx, local_name, fn_)?.render(import_to_add))
+    Some(FunctionRender::new(ctx, local_name, fn_, false)?.render(import_to_add))
+}
+
+pub(crate) fn render_method<'a>(
+    ctx: RenderContext<'a>,
+    import_to_add: Option<ImportEdit>,
+    local_name: Option<String>,
+    fn_: hir::Function,
+) -> Option<CompletionItem> {
+    let _p = profile::span("render_method");
+    Some(FunctionRender::new(ctx, local_name, fn_, true)?.render(import_to_add))
 }
 
 #[derive(Debug)]
@@ -29,6 +39,7 @@ struct FunctionRender<'a> {
     name: String,
     func: hir::Function,
     ast_node: Fn,
+    is_method: bool,
 }
 
 impl<'a> FunctionRender<'a> {
@@ -36,11 +47,12 @@ impl<'a> FunctionRender<'a> {
         ctx: RenderContext<'a>,
         local_name: Option<String>,
         fn_: hir::Function,
+        is_method: bool,
     ) -> Option<FunctionRender<'a>> {
         let name = local_name.unwrap_or_else(|| fn_.name(ctx.db()).to_string());
         let ast_node = fn_.source(ctx.db())?.value;
 
-        Some(FunctionRender { ctx, name, func: fn_, ast_node })
+        Some(FunctionRender { ctx, name, func: fn_, ast_node, is_method })
     }
 
     fn render(self, import_to_add: Option<ImportEdit>) -> CompletionItem {
@@ -67,7 +79,12 @@ impl<'a> FunctionRender<'a> {
         });
 
         if let Some(ref_match) = compute_ref_match(self.ctx.completion, &ret_type) {
-            item.ref_match(ref_match);
+            // FIXME
+            // For now we don't properly calculate the edits for ref match
+            // completions on methods, so we've disabled them. See #8058.
+            if !self.is_method {
+                item.ref_match(ref_match);
+            }
         }
 
         item.build()
