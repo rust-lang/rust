@@ -1,6 +1,6 @@
 macro_rules! unimpl {
     () => {
-        return Err(io::Error::new(io::ErrorKind::Other, "No networking available on L4Re."));
+        return Err(io::Error::new_const(io::ErrorKind::Other, &"No networking available on L4Re."));
     };
 }
 

@@ -513,9 +513,9 @@ impl File {
                     )
                 }
                 _ => {
-                    return Err(io::Error::new(
+                    return Err(io::Error::new_const(
                         io::ErrorKind::Other,
-                        "Unsupported reparse point type",
+                        &"Unsupported reparse point type",
                     ));
                 }
             };
@@ -802,7 +802,7 @@ pub fn link(original: &Path, link: &Path) -> io::Result<()> {
 
 #[cfg(target_vendor = "uwp")]
 pub fn link(_original: &Path, _link: &Path) -> io::Result<()> {
-    return Err(io::Error::new(io::ErrorKind::Other, "hard link are not supported on UWP"));
+    return Err(io::Error::new_const(io::ErrorKind::Other, &"hard link are not supported on UWP"));
 }
 
 pub fn stat(path: &Path) -> io::Result<FileAttr> {

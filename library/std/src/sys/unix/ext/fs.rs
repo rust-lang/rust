@@ -109,7 +109,7 @@ pub trait FileExt {
             }
         }
         if !buf.is_empty() {
-            Err(io::Error::new(io::ErrorKind::UnexpectedEof, "failed to fill whole buffer"))
+            Err(io::Error::new_const(io::ErrorKind::UnexpectedEof, &"failed to fill whole buffer"))
         } else {
             Ok(())
         }
@@ -191,9 +191,9 @@ pub trait FileExt {
         while !buf.is_empty() {
             match self.write_at(buf, offset) {
                 Ok(0) => {
-                    return Err(io::Error::new(
+                    return Err(io::Error::new_const(
                         io::ErrorKind::WriteZero,
-                        "failed to write whole buffer",
+                        &"failed to write whole buffer",
                     ));
                 }
                 Ok(n) => {

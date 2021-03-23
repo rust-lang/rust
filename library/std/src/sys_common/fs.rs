@@ -9,9 +9,9 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     let metadata = reader.metadata()?;
 
     if !metadata.is_file() {
-        return Err(Error::new(
+        return Err(Error::new_const(
             ErrorKind::InvalidInput,
-            "the source path is not an existing regular file",
+            &"the source path is not an existing regular file",
         ));
     }
 

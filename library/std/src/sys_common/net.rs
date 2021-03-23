@@ -108,7 +108,7 @@ pub fn sockaddr_to_addr(storage: &c::sockaddr_storage, len: usize) -> io::Result
                 *(storage as *const _ as *const c::sockaddr_in6)
             })))
         }
-        _ => Err(Error::new(ErrorKind::InvalidInput, "invalid argument")),
+        _ => Err(Error::new_const(ErrorKind::InvalidInput, &"invalid argument")),
     }
 }
 
@@ -171,7 +171,7 @@ impl TryFrom<&str> for LookupHost {
             ($e:expr, $msg:expr) => {
                 match $e {
                     Some(r) => r,
-                    None => return Err(io::Error::new(io::ErrorKind::InvalidInput, $msg)),
+                    None => return Err(io::Error::new_const(io::ErrorKind::InvalidInput, &$msg)),
                 }
             };
         }
