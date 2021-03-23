@@ -114,7 +114,7 @@ pub(crate) fn extract_definitions_from_markdown(
     for (event, range) in doc.into_offset_iter() {
         if let Event::Start(Tag::Link(_, target, title)) = event {
             let link = if target.is_empty() { title } else { target };
-            let (link, ns) = parse_link(&link);
+            let (link, ns) = parse_intra_doc_link(&link);
             res.push((range, link.to_string(), ns));
         }
     }
@@ -276,26 +276,8 @@ fn rewrite_intra_doc_link(
     title: &str,
 ) -> Option<(String, String)> {
     let link = if target.is_empty() { title } else { target };
-    let (link, ns) = parse_link(link);
-    let resolved = match def {
-        Definition::ModuleDef(def) => match def {
-            ModuleDef::Module(it) => it.resolve_doc_path(db, link, ns),
-            ModuleDef::Function(it) => it.resolve_doc_path(db, link, ns),
-            ModuleDef::Adt(it) => it.resolve_doc_path(db, link, ns),
-            ModuleDef::Variant(it) => it.resolve_doc_path(db, link, ns),
-            ModuleDef::Const(it) => it.resolve_doc_path(db, link, ns),
-            ModuleDef::Static(it) => it.resolve_doc_path(db, link, ns),
-            ModuleDef::Trait(it) => it.resolve_doc_path(db, link, ns),
-            ModuleDef::TypeAlias(it) => it.resolve_doc_path(db, link, ns),
-            ModuleDef::BuiltinType(_) => return None,
-        },
-        Definition::Macro(it) => it.resolve_doc_path(db, link, ns),
-        Definition::Field(it) => it.resolve_doc_path(db, link, ns),
-        Definition::SelfType(_)
-        | Definition::Local(_)
-        | Definition::GenericParam(_)
-        | Definition::Label(_) => return None,
-    }?;
+    let (link, ns) = parse_intra_doc_link(link);
+    let resolved = resolve_doc_path_for_def(db, def, link, ns)?;
     let krate = resolved.module(db)?.krate();
     let canonical_path = resolved.canonical_path(db)?;
     let mut new_url = get_doc_url(db, &krate)?
@@ -307,24 +289,23 @@ fn rewrite_intra_doc_link(
         .ok()?;
 
     if let ModuleDef::Trait(t) = resolved {
-        let items = t.items(db);
-        if let Some(field_or_assoc_item) = items.iter().find_map(|assoc_item| {
+        if let Some(assoc_item) = t.items(db).into_iter().find_map(|assoc_item| {
             if let Some(name) = assoc_item.name(db) {
                 if *link == format!("{}::{}", canonical_path, name) {
-                    return Some(FieldOrAssocItem::AssocItem(*assoc_item));
+                    return Some(assoc_item);
                 }
             }
             None
         }) {
-            if let Some(fragment) = get_symbol_fragment(db, &field_or_assoc_item) {
+            if let Some(fragment) =
+                get_symbol_fragment(db, &FieldOrAssocItem::AssocItem(assoc_item))
+            {
                 new_url = new_url.join(&fragment).ok()?;
             }
         };
     }
 
-    let new_target = new_url.into_string();
-    let new_title = strip_prefixes_suffixes(title);
-    Some((new_target, new_title.to_string()))
+    Some((new_url.into_string(), strip_prefixes_suffixes(title).to_string()))
 }
 
 /// Try to resolve path to local documentation via path-based links (i.e. `../gateway/struct.Shard.html`).
@@ -401,73 +382,61 @@ fn map_links<'e>(
     })
 }
 
-fn parse_link(s: &str) -> (&str, Option<hir::Namespace>) {
-    let path = strip_prefixes_suffixes(s);
-    let ns = ns_from_intra_spec(s);
-    (path, ns)
-}
-
-/// Strip prefixes, suffixes, and inline code marks from the given string.
-fn strip_prefixes_suffixes(mut s: &str) -> &str {
-    s = s.trim_matches('`');
-
-    [
-        (TYPES.0.iter(), TYPES.1.iter()),
-        (VALUES.0.iter(), VALUES.1.iter()),
-        (MACROS.0.iter(), MACROS.1.iter()),
-    ]
-    .iter()
-    .for_each(|(prefixes, suffixes)| {
-        prefixes.clone().for_each(|prefix| s = s.trim_start_matches(*prefix));
-        suffixes.clone().for_each(|suffix| s = s.trim_end_matches(*suffix));
-    });
-    s.trim_start_matches('@').trim()
-}
-
-static TYPES: ([&str; 7], [&str; 0]) =
-    (["type", "struct", "enum", "mod", "trait", "union", "module"], []);
-static VALUES: ([&str; 8], [&str; 1]) =
+const TYPES: ([&str; 9], [&str; 0]) =
+    (["type", "struct", "enum", "mod", "trait", "union", "module", "prim", "primitive"], []);
+const VALUES: ([&str; 8], [&str; 1]) =
     (["value", "function", "fn", "method", "const", "static", "mod", "module"], ["()"]);
-static MACROS: ([&str; 1], [&str; 1]) = (["macro"], ["!"]);
+const MACROS: ([&str; 2], [&str; 1]) = (["macro", "derive"], ["!"]);
 
 /// Extract the specified namespace from an intra-doc-link if one exists.
 ///
 /// # Examples
 ///
-/// * `struct MyStruct` -> `Namespace::Types`
-/// * `panic!` -> `Namespace::Macros`
-/// * `fn@from_intra_spec` -> `Namespace::Values`
-fn ns_from_intra_spec(s: &str) -> Option<hir::Namespace> {
+/// * `struct MyStruct` -> ("MyStruct", `Namespace::Types`)
+/// * `panic!` -> ("panic", `Namespace::Macros`)
+/// * `fn@from_intra_spec` -> ("from_intra_spec", `Namespace::Values`)
+fn parse_intra_doc_link(s: &str) -> (&str, Option<hir::Namespace>) {
+    let s = s.trim_matches('`');
+
     [
         (hir::Namespace::Types, (TYPES.0.iter(), TYPES.1.iter())),
         (hir::Namespace::Values, (VALUES.0.iter(), VALUES.1.iter())),
         (hir::Namespace::Macros, (MACROS.0.iter(), MACROS.1.iter())),
     ]
     .iter()
-    .filter(|(_ns, (prefixes, suffixes))| {
-        prefixes
-            .clone()
-            .map(|prefix| {
-                s.starts_with(*prefix)
-                    && s.chars()
-                        .nth(prefix.len() + 1)
-                        .map(|c| c == '@' || c == ' ')
-                        .unwrap_or(false)
-            })
-            .any(|cond| cond)
-            || suffixes
-                .clone()
-                .map(|suffix| {
-                    s.starts_with(*suffix)
-                        && s.chars()
-                            .nth(suffix.len() + 1)
-                            .map(|c| c == '@' || c == ' ')
-                            .unwrap_or(false)
-                })
-                .any(|cond| cond)
+    .cloned()
+    .find_map(|(ns, (mut prefixes, mut suffixes))| {
+        if let Some(prefix) = prefixes.find(|&&prefix| {
+            s.starts_with(prefix)
+                && s.chars().nth(prefix.len()).map_or(false, |c| c == '@' || c == ' ')
+        }) {
+            Some((&s[prefix.len() + 1..], ns))
+        } else {
+            suffixes.find_map(|&suffix| s.strip_suffix(suffix).zip(Some(ns)))
+        }
     })
-    .map(|(ns, (_, _))| *ns)
-    .next()
+    .map_or((s, None), |(s, ns)| (s, Some(ns)))
+}
+
+fn strip_prefixes_suffixes(s: &str) -> &str {
+    [
+        (TYPES.0.iter(), TYPES.1.iter()),
+        (VALUES.0.iter(), VALUES.1.iter()),
+        (MACROS.0.iter(), MACROS.1.iter()),
+    ]
+    .iter()
+    .cloned()
+    .find_map(|(mut prefixes, mut suffixes)| {
+        if let Some(prefix) = prefixes.find(|&&prefix| {
+            s.starts_with(prefix)
+                && s.chars().nth(prefix.len()).map_or(false, |c| c == '@' || c == ' ')
+        }) {
+            Some(&s[prefix.len() + 1..])
+        } else {
+            suffixes.find_map(|&suffix| s.strip_suffix(suffix))
+        }
+    })
+    .unwrap_or(s)
 }
 
 /// Get the root URL for the documentation of a crate.
