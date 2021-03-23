@@ -382,9 +382,18 @@ LLVMRustBuildAtomicCmpXchg(LLVMBuilderRef B, LLVMValueRef Target,
                            LLVMValueRef Old, LLVMValueRef Source,
                            LLVMAtomicOrdering Order,
                            LLVMAtomicOrdering FailureOrder, LLVMBool Weak) {
+#if LLVM_VERSION_GE(13,0)
+  // Rust probably knows the alignment of the target value and should be able to
+  // specify something more precise than MaybeAlign here. See also
+  // https://reviews.llvm.org/D97224 which may be a useful reference.
+  AtomicCmpXchgInst *ACXI = unwrap(B)->CreateAtomicCmpXchg(
+      unwrap(Target), unwrap(Old), unwrap(Source), llvm::MaybeAlign(), fromRust(Order),
+      fromRust(FailureOrder));
+#else
   AtomicCmpXchgInst *ACXI = unwrap(B)->CreateAtomicCmpXchg(
       unwrap(Target), unwrap(Old), unwrap(Source), fromRust(Order),
       fromRust(FailureOrder));
+#endif
   ACXI->setWeak(Weak);
   return wrap(ACXI);
 }
