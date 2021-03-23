@@ -24,7 +24,7 @@ use std::collections::HashSet;
 impl JsonRenderer<'_> {
     pub(super) fn convert_item(&self, item: clean::Item) -> Option<Item> {
         let deprecation = item.deprecation(self.tcx);
-        let clean::Item { source, name, attrs, kind, visibility, def_id } = item;
+        let clean::Item { span, name, attrs, kind, visibility, def_id } = item;
         let inner = match *kind {
             clean::StrippedItem(_) => return None,
             x => from_clean_item_kind(x, self.tcx, &name),
@@ -33,7 +33,7 @@ impl JsonRenderer<'_> {
             id: from_def_id(def_id),
             crate_id: def_id.krate.as_u32(),
             name: name.map(|sym| sym.to_string()),
-            source: self.convert_span(source),
+            span: self.convert_span(span),
             visibility: self.convert_visibility(visibility),
             docs: attrs.collapsed_doc_value(),
             links: attrs
@@ -503,13 +503,13 @@ impl From<clean::Import> for Import {
         use clean::ImportKind::*;
         match import.kind {
             Simple(s) => Import {
-                span: import.source.path.whole_name(),
+                source: import.source.path.whole_name(),
                 name: s.to_string(),
                 id: import.source.did.map(from_def_id),
                 glob: false,
             },
             Glob => Import {
-                span: import.source.path.whole_name(),
+                source: import.source.path.whole_name(),
                 name: import.source.path.last_name().to_string(),
                 id: import.source.did.map(from_def_id),
                 glob: true,

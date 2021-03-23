@@ -64,7 +64,7 @@ pub struct Item {
     pub name: Option<String>,
     /// The source location of this item (absent if it came from a macro expansion or inline
     /// assembly).
-    pub source: Option<Span>,
+    pub span: Option<Span>,
     /// By default all documented items are public, but you can tell rustdoc to output private items
     /// so this field is needed to differentiate.
     pub visibility: Visibility,
@@ -461,7 +461,7 @@ pub struct Impl {
 #[serde(rename_all = "snake_case")]
 pub struct Import {
     /// The full path being imported.
-    pub span: String,
+    pub source: String,
     /// May be different from the last segment of `source` when renaming imports:
     /// `use source as name;`
     pub name: String,

@@ -97,7 +97,7 @@ crate fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
     if tests.found_tests == 0 && cx.tcx.sess.is_nightly_build() {
         if should_have_doc_example(cx, &item) {
             debug!("reporting error for {:?} (hir_id={:?})", item, hir_id);
-            let sp = span_of_attrs(&item.attrs).unwrap_or(item.source.span());
+            let sp = span_of_attrs(&item.attrs).unwrap_or(item.span.inner());
             cx.tcx.struct_span_lint_hir(
                 crate::lint::MISSING_DOC_CODE_EXAMPLES,
                 hir_id,
@@ -109,7 +109,7 @@ crate fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
         cx.tcx.struct_span_lint_hir(
             crate::lint::PRIVATE_DOC_TESTS,
             hir_id,
-            span_of_attrs(&item.attrs).unwrap_or(item.source.span()),
+            span_of_attrs(&item.attrs).unwrap_or(item.span.inner()),
             |lint| lint.build("documentation test in private item").emit(),
         );
     }

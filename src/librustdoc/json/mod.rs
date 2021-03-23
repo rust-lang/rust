@@ -109,7 +109,7 @@ impl JsonRenderer<'tcx> {
                                 .map(Clone::clone),
                             visibility: types::Visibility::Public,
                             inner: types::ItemEnum::Trait(trait_item.clone().into()),
-                            source: None,
+                            span: None,
                             docs: Default::default(),
                             links: Default::default(),
                             attrs: Default::default(),
@@ -246,7 +246,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                     )
                 })
                 .collect(),
-            format_version: 4,
+            format_version: 5,
         };
         let mut p = self.out_path.clone();
         p.push(output.index.get(&output.root).unwrap().name.clone().unwrap());

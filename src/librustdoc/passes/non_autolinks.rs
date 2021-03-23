@@ -72,7 +72,7 @@ impl<'a, 'tcx> DocFolder for NonAutolinksLinter<'a, 'tcx> {
             let report_diag = |cx: &DocContext<'_>, msg: &str, url: &str, range: Range<usize>| {
                 let sp = super::source_span_for_markdown_range(cx.tcx, &dox, &range, &item.attrs)
                     .or_else(|| span_of_attrs(&item.attrs))
-                    .unwrap_or(item.source.span());
+                    .unwrap_or(item.span.inner());
                 cx.tcx.struct_span_lint_hir(crate::lint::NON_AUTOLINKS, hir_id, sp, |lint| {
                     lint.build(msg)
                         .span_suggestion(

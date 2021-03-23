@@ -81,12 +81,14 @@ crate struct ExternalCrate {
 /// directly to the AST's concept of an item; it's a strict superset.
 #[derive(Clone)]
 crate struct Item {
-    /// Stringified span
-    crate source: Span,
-    /// Not everything has a name. E.g., impls
+    crate span: Span,
+    /// The name of this item.
+    /// Optional because not every item has a name, e.g. impls.
     crate name: Option<Symbol>,
     crate attrs: Box<Attributes>,
     crate visibility: Visibility,
+    /// Information about this item that is specific to what kind of item it is.
+    /// E.g., struct vs enum vs function.
     crate kind: Box<ItemKind>,
     crate def_id: DefId,
 }
@@ -100,7 +102,7 @@ impl fmt::Debug for Item {
         let def_id: &dyn fmt::Debug = if self.is_fake() { &"**FAKE**" } else { &self.def_id };
 
         fmt.debug_struct("Item")
-            .field("source", &self.source)
+            .field("source", &self.span)
             .field("name", &self.name)
             .field("attrs", &self.attrs)
             .field("kind", &self.kind)
@@ -165,7 +167,7 @@ impl Item {
         debug!("name={:?}, def_id={:?}", name, def_id);
 
         // `span_if_local()` lies about functions and only gives the span of the function signature
-        let source = def_id.as_local().map_or_else(
+        let span = def_id.as_local().map_or_else(
             || cx.tcx.def_span(def_id),
             |local| {
                 let hir = cx.tcx.hir();
@@ -177,7 +179,7 @@ impl Item {
             def_id,
             kind: box kind,
             name,
-            source: source.clean(cx),
+            span: span.clean(cx),
             attrs,
             visibility: cx.tcx.visibility(def_id).clean(cx),
         }
@@ -559,6 +561,8 @@ impl<'a> FromIterator<&'a DocFragment> for String {
     }
 }
 
+/// The attributes on an [`Item`], including attributes like `#[derive(...)]` and `#[inline]`,
+/// as well as doc comments.
 #[derive(Clone, Debug, Default)]
 crate struct Attributes {
     crate doc_strings: Vec<DocFragment>,
@@ -1798,8 +1802,13 @@ impl From<hir::PrimTy> for PrimitiveType {
 
 #[derive(Copy, Clone, Debug)]
 crate enum Visibility {
+    /// `pub`
     Public,
+    /// Visibility inherited from parent.
+    ///
+    /// For example, this is the visibility of private items and of enum variants.
     Inherited,
+    /// `pub(crate)`, `pub(super)`, or `pub(in path::to::somewhere)`
     Restricted(DefId),
 }
 
@@ -1848,7 +1857,8 @@ crate enum Variant {
     Struct(VariantStruct),
 }
 
-/// Small wrapper around `rustc_span::Span` that adds helper methods and enforces calling `source_callsite`.
+/// Small wrapper around [`rustc_span::Span]` that adds helper methods
+/// and enforces calling [`rustc_span::Span::source_callsite()`].
 #[derive(Clone, Debug)]
 crate struct Span(rustc_span::Span);
 
@@ -1860,12 +1870,12 @@ impl Span {
         Self(sp.source_callsite())
     }
 
-    crate fn dummy() -> Self {
-        Self(rustc_span::DUMMY_SP)
+    crate fn inner(&self) -> rustc_span::Span {
+        self.0
     }
 
-    crate fn span(&self) -> rustc_span::Span {
-        self.0
+    crate fn dummy() -> Self {
+        Self(rustc_span::DUMMY_SP)
     }
 
     crate fn is_dummy(&self) -> bool {
