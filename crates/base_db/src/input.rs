@@ -280,6 +280,7 @@ impl CrateGraph {
         let mut worklist = vec![of];
         let mut rev_deps = FxHashSet::default();
         rev_deps.insert(of);
+
         let mut inverted_graph = FxHashMap::<_, Vec<_>>::default();
         self.arena.iter().for_each(|(&krate, data)| {
             data.dependencies
