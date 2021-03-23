@@ -46,7 +46,7 @@
           StorageDead(_4);                 // scope 0 at $DIR/slice_len.rs:5:33: 5:34
           StorageDead(_2);                 // scope 0 at $DIR/slice_len.rs:5:33: 5:34
           StorageDead(_1);                 // scope 0 at $DIR/slice_len.rs:5:33: 5:34
-          _0 = const ();                   // scope 0 at $DIR/slice_len.rs:4:11: 6:2
+          nop;                             // scope 0 at $DIR/slice_len.rs:4:11: 6:2
           return;                          // scope 0 at $DIR/slice_len.rs:6:2: 6:2
       }
   }

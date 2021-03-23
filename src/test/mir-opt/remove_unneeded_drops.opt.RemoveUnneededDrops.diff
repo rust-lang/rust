@@ -14,13 +14,14 @@
           StorageLive(_2);                 // scope 0 at $DIR/remove_unneeded_drops.rs:4:5: 4:12
           StorageLive(_3);                 // scope 0 at $DIR/remove_unneeded_drops.rs:4:10: 4:11
           _3 = _1;                         // scope 0 at $DIR/remove_unneeded_drops.rs:4:10: 4:11
+-         nop;                             // scope 1 at $DIR/remove_unneeded_drops.rs:4:5: 4:12
 -         drop(_3) -> bb1;                 // scope 1 at $DIR/remove_unneeded_drops.rs:4:5: 4:12
 -     }
 - 
 -     bb1: {
           StorageDead(_3);                 // scope 0 at $DIR/remove_unneeded_drops.rs:4:11: 4:12
           StorageDead(_2);                 // scope 0 at $DIR/remove_unneeded_drops.rs:4:12: 4:13
-          _0 = const ();                   // scope 0 at $DIR/remove_unneeded_drops.rs:3:17: 5:2
+-         nop;                             // scope 0 at $DIR/remove_unneeded_drops.rs:3:17: 5:2
           return;                          // scope 0 at $DIR/remove_unneeded_drops.rs:5:2: 5:2
       }
   }

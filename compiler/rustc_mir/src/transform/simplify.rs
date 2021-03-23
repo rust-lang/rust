@@ -31,10 +31,10 @@ use crate::transform::MirPass;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::ty::ParamEnv;
 use rustc_middle::ty::TyCtxt;
 use smallvec::SmallVec;
-use std::{borrow::Cow, convert::TryInto};
+use std::borrow::Cow;
+use std::convert::TryInto;
 
 pub struct SimplifyCfg {
     label: String,
@@ -326,7 +326,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyLocals {
 
 pub fn simplify_locals<'tcx>(body: &mut Body<'tcx>, tcx: TyCtxt<'tcx>) {
     // First, we're going to get a count of *actual* uses for every `Local`.
-    let mut used_locals = UsedLocals::new(body, tcx);
+    let mut used_locals = UsedLocals::new(body);
 
     // Next, we're going to remove any `Local` with zero actual uses. When we remove those
     // `Locals`, we're also going to subtract any uses of other `Locals` from the `used_locals`
@@ -336,8 +336,7 @@ pub fn simplify_locals<'tcx>(body: &mut Body<'tcx>, tcx: TyCtxt<'tcx>) {
     remove_unused_definitions(&mut used_locals, body);
 
     // Finally, we'll actually do the work of shrinking `body.local_decls` and remapping the `Local`s.
-    let arg_count = body.arg_count.try_into().unwrap();
-    let map = make_local_map(&mut body.local_decls, &used_locals, arg_count);
+    let map = make_local_map(&mut body.local_decls, &used_locals);
 
     // Only bother running the `LocalUpdater` if we actually found locals to remove.
     if map.iter().any(Option::is_none) {
@@ -350,61 +349,54 @@ pub fn simplify_locals<'tcx>(body: &mut Body<'tcx>, tcx: TyCtxt<'tcx>) {
 }
 
 /// Construct the mapping while swapping out unused stuff out from the `vec`.
-fn make_local_map<'tcx, V>(
+fn make_local_map<V>(
     local_decls: &mut IndexVec<Local, V>,
-    used_locals: &UsedLocals<'tcx>,
-    arg_count: u32,
+    used_locals: &UsedLocals,
 ) -> IndexVec<Local, Option<Local>> {
-    let mut map: IndexVec<Local, Option<Local>> = IndexVec::from_elem(None, local_decls);
+    let mut map: IndexVec<Local, Option<Local>> = IndexVec::from_elem(None, &*local_decls);
     let mut used = Local::new(0);
 
     for alive_index in local_decls.indices() {
-        // When creating the local map treat the `RETURN_PLACE` and arguments as used.
-        if alive_index.as_u32() <= arg_count || used_locals.is_used(alive_index) {
-            map[alive_index] = Some(used);
-            if alive_index != used {
-                local_decls.swap(alive_index, used);
-            }
-            used.increment_by(1);
+        // `is_used` treats the `RETURN_PLACE` and arguments as used.
+        if !used_locals.is_used(alive_index) {
+            continue;
         }
+
+        map[alive_index] = Some(used);
+        if alive_index != used {
+            local_decls.swap(alive_index, used);
+        }
+        used.increment_by(1);
     }
     local_decls.truncate(used.index());
     map
 }
 
 /// Keeps track of used & unused locals.
-struct UsedLocals<'tcx> {
+struct UsedLocals {
     increment: bool,
+    arg_count: u32,
     use_count: IndexVec<Local, u32>,
-    is_static: bool,
-    local_decls: IndexVec<Local, LocalDecl<'tcx>>,
-    param_env: ParamEnv<'tcx>,
-    tcx: TyCtxt<'tcx>,
 }
 
-impl UsedLocals<'tcx> {
+impl UsedLocals {
     /// Determines which locals are used & unused in the given body.
-    fn new(body: &Body<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
-        let def_id = body.source.def_id();
-        let is_static = tcx.is_static(def_id);
-        let param_env = tcx.param_env(def_id);
-        let local_decls = body.local_decls.clone();
+    fn new(body: &Body<'_>) -> Self {
         let mut this = Self {
             increment: true,
+            arg_count: body.arg_count.try_into().unwrap(),
             use_count: IndexVec::from_elem(0, &body.local_decls),
-            is_static,
-            local_decls,
-            param_env,
-            tcx,
         };
         this.visit_body(body);
         this
     }
 
     /// Checks if local is used.
+    ///
+    /// Return place and arguments are always considered used.
     fn is_used(&self, local: Local) -> bool {
         trace!("is_used({:?}): use_count: {:?}", local, self.use_count[local]);
-        self.use_count[local] != 0
+        local.as_u32() <= self.arg_count || self.use_count[local] != 0
     }
 
     /// Updates the use counts to reflect the removal of given statement.
@@ -434,7 +426,7 @@ impl UsedLocals<'tcx> {
     }
 }
 
-impl Visitor<'tcx> for UsedLocals<'tcx> {
+impl Visitor<'_> for UsedLocals {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         match statement.kind {
             StatementKind::LlvmInlineAsm(..)
@@ -461,21 +453,7 @@ impl Visitor<'tcx> for UsedLocals<'tcx> {
         }
     }
 
-    fn visit_local(&mut self, local: &Local, ctx: PlaceContext, _location: Location) {
-        debug!("local: {:?} is_static: {:?}, ctx: {:?}", local, self.is_static, ctx);
-        // Do not count _0 as a used in `return;` if it is a ZST.
-        let return_place = *local == RETURN_PLACE
-            && matches!(ctx, PlaceContext::NonMutatingUse(visit::NonMutatingUseContext::Move));
-        if !self.is_static && return_place {
-            let ty = self.local_decls[*local].ty;
-            let param_env_and = self.param_env.and(ty);
-            if let Ok(layout) = self.tcx.layout_of(param_env_and) {
-                debug!("layout.is_zst: {:?}", layout.is_zst());
-                if layout.is_zst() {
-                    return;
-                }
-            }
-        }
+    fn visit_local(&mut self, local: &Local, _ctx: PlaceContext, _location: Location) {
         if self.increment {
             self.use_count[*local] += 1;
         } else {
@@ -486,10 +464,7 @@ impl Visitor<'tcx> for UsedLocals<'tcx> {
 }
 
 /// Removes unused definitions. Updates the used locals to reflect the changes made.
-fn remove_unused_definitions<'a, 'tcx>(
-    used_locals: &'a mut UsedLocals<'tcx>,
-    body: &mut Body<'tcx>,
-) {
+fn remove_unused_definitions<'a, 'tcx>(used_locals: &'a mut UsedLocals, body: &mut Body<'tcx>) {
     // The use counts are updated as we remove the statements. A local might become unused
     // during the retain operation, leading to a temporary inconsistency (storage statements or
     // definitions referencing the local might remain). For correctness it is crucial that this

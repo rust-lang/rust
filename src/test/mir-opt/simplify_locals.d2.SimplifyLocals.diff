@@ -31,7 +31,6 @@
 -                                          // + literal: Const { ty: E, val: Value(Scalar(0x01)) }
 -         StorageDead(_1);                 // scope 0 at $DIR/simplify-locals.rs:28:25: 28:26
 -         StorageDead(_2);                 // scope 0 at $DIR/simplify-locals.rs:28:26: 28:27
--         _0 = const ();                   // scope 0 at $DIR/simplify-locals.rs:26:9: 29:2
           return;                          // scope 0 at $DIR/simplify-locals.rs:29:2: 29:2
       }
   }

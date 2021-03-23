@@ -13,7 +13,7 @@
 -     }
 - 
 -     bb1: {
--         goto -> bb3;                     // scope 0 at $DIR/matches_reduce_branches.rs:8:5: 10:6
+-         goto -> bb3;                     // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
 -     }
 - 
 -     bb2: {

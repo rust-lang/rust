@@ -23,7 +23,7 @@
 +         _1 = const 4_i32;                // scope 0 at $DIR/ref_deref.rs:5:5: 5:10
           StorageDead(_2);                 // scope 0 at $DIR/ref_deref.rs:5:10: 5:11
           StorageDead(_1);                 // scope 0 at $DIR/ref_deref.rs:5:10: 5:11
-          _0 = const ();                   // scope 0 at $DIR/ref_deref.rs:4:11: 6:2
+          nop;                             // scope 0 at $DIR/ref_deref.rs:4:11: 6:2
           return;                          // scope 0 at $DIR/ref_deref.rs:6:2: 6:2
       }
   }

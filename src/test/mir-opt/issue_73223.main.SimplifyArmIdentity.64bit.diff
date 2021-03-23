@@ -58,7 +58,7 @@
       }
   
       bb1: {
-          _0 = const ();                   // scope 0 at $DIR/issue-73223.rs:4:17: 4:23
+          nop;                             // scope 0 at $DIR/issue-73223.rs:4:17: 4:23
           StorageDead(_2);                 // scope 0 at $DIR/issue-73223.rs:5:6: 5:7
           StorageDead(_1);                 // scope 0 at $DIR/issue-73223.rs:9:1: 9:2
           return;                          // scope 0 at $DIR/issue-73223.rs:9:2: 9:2
@@ -146,13 +146,13 @@
       }
   
       bb4: {
-          _8 = const ();                   // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+          nop;                             // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageDead(_15);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageDead(_14);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageDead(_13);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageDead(_9);                 // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageDead(_8);                 // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-          _0 = const ();                   // scope 0 at $DIR/issue-73223.rs:1:11: 9:2
+          nop;                             // scope 0 at $DIR/issue-73223.rs:1:11: 9:2
           StorageDead(_6);                 // scope 1 at $DIR/issue-73223.rs:9:1: 9:2
           StorageDead(_1);                 // scope 0 at $DIR/issue-73223.rs:9:1: 9:2
           return;                          // scope 0 at $DIR/issue-73223.rs:9:2: 9:2

@@ -30,7 +30,7 @@
 +         _1 = const 2_u32;                // scope 0 at $DIR/array_index.rs:5:18: 5:33
           StorageDead(_3);                 // scope 0 at $DIR/array_index.rs:5:33: 5:34
           StorageDead(_2);                 // scope 0 at $DIR/array_index.rs:5:33: 5:34
-          _0 = const ();                   // scope 0 at $DIR/array_index.rs:4:11: 6:2
+          nop;                             // scope 0 at $DIR/array_index.rs:4:11: 6:2
           StorageDead(_1);                 // scope 0 at $DIR/array_index.rs:6:1: 6:2
           return;                          // scope 0 at $DIR/array_index.rs:6:2: 6:2
       }
