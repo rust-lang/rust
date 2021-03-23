@@ -2122,13 +2122,13 @@ fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean
         items: &[clean::Item],
         before: &str,
         filter: impl Fn(&clean::Item) -> bool,
-        write: impl Fn(&mut Buffer, String),
+        write: impl Fn(&mut Buffer, &str),
         after: &str,
     ) {
         let mut items = items
             .iter()
             .filter_map(|m| match m.name {
-                Some(ref name) if filter(m) => Some(name.to_string()),
+                Some(ref name) if filter(m) => Some(name.as_str()),
                 _ => None,
             })
             .collect::<Vec<_>>();
@@ -2137,7 +2137,7 @@ fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean
             items.sort_unstable();
             out.push_str(before);
             for item in items.into_iter() {
-                write(out, item);
+                write(out, &item);
             }
             out.push_str(after);
         }
