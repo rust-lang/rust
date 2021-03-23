@@ -1294,4 +1294,34 @@ pub use level1::Foo;
             "#]],
         );
     }
+
+    #[test]
+    fn test_decl_macro_references() {
+        check(
+            r#"
+//- /lib.rs crate:lib
+#[macro_use]
+mod qux;
+mod bar;
+
+pub use self::foo;
+//- /qux.rs
+#[macro_export]
+macro_rules! foo$0 {
+    () => {struct Foo;};
+}
+//- /bar.rs
+foo!();
+//- /other.rs crate:other deps:lib new_source_root:
+lib::foo!();
+"#,
+            expect![[r#"
+                foo Macro FileId(1) 0..61 29..32
+
+                FileId(0) 46..49
+                FileId(2) 0..3
+                FileId(3) 5..8
+            "#]],
+        );
+    }
 }

@@ -1117,6 +1117,14 @@ impl BuiltinType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum MacroKind {
+    Declarative,
+    ProcMacro,
+    Derive,
+    BuiltIn,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MacroDef {
     pub(crate) id: MacroDefId,
 }
@@ -1140,15 +1148,15 @@ impl MacroDef {
         }
     }
 
-    /// Indicate it is a proc-macro
-    pub fn is_proc_macro(&self) -> bool {
-        matches!(self.id.kind, MacroDefKind::ProcMacro(..))
-    }
-
-    /// Indicate it is a derive macro
-    pub fn is_derive_macro(&self) -> bool {
-        // FIXME: wrong for `ProcMacro`
-        matches!(self.id.kind, MacroDefKind::ProcMacro(..) | MacroDefKind::BuiltInDerive(..))
+    pub fn kind(&self) -> MacroKind {
+        match self.id.kind {
+            MacroDefKind::Declarative(_) => MacroKind::Declarative,
+            MacroDefKind::BuiltIn(_, _) => MacroKind::BuiltIn,
+            MacroDefKind::BuiltInDerive(_, _) => MacroKind::Derive,
+            MacroDefKind::BuiltInEager(_, _) => MacroKind::BuiltIn,
+            // FIXME might be a derive
+            MacroDefKind::ProcMacro(_, _) => MacroKind::ProcMacro,
+        }
     }
 }
 

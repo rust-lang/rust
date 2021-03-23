@@ -246,7 +246,8 @@ fn get_derive_names_in_scope(ctx: &CompletionContext) -> FxHashSet<String> {
     let mut result = FxHashSet::default();
     ctx.scope.process_all_names(&mut |name, scope_def| {
         if let hir::ScopeDef::MacroDef(mac) = scope_def {
-            if mac.is_derive_macro() {
+            // FIXME kind() doesn't check whether proc-macro is a derive
+            if mac.kind() == hir::MacroKind::Derive || mac.kind() == hir::MacroKind::ProcMacro {
                 result.insert(name.to_string());
             }
         }
