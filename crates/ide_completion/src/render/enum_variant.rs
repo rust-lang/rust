@@ -6,7 +6,7 @@ use itertools::Itertools;
 
 use crate::{
     item::{CompletionItem, CompletionKind, ImportEdit},
-    render::{builder_ext::Params, compute_exact_type_match, compute_ref_match, RenderContext},
+    render::{builder_ext::Params, compute_ref_match, compute_type_match, RenderContext},
     CompletionRelevance,
 };
 
@@ -77,7 +77,7 @@ impl<'a> EnumRender<'a> {
 
         let ty = self.variant.parent_enum(self.ctx.completion.db).ty(self.ctx.completion.db);
         item.set_relevance(CompletionRelevance {
-            exact_type_match: compute_exact_type_match(self.ctx.completion, &ty),
+            type_match: compute_type_match(self.ctx.completion, &ty),
             ..CompletionRelevance::default()
         });
 

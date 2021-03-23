@@ -122,7 +122,7 @@ impl fmt::Debug for CompletionItem {
     }
 }
 
-#[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
 pub struct CompletionRelevance {
     /// This is set in cases like these:
     ///
@@ -134,6 +134,31 @@ pub struct CompletionRelevance {
     /// }
     /// ```
     pub exact_name_match: bool,
+    /// See CompletionRelevanceTypeMatch doc comments for cases where this is set.
+    pub type_match: Option<CompletionRelevanceTypeMatch>,
+    /// This is set in cases like these:
+    ///
+    /// ```
+    /// fn foo(a: u32) {
+    ///     let b = 0;
+    ///     $0 // `a` and `b` are local
+    /// }
+    /// ```
+    pub is_local: bool,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum CompletionRelevanceTypeMatch {
+    /// This is set in cases like these:
+    ///
+    /// ```
+    /// enum Option<T> { Some(T), None }
+    /// fn f(a: Option<u32>) {}
+    /// fn main {
+    ///     f(Option::N$0) // type `Option<T>` could unify with `Option<u32>`
+    /// }
+    /// ```
+    CouldUnify,
     /// This is set in cases like these:
     ///
     /// ```
@@ -143,22 +168,7 @@ pub struct CompletionRelevance {
     ///     f($0) // type of local matches the type of param
     /// }
     /// ```
-    pub exact_type_match: bool,
-    /// This is set in cases like these:
-    ///
-    /// ```
-    /// fn foo(bar: u32) {
-    ///     $0 // `bar` is local
-    /// }
-    /// ```
-    ///
-    /// ```
-    /// fn foo() {
-    ///     let bar = 0;
-    ///     $0 // `bar` is local
-    /// }
-    /// ```
-    pub is_local: bool,
+    Exact,
 }
 
 impl CompletionRelevance {
@@ -177,9 +187,11 @@ impl CompletionRelevance {
         if self.exact_name_match {
             score += 1;
         }
-        if self.exact_type_match {
-            score += 3;
-        }
+        score += match self.type_match {
+            Some(CompletionRelevanceTypeMatch::Exact) => 4,
+            Some(CompletionRelevanceTypeMatch::CouldUnify) => 3,
+            None => 0,
+        };
         if self.is_local {
             score += 1;
         }
@@ -342,7 +354,7 @@ impl CompletionItem {
         // match, but with exact type match set because self.ref_match
         // is only set if there is an exact type match.
         let mut relevance = self.relevance;
-        relevance.exact_type_match = true;
+        relevance.type_match = Some(CompletionRelevanceTypeMatch::Exact);
 
         self.ref_match.map(|mutability| (mutability, relevance))
     }
@@ -523,7 +535,7 @@ mod tests {
     use itertools::Itertools;
     use test_utils::assert_eq_text;
 
-    use super::CompletionRelevance;
+    use super::{CompletionRelevance, CompletionRelevanceTypeMatch};
 
     /// Check that these are CompletionRelevance are sorted in ascending order
     /// by their relevance score.
@@ -576,15 +588,22 @@ mod tests {
                 is_local: true,
                 ..CompletionRelevance::default()
             }],
-            vec![CompletionRelevance { exact_type_match: true, ..CompletionRelevance::default() }],
             vec![CompletionRelevance {
-                exact_name_match: true,
-                exact_type_match: true,
+                type_match: Some(CompletionRelevanceTypeMatch::CouldUnify),
+                ..CompletionRelevance::default()
+            }],
+            vec![CompletionRelevance {
+                type_match: Some(CompletionRelevanceTypeMatch::Exact),
                 ..CompletionRelevance::default()
             }],
             vec![CompletionRelevance {
                 exact_name_match: true,
-                exact_type_match: true,
+                type_match: Some(CompletionRelevanceTypeMatch::Exact),
+                ..CompletionRelevance::default()
+            }],
+            vec![CompletionRelevance {
+                exact_name_match: true,
+                type_match: Some(CompletionRelevanceTypeMatch::Exact),
                 is_local: true,
             }],
         ];
