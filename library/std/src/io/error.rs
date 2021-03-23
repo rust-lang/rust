@@ -69,6 +69,8 @@ impl fmt::Debug for Error {
 enum Repr {
     Os(i32),
     Simple(ErrorKind),
+    // &str is a fat pointer, but &&str is a thin pointer.
+    SimpleMessage(ErrorKind, &'static &'static str),
     Custom(Box<Custom>),
 }
 
@@ -259,6 +261,18 @@ impl Error {
         Error { repr: Repr::Custom(Box::new(Custom { kind, error })) }
     }
 
+    /// Creates a new I/O error from a known kind of error as well as a
+    /// constant message.
+    ///
+    /// This function does not allocate.
+    ///
+    /// This function should maybe change to
+    /// `new_const<const MSG: &'static str>(kind: ErrorKind)`
+    /// in the future, when const generics allow that.
+    pub(crate) const fn new_const(kind: ErrorKind, message: &'static &'static str) -> Error {
+        Self { repr: Repr::SimpleMessage(kind, message) }
+    }
+
     /// Returns an error representing the last OS error which occurred.
     ///
     /// This function reads the value of `errno` for the target platform (e.g.
@@ -342,6 +356,7 @@ impl Error {
             Repr::Os(i) => Some(i),
             Repr::Custom(..) => None,
             Repr::Simple(..) => None,
+            Repr::SimpleMessage(..) => None,
         }
     }
 
@@ -377,6 +392,7 @@ impl Error {
         match self.repr {
             Repr::Os(..) => None,
             Repr::Simple(..) => None,
+            Repr::SimpleMessage(..) => None,
             Repr::Custom(ref c) => Some(&*c.error),
         }
     }
@@ -448,6 +464,7 @@ impl Error {
         match self.repr {
             Repr::Os(..) => None,
             Repr::Simple(..) => None,
+            Repr::SimpleMessage(..) => None,
             Repr::Custom(ref mut c) => Some(&mut *c.error),
         }
     }
@@ -484,6 +501,7 @@ impl Error {
         match self.repr {
             Repr::Os(..) => None,
             Repr::Simple(..) => None,
+            Repr::SimpleMessage(..) => None,
             Repr::Custom(c) => Some(c.error),
         }
     }
@@ -512,6 +530,7 @@ impl Error {
             Repr::Os(code) => sys::decode_error_kind(code),
             Repr::Custom(ref c) => c.kind,
             Repr::Simple(kind) => kind,
+            Repr::SimpleMessage(kind, _) => kind,
         }
     }
 }
@@ -527,6 +546,9 @@ impl fmt::Debug for Repr {
                 .finish(),
             Repr::Custom(ref c) => fmt::Debug::fmt(&c, fmt),
             Repr::Simple(kind) => fmt.debug_tuple("Kind").field(&kind).finish(),
+            Repr::SimpleMessage(kind, &message) => {
+                fmt.debug_struct("Error").field("kind", &kind).field("message", &message).finish()
+            }
         }
     }
 }
@@ -541,6 +563,7 @@ impl fmt::Display for Error {
             }
             Repr::Custom(ref c) => c.error.fmt(fmt),
             Repr::Simple(kind) => write!(fmt, "{}", kind.as_str()),
+            Repr::SimpleMessage(_, &msg) => msg.fmt(fmt),
         }
     }
 }
@@ -551,6 +574,7 @@ impl error::Error for Error {
     fn description(&self) -> &str {
         match self.repr {
             Repr::Os(..) | Repr::Simple(..) => self.kind().as_str(),
+            Repr::SimpleMessage(_, &msg) => msg,
             Repr::Custom(ref c) => c.error.description(),
         }
     }
@@ -560,6 +584,7 @@ impl error::Error for Error {
         match self.repr {
             Repr::Os(..) => None,
             Repr::Simple(..) => None,
+            Repr::SimpleMessage(..) => None,
             Repr::Custom(ref c) => c.error.cause(),
         }
     }
@@ -568,6 +593,7 @@ impl error::Error for Error {
         match self.repr {
             Repr::Os(..) => None,
             Repr::Simple(..) => None,
+            Repr::SimpleMessage(..) => None,
             Repr::Custom(ref c) => c.error.source(),
         }
     }
