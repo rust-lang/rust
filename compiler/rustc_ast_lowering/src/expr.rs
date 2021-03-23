@@ -97,23 +97,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ExprKind::Let(ref pat, ref scrutinee) => {
                         self.lower_expr_if_let(e.span, pat, scrutinee, then, else_opt.as_deref())
                     }
-                    ExprKind::Paren(ref paren) => match paren.peel_parens().kind {
-                        ExprKind::Let(ref pat, ref scrutinee) => {
-                            // A user has written `if (let Some(x) = foo) {`, we want to avoid
-                            // confusing them with mentions of nightly features.
-                            // If this logic is changed, you will also likely need to touch
-                            // `unused::UnusedParens::check_expr`.
-                            self.if_let_expr_with_parens(cond, &paren.peel_parens());
-                            self.lower_expr_if_let(
-                                e.span,
-                                pat,
-                                scrutinee,
-                                then,
-                                else_opt.as_deref(),
-                            )
-                        }
-                        _ => self.lower_expr_if(cond, then, else_opt.as_deref()),
-                    },
                     _ => self.lower_expr_if(cond, then, else_opt.as_deref()),
                 },
                 ExprKind::While(ref cond, ref body, opt_label) => self
@@ -368,25 +351,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // Now lower everything as normal.
         let f = self.lower_expr(&f);
         hir::ExprKind::Call(f, self.lower_exprs(&real_args))
-    }
-
-    fn if_let_expr_with_parens(&mut self, cond: &Expr, paren: &Expr) {
-        let start = cond.span.until(paren.span);
-        let end = paren.span.shrink_to_hi().until(cond.span.shrink_to_hi());
-        self.sess
-            .struct_span_err(
-                vec![start, end],
-                "invalid parentheses around `let` expression in `if let`",
-            )
-            .multipart_suggestion(
-                "`if let` needs to be written without parentheses",
-                vec![(start, String::new()), (end, String::new())],
-                rustc_errors::Applicability::MachineApplicable,
-            )
-            .emit();
-        // Ideally, we'd remove the feature gating of a `let` expression since we are already
-        // complaining about it here, but `feature_gate::check_crate` has already run by now:
-        // self.sess.parse_sess.gated_spans.ungate_last(sym::let_chains, paren.span);
     }
 
     /// Emit an error and lower `ast::ExprKind::Let(pat, scrutinee)` into:

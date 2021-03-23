@@ -1145,6 +1145,17 @@ impl Expr {
         expr
     }
 
+    pub fn peel_parens_owned(self) -> Expr {
+        let mut expr = self;
+        loop {
+            let Expr { id, kind, span, attrs, tokens } = expr;
+            match kind {
+                ExprKind::Paren(inner) => expr = inner.into_inner(),
+                kind => return Expr { id, kind, span, attrs, tokens },
+            }
+        }
+    }
+
     /// Attempts to reparse as `Ty` (for diagnostic purposes).
     pub fn to_ty(&self) -> Option<P<Ty>> {
         let kind = match &self.kind {

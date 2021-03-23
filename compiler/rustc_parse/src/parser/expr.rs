@@ -1765,7 +1765,24 @@ impl<'a> Parser<'a> {
     /// Parses an `if` expression (`if` token already eaten).
     fn parse_if_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let lo = self.prev_token.span;
-        let cond = self.parse_cond_expr()?;
+        let cond = self.parse_cond_expr()?.into_inner();
+
+        let cond = if let ExprKind::Paren(paren) = &cond.kind {
+            let peeled = paren.peel_parens();
+            if let ExprKind::Let(_, _) = peeled.kind {
+                // A user has written `if (let <pat> = <expr>)` (with some number of parens), we
+                // want to avoid confusing them with mentions of nightly features. If this logic is
+                // changed, you will also likely need to touch `unused::UnusedParens::check_expr`.
+                self.if_let_expr_with_parens(&cond, peeled);
+                cond.peel_parens_owned()
+            } else {
+                cond
+            }
+        } else {
+            cond
+        };
+
+        let cond = P(cond);
 
         // Verify that the parsed `if` condition makes sense as a condition. If it is a block, then
         // verify that the last statement is either an implicit return (no `;`) or an explicit
@@ -1792,6 +1809,22 @@ impl<'a> Parser<'a> {
         };
         let els = if self.eat_keyword(kw::Else) { Some(self.parse_else_expr()?) } else { None };
         Ok(self.mk_expr(lo.to(self.prev_token.span), ExprKind::If(cond, thn, els), attrs))
+    }
+
+    fn if_let_expr_with_parens(&mut self, cond: &Expr, paren: &Expr) {
+        let start = cond.span.until(paren.span);
+        let end = paren.span.shrink_to_hi().until(cond.span.shrink_to_hi());
+        self.struct_span_err(
+            vec![start, end],
+            "invalid parentheses around `let` expression in `if let`",
+        )
+        .multipart_suggestion(
+            "`if let` needs to be written without parentheses",
+            vec![(start, String::new()), (end, String::new())],
+            rustc_errors::Applicability::MachineApplicable,
+        )
+        .emit();
+        self.sess.gated_spans.ungate_last(sym::let_chains, paren.span);
     }
 
     fn error_missing_if_cond(&self, lo: Span, span: Span) -> P<ast::Block> {

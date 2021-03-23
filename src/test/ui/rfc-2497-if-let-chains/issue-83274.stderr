@@ -1,0 +1,13 @@
+error: invalid parentheses around `let` expression in `if let`
+  --> $DIR/issue-83274.rs:5:8
+   |
+LL |     if (let Some(y) = x) {
+   |        ^               ^
+   |
+help: `if let` needs to be written without parentheses
+   |
+LL |     if let Some(y) = x {
+   |       --             --
+
+error: aborting due to previous error
+
