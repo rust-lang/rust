@@ -47,14 +47,19 @@ pub fn some_more_function<T: fmt::Debug>(t: &T) -> String {
 
 /// Woohoo! A trait!
 pub trait AnotherOne {
+    /// Some func 3.
+    fn func3();
+
     /// Some func 1.
     fn func1();
+
+    fn another();
+    fn why_not();
 
     /// Some func 2.
     fn func2();
 
-    /// Some func 3.
-    fn func3();
+    fn hello();
 }
 
 /// Check for "i" signs in lists!
