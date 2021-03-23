@@ -76,7 +76,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             &Spanned { span: rustc_span::DUMMY_SP, node: hir::VisibilityKind::Public },
             hir::CRATE_HIR_ID,
             &krate.item.module,
-            None,
+            Some(self.cx.tcx.crate_name),
         );
         top_level_module.is_crate = true;
         // Attach the crate's exported macros to the top-level module.
