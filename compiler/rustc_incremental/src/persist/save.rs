@@ -49,7 +49,7 @@ pub fn save_dep_graph(tcx: TyCtxt<'_>) {
             },
             move || {
                 sess.time("incr_comp_persist_dep_graph", || {
-                    if let Err(err) = tcx.dep_graph.encode() {
+                    if let Err(err) = tcx.dep_graph.encode(&tcx.sess.prof) {
                         sess.err(&format!(
                             "failed to write dependency graph to `{}`: {}",
                             staging_dep_graph_path.display(),

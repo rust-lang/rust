@@ -304,7 +304,8 @@ impl<K: DepKind + Encodable<FileEncoder>> GraphEncoder<K> {
         self.status.lock().encode_node(&node, &self.record_graph)
     }
 
-    pub fn finish(self) -> FileEncodeResult {
+    pub fn finish(self, profiler: &SelfProfilerRef) -> FileEncodeResult {
+        let _prof_timer = profiler.generic_activity("incr_comp_encode_dep_graph");
         self.status.into_inner().finish()
     }
 }

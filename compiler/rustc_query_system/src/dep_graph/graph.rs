@@ -789,8 +789,12 @@ impl<K: DepKind> DepGraph<K> {
         }
     }
 
-    pub fn encode(&self) -> FileEncodeResult {
-        if let Some(data) = &self.data { data.current.encoder.steal().finish() } else { Ok(()) }
+    pub fn encode(&self, profiler: &SelfProfilerRef) -> FileEncodeResult {
+        if let Some(data) = &self.data {
+            data.current.encoder.steal().finish(profiler)
+        } else {
+            Ok(())
+        }
     }
 
     fn next_virtual_depnode_index(&self) -> DepNodeIndex {
