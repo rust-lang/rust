@@ -190,10 +190,10 @@ pub(super) fn doc_comment(
                     intra_doc_links.extend(
                         extract_definitions_from_markdown(line)
                             .into_iter()
-                            .filter_map(|(link, ns, range)| {
-                                validate_intra_doc_link(sema.db, &def, &link, ns).zip(Some(range))
+                            .filter_map(|(range, link, ns)| {
+                                Some(range).zip(validate_intra_doc_link(sema.db, &def, &link, ns))
                             })
-                            .map(|(def, Range { start, end })| {
+                            .map(|(Range { start, end }, def)| {
                                 (
                                     def,
                                     TextRange::at(

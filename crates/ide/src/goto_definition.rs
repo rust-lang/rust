@@ -1,18 +1,14 @@
-use std::ops::Range;
-
 use either::Either;
-use hir::{HasAttrs, ModuleDef, Semantics};
+use hir::Semantics;
 use ide_db::{
-    defs::{Definition, NameClass, NameRefClass},
+    defs::{NameClass, NameRefClass},
     RootDatabase,
 };
-use syntax::{
-    ast, match_ast, AstNode, AstToken, SyntaxKind::*, SyntaxToken, TextRange, TextSize,
-    TokenAtOffset, T,
-};
+use syntax::{ast, match_ast, AstNode, AstToken, SyntaxKind::*, SyntaxToken, TokenAtOffset, T};
 
 use crate::{
-    display::TryToNav, doc_links::extract_definitions_from_markdown, runnables::doc_owner_to_def,
+    display::TryToNav,
+    doc_links::{doc_owner_to_def, extract_positioned_link_from_comment, resolve_doc_path_for_def},
     FilePosition, NavigationTarget, RangeInfo,
 };
 
@@ -35,7 +31,9 @@ pub(crate) fn goto_definition(
     let token = sema.descend_into_macros(original_token.clone());
     let parent = token.parent()?;
     if let Some(comment) = ast::Comment::cast(token) {
-        let nav = def_for_doc_comment(&sema, position, &comment)?.try_to_nav(db)?;
+        let (_, link, ns) = extract_positioned_link_from_comment(position.offset, &comment)?;
+        let def = doc_owner_to_def(&sema, &parent)?;
+        let nav = resolve_doc_path_for_def(db, def, &link, ns)?.try_to_nav(db)?;
         return Some(RangeInfo::new(original_token.text_range(), vec![nav]));
     }
 
@@ -59,54 +57,6 @@ pub(crate) fn goto_definition(
     };
 
     Some(RangeInfo::new(original_token.text_range(), nav.into_iter().collect()))
-}
-
-fn def_for_doc_comment(
-    sema: &Semantics<RootDatabase>,
-    position: FilePosition,
-    doc_comment: &ast::Comment,
-) -> Option<hir::ModuleDef> {
-    let parent = doc_comment.syntax().parent()?;
-    let (link, ns) = extract_positioned_link_from_comment(position, doc_comment)?;
-
-    let def = doc_owner_to_def(sema, parent)?;
-    match def {
-        Definition::ModuleDef(def) => match def {
-            ModuleDef::Module(it) => it.resolve_doc_path(sema.db, &link, ns),
-            ModuleDef::Function(it) => it.resolve_doc_path(sema.db, &link, ns),
-            ModuleDef::Adt(it) => it.resolve_doc_path(sema.db, &link, ns),
-            ModuleDef::Variant(it) => it.resolve_doc_path(sema.db, &link, ns),
-            ModuleDef::Const(it) => it.resolve_doc_path(sema.db, &link, ns),
-            ModuleDef::Static(it) => it.resolve_doc_path(sema.db, &link, ns),
-            ModuleDef::Trait(it) => it.resolve_doc_path(sema.db, &link, ns),
-            ModuleDef::TypeAlias(it) => it.resolve_doc_path(sema.db, &link, ns),
-            ModuleDef::BuiltinType(_) => return None,
-        },
-        Definition::Macro(it) => it.resolve_doc_path(sema.db, &link, ns),
-        Definition::Field(it) => it.resolve_doc_path(sema.db, &link, ns),
-        Definition::SelfType(_)
-        | Definition::Local(_)
-        | Definition::GenericParam(_)
-        | Definition::Label(_) => return None,
-    }
-}
-
-fn extract_positioned_link_from_comment(
-    position: FilePosition,
-    comment: &ast::Comment,
-) -> Option<(String, Option<hir::Namespace>)> {
-    let doc_comment = comment.doc_comment()?;
-    let comment_start =
-        comment.syntax().text_range().start() + TextSize::from(comment.prefix().len() as u32);
-    let def_links = extract_definitions_from_markdown(doc_comment);
-    let (def_link, ns, _) = def_links.into_iter().find(|&(_, _, Range { start, end })| {
-        TextRange::at(
-            comment_start + TextSize::from(start as u32),
-            TextSize::from((end - start) as u32),
-        )
-        .contains(position.offset)
-    })?;
-    Some((def_link, ns))
 }
 
 fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {

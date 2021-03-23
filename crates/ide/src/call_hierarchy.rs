@@ -50,16 +50,16 @@ pub(crate) fn incoming_calls(db: &RootDatabase, position: FilePosition) -> Optio
     for (file_id, references) in refs.references {
         let file = sema.parse(file_id);
         let file = file.syntax();
-        for (r_range, _) in references {
-            let token = file.token_at_offset(r_range.start()).next()?;
+        for (relative_range, token) in references
+            .into_iter()
+            .filter_map(|(range, _)| Some(range).zip(file.token_at_offset(range.start()).next()))
+        {
             let token = sema.descend_into_macros(token);
             // This target is the containing function
             if let Some(nav) = token.ancestors().find_map(|node| {
-                let fn_ = ast::Fn::cast(node)?;
-                let def = sema.to_def(&fn_)?;
+                let def = ast::Fn::cast(node).and_then(|fn_| sema.to_def(&fn_))?;
                 def.try_to_nav(sema.db)
             }) {
-                let relative_range = r_range;
                 calls.add(&nav, relative_range);
             }
         }
@@ -87,7 +87,6 @@ pub(crate) fn outgoing_calls(db: &RootDatabase, position: FilePosition) -> Optio
             let name_ref = call_node.name_ref()?;
             let func_target = match call_node {
                 FnCallNode::CallExpr(expr) => {
-                    //FIXME: Type::as_callable is broken
                     let callable = sema.type_of_expr(&expr.expr()?)?.as_callable(db)?;
                     match callable.kind() {
                         hir::CallableKind::Function(it) => it.try_to_nav(db),

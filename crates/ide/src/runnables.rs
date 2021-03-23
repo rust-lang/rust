@@ -7,17 +7,13 @@ use hir::{AsAssocItem, HasAttrs, HasSource, HirDisplay, Semantics};
 use ide_assists::utils::test_related_attribute;
 use ide_db::{
     base_db::{FilePosition, FileRange},
-    defs::Definition,
     helpers::visit_file_defs,
     search::SearchScope,
     RootDatabase, SymbolKind,
 };
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
-use syntax::{
-    ast::{self, AstNode, AttrsOwner},
-    match_ast, SyntaxNode,
-};
+use syntax::ast::{self, AstNode, AttrsOwner};
 
 use crate::{
     display::{ToNav, TryToNav},
@@ -269,28 +265,6 @@ pub(crate) fn runnable_mod(sema: &Semantics<RootDatabase>, def: hir::Module) -> 
     let cfg = attrs.cfg();
     let nav = def.to_nav(sema.db);
     Some(Runnable { nav, kind: RunnableKind::TestMod { path }, cfg })
-}
-
-// FIXME: figure out a proper API here.
-pub(crate) fn doc_owner_to_def(
-    sema: &Semantics<RootDatabase>,
-    item: SyntaxNode,
-) -> Option<Definition> {
-    let res: hir::ModuleDef = match_ast! {
-        match item {
-            ast::SourceFile(_it) => sema.scope(&item).module()?.into(),
-            ast::Fn(it) => sema.to_def(&it)?.into(),
-            ast::Struct(it) => sema.to_def(&it)?.into(),
-            ast::Enum(it) => sema.to_def(&it)?.into(),
-            ast::Union(it) => sema.to_def(&it)?.into(),
-            ast::Trait(it) => sema.to_def(&it)?.into(),
-            ast::Const(it) => sema.to_def(&it)?.into(),
-            ast::Static(it) => sema.to_def(&it)?.into(),
-            ast::TypeAlias(it) => sema.to_def(&it)?.into(),
-            _ => return None,
-        }
-    };
-    Some(Definition::ModuleDef(res))
 }
 
 fn module_def_doctest(sema: &Semantics<RootDatabase>, def: hir::ModuleDef) -> Option<Runnable> {

@@ -1,4 +1,4 @@
-//! Resolves and rewrites links in markdown documentation.
+//! Extracts, resolves and rewrites links and intra-doc links in markdown documentation.
 
 use std::{convert::TryFrom, iter::once, ops::Range};
 
@@ -15,7 +15,10 @@ use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
     RootDatabase,
 };
-use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset, T};
+use syntax::{
+    ast, match_ast, AstNode, AstToken, SyntaxKind::*, SyntaxNode, SyntaxToken, TextRange, TextSize,
+    TokenAtOffset, T,
+};
 
 use crate::{FilePosition, Semantics};
 
@@ -60,29 +63,6 @@ pub(crate) fn rewrite_links(db: &RootDatabase, markdown: &str, definition: &Defi
     out
 }
 
-pub(crate) fn extract_definitions_from_markdown(
-    markdown: &str,
-) -> Vec<(String, Option<hir::Namespace>, Range<usize>)> {
-    let mut res = vec![];
-    let mut cb = |link: BrokenLink| {
-        // These allocations are actually unnecessary but the lifetimes on BrokenLinkCallback are wrong
-        // this is fixed in the repo but not on the crates.io release yet
-        Some((
-            /*url*/ link.reference.to_owned().into(),
-            /*title*/ link.reference.to_owned().into(),
-        ))
-    };
-    let doc = Parser::new_with_broken_link_callback(markdown, Options::empty(), Some(&mut cb));
-    for (event, range) in doc.into_offset_iter() {
-        if let Event::Start(Tag::Link(_, target, title)) = event {
-            let link = if target.is_empty() { title } else { target };
-            let (link, ns) = parse_link(&link);
-            res.push((link.to_string(), ns, range));
-        }
-    }
-    res
-}
-
 /// Remove all links in markdown documentation.
 pub(crate) fn remove_links(markdown: &str) -> String {
     let mut drop_link = false;
@@ -116,6 +96,105 @@ pub(crate) fn remove_links(markdown: &str) -> String {
     options.code_block_backticks = 3;
     cmark_with_options(doc, &mut out, None, options).ok();
     out
+}
+
+pub(crate) fn extract_definitions_from_markdown(
+    markdown: &str,
+) -> Vec<(Range<usize>, String, Option<hir::Namespace>)> {
+    let mut res = vec![];
+    let mut cb = |link: BrokenLink| {
+        // These allocations are actually unnecessary but the lifetimes on BrokenLinkCallback are wrong
+        // this is fixed in the repo but not on the crates.io release yet
+        Some((
+            /*url*/ link.reference.to_owned().into(),
+            /*title*/ link.reference.to_owned().into(),
+        ))
+    };
+    let doc = Parser::new_with_broken_link_callback(markdown, Options::empty(), Some(&mut cb));
+    for (event, range) in doc.into_offset_iter() {
+        if let Event::Start(Tag::Link(_, target, title)) = event {
+            let link = if target.is_empty() { title } else { target };
+            let (link, ns) = parse_link(&link);
+            res.push((range, link.to_string(), ns));
+        }
+    }
+    res
+}
+
+/// Extracts a link from a comment at the given position returning the spanning range, link and
+/// optionally it's namespace.
+pub(crate) fn extract_positioned_link_from_comment(
+    position: TextSize,
+    comment: &ast::Comment,
+) -> Option<(TextRange, String, Option<hir::Namespace>)> {
+    let doc_comment = comment.doc_comment()?;
+    let comment_start =
+        comment.syntax().text_range().start() + TextSize::from(comment.prefix().len() as u32);
+    let def_links = extract_definitions_from_markdown(doc_comment);
+    let (range, def_link, ns) =
+        def_links.into_iter().find_map(|(Range { start, end }, def_link, ns)| {
+            let range = TextRange::at(
+                comment_start + TextSize::from(start as u32),
+                TextSize::from((end - start) as u32),
+            );
+            range.contains(position).then(|| (range, def_link, ns))
+        })?;
+    Some((range, def_link, ns))
+}
+
+/// Turns a syntax node into it's [`Definition`] if it can hold docs.
+pub(crate) fn doc_owner_to_def(
+    sema: &Semantics<RootDatabase>,
+    item: &SyntaxNode,
+) -> Option<Definition> {
+    let res: hir::ModuleDef = match_ast! {
+        match item {
+            ast::SourceFile(_it) => sema.scope(item).module()?.into(),
+            ast::Fn(it) => sema.to_def(&it)?.into(),
+            ast::Struct(it) => sema.to_def(&it)?.into(),
+            ast::Enum(it) => sema.to_def(&it)?.into(),
+            ast::Union(it) => sema.to_def(&it)?.into(),
+            ast::Trait(it) => sema.to_def(&it)?.into(),
+            ast::Const(it) => sema.to_def(&it)?.into(),
+            ast::Static(it) => sema.to_def(&it)?.into(),
+            ast::TypeAlias(it) => sema.to_def(&it)?.into(),
+            ast::Variant(it) => sema.to_def(&it)?.into(),
+            ast::Trait(it) => sema.to_def(&it)?.into(),
+            ast::Impl(it) => return sema.to_def(&it).map(Definition::SelfType),
+            ast::MacroRules(it) => return sema.to_def(&it).map(Definition::Macro),
+            ast::TupleField(it) => return sema.to_def(&it).map(Definition::Field),
+            ast::RecordField(it) => return sema.to_def(&it).map(Definition::Field),
+            _ => return None,
+        }
+    };
+    Some(Definition::ModuleDef(res))
+}
+
+pub(crate) fn resolve_doc_path_for_def(
+    db: &dyn HirDatabase,
+    def: Definition,
+    link: &str,
+    ns: Option<hir::Namespace>,
+) -> Option<hir::ModuleDef> {
+    match def {
+        Definition::ModuleDef(def) => match def {
+            ModuleDef::Module(it) => it.resolve_doc_path(db, &link, ns),
+            ModuleDef::Function(it) => it.resolve_doc_path(db, &link, ns),
+            ModuleDef::Adt(it) => it.resolve_doc_path(db, &link, ns),
+            ModuleDef::Variant(it) => it.resolve_doc_path(db, &link, ns),
+            ModuleDef::Const(it) => it.resolve_doc_path(db, &link, ns),
+            ModuleDef::Static(it) => it.resolve_doc_path(db, &link, ns),
+            ModuleDef::Trait(it) => it.resolve_doc_path(db, &link, ns),
+            ModuleDef::TypeAlias(it) => it.resolve_doc_path(db, &link, ns),
+            ModuleDef::BuiltinType(_) => None,
+        },
+        Definition::Macro(it) => it.resolve_doc_path(db, &link, ns),
+        Definition::Field(it) => it.resolve_doc_path(db, &link, ns),
+        Definition::SelfType(_)
+        | Definition::Local(_)
+        | Definition::GenericParam(_)
+        | Definition::Label(_) => None,
+    }
 }
 
 // FIXME:
