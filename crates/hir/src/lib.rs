@@ -973,6 +973,14 @@ impl SelfParam {
             Access::Owned => "self",
         }
     }
+
+    pub fn source(&self, db: &dyn HirDatabase) -> Option<InFile<ast::SelfParam>> {
+        let InFile { file_id, value } = Function::from(self.func).source(db)?;
+        value
+            .param_list()
+            .and_then(|params| params.self_param())
+            .map(|value| InFile { file_id, value })
+    }
 }
 
 impl HasVisibility for Function {
@@ -1345,6 +1353,13 @@ impl Local {
                 bind_pat.syntax().ancestors().any(|it| ast::Param::can_cast(it.kind()))
             }
             Either::Right(_self_param) => true,
+        }
+    }
+
+    pub fn as_self_param(self, db: &dyn HirDatabase) -> Option<SelfParam> {
+        match self.parent {
+            DefWithBodyId::FunctionId(func) if self.is_self(db) => Some(SelfParam { func }),
+            _ => None,
         }
     }
 
