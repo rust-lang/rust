@@ -1353,7 +1353,7 @@ h4 > .notable-traits {
 	to prevent an overlay between the "collapse toggle" and the information tooltip.
 	However, it's not needed with smaller screen width because the doc/code block is always put
 	"one line" below. */
-	.information:first-child > .tooltip {
+	.docblock > .information:first-child > .tooltip {
 		margin-top: 16px;
 	}
 }
