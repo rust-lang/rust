@@ -80,10 +80,6 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
     pub fn eq_path_segments(&mut self, left: &[PathSegment<'_>], right: &[PathSegment<'_>]) -> bool {
         self.inter_expr().eq_path_segments(left, right)
     }
-
-    pub fn eq_ty_kind(&mut self, left: &TyKind<'_>, right: &TyKind<'_>) -> bool {
-        self.inter_expr().eq_ty_kind(left, right)
-    }
 }
 
 struct HirEqInterExpr<'a, 'b, 'tcx> {
@@ -378,13 +374,9 @@ impl HirEqInterExpr<'_, '_, '_> {
         left.ident.name == right.ident.name && both(&left.args, &right.args, |l, r| self.eq_path_parameters(l, r))
     }
 
-    fn eq_ty(&mut self, left: &Ty<'_>, right: &Ty<'_>) -> bool {
-        self.eq_ty_kind(&left.kind, &right.kind)
-    }
-
     #[allow(clippy::similar_names)]
-    fn eq_ty_kind(&mut self, left: &TyKind<'_>, right: &TyKind<'_>) -> bool {
-        match (left, right) {
+    fn eq_ty(&mut self, left: &Ty<'_>, right: &Ty<'_>) -> bool {
+        match (&left.kind, &right.kind) {
             (&TyKind::Slice(ref l_vec), &TyKind::Slice(ref r_vec)) => self.eq_ty(l_vec, r_vec),
             (&TyKind::Array(ref lt, ref ll_id), &TyKind::Array(ref rt, ref rl_id)) => {
                 let cx = self.inner.cx;

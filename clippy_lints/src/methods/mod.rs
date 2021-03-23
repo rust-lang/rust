@@ -62,13 +62,11 @@ mod zst_offset;
 use bind_instead_of_map::BindInsteadOfMap;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::ty::{contains_ty, implements_trait, is_copy, is_type_diagnostic_item};
-use clippy_utils::{
-    contains_return, get_trait_def_id, in_macro, iter_input_pats, match_qpath, method_calls, paths, return_ty,
-    SpanlessEq,
-};
+use clippy_utils::{contains_return, get_trait_def_id, in_macro, iter_input_pats, method_calls, paths, return_ty};
 use if_chain::if_chain;
 use rustc_hir as hir;
-use rustc_hir::{TraitItem, TraitItemKind};
+use rustc_hir::def::Res;
+use rustc_hir::{PrimTy, QPath, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, TraitRef, Ty, TyS};
@@ -1872,7 +1870,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                     for method_config in &TRAIT_METHODS {
                         if name == method_config.method_name &&
                             sig.decl.inputs.len() == method_config.param_count &&
-                            method_config.output_type.matches(cx, &sig.decl.output) &&
+                            method_config.output_type.matches(&sig.decl.output) &&
                             method_config.self_kind.matches(cx, self_ty, first_arg_ty) &&
                             fn_header_equals(method_config.fn_header, sig.header) &&
                             method_config.lifetime_param_cond(&impl_item)
@@ -2199,8 +2197,8 @@ enum OutType {
 }
 
 impl OutType {
-    fn matches(self, cx: &LateContext<'_>, ty: &hir::FnRetTy<'_>) -> bool {
-        let is_unit = |ty: &hir::Ty<'_>| SpanlessEq::new(cx).eq_ty_kind(&ty.kind, &hir::TyKind::Tup(&[]));
+    fn matches(self, ty: &hir::FnRetTy<'_>) -> bool {
+        let is_unit = |ty: &hir::Ty<'_>| matches!(ty.kind, hir::TyKind::Tup(&[]));
         match (self, ty) {
             (Self::Unit, &hir::FnRetTy::DefaultReturn(_)) => true,
             (Self::Unit, &hir::FnRetTy::Return(ref ty)) if is_unit(ty) => true,
@@ -2213,8 +2211,8 @@ impl OutType {
 }
 
 fn is_bool(ty: &hir::Ty<'_>) -> bool {
-    if let hir::TyKind::Path(ref p) = ty.kind {
-        match_qpath(p, &["bool"])
+    if let hir::TyKind::Path(QPath::Resolved(_, path)) = ty.kind {
+        matches!(path.res, Res::PrimTy(PrimTy::Bool))
     } else {
         false
     }
