@@ -3,9 +3,9 @@ use syntax::ast::{self, AstNode};
 
 use crate::{
     assist_context::{AssistContext, Assists},
-    utils::add_trait_assoc_items_to_impl,
-    utils::DefaultMethods,
-    utils::{filter_assoc_items, render_snippet, Cursor},
+    utils::{
+        add_trait_assoc_items_to_impl, filter_assoc_items, render_snippet, Cursor, DefaultMethods,
+    },
     AssistId, AssistKind,
 };
 
