@@ -1,5 +1,4 @@
-use ast::FieldList;
-use syntax::ast::{self, AstNode, GenericParamsOwner, NameOwner, RefType, Type};
+use syntax::ast::{self, AstNode, GenericParamsOwner, NameOwner};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -65,8 +64,8 @@ pub(crate) fn add_lifetime_to_type(acc: &mut Assists, ctx: &AssistContext) -> Op
     )
 }
 
-fn fetch_borrowed_types(node: &ast::Adt) -> Option<Vec<RefType>> {
-    let ref_types: Vec<RefType> = match node {
+fn fetch_borrowed_types(node: &ast::Adt) -> Option<Vec<ast::RefType>> {
+    let ref_types: Vec<ast::RefType> = match node {
         ast::Adt::Enum(enum_) => {
             let variant_list = enum_.variant_list()?;
             variant_list
@@ -88,7 +87,7 @@ fn fetch_borrowed_types(node: &ast::Adt) -> Option<Vec<RefType>> {
             record_field_list
                 .fields()
                 .filter_map(|r_field| {
-                    if let Type::RefType(ref_type) = r_field.ty()? {
+                    if let ast::Type::RefType(ref_type) = r_field.ty()? {
                         if ref_type.lifetime().is_none() {
                             return Some(ref_type);
                         }
@@ -107,12 +106,12 @@ fn fetch_borrowed_types(node: &ast::Adt) -> Option<Vec<RefType>> {
     }
 }
 
-fn find_ref_types_from_field_list(field_list: &FieldList) -> Option<Vec<RefType>> {
-    let ref_types: Vec<RefType> = match field_list {
+fn find_ref_types_from_field_list(field_list: &ast::FieldList) -> Option<Vec<ast::RefType>> {
+    let ref_types: Vec<ast::RefType> = match field_list {
         ast::FieldList::RecordFieldList(record_list) => record_list
             .fields()
             .filter_map(|f| {
-                if let Type::RefType(ref_type) = f.ty()? {
+                if let ast::Type::RefType(ref_type) = f.ty()? {
                     if ref_type.lifetime().is_none() {
                         return Some(ref_type);
                     }
@@ -124,7 +123,7 @@ fn find_ref_types_from_field_list(field_list: &FieldList) -> Option<Vec<RefType>
         ast::FieldList::TupleFieldList(tuple_field_list) => tuple_field_list
             .fields()
             .filter_map(|f| {
-                if let Type::RefType(ref_type) = f.ty()? {
+                if let ast::Type::RefType(ref_type) = f.ty()? {
                     if ref_type.lifetime().is_none() {
                         return Some(ref_type);
                     }
@@ -152,76 +151,79 @@ mod tests {
     fn add_lifetime_to_struct() {
         check_assist(
             add_lifetime_to_type,
-            "struct Foo { a: &$0i32 }",
-            "struct Foo<'a> { a: &'a i32 }",
+            r#"struct Foo { a: &$0i32 }"#,
+            r#"struct Foo<'a> { a: &'a i32 }"#,
         );
 
         check_assist(
             add_lifetime_to_type,
-            "struct Foo { a: &$0i32, b: &usize }",
-            "struct Foo<'a> { a: &'a i32, b: &'a usize }",
+            r#"struct Foo { a: &$0i32, b: &usize }"#,
+            r#"struct Foo<'a> { a: &'a i32, b: &'a usize }"#,
         );
 
         check_assist(
             add_lifetime_to_type,
-            "struct Foo { a: &$0i32, b: usize }",
-            "struct Foo<'a> { a: &'a i32, b: usize }",
+            r#"struct Foo { a: &$0i32, b: usize }"#,
+            r#"struct Foo<'a> { a: &'a i32, b: usize }"#,
         );
 
         check_assist(
             add_lifetime_to_type,
-            "struct Foo<T> { a: &$0T, b: usize }",
-            "struct Foo<'a, T> { a: &'a T, b: usize }",
+            r#"struct Foo<T> { a: &$0T, b: usize }"#,
+            r#"struct Foo<'a, T> { a: &'a T, b: usize }"#,
         );
 
-        check_assist_not_applicable(add_lifetime_to_type, "struct Foo<'a> { a: &$0'a i32 }");
-        check_assist_not_applicable(add_lifetime_to_type, "struct Foo { a: &'a$0 i32 }");
+        check_assist_not_applicable(add_lifetime_to_type, r#"struct Foo<'a> { a: &$0'a i32 }"#);
+        check_assist_not_applicable(add_lifetime_to_type, r#"struct Foo { a: &'a$0 i32 }"#);
     }
 
     #[test]
     fn add_lifetime_to_enum() {
         check_assist(
             add_lifetime_to_type,
-            "enum Foo { Bar { a: i32 }, Other, Tuple(u32, &$0u32)}",
-            "enum Foo<'a> { Bar { a: i32 }, Other, Tuple(u32, &'a u32)}",
+            r#"enum Foo { Bar { a: i32 }, Other, Tuple(u32, &$0u32)}"#,
+            r#"enum Foo<'a> { Bar { a: i32 }, Other, Tuple(u32, &'a u32)}"#,
         );
 
         check_assist(
             add_lifetime_to_type,
-            "enum Foo { Bar { a: &$0i32 }}",
-            "enum Foo<'a> { Bar { a: &'a i32 }}",
+            r#"enum Foo { Bar { a: &$0i32 }}"#,
+            r#"enum Foo<'a> { Bar { a: &'a i32 }}"#,
         );
 
         check_assist(
             add_lifetime_to_type,
-            "enum Foo<T> { Bar { a: &$0i32, b: &T }}",
-            "enum Foo<'a, T> { Bar { a: &'a i32, b: &'a T }}",
+            r#"enum Foo<T> { Bar { a: &$0i32, b: &T }}"#,
+            r#"enum Foo<'a, T> { Bar { a: &'a i32, b: &'a T }}"#,
         );
 
-        check_assist_not_applicable(add_lifetime_to_type, "enum Foo<'a> { Bar { a: &$0'a i32 }}");
-        check_assist_not_applicable(add_lifetime_to_type, "enum Foo { Bar, $0Misc }");
+        check_assist_not_applicable(
+            add_lifetime_to_type,
+            r#"enum Foo<'a> { Bar { a: &$0'a i32 }}"#,
+        );
+        check_assist_not_applicable(add_lifetime_to_type, r#"enum Foo { Bar, $0Misc }"#);
     }
 
     #[test]
     fn add_lifetime_to_union() {
         check_assist(
             add_lifetime_to_type,
-            "union Foo { a: &$0i32 }",
-            "union Foo<'a> { a: &'a i32 }",
+            r#"union Foo { a: &$0i32 }"#,
+            r#"union Foo<'a> { a: &'a i32 }"#,
         );
 
         check_assist(
             add_lifetime_to_type,
-            "union Foo { a: &$0i32, b: &usize }",
-            "union Foo<'a> { a: &'a i32, b: &'a usize }",
+            r#"union Foo { a: &$0i32, b: &usize }"#,
+            r#"union Foo<'a> { a: &'a i32, b: &'a usize }"#,
         );
 
         check_assist(
             add_lifetime_to_type,
-            "union Foo<T> { a: &$0T, b: usize }",
-            "union Foo<'a, T> { a: &'a T, b: usize }",
+            r#"union Foo<T> { a: &$0T, b: usize }"#,
+            r#"union Foo<'a, T> { a: &'a T, b: usize }"#,
         );
 
-        check_assist_not_applicable(add_lifetime_to_type, "struct Foo<'a> { a: &'a $0i32 }");
+        check_assist_not_applicable(add_lifetime_to_type, r#"struct Foo<'a> { a: &'a $0i32 }"#);
     }
 }
