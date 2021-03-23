@@ -1,8 +1,11 @@
-//! FIXME: write short doc here
+//! Renaming functionality
+//!
+//! All reference and file rename requests go through here where the corresponding [`SourceChange`]s
+//! will be calculated.
 use std::fmt::{self, Display};
 
 use either::Either;
-use hir::{HasSource, InFile, Module, ModuleDef, ModuleSource, Semantics};
+use hir::{AsAssocItem, InFile, Module, ModuleDef, ModuleSource, Semantics};
 use ide_db::{
     base_db::{AnchoredPathBuf, FileId},
     defs::{Definition, NameClass, NameRefClass},
@@ -196,7 +199,7 @@ fn rename_mod(
                 file_id,
                 TextEdit::replace(name.syntax().text_range(), new_name.to_string()),
             ),
-            _ => unreachable!(),
+            _ => never!("Module source node is missing a name"),
         }
     }
     let def = Definition::ModuleDef(ModuleDef::Module(module));
@@ -275,46 +278,32 @@ fn rename_to_self(sema: &Semantics<RootDatabase>, local: hir::Local) -> RenameRe
 
     let fn_def = match local.parent(sema.db) {
         hir::DefWithBody::Function(func) => func,
-        _ => bail!("Cannot rename non-param local to self"),
+        _ => bail!("Cannot rename local to self outside of function"),
     };
 
-    // FIXME: reimplement this on the hir instead
-    // as of the time of this writing params in hir don't keep their names
-    let fn_ast = fn_def
-        .source(sema.db)
-        .ok_or_else(|| format_err!("Cannot rename non-param local to self"))?
-        .value;
-
-    let first_param_range = fn_ast
-        .param_list()
-        .and_then(|p| p.params().next())
-        .ok_or_else(|| format_err!("Method has no parameters"))?
-        .syntax()
-        .text_range();
-    let InFile { file_id, value: local_source } = local.source(sema.db);
-    match local_source {
-        either::Either::Left(pat)
-            if !first_param_range.contains_range(pat.syntax().text_range()) =>
-        {
-            bail!("Only the first parameter can be self");
-        }
-        _ => (),
-    }
-
-    let impl_block = fn_ast
-        .syntax()
-        .ancestors()
-        .find_map(|node| ast::Impl::cast(node))
-        .and_then(|def| sema.to_def(&def))
-        .ok_or_else(|| format_err!("No impl block found for function"))?;
-    if fn_def.self_param(sema.db).is_some() {
+    if let Some(_) = fn_def.self_param(sema.db) {
         bail!("Method already has a self parameter");
     }
 
     let params = fn_def.assoc_fn_params(sema.db);
-    let first_param = params.first().ok_or_else(|| format_err!("Method has no parameters"))?;
+    let first_param = params
+        .first()
+        .ok_or_else(|| format_err!("Cannot rename local to self unless it is a parameter"))?;
+    if first_param.as_local(sema.db) != local {
+        bail!("Only the first parameter may be renamed to self");
+    }
+
+    let assoc_item = fn_def
+        .as_assoc_item(sema.db)
+        .ok_or_else(|| format_err!("Cannot rename parameter to self for free function"))?;
+    let impl_ = match assoc_item.container(sema.db) {
+        hir::AssocItemContainer::Trait(_) => {
+            bail!("Cannot rename parameter to self for trait functions");
+        }
+        hir::AssocItemContainer::Impl(impl_) => impl_,
+    };
     let first_param_ty = first_param.ty();
-    let impl_ty = impl_block.target_ty(sema.db);
+    let impl_ty = impl_.target_ty(sema.db);
     let (ty, self_param) = if impl_ty.remove_ref().is_some() {
         // if the impl is a ref to the type we can just match the `&T` with self directly
         (first_param_ty.clone(), "self")
@@ -328,6 +317,9 @@ fn rename_to_self(sema: &Semantics<RootDatabase>, local: hir::Local) -> RenameRe
         bail!("Parameter type differs from impl block type");
     }
 
+    let InFile { file_id, value: param_source } =
+        first_param.source(sema.db).ok_or_else(|| format_err!("No source for parameter found"))?;
+
     let def = Definition::Local(local);
     let usages = def.usages(sema).all();
     let mut source_change = SourceChange::default();
@@ -336,9 +328,8 @@ fn rename_to_self(sema: &Semantics<RootDatabase>, local: hir::Local) -> RenameRe
     }));
     source_change.insert_source_edit(
         file_id.original_file(sema.db),
-        TextEdit::replace(first_param_range, String::from(self_param)),
+        TextEdit::replace(param_source.syntax().text_range(), String::from(self_param)),
     );
-
     Ok(source_change)
 }
 
@@ -1361,7 +1352,7 @@ fn f(foo$0: &mut Foo) -> i32 {
     foo.i
 }
 "#,
-            "error: No impl block found for function",
+            "error: Cannot rename parameter to self for free function",
         );
         check(
             "self",
@@ -1391,7 +1382,7 @@ impl Foo {
     }
 }
 "#,
-            "error: Only the first parameter can be self",
+            "error: Only the first parameter may be renamed to self",
         );
     }
 
