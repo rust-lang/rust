@@ -154,11 +154,7 @@ impl Crate {
     }
 
     pub fn transitive_reverse_dependencies(self, db: &dyn HirDatabase) -> Vec<Crate> {
-        db.crate_graph()
-            .transitive_reverse_dependencies(self.id)
-            .into_iter()
-            .map(|id| Crate { id })
-            .collect()
+        db.crate_graph().transitive_rev_deps(self.id).into_iter().map(|id| Crate { id }).collect()
     }
 
     pub fn root_module(self, db: &dyn HirDatabase) -> Module {

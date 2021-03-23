@@ -276,10 +276,7 @@ impl CrateGraph {
 
     /// Returns all transitive reverse dependencies of the given crate,
     /// including the crate itself.
-    pub fn transitive_reverse_dependencies(
-        &self,
-        of: CrateId,
-    ) -> impl Iterator<Item = CrateId> + '_ {
+    pub fn transitive_rev_deps(&self, of: CrateId) -> impl Iterator<Item = CrateId> + '_ {
         let mut worklist = vec![of];
         let mut rev_deps = FxHashSet::default();
         rev_deps.insert(of);
