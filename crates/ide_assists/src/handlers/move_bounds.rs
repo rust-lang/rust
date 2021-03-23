@@ -21,7 +21,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // }
 // ```
 pub(crate) fn move_bounds_to_where_clause(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let type_param_list = ctx.find_node_at_offset::<ast::GenericParamList>()?.clone_for_update();
+    let type_param_list = ctx.find_node_at_offset::<ast::GenericParamList>()?;
 
     let mut type_params = type_param_list.type_params();
     if type_params.all(|p| p.type_bound_list().is_none()) {
@@ -29,7 +29,6 @@ pub(crate) fn move_bounds_to_where_clause(acc: &mut Assists, ctx: &AssistContext
     }
 
     let parent = type_param_list.syntax().parent()?;
-    let original_parent_range = parent.text_range();
 
     let target = type_param_list.syntax().text_range();
     acc.add(
@@ -37,6 +36,9 @@ pub(crate) fn move_bounds_to_where_clause(acc: &mut Assists, ctx: &AssistContext
         "Move to where clause",
         target,
         |edit| {
+            let type_param_list = edit.make_ast_mut(type_param_list);
+            let parent = edit.make_mut(parent);
+
             let where_clause: ast::WhereClause = match_ast! {
                 match parent {
                     ast::Fn(it) => it.get_or_create_where_clause(),
@@ -56,8 +58,6 @@ pub(crate) fn move_bounds_to_where_clause(acc: &mut Assists, ctx: &AssistContext
                     tbl.remove()
                 }
             }
-
-            edit.replace(original_parent_range, parent.to_string())
         },
     )
 }
