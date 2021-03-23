@@ -21,12 +21,6 @@ use crate::{
 // ```
 pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let tree: ast::UseTree = ctx.find_node_at_offset()?;
-    let original_parent = tree.syntax().ancestors().last()?;
-
-    let tree = tree.clone_for_update();
-    let new_parent = tree.syntax().ancestors().last()?;
-
-    let mut offset = ctx.offset();
 
     let mut imports = None;
     let mut uses = None;
@@ -53,22 +47,20 @@ pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext) -> Option<()
         target,
         |builder| {
             if let Some((to_replace, replacement, to_remove)) = imports {
-                if to_remove.syntax().text_range().end() < offset {
-                    offset -= to_remove.syntax().text_range().len();
-                }
-                ted::replace(to_replace.syntax().clone(), replacement.syntax().clone());
+                let to_replace = builder.make_ast_mut(to_replace);
+                let to_remove = builder.make_ast_mut(to_remove);
+
+                ted::replace(to_replace.syntax(), replacement.syntax());
                 to_remove.remove();
             }
 
             if let Some((to_replace, replacement, to_remove)) = uses {
-                if to_remove.syntax().text_range().end() < offset {
-                    offset -= to_remove.syntax().text_range().len();
-                }
-                ted::replace(to_replace.syntax().clone(), replacement.syntax().clone());
+                let to_replace = builder.make_ast_mut(to_replace);
+                let to_remove = builder.make_ast_mut(to_remove);
+
+                ted::replace(to_replace.syntax(), replacement.syntax());
                 to_remove.remove()
             }
-
-            builder.replace(original_parent.text_range(), new_parent.to_string())
         },
     )
 }

@@ -14,8 +14,8 @@ use ide_db::{
 };
 use syntax::{
     algo::{self, find_node_at_offset, SyntaxRewriter},
-    AstNode, AstToken, SourceFile, SyntaxElement, SyntaxKind, SyntaxToken, TextRange, TextSize,
-    TokenAtOffset,
+    AstNode, AstToken, SourceFile, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxNodePtr,
+    SyntaxToken, TextRange, TextSize, TokenAtOffset,
 };
 use text_edit::{TextEdit, TextEditBuilder};
 
@@ -180,11 +180,19 @@ pub(crate) struct AssistBuilder {
     edit: TextEditBuilder,
     file_id: FileId,
     source_change: SourceChange,
+
+    /// Maps the original, immutable `SyntaxNode` to a `clone_for_update` twin.
+    mutated_tree: Option<(SyntaxNode, SyntaxNode)>,
 }
 
 impl AssistBuilder {
     pub(crate) fn new(file_id: FileId) -> AssistBuilder {
-        AssistBuilder { edit: TextEdit::builder(), file_id, source_change: SourceChange::default() }
+        AssistBuilder {
+            edit: TextEdit::builder(),
+            file_id,
+            source_change: SourceChange::default(),
+            mutated_tree: None,
+        }
     }
 
     pub(crate) fn edit_file(&mut self, file_id: FileId) {
@@ -193,10 +201,40 @@ impl AssistBuilder {
     }
 
     fn commit(&mut self) {
+        if let Some((old, new)) = self.mutated_tree.take() {
+            algo::diff(&old, &new).into_text_edit(&mut self.edit)
+        }
+
         let edit = mem::take(&mut self.edit).finish();
         if !edit.is_empty() {
             self.source_change.insert_source_edit(self.file_id, edit);
         }
+    }
+
+    pub(crate) fn make_ast_mut<N: AstNode>(&mut self, node: N) -> N {
+        N::cast(self.make_mut(node.syntax().clone())).unwrap()
+    }
+    /// Returns a copy of the `node`, suitable for mutation.
+    ///
+    /// Syntax trees in rust-analyzer are typically immutable, and mutating
+    /// operations panic at runtime. However, it is possible to make a copy of
+    /// the tree and mutate the copy freely. Mutation is based on interior
+    /// mutability, and different nodes in the same tree see the same mutations.
+    ///
+    /// The typical pattern for an assist is to find specific nodes in the read
+    /// phase, and then get their mutable couterparts using `make_mut` in the
+    /// mutable state.
+    pub(crate) fn make_mut(&mut self, node: SyntaxNode) -> SyntaxNode {
+        let root = &self
+            .mutated_tree
+            .get_or_insert_with(|| {
+                let immutable = node.ancestors().last().unwrap();
+                let mutable = immutable.clone_for_update();
+                (immutable, mutable)
+            })
+            .1;
+        let ptr = SyntaxNodePtr::new(&&node);
+        ptr.to_node(root)
     }
 
     /// Remove specified `range` of text.
