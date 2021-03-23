@@ -245,9 +245,7 @@ impl Definition {
         }
 
         if let Some(Visibility::Public) = vis {
-            let source_root_id = db.file_source_root(file_id);
-            let source_root = db.source_root(source_root_id);
-            let mut res = source_root.iter().map(|id| (id, None)).collect::<FxHashMap<_, _>>();
+            let mut res = FxHashMap::default();
 
             let krate = module.krate();
             for rev_dep in krate.transitive_reverse_dependencies(db) {
