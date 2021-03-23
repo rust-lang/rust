@@ -73,10 +73,26 @@ impl CoverageInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
     }
 
+    /// Functions with MIR-based coverage are normally codegenned _only_ if
+    /// called. LLVM coverage tools typically expect every function to be
+    /// defined (even if unused), with at least one call to LLVM intrinsic
+    /// `instrprof.increment`.
+    ///
+    /// Codegen a small function that will never be called, with one counter
+    /// that will never be incremented.
+    ///
+    /// For used/called functions, the coverageinfo was already added to the
+    /// `function_coverage_map` (keyed by function `Instance`) during codegen.
+    /// But in this case, since the unused function was _not_ previously
+    /// codegenned, collect the coverage `CodeRegion`s from the MIR and add
+    /// them. The first `CodeRegion` is used to add a single counter, with the
+    /// same counter ID used in the injected `instrprof.increment` intrinsic
+    /// call. Since the function is never called, all other `CodeRegion`s can be
+    /// added as `unreachable_region`s.
     fn define_unused_fn(&self, def_id: DefId) {
         let instance = declare_unused_fn(self, &def_id);
         codegen_unused_fn_and_counter(self, instance);
-        add_function_coverage(self, instance, def_id);
+        add_unused_function_coverage(self, instance, def_id);
     }
 }
 
@@ -200,7 +216,7 @@ fn declare_unused_fn(cx: &CodegenCx<'ll, 'tcx>, def_id: &DefId) -> Instance<'tcx
     llvm::set_linkage(llfn, llvm::Linkage::WeakAnyLinkage);
     llvm::set_visibility(llfn, llvm::Visibility::Hidden);
 
-    cx.instances.borrow_mut().insert(instance, llfn);
+    assert!(cx.instances.borrow_mut().insert(instance, llfn).is_none());
 
     instance
 }
@@ -221,7 +237,11 @@ fn codegen_unused_fn_and_counter(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'
     bx.ret_void();
 }
 
-fn add_function_coverage(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>, def_id: DefId) {
+fn add_unused_function_coverage(
+    cx: &CodegenCx<'ll, 'tcx>,
+    instance: Instance<'tcx>,
+    def_id: DefId,
+) {
     let tcx = cx.tcx;
 
     let mut function_coverage = FunctionCoverage::unused(tcx, instance);

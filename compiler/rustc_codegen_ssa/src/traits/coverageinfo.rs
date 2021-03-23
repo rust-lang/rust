@@ -6,22 +6,11 @@ use rustc_middle::ty::Instance;
 pub trait CoverageInfoMethods<'tcx>: BackendTypes {
     fn coverageinfo_finalize(&self);
 
-    /// Functions with MIR-based coverage are normally codegenned _only_ if
-    /// called. LLVM coverage tools typically expect every function to be
-    /// defined (even if unused), with at least one call to LLVM intrinsic
-    /// `instrprof.increment`.
-    ///
     /// Codegen a small function that will never be called, with one counter
-    /// that will never be incremented.
-    ///
-    /// For used/called functions, the coverageinfo was already added to the
-    /// `function_coverage_map` (keyed by function `Instance`) during codegen.
-    /// But in this case, since the unused function was _not_ previously
-    /// codegenned, collect the coverage `CodeRegion`s from the MIR and add
-    /// them. The first `CodeRegion` is used to add a single counter, with the
-    /// same counter ID used in the injected `instrprof.increment` intrinsic
-    /// call. Since the function is never called, all other `CodeRegion`s can be
-    /// added as `unreachable_region`s.
+    /// that will never be incremented, that gives LLVM coverage tools a
+    /// function definition it needs in order to resolve coverage map references
+    /// to unused functions. This is necessary so unused functions will appear
+    /// as uncovered (coverage execution count `0`) in LLVM coverage reports.
     fn define_unused_fn(&self, def_id: DefId);
 
     /// For LLVM codegen, returns a function-specific `Value` for a global
