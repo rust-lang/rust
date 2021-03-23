@@ -30,8 +30,9 @@ crate static FILES_UNVERSIONED: Lazy<FxHashMap<&str, &[u8]>> = Lazy::new(|| {
         "SourceSerifPro-Bold.ttf.woff" => static_files::source_serif_pro::BOLD,
         "SourceSerifPro-It.ttf.woff" => static_files::source_serif_pro::ITALIC,
         "SourceSerifPro-LICENSE.md" => static_files::source_serif_pro::LICENSE,
-        "SourceCodePro-Regular.woff" => static_files::source_code_pro::REGULAR,
-        "SourceCodePro-Semibold.woff" => static_files::source_code_pro::SEMIBOLD,
+        "SourceCodePro-Regular.ttf.woff" => static_files::source_code_pro::REGULAR,
+        "SourceCodePro-Semibold.ttf.woff" => static_files::source_code_pro::SEMIBOLD,
+        "SourceCodePro-It.ttf.woff" => static_files::source_code_pro::ITALIC,
         "SourceCodePro-LICENSE.txt" => static_files::source_code_pro::LICENSE,
         "LICENSE-MIT.txt" => static_files::LICENSE_MIT,
         "LICENSE-APACHE.txt" => static_files::LICENSE_APACHE,
@@ -129,65 +130,14 @@ pub(super) fn write_shared(
 
     let mut themes: Vec<&String> = themes.iter().collect();
     themes.sort();
-    // To avoid theme switch latencies as much as possible, we put everything theme related
-    // at the beginning of the html files into another js file.
-    let theme_js = format!(
-        r#"var themes = document.getElementById("theme-choices");
-var themePicker = document.getElementById("theme-picker");
 
-function showThemeButtonState() {{
-    themes.style.display = "block";
-    themePicker.style.borderBottomRightRadius = "0";
-    themePicker.style.borderBottomLeftRadius = "0";
-}}
-
-function hideThemeButtonState() {{
-    themes.style.display = "none";
-    themePicker.style.borderBottomRightRadius = "3px";
-    themePicker.style.borderBottomLeftRadius = "3px";
-}}
-
-function switchThemeButtonState() {{
-    if (themes.style.display === "block") {{
-        hideThemeButtonState();
-    }} else {{
-        showThemeButtonState();
-    }}
-}};
-
-function handleThemeButtonsBlur(e) {{
-    var active = document.activeElement;
-    var related = e.relatedTarget;
-
-    if (active.id !== "theme-picker" &&
-        (!active.parentNode || active.parentNode.id !== "theme-choices") &&
-        (!related ||
-         (related.id !== "theme-picker" &&
-          (!related.parentNode || related.parentNode.id !== "theme-choices")))) {{
-        hideThemeButtonState();
-    }}
-}}
-
-themePicker.onclick = switchThemeButtonState;
-themePicker.onblur = handleThemeButtonsBlur;
-{}.forEach(function(item) {{
-    var but = document.createElement("button");
-    but.textContent = item;
-    but.onclick = function(el) {{
-        switchTheme(currentTheme, mainTheme, item, true);
-        useSystemTheme(false);
-    }};
-    but.onblur = handleThemeButtonsBlur;
-    themes.appendChild(but);
-}});"#,
-        serde_json::to_string(&themes).unwrap()
-    );
-
-    write_minify(&cx.shared.fs, cx.path("theme.js"), &theme_js, options.enable_minification)?;
     write_minify(
         &cx.shared.fs,
         cx.path("main.js"),
-        static_files::MAIN_JS,
+        &static_files::MAIN_JS.replace(
+            "/* INSERT THEMES HERE */",
+            &format!(" = {}", serde_json::to_string(&themes).unwrap()),
+        ),
         options.enable_minification,
     )?;
     write_minify(

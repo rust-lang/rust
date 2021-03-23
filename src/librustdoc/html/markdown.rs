@@ -690,25 +690,29 @@ crate fn find_testable_code<T: doctest::Tester>(
 }
 
 crate struct ExtraInfo<'tcx> {
-    hir_id: Option<HirId>,
-    item_did: Option<DefId>,
+    id: ExtraInfoId,
     sp: Span,
     tcx: TyCtxt<'tcx>,
 }
 
+enum ExtraInfoId {
+    Hir(HirId),
+    Def(DefId),
+}
+
 impl<'tcx> ExtraInfo<'tcx> {
     crate fn new(tcx: TyCtxt<'tcx>, hir_id: HirId, sp: Span) -> ExtraInfo<'tcx> {
-        ExtraInfo { hir_id: Some(hir_id), item_did: None, sp, tcx }
+        ExtraInfo { id: ExtraInfoId::Hir(hir_id), sp, tcx }
     }
 
     crate fn new_did(tcx: TyCtxt<'tcx>, did: DefId, sp: Span) -> ExtraInfo<'tcx> {
-        ExtraInfo { hir_id: None, item_did: Some(did), sp, tcx }
+        ExtraInfo { id: ExtraInfoId::Def(did), sp, tcx }
     }
 
     fn error_invalid_codeblock_attr(&self, msg: &str, help: &str) {
-        let hir_id = match (self.hir_id, self.item_did) {
-            (Some(h), _) => h,
-            (None, Some(item_did)) => {
+        let hir_id = match self.id {
+            ExtraInfoId::Hir(hir_id) => hir_id,
+            ExtraInfoId::Def(item_did) => {
                 match item_did.as_local() {
                     Some(item_did) => self.tcx.hir().local_def_id_to_hir_id(item_did),
                     None => {
@@ -717,7 +721,6 @@ impl<'tcx> ExtraInfo<'tcx> {
                     }
                 }
             }
-            (None, None) => return,
         };
         self.tcx.struct_span_lint_hir(
             crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,

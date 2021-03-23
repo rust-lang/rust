@@ -2,7 +2,7 @@
 // Local js definitions:
 /* global addClass, getSettingValue, hasClass */
 /* global onEach, onEachLazy, hasOwnProperty, removeClass, updateLocalStorage */
-/* global hideThemeButtonState, showThemeButtonState */
+/* global switchTheme, useSystemTheme */
 
 if (!String.prototype.startsWith) {
     String.prototype.startsWith = function(searchString, position) {
@@ -85,12 +85,15 @@ function getSearchElement() {
     return document.getElementById("search");
 }
 
+var THEME_PICKER_ELEMENT_ID = "theme-picker";
+var THEMES_ELEMENT_ID = "theme-choices";
+
 function getThemesElement() {
-    return document.getElementById("theme-choices");
+    return document.getElementById(THEMES_ELEMENT_ID);
 }
 
 function getThemePickerElement() {
-    return document.getElementById("theme-picker");
+    return document.getElementById(THEME_PICKER_ELEMENT_ID);
 }
 
 // Returns the current URL without any query parameter or hash.
@@ -107,6 +110,65 @@ function focusSearchBar() {
 function defocusSearchBar() {
     getSearchInput().blur();
 }
+
+function showThemeButtonState() {
+    var themePicker = getThemePickerElement();
+    var themeChoices = getThemesElement();
+
+    themeChoices.style.display = "block";
+    themePicker.style.borderBottomRightRadius = "0";
+    themePicker.style.borderBottomLeftRadius = "0";
+}
+
+function hideThemeButtonState() {
+    var themePicker = getThemePickerElement();
+    var themeChoices = getThemesElement();
+
+    themeChoices.style.display = "none";
+    themePicker.style.borderBottomRightRadius = "3px";
+    themePicker.style.borderBottomLeftRadius = "3px";
+}
+
+// Set up the theme picker list.
+(function () {
+    var themeChoices = getThemesElement();
+    var themePicker = getThemePickerElement();
+    var availableThemes/* INSERT THEMES HERE */;
+
+    function switchThemeButtonState() {
+        if (themeChoices.style.display === "block") {
+            hideThemeButtonState();
+        } else {
+            showThemeButtonState();
+        }
+    }
+
+    function handleThemeButtonsBlur(e) {
+        var active = document.activeElement;
+        var related = e.relatedTarget;
+
+        if (active.id !== THEME_PICKER_ELEMENT_ID &&
+            (!active.parentNode || active.parentNode.id !== THEMES_ELEMENT_ID) &&
+            (!related ||
+             (related.id !== THEME_PICKER_ELEMENT_ID &&
+              (!related.parentNode || related.parentNode.id !== THEMES_ELEMENT_ID)))) {
+            hideThemeButtonState();
+        }
+    }
+
+    themePicker.onclick = switchThemeButtonState;
+    themePicker.onblur = handleThemeButtonsBlur;
+    availableThemes.forEach(function(item) {
+        var but = document.createElement("button");
+        but.textContent = item;
+        but.onclick = function() {
+            switchTheme(window.currentTheme, window.mainTheme, item, true);
+            useSystemTheme(false);
+        };
+        but.onblur = handleThemeButtonsBlur;
+        themeChoices.appendChild(but);
+    });
+}());
 
 (function() {
     "use strict";
@@ -461,8 +523,7 @@ function defocusSearchBar() {
                 break;
 
             default:
-                var themePicker = getThemePickerElement();
-                if (themePicker.parentNode.contains(ev.target)) {
+                if (getThemePickerElement().parentNode.contains(ev.target)) {
                     handleThemeKeyDown(ev);
                 }
             }
@@ -475,7 +536,7 @@ function defocusSearchBar() {
         switch (getVirtualKey(ev)) {
         case "ArrowUp":
             ev.preventDefault();
-            if (active.previousElementSibling && ev.target.id !== "theme-picker") {
+            if (active.previousElementSibling && ev.target.id !== THEME_PICKER_ELEMENT_ID) {
                 active.previousElementSibling.focus();
             } else {
                 showThemeButtonState();
@@ -484,7 +545,7 @@ function defocusSearchBar() {
             break;
         case "ArrowDown":
             ev.preventDefault();
-            if (active.nextElementSibling && ev.target.id !== "theme-picker") {
+            if (active.nextElementSibling && ev.target.id !== THEME_PICKER_ELEMENT_ID) {
                 active.nextElementSibling.focus();
             } else {
                 showThemeButtonState();
@@ -494,7 +555,7 @@ function defocusSearchBar() {
         case "Enter":
         case "Return":
         case "Space":
-            if (ev.target.id === "theme-picker" && themes.style.display === "none") {
+            if (ev.target.id === THEME_PICKER_ELEMENT_ID && themes.style.display === "none") {
                 ev.preventDefault();
                 showThemeButtonState();
                 themes.firstElementChild.focus();

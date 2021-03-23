@@ -6,9 +6,10 @@ FiraSans-Regular.woff
 FiraSans-Regular.woff2
 LICENSE-APACHE.txt
 LICENSE-MIT.txt
+SourceCodePro-It.ttf.woff
 SourceCodePro-LICENSE.txt
-SourceCodePro-Regular.woff
-SourceCodePro-Semibold.woff
+SourceCodePro-Regular.ttf.woff
+SourceCodePro-Semibold.ttf.woff
 SourceSerifPro-Bold.ttf.woff
 SourceSerifPro-It.ttf.woff
 SourceSerifPro-LICENSE.md
