@@ -1804,7 +1804,9 @@ impl From<hir::PrimTy> for PrimitiveType {
 crate enum Visibility {
     /// `pub`
     Public,
-    /// visibility inherited from parent (e.g. for enum variant fields)
+    /// Visibility inherited from parent.
+    ///
+    /// For example, this is the visibility of private items and of enum variants.
     Inherited,
     /// `pub(crate)`, `pub(super)`, or `pub(in path::to::somewhere)`
     Restricted(DefId),
