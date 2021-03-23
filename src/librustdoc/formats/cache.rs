@@ -182,8 +182,6 @@ impl Cache {
             self.primitive_locations.insert(prim, def_id);
         }
 
-        self.stack.push(krate.name.to_string());
-
         krate = CacheBuilder { tcx, cache: self, empty_cache: Cache::default() }.fold_crate(krate);
 
         for (trait_did, dids, impl_) in self.orphan_trait_impls.drain(..) {
