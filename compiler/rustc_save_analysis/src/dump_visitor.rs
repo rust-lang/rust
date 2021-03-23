@@ -320,15 +320,6 @@ impl<'tcx> DumpVisitor<'tcx> {
         for param in generics.params {
             match param.kind {
                 hir::GenericParamKind::Lifetime { .. } => {}
-                hir::GenericParamKind::Type {
-                    synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
-                    ..
-                } => {
-                    return self
-                        .nest_typeck_results(self.tcx.hir().local_def_id(param.hir_id), |this| {
-                            this.visit_generics(generics)
-                        });
-                }
                 hir::GenericParamKind::Type { .. } => {
                     let param_ss = param.name.ident().span;
                     let name = escape(self.span.snippet(param_ss));
