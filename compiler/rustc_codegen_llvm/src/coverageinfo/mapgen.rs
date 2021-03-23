@@ -269,7 +269,7 @@ fn add_unused_functions<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
         .iter()
         .filter_map(|local_def_id| {
             let def_id = local_def_id.to_def_id();
-            if ignore_unused_generics && tcx.generics_of(def_id).count() > 0 {
+            if ignore_unused_generics && tcx.generics_of(def_id).requires_monomorphization(tcx) {
                 return None;
             }
             Some(local_def_id.to_def_id())
