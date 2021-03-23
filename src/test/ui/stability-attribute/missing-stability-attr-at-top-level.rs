@@ -1,4 +1,4 @@
 #![feature(staged_api)]
-//~^ ERROR module has missing stability attribute
+//~^ ERROR module is missing a stability attribute
 
 fn main() {}

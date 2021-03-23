@@ -1,4 +1,4 @@
-error: function has missing stability attribute
+error: function is missing a stability attribute
   --> $DIR/missing-stability.rs:8:1
    |
 LL | / pub fn unmarked() {
@@ -7,7 +7,7 @@ LL | |     ()
 LL | | }
    | |_^
 
-error: function has missing stability attribute
+error: function is missing a stability attribute
   --> $DIR/missing-stability.rs:22:5
    |
 LL |     pub fn unmarked() {}
