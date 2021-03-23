@@ -712,6 +712,10 @@ pub fn foo(_input: TokenStream) -> TokenStream {
     // We hard code the output here for preventing to use any deps
     let mut res = TokenStream::new();
 
+    // ill behaved proc-macro will use the stdout
+    // we should ignore it
+    println!("I am bad guy");
+
     // impl Bar for Foo { fn bar() {} }
     let mut tokens = vec![t!("impl"), t!("Bar"), t!("for"), t!("Foo")];
     let mut fn_stream = TokenStream::new();

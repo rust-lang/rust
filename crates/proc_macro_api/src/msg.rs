@@ -77,13 +77,24 @@ impl Message for Request {}
 impl Message for Response {}
 
 fn read_json(inp: &mut impl BufRead) -> io::Result<Option<String>> {
-    let mut buf = String::new();
-    inp.read_line(&mut buf)?;
-    buf.pop(); // Remove trailing '\n'
-    Ok(match buf.len() {
-        0 => None,
-        _ => Some(buf),
-    })
+    loop {
+        let mut buf = String::new();
+        inp.read_line(&mut buf)?;
+        buf.pop(); // Remove trailing '\n'
+
+        if buf.is_empty() {
+            return Ok(None);
+        }
+
+        // Some ill behaved macro try to use stdout for debugging
+        // We ignore it here
+        if !buf.starts_with("{") {
+            log::error!("proc-macro tried to print : {}", buf);
+            continue;
+        }
+
+        return Ok(Some(buf));
+    }
 }
 
 fn write_json(out: &mut impl Write, msg: &str) -> io::Result<()> {
