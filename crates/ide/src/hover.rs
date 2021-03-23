@@ -11,11 +11,14 @@ use ide_db::{
 };
 use itertools::Itertools;
 use stdx::format_to;
-use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset, T};
+use syntax::{ast, match_ast, AstNode, AstToken, SyntaxKind::*, SyntaxToken, TokenAtOffset, T};
 
 use crate::{
     display::{macro_label, TryToNav},
-    doc_links::{remove_links, rewrite_links},
+    doc_links::{
+        doc_owner_to_def, extract_positioned_link_from_comment, remove_links,
+        resolve_doc_path_for_def, rewrite_links,
+    },
     markdown_remove::remove_markdown,
     markup::Markup,
     runnables::{runnable_fn, runnable_mod},
@@ -93,20 +96,35 @@ pub(crate) fn hover(
     let mut res = HoverResult::default();
 
     let node = token.parent()?;
+    let mut range = None;
     let definition = match_ast! {
         match node {
             // we don't use NameClass::referenced_or_defined here as we do not want to resolve
             // field pattern shorthands to their definition
             ast::Name(name) => NameClass::classify(&sema, &name).and_then(|class| match class {
                 NameClass::ConstReference(def) => Some(def),
-                def => def.defined(sema.db),
+                def => def.defined(db),
             }),
-            ast::NameRef(name_ref) => NameRefClass::classify(&sema, &name_ref).map(|d| d.referenced(sema.db)),
-            ast::Lifetime(lifetime) => NameClass::classify_lifetime(&sema, &lifetime)
-                .map_or_else(|| NameRefClass::classify_lifetime(&sema, &lifetime).map(|d| d.referenced(sema.db)), |d| d.defined(sema.db)),
-            _ => None,
+            ast::NameRef(name_ref) => {
+                NameRefClass::classify(&sema, &name_ref).map(|d| d.referenced(db))
+            },
+            ast::Lifetime(lifetime) => NameClass::classify_lifetime(&sema, &lifetime).map_or_else(
+                || NameRefClass::classify_lifetime(&sema, &lifetime).map(|d| d.referenced(db)),
+                |d| d.defined(db),
+            ),
+
+            _ => ast::Comment::cast(token.clone())
+                .and_then(|comment| {
+                    let (idl_range, link, ns) =
+                        extract_positioned_link_from_comment(position.offset, &comment)?;
+                    range = Some(idl_range);
+                    let def = doc_owner_to_def(&sema, &node)?;
+                    resolve_doc_path_for_def(db, def, &link, ns)
+                })
+                .map(Definition::ModuleDef),
         }
     };
+
     if let Some(definition) = definition {
         let famous_defs = match &definition {
             Definition::ModuleDef(ModuleDef::BuiltinType(_)) => {
@@ -128,15 +146,16 @@ pub(crate) fn hover(
                 res.actions.push(action);
             }
 
-            let range = sema.original_range(&node).range;
+            let range = range.unwrap_or_else(|| sema.original_range(&node).range);
             return Some(RangeInfo::new(range, res));
         }
     }
 
     if token.kind() == syntax::SyntaxKind::COMMENT {
-        // don't highlight the entire parent node on comment hover
+        cov_mark::hit!(no_highlight_on_comment_hover);
         return None;
     }
+
     if let res @ Some(_) = hover_for_keyword(&sema, links_in_hover, markdown, &token) {
         return res;
     }
@@ -3483,6 +3502,7 @@ fn foo$0() {}
 
     #[test]
     fn hover_comments_dont_highlight_parent() {
+        cov_mark::check!(no_highlight_on_comment_hover);
         check_hover_no_result(
             r#"
 fn no_hover() {
@@ -3754,5 +3774,30 @@ fn main() {
                 ```
             "#]],
         )
+    }
+
+    #[test]
+    fn hover_intra_doc_links() {
+        check(
+            r#"
+/// This is the [`foo`](foo$0) function.
+fn foo() {}
+"#,
+            expect![[r#"
+                *[`foo`](foo)*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                fn foo()
+                ```
+
+                ---
+
+                This is the [`foo`](https://docs.rs/test/*/test/fn.foo.html) function.
+            "#]],
+        );
     }
 }
