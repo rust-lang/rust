@@ -1,0 +1,56 @@
+error: module is private but has a stability attribute
+  --> $DIR/stability-without-publicity.rs:6:1
+   |
+LL | mod mod_stable {}
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = help: if it is meant to be private, remove the stability attribute
+   = help: or, if it is meant to be public, make it public
+
+error: module is private but has a stability attribute
+  --> $DIR/stability-without-publicity.rs:10:1
+   |
+LL | mod mod_unstable {}
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: if it is meant to be private, remove the stability attribute
+   = help: or, if it is meant to be public, make it public
+
+error: function is private but has a stability attribute
+  --> $DIR/stability-without-publicity.rs:14:1
+   |
+LL | fn fn_stable() {}
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = help: if it is meant to be private, remove the stability attribute
+   = help: or, if it is meant to be public, make it public
+
+error: function is private but has a stability attribute
+  --> $DIR/stability-without-publicity.rs:18:1
+   |
+LL | fn fn_unstable() {}
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: if it is meant to be private, remove the stability attribute
+   = help: or, if it is meant to be public, make it public
+
+error: function is private but has a stability attribute
+  --> $DIR/stability-without-publicity.rs:23:1
+   |
+LL | const fn const_fn_stable() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: if it is meant to be private, remove the stability attribute
+   = help: or, if it is meant to be public, make it public
+
+error: function is private but has a stability attribute
+  --> $DIR/stability-without-publicity.rs:28:1
+   |
+LL | const fn const_fn_unstable() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: if it is meant to be private, remove the stability attribute
+   = help: or, if it is meant to be public, make it public
+
+error: aborting due to 6 previous errors
+
