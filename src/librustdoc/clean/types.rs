@@ -255,6 +255,10 @@ impl Item {
         if self.is_fake() { None } else { tcx.lookup_deprecation(self.def_id) }
     }
 
+    crate fn attr_span(&self, _tcx: TyCtxt<'_>) -> rustc_span::Span {
+        crate::passes::span_of_attrs(&self.attrs).unwrap_or_else(|| self.span.inner())
+    }
+
     /// Finds the `doc` attribute as a NameValue and returns the corresponding
     /// value found.
     crate fn doc_value(&self) -> Option<String> {
