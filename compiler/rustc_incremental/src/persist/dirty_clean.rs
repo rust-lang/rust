@@ -148,6 +148,10 @@ impl Assertion {
 }
 
 pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
+    if !tcx.sess.opts.debugging_opts.query_dep_graph {
+        return;
+    }
+
     // can't add `#[rustc_dirty]` etc without opting in to this feature
     if !tcx.features().rustc_attrs {
         return;

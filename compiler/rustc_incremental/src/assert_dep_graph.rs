@@ -57,6 +57,10 @@ pub fn assert_dep_graph(tcx: TyCtxt<'_>) {
             dump_graph(tcx);
         }
 
+        if !tcx.sess.opts.debugging_opts.query_dep_graph {
+            return;
+        }
+
         // if the `rustc_attrs` feature is not enabled, then the
         // attributes we are interested in cannot be present anyway, so
         // skip the walk.
