@@ -44,6 +44,7 @@ use hir_def::{
     per_ns::PerNs,
     resolver::{HasResolver, Resolver},
     src::HasSource as _,
+    type_ref::TraitRef,
     AdtId, AssocContainerId, AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId,
     DefWithBodyId, EnumId, FunctionId, GenericDefId, HasModule, ImplId, LifetimeParamId,
     LocalEnumVariantId, LocalFieldId, Lookup, ModuleId, StaticId, StructId, TraitId, TypeAliasId,
@@ -1613,7 +1614,7 @@ impl Impl {
 
     // FIXME: the return type is wrong. This should be a hir version of
     // `TraitRef` (ie, resolved `TypeRef`).
-    pub fn target_trait(self, db: &dyn HirDatabase) -> Option<TypeRef> {
+    pub fn target_trait(self, db: &dyn HirDatabase) -> Option<TraitRef> {
         db.impl_data(self.id).target_trait.clone()
     }
 

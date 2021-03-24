@@ -15,7 +15,7 @@ use hir_def::{
     generics::{TypeParamProvenance, WherePredicate, WherePredicateTypeTarget},
     path::{GenericArg, Path, PathSegment, PathSegments},
     resolver::{HasResolver, Resolver, TypeNs},
-    type_ref::{TypeBound, TypeRef},
+    type_ref::{TraitRef as HirTraitRef, TypeBound, TypeRef},
     AdtId, AssocContainerId, AssocItemId, ConstId, ConstParamId, EnumId, EnumVariantId, FunctionId,
     GenericDefId, HasModule, ImplId, LocalFieldId, Lookup, StaticId, StructId, TraitId,
     TypeAliasId, TypeParamId, UnionId, VariantId,
@@ -667,14 +667,13 @@ impl<'a> TyLoweringContext<'a> {
 
     fn lower_trait_ref(
         &self,
-        type_ref: &TypeRef,
+        trait_ref: &HirTraitRef,
         explicit_self_ty: Option<Ty>,
     ) -> Option<TraitRef> {
-        let path = match type_ref {
-            TypeRef::Path(path) => path,
-            _ => return None,
-        };
-        self.lower_trait_ref_from_path(path, explicit_self_ty)
+        match trait_ref {
+            HirTraitRef::Path(path) => self.lower_trait_ref_from_path(path, explicit_self_ty),
+            HirTraitRef::Error => None,
+        }
     }
 
     fn trait_ref_substs_from_path(

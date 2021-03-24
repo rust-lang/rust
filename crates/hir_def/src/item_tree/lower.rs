@@ -11,7 +11,7 @@ use syntax::{
 
 use crate::{
     generics::{GenericParams, TypeParamData, TypeParamProvenance},
-    type_ref::LifetimeRef,
+    type_ref::{LifetimeRef, TraitRef},
 };
 
 use super::*;
@@ -536,7 +536,7 @@ impl Ctx {
     fn lower_impl(&mut self, impl_def: &ast::Impl) -> Option<FileItemTreeId<Impl>> {
         let generic_params =
             self.lower_generic_params_and_inner_items(GenericsOwner::Impl, impl_def);
-        let target_trait = impl_def.trait_().map(|tr| self.lower_type_ref(&tr));
+        let target_trait = impl_def.trait_().map(|tr| self.lower_trait_ref(&tr));
         let target_type = self.lower_type_ref(&impl_def.self_ty()?);
         let is_negative = impl_def.excl_token().is_some();
 
@@ -740,10 +740,16 @@ impl Ctx {
         self.data().vis.alloc(vis)
     }
 
+    fn lower_trait_ref(&mut self, trait_ref: &ast::Type) -> Idx<TraitRef> {
+        let trait_ref = TraitRef::from_ast(&self.body_ctx, trait_ref.clone());
+        self.data().trait_refs.intern(trait_ref)
+    }
+
     fn lower_type_ref(&mut self, type_ref: &ast::Type) -> Idx<TypeRef> {
         let tyref = TypeRef::from_ast(&self.body_ctx, type_ref.clone());
         self.data().type_refs.intern(tyref)
     }
+
     fn lower_type_ref_opt(&mut self, type_ref: Option<ast::Type>) -> Idx<TypeRef> {
         match type_ref.map(|ty| self.lower_type_ref(&ty)) {
             Some(it) => it,

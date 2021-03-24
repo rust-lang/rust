@@ -10,7 +10,7 @@ use crate::{
     body::Expander,
     db::DefDatabase,
     item_tree::{AssocItem, FunctionQualifier, ItemTreeId, ModItem, Param},
-    type_ref::{TypeBound, TypeRef},
+    type_ref::{TraitRef, TypeBound, TypeRef},
     visibility::RawVisibility,
     AssocContainerId, AssocItemId, ConstId, ConstLoc, FunctionId, FunctionLoc, HasModule, ImplId,
     Intern, Lookup, ModuleId, StaticId, TraitId, TypeAliasId, TypeAliasLoc,
@@ -156,7 +156,7 @@ impl TraitData {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImplData {
-    pub target_trait: Option<TypeRef>,
+    pub target_trait: Option<TraitRef>,
     pub target_type: TypeRef,
     pub items: Vec<AssocItemId>,
     pub is_negative: bool,
