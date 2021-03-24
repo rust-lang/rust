@@ -2274,7 +2274,7 @@ impl PpMode {
 
     pub fn needs_analysis(&self) -> bool {
         use PpMode::*;
-        matches!(*self, Mir | MirCFG)
+        matches!(*self, Mir | MirCFG | ThirTree)
     }
 }
 
