@@ -67,7 +67,7 @@ use rustc_hir::{Item, ItemKind, Node};
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{
     self,
-    subst::{Subst, SubstsRef},
+    subst::{GenericArgKind, Subst, SubstsRef},
     Region, Ty, TyCtxt, TypeFoldable,
 };
 use rustc_span::{sym, BytePos, DesugaringKind, Pos, Span};
@@ -957,33 +957,27 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ) -> SubstsRef<'tcx> {
         let generics = self.tcx.generics_of(def_id);
         let mut num_supplied_defaults = 0;
-        let mut type_params = generics
-            .params
-            .iter()
-            .rev()
-            .filter_map(|param| match param.kind {
-                ty::GenericParamDefKind::Lifetime => None,
-                ty::GenericParamDefKind::Type { has_default, .. } => {
-                    Some((param.def_id, has_default))
+
+        let default_params = generics.params.iter().rev().filter_map(|param| match param.kind {
+            ty::GenericParamDefKind::Type { has_default: true, .. } => Some(param.def_id),
+            ty::GenericParamDefKind::Const { has_default: true } => Some(param.def_id),
+            _ => None,
+        });
+        for (def_id, actual) in default_params.zip(substs.iter().rev()) {
+            match actual.unpack() {
+                GenericArgKind::Const(c) => {
+                    if self.tcx.const_param_default(def_id).subst(self.tcx, substs) != c {
+                        break;
+                    }
                 }
-                ty::GenericParamDefKind::Const => None, // FIXME(const_generics_defaults)
-            })
-            .peekable();
-        let has_default = {
-            let has_default = type_params.peek().map(|(_, has_default)| has_default);
-            *has_default.unwrap_or(&false)
-        };
-        if has_default {
-            let types = substs.types().rev();
-            for ((def_id, has_default), actual) in type_params.zip(types) {
-                if !has_default {
-                    break;
+                GenericArgKind::Type(ty) => {
+                    if self.tcx.type_of(def_id).subst(self.tcx, substs) != ty {
+                        break;
+                    }
                 }
-                if self.tcx.type_of(def_id).subst(self.tcx, substs) != actual {
-                    break;
-                }
-                num_supplied_defaults += 1;
+                _ => break,
             }
+            num_supplied_defaults += 1;
         }
         let len = generics.params.len();
         let mut generics = generics.clone();

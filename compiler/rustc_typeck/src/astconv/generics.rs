@@ -64,7 +64,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     kind: hir::TyKind::Path(rustc_hir::QPath::Resolved(_, path)),
                     ..
                 }),
-                GenericParamDefKind::Const,
+                GenericParamDefKind::Const { .. },
             ) => match path.res {
                 Res::Err => {
                     add_braces_suggestion(arg, &mut err);
@@ -93,7 +93,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             },
             (
                 GenericArg::Type(hir::Ty { kind: hir::TyKind::Path(_), .. }),
-                GenericParamDefKind::Const,
+                GenericParamDefKind::Const { .. },
             ) => add_braces_suggestion(arg, &mut err),
             (
                 GenericArg::Type(hir::Ty { kind: hir::TyKind::Array(_, len), .. }),
@@ -236,7 +236,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         match (arg, &param.kind, arg_count.explicit_late_bound) {
                             (GenericArg::Lifetime(_), GenericParamDefKind::Lifetime, _)
                             | (GenericArg::Type(_), GenericParamDefKind::Type { .. }, _)
-                            | (GenericArg::Const(_), GenericParamDefKind::Const, _) => {
+                            | (GenericArg::Const(_), GenericParamDefKind::Const { .. }, _) => {
                                 substs.push(ctx.provided_kind(param, arg));
                                 args.next();
                                 params.next();
@@ -282,7 +282,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                                     GenericParamDefKind::Type { .. } => {
                                                         ParamKindOrd::Type
                                                     }
-                                                    GenericParamDefKind::Const => {
+                                                    GenericParamDefKind::Const { .. } => {
                                                         ParamKindOrd::Const {
                                                             unordered: tcx
                                                                 .features()
@@ -499,7 +499,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let expected_min = if infer_args {
                 0
             } else {
-                param_counts.consts + named_type_param_count - default_counts.types
+                param_counts.consts + named_type_param_count
+                    - default_counts.types
+                    - default_counts.consts
             };
 
             check_generics(

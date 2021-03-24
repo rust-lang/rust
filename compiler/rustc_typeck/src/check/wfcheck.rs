@@ -713,10 +713,11 @@ fn check_where_clauses<'tcx, 'fcx>(
     let generics = tcx.generics_of(def_id);
 
     let is_our_default = |def: &ty::GenericParamDef| match def.kind {
-        GenericParamDefKind::Type { has_default, .. } => {
+        GenericParamDefKind::Type { has_default, .. }
+        | GenericParamDefKind::Const { has_default } => {
             has_default && def.index >= generics.parent_count as u32
         }
-        _ => unreachable!(),
+        GenericParamDefKind::Lifetime => unreachable!(),
     };
 
     // Check that concrete defaults are well-formed. See test `type-check-defaults.rs`.
@@ -771,10 +772,15 @@ fn check_where_clauses<'tcx, 'fcx>(
 
                 fcx.tcx.mk_param_from_def(param)
             }
-
-            GenericParamDefKind::Const => {
-                // FIXME(const_generics_defaults)
-                fcx.tcx.mk_param_from_def(param)
+            GenericParamDefKind::Const { .. } => {
+                if is_our_default(param) {
+                    let default_ct = tcx.const_param_default(param.def_id);
+                    // Const params currently have to be concrete.
+                    assert!(!default_ct.needs_subst());
+                    default_ct.into()
+                } else {
+                    fcx.tcx.mk_param_from_def(param)
+                }
             }
         }
     });

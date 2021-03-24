@@ -132,10 +132,10 @@ crate enum RibKind<'a> {
     /// We passed through a `macro_rules!` statement
     MacroDefinition(DefId),
 
-    /// All bindings in this rib are type parameters that can't be used
-    /// from the default of a type parameter because they're not declared
-    /// before said type parameter. Also see the `visit_generics` override.
-    ForwardTyParamBanRibKind,
+    /// All bindings in this rib are generic parameters that can't be used
+    /// from the default of a generic parameter because they're not declared
+    /// before said generic parameter. Also see the `visit_generics` override.
+    ForwardGenericParamBanRibKind,
 
     /// We are inside of the type of a const parameter. Can't refer to any
     /// parameters.
@@ -154,7 +154,7 @@ impl RibKind<'_> {
             | ModuleRibKind(_)
             | MacroDefinition(_)
             | ConstParamTyRibKind => false,
-            AssocItemRibKind | ItemRibKind(_) | ForwardTyParamBanRibKind => true,
+            AssocItemRibKind | ItemRibKind(_) | ForwardGenericParamBanRibKind => true,
         }
     }
 }
@@ -555,15 +555,16 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         // provide previous type parameters as they're built. We
         // put all the parameters on the ban list and then remove
         // them one by one as they are processed and become available.
-        let mut default_ban_rib = Rib::new(ForwardTyParamBanRibKind);
+        let mut default_ban_rib = Rib::new(ForwardGenericParamBanRibKind);
         let mut found_default = false;
         default_ban_rib.bindings.extend(generics.params.iter().filter_map(
             |param| match param.kind {
-                GenericParamKind::Const { .. } | GenericParamKind::Lifetime { .. } => None,
-                GenericParamKind::Type { ref default, .. } => {
-                    found_default |= default.is_some();
-                    found_default.then_some((Ident::with_dummy_span(param.ident.name), Res::Err))
+                GenericParamKind::Type { default: Some(_), .. }
+                | GenericParamKind::Const { default: Some(_), .. } => {
+                    found_default = true;
+                    Some((Ident::with_dummy_span(param.ident.name), Res::Err))
                 }
+                _ => None,
             },
         ));
 
@@ -591,8 +592,8 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
 
                     if let Some(ref ty) = default {
                         self.ribs[TypeNS].push(default_ban_rib);
-                        self.with_rib(ValueNS, ForwardTyParamBanRibKind, |this| {
-                            // HACK: We use an empty `ForwardTyParamBanRibKind` here which
+                        self.with_rib(ValueNS, ForwardGenericParamBanRibKind, |this| {
+                            // HACK: We use an empty `ForwardGenericParamBanRibKind` here which
                             // is only used to forbid the use of const parameters inside of
                             // type defaults.
                             //
@@ -865,7 +866,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 | ItemRibKind(..)
                 | ConstantItemRibKind(..)
                 | ModuleRibKind(..)
-                | ForwardTyParamBanRibKind
+                | ForwardGenericParamBanRibKind
                 | ConstParamTyRibKind => {
                     return false;
                 }

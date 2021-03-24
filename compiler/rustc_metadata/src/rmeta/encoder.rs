@@ -1876,13 +1876,12 @@ impl EncodeContext<'a, 'tcx> {
                         default.is_some(),
                     );
                 }
-                GenericParamKind::Const { .. } => {
-                    self.encode_info_for_generic_param(
-                        def_id.to_def_id(),
-                        EntryKind::ConstParam,
-                        true,
-                    );
-                    // FIXME(const_generics_defaults)
+                GenericParamKind::Const { ref default, .. } => {
+                    let def_id = def_id.to_def_id();
+                    self.encode_info_for_generic_param(def_id, EntryKind::ConstParam, true);
+                    if default.is_some() {
+                        record!(self.tables.const_defaults[def_id] <- self.tcx.const_param_default(def_id))
+                    }
                 }
             }
         }

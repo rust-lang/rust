@@ -593,7 +593,7 @@ fn polymorphize<'tcx>(
                 },
 
             // Simple case: If parameter is a const or type parameter..
-            ty::GenericParamDefKind::Const | ty::GenericParamDefKind::Type { .. } if
+            ty::GenericParamDefKind::Const { .. } | ty::GenericParamDefKind::Type { .. } if
                 // ..and is within range and unused..
                 unused.contains(param.index).unwrap_or(false) =>
                     // ..then use the identity for this parameter.

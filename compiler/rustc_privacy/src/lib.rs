@@ -928,8 +928,11 @@ impl ReachEverythingInTheInterfaceVisitor<'_, 'tcx> {
                         self.visit(self.ev.tcx.type_of(param.def_id));
                     }
                 }
-                GenericParamDefKind::Const => {
+                GenericParamDefKind::Const { has_default, .. } => {
                     self.visit(self.ev.tcx.type_of(param.def_id));
+                    if has_default {
+                        self.visit(self.ev.tcx.const_param_default(param.def_id));
+                    }
                 }
             }
         }
@@ -1741,7 +1744,8 @@ impl SearchInterfaceForPrivateItemsVisitor<'tcx> {
                         self.visit(self.tcx.type_of(param.def_id));
                     }
                 }
-                GenericParamDefKind::Const => {
+                // FIXME(const_evaluatable_checked): May want to look inside const here
+                GenericParamDefKind::Const { .. } => {
                     self.visit(self.tcx.type_of(param.def_id));
                 }
             }

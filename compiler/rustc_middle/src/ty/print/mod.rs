@@ -193,17 +193,19 @@ pub trait Printer<'tcx>: Sized {
             .params
             .iter()
             .rev()
-            .take_while(|param| {
-                match param.kind {
-                    ty::GenericParamDefKind::Lifetime => false,
-                    ty::GenericParamDefKind::Type { has_default, .. } => {
-                        has_default
-                            && substs[param.index as usize]
-                                == GenericArg::from(
-                                    self.tcx().type_of(param.def_id).subst(self.tcx(), substs),
-                                )
-                    }
-                    ty::GenericParamDefKind::Const => false, // FIXME(const_generics_defaults)
+            .take_while(|param| match param.kind {
+                ty::GenericParamDefKind::Lifetime => false,
+                ty::GenericParamDefKind::Type { has_default, .. } => {
+                    has_default
+                        && substs[param.index as usize]
+                            == GenericArg::from(
+                                self.tcx().type_of(param.def_id).subst(self.tcx(), substs),
+                            )
+                }
+                ty::GenericParamDefKind::Const { has_default } => {
+                    has_default
+                        && substs[param.index as usize]
+                            == GenericArg::from(self.tcx().const_param_default(param.def_id))
                 }
             })
             .count();

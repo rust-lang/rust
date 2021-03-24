@@ -2659,8 +2659,10 @@ impl<'a> State<'a> {
                     s.word_space(":");
                     s.print_type(ty);
                     s.print_type_bounds(":", &param.bounds);
-                    if let Some(ref _default) = default {
-                        // FIXME(const_generics_defaults): print the `default` value here
+                    if let Some(ref default) = default {
+                        s.s.space();
+                        s.word_space("=");
+                        s.print_expr(&default.value);
                     }
                 }
             }

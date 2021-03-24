@@ -1150,20 +1150,23 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_generics(&mut self, generics: &'a Generics) {
-        let mut prev_ty_default = None;
+        let cg_defaults = self.session.features_untracked().const_generics_defaults;
+
+        let mut prev_param_default = None;
         for param in &generics.params {
             match param.kind {
                 GenericParamKind::Lifetime => (),
-                GenericParamKind::Type { default: Some(_), .. } => {
-                    prev_ty_default = Some(param.ident.span);
+                GenericParamKind::Type { default: Some(_), .. }
+                | GenericParamKind::Const { default: Some(_), .. } => {
+                    prev_param_default = Some(param.ident.span);
                 }
                 GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {
-                    if let Some(span) = prev_ty_default {
+                    if let Some(span) = prev_param_default {
                         let mut err = self.err_handler().struct_span_err(
                             span,
-                            "type parameters with a default must be trailing",
+                            "generic parameters with a default must be trailing",
                         );
-                        if matches!(param.kind, GenericParamKind::Const { .. }) {
+                        if matches!(param.kind, GenericParamKind::Const { .. }) && !cg_defaults {
                             err.note(
                                 "using type defaults and const parameters \
                                  in the same parameter list is currently not permitted",

@@ -173,7 +173,7 @@ fn enforce_impl_params_are_constrained(
                     );
                 }
             }
-            ty::GenericParamDefKind::Const => {
+            ty::GenericParamDefKind::Const { .. } => {
                 let param_ct = ty::ParamConst::for_def(param);
                 if !input_parameters.contains(&cgp::Parameter::from(param_ct)) {
                     report_unused_parameter(

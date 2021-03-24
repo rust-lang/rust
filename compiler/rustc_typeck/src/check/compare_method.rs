@@ -792,11 +792,11 @@ fn compare_synthetic_generics<'tcx>(
     let trait_m_generics = tcx.generics_of(trait_m.def_id);
     let impl_m_type_params = impl_m_generics.params.iter().filter_map(|param| match param.kind {
         GenericParamDefKind::Type { synthetic, .. } => Some((param.def_id, synthetic)),
-        GenericParamDefKind::Lifetime | GenericParamDefKind::Const => None,
+        GenericParamDefKind::Lifetime | GenericParamDefKind::Const { .. } => None,
     });
     let trait_m_type_params = trait_m_generics.params.iter().filter_map(|param| match param.kind {
         GenericParamDefKind::Type { synthetic, .. } => Some((param.def_id, synthetic)),
-        GenericParamDefKind::Lifetime | GenericParamDefKind::Const => None,
+        GenericParamDefKind::Lifetime | GenericParamDefKind::Const { .. } => None,
     });
     for ((impl_def_id, impl_synthetic), (trait_def_id, trait_synthetic)) in
         impl_m_type_params.zip(trait_m_type_params)

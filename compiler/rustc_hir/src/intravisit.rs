@@ -366,6 +366,9 @@ pub trait Visitor<'v>: Sized {
     fn visit_generic_param(&mut self, p: &'v GenericParam<'v>) {
         walk_generic_param(self, p)
     }
+    fn visit_const_param_default(&mut self, _param: HirId, ct: &'v AnonConst) {
+        walk_const_param_default(self, ct)
+    }
     fn visit_generics(&mut self, g: &'v Generics<'v>) {
         walk_generics(self, g)
     }
@@ -869,11 +872,15 @@ pub fn walk_generic_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v Generi
         GenericParamKind::Const { ref ty, ref default } => {
             visitor.visit_ty(ty);
             if let Some(ref default) = default {
-                visitor.visit_anon_const(default);
+                visitor.visit_const_param_default(param.hir_id, default);
             }
         }
     }
     walk_list!(visitor, visit_param_bound, param.bounds);
+}
+
+pub fn walk_const_param_default<'v, V: Visitor<'v>>(visitor: &mut V, ct: &'v AnonConst) {
+    visitor.visit_anon_const(ct)
 }
 
 pub fn walk_generics<'v, V: Visitor<'v>>(visitor: &mut V, generics: &'v Generics<'v>) {

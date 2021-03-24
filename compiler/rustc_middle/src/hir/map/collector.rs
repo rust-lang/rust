@@ -395,6 +395,10 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         }
     }
 
+    fn visit_const_param_default(&mut self, param: HirId, ct: &'hir AnonConst) {
+        self.with_parent(param, |this| intravisit::walk_const_param_default(this, ct))
+    }
+
     fn visit_trait_item(&mut self, ti: &'hir TraitItem<'hir>) {
         self.with_dep_node_owner(ti.def_id, ti, |this, hash| {
             this.insert_with_hash(ti.span, ti.hir_id(), Node::TraitItem(ti), hash);

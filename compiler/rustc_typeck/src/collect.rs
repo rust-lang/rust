@@ -254,10 +254,15 @@ impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
                     self.tcx.ensure().type_of(def_id);
                 }
                 hir::GenericParamKind::Type { .. } => {}
-                hir::GenericParamKind::Const { .. } => {
+                hir::GenericParamKind::Const { default, .. } => {
                     let def_id = self.tcx.hir().local_def_id(param.hir_id);
                     self.tcx.ensure().type_of(def_id);
-                    // FIXME(const_generics_defaults)
+                    if let Some(default) = default {
+                        let default_def_id = self.tcx.hir().local_def_id(default.hir_id);
+                        // need to store default and type of default
+                        self.tcx.ensure().type_of(default_def_id);
+                        self.tcx.ensure().const_param_default(def_id);
+                    }
                 }
             }
         }
@@ -1523,7 +1528,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                         |lint| {
                             lint.build(
                                 "defaults for type parameters are only allowed in \
-                                 `struct`, `enum`, `type`, or `trait` definitions.",
+                                 `struct`, `enum`, `type`, or `trait` definitions",
                             )
                             .emit();
                         },
@@ -1549,13 +1554,21 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
             i += 1;
             Some(param_def)
         }
-        GenericParamKind::Const { .. } => {
+        GenericParamKind::Const { default, .. } => {
+            if !allow_defaults && default.is_some() {
+                tcx.sess.span_err(
+                    param.span,
+                    "defaults for const parameters are only allowed in \
+                    `struct`, `enum`, `type`, or `trait` definitions",
+                );
+            }
+
             let param_def = ty::GenericParamDef {
                 index: type_start + i as u32,
                 name: param.name.ident().name,
                 def_id: tcx.hir().local_def_id(param.hir_id).to_def_id(),
                 pure_wrt_drop: param.pure_wrt_drop,
-                kind: ty::GenericParamDefKind::Const,
+                kind: ty::GenericParamDefKind::Const { has_default: default.is_some() },
             };
             i += 1;
             Some(param_def)

@@ -176,7 +176,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         for param in generics.params.iter() {
             let value = match param.kind {
-                GenericParamDefKind::Type { .. } | GenericParamDefKind::Const => {
+                GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
                     trait_ref.substs[param.index as usize].to_string()
                 }
                 GenericParamDefKind::Lifetime => continue,
