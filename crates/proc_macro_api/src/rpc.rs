@@ -77,7 +77,11 @@ struct TokenIdDef(u32);
 #[derive(Serialize, Deserialize)]
 #[serde(remote = "Delimiter")]
 struct DelimiterDef {
-    #[serde(with = "TokenIdDef")]
+    #[serde(
+        with = "TokenIdDef",
+        default = "tt::TokenId::unspecified",
+        skip_serializing_if = "token_id_def::skip_if"
+    )]
     id: TokenId,
     #[serde(with = "DelimiterKindDef")]
     kind: DelimiterKind,
@@ -116,7 +120,11 @@ enum LeafDef {
 #[serde(remote = "Literal")]
 struct LiteralDef {
     text: SmolStr,
-    #[serde(with = "TokenIdDef")]
+    #[serde(
+        with = "TokenIdDef",
+        default = "tt::TokenId::unspecified",
+        skip_serializing_if = "token_id_def::skip_if"
+    )]
     id: TokenId,
 }
 
@@ -126,7 +134,11 @@ struct PunctDef {
     char: char,
     #[serde(with = "SpacingDef")]
     spacing: Spacing,
-    #[serde(with = "TokenIdDef")]
+    #[serde(
+        with = "TokenIdDef",
+        default = "tt::TokenId::unspecified",
+        skip_serializing_if = "token_id_def::skip_if"
+    )]
     id: TokenId,
 }
 
@@ -141,8 +153,18 @@ enum SpacingDef {
 #[serde(remote = "Ident")]
 struct IdentDef {
     text: SmolStr,
-    #[serde(with = "TokenIdDef")]
+    #[serde(
+        with = "TokenIdDef",
+        default = "tt::TokenId::unspecified",
+        skip_serializing_if = "token_id_def::skip_if"
+    )]
     id: TokenId,
+}
+
+mod token_id_def {
+    pub(super) fn skip_if(value: &tt::TokenId) -> bool {
+        *value == tt::TokenId::unspecified()
+    }
 }
 
 mod opt_delimiter_def {
