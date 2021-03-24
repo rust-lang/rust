@@ -256,7 +256,7 @@ environment variable:
   indicates a pointer that was cast from an integer, so Miri was unable to track
   this pointer. Note that it is not currently guaranteed that code that works
   with `-Zmiri-track-raw-pointers` also works without
-  `-Zmiri-track-raw-pointers`.
+  `-Zmiri-track-raw-pointers`, but for the vast majority of code, this will be the case.
 
 Some native rustc `-Z` flags are also very relevant for Miri:
 
