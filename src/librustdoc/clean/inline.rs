@@ -7,7 +7,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
-use rustc_hir::Mutability;
+use rustc_hir::{HirId, Mutability};
 use rustc_metadata::creader::LoadedMacro;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir::const_eval::is_min_const_fn;
@@ -122,7 +122,8 @@ crate fn try_inline(
     };
 
     let target_attrs = load_attrs(cx, did);
-    let attrs = box merge_attrs(cx, Some(parent_module), target_attrs, attrs_clone, did.is_local());
+    let local_item = DocContext::as_local_hir_id(cx.tcx, did);
+    let attrs = box merge_attrs(cx, Some(parent_module), target_attrs, attrs_clone, local_item);
 
     cx.inlined.insert(did);
     let what_rustc_thinks = clean::Item::from_def_id_and_parts(did, Some(name), kind, cx);
@@ -290,7 +291,7 @@ fn merge_attrs(
     parent_module: Option<DefId>,
     old_attrs: Attrs<'_>,
     new_attrs: Option<Attrs<'_>>,
-    local: bool,
+    item: Option<HirId>,
 ) -> clean::Attributes {
     // NOTE: If we have additional attributes (from a re-export),
     // always insert them first. This ensure that re-export
@@ -298,14 +299,14 @@ fn merge_attrs(
     // when we render them.
     if let Some(inner) = new_attrs {
         if let Some(new_id) = parent_module {
-            Attributes::from_ast(cx.tcx, old_attrs, Some((inner, new_id)), local)
+            Attributes::from_ast(cx.tcx, old_attrs, Some((inner, new_id)), item)
         } else {
             let mut both = inner.to_vec();
             both.extend_from_slice(old_attrs);
-            clean_attrs(&both, local, cx)
+            clean_attrs(&both, item, cx)
         }
     } else {
-        clean_attrs(old_attrs, local, cx)
+        clean_attrs(old_attrs, item, cx)
     }
 }
 
@@ -416,8 +417,8 @@ crate fn build_impl(
 
     debug!("build_impl: impl {:?} for {:?}", trait_.def_id(), for_.def_id());
 
-    let attrs =
-        box merge_attrs(cx, parent_module.into(), load_attrs(cx, did), attrs, did.is_local());
+    let local_item = DocContext::as_local_hir_id(tcx, did);
+    let attrs = box merge_attrs(cx, parent_module.into(), load_attrs(cx, did), attrs, local_item);
     debug!("merged_attrs={:?}", attrs);
 
     ret.push(clean::Item::from_def_id_and_attrs_and_parts(

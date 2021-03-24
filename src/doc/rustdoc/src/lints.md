@@ -340,6 +340,22 @@ error in a future release.
 
 ```rust
 #![feature(external_doc)]
-#[doc(include = "README.md")]
-pub fn foo() {}
+#![doc(include = "./external-doc.rs")]
+```
+
+Which will give:
+
+```text
+warning: `#[doc(include)]` is deprecated and will be removed in a future release
+ --> external-doc.rs:2:1
+  |
+2 | #![doc(include = "./external-doc.rs")]
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(rustdoc::doc_include)]` on by default
+  = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+  = note: for more information, see issue #44732 <https://github.com/rust-lang/rust/issues/44732>
+help: use `#![feature(extended_key_value_attributes)]` instead
+  |
+2 | #![doc = include_str!("./external-doc.rs")]
 ```

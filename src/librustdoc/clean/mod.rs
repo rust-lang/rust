@@ -15,6 +15,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::HirId;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc_middle::bug;
@@ -110,7 +111,7 @@ impl Clean<ExternalCrate> for CrateNum {
             if let Res::Def(DefKind::Mod, def_id) = res {
                 // We already warned about any attributes on the module when cleaning it.
                 // Don't warn a second time.
-                let attrs = clean_attrs(cx.tcx.get_attrs(def_id), false, cx);
+                let attrs = clean_attrs(cx.tcx.get_attrs(def_id), None, cx);
                 let mut prim = None;
                 for attr in attrs.lists(sym::doc) {
                     if let Some(v) = attr.value_str() {
@@ -157,7 +158,7 @@ impl Clean<ExternalCrate> for CrateNum {
 
         let mut as_keyword = |res: Res| {
             if let Res::Def(DefKind::Mod, def_id) = res {
-                let attrs = clean_attrs(tcx.get_attrs(def_id), false, cx);
+                let attrs = clean_attrs(tcx.get_attrs(def_id), None, cx);
                 let mut keyword = None;
                 for attr in attrs.lists(sym::doc) {
                     if attr.has_name(sym::keyword) {
@@ -200,7 +201,7 @@ impl Clean<ExternalCrate> for CrateNum {
             name: tcx.crate_name(*self),
             src: krate_src,
             // The local crate was already cleaned, and all other crates are non-local.
-            attrs: clean_attrs(tcx.get_attrs(root), false, cx),
+            attrs: clean_attrs(tcx.get_attrs(root), None, cx),
             primitives,
             keywords,
         }
@@ -240,7 +241,11 @@ impl Clean<Item> for doctree::Module<'_> {
     }
 }
 
-fn clean_attrs(attrs: &[ast::Attribute], local: bool, cx: &mut DocContext<'_>) -> Attributes {
+fn clean_attrs(
+    attrs: &[ast::Attribute],
+    local: Option<HirId>,
+    cx: &mut DocContext<'_>,
+) -> Attributes {
     Attributes::from_ast(cx.tcx, attrs, None, local)
 }
 
@@ -2125,7 +2130,7 @@ fn clean_extern_crate(
     // FIXME: using `from_def_id_and_kind` breaks `rustdoc/masked` for some reason
     vec![Item {
         name: Some(name),
-        attrs: box clean_attrs(attrs, true, cx),
+        attrs: box clean_attrs(attrs, Some(krate.hir_id()), cx),
         span: krate.span.clean(cx),
         def_id: crate_def_id,
         visibility: krate.vis.clean(cx),

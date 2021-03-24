@@ -1,35 +1,42 @@
-warning: `doc(include)` is deprecated
-  --> $DIR/doc-include-deprecated.rs:10:1
+warning: `#[doc(include)]` is deprecated and will be removed in a future release
+  --> $DIR/doc-include-deprecated.rs:12:1
    |
 LL | #[doc(include = "auxiliary/docs.md")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: `#[warn(rustdoc::doc_include)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #44732 <https://github.com/rust-lang/rust/issues/44732>
 help: use `#![feature(extended_key_value_attributes)]` instead
    |
 LL | #[doc = include_str!("auxiliary/docs.md")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
 
-warning: `doc(include)` is deprecated
-  --> $DIR/doc-include-deprecated.rs:13:1
+warning: `#[doc(include)]` is deprecated and will be removed in a future release
+  --> $DIR/doc-include-deprecated.rs:17:1
    |
 LL | #[doc(include = "auxiliary/docs.md")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #44732 <https://github.com/rust-lang/rust/issues/44732>
 help: use `#![feature(extended_key_value_attributes)]` instead
    |
 LL | #[doc = include_str!("auxiliary/docs.md")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
 
-warning: `doc(include)` is deprecated
+warning: `#[doc(include)]` is deprecated and will be removed in a future release
   --> $DIR/doc-include-deprecated.rs:4:1
    |
 LL | #![doc(include = "auxiliary/docs.md")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #44732 <https://github.com/rust-lang/rust/issues/44732>
 help: use `#![feature(extended_key_value_attributes)]` instead
    |
 LL | #![doc = include_str!("auxiliary/docs.md")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
 
 warning: 3 warnings emitted
 

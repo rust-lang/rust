@@ -448,17 +448,24 @@ macro_rules! declare_tool_lint {
         $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level: ident, $desc: expr
         $(, @future_incompatible = FutureIncompatibleInfo { $($field:ident : $val:expr),* $(,)*  }; )?
     ) => (
-        $crate::declare_tool_lint!{$(#[$attr])* $vis $tool::$NAME, $Level, $desc, false}
+        $crate::declare_tool_lint!{
+            $(#[$attr])* $vis $tool::$NAME, $Level, $desc, false
+            $(, @future_incompatible = FutureIncompatibleInfo { $($field : $val),* };)?
+        }
     );
     (
         $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level:ident, $desc:expr,
         report_in_external_macro: $rep:expr
+        $(, @future_incompatible = FutureIncompatibleInfo { $($field:ident : $val:expr),* $(,)*  }; )?
     ) => (
-         $crate::declare_tool_lint!{$(#[$attr])* $vis $tool::$NAME, $Level, $desc, $rep}
+         $crate::declare_tool_lint!{$(#[$attr])* $vis $tool::$NAME, $Level, $desc, $rep
+         $(, @future_incompatible = FutureIncompatibleInfo { $($field:ident : $val:expr),* $(,)*  }; )?
+         }
     );
     (
         $(#[$attr:meta])* $vis:vis $tool:ident ::$NAME:ident, $Level:ident, $desc:expr,
         $external:expr
+         $(, @future_incompatible = FutureIncompatibleInfo { $($field:ident : $val:expr),* $(,)*  }; )?
     ) => (
         $(#[$attr])*
         $vis static $NAME: &$crate::Lint = &$crate::Lint {
@@ -467,10 +474,14 @@ macro_rules! declare_tool_lint {
             desc: $desc,
             edition_lint_opts: None,
             report_in_external_macro: $external,
-            future_incompatible: None,
+            $(future_incompatible: Some($crate::FutureIncompatibleInfo {
+                $($field: $val,)*
+                ..$crate::FutureIncompatibleInfo::default_fields_for_macro()
+            }),)?
             is_plugin: true,
             feature_gate: None,
             crate_level_only: false,
+            ..$crate::Lint::default_fields_for_macro()
         };
     );
 }

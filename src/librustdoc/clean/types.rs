@@ -21,6 +21,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex};
 use rustc_hir::lang_items::LangItem;
+use rustc_hir::HirId;
 use rustc_hir::{BodyId, Mutability};
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::{self, TyCtxt};
@@ -150,11 +151,12 @@ impl Item {
         kind: ItemKind,
         cx: &mut DocContext<'_>,
     ) -> Item {
+        let local_item = DocContext::as_local_hir_id(cx.tcx, def_id);
         Self::from_def_id_and_attrs_and_parts(
             def_id,
             name,
             kind,
-            box clean_attrs(cx.tcx.get_attrs(def_id), def_id.is_local(), cx),
+            box clean_attrs(cx.tcx.get_attrs(def_id), local_item, cx),
             cx,
         )
     }
@@ -742,7 +744,7 @@ impl Attributes {
         tcx: TyCtxt<'_>,
         attrs: &[ast::Attribute],
         additional_attrs: Option<(&[ast::Attribute], DefId)>,
-        local: bool,
+        item: Option<HirId>,
     ) -> Attributes {
         let mut doc_strings: Vec<DocFragment> = vec![];
         let mut sp = None;
@@ -805,20 +807,21 @@ impl Attributes {
                             }
                         } else if let Some((filename, contents)) = Attributes::extract_include(&mi)
                         {
-                            if local {
-                                let mut diag = handler
-                                    .struct_span_warn(attr.span, "`doc(include)` is deprecated");
-                                diag.span_suggestion_verbose(
-                                    attr.span,
-                                    "use `#![feature(extended_key_value_attributes)]` instead",
-                                    format!(
-                                        "#{}[doc = include_str!(\"{}\")]",
-                                        if attr.style == AttrStyle::Inner { "!" } else { "" },
-                                        filename,
-                                    ),
-                                    Applicability::MaybeIncorrect,
-                                );
-                                diag.emit();
+                            if let Some(hir_id) = item {
+                                tcx.struct_span_lint_hir(crate::lint::DOC_INCLUDE, hir_id, attr.span, |lint_builder| {
+                                    let mut diag = lint_builder.build("`#[doc(include)]` is deprecated and will be removed in a future release");
+                                    diag.span_suggestion_verbose(
+                                        attr.span,
+                                        "use `#![feature(extended_key_value_attributes)]` instead",
+                                        format!(
+                                            "#{}[doc = include_str!(\"{}\")]",
+                                            if attr.style == AttrStyle::Inner { "!" } else { "" },
+                                            filename,
+                                        ),
+                                        Applicability::MaybeIncorrect,
+                                    );
+                                    diag.emit();
+                                });
                             }
 
                             let line = doc_line;
