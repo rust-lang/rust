@@ -186,7 +186,7 @@ fn main() {
     if true {$0
         foo();
 
-        //comment
+        // comment
         bar();
     } else {
         println!("bar");
@@ -198,7 +198,7 @@ fn main() {
     bar();
     foo();
 
-    //comment
+    // comment
     bar();
 }
 "#,
@@ -215,7 +215,7 @@ fn main() {
     if true {
         foo();
 
-        //comment
+        // comment
         bar();
     } else {$0
         println!("bar");
@@ -228,7 +228,7 @@ fn main() {
     if true {
         foo();
 
-        //comment
+        // comment
         bar();
     }
     println!("bar");
@@ -243,12 +243,12 @@ fn main() {
             unwrap_block,
             r#"
 fn main() {
-    //bar();
+    // bar();
     if true {
         println!("true");
 
-        //comment
-        //bar();
+        // comment
+        // bar();
     } else if false {$0
         println!("bar");
     } else {
@@ -258,12 +258,12 @@ fn main() {
 "#,
             r#"
 fn main() {
-    //bar();
+    // bar();
     if true {
         println!("true");
 
-        //comment
-        //bar();
+        // comment
+        // bar();
     }
     println!("bar");
 }
@@ -277,12 +277,12 @@ fn main() {
             unwrap_block,
             r#"
 fn main() {
-    //bar();
+    // bar();
     if true {
         println!("true");
 
-        //comment
-        //bar();
+        // comment
+        // bar();
     } else if false {
         println!("bar");
     } else if true {$0
@@ -292,12 +292,12 @@ fn main() {
 "#,
             r#"
 fn main() {
-    //bar();
+    // bar();
     if true {
         println!("true");
 
-        //comment
-        //bar();
+        // comment
+        // bar();
     } else if false {
         println!("bar");
     }
@@ -313,12 +313,12 @@ fn main() {
             unwrap_block,
             r#"
 fn main() {
-    //bar();
+    // bar();
     if true {
         println!("true");
 
-        //comment
-        //bar();
+        // comment
+        // bar();
     } else if false {
         println!("bar");
     } else if true {
@@ -330,12 +330,12 @@ fn main() {
 "#,
             r#"
 fn main() {
-    //bar();
+    // bar();
     if true {
         println!("true");
 
-        //comment
-        //bar();
+        // comment
+        // bar();
     } else if false {
         println!("bar");
     } else if true {
@@ -353,12 +353,12 @@ fn main() {
             unwrap_block,
             r#"
 fn main() {
-    //bar();
+    // bar();
     if true {
         println!("true");
 
-        //comment
-        //bar();
+        // comment
+        // bar();
     } else if false {
         println!("bar");
     } else if true {$0
@@ -370,12 +370,12 @@ fn main() {
 "#,
             r#"
 fn main() {
-    //bar();
+    // bar();
     if true {
         println!("true");
 
-        //comment
-        //bar();
+        // comment
+        // bar();
     } else if false {
         println!("bar");
     }
@@ -395,7 +395,7 @@ fn main() {
     if true {
         foo();
 
-        //comment
+        // comment
         bar();
     } else {
         println!("bar");
@@ -415,7 +415,7 @@ fn main() {
         if true {
             foo();
 
-            //comment
+            // comment
             bar();
         } else {
             println!("bar");
@@ -428,7 +428,7 @@ fn main() {
     if true {
         foo();
 
-        //comment
+        // comment
         bar();
     } else {
         println!("bar");
@@ -448,7 +448,7 @@ fn main() {
         if true {$0
             foo();
 
-            //comment
+            // comment
             bar();
         } else {
             println!("bar");
@@ -461,7 +461,7 @@ fn main() {
     for i in 0..5 {
         foo();
 
-        //comment
+        // comment
         bar();
     }
 }
@@ -479,7 +479,7 @@ fn main() {
         if true {
             foo();
 
-            //comment
+            // comment
             bar();
         } else {
             println!("bar");
@@ -492,7 +492,7 @@ fn main() {
     if true {
         foo();
 
-        //comment
+        // comment
         bar();
     } else {
         println!("bar");
@@ -512,7 +512,7 @@ fn main() {
         if true {
             foo();
 
-            //comment
+            // comment
             bar();
         } else {
             println!("bar");
@@ -525,7 +525,7 @@ fn main() {
     if true {
         foo();
 
-        //comment
+        // comment
         bar();
     } else {
         println!("bar");
@@ -569,7 +569,7 @@ fn main() {
         if true {
             foo();$0
 
-            //comment
+            // comment
             bar();
         } else {
             println!("bar");
