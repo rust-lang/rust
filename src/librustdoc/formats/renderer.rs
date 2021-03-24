@@ -13,6 +13,11 @@ crate trait FormatRenderer<'tcx>: Sized {
     /// Gives a description of the renderer. Used for performance profiling.
     fn descr() -> &'static str;
 
+    /// Whether to call `item` recursivly for modules
+    ///
+    /// This is true for html, and false for json. See #80664
+    const RUN_ON_MODULE: bool;
+
     /// Sets up any state required for the renderer. When this is called the cache has already been
     /// populated.
     fn init(
@@ -68,7 +73,7 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
 
     let unknown = Symbol::intern("<unknown item>");
     while let Some((mut cx, item)) = work.pop() {
-        if item.is_mod() {
+        if item.is_mod() && T::RUN_ON_MODULE {
             // modules are special because they add a namespace. We also need to
             // recurse into the items of the module as well.
             let name = item.name.as_ref().unwrap().to_string();
