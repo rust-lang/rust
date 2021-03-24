@@ -1203,16 +1203,9 @@ pub fn parent_node_is_if_expr(expr: &Expr<'_>, cx: &LateContext<'_>) -> bool {
     )
 }
 
-// Finds the attribute with the given name, if any
-pub fn attr_by_name<'a>(attrs: &'a [Attribute], name: &'_ str) -> Option<&'a Attribute> {
-    attrs
-        .iter()
-        .find(|attr| attr.ident().map_or(false, |ident| ident.as_str() == name))
-}
-
 // Finds the `#[must_use]` attribute, if any
 pub fn must_use_attr(attrs: &[Attribute]) -> Option<&Attribute> {
-    attr_by_name(attrs, "must_use")
+    attrs.iter().find(|a| a.has_name(sym::must_use))
 }
 
 // check if expr is calling method or function with #[must_use] attribute
