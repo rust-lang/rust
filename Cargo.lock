@@ -1220,6 +1220,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "fs-err"
+version = "2.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bcd1163ae48bda72a20ae26d66a04d3094135cadab911cff418ae5e33f253431"
+
+[[package]]
 name = "fs_extra"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1748,6 +1754,7 @@ checksum = "92c245af8786f6ac35f95ca14feca9119e71339aaab41e878e7cdd655c97e9e5"
 name = "jsondocck"
 version = "0.1.0"
 dependencies = [
+ "fs-err",
  "getopts",
  "jsonpath_lib",
  "lazy_static",
