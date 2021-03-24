@@ -1,7 +1,8 @@
 mod too_many_arguments;
+mod too_many_lines;
 
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_then};
-use clippy_utils::source::{snippet, snippet_opt};
+use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{is_must_use_ty, is_type_diagnostic_item, type_is_unsafe_function};
 use clippy_utils::{
     attr_by_name, attrs::is_proc_macro, iter_input_pats, match_def_path, must_use_attr, path_to_local, return_ty,
@@ -256,6 +257,7 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
         hir_id: hir::HirId,
     ) {
         too_many_arguments::check_fn(cx, kind, decl, span, hir_id, self.too_many_arguments_threshold);
+        too_many_lines::check(cx, span, body, self.too_many_lines_threshold);
 
         let unsafety = match kind {
             intravisit::FnKind::ItemFn(_, _, hir::FnHeader { unsafety, .. }, _) => unsafety,
@@ -264,7 +266,6 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
         };
 
         Self::check_raw_ptr(cx, unsafety, decl, body, hir_id);
-        self.check_line_number(cx, span, body);
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
@@ -356,65 +357,6 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
 }
 
 impl<'tcx> Functions {
-    fn check_line_number(self, cx: &LateContext<'_>, span: Span, body: &'tcx hir::Body<'_>) {
-        if in_external_macro(cx.sess(), span) {
-            return;
-        }
-
-        let code_snippet = snippet(cx, body.value.span, "..");
-        let mut line_count: u64 = 0;
-        let mut in_comment = false;
-        let mut code_in_line;
-
-        // Skip the surrounding function decl.
-        let start_brace_idx = code_snippet.find('{').map_or(0, |i| i + 1);
-        let end_brace_idx = code_snippet.rfind('}').unwrap_or_else(|| code_snippet.len());
-        let function_lines = code_snippet[start_brace_idx..end_brace_idx].lines();
-
-        for mut line in function_lines {
-            code_in_line = false;
-            loop {
-                line = line.trim_start();
-                if line.is_empty() {
-                    break;
-                }
-                if in_comment {
-                    if let Some(i) = line.find("*/") {
-                        line = &line[i + 2..];
-                        in_comment = false;
-                        continue;
-                    }
-                } else {
-                    let multi_idx = line.find("/*").unwrap_or_else(|| line.len());
-                    let single_idx = line.find("//").unwrap_or_else(|| line.len());
-                    code_in_line |= multi_idx > 0 && single_idx > 0;
-                    // Implies multi_idx is below line.len()
-                    if multi_idx < single_idx {
-                        line = &line[multi_idx + 2..];
-                        in_comment = true;
-                        continue;
-                    }
-                }
-                break;
-            }
-            if code_in_line {
-                line_count += 1;
-            }
-        }
-
-        if line_count > self.too_many_lines_threshold {
-            span_lint(
-                cx,
-                TOO_MANY_LINES,
-                span,
-                &format!(
-                    "this function has too many lines ({}/{})",
-                    line_count, self.too_many_lines_threshold
-                ),
-            )
-        }
-    }
-
     fn check_raw_ptr(
         cx: &LateContext<'tcx>,
         unsafety: hir::Unsafety,
