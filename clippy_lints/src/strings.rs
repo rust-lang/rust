@@ -284,6 +284,35 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
                 }
             }
         }
+
+        if_chain! {
+            if let ExprKind::MethodCall(path, _, [recv], _) = &e.kind;
+            if path.ident.name == sym!(into_bytes);
+            if let ExprKind::MethodCall(path, _, [recv], _) = &recv.kind;
+            if matches!(&*path.ident.name.as_str(), "to_owned" | "to_string");
+            if let ExprKind::Lit(lit) = &recv.kind;
+            if let LitKind::Str(lit_content, _) = &lit.node;
+
+            if lit_content.as_str().is_ascii();
+            if lit_content.as_str().len() <= MAX_LENGTH_BYTE_STRING_LIT;
+            if !recv.span.from_expansion();
+            then {
+                let mut applicability = Applicability::MachineApplicable;
+
+                span_lint_and_sugg(
+                    cx,
+                    STRING_LIT_AS_BYTES,
+                    e.span,
+                    "calling `into_bytes()` on a string literal",
+                    "consider using a byte string literal instead",
+                    format!(
+                        "b{}.to_vec()",
+                        snippet_with_applicability(cx, recv.span, r#""..""#, &mut applicability)
+                    ),
+                    applicability,
+                );
+            }
+        }
     }
 }
 
