@@ -65,7 +65,7 @@ fn main() {
 
         // Checks that only make sense for the compiler.
         check!(errors, &compiler_path);
-        check!(error_codes_check, &src_path);
+        check!(error_codes_check, &[&src_path, &compiler_path]);
 
         // Checks that only make sense for the std libs.
         check!(pal, &library_path);
