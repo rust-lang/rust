@@ -101,8 +101,8 @@ fn write(
             match s {
                 Ok(s) => {
                     assert_eq!(char_width, s.len());
-                    let written = write_valid_utf8(handle, s)?;
-                    assert_eq!(written, s.len()); // guaranteed by write_valid_utf8() for single codepoint writes
+                    let written = write_valid_utf8_to_console(handle, s)?;
+                    assert_eq!(written, s.len()); // guaranteed by write_valid_utf8_to_console() for single codepoint writes
                     return Ok(1);
                 }
                 Err(_) => {
@@ -143,10 +143,10 @@ fn write(
         Err(e) => str::from_utf8(&data[..e.valid_up_to()]).unwrap(),
     };
 
-    write_valid_utf8(handle, utf8)
+    write_valid_utf8_to_console(handle, utf8)
 }
 
-fn write_valid_utf8(handle: c::HANDLE, utf8: &str) -> io::Result<usize> {
+fn write_valid_utf8_to_console(handle: c::HANDLE, utf8: &str) -> io::Result<usize> {
     let mut utf16 = [0u16; MAX_BUFFER_SIZE / 2];
     let mut len_utf16 = 0;
     for (chr, dest) in utf8.encode_utf16().zip(utf16.iter_mut()) {
