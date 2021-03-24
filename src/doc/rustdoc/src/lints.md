@@ -331,3 +331,15 @@ warning: this URL is not a hyperlink
 3 | /// [http://example.net]
   |      ^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<http://example.net>`
 ```
+
+## external_doc
+
+This lint is **nightly-only** and **warns by default**. It detects when
+`#![feature(external_doc)]` is used. This feature is scheduled for removal and will give a hard
+error in a future release.
+
+```rust
+#![feature(external_doc)]
+#[doc(include = "README.md")]
+pub fn foo() {}
+```

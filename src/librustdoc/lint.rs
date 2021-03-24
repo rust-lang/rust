@@ -64,9 +64,12 @@ where
 }
 
 macro_rules! declare_rustdoc_lint {
-    ($(#[$attr:meta])* $name: ident, $level: ident, $descr: literal $(,)?) => {
+    ($(#[$attr:meta])* $name: ident, $level: ident, $descr: literal
+    $(, @future_incompatible = FutureIncompatibleInfo { $($field:ident : $val:expr),* $(,)*  }; )?
+    $(,)?) => {
         declare_tool_lint! {
             $(#[$attr])* pub rustdoc::$name, $level, $descr
+            $(, @future_incompatible = FutureIncompatibleInfo { $($field : $val),* };)?
         }
     }
 }
@@ -156,6 +159,22 @@ declare_rustdoc_lint! {
     NON_AUTOLINKS,
     Warn,
     "detects URLs that could be written using only angle brackets"
+}
+
+declare_rustdoc_lint! {
+    /// The `doc_include` lint detects when `#[doc(include = ...)]` is used.
+    /// This feature is scheduled for removal and will give a hard error in a future release.
+    ///
+    /// This is a `rustdoc` only lint, see the documentation in the [rustdoc book].
+    ///
+    /// [rustdoc book]: ../../../rustdoc/lints.html#non_autolinks
+    DOC_INCLUDE,
+    Warn,
+    "detects using `#[doc(include = ...)]`",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #44732 <https://github.com/rust-lang/rust/issues/44732>",
+        edition: None,
+    };
 }
 
 crate static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
