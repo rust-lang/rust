@@ -863,7 +863,7 @@ impl Session {
         } else if self.target.requires_uwtable {
             true
         } else {
-            self.opts.cg.force_unwind_tables.unwrap_or(false)
+            self.opts.cg.force_unwind_tables.unwrap_or(self.target.default_uwtable)
         }
     }
 
