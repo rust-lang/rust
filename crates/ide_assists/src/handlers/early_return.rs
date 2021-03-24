@@ -56,7 +56,11 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
             match path.qualifier() {
                 None => {
                     let bound_ident = pat.fields().next().unwrap();
-                    Some((path, bound_ident))
+                    if ast::IdentPat::can_cast(bound_ident.syntax().kind()) {
+                        Some((path, bound_ident))
+                    } else {
+                        return None;
+                    }
                 }
                 Some(_) => return None,
             }
@@ -143,10 +147,7 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
                         make::expr_match(cond_expr, make::match_arm_list(vec![happy_arm, sad_arm]))
                     };
 
-                    let let_stmt = make::let_stmt(
-                        make::ident_pat(make::name(&bound_ident.syntax().to_string())).into(),
-                        Some(match_expr),
-                    );
+                    let let_stmt = make::let_stmt(bound_ident, Some(match_expr));
                     let let_stmt = let_stmt.indent(if_indent_level);
                     replace(let_stmt.syntax(), &then_block, &parent_block, &if_expr)
                 }
@@ -284,7 +285,7 @@ mod tests {
             r#"
             fn main(n: Option<String>) {
                 bar();
-                if$0 let Ok(n) = n {
+                if$0 let Some(n) = n {
                     foo(n);
 
                     //comment
@@ -296,7 +297,69 @@ mod tests {
             fn main(n: Option<String>) {
                 bar();
                 let n = match n {
-                    Ok(it) => it,
+                    Some(it) => it,
+                    _ => return,
+                };
+                foo(n);
+
+                //comment
+                bar();
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn convert_let_mut_ok_inside_fn() {
+        check_assist(
+            convert_to_guarded_return,
+            r#"
+            fn main(n: Option<String>) {
+                bar();
+                if$0 let Some(mut n) = n {
+                    foo(n);
+
+                    //comment
+                    bar();
+                }
+            }
+            "#,
+            r#"
+            fn main(n: Option<String>) {
+                bar();
+                let mut n = match n {
+                    Some(it) => it,
+                    _ => return,
+                };
+                foo(n);
+
+                //comment
+                bar();
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn convert_let_ref_ok_inside_fn() {
+        check_assist(
+            convert_to_guarded_return,
+            r#"
+            fn main(n: Option<&str>) {
+                bar();
+                if$0 let Some(ref n) = n {
+                    foo(n);
+
+                    //comment
+                    bar();
+                }
+            }
+            "#,
+            r#"
+            fn main(n: Option<&str>) {
+                bar();
+                let ref n = match n {
+                    Some(it) => it,
                     _ => return,
                 };
                 foo(n);
