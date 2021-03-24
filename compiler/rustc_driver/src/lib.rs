@@ -895,7 +895,12 @@ Available lint options:
     let print_lints = |lints: Vec<&Lint>| {
         for lint in lints {
             let name = lint.name_lower().replace("_", "-");
-            println!("    {}  {:7.7}  {}", padded(&name), lint.default_level.as_str(), lint.desc);
+            println!(
+                "    {}  {:7.7}  {}",
+                padded(&name),
+                lint.default_level(sess.edition()).as_str(),
+                lint.desc
+            );
         }
         println!("\n");
     };
