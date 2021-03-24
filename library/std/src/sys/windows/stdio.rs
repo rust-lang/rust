@@ -78,43 +78,41 @@ fn write(
         return ret;
     }
 
-    match incomplete_utf8.len {
-        0 => {}
-        1..=3 => {
-            if data[0] >> 6 != 0b10 {
-                incomplete_utf8.len = 0;
-                // not a continuation byte - reject
+    if incomplete_utf8.len > 0 {
+        assert!(
+            incomplete_utf8.len < 4,
+            "Unexpected number of bytes for incomplete UTF-8 codepoint."
+        );
+        if data[0] >> 6 != 0b10 {
+            incomplete_utf8.len = 0;
+            // not a continuation byte - reject
+            return Err(io::Error::new_const(
+                io::ErrorKind::InvalidData,
+                &"Windows stdio in console mode does not support writing non-UTF-8 byte sequences",
+            ));
+        }
+        incomplete_utf8.bytes[incomplete_utf8.len as usize] = data[0];
+        incomplete_utf8.len += 1;
+        let char_width = utf8_char_width(incomplete_utf8.bytes[0]);
+        if (incomplete_utf8.len as usize) < char_width {
+            // more bytes needed
+            return Ok(1);
+        }
+        let s = str::from_utf8(&incomplete_utf8.bytes[0..incomplete_utf8.len as usize]);
+        incomplete_utf8.len = 0;
+        match s {
+            Ok(s) => {
+                assert_eq!(char_width, s.len());
+                let written = write_valid_utf8_to_console(handle, s)?;
+                assert_eq!(written, s.len()); // guaranteed by write_valid_utf8_to_console() for single codepoint writes
+                return Ok(1);
+            }
+            Err(_) => {
                 return Err(io::Error::new_const(
                     io::ErrorKind::InvalidData,
                     &"Windows stdio in console mode does not support writing non-UTF-8 byte sequences",
                 ));
             }
-            incomplete_utf8.bytes[incomplete_utf8.len as usize] = data[0];
-            incomplete_utf8.len += 1;
-            let char_width = utf8_char_width(incomplete_utf8.bytes[0]);
-            if (incomplete_utf8.len as usize) < char_width {
-                // more bytes needed
-                return Ok(1);
-            }
-            let s = str::from_utf8(&incomplete_utf8.bytes[0..incomplete_utf8.len as usize]);
-            incomplete_utf8.len = 0;
-            match s {
-                Ok(s) => {
-                    assert_eq!(char_width, s.len());
-                    let written = write_valid_utf8_to_console(handle, s)?;
-                    assert_eq!(written, s.len()); // guaranteed by write_valid_utf8_to_console() for single codepoint writes
-                    return Ok(1);
-                }
-                Err(_) => {
-                    return Err(io::Error::new_const(
-                        io::ErrorKind::InvalidData,
-                        &"Windows stdio in console mode does not support writing non-UTF-8 byte sequences",
-                    ));
-                }
-            }
-        }
-        _ => {
-            panic!("Unexpected number of incomplete UTF-8 chars.");
         }
     }
 
