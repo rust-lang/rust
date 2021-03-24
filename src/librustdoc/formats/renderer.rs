@@ -1,5 +1,5 @@
 use rustc_middle::ty::TyCtxt;
-use rustc_span::edition::Edition;
+use rustc_span::{edition::Edition, Symbol};
 
 use crate::clean;
 use crate::config::RenderOptions;
@@ -40,7 +40,7 @@ crate trait FormatRenderer<'tcx>: Sized {
     /// A handler is available if the renderer wants to report errors.
     fn after_krate(
         &mut self,
-        krate: &clean::Crate,
+        crate_name: Symbol,
         diag: &rustc_errors::Handler,
     ) -> Result<(), Error>;
 
@@ -58,21 +58,15 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
 ) -> Result<(), Error> {
     let prof = &tcx.sess.prof;
 
-    let (mut format_renderer, mut krate) = prof
+    let (mut format_renderer, krate) = prof
         .extra_verbose_generic_activity("create_renderer", T::descr())
         .run(|| T::init(krate, options, edition, cache, tcx))?;
 
-    let mut item = match krate.module.take() {
-        Some(i) => i,
-        None => return Ok(()),
-    };
-
-    item.name = Some(krate.name);
-
     // Render the crate documentation
-    let mut work = vec![(format_renderer.make_child_renderer(), item)];
+    let crate_name = krate.name;
+    let mut work = vec![(format_renderer.make_child_renderer(), krate.module)];
 
-    let unknown = rustc_span::Symbol::intern("<unknown item>");
+    let unknown = Symbol::intern("<unknown item>");
     while let Some((mut cx, item)) = work.pop() {
         if item.is_mod() {
             // modules are special because they add a namespace. We also need to
@@ -102,5 +96,5 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
         }
     }
     prof.extra_verbose_generic_activity("renderer_after_krate", T::descr())
-        .run(|| format_renderer.after_krate(&krate, diag))
+        .run(|| format_renderer.after_krate(crate_name, diag))
 }

@@ -231,7 +231,7 @@ impl Clean<Item> for doctree::Module<'_> {
 
         let what_rustc_thinks = Item::from_hir_id_and_parts(
             self.id,
-            self.name,
+            Some(self.name),
             ModuleItem(Module { is_crate: self.is_crate, items }),
             cx,
         );

@@ -474,21 +474,19 @@ crate fn run_global_ctxt(
 
     let mut krate = tcx.sess.time("clean_crate", || clean::krate(&mut ctxt));
 
-    if let Some(ref m) = krate.module {
-        if m.doc_value().map(|d| d.is_empty()).unwrap_or(true) {
-            let help = "The following guide may be of use:\n\
+    if krate.module.doc_value().map(|d| d.is_empty()).unwrap_or(true) {
+        let help = "The following guide may be of use:\n\
                 https://doc.rust-lang.org/nightly/rustdoc/how-to-write-documentation.html";
-            tcx.struct_lint_node(
-                crate::lint::MISSING_CRATE_LEVEL_DOCS,
-                DocContext::as_local_hir_id(tcx, m.def_id).unwrap(),
-                |lint| {
-                    let mut diag =
-                        lint.build("no documentation found for this crate's top-level module");
-                    diag.help(help);
-                    diag.emit();
-                },
-            );
-        }
+        tcx.struct_lint_node(
+            crate::lint::MISSING_CRATE_LEVEL_DOCS,
+            DocContext::as_local_hir_id(tcx, krate.module.def_id).unwrap(),
+            |lint| {
+                let mut diag =
+                    lint.build("no documentation found for this crate's top-level module");
+                diag.help(help);
+                diag.emit();
+            },
+        );
     }
 
     fn report_deprecated_attr(name: &str, diag: &rustc_errors::Handler, sp: Span) {
@@ -531,7 +529,7 @@ crate fn run_global_ctxt(
 
     // Process all of the crate attributes, extracting plugin metadata along
     // with the passes which we are supposed to run.
-    for attr in krate.module.as_ref().unwrap().attrs.lists(sym::doc) {
+    for attr in krate.module.attrs.lists(sym::doc) {
         let diag = ctxt.sess().diagnostic();
 
         let name = attr.name_or_empty();
