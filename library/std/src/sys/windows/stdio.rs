@@ -84,8 +84,8 @@ fn write(
             "Unexpected number of bytes for incomplete UTF-8 codepoint."
         );
         if data[0] >> 6 != 0b10 {
-            incomplete_utf8.len = 0;
             // not a continuation byte - reject
+            incomplete_utf8.len = 0;
             return Err(io::Error::new_const(
                 io::ErrorKind::InvalidData,
                 &"Windows stdio in console mode does not support writing non-UTF-8 byte sequences",
