@@ -863,7 +863,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         stack: &TraitObligationStack<'o, 'tcx>,
         candidate: &SelectionCandidate<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
-        let result = self.evaluation_probe(|this| {
+        let mut result = self.evaluation_probe(|this| {
             let candidate = (*candidate).clone();
             match this.confirm_candidate(stack.obligation, candidate) {
                 Ok(selection) => {
@@ -876,6 +876,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Err(..) => Ok(EvaluatedToErr),
             }
         })?;
+
+        // If we erased any lifetimes, then we want to use
+        // `EvaluatedToOkModuloRegions` instead of `EvaluatedToOk`
+        // as your final result. The result will be cached using
+        // the freshened trait predicate as a key, so we need
+        // our result to be correct by *any* choice of original lifetimes,
+        // not just the lifetime choice for this particular (non-erased)
+        // predicate.
+        // See issue #80691
+        if stack.fresh_trait_ref.has_erased_regions() {
+            result = result.max(EvaluatedToOkModuloRegions);
+        }
+
         debug!(?result);
         Ok(result)
     }
