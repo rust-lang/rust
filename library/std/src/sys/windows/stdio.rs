@@ -84,9 +84,9 @@ fn write(
             if data[0] >> 6 != 0b10 {
                 incomplete_utf8.len = 0;
                 // not a continuation byte - reject
-                return Err(io::Error::new(
+                return Err(io::Error::new_const(
                     io::ErrorKind::InvalidData,
-                    "Windows stdio in console mode does not support writing non-UTF-8 byte sequences",
+                    &"Windows stdio in console mode does not support writing non-UTF-8 byte sequences",
                 ));
             }
             incomplete_utf8.bytes[incomplete_utf8.len as usize] = data[0];
@@ -106,9 +106,9 @@ fn write(
                     return Ok(1);
                 }
                 Err(_) => {
-                    return Err(io::Error::new(
+                    return Err(io::Error::new_const(
                         io::ErrorKind::InvalidData,
-                        "Windows stdio in console mode does not support writing non-UTF-8 byte sequences",
+                        &"Windows stdio in console mode does not support writing non-UTF-8 byte sequences",
                     ));
                 }
             }
@@ -134,9 +134,9 @@ fn write(
                 incomplete_utf8.len = 1;
                 return Ok(1);
             } else {
-                return Err(io::Error::new(
+                return Err(io::Error::new_const(
                     io::ErrorKind::InvalidData,
-                    "Windows stdio in console mode does not support writing non-UTF-8 byte sequences",
+                    &"Windows stdio in console mode does not support writing non-UTF-8 byte sequences",
                 ));
             }
         }
