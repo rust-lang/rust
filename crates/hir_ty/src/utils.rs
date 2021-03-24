@@ -2,6 +2,7 @@
 //! query, but can't be computed directly from `*Data` (ie, which need a `db`).
 use std::sync::Arc;
 
+use chalk_ir::DebruijnIndex;
 use hir_def::{
     adt::VariantData,
     db::DefDatabase,
@@ -15,7 +16,7 @@ use hir_def::{
 };
 use hir_expand::name::{name, Name};
 
-use crate::{db::HirDatabase, TraitRef, WhereClause};
+use crate::{db::HirDatabase, TraitRef, TypeWalk, WhereClause};
 
 fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> Vec<TraitId> {
     let resolver = trait_.resolver(db);
@@ -64,7 +65,10 @@ fn direct_super_trait_refs(db: &dyn HirDatabase, trait_ref: &TraitRef) -> Vec<Tr
         .iter()
         .filter_map(|pred| {
             pred.as_ref().filter_map(|pred| match pred.skip_binders() {
-                WhereClause::Implemented(tr) => Some(tr.clone()),
+                // FIXME: how to correctly handle higher-ranked bounds here?
+                WhereClause::Implemented(tr) => {
+                    Some(tr.clone().shift_bound_vars_out(DebruijnIndex::ONE))
+                }
                 _ => None,
             })
         })
