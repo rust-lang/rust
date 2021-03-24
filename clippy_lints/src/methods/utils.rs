@@ -5,8 +5,7 @@ use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
-use rustc_middle::ty;
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::sym;
 
 pub(super) fn derefs_to_slice<'tcx>(
