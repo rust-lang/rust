@@ -43,9 +43,9 @@ pub fn contains_ty(ty: Ty<'_>, other_ty: Ty<'_>) -> bool {
     })
 }
 
-/// Walks into `ty` and returns `true` if any inner type is any instance of the given abstract data
-/// type.`
-pub fn contains_adt(ty: Ty<'_>, adt: &AdtDef) -> bool {
+/// Walks into `ty` and returns `true` if any inner type is an instance of the given adt
+/// constructor.
+pub fn contains_adt_constructor(ty: Ty<'_>, adt: &AdtDef) -> bool {
     ty.walk().any(|inner| match inner.unpack() {
         GenericArgKind::Type(inner_ty) => inner_ty.ty_adt_def() == Some(adt),
         GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
