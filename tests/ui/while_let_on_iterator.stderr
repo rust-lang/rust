@@ -19,28 +19,90 @@ LL |     while let Some(_) = iter.next() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for _ in iter`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:101:9
+  --> $DIR/while_let_on_iterator.rs:94:9
    |
 LL |         while let Some([..]) = it.next() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for [..] in it`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:108:9
+  --> $DIR/while_let_on_iterator.rs:101:9
    |
 LL |         while let Some([_x]) = it.next() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for [_x] in it`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:121:9
+  --> $DIR/while_let_on_iterator.rs:114:9
    |
 LL |         while let Some(x @ [_]) = it.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x @ [_] in it`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:153:9
+  --> $DIR/while_let_on_iterator.rs:134:9
    |
 LL |         while let Some(_) = y.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for _ in y`
 
-error: aborting due to 7 previous errors
+error: this loop could be written as a `for` loop
+  --> $DIR/while_let_on_iterator.rs:193:9
+   |
+LL |         while let Some(m) = it.next() {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for m in &mut it`
+
+error: this loop could be written as a `for` loop
+  --> $DIR/while_let_on_iterator.rs:204:5
+   |
+LL |     while let Some(n) = it.next() {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for n in it`
+
+error: this loop could be written as a `for` loop
+  --> $DIR/while_let_on_iterator.rs:206:9
+   |
+LL |         while let Some(m) = it.next() {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for m in it`
+
+error: this loop could be written as a `for` loop
+  --> $DIR/while_let_on_iterator.rs:215:9
+   |
+LL |         while let Some(m) = it.next() {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for m in it`
+
+error: this loop could be written as a `for` loop
+  --> $DIR/while_let_on_iterator.rs:224:9
+   |
+LL |         while let Some(m) = it.next() {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for m in &mut it`
+
+error: this loop could be written as a `for` loop
+  --> $DIR/while_let_on_iterator.rs:241:9
+   |
+LL |         while let Some(m) = it.next() {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for m in &mut it`
+
+error: this loop could be written as a `for` loop
+  --> $DIR/while_let_on_iterator.rs:256:13
+   |
+LL |             while let Some(i) = self.0.next() {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for i in &mut self.0`
+
+error: manual `!RangeInclusive::contains` implementation
+  --> $DIR/while_let_on_iterator.rs:257:20
+   |
+LL |                 if i < 3 || i > 7 {
+   |                    ^^^^^^^^^^^^^^ help: use: `!(3..=7).contains(&i)`
+   |
+   = note: `-D clippy::manual-range-contains` implied by `-D warnings`
+
+error: this loop could be written as a `for` loop
+  --> $DIR/while_let_on_iterator.rs:288:13
+   |
+LL |             while let Some(i) = self.0.0.0.next() {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for i in &mut self.0.0.0`
+
+error: this loop could be written as a `for` loop
+  --> $DIR/while_let_on_iterator.rs:315:5
+   |
+LL |     while let Some(n) = it.next() {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for n in &mut it`
+
+error: aborting due to 17 previous errors
 

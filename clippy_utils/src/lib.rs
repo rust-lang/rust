@@ -855,6 +855,24 @@ pub fn get_enclosing_block<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Optio
     })
 }
 
+/// Gets the loop enclosing the given expression, if any.
+pub fn get_enclosing_loop(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
+    let map = tcx.hir();
+    for (_, node) in map.parent_iter(expr.hir_id) {
+        match node {
+            Node::Expr(
+                e @ Expr {
+                    kind: ExprKind::Loop(..),
+                    ..
+                },
+            ) => return Some(e),
+            Node::Expr(_) | Node::Stmt(_) | Node::Block(_) | Node::Local(_) | Node::Arm(_) => (),
+            _ => break,
+        }
+    }
+    None
+}
+
 /// Gets the parent node if it's an impl block.
 pub fn get_parent_as_impl(tcx: TyCtxt<'_>, id: HirId) -> Option<&Impl<'_>> {
     let map = tcx.hir();
