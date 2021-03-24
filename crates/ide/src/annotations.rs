@@ -80,19 +80,19 @@ pub(crate) fn annotations(
         Either::Left(def) => {
             let node = match def {
                 hir::ModuleDef::Const(konst) => {
-                    konst.source(db).and_then(|node| range_and_position_of(&node))
+                    konst.source(db).and_then(|node| range_and_position_of(&node, file_id))
                 }
                 hir::ModuleDef::Trait(trait_) => {
-                    trait_.source(db).and_then(|node| range_and_position_of(&node))
+                    trait_.source(db).and_then(|node| range_and_position_of(&node, file_id))
                 }
                 hir::ModuleDef::Adt(hir::Adt::Struct(strukt)) => {
-                    strukt.source(db).and_then(|node| range_and_position_of(&node))
+                    strukt.source(db).and_then(|node| range_and_position_of(&node, file_id))
                 }
                 hir::ModuleDef::Adt(hir::Adt::Enum(enum_)) => {
-                    enum_.source(db).and_then(|node| range_and_position_of(&node))
+                    enum_.source(db).and_then(|node| range_and_position_of(&node, file_id))
                 }
                 hir::ModuleDef::Adt(hir::Adt::Union(union)) => {
-                    union.source(db).and_then(|node| range_and_position_of(&node))
+                    union.source(db).and_then(|node| range_and_position_of(&node, file_id))
                 }
                 _ => None,
             };
@@ -122,9 +122,10 @@ pub(crate) fn annotations(
 
             fn range_and_position_of<T: NameOwner>(
                 node: &InFile<T>,
+                file_id: FileId,
             ) -> Option<(TextSize, TextRange)> {
-                if node.file_id.is_macro_file() {
-                    // Macro generated files should not contain annotations.
+                if node.file_id != file_id.into() {
+                    // Node is outside the file we are adding annotations to (e.g. macros).
                     None
                 } else {
                     Some((
