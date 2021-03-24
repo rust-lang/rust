@@ -1,5 +1,5 @@
 use either::Either;
-use hir::{HasSource, Semantics};
+use hir::{HasSource, InFile, Semantics};
 use ide_db::{
     base_db::{FileId, FilePosition, FileRange},
     helpers::visit_file_defs,
@@ -80,19 +80,19 @@ pub(crate) fn annotations(
         Either::Left(def) => {
             let node = match def {
                 hir::ModuleDef::Const(konst) => {
-                    konst.source(db).and_then(|node| range_and_position_of(&node.value))
+                    konst.source(db).and_then(|node| range_and_position_of(&node))
                 }
                 hir::ModuleDef::Trait(trait_) => {
-                    trait_.source(db).and_then(|node| range_and_position_of(&node.value))
+                    trait_.source(db).and_then(|node| range_and_position_of(&node))
                 }
                 hir::ModuleDef::Adt(hir::Adt::Struct(strukt)) => {
-                    strukt.source(db).and_then(|node| range_and_position_of(&node.value))
+                    strukt.source(db).and_then(|node| range_and_position_of(&node))
                 }
                 hir::ModuleDef::Adt(hir::Adt::Enum(enum_)) => {
-                    enum_.source(db).and_then(|node| range_and_position_of(&node.value))
+                    enum_.source(db).and_then(|node| range_and_position_of(&node))
                 }
                 hir::ModuleDef::Adt(hir::Adt::Union(union)) => {
-                    union.source(db).and_then(|node| range_and_position_of(&node.value))
+                    union.source(db).and_then(|node| range_and_position_of(&node))
                 }
                 _ => None,
             };
@@ -120,8 +120,18 @@ pub(crate) fn annotations(
                 });
             }
 
-            fn range_and_position_of(node: &dyn NameOwner) -> Option<(TextSize, TextRange)> {
-                Some((node.name()?.syntax().text_range().start(), node.syntax().text_range()))
+            fn range_and_position_of<T: NameOwner>(
+                node: &InFile<T>,
+            ) -> Option<(TextSize, TextRange)> {
+                if node.file_id.is_macro_file() {
+                    // Macro generated files should not contain annotations.
+                    None
+                } else {
+                    Some((
+                        node.value.name()?.syntax().text_range().start(),
+                        node.value.syntax().text_range(),
+                    ))
+                }
             }
         }
         Either::Right(_) => (),
@@ -961,6 +971,25 @@ mod tests {
 struct Foo;
 //- /lib.rs
 // this file comes last since `check` checks the first file only
+"#,
+            expect![[r#"
+                []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_no_annotations_macro_struct_def() {
+        check(
+            r#"
+//- /lib.rs
+macro_rules! m {
+    () => {
+        struct A {}
+    };
+}
+
+m!();
 "#,
             expect![[r#"
                 []

@@ -207,6 +207,13 @@ impl HirFileId {
         }
         false
     }
+
+    pub fn is_macro_file(&self) -> bool {
+        match self.0 {
+            HirFileIdRepr::MacroFile(_) => true,
+            HirFileIdRepr::FileId(_) => false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
