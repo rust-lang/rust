@@ -487,7 +487,8 @@ fn build_module(
         }
     }
 
-    clean::Module { items }
+    let span = clean::Span::from_rustc_span(cx.tcx.def_span(did));
+    clean::Module { items, span }
 }
 
 crate fn print_inlined_const(tcx: TyCtxt<'_>, did: DefId) -> String {

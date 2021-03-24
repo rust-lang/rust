@@ -80,7 +80,10 @@ crate trait DocFolder: Sized {
     }
 
     fn fold_mod(&mut self, m: Module) -> Module {
-        Module { items: m.items.into_iter().filter_map(|i| self.fold_item(i)).collect() }
+        Module {
+            span: m.span,
+            items: m.items.into_iter().filter_map(|i| self.fold_item(i)).collect(),
+        }
     }
 
     fn fold_crate(&mut self, mut c: Crate) -> Crate {

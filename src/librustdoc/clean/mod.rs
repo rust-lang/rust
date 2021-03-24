@@ -100,7 +100,7 @@ impl Clean<Item> for doctree::Module<'_> {
 
         // determine if we should display the inner contents or
         // the outer `mod` item for the source code.
-        let span = {
+        let span = Span::from_rustc_span({
             let sm = cx.sess().source_map();
             let outer = sm.lookup_char_pos(self.where_outer.lo());
             let inner = sm.lookup_char_pos(self.where_inner.lo());
@@ -111,11 +111,14 @@ impl Clean<Item> for doctree::Module<'_> {
                 // mod foo; (and a separate SourceFile for the contents)
                 self.where_inner
             }
-        };
+        });
 
-        let what_rustc_thinks =
-            Item::from_hir_id_and_parts(self.id, Some(self.name), ModuleItem(Module { items }), cx);
-        Item { span: span.clean(cx), ..what_rustc_thinks }
+        Item::from_hir_id_and_parts(
+            self.id,
+            Some(self.name),
+            ModuleItem(Module { items, span }),
+            cx,
+        )
     }
 }
 

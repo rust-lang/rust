@@ -232,7 +232,7 @@ impl fmt::Debug for Item {
         let def_id: &dyn fmt::Debug = if self.is_fake() { &"**FAKE**" } else { &self.def_id };
 
         fmt.debug_struct("Item")
-            .field("source", &self.span)
+            .field("source", &self.span())
             .field("name", &self.name)
             .field("attrs", &self.attrs)
             .field("kind", &self.kind)
@@ -255,8 +255,12 @@ impl Item {
         if self.is_fake() { None } else { tcx.lookup_deprecation(self.def_id) }
     }
 
+    crate fn span(&self) -> Span {
+        if let ItemKind::ModuleItem(Module { span, .. }) = &*self.kind { *span } else { self.span }
+    }
+
     crate fn attr_span(&self, _tcx: TyCtxt<'_>) -> rustc_span::Span {
-        crate::passes::span_of_attrs(&self.attrs).unwrap_or_else(|| self.span.inner())
+        crate::passes::span_of_attrs(&self.attrs).unwrap_or_else(|| self.span().inner())
     }
 
     /// Finds the `doc` attribute as a NameValue and returns the corresponding
@@ -609,6 +613,7 @@ impl ItemKind {
 #[derive(Clone, Debug)]
 crate struct Module {
     crate items: Vec<Item>,
+    crate span: Span,
 }
 
 crate struct ListAttributesIter<'a> {

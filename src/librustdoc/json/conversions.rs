@@ -40,7 +40,8 @@ impl JsonRenderer<'_> {
             .iter()
             .map(rustc_ast_pretty::pprust::attribute_to_string)
             .collect();
-        let clean::Item { span, name, attrs: _, kind: _, visibility, def_id } = item;
+        let span = item.span();
+        let clean::Item { name, attrs: _, kind: _, span: _, visibility, def_id } = item;
         let inner = match *item.kind {
             clean::StrippedItem(_) => return None,
             _ => from_clean_item(item, self.tcx),
