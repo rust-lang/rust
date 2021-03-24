@@ -1,9 +1,11 @@
+mod too_many_arguments;
+
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_then};
 use clippy_utils::source::{snippet, snippet_opt};
 use clippy_utils::ty::{is_must_use_ty, is_type_diagnostic_item, type_is_unsafe_function};
 use clippy_utils::{
-    attr_by_name, attrs::is_proc_macro, is_trait_impl_item, iter_input_pats, match_def_path, must_use_attr,
-    path_to_local, return_ty, trait_ref_of_method,
+    attr_by_name, attrs::is_proc_macro, iter_input_pats, match_def_path, must_use_attr, path_to_local, return_ty,
+    trait_ref_of_method,
 };
 use if_chain::if_chain;
 use rustc_ast::ast::Attribute;
@@ -17,9 +19,7 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::source_map::Span;
-use rustc_span::sym;
-use rustc_target::spec::abi::Abi;
+use rustc_span::{sym, Span};
 use rustc_typeck::hir_ty_to_ty;
 
 declare_clippy_lint! {
@@ -222,13 +222,16 @@ declare_clippy_lint! {
 
 #[derive(Copy, Clone)]
 pub struct Functions {
-    threshold: u64,
-    max_lines: u64,
+    too_many_arguments_threshold: u64,
+    too_many_lines_threshold: u64,
 }
 
 impl Functions {
-    pub fn new(threshold: u64, max_lines: u64) -> Self {
-        Self { threshold, max_lines }
+    pub fn new(too_many_arguments_threshold: u64, too_many_lines_threshold: u64) -> Self {
+        Self {
+            too_many_arguments_threshold,
+            too_many_lines_threshold,
+        }
     }
 }
 
@@ -252,30 +255,13 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
         span: Span,
         hir_id: hir::HirId,
     ) {
+        too_many_arguments::check_fn(cx, kind, decl, span, hir_id, self.too_many_arguments_threshold);
+
         let unsafety = match kind {
             intravisit::FnKind::ItemFn(_, _, hir::FnHeader { unsafety, .. }, _) => unsafety,
             intravisit::FnKind::Method(_, sig, _) => sig.header.unsafety,
             intravisit::FnKind::Closure => return,
         };
-
-        // don't warn for implementations, it's not their fault
-        if !is_trait_impl_item(cx, hir_id) {
-            // don't lint extern functions decls, it's not their fault either
-            match kind {
-                intravisit::FnKind::Method(
-                    _,
-                    &hir::FnSig {
-                        header: hir::FnHeader { abi: Abi::Rust, .. },
-                        ..
-                    },
-                    _,
-                )
-                | intravisit::FnKind::ItemFn(_, _, hir::FnHeader { abi: Abi::Rust, .. }, _) => {
-                    self.check_arg_number(cx, decl, span.with_hi(decl.output.span().hi()))
-                },
-                _ => {},
-            }
-        }
 
         Self::check_raw_ptr(cx, unsafety, decl, body, hir_id);
         self.check_line_number(cx, span, body);
@@ -335,11 +321,9 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
+        too_many_arguments::check_trait_item(cx, item, self.too_many_arguments_threshold);
+
         if let hir::TraitItemKind::Fn(ref sig, ref eid) = item.kind {
-            // don't lint extern functions decls, it's not their fault
-            if sig.header.abi == Abi::Rust {
-                self.check_arg_number(cx, &sig.decl, item.span.with_hi(sig.decl.output.span().hi()));
-            }
             let is_public = cx.access_levels.is_exported(item.hir_id());
             let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
             if is_public {
@@ -372,18 +356,6 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
 }
 
 impl<'tcx> Functions {
-    fn check_arg_number(self, cx: &LateContext<'_>, decl: &hir::FnDecl<'_>, fn_span: Span) {
-        let args = decl.inputs.len() as u64;
-        if args > self.threshold {
-            span_lint(
-                cx,
-                TOO_MANY_ARGUMENTS,
-                fn_span,
-                &format!("this function has too many arguments ({}/{})", args, self.threshold),
-            );
-        }
-    }
-
     fn check_line_number(self, cx: &LateContext<'_>, span: Span, body: &'tcx hir::Body<'_>) {
         if in_external_macro(cx.sess(), span) {
             return;
@@ -430,12 +402,15 @@ impl<'tcx> Functions {
             }
         }
 
-        if line_count > self.max_lines {
+        if line_count > self.too_many_lines_threshold {
             span_lint(
                 cx,
                 TOO_MANY_LINES,
                 span,
-                &format!("this function has too many lines ({}/{})", line_count, self.max_lines),
+                &format!(
+                    "this function has too many lines ({}/{})",
+                    line_count, self.too_many_lines_threshold
+                ),
             )
         }
     }

@@ -1124,9 +1124,9 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box new_without_default::NewWithoutDefault::default());
     let blacklisted_names = conf.blacklisted_names.iter().cloned().collect::<FxHashSet<_>>();
     store.register_late_pass(move || box blacklisted_name::BlacklistedName::new(blacklisted_names.clone()));
-    let too_many_arguments_threshold1 = conf.too_many_arguments_threshold;
-    let too_many_lines_threshold2 = conf.too_many_lines_threshold;
-    store.register_late_pass(move || box functions::Functions::new(too_many_arguments_threshold1, too_many_lines_threshold2));
+    let too_many_arguments_threshold = conf.too_many_arguments_threshold;
+    let too_many_lines_threshold = conf.too_many_lines_threshold;
+    store.register_late_pass(move || box functions::Functions::new(too_many_arguments_threshold, too_many_lines_threshold));
     let doc_valid_idents = conf.doc_valid_idents.iter().cloned().collect::<FxHashSet<_>>();
     store.register_late_pass(move || box doc::DocMarkdown::new(doc_valid_idents.clone()));
     store.register_late_pass(|| box neg_multiply::NegMultiply);
