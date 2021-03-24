@@ -538,12 +538,6 @@ impl<T: TypeWalk> Binders<T> {
         assert_eq!(subst.len(), self.num_binders);
         self.value.subst_bound_vars(subst)
     }
-
-    /// Substitutes just a prefix of the variables (shifting the rest).
-    pub fn subst_prefix(self, subst: &Substitution) -> Binders<T> {
-        assert!(subst.len() < self.num_binders);
-        Binders::new(self.num_binders - subst.len(), self.value.subst_bound_vars(subst))
-    }
 }
 
 impl<T: TypeWalk> TypeWalk for Binders<T> {
@@ -698,7 +692,15 @@ impl CallableSig {
 
     pub fn from_fn_ptr(fn_ptr: &FnPointer) -> CallableSig {
         CallableSig {
-            params_and_return: fn_ptr.substs.interned(&Interner).iter().cloned().collect(),
+            // FIXME: what to do about lifetime params?
+            params_and_return: fn_ptr
+                .substs
+                .clone()
+                .shift_bound_vars_out(DebruijnIndex::ONE)
+                .interned(&Interner)
+                .iter()
+                .cloned()
+                .collect(),
             is_varargs: fn_ptr.sig.variadic,
         }
     }
@@ -1125,6 +1127,23 @@ pub trait TypeWalk {
             &mut |ty, binders| match ty.interned(&Interner) {
                 TyKind::BoundVar(bound) if bound.debruijn >= binders => {
                     TyKind::BoundVar(bound.shifted_in_from(n)).intern(&Interner)
+                }
+                _ => ty,
+            },
+            DebruijnIndex::INNERMOST,
+        )
+    }
+
+    /// Shifts debruijn indices of `TyKind::Bound` vars out (down) by `n`.
+    fn shift_bound_vars_out(self, n: DebruijnIndex) -> Self
+    where
+        Self: Sized + std::fmt::Debug,
+    {
+        self.fold_binders(
+            &mut |ty, binders| match ty.interned(&Interner) {
+                TyKind::BoundVar(bound) if bound.debruijn >= binders => {
+                    TyKind::BoundVar(bound.shifted_out_to(n).unwrap_or(bound.clone()))
+                        .intern(&Interner)
                 }
                 _ => ty,
             },

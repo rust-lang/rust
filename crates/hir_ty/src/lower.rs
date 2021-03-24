@@ -828,14 +828,18 @@ pub fn associated_type_shorthand_candidates<R>(
     let traits_from_env: Vec<_> = match res {
         TypeNs::SelfType(impl_id) => match db.impl_trait(impl_id) {
             None => vec![],
-            Some(trait_ref) => vec![trait_ref.value],
+            // FIXME: how to correctly handle higher-ranked bounds here?
+            Some(trait_ref) => vec![trait_ref.value.shift_bound_vars_out(DebruijnIndex::ONE)],
         },
         TypeNs::GenericParam(param_id) => {
             let predicates = db.generic_predicates_for_param(param_id);
             let mut traits_: Vec<_> = predicates
                 .iter()
                 .filter_map(|pred| match &pred.value.value {
-                    WhereClause::Implemented(tr) => Some(tr.clone()),
+                    // FIXME: how to correctly handle higher-ranked bounds here?
+                    WhereClause::Implemented(tr) => {
+                        Some(tr.clone().shift_bound_vars_out(DebruijnIndex::ONE))
+                    }
                     _ => None,
                 })
                 .collect();
@@ -1156,10 +1160,9 @@ fn type_for_type_alias(db: &dyn HirDatabase, t: TypeAliasId) -> Binders<Ty> {
     if db.type_alias_data(t).is_extern {
         Binders::new(0, TyKind::ForeignType(crate::to_foreign_def_id(t)).intern(&Interner))
     } else {
-        let substs = Substitution::bound_vars(&generics, DebruijnIndex::INNERMOST);
         let type_ref = &db.type_alias_data(t).type_ref;
         let inner = ctx.lower_ty(type_ref.as_ref().unwrap_or(&TypeRef::Error));
-        Binders::new(substs.len(), inner)
+        Binders::new(generics.len(), inner)
     }
 }
 

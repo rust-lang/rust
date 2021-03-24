@@ -21,8 +21,8 @@ use crate::{
     method_resolution::{TyFingerprint, ALL_FLOAT_FPS, ALL_INT_FPS},
     to_assoc_type_id, to_chalk_trait_id,
     utils::generics,
-    AliasEq, AliasTy, BoundVar, CallableDefId, CallableSig, DebruijnIndex, FnDefId, ProjectionTy,
-    Substitution, TraitRef, Ty, TyKind, WhereClause,
+    AliasEq, AliasTy, BoundVar, CallableDefId, DebruijnIndex, FnDefId, ProjectionTy, Substitution,
+    TraitRef, Ty, TyKind, WhereClause,
 };
 use mapping::{
     convert_where_clauses, generic_predicate_to_inline_bound, make_binders, TypeAliasAsValue,
@@ -288,9 +288,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
     ) -> chalk_ir::Binders<rust_ir::FnDefInputsAndOutputDatum<Interner>> {
         let sig_ty: Ty =
             from_chalk(self.db, substs.at(&Interner, 0).assert_ty_ref(&Interner).clone());
-        let sig = CallableSig::from_substs(
-            &sig_ty.substs().expect("first closure param should be fn ptr"),
-        );
+        let sig = &sig_ty.callable_sig(self.db).expect("first closure param should be fn ptr");
         let io = rust_ir::FnDefInputsAndOutputDatum {
             argument_types: sig.params().iter().map(|ty| ty.clone().to_chalk(self.db)).collect(),
             return_type: sig.ret().clone().to_chalk(self.db),
