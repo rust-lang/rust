@@ -181,6 +181,7 @@ impl RootDatabase {
             hir::db::GenericPredicatesQuery
             hir::db::GenericDefaultsQuery
             hir::db::InherentImplsInCrateQuery
+            hir::db::TraitEnvironmentQuery
             hir::db::TraitImplsInCrateQuery
             hir::db::TraitImplsInDepsQuery
             hir::db::AssociatedTyDataQuery
