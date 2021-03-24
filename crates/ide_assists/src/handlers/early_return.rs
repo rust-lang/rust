@@ -204,7 +204,7 @@ mod tests {
                 if$0 true {
                     foo();
 
-                    //comment
+                    // comment
                     bar();
                 }
             }
@@ -217,7 +217,7 @@ mod tests {
                 }
                 foo();
 
-                //comment
+                // comment
                 bar();
             }
             "#,
@@ -234,7 +234,7 @@ mod tests {
                 if$0 let Some(n) = n {
                     foo(n);
 
-                    //comment
+                    // comment
                     bar();
                 }
             }
@@ -248,7 +248,7 @@ mod tests {
                 };
                 foo(n);
 
-                //comment
+                // comment
                 bar();
             }
             "#,
@@ -288,7 +288,7 @@ mod tests {
                 if$0 let Some(n) = n {
                     foo(n);
 
-                    //comment
+                    // comment
                     bar();
                 }
             }
@@ -302,7 +302,7 @@ mod tests {
                 };
                 foo(n);
 
-                //comment
+                // comment
                 bar();
             }
             "#,
@@ -319,7 +319,7 @@ mod tests {
                 if$0 let Some(mut n) = n {
                     foo(n);
 
-                    //comment
+                    // comment
                     bar();
                 }
             }
@@ -333,7 +333,7 @@ mod tests {
                 };
                 foo(n);
 
-                //comment
+                // comment
                 bar();
             }
             "#,
@@ -350,7 +350,7 @@ mod tests {
                 if$0 let Some(ref n) = n {
                     foo(n);
 
-                    //comment
+                    // comment
                     bar();
                 }
             }
@@ -364,7 +364,7 @@ mod tests {
                 };
                 foo(n);
 
-                //comment
+                // comment
                 bar();
             }
             "#,
