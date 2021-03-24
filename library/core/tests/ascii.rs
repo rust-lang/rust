@@ -344,6 +344,23 @@ fn test_is_ascii_control() {
     );
 }
 
+#[cfg(not(bootstrap))]
+#[test]
+fn test_to_digit() {
+    assert_eq!(b'0'.to_digit(10), Some(0));
+    assert_eq!(b'1'.to_digit(2), Some(1));
+    assert_eq!(b'2'.to_digit(3), Some(2));
+    assert_eq!(b'9'.to_digit(10), Some(9));
+    assert_eq!(b'a'.to_digit(16), Some(10));
+    assert_eq!(b'A'.to_digit(16), Some(10));
+    assert_eq!(b'b'.to_digit(16), Some(11));
+    assert_eq!(b'B'.to_digit(16), Some(11));
+    assert_eq!(b'z'.to_digit(36), Some(35));
+    assert_eq!(b'Z'.to_digit(36), Some(35));
+    assert_eq!(b' '.to_digit(10), None);
+    assert_eq!(b'$'.to_digit(36), None);
+}
+
 // `is_ascii` does a good amount of pointer manipulation and has
 // alignment-dependent computation. This is all sanity-checked via
 // `debug_assert!`s, so we test various sizes/alignments thoroughly versus an
