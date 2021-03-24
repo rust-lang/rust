@@ -739,7 +739,7 @@ impl Attributes {
     }
 
     crate fn from_ast(
-        handler: &::rustc_errors::Handler,
+        tcx: TyCtxt<'_>,
         attrs: &[ast::Attribute],
         additional_attrs: Option<(&[ast::Attribute], DefId)>,
         local: bool,
@@ -801,7 +801,7 @@ impl Attributes {
                             // Extracted #[doc(cfg(...))]
                             match Cfg::parse(cfg_mi) {
                                 Ok(new_cfg) => cfg &= new_cfg,
-                                Err(e) => handler.span_err(e.span, e.msg),
+                                Err(e) => tcx.sess.span_err(e.span, e.msg),
                             }
                         } else if let Some((filename, contents)) = Attributes::extract_include(&mi)
                         {

@@ -241,7 +241,7 @@ impl Clean<Item> for doctree::Module<'_> {
 }
 
 fn clean_attrs(attrs: &[ast::Attribute], local: bool, cx: &mut DocContext<'_>) -> Attributes {
-    Attributes::from_ast(cx.sess().diagnostic(), attrs, None, local)
+    Attributes::from_ast(cx.tcx, attrs, None, local)
 }
 
 impl Clean<GenericBound> for hir::GenericBound<'_> {

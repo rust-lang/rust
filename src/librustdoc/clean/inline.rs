@@ -298,8 +298,7 @@ fn merge_attrs(
     // when we render them.
     if let Some(inner) = new_attrs {
         if let Some(new_id) = parent_module {
-            let diag = cx.sess().diagnostic();
-            Attributes::from_ast(diag, old_attrs, Some((inner, new_id)), local)
+            Attributes::from_ast(cx.tcx, old_attrs, Some((inner, new_id)), local)
         } else {
             let mut both = inner.to_vec();
             both.extend_from_slice(old_attrs);
