@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use base_db::{impl_intern_key, salsa, CrateId, Upcast};
 use hir_def::{
-    db::DefDatabase, expr::ExprId, visibility::Visibility, ConstParamId, DefWithBodyId, FunctionId,
-    GenericDefId, ImplId, LocalFieldId, TypeParamId, VariantId,
+    db::DefDatabase, expr::ExprId, ConstParamId, DefWithBodyId, FunctionId, GenericDefId, ImplId,
+    LocalFieldId, TypeParamId, VariantId,
 };
 use la_arena::ArenaMap;
 
@@ -128,12 +128,6 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
         krate: CrateId,
         env: chalk_ir::Environment<chalk::Interner>,
     ) -> chalk_ir::ProgramClauses<chalk::Interner>;
-
-    #[salsa::invoke(crate::lower::field_visibilities_query)]
-    fn field_visibilities(&self, var: VariantId) -> Arc<ArenaMap<LocalFieldId, Visibility>>;
-
-    #[salsa::invoke(crate::lower::fn_visibility_query)]
-    fn fn_visibility(&self, def: FunctionId) -> Visibility;
 }
 
 fn infer_wait(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> {

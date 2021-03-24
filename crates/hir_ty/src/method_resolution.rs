@@ -686,7 +686,7 @@ fn is_valid_candidate(
                 }
             }
             if let Some(from_module) = visible_from_module {
-                if !db.fn_visibility(m).is_visible_from(db.upcast(), from_module) {
+                if !db.function_visibility(m).is_visible_from(db.upcast(), from_module) {
                     cov_mark::hit!(autoderef_candidate_not_visible);
                     return false;
                 }

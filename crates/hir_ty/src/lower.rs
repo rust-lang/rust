@@ -16,10 +16,9 @@ use hir_def::{
     path::{GenericArg, Path, PathSegment, PathSegments},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{TypeBound, TypeRef},
-    visibility::Visibility,
     AdtId, AssocContainerId, AssocItemId, ConstId, ConstParamId, EnumId, EnumVariantId, FunctionId,
-    GenericDefId, HasModule, ImplId, LocalFieldId, Lookup, ModuleDefId, StaticId, StructId,
-    TraitId, TypeAliasId, TypeParamId, UnionId, VariantId,
+    GenericDefId, HasModule, ImplId, LocalFieldId, Lookup, StaticId, StructId, TraitId,
+    TypeAliasId, TypeParamId, UnionId, VariantId,
 };
 use hir_expand::name::Name;
 use la_arena::ArenaMap;
@@ -866,28 +865,6 @@ pub(crate) fn field_types_query(
         res.insert(field_id, Binders::new(generics.len(), ctx.lower_ty(&field_data.type_ref)))
     }
     Arc::new(res)
-}
-
-/// Resolve visibility of all specific fields of a struct or union variant.
-pub(crate) fn field_visibilities_query(
-    db: &dyn HirDatabase,
-    variant_id: VariantId,
-) -> Arc<ArenaMap<LocalFieldId, Visibility>> {
-    let def_db = db.upcast();
-    let var_data = variant_data(def_db, variant_id);
-    let resolver = variant_id.module(def_db).resolver(def_db);
-    let mut res = ArenaMap::default();
-    for (field_id, field_data) in var_data.fields().iter() {
-        res.insert(field_id, field_data.visibility.resolve(def_db, &resolver))
-    }
-    Arc::new(res)
-}
-
-/// Resolve visibility of a function.
-pub(crate) fn fn_visibility_query(db: &dyn HirDatabase, def: FunctionId) -> Visibility {
-    let def_db = db.upcast();
-    let resolver = ModuleDefId::from(def).module(def_db).unwrap().resolver(def_db);
-    db.function_data(def).visibility.resolve(def_db, &resolver)
 }
 
 /// This query exists only to be used when resolving short-hand associated types
