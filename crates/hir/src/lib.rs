@@ -1999,6 +1999,7 @@ impl Type {
             env,
             krate,
             traits_in_scope,
+            None,
             name,
             method_resolution::LookupMode::MethodCall,
             |ty, it| match it {
@@ -2031,6 +2032,7 @@ impl Type {
             env,
             krate,
             traits_in_scope,
+            None,
             name,
             method_resolution::LookupMode::Path,
             |ty, it| callback(ty, it.into()),

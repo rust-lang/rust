@@ -16,6 +16,7 @@ use crate::{
     item_tree::ItemTree,
     lang_item::{LangItemTarget, LangItems},
     nameres::DefMap,
+    visibility::{self, Visibility},
     AttrDefId, BlockId, BlockLoc, ConstId, ConstLoc, DefWithBodyId, EnumId, EnumLoc, FunctionId,
     FunctionLoc, GenericDefId, ImplId, ImplLoc, LocalEnumVariantId, LocalFieldId, StaticId,
     StaticLoc, StructId, StructLoc, TraitId, TraitLoc, TypeAliasId, TypeAliasLoc, UnionId,
@@ -131,6 +132,12 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
 
     #[salsa::invoke(ImportMap::import_map_query)]
     fn import_map(&self, krate: CrateId) -> Arc<ImportMap>;
+
+    #[salsa::invoke(visibility::field_visibilities_query)]
+    fn field_visibilities(&self, var: VariantId) -> Arc<ArenaMap<LocalFieldId, Visibility>>;
+
+    #[salsa::invoke(visibility::function_visibility_query)]
+    fn function_visibility(&self, def: FunctionId) -> Visibility;
 }
 
 fn crate_def_map_wait(db: &dyn DefDatabase, krate: CrateId) -> Arc<DefMap> {

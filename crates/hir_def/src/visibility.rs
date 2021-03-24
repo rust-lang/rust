@@ -1,13 +1,17 @@
 //! Defines hir-level representation of visibility (e.g. `pub` and `pub(crate)`).
 
+use std::sync::Arc;
+
 use hir_expand::{hygiene::Hygiene, InFile};
+use la_arena::ArenaMap;
 use syntax::ast;
 
 use crate::{
     db::DefDatabase,
     nameres::DefMap,
     path::{ModPath, PathKind},
-    ModuleId,
+    resolver::HasResolver,
+    FunctionId, HasModule, LocalFieldId, ModuleDefId, ModuleId, VariantId,
 };
 
 /// Visibility of an item, not yet resolved.
@@ -189,4 +193,30 @@ impl Visibility {
             }
         }
     }
+}
+
+/// Resolve visibility of all specific fields of a struct or union variant.
+pub(crate) fn field_visibilities_query(
+    db: &dyn DefDatabase,
+    variant_id: VariantId,
+) -> Arc<ArenaMap<LocalFieldId, Visibility>> {
+    let var_data = match variant_id {
+        VariantId::StructId(it) => db.struct_data(it).variant_data.clone(),
+        VariantId::UnionId(it) => db.union_data(it).variant_data.clone(),
+        VariantId::EnumVariantId(it) => {
+            db.enum_data(it.parent).variants[it.local_id].variant_data.clone()
+        }
+    };
+    let resolver = variant_id.module(db).resolver(db);
+    let mut res = ArenaMap::default();
+    for (field_id, field_data) in var_data.fields().iter() {
+        res.insert(field_id, field_data.visibility.resolve(db, &resolver))
+    }
+    Arc::new(res)
+}
+
+/// Resolve visibility of a function.
+pub(crate) fn function_visibility_query(db: &dyn DefDatabase, def: FunctionId) -> Visibility {
+    let resolver = ModuleDefId::from(def).module(db).unwrap().resolver(db);
+    db.function_data(def).visibility.resolve(db, &resolver)
 }

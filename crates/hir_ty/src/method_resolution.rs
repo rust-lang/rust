@@ -296,6 +296,7 @@ pub(crate) fn lookup_method(
     env: Arc<TraitEnvironment>,
     krate: CrateId,
     traits_in_scope: &FxHashSet<TraitId>,
+    visible_from_module: Option<ModuleId>,
     name: &Name,
 ) -> Option<(Ty, FunctionId)> {
     iterate_method_candidates(
@@ -304,6 +305,7 @@ pub(crate) fn lookup_method(
         env,
         krate,
         &traits_in_scope,
+        visible_from_module,
         Some(name),
         LookupMode::MethodCall,
         |ty, f| match f {
@@ -334,6 +336,7 @@ pub fn iterate_method_candidates<T>(
     env: Arc<TraitEnvironment>,
     krate: CrateId,
     traits_in_scope: &FxHashSet<TraitId>,
+    visible_from_module: Option<ModuleId>,
     name: Option<&Name>,
     mode: LookupMode,
     mut callback: impl FnMut(&Ty, AssocItemId) -> Option<T>,
@@ -345,6 +348,7 @@ pub fn iterate_method_candidates<T>(
         env,
         krate,
         traits_in_scope,
+        visible_from_module,
         name,
         mode,
         &mut |ty, item| {
@@ -362,6 +366,7 @@ fn iterate_method_candidates_impl(
     env: Arc<TraitEnvironment>,
     krate: CrateId,
     traits_in_scope: &FxHashSet<TraitId>,
+    visible_from_module: Option<ModuleId>,
     name: Option<&Name>,
     mode: LookupMode,
     callback: &mut dyn FnMut(&Ty, AssocItemId) -> bool,
@@ -399,6 +404,7 @@ fn iterate_method_candidates_impl(
                     env.clone(),
                     krate,
                     traits_in_scope,
+                    visible_from_module,
                     name,
                     callback,
                 ) {
@@ -415,6 +421,7 @@ fn iterate_method_candidates_impl(
                 env,
                 krate,
                 traits_in_scope,
+                visible_from_module,
                 name,
                 callback,
             )
@@ -428,6 +435,7 @@ fn iterate_method_candidates_with_autoref(
     env: Arc<TraitEnvironment>,
     krate: CrateId,
     traits_in_scope: &FxHashSet<TraitId>,
+    visible_from_module: Option<ModuleId>,
     name: Option<&Name>,
     mut callback: &mut dyn FnMut(&Ty, AssocItemId) -> bool,
 ) -> bool {
@@ -438,6 +446,7 @@ fn iterate_method_candidates_with_autoref(
         env.clone(),
         krate,
         &traits_in_scope,
+        visible_from_module,
         name,
         &mut callback,
     ) {
@@ -454,6 +463,7 @@ fn iterate_method_candidates_with_autoref(
         env.clone(),
         krate,
         &traits_in_scope,
+        visible_from_module,
         name,
         &mut callback,
     ) {
@@ -470,6 +480,7 @@ fn iterate_method_candidates_with_autoref(
         env,
         krate,
         &traits_in_scope,
+        visible_from_module,
         name,
         &mut callback,
     ) {
@@ -485,6 +496,7 @@ fn iterate_method_candidates_by_receiver(
     env: Arc<TraitEnvironment>,
     krate: CrateId,
     traits_in_scope: &FxHashSet<TraitId>,
+    visible_from_module: Option<ModuleId>,
     name: Option<&Name>,
     mut callback: &mut dyn FnMut(&Ty, AssocItemId) -> bool,
 ) -> bool {
@@ -492,7 +504,15 @@ fn iterate_method_candidates_by_receiver(
     // be found in any of the derefs of receiver_ty, so we have to go through
     // that.
     for self_ty in std::iter::once(receiver_ty).chain(rest_of_deref_chain) {
-        if iterate_inherent_methods(self_ty, db, name, Some(receiver_ty), krate, &mut callback) {
+        if iterate_inherent_methods(
+            self_ty,
+            db,
+            name,
+            Some(receiver_ty),
+            krate,
+            visible_from_module,
+            &mut callback,
+        ) {
             return true;
         }
     }
@@ -519,10 +539,12 @@ fn iterate_method_candidates_for_self_ty(
     env: Arc<TraitEnvironment>,
     krate: CrateId,
     traits_in_scope: &FxHashSet<TraitId>,
+    visible_from_module: Option<ModuleId>,
     name: Option<&Name>,
     mut callback: &mut dyn FnMut(&Ty, AssocItemId) -> bool,
 ) -> bool {
-    if iterate_inherent_methods(self_ty, db, name, None, krate, &mut callback) {
+    if iterate_inherent_methods(self_ty, db, name, None, krate, visible_from_module, &mut callback)
+    {
         return true;
     }
     iterate_trait_method_candidates(self_ty, db, env, krate, traits_in_scope, name, None, callback)
@@ -559,7 +581,9 @@ fn iterate_trait_method_candidates(
         // iteration
         let mut known_implemented = false;
         for (_name, item) in data.items.iter() {
-            if !is_valid_candidate(db, name, receiver_ty, *item, self_ty) {
+            // Don't pass a `visible_from_module` down to `is_valid_candidate`,
+            // since only inherent methods should be included into visibility checking.
+            if !is_valid_candidate(db, name, receiver_ty, *item, self_ty, None) {
                 continue;
             }
             if !known_implemented {
@@ -583,6 +607,7 @@ fn iterate_inherent_methods(
     name: Option<&Name>,
     receiver_ty: Option<&Canonical<Ty>>,
     krate: CrateId,
+    visible_from_module: Option<ModuleId>,
     callback: &mut dyn FnMut(&Ty, AssocItemId) -> bool,
 ) -> bool {
     let def_crates = match self_ty.value.def_crates(db, krate) {
@@ -594,7 +619,7 @@ fn iterate_inherent_methods(
 
         for &impl_def in impls.for_self_ty(&self_ty.value) {
             for &item in db.impl_data(impl_def).items.iter() {
-                if !is_valid_candidate(db, name, receiver_ty, item, self_ty) {
+                if !is_valid_candidate(db, name, receiver_ty, item, self_ty, visible_from_module) {
                     continue;
                 }
                 // we have to check whether the self type unifies with the type
@@ -639,6 +664,7 @@ fn is_valid_candidate(
     receiver_ty: Option<&Canonical<Ty>>,
     item: AssocItemId,
     self_ty: &Canonical<Ty>,
+    visible_from_module: Option<ModuleId>,
 ) -> bool {
     match item {
         AssocItemId::FunctionId(m) => {
@@ -660,6 +686,13 @@ fn is_valid_candidate(
                     return false;
                 }
             }
+            if let Some(from_module) = visible_from_module {
+                if !db.function_visibility(m).is_visible_from(db.upcast(), from_module) {
+                    cov_mark::hit!(autoderef_candidate_not_visible);
+                    return false;
+                }
+            }
+
             true
         }
         AssocItemId::ConstId(c) => {

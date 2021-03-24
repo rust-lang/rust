@@ -1173,3 +1173,122 @@ fn main() {
 "#,
     );
 }
+
+#[test]
+fn autoderef_visibility_field() {
+    check_infer(
+        r#"
+#[lang = "deref"]
+pub trait Deref {
+    type Target;
+    fn deref(&self) -> &Self::Target;
+}
+mod a {
+    pub struct Foo(pub char);
+    pub struct Bar(i32);
+    impl Bar {
+        pub fn new() -> Self {
+            Self(0)
+        }
+    }
+    impl super::Deref for Bar {
+        type Target = Foo;
+        fn deref(&self) -> &Foo {
+            &Foo('z')
+        }
+    }
+}
+mod b {
+    fn foo() {
+        let x = super::a::Bar::new().0;
+    }
+}
+        "#,
+        expect![[r#"
+            67..71 'self': &Self
+            200..231 '{     ...     }': Bar
+            214..218 'Self': Bar(i32) -> Bar
+            214..221 'Self(0)': Bar
+            219..220 '0': i32
+            315..319 'self': &Bar
+            329..362 '{     ...     }': &Foo
+            343..352 '&Foo('z')': &Foo
+            344..347 'Foo': Foo(char) -> Foo
+            344..352 'Foo('z')': Foo
+            348..351 ''z'': char
+            392..439 '{     ...     }': ()
+            406..407 'x': char
+            410..428 'super:...r::new': fn new() -> Bar
+            410..430 'super:...:new()': Bar
+            410..432 'super:...ew().0': char
+        "#]],
+    )
+}
+
+#[test]
+fn autoderef_visibility_method() {
+    cov_mark::check!(autoderef_candidate_not_visible);
+    check_infer(
+        r#"
+#[lang = "deref"]
+pub trait Deref {
+    type Target;
+    fn deref(&self) -> &Self::Target;
+}
+mod a {
+    pub struct Foo(pub char);
+    impl Foo {
+        pub fn mango(&self) -> char {
+            self.0
+        }
+    }
+    pub struct Bar(i32);
+    impl Bar {
+        pub fn new() -> Self {
+            Self(0)
+        }
+        fn mango(&self) -> i32 {
+            self.0
+        }
+    }
+    impl super::Deref for Bar {
+        type Target = Foo;
+        fn deref(&self) -> &Foo {
+            &Foo('z')
+        }
+    }
+}
+mod b {
+    fn foo() {
+        let x = super::a::Bar::new().mango();
+    }
+}
+        "#,
+        expect![[r#"
+            67..71 'self': &Self
+            168..172 'self': &Foo
+            182..212 '{     ...     }': char
+            196..200 'self': &Foo
+            196..202 'self.0': char
+            288..319 '{     ...     }': Bar
+            302..306 'Self': Bar(i32) -> Bar
+            302..309 'Self(0)': Bar
+            307..308 '0': i32
+            338..342 'self': &Bar
+            351..381 '{     ...     }': i32
+            365..369 'self': &Bar
+            365..371 'self.0': i32
+            465..469 'self': &Bar
+            479..512 '{     ...     }': &Foo
+            493..502 '&Foo('z')': &Foo
+            494..497 'Foo': Foo(char) -> Foo
+            494..502 'Foo('z')': Foo
+            498..501 ''z'': char
+            542..595 '{     ...     }': ()
+            556..557 'x': char
+            560..578 'super:...r::new': fn new() -> Bar
+            560..580 'super:...:new()': Bar
+            560..588 'super:...ango()': char
+        "#]],
+    )
+}
