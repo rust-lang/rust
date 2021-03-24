@@ -80,11 +80,11 @@ pub fn getenv(_: &OsStr) -> io::Result<Option<OsString>> {
 }
 
 pub fn setenv(_: &OsStr, _: &OsStr) -> io::Result<()> {
-    Err(io::Error::new(io::ErrorKind::Other, "cannot set env vars on this platform"))
+    Err(io::Error::new_const(io::ErrorKind::Other, &"cannot set env vars on this platform"))
 }
 
 pub fn unsetenv(_: &OsStr) -> io::Result<()> {
-    Err(io::Error::new(io::ErrorKind::Other, "cannot unset env vars on this platform"))
+    Err(io::Error::new_const(io::ErrorKind::Other, &"cannot unset env vars on this platform"))
 }
 
 pub fn temp_dir() -> PathBuf {

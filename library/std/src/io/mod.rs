@@ -333,7 +333,7 @@ where
         let ret = f(g.buf);
         if str::from_utf8(&g.buf[g.len..]).is_err() {
             ret.and_then(|_| {
-                Err(Error::new(ErrorKind::InvalidData, "stream did not contain valid UTF-8"))
+                Err(Error::new_const(ErrorKind::InvalidData, &"stream did not contain valid UTF-8"))
             })
         } else {
             g.len = g.buf.len();
@@ -429,7 +429,7 @@ pub(crate) fn default_read_exact<R: Read + ?Sized>(this: &mut R, mut buf: &mut [
         }
     }
     if !buf.is_empty() {
-        Err(Error::new(ErrorKind::UnexpectedEof, "failed to fill whole buffer"))
+        Err(Error::new_const(ErrorKind::UnexpectedEof, &"failed to fill whole buffer"))
     } else {
         Ok(())
     }
@@ -1437,7 +1437,10 @@ pub trait Write {
         while !buf.is_empty() {
             match self.write(buf) {
                 Ok(0) => {
-                    return Err(Error::new(ErrorKind::WriteZero, "failed to write whole buffer"));
+                    return Err(Error::new_const(
+                        ErrorKind::WriteZero,
+                        &"failed to write whole buffer",
+                    ));
                 }
                 Ok(n) => buf = &buf[n..],
                 Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
@@ -1502,7 +1505,10 @@ pub trait Write {
         while !bufs.is_empty() {
             match self.write_vectored(bufs) {
                 Ok(0) => {
-                    return Err(Error::new(ErrorKind::WriteZero, "failed to write whole buffer"));
+                    return Err(Error::new_const(
+                        ErrorKind::WriteZero,
+                        &"failed to write whole buffer",
+                    ));
                 }
                 Ok(n) => bufs = IoSlice::advance(bufs, n),
                 Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
@@ -1576,7 +1582,7 @@ pub trait Write {
                 if output.error.is_err() {
                     output.error
                 } else {
-                    Err(Error::new(ErrorKind::Other, "formatter error"))
+                    Err(Error::new_const(ErrorKind::Other, &"formatter error"))
                 }
             }
         }

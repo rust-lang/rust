@@ -139,9 +139,9 @@ impl Socket {
         let mut pollfd = libc::pollfd { fd: self.0.raw(), events: libc::POLLOUT, revents: 0 };
 
         if timeout.as_secs() == 0 && timeout.subsec_nanos() == 0 {
-            return Err(io::Error::new(
+            return Err(io::Error::new_const(
                 io::ErrorKind::InvalidInput,
-                "cannot set a 0 duration timeout",
+                &"cannot set a 0 duration timeout",
             ));
         }
 
@@ -150,7 +150,7 @@ impl Socket {
         loop {
             let elapsed = start.elapsed();
             if elapsed >= timeout {
-                return Err(io::Error::new(io::ErrorKind::TimedOut, "connection timed out"));
+                return Err(io::Error::new_const(io::ErrorKind::TimedOut, &"connection timed out"));
             }
 
             let timeout = timeout - elapsed;
@@ -177,7 +177,10 @@ impl Socket {
                     // for POLLHUP rather than read readiness
                     if pollfd.revents & libc::POLLHUP != 0 {
                         let e = self.take_error()?.unwrap_or_else(|| {
-                            io::Error::new(io::ErrorKind::Other, "no error set after POLLHUP")
+                            io::Error::new_const(
+                                io::ErrorKind::Other,
+                                &"no error set after POLLHUP",
+                            )
                         });
                         return Err(e);
                     }
@@ -318,9 +321,9 @@ impl Socket {
         let timeout = match dur {
             Some(dur) => {
                 if dur.as_secs() == 0 && dur.subsec_nanos() == 0 {
-                    return Err(io::Error::new(
+                    return Err(io::Error::new_const(
                         io::ErrorKind::InvalidInput,
-                        "cannot set a 0 duration timeout",
+                        &"cannot set a 0 duration timeout",
                     ));
                 }
 

@@ -357,17 +357,17 @@ impl FileAttr {
                         tv_nsec: ext.stx_btime.tv_nsec as _,
                     }))
                 } else {
-                    Err(io::Error::new(
+                    Err(io::Error::new_const(
                         io::ErrorKind::Other,
-                        "creation time is not available for the filesystem",
+                        &"creation time is not available for the filesystem",
                     ))
                 };
             }
         }
 
-        Err(io::Error::new(
+        Err(io::Error::new_const(
             io::ErrorKind::Other,
-            "creation time is not available on this platform \
+            &"creation time is not available on this platform \
                             currently",
         ))
     }
@@ -1156,9 +1156,9 @@ fn open_from(from: &Path) -> io::Result<(crate::fs::File, crate::fs::Metadata)> 
     let reader = File::open(from)?;
     let metadata = reader.metadata()?;
     if !metadata.is_file() {
-        return Err(Error::new(
+        return Err(Error::new_const(
             ErrorKind::InvalidInput,
-            "the source path is not an existing regular file",
+            &"the source path is not an existing regular file",
         ));
     }
     Ok((reader, metadata))

@@ -152,12 +152,12 @@ fn take_eof() {
 
     impl Read for R {
         fn read(&mut self, _: &mut [u8]) -> io::Result<usize> {
-            Err(io::Error::new(io::ErrorKind::Other, ""))
+            Err(io::Error::new_const(io::ErrorKind::Other, &""))
         }
     }
     impl BufRead for R {
         fn fill_buf(&mut self) -> io::Result<&[u8]> {
-            Err(io::Error::new(io::ErrorKind::Other, ""))
+            Err(io::Error::new_const(io::ErrorKind::Other, &""))
         }
         fn consume(&mut self, _amt: usize) {}
     }

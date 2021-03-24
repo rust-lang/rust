@@ -22,7 +22,10 @@ impl Command {
         let envp = self.capture_env();
 
         if self.saw_nul() {
-            return Err(io::Error::new(ErrorKind::InvalidInput, "nul byte found in provided data"));
+            return Err(io::Error::new_const(
+                ErrorKind::InvalidInput,
+                &"nul byte found in provided data",
+            ));
         }
         let (ours, theirs) = self.setup_io(default, needs_stdin)?;
         let mut p = Process { pid: 0, status: None };
@@ -134,9 +137,9 @@ impl Process {
         // and used for another process, and we probably shouldn't be killing
         // random processes, so just return an error.
         if self.status.is_some() {
-            Err(Error::new(
+            Err(Error::new_const(
                 ErrorKind::InvalidInput,
-                "invalid argument: can't kill an exited process",
+                &"invalid argument: can't kill an exited process",
             ))
         } else {
             cvt(unsafe { libc::kill(self.pid, libc::SIGKILL) }).map(drop)
