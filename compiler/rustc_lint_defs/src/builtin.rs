@@ -2487,6 +2487,52 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `bad_asm_style` lint detects the use of the `.intel_syntax` and
+    /// `.att_syntax` directives.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (fails on system llvm)
+    /// #![feature(asm)]
+    ///
+    /// fn main() {
+    ///     #[cfg(target_arch="x86_64")]
+    ///     unsafe {
+    ///         asm!(
+    ///             ".att_syntax",
+    ///             "movl {0}, {0}", in(reg) 0usize
+    ///         );
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// This will produce:
+    ///
+    /// ```text
+    ///  warning: avoid using `.att_syntax`, prefer using `options(att_syntax)` instead
+    ///  --> test.rs:7:14
+    ///   |
+    /// 7 |             ".att_syntax",
+    ///   |              ^^^^^^^^^^^
+    /// 8 |             "movq {0}, {0}", out(reg) _,
+    /// 9 |         );
+    ///   |         - help: add option: `, options(att_syntax)`
+    ///   |
+    ///   = note: `#[warn(bad_asm_style)]` on by default
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// On x86, `asm!` uses the intel assembly syntax by default. While this
+    /// can be switched using assembler directives like `.att_syntax`, using the
+    /// `att_syntax` option is recomended instead because it will also properly
+    /// prefix register placeholders with `%` as required by AT&T syntax.
+    pub BAD_ASM_STYLE,
+    Warn,
+    "incorrect use of inline assembly",
+}
+
+declare_lint! {
     /// The `unsafe_op_in_unsafe_fn` lint detects unsafe operations in unsafe
     /// functions without an explicit unsafe block.
     ///
