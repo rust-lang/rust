@@ -102,7 +102,7 @@ fn write(
                 Ok(s) => {
                     assert_eq!(char_width, s.len());
                     let written = write_valid_utf8(handle, s)?;
-                    assert_eq!(written, s.len()); // guaranteed by write0() for single codepoint writes
+                    assert_eq!(written, s.len()); // guaranteed by write_valid_utf8() for single codepoint writes
                     return Ok(1);
                 }
                 Err(_) => {
