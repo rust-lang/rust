@@ -1111,6 +1111,10 @@ pub struct TargetOptions {
     /// unwinders.
     pub requires_uwtable: bool,
 
+    /// Whether or not to emit `uwtable` attributes on functions if `-C force-unwind-tables`
+    /// is not specified and `uwtable` is not required on this target.
+    pub default_uwtable: bool,
+
     /// Whether or not SIMD types are passed by reference in the Rust ABI,
     /// typically required if a target can be compiled with a mixed set of
     /// target features. This is `true` by default, and `false` for targets like
@@ -1248,6 +1252,7 @@ impl Default for TargetOptions {
             default_hidden_visibility: false,
             emit_debug_gdb_scripts: true,
             requires_uwtable: false,
+            default_uwtable: false,
             simd_types_indirect: true,
             limit_rdylib_exports: true,
             override_export_symbols: None,
@@ -1711,6 +1716,7 @@ impl Target {
         key!(default_hidden_visibility, bool);
         key!(emit_debug_gdb_scripts, bool);
         key!(requires_uwtable, bool);
+        key!(default_uwtable, bool);
         key!(simd_types_indirect, bool);
         key!(limit_rdylib_exports, bool);
         key!(override_export_symbols, opt_list);
@@ -1947,6 +1953,7 @@ impl ToJson for Target {
         target_option_val!(default_hidden_visibility);
         target_option_val!(emit_debug_gdb_scripts);
         target_option_val!(requires_uwtable);
+        target_option_val!(default_uwtable);
         target_option_val!(simd_types_indirect);
         target_option_val!(limit_rdylib_exports);
         target_option_val!(override_export_symbols);

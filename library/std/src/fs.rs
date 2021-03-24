@@ -2188,7 +2188,10 @@ impl DirBuilder {
         match path.parent() {
             Some(p) => self.create_dir_all(p)?,
             None => {
-                return Err(io::Error::new(io::ErrorKind::Other, "failed to create whole tree"));
+                return Err(io::Error::new_const(
+                    io::ErrorKind::Other,
+                    &"failed to create whole tree",
+                ));
             }
         }
         match self.inner.mkdir(path) {

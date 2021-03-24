@@ -76,7 +76,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             &Spanned { span: rustc_span::DUMMY_SP, node: hir::VisibilityKind::Public },
             hir::CRATE_HIR_ID,
             &krate.item.module,
-            None,
+            self.cx.tcx.crate_name,
         );
         top_level_module.is_crate = true;
         // Attach the crate's exported macros to the top-level module.
@@ -114,7 +114,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     _ => continue 'exported_macros,
                 };
                 // Descend into the child module that matches this path segment (if any).
-                match cur_mod.mods.iter_mut().find(|child| child.name == Some(path_segment_ty_ns)) {
+                match cur_mod.mods.iter_mut().find(|child| child.name == path_segment_ty_ns) {
                     Some(child_mod) => cur_mod = &mut *child_mod,
                     None => continue 'exported_macros,
                 }
@@ -133,7 +133,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         vis: &'tcx hir::Visibility<'_>,
         id: hir::HirId,
         m: &'tcx hir::Mod<'tcx>,
-        name: Option<Symbol>,
+        name: Symbol,
     ) -> Module<'tcx> {
         let mut om = Module::new(name);
         om.where_outer = span;
@@ -312,13 +312,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 om.items.push((item, renamed))
             }
             hir::ItemKind::Mod(ref m) => {
-                om.mods.push(self.visit_mod_contents(
-                    item.span,
-                    &item.vis,
-                    item.hir_id(),
-                    m,
-                    Some(name),
-                ));
+                om.mods.push(self.visit_mod_contents(item.span, &item.vis, item.hir_id(), m, name));
             }
             hir::ItemKind::Fn(..)
             | hir::ItemKind::ExternCrate(..)

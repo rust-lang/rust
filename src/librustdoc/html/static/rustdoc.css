@@ -858,6 +858,15 @@ body.blur > :not(#help) {
 	font-size: 1.5em;
 }
 
+/* Black one-pixel outline around emoji shapes */
+.emoji {
+	text-shadow:
+		1px 0 0 black,
+		-1px 0 0 black,
+		0  1px 0 black,
+		0 -1px 0 black;
+}
+
 .module-item .stab {
 	border-radius: 3px;
 	display: inline-block;
@@ -1353,7 +1362,7 @@ h4 > .notable-traits {
 	to prevent an overlay between the "collapse toggle" and the information tooltip.
 	However, it's not needed with smaller screen width because the doc/code block is always put
 	"one line" below. */
-	.information:first-child > .tooltip {
+	.docblock > .information:first-child > .tooltip {
 		margin-top: 16px;
 	}
 }

@@ -218,8 +218,8 @@ a.test-arrow {
 }
 
 .stab.unstable { background: #FFF5D6; border-color: #FFC600; }
-.stab.deprecated { background: #F3DFFF; border-color: #7F0087; }
-.stab.portability { background: #C4ECFF; border-color: #7BA5DB; }
+.stab.deprecated { background: #ffc4c4; border-color: #db7b7b; }
+.stab.portability { background: #F3DFFF; border-color: #b07bdb; }
 .stab.portability > code { background: none; }
 
 #help > div {

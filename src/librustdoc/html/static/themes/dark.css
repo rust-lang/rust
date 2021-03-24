@@ -220,8 +220,8 @@ a.test-arrow {
 }
 
 .stab.unstable { background: #FFF5D6; border-color: #FFC600; color: #2f2f2f; }
-.stab.deprecated { background: #F3DFFF; border-color: #7F0087; color: #2f2f2f; }
-.stab.portability { background: #C4ECFF; border-color: #7BA5DB; color: #2f2f2f; }
+.stab.deprecated { background: #ffc4c4; border-color: #db7b7b; color: #2f2f2f; }
+.stab.portability { background: #F3DFFF; border-color: #b07bdb; color: #2f2f2f; }
 .stab.portability > code { background: none; }
 
 #help > div {

@@ -64,7 +64,7 @@ cfg_if::cfg_if! {
                 sysinfo.dwNumberOfProcessors as usize
             };
             match res {
-                0 => Err(io::Error::new(io::ErrorKind::NotFound, "The number of hardware threads is not known for the target platform")),
+                0 => Err(io::Error::new_const(io::ErrorKind::NotFound, &"The number of hardware threads is not known for the target platform")),
                 cpus => Ok(unsafe { NonZeroUsize::new_unchecked(cpus) }),
             }
         }
@@ -81,7 +81,7 @@ cfg_if::cfg_if! {
         fn available_concurrency_internal() -> io::Result<NonZeroUsize> {
             match unsafe { libc::sysconf(libc::_SC_NPROCESSORS_ONLN) } {
                 -1 => Err(io::Error::last_os_error()),
-                0 => Err(io::Error::new(io::ErrorKind::NotFound, "The number of hardware threads is not known for the target platform")),
+                0 => Err(io::Error::new_const(io::ErrorKind::NotFound, &"The number of hardware threads is not known for the target platform")),
                 cpus => Ok(unsafe { NonZeroUsize::new_unchecked(cpus as usize) }),
             }
         }
@@ -114,7 +114,7 @@ cfg_if::cfg_if! {
                 if res == -1 {
                     return Err(io::Error::last_os_error());
                 } else if cpus == 0 {
-                    return Err(io::Error::new(io::ErrorKind::NotFound, "The number of hardware threads is not known for the target platform"));
+                    return Err(io::Error::new_const(io::ErrorKind::NotFound, &"The number of hardware threads is not known for the target platform"));
                 }
             }
             Ok(unsafe { NonZeroUsize::new_unchecked(cpus as usize) })
@@ -142,7 +142,7 @@ cfg_if::cfg_if! {
             if res == -1 {
                 return Err(io::Error::last_os_error());
             } else if cpus == 0 {
-                return Err(io::Error::new(io::ErrorKind::NotFound, "The number of hardware threads is not known for the target platform"));
+                return Err(io::Error::new_const(io::ErrorKind::NotFound, &"The number of hardware threads is not known for the target platform"));
             }
 
             Ok(unsafe { NonZeroUsize::new_unchecked(cpus as usize) })
@@ -150,7 +150,7 @@ cfg_if::cfg_if! {
     } else {
         // FIXME: implement on vxWorks, Redox, HermitCore, Haiku, l4re
         fn available_concurrency_internal() -> io::Result<NonZeroUsize> {
-            Err(io::Error::new(io::ErrorKind::NotFound, "The number of hardware threads is not known for the target platform"))
+            Err(io::Error::new_const(io::ErrorKind::NotFound, &"The number of hardware threads is not known for the target platform"))
         }
     }
 }

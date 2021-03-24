@@ -99,6 +99,12 @@ impl CheckAttrVisitor<'tcx> {
                 self.check_naked(hir_id, attr, span, target)
             } else if self.tcx.sess.check_name(attr, sym::rustc_legacy_const_generics) {
                 self.check_rustc_legacy_const_generics(&attr, span, target, item)
+            } else if self.tcx.sess.check_name(attr, sym::rustc_clean)
+                || self.tcx.sess.check_name(attr, sym::rustc_dirty)
+                || self.tcx.sess.check_name(attr, sym::rustc_if_this_changed)
+                || self.tcx.sess.check_name(attr, sym::rustc_then_this_would_need)
+            {
+                self.check_rustc_dirty_clean(&attr)
             } else {
                 // lint-only checks
                 if self.tcx.sess.check_name(attr, sym::cold) {
@@ -1009,6 +1015,20 @@ impl CheckAttrVisitor<'tcx> {
             false
         } else {
             true
+        }
+    }
+
+    /// Checks that the dep-graph debugging attributes are only present when the query-dep-graph
+    /// option is passed to the compiler.
+    fn check_rustc_dirty_clean(&self, attr: &Attribute) -> bool {
+        if self.tcx.sess.opts.debugging_opts.query_dep_graph {
+            true
+        } else {
+            self.tcx
+                .sess
+                .struct_span_err(attr.span, "attribute requires -Z query-dep-graph to be enabled")
+                .emit();
+            false
         }
     }
 
