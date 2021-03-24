@@ -20,6 +20,10 @@ use crate::Fix;
 
 use super::fixes::DiagnosticWithFix;
 
+// Diagnostic: unlinked-file
+//
+// This diagnostic is shown for files that are not included in any crate, or files that are part of
+// crates rust-analyzer failed to discover. The file will not have IDE features available.
 #[derive(Debug)]
 pub(crate) struct UnlinkedFile {
     pub(crate) file_id: FileId,
