@@ -6,6 +6,7 @@ use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, MatchSource, Pat, PatKind, QPath, StmtKind};
 use rustc_lint::LateContext;
+use rustc_middle::ty;
 use rustc_span::source_map::Span;
 
 /// Check for unnecessary `if let` usage in a for loop where only the `Some` or `Ok` variant of the
@@ -54,6 +55,13 @@ pub(super) fn check<'tcx>(
                 // Prepare the help message
                 let mut applicability = Applicability::MaybeIncorrect;
                 let arg_snippet = make_iterator_snippet(cx, arg, &mut applicability);
+                let copied = match cx.typeck_results().expr_ty(match_expr).kind() {
+                    ty::Ref(_, inner, _) => match inner.kind() {
+                        ty::Ref(..) => ".copied()",
+                        _ => ""
+                    }
+                    _ => ""
+                };
 
                 span_lint_and_then(
                     cx,
@@ -61,7 +69,7 @@ pub(super) fn check<'tcx>(
                     span,
                     &msg,
                     |diag| {
-                        let sugg = format!("{}.flatten()", arg_snippet);
+                        let sugg = format!("{}{}.flatten()", arg_snippet, copied);
                         diag.span_suggestion(
                             arg.span,
                             "try",
