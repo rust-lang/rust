@@ -1945,6 +1945,7 @@ fn clean_impl(impl_: &hir::Impl<'_>, hir_id: hir::HirId, cx: &mut DocContext<'_>
     });
     let mut make_item = |trait_: Option<Type>, for_: Type, items: Vec<Item>| {
         let kind = ImplItem(Impl {
+            span: types::rustc_span(tcx.hir().local_def_id(hir_id).to_def_id(), tcx),
             unsafety: impl_.unsafety,
             generics: impl_.generics.clean(cx),
             provided_trait_methods: provided.clone(),
@@ -2004,7 +2005,6 @@ fn clean_extern_crate(
     vec![Item {
         name: Some(name),
         attrs: box attrs.clean(cx),
-        span: krate.span.clean(cx),
         def_id: crate_def_id,
         visibility: krate.vis.clean(cx),
         kind: box ExternCrateItem { src: orig_name },

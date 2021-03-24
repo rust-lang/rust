@@ -110,12 +110,12 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         };
 
         Some(Item {
-            span: Span::dummy(),
             name: None,
             attrs: Default::default(),
             visibility: Inherited,
             def_id: self.cx.next_def_id(item_def_id.krate),
             kind: box ImplItem(Impl {
+                span: Span::dummy(),
                 unsafety: hir::Unsafety::Normal,
                 generics: new_generics,
                 provided_trait_methods: Default::default(),
