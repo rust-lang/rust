@@ -188,7 +188,7 @@
 //! [`Rc<T>`]: ../../std/rc/struct.Rc.html
 //! [`RwLock<T>`]: ../../std/sync/struct.RwLock.html
 //! [`Mutex<T>`]: ../../std/sync/struct.Mutex.html
-//! [`atomic`]: ../../core/sync/atomic/index.html
+//! [`atomic`]: crate::sync::atomic
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
