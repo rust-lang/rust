@@ -128,7 +128,7 @@ fn write(
     let utf8 = match str::from_utf8(&data[..len]) {
         Ok(s) => s,
         Err(ref e) if e.valid_up_to() == 0 => {
-            first_byte_char_width = utf8_char_width(data[0]);
+            let first_byte_char_width = utf8_char_width(data[0]);
             if first_byte_char_width > 1 && data.len() < first_byte_char_width {
                 incomplete_utf8.bytes[0] = data[0];
                 incomplete_utf8.len = 1;
