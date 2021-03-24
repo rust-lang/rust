@@ -206,10 +206,10 @@ Use markdown syntax for links in hover.
 --
 Whether to show inlay type hints for method chains.
 --
-[[rust-analyzer.inlayHints.maxLength]]rust-analyzer.inlayHints.maxLength (default: `null`)::
+[[rust-analyzer.inlayHints.maxLength]]rust-analyzer.inlayHints.maxLength (default: `25`)::
 +
 --
-Maximum length for inlay hints. Default is unlimited.
+Maximum length for inlay hints. Set to null to have an unlimited length.
 --
 [[rust-analyzer.inlayHints.parameterHints]]rust-analyzer.inlayHints.parameterHints (default: `true`)::
 +
