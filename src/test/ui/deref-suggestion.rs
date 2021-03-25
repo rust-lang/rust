@@ -63,4 +63,12 @@ fn main() {
         b
         //~^ ERROR mismatched types
     };
+    let val = if true {
+        *a
+    } else if true {
+    //~^ ERROR incompatible types
+        b
+    } else {
+        &0
+    };
 }
