@@ -821,6 +821,7 @@ public:
 
   void eraseFictiousPHIs() {
     for (auto pp : fictiousPHIs) {
+      llvm::errs() << *pp << "\n";
       if (pp->getNumUses() != 0) {
         llvm::errs() << "mod:" << *oldFunc->getParent() << "\n";
         llvm::errs() << "oldFunc:" << *oldFunc << "\n";
@@ -1522,154 +1523,162 @@ public:
 //! align is the alignment that should be specified for load/store to pointer
 #if LLVM_VERSION_MAJOR >= 10
   void addToInvertedPtrDiffe(Value *origptr, Value *dif, IRBuilder<> &BuilderM,
-                             MaybeAlign align){
+                             MaybeAlign align, Value *OrigOffset = nullptr)
 #else
   void addToInvertedPtrDiffe(Value *origptr, Value *dif, IRBuilder<> &BuilderM,
-                             unsigned align) {
+                             unsigned align, Value *OrigOffset = nullptr)
 #endif
-      if (!(origptr->getType()->isPointerTy()) ||
-          !(cast<PointerType>(origptr->getType())->getElementType() ==
-            dif->getType())) {
-        llvm::errs() << *oldFunc << "\n";
-  llvm::errs() << *newFunc << "\n";
-  llvm::errs() << "Origptr: " << *origptr << "\n";
-  llvm::errs() << "Diff: " << *dif << "\n";
-} assert(origptr->getType()->isPointerTy());
-assert(cast<PointerType>(origptr->getType())->getElementType() ==
-       dif->getType());
+  {
+    if (!(origptr->getType()->isPointerTy()) ||
+        !(cast<PointerType>(origptr->getType())->getElementType() ==
+          dif->getType())) {
+      llvm::errs() << *oldFunc << "\n";
+      llvm::errs() << *newFunc << "\n";
+      llvm::errs() << "Origptr: " << *origptr << "\n";
+      llvm::errs() << "Diff: " << *dif << "\n";
+    }
+    assert(origptr->getType()->isPointerTy());
+    assert(cast<PointerType>(origptr->getType())->getElementType() ==
+           dif->getType());
 
-assert(origptr->getType()->isPointerTy());
-assert(cast<PointerType>(origptr->getType())->getElementType() ==
-       dif->getType());
+    assert(origptr->getType()->isPointerTy());
+    assert(cast<PointerType>(origptr->getType())->getElementType() ==
+           dif->getType());
 
-// const SCEV *S = SE.getSCEV(PN);
-// if (SE.getCouldNotCompute() == S)
-//  continue;
+    // const SCEV *S = SE.getSCEV(PN);
+    // if (SE.getCouldNotCompute() == S)
+    //  continue;
 
-Value *ptr = invertPointerM(origptr, BuilderM);
-assert(ptr);
+    Value *ptr = invertPointerM(origptr, BuilderM);
+    assert(ptr);
+    if (OrigOffset) {
+      ptr = BuilderM.CreateGEP(
+          ptr, {lookupM(getNewFromOriginal(OrigOffset), BuilderM)});
+    }
 
-auto TmpOrig =
+    auto TmpOrig =
 #if LLVM_VERSION_MAJOR >= 12
-    getUnderlyingObject(origptr, 100);
+        getUnderlyingObject(origptr, 100);
 #else
         GetUnderlyingObject(origptr, oldFunc->getParent()->getDataLayout(),
                             100);
 #endif
 
-// atomics
-bool Atomic = AtomicAdd;
+    // atomics
+    bool Atomic = AtomicAdd;
 
-// No need to do atomic on local memory for CUDA since it can't be raced upon
-if (isa<AllocaInst>(TmpOrig) &&
-    (llvm::Triple(newFunc->getParent()->getTargetTriple()).getArch() ==
-         Triple::nvptx ||
-     llvm::Triple(newFunc->getParent()->getTargetTriple()).getArch() ==
-         Triple::nvptx64)) {
-  Atomic = false;
-}
-
-if (Atomic) {
-  /*
-  while (auto ASC = dyn_cast<AddrSpaceCastInst>(ptr)) {
-    ptr = ASC->getOperand(0);
-  }
-  while (auto ASC = dyn_cast<ConstantExpr>(ptr)) {
-    if (!ASC->isCast()) break;
-    if (ASC->getOpcode() != Instruction::AddrSpaceCast) break;
-    ptr = ASC->getOperand(0);
-  }
-  */
-  if (dif->getType()->isIntOrIntVectorTy()) {
-
-    ptr = BuilderM.CreateBitCast(
-        ptr,
-        PointerType::get(IntToFloatTy(dif->getType()),
-                         cast<PointerType>(ptr->getType())->getAddressSpace()));
-    dif = BuilderM.CreateBitCast(dif, IntToFloatTy(dif->getType()));
-  }
-#if LLVM_VERSION_MAJOR >= 9
-  AtomicRMWInst::BinOp op = AtomicRMWInst::FAdd;
-  if (auto vt = dyn_cast<VectorType>(dif->getType())) {
-#if LLVM_VERSION_MAJOR >= 13
-    assert(!vt->getElementCount().isScalable());
-    size_t numElems = vt->getElementCount().getKnownMinValue();
-#else
-    size_t numElems = vt->getNumElements();
-#endif
-    for (size_t i = 0; i < numElems; ++i) {
-      auto vdif = BuilderM.CreateExtractElement(dif, i);
-      Value *Idxs[] = {ConstantInt::get(Type::getInt64Ty(vt->getContext()), 0),
-                       ConstantInt::get(Type::getInt32Ty(vt->getContext()), i)};
-      auto vptr = BuilderM.CreateGEP(ptr, Idxs);
-#if LLVM_VERSION_MAJOR >= 13
-      BuilderM.CreateAtomicRMW(op, vptr, vdif, align, AtomicOrdering::Monotonic,
-                               SyncScope::System);
-#elif LLVM_VERSION_MAJOR >= 11
-      AtomicRMWInst *rmw = BuilderM.CreateAtomicRMW(
-          op, vptr, vdif, AtomicOrdering::Monotonic, SyncScope::System);
-      if (align)
-        rmw->setAlignment(align.getValue());
-#else
-      BuilderM.CreateAtomicRMW(op, vptr, vdif, AtomicOrdering::Monotonic,
-                               SyncScope::System);
-#endif
+    // No need to do atomic on local memory for CUDA since it can't be raced
+    // upon
+    if (isa<AllocaInst>(TmpOrig) &&
+        (llvm::Triple(newFunc->getParent()->getTargetTriple()).getArch() ==
+             Triple::nvptx ||
+         llvm::Triple(newFunc->getParent()->getTargetTriple()).getArch() ==
+             Triple::nvptx64)) {
+      Atomic = false;
     }
-  } else {
+
+    if (Atomic) {
+      /*
+      while (auto ASC = dyn_cast<AddrSpaceCastInst>(ptr)) {
+        ptr = ASC->getOperand(0);
+      }
+      while (auto ASC = dyn_cast<ConstantExpr>(ptr)) {
+        if (!ASC->isCast()) break;
+        if (ASC->getOpcode() != Instruction::AddrSpaceCast) break;
+        ptr = ASC->getOperand(0);
+      }
+      */
+      if (dif->getType()->isIntOrIntVectorTy()) {
+
+        ptr = BuilderM.CreateBitCast(
+            ptr, PointerType::get(
+                     IntToFloatTy(dif->getType()),
+                     cast<PointerType>(ptr->getType())->getAddressSpace()));
+        dif = BuilderM.CreateBitCast(dif, IntToFloatTy(dif->getType()));
+      }
+#if LLVM_VERSION_MAJOR >= 9
+      AtomicRMWInst::BinOp op = AtomicRMWInst::FAdd;
+      if (auto vt = dyn_cast<VectorType>(dif->getType())) {
 #if LLVM_VERSION_MAJOR >= 13
-    BuilderM.CreateAtomicRMW(op, ptr, dif, align, AtomicOrdering::Monotonic,
-                             SyncScope::System);
-#elif LLVM_VERSION_MAJOR >= 11
-    AtomicRMWInst *rmw = BuilderM.CreateAtomicRMW(
-        op, ptr, dif, AtomicOrdering::Monotonic, SyncScope::System);
-    if (align)
-      rmw->setAlignment(align.getValue());
+        assert(!vt->getElementCount().isScalable());
+        size_t numElems = vt->getElementCount().getKnownMinValue();
 #else
-    BuilderM.CreateAtomicRMW(op, ptr, dif, AtomicOrdering::Monotonic,
-                             SyncScope::System);
+        size_t numElems = vt->getNumElements();
 #endif
-  }
+        for (size_t i = 0; i < numElems; ++i) {
+          auto vdif = BuilderM.CreateExtractElement(dif, i);
+          Value *Idxs[] = {
+              ConstantInt::get(Type::getInt64Ty(vt->getContext()), 0),
+              ConstantInt::get(Type::getInt32Ty(vt->getContext()), i)};
+          auto vptr = BuilderM.CreateGEP(ptr, Idxs);
+#if LLVM_VERSION_MAJOR >= 13
+          BuilderM.CreateAtomicRMW(op, vptr, vdif, align,
+                                   AtomicOrdering::Monotonic,
+                                   SyncScope::System);
+#elif LLVM_VERSION_MAJOR >= 11
+          AtomicRMWInst *rmw = BuilderM.CreateAtomicRMW(
+              op, vptr, vdif, AtomicOrdering::Monotonic, SyncScope::System);
+          if (align)
+            rmw->setAlignment(align.getValue());
+#else
+          BuilderM.CreateAtomicRMW(op, vptr, vdif, AtomicOrdering::Monotonic,
+                                   SyncScope::System);
+#endif
+        }
+      } else {
+#if LLVM_VERSION_MAJOR >= 13
+        BuilderM.CreateAtomicRMW(op, ptr, dif, align, AtomicOrdering::Monotonic,
+                                 SyncScope::System);
+#elif LLVM_VERSION_MAJOR >= 11
+        AtomicRMWInst *rmw = BuilderM.CreateAtomicRMW(
+            op, ptr, dif, AtomicOrdering::Monotonic, SyncScope::System);
+        if (align)
+          rmw->setAlignment(align.getValue());
+#else
+        BuilderM.CreateAtomicRMW(op, ptr, dif, AtomicOrdering::Monotonic,
+                                 SyncScope::System);
+#endif
+      }
 #else
       llvm::errs() << "unhandled atomic fadd on llvm version " << *ptr << " "
                    << *dif << "\n";
       llvm_unreachable("unhandled atomic fadd");
 #endif
-  return;
-}
+      return;
+    }
 
-Value *res;
-LoadInst *old = BuilderM.CreateLoad(ptr);
+    Value *res;
+    LoadInst *old = BuilderM.CreateLoad(ptr);
 #if LLVM_VERSION_MAJOR >= 10
-if (align)
-  old->setAlignment(align.getValue());
+    if (align)
+      old->setAlignment(align.getValue());
 #else
     old->setAlignment(align);
 #endif
 
-if (old->getType()->isIntOrIntVectorTy()) {
-  res = BuilderM.CreateFAdd(
-      BuilderM.CreateBitCast(old, IntToFloatTy(old->getType())),
-      BuilderM.CreateBitCast(dif, IntToFloatTy(dif->getType())));
-  res = BuilderM.CreateBitCast(res, old->getType());
-} else if (old->getType()->isFPOrFPVectorTy()) {
-  res = BuilderM.CreateFAdd(old, dif);
-} else {
-  assert(old);
-  assert(dif);
-  llvm::errs() << *newFunc << "\n"
-               << "cannot handle type " << *old << "\n"
-               << *dif;
-  assert(0 && "cannot handle type");
-  report_fatal_error("cannot handle type");
-}
-StoreInst *st = BuilderM.CreateStore(res, ptr);
+    if (old->getType()->isIntOrIntVectorTy()) {
+      res = BuilderM.CreateFAdd(
+          BuilderM.CreateBitCast(old, IntToFloatTy(old->getType())),
+          BuilderM.CreateBitCast(dif, IntToFloatTy(dif->getType())));
+      res = BuilderM.CreateBitCast(res, old->getType());
+    } else if (old->getType()->isFPOrFPVectorTy()) {
+      res = BuilderM.CreateFAdd(old, dif);
+    } else {
+      assert(old);
+      assert(dif);
+      llvm::errs() << *newFunc << "\n"
+                   << "cannot handle type " << *old << "\n"
+                   << *dif;
+      assert(0 && "cannot handle type");
+      report_fatal_error("cannot handle type");
+    }
+    StoreInst *st = BuilderM.CreateStore(res, ptr);
 #if LLVM_VERSION_MAJOR >= 10
-if (align)
-  st->setAlignment(align.getValue());
+    if (align)
+      st->setAlignment(align.getValue());
 #else
     st->setAlignment(align);
 #endif
-}
-}
-;
+  }
+};
 #endif

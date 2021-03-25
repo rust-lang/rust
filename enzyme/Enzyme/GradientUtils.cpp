@@ -1585,6 +1585,20 @@ bool GradientUtils::legalRecompute(const Value *val,
     }
   }
 
+  if (auto II = dyn_cast<IntrinsicInst>(val)) {
+    switch (II->getIntrinsicID()) {
+    case Intrinsic::nvvm_ldu_global_i:
+    case Intrinsic::nvvm_ldu_global_p:
+    case Intrinsic::nvvm_ldu_global_f:
+    case Intrinsic::nvvm_ldg_global_i:
+    case Intrinsic::nvvm_ldg_global_p:
+    case Intrinsic::nvvm_ldg_global_f:
+      return true;
+    default:
+      break;
+    }
+  }
+
   if (auto inst = dyn_cast<Instruction>(val)) {
     if (inst->mayReadOrWriteMemory()) {
       return false;
@@ -1701,6 +1715,12 @@ bool GradientUtils::shouldRecompute(const Value *val,
     case Intrinsic::cos:
     case Intrinsic::exp:
     case Intrinsic::log:
+    case Intrinsic::nvvm_ldu_global_i:
+    case Intrinsic::nvvm_ldu_global_p:
+    case Intrinsic::nvvm_ldu_global_f:
+    case Intrinsic::nvvm_ldg_global_i:
+    case Intrinsic::nvvm_ldg_global_p:
+    case Intrinsic::nvvm_ldg_global_f:
       return true;
     default:
       return false;
@@ -1878,7 +1898,7 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
     Value *args[] = {dst_arg, val_arg, len_arg, volatile_arg};
 #endif
     Type *tys[] = {dst_arg->getType(), len_arg->getType()};
-    auto memset = cast<CallInst>(bb.CreateCall(
+    cast<CallInst>(bb.CreateCall(
         Intrinsic::getDeclaration(M, Intrinsic::memset, tys), args));
     return antialloca;
   } else if (auto arg = dyn_cast<GlobalVariable>(oval)) {

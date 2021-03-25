@@ -242,92 +242,77 @@ public:
 
   void visitFCmpInst(llvm::FCmpInst &I) { eraseIfUnused(I); }
 
-  void visitLoadInst(llvm::LoadInst &LI) {
-    // If a load of an omp init argument, don't cache for reverse
-    // and don't do any adjoint propagation (assumed integral)
-    for (auto U : LI.getPointerOperand()->users()) {
-      if (auto CI = dyn_cast<CallInst>(U)) {
-        if (auto F = CI->getCalledFunction()) {
-          if (F->getName() == "__kmpc_for_static_init_4" ||
-              F->getName() == "__kmpc_for_static_init_4u" ||
-              F->getName() == "__kmpc_for_static_init_8" ||
-              F->getName() == "__kmpc_for_static_init_8u") {
-            eraseIfUnused(LI);
-            return;
-          }
-        }
-      }
-    }
-
+#if LLVM_VERSION_MAJOR >= 10
+  void visitLoadLike(llvm::Instruction &I, MaybeAlign alignment,
+                     bool constantval, bool can_modref,
+                     Value *OrigOffset = nullptr)
+#else
+  void visitLoadLike(llvm::Instruction &I, unsigned alignment, bool constantval,
+                     bool can_modref, Value *OrigOffset = nullptr)
+#endif
+  {
     auto &DL = gutils->newFunc->getParent()->getDataLayout();
 
-    bool constantval =
-        gutils->isConstantValue(&LI) || parseTBAA(LI, DL).Inner0().isIntegral();
+    constantval |= gutils->isConstantValue(&I);
     // even if this is an active value if it has no active users
     // (e.g. potential but unused active pointer), it does not
     // need an adjoint here
     if (!constantval) {
-      constantval |= gutils->ATA->isValueInactiveFromUsers(TR, &LI);
+      constantval |= gutils->ATA->isValueInactiveFromUsers(TR, &I);
     }
-#if LLVM_VERSION_MAJOR >= 10
-    auto alignment = LI.getAlign();
-#else
-    auto alignment = LI.getAlignment();
-#endif
 
-    BasicBlock *parent = LI.getParent();
-    Type *type = LI.getType();
+    BasicBlock *parent = I.getParent();
+    Type *type = I.getType();
 
-    LoadInst *newi = dyn_cast<LoadInst>(gutils->getNewFromOriginal(&LI));
+    auto *newi = dyn_cast<Instruction>(gutils->getNewFromOriginal(&I));
 
     //! Store inverted pointer loads that need to be cached for use in reverse
     //! pass
     if (!type->isEmptyTy() && !type->isFPOrFPVectorTy() &&
-        TR.query(&LI).Inner0().isPossiblePointer()) {
+        TR.query(&I).Inner0().isPossiblePointer()) {
       Instruction *placeholder =
-          cast<Instruction>(gutils->invertedPointers[&LI]);
+          cast<Instruction>(gutils->invertedPointers[&I]);
       assert(placeholder->getType() == type);
-      gutils->invertedPointers.erase(&LI);
+      gutils->invertedPointers.erase(&I);
 
       if (!constantval) {
         IRBuilder<> BuilderZ(newi);
         Value *newip = nullptr;
 
         bool needShadow = is_value_needed_in_reverse<Shadow>(
-            TR, gutils, &LI, /*toplevel*/ Mode == DerivativeMode::Both,
+            TR, gutils, &I, /*toplevel*/ Mode == DerivativeMode::Both,
             oldUnreachable);
 
         switch (Mode) {
 
         case DerivativeMode::Forward:
         case DerivativeMode::Both: {
-          newip = gutils->invertPointerM(&LI, BuilderZ);
+          newip = gutils->invertPointerM(&I, BuilderZ);
           assert(newip->getType() == type);
 
-          if (Mode == DerivativeMode::Forward &&
-              gutils->can_modref_map->find(&LI)->second && needShadow) {
+          if (Mode == DerivativeMode::Forward && can_modref && needShadow) {
             gutils->cacheForReverse(BuilderZ, newip,
-                                    getIndex(&LI, CacheType::Shadow));
+                                    getIndex(&I, CacheType::Shadow));
           }
           placeholder->replaceAllUsesWith(newip);
           gutils->erase(placeholder);
-          gutils->invertedPointers[&LI] = newip;
+          gutils->invertedPointers[&I] = newip;
           break;
         }
 
         case DerivativeMode::Reverse: {
           // only make shadow where caching needed
-          if (gutils->can_modref_map->find(&LI)->second && needShadow) {
+          if (can_modref && needShadow) {
             newip = gutils->cacheForReverse(BuilderZ, placeholder,
-                                            getIndex(&LI, CacheType::Shadow));
+                                            getIndex(&I, CacheType::Shadow));
             assert(newip->getType() == type);
-            gutils->invertedPointers[&LI] = newip;
+            gutils->invertedPointers[&I] = newip;
           } else {
-            newip = gutils->invertPointerM(&LI, BuilderZ);
+            newip = gutils->invertPointerM(&I, BuilderZ);
             assert(newip->getType() == type);
             placeholder->replaceAllUsesWith(newip);
             gutils->erase(placeholder);
-            gutils->invertedPointers[&LI] = newip;
+            gutils->invertedPointers[&I] = newip;
           }
           break;
         }
@@ -338,8 +323,6 @@ public:
       }
     }
 
-    eraseIfUnused(LI);
-
     // Allow forcing cache reads to be on or off using flags.
     assert(!(cache_reads_always && cache_reads_never) &&
            "Both cache_reads_always and cache_reads_never are true. This "
@@ -348,17 +331,15 @@ public:
     Value *inst = newi;
 
     //! Store loads that need to be cached for use in reverse pass
-    assert(gutils->can_modref_map);
-    assert(gutils->can_modref_map->find(&LI) != gutils->can_modref_map->end());
     if (cache_reads_always ||
-        (!cache_reads_never && gutils->can_modref_map->find(&LI)->second &&
+        (!cache_reads_never && can_modref &&
          is_value_needed_in_reverse<Primal>(
-             TR, gutils, &LI, /*toplevel*/ Mode == DerivativeMode::Both,
+             TR, gutils, &I, /*toplevel*/ Mode == DerivativeMode::Both,
              oldUnreachable))) {
-      IRBuilder<> BuilderZ(gutils->getNewFromOriginal(&LI)->getNextNode());
+      IRBuilder<> BuilderZ(gutils->getNewFromOriginal(&I)->getNextNode());
       // auto tbaa = inst->getMetadata(LLVMContext::MD_tbaa);
       inst = gutils->cacheForReverse(BuilderZ, newi,
-                                     getIndex(&LI, CacheType::Self));
+                                     getIndex(&I, CacheType::Self));
       assert(inst->getType() == type);
 
       if (Mode == DerivativeMode::Reverse) {
@@ -381,7 +362,7 @@ public:
       //  have their derivative computed Note that this is too aggressive for
       //  general programs as if the global aliases with an argument something
       //  that is written to, then we will have a logical error
-      if (auto arg = dyn_cast<GlobalVariable>(LI.getPointerOperand())) {
+      if (auto arg = dyn_cast<GlobalVariable>(I.getOperand(0))) {
         if (!hasMetadata(arg, "enzyme_shadow")) {
           return;
         }
@@ -390,36 +371,63 @@ public:
 
     bool isfloat = type->isFPOrFPVectorTy();
     if (!isfloat && type->isIntOrIntVectorTy()) {
-      auto storeSize =
-          gutils->newFunc->getParent()->getDataLayout().getTypeSizeInBits(
-              type) /
-          8;
-      auto vd =
-          TR.firstPointer(storeSize, LI.getPointerOperand(),
-                          /*errifnotfound*/ false, /*pointerIntSame*/ true);
+      auto LoadSize = DL.getTypeSizeInBits(type) / 8;
+      ConcreteType vd = BaseType::Unknown;
+      if (!OrigOffset)
+        vd = TR.firstPointer(LoadSize, I.getOperand(0),
+                             /*errifnotfound*/ false, /*pointerIntSame*/ true);
       if (vd.isKnown())
         isfloat = vd.isFloat();
       else
-        isfloat =
-            TR.intType(storeSize, &LI, /*errIfNotFound*/ !looseTypeAnalysis)
-                .isFloat();
+        isfloat = TR.intType(LoadSize, &I, /*errIfNotFound*/ !looseTypeAnalysis)
+                      .isFloat();
     }
 
     if (isfloat) {
       IRBuilder<> Builder2(parent);
       getReverseBuilder(Builder2);
-      auto prediff = diffe(&LI, Builder2);
-      setDiffe(&LI, Constant::getNullValue(type), Builder2);
-      // llvm::errs() << "  + doing load propagation: orig:" << *oorig << "
-      // inst:" << *inst << " prediff: " << *prediff << " inverted_operand: " <<
-      // *inverted_operand << "\n";
+      auto prediff = diffe(&I, Builder2);
+      setDiffe(&I, Constant::getNullValue(type), Builder2);
 
-      if (!gutils->isConstantValue(LI.getPointerOperand())) {
+      if (!gutils->isConstantValue(I.getOperand(0))) {
         ((DiffeGradientUtils *)gutils)
-            ->addToInvertedPtrDiffe(LI.getPointerOperand(), prediff, Builder2,
-                                    alignment);
+            ->addToInvertedPtrDiffe(I.getOperand(0), prediff, Builder2,
+                                    alignment, OrigOffset);
       }
     }
+  }
+
+  void visitLoadInst(llvm::LoadInst &LI) {
+    // If a load of an omp init argument, don't cache for reverse
+    // and don't do any adjoint propagation (assumed integral)
+    for (auto U : LI.getPointerOperand()->users()) {
+      if (auto CI = dyn_cast<CallInst>(U)) {
+        if (auto F = CI->getCalledFunction()) {
+          if (F->getName() == "__kmpc_for_static_init_4" ||
+              F->getName() == "__kmpc_for_static_init_4u" ||
+              F->getName() == "__kmpc_for_static_init_8" ||
+              F->getName() == "__kmpc_for_static_init_8u") {
+            eraseIfUnused(LI);
+            return;
+          }
+        }
+      }
+    }
+
+#if LLVM_VERSION_MAJOR >= 10
+    auto alignment = LI.getAlign();
+#else
+    auto alignment = LI.getAlignment();
+#endif
+
+    auto &DL = gutils->newFunc->getParent()->getDataLayout();
+
+    bool constantval = parseTBAA(LI, DL).Inner0().isIntegral();
+    assert(gutils->can_modref_map);
+    assert(gutils->can_modref_map->find(&LI) != gutils->can_modref_map->end());
+    bool can_modref = gutils->can_modref_map->find(&LI)->second;
+    visitLoadLike(LI, alignment, constantval, can_modref);
+    eraseIfUnused(LI);
   }
 
   void visitStoreInst(llvm::StoreInst &SI) {
@@ -1732,6 +1740,28 @@ public:
 
   void handleAdjointForIntrinsic(Intrinsic::ID ID, llvm::Instruction &I,
                                  SmallVectorImpl<Value *> &orig_ops) {
+
+    switch (ID) {
+    case Intrinsic::nvvm_ldu_global_i:
+    case Intrinsic::nvvm_ldu_global_p:
+    case Intrinsic::nvvm_ldu_global_f:
+    case Intrinsic::nvvm_ldg_global_i:
+    case Intrinsic::nvvm_ldg_global_p:
+    case Intrinsic::nvvm_ldg_global_f: {
+      auto CI = cast<ConstantInt>(I.getOperand(1));
+#if LLVM_VERSION_MAJOR >= 10
+      visitLoadLike(I, /*Align*/ MaybeAlign(CI->getZExtValue()),
+                    /*constantval*/ false,
+                    /*can_modref*/ false);
+#else
+      visitLoadLike(I, /*Align*/ CI->getZExtValue(), /*constantval*/ false,
+                    /*can_modref*/ false);
+#endif
+      return;
+    }
+    default:
+      break;
+    }
     if (Mode == DerivativeMode::Forward) {
       switch (ID) {
       case Intrinsic::nvvm_barrier0:

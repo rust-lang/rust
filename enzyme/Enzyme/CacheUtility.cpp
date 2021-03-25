@@ -843,7 +843,7 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
     }
 
     // Free the memory, if requested
-    if (i != sublimits.size() - 1 || !ompOffset)
+    if ((unsigned)i != sublimits.size() - 1 || !ompOffset)
       if (shouldFree) {
         if (CachePointerInvariantGroups.find(std::make_pair(
                 (Value *)alloc, i)) == CachePointerInvariantGroups.end()) {
@@ -864,7 +864,7 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
 
       Value *idx = computeIndexOfChunk(
           /*inForwardPass*/ true, v, containedloops,
-          (i == sublimits.size() - 1) ? ompOffset : nullptr);
+          ((unsigned)i == sublimits.size() - 1) ? ompOffset : nullptr);
 
       storeInto = v.CreateGEP(v.CreateLoad(storeInto), idx);
       cast<GetElementPtrInst>(storeInto)->setIsInBounds(true);
@@ -1350,9 +1350,9 @@ Value *CacheUtility::getCachePointer(bool inForwardPass, IRBuilder<> &BuilderM,
     const auto &containedloops = sublimits[i].second;
 
     if (containedloops.size() > 0) {
-      Value *idx = computeIndexOfChunk(inForwardPass, BuilderM, containedloops,
-                                       (i == sublimits.size() - 1) ? ompOffset
-                                                                   : nullptr);
+      Value *idx = computeIndexOfChunk(
+          inForwardPass, BuilderM, containedloops,
+          ((unsigned)i == sublimits.size() - 1) ? ompOffset : nullptr);
       if (EfficientBoolCache && isi1 && i == 0)
         idx = BuilderM.CreateLShr(
             idx, ConstantInt::get(Type::getInt64Ty(newFunc->getContext()), 3));

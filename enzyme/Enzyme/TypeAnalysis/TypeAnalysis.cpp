@@ -917,13 +917,13 @@ void TypeAnalyzer::visitLoadInst(LoadInst &I) {
   auto &DL = I.getParent()->getParent()->getParent()->getDataLayout();
   auto LoadSize = (DL.getTypeSizeInBits(I.getType()) + 7) / 8;
 
-  // Only propagate mappings in range that aren't "Anything" into the pointer
-  auto ptr = getAnalysis(&I)
-                 .ShiftIndices(DL, /*start*/ 0, LoadSize, /*addOffset*/ 0)
-                 .PurgeAnything();
-  ptr |= TypeTree(BaseType::Pointer);
-  if (direction & UP)
+  if (direction & UP) {
+    // Only propagate mappings in range that aren't "Anything" into the pointer
+    auto ptr = getAnalysis(&I).PurgeAnything().ShiftIndices(
+        DL, /*start*/ 0, LoadSize, /*addOffset*/ 0);
+    ptr |= TypeTree(BaseType::Pointer);
     updateAnalysis(I.getOperand(0), ptr.Only(-1), &I);
+  }
   if (direction & DOWN)
     updateAnalysis(&I, getAnalysis(I.getOperand(0)).Lookup(LoadSize, DL), &I);
 }
@@ -2175,6 +2175,26 @@ void TypeAnalyzer::visitIntrinsicInst(llvm::IntrinsicInst &I) {
     updateAnalysis(I.getOperand(0), TypeTree(BaseType::Integer).Only(-1), &I);
     return;
 
+  case Intrinsic::nvvm_ldu_global_i:
+  case Intrinsic::nvvm_ldu_global_p:
+  case Intrinsic::nvvm_ldu_global_f:
+  case Intrinsic::nvvm_ldg_global_i:
+  case Intrinsic::nvvm_ldg_global_p:
+  case Intrinsic::nvvm_ldg_global_f: {
+    auto &DL = I.getParent()->getParent()->getParent()->getDataLayout();
+    auto LoadSize = (DL.getTypeSizeInBits(I.getType()) + 7) / 8;
+
+    if (direction & UP) {
+      TypeTree ptr(BaseType::Pointer);
+      ptr |= getAnalysis(&I).PurgeAnything().ShiftIndices(
+          DL, /*start*/ 0, LoadSize, /*addOffset*/ 0);
+      updateAnalysis(I.getOperand(0), ptr.Only(-1), &I);
+    }
+    if (direction & DOWN)
+      updateAnalysis(&I, getAnalysis(I.getOperand(0)).Lookup(LoadSize, DL), &I);
+    return;
+  }
+
   case Intrinsic::log:
   case Intrinsic::log2:
   case Intrinsic::log10:
@@ -3201,7 +3221,7 @@ std::set<int64_t> FnTypeInfo::knownIntegralValues(
     return {constant->getSExtValue()};
   }
 
-  if (auto IP = dyn_cast<ConstantPointerNull>(val)) {
+  if (isa<ConstantPointerNull>(val)) {
     return {0};
   }
 

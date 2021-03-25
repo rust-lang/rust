@@ -734,6 +734,32 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
             return true;
           }
         }
+      } else if (isa<IntrinsicInst>(TmpOrig) &&
+                 (cast<IntrinsicInst>(TmpOrig)->getIntrinsicID() ==
+                      Intrinsic::nvvm_ldu_global_i ||
+                  cast<IntrinsicInst>(TmpOrig)->getIntrinsicID() ==
+                      Intrinsic::nvvm_ldu_global_p ||
+                  cast<IntrinsicInst>(TmpOrig)->getIntrinsicID() ==
+                      Intrinsic::nvvm_ldu_global_f ||
+                  cast<IntrinsicInst>(TmpOrig)->getIntrinsicID() ==
+                      Intrinsic::nvvm_ldg_global_i ||
+                  cast<IntrinsicInst>(TmpOrig)->getIntrinsicID() ==
+                      Intrinsic::nvvm_ldg_global_p ||
+                  cast<IntrinsicInst>(TmpOrig)->getIntrinsicID() ==
+                      Intrinsic::nvvm_ldg_global_f)) {
+        auto II = cast<IntrinsicInst>(TmpOrig);
+        if (directions == UP) {
+          if (isConstantValue(TR, II->getOperand(0))) {
+            ConstantValues.insert(Val);
+            return true;
+          }
+        } else {
+          if (UpHypothesis->isConstantValue(TR, II->getOperand(0))) {
+            ConstantValues.insert(Val);
+            insertConstantsFrom(*UpHypothesis);
+            return true;
+          }
+        }
       } else if (auto op = dyn_cast<CallInst>(TmpOrig)) {
         if (op->hasFnAttr("enzyme_inactive")) {
           ConstantValues.insert(Val);
@@ -1015,10 +1041,23 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
         if (!potentiallyActiveLoad && isRefSet(AARes)) {
           if (EnzymePrintActivity)
             llvm::errs() << "potential active load: " << I << "\n";
-          if (auto LI = dyn_cast<LoadInst>(&I)) {
+          if (isa<LoadInst>(&I) ||
+              (isa<IntrinsicInst>(&I) &&
+               (cast<IntrinsicInst>(&I)->getIntrinsicID() ==
+                    Intrinsic::nvvm_ldu_global_i ||
+                cast<IntrinsicInst>(&I)->getIntrinsicID() ==
+                    Intrinsic::nvvm_ldu_global_p ||
+                cast<IntrinsicInst>(&I)->getIntrinsicID() ==
+                    Intrinsic::nvvm_ldu_global_f ||
+                cast<IntrinsicInst>(&I)->getIntrinsicID() ==
+                    Intrinsic::nvvm_ldg_global_i ||
+                cast<IntrinsicInst>(&I)->getIntrinsicID() ==
+                    Intrinsic::nvvm_ldg_global_p ||
+                cast<IntrinsicInst>(&I)->getIntrinsicID() ==
+                    Intrinsic::nvvm_ldg_global_f))) {
             // If the ref'ing value is a load check if the loaded value is
             // active
-            potentiallyActiveLoad = !Hypothesis->isConstantValue(TR, LI);
+            potentiallyActiveLoad = !Hypothesis->isConstantValue(TR, &I);
           } else if (auto MTI = dyn_cast<MemTransferInst>(&I)) {
             potentiallyActiveLoad =
                 !Hypothesis->isConstantValue(TR, MTI->getArgOperand(0));

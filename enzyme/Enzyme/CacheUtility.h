@@ -96,7 +96,8 @@ enum class UnwrapMode {
   AttemptSingleUnwrap,
 };
 
-static llvm::raw_ostream &operator<<(llvm::raw_ostream &os, UnwrapMode mode) {
+static inline llvm::raw_ostream &operator<<(llvm::raw_ostream &os,
+                                            UnwrapMode mode) {
   switch (mode) {
   case UnwrapMode::LegalFullUnwrap:
     os << "LegalFullUnwrap";
