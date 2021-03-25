@@ -13,7 +13,7 @@ use serde::Serialize;
 
 use super::{collect_paths_for_type, ensure_trailing_slash, Context, BASIC_KEYWORDS};
 use crate::clean::Crate;
-use crate::config::RenderOptions;
+use crate::config::{EmitType, RenderOptions};
 use crate::docfs::PathError;
 use crate::error::Error;
 use crate::formats::FormatRenderer;
@@ -72,6 +72,18 @@ impl SharedResource<'_> {
             SharedResource::CrateSpecific { basename } => cx.suffix_path(basename),
         }
     }
+
+    fn should_emit(&self, emit: &[EmitType]) -> bool {
+        if emit.is_empty() {
+            return true;
+        }
+        let kind = match self {
+            SharedResource::Unversioned { .. } => EmitType::Unversioned,
+            SharedResource::ToolchainSpecific { .. } => EmitType::Toolchain,
+            SharedResource::CrateSpecific { .. } => EmitType::CrateSpecific,
+        };
+        emit.contains(&kind)
+    }
 }
 
 impl Context<'_> {
@@ -86,9 +98,17 @@ impl Context<'_> {
         self.dst.join(&filename)
     }
 
-    fn write_shared<C: AsRef<[u8]>>(&self, resource: SharedResource<'_>, contents: C) -> Result<(), Error>
-    {
-        self.shared.fs.write(resource.path(self), contents)
+    fn write_shared<C: AsRef<[u8]>>(
+        &self,
+        resource: SharedResource<'_>,
+        contents: C,
+        emit: &[EmitType],
+    ) -> Result<(), Error> {
+        if resource.should_emit(emit) {
+            self.shared.fs.write(resource.path(self), contents)
+        } else {
+            Ok(())
+        }
     }
 
     fn write_minify(
@@ -96,6 +116,7 @@ impl Context<'_> {
         resource: SharedResource<'_>,
         contents: &str,
         minify: bool,
+        emit: &[EmitType],
     ) -> Result<(), Error> {
         let tmp;
         let contents = if minify {
@@ -111,7 +132,7 @@ impl Context<'_> {
             contents.as_bytes()
         };
 
-        self.write_shared(resource, contents)
+        self.write_shared(resource, contents, emit)
     }
 }
 
@@ -133,10 +154,14 @@ pub(super) fn write_shared(
             SharedResource::ToolchainSpecific { basename: p },
             c,
             options.enable_minification,
+            &options.emit,
         )
     };
-    let write_toolchain =
-        |p: &_, c: &_| cx.write_shared(SharedResource::ToolchainSpecific { basename: p }, c);
+    let write_toolchain = |p: &_, c: &_| {
+        cx.write_shared(SharedResource::ToolchainSpecific { basename: p }, c, &options.emit)
+    };
+    let write_crate =
+        |p, c: &_| cx.write_shared(SharedResource::CrateSpecific { basename: p }, c, &options.emit);
 
     // Add all the static files. These may already exist, but we just
     // overwrite them anyway to make sure that they're fresh and up-to-date.
@@ -214,7 +239,7 @@ pub(super) fn write_shared(
     }
     write_minify("normalize.css", static_files::NORMALIZE_CSS)?;
     for (name, contents) in &*FILES_UNVERSIONED {
-        cx.write_shared(SharedResource::Unversioned { name }, contents)?;
+        cx.write_shared(SharedResource::Unversioned { name }, contents, &options.emit)?;
     }
 
     fn collect(path: &Path, krate: &str, key: &str) -> io::Result<(Vec<String>, Vec<String>)> {
@@ -354,7 +379,7 @@ pub(super) fn write_shared(
             "var N = null;var sourcesIndex = {{}};\n{}\ncreateSourceSidebar();\n",
             all_sources.join("\n")
         );
-        cx.write_shared(SharedResource::CrateSpecific { basename: "source-files.js" }, v)?;
+        write_crate("source-files.js", &v)?;
     }
 
     // Update the search index and crate list.
@@ -371,12 +396,12 @@ pub(super) fn write_shared(
         let mut v = String::from("var searchIndex = JSON.parse('{\\\n");
         v.push_str(&all_indexes.join(",\\\n"));
         v.push_str("\\\n}');\ninitSearch(searchIndex);");
-        cx.write_shared(SharedResource::CrateSpecific { basename: "search-index.js" }, v)?;
+        write_crate("search-index.js", &v)?;
     }
 
     let crate_list =
         format!("window.ALL_CRATES = [{}];", krates.iter().map(|k| format!("\"{}\"", k)).join(","));
-    cx.write_shared(SharedResource::CrateSpecific { basename: "crates.js" }, crate_list)?;
+    write_crate("crates.js", &crate_list)?;
 
     if options.enable_index_page {
         if let Some(index_page) = options.index_page.clone() {

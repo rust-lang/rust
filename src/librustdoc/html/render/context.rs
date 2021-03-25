@@ -288,6 +288,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
     ) -> Result<(Self, clean::Crate), Error> {
         // need to save a copy of the options for rendering the index page
         let md_opts = options.clone();
+        let emit_crate = options.should_emit_crate();
         let RenderOptions {
             output,
             external_html,
@@ -393,7 +394,9 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
 
         let dst = output;
         scx.ensure_dir(&dst)?;
-        krate = sources::render(&dst, &mut scx, krate)?;
+        if emit_crate {
+            krate = sources::render(&dst, &mut scx, krate)?;
+        }
 
         // Build our search index
         let index = build_index(&krate, &mut cache, tcx);
