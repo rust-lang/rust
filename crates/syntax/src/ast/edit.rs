@@ -2,7 +2,7 @@
 //! immutable, all function here return a fresh copy of the tree, instead of
 //! doing an in-place modification.
 use std::{
-    fmt, iter,
+    array, fmt, iter,
     ops::{self, RangeInclusive},
 };
 
@@ -55,9 +55,8 @@ impl ast::Fn {
 
         let anchor = self.name().expect("The function must have a name").syntax().clone();
 
-        let mut to_insert: ArrayVec<SyntaxElement, 1> = ArrayVec::new();
-        to_insert.push(generic_args.syntax().clone().into());
-        self.insert_children(InsertPosition::After(anchor.into()), to_insert)
+        let to_insert = [generic_args.syntax().clone().into()];
+        self.insert_children(InsertPosition::After(anchor.into()), array::IntoIter::new(to_insert))
     }
 }
 
