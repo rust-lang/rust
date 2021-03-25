@@ -290,6 +290,8 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         "html"
     }
 
+    const RUN_ON_MODULE: bool = true;
+
     fn init(
         mut krate: clean::Crate,
         options: RenderOptions,
