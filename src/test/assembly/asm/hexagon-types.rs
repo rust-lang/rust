@@ -1,4 +1,4 @@
-// no-system-llvm
+// min-llvm-version: 10.0.1
 // assembly-output: emit-asm
 // compile-flags: --target hexagon-unknown-linux-musl
 // needs-llvm-components: hexagon
