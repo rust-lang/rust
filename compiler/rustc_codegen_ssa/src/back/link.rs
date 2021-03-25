@@ -1746,7 +1746,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     );
 
     // OBJECT-FILES-NO, AUDIT-ORDER
-    if sess.opts.cg.profile_generate.enabled() || sess.opts.debugging_opts.instrument_coverage {
+    if sess.opts.cg.profile_generate.enabled() || sess.instrument_coverage() {
         cmd.pgo_gen();
     }
 

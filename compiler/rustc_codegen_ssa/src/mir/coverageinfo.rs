@@ -33,7 +33,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                     let coverageinfo = bx.tcx().coverageinfo(instance.def_id());
 
-                    let fn_name = bx.create_pgo_func_name_var(instance);
+                    let fn_name = bx.get_pgo_func_name_var(instance);
                     let hash = bx.const_u64(function_source_hash);
                     let num_counters = bx.const_u32(coverageinfo.num_counters);
                     let index = bx.const_u32(u32::from(id));

@@ -1,6 +1,6 @@
 #![allow(unused_assignments, dead_code)]
 
-// compile-flags: --edition=2018
+// compile-flags: --edition=2018 -C opt-level=1 # fix in rustc_mir/monomorphize/partitioning/mod.rs
 
 async fn c(x: u8) -> u8 {
     if x == 8 {
@@ -10,7 +10,7 @@ async fn c(x: u8) -> u8 {
     }
 }
 
-async fn d() -> u8 { 1 }
+async fn d() -> u8 { 1 } // should have a coverage count `0` (see below)
 
 async fn e() -> u8 { 1 } // unused function; executor does not block on `g()`
 
@@ -126,3 +126,14 @@ mod executor {
         }
     }
 }
+
+// `llvm-cov show` shows no coverage results for the `d()`, even though the
+// crate's LLVM IR shows the function exists and has an InstrProf PGO counter,
+// and appears to be registered like all other counted functions.
+//
+// `llvm-cov show --debug` output shows there is at least one `Counter` for this
+// line, but counters do not appear in the `Combined regions` section (unlike
+// `f()`, which is similar, but does appear in `Combined regions`, and does show
+// coverage). The only difference is, `f()` is awaited, but the call to await
+// `d()` is not reached. (Note: `d()` will appear in coverage if the test is
+// modified to cause it to be awaited.)

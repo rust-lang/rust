@@ -29,12 +29,12 @@
    18|      2|        println!("BOOM times {}!!!", self.strength);
    19|      2|    }
   ------------------
-  | <generics::Firework<i32> as core::ops::drop::Drop>::drop:
+  | <generics::Firework<f64> as core::ops::drop::Drop>::drop:
   |   17|      1|    fn drop(&mut self) {
   |   18|      1|        println!("BOOM times {}!!!", self.strength);
   |   19|      1|    }
   ------------------
-  | <generics::Firework<f64> as core::ops::drop::Drop>::drop:
+  | <generics::Firework<i32> as core::ops::drop::Drop>::drop:
   |   17|      1|    fn drop(&mut self) {
   |   18|      1|        println!("BOOM times {}!!!", self.strength);
   |   19|      1|    }

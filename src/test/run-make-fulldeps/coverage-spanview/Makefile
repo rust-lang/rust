@@ -38,13 +38,11 @@ endif
 %: $(SOURCEDIR)/lib/%.rs
 	# Compile the test library with coverage instrumentation
 	$(RUSTC) $(SOURCEDIR)/lib/$@.rs \
-			$$( sed -nE 's#^// compile-flags:(.*)#\1# p' $(SOURCEDIR)/lib/$@.rs) \
+	    $$( sed -n 's/^\/\/ compile-flags: \([^#]*\).*/\1/p' $(SOURCEDIR)/lib/$@.rs ) \
 			--crate-type rlib \
 			-Ztrim-diagnostic-paths=no \
-			-Zinstrument-coverage \
-			-Zdump-mir=InstrumentCoverage \
-			-Zdump-mir-spanview \
-			-Zdump-mir-dir="$(TMPDIR)"/mir_dump.$@
+			-Zdump-mir=InstrumentCoverage -Zdump-mir-spanview -Zdump-mir-dir="$(TMPDIR)"/mir_dump.$@ \
+			-Zinstrument-coverage
 
 	for path in "$(TMPDIR)"/mir_dump.$@/*; do \
 		file="$$(basename "$$path")"; \
@@ -68,13 +66,11 @@ endif
 %: $(SOURCEDIR)/%.rs
 	# Compile the test program with coverage instrumentation
 	$(RUSTC) $(SOURCEDIR)/$@.rs \
-			$$( sed -nE 's#^// compile-flags:(.*)#\1# p' $(SOURCEDIR)/$@.rs) \
+			$$( sed -n 's/^\/\/ compile-flags: \([^#]*\).*/\1/p' $(SOURCEDIR)/$@.rs ) \
 			-L "$(TMPDIR)" \
 			-Ztrim-diagnostic-paths=no \
-			-Zinstrument-coverage \
-			-Zdump-mir=InstrumentCoverage \
-			-Zdump-mir-spanview \
-			-Zdump-mir-dir="$(TMPDIR)"/mir_dump.$@
+			-Zdump-mir=InstrumentCoverage -Zdump-mir-spanview -Zdump-mir-dir="$(TMPDIR)"/mir_dump.$@ \
+			-Zinstrument-coverage
 
 	for path in "$(TMPDIR)"/mir_dump.$@/*; do \
 		file="$$(basename "$$path")"; \

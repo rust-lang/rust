@@ -1,5 +1,6 @@
 use crate::llvm;
 
+use crate::abi::{Abi, FnAbi};
 use crate::builder::Builder;
 use crate::common::CodegenCx;
 
@@ -7,33 +8,47 @@ use libc::c_uint;
 use llvm::coverageinfo::CounterMappingRegion;
 use rustc_codegen_ssa::coverageinfo::map::{CounterExpression, FunctionCoverage};
 use rustc_codegen_ssa::traits::{
-    BaseTypeMethods, CoverageInfoBuilderMethods, CoverageInfoMethods, MiscMethods, StaticMethods,
+    BaseTypeMethods, BuilderMethods, ConstMethods, CoverageInfoBuilderMethods, CoverageInfoMethods,
+    MiscMethods, StaticMethods,
 };
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 use rustc_llvm::RustString;
+use rustc_middle::bug;
 use rustc_middle::mir::coverage::{
     CodeRegion, CounterValueReference, ExpressionOperandId, InjectedExpressionId, Op,
 };
+use rustc_middle::ty;
+use rustc_middle::ty::layout::FnAbiExt;
+use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::Instance;
 
 use std::cell::RefCell;
 use std::ffi::CString;
 
+use std::iter;
 use tracing::debug;
 
 pub mod mapgen;
 
+const UNUSED_FUNCTION_COUNTER_ID: CounterValueReference = CounterValueReference::START;
+
 const VAR_ALIGN_BYTES: usize = 8;
 
 /// A context object for maintaining all state needed by the coverageinfo module.
-pub struct CrateCoverageContext<'tcx> {
+pub struct CrateCoverageContext<'ll, 'tcx> {
     // Coverage data for each instrumented function identified by DefId.
     pub(crate) function_coverage_map: RefCell<FxHashMap<Instance<'tcx>, FunctionCoverage<'tcx>>>,
+    pub(crate) pgo_func_name_var_map: RefCell<FxHashMap<Instance<'tcx>, &'ll llvm::Value>>,
 }
 
-impl<'tcx> CrateCoverageContext<'tcx> {
+impl<'ll, 'tcx> CrateCoverageContext<'ll, 'tcx> {
     pub fn new() -> Self {
-        Self { function_coverage_map: Default::default() }
+        Self {
+            function_coverage_map: Default::default(),
+            pgo_func_name_var_map: Default::default(),
+        }
     }
 
     pub fn take_function_coverage_map(&self) -> FxHashMap<Instance<'tcx>, FunctionCoverage<'tcx>> {
@@ -41,23 +56,47 @@ impl<'tcx> CrateCoverageContext<'tcx> {
     }
 }
 
-impl CoverageInfoMethods for CodegenCx<'ll, 'tcx> {
+impl CoverageInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn coverageinfo_finalize(&self) {
         mapgen::finalize(self)
+    }
+
+    fn get_pgo_func_name_var(&self, instance: Instance<'tcx>) -> &'ll llvm::Value {
+        if let Some(coverage_context) = self.coverage_context() {
+            debug!("getting pgo_func_name_var for instance={:?}", instance);
+            let mut pgo_func_name_var_map = coverage_context.pgo_func_name_var_map.borrow_mut();
+            pgo_func_name_var_map
+                .entry(instance)
+                .or_insert_with(|| create_pgo_func_name_var(self, instance))
+        } else {
+            bug!("Could not get the `coverage_context`");
+        }
+    }
+
+    /// Functions with MIR-based coverage are normally codegenned _only_ if
+    /// called. LLVM coverage tools typically expect every function to be
+    /// defined (even if unused), with at least one call to LLVM intrinsic
+    /// `instrprof.increment`.
+    ///
+    /// Codegen a small function that will never be called, with one counter
+    /// that will never be incremented.
+    ///
+    /// For used/called functions, the coverageinfo was already added to the
+    /// `function_coverage_map` (keyed by function `Instance`) during codegen.
+    /// But in this case, since the unused function was _not_ previously
+    /// codegenned, collect the coverage `CodeRegion`s from the MIR and add
+    /// them. The first `CodeRegion` is used to add a single counter, with the
+    /// same counter ID used in the injected `instrprof.increment` intrinsic
+    /// call. Since the function is never called, all other `CodeRegion`s can be
+    /// added as `unreachable_region`s.
+    fn define_unused_fn(&self, def_id: DefId) {
+        let instance = declare_unused_fn(self, &def_id);
+        codegen_unused_fn_and_counter(self, instance);
+        add_unused_function_coverage(self, instance, def_id);
     }
 }
 
 impl CoverageInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
-    /// Calls llvm::createPGOFuncNameVar() with the given function instance's mangled function name.
-    /// The LLVM API returns an llvm::GlobalVariable containing the function name, with the specific
-    /// variable name and linkage required by LLVM InstrProf source-based coverage instrumentation.
-    fn create_pgo_func_name_var(&self, instance: Instance<'tcx>) -> Self::Value {
-        let llfn = self.cx.get_fn(instance);
-        let mangled_fn_name = CString::new(self.tcx.symbol_name(instance).name)
-            .expect("error converting function name to C string");
-        unsafe { llvm::LLVMRustCoverageCreatePGOFuncNameVar(llfn, mangled_fn_name.as_ptr()) }
-    }
-
     fn set_function_source_hash(
         &mut self,
         instance: Instance<'tcx>,
@@ -145,6 +184,104 @@ impl CoverageInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     }
 }
 
+fn declare_unused_fn(cx: &CodegenCx<'ll, 'tcx>, def_id: &DefId) -> Instance<'tcx> {
+    let tcx = cx.tcx;
+
+    let instance = Instance::new(
+        *def_id,
+        InternalSubsts::for_item(tcx, *def_id, |param, _| {
+            if let ty::GenericParamDefKind::Lifetime = param.kind {
+                tcx.lifetimes.re_erased.into()
+            } else {
+                tcx.mk_param_from_def(param)
+            }
+        }),
+    );
+
+    let llfn = cx.declare_fn(
+        &tcx.symbol_name(instance).name,
+        &FnAbi::of_fn_ptr(
+            cx,
+            ty::Binder::dummy(tcx.mk_fn_sig(
+                iter::once(tcx.mk_unit()),
+                tcx.mk_unit(),
+                false,
+                hir::Unsafety::Unsafe,
+                Abi::Rust,
+            )),
+            &[],
+        ),
+    );
+
+    llvm::set_linkage(llfn, llvm::Linkage::WeakAnyLinkage);
+    llvm::set_visibility(llfn, llvm::Visibility::Hidden);
+
+    assert!(cx.instances.borrow_mut().insert(instance, llfn).is_none());
+
+    instance
+}
+
+fn codegen_unused_fn_and_counter(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) {
+    let llfn = cx.get_fn(instance);
+    let mut bx = Builder::new_block(cx, llfn, "unused_function");
+    let fn_name = bx.get_pgo_func_name_var(instance);
+    let hash = bx.const_u64(0);
+    let num_counters = bx.const_u32(1);
+    let index = bx.const_u32(u32::from(UNUSED_FUNCTION_COUNTER_ID));
+    debug!(
+        "codegen intrinsic instrprof.increment(fn_name={:?}, hash={:?}, num_counters={:?},
+            index={:?}) for unused function: {:?}",
+        fn_name, hash, num_counters, index, instance
+    );
+    bx.instrprof_increment(fn_name, hash, num_counters, index);
+    bx.ret_void();
+}
+
+fn add_unused_function_coverage(
+    cx: &CodegenCx<'ll, 'tcx>,
+    instance: Instance<'tcx>,
+    def_id: DefId,
+) {
+    let tcx = cx.tcx;
+
+    let mut function_coverage = FunctionCoverage::unused(tcx, instance);
+    for (index, &code_region) in tcx.covered_code_regions(def_id).iter().enumerate() {
+        if index == 0 {
+            // Insert at least one real counter so the LLVM CoverageMappingReader will find expected
+            // definitions.
+            function_coverage.add_counter(UNUSED_FUNCTION_COUNTER_ID, code_region.clone());
+        }
+        // Add a Zero Counter for every code region.
+        //
+        // Even though the first coverage region already has an actual Counter, `llvm-cov` will not
+        // always report it. Re-adding an unreachable region (zero counter) for the same region
+        // seems to help produce the expected coverage.
+        function_coverage.add_unreachable_region(code_region.clone());
+    }
+
+    if let Some(coverage_context) = cx.coverage_context() {
+        coverage_context.function_coverage_map.borrow_mut().insert(instance, function_coverage);
+    } else {
+        bug!("Could not get the `coverage_context`");
+    }
+}
+
+/// Calls llvm::createPGOFuncNameVar() with the given function instance's
+/// mangled function name. The LLVM API returns an llvm::GlobalVariable
+/// containing the function name, with the specific variable name and linkage
+/// required by LLVM InstrProf source-based coverage instrumentation. Use
+/// `bx.get_pgo_func_name_var()` to ensure the variable is only created once per
+/// `Instance`.
+fn create_pgo_func_name_var(
+    cx: &CodegenCx<'ll, 'tcx>,
+    instance: Instance<'tcx>,
+) -> &'ll llvm::Value {
+    let mangled_fn_name = CString::new(cx.tcx.symbol_name(instance).name)
+        .expect("error converting function name to C string");
+    let llfn = cx.get_fn(instance);
+    unsafe { llvm::LLVMRustCoverageCreatePGOFuncNameVar(llfn, mangled_fn_name.as_ptr()) }
+}
+
 pub(crate) fn write_filenames_section_to_buffer<'a>(
     filenames: impl IntoIterator<Item = &'a CString>,
     buffer: &RustString,
@@ -177,6 +314,7 @@ pub(crate) fn write_mapping_to_buffer(
         );
     }
 }
+
 pub(crate) fn hash_str(strval: &str) -> u64 {
     let strval = CString::new(strval).expect("null error converting hashable str to C string");
     unsafe { llvm::LLVMRustCoverageHashCString(strval.as_ptr()) }

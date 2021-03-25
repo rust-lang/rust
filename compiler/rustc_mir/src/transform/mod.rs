@@ -314,11 +314,8 @@ fn mir_promoted(
         &simplify::SimplifyCfg::new("promote-consts"),
     ];
 
-    let opt_coverage: &[&dyn MirPass<'tcx>] = if tcx.sess.opts.debugging_opts.instrument_coverage {
-        &[&coverage::InstrumentCoverage]
-    } else {
-        &[]
-    };
+    let opt_coverage: &[&dyn MirPass<'tcx>] =
+        if tcx.sess.instrument_coverage() { &[&coverage::InstrumentCoverage] } else { &[] };
 
     run_passes(tcx, &mut body, MirPhase::ConstPromotion, &[promote, opt_coverage]);
 

@@ -176,7 +176,7 @@ impl ModuleConfig {
 
                     // The rustc option `-Zinstrument_coverage` injects intrinsic calls to
                     // `llvm.instrprof.increment()`, which requires the LLVM `instrprof` pass.
-                    if sess.opts.debugging_opts.instrument_coverage {
+                    if sess.instrument_coverage() {
                         passes.push("instrprof".to_owned());
                     }
                     passes

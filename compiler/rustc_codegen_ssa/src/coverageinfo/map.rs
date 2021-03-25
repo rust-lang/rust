@@ -31,25 +31,42 @@ pub struct Expression {
 pub struct FunctionCoverage<'tcx> {
     instance: Instance<'tcx>,
     source_hash: u64,
+    is_used: bool,
     counters: IndexVec<CounterValueReference, Option<CodeRegion>>,
     expressions: IndexVec<InjectedExpressionIndex, Option<Expression>>,
     unreachable_regions: Vec<CodeRegion>,
 }
 
 impl<'tcx> FunctionCoverage<'tcx> {
+    /// Creates a new set of coverage data for a used (called) function.
     pub fn new(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Self {
+        Self::create(tcx, instance, true)
+    }
+
+    /// Creates a new set of coverage data for an unused (never called) function.
+    pub fn unused(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Self {
+        Self::create(tcx, instance, false)
+    }
+
+    fn create(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>, is_used: bool) -> Self {
         let coverageinfo = tcx.coverageinfo(instance.def_id());
         debug!(
-            "FunctionCoverage::new(instance={:?}) has coverageinfo={:?}",
-            instance, coverageinfo
+            "FunctionCoverage::new(instance={:?}) has coverageinfo={:?}. is_used={}",
+            instance, coverageinfo, is_used
         );
         Self {
             instance,
             source_hash: 0, // will be set with the first `add_counter()`
+            is_used,
             counters: IndexVec::from_elem_n(None, coverageinfo.num_counters as usize),
             expressions: IndexVec::from_elem_n(None, coverageinfo.num_expressions as usize),
             unreachable_regions: Vec::new(),
         }
+    }
+
+    /// Returns true for a used (called) function, and false for an unused function.
+    pub fn is_used(&self) -> bool {
+        self.is_used
     }
 
     /// Sets the function source hash value. If called multiple times for the same function, all
@@ -128,8 +145,8 @@ impl<'tcx> FunctionCoverage<'tcx> {
         &'a self,
     ) -> (Vec<CounterExpression>, impl Iterator<Item = (Counter, &'a CodeRegion)>) {
         assert!(
-            self.source_hash != 0,
-            "No counters provided the source_hash for function: {:?}",
+            self.source_hash != 0 || !self.is_used,
+            "No counters provided the source_hash for used function: {:?}",
             self.instance
         );
 

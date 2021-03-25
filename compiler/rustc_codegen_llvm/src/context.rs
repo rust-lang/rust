@@ -79,7 +79,7 @@ pub struct CodegenCx<'ll, 'tcx> {
     pub pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
     pub isize_ty: &'ll Type,
 
-    pub coverage_cx: Option<coverageinfo::CrateCoverageContext<'tcx>>,
+    pub coverage_cx: Option<coverageinfo::CrateCoverageContext<'ll, 'tcx>>,
     pub dbg_cx: Option<debuginfo::CrateDebugContext<'ll, 'tcx>>,
 
     eh_personality: Cell<Option<&'ll Value>>,
@@ -280,7 +280,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
         let (llcx, llmod) = (&*llvm_module.llcx, llvm_module.llmod());
 
-        let coverage_cx = if tcx.sess.opts.debugging_opts.instrument_coverage {
+        let coverage_cx = if tcx.sess.instrument_coverage() {
             let covctx = coverageinfo::CrateCoverageContext::new();
             Some(covctx)
         } else {
@@ -331,7 +331,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     }
 
     #[inline]
-    pub fn coverage_context(&'a self) -> Option<&'a coverageinfo::CrateCoverageContext<'tcx>> {
+    pub fn coverage_context(&'a self) -> Option<&'a coverageinfo::CrateCoverageContext<'ll, 'tcx>> {
         self.coverage_cx.as_ref()
     }
 }
@@ -712,7 +712,7 @@ impl CodegenCx<'b, 'tcx> {
         ifn!("llvm.va_end", fn(i8p) -> void);
         ifn!("llvm.va_copy", fn(i8p, i8p) -> void);
 
-        if self.sess().opts.debugging_opts.instrument_coverage {
+        if self.sess().instrument_coverage() {
             ifn!("llvm.instrprof.increment", fn(i8p, t_i64, t_i32, t_i32) -> void);
         }
 
