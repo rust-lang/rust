@@ -9,8 +9,8 @@ fn exitstatus_display_tests() {
 
     t(0x0000f, "signal: 15");
     t(0x0008b, "signal: 11 (core dumped)");
-    t(0x00000, "exit code: 0");
-    t(0x0ff00, "exit code: 255");
+    t(0x00000, "exit status: 0");
+    t(0x0ff00, "exit status: 255");
 
     // On MacOS, 0x0137f is WIFCONTINUED, not WIFSTOPPED.  Probably *BSD is similar.
     //   https://github.com/rust-lang/rust/pull/82749#issuecomment-790525956
