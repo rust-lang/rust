@@ -60,7 +60,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{self, walk_expr, ErasedMap, NestedVisitorMap, Visitor};
 use rustc_hir::LangItem::{ResultErr, ResultOk};
 use rustc_hir::{
     def, Arm, BindingAnnotation, Block, Body, Constness, Destination, Expr, ExprKind, FnDecl, GenericArgs, HirId, Impl,
@@ -82,7 +82,7 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::Integer;
 
 use crate::consts::{constant, Constant};
-use crate::ty::is_recursively_primitive_type;
+use crate::ty::{can_partially_move_ty, is_recursively_primitive_type};
 
 pub fn parse_msrv(msrv: &str, sess: Option<&Session>, span: Option<Span>) -> Option<RustcVersion> {
     if let Ok(version) = RustcVersion::parse(msrv) {
@@ -537,6 +537,73 @@ pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Optio
         then { return impl_.of_trait.as_ref(); }
     }
     None
+}
+
+/// Checks if the top level expression can be moved into a closure as is.
+pub fn can_move_expr_to_closure_no_visit(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, jump_targets: &[HirId]) -> bool {
+    match expr.kind {
+        ExprKind::Break(Destination { target_id: Ok(id), .. }, _)
+        | ExprKind::Continue(Destination { target_id: Ok(id), .. })
+            if jump_targets.contains(&id) =>
+        {
+            true
+        },
+        ExprKind::Break(..)
+        | ExprKind::Continue(_)
+        | ExprKind::Ret(_)
+        | ExprKind::Yield(..)
+        | ExprKind::InlineAsm(_)
+        | ExprKind::LlvmInlineAsm(_) => false,
+        // Accessing a field of a local value can only be done if the type isn't
+        // partially moved.
+        ExprKind::Field(base_expr, _)
+            if matches!(
+                base_expr.kind,
+                ExprKind::Path(QPath::Resolved(_, Path { res: Res::Local(_), .. }))
+            ) && can_partially_move_ty(cx, cx.typeck_results().expr_ty(base_expr)) =>
+        {
+            // TODO: check if the local has been partially moved. Assume it has for now.
+            false
+        }
+        _ => true,
+    }
+}
+
+/// Checks if the expression can be moved into a closure as is.
+pub fn can_move_expr_to_closure(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
+    struct V<'cx, 'tcx> {
+        cx: &'cx LateContext<'tcx>,
+        loops: Vec<HirId>,
+        allow_closure: bool,
+    }
+    impl Visitor<'tcx> for V<'_, 'tcx> {
+        type Map = ErasedMap<'tcx>;
+        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+            NestedVisitorMap::None
+        }
+
+        fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
+            if !self.allow_closure {
+                return;
+            }
+            if let ExprKind::Loop(b, ..) = e.kind {
+                self.loops.push(e.hir_id);
+                self.visit_block(b);
+                self.loops.pop();
+            } else {
+                self.allow_closure &= can_move_expr_to_closure_no_visit(self.cx, e, &self.loops);
+                walk_expr(self, e);
+            }
+        }
+    }
+
+    let mut v = V {
+        cx,
+        allow_closure: true,
+        loops: Vec::new(),
+    };
+    v.visit_expr(expr);
+    v.allow_closure
 }
 
 /// Returns the method names and argument list of nested method call expressions that make up

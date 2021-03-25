@@ -27,6 +27,14 @@ fn hash_map<K: Eq + Hash + Copy, V: Copy>(m: &mut HashMap<K, V>, k: K, v: V, v2:
 
     if !m.contains_key(&k) {
         if true {
+            m.insert(k, v)
+        } else {
+            m.insert(k, v2)
+        };
+    }
+
+    if !m.contains_key(&k) {
+        if true {
             m.insert(k, v);
         } else {
             m.insert(k, v2);

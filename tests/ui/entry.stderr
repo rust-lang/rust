@@ -22,16 +22,38 @@ LL | |     }
    |
 help: try this
    |
-LL |     if let std::collections::hash_map::Entry::Vacant(e) = m.entry(k) {
+LL |     m.entry(k).or_insert_with(|| {
 LL |         if true {
-LL |             e.insert(v);
+LL |             v
 LL |         } else {
-LL |             e.insert(v2);
+LL |             v2
 LL |         }
  ...
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
   --> $DIR/entry.rs:28:5
+   |
+LL | /     if !m.contains_key(&k) {
+LL | |         if true {
+LL | |             m.insert(k, v)
+LL | |         } else {
+LL | |             m.insert(k, v2)
+LL | |         };
+LL | |     }
+   | |_____^
+   |
+help: try this
+   |
+LL |     m.entry(k).or_insert_with(|| {
+LL |         if true {
+LL |             v
+LL |         } else {
+LL |             v2
+LL |         }
+ ...
+
+error: usage of `contains_key` followed by `insert` on a `HashMap`
+  --> $DIR/entry.rs:36:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |         if true {
@@ -53,7 +75,7 @@ LL |             return;
  ...
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:37:5
+  --> $DIR/entry.rs:45:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |         foo();
@@ -63,14 +85,14 @@ LL | |     }
    |
 help: try this
    |
-LL |     if let std::collections::hash_map::Entry::Vacant(e) = m.entry(k) {
+LL |     m.entry(k).or_insert_with(|| {
 LL |         foo();
-LL |         e.insert(v);
-LL |     }
+LL |         v
+LL |     });
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:42:5
+  --> $DIR/entry.rs:50:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |         match 0 {
@@ -83,16 +105,16 @@ LL | |     }
    |
 help: try this
    |
-LL |     if let std::collections::hash_map::Entry::Vacant(e) = m.entry(k) {
+LL |     m.entry(k).or_insert_with(|| {
 LL |         match 0 {
 LL |             1 if true => {
-LL |                 e.insert(v);
+LL |                 v
 LL |             },
 LL |             _ => {
  ...
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:53:5
+  --> $DIR/entry.rs:61:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |         match 0 {
@@ -114,7 +136,7 @@ LL |             },
  ...
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:65:5
+  --> $DIR/entry.rs:73:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |         foo();
@@ -127,31 +149,24 @@ LL | |     }
    |
 help: try this
    |
-LL |     if let std::collections::hash_map::Entry::Vacant(e) = m.entry(k) {
+LL |     m.entry(k).or_insert_with(|| {
 LL |         foo();
 LL |         match 0 {
 LL |             0 if false => {
-LL |                 e.insert(v);
+LL |                 v
 LL |             },
  ...
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:91:5
+  --> $DIR/entry.rs:99:5
    |
 LL | /     if !m.contains_key(&m!(k)) {
 LL | |         m.insert(m!(k), m!(v));
 LL | |     }
-   | |_____^
-   |
-help: try this
-   |
-LL |     if let std::collections::hash_map::Entry::Vacant(e) = m.entry(m!(k)) {
-LL |         e.insert(m!(v));
-LL |     }
-   |
+   | |_____^ help: try this: `m.entry(m!(k)).or_insert_with(|| m!(v));`
 
 error: usage of `contains_key` followed by `insert` on a `BTreeMap`
-  --> $DIR/entry.rs:97:5
+  --> $DIR/entry.rs:105:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |         m.insert(k, v);
@@ -167,5 +182,5 @@ LL |         foo();
 LL |     }
    |
 
-error: aborting due to 9 previous errors
+error: aborting due to 10 previous errors
 

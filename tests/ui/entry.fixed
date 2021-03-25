@@ -15,13 +15,21 @@ fn foo() {}
 fn hash_map<K: Eq + Hash + Copy, V: Copy>(m: &mut HashMap<K, V>, k: K, v: V, v2: V) {
     m.entry(k).or_insert(v);
 
-    if let std::collections::hash_map::Entry::Vacant(e) = m.entry(k) {
+    m.entry(k).or_insert_with(|| {
         if true {
-            e.insert(v);
+            v
         } else {
-            e.insert(v2);
+            v2
         }
-    }
+    });
+
+    m.entry(k).or_insert_with(|| {
+        if true {
+            v
+        } else {
+            v2
+        }
+    });
 
     if let std::collections::hash_map::Entry::Vacant(e) = m.entry(k) {
         if true {
@@ -32,21 +40,21 @@ fn hash_map<K: Eq + Hash + Copy, V: Copy>(m: &mut HashMap<K, V>, k: K, v: V, v2:
         }
     }
 
-    if let std::collections::hash_map::Entry::Vacant(e) = m.entry(k) {
+    m.entry(k).or_insert_with(|| {
         foo();
-        e.insert(v);
-    }
+        v
+    });
 
-    if let std::collections::hash_map::Entry::Vacant(e) = m.entry(k) {
+    m.entry(k).or_insert_with(|| {
         match 0 {
             1 if true => {
-                e.insert(v);
+                v
             },
             _ => {
-                e.insert(v2);
+                v2
             },
-        };
-    }
+        }
+    });
 
     if let std::collections::hash_map::Entry::Vacant(e) = m.entry(k) {
         match 0 {
@@ -60,35 +68,33 @@ fn hash_map<K: Eq + Hash + Copy, V: Copy>(m: &mut HashMap<K, V>, k: K, v: V, v2:
         };
     }
 
-    if let std::collections::hash_map::Entry::Vacant(e) = m.entry(k) {
+    m.entry(k).or_insert_with(|| {
         foo();
         match 0 {
             0 if false => {
-                e.insert(v);
+                v
             },
             1 => {
                 foo();
-                e.insert(v);
+                v
             },
             2 | 3 => {
                 for _ in 0..2 {
                     foo();
                 }
                 if true {
-                    e.insert(v);
+                    v
                 } else {
-                    e.insert(v2);
-                };
+                    v2
+                }
             },
             _ => {
-                e.insert(v2);
+                v2
             },
         }
-    }
+    });
 
-    if let std::collections::hash_map::Entry::Vacant(e) = m.entry(m!(k)) {
-        e.insert(m!(v));
-    }
+    m.entry(m!(k)).or_insert_with(|| m!(v));
 }
 
 fn btree_map<K: Eq + Ord + Copy, V: Copy>(m: &mut BTreeMap<K, V>, k: K, v: V, v2: V) {
