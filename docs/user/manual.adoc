@@ -480,7 +480,7 @@ interface Crate {
         include_dirs: string[],
         exclude_dirs: string[],
     },
-    /// The set of cfgs activated for a given crate, like `["unix", "feature=foo", "feature=bar"]`.
+    /// The set of cfgs activated for a given crate, like `["unix", "feature=\"foo\"", "feature=\"bar\""]`.
     cfg: string[];
     /// Target triple for this Crate.
     ///
