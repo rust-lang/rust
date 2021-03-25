@@ -27,6 +27,7 @@
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Instructions.h"
+#include "llvm/IR/InlineAsm.h"
 
 extern std::map<std::string, std::function<llvm::Value *(
                                  llvm::IRBuilder<> &, llvm::CallInst *,
@@ -358,6 +359,16 @@ static inline bool writesToMemoryReadBy(llvm::AAResults &AA,
         return false;
 #endif
     }
+
+#if LLVM_VERSION_MAJOR >= 11
+    if (auto iasm = dyn_cast<InlineAsm>(call->getCalledOperand()))
+#else
+    if (auto iasm = dyn_cast<InlineAsm>(call->getCalledValue()))
+#endif
+    {
+      if (StringRef(iasm->getAsmString()).contains("exit"))
+        return false; 
+    }
   }
   if (auto call = dyn_cast<CallInst>(maybeReader)) {
     Function *called = call->getCalledFunction();
@@ -412,6 +423,16 @@ static inline bool writesToMemoryReadBy(llvm::AAResults &AA,
     }
     if (called && called->getName() == "jl_array_copy")
       return false;
+
+#if LLVM_VERSION_MAJOR >= 11
+    if (auto iasm = dyn_cast<InlineAsm>(call->getCalledOperand()))
+#else
+    if (auto iasm = dyn_cast<InlineAsm>(call->getCalledValue()))
+#endif
+    {
+      if (StringRef(iasm->getAsmString()).contains("exit"))
+        return false; 
+    }
   }
   if (auto call = dyn_cast<InvokeInst>(maybeReader)) {
     Function *called = call->getCalledFunction();

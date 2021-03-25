@@ -384,6 +384,16 @@ struct CacheAnalysis {
         if (called && isMemFreeLibMFunction(called->getName())) {
           return false;
         }
+
+    #if LLVM_VERSION_MAJOR >= 11
+        if (auto iasm = dyn_cast<InlineAsm>(obj_op->getCalledOperand()))
+    #else
+        if (auto iasm = dyn_cast<InlineAsm>(obj_op->getCalledValue()))
+    #endif
+        {
+          if (StringRef(iasm->getAsmString()).contains("exit"))
+            return false; 
+        }
       }
 
       if (unnecessaryInstructions.count(inst2))

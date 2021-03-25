@@ -54,7 +54,7 @@
 
 using namespace llvm;
 
-cl::opt<bool> printconst("enzyme-print-activity", cl::init(false), cl::Hidden,
+cl::opt<bool> printconst("enzyme-print-activity", cl::init(true), cl::Hidden,
                          cl::desc("Print activity analysis algorithm"));
 
 cl::opt<bool> nonmarkedglobals_inactive(
@@ -875,6 +875,17 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
 
         // If this is a malloc or free, this doesn't impact the activity
         if (auto CI = dyn_cast<CallInst>(&I)) {
+
+#if LLVM_VERSION_MAJOR >= 11
+    if (auto iasm = dyn_cast<InlineAsm>(CI->getCalledOperand()))
+#else
+    if (auto iasm = dyn_cast<InlineAsm>(CI->getCalledValue()))
+#endif
+    {
+      if (StringRef(iasm->getAsmString()).contains("exit") || StringRef(iasm->getAsmString()).contains("cpuid"))
+        continue; 
+    }
+
           Function *F = CI->getCalledFunction();
 #if LLVM_VERSION_MAJOR >= 11
           if (auto Cst = dyn_cast<CastInst>(CI->getCalledOperand()))
