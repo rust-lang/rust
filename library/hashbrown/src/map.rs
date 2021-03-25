@@ -194,7 +194,7 @@ pub struct HashMap<K, V, S = DefaultHashBuilder, A: Allocator + Clone = Global> 
     pub(crate) table: RawTable<(K, V), A>,
 }
 
-impl<K: Clone, V: Clone, S: Clone> Clone for HashMap<K, V, S> {
+impl<K: Clone, V: Clone, S: Clone, A: Allocator + Clone> Clone for HashMap<K, V, S, A> {
     fn clone(&self) -> Self {
         HashMap {
             hash_builder: self.hash_builder.clone(),
