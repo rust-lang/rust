@@ -473,8 +473,8 @@ macro_rules! implement_ty_decoder {
                 }
 
                 #[inline]
-                fn read_raw_bytes(&mut self, bytes: &mut [std::mem::MaybeUninit<u8>]) -> Result<(), Self::Error> {
-                    self.opaque.read_raw_bytes(bytes)
+                fn read_raw_bytes_into(&mut self, bytes: &mut [u8]) -> Result<(), Self::Error> {
+                    self.opaque.read_raw_bytes_into(bytes)
                 }
 
                 fn error(&mut self, err: &str) -> Self::Error {

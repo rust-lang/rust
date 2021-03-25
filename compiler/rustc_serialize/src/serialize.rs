@@ -7,7 +7,6 @@ Core encoding and decoding interfaces.
 use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
 use std::marker::PhantomData;
-use std::mem::MaybeUninit;
 use std::path;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -226,7 +225,7 @@ pub trait Decoder {
     fn read_f32(&mut self) -> Result<f32, Self::Error>;
     fn read_char(&mut self) -> Result<char, Self::Error>;
     fn read_str(&mut self) -> Result<Cow<'_, str>, Self::Error>;
-    fn read_raw_bytes(&mut self, s: &mut [MaybeUninit<u8>]) -> Result<(), Self::Error>;
+    fn read_raw_bytes_into(&mut self, s: &mut [u8]) -> Result<(), Self::Error>;
 
     // Compound types:
     #[inline]
