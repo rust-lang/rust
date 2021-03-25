@@ -910,6 +910,73 @@ impl<T: ?Sized> Rc<T> {
         this.inner().strong()
     }
 
+    /// Increments the strong reference count on the `Rc<T>` associated with the
+    /// provided pointer by one.
+    ///
+    /// # Safety
+    ///
+    /// The pointer must have been obtained through `Rc::into_raw`, and the
+    /// associated `Rc` instance must be valid (i.e. the strong count must be at
+    /// least 1) for the duration of this method.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::rc::Rc;
+    ///
+    /// let five = Rc::new(5);
+    ///
+    /// unsafe {
+    ///     let ptr = Rc::into_raw(five);
+    ///     Rc::increment_strong_count(ptr);
+    ///
+    ///     let five = Rc::from_raw(ptr);
+    ///     assert_eq!(2, Rc::strong_count(&five));
+    /// }
+    /// ```
+    #[inline]
+    #[stable(feature = "rc_mutate_strong_count", since = "1.53.0")]
+    pub unsafe fn increment_strong_count(ptr: *const T) {
+        // Retain Rc, but don't touch refcount by wrapping in ManuallyDrop
+        let rc = unsafe { mem::ManuallyDrop::new(Rc::<T>::from_raw(ptr)) };
+        // Now increase refcount, but don't drop new refcount either
+        let _rc_clone: mem::ManuallyDrop<_> = rc.clone();
+    }
+
+    /// Decrements the strong reference count on the `Rc<T>` associated with the
+    /// provided pointer by one.
+    ///
+    /// # Safety
+    ///
+    /// The pointer must have been obtained through `Rc::into_raw`, and the
+    /// associated `Rc` instance must be valid (i.e. the strong count must be at
+    /// least 1) when invoking this method. This method can be used to release
+    /// the final `Rc` and backing storage, but **should not** be called after
+    /// the final `Rc` has been released.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::rc::Rc;
+    ///
+    /// let five = Rc::new(5);
+    ///
+    /// unsafe {
+    ///     let ptr = Rc::into_raw(five);
+    ///     Rc::increment_strong_count(ptr);
+    ///
+    ///     let five = Rc::from_raw(ptr);
+    ///     assert_eq!(2, Rc::strong_count(&five));
+    ///     Rc::decrement_strong_count(ptr);
+    ///     assert_eq!(1, Rc::strong_count(&five));
+    /// }
+    /// ```
+    #[inline]
+    #[stable(feature = "rc_mutate_strong_count", since = "1.53.0")]
+    pub unsafe fn decrement_strong_count(ptr: *const T) {
+        unsafe { mem::drop(Rc::from_raw(ptr)) };
+    }
+
     /// Returns `true` if there are no other `Rc` or [`Weak`] pointers to
     /// this allocation.
     #[inline]
