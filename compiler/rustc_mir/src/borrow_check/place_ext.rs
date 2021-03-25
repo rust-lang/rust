@@ -5,7 +5,7 @@ use rustc_middle::mir::{Body, Mutability, Place};
 use rustc_middle::ty::{self, TyCtxt};
 
 /// Extension methods for the `Place` type.
-crate trait PlaceExt<'tcx> {
+pub trait PlaceExt<'tcx> {
     /// Returns `true` if we can safely ignore borrows of this place.
     /// This is true whenever there is no action that the user can do
     /// to the place `self` that would invalidate the borrow. This is true

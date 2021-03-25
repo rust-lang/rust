@@ -1,11 +1,9 @@
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_index::vec::IndexVec;
-use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::RegionVid;
-use std::fmt;
 use std::ops::Index;
 
-use crate::borrow_check::type_check::Locations;
+crate use rustc_middle::mir::regions::OutlivesConstraint;
 
 crate mod graph;
 
@@ -69,31 +67,6 @@ impl Index<OutlivesConstraintIndex> for OutlivesConstraintSet {
 
     fn index(&self, i: OutlivesConstraintIndex) -> &Self::Output {
         &self.outlives[i]
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct OutlivesConstraint {
-    // NB. The ordering here is not significant for correctness, but
-    // it is for convenience. Before we dump the constraints in the
-    // debugging logs, we sort them, and we'd like the "super region"
-    // to be first, etc. (In particular, span should remain last.)
-    /// The region SUP must outlive SUB...
-    pub sup: RegionVid,
-
-    /// Region that must be outlived.
-    pub sub: RegionVid,
-
-    /// Where did this constraint arise?
-    pub locations: Locations,
-
-    /// What caused this constraint?
-    pub category: ConstraintCategory,
-}
-
-impl fmt::Debug for OutlivesConstraint {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(formatter, "({:?}: {:?}) due to {:?}", self.sup, self.sub, self.locations)
     }
 }
 

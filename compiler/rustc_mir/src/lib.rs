@@ -35,7 +35,7 @@ extern crate tracing;
 #[macro_use]
 extern crate rustc_middle;
 
-mod borrow_check;
+pub mod borrow_check;
 pub mod const_eval;
 pub mod dataflow;
 pub mod interpret;

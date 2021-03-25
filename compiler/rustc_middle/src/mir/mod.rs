@@ -49,6 +49,7 @@ pub mod interpret;
 pub mod mono;
 mod predecessors;
 mod query;
+pub mod regions;
 pub mod tcx;
 pub mod terminator;
 pub use terminator::*;

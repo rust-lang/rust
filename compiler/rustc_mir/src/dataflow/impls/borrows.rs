@@ -1,7 +1,7 @@
 use rustc_middle::mir::{
     self,
     borrows::{BorrowIndex, BorrowSet},
-    Body, BorrowCheckResult, Location, Place,
+    Body, Location, Place,
 };
 use rustc_middle::ty::RegionVid;
 use rustc_middle::ty::TyCtxt;
@@ -157,20 +157,6 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
             body,
             borrow_set,
             borrows_out_of_scope_at_location: prec.borrows_out_of_scope_at_location,
-        }
-    }
-
-    pub fn from_borrowck_output(
-        tcx: TyCtxt<'tcx>,
-        body: &'a Body<'tcx>,
-        borrow_set: &'a BorrowSet<'tcx>,
-        results: &BorrowCheckResult<'tcx>,
-    ) -> Self {
-        Borrows {
-            tcx,
-            body,
-            borrow_set,
-            borrows_out_of_scope_at_location: results.borrows_out_of_scope_at_location.clone(),
         }
     }
 

@@ -13,7 +13,9 @@ use rustc_middle::mir::{
     traversal, Body, ClearCrossCrate, Local, Location, Mutability, Operand, Place, PlaceElem,
     PlaceRef, VarDebugInfoContents,
 };
-use rustc_middle::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
+use rustc_middle::mir::{
+    AggregateKind, BasicBlock, BorrowCheckIntermediates, BorrowCheckResult, BorrowKind,
+};
 use rustc_middle::mir::{Field, ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
 use rustc_middle::mir::{InlineAsmOperand, Terminator, TerminatorKind};
 use rustc_middle::ty::query::Providers;
@@ -44,6 +46,9 @@ use self::MutateMode::{JustWrite, WriteAndRead};
 
 use self::path_utils::*;
 
+pub use self::places_conflict::{borrow_conflicts_with_place, PlaceConflictBias};
+pub use place_ext::PlaceExt;
+
 mod borrow_set;
 mod constraint_generation;
 mod constraints;
@@ -55,7 +60,7 @@ mod location;
 mod member_constraints;
 mod nll;
 mod path_utils;
-mod place_ext;
+pub mod place_ext;
 mod places_conflict;
 mod prefixes;
 mod region_infer;
@@ -66,8 +71,7 @@ mod used_muts;
 
 crate use borrow_set::{BorrowData, BorrowSet, BorrowSetExt};
 crate use nll::{PoloniusOutput, ToRegionVid};
-crate use place_ext::PlaceExt;
-crate use places_conflict::{places_conflict, PlaceConflictBias};
+crate use places_conflict::places_conflict;
 crate use region_infer::RegionInferenceContext;
 
 // FIXME(eddyb) perhaps move this somewhere more centrally.
@@ -175,7 +179,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     let mut body = input_body.clone();
     let mut promoted = input_promoted.clone();
     let free_regions = nll::replace_regions_in_mir(infcx, param_env, &mut body, &mut promoted);
-    let body = &body; // no further changes
+    let body = Rc::new(body); // no further changes
 
     let location_table = &LocationTable::new(&body);
 
@@ -453,9 +457,13 @@ fn do_mir_borrowck<'a, 'tcx>(
         concrete_opaque_types: opaque_type_values,
         closure_requirements: opt_closure_req,
         used_mut_upvars: mbcx.used_mut_upvars,
-        borrow_set: Rc::try_unwrap(borrow_set).unwrap(),
-        borrows_out_of_scope_at_location,
-        borrows_entry_sets,
+        intermediates: BorrowCheckIntermediates {
+            borrow_set: Rc::try_unwrap(borrow_set).unwrap(),
+            borrows_out_of_scope_at_location,
+            borrows_entry_sets,
+            body: Rc::try_unwrap(body).unwrap(),
+            outlives_constraints: regioncx.constraints.outlives().iter().cloned().collect(),
+        },
     };
 
     debug!("do_mir_borrowck: result = {:#?}", result);
@@ -836,13 +844,13 @@ use self::AccessDepth::{Deep, Shallow};
 use self::ReadOrWrite::{Activation, Read, Reservation, Write};
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-enum ArtificialField {
+pub enum ArtificialField {
     ArrayLength,
     ShallowBorrow,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-enum AccessDepth {
+pub enum AccessDepth {
     /// From the RFC: "A *shallow* access means that the immediate
     /// fields reached at P are accessed, but references or pointers
     /// found within are not dereferenced. Right now, the only access

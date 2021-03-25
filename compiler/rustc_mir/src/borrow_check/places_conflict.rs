@@ -13,7 +13,7 @@ use std::cmp::max;
 /// being run in the calling context, the conservative choice is to assume the compared indices
 /// are disjoint (and therefore, do not overlap).
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-crate enum PlaceConflictBias {
+pub enum PlaceConflictBias {
     Overlap,
     NoOverlap,
 }
@@ -43,7 +43,7 @@ crate fn places_conflict<'tcx>(
 /// access depth. The `bias` parameter is used to determine how the unknowable (comparing runtime
 /// array indices, for example) should be interpreted - this depends on what the caller wants in
 /// order to make the conservative choice and preserve soundness.
-pub(super) fn borrow_conflicts_with_place<'tcx>(
+pub fn borrow_conflicts_with_place<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     borrow_place: Place<'tcx>,

@@ -54,7 +54,7 @@ pub struct RegionInferenceContext<'tcx> {
     liveness_constraints: LivenessValues<RegionVid>,
 
     /// The outlives constraints computed by the type-check.
-    constraints: Frozen<OutlivesConstraintSet>,
+    pub(super) constraints: Frozen<OutlivesConstraintSet>,
 
     /// The constraint-set, but in graph form, making it easy to traverse
     /// the constraints adjacent to a particular region. Used to construct
