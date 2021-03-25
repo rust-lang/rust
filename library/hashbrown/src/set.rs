@@ -116,7 +116,7 @@ pub struct HashSet<T, S = DefaultHashBuilder, A: Allocator + Clone = Global> {
     pub(crate) map: HashMap<T, (), S, A>,
 }
 
-impl<T: Clone, S: Clone> Clone for HashSet<T, S> {
+impl<T: Clone, S: Clone, A: Allocator + Clone> Clone for HashSet<T, S, A> {
     fn clone(&self) -> Self {
         HashSet {
             map: self.map.clone(),
