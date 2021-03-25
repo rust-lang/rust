@@ -20,7 +20,6 @@
 #![feature(core_intrinsics)]
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]
-#![feature(debug_non_exhaustive)]
 #![feature(dec2flt)]
 #![feature(div_duration)]
 #![feature(duration_consts_2)]
