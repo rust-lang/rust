@@ -301,7 +301,7 @@ crate fn print_const(cx: &DocContext<'_>, n: &'tcx ty::Const<'_>) -> String {
                 let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def.did);
                 print_const_expr(cx.tcx, cx.tcx.hir().body_owned_by(hir_id))
             } else {
-                inline::print_inlined_const(cx, def.did)
+                inline::print_inlined_const(cx.tcx, def.did)
             };
             if let Some(promoted) = promoted {
                 s.push_str(&format!("::{:?}", promoted))
@@ -324,15 +324,15 @@ crate fn print_const(cx: &DocContext<'_>, n: &'tcx ty::Const<'_>) -> String {
     }
 }
 
-crate fn print_evaluated_const(cx: &DocContext<'_>, def_id: DefId) -> Option<String> {
-    cx.tcx.const_eval_poly(def_id).ok().and_then(|val| {
-        let ty = cx.tcx.type_of(def_id);
+crate fn print_evaluated_const(tcx: TyCtxt<'_>, def_id: DefId) -> Option<String> {
+    tcx.const_eval_poly(def_id).ok().and_then(|val| {
+        let ty = tcx.type_of(def_id);
         match (val, ty.kind()) {
             (_, &ty::Ref(..)) => None,
             (ConstValue::Scalar(_), &ty::Adt(_, _)) => None,
             (ConstValue::Scalar(_), _) => {
-                let const_ = ty::Const::from_value(cx.tcx, val, ty);
-                Some(print_const_with_custom_print_scalar(cx, const_))
+                let const_ = ty::Const::from_value(tcx, val, ty);
+                Some(print_const_with_custom_print_scalar(tcx, const_))
             }
             _ => None,
         }
@@ -349,7 +349,7 @@ fn format_integer_with_underscore_sep(num: &str) -> String {
         .collect()
 }
 
-fn print_const_with_custom_print_scalar(cx: &DocContext<'_>, ct: &'tcx ty::Const<'tcx>) -> String {
+fn print_const_with_custom_print_scalar(tcx: TyCtxt<'_>, ct: &'tcx ty::Const<'tcx>) -> String {
     // Use a slightly different format for integer types which always shows the actual value.
     // For all other types, fallback to the original `pretty_print_const`.
     match (ct.val, ct.ty.kind()) {
@@ -357,8 +357,8 @@ fn print_const_with_custom_print_scalar(cx: &DocContext<'_>, ct: &'tcx ty::Const
             format!("{}{}", format_integer_with_underscore_sep(&int.to_string()), ui.name_str())
         }
         (ty::ConstKind::Value(ConstValue::Scalar(int)), ty::Int(i)) => {
-            let ty = cx.tcx.lift(ct.ty).unwrap();
-            let size = cx.tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size;
+            let ty = tcx.lift(ct.ty).unwrap();
+            let size = tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size;
             let data = int.assert_bits(size);
             let sign_extended_data = size.sign_extend(data) as i128;
 
@@ -372,8 +372,8 @@ fn print_const_with_custom_print_scalar(cx: &DocContext<'_>, ct: &'tcx ty::Const
     }
 }
 
-crate fn is_literal_expr(cx: &DocContext<'_>, hir_id: hir::HirId) -> bool {
-    if let hir::Node::Expr(expr) = cx.tcx.hir().get(hir_id) {
+crate fn is_literal_expr(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> bool {
+    if let hir::Node::Expr(expr) = tcx.hir().get(hir_id) {
         if let hir::ExprKind::Lit(_) = &expr.kind {
             return true;
         }
@@ -411,7 +411,7 @@ crate fn resolve_type(cx: &mut DocContext<'_>, path: Path, id: hir::HirId) -> Ty
             return Generic(kw::SelfUpper);
         }
         Res::Def(DefKind::TyParam, _) if path.segments.len() == 1 => {
-            return Generic(Symbol::intern(&format!("{:#}", path.print(&cx.cache))));
+            return Generic(Symbol::intern(&format!("{:#}", path.print(&cx.cache, cx.tcx))));
         }
         Res::SelfTy(..) | Res::Def(DefKind::TyParam | DefKind::AssocTy, _) => true,
         _ => false,
