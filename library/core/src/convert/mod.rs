@@ -728,6 +728,13 @@ impl From<!> for Infallible {
     }
 }
 
+#[stable(feature = "convert_into_infallible", since = "1.53.0")]
+impl Into<!> for Infallible {
+    fn into(self) -> ! {
+        match self {}
+    }
+}
+
 #[stable(feature = "convert_infallible_hash", since = "1.44.0")]
 impl Hash for Infallible {
     fn hash<H: Hasher>(&self, _: &mut H) {
