@@ -228,12 +228,12 @@ impl Ty {
         &self,
         db: &dyn HirDatabase,
         cur_crate: CrateId,
-    ) -> Option<ArrayVec<[CrateId; 2]>> {
+    ) -> Option<ArrayVec<CrateId, 2>> {
         // Types like slice can have inherent impls in several crates, (core and alloc).
         // The corresponding impls are marked with lang items, so we can use them to find the required crates.
         macro_rules! lang_item_crate {
             ($($name:expr),+ $(,)?) => {{
-                let mut v = ArrayVec::<[LangItemTarget; 2]>::new();
+                let mut v = ArrayVec::<LangItemTarget, 2>::new();
                 $(
                     v.extend(db.lang_item(cur_crate, $name.into()));
                 )+

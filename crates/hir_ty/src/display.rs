@@ -1,8 +1,7 @@
 //! FIXME: write short doc here
 
-use std::fmt;
+use std::{array, fmt};
 
-use arrayvec::ArrayVec;
 use chalk_ir::Mutability;
 use hir_def::{
     db::DefDatabase,
@@ -669,8 +668,7 @@ fn fn_traits(db: &dyn DefDatabase, trait_: TraitId) -> impl Iterator<Item = Trai
         db.lang_item(krate, "fn_mut".into()),
         db.lang_item(krate, "fn_once".into()),
     ];
-    // FIXME: Replace ArrayVec when into_iter is a thing on arrays
-    ArrayVec::from(fn_traits).into_iter().flatten().flat_map(|it| it.as_trait())
+    array::IntoIter::new(fn_traits).into_iter().flatten().flat_map(|it| it.as_trait())
 }
 
 pub fn write_bounds_like_dyn_trait_with_prefix(

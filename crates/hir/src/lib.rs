@@ -2238,7 +2238,7 @@ pub enum ScopeDef {
 }
 
 impl ScopeDef {
-    pub fn all_items(def: PerNs) -> ArrayVec<[Self; 3]> {
+    pub fn all_items(def: PerNs) -> ArrayVec<Self, 3> {
         let mut items = ArrayVec::new();
 
         match (def.take_types(), def.take_values()) {
