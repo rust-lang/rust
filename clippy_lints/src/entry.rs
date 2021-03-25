@@ -1,6 +1,8 @@
-use crate::utils::SpanlessEq;
-use crate::utils::{get_item_name, is_type_diagnostic_item, match_type, paths, snippet, snippet_opt};
-use crate::utils::{snippet_with_applicability, span_lint_and_then};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::source::{snippet, snippet_opt, snippet_with_applicability};
+use clippy_utils::ty::{is_type_diagnostic_item, match_type};
+use clippy_utils::SpanlessEq;
+use clippy_utils::{get_item_name, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};

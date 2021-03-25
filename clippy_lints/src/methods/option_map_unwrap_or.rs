@@ -1,5 +1,8 @@
-use crate::utils::{differing_macro_contexts, snippet_with_applicability, span_lint_and_then};
-use crate::utils::{is_copy, is_type_diagnostic_item};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::differing_macro_contexts;
+use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::ty::is_copy;
+use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_path, NestedVisitorMap, Visitor};

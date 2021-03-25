@@ -1,7 +1,6 @@
-use crate::utils::{
-    is_adjusted, is_type_diagnostic_item, match_path, match_trait_method, match_var, paths, remove_blocks,
-    span_lint_and_sugg,
-};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::{is_adjusted, is_trait_method, match_path, match_var, paths, remove_blocks};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Body, Expr, ExprKind, Pat, PatKind, QPath, StmtKind};
@@ -65,7 +64,7 @@ fn get_map_argument<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<&'a 
         if let ExprKind::MethodCall(ref method, _, ref args, _) = expr.kind;
         if args.len() == 2 && method.ident.name == sym::map;
         let caller_ty = cx.typeck_results().expr_ty(&args[0]);
-        if match_trait_method(cx, expr, &paths::ITERATOR)
+        if is_trait_method(cx, expr, sym::Iterator)
             || is_type_diagnostic_item(cx, caller_ty, sym::result_type)
             || is_type_diagnostic_item(cx, caller_ty, sym::option_type);
         then {

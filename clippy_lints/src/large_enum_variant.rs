@@ -1,6 +1,7 @@
 //! lint when there is a large size difference between variants on an enum
 
-use crate::utils::{snippet_opt, span_lint_and_then};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::source::snippet_opt;
 use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind, VariantData};
 use rustc_lint::{LateContext, LateLintPass};

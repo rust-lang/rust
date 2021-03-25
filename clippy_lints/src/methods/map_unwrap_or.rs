@@ -1,5 +1,8 @@
-use crate::utils::usage::mutated_variables;
-use crate::utils::{is_type_diagnostic_item, meets_msrv, snippet, span_lint, span_lint_and_sugg};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
+use clippy_utils::meets_msrv;
+use clippy_utils::source::snippet;
+use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::usage::mutated_variables;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;

@@ -1,4 +1,5 @@
-use crate::utils::{is_diagnostic_assoc_item, match_def_path, path_to_local_id, paths, span_lint};
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::{is_diagnostic_assoc_item, match_def_path, path_to_local_id, paths};
 use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};

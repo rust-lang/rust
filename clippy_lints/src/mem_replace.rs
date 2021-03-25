@@ -1,9 +1,10 @@
-use crate::utils::{
-    in_macro, match_def_path, match_qpath, meets_msrv, paths, snippet, snippet_with_applicability, span_lint_and_help,
-    span_lint_and_sugg, span_lint_and_then,
-};
+use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::is_diagnostic_assoc_item;
+use clippy_utils::source::{snippet, snippet_with_applicability};
+use clippy_utils::{in_macro, match_def_path, match_qpath, meets_msrv, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
+use rustc_hir::def_id::DefId;
 use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, QPath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -194,13 +195,44 @@ fn check_replace_with_uninit(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'
     }
 }
 
+/// Returns true if the `def_id` associated with the `path` is recognized as a "default-equivalent"
+/// constructor from the std library
+fn is_default_equivalent_ctor(cx: &LateContext<'_>, def_id: DefId, path: &QPath<'_>) -> bool {
+    let std_types_symbols = &[
+        sym::string_type,
+        sym::vec_type,
+        sym::vecdeque_type,
+        sym::LinkedList,
+        sym::hashmap_type,
+        sym::BTreeMap,
+        sym::hashset_type,
+        sym::BTreeSet,
+        sym::BinaryHeap,
+    ];
+
+    if std_types_symbols
+        .iter()
+        .any(|symbol| is_diagnostic_assoc_item(cx, def_id, *symbol))
+    {
+        if let QPath::TypeRelative(_, ref method) = path {
+            if method.ident.name == sym::new {
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
 fn check_replace_with_default(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'_>, expr_span: Span) {
     if let ExprKind::Call(ref repl_func, _) = src.kind {
         if_chain! {
             if !in_external_macro(cx.tcx.sess, expr_span);
             if let ExprKind::Path(ref repl_func_qpath) = repl_func.kind;
             if let Some(repl_def_id) = cx.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id();
-            if match_def_path(cx, repl_def_id, &paths::DEFAULT_TRAIT_METHOD);
+            if is_diagnostic_assoc_item(cx, repl_def_id, sym::Default)
+                || is_default_equivalent_ctor(cx, repl_def_id, repl_func_qpath);
+
             then {
                 span_lint_and_then(
                     cx,

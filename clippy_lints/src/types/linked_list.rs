@@ -1,7 +1,7 @@
+use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::{match_def_path, paths};
 use rustc_hir::{self as hir, def_id::DefId};
 use rustc_lint::LateContext;
-
-use crate::utils::{match_def_path, paths, span_lint_and_help};
 
 use super::LINKEDLIST;
 

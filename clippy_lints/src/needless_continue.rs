@@ -33,13 +33,13 @@
 //! ```
 //!
 //! This lint is **warn** by default.
+use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::source::{indent_of, snippet, snippet_block};
 use rustc_ast::ast;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::{original_sp, DUMMY_SP};
 use rustc_span::Span;
-
-use crate::utils::{indent_of, snippet, snippet_block, span_lint_and_help};
 
 declare_clippy_lint! {
     /// **What it does:** The lint checks for `if`-statements appearing in loops

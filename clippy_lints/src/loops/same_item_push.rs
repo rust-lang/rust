@@ -1,5 +1,7 @@
 use super::SAME_ITEM_PUSH;
-use crate::utils::{implements_trait, is_type_diagnostic_item, snippet_with_macro_callsite, span_lint_and_help};
+use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::source::snippet_with_macro_callsite;
+use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use if_chain::if_chain;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};

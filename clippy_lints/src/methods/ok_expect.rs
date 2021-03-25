@@ -1,4 +1,5 @@
-use crate::utils::{implements_trait, is_type_diagnostic_item, span_lint_and_help};
+use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_lint::LateContext;

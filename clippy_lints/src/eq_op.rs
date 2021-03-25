@@ -1,7 +1,7 @@
-use crate::utils::{
-    ast_utils::is_useless_with_eq_exprs, eq_expr_value, higher, implements_trait, in_macro, is_copy, is_expn_of,
-    multispan_sugg, snippet, span_lint, span_lint_and_then,
-};
+use clippy_utils::diagnostics::{multispan_sugg, span_lint, span_lint_and_then};
+use clippy_utils::source::snippet;
+use clippy_utils::ty::{implements_trait, is_copy};
+use clippy_utils::{ast_utils::is_useless_with_eq_exprs, eq_expr_value, higher, in_macro, is_expn_of};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, StmtKind};

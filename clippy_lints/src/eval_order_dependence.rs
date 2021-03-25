@@ -1,4 +1,5 @@
-use crate::utils::{get_parent_expr, path_to_local, path_to_local_id, span_lint, span_lint_and_note};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_note};
+use clippy_utils::{get_parent_expr, path_to_local, path_to_local_id};
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, Guard, HirId, Local, Node, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -272,7 +273,7 @@ fn check_stmt<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, stmt: &'tcx Stmt<'_>) -
             .init
             .as_ref()
             .map_or(StopEarly::KeepGoing, |expr| check_expr(vis, expr)),
-        _ => StopEarly::KeepGoing,
+        StmtKind::Item(..) => StopEarly::KeepGoing,
     }
 }
 

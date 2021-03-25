@@ -167,3 +167,28 @@ mod question_mark_both {
         needless_question_mark_result();
     }
 }
+
+// #6921 if a macro wraps an expr in Some(  ) and the ? is in the macro use,
+// the suggestion fails to apply; do not lint
+macro_rules! some_in_macro {
+    ($expr:expr) => {
+        || -> _ { Some($expr) }()
+    };
+}
+
+pub fn test1() {
+    let x = Some(3);
+    let _x = some_in_macro!(x?);
+}
+
+// this one is ok because both the ? and the Some are both inside the macro def
+macro_rules! some_and_qmark_in_macro {
+    ($expr:expr) => {
+        || -> Option<_> { Some(Some($expr)?) }()
+    };
+}
+
+pub fn test2() {
+    let x = Some(3);
+    let _x = some_and_qmark_in_macro!(x?);
+}

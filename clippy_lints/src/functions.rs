@@ -1,7 +1,9 @@
-use crate::utils::{
-    attr_by_name, attrs::is_proc_macro, is_must_use_ty, is_trait_impl_item, is_type_diagnostic_item, iter_input_pats,
-    match_def_path, must_use_attr, path_to_local, return_ty, snippet, snippet_opt, span_lint, span_lint_and_help,
-    span_lint_and_then, trait_ref_of_method, type_is_unsafe_function,
+use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_then};
+use clippy_utils::source::{snippet, snippet_opt};
+use clippy_utils::ty::{is_must_use_ty, is_type_diagnostic_item, type_is_unsafe_function};
+use clippy_utils::{
+    attr_by_name, attrs::is_proc_macro, is_trait_impl_item, iter_input_pats, match_def_path, must_use_attr,
+    path_to_local, return_ty, trait_ref_of_method,
 };
 use if_chain::if_chain;
 use rustc_ast::ast::Attribute;

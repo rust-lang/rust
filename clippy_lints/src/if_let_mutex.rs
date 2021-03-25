@@ -1,4 +1,6 @@
-use crate::utils::{is_type_diagnostic_item, span_lint_and_help, SpanlessEq};
+use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::SpanlessEq;
 use if_chain::if_chain;
 use rustc_hir::intravisit::{self as visit, NestedVisitorMap, Visitor};
 use rustc_hir::{Expr, ExprKind, MatchSource};

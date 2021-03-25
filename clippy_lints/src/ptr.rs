@@ -1,10 +1,10 @@
 //! Checks for usage of  `&Vec[_]` and `&String`.
 
-use crate::utils::ptr::get_spans;
-use crate::utils::{
-    is_allowed, is_type_diagnostic_item, match_qpath, match_type, paths, snippet_opt, span_lint, span_lint_and_sugg,
-    span_lint_and_then, walk_ptrs_hir_ty,
-};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::ptr::get_spans;
+use clippy_utils::source::snippet_opt;
+use clippy_utils::ty::{is_type_diagnostic_item, match_type, walk_ptrs_hir_ty};
+use clippy_utils::{is_allowed, match_qpath, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{

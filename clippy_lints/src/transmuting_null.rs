@@ -1,5 +1,6 @@
 use crate::consts::{constant_context, Constant};
-use crate::utils::{match_qpath, paths, span_lint};
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::{match_qpath, paths};
 use if_chain::if_chain;
 use rustc_ast::LitKind;
 use rustc_hir::{Expr, ExprKind};

@@ -114,5 +114,23 @@ error: use of `or` followed by a function call
 LL |         .or(Some(Bar(b, Duration::from_secs(2))));
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `or_else(|| Some(Bar(b, Duration::from_secs(2))))`
 
-error: aborting due to 19 previous errors
+error: use of `unwrap_or` followed by a function call
+  --> $DIR/or_fun_call.rs:141:14
+   |
+LL |         None.unwrap_or(s.as_mut_vec());
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| s.as_mut_vec())`
+
+error: use of `unwrap_or` followed by a function call
+  --> $DIR/or_fun_call.rs:146:14
+   |
+LL |         None.unwrap_or(unsafe { s.as_mut_vec() });
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| unsafe { s.as_mut_vec() })`
+
+error: use of `unwrap_or` followed by a function call
+  --> $DIR/or_fun_call.rs:148:14
+   |
+LL |         None.unwrap_or( unsafe { s.as_mut_vec() }    );
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| unsafe { s.as_mut_vec() })`
+
+error: aborting due to 22 previous errors
 
