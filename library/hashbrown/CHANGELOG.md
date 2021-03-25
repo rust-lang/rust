@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [v0.11.2] - 2021-03-25
+
+## Fixed
+
+- Added missing allocator type parameter to `HashMap`'s and `HashSet`'s `Clone` impls. (#252)
+
 ## [v0.11.1] - 2021-03-20
 
 ## Fixed
@@ -301,7 +307,8 @@ This release was _yanked_ due to a breaking change for users of `no-default-feat
 
 - Initial release
 
-[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.11.1...HEAD
+[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.11.2...HEAD
+[v0.11.2]: https://github.com/rust-lang/hashbrown/compare/v0.11.1...v0.11.2
 [v0.11.1]: https://github.com/rust-lang/hashbrown/compare/v0.11.0...v0.11.1
 [v0.11.0]: https://github.com/rust-lang/hashbrown/compare/v0.10.0...v0.11.0
 [v0.10.0]: https://github.com/rust-lang/hashbrown/compare/v0.9.1...v0.10.0
