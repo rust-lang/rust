@@ -60,6 +60,7 @@
 
 using namespace llvm;
 
+extern "C" {
 llvm::cl::opt<bool>
     EnzymePrint("enzyme-print", cl::init(false), cl::Hidden,
                 cl::desc("Print before and after fns for autodiff"));
@@ -79,6 +80,7 @@ cl::opt<bool> cache_reads_never("enzyme-cache-never", cl::init(false),
 cl::opt<bool> nonmarkedglobals_inactiveloads(
     "enzyme_nonmarkedglobals_inactiveloads", cl::init(true), cl::Hidden,
     cl::desc("Consider loads of nonmarked globals to be inactive"));
+}
 
 bool is_load_uncacheable(
     LoadInst &li, AAResults &AA, Function *oldFunc, TargetLibraryInfo &TLI,
@@ -385,14 +387,14 @@ struct CacheAnalysis {
           return false;
         }
 
-    #if LLVM_VERSION_MAJOR >= 11
+#if LLVM_VERSION_MAJOR >= 11
         if (auto iasm = dyn_cast<InlineAsm>(obj_op->getCalledOperand()))
-    #else
+#else
         if (auto iasm = dyn_cast<InlineAsm>(obj_op->getCalledValue()))
-    #endif
+#endif
         {
           if (StringRef(iasm->getAsmString()).contains("exit"))
-            return false; 
+            return false;
         }
       }
 

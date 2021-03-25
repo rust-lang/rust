@@ -357,8 +357,10 @@ getAccessNameTBAA(Instruction *Inst, const std::set<std::string> &legalnames) {
 
 //! The following is not taken from LLVM
 
+extern "C" {
 /// Flag to print Type Analysis results as they are derived
-extern llvm::cl::opt<bool> PrintType;
+extern llvm::cl::opt<bool> EnzymePrintType;
+}
 
 /// Derive the ConcreteType corresponding to the string TypeName
 /// The Instruction I denotes the context in which this was found
@@ -367,22 +369,22 @@ static inline ConcreteType getTypeFromTBAAString(std::string TypeName,
   if (TypeName == "long long" || TypeName == "long" || TypeName == "int" ||
       TypeName == "bool" || TypeName == "jtbaa_arraysize" ||
       TypeName == "jtbaa_arraylen") {
-    if (PrintType) {
+    if (EnzymePrintType) {
       llvm::errs() << "known tbaa " << I << " " << TypeName << "\n";
     }
     return ConcreteType(BaseType::Integer);
   } else if (TypeName == "any pointer" || TypeName == "vtable pointer" ||
              TypeName == "jtbaa_arrayptr" || TypeName == "jtbaa_tag") {
-    if (PrintType) {
+    if (EnzymePrintType) {
       llvm::errs() << "known tbaa " << I << " " << TypeName << "\n";
     }
     return ConcreteType(BaseType::Pointer);
   } else if (TypeName == "float") {
-    if (PrintType)
+    if (EnzymePrintType)
       llvm::errs() << "known tbaa " << I << " " << TypeName << "\n";
     return Type::getFloatTy(I.getContext());
   } else if (TypeName == "double") {
-    if (PrintType)
+    if (EnzymePrintType)
       llvm::errs() << "known tbaa " << I << " " << TypeName << "\n";
     return Type::getDoubleTy(I.getContext());
   }

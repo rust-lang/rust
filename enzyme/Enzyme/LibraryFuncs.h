@@ -26,8 +26,8 @@
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/Instructions.h"
 #include "llvm/IR/InlineAsm.h"
+#include "llvm/IR/Instructions.h"
 
 extern std::map<std::string, std::function<llvm::Value *(
                                  llvm::IRBuilder<> &, llvm::CallInst *,
@@ -367,7 +367,7 @@ static inline bool writesToMemoryReadBy(llvm::AAResults &AA,
 #endif
     {
       if (StringRef(iasm->getAsmString()).contains("exit"))
-        return false; 
+        return false;
     }
   }
   if (auto call = dyn_cast<CallInst>(maybeReader)) {
@@ -431,7 +431,7 @@ static inline bool writesToMemoryReadBy(llvm::AAResults &AA,
 #endif
     {
       if (StringRef(iasm->getAsmString()).contains("exit"))
-        return false; 
+        return false;
     }
   }
   if (auto call = dyn_cast<InvokeInst>(maybeReader)) {

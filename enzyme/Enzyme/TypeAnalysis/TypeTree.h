@@ -42,7 +42,9 @@
 #include "ConcreteType.h"
 
 /// Maximum offset for type trees to keep
+extern "C" {
 extern llvm::cl::opt<int> MaxTypeOffset;
+}
 
 /// Helper function to print a vector of ints to a string
 static inline std::string to_string(const std::vector<int> x) {

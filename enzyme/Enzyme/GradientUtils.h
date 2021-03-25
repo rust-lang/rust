@@ -79,7 +79,9 @@ extern std::map<std::string, std::function<llvm::Value *(
                                  IRBuilder<> &, CallInst *, ArrayRef<Value *>)>>
     shadowHandlers;
 
+extern "C" {
 extern llvm::cl::opt<bool> EnzymeInactiveDynamic;
+}
 
 static inline std::string to_string(DerivativeMode mode) {
   switch (mode) {
@@ -849,7 +851,7 @@ public:
         internal_isConstantValue[&I] = const_value;
         internal_isConstantInstruction[&I] = const_inst;
 
-        if (printconst)
+        if (EnzymePrintActivity)
           llvm::errs() << I << " cv=" << const_value << " ci=" << const_inst
                        << "\n";
       }
@@ -889,12 +891,12 @@ public:
         if (res == "active")
           return false;
       }
-      if (nonmarkedglobals_inactive)
+      if (EnzymeNonmarkedGlobalsInactive)
         return true;
       goto err;
     }
     if (isa<GlobalValue>(val)) {
-      if (nonmarkedglobals_inactive)
+      if (EnzymeNonmarkedGlobalsInactive)
         return true;
       goto err;
     }

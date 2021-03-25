@@ -30,6 +30,7 @@
 using namespace llvm;
 
 /// Pack 8 bools together in a single byte
+extern "C" {
 llvm::cl::opt<bool>
     EfficientBoolCache("enzyme-smallbool", cl::init(false), cl::Hidden,
                        cl::desc("Place 8 bools together in a single byte"));
@@ -42,6 +43,7 @@ llvm::cl::opt<bool> EfficientMaxCache(
     "enzyme-max-cache", cl::init(false), cl::Hidden,
     cl::desc(
         "Avoid reallocs when possible by potentially overallocating cache"));
+}
 
 CacheUtility::~CacheUtility() {}
 

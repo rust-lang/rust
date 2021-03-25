@@ -48,7 +48,9 @@
 #include "TypeAnalysis/TypeAnalysis.h"
 #include "Utils.h"
 
+extern "C" {
 extern llvm::cl::opt<bool> EnzymePrint;
+}
 
 enum class AugmentedStruct { Tape, Return, DifferentialReturn };
 
@@ -190,6 +192,7 @@ public:
   void clear();
 };
 
+extern "C" {
 extern llvm::cl::opt<bool> looseTypeAnalysis;
 
 extern llvm::cl::opt<bool> cache_reads_always;
@@ -197,6 +200,7 @@ extern llvm::cl::opt<bool> cache_reads_always;
 extern llvm::cl::opt<bool> cache_reads_never;
 
 extern llvm::cl::opt<bool> nonmarkedglobals_inactiveloads;
+};
 
 class GradientUtils;
 bool shouldAugmentCall(llvm::CallInst *op, const GradientUtils *gutils,

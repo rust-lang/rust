@@ -40,6 +40,11 @@
 #include "FunctionUtils.h"
 #include "MustExitScalarEvolution.h"
 
+extern "C" {
+/// Pack 8 bools together in a single byte
+extern llvm::cl::opt<bool> EfficientBoolCache;
+}
+
 /// Container for all loop information to synthesize gradients
 struct LoopContext {
   /// Canonical induction variable of the loop
@@ -75,9 +80,6 @@ struct LoopContext {
 static inline bool operator==(const LoopContext &lhs, const LoopContext &rhs) {
   return lhs.parent == rhs.parent;
 }
-
-/// Pack 8 bools together in a single byte
-extern llvm::cl::opt<bool> EfficientBoolCache;
 
 /// Modes of potential unwraps
 enum class UnwrapMode {

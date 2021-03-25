@@ -86,6 +86,9 @@ void EnzymeTypeTreeShiftIndiciesEq(CTypeTreeRef dst, const char *datalayout,
 const char *EnzymeTypeTreeToString(CTypeTreeRef src);
 void EnzymeTypeTreeToStringFree(const char *cstr);
 
+void EnzymeSetCLBool(void *, uint8_t);
+void EnzymeSetCLInteger(void *, int64_t);
+
 struct CFnTypeInfo {
   /// Types of arguments, assumed of size len(Arguments)
   CTypeTreeRef *Arguments;

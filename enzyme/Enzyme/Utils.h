@@ -54,13 +54,15 @@
 
 #include "llvm/Analysis/OptimizationRemarkEmitter.h"
 
+extern "C" {
+/// Print additional debug info relevant to performance
+extern llvm::cl::opt<bool> EnzymePrintPerf;
+}
+
 extern std::map<std::string, std::function<llvm::Value *(
                                  llvm::IRBuilder<> &, llvm::CallInst *,
                                  llvm::ArrayRef<llvm::Value *>)>>
     shadowHandlers;
-
-/// Print additional debug info relevant to performance
-extern llvm::cl::opt<bool> EnzymePrintPerf;
 
 template <typename... Args>
 void EmitFailure(llvm::StringRef RemarkName,

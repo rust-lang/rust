@@ -103,6 +103,7 @@
 #define DEBUG_TYPE "enzyme"
 using namespace llvm;
 
+extern "C" {
 static cl::opt<bool>
     EnzymePreopt("enzyme-preopt", cl::init(true), cl::Hidden,
                  cl::desc("Run enzyme preprocessing optimizations"));
@@ -128,6 +129,7 @@ static cl::opt<bool> EnzymePHIRestructure(
     "enzyme-phi-restructure", cl::init(false), cl::Hidden,
     cl::desc("Whether to restructure phi's to have better unwrap behavior"));
 #endif
+}
 
 /// Is the use of value val as an argument of call CI potentially captured
 bool couldFunctionArgumentCapture(llvm::CallInst *CI, llvm::Value *val) {
@@ -1467,12 +1469,12 @@ Function *PreProcessCache::CloneFunctionWithReturns(
     if (constant_args[ii] == DIFFE_TYPE::CONSTANT) {
       if (!i->hasByValAttr())
         constants.insert(i);
-      if (printconst)
+      if (EnzymePrintActivity)
         llvm::errs() << "in new function " << NewF->getName()
                      << " constant arg " << *j << "\n";
     } else {
       nonconstant.insert(i);
-      if (printconst)
+      if (EnzymePrintActivity)
         llvm::errs() << "in new function " << NewF->getName()
                      << " nonconstant arg " << *j << "\n";
     }

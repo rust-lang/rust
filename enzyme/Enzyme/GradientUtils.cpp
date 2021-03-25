@@ -52,6 +52,7 @@ std::map<std::string,
          std::function<llvm::CallInst *(IRBuilder<> &, Value *, Function *)>>
     shadowErasers;
 
+extern "C" {
 llvm::cl::opt<bool>
     EnzymeNewCache("enzyme-new-cache", cl::init(true), cl::Hidden,
                    cl::desc("Use new cache decision algorithm"));
@@ -63,6 +64,7 @@ llvm::cl::opt<bool> EnzymeLoopInvariantCache(
 llvm::cl::opt<bool> EnzymeInactiveDynamic(
     "enzyme-inactive-dynamic", cl::init(true), cl::Hidden,
     cl::desc("Force wholy inactive dynamic loops to have 0 iter reverse pass"));
+}
 
 bool isPotentialLastLoopValue(Value *val, const BasicBlock *loc,
                               const LoopInfo &LI) {

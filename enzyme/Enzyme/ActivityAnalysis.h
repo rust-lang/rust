@@ -43,8 +43,10 @@
 
 #include "TypeAnalysis/TypeAnalysis.h"
 
-extern llvm::cl::opt<bool> printconst;
-extern llvm::cl::opt<bool> nonmarkedglobals_inactive;
+extern "C" {
+extern llvm::cl::opt<bool> EnzymePrintActivity;
+extern llvm::cl::opt<bool> EnzymeNonmarkedGlobalsInactive;
+}
 
 /// Helper class to analyze the differential activity
 class ActivityAnalyzer {

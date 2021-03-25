@@ -50,10 +50,20 @@
 
 #include "TBAA.h"
 
+extern "C" {
 /// Maximum offset for type trees to keep
 llvm::cl::opt<int> MaxIntOffset("enzyme-max-int-offset", cl::init(100),
                                 cl::Hidden,
                                 cl::desc("Maximum type tree offset"));
+
+llvm::cl::opt<bool> EnzymePrintType("enzyme-print-type", cl::init(false),
+                                    cl::Hidden,
+                                    cl::desc("Print type analysis algorithm"));
+
+llvm::cl::opt<bool> RustTypeRules("enzyme-rust-type", cl::init(false),
+                                  cl::Hidden,
+                                  cl::desc("Enable rust-specific type rules"));
+}
 
 const std::map<std::string, llvm::Intrinsic::ID> LIBM_FUNCTIONS = {
     {"cos", Intrinsic::cos},
@@ -117,13 +127,6 @@ const std::map<std::string, llvm::Intrinsic::ID> LIBM_FUNCTIONS = {
     {"llrint", Intrinsic::not_intrinsic}
 #endif
 };
-
-llvm::cl::opt<bool> PrintType("enzyme-print-type", cl::init(false), cl::Hidden,
-                              cl::desc("Print type analysis algorithm"));
-
-llvm::cl::opt<bool> RustTypeRules("enzyme-rust-type", cl::init(false),
-                                  cl::Hidden,
-                                  cl::desc("Enable rust-specific type rules"));
 
 TypeAnalyzer::TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA,
                            uint8_t direction)
@@ -467,7 +470,7 @@ void TypeAnalyzer::updateAnalysis(Value *Val, TypeTree Data, Value *Origin) {
       analysis[Val].checkedOrIn(Data, /*PointerIntSame*/ false, LegalOr);
 
   // Print the update being made, if requested
-  if (PrintType) {
+  if (EnzymePrintType) {
     llvm::errs() << "updating analysis of val: " << *Val
                  << " current: " << prev.str() << " new " << Data.str();
     if (Origin)
@@ -3503,7 +3506,7 @@ void TypeAnalyzer::visitIPOCall(CallInst &call, Function &fn) {
 
   FnTypeInfo typeInfo = getCallInfo(call, fn);
 
-  if (PrintType)
+  if (EnzymePrintType)
     llvm::errs() << " starting IPO of " << call << "\n";
 
   if (direction & UP) {
@@ -3549,7 +3552,7 @@ TypeResults TypeAnalysis::analyzeFunction(const FnTypeInfo &fn) {
   auto res = analyzedFunctions.emplace(fn, TypeAnalyzer(fn, *this));
   auto &analysis = res.first->second;
 
-  if (PrintType) {
+  if (EnzymePrintType) {
     llvm::errs() << "analyzing function " << fn.Function->getName() << "\n";
     for (auto &pair : fn.Arguments) {
       llvm::errs() << " + knowndata: " << *pair.first << " : "

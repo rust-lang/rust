@@ -54,20 +54,24 @@
 
 using namespace llvm;
 
-cl::opt<bool> printconst("enzyme-print-activity", cl::init(true), cl::Hidden,
-                         cl::desc("Print activity analysis algorithm"));
+extern "C" {
+cl::opt<bool>
+    EnzymePrintActivity("enzyme-print-activity", cl::init(false), cl::Hidden,
+                        cl::desc("Print activity analysis algorithm"));
 
-cl::opt<bool> nonmarkedglobals_inactive(
+cl::opt<bool> EnzymeNonmarkedGlobalsInactive(
     "enzyme-globals-default-inactive", cl::init(false), cl::Hidden,
     cl::desc("Consider all nonmarked globals to be inactive"));
 
-cl::opt<bool> emptyfnconst("enzyme-emptyfn-inactive", cl::init(false),
-                           cl::Hidden,
-                           cl::desc("Empty functions are considered inactive"));
+cl::opt<bool>
+    EnzymeEmptyFnInactive("enzyme-emptyfn-inactive", cl::init(false),
+                          cl::Hidden,
+                          cl::desc("Empty functions are considered inactive"));
 
 cl::opt<bool>
     EnzymeGlobalActivity("enzyme-global-activity", cl::init(false), cl::Hidden,
                          cl::desc("Enable correct global activity analysis"));
+}
 
 #include "llvm/IR/InstIterator.h"
 #include <map>
@@ -299,7 +303,7 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
     }
 
     if (AllIntegral && SeenInteger) {
-      if (printconst)
+      if (EnzymePrintActivity)
         llvm::errs() << " constant instruction from TA " << *I << "\n";
       ConstantInstructions.insert(I);
       return true;
@@ -309,13 +313,13 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
   if (isa<MemSetInst>(I)) {
     // memset's are definitionally inactive since
     // they copy a byte which cannot be active
-    if (printconst)
+    if (EnzymePrintActivity)
       llvm::errs() << " constant instruction as memset " << *I << "\n";
     ConstantInstructions.insert(I);
     return true;
   }
 
-  if (printconst)
+  if (EnzymePrintActivity)
     llvm::errs() << "checking if is constant[" << (int)directions << "] " << *I
                  << "\n";
 
@@ -348,7 +352,7 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
     // since the instruction doesn't prop gradients. Thus, so long as we don't
     // return an object containing a float, this instruction is inactive
     if (!TR.intType(1, I, /*errifNotFound*/ false).isPossibleFloat()) {
-      if (printconst)
+      if (EnzymePrintActivity)
         llvm::errs()
             << " constant instruction from known non-float non-writing "
                "instruction "
@@ -359,7 +363,7 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
 
     // If the value returned is constant otherwise, the instruction is inactive
     if (isConstantValue(TR, I)) {
-      if (printconst)
+      if (EnzymePrintActivity)
         llvm::errs() << " constant instruction from known constant non-writing "
                         "instruction "
                      << *I << "\n";
@@ -379,7 +383,7 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
       // reducing runtime.
       if (directions == DOWN && !isa<PHINode>(I)) {
         if (isValueInactiveFromUsers(TR, I)) {
-          if (printconst)
+          if (EnzymePrintActivity)
             llvm::errs() << " constant instruction[" << directions
                          << "] from users instruction " << *I << "\n";
           ConstantInstructions.insert(I);
@@ -390,7 +394,7 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
             new ActivityAnalyzer(*this, DOWN));
         DownHypothesis->ConstantInstructions.insert(I);
         if (DownHypothesis->isValueInactiveFromUsers(TR, I)) {
-          if (printconst)
+          if (EnzymePrintActivity)
             llvm::errs() << " constant instruction[" << directions
                          << "] from users instruction " << *I << "\n";
           ConstantInstructions.insert(I);
@@ -415,7 +419,7 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
     UpHypothesis->ConstantInstructions.insert(I);
     assert(directions & UP);
     if (UpHypothesis->isInstructionInactiveFromOrigin(TR, I)) {
-      if (printconst)
+      if (EnzymePrintActivity)
         llvm::errs() << " constant instruction from origin "
                         "instruction "
                      << *I << "\n";
@@ -429,7 +433,7 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
 
   // Otherwise we must fall back and assume this instruction to be active.
   ActiveInstructions.insert(I);
-  if (printconst)
+  if (EnzymePrintActivity)
     llvm::errs() << "couldnt decide fallback as nonconstant instruction("
                  << (int)directions << "):" << *I << "\n";
   return false;
@@ -529,7 +533,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
   // This value is certainly an integer (and only and integer, not a pointer or
   // float). Therefore its value is constant
   if (TR.intType(1, Val, /*errIfNotFound*/ false).isIntegral()) {
-    if (printconst)
+    if (EnzymePrintActivity)
       llvm::errs() << " Value const as integral " << (int)directions << " "
                    << *Val << " "
                    << TR.intType(1, Val, /*errIfNotFound*/ false).str() << "\n";
@@ -544,7 +548,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
   if (val->getType()->isPointerTy() &&
       cast<PointerType>(val->getType())->isIntOrIntVectorTy() &&
       TR.firstPointer(1, val, /*errifnotfound*/ false).isIntegral()) {
-    if (printconst)
+    if (EnzymePrintActivity)
       llvm::errs() << " Value const as integral pointer" << (int)directions
                    << " " << *val << "\n";
     ConstantValues.insert(val);
@@ -555,7 +559,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
   if (auto GI = dyn_cast<GlobalVariable>(Val)) {
     // If operating under the assumption globals are inactive unless
     // explicitly marked as active, this is inactive
-    if (!hasMetadata(GI, "enzyme_shadow") && nonmarkedglobals_inactive) {
+    if (!hasMetadata(GI, "enzyme_shadow") && EnzymeNonmarkedGlobalsInactive) {
       ConstantValues.insert(Val);
       return true;
     }
@@ -564,7 +568,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
     // is inactive, the global is inactive
     if (GI->isConstant() && isConstantValue(TR, GI->getInitializer())) {
       ConstantValues.insert(Val);
-      if (printconst)
+      if (EnzymePrintActivity)
         llvm::errs() << " VALUE const global " << *Val << "\n";
       return true;
     }
@@ -576,7 +580,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
     auto dt = res[{-1}];
     dt |= res[{0}];
     if (dt.isIntegral()) {
-      if (printconst)
+      if (EnzymePrintActivity)
         llvm::errs() << " VALUE const as global int pointer " << *Val
                      << " type - " << res.str() << "\n";
       return true;
@@ -587,7 +591,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
     bool usedJustInThisModule =
         GI->hasInternalLinkage() || GI->hasPrivateLinkage();
 
-    if (printconst)
+    if (EnzymePrintActivity)
       llvm::errs() << "pre attempting just used in module for: " << *GI
                    << " dir" << (char)directions
                    << " justusedin:" << usedJustInThisModule << "\n";
@@ -597,7 +601,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
       // infinite loop)
       if (!GI->hasInitializer() || isConstantValue(TR, GI->getInitializer())) {
 
-        if (printconst)
+        if (EnzymePrintActivity)
           llvm::errs() << "attempting just used in module for: " << *GI << "\n";
         // Not looking at users to prove inactive (definition of down)
         // If all users are inactive, this is therefore inactive.
@@ -629,7 +633,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
     // Otherwise we have to assume this global is active since it can
     // be arbitrarily used in an active way
     // TODO we can be more aggressive here in the future
-    if (printconst)
+    if (EnzymePrintActivity)
       llvm::errs() << " VALUE nonconst unknown global " << *Val << " type - "
                    << res.str() << "\n";
     return false;
@@ -642,7 +646,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
     if (ce->isCast()) {
       if (auto PT = dyn_cast<PointerType>(ce->getType())) {
         if (PT->getElementType()->isFunctionTy()) {
-          if (printconst)
+          if (EnzymePrintActivity)
             llvm::errs()
                 << " VALUE nonconst as cast to pointer of functiontype " << *Val
                 << "\n";
@@ -651,7 +655,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
       }
 
       if (isConstantValue(TR, ce->getOperand(0))) {
-        if (printconst)
+        if (EnzymePrintActivity)
           llvm::errs() << " VALUE const cast from from operand " << *Val
                        << "\n";
         ConstantValues.insert(Val);
@@ -660,13 +664,13 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
     }
     if (ce->isGEPWithNoNotionalOverIndexing()) {
       if (isConstantValue(TR, ce->getOperand(0))) {
-        if (printconst)
+        if (EnzymePrintActivity)
           llvm::errs() << " VALUE const cast from gep operand " << *Val << "\n";
         ConstantValues.insert(Val);
         return true;
       }
     }
-    if (printconst)
+    if (EnzymePrintActivity)
       llvm::errs() << " VALUE nonconst unknown expr " << *Val << "\n";
     return false;
   }
@@ -782,7 +786,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
           // abide by those rules
           if (!isCertainPrintMallocOrFree(called) && called->empty() &&
               !hasMetadata(called, "enzyme_gradient") &&
-              !isa<IntrinsicInst>(op) && emptyfnconst) {
+              !isa<IntrinsicInst>(op) && EnzymeEmptyFnInactive) {
             ConstantValues.insert(Val);
             insertConstantsFrom(*UpHypothesis);
             return true;
@@ -831,14 +835,14 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
     // can be loaded/stored cannot be assesed and therefore we default to assume
     // it to be active
     if (directions != 3) {
-      if (printconst)
+      if (EnzymePrintActivity)
         llvm::errs() << " <Potential Pointer assumed active at "
                      << (int)directions << ">" << *Val << "\n";
       ActiveValues.insert(Val);
       return false;
     }
 
-    if (printconst)
+    if (EnzymePrintActivity)
       llvm::errs() << " < MEMSEARCH" << (int)directions << ">" << *Val << "\n";
     // A pointer value is active if two things hold:
     //   an potentially active value is stored into the memory
@@ -877,14 +881,15 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
         if (auto CI = dyn_cast<CallInst>(&I)) {
 
 #if LLVM_VERSION_MAJOR >= 11
-    if (auto iasm = dyn_cast<InlineAsm>(CI->getCalledOperand()))
+          if (auto iasm = dyn_cast<InlineAsm>(CI->getCalledOperand()))
 #else
-    if (auto iasm = dyn_cast<InlineAsm>(CI->getCalledValue()))
+          if (auto iasm = dyn_cast<InlineAsm>(CI->getCalledValue()))
 #endif
-    {
-      if (StringRef(iasm->getAsmString()).contains("exit") || StringRef(iasm->getAsmString()).contains("cpuid"))
-        continue; 
-    }
+          {
+            if (StringRef(iasm->getAsmString()).contains("exit") ||
+                StringRef(iasm->getAsmString()).contains("cpuid"))
+              continue;
+          }
 
           Function *F = CI->getCalledFunction();
 #if LLVM_VERSION_MAJOR >= 11
@@ -1008,7 +1013,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
         // If we haven't already shown a potentially active load
         // check if this loads the given value and is active
         if (!potentiallyActiveLoad && isRefSet(AARes)) {
-          if (printconst)
+          if (EnzymePrintActivity)
             llvm::errs() << "potential active load: " << I << "\n";
           if (auto LI = dyn_cast<LoadInst>(&I)) {
             // If the ref'ing value is a load check if the loaded value is
@@ -1026,7 +1031,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
           }
         }
         if (!potentialStore && isModSet(AARes)) {
-          if (printconst)
+          if (EnzymePrintActivity)
             llvm::errs() << "potential active store: " << I << "\n";
           if (auto SI = dyn_cast<StoreInst>(&I)) {
             potentialStore =
@@ -1044,7 +1049,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
       }
     }
 
-    if (printconst)
+    if (EnzymePrintActivity)
       llvm::errs() << " </MEMSEARCH" << (int)directions << ">" << *Val
                    << " potentiallyActiveLoad=" << potentiallyActiveLoad
                    << " potentialStore=" << potentialStore << "\n";
@@ -1100,13 +1105,13 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
                   new ActivityAnalyzer(*DownHypothesis, DOWN));
           DownHypothesis2->ConstantValues.insert(TmpOrig);
           if (DownHypothesis2->isValueActivelyStoredOrReturned(TR, TmpOrig)) {
-            if (printconst)
+            if (EnzymePrintActivity)
               llvm::errs() << " active from ivasor: " << *TmpOrig << "\n";
             ActiveDown = true;
           }
         } else {
           // unknown origin that could've been stored/returned/etc
-          if (printconst)
+          if (EnzymePrintActivity)
             llvm::errs() << " active from unknown origin: " << *TmpOrig << "\n";
           ActiveDown = true;
         }
@@ -1144,7 +1149,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
       // If we go to an active return and only load it, however, that doesnt
       // transfer derivatives and we can say this memory is inactive
 
-      if (printconst)
+      if (EnzymePrintActivity)
         llvm::errs() << " @@MEMSEARCH" << (int)directions << ">" << *Val
                      << " potentiallyActiveLoad=" << potentiallyActiveLoad
                      << " potentialStore=" << potentialStore
@@ -1223,7 +1228,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
     }
   }
 
-  if (printconst)
+  if (EnzymePrintActivity)
     llvm::errs() << " Value nonconstant (couldn't disprove)[" << (int)directions
                  << "]" << *Val << "\n";
   ActiveValues.insert(Val);
@@ -1247,7 +1252,7 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
   }
 
   Instruction *inst = cast<Instruction>(val);
-  if (printconst)
+  if (EnzymePrintActivity)
     llvm::errs() << " < UPSEARCH" << (int)directions << ">" << *inst << "\n";
 
   // cpuid is explicitly an inactive instruction
@@ -1258,7 +1263,7 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
     if (auto iasm = dyn_cast<InlineAsm>(call->getCalledValue())) {
 #endif
       if (StringRef(iasm->getAsmString()).contains("cpuid")) {
-        if (printconst)
+        if (EnzymePrintActivity)
           llvm::errs() << " constant instruction from known cpuid instruction "
                        << *inst << "\n";
         return true;
@@ -1269,7 +1274,7 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
   if (isa<MemSetInst>(inst)) {
     // memset's are definitionally inactive since
     // they copy a byte which cannot be active
-    if (printconst)
+    if (EnzymePrintActivity)
       llvm::errs() << " constant instruction as memset " << *inst << "\n";
     return true;
   }
@@ -1279,7 +1284,7 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
     // values and thus the store is inactive
     if (isConstantValue(TR, SI->getValueOperand()) ||
         isConstantValue(TR, SI->getPointerOperand())) {
-      if (printconst)
+      if (EnzymePrintActivity)
         llvm::errs() << " constant instruction as memset " << *inst << "\n";
       return true;
     }
@@ -1290,7 +1295,7 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
     // values and thus the store is inactive
     if (isConstantValue(TR, MTI->getArgOperand(0)) ||
         isConstantValue(TR, MTI->getArgOperand(1))) {
-      if (printconst)
+      if (EnzymePrintActivity)
         llvm::errs() << " constant instruction as memset " << *inst << "\n";
       return true;
     }
@@ -1326,7 +1331,7 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
       }
 
       if (KnownInactiveFunctions.count(called->getName().str())) {
-        if (printconst)
+        if (EnzymePrintActivity)
           llvm::errs() << "constant(" << (int)directions
                        << ") up-knowninactivecall " << *inst << "\n";
         return true;
@@ -1339,8 +1344,8 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
       // by those rules
       if (!isCertainPrintMallocOrFree(called) && called->empty() &&
           !hasMetadata(called, "enzyme_gradient") && !isa<IntrinsicInst>(op) &&
-          emptyfnconst) {
-        if (printconst)
+          EnzymeEmptyFnInactive) {
+        if (EnzymePrintActivity)
           llvm::errs() << "constant(" << (int)directions << ") up-emptyconst "
                        << *inst << "\n";
         return true;
@@ -1378,7 +1383,7 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
 #if LLVM_VERSION_MAJOR >= 8
     case Intrinsic::is_constant:
 #endif
-      if (printconst)
+      if (EnzymePrintActivity)
         llvm::errs() << "constant(" << (int)directions << ") up-intrinsic "
                      << *inst << "\n";
       return true;
@@ -1390,7 +1395,7 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
   if (auto gep = dyn_cast<GetElementPtrInst>(inst)) {
     // A gep's only args that could make it active is the pointer operand
     if (isConstantValue(TR, gep->getPointerOperand())) {
-      if (printconst)
+      if (EnzymePrintActivity)
         llvm::errs() << "constant(" << (int)directions << ") up-gep " << *inst
                      << "\n";
       return true;
@@ -1402,7 +1407,7 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
     propagateArgumentInformation(TLI, *ci, [&](Value *a) {
       if (!isConstantValue(TR, a)) {
         seenuse = true;
-        if (printconst)
+        if (EnzymePrintActivity)
           llvm::errs() << "nonconstant(" << (int)directions << ")  up-call "
                        << *inst << " op " << *a << "\n";
         return true;
@@ -1426,7 +1431,7 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
         }
         if (!called || (!isCertainPrintMallocOrFree(called) &&
                         !isMemFreeLibMFunction(called->getName()))) {
-          if (printconst)
+          if (EnzymePrintActivity)
             llvm::errs() << "nonconstant(" << (int)directions << ")  up-global "
                          << *inst << "\n";
           seenuse = true;
@@ -1435,7 +1440,7 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
     }
 
     if (!seenuse) {
-      if (printconst)
+      if (EnzymePrintActivity)
         llvm::errs() << "constant(" << (int)directions << ")  up-call:" << *inst
                      << "\n";
       return true;
@@ -1446,7 +1451,7 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
     if (isConstantValue(TR, si->getTrueValue()) &&
         isConstantValue(TR, si->getFalseValue())) {
 
-      if (printconst)
+      if (EnzymePrintActivity)
         llvm::errs() << "constant(" << (int)directions << ") up-sel:" << *inst
                      << "\n";
       return true;
@@ -1455,7 +1460,7 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
   } else if (isa<SIToFPInst>(inst) || isa<UIToFPInst>(inst) ||
              isa<FPToSIInst>(inst) || isa<FPToUIInst>(inst)) {
 
-    if (printconst)
+    if (EnzymePrintActivity)
       llvm::errs() << "constant(" << (int)directions << ") up-fpcst:" << *inst
                    << "\n";
     return true;
@@ -1466,7 +1471,7 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
     for (auto &a : inst->operands()) {
       bool hypval = isConstantValue(TR, a);
       if (!hypval) {
-        if (printconst)
+        if (EnzymePrintActivity)
           llvm::errs() << "nonconstant(" << (int)directions << ")  up-inst "
                        << *inst << " op " << *a << "\n";
         seenuse = true;
@@ -1475,7 +1480,7 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
     }
 
     if (!seenuse) {
-      if (printconst)
+      if (EnzymePrintActivity)
         llvm::errs() << "constant(" << (int)directions << ")  up-inst:" << *inst
                      << "\n";
       return true;
@@ -1493,7 +1498,7 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
 
   // To ensure we can call down
 
-  if (printconst)
+  if (EnzymePrintActivity)
     llvm::errs() << " <Value USESEARCH" << (int)directions << ">" << *val
                  << "\n";
 
@@ -1513,14 +1518,14 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
     done.insert(pair);
     User *a = pair.first;
 
-    if (printconst)
+    if (EnzymePrintActivity)
       llvm::errs() << "      considering use of " << *val << " - " << *a
                    << "\n";
 
     if (!isa<Instruction>(a)) {
       if (isa<ConstantExpr>(a)) {
         if (!isValueInactiveFromUsers(TR, a)) {
-          if (printconst)
+          if (EnzymePrintActivity)
             llvm::errs() << "   active user of " << *val << " in " << *a
                          << "\n";
           return false;
@@ -1531,14 +1536,14 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
         continue;
       }
 
-      if (printconst)
+      if (EnzymePrintActivity)
         llvm::errs() << "      unknown non instruction use of " << *val << " - "
                      << *a << "\n";
       return false;
     }
 
     if (isa<AllocaInst>(a)) {
-      if (printconst)
+      if (EnzymePrintActivity)
         llvm::errs() << "found constant(" << (int)directions
                      << ")  allocainst use:" << *val << " user " << *a << "\n";
       continue;
@@ -1546,7 +1551,7 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
 
     if (isa<SIToFPInst>(a) || isa<UIToFPInst>(a) || isa<FPToSIInst>(a) ||
         isa<FPToUIInst>(a)) {
-      if (printconst)
+      if (EnzymePrintActivity)
         llvm::errs() << "found constant(" << (int)directions
                      << ")  si-fp use:" << *val << " user " << *a << "\n";
       continue;
@@ -1555,7 +1560,7 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
     // if this instruction is in a different function, conservatively assume
     // it is active
     if (cast<Instruction>(a)->getParent()->getParent() != TR.info.Function) {
-      if (printconst)
+      if (EnzymePrintActivity)
         llvm::errs() << "found use in different function(" << (int)directions
                      << ")  val:" << *val << " user " << *a << "\n";
       return false;
@@ -1569,7 +1574,7 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
     if (auto call = dyn_cast<CallInst>(a)) {
       bool ConstantArg = isFunctionArgumentConstant(call, pair.second);
       if (ConstantArg) {
-        if (printconst) {
+        if (EnzymePrintActivity) {
           llvm::errs() << "Value found constant callinst use:" << *val
                        << " user " << *call << "\n";
         }
@@ -1592,14 +1597,14 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
       }
     }
 
-    if (printconst)
+    if (EnzymePrintActivity)
       llvm::errs() << "Value nonconstant inst (uses):" << *val << " user " << *a
                    << "\n";
     seenuse = true;
     break;
   }
 
-  if (printconst)
+  if (EnzymePrintActivity)
     llvm::errs() << " </Value USESEARCH" << (int)directions
                  << " const=" << (!seenuse) << ">" << *val << "\n";
   return !seenuse;
@@ -1617,7 +1622,7 @@ bool ActivityAnalyzer::isValueActivelyStoredOrReturned(TypeResults &TR,
     return StoredOrReturnedCache[val];
   }
 
-  if (printconst)
+  if (EnzymePrintActivity)
     llvm::errs() << " <ASOR" << (int)directions << ">" << *val << "\n";
 
   StoredOrReturnedCache[val] = false;
@@ -1635,7 +1640,7 @@ bool ActivityAnalyzer::isValueActivelyStoredOrReturned(TypeResults &TR,
       if (!ActiveReturns)
         continue;
 
-      if (printconst)
+      if (EnzymePrintActivity)
         llvm::errs() << " </ASOR" << (int)directions << " active from-ret>"
                      << *val << "\n";
       StoredOrReturnedCache[val] = true;
@@ -1661,7 +1666,7 @@ bool ActivityAnalyzer::isValueActivelyStoredOrReturned(TypeResults &TR,
       // Storing into active memory, return true
       if (!isConstantValue(TR, SI->getPointerOperand())) {
         StoredOrReturnedCache[val] = true;
-        if (printconst)
+        if (EnzymePrintActivity)
           llvm::errs() << " </ASOR" << (int)directions << " active from-store>"
                        << *val << " store=" << *SI << "\n";
         return true;
@@ -1708,13 +1713,13 @@ bool ActivityAnalyzer::isValueActivelyStoredOrReturned(TypeResults &TR,
     // it is written to active memory
     // TODO handle more memory instructions above to be less conservative
 
-    if (printconst)
+    if (EnzymePrintActivity)
       llvm::errs() << " </ASOR" << (int)directions << " active from-unknown>"
                    << *val << " - use=" << *a << "\n";
     return StoredOrReturnedCache[val] = true;
   }
 
-  if (printconst)
+  if (EnzymePrintActivity)
     llvm::errs() << " </ASOR" << (int)directions << " inactive>" << *val
                  << "\n";
   return false;
