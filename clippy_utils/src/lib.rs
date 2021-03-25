@@ -63,9 +63,9 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::LangItem::{ResultErr, ResultOk};
 use rustc_hir::{
-    def, Arm, BindingAnnotation, Block, Body, Constness, Expr, ExprKind, FnDecl, GenericArgs, HirId, Impl, ImplItem,
-    ImplItemKind, Item, ItemKind, LangItem, MatchSource, Node, Param, Pat, PatKind, Path, PathSegment, QPath,
-    TraitItem, TraitItemKind, TraitRef, TyKind,
+    def, Arm, BindingAnnotation, Block, Body, Constness, Destination, Expr, ExprKind, FnDecl, GenericArgs, HirId, Impl,
+    ImplItem, ImplItemKind, Item, ItemKind, LangItem, MatchSource, Node, Param, Pat, PatKind, Path, PathSegment, QPath,
+    Stmt, StmtKind, TraitItem, TraitItemKind, TraitRef, TyKind,
 };
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::exports::Export;
@@ -1245,6 +1245,82 @@ pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     did.map_or(false, |did| must_use_attr(&cx.tcx.get_attrs(did)).is_some())
 }
 
+pub fn get_expr_use_node(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> Option<Node<'tcx>> {
+    let map = tcx.hir();
+    let mut child_id = expr.hir_id;
+    let mut iter = map.parent_iter(child_id);
+    loop {
+        match iter.next() {
+            None => break None,
+            Some((id, Node::Block(_))) => child_id = id,
+            Some((id, Node::Arm(arm))) if arm.body.hir_id == child_id => child_id = id,
+            Some((_, Node::Expr(expr))) => match expr.kind {
+                ExprKind::Break(
+                    Destination {
+                        target_id: Ok(dest), ..
+                    },
+                    _,
+                ) => {
+                    iter = map.parent_iter(dest);
+                    child_id = dest;
+                },
+                ExprKind::DropTemps(_) | ExprKind::Block(..) => child_id = expr.hir_id,
+                ExprKind::If(control_expr, ..) | ExprKind::Match(control_expr, ..)
+                    if control_expr.hir_id != child_id =>
+                {
+                    child_id = expr.hir_id
+                },
+                _ => break Some(Node::Expr(expr)),
+            },
+            Some((_, node)) => break Some(node),
+        }
+    }
+}
+
+pub fn is_expr_used(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
+    !matches!(
+        get_expr_use_node(tcx, expr),
+        Some(Node::Stmt(Stmt {
+            kind: StmtKind::Expr(_) | StmtKind::Semi(_),
+            ..
+        }))
+    )
+}
+
+pub fn get_expr_use_or_unification_node(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> Option<Node<'tcx>> {
+    let map = tcx.hir();
+    let mut child_id = expr.hir_id;
+    let mut iter = map.parent_iter(child_id);
+    loop {
+        match iter.next() {
+            None => break None,
+            Some((id, Node::Block(_))) => child_id = id,
+            Some((id, Node::Arm(arm))) if arm.body.hir_id == child_id => child_id = id,
+            Some((_, Node::Expr(expr))) => match expr.kind {
+                ExprKind::Match(_, [arm], _) if arm.hir_id == child_id => child_id = expr.hir_id,
+                ExprKind::Block(..) | ExprKind::DropTemps(_) => child_id = expr.hir_id,
+                ExprKind::If(_, then_expr, None) if then_expr.hir_id == child_id => break None,
+                _ => break Some(Node::Expr(expr)),
+            },
+            Some((_, node)) => break Some(node),
+        }
+    }
+}
+
+pub fn is_expr_used_or_unified(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
+    !matches!(
+        get_expr_use_or_unification_node(tcx, expr),
+        None | Some(Node::Stmt(Stmt {
+            kind: StmtKind::Expr(_) | StmtKind::Semi(_),
+            ..
+        }))
+    )
+}
+
+pub fn is_expr_final_block_expr(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
+    matches!(get_parent_node(tcx, expr.hir_id), Some(Node::Block(..)))
+}
+
 pub fn is_no_std_crate(cx: &LateContext<'_>) -> bool {
     cx.tcx.hir().attrs(hir::CRATE_HIR_ID).iter().any(|attr| {
         if let ast::AttrKind::Normal(ref attr, _) = attr.kind {
@@ -1414,28 +1490,43 @@ pub fn peel_hir_pat_refs(pat: &'a Pat<'a>) -> (&'a Pat<'a>, usize) {
     peel(pat, 0)
 }
 
+/// Peels of expressions while the given closure returns `Some`.
+pub fn peel_hir_expr_while<'tcx>(
+    mut expr: &'tcx Expr<'tcx>,
+    mut f: impl FnMut(&'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>>,
+) -> &'tcx Expr<'tcx> {
+    while let Some(e) = f(expr) {
+        expr = e;
+    }
+    expr
+}
+
 /// Peels off up to the given number of references on the expression. Returns the underlying
 /// expression and the number of references removed.
 pub fn peel_n_hir_expr_refs(expr: &'a Expr<'a>, count: usize) -> (&'a Expr<'a>, usize) {
-    fn f(expr: &'a Expr<'a>, count: usize, target: usize) -> (&'a Expr<'a>, usize) {
-        match expr.kind {
-            ExprKind::AddrOf(_, _, expr) if count != target => f(expr, count + 1, target),
-            _ => (expr, count),
-        }
-    }
-    f(expr, 0, count)
+    let mut remaining = count;
+    let e = peel_hir_expr_while(expr, |e| match e.kind {
+        ExprKind::AddrOf(BorrowKind::Ref, _, e) if remaining != 0 => {
+            remaining -= 1;
+            Some(e)
+        },
+        _ => None,
+    });
+    (e, count - remaining)
 }
 
 /// Peels off all references on the expression. Returns the underlying expression and the number of
 /// references removed.
 pub fn peel_hir_expr_refs(expr: &'a Expr<'a>) -> (&'a Expr<'a>, usize) {
-    fn f(expr: &'a Expr<'a>, count: usize) -> (&'a Expr<'a>, usize) {
-        match expr.kind {
-            ExprKind::AddrOf(BorrowKind::Ref, _, expr) => f(expr, count + 1),
-            _ => (expr, count),
-        }
-    }
-    f(expr, 0)
+    let mut count = 0;
+    let e = peel_hir_expr_while(expr, |e| match e.kind {
+        ExprKind::AddrOf(BorrowKind::Ref, _, e) => {
+            count += 1;
+            Some(e)
+        },
+        _ => None,
+    });
+    (e, count)
 }
 
 #[macro_export]
