@@ -2795,8 +2795,8 @@ where
 #[cfg(not(test))]
 #[stable(feature = "vec_from_box", since = "1.18.0")]
 impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A> {
-    /// Convert a boxed slice into a vector.
-    /// No heap allocation is performed, and the items are not copied.
+    /// Convert a boxed slice into a vector by transferring ownership of
+    /// the existing heap allocation.
     ///
     /// # Examples
     ///
