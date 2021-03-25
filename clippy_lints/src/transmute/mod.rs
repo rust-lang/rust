@@ -12,7 +12,7 @@ mod useless_transmute;
 mod utils;
 mod wrong_transmute;
 
-use crate::utils::{in_constant, match_def_path, paths};
+use clippy_utils::{in_constant, match_def_path, paths};
 use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};

@@ -1,16 +1,17 @@
-use crate::utils::usage::mutated_variables;
-use crate::utils::{match_qpath, match_trait_method, path_to_local_id, paths, span_lint};
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::usage::mutated_variables;
+use clippy_utils::{is_trait_method, match_qpath, path_to_local_id, paths};
+use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
-
-use if_chain::if_chain;
+use rustc_span::sym;
 
 use super::UNNECESSARY_FILTER_MAP;
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
-    if !match_trait_method(cx, expr, &paths::ITERATOR) {
+    if !is_trait_method(cx, expr, sym::Iterator) {
         return;
     }
 

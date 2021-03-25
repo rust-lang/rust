@@ -1,6 +1,7 @@
-use crate::utils::{
-    contains_name, get_pat_name, match_type, paths, single_segment_path, snippet_with_applicability, span_lint_and_sugg,
-};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::ty::match_type;
+use clippy_utils::{contains_name, get_pat_name, paths, single_segment_path};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, UnOp};

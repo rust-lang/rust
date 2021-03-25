@@ -1,5 +1,7 @@
 use super::{get_span_of_entire_for_loop, SINGLE_ELEMENT_LOOP};
-use crate::utils::{indent_of, single_segment_path, snippet, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::single_segment_path;
+use clippy_utils::source::{indent_of, snippet};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, Pat, PatKind};

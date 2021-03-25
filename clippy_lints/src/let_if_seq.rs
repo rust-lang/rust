@@ -1,4 +1,6 @@
-use crate::utils::{path_to_local_id, snippet, span_lint_and_then, visitors::LocalUsedVisitor};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::source::snippet;
+use clippy_utils::{path_to_local_id, visitors::LocalUsedVisitor};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;

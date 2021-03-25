@@ -20,4 +20,9 @@ enum Flags {
 // `GccLlvmSomething`
 struct GCCLLVMSomething;
 
+// don't warn on public items
+pub struct MIXEDCapital;
+
+pub struct FULLCAPITAL;
+
 fn main() {}

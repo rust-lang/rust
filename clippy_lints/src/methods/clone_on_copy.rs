@@ -1,15 +1,23 @@
-use crate::utils::{is_copy, span_lint_and_then, sugg};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::sugg;
+use clippy_utils::ty::is_copy;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty;
+use rustc_span::symbol::{sym, Symbol};
 use std::iter;
 
 use super::CLONE_DOUBLE_REF;
 use super::CLONE_ON_COPY;
 
 /// Checks for the `CLONE_ON_COPY` lint.
-pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Expr<'_>, arg_ty: Ty<'_>) {
+pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_name: Symbol, args: &[hir::Expr<'_>]) {
+    if !(args.len() == 1 && method_name == sym::clone) {
+        return;
+    }
+    let arg = &args[0];
+    let arg_ty = cx.typeck_results().expr_ty_adjusted(&args[0]);
     let ty = cx.typeck_results().expr_ty(expr);
     if let ty::Ref(_, inner, _) = arg_ty.kind() {
         if let ty::Ref(_, innermost, _) = inner.kind() {

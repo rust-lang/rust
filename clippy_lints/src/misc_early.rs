@@ -1,4 +1,5 @@
-use crate::utils::{snippet_opt, span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::source::snippet_opt;
 use rustc_ast::ast::{
     BindingMode, Expr, ExprKind, GenericParamKind, Generics, Lit, LitFloatType, LitIntType, LitKind, Mutability,
     NodeId, Pat, PatKind, UnOp,

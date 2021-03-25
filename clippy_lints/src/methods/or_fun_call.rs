@@ -1,11 +1,12 @@
-use crate::utils::eager_or_lazy::is_lazyness_candidate;
-use crate::utils::{
-    contains_return, get_trait_def_id, implements_trait, is_type_diagnostic_item, last_path_segment, match_type, paths,
-    snippet, snippet_with_applicability, snippet_with_macro_callsite, span_lint_and_sugg,
-};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::eager_or_lazy::is_lazyness_candidate;
+use clippy_utils::source::{snippet, snippet_with_applicability, snippet_with_macro_callsite};
+use clippy_utils::ty::{implements_trait, is_type_diagnostic_item, match_type};
+use clippy_utils::{contains_return, get_trait_def_id, last_path_segment, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
+use rustc_hir::{BlockCheckMode, UnsafeSource};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::source_map::Span;
@@ -90,7 +91,7 @@ pub(super) fn check<'tcx>(
                 let ty = cx.typeck_results().expr_ty(&args[0]).peel_refs();
 
                 match ty.kind() {
-                    ty::Slice(_) | ty::Array(_, _) => return,
+                    ty::Slice(_) | ty::Array(_, _) | ty::Str => return,
                     _ => (),
                 }
 
@@ -167,7 +168,16 @@ pub(super) fn check<'tcx>(
             hir::ExprKind::Index(..) | hir::ExprKind::MethodCall(..) => {
                 check_general_case(cx, name, method_span, &args[0], &args[1], expr.span, None);
             },
-            _ => {},
+            hir::ExprKind::Block(block, _) => {
+                if let BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided) = block.rules {
+                    if let Some(block_expr) = block.expr {
+                        if let hir::ExprKind::MethodCall(..) = block_expr.kind {
+                            check_general_case(cx, name, method_span, &args[0], &args[1], expr.span, None);
+                        }
+                    }
+                }
+            },
+            _ => (),
         }
     }
 }

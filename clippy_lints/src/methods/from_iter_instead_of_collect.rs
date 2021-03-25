@@ -1,19 +1,24 @@
-use crate::utils::{get_trait_def_id, implements_trait, paths, span_lint_and_sugg, sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::ty::implements_trait;
+use clippy_utils::{get_trait_def_id, match_qpath, paths, sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
+use rustc_hir::ExprKind;
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty::Ty;
+use rustc_span::sym;
 
 use super::FROM_ITER_INSTEAD_OF_COLLECT;
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
-    let ty = cx.typeck_results().expr_ty(expr);
-    let arg_ty = cx.typeck_results().expr_ty(&args[0]);
-
+pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>], func_kind: &ExprKind<'_>) {
     if_chain! {
+        if let hir::ExprKind::Path(path) = func_kind;
+        if match_qpath(path, &["from_iter"]);
+        let ty = cx.typeck_results().expr_ty(expr);
+        let arg_ty = cx.typeck_results().expr_ty(&args[0]);
         if let Some(from_iter_id) = get_trait_def_id(cx, &paths::FROM_ITERATOR);
-        if let Some(iter_id) = get_trait_def_id(cx, &paths::ITERATOR);
+        if let Some(iter_id) = cx.tcx.get_diagnostic_item(sym::Iterator);
 
         if implements_trait(cx, ty, from_iter_id, &[]) && implements_trait(cx, arg_ty, iter_id, &[]);
         then {

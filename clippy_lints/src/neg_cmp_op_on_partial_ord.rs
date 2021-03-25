@@ -1,10 +1,11 @@
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::ty::implements_trait;
+use clippy_utils::{self, get_trait_def_id, paths};
 use if_chain::if_chain;
 use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-
-use crate::utils::{self, paths, span_lint};
 
 declare_clippy_lint! {
     /// **What it does:**
@@ -59,8 +60,8 @@ impl<'tcx> LateLintPass<'tcx> for NoNegCompOpForPartialOrd {
                 let ty = cx.typeck_results().expr_ty(left);
 
                 let implements_ord = {
-                    if let Some(id) = utils::get_trait_def_id(cx, &paths::ORD) {
-                        utils::implements_trait(cx, ty, id, &[])
+                    if let Some(id) = get_trait_def_id(cx, &paths::ORD) {
+                        implements_trait(cx, ty, id, &[])
                     } else {
                         return;
                     }
@@ -68,7 +69,7 @@ impl<'tcx> LateLintPass<'tcx> for NoNegCompOpForPartialOrd {
 
                 let implements_partial_ord = {
                     if let Some(id) = cx.tcx.lang_items().partial_ord_trait() {
-                        utils::implements_trait(cx, ty, id, &[])
+                        implements_trait(cx, ty, id, &[])
                     } else {
                         return;
                     }

@@ -1,6 +1,7 @@
 //! lint on multiple versions of a crate being used
 
-use crate::utils::{run_lints, span_lint};
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::run_lints;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::{Crate, CRATE_HIR_ID};
 use rustc_lint::{LateContext, LateLintPass};

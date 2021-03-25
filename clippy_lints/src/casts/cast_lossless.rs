@@ -1,9 +1,11 @@
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::in_constant;
+use clippy_utils::source::snippet_opt;
+use clippy_utils::ty::is_isize_or_usize;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, FloatTy, Ty};
-
-use crate::utils::{in_constant, is_isize_or_usize, snippet_opt, span_lint_and_sugg};
 
 use super::{utils, CAST_LOSSLESS};
 

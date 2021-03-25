@@ -1,6 +1,9 @@
 use super::FOR_KV_MAP;
-use crate::utils::visitors::LocalUsedVisitor;
-use crate::utils::{is_type_diagnostic_item, match_type, multispan_sugg, paths, snippet, span_lint_and_then, sugg};
+use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
+use clippy_utils::source::snippet;
+use clippy_utils::ty::{is_type_diagnostic_item, match_type};
+use clippy_utils::visitors::LocalUsedVisitor;
+use clippy_utils::{paths, sugg};
 use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, Pat, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty;

@@ -1,7 +1,8 @@
-use crate::utils::paths;
-use crate::utils::{
-    is_copy, is_type_diagnostic_item, match_trait_method, remove_blocks, snippet_with_applicability, span_lint_and_sugg,
-};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_trait_method;
+use clippy_utils::remove_blocks;
+use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::ty::{is_copy, is_type_diagnostic_item};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -55,7 +56,7 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
             if args.len() == 2;
             if method.ident.name == sym::map;
             let ty = cx.typeck_results().expr_ty(&args[0]);
-            if is_type_diagnostic_item(cx, ty, sym::option_type) || match_trait_method(cx, e, &paths::ITERATOR);
+            if is_type_diagnostic_item(cx, ty, sym::option_type) || is_trait_method(cx, e, sym::Iterator);
             if let hir::ExprKind::Closure(_, _, body_id, _, _) = args[1].kind;
             let closure_body = cx.tcx.hir().body(body_id);
             let closure_expr = remove_blocks(&closure_body.value);

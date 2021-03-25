@@ -1,26 +1,28 @@
 use crate::consts::{constant, miri_to_const, Constant};
-use crate::utils::sugg::Sugg;
-use crate::utils::visitors::LocalUsedVisitor;
-use crate::utils::{
-    expr_block, get_parent_expr, implements_trait, in_macro, indent_of, is_allowed, is_expn_of, is_refutable,
-    is_type_diagnostic_item, is_wild, match_qpath, match_type, meets_msrv, multispan_sugg, path_to_local,
-    path_to_local_id, peel_hir_pat_refs, peel_mid_ty_refs, peel_n_hir_expr_refs, remove_blocks, snippet, snippet_block,
-    snippet_opt, snippet_with_applicability, span_lint_and_help, span_lint_and_note, span_lint_and_sugg,
-    span_lint_and_then, strip_pat_refs,
+use clippy_utils::diagnostics::{
+    multispan_sugg, span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then,
 };
-use crate::utils::{paths, search_same, SpanlessEq, SpanlessHash};
+use clippy_utils::source::{expr_block, indent_of, snippet, snippet_block, snippet_opt, snippet_with_applicability};
+use clippy_utils::sugg::Sugg;
+use clippy_utils::ty::{implements_trait, is_type_diagnostic_item, match_type, peel_mid_ty_refs};
+use clippy_utils::visitors::LocalUsedVisitor;
+use clippy_utils::{
+    get_parent_expr, in_macro, is_allowed, is_expn_of, is_refutable, is_wild, match_qpath, meets_msrv, path_to_local,
+    path_to_local_id, peel_hir_pat_refs, peel_n_hir_expr_refs, recurse_or_patterns, remove_blocks, strip_pat_refs,
+};
+use clippy_utils::{paths, search_same, SpanlessEq, SpanlessHash};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
-use rustc_hir::def::CtorKind;
+use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::{
-    Arm, BindingAnnotation, Block, BorrowKind, Expr, ExprKind, Guard, HirId, Local, MatchSource, Mutability, Node, Pat,
-    PatKind, QPath, RangeEnd,
+    self as hir, Arm, BindingAnnotation, Block, BorrowKind, Expr, ExprKind, Guard, HirId, Local, MatchSource,
+    Mutability, Node, Pat, PatKind, PathSegment, QPath, RangeEnd, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self, Ty, TyS};
+use rustc_middle::ty::{self, Ty, TyS, VariantDef};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::{Span, Spanned};
@@ -954,114 +956,181 @@ fn check_wild_err_arm<'tcx>(cx: &LateContext<'tcx>, ex: &Expr<'tcx>, arms: &[Arm
     }
 }
 
-fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
-    let ty = cx.typeck_results().expr_ty(ex);
-    if !ty.is_enum() {
-        // If there isn't a nice closed set of possible values that can be conveniently enumerated,
-        // don't complain about not enumerating the mall.
-        return;
+enum CommonPrefixSearcher<'a> {
+    None,
+    Path(&'a [PathSegment<'a>]),
+    Mixed,
+}
+impl CommonPrefixSearcher<'a> {
+    fn with_path(&mut self, path: &'a [PathSegment<'a>]) {
+        match path {
+            [path @ .., _] => self.with_prefix(path),
+            [] => (),
+        }
     }
+
+    fn with_prefix(&mut self, path: &'a [PathSegment<'a>]) {
+        match self {
+            Self::None => *self = Self::Path(path),
+            Self::Path(self_path)
+                if path
+                    .iter()
+                    .map(|p| p.ident.name)
+                    .eq(self_path.iter().map(|p| p.ident.name)) => {},
+            Self::Path(_) => *self = Self::Mixed,
+            Self::Mixed => (),
+        }
+    }
+}
+
+#[allow(clippy::too_many_lines)]
+fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
+    let ty = cx.typeck_results().expr_ty(ex).peel_refs();
+    let adt_def = match ty.kind() {
+        ty::Adt(adt_def, _)
+            if adt_def.is_enum()
+                && !(is_type_diagnostic_item(cx, ty, sym::option_type)
+                    || is_type_diagnostic_item(cx, ty, sym::result_type)) =>
+        {
+            adt_def
+        },
+        _ => return,
+    };
 
     // First pass - check for violation, but don't do much book-keeping because this is hopefully
     // the uncommon case, and the book-keeping is slightly expensive.
     let mut wildcard_span = None;
     let mut wildcard_ident = None;
+    let mut has_non_wild = false;
     for arm in arms {
-        if let PatKind::Wild = arm.pat.kind {
-            wildcard_span = Some(arm.pat.span);
-        } else if let PatKind::Binding(_, _, ident, None) = arm.pat.kind {
-            wildcard_span = Some(arm.pat.span);
-            wildcard_ident = Some(ident);
+        match peel_hir_pat_refs(arm.pat).0.kind {
+            PatKind::Wild => wildcard_span = Some(arm.pat.span),
+            PatKind::Binding(_, _, ident, None) => {
+                wildcard_span = Some(arm.pat.span);
+                wildcard_ident = Some(ident);
+            },
+            _ => has_non_wild = true,
         }
     }
+    let wildcard_span = match wildcard_span {
+        Some(x) if has_non_wild => x,
+        _ => return,
+    };
 
-    if let Some(wildcard_span) = wildcard_span {
-        // Accumulate the variants which should be put in place of the wildcard because they're not
-        // already covered.
+    // Accumulate the variants which should be put in place of the wildcard because they're not
+    // already covered.
+    let mut missing_variants: Vec<_> = adt_def.variants.iter().collect();
 
-        let mut missing_variants = vec![];
-        if let ty::Adt(def, _) = ty.kind() {
-            for variant in &def.variants {
-                missing_variants.push(variant);
+    let mut path_prefix = CommonPrefixSearcher::None;
+    for arm in arms {
+        // Guards mean that this case probably isn't exhaustively covered. Technically
+        // this is incorrect, as we should really check whether each variant is exhaustively
+        // covered by the set of guards that cover it, but that's really hard to do.
+        recurse_or_patterns(arm.pat, |pat| {
+            let path = match &peel_hir_pat_refs(pat).0.kind {
+                PatKind::Path(path) => {
+                    #[allow(clippy::match_same_arms)]
+                    let id = match cx.qpath_res(path, pat.hir_id) {
+                        Res::Def(DefKind::Const | DefKind::ConstParam | DefKind::AnonConst, _) => return,
+                        Res::Def(_, id) => id,
+                        _ => return,
+                    };
+                    if arm.guard.is_none() {
+                        missing_variants.retain(|e| e.ctor_def_id != Some(id));
+                    }
+                    path
+                },
+                PatKind::TupleStruct(path, patterns, ..) => {
+                    if arm.guard.is_none() && patterns.iter().all(|p| !is_refutable(cx, p)) {
+                        let id = cx.qpath_res(path, pat.hir_id).def_id();
+                        missing_variants.retain(|e| e.ctor_def_id != Some(id));
+                    }
+                    path
+                },
+                PatKind::Struct(path, patterns, ..) => {
+                    if arm.guard.is_none() && patterns.iter().all(|p| !is_refutable(cx, p.pat)) {
+                        let id = cx.qpath_res(path, pat.hir_id).def_id();
+                        missing_variants.retain(|e| e.def_id != id);
+                    }
+                    path
+                },
+                _ => return,
+            };
+            match path {
+                QPath::Resolved(_, path) => path_prefix.with_path(path.segments),
+                QPath::TypeRelative(
+                    hir::Ty {
+                        kind: TyKind::Path(QPath::Resolved(_, path)),
+                        ..
+                    },
+                    _,
+                ) => path_prefix.with_prefix(path.segments),
+                _ => (),
             }
-        }
+        });
+    }
 
-        for arm in arms {
-            if arm.guard.is_some() {
-                // Guards mean that this case probably isn't exhaustively covered. Technically
-                // this is incorrect, as we should really check whether each variant is exhaustively
-                // covered by the set of guards that cover it, but that's really hard to do.
-                continue;
-            }
-            if let PatKind::Path(ref path) = arm.pat.kind {
-                if let QPath::Resolved(_, p) = path {
-                    missing_variants.retain(|e| e.ctor_def_id != Some(p.res.def_id()));
+    let format_suggestion = |variant: &VariantDef| {
+        format!(
+            "{}{}{}{}",
+            if let Some(ident) = wildcard_ident {
+                format!("{} @ ", ident.name)
+            } else {
+                String::new()
+            },
+            if let CommonPrefixSearcher::Path(path_prefix) = path_prefix {
+                let mut s = String::new();
+                for seg in path_prefix {
+                    s.push_str(&seg.ident.as_str());
+                    s.push_str("::");
                 }
-            } else if let PatKind::TupleStruct(QPath::Resolved(_, p), ref patterns, ..) = arm.pat.kind {
-                // Some simple checks for exhaustive patterns.
-                // There is a room for improvements to detect more cases,
-                // but it can be more expensive to do so.
-                let is_pattern_exhaustive =
-                    |pat: &&Pat<'_>| matches!(pat.kind, PatKind::Wild | PatKind::Binding(.., None));
-                if patterns.iter().all(is_pattern_exhaustive) {
-                    missing_variants.retain(|e| e.ctor_def_id != Some(p.res.def_id()));
-                }
+                s
+            } else {
+                let mut s = cx.tcx.def_path_str(adt_def.did);
+                s.push_str("::");
+                s
+            },
+            variant.ident.name,
+            match variant.ctor_kind {
+                CtorKind::Fn if variant.fields.len() == 1 => "(_)",
+                CtorKind::Fn => "(..)",
+                CtorKind::Const => "",
+                CtorKind::Fictive => "{ .. }",
             }
-        }
+        )
+    };
 
-        let mut suggestion: Vec<String> = missing_variants
-            .iter()
-            .map(|v| {
-                let suffix = match v.ctor_kind {
-                    CtorKind::Fn => "(..)",
-                    CtorKind::Const | CtorKind::Fictive => "",
-                };
-                let ident_str = if let Some(ident) = wildcard_ident {
-                    format!("{} @ ", ident.name)
-                } else {
-                    String::new()
-                };
-                // This path assumes that the enum type is imported into scope.
-                format!("{}{}{}", ident_str, cx.tcx.def_path_str(v.def_id), suffix)
-            })
-            .collect();
+    match missing_variants.as_slice() {
+        [] => (),
+        [x] if !adt_def.is_variant_list_non_exhaustive() => span_lint_and_sugg(
+            cx,
+            MATCH_WILDCARD_FOR_SINGLE_VARIANTS,
+            wildcard_span,
+            "wildcard matches only a single variant and will also match any future added variants",
+            "try this",
+            format_suggestion(x),
+            Applicability::MaybeIncorrect,
+        ),
+        variants => {
+            let mut suggestions: Vec<_> = variants.iter().cloned().map(format_suggestion).collect();
+            let message = if adt_def.is_variant_list_non_exhaustive() {
+                suggestions.push("_".into());
+                "wildcard matches known variants and will also match future added variants"
+            } else {
+                "wildcard match will also match any future added variants"
+            };
 
-        if suggestion.is_empty() {
-            return;
-        }
-
-        let mut message = "wildcard match will miss any future added variants";
-
-        if let ty::Adt(def, _) = ty.kind() {
-            if def.is_variant_list_non_exhaustive() {
-                message = "match on non-exhaustive enum doesn't explicitly match all known variants";
-                suggestion.push(String::from("_"));
-            }
-        }
-
-        if suggestion.len() == 1 {
-            // No need to check for non-exhaustive enum as in that case len would be greater than 1
             span_lint_and_sugg(
                 cx,
-                MATCH_WILDCARD_FOR_SINGLE_VARIANTS,
+                WILDCARD_ENUM_MATCH_ARM,
                 wildcard_span,
                 message,
                 "try this",
-                suggestion[0].clone(),
+                suggestions.join(" | "),
                 Applicability::MaybeIncorrect,
             )
-        };
-
-        span_lint_and_sugg(
-            cx,
-            WILDCARD_ENUM_MATCH_ARM,
-            wildcard_span,
-            message,
-            "try this",
-            suggestion.join(" | "),
-            Applicability::MaybeIncorrect,
-        )
-    }
+        },
+    };
 }
 
 // If the block contains only a `panic!` macro (as expression or statement)
@@ -1284,6 +1353,7 @@ fn find_bool_lit(ex: &ExprKind<'_>, desugared: bool) -> Option<bool> {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 fn check_match_single_binding<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], expr: &Expr<'_>) {
     if in_macro(expr.span) || arms.len() != 1 || is_refutable(cx, arms[0].pat) {
         return;
@@ -1358,7 +1428,18 @@ fn check_match_single_binding<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[A
                         indent = " ".repeat(indent_of(cx, bind_names).unwrap_or(0));
                         cbrace_start = format!("{{\n{}", indent);
                     }
-                };
+                }
+                // If the parent is already an arm, and the body is another match statement,
+                // we need curly braces around suggestion
+                let parent_node_id = cx.tcx.hir().get_parent_node(expr.hir_id);
+                if let Node::Arm(arm) = &cx.tcx.hir().get(parent_node_id) {
+                    if let ExprKind::Match(..) = arm.body.kind {
+                        cbrace_end = format!("\n{}}}", indent);
+                        // Fix body indent due to the match
+                        indent = " ".repeat(indent_of(cx, bind_names).unwrap_or(0));
+                        cbrace_start = format!("{{\n{}", indent);
+                    }
+                }
                 (
                     expr.span,
                     format!(
@@ -1614,7 +1695,9 @@ where
 
 mod redundant_pattern_match {
     use super::REDUNDANT_PATTERN_MATCHING;
-    use crate::utils::{match_qpath, match_trait_method, paths, snippet, span_lint_and_then};
+    use clippy_utils::diagnostics::span_lint_and_then;
+    use clippy_utils::source::snippet;
+    use clippy_utils::{is_trait_method, match_qpath, paths};
     use if_chain::if_chain;
     use rustc_ast::ast::LitKind;
     use rustc_errors::Applicability;
@@ -1679,7 +1762,7 @@ mod redundant_pattern_match {
             if keyword == "while";
             if let ExprKind::MethodCall(method_path, _, _, _) = op.kind;
             if method_path.ident.name == sym::next;
-            if match_trait_method(cx, op, &paths::ITERATOR);
+            if is_trait_method(cx, op, sym::Iterator);
             then {
                 return;
             }

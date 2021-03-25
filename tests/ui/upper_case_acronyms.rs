@@ -20,4 +20,8 @@ enum Flags {
 // `GccLlvmSomething`
 struct GCCLLVMSomething;
 
+// public items must not be linted
+pub struct NOWARNINGHERE;
+pub struct ALSONoWarningHERE;
+
 fn main() {}

@@ -1,4 +1,5 @@
-use crate::utils::{higher, is_direct_expn_of, span_lint};
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::{higher, is_direct_expn_of};
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::{BorrowKind, Expr, ExprKind, MatchSource, Mutability};
 use rustc_lint::{LateContext, LateLintPass};
@@ -83,10 +84,6 @@ impl<'a, 'tcx> Visitor<'tcx> for MutArgVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         match expr.kind {
             ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, _) => {
-                self.found = true;
-                return;
-            },
-            ExprKind::If(..) => {
                 self.found = true;
                 return;
             },

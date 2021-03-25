@@ -2,7 +2,8 @@ use crate::consts::{
     constant, constant_simple, Constant,
     Constant::{Int, F32, F64},
 };
-use crate::utils::{eq_expr_value, get_parent_expr, numeric_literal, span_lint_and_sugg, sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::{eq_expr_value, get_parent_expr, numeric_literal, sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, PathSegment, UnOp};

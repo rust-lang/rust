@@ -1,6 +1,10 @@
-use crate::utils::{is_type_diagnostic_item, method_chain_args, return_ty, span_lint_and_then};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::{method_chain_args, return_ty};
 use if_chain::if_chain;
 use rustc_hir as hir;
+use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::{Expr, ImplItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty;
@@ -65,9 +69,6 @@ impl<'tcx> LateLintPass<'tcx> for UnwrapInResult {
         }
     }
 }
-
-use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::{Expr, ImplItemKind};
 
 struct FindExpectUnwrap<'a, 'tcx> {
     lcx: &'a LateContext<'tcx>,

@@ -1,3 +1,5 @@
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::ty::contains_ty;
 use rustc_hir::intravisit;
 use rustc_hir::{self, AssocItemKind, Body, FnDecl, HirId, HirIdSet, Impl, ItemKind, Node};
 use rustc_infer::infer::TyCtxtInferExt;
@@ -10,8 +12,6 @@ use rustc_span::symbol::kw;
 use rustc_target::abi::LayoutOf;
 use rustc_target::spec::abi::Abi;
 use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
-
-use crate::utils::{contains_ty, span_lint};
 
 #[derive(Copy, Clone)]
 pub struct BoxedLocal {
@@ -186,7 +186,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
         }
     }
 
-    fn fake_read(&mut self, _: rustc_typeck::expr_use_visitor::Place<'tcx>, _: FakeReadCause, _: HirId) { }
+    fn fake_read(&mut self, _: rustc_typeck::expr_use_visitor::Place<'tcx>, _: FakeReadCause, _: HirId) {}
 }
 
 impl<'a, 'tcx> EscapeDelegate<'a, 'tcx> {

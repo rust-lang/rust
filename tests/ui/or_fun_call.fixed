@@ -120,6 +120,9 @@ fn test_or_with_ctors() {
 
     let slice = &["foo"][..];
     let _ = opt.ok_or(slice.len());
+
+    let string = "foo";
+    let _ = opt.ok_or(string.len());
 }
 
 // Issue 4514 - early return
@@ -130,6 +133,20 @@ fn f() -> Option<()> {
     let _ = a.unwrap_or(b.checked_mul(3)?.min(240));
 
     Some(())
+}
+
+mod issue6675 {
+    unsafe fn foo() {
+        let mut s = "test".to_owned();
+        None.unwrap_or_else(|| s.as_mut_vec());
+    }
+
+    fn bar() {
+        let mut s = "test".to_owned();
+        None.unwrap_or_else(|| unsafe { s.as_mut_vec() });
+        #[rustfmt::skip]
+        None.unwrap_or_else(|| unsafe { s.as_mut_vec() });
+    }
 }
 
 fn main() {}

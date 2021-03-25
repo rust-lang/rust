@@ -1,7 +1,7 @@
-use crate::utils::qualify_min_const_fn::is_min_const_fn;
-use crate::utils::{
-    fn_has_unsatisfiable_preds, has_drop, is_entrypoint_fn, meets_msrv, span_lint, trait_ref_of_method,
-};
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::qualify_min_const_fn::is_min_const_fn;
+use clippy_utils::ty::has_drop;
+use clippy_utils::{fn_has_unsatisfiable_preds, is_entrypoint_fn, meets_msrv, trait_ref_of_method};
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, Constness, FnDecl, GenericParamKind, HirId};

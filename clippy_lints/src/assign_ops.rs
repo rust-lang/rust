@@ -1,7 +1,8 @@
-use crate::utils::{
-    eq_expr_value, get_trait_def_id, implements_trait, snippet_opt, span_lint_and_then, trait_ref_of_method,
-};
-use crate::utils::{higher, sugg};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::source::snippet_opt;
+use clippy_utils::ty::implements_trait;
+use clippy_utils::{eq_expr_value, get_trait_def_id, trait_ref_of_method};
+use clippy_utils::{higher, paths, sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -92,7 +93,7 @@ impl<'tcx> LateLintPass<'tcx> for AssignOps {
                              $($trait_name:ident),+) => {
                                 match $op {
                                     $(hir::BinOpKind::$trait_name => {
-                                        let [krate, module] = crate::utils::paths::OPS_MODULE;
+                                        let [krate, module] = paths::OPS_MODULE;
                                         let path: [&str; 3] = [krate, module, concat!(stringify!($trait_name), "Assign")];
                                         let trait_id = if let Some(trait_id) = get_trait_def_id($cx, &path) {
                                             trait_id
