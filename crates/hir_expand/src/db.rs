@@ -5,7 +5,13 @@ use std::sync::Arc;
 use base_db::{salsa, SourceDatabase};
 use mbe::{ExpandError, ExpandResult, MacroRules};
 use parser::FragmentKind;
-use syntax::{algo::diff, ast::NameOwner, AstNode, GreenNode, Parse, SyntaxKind::*, SyntaxNode};
+use syntax::{
+    algo::diff,
+    ast::{MacroStmts, NameOwner},
+    AstNode, GreenNode, Parse,
+    SyntaxKind::*,
+    SyntaxNode,
+};
 
 use crate::{
     ast_id_map::AstIdMap, hygiene::HygieneFrame, BuiltinDeriveExpander, BuiltinFnLikeExpander,
@@ -340,13 +346,19 @@ fn parse_macro_with_arg(
         None => return ExpandResult { value: None, err: result.err },
     };
 
-    log::debug!("expanded = {}", tt.as_debug_string());
-
     let fragment_kind = to_fragment_kind(db, macro_call_id);
+
+    log::debug!("expanded = {}", tt.as_debug_string());
+    log::debug!("kind = {:?}", fragment_kind);
 
     let (parse, rev_token_map) = match mbe::token_tree_to_syntax_node(&tt, fragment_kind) {
         Ok(it) => it,
         Err(err) => {
+            log::debug!(
+                "failed to parse expanstion to {:?} = {}",
+                fragment_kind,
+                tt.as_debug_string()
+            );
             return ExpandResult::only_err(err);
         }
     };
@@ -362,15 +374,34 @@ fn parse_macro_with_arg(
                     return ExpandResult::only_err(err);
                 }
             };
-
-            if !diff(&node, &call_node.value).is_empty() {
-                ExpandResult { value: Some((parse, Arc::new(rev_token_map))), err: Some(err) }
-            } else {
+            if is_self_replicating(&node, &call_node.value) {
                 return ExpandResult::only_err(err);
+            } else {
+                ExpandResult { value: Some((parse, Arc::new(rev_token_map))), err: Some(err) }
             }
         }
-        None => ExpandResult { value: Some((parse, Arc::new(rev_token_map))), err: None },
+        None => {
+            log::debug!("parse = {:?}", parse.syntax_node().kind());
+            ExpandResult { value: Some((parse, Arc::new(rev_token_map))), err: None }
+        }
     }
+}
+
+fn is_self_replicating(from: &SyntaxNode, to: &SyntaxNode) -> bool {
+    if diff(from, to).is_empty() {
+        return true;
+    }
+    if let Some(stmts) = MacroStmts::cast(from.clone()) {
+        if stmts.statements().any(|stmt| diff(stmt.syntax(), to).is_empty()) {
+            return true;
+        }
+        if let Some(expr) = stmts.expr() {
+            if diff(expr.syntax(), to).is_empty() {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 fn hygiene_frame(db: &dyn AstDatabase, file_id: HirFileId) -> Arc<HygieneFrame> {
@@ -390,21 +421,15 @@ fn to_fragment_kind(db: &dyn AstDatabase, id: MacroCallId) -> FragmentKind {
 
     let parent = match syn.parent() {
         Some(it) => it,
-        None => {
-            // FIXME:
-            // If it is root, which means the parent HirFile
-            // MacroKindFile must be non-items
-            // return expr now.
-            return FragmentKind::Expr;
-        }
+        None => return FragmentKind::Statements,
     };
 
     match parent.kind() {
         MACRO_ITEMS | SOURCE_FILE => FragmentKind::Items,
-        MACRO_STMTS => FragmentKind::Statement,
+        MACRO_STMTS => FragmentKind::Statements,
         ITEM_LIST => FragmentKind::Items,
         LET_STMT => {
-            // FIXME: Handle Pattern
+            // FIXME: Handle LHS Pattern
             FragmentKind::Expr
         }
         EXPR_STMT => FragmentKind::Statements,

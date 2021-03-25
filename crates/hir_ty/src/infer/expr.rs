@@ -767,6 +767,7 @@ impl<'a> InferenceContext<'a> {
                     None => self.table.new_float_var(),
                 },
             },
+            Expr::MacroStmts { tail } => self.infer_expr(*tail, expected),
         };
         // use a new type variable if we got unknown here
         let ty = self.insert_type_vars_shallow(ty);
