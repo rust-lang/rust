@@ -1,50 +1,40 @@
-error: intel syntax is the default syntax on this target, and trying to use this directive may cause issues
-  --> $DIR/inline-syntax.rs:19:15
+warning: avoid using `.intel_syntax`, Intel syntax is the default
+  --> $DIR/inline-syntax.rs:22:15
    |
 LL |         asm!(".intel_syntax noprefix", "nop");
-   |               ^^^^^^^^^^^^^^^^^^^^^^ help: remove this assembler directive
+   |               ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(bad_asm_style)]` on by default
 
-error: intel syntax is the default syntax on this target, and trying to use this directive may cause issues
-  --> $DIR/inline-syntax.rs:21:15
+warning: avoid using `.intel_syntax`, Intel syntax is the default
+  --> $DIR/inline-syntax.rs:25:15
    |
 LL |         asm!(".intel_syntax aaa noprefix", "nop");
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this assembler directive
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: using the .att_syntax directive may cause issues, use the att_syntax option instead
-  --> $DIR/inline-syntax.rs:23:15
+warning: avoid using `.att_syntax`, prefer using `options(att_syntax)` instead
+  --> $DIR/inline-syntax.rs:28:15
    |
 LL |         asm!(".att_syntax noprefix", "nop");
    |               ^^^^^^^^^^^^^^^^^^^^
-   |
-help: remove the assembler directive and replace it with options(att_syntax)
-   |
-LL |         asm!("", "nop", options(att_syntax));
-   |              --       ^^^^^^^^^^^^^^^^^^^^^
 
-error: using the .att_syntax directive may cause issues, use the att_syntax option instead
-  --> $DIR/inline-syntax.rs:26:15
+warning: avoid using `.att_syntax`, prefer using `options(att_syntax)` instead
+  --> $DIR/inline-syntax.rs:31:15
    |
 LL |         asm!(".att_syntax bbb noprefix", "nop");
    |               ^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: remove the assembler directive and replace it with options(att_syntax)
-   |
-LL |         asm!("", "nop", options(att_syntax));
-   |              --       ^^^^^^^^^^^^^^^^^^^^^
 
-error: intel syntax is the default syntax on this target, and trying to use this directive may cause issues
-  --> $DIR/inline-syntax.rs:29:15
+warning: avoid using `.intel_syntax`, Intel syntax is the default
+  --> $DIR/inline-syntax.rs:34:15
    |
 LL |         asm!(".intel_syntax noprefix; nop");
-   |               ^^^^^^^^^^^^^^^^^^^^^^ help: remove this assembler directive
+   |               ^^^^^^^^^^^^^^^^^^^^^^
 
-error: intel syntax is the default syntax on this target, and trying to use this directive may cause issues
-  --> $DIR/inline-syntax.rs:34:14
+warning: avoid using `.intel_syntax`, Intel syntax is the default
+  --> $DIR/inline-syntax.rs:40:13
    |
-LL |               .intel_syntax noprefix
-   |  ______________^
-LL | |             nop"
-   | |_ help: remove this assembler directive
+LL |             .intel_syntax noprefix
+   |             ^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 6 previous errors
+warning: 6 warnings emitted
 
