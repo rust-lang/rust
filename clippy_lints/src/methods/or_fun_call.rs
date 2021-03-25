@@ -155,6 +155,7 @@ pub(super) fn check<'tcx>(
             }
         }
     }
+
     if args.len() == 2 {
         match args[1].kind {
             hir::ExprKind::Call(ref fun, ref or_args) => {

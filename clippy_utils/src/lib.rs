@@ -1,6 +1,5 @@
 #![feature(box_patterns)]
 #![feature(in_band_lifetimes)]
-#![feature(or_patterns)]
 #![feature(rustc_private)]
 #![recursion_limit = "512"]
 #![allow(clippy::missing_errors_doc, clippy::missing_panics_doc, clippy::must_use_candidate)]
@@ -61,9 +60,9 @@ use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{
-    def, Arm, BindingAnnotation, Block, Body, Constness, CrateItem, Expr, ExprKind, FnDecl, ForeignItem, GenericArgs,
-    GenericParam, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, LangItem, Lifetime, Local, MacroDef,
-    MatchSource, Node, Param, Pat, PatKind, Path, PathSegment, QPath, Stmt, StructField, TraitItem, TraitItemKind,
+    def, Arm, BindingAnnotation, Block, Body, Constness, CrateItem, Expr, ExprKind, FieldDef, FnDecl, ForeignItem,
+    GenericArgs, GenericParam, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, LangItem, Lifetime, Local,
+    MacroDef, MatchSource, Node, Param, Pat, PatKind, Path, PathSegment, QPath, Stmt, TraitItem, TraitItemKind,
     TraitRef, TyKind, Variant, Visibility,
 };
 use rustc_lint::{LateContext, Level, Lint, LintContext};
@@ -722,7 +721,7 @@ pub fn get_node_span(node: Node<'_>) -> Option<Span> {
         | Node::TraitItem(TraitItem { span, .. })
         | Node::ImplItem(ImplItem { span, .. })
         | Node::Variant(Variant { span, .. })
-        | Node::Field(StructField { span, .. })
+        | Node::Field(FieldDef { span, .. })
         | Node::Expr(Expr { span, .. })
         | Node::Stmt(Stmt { span, .. })
         | Node::PathSegment(PathSegment {

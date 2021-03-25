@@ -73,11 +73,6 @@ impl EarlyLintPass for UnnestedOrPatterns {
 }
 
 fn lint_unnested_or_patterns(cx: &EarlyContext<'_>, pat: &Pat) {
-    if !cx.sess.features_untracked().or_patterns {
-        // Do not suggest nesting the patterns if the feature `or_patterns` is not enabled.
-        return;
-    }
-
     if let Ident(.., None) | Lit(_) | Wild | Path(..) | Range(..) | Rest | MacCall(_) = pat.kind {
         // This is a leaf pattern, so cloning is unprofitable.
         return;
@@ -277,7 +272,7 @@ fn transform_with_focus_on_idx(alternatives: &mut Vec<P<Pat>>, focus_idx: usize)
 /// and check that all `fp_i` where `i ∈ ((0...n) \ k)` between two patterns are equal.
 fn extend_with_struct_pat(
     path1: &ast::Path,
-    fps1: &mut Vec<ast::FieldPat>,
+    fps1: &mut Vec<ast::PatField>,
     rest1: bool,
     start: usize,
     alternatives: &mut Vec<P<Pat>>,

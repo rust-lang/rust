@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::meets_msrv;
 use clippy_utils::source::snippet_opt;
 use if_chain::if_chain;
-use rustc_ast::ast::{Attribute, Item, ItemKind, StructField, Variant, VariantData, VisibilityKind};
+use rustc_ast::ast::{Attribute, FieldDef, Item, ItemKind, Variant, VariantData, VisibilityKind};
 use rustc_attr as attr;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -144,11 +144,11 @@ fn check_manual_non_exhaustive_enum(cx: &EarlyContext<'_>, item: &Item, variants
 }
 
 fn check_manual_non_exhaustive_struct(cx: &EarlyContext<'_>, item: &Item, data: &VariantData) {
-    fn is_private(field: &StructField) -> bool {
+    fn is_private(field: &FieldDef) -> bool {
         matches!(field.vis.kind, VisibilityKind::Inherited)
     }
 
-    fn is_non_exhaustive_marker(field: &StructField) -> bool {
+    fn is_non_exhaustive_marker(field: &FieldDef) -> bool {
         is_private(field) && field.ty.kind.is_unit() && field.ident.map_or(true, |n| n.as_str().starts_with('_'))
     }
 

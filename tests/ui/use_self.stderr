@@ -157,22 +157,10 @@ LL |             Foo { value }
    |             ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:319:21
-   |
-LL |         type From = T::From;
-   |                     ^^^^^^^ help: use the applicable keyword: `Self`
-
-error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:320:19
-   |
-LL |         type To = T::To;
-   |                   ^^^^^ help: use the applicable keyword: `Self`
-
-error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:453:13
+  --> $DIR/use_self.rs:454:13
    |
 LL |             A::new::<submod::B>(submod::B {})
    |             ^ help: use the applicable keyword: `Self`
 
-error: aborting due to 29 previous errors
+error: aborting due to 27 previous errors
 

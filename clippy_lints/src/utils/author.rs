@@ -101,12 +101,12 @@ impl<'tcx> LateLintPass<'tcx> for Author {
         done();
     }
 
-    fn check_struct_field(&mut self, cx: &LateContext<'tcx>, field: &'tcx hir::StructField<'_>) {
+    fn check_field_def(&mut self, cx: &LateContext<'tcx>, field: &'tcx hir::FieldDef<'_>) {
         if !has_attr(cx, field.hir_id) {
             return;
         }
         prelude();
-        PrintVisitor::new("field").visit_struct_field(field);
+        PrintVisitor::new("field").visit_field_def(field);
         done();
     }
 
