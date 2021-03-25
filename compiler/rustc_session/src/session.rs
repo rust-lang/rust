@@ -807,8 +807,11 @@ impl Session {
         // This is used to control the emission of the `uwtable` attribute on
         // LLVM functions.
         //
-        // At the very least, unwind tables are needed when compiling with
-        // `-C panic=unwind`.
+        // Unwind tables are needed when compiling with `-C panic=unwind`, but
+        // LLVM won't omit unwind tables unless the function is also marked as
+        // `nounwind`, so users are allowed to disable `uwtable` emission.
+        // Historically rustc always emits `uwtable` attributes by default, so
+        // even they can be disabled, they're still emitted by default.
         //
         // On some targets (including windows), however, exceptions include
         // other events such as illegal instructions, segfaults, etc. This means
@@ -821,13 +824,10 @@ impl Session {
         // If a target requires unwind tables, then they must be emitted.
         // Otherwise, we can defer to the `-C force-unwind-tables=<yes/no>`
         // value, if it is provided, or disable them, if not.
-        if self.panic_strategy() == PanicStrategy::Unwind {
-            true
-        } else if self.target.requires_uwtable {
-            true
-        } else {
-            self.opts.cg.force_unwind_tables.unwrap_or(self.target.default_uwtable)
-        }
+        self.target.requires_uwtable
+            || self.opts.cg.force_unwind_tables.unwrap_or(
+                self.panic_strategy() == PanicStrategy::Unwind || self.target.default_uwtable,
+            )
     }
 
     /// Returns the symbol name for the registrar function,
@@ -1483,13 +1483,6 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
 
     // Unwind tables cannot be disabled if the target requires them.
     if let Some(include_uwtables) = sess.opts.cg.force_unwind_tables {
-        if sess.panic_strategy() == PanicStrategy::Unwind && !include_uwtables {
-            sess.err(
-                "panic=unwind requires unwind tables, they cannot be disabled \
-                     with `-C force-unwind-tables=no`.",
-            );
-        }
-
         if sess.target.requires_uwtable && !include_uwtables {
             sess.err(
                 "target requires unwind tables, they cannot be disabled with \
