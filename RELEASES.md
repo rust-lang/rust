@@ -34,7 +34,6 @@ Compiler
   `aarch64-unknown-linux-gnu_ilp32`, and `aarch64_be-unknown-linux-gnu_ilp32` targets.][81455]
 - [Added tier 3 support for `i386-unknown-linux-gnu` and `i486-unknown-linux-gnu` targets.][80662]
 - [The `target-cpu=native` option will now detect individual features of CPUs.][80749]
-- [Rust now uses `inline-asm` for stack probes when used with LLVM 11.0.1+][77885]
 
 \* Refer to Rust's [platform support page][forge-platform-support] for more
 information on Rust's tiered platform support.
@@ -146,7 +145,6 @@ Internal Only
 [80764]: https://github.com/rust-lang/rust/pull/80764
 [80749]: https://github.com/rust-lang/rust/pull/80749
 [80662]: https://github.com/rust-lang/rust/pull/80662
-[77885]: https://github.com/rust-lang/rust/pull/77885
 [cargo/8997]: https://github.com/rust-lang/cargo/pull/8997
 [cargo/9112]: https://github.com/rust-lang/cargo/pull/9112
 [feature-resolver@2.0]: https://doc.rust-lang.org/nightly/cargo/reference/features.html#feature-resolver-version-2
