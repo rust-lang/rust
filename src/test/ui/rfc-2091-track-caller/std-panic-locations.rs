@@ -3,7 +3,6 @@
 // revisions: default mir-opt
 //[mir-opt] compile-flags: -Zmir-opt-level=4
 
-#![feature(option_expect_none, option_unwrap_none)]
 #![allow(unconditional_panic)]
 
 //! Test that panic locations for `#[track_caller]` functions in std have the correct
@@ -31,10 +30,6 @@ fn main() {
     let nope: Option<()> = None;
     assert_panicked(|| nope.unwrap());
     assert_panicked(|| nope.expect(""));
-
-    let yep: Option<()> = Some(());
-    assert_panicked(|| yep.unwrap_none());
-    assert_panicked(|| yep.expect_none(""));
 
     let oops: Result<(), ()> = Err(());
     assert_panicked(|| oops.unwrap());
