@@ -252,9 +252,11 @@ environment variable:
 * `-Zmiri-track-raw-pointers` makes Stacked Borrows track a pointer tag even for
   raw pointers. This can make valid code fail to pass the checks, but also can
   help identify latent aliasing issues in code that Miri accepts by default. You
-  can recognize false positives by "<untagged>" occurring in the message -- this
+  can recognize false positives by `<untagged>` occurring in the message -- this
   indicates a pointer that was cast from an integer, so Miri was unable to track
-  this pointer.
+  this pointer. Note that it is not currently guaranteed that code that works
+  with `-Zmiri-track-raw-pointers` also works without
+  `-Zmiri-track-raw-pointers`, but for the vast majority of code, this will be the case.
 
 Some native rustc `-Z` flags are also very relevant for Miri:
 
