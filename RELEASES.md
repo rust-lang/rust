@@ -87,7 +87,7 @@ Cargo
 Rustdoc
 -------
 
-- [Rustdoc will now include documentation for methods available from `Deref` traits.][80653]
+- [Rustdoc will now include documentation for methods available from _nested_ `Deref` traits.][80653]
 - [You can now provide a `--default-theme` flag which sets the default theme to use for
   documentation.][79642]
 
