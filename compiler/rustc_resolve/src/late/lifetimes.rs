@@ -341,6 +341,34 @@ pub fn provide(providers: &mut ty::query::Providers) {
 
 /// Like `resolve_lifetimes`, but does not resolve lifetimes for trait items.
 /// Also does not generate any diagnostics.
+///
+/// This is ultimately a subset of the `resolve_lifetimes` work. It effectively
+/// resolves lifetimes only within the trait "header" -- that is, the trait
+/// and supertrait list. In contrast, `resolve_lifetimes` resolves all the
+/// lifetimes within the trait and its items. There is room to refactor this,
+/// for example to resolve lifetimes for each trait item in separate queries,
+/// but it's convenient to do the entire trait at once because the lifetimes
+/// from the trait definition are in scope within the trait items as well.
+///
+/// The reason for this separate call is to resolve what would otherwise
+/// be a cycle. Consider this example:
+///
+/// ```rust
+/// trait Base<'a> {
+///     type BaseItem;
+/// }
+/// trait Sub<'b>: for<'a> Base<'a> {
+///    type SubItem: Sub<BaseItem = &'b u32>;
+/// }
+/// ```
+///
+/// When we resolve `Sub` and all its items, we also have to resolve `Sub<BaseItem = &'b u32>`.
+/// To figure out the index of `'b`, we have to know about the supertraits
+/// of `Sub` so that we can determine that the `for<'a>` will be in scope.
+/// (This is because we -- currently at least -- flatten all the late-bound
+/// lifetimes into a single binder.) This requires us to resolve the
+/// *trait definition* of `Sub`; basically just enough lifetime information
+/// to look at the supertraits.
 #[tracing::instrument(level = "debug", skip(tcx))]
 fn resolve_lifetimes_trait_definition(
     tcx: TyCtxt<'_>,
