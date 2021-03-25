@@ -2959,6 +2959,7 @@ declare_lint_pass! {
         DISJOINT_CAPTURE_DROP_REORDER,
         LEGACY_DERIVE_HELPERS,
         PROC_MACRO_BACK_COMPAT,
+        OR_PATTERNS_BACK_COMPAT,
     ]
 }
 
@@ -3135,4 +3136,38 @@ declare_lint! {
             date: None
         })
     };
+}
+
+declare_lint! {
+    /// The `or_patterns_back_compat` lint detects usage of old versions of or-patterns.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(or_patterns_back_compat)]
+    /// macro_rules! match_any {
+    ///     ( $expr:expr , $( $( $pat:pat )|+ => $expr_arm:expr ),+ ) => {
+    ///         match $expr {
+    ///             $(
+    ///                 $( $pat => $expr_arm, )+
+    ///             )+
+    ///         }
+    ///     };
+    /// }
+    ///
+    /// fn main() {
+    ///     let result: Result<i64, i32> = Err(42);
+    ///     let int: i64 = match_any!(result, Ok(i) | Err(i) => i.into());
+    ///     assert_eq!(int, 42);
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// In Rust 2021, the pat matcher will match new patterns, which include the | character.
+    pub OR_PATTERNS_BACK_COMPAT,
+    Allow,
+    "detects usage of old versions of or-patterns",
 }
