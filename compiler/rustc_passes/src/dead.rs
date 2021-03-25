@@ -16,7 +16,7 @@ use rustc_middle::middle::privacy;
 use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_session::lint;
 
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{sym, Ident, Symbol};
 
 // Any local node that may call something in its body block should be
 // explored. For example, if it's a live Node::Item that is a
@@ -580,7 +580,7 @@ impl DeadVisitor<'tcx> {
         &mut self,
         id: hir::HirId,
         span: rustc_span::Span,
-        name: Symbol,
+        name: Ident,
         participle: &str,
         extra_note: Option<ExtraNote>,
     ) {
@@ -589,7 +589,7 @@ impl DeadVisitor<'tcx> {
                 let def_id = self.tcx.hir().local_def_id(id);
                 let descr = self.tcx.def_kind(def_id).descr(def_id.to_def_id());
 
-                let prefixed = vec![(span, format!("_{}", name))];
+                let prefixed = vec![(name.span, format!("_{}", name))];
 
                 let mut diag =
                     lint.build(&format!("{} is never {}: `{}`", descr, participle, name));
@@ -602,11 +602,11 @@ impl DeadVisitor<'tcx> {
 
                 let mut note = format!(
                     "the leading underscore signals that this {} serves some other \
-                    purpose\neven if it isn't used in a way that we can detect.",
+                    purpose even if it isn't used in a way that we can detect.",
                     descr,
                 );
                 if matches!(extra_note, Some(ExtraNote::OtherPurposeExamples)) {
-                    note += " (e.g. for its effect\nwhen dropped or in foreign code)";
+                    note += " (e.g. for its effect when dropped or in foreign code)";
                 }
 
                 diag.note(&note);
@@ -661,7 +661,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                 hir::ItemKind::Struct(..) => "constructed", // Issue #52325
                 _ => "used",
             };
-            self.warn_dead_code(item.hir_id(), span, item.ident.name, participle, None);
+            self.warn_dead_code(item.hir_id(), span, item.ident, participle, None);
         } else {
             // Only continue if we didn't warn
             intravisit::walk_item(self, item);
@@ -675,7 +675,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
         id: hir::HirId,
     ) {
         if self.should_warn_about_variant(&variant) {
-            self.warn_dead_code(variant.id, variant.span, variant.ident.name, "constructed", None);
+            self.warn_dead_code(variant.id, variant.span, variant.ident, "constructed", None);
         } else {
             intravisit::walk_variant(self, variant, g, id);
         }
@@ -683,7 +683,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
 
     fn visit_foreign_item(&mut self, fi: &'tcx hir::ForeignItem<'tcx>) {
         if self.should_warn_about_foreign_item(fi) {
-            self.warn_dead_code(fi.hir_id(), fi.span, fi.ident.name, "used", None);
+            self.warn_dead_code(fi.hir_id(), fi.span, fi.ident, "used", None);
         }
         intravisit::walk_foreign_item(self, fi);
     }
@@ -693,7 +693,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
             self.warn_dead_code(
                 field.hir_id,
                 field.span,
-                field.ident.name,
+                field.ident,
                 "read",
                 Some(ExtraNote::OtherPurposeExamples),
             );
@@ -708,7 +708,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                     self.warn_dead_code(
                         impl_item.hir_id(),
                         impl_item.span,
-                        impl_item.ident.name,
+                        impl_item.ident,
                         "used",
                         None,
                     );
@@ -728,13 +728,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                     } else {
                         impl_item.ident.span
                     };
-                    self.warn_dead_code(
-                        impl_item.hir_id(),
-                        span,
-                        impl_item.ident.name,
-                        "used",
-                        None,
-                    );
+                    self.warn_dead_code(impl_item.hir_id(), span, impl_item.ident, "used", None);
                 }
                 self.visit_nested_body(body_id)
             }

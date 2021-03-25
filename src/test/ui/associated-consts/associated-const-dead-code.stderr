@@ -2,10 +2,11 @@ error: associated constant is never used: `BAR`
   --> $DIR/associated-const-dead-code.rs:6:5
    |
 LL |     const BAR: u32 = 1;
-   |     ^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_BAR`
+   |     ^^^^^^---^^^^^^^^^^
+   |           |
+   |           help: if this is intentional, prefix it with an underscore: `_BAR`
    |
-   = note: the leading underscore signals that this associated constant serves some other purpose
-           even if it isn't used in a way that we can detect.
+   = note: the leading underscore signals that this associated constant serves some other purpose even if it isn't used in a way that we can detect.
 note: the lint level is defined here
   --> $DIR/associated-const-dead-code.rs:1:9
    |
