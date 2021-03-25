@@ -326,6 +326,45 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 );
             }
         }
+
+        // Check for unstable modifiers on `#[link(..)]` attribute
+        if self.sess.check_name(attr, sym::link) {
+            for nested_meta in attr.meta_item_list().unwrap_or_default() {
+                if nested_meta.has_name(sym::modifiers) {
+                    gate_feature_post!(
+                        self,
+                        native_link_modifiers,
+                        nested_meta.span(),
+                        "native link modifiers are experimental"
+                    );
+
+                    if let Some(modifiers) = nested_meta.value_str() {
+                        for modifier in modifiers.as_str().split(',') {
+                            if let Some(modifier) = modifier.strip_prefix(&['+', '-'][..]) {
+                                macro_rules! gate_modifier { ($($name:literal => $feature:ident)*) => {
+                                    $(if modifier == $name {
+                                        let msg = concat!("`#[link(modifiers=\"", $name, "\")]` is unstable");
+                                        gate_feature_post!(
+                                            self,
+                                            $feature,
+                                            nested_meta.name_value_literal_span().unwrap(),
+                                            msg
+                                        );
+                                    })*
+                                }}
+
+                                gate_modifier!(
+                                    "bundle" => native_link_modifiers_bundle
+                                    "verbatim" => native_link_modifiers_verbatim
+                                    "whole-archive" => native_link_modifiers_whole_archive
+                                    "as-needed" => native_link_modifiers_as_needed
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     fn visit_item(&mut self, i: &'a ast::Item) {
