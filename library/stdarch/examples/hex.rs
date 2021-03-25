@@ -159,21 +159,21 @@ unsafe fn hex_encode_sse41<'a>(mut src: &[u8], dst: &'a mut [u8]) -> Result<&'a 
 unsafe fn hex_encode_simd128<'a>(mut src: &[u8], dst: &'a mut [u8]) -> Result<&'a str, usize> {
     use core_arch::arch::wasm32::*;
 
-    let ascii_zero = i8x16_splat(b'0' as i8);
-    let nines = i8x16_splat(9);
-    let ascii_a = i8x16_splat((b'a' - 9 - 1) as i8);
-    let and4bits = i8x16_splat(0xf);
+    let ascii_zero = u8x16_splat(b'0');
+    let nines = u8x16_splat(9);
+    let ascii_a = u8x16_splat(b'a' - 9 - 1);
+    let and4bits = u8x16_splat(0xf);
 
     let mut i = 0_isize;
     while src.len() >= 16 {
         let invec = v128_load(src.as_ptr() as *const _);
 
         let masked1 = v128_and(invec, and4bits);
-        let masked2 = v128_and(i8x16_shr_u(invec, 4), and4bits);
+        let masked2 = v128_and(u8x16_shr(invec, 4), and4bits);
 
         // return 0xff corresponding to the elements > 9, or 0x00 otherwise
-        let cmpmask1 = i8x16_gt_u(masked1, nines);
-        let cmpmask2 = i8x16_gt_u(masked2, nines);
+        let cmpmask1 = u8x16_gt(masked1, nines);
+        let cmpmask2 = u8x16_gt(masked2, nines);
 
         // add '0' or the offset depending on the masks
         let masked1 = i8x16_add(masked1, v128_bitselect(ascii_a, ascii_zero, cmpmask1));
