@@ -1,4 +1,5 @@
-use crate::utils::{snippet_opt, span_lint_and_help, span_lint_and_sugg};
+use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
+use clippy_utils::source::snippet_opt;
 use rustc_ast::ast;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::Applicability;

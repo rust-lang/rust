@@ -1,5 +1,6 @@
 use super::WHILE_LET_LOOP;
-use crate::utils::{snippet_with_applicability, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet_with_applicability;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, MatchSource, StmtKind};
 use rustc_lint::{LateContext, LintContext};

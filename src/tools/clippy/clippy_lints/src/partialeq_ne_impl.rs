@@ -1,4 +1,5 @@
-use crate::utils::{is_automatically_derived, span_lint_hir};
+use clippy_utils::diagnostics::span_lint_hir;
+use clippy_utils::is_automatically_derived;
 use if_chain::if_chain;
 use rustc_hir::{Impl, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};

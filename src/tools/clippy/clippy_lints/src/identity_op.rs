@@ -1,3 +1,4 @@
+use clippy_utils::source::snippet;
 use if_chain::if_chain;
 use rustc_hir::{BinOp, BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -6,7 +7,8 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 
 use crate::consts::{constant_simple, Constant};
-use crate::utils::{clip, snippet, span_lint, unsext};
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::{clip, unsext};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for identity operations, e.g., `x + 0`.

@@ -1,11 +1,12 @@
-use crate::utils::{last_path_segment, snippet, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::last_path_segment;
+use clippy_utils::source::snippet;
+use if_chain::if_chain;
+use rustc_errors::Applicability;
 use rustc_hir::{GenericArg, Mutability, Ty, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::sym;
-
-use if_chain::if_chain;
-use rustc_errors::Applicability;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `&Option<&T>`.

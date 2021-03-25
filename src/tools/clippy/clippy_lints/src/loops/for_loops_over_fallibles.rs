@@ -1,5 +1,7 @@
 use super::FOR_LOOPS_OVER_FALLIBLES;
-use crate::utils::{is_type_diagnostic_item, snippet, span_lint_and_help};
+use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::source::snippet;
+use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_hir::{Expr, Pat};
 use rustc_lint::LateContext;
 use rustc_span::symbol::sym;

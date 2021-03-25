@@ -1,4 +1,5 @@
-use crate::utils::{match_def_path, paths, span_lint, trait_ref_of_method};
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::{match_def_path, paths, trait_ref_of_method};
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::TypeFoldable;

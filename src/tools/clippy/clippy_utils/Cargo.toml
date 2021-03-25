@@ -1,6 +1,6 @@
 [package]
 name = "clippy_utils"
-version = "0.1.52"
+version = "0.1.53"
 authors = ["The Rust Clippy Developers"]
 edition = "2018"
 publish = false
@@ -10,8 +10,6 @@ if_chain = "1.0.0"
 itertools = "0.9"
 regex-syntax = "0.6"
 serde = { version = "1.0", features = ["derive"] }
-smallvec = { version = "1", features = ["union"] }
-toml = "0.5.3"
 unicode-normalization = "0.1"
 rustc-semver="1.1.0"
 

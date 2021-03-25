@@ -1,9 +1,10 @@
-use crate::utils;
-use crate::utils::eager_or_lazy;
-use crate::utils::sugg::Sugg;
-use crate::utils::{is_type_diagnostic_item, paths, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::paths;
+use clippy_utils::sugg::Sugg;
+use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::usage::contains_return_break_continue_macro;
+use clippy_utils::{eager_or_lazy, get_enclosing_block, in_macro, match_qpath};
 use if_chain::if_chain;
-
 use rustc_errors::Applicability;
 use rustc_hir::{Arm, BindingAnnotation, Block, Expr, ExprKind, MatchSource, Mutability, PatKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
@@ -108,7 +109,7 @@ fn extract_body_from_arm<'a>(arm: &'a Arm<'a>) -> Option<&'a Expr<'a>> {
 /// If this is the else body of an if/else expression, then we need to wrap
 /// it in curly braces. Otherwise, we don't.
 fn should_wrap_in_braces(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    utils::get_enclosing_block(cx, expr.hir_id).map_or(false, |parent| {
+    get_enclosing_block(cx, expr.hir_id).map_or(false, |parent| {
         let mut should_wrap = false;
 
         if let Some(Expr {
@@ -158,15 +159,15 @@ fn detect_option_if_let_else<'tcx>(
     expr: &'_ Expr<'tcx>,
 ) -> Option<OptionIfLetElseOccurence> {
     if_chain! {
-        if !utils::in_macro(expr.span); // Don't lint macros, because it behaves weirdly
+        if !in_macro(expr.span); // Don't lint macros, because it behaves weirdly
         if let ExprKind::Match(cond_expr, arms, MatchSource::IfLetDesugar{contains_else_clause: true}) = &expr.kind;
         if arms.len() == 2;
         if !is_result_ok(cx, cond_expr); // Don't lint on Result::ok because a different lint does it already
         if let PatKind::TupleStruct(struct_qpath, &[inner_pat], _) = &arms[0].pat.kind;
-        if utils::match_qpath(struct_qpath, &paths::OPTION_SOME);
+        if match_qpath(struct_qpath, &paths::OPTION_SOME);
         if let PatKind::Binding(bind_annotation, _, id, _) = &inner_pat.kind;
-        if !utils::usage::contains_return_break_continue_macro(arms[0].body);
-        if !utils::usage::contains_return_break_continue_macro(arms[1].body);
+        if !contains_return_break_continue_macro(arms[0].body);
+        if !contains_return_break_continue_macro(arms[1].body);
         then {
             let capture_mut = if bind_annotation == &BindingAnnotation::Mutable { "mut " } else { "" };
             let some_body = extract_body_from_arm(&arms[0])?;

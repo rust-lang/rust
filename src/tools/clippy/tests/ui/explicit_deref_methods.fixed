@@ -29,7 +29,7 @@ fn main() {
 
     let b: &str = &*a;
 
-    let b: &mut str = &mut *a;
+    let b: &mut str = &mut **a;
 
     // both derefs should get linted here
     let b: String = format!("{}, {}", &*a, &*a);
@@ -43,11 +43,11 @@ fn main() {
 
     let b: String = concat(&*a);
 
-    let b = &*just_return(a);
+    let b = just_return(a);
 
-    let b: String = concat(&*just_return(a));
+    let b: String = concat(just_return(a));
 
-    let b: &str = &*a.deref();
+    let b: &str = &**a;
 
     let opt_a = Some(a.clone());
     let b = &*opt_a.unwrap();
@@ -75,6 +75,8 @@ fn main() {
         };
     }
     let b: &str = expr_deref!(a);
+
+    let b: &str = expr_deref!(&*a);
 
     // The struct does not implement Deref trait
     #[derive(Copy, Clone)]

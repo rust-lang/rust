@@ -1,7 +1,6 @@
-use crate::utils::{
-    implements_trait, is_entrypoint_fn, is_expn_of, is_type_diagnostic_item, match_panic_def_id, method_chain_args,
-    return_ty, span_lint, span_lint_and_note,
-};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_note};
+use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
+use clippy_utils::{is_entrypoint_fn, is_expn_of, match_panic_def_id, method_chain_args, return_ty};
 use if_chain::if_chain;
 use itertools::Itertools;
 use rustc_ast::ast::{Async, AttrKind, Attribute, FnKind, FnRetTy, ItemKind};
@@ -584,7 +583,7 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
                                 let returns_nothing = match &sig.decl.output {
                                     FnRetTy::Default(..) => true,
                                     FnRetTy::Ty(ty) if ty.kind.is_unit() => true,
-                                    _ => false,
+                                    FnRetTy::Ty(_) => false,
                                 };
 
                                 if returns_nothing && !is_async && !block.stmts.is_empty() {

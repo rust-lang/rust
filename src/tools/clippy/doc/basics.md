@@ -88,8 +88,8 @@ cargo dev fmt
 cargo dev update_lints
 # create a new lint and register it
 cargo dev new_lint
-# (experimental) Setup Clippy to work with rust-analyzer
-cargo dev ra_setup
+# (experimental) Setup Clippy to work with IntelliJ-Rust
+cargo dev ide_setup
 ```
 
 ## lintcheck

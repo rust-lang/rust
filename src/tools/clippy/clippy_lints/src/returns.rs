@@ -1,3 +1,6 @@
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::source::snippet_opt;
+use clippy_utils::{fn_def_id, in_macro, match_qpath};
 use if_chain::if_chain;
 use rustc_ast::ast::Attribute;
 use rustc_errors::Applicability;
@@ -10,8 +13,6 @@ use rustc_middle::ty::subst::GenericArgKind;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::sym;
-
-use crate::utils::{fn_def_id, in_macro, match_qpath, snippet_opt, span_lint_and_sugg, span_lint_and_then};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `let`-bindings, which are subsequently

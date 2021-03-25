@@ -128,4 +128,9 @@ fn main() {
             None => None,
         };
     }
+
+    // #6847
+    if Some(0).is_some() {
+        Some(0)
+    } else { Some(0).map(|x| x + 1) };
 }

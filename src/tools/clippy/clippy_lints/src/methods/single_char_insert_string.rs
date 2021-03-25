@@ -1,5 +1,6 @@
-use crate::methods::get_hint_if_single_char_arg;
-use crate::utils::{snippet_with_applicability, span_lint_and_sugg};
+use super::utils::get_hint_if_single_char_arg;
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet_with_applicability;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;

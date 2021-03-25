@@ -1,8 +1,8 @@
 use super::{contains_return, BIND_INSTEAD_OF_MAP};
-use crate::utils::{
-    in_macro, match_qpath, match_type, method_calls, multispan_sugg_with_applicability, paths, remove_blocks, snippet,
-    snippet_with_macro_callsite, span_lint_and_sugg, span_lint_and_then, visitors::find_all_ret_expressions,
-};
+use clippy_utils::diagnostics::{multispan_sugg_with_applicability, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::source::{snippet, snippet_with_macro_callsite};
+use clippy_utils::ty::match_type;
+use clippy_utils::{in_macro, match_qpath, method_calls, paths, remove_blocks, visitors::find_all_ret_expressions};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;

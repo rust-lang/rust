@@ -1,4 +1,5 @@
-use crate::utils::{match_def_path, match_qpath, paths, span_lint};
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::{match_def_path, match_qpath, paths};
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_lint::LateContext;

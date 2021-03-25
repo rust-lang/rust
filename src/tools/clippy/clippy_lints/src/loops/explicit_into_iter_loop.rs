@@ -1,5 +1,6 @@
 use super::EXPLICIT_INTO_ITER_LOOP;
-use crate::utils::{snippet_with_applicability, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet_with_applicability;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;

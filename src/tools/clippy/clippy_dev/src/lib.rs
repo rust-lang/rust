@@ -12,8 +12,8 @@ use walkdir::WalkDir;
 
 pub mod bless;
 pub mod fmt;
+pub mod ide_setup;
 pub mod new_lint;
-pub mod ra_setup;
 pub mod serve;
 pub mod stderr_length_check;
 pub mod update_lints;

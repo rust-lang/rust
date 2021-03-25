@@ -1,18 +1,14 @@
-use crate::{
-    map_unit_fn::OPTION_MAP_UNIT_FN,
-    matches::MATCH_AS_REF,
-    utils::{
-        can_partially_move_ty, is_allowed, is_type_diagnostic_item, match_def_path, match_var, paths,
-        peel_hir_expr_refs, peel_mid_ty_refs_is_mutable, snippet_with_applicability, snippet_with_context,
-        span_lint_and_sugg,
-    },
-};
+use crate::{map_unit_fn::OPTION_MAP_UNIT_FN, matches::MATCH_AS_REF};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
+use clippy_utils::ty::{can_partially_move_ty, is_type_diagnostic_item, peel_mid_ty_refs_is_mutable};
+use clippy_utils::{is_allowed, is_else_clause_of_if_let_else, match_def_path, match_var, paths, peel_hir_expr_refs};
 use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::Applicability;
 use rustc_hir::{
     def::Res,
     intravisit::{walk_expr, ErasedMap, NestedVisitorMap, Visitor},
-    Arm, BindingAnnotation, Block, Expr, ExprKind, Mutability, Pat, PatKind, Path, QPath,
+    Arm, BindingAnnotation, Block, Expr, ExprKind, MatchSource, Mutability, Pat, PatKind, Path, QPath,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -55,8 +51,11 @@ impl LateLintPass<'_> for ManualMap {
             return;
         }
 
-        if let ExprKind::Match(scrutinee, [arm1 @ Arm { guard: None, .. }, arm2 @ Arm { guard: None, .. }], _) =
-            expr.kind
+        if let ExprKind::Match(
+            scrutinee,
+            [arm1 @ Arm { guard: None, .. }, arm2 @ Arm { guard: None, .. }],
+            match_kind,
+        ) = expr.kind
         {
             let (scrutinee_ty, ty_ref_count, ty_mutability) =
                 peel_mid_ty_refs_is_mutable(cx.typeck_results().expr_ty(scrutinee));
@@ -129,7 +128,7 @@ impl LateLintPass<'_> for ManualMap {
             // Remove address-of expressions from the scrutinee. Either `as_ref` will be called, or
             // it's being passed by value.
             let scrutinee = peel_hir_expr_refs(scrutinee).0;
-            let scrutinee_str = snippet_with_context(cx, scrutinee.span, expr_ctxt, "..", &mut app);
+            let (scrutinee_str, _) = snippet_with_context(cx, scrutinee.span, expr_ctxt, "..", &mut app);
             let scrutinee_str =
                 if scrutinee.span.ctxt() == expr.span.ctxt() && scrutinee.precedence().order() < PREC_POSTFIX {
                     format!("({})", scrutinee_str)
@@ -160,7 +159,7 @@ impl LateLintPass<'_> for ManualMap {
                             "|{}{}| {}",
                             annotation,
                             some_binding,
-                            snippet_with_context(cx, some_expr.span, expr_ctxt, "..", &mut app)
+                            snippet_with_context(cx, some_expr.span, expr_ctxt, "..", &mut app).0
                         )
                     },
                 }
@@ -168,8 +167,8 @@ impl LateLintPass<'_> for ManualMap {
                 // TODO: handle explicit reference annotations.
                 format!(
                     "|{}| {}",
-                    snippet_with_context(cx, some_pat.span, expr_ctxt, "..", &mut app),
-                    snippet_with_context(cx, some_expr.span, expr_ctxt, "..", &mut app)
+                    snippet_with_context(cx, some_pat.span, expr_ctxt, "..", &mut app).0,
+                    snippet_with_context(cx, some_expr.span, expr_ctxt, "..", &mut app).0
                 )
             } else {
                 // Refutable bindings and mixed reference annotations can't be handled by `map`.
@@ -182,7 +181,12 @@ impl LateLintPass<'_> for ManualMap {
                 expr.span,
                 "manual implementation of `Option::map`",
                 "try this",
-                format!("{}{}.map({})", scrutinee_str, as_ref_str, body_str),
+                if matches!(match_kind, MatchSource::IfLetDesugar { .. }) && is_else_clause_of_if_let_else(cx.tcx, expr)
+                {
+                    format!("{{ {}{}.map({}) }}", scrutinee_str, as_ref_str, body_str)
+                } else {
+                    format!("{}{}.map({})", scrutinee_str, as_ref_str, body_str)
+                },
                 app,
             );
         }

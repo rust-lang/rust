@@ -1,9 +1,9 @@
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet_with_applicability;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty, UintTy};
-
-use crate::utils::{snippet_with_applicability, span_lint_and_sugg};
 
 use super::{utils, FN_TO_NUMERIC_CAST};
 

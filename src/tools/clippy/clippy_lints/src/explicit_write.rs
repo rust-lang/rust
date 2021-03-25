@@ -1,4 +1,5 @@
-use crate::utils::{is_expn_of, match_function_call, paths, span_lint, span_lint_and_sugg};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
+use clippy_utils::{is_expn_of, match_function_call, paths};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;

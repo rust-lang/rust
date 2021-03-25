@@ -1,9 +1,9 @@
 use super::NEEDLESS_COLLECT;
-use crate::utils::sugg::Sugg;
-use crate::utils::{
-    is_type_diagnostic_item, match_trait_method, match_type, path_to_local_id, paths, snippet, span_lint_and_sugg,
-    span_lint_and_then,
-};
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::source::snippet;
+use clippy_utils::sugg::Sugg;
+use clippy_utils::ty::{is_type_diagnostic_item, match_type};
+use clippy_utils::{is_trait_method, path_to_local_id, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_block, walk_expr, NestedVisitorMap, Visitor};
@@ -23,7 +23,7 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
     if_chain! {
         if let ExprKind::MethodCall(ref method, _, ref args, _) = expr.kind;
         if let ExprKind::MethodCall(ref chain_method, _, _, _) = args[0].kind;
-        if chain_method.ident.name == sym!(collect) && match_trait_method(cx, &args[0], &paths::ITERATOR);
+        if chain_method.ident.name == sym!(collect) && is_trait_method(cx, &args[0], sym::Iterator);
         if let Some(ref generic_args) = chain_method.args;
         if let Some(GenericArg::Type(ref ty)) = generic_args.args.get(0);
         then {
@@ -94,7 +94,7 @@ fn check_needless_collect_indirect_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCo
                     init: Some(ref init_expr), .. }
                 ) = stmt.kind;
                 if let ExprKind::MethodCall(ref method_name, _, &[ref iter_source], ..) = init_expr.kind;
-                if method_name.ident.name == sym!(collect) && match_trait_method(cx, &init_expr, &paths::ITERATOR);
+                if method_name.ident.name == sym!(collect) && is_trait_method(cx, &init_expr, sym::Iterator);
                 if let Some(ref generic_args) = method_name.args;
                 if let Some(GenericArg::Type(ref ty)) = generic_args.args.get(0);
                 if let ty = cx.typeck_results().node_type(ty.hir_id);

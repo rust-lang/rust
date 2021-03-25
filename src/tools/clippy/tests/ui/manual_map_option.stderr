@@ -172,5 +172,24 @@ LL | |         None => None,
 LL | |     };
    | |_____^ help: try this: `option_env!("").map(String::from)`
 
-error: aborting due to 19 previous errors
+error: redundant pattern matching, consider using `is_some()`
+  --> $DIR/manual_map_option.rs:191:12
+   |
+LL |     if let Some(_) = Some(0) {
+   |     -------^^^^^^^---------- help: try this: `if Some(0).is_some()`
+   |
+   = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
+
+error: manual implementation of `Option::map`
+  --> $DIR/manual_map_option.rs:193:12
+   |
+LL |       } else if let Some(x) = Some(0) {
+   |  ____________^
+LL | |         Some(x + 1)
+LL | |     } else {
+LL | |         None
+LL | |     };
+   | |_____^ help: try this: `{ Some(0).map(|x| x + 1) }`
+
+error: aborting due to 21 previous errors
 

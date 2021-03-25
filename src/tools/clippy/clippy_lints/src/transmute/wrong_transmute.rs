@@ -1,5 +1,5 @@
 use super::WRONG_TRANSMUTE;
-use crate::utils::span_lint;
+use clippy_utils::diagnostics::span_lint;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};

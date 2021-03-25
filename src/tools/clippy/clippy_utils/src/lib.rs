@@ -32,7 +32,7 @@ pub mod attrs;
 pub mod camel_case;
 pub mod comparisons;
 pub mod consts;
-mod diagnostics;
+pub mod diagnostics;
 pub mod eager_or_lazy;
 pub mod higher;
 mod hir_utils;
@@ -40,51 +40,47 @@ pub mod numeric_literal;
 pub mod paths;
 pub mod ptr;
 pub mod qualify_min_const_fn;
+pub mod source;
 pub mod sugg;
+pub mod ty;
 pub mod usage;
 pub mod visitors;
 
 pub use self::attrs::*;
-pub use self::diagnostics::*;
 pub use self::hir_utils::{both, eq_expr_value, over, SpanlessEq, SpanlessHash};
 
-use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault;
 
 use if_chain::if_chain;
-use rustc_ast::ast::{self, Attribute, BorrowKind, LitKind, Mutability};
+use rustc_ast::ast::{self, Attribute, BorrowKind, LitKind};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::Node;
 use rustc_hir::{
-    def, Arm, Block, Body, Constness, Expr, ExprKind, FnDecl, GenericArgs, HirId, Impl, ImplItem, ImplItemKind, Item,
-    ItemKind, LangItem, MatchSource, Param, Pat, PatKind, Path, PathSegment, QPath, TraitItem, TraitItemKind, TraitRef,
-    TyKind, Unsafety,
+    def, Arm, BindingAnnotation, Block, Body, Constness, CrateItem, Expr, ExprKind, FieldDef, FnDecl, ForeignItem,
+    GenericArgs, GenericParam, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, LangItem, Lifetime, Local,
+    MacroDef, MatchSource, Node, Param, Pat, PatKind, Path, PathSegment, QPath, Stmt, TraitItem, TraitItemKind,
+    TraitRef, TyKind, Variant, Visibility,
 };
-use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::exports::Export;
 use rustc_middle::hir::map::Map;
-use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
-use rustc_middle::ty::{self, layout::IntegerExt, DefIdTree, IntTy, Ty, TyCtxt, TypeFoldable, UintTy};
+use rustc_middle::ty as rustc_ty;
+use rustc_middle::ty::{layout::IntegerExt, DefIdTree, Ty, TyCtxt, TypeFoldable};
 use rustc_semver::RustcVersion;
 use rustc_session::Session;
-use rustc_span::hygiene::{self, ExpnKind, MacroKind};
+use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::original_sp;
 use rustc_span::sym;
-use rustc_span::symbol::{kw, Symbol};
-use rustc_span::{BytePos, Pos, Span, SyntaxContext, DUMMY_SP};
+use rustc_span::symbol::{kw, Ident, Symbol};
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::Integer;
-use rustc_trait_selection::traits::query::normalize::AtExt;
-use smallvec::SmallVec;
 
 use crate::consts::{constant, Constant};
-use std::collections::HashMap;
+use crate::ty::is_recursively_primitive_type;
 
 pub fn parse_msrv(msrv: &str, sess: Option<&Session>, span: Option<Span>) -> Option<RustcVersion> {
     if let Ok(version) = RustcVersion::parse(msrv) {
@@ -137,6 +133,58 @@ pub fn differing_macro_contexts(lhs: Span, rhs: Span) -> bool {
     rhs.ctxt() != lhs.ctxt()
 }
 
+/// If the given expression is a local binding, find the initializer expression.
+/// If that initializer expression is another local binding, find its initializer again.
+/// This process repeats as long as possible (but usually no more than once). Initializer
+/// expressions with adjustments are ignored. If this is not desired, use [`find_binding_init`]
+/// instead.
+///
+/// Examples:
+/// ```ignore
+/// let abc = 1;
+/// //        ^ output
+/// let def = abc;
+/// dbg!(def)
+/// //   ^^^ input
+///
+/// // or...
+/// let abc = 1;
+/// let def = abc + 2;
+/// //        ^^^^^^^ output
+/// dbg!(def)
+/// //   ^^^ input
+/// ```
+pub fn expr_or_init<'a, 'b, 'tcx: 'b>(cx: &LateContext<'tcx>, mut expr: &'a Expr<'b>) -> &'a Expr<'b> {
+    while let Some(init) = path_to_local(expr)
+        .and_then(|id| find_binding_init(cx, id))
+        .filter(|init| cx.typeck_results().expr_adjustments(init).is_empty())
+    {
+        expr = init;
+    }
+    expr
+}
+
+/// Finds the initializer expression for a local binding. Returns `None` if the binding is mutable.
+/// By only considering immutable bindings, we guarantee that the returned expression represents the
+/// value of the binding wherever it is referenced.
+///
+/// Example: For `let x = 1`, if the `HirId` of `x` is provided, the `Expr` `1` is returned.
+/// Note: If you have an expression that references a binding `x`, use `path_to_local` to get the
+/// canonical binding `HirId`.
+pub fn find_binding_init<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<&'tcx Expr<'tcx>> {
+    let hir = cx.tcx.hir();
+    if_chain! {
+        if let Some(Node::Binding(pat)) = hir.find(hir_id);
+        if matches!(pat.kind, PatKind::Binding(BindingAnnotation::Unannotated, ..));
+        let parent = hir.get_parent_node(hir_id);
+        if let Some(Node::Local(local)) = hir.find(parent);
+        then {
+            return local.init;
+        }
+    }
+    None
+}
+
 /// Returns `true` if the given `NodeId` is inside a constant context
 ///
 /// # Example
@@ -184,52 +232,9 @@ pub fn in_macro(span: Span) -> bool {
     }
 }
 
-// If the snippet is empty, it's an attribute that was inserted during macro
-// expansion and we want to ignore those, because they could come from external
-// sources that the user has no control over.
-// For some reason these attributes don't have any expansion info on them, so
-// we have to check it this way until there is a better way.
-pub fn is_present_in_source<T: LintContext>(cx: &T, span: Span) -> bool {
-    if let Some(snippet) = snippet_opt(cx, span) {
-        if snippet.is_empty() {
-            return false;
-        }
-    }
-    true
-}
-
 /// Checks if given pattern is a wildcard (`_`)
 pub fn is_wild<'tcx>(pat: &impl std::ops::Deref<Target = Pat<'tcx>>) -> bool {
     matches!(pat.kind, PatKind::Wild)
-}
-
-/// Checks if type is struct, enum or union type with the given def path.
-///
-/// If the type is a diagnostic item, use `is_type_diagnostic_item` instead.
-/// If you change the signature, remember to update the internal lint `MatchTypeOnDiagItem`
-pub fn match_type(cx: &LateContext<'_>, ty: Ty<'_>, path: &[&str]) -> bool {
-    match ty.kind() {
-        ty::Adt(adt, _) => match_def_path(cx, adt.did, path),
-        _ => false,
-    }
-}
-
-/// Checks if the type is equal to a diagnostic item
-///
-/// If you change the signature, remember to update the internal lint `MatchTypeOnDiagItem`
-pub fn is_type_diagnostic_item(cx: &LateContext<'_>, ty: Ty<'_>, diag_item: Symbol) -> bool {
-    match ty.kind() {
-        ty::Adt(adt, _) => cx.tcx.is_diagnostic_item(diag_item, adt.did),
-        _ => false,
-    }
-}
-
-/// Checks if the type is equal to a lang item
-pub fn is_type_lang_item(cx: &LateContext<'_>, ty: Ty<'_>, lang_item: hir::LangItem) -> bool {
-    match ty.kind() {
-        ty::Adt(adt, _) => cx.tcx.lang_items().require(lang_item).unwrap() == adt.did,
-        _ => false,
-    }
 }
 
 /// Checks if the first type parameter is a lang item.
@@ -266,32 +271,35 @@ pub fn is_ty_param_diagnostic_item(
     }
 }
 
-/// Return `true` if the passed `typ` is `isize` or `usize`.
-pub fn is_isize_or_usize(typ: Ty<'_>) -> bool {
-    matches!(typ.kind(), ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize))
-}
-
 /// Checks if the method call given in `expr` belongs to the given trait.
+/// This is a deprecated function, consider using [`is_trait_method`].
 pub fn match_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, path: &[&str]) -> bool {
     let def_id = cx.typeck_results().type_dependent_def_id(expr.hir_id).unwrap();
     let trt_id = cx.tcx.trait_of_item(def_id);
     trt_id.map_or(false, |trt_id| match_def_path(cx, trt_id, path))
 }
 
-/// Checks if the method call given in `expr` belongs to a trait or other container with a given
+/// Checks if the method call given in `def_id` belongs to a trait or other container with a given
 /// diagnostic item
 pub fn is_diagnostic_assoc_item(cx: &LateContext<'_>, def_id: DefId, diag_item: Symbol) -> bool {
     cx.tcx
         .opt_associated_item(def_id)
         .and_then(|associated_item| match associated_item.container {
-            ty::TraitContainer(assoc_def_id) => Some(assoc_def_id),
-            ty::ImplContainer(assoc_def_id) => match cx.tcx.type_of(assoc_def_id).kind() {
-                ty::Adt(adt, _) => Some(adt.did),
-                ty::Slice(_) => cx.tcx.get_diagnostic_item(sym::slice), // this isn't perfect but it works
+            rustc_ty::TraitContainer(assoc_def_id) => Some(assoc_def_id),
+            rustc_ty::ImplContainer(assoc_def_id) => match cx.tcx.type_of(assoc_def_id).kind() {
+                rustc_ty::Adt(adt, _) => Some(adt.did),
+                rustc_ty::Slice(_) => cx.tcx.get_diagnostic_item(sym::slice), // this isn't perfect but it works
                 _ => None,
             },
         })
         .map_or(false, |assoc_def_id| cx.tcx.is_diagnostic_item(diag_item, assoc_def_id))
+}
+
+/// Checks if the method call given in `expr` belongs to the given trait.
+pub fn is_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, diag_item: Symbol) -> bool {
+    cx.typeck_results()
+        .type_dependent_def_id(expr.hir_id)
+        .map_or(false, |did| is_diagnostic_assoc_item(cx, did, diag_item))
 }
 
 /// Checks if an expression references a variable of the given name.
@@ -479,26 +487,6 @@ pub fn get_trait_def_id(cx: &LateContext<'_>, path: &[&str]) -> Option<DefId> {
     }
 }
 
-/// Checks whether a type implements a trait.
-/// See also `get_trait_def_id`.
-pub fn implements_trait<'tcx>(
-    cx: &LateContext<'tcx>,
-    ty: Ty<'tcx>,
-    trait_id: DefId,
-    ty_params: &[GenericArg<'tcx>],
-) -> bool {
-    // Do not check on infer_types to avoid panic in evaluate_obligation.
-    if ty.has_infer_types() {
-        return false;
-    }
-    let ty = cx.tcx.erase_regions(ty);
-    if ty.has_escaping_bound_vars() {
-        return false;
-    }
-    let ty_params = cx.tcx.mk_substs(ty_params.iter());
-    cx.tcx.type_implements_trait((trait_id, ty, ty_params, cx.param_env))
-}
-
 /// Gets the `hir::TraitRef` of the trait the given method is implemented for.
 ///
 /// Use this if you want to find the `TraitRef` of the `Add` trait in this example:
@@ -524,26 +512,6 @@ pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Optio
         then { return impl_.of_trait.as_ref(); }
     }
     None
-}
-
-/// Checks whether this type implements `Drop`.
-pub fn has_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    match ty.ty_adt_def() {
-        Some(def) => def.has_dtor(cx.tcx),
-        None => false,
-    }
-}
-
-/// Checks whether a type can be partially moved.
-pub fn can_partially_move_ty(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    if has_drop(cx, ty) || is_copy(cx, ty) {
-        return false;
-    }
-    match ty.kind() {
-        ty::Param(_) => false,
-        ty::Adt(def, subs) => def.all_fields().any(|f| !is_copy(cx, f.ty(cx.tcx, subs))),
-        _ => true,
-    }
 }
 
 /// Returns the method names and argument list of nested method call expressions that make up
@@ -727,206 +695,6 @@ pub fn find_macro_calls(names: &[&str], body: &Body<'_>) -> Vec<Span> {
     fmc.result
 }
 
-/// Converts a span to a code snippet if available, otherwise use default.
-///
-/// This is useful if you want to provide suggestions for your lint or more generally, if you want
-/// to convert a given `Span` to a `str`.
-///
-/// # Example
-/// ```rust,ignore
-/// snippet(cx, expr.span, "..")
-/// ```
-pub fn snippet<'a, T: LintContext>(cx: &T, span: Span, default: &'a str) -> Cow<'a, str> {
-    snippet_opt(cx, span).map_or_else(|| Cow::Borrowed(default), From::from)
-}
-
-/// Same as `snippet`, but it adapts the applicability level by following rules:
-///
-/// - Applicability level `Unspecified` will never be changed.
-/// - If the span is inside a macro, change the applicability level to `MaybeIncorrect`.
-/// - If the default value is used and the applicability level is `MachineApplicable`, change it to
-/// `HasPlaceholders`
-pub fn snippet_with_applicability<'a, T: LintContext>(
-    cx: &T,
-    span: Span,
-    default: &'a str,
-    applicability: &mut Applicability,
-) -> Cow<'a, str> {
-    if *applicability != Applicability::Unspecified && span.from_expansion() {
-        *applicability = Applicability::MaybeIncorrect;
-    }
-    snippet_opt(cx, span).map_or_else(
-        || {
-            if *applicability == Applicability::MachineApplicable {
-                *applicability = Applicability::HasPlaceholders;
-            }
-            Cow::Borrowed(default)
-        },
-        From::from,
-    )
-}
-
-/// Same as `snippet`, but should only be used when it's clear that the input span is
-/// not a macro argument.
-pub fn snippet_with_macro_callsite<'a, T: LintContext>(cx: &T, span: Span, default: &'a str) -> Cow<'a, str> {
-    snippet(cx, span.source_callsite(), default)
-}
-
-/// Converts a span to a code snippet. Returns `None` if not available.
-pub fn snippet_opt<T: LintContext>(cx: &T, span: Span) -> Option<String> {
-    cx.sess().source_map().span_to_snippet(span).ok()
-}
-
-/// Converts a span (from a block) to a code snippet if available, otherwise use default.
-///
-/// This trims the code of indentation, except for the first line. Use it for blocks or block-like
-/// things which need to be printed as such.
-///
-/// The `indent_relative_to` arg can be used, to provide a span, where the indentation of the
-/// resulting snippet of the given span.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// snippet_block(cx, block.span, "..", None)
-/// // where, `block` is the block of the if expr
-///     if x {
-///         y;
-///     }
-/// // will return the snippet
-/// {
-///     y;
-/// }
-/// ```
-///
-/// ```rust,ignore
-/// snippet_block(cx, block.span, "..", Some(if_expr.span))
-/// // where, `block` is the block of the if expr
-///     if x {
-///         y;
-///     }
-/// // will return the snippet
-/// {
-///         y;
-///     } // aligned with `if`
-/// ```
-/// Note that the first line of the snippet always has 0 indentation.
-pub fn snippet_block<'a, T: LintContext>(
-    cx: &T,
-    span: Span,
-    default: &'a str,
-    indent_relative_to: Option<Span>,
-) -> Cow<'a, str> {
-    let snip = snippet(cx, span, default);
-    let indent = indent_relative_to.and_then(|s| indent_of(cx, s));
-    reindent_multiline(snip, true, indent)
-}
-
-/// Same as `snippet_block`, but adapts the applicability level by the rules of
-/// `snippet_with_applicability`.
-pub fn snippet_block_with_applicability<'a, T: LintContext>(
-    cx: &T,
-    span: Span,
-    default: &'a str,
-    indent_relative_to: Option<Span>,
-    applicability: &mut Applicability,
-) -> Cow<'a, str> {
-    let snip = snippet_with_applicability(cx, span, default, applicability);
-    let indent = indent_relative_to.and_then(|s| indent_of(cx, s));
-    reindent_multiline(snip, true, indent)
-}
-
-/// Same as `snippet_with_applicability`, but first walks the span up to the given context. This
-/// will result in the macro call, rather then the expansion, if the span is from a child context.
-/// If the span is not from a child context, it will be used directly instead.
-///
-/// e.g. Given the expression `&vec![]`, getting a snippet from the span for `vec![]` as a HIR node
-/// would result in `box []`. If given the context of the address of expression, this function will
-/// correctly get a snippet of `vec![]`.
-pub fn snippet_with_context(
-    cx: &LateContext<'_>,
-    span: Span,
-    outer: SyntaxContext,
-    default: &'a str,
-    applicability: &mut Applicability,
-) -> Cow<'a, str> {
-    let outer_span = hygiene::walk_chain(span, outer);
-    let span = if outer_span.ctxt() == outer {
-        outer_span
-    } else {
-        // The span is from a macro argument, and the outer context is the macro using the argument
-        if *applicability != Applicability::Unspecified {
-            *applicability = Applicability::MaybeIncorrect;
-        }
-        // TODO: get the argument span.
-        span
-    };
-
-    snippet_with_applicability(cx, span, default, applicability)
-}
-
-/// Returns a new Span that extends the original Span to the first non-whitespace char of the first
-/// line.
-///
-/// ```rust,ignore
-///     let x = ();
-/// //          ^^
-/// // will be converted to
-///     let x = ();
-/// //  ^^^^^^^^^^
-/// ```
-pub fn first_line_of_span<T: LintContext>(cx: &T, span: Span) -> Span {
-    first_char_in_first_line(cx, span).map_or(span, |first_char_pos| span.with_lo(first_char_pos))
-}
-
-fn first_char_in_first_line<T: LintContext>(cx: &T, span: Span) -> Option<BytePos> {
-    let line_span = line_span(cx, span);
-    snippet_opt(cx, line_span).and_then(|snip| {
-        snip.find(|c: char| !c.is_whitespace())
-            .map(|pos| line_span.lo() + BytePos::from_usize(pos))
-    })
-}
-
-/// Returns the indentation of the line of a span
-///
-/// ```rust,ignore
-/// let x = ();
-/// //      ^^ -- will return 0
-///     let x = ();
-/// //          ^^ -- will return 4
-/// ```
-pub fn indent_of<T: LintContext>(cx: &T, span: Span) -> Option<usize> {
-    snippet_opt(cx, line_span(cx, span)).and_then(|snip| snip.find(|c: char| !c.is_whitespace()))
-}
-
-/// Returns the positon just before rarrow
-///
-/// ```rust,ignore
-/// fn into(self) -> () {}
-///              ^
-/// // in case of unformatted code
-/// fn into2(self)-> () {}
-///               ^
-/// fn into3(self)   -> () {}
-///               ^
-/// ```
-pub fn position_before_rarrow(s: &str) -> Option<usize> {
-    s.rfind("->").map(|rpos| {
-        let mut rpos = rpos;
-        let chars: Vec<char> = s.chars().collect();
-        while rpos > 1 {
-            if let Some(c) = chars.get(rpos - 1) {
-                if c.is_whitespace() {
-                    rpos -= 1;
-                    continue;
-                }
-            }
-            break;
-        }
-        rpos
-    })
-}
-
 /// Extends the span to the beginning of the spans line, incl. whitespaces.
 ///
 /// ```rust,ignore
@@ -944,81 +712,52 @@ fn line_span<T: LintContext>(cx: &T, span: Span) -> Span {
     Span::new(line_start, span.hi(), span.ctxt())
 }
 
-/// Like `snippet_block`, but add braces if the expr is not an `ExprKind::Block`.
-/// Also takes an `Option<String>` which can be put inside the braces.
-pub fn expr_block<'a, T: LintContext>(
-    cx: &T,
-    expr: &Expr<'_>,
-    option: Option<String>,
-    default: &'a str,
-    indent_relative_to: Option<Span>,
-) -> Cow<'a, str> {
-    let code = snippet_block(cx, expr.span, default, indent_relative_to);
-    let string = option.unwrap_or_default();
-    if expr.span.from_expansion() {
-        Cow::Owned(format!("{{ {} }}", snippet_with_macro_callsite(cx, expr.span, default)))
-    } else if let ExprKind::Block(_, _) = expr.kind {
-        Cow::Owned(format!("{}{}", code, string))
-    } else if string.is_empty() {
-        Cow::Owned(format!("{{ {} }}", code))
-    } else {
-        Cow::Owned(format!("{{\n{};\n{}\n}}", code, string))
+/// Gets the span of the node, if there is one.
+pub fn get_node_span(node: Node<'_>) -> Option<Span> {
+    match node {
+        Node::Param(Param { span, .. })
+        | Node::Item(Item { span, .. })
+        | Node::ForeignItem(ForeignItem { span, .. })
+        | Node::TraitItem(TraitItem { span, .. })
+        | Node::ImplItem(ImplItem { span, .. })
+        | Node::Variant(Variant { span, .. })
+        | Node::Field(FieldDef { span, .. })
+        | Node::Expr(Expr { span, .. })
+        | Node::Stmt(Stmt { span, .. })
+        | Node::PathSegment(PathSegment {
+            ident: Ident { span, .. },
+            ..
+        })
+        | Node::Ty(hir::Ty { span, .. })
+        | Node::TraitRef(TraitRef {
+            path: Path { span, .. },
+            ..
+        })
+        | Node::Binding(Pat { span, .. })
+        | Node::Pat(Pat { span, .. })
+        | Node::Arm(Arm { span, .. })
+        | Node::Block(Block { span, .. })
+        | Node::Local(Local { span, .. })
+        | Node::MacroDef(MacroDef { span, .. })
+        | Node::Lifetime(Lifetime { span, .. })
+        | Node::GenericParam(GenericParam { span, .. })
+        | Node::Visibility(Visibility { span, .. })
+        | Node::Crate(CrateItem { span, .. }) => Some(*span),
+        Node::Ctor(_) | Node::AnonConst(_) => None,
     }
 }
 
-/// Reindent a multiline string with possibility of ignoring the first line.
-#[allow(clippy::needless_pass_by_value)]
-pub fn reindent_multiline(s: Cow<'_, str>, ignore_first: bool, indent: Option<usize>) -> Cow<'_, str> {
-    let s_space = reindent_multiline_inner(&s, ignore_first, indent, ' ');
-    let s_tab = reindent_multiline_inner(&s_space, ignore_first, indent, '\t');
-    reindent_multiline_inner(&s_tab, ignore_first, indent, ' ').into()
-}
-
-fn reindent_multiline_inner(s: &str, ignore_first: bool, indent: Option<usize>, ch: char) -> String {
-    let x = s
-        .lines()
-        .skip(ignore_first as usize)
-        .filter_map(|l| {
-            if l.is_empty() {
-                None
-            } else {
-                // ignore empty lines
-                Some(l.char_indices().find(|&(_, x)| x != ch).unwrap_or((l.len(), ch)).0)
-            }
-        })
-        .min()
-        .unwrap_or(0);
-    let indent = indent.unwrap_or(0);
-    s.lines()
-        .enumerate()
-        .map(|(i, l)| {
-            if (ignore_first && i == 0) || l.is_empty() {
-                l.to_owned()
-            } else if x > indent {
-                l.split_at(x - indent).1.to_owned()
-            } else {
-                " ".repeat(indent - x) + l
-            }
-        })
-        .collect::<Vec<String>>()
-        .join("\n")
+/// Gets the parent node, if any.
+pub fn get_parent_node(tcx: TyCtxt<'_>, id: HirId) -> Option<Node<'_>> {
+    tcx.hir().parent_iter(id).next().map(|(_, node)| node)
 }
 
 /// Gets the parent expression, if any –- this is useful to constrain a lint.
 pub fn get_parent_expr<'tcx>(cx: &LateContext<'tcx>, e: &Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
-    let map = &cx.tcx.hir();
-    let hir_id = e.hir_id;
-    let parent_id = map.get_parent_node(hir_id);
-    if hir_id == parent_id {
-        return None;
+    match get_parent_node(cx.tcx, e.hir_id) {
+        Some(Node::Expr(parent)) => Some(parent),
+        _ => None,
     }
-    map.find(parent_id).and_then(|node| {
-        if let Node::Expr(parent) = node {
-            Some(parent)
-        } else {
-            None
-        }
-    })
 }
 
 pub fn get_enclosing_block<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<&'tcx Block<'tcx>> {
@@ -1058,24 +797,24 @@ pub fn get_parent_as_impl(tcx: TyCtxt<'_>, id: HirId) -> Option<&Impl<'_>> {
     }
 }
 
-/// Returns the base type for HIR references and pointers.
-pub fn walk_ptrs_hir_ty<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> &'tcx hir::Ty<'tcx> {
-    match ty.kind {
-        TyKind::Ptr(ref mut_ty) | TyKind::Rptr(_, ref mut_ty) => walk_ptrs_hir_ty(&mut_ty.ty),
-        _ => ty,
+/// Checks if the given expression is the else clause in the expression `if let .. {} else {}`
+pub fn is_else_clause_of_if_let_else(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
+    let map = tcx.hir();
+    let mut iter = map.parent_iter(expr.hir_id);
+    let arm_id = match iter.next() {
+        Some((id, Node::Arm(..))) => id,
+        _ => return false,
+    };
+    match iter.next() {
+        Some((
+            _,
+            Node::Expr(Expr {
+                kind: ExprKind::Match(_, [_, else_arm], kind),
+                ..
+            }),
+        )) => else_arm.hir_id == arm_id && matches!(kind, MatchSource::IfLetDesugar { .. }),
+        _ => false,
     }
-}
-
-/// Returns the base type for references and raw pointers, and count reference
-/// depth.
-pub fn walk_ptrs_ty_depth(ty: Ty<'_>) -> (Ty<'_>, usize) {
-    fn inner(ty: Ty<'_>, depth: usize) -> (Ty<'_>, usize) {
-        match ty.kind() {
-            ty::Ref(_, ty, _) => inner(ty, depth + 1),
-            _ => (ty, depth),
-        }
-    }
-    inner(ty, 0)
 }
 
 /// Checks whether the given expression is a constant integer of the given value.
@@ -1173,26 +912,6 @@ pub fn return_ty<'tcx>(cx: &LateContext<'tcx>, fn_item: hir::HirId) -> Ty<'tcx> 
     cx.tcx.erase_late_bound_regions(ret_ty)
 }
 
-/// Walks into `ty` and returns `true` if any inner type is the same as `other_ty`
-pub fn contains_ty(ty: Ty<'_>, other_ty: Ty<'_>) -> bool {
-    ty.walk().any(|inner| match inner.unpack() {
-        GenericArgKind::Type(inner_ty) => ty::TyS::same_type(other_ty, inner_ty),
-        GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
-    })
-}
-
-/// Returns `true` if the given type is an `unsafe` function.
-pub fn type_is_unsafe_function<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    match ty.kind() {
-        ty::FnDef(..) | ty::FnPtr(_) => ty.fn_sig(cx.tcx).unsafety() == Unsafety::Unsafe,
-        _ => false,
-    }
-}
-
-pub fn is_copy<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    ty.is_copy_modulo_regions(cx.tcx.at(DUMMY_SP), cx.param_env)
-}
-
 /// Checks if an expression is constructing a tuple-like enum variant or struct
 pub fn is_ctor_or_promotable_const_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     if let ExprKind::Call(ref fun, _) = expr.kind {
@@ -1241,17 +960,29 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
         },
         PatKind::Slice(ref head, ref middle, ref tail) => {
             match &cx.typeck_results().node_type(pat.hir_id).kind() {
-                ty::Slice(..) => {
+                rustc_ty::Slice(..) => {
                     // [..] is the only irrefutable slice pattern.
                     !head.is_empty() || middle.is_none() || !tail.is_empty()
                 },
-                ty::Array(..) => are_refutable(cx, head.iter().chain(middle).chain(tail.iter()).map(|pat| &**pat)),
+                rustc_ty::Array(..) => {
+                    are_refutable(cx, head.iter().chain(middle).chain(tail.iter()).map(|pat| &**pat))
+                },
                 _ => {
                     // unreachable!()
                     true
                 },
             }
         },
+    }
+}
+
+/// If the pattern is an `or` pattern, call the function once for each sub pattern. Otherwise, call
+/// the function once on the given pattern.
+pub fn recurse_or_patterns<'tcx, F: FnMut(&'tcx Pat<'tcx>)>(pat: &'tcx Pat<'tcx>, mut f: F) {
+    if let PatKind::Or(pats) = pat.kind {
+        pats.iter().cloned().for_each(f)
+    } else {
+        f(pat)
     }
 }
 
@@ -1357,62 +1088,29 @@ pub fn strip_pat_refs<'hir>(mut pat: &'hir Pat<'hir>) -> &'hir Pat<'hir> {
     pat
 }
 
-pub fn int_bits(tcx: TyCtxt<'_>, ity: ty::IntTy) -> u64 {
+pub fn int_bits(tcx: TyCtxt<'_>, ity: rustc_ty::IntTy) -> u64 {
     Integer::from_int_ty(&tcx, ity).size().bits()
 }
 
 #[allow(clippy::cast_possible_wrap)]
 /// Turn a constant int byte representation into an i128
-pub fn sext(tcx: TyCtxt<'_>, u: u128, ity: ty::IntTy) -> i128 {
+pub fn sext(tcx: TyCtxt<'_>, u: u128, ity: rustc_ty::IntTy) -> i128 {
     let amt = 128 - int_bits(tcx, ity);
     ((u as i128) << amt) >> amt
 }
 
 #[allow(clippy::cast_sign_loss)]
 /// clip unused bytes
-pub fn unsext(tcx: TyCtxt<'_>, u: i128, ity: ty::IntTy) -> u128 {
+pub fn unsext(tcx: TyCtxt<'_>, u: i128, ity: rustc_ty::IntTy) -> u128 {
     let amt = 128 - int_bits(tcx, ity);
     ((u as u128) << amt) >> amt
 }
 
 /// clip unused bytes
-pub fn clip(tcx: TyCtxt<'_>, u: u128, ity: ty::UintTy) -> u128 {
+pub fn clip(tcx: TyCtxt<'_>, u: u128, ity: rustc_ty::UintTy) -> u128 {
     let bits = Integer::from_uint_ty(&tcx, ity).size().bits();
     let amt = 128 - bits;
     (u << amt) >> amt
-}
-
-/// Removes block comments from the given `Vec` of lines.
-///
-/// # Examples
-///
-/// ```rust,ignore
-/// without_block_comments(vec!["/*", "foo", "*/"]);
-/// // => vec![]
-///
-/// without_block_comments(vec!["bar", "/*", "foo", "*/"]);
-/// // => vec!["bar"]
-/// ```
-pub fn without_block_comments(lines: Vec<&str>) -> Vec<&str> {
-    let mut without = vec![];
-
-    let mut nest_level = 0;
-
-    for line in lines {
-        if line.contains("/*") {
-            nest_level += 1;
-            continue;
-        } else if line.contains("*/") {
-            nest_level -= 1;
-            continue;
-        }
-
-        if nest_level == 0 {
-            without.push(line);
-        }
-    }
-
-    without
 }
 
 pub fn any_parent_is_automatically_derived(tcx: TyCtxt<'_>, node: HirId) -> bool {
@@ -1427,47 +1125,6 @@ pub fn any_parent_is_automatically_derived(tcx: TyCtxt<'_>, node: HirId) -> bool
         enclosing_node = map.get_parent_item(enclosing_node);
     }
     false
-}
-
-/// Returns true if ty has `iter` or `iter_mut` methods
-pub fn has_iter_method(cx: &LateContext<'_>, probably_ref_ty: Ty<'_>) -> Option<Symbol> {
-    // FIXME: instead of this hard-coded list, we should check if `<adt>::iter`
-    // exists and has the desired signature. Unfortunately FnCtxt is not exported
-    // so we can't use its `lookup_method` method.
-    let into_iter_collections: &[Symbol] = &[
-        sym::vec_type,
-        sym::option_type,
-        sym::result_type,
-        sym::BTreeMap,
-        sym::BTreeSet,
-        sym::vecdeque_type,
-        sym::LinkedList,
-        sym::BinaryHeap,
-        sym::hashset_type,
-        sym::hashmap_type,
-        sym::PathBuf,
-        sym::Path,
-        sym::Receiver,
-    ];
-
-    let ty_to_check = match probably_ref_ty.kind() {
-        ty::Ref(_, ty_to_check, _) => ty_to_check,
-        _ => probably_ref_ty,
-    };
-
-    let def_id = match ty_to_check.kind() {
-        ty::Array(..) => return Some(sym::array),
-        ty::Slice(..) => return Some(sym::slice),
-        ty::Adt(adt, _) => adt.did,
-        _ => return None,
-    };
-
-    for &name in into_iter_collections {
-        if cx.tcx.is_diagnostic_item(name, def_id) {
-            return Some(cx.tcx.item_name(def_id));
-        }
-    }
-    None
 }
 
 /// Matches a function call with the given path and returns the arguments.
@@ -1492,51 +1149,6 @@ pub fn match_function_call<'tcx>(
         }
     };
     None
-}
-
-// FIXME: Per https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/infer/at/struct.At.html#method.normalize
-// this function can be removed once the `normalizie` method does not panic when normalization does
-// not succeed
-/// Checks if `Ty` is normalizable. This function is useful
-/// to avoid crashes on `layout_of`.
-pub fn is_normalizable<'tcx>(cx: &LateContext<'tcx>, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
-    is_normalizable_helper(cx, param_env, ty, &mut HashMap::new())
-}
-
-fn is_normalizable_helper<'tcx>(
-    cx: &LateContext<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    ty: Ty<'tcx>,
-    cache: &mut HashMap<Ty<'tcx>, bool>,
-) -> bool {
-    if let Some(&cached_result) = cache.get(ty) {
-        return cached_result;
-    }
-    // prevent recursive loops, false-negative is better than endless loop leading to stack overflow
-    cache.insert(ty, false);
-    let result = cx.tcx.infer_ctxt().enter(|infcx| {
-        let cause = rustc_middle::traits::ObligationCause::dummy();
-        if infcx.at(&cause, param_env).normalize(ty).is_ok() {
-            match ty.kind() {
-                ty::Adt(def, substs) => def.variants.iter().all(|variant| {
-                    variant
-                        .fields
-                        .iter()
-                        .all(|field| is_normalizable_helper(cx, param_env, field.ty(cx.tcx, substs), cache))
-                }),
-                _ => ty.walk().all(|generic_arg| match generic_arg.unpack() {
-                    GenericArgKind::Type(inner_ty) if inner_ty != ty => {
-                        is_normalizable_helper(cx, param_env, inner_ty, cache)
-                    },
-                    _ => true, // if inner_ty == ty, we've already checked it
-                }),
-            }
-        } else {
-            false
-        }
-    });
-    cache.insert(ty, result);
-    result
 }
 
 pub fn match_def_path<'tcx>(cx: &LateContext<'tcx>, did: DefId, syms: &[&str]) -> bool {
@@ -1568,11 +1180,9 @@ pub fn match_panic_def_id(cx: &LateContext<'_>, did: DefId) -> bool {
 /// sequence of `if/else`.
 /// E.g., this returns `([a, b], [c, d, e])` for the expression
 /// `if a { c } else if b { d } else { e }`.
-pub fn if_sequence<'tcx>(
-    mut expr: &'tcx Expr<'tcx>,
-) -> (SmallVec<[&'tcx Expr<'tcx>; 1]>, SmallVec<[&'tcx Block<'tcx>; 1]>) {
-    let mut conds = SmallVec::new();
-    let mut blocks: SmallVec<[&Block<'_>; 1]> = SmallVec::new();
+pub fn if_sequence<'tcx>(mut expr: &'tcx Expr<'tcx>) -> (Vec<&'tcx Expr<'tcx>>, Vec<&'tcx Block<'tcx>>) {
+    let mut conds = Vec::new();
+    let mut blocks: Vec<&Block<'_>> = Vec::new();
 
     while let ExprKind::If(ref cond, ref then_expr, ref else_expr) = expr.kind {
         conds.push(&**cond);
@@ -1622,44 +1232,6 @@ pub fn attr_by_name<'a>(attrs: &'a [Attribute], name: &'_ str) -> Option<&'a Att
 // Finds the `#[must_use]` attribute, if any
 pub fn must_use_attr(attrs: &[Attribute]) -> Option<&Attribute> {
     attr_by_name(attrs, "must_use")
-}
-
-// Returns whether the type has #[must_use] attribute
-pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    match ty.kind() {
-        ty::Adt(ref adt, _) => must_use_attr(&cx.tcx.get_attrs(adt.did)).is_some(),
-        ty::Foreign(ref did) => must_use_attr(&cx.tcx.get_attrs(*did)).is_some(),
-        ty::Slice(ref ty)
-        | ty::Array(ref ty, _)
-        | ty::RawPtr(ty::TypeAndMut { ref ty, .. })
-        | ty::Ref(_, ref ty, _) => {
-            // for the Array case we don't need to care for the len == 0 case
-            // because we don't want to lint functions returning empty arrays
-            is_must_use_ty(cx, *ty)
-        },
-        ty::Tuple(ref substs) => substs.types().any(|ty| is_must_use_ty(cx, ty)),
-        ty::Opaque(ref def_id, _) => {
-            for (predicate, _) in cx.tcx.explicit_item_bounds(*def_id) {
-                if let ty::PredicateKind::Trait(trait_predicate, _) = predicate.kind().skip_binder() {
-                    if must_use_attr(&cx.tcx.get_attrs(trait_predicate.trait_ref.def_id)).is_some() {
-                        return true;
-                    }
-                }
-            }
-            false
-        },
-        ty::Dynamic(binder, _) => {
-            for predicate in binder.iter() {
-                if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder() {
-                    if must_use_attr(&cx.tcx.get_attrs(trait_ref.def_id)).is_some() {
-                        return true;
-                    }
-                }
-            }
-            false
-        },
-        _ => false,
-    }
 }
 
 // check if expr is calling method or function with #[must_use] attribute
@@ -1756,18 +1328,6 @@ pub fn run_lints(cx: &LateContext<'_>, lints: &[&'static Lint], id: HirId) -> bo
     })
 }
 
-/// Returns true iff the given type is a primitive (a bool or char, any integer or floating-point
-/// number type, a str, or an array, slice, or tuple of those types).
-pub fn is_recursively_primitive_type(ty: Ty<'_>) -> bool {
-    match ty.kind() {
-        ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => true,
-        ty::Ref(_, inner, _) if *inner.kind() == ty::Str => true,
-        ty::Array(inner_type, _) | ty::Slice(inner_type) => is_recursively_primitive_type(inner_type),
-        ty::Tuple(inner_types) => inner_types.types().all(is_recursively_primitive_type),
-        _ => false,
-    }
-}
-
 /// Returns Option<String> where String is a textual representation of the type encapsulated in the
 /// slice iff the given expression is a slice of primitives (as defined in the
 /// `is_recursively_primitive_type` function) and None otherwise.
@@ -1775,9 +1335,9 @@ pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<S
     let expr_type = cx.typeck_results().expr_ty_adjusted(expr);
     let expr_kind = expr_type.kind();
     let is_primitive = match expr_kind {
-        ty::Slice(element_type) => is_recursively_primitive_type(element_type),
-        ty::Ref(_, inner_ty, _) if matches!(inner_ty.kind(), &ty::Slice(_)) => {
-            if let ty::Slice(element_type) = inner_ty.kind() {
+        rustc_ty::Slice(element_type) => is_recursively_primitive_type(element_type),
+        rustc_ty::Ref(_, inner_ty, _) if matches!(inner_ty.kind(), &rustc_ty::Slice(_)) => {
+            if let rustc_ty::Slice(element_type) = inner_ty.kind() {
                 is_recursively_primitive_type(element_type)
             } else {
                 unreachable!()
@@ -1790,9 +1350,9 @@ pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<S
         // if we have wrappers like Array, Slice or Tuple, print these
         // and get the type enclosed in the slice ref
         match expr_type.peel_refs().walk().nth(1).unwrap().expect_ty().kind() {
-            ty::Slice(..) => return Some("slice".into()),
-            ty::Array(..) => return Some("array".into()),
-            ty::Tuple(..) => return Some("tuple".into()),
+            rustc_ty::Slice(..) => return Some("slice".into()),
+            rustc_ty::Array(..) => return Some("array".into()),
+            rustc_ty::Tuple(..) => return Some("tuple".into()),
             _ => {
                 // is_recursively_primitive_type() should have taken care
                 // of the rest and we can rely on the type that is found
@@ -1876,32 +1436,6 @@ pub fn peel_hir_expr_refs(expr: &'a Expr<'a>) -> (&'a Expr<'a>, usize) {
     f(expr, 0)
 }
 
-/// Peels off all references on the type. Returns the underlying type and the number of references
-/// removed.
-pub fn peel_mid_ty_refs(ty: Ty<'_>) -> (Ty<'_>, usize) {
-    fn peel(ty: Ty<'_>, count: usize) -> (Ty<'_>, usize) {
-        if let ty::Ref(_, ty, _) = ty.kind() {
-            peel(ty, count + 1)
-        } else {
-            (ty, count)
-        }
-    }
-    peel(ty, 0)
-}
-
-/// Peels off all references on the type.Returns the underlying type, the number of references
-/// removed, and whether the pointer is ultimately mutable or not.
-pub fn peel_mid_ty_refs_is_mutable(ty: Ty<'_>) -> (Ty<'_>, usize, Mutability) {
-    fn f(ty: Ty<'_>, count: usize, mutability: Mutability) -> (Ty<'_>, usize, Mutability) {
-        match ty.kind() {
-            ty::Ref(_, ty, Mutability::Mut) => f(ty, count + 1, mutability),
-            ty::Ref(_, ty, Mutability::Not) => f(ty, count + 1, Mutability::Not),
-            _ => (ty, count, mutability),
-        }
-    }
-    f(ty, 0, Mutability::Mut)
-}
-
 #[macro_export]
 macro_rules! unwrap_cargo_metadata {
     ($cx: ident, $lint: ident, $deps: expr) => {{
@@ -1954,101 +1488,4 @@ pub fn is_some_ctor(cx: &LateContext<'_>, res: Res) -> bool {
         }
     }
     false
-}
-
-#[cfg(test)]
-mod test {
-    use super::{reindent_multiline, without_block_comments};
-
-    #[test]
-    fn test_reindent_multiline_single_line() {
-        assert_eq!("", reindent_multiline("".into(), false, None));
-        assert_eq!("...", reindent_multiline("...".into(), false, None));
-        assert_eq!("...", reindent_multiline("    ...".into(), false, None));
-        assert_eq!("...", reindent_multiline("\t...".into(), false, None));
-        assert_eq!("...", reindent_multiline("\t\t...".into(), false, None));
-    }
-
-    #[test]
-    #[rustfmt::skip]
-    fn test_reindent_multiline_block() {
-        assert_eq!("\
-    if x {
-        y
-    } else {
-        z
-    }", reindent_multiline("    if x {
-            y
-        } else {
-            z
-        }".into(), false, None));
-        assert_eq!("\
-    if x {
-    \ty
-    } else {
-    \tz
-    }", reindent_multiline("    if x {
-        \ty
-        } else {
-        \tz
-        }".into(), false, None));
-    }
-
-    #[test]
-    #[rustfmt::skip]
-    fn test_reindent_multiline_empty_line() {
-        assert_eq!("\
-    if x {
-        y
-
-    } else {
-        z
-    }", reindent_multiline("    if x {
-            y
-
-        } else {
-            z
-        }".into(), false, None));
-    }
-
-    #[test]
-    #[rustfmt::skip]
-    fn test_reindent_multiline_lines_deeper() {
-        assert_eq!("\
-        if x {
-            y
-        } else {
-            z
-        }", reindent_multiline("\
-    if x {
-        y
-    } else {
-        z
-    }".into(), true, Some(8)));
-    }
-
-    #[test]
-    fn test_without_block_comments_lines_without_block_comments() {
-        let result = without_block_comments(vec!["/*", "", "*/"]);
-        println!("result: {:?}", result);
-        assert!(result.is_empty());
-
-        let result = without_block_comments(vec!["", "/*", "", "*/", "#[crate_type = \"lib\"]", "/*", "", "*/", ""]);
-        assert_eq!(result, vec!["", "#[crate_type = \"lib\"]", ""]);
-
-        let result = without_block_comments(vec!["/* rust", "", "*/"]);
-        assert!(result.is_empty());
-
-        let result = without_block_comments(vec!["/* one-line comment */"]);
-        assert!(result.is_empty());
-
-        let result = without_block_comments(vec!["/* nested", "/* multi-line", "comment", "*/", "test", "*/"]);
-        assert!(result.is_empty());
-
-        let result = without_block_comments(vec!["/* nested /* inline /* comment */ test */ */"]);
-        assert!(result.is_empty());
-
-        let result = without_block_comments(vec!["foo", "bar", "baz"]);
-        assert_eq!(result, vec!["foo", "bar", "baz"]);
-    }
 }

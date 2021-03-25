@@ -1,8 +1,10 @@
 use super::NEEDLESS_RANGE_LOOP;
-use crate::utils::visitors::LocalUsedVisitor;
-use crate::utils::{
-    contains_name, has_iter_method, higher, is_integer_const, match_trait_method, multispan_sugg, path_to_local_id,
-    paths, snippet, span_lint_and_then, sugg, SpanlessEq,
+use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
+use clippy_utils::source::snippet;
+use clippy_utils::ty::has_iter_method;
+use clippy_utils::visitors::LocalUsedVisitor;
+use clippy_utils::{
+    contains_name, higher, is_integer_const, match_trait_method, path_to_local_id, paths, sugg, SpanlessEq,
 };
 use if_chain::if_chain;
 use rustc_ast::ast;

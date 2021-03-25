@@ -9,7 +9,8 @@
 //!  - or-fun-call
 //!  - option-if-let-else
 
-use crate::{is_ctor_or_promotable_const_function, is_type_diagnostic_item};
+use crate::is_ctor_or_promotable_const_function;
+use crate::ty::is_type_diagnostic_item;
 use rustc_hir::def::{DefKind, Res};
 
 use rustc_hir::intravisit;

@@ -1,7 +1,6 @@
-use crate::utils::{
-    contains_return, in_macro, match_qpath, paths, return_ty, snippet, span_lint_and_then,
-    visitors::find_all_ret_expressions,
-};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::source::snippet;
+use clippy_utils::{contains_return, in_macro, match_qpath, paths, return_ty, visitors::find_all_ret_expressions};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
@@ -72,7 +71,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
                 }
             },
             FnKind::Closure => return,
-            _ => (),
+            FnKind::Method(..) => (),
         }
 
         // Abort if the method is implementing a trait or of it a trait method.
