@@ -256,16 +256,13 @@ pub fn provide(providers: &mut Providers) {
     // resolve! Does this work? Unsure! That's what the issue is about
     *providers = Providers {
         is_dllimport_foreign_item: |tcx, id| match tcx.native_library_kind(id) {
-            Some(NativeLibKind::Dylib | NativeLibKind::RawDylib | NativeLibKind::Unspecified) => {
-                true
-            }
+            Some(
+                NativeLibKind::Dylib { .. } | NativeLibKind::RawDylib | NativeLibKind::Unspecified,
+            ) => true,
             _ => false,
         },
         is_statically_included_foreign_item: |tcx, id| {
-            matches!(
-                tcx.native_library_kind(id),
-                Some(NativeLibKind::StaticBundle | NativeLibKind::StaticNoBundle)
-            )
+            matches!(tcx.native_library_kind(id), Some(NativeLibKind::Static { .. }))
         },
         native_library_kind: |tcx, id| {
             tcx.native_libraries(id.krate)

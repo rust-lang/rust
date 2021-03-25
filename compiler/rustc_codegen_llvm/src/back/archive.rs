@@ -100,8 +100,9 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
 
     /// Adds all of the contents of a native library to this archive. This will
     /// search in the relevant locations for a library named `name`.
-    fn add_native_library(&mut self, name: Symbol) {
-        let location = find_library(name, &self.config.lib_search_paths, self.config.sess);
+    fn add_native_library(&mut self, name: Symbol, verbatim: bool) {
+        let location =
+            find_library(name, verbatim, &self.config.lib_search_paths, self.config.sess);
         self.add_archive(&location, |_| false).unwrap_or_else(|e| {
             self.config.sess.fatal(&format!(
                 "failed to add native library {}: {}",

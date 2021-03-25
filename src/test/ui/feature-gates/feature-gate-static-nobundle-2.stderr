@@ -1,3 +1,5 @@
+warning: library kind `static-nobundle` has been superseded by specifying `-bundle` on library kind `static`. Try `static:-bundle`
+
 error[E0658]: kind="static-nobundle" is unstable
    |
    = note: see issue #37403 <https://github.com/rust-lang/rust/issues/37403> for more information
