@@ -198,6 +198,7 @@ pub trait CreateSubstsForGenericArgsCtxt<'a, 'tcx> {
 }
 
 impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
+    #[tracing::instrument(level = "debug", skip(self))]
     pub fn ast_region_to_region(
         &self,
         lifetime: &hir::Lifetime,
@@ -237,6 +238,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
             None => {
                 self.re_infer(def, lifetime.span).unwrap_or_else(|| {
+                    debug!(?lifetime, "unelided lifetime in signature");
+
                     // This indicates an illegal lifetime
                     // elision. `resolve_lifetime` should have
                     // reported an error in this case -- but if
@@ -2173,9 +2176,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
     /// Turns a `hir::Ty` into a `Ty`. For diagnostics' purposes we keep track of whether trait
     /// objects are borrowed like `&dyn Trait` to avoid emitting redundant errors.
+    #[tracing::instrument(level = "debug", skip(self))]
     fn ast_ty_to_ty_inner(&self, ast_ty: &hir::Ty<'_>, borrowed: bool) -> Ty<'tcx> {
-        debug!("ast_ty_to_ty(id={:?}, ast_ty={:?} ty_ty={:?})", ast_ty.hir_id, ast_ty, ast_ty.kind);
-
         let tcx = self.tcx();
 
         let result_ty = match ast_ty.kind {
@@ -2185,7 +2187,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             hir::TyKind::Rptr(ref region, ref mt) => {
                 let r = self.ast_region_to_region(region, None);
-                debug!("ast_ty_to_ty: r={:?}", r);
+                debug!(?r);
                 let t = self.ast_ty_to_ty_inner(&mt.ty, true);
                 tcx.mk_ref(r, ty::TypeAndMut { ty: t, mutbl: mt.mutbl })
             }
@@ -2209,7 +2211,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 self.conv_object_ty_poly_trait_ref(ast_ty.span, bounds, lifetime, borrowed)
             }
             hir::TyKind::Path(hir::QPath::Resolved(ref maybe_qself, ref path)) => {
-                debug!("ast_ty_to_ty: maybe_qself={:?} path={:?}", maybe_qself, path);
+                debug!(?maybe_qself, ?path);
                 let opt_self_ty = maybe_qself.as_ref().map(|qself| self.ast_ty_to_ty(qself));
                 self.res_to_ty(opt_self_ty, path, false)
             }
@@ -2225,7 +2227,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
             }
             hir::TyKind::Path(hir::QPath::TypeRelative(ref qself, ref segment)) => {
-                debug!("ast_ty_to_ty: qself={:?} segment={:?}", qself, segment);
+                debug!(?qself, ?segment);
                 let ty = self.ast_ty_to_ty(qself);
 
                 let res = if let hir::TyKind::Path(hir::QPath::Resolved(_, ref path)) = qself.kind {
@@ -2270,7 +2272,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             hir::TyKind::Err => tcx.ty_error(),
         };
 
-        debug!("ast_ty_to_ty: result_ty={:?}", result_ty);
+        debug!(?result_ty);
 
         self.record_ty(ast_ty.hir_id, result_ty, ast_ty.span);
         result_ty
