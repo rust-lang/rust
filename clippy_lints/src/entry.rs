@@ -1,7 +1,7 @@
 use clippy_utils::{
     diagnostics::span_lint_and_sugg,
     is_expr_final_block_expr, is_expr_used_or_unified, match_def_path, paths, peel_hir_expr_while,
-    source::{snippet_indent, snippet_with_applicability, snippet_with_context},
+    source::{reindent_multiline, snippet_indent, snippet_with_applicability, snippet_with_context},
     SpanlessEq,
 };
 use rustc_errors::Applicability;
@@ -75,7 +75,84 @@ impl<'tcx> LateLintPass<'tcx> for HashMapPass {
         let mut app = Applicability::MachineApplicable;
         let map_str = snippet_with_context(cx, contains_expr.map.span, contains_expr.call_ctxt, "..", &mut app).0;
         let key_str = snippet_with_context(cx, contains_expr.key.span, contains_expr.call_ctxt, "..", &mut app).0;
-        let sugg = if !contains_expr.negated || else_expr.is_some() || then_search.insertions.is_empty() {
+        let sugg = if let Some(else_expr) = else_expr {
+            // if .. { .. } else { .. }
+            let else_search = match find_insert_calls(cx, &contains_expr, else_expr) {
+                Some(search) if !(then_search.insertions.is_empty() && search.insertions.is_empty()) => search,
+                _ => return,
+            };
+
+            if then_search.insertions.is_empty() || else_search.insertions.is_empty() {
+                // if .. { insert } else { .. } or if .. { .. } else { then } of
+                let (then_str, else_str, entry_kind) = if else_search.insertions.is_empty() {
+                    if contains_expr.negated {
+                        (
+                            then_search.snippet_vacant(cx, then_expr.span, &mut app),
+                            snippet_with_applicability(cx, else_expr.span, "{ .. }", &mut app),
+                            "Vacant(e)",
+                        )
+                    } else {
+                        (
+                            then_search.snippet_occupied(cx, then_expr.span, &mut app),
+                            snippet_with_applicability(cx, else_expr.span, "{ .. }", &mut app),
+                            "Occupied(mut e)",
+                        )
+                    }
+                } else if contains_expr.negated {
+                    (
+                        else_search.snippet_occupied(cx, else_expr.span, &mut app),
+                        snippet_with_applicability(cx, then_expr.span, "{ .. }", &mut app),
+                        "Occupied(mut e)",
+                    )
+                } else {
+                    (
+                        else_search.snippet_vacant(cx, else_expr.span, &mut app),
+                        snippet_with_applicability(cx, then_expr.span, "{ .. }", &mut app),
+                        "Vacant(e)",
+                    )
+                };
+                format!(
+                    "if let {}::{} = {}.entry({}) {} else {}",
+                    map_ty.entry_path(),
+                    entry_kind,
+                    map_str,
+                    key_str,
+                    then_str,
+                    else_str,
+                )
+            } else {
+                // if .. { insert } else { insert }
+                let (then_str, else_str, then_entry, else_entry) = if contains_expr.negated {
+                    (
+                        then_search.snippet_vacant(cx, then_expr.span, &mut app),
+                        else_search.snippet_occupied(cx, else_expr.span, &mut app),
+                        "Vacant(e)",
+                        "Occupied(mut e)",
+                    )
+                } else {
+                    (
+                        then_search.snippet_occupied(cx, then_expr.span, &mut app),
+                        else_search.snippet_vacant(cx, else_expr.span, &mut app),
+                        "Occupied(mut e)",
+                        "Vacant(e)",
+                    )
+                };
+                let indent_str = snippet_indent(cx, expr.span);
+                let indent_str = indent_str.as_deref().unwrap_or("");
+                format!(
+                    "match {}.entry({}) {{\n{indent}    {entry}::{} => {}\n\
+                        {indent}    {entry}::{} => {}\n{indent}}}",
+                    map_str,
+                    key_str,
+                    then_entry,
+                    reindent_multiline(then_str.into(), true, Some(4 + indent_str.len())),
+                    else_entry,
+                    reindent_multiline(else_str.into(), true, Some(4 + indent_str.len())),
+                    entry = map_ty.entry_path(),
+                    indent = indent_str,
+                )
+            }
+        } else if then_search.insertions.is_empty() || !contains_expr.negated {
             return;
         } else {
             // if .. { insert }
