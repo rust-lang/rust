@@ -66,24 +66,6 @@ fn main() {
     };
     assert_eq!(output.raw_os_error(), Some(102));
 
-    let pid = unsafe { libc::getpid() };
-    assert!(pid >= 0);
-    let output = unsafe {
-        Command::new(&me)
-            .arg("empty")
-            .pre_exec(move || {
-                let child = libc::getpid();
-                assert!(child >= 0);
-                assert!(pid != child);
-                Ok(())
-            })
-            .output()
-            .unwrap()
-    };
-    assert!(output.status.success());
-    assert!(output.stderr.is_empty());
-    assert!(output.stdout.is_empty());
-
     let mem = Arc::new(AtomicUsize::new(0));
     let mem2 = mem.clone();
     let output = unsafe {
