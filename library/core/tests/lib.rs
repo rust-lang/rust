@@ -71,7 +71,6 @@
 #![cfg_attr(not(bootstrap), feature(ptr_metadata))]
 #![feature(once_cell)]
 #![feature(unsized_tuple_coercion)]
-#![feature(int_bits_const)]
 #![feature(nonzero_leading_trailing_zeros)]
 #![feature(const_option)]
 #![feature(integer_atomics)]

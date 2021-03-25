@@ -16,7 +16,6 @@
 #![feature(binary_heap_retain)]
 #![feature(inplace_iteration)]
 #![feature(iter_map_while)]
-#![feature(int_bits_const)]
 #![feature(vecdeque_binary_search)]
 #![feature(slice_group_by)]
 #![feature(slice_partition_dedup)]
