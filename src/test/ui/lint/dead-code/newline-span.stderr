@@ -4,8 +4,7 @@ error: function is never used: `unused`
 LL | fn unused() {
    |    ^^^^^^ help: if this is intentional, prefix it with an underscore: `_unused`
    |
-   = note: the leading underscore signals that this function serves some other purpose
-           even if it isn't used in a way that we can detect.
+   = note: the leading underscore signals that this function serves some other purpose even if it isn't used in a way that we can detect.
 note: the lint level is defined here
   --> $DIR/newline-span.rs:1:9
    |
@@ -18,8 +17,7 @@ error: function is never used: `unused2`
 LL | fn unused2(var: i32) {
    |    ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_unused2`
    |
-   = note: the leading underscore signals that this function serves some other purpose
-           even if it isn't used in a way that we can detect.
+   = note: the leading underscore signals that this function serves some other purpose even if it isn't used in a way that we can detect.
 
 error: function is never used: `unused3`
   --> $DIR/newline-span.rs:11:4
@@ -27,8 +25,7 @@ error: function is never used: `unused3`
 LL | fn unused3(
    |    ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_unused3`
    |
-   = note: the leading underscore signals that this function serves some other purpose
-           even if it isn't used in a way that we can detect.
+   = note: the leading underscore signals that this function serves some other purpose even if it isn't used in a way that we can detect.
 
 error: aborting due to 3 previous errors
 
