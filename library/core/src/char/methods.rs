@@ -673,6 +673,39 @@ impl char {
         encode_utf16_raw(self as u32, dst)
     }
 
+    /// Returns the ["Unicode code point"][codepoint] associated with this `char`.
+    ///
+    /// Although ["Unicode scalar values"][scalar] and ["code points"][codepoint] are different,
+    /// all scalar values are code points. Because a `char` is a scalar value, it therefore is also
+    /// a valid code point. This method provides that code point as a `u32`.
+    ///
+    /// [scalar]: http://www.unicode.org/glossary/#unicode_scalar_value
+    /// [codepoint]: http://www.unicode.org/glossary/#code_point
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// assert_eq!('💯'.code_point(), 65);
+    /// assert_eq!('❤'.code_point(), 0x2764);
+    /// assert_eq!('a'.code_point(), 97);
+    /// ```
+    ///
+    /// This method is equivalent to casting via `as`, but with a more descriptive name:
+    ///
+    /// ```
+    /// assert_eq!('a'.code_point(), 'a' as u32);
+    /// assert_eq!('ß'.code_point(), 'ß' as u32);
+    /// assert_eq!('\n'.code_point(), '\n' as u32);
+    /// ```
+    #[inline]
+    pub const fn code_point(self) -> u32 {
+        // Casting a `char` to a `u32` gives the underlying scalar value, and all scalar values are
+        // valid code points
+        self as u32
+    }
+
     /// Returns `true` if this `char` has the `Alphabetic` property.
     ///
     /// `Alphabetic` is described in Chapter 4 (Character Properties) of the [Unicode Standard] and
