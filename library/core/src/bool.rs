@@ -31,7 +31,7 @@ impl bool {
     pub fn then<T, F: FnOnce() -> T>(self, f: F) -> Option<T> {
         if self { Some(f()) } else { None }
     }
-    
+
     /// Sets the `bool` to `false`, and returns the original value.
     ///
     /// # Examples
