@@ -198,7 +198,8 @@ fn from_clean_item_kind(item: clean::ItemKind, tcx: TyCtxt<'_>, name: &Option<Sy
             bounds: g.into_iter().map(|x| x.into_tcx(tcx)).collect(),
             default: t.map(|x| x.into_tcx(tcx)),
         },
-        StrippedItem(inner) => from_clean_item_kind(*inner, tcx, name),
+        // `convert_item` early returns `None` for striped items
+        StrippedItem(_) => unreachable!(),
         PrimitiveItem(_) | KeywordItem(_) => {
             panic!("{:?} is not supported for JSON output", item)
         }

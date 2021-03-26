@@ -129,6 +129,8 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         "json"
     }
 
+    const RUN_ON_MODULE: bool = false;
+
     fn init(
         krate: clean::Crate,
         options: RenderOptions,
@@ -169,8 +171,10 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 e.impls = self.get_impls(id)
             }
             let removed = self.index.borrow_mut().insert(from_def_id(id), new_item.clone());
+
             // FIXME(adotinthevoid): Currently, the index is duplicated. This is a sanity check
-            // to make sure the items are unique.
+            // to make sure the items are unique. The main place this happens is when an item, is
+            // reexported in more than one place. See `rustdoc-json/reexport/in_root_and_mod`
             if let Some(old_item) = removed {
                 assert_eq!(old_item, new_item);
             }
