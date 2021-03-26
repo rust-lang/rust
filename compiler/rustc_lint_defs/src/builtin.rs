@@ -2878,7 +2878,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `large_assigments` lint detects when objects of large
+    /// The `large_assignments` lint detects when objects of large
     /// types are being moved around.
     ///
     /// ### Example
