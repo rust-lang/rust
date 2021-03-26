@@ -547,9 +547,9 @@ Before submitting your PR make sure you followed all of the basic requirements:
 
 ## Adding configuration to a lint
 
-Clippy supports the configuration of lints values using a `clippy.toml` file in the workspace 
+Clippy supports the configuration of lints values using a `clippy.toml` file in the workspace
 directory. Adding a configuration to a lint can be useful for thresholds or to constrain some
-behavior that can be seen as a false positive for some users. Adding a configuration is done 
+behavior that can be seen as a false positive for some users. Adding a configuration is done
 in the following steps:
 
 1. Adding a new configuration entry to [clippy_utils::conf](/clippy_utils/src/conf.rs)
@@ -558,10 +558,10 @@ in the following steps:
     /// Lint: LINT_NAME. <The configuration field doc comment>
     (configuration_ident, "configuration_value": Type, DefaultValue),
     ```
-    The configuration value and identifier should usually be the same. The doc comment will be 
+    The configuration value and identifier should usually be the same. The doc comment will be
     automatically added to the lint documentation.
 2. Adding the configuration value to the lint impl struct:
-    1. This first requires the definition of a lint impl struct. Lint impl structs are usually 
+    1. This first requires the definition of a lint impl struct. Lint impl structs are usually
         generated with the `declare_lint_pass!` macro. This struct needs to be defined manually
         to add some kind of metadata to it:
         ```rust
@@ -578,7 +578,7 @@ in the following steps:
             LINT_NAME
         ]);
         ```
-    
+
     2. Next add the configuration value and a corresponding creation method like this:
         ```rust
         #[derive(Copy, Clone)]
@@ -598,7 +598,7 @@ in the following steps:
         ```
 3. Passing the configuration value to the lint impl struct:
 
-    First find the struct construction in the [clippy_lints lib file](/clippy_lints/src/lib.rs). 
+    First find the struct construction in the [clippy_lints lib file](/clippy_lints/src/lib.rs).
     The configuration value is now cloned or copied into a local value that is then passed to the
     impl struct like this:
     ```rust
@@ -615,9 +615,9 @@ in the following steps:
 
 4. Adding tests:
     1. The default configured value can be tested like any normal lint in [`tests/ui`](/tests/ui).
-    2. The configuration itself will be tested separately in [`tests/ui-toml`](/tests/ui-toml). 
-        Simply add a new subfolder with a fitting name. This folder contains a `clippy.toml` file 
-        with the configuration value and a rust file that should be linted by Clippy. The test can 
+    2. The configuration itself will be tested separately in [`tests/ui-toml`](/tests/ui-toml).
+        Simply add a new subfolder with a fitting name. This folder contains a `clippy.toml` file
+        with the configuration value and a rust file that should be linted by Clippy. The test can
         otherwise be written as usual.
 
 ## Cheatsheet
