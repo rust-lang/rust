@@ -329,6 +329,25 @@ enum A { One(One) }
 }
 
 #[test]
+fn doctest_extract_type_alias() {
+    check_doc_test(
+        "extract_type_alias",
+        r#####"
+struct S {
+    field: $0(u8, u8, u8)$0,
+}
+"#####,
+        r#####"
+type Type = (u8, u8, u8);
+
+struct S {
+    field: Type,
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_extract_variable() {
     check_doc_test(
         "extract_variable",

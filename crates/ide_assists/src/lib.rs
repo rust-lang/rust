@@ -121,6 +121,7 @@ mod handlers {
     mod expand_glob_import;
     mod extract_function;
     mod extract_struct_from_enum_variant;
+    mod extract_type_alias;
     mod extract_variable;
     mod fill_match_arms;
     mod fix_visibility;
@@ -187,6 +188,7 @@ mod handlers {
             early_return::convert_to_guarded_return,
             expand_glob_import::expand_glob_import,
             extract_struct_from_enum_variant::extract_struct_from_enum_variant,
+            extract_type_alias::extract_type_alias,
             fill_match_arms::fill_match_arms,
             fix_visibility::fix_visibility,
             flip_binexpr::flip_binexpr,
