@@ -4,6 +4,7 @@
 
 // build-fail
 // aux-build:def_colliding_external.rs
+// compile-flags: -Ccodegen-units=16
 
 extern crate def_colliding_external as dep1;
 
