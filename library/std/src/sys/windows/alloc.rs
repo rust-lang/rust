@@ -1,7 +1,9 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 use crate::alloc::{GlobalAlloc, Layout, System};
+use crate::ffi::c_void;
 use crate::ptr;
+use crate::sync::atomic::{AtomicPtr, Ordering};
 use crate::sys::c;
 use crate::sys_common::alloc::{realloc_fallback, MIN_ALIGN};
 
@@ -16,6 +18,9 @@ const HEAP_ZERO_MEMORY: c::DWORD = 0x00000008;
 
 extern "system" {
     // Get a handle to the default heap of the current process, or null if the operation fails.
+    //
+    // SAFETY: Successful calls to this function within the same process are assumed to
+    // always return the same handle, which remains valid for the entire lifetime of the process.
     //
     // See https://docs.microsoft.com/windows/win32/api/heapapi/nf-heapapi-getprocessheap
     fn GetProcessHeap() -> c::HANDLE;
@@ -66,29 +71,59 @@ extern "system" {
     // Returns a nonzero value if the operation is successful, and zero if the operation fails.
     //
     // SAFETY:
+    //  - `hHeap` must be a non-null handle returned by `GetProcessHeap`.
     //  - `dwFlags` must be set to zero.
     //  - `lpMem` must be a pointer to an allocated block returned by `HeapAlloc` or `HeapReAlloc`,
     //     that has not already been freed.
     // If the block was successfully freed, pointers pointing to the freed memory, such as `lpMem`,
     // must not be dereferenced ever again.
     //
-    // Note that both `hHeap` is allowed to be any value, and `lpMem` is allowed to be null,
-    // both of which will not cause the operation to fail.
+    // Note that `lpMem` is allowed to be null, which will not cause the operation to fail.
     //
     // See https://docs.microsoft.com/windows/win32/api/heapapi/nf-heapapi-heapfree
     fn HeapFree(hHeap: c::HANDLE, dwFlags: c::DWORD, lpMem: c::LPVOID) -> c::BOOL;
 }
 
+// Cached handle to the default heap of the current process.
+// Either a non-null handle returned by `GetProcessHeap`, or null when not yet initialized or `GetProcessHeap` failed.
+static HEAP: AtomicPtr<c_void> = AtomicPtr::new(ptr::null_mut());
+
+// Get a handle to the default heap of the current process, or null if the operation fails.
+// SAFETY: If this operation is successful, `HEAP` will be successfully initialized and contain
+// a non-null handle returned by `GetProcessHeap`.
+#[inline]
+unsafe fn init_or_get_process_heap() -> c::HANDLE {
+    let heap = HEAP.load(Ordering::Relaxed);
+    if heap.is_null() {
+        // `HEAP` has not yet been successfully initialized
+        let heap = unsafe { GetProcessHeap() };
+        if !heap.is_null() {
+            // SAFETY: No locking is needed because within the same process,
+            // successful calls to `GetProcessHeap` will always return the same value, even on different threads.
+            HEAP.store(heap, Ordering::Relaxed);
+
+            // SAFETY: `HEAP` contains a non-null handle returned by `GetProcessHeap`
+            heap
+        } else {
+            // Could not get the current process heap.
+            ptr::null_mut()
+        }
+    } else {
+        // SAFETY: `HEAP` contains a non-null handle returned by `GetProcessHeap`
+        heap
+    }
+}
+
 // Header containing a pointer to the start of an allocated block.
-// SAFETY: size and alignment must be <= `MIN_ALIGN`.
+// SAFETY: Size and alignment must be <= `MIN_ALIGN`.
 #[repr(C)]
 struct Header(*mut u8);
 
-// Allocates a block of optionally zeroed memory for a given `layout`.
-// Returns a pointer satisfying the guarantees of `System` about allocated pointers.
+// Allocate a block of optionally zeroed memory for a given `layout`.
+// SAFETY: Returns a pointer satisfying the guarantees of `System` about allocated pointers.
 #[inline]
 unsafe fn allocate(layout: Layout, zeroed: bool) -> *mut u8 {
-    let heap = unsafe { GetProcessHeap() };
+    let heap = unsafe { init_or_get_process_heap() };
     if heap.is_null() {
         // Allocation has failed, could not get the current process heap.
         return ptr::null_mut();
@@ -147,14 +182,14 @@ unsafe fn allocate(layout: Layout, zeroed: bool) -> *mut u8 {
 unsafe impl GlobalAlloc for System {
     #[inline]
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        // SAFETY: pointers returned by `allocate` satisfy the guarantees of `System`
+        // SAFETY: Pointers returned by `allocate` satisfy the guarantees of `System`
         let zeroed = false;
         unsafe { allocate(layout, zeroed) }
     }
 
     #[inline]
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
-        // SAFETY: pointers returned by `allocate` satisfy the guarantees of `System`
+        // SAFETY: Pointers returned by `allocate` satisfy the guarantees of `System`
         let zeroed = true;
         unsafe { allocate(layout, zeroed) }
     }
@@ -173,9 +208,14 @@ unsafe impl GlobalAlloc for System {
             }
         };
 
+        // SAFETY: because `ptr` has been successfully allocated with this allocator,
+        // `HEAP` must have been successfully initialized and contain a non-null handle
+        // returned by `GetProcessHeap`.
+        let heap = HEAP.load(Ordering::Relaxed);
+
         // SAFETY: `block` is a pointer to the start of an allocated block.
         unsafe {
-            let err = HeapFree(GetProcessHeap(), 0, block as c::LPVOID);
+            let err = HeapFree(heap, 0, block as c::LPVOID);
             debug_assert!(err != 0, "Failed to free heap memory: {}", c::GetLastError());
         }
     }
@@ -183,14 +223,12 @@ unsafe impl GlobalAlloc for System {
     #[inline]
     unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
         if layout.align() <= MIN_ALIGN {
-            let heap = unsafe { GetProcessHeap() };
-            if heap.is_null() {
-                // Reallocation has failed, could not get the current process heap.
-                return ptr::null_mut();
-            }
+            // SAFETY: because `ptr` has been successfully allocated with this allocator,
+            // `HEAP` must have been successfully initialized and contain a non-null handle
+            // returned by `GetProcessHeap`.
+            let heap = HEAP.load(Ordering::Relaxed);
 
-            // SAFETY: `heap` is a non-null handle returned by `GetProcessHeap`,
-            // `ptr` is a pointer to the start of an allocated block.
+            // SAFETY: `ptr` is a pointer to the start of an allocated block.
             // The returned pointer points to the start of an allocated block.
             unsafe { HeapReAlloc(heap, 0, ptr as c::LPVOID, new_size) as *mut u8 }
         } else {
