@@ -139,7 +139,7 @@ download-ci-llvm = true
 #allow-old-toolchain = false
 
 # Whether to include the Polly optimizer.
-polly = false
+#polly = false
 
 # =============================================================================
 # General build configuration options
