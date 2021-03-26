@@ -71,6 +71,7 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
     },
 ]
 PRINT-BANG INPUT (DISPLAY): "hi" "hello".len() + "world".len() (1 + 1)
+PRINT-BANG DEEP-RE-COLLECTED (DISPLAY): "hi" "hello" . len() + "world" . len() (1 + 1)
 PRINT-BANG INPUT (DEBUG): TokenStream [
     Literal {
         kind: Str,

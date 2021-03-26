@@ -19,10 +19,10 @@ const Π: f64 = 3.14f64;
 
 ## Changes to the language reference
 
-> **<sup>Lexer:<sup>**  
-> IDENTIFIER :  
-> &nbsp;&nbsp; &nbsp;&nbsp; XID_start XID_continue<sup>\*</sup>  
-> &nbsp;&nbsp; | `_` XID_continue<sup>+</sup>  
+> **<sup>Lexer:<sup>**\
+> IDENTIFIER :\
+> &nbsp;&nbsp; &nbsp;&nbsp; XID_start XID_continue<sup>\*</sup>\
+> &nbsp;&nbsp; | `_` XID_continue<sup>+</sup>
 
 An identifier is any nonempty Unicode string of the following form:
 

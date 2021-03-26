@@ -1,5 +1,5 @@
 error[E0658]: use of unstable library feature 'function'
-  --> $DIR/internal-unstable.rs:34:25
+  --> $DIR/internal-unstable.rs:41:25
    |
 LL |     pass_through_allow!(internal_unstable::unstable());
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     pass_through_allow!(internal_unstable::unstable());
    = help: add `#![feature(function)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'function'
-  --> $DIR/internal-unstable.rs:36:27
+  --> $DIR/internal-unstable.rs:43:27
    |
 LL |     pass_through_noallow!(internal_unstable::unstable());
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL |     pass_through_noallow!(internal_unstable::unstable());
    = help: add `#![feature(function)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'function'
-  --> $DIR/internal-unstable.rs:40:22
+  --> $DIR/internal-unstable.rs:47:22
    |
 LL |     println!("{:?}", internal_unstable::unstable());
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL |     println!("{:?}", internal_unstable::unstable());
    = help: add `#![feature(function)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'function'
-  --> $DIR/internal-unstable.rs:42:10
+  --> $DIR/internal-unstable.rs:49:10
    |
 LL |     bar!(internal_unstable::unstable());
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -31,7 +31,7 @@ LL |     bar!(internal_unstable::unstable());
    = help: add `#![feature(function)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'function'
-  --> $DIR/internal-unstable.rs:12:9
+  --> $DIR/internal-unstable.rs:19:9
    |
 LL |         internal_unstable::unstable();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^

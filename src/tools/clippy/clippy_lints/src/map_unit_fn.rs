@@ -1,4 +1,7 @@
-use crate::utils::{is_type_diagnostic_item, iter_input_pats, method_chain_args, snippet, span_lint_and_then};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::source::snippet;
+use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::{iter_input_pats, method_chain_args};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -131,7 +134,7 @@ fn reduce_unit_expression<'a>(cx: &LateContext<'_>, expr: &'a hir::Expr<'_>) -> 
             Some(expr.span)
         },
         hir::ExprKind::Block(ref block, _) => {
-            match (&block.stmts[..], block.expr.as_ref()) {
+            match (block.stmts, block.expr.as_ref()) {
                 (&[], Some(inner_expr)) => {
                     // If block only contains an expression,
                     // reduce `{ X }` to `X`

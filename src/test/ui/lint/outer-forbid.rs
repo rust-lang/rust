@@ -15,11 +15,16 @@
 // compile-flags: -Z deduplicate-diagnostics=yes
 
 #![forbid(unused, non_snake_case)]
+#![forbid(forbidden_lint_groups)]
 
 #[allow(unused_variables)] //~ ERROR incompatible with previous
+//~^ ERROR incompatible with previous
+//~| WARNING this was previously accepted by the compiler
+//~| WARNING this was previously accepted by the compiler
 fn foo() {}
 
 #[allow(unused)] //~ ERROR incompatible with previous
+//~^ WARNING this was previously accepted by the compiler
 fn bar() {}
 
 #[allow(nonstandard_style)] //~ ERROR incompatible with previous

@@ -548,6 +548,22 @@ fn bench_in_place_zip_iter_mut(b: &mut Bencher) {
     black_box(data);
 }
 
+pub fn vec_cast<T, U>(input: Vec<T>) -> Vec<U> {
+    input.into_iter().map(|e| unsafe { std::mem::transmute_copy(&e) }).collect()
+}
+
+#[bench]
+fn bench_transmute(b: &mut Bencher) {
+    let mut vec = vec![10u32; 100];
+    b.bytes = 800; // 2 casts x 4 bytes x 100
+    b.iter(|| {
+        let v = std::mem::take(&mut vec);
+        let v = black_box(vec_cast::<u32, i32>(v));
+        let v = black_box(vec_cast::<i32, u32>(v));
+        vec = v;
+    });
+}
+
 #[derive(Clone)]
 struct Droppable(usize);
 
@@ -670,4 +686,93 @@ fn bench_map_regular(b: &mut Bencher) {
 fn bench_map_fast(b: &mut Bencher) {
     let data = black_box([(0, 0); LEN]);
     b.iter(|| map_fast(&data));
+}
+
+fn random_sorted_fill(mut seed: u32, buf: &mut [u32]) {
+    let mask = if buf.len() < 8192 {
+        0xFF
+    } else if buf.len() < 200_000 {
+        0xFFFF
+    } else {
+        0xFFFF_FFFF
+    };
+
+    for item in buf.iter_mut() {
+        seed ^= seed << 13;
+        seed ^= seed >> 17;
+        seed ^= seed << 5;
+
+        *item = seed & mask;
+    }
+
+    buf.sort();
+}
+
+fn bench_vec_dedup_old(b: &mut Bencher, sz: usize) {
+    let mut template = vec![0u32; sz];
+    b.bytes = std::mem::size_of_val(template.as_slice()) as u64;
+    random_sorted_fill(0x43, &mut template);
+
+    let mut vec = template.clone();
+    b.iter(|| {
+        let len = {
+            let (dedup, _) = vec.partition_dedup();
+            dedup.len()
+        };
+        vec.truncate(len);
+
+        black_box(vec.first());
+        vec.clear();
+        vec.extend_from_slice(&template);
+    });
+}
+
+fn bench_vec_dedup_new(b: &mut Bencher, sz: usize) {
+    let mut template = vec![0u32; sz];
+    b.bytes = std::mem::size_of_val(template.as_slice()) as u64;
+    random_sorted_fill(0x43, &mut template);
+
+    let mut vec = template.clone();
+    b.iter(|| {
+        vec.dedup();
+        black_box(vec.first());
+        vec.clear();
+        vec.extend_from_slice(&template);
+    });
+}
+
+#[bench]
+fn bench_dedup_old_100(b: &mut Bencher) {
+    bench_vec_dedup_old(b, 100);
+}
+#[bench]
+fn bench_dedup_new_100(b: &mut Bencher) {
+    bench_vec_dedup_new(b, 100);
+}
+
+#[bench]
+fn bench_dedup_old_1000(b: &mut Bencher) {
+    bench_vec_dedup_old(b, 1000);
+}
+#[bench]
+fn bench_dedup_new_1000(b: &mut Bencher) {
+    bench_vec_dedup_new(b, 1000);
+}
+
+#[bench]
+fn bench_dedup_old_10000(b: &mut Bencher) {
+    bench_vec_dedup_old(b, 10000);
+}
+#[bench]
+fn bench_dedup_new_10000(b: &mut Bencher) {
+    bench_vec_dedup_new(b, 10000);
+}
+
+#[bench]
+fn bench_dedup_old_100000(b: &mut Bencher) {
+    bench_vec_dedup_old(b, 100000);
+}
+#[bench]
+fn bench_dedup_new_100000(b: &mut Bencher) {
+    bench_vec_dedup_new(b, 100000);
 }

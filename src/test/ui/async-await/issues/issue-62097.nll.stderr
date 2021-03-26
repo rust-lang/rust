@@ -26,4 +26,5 @@ LL |         foo(|| self.bar()).await;
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0373`.
+Some errors have detailed explanations: E0373, E0521.
+For more information about an error, try `rustc --explain E0373`.

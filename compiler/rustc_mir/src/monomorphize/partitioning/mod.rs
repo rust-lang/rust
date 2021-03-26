@@ -196,7 +196,13 @@ pub fn partition<'tcx>(
 
     // Next we try to make as many symbols "internal" as possible, so LLVM has
     // more freedom to optimize.
-    if !tcx.sess.link_dead_code() {
+    if !tcx.sess.link_dead_code() && !tcx.sess.instrument_coverage() {
+        // Disabled for `-Z instrument-coverage` because some LLVM optimizations can sometimes
+        // break coverage results. Tests that failed at certain optimization levels are now
+        // validated at those optimization levels (via `compile-flags` directive); for example:
+        //   * `src/test/run-make-fulldeps/coverage/async.rs` broke with `-C opt-level=1`
+        //   * `src/test/run-make-fulldeps/coverage/closure.rs` broke with `-C opt-level=2`, and
+        //     also required disabling `generate_gcu_internal_copies` in `rustc_middle/mir/mono.rs`
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_internalize_symbols");
         partitioner.internalize_symbols(cx, &mut post_inlining);
     }
@@ -239,17 +245,22 @@ where
     I: Iterator<Item = &'a CodegenUnit<'tcx>>,
     'tcx: 'a,
 {
-    if cfg!(debug_assertions) {
-        debug!("{}", label);
+    let dump = move || {
+        use std::fmt::Write;
+
+        let s = &mut String::new();
+        let _ = writeln!(s, "{}", label);
         for cgu in cgus {
-            debug!("CodegenUnit {} estimated size {} :", cgu.name(), cgu.size_estimate());
+            let _ =
+                writeln!(s, "CodegenUnit {} estimated size {} :", cgu.name(), cgu.size_estimate());
 
             for (mono_item, linkage) in cgu.items() {
                 let symbol_name = mono_item.symbol_name(tcx).name;
                 let symbol_hash_start = symbol_name.rfind('h');
                 let symbol_hash = symbol_hash_start.map_or("<no hash>", |i| &symbol_name[i..]);
 
-                debug!(
+                let _ = writeln!(
+                    s,
                     " - {} [{:?}] [{}] estimated size {}",
                     mono_item,
                     linkage,
@@ -258,9 +269,13 @@ where
                 );
             }
 
-            debug!("");
+            let _ = writeln!(s, "");
         }
-    }
+
+        std::mem::take(s)
+    };
+
+    debug!("{}", dump());
 }
 
 #[inline(never)] // give this a place in the profiler
@@ -415,8 +430,33 @@ fn collect_and_partition_mono_items<'tcx>(
     (tcx.arena.alloc(mono_items), codegen_units)
 }
 
+fn codegened_and_inlined_items<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> &'tcx DefIdSet {
+    let (items, cgus) = tcx.collect_and_partition_mono_items(cnum);
+    let mut visited = DefIdSet::default();
+    let mut result = items.clone();
+
+    for cgu in cgus {
+        for (item, _) in cgu.items() {
+            if let MonoItem::Fn(ref instance) = item {
+                let did = instance.def_id();
+                if !visited.insert(did) {
+                    continue;
+                }
+                for scope in &tcx.instance_mir(instance.def).source_scopes {
+                    if let Some((ref inlined, _)) = scope.inlined {
+                        result.insert(inlined.def_id());
+                    }
+                }
+            }
+        }
+    }
+
+    tcx.arena.alloc(result)
+}
+
 pub fn provide(providers: &mut Providers) {
     providers.collect_and_partition_mono_items = collect_and_partition_mono_items;
+    providers.codegened_and_inlined_items = codegened_and_inlined_items;
 
     providers.is_codegened_item = |tcx, def_id| {
         let (all_mono_items, _) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);

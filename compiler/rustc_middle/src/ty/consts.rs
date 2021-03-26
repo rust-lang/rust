@@ -5,14 +5,16 @@ use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::{ParamEnv, ParamEnvAnd};
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
-use rustc_hir::def_id::LocalDefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_macros::HashStable;
 
 mod int;
 mod kind;
+mod valtree;
 
 pub use int::*;
 pub use kind::*;
+pub use valtree::*;
 
 /// Typed constant value.
 #[derive(Copy, Clone, Debug, Hash, TyEncodable, TyDecodable, Eq, PartialEq, Ord, PartialOrd)]
@@ -23,7 +25,7 @@ pub struct Const<'tcx> {
     pub val: ConstKind<'tcx>,
 }
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(Const<'_>, 48);
 
 impl<'tcx> Const<'tcx> {
@@ -55,7 +57,7 @@ impl<'tcx> Const<'tcx> {
 
         let lit_input = match expr.kind {
             hir::ExprKind::Lit(ref lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: false }),
-            hir::ExprKind::Unary(hir::UnOp::UnNeg, ref expr) => match expr.kind {
+            hir::ExprKind::Unary(hir::UnOp::Neg, ref expr) => match expr.kind {
                 hir::ExprKind::Lit(ref lit) => {
                     Some(LitToConstInput { lit: &lit.node, ty, neg: true })
                 }
@@ -96,18 +98,18 @@ impl<'tcx> Const<'tcx> {
                 let name = tcx.hir().name(hir_id);
                 ty::ConstKind::Param(ty::ParamConst::new(index, name))
             }
-            _ => ty::ConstKind::Unevaluated(
-                def.to_global(),
-                InternalSubsts::identity_for_item(tcx, def.did.to_def_id()),
-                None,
-            ),
+            _ => ty::ConstKind::Unevaluated(ty::Unevaluated {
+                def: def.to_global(),
+                substs: InternalSubsts::identity_for_item(tcx, def.did.to_def_id()),
+                promoted: None,
+            }),
         };
 
         tcx.mk_const(ty::Const { val, ty })
     }
 
-    #[inline]
     /// Interns the given value as a constant.
+    #[inline]
     pub fn from_value(tcx: TyCtxt<'tcx>, val: ConstValue<'tcx>, ty: Ty<'tcx>) -> &'tcx Self {
         tcx.mk_const(Self { val: ConstKind::Value(val), ty })
     }
@@ -199,4 +201,19 @@ impl<'tcx> Const<'tcx> {
         self.try_eval_usize(tcx, param_env)
             .unwrap_or_else(|| bug!("expected usize, got {:#?}", self))
     }
+}
+
+pub fn const_param_default<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx Const<'tcx> {
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
+    let default_def_id = match tcx.hir().get(hir_id) {
+        hir::Node::GenericParam(hir::GenericParam {
+            kind: hir::GenericParamKind::Const { ty: _, default: Some(ac) },
+            ..
+        }) => tcx.hir().local_def_id(ac.hir_id),
+        _ => span_bug!(
+            tcx.def_span(def_id),
+            "`const_param_default` expected a generic parameter with a constant"
+        ),
+    };
+    Const::from_anon_const(tcx, default_def_id)
 }

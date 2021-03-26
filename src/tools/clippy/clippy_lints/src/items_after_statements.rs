@@ -1,6 +1,6 @@
 //! lint when items are used after statements
 
-use crate::utils::span_lint;
+use clippy_utils::diagnostics::span_lint;
 use rustc_ast::ast::{Block, ItemKind, StmtKind};
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;

@@ -1,5 +1,6 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
+use super::fd::WasiFd;
 use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;
 use crate::io::{self, IoSlice, IoSliceMut, SeekFrom};
@@ -9,7 +10,6 @@ use crate::os::wasi::ffi::{OsStrExt, OsStringExt};
 use crate::path::{Path, PathBuf};
 use crate::ptr;
 use crate::sync::Arc;
-use crate::sys::fd::WasiFd;
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
 use crate::sys_common::FromInner;
@@ -557,12 +557,8 @@ pub fn symlink(original: &Path, link: &Path) -> io::Result<()> {
 pub fn link(original: &Path, link: &Path) -> io::Result<()> {
     let (original, original_file) = open_parent(original)?;
     let (link, link_file) = open_parent(link)?;
-    original.link(
-        wasi::LOOKUPFLAGS_SYMLINK_FOLLOW,
-        osstr2str(original_file.as_ref())?,
-        &link,
-        osstr2str(link_file.as_ref())?,
-    )
+    // Pass 0 as the flags argument, meaning don't follow symlinks.
+    original.link(0, osstr2str(original_file.as_ref())?, &link, osstr2str(link_file.as_ref())?)
 }
 
 pub fn stat(p: &Path) -> io::Result<FileAttr> {
@@ -654,13 +650,11 @@ fn open_parent(p: &Path) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
                 );
                 return Err(io::Error::new(io::ErrorKind::Other, msg));
             }
-            let len = CStr::from_ptr(buf.as_ptr().cast()).to_bytes().len();
-            buf.set_len(len);
-            buf.shrink_to_fit();
+            let relative = CStr::from_ptr(relative_path).to_bytes().to_vec();
 
             return Ok((
                 ManuallyDrop::new(WasiFd::from_raw(fd as u32)),
-                PathBuf::from(OsString::from_vec(buf)),
+                PathBuf::from(OsString::from_vec(relative)),
             ));
         }
     }
@@ -676,7 +670,7 @@ fn open_parent(p: &Path) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
 }
 
 pub fn osstr2str(f: &OsStr) -> io::Result<&str> {
-    f.to_str().ok_or_else(|| io::Error::new(io::ErrorKind::Other, "input must be utf-8"))
+    f.to_str().ok_or_else(|| io::Error::new_const(io::ErrorKind::Other, &"input must be utf-8"))
 }
 
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {

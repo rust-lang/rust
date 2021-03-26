@@ -125,19 +125,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let offset = args[1].immediate();
                 bx.gep(ptr, &[offset])
             }
-
-            sym::copy_nonoverlapping => {
-                copy_intrinsic(
-                    bx,
-                    false,
-                    false,
-                    substs.type_at(0),
-                    args[1].immediate(),
-                    args[0].immediate(),
-                    args[2].immediate(),
-                );
-                return;
-            }
             sym::copy => {
                 copy_intrinsic(
                     bx,

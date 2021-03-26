@@ -439,7 +439,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         qpath: &QPath<'_>,
         hir_id: hir::HirId,
     ) -> Option<(&'tcx ty::VariantDef, Ty<'tcx>)> {
-        let path_span = qpath.qself_span();
+        let path_span = qpath.span();
         let (def, ty) = self.finish_resolving_struct_path(qpath, path_span, hir_id);
         let variant = match def {
             Res::Err => {
@@ -539,7 +539,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.overwrite_local_ty_if_err(local, ty, pat_ty);
     }
 
-    pub fn check_stmt(&self, stmt: &'tcx hir::Stmt<'tcx>) {
+    pub fn check_stmt(&self, stmt: &'tcx hir::Stmt<'tcx>, is_last: bool) {
         // Don't do all the complex logic below for `DeclItem`.
         match stmt.kind {
             hir::StmtKind::Item(..) => return,
@@ -561,11 +561,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::StmtKind::Expr(ref expr) => {
                 // Check with expected type of `()`.
                 self.check_expr_has_type_or_error(&expr, self.tcx.mk_unit(), |err| {
-                    self.suggest_semicolon_at_end(expr.span, err);
+                    if expr.can_have_side_effects() {
+                        self.suggest_semicolon_at_end(expr.span, err);
+                    }
                 });
             }
             hir::StmtKind::Semi(ref expr) => {
-                self.check_expr(&expr);
+                // All of this is equivalent to calling `check_expr`, but it is inlined out here
+                // in order to capture the fact that this `match` is the last statement in its
+                // function. This is done for better suggestions to remove the `;`.
+                let expectation = match expr.kind {
+                    hir::ExprKind::Match(..) if is_last => IsLast(stmt.span),
+                    _ => NoExpectation,
+                };
+                self.check_expr_with_expectation(expr, expectation);
             }
         }
 
@@ -624,8 +633,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ctxt = BreakableCtxt { coerce: Some(coerce), may_break: false };
 
         let (ctxt, ()) = self.with_breakable_ctxt(blk.hir_id, ctxt, || {
-            for s in blk.stmts {
-                self.check_stmt(s);
+            for (pos, s) in blk.stmts.iter().enumerate() {
+                self.check_stmt(s, blk.stmts.len() - 1 == pos);
             }
 
             // check the tail expression **without** holding the
@@ -866,7 +875,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match *qpath {
             QPath::Resolved(ref maybe_qself, ref path) => {
                 let self_ty = maybe_qself.as_ref().map(|qself| self.to_ty(qself));
-                let ty = AstConv::res_to_ty(self, self_ty, path, true);
+                let ty = <dyn AstConv<'_>>::res_to_ty(self, self_ty, path, true);
                 (path.res, ty)
             }
             QPath::TypeRelative(ref qself, ref segment) => {
@@ -877,8 +886,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else {
                     Res::Err
                 };
-                let result =
-                    AstConv::associated_path_to_ty(self, hir_id, path_span, ty, res, segment, true);
+                let result = <dyn AstConv<'_>>::associated_path_to_ty(
+                    self, hir_id, path_span, ty, res, segment, true,
+                );
                 let ty = result.map(|(ty, _, _)| ty).unwrap_or_else(|_| self.tcx().ty_error());
                 let result = result.map(|(_, kind, def_id)| (kind, def_id));
 
@@ -991,7 +1001,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         // would trigger in `is_send::<T::AssocType>();`
                                         // from `typeck-default-trait-impl-assoc-type.rs`.
                                     } else {
-                                        let ty = AstConv::ast_ty_to_ty(self, hir_ty);
+                                        let ty = <dyn AstConv<'_>>::ast_ty_to_ty(self, hir_ty);
                                         let ty = self.resolve_vars_if_possible(ty);
                                         if ty == predicate.self_ty() {
                                             error.obligation.cause.make_mut().span = hir_ty.span;

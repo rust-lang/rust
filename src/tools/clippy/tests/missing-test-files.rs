@@ -9,14 +9,12 @@ fn test_missing_tests() {
     if !missing_files.is_empty() {
         assert!(
             false,
-            format!(
-                "Didn't see a test file for the following files:\n\n{}\n",
-                missing_files
-                    .iter()
-                    .map(|s| format!("\t{}", s))
-                    .collect::<Vec<_>>()
-                    .join("\n")
-            )
+            "Didn't see a test file for the following files:\n\n{}\n",
+            missing_files
+                .iter()
+                .map(|s| format!("\t{}", s))
+                .collect::<Vec<_>>()
+                .join("\n")
         );
     }
 }

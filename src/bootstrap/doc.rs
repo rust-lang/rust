@@ -270,6 +270,10 @@ fn invoke_rustdoc(
         .arg("--markdown-css")
         .arg("../rust.css");
 
+    if !builder.config.docs_minification {
+        cmd.arg("-Z").arg("unstable-options").arg("--disable-minification");
+    }
+
     builder.run(&mut cmd);
 }
 
@@ -365,6 +369,10 @@ impl Step for Standalone {
                 .arg(&out)
                 .arg(&path);
 
+            if !builder.config.docs_minification {
+                cmd.arg("--disable-minification");
+            }
+
             if filename == "not_found.md" {
                 cmd.arg("--markdown-css").arg("https://doc.rust-lang.org/rust.css");
             } else {
@@ -436,6 +444,10 @@ impl Step for Std {
                 .arg(&builder.version)
                 .arg("--index-page")
                 .arg(&builder.src.join("src/doc/index.md"));
+
+            if !builder.config.docs_minification {
+                cargo.arg("--disable-minification");
+            }
 
             builder.run(&mut cargo.into());
         };
@@ -626,6 +638,7 @@ impl Step for Rustdoc {
         // Only include compiler crates, no dependencies of those, such as `libc`.
         cargo.arg("--no-deps");
         cargo.arg("-p").arg("rustdoc");
+        cargo.arg("-p").arg("rustdoc-json-types");
 
         cargo.rustdocflag("--document-private-items");
         cargo.rustdocflag("--enable-index-page");
@@ -636,7 +649,6 @@ impl Step for Rustdoc {
 
 #[derive(Ord, PartialOrd, Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct ErrorIndex {
-    pub compiler: Compiler,
     pub target: TargetSelection,
 }
 
@@ -652,12 +664,7 @@ impl Step for ErrorIndex {
 
     fn make_run(run: RunConfig<'_>) {
         let target = run.target;
-        // error_index_generator depends on librustdoc. Use the compiler that
-        // is normally used to build rustdoc for other documentation so that
-        // it shares the same artifacts.
-        let compiler =
-            run.builder.compiler_for(run.builder.top_stage, run.builder.config.build, target);
-        run.builder.ensure(ErrorIndex { compiler, target });
+        run.builder.ensure(ErrorIndex { target });
     }
 
     /// Generates the HTML rendered error-index by running the
@@ -666,7 +673,7 @@ impl Step for ErrorIndex {
         builder.info(&format!("Documenting error index ({})", self.target));
         let out = builder.doc_out(self.target);
         t!(fs::create_dir_all(&out));
-        let mut index = tool::ErrorIndex::command(builder, self.compiler);
+        let mut index = tool::ErrorIndex::command(builder);
         index.arg("html");
         index.arg(out.join("error-index.html"));
         index.arg(&builder.version);

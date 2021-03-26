@@ -3,8 +3,8 @@
 #![feature(decl_macro)] //~ ERROR `feature` is ambiguous
 
 extern crate builtin_attrs;
-use builtin_attrs::{test, bench};
 use builtin_attrs::*;
+use builtin_attrs::{bench, test};
 
 #[repr(C)] //~ ERROR `repr` is ambiguous
 struct S;
@@ -21,7 +21,9 @@ fn non_macro_expanded_location<#[repr(C)] T>() {
     //~^ ERROR `repr` is ambiguous
     //~| ERROR attribute should be applied to a struct, enum, or union
     match 0u8 {
-        #[repr(C)] //~ ERROR `repr` is ambiguous
+        #[repr(C)]
+        //~^ ERROR `repr` is ambiguous
+        //~| ERROR attribute should be applied to a struct, enum, or union
         _ => {}
     }
 }

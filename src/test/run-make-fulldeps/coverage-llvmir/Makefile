@@ -1,4 +1,5 @@
 # needs-profiler-support
+# min-llvm-version: 11.0
 
 -include ../coverage/coverage_tools.mk
 
@@ -16,7 +17,7 @@ else
 	COMDAT_IF_SUPPORTED=, comdat
 endif
 
-DEFINE_INTERNAL=define internal
+DEFINE_INTERNAL=define hidden
 
 ifdef IS_WINDOWS
 	LLVM_FILECHECK_OPTIONS=\
@@ -48,12 +49,7 @@ else
 		-DINSTR_PROF_ORDERFILE='$(DATA_SECTION_PREFIX)__llvm_orderfile'
 endif
 
-ifeq ($(LLVM_VERSION_11_PLUS),true)
 all: test_llvm_ir
-else
-$(info Rust option `-Z instrument-coverage` requires LLVM 11 or higher. Test skipped.)
-all:
-endif
 
 test_llvm_ir:
 	# Compile the test program with non-experimental coverage instrumentation, and generate LLVM IR

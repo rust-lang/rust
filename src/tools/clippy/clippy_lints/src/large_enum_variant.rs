@@ -1,6 +1,7 @@
 //! lint when there is a large size difference between variants on an enum
 
-use crate::utils::{snippet_opt, span_lint_and_then};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::source::snippet_opt;
 use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind, VariantData};
 use rustc_lint::{LateContext, LateLintPass};
@@ -62,9 +63,8 @@ impl<'tcx> LateLintPass<'tcx> for LargeEnumVariant {
         if in_external_macro(cx.tcx.sess, item.span) {
             return;
         }
-        let did = cx.tcx.hir().local_def_id(item.hir_id);
         if let ItemKind::Enum(ref def, _) = item.kind {
-            let ty = cx.tcx.type_of(did);
+            let ty = cx.tcx.type_of(item.def_id);
             let adt = ty.ty_adt_def().expect("already checked whether this is an enum");
 
             let mut largest_variant: Option<(_, _)> = None;

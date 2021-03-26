@@ -589,7 +589,7 @@ impl StackProbeType {
                 Ok(StackProbeType::InlineOrCall { min_llvm_version_for_inline })
             }
             _ => Err(String::from(
-                "`kind` expected to be one of `inline-or-none`, `call` or `inline-or-call`",
+                "`kind` expected to be one of `none`, `inline`, `call` or `inline-or-call`",
             )),
         }
     }
@@ -641,6 +641,7 @@ supported_targets! {
     ("powerpc64le-unknown-linux-gnu", powerpc64le_unknown_linux_gnu),
     ("powerpc64le-unknown-linux-musl", powerpc64le_unknown_linux_musl),
     ("s390x-unknown-linux-gnu", s390x_unknown_linux_gnu),
+    ("s390x-unknown-linux-musl", s390x_unknown_linux_musl),
     ("sparc-unknown-linux-gnu", sparc_unknown_linux_gnu),
     ("sparc64-unknown-linux-gnu", sparc64_unknown_linux_gnu),
     ("arm-unknown-linux-gnueabi", arm_unknown_linux_gnueabi),
@@ -678,7 +679,7 @@ supported_targets! {
     ("thumbv7neon-linux-androideabi", thumbv7neon_linux_androideabi),
     ("aarch64-linux-android", aarch64_linux_android),
 
-    ("x86_64-linux-kernel", x86_64_linux_kernel),
+    ("x86_64-unknown-none-linuxkernel", x86_64_unknown_none_linuxkernel),
 
     ("aarch64-unknown-freebsd", aarch64_unknown_freebsd),
     ("armv6-unknown-freebsd", armv6_unknown_freebsd),
@@ -693,6 +694,7 @@ supported_targets! {
     ("i686-unknown-openbsd", i686_unknown_openbsd),
     ("sparc64-unknown-openbsd", sparc64_unknown_openbsd),
     ("x86_64-unknown-openbsd", x86_64_unknown_openbsd),
+    ("powerpc-unknown-openbsd", powerpc_unknown_openbsd),
 
     ("aarch64-unknown-netbsd", aarch64_unknown_netbsd),
     ("armv6-unknown-netbsd-eabihf", armv6_unknown_netbsd_eabihf),
@@ -701,7 +703,6 @@ supported_targets! {
     ("powerpc-unknown-netbsd", powerpc_unknown_netbsd),
     ("sparc64-unknown-netbsd", sparc64_unknown_netbsd),
     ("x86_64-unknown-netbsd", x86_64_unknown_netbsd),
-    ("x86_64-rumprun-netbsd", x86_64_rumprun_netbsd),
 
     ("i686-unknown-haiku", i686_unknown_haiku),
     ("x86_64-unknown-haiku", x86_64_unknown_haiku),
@@ -727,6 +728,7 @@ supported_targets! {
     ("armv7s-apple-ios", armv7s_apple_ios),
     ("x86_64-apple-ios-macabi", x86_64_apple_ios_macabi),
     ("aarch64-apple-ios-macabi", aarch64_apple_ios_macabi),
+    ("aarch64-apple-ios-sim", aarch64_apple_ios_sim),
     ("aarch64-apple-tvos", aarch64_apple_tvos),
     ("x86_64-apple-tvos", x86_64_apple_tvos),
 
@@ -735,9 +737,8 @@ supported_targets! {
     ("armv7r-none-eabi", armv7r_none_eabi),
     ("armv7r-none-eabihf", armv7r_none_eabihf),
 
-    // `x86_64-pc-solaris` is an alias for `x86_64_sun_solaris` for backwards compatibility reasons.
-    // (See <https://github.com/rust-lang/rust/issues/40531>.)
-    ("x86_64-sun-solaris", "x86_64-pc-solaris", x86_64_sun_solaris),
+    ("x86_64-pc-solaris", x86_64_pc_solaris),
+    ("x86_64-sun-solaris", x86_64_sun_solaris),
     ("sparcv9-sun-solaris", sparcv9_sun_solaris),
 
     ("x86_64-unknown-illumos", x86_64_unknown_illumos),
@@ -777,15 +778,18 @@ supported_targets! {
 
     ("aarch64-unknown-hermit", aarch64_unknown_hermit),
     ("x86_64-unknown-hermit", x86_64_unknown_hermit),
-    ("x86_64-unknown-hermit-kernel", x86_64_unknown_hermit_kernel),
+
+    ("x86_64-unknown-none-hermitkernel", x86_64_unknown_none_hermitkernel),
 
     ("riscv32i-unknown-none-elf", riscv32i_unknown_none_elf),
     ("riscv32imc-unknown-none-elf", riscv32imc_unknown_none_elf),
     ("riscv32imac-unknown-none-elf", riscv32imac_unknown_none_elf),
     ("riscv32gc-unknown-linux-gnu", riscv32gc_unknown_linux_gnu),
+    ("riscv32gc-unknown-linux-musl", riscv32gc_unknown_linux_musl),
     ("riscv64imac-unknown-none-elf", riscv64imac_unknown_none_elf),
     ("riscv64gc-unknown-none-elf", riscv64gc_unknown_none_elf),
     ("riscv64gc-unknown-linux-gnu", riscv64gc_unknown_linux_gnu),
+    ("riscv64gc-unknown-linux-musl", riscv64gc_unknown_linux_musl),
 
     ("aarch64-unknown-none", aarch64_unknown_none),
     ("aarch64-unknown-none-softfloat", aarch64_unknown_none_softfloat),
@@ -808,6 +812,10 @@ supported_targets! {
     ("mipsel-sony-psp", mipsel_sony_psp),
     ("mipsel-unknown-none", mipsel_unknown_none),
     ("thumbv4t-none-eabi", thumbv4t_none_eabi),
+
+    ("aarch64_be-unknown-linux-gnu", aarch64_be_unknown_linux_gnu),
+    ("aarch64-unknown-linux-gnu_ilp32", aarch64_unknown_linux_gnu_ilp32),
+    ("aarch64_be-unknown-linux-gnu_ilp32", aarch64_be_unknown_linux_gnu_ilp32),
 }
 
 /// Everything `rustc` knows about how to compile for a specific target.
@@ -1103,6 +1111,10 @@ pub struct TargetOptions {
     /// unwinders.
     pub requires_uwtable: bool,
 
+    /// Whether or not to emit `uwtable` attributes on functions if `-C force-unwind-tables`
+    /// is not specified and `uwtable` is not required on this target.
+    pub default_uwtable: bool,
+
     /// Whether or not SIMD types are passed by reference in the Rust ABI,
     /// typically required if a target can be compiled with a mixed set of
     /// target features. This is `true` by default, and `false` for targets like
@@ -1240,6 +1252,7 @@ impl Default for TargetOptions {
             default_hidden_visibility: false,
             emit_debug_gdb_scripts: true,
             requires_uwtable: false,
+            default_uwtable: false,
             simd_types_indirect: true,
             limit_rdylib_exports: true,
             override_export_symbols: None,
@@ -1276,24 +1289,31 @@ impl Target {
     /// Given a function ABI, turn it into the correct ABI for this target.
     pub fn adjust_abi(&self, abi: Abi) -> Abi {
         match abi {
-            Abi::System => {
+            Abi::System { unwind } => {
                 if self.is_like_windows && self.arch == "x86" {
-                    Abi::Stdcall
+                    Abi::Stdcall { unwind }
                 } else {
-                    Abi::C
+                    Abi::C { unwind }
                 }
             }
             // These ABI kinds are ignored on non-x86 Windows targets.
             // See https://docs.microsoft.com/en-us/cpp/cpp/argument-passing-and-naming-conventions
             // and the individual pages for __stdcall et al.
-            Abi::Stdcall | Abi::Fastcall | Abi::Vectorcall | Abi::Thiscall => {
-                if self.is_like_windows && self.arch != "x86" { Abi::C } else { abi }
+            Abi::Stdcall { unwind } | Abi::Thiscall { unwind } => {
+                if self.is_like_windows && self.arch != "x86" { Abi::C { unwind } } else { abi }
+            }
+            Abi::Fastcall | Abi::Vectorcall => {
+                if self.is_like_windows && self.arch != "x86" {
+                    Abi::C { unwind: false }
+                } else {
+                    abi
+                }
             }
             Abi::EfiApi => {
                 if self.arch == "x86_64" {
                     Abi::Win64
                 } else {
-                    Abi::C
+                    Abi::C { unwind: false }
                 }
             }
             abi => abi,
@@ -1488,7 +1508,7 @@ impl Target {
             } );
             ($key_name:ident = $json_name:expr, optional) => ( {
                 let name = $json_name;
-                if let Some(o) = obj.find(&name[..]) {
+                if let Some(o) = obj.find(name) {
                     base.$key_name = o
                         .as_string()
                         .map(|s| s.to_string() );
@@ -1696,6 +1716,7 @@ impl Target {
         key!(default_hidden_visibility, bool);
         key!(emit_debug_gdb_scripts, bool);
         key!(requires_uwtable, bool);
+        key!(default_uwtable, bool);
         key!(simd_types_indirect, bool);
         key!(limit_rdylib_exports, bool);
         key!(override_export_symbols, opt_list);
@@ -1932,6 +1953,7 @@ impl ToJson for Target {
         target_option_val!(default_hidden_visibility);
         target_option_val!(emit_debug_gdb_scripts);
         target_option_val!(requires_uwtable);
+        target_option_val!(default_uwtable);
         target_option_val!(simd_types_indirect);
         target_option_val!(limit_rdylib_exports);
         target_option_val!(override_export_symbols);
@@ -1977,24 +1999,6 @@ impl TargetTriple {
     pub fn from_path(path: &Path) -> Result<Self, io::Error> {
         let canonicalized_path = path.canonicalize()?;
         Ok(TargetTriple::TargetPath(canonicalized_path))
-    }
-
-    /// Creates a target triple from its alias
-    pub fn from_alias(triple: String) -> Self {
-        macro_rules! target_aliases {
-            ( $(($alias:literal, $target:literal ),)+ ) => {
-                match triple.as_str() {
-                    $( $alias => TargetTriple::from_triple($target), )+
-                    _ => TargetTriple::TargetTriple(triple),
-                }
-            }
-        }
-
-        target_aliases! {
-            // `x86_64-pc-solaris` is an alias for `x86_64_sun_solaris` for backwards compatibility reasons.
-            // (See <https://github.com/rust-lang/rust/issues/40531>.)
-            ("x86_64-pc-solaris", "x86_64-sun-solaris"),
-        }
     }
 
     /// Returns a string triple for this target.

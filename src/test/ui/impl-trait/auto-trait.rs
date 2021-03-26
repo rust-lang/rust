@@ -1,6 +1,9 @@
 // Tests that type alias impls traits do not leak auto-traits for
 // the purposes of coherence checking
-#![feature(type_alias_impl_trait)]
+// revisions: min_tait full_tait
+#![feature(min_type_alias_impl_trait)]
+#![cfg_attr(full_tait, feature(type_alias_impl_trait))]
+//[full_tait]~^ WARN incomplete
 
 trait OpaqueTrait {}
 impl<T> OpaqueTrait for T {}

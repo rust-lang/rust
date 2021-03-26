@@ -7,15 +7,21 @@ enum Cache {
     L3,
 }
 
+impl Cache {
+    fn size(&self) -> usize {
+        match self {
+            Cache::L1 => 1000,      // 8kb
+            Cache::L2 => 10_000,    // 80kb
+            Cache::L3 => 1_000_000, // 8Mb
+        }
+    }
+}
+
 fn binary_search<F>(b: &mut Bencher, cache: Cache, mapper: F)
 where
     F: Fn(usize) -> usize,
 {
-    let size = match cache {
-        Cache::L1 => 1000,      // 8kb
-        Cache::L2 => 10_000,    // 80kb
-        Cache::L3 => 1_000_000, // 8Mb
-    };
+    let size = cache.size();
     let v = (0..size).map(&mapper).collect::<Vec<_>>();
     let mut r = 0usize;
     b.iter(move || {
@@ -24,7 +30,18 @@ where
         // Lookup the whole range to get 50% hits and 50% misses.
         let i = mapper(r % size);
         black_box(v.binary_search(&i).is_ok());
-    })
+    });
+}
+
+fn binary_search_worst_case(b: &mut Bencher, cache: Cache) {
+    let size = cache.size();
+
+    let mut v = vec![0; size];
+    let i = 1;
+    v[size - 1] = i;
+    b.iter(move || {
+        black_box(v.binary_search(&i).is_ok());
+    });
 }
 
 #[bench]
@@ -55,6 +72,21 @@ fn binary_search_l2_with_dups(b: &mut Bencher) {
 #[bench]
 fn binary_search_l3_with_dups(b: &mut Bencher) {
     binary_search(b, Cache::L3, |i| i / 16 * 16);
+}
+
+#[bench]
+fn binary_search_l1_worst_case(b: &mut Bencher) {
+    binary_search_worst_case(b, Cache::L1);
+}
+
+#[bench]
+fn binary_search_l2_worst_case(b: &mut Bencher) {
+    binary_search_worst_case(b, Cache::L2);
+}
+
+#[bench]
+fn binary_search_l3_worst_case(b: &mut Bencher) {
+    binary_search_worst_case(b, Cache::L3);
 }
 
 macro_rules! rotate {

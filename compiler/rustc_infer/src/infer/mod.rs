@@ -18,7 +18,6 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
-use rustc_middle::mir;
 use rustc_middle::mir::interpret::EvalToConstValueResult;
 use rustc_middle::traits::select;
 use rustc_middle::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
@@ -408,7 +407,7 @@ pub enum SubregionOrigin<'tcx> {
 }
 
 // `SubregionOrigin` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(SubregionOrigin<'_>, 32);
 
 /// Times when we replace late-bound regions with variables:
@@ -458,11 +457,11 @@ pub enum RegionVariableOrigin {
 
     /// This origin is used for the inference variables that we create
     /// during NLL region processing.
-    NLL(NLLRegionVariableOrigin),
+    Nll(NllRegionVariableOrigin),
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum NLLRegionVariableOrigin {
+pub enum NllRegionVariableOrigin {
     /// During NLL region processing, we create variables for free
     /// regions that we encounter in the function signature and
     /// elsewhere. This origin indices we've got one of those.
@@ -1078,17 +1077,17 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     /// Just a convenient wrapper of `next_region_var` for using during NLL.
-    pub fn next_nll_region_var(&self, origin: NLLRegionVariableOrigin) -> ty::Region<'tcx> {
-        self.next_region_var(RegionVariableOrigin::NLL(origin))
+    pub fn next_nll_region_var(&self, origin: NllRegionVariableOrigin) -> ty::Region<'tcx> {
+        self.next_region_var(RegionVariableOrigin::Nll(origin))
     }
 
     /// Just a convenient wrapper of `next_region_var` for using during NLL.
     pub fn next_nll_region_var_in_universe(
         &self,
-        origin: NLLRegionVariableOrigin,
+        origin: NllRegionVariableOrigin,
         universe: ty::UniverseIndex,
     ) -> ty::Region<'tcx> {
-        self.next_region_var_in_universe(RegionVariableOrigin::NLL(origin), universe)
+        self.next_region_var_in_universe(RegionVariableOrigin::Nll(origin), universe)
     }
 
     pub fn var_for_def(&self, span: Span, param: &ty::GenericParamDef) -> GenericArg<'tcx> {
@@ -1499,9 +1498,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn const_eval_resolve(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        def: ty::WithOptConstParam<DefId>,
-        substs: SubstsRef<'tcx>,
-        promoted: Option<mir::Promoted>,
+        ty::Unevaluated { def, substs, promoted }: ty::Unevaluated<'tcx>,
         span: Option<Span>,
     ) -> EvalToConstValueResult<'tcx> {
         let mut original_values = OriginalQueryValues::default();
@@ -1510,7 +1507,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let (param_env, substs) = canonical.value;
         // The return value is the evaluated value which doesn't contain any reference to inference
         // variables, thus we don't need to substitute back the original values.
-        self.tcx.const_eval_resolve(param_env, def, substs, promoted, span)
+        self.tcx.const_eval_resolve(param_env, ty::Unevaluated { def, substs, promoted }, span)
     }
 
     /// If `typ` is a type variable of some kind, resolve it one level
@@ -1770,7 +1767,7 @@ impl RegionVariableOrigin {
             | LateBoundRegion(a, ..)
             | UpvarRegion(_, a) => a,
             BoundRegionInCoherence(_) => rustc_span::DUMMY_SP,
-            NLL(..) => bug!("NLL variable used with `span`"),
+            Nll(..) => bug!("NLL variable used with `span`"),
         }
     }
 }

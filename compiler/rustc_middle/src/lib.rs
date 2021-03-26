@@ -24,7 +24,7 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(array_windows)]
-#![feature(assoc_char_funcs)]
+#![feature(assert_matches)]
 #![feature(backtrace)]
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
@@ -38,8 +38,7 @@
 #![feature(extern_types)]
 #![feature(nll)]
 #![feature(once_cell)]
-#![feature(option_expect_none)]
-#![feature(or_patterns)]
+#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(min_specialization)]
 #![feature(trusted_len)]
 #![feature(test)]
@@ -76,6 +75,7 @@ pub mod query;
 
 #[macro_use]
 pub mod arena;
+#[macro_use]
 pub mod dep_graph;
 pub mod hir;
 pub mod ich;

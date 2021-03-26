@@ -1,4 +1,5 @@
-use crate::utils::{numeric_literal, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::numeric_literal;
 use if_chain::if_chain;
 use rustc_ast::ast::{self, LitFloatType, LitKind};
 use rustc_errors::Applicability;
@@ -145,11 +146,7 @@ fn count_digits(s: &str) -> usize {
         .take_while(|c| *c != 'e' && *c != 'E')
         .fold(0, |count, c| {
             // leading zeros
-            if c == '0' && count == 0 {
-                count
-            } else {
-                count + 1
-            }
+            if c == '0' && count == 0 { count } else { count + 1 }
         })
 }
 

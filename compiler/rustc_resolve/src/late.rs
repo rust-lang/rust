@@ -20,7 +20,7 @@ use rustc_errors::DiagnosticId;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, PartialRes, PerNS};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
-use rustc_hir::TraitCandidate;
+use rustc_hir::{PrimTy, TraitCandidate};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -132,10 +132,10 @@ crate enum RibKind<'a> {
     /// We passed through a `macro_rules!` statement
     MacroDefinition(DefId),
 
-    /// All bindings in this rib are type parameters that can't be used
-    /// from the default of a type parameter because they're not declared
-    /// before said type parameter. Also see the `visit_generics` override.
-    ForwardTyParamBanRibKind,
+    /// All bindings in this rib are generic parameters that can't be used
+    /// from the default of a generic parameter because they're not declared
+    /// before said generic parameter. Also see the `visit_generics` override.
+    ForwardGenericParamBanRibKind,
 
     /// We are inside of the type of a const parameter. Can't refer to any
     /// parameters.
@@ -154,7 +154,7 @@ impl RibKind<'_> {
             | ModuleRibKind(_)
             | MacroDefinition(_)
             | ConstParamTyRibKind => false,
-            AssocItemRibKind | ItemRibKind(_) | ForwardTyParamBanRibKind => true,
+            AssocItemRibKind | ItemRibKind(_) | ForwardGenericParamBanRibKind => true,
         }
     }
 }
@@ -493,8 +493,8 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
     }
     fn visit_foreign_item(&mut self, foreign_item: &'ast ForeignItem) {
         match foreign_item.kind {
-            ForeignItemKind::Fn(_, _, ref generics, _)
-            | ForeignItemKind::TyAlias(_, ref generics, ..) => {
+            ForeignItemKind::Fn(box FnKind(_, _, ref generics, _))
+            | ForeignItemKind::TyAlias(box TyAliasKind(_, ref generics, ..)) => {
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
                     visit::walk_foreign_item(this, foreign_item);
                 });
@@ -555,15 +555,16 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         // provide previous type parameters as they're built. We
         // put all the parameters on the ban list and then remove
         // them one by one as they are processed and become available.
-        let mut default_ban_rib = Rib::new(ForwardTyParamBanRibKind);
+        let mut default_ban_rib = Rib::new(ForwardGenericParamBanRibKind);
         let mut found_default = false;
         default_ban_rib.bindings.extend(generics.params.iter().filter_map(
             |param| match param.kind {
-                GenericParamKind::Const { .. } | GenericParamKind::Lifetime { .. } => None,
-                GenericParamKind::Type { ref default, .. } => {
-                    found_default |= default.is_some();
-                    found_default.then_some((Ident::with_dummy_span(param.ident.name), Res::Err))
+                GenericParamKind::Type { default: Some(_), .. }
+                | GenericParamKind::Const { default: Some(_), .. } => {
+                    found_default = true;
+                    Some((Ident::with_dummy_span(param.ident.name), Res::Err))
                 }
+                _ => None,
             },
         ));
 
@@ -591,8 +592,8 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
 
                     if let Some(ref ty) = default {
                         self.ribs[TypeNS].push(default_ban_rib);
-                        self.with_rib(ValueNS, ForwardTyParamBanRibKind, |this| {
-                            // HACK: We use an empty `ForwardTyParamBanRibKind` here which
+                        self.with_rib(ValueNS, ForwardGenericParamBanRibKind, |this| {
+                            // HACK: We use an empty `ForwardGenericParamBanRibKind` here which
                             // is only used to forbid the use of const parameters inside of
                             // type defaults.
                             //
@@ -865,7 +866,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 | ItemRibKind(..)
                 | ConstantItemRibKind(..)
                 | ModuleRibKind(..)
-                | ForwardTyParamBanRibKind
+                | ForwardGenericParamBanRibKind
                 | ConstParamTyRibKind => {
                     return false;
                 }
@@ -938,7 +939,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         debug!("(resolving item) resolving {} ({:?})", name, item.kind);
 
         match item.kind {
-            ItemKind::TyAlias(_, ref generics, _, _) | ItemKind::Fn(_, _, ref generics, _) => {
+            ItemKind::TyAlias(box TyAliasKind(_, ref generics, _, _))
+            | ItemKind::Fn(box FnKind(_, _, ref generics, _)) => {
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
                     visit::walk_item(this, item)
                 });
@@ -950,17 +952,17 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 self.resolve_adt(item, generics);
             }
 
-            ItemKind::Impl {
+            ItemKind::Impl(box ImplKind {
                 ref generics,
                 ref of_trait,
                 ref self_ty,
                 items: ref impl_items,
                 ..
-            } => {
+            }) => {
                 self.resolve_implementation(generics, of_trait, &self_ty, item.id, impl_items);
             }
 
-            ItemKind::Trait(.., ref generics, ref bounds, ref trait_items) => {
+            ItemKind::Trait(box TraitKind(.., ref generics, ref bounds, ref trait_items)) => {
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
                     let local_def_id = this.r.local_def_id(item.id).to_def_id();
@@ -995,10 +997,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                             );
                                         }
                                     }
-                                    AssocItemKind::Fn(_, _, generics, _) => {
+                                    AssocItemKind::Fn(box FnKind(_, _, generics, _)) => {
                                         walk_assoc_item(this, generics, item);
                                     }
-                                    AssocItemKind::TyAlias(_, generics, _, _) => {
+                                    AssocItemKind::TyAlias(box TyAliasKind(_, generics, _, _)) => {
                                         walk_assoc_item(this, generics, item);
                                     }
                                     AssocItemKind::MacCall(_) => {
@@ -1022,7 +1024,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 });
             }
 
-            ItemKind::Mod(_) | ItemKind::ForeignMod(_) => {
+            ItemKind::Mod(..) | ItemKind::ForeignMod(_) => {
                 self.with_scope(item.id, |this| {
                     visit::walk_item(this, item);
                 });
@@ -1306,7 +1308,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                                 },
                                             );
                                         }
-                                        AssocItemKind::Fn(_, _, generics, _) => {
+                                        AssocItemKind::Fn(box FnKind(.., generics, _)) => {
                                             // We also need a new scope for the impl item type parameters.
                                             this.with_generic_param_rib(
                                                 generics,
@@ -1329,7 +1331,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                                 },
                                             );
                                         }
-                                        AssocItemKind::TyAlias(_, generics, _, _) => {
+                                        AssocItemKind::TyAlias(box TyAliasKind(
+                                            _,
+                                            generics,
+                                            _,
+                                            _,
+                                        )) => {
                                             // We also need a new scope for the impl item type parameters.
                                             this.with_generic_param_rib(
                                                 generics,
@@ -1795,7 +1802,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         crate_lint: CrateLint,
     ) -> PartialRes {
         tracing::debug!(
-            "smart_resolve_path_fragment(id={:?},qself={:?},path={:?}",
+            "smart_resolve_path_fragment(id={:?}, qself={:?}, path={:?})",
             id,
             qself,
             path
@@ -1835,11 +1842,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
             // Before we start looking for candidates, we have to get our hands
             // on the type user is trying to perform invocation on; basically:
-            // we're transforming `HashMap::new` into just `HashMap`
-            let path = if let Some((_, path)) = path.split_last() {
-                path
-            } else {
-                return Some(parent_err);
+            // we're transforming `HashMap::new` into just `HashMap`.
+            let path = match path.split_last() {
+                Some((_, path)) if !path.is_empty() => path,
+                _ => return Some(parent_err),
             };
 
             let (mut err, candidates) =
@@ -1921,7 +1927,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     self.r.trait_map.insert(id, traits);
                 }
 
-                if self.r.primitive_type_table.primitive_types.contains_key(&path[0].ident.name) {
+                if PrimTy::from_name(path[0].ident.name).is_some() {
                     let mut std_path = Vec::with_capacity(1 + path.len());
 
                     std_path.push(Segment::from_ident(Ident::with_dummy_span(sym::std)));
@@ -2115,13 +2121,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             // The same fallback is used when `a` resolves to nothing.
             PathResult::Module(ModuleOrUniformRoot::Module(_)) | PathResult::Failed { .. }
                 if (ns == TypeNS || path.len() > 1)
-                    && self
-                        .r
-                        .primitive_type_table
-                        .primitive_types
-                        .contains_key(&path[0].ident.name) =>
+                    && PrimTy::from_name(path[0].ident.name).is_some() =>
             {
-                let prim = self.r.primitive_type_table.primitive_types[&path[0].ident.name];
+                let prim = PrimTy::from_name(path[0].ident.name).unwrap();
                 PartialRes::with_unresolved_segments(Res::PrimTy(prim), path.len() - 1)
             }
             PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
@@ -2250,8 +2252,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 visit::walk_expr(self, expr);
             }
 
-            ExprKind::Struct(ref path, ..) => {
-                self.smart_resolve_path(expr.id, None, path, PathSource::Struct);
+            ExprKind::Struct(ref se) => {
+                self.smart_resolve_path(expr.id, None, &se.path, PathSource::Struct);
                 visit::walk_expr(self, expr);
             }
 
@@ -2325,8 +2327,22 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
             ExprKind::Call(ref callee, ref arguments) => {
                 self.resolve_expr(callee, Some(expr));
-                for argument in arguments {
-                    self.resolve_expr(argument, None);
+                let const_args = self.r.legacy_const_generic_args(callee).unwrap_or(Vec::new());
+                for (idx, argument) in arguments.iter().enumerate() {
+                    // Constant arguments need to be treated as AnonConst since
+                    // that is how they will be later lowered to HIR.
+                    if const_args.contains(&idx) {
+                        self.with_constant_rib(
+                            IsRepeatExpr::No,
+                            argument.is_potential_trivial_const_param(),
+                            None,
+                            |this| {
+                                this.resolve_expr(argument, None);
+                            },
+                        );
+                    } else {
+                        self.resolve_expr(argument, None);
+                    }
                 }
             }
             ExprKind::Type(ref type_expr, ref ty) => {

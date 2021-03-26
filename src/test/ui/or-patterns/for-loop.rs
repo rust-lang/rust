@@ -1,8 +1,6 @@
 // Check that or patterns are lowered correctly in `for` loops.
 // run-pass
 
-#![feature(or_patterns)]
-
 fn main() {
     let v = vec![Ok(2), Err(3), Ok(5)];
     let mut w = Vec::new();

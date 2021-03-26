@@ -5,7 +5,7 @@
 
 use super::{OutlivesConstraint, RegionInferenceContext};
 use crate::borrow_check::type_check::Locations;
-use rustc_infer::infer::NLLRegionVariableOrigin;
+use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::ty::TyCtxt;
 use std::io::{self, Write};
 
@@ -20,7 +20,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         writeln!(out, "| Free Region Mapping")?;
 
         for region in self.regions() {
-            if let NLLRegionVariableOrigin::FreeRegion = self.definitions[region].origin {
+            if let NllRegionVariableOrigin::FreeRegion = self.definitions[region].origin {
                 let classification = self.universal_regions.region_classification(region).unwrap();
                 let outlived_by = self.universal_region_relations.regions_outlived_by(region);
                 writeln!(

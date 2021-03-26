@@ -12,8 +12,8 @@ use walkdir::WalkDir;
 
 pub mod bless;
 pub mod fmt;
+pub mod ide_setup;
 pub mod new_lint;
-pub mod ra_setup;
 pub mod serve;
 pub mod stderr_length_check;
 pub mod update_lints;
@@ -235,6 +235,10 @@ pub struct FileChange {
 /// `path` is the relative path to the file on which you want to perform the replacement.
 ///
 /// See `replace_region_in_text` for documentation of the other options.
+///
+/// # Panics
+///
+/// Panics if the path could not read or then written
 pub fn replace_region_in_file<F>(
     path: &Path,
     start: &str,
@@ -282,6 +286,10 @@ where
 ///     .new_lines;
 /// assert_eq!("replace_start\na different\ntext\nreplace_end", result);
 /// ```
+///
+/// # Panics
+///
+/// Panics if start or end is not valid regex
 pub fn replace_region_in_text<F>(text: &str, start: &str, end: &str, replace_start: bool, replacements: F) -> FileChange
 where
     F: FnOnce() -> Vec<String>,
@@ -328,6 +336,11 @@ where
 }
 
 /// Returns the path to the Clippy project directory
+///
+/// # Panics
+///
+/// Panics if the current directory could not be retrieved, there was an error reading any of the
+/// Cargo.toml files or ancestor directory is the clippy root directory
 #[must_use]
 pub fn clippy_project_root() -> PathBuf {
     let current_dir = std::env::current_dir().unwrap();
@@ -516,7 +529,7 @@ fn test_gen_deprecated() {
 #[should_panic]
 fn test_gen_deprecated_fail() {
     let lints = vec![Lint::new("should_assert_eq2", "group2", "abc", None, "module_name")];
-    let _ = gen_deprecated(lints.iter());
+    let _deprecated_lints = gen_deprecated(lints.iter());
 }
 
 #[test]

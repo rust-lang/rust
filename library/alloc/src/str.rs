@@ -1,6 +1,6 @@
 //! Unicode string slices.
 //!
-//! *[See also the `str` primitive type](../../std/primitive.str.html).*
+//! *[See also the `str` primitive type](str).*
 //!
 //! The `&str` type is one of the two main string types, the other being `String`.
 //! Unlike its `String` counterpart, its contents are borrowed.
@@ -46,6 +46,8 @@ pub use core::str::pattern;
 pub use core::str::EncodeUtf16;
 #[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
 pub use core::str::SplitAsciiWhitespace;
+#[stable(feature = "split_inclusive", since = "1.53.0")]
+pub use core::str::SplitInclusive;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::SplitWhitespace;
 #[stable(feature = "rust1", since = "1.0.0")]

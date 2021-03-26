@@ -36,7 +36,7 @@ impl From<Option<String>> for Invalid {
     fn from(s: Option<String>) -> Invalid {
         let s = s.unwrap();
         if !s.is_empty() {
-            panic!(42);
+            panic!("42");
         } else if s.parse::<u32>().unwrap() != 42 {
             panic!("{:?}", s);
         }

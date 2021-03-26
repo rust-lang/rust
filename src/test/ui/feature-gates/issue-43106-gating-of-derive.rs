@@ -6,6 +6,7 @@
 mod derive {
     mod inner { #![derive(Debug)] }
     //~^ ERROR `derive` may only be applied to structs, enums and unions
+    //~| ERROR inner macro attributes are unstable
 
     #[derive(Debug)]
     //~^ ERROR `derive` may only be applied to structs, enums and unions

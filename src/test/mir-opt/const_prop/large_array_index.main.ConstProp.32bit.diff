@@ -29,7 +29,7 @@
           _1 = _2[_3];                     // scope 0 at $DIR/large_array_index.rs:6:17: 6:32
           StorageDead(_3);                 // scope 0 at $DIR/large_array_index.rs:6:32: 6:33
           StorageDead(_2);                 // scope 0 at $DIR/large_array_index.rs:6:32: 6:33
-          _0 = const ();                   // scope 0 at $DIR/large_array_index.rs:4:11: 7:2
+          nop;                             // scope 0 at $DIR/large_array_index.rs:4:11: 7:2
           StorageDead(_1);                 // scope 0 at $DIR/large_array_index.rs:7:1: 7:2
           return;                          // scope 0 at $DIR/large_array_index.rs:7:2: 7:2
       }

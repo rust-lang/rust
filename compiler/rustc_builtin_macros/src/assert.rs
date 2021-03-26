@@ -29,11 +29,11 @@ pub fn expand_assert<'cx>(
 
     let panic_call = if let Some(tokens) = custom_message {
         let path = if span.rust_2021() {
-            // On edition 2021, we always call `$crate::panic!()`.
+            // On edition 2021, we always call `$crate::panic::panic_2021!()`.
             Path {
                 span: sp,
                 segments: cx
-                    .std_path(&[sym::panic])
+                    .std_path(&[sym::panic, sym::panic_2021])
                     .into_iter()
                     .map(|ident| PathSegment::from_ident(ident))
                     .collect(),

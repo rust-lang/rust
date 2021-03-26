@@ -9,7 +9,7 @@ use std::mem;
 mod tests;
 
 #[derive(Clone, Debug)]
-pub struct TransitiveRelation<T: Eq + Hash> {
+pub struct TransitiveRelation<T> {
     // List of elements. This is used to map from a T to a usize.
     elements: FxIndexSet<T>,
 
@@ -49,7 +49,7 @@ struct Edge {
     target: Index,
 }
 
-impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
+impl<T: Eq + Hash> TransitiveRelation<T> {
     pub fn is_empty(&self) -> bool {
         self.edges.is_empty()
     }
@@ -320,12 +320,6 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
             .rev() // (4)
             .map(|i| &self.elements[i])
             .collect()
-    }
-
-    /// A "best" parent in some sense. See `parents` and
-    /// `postdom_upper_bound` for more details.
-    pub fn postdom_parent(&self, a: &T) -> Option<&T> {
-        self.mutual_immediate_postdominator(self.parents(a))
     }
 
     fn with_closure<OP, R>(&self, op: OP) -> R

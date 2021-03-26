@@ -540,9 +540,7 @@ pub trait FromStr: Sized {
     ///
     /// # Examples
     ///
-    /// Basic usage with [`i32`][ithirtytwo], a type that implements `FromStr`:
-    ///
-    /// [ithirtytwo]: ../../std/primitive.i32.html
+    /// Basic usage with [`i32`], a type that implements `FromStr`:
     ///
     /// ```
     /// use std::str::FromStr;

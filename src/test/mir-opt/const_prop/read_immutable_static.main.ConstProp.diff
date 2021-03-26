@@ -42,7 +42,7 @@
           StorageDead(_2);                 // scope 0 at $DIR/read_immutable_static.rs:7:21: 7:22
           StorageDead(_5);                 // scope 0 at $DIR/read_immutable_static.rs:7:22: 7:23
           StorageDead(_3);                 // scope 0 at $DIR/read_immutable_static.rs:7:22: 7:23
-          _0 = const ();                   // scope 0 at $DIR/read_immutable_static.rs:6:11: 8:2
+          nop;                             // scope 0 at $DIR/read_immutable_static.rs:6:11: 8:2
           StorageDead(_1);                 // scope 0 at $DIR/read_immutable_static.rs:8:1: 8:2
           return;                          // scope 0 at $DIR/read_immutable_static.rs:8:2: 8:2
       }

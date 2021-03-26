@@ -5,6 +5,7 @@
 // identify what tests are needed, perform the tests, and then filter
 // the candidates based on the result.
 
+use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::matches::{Candidate, MatchPair, Test, TestKind};
 use crate::build::Builder;
 use crate::thir::pattern::compare_const_vals;
@@ -13,9 +14,11 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::{LangItem, RangeEnd};
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::*;
+use rustc_middle::ty::subst::{GenericArg, Subst};
 use rustc_middle::ty::util::IntTypeExt;
-use rustc_middle::ty::{self, adjustment::PointerCast, Ty};
-use rustc_span::symbol::sym;
+use rustc_middle::ty::{self, adjustment::PointerCast, Ty, TyCtxt};
+use rustc_span::def_id::DefId;
+use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::VariantIdx;
 
 use std::cmp::Ordering;
@@ -23,7 +26,7 @@ use std::cmp::Ordering;
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Identifies what test is needed to decide if `match_pair` is applicable.
     ///
-    /// It is a bug to call this with a simplifiable pattern.
+    /// It is a bug to call this with a not-fully-simplified pattern.
     pub(super) fn test<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> Test<'tcx> {
         match *match_pair.pattern.kind {
             PatKind::Variant { ref adt_def, substs: _, variant_index: _, subpatterns: _ } => Test {
@@ -51,7 +54,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             PatKind::Constant { value } => Test {
                 span: match_pair.pattern.span,
-                kind: TestKind::Eq { value, ty: match_pair.pattern.ty.clone() },
+                kind: TestKind::Eq { value, ty: match_pair.pattern.ty },
             },
 
             PatKind::Range(range) => {
@@ -79,7 +82,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     pub(super) fn add_cases_to_switch<'pat>(
         &mut self,
-        test_place: &Place<'tcx>,
+        test_place: &PlaceBuilder<'tcx>,
         candidate: &Candidate<'pat, 'tcx>,
         switch_ty: Ty<'tcx>,
         options: &mut FxIndexMap<&'tcx ty::Const<'tcx>, u128>,
@@ -93,9 +96,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         match *match_pair.pattern.kind {
             PatKind::Constant { value } => {
-                options.entry(value).or_insert_with(|| {
-                    value.eval_bits(self.hir.tcx(), self.hir.param_env, switch_ty)
-                });
+                options
+                    .entry(value)
+                    .or_insert_with(|| value.eval_bits(self.tcx, self.param_env, switch_ty));
                 true
             }
             PatKind::Variant { .. } => {
@@ -121,7 +124,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     pub(super) fn add_variants_to_switch<'pat>(
         &mut self,
-        test_place: &Place<'tcx>,
+        test_place: &PlaceBuilder<'tcx>,
         candidate: &Candidate<'pat, 'tcx>,
         variants: &mut BitSet<VariantIdx>,
     ) -> bool {
@@ -149,15 +152,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(super) fn perform_test(
         &mut self,
         block: BasicBlock,
-        place: Place<'tcx>,
+        place_builder: PlaceBuilder<'tcx>,
         test: &Test<'tcx>,
         make_target_blocks: impl FnOnce(&mut Self) -> Vec<BasicBlock>,
     ) {
+        let place: Place<'tcx>;
+        if let Ok(test_place_builder) =
+            place_builder.try_upvars_resolved(self.tcx, self.typeck_results)
+        {
+            place = test_place_builder.into_place(self.tcx, self.typeck_results);
+        } else {
+            return;
+        }
         debug!(
             "perform_test({:?}, {:?}: {:?}, {:?})",
             block,
             place,
-            place.ty(&self.local_decls, self.hir.tcx()),
+            place.ty(&self.local_decls, self.tcx),
             test
         );
 
@@ -169,7 +180,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let num_enum_variants = adt_def.variants.len();
                 debug_assert_eq!(target_blocks.len(), num_enum_variants + 1);
                 let otherwise_block = *target_blocks.last().unwrap();
-                let tcx = self.hir.tcx();
+                let tcx = self.tcx;
                 let switch_targets = SwitchTargets::new(
                     adt_def.discriminants(tcx).filter_map(|(idx, discr)| {
                         if variants.contains(idx) {
@@ -217,7 +228,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             0 => (second_bb, first_bb),
                             v => span_bug!(test.span, "expected boolean value but got {:?}", v),
                         };
-                        TerminatorKind::if_(self.hir.tcx(), Operand::Copy(place), true_bb, false_bb)
+                        TerminatorKind::if_(self.tcx, Operand::Copy(place), true_bb, false_bb)
                     } else {
                         bug!("`TestKind::SwitchInt` on `bool` should have two targets")
                     }
@@ -292,7 +303,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             TestKind::Len { len, op } => {
                 let target_blocks = make_target_blocks(self);
 
-                let usize_ty = self.hir.usize_ty();
+                let usize_ty = self.tcx.types.usize;
                 let actual = self.temp(usize_ty, test.span);
 
                 // actual = len(place)
@@ -331,17 +342,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         left: Operand<'tcx>,
         right: Operand<'tcx>,
     ) {
-        let bool_ty = self.hir.bool_ty();
+        let bool_ty = self.tcx.types.bool;
         let result = self.temp(bool_ty, source_info.span);
 
         // result = op(left, right)
-        self.cfg.push_assign(block, source_info, result, Rvalue::BinaryOp(op, left, right));
+        self.cfg.push_assign(block, source_info, result, Rvalue::BinaryOp(op, box (left, right)));
 
         // branch based on result
         self.cfg.terminate(
             block,
             source_info,
-            TerminatorKind::if_(self.hir.tcx(), Operand::Move(result), success_block, fail_block),
+            TerminatorKind::if_(self.tcx, Operand::Move(result), success_block, fail_block),
         );
     }
 
@@ -377,7 +388,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // nothing to do, neither is an array
             (None, None) => {}
             (Some((region, elem_ty, _)), _) | (None, Some((region, elem_ty, _))) => {
-                let tcx = self.hir.tcx();
+                let tcx = self.tcx;
                 // make both a slice
                 ty = tcx.mk_imm_ref(region, tcx.mk_slice(elem_ty));
                 if opt_ref_ty.is_some() {
@@ -408,10 +419,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             _ => bug!("non_scalar_compare called on non-reference type: {}", ty),
         };
 
-        let eq_def_id = self.hir.tcx().require_lang_item(LangItem::PartialEq, None);
-        let method = self.hir.trait_method(eq_def_id, sym::eq, deref_ty, &[deref_ty.into()]);
+        let eq_def_id = self.tcx.require_lang_item(LangItem::PartialEq, None);
+        let method = trait_method(self.tcx, eq_def_id, sym::eq, deref_ty, &[deref_ty.into()]);
 
-        let bool_ty = self.hir.bool_ty();
+        let bool_ty = self.tcx.types.bool;
         let eq_result = self.temp(bool_ty, source_info.span);
         let eq_block = self.cfg.start_new_block();
         self.cfg.terminate(
@@ -427,7 +438,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // Need to experiment.
                     user_ty: None,
 
-                    literal: method,
+                    literal: method.into(),
                 }),
                 args: vec![val, expect],
                 destination: Some((eq_result, eq_block)),
@@ -443,12 +454,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.cfg.terminate(
                 eq_block,
                 source_info,
-                TerminatorKind::if_(
-                    self.hir.tcx(),
-                    Operand::Move(eq_result),
-                    success_block,
-                    fail_block,
-                ),
+                TerminatorKind::if_(self.tcx, Operand::Move(eq_result), success_block, fail_block),
             );
         } else {
             bug!("`TestKind::Eq` should have two target blocks")
@@ -484,7 +490,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// tighter match code if we do something a bit different.
     pub(super) fn sort_candidate<'pat>(
         &mut self,
-        test_place: &Place<'tcx>,
+        test_place: &PlaceBuilder<'tcx>,
         test: &Test<'tcx>,
         candidate: &mut Candidate<'pat, 'tcx>,
     ) -> Option<usize> {
@@ -632,11 +638,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     use rustc_hir::RangeEnd::*;
                     use std::cmp::Ordering::*;
 
-                    let tcx = self.hir.tcx();
+                    let tcx = self.tcx;
 
                     let test_ty = test.lo.ty;
-                    let lo = compare_const_vals(tcx, test.lo, pat.hi, self.hir.param_env, test_ty)?;
-                    let hi = compare_const_vals(tcx, test.hi, pat.lo, self.hir.param_env, test_ty)?;
+                    let lo = compare_const_vals(tcx, test.lo, pat.hi, self.param_env, test_ty)?;
+                    let hi = compare_const_vals(tcx, test.hi, pat.lo, self.param_env, test_ty)?;
 
                     match (test.end, pat.end, lo, hi) {
                         // pat < test
@@ -731,7 +737,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate: &mut Candidate<'pat, 'tcx>,
     ) {
         let match_pair = candidate.match_pairs.remove(match_pair_index);
-        let tcx = self.hir.tcx();
 
         // So, if we have a match-pattern like `x @ Enum::Variant(P1, P2)`,
         // we want to create a set of derived match-patterns like
@@ -740,10 +745,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             Some(adt_def.variants[variant_index].ident.name),
             variant_index,
         );
-        let downcast_place = tcx.mk_place_elem(match_pair.place, elem); // `(x as Variant)`
+        let downcast_place = match_pair.place.project(elem); // `(x as Variant)`
         let consequent_match_pairs = subpatterns.iter().map(|subpattern| {
             // e.g., `(x as Variant).0`
-            let place = tcx.mk_place_field(downcast_place, subpattern.field, subpattern.pattern.ty);
+            let place = downcast_place.clone().field(subpattern.field, subpattern.pattern.ty);
             // e.g., `(x as Variant).0 @ P1`
             MatchPair::new(place, &subpattern.pattern)
         });
@@ -762,10 +767,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> Option<bool> {
         use std::cmp::Ordering::*;
 
-        let tcx = self.hir.tcx();
+        let tcx = self.tcx;
 
-        let a = compare_const_vals(tcx, range.lo, value, self.hir.param_env, range.lo.ty)?;
-        let b = compare_const_vals(tcx, value, range.hi, self.hir.param_env, range.lo.ty)?;
+        let a = compare_const_vals(tcx, range.lo, value, self.param_env, range.lo.ty)?;
+        let b = compare_const_vals(tcx, value, range.hi, self.param_env, range.lo.ty)?;
 
         match (b, range.end) {
             (Less, _) | (Equal, RangeEnd::Included) if a != Greater => Some(true),
@@ -814,4 +819,26 @@ impl Test<'_> {
 
 fn is_switch_ty(ty: Ty<'_>) -> bool {
     ty.is_integral() || ty.is_char() || ty.is_bool()
+}
+
+fn trait_method<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_def_id: DefId,
+    method_name: Symbol,
+    self_ty: Ty<'tcx>,
+    params: &[GenericArg<'tcx>],
+) -> &'tcx ty::Const<'tcx> {
+    let substs = tcx.mk_substs_trait(self_ty, params);
+
+    // The unhygienic comparison here is acceptable because this is only
+    // used on known traits.
+    let item = tcx
+        .associated_items(trait_def_id)
+        .filter_by_name_unhygienic(method_name)
+        .find(|item| item.kind == ty::AssocKind::Fn)
+        .expect("trait method not found");
+
+    let method_ty = tcx.type_of(item.def_id);
+    let method_ty = method_ty.subst(tcx, substs);
+    ty::Const::zero_sized(tcx, method_ty)
 }

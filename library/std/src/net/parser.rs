@@ -35,7 +35,7 @@ macro_rules! impl_helper {
 impl_helper! { u8 u16 u32 }
 
 struct Parser<'a> {
-    // parsing as ASCII, so can use byte array
+    // Parsing as ASCII, so can use byte array.
     state: &'a [u8],
 }
 
@@ -44,7 +44,7 @@ impl<'a> Parser<'a> {
         Parser { state: input.as_bytes() }
     }
 
-    /// Run a parser, and restore the pre-parse state if it fails
+    /// Run a parser, and restore the pre-parse state if it fails.
     fn read_atomically<T, F>(&mut self, inner: F) -> Option<T>
     where
         F: FnOnce(&mut Parser<'_>) -> Option<T>,
@@ -126,7 +126,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Read an IPv4 address
+    /// Read an IPv4 address.
     fn read_ipv4_addr(&mut self) -> Option<Ipv4Addr> {
         self.read_atomically(|p| {
             let mut groups = [0; 4];
@@ -139,18 +139,18 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Read an IPV6 Address
+    /// Read an IPv6 Address.
     fn read_ipv6_addr(&mut self) -> Option<Ipv6Addr> {
-        /// Read a chunk of an ipv6 address into `groups`. Returns the number
+        /// Read a chunk of an IPv6 address into `groups`. Returns the number
         /// of groups read, along with a bool indicating if an embedded
-        /// trailing ipv4 address was read. Specifically, read a series of
-        /// colon-separated ipv6 groups (0x0000 - 0xFFFF), with an optional
-        /// trailing embedded ipv4 address.
+        /// trailing IPv4 address was read. Specifically, read a series of
+        /// colon-separated IPv6 groups (0x0000 - 0xFFFF), with an optional
+        /// trailing embedded IPv4 address.
         fn read_groups(p: &mut Parser<'_>, groups: &mut [u16]) -> (usize, bool) {
             let limit = groups.len();
 
             for (i, slot) in groups.iter_mut().enumerate() {
-                // Try to read a trailing embedded ipv4 address. There must be
+                // Try to read a trailing embedded IPv4 address. There must be
                 // at least two groups left.
                 if i < limit - 1 {
                     let ipv4 = p.read_separator(':', i, |p| p.read_ipv4_addr());
@@ -188,8 +188,8 @@ impl<'a> Parser<'a> {
                 return None;
             }
 
-            // read `::` if previous code parsed less than 8 groups
-            // `::` indicates one or more groups of 16 bits of zeros
+            // Read `::` if previous code parsed less than 8 groups.
+            // `::` indicates one or more groups of 16 bits of zeros.
             p.read_given_char(':')?;
             p.read_given_char(':')?;
 
@@ -206,12 +206,12 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Read an IP Address, either IPV4 or IPV6.
+    /// Read an IP Address, either IPv4 or IPv6.
     fn read_ip_addr(&mut self) -> Option<IpAddr> {
         self.read_ipv4_addr().map(IpAddr::V4).or_else(move || self.read_ipv6_addr().map(IpAddr::V6))
     }
 
-    /// Read a : followed by a port in base 10.
+    /// Read a `:` followed by a port in base 10.
     fn read_port(&mut self) -> Option<u16> {
         self.read_atomically(|p| {
             p.read_given_char(':')?;
@@ -219,7 +219,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Read a % followed by a scope id in base 10.
+    /// Read a `%` followed by a scope ID in base 10.
     fn read_scope_id(&mut self) -> Option<u32> {
         self.read_atomically(|p| {
             p.read_given_char('%')?;
@@ -227,7 +227,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Read an IPV4 address with a port
+    /// Read an IPv4 address with a port.
     fn read_socket_addr_v4(&mut self) -> Option<SocketAddrV4> {
         self.read_atomically(|p| {
             let ip = p.read_ipv4_addr()?;
@@ -236,7 +236,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Read an IPV6 address with a port
+    /// Read an IPv6 address with a port.
     fn read_socket_addr_v6(&mut self) -> Option<SocketAddrV6> {
         self.read_atomically(|p| {
             p.read_given_char('[')?;

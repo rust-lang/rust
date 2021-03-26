@@ -430,7 +430,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 
                 GenericArgKind::Const(constant) => {
                     match constant.val {
-                        ty::ConstKind::Unevaluated(def, substs, promoted) => {
+                        ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted }) => {
                             assert!(promoted.is_none());
 
                             let obligations = self.nominal_obligations(def.did, substs);

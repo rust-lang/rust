@@ -3,7 +3,7 @@
 use crate::ty::{tls, TyCtxt};
 use rustc_span::{MultiSpan, Span};
 use std::fmt;
-use std::panic::Location;
+use std::panic::{panic_any, Location};
 
 #[cold]
 #[inline(never)]
@@ -32,7 +32,7 @@ fn opt_span_bug_fmt<S: Into<MultiSpan>>(
         match (tcx, span) {
             (Some(tcx), Some(span)) => tcx.sess.diagnostic().span_bug(span, &msg),
             (Some(tcx), None) => tcx.sess.diagnostic().bug(&msg),
-            (None, _) => panic!(msg),
+            (None, _) => panic_any(msg),
         }
     });
     unreachable!();

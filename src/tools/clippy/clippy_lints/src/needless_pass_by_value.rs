@@ -1,8 +1,8 @@
-use crate::utils::ptr::get_spans;
-use crate::utils::{
-    get_trait_def_id, implements_trait, is_copy, is_self, is_type_diagnostic_item, multispan_sugg, paths, snippet,
-    snippet_opt, span_lint_and_then,
-};
+use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
+use clippy_utils::ptr::get_spans;
+use clippy_utils::source::{snippet, snippet_opt};
+use clippy_utils::ty::{implements_trait, is_copy, is_type_diagnostic_item};
+use clippy_utils::{get_trait_def_id, is_self, paths};
 use if_chain::if_chain;
 use rustc_ast::ast::Attribute;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -11,6 +11,7 @@ use rustc_hir::intravisit::FnKind;
 use rustc_hir::{BindingAnnotation, Body, FnDecl, GenericArg, HirId, Impl, ItemKind, Node, PatKind, QPath, TyKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{self, TypeFoldable};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::kw;
@@ -80,13 +81,14 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
         }
 
         match kind {
-            FnKind::ItemFn(.., header, _, attrs) => {
+            FnKind::ItemFn(.., header, _) => {
+                let attrs = cx.tcx.hir().attrs(hir_id);
                 if header.abi != Abi::Rust || requires_exact_signature(attrs) {
                     return;
                 }
             },
             FnKind::Method(..) => (),
-            FnKind::Closure(..) => return,
+            FnKind::Closure => return,
         }
 
         // Exclude non-inherent impls
@@ -117,9 +119,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
             .filter_map(|obligation| {
                 // Note that we do not want to deal with qualified predicates here.
                 match obligation.predicate.kind().no_bound_vars() {
-                    Some(ty::PredicateKind::Trait(pred, _)) if pred.def_id() != sized_trait => {
-                        Some(pred)
-                    },
+                    Some(ty::PredicateKind::Trait(pred, _)) if pred.def_id() != sized_trait => Some(pred),
                     _ => None,
                 }
             })
@@ -334,4 +334,6 @@ impl<'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt {
     fn borrow(&mut self, _: &euv::PlaceWithHirId<'tcx>, _: HirId, _: ty::BorrowKind) {}
 
     fn mutate(&mut self, _: &euv::PlaceWithHirId<'tcx>, _: HirId) {}
+
+    fn fake_read(&mut self, _: rustc_typeck::expr_use_visitor::Place<'tcx>, _: FakeReadCause, _: HirId) {}
 }

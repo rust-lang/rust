@@ -95,7 +95,7 @@ use rustc_hir::{Expr, HirId, HirIdMap, HirIdSet};
 use rustc_index::vec::IndexVec;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, DefIdTree, TyCtxt};
+use rustc_middle::ty::{self, DefIdTree, RootVariableMinCaptureList, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
@@ -331,7 +331,7 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             }
         }
 
-        if let Some(captures) = maps.tcx.typeck(local_def_id).closure_captures.get(&def_id) {
+        if let Some(captures) = maps.tcx.typeck(local_def_id).closure_min_captures.get(&def_id) {
             for &var_hir_id in captures.keys() {
                 let var_name = maps.tcx.hir().name(var_hir_id);
                 maps.add_variable(Upvar(var_hir_id, var_name));
@@ -367,12 +367,17 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
-        let is_shorthand = matches!(param.pat.kind, rustc_hir::PatKind::Struct(..));
         param.pat.each_binding(|_bm, hir_id, _x, ident| {
-            let var = if is_shorthand {
-                Local(LocalInfo { id: hir_id, name: ident.name, is_shorthand: true })
-            } else {
-                Param(hir_id, ident.name)
+            let var = match param.pat.kind {
+                rustc_hir::PatKind::Struct(_, fields, _) => Local(LocalInfo {
+                    id: hir_id,
+                    name: ident.name,
+                    is_shorthand: fields
+                        .iter()
+                        .find(|f| f.ident == ident)
+                        .map_or(false, |f| f.is_shorthand),
+                }),
+                _ => Param(hir_id, ident.name),
             };
             self.add_variable(var);
         });
@@ -403,10 +408,10 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
                 if let Some(captures) = self
                     .tcx
                     .typeck(closure_def_id)
-                    .closure_captures
+                    .closure_min_captures
                     .get(&closure_def_id.to_def_id())
                 {
-                    // If closure captures is Some, upvars_mentioned must also be Some
+                    // If closure_min_captures is Some, upvars_mentioned must also be Some
                     let upvars = self.tcx.upvars_mentioned(closure_def_id).unwrap();
                     call_caps.extend(captures.keys().map(|var_id| {
                         let upvar = upvars[var_id];
@@ -476,11 +481,10 @@ const ACC_USE: u32 = 4;
 
 struct Liveness<'a, 'tcx> {
     ir: &'a mut IrMaps<'tcx>,
-    body_owner: LocalDefId,
     typeck_results: &'a ty::TypeckResults<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     upvars: Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>>,
-    closure_captures: Option<&'tcx FxIndexMap<hir::HirId, ty::UpvarId>>,
+    closure_min_captures: Option<&'tcx RootVariableMinCaptureList<'tcx>>,
     successors: IndexVec<LiveNode, Option<LiveNode>>,
     rwu_table: rwu_table::RWUTable,
 
@@ -504,8 +508,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         let typeck_results = ir.tcx.typeck(body_owner);
         let param_env = ir.tcx.param_env(body_owner);
         let upvars = ir.tcx.upvars_mentioned(body_owner);
-        let closure_captures = typeck_results.closure_captures.get(&body_owner.to_def_id());
-
+        let closure_min_captures = typeck_results.closure_min_captures.get(&body_owner.to_def_id());
         let closure_ln = ir.add_live_node(ClosureNode);
         let exit_ln = ir.add_live_node(ExitNode);
 
@@ -514,11 +517,10 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
         Liveness {
             ir,
-            body_owner,
             typeck_results,
             param_env,
             upvars,
-            closure_captures,
+            closure_min_captures,
             successors: IndexVec::from_elem_n(None, num_live_nodes),
             rwu_table: rwu_table::RWUTable::new(num_live_nodes, num_vars),
             closure_ln,
@@ -702,25 +704,27 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         // if they are live on the entry to the closure, since only the closure
         // itself can access them on subsequent calls.
 
-        if let Some(closure_captures) = self.closure_captures {
+        if let Some(closure_min_captures) = self.closure_min_captures {
             // Mark upvars captured by reference as used after closure exits.
-            // Since closure_captures is Some, upvars must exists too.
-            let upvars = self.upvars.unwrap();
-            for (&var_hir_id, upvar_id) in closure_captures {
-                let upvar = upvars[&var_hir_id];
-                match self.typeck_results.upvar_capture(*upvar_id) {
-                    ty::UpvarCapture::ByRef(_) => {
-                        let var = self.variable(var_hir_id, upvar.span);
-                        self.acc(self.exit_ln, var, ACC_READ | ACC_USE);
+            for (&var_hir_id, min_capture_list) in closure_min_captures {
+                for captured_place in min_capture_list {
+                    match captured_place.info.capture_kind {
+                        ty::UpvarCapture::ByRef(_) => {
+                            let var = self.variable(
+                                var_hir_id,
+                                captured_place.get_capture_kind_span(self.ir.tcx),
+                            );
+                            self.acc(self.exit_ln, var, ACC_READ | ACC_USE);
+                        }
+                        ty::UpvarCapture::ByValue(_) => {}
                     }
-                    ty::UpvarCapture::ByValue(_) => {}
                 }
             }
         }
 
         let succ = self.propagate_through_expr(&body.value, self.exit_ln);
 
-        if self.closure_captures.is_none() {
+        if self.closure_min_captures.is_none() {
             // Either not a closure, or closure without any captured variables.
             // No need to determine liveness of captured variables, since there
             // are none.
@@ -1216,7 +1220,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         match path.res {
             Res::Local(hid) => {
                 let in_upvars = self.upvars.map_or(false, |u| u.contains_key(&hid));
-                let in_captures = self.closure_captures.map_or(false, |c| c.contains_key(&hid));
+                let in_captures = self.closure_min_captures.map_or(false, |c| c.contains_key(&hid));
 
                 match (in_upvars, in_captures) {
                     (false, _) | (true, true) => self.access_var(hir_id, hid, succ, acc, path.span),
@@ -1417,51 +1421,51 @@ impl<'tcx> Liveness<'_, 'tcx> {
     }
 
     fn warn_about_unused_upvars(&self, entry_ln: LiveNode) {
-        let closure_captures = match self.closure_captures {
+        let closure_min_captures = match self.closure_min_captures {
             None => return,
-            Some(closure_captures) => closure_captures,
+            Some(closure_min_captures) => closure_min_captures,
         };
 
-        // If closure_captures is Some(), upvars must be Some() too.
-        let upvars = self.upvars.unwrap();
-        for &var_hir_id in closure_captures.keys() {
-            let upvar = upvars[&var_hir_id];
-            let var = self.variable(var_hir_id, upvar.span);
-            let upvar_id = ty::UpvarId {
-                var_path: ty::UpvarPath { hir_id: var_hir_id },
-                closure_expr_id: self.body_owner,
-            };
-            match self.typeck_results.upvar_capture(upvar_id) {
-                ty::UpvarCapture::ByValue(_) => {}
-                ty::UpvarCapture::ByRef(..) => continue,
-            };
-            if self.used_on_entry(entry_ln, var) {
-                if !self.live_on_entry(entry_ln, var) {
+        // If closure_min_captures is Some(), upvars must be Some() too.
+        for (&var_hir_id, min_capture_list) in closure_min_captures {
+            for captured_place in min_capture_list {
+                match captured_place.info.capture_kind {
+                    ty::UpvarCapture::ByValue(_) => {}
+                    ty::UpvarCapture::ByRef(..) => continue,
+                };
+                let span = captured_place.get_capture_kind_span(self.ir.tcx);
+                let var = self.variable(var_hir_id, span);
+                if self.used_on_entry(entry_ln, var) {
+                    if !self.live_on_entry(entry_ln, var) {
+                        if let Some(name) = self.should_warn(var) {
+                            self.ir.tcx.struct_span_lint_hir(
+                                lint::builtin::UNUSED_ASSIGNMENTS,
+                                var_hir_id,
+                                vec![span],
+                                |lint| {
+                                    lint.build(&format!(
+                                        "value captured by `{}` is never read",
+                                        name
+                                    ))
+                                    .help("did you mean to capture by reference instead?")
+                                    .emit();
+                                },
+                            );
+                        }
+                    }
+                } else {
                     if let Some(name) = self.should_warn(var) {
                         self.ir.tcx.struct_span_lint_hir(
-                            lint::builtin::UNUSED_ASSIGNMENTS,
+                            lint::builtin::UNUSED_VARIABLES,
                             var_hir_id,
-                            vec![upvar.span],
+                            vec![span],
                             |lint| {
-                                lint.build(&format!("value captured by `{}` is never read", name))
+                                lint.build(&format!("unused variable: `{}`", name))
                                     .help("did you mean to capture by reference instead?")
                                     .emit();
                             },
                         );
                     }
-                }
-            } else {
-                if let Some(name) = self.should_warn(var) {
-                    self.ir.tcx.struct_span_lint_hir(
-                        lint::builtin::UNUSED_VARIABLES,
-                        var_hir_id,
-                        vec![upvar.span],
-                        |lint| {
-                            lint.build(&format!("unused variable: `{}`", name))
-                                .help("did you mean to capture by reference instead?")
-                                .emit();
-                        },
-                    );
                 }
             }
         }
@@ -1489,12 +1493,13 @@ impl<'tcx> Liveness<'_, 'tcx> {
         // bindings, and we also consider the first pattern to be the "authoritative" set of ids.
         // However, we should take the ids and spans of variables with the same name from the later
         // patterns so the suggestions to prefix with underscores will apply to those too.
-        let mut vars: FxIndexMap<Symbol, (LiveNode, Variable, Vec<(HirId, Span)>)> = <_>::default();
+        let mut vars: FxIndexMap<Symbol, (LiveNode, Variable, Vec<(HirId, Span, Span)>)> =
+            <_>::default();
 
         pat.each_binding(|_, hir_id, pat_sp, ident| {
             let ln = entry_ln.unwrap_or_else(|| self.live_node(hir_id, pat_sp));
             let var = self.variable(hir_id, ident.span);
-            let id_and_sp = (hir_id, pat_sp);
+            let id_and_sp = (hir_id, pat_sp, ident.span);
             vars.entry(self.ir.variable_name(var))
                 .and_modify(|(.., hir_ids_and_spans)| hir_ids_and_spans.push(id_and_sp))
                 .or_insert_with(|| (ln, var, vec![id_and_sp]));
@@ -1503,7 +1508,8 @@ impl<'tcx> Liveness<'_, 'tcx> {
         for (_, (ln, var, hir_ids_and_spans)) in vars {
             if self.used_on_entry(ln, var) {
                 let id = hir_ids_and_spans[0].0;
-                let spans = hir_ids_and_spans.into_iter().map(|(_, sp)| sp).collect();
+                let spans =
+                    hir_ids_and_spans.into_iter().map(|(_, _, ident_span)| ident_span).collect();
                 on_used_on_entry(spans, id, ln, var);
             } else {
                 self.report_unused(hir_ids_and_spans, ln, var);
@@ -1511,7 +1517,12 @@ impl<'tcx> Liveness<'_, 'tcx> {
         }
     }
 
-    fn report_unused(&self, hir_ids_and_spans: Vec<(HirId, Span)>, ln: LiveNode, var: Variable) {
+    fn report_unused(
+        &self,
+        hir_ids_and_spans: Vec<(HirId, Span, Span)>,
+        ln: LiveNode,
+        var: Variable,
+    ) {
         let first_hir_id = hir_ids_and_spans[0].0;
 
         if let Some(name) = self.should_warn(var).filter(|name| name != "self") {
@@ -1525,7 +1536,10 @@ impl<'tcx> Liveness<'_, 'tcx> {
                 self.ir.tcx.struct_span_lint_hir(
                     lint::builtin::UNUSED_VARIABLES,
                     first_hir_id,
-                    hir_ids_and_spans.into_iter().map(|(_, sp)| sp).collect::<Vec<_>>(),
+                    hir_ids_and_spans
+                        .into_iter()
+                        .map(|(_, _, ident_span)| ident_span)
+                        .collect::<Vec<_>>(),
                     |lint| {
                         lint.build(&format!("variable `{}` is assigned to, but never used", name))
                             .note(&format!("consider using `_{}` instead", name))
@@ -1533,54 +1547,67 @@ impl<'tcx> Liveness<'_, 'tcx> {
                     },
                 )
             } else {
-                self.ir.tcx.struct_span_lint_hir(
-                    lint::builtin::UNUSED_VARIABLES,
-                    first_hir_id,
-                    hir_ids_and_spans.iter().map(|(_, sp)| *sp).collect::<Vec<_>>(),
-                    |lint| {
-                        let mut err = lint.build(&format!("unused variable: `{}`", name));
+                let (shorthands, non_shorthands): (Vec<_>, Vec<_>) =
+                    hir_ids_and_spans.iter().copied().partition(|(hir_id, _, ident_span)| {
+                        let var = self.variable(*hir_id, *ident_span);
+                        self.ir.variable_is_shorthand(var)
+                    });
 
-                        let (shorthands, non_shorthands): (Vec<_>, Vec<_>) =
-                            hir_ids_and_spans.into_iter().partition(|(hir_id, span)| {
-                                let var = self.variable(*hir_id, *span);
-                                self.ir.variable_is_shorthand(var)
-                            });
+                // If we have both shorthand and non-shorthand, prefer the "try ignoring
+                // the field" message, and suggest `_` for the non-shorthands. If we only
+                // have non-shorthand, then prefix with an underscore instead.
+                if !shorthands.is_empty() {
+                    let shorthands = shorthands
+                        .into_iter()
+                        .map(|(_, pat_span, _)| (pat_span, format!("{}: _", name)))
+                        .chain(
+                            non_shorthands
+                                .into_iter()
+                                .map(|(_, pat_span, _)| (pat_span, "_".to_string())),
+                        )
+                        .collect::<Vec<_>>();
 
-                        let mut shorthands = shorthands
-                            .into_iter()
-                            .map(|(_, span)| (span, format!("{}: _", name)))
-                            .collect::<Vec<_>>();
-
-                        // If we have both shorthand and non-shorthand, prefer the "try ignoring
-                        // the field" message, and suggest `_` for the non-shorthands. If we only
-                        // have non-shorthand, then prefix with an underscore instead.
-                        if !shorthands.is_empty() {
-                            shorthands.extend(
-                                non_shorthands
-                                    .into_iter()
-                                    .map(|(_, span)| (span, "_".to_string()))
-                                    .collect::<Vec<_>>(),
-                            );
-
+                    self.ir.tcx.struct_span_lint_hir(
+                        lint::builtin::UNUSED_VARIABLES,
+                        first_hir_id,
+                        hir_ids_and_spans
+                            .iter()
+                            .map(|(_, pat_span, _)| *pat_span)
+                            .collect::<Vec<_>>(),
+                        |lint| {
+                            let mut err = lint.build(&format!("unused variable: `{}`", name));
                             err.multipart_suggestion(
                                 "try ignoring the field",
                                 shorthands,
                                 Applicability::MachineApplicable,
                             );
-                        } else {
+                            err.emit()
+                        },
+                    );
+                } else {
+                    let non_shorthands = non_shorthands
+                        .into_iter()
+                        .map(|(_, _, ident_span)| (ident_span, format!("_{}", name)))
+                        .collect::<Vec<_>>();
+
+                    self.ir.tcx.struct_span_lint_hir(
+                        lint::builtin::UNUSED_VARIABLES,
+                        first_hir_id,
+                        hir_ids_and_spans
+                            .iter()
+                            .map(|(_, _, ident_span)| *ident_span)
+                            .collect::<Vec<_>>(),
+                        |lint| {
+                            let mut err = lint.build(&format!("unused variable: `{}`", name));
                             err.multipart_suggestion(
                                 "if this is intentional, prefix it with an underscore",
-                                non_shorthands
-                                    .into_iter()
-                                    .map(|(_, span)| (span, format!("_{}", name)))
-                                    .collect::<Vec<_>>(),
+                                non_shorthands,
                                 Applicability::MachineApplicable,
                             );
-                        }
-
-                        err.emit()
-                    },
-                );
+                            err.emit()
+                        },
+                    );
+                }
             }
         }
     }

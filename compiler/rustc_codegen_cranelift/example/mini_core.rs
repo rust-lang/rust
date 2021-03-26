@@ -365,6 +365,22 @@ impl <T: PartialEq> PartialEq for Option<T> {
     }
 }
 
+#[lang = "shl"]
+pub trait Shl<RHS = Self> {
+    type Output;
+
+    #[must_use]
+    fn shl(self, rhs: RHS) -> Self::Output;
+}
+
+impl Shl for u128 {
+    type Output = u128;
+
+    fn shl(self, rhs: u128) -> u128 {
+        self << rhs
+    }
+}
+
 #[lang = "neg"]
 pub trait Neg {
     type Output;
@@ -532,8 +548,8 @@ pub mod intrinsics {
 }
 
 pub mod libc {
-    #[cfg_attr(not(windows), link(name = "c"))]
-    #[cfg_attr(windows, link(name = "msvcrt"))]
+    #[cfg_attr(unix, link(name = "c"))]
+    #[cfg_attr(target_env = "msvc", link(name = "msvcrt"))]
     extern "C" {
         pub fn puts(s: *const i8) -> i32;
         pub fn printf(format: *const i8, ...) -> i32;

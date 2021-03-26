@@ -1,7 +1,5 @@
 // run-pass
 
-#![feature(or_patterns)]
-
 fn main() {
     assert!(f("", 0));
     assert!(f("a", 1));

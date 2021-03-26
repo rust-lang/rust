@@ -9,7 +9,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_hir::Mutability;
 use rustc_metadata::creader::LoadedMacro;
-use rustc_middle::ty;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir::const_eval::is_min_const_fn;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -17,6 +17,7 @@ use rustc_span::Span;
 
 use crate::clean::{self, Attributes, GetDefId, ToSource, TypeKind};
 use crate::core::DocContext;
+use crate::formats::item_type::ItemType;
 
 use super::Clean;
 
@@ -37,7 +38,7 @@ type Attrs<'hir> = rustc_middle::ty::Attributes<'hir>;
 ///
 /// `parent_module` refers to the parent of the *re-export*, not the original item.
 crate fn try_inline(
-    cx: &DocContext<'_>,
+    cx: &mut DocContext<'_>,
     parent_module: DefId,
     res: Res,
     name: Symbol,
@@ -122,14 +123,14 @@ crate fn try_inline(
     let target_attrs = load_attrs(cx, did);
     let attrs = box merge_attrs(cx, Some(parent_module), target_attrs, attrs_clone);
 
-    cx.renderinfo.borrow_mut().inlined.insert(did);
+    cx.inlined.insert(did);
     let what_rustc_thinks = clean::Item::from_def_id_and_parts(did, Some(name), kind, cx);
     ret.push(clean::Item { attrs, ..what_rustc_thinks });
     Some(ret)
 }
 
 crate fn try_inline_glob(
-    cx: &DocContext<'_>,
+    cx: &mut DocContext<'_>,
     res: Res,
     visited: &mut FxHashSet<DefId>,
 ) -> Option<Vec<clean::Item>> {
@@ -156,7 +157,7 @@ crate fn load_attrs<'hir>(cx: &DocContext<'hir>, did: DefId) -> Attrs<'hir> {
 ///
 /// These names are used later on by HTML rendering to generate things like
 /// source links back to the original item.
-crate fn record_extern_fqn(cx: &DocContext<'_>, did: DefId, kind: clean::TypeKind) {
+crate fn record_extern_fqn(cx: &mut DocContext<'_>, did: DefId, kind: clean::TypeKind) {
     let crate_name = cx.tcx.crate_name(did.krate).to_string();
 
     let relative = cx.tcx.def_path(did).data.into_iter().filter_map(|elem| {
@@ -181,13 +182,13 @@ crate fn record_extern_fqn(cx: &DocContext<'_>, did: DefId, kind: clean::TypeKin
     };
 
     if did.is_local() {
-        cx.renderinfo.borrow_mut().exact_paths.insert(did, fqn);
+        cx.cache.exact_paths.insert(did, fqn);
     } else {
-        cx.renderinfo.borrow_mut().external_paths.insert(did, (fqn, kind));
+        cx.cache.external_paths.insert(did, (fqn, ItemType::from(kind)));
     }
 }
 
-crate fn build_external_trait(cx: &DocContext<'_>, did: DefId) -> clean::Trait {
+crate fn build_external_trait(cx: &mut DocContext<'_>, did: DefId) -> clean::Trait {
     let trait_items =
         cx.tcx.associated_items(did).in_definition_order().map(|item| item.clean(cx)).collect();
 
@@ -195,39 +196,34 @@ crate fn build_external_trait(cx: &DocContext<'_>, did: DefId) -> clean::Trait {
     let generics = (cx.tcx.generics_of(did), predicates).clean(cx);
     let generics = filter_non_trait_generics(did, generics);
     let (generics, supertrait_bounds) = separate_supertrait_bounds(generics);
-    let is_spotlight = load_attrs(cx, did).clean(cx).has_doc_flag(sym::spotlight);
     let is_auto = cx.tcx.trait_is_auto(did);
     clean::Trait {
         unsafety: cx.tcx.trait_def(did).unsafety,
         generics,
         items: trait_items,
         bounds: supertrait_bounds,
-        is_spotlight,
         is_auto,
     }
 }
 
-fn build_external_function(cx: &DocContext<'_>, did: DefId) -> clean::Function {
+fn build_external_function(cx: &mut DocContext<'_>, did: DefId) -> clean::Function {
     let sig = cx.tcx.fn_sig(did);
 
     let constness =
         if is_min_const_fn(cx.tcx, did) { hir::Constness::Const } else { hir::Constness::NotConst };
     let asyncness = cx.tcx.asyncness(did);
     let predicates = cx.tcx.predicates_of(did);
-    let (generics, decl) = clean::enter_impl_trait(cx, || {
+    let (generics, decl) = clean::enter_impl_trait(cx, |cx| {
         ((cx.tcx.generics_of(did), predicates).clean(cx), (did, sig).clean(cx))
     });
-    let (all_types, ret_types) = clean::get_all_types(&generics, &decl, cx);
     clean::Function {
         decl,
         generics,
         header: hir::FnHeader { unsafety: sig.unsafety(), abi: sig.abi(), constness, asyncness },
-        all_types,
-        ret_types,
     }
 }
 
-fn build_enum(cx: &DocContext<'_>, did: DefId) -> clean::Enum {
+fn build_enum(cx: &mut DocContext<'_>, did: DefId) -> clean::Enum {
     let predicates = cx.tcx.explicit_predicates_of(did);
 
     clean::Enum {
@@ -237,7 +233,7 @@ fn build_enum(cx: &DocContext<'_>, did: DefId) -> clean::Enum {
     }
 }
 
-fn build_struct(cx: &DocContext<'_>, did: DefId) -> clean::Struct {
+fn build_struct(cx: &mut DocContext<'_>, did: DefId) -> clean::Struct {
     let predicates = cx.tcx.explicit_predicates_of(did);
     let variant = cx.tcx.adt_def(did).non_enum_variant();
 
@@ -249,7 +245,7 @@ fn build_struct(cx: &DocContext<'_>, did: DefId) -> clean::Struct {
     }
 }
 
-fn build_union(cx: &DocContext<'_>, did: DefId) -> clean::Union {
+fn build_union(cx: &mut DocContext<'_>, did: DefId) -> clean::Union {
     let predicates = cx.tcx.explicit_predicates_of(did);
     let variant = cx.tcx.adt_def(did).non_enum_variant();
 
@@ -260,7 +256,7 @@ fn build_union(cx: &DocContext<'_>, did: DefId) -> clean::Union {
     }
 }
 
-fn build_type_alias(cx: &DocContext<'_>, did: DefId) -> clean::Typedef {
+fn build_type_alias(cx: &mut DocContext<'_>, did: DefId) -> clean::Typedef {
     let predicates = cx.tcx.explicit_predicates_of(did);
     let type_ = cx.tcx.type_of(did).clean(cx);
 
@@ -273,7 +269,7 @@ fn build_type_alias(cx: &DocContext<'_>, did: DefId) -> clean::Typedef {
 
 /// Builds all inherent implementations of an ADT (struct/union/enum) or Trait item/path/reexport.
 crate fn build_impls(
-    cx: &DocContext<'_>,
+    cx: &mut DocContext<'_>,
     parent_module: Option<DefId>,
     did: DefId,
     attrs: Option<Attrs<'_>>,
@@ -289,7 +285,7 @@ crate fn build_impls(
 
 /// `parent_module` refers to the parent of the re-export, not the original item
 fn merge_attrs(
-    cx: &DocContext<'_>,
+    cx: &mut DocContext<'_>,
     parent_module: Option<DefId>,
     old_attrs: Attrs<'_>,
     new_attrs: Option<Attrs<'_>>,
@@ -314,13 +310,13 @@ fn merge_attrs(
 
 /// Builds a specific implementation of a type. The `did` could be a type method or trait method.
 crate fn build_impl(
-    cx: &DocContext<'_>,
+    cx: &mut DocContext<'_>,
     parent_module: impl Into<Option<DefId>>,
     did: DefId,
     attrs: Option<Attrs<'_>>,
     ret: &mut Vec<clean::Item>,
 ) {
-    if !cx.renderinfo.borrow_mut().inlined.insert(did) {
+    if !cx.inlined.insert(did) {
         return;
     }
 
@@ -332,7 +328,7 @@ crate fn build_impl(
     if !did.is_local() {
         if let Some(traitref) = associated_trait {
             let did = traitref.def_id;
-            if !cx.renderinfo.borrow().access_levels.is_public(did) {
+            if !cx.cache.access_levels.is_public(did) {
                 return;
             }
 
@@ -364,7 +360,7 @@ crate fn build_impl(
     // reachable in rustdoc generated documentation
     if !did.is_local() {
         if let Some(did) = for_.def_id() {
-            if !cx.renderinfo.borrow().access_levels.is_public(did) {
+            if !cx.cache.access_levels.is_public(did) {
                 return;
             }
 
@@ -397,7 +393,7 @@ crate fn build_impl(
                     }
                 })
                 .collect::<Vec<_>>(),
-            clean::enter_impl_trait(cx, || (tcx.generics_of(did), predicates).clean(cx)),
+            clean::enter_impl_trait(cx, |cx| (tcx.generics_of(did), predicates).clean(cx)),
         ),
     };
     let polarity = tcx.impl_polarity(did);
@@ -419,7 +415,10 @@ crate fn build_impl(
 
     debug!("build_impl: impl {:?} for {:?}", trait_.def_id(), for_.def_id());
 
-    let mut item = clean::Item::from_def_id_and_parts(
+    let attrs = box merge_attrs(cx, parent_module.into(), load_attrs(cx, did), attrs);
+    debug!("merged_attrs={:?}", attrs);
+
+    ret.push(clean::Item::from_def_id_and_attrs_and_parts(
         did,
         None,
         clean::ImplItem(clean::Impl {
@@ -433,14 +432,16 @@ crate fn build_impl(
             synthetic: false,
             blanket_impl: None,
         }),
+        attrs,
         cx,
-    );
-    item.attrs = box merge_attrs(cx, parent_module.into(), load_attrs(cx, did), attrs);
-    debug!("merged_attrs={:?}", item.attrs);
-    ret.push(item);
+    ));
 }
 
-fn build_module(cx: &DocContext<'_>, did: DefId, visited: &mut FxHashSet<DefId>) -> clean::Module {
+fn build_module(
+    cx: &mut DocContext<'_>,
+    did: DefId,
+    visited: &mut FxHashSet<DefId>,
+) -> clean::Module {
     let mut items = Vec::new();
 
     // If we're re-exporting a re-export it may actually re-export something in
@@ -458,7 +459,7 @@ fn build_module(cx: &DocContext<'_>, did: DefId, visited: &mut FxHashSet<DefId>)
                 items.push(clean::Item {
                     name: None,
                     attrs: box clean::Attributes::default(),
-                    source: clean::Span::dummy(),
+                    span: clean::Span::dummy(),
                     def_id: DefId::local(CRATE_DEF_INDEX),
                     visibility: clean::Public,
                     kind: box clean::ImportItem(clean::Import::new_simple(
@@ -489,35 +490,31 @@ fn build_module(cx: &DocContext<'_>, did: DefId, visited: &mut FxHashSet<DefId>)
     clean::Module { items, is_crate: false }
 }
 
-crate fn print_inlined_const(cx: &DocContext<'_>, did: DefId) -> String {
+crate fn print_inlined_const(tcx: TyCtxt<'_>, did: DefId) -> String {
     if let Some(did) = did.as_local() {
-        let hir_id = cx.tcx.hir().local_def_id_to_hir_id(did);
-        rustc_hir_pretty::id_to_string(&cx.tcx.hir(), hir_id)
+        let hir_id = tcx.hir().local_def_id_to_hir_id(did);
+        rustc_hir_pretty::id_to_string(&tcx.hir(), hir_id)
     } else {
-        cx.tcx.rendered_const(did)
+        tcx.rendered_const(did)
     }
 }
 
-fn build_const(cx: &DocContext<'_>, did: DefId) -> clean::Constant {
+fn build_const(cx: &mut DocContext<'_>, def_id: DefId) -> clean::Constant {
     clean::Constant {
-        type_: cx.tcx.type_of(did).clean(cx),
-        expr: print_inlined_const(cx, did),
-        value: clean::utils::print_evaluated_const(cx, did),
-        is_literal: did.as_local().map_or(false, |did| {
-            clean::utils::is_literal_expr(cx, cx.tcx.hir().local_def_id_to_hir_id(did))
-        }),
+        type_: cx.tcx.type_of(def_id).clean(cx),
+        kind: clean::ConstantKind::Extern { def_id },
     }
 }
 
-fn build_static(cx: &DocContext<'_>, did: DefId, mutable: bool) -> clean::Static {
+fn build_static(cx: &mut DocContext<'_>, did: DefId, mutable: bool) -> clean::Static {
     clean::Static {
         type_: cx.tcx.type_of(did).clean(cx),
         mutability: if mutable { Mutability::Mut } else { Mutability::Not },
-        expr: "\n\n\n".to_string(), // trigger the "[definition]" links
+        expr: None,
     }
 }
 
-fn build_macro(cx: &DocContext<'_>, did: DefId, name: Symbol) -> clean::ItemKind {
+fn build_macro(cx: &mut DocContext<'_>, did: DefId, name: Symbol) -> clean::ItemKind {
     let imported_from = cx.tcx.original_crate_name(did.krate);
     match cx.enter_resolver(|r| r.cstore().load_macro_untracked(did, cx.sess())) {
         LoadedMacro::MacroDef(def, _) => {
@@ -606,26 +603,29 @@ fn separate_supertrait_bounds(
     (g, ty_bounds)
 }
 
-crate fn record_extern_trait(cx: &DocContext<'_>, did: DefId) {
+crate fn record_extern_trait(cx: &mut DocContext<'_>, did: DefId) {
     if did.is_local() {
         return;
     }
 
     {
-        if cx.external_traits.borrow().contains_key(&did)
-            || cx.active_extern_traits.borrow().contains(&did)
+        if cx.external_traits.borrow().contains_key(&did) || cx.active_extern_traits.contains(&did)
         {
             return;
         }
     }
 
     {
-        cx.active_extern_traits.borrow_mut().insert(did);
+        cx.active_extern_traits.insert(did);
     }
 
     debug!("record_extern_trait: {:?}", did);
     let trait_ = build_external_trait(cx, did);
 
+    let trait_ = clean::TraitWithExtraInfo {
+        trait_,
+        is_spotlight: clean::utils::has_doc_flag(cx.tcx.get_attrs(did), sym::spotlight),
+    };
     cx.external_traits.borrow_mut().insert(did, trait_);
-    cx.active_extern_traits.borrow_mut().remove(&did);
+    cx.active_extern_traits.remove(&did);
 }

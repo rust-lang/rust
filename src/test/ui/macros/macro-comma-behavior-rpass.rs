@@ -57,7 +57,7 @@ fn writeln_1arg() {
 //
 // (Example: Issue #48042)
 #[test]
-#[allow(panic_fmt)]
+#[allow(non_fmt_panic)]
 fn to_format_or_not_to_format() {
     // ("{}" is the easiest string to test because if this gets
     // sent to format_args!, it'll simply fail to compile.

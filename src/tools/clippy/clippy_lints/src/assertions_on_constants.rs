@@ -1,5 +1,7 @@
 use crate::consts::{constant, Constant};
-use crate::utils::{is_direct_expn_of, is_expn_of, match_panic_call, snippet_opt, span_lint_and_help};
+use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::source::snippet_opt;
+use clippy_utils::{is_direct_expn_of, is_expn_of, match_panic_call};
 use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
@@ -112,7 +114,7 @@ enum AssertKind {
 fn match_assert_with_message<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<AssertKind> {
     if_chain! {
         if let ExprKind::If(ref cond, ref then, _) = expr.kind;
-        if let ExprKind::Unary(UnOp::UnNot, ref expr) = cond.kind;
+        if let ExprKind::Unary(UnOp::Not, ref expr) = cond.kind;
         // bind the first argument of the `assert!` macro
         if let Some((Constant::Bool(is_true), _)) = constant(cx, cx.typeck_results(), expr);
         // block

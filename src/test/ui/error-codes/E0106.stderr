@@ -24,17 +24,6 @@ LL |     B(&'a bool),
    |
 
 error[E0106]: missing lifetime specifier
-  --> $DIR/E0106.rs:10:14
-   |
-LL | type MyStr = &str;
-   |              ^ expected named lifetime parameter
-   |
-help: consider introducing a named lifetime parameter
-   |
-LL | type MyStr<'a> = &'a str;
-   |           ^^^^   ^^^
-
-error[E0106]: missing lifetime specifier
   --> $DIR/E0106.rs:17:10
    |
 LL |     baz: Baz,
@@ -60,6 +49,17 @@ LL |
 LL |
 LL |     buzz: Buzz<'a, 'a>,
    |
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/E0106.rs:10:14
+   |
+LL | type MyStr = &str;
+   |              ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL | type MyStr<'a> = &'a str;
+   |           ^^^^   ^^^
 
 error: aborting due to 5 previous errors
 

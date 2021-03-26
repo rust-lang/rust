@@ -53,10 +53,10 @@ fn transmute_ptr_to_ptr() {
 
 // dereferencing raw pointers in const contexts, should not lint as it's unstable (issue 5959)
 const _: &() = {
-    struct ZST;
-    let zst = &ZST;
+    struct Zst;
+    let zst = &Zst;
 
-    unsafe { std::mem::transmute::<&'static ZST, &'static ()>(zst) }
+    unsafe { std::mem::transmute::<&'static Zst, &'static ()>(zst) }
 };
 
 fn main() {}

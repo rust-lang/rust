@@ -4,7 +4,6 @@ use crate::mir::{self, interpret};
 use crate::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
 use crate::ty::context::TyCtxt;
 use crate::ty::{self, Ty};
-use rustc_data_structures::fingerprint::{Fingerprint, FingerprintDecoder, FingerprintEncoder};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, OnceCell};
 use rustc_data_structures::thin_vec::ThinVec;
@@ -14,8 +13,10 @@ use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathHash;
 use rustc_hir::definitions::Definitions;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_query_system::dep_graph::DepContext;
+use rustc_query_system::query::QueryContext;
 use rustc_serialize::{
-    opaque::{self, FileEncodeResult, FileEncoder},
+    opaque::{self, FileEncodeResult, FileEncoder, IntEncodedWithFixedSize},
     Decodable, Decoder, Encodable, Encoder,
 };
 use rustc_session::{CrateDisambiguator, Session};
@@ -132,7 +133,7 @@ struct Footer {
     foreign_def_path_hashes: UnhashMap<DefPathHash, RawDefId>,
 }
 
-type EncodedQueryResultIndex = Vec<(SerializedDepNodeIndex, AbsoluteBytePos)>;
+pub type EncodedQueryResultIndex = Vec<(SerializedDepNodeIndex, AbsoluteBytePos)>;
 type EncodedDiagnosticsIndex = Vec<(SerializedDepNodeIndex, AbsoluteBytePos)>;
 type EncodedDiagnostics = Vec<Diagnostic>;
 
@@ -140,7 +141,7 @@ type EncodedDiagnostics = Vec<Diagnostic>;
 struct SourceFileIndex(u32);
 
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Encodable, Decodable)]
-struct AbsoluteBytePos(u32);
+pub struct AbsoluteBytePos(u32);
 
 impl AbsoluteBytePos {
     fn new(pos: usize) -> AbsoluteBytePos {
@@ -284,7 +285,7 @@ impl<'sess> OnDiskCache<'sess> {
             // Do this *before* we clone 'latest_foreign_def_path_hashes', since
             // loading existing queries may cause us to create new DepNodes, which
             // may in turn end up invoking `store_foreign_def_id_hash`
-            tcx.dep_graph.exec_cache_promotions(tcx);
+            tcx.queries.exec_cache_promotions(tcx);
 
             let latest_foreign_def_path_hashes = self.latest_foreign_def_path_hashes.lock().clone();
             let hygiene_encode_context = HygieneEncodeContext::default();
@@ -307,22 +308,7 @@ impl<'sess> OnDiskCache<'sess> {
             tcx.sess.time("encode_query_results", || -> FileEncodeResult {
                 let enc = &mut encoder;
                 let qri = &mut query_result_index;
-
-                macro_rules! encode_queries {
-                    ($($query:ident,)*) => {
-                        $(
-                            encode_query_results::<ty::query::queries::$query<'_>>(
-                                tcx,
-                                enc,
-                                qri
-                            )?;
-                        )*
-                    }
-                }
-
-                rustc_cached_queries!(encode_queries!);
-
-                Ok(())
+                tcx.queries.encode_query_results(tcx, enc, qri)
             })?;
 
             // Encode diagnostics.
@@ -427,7 +413,7 @@ impl<'sess> OnDiskCache<'sess> {
 
             fn sorted_cnums_including_local_crate(tcx: TyCtxt<'_>) -> Vec<CrateNum> {
                 let mut cnums = vec![LOCAL_CRATE];
-                cnums.extend_from_slice(&tcx.crates()[..]);
+                cnums.extend_from_slice(tcx.crates());
                 cnums.sort_unstable();
                 // Just to be sure...
                 cnums.dedup();
@@ -515,7 +501,7 @@ impl<'sess> OnDiskCache<'sess> {
 
     /// Returns the cached query result if there is something in the cache for
     /// the given `SerializedDepNodeIndex`; otherwise returns `None`.
-    crate fn try_load_query_result<'tcx, T>(
+    pub fn try_load_query_result<'tcx, T>(
         &self,
         tcx: TyCtxt<'tcx>,
         dep_node_index: SerializedDepNodeIndex,
@@ -678,7 +664,7 @@ impl<'sess> OnDiskCache<'sess> {
 /// A decoder that can read from the incremental compilation cache. It is similar to the one
 /// we use for crate metadata decoding in that it can rebase spans and eventually
 /// will also handle things that contain `Ty` instances.
-crate struct CacheDecoder<'a, 'tcx> {
+pub struct CacheDecoder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     opaque: opaque::Decoder<'a>,
     source_map: &'a SourceMap,
@@ -918,18 +904,11 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for DefId {
         // which means that the definition with this hash is guaranteed to
         // still exist in the current compilation session.
         Ok(d.tcx()
-            .queries
             .on_disk_cache
             .as_ref()
             .unwrap()
             .def_path_hash_to_def_id(d.tcx(), def_path_hash)
             .unwrap())
-    }
-}
-
-impl<'a, 'tcx> FingerprintDecoder for CacheDecoder<'a, 'tcx> {
-    fn decode_fingerprint(&mut self) -> Result<Fingerprint, Self::Error> {
-        Fingerprint::decode_opaque(&mut self.opaque)
     }
 }
 
@@ -973,7 +952,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [Span] {
 
 //- ENCODING -------------------------------------------------------------------
 
-trait OpaqueEncoder: Encoder {
+pub trait OpaqueEncoder: Encoder {
     fn position(&self) -> usize;
 }
 
@@ -985,7 +964,7 @@ impl OpaqueEncoder for FileEncoder {
 }
 
 /// An encoder that can write to the incremental compilation cache.
-struct CacheEncoder<'a, 'tcx, E: OpaqueEncoder> {
+pub struct CacheEncoder<'a, 'tcx, E: OpaqueEncoder> {
     tcx: TyCtxt<'tcx>,
     encoder: &'a mut E,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
@@ -1025,12 +1004,6 @@ where
     }
 }
 
-impl<'a, 'tcx, E: OpaqueEncoder> FingerprintEncoder for CacheEncoder<'a, 'tcx, E> {
-    fn encode_fingerprint(&mut self, f: &Fingerprint) -> Result<(), E::Error> {
-        self.encoder.encode_fingerprint(f)
-    }
-}
-
 impl<'a, 'tcx, E> Encodable<CacheEncoder<'a, 'tcx, E>> for SyntaxContext
 where
     E: 'a + OpaqueEncoder,
@@ -1059,12 +1032,12 @@ where
     E: 'a + OpaqueEncoder,
 {
     fn encode(&self, s: &mut CacheEncoder<'a, 'tcx, E>) -> Result<(), E::Error> {
-        if *self == DUMMY_SP {
+        let span_data = self.data();
+        if self.is_dummy() {
             TAG_PARTIAL_SPAN.encode(s)?;
-            return SyntaxContext::root().encode(s);
+            return span_data.ctxt.encode(s);
         }
 
-        let span_data = self.data();
         let pos = s.source_map.byte_pos_to_line_and_col(span_data.lo);
         let partial_span = match &pos {
             Some((file_lo, _, _)) => !file_lo.contains(span_data.hi),
@@ -1181,6 +1154,7 @@ where
         emit_f32(f32);
         emit_char(char);
         emit_str(&str);
+        emit_raw_bytes(&[u8]);
     }
 }
 
@@ -1194,60 +1168,24 @@ impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx, FileEncoder>> for [u8] {
     }
 }
 
-// An integer that will always encode to 8 bytes.
-struct IntEncodedWithFixedSize(u64);
-
-impl IntEncodedWithFixedSize {
-    pub const ENCODED_SIZE: usize = 8;
-}
-
-impl<E: OpaqueEncoder> Encodable<E> for IntEncodedWithFixedSize {
-    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
-        let start_pos = e.position();
-        for i in 0..IntEncodedWithFixedSize::ENCODED_SIZE {
-            ((self.0 >> (i * 8)) as u8).encode(e)?;
-        }
-        let end_pos = e.position();
-        assert_eq!((end_pos - start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
-        Ok(())
-    }
-}
-
-impl<'a> Decodable<opaque::Decoder<'a>> for IntEncodedWithFixedSize {
-    fn decode(decoder: &mut opaque::Decoder<'a>) -> Result<IntEncodedWithFixedSize, String> {
-        let mut value: u64 = 0;
-        let start_pos = decoder.position();
-
-        for i in 0..IntEncodedWithFixedSize::ENCODED_SIZE {
-            let byte: u8 = Decodable::decode(decoder)?;
-            value |= (byte as u64) << (i * 8);
-        }
-
-        let end_pos = decoder.position();
-        assert_eq!((end_pos - start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
-
-        Ok(IntEncodedWithFixedSize(value))
-    }
-}
-
-fn encode_query_results<'a, 'tcx, Q>(
-    tcx: TyCtxt<'tcx>,
+pub fn encode_query_results<'a, 'tcx, CTX, Q>(
+    tcx: CTX,
     encoder: &mut CacheEncoder<'a, 'tcx, FileEncoder>,
     query_result_index: &mut EncodedQueryResultIndex,
 ) -> FileEncodeResult
 where
-    Q: super::QueryDescription<TyCtxt<'tcx>> + super::QueryAccessors<TyCtxt<'tcx>>,
+    CTX: QueryContext + 'tcx,
+    Q: super::QueryDescription<CTX> + super::QueryAccessors<CTX>,
     Q::Value: Encodable<CacheEncoder<'a, 'tcx, FileEncoder>>,
 {
     let _timer = tcx
-        .sess
-        .prof
+        .dep_context()
+        .profiler()
         .extra_verbose_generic_activity("encode_query_results_for", std::any::type_name::<Q>());
 
-    let state = Q::query_state(tcx);
-    assert!(state.all_inactive());
-
-    state.iter_results(|results| {
+    assert!(Q::query_state(tcx).all_inactive());
+    let cache = Q::query_cache(tcx);
+    cache.iter_results(|results| {
         for (key, value, dep_node) in results {
             if Q::cache_on_disk(tcx, &key, Some(value)) {
                 let dep_node = SerializedDepNodeIndex::new(dep_node.index());

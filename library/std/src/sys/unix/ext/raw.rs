@@ -24,10 +24,10 @@ pub type pid_t = i32;
 
 #[doc(inline)]
 #[stable(feature = "pthread_t", since = "1.8.0")]
-pub use crate::sys::platform::raw::pthread_t;
+pub use super::platform::raw::pthread_t;
 #[doc(inline)]
 #[stable(feature = "raw_ext", since = "1.1.0")]
-pub use crate::sys::platform::raw::{blkcnt_t, time_t};
+pub use super::platform::raw::{blkcnt_t, time_t};
 #[doc(inline)]
 #[stable(feature = "raw_ext", since = "1.1.0")]
-pub use crate::sys::platform::raw::{blksize_t, dev_t, ino_t, mode_t, nlink_t, off_t};
+pub use super::platform::raw::{blksize_t, dev_t, ino_t, mode_t, nlink_t, off_t};

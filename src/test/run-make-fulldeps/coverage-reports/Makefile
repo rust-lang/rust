@@ -1,5 +1,6 @@
 # needs-profiler-support
 # ignore-windows-gnu
+# min-llvm-version: 11.0
 
 # FIXME(mati865): MinGW GCC miscompiles compiler-rt profiling library but with Clang it works
 # properly. Since we only have GCC on the CI ignore the test for now.
@@ -58,7 +59,7 @@ endif
 # if and when we allow `llvm-cov` to produce results for multiple files. Note, the path separators
 # appear to be normalized to `/` in those files, thankfully.)
 LLVM_COV_IGNORE_FILES=\
-	--ignore-filename-regex=uses_crate.rs
+	--ignore-filename-regex='(uses_crate.rs|uses_inline_crate.rs)'
 
 # When generating `expected_*` results (using `x.py test --bless`), the `--debug` flag is forced.
 # If assertions are disabled, the command will fail with an error, rather than attempt to generate
@@ -67,12 +68,7 @@ ifdef RUSTC_BLESS_TEST
 DEBUG_FLAG=--debug
 endif
 
-ifeq ($(LLVM_VERSION_11_PLUS),true)
 all: $(patsubst $(SOURCEDIR)/lib/%.rs,%,$(wildcard $(SOURCEDIR)/lib/*.rs)) $(patsubst $(SOURCEDIR)/%.rs,%,$(wildcard $(SOURCEDIR)/*.rs))
-else
-$(info Rust option `-Z instrument-coverage` requires LLVM 11 or higher. Test skipped.)
-all:
-endif
 
 # Ensure there are no `expected` results for tests that may have been removed or renamed
 .PHONY: clear_expected_if_blessed
@@ -86,13 +82,13 @@ endif
 %: $(SOURCEDIR)/lib/%.rs
 	# Compile the test library with coverage instrumentation
 	$(RUSTC) $(SOURCEDIR)/lib/$@.rs \
-			$$( grep -q '^\/\/ require-rust-edition-2018' $(SOURCEDIR)/lib/$@.rs && echo "--edition=2018" ) \
+			$$( sed -n 's/^\/\/ compile-flags: \([^#]*\).*/\1/p' $(SOURCEDIR)/lib/$@.rs ) \
 			--crate-type rlib -Zinstrument-coverage
 
 %: $(SOURCEDIR)/%.rs
 	# Compile the test program with coverage instrumentation
 	$(RUSTC) $(SOURCEDIR)/$@.rs \
-			$$( grep -q '^\/\/ require-rust-edition-2018' $(SOURCEDIR)/$@.rs && echo "--edition=2018" ) \
+			$$( sed -n 's/^\/\/ compile-flags: \([^#]*\).*/\1/p' $(SOURCEDIR)/$@.rs ) \
 			-L "$(TMPDIR)" -Zinstrument-coverage
 
 	# Run it in order to generate some profiling data,
@@ -111,7 +107,7 @@ endif
 	# Run it through rustdoc as well to cover doctests
 	LLVM_PROFILE_FILE="$(TMPDIR)"/$@-%p.profraw \
 			$(RUSTDOC) --crate-name workaround_for_79771 --test $(SOURCEDIR)/$@.rs \
-			$$( grep -q '^\/\/ require-rust-edition-2018' $(SOURCEDIR)/$@.rs && echo "--edition=2018" ) \
+			$$( sed -n 's/^\/\/ compile-flags: \([^#]*\).*/\1/p' $(SOURCEDIR)/$@.rs ) \
 			-L "$(TMPDIR)" -Zinstrument-coverage \
 			-Z unstable-options --persist-doctests=$(TMPDIR)/rustdoc-$@
 
@@ -131,7 +127,7 @@ endif
 			$$( \
 				for file in $(TMPDIR)/rustdoc-$@/*/rust_out; \
 				do \
-				[[ -x $$file ]] && printf "%s %s " -object $$file; \
+				[ -x "$$file" ] && printf "%s %s " -object $$file; \
 				done \
 			) \
 		2> "$(TMPDIR)"/show_coverage_stderr.$@.txt \

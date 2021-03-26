@@ -1,7 +1,7 @@
-use crate::utils::{
-    fn_has_unsatisfiable_preds, has_drop, is_copy, is_type_diagnostic_item, match_def_path, match_type, paths,
-    snippet_opt, span_lint_hir, span_lint_hir_and_then, walk_ptrs_ty_depth,
-};
+use clippy_utils::diagnostics::{span_lint_hir, span_lint_hir_and_then};
+use clippy_utils::source::snippet_opt;
+use clippy_utils::ty::{has_drop, is_copy, is_type_diagnostic_item, walk_ptrs_ty_depth};
+use clippy_utils::{fn_has_unsatisfiable_preds, match_def_path, paths};
 use if_chain::if_chain;
 use rustc_data_structures::{fx::FxHashMap, transitive_relation::TransitiveRelation};
 use rustc_errors::Applicability;
@@ -165,9 +165,9 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                     if let Some((pred_fn_def_id, pred_arg, pred_arg_ty, res)) =
                         is_call_with_ref_arg(cx, mir, &pred_terminator.kind);
                     if res == cloned;
-                    if match_def_path(cx, pred_fn_def_id, &paths::DEREF_TRAIT_METHOD);
-                    if match_type(cx, pred_arg_ty, &paths::PATH_BUF)
-                        || match_type(cx, pred_arg_ty, &paths::OS_STRING);
+                    if cx.tcx.is_diagnostic_item(sym::deref_method, pred_fn_def_id);
+                    if is_type_diagnostic_item(cx, pred_arg_ty, sym::PathBuf)
+                        || is_type_diagnostic_item(cx, pred_arg_ty, sym::OsString);
                     then {
                         (pred_arg, res)
                     } else {
@@ -556,7 +556,7 @@ impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'tcx> {
                     mir::Operand::Copy(p) | mir::Operand::Move(p) => {
                         self.possible_borrower.add(p.local, *dest);
                     },
-                    _ => (),
+                    mir::Operand::Constant(..) => (),
                 }
             }
         }
@@ -578,16 +578,16 @@ fn rvalue_locals(rvalue: &mir::Rvalue<'_>, mut visit: impl FnMut(mir::Local)) {
 
     let mut visit_op = |op: &mir::Operand<'_>| match op {
         mir::Operand::Copy(p) | mir::Operand::Move(p) => visit(p.local),
-        _ => (),
+        mir::Operand::Constant(..) => (),
     };
 
     match rvalue {
         Use(op) | Repeat(op, _) | Cast(_, op, _) | UnaryOp(_, op) => visit_op(op),
         Aggregate(_, ops) => ops.iter().for_each(visit_op),
-        BinaryOp(_, lhs, rhs) | CheckedBinaryOp(_, lhs, rhs) => {
+        BinaryOp(_, box (lhs, rhs)) | CheckedBinaryOp(_, box (lhs, rhs)) => {
             visit_op(lhs);
             visit_op(rhs);
-        },
+        }
         _ => (),
     }
 }

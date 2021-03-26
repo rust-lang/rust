@@ -74,7 +74,7 @@ impl<'a> FnKind<'a> {
 /// Each method of the `Visitor` trait is a hook to be potentially
 /// overridden. Each method's default implementation recursively visits
 /// the substructure of the input via the corresponding `walk` method;
-/// e.g., the `visit_mod` method by default calls `visit::walk_mod`.
+/// e.g., the `visit_item` method by default calls `visit::walk_item`.
 ///
 /// If you want to ensure that your code handles every variant
 /// explicitly, you need to override each method. (And you also need
@@ -86,9 +86,6 @@ pub trait Visitor<'ast>: Sized {
     }
     fn visit_ident(&mut self, ident: Ident) {
         walk_ident(self, ident);
-    }
-    fn visit_mod(&mut self, m: &'ast Mod, _s: Span, _attrs: &[Attribute], _n: NodeId) {
-        walk_mod(self, m);
     }
     fn visit_foreign_item(&mut self, i: &'ast ForeignItem) {
         walk_foreign_item(self, i)
@@ -154,8 +151,8 @@ pub trait Visitor<'ast>: Sized {
     fn visit_variant_data(&mut self, s: &'ast VariantData) {
         walk_struct_def(self, s)
     }
-    fn visit_struct_field(&mut self, s: &'ast StructField) {
-        walk_struct_field(self, s)
+    fn visit_field_def(&mut self, s: &'ast FieldDef) {
+        walk_field_def(self, s)
     }
     fn visit_enum_def(
         &mut self,
@@ -211,11 +208,11 @@ pub trait Visitor<'ast>: Sized {
     fn visit_fn_header(&mut self, _header: &'ast FnHeader) {
         // Nothing to do
     }
-    fn visit_field(&mut self, f: &'ast Field) {
-        walk_field(self, f)
+    fn visit_expr_field(&mut self, f: &'ast ExprField) {
+        walk_expr_field(self, f)
     }
-    fn visit_field_pattern(&mut self, fp: &'ast FieldPat) {
-        walk_field_pattern(self, fp)
+    fn visit_pat_field(&mut self, fp: &'ast PatField) {
+        walk_pat_field(self, fp)
     }
 }
 
@@ -238,12 +235,8 @@ pub fn walk_ident<'a, V: Visitor<'a>>(visitor: &mut V, ident: Ident) {
 }
 
 pub fn walk_crate<'a, V: Visitor<'a>>(visitor: &mut V, krate: &'a Crate) {
-    visitor.visit_mod(&krate.module, krate.span, &krate.attrs, CRATE_NODE_ID);
+    walk_list!(visitor, visit_item, &krate.items);
     walk_list!(visitor, visit_attribute, &krate.attrs);
-}
-
-pub fn walk_mod<'a, V: Visitor<'a>>(visitor: &mut V, module: &'a Mod) {
-    walk_list!(visitor, visit_item, &module.items);
 }
 
 pub fn walk_local<'a, V: Visitor<'a>>(visitor: &mut V, local: &'a Local) {
@@ -292,17 +285,22 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             visitor.visit_ty(typ);
             walk_list!(visitor, visit_expr, expr);
         }
-        ItemKind::Fn(_, ref sig, ref generics, ref body) => {
+        ItemKind::Fn(box FnKind(_, ref sig, ref generics, ref body)) => {
             visitor.visit_generics(generics);
             let kind = FnKind::Fn(FnCtxt::Free, item.ident, sig, &item.vis, body.as_deref());
             visitor.visit_fn(kind, item.span, item.id)
         }
-        ItemKind::Mod(ref module) => visitor.visit_mod(module, item.span, &item.attrs, item.id),
+        ItemKind::Mod(_unsafety, ref mod_kind) => match mod_kind {
+            ModKind::Loaded(items, _inline, _inner_span) => {
+                walk_list!(visitor, visit_item, items)
+            }
+            ModKind::Unloaded => {}
+        },
         ItemKind::ForeignMod(ref foreign_module) => {
             walk_list!(visitor, visit_foreign_item, &foreign_module.items);
         }
         ItemKind::GlobalAsm(ref ga) => visitor.visit_global_asm(ga),
-        ItemKind::TyAlias(_, ref generics, ref bounds, ref ty) => {
+        ItemKind::TyAlias(box TyAliasKind(_, ref generics, ref bounds, ref ty)) => {
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_param_bound, bounds);
             walk_list!(visitor, visit_ty, ty);
@@ -311,7 +309,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             visitor.visit_generics(generics);
             visitor.visit_enum_def(enum_definition, generics, item.id, item.span)
         }
-        ItemKind::Impl {
+        ItemKind::Impl(box ImplKind {
             unsafety: _,
             polarity: _,
             defaultness: _,
@@ -320,7 +318,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             ref of_trait,
             ref self_ty,
             ref items,
-        } => {
+        }) => {
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_trait_ref, of_trait);
             visitor.visit_ty(self_ty);
@@ -331,7 +329,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             visitor.visit_generics(generics);
             visitor.visit_variant_data(struct_definition);
         }
-        ItemKind::Trait(.., ref generics, ref bounds, ref items) => {
+        ItemKind::Trait(box TraitKind(.., ref generics, ref bounds, ref items)) => {
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_param_bound, bounds);
             walk_list!(visitor, visit_assoc_item, items, AssocCtxt::Trait);
@@ -366,13 +364,13 @@ where
     walk_list!(visitor, visit_attribute, &variant.attrs);
 }
 
-pub fn walk_field<'a, V: Visitor<'a>>(visitor: &mut V, f: &'a Field) {
+pub fn walk_expr_field<'a, V: Visitor<'a>>(visitor: &mut V, f: &'a ExprField) {
     visitor.visit_expr(&f.expr);
     visitor.visit_ident(f.ident);
     walk_list!(visitor, visit_attribute, f.attrs.iter());
 }
 
-pub fn walk_field_pattern<'a, V: Visitor<'a>>(visitor: &mut V, fp: &'a FieldPat) {
+pub fn walk_pat_field<'a, V: Visitor<'a>>(visitor: &mut V, fp: &'a PatField) {
     visitor.visit_ident(fp.ident);
     visitor.visit_pat(&fp.pat);
     walk_list!(visitor, visit_attribute, fp.attrs.iter());
@@ -511,7 +509,7 @@ pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) {
         }
         PatKind::Struct(ref path, ref fields, _) => {
             visitor.visit_path(path, pattern.id);
-            walk_list!(visitor, visit_field_pattern, fields);
+            walk_list!(visitor, visit_pat_field, fields);
         }
         PatKind::Box(ref subpattern)
         | PatKind::Ref(ref subpattern, _)
@@ -543,12 +541,12 @@ pub fn walk_foreign_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a ForeignI
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_expr, expr);
         }
-        ForeignItemKind::Fn(_, sig, generics, body) => {
+        ForeignItemKind::Fn(box FnKind(_, sig, generics, body)) => {
             visitor.visit_generics(generics);
             let kind = FnKind::Fn(FnCtxt::Foreign, ident, sig, vis, body.as_deref());
             visitor.visit_fn(kind, span, id);
         }
-        ForeignItemKind::TyAlias(_, generics, bounds, ty) => {
+        ForeignItemKind::TyAlias(box TyAliasKind(_, generics, bounds, ty)) => {
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_param_bound, bounds);
             walk_list!(visitor, visit_ty, ty);
@@ -653,12 +651,12 @@ pub fn walk_assoc_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a AssocItem,
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_expr, expr);
         }
-        AssocItemKind::Fn(_, sig, generics, body) => {
+        AssocItemKind::Fn(box FnKind(_, sig, generics, body)) => {
             visitor.visit_generics(generics);
             let kind = FnKind::Fn(FnCtxt::Assoc(ctxt), ident, sig, vis, body.as_deref());
             visitor.visit_fn(kind, span, id);
         }
-        AssocItemKind::TyAlias(_, generics, bounds, ty) => {
+        AssocItemKind::TyAlias(box TyAliasKind(_, generics, bounds, ty)) => {
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_param_bound, bounds);
             walk_list!(visitor, visit_ty, ty);
@@ -670,16 +668,16 @@ pub fn walk_assoc_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a AssocItem,
 }
 
 pub fn walk_struct_def<'a, V: Visitor<'a>>(visitor: &mut V, struct_definition: &'a VariantData) {
-    walk_list!(visitor, visit_struct_field, struct_definition.fields());
+    walk_list!(visitor, visit_field_def, struct_definition.fields());
 }
 
-pub fn walk_struct_field<'a, V: Visitor<'a>>(visitor: &mut V, struct_field: &'a StructField) {
-    visitor.visit_vis(&struct_field.vis);
-    if let Some(ident) = struct_field.ident {
+pub fn walk_field_def<'a, V: Visitor<'a>>(visitor: &mut V, field: &'a FieldDef) {
+    visitor.visit_vis(&field.vis);
+    if let Some(ident) = field.ident {
         visitor.visit_ident(ident);
     }
-    visitor.visit_ty(&struct_field.ty);
-    walk_list!(visitor, visit_attribute, &struct_field.attrs);
+    visitor.visit_ty(&field.ty);
+    walk_list!(visitor, visit_attribute, &field.attrs);
 }
 
 pub fn walk_block<'a, V: Visitor<'a>>(visitor: &mut V, block: &'a Block) {
@@ -723,10 +721,10 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             visitor.visit_expr(element);
             visitor.visit_anon_const(count)
         }
-        ExprKind::Struct(ref path, ref fields, ref optional_base) => {
-            visitor.visit_path(path, expression.id);
-            walk_list!(visitor, visit_field, fields);
-            match optional_base {
+        ExprKind::Struct(ref se) => {
+            visitor.visit_path(&se.path, expression.id);
+            walk_list!(visitor, visit_expr_field, &se.fields);
+            match &se.rest {
                 StructRest::Base(expr) => visitor.visit_expr(expr),
                 StructRest::Rest(_span) => {}
                 StructRest::None => {}

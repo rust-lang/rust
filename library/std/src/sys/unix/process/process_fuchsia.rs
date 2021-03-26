@@ -22,9 +22,9 @@ impl Command {
         let envp = self.capture_env();
 
         if self.saw_nul() {
-            return Err(io::Error::new(
+            return Err(io::Error::new_const(
                 io::ErrorKind::InvalidInput,
-                "nul byte found in provided data",
+                &"nul byte found in provided data",
             ));
         }
 
@@ -37,7 +37,10 @@ impl Command {
 
     pub fn exec(&mut self, default: Stdio) -> io::Error {
         if self.saw_nul() {
-            return io::Error::new(io::ErrorKind::InvalidInput, "nul byte found in provided data");
+            return io::Error::new_const(
+                io::ErrorKind::InvalidInput,
+                &"nul byte found in provided data",
+            );
         }
 
         match self.setup_io(default, true) {
@@ -182,9 +185,9 @@ impl Process {
             ))?;
         }
         if actual != 1 {
-            return Err(io::Error::new(
+            return Err(io::Error::new_const(
                 io::ErrorKind::InvalidData,
-                "Failed to get exit status of process",
+                &"Failed to get exit status of process",
             ));
         }
         Ok(ExitStatus(proc_info.return_code))
@@ -220,9 +223,9 @@ impl Process {
             ))?;
         }
         if actual != 1 {
-            return Err(io::Error::new(
+            return Err(io::Error::new_const(
                 io::ErrorKind::InvalidData,
-                "Failed to get exit status of process",
+                &"Failed to get exit status of process",
             ));
         }
         Ok(Some(ExitStatus(proc_info.return_code)))

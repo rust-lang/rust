@@ -9,11 +9,13 @@
 //! Type-relative name resolution (methods, fields, associated items) happens in `librustc_typeck`.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+#![feature(box_patterns)]
 #![feature(bool_to_option)]
+#![feature(control_flow_enum)]
 #![feature(crate_visibility_modifier)]
 #![feature(format_args_capture)]
 #![feature(nll)]
-#![feature(or_patterns)]
+#![cfg_attr(bootstrap, feature(or_patterns))]
 #![recursion_limit = "256"]
 
 pub use rustc_hir::def::{Namespace, PerNS};
@@ -22,11 +24,13 @@ use Determinacy::*;
 
 use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::node_id::NodeMap;
+use rustc_ast::ptr::P;
 use rustc_ast::unwrap_or;
 use rustc_ast::visit::{self, Visitor};
-use rustc_ast::{self as ast, FloatTy, IntTy, NodeId, UintTy};
+use rustc_ast::{self as ast, NodeId};
 use rustc_ast::{Crate, CRATE_NODE_ID};
-use rustc_ast::{ItemKind, Path};
+use rustc_ast::{Expr, ExprKind, LitKind};
+use rustc_ast::{ItemKind, ModKind, Path};
 use rustc_ast_lowering::ResolverAstLowering;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
@@ -38,8 +42,7 @@ use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{self, CtorOf, DefKind, NonMacroAttrKind, PartialRes};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
-use rustc_hir::PrimTy::{self, Bool, Char, Float, Int, Str, Uint};
-use rustc_hir::TraitCandidate;
+use rustc_hir::{PrimTy, TraitCandidate};
 use rustc_index::vec::IndexVec;
 use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_middle::hir::exports::ExportMap;
@@ -59,6 +62,7 @@ use rustc_span::{Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
+use std::ops::ControlFlow;
 use std::{cmp, fmt, iter, ptr};
 use tracing::debug;
 
@@ -152,6 +156,12 @@ impl<'a> ParentScope<'a> {
     }
 }
 
+#[derive(Copy, Debug, Clone)]
+enum ImplTraitContext {
+    Existential,
+    Universal(LocalDefId),
+}
+
 #[derive(Eq)]
 struct BindingError {
     name: Symbol,
@@ -218,7 +228,7 @@ enum ResolutionError<'a> {
     ),
     /// Error E0530: `X` bindings cannot shadow `Y`s.
     BindingShadowsSomethingUnacceptable(&'static str, Symbol, &'a NameBinding<'a>),
-    /// Error E0128: type parameters with a default cannot use forward-declared identifiers.
+    /// Error E0128: generic parameters with a default cannot use forward-declared identifiers.
     ForwardDeclaredTyParam, // FIXME(const_generics_defaults)
     /// ERROR E0770: the type of const parameters must not depend on other generic parameters.
     ParamInTyOfConstParam(Symbol),
@@ -228,7 +238,7 @@ enum ResolutionError<'a> {
     ///
     /// This error is only emitted when using `min_const_generics`.
     ParamInNonTrivialAnonConst { name: Symbol, is_type: bool },
-    /// Error E0735: type parameters with a default cannot use `Self`
+    /// Error E0735: generic parameters with a default cannot use `Self`
     SelfInTyParamDefault,
     /// Error E0767: use of unreachable label
     UnreachableLabel { name: Symbol, definition_span: Span, suggestion: Option<LabelSuggestion> },
@@ -283,28 +293,21 @@ struct UsePlacementFinder {
 impl UsePlacementFinder {
     fn check(krate: &Crate, target_module: NodeId) -> (Option<Span>, bool) {
         let mut finder = UsePlacementFinder { target_module, span: None, found_use: false };
-        visit::walk_crate(&mut finder, krate);
+        if let ControlFlow::Continue(..) = finder.check_mod(&krate.items, CRATE_NODE_ID) {
+            visit::walk_crate(&mut finder, krate);
+        }
         (finder.span, finder.found_use)
     }
-}
 
-impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
-    fn visit_mod(
-        &mut self,
-        module: &'tcx ast::Mod,
-        _: Span,
-        _: &[ast::Attribute],
-        node_id: NodeId,
-    ) {
+    fn check_mod(&mut self, items: &[P<ast::Item>], node_id: NodeId) -> ControlFlow<()> {
         if self.span.is_some() {
-            return;
+            return ControlFlow::Break(());
         }
         if node_id != self.target_module {
-            visit::walk_mod(self, module);
-            return;
+            return ControlFlow::Continue(());
         }
         // find a use statement
-        for item in &module.items {
+        for item in items {
             match item.kind {
                 ItemKind::Use(..) => {
                     // don't suggest placing a use before the prelude
@@ -312,7 +315,7 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
                     if !item.span.from_expansion() {
                         self.span = Some(item.span.shrink_to_lo());
                         self.found_use = true;
-                        return;
+                        return ControlFlow::Break(());
                     }
                 }
                 // don't place use before extern crate
@@ -337,6 +340,18 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
                 }
             }
         }
+        ControlFlow::Continue(())
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
+    fn visit_item(&mut self, item: &'tcx ast::Item) {
+        if let ItemKind::Mod(_, ModKind::Loaded(items, ..)) = &item.kind {
+            if let ControlFlow::Break(..) = self.check_mod(items, item.id) {
+                return;
+            }
+        }
+        visit::walk_item(self, item);
     }
 }
 
@@ -750,27 +765,12 @@ impl<'a> NameBinding<'a> {
     fn is_possibly_imported_variant(&self) -> bool {
         match self.kind {
             NameBindingKind::Import { binding, .. } => binding.is_possibly_imported_variant(),
-            _ => self.is_variant(),
-        }
-    }
-
-    // We sometimes need to treat variants as `pub` for backwards compatibility.
-    fn pseudo_vis(&self) -> ty::Visibility {
-        if self.is_variant() && self.res().def_id().is_local() {
-            ty::Visibility::Public
-        } else {
-            self.vis
-        }
-    }
-
-    fn is_variant(&self) -> bool {
-        matches!(
-            self.kind,
             NameBindingKind::Res(
                 Res::Def(DefKind::Variant | DefKind::Ctor(CtorOf::Variant, ..), _),
                 _,
-            )
-        )
+            ) => true,
+            NameBindingKind::Res(..) | NameBindingKind::Module(..) => false,
+        }
     }
 
     fn is_extern_crate(&self) -> bool {
@@ -833,39 +833,6 @@ impl<'a> NameBinding<'a> {
     }
 }
 
-/// Interns the names of the primitive types.
-///
-/// All other types are defined somewhere and possibly imported, but the primitive ones need
-/// special handling, since they have no place of origin.
-struct PrimitiveTypeTable {
-    primitive_types: FxHashMap<Symbol, PrimTy>,
-}
-
-impl PrimitiveTypeTable {
-    fn new() -> PrimitiveTypeTable {
-        let mut table = FxHashMap::default();
-
-        table.insert(sym::bool, Bool);
-        table.insert(sym::char, Char);
-        table.insert(sym::f32, Float(FloatTy::F32));
-        table.insert(sym::f64, Float(FloatTy::F64));
-        table.insert(sym::isize, Int(IntTy::Isize));
-        table.insert(sym::i8, Int(IntTy::I8));
-        table.insert(sym::i16, Int(IntTy::I16));
-        table.insert(sym::i32, Int(IntTy::I32));
-        table.insert(sym::i64, Int(IntTy::I64));
-        table.insert(sym::i128, Int(IntTy::I128));
-        table.insert(sym::str, Str);
-        table.insert(sym::usize, Uint(UintTy::Usize));
-        table.insert(sym::u8, Uint(UintTy::U8));
-        table.insert(sym::u16, Uint(UintTy::U16));
-        table.insert(sym::u32, Uint(UintTy::U32));
-        table.insert(sym::u64, Uint(UintTy::U64));
-        table.insert(sym::u128, Uint(UintTy::U128));
-        Self { primitive_types: table }
-    }
-}
-
 #[derive(Debug, Default, Clone)]
 pub struct ExternPreludeEntry<'a> {
     extern_crate_item: Option<&'a NameBinding<'a>>,
@@ -910,9 +877,6 @@ pub struct Resolver<'a> {
     /// This binding should be ignored during in-module resolution, so that we don't get
     /// "self-confirming" import resolutions during import validation.
     unusable_binding: Option<&'a NameBinding<'a>>,
-
-    /// The idents for the primitive types.
-    primitive_type_table: PrimitiveTypeTable,
 
     /// Resolutions for nodes that have a single resolution.
     partial_res_map: NodeMap<PartialRes>,
@@ -1003,6 +967,8 @@ pub struct Resolver<'a> {
     output_macro_rules_scopes: FxHashMap<ExpnId, MacroRulesScopeRef<'a>>,
     /// Helper attributes that are in scope for the given expansion.
     helper_attrs: FxHashMap<ExpnId, Vec<Ident>>,
+    /// Resolutions for paths inside the `#[derive(...)]` attribute with the given `ExpnId`.
+    derive_resolutions: FxHashMap<ExpnId, Vec<(Lrc<SyntaxExtension>, ast::Path)>>,
 
     /// Avoid duplicated errors for "name already defined".
     name_already_seen: FxHashMap<Symbol, Span>,
@@ -1029,13 +995,16 @@ pub struct Resolver<'a> {
     /// Indices of unnamed struct or variant fields with unresolved attributes.
     placeholder_field_indices: FxHashMap<NodeId, usize>,
     /// When collecting definitions from an AST fragment produced by a macro invocation `ExpnId`
-    /// we know what parent node that fragment should be attached to thanks to this table.
-    invocation_parents: FxHashMap<ExpnId, LocalDefId>,
+    /// we know what parent node that fragment should be attached to thanks to this table,
+    /// and how the `impl Trait` fragments were introduced.
+    invocation_parents: FxHashMap<ExpnId, (LocalDefId, ImplTraitContext)>,
 
     next_disambiguator: FxHashMap<(LocalDefId, DefPathData), u32>,
     /// Some way to know that we are in a *trait* impl in `visit_assoc_item`.
     /// FIXME: Replace with a more general AST map (together with some other fields).
     trait_impl_items: FxHashSet<LocalDefId>,
+
+    legacy_const_generic_args: FxHashMap<DefId, Option<Vec<usize>>>,
 }
 
 /// Nothing really interesting here; it just provides memory for the rest of the crate.
@@ -1115,6 +1084,10 @@ impl ResolverAstLowering for Resolver<'_> {
 
     fn item_generics_num_lifetimes(&self, def_id: DefId, sess: &Session) -> usize {
         self.cstore().item_generics_num_lifetimes(def_id, sess)
+    }
+
+    fn legacy_const_generic_args(&mut self, expr: &Expr) -> Option<Vec<usize>> {
+        self.legacy_const_generic_args(expr)
     }
 
     fn get_partial_res(&mut self, id: NodeId) -> Option<PartialRes> {
@@ -1239,7 +1212,7 @@ impl<'a> Resolver<'a> {
         node_id_to_def_id.insert(CRATE_NODE_ID, root);
 
         let mut invocation_parents = FxHashMap::default();
-        invocation_parents.insert(ExpnId::root(), root);
+        invocation_parents.insert(ExpnId::root(), (root, ImplTraitContext::Existential));
 
         let mut extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'_>> = session
             .opts
@@ -1282,8 +1255,6 @@ impl<'a> Resolver<'a> {
 
             last_import_segment: false,
             unusable_binding: None,
-
-            primitive_type_table: PrimitiveTypeTable::new(),
 
             partial_res_map: Default::default(),
             import_res_map: Default::default(),
@@ -1333,6 +1304,7 @@ impl<'a> Resolver<'a> {
             invocation_parent_scopes: Default::default(),
             output_macro_rules_scopes: Default::default(),
             helper_attrs: Default::default(),
+            derive_resolutions: Default::default(),
             local_macro_def_scopes: FxHashMap::default(),
             name_already_seen: FxHashMap::default(),
             potentially_unused_imports: Vec::new(),
@@ -1358,6 +1330,7 @@ impl<'a> Resolver<'a> {
             invocation_parents,
             next_disambiguator: Default::default(),
             trait_impl_items: Default::default(),
+            legacy_const_generic_args: Default::default(),
         };
 
         let root_parent_scope = ParentScope::module(graph_root, &resolver);
@@ -1456,7 +1429,7 @@ impl<'a> Resolver<'a> {
 
     fn macro_def(&self, mut ctxt: SyntaxContext) -> DefId {
         loop {
-            match ctxt.outer_expn().expn_data().macro_def_id {
+            match ctxt.outer_expn_data().macro_def_id {
                 Some(def_id) => return def_id,
                 None => ctxt.remove_mark(),
             };
@@ -1993,9 +1966,9 @@ impl<'a> Resolver<'a> {
         }
 
         if ns == TypeNS {
-            if let Some(prim_ty) = self.primitive_type_table.primitive_types.get(&ident.name) {
+            if let Some(prim_ty) = PrimTy::from_name(ident.name) {
                 let binding =
-                    (Res::PrimTy(*prim_ty), ty::Visibility::Public, DUMMY_SP, ExpnId::root())
+                    (Res::PrimTy(prim_ty), ty::Visibility::Public, DUMMY_SP, ExpnId::root())
                         .to_name_binding(self.arenas);
                 return Some(LexicalScopeBinding::Item(binding));
             }
@@ -2467,8 +2440,10 @@ impl<'a> Resolver<'a> {
                                     Applicability::MaybeIncorrect,
                                 )),
                             )
-                        } else {
+                        } else if self.session.edition() == Edition::Edition2015 {
                             (format!("maybe a missing crate `{}`?", ident), None)
+                        } else {
+                            (format!("could not find `{}` in the crate root", ident), None)
                         }
                     } else if i == 0 {
                         if ident
@@ -2484,10 +2459,16 @@ impl<'a> Resolver<'a> {
                         }
                     } else {
                         let parent = path[i - 1].ident.name;
-                        let parent = if parent == kw::PathRoot {
-                            "crate root".to_owned()
-                        } else {
-                            format!("`{}`", parent)
+                        let parent = match parent {
+                            // ::foo is mounted at the crate root for 2015, and is the extern
+                            // prelude for 2018+
+                            kw::PathRoot if self.session.edition() > Edition::Edition2015 => {
+                                "the list of imported crates".to_owned()
+                            }
+                            kw::PathRoot | kw::Crate => "the crate root".to_owned(),
+                            _ => {
+                                format!("`{}`", parent)
+                            }
                         };
 
                         let mut msg = format!("could not find `{}` in {}", ident, parent);
@@ -2611,8 +2592,8 @@ impl<'a> Resolver<'a> {
         debug!("validate_res_from_ribs({:?})", res);
         let ribs = &all_ribs[rib_index + 1..];
 
-        // An invalid forward use of a type parameter from a previous default.
-        if let ForwardTyParamBanRibKind = all_ribs[rib_index].kind {
+        // An invalid forward use of a generic parameter from a previous default.
+        if let ForwardGenericParamBanRibKind = all_ribs[rib_index].kind {
             if record_used {
                 let res_error = if rib_ident.name == kw::SelfUpper {
                     ResolutionError::SelfInTyParamDefault
@@ -2636,7 +2617,7 @@ impl<'a> Resolver<'a> {
                         | ClosureOrAsyncRibKind
                         | ModuleRibKind(..)
                         | MacroDefinition(..)
-                        | ForwardTyParamBanRibKind => {
+                        | ForwardGenericParamBanRibKind => {
                             // Nothing to do. Continue.
                         }
                         ItemRibKind(_) | FnItemRibKind | AssocItemRibKind => {
@@ -2708,7 +2689,9 @@ impl<'a> Resolver<'a> {
 
                         // We only forbid constant items if we are inside of type defaults,
                         // for example `struct Foo<T, U = [u8; std::mem::size_of::<T>()]>`
-                        ForwardTyParamBanRibKind => {
+                        ForwardGenericParamBanRibKind => {
+                            // FIXME(const_generic_defaults): we may need to distinguish between
+                            // being in type parameter defaults and const parameter defaults
                             in_ty_param_default = true;
                             continue;
                         }
@@ -2801,7 +2784,9 @@ impl<'a> Resolver<'a> {
 
                         // We only forbid constant items if we are inside of type defaults,
                         // for example `struct Foo<T, U = [u8; std::mem::size_of::<T>()]>`
-                        ForwardTyParamBanRibKind => {
+                        ForwardGenericParamBanRibKind => {
+                            // FIXME(const_generic_defaults): we may need to distinguish between
+                            // being in type parameter defaults and const parameter defaults
                             in_ty_param_default = true;
                             continue;
                         }
@@ -3349,6 +3334,61 @@ impl<'a> Resolver<'a> {
     #[inline]
     pub fn opt_span(&self, def_id: DefId) -> Option<Span> {
         if let Some(def_id) = def_id.as_local() { Some(self.def_id_to_span[def_id]) } else { None }
+    }
+
+    /// Checks if an expression refers to a function marked with
+    /// `#[rustc_legacy_const_generics]` and returns the argument index list
+    /// from the attribute.
+    pub fn legacy_const_generic_args(&mut self, expr: &Expr) -> Option<Vec<usize>> {
+        if let ExprKind::Path(None, path) = &expr.kind {
+            // Don't perform legacy const generics rewriting if the path already
+            // has generic arguments.
+            if path.segments.last().unwrap().args.is_some() {
+                return None;
+            }
+
+            let partial_res = self.partial_res_map.get(&expr.id)?;
+            if partial_res.unresolved_segments() != 0 {
+                return None;
+            }
+
+            if let Res::Def(def::DefKind::Fn, def_id) = partial_res.base_res() {
+                // We only support cross-crate argument rewriting. Uses
+                // within the same crate should be updated to use the new
+                // const generics style.
+                if def_id.is_local() {
+                    return None;
+                }
+
+                if let Some(v) = self.legacy_const_generic_args.get(&def_id) {
+                    return v.clone();
+                }
+
+                let parse_attrs = || {
+                    let attrs = self.cstore().item_attrs(def_id, self.session);
+                    let attr = attrs
+                        .iter()
+                        .find(|a| self.session.check_name(a, sym::rustc_legacy_const_generics))?;
+                    let mut ret = vec![];
+                    for meta in attr.meta_item_list()? {
+                        match meta.literal()?.kind {
+                            LitKind::Int(a, _) => {
+                                ret.push(a as usize);
+                            }
+                            _ => panic!("invalid arg index"),
+                        }
+                    }
+                    Some(ret)
+                };
+
+                // Cache the lookup to avoid parsing attributes for an iterm
+                // multiple times.
+                let ret = parse_attrs();
+                self.legacy_const_generic_args.insert(def_id, ret.clone());
+                return ret;
+            }
+        }
+        None
     }
 }
 

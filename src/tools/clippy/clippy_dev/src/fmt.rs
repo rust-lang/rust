@@ -8,7 +8,7 @@ use walkdir::WalkDir;
 
 #[derive(Debug)]
 pub enum CliError {
-    CommandFailed(String),
+    CommandFailed(String, String),
     IoError(io::Error),
     RustfmtNotInstalled,
     WalkDirError(walkdir::Error),
@@ -54,6 +54,7 @@ pub fn run(check: bool, verbose: bool) {
         success &= cargo_fmt(context, project_root.as_path())?;
         success &= cargo_fmt(context, &project_root.join("clippy_dev"))?;
         success &= cargo_fmt(context, &project_root.join("rustc_tools_util"))?;
+        success &= cargo_fmt(context, &project_root.join("lintcheck"))?;
 
         for entry in WalkDir::new(project_root.join("tests")) {
             let entry = entry?;
@@ -75,8 +76,8 @@ pub fn run(check: bool, verbose: bool) {
 
     fn output_err(err: CliError) {
         match err {
-            CliError::CommandFailed(command) => {
-                eprintln!("error: A command failed! `{}`", command);
+            CliError::CommandFailed(command, stderr) => {
+                eprintln!("error: A command failed! `{}`\nstderr: {}", command, stderr);
             },
             CliError::IoError(err) => {
                 eprintln!("error: {}", err);
@@ -89,7 +90,7 @@ pub fn run(check: bool, verbose: bool) {
             },
             CliError::RaSetupActive => {
                 eprintln!(
-                    "error: a local rustc repo is enabled as path dependency via `cargo dev ra_setup`.
+                    "error: a local rustc repo is enabled as path dependency via `cargo dev ide_setup`.
 Not formatting because that would format the local repo as well!
 Please revert the changes to Cargo.tomls first."
                 );
@@ -136,12 +137,16 @@ fn exec(
         println!("{}", format_command(&program, &dir, args));
     }
 
-    let mut child = Command::new(&program).current_dir(&dir).args(args.iter()).spawn()?;
-    let code = child.wait()?;
-    let success = code.success();
+    let child = Command::new(&program).current_dir(&dir).args(args.iter()).spawn()?;
+    let output = child.wait_with_output()?;
+    let success = output.status.success();
 
     if !context.check && !success {
-        return Err(CliError::CommandFailed(format_command(&program, &dir, args)));
+        let stderr = std::str::from_utf8(&output.stderr).unwrap_or("");
+        return Err(CliError::CommandFailed(
+            format_command(&program, &dir, args),
+            String::from(stderr),
+        ));
     }
 
     Ok(success)
@@ -177,7 +182,10 @@ fn rustfmt_test(context: &FmtContext) -> Result<(), CliError> {
     {
         Err(CliError::RustfmtNotInstalled)
     } else {
-        Err(CliError::CommandFailed(format_command(&program, &dir, args)))
+        Err(CliError::CommandFailed(
+            format_command(&program, &dir, args),
+            std::str::from_utf8(&output.stderr).unwrap_or("").to_string(),
+        ))
     }
 }
 

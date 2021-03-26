@@ -1,0 +1,22 @@
+error: called `.byte().nth()` on a `String`
+  --> $DIR/bytes_nth.rs:8:5
+   |
+LL |     s.bytes().nth(3);
+   |     ^^^^^^^^^^^^^^^^ help: try: `s.as_bytes().get(3)`
+   |
+   = note: `-D clippy::bytes-nth` implied by `-D warnings`
+
+error: called `.byte().nth()` on a `String`
+  --> $DIR/bytes_nth.rs:9:6
+   |
+LL |     &s.bytes().nth(3);
+   |      ^^^^^^^^^^^^^^^^ help: try: `s.as_bytes().get(3)`
+
+error: called `.byte().nth()` on a `str`
+  --> $DIR/bytes_nth.rs:10:5
+   |
+LL |     s[..].bytes().nth(3);
+   |     ^^^^^^^^^^^^^^^^^^^^ help: try: `s[..].as_bytes().get(3)`
+
+error: aborting due to 3 previous errors
+

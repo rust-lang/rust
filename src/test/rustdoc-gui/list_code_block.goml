@@ -1,0 +1,3 @@
+goto: file://|DOC_PATH|/index.html
+goto: ./fn.check_list_code_block.html
+assert: ("pre.rust.fn")

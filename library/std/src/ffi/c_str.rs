@@ -62,20 +62,18 @@ use crate::sys;
 /// u8` argument which is not necessarily nul-terminated, plus another
 /// argument with the length of the string — like C's `strndup()`.
 /// You can of course get the slice's length with its
-/// [`len`][slice.len] method.
+/// [`len`][slice::len] method.
 ///
 /// If you need a `&[`[`u8`]`]` slice *with* the nul terminator, you
 /// can use [`CString::as_bytes_with_nul`] instead.
 ///
 /// Once you have the kind of slice you need (with or without a nul
 /// terminator), you can call the slice's own
-/// [`as_ptr`][slice.as_ptr] method to get a read-only raw pointer to pass to
+/// [`as_ptr`][slice::as_ptr] method to get a read-only raw pointer to pass to
 /// extern functions. See the documentation for that function for a
 /// discussion on ensuring the lifetime of the raw pointer.
 ///
 /// [`&str`]: prim@str
-/// [slice.as_ptr]: ../primitive.slice.html#method.as_ptr
-/// [slice.len]: ../primitive.slice.html#method.len
 /// [`Deref`]: ops::Deref
 /// [`&CStr`]: CStr
 ///
@@ -1038,7 +1036,7 @@ impl fmt::Display for NulError {
 impl From<NulError> for io::Error {
     /// Converts a [`NulError`] into a [`io::Error`].
     fn from(_: NulError) -> io::Error {
-        io::Error::new(io::ErrorKind::InvalidInput, "data provided contains a nul byte")
+        io::Error::new_const(io::ErrorKind::InvalidInput, &"data provided contains a nul byte")
     }
 }
 

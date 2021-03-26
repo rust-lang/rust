@@ -108,10 +108,10 @@ impl Parker {
             return;
         }
 
-        if c::WaitOnAddress::is_available() {
+        if let Some(wait_on_address) = c::WaitOnAddress::option() {
             loop {
                 // Wait for something to happen, assuming it's still set to PARKED.
-                c::WaitOnAddress(self.ptr(), &PARKED as *const _ as c::LPVOID, 1, c::INFINITE);
+                wait_on_address(self.ptr(), &PARKED as *const _ as c::LPVOID, 1, c::INFINITE);
                 // Change NOTIFIED=>EMPTY but leave PARKED alone.
                 if self.state.compare_exchange(NOTIFIED, EMPTY, Acquire, Acquire).is_ok() {
                     // Actually woken up by unpark().
@@ -140,9 +140,9 @@ impl Parker {
             return;
         }
 
-        if c::WaitOnAddress::is_available() {
+        if let Some(wait_on_address) = c::WaitOnAddress::option() {
             // Wait for something to happen, assuming it's still set to PARKED.
-            c::WaitOnAddress(self.ptr(), &PARKED as *const _ as c::LPVOID, 1, dur2timeout(timeout));
+            wait_on_address(self.ptr(), &PARKED as *const _ as c::LPVOID, 1, dur2timeout(timeout));
             // Set the state back to EMPTY (from either PARKED or NOTIFIED).
             // Note that we don't just write EMPTY, but use swap() to also
             // include an acquire-ordered read to synchronize with unpark()'s
@@ -192,9 +192,9 @@ impl Parker {
         // purpose, to make sure every unpark() has a release-acquire ordering
         // with park().
         if self.state.swap(NOTIFIED, Release) == PARKED {
-            if c::WakeByAddressSingle::is_available() {
+            if let Some(wake_by_address_single) = c::WakeByAddressSingle::option() {
                 unsafe {
-                    c::WakeByAddressSingle(self.ptr());
+                    wake_by_address_single(self.ptr());
                 }
             } else {
                 // If we run NtReleaseKeyedEvent before the waiting thread runs

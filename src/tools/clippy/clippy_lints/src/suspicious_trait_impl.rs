@@ -1,4 +1,5 @@
-use crate::utils::{get_trait_def_id, span_lint, trait_ref_of_method};
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::{get_trait_def_id, paths, trait_ref_of_method};
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
@@ -158,7 +159,7 @@ fn check_binop(
     expected_ops: &[hir::BinOpKind],
 ) -> Option<&'static str> {
     let mut trait_ids = vec![];
-    let [krate, module] = crate::utils::paths::OPS_MODULE;
+    let [krate, module] = paths::OPS_MODULE;
 
     for &t in traits {
         let path = [krate, module, t];
@@ -194,7 +195,7 @@ impl<'tcx> Visitor<'tcx> for BinaryExprVisitor {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
         match expr.kind {
             hir::ExprKind::Binary(..)
-            | hir::ExprKind::Unary(hir::UnOp::UnNot | hir::UnOp::UnNeg, _)
+            | hir::ExprKind::Unary(hir::UnOp::Not | hir::UnOp::Neg, _)
             | hir::ExprKind::AssignOp(..) => self.nb_binops += 1,
             _ => {},
         }

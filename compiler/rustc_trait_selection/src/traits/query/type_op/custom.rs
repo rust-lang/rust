@@ -43,7 +43,7 @@ where
             info!("fully_perform({:?})", self);
         }
 
-        scrape_region_constraints(infcx, || Ok((self.closure)(infcx)?))
+        scrape_region_constraints(infcx, || (self.closure)(infcx))
     }
 }
 
@@ -62,7 +62,7 @@ fn scrape_region_constraints<'tcx, R>(
     infcx: &InferCtxt<'_, 'tcx>,
     op: impl FnOnce() -> Fallible<InferOk<'tcx, R>>,
 ) -> Fallible<(R, Option<Rc<QueryRegionConstraints<'tcx>>>)> {
-    let mut fulfill_cx = TraitEngine::new(infcx.tcx);
+    let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
     let dummy_body_id = ObligationCause::dummy().body_id;
 
     // During NLL, we expect that nobody will register region

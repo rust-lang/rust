@@ -1,6 +1,6 @@
 //! Constants for the pointer-sized unsigned integer type.
 //!
-//! *[See also the `usize` primitive type](../../std/primitive.usize.html).*
+//! *[See also the `usize` primitive type][usize].*
 //!
 //! New code should use the associated constants directly on the primitive type.
 

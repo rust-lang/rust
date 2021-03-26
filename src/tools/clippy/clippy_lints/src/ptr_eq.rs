@@ -1,4 +1,6 @@
-use crate::utils;
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::in_macro;
+use clippy_utils::source::snippet_opt;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
@@ -40,7 +42,7 @@ static LINT_MSG: &str = "use `std::ptr::eq` when comparing raw pointers";
 
 impl LateLintPass<'_> for PtrEq {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if utils::in_macro(expr.span) {
+        if in_macro(expr.span) {
             return;
         }
 
@@ -54,10 +56,10 @@ impl LateLintPass<'_> for PtrEq {
                 if_chain! {
                     if let Some(left_var) = expr_as_cast_to_raw_pointer(cx, left);
                     if let Some(right_var) = expr_as_cast_to_raw_pointer(cx, right);
-                    if let Some(left_snip) = utils::snippet_opt(cx, left_var.span);
-                    if let Some(right_snip) = utils::snippet_opt(cx, right_var.span);
+                    if let Some(left_snip) = snippet_opt(cx, left_var.span);
+                    if let Some(right_snip) = snippet_opt(cx, right_var.span);
                     then {
-                        utils::span_lint_and_sugg(
+                        span_lint_and_sugg(
                             cx,
                             PTR_EQ,
                             expr.span,

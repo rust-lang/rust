@@ -1,14 +1,14 @@
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet;
+use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::{differing_macro_contexts, is_ok_ctor, is_some_ctor, meets_msrv};
+use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::{Body, Expr, ExprKind, LangItem, MatchSource, QPath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::DefIdTree;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::sym;
-
-use crate::utils;
-use if_chain::if_chain;
 
 declare_clippy_lint! {
     /// **What it does:**
@@ -140,13 +140,13 @@ fn emit_lint(cx: &LateContext<'_>, expr: &SomeOkCall<'_>) {
         SomeOkCall::OkCall(outer, inner) | SomeOkCall::SomeCall(outer, inner) => (outer, inner),
     };
 
-    utils::span_lint_and_sugg(
+    span_lint_and_sugg(
         cx,
         NEEDLESS_QUESTION_MARK,
         entire_expr.span,
-        "Question mark operator is useless here",
+        "question mark operator is useless here",
         "try",
-        format!("{}", utils::snippet(cx, inner_expr.span, r#""...""#)),
+        format!("{}", snippet(cx, inner_expr.span, r#""...""#)),
         Applicability::MachineApplicable,
     );
 }
@@ -173,29 +173,34 @@ fn is_some_or_ok_call<'a>(
             // question mark operator
             let inner_expr = &args[0];
 
+            // if the inner expr is inside macro but the outer one is not, do not lint (#6921)
+            if  differing_macro_contexts(expr.span, inner_expr.span) {
+                return None;
+            }
+
             let inner_ty = cx.typeck_results().expr_ty(inner_expr);
             let outer_ty = cx.typeck_results().expr_ty(expr);
 
             // Check if outer and inner type are Option
-            let outer_is_some = utils::is_type_diagnostic_item(cx, outer_ty, sym::option_type);
-            let inner_is_some = utils::is_type_diagnostic_item(cx, inner_ty, sym::option_type);
+            let outer_is_some = is_type_diagnostic_item(cx, outer_ty, sym::option_type);
+            let inner_is_some = is_type_diagnostic_item(cx, inner_ty, sym::option_type);
 
             // Check for Option MSRV
-            let meets_option_msrv = utils::meets_msrv(nqml.msrv.as_ref(), &NEEDLESS_QUESTION_MARK_OPTION_MSRV);
+            let meets_option_msrv = meets_msrv(nqml.msrv.as_ref(), &NEEDLESS_QUESTION_MARK_OPTION_MSRV);
             if outer_is_some && inner_is_some && meets_option_msrv {
                 return Some(SomeOkCall::SomeCall(expr, inner_expr));
             }
 
             // Check if outer and inner type are Result
-            let outer_is_result = utils::is_type_diagnostic_item(cx, outer_ty, sym::result_type);
-            let inner_is_result = utils::is_type_diagnostic_item(cx, inner_ty, sym::result_type);
+            let outer_is_result = is_type_diagnostic_item(cx, outer_ty, sym::result_type);
+            let inner_is_result = is_type_diagnostic_item(cx, inner_ty, sym::result_type);
 
             // Additional check: if the error type of the Result can be converted
             // via the From trait, then don't match
             let does_not_call_from = !has_implicit_error_from(cx, expr, inner_expr);
 
             // Must meet Result MSRV
-            let meets_result_msrv = utils::meets_msrv(nqml.msrv.as_ref(), &NEEDLESS_QUESTION_MARK_RESULT_MSRV);
+            let meets_result_msrv = meets_msrv(nqml.msrv.as_ref(), &NEEDLESS_QUESTION_MARK_RESULT_MSRV);
             if outer_is_result && inner_is_result && does_not_call_from && meets_result_msrv {
                 return Some(SomeOkCall::OkCall(expr, inner_expr));
             }
@@ -207,26 +212,4 @@ fn is_some_or_ok_call<'a>(
 
 fn has_implicit_error_from(cx: &LateContext<'_>, entire_expr: &Expr<'_>, inner_result_expr: &Expr<'_>) -> bool {
     return cx.typeck_results().expr_ty(entire_expr) != cx.typeck_results().expr_ty(inner_result_expr);
-}
-
-fn is_ok_ctor(cx: &LateContext<'_>, res: Res) -> bool {
-    if let Some(ok_id) = cx.tcx.lang_items().result_ok_variant() {
-        if let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Fn), id) = res {
-            if let Some(variant_id) = cx.tcx.parent(id) {
-                return variant_id == ok_id;
-            }
-        }
-    }
-    false
-}
-
-fn is_some_ctor(cx: &LateContext<'_>, res: Res) -> bool {
-    if let Some(some_id) = cx.tcx.lang_items().option_some_variant() {
-        if let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Fn), id) = res {
-            if let Some(variant_id) = cx.tcx.parent(id) {
-                return variant_id == some_id;
-            }
-        }
-    }
-    false
 }

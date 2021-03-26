@@ -16,7 +16,7 @@ pub extern crate rustc_plugin_impl as plugin;
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::{traits::CodegenBackend, CodegenResults};
-use rustc_data_structures::profiling::print_time_passes_entry;
+use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::SeqCst;
 use rustc_errors::registry::{InvalidErrorCode, Registry};
 use rustc_errors::{ErrorReported, PResult};
@@ -27,7 +27,6 @@ use rustc_interface::{interface, Queries};
 use rustc_lint::LintStore;
 use rustc_metadata::locator;
 use rustc_middle::middle::cstore::MetadataLoader;
-use rustc_middle::ty::TyCtxt;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
 use rustc_serialize::json::{self, ToJson};
@@ -55,7 +54,7 @@ use std::process::{self, Command, Stdio};
 use std::str;
 use std::time::Instant;
 
-mod args;
+pub mod args;
 pub mod pretty;
 
 /// Exit status code used for successful compilation and help output.
@@ -188,16 +187,8 @@ fn run_compiler(
         Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>,
     >,
 ) -> interface::Result<()> {
-    let mut args = Vec::new();
-    for arg in at_args {
-        match args::arg_expand(arg.clone()) {
-            Ok(arg) => args.extend(arg),
-            Err(err) => early_error(
-                ErrorOutputType::default(),
-                &format!("Failed to load argument file: {}", err),
-            ),
-        }
-    }
+    let args = args::arg_expand_all(at_args);
+
     let diagnostic_output = emitter.map_or(DiagnosticOutput::Default, DiagnosticOutput::Raw);
     let matches = match handle_options(&args) {
         Some(matches) => matches,
@@ -224,6 +215,7 @@ fn run_compiler(
             diagnostic_output,
             stderr: None,
             lint_caps: Default::default(),
+            parse_sess_created: None,
             register_lints: None,
             override_queries: None,
             make_codegen_backend: make_codegen_backend.take().unwrap(),
@@ -307,6 +299,7 @@ fn run_compiler(
         diagnostic_output,
         stderr: None,
         lint_caps: Default::default(),
+        parse_sess_created: None,
         register_lints: None,
         override_queries: None,
         make_codegen_backend: make_codegen_backend.unwrap(),
@@ -821,7 +814,7 @@ fn usage(verbose: bool, include_unstable_options: bool, nightly_build: bool) {
     } else {
         "\n    --help -v           Print the full set of options rustc accepts"
     };
-    let at_path = if verbose && nightly_build {
+    let at_path = if verbose {
         "    @path               Read newline separated options from `path`\n"
     } else {
         ""
@@ -902,7 +895,12 @@ Available lint options:
     let print_lints = |lints: Vec<&Lint>| {
         for lint in lints {
             let name = lint.name_lower().replace("_", "-");
-            println!("    {}  {:7.7}  {}", padded(&name), lint.default_level.as_str(), lint.desc);
+            println!(
+                "    {}  {:7.7}  {}",
+                padded(&name),
+                lint.default_level(sess.edition()).as_str(),
+                lint.desc
+            );
         }
         println!("\n");
     };
@@ -1240,7 +1238,7 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
 
     let num_frames = if backtrace { None } else { Some(2) };
 
-    TyCtxt::try_print_query_stack(&handler, num_frames);
+    interface::try_print_query_stack(&handler, num_frames);
 
     #[cfg(windows)]
     unsafe {
@@ -1312,7 +1310,8 @@ pub fn init_env_logger(env: &str) {
 }
 
 pub fn main() -> ! {
-    let start = Instant::now();
+    let start_time = Instant::now();
+    let start_rss = get_resident_set_size();
     init_rustc_env_logger();
     let mut callbacks = TimePassesCallbacks::default();
     install_ice_hook();
@@ -1330,7 +1329,11 @@ pub fn main() -> ! {
             .collect::<Vec<_>>();
         RunCompiler::new(&args, &mut callbacks).run()
     });
-    // The extra `\t` is necessary to align this label with the others.
-    print_time_passes_entry(callbacks.time_passes, "\ttotal", start.elapsed());
+
+    if callbacks.time_passes {
+        let end_rss = get_resident_set_size();
+        print_time_passes_entry("total", start_time.elapsed(), start_rss, end_rss);
+    }
+
     process::exit(exit_code)
 }

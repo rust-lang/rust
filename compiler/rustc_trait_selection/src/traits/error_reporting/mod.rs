@@ -2,10 +2,10 @@ pub mod on_unimplemented;
 pub mod suggestions;
 
 use super::{
-    ConstEvalFailure, EvaluationResult, FulfillmentError, FulfillmentErrorCode,
-    MismatchedProjectionTypes, Obligation, ObligationCause, ObligationCauseCode,
-    OnUnimplementedDirective, OnUnimplementedNote, OutputTypeParameterMismatch, Overflow,
-    PredicateObligation, SelectionContext, SelectionError, TraitNotObjectSafe,
+    EvaluationResult, FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes,
+    Obligation, ObligationCause, ObligationCauseCode, OnUnimplementedDirective,
+    OnUnimplementedNote, OutputTypeParameterMismatch, Overflow, PredicateObligation,
+    SelectionContext, SelectionError, TraitNotObjectSafe,
 };
 
 use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCode};
@@ -17,7 +17,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::Node;
-use rustc_middle::mir::interpret::ErrorHandled;
+use rustc_middle::mir::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::{
@@ -468,22 +468,21 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                 trait_ref,
                                 obligation.cause.body_id,
                             );
-                        } else {
-                            if !have_alt_message {
-                                // Can't show anything else useful, try to find similar impls.
-                                let impl_candidates = self.find_similar_impl_candidates(trait_ref);
-                                self.report_similar_impl_candidates(impl_candidates, &mut err);
-                            }
-                            // Changing mutability doesn't make a difference to whether we have
-                            // an `Unsize` impl (Fixes ICE in #71036)
-                            if !is_unsize {
-                                self.suggest_change_mut(
-                                    &obligation,
-                                    &mut err,
-                                    trait_ref,
-                                    points_at_arg,
-                                );
-                            }
+                        } else if !have_alt_message {
+                            // Can't show anything else useful, try to find similar impls.
+                            let impl_candidates = self.find_similar_impl_candidates(trait_ref);
+                            self.report_similar_impl_candidates(impl_candidates, &mut err);
+                        }
+
+                        // Changing mutability doesn't make a difference to whether we have
+                        // an `Unsize` impl (Fixes ICE in #71036)
+                        if !is_unsize {
+                            self.suggest_change_mut(
+                                &obligation,
+                                &mut err,
+                                trait_ref,
+                                points_at_arg,
+                            );
                         }
 
                         // If this error is due to `!: Trait` not implemented but `(): Trait` is
@@ -739,21 +738,56 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let violations = self.tcx.object_safety_violations(did);
                 report_object_safety_error(self.tcx, span, did, violations)
             }
-            ConstEvalFailure(ErrorHandled::TooGeneric) => {
-                bug!("too generic should have been handled in `is_const_evaluatable`");
+
+            SelectionError::NotConstEvaluatable(NotConstEvaluatable::MentionsInfer) => {
+                bug!(
+                    "MentionsInfer should have been handled in `traits/fulfill.rs` or `traits/select/mod.rs`"
+                )
             }
-            // Already reported in the query.
-            ConstEvalFailure(ErrorHandled::Reported(ErrorReported)) => {
-                // FIXME(eddyb) remove this once `ErrorReported` becomes a proof token.
-                self.tcx.sess.delay_span_bug(span, "`ErrorReported` without an error");
-                return;
+            SelectionError::NotConstEvaluatable(NotConstEvaluatable::MentionsParam) => {
+                if !self.tcx.features().const_evaluatable_checked {
+                    let mut err = self.tcx.sess.struct_span_err(
+                        span,
+                        "constant expression depends on a generic parameter",
+                    );
+                    // FIXME(const_generics): we should suggest to the user how they can resolve this
+                    // issue. However, this is currently not actually possible
+                    // (see https://github.com/rust-lang/rust/issues/66962#issuecomment-575907083).
+                    //
+                    // Note that with `feature(const_evaluatable_checked)` this case should not
+                    // be reachable.
+                    err.note("this may fail depending on what value the parameter takes");
+                    err.emit();
+                    return;
+                }
+
+                match obligation.predicate.kind().skip_binder() {
+                    ty::PredicateKind::ConstEvaluatable(def, _) => {
+                        let mut err =
+                            self.tcx.sess.struct_span_err(span, "unconstrained generic constant");
+                        let const_span = self.tcx.def_span(def.did);
+                        match self.tcx.sess.source_map().span_to_snippet(const_span) {
+                            Ok(snippet) => err.help(&format!(
+                                "try adding a `where` bound using this expression: `where [(); {}]:`",
+                                snippet
+                            )),
+                            _ => err.help("consider adding a `where` bound using this expression"),
+                        };
+                        err
+                    }
+                    _ => {
+                        span_bug!(
+                            span,
+                            "unexpected non-ConstEvaluatable predicate, this should not be reachable"
+                        )
+                    }
+                }
             }
 
-            // Already reported in the query, but only as a lint.
-            // This shouldn't actually happen for constants used in types, modulo
-            // bugs. The `delay_span_bug` here ensures it won't be ignored.
-            ConstEvalFailure(ErrorHandled::Linted) => {
-                self.tcx.sess.delay_span_bug(span, "constant in type had error reported as lint");
+            // Already reported in the query.
+            SelectionError::NotConstEvaluatable(NotConstEvaluatable::Error(ErrorReported)) => {
+                // FIXME(eddyb) remove this once `ErrorReported` becomes a proof token.
+                self.tcx.sess.delay_span_bug(span, "`ErrorReported` without an error");
                 return;
             }
 
@@ -820,7 +854,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 sig.decl
                     .inputs
                     .iter()
-                    .map(|arg| match arg.clone().kind {
+                    .map(|arg| match arg.kind {
                         hir::TyKind::Tup(ref tys) => ArgKind::Tuple(
                             Some(arg.span),
                             vec![("_".to_owned(), "_".to_owned()); tys.len()],
@@ -1190,9 +1224,12 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     normalized_ty, data.ty
                 );
 
-                let is_normalized_ty_expected = !matches!(obligation.cause.code, ObligationCauseCode::ItemObligation(_)
-                    | ObligationCauseCode::BindingObligation(_, _)
-                    | ObligationCauseCode::ObjectCastObligation(_));
+                let is_normalized_ty_expected = !matches!(
+                    obligation.cause.code,
+                    ObligationCauseCode::ItemObligation(_)
+                        | ObligationCauseCode::BindingObligation(_, _)
+                        | ObligationCauseCode::ObjectCastObligation(_)
+                );
 
                 if let Err(error) = self.at(&obligation.cause, obligation.param_env).eq_exp(
                     is_normalized_ty_expected,
@@ -1366,8 +1403,8 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     Some(t) => Some(t),
                     None => {
                         let ty = parent_trait_ref.skip_binder().self_ty();
-                        let span =
-                            TyCategory::from_ty(ty).map(|(_, def_id)| self.tcx.def_span(def_id));
+                        let span = TyCategory::from_ty(self.tcx, ty)
+                            .map(|(_, def_id)| self.tcx.def_span(def_id));
                         Some((ty.to_string(), span))
                     }
                 }
@@ -1587,8 +1624,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 self.emit_inference_failure_err(body_id, span, a.into(), vec![], ErrorCode::E0282)
             }
             ty::PredicateKind::Projection(data) => {
-                let trait_ref = bound_predicate.rebind(data).to_poly_trait_ref(self.tcx);
-                let self_ty = trait_ref.skip_binder().self_ty();
+                let self_ty = data.projection_ty.self_ty();
                 let ty = data.ty;
                 if predicate.references_error() {
                     return;
@@ -1777,7 +1813,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                             multispan.push_span_label(
                                 sp,
                                 format!(
-                                    "...if indirection was used here: `Box<{}>`",
+                                    "...if indirection were used here: `Box<{}>`",
                                     param.name.ident(),
                                 ),
                             );

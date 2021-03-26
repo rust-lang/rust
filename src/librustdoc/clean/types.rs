@@ -19,7 +19,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::Mutability;
+use rustc_hir::{BodyId, Mutability};
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::Session;
@@ -32,8 +32,9 @@ use rustc_target::spec::abi::Abi;
 
 use crate::clean::cfg::Cfg;
 use crate::clean::external_path;
-use crate::clean::inline;
+use crate::clean::inline::{self, print_inlined_const};
 use crate::clean::types::Type::{QPath, ResolvedPath};
+use crate::clean::utils::{is_literal_expr, print_const_expr, print_evaluated_const};
 use crate::clean::Clean;
 use crate::core::DocContext;
 use crate::formats::cache::Cache;
@@ -50,16 +51,21 @@ thread_local!(crate static MAX_DEF_IDX: RefCell<FxHashMap<CrateNum, DefIndex>> =
 #[derive(Clone, Debug)]
 crate struct Crate {
     crate name: Symbol,
-    crate version: Option<String>,
     crate src: FileName,
-    crate module: Option<Item>,
+    crate module: Item,
     crate externs: Vec<(CrateNum, ExternalCrate)>,
     crate primitives: Vec<(DefId, PrimitiveType)>,
     // These are later on moved into `CACHEKEY`, leaving the map empty.
     // Only here so that they can be filtered through the rustdoc passes.
-    crate external_traits: Rc<RefCell<FxHashMap<DefId, Trait>>>,
-    crate masked_crates: FxHashSet<CrateNum>,
+    crate external_traits: Rc<RefCell<FxHashMap<DefId, TraitWithExtraInfo>>>,
     crate collapsed: bool,
+}
+
+/// This struct is used to wrap additional information added by rustdoc on a `trait` item.
+#[derive(Clone, Debug)]
+crate struct TraitWithExtraInfo {
+    crate trait_: Trait,
+    crate is_spotlight: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -76,18 +82,20 @@ crate struct ExternalCrate {
 /// directly to the AST's concept of an item; it's a strict superset.
 #[derive(Clone)]
 crate struct Item {
-    /// Stringified span
-    crate source: Span,
-    /// Not everything has a name. E.g., impls
+    crate span: Span,
+    /// The name of this item.
+    /// Optional because not every item has a name, e.g. impls.
     crate name: Option<Symbol>,
     crate attrs: Box<Attributes>,
     crate visibility: Visibility,
+    /// Information about this item that is specific to what kind of item it is.
+    /// E.g., struct vs enum vs function.
     crate kind: Box<ItemKind>,
     crate def_id: DefId,
 }
 
 // `Item` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(Item, 48);
 
 impl fmt::Debug for Item {
@@ -95,7 +103,7 @@ impl fmt::Debug for Item {
         let def_id: &dyn fmt::Debug = if self.is_fake() { &"**FAKE**" } else { &self.def_id };
 
         fmt.debug_struct("Item")
-            .field("source", &self.source)
+            .field("source", &self.span)
             .field("name", &self.name)
             .field("attrs", &self.attrs)
             .field("kind", &self.kind)
@@ -130,7 +138,7 @@ impl Item {
         hir_id: hir::HirId,
         name: Option<Symbol>,
         kind: ItemKind,
-        cx: &DocContext<'_>,
+        cx: &mut DocContext<'_>,
     ) -> Item {
         Item::from_def_id_and_parts(cx.tcx.hir().local_def_id(hir_id).to_def_id(), name, kind, cx)
     }
@@ -139,12 +147,28 @@ impl Item {
         def_id: DefId,
         name: Option<Symbol>,
         kind: ItemKind,
-        cx: &DocContext<'_>,
+        cx: &mut DocContext<'_>,
+    ) -> Item {
+        Self::from_def_id_and_attrs_and_parts(
+            def_id,
+            name,
+            kind,
+            box cx.tcx.get_attrs(def_id).clean(cx),
+            cx,
+        )
+    }
+
+    pub fn from_def_id_and_attrs_and_parts(
+        def_id: DefId,
+        name: Option<Symbol>,
+        kind: ItemKind,
+        attrs: Box<Attributes>,
+        cx: &mut DocContext<'_>,
     ) -> Item {
         debug!("name={:?}, def_id={:?}", name, def_id);
 
         // `span_if_local()` lies about functions and only gives the span of the function signature
-        let source = def_id.as_local().map_or_else(
+        let span = def_id.as_local().map_or_else(
             || cx.tcx.def_span(def_id),
             |local| {
                 let hir = cx.tcx.hir();
@@ -156,8 +180,8 @@ impl Item {
             def_id,
             kind: box kind,
             name,
-            source: source.clean(cx),
-            attrs: box cx.tcx.get_attrs(def_id).clean(cx),
+            span: span.clean(cx),
+            attrs,
             visibility: cx.tcx.visibility(def_id).clean(cx),
         }
     }
@@ -169,7 +193,7 @@ impl Item {
     }
 
     crate fn links(&self, cache: &Cache) -> Vec<RenderedLink> {
-        self.attrs.links(&self.def_id.krate, cache)
+        self.attrs.links(self.def_id.krate, cache)
     }
 
     crate fn is_crate(&self) -> bool {
@@ -301,7 +325,10 @@ impl Item {
 
 #[derive(Clone, Debug)]
 crate enum ItemKind {
-    ExternCrateItem(Symbol, Option<Symbol>),
+    ExternCrateItem {
+        /// The crate's name, *not* the name it's imported as.
+        src: Option<Symbol>,
+    },
     ImportItem(Import),
     StructItem(Struct),
     UnionItem(Union),
@@ -354,7 +381,7 @@ impl ItemKind {
             TraitItem(t) => t.items.iter(),
             ImplItem(i) => i.items.iter(),
             ModuleItem(m) => m.items.iter(),
-            ExternCrateItem(_, _)
+            ExternCrateItem { .. }
             | ImportItem(_)
             | FunctionItem(_)
             | TypedefItem(_, _)
@@ -438,7 +465,7 @@ impl AttributesExt for [ast::Attribute] {
 crate trait NestedAttributesExt {
     /// Returns `true` if the attribute list contains a specific `Word`
     fn has_word(self, word: Symbol) -> bool;
-    fn get_word_attr(self, word: Symbol) -> (Option<ast::NestedMetaItem>, bool);
+    fn get_word_attr(self, word: Symbol) -> Option<ast::NestedMetaItem>;
 }
 
 impl<I: Iterator<Item = ast::NestedMetaItem> + IntoIterator<Item = ast::NestedMetaItem>>
@@ -448,11 +475,8 @@ impl<I: Iterator<Item = ast::NestedMetaItem> + IntoIterator<Item = ast::NestedMe
         self.into_iter().any(|attr| attr.is_word() && attr.has_name(word))
     }
 
-    fn get_word_attr(mut self, word: Symbol) -> (Option<ast::NestedMetaItem>, bool) {
-        match self.find(|attr| attr.is_word() && attr.has_name(word)) {
-            Some(a) => (Some(a), true),
-            None => (None, false),
-        }
+    fn get_word_attr(mut self, word: Symbol) -> Option<ast::NestedMetaItem> {
+        self.find(|attr| attr.is_word() && attr.has_name(word))
     }
 }
 
@@ -538,6 +562,8 @@ impl<'a> FromIterator<&'a DocFragment> for String {
     }
 }
 
+/// The attributes on an [`Item`], including attributes like `#[derive(...)]` and `#[inline]`,
+/// as well as doc comments.
 #[derive(Clone, Debug, Default)]
 crate struct Attributes {
     crate doc_strings: Vec<DocFragment>,
@@ -825,7 +851,7 @@ impl Attributes {
     /// Gets links as a vector
     ///
     /// Cache must be populated before call
-    crate fn links(&self, krate: &CrateNum, cache: &Cache) -> Vec<RenderedLink> {
+    crate fn links(&self, krate: CrateNum, cache: &Cache) -> Vec<RenderedLink> {
         use crate::html::format::href;
         use crate::html::render::CURRENT_DEPTH;
 
@@ -850,7 +876,7 @@ impl Attributes {
                     }
                     None => {
                         if let Some(ref fragment) = *fragment {
-                            let url = match cache.extern_locations.get(krate) {
+                            let url = match cache.extern_locations.get(&krate) {
                                 Some(&(_, _, ExternalLocation::Local)) => {
                                     let depth = CURRENT_DEPTH.with(|l| l.get());
                                     "../".repeat(depth)
@@ -889,12 +915,23 @@ impl Attributes {
     }
 
     crate fn get_doc_aliases(&self) -> FxHashSet<String> {
-        self.other_attrs
-            .lists(sym::doc)
-            .filter(|a| a.has_name(sym::alias))
-            .filter_map(|a| a.value_str().map(|s| s.to_string()))
-            .filter(|v| !v.is_empty())
-            .collect::<FxHashSet<_>>()
+        let mut aliases = FxHashSet::default();
+
+        for attr in self.other_attrs.lists(sym::doc).filter(|a| a.has_name(sym::alias)) {
+            if let Some(values) = attr.meta_item_list() {
+                for l in values {
+                    match l.literal().unwrap().kind {
+                        ast::LitKind::Str(s, _) => {
+                            aliases.insert(s.as_str().to_string());
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+            } else {
+                aliases.insert(attr.value_str().map(|s| s.to_string()).unwrap());
+            }
+        }
+        aliases
     }
 }
 
@@ -939,7 +976,7 @@ crate enum GenericBound {
 }
 
 impl GenericBound {
-    crate fn maybe_sized(cx: &DocContext<'_>) -> GenericBound {
+    crate fn maybe_sized(cx: &mut DocContext<'_>) -> GenericBound {
         let did = cx.tcx.require_lang_item(LangItem::Sized, None);
         let empty = cx.tcx.intern_substs(&[]);
         let path = external_path(cx, cx.tcx.item_name(did), Some(did), false, vec![], empty);
@@ -1087,8 +1124,6 @@ crate struct Function {
     crate decl: FnDecl,
     crate generics: Generics,
     crate header: hir::FnHeader,
-    crate all_types: Vec<(Type, TypeKind)>,
-    crate ret_types: Vec<(Type, TypeKind)>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -1190,7 +1225,6 @@ crate struct Trait {
     crate items: Vec<Item>,
     crate generics: Generics,
     crate bounds: Vec<GenericBound>,
-    crate is_spotlight: bool,
     crate is_auto: bool,
 }
 
@@ -1301,6 +1335,44 @@ crate enum TypeKind {
     Attr,
     Derive,
     TraitAlias,
+    Primitive,
+}
+
+impl From<hir::def::DefKind> for TypeKind {
+    fn from(other: hir::def::DefKind) -> Self {
+        match other {
+            hir::def::DefKind::Enum => Self::Enum,
+            hir::def::DefKind::Fn => Self::Function,
+            hir::def::DefKind::Mod => Self::Module,
+            hir::def::DefKind::Const => Self::Const,
+            hir::def::DefKind::Static => Self::Static,
+            hir::def::DefKind::Struct => Self::Struct,
+            hir::def::DefKind::Union => Self::Union,
+            hir::def::DefKind::Trait => Self::Trait,
+            hir::def::DefKind::TyAlias => Self::Typedef,
+            hir::def::DefKind::TraitAlias => Self::TraitAlias,
+            hir::def::DefKind::Macro(_) => Self::Macro,
+            hir::def::DefKind::ForeignTy
+            | hir::def::DefKind::Variant
+            | hir::def::DefKind::AssocTy
+            | hir::def::DefKind::TyParam
+            | hir::def::DefKind::ConstParam
+            | hir::def::DefKind::Ctor(..)
+            | hir::def::DefKind::AssocFn
+            | hir::def::DefKind::AssocConst
+            | hir::def::DefKind::ExternCrate
+            | hir::def::DefKind::Use
+            | hir::def::DefKind::ForeignMod
+            | hir::def::DefKind::AnonConst
+            | hir::def::DefKind::OpaqueTy
+            | hir::def::DefKind::Field
+            | hir::def::DefKind::LifetimeParam
+            | hir::def::DefKind::GlobalAsm
+            | hir::def::DefKind::Impl
+            | hir::def::DefKind::Closure
+            | hir::def::DefKind::Generator => Self::Foreign,
+        }
+    }
 }
 
 crate trait GetDefId {
@@ -1366,14 +1438,14 @@ impl Type {
         }
     }
 
-    crate fn generics(&self) -> Option<Vec<Type>> {
+    crate fn generics(&self) -> Option<Vec<&Type>> {
         match *self {
             ResolvedPath { ref path, .. } => path.segments.last().and_then(|seg| {
                 if let GenericArgs::AngleBracketed { ref args, .. } = seg.args {
                     Some(
                         args.iter()
                             .filter_map(|arg| match arg {
-                                GenericArg::Type(ty) => Some(ty.clone()),
+                                GenericArg::Type(ty) => Some(ty),
                                 _ => None,
                             })
                             .collect(),
@@ -1401,6 +1473,16 @@ impl Type {
 
     crate fn is_full_generic(&self) -> bool {
         matches!(self, Type::Generic(_))
+    }
+
+    crate fn is_primitive(&self) -> bool {
+        match self {
+            Self::Primitive(_) => true,
+            Self::BorrowedRef { ref type_, .. } | Self::RawPointer(_, ref type_) => {
+                type_.is_primitive()
+            }
+            _ => false,
+        }
     }
 
     crate fn projection(&self) -> Option<(&Type, DefId, Symbol)> {
@@ -1436,8 +1518,7 @@ impl Type {
             Array(..) => PrimitiveType::Array,
             RawPointer(..) => PrimitiveType::RawPointer,
             QPath { ref self_type, .. } => return self_type.inner_def_id(cache),
-            // FIXME: remove this wildcard
-            _ => return None,
+            Generic(_) | Infer | ImplTrait(_) => return None,
         };
         cache.and_then(|c| Primitive(t).def_id_full(c))
     }
@@ -1548,24 +1629,6 @@ impl PrimitiveType {
 
         CELL.get_or_init(move || {
             use self::PrimitiveType::*;
-
-            /// A macro to create a FxHashMap.
-            ///
-            /// Example:
-            ///
-            /// ```
-            /// let letters = map!{"a" => "b", "c" => "d"};
-            /// ```
-            ///
-            /// Trailing commas are allowed.
-            /// Commas between elements are required (even if the expression is a block).
-            macro_rules! map {
-                ($( $key: expr => $val: expr ),* $(,)*) => {{
-                    let mut map = ::rustc_data_structures::fx::FxHashMap::default();
-                    $( map.insert($key, $val); )*
-                    map
-                }}
-            }
 
             let single = |a: Option<DefId>| a.into_iter().collect();
             let both = |a: Option<DefId>, b: Option<DefId>| -> ArrayVec<_> {
@@ -1740,8 +1803,13 @@ impl From<hir::PrimTy> for PrimitiveType {
 
 #[derive(Copy, Clone, Debug)]
 crate enum Visibility {
+    /// `pub`
     Public,
+    /// Visibility inherited from parent.
+    ///
+    /// For example, this is the visibility of private items and of enum variants.
     Inherited,
+    /// `pub(crate)`, `pub(super)`, or `pub(in path::to::somewhere)`
     Restricted(DefId),
 }
 
@@ -1790,7 +1858,8 @@ crate enum Variant {
     Struct(VariantStruct),
 }
 
-/// Small wrapper around `rustc_span::Span` that adds helper methods and enforces calling `source_callsite`.
+/// Small wrapper around [`rustc_span::Span]` that adds helper methods
+/// and enforces calling [`rustc_span::Span::source_callsite()`].
 #[derive(Clone, Debug)]
 crate struct Span(rustc_span::Span);
 
@@ -1802,12 +1871,16 @@ impl Span {
         Self(sp.source_callsite())
     }
 
+    crate fn inner(&self) -> rustc_span::Span {
+        self.0
+    }
+
     crate fn dummy() -> Self {
         Self(rustc_span::DUMMY_SP)
     }
 
-    crate fn span(&self) -> rustc_span::Span {
-        self.0
+    crate fn is_dummy(&self) -> bool {
+        self.0.is_dummy()
     }
 
     crate fn filename(&self, sess: &Session) -> FileName {
@@ -1910,18 +1983,64 @@ crate struct BareFunctionDecl {
 crate struct Static {
     crate type_: Type,
     crate mutability: Mutability,
-    /// It's useful to have the value of a static documented, but I have no
-    /// desire to represent expressions (that'd basically be all of the AST,
-    /// which is huge!). So, have a string.
-    crate expr: String,
+    crate expr: Option<BodyId>,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 crate struct Constant {
     crate type_: Type,
-    crate expr: String,
-    crate value: Option<String>,
-    crate is_literal: bool,
+    crate kind: ConstantKind,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+crate enum ConstantKind {
+    /// This is the wrapper around `ty::Const` for a non-local constant. Because it doesn't have a
+    /// `BodyId`, we need to handle it on its own.
+    ///
+    /// Note that `ty::Const` includes generic parameters, and may not always be uniquely identified
+    /// by a DefId. So this field must be different from `Extern`.
+    TyConst { expr: String },
+    /// A constant (expression) that's not an item or associated item. These are usually found
+    /// nested inside types (e.g., array lengths) or expressions (e.g., repeat counts), and also
+    /// used to define explicit discriminant values for enum variants.
+    Anonymous { body: BodyId },
+    /// A constant from a different crate.
+    Extern { def_id: DefId },
+    /// `const FOO: u32 = ...;`
+    Local { def_id: DefId, body: BodyId },
+}
+
+impl Constant {
+    crate fn expr(&self, tcx: TyCtxt<'_>) -> String {
+        match self.kind {
+            ConstantKind::TyConst { ref expr } => expr.clone(),
+            ConstantKind::Extern { def_id } => print_inlined_const(tcx, def_id),
+            ConstantKind::Local { body, .. } | ConstantKind::Anonymous { body } => {
+                print_const_expr(tcx, body)
+            }
+        }
+    }
+
+    crate fn value(&self, tcx: TyCtxt<'_>) -> Option<String> {
+        match self.kind {
+            ConstantKind::TyConst { .. } | ConstantKind::Anonymous { .. } => None,
+            ConstantKind::Extern { def_id } | ConstantKind::Local { def_id, .. } => {
+                print_evaluated_const(tcx, def_id)
+            }
+        }
+    }
+
+    crate fn is_literal(&self, tcx: TyCtxt<'_>) -> bool {
+        match self.kind {
+            ConstantKind::TyConst { .. } => false,
+            ConstantKind::Extern { def_id } => def_id.as_local().map_or(false, |def_id| {
+                is_literal_expr(tcx, tcx.hir().local_def_id_to_hir_id(def_id))
+            }),
+            ConstantKind::Local { body, .. } | ConstantKind::Anonymous { body } => {
+                is_literal_expr(tcx, body.hir_id)
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

@@ -8,7 +8,7 @@ use rustc_middle::mir::coverage::{
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::TyCtxt;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Expression {
     lhs: ExpressionOperandId,
     op: Op,
@@ -31,25 +31,42 @@ pub struct Expression {
 pub struct FunctionCoverage<'tcx> {
     instance: Instance<'tcx>,
     source_hash: u64,
+    is_used: bool,
     counters: IndexVec<CounterValueReference, Option<CodeRegion>>,
     expressions: IndexVec<InjectedExpressionIndex, Option<Expression>>,
     unreachable_regions: Vec<CodeRegion>,
 }
 
 impl<'tcx> FunctionCoverage<'tcx> {
+    /// Creates a new set of coverage data for a used (called) function.
     pub fn new(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Self {
+        Self::create(tcx, instance, true)
+    }
+
+    /// Creates a new set of coverage data for an unused (never called) function.
+    pub fn unused(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Self {
+        Self::create(tcx, instance, false)
+    }
+
+    fn create(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>, is_used: bool) -> Self {
         let coverageinfo = tcx.coverageinfo(instance.def_id());
         debug!(
-            "FunctionCoverage::new(instance={:?}) has coverageinfo={:?}",
-            instance, coverageinfo
+            "FunctionCoverage::new(instance={:?}) has coverageinfo={:?}. is_used={}",
+            instance, coverageinfo, is_used
         );
         Self {
             instance,
             source_hash: 0, // will be set with the first `add_counter()`
+            is_used,
             counters: IndexVec::from_elem_n(None, coverageinfo.num_counters as usize),
             expressions: IndexVec::from_elem_n(None, coverageinfo.num_expressions as usize),
             unreachable_regions: Vec::new(),
         }
+    }
+
+    /// Returns true for a used (called) function, and false for an unused function.
+    pub fn is_used(&self) -> bool {
+        self.is_used
     }
 
     /// Sets the function source hash value. If called multiple times for the same function, all
@@ -64,7 +81,9 @@ impl<'tcx> FunctionCoverage<'tcx> {
 
     /// Adds a code region to be counted by an injected counter intrinsic.
     pub fn add_counter(&mut self, id: CounterValueReference, region: CodeRegion) {
-        self.counters[id].replace(region).expect_none("add_counter called with duplicate `id`");
+        if let Some(previous_region) = self.counters[id].replace(region.clone()) {
+            assert_eq!(previous_region, region, "add_counter: code region for id changed");
+        }
     }
 
     /// Both counters and "counter expressions" (or simply, "expressions") can be operands in other
@@ -94,9 +113,18 @@ impl<'tcx> FunctionCoverage<'tcx> {
             expression_id, lhs, op, rhs, region
         );
         let expression_index = self.expression_index(u32::from(expression_id));
-        self.expressions[expression_index]
-            .replace(Expression { lhs, op, rhs, region })
-            .expect_none("add_counter_expression called with duplicate `id_descending_from_max`");
+        if let Some(previous_expression) = self.expressions[expression_index].replace(Expression {
+            lhs,
+            op,
+            rhs,
+            region: region.clone(),
+        }) {
+            assert_eq!(
+                previous_expression,
+                Expression { lhs, op, rhs, region },
+                "add_counter_expression: expression for id changed"
+            );
+        }
     }
 
     /// Add a region that will be marked as "unreachable", with a constant "zero counter".
@@ -117,8 +145,8 @@ impl<'tcx> FunctionCoverage<'tcx> {
         &'a self,
     ) -> (Vec<CounterExpression>, impl Iterator<Item = (Counter, &'a CodeRegion)>) {
         assert!(
-            self.source_hash != 0,
-            "No counters provided the source_hash for function: {:?}",
+            self.source_hash != 0 || !self.is_used,
+            "No counters provided the source_hash for used function: {:?}",
             self.instance
         );
 

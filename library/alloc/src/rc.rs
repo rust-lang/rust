@@ -398,7 +398,7 @@ impl<T> Rc<T> {
 
         unsafe {
             let inner = init_ptr.as_ptr();
-            ptr::write(&raw mut (*inner).value, data);
+            ptr::write(ptr::addr_of_mut!((*inner).value), data);
 
             let prev_value = (*inner).strong.get();
             debug_assert_eq!(prev_value, 0, "No prior strong references should exist");
@@ -804,7 +804,7 @@ impl<T: ?Sized> Rc<T> {
         // SAFETY: This cannot go through Deref::deref or Rc::inner because
         // this is required to retain raw/mut provenance such that e.g. `get_mut` can
         // write through the pointer after the Rc is recovered through `from_raw`.
-        unsafe { &raw const (*ptr).value }
+        unsafe { ptr::addr_of_mut!((*ptr).value) }
     }
 
     /// Constructs an `Rc<T>` from a raw pointer.
@@ -1652,6 +1652,16 @@ impl<T> From<T> for Rc<T> {
 
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl<T: Clone> From<&[T]> for Rc<[T]> {
+    /// Allocate a reference-counted slice and fill it by cloning `v`'s items.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::rc::Rc;
+    /// let original: &[i32] = &[1, 2, 3];
+    /// let shared: Rc<[i32]> = Rc::from(original);
+    /// assert_eq!(&[1, 2, 3], &shared[..]);
+    /// ```
     #[inline]
     fn from(v: &[T]) -> Rc<[T]> {
         <Self as RcFromSlice<T>>::from_slice(v)
@@ -1660,6 +1670,15 @@ impl<T: Clone> From<&[T]> for Rc<[T]> {
 
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl From<&str> for Rc<str> {
+    /// Allocate a reference-counted string slice and copy `v` into it.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::rc::Rc;
+    /// let shared: Rc<str> = Rc::from("statue");
+    /// assert_eq!("statue", &shared[..]);
+    /// ```
     #[inline]
     fn from(v: &str) -> Rc<str> {
         let rc = Rc::<[u8]>::from(v.as_bytes());
@@ -1669,6 +1688,16 @@ impl From<&str> for Rc<str> {
 
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl From<String> for Rc<str> {
+    /// Allocate a reference-counted string slice and copy `v` into it.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::rc::Rc;
+    /// let original: String = "statue".to_owned();
+    /// let shared: Rc<str> = Rc::from(original);
+    /// assert_eq!("statue", &shared[..]);
+    /// ```
     #[inline]
     fn from(v: String) -> Rc<str> {
         Rc::from(&v[..])
@@ -1677,6 +1706,16 @@ impl From<String> for Rc<str> {
 
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl<T: ?Sized> From<Box<T>> for Rc<T> {
+    /// Move a boxed object to a new, reference counted, allocation.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::rc::Rc;
+    /// let original: Box<i32> = Box::new(1);
+    /// let shared: Rc<i32> = Rc::from(original);
+    /// assert_eq!(1, *shared);
+    /// ```
     #[inline]
     fn from(v: Box<T>) -> Rc<T> {
         Rc::from_box(v)
@@ -1685,6 +1724,16 @@ impl<T: ?Sized> From<Box<T>> for Rc<T> {
 
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl<T> From<Vec<T>> for Rc<[T]> {
+    /// Allocate a reference-counted slice and move `v`'s items into it.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::rc::Rc;
+    /// let original: Box<Vec<i32>> = Box::new(vec![1, 2, 3]);
+    /// let shared: Rc<Vec<i32>> = Rc::from(original);
+    /// assert_eq!(vec![1, 2, 3], *shared);
+    /// ```
     #[inline]
     fn from(mut v: Vec<T>) -> Rc<[T]> {
         unsafe {
@@ -1917,7 +1966,7 @@ impl<T: ?Sized> Weak<T> {
             // SAFETY: if is_dangling returns false, then the pointer is dereferencable.
             // The payload may be dropped at this point, and we have to maintain provenance,
             // so use raw pointer manipulation.
-            unsafe { &raw const (*ptr).value }
+            unsafe { ptr::addr_of_mut!((*ptr).value) }
         }
     }
 

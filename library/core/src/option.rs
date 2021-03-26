@@ -150,7 +150,7 @@
 use crate::iter::{FromIterator, FusedIterator, TrustedLen};
 use crate::pin::Pin;
 use crate::{
-    convert, fmt, hint, mem,
+    hint, mem,
     ops::{self, Deref, DerefMut},
 };
 
@@ -336,7 +336,7 @@ impl<T> Option<T> {
     /// assert_eq!(x.expect("fruits are healthy"), "value");
     /// ```
     ///
-    /// ```{.should_panic}
+    /// ```should_panic
     /// let x: Option<&str> = None;
     /// x.expect("fruits are healthy"); // panics with `fruits are healthy`
     /// ```
@@ -372,7 +372,7 @@ impl<T> Option<T> {
     /// assert_eq!(x.unwrap(), "air");
     /// ```
     ///
-    /// ```{.should_panic}
+    /// ```should_panic
     /// let x: Option<&str> = None;
     /// assert_eq!(x.unwrap(), "air"); // fails
     /// ```
@@ -877,6 +877,34 @@ impl<T> Option<T> {
         self.get_or_insert_with(|| value)
     }
 
+    /// Inserts the default value into the option if it is [`None`], then
+    /// returns a mutable reference to the contained value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_get_or_insert_default)]
+    ///
+    /// let mut x = None;
+    ///
+    /// {
+    ///     let y: &mut u32 = x.get_or_insert_default();
+    ///     assert_eq!(y, &0);
+    ///
+    ///     *y = 7;
+    /// }
+    ///
+    /// assert_eq!(x, Some(7));
+    /// ```
+    #[inline]
+    #[unstable(feature = "option_get_or_insert_default", issue = "82901")]
+    pub fn get_or_insert_default(&mut self) -> &mut T
+    where
+        T: Default,
+    {
+        self.get_or_insert_with(Default::default)
+    }
+
     /// Inserts a value computed from `f` into the option if it is [`None`],
     /// then returns a mutable reference to the contained value.
     ///
@@ -1093,90 +1121,6 @@ impl<T: Clone> Option<&mut T> {
     }
 }
 
-impl<T: fmt::Debug> Option<T> {
-    /// Consumes `self` while expecting [`None`] and returning nothing.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the value is a [`Some`], with a panic message including the
-    /// passed message, and the content of the [`Some`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(option_expect_none)]
-    ///
-    /// use std::collections::HashMap;
-    /// let mut squares = HashMap::new();
-    /// for i in -10..=10 {
-    ///     // This will not panic, since all keys are unique.
-    ///     squares.insert(i, i * i).expect_none("duplicate key");
-    /// }
-    /// ```
-    ///
-    /// ```{.should_panic}
-    /// #![feature(option_expect_none)]
-    ///
-    /// use std::collections::HashMap;
-    /// let mut sqrts = HashMap::new();
-    /// for i in -10..=10 {
-    ///     // This will panic, since both negative and positive `i` will
-    ///     // insert the same `i * i` key, returning the old `Some(i)`.
-    ///     sqrts.insert(i * i, i).expect_none("duplicate key");
-    /// }
-    /// ```
-    #[inline]
-    #[track_caller]
-    #[unstable(feature = "option_expect_none", reason = "newly added", issue = "62633")]
-    pub fn expect_none(self, msg: &str) {
-        if let Some(val) = self {
-            expect_none_failed(msg, &val);
-        }
-    }
-
-    /// Consumes `self` while expecting [`None`] and returning nothing.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the value is a [`Some`], with a custom panic message provided
-    /// by the [`Some`]'s value.
-    ///
-    /// [`Some(v)`]: Some
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(option_unwrap_none)]
-    ///
-    /// use std::collections::HashMap;
-    /// let mut squares = HashMap::new();
-    /// for i in -10..=10 {
-    ///     // This will not panic, since all keys are unique.
-    ///     squares.insert(i, i * i).unwrap_none();
-    /// }
-    /// ```
-    ///
-    /// ```{.should_panic}
-    /// #![feature(option_unwrap_none)]
-    ///
-    /// use std::collections::HashMap;
-    /// let mut sqrts = HashMap::new();
-    /// for i in -10..=10 {
-    ///     // This will panic, since both negative and positive `i` will
-    ///     // insert the same `i * i` key, returning the old `Some(i)`.
-    ///     sqrts.insert(i * i, i).unwrap_none();
-    /// }
-    /// ```
-    #[inline]
-    #[track_caller]
-    #[unstable(feature = "option_unwrap_none", reason = "newly added", issue = "62633")]
-    pub fn unwrap_none(self) {
-        if let Some(val) = self {
-            expect_none_failed("called `Option::unwrap_none()` on a `Some` value", &val);
-        }
-    }
-}
-
 impl<T: Default> Option<T> {
     /// Returns the contained [`Some`] value or a default
     ///
@@ -1275,7 +1219,8 @@ impl<T, E> Option<Result<T, E>> {
     /// ```
     #[inline]
     #[stable(feature = "transpose_result", since = "1.33.0")]
-    pub fn transpose(self) -> Result<Option<T>, E> {
+    #[rustc_const_unstable(feature = "const_option", issue = "67441")]
+    pub const fn transpose(self) -> Result<Option<T>, E> {
         match self {
             Some(Ok(x)) => Ok(Some(x)),
             Some(Err(e)) => Err(e),
@@ -1290,14 +1235,6 @@ impl<T, E> Option<Result<T, E>> {
 #[track_caller]
 fn expect_failed(msg: &str) -> ! {
     panic!("{}", msg)
-}
-
-// This is a separate function to reduce the code size of .expect_none() itself.
-#[inline(never)]
-#[cold]
-#[track_caller]
-fn expect_none_failed(msg: &str, value: &dyn fmt::Debug) -> ! {
-    panic!("{}: {:?}", msg, value)
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1750,7 +1687,11 @@ impl<T> Option<Option<T>> {
     /// ```
     #[inline]
     #[stable(feature = "option_flattening", since = "1.40.0")]
-    pub fn flatten(self) -> Option<T> {
-        self.and_then(convert::identity)
+    #[rustc_const_unstable(feature = "const_option", issue = "67441")]
+    pub const fn flatten(self) -> Option<T> {
+        match self {
+            Some(inner) => inner,
+            None => None,
+        }
     }
 }

@@ -12,7 +12,7 @@ use crate::{CachedModuleCodegen, CrateInfo, MemFlags, ModuleCodegen, ModuleKind}
 
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::profiling::print_time_passes_entry;
+use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::{par_iter, ParallelIterator};
 use rustc_hir as hir;
 use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
@@ -32,9 +32,10 @@ use rustc_session::config::{self, EntryFnType};
 use rustc_session::Session;
 use rustc_target::abi::{Align, LayoutOf, VariantIdx};
 
-use std::cmp;
 use std::ops::{Deref, DerefMut};
 use std::time::{Duration, Instant};
+
+use itertools::Itertools;
 
 pub fn bin_op_to_icmp_predicate(op: hir::BinOpKind, signed: bool) -> IntPredicate {
     match op {
@@ -546,12 +547,23 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         ongoing_codegen.submit_pre_codegened_module_to_llvm(tcx, metadata_module);
     }
 
-    // We sort the codegen units by size. This way we can schedule work for LLVM
-    // a bit more efficiently.
-    let codegen_units = {
-        let mut codegen_units = codegen_units.iter().collect::<Vec<_>>();
-        codegen_units.sort_by_cached_key(|cgu| cmp::Reverse(cgu.size_estimate()));
-        codegen_units
+    // For better throughput during parallel processing by LLVM, we used to sort
+    // CGUs largest to smallest. This would lead to better thread utilization
+    // by, for example, preventing a large CGU from being processed last and
+    // having only one LLVM thread working while the rest remained idle.
+    //
+    // However, this strategy would lead to high memory usage, as it meant the
+    // LLVM-IR for all of the largest CGUs would be resident in memory at once.
+    //
+    // Instead, we can compromise by ordering CGUs such that the largest and
+    // smallest are first, second largest and smallest are next, etc. If there
+    // are large size variations, this can reduce memory usage significantly.
+    let codegen_units: Vec<_> = {
+        let mut sorted_cgus = codegen_units.iter().collect::<Vec<_>>();
+        sorted_cgus.sort_by_cached_key(|cgu| cgu.size_estimate());
+
+        let (first_half, second_half) = sorted_cgus.split_at(sorted_cgus.len() / 2);
+        second_half.iter().rev().interleave(first_half).copied().collect()
     };
 
     // The non-parallel compiler can only translate codegen units to LLVM IR
@@ -595,6 +607,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     let mut cgu_reuse = Vec::new();
     let mut pre_compiled_cgus: Option<FxHashMap<usize, _>> = None;
     let mut total_codegen_time = Duration::new(0, 0);
+    let start_rss = tcx.sess.time_passes().then(|| get_resident_set_size());
 
     for (i, cgu) in codegen_units.iter().enumerate() {
         ongoing_codegen.wait_for_signal_to_codegen_item();
@@ -626,6 +639,11 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                         total_codegen_time += start_time.elapsed();
                         module
                     };
+                // This will unwind if there are errors, which triggers our `AbortCodegenOnDrop`
+                // guard. Unfortunately, just skipping the `submit_codegened_module_to_llvm` makes
+                // compilation hang on post-monomorphization errors.
+                tcx.sess.abort_if_errors();
+
                 submit_codegened_module_to_llvm(
                     &backend,
                     &ongoing_codegen.coordinator_send,
@@ -664,7 +682,16 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
     // Since the main thread is sometimes blocked during codegen, we keep track
     // -Ztime-passes output manually.
-    print_time_passes_entry(tcx.sess.time_passes(), "codegen_to_LLVM_IR", total_codegen_time);
+    if tcx.sess.time_passes() {
+        let end_rss = get_resident_set_size();
+
+        print_time_passes_entry(
+            "codegen_to_LLVM_IR",
+            total_codegen_time,
+            start_rss.unwrap(),
+            end_rss,
+        );
+    }
 
     ongoing_codegen.check_for_errors(tcx.sess);
 
@@ -840,7 +867,7 @@ fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> CguR
         cgu.name()
     );
 
-    if tcx.dep_graph.try_mark_green(tcx, &dep_node).is_some() {
+    if tcx.try_mark_green(&dep_node) {
         // We can re-use either the pre- or the post-thinlto state. If no LTO is
         // being performed then we can use post-LTO artifacts, otherwise we must
         // reuse pre-LTO artifacts

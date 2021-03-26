@@ -1,0 +1,22 @@
+error: consider adding a `;` to the last statement for consistent formatting
+  --> $DIR/semicolon_if_nothing_returned.rs:8:5
+   |
+LL |     println!("Hello")
+   |     ^^^^^^^^^^^^^^^^^ help: add a `;` here: `println!("Hello");`
+   |
+   = note: `-D clippy::semicolon-if-nothing-returned` implied by `-D warnings`
+
+error: consider adding a `;` to the last statement for consistent formatting
+  --> $DIR/semicolon_if_nothing_returned.rs:12:5
+   |
+LL |     get_unit()
+   |     ^^^^^^^^^^ help: add a `;` here: `get_unit();`
+
+error: consider adding a `;` to the last statement for consistent formatting
+  --> $DIR/semicolon_if_nothing_returned.rs:17:5
+   |
+LL |     y = x + 1
+   |     ^^^^^^^^^ help: add a `;` here: `y = x + 1;`
+
+error: aborting due to 3 previous errors
+

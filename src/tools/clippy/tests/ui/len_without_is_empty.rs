@@ -34,6 +34,24 @@ impl PubAllowed {
     }
 }
 
+pub struct PubAllowedFn;
+
+impl PubAllowedFn {
+    #[allow(clippy::len_without_is_empty)]
+    pub fn len(&self) -> isize {
+        1
+    }
+}
+
+#[allow(clippy::len_without_is_empty)]
+pub struct PubAllowedStruct;
+
+impl PubAllowedStruct {
+    pub fn len(&self) -> isize {
+        1
+    }
+}
+
 pub trait PubTraitsToo {
     fn len(&self) -> isize;
 }
@@ -64,6 +82,18 @@ impl HasWrongIsEmpty {
     }
 
     pub fn is_empty(&self, x: u32) -> bool {
+        false
+    }
+}
+
+pub struct MismatchedSelf;
+
+impl MismatchedSelf {
+    pub fn len(self) -> isize {
+        1
+    }
+
+    pub fn is_empty(&self) -> bool {
         false
     }
 }
@@ -140,6 +170,21 @@ pub trait Foo: Sized {}
 
 pub trait DependsOnFoo: Foo {
     fn len(&mut self) -> usize;
+}
+
+pub struct MultipleImpls;
+
+// issue #1562
+impl MultipleImpls {
+    pub fn len(&self) -> usize {
+        1
+    }
+}
+
+impl MultipleImpls {
+    pub fn is_empty(&self) -> bool {
+        false
+    }
 }
 
 fn main() {}

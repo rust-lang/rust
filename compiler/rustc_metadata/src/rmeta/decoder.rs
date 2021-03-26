@@ -7,7 +7,6 @@ use crate::rmeta::*;
 use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fingerprint::{Fingerprint, FingerprintDecoder};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{Lock, LockGuard, Lrc, OnceCell};
@@ -351,12 +350,6 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for DefIndex {
     }
 }
 
-impl<'a, 'tcx> FingerprintDecoder for DecodeContext<'a, 'tcx> {
-    fn decode_fingerprint(&mut self) -> Result<Fingerprint, String> {
-        Fingerprint::decode_opaque(&mut self.opaque)
-    }
-}
-
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for SyntaxContext {
     fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Result<SyntaxContext, String> {
         let cdata = decoder.cdata();
@@ -633,6 +626,10 @@ impl CrateRoot<'_> {
 
     crate fn hash(&self) -> Svh {
         self.hash
+    }
+
+    crate fn stable_crate_id(&self) -> StableCrateId {
+        self.stable_crate_id
     }
 
     crate fn triple(&self) -> &TargetTriple {
@@ -954,6 +951,14 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     fn get_expn_that_defined(&self, id: DefIndex, sess: &Session) -> ExpnId {
         self.root.tables.expn_that_defined.get(self, id).unwrap().decode((self, sess))
+    }
+
+    fn get_const_param_default(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        id: DefIndex,
+    ) -> rustc_middle::ty::Const<'tcx> {
+        self.root.tables.const_defaults.get(self, id).unwrap().decode((self, tcx))
     }
 
     /// Iterates over all the stability attributes in the given crate.

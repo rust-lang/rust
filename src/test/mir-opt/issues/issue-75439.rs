@@ -1,7 +1,6 @@
 // EMIT_MIR issue_75439.foo.MatchBranchSimplification.diff
 
 #![feature(const_fn_transmute)]
-#![feature(or_patterns)]
 
 use std::mem::transmute;
 

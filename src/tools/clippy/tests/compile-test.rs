@@ -44,7 +44,9 @@ fn third_party_crates() -> String {
         };
         if let Some(name) = path.file_name().and_then(OsStr::to_str) {
             for dep in CRATES {
-                if name.starts_with(&format!("lib{}-", dep)) && name.ends_with(".rlib") {
+                if name.starts_with(&format!("lib{}-", dep))
+                    && name.rsplit('.').next().map(|ext| ext.eq_ignore_ascii_case("rlib")) == Some(true)
+                {
                     if let Some(old) = crates.insert(dep, path.clone()) {
                         panic!("Found multiple rlibs for crate `{}`: `{:?}` and `{:?}", dep, old, path);
                     }
@@ -64,8 +66,8 @@ fn third_party_crates() -> String {
 fn default_config() -> compiletest::Config {
     let mut config = compiletest::Config::default();
 
-    if let Ok(name) = env::var("TESTNAME") {
-        config.filter = Some(name);
+    if let Ok(filters) = env::var("TESTNAME") {
+        config.filters = filters.split(',').map(std::string::ToString::to_string).collect();
     }
 
     if let Some(path) = option_env!("RUSTC_LIB_PATH") {
@@ -165,7 +167,7 @@ fn run_ui_toml(config: &mut compiletest::Config) {
 fn run_ui_cargo(config: &mut compiletest::Config) {
     fn run_tests(
         config: &compiletest::Config,
-        filter: &Option<String>,
+        filters: &[String],
         mut tests: Vec<tester::TestDescAndFn>,
     ) -> Result<bool, io::Error> {
         let mut result = true;
@@ -179,9 +181,10 @@ fn run_ui_cargo(config: &mut compiletest::Config) {
 
             // Use the filter if provided
             let dir_path = dir.path();
-            match &filter {
-                Some(name) if !dir_path.ends_with(name) => continue,
-                _ => {},
+            for filter in filters {
+                if !dir_path.ends_with(filter) {
+                    continue;
+                }
             }
 
             for case in fs::read_dir(&dir_path)? {
@@ -212,6 +215,7 @@ fn run_ui_cargo(config: &mut compiletest::Config) {
                         Some("main.rs") => {},
                         _ => continue,
                     }
+                    set_var("CLIPPY_CONF_DIR", case.path());
                     let paths = compiletest::common::TestPaths {
                         file: file_path,
                         base: config.src_base.clone(),
@@ -239,9 +243,10 @@ fn run_ui_cargo(config: &mut compiletest::Config) {
     let tests = compiletest::make_tests(&config);
 
     let current_dir = env::current_dir().unwrap();
-    let filter = env::var("TESTNAME").ok();
-    let res = run_tests(&config, &filter, tests);
+    let conf_dir = var("CLIPPY_CONF_DIR").unwrap_or_default();
+    let res = run_tests(&config, &config.filters, tests);
     env::set_current_dir(current_dir).unwrap();
+    set_var("CLIPPY_CONF_DIR", conf_dir);
 
     match res {
         Ok(true) => {},

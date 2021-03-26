@@ -122,6 +122,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     promoted_mir => { tcx.arena.alloc(cdata.get_promoted_mir(tcx, def_id.index)) }
     mir_abstract_const => { cdata.get_mir_abstract_const(tcx, def_id.index) }
     unused_generic_params => { cdata.get_unused_generic_params(def_id.index) }
+    const_param_default => { tcx.mk_const(cdata.get_const_param_default(tcx, def_id.index)) }
     mir_const_qualif => { cdata.mir_const_qualif(def_id.index) }
     fn_sig => { cdata.fn_sig(def_id.index, tcx) }
     inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, def_id.index) }
@@ -467,6 +468,10 @@ impl CStore {
 
     pub fn num_def_ids(&self, cnum: CrateNum) -> usize {
         self.get_crate_data(cnum).num_def_ids()
+    }
+
+    pub fn item_attrs(&self, def_id: DefId, sess: &Session) -> Vec<ast::Attribute> {
+        self.get_crate_data(def_id.krate).get_item_attrs(def_id.index, sess).collect()
     }
 }
 

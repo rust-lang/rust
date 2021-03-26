@@ -253,7 +253,7 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for SubstsRef<'tcx> {
     fn decode(decoder: &mut D) -> Result<Self, D::Error> {
         let len = decoder.read_usize()?;
         let tcx = decoder.tcx();
-        Ok(tcx.mk_substs((0..len).map(|_| Decodable::decode(decoder)))?)
+        tcx.mk_substs((0..len).map(|_| Decodable::decode(decoder)))
     }
 }
 
@@ -314,7 +314,7 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::AdtDef {
 impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<Ty<'tcx>> {
     fn decode(decoder: &mut D) -> Result<&'tcx Self, D::Error> {
         let len = decoder.read_usize()?;
-        Ok(decoder.tcx().mk_type_list((0..len).map(|_| Decodable::decode(decoder)))?)
+        decoder.tcx().mk_type_list((0..len).map(|_| Decodable::decode(decoder)))
     }
 }
 
@@ -323,15 +323,23 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D>
 {
     fn decode(decoder: &mut D) -> Result<&'tcx Self, D::Error> {
         let len = decoder.read_usize()?;
-        Ok(decoder
-            .tcx()
-            .mk_poly_existential_predicates((0..len).map(|_| Decodable::decode(decoder)))?)
+        decoder.tcx().mk_poly_existential_predicates((0..len).map(|_| Decodable::decode(decoder)))
     }
 }
 
 impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::Const<'tcx> {
     fn decode(decoder: &mut D) -> Result<&'tcx Self, D::Error> {
         Ok(decoder.tcx().mk_const(Decodable::decode(decoder)?))
+    }
+}
+
+impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for [ty::ValTree<'tcx>] {
+    fn decode(decoder: &mut D) -> Result<&'tcx Self, D::Error> {
+        Ok(decoder.tcx().arena.alloc_from_iter(
+            (0..decoder.read_usize()?)
+                .map(|_| Decodable::decode(decoder))
+                .collect::<Result<Vec<_>, _>>()?,
+        ))
     }
 }
 
@@ -462,6 +470,11 @@ macro_rules! implement_ty_decoder {
                     read_f32 -> f32;
                     read_char -> char;
                     read_str -> Cow<'_, str>;
+                }
+
+                #[inline]
+                fn read_raw_bytes_into(&mut self, bytes: &mut [u8]) -> Result<(), Self::Error> {
+                    self.opaque.read_raw_bytes_into(bytes)
                 }
 
                 fn error(&mut self, err: &str) -> Self::Error {

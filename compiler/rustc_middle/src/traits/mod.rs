@@ -9,7 +9,7 @@ pub mod specialization_graph;
 mod structural_impls;
 
 use crate::infer::canonical::Canonical;
-use crate::mir::interpret::ErrorHandled;
+use crate::mir::abstract_const::NotConstEvaluatable;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, AdtKind, Ty, TyCtxt};
 
@@ -228,7 +228,9 @@ pub enum ObligationCauseCode<'tcx> {
     /// Inline asm operand type must be `Sized`.
     InlineAsmSized,
     /// `[T, ..n]` implies that `T` must be `Copy`.
-    /// If `true`, suggest `const_in_array_repeat_expressions` feature flag.
+    /// If the function in the array repeat expression is a `const fn`,
+    /// display a help message suggesting to move the function call to a
+    /// new `const` item while saying that `T` doesn't implement `Copy`.
     RepeatVec(bool),
 
     /// Types of fields (other than the last, except for packed structs) in a struct must be sized.
@@ -338,7 +340,7 @@ impl ObligationCauseCode<'_> {
 }
 
 // `ObligationCauseCode` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(ObligationCauseCode<'_>, 32);
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -396,7 +398,7 @@ pub enum SelectionError<'tcx> {
         ty::error::TypeError<'tcx>,
     ),
     TraitNotObjectSafe(DefId),
-    ConstEvalFailure(ErrorHandled),
+    NotConstEvaluatable(NotConstEvaluatable),
     Overflow,
 }
 
@@ -477,6 +479,9 @@ pub enum ImplSource<'tcx, N> {
     /// ImplSource for a builtin `DeterminantKind` trait implementation.
     DiscriminantKind(ImplSourceDiscriminantKindData),
 
+    /// ImplSource for a builtin `Pointee` trait implementation.
+    Pointee(ImplSourcePointeeData),
+
     /// ImplSource automatically generated for a generator.
     Generator(ImplSourceGeneratorData<'tcx, N>),
 
@@ -495,7 +500,8 @@ impl<'tcx, N> ImplSource<'tcx, N> {
             ImplSource::Generator(c) => c.nested,
             ImplSource::Object(d) => d.nested,
             ImplSource::FnPointer(d) => d.nested,
-            ImplSource::DiscriminantKind(ImplSourceDiscriminantKindData) => Vec::new(),
+            ImplSource::DiscriminantKind(ImplSourceDiscriminantKindData)
+            | ImplSource::Pointee(ImplSourcePointeeData) => Vec::new(),
             ImplSource::TraitAlias(d) => d.nested,
         }
     }
@@ -510,7 +516,8 @@ impl<'tcx, N> ImplSource<'tcx, N> {
             ImplSource::Generator(c) => &c.nested[..],
             ImplSource::Object(d) => &d.nested[..],
             ImplSource::FnPointer(d) => &d.nested[..],
-            ImplSource::DiscriminantKind(ImplSourceDiscriminantKindData) => &[],
+            ImplSource::DiscriminantKind(ImplSourceDiscriminantKindData)
+            | ImplSource::Pointee(ImplSourcePointeeData) => &[],
             ImplSource::TraitAlias(d) => &d.nested[..],
         }
     }
@@ -554,6 +561,9 @@ impl<'tcx, N> ImplSource<'tcx, N> {
             }),
             ImplSource::DiscriminantKind(ImplSourceDiscriminantKindData) => {
                 ImplSource::DiscriminantKind(ImplSourceDiscriminantKindData)
+            }
+            ImplSource::Pointee(ImplSourcePointeeData) => {
+                ImplSource::Pointee(ImplSourcePointeeData)
             }
             ImplSource::TraitAlias(d) => ImplSource::TraitAlias(ImplSourceTraitAliasData {
                 alias_def_id: d.alias_def_id,
@@ -632,6 +642,9 @@ pub struct ImplSourceFnPointerData<'tcx, N> {
 // FIXME(@lcnr): This should be  refactored and merged with other builtin vtables.
 #[derive(Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
 pub struct ImplSourceDiscriminantKindData;
+
+#[derive(Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
+pub struct ImplSourcePointeeData;
 
 #[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, TypeFoldable, Lift)]
 pub struct ImplSourceTraitAliasData<'tcx, N> {

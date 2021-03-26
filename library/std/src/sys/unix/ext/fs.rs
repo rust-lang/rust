@@ -2,11 +2,11 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use super::platform::fs::MetadataExt as _;
 use crate::fs::{self, OpenOptions, Permissions};
 use crate::io;
 use crate::path::Path;
 use crate::sys;
-use crate::sys::platform::fs::MetadataExt as UnixMetadataExt;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner};
 // Used for `File::read` on intra-doc links
 #[allow(unused_imports)]
@@ -109,7 +109,7 @@ pub trait FileExt {
             }
         }
         if !buf.is_empty() {
-            Err(io::Error::new(io::ErrorKind::UnexpectedEof, "failed to fill whole buffer"))
+            Err(io::Error::new_const(io::ErrorKind::UnexpectedEof, &"failed to fill whole buffer"))
         } else {
             Ok(())
         }
@@ -191,9 +191,9 @@ pub trait FileExt {
         while !buf.is_empty() {
             match self.write_at(buf, offset) {
                 Ok(0) => {
-                    return Err(io::Error::new(
+                    return Err(io::Error::new_const(
                         io::ErrorKind::WriteZero,
-                        "failed to write whole buffer",
+                        &"failed to write whole buffer",
                     ));
                 }
                 Ok(n) => {

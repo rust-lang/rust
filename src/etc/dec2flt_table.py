@@ -113,7 +113,7 @@ def print_proper_powers():
     print()
     print("#[rustfmt::skip]")
     typ = "([u64; {0}], [i16; {0}])".format(len(powers))
-    print("pub const POWERS: ", typ, " = (", sep='')
+    print("pub static POWERS: ", typ, " = (", sep='')
     print("    [")
     for z in powers:
         print("        0x{:x},".format(z.sig))

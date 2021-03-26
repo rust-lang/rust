@@ -65,7 +65,10 @@ mod attr_impl {
             const NoCapture = 1 << 2;
             const NonNull   = 1 << 3;
             const ReadOnly  = 1 << 4;
-            const InReg     = 1 << 8;
+            const InReg     = 1 << 5;
+            // NoAlias on &mut arguments can only be used with LLVM >= 12 due to miscompiles
+            // in earlier versions. FIXME: Remove this distinction once possible.
+            const NoAliasMutRef = 1 << 6;
         }
     }
 }
@@ -103,7 +106,12 @@ impl ArgAttributes {
     }
 
     pub fn ext(&mut self, ext: ArgExtension) -> &mut Self {
-        assert!(self.arg_ext == ArgExtension::None || self.arg_ext == ext);
+        assert!(
+            self.arg_ext == ArgExtension::None || self.arg_ext == ext,
+            "cannot set {:?} when {:?} is already set",
+            ext,
+            self.arg_ext
+        );
         self.arg_ext = ext;
         self
     }
@@ -521,7 +529,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     }
 
     pub fn is_indirect(&self) -> bool {
-        matches!(self.mode, PassMode::Indirect {..})
+        matches!(self.mode, PassMode::Indirect { .. })
     }
 
     pub fn is_sized_indirect(&self) -> bool {
@@ -546,6 +554,7 @@ pub enum Conv {
 
     // Target-specific calling conventions.
     ArmAapcs,
+    CCmseNonSecureCall,
 
     Msp430Intr,
 
@@ -597,6 +606,13 @@ impl<'a, Ty> FnAbi<'a, Ty> {
         Ty: TyAndLayoutMethods<'a, C> + Copy,
         C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout + HasTargetSpec,
     {
+        if abi == spec::abi::Abi::X86Interrupt {
+            if let Some(arg) = self.args.first_mut() {
+                arg.make_indirect_byval();
+            }
+            return Ok(());
+        }
+
         match &cx.target_spec().arch[..] {
             "x86" => {
                 let flavor = if abi == spec::abi::Abi::Fastcall {

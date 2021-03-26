@@ -156,6 +156,46 @@ impl<'a> PostExpansionVisitor<'a> {
                     "efiapi ABI is experimental and subject to change"
                 );
             }
+            "C-cmse-nonsecure-call" => {
+                gate_feature_post!(
+                    &self,
+                    abi_c_cmse_nonsecure_call,
+                    span,
+                    "C-cmse-nonsecure-call ABI is experimental and subject to change"
+                );
+            }
+            "C-unwind" => {
+                gate_feature_post!(
+                    &self,
+                    c_unwind,
+                    span,
+                    "C-unwind ABI is experimental and subject to change"
+                );
+            }
+            "stdcall-unwind" => {
+                gate_feature_post!(
+                    &self,
+                    c_unwind,
+                    span,
+                    "stdcall-unwind ABI is experimental and subject to change"
+                );
+            }
+            "system-unwind" => {
+                gate_feature_post!(
+                    &self,
+                    c_unwind,
+                    span,
+                    "system-unwind ABI is experimental and subject to change"
+                );
+            }
+            "thiscall-unwind" => {
+                gate_feature_post!(
+                    &self,
+                    c_unwind,
+                    span,
+                    "thiscall-unwind ABI is experimental and subject to change"
+                );
+            }
             abi => self
                 .sess
                 .parse_sess
@@ -239,7 +279,7 @@ impl<'a> PostExpansionVisitor<'a> {
                 if let ast::TyKind::ImplTrait(..) = ty.kind {
                     gate_feature_post!(
                         &self.vis,
-                        type_alias_impl_trait,
+                        min_type_alias_impl_trait,
                         ty.span,
                         "`impl Trait` in type aliases is unstable"
                     );
@@ -365,7 +405,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemKind::Impl { polarity, defaultness, ref of_trait, .. } => {
+            ast::ItemKind::Impl(box ast::ImplKind {
+                polarity, defaultness, ref of_trait, ..
+            }) => {
                 if let ast::ImplPolarity::Negative(span) = polarity {
                     gate_feature_post!(
                         &self,
@@ -381,7 +423,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemKind::Trait(ast::IsAuto::Yes, ..) => {
+            ast::ItemKind::Trait(box ast::TraitKind(ast::IsAuto::Yes, ..)) => {
                 gate_feature_post!(
                     &self,
                     auto_traits,
@@ -399,7 +441,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, decl_macro, i.span, msg);
             }
 
-            ast::ItemKind::TyAlias(_, _, _, Some(ref ty)) => self.check_impl_trait(&ty),
+            ast::ItemKind::TyAlias(box ast::TyAliasKind(_, _, _, Some(ref ty))) => {
+                self.check_impl_trait(&ty)
+            }
 
             _ => {}
         }
@@ -555,13 +599,13 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_assoc_item(&mut self, i: &'a ast::AssocItem, ctxt: AssocCtxt) {
         let is_fn = match i.kind {
-            ast::AssocItemKind::Fn(_, ref sig, _, _) => {
+            ast::AssocItemKind::Fn(box ast::FnKind(_, ref sig, _, _)) => {
                 if let (ast::Const::Yes(_), AssocCtxt::Trait) = (sig.header.constness, ctxt) {
                     gate_feature_post!(&self, const_fn, i.span, "const fn is unstable");
                 }
                 true
             }
-            ast::AssocItemKind::TyAlias(_, ref generics, _, ref ty) => {
+            ast::AssocItemKind::TyAlias(box ast::TyAliasKind(_, ref generics, _, ref ty)) => {
                 if let (Some(_), AssocCtxt::Trait) = (ty, ctxt) {
                     gate_feature_post!(
                         &self,
@@ -626,15 +670,22 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
             }
         };
     }
-    gate_all!(if_let_guard, "`if let` guards are experimental");
-    gate_all!(let_chains, "`let` expressions in this position are experimental");
+    gate_all!(
+        if_let_guard,
+        "`if let` guards are experimental",
+        "you can write `if matches!(<expr>, <pattern>)` instead of `if let <pattern> = <expr>`"
+    );
+    gate_all!(
+        let_chains,
+        "`let` expressions in this position are experimental",
+        "you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`"
+    );
     gate_all!(
         async_closure,
         "async closures are unstable",
         "to use an async block, remove the `||`: `async {`"
     );
     gate_all!(generators, "yield syntax is experimental");
-    gate_all!(or_patterns, "or-patterns syntax is experimental");
     gate_all!(raw_ref_op, "raw address of syntax is experimental");
     gate_all!(const_trait_bound_opt_out, "`?const` on trait bounds is experimental");
     gate_all!(const_trait_impl, "const trait impls are experimental");
@@ -653,6 +704,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
         // involved, so we only emit errors where there are no other parsing errors.
         gate_all!(destructuring_assignment, "destructuring assignments are unstable");
     }
+    gate_all!(pub_macro_rules, "`pub` on `macro_rules` items is unstable");
 
     // All uses of `gate_all!` below this point were added in #65742,
     // and subsequently disabled (with the non-early gating readded).

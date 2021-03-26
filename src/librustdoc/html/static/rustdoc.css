@@ -3,13 +3,19 @@
 	font-family: 'Fira Sans';
 	font-style: normal;
 	font-weight: 400;
-	src: local('Fira Sans'), url("FiraSans-Regular.woff") format('woff');
+	src: local('Fira Sans'),
+		url("FiraSans-Regular.woff2") format("woff2"),
+		url("FiraSans-Regular.woff") format('woff');
+	font-display: swap;
 }
 @font-face {
 	font-family: 'Fira Sans';
 	font-style: normal;
 	font-weight: 500;
-	src: local('Fira Sans Medium'), url("FiraSans-Medium.woff") format('woff');
+	src: local('Fira Sans Medium'),
+		url("FiraSans-Medium.woff2") format("woff2"),
+		url("FiraSans-Medium.woff") format('woff');
+	font-display: swap;
 }
 
 /* See SourceSerifPro-LICENSE.txt for the Source Serif Pro license. */
@@ -18,18 +24,21 @@
 	font-style: normal;
 	font-weight: 400;
 	src: local('Source Serif Pro'), url("SourceSerifPro-Regular.ttf.woff") format('woff');
+	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Serif Pro';
 	font-style: italic;
 	font-weight: 400;
 	src: local('Source Serif Pro Italic'), url("SourceSerifPro-It.ttf.woff") format('woff');
+	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Serif Pro';
 	font-style: normal;
 	font-weight: 700;
 	src: local('Source Serif Pro Bold'), url("SourceSerifPro-Bold.ttf.woff") format('woff');
+	font-display: swap;
 }
 
 /* See SourceCodePro-LICENSE.txt for the Source Code Pro license. */
@@ -39,13 +48,22 @@
 	font-weight: 400;
 	/* Avoid using locally installed font because bad versions are in circulation:
 	 * see https://github.com/rust-lang/rust/issues/24355 */
-	src: url("SourceCodePro-Regular.woff") format('woff');
+	src: url("SourceCodePro-Regular.ttf.woff") format('woff');
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Source Code Pro';
+	font-style: italic;
+	font-weight: 400;
+	src: url("SourceCodePro-It.ttf.woff") format('woff');
+	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Code Pro';
 	font-style: normal;
 	font-weight: 600;
-	src: url("SourceCodePro-Semibold.woff") format('woff');
+	src: url("SourceCodePro-Semibold.ttf.woff") format('woff');
+	font-display: swap;
 }
 
 * {
@@ -125,11 +143,12 @@ h1, h2, h3, h4,
 #source-sidebar, #sidebar-toggle,
 /* This selector is for the items listed in the "all items" page. */
 #main > ul.docblock > li > a {
-	font-family: "Fira Sans", sans-serif;
+	font-family: "Fira Sans", Arial, sans-serif;
 }
 
 .content ul.crate a.crate {
-	font: 16px/1.6 "Fira Sans";
+	font-size: 16px/1.6;
+	font-family: "Fira Sans", Arial, sans-serif;
 }
 
 ol, ul {
@@ -156,6 +175,7 @@ code, pre, a.test-arrow {
 }
 .docblock pre code, .docblock-short pre code, .docblock code.spotlight {
 	padding: 0;
+	padding-right: 1ex;
 }
 .docblock code.spotlight :last-child {
 	padding-bottom: 0.6em;
@@ -335,10 +355,10 @@ nav.sub {
 .rustdoc:not(.source) .example-wrap {
 	display: inline-flex;
 	margin-bottom: 10px;
-	position: relative;
 }
 
 .example-wrap {
+	position: relative;
 	width: 100%;
 }
 
@@ -404,7 +424,7 @@ nav.sub {
 	text-overflow: ellipsis;
 	margin: 0;
 }
-.docblock code, .docblock-short code {
+.docblock-short code {
 	white-space: pre-wrap;
 }
 
@@ -470,7 +490,7 @@ h4 > code, h3 > code, .invisible > code {
 }
 #main > .since {
 	top: inherit;
-	font-family: "Fira Sans", sans-serif;
+	font-family: "Fira Sans", Arial, sans-serif;
 }
 
 .content table:not(.table-display) {
@@ -679,6 +699,7 @@ a {
 	width: calc(100% - 63px);
 }
 #crate-search {
+	min-width: 115px;
 	margin-top: 5px;
 	padding: 6px;
 	padding-right: 19px;
@@ -797,6 +818,7 @@ body.blur > :not(#help) {
 	float: left;
 	clear: left;
 	display: block;
+	margin-right: 0.5rem;
 }
 #help > div > span {
 	text-align: center;
@@ -834,6 +856,15 @@ body.blur > :not(#help) {
 
 .stab .emoji {
 	font-size: 1.5em;
+}
+
+/* Black one-pixel outline around emoji shapes */
+.emoji {
+	text-shadow:
+		1px 0 0 black,
+		-1px 0 0 black,
+		0  1px 0 black,
+		0 -1px 0 black;
 }
 
 .module-item .stab {
@@ -1287,7 +1318,7 @@ h4 > .notable-traits {
 
 .help-button {
 	right: 30px;
-	font-family: "Fira Sans",sans-serif;
+	font-family: "Fira Sans", Arial, sans-serif;
 	text-align: center;
 	font-size: 17px;
 }
@@ -1329,9 +1360,9 @@ h4 > .notable-traits {
 @media (min-width: 701px) {
 	/* In case there is no documentation before a code block, we need to add some margin at the top
 	to prevent an overlay between the "collapse toggle" and the information tooltip.
-	However, it's needed needed with smaller screen width because the doc/code block is always put
+	However, it's not needed with smaller screen width because the doc/code block is always put
 	"one line" below. */
-	.information:first-child > .tooltip {
+	.docblock > .information:first-child > .tooltip {
 		margin-top: 16px;
 	}
 }
@@ -1424,7 +1455,7 @@ h4 > .notable-traits {
 		margin-left: 0px;
 	}
 
-	#main {
+	#main, #search {
 		margin-top: 45px;
 		padding: 0;
 	}
@@ -1488,6 +1519,14 @@ h4 > .notable-traits {
 		margin-left: 0;
 		background-color: rgba(0,0,0,0);
 		height: 100%;
+	}
+	/*
+	This allows to prevent the version text to overflow the sidebar title on mobile mode when the
+	sidebar is displayed (after clicking on the "hamburger" button).
+	*/
+	.sidebar.mobile > div.version {
+		overflow: hidden;
+		max-height: 33px;
 	}
 	.sidebar {
 		width: calc(100% + 30px);
@@ -1578,7 +1617,7 @@ h4 > .notable-traits {
 	}
 }
 
-@media (max-width: 416px) {
+@media (max-width: 464px) {
 	#titles, #titles > button {
 		height: 73px;
 	}
@@ -1623,6 +1662,10 @@ h4 > .notable-traits {
 
 	#settings-menu {
 		top: 7px;
+	}
+
+	.docblock {
+		margin-left: 12px;
 	}
 }
 

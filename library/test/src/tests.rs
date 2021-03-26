@@ -27,7 +27,6 @@ use crate::{
     },
     time::{TestTimeOptions, TimeThreshold},
 };
-use std::any::TypeId;
 use std::sync::mpsc::channel;
 use std::time::Duration;
 
@@ -35,7 +34,7 @@ impl TestOpts {
     fn new() -> TestOpts {
         TestOpts {
             list: false,
-            filter: None,
+            filters: vec![],
             filter_exact: false,
             force_run_in_process: false,
             exclude_should_panic: false,
@@ -198,8 +197,9 @@ fn test_should_panic_bad_message() {
 #[cfg(not(target_os = "emscripten"))]
 fn test_should_panic_non_string_message_type() {
     use crate::tests::TrFailedMsg;
+    use std::any::TypeId;
     fn f() {
-        panic!(1i32);
+        std::panic::panic_any(1i32);
     }
     let expected = "foobar";
     let failed_msg = format!(
@@ -391,12 +391,7 @@ fn parse_show_output_flag() {
 
 #[test]
 fn parse_include_ignored_flag() {
-    let args = vec![
-        "progname".to_string(),
-        "filter".to_string(),
-        "-Zunstable-options".to_string(),
-        "--include-ignored".to_string(),
-    ];
+    let args = vec!["progname".to_string(), "filter".to_string(), "--include-ignored".to_string()];
     let opts = parse_opts(&args).unwrap().unwrap();
     assert_eq!(opts.run_ignored, RunIgnored::Yes);
 }
@@ -478,43 +473,60 @@ pub fn exact_filter_match() {
     }
 
     let substr =
-        filter_tests(&TestOpts { filter: Some("base".into()), ..TestOpts::new() }, tests());
-    assert_eq!(substr.len(), 4);
-
-    let substr = filter_tests(&TestOpts { filter: Some("bas".into()), ..TestOpts::new() }, tests());
+        filter_tests(&TestOpts { filters: vec!["base".into()], ..TestOpts::new() }, tests());
     assert_eq!(substr.len(), 4);
 
     let substr =
-        filter_tests(&TestOpts { filter: Some("::test".into()), ..TestOpts::new() }, tests());
+        filter_tests(&TestOpts { filters: vec!["bas".into()], ..TestOpts::new() }, tests());
+    assert_eq!(substr.len(), 4);
+
+    let substr =
+        filter_tests(&TestOpts { filters: vec!["::test".into()], ..TestOpts::new() }, tests());
     assert_eq!(substr.len(), 3);
 
     let substr =
-        filter_tests(&TestOpts { filter: Some("base::test".into()), ..TestOpts::new() }, tests());
+        filter_tests(&TestOpts { filters: vec!["base::test".into()], ..TestOpts::new() }, tests());
     assert_eq!(substr.len(), 3);
+
+    let substr = filter_tests(
+        &TestOpts { filters: vec!["test1".into(), "test2".into()], ..TestOpts::new() },
+        tests(),
+    );
+    assert_eq!(substr.len(), 2);
 
     let exact = filter_tests(
-        &TestOpts { filter: Some("base".into()), filter_exact: true, ..TestOpts::new() },
+        &TestOpts { filters: vec!["base".into()], filter_exact: true, ..TestOpts::new() },
         tests(),
     );
     assert_eq!(exact.len(), 1);
 
     let exact = filter_tests(
-        &TestOpts { filter: Some("bas".into()), filter_exact: true, ..TestOpts::new() },
+        &TestOpts { filters: vec!["bas".into()], filter_exact: true, ..TestOpts::new() },
         tests(),
     );
     assert_eq!(exact.len(), 0);
 
     let exact = filter_tests(
-        &TestOpts { filter: Some("::test".into()), filter_exact: true, ..TestOpts::new() },
+        &TestOpts { filters: vec!["::test".into()], filter_exact: true, ..TestOpts::new() },
         tests(),
     );
     assert_eq!(exact.len(), 0);
 
     let exact = filter_tests(
-        &TestOpts { filter: Some("base::test".into()), filter_exact: true, ..TestOpts::new() },
+        &TestOpts { filters: vec!["base::test".into()], filter_exact: true, ..TestOpts::new() },
         tests(),
     );
     assert_eq!(exact.len(), 1);
+
+    let exact = filter_tests(
+        &TestOpts {
+            filters: vec!["base".into(), "base::test".into()],
+            filter_exact: true,
+            ..TestOpts::new()
+        },
+        tests(),
+    );
+    assert_eq!(exact.len(), 2);
 }
 
 #[test]

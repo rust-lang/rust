@@ -1,12 +1,14 @@
+use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::paths;
+use clippy_utils::ty::{is_normalizable, is_type_diagnostic_item, match_type};
 use if_chain::if_chain;
 use rustc_hir::{self as hir, HirId, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{Adt, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::sym;
 use rustc_target::abi::LayoutOf as _;
 use rustc_typeck::hir_ty_to_ty;
-
-use crate::utils::{is_type_diagnostic_item, match_type, paths, span_lint_and_help};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for maps with zero-sized value types anywhere in the code.
@@ -47,9 +49,11 @@ impl LateLintPass<'_> for ZeroSizedMapValues {
             if !hir_ty.span.from_expansion();
             if !in_trait_impl(cx, hir_ty.hir_id);
             let ty = ty_from_hir_ty(cx, hir_ty);
-            if is_type_diagnostic_item(cx, ty, sym!(hashmap_type)) || match_type(cx, ty, &paths::BTREEMAP);
+            if is_type_diagnostic_item(cx, ty, sym::hashmap_type) || match_type(cx, ty, &paths::BTREEMAP);
             if let Adt(_, ref substs) = ty.kind();
             let ty = substs.type_at(1);
+            // Do this to prevent `layout_of` crashing, being unable to fully normalize `ty`.
+            if is_normalizable(cx, cx.param_env, ty);
             if let Ok(layout) = cx.layout_of(ty);
             if layout.is_zst();
             then {

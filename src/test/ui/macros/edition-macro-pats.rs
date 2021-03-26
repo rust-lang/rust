@@ -1,10 +1,9 @@
 // run-pass
 
-#![feature(or_patterns)]
 #![feature(edition_macro_pats)]
 
 macro_rules! foo {
-    (a $x:pat2018) => {};
+    (a $x:pat2015) => {};
     (b $x:pat2021) => {};
 }
 

@@ -18,7 +18,7 @@ use crate::context::{EarlyContext, LintContext, LintStore};
 use crate::passes::{EarlyLintPass, EarlyLintPassObject};
 use rustc_ast as ast;
 use rustc_ast::visit as ast_visit;
-use rustc_attr::HasAttrs;
+use rustc_ast::AstLike;
 use rustc_session::lint::{BufferedEarlyLint, LintBuffer, LintPass};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
@@ -143,6 +143,14 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         run_early_pass!(self, check_fn, fk, span, id);
         self.check_id(id);
         ast_visit::walk_fn(self, fk, span);
+
+        // Explicitly check for lints associated with 'closure_id', since
+        // it does not have a corresponding AST node
+        if let ast_visit::FnKind::Fn(_, _, sig, _, _) = fk {
+            if let ast::Async::Yes { closure_id, .. } = sig.header.asyncness {
+                self.check_id(closure_id);
+            }
+        }
         run_early_pass!(self, check_fn_post, fk, span, id);
     }
 
@@ -155,10 +163,10 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         run_early_pass!(self, check_struct_def_post, s);
     }
 
-    fn visit_struct_field(&mut self, s: &'a ast::StructField) {
+    fn visit_field_def(&mut self, s: &'a ast::FieldDef) {
         self.with_lint_attrs(s.id, &s.attrs, |cx| {
-            run_early_pass!(cx, check_struct_field, s);
-            ast_visit::walk_struct_field(cx, s);
+            run_early_pass!(cx, check_field_def, s);
+            ast_visit::walk_field_def(cx, s);
         })
     }
 
@@ -178,13 +186,6 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
 
     fn visit_ident(&mut self, ident: Ident) {
         run_early_pass!(self, check_ident, ident);
-    }
-
-    fn visit_mod(&mut self, m: &'a ast::Mod, s: Span, _a: &[ast::Attribute], n: ast::NodeId) {
-        run_early_pass!(self, check_mod, m, s, n);
-        self.check_id(n);
-        ast_visit::walk_mod(self, m);
-        run_early_pass!(self, check_mod_post, m, s, n);
     }
 
     fn visit_local(&mut self, l: &'a ast::Local) {
@@ -208,6 +209,14 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
 
     fn visit_expr_post(&mut self, e: &'a ast::Expr) {
         run_early_pass!(self, check_expr_post, e);
+
+        // Explicitly check for lints associated with 'closure_id', since
+        // it does not have a corresponding AST node
+        match e.kind {
+            ast::ExprKind::Closure(_, ast::Async::Yes { closure_id, .. }, ..)
+            | ast::ExprKind::Async(_, closure_id, ..) => self.check_id(closure_id),
+            _ => {}
+        }
     }
 
     fn visit_generic_arg(&mut self, arg: &'a ast::GenericArg) {

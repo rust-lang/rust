@@ -3,7 +3,7 @@
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_infer::infer::{
     error_reporting::nice_region_error::NiceRegionError,
-    error_reporting::unexpected_hidden_region_diagnostic, NLLRegionVariableOrigin,
+    error_reporting::unexpected_hidden_region_diagnostic, NllRegionVariableOrigin,
 };
 use rustc_middle::mir::{ConstraintCategory, ReturnConstraint};
 use rustc_middle::ty::subst::Subst;
@@ -75,13 +75,13 @@ crate enum RegionErrorKind<'tcx> {
         /// The region element that erroneously must be outlived by `longer_fr`.
         error_element: RegionElement,
         /// The origin of the placeholder region.
-        fr_origin: NLLRegionVariableOrigin,
+        fr_origin: NllRegionVariableOrigin,
     },
 
     /// Any other lifetime error.
     RegionError {
         /// The origin of the region.
-        fr_origin: NLLRegionVariableOrigin,
+        fr_origin: NllRegionVariableOrigin,
         /// The region that should outlive `shorter_fr`.
         longer_fr: RegionVid,
         /// The region that should be shorter, but we can't prove it.
@@ -269,7 +269,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     pub(in crate::borrow_check) fn report_region_error(
         &mut self,
         fr: RegionVid,
-        fr_origin: NLLRegionVariableOrigin,
+        fr_origin: NllRegionVariableOrigin,
         outlived_fr: RegionVid,
         outlives_suggestion: &mut OutlivesSuggestionBuilder,
     ) {

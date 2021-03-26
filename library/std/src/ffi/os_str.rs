@@ -5,6 +5,7 @@ use crate::borrow::{Borrow, Cow};
 use crate::cmp;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
+use crate::iter::{Extend, FromIterator};
 use crate::ops;
 use crate::rc::Rc;
 use crate::str::FromStr;
@@ -71,10 +72,15 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// [`CStr`]: crate::ffi::CStr
 /// [conversions]: super#conversions
 #[derive(Clone)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "OsString")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OsString {
     inner: Buf,
 }
+
+/// Allows extension traits within `std`.
+#[unstable(feature = "sealed", issue = "none")]
+impl crate::sealed::Sealed for OsString {}
 
 /// Borrowed reference to an OS string (see [`OsString`]).
 ///
@@ -89,6 +95,7 @@ pub struct OsString {
 ///
 /// [`&str`]: str
 /// [conversions]: super#conversions
+#[cfg_attr(not(test), rustc_diagnostic_item = "OsStr")]
 #[stable(feature = "rust1", since = "1.0.0")]
 // FIXME:
 // `OsStr::from_inner` current implementation relies
@@ -99,6 +106,10 @@ pub struct OsString {
 pub struct OsStr {
     inner: Slice,
 }
+
+/// Allows extension traits within `std`.
+#[unstable(feature = "sealed", issue = "none")]
+impl crate::sealed::Sealed for OsStr {}
 
 impl OsString {
     /// Constructs a new empty `OsString`.
@@ -705,7 +716,6 @@ impl OsStr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(osstring_ascii)]
     /// use std::ffi::OsString;
     ///
     /// let mut s = OsString::from("GRÜßE, JÜRGEN ❤");
@@ -714,7 +724,7 @@ impl OsStr {
     ///
     /// assert_eq!("grÜße, jÜrgen ❤", s);
     /// ```
-    #[unstable(feature = "osstring_ascii", issue = "70516")]
+    #[stable(feature = "osstring_ascii", since = "1.53.0")]
     #[inline]
     pub fn make_ascii_lowercase(&mut self) {
         self.inner.make_ascii_lowercase()
@@ -731,7 +741,6 @@ impl OsStr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(osstring_ascii)]
     /// use std::ffi::OsString;
     ///
     /// let mut s = OsString::from("Grüße, Jürgen ❤");
@@ -740,7 +749,7 @@ impl OsStr {
     ///
     /// assert_eq!("GRüßE, JüRGEN ❤", s);
     /// ```
-    #[unstable(feature = "osstring_ascii", issue = "70516")]
+    #[stable(feature = "osstring_ascii", since = "1.53.0")]
     #[inline]
     pub fn make_ascii_uppercase(&mut self) {
         self.inner.make_ascii_uppercase()
@@ -757,13 +766,12 @@ impl OsStr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(osstring_ascii)]
     /// use std::ffi::OsString;
     /// let s = OsString::from("Grüße, Jürgen ❤");
     ///
     /// assert_eq!("grüße, jürgen ❤", s.to_ascii_lowercase());
     /// ```
-    #[unstable(feature = "osstring_ascii", issue = "70516")]
+    #[stable(feature = "osstring_ascii", since = "1.53.0")]
     pub fn to_ascii_lowercase(&self) -> OsString {
         OsString::from_inner(self.inner.to_ascii_lowercase())
     }
@@ -779,13 +787,12 @@ impl OsStr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(osstring_ascii)]
     /// use std::ffi::OsString;
     /// let s = OsString::from("Grüße, Jürgen ❤");
     ///
     /// assert_eq!("GRüßE, JüRGEN ❤", s.to_ascii_uppercase());
     /// ```
-    #[unstable(feature = "osstring_ascii", issue = "70516")]
+    #[stable(feature = "osstring_ascii", since = "1.53.0")]
     pub fn to_ascii_uppercase(&self) -> OsString {
         OsString::from_inner(self.inner.to_ascii_uppercase())
     }
@@ -795,7 +802,6 @@ impl OsStr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(osstring_ascii)]
     /// use std::ffi::OsString;
     ///
     /// let ascii = OsString::from("hello!\n");
@@ -804,7 +810,7 @@ impl OsStr {
     /// assert!(ascii.is_ascii());
     /// assert!(!non_ascii.is_ascii());
     /// ```
-    #[unstable(feature = "osstring_ascii", issue = "70516")]
+    #[stable(feature = "osstring_ascii", since = "1.53.0")]
     #[inline]
     pub fn is_ascii(&self) -> bool {
         self.inner.is_ascii()
@@ -818,15 +824,14 @@ impl OsStr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(osstring_ascii)]
     /// use std::ffi::OsString;
     ///
     /// assert!(OsString::from("Ferris").eq_ignore_ascii_case("FERRIS"));
     /// assert!(OsString::from("Ferrös").eq_ignore_ascii_case("FERRöS"));
     /// assert!(!OsString::from("Ferrös").eq_ignore_ascii_case("FERRÖS"));
     /// ```
-    #[unstable(feature = "osstring_ascii", issue = "70516")]
-    pub fn eq_ignore_ascii_case<S: ?Sized + AsRef<OsStr>>(&self, other: &S) -> bool {
+    #[stable(feature = "osstring_ascii", since = "1.53.0")]
+    pub fn eq_ignore_ascii_case<S: AsRef<OsStr>>(&self, other: S) -> bool {
         self.inner.eq_ignore_ascii_case(&other.as_ref().inner)
     }
 }
@@ -1180,5 +1185,90 @@ impl FromStr for OsString {
     #[inline]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(OsString::from(s))
+    }
+}
+
+#[stable(feature = "osstring_extend", since = "1.52.0")]
+impl Extend<OsString> for OsString {
+    #[inline]
+    fn extend<T: IntoIterator<Item = OsString>>(&mut self, iter: T) {
+        for s in iter {
+            self.push(&s);
+        }
+    }
+}
+
+#[stable(feature = "osstring_extend", since = "1.52.0")]
+impl<'a> Extend<&'a OsStr> for OsString {
+    #[inline]
+    fn extend<T: IntoIterator<Item = &'a OsStr>>(&mut self, iter: T) {
+        for s in iter {
+            self.push(s);
+        }
+    }
+}
+
+#[stable(feature = "osstring_extend", since = "1.52.0")]
+impl<'a> Extend<Cow<'a, OsStr>> for OsString {
+    #[inline]
+    fn extend<T: IntoIterator<Item = Cow<'a, OsStr>>>(&mut self, iter: T) {
+        for s in iter {
+            self.push(&s);
+        }
+    }
+}
+
+#[stable(feature = "osstring_extend", since = "1.52.0")]
+impl FromIterator<OsString> for OsString {
+    #[inline]
+    fn from_iter<I: IntoIterator<Item = OsString>>(iter: I) -> Self {
+        let mut iterator = iter.into_iter();
+
+        // Because we're iterating over `OsString`s, we can avoid at least
+        // one allocation by getting the first string from the iterator
+        // and appending to it all the subsequent strings.
+        match iterator.next() {
+            None => OsString::new(),
+            Some(mut buf) => {
+                buf.extend(iterator);
+                buf
+            }
+        }
+    }
+}
+
+#[stable(feature = "osstring_extend", since = "1.52.0")]
+impl<'a> FromIterator<&'a OsStr> for OsString {
+    #[inline]
+    fn from_iter<I: IntoIterator<Item = &'a OsStr>>(iter: I) -> Self {
+        let mut buf = Self::new();
+        for s in iter {
+            buf.push(s);
+        }
+        buf
+    }
+}
+
+#[stable(feature = "osstring_extend", since = "1.52.0")]
+impl<'a> FromIterator<Cow<'a, OsStr>> for OsString {
+    #[inline]
+    fn from_iter<I: IntoIterator<Item = Cow<'a, OsStr>>>(iter: I) -> Self {
+        let mut iterator = iter.into_iter();
+
+        // Because we're iterating over `OsString`s, we can avoid at least
+        // one allocation by getting the first owned string from the iterator
+        // and appending to it all the subsequent strings.
+        match iterator.next() {
+            None => OsString::new(),
+            Some(Cow::Owned(mut buf)) => {
+                buf.extend(iterator);
+                buf
+            }
+            Some(Cow::Borrowed(buf)) => {
+                let mut buf = OsString::from(buf);
+                buf.extend(iterator);
+                buf
+            }
+        }
     }
 }

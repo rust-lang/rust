@@ -1,6 +1,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(nll)]
-#![feature(or_patterns)]
+#![cfg_attr(bootstrap, feature(or_patterns))]
 #![recursion_limit = "256"]
 
 mod dump_visitor;
@@ -137,8 +137,9 @@ impl<'tcx> SaveContext<'tcx> {
     }
 
     pub fn get_extern_item_data(&self, item: &hir::ForeignItem<'_>) -> Option<Data> {
-        let def_id = self.tcx.hir().local_def_id(item.hir_id).to_def_id();
+        let def_id = item.def_id.to_def_id();
         let qualname = format!("::{}", self.tcx.def_path_str(def_id));
+        let attrs = self.tcx.hir().attrs(item.hir_id());
         match item.kind {
             hir::ForeignItemKind::Fn(ref decl, arg_names, ref generics) => {
                 filter!(self.span_utils, item.ident.span);
@@ -156,7 +157,7 @@ impl<'tcx> SaveContext<'tcx> {
                             unsafety: hir::Unsafety::Unsafe,
                             // functions in extern block cannot be const
                             constness: hir::Constness::NotConst,
-                            abi: self.tcx.hir().get_foreign_abi(item.hir_id),
+                            abi: self.tcx.hir().get_foreign_abi(item.hir_id()),
                             // functions in extern block cannot be async
                             asyncness: hir::IsAsync::NotAsync,
                         },
@@ -169,9 +170,9 @@ impl<'tcx> SaveContext<'tcx> {
                     parent: None,
                     children: vec![],
                     decl_id: None,
-                    docs: self.docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(attrs),
                     sig: sig::foreign_item_signature(item, self),
-                    attributes: lower_attributes(item.attrs.to_vec(), self),
+                    attributes: lower_attributes(attrs.to_vec(), self),
                 }))
             }
             hir::ForeignItemKind::Static(ref ty, _) => {
@@ -190,9 +191,9 @@ impl<'tcx> SaveContext<'tcx> {
                     parent: None,
                     children: vec![],
                     decl_id: None,
-                    docs: self.docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(attrs),
                     sig: sig::foreign_item_signature(item, self),
-                    attributes: lower_attributes(item.attrs.to_vec(), self),
+                    attributes: lower_attributes(attrs.to_vec(), self),
                 }))
             }
             // FIXME(plietar): needs a new DefKind in rls-data
@@ -201,7 +202,8 @@ impl<'tcx> SaveContext<'tcx> {
     }
 
     pub fn get_item_data(&self, item: &hir::Item<'_>) -> Option<Data> {
-        let def_id = self.tcx.hir().local_def_id(item.hir_id).to_def_id();
+        let def_id = item.def_id.to_def_id();
+        let attrs = self.tcx.hir().attrs(item.hir_id());
         match item.kind {
             hir::ItemKind::Fn(ref sig, ref generics, _) => {
                 let qualname = format!("::{}", self.tcx.def_path_str(def_id));
@@ -224,9 +226,9 @@ impl<'tcx> SaveContext<'tcx> {
                     parent: None,
                     children: vec![],
                     decl_id: None,
-                    docs: self.docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(attrs),
                     sig: sig::item_signature(item, self),
-                    attributes: lower_attributes(item.attrs.to_vec(), self),
+                    attributes: lower_attributes(attrs.to_vec(), self),
                 }))
             }
             hir::ItemKind::Static(ref typ, ..) => {
@@ -247,9 +249,9 @@ impl<'tcx> SaveContext<'tcx> {
                     parent: None,
                     children: vec![],
                     decl_id: None,
-                    docs: self.docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(attrs),
                     sig: sig::item_signature(item, self),
-                    attributes: lower_attributes(item.attrs.to_vec(), self),
+                    attributes: lower_attributes(attrs.to_vec(), self),
                 }))
             }
             hir::ItemKind::Const(ref typ, _) => {
@@ -269,9 +271,9 @@ impl<'tcx> SaveContext<'tcx> {
                     parent: None,
                     children: vec![],
                     decl_id: None,
-                    docs: self.docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(attrs),
                     sig: sig::item_signature(item, self),
-                    attributes: lower_attributes(item.attrs.to_vec(), self),
+                    attributes: lower_attributes(attrs.to_vec(), self),
                 }))
             }
             hir::ItemKind::Mod(ref m) => {
@@ -290,11 +292,15 @@ impl<'tcx> SaveContext<'tcx> {
                     span: self.span_from_span(item.ident.span),
                     value: filename.to_string(),
                     parent: None,
-                    children: m.item_ids.iter().map(|i| id_from_hir_id(i.id, self)).collect(),
+                    children: m
+                        .item_ids
+                        .iter()
+                        .map(|i| id_from_def_id(i.def_id.to_def_id()))
+                        .collect(),
                     decl_id: None,
-                    docs: self.docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(attrs),
                     sig: sig::item_signature(item, self),
-                    attributes: lower_attributes(item.attrs.to_vec(), self),
+                    attributes: lower_attributes(attrs.to_vec(), self),
                 }))
             }
             hir::ItemKind::Enum(ref def, ref generics) => {
@@ -313,9 +319,9 @@ impl<'tcx> SaveContext<'tcx> {
                     parent: None,
                     children: def.variants.iter().map(|v| id_from_hir_id(v.id, self)).collect(),
                     decl_id: None,
-                    docs: self.docs_for_attrs(&item.attrs),
+                    docs: self.docs_for_attrs(attrs),
                     sig: sig::item_signature(item, self),
-                    attributes: lower_attributes(item.attrs.to_vec(), self),
+                    attributes: lower_attributes(attrs.to_vec(), self),
                 }))
             }
             hir::ItemKind::Impl(hir::Impl { ref of_trait, ref self_ty, ref items, .. }) => {
@@ -354,7 +360,7 @@ impl<'tcx> SaveContext<'tcx> {
                                 parent: None,
                                 children: items
                                     .iter()
-                                    .map(|i| id_from_hir_id(i.id.hir_id, self))
+                                    .map(|i| id_from_def_id(i.id.def_id.to_def_id()))
                                     .collect(),
                                 docs: String::new(),
                                 sig: None,
@@ -373,7 +379,7 @@ impl<'tcx> SaveContext<'tcx> {
         }
     }
 
-    pub fn get_field_data(&self, field: &hir::StructField<'_>, scope: hir::HirId) -> Option<Def> {
+    pub fn get_field_data(&self, field: &hir::FieldDef<'_>, scope: hir::HirId) -> Option<Def> {
         let name = field.ident.to_string();
         let scope_def_id = self.tcx.hir().local_def_id(scope).to_def_id();
         let qualname = format!("::{}::{}", self.tcx.def_path_str(scope_def_id), field.ident);
@@ -383,6 +389,7 @@ impl<'tcx> SaveContext<'tcx> {
 
         let id = id_from_def_id(field_def_id);
         let span = self.span_from_span(field.ident.span);
+        let attrs = self.tcx.hir().attrs(field.hir_id);
 
         Some(Def {
             kind: DefKind::Field,
@@ -394,9 +401,9 @@ impl<'tcx> SaveContext<'tcx> {
             parent: Some(id_from_def_id(scope_def_id)),
             children: vec![],
             decl_id: None,
-            docs: self.docs_for_attrs(&field.attrs),
+            docs: self.docs_for_attrs(attrs),
             sig: sig::field_signature(field, self),
-            attributes: lower_attributes(field.attrs.to_vec(), self),
+            attributes: lower_attributes(attrs.to_vec(), self),
         })
     }
 
@@ -420,9 +427,9 @@ impl<'tcx> SaveContext<'tcx> {
                             let trait_id = self.tcx.trait_id_of_impl(impl_id);
                             let mut docs = String::new();
                             let mut attrs = vec![];
-                            if let Some(Node::ImplItem(item)) = hir.find(hir_id) {
-                                docs = self.docs_for_attrs(&item.attrs);
-                                attrs = item.attrs.to_vec();
+                            if let Some(Node::ImplItem(_)) = hir.find(hir_id) {
+                                attrs = self.tcx.hir().attrs(hir_id).to_vec();
+                                docs = self.docs_for_attrs(&attrs);
                             }
 
                             let mut decl_id = None;
@@ -466,9 +473,9 @@ impl<'tcx> SaveContext<'tcx> {
                         let mut docs = String::new();
                         let mut attrs = vec![];
 
-                        if let Some(Node::TraitItem(item)) = self.tcx.hir().find(hir_id) {
-                            docs = self.docs_for_attrs(&item.attrs);
-                            attrs = item.attrs.to_vec();
+                        if let Some(Node::TraitItem(_)) = self.tcx.hir().find(hir_id) {
+                            attrs = self.tcx.hir().attrs(hir_id).to_vec();
+                            docs = self.docs_for_attrs(&attrs);
                         }
 
                         (
@@ -762,7 +769,7 @@ impl<'tcx> SaveContext<'tcx> {
 
     pub fn get_field_ref_data(
         &self,
-        field_ref: &hir::Field<'_>,
+        field_ref: &hir::ExprField<'_>,
         variant: &ty::VariantDef,
     ) -> Option<Ref> {
         filter!(self.span_utils, field_ref.ident.span);

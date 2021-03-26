@@ -310,6 +310,7 @@ mod cache_aligned;
 /// println!("{}", recv.recv().unwrap()); // Received after 2 seconds
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "Receiver")]
 pub struct Receiver<T> {
     inner: UnsafeCell<Flavor<T>>,
 }

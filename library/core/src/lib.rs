@@ -73,13 +73,12 @@
 #![feature(const_discriminant)]
 #![feature(const_cell_into_inner)]
 #![feature(const_intrinsic_copy)]
-#![feature(const_checked_int_methods)]
-#![feature(const_euclidean_int_methods)]
+#![feature(const_intrinsic_forget)]
 #![feature(const_float_classify)]
 #![feature(const_float_bits_conv)]
-#![feature(const_overflowing_int_methods)]
 #![feature(const_int_unchecked_arith)]
 #![feature(const_mut_refs)]
+#![feature(const_refs_to_cell)]
 #![feature(const_cttz)]
 #![feature(const_panic)]
 #![feature(const_pin)]
@@ -93,11 +92,13 @@
 #![feature(const_ptr_offset)]
 #![feature(const_ptr_offset_from)]
 #![feature(const_ptr_read)]
+#![feature(const_ptr_write)]
 #![feature(const_raw_ptr_comparison)]
 #![feature(const_raw_ptr_deref)]
 #![feature(const_slice_from_raw_parts)]
 #![feature(const_slice_ptr_len)]
 #![feature(const_size_of_val)]
+#![feature(const_swap)]
 #![feature(const_align_of_val)]
 #![feature(const_type_id)]
 #![feature(const_type_name)]
@@ -114,6 +115,7 @@
 #![feature(extended_key_value_attributes)]
 #![feature(extern_types)]
 #![feature(fundamental)]
+#![feature(intra_doc_pointers)]
 #![feature(intrinsics)]
 #![feature(lang_items)]
 #![feature(link_llvm_intrinsics)]
@@ -124,19 +126,19 @@
 #![feature(exhaustive_patterns)]
 #![feature(no_core)]
 #![feature(auto_traits)]
-#![feature(or_patterns)]
+#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(prelude_import)]
-#![feature(raw_ref_macros)]
+#![cfg_attr(not(bootstrap), feature(ptr_metadata))]
 #![feature(repr_simd, platform_intrinsics)]
 #![feature(rustc_attrs)]
 #![feature(simd_ffi)]
-#![cfg_attr(bootstrap, feature(min_const_generics))]
 #![feature(min_specialization)]
 #![feature(staged_api)]
 #![feature(std_internals)]
 #![feature(stmt_expr_attributes)]
 #![feature(str_split_as_str)]
 #![feature(str_split_inclusive_as_str)]
+#![feature(trait_alias)]
 #![feature(transparent_unions)]
 #![feature(try_blocks)]
 #![feature(unboxed_closures)]
@@ -163,8 +165,8 @@
 #![feature(const_caller_location)]
 #![feature(slice_ptr_get)]
 #![feature(no_niche)] // rust-lang/rust#68303
-#![feature(unsafe_block_in_unsafe_fn)]
 #![feature(int_error_matching)]
+#![cfg_attr(bootstrap, feature(unsafe_block_in_unsafe_fn))]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 #[prelude_import]
@@ -254,6 +256,8 @@ pub mod panicking;
 pub mod pin;
 pub mod raw;
 pub mod result;
+#[unstable(feature = "async_stream", issue = "79024")]
+pub mod stream;
 pub mod sync;
 
 pub mod fmt;
@@ -294,7 +298,8 @@ pub mod primitive;
     unused_imports,
     unsafe_op_in_unsafe_fn
 )]
-#[allow(non_autolinks)]
+#[cfg_attr(bootstrap, allow(non_autolinks))]
+#[cfg_attr(not(bootstrap), allow(rustdoc::non_autolinks))]
 // FIXME: This annotation should be moved into rust-lang/stdarch after clashing_extern_declarations is
 // merged. It currently cannot because bootstrap fails as the lint hasn't been defined yet.
 #[allow(clashing_extern_declarations)]

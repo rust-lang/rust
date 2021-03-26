@@ -10,7 +10,7 @@
     test(attr(deny(warnings)))
 )]
 #![feature(nll)]
-#![feature(or_patterns)]
+#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(bool_to_option)]
 
 pub use Alignment::*;
@@ -730,7 +730,7 @@ fn find_skips_from_snippet(
     str_style: Option<usize>,
 ) -> (Vec<usize>, bool) {
     let snippet = match snippet {
-        Some(ref s) if s.starts_with('"') || s.starts_with("r#") => s,
+        Some(ref s) if s.starts_with('"') || s.starts_with("r\"") || s.starts_with("r#") => s,
         _ => return (vec![], false),
     };
 

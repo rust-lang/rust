@@ -1,5 +1,7 @@
-use crate::utils::{eager_or_lazy, usage};
-use crate::utils::{is_type_diagnostic_item, snippet, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet;
+use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::{eager_or_lazy, usage};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -9,7 +11,7 @@ use super::UNNECESSARY_LAZY_EVALUATIONS;
 
 /// lint use of `<fn>_else(simple closure)` for `Option`s and `Result`s that can be
 /// replaced with `<fn>(return value of simple closure)`
-pub(super) fn lint<'tcx>(
+pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx hir::Expr<'_>,
     args: &'tcx [hir::Expr<'_>],
@@ -50,7 +52,7 @@ pub(super) fn lint<'tcx>(
                     UNNECESSARY_LAZY_EVALUATIONS,
                     expr.span,
                     msg,
-                    &format!("Use `{}` instead", simplify_using),
+                    &format!("use `{}` instead", simplify_using),
                     format!(
                         "{0}.{1}({2})",
                         snippet(cx, args[0].span, ".."),

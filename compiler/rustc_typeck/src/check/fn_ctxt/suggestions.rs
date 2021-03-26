@@ -10,7 +10,8 @@ use rustc_hir::def::{CtorOf, DefKind};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, ItemKind, Node};
 use rustc_infer::infer;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty::{self, Binder, Ty};
 use rustc_span::symbol::kw;
 
 use std::iter;
@@ -44,11 +45,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         blk_id: hir::HirId,
     ) -> bool {
         let expr = expr.peel_drop_temps();
-        self.suggest_missing_semicolon(err, expr, expected, cause_span);
+        // If the expression is from an external macro, then do not suggest
+        // adding a semicolon, because there's nowhere to put it.
+        // See issue #81943.
+        if expr.can_have_side_effects() && !in_external_macro(self.tcx.sess, cause_span) {
+            self.suggest_missing_semicolon(err, expr, expected, cause_span);
+        }
         let mut pointing_at_return_type = false;
         if let Some((fn_decl, can_suggest)) = self.get_fn_decl(blk_id) {
             pointing_at_return_type =
                 self.suggest_missing_return_type(err, &fn_decl, expected, found, can_suggest);
+            self.suggest_missing_return_expr(err, expr, &fn_decl, expected, found);
         }
         pointing_at_return_type
     }
@@ -392,10 +399,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 | ExprKind::Loop(..)
                 | ExprKind::If(..)
                 | ExprKind::Match(..)
-                | ExprKind::Block(..) => {
+                | ExprKind::Block(..)
+                    if expression.can_have_side_effects() =>
+                {
                     err.span_suggestion(
                         cause_span.shrink_to_hi(),
-                        "try adding a semicolon",
+                        "consider using a semicolon here",
                         ";".to_string(),
                         Applicability::MachineApplicable,
                     );
@@ -452,7 +461,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // are not, the expectation must have been caused by something else.
                 debug!("suggest_missing_return_type: return type {:?} node {:?}", ty, ty.kind);
                 let sp = ty.span;
-                let ty = AstConv::ast_ty_to_ty(self, ty);
+                let ty = <dyn AstConv<'_>>::ast_ty_to_ty(self, ty);
                 debug!("suggest_missing_return_type: return type {:?}", ty);
                 debug!("suggest_missing_return_type: expected type {:?}", ty);
                 if ty.kind() == expected.kind() {
@@ -460,6 +469,35 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return true;
                 }
                 false
+            }
+        }
+    }
+
+    pub(in super::super) fn suggest_missing_return_expr(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        expr: &'tcx hir::Expr<'tcx>,
+        fn_decl: &hir::FnDecl<'_>,
+        expected: Ty<'tcx>,
+        found: Ty<'tcx>,
+    ) {
+        if !expected.is_unit() {
+            return;
+        }
+        let found = self.resolve_vars_with_obligations(found);
+        if let hir::FnRetTy::Return(ty) = fn_decl.output {
+            let ty = <dyn AstConv<'_>>::ast_ty_to_ty(self, ty);
+            let ty = self.tcx.erase_late_bound_regions(Binder::bind(ty));
+            let ty = self.normalize_associated_types_in(expr.span, ty);
+            if self.can_coerce(found, ty) {
+                err.multipart_suggestion(
+                    "you might have meant to return this value",
+                    vec![
+                        (expr.span.shrink_to_lo(), "return ".to_string()),
+                        (expr.span.shrink_to_hi(), ";".to_string()),
+                    ],
+                    Applicability::MaybeIncorrect,
+                );
             }
         }
     }

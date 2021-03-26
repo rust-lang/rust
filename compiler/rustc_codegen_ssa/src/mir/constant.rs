@@ -16,7 +16,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         constant: &mir::Constant<'tcx>,
     ) -> Result<OperandRef<'tcx, Bx::Value>, ErrorHandled> {
         let val = self.eval_mir_constant(constant)?;
-        let ty = self.monomorphize(constant.literal.ty);
+        let ty = self.monomorphize(constant.ty());
         Ok(OperandRef::from_const(bx, val, ty))
     }
 
@@ -24,11 +24,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &self,
         constant: &mir::Constant<'tcx>,
     ) -> Result<ConstValue<'tcx>, ErrorHandled> {
-        match self.monomorphize(constant.literal).val {
-            ty::ConstKind::Unevaluated(def, substs, promoted) => self
+        let ct = self.monomorphize(constant.literal);
+        let ct = match ct {
+            mir::ConstantKind::Ty(ct) => ct,
+            mir::ConstantKind::Val(val, _) => return Ok(val),
+        };
+        match ct.val {
+            ty::ConstKind::Unevaluated(ct) => self
                 .cx
                 .tcx()
-                .const_eval_resolve(ty::ParamEnv::reveal_all(), def, substs, promoted, None)
+                .const_eval_resolve(ty::ParamEnv::reveal_all(), ct, None)
                 .map_err(|err| {
                     self.cx.tcx().sess.span_err(constant.span, "erroneous constant encountered");
                     err

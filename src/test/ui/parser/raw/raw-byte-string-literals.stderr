@@ -8,7 +8,7 @@ error: raw byte string must be ASCII
   --> $DIR/raw-byte-string-literals.rs:5:8
    |
 LL |     br"é";
-   |        ^
+   |        ^ must be ASCII
 
 error: found invalid character; only `#` is allowed in raw string delimitation: ~
   --> $DIR/raw-byte-string-literals.rs:6:5

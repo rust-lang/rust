@@ -384,7 +384,7 @@ impl<T> Arc<T> {
         // reference into a strong reference.
         unsafe {
             let inner = init_ptr.as_ptr();
-            ptr::write(&raw mut (*inner).data, data);
+            ptr::write(ptr::addr_of_mut!((*inner).data), data);
 
             // The above write to the data field must be visible to any threads which
             // observe a non-zero strong count. Therefore we need at least "Release" ordering
@@ -800,7 +800,7 @@ impl<T: ?Sized> Arc<T> {
         // SAFETY: This cannot go through Deref::deref or RcBoxPtr::inner because
         // this is required to retain raw/mut provenance such that e.g. `get_mut` can
         // write through the pointer after the Rc is recovered through `from_raw`.
-        unsafe { &raw const (*ptr).data }
+        unsafe { ptr::addr_of_mut!((*ptr).data) }
     }
 
     /// Constructs an `Arc<T>` from a raw pointer.
@@ -962,15 +962,13 @@ impl<T: ?Sized> Arc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(arc_mutate_strong_count)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let five = Arc::new(5);
     ///
     /// unsafe {
     ///     let ptr = Arc::into_raw(five);
-    ///     Arc::incr_strong_count(ptr);
+    ///     Arc::increment_strong_count(ptr);
     ///
     ///     // This assertion is deterministic because we haven't shared
     ///     // the `Arc` between threads.
@@ -979,8 +977,8 @@ impl<T: ?Sized> Arc<T> {
     /// }
     /// ```
     #[inline]
-    #[unstable(feature = "arc_mutate_strong_count", issue = "71983")]
-    pub unsafe fn incr_strong_count(ptr: *const T) {
+    #[stable(feature = "arc_mutate_strong_count", since = "1.51.0")]
+    pub unsafe fn increment_strong_count(ptr: *const T) {
         // Retain Arc, but don't touch refcount by wrapping in ManuallyDrop
         let arc = unsafe { mem::ManuallyDrop::new(Arc::<T>::from_raw(ptr)) };
         // Now increase refcount, but don't drop new refcount either
@@ -1001,27 +999,25 @@ impl<T: ?Sized> Arc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(arc_mutate_strong_count)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let five = Arc::new(5);
     ///
     /// unsafe {
     ///     let ptr = Arc::into_raw(five);
-    ///     Arc::incr_strong_count(ptr);
+    ///     Arc::increment_strong_count(ptr);
     ///
     ///     // Those assertions are deterministic because we haven't shared
     ///     // the `Arc` between threads.
     ///     let five = Arc::from_raw(ptr);
     ///     assert_eq!(2, Arc::strong_count(&five));
-    ///     Arc::decr_strong_count(ptr);
+    ///     Arc::decrement_strong_count(ptr);
     ///     assert_eq!(1, Arc::strong_count(&five));
     /// }
     /// ```
     #[inline]
-    #[unstable(feature = "arc_mutate_strong_count", issue = "71983")]
-    pub unsafe fn decr_strong_count(ptr: *const T) {
+    #[stable(feature = "arc_mutate_strong_count", since = "1.51.0")]
+    pub unsafe fn decrement_strong_count(ptr: *const T) {
         unsafe { mem::drop(Arc::from_raw(ptr)) };
     }
 
@@ -1677,7 +1673,7 @@ impl<T: ?Sized> Weak<T> {
             // SAFETY: if is_dangling returns false, then the pointer is dereferencable.
             // The payload may be dropped at this point, and we have to maintain provenance,
             // so use raw pointer manipulation.
-            unsafe { &raw mut (*ptr).data }
+            unsafe { ptr::addr_of_mut!((*ptr).data) }
         }
     }
 
@@ -2289,6 +2285,16 @@ impl<T> From<T> for Arc<T> {
 
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl<T: Clone> From<&[T]> for Arc<[T]> {
+    /// Allocate a reference-counted slice and fill it by cloning `v`'s items.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::sync::Arc;
+    /// let original: &[i32] = &[1, 2, 3];
+    /// let shared: Arc<[i32]> = Arc::from(original);
+    /// assert_eq!(&[1, 2, 3], &shared[..]);
+    /// ```
     #[inline]
     fn from(v: &[T]) -> Arc<[T]> {
         <Self as ArcFromSlice<T>>::from_slice(v)
@@ -2297,6 +2303,15 @@ impl<T: Clone> From<&[T]> for Arc<[T]> {
 
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl From<&str> for Arc<str> {
+    /// Allocate a reference-counted `str` and copy `v` into it.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::sync::Arc;
+    /// let shared: Arc<str> = Arc::from("eggplant");
+    /// assert_eq!("eggplant", &shared[..]);
+    /// ```
     #[inline]
     fn from(v: &str) -> Arc<str> {
         let arc = Arc::<[u8]>::from(v.as_bytes());
@@ -2306,6 +2321,16 @@ impl From<&str> for Arc<str> {
 
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl From<String> for Arc<str> {
+    /// Allocate a reference-counted `str` and copy `v` into it.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::sync::Arc;
+    /// let unique: String = "eggplant".to_owned();
+    /// let shared: Arc<str> = Arc::from(unique);
+    /// assert_eq!("eggplant", &shared[..]);
+    /// ```
     #[inline]
     fn from(v: String) -> Arc<str> {
         Arc::from(&v[..])
@@ -2314,6 +2339,16 @@ impl From<String> for Arc<str> {
 
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl<T: ?Sized> From<Box<T>> for Arc<T> {
+    /// Move a boxed object to a new, reference-counted allocation.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::sync::Arc;
+    /// let unique: Box<str> = Box::from("eggplant");
+    /// let shared: Arc<str> = Arc::from(unique);
+    /// assert_eq!("eggplant", &shared[..]);
+    /// ```
     #[inline]
     fn from(v: Box<T>) -> Arc<T> {
         Arc::from_box(v)
@@ -2322,6 +2357,16 @@ impl<T: ?Sized> From<Box<T>> for Arc<T> {
 
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl<T> From<Vec<T>> for Arc<[T]> {
+    /// Allocate a reference-counted slice and move `v`'s items into it.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::sync::Arc;
+    /// let unique: Vec<i32> = vec![1, 2, 3];
+    /// let shared: Arc<[i32]> = Arc::from(unique);
+    /// assert_eq!(&[1, 2, 3], &shared[..]);
+    /// ```
     #[inline]
     fn from(mut v: Vec<T>) -> Arc<[T]> {
         unsafe {

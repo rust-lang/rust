@@ -1,4 +1,8 @@
-use crate::utils::{differing_macro_contexts, snippet_block_with_applicability, span_lint, span_lint_and_sugg};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
+use clippy_utils::source::snippet_block_with_applicability;
+use clippy_utils::ty::implements_trait;
+use clippy_utils::{differing_macro_contexts, get_parent_expr};
+use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::{BlockCheckMode, Expr, ExprKind};
@@ -6,6 +10,7 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `if` conditions that use blocks containing an
@@ -52,6 +57,18 @@ impl<'a, 'tcx> Visitor<'tcx> for ExVisitor<'a, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         if let ExprKind::Closure(_, _, eid, _, _) = expr.kind {
+            // do not lint if the closure is called using an iterator (see #1141)
+            if_chain! {
+                if let Some(parent) = get_parent_expr(self.cx, expr);
+                if let ExprKind::MethodCall(_, _, args, _) = parent.kind;
+                let caller = self.cx.typeck_results().expr_ty(&args[0]);
+                if let Some(iter_id) = self.cx.tcx.get_diagnostic_item(sym::Iterator);
+                if implements_trait(self.cx, caller, iter_id, &[]);
+                then {
+                    return;
+                }
+            }
+
             let body = self.cx.tcx.hir().body(eid);
             let ex = &body.value;
             if matches!(ex.kind, ExprKind::Block(_, _)) && !body.value.span.from_expansion() {

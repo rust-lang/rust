@@ -76,8 +76,14 @@ crate mod fira_sans {
     /// The file `FiraSans-Regular.woff`, the Regular variant of the Fira Sans font.
     crate static REGULAR: &[u8] = include_bytes!("static/FiraSans-Regular.woff");
 
+    /// The file `FiraSans-Regular.woff2`, the Regular variant of the Fira Sans font in woff2.
+    crate static REGULAR2: &[u8] = include_bytes!("static/FiraSans-Regular.woff2");
+
     /// The file `FiraSans-Medium.woff`, the Medium variant of the Fira Sans font.
     crate static MEDIUM: &[u8] = include_bytes!("static/FiraSans-Medium.woff");
+
+    /// The file `FiraSans-Medium.woff2`, the Medium variant of the Fira Sans font in woff2.
+    crate static MEDIUM2: &[u8] = include_bytes!("static/FiraSans-Medium.woff2");
 
     /// The file `FiraSans-LICENSE.txt`, the license text for the Fira Sans font.
     crate static LICENSE: &[u8] = include_bytes!("static/FiraSans-LICENSE.txt");
@@ -101,11 +107,15 @@ crate mod source_serif_pro {
 
 /// Files related to the Source Code Pro font.
 crate mod source_code_pro {
-    /// The file `SourceCodePro-Regular.woff`, the Regular variant of the Source Code Pro font.
-    crate static REGULAR: &[u8] = include_bytes!("static/SourceCodePro-Regular.woff");
+    /// The file `SourceCodePro-Regular.ttf.woff`, the Regular variant of the Source Code Pro font.
+    crate static REGULAR: &[u8] = include_bytes!("static/SourceCodePro-Regular.ttf.woff");
 
-    /// The file `SourceCodePro-Semibold.woff`, the Semibold variant of the Source Code Pro font.
-    crate static SEMIBOLD: &[u8] = include_bytes!("static/SourceCodePro-Semibold.woff");
+    /// The file `SourceCodePro-Semibold.ttf.woff`, the Semibold variant of the Source Code Pro
+    /// font.
+    crate static SEMIBOLD: &[u8] = include_bytes!("static/SourceCodePro-Semibold.ttf.woff");
+
+    /// The file `SourceCodePro-It.ttf.woff`, the Italic variant of the Source Code Pro font.
+    crate static ITALIC: &[u8] = include_bytes!("static/SourceCodePro-It.ttf.woff");
 
     /// The file `SourceCodePro-LICENSE.txt`, the license text of the Source Code Pro font.
     crate static LICENSE: &[u8] = include_bytes!("static/SourceCodePro-LICENSE.txt");

@@ -38,12 +38,14 @@ pub enum Target {
     Enum,
     Variant,
     Struct,
+    Field,
     Union,
     Trait,
     TraitAlias,
     Impl,
     Expression,
     Statement,
+    Arm,
     AssocConst,
     Method(MethodKind),
     AssocTy,
@@ -51,6 +53,8 @@ pub enum Target {
     ForeignStatic,
     ForeignTy,
     GenericParam(GenericParamKind),
+    MacroDef,
+    Param,
 }
 
 impl Display for Target {
@@ -73,12 +77,14 @@ impl Display for Target {
                 Target::Enum => "enum",
                 Target::Variant => "enum variant",
                 Target::Struct => "struct",
+                Target::Field => "struct field",
                 Target::Union => "union",
                 Target::Trait => "trait",
                 Target::TraitAlias => "trait alias",
                 Target::Impl => "item",
                 Target::Expression => "expression",
                 Target::Statement => "statement",
+                Target::Arm => "match arm",
                 Target::AssocConst => "associated const",
                 Target::Method(_) => "method",
                 Target::AssocTy => "associated type",
@@ -90,6 +96,8 @@ impl Display for Target {
                     GenericParamKind::Lifetime => "lifetime parameter",
                     GenericParamKind::Const => "const parameter",
                 },
+                Target::MacroDef => "macro def",
+                Target::Param => "function param",
             }
         )
     }

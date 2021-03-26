@@ -9,7 +9,7 @@
 //! a type that is not `Copy`, then using any of these functions will
 //! "move" the value out of its current home (if any).
 //!
-//! - `into` -- writes the value into a specific location, which
+//! - `expr_into_dest` -- writes the value into a specific location, which
 //!   should be uninitialized
 //! - `as_operand` -- evaluates the value and yields an `Operand`,
 //!   suitable for use as an argument to an `Rvalue`
@@ -62,7 +62,7 @@
 
 mod as_constant;
 mod as_operand;
-mod as_place;
+pub mod as_place;
 mod as_rvalue;
 mod as_temp;
 mod category;

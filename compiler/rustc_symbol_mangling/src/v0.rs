@@ -440,7 +440,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
                     }
                     match sig.abi {
                         Abi::Rust => {}
-                        Abi::C => cx.push("KC"),
+                        Abi::C { unwind: false } => cx.push("KC"),
                         abi => {
                             cx.push("K");
                             let name = abi.name();
@@ -530,7 +530,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
                     if val < 0 {
                         neg = true;
                     }
-                    Some(val.wrapping_abs() as u128)
+                    Some(val.unsigned_abs())
                 })
             }
             _ => {

@@ -1,8 +1,6 @@
 // Test some cases where or-patterns may ostensibly be allowed but are in fact not.
 // This is not a semantic test. We only test parsing.
 
-#![feature(or_patterns)]
-
 fn main() {}
 
 enum E { A, B }
@@ -14,29 +12,19 @@ fn no_top_level_or_patterns() {
     //           -------- This looks like an or-pattern but is in fact `|A| (B: E | ())`.
 
     // ...and for now neither do we allow or-patterns at the top level of functions.
-    fn fun1(A | B: E) {} //~ ERROR an or-pattern parameter must be wrapped in parenthesis
+    fn fun1(A | B: E) {}
+    //~^ ERROR top-level or-patterns are not allowed
 
     fn fun2(| A | B: E) {}
-    //~^ ERROR a leading `|` is not allowed in a parameter pattern
-    //~| ERROR an or-pattern parameter must be wrapped in parenthesis
-}
+    //~^ ERROR top-level or-patterns are not allowed
 
-// We also do not allow a leading `|` when not in a top level position:
+    // We don't allow top-level or-patterns before type annotation in let-statements because we
+    // want to reserve this syntactic space for possible future type ascription.
+    let A | B: E = A;
+    //~^ ERROR top-level or-patterns are not allowed
 
-fn no_leading_inner() {
-    struct TS(E);
-    struct NS { f: E }
+    let | A | B: E = A;
+    //~^ ERROR top-level or-patterns are not allowed
 
-    let ( | A | B) = E::A; //~ ERROR a leading `|` is only allowed in a top-level pattern
-    let ( | A | B,) = (E::B,); //~ ERROR a leading `|` is only allowed in a top-level pattern
-    let [ | A | B ] = [E::A]; //~ ERROR a leading `|` is only allowed in a top-level pattern
-    let TS( | A | B ); //~ ERROR a leading `|` is only allowed in a top-level pattern
-    let NS { f: | A | B }; //~ ERROR a leading `|` is only allowed in a top-level pattern
-
-    let ( || A | B) = E::A; //~ ERROR a leading `|` is only allowed in a top-level pattern
-    let [ || A | B ] = [E::A]; //~ ERROR a leading `|` is only allowed in a top-level pattern
-    let TS( || A | B ); //~ ERROR a leading `|` is only allowed in a top-level pattern
-    let NS { f: || A | B }; //~ ERROR a leading `|` is only allowed in a top-level pattern
-
-    let recovery_witness: String = 0; //~ ERROR mismatched types
+    let (A | B): E = A; // ok -- wrapped in parens
 }

@@ -3,9 +3,11 @@ use rustc_data_structures::obligation_forest::ProcessResult;
 use rustc_data_structures::obligation_forest::{Error, ForestObligation, Outcome};
 use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProcessor};
 use rustc_errors::ErrorReported;
-use rustc_infer::traits::{TraitEngine, TraitEngineExt as _, TraitObligation};
+use rustc_infer::traits::{SelectionError, TraitEngine, TraitEngineExt as _, TraitObligation};
+use rustc_middle::mir::abstract_const::NotConstEvaluatable;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::error::ExpectedFound;
+use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::{self, Binder, Const, Ty, TypeFoldable};
 use std::marker::PhantomData;
@@ -17,7 +19,7 @@ use super::wf;
 use super::CodeAmbiguity;
 use super::CodeProjectionError;
 use super::CodeSelectionError;
-use super::{ConstEvalFailure, Unimplemented};
+use super::Unimplemented;
 use super::{FulfillmentError, FulfillmentErrorCode};
 use super::{ObligationCause, PredicateObligation};
 
@@ -86,7 +88,7 @@ pub struct PendingPredicateObligation<'tcx> {
 }
 
 // `PendingPredicateObligation` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(PendingPredicateObligation<'_>, 56);
 
 impl<'a, 'tcx> FulfillmentContext<'tcx> {
@@ -497,14 +499,19 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                         obligation.cause.span,
                     ) {
                         Ok(()) => ProcessResult::Changed(vec![]),
-                        Err(ErrorHandled::TooGeneric) => {
-                            pending_obligation.stalled_on = substs
-                                .iter()
-                                .filter_map(TyOrConstInferVar::maybe_from_generic_arg)
-                                .collect();
+                        Err(NotConstEvaluatable::MentionsInfer) => {
+                            pending_obligation.stalled_on.clear();
+                            pending_obligation.stalled_on.extend(
+                                substs.iter().filter_map(TyOrConstInferVar::maybe_from_generic_arg),
+                            );
                             ProcessResult::Unchanged
                         }
-                        Err(e) => ProcessResult::Error(CodeSelectionError(ConstEvalFailure(e))),
+                        Err(
+                            e @ NotConstEvaluatable::MentionsParam
+                            | e @ NotConstEvaluatable::Error(_),
+                        ) => ProcessResult::Error(CodeSelectionError(
+                            SelectionError::NotConstEvaluatable(e),
+                        )),
                     }
                 }
 
@@ -515,15 +522,13 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                         // if the constants depend on generic parameters.
                         //
                         // Let's just see where this breaks :shrug:
-                        if let (
-                            ty::ConstKind::Unevaluated(a_def, a_substs, None),
-                            ty::ConstKind::Unevaluated(b_def, b_substs, None),
-                        ) = (c1.val, c2.val)
+                        if let (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b)) =
+                            (c1.val, c2.val)
                         {
                             if self
                                 .selcx
                                 .tcx()
-                                .try_unify_abstract_consts(((a_def, a_substs), (b_def, b_substs)))
+                                .try_unify_abstract_consts(((a.def, a.substs), (b.def, b.substs)))
                             {
                                 return ProcessResult::Changed(vec![]);
                             }
@@ -533,23 +538,19 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                     let stalled_on = &mut pending_obligation.stalled_on;
 
                     let mut evaluate = |c: &'tcx Const<'tcx>| {
-                        if let ty::ConstKind::Unevaluated(def, substs, promoted) = c.val {
+                        if let ty::ConstKind::Unevaluated(unevaluated) = c.val {
                             match self.selcx.infcx().const_eval_resolve(
                                 obligation.param_env,
-                                def,
-                                substs,
-                                promoted,
+                                unevaluated,
                                 Some(obligation.cause.span),
                             ) {
                                 Ok(val) => Ok(Const::from_value(self.selcx.tcx(), val, c.ty)),
                                 Err(ErrorHandled::TooGeneric) => {
-                                    stalled_on.append(
-                                        &mut substs
+                                    stalled_on.extend(
+                                        unevaluated
+                                            .substs
                                             .iter()
-                                            .filter_map(|arg| {
-                                                TyOrConstInferVar::maybe_from_generic_arg(arg)
-                                            })
-                                            .collect(),
+                                            .filter_map(TyOrConstInferVar::maybe_from_generic_arg),
                                     );
                                     Err(ErrorHandled::TooGeneric)
                                 }
@@ -578,11 +579,11 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                             }
                         }
                         (Err(ErrorHandled::Reported(ErrorReported)), _)
-                        | (_, Err(ErrorHandled::Reported(ErrorReported))) => {
-                            ProcessResult::Error(CodeSelectionError(ConstEvalFailure(
-                                ErrorHandled::Reported(ErrorReported),
-                            )))
-                        }
+                        | (_, Err(ErrorHandled::Reported(ErrorReported))) => ProcessResult::Error(
+                            CodeSelectionError(SelectionError::NotConstEvaluatable(
+                                NotConstEvaluatable::Error(ErrorReported),
+                            )),
+                        ),
                         (Err(ErrorHandled::Linted), _) | (_, Err(ErrorHandled::Linted)) => {
                             span_bug!(
                                 obligation.cause.span(self.selcx.tcx()),
@@ -633,10 +634,11 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                 // only reason we can fail to make progress on
                 // trait selection is because we don't have enough
                 // information about the types in the trait.
-                *stalled_on = trait_ref_infer_vars(
+                stalled_on.clear();
+                stalled_on.extend(substs_infer_vars(
                     self.selcx,
-                    trait_obligation.predicate.map_bound(|pred| pred.trait_ref),
-                );
+                    trait_obligation.predicate.map_bound(|pred| pred.trait_ref.substs),
+                ));
 
                 debug!(
                     "process_predicate: pending obligation {:?} now stalled on {:?}",
@@ -647,7 +649,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                 ProcessResult::Unchanged
             }
             Err(selection_err) => {
-                info!("selecting trait at depth {} yielded Err", obligation.recursion_depth);
+                debug!("selecting trait at depth {} yielded Err", obligation.recursion_depth);
 
                 ProcessResult::Error(CodeSelectionError(selection_err))
             }
@@ -663,10 +665,11 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
         match project::poly_project_and_unify_type(self.selcx, &project_obligation) {
             Ok(Ok(Some(os))) => ProcessResult::Changed(mk_pending(os)),
             Ok(Ok(None)) => {
-                *stalled_on = trait_ref_infer_vars(
+                stalled_on.clear();
+                stalled_on.extend(substs_infer_vars(
                     self.selcx,
-                    project_obligation.predicate.to_poly_trait_ref(tcx),
-                );
+                    project_obligation.predicate.map_bound(|pred| pred.projection_ty.substs),
+                ));
                 ProcessResult::Unchanged
             }
             // Let the caller handle the recursion
@@ -678,23 +681,28 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
     }
 }
 
-/// Returns the set of inference variables contained in a trait ref.
-fn trait_ref_infer_vars<'a, 'tcx>(
+/// Returns the set of inference variables contained in `substs`.
+fn substs_infer_vars<'a, 'tcx>(
     selcx: &mut SelectionContext<'a, 'tcx>,
-    trait_ref: ty::PolyTraitRef<'tcx>,
-) -> Vec<TyOrConstInferVar<'tcx>> {
+    substs: ty::Binder<SubstsRef<'tcx>>,
+) -> impl Iterator<Item = TyOrConstInferVar<'tcx>> {
     selcx
         .infcx()
-        .resolve_vars_if_possible(trait_ref)
-        .skip_binder()
-        .substs
+        .resolve_vars_if_possible(substs)
+        .skip_binder() // ok because this check doesn't care about regions
         .iter()
-        // FIXME(eddyb) try using `skip_current_subtree` to skip everything that
-        // doesn't contain inference variables, not just the outermost level.
         .filter(|arg| arg.has_infer_types_or_consts())
-        .flat_map(|arg| arg.walk())
+        .flat_map(|arg| {
+            let mut walker = arg.walk();
+            while let Some(c) = walker.next() {
+                if !c.has_infer_types_or_consts() {
+                    walker.visited.remove(&c);
+                    walker.skip_current_subtree();
+                }
+            }
+            walker.visited.into_iter()
+        })
         .filter_map(TyOrConstInferVar::maybe_from_generic_arg)
-        .collect()
 }
 
 fn to_fulfillment_error<'tcx>(

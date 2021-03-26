@@ -473,9 +473,9 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
                                         .map(
                                             |applicability_idx| quote!(#binding.#applicability_idx),
                                         )
-                                        .unwrap_or(quote!(
-                                            rustc_errors::Applicability::Unspecified
-                                        ));
+                                        .unwrap_or_else(|| {
+                                            quote!(rustc_errors::Applicability::Unspecified)
+                                        });
                                     return Ok((span, applicability));
                                 }
                                 throw_span_err!(

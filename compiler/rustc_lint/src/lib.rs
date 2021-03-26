@@ -30,11 +30,12 @@
 #![feature(array_windows)]
 #![feature(bool_to_option)]
 #![feature(box_syntax)]
+#![feature(box_patterns)]
 #![feature(crate_visibility_modifier)]
 #![feature(iter_order_by)]
 #![feature(never_type)]
 #![feature(nll)]
-#![feature(or_patterns)]
+#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(half_open_range_patterns)]
 #![feature(exclusive_range_pattern)]
 #![feature(control_flow_enum)]
@@ -54,8 +55,9 @@ mod late;
 mod levels;
 mod methods;
 mod non_ascii_idents;
+mod non_fmt_panic;
 mod nonstandard_style;
-mod panic_fmt;
+mod noop_method_call;
 mod passes;
 mod redundant_semicolon;
 mod traits;
@@ -68,9 +70,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::{
-    BARE_TRAIT_OBJECTS, BROKEN_INTRA_DOC_LINKS, ELIDED_LIFETIMES_IN_PATHS,
-    EXPLICIT_OUTLIVES_REQUIREMENTS, INVALID_CODEBLOCK_ATTRIBUTES, INVALID_HTML_TAGS,
-    MISSING_DOC_CODE_EXAMPLES, NON_AUTOLINKS, PRIVATE_DOC_TESTS,
+    BARE_TRAIT_OBJECTS, ELIDED_LIFETIMES_IN_PATHS, EXPLICIT_OUTLIVES_REQUIREMENTS,
 };
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::Span;
@@ -80,8 +80,9 @@ use builtin::*;
 use internal::*;
 use methods::*;
 use non_ascii_idents::*;
+use non_fmt_panic::NonPanicFmt;
 use nonstandard_style::*;
-use panic_fmt::PanicFmt;
+use noop_method_call::*;
 use redundant_semicolon::*;
 use traits::*;
 use types::*;
@@ -168,7 +169,8 @@ macro_rules! late_lint_passes {
                 ClashingExternDeclarations: ClashingExternDeclarations::new(),
                 DropTraitConstraints: DropTraitConstraints,
                 TemporaryCStringAsPtr: TemporaryCStringAsPtr,
-                PanicFmt: PanicFmt,
+                NonPanicFmt: NonPanicFmt,
+                NoopMethodCall: NoopMethodCall,
             ]
         );
     };
@@ -313,17 +315,6 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
                                        // MACRO_USE_EXTERN_CRATE
     );
 
-    add_lint_group!(
-        "rustdoc",
-        NON_AUTOLINKS,
-        BROKEN_INTRA_DOC_LINKS,
-        PRIVATE_INTRA_DOC_LINKS,
-        INVALID_CODEBLOCK_ATTRIBUTES,
-        MISSING_DOC_CODE_EXAMPLES,
-        PRIVATE_DOC_TESTS,
-        INVALID_HTML_TAGS
-    );
-
     // Register renamed and removed lints.
     store.register_renamed("single_use_lifetime", "single_use_lifetimes");
     store.register_renamed("elided_lifetime_in_path", "elided_lifetimes_in_paths");
@@ -333,8 +324,30 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
     store.register_renamed("async_idents", "keyword_idents");
     store.register_renamed("exceeding_bitshifts", "arithmetic_overflow");
     store.register_renamed("redundant_semicolon", "redundant_semicolons");
-    store.register_renamed("intra_doc_link_resolution_failure", "broken_intra_doc_links");
     store.register_renamed("overlapping_patterns", "overlapping_range_endpoints");
+
+    // These were moved to tool lints, but rustc still sees them when compiling normally, before
+    // tool lints are registered, so `check_tool_name_for_backwards_compat` doesn't work. Use
+    // `register_removed` explicitly.
+    const RUSTDOC_LINTS: &[&str] = &[
+        "broken_intra_doc_links",
+        "private_intra_doc_links",
+        "missing_crate_level_docs",
+        "missing_doc_code_examples",
+        "private_doc_tests",
+        "invalid_codeblock_attributes",
+        "invalid_html_tags",
+        "non_autolinks",
+    ];
+    for rustdoc_lint in RUSTDOC_LINTS {
+        store.register_ignored(rustdoc_lint);
+    }
+    store.register_removed(
+        "intra_doc_link_resolution_failure",
+        "use `rustdoc::broken_intra_doc_links` instead",
+    );
+    store.register_removed("rustdoc", "use `rustdoc::all` instead");
+
     store.register_removed("unknown_features", "replaced by an error");
     store.register_removed("unsigned_negation", "replaced by negate_unsigned feature gate");
     store.register_removed("negate_unsigned", "cast a signed value instead");

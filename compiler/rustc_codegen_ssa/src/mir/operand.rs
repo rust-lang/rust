@@ -6,9 +6,8 @@ use crate::glue;
 use crate::traits::*;
 use crate::MemFlags;
 
-use rustc_errors::ErrorReported;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{ConstValue, ErrorHandled, Pointer, Scalar};
+use rustc_middle::mir::interpret::{ConstValue, Pointer, Scalar};
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::Ty;
 use rustc_target::abi::{Abi, Align, LayoutOf, Size};
@@ -439,25 +438,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::Operand::Constant(ref constant) => {
-                self.eval_mir_constant_to_operand(bx, constant).unwrap_or_else(|err| {
-                    match err {
-                        // errored or at least linted
-                        ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted => {}
-                        ErrorHandled::TooGeneric => {
-                            bug!("codegen encountered polymorphic constant")
-                        }
-                    }
-                    // Allow RalfJ to sleep soundly knowing that even refactorings that remove
-                    // the above error (or silence it under some conditions) will not cause UB.
-                    bx.abort();
-                    // We still have to return an operand but it doesn't matter,
-                    // this code is unreachable.
-                    let ty = self.monomorphize(constant.literal.ty);
-                    let layout = bx.cx().layout_of(ty);
-                    bx.load_operand(PlaceRef::new_sized(
-                        bx.cx().const_undef(bx.cx().type_ptr_to(bx.cx().backend_type(layout))),
-                        layout,
-                    ))
+                // This cannot fail because we checked all required_consts in advance.
+                self.eval_mir_constant_to_operand(bx, constant).unwrap_or_else(|_err| {
+                    span_bug!(constant.span, "erroneous constant not captured by required_consts")
                 })
             }
         }

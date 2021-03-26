@@ -102,9 +102,6 @@ pub enum Candidate {
     /// Borrow of a constant temporary, candidate for lifetime extension.
     Ref(Location),
 
-    /// Promotion of the `x` in `[x; 32]`.
-    Repeat(Location),
-
     /// Currently applied to function calls where the callee has the unstable
     /// `#[rustc_args_required_const]` attribute as well as the SIMD shuffle
     /// intrinsic. The intrinsic requires the arguments are indeed constant and
@@ -120,14 +117,14 @@ impl Candidate {
     /// Returns `true` if we should use the "explicit" rules for promotability for this `Candidate`.
     fn forces_explicit_promotion(&self) -> bool {
         match self {
-            Candidate::Ref(_) | Candidate::Repeat(_) => false,
+            Candidate::Ref(_) => false,
             Candidate::Argument { .. } | Candidate::InlineAsm { .. } => true,
         }
     }
 
     fn source_info(&self, body: &Body<'_>) -> SourceInfo {
         match self {
-            Candidate::Ref(location) | Candidate::Repeat(location) => *body.source_info(*location),
+            Candidate::Ref(location) => *body.source_info(*location),
             Candidate::Argument { bb, .. } | Candidate::InlineAsm { bb, .. } => {
                 *body.source_info(body.terminator_loc(*bb))
             }
@@ -212,11 +209,6 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
         match *rvalue {
             Rvalue::Ref(..) => {
                 self.candidates.push(Candidate::Ref(location));
-            }
-            Rvalue::Repeat(..) if self.ccx.tcx.features().const_in_array_repeat_expressions => {
-                // FIXME(#49147) only promote the element when it isn't `Copy`
-                // (so that code that can copy it at runtime is unaffected).
-                self.candidates.push(Candidate::Repeat(location));
             }
             _ => {}
         }
@@ -330,21 +322,6 @@ impl<'tcx> Validator<'_, 'tcx> {
                         }
 
                         Ok(())
-                    }
-                    _ => bug!(),
-                }
-            }
-            Candidate::Repeat(loc) => {
-                assert!(!self.explicit);
-
-                let statement = &self.body[loc.block].statements[loc.statement_index];
-                match &statement.kind {
-                    StatementKind::Assign(box (_, Rvalue::Repeat(ref operand, _))) => {
-                        if !self.tcx.features().const_in_array_repeat_expressions {
-                            return Err(Unpromotable);
-                        }
-
-                        self.validate_operand(operand)
                     }
                     _ => bug!(),
                 }
@@ -666,7 +643,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 self.validate_operand(operand)?;
             }
 
-            Rvalue::BinaryOp(op, lhs, rhs) | Rvalue::CheckedBinaryOp(op, lhs, rhs) => {
+            Rvalue::BinaryOp(op, box (lhs, rhs)) | Rvalue::CheckedBinaryOp(op, box (lhs, rhs)) => {
                 let op = *op;
                 let lhs_ty = lhs.ty(self.body, self.tcx);
 
@@ -944,7 +921,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         let unit = Rvalue::Use(Operand::Constant(box Constant {
                             span: statement.source_info.span,
                             user_ty: None,
-                            literal: ty::Const::zero_sized(self.tcx, self.tcx.types.unit),
+                            literal: ty::Const::zero_sized(self.tcx, self.tcx.types.unit).into(),
                         }));
                         mem::replace(rhs, unit)
                     },
@@ -1021,20 +998,22 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 Operand::Constant(Box::new(Constant {
                     span,
                     user_ty: None,
-                    literal: tcx.mk_const(ty::Const {
-                        ty,
-                        val: ty::ConstKind::Unevaluated(
-                            def,
-                            InternalSubsts::for_item(tcx, def.did, |param, _| {
-                                if let ty::GenericParamDefKind::Lifetime = param.kind {
-                                    tcx.lifetimes.re_erased.into()
-                                } else {
-                                    tcx.mk_param_from_def(param)
-                                }
+                    literal: tcx
+                        .mk_const(ty::Const {
+                            ty,
+                            val: ty::ConstKind::Unevaluated(ty::Unevaluated {
+                                def,
+                                substs: InternalSubsts::for_item(tcx, def.did, |param, _| {
+                                    if let ty::GenericParamDefKind::Lifetime = param.kind {
+                                        tcx.lifetimes.re_erased.into()
+                                    } else {
+                                        tcx.mk_param_from_def(param)
+                                    }
+                                }),
+                                promoted: Some(promoted_id),
                             }),
-                            Some(promoted_id),
-                        ),
-                    }),
+                        })
+                        .into(),
                 }))
             };
             let (blocks, local_decls) = self.source.basic_blocks_and_local_decls_mut();
@@ -1086,18 +1065,6 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                                     projection: List::empty(),
                                 },
                             )
-                        }
-                        _ => bug!(),
-                    }
-                }
-                Candidate::Repeat(loc) => {
-                    let statement = &mut blocks[loc.block].statements[loc.statement_index];
-                    match statement.kind {
-                        StatementKind::Assign(box (_, Rvalue::Repeat(ref mut operand, _))) => {
-                            let ty = operand.ty(local_decls, self.tcx);
-                            let span = statement.source_info.span;
-
-                            Rvalue::Use(mem::replace(operand, promoted_operand(ty, span)))
                         }
                         _ => bug!(),
                     }
@@ -1182,8 +1149,7 @@ pub fn promote_candidates<'tcx>(
     let mut extra_statements = vec![];
     for candidate in candidates.into_iter().rev() {
         match candidate {
-            Candidate::Repeat(Location { block, statement_index })
-            | Candidate::Ref(Location { block, statement_index }) => {
+            Candidate::Ref(Location { block, statement_index }) => {
                 if let StatementKind::Assign(box (place, _)) =
                     &body[block].statements[statement_index].kind
                 {
@@ -1213,7 +1179,7 @@ pub fn promote_candidates<'tcx>(
             0,
             vec![],
             body.span,
-            body.generator_kind,
+            body.generator_kind(),
         );
 
         let promoter = Promoter {
@@ -1268,26 +1234,37 @@ pub fn promote_candidates<'tcx>(
     promotions
 }
 
-/// This function returns `true` if the `const_in_array_repeat_expressions` feature attribute should
-/// be suggested. This function is probably quite expensive, it shouldn't be run in the happy path.
-/// Feature attribute should be suggested if `operand` can be promoted and the feature is not
-/// enabled.
-crate fn should_suggest_const_in_array_repeat_expressions_attribute<'tcx>(
+/// This function returns `true` if the function being called in the array
+/// repeat expression is a `const` function.
+crate fn is_const_fn_in_array_repeat_expression<'tcx>(
     ccx: &ConstCx<'_, 'tcx>,
-    operand: &Operand<'tcx>,
+    place: &Place<'tcx>,
+    body: &Body<'tcx>,
 ) -> bool {
-    let mut rpo = traversal::reverse_postorder(&ccx.body);
-    let (temps, _) = collect_temps_and_candidates(&ccx, &mut rpo);
-    let validator = Validator { ccx, temps: &temps, explicit: false };
+    match place.as_local() {
+        // rule out cases such as: `let my_var = some_fn(); [my_var; N]`
+        Some(local) if body.local_decls[local].is_user_variable() => return false,
+        None => return false,
+        _ => {}
+    }
 
-    let should_promote = validator.validate_operand(operand).is_ok();
-    let feature_flag = validator.ccx.tcx.features().const_in_array_repeat_expressions;
-    debug!(
-        "should_suggest_const_in_array_repeat_expressions_flag: def_id={:?} \
-            should_promote={:?} feature_flag={:?}",
-        validator.ccx.def_id(),
-        should_promote,
-        feature_flag
-    );
-    should_promote && !feature_flag
+    for block in body.basic_blocks() {
+        if let Some(Terminator { kind: TerminatorKind::Call { func, destination, .. }, .. }) =
+            &block.terminator
+        {
+            if let Operand::Constant(box Constant { literal, .. }) = func {
+                if let ty::FnDef(def_id, _) = *literal.ty().kind() {
+                    if let Some((destination_place, _)) = destination {
+                        if destination_place == place {
+                            if is_const_fn(ccx.tcx, def_id) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    false
 }

@@ -13,7 +13,7 @@ help: you could relax the implicit `Sized` bound on `U` if it were used through 
   --> $DIR/unsized-enum.rs:4:10
    |
 LL | enum Foo<U> { FooSome(U), FooNone }
-   |          ^            - ...if indirection was used here: `Box<U>`
+   |          ^            - ...if indirection were used here: `Box<U>`
    |          |
    |          this could be changed to `U: ?Sized`...
 

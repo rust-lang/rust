@@ -1,6 +1,9 @@
 use std::cmp;
 
-use crate::utils::{is_copy, is_self_ty, snippet, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_self_ty;
+use clippy_utils::source::snippet;
+use clippy_utils::ty::is_copy;
 use if_chain::if_chain;
 use rustc_ast::attr;
 use rustc_errors::Applicability;
@@ -206,7 +209,7 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
         }
 
         if let hir::TraitItemKind::Fn(method_sig, _) = &item.kind {
-            self.check_poly_fn(cx, item.hir_id, &*method_sig.decl, None);
+            self.check_poly_fn(cx, item.hir_id(), &*method_sig.decl, None);
         }
     }
 
@@ -224,10 +227,11 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
         }
 
         match kind {
-            FnKind::ItemFn(.., header, _, attrs) => {
+            FnKind::ItemFn(.., header, _) => {
                 if header.abi != Abi::Rust {
                     return;
                 }
+                let attrs = cx.tcx.hir().attrs(hir_id);
                 for a in attrs {
                     if let Some(meta_items) = a.meta_item_list() {
                         if a.has_name(sym::proc_macro_derive)
@@ -239,7 +243,7 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
                 }
             },
             FnKind::Method(..) => (),
-            FnKind::Closure(..) => return,
+            FnKind::Closure => return,
         }
 
         // Exclude non-inherent impls

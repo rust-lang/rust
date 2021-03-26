@@ -8,10 +8,11 @@
 #![feature(bool_to_option)]
 #![feature(const_cstr_unchecked)]
 #![feature(crate_visibility_modifier)]
+#![feature(extended_key_value_attributes)]
 #![feature(extern_types)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
-#![feature(or_patterns)]
+#![cfg_attr(bootstrap, feature(or_patterns))]
 #![recursion_limit = "256"]
 
 use back::write::{create_informational_target_machine, create_target_machine};

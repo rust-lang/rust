@@ -287,12 +287,12 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                 chalk_ir::TyKind::Function(chalk_ir::FnPointer {
                     num_binders: binders.len(interner),
                     sig: sig.lower_into(interner),
-                    substitution: chalk_ir::Substitution::from_iter(
+                    substitution: chalk_ir::FnSubst(chalk_ir::Substitution::from_iter(
                         interner,
                         inputs_and_outputs.iter().map(|ty| {
                             chalk_ir::GenericArgData::Ty(ty.lower_into(interner)).intern(interner)
                         }),
-                    ),
+                    )),
                 })
             }
             ty::Dynamic(predicates, region) => chalk_ir::TyKind::Dyn(chalk_ir::DynTy {
@@ -478,6 +478,10 @@ impl<'tcx> LowerInto<'tcx, Region<'tcx>> for &chalk_ir::Lifetime<RustInterner<'t
             }
             chalk_ir::LifetimeData::Static => ty::RegionKind::ReStatic,
             chalk_ir::LifetimeData::Phantom(_, _) => unimplemented!(),
+            chalk_ir::LifetimeData::Empty(ui) => {
+                ty::RegionKind::ReEmpty(ty::UniverseIndex::from_usize(ui.counter))
+            }
+            chalk_ir::LifetimeData::Erased => ty::RegionKind::ReErased,
         };
         interner.tcx.mk_region(kind)
     }
@@ -775,14 +779,11 @@ impl<'tcx> LowerInto<'tcx, chalk_solve::rust_ir::AliasEqBound<RustInterner<'tcx>
         self,
         interner: &RustInterner<'tcx>,
     ) -> chalk_solve::rust_ir::AliasEqBound<RustInterner<'tcx>> {
-        let trait_ref = self.projection_ty.trait_ref(interner.tcx);
+        let (trait_ref, own_substs) = self.projection_ty.trait_ref_and_own_substs(interner.tcx);
         chalk_solve::rust_ir::AliasEqBound {
             trait_bound: trait_ref.lower_into(interner),
             associated_ty_id: chalk_ir::AssocTypeId(self.projection_ty.item_def_id),
-            parameters: self.projection_ty.substs[trait_ref.substs.len()..]
-                .iter()
-                .map(|arg| arg.lower_into(interner))
-                .collect(),
+            parameters: own_substs.iter().map(|arg| arg.lower_into(interner)).collect(),
             value: self.ty.lower_into(interner),
         }
     }

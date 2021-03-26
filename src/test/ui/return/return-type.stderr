@@ -6,7 +6,7 @@ LL |     foo(4 as usize)
    |
    = note: expected unit type `()`
                  found struct `S<usize>`
-help: try adding a semicolon
+help: consider using a semicolon here
    |
 LL |     foo(4 as usize);
    |                    ^

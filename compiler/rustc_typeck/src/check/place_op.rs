@@ -103,9 +103,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let method =
                 self.try_overloaded_place_op(expr.span, self_ty, &[input_ty], PlaceOp::Index);
 
-            let result = method.map(|ok| {
+            if let Some(result) = method {
                 debug!("try_index_step: success, using overloaded indexing");
-                let method = self.register_infer_ok_obligations(ok);
+                let method = self.register_infer_ok_obligations(result);
 
                 let mut adjustments = self.adjust_steps(autoderef);
                 if let ty::Ref(region, _, hir::Mutability::Not) = method.sig.inputs()[0].kind() {
@@ -128,10 +128,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.apply_adjustments(base_expr, adjustments);
 
                 self.write_method_call(expr.hir_id, method);
-                (input_ty, self.make_overloaded_place_return_type(method).ty)
-            });
-            if result.is_some() {
-                return result;
+
+                return Some((input_ty, self.make_overloaded_place_return_type(method).ty));
             }
         }
 
@@ -203,7 +201,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         while let hir::ExprKind::Field(ref expr, _)
         | hir::ExprKind::Index(ref expr, _)
-        | hir::ExprKind::Unary(hir::UnOp::UnDeref, ref expr) = exprs.last().unwrap().kind
+        | hir::ExprKind::Unary(hir::UnOp::Deref, ref expr) = exprs.last().unwrap().kind
         {
             exprs.push(&expr);
         }
@@ -216,7 +214,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             debug!("convert_place_derefs_to_mutable: i={} expr={:?}", i, expr);
 
             let mut source = self.node_ty(expr.hir_id);
-            if matches!(expr.kind, hir::ExprKind::Unary(hir::UnOp::UnDeref, _)) {
+            if matches!(expr.kind, hir::ExprKind::Unary(hir::UnOp::Deref, _)) {
                 // Clear previous flag; after a pointer indirection it does not apply any more.
                 inside_union = false;
             }
@@ -270,7 +268,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 hir::ExprKind::Index(ref base_expr, ..) => {
                     self.convert_place_op_to_mutable(PlaceOp::Index, expr, base_expr);
                 }
-                hir::ExprKind::Unary(hir::UnOp::UnDeref, ref base_expr) => {
+                hir::ExprKind::Unary(hir::UnOp::Deref, ref base_expr) => {
                     self.convert_place_op_to_mutable(PlaceOp::Deref, expr, base_expr);
                 }
                 _ => {}

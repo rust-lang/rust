@@ -185,8 +185,10 @@ fn start_qemu_emulator(target: &str, rootfs: &Path, server: &Path, tmpdir: &Path
                 .arg("-append")
                 .arg("console=ttyAMA0 root=/dev/ram rdinit=/sbin/init init=/sbin/init")
                 .arg("-nographic")
-                .arg("-redir")
-                .arg("tcp:12345::12345");
+                .arg("-netdev")
+                .arg("user,id=net0,hostfwd=tcp::12345-:12345")
+                .arg("-device")
+                .arg("virtio-net-device,netdev=net0,mac=00:00:00:00:00:00");
             t!(cmd.spawn());
         }
         "aarch64-unknown-linux-gnu" => {

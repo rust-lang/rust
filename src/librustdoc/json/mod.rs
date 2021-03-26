@@ -14,17 +14,17 @@ use std::rc::Rc;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_span::edition::Edition;
+use rustc_span::{edition::Edition, Symbol};
 
 use rustdoc_json_types as types;
 
 use crate::clean;
-use crate::config::{RenderInfo, RenderOptions};
+use crate::config::RenderOptions;
 use crate::error::Error;
 use crate::formats::cache::Cache;
 use crate::formats::FormatRenderer;
 use crate::html::render::cache::ExternalLocation;
-use crate::json::conversions::from_def_id;
+use crate::json::conversions::{from_def_id, IntoWithTcx};
 
 #[derive(Clone)]
 crate struct JsonRenderer<'tcx> {
@@ -37,8 +37,8 @@ crate struct JsonRenderer<'tcx> {
     cache: Rc<Cache>,
 }
 
-impl JsonRenderer<'_> {
-    fn sess(&self) -> &Session {
+impl JsonRenderer<'tcx> {
+    fn sess(&self) -> &'tcx Session {
         self.tcx.sess
     }
 
@@ -87,6 +87,7 @@ impl JsonRenderer<'_> {
             .filter_map(|(&id, trait_item)| {
                 // only need to synthesize items for external traits
                 if !id.is_local() {
+                    let trait_item = &trait_item.trait_;
                     trait_item.items.clone().into_iter().for_each(|i| self.item(i).unwrap());
                     Some((
                         from_def_id(id),
@@ -107,9 +108,8 @@ impl JsonRenderer<'_> {
                                 .last()
                                 .map(Clone::clone),
                             visibility: types::Visibility::Public,
-                            kind: types::ItemKind::Trait,
-                            inner: types::ItemEnum::TraitItem(trait_item.clone().into()),
-                            source: None,
+                            inner: types::ItemEnum::Trait(trait_item.clone().into_tcx(self.tcx)),
+                            span: None,
                             docs: Default::default(),
                             links: Default::default(),
                             attrs: Default::default(),
@@ -129,10 +129,11 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         "json"
     }
 
+    const RUN_ON_MODULE: bool = false;
+
     fn init(
         krate: clean::Crate,
         options: RenderOptions,
-        _render_info: RenderInfo,
         _edition: Edition,
         cache: Cache,
         tcx: TyCtxt<'tcx>,
@@ -149,6 +150,10 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         ))
     }
 
+    fn make_child_renderer(&self) -> Self {
+        self.clone()
+    }
+
     /// Inserts an item into the index. This should be used rather than directly calling insert on
     /// the hashmap because certain items (traits and types) need to have their mappings for trait
     /// implementations filled out before they're inserted.
@@ -158,16 +163,18 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
 
         let id = item.def_id;
         if let Some(mut new_item) = self.convert_item(item) {
-            if let types::ItemEnum::TraitItem(ref mut t) = new_item.inner {
+            if let types::ItemEnum::Trait(ref mut t) = new_item.inner {
                 t.implementors = self.get_trait_implementors(id)
-            } else if let types::ItemEnum::StructItem(ref mut s) = new_item.inner {
+            } else if let types::ItemEnum::Struct(ref mut s) = new_item.inner {
                 s.impls = self.get_impls(id)
-            } else if let types::ItemEnum::EnumItem(ref mut e) = new_item.inner {
+            } else if let types::ItemEnum::Enum(ref mut e) = new_item.inner {
                 e.impls = self.get_impls(id)
             }
             let removed = self.index.borrow_mut().insert(from_def_id(id), new_item.clone());
+
             // FIXME(adotinthevoid): Currently, the index is duplicated. This is a sanity check
-            // to make sure the items are unique.
+            // to make sure the items are unique. The main place this happens is when an item, is
+            // reexported in more than one place. See `rustdoc-json/reexport/in_root_and_mod`
             if let Some(old_item) = removed {
                 assert_eq!(old_item, new_item);
             }
@@ -183,7 +190,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 match &*item.kind {
                     // These don't have names so they don't get added to the output by default
                     ImportItem(_) => self.item(item.clone()).unwrap(),
-                    ExternCrateItem(_, _) => self.item(item.clone()).unwrap(),
+                    ExternCrateItem { .. } => self.item(item.clone()).unwrap(),
                     ImplItem(i) => i.items.iter().for_each(|i| self.item(i.clone()).unwrap()),
                     _ => {}
                 }
@@ -199,7 +206,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
 
     fn after_krate(
         &mut self,
-        krate: &clean::Crate,
+        _crate_name: Symbol,
         _diag: &rustc_errors::Handler,
     ) -> Result<(), Error> {
         debug!("Done with crate");
@@ -210,7 +217,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         #[allow(rustc::default_hash_types)]
         let output = types::Crate {
             root: types::Id(String::from("0:0")),
-            crate_version: krate.version.clone(),
+            crate_version: self.cache.crate_version.clone(),
             includes_private: self.cache.document_private,
             index: index.into_iter().collect(),
             paths: self
@@ -222,7 +229,11 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 .map(|(k, (path, kind))| {
                     (
                         from_def_id(k),
-                        types::ItemSummary { crate_id: k.krate.as_u32(), path, kind: kind.into() },
+                        types::ItemSummary {
+                            crate_id: k.krate.as_u32(),
+                            path,
+                            kind: kind.into_tcx(self.tcx),
+                        },
                     )
                 })
                 .collect(),
@@ -243,7 +254,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                     )
                 })
                 .collect(),
-            format_version: 2,
+            format_version: 5,
         };
         let mut p = self.out_path.clone();
         p.push(output.index.get(&output.root).unwrap().name.clone().unwrap());

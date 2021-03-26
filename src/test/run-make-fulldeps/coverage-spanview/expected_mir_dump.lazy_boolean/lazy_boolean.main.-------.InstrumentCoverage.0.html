@@ -69,9 +69,9 @@ For revisions in Pull Requests (PR):
 </style>
 </head>
 <body>
-<div class="code" style="counter-reset: line 2"><span class="line"><span><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb36]
+<div class="code" style="counter-reset: line 2"><span class="line"><span><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = std::env::args() -&gt; [return: bb1, unwind: bb36]
 7:19-7:35: @1[0]: _3 = &amp;_4
-7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb35]
+7:19-7:41: @1.Call: _2 = &lt;std::env::Args as std::iter::ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb35]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
 7:9-7:16: @2[3]: FakeRead(ForLet, _1)
 9:33-9:42: @3[2]: _8 = (const 0_i32, const 0_i32, const 0_i32)
@@ -79,9 +79,9 @@ For revisions in Pull Requests (PR):
 9:17-9:22: @3[6]: _6 = (_8.1: i32)
 9:24-9:29: @3[8]: _7 = (_8.2: i32)
 10:8-10:15: @3[12]: _10 = _1"><span class="annotation">@0,1,2,3⦊</span>fn main() {</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb36]
+<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = std::env::args() -&gt; [return: bb1, unwind: bb36]
 7:19-7:35: @1[0]: _3 = &amp;_4
-7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb35]
+7:19-7:41: @1.Call: _2 = &lt;std::env::Args as std::iter::ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb35]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
 7:9-7:16: @2[3]: FakeRead(ForLet, _1)
 9:33-9:42: @3[2]: _8 = (const 0_i32, const 0_i32, const 0_i32)
@@ -89,9 +89,9 @@ For revisions in Pull Requests (PR):
 9:17-9:22: @3[6]: _6 = (_8.1: i32)
 9:24-9:29: @3[8]: _7 = (_8.2: i32)
 10:8-10:15: @3[12]: _10 = _1">    // Initialize test constants in a way that cannot be determined at compile time, to ensure</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb36]
+<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = std::env::args() -&gt; [return: bb1, unwind: bb36]
 7:19-7:35: @1[0]: _3 = &amp;_4
-7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb35]
+7:19-7:41: @1.Call: _2 = &lt;std::env::Args as std::iter::ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb35]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
 7:9-7:16: @2[3]: FakeRead(ForLet, _1)
 9:33-9:42: @3[2]: _8 = (const 0_i32, const 0_i32, const 0_i32)
@@ -99,9 +99,9 @@ For revisions in Pull Requests (PR):
 9:17-9:22: @3[6]: _6 = (_8.1: i32)
 9:24-9:29: @3[8]: _7 = (_8.2: i32)
 10:8-10:15: @3[12]: _10 = _1">    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb36]
+<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = std::env::args() -&gt; [return: bb1, unwind: bb36]
 7:19-7:35: @1[0]: _3 = &amp;_4
-7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb35]
+7:19-7:41: @1.Call: _2 = &lt;std::env::Args as std::iter::ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb35]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
 7:9-7:16: @2[3]: FakeRead(ForLet, _1)
 9:33-9:42: @3[2]: _8 = (const 0_i32, const 0_i32, const 0_i32)
@@ -109,9 +109,9 @@ For revisions in Pull Requests (PR):
 9:17-9:22: @3[6]: _6 = (_8.1: i32)
 9:24-9:29: @3[8]: _7 = (_8.2: i32)
 10:8-10:15: @3[12]: _10 = _1">    // dependent conditions.</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb36]
+<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = std::env::args() -&gt; [return: bb1, unwind: bb36]
 7:19-7:35: @1[0]: _3 = &amp;_4
-7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb35]
+7:19-7:41: @1.Call: _2 = &lt;std::env::Args as std::iter::ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb35]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
 7:9-7:16: @2[3]: FakeRead(ForLet, _1)
 9:33-9:42: @3[2]: _8 = (const 0_i32, const 0_i32, const 0_i32)
@@ -119,9 +119,9 @@ For revisions in Pull Requests (PR):
 9:17-9:22: @3[6]: _6 = (_8.1: i32)
 9:24-9:29: @3[8]: _7 = (_8.2: i32)
 10:8-10:15: @3[12]: _10 = _1">    let is_true = std::env::args().len() == 1;</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb36]
+<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = std::env::args() -&gt; [return: bb1, unwind: bb36]
 7:19-7:35: @1[0]: _3 = &amp;_4
-7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb35]
+7:19-7:41: @1.Call: _2 = &lt;std::env::Args as std::iter::ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb35]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
 7:9-7:16: @2[3]: FakeRead(ForLet, _1)
 9:33-9:42: @3[2]: _8 = (const 0_i32, const 0_i32, const 0_i32)
@@ -129,9 +129,9 @@ For revisions in Pull Requests (PR):
 9:17-9:22: @3[6]: _6 = (_8.1: i32)
 9:24-9:29: @3[8]: _7 = (_8.2: i32)
 10:8-10:15: @3[12]: _10 = _1"></span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb36]
+<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = std::env::args() -&gt; [return: bb1, unwind: bb36]
 7:19-7:35: @1[0]: _3 = &amp;_4
-7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb35]
+7:19-7:41: @1.Call: _2 = &lt;std::env::Args as std::iter::ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb35]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
 7:9-7:16: @2[3]: FakeRead(ForLet, _1)
 9:33-9:42: @3[2]: _8 = (const 0_i32, const 0_i32, const 0_i32)
@@ -139,9 +139,9 @@ For revisions in Pull Requests (PR):
 9:17-9:22: @3[6]: _6 = (_8.1: i32)
 9:24-9:29: @3[8]: _7 = (_8.2: i32)
 10:8-10:15: @3[12]: _10 = _1">    let (mut a, mut b, mut c) = (0, 0, 0);</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = args() -&gt; [return: bb1, unwind: bb36]
+<span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = std::env::args() -&gt; [return: bb1, unwind: bb36]
 7:19-7:35: @1[0]: _3 = &amp;_4
-7:19-7:41: @1.Call: _2 = &lt;Args as ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb35]
+7:19-7:41: @1.Call: _2 = &lt;std::env::Args as std::iter::ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb35]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
 7:9-7:16: @2[3]: FakeRead(ForLet, _1)
 9:33-9:42: @3[2]: _8 = (const 0_i32, const 0_i32, const 0_i32)

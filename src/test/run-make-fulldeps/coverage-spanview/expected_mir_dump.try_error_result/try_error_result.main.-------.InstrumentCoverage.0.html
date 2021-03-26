@@ -84,7 +84,7 @@ For revisions in Pull Requests (PR):
 <span class="line"><span class="code" style="--layer: 0">    in</span></span>
 <span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code even" style="--layer: 1" title="19:9-19:14: @3[5]: _11 = &amp;mut _5
 19:9-19:14: @3[6]: _10 = &amp;mut (*_11)
-19:9-19:14: @3.Call: _9 = &lt;std::ops::Range&lt;i32&gt; as Iterator&gt;::next(move _10) -&gt; [return: bb4, unwind: bb39]
+19:9-19:14: @3.Call: _9 = &lt;std::ops::Range&lt;i32&gt; as std::iter::Iterator&gt;::next(move _10) -&gt; [return: bb4, unwind: bb39]
 19:9-19:14: @4[1]: FakeRead(ForMatchedPlace, _9)"><span class="annotation">@2,3,4⦊</span>0..10<span class="annotation">⦉@2,3,4</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">    {</span></span>
 <span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code odd" style="--layer: 1" title="21:9-22:17: @8[12]: _17 = CheckedSub(_1, const 1_i32)
@@ -110,16 +110,16 @@ For revisions in Pull Requests (PR):
 <span class="line"><span class="code" style="--layer: 0">        {</span></span>
 <span class="line"><span class="code" style="--layer: 0">            </span><span><span class="code even" style="--layer: 1" title="27:13-27:41: @10.Call: _22 = call(const true) -&gt; [return: bb12, unwind: bb39]"><span class="annotation">@10,12,13⦊</span>call(/*return_error=*/ true)<span class="annotation">⦉@10,12,13</span></span></span><span><span class="code odd" style="--layer: 1" title="27:41-27:42: @17[1]: _24 = ((_21 as Err).0: ())
 27:41-27:42: @17[4]: _27 = _24
-27:41-27:42: @17.Call: _26 = &lt;() as From&lt;()&gt;&gt;::from(move _27) -&gt; [return: bb18, unwind: bb39]"><span class="annotation">@15,17,18,19⦊</span>?<span class="annotation">⦉@15,17,18,19</span></span></span><span class="code" style="--layer: 0">;</span></span>
+27:41-27:42: @17.Call: _26 = &lt;() as std::convert::From&lt;()&gt;&gt;::from(move _27) -&gt; [return: bb18, unwind: bb39]"><span class="annotation">@15,17,18,19⦊</span>?<span class="annotation">⦉@15,17,18,19</span></span></span><span class="code" style="--layer: 0">;</span></span>
 <span class="line"><span class="code" style="--layer: 0">            </span><span><span class="code even" style="--layer: 1" title="28:13-28:42: @14.Call: _31 = call(const false) -&gt; [return: bb20, unwind: bb39]"><span class="annotation">@14,20,21⦊</span>call(/*return_error=*/ false)<span class="annotation">⦉@14,20,21</span></span></span><span><span class="code odd" style="--layer: 1" title="28:42-28:43: @25[1]: _33 = ((_30 as Err).0: ())
 28:42-28:43: @25[4]: _36 = _33
-28:42-28:43: @25.Call: _35 = &lt;() as From&lt;()&gt;&gt;::from(move _36) -&gt; [return: bb26, unwind: bb39]"><span class="annotation">@23,25,26,27⦊</span>?<span class="annotation">⦉@23,25,26,27</span></span></span><span class="code" style="--layer: 0">;</span></span>
+28:42-28:43: @25.Call: _35 = &lt;() as std::convert::From&lt;()&gt;&gt;::from(move _36) -&gt; [return: bb26, unwind: bb39]"><span class="annotation">@23,25,26,27⦊</span>?<span class="annotation">⦉@23,25,26,27</span></span></span><span class="code" style="--layer: 0">;</span></span>
 <span class="line"><span class="code" style="--layer: 0">        }</span></span>
 <span class="line"><span class="code" style="--layer: 0">        else</span></span>
 <span class="line"><span class="code" style="--layer: 0">        {</span></span>
 <span class="line"><span class="code" style="--layer: 0">            </span><span><span class="code even" style="--layer: 1" title="32:13-32:42: @11.Call: _40 = call(const false) -&gt; [return: bb28, unwind: bb39]"><span class="annotation">@11,28,29⦊</span>call(/*return_error=*/ false)<span class="annotation">⦉@11,28,29</span></span></span><span><span class="code odd" style="--layer: 1" title="32:42-32:43: @33[1]: _42 = ((_39 as Err).0: ())
 32:42-32:43: @33[4]: _45 = _42
-32:42-32:43: @33.Call: _44 = &lt;() as From&lt;()&gt;&gt;::from(move _45) -&gt; [return: bb34, unwind: bb39]"><span class="annotation">@31,33,34,35⦊</span>?<span class="annotation">⦉@31,33,34,35</span></span></span><span class="code" style="--layer: 0">;</span></span>
+32:42-32:43: @33.Call: _44 = &lt;() as std::convert::From&lt;()&gt;&gt;::from(move _45) -&gt; [return: bb34, unwind: bb39]"><span class="annotation">@31,33,34,35⦊</span>?<span class="annotation">⦉@31,33,34,35</span></span></span><span class="code" style="--layer: 0">;</span></span>
 <span class="line"><span class="code" style="--layer: 0">        }</span></span>
 <span class="line"><span class="code" style="--layer: 0">    }</span></span>
 <span class="line"><span class="code" style="--layer: 0">    </span><span><span class="code even" style="--layer: 1" title="35:8-35:10: @5[9]: _47 = ()

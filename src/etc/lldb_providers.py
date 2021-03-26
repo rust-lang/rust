@@ -531,7 +531,9 @@ class StdHashMapSyntheticProvider:
         ctrl = table.GetChildMemberWithName("ctrl").GetChildAtIndex(0)
 
         self.size = table.GetChildMemberWithName("items").GetValueAsUnsigned()
-        self.pair_type = table.type.template_args[0].GetTypedefedType()
+        self.pair_type = table.type.template_args[0]
+        if self.pair_type.IsTypedefType():
+            self.pair_type = self.pair_type.GetTypedefedType()
         self.pair_type_size = self.pair_type.GetByteSize()
 
         self.new_layout = not table.GetChildMemberWithName("data").IsValid()
@@ -561,7 +563,7 @@ class StdHashMapSyntheticProvider:
             # HashSet wraps either std HashMap or hashbrown::HashSet, which both
             # wrap hashbrown::HashMap, so either way we "unwrap" twice.
             hashbrown_hashmap = self.valobj.GetChildAtIndex(0).GetChildAtIndex(0)
-        return hashbrown_hashmap.GetChildMemberWithName("table")
+        return hashbrown_hashmap.GetChildMemberWithName("table").GetChildMemberWithName("table")
 
     def has_children(self):
         # type: () -> bool

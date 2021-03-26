@@ -1,5 +1,6 @@
-use crate::utils::{eq_expr_value, in_macro, search_same, SpanlessEq, SpanlessHash};
-use crate::utils::{get_parent_expr, if_sequence, span_lint_and_note};
+use clippy_utils::diagnostics::span_lint_and_note;
+use clippy_utils::{eq_expr_value, in_macro, search_same, SpanlessEq, SpanlessHash};
+use clippy_utils::{get_parent_expr, if_sequence};
 use rustc_hir::{Block, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};

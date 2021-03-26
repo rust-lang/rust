@@ -7,6 +7,8 @@ LL | const ZST: &[u8] = unsafe { std::mem::transmute(1usize) };
    |                             transmuting `usize` to `&[u8]` is not possible, because these types do not have the same size
    |
    = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: could not evaluate constant pattern
   --> $DIR/transmute-size-mismatch-before-typeck.rs:10:9

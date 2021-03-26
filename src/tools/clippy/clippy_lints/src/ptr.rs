@@ -1,10 +1,10 @@
 //! Checks for usage of  `&Vec[_]` and `&String`.
 
-use crate::utils::ptr::get_spans;
-use crate::utils::{
-    is_allowed, is_type_diagnostic_item, match_qpath, match_type, paths, snippet_opt, span_lint, span_lint_and_sugg,
-    span_lint_and_then, walk_ptrs_hir_ty,
-};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::ptr::get_spans;
+use clippy_utils::source::snippet_opt;
+use clippy_utils::ty::{is_type_diagnostic_item, match_type, walk_ptrs_hir_ty};
+use clippy_utils::{is_allowed, match_qpath, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{
@@ -124,19 +124,19 @@ declare_lint_pass!(Ptr => [PTR_ARG, CMP_NULL, MUT_FROM_REF]);
 impl<'tcx> LateLintPass<'tcx> for Ptr {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if let ItemKind::Fn(ref sig, _, body_id) = item.kind {
-            check_fn(cx, &sig.decl, item.hir_id, Some(body_id));
+            check_fn(cx, &sig.decl, item.hir_id(), Some(body_id));
         }
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
         if let ImplItemKind::Fn(ref sig, body_id) = item.kind {
-            let parent_item = cx.tcx.hir().get_parent_item(item.hir_id);
+            let parent_item = cx.tcx.hir().get_parent_item(item.hir_id());
             if let Some(Node::Item(it)) = cx.tcx.hir().find(parent_item) {
                 if let ItemKind::Impl(Impl { of_trait: Some(_), .. }) = it.kind {
                     return; // ignore trait impls
                 }
             }
-            check_fn(cx, &sig.decl, item.hir_id, Some(body_id));
+            check_fn(cx, &sig.decl, item.hir_id(), Some(body_id));
         }
     }
 
@@ -147,7 +147,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
             } else {
                 None
             };
-            check_fn(cx, &sig.decl, item.hir_id, body_id);
+            check_fn(cx, &sig.decl, item.hir_id(), body_id);
         }
     }
 
@@ -188,7 +188,7 @@ fn check_fn(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_id: 
                         PTR_ARG,
                         arg.span,
                         "writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used \
-                         with non-Vec-based slices.",
+                         with non-Vec-based slices",
                         |diag| {
                             if let Some(ref snippet) = get_only_generic_arg_snippet(cx, arg) {
                                 diag.span_suggestion(
@@ -217,7 +217,7 @@ fn check_fn(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_id: 
                         cx,
                         PTR_ARG,
                         arg.span,
-                        "writing `&String` instead of `&str` involves a new object where a slice will do.",
+                        "writing `&String` instead of `&str` involves a new object where a slice will do",
                         |diag| {
                             diag.span_suggestion(arg.span, "change this to", "&str".into(), Applicability::Unspecified);
                             for (clonespan, suggestion) in spans {
@@ -233,13 +233,13 @@ fn check_fn(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_id: 
                         },
                     );
                 }
-            } else if match_type(cx, ty, &paths::PATH_BUF) {
+            } else if is_type_diagnostic_item(cx, ty, sym::PathBuf) {
                 if let Some(spans) = get_spans(cx, opt_body_id, idx, &[("clone", ".to_path_buf()"), ("as_path", "")]) {
                     span_lint_and_then(
                         cx,
                         PTR_ARG,
                         arg.span,
-                        "writing `&PathBuf` instead of `&Path` involves a new object where a slice will do.",
+                        "writing `&PathBuf` instead of `&Path` involves a new object where a slice will do",
                         |diag| {
                             diag.span_suggestion(
                                 arg.span,
@@ -263,8 +263,7 @@ fn check_fn(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_id: 
             } else if match_type(cx, ty, &paths::COW) {
                 if_chain! {
                     if let TyKind::Rptr(_, MutTy { ref ty, ..} ) = arg.kind;
-                    if let TyKind::Path(ref path) = ty.kind;
-                    if let QPath::Resolved(None, ref pp) = *path;
+                    if let TyKind::Path(QPath::Resolved(None, ref pp)) = ty.kind;
                     if let [ref bx] = *pp.segments;
                     if let Some(ref params) = bx.args;
                     if !params.parenthesized;
@@ -279,7 +278,7 @@ fn check_fn(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_id: 
                                 cx,
                                 PTR_ARG,
                                 arg.span,
-                                "using a reference to `Cow` is not recommended.",
+                                "using a reference to `Cow` is not recommended",
                                 "change this to",
                                 "&".to_owned() + &r,
                                 Applicability::Unspecified,

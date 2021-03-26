@@ -1,4 +1,3 @@
-#![feature(or_patterns)]
 #![deny(unreachable_patterns)]
 
 // check-pass

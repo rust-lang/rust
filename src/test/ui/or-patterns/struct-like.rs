@@ -1,7 +1,5 @@
 // run-pass
 
-#![feature(or_patterns)]
-
 #[derive(Debug)]
 enum Other {
     One,

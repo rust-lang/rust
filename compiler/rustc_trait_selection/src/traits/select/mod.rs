@@ -32,7 +32,9 @@ use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::Constness;
+use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_middle::dep_graph::{DepKind, DepNodeIndex};
+use rustc_middle::mir::abstract_const::NotConstEvaluatable;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::fast_reject;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -546,7 +548,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         obligation.cause.span,
                     ) {
                         Ok(()) => Ok(EvaluatedToOk),
-                        Err(ErrorHandled::TooGeneric) => Ok(EvaluatedToAmbig),
+                        Err(NotConstEvaluatable::MentionsInfer) => Ok(EvaluatedToAmbig),
+                        Err(NotConstEvaluatable::MentionsParam) => Ok(EvaluatedToErr),
                         Err(_) => Ok(EvaluatedToErr),
                     }
                 }
@@ -555,13 +558,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     debug!(?c1, ?c2, "evaluate_predicate_recursively: equating consts");
 
                     let evaluate = |c: &'tcx ty::Const<'tcx>| {
-                        if let ty::ConstKind::Unevaluated(def, substs, promoted) = c.val {
+                        if let ty::ConstKind::Unevaluated(unevaluated) = c.val {
                             self.infcx
                                 .const_eval_resolve(
                                     obligation.param_env,
-                                    def,
-                                    substs,
-                                    promoted,
+                                    unevaluated,
                                     Some(obligation.cause.span),
                                 )
                                 .map(|val| ty::Const::from_value(self.tcx(), val, c.ty))
@@ -862,7 +863,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         stack: &TraitObligationStack<'o, 'tcx>,
         candidate: &SelectionCandidate<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
-        let result = self.evaluation_probe(|this| {
+        let mut result = self.evaluation_probe(|this| {
             let candidate = (*candidate).clone();
             match this.confirm_candidate(stack.obligation, candidate) {
                 Ok(selection) => {
@@ -875,6 +876,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Err(..) => Ok(EvaluatedToErr),
             }
         })?;
+
+        // If we erased any lifetimes, then we want to use
+        // `EvaluatedToOkModuloRegions` instead of `EvaluatedToOk`
+        // as your final result. The result will be cached using
+        // the freshened trait predicate as a key, so we need
+        // our result to be correct by *any* choice of original lifetimes,
+        // not just the lifetime choice for this particular (non-erased)
+        // predicate.
+        // See issue #80691
+        if stack.fresh_trait_ref.has_erased_regions() {
+            result = result.max(EvaluatedToOkModuloRegions);
+        }
+
         debug!(?result);
         Ok(result)
     }
@@ -1254,32 +1268,33 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub(super) fn match_projection_projections(
         &mut self,
         obligation: &ProjectionTyObligation<'tcx>,
-        obligation_trait_ref: &ty::TraitRef<'tcx>,
-        data: &PolyProjectionPredicate<'tcx>,
+        env_predicate: PolyProjectionPredicate<'tcx>,
         potentially_unnormalized_candidates: bool,
     ) -> bool {
         let mut nested_obligations = Vec::new();
-        let projection_ty = if potentially_unnormalized_candidates {
+        let (infer_predicate, _) = self.infcx.replace_bound_vars_with_fresh_vars(
+            obligation.cause.span,
+            LateBoundRegionConversionTime::HigherRankedType,
+            env_predicate,
+        );
+        let infer_projection = if potentially_unnormalized_candidates {
             ensure_sufficient_stack(|| {
                 project::normalize_with_depth_to(
                     self,
                     obligation.param_env,
                     obligation.cause.clone(),
                     obligation.recursion_depth + 1,
-                    data.map_bound(|data| data.projection_ty),
+                    infer_predicate.projection_ty,
                     &mut nested_obligations,
                 )
             })
         } else {
-            data.map_bound(|data| data.projection_ty)
+            infer_predicate.projection_ty
         };
 
-        // FIXME(generic_associated_types): Compare the whole projections
-        let data_poly_trait_ref = projection_ty.map_bound(|proj| proj.trait_ref(self.tcx()));
-        let obligation_poly_trait_ref = ty::Binder::dummy(*obligation_trait_ref);
         self.infcx
             .at(&obligation.cause, obligation.param_env)
-            .sup(obligation_poly_trait_ref, data_poly_trait_ref)
+            .sup(obligation.predicate, infer_projection)
             .map_or(false, |InferOk { obligations, value: () }| {
                 self.evaluate_predicates_recursively(
                     TraitObligationStackList::empty(&ProvisionalEvaluationCache::default()),
@@ -1318,8 +1333,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let is_global =
             |cand: &ty::PolyTraitRef<'_>| cand.is_global() && !cand.has_late_bound_regions();
 
-        // (*) Prefer `BuiltinCandidate { has_nested: false }` and `DiscriminantKindCandidate`
-        // to anything else.
+        // (*) Prefer `BuiltinCandidate { has_nested: false }`, `PointeeCandidate`,
+        // and `DiscriminantKindCandidate` to anything else.
         //
         // This is a fix for #53123 and prevents winnowing from accidentally extending the
         // lifetime of a variable.
@@ -1332,8 +1347,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // (*)
-            (BuiltinCandidate { has_nested: false } | DiscriminantKindCandidate, _) => true,
-            (_, BuiltinCandidate { has_nested: false } | DiscriminantKindCandidate) => false,
+            (
+                BuiltinCandidate { has_nested: false }
+                | DiscriminantKindCandidate
+                | PointeeCandidate,
+                _,
+            ) => true,
+            (
+                _,
+                BuiltinCandidate { has_nested: false }
+                | DiscriminantKindCandidate
+                | PointeeCandidate,
+            ) => false,
 
             (ParamCandidate(other), ParamCandidate(victim)) => {
                 if other.value == victim.value && victim.constness == Constness::NotConst {

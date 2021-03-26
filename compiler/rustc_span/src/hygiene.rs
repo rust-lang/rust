@@ -118,7 +118,8 @@ impl ExpnId {
         HygieneData::with(|data| {
             let old_expn_data = &mut data.expn_data[self.0 as usize];
             assert!(old_expn_data.is_none(), "expansion data is reset for an expansion ID");
-            expn_data.orig_id.replace(self.as_u32()).expect_none("orig_id should be None");
+            assert_eq!(expn_data.orig_id, None);
+            expn_data.orig_id = Some(self.as_u32());
             *old_expn_data = Some(expn_data);
         });
         update_disambiguator(self)
@@ -202,7 +203,8 @@ impl HygieneData {
     fn fresh_expn(&mut self, mut expn_data: Option<ExpnData>) -> ExpnId {
         let raw_id = self.expn_data.len() as u32;
         if let Some(data) = expn_data.as_mut() {
-            data.orig_id.replace(raw_id).expect_none("orig_id should be None");
+            assert_eq!(data.orig_id, None);
+            data.orig_id = Some(raw_id);
         }
         self.expn_data.push(expn_data);
         ExpnId(raw_id)
@@ -1362,12 +1364,6 @@ fn update_disambiguator(expn_id: ExpnId) {
         fn hash_spans(&self) -> bool {
             true
         }
-        fn byte_pos_to_line_and_col(
-            &mut self,
-            byte: BytePos,
-        ) -> Option<(Lrc<SourceFile>, usize, BytePos)> {
-            self.caching_source_map.byte_pos_to_line_and_col(byte)
-        }
         fn span_data_to_lines_and_cols(
             &mut self,
             span: &crate::SpanData,
@@ -1405,8 +1401,8 @@ fn update_disambiguator(expn_id: ExpnId) {
     });
 
     if modified {
-        info!("Set disambiguator for {:?} (hash {:?})", expn_id, first_hash);
-        info!("expn_data = {:?}", expn_id.expn_data());
+        debug!("Set disambiguator for {:?} (hash {:?})", expn_id, first_hash);
+        debug!("expn_data = {:?}", expn_id.expn_data());
 
         // Verify that the new disambiguator makes the hash unique
         #[cfg(debug_assertions)]
@@ -1416,9 +1412,11 @@ fn update_disambiguator(expn_id: ExpnId) {
             let new_hash: Fingerprint = hasher.finish();
 
             HygieneData::with(|data| {
-                data.expn_data_disambiguators
-                    .get(&new_hash)
-                    .expect_none("Hash collision after disambiguator update!");
+                assert_eq!(
+                    data.expn_data_disambiguators.get(&new_hash),
+                    None,
+                    "Hash collision after disambiguator update!",
+                );
             });
         };
     }

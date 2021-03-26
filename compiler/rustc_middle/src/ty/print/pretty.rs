@@ -607,7 +607,7 @@ pub trait PrettyPrinter<'tcx>:
                     return Ok(self);
                 }
 
-                return Ok(with_no_queries(|| {
+                return with_no_queries(|| {
                     let def_key = self.tcx().def_key(def_id);
                     if let Some(name) = def_key.disambiguated_data.data.get_opt_name() {
                         p!(write("{}", name));
@@ -649,7 +649,7 @@ pub trait PrettyPrinter<'tcx>:
                         p!(" Sized");
                     }
                     Ok(self)
-                })?);
+                });
             }
             ty::Str => p!("str"),
             ty::Generator(did, substs, movability) => {
@@ -915,7 +915,7 @@ pub trait PrettyPrinter<'tcx>:
         }
 
         match ct.val {
-            ty::ConstKind::Unevaluated(def, substs, promoted) => {
+            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted }) => {
                 if let Some(promoted) = promoted {
                     p!(print_value_path(def.did, substs));
                     p!(write("::{:?}", promoted));
@@ -956,32 +956,40 @@ pub trait PrettyPrinter<'tcx>:
     }
 
     fn pretty_print_const_scalar(
-        mut self,
+        self,
         scalar: Scalar,
+        ty: Ty<'tcx>,
+        print_ty: bool,
+    ) -> Result<Self::Const, Self::Error> {
+        match scalar {
+            Scalar::Ptr(ptr) => self.pretty_print_const_scalar_ptr(ptr, ty, print_ty),
+            Scalar::Int(int) => self.pretty_print_const_scalar_int(int, ty, print_ty),
+        }
+    }
+
+    fn pretty_print_const_scalar_ptr(
+        mut self,
+        ptr: Pointer,
         ty: Ty<'tcx>,
         print_ty: bool,
     ) -> Result<Self::Const, Self::Error> {
         define_scoped_cx!(self);
 
-        match (scalar, &ty.kind()) {
+        match ty.kind() {
             // Byte strings (&[u8; N])
-            (
-                Scalar::Ptr(ptr),
-                ty::Ref(
-                    _,
-                    ty::TyS {
-                        kind:
-                            ty::Array(
-                                ty::TyS { kind: ty::Uint(ty::UintTy::U8), .. },
-                                ty::Const {
-                                    val: ty::ConstKind::Value(ConstValue::Scalar(int)),
-                                    ..
-                                },
-                            ),
-                        ..
-                    },
-                    _,
-                ),
+            ty::Ref(
+                _,
+                ty::TyS {
+                    kind:
+                        ty::Array(
+                            ty::TyS { kind: ty::Uint(ty::UintTy::U8), .. },
+                            ty::Const {
+                                val: ty::ConstKind::Value(ConstValue::Scalar(int)), ..
+                            },
+                        ),
+                    ..
+                },
+                _,
             ) => match self.tcx().get_global_alloc(ptr.alloc_id) {
                 Some(GlobalAlloc::Memory(alloc)) => {
                     let bytes = int.assert_bits(self.tcx().data_layout.pointer_size);
@@ -997,28 +1005,59 @@ pub trait PrettyPrinter<'tcx>:
                 Some(GlobalAlloc::Function(_)) => p!("<function>"),
                 None => p!("<dangling pointer>"),
             },
+            ty::FnPtr(_) => {
+                // FIXME: We should probably have a helper method to share code with the "Byte strings"
+                // printing above (which also has to handle pointers to all sorts of things).
+                match self.tcx().get_global_alloc(ptr.alloc_id) {
+                    Some(GlobalAlloc::Function(instance)) => {
+                        self = self.typed_value(
+                            |this| this.print_value_path(instance.def_id(), instance.substs),
+                            |this| this.print_type(ty),
+                            " as ",
+                        )?;
+                    }
+                    _ => self = self.pretty_print_const_pointer(ptr, ty, print_ty)?,
+                }
+            }
+            // Any pointer values not covered by a branch above
+            _ => {
+                self = self.pretty_print_const_pointer(ptr, ty, print_ty)?;
+            }
+        }
+        Ok(self)
+    }
+
+    fn pretty_print_const_scalar_int(
+        mut self,
+        int: ScalarInt,
+        ty: Ty<'tcx>,
+        print_ty: bool,
+    ) -> Result<Self::Const, Self::Error> {
+        define_scoped_cx!(self);
+
+        match ty.kind() {
             // Bool
-            (Scalar::Int(int), ty::Bool) if int == ScalarInt::FALSE => p!("false"),
-            (Scalar::Int(int), ty::Bool) if int == ScalarInt::TRUE => p!("true"),
+            ty::Bool if int == ScalarInt::FALSE => p!("false"),
+            ty::Bool if int == ScalarInt::TRUE => p!("true"),
             // Float
-            (Scalar::Int(int), ty::Float(ty::FloatTy::F32)) => {
+            ty::Float(ty::FloatTy::F32) => {
                 p!(write("{}f32", Single::try_from(int).unwrap()))
             }
-            (Scalar::Int(int), ty::Float(ty::FloatTy::F64)) => {
+            ty::Float(ty::FloatTy::F64) => {
                 p!(write("{}f64", Double::try_from(int).unwrap()))
             }
             // Int
-            (Scalar::Int(int), ty::Uint(_) | ty::Int(_)) => {
+            ty::Uint(_) | ty::Int(_) => {
                 let int =
                     ConstInt::new(int, matches!(ty.kind(), ty::Int(_)), ty.is_ptr_sized_integral());
                 if print_ty { p!(write("{:#?}", int)) } else { p!(write("{:?}", int)) }
             }
             // Char
-            (Scalar::Int(int), ty::Char) if char::try_from(int).is_ok() => {
+            ty::Char if char::try_from(int).is_ok() => {
                 p!(write("{:?}", char::try_from(int).unwrap()))
             }
             // Raw pointers
-            (Scalar::Int(int), ty::RawPtr(_)) => {
+            ty::RawPtr(_) | ty::FnPtr(_) => {
                 let data = int.assert_bits(self.tcx().data_layout.pointer_size);
                 self = self.typed_value(
                     |mut this| {
@@ -1029,23 +1068,12 @@ pub trait PrettyPrinter<'tcx>:
                     " as ",
                 )?;
             }
-            (Scalar::Ptr(ptr), ty::FnPtr(_)) => {
-                // FIXME: this can ICE when the ptr is dangling or points to a non-function.
-                // We should probably have a helper method to share code with the "Byte strings"
-                // printing above (which also has to handle pointers to all sorts of things).
-                let instance = self.tcx().global_alloc(ptr.alloc_id).unwrap_fn();
-                self = self.typed_value(
-                    |this| this.print_value_path(instance.def_id(), instance.substs),
-                    |this| this.print_type(ty),
-                    " as ",
-                )?;
-            }
             // For function type zsts just printing the path is enough
-            (Scalar::Int(int), ty::FnDef(d, s)) if int == ScalarInt::ZST => {
+            ty::FnDef(d, s) if int == ScalarInt::ZST => {
                 p!(print_value_path(*d, s))
             }
             // Nontrivial types with scalar bit representation
-            (Scalar::Int(int), _) => {
+            _ => {
                 let print = |mut this: Self| {
                     if int.size() == Size::ZERO {
                         write!(this, "transmute(())")?;
@@ -1059,10 +1087,6 @@ pub trait PrettyPrinter<'tcx>:
                 } else {
                     print(self)?
                 };
-            }
-            // Any pointer values not covered by a branch above
-            (Scalar::Ptr(p), _) => {
-                self = self.pretty_print_const_pointer(p, ty, print_ty)?;
             }
         }
         Ok(self)
@@ -2107,11 +2131,9 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
             continue;
         }
 
-        if let Some(local_def_id) = hir.definitions().opt_hir_id_to_local_def_id(item.hir_id) {
-            let def_id = local_def_id.to_def_id();
-            let ns = tcx.def_kind(def_id).ns().unwrap_or(Namespace::TypeNS);
-            collect_fn(&item.ident, ns, def_id);
-        }
+        let def_id = item.def_id.to_def_id();
+        let ns = tcx.def_kind(def_id).ns().unwrap_or(Namespace::TypeNS);
+        collect_fn(&item.ident, ns, def_id);
     }
 
     // Now take care of extern crate items.
@@ -2143,6 +2165,7 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
 
             match child.res {
                 def::Res::Def(DefKind::AssocTy, _) => {}
+                def::Res::Def(DefKind::TyAlias, _) => {}
                 def::Res::Def(defkind, def_id) => {
                     if let Some(ns) = defkind.ns() {
                         collect_fn(&child.ident, ns, def_id);

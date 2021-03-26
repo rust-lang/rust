@@ -50,7 +50,7 @@ fn test() {
                                                       .output().unwrap();
 
     assert!(child_output.status.success(),
-            format!("child assertion failed\n child stdout:\n {}\n child stderr:\n {}",
-                    str::from_utf8(&child_output.stdout).unwrap(),
-                    str::from_utf8(&child_output.stderr).unwrap()));
+            "child assertion failed\n child stdout:\n {}\n child stderr:\n {}",
+            str::from_utf8(&child_output.stdout).unwrap(),
+            str::from_utf8(&child_output.stderr).unwrap());
 }

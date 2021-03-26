@@ -1,7 +1,7 @@
 ---
 name: Bug Report (False Negative)
 about: Create a bug report about missing warnings from a lint
-labels: L-bug, L-false-negative
+labels: C-bug, I-false-negative
 ---
 <!--
 Thank you for filing a bug report! 🐛 Please provide a short summary of the bug,

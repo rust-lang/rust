@@ -77,7 +77,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         ty: Ty<'tcx>,
         orig_env: ty::ParamEnv<'tcx>,
         trait_did: DefId,
-        auto_trait_callback: impl Fn(&InferCtxt<'_, 'tcx>, AutoTraitInfo<'tcx>) -> A,
+        mut auto_trait_callback: impl FnMut(AutoTraitInfo<'tcx>) -> A,
     ) -> AutoTraitResult<A> {
         let tcx = self.tcx;
 
@@ -211,7 +211,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
             let info = AutoTraitInfo { full_user_env, region_data, vid_to_region };
 
-            AutoTraitResult::PositiveImpl(auto_trait_callback(&infcx, info))
+            AutoTraitResult::PositiveImpl(auto_trait_callback(info))
         })
     }
 }
@@ -803,12 +803,10 @@ impl AutoTraitFinder<'tcx> {
                 }
                 ty::PredicateKind::ConstEquate(c1, c2) => {
                     let evaluate = |c: &'tcx ty::Const<'tcx>| {
-                        if let ty::ConstKind::Unevaluated(def, substs, promoted) = c.val {
+                        if let ty::ConstKind::Unevaluated(unevaluated) = c.val {
                             match select.infcx().const_eval_resolve(
                                 obligation.param_env,
-                                def,
-                                substs,
-                                promoted,
+                                unevaluated,
                                 Some(obligation.cause.span),
                             ) {
                                 Ok(val) => Ok(ty::Const::from_value(select.tcx(), val, c.ty)),

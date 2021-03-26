@@ -80,11 +80,8 @@ pub fn parse_decimal(s: &str) -> ParseResult<'_> {
 
 /// Carves off decimal digits up to the first non-digit character.
 fn eat_digits(s: &[u8]) -> (&[u8], &[u8]) {
-    let mut i = 0;
-    while i < s.len() && b'0' <= s[i] && s[i] <= b'9' {
-        i += 1;
-    }
-    (&s[..i], &s[i..])
+    let pos = s.iter().position(|c| !c.is_ascii_digit()).unwrap_or(s.len());
+    s.split_at(pos)
 }
 
 /// Exponent extraction and error checking.

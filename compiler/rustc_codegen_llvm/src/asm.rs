@@ -61,9 +61,9 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         // Default per-arch clobbers
         // Basically what clang does
         let arch_clobbers = match &self.sess().target.arch[..] {
-            "x86" | "x86_64" => vec!["~{dirflag}", "~{fpsr}", "~{flags}"],
-            "mips" | "mips64" => vec!["~{$1}"],
-            _ => Vec::new(),
+            "x86" | "x86_64" => &["~{dirflag}", "~{fpsr}", "~{flags}"][..],
+            "mips" | "mips64" => &["~{$1}"],
+            _ => &[],
         };
 
         let all_constraints = ia
@@ -304,6 +304,7 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             } else if options.contains(InlineAsmOptions::READONLY) {
                 llvm::Attribute::ReadOnly.apply_callsite(llvm::AttributePlace::Function, result);
             }
+            llvm::Attribute::WillReturn.apply_callsite(llvm::AttributePlace::Function, result);
         } else if options.contains(InlineAsmOptions::NOMEM) {
             llvm::Attribute::InaccessibleMemOnly
                 .apply_callsite(llvm::AttributePlace::Function, result);
@@ -487,6 +488,9 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'tcx>>) 
             } else if reg == InlineAsmReg::AArch64(AArch64InlineAsmReg::x30) {
                 // LLVM doesn't recognize x30
                 "{lr}".to_string()
+            } else if reg == InlineAsmReg::Arm(ArmInlineAsmReg::r14) {
+                // LLVM doesn't recognize r14
+                "{lr}".to_string()
             } else {
                 format!("{{{}}}", reg.name())
             }
@@ -524,6 +528,7 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'tcx>>) 
             InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
                 bug!("LLVM backend does not support SPIR-V")
             }
+            InlineAsmRegClass::Err => unreachable!(),
         }
         .to_string(),
     }
@@ -590,6 +595,7 @@ fn modifier_to_llvm(
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
             bug!("LLVM backend does not support SPIR-V")
         }
+        InlineAsmRegClass::Err => unreachable!(),
     }
 }
 
@@ -633,6 +639,7 @@ fn dummy_output_type(cx: &CodegenCx<'ll, 'tcx>, reg: InlineAsmRegClass) -> &'ll 
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
             bug!("LLVM backend does not support SPIR-V")
         }
+        InlineAsmRegClass::Err => unreachable!(),
     }
 }
 

@@ -4,6 +4,9 @@
 
 use std::ptr;
 
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::in_constant;
+use if_chain::if_chain;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{
@@ -17,9 +20,6 @@ use rustc_middle::ty::{self, AssocKind, Const, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{InnerSpan, Span, DUMMY_SP};
 use rustc_typeck::hir_ty_to_ty;
-
-use crate::utils::{in_constant, span_lint_and_then};
-use if_chain::if_chain;
 
 // FIXME: this is a correctness problem but there's no suitable
 // warn-by-default category.
@@ -179,9 +179,15 @@ fn is_value_unfrozen_poly<'tcx>(cx: &LateContext<'tcx>, body_id: BodyId, ty: Ty<
 fn is_value_unfrozen_expr<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId, def_id: DefId, ty: Ty<'tcx>) -> bool {
     let substs = cx.typeck_results().node_substs(hir_id);
 
-    let result = cx
-        .tcx
-        .const_eval_resolve(cx.param_env, ty::WithOptConstParam::unknown(def_id), substs, None, None);
+    let result = cx.tcx.const_eval_resolve(
+        cx.param_env,
+        ty::Unevaluated {
+            def: ty::WithOptConstParam::unknown(def_id),
+            substs,
+            promoted: None,
+        },
+        None,
+    );
     is_value_unfrozen_raw(cx, result, ty)
 }
 
@@ -271,7 +277,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx ImplItem<'_>) {
         if let ImplItemKind::Const(hir_ty, body_id) = &impl_item.kind {
-            let item_hir_id = cx.tcx.hir().get_parent_node(impl_item.hir_id);
+            let item_hir_id = cx.tcx.hir().get_parent_node(impl_item.hir_id());
             let item = cx.tcx.hir().expect_item(item_hir_id);
 
             match &item.kind {
@@ -383,7 +389,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
                             needs_check_adjustment = false;
                             break;
                         },
-                        ExprKind::Unary(UnOp::UnDeref, _) => {
+                        ExprKind::Unary(UnOp::Deref, _) => {
                             // `*e` => desugared to `*Deref::deref(&e)`,
                             // meaning `e` must be referenced.
                             // no need to go further up since a method call is involved now.

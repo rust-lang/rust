@@ -1,5 +1,8 @@
-use crate::utils::{span_lint, span_lint_and_then};
-use rustc_ast::ast::{Arm, AssocItem, AssocItemKind, Attribute, Block, FnDecl, Item, ItemKind, Local, Pat, PatKind};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
+use rustc_ast::ast::{
+    Arm, AssocItem, AssocItemKind, Attribute, Block, FnDecl, FnKind, Item, ItemKind, Local, Pat,
+    PatKind,
+};
 use rustc_ast::visit::{walk_block, walk_expr, walk_pat, Visitor};
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_middle::lint::in_external_macro;
@@ -199,6 +202,10 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
             );
             return;
         }
+        if interned_name.starts_with('_') {
+            // these bindings are typically unused or represent an ignored portion of a destructuring pattern
+            return;
+        }
         let count = interned_name.chars().count();
         if count < 3 {
             if count == 1 {
@@ -360,7 +367,7 @@ impl EarlyLintPass for NonExpressiveNames {
             return;
         }
 
-        if let ItemKind::Fn(_, ref sig, _, Some(ref blk)) = item.kind {
+        if let ItemKind::Fn(box FnKind(_, ref sig, _, Some(ref blk))) = item.kind {
             do_check(self, cx, &item.attrs, &sig.decl, blk);
         }
     }
@@ -370,7 +377,7 @@ impl EarlyLintPass for NonExpressiveNames {
             return;
         }
 
-        if let AssocItemKind::Fn(_, ref sig, _, Some(ref blk)) = item.kind {
+        if let AssocItemKind::Fn(box FnKind(_, ref sig, _, Some(ref blk))) = item.kind {
             do_check(self, cx, &item.attrs, &sig.decl, blk);
         }
     }

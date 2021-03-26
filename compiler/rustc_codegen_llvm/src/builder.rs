@@ -5,13 +5,13 @@ use crate::llvm::{AtomicOrdering, AtomicRmwBinOp, SynchronizationScope};
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
+use cstr::cstr;
 use libc::{c_char, c_uint};
 use rustc_codegen_ssa::common::{IntPredicate, RealPredicate, TypeKind};
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::MemFlags;
-use rustc_data_structures::const_cstr;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::layout::TyAndLayout;
@@ -979,7 +979,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn cleanup_pad(&mut self, parent: Option<&'ll Value>, args: &[&'ll Value]) -> Funclet<'ll> {
-        let name = const_cstr!("cleanuppad");
+        let name = cstr!("cleanuppad");
         let ret = unsafe {
             llvm::LLVMRustBuildCleanupPad(
                 self.llbuilder,
@@ -1003,7 +1003,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn catch_pad(&mut self, parent: &'ll Value, args: &[&'ll Value]) -> Funclet<'ll> {
-        let name = const_cstr!("catchpad");
+        let name = cstr!("catchpad");
         let ret = unsafe {
             llvm::LLVMRustBuildCatchPad(
                 self.llbuilder,
@@ -1022,7 +1022,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unwind: Option<&'ll BasicBlock>,
         num_handlers: usize,
     ) -> &'ll Value {
-        let name = const_cstr!("catchswitch");
+        let name = cstr!("catchswitch");
         let ret = unsafe {
             llvm::LLVMRustBuildCatchSwitch(
                 self.llbuilder,

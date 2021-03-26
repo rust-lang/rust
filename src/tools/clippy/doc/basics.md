@@ -11,7 +11,9 @@ the codebase take a look at [Adding Lints] or [Common Tools].
   - [Get the Code](#get-the-code)
   - [Building and Testing](#building-and-testing)
   - [`cargo dev`](#cargo-dev)
+  - [lintcheck](#lintcheck)
   - [PR](#pr)
+  - [Common Abbreviations](#common-abbreviations)
 
 ## Get the Code
 
@@ -86,11 +88,40 @@ cargo dev fmt
 cargo dev update_lints
 # create a new lint and register it
 cargo dev new_lint
-# (experimental) Setup Clippy to work with rust-analyzer
-cargo dev ra_setup
+# (experimental) Setup Clippy to work with IntelliJ-Rust
+cargo dev ide_setup
 ```
 
+## lintcheck
+`cargo lintcheck` will build and run clippy on a fixed set of crates and generate a log of the results.  
+You can `git diff` the updated log against its previous version and 
+see what impact your lint made on a small set of crates.  
+If you add a new lint, please audit the resulting warnings and make sure 
+there are no false positives and that the suggestions are valid.
+
+Refer to the tools [README] for more details.
+
+[README]: https://github.com/rust-lang/rust-clippy/blob/master/lintcheck/README.md
 ## PR
 
 We follow a rustc no merge-commit policy.
 See <https://rustc-dev-guide.rust-lang.org/contributing.html#opening-a-pr>.
+
+## Common Abbreviations
+
+| Abbreviation | Meaning                                |
+| ------------ | -------------------------------------- |
+| UB           | Undefined Behavior                     |
+| FP           | False Positive                         |
+| FN           | False Negative                         |
+| ICE          | Internal Compiler Error                |
+| AST          | Abstract Syntax Tree                   |
+| MIR          | Mid-Level Intermediate Representation  |
+| HIR          | High-Level Intermediate Representation |
+| TCX          | Type context                           |
+
+This is a concise list of abbreviations that can come up during Clippy development. An extensive
+general list can be found in the [rustc-dev-guide glossary][glossary]. Always feel free to ask if
+an abbreviation or meaning is unclear to you.
+
+[glossary]: https://rustc-dev-guide.rust-lang.org/appendix/glossary.html

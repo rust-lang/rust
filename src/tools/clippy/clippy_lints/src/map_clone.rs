@@ -1,7 +1,8 @@
-use crate::utils::paths;
-use crate::utils::{
-    is_copy, is_type_diagnostic_item, match_trait_method, remove_blocks, snippet_with_applicability, span_lint_and_sugg,
-};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_trait_method;
+use clippy_utils::remove_blocks;
+use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::ty::{is_copy, is_type_diagnostic_item};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -55,7 +56,7 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
             if args.len() == 2;
             if method.ident.name == sym::map;
             let ty = cx.typeck_results().expr_ty(&args[0]);
-            if is_type_diagnostic_item(cx, ty, sym::option_type) || match_trait_method(cx, e, &paths::ITERATOR);
+            if is_type_diagnostic_item(cx, ty, sym::option_type) || is_trait_method(cx, e, sym::Iterator);
             if let hir::ExprKind::Closure(_, _, body_id, _, _) = args[1].kind;
             let closure_body = cx.tcx.hir().body(body_id);
             let closure_expr = remove_blocks(&closure_body.value);
@@ -70,7 +71,7 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
                     },
                     hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, .., name, None) => {
                         match closure_expr.kind {
-                            hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner) => {
+                            hir::ExprKind::Unary(hir::UnOp::Deref, ref inner) => {
                                 if ident_eq(name, inner) {
                                     if let ty::Ref(.., Mutability::Not) = cx.typeck_results().expr_ty(inner).kind() {
                                         lint(cx, e.span, args[0].span, true);
@@ -79,7 +80,9 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
                             },
                             hir::ExprKind::MethodCall(ref method, _, [obj], _) => if_chain! {
                                 if ident_eq(name, obj) && method.ident.name == sym::clone;
-                                if match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT);
+                                if let Some(fn_id) = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id);
+                                if let Some(trait_id) = cx.tcx.trait_of_item(fn_id);
+                                if cx.tcx.lang_items().clone_trait().map_or(false, |id| id == trait_id);
                                 // no autoderefs
                                 if !cx.typeck_results().expr_adjustments(obj).iter()
                                     .any(|a| matches!(a.kind, Adjust::Deref(Some(..))));

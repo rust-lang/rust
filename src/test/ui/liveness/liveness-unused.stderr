@@ -44,10 +44,10 @@ LL |     let x = 3;
    |         ^ help: if this is intentional, prefix it with an underscore: `_x`
 
 error: variable `x` is assigned to, but never used
-  --> $DIR/liveness-unused.rs:30:9
+  --> $DIR/liveness-unused.rs:30:13
    |
 LL |     let mut x = 3;
-   |         ^^^^^
+   |             ^
    |
    = note: consider using `_x` instead
 
@@ -65,10 +65,10 @@ LL | #![deny(unused_assignments)]
    = help: maybe it is overwritten before being read?
 
 error: variable `z` is assigned to, but never used
-  --> $DIR/liveness-unused.rs:37:9
+  --> $DIR/liveness-unused.rs:37:13
    |
 LL |     let mut z = 3;
-   |         ^^^^^
+   |             ^
    |
    = note: consider using `_z` instead
 

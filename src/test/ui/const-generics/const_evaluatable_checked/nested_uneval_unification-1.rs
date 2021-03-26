@@ -21,7 +21,6 @@ where
 
 fn substs3<const L: usize>() -> Substs1<{ (L - 1) * 2 }>
 where
-    [(); (L - 1)]: ,
     [(); (L - 1) * 2 + 1]: ,
 {
     substs2::<{ L - 1 }>()

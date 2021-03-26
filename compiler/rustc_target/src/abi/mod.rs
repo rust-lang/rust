@@ -682,7 +682,7 @@ pub struct Scalar {
 
 impl Scalar {
     pub fn is_bool(&self) -> bool {
-        if let Int(I8, _) = self.value { self.valid_range == (0..=1) } else { false }
+        matches!(self.value, Int(I8, false)) && self.valid_range == (0..=1)
     }
 
     /// Returns the valid range as a `x..y` range.
@@ -1112,7 +1112,7 @@ pub enum PointerKind {
     /// `&T` where `T` contains no `UnsafeCell`, is `noalias` and `readonly`.
     Frozen,
 
-    /// `&mut T`, when we know `noalias` is safe for LLVM.
+    /// `&mut T` which is `noalias` but not `readonly`.
     UniqueBorrowed,
 
     /// `Box<T>`, unlike `UniqueBorrowed`, it also has `noalias` on returns.

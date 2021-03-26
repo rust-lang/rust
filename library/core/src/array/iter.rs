@@ -2,16 +2,14 @@
 
 use crate::{
     fmt,
-    iter::{ExactSizeIterator, FusedIterator, TrustedLen},
+    iter::{ExactSizeIterator, FusedIterator, TrustedLen, TrustedRandomAccess},
     mem::{self, MaybeUninit},
     ops::Range,
     ptr,
 };
 
 /// A by-value [array] iterator.
-///
-/// [array]: ../../std/primitive.array.html
-#[unstable(feature = "array_value_iter", issue = "65798")]
+#[stable(feature = "array_value_iter", since = "1.51.0")]
 pub struct IntoIter<T, const N: usize> {
     /// This is the array we are iterating over.
     ///
@@ -38,10 +36,21 @@ pub struct IntoIter<T, const N: usize> {
 impl<T, const N: usize> IntoIter<T, N> {
     /// Creates a new iterator over the given `array`.
     ///
-    /// *Note*: this method might never get stabilized and/or removed in the
-    /// future as there will likely be another, preferred way of obtaining this
-    /// iterator (either via `IntoIterator` for arrays or via another way).
-    #[unstable(feature = "array_value_iter", issue = "65798")]
+    /// *Note*: this method might be deprecated in the future,
+    /// after [`IntoIterator` is implemented for arrays][array-into-iter].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::array;
+    ///
+    /// for value in array::IntoIter::new([1, 2, 3, 4, 5]) {
+    ///     // The type of `value` is a `i32` here, instead of `&i32`
+    ///     let _: i32 = value;
+    /// }
+    /// ```
+    /// [array-into-iter]: https://github.com/rust-lang/rust/pull/65819
+    #[stable(feature = "array_value_iter", since = "1.51.0")]
     pub fn new(array: [T; N]) -> Self {
         // SAFETY: The transmute here is actually safe. The docs of `MaybeUninit`
         // promise:
@@ -69,7 +78,7 @@ impl<T, const N: usize> IntoIter<T, N> {
 
     /// Returns an immutable slice of all elements that have not been yielded
     /// yet.
-    #[unstable(feature = "array_value_iter_slice", issue = "65798")]
+    #[stable(feature = "array_value_iter", since = "1.51.0")]
     pub fn as_slice(&self) -> &[T] {
         // SAFETY: We know that all elements within `alive` are properly initialized.
         unsafe {
@@ -79,7 +88,7 @@ impl<T, const N: usize> IntoIter<T, N> {
     }
 
     /// Returns a mutable slice of all elements that have not been yielded yet.
-    #[unstable(feature = "array_value_iter_slice", issue = "65798")]
+    #[stable(feature = "array_value_iter", since = "1.51.0")]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         // SAFETY: We know that all elements within `alive` are properly initialized.
         unsafe {
@@ -120,6 +129,18 @@ impl<T, const N: usize> Iterator for IntoIter<T, N> {
 
     fn last(mut self) -> Option<Self::Item> {
         self.next_back()
+    }
+
+    #[inline]
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
+    where
+        Self: TrustedRandomAccess,
+    {
+        // SAFETY: Callers are only allowed to pass an index that is in bounds
+        // Additionally Self: TrustedRandomAccess is only implemented for T: Copy which means even
+        // multiple repeated reads of the same index would be safe and the
+        // values aree !Drop, thus won't suffer from double drops.
+        unsafe { self.data.get_unchecked(self.alive.start + idx).assume_init_read() }
     }
 }
 
@@ -174,6 +195,17 @@ impl<T, const N: usize> FusedIterator for IntoIter<T, N> {}
 // always decremented by 1 in those methods, but only if `Some(_)` is returned.
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
 unsafe impl<T, const N: usize> TrustedLen for IntoIter<T, N> {}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+// T: Copy as approximation for !Drop since get_unchecked does not update the pointers
+// and thus we can't implement drop-handling
+unsafe impl<T, const N: usize> TrustedRandomAccess for IntoIter<T, N>
+where
+    T: Copy,
+{
+    const MAY_HAVE_SIDE_EFFECT: bool = false;
+}
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
 impl<T: Clone, const N: usize> Clone for IntoIter<T, N> {

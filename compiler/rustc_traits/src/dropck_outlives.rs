@@ -75,12 +75,12 @@ fn dropck_outlives<'tcx>(
             // Set used to detect infinite recursion.
             let mut ty_set = FxHashSet::default();
 
-            let mut fulfill_cx = TraitEngine::new(infcx.tcx);
+            let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
 
             let cause = ObligationCause::dummy();
             let mut constraints = DtorckConstraint::empty();
             while let Some((ty, depth)) = ty_stack.pop() {
-                info!(
+                debug!(
                     "{} kinds, {} overflows, {} ty_stack",
                     result.kinds.len(),
                     result.overflows.len(),

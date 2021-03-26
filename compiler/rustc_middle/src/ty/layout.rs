@@ -11,7 +11,7 @@ use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_session::{DataTypeKind, FieldInfo, SizeKind, VariantInfo};
+use rustc_session::{config::OptLevel, DataTypeKind, FieldInfo, SizeKind, VariantInfo};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::call::{
@@ -130,6 +130,7 @@ impl IntegerExt for Integer {
 
         if repr.c() {
             match &tcx.sess.target.arch[..] {
+                "hexagon" => min_from_extern = Some(I8),
                 // WARNING: the ARM EABI has two variants; the one corresponding
                 // to `at_least == I32` appears to be used on Linux and NetBSD,
                 // but some systems may use the variant corresponding to no
@@ -188,6 +189,13 @@ pub const FAT_PTR_ADDR: usize = 0;
 /// - For a slice, this is the length.
 pub const FAT_PTR_EXTRA: usize = 1;
 
+/// The maximum supported number of lanes in a SIMD vector.
+///
+/// This value is selected based on backend support:
+/// * LLVM does not appear to have a vector width limit.
+/// * Cranelift stores the base-2 log of the lane count in a 4 bit integer.
+pub const MAX_SIMD_LANES: u64 = 1 << 0xF;
+
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable)]
 pub enum LayoutError<'tcx> {
     Unknown(Ty<'tcx>),
@@ -224,7 +232,7 @@ fn layout_raw<'tcx>(
             let layout = cx.layout_raw_uncached(ty);
             // Type-level uninhabitedness should always imply ABI uninhabitedness.
             if let Ok(layout) = layout {
-                if ty.conservative_is_privately_uninhabited(tcx) {
+                if tcx.conservative_is_privately_uninhabited(param_env.and(ty)) {
                     assert!(layout.abi.is_uninhabited());
                 }
             }
@@ -576,11 +584,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 let size =
                     element.size.checked_mul(count, dl).ok_or(LayoutError::SizeOverflow(ty))?;
 
-                let abi = if count != 0 && ty.conservative_is_privately_uninhabited(tcx) {
-                    Abi::Uninhabited
-                } else {
-                    Abi::Aggregate { sized: true }
-                };
+                let abi =
+                    if count != 0 && tcx.conservative_is_privately_uninhabited(param_env.and(ty)) {
+                        Abi::Uninhabited
+                    } else {
+                        Abi::Aggregate { sized: true }
+                    };
 
                 let largest_niche = if count != 0 { element.largest_niche.clone() } else { None };
 
@@ -717,10 +726,17 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 };
 
                 // SIMD vectors of zero length are not supported.
+                // Additionally, lengths are capped at 2^16 as a fixed maximum backends must
+                // support.
                 //
                 // Can't be caught in typeck if the array length is generic.
                 if e_len == 0 {
                     tcx.sess.fatal(&format!("monomorphising SIMD type `{}` of zero length", ty));
+                } else if e_len > MAX_SIMD_LANES {
+                    tcx.sess.fatal(&format!(
+                        "monomorphising SIMD type `{}` of length greater than {}",
+                        ty, MAX_SIMD_LANES,
+                    ));
                 }
 
                 // Compute the ABI of the element type:
@@ -2302,31 +2318,30 @@ where
             ty::Ref(_, ty, mt) if offset.bytes() == 0 => {
                 let address_space = addr_space_of_ty(ty);
                 let tcx = cx.tcx();
-                let is_freeze = ty.is_freeze(tcx.at(DUMMY_SP), cx.param_env());
-                let kind = match mt {
-                    hir::Mutability::Not => {
-                        if is_freeze {
-                            PointerKind::Frozen
-                        } else {
-                            PointerKind::Shared
+                let kind = if tcx.sess.opts.optimize == OptLevel::No {
+                    // Use conservative pointer kind if not optimizing. This saves us the
+                    // Freeze/Unpin queries, and can save time in the codegen backend (noalias
+                    // attributes in LLVM have compile-time cost even in unoptimized builds).
+                    PointerKind::Shared
+                } else {
+                    match mt {
+                        hir::Mutability::Not => {
+                            if ty.is_freeze(tcx.at(DUMMY_SP), cx.param_env()) {
+                                PointerKind::Frozen
+                            } else {
+                                PointerKind::Shared
+                            }
                         }
-                    }
-                    hir::Mutability::Mut => {
-                        // Previously we would only emit noalias annotations for LLVM >= 6 or in
-                        // panic=abort mode. That was deemed right, as prior versions had many bugs
-                        // in conjunction with unwinding, but later versions didn’t seem to have
-                        // said issues. See issue #31681.
-                        //
-                        // Alas, later on we encountered a case where noalias would generate wrong
-                        // code altogether even with recent versions of LLVM in *safe* code with no
-                        // unwinding involved. See #54462.
-                        //
-                        // For now, do not enable mutable_noalias by default at all, while the
-                        // issue is being figured out.
-                        if tcx.sess.opts.debugging_opts.mutable_noalias {
-                            PointerKind::UniqueBorrowed
-                        } else {
-                            PointerKind::Shared
+                        hir::Mutability::Mut => {
+                            // References to self-referential structures should not be considered
+                            // noalias, as another pointer to the structure can be obtained, that
+                            // is not based-on the original reference. We consider all !Unpin
+                            // types to be potentially self-referential here.
+                            if ty.is_unpin(tcx.at(DUMMY_SP), cx.param_env()) {
+                                PointerKind::UniqueBorrowed
+                            } else {
+                                PointerKind::Shared
+                            }
                         }
                     }
                 };
@@ -2546,6 +2561,7 @@ fn fn_can_unwind(
     panic_strategy: PanicStrategy,
     codegen_fn_attr_flags: CodegenFnAttrFlags,
     call_conv: Conv,
+    abi: SpecAbi,
 ) -> bool {
     if panic_strategy != PanicStrategy::Unwind {
         // In panic=abort mode we assume nothing can unwind anywhere, so
@@ -2570,17 +2586,34 @@ fn fn_can_unwind(
             //
             //  2. A Rust item using a non-Rust ABI (like `extern "C" fn foo() { ... }`).
             //
-            // Foreign items (case 1) are assumed to not unwind; it is
-            // UB otherwise. (At least for now; see also
-            // rust-lang/rust#63909 and Rust RFC 2753.)
-            //
-            // Items defined in Rust with non-Rust ABIs (case 2) are also
-            // not supposed to unwind. Whether this should be enforced
-            // (versus stating it is UB) and *how* it would be enforced
-            // is currently under discussion; see rust-lang/rust#58794.
-            //
-            // In either case, we mark item as explicitly nounwind.
-            false
+            // In both of these cases, we should refer to the ABI to determine whether or not we
+            // should unwind. See Rust RFC 2945 for more information on this behavior, here:
+            // https://github.com/rust-lang/rfcs/blob/master/text/2945-c-unwind-abi.md
+            use SpecAbi::*;
+            match abi {
+                C { unwind } | Stdcall { unwind } | System { unwind } | Thiscall { unwind } => {
+                    unwind
+                }
+                Cdecl
+                | Fastcall
+                | Vectorcall
+                | Aapcs
+                | Win64
+                | SysV64
+                | PtxKernel
+                | Msp430Interrupt
+                | X86Interrupt
+                | AmdGpuKernel
+                | EfiApi
+                | AvrInterrupt
+                | AvrNonBlockingInterrupt
+                | CCmseNonSecureCall
+                | RustIntrinsic
+                | PlatformIntrinsic
+                | Unadjusted => false,
+                // In the `if` above, we checked for functions with the Rust calling convention.
+                Rust | RustCall => unreachable!(),
+            }
         }
     }
 }
@@ -2638,18 +2671,19 @@ where
             RustIntrinsic | PlatformIntrinsic | Rust | RustCall => Conv::Rust,
 
             // It's the ABI's job to select this, not ours.
-            System => bug!("system abi should be selected elsewhere"),
+            System { .. } => bug!("system abi should be selected elsewhere"),
             EfiApi => bug!("eficall abi should be selected elsewhere"),
 
-            Stdcall => Conv::X86Stdcall,
+            Stdcall { .. } => Conv::X86Stdcall,
             Fastcall => Conv::X86Fastcall,
             Vectorcall => Conv::X86VectorCall,
-            Thiscall => Conv::X86ThisCall,
-            C => Conv::C,
+            Thiscall { .. } => Conv::X86ThisCall,
+            C { .. } => Conv::C,
             Unadjusted => Conv::C,
             Win64 => Conv::X86_64Win64,
             SysV64 => Conv::X86_64SysV,
             Aapcs => Conv::ArmAapcs,
+            CCmseNonSecureCall => Conv::CCmseNonSecureCall,
             PtxKernel => Conv::PtxKernel,
             Msp430Interrupt => Conv::Msp430Intr,
             X86Interrupt => Conv::X86Intr,
@@ -2740,10 +2774,14 @@ where
                     // and can be marked as both `readonly` and `noalias`, as
                     // LLVM's definition of `noalias` is based solely on memory
                     // dependencies rather than pointer equality
+                    //
+                    // Due to miscompiles in LLVM < 12, we apply a separate NoAliasMutRef attribute
+                    // for UniqueBorrowed arguments, so that the codegen backend can decide
+                    // whether or not to actually emit the attribute.
                     let no_alias = match kind {
-                        PointerKind::Shared => false,
+                        PointerKind::Shared | PointerKind::UniqueBorrowed => false,
                         PointerKind::UniqueOwned => true,
-                        PointerKind::Frozen | PointerKind::UniqueBorrowed => !is_return,
+                        PointerKind::Frozen => !is_return,
                     };
                     if no_alias {
                         attrs.set(ArgAttribute::NoAlias);
@@ -2751,6 +2789,10 @@ where
 
                     if kind == PointerKind::Frozen && !is_return {
                         attrs.set(ArgAttribute::ReadOnly);
+                    }
+
+                    if kind == PointerKind::UniqueBorrowed && !is_return {
+                        attrs.set(ArgAttribute::NoAliasMutRef);
                     }
                 }
             }
@@ -2806,7 +2848,12 @@ where
             c_variadic: sig.c_variadic,
             fixed_count: inputs.len(),
             conv,
-            can_unwind: fn_can_unwind(cx.tcx().sess.panic_strategy(), codegen_fn_attr_flags, conv),
+            can_unwind: fn_can_unwind(
+                cx.tcx().sess.panic_strategy(),
+                codegen_fn_attr_flags,
+                conv,
+                sig.abi,
+            ),
         };
         fn_abi.adjust_for_abi(cx, sig.abi);
         debug!("FnAbi::new_internal = {:?}", fn_abi);

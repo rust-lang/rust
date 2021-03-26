@@ -25,13 +25,11 @@
 #![feature(nll)]
 #![feature(available_concurrency)]
 #![feature(internal_output_capture)]
-#![feature(option_unwrap_none)]
 #![feature(panic_unwind)]
 #![feature(staged_api)]
 #![feature(termination_trait_lib)]
 #![feature(test)]
 #![feature(total_cmp)]
-#![feature(str_split_once)]
 
 // Public reexports
 pub use self::bench::{black_box, Bencher};
@@ -299,8 +297,9 @@ where
             let test = remaining.pop().unwrap();
             let event = TestEvent::TeWait(test.desc.clone());
             notify_about_test_event(event)?;
-            run_test(opts, !opts.run_tests, test, run_strategy, tx.clone(), Concurrent::No)
-                .unwrap_none();
+            let join_handle =
+                run_test(opts, !opts.run_tests, test, run_strategy, tx.clone(), Concurrent::No);
+            assert!(join_handle.is_none());
             let completed_test = rx.recv().unwrap();
 
             let event = TestEvent::TeResult(completed_test);
@@ -353,12 +352,13 @@ where
             }
 
             let mut completed_test = res.unwrap();
-            let running_test = running_tests.remove(&completed_test.desc).unwrap();
-            if let Some(join_handle) = running_test.join_handle {
-                if let Err(_) = join_handle.join() {
-                    if let TrOk = completed_test.result {
-                        completed_test.result =
-                            TrFailedMsg("panicked after reporting success".to_string());
+            if let Some(running_test) = running_tests.remove(&completed_test.desc) {
+                if let Some(join_handle) = running_test.join_handle {
+                    if let Err(_) = join_handle.join() {
+                        if let TrOk = completed_test.result {
+                            completed_test.result =
+                                TrFailedMsg("panicked after reporting success".to_string());
+                        }
                     }
                 }
             }
@@ -396,8 +396,8 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
     };
 
     // Remove tests that don't match the test filter
-    if let Some(ref filter) = opts.filter {
-        filtered.retain(|test| matches_filter(test, filter));
+    if !opts.filters.is_empty() {
+        filtered.retain(|test| opts.filters.iter().any(|filter| matches_filter(test, filter)));
     }
 
     // Skip tests that match any of the skip filters
@@ -506,7 +506,18 @@ pub fn run_test(
         let supports_threads = !cfg!(target_os = "emscripten") && !cfg!(target_arch = "wasm32");
         if concurrency == Concurrent::Yes && supports_threads {
             let cfg = thread::Builder::new().name(name.as_slice().to_owned());
-            Some(cfg.spawn(runtest).unwrap())
+            let mut runtest = Arc::new(Mutex::new(Some(runtest)));
+            let runtest2 = runtest.clone();
+            match cfg.spawn(move || runtest2.lock().unwrap().take().unwrap()()) {
+                Ok(handle) => Some(handle),
+                Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
+                    // `ErrorKind::WouldBlock` means hitting the thread limit on some
+                    // platforms, so run the test synchronously here instead.
+                    Arc::get_mut(&mut runtest).unwrap().get_mut().unwrap().take().unwrap()();
+                    None
+                }
+                Err(e) => panic!("failed to spawn thread to run test: {}", e),
+            }
         } else {
             runtest();
             None
