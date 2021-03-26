@@ -51,7 +51,7 @@ use hir_def::{
 };
 use hir_expand::{diagnostics::DiagnosticSink, name::name, MacroDefKind};
 use hir_ty::{
-    autoderef,
+    autoderef, could_unify,
     method_resolution::{self, TyFingerprint},
     primitive::UintTy,
     to_assoc_type_id,
@@ -2153,6 +2153,10 @@ impl Type {
         }
 
         walk_type(db, self, &mut cb);
+    }
+
+    pub fn could_unify_with(&self, other: &Type) -> bool {
+        could_unify(&self.ty, &other.ty)
     }
 }
 

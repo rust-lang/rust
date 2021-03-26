@@ -20,8 +20,8 @@ use ide_db::{
 use syntax::TextRange;
 
 use crate::{
-    item::ImportEdit, CompletionContext, CompletionItem, CompletionItemKind, CompletionKind,
-    CompletionRelevance,
+    item::{CompletionRelevanceTypeMatch, ImportEdit},
+    CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, CompletionRelevance,
 };
 
 use crate::render::{enum_variant::render_variant, function::render_fn, macro_::render_macro};
@@ -143,7 +143,7 @@ impl<'a> Render<'a> {
             .set_deprecated(is_deprecated);
 
         item.set_relevance(CompletionRelevance {
-            exact_type_match: compute_exact_type_match(self.ctx.completion, ty),
+            type_match: compute_type_match(self.ctx.completion, ty),
             exact_name_match: compute_exact_name_match(self.ctx.completion, name.to_string()),
             ..CompletionRelevance::default()
         });
@@ -245,7 +245,7 @@ impl<'a> Render<'a> {
             }
 
             item.set_relevance(CompletionRelevance {
-                exact_type_match: compute_exact_type_match(self.ctx.completion, &ty),
+                type_match: compute_type_match(self.ctx.completion, &ty),
                 exact_name_match: compute_exact_name_match(self.ctx.completion, &local_name),
                 is_local: true,
                 ..CompletionRelevance::default()
@@ -309,14 +309,24 @@ impl<'a> Render<'a> {
     }
 }
 
-fn compute_exact_type_match(ctx: &CompletionContext, completion_ty: &hir::Type) -> bool {
-    match ctx.expected_type.as_ref() {
-        Some(expected_type) => {
-            // We don't ever consider unit type to be an exact type match, since
-            // nearly always this is not meaningful to the user.
-            completion_ty == expected_type && !expected_type.is_unit()
-        }
-        None => false,
+fn compute_type_match(
+    ctx: &CompletionContext,
+    completion_ty: &hir::Type,
+) -> Option<CompletionRelevanceTypeMatch> {
+    let expected_type = ctx.expected_type.as_ref()?;
+
+    // We don't ever consider unit type to be an exact type match, since
+    // nearly always this is not meaningful to the user.
+    if expected_type.is_unit() {
+        return None;
+    }
+
+    if completion_ty == expected_type {
+        Some(CompletionRelevanceTypeMatch::Exact)
+    } else if expected_type.could_unify_with(completion_ty) {
+        Some(CompletionRelevanceTypeMatch::CouldUnify)
+    } else {
+        None
     }
 }
 
@@ -348,6 +358,7 @@ mod tests {
     use itertools::Itertools;
 
     use crate::{
+        item::CompletionRelevanceTypeMatch,
         test_utils::{check_edit, do_completion, get_all_items, TEST_CONFIG},
         CompletionKind, CompletionRelevance,
     };
@@ -360,7 +371,11 @@ mod tests {
     fn check_relevance(ra_fixture: &str, expect: Expect) {
         fn display_relevance(relevance: CompletionRelevance) -> String {
             let relevance_factors = vec![
-                (relevance.exact_type_match, "type"),
+                (relevance.type_match == Some(CompletionRelevanceTypeMatch::Exact), "type"),
+                (
+                    relevance.type_match == Some(CompletionRelevanceTypeMatch::CouldUnify),
+                    "type_could_unify",
+                ),
                 (relevance.exact_name_match, "name"),
                 (relevance.is_local, "local"),
             ]
@@ -533,7 +548,9 @@ fn main() { let _: m::Spam = S$0 }
                         detail: "(i32)",
                         relevance: CompletionRelevance {
                             exact_name_match: false,
-                            exact_type_match: true,
+                            type_match: Some(
+                                Exact,
+                            ),
                             is_local: false,
                         },
                         trigger_call_info: true,
@@ -559,7 +576,9 @@ fn main() { let _: m::Spam = S$0 }
                         detail: "()",
                         relevance: CompletionRelevance {
                             exact_name_match: false,
-                            exact_type_match: true,
+                            type_match: Some(
+                                Exact,
+                            ),
                             is_local: false,
                         },
                     },
@@ -1108,7 +1127,7 @@ fn main() {
                         detail: "S",
                         relevance: CompletionRelevance {
                             exact_name_match: true,
-                            exact_type_match: false,
+                            type_match: None,
                             is_local: true,
                         },
                         ref_match: "&mut ",
@@ -1350,6 +1369,36 @@ fn foo(f: Foo) { let _: &u32 = f.b$0 }
                         detail: "fn(&self) -> u32",
                     },
                 ]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn generic_enum() {
+        check_relevance(
+            r#"
+enum Foo<T> { A(T), B }
+// bar() should not be an exact type match
+// because the generic parameters are different
+fn bar() -> Foo<u8> { Foo::B }
+// FIXME baz() should be an exact type match
+// because the types could unify, but it currently
+// is not. This is due to the T here being
+// TyKind::Placeholder rather than TyKind::Missing.
+fn baz<T>() -> Foo<T> { Foo::B }
+fn foo() {
+    let foo: Foo<u32> = Foo::B;
+    let _: Foo<u32> = f$0;
+}
+"#,
+            expect![[r#"
+                ev Foo::A(…) [type_could_unify]
+                ev Foo::B [type_could_unify]
+                lc foo [type+local]
+                en Foo []
+                fn baz() []
+                fn bar() []
+                fn foo() []
             "#]],
         );
     }

@@ -8,7 +8,7 @@ use syntax::ast::Fn;
 use crate::{
     item::{CompletionItem, CompletionItemKind, CompletionKind, CompletionRelevance, ImportEdit},
     render::{
-        builder_ext::Params, compute_exact_name_match, compute_exact_type_match, compute_ref_match,
+        builder_ext::Params, compute_exact_name_match, compute_ref_match, compute_type_match,
         RenderContext,
     },
 };
@@ -73,7 +73,7 @@ impl<'a> FunctionRender<'a> {
 
         let ret_type = self.func.ret_type(self.ctx.db());
         item.set_relevance(CompletionRelevance {
-            exact_type_match: compute_exact_type_match(self.ctx.completion, &ret_type),
+            type_match: compute_type_match(self.ctx.completion, &ret_type),
             exact_name_match: compute_exact_name_match(self.ctx.completion, self.name.clone()),
             ..CompletionRelevance::default()
         });
