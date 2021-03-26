@@ -98,6 +98,9 @@ unsafe fn configure_llvm(sess: &Session) {
         // during inlining. Unfortunately these may block other optimizations.
         add("-preserve-alignment-assumptions-during-inlining=false", false);
 
+        // Use non-zero `import-instr-limit` multiplier for cold callsites.
+        add("-import-cold-multiplier=0.1", false);
+
         for arg in sess_args {
             add(&(*arg), true);
         }
