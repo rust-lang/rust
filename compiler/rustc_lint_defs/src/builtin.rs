@@ -2906,7 +2906,7 @@ declare_lint! {
     /// This lint will trigger on all sites of large moves and thus allow the
     /// user to resolve them in code.
     pub LARGE_ASSIGNMENTS,
-    Allow,
+    Warn,
     "detects large moves or copies",
 }
 

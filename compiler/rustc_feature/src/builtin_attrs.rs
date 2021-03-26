@@ -241,6 +241,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         const_eval_limit, CrateLevel, template!(NameValueStr: "N"), const_eval_limit,
         experimental!(const_eval_limit)
     ),
+    gated!(
+        move_size_limit, CrateLevel, template!(NameValueStr: "N"), large_assignments,
+        experimental!(move_size_limit)
+    ),
 
     // Entry point:
     ungated!(main, Normal, template!(Word)),

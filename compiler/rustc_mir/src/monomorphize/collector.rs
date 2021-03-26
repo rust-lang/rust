@@ -757,11 +757,16 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
 
     fn visit_operand(&mut self, operand: &mir::Operand<'tcx>, location: Location) {
         self.super_operand(operand, location);
+        let limit = self.tcx.sess.move_size_limit();
+        if limit == 0 {
+            return;
+        }
+        let limit = Size::from_bytes(limit);
         let ty = operand.ty(self.body, self.tcx);
         let ty = self.monomorphize(ty);
         let layout = self.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty));
         if let Ok(layout) = layout {
-            if layout.size > Size::from_bytes(1000) {
+            if layout.size > limit {
                 debug!(?layout);
                 let source_info = self.body.source_info(location);
                 debug!(?source_info);

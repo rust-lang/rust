@@ -1,4 +1,6 @@
 #![deny(large_assignments)]
+#![feature(large_assignments)]
+#![move_size_limit = "1000"]
 // build-fail
 
 // edition:2018
