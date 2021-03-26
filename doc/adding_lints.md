@@ -388,18 +388,19 @@ pass.
 [`FnKind::Fn`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/visit/enum.FnKind.html#variant.Fn
 [ident]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Ident.html
 
-## Specifying the lint's minimum supported Rust version (msrv)
+## Specifying the lint's minimum supported Rust version (MSRV)
 
-Projects supporting older versions of Rust would need to disable a lint if it targets features
-present in later versions. Support for this can be added by specifying an msrv in your lint like so,
+Projects supporting older versions of Rust would need to disable a lint if it
+targets features present in later versions. Support for this can be added by
+specifying an MSRV in your lint like so,
 
 ```rust
 const MANUAL_STRIP_MSRV: RustcVersion = RustcVersion::new(1, 45, 0);
 ```
 
-The project's msrv will also have to be an attribute in the lint so you'll have to add a struct
-and constructor for your lint. The project's msrv needs to be passed when the lint is registered
-in `lib.rs`
+The project's MSRV will also have to be an attribute in the lint so you'll have
+to add a struct and constructor for your lint. The project's MSRV needs to be
+passed when the lint is registered in `lib.rs`
 
 ```rust
 pub struct ManualStrip {
@@ -414,8 +415,8 @@ impl ManualStrip {
 }
 ```
 
-The project's msrv can then be matched against the lint's msrv in the LintPass using the `meets_msrv` utility
-function.
+The project's MSRV can then be matched against the lint's `msrv` in the LintPass
+using the `meets_msrv` utility function.
 
 ``` rust
 if !meets_msrv(self.msrv.as_ref(), &MANUAL_STRIP_MSRV) {
@@ -423,9 +424,10 @@ if !meets_msrv(self.msrv.as_ref(), &MANUAL_STRIP_MSRV) {
 }
 ```
 
-The project's msrv can also be specified as an inner attribute, which overrides the value from
-`clippy.toml`. This can be accounted for using the `extract_msrv_attr!(LintContext)` macro and passing
-LateContext/EarlyContext.
+The project's MSRV can also be specified as an inner attribute, which overrides
+the value from `clippy.toml`. This can be accounted for using the
+`extract_msrv_attr!(LintContext)` macro and passing
+`LateContext`/`EarlyContext`.
 
 ```rust
 impl<'tcx> LateLintPass<'tcx> for ManualStrip {
@@ -436,8 +438,20 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
 }
 ```
 
-Once the msrv is added to the lint, a relevant test case should be added to `tests/ui/min_rust_version_attr.rs`
-which verifies that the lint isn't emitted if the project's msrv is lower.
+Once the `msrv` is added to the lint, a relevant test case should be added to
+`tests/ui/min_rust_version_attr.rs` which verifies that the lint isn't emitted
+if the project's MSRV is lower.
+
+As a last step, the lint should be added to the lint documentation. This is done
+in `clippy_lints/src/utils/conf.rs`:
+
+```rust
+define_Conf! {
+    /// Lint: LIST, OF, LINTS, <THE_NEWLY_ADDED_LINT>. The minimum rust version that the project supports
+    (msrv, "msrv": Option<String>, None),
+    ...
+}
+```
 
 ## Author lint
 
