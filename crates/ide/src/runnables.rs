@@ -226,7 +226,9 @@ pub(crate) fn runnable_fn(sema: &Semantics<RootDatabase>, def: hir::Function) ->
     let func = def.source(sema.db)?;
     let name_string = def.name(sema.db).to_string();
 
-    let kind = if name_string == "main" {
+    let root = def.krate(sema.db)?.root_module(sema.db);
+
+    let kind = if name_string == "main" && def.module(sema.db) == root {
         RunnableKind::Bin
     } else {
         let canonical_path = {
@@ -444,6 +446,10 @@ fn test_foo() {}
 
 #[bench]
 fn bench() {}
+
+mod not_a_root {
+    fn main() {}
+}
 "#,
             &[&BIN, &TEST, &TEST, &BENCH],
             expect![[r#"
