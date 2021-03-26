@@ -138,4 +138,12 @@ fn main() {
     if true {
         Some(0)
     } else { Some(0).map(|x| x + 1) };
+
+    // #6967
+    const fn f4() {
+        match Some(0) {
+            Some(x) => Some(x + 1),
+            None => None,
+        };
+    }
 }
