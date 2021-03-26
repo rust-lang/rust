@@ -1470,7 +1470,7 @@ pub struct Statement<'tcx> {
 
 // `Statement` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(Statement<'_>, 32);
+static_assert_size!(Statement<'_>, 40);
 
 impl Statement<'_> {
     /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
@@ -1593,7 +1593,12 @@ pub enum FakeReadCause {
 
     /// `let x: !; match x {}` doesn't generate any read of x so we need to
     /// generate a read of x to check that it is initialized and safe.
-    ForMatchedPlace,
+    ///
+    /// If a closure pattern matches a Place starting with an Upvar, then we introduce a
+    /// FakeRead for that Place outside the closure, in such a case this option would be
+    /// Some(closure_def_id).
+    /// Otherwise, the value of the optional DefId will be None.
+    ForMatchedPlace(Option<DefId>),
 
     /// A fake read of the RefWithinGuard version of a bind-by-value variable
     /// in a match guard to ensure that it's value hasn't change by the time
@@ -1612,7 +1617,12 @@ pub enum FakeReadCause {
     /// but in some cases it can affect the borrow checker, as in #53695.
     /// Therefore, we insert a "fake read" here to ensure that we get
     /// appropriate errors.
-    ForLet,
+    ///
+    /// If a closure pattern matches a Place starting with an Upvar, then we introduce a
+    /// FakeRead for that Place outside the closure, in such a case this option would be
+    /// Some(closure_def_id).
+    /// Otherwise, the value of the optional DefId will be None.
+    ForLet(Option<DefId>),
 
     /// If we have an index expression like
     ///

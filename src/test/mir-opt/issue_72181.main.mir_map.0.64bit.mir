@@ -38,7 +38,7 @@ fn main() -> () {
         _2 = [move _3, move _4];         // scope 1 at $DIR/issue-72181.rs:26:13: 26:43
         StorageDead(_4);                 // scope 1 at $DIR/issue-72181.rs:26:42: 26:43
         StorageDead(_3);                 // scope 1 at $DIR/issue-72181.rs:26:42: 26:43
-        FakeRead(ForLet, _2);            // scope 1 at $DIR/issue-72181.rs:26:9: 26:10
+        FakeRead(ForLet(None), _2);      // scope 1 at $DIR/issue-72181.rs:26:9: 26:10
         StorageLive(_5);                 // scope 2 at $DIR/issue-72181.rs:27:13: 27:30
         StorageLive(_6);                 // scope 4 at $DIR/issue-72181.rs:27:24: 27:25
         _6 = const 0_usize;              // scope 4 at $DIR/issue-72181.rs:27:24: 27:25

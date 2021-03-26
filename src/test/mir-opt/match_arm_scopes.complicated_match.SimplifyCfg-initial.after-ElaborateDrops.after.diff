@@ -31,7 +31,7 @@
       }
   
       bb0: {
--         FakeRead(ForMatchedPlace, _2);   // scope 0 at $DIR/match-arm-scopes.rs:14:11: 14:16
+-         FakeRead(ForMatchedPlace(None), _2); // scope 0 at $DIR/match-arm-scopes.rs:14:11: 14:16
 -         switchInt((_2.0: bool)) -> [false: bb1, otherwise: bb2]; // scope 0 at $DIR/match-arm-scopes.rs:15:10: 15:15
 +         switchInt((_2.0: bool)) -> [false: bb5, otherwise: bb1]; // scope 0 at $DIR/match-arm-scopes.rs:15:10: 15:15
       }
