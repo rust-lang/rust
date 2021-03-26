@@ -1,0 +1,23 @@
+error: expected expression, found `+`
+  --> $DIR/increment.rs:3:7
+   |
+LL |     i++;
+   |       ^ expected expression
+   |
+   = note: Rust has no dedicated increment and decrement operators
+help: try using `+= 1` instead
+   |
+LL |     i += 1;
+   |       ^^^^
+
+error: expected expression, found `+`
+  --> $DIR/increment.rs:8:5
+   |
+LL |     ++i;
+   |     ^ expected expression
+   |
+   = note: Rust has no dedicated increment and decrement operators
+   = help: try using `+= 1` instead
+
+error: aborting due to 2 previous errors
+

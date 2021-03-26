@@ -1775,6 +1775,23 @@ impl<'a> Parser<'a> {
             self.sess.expr_parentheses_needed(&mut err, *sp, None);
         }
         err.span_label(span, "expected expression");
+        if self.prev_token.kind == TokenKind::BinOp(token::Plus)
+            && self.token.kind == TokenKind::BinOp(token::Plus)
+        {
+            let span = self.prev_token.span.to(self.token.span);
+            err.note("Rust has no dedicated increment and decrement operators");
+            err.span_suggestion_verbose(
+                span,
+                "try using `+= 1` instead",
+                " += 1".into(),
+                Applicability::Unspecified,
+            );
+        } else if self.token.kind == TokenKind::BinOp(token::Plus)
+            && self.look_ahead(1, |t| t.kind == TokenKind::BinOp(token::Plus))
+        {
+            err.note("Rust has no dedicated increment and decrement operators");
+            err.help("try using `+= 1` instead");
+        }
         err
     }
 
