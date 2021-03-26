@@ -15,7 +15,7 @@ mod validations;
 use self::pattern::Pattern;
 use self::pattern::{DoubleEndedSearcher, ReverseSearcher, Searcher};
 
-use crate::char;
+use crate::char::{self, EscapeDebugExtArgs};
 use crate::mem;
 use crate::slice::{self, SliceIndex};
 
@@ -2342,7 +2342,7 @@ impl str {
         EscapeDebug {
             inner: chars
                 .next()
-                .map(|first| first.escape_debug_ext(true))
+                .map(|first| first.escape_debug_ext(EscapeDebugExtArgs::ESCAPE_ALL))
                 .into_iter()
                 .flatten()
                 .chain(chars.flat_map(CharEscapeDebugContinue)),
@@ -2460,7 +2460,11 @@ impl_fn_for_zst! {
 
     #[derive(Clone)]
     struct CharEscapeDebugContinue impl Fn = |c: char| -> char::EscapeDebug {
-        c.escape_debug_ext(false)
+        c.escape_debug_ext(EscapeDebugExtArgs {
+            escape_grapheme_extended: false,
+            escape_single_quote: true,
+            escape_double_quote: true
+        })
     };
 
     #[derive(Clone)]
