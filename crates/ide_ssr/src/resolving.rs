@@ -150,7 +150,7 @@ impl Resolver<'_, '_> {
     fn path_contains_placeholder(&self, path: &ast::Path) -> bool {
         if let Some(segment) = path.segment() {
             if let Some(name_ref) = segment.name_ref() {
-                if self.placeholders_by_stand_in.contains_key(name_ref.text()) {
+                if self.placeholders_by_stand_in.contains_key(name_ref.text().as_str()) {
                     return true;
                 }
             }

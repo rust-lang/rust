@@ -165,7 +165,7 @@ fn impl_def_from_trait(
     }
     let impl_def = make::impl_trait(
         trait_path.clone(),
-        make::path_unqualified(make::path_segment(make::name_ref(annotated_name.text()))),
+        make::path_unqualified(make::path_segment(make::name_ref(&annotated_name.text()))),
     );
     let (impl_def, first_assoc_item) =
         add_trait_assoc_items_to_impl(sema, trait_items, trait_, impl_def, target_scope);
@@ -178,12 +178,13 @@ fn update_attribute(
     trait_name: &ast::NameRef,
     attr: &ast::Attr,
 ) {
+    let trait_name = trait_name.text();
     let new_attr_input = input
         .syntax()
         .descendants_with_tokens()
         .filter(|t| t.kind() == IDENT)
         .filter_map(|t| t.into_token().map(|t| t.text().to_string()))
-        .filter(|t| t != trait_name.text())
+        .filter(|t| t != &trait_name)
         .collect::<Vec<_>>();
     let has_more_derives = !new_attr_input.is_empty();
 

@@ -132,7 +132,8 @@ fn generate_enum_projection_method(
         ast::StructKind::Unit => return None,
     };
 
-    let fn_name = format!("{}_{}", props.fn_name_prefix, &to_lower_snake_case(variant_name.text()));
+    let fn_name =
+        format!("{}_{}", props.fn_name_prefix, &to_lower_snake_case(&variant_name.text()));
 
     // Return early if we've found an existing new fn
     let impl_def = find_struct_impl(&ctx, &parent_enum, &fn_name)?;

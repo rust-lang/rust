@@ -288,7 +288,7 @@ fn path_applicable_imports(
                 import_for_item(
                     sema.db,
                     mod_path,
-                    unresolved_first_segment,
+                    &unresolved_first_segment,
                     &unresolved_qualifier,
                     item,
                 )

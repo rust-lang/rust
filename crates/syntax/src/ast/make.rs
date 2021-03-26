@@ -268,14 +268,14 @@ pub fn arg_list(args: impl IntoIterator<Item = ast::Expr>) -> ast::ArgList {
 }
 
 pub fn ident_pat(name: ast::Name) -> ast::IdentPat {
-    return from_text(name.text());
+    return from_text(&name.text());
 
     fn from_text(text: &str) -> ast::IdentPat {
         ast_from_text(&format!("fn f({}: ())", text))
     }
 }
 pub fn ident_mut_pat(name: ast::Name) -> ast::IdentPat {
-    return from_text(name.text());
+    return from_text(&name.text());
 
     fn from_text(text: &str) -> ast::IdentPat {
         ast_from_text(&format!("fn f(mut {}: ())", text))

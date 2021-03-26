@@ -509,7 +509,7 @@ impl ImportGroup {
             PathSegmentKind::SelfKw => ImportGroup::ThisModule,
             PathSegmentKind::SuperKw => ImportGroup::SuperModule,
             PathSegmentKind::CrateKw => ImportGroup::ThisCrate,
-            PathSegmentKind::Name(name) => match name.text() {
+            PathSegmentKind::Name(name) => match name.text().as_str() {
                 "std" => ImportGroup::Std,
                 "core" => ImportGroup::Std,
                 _ => ImportGroup::ExternCrate,

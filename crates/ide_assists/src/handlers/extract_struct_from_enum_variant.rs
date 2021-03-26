@@ -195,7 +195,7 @@ fn extract_struct_def(
 
 fn update_variant(rewriter: &mut SyntaxRewriter, variant: &ast::Variant) -> Option<()> {
     let name = variant.name()?;
-    let tuple_field = make::tuple_field(None, make::ty(name.text()));
+    let tuple_field = make::tuple_field(None, make::ty(&name.text()));
     let replacement = make::variant(
         name,
         Some(ast::FieldList::TupleFieldList(make::tuple_field_list(iter::once(tuple_field)))),
