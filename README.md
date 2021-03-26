@@ -226,17 +226,7 @@ supported build environments that are most likely to work.
 
 ## Getting Help
 
-The Rust community congregates in a few places:
-
-* [Stack Overflow] - Direct questions about using the language.
-* [users.rust-lang.org] - General discussion and broader questions.
-* [/r/rust] - News and general discussion.
-* [Discord] - Direct questions about using the language along with broader questions, news and general discussion.
-
-[Stack Overflow]: https://stackoverflow.com/questions/tagged/rust
-[/r/rust]: https://reddit.com/r/rust
-[users.rust-lang.org]: https://users.rust-lang.org/
-[Discord]: https://discord.gg/rust-lang
+The Rust community congregates in a few places, you can find them at the [community tab of the Rust website](https://www.rust-lang.org/community)
 
 ## Contributing
 
