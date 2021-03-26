@@ -1079,6 +1079,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || box missing_const_for_fn::MissingConstForFn::new(msrv));
     store.register_late_pass(move || box needless_question_mark::NeedlessQuestionMark::new(msrv));
     store.register_late_pass(move || box casts::Casts::new(msrv));
+    store.register_early_pass(move || box unnested_or_patterns::UnnestedOrPatterns::new(msrv));
 
     store.register_late_pass(|| box size_of_in_element_count::SizeOfInElementCount);
     store.register_late_pass(|| box map_clone::MapClone);
@@ -1254,7 +1255,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(move || box non_expressive_names::NonExpressiveNames {
         single_char_binding_names_threshold,
     });
-    store.register_early_pass(|| box unnested_or_patterns::UnnestedOrPatterns);
     store.register_late_pass(|| box macro_use::MacroUseImports::default());
     store.register_late_pass(|| box map_identity::MapIdentity);
     store.register_late_pass(|| box pattern_type_mismatch::PatternTypeMismatch);
