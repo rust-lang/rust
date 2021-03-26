@@ -687,7 +687,7 @@ impl char {
     /// Basic usage:
     ///
     /// ```
-    /// assert_eq!('💯'.code_point(), 65);
+    /// assert_eq!('💯'.code_point(), 0x1F4AF);
     /// assert_eq!('❤'.code_point(), 0x2764);
     /// assert_eq!('a'.code_point(), 97);
     /// ```
