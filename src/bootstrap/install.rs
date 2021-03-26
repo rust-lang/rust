@@ -190,6 +190,26 @@ install!((self, builder, _config),
             );
         }
     };
+    RustDemangler,
+        "rust-demangler",
+        Self::should_build(_config),
+        only_hosts: true,
+    {
+        let profiler = builder.config.profiler_enabled(self.target);
+        let install_rust_demangler =
+            builder.config.tools.as_ref().map_or(profiler, |t| t.contains("rust-demangler"));
+        if install_rust_demangler {
+            let tarball = builder.ensure(
+                dist::RustDemangler { compiler: self.compiler, target: self.target }
+            );
+            install_sh(builder, "rust-demangler", self.compiler.stage, Some(self.target), &tarball);
+        } else {
+            builder.info(
+                &format!("skipping Install RustDemangler stage{} ({})",
+                         self.compiler.stage, self.target),
+            );
+        }
+    };
     Analysis, "analysis", Self::should_build(_config), only_hosts: false, {
         let tarball = builder.ensure(dist::Analysis {
             // Find the actual compiler (handling the full bootstrap option) which
