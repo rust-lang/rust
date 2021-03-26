@@ -1882,6 +1882,49 @@ impl<'a> Parser<'a> {
             self.sess.expr_parentheses_needed(&mut err, *sp);
         }
         err.span_label(span, "expected expression");
+        if self.prev_token.kind == TokenKind::BinOp(token::Plus)
+            && self.token.kind == TokenKind::BinOp(token::Plus)
+            && self.look_ahead(1, |t| !t.is_lit())
+        {
+            let span = self.prev_token.span.to(self.token.span);
+            err.note("Rust has no dedicated increment operator");
+            err.span_suggestion_verbose(
+                span,
+                "try using `+= 1` instead",
+                " += 1".into(),
+                Applicability::Unspecified,
+            );
+        } else if self.token.kind == TokenKind::BinOp(token::Plus)
+            && self.look_ahead(1, |t| t.kind == TokenKind::BinOp(token::Plus))
+            && self.look_ahead(2, |t| !t.is_lit())
+        {
+            let target_span = self.look_ahead(2, |t| t.span);
+            let left_brace_span = target_span.shrink_to_lo();
+            let pre_span = self.token.span.to(self.look_ahead(1, |t| t.span));
+            let post_span = target_span.shrink_to_hi();
+
+            err.note("Rust has no dedicated increment operator");
+
+            if self.prev_token.kind == TokenKind::Semi {
+                err.multipart_suggestion(
+                    "try using `+= 1` instead",
+                    vec![(pre_span, String::new()), (post_span, " += 1".into())],
+                    Applicability::MachineApplicable,
+                );
+            } else if let Ok(target_snippet) = self.span_to_snippet(target_span) {
+                err.multipart_suggestion(
+                    "try using `+= 1` instead",
+                    vec![
+                        (left_brace_span, "{ ".to_string()),
+                        (pre_span, String::new()),
+                        (post_span, format!(" += 1; {} }}", target_snippet)),
+                    ],
+                    Applicability::MachineApplicable,
+                );
+            } else {
+                err.span_help(pre_span.to(target_span), "try using `+= 1` instead");
+            }
+        }
         err
     }
 

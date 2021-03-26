@@ -1,0 +1,52 @@
+error: expected expression, found `+`
+  --> $DIR/increment.rs:3:7
+   |
+LL |     i++;
+   |       ^ expected expression
+   |
+   = note: Rust has no dedicated increment operator
+help: try using `+= 1` instead
+   |
+LL |     i += 1;
+   |       ~~~~
+
+error: expected expression, found `+`
+  --> $DIR/increment.rs:8:13
+   |
+LL |     while i++ < 5 {
+   |             ^ expected expression
+   |
+   = note: Rust has no dedicated increment operator
+help: try using `+= 1` instead
+   |
+LL |     while i += 1 < 5 {
+   |             ~~~~
+
+error: expected expression, found `+`
+  --> $DIR/increment.rs:16:5
+   |
+LL |     ++i;
+   |     ^ expected expression
+   |
+   = note: Rust has no dedicated increment operator
+help: try using `+= 1` instead
+   |
+LL -     ++i;
+LL +     i += 1;
+   | 
+
+error: expected expression, found `+`
+  --> $DIR/increment.rs:21:11
+   |
+LL |     while ++i < 5 {
+   |           ^ expected expression
+   |
+   = note: Rust has no dedicated increment operator
+help: try using `+= 1` instead
+   |
+LL -     while ++i < 5 {
+LL +     while { i += 1; i } < 5 {
+   | 
+
+error: aborting due to 4 previous errors
+
