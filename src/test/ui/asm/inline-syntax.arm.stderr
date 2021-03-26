@@ -1,14 +1,74 @@
-error: att syntax is the default syntax on this target, and trying to use this directive may cause issues
-  --> $DIR/inline-syntax.rs:23:15
+error: unknown directive
+  --> $DIR/inline-syntax.rs:22:15
+   |
+LL |         asm!(".intel_syntax noprefix", "nop");
+   |               ^
+   |
+note: instantiated into assembly here
+  --> <inline asm>:1:2
+   |
+LL |     .intel_syntax noprefix
+   |     ^
+
+error: unknown directive
+  --> $DIR/inline-syntax.rs:25:15
+   |
+LL |         asm!(".intel_syntax aaa noprefix", "nop");
+   |               ^
+   |
+note: instantiated into assembly here
+  --> <inline asm>:1:2
+   |
+LL |     .intel_syntax aaa noprefix
+   |     ^
+
+error: unknown directive
+  --> $DIR/inline-syntax.rs:28:15
    |
 LL |         asm!(".att_syntax noprefix", "nop");
-   |               ^^^^^^^^^^^^^^^^^^^^ help: remove this assembler directive
+   |               ^
+   |
+note: instantiated into assembly here
+  --> <inline asm>:1:2
+   |
+LL |     .att_syntax noprefix
+   |     ^
 
-error: att syntax is the default syntax on this target, and trying to use this directive may cause issues
-  --> $DIR/inline-syntax.rs:26:15
+error: unknown directive
+  --> $DIR/inline-syntax.rs:31:15
    |
 LL |         asm!(".att_syntax bbb noprefix", "nop");
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this assembler directive
+   |               ^
+   |
+note: instantiated into assembly here
+  --> <inline asm>:1:2
+   |
+LL |     .att_syntax bbb noprefix
+   |     ^
 
-error: aborting due to 2 previous errors
+error: unknown directive
+  --> $DIR/inline-syntax.rs:34:15
+   |
+LL |         asm!(".intel_syntax noprefix; nop");
+   |               ^
+   |
+note: instantiated into assembly here
+  --> <inline asm>:1:2
+   |
+LL |     .intel_syntax noprefix; nop
+   |     ^
+
+error: unknown directive
+  --> $DIR/inline-syntax.rs:40:13
+   |
+LL |             .intel_syntax noprefix
+   |             ^
+   |
+note: instantiated into assembly here
+  --> <inline asm>:2:13
+   |
+LL |             .intel_syntax noprefix
+   |             ^
+
+error: aborting due to 6 previous errors
 
