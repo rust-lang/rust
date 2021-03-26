@@ -3,6 +3,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::cell::{Cell, Ref, RefCell, RefMut, UnsafeCell};
+use crate::char::EscapeDebugExtArgs;
 use crate::marker::PhantomData;
 use crate::mem;
 use crate::num::flt2dec;
@@ -2054,7 +2055,11 @@ impl Debug for str {
         f.write_char('"')?;
         let mut from = 0;
         for (i, c) in self.char_indices() {
-            let esc = c.escape_debug();
+            let esc = c.escape_debug_ext(EscapeDebugExtArgs {
+                escape_grapheme_extended: true,
+                escape_single_quote: false,
+                escape_double_quote: true,
+            });
             // If char needs escaping, flush backlog so far and write, else skip
             if esc.len() != 1 {
                 f.write_str(&self[from..i])?;
@@ -2080,7 +2085,11 @@ impl Display for str {
 impl Debug for char {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         f.write_char('\'')?;
-        for c in self.escape_debug() {
+        for c in self.escape_debug_ext(EscapeDebugExtArgs {
+            escape_grapheme_extended: true,
+            escape_single_quote: true,
+            escape_double_quote: false,
+        }) {
             f.write_char(c)?
         }
         f.write_char('\'')

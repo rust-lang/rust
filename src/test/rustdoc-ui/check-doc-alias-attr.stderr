@@ -10,7 +10,7 @@ error: doc alias attribute expects a string `#[doc(alias = "a")]` or a list of s
 LL | #[doc(alias = 0)]
    |       ^^^^^^^^^
 
-error: '\"' character isn't allowed in `#[doc(alias = "...")]`
+error: '"' character isn't allowed in `#[doc(alias = "...")]`
   --> $DIR/check-doc-alias-attr.rs:9:15
    |
 LL | #[doc(alias = "\"")]
@@ -60,7 +60,7 @@ error: `#[doc(alias("a"))]` expects string literals
 LL | #[doc(alias(0))]
    |             ^
 
-error: '\"' character isn't allowed in `#[doc(alias("..."))]`
+error: '"' character isn't allowed in `#[doc(alias("..."))]`
   --> $DIR/check-doc-alias-attr.rs:20:13
    |
 LL | #[doc(alias("\""))]

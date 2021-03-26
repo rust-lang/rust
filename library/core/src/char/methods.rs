@@ -403,16 +403,20 @@ impl char {
     }
 
     /// An extended version of `escape_debug` that optionally permits escaping
-    /// Extended Grapheme codepoints. This allows us to format characters like
-    /// nonspacing marks better when they're at the start of a string.
+    /// Extended Grapheme codepoints, single quotes, and double quotes. This
+    /// allows us to format characters like nonspacing marks better when they're
+    /// at the start of a string, and allows escaping single quotes in
+    /// characters, and double quotes in strings.
     #[inline]
-    pub(crate) fn escape_debug_ext(self, escape_grapheme_extended: bool) -> EscapeDebug {
+    pub(crate) fn escape_debug_ext(self, args: EscapeDebugExtArgs) -> EscapeDebug {
         let init_state = match self {
             '\t' => EscapeDefaultState::Backslash('t'),
             '\r' => EscapeDefaultState::Backslash('r'),
             '\n' => EscapeDefaultState::Backslash('n'),
-            '\\' | '\'' | '"' => EscapeDefaultState::Backslash(self),
-            _ if escape_grapheme_extended && self.is_grapheme_extended() => {
+            '\\' => EscapeDefaultState::Backslash(self),
+            '"' if args.escape_double_quote => EscapeDefaultState::Backslash(self),
+            '\'' if args.escape_single_quote => EscapeDefaultState::Backslash(self),
+            _ if args.escape_grapheme_extended && self.is_grapheme_extended() => {
                 EscapeDefaultState::Unicode(self.escape_unicode())
             }
             _ if is_printable(self) => EscapeDefaultState::Char(self),
@@ -458,7 +462,7 @@ impl char {
     #[stable(feature = "char_escape_debug", since = "1.20.0")]
     #[inline]
     pub fn escape_debug(self) -> EscapeDebug {
-        self.escape_debug_ext(true)
+        self.escape_debug_ext(EscapeDebugExtArgs::ESCAPE_ALL)
     }
 
     /// Returns an iterator that yields the literal escape code of a character
@@ -1563,6 +1567,25 @@ impl char {
     pub const fn is_ascii_control(&self) -> bool {
         matches!(*self, '\0'..='\x1F' | '\x7F')
     }
+}
+
+pub(crate) struct EscapeDebugExtArgs {
+    /// Escape Extended Grapheme codepoints?
+    pub(crate) escape_grapheme_extended: bool,
+
+    /// Escape single quotes?
+    pub(crate) escape_single_quote: bool,
+
+    /// Escape double quotes?
+    pub(crate) escape_double_quote: bool,
+}
+
+impl EscapeDebugExtArgs {
+    pub(crate) const ESCAPE_ALL: Self = Self {
+        escape_grapheme_extended: true,
+        escape_single_quote: true,
+        escape_double_quote: true,
+    };
 }
 
 #[inline]
