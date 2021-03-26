@@ -1777,6 +1777,7 @@ impl<'a> Parser<'a> {
         err.span_label(span, "expected expression");
         if self.prev_token.kind == TokenKind::BinOp(token::Plus)
             && self.token.kind == TokenKind::BinOp(token::Plus)
+            && self.look_ahead(1, |t| !t.is_lit())
         {
             let span = self.prev_token.span.to(self.token.span);
             err.note("Rust has no dedicated increment and decrement operators");
@@ -1788,6 +1789,7 @@ impl<'a> Parser<'a> {
             );
         } else if self.token.kind == TokenKind::BinOp(token::Plus)
             && self.look_ahead(1, |t| t.kind == TokenKind::BinOp(token::Plus))
+            && self.look_ahead(2, |t| !t.is_lit())
         {
             err.note("Rust has no dedicated increment and decrement operators");
             err.help("try using `+= 1` instead");
