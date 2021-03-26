@@ -48,7 +48,7 @@ use core::fmt;
 use core::hash;
 #[cfg(not(no_global_oom_handling))]
 use core::iter::FromIterator;
-use core::iter::FusedIterator;
+use core::iter::{from_fn, FusedIterator};
 #[cfg(not(no_global_oom_handling))]
 use core::ops::Add;
 #[cfg(not(no_global_oom_handling))]
@@ -1290,15 +1290,9 @@ impl String {
     {
         use core::str::pattern::Searcher;
 
-        let matches = {
+        let matches: Vec<_> = {
             let mut searcher = pat.into_searcher(self);
-            let mut matches = Vec::new();
-
-            while let Some(m) = searcher.next_match() {
-                matches.push(m);
-            }
-
-            matches
+            from_fn(|| searcher.next_match()).collect()
         };
 
         let len = self.len();
