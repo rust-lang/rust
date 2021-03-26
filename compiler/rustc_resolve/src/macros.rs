@@ -17,7 +17,7 @@ use rustc_errors::struct_span_err;
 use rustc_expand::base::Annotatable;
 use rustc_expand::base::{Indeterminate, ResolverExpand, SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::compile_declarative_macro;
-use rustc_expand::expand::{AstFragment, Invocation, InvocationKind};
+use rustc_expand::expand::{AstFragment, Invocation, InvocationKind, SupportsMacroExpansion};
 use rustc_feature::is_builtin_attr_name;
 use rustc_hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc_hir::def_id;
@@ -278,12 +278,12 @@ impl<'a> ResolverExpand for Resolver<'a> {
 
         // Derives are not included when `invocations` are collected, so we have to add them here.
         let parent_scope = &ParentScope { derives, ..parent_scope };
-        let require_inert = !invoc.fragment_kind.supports_macro_expansion();
+        let supports_macro_expansion = invoc.fragment_kind.supports_macro_expansion();
         let node_id = self.lint_node_id(eager_expansion_root);
         let (ext, res) = self.smart_resolve_macro_path(
             path,
             kind,
-            require_inert,
+            supports_macro_expansion,
             inner_attr,
             parent_scope,
             node_id,
@@ -457,7 +457,7 @@ impl<'a> Resolver<'a> {
         &mut self,
         path: &ast::Path,
         kind: MacroKind,
-        require_inert: bool,
+        supports_macro_expansion: SupportsMacroExpansion,
         inner_attr: bool,
         parent_scope: &ParentScope<'a>,
         node_id: NodeId,
@@ -505,8 +505,17 @@ impl<'a> Resolver<'a> {
 
         let unexpected_res = if ext.macro_kind() != kind {
             Some((kind.article(), kind.descr_expected()))
-        } else if require_inert && matches!(res, Res::Def(..)) {
-            Some(("a", "non-macro attribute"))
+        } else if matches!(res, Res::Def(..)) {
+            match supports_macro_expansion {
+                SupportsMacroExpansion::No => Some(("a", "non-macro attribute")),
+                SupportsMacroExpansion::Yes { supports_inner_attrs } => {
+                    if inner_attr && !supports_inner_attrs {
+                        Some(("a", "non-macro inner attribute"))
+                    } else {
+                        None
+                    }
+                }
+            }
         } else {
             None
         };

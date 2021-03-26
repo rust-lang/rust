@@ -987,7 +987,7 @@ impl<'a> Parser<'a> {
                     }
 
                     // Collect tokens because they are used during lowering to HIR.
-                    let expr = self.collect_tokens_no_attrs(|this| this.parse_expr())?;
+                    let expr = self.parse_expr_force_collect()?;
                     let span = expr.span;
 
                     match &expr.kind {
