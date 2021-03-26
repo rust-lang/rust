@@ -504,7 +504,6 @@ impl<'tcx> TyCtxt<'tcx> {
         let closure_ty = self.mk_closure(closure_def_id, closure_substs);
         let closure_kind_ty = closure_substs.as_closure().kind_ty();
         let closure_kind = closure_kind_ty.to_opt_closure_kind()?;
-        debug_assert!(!closure_ty.has_escaping_bound_vars());
         let env_ty = match closure_kind {
             ty::ClosureKind::Fn => self.mk_imm_ref(self.mk_region(env_region), closure_ty),
             ty::ClosureKind::FnMut => self.mk_mut_ref(self.mk_region(env_region), closure_ty),

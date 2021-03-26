@@ -34,7 +34,6 @@ use tracing::debug;
 
 mod diagnostics;
 crate mod lifetimes;
-crate mod supertraits;
 
 type Res = def::Res<NodeId>;
 

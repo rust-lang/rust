@@ -1,6 +1,6 @@
 use rustc_middle::traits;
 use rustc_middle::ty::adjustment::CustomCoerceUnsized;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 
 use rustc_hir::lang_items::LangItem;
 
@@ -15,8 +15,6 @@ fn custom_coerce_unsize_info<'tcx>(
 ) -> CustomCoerceUnsized {
     let def_id = tcx.require_lang_item(LangItem::CoerceUnsized, None);
 
-    debug_assert!(!source_ty.has_escaping_bound_vars());
-    debug_assert!(!target_ty.has_escaping_bound_vars());
     let trait_ref = ty::Binder::dummy(ty::TraitRef {
         def_id,
         substs: tcx.mk_substs_trait(source_ty, &[target_ty.into()]),

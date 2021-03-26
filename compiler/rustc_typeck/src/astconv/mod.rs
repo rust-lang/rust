@@ -2186,13 +2186,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
     }
 
+    /// Parses the programmer's textual representation of a type into our
+    /// internal notion of a type.
     pub fn ast_ty_to_ty(&self, ast_ty: &hir::Ty<'_>) -> Ty<'tcx> {
         self.ast_ty_to_ty_inner(ast_ty, false)
     }
 
-    /// Parses the programmer's textual representation of a type into our
-    /// internal notion of a type.
-    ///
     /// Turns a `hir::Ty` into a `Ty`. For diagnostics' purposes we keep track of whether trait
     /// objects are borrowed like `&dyn Trait` to avoid emitting redundant errors.
     #[tracing::instrument(level = "debug", skip(self))]
