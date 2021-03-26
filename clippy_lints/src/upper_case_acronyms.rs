@@ -99,21 +99,21 @@ fn check_ident(cx: &EarlyContext<'_>, ident: &Ident, be_aggressive: bool) {
 
 impl EarlyLintPass for UpperCaseAcronyms {
     fn check_item(&mut self, cx: &EarlyContext<'_>, it: &Item) {
-        if_chain! {
-            if !in_external_macro(cx.sess(), it.span);
+        // do not lint public items or in macros
+        if !in_external_macro(cx.sess(), it.span) && !matches!(it.vis.kind, VisibilityKind::Public) {
             if matches!(
                 it.kind,
-                ItemKind::TyAlias(..) | ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Trait(..)
-            );
-            // do not lint public items
-            if !matches!(it.vis.kind, VisibilityKind::Public);
-            then {
+                ItemKind::TyAlias(..) | ItemKind::Struct(..) | ItemKind::Trait(..)
+            ) {
                 check_ident(cx, &it.ident, self.upper_case_acronyms_aggressive);
+            } else if let ItemKind::Enum(ref enumdef, _) = it.kind {
+                // check enum variants seperately because again we only want to lint on private enums and
+                // the fn check_variant does not know about the vis of the enum of its variants
+                &enumdef
+                    .variants
+                    .iter()
+                    .for_each(|variant| check_ident(cx, &variant.ident, self.upper_case_acronyms_aggressive));
             }
         }
-    }
-
-    fn check_variant(&mut self, cx: &EarlyContext<'_>, v: &Variant) {
-        check_ident(cx, &v.ident, self.upper_case_acronyms_aggressive);
     }
 }
