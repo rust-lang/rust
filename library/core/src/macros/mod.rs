@@ -1391,7 +1391,6 @@ pub(crate) mod builtin {
     }
 
     /// Attribute macro used to apply derive macros.
-    #[cfg(not(bootstrap))]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
     pub macro derive($item:item) {
@@ -1453,7 +1452,6 @@ pub(crate) mod builtin {
     }
 
     /// Expands all `#[cfg]` and `#[cfg_attr]` attributes in the code fragment it's applied to.
-    #[cfg(not(bootstrap))]
     #[unstable(
         feature = "cfg_eval",
         issue = "82679",

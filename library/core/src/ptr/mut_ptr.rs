@@ -50,7 +50,6 @@ impl<T: ?Sized> *mut T {
     /// Decompose a (possibly wide) pointer into is address and metadata components.
     ///
     /// The pointer can be later reconstructed with [`from_raw_parts_mut`].
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "ptr_metadata", issue = "81513")]
     #[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
     #[inline]
@@ -1175,13 +1174,6 @@ impl<T> *mut [T] {
     #[unstable(feature = "slice_ptr_len", issue = "71146")]
     #[rustc_const_unstable(feature = "const_slice_ptr_len", issue = "71146")]
     pub const fn len(self) -> usize {
-        #[cfg(bootstrap)]
-        {
-            // SAFETY: this is safe because `*const [T]` and `FatPtr<T>` have the same layout.
-            // Only `std` can make this guarantee.
-            unsafe { Repr { rust_mut: self }.raw }.len
-        }
-        #[cfg(not(bootstrap))]
         metadata(self)
     }
 

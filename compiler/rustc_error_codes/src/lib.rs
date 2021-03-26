@@ -1,5 +1,4 @@
-#![cfg_attr(bootstrap, deny(invalid_codeblock_attributes))]
-#![cfg_attr(not(bootstrap), deny(rustdoc::invalid_codeblock_attributes))]
+#![deny(rustdoc::invalid_codeblock_attributes)]
 //! This library is used to gather all error codes into one place,
 //! the goal being to make their maintenance easier.
 

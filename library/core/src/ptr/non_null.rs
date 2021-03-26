@@ -181,7 +181,6 @@ impl<T: ?Sized> NonNull<T> {
     /// See the documentation of [`std::ptr::from_raw_parts`] for more details.
     ///
     /// [`std::ptr::from_raw_parts`]: crate::ptr::from_raw_parts
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "ptr_metadata", issue = "81513")]
     #[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
     #[inline]
@@ -198,7 +197,6 @@ impl<T: ?Sized> NonNull<T> {
     /// Decompose a (possibly wide) pointer into is address and metadata components.
     ///
     /// The pointer can be later reconstructed with [`NonNull::from_raw_parts`].
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "ptr_metadata", issue = "81513")]
     #[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
     #[inline]
