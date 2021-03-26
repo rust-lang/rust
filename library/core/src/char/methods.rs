@@ -700,6 +700,7 @@ impl char {
     /// assert_eq!('\n'.code_point(), '\n' as u32);
     /// ```
     #[stable(feature = "char_code_point", since = "1.53.0")]
+    #[rustc_const_stable(feature = "char_code_point", since = "1.53.0")]
     #[inline]
     pub const fn code_point(self) -> u32 {
         // Casting a `char` to a `u32` gives the underlying scalar value, and all scalar values are
