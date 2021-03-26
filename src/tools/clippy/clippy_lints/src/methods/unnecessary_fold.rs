@@ -1,14 +1,13 @@
-use crate::utils::{
-    match_trait_method, path_to_local_id, paths, remove_blocks, snippet_with_applicability, span_lint_and_sugg,
-    strip_pat_refs,
-};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::{is_trait_method, path_to_local_id, remove_blocks, strip_pat_refs};
 use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::PatKind;
 use rustc_lint::LateContext;
-use rustc_span::source_map::Span;
+use rustc_span::{source_map::Span, sym};
 
 use super::UNNECESSARY_FOLD;
 
@@ -71,7 +70,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, fold_args: &[hir
     }
 
     // Check that this is a call to Iterator::fold rather than just some function called fold
-    if !match_trait_method(cx, expr, &paths::ITERATOR) {
+    if !is_trait_method(cx, expr, sym::Iterator) {
         return;
     }
 

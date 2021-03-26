@@ -1,11 +1,11 @@
 use super::MUT_RANGE_BOUND;
-use crate::utils::{higher, path_to_local, span_lint};
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::{higher, path_to_local};
 use if_chain::if_chain;
 use rustc_hir::{BindingAnnotation, Expr, HirId, Node, PatKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
-use rustc_middle::mir::FakeReadCause;
-use rustc_middle::ty;
+use rustc_middle::{mir::FakeReadCause, ty};
 use rustc_span::source_map::Span;
 use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 
@@ -108,7 +108,7 @@ impl<'tcx> Delegate<'tcx> for MutatePairDelegate<'_, 'tcx> {
         }
     }
 
-    fn fake_read(&mut self, _: rustc_typeck::expr_use_visitor::Place<'tcx>, _: FakeReadCause, _:HirId) { }
+    fn fake_read(&mut self, _: rustc_typeck::expr_use_visitor::Place<'tcx>, _: FakeReadCause, _: HirId) {}
 }
 
 impl MutatePairDelegate<'_, '_> {

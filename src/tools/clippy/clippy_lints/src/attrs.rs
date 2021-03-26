@@ -1,9 +1,8 @@
 //! checks for attributes
 
-use crate::utils::{
-    first_line_of_span, is_present_in_source, match_panic_def_id, snippet_opt, span_lint, span_lint_and_help,
-    span_lint_and_sugg, span_lint_and_then, without_block_comments,
-};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::match_panic_def_id;
+use clippy_utils::source::{first_line_of_span, is_present_in_source, snippet_opt, without_block_comments};
 use if_chain::if_chain;
 use rustc_ast::{AttrKind, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
 use rustc_errors::Applicability;
@@ -431,7 +430,7 @@ fn is_relevant_block(cx: &LateContext<'_>, typeck_results: &ty::TypeckResults<'_
         |stmt| match &stmt.kind {
             StmtKind::Local(_) => true,
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => is_relevant_expr(cx, typeck_results, expr),
-            _ => false,
+            StmtKind::Item(_) => false,
         },
     )
 }
@@ -565,7 +564,7 @@ fn check_deprecated_cfg_attr(cx: &EarlyContext<'_>, attr: &Attribute) {
         // check for `rustfmt_skip` and `rustfmt::skip`
         if let Some(skip_item) = &items[1].meta_item();
         if skip_item.has_name(sym!(rustfmt_skip)) ||
-            skip_item.path.segments.last().expect("empty path in attribute").ident.name == sym!(skip);
+            skip_item.path.segments.last().expect("empty path in attribute").ident.name == sym::skip;
         // Only lint outer attributes, because custom inner attributes are unstable
         // Tracking issue: https://github.com/rust-lang/rust/issues/54726
         if let AttrStyle::Outer = attr.style;
@@ -614,7 +613,7 @@ fn check_mismatched_target_os(cx: &EarlyContext<'_>, attr: &Attribute) {
                             }
                         }
                     },
-                    _ => {},
+                    MetaItemKind::NameValue(..) => {},
                 }
             }
         }

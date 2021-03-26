@@ -1,5 +1,6 @@
 use super::EMPTY_LOOP;
-use crate::utils::{is_in_panic_handler, is_no_std_crate, span_lint_and_help};
+use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::{is_in_panic_handler, is_no_std_crate};
 
 use rustc_hir::{Block, Expr};
 use rustc_lint::LateContext;

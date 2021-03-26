@@ -76,6 +76,8 @@ fn main() {
     }
     let b: &str = expr_deref!(a);
 
+    let b: &str = expr_deref!(a.deref());
+
     // The struct does not implement Deref trait
     #[derive(Copy, Clone)]
     struct NoLint(u32);

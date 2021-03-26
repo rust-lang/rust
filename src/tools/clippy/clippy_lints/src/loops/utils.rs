@@ -1,7 +1,5 @@
-use crate::utils::{
-    get_parent_expr, get_trait_def_id, has_iter_method, implements_trait, is_integer_const, path_to_local,
-    path_to_local_id, paths, sugg,
-};
+use clippy_utils::ty::{has_iter_method, implements_trait};
+use clippy_utils::{get_parent_expr, is_integer_const, path_to_local, path_to_local_id, sugg};
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
@@ -10,7 +8,7 @@ use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, HirId, Mutability, Pat, P
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
 use rustc_span::source_map::Span;
-use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{sym, Symbol};
 use std::iter::Iterator;
 
 #[derive(Debug, PartialEq)]
@@ -316,7 +314,7 @@ pub(super) fn get_span_of_entire_for_loop(expr: &Expr<'_>) -> Span {
 /// If `arg` was the argument to a `for` loop, return the "cleanest" way of writing the
 /// actual `Iterator` that the loop uses.
 pub(super) fn make_iterator_snippet(cx: &LateContext<'_>, arg: &Expr<'_>, applic_ref: &mut Applicability) -> String {
-    let impls_iterator = get_trait_def_id(cx, &paths::ITERATOR).map_or(false, |id| {
+    let impls_iterator = cx.tcx.get_diagnostic_item(sym::Iterator).map_or(false, |id| {
         implements_trait(cx, cx.typeck_results().expr_ty(arg), id, &[])
     });
     if impls_iterator {

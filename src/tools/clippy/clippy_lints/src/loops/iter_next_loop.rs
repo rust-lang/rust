@@ -1,10 +1,12 @@
 use super::ITER_NEXT_LOOP;
-use crate::utils::{match_trait_method, paths, span_lint};
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::is_trait_method;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
+use rustc_span::sym;
 
 pub(super) fn check(cx: &LateContext<'_>, arg: &Expr<'_>, expr: &Expr<'_>) -> bool {
-    if match_trait_method(cx, arg, &paths::ITERATOR) {
+    if is_trait_method(cx, arg, sym::Iterator) {
         span_lint(
             cx,
             ITER_NEXT_LOOP,

@@ -1,7 +1,7 @@
-use crate::utils::{
-    fn_has_unsatisfiable_preds, has_drop, is_copy, is_type_diagnostic_item, match_def_path, paths, snippet_opt,
-    span_lint_hir, span_lint_hir_and_then, walk_ptrs_ty_depth,
-};
+use clippy_utils::diagnostics::{span_lint_hir, span_lint_hir_and_then};
+use clippy_utils::source::snippet_opt;
+use clippy_utils::ty::{has_drop, is_copy, is_type_diagnostic_item, walk_ptrs_ty_depth};
+use clippy_utils::{fn_has_unsatisfiable_preds, match_def_path, paths};
 use if_chain::if_chain;
 use rustc_data_structures::{fx::FxHashMap, transitive_relation::TransitiveRelation};
 use rustc_errors::Applicability;
@@ -556,7 +556,7 @@ impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'tcx> {
                     mir::Operand::Copy(p) | mir::Operand::Move(p) => {
                         self.possible_borrower.add(p.local, *dest);
                     },
-                    _ => (),
+                    mir::Operand::Constant(..) => (),
                 }
             }
         }
@@ -578,7 +578,7 @@ fn rvalue_locals(rvalue: &mir::Rvalue<'_>, mut visit: impl FnMut(mir::Local)) {
 
     let mut visit_op = |op: &mir::Operand<'_>| match op {
         mir::Operand::Copy(p) | mir::Operand::Move(p) => visit(p.local),
-        _ => (),
+        mir::Operand::Constant(..) => (),
     };
 
     match rvalue {

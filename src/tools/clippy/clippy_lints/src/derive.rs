@@ -1,8 +1,7 @@
-use crate::utils::paths;
-use crate::utils::{
-    get_trait_def_id, is_allowed, is_automatically_derived, is_copy, match_def_path, span_lint_and_help,
-    span_lint_and_note, span_lint_and_then,
-};
+use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_note, span_lint_and_then};
+use clippy_utils::paths;
+use clippy_utils::ty::is_copy;
+use clippy_utils::{get_trait_def_id, is_allowed, is_automatically_derived, match_def_path};
 use if_chain::if_chain;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_expr, walk_fn, walk_item, FnKind, NestedVisitorMap, Visitor};

@@ -1,6 +1,7 @@
-use crate::utils::{last_path_segment, span_lint_and_help};
+use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::last_path_segment;
 use rustc_hir::{
-    intravisit, Body, Expr, ExprKind, PatField, FnDecl, HirId, LocalSource, MatchSource, Mutability, Pat, PatKind,
+    intravisit, Body, Expr, ExprKind, FnDecl, HirId, LocalSource, MatchSource, Mutability, Pat, PatField, PatKind,
     QPath, Stmt, StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};

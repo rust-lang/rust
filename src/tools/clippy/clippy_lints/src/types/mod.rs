@@ -13,21 +13,22 @@ use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
+use clippy_utils::diagnostics::{multispan_sugg, span_lint, span_lint_and_help, span_lint_and_then};
+use clippy_utils::source::{snippet, snippet_opt};
+use clippy_utils::ty::{is_isize_or_usize, is_type_diagnostic_item};
 use if_chain::if_chain;
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::{
-    BinOpKind, Block, Body, Expr, ExprKind, FnDecl, FnRetTy, FnSig, GenericArg, GenericParamKind, HirId, ImplItem,
-    ImplItemKind, Item, ItemKind, Local, MatchSource, MutTy, Node, QPath, Stmt, StmtKind, TraitFn, TraitItem,
-    TraitItemKind, TyKind,
+    BinOpKind, Body, Expr, ExprKind, FnDecl, FnRetTy, FnSig, GenericArg, GenericParamKind, HirId, ImplItem,
+    ImplItemKind, Item, ItemKind, Local, MutTy, QPath, TraitFn, TraitItem, TraitItemKind, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, IntTy, Ty, TyS, TypeckResults, UintTy};
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
-use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::sym;
 use rustc_target::abi::LayoutOf;
@@ -35,12 +36,8 @@ use rustc_target::spec::abi::Abi;
 use rustc_typeck::hir_ty_to_ty;
 
 use crate::consts::{constant, Constant};
-use crate::utils::paths;
-use crate::utils::{
-    clip, comparisons, differing_macro_contexts, higher, indent_of, int_bits, is_isize_or_usize,
-    is_type_diagnostic_item, match_path, multispan_sugg, reindent_multiline, sext, snippet, snippet_opt,
-    snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_then, unsext,
-};
+use clippy_utils::paths;
+use clippy_utils::{clip, comparisons, differing_macro_contexts, int_bits, match_path, sext, unsext};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for use of `Box<Vec<_>>` anywhere in the code.
@@ -279,7 +276,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
         match item.kind {
             TraitItemKind::Const(ref ty, _) | TraitItemKind::Type(_, Some(ref ty)) => self.check_ty(cx, ty, false),
             TraitItemKind::Fn(ref sig, _) => self.check_fn_decl(cx, &sig.decl),
-            _ => (),
+            TraitItemKind::Type(..) => (),
         }
     }
 
@@ -391,390 +388,6 @@ impl Types {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for binding a unit value.
-    ///
-    /// **Why is this bad?** A unit value cannot usefully be used anywhere. So
-    /// binding one is kind of pointless.
-    ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    /// ```rust
-    /// let x = {
-    ///     1;
-    /// };
-    /// ```
-    pub LET_UNIT_VALUE,
-    pedantic,
-    "creating a `let` binding to a value of unit type, which usually can't be used afterwards"
-}
-
-declare_lint_pass!(LetUnitValue => [LET_UNIT_VALUE]);
-
-impl<'tcx> LateLintPass<'tcx> for LetUnitValue {
-    fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
-        if let StmtKind::Local(ref local) = stmt.kind {
-            if is_unit(cx.typeck_results().pat_ty(&local.pat)) {
-                if in_external_macro(cx.sess(), stmt.span) || local.pat.span.from_expansion() {
-                    return;
-                }
-                if higher::is_from_for_desugar(local) {
-                    return;
-                }
-                span_lint_and_then(
-                    cx,
-                    LET_UNIT_VALUE,
-                    stmt.span,
-                    "this let-binding has unit value",
-                    |diag| {
-                        if let Some(expr) = &local.init {
-                            let snip = snippet_with_macro_callsite(cx, expr.span, "()");
-                            diag.span_suggestion(
-                                stmt.span,
-                                "omit the `let` binding",
-                                format!("{};", snip),
-                                Applicability::MachineApplicable, // snippet
-                            );
-                        }
-                    },
-                );
-            }
-        }
-    }
-}
-
-declare_clippy_lint! {
-    /// **What it does:** Checks for comparisons to unit. This includes all binary
-    /// comparisons (like `==` and `<`) and asserts.
-    ///
-    /// **Why is this bad?** Unit is always equal to itself, and thus is just a
-    /// clumsily written constant. Mostly this happens when someone accidentally
-    /// adds semicolons at the end of the operands.
-    ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    /// ```rust
-    /// # fn foo() {};
-    /// # fn bar() {};
-    /// # fn baz() {};
-    /// if {
-    ///     foo();
-    /// } == {
-    ///     bar();
-    /// } {
-    ///     baz();
-    /// }
-    /// ```
-    /// is equal to
-    /// ```rust
-    /// # fn foo() {};
-    /// # fn bar() {};
-    /// # fn baz() {};
-    /// {
-    ///     foo();
-    ///     bar();
-    ///     baz();
-    /// }
-    /// ```
-    ///
-    /// For asserts:
-    /// ```rust
-    /// # fn foo() {};
-    /// # fn bar() {};
-    /// assert_eq!({ foo(); }, { bar(); });
-    /// ```
-    /// will always succeed
-    pub UNIT_CMP,
-    correctness,
-    "comparing unit values"
-}
-
-declare_lint_pass!(UnitCmp => [UNIT_CMP]);
-
-impl<'tcx> LateLintPass<'tcx> for UnitCmp {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if expr.span.from_expansion() {
-            if let Some(callee) = expr.span.source_callee() {
-                if let ExpnKind::Macro(MacroKind::Bang, symbol) = callee.kind {
-                    if let ExprKind::Binary(ref cmp, ref left, _) = expr.kind {
-                        let op = cmp.node;
-                        if op.is_comparison() && is_unit(cx.typeck_results().expr_ty(left)) {
-                            let result = match &*symbol.as_str() {
-                                "assert_eq" | "debug_assert_eq" => "succeed",
-                                "assert_ne" | "debug_assert_ne" => "fail",
-                                _ => return,
-                            };
-                            span_lint(
-                                cx,
-                                UNIT_CMP,
-                                expr.span,
-                                &format!(
-                                    "`{}` of unit values detected. This will always {}",
-                                    symbol.as_str(),
-                                    result
-                                ),
-                            );
-                        }
-                    }
-                }
-            }
-            return;
-        }
-        if let ExprKind::Binary(ref cmp, ref left, _) = expr.kind {
-            let op = cmp.node;
-            if op.is_comparison() && is_unit(cx.typeck_results().expr_ty(left)) {
-                let result = match op {
-                    BinOpKind::Eq | BinOpKind::Le | BinOpKind::Ge => "true",
-                    _ => "false",
-                };
-                span_lint(
-                    cx,
-                    UNIT_CMP,
-                    expr.span,
-                    &format!(
-                        "{}-comparison of unit values detected. This will always be {}",
-                        op.as_str(),
-                        result
-                    ),
-                );
-            }
-        }
-    }
-}
-
-declare_clippy_lint! {
-    /// **What it does:** Checks for passing a unit value as an argument to a function without using a
-    /// unit literal (`()`).
-    ///
-    /// **Why is this bad?** This is likely the result of an accidental semicolon.
-    ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    /// ```rust,ignore
-    /// foo({
-    ///     let a = bar();
-    ///     baz(a);
-    /// })
-    /// ```
-    pub UNIT_ARG,
-    complexity,
-    "passing unit to a function"
-}
-
-declare_lint_pass!(UnitArg => [UNIT_ARG]);
-
-impl<'tcx> LateLintPass<'tcx> for UnitArg {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if expr.span.from_expansion() {
-            return;
-        }
-
-        // apparently stuff in the desugaring of `?` can trigger this
-        // so check for that here
-        // only the calls to `Try::from_error` is marked as desugared,
-        // so we need to check both the current Expr and its parent.
-        if is_questionmark_desugar_marked_call(expr) {
-            return;
-        }
-        if_chain! {
-            let map = &cx.tcx.hir();
-            let opt_parent_node = map.find(map.get_parent_node(expr.hir_id));
-            if let Some(hir::Node::Expr(parent_expr)) = opt_parent_node;
-            if is_questionmark_desugar_marked_call(parent_expr);
-            then {
-                return;
-            }
-        }
-
-        match expr.kind {
-            ExprKind::Call(_, args) | ExprKind::MethodCall(_, _, args, _) => {
-                let args_to_recover = args
-                    .iter()
-                    .filter(|arg| {
-                        if is_unit(cx.typeck_results().expr_ty(arg)) && !is_unit_literal(arg) {
-                            !matches!(
-                                &arg.kind,
-                                ExprKind::Match(.., MatchSource::TryDesugar) | ExprKind::Path(..)
-                            )
-                        } else {
-                            false
-                        }
-                    })
-                    .collect::<Vec<_>>();
-                if !args_to_recover.is_empty() {
-                    lint_unit_args(cx, expr, &args_to_recover);
-                }
-            },
-            _ => (),
-        }
-    }
-}
-
-fn fmt_stmts_and_call(
-    cx: &LateContext<'_>,
-    call_expr: &Expr<'_>,
-    call_snippet: &str,
-    args_snippets: &[impl AsRef<str>],
-    non_empty_block_args_snippets: &[impl AsRef<str>],
-) -> String {
-    let call_expr_indent = indent_of(cx, call_expr.span).unwrap_or(0);
-    let call_snippet_with_replacements = args_snippets
-        .iter()
-        .fold(call_snippet.to_owned(), |acc, arg| acc.replacen(arg.as_ref(), "()", 1));
-
-    let mut stmts_and_call = non_empty_block_args_snippets
-        .iter()
-        .map(|it| it.as_ref().to_owned())
-        .collect::<Vec<_>>();
-    stmts_and_call.push(call_snippet_with_replacements);
-    stmts_and_call = stmts_and_call
-        .into_iter()
-        .map(|v| reindent_multiline(v.into(), true, Some(call_expr_indent)).into_owned())
-        .collect();
-
-    let mut stmts_and_call_snippet = stmts_and_call.join(&format!("{}{}", ";\n", " ".repeat(call_expr_indent)));
-    // expr is not in a block statement or result expression position, wrap in a block
-    let parent_node = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(call_expr.hir_id));
-    if !matches!(parent_node, Some(Node::Block(_))) && !matches!(parent_node, Some(Node::Stmt(_))) {
-        let block_indent = call_expr_indent + 4;
-        stmts_and_call_snippet =
-            reindent_multiline(stmts_and_call_snippet.into(), true, Some(block_indent)).into_owned();
-        stmts_and_call_snippet = format!(
-            "{{\n{}{}\n{}}}",
-            " ".repeat(block_indent),
-            &stmts_and_call_snippet,
-            " ".repeat(call_expr_indent)
-        );
-    }
-    stmts_and_call_snippet
-}
-
-fn lint_unit_args(cx: &LateContext<'_>, expr: &Expr<'_>, args_to_recover: &[&Expr<'_>]) {
-    let mut applicability = Applicability::MachineApplicable;
-    let (singular, plural) = if args_to_recover.len() > 1 {
-        ("", "s")
-    } else {
-        ("a ", "")
-    };
-    span_lint_and_then(
-        cx,
-        UNIT_ARG,
-        expr.span,
-        &format!("passing {}unit value{} to a function", singular, plural),
-        |db| {
-            let mut or = "";
-            args_to_recover
-                .iter()
-                .filter_map(|arg| {
-                    if_chain! {
-                        if let ExprKind::Block(block, _) = arg.kind;
-                        if block.expr.is_none();
-                        if let Some(last_stmt) = block.stmts.iter().last();
-                        if let StmtKind::Semi(last_expr) = last_stmt.kind;
-                        if let Some(snip) = snippet_opt(cx, last_expr.span);
-                        then {
-                            Some((
-                                last_stmt.span,
-                                snip,
-                            ))
-                        }
-                        else {
-                            None
-                        }
-                    }
-                })
-                .for_each(|(span, sugg)| {
-                    db.span_suggestion(
-                        span,
-                        "remove the semicolon from the last statement in the block",
-                        sugg,
-                        Applicability::MaybeIncorrect,
-                    );
-                    or = "or ";
-                    applicability = Applicability::MaybeIncorrect;
-                });
-
-            let arg_snippets: Vec<String> = args_to_recover
-                .iter()
-                .filter_map(|arg| snippet_opt(cx, arg.span))
-                .collect();
-            let arg_snippets_without_empty_blocks: Vec<String> = args_to_recover
-                .iter()
-                .filter(|arg| !is_empty_block(arg))
-                .filter_map(|arg| snippet_opt(cx, arg.span))
-                .collect();
-
-            if let Some(call_snippet) = snippet_opt(cx, expr.span) {
-                let sugg = fmt_stmts_and_call(
-                    cx,
-                    expr,
-                    &call_snippet,
-                    &arg_snippets,
-                    &arg_snippets_without_empty_blocks,
-                );
-
-                if arg_snippets_without_empty_blocks.is_empty() {
-                    db.multipart_suggestion(
-                        &format!("use {}unit literal{} instead", singular, plural),
-                        args_to_recover
-                            .iter()
-                            .map(|arg| (arg.span, "()".to_string()))
-                            .collect::<Vec<_>>(),
-                        applicability,
-                    );
-                } else {
-                    let plural = arg_snippets_without_empty_blocks.len() > 1;
-                    let empty_or_s = if plural { "s" } else { "" };
-                    let it_or_them = if plural { "them" } else { "it" };
-                    db.span_suggestion(
-                        expr.span,
-                        &format!(
-                            "{}move the expression{} in front of the call and replace {} with the unit literal `()`",
-                            or, empty_or_s, it_or_them
-                        ),
-                        sugg,
-                        applicability,
-                    );
-                }
-            }
-        },
-    );
-}
-
-fn is_empty_block(expr: &Expr<'_>) -> bool {
-    matches!(
-        expr.kind,
-        ExprKind::Block(
-            Block {
-                stmts: &[],
-                expr: None,
-                ..
-            },
-            _,
-        )
-    )
-}
-
-fn is_questionmark_desugar_marked_call(expr: &Expr<'_>) -> bool {
-    use rustc_span::hygiene::DesugaringKind;
-    if let ExprKind::Call(ref callee, _) = expr.kind {
-        callee.span.is_desugaring(DesugaringKind::QuestionMark)
-    } else {
-        false
-    }
-}
-
-fn is_unit(ty: Ty<'_>) -> bool {
-    matches!(ty.kind(), ty::Tuple(slice) if slice.is_empty())
-}
-
-fn is_unit_literal(expr: &Expr<'_>) -> bool {
-    matches!(expr.kind, ExprKind::Tup(ref slice) if slice.is_empty())
-}
-
-declare_clippy_lint! {
     /// **What it does:** Checks for types used in structs, parameters and `let`
     /// declarations above a certain complexity threshold.
     ///
@@ -839,7 +452,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeComplexity {
             TraitItemKind::Const(ref ty, _) | TraitItemKind::Type(_, Some(ref ty)) => self.check_type(cx, ty),
             TraitItemKind::Fn(FnSig { ref decl, .. }, TraitFn::Required(_)) => self.check_fndecl(cx, decl),
             // methods with default impl are covered by check_fn
-            _ => (),
+            TraitItemKind::Type(..) | TraitItemKind::Fn(_, TraitFn::Provided(_)) => (),
         }
     }
 
@@ -847,7 +460,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeComplexity {
         match item.kind {
             ImplItemKind::Const(ref ty, _) | ImplItemKind::TyAlias(ref ty) => self.check_type(cx, ty),
             // methods are covered by check_fn
-            _ => (),
+            ImplItemKind::Fn(..) => (),
         }
     }
 
@@ -911,7 +524,7 @@ impl<'tcx> Visitor<'tcx> for TypeComplexityVisitor {
             // function types bring a lot of overhead
             TyKind::BareFn(ref bare) if bare.abi == Abi::Rust => (50 * self.nest, 1),
 
-            TyKind::TraitObject(ref param_bounds, ..) => {
+            TyKind::TraitObject(ref param_bounds, _, _) => {
                 let has_lifetime_parameters = param_bounds.iter().any(|bound| {
                     bound
                         .bound_generic_params
@@ -1005,7 +618,7 @@ fn detect_absurd_comparison<'tcx>(
 ) -> Option<(ExtremeExpr<'tcx>, AbsurdComparisonResult)> {
     use crate::types::AbsurdComparisonResult::{AlwaysFalse, AlwaysTrue, InequalityImpossible};
     use crate::types::ExtremeType::{Maximum, Minimum};
-    use crate::utils::comparisons::{normalize_comparison, Rel};
+    use clippy_utils::comparisons::{normalize_comparison, Rel};
 
     // absurd comparison only makes sense on primitive types
     // primitive types don't implement comparison operators with each other
@@ -1247,7 +860,7 @@ fn upcast_comparison_bounds_err<'tcx>(
     rhs: &'tcx Expr<'_>,
     invert: bool,
 ) {
-    use crate::utils::comparisons::Rel;
+    use clippy_utils::comparisons::Rel;
 
     if let Some((lb, ub)) = lhs_bounds {
         if let Some(norm_rhs_val) = node_as_const_fullint(cx, rhs) {

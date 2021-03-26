@@ -1,8 +1,9 @@
 use super::{get_span_of_entire_for_loop, IncrementVisitor, InitializeVisitor, MANUAL_MEMCPY};
-use crate::utils::sugg::Sugg;
-use crate::utils::{
-    get_enclosing_block, higher, is_type_diagnostic_item, path_to_local, snippet, span_lint_and_sugg, sugg,
-};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet;
+use clippy_utils::sugg::Sugg;
+use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::{get_enclosing_block, higher, path_to_local, sugg};
 use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_errors::Applicability;

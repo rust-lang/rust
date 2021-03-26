@@ -61,7 +61,6 @@ pub const IO_READ: [&str; 3] = ["std", "io", "Read"];
 pub const IO_WRITE: [&str; 3] = ["std", "io", "Write"];
 pub const IPADDR_V4: [&str; 4] = ["std", "net", "IpAddr", "V4"];
 pub const IPADDR_V6: [&str; 4] = ["std", "net", "IpAddr", "V6"];
-pub const ITERATOR: [&str; 5] = ["core", "iter", "traits", "iterator", "Iterator"];
 #[cfg(feature = "internal-lints")]
 pub const KW_MODULE: [&str; 3] = ["rustc_span", "symbol", "kw"];
 #[cfg(feature = "internal-lints")]

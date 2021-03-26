@@ -1,4 +1,4 @@
-error: inconsistent struct constructor
+error: struct constructor field order is inconsistent with struct definition field order
   --> $DIR/inconsistent_struct_constructor.rs:25:9
    |
 LL |         Foo { y, x, z };
@@ -6,7 +6,7 @@ LL |         Foo { y, x, z };
    |
    = note: `-D clippy::inconsistent-struct-constructor` implied by `-D warnings`
 
-error: inconsistent struct constructor
+error: struct constructor field order is inconsistent with struct definition field order
   --> $DIR/inconsistent_struct_constructor.rs:43:9
    |
 LL | /         Foo {

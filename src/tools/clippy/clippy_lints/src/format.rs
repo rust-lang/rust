@@ -1,8 +1,8 @@
-use crate::utils::paths;
-use crate::utils::{
-    is_expn_of, is_type_diagnostic_item, last_path_segment, match_def_path, match_function_call, snippet, snippet_opt,
-    span_lint_and_then,
-};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::paths;
+use clippy_utils::source::{snippet, snippet_opt};
+use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::{is_expn_of, last_path_segment, match_def_path, match_function_call};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;

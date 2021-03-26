@@ -1,6 +1,7 @@
 use super::utils::get_type_snippet;
 use super::TRANSMUTE_PTR_TO_REF;
-use crate::utils::{span_lint_and_then, sugg};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::sugg;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Mutability, QPath};
 use rustc_lint::LateContext;

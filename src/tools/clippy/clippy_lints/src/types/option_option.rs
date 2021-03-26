@@ -1,8 +1,8 @@
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::is_ty_param_diagnostic_item;
 use rustc_hir::{self as hir, def_id::DefId, QPath};
 use rustc_lint::LateContext;
 use rustc_span::symbol::sym;
-
-use crate::utils::{is_ty_param_diagnostic_item, span_lint};
 
 use super::OPTION_OPTION;
 

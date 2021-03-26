@@ -1,10 +1,9 @@
+use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::visitors::LocalUsedVisitor;
 use if_chain::if_chain;
 use rustc_hir::{Impl, ImplItem, ImplItemKind, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-
-use crate::utils::span_lint_and_help;
-use crate::utils::visitors::LocalUsedVisitor;
 
 declare_clippy_lint! {
     /// **What it does:** Checks methods that contain a `self` argument but don't use it

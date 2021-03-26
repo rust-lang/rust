@@ -1,5 +1,5 @@
 use super::NEVER_LOOP;
-use crate::utils::span_lint;
+use clippy_utils::diagnostics::span_lint;
 use rustc_hir::{Block, Expr, ExprKind, HirId, InlineAsmOperand, Stmt, StmtKind};
 use rustc_lint::LateContext;
 use std::iter::{once, Iterator};
@@ -78,7 +78,7 @@ fn stmt_to_expr<'tcx>(stmt: &Stmt<'tcx>) -> Option<&'tcx Expr<'tcx>> {
     match stmt.kind {
         StmtKind::Semi(ref e, ..) | StmtKind::Expr(ref e, ..) => Some(e),
         StmtKind::Local(ref local) => local.init.as_deref(),
-        _ => None,
+        StmtKind::Item(..) => None,
     }
 }
 

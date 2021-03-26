@@ -1,7 +1,8 @@
 #![allow(clippy::wildcard_imports, clippy::enum_glob_use)]
 
-use crate::utils::ast_utils::{eq_field_pat, eq_id, eq_pat, eq_path};
-use crate::utils::{over, span_lint_and_then};
+use clippy_utils::ast_utils::{eq_field_pat, eq_id, eq_pat, eq_path};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::over;
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, Pat, PatKind, PatKind::*, DUMMY_NODE_ID};

@@ -1,8 +1,11 @@
-use crate::utils::{match_trait_method, meets_msrv, paths, snippet, span_lint, span_lint_and_sugg};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
+use clippy_utils::source::snippet;
+use clippy_utils::{is_trait_method, meets_msrv};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_semver::RustcVersion;
+use rustc_span::sym;
 
 use super::FILTER_MAP_NEXT;
 
@@ -14,7 +17,7 @@ pub(super) fn check<'tcx>(
     filter_args: &'tcx [hir::Expr<'_>],
     msrv: Option<&RustcVersion>,
 ) {
-    if match_trait_method(cx, expr, &paths::ITERATOR) {
+    if is_trait_method(cx, expr, sym::Iterator) {
         if !meets_msrv(msrv, &FILTER_MAP_NEXT_MSRV) {
             return;
         }

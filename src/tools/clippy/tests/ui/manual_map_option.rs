@@ -186,4 +186,13 @@ fn main() {
             None => None,
         };
     }
+
+    // #6847
+    if let Some(_) = Some(0) {
+        Some(0)
+    } else if let Some(x) = Some(0) {
+        Some(x + 1)
+    } else {
+        None
+    };
 }

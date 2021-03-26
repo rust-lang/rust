@@ -1,5 +1,6 @@
 use super::TRANSMUTE_INT_TO_BOOL;
-use crate::utils::{span_lint_and_then, sugg};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::sugg;
 use rustc_ast as ast;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;

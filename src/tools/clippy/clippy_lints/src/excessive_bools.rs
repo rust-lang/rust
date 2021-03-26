@@ -1,7 +1,6 @@
-use crate::utils::{attr_by_name, in_macro, match_path_ast, span_lint_and_help};
-use rustc_ast::ast::{
-    AssocItemKind, Extern, FnKind, FnSig, ImplKind, Item, ItemKind, TraitKind, Ty, TyKind,
-};
+use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::{attr_by_name, in_macro, match_path_ast};
+use rustc_ast::ast::{AssocItemKind, Extern, FnKind, FnSig, ImplKind, Item, ItemKind, TraitKind, Ty, TyKind};
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Span;
