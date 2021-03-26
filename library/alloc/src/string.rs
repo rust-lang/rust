@@ -1290,26 +1290,49 @@ impl String {
     {
         use core::str::pattern::Searcher;
 
-        let matches: Vec<_> = {
+        let rejections = {
             let mut searcher = pat.into_searcher(self);
-            from_fn(|| searcher.next_match()).collect()
+            // Per Searcher::next:
+            //
+            // A Match result needs to contain the whole matched pattern,
+            // however Reject results may be split up into arbitrary many
+            // adjacent fragments. Both ranges may have zero length.
+            //
+            // In practice the implementation of Searcher::next_match tends to
+            // be more efficient, so we use it here and do some work to invert
+            // matches into rejections since that's what we want to copy below.
+            let mut front = 0;
+            let rejections: Vec<_> = from_fn(|| {
+                let (start, end) = searcher.next_match()?;
+                let prev_front = front;
+                front = end;
+                Some((prev_front, start))
+            })
+            .collect();
+            rejections.into_iter().chain(core::iter::once((front, self.len())))
         };
 
-        let len = self.len();
-        let mut shrunk_by = 0;
+        let mut len = 0;
+        let ptr = self.vec.as_mut_ptr();
 
-        // SAFETY: start and end will be on utf8 byte boundaries per
-        // the Searcher docs
-        unsafe {
-            for (start, end) in matches {
-                ptr::copy(
-                    self.vec.as_mut_ptr().add(end - shrunk_by),
-                    self.vec.as_mut_ptr().add(start - shrunk_by),
-                    len - end,
-                );
-                shrunk_by += end - start;
+        for (start, end) in rejections {
+            let count = end - start;
+            if start != len {
+                // SAFETY: per Searcher::next:
+                //
+                // The stream of Match and Reject values up to a Done will
+                // contain index ranges that are adjacent, non-overlapping,
+                // covering the whole haystack, and laying on utf8
+                // boundaries.
+                unsafe {
+                    ptr::copy(ptr.add(start), ptr.add(len), count);
+                }
             }
-            self.vec.set_len(len - shrunk_by);
+            len += count;
+        }
+
+        unsafe {
+            self.vec.set_len(len);
         }
     }
 
