@@ -188,7 +188,6 @@ use std::collections::{BTreeMap, HashMap};
 use std::io;
 use std::io::prelude::*;
 use std::mem::swap;
-use std::mem::MaybeUninit;
 use std::num::FpCategory as Fp;
 use std::ops::Index;
 use std::str::FromStr;
@@ -2367,10 +2366,9 @@ impl crate::Decoder for Decoder {
         expect!(self.pop(), String).map(Cow::Owned)
     }
 
-    fn read_raw_bytes(&mut self, s: &mut [MaybeUninit<u8>]) -> Result<(), Self::Error> {
+    fn read_raw_bytes_into(&mut self, s: &mut [u8]) -> Result<(), Self::Error> {
         for c in s.iter_mut() {
-            let h = self.read_u8()?;
-            unsafe { *c.as_mut_ptr() = h };
+            *c = self.read_u8()?;
         }
         Ok(())
     }
