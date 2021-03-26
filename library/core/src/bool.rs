@@ -37,6 +37,8 @@ impl bool {
     /// # Examples
     ///
     /// ```
+    /// #![feature(bool_take)]
+    ///
     /// let mut b = true;
     /// assert_eq!(b.take(), true);
     /// assert_eq!(b.take(), false);
