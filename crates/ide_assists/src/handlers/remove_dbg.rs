@@ -94,15 +94,11 @@ fn get_valid_macrocall_contents(
     let mut contents_between_brackets = children_with_tokens.collect::<Vec<_>>();
     let last_child = contents_between_brackets.pop()?;
 
-    if contents_between_brackets.is_empty() {
-        None
-    } else {
-        match (first_child.kind(), last_child.kind()) {
-            (T!['('], T![')']) | (T!['['], T![']']) | (T!['{'], T!['}']) => {
-                Some(contents_between_brackets)
-            }
-            _ => None,
+    match (first_child.kind(), last_child.kind()) {
+        (T!['('], T![')']) | (T!['['], T![']']) | (T!['{'], T!['}']) => {
+            Some(contents_between_brackets)
         }
+        _ => None,
     }
 }
 
@@ -417,5 +413,10 @@ fn main() {
     match &x {}
 }"#,
         );
+    }
+
+    #[test]
+    fn test_remove_empty_dbg() {
+        check_assist(remove_dbg, r#"$0dbg!()"#, r#""#);
     }
 }
