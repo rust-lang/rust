@@ -821,7 +821,6 @@ public:
 
   void eraseFictiousPHIs() {
     for (auto pp : fictiousPHIs) {
-      llvm::errs() << *pp << "\n";
       if (pp->getNumUses() != 0) {
         llvm::errs() << "mod:" << *oldFunc->getParent() << "\n";
         llvm::errs() << "oldFunc:" << *oldFunc << "\n";
