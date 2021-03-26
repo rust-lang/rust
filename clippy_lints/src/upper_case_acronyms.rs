@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use if_chain::if_chain;
 use itertools::Itertools;
-use rustc_ast::ast::{Item, ItemKind, Variant, VisibilityKind};
+use rustc_ast::ast::{Item, ItemKind, VisibilityKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -109,7 +108,7 @@ impl EarlyLintPass for UpperCaseAcronyms {
             } else if let ItemKind::Enum(ref enumdef, _) = it.kind {
                 // check enum variants seperately because again we only want to lint on private enums and
                 // the fn check_variant does not know about the vis of the enum of its variants
-                &enumdef
+                enumdef
                     .variants
                     .iter()
                     .for_each(|variant| check_ident(cx, &variant.ident, self.upper_case_acronyms_aggressive));
