@@ -28,4 +28,4 @@ else # running locally
   echo "Checking files changed in $COMMIT_RANGE: $CHANGED_FILES"
 fi
 
-exec mdbook-linkcheck $FLAGS -- $GITHUB_WORKSPACE
+exec mdbook-linkcheck $FLAGS
