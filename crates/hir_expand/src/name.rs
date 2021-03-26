@@ -75,14 +75,14 @@ impl AsName for ast::NameRef {
     fn as_name(&self) -> Name {
         match self.as_tuple_field() {
             Some(idx) => Name::new_tuple_field(idx),
-            None => Name::resolve(self.text()),
+            None => Name::resolve(&self.text()),
         }
     }
 }
 
 impl AsName for ast::Name {
     fn as_name(&self) -> Name {
-        Name::resolve(self.text())
+        Name::resolve(&self.text())
     }
 }
 

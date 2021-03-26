@@ -445,7 +445,7 @@ impl<'db> SemanticsImpl<'db> {
                 }
             };
             gpl.lifetime_params()
-                .find(|tp| tp.lifetime().as_ref().map(|lt| lt.text()) == Some(text))
+                .find(|tp| tp.lifetime().as_ref().map(|lt| lt.text()).as_ref() == Some(&text))
         })?;
         let src = self.find_file(lifetime_param.syntax().clone()).with_value(lifetime_param);
         ToDef::to_def(self, src)

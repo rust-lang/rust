@@ -12,19 +12,19 @@ use crate::{
 };
 
 impl ast::Lifetime {
-    pub fn text(&self) -> &str {
+    pub fn text(&self) -> SmolStr {
         text_of_first_token(self.syntax())
     }
 }
 
 impl ast::Name {
-    pub fn text(&self) -> &str {
+    pub fn text(&self) -> SmolStr {
         text_of_first_token(self.syntax())
     }
 }
 
 impl ast::NameRef {
-    pub fn text(&self) -> &str {
+    pub fn text(&self) -> SmolStr {
         text_of_first_token(self.syntax())
     }
 
@@ -33,10 +33,8 @@ impl ast::NameRef {
     }
 }
 
-fn text_of_first_token(node: &SyntaxNode) -> &str {
-    let t =
-        node.green().children().next().and_then(|it| it.into_token()).unwrap().text().to_string();
-    Box::leak(Box::new(t))
+fn text_of_first_token(node: &SyntaxNode) -> SmolStr {
+    node.green().children().next().and_then(|it| it.into_token()).unwrap().text().into()
 }
 
 pub enum Macro {
@@ -378,7 +376,7 @@ impl fmt::Display for NameOrNameRef {
 }
 
 impl NameOrNameRef {
-    pub fn text(&self) -> &str {
+    pub fn text(&self) -> SmolStr {
         match self {
             NameOrNameRef::Name(name) => name.text(),
             NameOrNameRef::NameRef(name_ref) => name_ref.text(),

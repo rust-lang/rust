@@ -246,7 +246,7 @@ fn invert_special_case(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Opti
             let method = mce.name_ref()?;
             let arg_list = mce.arg_list()?;
 
-            let method = match method.text() {
+            let method = match method.text().as_str() {
                 "is_some" => "is_none",
                 "is_none" => "is_some",
                 "is_ok" => "is_err",
@@ -442,7 +442,7 @@ fn generate_impl_text_inner(adt: &ast::Adt, trait_text: Option<&str>, code: &str
         buf.push_str(trait_text);
         buf.push_str(" for ");
     }
-    buf.push_str(adt.name().unwrap().text());
+    buf.push_str(&adt.name().unwrap().text());
     if let Some(generic_params) = generic_params {
         let lifetime_params = generic_params
             .lifetime_params()

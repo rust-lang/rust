@@ -416,7 +416,7 @@ fn get_string_representation(expr: &ast::Expr) -> Option<String> {
     match expr {
         ast::Expr::MethodCallExpr(method_call_expr) => {
             let name_ref = method_call_expr.name_ref()?;
-            match name_ref.text() {
+            match name_ref.text().as_str() {
                 "clone" => method_call_expr.receiver().map(|rec| rec.to_string()),
                 name_ref => Some(name_ref.to_owned()),
             }
