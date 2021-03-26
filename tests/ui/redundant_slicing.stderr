@@ -1,16 +1,34 @@
 error: redundant slicing of the whole range
-  --> $DIR/redundant_slicing.rs:6:15
+  --> $DIR/redundant_slicing.rs:6:13
    |
-LL |     let err = &x[..];
-   |               ^^^^^^ help: use the original slice instead: `x`
+LL |     let _ = &slice[..];
+   |             ^^^^^^^^^^ help: use the original value instead: `slice`
    |
    = note: `-D clippy::redundant-slicing` implied by `-D warnings`
 
 error: redundant slicing of the whole range
-  --> $DIR/redundant_slicing.rs:10:15
+  --> $DIR/redundant_slicing.rs:10:13
    |
-LL |     let err = &(&v[..])[..];
-   |               ^^^^^^^^^^^^^ help: use the original slice instead: `(&v[..])`
+LL |     let _ = &(&v[..])[..]; // Outer borrow is redundant
+   |             ^^^^^^^^^^^^^ help: use the original value instead: `(&v[..])`
 
-error: aborting due to 2 previous errors
+error: redundant slicing of the whole range
+  --> $DIR/redundant_slicing.rs:13:20
+   |
+LL |     let err = &mut &S[..]; // Should reborrow instead of slice
+   |                    ^^^^^^ help: reborrow the original value instead: `&*S`
+
+error: redundant slicing of the whole range
+  --> $DIR/redundant_slicing.rs:17:13
+   |
+LL |     let _ = &mut mut_slice[..]; // Should reborrow instead of slice
+   |             ^^^^^^^^^^^^^^^^^^ help: reborrow the original value instead: `&mut *mut_slice`
+
+error: redundant slicing of the whole range
+  --> $DIR/redundant_slicing.rs:24:13
+   |
+LL |     let _ = &m!(slice)[..];
+   |             ^^^^^^^^^^^^^^ help: use the original value instead: `slice`
+
+error: aborting due to 5 previous errors
 
