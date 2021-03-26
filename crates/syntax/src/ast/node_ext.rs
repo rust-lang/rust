@@ -8,23 +8,23 @@ use parser::SyntaxKind;
 
 use crate::{
     ast::{self, support, AstNode, AstToken, AttrsOwner, NameOwner, SyntaxNode},
-    SmolStr, SyntaxElement, SyntaxToken, T,
+    SmolStr, SyntaxElement, SyntaxToken, TokenText, T,
 };
 
 impl ast::Lifetime {
-    pub fn text(&self) -> SmolStr {
+    pub fn text(&self) -> TokenText {
         text_of_first_token(self.syntax())
     }
 }
 
 impl ast::Name {
-    pub fn text(&self) -> SmolStr {
+    pub fn text(&self) -> TokenText {
         text_of_first_token(self.syntax())
     }
 }
 
 impl ast::NameRef {
-    pub fn text(&self) -> SmolStr {
+    pub fn text(&self) -> TokenText {
         text_of_first_token(self.syntax())
     }
 
@@ -33,8 +33,11 @@ impl ast::NameRef {
     }
 }
 
-fn text_of_first_token(node: &SyntaxNode) -> SmolStr {
-    node.green().children().next().and_then(|it| it.into_token()).unwrap().text().into()
+fn text_of_first_token(node: &SyntaxNode) -> TokenText {
+    let first_token =
+        node.green().children().next().and_then(|it| it.into_token()).unwrap().to_owned();
+
+    TokenText(first_token)
 }
 
 pub enum Macro {
@@ -376,7 +379,7 @@ impl fmt::Display for NameOrNameRef {
 }
 
 impl NameOrNameRef {
-    pub fn text(&self) -> SmolStr {
+    pub fn text(&self) -> TokenText {
         match self {
             NameOrNameRef::Name(name) => name.text(),
             NameOrNameRef::NameRef(name_ref) => name_ref.text(),

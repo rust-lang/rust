@@ -29,6 +29,7 @@ mod syntax_error;
 mod parsing;
 mod validation;
 mod ptr;
+mod token_text;
 #[cfg(test)]
 mod tests;
 
@@ -55,6 +56,7 @@ pub use crate::{
         SyntaxElement, SyntaxElementChildren, SyntaxNode, SyntaxNodeChildren, SyntaxToken,
         SyntaxTreeBuilder,
     },
+    token_text::TokenText,
 };
 pub use parser::{SyntaxKind, T};
 pub use rowan::{
