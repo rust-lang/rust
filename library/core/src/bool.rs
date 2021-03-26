@@ -31,4 +31,19 @@ impl bool {
     pub fn then<T, F: FnOnce() -> T>(self, f: F) -> Option<T> {
         if self { Some(f()) } else { None }
     }
+    
+    /// Sets the `bool` to `false`, and returns the original value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut b = true;
+    /// assert_eq!(b.take(), true);
+    /// assert_eq!(b.take(), false);
+    /// ```
+    #[unstable(feature = "bool_take", issue = "none")]
+    #[inline]
+    pub fn take(&mut self) -> bool {
+        crate::mem::replace(self, false)
+    }
 }
