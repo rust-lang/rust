@@ -59,6 +59,7 @@ pub use rustc_middle::mir::MirSource;
 
 pub(crate) fn provide(providers: &mut Providers) {
     self::check_unsafety::provide(providers);
+    self::check_packed_ref::provide(providers);
     *providers = Providers {
         mir_keys,
         mir_const,

@@ -767,6 +767,7 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 ///     unaligned: 0x01020304,
 /// };
 ///
+/// #[allow(unaligned_references)]
 /// let v = unsafe {
 ///     // Here we attempt to take the address of a 32-bit integer which is not aligned.
 ///     let unaligned =
@@ -960,6 +961,7 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 /// let v = 0x01020304;
 /// let mut packed: Packed = unsafe { std::mem::zeroed() };
 ///
+/// #[allow(unaligned_references)]
 /// let v = unsafe {
 ///     // Here we attempt to take the address of a 32-bit integer which is not aligned.
 ///     let unaligned =

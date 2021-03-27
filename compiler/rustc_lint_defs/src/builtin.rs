@@ -1057,6 +1057,7 @@ declare_lint! {
     ///     unsafe {
     ///         let foo = Foo { field1: 0, field2: 0 };
     ///         let _ = &foo.field1;
+    ///         println!("{}", foo.field1); // An implicit `&` is added here, triggering the lint.
     ///     }
     /// }
     /// ```
@@ -1065,20 +1066,20 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// Creating a reference to an insufficiently aligned packed field is
-    /// [undefined behavior] and should be disallowed.
-    ///
-    /// This lint is "allow" by default because there is no stable
-    /// alternative, and it is not yet certain how widespread existing code
-    /// will trigger this lint.
-    ///
-    /// See [issue #27060] for more discussion.
+    /// Creating a reference to an insufficiently aligned packed field is [undefined behavior] and
+    /// should be disallowed. Using an `unsafe` block does not change anything about this. Instead,
+    /// the code should do a copy of the data in the packed field or use raw pointers and unaligned
+    /// accesses. See [issue #82523] for more information.
     ///
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
-    /// [issue #27060]: https://github.com/rust-lang/rust/issues/27060
+    /// [issue #82523]: https://github.com/rust-lang/rust/issues/82523
     pub UNALIGNED_REFERENCES,
-    Allow,
+    Warn,
     "detects unaligned references to fields of packed structs",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #82523 <https://github.com/rust-lang/rust/issues/82523>",
+        edition: None,
+    };
     report_in_external_macro
 }
 
@@ -1148,49 +1149,6 @@ declare_lint! {
     pub CONST_ITEM_MUTATION,
     Warn,
     "detects attempts to mutate a `const` item",
-}
-
-declare_lint! {
-    /// The `safe_packed_borrows` lint detects borrowing a field in the
-    /// interior of a packed structure with alignment other than 1.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// #[repr(packed)]
-    /// pub struct Unaligned<T>(pub T);
-    ///
-    /// pub struct Foo {
-    ///     start: u8,
-    ///     data: Unaligned<u32>,
-    /// }
-    ///
-    /// fn main() {
-    ///     let x = Foo { start: 0, data: Unaligned(1) };
-    ///     let y = &x.data.0;
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// This type of borrow is unsafe and can cause errors on some platforms
-    /// and violates some assumptions made by the compiler. This was
-    /// previously allowed unintentionally. This is a [future-incompatible]
-    /// lint to transition this to a hard error in the future. See [issue
-    /// #46043] for more details, including guidance on how to solve the
-    /// problem.
-    ///
-    /// [issue #46043]: https://github.com/rust-lang/rust/issues/46043
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub SAFE_PACKED_BORROWS,
-    Warn,
-    "safe borrows of fields of packed structs were erroneously allowed",
-    @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #46043 <https://github.com/rust-lang/rust/issues/46043>",
-        edition: None,
-    };
 }
 
 declare_lint! {
@@ -2953,7 +2911,6 @@ declare_lint_pass! {
         RENAMED_AND_REMOVED_LINTS,
         UNALIGNED_REFERENCES,
         CONST_ITEM_MUTATION,
-        SAFE_PACKED_BORROWS,
         PATTERNS_IN_FNS_WITHOUT_BODY,
         MISSING_FRAGMENT_SPECIFIER,
         LATE_BOUND_LIFETIME_ARGUMENTS,

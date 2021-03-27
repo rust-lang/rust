@@ -10,14 +10,12 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_session::lint::builtin::{SAFE_PACKED_BORROWS, UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
+use rustc_session::lint::builtin::{UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
 use rustc_session::lint::Level;
-use rustc_span::symbol::sym;
 
 use std::ops::Bound;
 
 use crate::const_eval::is_min_const_fn;
-use crate::util;
 
 pub struct UnsafetyChecker<'a, 'tcx> {
     body: &'a Body<'tcx>,
@@ -182,18 +180,6 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             self.check_mut_borrowing_layout_constrained_field(*place, context.is_mutating_use());
         }
 
-        // Check for borrows to packed fields.
-        // `is_disaligned` already traverses the place to consider all projections after the last
-        // `Deref`, so this only needs to be called once at the top level.
-        if context.is_borrow() {
-            if util::is_disaligned(self.tcx, self.body, self.param_env, *place) {
-                self.require_unsafe(
-                    UnsafetyViolationKind::BorrowPacked,
-                    UnsafetyViolationDetails::BorrowOfPackedField,
-                );
-            }
-        }
-
         // Some checks below need the extra metainfo of the local declaration.
         let decl = &self.body.local_decls[place.local];
 
@@ -317,25 +303,15 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
             // `unsafe` blocks are required in safe code
             Safety::Safe => {
                 for violation in violations {
-                    let mut violation = *violation;
                     match violation.kind {
                         UnsafetyViolationKind::GeneralAndConstFn
                         | UnsafetyViolationKind::General => {}
-                        UnsafetyViolationKind::BorrowPacked => {
-                            if self.min_const_fn {
-                                // const fns don't need to be backwards compatible and can
-                                // emit these violations as a hard error instead of a backwards
-                                // compat lint
-                                violation.kind = UnsafetyViolationKind::General;
-                            }
-                        }
-                        UnsafetyViolationKind::UnsafeFn
-                        | UnsafetyViolationKind::UnsafeFnBorrowPacked => {
+                        UnsafetyViolationKind::UnsafeFn => {
                             bug!("`UnsafetyViolationKind::UnsafeFn` in an `Safe` context")
                         }
                     }
-                    if !self.violations.contains(&violation) {
-                        self.violations.push(violation)
+                    if !self.violations.contains(violation) {
+                        self.violations.push(*violation)
                     }
                 }
                 false
@@ -345,11 +321,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                 for violation in violations {
                     let mut violation = *violation;
 
-                    if violation.kind == UnsafetyViolationKind::BorrowPacked {
-                        violation.kind = UnsafetyViolationKind::UnsafeFnBorrowPacked;
-                    } else {
-                        violation.kind = UnsafetyViolationKind::UnsafeFn;
-                    }
+                    violation.kind = UnsafetyViolationKind::UnsafeFn;
                     if !self.violations.contains(&violation) {
                         self.violations.push(violation)
                     }
@@ -369,8 +341,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                             // these unsafe things are stable in const fn
                             UnsafetyViolationKind::GeneralAndConstFn => {}
                             // these things are forbidden in const fns
-                            UnsafetyViolationKind::General
-                            | UnsafetyViolationKind::BorrowPacked => {
+                            UnsafetyViolationKind::General => {
                                 let mut violation = *violation;
                                 // const fns don't need to be backwards compatible and can
                                 // emit these violations as a hard error instead of a backwards
@@ -380,8 +351,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                                     self.violations.push(violation)
                                 }
                             }
-                            UnsafetyViolationKind::UnsafeFn
-                            | UnsafetyViolationKind::UnsafeFnBorrowPacked => bug!(
+                            UnsafetyViolationKind::UnsafeFn => bug!(
                                 "`UnsafetyViolationKind::UnsafeFn` in an `ExplicitUnsafe` context"
                             ),
                         }
@@ -464,7 +434,6 @@ pub(crate) fn provide(providers: &mut Providers) {
                 ty::WithOptConstParam { did, const_param_did: Some(param_did) },
             )
         },
-        unsafe_derive_on_repr_packed,
         ..*providers
     };
 }
@@ -544,25 +513,6 @@ fn unsafety_check_result<'tcx>(
     })
 }
 
-fn unsafe_derive_on_repr_packed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
-    let lint_hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-
-    tcx.struct_span_lint_hir(SAFE_PACKED_BORROWS, lint_hir_id, tcx.def_span(def_id), |lint| {
-        // FIXME: when we make this a hard error, this should have its
-        // own error code.
-        let message = if tcx.generics_of(def_id).own_requires_monomorphization() {
-            "`#[derive]` can't be used on a `#[repr(packed)]` struct with \
-             type or const parameters (error E0133)"
-                .to_string()
-        } else {
-            "`#[derive]` can't be used on a `#[repr(packed)]` struct that \
-             does not derive Copy (error E0133)"
-                .to_string()
-        };
-        lint.build(&message).emit()
-    });
-}
-
 /// Returns the `HirId` for an enclosing scope that is also `unsafe`.
 fn is_enclosed(
     tcx: TyCtxt<'_>,
@@ -609,22 +559,6 @@ fn report_unused_unsafe(tcx: TyCtxt<'_>, used_unsafe: &FxHashSet<hir::HirId>, id
     });
 }
 
-fn builtin_derive_def_id(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
-    debug!("builtin_derive_def_id({:?})", def_id);
-    if let Some(impl_def_id) = tcx.impl_of_method(def_id) {
-        if tcx.has_attr(impl_def_id, sym::automatically_derived) {
-            debug!("builtin_derive_def_id({:?}) - is {:?}", def_id, impl_def_id);
-            Some(impl_def_id)
-        } else {
-            debug!("builtin_derive_def_id({:?}) - not automatically derived", def_id);
-            None
-        }
-    } else {
-        debug!("builtin_derive_def_id({:?}) - not a method", def_id);
-        None
-    }
-}
-
 pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     debug!("check_unsafety({:?})", def_id);
 
@@ -657,27 +591,6 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 .note(note)
                 .emit();
             }
-            UnsafetyViolationKind::BorrowPacked => {
-                if let Some(impl_def_id) = builtin_derive_def_id(tcx, def_id.to_def_id()) {
-                    // If a method is defined in the local crate,
-                    // the impl containing that method should also be.
-                    tcx.ensure().unsafe_derive_on_repr_packed(impl_def_id.expect_local());
-                } else {
-                    tcx.struct_span_lint_hir(
-                        SAFE_PACKED_BORROWS,
-                        lint_root,
-                        source_info.span,
-                        |lint| {
-                            lint.build(&format!(
-                                "{} is unsafe and requires unsafe{} block (error E0133)",
-                                description, unsafe_fn_msg,
-                            ))
-                            .note(note)
-                            .emit()
-                        },
-                    )
-                }
-            }
             UnsafetyViolationKind::UnsafeFn => tcx.struct_span_lint_hir(
                 UNSAFE_OP_IN_UNSAFE_FN,
                 lint_root,
@@ -692,35 +605,6 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     .emit();
                 },
             ),
-            UnsafetyViolationKind::UnsafeFnBorrowPacked => {
-                // When `unsafe_op_in_unsafe_fn` is disallowed, the behavior of safe and unsafe functions
-                // should be the same in terms of warnings and errors. Therefore, with `#[warn(safe_packed_borrows)]`,
-                // a safe packed borrow should emit a warning *but not an error* in an unsafe function,
-                // just like in a safe function, even if `unsafe_op_in_unsafe_fn` is `deny`.
-                //
-                // Also, `#[warn(unsafe_op_in_unsafe_fn)]` can't cause any new errors. Therefore, with
-                // `#[deny(safe_packed_borrows)]` and `#[warn(unsafe_op_in_unsafe_fn)]`, a packed borrow
-                // should only issue a warning for the sake of backwards compatibility.
-                //
-                // The solution those 2 expectations is to always take the minimum of both lints.
-                // This prevent any new errors (unless both lints are explicitly set to `deny`).
-                let lint = if tcx.lint_level_at_node(SAFE_PACKED_BORROWS, lint_root).0
-                    <= tcx.lint_level_at_node(UNSAFE_OP_IN_UNSAFE_FN, lint_root).0
-                {
-                    SAFE_PACKED_BORROWS
-                } else {
-                    UNSAFE_OP_IN_UNSAFE_FN
-                };
-                tcx.struct_span_lint_hir(&lint, lint_root, source_info.span, |lint| {
-                    lint.build(&format!(
-                        "{} is unsafe and requires unsafe block (error E0133)",
-                        description,
-                    ))
-                    .span_label(source_info.span, description)
-                    .note(note)
-                    .emit();
-                })
-            }
         }
     }
 
