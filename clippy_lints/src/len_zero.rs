@@ -10,9 +10,12 @@ use rustc_hir::{
     ItemKind, Mutability, Node, TraitItemRef, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, AssocKind, FnSig};
+use rustc_middle::ty::{self, AssocKind, FnSig, Ty, TyS};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::source_map::{Span, Spanned, Symbol};
+use rustc_span::{
+    source_map::{Span, Spanned, Symbol},
+    symbol::sym,
+};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for getting the length of something via `.len()`
@@ -137,6 +140,7 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
             if let Some(local_id) = ty_id.as_local();
             let ty_hir_id = cx.tcx.hir().local_def_id_to_hir_id(local_id);
             if !is_allowed(cx, LEN_WITHOUT_IS_EMPTY, ty_hir_id);
+            if let Some(output) = parse_len_output(cx, cx.tcx.fn_sig(item.def_id).skip_binder());
             then {
                 let (name, kind) = match cx.tcx.hir().find(ty_hir_id) {
                     Some(Node::ForeignItem(x)) => (x.ident.name, "extern type"),
@@ -148,7 +152,7 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
                     }
                     _ => return,
                 };
-                check_for_is_empty(cx, sig.span, sig.decl.implicit_self, ty_id, name, kind)
+                check_for_is_empty(cx, sig.span, sig.decl.implicit_self, output, ty_id, name, kind)
             }
         }
     }
@@ -231,10 +235,62 @@ fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, trait_items
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+enum LenOutput<'tcx> {
+    Integral,
+    Option(DefId),
+    Result(DefId, Ty<'tcx>),
+}
+fn parse_len_output(cx: &LateContext<'_>, sig: FnSig<'tcx>) -> Option<LenOutput<'tcx>> {
+    match *sig.output().kind() {
+        ty::Int(_) | ty::Uint(_) => Some(LenOutput::Integral),
+        ty::Adt(adt, subs) if cx.tcx.is_diagnostic_item(sym::option_type, adt.did) => {
+            subs.type_at(0).is_integral().then(|| LenOutput::Option(adt.did))
+        },
+        ty::Adt(adt, subs) if cx.tcx.is_diagnostic_item(sym::result_type, adt.did) => subs
+            .type_at(0)
+            .is_integral()
+            .then(|| LenOutput::Result(adt.did, subs.type_at(1))),
+        _ => None,
+    }
+}
+
+impl LenOutput<'_> {
+    fn matches_is_empty_output(self, ty: Ty<'_>) -> bool {
+        match (self, ty.kind()) {
+            (_, &ty::Bool) => true,
+            (Self::Option(id), &ty::Adt(adt, subs)) if id == adt.did => subs.type_at(0).is_bool(),
+            (Self::Result(id, err_ty), &ty::Adt(adt, subs)) if id == adt.did => {
+                subs.type_at(0).is_bool() && TyS::same_type(subs.type_at(1), err_ty)
+            },
+            _ => false,
+        }
+    }
+
+    fn expected_sig(self, self_kind: ImplicitSelfKind) -> String {
+        let self_ref = match self_kind {
+            ImplicitSelfKind::ImmRef => "&",
+            ImplicitSelfKind::MutRef => "&mut ",
+            _ => "",
+        };
+        match self {
+            Self::Integral => format!("expected signature: `({}self) -> bool`", self_ref),
+            Self::Option(_) => format!(
+                "expected signature: `({}self) -> bool` or `({}self) -> Option<bool>",
+                self_ref, self_ref
+            ),
+            Self::Result(..) => format!(
+                "expected signature: `({}self) -> bool` or `({}self) -> Result<bool>",
+                self_ref, self_ref
+            ),
+        }
+    }
+}
+
 /// Checks if the given signature matches the expectations for `is_empty`
-fn check_is_empty_sig(cx: &LateContext<'_>, sig: FnSig<'_>, self_kind: ImplicitSelfKind) -> bool {
+fn check_is_empty_sig(sig: FnSig<'_>, self_kind: ImplicitSelfKind, len_output: LenOutput<'_>) -> bool {
     match &**sig.inputs_and_output {
-        [arg, res] if *res == cx.tcx.types.bool => {
+        [arg, res] if len_output.matches_is_empty_output(res) => {
             matches!(
                 (arg.kind(), self_kind),
                 (ty::Ref(_, _, Mutability::Not), ImplicitSelfKind::ImmRef)
@@ -250,6 +306,7 @@ fn check_for_is_empty(
     cx: &LateContext<'_>,
     span: Span,
     self_kind: ImplicitSelfKind,
+    output: LenOutput<'_>,
     impl_ty: DefId,
     item_name: Symbol,
     item_kind: &str,
@@ -289,7 +346,7 @@ fn check_for_is_empty(
         },
         Some(is_empty)
             if !(is_empty.fn_has_self_parameter
-                && check_is_empty_sig(cx, cx.tcx.fn_sig(is_empty.def_id).skip_binder(), self_kind)) =>
+                && check_is_empty_sig(cx.tcx.fn_sig(is_empty.def_id).skip_binder(), self_kind, output)) =>
         {
             (
                 format!(
@@ -309,14 +366,7 @@ fn check_for_is_empty(
             db.span_note(span, "`is_empty` defined here");
         }
         if let Some(self_kind) = self_kind {
-            db.note(&format!(
-                "expected signature: `({}self) -> bool`",
-                match self_kind {
-                    ImplicitSelfKind::ImmRef => "&",
-                    ImplicitSelfKind::MutRef => "&mut ",
-                    _ => "",
-                }
-            ));
+            db.note(&output.expected_sig(self_kind));
         }
     });
 }
