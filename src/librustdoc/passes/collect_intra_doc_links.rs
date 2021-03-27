@@ -973,10 +973,13 @@ impl LinkCollector<'_, '_> {
         };
 
         // Parse and strip the disambiguator from the link, if present.
-        let (mut path_str, disambiguator) = if let Ok((d, path)) = Disambiguator::from_str(&link) {
-            (path.trim(), Some(d))
-        } else {
-            (link.trim(), None)
+        let (mut path_str, disambiguator) = match Disambiguator::from_str(&link) {
+            Ok(Some((d, path))) => (path.trim(), Some(d)),
+            Ok(None) => (link.trim(), None),
+            Err(err_msg) => {
+                disambiguator_error(self.cx, &item, dox, ori_link.range, &err_msg);
+                return None;
+            }
         };
 
         if path_str.contains(|ch: char| !(ch.is_alphanumeric() || ":_<>, !*&;".contains(ch))) {
@@ -1514,8 +1517,12 @@ impl Disambiguator {
         }
     }
 
-    /// Given a link, parse and return `(disambiguator, path_str)`
-    fn from_str(link: &str) -> Result<(Self, &str), ()> {
+    /// Given a link, parse and return `(disambiguator, path_str)`.
+    ///
+    /// This returns `Ok(Some(...))` if a disambiguator was found,
+    /// `Ok(None)` if no disambiguator was found, or `Err(...)`
+    /// if there was a problem with the disambiguator.
+    fn from_str(link: &str) -> Result<Option<(Self, &str)>, String> {
         use Disambiguator::{Kind, Namespace as NS, Primitive};
 
         let find_suffix = || {
@@ -1528,11 +1535,11 @@ impl Disambiguator {
                 if let Some(link) = link.strip_suffix(suffix) {
                     // Avoid turning `!` or `()` into an empty string
                     if !link.is_empty() {
-                        return Ok((Kind(kind), link));
+                        return Some((Kind(kind), link));
                     }
                 }
             }
-            Err(())
+            None
         };
 
         if let Some(idx) = link.find('@') {
@@ -1551,11 +1558,11 @@ impl Disambiguator {
                 "value" => NS(Namespace::ValueNS),
                 "macro" => NS(Namespace::MacroNS),
                 "prim" | "primitive" => Primitive,
-                _ => return find_suffix(),
+                _ => return Err(format!("unknown disambiguator `{}`", prefix)),
             };
-            Ok((d, &rest[1..]))
+            Ok(Some((d, &rest[1..])))
         } else {
-            find_suffix()
+            Ok(find_suffix())
         }
     }
 
@@ -1976,6 +1983,22 @@ fn anchor_failure(
         if let Some(sp) = sp {
             diag.span_label(sp, "contains invalid anchor");
         }
+    });
+}
+
+/// Report an error in the link disambiguator.
+fn disambiguator_error(
+    cx: &DocContext<'_>,
+    item: &Item,
+    dox: &str,
+    link_range: Range<usize>,
+    msg: &str,
+) {
+    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, msg, item, dox, &link_range, |diag, _sp| {
+        diag.note(
+            "the disambiguator is the part of the link before the `@` sign, \
+             or a suffix such as `()` for functions",
+        );
     });
 }
 
