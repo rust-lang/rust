@@ -4413,6 +4413,75 @@ pub unsafe fn vrecpeq_f32(a: float32x4_t) -> float32x4_t {
 vrecpeq_f32_(a)
 }
 
+/// Unsigned Absolute difference and Accumulate Long
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabal.u8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uabal))]
+pub unsafe fn vabal_u8(a: uint16x8_t, b: uint8x8_t, c: uint8x8_t) -> uint16x8_t {
+    let d: uint8x8_t = vabd_u8(b, c);
+    simd_add(a, simd_cast(d))
+}
+
+/// Unsigned Absolute difference and Accumulate Long
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabal.u16"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uabal))]
+pub unsafe fn vabal_u16(a: uint32x4_t, b: uint16x4_t, c: uint16x4_t) -> uint32x4_t {
+    let d: uint16x4_t = vabd_u16(b, c);
+    simd_add(a, simd_cast(d))
+}
+
+/// Unsigned Absolute difference and Accumulate Long
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabal.u32"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uabal))]
+pub unsafe fn vabal_u32(a: uint64x2_t, b: uint32x2_t, c: uint32x2_t) -> uint64x2_t {
+    let d: uint32x2_t = vabd_u32(b, c);
+    simd_add(a, simd_cast(d))
+}
+
+/// Signed Absolute difference and Accumulate Long
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabal.s8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sabal))]
+pub unsafe fn vabal_s8(a: int16x8_t, b: int8x8_t, c: int8x8_t) -> int16x8_t {
+    let d: int8x8_t = vabd_s8(b, c);
+    let e: uint8x8_t = simd_cast(d);
+    simd_add(a, simd_cast(e))
+}
+
+/// Signed Absolute difference and Accumulate Long
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabal.s16"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sabal))]
+pub unsafe fn vabal_s16(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t {
+    let d: int16x4_t = vabd_s16(b, c);
+    let e: uint16x4_t = simd_cast(d);
+    simd_add(a, simd_cast(e))
+}
+
+/// Signed Absolute difference and Accumulate Long
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabal.s32"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sabal))]
+pub unsafe fn vabal_s32(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t {
+    let d: int32x2_t = vabd_s32(b, c);
+    let e: uint32x2_t = simd_cast(d);
+    simd_add(a, simd_cast(e))
+}
+
 #[cfg(test)]
 #[allow(overflowing_literals)]
 mod test {
@@ -7841,6 +7910,66 @@ mod test {
         let a: f32x4 = f32x4::new(4.0, 3.0, 2.0, 1.0);
         let e: f32x4 = f32x4::new(0.24951171875, 0.3330078125, 0.4990234375, 0.998046875);
         let r: f32x4 = transmute(vrecpeq_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabal_u8() {
+        let a: u16x8 = u16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let b: u8x8 = u8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let c: u8x8 = u8x8::new(10, 10, 10, 10, 10, 10, 10, 10);
+        let e: u16x8 = u16x8::new(10, 10, 10, 10, 10, 10, 10, 10);
+        let r: u16x8 = transmute(vabal_u8(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabal_u16() {
+        let a: u32x4 = u32x4::new(1, 2, 3, 4);
+        let b: u16x4 = u16x4::new(1, 2, 3, 4);
+        let c: u16x4 = u16x4::new(10, 10, 10, 10);
+        let e: u32x4 = u32x4::new(10, 10, 10, 10);
+        let r: u32x4 = transmute(vabal_u16(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabal_u32() {
+        let a: u64x2 = u64x2::new(1, 2);
+        let b: u32x2 = u32x2::new(1, 2);
+        let c: u32x2 = u32x2::new(10, 10);
+        let e: u64x2 = u64x2::new(10, 10);
+        let r: u64x2 = transmute(vabal_u32(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabal_s8() {
+        let a: i16x8 = i16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let b: i8x8 = i8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let c: i8x8 = i8x8::new(10, 10, 10, 10, 10, 10, 10, 10);
+        let e: i16x8 = i16x8::new(10, 10, 10, 10, 10, 10, 10, 10);
+        let r: i16x8 = transmute(vabal_s8(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabal_s16() {
+        let a: i32x4 = i32x4::new(1, 2, 3, 4);
+        let b: i16x4 = i16x4::new(1, 2, 3, 4);
+        let c: i16x4 = i16x4::new(10, 10, 10, 10);
+        let e: i32x4 = i32x4::new(10, 10, 10, 10);
+        let r: i32x4 = transmute(vabal_s16(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabal_s32() {
+        let a: i64x2 = i64x2::new(1, 2);
+        let b: i32x2 = i32x2::new(1, 2);
+        let c: i32x2 = i32x2::new(10, 10);
+        let e: i64x2 = i64x2::new(10, 10);
+        let r: i64x2 = transmute(vabal_s32(transmute(a), transmute(b), transmute(c)));
         assert_eq!(r, e);
     }
 }
