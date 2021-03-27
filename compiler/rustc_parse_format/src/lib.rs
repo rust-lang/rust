@@ -735,25 +735,24 @@ fn find_skips_from_snippet(
     };
 
     fn find_skips(snippet: &str, is_raw: bool) -> Vec<usize> {
-        let mut eat_ws = false;
         let mut s = snippet.char_indices().peekable();
         let mut skips = vec![];
         while let Some((pos, c)) = s.next() {
             match (c, s.peek()) {
                 // skip whitespace and empty lines ending in '\\'
                 ('\\', Some((next_pos, '\n'))) if !is_raw => {
-                    eat_ws = true;
                     skips.push(pos);
                     skips.push(*next_pos);
                     let _ = s.next();
-                }
-                ('\\', Some((next_pos, '\n' | 'n' | 't'))) if eat_ws => {
-                    skips.push(pos);
-                    skips.push(*next_pos);
-                    let _ = s.next();
-                }
-                (' ' | '\n' | '\t', _) if eat_ws => {
-                    skips.push(pos);
+
+                    while let Some((pos, c)) = s.peek() {
+                        if matches!(c, ' ' | '\n' | '\t') {
+                            skips.push(*pos);
+                            let _ = s.next();
+                        } else {
+                            break;
+                        }
+                    }
                 }
                 ('\\', Some((next_pos, 'n' | 't' | 'r' | '0' | '\\' | '\'' | '\"'))) => {
                     skips.push(*next_pos);
@@ -803,10 +802,6 @@ fn find_skips_from_snippet(
                             }
                         }
                     }
-                }
-                _ if eat_ws => {
-                    // `take_while(|c| c.is_whitespace())`
-                    eat_ws = false;
                 }
                 _ => {}
             }

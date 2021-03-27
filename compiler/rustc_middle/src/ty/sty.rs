@@ -160,7 +160,7 @@ pub enum TyKind<'tcx> {
     /// ```
     FnPtr(PolyFnSig<'tcx>),
 
-    /// A trait, defined with `trait`.
+    /// A trait object. Written as `dyn for<'b> Trait<'b, Assoc = u32> + Send + 'a`.
     Dynamic(&'tcx List<Binder<ExistentialPredicate<'tcx>>>, ty::Region<'tcx>),
 
     /// The anonymous type of a closure. Used to represent the type of
