@@ -1235,6 +1235,37 @@ fn f() { fo$0o!(); }
     }
 
     #[test]
+    fn test_hover_macro2_invocation() {
+        check(
+            r#"
+/// foo bar
+///
+/// foo bar baz
+macro foo() {}
+
+fn f() { fo$0o!(); }
+"#,
+            expect![[r#"
+                *foo*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                macro foo
+                ```
+
+                ---
+
+                foo bar
+
+                foo bar baz
+            "#]],
+        )
+    }
+
+    #[test]
     fn test_hover_tuple_field() {
         check(
             r#"struct TS(String, i32$0);"#,
