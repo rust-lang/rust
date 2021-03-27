@@ -35,7 +35,7 @@ Compiler
 - [Added tier 3 support for `i386-unknown-linux-gnu` and `i486-unknown-linux-gnu` targets.][80662]
 - [The `target-cpu=native` option will now detect individual features of CPUs.][80749]
 
-\* Refer to Rust's [platform support page][forge-platform-support] for more
+\* Refer to Rust's [platform support page][platform-support-doc] for more
 information on Rust's tiered platform support.
 
 Libraries
@@ -183,7 +183,7 @@ Compiler
 - [The `x86_64-unknown-freebsd` is now built with the full toolset.][79484]
 - [Dropped support for all cloudabi targets.][78439]
 
-\* Refer to Rust's [platform support page][forge-platform-support] for more
+\* Refer to Rust's [platform support page][platform-support-doc] for more
 information on Rust's tiered platform support.
 
 Libraries
@@ -360,7 +360,7 @@ Compiler
 - [Output from threads spawned in tests is now captured.][78227]
 - [Change os and vendor values to "none" and "unknown" for some targets][78951]
 
-\* Refer to Rust's [platform support page][forge-platform-support] for more
+\* Refer to Rust's [platform support page][platform-support-doc] for more
 information on Rust's tiered platform support.
 
 Libraries
@@ -465,7 +465,7 @@ Compiler
   Note: If you're using cargo you must explicitly pass the `--target` flag.
 - [Added tier 2\* support for `aarch64-unknown-linux-musl`.][76420]
 
-\* Refer to Rust's [platform support page][forge-platform-support] for more
+\* Refer to Rust's [platform support page][platform-support-doc] for more
 information on Rust's tiered platform support.
 
 Libraries
@@ -604,7 +604,7 @@ Compiler
 - [Upgrade the FreeBSD toolchain to version 11.4][75204]
 - [`RUST_BACKTRACE`'s output is now more compact.][75048]
 
-\* Refer to Rust's [platform support page][forge-platform-support] for more
+\* Refer to Rust's [platform support page][platform-support-doc] for more
 information on Rust's tiered platform support.
 
 Libraries
@@ -889,7 +889,7 @@ Compiler
 - [Added tier 3 support for the `thumbv7a-uwp-windows-msvc` target.][72133]
 - [Upgraded to LLVM 10.][67759]
 
-\* Refer to Rust's [platform support page][forge-platform-support] for more
+\* Refer to Rust's [platform support page][platform-support-doc] for more
 information on Rust's tiered platform support.
 
 
@@ -1398,7 +1398,7 @@ Compiler
    pointing to the location where they were called, rather than
    `core`'s internals. ][67887]
 
-\* Refer to Rust's [platform support page][forge-platform-support] for more
+\* Refer to Rust's [platform support page][platform-support-doc] for more
 information on Rust's tiered platform support.
 
 Libraries
@@ -1496,7 +1496,7 @@ Compiler
 - [You can now provide `--extern` flag without a path, indicating that it is
   available from the search path or specified with an `-L` flag.][64882]
 
-\* Refer to Rust's [platform support page][forge-platform-support] for more
+\* Refer to Rust's [platform support page][platform-support-doc] for more
 information on Rust's tiered platform support.
 
 [argfile-docs]: https://doc.rust-lang.org/nightly/rustc/command-line-arguments.html#path-load-command-line-flags-from-a-path
@@ -1620,7 +1620,7 @@ Compiler
 - [Added tier 3 support for the `mips64-unknown-linux-muslabi64`, and
   `mips64el-unknown-linux-muslabi64` targets.][65843]
 
-\* Refer to Rust's [platform support page][forge-platform-support] for more
+\* Refer to Rust's [platform support page][platform-support-doc] for more
   information on Rust's tiered platform support.
 
 Libraries
@@ -1770,7 +1770,7 @@ Compiler
   output of successful tests.][62600]
 
 
-\* Refer to Rust's [platform support page][forge-platform-support] for more
+\* Refer to Rust's [platform support page][platform-support-doc] for more
 information on Rust's tiered platform support.
 
 Libraries
@@ -1864,7 +1864,7 @@ Compiler
 - [Added tier 3 support for the `riscv32i-unknown-none-elf` target.][62784]
 - [Upgraded to LLVM 9.][62592]
 
-\* Refer to Rust's [platform support page][forge-platform-support] for more
+\* Refer to Rust's [platform support page][platform-support-doc] for more
 information on Rust's tiered platform support.
 
 Libraries
@@ -1951,7 +1951,7 @@ Compatibility Notes
 [`Duration::mul_f32`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.mul_f32
 [`Duration::mul_f64`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.mul_f64
 [`any::type_name`]: https://doc.rust-lang.org/std/any/fn.type_name.html
-[forge-platform-support]: https://forge.rust-lang.org/release/platform-support.html
+[platform-support-doc]: https://doc.rust-lang.org/nightly/rustc/platform-support.html
 [pipeline-internals]: https://internals.rust-lang.org/t/evaluating-pipelined-rustc-compilation/10199
 
 Version 1.37.0 (2019-08-15)
