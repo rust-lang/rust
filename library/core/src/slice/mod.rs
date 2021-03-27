@@ -145,8 +145,9 @@ impl<T> [T] {
     /// assert_eq!(None, w.first());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_slice_first_last", issue = "83570")]
     #[inline]
-    pub fn first(&self) -> Option<&T> {
+    pub const fn first(&self) -> Option<&T> {
         if let [first, ..] = self { Some(first) } else { None }
     }
 
@@ -163,8 +164,9 @@ impl<T> [T] {
     /// assert_eq!(x, &[5, 1, 2]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_slice_first_last", issue = "83570")]
     #[inline]
-    pub fn first_mut(&mut self) -> Option<&mut T> {
+    pub const fn first_mut(&mut self) -> Option<&mut T> {
         if let [first, ..] = self { Some(first) } else { None }
     }
 
@@ -181,8 +183,9 @@ impl<T> [T] {
     /// }
     /// ```
     #[stable(feature = "slice_splits", since = "1.5.0")]
+    #[rustc_const_unstable(feature = "const_slice_first_last", issue = "83570")]
     #[inline]
-    pub fn split_first(&self) -> Option<(&T, &[T])> {
+    pub const fn split_first(&self) -> Option<(&T, &[T])> {
         if let [first, tail @ ..] = self { Some((first, tail)) } else { None }
     }
 
@@ -201,8 +204,9 @@ impl<T> [T] {
     /// assert_eq!(x, &[3, 4, 5]);
     /// ```
     #[stable(feature = "slice_splits", since = "1.5.0")]
+    #[rustc_const_unstable(feature = "const_slice_first_last", issue = "83570")]
     #[inline]
-    pub fn split_first_mut(&mut self) -> Option<(&mut T, &mut [T])> {
+    pub const fn split_first_mut(&mut self) -> Option<(&mut T, &mut [T])> {
         if let [first, tail @ ..] = self { Some((first, tail)) } else { None }
     }
 
@@ -219,8 +223,9 @@ impl<T> [T] {
     /// }
     /// ```
     #[stable(feature = "slice_splits", since = "1.5.0")]
+    #[rustc_const_unstable(feature = "const_slice_first_last", issue = "83570")]
     #[inline]
-    pub fn split_last(&self) -> Option<(&T, &[T])> {
+    pub const fn split_last(&self) -> Option<(&T, &[T])> {
         if let [init @ .., last] = self { Some((last, init)) } else { None }
     }
 
@@ -239,8 +244,9 @@ impl<T> [T] {
     /// assert_eq!(x, &[4, 5, 3]);
     /// ```
     #[stable(feature = "slice_splits", since = "1.5.0")]
+    #[rustc_const_unstable(feature = "const_slice_first_last", issue = "83570")]
     #[inline]
-    pub fn split_last_mut(&mut self) -> Option<(&mut T, &mut [T])> {
+    pub const fn split_last_mut(&mut self) -> Option<(&mut T, &mut [T])> {
         if let [init @ .., last] = self { Some((last, init)) } else { None }
     }
 
@@ -256,8 +262,9 @@ impl<T> [T] {
     /// assert_eq!(None, w.last());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_slice_first_last", issue = "83570")]
     #[inline]
-    pub fn last(&self) -> Option<&T> {
+    pub const fn last(&self) -> Option<&T> {
         if let [.., last] = self { Some(last) } else { None }
     }
 
@@ -274,8 +281,9 @@ impl<T> [T] {
     /// assert_eq!(x, &[0, 1, 10]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_slice_first_last", issue = "83570")]
     #[inline]
-    pub fn last_mut(&mut self) -> Option<&mut T> {
+    pub const fn last_mut(&mut self) -> Option<&mut T> {
         if let [.., last] = self { Some(last) } else { None }
     }
 
