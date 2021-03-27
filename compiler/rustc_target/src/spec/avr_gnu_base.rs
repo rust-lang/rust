@@ -21,22 +21,9 @@ pub fn target(target_cpu: String) -> Target {
             has_rpath: false,
             position_independent_executables: false,
             eh_frame_header: false,
-            pre_link_args: vec![(
-                LinkerFlavor::Gcc,
-                vec![
-                    format!("-mmcu={}", target_cpu),
-                    // We want to be able to strip as much executable code as possible
-                    // from the linker command line, and this flag indicates to the
-                    // linker that it can avoid linking in dynamic libraries that don't
-                    // actually satisfy any symbols up to that point (as with many other
-                    // resolutions the linker does). This option only applies to all
-                    // following libraries so we're sure to pass it as one of the first
-                    // arguments.
-                    "-Wl,--as-needed".to_string(),
-                ],
-            )]
-            .into_iter()
-            .collect(),
+            pre_link_args: vec![(LinkerFlavor::Gcc, vec![format!("-mmcu={}", target_cpu)])]
+                .into_iter()
+                .collect(),
             late_link_args: vec![(LinkerFlavor::Gcc, vec!["-lgcc".to_owned()])]
                 .into_iter()
                 .collect(),

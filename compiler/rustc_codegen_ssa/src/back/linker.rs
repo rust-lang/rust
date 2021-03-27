@@ -130,6 +130,7 @@ pub trait Linker {
     fn group_end(&mut self);
     fn linker_plugin_lto(&mut self);
     fn add_eh_frame_header(&mut self) {}
+    fn add_as_needed(&mut self) {}
     fn finalize(&mut self);
 }
 
@@ -640,6 +641,12 @@ impl<'a> Linker for GccLinker<'a> {
     // so we just always add it.
     fn add_eh_frame_header(&mut self) {
         self.linker_arg("--eh-frame-hdr");
+    }
+
+    fn add_as_needed(&mut self) {
+        if self.sess.target.linker_is_gnu {
+            self.linker_arg("--as-needed");
+        }
     }
 }
 
