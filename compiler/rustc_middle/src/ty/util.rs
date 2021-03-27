@@ -21,7 +21,7 @@ use rustc_macros::HashStable;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{Integer, Size, TargetDataLayout};
 use smallvec::SmallVec;
-use std::{cmp, fmt};
+use std::{cmp, fmt, iter};
 
 #[derive(Copy, Clone, Debug)]
 pub struct Discr<'tcx> {
@@ -414,9 +414,7 @@ impl<'tcx> TyCtxt<'tcx> {
             _ => bug!(),
         };
 
-        let result = item_substs
-            .iter()
-            .zip(impl_substs.iter())
+        let result = iter::zip(item_substs, impl_substs)
             .filter(|&(_, k)| {
                 match k.unpack() {
                     GenericArgKind::Lifetime(&ty::RegionKind::ReEarlyBound(ref ebr)) => {

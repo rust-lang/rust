@@ -14,6 +14,7 @@
 #![feature(control_flow_enum)]
 #![feature(crate_visibility_modifier)]
 #![feature(format_args_capture)]
+#![feature(iter_zip)]
 #![feature(nll)]
 #![cfg_attr(bootstrap, feature(or_patterns))]
 #![recursion_limit = "256"]

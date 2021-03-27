@@ -492,13 +492,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // The liberated version of this signature should be a subtype
             // of the liberated form of the expectation.
-            for ((hir_ty, &supplied_ty), expected_ty) in decl
-                .inputs
-                .iter()
-                .zip(supplied_sig.inputs().skip_binder()) // binder moved to (*) below
-                .zip(expected_sigs.liberated_sig.inputs())
-            // `liberated_sig` is E'.
-            {
+            for ((hir_ty, &supplied_ty), expected_ty) in iter::zip(
+                iter::zip(
+                    decl.inputs,
+                    supplied_sig.inputs().skip_binder(), // binder moved to (*) below
+                ),
+                expected_sigs.liberated_sig.inputs(), // `liberated_sig` is E'.
+            ) {
                 // Instantiate (this part of..) S to S', i.e., with fresh variables.
                 let (supplied_ty, _) = self.infcx.replace_bound_vars_with_fresh_vars(
                     hir_ty.span,

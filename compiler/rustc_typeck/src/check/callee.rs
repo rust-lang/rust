@@ -17,6 +17,7 @@ use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use rustc_target::spec::abi;
 use rustc_trait_selection::autoderef::Autoderef;
+use std::iter;
 
 /// Checks that it is legal to call methods of the trait corresponding
 /// to `trait_id` (this only cares about the trait, not the specific
@@ -539,7 +540,7 @@ impl<'a, 'tcx> DeferredCallResolution<'tcx> {
                 debug!("attempt_resolution: method_callee={:?}", method_callee);
 
                 for (method_arg_ty, self_arg_ty) in
-                    method_sig.inputs().iter().skip(1).zip(self.fn_sig.inputs())
+                    iter::zip(method_sig.inputs().iter().skip(1), self.fn_sig.inputs())
                 {
                     fcx.demand_eqtype(self.call_expr.span, &self_arg_ty, &method_arg_ty);
                 }

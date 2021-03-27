@@ -23,6 +23,7 @@ use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::Span;
 
 use std::cmp;
+use std::iter;
 use std::ops::ControlFlow;
 
 /// Check if a given constant can be evaluated.
@@ -672,9 +673,7 @@ pub(super) fn try_unify<'tcx>(
             if a_args.len() == b_args.len() =>
         {
             try_unify(tcx, a.subtree(a_f), b.subtree(b_f))
-                && a_args
-                    .iter()
-                    .zip(b_args)
+                && iter::zip(a_args, b_args)
                     .all(|(&an, &bn)| try_unify(tcx, a.subtree(an), b.subtree(bn)))
         }
         _ => false,

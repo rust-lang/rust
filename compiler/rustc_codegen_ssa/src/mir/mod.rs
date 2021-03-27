@@ -282,9 +282,7 @@ fn create_funclets<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     IndexVec<mir::BasicBlock, Option<Bx::BasicBlock>>,
     IndexVec<mir::BasicBlock, Option<Bx::Funclet>>,
 ) {
-    block_bxs
-        .iter_enumerated()
-        .zip(cleanup_kinds)
+    iter::zip(block_bxs.iter_enumerated(), cleanup_kinds)
         .map(|((bb, &llbb), cleanup_kind)| {
             match *cleanup_kind {
                 CleanupKind::Funclet if base::wants_msvc_seh(bx.sess()) => {}

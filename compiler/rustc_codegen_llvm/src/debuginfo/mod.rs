@@ -37,6 +37,7 @@ use rustc_target::abi::{LayoutOf, Primitive, Size};
 use libc::c_uint;
 use smallvec::SmallVec;
 use std::cell::RefCell;
+use std::iter;
 use tracing::debug;
 
 mod create_scope_map;
@@ -448,9 +449,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             // Again, only create type information if full debuginfo is enabled
             let template_params: Vec<_> = if cx.sess().opts.debuginfo == DebugInfo::Full {
                 let names = get_parameter_names(cx, generics);
-                substs
-                    .iter()
-                    .zip(names)
+                iter::zip(substs, names)
                     .filter_map(|(kind, name)| {
                         if let GenericArgKind::Type(ty) = kind.unpack() {
                             let actual_type =

@@ -18,6 +18,7 @@ use rustc_span::{
     Span,
 };
 use rustc_target::abi::VariantIdx;
+use std::iter;
 
 use super::borrow_set::BorrowData;
 use super::MirBorrowckCtxt;
@@ -970,13 +971,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let expr = &self.infcx.tcx.hir().expect_expr(hir_id).kind;
         debug!("closure_span: hir_id={:?} expr={:?}", hir_id, expr);
         if let hir::ExprKind::Closure(.., body_id, args_span, _) = expr {
-            for (captured_place, place) in self
-                .infcx
-                .tcx
-                .typeck(def_id.expect_local())
-                .closure_min_captures_flattened(def_id)
-                .zip(places)
-            {
+            for (captured_place, place) in iter::zip(
+                self.infcx.tcx.typeck(def_id.expect_local()).closure_min_captures_flattened(def_id),
+                places,
+            ) {
                 let upvar_hir_id = captured_place.get_root_variable();
                 //FIXME(project-rfc-2229#8): Use better span from captured_place
                 let span = self.infcx.tcx.upvars_mentioned(local_did)?[&upvar_hir_id].span;

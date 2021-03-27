@@ -2,7 +2,7 @@ use crate::ffi::OsStr;
 use crate::os::unix::ffi::OsStrExt;
 use crate::path::Path;
 use crate::sys::cvt;
-use crate::{ascii, fmt, io, mem};
+use crate::{ascii, fmt, io, iter, mem};
 
 // FIXME(#43348): Make libc adapt #[doc(cfg(...))] so we don't need these fake definitions here?
 #[cfg(not(unix))]
@@ -41,7 +41,7 @@ pub(super) unsafe fn sockaddr_un(path: &Path) -> io::Result<(libc::sockaddr_un, 
             &"path must be shorter than SUN_LEN",
         ));
     }
-    for (dst, src) in addr.sun_path.iter_mut().zip(bytes.iter()) {
+    for (dst, src) in iter::zip(&mut addr.sun_path, bytes) {
         *dst = *src as libc::c_char;
     }
     // null byte for pathname addresses is already there because we zeroed the

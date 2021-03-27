@@ -63,6 +63,7 @@ This API is completely unstable and subject to change.
 #![feature(format_args_capture)]
 #![feature(in_band_lifetimes)]
 #![feature(is_sorted)]
+#![feature(iter_zip)]
 #![feature(nll)]
 #![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(try_blocks)]

@@ -18,6 +18,7 @@ use rustc_middle::hir::place::ProjectionKind;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{self, adjustment, TyCtxt};
 use rustc_target::abi::VariantIdx;
+use std::iter;
 
 use crate::mem_categorization as mc;
 
@@ -333,7 +334,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             }
 
             hir::ExprKind::LlvmInlineAsm(ref ia) => {
-                for (o, output) in ia.inner.outputs.iter().zip(ia.outputs_exprs) {
+                for (o, output) in iter::zip(&ia.inner.outputs, ia.outputs_exprs) {
                     if o.is_indirect {
                         self.consume_expr(output);
                     } else {

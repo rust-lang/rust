@@ -5,8 +5,8 @@ use crate::iter::{InPlaceIterable, SourceIter, TrustedLen};
 
 /// An iterator that iterates two other iterators simultaneously.
 ///
-/// This `struct` is created by [`Iterator::zip`]. See its documentation
-/// for more.
+/// This `struct` is created by [`zip`] or [`Iterator::zip`].
+/// See their documentation for more.
 #[derive(Clone)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -31,6 +31,37 @@ impl<A: Iterator, B: Iterator> Zip<A, B> {
         }
         None
     }
+}
+
+/// Converts the arguments to iterators and zips them.
+///
+/// See the documentation of [`Iterator::zip`] for more.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(iter_zip)]
+/// use std::iter::zip;
+///
+/// let xs = [1, 2, 3];
+/// let ys = [4, 5, 6];
+/// for (x, y) in zip(&xs, &ys) {
+///     println!("x:{}, y:{}", x, y);
+/// }
+///
+/// // Nested zips are also possible:
+/// let zs = [7, 8, 9];
+/// for ((x, y), z) in zip(zip(&xs, &ys), &zs) {
+///     println!("x:{}, y:{}, z:{}", x, y, z);
+/// }
+/// ```
+#[unstable(feature = "iter_zip", issue = "83574")]
+pub fn zip<A, B>(a: A, b: B) -> Zip<A::IntoIter, B::IntoIter>
+where
+    A: IntoIterator,
+    B: IntoIterator,
+{
+    ZipImpl::new(a.into_iter(), b.into_iter())
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

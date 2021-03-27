@@ -58,7 +58,7 @@ use core::convert::TryFrom;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::intrinsics::{arith_offset, assume};
-use core::iter::FromIterator;
+use core::iter::{self, FromIterator};
 use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop, MaybeUninit};
 use core::ops::{self, Index, IndexMut, Range, RangeBounds};
@@ -2268,11 +2268,8 @@ impl<T: Clone, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
         // - caller guaratees that src is a valid index
         let to_clone = unsafe { this.get_unchecked(src) };
 
-        to_clone
-            .iter()
-            .cloned()
-            .zip(spare.iter_mut())
-            .map(|(src, dst)| dst.write(src))
+        iter::zip(to_clone, spare)
+            .map(|(src, dst)| dst.write(src.clone()))
             // Note:
             // - Element was just initialized with `MaybeUninit::write`, so it's ok to increace len
             // - len is increased after each element to prevent leaks (see issue #82533)

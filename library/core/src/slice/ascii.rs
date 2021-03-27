@@ -1,5 +1,6 @@
 //! Operations on ASCII `[u8]`.
 
+use crate::iter;
 use crate::mem;
 
 #[lang = "slice_u8"]
@@ -19,7 +20,7 @@ impl [u8] {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn eq_ignore_ascii_case(&self, other: &[u8]) -> bool {
-        self.len() == other.len() && self.iter().zip(other).all(|(a, b)| a.eq_ignore_ascii_case(b))
+        self.len() == other.len() && iter::zip(self, other).all(|(a, b)| a.eq_ignore_ascii_case(b))
     }
 
     /// Converts this slice to its ASCII upper case equivalent in-place.
