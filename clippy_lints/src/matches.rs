@@ -1723,7 +1723,13 @@ mod redundant_pattern_match {
         arms: &[Arm<'_>],
         keyword: &'static str,
     ) {
-        let good_method = match arms[0].pat.kind {
+        // also look inside refs
+        let mut kind = &arms[0].pat.kind;
+        // if we have &None for example, peel it so we can detect "if let None = x"
+        if let PatKind::Ref(inner, _mutability) = kind {
+            kind = &inner.kind;
+        }
+        let good_method = match kind {
             PatKind::TupleStruct(ref path, ref patterns, _) if patterns.len() == 1 => {
                 if let PatKind::Wild = patterns[0].kind {
                     if match_qpath(path, &paths::RESULT_OK) {
