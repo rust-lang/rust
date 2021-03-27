@@ -1765,22 +1765,18 @@ impl<'a> Parser<'a> {
     /// Parses an `if` expression (`if` token already eaten).
     fn parse_if_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let lo = self.prev_token.span;
-        let cond = self.parse_cond_expr()?.into_inner();
+        let mut cond = self.parse_cond_expr()?.into_inner();
 
-        let cond = if let ExprKind::Paren(paren) = &cond.kind {
+        if let ExprKind::Paren(paren) = &cond.kind {
             let peeled = paren.peel_parens();
             if let ExprKind::Let(_, _) = peeled.kind {
                 // A user has written `if (let <pat> = <expr>)` (with some number of parens), we
                 // want to avoid confusing them with mentions of nightly features. If this logic is
                 // changed, you will also likely need to touch `unused::UnusedParens::check_expr`.
                 self.if_let_expr_with_parens(&cond, peeled);
-                cond.peel_parens_owned()
-            } else {
-                cond
+                cond = cond.peel_parens_owned();
             }
-        } else {
-            cond
-        };
+        }
 
         let cond = P(cond);
 
