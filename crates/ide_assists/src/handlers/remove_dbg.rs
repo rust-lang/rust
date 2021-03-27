@@ -1,5 +1,5 @@
 use syntax::{
-    ast::{self, AstNode},
+    ast::{self, AstNode, AstToken},
     match_ast, SyntaxElement, TextRange, TextSize, T,
 };
 
@@ -24,11 +24,25 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let macro_call = ctx.find_node_at_offset::<ast::MacroCall>()?;
     let new_contents = adjusted_macro_contents(&macro_call)?;
 
-    let macro_text_range = macro_call.syntax().text_range();
-    let macro_end = if macro_call.semicolon_token().is_some() {
-        macro_text_range.end() - TextSize::of(';')
+    let macro_text_range = if new_contents.is_empty() {
+        let parent = macro_call.syntax().parent()?;
+
+        let start = parent
+            .prev_sibling_or_token()
+            .and_then(|el| {
+                Some(el.into_token().and_then(ast::Whitespace::cast)?.syntax().text_range().start())
+            })
+            .unwrap_or(parent.text_range().start());
+        let end = parent.text_range().end();
+
+        TextRange::new(start, end)
     } else {
-        macro_text_range.end()
+        macro_call.syntax().text_range()
+    };
+
+    let macro_end = match macro_call.semicolon_token() {
+        Some(_) => macro_text_range.end() - TextSize::of(';'),
+        None => macro_text_range.end(),
     };
 
     acc.add(
@@ -417,6 +431,14 @@ fn main() {
 
     #[test]
     fn test_remove_empty_dbg() {
-        check_assist(remove_dbg, r#"$0dbg!()"#, r#""#);
+        check_assist(remove_dbg, r#"fn foo() { $0dbg!(); }"#, r#"fn foo() { }"#);
+        check_assist(
+            remove_dbg,
+            r#"fn foo() {
+$0dbg!();
+}"#,
+            r#"fn foo() {
+}"#,
+        );
     }
 }
