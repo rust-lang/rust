@@ -548,6 +548,11 @@ pub(crate) unsafe fn optimize(
                     llvm::LLVMRustAddPass(fpm, find_pass("lint").unwrap());
                     continue;
                 }
+                if pass_name == "insert-gcov-profiling" || pass_name == "instrprof" {
+                    // Instrumentation should be inserted before optimization.
+                    llvm::LLVMRustAddPass(mpm, find_pass(pass_name).unwrap());
+                    continue;
+                }
 
                 if let Some(pass) = find_pass(pass_name) {
                     extra_passes.push(pass);

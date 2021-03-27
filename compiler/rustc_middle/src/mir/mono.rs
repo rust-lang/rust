@@ -84,14 +84,7 @@ impl<'tcx> MonoItem<'tcx> {
             .debugging_opts
             .inline_in_all_cgus
             .unwrap_or_else(|| tcx.sess.opts.optimize != OptLevel::No)
-            && !tcx.sess.link_dead_code()
-            && !tcx.sess.instrument_coverage();
-        // Disabled for `-Z instrument-coverage` because some LLVM optimizations can sometimes
-        // break coverage results. A test that failed at certain optimization levels is now
-        // validated at that optimization level (via `compile-flags` directive):
-        //   * `src/test/run-make-fulldeps/coverage/closure.rs` broke with `-C opt-level=2`, and
-        //     also required disabling `internalize_symbols` in
-        //     `rustc_mir/monomorphize/partitioning/mod.rs`
+            && !tcx.sess.link_dead_code();
 
         match *self {
             MonoItem::Fn(ref instance) => {
