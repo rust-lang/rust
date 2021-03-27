@@ -1154,7 +1154,7 @@ impl fmt::Debug for Metadata {
             .field("modified", &self.modified())
             .field("accessed", &self.accessed())
             .field("created", &self.created())
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
