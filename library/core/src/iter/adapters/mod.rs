@@ -51,7 +51,7 @@ pub use self::map_while::MapWhile;
 #[unstable(feature = "trusted_random_access", issue = "none")]
 pub use self::zip::TrustedRandomAccess;
 
-#[unstable(feature = "iter_zip", issue = "none")]
+#[unstable(feature = "iter_zip", issue = "83574")]
 pub use self::zip::zip;
 
 /// This trait provides transitive access to source-stage in an interator-adapter pipeline

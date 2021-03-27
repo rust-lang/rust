@@ -389,7 +389,7 @@ pub use self::traits::{
     DoubleEndedIterator, ExactSizeIterator, Extend, FromIterator, IntoIterator, Product, Sum,
 };
 
-#[unstable(feature = "iter_zip", issue = "none")]
+#[unstable(feature = "iter_zip", issue = "83574")]
 pub use self::adapters::zip;
 #[stable(feature = "iter_cloned", since = "1.1.0")]
 pub use self::adapters::Cloned;

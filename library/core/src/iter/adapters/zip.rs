@@ -55,7 +55,7 @@ impl<A: Iterator, B: Iterator> Zip<A, B> {
 ///     println!("x:{}, y:{}, z:{}", x, y, z);
 /// }
 /// ```
-#[unstable(feature = "iter_zip", issue = "none")]
+#[unstable(feature = "iter_zip", issue = "83574")]
 pub fn zip<A, B>(a: A, b: B) -> Zip<A::IntoIter, B::IntoIter>
 where
     A: IntoIterator,
