@@ -1,5 +1,5 @@
 warning: the feature `const_generics` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/issue-56445.rs:3:27
+  --> $DIR/issue-56445-1.rs:3:27
    |
 LL | #![cfg_attr(full, feature(const_generics))]
    |                           ^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | #![cfg_attr(full, feature(const_generics))]
    = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
 
 error[E0771]: use of non-static lifetime `'a` in const generic
-  --> $DIR/issue-56445.rs:8:26
+  --> $DIR/issue-56445-1.rs:8:26
    |
 LL | struct Bug<'a, const S: &'a str>(PhantomData<&'a ()>);
    |                          ^^
