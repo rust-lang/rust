@@ -11,8 +11,8 @@ pub fn target() -> Target {
     // Mark all dynamic libraries and executables as compatible with the larger 4GiB address
     // space available to x86 Windows binaries on x86_64.
     base.pre_link_args
-        .get_mut(&LinkerFlavor::Gcc)
-        .unwrap()
+        .entry(LinkerFlavor::Gcc)
+        .or_default()
         .push("-Wl,--large-address-aware".to_string());
 
     Target {
