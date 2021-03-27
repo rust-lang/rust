@@ -422,10 +422,13 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for RwLock<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + fmt::Debug> fmt::Debug for RwLock<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut d = f.debug_struct("RwLock");
         match self.try_read() {
-            Ok(guard) => f.debug_struct("RwLock").field("data", &&*guard).finish(),
+            Ok(guard) => {
+                d.field("data", &&*guard);
+            }
             Err(TryLockError::Poisoned(err)) => {
-                f.debug_struct("RwLock").field("data", &&**err.get_ref()).finish()
+                d.field("data", &&**err.get_ref());
             }
             Err(TryLockError::WouldBlock) => {
                 struct LockedPlaceholder;
@@ -434,10 +437,11 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for RwLock<T> {
                         f.write_str("<locked>")
                     }
                 }
-
-                f.debug_struct("RwLock").field("data", &LockedPlaceholder).finish()
+                d.field("data", &LockedPlaceholder);
             }
         }
+        d.field("poisoned", &self.poison.get());
+        d.finish_non_exhaustive()
     }
 }
 
