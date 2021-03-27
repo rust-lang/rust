@@ -74,7 +74,7 @@ pub(crate) enum OverflowableItem<'a> {
     MacroArg(&'a MacroArg),
     NestedMetaItem(&'a ast::NestedMetaItem),
     SegmentParam(&'a SegmentParam<'a>),
-    StructField(&'a ast::StructField),
+    FieldDef(&'a ast::FieldDef),
     TuplePatField(&'a TuplePatField<'a>),
     Ty(&'a ast::Ty),
 }
@@ -96,7 +96,7 @@ impl<'a> OverflowableItem<'a> {
         match self {
             OverflowableItem::Expr(ast::Expr { attrs, .. })
             | OverflowableItem::GenericParam(ast::GenericParam { attrs, .. }) => !attrs.is_empty(),
-            OverflowableItem::StructField(ast::StructField { attrs, .. }) => !attrs.is_empty(),
+            OverflowableItem::FieldDef(ast::FieldDef { attrs, .. }) => !attrs.is_empty(),
             OverflowableItem::MacroArg(MacroArg::Expr(expr)) => !expr.attrs.is_empty(),
             OverflowableItem::MacroArg(MacroArg::Item(item)) => !item.attrs.is_empty(),
             _ => false,
@@ -113,7 +113,7 @@ impl<'a> OverflowableItem<'a> {
             OverflowableItem::MacroArg(macro_arg) => f(*macro_arg),
             OverflowableItem::NestedMetaItem(nmi) => f(*nmi),
             OverflowableItem::SegmentParam(sp) => f(*sp),
-            OverflowableItem::StructField(sf) => f(*sf),
+            OverflowableItem::FieldDef(sf) => f(*sf),
             OverflowableItem::TuplePatField(pat) => f(*pat),
             OverflowableItem::Ty(ty) => f(*ty),
         }
@@ -238,7 +238,7 @@ macro_rules! impl_into_overflowable_item_for_rustfmt_types {
     }
 }
 
-impl_into_overflowable_item_for_ast_node!(Expr, GenericParam, NestedMetaItem, StructField, Ty);
+impl_into_overflowable_item_for_ast_node!(Expr, GenericParam, NestedMetaItem, FieldDef, Ty);
 impl_into_overflowable_item_for_rustfmt_types!([MacroArg], [SegmentParam, TuplePatField]);
 
 pub(crate) fn into_overflowable_list<'a, T>(

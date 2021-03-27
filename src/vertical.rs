@@ -33,7 +33,7 @@ pub(crate) trait AlignedItem {
     ) -> Option<String>;
 }
 
-impl AlignedItem for ast::StructField {
+impl AlignedItem for ast::FieldDef {
     fn skip(&self) -> bool {
         contains_skip(&self.attrs)
     }
@@ -72,7 +72,7 @@ impl AlignedItem for ast::StructField {
     }
 }
 
-impl AlignedItem for ast::Field {
+impl AlignedItem for ast::ExprField {
     fn skip(&self) -> bool {
         contains_skip(&self.attrs)
     }

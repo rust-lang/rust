@@ -1,4 +1,4 @@
-use rustc_ast::ast::{self, BindingMode, FieldPat, Pat, PatKind, RangeEnd, RangeSyntax};
+use rustc_ast::ast::{self, BindingMode, PatField, Pat, PatKind, RangeEnd, RangeSyntax};
 use rustc_ast::ptr;
 use rustc_span::{BytePos, Span};
 
@@ -259,7 +259,7 @@ impl Rewrite for Pat {
 
 fn rewrite_struct_pat(
     path: &ast::Path,
-    fields: &[ast::FieldPat],
+    fields: &[ast::PatField],
     ellipsis: bool,
     span: Span,
     context: &RewriteContext<'_>,
@@ -334,7 +334,7 @@ fn rewrite_struct_pat(
     Some(format!("{} {{{}}}", path_str, fields_str))
 }
 
-impl Rewrite for FieldPat {
+impl Rewrite for PatField {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         let hi_pos = if let Some(last) = self.attrs.last() {
             last.span.hi()

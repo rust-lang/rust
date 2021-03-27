@@ -53,7 +53,7 @@ macro_rules! implement_spanned {
 // Implement `Spanned` for structs with `attrs` field.
 implement_spanned!(ast::AssocItem);
 implement_spanned!(ast::Expr);
-implement_spanned!(ast::Field);
+implement_spanned!(ast::ExprField);
 implement_spanned!(ast::ForeignItem);
 implement_spanned!(ast::Item);
 implement_spanned!(ast::Local);
@@ -143,7 +143,7 @@ impl Spanned for ast::GenericParam {
     }
 }
 
-impl Spanned for ast::StructField {
+impl Spanned for ast::FieldDef {
     fn span(&self) -> Span {
         span_with_attrs_lo_hi!(self, self.span.lo(), self.ty.span.hi())
     }
