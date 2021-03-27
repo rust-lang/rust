@@ -1,6 +1,6 @@
 use crate::def::{CtorKind, DefKind, Res};
-use crate::def_id::DefId;
-crate use crate::hir_id::{HirId, ItemLocalId};
+use crate::def_id::{DefId, LocalDefId};
+crate use crate::hir_id::{HirId, ItemLocalId, OwnerId};
 use crate::intravisit::FnKind;
 use crate::LangItem;
 
@@ -16,7 +16,7 @@ use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable_Generic;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{def_id::LocalDefId, BytePos};
+use rustc_span::BytePos;
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use rustc_target::spec::abi::Abi;
@@ -714,7 +714,7 @@ pub struct OwnerInfo<'hir> {
     /// Contents of the HIR.
     pub nodes: OwnerNodes<'hir>,
     /// Map from each nested owner to its parent's local id.
-    pub parenting: FxHashMap<LocalDefId, ItemLocalId>,
+    pub parenting: FxHashMap<OwnerId, ItemLocalId>,
     /// Collected attributes of the HIR nodes.
     pub attrs: AttributeMap<'hir>,
     /// Map indicating what traits are in scope for places where this
@@ -1971,14 +1971,14 @@ pub struct FnSig<'hir> {
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Debug)]
 pub struct TraitItemId {
-    pub def_id: LocalDefId,
+    pub def_id: OwnerId,
 }
 
 impl TraitItemId {
     #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
-        HirId::make_owner(self.def_id)
+        self.def_id.hir_id()
     }
 }
 
@@ -1989,7 +1989,7 @@ impl TraitItemId {
 #[derive(Debug)]
 pub struct TraitItem<'hir> {
     pub ident: Ident,
-    pub def_id: LocalDefId,
+    pub def_id: OwnerId,
     pub generics: Generics<'hir>,
     pub kind: TraitItemKind<'hir>,
     pub span: Span,
@@ -1999,7 +1999,7 @@ impl TraitItem<'_> {
     #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
-        HirId::make_owner(self.def_id)
+        self.def_id.hir_id()
     }
 
     pub fn trait_item_id(&self) -> TraitItemId {
@@ -2034,14 +2034,14 @@ pub enum TraitItemKind<'hir> {
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Debug)]
 pub struct ImplItemId {
-    pub def_id: LocalDefId,
+    pub def_id: OwnerId,
 }
 
 impl ImplItemId {
     #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
-        HirId::make_owner(self.def_id)
+        self.def_id.hir_id()
     }
 }
 
@@ -2049,7 +2049,7 @@ impl ImplItemId {
 #[derive(Debug)]
 pub struct ImplItem<'hir> {
     pub ident: Ident,
-    pub def_id: LocalDefId,
+    pub def_id: OwnerId,
     pub vis: Visibility<'hir>,
     pub defaultness: Defaultness,
     pub generics: Generics<'hir>,
@@ -2061,7 +2061,7 @@ impl ImplItem<'_> {
     #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
-        HirId::make_owner(self.def_id)
+        self.def_id.hir_id()
     }
 
     pub fn impl_item_id(&self) -> ImplItemId {
@@ -2636,14 +2636,14 @@ impl VariantData<'hir> {
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Debug, Hash)]
 pub struct ItemId {
-    pub def_id: LocalDefId,
+    pub def_id: OwnerId,
 }
 
 impl ItemId {
     #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
-        HirId::make_owner(self.def_id)
+        self.def_id.hir_id()
     }
 }
 
@@ -2653,7 +2653,7 @@ impl ItemId {
 #[derive(Debug)]
 pub struct Item<'hir> {
     pub ident: Ident,
-    pub def_id: LocalDefId,
+    pub def_id: OwnerId,
     pub kind: ItemKind<'hir>,
     pub vis: Visibility<'hir>,
     pub span: Span,
@@ -2663,7 +2663,7 @@ impl Item<'_> {
     #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
-        HirId::make_owner(self.def_id)
+        self.def_id.hir_id()
     }
 
     pub fn item_id(&self) -> ItemId {
@@ -2873,14 +2873,14 @@ pub enum AssocItemKind {
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Debug)]
 pub struct ForeignItemId {
-    pub def_id: LocalDefId,
+    pub def_id: OwnerId,
 }
 
 impl ForeignItemId {
     #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
-        HirId::make_owner(self.def_id)
+        self.def_id.hir_id()
     }
 }
 
@@ -2902,7 +2902,7 @@ pub struct ForeignItemRef {
 pub struct ForeignItem<'hir> {
     pub ident: Ident,
     pub kind: ForeignItemKind<'hir>,
-    pub def_id: LocalDefId,
+    pub def_id: OwnerId,
     pub span: Span,
     pub vis: Visibility<'hir>,
 }
@@ -2911,7 +2911,7 @@ impl ForeignItem<'_> {
     #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
-        HirId::make_owner(self.def_id)
+        self.def_id.hir_id()
     }
 
     pub fn foreign_item_id(&self) -> ForeignItemId {
@@ -2943,7 +2943,7 @@ pub struct Upvar {
 #[derive(Encodable, Decodable, Clone, Debug)]
 pub struct TraitCandidate {
     pub def_id: DefId,
-    pub import_ids: SmallVec<[LocalDefId; 1]>,
+    pub import_ids: SmallVec<[OwnerId; 1]>,
 }
 
 #[derive(Copy, Clone, Debug, HashStable_Generic)]
@@ -3010,7 +3010,7 @@ impl<'hir> OwnerNode<'hir> {
         }
     }
 
-    pub fn def_id(self) -> LocalDefId {
+    pub fn def_id(self) -> OwnerId {
         match self {
             OwnerNode::Item(Item { def_id, .. })
             | OwnerNode::TraitItem(TraitItem { def_id, .. })
@@ -3201,7 +3201,7 @@ impl<'hir> Node<'hir> {
             Node::Item(Item { def_id, .. })
             | Node::TraitItem(TraitItem { def_id, .. })
             | Node::ImplItem(ImplItem { def_id, .. })
-            | Node::ForeignItem(ForeignItem { def_id, .. }) => Some(HirId::make_owner(*def_id)),
+            | Node::ForeignItem(ForeignItem { def_id, .. }) => Some(def_id.hir_id()),
             Node::Field(FieldDef { hir_id, .. })
             | Node::AnonConst(AnonConst { hir_id, .. })
             | Node::Expr(Expr { hir_id, .. })

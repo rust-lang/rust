@@ -145,7 +145,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     pub(super) fn lower_item_ref(&mut self, i: &Item) -> SmallVec<[hir::ItemId; 1]> {
-        let mut node_ids = smallvec![hir::ItemId { def_id: self.resolver.local_def_id(i.id) }];
+        let def_id = self.resolver.local_def_id(i.id);
+        let mut node_ids = smallvec![hir::ItemId { def_id: hir::OwnerId { def_id } }];
         if let ItemKind::Use(ref use_tree) = &i.kind {
             self.lower_item_id_use_tree(use_tree, i.id, &mut node_ids);
         }
@@ -161,7 +162,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         match tree.kind {
             UseTreeKind::Nested(ref nested_vec) => {
                 for &(ref nested, id) in nested_vec {
-                    vec.push(hir::ItemId { def_id: self.resolver.local_def_id(id) });
+                    let def_id = self.resolver.local_def_id(id);
+                    vec.push(hir::ItemId { def_id: hir::OwnerId { def_id } });
                     self.lower_item_id_use_tree(nested, id, vec);
                 }
             }
@@ -170,7 +172,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 for (_, &id) in
                     iter::zip(self.expect_full_res_from_use(base_id).skip(1), &[id1, id2])
                 {
-                    vec.push(hir::ItemId { def_id: self.resolver.local_def_id(id) });
+                    let def_id = self.resolver.local_def_id(id);
+                    vec.push(hir::ItemId { def_id: hir::OwnerId { def_id } });
                 }
             }
         }
@@ -238,7 +241,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                     let (generics, decl) = this.add_in_band_defs(
                         generics,
-                        fn_def_id,
+                        hir::OwnerId { def_id: fn_def_id },
                         AnonymousLifetimeMode::PassThrough,
                         |this, idty| {
                             let ret_id = asyncness.opt_return_id();
@@ -499,7 +502,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         }
 
                         let item = hir::Item {
-                            def_id: new_id,
+                            def_id: hir::OwnerId { def_id: new_id },
                             ident: this.lower_ident(ident),
                             kind,
                             vis,
@@ -574,7 +577,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         }
 
                         let item = hir::Item {
-                            def_id: new_hir_id,
+                            def_id: hir::OwnerId { def_id: new_hir_id },
                             ident: this.lower_ident(ident),
                             kind,
                             vis,
@@ -686,8 +689,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_foreign_item_ref(&mut self, i: &ForeignItem) -> hir::ForeignItemRef {
+        let def_id = self.resolver.local_def_id(i.id);
         hir::ForeignItemRef {
-            id: hir::ForeignItemId { def_id: self.resolver.local_def_id(i.id) },
+            id: hir::ForeignItemId { def_id: hir::OwnerId { def_id } },
             ident: self.lower_ident(i.ident),
             span: self.lower_span(i.span),
         }
@@ -826,7 +830,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             AssocItemKind::MacCall(..) => unimplemented!(),
         };
-        let id = hir::TraitItemId { def_id: self.resolver.local_def_id(i.id) };
+        let def_id = self.resolver.local_def_id(i.id);
+        let id = hir::TraitItemId { def_id: hir::OwnerId { def_id } };
         let defaultness = hir::Defaultness::Default { has_value: has_default };
         hir::TraitItemRef {
             id,
@@ -843,7 +848,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_impl_item(&mut self, i: &AssocItem) -> &'hir hir::ImplItem<'hir> {
-        let impl_item_def_id = self.resolver.local_def_id(i.id);
+        let impl_item_def_id = hir::OwnerId { def_id: self.resolver.local_def_id(i.id) };
 
         let (generics, kind) = match &i.kind {
             AssocItemKind::Const(_, ty, expr) => {
@@ -912,8 +917,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // Since `default impl` is not yet implemented, this is always true in impls.
         let has_value = true;
         let (defaultness, _) = self.lower_defaultness(i.kind.defaultness(), has_value);
+        let def_id = self.resolver.local_def_id(i.id);
         hir::ImplItemRef {
-            id: hir::ImplItemId { def_id: self.resolver.local_def_id(i.id) },
+            id: hir::ImplItemId { def_id: hir::OwnerId { def_id } },
             ident: self.lower_ident(i.ident),
             span: self.lower_span(i.span),
             defaultness,
@@ -1248,7 +1254,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         generics: &Generics,
         sig: &FnSig,
-        fn_def_id: LocalDefId,
+        fn_def_id: hir::OwnerId,
         impl_trait_return_allow: bool,
         is_async: Option<NodeId>,
     ) -> (hir::Generics<'hir>, hir::FnSig<'hir>) {
@@ -1260,7 +1266,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             |this, idty| {
                 this.lower_fn_decl(
                     &sig.decl,
-                    Some((fn_def_id.to_def_id(), idty)),
+                    Some((fn_def_id.def_id.to_def_id(), idty)),
                     impl_trait_return_allow,
                     is_async,
                 )

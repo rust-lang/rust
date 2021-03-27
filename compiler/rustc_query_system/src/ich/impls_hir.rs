@@ -19,7 +19,7 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
             NodeIdHashingMode::HashDefPath => {
                 let hir::HirId { owner, local_id } = hir_id;
 
-                hcx.local_def_path_hash(owner).hash_stable(hcx, hasher);
+                hcx.local_def_path_hash(owner.def_id).hash_stable(hcx, hasher);
                 local_id.hash_stable(hcx, hasher);
             }
         }

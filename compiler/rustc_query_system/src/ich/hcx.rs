@@ -50,7 +50,7 @@ pub(super) enum BodyResolver<'tcx> {
     Forbidden,
     Traverse {
         hash_bodies: bool,
-        owner: LocalDefId,
+        owner: hir::OwnerId,
         bodies: &'tcx IndexVec<hir::ItemLocalId, Option<&'tcx hir::Body<'tcx>>>,
     },
 }
@@ -121,7 +121,7 @@ impl<'a> StableHashingContext<'a> {
     pub fn with_hir_bodies(
         &mut self,
         hash_bodies: bool,
-        owner: LocalDefId,
+        owner: hir::OwnerId,
         bodies: &'a IndexVec<hir::ItemLocalId, Option<&'a hir::Body<'a>>>,
         f: impl FnOnce(&mut Self),
     ) {

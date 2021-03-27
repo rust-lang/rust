@@ -1,11 +1,41 @@
 use crate::def_id::{LocalDefId, CRATE_DEF_INDEX};
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::{Idx, IndexVec};
 use std::fmt;
 
+/// Uniquely identifies an item-like node in the HIR of the current crate.
+/// It wraps the `LocalDefId` of `hir::Item`, `hir::TraitItem`, `hir::ImplItem` or
+/// `hir::ForeignItem`.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
+#[derive(Encodable, Decodable)]
+pub struct OwnerId {
+    pub def_id: LocalDefId,
+}
+
+impl OwnerId {
+    #[inline]
+    pub const fn new(def_id: LocalDefId) -> Self {
+        Self { def_id }
+    }
+
+    #[inline]
+    pub const fn hir_id(self) -> HirId {
+        HirId { owner: self, local_id: ItemLocalId::from_u32(0) }
+    }
+}
+
+impl Idx for OwnerId {
+    fn new(idx: usize) -> Self {
+        Self::new(LocalDefId::new(idx))
+    }
+
+    fn index(self) -> usize {
+        self.def_id.index()
+    }
+}
+
 /// Uniquely identifies a node in the HIR of the current crate. It is
-/// composed of the `owner`, which is the `LocalDefId` of the directly enclosing
-/// `hir::Item`, `hir::TraitItem`, or `hir::ImplItem` (i.e., the closest "item-like"),
-/// and the `local_id` which is unique within the given owner.
+/// composed of the `owner`, which is the `OwnerId` of the directly enclosing
+/// "item-like", and the `local_id` which is unique within the given owner.
 ///
 /// This two-level structure makes for more stable values: One can move an item
 /// around within the source code, or add or remove stuff before it, without
@@ -15,23 +45,22 @@ use std::fmt;
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 #[derive(Encodable, Decodable)]
 pub struct HirId {
-    pub owner: LocalDefId,
+    pub owner: OwnerId,
     pub local_id: ItemLocalId,
 }
 
 impl HirId {
-    pub fn expect_owner(self) -> LocalDefId {
+    pub fn expect_owner(self) -> OwnerId {
         assert_eq!(self.local_id.index(), 0);
         self.owner
     }
 
-    pub fn as_owner(self) -> Option<LocalDefId> {
+    pub fn as_owner(self) -> Option<OwnerId> {
         if self.local_id.index() == 0 { Some(self.owner) } else { None }
     }
 
-    #[inline]
-    pub fn make_owner(owner: LocalDefId) -> Self {
-        Self { owner, local_id: ItemLocalId::from_u32(0) }
+    pub fn make_owner(owner: LocalDefId) -> HirId {
+        HirId { owner: OwnerId { def_id: owner }, local_id: ItemLocalId::new(0) }
     }
 }
 
@@ -61,20 +90,21 @@ impl ItemLocalId {
     pub const INVALID: ItemLocalId = ItemLocalId::MAX;
 }
 
+/// The `OwnerId` corresponding to `CRATE_NODE_ID` and `CRATE_DEF_INDEX`.
+pub const CRATE_OWNER_ID: OwnerId =
+    OwnerId { def_id: LocalDefId { local_def_index: CRATE_DEF_INDEX } };
+
 /// The `HirId` corresponding to `CRATE_NODE_ID` and `CRATE_DEF_INDEX`.
-pub const CRATE_HIR_ID: HirId = HirId {
-    owner: LocalDefId { local_def_index: CRATE_DEF_INDEX },
-    local_id: ItemLocalId::from_u32(0),
-};
+pub const CRATE_HIR_ID: HirId = CRATE_OWNER_ID.hir_id();
 
 /// N.B. This collection is currently unused, but will be used by #72015 and future PRs.
 #[derive(Clone, Default, Debug, Encodable, Decodable)]
 pub struct HirIdVec<T> {
-    map: IndexVec<LocalDefId, IndexVec<ItemLocalId, T>>,
+    map: IndexVec<OwnerId, IndexVec<ItemLocalId, T>>,
 }
 
 impl<T> HirIdVec<T> {
-    pub fn push_owner(&mut self, id: LocalDefId) {
+    pub fn push_owner(&mut self, id: OwnerId) {
         self.map.ensure_contains_elem(id, IndexVec::new);
     }
 
@@ -105,7 +135,7 @@ impl<T> HirIdVec<T> {
         self.map.get(id.owner)?.get(id.local_id)
     }
 
-    pub fn get_owner(&self, id: LocalDefId) -> &IndexVec<ItemLocalId, T> {
+    pub fn get_owner(&self, id: OwnerId) -> &IndexVec<ItemLocalId, T> {
         &self.map[id]
     }
 

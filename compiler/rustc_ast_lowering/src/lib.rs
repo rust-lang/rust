@@ -154,7 +154,7 @@ struct LoweringContext<'a, 'hir: 'a> {
     /// vector.
     in_scope_lifetimes: Vec<ParamName>,
 
-    current_hir_id_owner: LocalDefId,
+    current_hir_id_owner: hir::OwnerId,
     item_local_id_counter: hir::ItemLocalId,
     node_id_to_hir_id: IndexVec<NodeId, Option<hir::HirId>>,
 
@@ -220,7 +220,7 @@ enum ImplTraitContext<'b, 'a> {
     /// equivalent to a fresh universal parameter like `fn foo<T: Debug>(x: T)`.
     ///
     /// Newly generated parameters should be inserted into the given `Vec`.
-    Universal(&'b mut Vec<hir::GenericParam<'a>>, LocalDefId),
+    Universal(&'b mut Vec<hir::GenericParam<'a>>, hir::OwnerId),
 
     /// Treat `impl Trait` as shorthand for a new opaque type.
     /// Example: `fn foo() -> impl Debug`, where `impl Debug` is conceptually
@@ -309,7 +309,7 @@ pub fn lower_crate<'a, 'hir>(
         is_in_trait_impl: false,
         is_in_dyn_type: false,
         anonymous_lifetime_mode: AnonymousLifetimeMode::PassThrough,
-        current_hir_id_owner: CRATE_DEF_ID,
+        current_hir_id_owner: hir::CRATE_OWNER_ID,
         item_local_id_counter: hir::ItemLocalId::new(0),
         node_id_to_hir_id: IndexVec::new(),
         local_node_ids: Vec::new(),
@@ -452,7 +452,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let current_attrs = std::mem::take(&mut self.attrs);
         let current_bodies = std::mem::take(&mut self.bodies);
         let current_node_ids = std::mem::take(&mut self.local_node_ids);
-        let current_owner = std::mem::replace(&mut self.current_hir_id_owner, def_id);
+        let current_owner =
+            std::mem::replace(&mut self.current_hir_id_owner, hir::OwnerId { def_id });
         let current_local_counter =
             std::mem::replace(&mut self.item_local_id_counter, hir::ItemLocalId::new(1));
 
@@ -623,7 +624,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// Mark a span as relative to the current owning item.
     fn lower_span(&self, span: Span) -> Span {
         if self.sess.opts.debugging_opts.incremental_relative_spans {
-            span.with_parent(Some(self.current_hir_id_owner))
+            span.with_parent(Some(self.current_hir_id_owner.def_id))
         } else {
             // Do not make spans relative when not using incremental compilation.
             span
@@ -779,13 +780,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn add_in_band_defs<T>(
         &mut self,
         generics: &Generics,
-        parent_def_id: LocalDefId,
+        parent_def_id: hir::OwnerId,
         anonymous_lifetime_mode: AnonymousLifetimeMode,
         f: impl FnOnce(&mut Self, &mut Vec<hir::GenericParam<'hir>>) -> T,
     ) -> (hir::Generics<'hir>, T) {
         let (in_band_defs, (mut lowered_generics, res)) =
             self.with_in_scope_lifetime_defs(&generics.params, |this| {
-                this.collect_in_band_defs(parent_def_id, anonymous_lifetime_mode, |this| {
+                this.collect_in_band_defs(parent_def_id.def_id, anonymous_lifetime_mode, |this| {
                     let mut params = Vec::new();
                     // Note: it is necessary to lower generics *before* calling `f`.
                     // When lowering `async fn`, there's a final step when lowering
@@ -1469,7 +1470,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         debug!("lower_opaque_impl_trait: lifetimes={:#?}", lifetimes);
 
         // `impl Trait` now just becomes `Foo<'a, 'b, ..>`.
-        hir::TyKind::OpaqueDef(hir::ItemId { def_id: opaque_ty_def_id }, lifetimes)
+        hir::TyKind::OpaqueDef(
+            hir::ItemId { def_id: hir::OwnerId { def_id: opaque_ty_def_id } },
+            lifetimes,
+        )
     }
 
     /// Registers a new opaque type with the proper `NodeId`s and

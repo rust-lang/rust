@@ -117,12 +117,12 @@ pub struct ParentOwnerIterator<'hir> {
 }
 
 impl<'hir> Iterator for ParentOwnerIterator<'hir> {
-    type Item = (LocalDefId, OwnerNode<'hir>);
+    type Item = (OwnerId, OwnerNode<'hir>);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.current_id.local_id.index() != 0 {
             self.current_id.local_id = ItemLocalId::new(0);
-            if let Some(node) = self.map.tcx.hir_owner(self.current_id.owner) {
+            if let Some(node) = self.map.tcx.hir_owner(self.current_id.owner.def_id) {
                 return Some((self.current_id.owner, node.node));
             }
         }
@@ -131,7 +131,7 @@ impl<'hir> Iterator for ParentOwnerIterator<'hir> {
         }
         loop {
             // There are nodes that do not have entries, so we need to skip them.
-            let parent_id = self.map.def_key(self.current_id.owner).parent;
+            let parent_id = self.map.def_key(self.current_id.owner.def_id).parent;
 
             let parent_id = parent_id.map_or(CRATE_HIR_ID.owner, |local_def_index| {
                 let def_id = LocalDefId { local_def_index };
@@ -140,7 +140,7 @@ impl<'hir> Iterator for ParentOwnerIterator<'hir> {
             self.current_id = HirId::make_owner(parent_id);
 
             // If this `HirId` doesn't have an entry, skip it and look for its `parent_id`.
-            if let Some(node) = self.map.tcx.hir_owner(self.current_id.owner) {
+            if let Some(node) = self.map.tcx.hir_owner(self.current_id.owner.def_id) {
                 return Some((self.current_id.owner, node.node));
             }
         }
@@ -514,6 +514,7 @@ impl<'hir> Map<'hir> {
             .owners
             .iter_enumerated()
             .flat_map(move |(owner, owner_info)| {
+                let owner = OwnerId { def_id: owner };
                 let bodies = &owner_info.as_ref()?.nodes.bodies;
                 Some(bodies.iter_enumerated().filter_map(move |(local_id, body)| {
                     if body.is_none() {
@@ -576,9 +577,9 @@ impl<'hir> Map<'hir> {
         self.attrs(CRATE_HIR_ID)
     }
 
-    pub fn get_module(&self, module: LocalDefId) -> (&'hir Mod<'hir>, Span, HirId) {
-        let hir_id = HirId::make_owner(module);
-        match self.tcx.hir_owner(module).map(|o| o.node) {
+    pub fn get_module(&self, module: OwnerId) -> (&'hir Mod<'hir>, Span, HirId) {
+        let hir_id = module.hir_id();
+        match self.tcx.hir_owner(module.def_id).map(|o| o.node) {
             Some(OwnerNode::Item(&Item { span, kind: ItemKind::Mod(ref m), .. })) => {
                 (m, span, hir_id)
             }
@@ -793,7 +794,7 @@ impl<'hir> Map<'hir> {
     /// parent item is in this map. The "parent item" is the closest parent node
     /// in the HIR which is recorded by the map and is an item, either an item
     /// in a module, trait, or impl.
-    pub fn get_parent_item(&self, hir_id: HirId) -> LocalDefId {
+    pub fn get_parent_item(&self, hir_id: HirId) -> OwnerId {
         if let Some((def_id, _node)) = self.parent_owner_iter(hir_id).next() {
             def_id
         } else {
@@ -874,7 +875,7 @@ impl<'hir> Map<'hir> {
 
     pub fn get_foreign_abi(&self, hir_id: HirId) -> Abi {
         let parent = self.get_parent_item(hir_id);
-        if let Some(node) = self.tcx.hir_owner(parent) {
+        if let Some(node) = self.tcx.hir_owner(parent.def_id) {
             if let OwnerNode::Item(Item { kind: ItemKind::ForeignMod { abi, .. }, .. }) = node.node
             {
                 return *abi;
@@ -882,7 +883,7 @@ impl<'hir> Map<'hir> {
         }
         bug!(
             "expected foreign mod or inlined parent, found {}",
-            self.node_to_string(HirId::make_owner(parent))
+            self.node_to_string(parent.hir_id())
         )
     }
 
@@ -941,7 +942,7 @@ impl<'hir> Map<'hir> {
             Node::Lifetime(lt) => lt.name.ident().name,
             Node::GenericParam(param) => param.name.ident().name,
             Node::Binding(&Pat { kind: PatKind::Binding(_, _, l, _), .. }) => l.name,
-            Node::Ctor(..) => self.name(HirId::make_owner(self.get_parent_item(id))),
+            Node::Ctor(..) => self.name(self.get_parent_item(id).hir_id()),
             _ => return None,
         })
     }

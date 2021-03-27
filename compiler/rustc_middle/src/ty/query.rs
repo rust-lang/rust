@@ -267,6 +267,7 @@ rustc_query_append! { [define_callbacks!][<'tcx>] }
 
 mod sealed {
     use super::{DefId, LocalDefId};
+    use rustc_hir::OwnerId;
 
     /// An analogue of the `Into` trait that's intended only for query paramaters.
     ///
@@ -287,6 +288,20 @@ mod sealed {
         #[inline(always)]
         fn into_query_param(self) -> DefId {
             self.to_def_id()
+        }
+    }
+
+    impl IntoQueryParam<DefId> for OwnerId {
+        #[inline(always)]
+        fn into_query_param(self) -> DefId {
+            self.def_id.to_def_id()
+        }
+    }
+
+    impl IntoQueryParam<LocalDefId> for OwnerId {
+        #[inline(always)]
+        fn into_query_param(self) -> DefId {
+            self.def_id
         }
     }
 }

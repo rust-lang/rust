@@ -1,6 +1,5 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
-use rustc_hir::def_id::LocalDefId;
 use rustc_hir::definitions;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::*;
@@ -20,12 +19,12 @@ pub(super) struct NodeCollector<'a, 'hir> {
 
     /// Outputs
     nodes: IndexVec<ItemLocalId, Option<ParentedNode<'hir>>>,
-    parenting: FxHashMap<LocalDefId, ItemLocalId>,
+    parenting: FxHashMap<OwnerId, ItemLocalId>,
 
     /// The parent of this node
     parent_node: hir::ItemLocalId,
 
-    owner: LocalDefId,
+    owner: OwnerId,
 
     definitions: &'a definitions::Definitions,
 }
@@ -45,7 +44,7 @@ pub(super) fn index_hir<'hir>(
     definitions: &definitions::Definitions,
     item: hir::OwnerNode<'hir>,
     bodies: &IndexVec<ItemLocalId, Option<&'hir Body<'hir>>>,
-) -> (IndexVec<ItemLocalId, Option<ParentedNode<'hir>>>, FxHashMap<LocalDefId, ItemLocalId>) {
+) -> (IndexVec<ItemLocalId, Option<ParentedNode<'hir>>>, FxHashMap<OwnerId, ItemLocalId>) {
     let mut nodes = IndexVec::new();
     // This node's parent should never be accessed: the owner's parent is computed by the
     // hir_owner_parent query.  Make it invalid (= ItemLocalId::MAX) to force an ICE whenever it is
@@ -86,9 +85,9 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                      current_dep_node_owner={} ({:?}), hir_id.owner={} ({:?})",
                     self.source_map.span_to_diagnostic_string(span),
                     node,
-                    self.definitions.def_path(self.owner).to_string_no_crate_verbose(),
+                    self.definitions.def_path(self.owner.def_id).to_string_no_crate_verbose(),
                     self.owner,
-                    self.definitions.def_path(hir_id.owner).to_string_no_crate_verbose(),
+                    self.definitions.def_path(hir_id.owner.def_id).to_string_no_crate_verbose(),
                     hir_id.owner,
                 )
             }
@@ -109,7 +108,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         self.parent_node = parent_node;
     }
 
-    fn insert_nested(&mut self, item: LocalDefId) {
+    fn insert_nested(&mut self, item: OwnerId) {
         self.parenting.insert(item, self.parent_node);
     }
 }
