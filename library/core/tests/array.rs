@@ -307,6 +307,15 @@ fn empty_array_is_always_default() {
 }
 
 #[test]
+fn array_from_fn() {
+    let a = array::from_fn(|i| 2 * i + 1);
+    assert_eq!(a, [1, 3, 5, 7]);
+
+    let b = array::from_fn(|i| i.to_string());
+    assert_eq!(b, [String::from("0"), String::from("1")]);
+}
+
+#[test]
 fn array_map() {
     let a = [1, 2, 3];
     let b = a.map(|v| v + 1);

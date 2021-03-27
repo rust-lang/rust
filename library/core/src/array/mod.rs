@@ -532,6 +532,68 @@ impl<T, const N: usize> [T; N] {
     }
 }
 
+struct Guard<T, const N: usize> {
+    ptr: *mut T,
+    initialized: usize,
+}
+
+impl<T, const N: usize> Drop for Guard<T, N> {
+    fn drop(&mut self) {
+        debug_assert!(self.initialized <= N);
+
+        let initialized_part = crate::ptr::slice_from_raw_parts_mut(self.ptr, self.initialized);
+
+        // SAFETY: this raw slice will contain only initialized objects.
+        unsafe {
+            crate::ptr::drop_in_place(initialized_part);
+        }
+    }
+}
+
+/// Creates a new array where each element is initialized by calling the
+/// provided closure `F: FnMut(usize) -> T` with the index of each element.
+///
+/// This allows initializing an array with elements that are not `Copy` or
+/// `const` and where writing out the entire array literal as opposed to
+/// `[expr; N]` is too verbose or not possible.
+///
+/// # Example
+///
+/// ```
+/// #![feature(array_from_fn)]
+///
+/// let array = std::array::from_fn(|index| 2 * index);
+/// assert_eq!(array, [0, 2, 4, 6]);
+/// ```
+#[unstable(feature = "array_from_fn", issue = "none")]
+pub fn from_fn<T, F, const N: usize>(mut f: F) -> [T; N]
+where
+    F: FnMut(usize) -> T,
+{
+    let mut array = MaybeUninit::uninit_array::<N>();
+    let mut guard: Guard<_, N> =
+        Guard { ptr: MaybeUninit::slice_as_mut_ptr(&mut array), initialized: 0 };
+
+    while guard.initialized < N {
+        let item = f(guard.initialized);
+
+        // SAFETY: `guard.initialized` starts at 0, is increased by one in the
+        // loop and the loop is aborted once it reaches N (which is
+        // `array.len()`).
+        unsafe {
+            array.get_unchecked_mut(guard.initialized).write(item);
+        }
+
+        guard.initialized += 1;
+    }
+
+    mem::forget(guard);
+
+    // SAFETY: the condition above asserts that all elements are
+    // initialized.
+    unsafe { MaybeUninit::array_assume_init(array) }
+}
+
 /// Pulls `N` items from `iter` and returns them as an array. If the iterator
 /// yields fewer than `N` items, this function exhibits undefined behavior.
 ///
@@ -568,7 +630,7 @@ where
 /// `next` at most `N` times, the iterator can still be used afterwards to
 /// retrieve the remaining items.
 ///
-/// If `iter.next()` panicks, all items already yielded by the iterator are
+/// If `iter.next()` panics, all items already yielded by the iterator are
 /// dropped.
 fn collect_into_array<I, const N: usize>(iter: &mut I) -> Option<[I::Item; N]>
 where
@@ -577,24 +639,6 @@ where
     if N == 0 {
         // SAFETY: An empty array is always inhabited and has no validity invariants.
         return unsafe { Some(mem::zeroed()) };
-    }
-
-    struct Guard<T, const N: usize> {
-        ptr: *mut T,
-        initialized: usize,
-    }
-
-    impl<T, const N: usize> Drop for Guard<T, N> {
-        fn drop(&mut self) {
-            debug_assert!(self.initialized <= N);
-
-            let initialized_part = crate::ptr::slice_from_raw_parts_mut(self.ptr, self.initialized);
-
-            // SAFETY: this raw slice will contain only initialized objects.
-            unsafe {
-                crate::ptr::drop_in_place(initialized_part);
-            }
-        }
     }
 
     let mut array = MaybeUninit::uninit_array::<N>();
