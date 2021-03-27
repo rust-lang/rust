@@ -161,9 +161,8 @@
 //!
 //! * `+` - This is intended for numeric types and indicates that the sign
 //!         should always be printed. Positive signs are never printed by
-//!         default, and the negative sign is only printed by default for the
-//!         `Signed` trait. This flag indicates that the correct sign (`+` or `-`)
-//!         should always be printed.
+//!         default, and the negative sign is only printed by default for signed values.
+//!         This flag indicates that the correct sign (`+` or `-`) should always be printed.
 //! * `-` - Currently not used
 //! * `#` - This flag indicates that the "alternate" form of printing should
 //!         be used. The alternate forms are:

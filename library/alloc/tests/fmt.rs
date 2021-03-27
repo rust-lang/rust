@@ -151,8 +151,7 @@ fn test_format_macro_interface() {
     t!(format!("{:+10.3e}", -1.2345e6f64), "  -1.234e6");
 
     // Float edge cases
-    t!(format!("{}", -0.0), "0");
-    t!(format!("{:?}", -0.0), "-0.0");
+    t!(format!("{}", -0.0), "-0");
     t!(format!("{:?}", 0.0), "0.0");
 
     // sign aware zero padding
