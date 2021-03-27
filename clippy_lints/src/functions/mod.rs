@@ -1,20 +1,14 @@
 mod must_use;
 mod not_unsafe_ptr_arg_deref;
+mod result_unit_err;
 mod too_many_arguments;
 mod too_many_lines;
 
-use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::trait_ref_of_method;
-use clippy_utils::ty::is_type_diagnostic_item;
-use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_hir::intravisit;
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty;
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{sym, Span};
-use rustc_typeck::hir_ty_to_ty;
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for functions with too many parameters.
@@ -250,65 +244,24 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
         hir_id: hir::HirId,
     ) {
         too_many_arguments::check_fn(cx, kind, decl, span, hir_id, self.too_many_arguments_threshold);
-        too_many_lines::check(cx, span, body, self.too_many_lines_threshold);
+        too_many_lines::check_fn(cx, span, body, self.too_many_lines_threshold);
         not_unsafe_ptr_arg_deref::check_fn(cx, kind, decl, body, hir_id);
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         must_use::check_item(cx, item);
-        if let hir::ItemKind::Fn(ref sig, ref _generics, _) = item.kind {
-            let is_public = cx.access_levels.is_exported(item.hir_id());
-            let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
-            if is_public {
-                check_result_unit_err(cx, &sig.decl, item.span, fn_header_span);
-            }
-        }
+        result_unit_err::check_item(cx, item);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'_>) {
         must_use::check_impl_item(cx, item);
-        if let hir::ImplItemKind::Fn(ref sig, _) = item.kind {
-            let is_public = cx.access_levels.is_exported(item.hir_id());
-            let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
-            if is_public && trait_ref_of_method(cx, item.hir_id()).is_none() {
-                check_result_unit_err(cx, &sig.decl, item.span, fn_header_span);
-            }
-        }
+        result_unit_err::check_impl_item(cx, item);
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
         too_many_arguments::check_trait_item(cx, item, self.too_many_arguments_threshold);
         not_unsafe_ptr_arg_deref::check_trait_item(cx, item);
         must_use::check_trait_item(cx, item);
-
-        if let hir::TraitItemKind::Fn(ref sig, _) = item.kind {
-            let is_public = cx.access_levels.is_exported(item.hir_id());
-            let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
-            if is_public {
-                check_result_unit_err(cx, &sig.decl, item.span, fn_header_span);
-            }
-        }
-    }
-}
-
-fn check_result_unit_err(cx: &LateContext<'_>, decl: &hir::FnDecl<'_>, item_span: Span, fn_header_span: Span) {
-    if_chain! {
-        if !in_external_macro(cx.sess(), item_span);
-        if let hir::FnRetTy::Return(ref ty) = decl.output;
-        let ty = hir_ty_to_ty(cx.tcx, ty);
-        if is_type_diagnostic_item(cx, ty, sym::result_type);
-        if let ty::Adt(_, substs) = ty.kind();
-        let err_ty = substs.type_at(1);
-        if err_ty.is_unit();
-        then {
-            span_lint_and_help(
-                cx,
-                RESULT_UNIT_ERR,
-                fn_header_span,
-                "this returns a `Result<_, ()>",
-                None,
-                "use a custom Error type instead",
-            );
-        }
+        result_unit_err::check_trait_item(cx, item);
     }
 }

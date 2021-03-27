@@ -8,7 +8,7 @@ use clippy_utils::source::snippet;
 
 use super::TOO_MANY_LINES;
 
-pub(super) fn check(cx: &LateContext<'_>, span: Span, body: &'tcx hir::Body<'_>, too_many_lines_threshold: u64) {
+pub(super) fn check_fn(cx: &LateContext<'_>, span: Span, body: &'tcx hir::Body<'_>, too_many_lines_threshold: u64) {
     if in_external_macro(cx.sess(), span) {
         return;
     }
