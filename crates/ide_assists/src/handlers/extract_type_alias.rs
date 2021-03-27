@@ -16,10 +16,10 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // ```
 // ->
 // ```
-// type Type = (u8, u8, u8);
+// type ${0:Type} = (u8, u8, u8);
 //
 // struct S {
-//     field: Type,
+//     field: ${0:Type},
 // }
 // ```
 pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
@@ -56,9 +56,20 @@ pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext) -> Opti
         target,
         |builder| {
             builder.edit_file(ctx.frange.file_id);
-            // FIXME: add snippet support
-            builder.replace(target, "Type");
-            builder.insert(insert, format!("type Type = {};\n\n", node));
+            match ctx.config.snippet_cap {
+                Some(cap) => {
+                    builder.replace_snippet(cap, target, "${0:Type}");
+                    builder.insert_snippet(
+                        cap,
+                        insert,
+                        format!("type ${{0:Type}} = {};\n\n", node),
+                    );
+                }
+                None => {
+                    builder.replace(target, "Type");
+                    builder.insert(insert, format!("type Type = {};\n\n", node));
+                }
+            }
         },
     )
 }
@@ -91,10 +102,10 @@ struct S {
 }
             ",
             r#"
-type Type = u8;
+type ${0:Type} = u8;
 
 struct S {
-    field: Type,
+    field: ${0:Type},
 }
             "#,
         );
@@ -114,10 +125,10 @@ fn f() {
             r#"
 fn generic<T>() {}
 
-type Type = ();
+type ${0:Type} = ();
 
 fn f() {
-    generic::<Type>();
+    generic::<${0:Type}>();
 }
             "#,
         );
@@ -135,10 +146,10 @@ struct S {
             ",
             r#"
 struct Vec<T> {}
-type Type = Vec<u8>;
+type ${0:Type} = Vec<u8>;
 
 struct S {
-    v: Vec<Vec<Type>>,
+    v: Vec<Vec<${0:Type}>>,
 }
             "#,
         );
@@ -154,10 +165,10 @@ struct S {
 }
             ",
             r#"
-type Type = u8;
+type ${0:Type} = u8;
 
 struct S {
-    field: (Type,),
+    field: (${0:Type},),
 }
             "#,
         );
