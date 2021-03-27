@@ -1,13 +1,11 @@
+mod not_unsafe_ptr_arg_deref;
 mod too_many_arguments;
 mod too_many_lines;
 
-use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_then};
+use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_then};
 use clippy_utils::source::snippet_opt;
-use clippy_utils::ty::{is_must_use_ty, is_type_diagnostic_item, type_is_unsafe_function};
-use clippy_utils::{
-    attr_by_name, attrs::is_proc_macro, iter_input_pats, match_def_path, must_use_attr, path_to_local, return_ty,
-    trait_ref_of_method,
-};
+use clippy_utils::ty::{is_must_use_ty, is_type_diagnostic_item};
+use clippy_utils::{attr_by_name, attrs::is_proc_macro, match_def_path, must_use_attr, return_ty, trait_ref_of_method};
 use if_chain::if_chain;
 use rustc_ast::ast::Attribute;
 use rustc_data_structures::fx::FxHashSet;
@@ -258,14 +256,7 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
     ) {
         too_many_arguments::check_fn(cx, kind, decl, span, hir_id, self.too_many_arguments_threshold);
         too_many_lines::check(cx, span, body, self.too_many_lines_threshold);
-
-        let unsafety = match kind {
-            intravisit::FnKind::ItemFn(_, _, hir::FnHeader { unsafety, .. }, _) => unsafety,
-            intravisit::FnKind::Method(_, sig, _) => sig.header.unsafety,
-            intravisit::FnKind::Closure => return,
-        };
-
-        Self::check_raw_ptr(cx, unsafety, decl, body, hir_id);
+        not_unsafe_ptr_arg_deref::check_fn(cx, kind, decl, body, hir_id);
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
@@ -323,6 +314,7 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
         too_many_arguments::check_trait_item(cx, item, self.too_many_arguments_threshold);
+        not_unsafe_ptr_arg_deref::check_trait_item(cx, item);
 
         if let hir::TraitItemKind::Fn(ref sig, ref eid) = item.kind {
             let is_public = cx.access_levels.is_exported(item.hir_id());
@@ -338,8 +330,6 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
             }
             if let hir::TraitFn::Provided(eid) = *eid {
                 let body = cx.tcx.hir().body(eid);
-                Self::check_raw_ptr(cx, sig.header.unsafety, &sig.decl, body, item.hir_id());
-
                 if attr.is_none() && is_public && !is_proc_macro(cx.sess(), attrs) {
                     check_must_use_candidate(
                         cx,
@@ -351,35 +341,6 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
                         "this method could have a `#[must_use]` attribute",
                     );
                 }
-            }
-        }
-    }
-}
-
-impl<'tcx> Functions {
-    fn check_raw_ptr(
-        cx: &LateContext<'tcx>,
-        unsafety: hir::Unsafety,
-        decl: &'tcx hir::FnDecl<'_>,
-        body: &'tcx hir::Body<'_>,
-        hir_id: hir::HirId,
-    ) {
-        let expr = &body.value;
-        if unsafety == hir::Unsafety::Normal && cx.access_levels.is_exported(hir_id) {
-            let raw_ptrs = iter_input_pats(decl, body)
-                .zip(decl.inputs.iter())
-                .filter_map(|(arg, ty)| raw_ptr_arg(arg, ty))
-                .collect::<FxHashSet<_>>();
-
-            if !raw_ptrs.is_empty() {
-                let typeck_results = cx.tcx.typeck_body(body.id());
-                let mut v = DerefVisitor {
-                    cx,
-                    ptrs: raw_ptrs,
-                    typeck_results,
-                };
-
-                intravisit::walk_expr(&mut v, expr);
             }
         }
     }
@@ -521,71 +482,6 @@ fn is_mutable_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span, tys: &m
         // calling something constitutes a side effect, so return true on all callables
         // also never calls need not be used, so return true for them, too
         _ => true,
-    }
-}
-
-fn raw_ptr_arg(arg: &hir::Param<'_>, ty: &hir::Ty<'_>) -> Option<hir::HirId> {
-    if let (&hir::PatKind::Binding(_, id, _, _), &hir::TyKind::Ptr(_)) = (&arg.pat.kind, &ty.kind) {
-        Some(id)
-    } else {
-        None
-    }
-}
-
-struct DerefVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'tcx>,
-    ptrs: FxHashSet<hir::HirId>,
-    typeck_results: &'a ty::TypeckResults<'tcx>,
-}
-
-impl<'a, 'tcx> intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
-
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
-        match expr.kind {
-            hir::ExprKind::Call(ref f, args) => {
-                let ty = self.typeck_results.expr_ty(f);
-
-                if type_is_unsafe_function(self.cx, ty) {
-                    for arg in args {
-                        self.check_arg(arg);
-                    }
-                }
-            },
-            hir::ExprKind::MethodCall(_, _, args, _) => {
-                let def_id = self.typeck_results.type_dependent_def_id(expr.hir_id).unwrap();
-                let base_type = self.cx.tcx.type_of(def_id);
-
-                if type_is_unsafe_function(self.cx, base_type) {
-                    for arg in args {
-                        self.check_arg(arg);
-                    }
-                }
-            },
-            hir::ExprKind::Unary(hir::UnOp::Deref, ref ptr) => self.check_arg(ptr),
-            _ => (),
-        }
-
-        intravisit::walk_expr(self, expr);
-    }
-
-    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
-        intravisit::NestedVisitorMap::None
-    }
-}
-
-impl<'a, 'tcx> DerefVisitor<'a, 'tcx> {
-    fn check_arg(&self, ptr: &hir::Expr<'_>) {
-        if let Some(id) = path_to_local(ptr) {
-            if self.ptrs.contains(&id) {
-                span_lint(
-                    self.cx,
-                    NOT_UNSAFE_PTR_ARG_DEREF,
-                    ptr.span,
-                    "this public function dereferences a raw pointer but is not marked `unsafe`",
-                );
-            }
-        }
     }
 }
 
