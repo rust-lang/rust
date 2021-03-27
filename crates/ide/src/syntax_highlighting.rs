@@ -5,7 +5,7 @@ mod injector;
 
 mod highlight;
 mod format;
-mod macro_rules;
+mod macro_;
 mod inject;
 
 mod html;
@@ -24,8 +24,8 @@ use syntax::{
 
 use crate::{
     syntax_highlighting::{
-        format::highlight_format_string, highlights::Highlights,
-        macro_rules::MacroRulesHighlighter, tags::Highlight,
+        format::highlight_format_string, highlights::Highlights, macro_::MacroHighlighter,
+        tags::Highlight,
     },
     FileId, HlMod, HlTag,
 };
@@ -93,8 +93,8 @@ fn traverse(
     let mut bindings_shadow_count: FxHashMap<Name, u32> = FxHashMap::default();
 
     let mut current_macro_call: Option<ast::MacroCall> = None;
-    let mut current_macro_rules: Option<ast::MacroRules> = None;
-    let mut macro_rules_highlighter = MacroRulesHighlighter::default();
+    let mut current_macro: Option<ast::Macro> = None;
+    let mut macro_highlighter = MacroHighlighter::default();
     let mut inside_attribute = false;
 
     // Walk all nodes, keeping track of whether we are inside a macro or not.
@@ -129,16 +129,16 @@ fn traverse(
             _ => (),
         }
 
-        match event.clone().map(|it| it.into_node().and_then(ast::MacroRules::cast)) {
+        match event.clone().map(|it| it.into_node().and_then(ast::Macro::cast)) {
             WalkEvent::Enter(Some(mac)) => {
-                macro_rules_highlighter.init();
-                current_macro_rules = Some(mac);
+                macro_highlighter.init();
+                current_macro = Some(mac);
                 continue;
             }
             WalkEvent::Leave(Some(mac)) => {
-                assert_eq!(current_macro_rules, Some(mac));
-                current_macro_rules = None;
-                macro_rules_highlighter = MacroRulesHighlighter::default();
+                assert_eq!(current_macro, Some(mac));
+                current_macro = None;
+                macro_highlighter = MacroHighlighter::default();
             }
             _ => (),
         }
@@ -164,9 +164,9 @@ fn traverse(
 
         let range = element.text_range();
 
-        if current_macro_rules.is_some() {
+        if current_macro.is_some() {
             if let Some(tok) = element.as_token() {
-                macro_rules_highlighter.advance(tok);
+                macro_highlighter.advance(tok);
             }
         }
 
@@ -200,7 +200,7 @@ fn traverse(
             }
         }
 
-        if let Some(_) = macro_rules_highlighter.highlight(element_to_highlight.clone()) {
+        if let Some(_) = macro_highlighter.highlight(element_to_highlight.clone()) {
             continue;
         }
 

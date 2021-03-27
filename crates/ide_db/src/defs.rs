@@ -227,7 +227,7 @@ impl NameClass {
                     let def: hir::TypeAlias = sema.to_def(&it)?;
                     Some(NameClass::Definition(Definition::ModuleDef(def.into())))
                 },
-                ast::MacroRules(it) => {
+                ast::Macro(it) => {
                     let def = sema.to_def(&it)?;
                     Some(NameClass::Definition(Definition::Macro(def)))
                 },

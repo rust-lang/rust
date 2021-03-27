@@ -129,6 +129,16 @@ macro_rules! keyword_frag {
     ($type:ty) => ($type)
 }
 
+macro with_args($i:ident) {
+    $i
+}
+
+macro without_args {
+    ($i:ident) => {
+        $i
+    }
+}
+
 // comment
 fn main() {
     println!("Hello, {}!", 92);
