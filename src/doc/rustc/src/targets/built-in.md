@@ -12,4 +12,4 @@ library built by the official Rust distributions. Most targets will need a
 system linker, and possibly other things.
 
 [rustup]: https://github.com/rust-lang/rustup
-[rustup-cross]: https://github.com/rust-lang/rustup#cross-compilation
+[rustup-cross]: https://rust-lang.github.io/rustup/cross-compilation.html
