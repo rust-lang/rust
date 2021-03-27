@@ -1935,7 +1935,7 @@ declare_lint! {
     Warn,
     "detects proc macro derives using inaccessible names from parent modules",
     @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #50504 <https://github.com/rust-lang/rust/issues/50504>",
+        reference: "issue #83583 <https://github.com/rust-lang/rust/issues/83583>",
         edition: None,
     };
 }
