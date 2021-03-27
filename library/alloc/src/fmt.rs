@@ -19,6 +19,10 @@
 //! format!("{value}", value=4);      // => "4"
 //! format!("{} {}", 1, 2);           // => "1 2"
 //! format!("{:04}", 42);             // => "0042" with leading zeros
+//! format!("{:#?}", (100, 200));     // => "(
+//!                                   //       100,
+//!                                   //       200,
+//!                                   //     )"
 //! ```
 //!
 //! From these, you can see that the first argument is a format string. It is
@@ -163,7 +167,7 @@
 //! * `-` - Currently not used
 //! * `#` - This flag indicates that the "alternate" form of printing should
 //!         be used. The alternate forms are:
-//!     * `#?` - pretty-print the [`Debug`] formatting
+//!     * `#?` - pretty-print the [`Debug`] formatting (adds linebreaks and indentation)
 //!     * `#x` - precedes the argument with a `0x`
 //!     * `#X` - precedes the argument with a `0x`
 //!     * `#b` - precedes the argument with a `0b`
