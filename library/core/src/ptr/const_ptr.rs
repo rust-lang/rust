@@ -184,8 +184,7 @@ impl<T: ?Sized> *const T {
     /// Behavior:
     ///
     /// * Both the starting and resulting pointer must be either in bounds or one
-    ///   byte past the end of the same allocated object. Note that in Rust,
-    ///   every (stack-allocated) variable is considered a separate allocated object.
+    ///   byte past the end of the same [allocated object].
     ///
     /// * The computed offset, **in bytes**, cannot overflow an `isize`.
     ///
@@ -210,6 +209,7 @@ impl<T: ?Sized> *const T {
     /// enables more aggressive compiler optimizations.
     ///
     /// [`wrapping_offset`]: #method.wrapping_offset
+    /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Examples
     ///
@@ -245,9 +245,8 @@ impl<T: ?Sized> *const T {
     ///
     /// This operation itself is always safe, but using the resulting pointer is not.
     ///
-    /// The resulting pointer remains attached to the same allocated object that `self` points to.
-    /// It may *not* be used to access a different allocated object. Note that in Rust, every
-    /// (stack-allocated) variable is considered a separate allocated object.
+    /// The resulting pointer remains attached to the same [allocated object] that `self` points to.
+    /// It may *not* be used to access a different allocated object.
     ///
     /// In other words, `let z = x.wrapping_offset((y as isize) - (x as isize))` does *not* make `z`
     /// the same as `y` even if we assume `T` has size `1` and there is no overflow: `z` is still
@@ -269,6 +268,7 @@ impl<T: ?Sized> *const T {
     /// do the arithmetic there.
     ///
     /// [`offset`]: #method.offset
+    /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Examples
     ///
@@ -314,8 +314,7 @@ impl<T: ?Sized> *const T {
     /// Behavior:
     ///
     /// * Both the starting and other pointer must be either in bounds or one
-    ///   byte past the end of the same allocated object. Note that in Rust,
-    ///   every (stack-allocated) variable is considered a separate allocated object.
+    ///   byte past the end of the same [allocated object].
     ///
     /// * Both pointers must be *derived from* a pointer to the same object.
     ///   (See below for an example.)
@@ -345,6 +344,7 @@ impl<T: ?Sized> *const T {
     /// such large allocations either.)
     ///
     /// [`add`]: #method.add
+    /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Panics
     ///
@@ -468,8 +468,7 @@ impl<T: ?Sized> *const T {
     /// Behavior:
     ///
     /// * Both the starting and resulting pointer must be either in bounds or one
-    ///   byte past the end of the same allocated object. Note that in Rust,
-    ///   every (stack-allocated) variable is considered a separate allocated object.
+    ///   byte past the end of the same [allocated object].
     ///
     /// * The computed offset, **in bytes**, cannot overflow an `isize`.
     ///
@@ -494,6 +493,7 @@ impl<T: ?Sized> *const T {
     /// enables more aggressive compiler optimizations.
     ///
     /// [`wrapping_add`]: #method.wrapping_add
+    /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Examples
     ///
@@ -532,8 +532,7 @@ impl<T: ?Sized> *const T {
     /// Behavior:
     ///
     /// * Both the starting and resulting pointer must be either in bounds or one
-    ///   byte past the end of the same allocated object. Note that in Rust,
-    ///   every (stack-allocated) variable is considered a separate allocated object.
+    ///   byte past the end of the same [allocated object].
     ///
     /// * The computed offset cannot exceed `isize::MAX` **bytes**.
     ///
@@ -558,6 +557,7 @@ impl<T: ?Sized> *const T {
     /// enables more aggressive compiler optimizations.
     ///
     /// [`wrapping_sub`]: #method.wrapping_sub
+    /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Examples
     ///
@@ -594,9 +594,8 @@ impl<T: ?Sized> *const T {
     ///
     /// This operation itself is always safe, but using the resulting pointer is not.
     ///
-    /// The resulting pointer remains attached to the same allocated object that `self` points to.
-    /// It may *not* be used to access a different allocated object. Note that in Rust, every
-    /// (stack-allocated) variable is considered a separate allocated object.
+    /// The resulting pointer remains attached to the same [allocated object] that `self` points to.
+    /// It may *not* be used to access a different allocated object.
     ///
     /// In other words, `let z = x.wrapping_add((y as usize) - (x as usize))` does *not* make `z`
     /// the same as `y` even if we assume `T` has size `1` and there is no overflow: `z` is still
@@ -618,6 +617,7 @@ impl<T: ?Sized> *const T {
     /// do the arithmetic there.
     ///
     /// [`add`]: #method.add
+    /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Examples
     ///
@@ -659,9 +659,8 @@ impl<T: ?Sized> *const T {
     ///
     /// This operation itself is always safe, but using the resulting pointer is not.
     ///
-    /// The resulting pointer remains attached to the same allocated object that `self` points to.
-    /// It may *not* be used to access a different allocated object. Note that in Rust, every
-    /// (stack-allocated) variable is considered a separate allocated object.
+    /// The resulting pointer remains attached to the same [allocated object] that `self` points to.
+    /// It may *not* be used to access a different allocated object.
     ///
     /// In other words, `let z = x.wrapping_sub((x as usize) - (y as usize))` does *not* make `z`
     /// the same as `y` even if we assume `T` has size `1` and there is no overflow: `z` is still
@@ -683,6 +682,7 @@ impl<T: ?Sized> *const T {
     /// do the arithmetic there.
     ///
     /// [`sub`]: #method.sub
+    /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Examples
     ///
@@ -997,7 +997,7 @@ impl<T> *const [T] {
     /// * The pointer must be [valid] for reads for `ptr.len() * mem::size_of::<T>()` many bytes,
     ///   and it must be properly aligned. This means in particular:
     ///
-    ///     * The entire memory range of this slice must be contained within a single allocated object!
+    ///     * The entire memory range of this slice must be contained within a single [allocated object]!
     ///       Slices can never span across multiple allocated objects.
     ///
     ///     * The pointer must be aligned even for zero-length slices. One
@@ -1019,6 +1019,7 @@ impl<T> *const [T] {
     /// See also [`slice::from_raw_parts`][].
     ///
     /// [valid]: crate::ptr#safety
+    /// [allocated object]: crate::ptr#allocated-object
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
     pub unsafe fn as_uninit_slice<'a>(self) -> Option<&'a [MaybeUninit<T>]> {
