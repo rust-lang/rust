@@ -1,6 +1,6 @@
 // ignore-tidy-filelength
 use crate::def::{CtorKind, DefKind, Res};
-use crate::def_id::DefId;
+use crate::def_id::{DefId, CRATE_DEF_ID};
 crate use crate::hir_id::{HirId, ItemLocalId};
 use crate::{itemlikevisit, LangItem};
 
@@ -628,7 +628,6 @@ pub struct ModuleItems {
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
 #[derive(Debug)]
 pub struct Crate<'hir> {
-    pub item: Mod<'hir>,
     // Attributes from non-exported macros, kept only for collecting the library feature list.
     pub non_exported_macro_attrs: &'hir [Attribute],
 
@@ -658,6 +657,11 @@ pub struct Crate<'hir> {
 }
 
 impl Crate<'hir> {
+    pub fn module(&self) -> &'hir Mod<'hir> {
+        let i = self.owners[CRATE_DEF_ID].as_ref().unwrap();
+        if let OwnerNode::Crate(m) = i { m } else { panic!() }
+    }
+
     pub fn item(&self, id: ItemId) -> &'hir Item<'hir> {
         self.owners[id.def_id].as_ref().unwrap().expect_item()
     }
@@ -698,7 +702,7 @@ impl Crate<'_> {
                 OwnerNode::ForeignItem(item) => visitor.visit_foreign_item(item),
                 OwnerNode::ImplItem(item) => visitor.visit_impl_item(item),
                 OwnerNode::TraitItem(item) => visitor.visit_trait_item(item),
-                OwnerNode::MacroDef(_) => {}
+                OwnerNode::MacroDef(_) | OwnerNode::Crate(_) => {}
             }
         }
     }
@@ -713,7 +717,7 @@ impl Crate<'_> {
             Some(OwnerNode::ForeignItem(item)) => visitor.visit_foreign_item(item),
             Some(OwnerNode::ImplItem(item)) => visitor.visit_impl_item(item),
             Some(OwnerNode::TraitItem(item)) => visitor.visit_trait_item(item),
-            Some(OwnerNode::MacroDef(_)) | None => {}
+            Some(OwnerNode::MacroDef(_)) | Some(OwnerNode::Crate(_)) | None => {}
         })
     }
 
@@ -2947,16 +2951,29 @@ pub enum OwnerNode<'hir> {
     TraitItem(&'hir TraitItem<'hir>),
     ImplItem(&'hir ImplItem<'hir>),
     MacroDef(&'hir MacroDef<'hir>),
+    Crate(&'hir Mod<'hir>),
 }
 
 impl<'hir> OwnerNode<'hir> {
-    pub fn ident(&self) -> Ident {
+    pub fn ident(&self) -> Option<Ident> {
         match self {
             OwnerNode::Item(Item { ident, .. })
             | OwnerNode::ForeignItem(ForeignItem { ident, .. })
             | OwnerNode::ImplItem(ImplItem { ident, .. })
             | OwnerNode::TraitItem(TraitItem { ident, .. })
-            | OwnerNode::MacroDef(MacroDef { ident, .. }) => *ident,
+            | OwnerNode::MacroDef(MacroDef { ident, .. }) => Some(*ident),
+            OwnerNode::Crate(..) => None,
+        }
+    }
+
+    pub fn span(&self) -> Span {
+        match self {
+            OwnerNode::Item(Item { span, .. })
+            | OwnerNode::ForeignItem(ForeignItem { span, .. })
+            | OwnerNode::ImplItem(ImplItem { span, .. })
+            | OwnerNode::TraitItem(TraitItem { span, .. })
+            | OwnerNode::MacroDef(MacroDef { span, .. })
+            | OwnerNode::Crate(Mod { inner: span, .. }) => *span,
         }
     }
 
@@ -3001,56 +3018,42 @@ impl<'hir> OwnerNode<'hir> {
             | OwnerNode::ImplItem(ImplItem { def_id, .. })
             | OwnerNode::ForeignItem(ForeignItem { def_id, .. })
             | OwnerNode::MacroDef(MacroDef { def_id, .. }) => *def_id,
+            OwnerNode::Crate(..) => crate::CRATE_HIR_ID.owner,
         }
     }
 
     pub fn expect_item(self) -> &'hir Item<'hir> {
         match self {
             OwnerNode::Item(n) => n,
-            OwnerNode::ForeignItem(_)
-            | OwnerNode::ImplItem(_)
-            | OwnerNode::TraitItem(_)
-            | OwnerNode::MacroDef(_) => panic!(),
+            _ => panic!(),
         }
     }
 
     pub fn expect_foreign_item(self) -> &'hir ForeignItem<'hir> {
         match self {
             OwnerNode::ForeignItem(n) => n,
-            OwnerNode::Item(_)
-            | OwnerNode::ImplItem(_)
-            | OwnerNode::TraitItem(_)
-            | OwnerNode::MacroDef(_) => panic!(),
+            _ => panic!(),
         }
     }
 
     pub fn expect_impl_item(self) -> &'hir ImplItem<'hir> {
         match self {
             OwnerNode::ImplItem(n) => n,
-            OwnerNode::ForeignItem(_)
-            | OwnerNode::Item(_)
-            | OwnerNode::TraitItem(_)
-            | OwnerNode::MacroDef(_) => panic!(),
+            _ => panic!(),
         }
     }
 
     pub fn expect_trait_item(self) -> &'hir TraitItem<'hir> {
         match self {
             OwnerNode::TraitItem(n) => n,
-            OwnerNode::ForeignItem(_)
-            | OwnerNode::ImplItem(_)
-            | OwnerNode::Item(_)
-            | OwnerNode::MacroDef(_) => panic!(),
+            _ => panic!(),
         }
     }
 
     pub fn expect_macro_def(self) -> &'hir MacroDef<'hir> {
         match self {
             OwnerNode::MacroDef(n) => n,
-            OwnerNode::ForeignItem(_)
-            | OwnerNode::ImplItem(_)
-            | OwnerNode::TraitItem(_)
-            | OwnerNode::Item(_) => panic!(),
+            _ => panic!(),
         }
     }
 }
@@ -3093,6 +3096,7 @@ impl<'hir> Into<Node<'hir>> for OwnerNode<'hir> {
             OwnerNode::ImplItem(n) => Node::ImplItem(n),
             OwnerNode::TraitItem(n) => Node::TraitItem(n),
             OwnerNode::MacroDef(n) => Node::MacroDef(n),
+            OwnerNode::Crate(n) => Node::Crate(n),
         }
     }
 }
@@ -3202,6 +3206,18 @@ impl<'hir> Node<'hir> {
             Node::Variant(Variant { id, .. }) => Some(*id),
             Node::Ctor(variant) => variant.ctor_hir_id(),
             Node::Crate(_) | Node::Visibility(_) => None,
+        }
+    }
+
+    pub fn as_owner(self) -> Option<OwnerNode<'hir>> {
+        match self {
+            Node::Item(i) => Some(OwnerNode::Item(i)),
+            Node::ForeignItem(i) => Some(OwnerNode::ForeignItem(i)),
+            Node::TraitItem(i) => Some(OwnerNode::TraitItem(i)),
+            Node::ImplItem(i) => Some(OwnerNode::ImplItem(i)),
+            Node::MacroDef(i) => Some(OwnerNode::MacroDef(i)),
+            Node::Crate(i) => Some(OwnerNode::Crate(i)),
+            _ => None,
         }
     }
 }

@@ -36,6 +36,7 @@ macro_rules! arena_types {
             [few] llvm_inline_asm: rustc_hir::LlvmInlineAsm<$tcx>,
             [] local: rustc_hir::Local<$tcx>,
             [few] macro_def: rustc_hir::MacroDef<$tcx>,
+            [few] mod_: rustc_hir::Mod<$tcx>,
             [] param: rustc_hir::Param<$tcx>,
             [] pat: rustc_hir::Pat<$tcx>,
             [] path: rustc_hir::Path<$tcx>,

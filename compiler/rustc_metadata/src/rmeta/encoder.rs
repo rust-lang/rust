@@ -430,7 +430,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     fn encode_info_for_items(&mut self) {
         let krate = self.tcx.hir().krate();
-        self.encode_info_for_mod(CRATE_DEF_ID, &krate.item);
+        self.encode_info_for_mod(CRATE_DEF_ID, krate.module());
 
         // Proc-macro crates only export proc-macro items, which are looked
         // up using `proc_macro_data`
