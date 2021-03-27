@@ -29,7 +29,7 @@ async function editorFromUri(uri: vscode.Uri): Promise<vscode.TextEditor | undef
 }
 
 export async function applySnippetTextEdits(editor: vscode.TextEditor, edits: vscode.TextEdit[]) {
-    let selections: vscode.Selection[] = [];
+    const selections: vscode.Selection[] = [];
     let lineDelta = 0;
     await editor.edit((builder) => {
         for (const indel of edits) {
