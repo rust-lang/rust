@@ -2175,6 +2175,307 @@ void TypeAnalyzer::visitIntrinsicInst(llvm::IntrinsicInst &I) {
     updateAnalysis(I.getOperand(0), TypeTree(BaseType::Integer).Only(-1), &I);
     return;
 
+  case Intrinsic::nvvm_wmma_m16n16k16_store_d_f32_col:
+  case Intrinsic::nvvm_wmma_m16n16k16_store_d_f32_col_stride:
+  case Intrinsic::nvvm_wmma_m16n16k16_store_d_f32_row:
+  case Intrinsic::nvvm_wmma_m16n16k16_store_d_f32_row_stride:
+  case Intrinsic::nvvm_wmma_m32n8k16_store_d_f32_col:
+  case Intrinsic::nvvm_wmma_m32n8k16_store_d_f32_col_stride:
+  case Intrinsic::nvvm_wmma_m32n8k16_store_d_f32_row:
+  case Intrinsic::nvvm_wmma_m32n8k16_store_d_f32_row_stride:
+  case Intrinsic::nvvm_wmma_m8n32k16_store_d_f32_col:
+  case Intrinsic::nvvm_wmma_m8n32k16_store_d_f32_col_stride:
+  case Intrinsic::nvvm_wmma_m8n32k16_store_d_f32_row:
+  case Intrinsic::nvvm_wmma_m8n32k16_store_d_f32_row_stride: {
+    updateAnalysis(
+        I.getOperand(0),
+        TypeTree(ConcreteType(Type::getFloatTy(I.getContext()))).Only(0), &I);
+    for (int i = 1; i <= 9; i++)
+      updateAnalysis(
+          I.getOperand(i),
+          TypeTree(ConcreteType(Type::getFloatTy(I.getContext()))).Only(-1),
+          &I);
+    return;
+  }
+
+  case Intrinsic::nvvm_wmma_m16n16k16_store_d_f16_col:
+  case Intrinsic::nvvm_wmma_m16n16k16_store_d_f16_col_stride:
+  case Intrinsic::nvvm_wmma_m16n16k16_store_d_f16_row:
+  case Intrinsic::nvvm_wmma_m16n16k16_store_d_f16_row_stride:
+  case Intrinsic::nvvm_wmma_m32n8k16_store_d_f16_col:
+  case Intrinsic::nvvm_wmma_m32n8k16_store_d_f16_col_stride:
+  case Intrinsic::nvvm_wmma_m32n8k16_store_d_f16_row:
+  case Intrinsic::nvvm_wmma_m32n8k16_store_d_f16_row_stride:
+  case Intrinsic::nvvm_wmma_m8n32k16_store_d_f16_col:
+  case Intrinsic::nvvm_wmma_m8n32k16_store_d_f16_col_stride:
+  case Intrinsic::nvvm_wmma_m8n32k16_store_d_f16_row:
+  case Intrinsic::nvvm_wmma_m8n32k16_store_d_f16_row_stride: {
+    updateAnalysis(
+        I.getOperand(0),
+        TypeTree(ConcreteType(Type::getHalfTy(I.getContext()))).Only(0), &I);
+    for (int i = 1; i <= 9; i++)
+      updateAnalysis(
+          I.getOperand(i),
+          TypeTree(ConcreteType(Type::getHalfTy(I.getContext()))).Only(-1), &I);
+    return;
+  }
+
+  case Intrinsic::nvvm_wmma_m16n16k16_load_c_f32_col:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_c_f32_col_stride:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_c_f32_row:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_c_f32_row_stride:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_c_f32_col:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_c_f32_col_stride:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_c_f32_row:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_c_f32_row_stride:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_c_f32_col:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_c_f32_col_stride:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_c_f32_row:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_c_f32_row_stride: {
+    updateAnalysis(
+        I.getOperand(0),
+        TypeTree(ConcreteType(Type::getFloatTy(I.getContext()))).Only(0), &I);
+    updateAnalysis(
+        &I, TypeTree(ConcreteType(Type::getFloatTy(I.getContext()))).Only(-1),
+        &I);
+    return;
+  }
+
+  case Intrinsic::nvvm_wmma_m16n16k16_load_a_f16_col:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_a_f16_col_stride:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_a_f16_row:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_a_f16_row_stride:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_b_f16_col:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_b_f16_col_stride:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_b_f16_row:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_b_f16_row_stride:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_c_f16_col:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_c_f16_col_stride:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_c_f16_row:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_c_f16_row_stride:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_a_f16_col:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_a_f16_col_stride:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_a_f16_row:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_a_f16_row_stride:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_b_f16_col:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_b_f16_col_stride:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_b_f16_row:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_b_f16_row_stride:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_c_f16_col:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_c_f16_col_stride:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_c_f16_row:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_c_f16_row_stride:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_a_f16_col:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_a_f16_col_stride:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_a_f16_row:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_a_f16_row_stride:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_b_f16_col:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_b_f16_col_stride:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_b_f16_row:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_b_f16_row_stride:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_c_f16_col:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_c_f16_col_stride:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_c_f16_row:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_c_f16_row_stride: {
+    updateAnalysis(
+        I.getOperand(0),
+        TypeTree(ConcreteType(Type::getHalfTy(I.getContext()))).Only(0), &I);
+    updateAnalysis(
+        &I, TypeTree(ConcreteType(Type::getHalfTy(I.getContext()))).Only(-1),
+        &I);
+    return;
+  }
+
+  case Intrinsic::nvvm_wmma_m16n16k16_load_c_s32_col:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_c_s32_col_stride:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_a_s8_col:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_a_s8_col_stride:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_a_u8_col_stride:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_a_u8_col:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_a_s8_row:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_a_s8_row_stride:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_a_u8_row_stride:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_a_u8_row:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_b_s8_col:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_b_s8_col_stride:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_b_u8_col_stride:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_b_u8_col:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_b_s8_row:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_b_s8_row_stride:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_b_u8_row_stride:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_b_u8_row:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_c_s32_row:
+  case Intrinsic::nvvm_wmma_m16n16k16_load_c_s32_row_stride:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_a_s8_col:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_a_s8_col_stride:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_a_u8_col_stride:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_a_u8_col:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_a_s8_row:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_a_s8_row_stride:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_a_u8_row_stride:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_a_u8_row:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_b_s8_col:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_b_s8_col_stride:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_b_u8_col_stride:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_b_u8_col:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_b_s8_row:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_b_s8_row_stride:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_b_u8_row_stride:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_b_u8_row:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_c_s32_col:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_c_s32_col_stride:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_c_s32_row:
+  case Intrinsic::nvvm_wmma_m32n8k16_load_c_s32_row_stride:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_a_s8_col:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_a_s8_col_stride:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_a_u8_col_stride:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_a_u8_col:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_a_s8_row:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_a_s8_row_stride:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_a_u8_row_stride:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_a_u8_row:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_b_s8_col:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_b_s8_col_stride:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_b_u8_col_stride:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_b_u8_col:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_b_s8_row:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_b_s8_row_stride:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_b_u8_row_stride:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_b_u8_row:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_c_s32_col:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_c_s32_col_stride:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_c_s32_row:
+  case Intrinsic::nvvm_wmma_m8n32k16_load_c_s32_row_stride:
+  case Intrinsic::nvvm_wmma_m8n8k128_load_a_b1_row:
+  case Intrinsic::nvvm_wmma_m8n8k128_load_a_b1_row_stride:
+  case Intrinsic::nvvm_wmma_m8n8k128_load_b_b1_col:
+  case Intrinsic::nvvm_wmma_m8n8k128_load_b_b1_col_stride:
+  case Intrinsic::nvvm_wmma_m8n8k128_load_c_s32_col:
+  case Intrinsic::nvvm_wmma_m8n8k128_load_c_s32_col_stride:
+  case Intrinsic::nvvm_wmma_m8n8k128_load_c_s32_row:
+  case Intrinsic::nvvm_wmma_m8n8k128_load_c_s32_row_stride:
+  case Intrinsic::nvvm_wmma_m8n8k32_load_a_s4_row:
+  case Intrinsic::nvvm_wmma_m8n8k32_load_a_s4_row_stride:
+  case Intrinsic::nvvm_wmma_m8n8k32_load_a_u4_row_stride:
+  case Intrinsic::nvvm_wmma_m8n8k32_load_a_u4_row:
+  case Intrinsic::nvvm_wmma_m8n8k32_load_b_s4_col:
+  case Intrinsic::nvvm_wmma_m8n8k32_load_b_s4_col_stride:
+  case Intrinsic::nvvm_wmma_m8n8k32_load_b_u4_col_stride:
+  case Intrinsic::nvvm_wmma_m8n8k32_load_b_u4_col:
+  case Intrinsic::nvvm_wmma_m8n8k32_load_c_s32_col:
+  case Intrinsic::nvvm_wmma_m8n8k32_load_c_s32_col_stride:
+  case Intrinsic::nvvm_wmma_m8n8k32_load_c_s32_row:
+  case Intrinsic::nvvm_wmma_m8n8k32_load_c_s32_row_stride: {
+    // TODO
+    return;
+  }
+
+  case Intrinsic::nvvm_wmma_m16n16k16_mma_col_col_f16_f16:
+  case Intrinsic::nvvm_wmma_m16n16k16_mma_col_row_f16_f16:
+  case Intrinsic::nvvm_wmma_m16n16k16_mma_row_col_f16_f16:
+  case Intrinsic::nvvm_wmma_m16n16k16_mma_row_row_f16_f16:
+  case Intrinsic::nvvm_wmma_m32n8k16_mma_col_col_f16_f16:
+  case Intrinsic::nvvm_wmma_m32n8k16_mma_col_row_f16_f16:
+  case Intrinsic::nvvm_wmma_m32n8k16_mma_row_col_f16_f16:
+  case Intrinsic::nvvm_wmma_m32n8k16_mma_row_row_f16_f16:
+  case Intrinsic::nvvm_wmma_m8n32k16_mma_col_col_f16_f16:
+  case Intrinsic::nvvm_wmma_m8n32k16_mma_col_row_f16_f16:
+  case Intrinsic::nvvm_wmma_m8n32k16_mma_row_col_f16_f16:
+  case Intrinsic::nvvm_wmma_m8n32k16_mma_row_row_f16_f16: {
+    for (int i = 0; i < 16; i++)
+      updateAnalysis(
+          I.getOperand(i),
+          TypeTree(ConcreteType(Type::getHalfTy(I.getContext()))).Only(-1), &I);
+    for (int i = 16; i < 16 + 8; i++)
+      updateAnalysis(
+          I.getOperand(i),
+          TypeTree(ConcreteType(Type::getHalfTy(I.getContext()))).Only(-1), &I);
+    updateAnalysis(
+        &I, TypeTree(ConcreteType(Type::getHalfTy(I.getContext()))).Only(-1),
+        &I);
+    return;
+  }
+
+  case Intrinsic::nvvm_wmma_m16n16k16_mma_col_col_f16_f32:
+  case Intrinsic::nvvm_wmma_m16n16k16_mma_col_row_f16_f32:
+  case Intrinsic::nvvm_wmma_m16n16k16_mma_row_col_f16_f32:
+  case Intrinsic::nvvm_wmma_m16n16k16_mma_row_row_f16_f32:
+  case Intrinsic::nvvm_wmma_m32n8k16_mma_col_col_f16_f32:
+  case Intrinsic::nvvm_wmma_m32n8k16_mma_col_row_f16_f32:
+  case Intrinsic::nvvm_wmma_m32n8k16_mma_row_col_f16_f32:
+  case Intrinsic::nvvm_wmma_m32n8k16_mma_row_row_f16_f32:
+  case Intrinsic::nvvm_wmma_m8n32k16_mma_col_col_f16_f32:
+  case Intrinsic::nvvm_wmma_m8n32k16_mma_col_row_f16_f32:
+  case Intrinsic::nvvm_wmma_m8n32k16_mma_row_col_f16_f32:
+  case Intrinsic::nvvm_wmma_m8n32k16_mma_row_row_f16_f32: {
+    for (int i = 0; i < 16; i++)
+      updateAnalysis(
+          I.getOperand(i),
+          TypeTree(ConcreteType(Type::getHalfTy(I.getContext()))).Only(-1), &I);
+    for (int i = 16; i < 16 + 8; i++)
+      updateAnalysis(
+          I.getOperand(i),
+          TypeTree(ConcreteType(Type::getFloatTy(I.getContext()))).Only(-1),
+          &I);
+    updateAnalysis(
+        &I, TypeTree(ConcreteType(Type::getHalfTy(I.getContext()))).Only(-1),
+        &I);
+    return;
+  }
+
+  case Intrinsic::nvvm_wmma_m16n16k16_mma_col_col_f32_f16:
+  case Intrinsic::nvvm_wmma_m16n16k16_mma_col_row_f32_f16:
+  case Intrinsic::nvvm_wmma_m16n16k16_mma_row_col_f32_f16:
+  case Intrinsic::nvvm_wmma_m16n16k16_mma_row_row_f32_f16:
+  case Intrinsic::nvvm_wmma_m32n8k16_mma_col_col_f32_f16:
+  case Intrinsic::nvvm_wmma_m32n8k16_mma_col_row_f32_f16:
+  case Intrinsic::nvvm_wmma_m32n8k16_mma_row_col_f32_f16:
+  case Intrinsic::nvvm_wmma_m32n8k16_mma_row_row_f32_f16:
+  case Intrinsic::nvvm_wmma_m8n32k16_mma_col_col_f32_f16:
+  case Intrinsic::nvvm_wmma_m8n32k16_mma_col_row_f32_f16:
+  case Intrinsic::nvvm_wmma_m8n32k16_mma_row_col_f32_f16:
+  case Intrinsic::nvvm_wmma_m8n32k16_mma_row_row_f32_f16: {
+    for (int i = 0; i < 16; i++)
+      updateAnalysis(
+          I.getOperand(i),
+          TypeTree(ConcreteType(Type::getHalfTy(I.getContext()))).Only(-1), &I);
+    for (int i = 16; i < 16 + 8; i++)
+      updateAnalysis(
+          I.getOperand(i),
+          TypeTree(ConcreteType(Type::getHalfTy(I.getContext()))).Only(-1), &I);
+    updateAnalysis(
+        &I, TypeTree(ConcreteType(Type::getFloatTy(I.getContext()))).Only(-1),
+        &I);
+    return;
+  }
+
+  case Intrinsic::nvvm_wmma_m16n16k16_mma_col_col_f32_f32:
+  case Intrinsic::nvvm_wmma_m16n16k16_mma_col_row_f32_f32:
+  case Intrinsic::nvvm_wmma_m16n16k16_mma_row_col_f32_f32:
+  case Intrinsic::nvvm_wmma_m16n16k16_mma_row_row_f32_f32:
+  case Intrinsic::nvvm_wmma_m32n8k16_mma_col_col_f32_f32:
+  case Intrinsic::nvvm_wmma_m32n8k16_mma_col_row_f32_f32:
+  case Intrinsic::nvvm_wmma_m32n8k16_mma_row_col_f32_f32:
+  case Intrinsic::nvvm_wmma_m32n8k16_mma_row_row_f32_f32:
+  case Intrinsic::nvvm_wmma_m8n32k16_mma_col_col_f32_f32:
+  case Intrinsic::nvvm_wmma_m8n32k16_mma_col_row_f32_f32:
+  case Intrinsic::nvvm_wmma_m8n32k16_mma_row_col_f32_f32:
+  case Intrinsic::nvvm_wmma_m8n32k16_mma_row_row_f32_f32: {
+    for (int i = 0; i < 16; i++)
+      updateAnalysis(
+          I.getOperand(i),
+          TypeTree(ConcreteType(Type::getHalfTy(I.getContext()))).Only(-1), &I);
+    for (int i = 16; i < 16 + 8; i++)
+      updateAnalysis(
+          I.getOperand(i),
+          TypeTree(ConcreteType(Type::getFloatTy(I.getContext()))).Only(-1),
+          &I);
+    updateAnalysis(
+        &I, TypeTree(ConcreteType(Type::getFloatTy(I.getContext()))).Only(-1),
+        &I);
+    return;
+  }
+
   case Intrinsic::nvvm_ldu_global_i:
   case Intrinsic::nvvm_ldu_global_p:
   case Intrinsic::nvvm_ldu_global_f:
