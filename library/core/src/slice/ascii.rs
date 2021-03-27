@@ -30,7 +30,7 @@ impl [u8] {
     /// To return a new uppercased value without modifying the existing one, use
     /// [`to_ascii_uppercase`].
     ///
-    /// [`to_ascii_uppercase`]: #method.to_ascii_uppercase
+    /// [`to_ascii_uppercase`]: slice::to_ascii_uppercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn make_ascii_uppercase(&mut self) {
@@ -47,7 +47,7 @@ impl [u8] {
     /// To return a new lowercased value without modifying the existing one, use
     /// [`to_ascii_lowercase`].
     ///
-    /// [`to_ascii_lowercase`]: #method.to_ascii_lowercase
+    /// [`to_ascii_lowercase`]: slice::to_ascii_lowercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn make_ascii_lowercase(&mut self) {
