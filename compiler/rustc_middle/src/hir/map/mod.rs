@@ -313,7 +313,7 @@ impl<'hir> Map<'hir> {
     pub fn find(&self, id: HirId) -> Option<Node<'hir>> {
         if id.local_id == ItemLocalId::from_u32(0) {
             let owner = self.tcx.hir_owner(id.owner)?;
-            Some(owner.node)
+            Some(owner.node.into())
         } else {
             let owner = self.tcx.hir_owner_nodes(id.owner)?;
             let node = owner.nodes[id.local_id].as_ref()?;
