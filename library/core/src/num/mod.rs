@@ -2,6 +2,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::ascii;
 use crate::intrinsics;
 use crate::mem;
 use crate::str::FromStr;
@@ -660,6 +661,31 @@ impl u8 {
     #[inline]
     pub const fn is_ascii_control(&self) -> bool {
         matches!(*self, b'\0'..=b'\x1F' | b'\x7F')
+    }
+
+    /// Returns an iterator that produces an escaped version of a `u8`,
+    /// treating it as an ASCII character.
+    ///
+    /// The behavior is identical to [`ascii::escape_default`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(inherent_ascii_escape)]
+    ///
+    /// assert_eq!("0", b'0'.escape_ascii().to_string());
+    /// assert_eq!("\\t", b'\t'.escape_ascii().to_string());
+    /// assert_eq!("\\r", b'\r'.escape_ascii().to_string());
+    /// assert_eq!("\\n", b'\n'.escape_ascii().to_string());
+    /// assert_eq!("\\'", b'\''.escape_ascii().to_string());
+    /// assert_eq!("\\\"", b'"'.escape_ascii().to_string());
+    /// assert_eq!("\\\\", b'\\'.escape_ascii().to_string());
+    /// assert_eq!("\\x9d", b'\x9d'.escape_ascii().to_string());
+    /// ```
+    #[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+    #[inline]
+    pub fn escape_ascii(&self) -> ascii::EscapeDefault {
+        ascii::escape_default(*self)
     }
 }
 
