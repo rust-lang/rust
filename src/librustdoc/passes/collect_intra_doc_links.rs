@@ -487,6 +487,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         &mut self,
         path_str: &'path str,
         ns: Namespace,
+        expect_field: bool,
         module_id: DefId,
         extra_fragment: &Option<String>,
     ) -> Result<(Res, Option<String>), ErrorKind<'path>> {
@@ -565,92 +566,60 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 | DefKind::ForeignTy,
                 did,
             ) => {
-                debug!("looking for associated item named {} for item {:?}", item_name, did);
-                // Checks if item_name belongs to `impl SomeItem`
-                let assoc_item = tcx
-                    .inherent_impls(did)
-                    .iter()
-                    .flat_map(|&imp| {
-                        tcx.associated_items(imp).find_by_name_and_namespace(
-                            tcx,
-                            Ident::with_dummy_span(item_name),
-                            ns,
-                            imp,
-                        )
-                    })
-                    .map(|item| (item.kind, item.def_id))
-                    // There should only ever be one associated item that matches from any inherent impl
-                    .next()
-                    // Check if item_name belongs to `impl SomeTrait for SomeItem`
-                    // FIXME(#74563): This gives precedence to `impl SomeItem`:
-                    // Although having both would be ambiguous, use impl version for compatibility's sake.
-                    // To handle that properly resolve() would have to support
-                    // something like [`ambi_fn`](<SomeStruct as SomeTrait>::ambi_fn)
-                    .or_else(|| {
-                        let kind =
-                            resolve_associated_trait_item(did, module_id, item_name, ns, self.cx);
-                        debug!("got associated item kind {:?}", kind);
-                        kind
-                    });
-
-                if let Some((kind, id)) = assoc_item {
-                    let out = match kind {
-                        ty::AssocKind::Fn => "method",
-                        ty::AssocKind::Const => "associatedconstant",
-                        ty::AssocKind::Type => "associatedtype",
-                    };
-                    Some(if extra_fragment.is_some() {
-                        Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(ty_res)))
-                    } else {
-                        // HACK(jynelson): `clean` expects the type, not the associated item
-                        // but the disambiguator logic expects the associated item.
-                        // Store the kind in a side channel so that only the disambiguator logic looks at it.
-                        self.kind_side_channel.set(Some((kind.as_def_kind(), id)));
-                        Ok((ty_res, Some(format!("{}.{}", out, item_str))))
-                    })
-                } else if ns == Namespace::ValueNS {
-                    debug!("looking for variants or fields named {} for {:?}", item_name, did);
-                    // FIXME(jynelson): why is this different from
-                    // `variant_field`?
-                    match tcx.type_of(did).kind() {
-                        ty::Adt(def, _) => {
-                            let field = if def.is_enum() {
-                                def.all_fields().find(|item| item.ident.name == item_name)
-                            } else {
-                                def.non_enum_variant()
-                                    .fields
-                                    .iter()
-                                    .find(|item| item.ident.name == item_name)
-                            };
-                            field.map(|item| {
-                                if extra_fragment.is_some() {
-                                    let res = Res::Def(
-                                        if def.is_enum() {
-                                            DefKind::Variant
-                                        } else {
-                                            DefKind::Field
-                                        },
-                                        item.did,
-                                    );
-                                    Err(ErrorKind::AnchorFailure(
-                                        AnchorFailure::RustdocAnchorConflict(res),
-                                    ))
-                                } else {
-                                    Ok((
-                                        ty_res,
-                                        Some(format!(
-                                            "{}.{}",
-                                            if def.is_enum() { "variant" } else { "structfield" },
-                                            item.ident
-                                        )),
-                                    ))
-                                }
-                            })
-                        }
-                        _ => None,
-                    }
+                if expect_field {
+                    self.resolve_variant_or_field(item_name, did, ty_res, extra_fragment)
                 } else {
-                    None
+                    debug!("looking for associated item named {} for item {:?}", item_name, did);
+                    // Checks if item_name belongs to `impl SomeItem`
+                    let assoc_item = tcx
+                        .inherent_impls(did)
+                        .iter()
+                        .flat_map(|&imp| {
+                            tcx.associated_items(imp).find_by_name_and_namespace(
+                                tcx,
+                                Ident::with_dummy_span(item_name),
+                                ns,
+                                imp,
+                            )
+                        })
+                        .map(|item| (item.kind, item.def_id))
+                        // There should only ever be one associated item that matches from any inherent impl
+                        .next()
+                        // Check if item_name belongs to `impl SomeTrait for SomeItem`
+                        // FIXME(#74563): This gives precedence to `impl SomeItem`:
+                        // Although having both would be ambiguous, use impl version for compatibility's sake.
+                        // To handle that properly resolve() would have to support
+                        // something like [`ambi_fn`](<SomeStruct as SomeTrait>::ambi_fn)
+                        .or_else(|| {
+                            let kind = resolve_associated_trait_item(
+                                did, module_id, item_name, ns, self.cx,
+                            );
+                            debug!("got associated item kind {:?}", kind);
+                            kind
+                        });
+
+                    if let Some((kind, id)) = assoc_item {
+                        let out = match kind {
+                            ty::AssocKind::Fn => "method",
+                            ty::AssocKind::Const => "associatedconstant",
+                            ty::AssocKind::Type => "associatedtype",
+                        };
+                        Some(if extra_fragment.is_some() {
+                            Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(
+                                ty_res,
+                            )))
+                        } else {
+                            // HACK(jynelson): `clean` expects the type, not the associated item
+                            // but the disambiguator logic expects the associated item.
+                            // Store the kind in a side channel so that only the disambiguator logic looks at it.
+                            self.kind_side_channel.set(Some((kind.as_def_kind(), id)));
+                            Ok((ty_res, Some(format!("{}.{}", out, item_str))))
+                        })
+                    } else if ns == Namespace::ValueNS {
+                        self.resolve_variant_or_field(item_name, did, ty_res, extra_fragment)
+                    } else {
+                        None
+                    }
                 }
             }
             Res::Def(DefKind::Trait, did) => tcx
@@ -692,6 +661,46 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         })
     }
 
+    fn resolve_variant_or_field(
+        &self,
+        item_name: Symbol,
+        did: DefId,
+        ty_res: Res,
+        extra_fragment: &Option<String>,
+    ) -> Option<Result<(Res, Option<String>), ErrorKind<'path>>> {
+        debug!("looking for variants or fields named {} for {:?}", item_name, did);
+        // FIXME(jynelson): why is this different from
+        // `variant_field`?
+        match self.cx.tcx.type_of(did).kind() {
+            ty::Adt(def, _) => {
+                let field = if def.is_enum() {
+                    def.all_fields().find(|item| item.ident.name == item_name)
+                } else {
+                    def.non_enum_variant().fields.iter().find(|item| item.ident.name == item_name)
+                };
+                field.map(|item| {
+                    if extra_fragment.is_some() {
+                        let res = Res::Def(
+                            if def.is_enum() { DefKind::Variant } else { DefKind::Field },
+                            item.did,
+                        );
+                        Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(res)))
+                    } else {
+                        Ok((
+                            ty_res,
+                            Some(format!(
+                                "{}.{}",
+                                if def.is_enum() { "variant" } else { "structfield" },
+                                item.ident
+                            )),
+                        ))
+                    }
+                })
+            }
+            _ => None,
+        }
+    }
+
     /// Used for reporting better errors.
     ///
     /// Returns whether the link resolved 'fully' in another namespace.
@@ -701,6 +710,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     fn check_full_res(
         &mut self,
         ns: Namespace,
+        expect_field: bool,
         path_str: &str,
         module_id: DefId,
         extra_fragment: &Option<String>,
@@ -708,9 +718,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         // resolve() can't be used for macro namespace
         let result = match ns {
             Namespace::MacroNS => self.resolve_macro(path_str, module_id).map_err(ErrorKind::from),
-            Namespace::TypeNS | Namespace::ValueNS => {
-                self.resolve(path_str, ns, module_id, extra_fragment).map(|(res, _)| res)
-            }
+            Namespace::TypeNS | Namespace::ValueNS => self
+                .resolve(path_str, ns, expect_field, module_id, extra_fragment)
+                .map(|(res, _)| res),
         };
 
         let res = match result {
@@ -1165,6 +1175,9 @@ impl LinkCollector<'_, '_> {
             debug!("saw kind {:?} with disambiguator {:?}", kind, disambiguator);
             match (kind, disambiguator) {
                 | (DefKind::Const | DefKind::ConstParam | DefKind::AssocConst | DefKind::AnonConst, Some(Disambiguator::Kind(DefKind::Const)))
+                // Fields are resolved to their parent type's Res.
+                // FIXME: what about DefKind::Variant?
+                | (DefKind::Struct | DefKind::Enum, Some(Disambiguator::Kind(DefKind::Field)))
                 // NOTE: this allows 'method' to mean both normal functions and associated functions
                 // This can't cause ambiguity because both are in the same namespace.
                 | (DefKind::Fn | DefKind::AssocFn, Some(Disambiguator::Kind(DefKind::Fn)))
@@ -1315,10 +1328,11 @@ impl LinkCollector<'_, '_> {
         let path_str = &key.path_str;
         let base_node = key.module_id;
         let extra_fragment = &key.extra_fragment;
+        let expect_field = disambiguator.map_or(false, Disambiguator::is_field);
 
         match disambiguator.map(Disambiguator::ns) {
             Some(expected_ns @ (ValueNS | TypeNS)) => {
-                match self.resolve(path_str, expected_ns, base_node, extra_fragment) {
+                match self.resolve(path_str, expected_ns, expect_field, base_node, extra_fragment) {
                     Ok(res) => Some(res),
                     Err(ErrorKind::Resolve(box mut kind)) => {
                         // We only looked in one namespace. Try to give a better error if possible.
@@ -1327,9 +1341,13 @@ impl LinkCollector<'_, '_> {
                             // FIXME: really it should be `resolution_failure` that does this, not `resolve_with_disambiguator`
                             // See https://github.com/rust-lang/rust/pull/76955#discussion_r493953382 for a good approach
                             for &new_ns in &[other_ns, MacroNS] {
-                                if let Some(res) =
-                                    self.check_full_res(new_ns, path_str, base_node, extra_fragment)
-                                {
+                                if let Some(res) = self.check_full_res(
+                                    new_ns,
+                                    expect_field,
+                                    path_str,
+                                    base_node,
+                                    extra_fragment,
+                                ) {
                                     kind = ResolutionFailure::WrongNamespace { res, expected_ns };
                                     break;
                                 }
@@ -1368,7 +1386,13 @@ impl LinkCollector<'_, '_> {
                     macro_ns: self
                         .resolve_macro(path_str, base_node)
                         .map(|res| (res, extra_fragment.clone())),
-                    type_ns: match self.resolve(path_str, TypeNS, base_node, extra_fragment) {
+                    type_ns: match self.resolve(
+                        path_str,
+                        TypeNS,
+                        expect_field,
+                        base_node,
+                        extra_fragment,
+                    ) {
                         Ok(res) => {
                             debug!("got res in TypeNS: {:?}", res);
                             Ok(res)
@@ -1386,7 +1410,13 @@ impl LinkCollector<'_, '_> {
                         }
                         Err(ErrorKind::Resolve(box kind)) => Err(kind),
                     },
-                    value_ns: match self.resolve(path_str, ValueNS, base_node, extra_fragment) {
+                    value_ns: match self.resolve(
+                        path_str,
+                        ValueNS,
+                        expect_field,
+                        base_node,
+                        extra_fragment,
+                    ) {
                         Ok(res) => Ok(res),
                         Err(ErrorKind::AnchorFailure(msg)) => {
                             anchor_failure(
@@ -1463,9 +1493,13 @@ impl LinkCollector<'_, '_> {
                     Err(mut kind) => {
                         // `resolve_macro` only looks in the macro namespace. Try to give a better error if possible.
                         for &ns in &[TypeNS, ValueNS] {
-                            if let Some(res) =
-                                self.check_full_res(ns, path_str, base_node, extra_fragment)
-                            {
+                            if let Some(res) = self.check_full_res(
+                                ns,
+                                expect_field,
+                                path_str,
+                                base_node,
+                                extra_fragment,
+                            ) {
                                 kind =
                                     ResolutionFailure::WrongNamespace { res, expected_ns: MacroNS };
                                 break;
@@ -1542,6 +1576,7 @@ impl Disambiguator {
                 "enum" => Kind(DefKind::Enum),
                 "trait" => Kind(DefKind::Trait),
                 "union" => Kind(DefKind::Union),
+                "field" => Kind(DefKind::Field),
                 "module" | "mod" => Kind(DefKind::Mod),
                 "const" | "constant" => Kind(DefKind::Const),
                 "static" => Kind(DefKind::Static),
@@ -1604,11 +1639,22 @@ impl Disambiguator {
         Suggestion::Prefix(prefix)
     }
 
+    fn is_field(self) -> bool {
+        self == Self::Kind(DefKind::Field)
+    }
+
     fn ns(self) -> Namespace {
         match self {
             Self::Namespace(n) => n,
             Self::Kind(k) => {
-                k.ns().expect("only DefKinds with a valid namespace can be disambiguators")
+                match k {
+                    // Fields technically don't have a namespace, but we treat
+                    // fields as if they belong to the value namespace.
+                    DefKind::Field => TypeNS,
+                    _ => {
+                        k.ns().expect("only DefKinds with a valid namespace can be disambiguators")
+                    }
+                }
             }
             Self::Primitive => TypeNS,
         }
@@ -1795,9 +1841,13 @@ fn resolution_failure(
                         };
                         name = start;
                         for &ns in &[TypeNS, ValueNS, MacroNS] {
-                            if let Some(res) =
-                                collector.check_full_res(ns, &start, module_id, &None)
-                            {
+                            if let Some(res) = collector.check_full_res(
+                                ns,
+                                disambiguator.map_or(false, Disambiguator::is_field),
+                                &start,
+                                module_id,
+                                &None,
+                            ) {
                                 debug!("found partial_res={:?}", res);
                                 *partial_res = Some(res);
                                 *unresolved = end.into();
