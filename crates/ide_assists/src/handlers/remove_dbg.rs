@@ -24,18 +24,35 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let macro_call = ctx.find_node_at_offset::<ast::MacroCall>()?;
     let new_contents = adjusted_macro_contents(&macro_call)?;
 
-    let macro_text_range = if new_contents.is_empty() {
-        let parent = macro_call.syntax().parent()?;
+    let parent = macro_call.syntax().parent();
 
-        let start = parent
-            .prev_sibling_or_token()
-            .and_then(|el| {
-                Some(el.into_token().and_then(ast::Whitespace::cast)?.syntax().text_range().start())
-            })
-            .unwrap_or(parent.text_range().start());
-        let end = parent.text_range().end();
+    let macro_text_range = if let Some(it) = parent.as_ref() {
+        if new_contents.is_empty() {
+            match_ast! {
+                match it {
+                    ast::BlockExpr(it) => {
+                        macro_call.syntax()
+                            .prev_sibling_or_token()
+                            .and_then(whitespace_start)
+                            .map(|start| TextRange::new(start, macro_call.syntax().text_range().end()))
+                            .unwrap_or(macro_call.syntax().text_range())
+                    },
+                    ast::ExprStmt(it) => {
+                        let start = it
+                            .syntax()
+                            .prev_sibling_or_token()
+                            .and_then(whitespace_start)
+                            .unwrap_or(it.syntax().text_range().start());
+                        let end = it.syntax().text_range().end();
 
-        TextRange::new(start, end)
+                        TextRange::new(start, end)
+                    },
+                    _ => macro_call.syntax().text_range()
+                }
+            }
+        } else {
+            macro_call.syntax().text_range()
+        }
     } else {
         macro_call.syntax().text_range()
     };
@@ -51,9 +68,20 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         "Remove dbg!()",
         macro_text_range,
         |builder| {
-            builder.replace(TextRange::new(macro_text_range.start(), macro_end), new_contents);
+            builder.replace(
+                TextRange::new(macro_text_range.start(), macro_end),
+                if new_contents.is_empty() && parent.and_then(ast::LetStmt::cast).is_some() {
+                    ast::make::expr_unit().to_string()
+                } else {
+                    new_contents
+                },
+            );
         },
     )
+}
+
+fn whitespace_start(it: SyntaxElement) -> Option<TextSize> {
+    Some(it.into_token().and_then(ast::Whitespace::cast)?.syntax().text_range().start())
 }
 
 fn adjusted_macro_contents(macro_call: &ast::MacroCall) -> Option<String> {
@@ -439,6 +467,37 @@ fn main() {
 $0dbg!();
 }"#,
             r#"fn foo() {
+}"#,
+        );
+        check_assist(
+            remove_dbg,
+            r#"fn foo() {
+let test = $0dbg!();
+}"#,
+            r#"fn foo() {
+let test = ();
+}"#,
+        );
+        check_assist(
+            remove_dbg,
+            r#"fn foo() {
+$0dbg!()
+}"#,
+            r#"fn foo() {
+}"#,
+        );
+        check_assist(
+            remove_dbg,
+            r#"fn foo() {
+let t = {
+    println!("Hello, world");
+    $0dbg!()
+};
+}"#,
+            r#"fn foo() {
+let t = {
+    println!("Hello, world");
+};
 }"#,
         );
     }
