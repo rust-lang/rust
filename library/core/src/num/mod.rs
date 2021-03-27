@@ -671,7 +671,7 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(inherent_ascii_escape)]
+    /// #![feature(inherent_ascii_escape)]
     ///
     /// assert_eq!("0", b'0'.escape_ascii().to_string());
     /// assert_eq!("\\t", b'\t'.escape_ascii().to_string());
