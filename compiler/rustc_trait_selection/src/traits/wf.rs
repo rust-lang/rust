@@ -692,11 +692,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         let predicates = predicates.instantiate(self.infcx.tcx, substs);
         debug_assert_eq!(predicates.predicates.len(), origins.len());
 
-        predicates
-            .predicates
-            .into_iter()
-            .zip(predicates.spans.into_iter())
-            .zip(origins.into_iter().rev())
+        iter::zip(iter::zip(predicates.predicates, predicates.spans), origins.into_iter().rev())
             .map(|((pred, span), origin_def_id)| {
                 let cause = self.cause(traits::BindingObligation(origin_def_id, span));
                 traits::Obligation::with_depth(cause, self.recursion_depth, self.param_env, pred)

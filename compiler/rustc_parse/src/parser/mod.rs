@@ -172,6 +172,13 @@ struct TokenCursor {
     // appended to the captured stream when
     // we evaluate a `LazyTokenStream`
     append_unglued_token: Option<TreeAndSpacing>,
+    // If `true`, skip the delimiters for `None`-delimited groups,
+    // and just yield the inner tokens. This is `true` during
+    // normal parsing, since the parser code is not currently prepared
+    // to handle `None` delimiters. When capturing a `TokenStream`,
+    // however, we want to handle `None`-delimiters, since
+    // proc-macros always see `None`-delimited groups.
+    skip_none_delims: bool,
 }
 
 #[derive(Clone)]
@@ -184,13 +191,13 @@ struct TokenCursorFrame {
 }
 
 impl TokenCursorFrame {
-    fn new(span: DelimSpan, delim: DelimToken, tts: TokenStream) -> Self {
+    fn new(span: DelimSpan, delim: DelimToken, tts: TokenStream, skip_none_delims: bool) -> Self {
         TokenCursorFrame {
             delim,
             span,
-            open_delim: delim == token::NoDelim,
+            open_delim: delim == token::NoDelim && skip_none_delims,
             tree_cursor: tts.into_trees(),
-            close_delim: delim == token::NoDelim,
+            close_delim: delim == token::NoDelim && skip_none_delims,
         }
     }
 }
@@ -218,7 +225,7 @@ impl TokenCursor {
                     return (token, spacing);
                 }
                 TokenTree::Delimited(sp, delim, tts) => {
-                    let frame = TokenCursorFrame::new(sp, delim, tts);
+                    let frame = TokenCursorFrame::new(sp, delim, tts, self.skip_none_delims);
                     self.stack.push(mem::replace(&mut self.frame, frame));
                 }
             }
@@ -276,6 +283,7 @@ impl TokenCursor {
                         .cloned()
                         .collect::<TokenStream>()
                 },
+                self.skip_none_delims,
             ),
         ));
 
@@ -371,12 +379,19 @@ impl<'a> Parser<'a> {
             prev_token: Token::dummy(),
             restrictions: Restrictions::empty(),
             expected_tokens: Vec::new(),
+            // Skip over the delimiters for `None`-delimited groups
             token_cursor: TokenCursor {
-                frame: TokenCursorFrame::new(DelimSpan::dummy(), token::NoDelim, tokens),
+                frame: TokenCursorFrame::new(
+                    DelimSpan::dummy(),
+                    token::NoDelim,
+                    tokens,
+                    /* skip_none_delims */ true,
+                ),
                 stack: Vec::new(),
                 num_next_calls: 0,
                 desugar_doc_comments,
                 append_unglued_token: None,
+                skip_none_delims: true,
             },
             desugar_doc_comments,
             unmatched_angle_bracket_count: 0,

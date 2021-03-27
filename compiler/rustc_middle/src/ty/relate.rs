@@ -33,15 +33,6 @@ pub trait TypeRelation<'tcx>: Sized {
     /// relation. Just affects error messages.
     fn a_is_expected(&self) -> bool;
 
-    /// Whether we should look into the substs of unevaluated constants
-    /// even if `feature(const_evaluatable_checked)` is active.
-    ///
-    /// This is needed in `combine` to prevent accidentially creating
-    /// infinite types as we abuse `TypeRelation` to walk a type there.
-    fn visit_ct_substs(&self) -> bool {
-        false
-    }
-
     fn with_cause<F, R>(&mut self, _cause: Cause, f: F) -> R
     where
         F: FnOnce(&mut Self) -> R,
@@ -149,7 +140,7 @@ pub fn relate_substs<R: TypeRelation<'tcx>>(
 ) -> RelateResult<'tcx, SubstsRef<'tcx>> {
     let tcx = relation.tcx();
 
-    let params = a_subst.iter().zip(b_subst).enumerate().map(|(i, (a, b))| {
+    let params = iter::zip(a_subst, b_subst).enumerate().map(|(i, (a, b))| {
         let variance = variances.map_or(ty::Invariant, |v| v[i]);
         relation.relate_with_variance(variance, a, b)
     });
@@ -179,12 +170,8 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
             return Err(TypeError::ArgCount);
         }
 
-        let inputs_and_output = a
-            .inputs()
-            .iter()
-            .cloned()
-            .zip(b.inputs().iter().cloned())
-            .map(|x| (x, false))
+        let inputs_and_output = iter::zip(a.inputs(), b.inputs())
+            .map(|(&a, &b)| ((a, b), false))
             .chain(iter::once(((a.output(), b.output()), true)))
             .map(|((a, b), is_output)| {
                 if is_output {
@@ -308,7 +295,7 @@ impl<'tcx> Relate<'tcx> for GeneratorWitness<'tcx> {
     ) -> RelateResult<'tcx, GeneratorWitness<'tcx>> {
         assert_eq!(a.0.len(), b.0.len());
         let tcx = relation.tcx();
-        let types = tcx.mk_type_list(a.0.iter().zip(b.0).map(|(a, b)| relation.relate(a, b)))?;
+        let types = tcx.mk_type_list(iter::zip(a.0, b.0).map(|(a, b)| relation.relate(a, b)))?;
         Ok(GeneratorWitness(types))
     }
 }
@@ -432,9 +419,9 @@ pub fn super_relate_tys<R: TypeRelation<'tcx>>(
                     let sz_a = sz_a.try_eval_usize(tcx, relation.param_env());
                     let sz_b = sz_b.try_eval_usize(tcx, relation.param_env());
                     match (sz_a, sz_b) {
-                        (Some(sz_a_val), Some(sz_b_val)) => Err(TypeError::FixedArraySize(
-                            expected_found(relation, sz_a_val, sz_b_val),
-                        )),
+                        (Some(sz_a_val), Some(sz_b_val)) if sz_a_val != sz_b_val => Err(
+                            TypeError::FixedArraySize(expected_found(relation, sz_a_val, sz_b_val)),
+                        ),
                         _ => Err(err),
                     }
                 }
@@ -449,7 +436,7 @@ pub fn super_relate_tys<R: TypeRelation<'tcx>>(
         (&ty::Tuple(as_), &ty::Tuple(bs)) => {
             if as_.len() == bs.len() {
                 Ok(tcx.mk_tup(
-                    as_.iter().zip(bs).map(|(a, b)| relation.relate(a.expect_ty(), b.expect_ty())),
+                    iter::zip(as_, bs).map(|(a, b)| relation.relate(a.expect_ty(), b.expect_ty())),
                 )?)
             } else if !(as_.is_empty() || bs.is_empty()) {
                 Err(TypeError::TupleSize(expected_found(relation, as_.len(), bs.len())))
@@ -532,7 +519,7 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
         }
 
         (ty::ConstKind::Unevaluated(au), ty::ConstKind::Unevaluated(bu))
-            if tcx.features().const_evaluatable_checked && !relation.visit_ct_substs() =>
+            if tcx.features().const_evaluatable_checked =>
         {
             tcx.try_unify_abstract_consts(((au.def, au.substs), (bu.def, bu.substs)))
         }
@@ -593,9 +580,7 @@ fn check_const_value_eq<R: TypeRelation<'tcx>>(
 
             // Both the variant and each field have to be equal.
             if a_destructured.variant == b_destructured.variant {
-                for (a_field, b_field) in
-                    a_destructured.fields.iter().zip(b_destructured.fields.iter())
-                {
+                for (a_field, b_field) in iter::zip(a_destructured.fields, b_destructured.fields) {
                     relation.consts(a_field, b_field)?;
                 }
 
@@ -631,7 +616,7 @@ impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'
             return Err(TypeError::ExistentialMismatch(expected_found(relation, a, b)));
         }
 
-        let v = a_v.into_iter().zip(b_v.into_iter()).map(|(ep_a, ep_b)| {
+        let v = iter::zip(a_v, b_v).map(|(ep_a, ep_b)| {
             use crate::ty::ExistentialPredicate::*;
             match (ep_a.skip_binder(), ep_b.skip_binder()) {
                 (Trait(a), Trait(b)) => Ok(ty::Binder::bind(Trait(

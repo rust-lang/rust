@@ -19,6 +19,7 @@ use std::char;
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::fmt::{self, Write as _};
+use std::iter;
 use std::ops::{ControlFlow, Deref, DerefMut};
 
 // `pretty` is a separate module only for organization.
@@ -1223,7 +1224,7 @@ pub trait PrettyPrinter<'tcx>:
                             CtorKind::Fictive => {
                                 p!(" {{ ");
                                 let mut first = true;
-                                for (field_def, field) in variant_def.fields.iter().zip(fields) {
+                                for (field_def, field) in iter::zip(&variant_def.fields, fields) {
                                     if !first {
                                         p!(", ");
                                     }

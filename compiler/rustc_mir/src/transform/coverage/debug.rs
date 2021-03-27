@@ -121,6 +121,7 @@ use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::{self, BasicBlock, TerminatorKind};
 use rustc_middle::ty::TyCtxt;
 
+use std::iter;
 use std::lazy::SyncOnceCell;
 
 pub const NESTED_INDENT: &str = "    ";
@@ -703,9 +704,7 @@ pub(super) fn dump_coverage_graphviz(
         let edge_counters = from_terminator
             .successors()
             .map(|&successor_bb| graphviz_data.get_edge_counter(from_bcb, successor_bb));
-        edge_labels
-            .iter()
-            .zip(edge_counters)
+        iter::zip(&edge_labels, edge_counters)
             .map(|(label, some_counter)| {
                 if let Some(counter) = some_counter {
                     format!("{}\n{}", label, debug_counters.format_counter(counter))

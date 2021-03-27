@@ -28,6 +28,7 @@ use rustc_session::DiagnosticMessageId;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{ExpnKind, MultiSpan, Span, DUMMY_SP};
 use std::fmt;
+use std::iter;
 
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::query::normalize::AtExt as _;
@@ -161,7 +162,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
         }
 
-        for (error, suppressed) in errors.iter().zip(is_suppressed) {
+        for (error, suppressed) in iter::zip(errors, is_suppressed) {
             if !suppressed {
                 self.report_fulfillment_error(error, body_id, fallback_has_occurred);
             }

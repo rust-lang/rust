@@ -580,7 +580,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
         let global_mapping = iter::once((tcx.lifetimes.re_static, fr_static));
         let subst_mapping =
-            identity_substs.regions().zip(fr_substs.regions().map(|r| r.to_region_vid()));
+            iter::zip(identity_substs.regions(), fr_substs.regions().map(|r| r.to_region_vid()));
 
         UniversalRegionIndices { indices: global_mapping.chain(subst_mapping).collect() }
     }

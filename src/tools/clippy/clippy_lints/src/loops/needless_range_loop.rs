@@ -17,7 +17,7 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::middle::region;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::{sym, Symbol};
-use std::iter::Iterator;
+use std::iter::{self, Iterator};
 use std::mem;
 
 /// Checks for looping over a range and then indexing a sequence with it.
@@ -369,7 +369,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
             },
             ExprKind::MethodCall(_, _, args, _) => {
                 let def_id = self.cx.typeck_results().type_dependent_def_id(expr.hir_id).unwrap();
-                for (ty, expr) in self.cx.tcx.fn_sig(def_id).inputs().skip_binder().iter().zip(args) {
+                for (ty, expr) in iter::zip(self.cx.tcx.fn_sig(def_id).inputs().skip_binder(), args) {
                     self.prefer_mutable = false;
                     if let ty::Ref(_, _, mutbl) = *ty.kind() {
                         if mutbl == Mutability::Mut {

@@ -17,6 +17,7 @@ use rustc_target::abi::{Integer, LayoutOf, TagEncoding, VariantIdx, Variants};
 use rustc_target::spec::abi::Abi as SpecAbi;
 
 use std::cmp;
+use std::iter;
 use std::ops::ControlFlow;
 use tracing::debug;
 
@@ -1255,7 +1256,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         let sig = self.cx.tcx.fn_sig(def_id);
         let sig = self.cx.tcx.erase_late_bound_regions(sig);
 
-        for (input_ty, input_hir) in sig.inputs().iter().zip(decl.inputs) {
+        for (input_ty, input_hir) in iter::zip(sig.inputs(), decl.inputs) {
             self.check_type_for_ffi_and_report_errors(input_hir.span, input_ty, false, false);
         }
 
@@ -1355,10 +1356,7 @@ impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
                 layout
             );
 
-            let (largest, slargest, largest_index) = enum_definition
-                .variants
-                .iter()
-                .zip(variants)
+            let (largest, slargest, largest_index) = iter::zip(enum_definition.variants, variants)
                 .map(|(variant, variant_layout)| {
                     // Subtract the size of the enum tag.
                     let bytes = variant_layout.size.bytes().saturating_sub(tag_size);

@@ -15,6 +15,7 @@
 #![feature(box_patterns)]
 #![feature(drain_filter)]
 #![feature(in_band_lifetimes)]
+#![feature(iter_zip)]
 #![feature(never_type)]
 #![feature(crate_visibility_modifier)]
 #![cfg_attr(bootstrap, feature(or_patterns))]

@@ -23,15 +23,9 @@ pub enum UnsafetyViolationKind {
     General,
     /// Permitted both in `const fn`s and regular `fn`s.
     GeneralAndConstFn,
-    /// Borrow of packed field.
-    /// Has to be handled as a lint for backwards compatibility.
-    BorrowPacked,
     /// Unsafe operation in an `unsafe fn` but outside an `unsafe` block.
     /// Has to be handled as a lint for backwards compatibility.
     UnsafeFn,
-    /// Borrow of packed field in an `unsafe fn` but outside an `unsafe` block.
-    /// Has to be handled as a lint for backwards compatibility.
-    UnsafeFnBorrowPacked,
 }
 
 #[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]

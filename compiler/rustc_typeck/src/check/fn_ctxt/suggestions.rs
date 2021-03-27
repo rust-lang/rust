@@ -218,8 +218,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.is_hir_id_from_struct_pattern_shorthand_field(expr.hir_id, expr.span);
             let methods = self.get_conversion_methods(expr.span, expected, found, expr.hir_id);
             if let Ok(expr_text) = self.sess().source_map().span_to_snippet(expr.span) {
-                let mut suggestions = iter::repeat(&expr_text)
-                    .zip(methods.iter())
+                let mut suggestions = iter::zip(iter::repeat(&expr_text), &methods)
                     .filter_map(|(receiver, method)| {
                         let method_call = format!(".{}()", method.ident);
                         if receiver.ends_with(&method_call) {

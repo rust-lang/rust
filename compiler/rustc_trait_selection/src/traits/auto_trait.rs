@@ -12,6 +12,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
 use std::collections::hash_map::Entry;
 use std::collections::VecDeque;
+use std::iter;
 
 // FIXME(twk): this is obviously not nice to duplicate like that
 #[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]
@@ -428,7 +429,9 @@ impl AutoTraitFinder<'tcx> {
                         return true;
                     }
 
-                    for (new_region, old_region) in new_substs.regions().zip(old_substs.regions()) {
+                    for (new_region, old_region) in
+                        iter::zip(new_substs.regions(), old_substs.regions())
+                    {
                         match (new_region, old_region) {
                             // If both predicates have an `ReLateBound` (a HRTB) in the
                             // same spot, we do nothing.

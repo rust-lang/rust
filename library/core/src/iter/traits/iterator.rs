@@ -81,8 +81,8 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
     ),
     on(
         _Self = "[]",
-        label = "borrow the array with `&` or call `.iter()` on it to iterate over it",
-        note = "arrays are not iterators, but slices like the following are: `&[1, 2, 3]`"
+        label = "arrays do not yet implement `IntoIterator`; try using `std::array::IntoIter::new(arr)`",
+        note = "see <https://github.com/rust-lang/rust/pull/65819> for more details"
     ),
     on(
         _Self = "{integral}",

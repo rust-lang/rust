@@ -413,7 +413,7 @@ pub fn update_dollar_crate_names(mut get_name: impl FnMut(SyntaxContext) -> Symb
     let names: Vec<_> =
         range_to_update.clone().map(|idx| get_name(SyntaxContext::from_u32(idx as u32))).collect();
     HygieneData::with(|data| {
-        range_to_update.zip(names.into_iter()).for_each(|(idx, name)| {
+        range_to_update.zip(names).for_each(|(idx, name)| {
             data.syntax_context_data[idx].dollar_crate_name = name;
         })
     })

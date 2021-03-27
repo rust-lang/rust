@@ -26,6 +26,7 @@ use rustc_trait_selection::opaque_types::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
 use rustc_trait_selection::traits::{self, ObligationCauseCode};
 
+use std::iter;
 use std::ops::ControlFlow;
 
 pub fn check_wf_new(tcx: TyCtxt<'_>) {
@@ -1472,7 +1473,7 @@ fn check_enum<'tcx>(
     }
 
     let mut disr_vals: Vec<Discr<'tcx>> = Vec::with_capacity(vs.len());
-    for ((_, discr), v) in def.discriminants(tcx).zip(vs) {
+    for ((_, discr), v) in iter::zip(def.discriminants(tcx), vs) {
         // Check for duplicate discriminant values
         if let Some(i) = disr_vals.iter().position(|&x| x.val == discr.val) {
             let variant_did = def.variants[VariantIdx::new(i)].def_id;

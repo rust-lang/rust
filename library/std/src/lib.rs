@@ -278,6 +278,7 @@
 #![feature(integer_atomics)]
 #![feature(into_future)]
 #![feature(intra_doc_pointers)]
+#![feature(iter_zip)]
 #![feature(lang_items)]
 #![feature(link_args)]
 #![feature(linkage)]

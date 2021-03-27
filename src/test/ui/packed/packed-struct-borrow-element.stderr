@@ -1,47 +1,33 @@
-error: reference to packed field is unaligned
-  --> $DIR/issue-27060.rs:16:13
+warning: reference to packed field is unaligned
+  --> $DIR/packed-struct-borrow-element.rs:25:15
    |
-LL |     let _ = &good.data;
-   |             ^^^^^^^^^^
+LL |     let brw = &foo.baz;
+   |               ^^^^^^^^
    |
-note: the lint level is defined here
-  --> $DIR/issue-27060.rs:8:8
-   |
-LL | #[deny(unaligned_references)]
-   |        ^^^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(unaligned_references)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
    = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
 
-error: reference to packed field is unaligned
-  --> $DIR/issue-27060.rs:18:13
+warning: reference to packed field is unaligned
+  --> $DIR/packed-struct-borrow-element.rs:30:15
    |
-LL |     let _ = &good.data2[0];
-   |             ^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
-   = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
-
-error: reference to packed field is unaligned
-  --> $DIR/issue-27060.rs:21:13
-   |
-LL |     let _ = &good.data;
-   |             ^^^^^^^^^^
+LL |     let brw = &foo.baz;
+   |               ^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
    = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
 
-error: reference to packed field is unaligned
-  --> $DIR/issue-27060.rs:23:13
+warning: reference to packed field is unaligned
+  --> $DIR/packed-struct-borrow-element.rs:35:15
    |
-LL |     let _ = &good.data2[0];
-   |             ^^^^^^^^^^^^^^
+LL |     let brw = &foo.baz;
+   |               ^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
    = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
 
-error: aborting due to 4 previous errors
+warning: 3 warnings emitted
 

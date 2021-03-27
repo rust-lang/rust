@@ -33,6 +33,7 @@
 #![feature(box_patterns)]
 #![feature(crate_visibility_modifier)]
 #![feature(iter_order_by)]
+#![feature(iter_zip)]
 #![feature(never_type)]
 #![feature(nll)]
 #![cfg_attr(bootstrap, feature(or_patterns))]
@@ -325,6 +326,7 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
     store.register_renamed("exceeding_bitshifts", "arithmetic_overflow");
     store.register_renamed("redundant_semicolon", "redundant_semicolons");
     store.register_renamed("overlapping_patterns", "overlapping_range_endpoints");
+    store.register_renamed("safe_packed_borrows", "unaligned_references");
 
     // These were moved to tool lints, but rustc still sees them when compiling normally, before
     // tool lints are registered, so `check_tool_name_for_backwards_compat` doesn't work. Use

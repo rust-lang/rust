@@ -1,4 +1,3 @@
-// build-pass
 #![feature(const_generics)]
 #![allow(incomplete_features)]
 
@@ -10,5 +9,5 @@ where
     A<N>: Bar<N>;
 
 fn main() {
-    let _ = A;
+    let _ = A; //~ERROR the trait bound
 }
