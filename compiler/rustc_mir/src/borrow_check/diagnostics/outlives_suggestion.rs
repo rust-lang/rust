@@ -157,7 +157,7 @@ impl OutlivesSuggestionBuilder {
         debug!("Collected {:?}: {:?}", fr, outlived_fr);
 
         // Add to set of constraints for final help note.
-        self.constraints_to_add.entry(fr).or_insert(Vec::new()).push(outlived_fr);
+        self.constraints_to_add.entry(fr).or_default().push(outlived_fr);
     }
 
     /// Emit an intermediate note on the given `Diagnostic` if the involved regions are
