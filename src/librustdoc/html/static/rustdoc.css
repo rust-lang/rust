@@ -970,10 +970,6 @@ a.test-arrow:hover{
 	position: absolute;
 	left: -23px;
 	top: 0;
-
-	/* The click event for this is defined on the document,
-	   so bubbling does not work. See https://github.com/rust-lang/rust/issues/83332 */
-	z-index: 10;
 }
 
 h3 > .collapse-toggle, h4 > .collapse-toggle {
@@ -1058,11 +1054,6 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	margin-top: 3px;
 }
 
-/* for hiding fields/variants/associated items */
-.enum > .toggle-wrapper + .docblock, .struct > .toggle-wrapper + .docblock, .union > .toggle-wrapper + .docblock, .trait > .toggle-wrapper + .docblock {
-	margin-left: 0px;
-}
-
 .docblock > .section-header:first-child {
 	margin-left: 15px;
 	margin-top: 0;
@@ -1076,22 +1067,6 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	display: block;
 }
 
-.attributes {
-	display: block;
-	margin-top: 0px !important;
-	margin-right: 0px;
-	margin-bottom: 0px !important;
-	margin-left: 30px;
-}
-.toggle-attributes.collapsed {
-	margin-bottom: 0;
-}
-.impl-items > .toggle-attributes {
-	margin-left: 20px;
-}
-.impl-items .attributes {
-	font-weight: 500;
-}
 
 :target > code {
 	opacity: 1;
@@ -1778,16 +1753,56 @@ div.name.expand::before {
 	top: 2px;
 }
 
-/* This part is to fix the "Expand attributes" part in the type declaration. */
-.type-decl > pre > .toggle-wrapper.toggle-attributes.top-attr {
-	margin-left: 0 !important;
+/* The hideme class is used on summary tags that contain a span with
+	placeholder text shown only when the toggle is closed. For instance,
+	"Expand description" or "Show methods". */
+details > summary.hideme {
+	cursor: pointer;
 }
-.type-decl > pre > .docblock.attributes.top-attr {
-	margin-left: 1.8em !important;
+
+details > summary::-webkit-details-marker {
+	display: none;
 }
-.type-decl > pre .toggle-attributes {
-	margin-left: 2.2em;
+
+details > summary.hideme > span {
+	margin-left: 9px;
+	color: #999;
 }
-.type-decl > pre > .docblock.attributes {
-	margin-left: 4em;
+
+details > summary::before {
+	content: "[+]";
+	font-weight: 300;
+	font-size: 0.8em;
+	color: #999;
+	letter-spacing: 1px;
+}
+
+details > summary.hideme::before {
+	position: relative;
+}
+
+details > summary:not(.hideme)::before {
+	float: left;
+}
+
+/* When a "hideme" summary is open and the "Expand description" or "Show
+	methods" text is hidden, we want the [-] toggle that remains to not
+	affect the layout of the items to its right. To do that, we use
+	absolute positioning. Note that we also set position: relative
+	on the parent <details> to make this work properly. */
+details[open] > summary.hideme {
+	position: absolute;
+}
+
+details[open] {
+	position: relative;
+}
+
+details[open] > summary.hideme > span {
+	display: none;
+}
+
+details[open] > summary::before {
+	content: "[−]";
+	display: inline;
 }
