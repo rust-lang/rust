@@ -222,6 +222,42 @@ crate fn render<T: Print, S: Print>(
     )
 }
 
+/// Since this is a "conflict file" on case insensitive file system, it'll be loaded by JS instead
+/// of being loaded directly. Which is why we need to modify its output a bit.
+crate fn conflict_layout<T: Print, S>(page: &Page<'_>, sidebar: S, t: T) -> String
+where
+    S: FnOnce(&mut Buffer) -> Option<String>,
+{
+    let content = Buffer::html().to_display(t).to_string();
+    let mut sidebar_buf = Buffer::html();
+    let script_src = sidebar(&mut sidebar_buf);
+    format!(
+        "\
+document.getElementById('main').innerHTML = \"{content}\";\
+document.getElementsByClassName('sidebar')[0].innerHTML += \"{sidebar}\";\
+document.title = \"{title}\";\
+window.initSidebarVars();\
+rustdocInit();{script}",
+        content = content.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n"),
+        title = page.title.replace("\\", "\\\\").replace("\"", "\\\""),
+        sidebar = sidebar_buf
+            .into_inner()
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            .replace("\n", "\\n"),
+        script = if let Some(script_src) = script_src {
+            format!(
+                "var script = document.createElement('script');\
+                 script.src = {:?};\
+                 document.body.appendChild(script);",
+                script_src,
+            )
+        } else {
+            String::new()
+        },
+    )
+}
+
 crate fn redirect(url: &str) -> String {
     // <script> triggers a redirect before refresh, so this is fine.
     format!(

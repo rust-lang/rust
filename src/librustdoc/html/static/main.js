@@ -2,7 +2,7 @@
 // Local js definitions:
 /* global addClass, getSettingValue, hasClass */
 /* global onEach, onEachLazy, hasOwnProperty, removeClass, updateLocalStorage */
-/* global switchTheme, useSystemTheme */
+/* global switchTheme, useSystemTheme, getNakedUrl */
 
 if (!String.prototype.startsWith) {
     String.prototype.startsWith = function(searchString, position) {
@@ -38,13 +38,7 @@ if (!DOMTokenList.prototype.remove) {
     };
 }
 
-(function () {
-    var rustdocVars = document.getElementById("rustdoc-vars");
-    if (rustdocVars) {
-        window.rootPath = rustdocVars.attributes["data-root-path"].value;
-        window.currentCrate = rustdocVars.attributes["data-current-crate"].value;
-        window.searchJS = rustdocVars.attributes["data-search-js"].value;
-    }
+function initSidebarVars() {
     var sidebarVars = document.getElementById("sidebar-vars");
     if (sidebarVars) {
         window.sidebarCurrent = {
@@ -53,6 +47,16 @@ if (!DOMTokenList.prototype.remove) {
             relpath: sidebarVars.attributes["data-relpath"].value,
         };
     }
+}
+
+(function () {
+    var rustdocVars = document.getElementById("rustdoc-vars");
+    if (rustdocVars) {
+        window.rootPath = rustdocVars.attributes["data-root-path"].value;
+        window.currentCrate = rustdocVars.attributes["data-current-crate"].value;
+        window.searchJS = rustdocVars.attributes["data-search-js"].value;
+    }
+    initSidebarVars();
 }());
 
 // Gets the human-readable string for the virtual-key code of the
@@ -94,11 +98,6 @@ function getThemesElement() {
 
 function getThemePickerElement() {
     return document.getElementById(THEME_PICKER_ELEMENT_ID);
-}
-
-// Returns the current URL without any query parameter or hash.
-function getNakedUrl() {
-    return window.location.href.split("?")[0].split("#")[0];
 }
 
 // Sets the focus on the search bar at the top of the page
@@ -170,7 +169,7 @@ function hideThemeButtonState() {
     });
 }());
 
-(function() {
+function rustdocInit() {
     "use strict";
 
     // This mapping table should match the discriminants of
@@ -2149,7 +2148,7 @@ function hideThemeButtonState() {
                 sidebar.appendChild(div);
             }
         }
-    }
+    };
 
     // delayed sidebar rendering.
     window.initSidebarItems = function(items) {
@@ -3060,4 +3059,6 @@ function hideThemeButtonState() {
     onHashChange(null);
     window.onhashchange = onHashChange;
     setupSearchLoader();
-}());
+}
+
+rustdocInit();

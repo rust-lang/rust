@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::mpsc::channel;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -17,8 +17,8 @@ use super::cache::{build_index, ExternalLocation};
 use super::print_item::{full_path, item_path, print_item};
 use super::write_shared::write_shared;
 use super::{
-    print_sidebar, settings, AllTypes, NameDoc, SharedContext, StylePath, BASIC_KEYWORDS,
-    CURRENT_DEPTH, INITIAL_IDS,
+    print_sidebar, print_sidebar_full, settings, AllTypes, NameDoc, SharedContext, StylePath,
+    BASIC_KEYWORDS, CURRENT_DEPTH, INITIAL_IDS,
 };
 
 use crate::clean::{self, AttributesExt};
@@ -109,7 +109,7 @@ impl<'tcx> Context<'tcx> {
         "../".repeat(self.current.len())
     }
 
-    fn render_item(&self, it: &clean::Item, pushname: bool) -> String {
+    fn render_item(&self, it: &clean::Item, pushname: bool, is_conflict_path: bool) -> String {
         // A little unfortunate that this is done like this, but it sure
         // does make formatting *a lot* nicer.
         CURRENT_DEPTH.with(|slot| {
@@ -157,13 +157,21 @@ impl<'tcx> Context<'tcx> {
         };
 
         if !self.render_redirect_pages {
-            layout::render(
-                &self.shared.layout,
-                &page,
-                |buf: &mut _| print_sidebar(self, it, buf),
-                |buf: &mut _| print_item(self, it, buf),
-                &self.shared.style_files,
-            )
+            if is_conflict_path {
+                layout::conflict_layout(
+                    &page,
+                    |buf: &mut _| print_sidebar_full(self, it, buf, false),
+                    |buf: &mut _| print_item(self, it, buf),
+                )
+            } else {
+                layout::render(
+                    &self.shared.layout,
+                    &page,
+                    |buf: &mut _| print_sidebar(self, it, buf),
+                    |buf: &mut _| print_item(self, it, buf),
+                    &self.shared.style_files,
+                )
+            }
         } else {
             if let Some(&(ref names, ty)) = self.cache.paths.get(&it.def_id) {
                 let mut path = String::new();
@@ -216,6 +224,40 @@ impl<'tcx> Context<'tcx> {
             }
         }
         map
+    }
+
+    fn is_conflict_path(&self, path: &PathBuf) -> bool {
+        if let Some(case_insensitive_conflicts) = &self.shared.case_insensitive_conflicts {
+            let p = path.display().to_string().to_lowercase();
+            case_insensitive_conflicts.borrow().contains_key(&p)
+        } else {
+            false
+        }
+    }
+
+    fn write_unconflicted_path(
+        &mut self,
+        path: PathBuf,
+        bytes: &[u8],
+        file_name: &str,
+    ) -> Result<(), Error> {
+        if let Some(case_insensitive_conflicts) = &self.shared.case_insensitive_conflicts {
+            let p = path.display().to_string();
+            let insensitive = p.to_lowercase();
+            if let Some((entry, root_path)) =
+                case_insensitive_conflicts.borrow_mut().get_mut(&insensitive)
+            {
+                entry.push(format!("/{}", file_name));
+                if root_path.is_empty() {
+                    *root_path = self.root_path();
+                }
+                return self.shared.fs.write(
+                    &insensitive.replace(".html", &format!("_{}.js", entry.len() - 1)),
+                    bytes,
+                );
+            }
+        }
+        self.shared.fs.write(path, bytes)
     }
 
     /// Generates a url appropriate for an `href` attribute back to the source of
@@ -298,6 +340,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         edition: Edition,
         mut cache: Cache,
         tcx: TyCtxt<'tcx>,
+        case_insensitive_conflicts: Option<FxHashSet<String>>,
     ) -> Result<(Self, clean::Crate), Error> {
         // need to save a copy of the options for rendering the index page
         let md_opts = options.clone();
@@ -368,6 +411,12 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                 _ => {}
             }
         }
+
+        info!(
+            "Generating with{} case insensitive",
+            if case_insensitive_conflicts.is_some() { "" } else { "out" }
+        );
+
         let (sender, receiver) = channel();
         let mut scx = SharedContext {
             tcx,
@@ -389,6 +438,13 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             all: RefCell::new(AllTypes::new()),
             errors: receiver,
             redirections: if generate_redirect_map { Some(Default::default()) } else { None },
+            case_insensitive_conflicts: case_insensitive_conflicts.map(|c| {
+                let mut map = FxHashMap::default();
+                for entry in c.into_iter() {
+                    map.insert(entry, (Vec::new(), String::new()));
+                }
+                RefCell::new(map)
+            }),
         };
 
         // Add the default themes to the `Vec` of stylepaths
@@ -521,6 +577,45 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             }
         }
 
+        // It's now time to generate the case insensitive handler!
+        //
+        // The idea is to generate a file with JS which will then load the valid file depending on
+        // the URL.
+        if let Some(case_insensitive_conflicts) = &self.shared.case_insensitive_conflicts {
+            for (path, (entries, root_path)) in &*case_insensitive_conflicts.borrow() {
+                // FIXME: use REAL infos!
+                page.title = "Loading...";
+                page.description = "";
+                page.root_path = root_path.as_str();
+                let v = layout::render(
+                    &self.shared.layout,
+                    &page,
+                    "",
+                    |buf: &mut Buffer| {
+                        buf.write_str(&format!(
+                            "<script>\
+(function () {{\
+    var map = {:?};\
+    var url = getNakedUrl();\
+    for (var i = 0, len = map.length; i < len; ++i) {{\
+        if (url.indexOf(map[i]) !== -1) {{\
+            var script = document.createElement('script');\
+            script.src = url.replace('.html', '_' + i + '.js');\
+            document.body.appendChild(script);\
+            return;\
+        }}\
+    }}\
+    console.error('failed to find it...');\
+}}());</script>",
+                            entries
+                        ))
+                    },
+                    &style_files,
+                );
+                self.shared.fs.write(&path, v.as_bytes())?;
+            }
+        }
+
         // Flush pending errors.
         Rc::get_mut(&mut self.shared).unwrap().fs.close();
         let nb_errors = self.shared.errors.iter().map(|err| diag.struct_err(&err).emit()).count();
@@ -548,7 +643,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
 
         info!("Recursing into {}", self.dst.display());
 
-        let buf = self.render_item(item, false);
+        let buf = self.render_item(item, false, false);
         // buf will be empty if the module is stripped and there is no redirect for it
         if !buf.is_empty() {
             self.shared.ensure_dir(&self.dst)?;
@@ -591,15 +686,21 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             self.render_redirect_pages = item.is_stripped();
         }
 
-        let buf = self.render_item(&item, true);
+        let name = item.name.as_ref().unwrap();
+        let item_type = item.type_();
+        let file_name = &item_path(item_type, &name.as_str());
+        let joint_dst = self.dst.join(file_name);
+        let is_conflict_path = self.is_conflict_path(&joint_dst);
+
+        let buf = self.render_item(&item, true, is_conflict_path);
         // buf will be empty if the item is stripped and there is no redirect for it
         if !buf.is_empty() {
-            let name = item.name.as_ref().unwrap();
-            let item_type = item.type_();
-            let file_name = &item_path(item_type, &name.as_str());
             self.shared.ensure_dir(&self.dst)?;
-            let joint_dst = self.dst.join(file_name);
-            self.shared.fs.write(&joint_dst, buf.as_bytes())?;
+            if is_conflict_path {
+                self.write_unconflicted_path(joint_dst, buf.as_bytes(), file_name)?;
+            } else {
+                self.shared.fs.write(&joint_dst, buf.as_bytes())?;
+            }
 
             if !self.render_redirect_pages {
                 self.shared.all.borrow_mut().append(full_path(self, &item), &item_type);

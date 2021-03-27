@@ -31,6 +31,11 @@ function getSettingValue(settingName) {
     return null;
 }
 
+// Returns the current URL without any query parameter or hash.
+function getNakedUrl() {
+    return window.location.href.split("?")[0].split("#")[0];
+}
+
 var localStoredTheme = getSettingValue("theme");
 
 var savedHref = [];

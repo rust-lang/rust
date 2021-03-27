@@ -24,12 +24,12 @@
 //! both occur before the crate is rendered.
 
 crate mod cache;
+crate mod print_item;
 
 #[cfg(test)]
 mod tests;
 
 mod context;
-mod print_item;
 mod write_shared;
 
 crate use context::*;
@@ -130,6 +130,12 @@ crate struct SharedContext<'tcx> {
     /// to `Some(...)`, it'll store redirections and then generate a JSON file at the top level of
     /// the crate.
     redirections: Option<RefCell<FxHashMap<String, String>>>,
+    /// This map contains the conflicts of paths on case insensitive file systems.
+    ///
+    /// The HashMap key is the conflict path (the path in lowercase).
+    /// The value is a tuple composed of a vector of the original path (it is used when generating
+    /// the HTML page to know which file to load depending on the URL) and of the root path.
+    case_insensitive_conflicts: Option<RefCell<FxHashMap<String, (Vec<String>, String)>>>,
 }
 
 impl SharedContext<'_> {
@@ -1720,6 +1726,19 @@ fn render_impl(
 }
 
 fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
+    print_sidebar_full(cx, it, buffer, true);
+}
+
+/// Unfortunately, we cannot simply insert a script with `innerHTML`, otherwise it'll simply be
+/// ignored. To go around this limitation, we have to manipulate it as DOM element.
+///
+/// This function returns the "script" src in case it wasn't put in the buffer.
+fn print_sidebar_full(
+    cx: &Context<'_>,
+    it: &clean::Item,
+    buffer: &mut Buffer,
+    use_script: bool,
+) -> Option<String> {
     let parentlen = cx.current.len() - if it.is_mod() { 1 } else { 0 };
 
     if it.is_struct()
@@ -1817,14 +1836,19 @@ fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
         ty = it.type_(),
         path = relpath
     );
-    if parentlen == 0 {
+    let ret = if parentlen == 0 {
         // There is no sidebar-items.js beyond the crate root path
         // FIXME maybe dynamic crate loading can be merged here
-    } else {
+        None
+    } else if use_script {
         write!(buffer, "<script defer src=\"{path}sidebar-items.js\"></script>", path = relpath);
-    }
+        None
+    } else {
+        Some(format!("{path}sidebar-items.js", path = relpath))
+    };
     // Closes sidebar-elems div.
     buffer.write_str("</div>");
+    ret
 }
 
 fn get_next_url(used_links: &mut FxHashSet<String>, url: String) -> String {

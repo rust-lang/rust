@@ -1138,7 +1138,7 @@ pub(super) fn full_path(cx: &Context<'_>, item: &clean::Item) -> String {
     s
 }
 
-pub(super) fn item_path(ty: ItemType, name: &str) -> String {
+crate fn item_path(ty: ItemType, name: &str) -> String {
     match ty {
         ItemType::Module => format!("{}index.html", ensure_trailing_slash(name)),
         _ => format!("{}.{}.html", ty, name),

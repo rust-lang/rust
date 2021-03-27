@@ -527,6 +527,13 @@ fn opts() -> Vec<RustcOptGroup> {
         unstable("print", |o| {
             o.optmulti("", "print", "Rustdoc information to print on stdout", "[unversioned-files]")
         }),
+        unstable("generate-case-insensitive", |o| {
+            o.optflag(
+                "",
+                "generate-case-insensitive",
+                "Force the generation of HTML to be case insensitive",
+            )
+        }),
     ]
 }
 

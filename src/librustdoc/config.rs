@@ -265,6 +265,9 @@ crate struct RenderOptions {
     crate document_hidden: bool,
     /// If `true`, generate a JSON file in the crate folder instead of HTML redirection files.
     crate generate_redirect_map: bool,
+    /// If this option is set to `true`, HTML files will be generated as it would on a
+    /// case-insensitive file system.
+    crate generate_case_insensitive: bool,
     crate unstable_features: rustc_feature::UnstableFeatures,
 }
 
@@ -580,6 +583,7 @@ impl Options {
         let document_hidden = matches.opt_present("document-hidden-items");
         let run_check = matches.opt_present("check");
         let generate_redirect_map = matches.opt_present("generate-redirect-map");
+        let generate_case_insensitive = matches.opt_present("generate-case-insensitive");
 
         let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
@@ -638,6 +642,7 @@ impl Options {
                 document_private,
                 document_hidden,
                 generate_redirect_map,
+                generate_case_insensitive,
                 unstable_features: rustc_feature::UnstableFeatures::from_environment(
                     crate_name.as_deref(),
                 ),

@@ -11,7 +11,7 @@ use std::fs::File;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::{edition::Edition, Symbol};
@@ -137,6 +137,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         _edition: Edition,
         cache: Cache,
         tcx: TyCtxt<'tcx>,
+        _case_insensitive_conflicts: Option<FxHashSet<String>>,
     ) -> Result<(Self, clean::Crate), Error> {
         debug!("Initializing json renderer");
         Ok((
