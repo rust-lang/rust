@@ -319,9 +319,9 @@ impl<T> MaybeUninit<T> {
     /// Create a new array of `MaybeUninit<T>` items, in an uninitialized state.
     ///
     /// Note: in a future Rust version this method may become unnecessary
-    /// when array literal syntax allows
-    /// [repeating const expressions](https://github.com/rust-lang/rust/issues/49147).
-    /// The example below could then use `let mut buf = [MaybeUninit::<u8>::uninit(); 32];`.
+    /// when Rust allows
+    /// [inline const expressions](https://github.com/rust-lang/rust/issues/76001).
+    /// The example below could then use `let mut buf = [const { MaybeUninit::<u8>::uninit() }; 32];`.
     ///
     /// # Examples
     ///
