@@ -25,6 +25,13 @@ INCR=$(TMPDIR)/incr
 # prefix, then loop on the next prefix. This way, we basically create a copy of
 # the context around root/lib/rustlib/src, and can freely add/remove the src
 # component itself.
+#
+# Normally, path remapping only occured when the compiler was build with
+# `remap-debuginfo=true` in the `config.toml`.
+# We don't do this on CI, and it would be very wasteful to rebuild the entire
+# compiler for a single test. Instead, we use the `-Z force-virtual-source-base` option,
+# which makes the compiler act as though it was built with debuginfo remapped to the
+# specified directory.
 all:
 	mkdir $(FAKEROOT)
 	ln -s $(SYSROOT)/* $(FAKEROOT)
@@ -38,7 +45,11 @@ all:
 	mkdir $(FAKEROOT)/lib/rustlib/src
 	ln -s $(SYSROOT)/lib/rustlib/src/* $(FAKEROOT)/lib/rustlib/src
 	rm -f $(FAKEROOT)/lib/rustlib/src/rust
-	$(RUSTC) --sysroot $(FAKEROOT) -C incremental=$(INCR) main.rs
-	mkdir -p $(FAKEROOT)/lib/rustlib/src/rust/src/libstd
-	touch $(FAKEROOT)/lib/rustlib/src/rust/src/libstd/lib.rs
-	$(RUSTC) --sysroot $(FAKEROOT) -C incremental=$(INCR) main.rs
+	$(RUSTC) --sysroot $(FAKEROOT) -C incremental=$(INCR) -Z force-virtual-source-base=$(S)/library main.rs
+	# Run the compiled binary, and check for a non-remapped path in the panic message
+	$(call RUN,main) 2>&1 | grep $(S)/library/core/src/sync/atomic.rs
+	mkdir -p $(FAKEROOT)/lib/rustlib/src/rust/library/std/src/
+	touch $(FAKEROOT)/lib/rustlib/src/rust/library/std/src/lib.rs
+	$(RUSTC) --sysroot $(FAKEROOT) -C incremental=$(INCR) -Z force-virtual-source-base=$(S)/library main.rs
+	# Run the newly compiled binary, and check that the path in the panic message is now remapped
+	$(call RUN,main) 2>&1 | grep $(FAKEROOT)/lib/rustlib/src/rust/library/core/src/sync/atomic.rs

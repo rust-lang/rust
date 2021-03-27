@@ -1394,6 +1394,9 @@ pub fn build_session(
         // Only use this directory if it has a file we can expect to always find.
         if candidate.join("library/std/src/lib.rs").is_file() { Some(candidate) } else { None }
     };
+    if real_rust_source_base_dir.is_some() {
+        tracing::info!("Got base source dir: {:?}", real_rust_source_base_dir);
+    }
 
     let asm_arch =
         if target_cfg.allow_asm { InlineAsmArch::from_str(&target_cfg.arch).ok() } else { None };

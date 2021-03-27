@@ -12,7 +12,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_middle::hir::exports::Export;
-use rustc_middle::middle::cstore::ForeignModule;
+use rustc_middle::middle::cstore::{CrateHashAndState, ForeignModule, OptCrateHashAndState};
 use rustc_middle::middle::cstore::{CrateSource, CrateStore, EncodedMetadata};
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::middle::stability::DeprecationEntry;
@@ -199,8 +199,8 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         })
     }
     crate_disambiguator => { cdata.root.disambiguator }
-    crate_hash => { cdata.root.hash }
-    crate_host_hash => { cdata.host_hash }
+    crate_hash => { CrateHashAndState::new(tcx, cdata.root.hash) }
+    crate_host_hash => { OptCrateHashAndState::new(tcx, cdata.host_hash) }
     original_crate_name => { cdata.root.name }
 
     extra_filename => { cdata.root.extra_filename.clone() }

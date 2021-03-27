@@ -1207,11 +1207,11 @@ rustc_queries! {
     }
     // The macro which defines `rustc_metadata::provide_extern` depends on this query's name.
     // Changing the name should cause a compiler error, but in case that changes, be aware.
-    query crate_hash(_: CrateNum) -> Svh {
+    query crate_hash(_: CrateNum) -> rustc_middle::middle::cstore::CrateHashAndState {
         eval_always
         desc { "looking up the hash a crate" }
     }
-    query crate_host_hash(_: CrateNum) -> Option<Svh> {
+    query crate_host_hash(_: CrateNum) -> rustc_middle::middle::cstore::OptCrateHashAndState {
         eval_always
         desc { "looking up the hash of a host version of a crate" }
     }

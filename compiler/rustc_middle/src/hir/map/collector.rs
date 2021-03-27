@@ -15,7 +15,6 @@ use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::*;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_session::{CrateDisambiguator, Session};
-use rustc_span::source_map::SourceMap;
 use rustc_span::{Span, Symbol, DUMMY_SP};
 
 use std::iter::repeat;
@@ -27,8 +26,7 @@ pub(super) struct NodeCollector<'a, 'hir> {
     /// The crate
     krate: &'hir Crate<'hir>,
 
-    /// Source map
-    source_map: &'a SourceMap,
+    sess: &'a Session,
 
     map: IndexVec<LocalDefId, HirOwnerData<'hir>>,
 
@@ -126,7 +124,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         let mut collector = NodeCollector {
             arena,
             krate,
-            source_map: sess.source_map(),
+            sess,
             parent_node: hir::CRATE_HIR_ID,
             current_dep_node_owner: LocalDefId { local_def_index: CRATE_DEF_INDEX },
             definitions,
@@ -174,7 +172,8 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         // reproducible builds by compiling from the same directory. So we just
         // hash the result of the mapping instead of the mapping itself.
         let mut source_file_names: Vec<_> = self
-            .source_map
+            .sess
+            .source_map()
             .files()
             .iter()
             .filter(|source_file| source_file.cnum == LOCAL_CRATE)
@@ -186,6 +185,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         let crate_hash_input = (
             ((node_hashes, upstream_crates), source_file_names),
             (commandline_args_hash, crate_disambiguator.to_fingerprint()),
+            &self.sess.real_rust_source_base_dir,
         );
 
         let mut stable_hasher = StableHasher::new();
@@ -262,7 +262,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                     span,
                     "inconsistent DepNode at `{:?}` for `{}`: \
                      current_dep_node_owner={} ({:?}), hir_id.owner={} ({:?})",
-                    self.source_map.span_to_string(span),
+                    self.sess.source_map().span_to_string(span),
                     node_str,
                     self.definitions
                         .def_path(self.current_dep_node_owner)

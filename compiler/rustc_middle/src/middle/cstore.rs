@@ -255,3 +255,31 @@ pub fn used_crates(tcx: TyCtxt<'_>, prefer: LinkagePreference) -> Vec<(CrateNum,
     libs.sort_by_cached_key(|&(a, _)| ordering.iter().position(|x| *x == a));
     libs
 }
+
+/// Holds a crate hash, together with additional global state.
+/// This is used as the return value of the `crate_hash` and `crate_host_hash`
+/// queries. When the global state changes between compilation sessions,
+/// the hash will change, causing the query system to re-run any queries
+/// which depend on the crate hash.
+#[derive(Clone, Debug, HashStable, Encodable, Decodable)]
+pub struct HashAndState<T> {
+    pub svh: T,
+    /// The value of `tcx.sess.real_rust_source_base_dir` in the *current* session.
+    /// This global state is special - it influences how we decode foreign `SourceFile`s
+    /// (and therefore `Span`s). As a result, a foreign crate's hash can be unchanged across
+    /// two compilation sessions, but queries run on that crate can nevertheless return
+    /// different results across those compilation sessions.
+    /// This field is private, and never needs to be accessed by callers of `crate_hash`
+    /// or `host_crate_hash`. Its sole purpose is to be hashed as part of the
+    /// `HashStable` impl, so that its value influences the hash used by incremental compilation.
+    real_rust_source_base_dir: Option<PathBuf>,
+}
+
+impl<T> HashAndState<T> {
+    pub fn new(tcx: TyCtxt<'tcx>, svh: T) -> HashAndState<T> {
+        HashAndState { svh, real_rust_source_base_dir: tcx.sess.real_rust_source_base_dir.clone() }
+    }
+}
+
+pub type CrateHashAndState = HashAndState<Svh>;
+pub type OptCrateHashAndState = HashAndState<Option<Svh>>;

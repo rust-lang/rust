@@ -1611,7 +1611,12 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         //
         // NOTE: if you update this, you might need to also update bootstrap's code for generating
         // the `rust-src` component in `Src::run` in `src/bootstrap/dist.rs`.
-        let virtual_rust_source_base_dir = option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR")
+        let virtual_rust_source_base_dir = sess
+            .opts
+            .debugging_opts
+            .force_virtual_source_base
+            .as_deref()
+            .or(option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR"))
             .map(Path::new)
             .filter(|_| {
                 // Only spend time on further checks if we have what to translate *to*.
@@ -1623,65 +1628,67 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 // and we don't want the real path to leak into codegen/debuginfo.
                 !sess.opts.remap_path_prefix.iter().any(|(_from, to)| to == virtual_dir)
             });
-        let try_to_translate_virtual_to_real = |name: &mut rustc_span::FileName| {
-            debug!(
-                "try_to_translate_virtual_to_real(name={:?}): \
+        let try_to_translate_virtual_to_real =
+            |name: &mut rustc_span::FileName, name_hash: &mut u128| {
+                debug!(
+                    "try_to_translate_virtual_to_real(name={:?}): \
                  virtual_rust_source_base_dir={:?}, real_rust_source_base_dir={:?}",
-                name, virtual_rust_source_base_dir, sess.real_rust_source_base_dir,
-            );
+                    name, virtual_rust_source_base_dir, sess.real_rust_source_base_dir,
+                );
 
-            if let Some(virtual_dir) = virtual_rust_source_base_dir {
-                if let Some(real_dir) = &sess.real_rust_source_base_dir {
-                    if let rustc_span::FileName::Real(old_name) = name {
-                        if let rustc_span::RealFileName::Named(one_path) = old_name {
-                            if let Ok(rest) = one_path.strip_prefix(virtual_dir) {
-                                let virtual_name = one_path.clone();
+                if let Some(virtual_dir) = virtual_rust_source_base_dir {
+                    if let Some(real_dir) = &sess.real_rust_source_base_dir {
+                        if let rustc_span::FileName::Real(old_name) = name {
+                            if let rustc_span::RealFileName::Named(one_path) = old_name {
+                                if let Ok(rest) = one_path.strip_prefix(virtual_dir) {
+                                    let virtual_name = one_path.clone();
 
-                                // The std library crates are in
-                                // `$sysroot/lib/rustlib/src/rust/library`, whereas other crates
-                                // may be in `$sysroot/lib/rustlib/src/rust/` directly. So we
-                                // detect crates from the std libs and handle them specially.
-                                const STD_LIBS: &[&str] = &[
-                                    "core",
-                                    "alloc",
-                                    "std",
-                                    "test",
-                                    "term",
-                                    "unwind",
-                                    "proc_macro",
-                                    "panic_abort",
-                                    "panic_unwind",
-                                    "profiler_builtins",
-                                    "rtstartup",
-                                    "rustc-std-workspace-core",
-                                    "rustc-std-workspace-alloc",
-                                    "rustc-std-workspace-std",
-                                    "backtrace",
-                                ];
-                                let is_std_lib = STD_LIBS.iter().any(|l| rest.starts_with(l));
+                                    // The std library crates are in
+                                    // `$sysroot/lib/rustlib/src/rust/library`, whereas other crates
+                                    // may be in `$sysroot/lib/rustlib/src/rust/` directly. So we
+                                    // detect crates from the std libs and handle them specially.
+                                    const STD_LIBS: &[&str] = &[
+                                        "core",
+                                        "alloc",
+                                        "std",
+                                        "test",
+                                        "term",
+                                        "unwind",
+                                        "proc_macro",
+                                        "panic_abort",
+                                        "panic_unwind",
+                                        "profiler_builtins",
+                                        "rtstartup",
+                                        "rustc-std-workspace-core",
+                                        "rustc-std-workspace-alloc",
+                                        "rustc-std-workspace-std",
+                                        "backtrace",
+                                    ];
+                                    let is_std_lib = STD_LIBS.iter().any(|l| rest.starts_with(l));
 
-                                let new_path = if is_std_lib {
-                                    real_dir.join("library").join(rest)
-                                } else {
-                                    real_dir.join(rest)
-                                };
+                                    let new_path = if is_std_lib {
+                                        real_dir.join("library").join(rest)
+                                    } else {
+                                        real_dir.join(rest)
+                                    };
 
-                                debug!(
-                                    "try_to_translate_virtual_to_real: `{}` -> `{}`",
-                                    virtual_name.display(),
-                                    new_path.display(),
-                                );
-                                let new_name = rustc_span::RealFileName::Devirtualized {
-                                    local_path: new_path,
-                                    virtual_name,
-                                };
-                                *old_name = new_name;
+                                    debug!(
+                                        "try_to_translate_virtual_to_real: `{}` -> `{}`",
+                                        virtual_name.display(),
+                                        new_path.display(),
+                                    );
+                                    let new_name = rustc_span::RealFileName::Devirtualized {
+                                        local_path: new_path,
+                                        virtual_name,
+                                    };
+                                    *old_name = new_name;
+                                    *name_hash = name.name_hash();
+                                }
                             }
                         }
                     }
                 }
-            }
-        };
+            };
 
         self.cdata.source_map_import_info.get_or_init(|| {
             let external_source_map = self.root.source_map.decode(self);
@@ -1700,7 +1707,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                         mut multibyte_chars,
                         mut non_narrow_chars,
                         mut normalized_pos,
-                        name_hash,
+                        mut name_hash,
                         ..
                     } = source_file_to_import;
 
@@ -1709,7 +1716,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     // on `try_to_translate_virtual_to_real`).
                     // FIXME(eddyb) we could check `name_was_remapped` here,
                     // but in practice it seems to be always `false`.
-                    try_to_translate_virtual_to_real(&mut name);
+                    try_to_translate_virtual_to_real(&mut name, &mut name_hash);
 
                     let source_length = (end_pos - start_pos).to_usize();
 

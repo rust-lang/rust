@@ -645,7 +645,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             name: tcx.crate_name(LOCAL_CRATE),
             extra_filename: tcx.sess.opts.cg.extra_filename.clone(),
             triple: tcx.sess.opts.target_triple.clone(),
-            hash: tcx.crate_hash(LOCAL_CRATE),
+            hash: tcx.crate_hash(LOCAL_CRATE).svh,
             disambiguator: tcx.sess.local_crate_disambiguator(),
             stable_crate_id: tcx.def_path_hash(LOCAL_CRATE.as_def_id()).stable_crate_id(),
             panic_strategy: tcx.sess.panic_strategy(),
@@ -1646,8 +1646,8 @@ impl EncodeContext<'a, 'tcx> {
             .map(|&cnum| {
                 let dep = CrateDep {
                     name: self.tcx.original_crate_name(cnum),
-                    hash: self.tcx.crate_hash(cnum),
-                    host_hash: self.tcx.crate_host_hash(cnum),
+                    hash: self.tcx.crate_hash(cnum).svh,
+                    host_hash: self.tcx.crate_host_hash(cnum).svh,
                     kind: self.tcx.dep_kind(cnum),
                     extra_filename: self.tcx.extra_filename(cnum),
                 };

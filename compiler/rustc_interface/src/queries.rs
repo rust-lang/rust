@@ -345,7 +345,8 @@ impl<'tcx> Queries<'tcx> {
     pub fn linker(&'tcx self) -> Result<Linker> {
         let dep_graph = self.dep_graph()?;
         let prepare_outputs = self.prepare_outputs()?;
-        let crate_hash = self.global_ctxt()?.peek_mut().enter(|tcx| tcx.crate_hash(LOCAL_CRATE));
+        let crate_hash =
+            self.global_ctxt()?.peek_mut().enter(|tcx| tcx.crate_hash(LOCAL_CRATE).svh);
         let ongoing_codegen = self.ongoing_codegen()?;
 
         let sess = self.session().clone();

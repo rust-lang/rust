@@ -188,6 +188,14 @@ pub enum FileName {
     InlineAsm(u64),
 }
 
+impl FileName {
+    pub fn name_hash(&self) -> u128 {
+        let mut hasher: StableHasher = StableHasher::new();
+        self.hash(&mut hasher);
+        hasher.finish::<u128>()
+    }
+}
+
 impl std::fmt::Display for FileName {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use FileName::*;
@@ -1318,11 +1326,7 @@ impl SourceFile {
         let src_hash = SourceFileHash::new(hash_kind, &src);
         let normalized_pos = normalize_src(&mut src, start_pos);
 
-        let name_hash = {
-            let mut hasher: StableHasher = StableHasher::new();
-            name.hash(&mut hasher);
-            hasher.finish::<u128>()
-        };
+        let name_hash = name.name_hash();
         let end_pos = start_pos.to_usize() + src.len();
         assert!(end_pos <= u32::MAX as usize);
 

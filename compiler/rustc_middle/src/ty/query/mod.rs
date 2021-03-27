@@ -34,7 +34,6 @@ use crate::ty::{self, AdtSizedConstraint, CrateInherentImpls, ParamEnvAnd, Ty, T
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::stable_hasher::StableVec;
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{ErrorReported, Handler};
 use rustc_hir as hir;

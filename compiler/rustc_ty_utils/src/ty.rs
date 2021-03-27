@@ -1,8 +1,8 @@
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_middle::hir::map as hir_map;
+use rustc_middle::middle::cstore::CrateHashAndState;
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{
     self, Binder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt, WithConstness,
@@ -400,8 +400,8 @@ fn original_crate_name(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Symbol {
     tcx.crate_name
 }
 
-fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
-    tcx.index_hir(crate_num).crate_hash
+fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> CrateHashAndState {
+    CrateHashAndState::new(tcx, tcx.index_hir(crate_num).crate_hash)
 }
 
 fn instance_def_size_estimate<'tcx>(
