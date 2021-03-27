@@ -178,6 +178,15 @@ $ cargo xtask install --server
 If your editor can't find the binary even though the binary is on your `$PATH`, the likely explanation is that it doesn't see the same `$PATH` as the shell, see https://github.com/rust-analyzer/rust-analyzer/issues/1811[this issue].
 On Unix, running the editor from a shell or changing the `.desktop` file to set the environment should help.
 
+==== `rustup`
+
+`rust-analyzer` is available in `rustup`, but only in the nightly toolchain:
+
+[source,bash]
+---
+$ rustup +nightly component add rust-analyzer-preview
+---
+
 ==== Arch Linux
 
 The `rust-analyzer` binary can be installed from the repos or AUR (Arch User Repository):
