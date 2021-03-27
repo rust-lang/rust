@@ -163,61 +163,65 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             flags.push((sym::from_desugaring, None));
             flags.push((sym::from_desugaring, Some(format!("{:?}", k))));
         }
-        let generics = self.tcx.generics_of(def_id);
-        let self_ty = trait_ref.self_ty();
-        // This is also included through the generics list as `Self`,
-        // but the parser won't allow you to use it
-        flags.push((sym::_Self, Some(self_ty.to_string())));
-        if let Some(def) = self_ty.ty_adt_def() {
-            // We also want to be able to select self's original
-            // signature with no type arguments resolved
-            flags.push((sym::_Self, Some(self.tcx.type_of(def.did).to_string())));
-        }
 
-        for param in generics.params.iter() {
-            let value = match param.kind {
-                GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
-                    trait_ref.substs[param.index as usize].to_string()
-                }
-                GenericParamDefKind::Lifetime => continue,
-            };
-            let name = param.name;
-            flags.push((name, Some(value)));
-        }
-
-        if let Some(true) = self_ty.ty_adt_def().map(|def| def.did.is_local()) {
-            flags.push((sym::crate_local, None));
-        }
-
-        // Allow targeting all integers using `{integral}`, even if the exact type was resolved
-        if self_ty.is_integral() {
-            flags.push((sym::_Self, Some("{integral}".to_owned())));
-        }
-
-        if let ty::Array(aty, len) = self_ty.kind() {
-            flags.push((sym::_Self, Some("[]".to_owned())));
-            flags.push((sym::_Self, Some(format!("[{}]", aty))));
-            if let Some(def) = aty.ty_adt_def() {
-                // We also want to be able to select the array's type's original
+        // Add all types without trimmed paths.
+        ty::print::with_no_trimmed_paths(|| {
+            let generics = self.tcx.generics_of(def_id);
+            let self_ty = trait_ref.self_ty();
+            // This is also included through the generics list as `Self`,
+            // but the parser won't allow you to use it
+            flags.push((sym::_Self, Some(self_ty.to_string())));
+            if let Some(def) = self_ty.ty_adt_def() {
+                // We also want to be able to select self's original
                 // signature with no type arguments resolved
-                let type_string = self.tcx.type_of(def.did).to_string();
-                flags.push((sym::_Self, Some(format!("[{}]", type_string))));
-
-                let len = len.val.try_to_value().and_then(|v| v.try_to_machine_usize(self.tcx));
-                let string = match len {
-                    Some(n) => format!("[{}; {}]", type_string, n),
-                    None => format!("[{}; _]", type_string),
-                };
-                flags.push((sym::_Self, Some(string)));
+                flags.push((sym::_Self, Some(self.tcx.type_of(def.did).to_string())));
             }
-        }
-        if let ty::Dynamic(traits, _) = self_ty.kind() {
-            for t in traits.iter() {
-                if let ty::ExistentialPredicate::Trait(trait_ref) = t.skip_binder() {
-                    flags.push((sym::_Self, Some(self.tcx.def_path_str(trait_ref.def_id))))
+
+            for param in generics.params.iter() {
+                let value = match param.kind {
+                    GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
+                        trait_ref.substs[param.index as usize].to_string()
+                    }
+                    GenericParamDefKind::Lifetime => continue,
+                };
+                let name = param.name;
+                flags.push((name, Some(value)));
+            }
+
+            if let Some(true) = self_ty.ty_adt_def().map(|def| def.did.is_local()) {
+                flags.push((sym::crate_local, None));
+            }
+
+            // Allow targeting all integers using `{integral}`, even if the exact type was resolved
+            if self_ty.is_integral() {
+                flags.push((sym::_Self, Some("{integral}".to_owned())));
+            }
+
+            if let ty::Array(aty, len) = self_ty.kind() {
+                flags.push((sym::_Self, Some("[]".to_owned())));
+                flags.push((sym::_Self, Some(format!("[{}]", aty))));
+                if let Some(def) = aty.ty_adt_def() {
+                    // We also want to be able to select the array's type's original
+                    // signature with no type arguments resolved
+                    let type_string = self.tcx.type_of(def.did).to_string();
+                    flags.push((sym::_Self, Some(format!("[{}]", type_string))));
+
+                    let len = len.val.try_to_value().and_then(|v| v.try_to_machine_usize(self.tcx));
+                    let string = match len {
+                        Some(n) => format!("[{}; {}]", type_string, n),
+                        None => format!("[{}; _]", type_string),
+                    };
+                    flags.push((sym::_Self, Some(string)));
                 }
             }
-        }
+            if let ty::Dynamic(traits, _) = self_ty.kind() {
+                for t in traits.iter() {
+                    if let ty::ExistentialPredicate::Trait(trait_ref) = t.skip_binder() {
+                        flags.push((sym::_Self, Some(self.tcx.def_path_str(trait_ref.def_id))))
+                    }
+                }
+            }
+        });
 
         if let Ok(Some(command)) =
             OnUnimplementedDirective::of_item(self.tcx, trait_ref.def_id, def_id)
