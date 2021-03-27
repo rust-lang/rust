@@ -12,9 +12,8 @@ use once_cell::unsync::Lazy;
 use rustc_hash::FxHashMap;
 use syntax::{ast, match_ast, AstNode, TextRange, TextSize};
 
-use crate::defs::NameClass;
 use crate::{
-    defs::{Definition, NameRefClass},
+    defs::{Definition, NameClass, NameRefClass},
     RootDatabase,
 };
 

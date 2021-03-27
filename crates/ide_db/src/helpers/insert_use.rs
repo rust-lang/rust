@@ -1,7 +1,6 @@
 //! Handle syntactic aspects of inserting a new `use`.
 use std::{cmp::Ordering, iter::successors};
 
-use crate::RootDatabase;
 use hir::Semantics;
 use itertools::{EitherOrBoth, Itertools};
 use syntax::{
@@ -13,6 +12,8 @@ use syntax::{
     },
     AstToken, InsertPosition, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxToken,
 };
+
+use crate::RootDatabase;
 
 pub use hir::PrefixKind;
 

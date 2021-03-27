@@ -2,10 +2,12 @@
 //! Use case for structures in this module is, for example, situation when you need to process
 //! only certain `Enum`s.
 
-use crate::RootDatabase;
-use hir::{Adt, Semantics, Type};
 use std::iter;
+
+use hir::{Adt, Semantics, Type};
 use syntax::ast::{self, make};
+
+use crate::RootDatabase;
 
 /// Enum types that implement `std::ops::Try` trait.
 #[derive(Clone, Copy)]

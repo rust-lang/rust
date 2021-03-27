@@ -1,7 +1,8 @@
-use crate::RootDatabase;
 use base_db::{fixture::ChangeFixture, FilePosition};
 use expect_test::{expect, Expect};
 use test_utils::RangeOrOffset;
+
+use crate::RootDatabase;
 
 /// Creates analysis from a multi-file fixture, returns positions marked with $0.
 pub(crate) fn position(ra_fixture: &str) -> (RootDatabase, FilePosition) {

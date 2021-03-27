@@ -61,7 +61,7 @@ pub fn get_missing_assoc_items(
     resolve_target_trait(sema, impl_def).map_or(vec![], |target_trait| {
         target_trait
             .items(sema.db)
-            .iter()
+            .into_iter()
             .filter(|i| match i {
                 hir::AssocItem::Function(f) => {
                     !impl_fns_consts.contains(&f.name(sema.db).to_string())
@@ -72,7 +72,6 @@ pub fn get_missing_assoc_items(
                     .map(|n| !impl_fns_consts.contains(&n.to_string()))
                     .unwrap_or_default(),
             })
-            .cloned()
             .collect()
     })
 }

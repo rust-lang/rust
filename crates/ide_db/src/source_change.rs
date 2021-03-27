@@ -37,6 +37,8 @@ impl SourceChange {
         }
     }
 
+    /// Inserts a [`TextEdit`] for the given [`FileId`]. This properly handles merging existing
+    /// edits for a file if some already exist.
     pub fn insert_source_edit(&mut self, file_id: FileId, edit: TextEdit) {
         match self.source_file_edits.entry(file_id) {
             Entry::Occupied(mut entry) => {
