@@ -57,7 +57,8 @@ pub enum SocketAddr {
 /// See [`SocketAddr`] for a type encompassing both IPv4 and IPv6 socket addresses.
 ///
 /// The size of a `SocketAddrV4` struct may vary depending on the target operating
-/// system.
+/// system. Do not assume that this type has the same memory layout as the underlying
+/// system representation.
 ///
 /// [IETF RFC 793]: https://tools.ietf.org/html/rfc793
 /// [`IPv4` address]: Ipv4Addr
@@ -76,6 +77,8 @@ pub enum SocketAddr {
 #[derive(Copy)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SocketAddrV4 {
+    // Do not assume that this struct is implemented as the underlying system representation.
+    // The memory layout is not part of the stable interface that std exposes.
     inner: c::sockaddr_in,
 }
 
@@ -88,7 +91,8 @@ pub struct SocketAddrV4 {
 /// See [`SocketAddr`] for a type encompassing both IPv4 and IPv6 socket addresses.
 ///
 /// The size of a `SocketAddrV6` struct may vary depending on the target operating
-/// system.
+/// system. Do not assume that this type has the same memory layout as the underlying
+/// system representation.
 ///
 /// [IETF RFC 2553, Section 3.3]: https://tools.ietf.org/html/rfc2553#section-3.3
 /// [`IPv6` address]: Ipv6Addr
@@ -107,6 +111,8 @@ pub struct SocketAddrV4 {
 #[derive(Copy)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SocketAddrV6 {
+    // Do not assume that this struct is implemented as the underlying system representation.
+    // The memory layout is not part of the stable interface that std exposes.
     inner: c::sockaddr_in6,
 }
 
