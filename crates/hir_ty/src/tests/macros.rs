@@ -226,7 +226,44 @@ fn expr_macro_expanded_in_stmts() {
         "#,
         expect![[r#"
             !0..8 'leta=();': ()
+            !0..8 'leta=();': ()
+            !3..4 'a': ()
+            !5..7 '()': ()
             57..84 '{     ...); } }': ()
+        "#]],
+    );
+}
+
+#[test]
+fn recurisve_macro_expanded_in_stmts() {
+    check_infer(
+        r#"
+        macro_rules! ng {
+            ([$($tts:tt)*]) => {
+                $($tts)*;
+            };
+            ([$($tts:tt)*] $head:tt $($rest:tt)*) => {
+                ng! {
+                    [$($tts)* $head] $($rest)*
+                }
+            };
+        }
+        fn foo() {
+            ng!([] let a = 3);
+            let b = a;
+        }
+        "#,
+        expect![[r#"
+            !0..7 'leta=3;': {unknown}
+            !0..7 'leta=3;': {unknown}
+            !0..13 'ng!{[leta=3]}': {unknown}
+            !0..13 'ng!{[leta=]3}': {unknown}
+            !0..13 'ng!{[leta]=3}': {unknown}
+            !3..4 'a': i32
+            !5..6 '3': i32
+            196..237 '{     ...= a; }': ()
+            229..230 'b': i32
+            233..234 'a': i32
         "#]],
     );
 }
@@ -246,7 +283,8 @@ fn recursive_inner_item_macro_rules() {
         "#,
         expect![[r#"
             !0..1 '1': i32
-            !0..7 'mac!($)': {unknown}
+            !0..26 'macro_...>{1};}': {unknown}
+            !0..26 'macro_...>{1};}': {unknown}
             107..143 '{     ...!(); }': ()
             129..130 'a': i32
         "#]],

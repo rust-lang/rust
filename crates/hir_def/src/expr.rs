@@ -171,6 +171,9 @@ pub enum Expr {
     Unsafe {
         body: ExprId,
     },
+    MacroStmts {
+        tail: ExprId,
+    },
     Array(Array),
     Literal(Literal),
 }
@@ -357,6 +360,7 @@ impl Expr {
                     f(*repeat)
                 }
             },
+            Expr::MacroStmts { tail } => f(*tail),
             Expr::Literal(_) => {}
         }
     }
