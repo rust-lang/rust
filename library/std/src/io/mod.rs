@@ -2114,6 +2114,7 @@ pub trait BufRead: Read {
 ///
 /// [`chain`]: Read::chain
 #[stable(feature = "rust1", since = "1.0.0")]
+#[derive(Debug)]
 pub struct Chain<T, U> {
     first: T,
     second: U,
@@ -2192,13 +2193,6 @@ impl<T, U> Chain<T, U> {
     #[stable(feature = "more_io_inner_methods", since = "1.20.0")]
     pub fn get_mut(&mut self) -> (&mut T, &mut U) {
         (&mut self.first, &mut self.second)
-    }
-}
-
-#[stable(feature = "std_debug", since = "1.16.0")]
-impl<T: fmt::Debug, U: fmt::Debug> fmt::Debug for Chain<T, U> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Chain").field("t", &self.first).field("u", &self.second).finish()
     }
 }
 
