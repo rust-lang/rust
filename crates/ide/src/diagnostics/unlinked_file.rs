@@ -63,7 +63,7 @@ impl DiagnosticWithFix for UnlinkedFile {
         // - `$dir.rs` in the parent folder, where `$dir` is the directory containing `self.file_id`
         let parent = our_path.parent()?;
         let mut paths =
-            vec![parent.join("mod.rs")?, parent.join("main.rs")?, parent.join("lib.rs")?];
+            vec![parent.join("mod.rs")?, parent.join("lib.rs")?, parent.join("main.rs")?];
 
         // `submod/bla.rs` -> `submod.rs`
         if let Some(newmod) = (|| {
