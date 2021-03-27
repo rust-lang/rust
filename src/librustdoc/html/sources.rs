@@ -54,12 +54,10 @@ impl DocFolder for SourceCollector<'_, '_> {
             self.scx.include_sources = match self.emit_source(&filename) {
                 Ok(()) => true,
                 Err(e) => {
-                    println!(
-                        "warning: source code was requested to be rendered, \
-                         but processing `{}` had an error: {}",
-                        filename, e
+                    self.scx.tcx.sess.span_err(
+                        item.span.inner(),
+                        &format!("failed to render source code for `{}`: {}", filename, e),
                     );
-                    println!("         skipping rendering of source code");
                     false
                 }
             };
