@@ -912,9 +912,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_arena"
-version = "711.0.0"
+version = "712.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53c050d4265f6e524fa318fb80a7cb328a696fb242ee5f7a16fd811f6e486774"
+checksum = "259cca0e975ecb05fd289ace45280c30ff792efc04e856a7f18b7fc86a3cb610"
 dependencies = [
  "rustc-ap-rustc_data_structures",
  "smallvec",
@@ -922,9 +922,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_ast"
-version = "711.0.0"
+version = "712.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "739160ba3e81f157f838f7121f647a2183b218f422e16ca1b3f7c2e02c1487fb"
+checksum = "bb9be435d50c88e94bbad6ea468c8680b52c5043bb298ab8058d05251717f8f8"
 dependencies = [
  "bitflags",
  "rustc-ap-rustc_data_structures",
@@ -939,9 +939,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_ast_passes"
-version = "711.0.0"
+version = "712.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "919e3dbdef36cae901744675cc96a5cd2700a4086b91ca4254e5e49988231726"
+checksum = "75246dd1a95a57f7767e53bde3971baa2d948078e180564709f5ea46cf863ddd"
 dependencies = [
  "itertools 0.9.0",
  "rustc-ap-rustc_ast",
@@ -958,9 +958,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_ast_pretty"
-version = "711.0.0"
+version = "712.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "529e08e8d3defcdd372f5c1e2b83291720e93925090a863c85e6d377c1e4d730"
+checksum = "79bede0b44bed453fd0034b7ba492840391f6486bf3e17a1af12922f0b98d4cc"
 dependencies = [
  "rustc-ap-rustc_ast",
  "rustc-ap-rustc_span",
@@ -969,9 +969,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_attr"
-version = "711.0.0"
+version = "712.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "234b02185a27eedbff98dbfe6a3258fb6294efe4613c1c8613788a030324d7ad"
+checksum = "84a92a4a34b996694ca2dab70361c60d2d48c07adce57e8155b7ec75e069e3ea"
 dependencies = [
  "rustc-ap-rustc_ast",
  "rustc-ap-rustc_ast_pretty",
@@ -987,9 +987,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_data_structures"
-version = "711.0.0"
+version = "712.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a3d784a5f78393493f3bb85f9598cb4259b86097e0ca97bb2abfd7caaf91dcb4"
+checksum = "9cbfa7f82517a1b2efe7106c864c3f930b1da8aff07a27fd317af2f36522fd2e"
 dependencies = [
  "arrayvec 0.5.1",
  "bitflags",
@@ -1018,9 +1018,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_errors"
-version = "711.0.0"
+version = "712.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "802694bfa5e71310c6e3a1e9aa0f2b2a7fe5e4802899a91d8546cd205a124b98"
+checksum = "58a272a5101843bcb40900cc9ccf80ecfec62830bb1f4a242986da4a34c0da89"
 dependencies = [
  "annotate-snippets 0.8.0",
  "atty",
@@ -1038,9 +1038,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_expand"
-version = "711.0.0"
+version = "712.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "266c14d813a3c895d715edda4c64f8819fbcae2d5bd1be948c7cc8244f5d4073"
+checksum = "3bc7988f3facf2402fe057405ef0f7fbacc7e7a483da25e35a35ac09491fbbfb"
 dependencies = [
  "rustc-ap-rustc_ast",
  "rustc-ap-rustc_ast_passes",
@@ -1062,9 +1062,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_feature"
-version = "711.0.0"
+version = "712.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e3a4b848e0dd6a5549c3379d547947a22fc160e83605c303d4e4f5f62709d8a"
+checksum = "5e931cd1580ae60c5737d3fa57633034935e885414e794d83b3e52a81021985c"
 dependencies = [
  "rustc-ap-rustc_data_structures",
  "rustc-ap-rustc_span",
@@ -1072,21 +1072,21 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_fs_util"
-version = "711.0.0"
+version = "712.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6026674a2afffc5602f39ef30e3d3014377c0c4be70001934a0a25b71a19e826"
+checksum = "8fe9422e10d5b441d2a78202667bc85d7cf713a087b9ae6cdea0dfc825d79f07"
 
 [[package]]
 name = "rustc-ap-rustc_graphviz"
-version = "711.0.0"
+version = "712.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db7ccfe86463304dbc073babd0290a0bfa3a375c2a1f7d93ba51a6129ede5864"
+checksum = "ffffffdef9fd51db69c1d4c045ced8aaab999be5627f2d3a0ce020d74c1f1e50"
 
 [[package]]
 name = "rustc-ap-rustc_index"
-version = "711.0.0"
+version = "712.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe42f0017edecc6521c33a05f791e89fe218ad591f7ce5a7bc9d961a1d50129a"
+checksum = "7f6f53afc4f7111c82295cb7ea3878f520bbac6a2c5a12e125b4ca9156498cff"
 dependencies = [
  "arrayvec 0.5.1",
  "rustc-ap-rustc_macros",
@@ -1095,18 +1095,18 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_lexer"
-version = "711.0.0"
+version = "712.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a32efffdb17504a11ced7bba5538ae2452ea1eef9ad48f3b63c336477352da8c"
+checksum = "8056b05346dff7e39164d0434c6ec443a14ab5fbf6221bd1a56e5abbeae5f60c"
 dependencies = [
  "unicode-xid",
 ]
 
 [[package]]
 name = "rustc-ap-rustc_lint_defs"
-version = "711.0.0"
+version = "712.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d983646feff12bb72cef5172ca78a8a8c034a8e0f220d6913dcaea7d65f0f63"
+checksum = "364c3fb7b3cbdfe3fbb21d4078ff2cb3c58df63cda27995f8b064d21ee6dede5"
 dependencies = [
  "rustc-ap-rustc_ast",
  "rustc-ap-rustc_data_structures",
@@ -1119,9 +1119,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_macros"
-version = "711.0.0"
+version = "712.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88c08a1ab3aef2cd8574a9f305fb2266596a505041537fcc35b036681003b0d1"
+checksum = "4607d6879cae3bae4d0369ca4b3a7510fd6295ac32eec088ac975208ba96ca45"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1131,9 +1131,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_parse"
-version = "711.0.0"
+version = "712.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "533043a957c22f57ac6b707faa3514db143cfa459e00ad41139a1b9c099ed2fd"
+checksum = "78d22889bff7ca2346037c9df7ea55c66ffb714f5b50fb62b41975f8ac7a2d70"
 dependencies = [
  "bitflags",
  "rustc-ap-rustc_ast",
@@ -1151,9 +1151,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_serialize"
-version = "711.0.0"
+version = "712.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "28c2e430449dbed703192cff1ec44ec731c1be53c8fbaae335a01f7dbb630dc2"
+checksum = "d33c710120953c0214f47a6caf42064d7e241003b4af36c98a6d6156e70335f1"
 dependencies = [
  "indexmap",
  "smallvec",
@@ -1161,9 +1161,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_session"
-version = "711.0.0"
+version = "712.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e22ecc4aee1c5afcf0733f90965dd0af873e9fa4a09106e623565bb0e8803a1"
+checksum = "6d35919041429a90713c8f704fa5209ba159cb554ce74d95722cbc18ac4b4c6f"
 dependencies = [
  "bitflags",
  "getopts",
@@ -1183,9 +1183,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_span"
-version = "711.0.0"
+version = "712.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1540067b114af3697b316dd83942e19d6e1295df35abde6ab569c60ec95d55a9"
+checksum = "73b12170c69603c0bf4b50e5c25fd348aae13b8c6465aa0ef4389c9eaa568e51"
 dependencies = [
  "cfg-if 0.1.10",
  "md-5",
@@ -1203,9 +1203,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_target"
-version = "711.0.0"
+version = "712.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a58b6d668ea0da42dc5f93a2b38ccfd884fcb278ed880e3523b7077c5dadf7c"
+checksum = "0a8329d92e7dc24b974f759e6c6e97e2bbc47b18d0573343028f8135ca367200"
 dependencies = [
  "bitflags",
  "rustc-ap-rustc_data_structures",
