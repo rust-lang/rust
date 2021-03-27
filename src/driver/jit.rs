@@ -30,6 +30,7 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
     let mut jit_builder =
         JITBuilder::with_isa(crate::build_isa(tcx.sess), cranelift_module::default_libcall_names());
     jit_builder.hotswap(matches!(backend_config.codegen_mode, CodegenMode::JitLazy));
+    crate::compiler_builtins::register_functions_for_jit(&mut jit_builder);
     jit_builder.symbols(imported_symbols);
     let mut jit_module = JITModule::new(jit_builder);
     assert_eq!(pointer_ty(tcx), jit_module.target_config().pointer_type());
@@ -47,15 +48,12 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
 
     super::time(tcx, "codegen mono items", || {
         super::predefine_mono_items(&mut cx, &mono_items);
-        for (mono_item, (linkage, visibility)) in mono_items {
-            let linkage = crate::linkage::get_clif_linkage(mono_item, linkage, visibility);
+        for (mono_item, _) in mono_items {
             match mono_item {
                 MonoItem::Fn(inst) => match backend_config.codegen_mode {
                     CodegenMode::Aot => unreachable!(),
                     CodegenMode::Jit => {
-                        cx.tcx
-                            .sess
-                            .time("codegen fn", || crate::base::codegen_fn(&mut cx, inst, linkage));
+                        cx.tcx.sess.time("codegen fn", || crate::base::codegen_fn(&mut cx, inst));
                     }
                     CodegenMode::JitLazy => codegen_shim(&mut cx, inst),
                 },
@@ -175,8 +173,7 @@ extern "C" fn __clif_jit_fn(instance_ptr: *const Instance<'static>) -> *const u8
             jit_module.prepare_for_function_redefine(func_id).unwrap();
 
             let mut cx = crate::CodegenCx::new(tcx, backend_config, jit_module, false);
-            tcx.sess
-                .time("codegen fn", || crate::base::codegen_fn(&mut cx, instance, Linkage::Export));
+            tcx.sess.time("codegen fn", || crate::base::codegen_fn(&mut cx, instance));
 
             let (global_asm, _debug_context, unwind_context) = cx.finalize();
             assert!(global_asm.is_empty());

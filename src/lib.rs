@@ -48,6 +48,7 @@ mod base;
 mod cast;
 mod codegen_i128;
 mod common;
+mod compiler_builtins;
 mod constant;
 mod debuginfo;
 mod discriminant;

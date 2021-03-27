@@ -119,11 +119,10 @@ fn module_codegen(
         tcx.sess.opts.debuginfo != DebugInfo::None,
     );
     super::predefine_mono_items(&mut cx, &mono_items);
-    for (mono_item, (linkage, visibility)) in mono_items {
-        let linkage = crate::linkage::get_clif_linkage(mono_item, linkage, visibility);
+    for (mono_item, _) in mono_items {
         match mono_item {
             MonoItem::Fn(inst) => {
-                cx.tcx.sess.time("codegen fn", || crate::base::codegen_fn(&mut cx, inst, linkage));
+                cx.tcx.sess.time("codegen fn", || crate::base::codegen_fn(&mut cx, inst));
             }
             MonoItem::Static(def_id) => {
                 crate::constant::codegen_static(&mut cx.constants_cx, def_id)

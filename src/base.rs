@@ -8,11 +8,7 @@ use rustc_target::abi::call::FnAbi;
 
 use crate::prelude::*;
 
-pub(crate) fn codegen_fn<'tcx>(
-    cx: &mut crate::CodegenCx<'_, 'tcx>,
-    instance: Instance<'tcx>,
-    linkage: Linkage,
-) {
+pub(crate) fn codegen_fn<'tcx>(cx: &mut crate::CodegenCx<'_, 'tcx>, instance: Instance<'tcx>) {
     let tcx = cx.tcx;
 
     let _inst_guard =
@@ -24,7 +20,7 @@ pub(crate) fn codegen_fn<'tcx>(
     // Declare function
     let name = tcx.symbol_name(instance).name.to_string();
     let sig = get_function_sig(tcx, cx.module.isa().triple(), instance);
-    let func_id = cx.module.declare_function(&name, linkage, &sig).unwrap();
+    let func_id = cx.module.declare_function(&name, Linkage::Local, &sig).unwrap();
 
     cx.cached_context.clear();
 
