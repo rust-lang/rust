@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use base_db::{salsa, SourceDatabase};
-use mbe::{ExpandError, ExpandResult, MacroRules};
+use mbe::{ExpandError, ExpandResult, MacroDef, MacroRules};
 use parser::FragmentKind;
 use syntax::{
     algo::diff,
@@ -28,6 +28,7 @@ const TOKEN_LIMIT: usize = 524288;
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TokenExpander {
     MacroRules(mbe::MacroRules),
+    MacroDef(mbe::MacroDef),
     Builtin(BuiltinFnLikeExpander),
     BuiltinDerive(BuiltinDeriveExpander),
     ProcMacro(ProcMacroExpander),
@@ -42,6 +43,7 @@ impl TokenExpander {
     ) -> mbe::ExpandResult<tt::Subtree> {
         match self {
             TokenExpander::MacroRules(it) => it.expand(tt),
+            TokenExpander::MacroDef(it) => it.expand(tt),
             TokenExpander::Builtin(it) => it.expand(db, id, tt),
             // FIXME switch these to ExpandResult as well
             TokenExpander::BuiltinDerive(it) => it.expand(db, id, tt).into(),
@@ -57,6 +59,7 @@ impl TokenExpander {
     pub fn map_id_down(&self, id: tt::TokenId) -> tt::TokenId {
         match self {
             TokenExpander::MacroRules(it) => it.map_id_down(id),
+            TokenExpander::MacroDef(it) => it.map_id_down(id),
             TokenExpander::Builtin(..) => id,
             TokenExpander::BuiltinDerive(..) => id,
             TokenExpander::ProcMacro(..) => id,
@@ -66,6 +69,7 @@ impl TokenExpander {
     pub fn map_id_up(&self, id: tt::TokenId) -> (tt::TokenId, mbe::Origin) {
         match self {
             TokenExpander::MacroRules(it) => it.map_id_up(id),
+            TokenExpander::MacroDef(it) => it.map_id_up(id),
             TokenExpander::Builtin(..) => (id, mbe::Origin::Call),
             TokenExpander::BuiltinDerive(..) => (id, mbe::Origin::Call),
             TokenExpander::ProcMacro(..) => (id, mbe::Origin::Call),
@@ -136,26 +140,40 @@ fn ast_id_map(db: &dyn AstDatabase, file_id: HirFileId) -> Arc<AstIdMap> {
 
 fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Option<Arc<(TokenExpander, mbe::TokenMap)>> {
     match id.kind {
-        MacroDefKind::Declarative(ast_id) => {
-            let macro_rules = match ast_id.to_node(db) {
-                syntax::ast::Macro::MacroRules(mac) => mac,
-                syntax::ast::Macro::MacroDef(_) => return None,
-            };
-            let arg = macro_rules.token_tree()?;
-            let (tt, tmap) = mbe::ast_to_token_tree(&arg).or_else(|| {
-                log::warn!("fail on macro_def to token tree: {:#?}", arg);
-                None
-            })?;
-            let rules = match MacroRules::parse(&tt) {
-                Ok(it) => it,
-                Err(err) => {
-                    let name = macro_rules.name().map(|n| n.to_string()).unwrap_or_default();
-                    log::warn!("fail on macro_def parse ({}): {:?} {:#?}", name, err, tt);
-                    return None;
-                }
-            };
-            Some(Arc::new((TokenExpander::MacroRules(rules), tmap)))
-        }
+        MacroDefKind::Declarative(ast_id) => match ast_id.to_node(db) {
+            syntax::ast::Macro::MacroRules(macro_rules) => {
+                let arg = macro_rules.token_tree()?;
+                let (tt, tmap) = mbe::ast_to_token_tree(&arg).or_else(|| {
+                    log::warn!("fail on macro_rules to token tree: {:#?}", arg);
+                    None
+                })?;
+                let rules = match MacroRules::parse(&tt) {
+                    Ok(it) => it,
+                    Err(err) => {
+                        let name = macro_rules.name().map(|n| n.to_string()).unwrap_or_default();
+                        log::warn!("fail on macro_def parse ({}): {:?} {:#?}", name, err, tt);
+                        return None;
+                    }
+                };
+                Some(Arc::new((TokenExpander::MacroRules(rules), tmap)))
+            }
+            syntax::ast::Macro::MacroDef(macro_def) => {
+                let arg = macro_def.body()?;
+                let (tt, tmap) = mbe::ast_to_token_tree(&arg).or_else(|| {
+                    log::warn!("fail on macro_def to token tree: {:#?}", arg);
+                    None
+                })?;
+                let rules = match MacroDef::parse(&tt) {
+                    Ok(it) => it,
+                    Err(err) => {
+                        let name = macro_def.name().map(|n| n.to_string()).unwrap_or_default();
+                        log::warn!("fail on macro_def parse ({}): {:?} {:#?}", name, err, tt);
+                        return None;
+                    }
+                };
+                Some(Arc::new((TokenExpander::MacroDef(rules), tmap)))
+            }
+        },
         MacroDefKind::BuiltIn(expander, _) => {
             Some(Arc::new((TokenExpander::Builtin(expander), mbe::TokenMap::default())))
         }

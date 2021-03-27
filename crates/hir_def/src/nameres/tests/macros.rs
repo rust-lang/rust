@@ -837,3 +837,25 @@ fn collects_derive_helpers() {
         _ => unreachable!(),
     }
 }
+
+#[test]
+fn resolve_macro_def() {
+    check(
+        r#"
+//- /lib.rs
+pub macro structs($($i:ident),*) {
+    $(struct $i { field: u32 } )*
+}
+
+structs!(Foo);
+
+//- /nested.rs
+structs!(Bar, Baz);
+"#,
+        expect![[r#"
+            crate
+            Foo: t
+            structs: m
+        "#]],
+    );
+}

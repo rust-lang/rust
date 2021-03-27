@@ -40,6 +40,7 @@ fn text_of_first_token(node: &SyntaxNode) -> TokenText {
     TokenText(first_token)
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Macro {
     MacroRules(ast::MacroRules),
     MacroDef(ast::MacroDef),

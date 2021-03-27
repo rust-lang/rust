@@ -148,7 +148,7 @@ fn make_hygiene_info(
     let def_offset = loc.def.ast_id().left().and_then(|id| {
         let def_tt = match id.to_node(db) {
             ast::Macro::MacroRules(mac) => mac.token_tree()?.syntax().text_range().start(),
-            ast::Macro::MacroDef(_) => return None,
+            ast::Macro::MacroDef(mac) => mac.body()?.syntax().text_range().start(),
         };
         Some(InFile::new(id.file_id, def_tt))
     });

@@ -135,7 +135,88 @@ fn infer_path_qualified_macros_expanded() {
 }
 
 #[test]
-fn expr_macro_expanded_in_various_places() {
+fn expr_macro_def_expanded_in_various_places() {
+    check_infer(
+        r#"
+        macro spam() {
+            1isize
+        }
+
+        fn spam() {
+            spam!();
+            (spam!());
+            spam!().spam(spam!());
+            for _ in spam!() {}
+            || spam!();
+            while spam!() {}
+            break spam!();
+            return spam!();
+            match spam!() {
+                _ if spam!() => spam!(),
+            }
+            spam!()(spam!());
+            Spam { spam: spam!() };
+            spam!()[spam!()];
+            await spam!();
+            spam!() as usize;
+            &spam!();
+            -spam!();
+            spam!()..spam!();
+            spam!() + spam!();
+        }
+        "#,
+        expect![[r#"
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            !0..6 '1isize': isize
+            39..442 '{     ...!(); }': ()
+            73..94 'spam!(...am!())': {unknown}
+            100..119 'for _ ...!() {}': ()
+            104..105 '_': {unknown}
+            117..119 '{}': ()
+            124..134 '|| spam!()': || -> isize
+            140..156 'while ...!() {}': ()
+            154..156 '{}': ()
+            161..174 'break spam!()': !
+            180..194 'return spam!()': !
+            200..254 'match ...     }': isize
+            224..225 '_': isize
+            259..275 'spam!(...am!())': {unknown}
+            281..303 'Spam {...m!() }': {unknown}
+            309..325 'spam!(...am!()]': {unknown}
+            350..366 'spam!(... usize': usize
+            372..380 '&spam!()': &isize
+            386..394 '-spam!()': isize
+            400..416 'spam!(...pam!()': {unknown}
+            422..439 'spam!(...pam!()': isize
+        "#]],
+    );
+}
+
+#[test]
+fn expr_macro_rules_expanded_in_various_places() {
     check_infer(
         r#"
         macro_rules! spam {

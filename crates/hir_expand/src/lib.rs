@@ -151,7 +151,7 @@ impl HirFileId {
                 let def = loc.def.ast_id().left().and_then(|id| {
                     let def_tt = match id.to_node(db) {
                         ast::Macro::MacroRules(mac) => mac.token_tree()?,
-                        ast::Macro::MacroDef(_) => return None,
+                        ast::Macro::MacroDef(mac) => mac.body()?,
                     };
                     Some(InFile::new(id.file_id, def_tt))
                 });
