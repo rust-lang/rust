@@ -434,7 +434,8 @@ fn generate_impl_text_inner(adt: &ast::Adt, trait_text: Option<&str>, code: &str
             }
             buf
         });
-        let generics = lifetimes.chain(type_params).format(", ");
+        let const_params = generic_params.const_params().map(|t| t.syntax().to_string());
+        let generics = lifetimes.chain(type_params).chain(const_params).format(", ");
         format_to!(buf, "<{}>", generics);
     }
     buf.push(' ');
@@ -452,7 +453,11 @@ fn generate_impl_text_inner(adt: &ast::Adt, trait_text: Option<&str>, code: &str
             .type_params()
             .filter_map(|it| it.name())
             .map(|it| SmolStr::from(it.text()));
-        format_to!(buf, "<{}>", lifetime_params.chain(type_params).format(", "))
+        let const_params = generic_params
+            .const_params()
+            .filter_map(|it| it.name())
+            .map(|it| SmolStr::from(it.text()));
+        format_to!(buf, "<{}>", lifetime_params.chain(type_params).chain(const_params).format(", "))
     }
 
     match adt.where_clause() {

@@ -72,6 +72,17 @@ mod tests {
         check_assist(
             generate_impl,
             r#"
+            struct MyOwnArray<T, const S: usize> {}$0"#,
+            r#"
+            struct MyOwnArray<T, const S: usize> {}
+
+            impl<T, const S: usize> MyOwnArray<T, S> {
+                $0
+            }"#,
+        );
+        check_assist(
+            generate_impl,
+            r#"
             #[cfg(feature = "foo")]
             struct Foo<'a, T: Foo<'a>> {$0}"#,
             r#"
@@ -114,11 +125,11 @@ mod tests {
         check_assist(
             generate_impl,
             r#"
-            struct Defaulted<'a, 'b: 'a, T: Debug + Clone + 'a + 'b = String> {}$0"#,
+            struct Defaulted<'a, 'b: 'a, T: Debug + Clone + 'a + 'b = String, const S: usize> {}$0"#,
             r#"
-            struct Defaulted<'a, 'b: 'a, T: Debug + Clone + 'a + 'b = String> {}
+            struct Defaulted<'a, 'b: 'a, T: Debug + Clone + 'a + 'b = String, const S: usize> {}
 
-            impl<'a, 'b: 'a, T: Debug + Clone + 'a + 'b> Defaulted<'a, 'b, T> {
+            impl<'a, 'b: 'a, T: Debug + Clone + 'a + 'b, const S: usize> Defaulted<'a, 'b, T, S> {
                 $0
             }"#,
         );
