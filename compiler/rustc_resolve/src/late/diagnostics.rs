@@ -184,7 +184,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         PathResult::Module(ModuleOrUniformRoot::Module(module)) => module.res(),
                         _ => None,
                     }
-                    .map_or(String::new(), |res| format!("{} ", res.descr()));
+                    .map_or_else(String::new, |res| format!("{} ", res.descr()));
                 (mod_prefix, format!("`{}`", Segment::names_to_string(mod_path)))
             };
             (
@@ -1042,10 +1042,10 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 if let Some(span) = self.def_span(def_id) {
                     err.span_label(span, &format!("`{}` defined here", path_str));
                 }
-                let fields =
-                    self.r.field_names.get(&def_id).map_or("/* fields */".to_string(), |fields| {
-                        vec!["_"; fields.len()].join(", ")
-                    });
+                let fields = self.r.field_names.get(&def_id).map_or_else(
+                    || "/* fields */".to_string(),
+                    |fields| vec!["_"; fields.len()].join(", "),
+                );
                 err.span_suggestion(
                     span,
                     "use the tuple variant pattern syntax instead",
