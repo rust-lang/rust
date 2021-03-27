@@ -40,9 +40,10 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         macro_call.syntax().text_range()
     };
 
-    let macro_end = match macro_call.semicolon_token() {
-        Some(_) => macro_text_range.end() - TextSize::of(';'),
-        None => macro_text_range.end(),
+    let macro_end = if macro_call.semicolon_token().is_some() {
+        macro_text_range.end() - TextSize::of(';')
+    } else {
+        macro_text_range.end()
     };
 
     acc.add(
