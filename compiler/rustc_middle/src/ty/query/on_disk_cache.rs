@@ -525,7 +525,7 @@ impl<'sess> OnDiskCache<'sess> {
     ) {
         let mut current_diagnostics = self.current_diagnostics.borrow_mut();
 
-        let x = current_diagnostics.entry(dep_node_index).or_insert(Vec::new());
+        let x = current_diagnostics.entry(dep_node_index).or_default();
 
         x.extend(Into::<Vec<_>>::into(diagnostics));
     }
