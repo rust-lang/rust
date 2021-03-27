@@ -130,7 +130,7 @@ impl FileType {
 
 impl fmt::Debug for ReadDir {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ReadDir").finish()
+        f.debug_struct("ReadDir").finish_non_exhaustive()
     }
 }
 

@@ -234,7 +234,7 @@ impl fmt::Debug for Child {
             .field("stdin", &self.stdin)
             .field("stdout", &self.stdout)
             .field("stderr", &self.stderr)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
