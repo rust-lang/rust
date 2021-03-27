@@ -1,0 +1,9 @@
+error[E0308]: mismatched types
+  --> $DIR/unused-substs-2.rs:25:9
+   |
+LL |     t = foo;
+   |         ^^^ cyclic type of infinite size
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.
