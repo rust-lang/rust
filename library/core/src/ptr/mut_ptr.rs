@@ -251,8 +251,8 @@ impl<T: ?Sized> *mut T {
     ///
     /// This operation itself is always safe, but using the resulting pointer is not.
     ///
-    /// The resulting pointer remains attached to the same [allocated object] that `self` points to.
-    /// It may *not* be used to access a different allocated object.
+    /// The resulting pointer "remembers" the [allocated object] that `self` points to; it may not
+    /// be used to read or write other allocated objects.
     ///
     /// In other words, `let z = x.wrapping_offset((y as isize) - (x as isize))` does *not* make `z`
     /// the same as `y` even if we assume `T` has size `1` and there is no overflow: `z` is still
@@ -269,9 +269,6 @@ impl<T: ?Sized> *mut T {
     /// intermediate values used during the computation of the final result. For example,
     /// `x.wrapping_offset(o).wrapping_offset(o.wrapping_neg())` is always the same as `x`. In other
     /// words, leaving the allocated object and then re-entering it later is permitted.
-    ///
-    /// If you need to cross object boundaries, cast the pointer to an integer and
-    /// do the arithmetic there.
     ///
     /// [`offset`]: #method.offset
     /// [allocated object]: crate::ptr#allocated-object
@@ -700,8 +697,8 @@ impl<T: ?Sized> *mut T {
     ///
     /// This operation itself is always safe, but using the resulting pointer is not.
     ///
-    /// The resulting pointer remains attached to the same [allocated object] that `self` points to.
-    /// It may *not* be used to access a different allocated object.
+    /// The resulting pointer "remembers" the [allocated object] that `self` points to; it may not
+    /// be used to read or write other allocated objects.
     ///
     /// In other words, `let z = x.wrapping_add((y as usize) - (x as usize))` does *not* make `z`
     /// the same as `y` even if we assume `T` has size `1` and there is no overflow: `z` is still
@@ -718,9 +715,6 @@ impl<T: ?Sized> *mut T {
     /// intermediate values used during the computation of the final result. For example,
     /// `x.wrapping_add(o).wrapping_sub(o)` is always the same as `x`. In other words, leaving the
     /// allocated object and then re-entering it later is permitted.
-    ///
-    /// If you need to cross object boundaries, cast the pointer to an integer and
-    /// do the arithmetic there.
     ///
     /// [`add`]: #method.add
     /// [allocated object]: crate::ptr#allocated-object
@@ -765,8 +759,8 @@ impl<T: ?Sized> *mut T {
     ///
     /// This operation itself is always safe, but using the resulting pointer is not.
     ///
-    /// The resulting pointer remains attached to the same [allocated object] that `self` points to.
-    /// It may *not* be used to access a different allocated object.
+    /// The resulting pointer "remembers" the [allocated object] that `self` points to; it may not
+    /// be used to read or write other allocated objects.
     ///
     /// In other words, `let z = x.wrapping_sub((x as usize) - (y as usize))` does *not* make `z`
     /// the same as `y` even if we assume `T` has size `1` and there is no overflow: `z` is still
@@ -783,9 +777,6 @@ impl<T: ?Sized> *mut T {
     /// intermediate values used during the computation of the final result. For example,
     /// `x.wrapping_add(o).wrapping_sub(o)` is always the same as `x`. In other words, leaving the
     /// allocated object and then re-entering it later is permitted.
-    ///
-    /// If you need to cross object boundaries, cast the pointer to an integer and
-    /// do the arithmetic there.
     ///
     /// [`sub`]: #method.sub
     /// [allocated object]: crate::ptr#allocated-object
