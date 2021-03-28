@@ -603,9 +603,8 @@ impl RustcDefaultCalls {
         if sess.opts.debugging_opts.link_only {
             if let Input::File(file) = compiler.input() {
                 // FIXME: #![crate_type] and #![crate_name] support not implemented yet
-                let attrs = vec![];
-                sess.init_crate_types(collect_crate_types(sess, &attrs));
-                let outputs = compiler.build_output_filenames(&sess, &attrs);
+                sess.init_crate_types(collect_crate_types(sess, &[]));
+                let outputs = compiler.build_output_filenames(&sess, &[]);
                 let rlink_data = fs::read_to_string(file).unwrap_or_else(|err| {
                     sess.fatal(&format!("failed to read rlink file: {}", err));
                 });
