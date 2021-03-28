@@ -34,11 +34,16 @@ impl bool {
 
     /// Returns the opposite value.
     ///
+    /// This is identical in functionality to usage of the `!` operator, it's
+    /// simply an alternate way to write it. Because it's post-fix instead of
+    /// pre-fix, it is often more readable within chained function call
+    /// expressions.
+    ///
     /// # Examples
     ///
     /// ```
-    /// assert_eq!(false.not(), true);
-    /// assert_eq!(true.not(), false);
+    /// assert_eq!(!true, true.not());
+    /// assert_eq!(!false, false.not());
     /// ```
     #[unstable(feature = "bool_not_method", issue = "none")]
     #[inline]
