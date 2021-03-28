@@ -72,10 +72,6 @@ version = "711.0.0"
 package = "rustc-ap-rustc_ast_pretty"
 version = "711.0.0"
 
-# [dependencies.rustc_attr]
-# package = "rustc-ap-rustc_attr"
-# version = "708.0.0"
-
 [dependencies.rustc_data_structures]
 package = "rustc-ap-rustc_data_structures"
 version = "711.0.0"
