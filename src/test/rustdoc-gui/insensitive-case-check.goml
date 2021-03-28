@@ -1,0 +1,7 @@
+goto: file://|DOC_PATH|/insensitive_case_docs/struct.ab.html
+// Checks that the sidebar was filled.
+wait-for: ".sidebar-elems > .items > .sidebar-title"
+// Checks that the content has been loaded
+assert: ".impl-items > h4"
+// Checks that the collapse toggles have been generated as expected
+assert: ".impl-items > h4 > .collapse-toggle"

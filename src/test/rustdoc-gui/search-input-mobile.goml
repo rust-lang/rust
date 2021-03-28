@@ -1,6 +1,6 @@
 // Test to ensure that you can click on the search input, whatever the width.
 // The PR which fixed it is: https://github.com/rust-lang/rust/pull/81592
-goto: file://|DOC_PATH|/index.html
+goto: file://|DOC_PATH|/test_docs/index.html
 size: (463, 700)
 // We first check that the search input isn't already focused.
 assert-false: ("input.search-input:focus")
