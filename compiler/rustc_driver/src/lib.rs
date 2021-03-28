@@ -411,11 +411,10 @@ fn run_compiler(
                 return early_exit();
             }
 
-            if sess.opts.debugging_opts.save_analysis {
-                let crate_name = queries.crate_name()?.peek().clone();
-                queries.global_ctxt()?.peek_mut().enter(|tcx| {
-                    let result = tcx.analysis(LOCAL_CRATE);
-
+            let crate_name = queries.crate_name()?.peek().clone();
+            queries.global_ctxt()?.peek_mut().enter(|tcx| {
+                let result = tcx.analysis(LOCAL_CRATE);
+                if sess.opts.debugging_opts.save_analysis {
                     sess.time("save_analysis", || {
                         save::process_crate(
                             tcx,
@@ -428,12 +427,9 @@ fn run_compiler(
                             ),
                         )
                     });
-
-                    result
-                })?;
-            }
-
-            queries.global_ctxt()?.peek_mut().enter(|tcx| tcx.analysis(LOCAL_CRATE))?;
+                }
+                result
+            })?;
 
             if callbacks.after_analysis(compiler, queries) == Compilation::Stop {
                 return early_exit();
