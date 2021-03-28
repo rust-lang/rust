@@ -1209,6 +1209,11 @@ pub trait WithConstness: Sized {
     }
 
     #[inline]
+    fn with_const(self) -> ConstnessAnd<Self> {
+        self.with_constness(Constness::Const)
+    }
+
+    #[inline]
     fn without_const(self) -> ConstnessAnd<Self> {
         self.with_constness(Constness::NotConst)
     }

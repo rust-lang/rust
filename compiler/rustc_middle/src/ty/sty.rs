@@ -1058,6 +1058,20 @@ impl<T> Binder<T> {
     {
         Binder(f(self.0, u.0))
     }
+
+    /// Splits the contents into two things that share the same binder
+    /// level as the original, returning two distinct binders.
+    ///
+    /// `f` should consider bound regions at depth 1 to be free, and
+    /// anything it produces with bound regions at depth 1 will be
+    /// bound in the resulting return values.
+    pub fn split<U, V, F>(self, f: F) -> (Binder<U>, Binder<V>)
+    where
+        F: FnOnce(T) -> (U, V),
+    {
+        let (u, v) = f(self.0);
+        (Binder(u), Binder(v))
+    }
 }
 
 impl<T> Binder<Option<T>> {

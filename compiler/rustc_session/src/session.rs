@@ -364,6 +364,14 @@ impl Session {
     pub fn struct_span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_span_warn(sp, msg)
     }
+    pub fn struct_span_warn_with_code<S: Into<MultiSpan>>(
+        &self,
+        sp: S,
+        msg: &str,
+        code: DiagnosticId,
+    ) -> DiagnosticBuilder<'_> {
+        self.diagnostic().struct_span_warn_with_code(sp, msg, code)
+    }
     pub fn struct_warn(&self, msg: &str) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_warn(msg)
     }
@@ -402,15 +410,36 @@ impl Session {
     ) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_span_fatal_with_code(sp, msg, code)
     }
+    pub fn struct_fatal(&self, msg: &str) -> DiagnosticBuilder<'_> {
+        self.diagnostic().struct_fatal(msg)
+    }
 
     pub fn span_fatal<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
         self.diagnostic().span_fatal(sp, msg).raise()
     }
+    pub fn span_fatal_with_code<S: Into<MultiSpan>>(
+        &self,
+        sp: S,
+        msg: &str,
+        code: DiagnosticId,
+    ) -> ! {
+        self.diagnostic().span_fatal_with_code(sp, msg, code).raise()
+    }
     pub fn fatal(&self, msg: &str) -> ! {
         self.diagnostic().fatal(msg).raise()
     }
+    pub fn span_err_or_warn<S: Into<MultiSpan>>(&self, is_warning: bool, sp: S, msg: &str) {
+        if is_warning {
+            self.span_warn(sp, msg);
+        } else {
+            self.span_err(sp, msg);
+        }
+    }
     pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.diagnostic().span_err(sp, msg)
+    }
+    pub fn span_err_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: DiagnosticId) {
+        self.diagnostic().span_err_with_code(sp, &msg, code)
     }
     pub fn err(&self, msg: &str) {
         self.diagnostic().err(msg)
@@ -451,8 +480,17 @@ impl Session {
     pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.diagnostic().span_warn(sp, msg)
     }
+    pub fn span_warn_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: DiagnosticId) {
+        self.diagnostic().span_warn_with_code(sp, msg, code)
+    }
     pub fn warn(&self, msg: &str) {
         self.diagnostic().warn(msg)
+    }
+    pub fn opt_span_warn<S: Into<MultiSpan>>(&self, opt_sp: Option<S>, msg: &str) {
+        match opt_sp {
+            Some(sp) => self.span_warn(sp, msg),
+            None => self.warn(msg),
+        }
     }
     /// Delay a span_bug() call until abort_if_errors()
     #[track_caller]
@@ -479,6 +517,9 @@ impl Session {
 
     pub fn note_without_error(&self, msg: &str) {
         self.diagnostic().note_without_error(msg)
+    }
+    pub fn span_note_without_error<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
+        self.diagnostic().span_note_without_error(sp, msg)
     }
     pub fn struct_note_without_error(&self, msg: &str) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_note_without_error(msg)

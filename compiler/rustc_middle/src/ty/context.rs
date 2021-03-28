@@ -14,7 +14,7 @@ use crate::middle::stability;
 use crate::mir::interpret::{self, Allocation, ConstValue, Scalar};
 use crate::mir::{Body, Field, Local, Place, PlaceElem, ProjectionKind, Promoted};
 use crate::traits;
-use crate::ty::query::{self, OnDiskCache};
+use crate::ty::query::{self, OnDiskCache, TyCtxtAt};
 use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, SubstsRef, UserSubsts};
 use crate::ty::TyKind::*;
 use crate::ty::{
@@ -2647,6 +2647,21 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn object_lifetime_defaults(self, id: HirId) -> Option<Vec<ObjectLifetimeDefault>> {
         self.object_lifetime_defaults_map(id.owner)
+    }
+}
+
+impl TyCtxtAt<'tcx> {
+    /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` to ensure it gets used.
+    #[track_caller]
+    pub fn ty_error(self) -> Ty<'tcx> {
+        self.tcx.ty_error_with_message(self.span, "TyKind::Error constructed but no error reported")
+    }
+
+    /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` with the given `msg to
+    /// ensure it gets used.
+    #[track_caller]
+    pub fn ty_error_with_message(self, msg: &str) -> Ty<'tcx> {
+        self.tcx.ty_error_with_message(self.span, msg)
     }
 }
 
