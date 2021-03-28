@@ -133,8 +133,8 @@ pub fn panic_any<M: 'static + Any + Send>(msg: M) -> ! {
 /// implemented for any closed over variables passed to `catch_unwind`.
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 #[rustc_on_unimplemented(
-    message = "the type `{Self}` might not be safely transferred across an unwind boundary",
-    label = "`{Self}` might not be safely transferred across an unwind boundary"
+    message = "the type `{Self}` may not be safely transferred across an unwind boundary",
+    label = "`{Self}` may not be safely transferred across an unwind boundary"
 )]
 pub auto trait UnwindSafe {}
 
@@ -148,9 +148,9 @@ pub auto trait UnwindSafe {}
 /// [`UnwindSafe`] trait, for more information see that documentation.
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 #[rustc_on_unimplemented(
-    message = "the type `{Self}` may contain interior mutability and a reference might not be safely \
+    message = "the type `{Self}` may contain interior mutability and a reference may not be safely \
                transferrable across a catch_unwind boundary",
-    label = "`{Self}` may contain interior mutability and a reference might not be safely \
+    label = "`{Self}` may contain interior mutability and a reference may not be safely \
              transferrable across a catch_unwind boundary"
 )]
 pub auto trait RefUnwindSafe {}
@@ -160,7 +160,7 @@ pub auto trait RefUnwindSafe {}
 /// When using [`catch_unwind`] it may be the case that some of the closed over
 /// variables are not unwind safe. For example if `&mut T` is captured the
 /// compiler will generate a warning indicating that it is not unwind safe. It
-/// might not be the case, however, that this is actually a problem due to the
+/// may not be the case, however, that this is actually a problem due to the
 /// specific usage of [`catch_unwind`] if unwind safety is specifically taken into
 /// account. This wrapper struct is useful for a quick and lightweight
 /// annotation that a variable is indeed unwind safe.
@@ -403,7 +403,7 @@ impl<S: Stream> Stream for AssertUnwindSafe<S> {
 ///
 /// # Notes
 ///
-/// Note that this function **might not catch all panics** in Rust. A panic in
+/// Note that this function **may not catch all panics** in Rust. A panic in
 /// Rust is not always implemented via unwinding, but can be implemented by
 /// aborting the process as well. This function *only* catches unwinding panics,
 /// not those that abort the process.
