@@ -6,6 +6,7 @@ use rustc_ast::ast;
 use rustc_ast::attr::HasAttrs;
 use rustc_ast::visit::Visitor;
 use rustc_span::symbol::{self, sym, Symbol};
+use rustc_span::Span;
 use thiserror::Error;
 
 use crate::attr::MetaVisitor;
@@ -24,20 +25,31 @@ type FileModMap<'ast> = BTreeMap<FileName, Module<'ast>>;
 /// Represents module with its inner attributes.
 #[derive(Debug, Clone)]
 pub(crate) struct Module<'a> {
-    ast_mod: Cow<'a, ast::Mod>,
+    ast_mod_kind: Option<Cow<'a, ast::ModKind>>,
+    pub(crate) items: Cow<'a, Vec<rustc_ast::ptr::P<ast::Item>>>,
+    attrs: Cow<'a, Vec<ast::Attribute>>,
     inner_attr: Vec<ast::Attribute>,
+    pub(crate) span: Span,
 }
 
 impl<'a> Module<'a> {
-    pub(crate) fn new(ast_mod: Cow<'a, ast::Mod>, attrs: &[ast::Attribute]) -> Self {
-        let inner_attr = attrs
+    pub(crate) fn new(
+        mod_span: Span,
+        ast_mod_kind: Option<Cow<'a, ast::ModKind>>,
+        mod_items: Cow<'a, Vec<rustc_ast::ptr::P<ast::Item>>>,
+        mod_attrs: Cow<'a, Vec<ast::Attribute>>,
+    ) -> Self {
+        let inner_attr = mod_attrs
             .iter()
             .filter(|attr| attr.style == ast::AttrStyle::Inner)
             .cloned()
             .collect();
         Module {
-            ast_mod,
+            items: mod_items,
+            attrs: mod_attrs,
             inner_attr,
+            span: mod_span,
+            ast_mod_kind,
         }
     }
 }
@@ -48,12 +60,6 @@ impl<'a> HasAttrs for Module<'a> {
     }
     fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<ast::Attribute>)) {
         f(&mut self.inner_attr)
-    }
-}
-
-impl<'a> AsRef<ast::Mod> for Module<'a> {
-    fn as_ref(&self) -> &ast::Mod {
-        &self.ast_mod
     }
 }
 
@@ -124,12 +130,17 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
 
         // Skip visiting sub modules when the input is from stdin.
         if self.recursive {
-            self.visit_mod_from_ast(&krate.module)?;
+            self.visit_mod_from_ast(&krate.items)?;
         }
 
         self.file_map.insert(
             root_filename,
-            Module::new(Cow::Borrowed(&krate.module), &krate.attrs),
+            Module::new(
+                krate.span,
+                None,
+                Cow::Borrowed(&krate.items),
+                Cow::Borrowed(&krate.attrs),
+            ),
         );
         Ok(self.file_map)
     }
@@ -139,10 +150,15 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
         let mut visitor = visitor::CfgIfVisitor::new(self.parse_sess);
         visitor.visit_item(&item);
         for module_item in visitor.mods() {
-            if let ast::ItemKind::Mod(ref sub_mod) = module_item.item.kind {
+            if let ast::ItemKind::Mod(_, ref sub_mod_kind) = module_item.item.kind {
                 self.visit_sub_mod(
                     &module_item.item,
-                    Module::new(Cow::Owned(sub_mod.clone()), &module_item.item.attrs),
+                    Module::new(
+                        module_item.item.span,
+                        Some(Cow::Owned(sub_mod_kind.clone())),
+                        Cow::Owned(vec![]),
+                        Cow::Owned(vec![]),
+                    ),
                 )?;
             }
         }
@@ -150,29 +166,53 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
     }
 
     /// Visit modules defined inside macro calls.
-    fn visit_mod_outside_ast(&mut self, module: ast::Mod) -> Result<(), ModuleResolutionError> {
-        for item in module.items {
+    fn visit_mod_outside_ast(
+        &mut self,
+        items: Vec<rustc_ast::ptr::P<ast::Item>>,
+    ) -> Result<(), ModuleResolutionError> {
+        for item in items {
             if is_cfg_if(&item) {
                 self.visit_cfg_if(Cow::Owned(item.into_inner()))?;
                 continue;
             }
 
-            if let ast::ItemKind::Mod(ref sub_mod) = item.kind {
-                self.visit_sub_mod(&item, Module::new(Cow::Owned(sub_mod.clone()), &item.attrs))?;
+            if let ast::ItemKind::Mod(_, ref sub_mod_kind) = item.kind {
+                let span = item.span;
+                self.visit_sub_mod(
+                    &item,
+                    Module::new(
+                        span,
+                        Some(Cow::Owned(sub_mod_kind.clone())),
+                        Cow::Owned(vec![]),
+                        Cow::Owned(vec![]),
+                    ),
+                )?;
             }
         }
         Ok(())
     }
 
     /// Visit modules from AST.
-    fn visit_mod_from_ast(&mut self, module: &'ast ast::Mod) -> Result<(), ModuleResolutionError> {
-        for item in &module.items {
+    fn visit_mod_from_ast(
+        &mut self,
+        items: &'ast Vec<rustc_ast::ptr::P<ast::Item>>,
+    ) -> Result<(), ModuleResolutionError> {
+        for item in items {
             if is_cfg_if(item) {
                 self.visit_cfg_if(Cow::Borrowed(item))?;
             }
 
-            if let ast::ItemKind::Mod(ref sub_mod) = item.kind {
-                self.visit_sub_mod(item, Module::new(Cow::Borrowed(sub_mod), &item.attrs))?;
+            if let ast::ItemKind::Mod(_, ref sub_mod_kind) = item.kind {
+                let span = item.span;
+                self.visit_sub_mod(
+                    item,
+                    Module::new(
+                        span,
+                        Some(Cow::Borrowed(sub_mod_kind)),
+                        Cow::Owned(vec![]),
+                        Cow::Borrowed(&item.attrs),
+                    ),
+                )?;
             }
         }
         Ok(())
@@ -273,9 +313,12 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
         if let Some(directory) = directory {
             self.directory = directory;
         }
-        match sub_mod.ast_mod {
-            Cow::Borrowed(sub_mod) => self.visit_mod_from_ast(sub_mod),
-            Cow::Owned(sub_mod) => self.visit_mod_outside_ast(sub_mod),
+        match (sub_mod.ast_mod_kind, sub_mod.items) {
+            (Some(Cow::Borrowed(ast::ModKind::Loaded(items, ast::Inline::No, _))), _) => {
+                self.visit_mod_from_ast(&items)
+            }
+            (Some(Cow::Owned(..)), Cow::Owned(items)) => self.visit_mod_outside_ast(items),
+            (_, _) => Ok(()),
         }
     }
 
@@ -294,13 +337,17 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
             if self.parse_sess.is_file_parsed(&path) {
                 return Ok(None);
             }
-            return match Parser::parse_file_as_module(self.parse_sess, &path, sub_mod.ast_mod.inner)
-            {
-                Ok((_, ref attrs)) if contains_skip(attrs) => Ok(None),
-                Ok(m) => Ok(Some(SubModKind::External(
+            return match Parser::parse_file_as_module(self.parse_sess, &path, sub_mod.span) {
+                Ok((ref attrs, _, _)) if contains_skip(attrs) => Ok(None),
+                Ok((attrs, items, span)) => Ok(Some(SubModKind::External(
                     path,
                     DirectoryOwnership::Owned { relative: None },
-                    Module::new(Cow::Owned(m.0), &m.1),
+                    Module::new(
+                        span,
+                        Some(Cow::Owned(ast::ModKind::Unloaded)),
+                        Cow::Owned(items),
+                        Cow::Owned(attrs),
+                    ),
                 ))),
                 Err(ParserError::ParseError) => Err(ModuleResolutionError {
                     module: mod_name.to_string(),
@@ -338,18 +385,30 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                         return Ok(Some(SubModKind::MultiExternal(mods_outside_ast)));
                     }
                 }
-                match Parser::parse_file_as_module(self.parse_sess, &path, sub_mod.ast_mod.inner) {
-                    Ok((_, ref attrs)) if contains_skip(attrs) => Ok(None),
-                    Ok(m) if outside_mods_empty => Ok(Some(SubModKind::External(
-                        path,
-                        ownership,
-                        Module::new(Cow::Owned(m.0), &m.1),
-                    ))),
-                    Ok(m) => {
+                match Parser::parse_file_as_module(self.parse_sess, &path, sub_mod.span) {
+                    Ok((ref attrs, _, _)) if contains_skip(attrs) => Ok(None),
+                    Ok((attrs, items, span)) if outside_mods_empty => {
+                        Ok(Some(SubModKind::External(
+                            path,
+                            ownership,
+                            Module::new(
+                                span,
+                                Some(Cow::Owned(ast::ModKind::Unloaded)),
+                                Cow::Owned(items),
+                                Cow::Owned(attrs),
+                            ),
+                        )))
+                    }
+                    Ok((attrs, items, span)) => {
                         mods_outside_ast.push((
                             path.clone(),
                             ownership,
-                            Module::new(Cow::Owned(m.0), &m.1),
+                            Module::new(
+                                span,
+                                Some(Cow::Owned(ast::ModKind::Unloaded)),
+                                Cow::Owned(items),
+                                Cow::Owned(attrs),
+                            ),
                         ));
                         if should_insert {
                             mods_outside_ast.push((path, ownership, sub_mod.clone()));
@@ -437,20 +496,22 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                 ));
                 continue;
             }
-            let m = match Parser::parse_file_as_module(
-                self.parse_sess,
-                &actual_path,
-                sub_mod.ast_mod.inner,
-            ) {
-                Ok((_, ref attrs)) if contains_skip(attrs) => continue,
-                Ok(m) => m,
-                Err(..) => continue,
-            };
+            let (attrs, items, span) =
+                match Parser::parse_file_as_module(self.parse_sess, &actual_path, sub_mod.span) {
+                    Ok((ref attrs, _, _)) if contains_skip(attrs) => continue,
+                    Ok(m) => m,
+                    Err(..) => continue,
+                };
 
             result.push((
                 actual_path,
                 DirectoryOwnership::Owned { relative: None },
-                Module::new(Cow::Owned(m.0), &m.1),
+                Module::new(
+                    span,
+                    Some(Cow::Owned(ast::ModKind::Unloaded)),
+                    Cow::Owned(items),
+                    Cow::Owned(attrs),
+                ),
             ))
         }
         result

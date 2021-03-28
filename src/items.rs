@@ -3271,8 +3271,8 @@ pub(crate) fn rewrite_extern_crate(
 /// Returns `true` for `mod foo;`, false for `mod foo { .. }`.
 pub(crate) fn is_mod_decl(item: &ast::Item) -> bool {
     match item.kind {
-        ast::ItemKind::Mod(ref m) => m.inner.hi() != item.span.hi(),
-        _ => false,
+        ast::ItemKind::Mod(_, ast::ModKind::Loaded(_, ast::Inline::Yes, _)) => false,
+        _ => true,
     }
 }
 

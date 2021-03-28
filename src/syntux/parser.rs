@@ -1,8 +1,8 @@
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
 
-use rustc_ast::ast;
 use rustc_ast::token::{DelimToken, TokenKind};
+use rustc_ast::{ast, ptr};
 use rustc_errors::Diagnostic;
 use rustc_parse::{
     new_parser_from_file,
@@ -109,10 +109,10 @@ impl<'a> Parser<'a> {
         sess: &'a ParseSess,
         path: &Path,
         span: Span,
-    ) -> Result<(ast::Mod, Vec<ast::Attribute>), ParserError> {
+    ) -> Result<(Vec<ast::Attribute>, Vec<ptr::P<ast::Item>>, Span), ParserError> {
         let result = catch_unwind(AssertUnwindSafe(|| {
             let mut parser = new_parser_from_file(sess.inner(), &path, Some(span));
-            match parser.parse_mod(&TokenKind::Eof, ast::Unsafe::No) {
+            match parser.parse_mod(&TokenKind::Eof) {
                 Ok(result) => Some(result),
                 Err(mut e) => {
                     sess.emit_or_cancel_diagnostic(&mut e);

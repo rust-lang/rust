@@ -524,10 +524,9 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     self.visit_enum(item.ident, &item.vis, def, generics, item.span);
                     self.last_pos = source!(self, item.span).hi();
                 }
-                ast::ItemKind::Mod(ref module) => {
-                    let is_inline = !is_mod_decl(item);
+                ast::ItemKind::Mod(unsafety, ref mod_kind) => {
                     self.format_missing_with_indent(source!(self, item.span).lo());
-                    self.format_mod(module, &item.vis, item.span, item.ident, attrs, is_inline);
+                    self.format_mod(mod_kind, unsafety, &item.vis, item.span, item.ident, attrs);
                 }
                 ast::ItemKind::MacCall(ref mac) => {
                     self.visit_mac(mac, Some(item.ident), MacroPosition::Item);
@@ -921,8 +920,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         !is_skip_attr(segments)
     }
 
-    fn walk_mod_items(&mut self, m: &ast::Mod) {
-        self.visit_items_with_reordering(&ptr_vec_to_ref_vec(&m.items));
+    fn walk_mod_items(&mut self, items: &Vec<rustc_ast::ptr::P<ast::Item>>) {
+        self.visit_items_with_reordering(&ptr_vec_to_ref_vec(&items));
     }
 
     fn walk_stmts(&mut self, stmts: &[Stmt<'_>], include_current_empty_semi: bool) {
@@ -974,22 +973,22 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
     fn format_mod(
         &mut self,
-        m: &ast::Mod,
+        mod_kind: &ast::ModKind,
+        unsafety: ast::Unsafe,
         vis: &ast::Visibility,
         s: Span,
         ident: symbol::Ident,
         attrs: &[ast::Attribute],
-        is_internal: bool,
     ) {
         let vis_str = utils::format_visibility(&self.get_context(), vis);
         self.push_str(&*vis_str);
-        self.push_str(format_unsafety(m.unsafety));
+        self.push_str(format_unsafety(unsafety));
         self.push_str("mod ");
         // Calling `to_owned()` to work around borrow checker.
         let ident_str = rewrite_ident(&self.get_context(), ident).to_owned();
         self.push_str(&ident_str);
 
-        if is_internal {
+        if let ast::ModKind::Loaded(ref items, ast::Inline::Yes, inner_span) = mod_kind {
             match self.config.brace_style() {
                 BraceStyle::AlwaysNextLine => {
                     let indent_str = self.block_indent.to_string_with_newline(self.config);
@@ -1001,7 +1000,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             // Hackery to account for the closing }.
             let mod_lo = self.snippet_provider.span_after(source!(self, s), "{");
             let body_snippet =
-                self.snippet(mk_sp(mod_lo, source!(self, m.inner).hi() - BytePos(1)));
+                self.snippet(mk_sp(mod_lo, source!(self, inner_span).hi() - BytePos(1)));
             let body_snippet = body_snippet.trim();
             if body_snippet.is_empty() {
                 self.push_str("}");
@@ -1009,11 +1008,11 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 self.last_pos = mod_lo;
                 self.block_indent = self.block_indent.block_indent(self.config);
                 self.visit_attrs(attrs, ast::AttrStyle::Inner);
-                self.walk_mod_items(m);
-                let missing_span = self.next_span(m.inner.hi() - BytePos(1));
+                self.walk_mod_items(items);
+                let missing_span = self.next_span(inner_span.hi() - BytePos(1));
                 self.close_block(missing_span, false);
             }
-            self.last_pos = source!(self, m.inner).hi();
+            self.last_pos = source!(self, inner_span).hi();
         } else {
             self.push_str(";");
             self.last_pos = source!(self, s).hi();
@@ -1023,9 +1022,9 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     pub(crate) fn format_separate_mod(&mut self, m: &Module<'_>, end_pos: BytePos) {
         self.block_indent = Indent::empty();
         if self.visit_attrs(m.attrs(), ast::AttrStyle::Inner) {
-            self.push_skipped_with_span(m.attrs(), m.as_ref().inner, m.as_ref().inner);
+            self.push_skipped_with_span(m.attrs(), m.span, m.span);
         } else {
-            self.walk_mod_items(m.as_ref());
+            self.walk_mod_items(&m.items);
             self.format_missing_with_indent(end_pos);
         }
     }
