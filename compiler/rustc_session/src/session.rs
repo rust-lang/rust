@@ -421,7 +421,7 @@ impl Session {
     }
 
     pub fn span_fatal<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
-        self.diagnostic().span_fatal(sp, msg).raise()
+        self.diagnostic().span_fatal(sp, msg)
     }
     pub fn span_fatal_with_code<S: Into<MultiSpan>>(
         &self,
@@ -429,7 +429,7 @@ impl Session {
         msg: &str,
         code: DiagnosticId,
     ) -> ! {
-        self.diagnostic().span_fatal_with_code(sp, msg, code).raise()
+        self.diagnostic().span_fatal_with_code(sp, msg, code)
     }
     pub fn fatal(&self, msg: &str) -> ! {
         self.diagnostic().fatal(msg).raise()

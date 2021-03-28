@@ -634,9 +634,9 @@ impl Handler {
         DiagnosticBuilder::new(self, Level::Note, msg)
     }
 
-    pub fn span_fatal(&self, span: impl Into<MultiSpan>, msg: &str) -> FatalError {
+    pub fn span_fatal(&self, span: impl Into<MultiSpan>, msg: &str) -> ! {
         self.emit_diag_at_span(Diagnostic::new(Fatal, msg), span);
-        FatalError
+        FatalError.raise()
     }
 
     pub fn span_fatal_with_code(
@@ -644,9 +644,9 @@ impl Handler {
         span: impl Into<MultiSpan>,
         msg: &str,
         code: DiagnosticId,
-    ) -> FatalError {
+    ) -> ! {
         self.emit_diag_at_span(Diagnostic::new_with_code(Fatal, Some(code), msg), span);
-        FatalError
+        FatalError.raise()
     }
 
     pub fn span_err(&self, span: impl Into<MultiSpan>, msg: &str) {

@@ -148,15 +148,11 @@ impl<'a> StringReader<'a> {
                         None => "unterminated block comment",
                     };
                     let last_bpos = self.pos;
-                    self.sess
-                        .span_diagnostic
-                        .struct_span_fatal_with_code(
-                            self.mk_sp(start, last_bpos),
-                            msg,
-                            error_code!(E0758),
-                        )
-                        .emit();
-                    FatalError.raise();
+                    self.sess.span_diagnostic.span_fatal_with_code(
+                        self.mk_sp(start, last_bpos),
+                        msg,
+                        error_code!(E0758),
+                    );
                 }
 
                 // Skip non-doc comments
