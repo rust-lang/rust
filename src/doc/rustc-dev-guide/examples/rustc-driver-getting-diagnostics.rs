@@ -3,6 +3,8 @@
 // NOTE: For the example to compile, you will need to first run the following:
 //   rustup component add rustc-dev
 
+// version: 1.53.0-nightly (9b0edb7fd 2021-03-27)
+
 extern crate rustc_error_codes;
 extern crate rustc_errors;
 extern crate rustc_hash;
@@ -68,11 +70,12 @@ fn main() {
         output_file: None,
         file_loader: None,
         stderr: None,
-        crate_name: None,
         lint_caps: rustc_hash::FxHashMap::default(),
+        parse_sess_created: None,
         register_lints: None,
         override_queries: None,
         registry: registry::Registry::new(&rustc_error_codes::DIAGNOSTICS),
+        make_codegen_backend: None,
     };
     rustc_interface::run_compiler(config, |compiler| {
         compiler.enter(|queries| {
