@@ -4,12 +4,15 @@
 
 ## Getting diagnostics
 
-To get diagnostics from the compiler, 
-configure `rustc_interface::Config` to output diagnostic to a buffer, 
-and run `TyCtxt.analysis`:
+To get diagnostics from the compiler,
+configure `rustc_interface::Config` to output diagnostic to a buffer,
+and run `TyCtxt.analysis`. The following should be compiled
+with <!-- date: 2021-03 --> `nightly-2021-03-28` (See [here][example]
+for the complete example):
+
+[example]: https://github.com/rust-lang/rustc-dev-guide/blob/master/examples/rustc-driver-getting-diagnostics.rs
 
 ```rust
-// See https://github.com/rust-lang/rustc-dev-guide/blob/master/examples/rustc-driver-getting-diagnostics.rs for complete program.
 let buffer = sync::Arc::new(sync::Mutex::new(Vec::new()));
 let config = rustc_interface::Config {
     opts: config::Options {
