@@ -492,12 +492,6 @@ impl Session {
     pub fn warn(&self, msg: &str) {
         self.diagnostic().warn(msg)
     }
-    pub fn opt_span_warn<S: Into<MultiSpan>>(&self, opt_sp: Option<S>, msg: &str) {
-        match opt_sp {
-            Some(sp) => self.span_warn(sp, msg),
-            None => self.warn(msg),
-        }
-    }
     /// Delay a span_bug() call until abort_if_errors()
     #[track_caller]
     pub fn delay_span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
