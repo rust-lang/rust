@@ -1065,7 +1065,7 @@ impl Thread {
     // Panics if the name contains nuls.
     pub(crate) fn new(name: Option<String>) -> Thread {
         let cname =
-            name.map(|n| CString::new(n).expect("thread name should not contain interior null bytes"));
+            name.map(|n| CString::new(n).expect("thread name may not contain interior null bytes"));
         Thread {
             inner: Arc::new(Inner { name: cname, id: ThreadId::new(), parker: Parker::new() }),
         }
