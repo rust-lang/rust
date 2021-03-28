@@ -1,4 +1,4 @@
-#![deny(rustdoc::non_autolinks)]
+#![deny(rustdoc::bare_urls)]
 
 /// https://somewhere.com
 //~^ ERROR this URL is not a hyperlink
@@ -51,7 +51,7 @@ pub fn c() {}
 /// [should_not.lint](should_not.lint)
 pub fn everything_is_fine_here() {}
 
-#[allow(rustdoc::non_autolinks)]
+#[allow(rustdoc::bare_urls)]
 pub mod foo {
     /// https://somewhere.com/a?hello=12&bye=11#xyz
     pub fn bar() {}

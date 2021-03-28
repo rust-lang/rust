@@ -298,7 +298,8 @@ pub mod primitive;
     unused_imports,
     unsafe_op_in_unsafe_fn
 )]
-#[allow(rustdoc::non_autolinks)]
+#[cfg_attr(bootstrap, allow(rustdoc::non_autolinks))]
+#[cfg_attr(not(bootstrap), allow(rustdoc::bare_urls))]
 // FIXME: This annotation should be moved into rust-lang/stdarch after clashing_extern_declarations is
 // merged. It currently cannot because bootstrap fails as the lint hasn't been defined yet.
 #[allow(clashing_extern_declarations)]

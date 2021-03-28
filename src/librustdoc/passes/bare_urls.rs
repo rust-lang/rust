@@ -10,10 +10,10 @@ use rustc_errors::Applicability;
 use std::lazy::SyncLazy;
 use std::mem;
 
-crate const CHECK_NON_AUTOLINKS: Pass = Pass {
-    name: "check-non-autolinks",
-    run: check_non_autolinks,
-    description: "detects URLs that could be linkified",
+crate const CHECK_BARE_URLS: Pass = Pass {
+    name: "check-bare-urls",
+    run: check_bare_urls,
+    description: "detects URLs that are not hyperlinks",
 };
 
 const URL_REGEX: SyncLazy<Regex> = SyncLazy::new(|| {
@@ -26,11 +26,11 @@ const URL_REGEX: SyncLazy<Regex> = SyncLazy::new(|| {
     .expect("failed to build regex")
 });
 
-struct NonAutolinksLinter<'a, 'tcx> {
+struct BareUrlsLinter<'a, 'tcx> {
     cx: &'a mut DocContext<'tcx>,
 }
 
-impl<'a, 'tcx> NonAutolinksLinter<'a, 'tcx> {
+impl<'a, 'tcx> BareUrlsLinter<'a, 'tcx> {
     fn find_raw_urls(
         &self,
         text: &str,
@@ -52,11 +52,11 @@ impl<'a, 'tcx> NonAutolinksLinter<'a, 'tcx> {
     }
 }
 
-crate fn check_non_autolinks(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
-    NonAutolinksLinter { cx }.fold_crate(krate)
+crate fn check_bare_urls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
+    BareUrlsLinter { cx }.fold_crate(krate)
 }
 
-impl<'a, 'tcx> DocFolder for NonAutolinksLinter<'a, 'tcx> {
+impl<'a, 'tcx> DocFolder for BareUrlsLinter<'a, 'tcx> {
     fn fold_item(&mut self, item: Item) -> Option<Item> {
         let hir_id = match DocContext::as_local_hir_id(self.cx.tcx, item.def_id) {
             Some(hir_id) => hir_id,
@@ -71,7 +71,7 @@ impl<'a, 'tcx> DocFolder for NonAutolinksLinter<'a, 'tcx> {
                 let sp = super::source_span_for_markdown_range(cx.tcx, &dox, &range, &item.attrs)
                     .or_else(|| span_of_attrs(&item.attrs))
                     .unwrap_or(item.span.inner());
-                cx.tcx.struct_span_lint_hir(crate::lint::NON_AUTOLINKS, hir_id, sp, |lint| {
+                cx.tcx.struct_span_lint_hir(crate::lint::BARE_URLS, hir_id, sp, |lint| {
                     lint.build(msg)
                         .span_suggestion(
                             sp,
