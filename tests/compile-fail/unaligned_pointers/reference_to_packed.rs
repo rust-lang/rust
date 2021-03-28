@@ -1,7 +1,7 @@
 // This should fail even without validation/SB
 // compile-flags: -Zmiri-disable-validation -Zmiri-disable-stacked-borrows
 
-#![allow(dead_code, unused_variables)]
+#![allow(dead_code, unused_variables, unaligned_references)]
 
 #[repr(packed)]
 struct Foo {
@@ -15,7 +15,7 @@ fn main() {
             x: 42,
             y: 99,
         };
-        let p = unsafe { &foo.x };
+        let p = &foo.x;
         let i = *p; //~ERROR alignment 4 is required
     }
 }
