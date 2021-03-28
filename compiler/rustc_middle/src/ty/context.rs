@@ -220,7 +220,7 @@ pub struct CommonConsts<'tcx> {
 }
 
 pub struct LocalTableInContext<'a, V> {
-    hir_owner: LocalDefId,
+    hir_owner: hir::OwnerId,
     data: &'a ItemLocalMap<V>,
 }
 
@@ -232,7 +232,7 @@ pub struct LocalTableInContext<'a, V> {
 /// would result in lookup errors, or worse, in silently wrong data being
 /// stored/returned.
 #[inline]
-fn validate_hir_id_for_typeck_results(hir_owner: LocalDefId, hir_id: hir::HirId) {
+fn validate_hir_id_for_typeck_results(hir_owner: hir::OwnerId, hir_id: hir::HirId) {
     if hir_id.owner != hir_owner {
         invalid_hir_id_for_typeck_results(hir_owner, hir_id);
     }
@@ -240,7 +240,7 @@ fn validate_hir_id_for_typeck_results(hir_owner: LocalDefId, hir_id: hir::HirId)
 
 #[cold]
 #[inline(never)]
-fn invalid_hir_id_for_typeck_results(hir_owner: LocalDefId, hir_id: hir::HirId) {
+fn invalid_hir_id_for_typeck_results(hir_owner: hir::OwnerId, hir_id: hir::HirId) {
     ty::tls::with(|tcx| {
         bug!(
             "node {} with HirId::owner {:?} cannot be placed in TypeckResults with hir_owner {:?}",
@@ -276,7 +276,7 @@ impl<'a, V> ::std::ops::Index<hir::HirId> for LocalTableInContext<'a, V> {
 }
 
 pub struct LocalTableInContextMut<'a, V> {
-    hir_owner: LocalDefId,
+    hir_owner: hir::OwnerId,
     data: &'a mut ItemLocalMap<V>,
 }
 
@@ -338,7 +338,7 @@ pub struct GeneratorInteriorTypeCause<'tcx> {
 #[derive(TyEncodable, TyDecodable, Debug)]
 pub struct TypeckResults<'tcx> {
     /// The `HirId::owner` all `ItemLocalId`s in this table are relative to.
-    pub hir_owner: LocalDefId,
+    pub hir_owner: hir::OwnerId,
 
     /// Resolved definitions for `<T>::X` associated paths and
     /// method calls, including those of overloaded operators.
@@ -503,7 +503,7 @@ pub struct TypeckResults<'tcx> {
 }
 
 impl<'tcx> TypeckResults<'tcx> {
-    pub fn new(hir_owner: LocalDefId) -> TypeckResults<'tcx> {
+    pub fn new(hir_owner: hir::OwnerId) -> TypeckResults<'tcx> {
         TypeckResults {
             hir_owner,
             type_dependent_defs: Default::default(),
@@ -750,7 +750,7 @@ impl<'tcx> TypeckResults<'tcx> {
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckResults<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let ty::TypeckResults {
-            hir_owner,
+            hir_owner: _,
             ref type_dependent_defs,
             ref field_indices,
             ref user_provided_types,
@@ -775,8 +775,6 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckResults<'tcx> {
         } = *self;
 
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-            hcx.local_def_path_hash(hir_owner);
-
             type_dependent_defs.hash_stable(hcx, hasher);
             field_indices.hash_stable(hcx, hasher);
             user_provided_types.hash_stable(hcx, hasher);
@@ -2691,16 +2689,16 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn named_region(self, id: HirId) -> Option<resolve_lifetime::Region> {
         debug!(?id, "named_region");
-        self.named_region_map(id.owner).and_then(|map| map.get(&id.local_id).cloned())
+        self.named_region_map(id.owner.def_id).and_then(|map| map.get(&id.local_id).cloned())
     }
 
     pub fn is_late_bound(self, id: HirId) -> bool {
-        self.is_late_bound_map(id.owner)
+        self.is_late_bound_map(id.owner.def_id)
             .map_or(false, |(owner, set)| owner == id.owner && set.contains(&id.local_id))
     }
 
     pub fn object_lifetime_defaults(self, id: HirId) -> Option<Vec<ObjectLifetimeDefault>> {
-        self.object_lifetime_defaults_map(id.owner)
+        self.object_lifetime_defaults_map(id.owner.def_id)
     }
 
     pub fn late_bound_vars(self, id: HirId) -> &'tcx List<ty::BoundVariableKind> {
@@ -2715,7 +2713,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn lifetime_scope(self, id: HirId) -> Option<LifetimeScopeForPath> {
-        self.lifetime_scope_map(id.owner).and_then(|mut map| map.remove(&id.local_id))
+        self.lifetime_scope_map(id.owner.def_id).and_then(|mut map| map.remove(&id.local_id))
     }
 
     /// Whether the `def_id` counts as const fn in the current crate, considering all active

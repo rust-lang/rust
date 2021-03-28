@@ -43,7 +43,7 @@ rustc_queries! {
     ///
     /// This can be conveniently accessed by `tcx.hir().visit_item_likes_in_module`.
     /// Avoid calling this query directly.
-    query hir_module_items(key: LocalDefId) -> rustc_middle::hir::ModuleItems {
+    query hir_module_items(key: hir::OwnerId) -> rustc_middle::hir::ModuleItems {
         storage(ArenaCacheSelector<'tcx>)
         desc { |tcx| "HIR module items in `{}`", tcx.def_path_str(key.to_def_id()) }
     }
@@ -76,7 +76,7 @@ rustc_queries! {
     ///
     /// This can be conveniently accessed by methods on `tcx.hir()`.
     /// Avoid calling this query directly.
-    query hir_attrs(key: LocalDefId) -> &'tcx hir::AttributeMap<'tcx> {
+    query hir_attrs(key: hir::OwnerId) -> &'tcx hir::AttributeMap<'tcx> {
         desc { |tcx| "HIR owner attributes in `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 
@@ -217,7 +217,7 @@ rustc_queries! {
         desc { "computing the lint levels for items in this crate" }
     }
 
-    query parent_module_from_def_id(key: LocalDefId) -> LocalDefId {
+    query parent_module_from_def_id(key: LocalDefId) -> hir::OwnerId {
         eval_always
         desc { |tcx| "parent module of `{}`", tcx.def_path_str(key.to_def_id()) }
     }
@@ -663,54 +663,54 @@ rustc_queries! {
         desc { |tcx| "computing function signature of `{}`", tcx.def_path_str(key) }
     }
 
-    query lint_mod(key: LocalDefId) -> () {
+    query lint_mod(key: hir::OwnerId) -> () {
         desc { |tcx| "linting {}", describe_as_module(key, tcx) }
     }
 
     /// Checks the attributes in the module.
-    query check_mod_attrs(key: LocalDefId) -> () {
+    query check_mod_attrs(key: hir::OwnerId) -> () {
         desc { |tcx| "checking attributes in {}", describe_as_module(key, tcx) }
     }
 
-    query check_mod_unstable_api_usage(key: LocalDefId) -> () {
+    query check_mod_unstable_api_usage(key: hir::OwnerId) -> () {
         desc { |tcx| "checking for unstable API usage in {}", describe_as_module(key, tcx) }
     }
 
     /// Checks the const bodies in the module for illegal operations (e.g. `if` or `loop`).
-    query check_mod_const_bodies(key: LocalDefId) -> () {
+    query check_mod_const_bodies(key: hir::OwnerId) -> () {
         desc { |tcx| "checking consts in {}", describe_as_module(key, tcx) }
     }
 
     /// Checks the loops in the module.
-    query check_mod_loops(key: LocalDefId) -> () {
+    query check_mod_loops(key: hir::OwnerId) -> () {
         desc { |tcx| "checking loops in {}", describe_as_module(key, tcx) }
     }
 
-    query check_mod_naked_functions(key: LocalDefId) -> () {
+    query check_mod_naked_functions(key: hir::OwnerId) -> () {
         desc { |tcx| "checking naked functions in {}", describe_as_module(key, tcx) }
     }
 
-    query check_mod_item_types(key: LocalDefId) -> () {
+    query check_mod_item_types(key: hir::OwnerId) -> () {
         desc { |tcx| "checking item types in {}", describe_as_module(key, tcx) }
     }
 
-    query check_mod_privacy(key: LocalDefId) -> () {
+    query check_mod_privacy(key: hir::OwnerId) -> () {
         desc { |tcx| "checking privacy in {}", describe_as_module(key, tcx) }
     }
 
-    query check_mod_intrinsics(key: LocalDefId) -> () {
+    query check_mod_intrinsics(key: hir::OwnerId) -> () {
         desc { |tcx| "checking intrinsics in {}", describe_as_module(key, tcx) }
     }
 
-    query check_mod_liveness(key: LocalDefId) -> () {
+    query check_mod_liveness(key: hir::OwnerId) -> () {
         desc { |tcx| "checking liveness of variables in {}", describe_as_module(key, tcx) }
     }
 
-    query check_mod_impl_wf(key: LocalDefId) -> () {
+    query check_mod_impl_wf(key: hir::OwnerId) -> () {
         desc { |tcx| "checking that impls are well-formed in {}", describe_as_module(key, tcx) }
     }
 
-    query collect_mod_item_types(key: LocalDefId) -> () {
+    query collect_mod_item_types(key: hir::OwnerId) -> () {
         desc { |tcx| "collecting item types in {}", describe_as_module(key, tcx) }
     }
 
@@ -1203,13 +1203,13 @@ rustc_queries! {
         desc { |tcx| "looking up whether `{}` is a const impl", tcx.def_path_str(def_id) }
     }
 
-    query check_item_well_formed(key: LocalDefId) -> () {
+    query check_item_well_formed(key: hir::ItemId) -> () {
         desc { |tcx| "checking that `{}` is well-formed", tcx.def_path_str(key.to_def_id()) }
     }
-    query check_trait_item_well_formed(key: LocalDefId) -> () {
+    query check_trait_item_well_formed(key: hir::TraitItemId) -> () {
         desc { |tcx| "checking that `{}` is well-formed", tcx.def_path_str(key.to_def_id()) }
     }
-    query check_impl_item_well_formed(key: LocalDefId) -> () {
+    query check_impl_item_well_formed(key: hir::ImplItemId) -> () {
         desc { |tcx| "checking that `{}` is well-formed", tcx.def_path_str(key.to_def_id()) }
     }
 
@@ -1362,7 +1362,7 @@ rustc_queries! {
         desc { "looking up a named region" }
     }
     query is_late_bound_map(_: LocalDefId) ->
-        Option<(LocalDefId, &'tcx FxHashSet<ItemLocalId>)> {
+        Option<(hir::OwnerId, &'tcx FxHashSet<ItemLocalId>)> {
         desc { "testing if a region is late bound" }
     }
     /// For a given item (like a struct), gets the default lifetimes to be used

@@ -16,8 +16,7 @@ use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable_Generic;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::BytePos;
-use rustc_span::{MultiSpan, Span, DUMMY_SP};
+use rustc_span::{BytePos, MultiSpan, Span, DUMMY_SP};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use rustc_target::spec::abi::Abi;
 
@@ -1969,7 +1968,7 @@ pub struct FnSig<'hir> {
 // The bodies for items are stored "out of line", in a separate
 // hashmap in the `Crate`. Here we just record the hir-id of the item
 // so it can fetched later.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Debug)]
 pub struct TraitItemId {
     pub def_id: OwnerId,
 }
@@ -1979,6 +1978,11 @@ impl TraitItemId {
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
         self.def_id.hir_id()
+    }
+
+    #[inline]
+    pub fn to_def_id(&self) -> DefId {
+        self.def_id.to_def_id()
     }
 }
 
@@ -2032,7 +2036,7 @@ pub enum TraitItemKind<'hir> {
 // The bodies for items are stored "out of line", in a separate
 // hashmap in the `Crate`. Here we just record the hir-id of the item
 // so it can fetched later.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Debug)]
 pub struct ImplItemId {
     pub def_id: OwnerId,
 }
@@ -2042,6 +2046,11 @@ impl ImplItemId {
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
         self.def_id.hir_id()
+    }
+
+    #[inline]
+    pub fn to_def_id(&self) -> DefId {
+        self.def_id.to_def_id()
     }
 }
 
@@ -2645,6 +2654,11 @@ impl ItemId {
         // Items are always HIR owners.
         self.def_id.hir_id()
     }
+
+    #[inline]
+    pub fn to_def_id(&self) -> DefId {
+        self.def_id.to_def_id()
+    }
 }
 
 /// An item
@@ -2668,6 +2682,10 @@ impl Item<'_> {
 
     pub fn item_id(&self) -> ItemId {
         ItemId { def_id: self.def_id }
+    }
+
+    pub fn local_def_id(&self) -> LocalDefId {
+        self.def_id.def_id
     }
 }
 
@@ -2943,7 +2961,7 @@ pub struct Upvar {
 #[derive(Encodable, Decodable, Clone, Debug)]
 pub struct TraitCandidate {
     pub def_id: DefId,
-    pub import_ids: SmallVec<[OwnerId; 1]>,
+    pub import_ids: SmallVec<[LocalDefId; 1]>,
 }
 
 #[derive(Copy, Clone, Debug, HashStable_Generic)]

@@ -52,6 +52,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{DefId, DefPathHash, LocalDefId, CRATE_DEF_ID};
 use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
+use rustc_hir::hir_id::CRATE_OWNER_ID;
 use rustc_hir::intravisit;
 use rustc_hir::{ConstArg, GenericArg, InferKind, ParamName};
 use rustc_index::vec::{Idx, IndexVec};
@@ -309,7 +310,7 @@ pub fn lower_crate<'a, 'hir>(
         is_in_trait_impl: false,
         is_in_dyn_type: false,
         anonymous_lifetime_mode: AnonymousLifetimeMode::PassThrough,
-        current_hir_id_owner: hir::CRATE_OWNER_ID,
+        current_hir_id_owner: CRATE_OWNER_ID,
         item_local_id_counter: hir::ItemLocalId::new(0),
         node_id_to_hir_id: IndexVec::new(),
         local_node_ids: Vec::new(),
@@ -446,7 +447,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         owner: NodeId,
         f: impl FnOnce(&mut Self) -> hir::OwnerNode<'hir>,
-    ) -> LocalDefId {
+    ) -> hir::OwnerId {
         let def_id = self.resolver.local_def_id(owner);
 
         let current_attrs = std::mem::take(&mut self.attrs);
@@ -463,7 +464,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.local_node_ids.push(owner);
 
         let item = f(self);
-        debug_assert_eq!(def_id, item.def_id());
+        debug_assert_eq!(def_id, item.def_id().def_id);
         let info = self.make_owner_info(item);
 
         self.attrs = current_attrs;
@@ -475,7 +476,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let _old = self.owners.insert(def_id, info);
         debug_assert!(_old.is_none());
 
-        def_id
+        hir::OwnerId { def_id }
     }
 
     fn make_owner_info(&mut self, node: hir::OwnerNode<'hir>) -> hir::OwnerInfo<'hir> {
@@ -645,7 +646,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// parameter while `f` is running (and restored afterwards).
     fn collect_in_band_defs<T>(
         &mut self,
-        parent_def_id: LocalDefId,
+        parent_def_id: hir::OwnerId,
         anonymous_lifetime_mode: AnonymousLifetimeMode,
         f: impl FnOnce(&mut Self) -> (Vec<hir::GenericParam<'hir>>, T),
     ) -> (Vec<hir::GenericParam<'hir>>, T) {
@@ -677,7 +678,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         span: Span,
         hir_name: ParamName,
-        parent_def_id: LocalDefId,
+        parent_def_id: hir::OwnerId,
     ) -> hir::GenericParam<'hir> {
         let node_id = self.resolver.next_node_id();
 
@@ -692,7 +693,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         // Add a definition for the in-band lifetime def.
         self.resolver.create_def(
-            parent_def_id,
+            parent_def_id.def_id,
             node_id,
             DefPathData::LifetimeNs(str_name),
             ExpnId::root(),
@@ -786,7 +787,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> (hir::Generics<'hir>, T) {
         let (in_band_defs, (mut lowered_generics, res)) =
             self.with_in_scope_lifetime_defs(&generics.params, |this| {
-                this.collect_in_band_defs(parent_def_id.def_id, anonymous_lifetime_mode, |this| {
+                this.collect_in_band_defs(parent_def_id, anonymous_lifetime_mode, |this| {
                     let mut params = Vec::new();
                     // Note: it is necessary to lower generics *before* calling `f`.
                     // When lowering `async fn`, there's a final step when lowering
@@ -1063,7 +1064,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                     let impl_trait_node_id = self.resolver.next_node_id();
                     self.resolver.create_def(
-                        parent_def_id,
+                        parent_def_id.def_id,
                         impl_trait_node_id,
                         DefPathData::ImplTrait,
                         ExpnId::root(),
@@ -1139,7 +1140,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                                 // Add a definition for the in-band const def.
                                 self.resolver.create_def(
-                                    parent_def_id,
+                                    parent_def_id.def_id,
                                     node_id,
                                     DefPathData::AnonConst,
                                     ExpnId::root(),
@@ -1403,7 +1404,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let opaque_ty_def_id = self.resolver.local_def_id(opaque_ty_node_id);
 
         let mut collected_lifetimes = Vec::new();
-        self.with_hir_id_owner(opaque_ty_node_id, |lctx| {
+        let opaque_ty_def_id = self.with_hir_id_owner(opaque_ty_node_id, |lctx| {
             let hir_bounds = lower_bounds(lctx);
 
             collected_lifetimes = lifetimes_from_impl_trait_bounds(
@@ -1459,7 +1460,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             };
 
             trace!("lower_opaque_impl_trait: {:#?}", opaque_ty_def_id);
-            lctx.generate_opaque_type(opaque_ty_def_id, opaque_ty_item, span, opaque_ty_span)
+            lctx.generate_opaque_type(
+                hir::OwnerId { def_id: opaque_ty_def_id },
+                opaque_ty_item,
+                span,
+                opaque_ty_span,
+            )
         });
 
         let lifetimes =
@@ -1470,17 +1476,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         debug!("lower_opaque_impl_trait: lifetimes={:#?}", lifetimes);
 
         // `impl Trait` now just becomes `Foo<'a, 'b, ..>`.
-        hir::TyKind::OpaqueDef(
-            hir::ItemId { def_id: hir::OwnerId { def_id: opaque_ty_def_id } },
-            lifetimes,
-        )
+        hir::TyKind::OpaqueDef(hir::ItemId { def_id: opaque_ty_def_id }, lifetimes)
     }
 
     /// Registers a new opaque type with the proper `NodeId`s and
     /// returns the lowered node-ID for the opaque type.
     fn generate_opaque_type(
         &mut self,
-        opaque_ty_id: LocalDefId,
+        opaque_ty_id: hir::OwnerId,
         opaque_ty_item: hir::OpaqueTy<'hir>,
         span: Span,
         opaque_ty_span: Span,
@@ -1656,6 +1659,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::Async, span, None);
 
         let opaque_ty_def_id = self.resolver.local_def_id(opaque_ty_node_id);
+        let opaque_ty_def_id = hir::OwnerId { def_id: opaque_ty_def_id };
 
         // When we create the opaque type for this async fn, it is going to have
         // to capture all the lifetimes involved in the signature (including in the

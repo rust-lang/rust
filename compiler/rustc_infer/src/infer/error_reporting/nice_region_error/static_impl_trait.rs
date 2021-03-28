@@ -376,7 +376,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let tcx = self.tcx();
         match tcx.hir().get_if_local(def_id) {
             Some(Node::ImplItem(impl_item)) => {
-                match tcx.hir().find_def(tcx.hir().get_parent_item(impl_item.hir_id())) {
+                match tcx.hir().find(tcx.hir().get_parent_item(impl_item.hir_id()).hir_id()) {
                     Some(Node::Item(Item {
                         kind: ItemKind::Impl(hir::Impl { self_ty, .. }),
                         ..
@@ -386,7 +386,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             }
             Some(Node::TraitItem(trait_item)) => {
                 let trait_did = tcx.hir().get_parent_item(trait_item.hir_id());
-                match tcx.hir().find_def(trait_did) {
+                match tcx.hir().find(trait_did.hir_id()) {
                     Some(Node::Item(Item { kind: ItemKind::Trait(..), .. })) => {
                         // The method being called is defined in the `trait`, but the `'static`
                         // obligation comes from the `impl`. Find that `impl` so that we can point

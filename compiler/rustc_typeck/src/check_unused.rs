@@ -49,7 +49,7 @@ impl CheckVisitor<'tcx> {
             return;
         }
 
-        if self.used_trait_imports.contains(&item_id.def_id) {
+        if self.used_trait_imports.contains(&item_id.def_id.def_id) {
             return;
         }
 

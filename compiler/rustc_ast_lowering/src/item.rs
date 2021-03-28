@@ -9,7 +9,6 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::LocalDefId;
 use rustc_index::vec::Idx;
 use rustc_span::source_map::{respan, DesugaringKind};
 use rustc_span::symbol::{kw, sym, Ident};
@@ -95,13 +94,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
     // only used when lowering a child item of a trait or impl.
     fn with_parent_item_lifetime_defs<T>(
         &mut self,
-        parent_hir_id: LocalDefId,
+        parent_hir_id: hir::OwnerId,
         f: impl FnOnce(&mut Self) -> T,
     ) -> T {
         let old_len = self.in_scope_lifetimes.len();
 
         let parent_generics =
-            match self.owners[parent_hir_id].as_ref().unwrap().node().expect_item().kind {
+            match self.owners[parent_hir_id.def_id].as_ref().unwrap().node().expect_item().kind {
                 hir::ItemKind::Impl(hir::Impl { ref generics, .. })
                 | hir::ItemKind::Trait(_, _, ref generics, ..) => generics.params,
                 _ => &[],
@@ -228,6 +227,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ref body,
             )) => {
                 let fn_def_id = self.resolver.local_def_id(id);
+                let fn_def_id = hir::OwnerId { def_id: fn_def_id };
                 self.with_new_scopes(|this| {
                     this.current_item = Some(ident.span);
 
@@ -241,7 +241,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                     let (generics, decl) = this.add_in_band_defs(
                         generics,
-                        hir::OwnerId { def_id: fn_def_id },
+                        fn_def_id,
                         AnonymousLifetimeMode::PassThrough,
                         |this, idty| {
                             let ret_id = asyncness.opt_return_id();

@@ -1093,7 +1093,7 @@ impl EncodeContext<'a, 'tcx> {
             record!(self.tables.children[def_id] <- &[]);
         } else {
             record!(self.tables.children[def_id] <- md.item_ids.iter().map(|item_id| {
-                item_id.def_id.local_def_index
+                item_id.def_id.def_id.local_def_index
             }));
         }
     }
@@ -1394,7 +1394,7 @@ impl EncodeContext<'a, 'tcx> {
                 EntryKind::MacroDef(self.lazy(macro_def.clone()))
             }
             hir::ItemKind::Mod(ref m) => {
-                return self.encode_info_for_mod(item.def_id, m);
+                return self.encode_info_for_mod(item.def_id.def_id, m);
             }
             hir::ItemKind::ForeignMod { .. } => EntryKind::ForeignMod,
             hir::ItemKind::GlobalAsm(..) => EntryKind::GlobalAsm,
@@ -1498,7 +1498,7 @@ impl EncodeContext<'a, 'tcx> {
             hir::ItemKind::ForeignMod { items, .. } => record!(self.tables.children[def_id] <-
                 items
                     .iter()
-                    .map(|foreign_item| foreign_item.id.def_id.local_def_index)
+                    .map(|foreign_item| foreign_item.id.def_id.def_id.local_def_index)
             ),
             hir::ItemKind::Enum(..) => record!(self.tables.children[def_id] <-
                 self.tcx.adt_def(def_id).variants.iter().map(|v| {
@@ -2038,7 +2038,7 @@ impl<'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'tcx> {
                 self.impls
                     .entry(trait_ref.def_id)
                     .or_default()
-                    .push((item.def_id.local_def_index, simplified_self_ty));
+                    .push((item.def_id.def_id.local_def_index, simplified_self_ty));
             }
         }
     }

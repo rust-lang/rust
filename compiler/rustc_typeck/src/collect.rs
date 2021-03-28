@@ -29,7 +29,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::weak_lang_items;
 use rustc_hir::{GenericParamKind, HirId, Node};
@@ -58,7 +58,7 @@ struct OnlySelfBounds(bool);
 ///////////////////////////////////////////////////////////////////////////
 // Main entry point
 
-fn collect_mod_item_types(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
+fn collect_mod_item_types(tcx: TyCtxt<'_>, module_def_id: hir::OwnerId) {
     tcx.hir().visit_item_likes_in_module(
         module_def_id,
         &mut CollectItemTypesVisitor { tcx }.as_deep_visitor(),
@@ -430,8 +430,10 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
 
             match self.node() {
                 hir::Node::Field(_) | hir::Node::Ctor(_) | hir::Node::Variant(_) => {
-                    let item =
-                        self.tcx.hir().expect_item(self.tcx.hir().get_parent_item(self.hir_id()));
+                    let item = self
+                        .tcx
+                        .hir()
+                        .expect_item(self.tcx.hir().get_parent_item(self.hir_id()).def_id);
                     match &item.kind {
                         hir::ItemKind::Enum(_, generics)
                         | hir::ItemKind::Struct(_, generics)
@@ -1504,7 +1506,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
             ItemKind::OpaqueTy(hir::OpaqueTy { impl_trait_fn, .. }) => {
                 impl_trait_fn.or_else(|| {
                     let parent_id = tcx.hir().get_parent_item(hir_id);
-                    assert_ne!(parent_id, CRATE_DEF_ID);
+                    assert_ne!(parent_id, hir::CRATE_OWNER_ID);
                     debug!("generics_of: parent of opaque ty {:?} is {:?}", def_id, parent_id);
                     // Opaque types are always nested within another item, and
                     // inherit the generics of the item.
@@ -3224,11 +3226,10 @@ fn check_link_name_xor_ordinal(
 /// Checks the function annotated with `#[target_feature]` is not a safe
 /// trait method implementation, reporting an error if it is.
 fn check_target_feature_trait_unsafe(tcx: TyCtxt<'_>, id: LocalDefId, attr_span: Span) {
-    let hir_id = tcx.hir().local_def_id_to_hir_id(id);
-    let node = tcx.hir().get(hir_id);
-    if let Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }) = node {
-        let parent_id = tcx.hir().get_parent_item(hir_id);
-        let parent_item = tcx.hir().expect_item(parent_id);
+    let node = tcx.hir().get_def(id);
+    if let Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(..), def_id, .. }) = node {
+        let parent_id = tcx.hir().get_parent_item(def_id.hir_id());
+        let parent_item = tcx.hir().expect_item(parent_id.def_id);
         if let hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) = parent_item.kind {
             tcx.sess
                 .struct_span_err(

@@ -1,6 +1,5 @@
 use rustc_ast::Attribute;
 use rustc_hir as hir;
-use rustc_hir::def_id::LocalDefId;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::ItemKind;
 use rustc_middle::ty::layout::{HasParamEnv, HasTyCtxt, LayoutError, LayoutOfHelpers, TyAndLayout};
@@ -29,7 +28,7 @@ impl ItemLikeVisitor<'tcx> for LayoutTest<'tcx> {
             | ItemKind::Union(..) => {
                 for attr in self.tcx.get_attrs(item.def_id.to_def_id()).iter() {
                     if attr.has_name(sym::rustc_layout) {
-                        self.dump_layout_of(item.def_id, item, attr);
+                        self.dump_layout_of(item, attr);
                     }
                 }
             }
@@ -43,10 +42,10 @@ impl ItemLikeVisitor<'tcx> for LayoutTest<'tcx> {
 }
 
 impl LayoutTest<'tcx> {
-    fn dump_layout_of(&self, item_def_id: LocalDefId, item: &hir::Item<'tcx>, attr: &Attribute) {
+    fn dump_layout_of(&self, item: &hir::Item<'tcx>, attr: &Attribute) {
         let tcx = self.tcx;
-        let param_env = self.tcx.param_env(item_def_id);
-        let ty = self.tcx.type_of(item_def_id);
+        let param_env = self.tcx.param_env(item.def_id);
+        let ty = self.tcx.type_of(item.def_id);
         match self.tcx.layout_of(param_env.and(ty)) {
             Ok(ty_layout) => {
                 // Check out the `#[rustc_layout(..)]` attribute to tell what to dump.

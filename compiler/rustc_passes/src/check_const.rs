@@ -55,7 +55,7 @@ impl NonConstExpr {
     }
 }
 
-fn check_mod_const_bodies(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
+fn check_mod_const_bodies(tcx: TyCtxt<'_>, module_def_id: hir::OwnerId) {
     let mut vis = CheckConstVisitor::new(tcx);
     tcx.hir().visit_item_likes_in_module(module_def_id, &mut vis.as_deep_visitor());
     tcx.hir().visit_item_likes_in_module(module_def_id, &mut CheckConstTraitVisitor::new(tcx));

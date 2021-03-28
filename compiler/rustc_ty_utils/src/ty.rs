@@ -122,14 +122,14 @@ fn associated_item_from_impl_item_ref(
 fn associated_item(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItem {
     let id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
     let parent_def_id = tcx.hir().get_parent_item(id);
-    let parent_item = tcx.hir().expect_item(parent_def_id);
+    let parent_item = tcx.hir().expect_item(parent_def_id.def_id);
     match parent_item.kind {
         hir::ItemKind::Impl(ref impl_) => {
             if let Some(impl_item_ref) =
                 impl_.items.iter().find(|i| i.id.def_id.to_def_id() == def_id)
             {
                 let assoc_item =
-                    associated_item_from_impl_item_ref(tcx, parent_def_id, impl_item_ref);
+                    associated_item_from_impl_item_ref(tcx, parent_def_id.def_id, impl_item_ref);
                 debug_assert_eq!(assoc_item.def_id, def_id);
                 return assoc_item;
             }
@@ -140,7 +140,7 @@ fn associated_item(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItem {
                 trait_item_refs.iter().find(|i| i.id.def_id.to_def_id() == def_id)
             {
                 let assoc_item =
-                    associated_item_from_trait_item_ref(tcx, parent_def_id, trait_item_ref);
+                    associated_item_from_trait_item_ref(tcx, parent_def_id.def_id, trait_item_ref);
                 debug_assert_eq!(assoc_item.def_id, def_id);
                 return assoc_item;
             }

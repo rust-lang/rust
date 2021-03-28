@@ -13,7 +13,6 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability};
 use rustc_feature::{AttributeType, BUILTIN_ATTRIBUTE_MAP};
 use rustc_hir as hir;
-use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{self, FnSig, ForeignItem, HirId, Item, ItemKind, TraitItem, CRATE_HIR_ID};
 use rustc_hir::{MethodKind, Target};
@@ -32,7 +31,7 @@ pub(crate) fn target_from_impl_item<'tcx>(
         hir::ImplItemKind::Const(..) => Target::AssocConst,
         hir::ImplItemKind::Fn(..) => {
             let parent_hir_id = tcx.hir().get_parent_item(impl_item.hir_id());
-            let containing_item = tcx.hir().expect_item(parent_hir_id);
+            let containing_item = tcx.hir().expect_item(parent_hir_id.def_id);
             let containing_impl_is_for_trait = match &containing_item.kind {
                 hir::ItemKind::Impl(impl_) => impl_.of_trait.is_some(),
                 _ => bug!("parent of an ImplItem must be an Impl"),
@@ -566,7 +565,7 @@ impl CheckAttrVisitor<'tcx> {
             Target::ForeignMod => Some("extern block"),
             Target::AssocTy => {
                 let parent_hir_id = self.tcx.hir().get_parent_item(hir_id);
-                let containing_item = self.tcx.hir().expect_item(parent_hir_id);
+                let containing_item = self.tcx.hir().expect_item(parent_hir_id.def_id);
                 if Target::from_item(containing_item) == Target::Impl {
                     Some("type alias in implementation block")
                 } else {
@@ -575,7 +574,7 @@ impl CheckAttrVisitor<'tcx> {
             }
             Target::AssocConst => {
                 let parent_hir_id = self.tcx.hir().get_parent_item(hir_id);
-                let containing_item = self.tcx.hir().expect_item(parent_hir_id);
+                let containing_item = self.tcx.hir().expect_item(parent_hir_id.def_id);
                 // We can't link to trait impl's consts.
                 let err = "associated constant in trait implementation block";
                 match containing_item.kind {
@@ -815,7 +814,7 @@ impl CheckAttrVisitor<'tcx> {
                     let mut err = lint.build(
                         "this attribute can only be applied at the crate level",
                     );
-                    if attr.style == AttrStyle::Outer && self.tcx.hir().get_parent_item(hir_id) == CRATE_DEF_ID {
+                    if attr.style == AttrStyle::Outer && self.tcx.hir().get_parent_item(hir_id) == hir::CRATE_OWNER_ID {
                         if let Ok(mut src) =
                             self.tcx.sess.source_map().span_to_snippet(attr.span)
                         {
@@ -1968,7 +1967,7 @@ fn check_non_exported_macro_for_invalid_attrs(tcx: TyCtxt<'_>, item: &Item<'_>) 
     }
 }
 
-fn check_mod_attrs(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
+fn check_mod_attrs(tcx: TyCtxt<'_>, module_def_id: hir::OwnerId) {
     let check_attr_visitor = &mut CheckAttrVisitor { tcx };
     tcx.hir().visit_item_likes_in_module(module_def_id, &mut check_attr_visitor.as_deep_visitor());
     if module_def_id.is_top_level_module() {

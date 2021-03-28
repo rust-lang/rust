@@ -2,7 +2,6 @@
 
 use rustc_ast::{Attribute, InlineAsmOptions};
 use rustc_hir as hir;
-use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{ErasedMap, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::{ExprKind, HirId, InlineAsmOperand, StmtKind};
 use rustc_middle::ty::query::Providers;
@@ -13,7 +12,7 @@ use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
-fn check_mod_naked_functions(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
+fn check_mod_naked_functions(tcx: TyCtxt<'_>, module_def_id: hir::OwnerId) {
     tcx.hir().visit_item_likes_in_module(
         module_def_id,
         &mut CheckNakedFunctions { tcx }.as_deep_visitor(),

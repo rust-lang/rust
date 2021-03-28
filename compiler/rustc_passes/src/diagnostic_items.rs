@@ -15,7 +15,7 @@ use rustc_hir::diagnostic_items::DiagnosticItems;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
+use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_span::symbol::{sym, Symbol};
 
 struct DiagnosticItemCollector<'tcx> {
@@ -46,8 +46,8 @@ impl<'tcx> DiagnosticItemCollector<'tcx> {
         DiagnosticItemCollector { tcx, diagnostic_items: DiagnosticItems::default() }
     }
 
-    fn observe_item(&mut self, def_id: LocalDefId) {
-        let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
+    fn observe_item(&mut self, def_id: hir::OwnerId) {
+        let hir_id = def_id.hir_id();
         let attrs = self.tcx.hir().attrs(hir_id);
         if let Some(name) = extract(attrs) {
             // insert into our table

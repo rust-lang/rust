@@ -171,7 +171,7 @@ impl<'tcx> ReachableContext<'tcx> {
                             // Check the impl. If the generics on the self
                             // type of the impl require inlining, this method
                             // does too.
-                            match self.tcx.hir().expect_item(impl_did).kind {
+                            match self.tcx.hir().expect_item(impl_did.def_id).kind {
                                 hir::ItemKind::Impl { .. } => {
                                     let generics = self.tcx.generics_of(impl_did);
                                     generics.requires_monomorphization(self.tcx)
@@ -349,16 +349,16 @@ impl CollectPrivateImplItemsVisitor<'_, '_> {
 
 impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
-        self.push_to_worklist_if_has_custom_linkage(item.def_id);
+        self.push_to_worklist_if_has_custom_linkage(item.def_id.def_id);
 
         // We need only trait impls here, not inherent impls, and only non-exported ones
         if let hir::ItemKind::Impl(hir::Impl { of_trait: Some(ref trait_ref), ref items, .. }) =
             item.kind
         {
-            if !self.access_levels.is_reachable(item.def_id) {
+            if !self.access_levels.is_reachable(item.def_id.def_id) {
                 // FIXME(#53488) remove `let`
                 let tcx = self.tcx;
-                self.worklist.extend(items.iter().map(|ii_ref| ii_ref.id.def_id));
+                self.worklist.extend(items.iter().map(|ii_ref| ii_ref.id.def_id.def_id));
 
                 let trait_def_id = match trait_ref.path.res {
                     Res::Def(DefKind::Trait, def_id) => def_id,
@@ -380,7 +380,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx
     fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem<'_>) {}
 
     fn visit_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) {
-        self.push_to_worklist_if_has_custom_linkage(impl_item.def_id);
+        self.push_to_worklist_if_has_custom_linkage(impl_item.def_id.def_id);
     }
 
     fn visit_foreign_item(&mut self, _foreign_item: &hir::ForeignItem<'_>) {

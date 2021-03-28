@@ -108,6 +108,7 @@ fn noop<T>(_: &T) {}
 
 macro_rules! query_helper_param_ty {
     (DefId) => { impl IntoQueryParam<DefId> };
+    (LocalDefId) => { impl IntoQueryParam<LocalDefId> };
     ($K:ty) => { $K };
 }
 
@@ -300,7 +301,7 @@ mod sealed {
 
     impl IntoQueryParam<LocalDefId> for OwnerId {
         #[inline(always)]
-        fn into_query_param(self) -> DefId {
+        fn into_query_param(self) -> LocalDefId {
             self.def_id
         }
     }

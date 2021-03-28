@@ -42,7 +42,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedSelf {
             return;
         }
         let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id());
-        let parent_item = cx.tcx.hir().expect_item(parent);
+        let parent_item = cx.tcx.hir().expect_item(parent.def_id);
         let assoc_item = cx.tcx.associated_item(impl_item.def_id);
         if_chain! {
             if let ItemKind::Impl(Impl { of_trait: None, .. }) = parent_item.kind;

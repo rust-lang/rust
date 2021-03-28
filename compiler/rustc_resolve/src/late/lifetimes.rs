@@ -160,7 +160,7 @@ struct NamedRegionMap {
     late_bound_vars: HirIdMap<Vec<ty::BoundVariableKind>>,
 
     // maps `PathSegment` `HirId`s to lifetime scopes.
-    scope_for_path: Option<FxHashMap<LocalDefId, FxHashMap<ItemLocalId, LifetimeScopeForPath>>>,
+    scope_for_path: Option<FxHashMap<hir::OwnerId, FxHashMap<ItemLocalId, LifetimeScopeForPath>>>,
 }
 
 crate struct LifetimeContext<'a, 'tcx> {
@@ -374,16 +374,23 @@ pub fn provide(providers: &mut ty::query::Providers) {
         resolve_lifetimes_trait_definition,
         resolve_lifetimes,
 
-        named_region_map: |tcx, id| resolve_lifetimes_for(tcx, id).defs.get(&id),
+        named_region_map: |tcx, id| {
+            resolve_lifetimes_for(tcx, id).defs.get(&hir::OwnerId { def_id: id })
+        },
         is_late_bound_map,
         object_lifetime_defaults_map: |tcx, id| match tcx.hir().find_def(id) {
             Some(Node::Item(item)) => compute_object_lifetime_defaults(tcx, item),
             _ => None,
         },
-        late_bound_vars_map: |tcx, id| resolve_lifetimes_for(tcx, id).late_bound_vars.get(&id),
+        late_bound_vars_map: |tcx, id| {
+            resolve_lifetimes_for(tcx, id).late_bound_vars.get(&hir::OwnerId { def_id: id })
+        },
         lifetime_scope_map: |tcx, id| {
-            let item_id = item_for(tcx, id);
-            do_resolve(tcx, item_id, false, true).scope_for_path.unwrap().remove(&id)
+            let item_id = item_for(tcx, id).local_def_id();
+            do_resolve(tcx, item_id, false, true)
+                .scope_for_path
+                .unwrap()
+                .remove(&hir::OwnerId { def_id: id })
         },
 
         ..*providers
@@ -497,45 +504,39 @@ fn convert_named_region_map(named_region_map: NamedRegionMap) -> ResolveLifetime
 /// other than the trait itself (like the trait methods or associated types), then we just use the regular
 /// `resolve_lifetimes`.
 fn resolve_lifetimes_for<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx ResolveLifetimes {
-    let item_id = item_for(tcx, def_id);
-    if item_id == def_id {
-        let item = tcx.hir().item(hir::ItemId { def_id: item_id });
-        match item.kind {
-            hir::ItemKind::Trait(..) => tcx.resolve_lifetimes_trait_definition(item_id),
-            _ => tcx.resolve_lifetimes(item_id),
+    let item = item_for(tcx, def_id);
+    if item.def_id.def_id == def_id {
+        if let hir::ItemKind::Trait(..) = item.kind {
+            return tcx.resolve_lifetimes_trait_definition(item.local_def_id());
         }
-    } else {
-        tcx.resolve_lifetimes(item_id)
     }
+    tcx.resolve_lifetimes(item.local_def_id())
 }
 
 /// Finds the `Item` that contains the given `LocalDefId`
-fn item_for(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> LocalDefId {
-    match tcx.hir().find_def(local_def_id) {
+fn item_for(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> &hir::Item<'_> {
+    let hir_id = tcx.hir().local_def_id_to_hir_id(local_def_id);
+    match tcx.hir().find(hir_id) {
         Some(Node::Item(item)) => {
-            return item.def_id;
+            return item;
         }
         _ => {}
     }
-    let item = {
-        let hir_id = tcx.hir().local_def_id_to_hir_id(local_def_id);
-        let mut parent_iter = tcx.hir().parent_iter(hir_id);
-        loop {
-            let node = parent_iter.next().map(|n| n.1);
-            match node {
-                Some(hir::Node::Item(item)) => break item.def_id,
-                Some(hir::Node::Crate(_)) | None => bug!("Called `item_for` on an Item."),
-                _ => {}
-            }
+    let hir = tcx.hir();
+    for (_, node) in hir.parent_owner_iter(hir_id) {
+        match node {
+            hir::OwnerNode::Item(item) => return item,
+            hir::OwnerNode::Crate(_) => bug!("Called `item_for` on an Item."),
+            _ => {}
         }
-    };
-    item
+    }
+    bug!("Called `item_for` on an Item.")
 }
 
 fn is_late_bound_map<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-) -> Option<(LocalDefId, &'tcx FxHashSet<ItemLocalId>)> {
+) -> Option<(hir::OwnerId, &'tcx FxHashSet<ItemLocalId>)> {
     match tcx.def_kind(def_id) {
         DefKind::AnonConst => {
             let mut def_id = tcx
@@ -554,7 +555,10 @@ fn is_late_bound_map<'tcx>(
 
             tcx.is_late_bound_map(def_id.expect_local())
         }
-        _ => resolve_lifetimes_for(tcx, def_id).late_bound.get(&def_id).map(|lt| (def_id, lt)),
+        _ => resolve_lifetimes_for(tcx, def_id)
+            .late_bound
+            .get(&hir::OwnerId { def_id })
+            .map(|lt| (hir::OwnerId { def_id }, lt)),
     }
 }
 
@@ -757,13 +761,11 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 // their owner, we can keep going until we find the Item that owns that. We then
                 // conservatively add all resolved lifetimes. Otherwise we run into problems in
                 // cases like `type Foo<'a> = impl Bar<As = impl Baz + 'a>`.
-                for (_hir_id, node) in
-                    self.tcx.hir().parent_iter(self.tcx.hir().local_def_id_to_hir_id(item.def_id))
-                {
+                for (_hir_id, node) in self.tcx.hir().parent_owner_iter(item.hir_id()) {
                     match node {
-                        hir::Node::Item(parent_item) => {
+                        hir::OwnerNode::Item(parent_item) => {
                             let resolved_lifetimes: &ResolveLifetimes =
-                                self.tcx.resolve_lifetimes(item_for(self.tcx, parent_item.def_id));
+                                self.tcx.resolve_lifetimes(parent_item.local_def_id());
                             // We need to add *all* deps, since opaque tys may want them from *us*
                             for (&owner, defs) in resolved_lifetimes.defs.iter() {
                                 defs.iter().for_each(|(&local_id, region)| {
@@ -787,7 +789,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                             }
                             break;
                         }
-                        hir::Node::Crate(_) => bug!("No Item about an OpaqueTy"),
+                        hir::OwnerNode::Crate(_) => bug!("No Item about an OpaqueTy"),
                         _ => {}
                     }
                 }
@@ -1017,7 +1019,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                                 let parent_is_item =
                                     if let Some(parent_def_id) = parent_id.as_owner() {
                                         matches!(
-                                            self.tcx.hir().krate().owners.get(parent_def_id),
+                                            self.tcx.hir().krate().owners.get(parent_def_id.def_id),
                                             Some(Some(_)),
                                         )
                                     } else {
@@ -1947,7 +1949,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         };
         if let Node::Lifetime(hir_lifetime) = self.tcx.hir().get(lifetime.hir_id) {
             if let Some(parent) =
-                self.tcx.hir().find_def(self.tcx.hir().get_parent_item(hir_lifetime.hir_id))
+                self.tcx.hir().find(self.tcx.hir().get_parent_item(hir_lifetime.hir_id).hir_id())
             {
                 match parent {
                     Node::Item(item) => {
@@ -2180,7 +2182,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     /// ordering is not important there.
     fn visit_early_late<F>(
         &mut self,
-        parent_id: Option<LocalDefId>,
+        parent_id: Option<hir::OwnerId>,
         hir_id: hir::HirId,
         decl: &'tcx hir::FnDecl<'tcx>,
         generics: &'tcx hir::Generics<'tcx>,
@@ -2193,7 +2195,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         // Find the start of nested early scopes, e.g., in methods.
         let mut next_early_index = 0;
         if let Some(parent_id) = parent_id {
-            let parent = self.tcx.hir().expect_item(parent_id);
+            let parent = self.tcx.hir().expect_item(parent_id.def_id);
             if sub_items_have_self_param(&parent.kind) {
                 next_early_index += 1; // Self comes before lifetimes
             }
@@ -2767,7 +2769,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
             Node::TraitItem(&hir::TraitItem { kind: hir::TraitItemKind::Fn(_, ref m), .. }) => {
                 if let hir::ItemKind::Trait(.., ref trait_items) =
-                    self.tcx.hir().expect_item(self.tcx.hir().get_parent_item(parent)).kind
+                    self.tcx.hir().expect_item(self.tcx.hir().get_parent_item(parent).def_id).kind
                 {
                     assoc_item_kind =
                         trait_items.iter().find(|ti| ti.id.hir_id() == parent).map(|ti| ti.kind);
@@ -2780,7 +2782,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
             Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(_, body), .. }) => {
                 if let hir::ItemKind::Impl(hir::Impl { ref self_ty, ref items, .. }) =
-                    self.tcx.hir().expect_item(self.tcx.hir().get_parent_item(parent)).kind
+                    self.tcx.hir().expect_item(self.tcx.hir().get_parent_item(parent).def_id).kind
                 {
                     impl_self = Some(self_ty);
                     assoc_item_kind =

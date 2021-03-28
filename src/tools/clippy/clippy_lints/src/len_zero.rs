@@ -131,7 +131,7 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
             if item.ident.name == sym::len;
             if let ImplItemKind::Fn(sig, _) = &item.kind;
             if sig.decl.implicit_self.has_implicit_self();
-            if cx.access_levels.is_exported(item.def_id);
+            if cx.access_levels.is_exported(item.def_id.def_id);
             if matches!(sig.decl.output, FnRetTy::Return(_));
             if let Some(imp) = get_parent_as_impl(cx.tcx, item.hir_id());
             if imp.of_trait.is_none();
@@ -140,7 +140,7 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
             if let Some(local_id) = ty_id.as_local();
             let ty_hir_id = cx.tcx.hir().local_def_id_to_hir_id(local_id);
             if !is_lint_allowed(cx, LEN_WITHOUT_IS_EMPTY, ty_hir_id);
-            if let Some(output) = parse_len_output(cx, cx.tcx.fn_sig(item.def_id).skip_binder());
+            if let Some(output) = parse_len_output(cx, cx.tcx.fn_sig(item.def_id.def_id).skip_binder());
             then {
                 let (name, kind) = match cx.tcx.hir().find(ty_hir_id) {
                     Some(Node::ForeignItem(x)) => (x.ident.name, "extern type"),
@@ -192,7 +192,7 @@ fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, trait_items
     fn is_named_self(cx: &LateContext<'_>, item: &TraitItemRef, name: Symbol) -> bool {
         item.ident.name == name
             && if let AssocItemKind::Fn { has_self } = item.kind {
-                has_self && { cx.tcx.fn_sig(item.id.def_id).inputs().skip_binder().len() == 1 }
+                has_self && { cx.tcx.fn_sig(item.id.def_id.def_id).inputs().skip_binder().len() == 1 }
             } else {
                 false
             }
@@ -207,10 +207,15 @@ fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, trait_items
         }
     }
 
-    if cx.access_levels.is_exported(visited_trait.def_id) && trait_items.iter().any(|i| is_named_self(cx, i, sym::len))
+    if cx.access_levels.is_exported(visited_trait.def_id.def_id)
+        && trait_items.iter().any(|i| is_named_self(cx, i, sym::len))
     {
         let mut current_and_super_traits = DefIdSet::default();
-        fill_trait_set(visited_trait.def_id.to_def_id(), &mut current_and_super_traits, cx);
+        fill_trait_set(
+            visited_trait.def_id.def_id.to_def_id(),
+            &mut current_and_super_traits,
+            cx,
+        );
 
         let is_empty_method_found = current_and_super_traits
             .iter()

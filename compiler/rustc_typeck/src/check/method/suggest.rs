@@ -6,7 +6,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, Node, QPath};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -1748,7 +1748,10 @@ pub fn provide(providers: &mut ty::query::Providers) {
     providers.all_traits = compute_all_traits;
 }
 
-fn find_use_placement<'tcx>(tcx: TyCtxt<'tcx>, target_module: LocalDefId) -> (Option<Span>, bool) {
+fn find_use_placement<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    target_module: hir::OwnerId,
+) -> (Option<Span>, bool) {
     let mut span = None;
     let mut found_use = false;
     let (module, _, _) = tcx.hir().get_module(target_module);

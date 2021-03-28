@@ -1940,7 +1940,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         }
         let name = impl_item.ident.name.as_str();
         let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id());
-        let item = cx.tcx.hir().expect_item(parent);
+        let item = cx.tcx.hir().expect_item(parent.def_id);
         let self_ty = cx.tcx.type_of(item.def_id);
 
         let implements_trait = matches!(item.kind, hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }));
@@ -1958,7 +1958,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
 
             then {
                 // if this impl block implements a trait, lint in trait definition instead
-                if !implements_trait && cx.access_levels.is_exported(impl_item.def_id) {
+                if !implements_trait && cx.access_levels.is_exported(impl_item.def_id.def_id) {
                     // check missing trait implementations
                     for method_config in &TRAIT_METHODS {
                         if name == method_config.method_name &&
@@ -1990,7 +1990,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
 
                 if sig.decl.implicit_self.has_implicit_self()
                     && !(self.avoid_breaking_exported_api
-                        && cx.access_levels.is_exported(impl_item.def_id))
+                        && cx.access_levels.is_exported(impl_item.def_id.def_id))
                 {
                     wrong_self_convention::check(
                         cx,

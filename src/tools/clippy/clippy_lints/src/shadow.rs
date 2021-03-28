@@ -3,8 +3,7 @@ use clippy_utils::source::snippet;
 use clippy_utils::visitors::is_local_used;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::Res;
-use rustc_hir::def_id::LocalDefId;
-use rustc_hir::hir_id::ItemLocalId;
+use rustc_hir::hir_id::{ItemLocalId, OwnerId};
 use rustc_hir::{Block, Body, BodyOwnerKind, Expr, ExprKind, HirId, Node, Pat, PatKind, QPath, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -144,7 +143,7 @@ impl<'tcx> LateLintPass<'tcx> for Shadow {
     }
 }
 
-fn is_shadow(cx: &LateContext<'_>, owner: LocalDefId, first: ItemLocalId, second: ItemLocalId) -> bool {
+fn is_shadow(cx: &LateContext<'_>, owner: OwnerId, first: ItemLocalId, second: ItemLocalId) -> bool {
     let scope_tree = cx.tcx.region_scope_tree(owner.to_def_id());
     let first_scope = scope_tree.var_scope(first);
     let second_scope = scope_tree.var_scope(second);

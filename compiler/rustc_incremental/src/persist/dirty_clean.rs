@@ -15,7 +15,6 @@
 use rustc_ast::{self as ast, Attribute, NestedMetaItem};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
-use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::Node as HirNode;
@@ -157,7 +156,7 @@ pub struct DirtyCleanVisitor<'tcx> {
 
 impl DirtyCleanVisitor<'tcx> {
     /// Possibly "deserialize" the attribute into a clean/dirty assertion
-    fn assertion_maybe(&mut self, item_id: LocalDefId, attr: &Attribute) -> Option<Assertion> {
+    fn assertion_maybe(&mut self, item_id: hir::OwnerId, attr: &Attribute) -> Option<Assertion> {
         if !attr.has_name(sym::rustc_clean) {
             // skip: not rustc_clean/dirty
             return None;
@@ -171,7 +170,7 @@ impl DirtyCleanVisitor<'tcx> {
     }
 
     /// Gets the "auto" assertion on pre-validated attr, along with the `except` labels.
-    fn assertion_auto(&mut self, item_id: LocalDefId, attr: &Attribute) -> Assertion {
+    fn assertion_auto(&mut self, item_id: hir::OwnerId, attr: &Attribute) -> Assertion {
         let (name, mut auto) = self.auto_labels(item_id, attr);
         let except = self.except(attr);
         for e in except.iter() {
@@ -200,8 +199,8 @@ impl DirtyCleanVisitor<'tcx> {
 
     /// Return all DepNode labels that should be asserted for this item.
     /// index=0 is the "name" used for error messages
-    fn auto_labels(&mut self, item_id: LocalDefId, attr: &Attribute) -> (&'static str, Labels) {
-        let node = self.tcx.hir().get_def(item_id);
+    fn auto_labels(&mut self, item_id: hir::OwnerId, attr: &Attribute) -> (&'static str, Labels) {
+        let node = self.tcx.hir().get(item_id.hir_id());
         let (name, labels) = match node {
             HirNode::Item(item) => {
                 match item.kind {
@@ -331,7 +330,7 @@ impl DirtyCleanVisitor<'tcx> {
         }
     }
 
-    fn check_item(&mut self, item_id: LocalDefId, item_span: Span) {
+    fn check_item(&mut self, item_id: hir::OwnerId, item_span: Span) {
         let def_path_hash = self.tcx.def_path_hash(item_id.to_def_id());
         for attr in self.tcx.get_attrs(item_id.to_def_id()).iter() {
             let assertion = match self.assertion_maybe(item_id, attr) {

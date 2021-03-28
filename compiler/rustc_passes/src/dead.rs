@@ -487,7 +487,7 @@ impl<'v, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
         let allow_dead_code = has_allow_dead_code_or_lang_attr(self.tcx, item.hir_id());
         if allow_dead_code {
-            self.worklist.push(item.def_id);
+            self.worklist.push(item.def_id.def_id);
         }
         match item.kind {
             hir::ItemKind::Enum(ref enum_def, _) => {
@@ -507,21 +507,21 @@ impl<'v, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'tcx> {
             }
             hir::ItemKind::Impl(hir::Impl { ref of_trait, items, .. }) => {
                 if of_trait.is_some() {
-                    self.worklist.push(item.def_id);
+                    self.worklist.push(item.def_id.def_id);
                 }
                 for impl_item_ref in items {
                     let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
                     if of_trait.is_some()
                         || has_allow_dead_code_or_lang_attr(self.tcx, impl_item.hir_id())
                     {
-                        self.worklist.push(impl_item_ref.id.def_id);
+                        self.worklist.push(impl_item_ref.id.def_id.def_id);
                     }
                 }
             }
             hir::ItemKind::Struct(ref variant_data, _) => {
                 if let Some(ctor_hir_id) = variant_data.ctor_hir_id() {
                     self.struct_constructors
-                        .insert(self.tcx.hir().local_def_id(ctor_hir_id), item.def_id);
+                        .insert(self.tcx.hir().local_def_id(ctor_hir_id), item.def_id.def_id);
                 }
             }
             _ => (),
@@ -533,7 +533,7 @@ impl<'v, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'tcx> {
         if matches!(trait_item.kind, Const(_, Some(_)) | Fn(_, hir::TraitFn::Provided(_)))
             && has_allow_dead_code_or_lang_attr(self.tcx, trait_item.hir_id())
         {
-            self.worklist.push(trait_item.def_id);
+            self.worklist.push(trait_item.def_id.def_id);
         }
     }
 
@@ -546,7 +546,7 @@ impl<'v, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'tcx> {
         if matches!(foreign_item.kind, Static(..) | Fn(..))
             && has_allow_dead_code_or_lang_attr(self.tcx, foreign_item.hir_id())
         {
-            self.worklist.push(foreign_item.def_id);
+            self.worklist.push(foreign_item.def_id.def_id);
         }
     }
 }
@@ -612,7 +612,7 @@ impl DeadVisitor<'tcx> {
                 | hir::ItemKind::Struct(..)
                 | hir::ItemKind::Union(..)
         );
-        should_warn && !self.symbol_is_live(item.def_id)
+        should_warn && !self.symbol_is_live(item.def_id.def_id)
     }
 
     fn should_warn_about_field(&mut self, field: &hir::FieldDef<'_>) -> bool {
@@ -630,7 +630,8 @@ impl DeadVisitor<'tcx> {
     }
 
     fn should_warn_about_foreign_item(&mut self, fi: &hir::ForeignItem<'_>) -> bool {
-        !self.symbol_is_live(fi.def_id) && !has_allow_dead_code_or_lang_attr(self.tcx, fi.hir_id())
+        !self.symbol_is_live(fi.def_id.def_id)
+            && !has_allow_dead_code_or_lang_attr(self.tcx, fi.hir_id())
     }
 
     // id := HIR id of an item's definition.
@@ -749,7 +750,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         match impl_item.kind {
             hir::ImplItemKind::Const(_, body_id) => {
-                if !self.symbol_is_live(impl_item.def_id) {
+                if !self.symbol_is_live(impl_item.def_id.def_id) {
                     self.warn_dead_code(
                         impl_item.hir_id(),
                         impl_item.span,
@@ -760,7 +761,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                 self.visit_nested_body(body_id)
             }
             hir::ImplItemKind::Fn(_, body_id) => {
-                if !self.symbol_is_live(impl_item.def_id) {
+                if !self.symbol_is_live(impl_item.def_id.def_id) {
                     // FIXME(66095): Because impl_item.span is annotated with things
                     // like expansion data, and ident.span isn't, we use the
                     // def_span method if it's part of a macro invocation

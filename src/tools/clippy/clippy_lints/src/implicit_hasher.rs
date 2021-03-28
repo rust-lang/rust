@@ -112,7 +112,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
             }
         }
 
-        if !cx.access_levels.is_exported(item.def_id) {
+        if !cx.access_levels.is_exported(item.def_id.def_id) {
             return;
         }
 

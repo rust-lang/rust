@@ -282,7 +282,7 @@ impl<'tcx> DefIdTree for TyCtxt<'tcx> {
 }
 
 impl Visibility {
-    pub fn from_hir(visibility: &hir::Visibility<'_>, id: hir::HirId, tcx: TyCtxt<'_>) -> Self {
+    pub fn from_hir(visibility: &hir::Visibility<'_>, id: hir::OwnerId, tcx: TyCtxt<'_>) -> Self {
         match visibility.node {
             hir::VisibilityKind::Public => Visibility::Public,
             hir::VisibilityKind::Crate(_) => Visibility::Restricted(DefId::local(CRATE_DEF_INDEX)),
@@ -293,7 +293,7 @@ impl Visibility {
                 def => Visibility::Restricted(def.def_id()),
             },
             hir::VisibilityKind::Inherited => {
-                Visibility::Restricted(tcx.parent_module(id).to_def_id())
+                Visibility::Restricted(tcx.parent_module(id.hir_id()).to_def_id())
             }
         }
     }

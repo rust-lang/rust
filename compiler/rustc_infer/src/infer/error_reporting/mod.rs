@@ -2096,14 +2096,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .in_progress_typeck_results
             .map(|typeck_results| typeck_results.borrow().hir_owner)
             .map(|owner| {
-                let hir_id = hir.local_def_id_to_hir_id(owner);
+                let hir_id = owner.hir_id();
                 let parent_id = hir.get_parent_item(hir_id);
                 (
                     // Parent item could be a `mod`, so we check the HIR before calling:
                     if let Some(Node::Item(Item {
                         kind: ItemKind::Trait(..) | ItemKind::Impl { .. },
                         ..
-                    })) = hir.find_def(parent_id)
+                    })) = hir.find(parent_id.hir_id())
                     {
                         Some(self.tcx.generics_of(parent_id))
                     } else {
@@ -2397,7 +2397,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     let return_impl_trait = self
                         .in_progress_typeck_results
                         .map(|typeck_results| typeck_results.borrow().hir_owner)
-                        .and_then(|owner| self.tcx.return_type_impl_trait(owner))
+                        .and_then(|owner| self.tcx.return_type_impl_trait(owner.def_id))
                         .is_some();
                     let t = self.resolve_vars_if_possible(t);
                     match t.kind() {

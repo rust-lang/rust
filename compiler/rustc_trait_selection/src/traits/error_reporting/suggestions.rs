@@ -475,7 +475,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 _ => {}
             }
 
-            hir_id = self.tcx.hir().local_def_id_to_hir_id(self.tcx.hir().get_parent_item(hir_id));
+            hir_id = self.tcx.hir().get_parent_item(hir_id).hir_id();
         }
     }
 

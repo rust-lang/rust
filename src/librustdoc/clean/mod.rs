@@ -15,7 +15,7 @@ use rustc_const_eval::const_eval::is_unstable_const_fn;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc_middle::middle::resolve_lifetime as rl;
@@ -981,7 +981,8 @@ impl Clean<Item> for hir::ImplItem<'_> {
 
             let what_rustc_thinks =
                 Item::from_def_id_and_parts(local_did, Some(self.ident.name), inner, cx);
-            let parent_item = cx.tcx.hir().expect_item(cx.tcx.hir().get_parent_item(self.hir_id()));
+            let parent_item =
+                cx.tcx.hir().expect_item(cx.tcx.hir().get_parent_item(self.hir_id()).def_id);
             if let hir::ItemKind::Impl(impl_) = &parent_item.kind {
                 if impl_.of_trait.is_some() {
                     // Trait impl items always inherit the impl's visibility --
@@ -1275,7 +1276,7 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
             register_res(cx, trait_.res);
             Type::QPath {
                 name: p.segments.last().expect("segments were empty").ident.name,
-                self_def_id: Some(DefId::local(qself.hir_id.owner.local_def_index)),
+                self_def_id: Some(qself.hir_id.owner.def_id.to_def_id()),
                 self_type: box qself.clean(cx),
                 trait_,
             }
@@ -1416,7 +1417,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
             ty::FnDef(..) | ty::FnPtr(_) => {
                 let ty = cx.tcx.lift(*self).expect("FnPtr lift failed");
                 let sig = ty.fn_sig(cx.tcx);
-                let def_id = DefId::local(CRATE_DEF_INDEX);
+                let def_id = CRATE_DEF_ID.to_def_id();
                 BareFunction(box BareFunctionDecl {
                     unsafety: sig.unsafety(),
                     generic_params: Vec::new(),
@@ -1619,7 +1620,7 @@ impl Clean<Visibility> for hir::Visibility<'_> {
             hir::VisibilityKind::Public => Visibility::Public,
             hir::VisibilityKind::Inherited => Visibility::Inherited,
             hir::VisibilityKind::Crate(_) => {
-                let krate = DefId::local(CRATE_DEF_INDEX);
+                let krate = CRATE_DEF_ID.to_def_id();
                 Visibility::Restricted(krate)
             }
             hir::VisibilityKind::Restricted { ref path, .. } => {

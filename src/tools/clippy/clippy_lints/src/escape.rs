@@ -76,7 +76,7 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
         }
 
         let parent_id = cx.tcx.hir().get_parent_item(hir_id);
-        let parent_node = cx.tcx.hir().find_def(parent_id);
+        let parent_node = cx.tcx.hir().find(parent_id.hir_id());
 
         let mut trait_self_ty = None;
         if let Some(Node::Item(item)) = parent_node {

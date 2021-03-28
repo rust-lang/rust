@@ -1,6 +1,7 @@
 //! Defines the set of legal keys that can be used in queries.
 
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
+use rustc_hir::{ImplItemId, ItemId, OwnerId, TraitItemId};
 use rustc_middle::infer::canonical::Canonical;
 use rustc_middle::mir;
 use rustc_middle::traits;
@@ -114,6 +115,46 @@ impl Key for LocalDefId {
     }
     fn key_as_def_id(&self) -> Option<DefId> {
         Some(self.to_def_id())
+    }
+}
+
+impl Key for OwnerId {
+    #[inline(always)]
+    fn query_crate_is_local(&self) -> bool {
+        true
+    }
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        self.def_id.default_span(tcx)
+    }
+}
+
+impl Key for ItemId {
+    #[inline(always)]
+    fn query_crate_is_local(&self) -> bool {
+        true
+    }
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        self.def_id.default_span(tcx)
+    }
+}
+
+impl Key for ImplItemId {
+    #[inline(always)]
+    fn query_crate_is_local(&self) -> bool {
+        true
+    }
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        self.def_id.default_span(tcx)
+    }
+}
+
+impl Key for TraitItemId {
+    #[inline(always)]
+    fn query_crate_is_local(&self) -> bool {
+        true
+    }
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        self.def_id.default_span(tcx)
     }
 }
 

@@ -426,7 +426,7 @@ fn check_static_inhabited<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, span: Spa
 /// projections that would result in "inheriting lifetimes".
 pub(super) fn check_opaque<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def_id: LocalDefId,
+    def_id: hir::OwnerId,
     substs: SubstsRef<'tcx>,
     span: Span,
     origin: &hir::OpaqueTyOrigin,
@@ -446,10 +446,10 @@ pub(super) fn check_opaque<'tcx>(
 #[instrument(level = "debug", skip(tcx, span))]
 pub(super) fn check_opaque_for_inheriting_lifetimes(
     tcx: TyCtxt<'tcx>,
-    def_id: LocalDefId,
+    def_id: hir::OwnerId,
     span: Span,
 ) {
-    let item = tcx.hir().expect_item(def_id);
+    let item = tcx.hir().expect_item(def_id.def_id);
     debug!(?item, ?span);
 
     struct FoundParentLifetime;
@@ -588,7 +588,7 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
 /// Checks that an opaque type does not contain cycles.
 pub(super) fn check_opaque_for_cycles<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def_id: LocalDefId,
+    def_id: hir::OwnerId,
     substs: SubstsRef<'tcx>,
     span: Span,
     origin: &hir::OpaqueTyOrigin,
@@ -619,7 +619,7 @@ pub(super) fn check_opaque_for_cycles<'tcx>(
 /// some tried, for example, to clone an `Option<X<&mut ()>>`.
 fn check_opaque_meets_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def_id: LocalDefId,
+    def_id: hir::OwnerId,
     substs: SubstsRef<'tcx>,
     span: Span,
     origin: &hir::OpaqueTyOrigin,
@@ -631,11 +631,11 @@ fn check_opaque_meets_bounds<'tcx>(
         hir::OpaqueTyOrigin::TyAlias => {}
     }
 
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     let param_env = tcx.param_env(def_id);
 
     tcx.infer_ctxt().enter(move |infcx| {
-        let inh = Inherited::new(infcx, def_id);
+        let hir_id = def_id.hir_id();
+        let inh = Inherited::new(infcx, def_id.def_id);
         let infcx = &inh.infcx;
         let opaque_ty = tcx.mk_opaque(def_id.to_def_id(), substs);
 
@@ -686,14 +686,14 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
         // Consts can play a role in type-checking, so they are included here.
         hir::ItemKind::Static(..) => {
             tcx.ensure().typeck(it.def_id);
-            maybe_check_static_with_link_section(tcx, it.def_id, it.span);
-            check_static_inhabited(tcx, it.def_id, it.span);
+            maybe_check_static_with_link_section(tcx, it.def_id.def_id, it.span);
+            check_static_inhabited(tcx, it.def_id.def_id, it.span);
         }
         hir::ItemKind::Const(..) => {
             tcx.ensure().typeck(it.def_id);
         }
         hir::ItemKind::Enum(ref enum_definition, _) => {
-            check_enum(tcx, it.span, &enum_definition.variants, it.def_id);
+            check_enum(tcx, it.span, &enum_definition.variants, it.def_id.def_id);
         }
         hir::ItemKind::Fn(..) => {} // entirely within check_item_body
         hir::ItemKind::Impl(ref impl_) => {
@@ -702,7 +702,7 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
                 check_impl_items_against_trait(
                     tcx,
                     it.span,
-                    it.def_id,
+                    it.def_id.def_id,
                     impl_trait_ref,
                     &impl_.items,
                 );
@@ -737,10 +737,10 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
             }
         }
         hir::ItemKind::Struct(..) => {
-            check_struct(tcx, it.def_id, it.span);
+            check_struct(tcx, it.def_id.def_id, it.span);
         }
         hir::ItemKind::Union(..) => {
-            check_union(tcx, it.def_id, it.span);
+            check_union(tcx, it.def_id.def_id, it.span);
         }
         hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => {
             // HACK(jynelson): trying to infer the type of `impl trait` breaks documenting
@@ -810,7 +810,7 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
                             require_c_abi_if_c_variadic(tcx, fn_decl, abi, item.span);
                         }
                         hir::ForeignItemKind::Static(..) => {
-                            check_static_inhabited(tcx, def_id, item.span);
+                            check_static_inhabited(tcx, def_id.def_id, item.span);
                         }
                         _ => {}
                     }
@@ -1492,20 +1492,8 @@ pub(super) fn check_type_params_are_used<'tcx>(
     }
 }
 
-pub(super) fn check_mod_item_types(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
+pub(super) fn check_mod_item_types(tcx: TyCtxt<'_>, module_def_id: hir::OwnerId) {
     tcx.hir().visit_item_likes_in_module(module_def_id, &mut CheckItemTypesVisitor { tcx });
-}
-
-pub(super) fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
-    wfcheck::check_item_well_formed(tcx, def_id);
-}
-
-pub(super) fn check_trait_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
-    wfcheck::check_trait_item(tcx, def_id);
-}
-
-pub(super) fn check_impl_item_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
-    wfcheck::check_impl_item(tcx, def_id);
 }
 
 fn async_opaque_type_cycle_error(tcx: TyCtxt<'tcx>, span: Span) {
@@ -1526,7 +1514,7 @@ fn async_opaque_type_cycle_error(tcx: TyCtxt<'tcx>, span: Span) {
 ///
 /// If all the return expressions evaluate to `!`, then we explain that the error will go away
 /// after changing it. This can happen when a user uses `panic!()` or similar as a placeholder.
-fn opaque_type_cycle_error(tcx: TyCtxt<'tcx>, def_id: LocalDefId, span: Span) {
+fn opaque_type_cycle_error(tcx: TyCtxt<'tcx>, def_id: hir::OwnerId, span: Span) {
     let mut err = struct_span_err!(tcx.sess, span, E0720, "cannot resolve opaque type");
 
     let mut label = false;

@@ -9,7 +9,7 @@
 
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::DefId;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_middle::ty::{self, CrateInherentImpls, TyCtxt};
 
@@ -394,7 +394,7 @@ impl InherentCollect<'tcx> {
 
     fn check_primitive_impl(
         &self,
-        impl_def_id: LocalDefId,
+        impl_def_id: hir::OwnerId,
         lang_def_id: Option<DefId>,
         lang_def_id2: Option<DefId>,
         lang: &str,
@@ -402,6 +402,7 @@ impl InherentCollect<'tcx> {
         span: Span,
         assoc_items: &[hir::ImplItemRef],
     ) {
+        let impl_def_id = impl_def_id.def_id;
         match (lang_def_id, lang_def_id2) {
             (Some(lang_def_id), _) if lang_def_id == impl_def_id.to_def_id() => {
                 // OK

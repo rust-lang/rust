@@ -66,7 +66,7 @@ use rustc_ast::ast::{self, Attribute, LitKind};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
+use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{self, walk_expr, ErasedMap, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
@@ -211,7 +211,7 @@ pub fn find_binding_init<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<
 /// ```
 pub fn in_constant(cx: &LateContext<'_>, id: HirId) -> bool {
     let parent_id = cx.tcx.hir().get_parent_item(id);
-    match cx.tcx.hir().get_def(parent_id) {
+    match cx.tcx.hir().get(parent_id.hir_id()) {
         Node::Item(&Item {
             kind: ItemKind::Const(..) | ItemKind::Static(..),
             ..
@@ -580,13 +580,12 @@ pub fn get_trait_def_id(cx: &LateContext<'_>, path: &[&str]) -> Option<DefId> {
 ///     }
 /// }
 /// ```
-pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'tcx>, def_id: LocalDefId) -> Option<&'tcx TraitRef<'tcx>> {
+pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'tcx>, def_id: hir::OwnerId) -> Option<&'tcx TraitRef<'tcx>> {
     // Get the implemented trait for the current function
-    let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id);
-    let parent_impl = cx.tcx.hir().get_parent_item(hir_id);
+    let parent_impl = cx.tcx.hir().get_parent_item(def_id.hir_id());
     if_chain! {
-        if parent_impl != CRATE_DEF_ID;
-        if let hir::Node::Item(item) = cx.tcx.hir().get_def(parent_impl);
+        if parent_impl.def_id != CRATE_DEF_ID;
+        if let hir::Node::Item(item) = cx.tcx.hir().get(parent_impl.hir_id());
         if let hir::ItemKind::Impl(impl_) = &item.kind;
         then { return impl_.of_trait.as_ref(); }
     }
@@ -1073,7 +1072,7 @@ pub fn is_in_panic_handler(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
 /// Gets the name of the item the expression is in, if available.
 pub fn get_item_name(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Symbol> {
     let parent_id = cx.tcx.hir().get_parent_item(expr.hir_id);
-    match cx.tcx.hir().find_def(parent_id) {
+    match cx.tcx.hir().find(parent_id.hir_id()) {
         Some(
             Node::Item(Item { ident, .. })
             | Node::TraitItem(TraitItem { ident, .. })
@@ -1569,7 +1568,7 @@ pub fn any_parent_is_automatically_derived(tcx: TyCtxt<'_>, node: HirId) -> bool
             return true;
         }
         prev_enclosing_node = Some(enclosing_node);
-        enclosing_node = map.local_def_id_to_hir_id(map.get_parent_item(enclosing_node));
+        enclosing_node = map.get_parent_item(enclosing_node).hir_id();
     }
     false
 }

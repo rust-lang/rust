@@ -38,7 +38,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Owner<'tcx> {
 /// bodies.  The Ids are in visitor order.  This is used to partition a pass between modules.
 #[derive(Debug, HashStable)]
 pub struct ModuleItems {
-    submodules: Box<[LocalDefId]>,
+    submodules: Box<[OwnerId]>,
     items: Box<[ItemId]>,
     trait_items: Box<[TraitItemId]>,
     impl_items: Box<[ImplItemId]>,
@@ -51,8 +51,8 @@ impl<'tcx> TyCtxt<'tcx> {
         map::Map { tcx: self }
     }
 
-    pub fn parent_module(self, id: HirId) -> LocalDefId {
-        self.parent_module_from_def_id(id.owner)
+    pub fn parent_module(self, id: HirId) -> OwnerId {
+        self.hir().get_module_parent_node(id.owner.hir_id())
     }
 }
 
@@ -77,8 +77,11 @@ pub fn provide(providers: &mut Providers) {
             let def_id = LocalDefId { local_def_index };
             let mut parent_hir_id =
                 tcx.untracked_resolutions.definitions.local_def_id_to_hir_id(def_id);
-            if let Some(local_id) =
-                tcx.hir_crate(()).owners[parent_hir_id.owner].as_ref().unwrap().parenting.get(&id)
+            if let Some(local_id) = tcx.hir_crate(()).owners[parent_hir_id.owner.def_id]
+                .as_ref()
+                .unwrap()
+                .parenting
+                .get(&OwnerId { def_id: id })
             {
                 parent_hir_id.local_id = *local_id;
             }
@@ -86,8 +89,9 @@ pub fn provide(providers: &mut Providers) {
         });
         parent
     };
-    providers.hir_attrs =
-        |tcx, id| tcx.hir_crate(()).owners[id].as_ref().map_or(AttributeMap::EMPTY, |o| &o.attrs);
+    providers.hir_attrs = |tcx, id| {
+        tcx.hir_crate(()).owners[id.def_id].as_ref().map_or(AttributeMap::EMPTY, |o| &o.attrs)
+    };
     providers.source_span = |tcx, def_id| tcx.resolutions(()).definitions.def_span(def_id);
     providers.def_span = |tcx, def_id| tcx.hir().span_if_local(def_id).unwrap_or(DUMMY_SP);
     providers.fn_arg_names = |tcx, id| {

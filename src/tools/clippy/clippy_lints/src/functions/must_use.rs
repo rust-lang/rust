@@ -1,6 +1,6 @@
 use rustc_ast::ast::Attribute;
 use rustc_errors::Applicability;
-use rustc_hir::def_id::{DefIdSet, LocalDefId};
+use rustc_hir::def_id::DefIdSet;
 use rustc_hir::{self as hir, def::Res, intravisit, QPath};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::{
@@ -22,7 +22,7 @@ pub(super) fn check_item(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
     let attrs = cx.tcx.hir().attrs(item.hir_id());
     let attr = must_use_attr(attrs);
     if let hir::ItemKind::Fn(ref sig, ref _generics, ref body_id) = item.kind {
-        let is_public = cx.access_levels.is_exported(item.def_id);
+        let is_public = cx.access_levels.is_exported(item.def_id.def_id);
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
         if let Some(attr) = attr {
             check_needless_must_use(cx, sig.decl, item.hir_id(), item.span, fn_header_span, attr);
@@ -42,7 +42,7 @@ pub(super) fn check_item(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
 
 pub(super) fn check_impl_item(cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'_>) {
     if let hir::ImplItemKind::Fn(ref sig, ref body_id) = item.kind {
-        let is_public = cx.access_levels.is_exported(item.def_id);
+        let is_public = cx.access_levels.is_exported(item.def_id.def_id);
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
         let attrs = cx.tcx.hir().attrs(item.hir_id());
         let attr = must_use_attr(attrs);
@@ -64,7 +64,7 @@ pub(super) fn check_impl_item(cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<
 
 pub(super) fn check_trait_item(cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
     if let hir::TraitItemKind::Fn(ref sig, ref eid) = item.kind {
-        let is_public = cx.access_levels.is_exported(item.def_id);
+        let is_public = cx.access_levels.is_exported(item.def_id.def_id);
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
 
         let attrs = cx.tcx.hir().attrs(item.hir_id());
@@ -131,7 +131,7 @@ fn check_must_use_candidate<'tcx>(
     decl: &'tcx hir::FnDecl<'_>,
     body: &'tcx hir::Body<'_>,
     item_span: Span,
-    item_id: LocalDefId,
+    item_id: hir::OwnerId,
     fn_span: Span,
     msg: &str,
 ) {
@@ -139,8 +139,8 @@ fn check_must_use_candidate<'tcx>(
         || mutates_static(cx, body)
         || in_external_macro(cx.sess(), item_span)
         || returns_unit(decl)
-        || !cx.access_levels.is_exported(item_id)
-        || is_must_use_ty(cx, return_ty(cx, cx.tcx.hir().local_def_id_to_hir_id(item_id)))
+        || !cx.access_levels.is_exported(item_id.def_id)
+        || is_must_use_ty(cx, return_ty(cx, item_id.hir_id()))
     {
         return;
     }

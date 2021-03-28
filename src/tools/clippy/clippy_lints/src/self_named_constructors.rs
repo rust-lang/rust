@@ -51,7 +51,7 @@ impl<'tcx> LateLintPass<'tcx> for SelfNamedConstructors {
         }
 
         let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id());
-        let item = cx.tcx.hir().expect_item(parent);
+        let item = cx.tcx.hir().expect_item(parent.def_id);
         let self_ty = cx.tcx.type_of(item.def_id);
         let ret_ty = return_ty(cx, impl_item.hir_id());
 

@@ -387,7 +387,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     tcx.mk_adt(def, substs)
                 }
                 ItemKind::OpaqueTy(OpaqueTy { impl_trait_fn: None, .. }) => {
-                    find_opaque_ty_constraints(tcx, def_id)
+                    find_opaque_ty_constraints(tcx, hir_id.owner)
                 }
                 // Opaque types desugared from `impl Trait`.
                 ItemKind::OpaqueTy(OpaqueTy { impl_trait_fn: Some(owner), .. }) => {
@@ -557,7 +557,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 /// fn b<T>() -> Foo<T, u32> { .. }
 /// ```
 ///
-fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
+fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: hir::OwnerId) -> Ty<'_> {
     use rustc_hir::{Expr, ImplItem, Item, TraitItem};
 
     struct ConstraintLocator<'tcx> {
@@ -641,7 +641,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
             debug!("find_existential_constraints: visiting {:?}", it);
             // The opaque type itself or its children are not within its reveal scope.
             if it.def_id.to_def_id() != self.def_id {
-                self.check(it.def_id);
+                self.check(it.def_id.def_id);
                 intravisit::walk_item(self, it);
             }
         }
@@ -649,18 +649,18 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
             debug!("find_existential_constraints: visiting {:?}", it);
             // The opaque type itself or its children are not within its reveal scope.
             if it.def_id.to_def_id() != self.def_id {
-                self.check(it.def_id);
+                self.check(it.def_id.def_id);
                 intravisit::walk_impl_item(self, it);
             }
         }
         fn visit_trait_item(&mut self, it: &'tcx TraitItem<'tcx>) {
             debug!("find_existential_constraints: visiting {:?}", it);
-            self.check(it.def_id);
+            self.check(it.def_id.def_id);
             intravisit::walk_trait_item(self, it);
         }
     }
 
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+    let hir_id = def_id.hir_id();
     let scope = tcx.hir().get_defining_scope(hir_id);
     let mut locator = ConstraintLocator { def_id: def_id.to_def_id(), tcx, found: None };
 

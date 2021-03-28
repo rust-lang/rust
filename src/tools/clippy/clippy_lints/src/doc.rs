@@ -22,7 +22,6 @@ use rustc_parse::maybe_new_parser_from_source_str;
 use rustc_parse::parser::ForceCollect;
 use rustc_session::parse::ParseSess;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::def_id::LocalDefId;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{BytePos, FilePathMapping, MultiSpan, SourceMap, Span};
 use rustc_span::{sym, FileName, Pos};
@@ -288,14 +287,14 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
 
 fn lint_for_missing_headers<'tcx>(
     cx: &LateContext<'tcx>,
-    def_id: LocalDefId,
+    def_id: hir::OwnerId,
     span: impl Into<MultiSpan> + Copy,
     sig: &hir::FnSig<'_>,
     headers: DocHeaders,
     body_id: Option<hir::BodyId>,
     panic_span: Option<Span>,
 ) {
-    if !cx.access_levels.is_exported(def_id) {
+    if !cx.access_levels.is_exported(def_id.def_id) {
         return; // Private functions do not require doc comments
     }
 
@@ -303,7 +302,7 @@ fn lint_for_missing_headers<'tcx>(
     if cx
         .tcx
         .hir()
-        .parent_iter(cx.tcx.hir().local_def_id_to_hir_id(def_id))
+        .parent_iter(def_id.hir_id())
         .any(|(id, _node)| is_doc_hidden(cx.tcx.hir().attrs(id)))
     {
         return;
@@ -328,7 +327,7 @@ fn lint_for_missing_headers<'tcx>(
         );
     }
     if !headers.errors {
-        let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id);
+        let hir_id = def_id.hir_id();
         if is_type_diagnostic_item(cx, return_ty(cx, hir_id), sym::Result) {
             span_lint(
                 cx,

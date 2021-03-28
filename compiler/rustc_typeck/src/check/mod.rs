@@ -90,15 +90,13 @@ mod upvar;
 mod wfcheck;
 pub mod writeback;
 
-use check::{
-    check_abi, check_fn, check_impl_item_well_formed, check_item_well_formed, check_mod_item_types,
-    check_trait_item_well_formed,
-};
+use check::{check_abi, check_fn, check_mod_item_types};
 pub use check::{check_item_type, check_wf_new};
 pub use diverges::Diverges;
 pub use expectation::Expectation;
 pub use fn_ctxt::*;
 pub use inherited::{Inherited, InheritedBuilder};
+use wfcheck::{check_impl_item_well_formed, check_item_well_formed, check_trait_item_well_formed};
 
 use crate::astconv::AstConv;
 use crate::check::gather_locals::GatherLocalsVisitor;
@@ -511,11 +509,10 @@ struct GeneratorTypes<'tcx> {
 /// expressions.
 fn get_owner_return_paths(
     tcx: TyCtxt<'tcx>,
-    def_id: LocalDefId,
-) -> Option<(LocalDefId, ReturnsVisitor<'tcx>)> {
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-    let parent_id = tcx.hir().get_parent_item(hir_id);
-    tcx.hir().find_def(parent_id).and_then(|node| node.body_id()).map(|body_id| {
+    def_id: hir::OwnerId,
+) -> Option<(hir::OwnerId, ReturnsVisitor<'tcx>)> {
+    let parent_id = tcx.hir().get_parent_item(def_id.hir_id());
+    tcx.hir().find(parent_id.hir_id()).and_then(|node| node.body_id()).map(|body_id| {
         let body = tcx.hir().body(body_id);
         let mut visitor = ReturnsVisitor::default();
         visitor.visit_body(body);
