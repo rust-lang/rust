@@ -1651,6 +1651,10 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
         cmd.add_eh_frame_header();
     }
 
+    // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
+    // Make the binary compatible with data execution prevention schemes.
+    cmd.add_no_exec();
+
     // NO-OPT-OUT, OBJECT-FILES-NO
     // Avoid linking to dynamic libraries unless they satisfy some undefined symbols
     // at the point at which they are specified on the command line.

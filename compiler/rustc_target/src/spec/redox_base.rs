@@ -1,15 +1,6 @@
-use crate::spec::{LinkArgs, LinkerFlavor, RelroLevel, TargetOptions};
+use crate::spec::{RelroLevel, TargetOptions};
 
 pub fn opts() -> TargetOptions {
-    let mut args = LinkArgs::new();
-    args.insert(
-        LinkerFlavor::Gcc,
-        vec![
-            // Always enable NX protection when it is available
-            "-Wl,-z,noexecstack".to_string(),
-        ],
-    );
-
     TargetOptions {
         os: "redox".to_string(),
         env: "relibc".to_string(),
@@ -18,7 +9,6 @@ pub fn opts() -> TargetOptions {
         os_family: Some("unix".to_string()),
         linker_is_gnu: true,
         has_rpath: true,
-        pre_link_args: args,
         position_independent_executables: true,
         relro_level: RelroLevel::Full,
         has_elf_tls: true,
