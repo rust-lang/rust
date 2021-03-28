@@ -846,11 +846,7 @@ fn resolve_macro_def() {
 pub macro structs($($i:ident),*) {
     $(struct $i { field: u32 } )*
 }
-
 structs!(Foo);
-
-//- /nested.rs
-structs!(Bar, Baz);
 "#,
         expect![[r#"
             crate
