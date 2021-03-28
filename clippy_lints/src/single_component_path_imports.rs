@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::in_macro;
-use if_chain::if_chain;
-use rustc_ast::{Crate, Item, ItemKind, UseTreeKind};
+use rustc_ast::{Crate, Item, ItemKind, ModKind, UseTreeKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -83,13 +82,19 @@ impl EarlyLintPass for SingleComponentPathImports {
 
 impl SingleComponentPathImports {
     fn track_uses(&mut self, item: &Item) {
-        if_chain! {
-            if !in_macro(item.span);
-            if !item.vis.kind.is_pub();
-            if let ItemKind::Use(use_tree) = &item.kind;
-            if let segments = &use_tree.prefix.segments;
+        if in_macro(item.span) || item.vis.kind.is_pub() {
+            return;
+        }
 
-            then {
+        match &item.kind {
+            ItemKind::Mod(_, ModKind::Loaded(ref items, ..)) => {
+                for item in items.iter() {
+                    self.track_uses(&item);
+                }
+            },
+            ItemKind::Use(use_tree) => {
+                let segments = &use_tree.prefix.segments;
+
                 // keep track of `use some_module;` usages
                 if segments.len() == 1 {
                     if let UseTreeKind::Simple(None, _, _) = use_tree.kind {
@@ -117,7 +122,8 @@ impl SingleComponentPathImports {
                         }
                     }
                 }
-            }
+            },
+            _ => {},
         }
     }
 }

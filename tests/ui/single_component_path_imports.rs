@@ -19,3 +19,9 @@ fn main() {
     // False positive #5154, shouldn't trigger lint.
     m!();
 }
+
+mod hello_mod {
+    use regex;
+    #[allow(dead_code)]
+    fn hello_mod() {}
+}
