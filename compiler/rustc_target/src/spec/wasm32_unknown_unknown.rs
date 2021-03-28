@@ -17,7 +17,7 @@ pub fn target() -> Target {
     let mut options = wasm32_base::options();
     options.os = "unknown".to_string();
     options.linker_flavor = LinkerFlavor::Lld(LldFlavor::Wasm);
-    let clang_args = options.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap();
+    let clang_args = options.pre_link_args.entry(LinkerFlavor::Gcc).or_default();
 
     // Make sure clang uses LLD as its linker and is configured appropriately
     // otherwise
@@ -35,7 +35,7 @@ pub fn target() -> Target {
     clang_args.push("-Wl,--export-dynamic".to_string());
 
     // Add the flags to wasm-ld's args too.
-    let lld_args = options.pre_link_args.get_mut(&LinkerFlavor::Lld(LldFlavor::Wasm)).unwrap();
+    let lld_args = options.pre_link_args.entry(LinkerFlavor::Lld(LldFlavor::Wasm)).or_default();
     lld_args.push("--no-entry".to_string());
     lld_args.push("--export-dynamic".to_string());
 

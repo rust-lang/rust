@@ -4,7 +4,7 @@ use super::{LinkArgs, LinkerFlavor, PanicStrategy, Target, TargetOptions};
 pub fn target() -> Target {
     let mut options = wasm32_base::options();
 
-    let clang_args = options.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap();
+    let clang_args = options.pre_link_args.entry(LinkerFlavor::Gcc).or_default();
 
     // Rust really needs a way for users to specify exports and imports in
     // the source code. --export-dynamic isn't the right tool for this job,

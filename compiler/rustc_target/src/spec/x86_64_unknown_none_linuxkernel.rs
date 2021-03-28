@@ -11,7 +11,7 @@ pub fn target() -> Target {
         "-mmx,-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-3dnow,-3dnowa,-avx,-avx2,+soft-float"
             .to_string();
     base.code_model = Some(CodeModel::Kernel);
-    base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-m64".to_string());
+    base.pre_link_args.entry(LinkerFlavor::Gcc).or_default().push("-m64".to_string());
 
     Target {
         // FIXME: Some dispute, the linux-on-clang folks think this should use

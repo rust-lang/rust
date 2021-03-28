@@ -11,10 +11,10 @@ pub fn target() -> Target {
     // where necessary, but this is not the observed behavior.
     // Disabling the LBR optimization works around the issue.
     let pre_link_args_msvc = "/OPT:NOLBR".to_string();
-    base.pre_link_args.get_mut(&LinkerFlavor::Msvc).unwrap().push(pre_link_args_msvc.clone());
+    base.pre_link_args.entry(LinkerFlavor::Msvc).or_default().push(pre_link_args_msvc.clone());
     base.pre_link_args
-        .get_mut(&LinkerFlavor::Lld(LldFlavor::Link))
-        .unwrap()
+        .entry(LinkerFlavor::Lld(LldFlavor::Link))
+        .or_default()
         .push(pre_link_args_msvc);
 
     // FIXME(jordanrh): use PanicStrategy::Unwind when SEH is
