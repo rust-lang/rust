@@ -1,6 +1,6 @@
 //! System Mutexes
 //!
-//! The Windows implementation of mutexes is a little odd and it may not be
+//! The Windows implementation of mutexes is a little odd and it might not be
 //! immediately obvious what's going on. The primary oddness is that SRWLock is
 //! used instead of CriticalSection, and this is done because:
 //!

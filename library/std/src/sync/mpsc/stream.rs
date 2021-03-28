@@ -339,7 +339,7 @@ impl<T> Packet<T> {
 
         // At this point in time, we have gated all future senders from sending,
         // and we have flagged the channel as being disconnected. The senders
-        // still have some responsibility, however, because some sends may not
+        // still have some responsibility, however, because some sends might not
         // complete until after we flag the disconnection. There are more
         // details in the sending methods that see DISCONNECTED
     }
@@ -370,7 +370,7 @@ impl<T> Packet<T> {
         // at all.
         //
         // Hence, because of these invariants, we immediately return `Ok(true)`.
-        // Note that the data may not actually be sent on the channel just yet.
+        // Note that the data might not actually be sent on the channel just yet.
         // The other end could have flagged the upgrade but not sent data to
         // this end. This is fine because we know it's a small bounded windows
         // of time until the data is actually sent.

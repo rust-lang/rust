@@ -56,7 +56,7 @@ where
 
         let src = unsafe { iterator.as_inner().as_into_iter() };
         // check if SourceIter contract was upheld
-        // caveat: if they weren't we may not even make it to this point
+        // caveat: if they weren't we might not even make it to this point
         debug_assert_eq!(src_buf, src.buf.as_ptr());
         // check InPlaceIterable contract. This is only possible if the iterator advanced the
         // source pointer at all. If it uses unchecked access via TrustedRandomAccess

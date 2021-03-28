@@ -47,7 +47,7 @@ pub fn from_mut<T>(s: &mut T) -> &mut [T; 1] {
 /// initialization).
 ///
 /// Note that the traits [`AsRef`] and [`AsMut`] provide similar methods for types that
-/// may not be fixed-size arrays. Implementors should prefer those traits
+/// might not be fixed-size arrays. Implementors should prefer those traits
 /// instead.
 #[unstable(feature = "fixed_size_array", issue = "27778")]
 pub unsafe trait FixedSizeArray<T> {

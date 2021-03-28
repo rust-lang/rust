@@ -477,7 +477,7 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
 
 impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
     /// Temporarily takes out another, mutable reference to the same node. Beware, as
-    /// this method is very dangerous, doubly so since it may not immediately appear
+    /// this method is very dangerous, doubly so since it might not immediately appear
     /// dangerous.
     ///
     /// Because mutable pointers can roam anywhere around the tree, the returned
@@ -766,7 +766,7 @@ impl<'a, K, V, Type> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInterna
 
 impl<'a, K, V, NodeType, HandleType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, HandleType> {
     /// Temporarily takes out another, mutable handle on the same location. Beware, as
-    /// this method is very dangerous, doubly so since it may not immediately appear
+    /// this method is very dangerous, doubly so since it might not immediately appear
     /// dangerous.
     ///
     /// For details, see `NodeRef::reborrow_mut`.

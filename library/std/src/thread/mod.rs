@@ -903,7 +903,7 @@ pub fn park() {
 /// The semantics of this function are equivalent to [`park`] except
 /// that the thread will be blocked for roughly no longer than `dur`. This
 /// method should not be used for precise timing due to anomalies such as
-/// preemption or platform differences that may not cause the maximum
+/// preemption or platform differences that might not cause the maximum
 /// amount of time waited to be precisely `ms` long.
 ///
 /// See the [park documentation][`park`] for more detail.
@@ -919,7 +919,7 @@ pub fn park_timeout_ms(ms: u32) {
 /// The semantics of this function are equivalent to [`park`][park] except
 /// that the thread will be blocked for roughly no longer than `dur`. This
 /// method should not be used for precise timing due to anomalies such as
-/// preemption or platform differences that may not cause the maximum
+/// preemption or platform differences that might not cause the maximum
 /// amount of time waited to be precisely `dur` long.
 ///
 /// See the [park documentation][park] for more details.
@@ -1065,7 +1065,7 @@ impl Thread {
     // Panics if the name contains nuls.
     pub(crate) fn new(name: Option<String>) -> Thread {
         let cname =
-            name.map(|n| CString::new(n).expect("thread name may not contain interior null bytes"));
+            name.map(|n| CString::new(n).expect("thread name should not contain interior null bytes"));
         Thread {
             inner: Arc::new(Inner { name: cname, id: ThreadId::new(), parker: Parker::new() }),
         }

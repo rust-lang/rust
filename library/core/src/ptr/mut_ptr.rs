@@ -423,7 +423,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`guaranteed_ne`]: #method.guaranteed_ne
     ///
-    /// The return value may change depending on the compiler version and unsafe code may not
+    /// The return value may change depending on the compiler version and unsafe code should not
     /// rely on the result of this function for soundness. It is suggested to only use this function
     /// for performance optimizations where spurious `false` return values by this function do not
     /// affect the outcome, but just the performance.
@@ -454,7 +454,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`guaranteed_eq`]: #method.guaranteed_eq
     ///
-    /// The return value may change depending on the compiler version and unsafe code may not
+    /// The return value may change depending on the compiler version and unsafe code should not
     /// rely on the result of this function for soundness. It is suggested to only use this function
     /// for performance optimizations where spurious `false` return values by this function do not
     /// affect the outcome, but just the performance.

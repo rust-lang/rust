@@ -420,7 +420,7 @@ impl<A: Debug + TrustedRandomAccess, B: Debug + TrustedRandomAccess> ZipFmt<A, B
 ///
 /// The iterator's `size_hint` must be exact and cheap to call.
 ///
-/// `size` may not be overridden.
+/// `size` should not be overridden.
 ///
 /// `<Self as Iterator>::__iterator_get_unchecked` must be safe to call
 /// provided the following conditions are met.

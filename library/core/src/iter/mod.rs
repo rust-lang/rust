@@ -336,7 +336,7 @@
 //! This will print the numbers `0` through `4`, each on their own line.
 //!
 //! Bear in mind that methods on infinite iterators, even those for which a
-//! result can be determined mathematically in finite time, may not terminate.
+//! result can be determined mathematically in finite time, might not terminate.
 //! Specifically, methods such as [`min`], which in the general case require
 //! traversing every element in the iterator, are likely not to return
 //! successfully for any infinite iterators.

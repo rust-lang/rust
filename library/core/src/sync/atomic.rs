@@ -41,7 +41,7 @@
 //! instructions to implement `AtomicI8`. Note that this emulation should not
 //! have an impact on correctness of code, it's just something to be aware of.
 //!
-//! The atomic types in this module may not be available on all platforms. The
+//! The atomic types in this module might not be available on all platforms. The
 //! atomic types here are all widely available, however, and can generally be
 //! relied upon existing. Some notable exceptions are:
 //!

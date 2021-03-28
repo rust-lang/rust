@@ -159,7 +159,7 @@
 //! Notice that this guarantee does *not* mean that memory does not leak! It is still
 //! completely okay not ever to call [`drop`] on a pinned element (e.g., you can still
 //! call [`mem::forget`] on a [`Pin`]`<`[`Box`]`<T>>`). In the example of the doubly-linked
-//! list, that element would just stay in the list. However you may not free or reuse the storage
+//! list, that element would just stay in the list. However you should not free or reuse the storage
 //! *without calling [`drop`]*.
 //!
 //! # `Drop` implementation

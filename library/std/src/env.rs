@@ -673,7 +673,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
 /// for more.
 ///
 /// The first element is traditionally the path of the executable, but it can be
-/// set to arbitrary text, and may not even exist. This means this property
+/// set to arbitrary text, and might not even exist. This means this property
 /// should not be relied upon for security purposes.
 ///
 /// [`env::args()`]: args
@@ -689,7 +689,7 @@ pub struct Args {
 /// for more.
 ///
 /// The first element is traditionally the path of the executable, but it can be
-/// set to arbitrary text, and may not even exist. This means this property
+/// set to arbitrary text, and might not even exist. This means this property
 /// should not be relied upon for security purposes.
 ///
 /// [`env::args_os()`]: args_os
@@ -702,7 +702,7 @@ pub struct ArgsOs {
 /// via the command line).
 ///
 /// The first element is traditionally the path of the executable, but it can be
-/// set to arbitrary text, and may not even exist. This means this property should
+/// set to arbitrary text, and might not even exist. This means this property should
 /// not be relied upon for security purposes.
 ///
 /// On Unix systems the shell usually expands unquoted arguments with glob patterns
@@ -739,7 +739,7 @@ pub fn args() -> Args {
 /// via the command line).
 ///
 /// The first element is traditionally the path of the executable, but it can be
-/// set to arbitrary text, and it may not even exist, so this property should
+/// set to arbitrary text, and it might not even exist, so this property should
 /// not be relied upon for security purposes.
 ///
 /// On glibc Linux systems, arguments are retrieved by placing a function in ".init_array".

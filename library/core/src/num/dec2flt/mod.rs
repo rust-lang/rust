@@ -304,7 +304,7 @@ fn simplify(decimal: &mut Decimal<'_>) {
     let end = decimal.fractional.len() - trailing_zeros;
     decimal.fractional = &decimal.fractional[..end];
     // Simplify numbers of the form 0.0...x and x...0.0, adjusting the exponent accordingly.
-    // This may not always be a win (possibly pushes some numbers out of the fast path), but it
+    // This might not always be a win (possibly pushes some numbers out of the fast path), but it
     // simplifies other parts significantly (notably, approximating the magnitude of the value).
     if decimal.integral.is_empty() {
         let leading_zeros = decimal.fractional.iter().take_while(is_zero).count();

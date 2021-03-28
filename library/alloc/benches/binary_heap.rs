@@ -36,7 +36,7 @@ fn bench_peek_mut_deref_mut(b: &mut Bencher) {
         let mut peek_mut = bheap.peek_mut().unwrap();
         // The compiler shouldn't be able to optimize away the `sift_down`
         // assignment in `PeekMut`'s `DerefMut` implementation since
-        // the loop may not run.
+        // the loop might not run.
         for &i in vec.iter() {
             *peek_mut = i;
         }

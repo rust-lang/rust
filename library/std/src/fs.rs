@@ -415,7 +415,7 @@ impl File {
         self.inner.fsync()
     }
 
-    /// This function is similar to [`sync_all`], except that it may not
+    /// This function is similar to [`sync_all`], except that it might not
     /// synchronize file metadata to the filesystem.
     ///
     /// This is intended for use cases that must synchronize content, but don't
@@ -1051,7 +1051,7 @@ impl Metadata {
     ///
     /// # Errors
     ///
-    /// This field may not be available on all platforms, and will return an
+    /// This field might not be available on all platforms, and will return an
     /// `Err` on platforms where it is not available.
     ///
     /// # Examples
@@ -1086,7 +1086,7 @@ impl Metadata {
     ///
     /// # Errors
     ///
-    /// This field may not be available on all platforms, and will return an
+    /// This field might not be available on all platforms, and will return an
     /// `Err` on platforms where it is not available.
     ///
     /// # Examples
@@ -1118,7 +1118,7 @@ impl Metadata {
     ///
     /// # Errors
     ///
-    /// This field may not be available on all platforms, and will return an
+    /// This field might not be available on all platforms, and will return an
     /// `Err` on platforms or filesystems where it is not available.
     ///
     /// # Examples
