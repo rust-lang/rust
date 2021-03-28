@@ -692,6 +692,7 @@ impl Handler {
         db
     }
 
+    // NOTE: intentionally doesn't raise an error so rustc_codegen_ssa only reports fatal errors in the main thread
     pub fn fatal(&self, msg: &str) -> FatalError {
         self.inner.borrow_mut().fatal(msg)
     }
