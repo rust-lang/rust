@@ -599,28 +599,25 @@ fn show_content_with_pager(content: &str) {
 }
 
 impl RustcDefaultCalls {
-    fn process_rlink(sess: &Session, compiler: &interface::Compiler) -> Result<(), ErrorReported> {
-        if let Input::File(file) = compiler.input() {
-            // FIXME: #![crate_type] and #![crate_name] support not implemented yet
-            let attrs = vec![];
-            sess.init_crate_types(collect_crate_types(sess, &attrs));
-            let outputs = compiler.build_output_filenames(&sess, &attrs);
-            let rlink_data = fs::read_to_string(file).unwrap_or_else(|err| {
-                sess.fatal(&format!("failed to read rlink file: {}", err));
-            });
-            let codegen_results: CodegenResults = json::decode(&rlink_data).unwrap_or_else(|err| {
-                sess.fatal(&format!("failed to decode rlink: {}", err));
-            });
-            compiler.codegen_backend().link(&sess, codegen_results, &outputs)
-        } else {
-            sess.fatal("rlink must be a file")
-        }
-    }
-
     pub fn try_process_rlink(sess: &Session, compiler: &interface::Compiler) -> Compilation {
         if sess.opts.debugging_opts.link_only {
-            let result = RustcDefaultCalls::process_rlink(sess, compiler);
-            abort_on_err(result, sess);
+            if let Input::File(file) = compiler.input() {
+                // FIXME: #![crate_type] and #![crate_name] support not implemented yet
+                let attrs = vec![];
+                sess.init_crate_types(collect_crate_types(sess, &attrs));
+                let outputs = compiler.build_output_filenames(&sess, &attrs);
+                let rlink_data = fs::read_to_string(file).unwrap_or_else(|err| {
+                    sess.fatal(&format!("failed to read rlink file: {}", err));
+                });
+                let codegen_results: CodegenResults =
+                    json::decode(&rlink_data).unwrap_or_else(|err| {
+                        sess.fatal(&format!("failed to decode rlink: {}", err));
+                    });
+                let result = compiler.codegen_backend().link(&sess, codegen_results, &outputs);
+                abort_on_err(result, sess);
+            } else {
+                sess.fatal("rlink must be a file")
+            }
             Compilation::Stop
         } else {
             Compilation::Continue
