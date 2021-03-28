@@ -41,7 +41,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="keyword">mod</span> <span class="module declaration">inner</span> <span class="brace">{</span><span class="brace">}</span>
 
 <span class="attribute attribute">#</span><span class="attribute attribute">[</span><span class="function attribute">rustc_builtin_macro</span><span class="attribute attribute">]</span>
-<span class="keyword">macro</span> <span class="unresolved_reference declaration">Copy</span> <span class="brace">{</span><span class="brace">}</span>
+<span class="keyword">macro</span> <span class="macro declaration">Copy</span> <span class="brace">{</span><span class="brace">}</span>
 
 <span class="comment">// Needed for function consuming vs normal</span>
 <span class="keyword">pub</span> <span class="keyword">mod</span> <span class="module declaration">marker</span> <span class="brace">{</span>
@@ -156,6 +156,16 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 
 <span class="keyword">macro_rules</span><span class="punctuation">!</span> <span class="macro declaration">keyword_frag</span> <span class="brace">{</span>
     <span class="parenthesis">(</span><span class="punctuation">$</span>type<span class="colon">:</span>ty<span class="parenthesis">)</span> <span class="operator">=</span><span class="angle">&gt;</span> <span class="parenthesis">(</span><span class="punctuation">$</span>type<span class="parenthesis">)</span>
+<span class="brace">}</span>
+
+<span class="keyword">macro</span> <span class="macro declaration">with_args</span><span class="parenthesis">(</span><span class="punctuation">$</span>i<span class="colon">:</span>ident<span class="parenthesis">)</span> <span class="brace">{</span>
+    <span class="punctuation">$</span>i
+<span class="brace">}</span>
+
+<span class="keyword">macro</span> <span class="macro declaration">without_args</span> <span class="brace">{</span>
+    <span class="parenthesis">(</span><span class="punctuation">$</span>i<span class="colon">:</span>ident<span class="parenthesis">)</span> <span class="operator">=</span><span class="angle">&gt;</span> <span class="brace">{</span>
+        <span class="punctuation">$</span>i
+    <span class="brace">}</span>
 <span class="brace">}</span>
 
 <span class="comment">// comment</span>

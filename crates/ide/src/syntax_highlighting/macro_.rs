@@ -4,18 +4,18 @@ use syntax::{SyntaxElement, SyntaxKind, SyntaxToken, TextRange, T};
 use crate::{HlRange, HlTag};
 
 #[derive(Default)]
-pub(super) struct MacroRulesHighlighter {
+pub(super) struct MacroHighlighter {
     state: Option<MacroMatcherParseState>,
 }
 
-impl MacroRulesHighlighter {
+impl MacroHighlighter {
     pub(super) fn init(&mut self) {
         self.state = Some(MacroMatcherParseState::default());
     }
 
     pub(super) fn advance(&mut self, token: &SyntaxToken) {
         if let Some(state) = self.state.as_mut() {
-            update_macro_rules_state(state, token);
+            update_macro_state(state, token);
         }
     }
 
@@ -74,9 +74,9 @@ impl RuleState {
     }
 }
 
-fn update_macro_rules_state(state: &mut MacroMatcherParseState, tok: &SyntaxToken) {
+fn update_macro_state(state: &mut MacroMatcherParseState, tok: &SyntaxToken) {
     if !state.in_invoc_body {
-        if tok.kind() == T!['{'] {
+        if tok.kind() == T!['{'] || tok.kind() == T!['('] {
             state.in_invoc_body = true;
         }
         return;

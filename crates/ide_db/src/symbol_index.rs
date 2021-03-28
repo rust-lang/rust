@@ -438,7 +438,7 @@ fn to_symbol(node: &SyntaxNode) -> Option<(SmolStr, SyntaxNodePtr, TextRange)> {
             ast::TypeAlias(it) => decl(it),
             ast::Const(it) => decl(it),
             ast::Static(it) => decl(it),
-            ast::MacroRules(it) => decl(it),
+            ast::Macro(it) => decl(it),
             ast::Union(it) => decl(it),
             _ => None,
         }
@@ -458,6 +458,7 @@ fn to_file_symbol(node: &SyntaxNode, file_id: FileId) -> Option<FileSymbol> {
             CONST => FileSymbolKind::Const,
             STATIC => FileSymbolKind::Static,
             MACRO_RULES => FileSymbolKind::Macro,
+            MACRO_DEF => FileSymbolKind::Macro,
             UNION => FileSymbolKind::Union,
             kind => unreachable!("{:?}", kind),
         },

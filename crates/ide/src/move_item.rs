@@ -66,6 +66,7 @@ fn find_ancestors(item: SyntaxElement, direction: Direction, range: TextRange) -
         SyntaxKind::STATIC,
         SyntaxKind::CONST,
         SyntaxKind::MACRO_RULES,
+        SyntaxKind::MACRO_DEF,
     ];
 
     let ancestor = once(root.clone())

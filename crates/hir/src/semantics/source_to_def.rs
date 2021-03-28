@@ -191,10 +191,7 @@ impl SourceToDefCtx<'_, '_> {
     }
 
     // FIXME: use DynMap as well?
-    pub(super) fn macro_rules_to_def(
-        &mut self,
-        src: InFile<ast::MacroRules>,
-    ) -> Option<MacroDefId> {
+    pub(super) fn macro_to_def(&mut self, src: InFile<ast::Macro>) -> Option<MacroDefId> {
         let file_ast_id = self.db.ast_id_map(src.file_id).ast_id(&src.value);
         let ast_id = AstId::new(src.file_id, file_ast_id.upcast());
         let kind = MacroDefKind::Declarative(ast_id);

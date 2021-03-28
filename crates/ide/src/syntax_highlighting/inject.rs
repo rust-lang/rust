@@ -109,8 +109,7 @@ fn doc_attributes<'node>(
             ast::Impl(it)        => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::SelfType(def))),
             ast::RecordField(it) => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::Field(def))),
             ast::TupleField(it)  => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::Field(def))),
-            ast::MacroRules(it)  => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::Macro(def))),
-            // ast::MacroDef(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
+            ast::Macro(it)       => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::Macro(def))),
             // ast::Use(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
             _ => return None
         }

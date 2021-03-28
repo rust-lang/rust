@@ -172,7 +172,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
                 };
                 Some(node)
             },
-            ast::MacroRules(it) => decl(it, StructureNodeKind::SymbolKind(SymbolKind::Macro)),
+            ast::Macro(it) => decl(it, StructureNodeKind::SymbolKind(SymbolKind::Macro)),
             _ => None,
         }
     }

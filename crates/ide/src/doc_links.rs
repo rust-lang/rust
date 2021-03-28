@@ -161,7 +161,7 @@ pub(crate) fn doc_owner_to_def(
             ast::Variant(it) => sema.to_def(&it)?.into(),
             ast::Trait(it) => sema.to_def(&it)?.into(),
             ast::Impl(it) => return sema.to_def(&it).map(Definition::SelfType),
-            ast::MacroRules(it) => return sema.to_def(&it).map(Definition::Macro),
+            ast::Macro(it) => return sema.to_def(&it).map(Definition::Macro),
             ast::TupleField(it) => return sema.to_def(&it).map(Definition::Field),
             ast::RecordField(it) => return sema.to_def(&it).map(Definition::Field),
             _ => return None,
