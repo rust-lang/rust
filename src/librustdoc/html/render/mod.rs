@@ -1030,7 +1030,7 @@ fn render_attributes_in_pre(w: &mut Buffer, it: &clean::Item, prefix: &str) {
 // a div to produce a newline after it.
 fn render_attributes_in_code(w: &mut Buffer, it: &clean::Item) {
     for a in attributes(it) {
-        write!(w, "<div>{}</div>", a);
+        write!(w, "<div class=\"code-attribute\">{}</div>", a);
     }
 }
 

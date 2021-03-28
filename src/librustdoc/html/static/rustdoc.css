@@ -1756,20 +1756,20 @@ div.name.expand::before {
 /* The hideme class is used on summary tags that contain a span with
 	placeholder text shown only when the toggle is closed. For instance,
 	"Expand description" or "Show methods". */
-details > summary.hideme {
+details.rustdoc-toggle > summary.hideme {
 	cursor: pointer;
 }
 
-details > summary::-webkit-details-marker {
+details.rustdoc-toggle > summary::-webkit-details-marker {
 	display: none;
 }
 
-details > summary.hideme > span {
+details.rustdoc-toggle > summary.hideme > span {
 	margin-left: 9px;
 	color: #999;
 }
 
-details > summary::before {
+details.rustdoc-toggle > summary::before {
 	content: "[+]";
 	font-weight: 300;
 	font-size: 0.8em;
@@ -1777,11 +1777,11 @@ details > summary::before {
 	letter-spacing: 1px;
 }
 
-details > summary.hideme::before {
+details.rustdoc-toggle > summary.hideme::before {
 	position: relative;
 }
 
-details > summary:not(.hideme)::before {
+details.rustdoc-toggle > summary:not(.hideme)::before {
 	float: left;
 }
 
@@ -1790,19 +1790,19 @@ details > summary:not(.hideme)::before {
 	affect the layout of the items to its right. To do that, we use
 	absolute positioning. Note that we also set position: relative
 	on the parent <details> to make this work properly. */
-details[open] > summary.hideme {
+details.rustdoc-toggle[open] > summary.hideme {
 	position: absolute;
 }
 
-details[open] {
+details.rustdoc-toggle[open] {
 	position: relative;
 }
 
-details[open] > summary.hideme > span {
+details.rustdoc-toggle[open] > summary.hideme > span {
 	display: none;
 }
 
-details[open] > summary::before {
+details.rustdoc-toggle[open] > summary::before {
 	content: "[−]";
 	display: inline;
 }
