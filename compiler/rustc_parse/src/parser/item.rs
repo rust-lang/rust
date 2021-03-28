@@ -1326,7 +1326,7 @@ impl<'a> Parser<'a> {
             token::CloseDelim(token::Brace) => {}
             token::DocComment(..) => {
                 let previous_span = self.prev_token.span;
-                let mut err = self.span_fatal_err(self.token.span, Error::UselessDocComment);
+                let mut err = self.span_err(self.token.span, Error::UselessDocComment);
                 self.bump(); // consume the doc comment
                 let comma_after_doc_seen = self.eat(&token::Comma);
                 // `seen_comma` is always false, because we are inside doc block

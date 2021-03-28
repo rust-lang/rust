@@ -144,11 +144,7 @@ impl AttemptLocalParseRecovery {
 }
 
 impl<'a> Parser<'a> {
-    pub(super) fn span_fatal_err<S: Into<MultiSpan>>(
-        &self,
-        sp: S,
-        err: Error,
-    ) -> DiagnosticBuilder<'a> {
+    pub(super) fn span_err<S: Into<MultiSpan>>(&self, sp: S, err: Error) -> DiagnosticBuilder<'a> {
         err.span_err(sp, self.diagnostic())
     }
 

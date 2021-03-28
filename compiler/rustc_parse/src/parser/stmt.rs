@@ -168,7 +168,7 @@ impl<'a> Parser<'a> {
     fn error_outer_attrs(&self, attrs: &[Attribute]) {
         if let [.., last] = attrs {
             if last.is_doc_comment() {
-                self.span_fatal_err(last.span, Error::UselessDocComment).emit();
+                self.span_err(last.span, Error::UselessDocComment).emit();
             } else if attrs.iter().any(|a| a.style == AttrStyle::Outer) {
                 self.struct_span_err(last.span, "expected statement after outer attribute").emit();
             }
