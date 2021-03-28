@@ -1,4 +1,4 @@
-use rustc_ast::ast::{self, BindingMode, PatField, Pat, PatKind, RangeEnd, RangeSyntax};
+use rustc_ast::ast::{self, BindingMode, Pat, PatField, PatKind, RangeEnd, RangeSyntax};
 use rustc_ast::ptr;
 use rustc_span::{BytePos, Span};
 
