@@ -35,7 +35,7 @@ use rustc_session::config::{ErrorOutputType, Input, OutputType, PrintRequest, Tr
 use rustc_session::getopts;
 use rustc_session::lint::{Lint, LintId};
 use rustc_session::{config, DiagnosticOutput, Session};
-use rustc_session::{early_error, early_warn};
+use rustc_session::{early_error, early_error_no_abort, early_warn};
 use rustc_span::source_map::{FileLoader, FileName};
 use rustc_span::symbol::sym;
 
@@ -199,46 +199,49 @@ fn run_compiler(
     };
 
     let sopts = config::build_session_options(&matches);
-    let cfg = interface::parse_cfgspecs(matches.opt_strs("cfg"));
-
-    // We wrap `make_codegen_backend` in another `Option` such that `dummy_config` can take
-    // ownership of it when necessary, while also allowing the non-dummy config to take ownership
-    // when `dummy_config` is not used.
-    let mut make_codegen_backend = Some(make_codegen_backend);
-
-    let mut dummy_config = |sopts, cfg, diagnostic_output| {
-        let mut config = interface::Config {
-            opts: sopts,
-            crate_cfg: cfg,
-            input: Input::File(PathBuf::new()),
-            input_path: None,
-            output_file: None,
-            output_dir: None,
-            file_loader: None,
-            diagnostic_output,
-            stderr: None,
-            lint_caps: Default::default(),
-            parse_sess_created: None,
-            register_lints: None,
-            override_queries: None,
-            make_codegen_backend: make_codegen_backend.take().unwrap(),
-            registry: diagnostics_registry(),
-        };
-        callbacks.config(&mut config);
-        config
-    };
 
     if let Some(ref code) = matches.opt_str("explain") {
         handle_explain(diagnostics_registry(), code, sopts.error_format);
         return Ok(());
     }
 
+    let cfg = interface::parse_cfgspecs(matches.opt_strs("cfg"));
     let (odir, ofile) = make_output(&matches);
-    let (input, input_file_path, input_err) = match make_input(&matches.free) {
-        Some(v) => v,
+    let mut config = interface::Config {
+        opts: sopts,
+        crate_cfg: cfg,
+        input: Input::File(PathBuf::new()),
+        input_path: None,
+        output_file: ofile,
+        output_dir: odir,
+        file_loader,
+        diagnostic_output,
+        stderr: None,
+        lint_caps: Default::default(),
+        parse_sess_created: None,
+        register_lints: None,
+        override_queries: None,
+        make_codegen_backend,
+        registry: diagnostics_registry(),
+    };
+
+    match make_input(&matches.free) {
+        Some((input, input_file_path, input_err)) => {
+            if let Some(err) = input_err {
+                // Immediately stop compilation if there was an issue reading
+                // the input (for example if the input stream is not UTF-8).
+                early_error_no_abort(config.opts.error_format, &err.to_string());
+                return Err(ErrorReported);
+            }
+
+            config.input = input;
+            config.input_path = input_file_path;
+
+            callbacks.config(&mut config);
+        }
         None => match matches.free.len() {
             0 => {
-                let config = dummy_config(sopts, cfg, diagnostic_output);
+                callbacks.config(&mut config);
                 interface::run_compiler(config, |compiler| {
                     let sopts = &compiler.session().opts;
                     if sopts.describe_lints {
@@ -260,8 +263,8 @@ fn run_compiler(
                         &***compiler.codegen_backend(),
                         compiler.session(),
                         None,
-                        &odir,
-                        &ofile,
+                        &compiler.output_dir(),
+                        &compiler.output_file(),
                     );
 
                     if should_stop == Compilation::Stop {
@@ -273,7 +276,7 @@ fn run_compiler(
             }
             1 => panic!("make_input should have provided valid inputs"),
             _ => early_error(
-                sopts.error_format,
+                config.opts.error_format,
                 &format!(
                     "multiple input filenames provided (first two filenames are `{}` and `{}`)",
                     matches.free[0], matches.free[1],
@@ -281,35 +284,6 @@ fn run_compiler(
             ),
         },
     };
-
-    if let Some(err) = input_err {
-        // Immediately stop compilation if there was an issue reading
-        // the input (for example if the input stream is not UTF-8).
-        interface::run_compiler(dummy_config(sopts, cfg, diagnostic_output), |compiler| {
-            compiler.session().err(&err.to_string());
-        });
-        return Err(ErrorReported);
-    }
-
-    let mut config = interface::Config {
-        opts: sopts,
-        crate_cfg: cfg,
-        input,
-        input_path: input_file_path,
-        output_file: ofile,
-        output_dir: odir,
-        file_loader,
-        diagnostic_output,
-        stderr: None,
-        lint_caps: Default::default(),
-        parse_sess_created: None,
-        register_lints: None,
-        override_queries: None,
-        make_codegen_backend: make_codegen_backend.unwrap(),
-        registry: diagnostics_registry(),
-    };
-
-    callbacks.config(&mut config);
 
     interface::run_compiler(config, |compiler| {
         let sess = compiler.session();
