@@ -2204,6 +2204,8 @@ impl<T> [T] {
             } else if cmp == Greater {
                 right = mid;
             } else {
+                // SAFETY: same as the `get_unchecked` above
+                unsafe { crate::intrinsics::assume(mid < self.len()) };
                 return Ok(mid);
             }
 
