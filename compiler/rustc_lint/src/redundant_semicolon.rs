@@ -55,7 +55,7 @@ fn maybe_lint_redundant_semis(cx: &EarlyContext<'_>, seq: &mut Option<(Span, boo
                 ("unnecessary trailing semicolon", "remove this semicolon")
             };
             lint.build(msg)
-                .span_suggestion(span, rem, String::new(), Applicability::MaybeIncorrect)
+                .span_suggestion_verbose(span, rem, String::new(), Applicability::MaybeIncorrect)
                 .emit();
         });
     }
