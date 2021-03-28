@@ -4,10 +4,7 @@ use crate::spec::{
 
 pub fn opts() -> TargetOptions {
     let mut pre_link_args = LinkArgs::new();
-    pre_link_args.insert(
-        LinkerFlavor::Gcc,
-        vec!["-Wl,--as-needed".to_string(), "-Wl,-z,noexecstack".to_string()],
-    );
+    pre_link_args.insert(LinkerFlavor::Gcc, vec!["-Wl,-z,noexecstack".to_string()]);
 
     TargetOptions {
         env: "gnu".to_string(),

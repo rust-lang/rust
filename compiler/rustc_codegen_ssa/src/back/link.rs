@@ -1652,6 +1652,12 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     }
 
     // NO-OPT-OUT, OBJECT-FILES-NO
+    // Avoid linking to dynamic libraries unless they satisfy some undefined symbols
+    // at the point at which they are specified on the command line.
+    // Must be passed before any dynamic libraries.
+    cmd.add_as_needed();
+
+    // NO-OPT-OUT, OBJECT-FILES-NO
     if crt_objects_fallback {
         cmd.no_crt_objects();
     }
