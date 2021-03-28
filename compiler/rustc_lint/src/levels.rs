@@ -464,15 +464,16 @@ impl<'s> LintLevelsBuilder<'s> {
                 // we don't warn about the name change.
                 if let CheckLintNameResult::Warning(_, Some(new_name)) = lint_result {
                     // Ignore any errors or warnings that happen because the new name is inaccurate
-                    if let CheckLintNameResult::Ok(ids) =
-                        store.check_lint_name(&new_name, tool_name)
-                    {
+                    // NOTE: `new_name` already includes the tool name, so we don't have to add it again.
+                    if let CheckLintNameResult::Ok(ids) = store.check_lint_name(&new_name, None) {
                         let src =
                             LintLevelSource::Node(Symbol::intern(&new_name), li.span(), reason);
                         for &id in ids {
                             self.check_gated_lint(id, attr.span);
                             self.insert_spec(&mut specs, id, (level, src));
                         }
+                    } else {
+                        panic!("renamed lint does not exist: {}", new_name);
                     }
                 }
             }
