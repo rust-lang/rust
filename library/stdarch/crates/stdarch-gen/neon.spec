@@ -141,6 +141,138 @@ link-aarch64 = fabd._EXT_
 generate float*_t
 
 ////////////////////
+// Absolute difference Long
+////////////////////
+
+/// Unsigned Absolute difference Long
+name = vabdl
+multi_fn = simd_cast, {vabd-unsigned-noext, a, b}
+a = 1, 2, 3, 4, 4, 3, 2, 1
+b = 10, 10, 10, 10, 10, 10, 10, 10
+validate 9, 8, 7, 6, 6, 7, 8, 9
+
+arm = vabdl.s
+aarch64 = uabdl
+generate uint8x8_t:uint8x8_t:uint16x8_t, uint16x4_t:uint16x4_t:uint32x4_t, uint32x2_t:uint32x2_t:uint64x2_t
+
+/// Signed Absolute difference Long
+name = vabdl
+multi_fn = simd_cast, c:uint8x8_t, {vabd-signed-noext, a, b}
+multi_fn = simd_cast, c
+a = 1, 2, 3, 4, 4, 3, 2, 1
+b = 10, 10, 10, 10, 10, 10, 10, 10
+validate 9, 8, 7, 6, 6, 7, 8, 9
+
+arm = vabdl.s
+aarch64 = sabdl
+generate int8x8_t:int8x8_t:int16x8_t
+
+/// Signed Absolute difference Long
+name = vabdl
+multi_fn = simd_cast, c:uint16x4_t, {vabd-signed-noext, a, b}
+multi_fn = simd_cast, c
+a = 1, 2, 11, 12
+b = 10, 10, 10, 10
+validate 9, 8, 1, 2
+
+arm = vabdl.s
+aarch64 = sabdl
+generate int16x4_t:int16x4_t:int32x4_t
+
+/// Signed Absolute difference Long
+name = vabdl
+multi_fn = simd_cast, c:uint32x2_t, {vabd-signed-noext, a, b}
+multi_fn = simd_cast, c
+a = 1, 11
+b = 10, 10
+validate 9, 1
+
+arm = vabdl.s
+aarch64 = sabdl
+generate int32x2_t:int32x2_t:int64x2_t
+
+/// Unsigned Absolute difference Long
+name = vabdl_high
+no-q
+multi_fn = simd_shuffle8, c:uint8x8_t, a, a, [8, 9, 10, 11, 12, 13, 14, 15]
+multi_fn = simd_shuffle8, d:uint8x8_t, b, b, [8, 9, 10, 11, 12, 13, 14, 15]
+multi_fn = simd_cast, {vabd_u8, c, d}
+a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+b = 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10
+validate 1, 0, 1, 2, 3, 4, 5, 6
+
+aarch64 = uabdl
+generate uint8x16_t:uint8x16_t:uint16x8_t
+
+/// Unsigned Absolute difference Long
+name = vabdl_high
+no-q
+multi_fn = simd_shuffle4, c:uint16x4_t, a, a, [4, 5, 6, 7]
+multi_fn = simd_shuffle4, d:uint16x4_t, b, b, [4, 5, 6, 7]
+multi_fn = simd_cast, {vabd_u16, c, d}
+a = 1, 2, 3, 4, 8, 9, 11, 12
+b = 10, 10, 10, 10, 10, 10, 10, 10
+validate 2, 1, 1, 2
+
+aarch64 = uabdl
+generate uint16x8_t:uint16x8_t:uint32x4_t
+
+/// Unsigned Absolute difference Long
+name = vabdl_high
+no-q
+multi_fn = simd_shuffle2, c:uint32x2_t, a, a, [2, 3]
+multi_fn = simd_shuffle2, d:uint32x2_t, b, b, [2, 3]
+multi_fn = simd_cast, {vabd_u32, c, d}
+a = 1, 2, 3, 4
+b = 10, 10, 10, 10
+validate 7, 6
+
+aarch64 = uabdl
+generate uint32x4_t:uint32x4_t:uint64x2_t
+
+/// Signed Absolute difference Long
+name = vabdl_high
+no-q
+multi_fn = simd_shuffle8, c:int8x8_t, a, a, [8, 9, 10, 11, 12, 13, 14, 15]
+multi_fn = simd_shuffle8, d:int8x8_t, b, b, [8, 9, 10, 11, 12, 13, 14, 15]
+multi_fn = simd_cast, e:uint8x8_t, {vabd_s8, c, d}
+multi_fn = simd_cast, e
+a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+b = 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10
+validate 1, 0, 1, 2, 3, 4, 5, 6
+
+aarch64 = sabdl
+generate int8x16_t:int8x16_t:int16x8_t
+
+/// Signed Absolute difference Long
+name = vabdl_high
+no-q
+multi_fn = simd_shuffle4, c:int16x4_t, a, a, [4, 5, 6, 7]
+multi_fn = simd_shuffle4, d:int16x4_t, b, b, [4, 5, 6, 7]
+multi_fn = simd_cast, e:uint16x4_t, {vabd_s16, c, d}
+multi_fn = simd_cast, e
+a = 1, 2, 3, 4, 9, 10, 11, 12
+b = 10, 10, 10, 10, 10, 10, 10, 10
+validate 1, 0, 1, 2
+
+aarch64 = sabdl
+generate int16x8_t:int16x8_t:int32x4_t
+
+/// Signed Absolute difference Long
+name = vabdl_high
+no-q
+multi_fn = simd_shuffle2, c:int32x2_t, a, a, [2, 3]
+multi_fn = simd_shuffle2, d:int32x2_t, b, b, [2, 3]
+multi_fn = simd_cast, e:uint32x2_t, {vabd_s32, c, d}
+multi_fn = simd_cast, e
+a = 1, 2, 3, 4
+b = 10, 10, 10, 10
+validate 7, 6
+
+aarch64 = sabdl
+generate int32x4_t:int32x4_t:int64x2_t
+
+////////////////////
 // equality
 ////////////////////
 
