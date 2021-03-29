@@ -40,7 +40,7 @@ pub(crate) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
                 _ => false,
             },
             hir::ScopeDef::MacroDef(_) => true,
-            hir::ScopeDef::ImplSelfType(impl_) => match impl_.target_ty(ctx.db).as_adt() {
+            hir::ScopeDef::ImplSelfType(impl_) => match impl_.self_ty(ctx.db).as_adt() {
                 Some(hir::Adt::Struct(strukt)) => {
                     acc.add_struct_pat(ctx, strukt, Some(name.clone()));
                     true

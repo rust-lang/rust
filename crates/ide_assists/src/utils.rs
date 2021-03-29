@@ -338,11 +338,11 @@ pub(crate) fn find_struct_impl(
         // (we currently use the wrong type parameter)
         // also we wouldn't want to use e.g. `impl S<u32>`
 
-        let same_ty = match blk.target_ty(db).as_adt() {
+        let same_ty = match blk.self_ty(db).as_adt() {
             Some(def) => def == struct_def,
             None => false,
         };
-        let not_trait_impl = blk.target_trait(db).is_none();
+        let not_trait_impl = blk.trait_(db).is_none();
 
         if !(same_ty && not_trait_impl) {
             None

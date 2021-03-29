@@ -220,7 +220,7 @@ fn complete_enum_variants(
         };
 
         if let Some(impl_) = ctx.impl_def.as_ref().and_then(|impl_| ctx.sema.to_def(impl_)) {
-            if impl_.target_ty(ctx.db) == *ty {
+            if impl_.self_ty(ctx.db) == *ty {
                 for &variant in &variants {
                     let self_path = hir::ModPath::from_segments(
                         hir::PathKind::Plain,

@@ -537,7 +537,7 @@ impl Ctx {
         let generic_params =
             self.lower_generic_params_and_inner_items(GenericsOwner::Impl, impl_def);
         let target_trait = impl_def.trait_().map(|tr| self.lower_trait_ref(&tr));
-        let target_type = self.lower_type_ref(&impl_def.self_ty()?);
+        let self_ty = self.lower_type_ref(&impl_def.self_ty()?);
         let is_negative = impl_def.excl_token().is_some();
 
         // We cannot use `assoc_items()` here as that does not include macro calls.
@@ -554,7 +554,7 @@ impl Ctx {
             })
             .collect();
         let ast_id = self.source_ast_id_map.ast_id(impl_def);
-        let res = Impl { generic_params, target_trait, target_type, is_negative, items, ast_id };
+        let res = Impl { generic_params, target_trait, self_ty, is_negative, items, ast_id };
         Some(id(self.data().impls.alloc(res)))
     }
 

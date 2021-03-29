@@ -92,7 +92,7 @@ fn is_default_implemented(ctx: &AssistContext, impl_: &Impl) -> bool {
         None => return false,
     };
 
-    let ty = impl_def.target_ty(db);
+    let ty = impl_def.self_ty(db);
     let krate = impl_def.module(db).krate();
     let default = FamousDefs(&ctx.sema, Some(krate)).core_default_Default();
     let default_trait = match default {

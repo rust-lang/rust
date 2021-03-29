@@ -730,7 +730,7 @@ pub struct Trait {
 pub struct Impl {
     pub generic_params: GenericParamsId,
     pub target_trait: Option<Idx<TraitRef>>,
-    pub target_type: Idx<TypeRef>,
+    pub self_ty: Idx<TypeRef>,
     pub is_negative: bool,
     pub items: Box<[AssocItem]>,
     pub ast_id: FileAstId<ast::Impl>,
