@@ -26,12 +26,7 @@ pub(crate) type DocumentationLink = String;
 
 /// Rewrite documentation links in markdown to point to an online host (e.g. docs.rs)
 pub(crate) fn rewrite_links(db: &RootDatabase, markdown: &str, definition: &Definition) -> String {
-    let mut cb = |link: BrokenLink| {
-        Some((
-            /*url*/ link.reference.to_owned().into(),
-            /*title*/ link.reference.to_owned().into(),
-        ))
-    };
+    let mut cb = broken_link_clone_cb;
     let doc = Parser::new_with_broken_link_callback(markdown, Options::empty(), Some(&mut cb));
 
     let doc = map_links(doc, |target, title: &str| {
@@ -124,24 +119,24 @@ pub(crate) fn external_docs(
 pub(crate) fn extract_definitions_from_markdown(
     markdown: &str,
 ) -> Vec<(Range<usize>, String, Option<hir::Namespace>)> {
-    let mut res = vec![];
-    let mut cb = |link: BrokenLink| {
-        // These allocations are actually unnecessary but the lifetimes on BrokenLinkCallback are wrong
-        // this is fixed in the repo but not on the crates.io release yet
-        Some((
-            /*url*/ link.reference.to_owned().into(),
-            /*title*/ link.reference.to_owned().into(),
-        ))
-    };
-    let doc = Parser::new_with_broken_link_callback(markdown, Options::empty(), Some(&mut cb));
-    for (event, range) in doc.into_offset_iter() {
-        if let Event::Start(Tag::Link(_, target, title)) = event {
-            let link = if target.is_empty() { title } else { target };
-            let (link, ns) = parse_intra_doc_link(&link);
-            res.push((range, link.to_string(), ns));
-        }
-    }
-    res
+    extract_definitions_from_markdown_(markdown, &mut broken_link_clone_cb).collect()
+}
+
+fn extract_definitions_from_markdown_<'a>(
+    markdown: &'a str,
+    cb: &'a mut dyn FnMut(BrokenLink<'_>) -> Option<(CowStr<'a>, CowStr<'a>)>,
+) -> impl Iterator<Item = (Range<usize>, String, Option<hir::Namespace>)> + 'a {
+    Parser::new_with_broken_link_callback(markdown, Options::empty(), Some(cb))
+        .into_offset_iter()
+        .filter_map(|(event, range)| {
+            if let Event::Start(Tag::Link(_, target, title)) = event {
+                let link = if target.is_empty() { title } else { target };
+                let (link, ns) = parse_intra_doc_link(&link);
+                Some((range, link.to_string(), ns))
+            } else {
+                None
+            }
+        })
 }
 
 /// Extracts a link from a comment at the given position returning the spanning range, link and
@@ -149,20 +144,24 @@ pub(crate) fn extract_definitions_from_markdown(
 pub(crate) fn extract_positioned_link_from_comment(
     position: TextSize,
     comment: &ast::Comment,
+    docs: hir::Documentation,
 ) -> Option<(TextRange, String, Option<hir::Namespace>)> {
-    let doc_comment = comment.doc_comment()?;
+    let doc_comment = comment.doc_comment()?.to_string() + "\n" + docs.as_str();
     let comment_start =
         comment.syntax().text_range().start() + TextSize::from(comment.prefix().len() as u32);
-    let def_links = extract_definitions_from_markdown(doc_comment);
-    let (range, def_link, ns) =
-        def_links.into_iter().find_map(|(Range { start, end }, def_link, ns)| {
+    let len = comment.syntax().text_range().len().into();
+    let mut cb = broken_link_clone_cb;
+    // because pulldown_cmarks lifetimes are wrong we gotta dance around a few temporaries here
+    let res = extract_definitions_from_markdown_(&doc_comment, &mut cb)
+        .take_while(|&(Range { end, .. }, ..)| end < len)
+        .find_map(|(Range { start, end }, def_link, ns)| {
             let range = TextRange::at(
                 comment_start + TextSize::from(start as u32),
                 TextSize::from((end - start) as u32),
             );
             range.contains(position).then(|| (range, def_link, ns))
-        })?;
-    Some((range, def_link, ns))
+        });
+    res
 }
 
 /// Turns a syntax node into it's [`Definition`] if it can hold docs.
@@ -218,6 +217,15 @@ pub(crate) fn resolve_doc_path_for_def(
         | Definition::GenericParam(_)
         | Definition::Label(_) => None,
     }
+}
+
+fn broken_link_clone_cb<'a, 'b>(link: BrokenLink<'a>) -> Option<(CowStr<'b>, CowStr<'b>)> {
+    // These allocations are actually unnecessary but the lifetimes on BrokenLinkCallback are wrong
+    // this is fixed in the repo but not on the crates.io release yet
+    Some((
+        /*url*/ link.reference.to_owned().into(),
+        /*title*/ link.reference.to_owned().into(),
+    ))
 }
 
 // FIXME:

@@ -79,6 +79,29 @@ impl Definition {
         };
         Some(name)
     }
+
+    pub fn docs(&self, db: &RootDatabase) -> Option<hir::Documentation> {
+        match self {
+            Definition::Macro(it) => it.docs(db),
+            Definition::Field(it) => it.docs(db),
+            Definition::ModuleDef(def) => match def {
+                hir::ModuleDef::Module(it) => it.docs(db),
+                hir::ModuleDef::Function(it) => it.docs(db),
+                hir::ModuleDef::Adt(def) => match def {
+                    hir::Adt::Struct(it) => it.docs(db),
+                    hir::Adt::Union(it) => it.docs(db),
+                    hir::Adt::Enum(it) => it.docs(db),
+                },
+                hir::ModuleDef::Variant(it) => it.docs(db),
+                hir::ModuleDef::Const(it) => it.docs(db),
+                hir::ModuleDef::Static(it) => it.docs(db),
+                hir::ModuleDef::Trait(it) => it.docs(db),
+                hir::ModuleDef::TypeAlias(it) => it.docs(db),
+                hir::ModuleDef::BuiltinType(_) => None,
+            },
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug)]

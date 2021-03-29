@@ -115,10 +115,11 @@ pub(crate) fn hover(
 
             _ => ast::Comment::cast(token.clone())
                 .and_then(|comment| {
-                    let (idl_range, link, ns) =
-                        extract_positioned_link_from_comment(position.offset, &comment)?;
-                    range = Some(idl_range);
                     let def = doc_owner_to_def(&sema, &node)?;
+                    let docs = def.docs(db)?;
+                    let (idl_range, link, ns) =
+                        extract_positioned_link_from_comment(position.offset, &comment, docs)?;
+                    range = Some(idl_range);
                     resolve_doc_path_for_def(db, def, &link, ns)
                 })
                 .map(Definition::ModuleDef),
@@ -3812,23 +3813,33 @@ fn main() {
     fn hover_intra_doc_links() {
         check(
             r#"
-/// This is the [`foo`](foo$0) function.
-fn foo() {}
+
+pub mod theitem {
+    /// This is the item. Cool!
+    pub struct TheItem;
+}
+
+/// Gives you a [`TheItem$0`].
+///
+/// [`TheItem`]: theitem::TheItem
+pub fn gimme() -> theitem::TheItem {
+    theitem::TheItem
+}
 "#,
             expect![[r#"
-                *[`foo`](foo)*
+                *[`TheItem`]*
 
                 ```rust
-                test
+                test::theitem
                 ```
 
                 ```rust
-                fn foo()
+                pub struct TheItem
                 ```
 
                 ---
 
-                This is the [`foo`](https://docs.rs/test/*/test/fn.foo.html) function.
+                This is the item. Cool!
             "#]],
         );
     }

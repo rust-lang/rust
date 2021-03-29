@@ -31,7 +31,8 @@ pub(crate) fn goto_definition(
     let token = sema.descend_into_macros(original_token.clone());
     let parent = token.parent()?;
     if let Some(comment) = ast::Comment::cast(token) {
-        let (_, link, ns) = extract_positioned_link_from_comment(position.offset, &comment)?;
+        let docs = doc_owner_to_def(&sema, &parent)?.docs(db)?;
+        let (_, link, ns) = extract_positioned_link_from_comment(position.offset, &comment, docs)?;
         let def = doc_owner_to_def(&sema, &parent)?;
         let nav = resolve_doc_path_for_def(db, def, &link, ns)?.try_to_nav(db)?;
         return Some(RangeInfo::new(original_token.text_range(), vec![nav]));
@@ -1157,5 +1158,26 @@ fn fn_macro() {}
  //^^^^^^^^
             "#,
         )
+    }
+
+    #[test]
+    fn goto_intra_doc_links() {
+        check(
+            r#"
+
+pub mod theitem {
+    /// This is the item. Cool!
+    pub struct TheItem;
+             //^^^^^^^
+}
+
+/// Gives you a [`TheItem$0`].
+///
+/// [`TheItem`]: theitem::TheItem
+pub fn gimme() -> theitem::TheItem {
+    theitem::TheItem
+}
+"#,
+        );
     }
 }
