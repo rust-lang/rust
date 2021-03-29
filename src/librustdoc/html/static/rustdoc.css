@@ -18,26 +18,26 @@
 	font-display: swap;
 }
 
-/* See SourceSerifPro-LICENSE.txt for the Source Serif Pro license. */
+/* See SourceSerif4-LICENSE.md for the Source Serif 4 license. */
 @font-face {
-	font-family: 'Source Serif Pro';
+	font-family: 'Source Serif 4';
 	font-style: normal;
 	font-weight: 400;
-	src: local('Source Serif Pro'), url("SourceSerifPro-Regular.ttf.woff") format('woff');
+	src: local('Source Serif 4'), url("SourceSerif4-Regular.ttf.woff") format('woff');
 	font-display: swap;
 }
 @font-face {
-	font-family: 'Source Serif Pro';
+	font-family: 'Source Serif 4';
 	font-style: italic;
 	font-weight: 400;
-	src: local('Source Serif Pro Italic'), url("SourceSerifPro-It.ttf.woff") format('woff');
+	src: local('Source Serif 4 Italic'), url("SourceSerif4-It.ttf.woff") format('woff');
 	font-display: swap;
 }
 @font-face {
-	font-family: 'Source Serif Pro';
+	font-family: 'Source Serif 4';
 	font-style: normal;
 	font-weight: 700;
-	src: local('Source Serif Pro Bold'), url("SourceSerifPro-Bold.ttf.woff") format('woff');
+	src: local('Source Serif 4 Bold'), url("SourceSerif4-Bold.ttf.woff") format('woff');
 	font-display: swap;
 }
 
@@ -90,7 +90,7 @@ html {
 /* General structure and fonts */
 
 body {
-	font: 16px/1.4 "Source Serif Pro", serif;
+	font: 16px/1.4 "Source Serif 4", serif;
 	margin: 0;
 	position: relative;
 	padding: 10px 15px 20px 15px;
