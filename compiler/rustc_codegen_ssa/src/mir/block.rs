@@ -893,8 +893,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         debug!("codegen_block({:?}={:?})", bb, data);
 
-        for statement in &data.statements {
-            bx = self.codegen_statement(bx, statement);
+        for (statement, source_info) in data.statements.statements_and_source_info_iter() {
+            bx = self.codegen_statement(bx, statement, source_info);
         }
 
         self.codegen_terminator(bx, bb, data.terminator());

@@ -408,14 +408,14 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         let terminator = data.terminator();
         assert!(!data.is_cleanup, "DropAndReplace in unwind path not supported");
 
-        let assign = Statement {
-            kind: StatementKind::Assign(box (place, Rvalue::Use(value.clone()))),
-            source_info: terminator.source_info,
-        };
+        let assign =
+            Statement { kind: StatementKind::Assign(box (place, Rvalue::Use(value.clone()))) };
+
+        let statements = Statements::one(assign, terminator.source_info);
 
         let unwind = unwind.unwrap_or_else(|| self.patch.resume_block());
         let unwind = self.patch.new_block(BasicBlockData {
-            statements: vec![assign.clone()],
+            statements: statements.clone(),
             terminator: Some(Terminator {
                 kind: TerminatorKind::Goto { target: unwind },
                 ..*terminator
@@ -424,7 +424,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         });
 
         let target = self.patch.new_block(BasicBlockData {
-            statements: vec![assign],
+            statements: statements,
             terminator: Some(Terminator { kind: TerminatorKind::Goto { target }, ..*terminator }),
             is_cleanup: false,
         });

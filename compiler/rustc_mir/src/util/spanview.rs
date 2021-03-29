@@ -104,9 +104,11 @@ where
     for (bb, data) in body.basic_blocks().iter_enumerated() {
         match spanview {
             MirSpanview::Statement => {
-                for (i, statement) in data.statements.iter().enumerate() {
+                for (i, (statement, stmt_source_info)) in
+                    data.statements.statements_and_source_info_iter().enumerate()
+                {
                     if let Some(span_viewable) =
-                        statement_span_viewable(tcx, body_span, bb, i, statement)
+                        statement_span_viewable(tcx, body_span, bb, i, statement, *stmt_source_info)
                     {
                         span_viewables.push(span_viewable);
                     }
@@ -277,13 +279,15 @@ fn statement_span_viewable<'tcx>(
     bb: BasicBlock,
     i: usize,
     statement: &Statement<'tcx>,
+    stmt_source_info: SourceInfo,
 ) -> Option<SpanViewable> {
-    let span = statement.source_info.span;
+    let span = stmt_source_info.span;
     if !body_span.contains(span) {
         return None;
     }
     let id = format!("{}[{}]", bb.index(), i);
-    let tooltip = tooltip(tcx, &id, span, vec![statement.clone()], &None);
+    let tooltip =
+        tooltip(tcx, &id, span, Statements::one(statement.clone(), stmt_source_info), &None);
     Some(SpanViewable { bb, span, id, tooltip })
 }
 
@@ -299,7 +303,7 @@ fn terminator_span_viewable<'tcx>(
         return None;
     }
     let id = format!("{}:{}", bb.index(), terminator_kind_name(term));
-    let tooltip = tooltip(tcx, &id, span, vec![], &data.terminator);
+    let tooltip = tooltip(tcx, &id, span, Statements::new(), &data.terminator);
     Some(SpanViewable { bb, span, id, tooltip })
 }
 
@@ -320,7 +324,7 @@ fn block_span_viewable<'tcx>(
 
 fn compute_block_span<'tcx>(data: &BasicBlockData<'tcx>, body_span: Span) -> Span {
     let mut span = data.terminator().source_info.span;
-    for statement_span in data.statements.iter().map(|statement| statement.source_info.span) {
+    for statement_span in data.statements.source_info_iter().map(|source_info| source_info.span) {
         // Only combine Spans from the root context, and within the function's body_span.
         if statement_span.ctxt() == SyntaxContext::root() && body_span.contains(statement_span) {
             span = span.to(statement_span);
@@ -619,14 +623,14 @@ fn tooltip<'tcx>(
     tcx: TyCtxt<'tcx>,
     spanview_id: &str,
     span: Span,
-    statements: Vec<Statement<'tcx>>,
+    statements: Statements<'tcx>,
     terminator: &Option<Terminator<'tcx>>,
 ) -> String {
     let source_map = tcx.sess.source_map();
     let mut text = Vec::new();
     text.push(format!("{}: {}:", spanview_id, &source_map.span_to_string(span)));
-    for statement in statements {
-        let source_range = source_range_no_file(tcx, &statement.source_info.span);
+    for (statement, source_info) in statements.statements_and_source_info_iter() {
+        let source_range = source_range_no_file(tcx, &source_info.span);
         text.push(format!(
             "\n{}{}: {}: {}",
             TOOLTIP_INDENT,

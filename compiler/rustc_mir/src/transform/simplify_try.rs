@@ -16,8 +16,10 @@ use rustc_middle::mir::visit::{NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, List, Ty, TyCtxt};
 use rustc_target::abi::VariantIdx;
-use std::iter::{once, Enumerate, Peekable};
-use std::slice::Iter;
+use std::{
+    iter::{once, Enumerate, Peekable},
+    slice::Iter,
+};
 
 /// Simplifies arms of form `Variant(x) => Variant(x)` to just a move.
 ///
@@ -84,7 +86,7 @@ struct ArmIdentityInfo<'tcx> {
 }
 
 fn get_arm_identity_info<'a, 'tcx>(
-    stmts: &'a [Statement<'tcx>],
+    stmts: &'a Statements<'tcx>,
     locals_count: usize,
     debug_info: &'a [VarDebugInfo<'tcx>],
 ) -> Option<ArmIdentityInfo<'tcx>> {
@@ -165,12 +167,12 @@ fn get_arm_identity_info<'a, 'tcx>(
 
     fn find_storage_live_dead_stmts_for_local<'tcx>(
         local: Local,
-        stmts: &[Statement<'tcx>],
+        stmts: &Statements<'tcx>,
     ) -> Option<(usize, usize)> {
         trace!("looking for {:?}", local);
         let mut storage_live_stmt = None;
         let mut storage_dead_stmt = None;
-        for (idx, stmt) in stmts.iter().enumerate() {
+        for (idx, stmt) in stmts.statements_iter().enumerate() {
             if stmt.kind == StatementKind::StorageLive(local) {
                 storage_live_stmt = Some(idx);
             } else if stmt.kind == StatementKind::StorageDead(local) {
@@ -194,7 +196,7 @@ fn get_arm_identity_info<'a, 'tcx>(
     // discriminant(LOCAL_FROM) = VariantIdx;
     // (StorageLive(_) | StorageDead(_));*
     // ```
-    let mut stmt_iter = stmts.iter().enumerate().peekable();
+    let mut stmt_iter = stmts.statements_iter().enumerate().peekable();
 
     try_eat_storage_stmts(&mut stmt_iter, &mut storage_live_stmts, &mut storage_dead_stmts);
 
@@ -215,7 +217,7 @@ fn get_arm_identity_info<'a, 'tcx>(
 
     let (idx, stmt) = stmt_iter.next()?;
     let (set_discr_local, set_discr_var_idx) = match_set_discr(stmt)?;
-    let discr_stmt_source_info = stmt.source_info;
+    let discr_stmt_source_info = *stmts.source_info(idx);
     nop_stmts.push(idx);
 
     try_eat_storage_stmts(&mut stmt_iter, &mut storage_live_stmts, &mut storage_dead_stmts);
@@ -402,28 +404,28 @@ impl<'tcx> MirPass<'tcx> for SimplifyArmIdentity {
                     // The temporary that we've read the variant field into is scoped to this block,
                     // so we can remove the assignment.
                     if *local == opt_info.local_temp_0 {
-                        bb.statements[opt_info.get_variant_field_stmt].make_nop();
+                        bb.statements.make_nop(opt_info.get_variant_field_stmt);
                     }
 
                     for (left, right) in &opt_info.field_tmp_assignments {
                         if local == left || local == right {
-                            bb.statements[*live_idx].make_nop();
-                            bb.statements[*dead_idx].make_nop();
+                            bb.statements.make_nop(*live_idx);
+                            bb.statements.make_nop(*dead_idx);
                         }
                     }
                 }
 
                 // Right shape; transform
                 for stmt_idx in opt_info.stmts_to_remove {
-                    bb.statements[stmt_idx].make_nop();
+                    bb.statements.make_nop(stmt_idx);
                 }
 
-                let stmt = &mut bb.statements[opt_info.stmt_to_overwrite];
-                stmt.source_info = opt_info.source_info;
-                stmt.kind = StatementKind::Assign(box (
-                    opt_info.local_0.into(),
-                    Rvalue::Use(Operand::Move(opt_info.local_1.into())),
-                ));
+                *bb.statements.source_info_mut(opt_info.stmt_to_overwrite) = opt_info.source_info;
+                bb.statements.statement_mut(opt_info.stmt_to_overwrite).kind =
+                    StatementKind::Assign(box (
+                        opt_info.local_0.into(),
+                        Rvalue::Use(Operand::Move(opt_info.local_1.into())),
+                    ));
 
                 bb.statements.retain(|stmt| stmt.kind != StatementKind::Nop);
 
@@ -601,7 +603,7 @@ impl<'a, 'tcx> SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
 
                 // find the adt that has its discriminant read
                 // assuming this must be the last statement of the block
-                let adt_matched_on = match &bb.statements.last()?.kind {
+                let adt_matched_on = match &bb.statements.last_stmt()?.kind {
                     StatementKind::Assign(box (place, rhs))
                         if Some(*place) == discr_switched_on.place() =>
                     {
@@ -628,7 +630,7 @@ impl<'a, 'tcx> SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
                     // But `asm!(...)` could abort the program,
                     // so we cannot assume that the `unreachable` terminator itself is reachable.
                     // FIXME(Centril): use a normalization pass instead of a check.
-                    || bb.statements.iter().any(|stmt| match stmt.kind {
+                    || bb.statements.statements_iter().any(|stmt| match stmt.kind {
                         StatementKind::LlvmInlineAsm(..) => true,
                         _ => false,
                     })
@@ -644,7 +646,7 @@ impl<'a, 'tcx> SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
                                             && bb_l.terminator().kind == bb_r.terminator().kind
                                             && bb_l.statements.len() == bb_r.statements.len();
                     let statement_check = || {
-                        bb_l.statements.iter().zip(&bb_r.statements).try_fold(StatementEquality::TrivialEqual, |acc,(l,r)| {
+                        bb_l.statements.statements_iter().zip(bb_r.statements.statements_iter()).try_fold(StatementEquality::TrivialEqual, |acc,(l,r)| {
                             let stmt_equality = self.statement_equality(*adt_matched_on, &l, target_and_value_l, &r, target_and_value_r);
                             if matches!(stmt_equality, StatementEquality::NotEqual) {
                                 // short circuit

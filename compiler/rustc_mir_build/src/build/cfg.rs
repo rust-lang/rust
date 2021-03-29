@@ -26,9 +26,14 @@ impl<'tcx> CFG<'tcx> {
         bb
     }
 
-    crate fn push(&mut self, block: BasicBlock, statement: Statement<'tcx>) {
+    crate fn push(
+        &mut self,
+        block: BasicBlock,
+        statement: Statement<'tcx>,
+        source_info: SourceInfo,
+    ) {
         debug!("push({:?}, {:?})", block, statement);
-        self.block_data_mut(block).statements.push(statement);
+        self.block_data_mut(block).statements.push(statement, source_info);
     }
 
     crate fn push_assign(
@@ -40,7 +45,8 @@ impl<'tcx> CFG<'tcx> {
     ) {
         self.push(
             block,
-            Statement { source_info, kind: StatementKind::Assign(box (place, rvalue)) },
+            Statement { kind: StatementKind::Assign(box (place, rvalue)) },
+            source_info,
         );
     }
 
@@ -81,8 +87,8 @@ impl<'tcx> CFG<'tcx> {
         place: Place<'tcx>,
     ) {
         let kind = StatementKind::FakeRead(box (cause, place));
-        let stmt = Statement { source_info, kind };
-        self.push(block, stmt);
+        let stmt = Statement { kind };
+        self.push(block, stmt, source_info);
     }
 
     crate fn terminate(

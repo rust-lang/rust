@@ -13,9 +13,12 @@ use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::InferCtxt;
-use rustc_middle::mir::abstract_const::{Node, NodeId, NotConstEvaluatable};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::mir::{self, Rvalue, StatementKind, TerminatorKind};
+use rustc_middle::mir::{
+    abstract_const::{Node, NodeId, NotConstEvaluatable},
+    SourceInfo,
+};
 use rustc_middle::ty::subst::{Subst, SubstsRef};
 use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
 use rustc_session::lint;
@@ -373,9 +376,13 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
         }
     }
 
-    fn build_statement(&mut self, stmt: &mir::Statement<'tcx>) -> Result<(), ErrorReported> {
+    fn build_statement(
+        &mut self,
+        stmt: &mir::Statement<'tcx>,
+        source_info: &SourceInfo,
+    ) -> Result<(), ErrorReported> {
         debug!("AbstractConstBuilder: stmt={:?}", stmt);
-        let span = stmt.source_info.span;
+        let span = source_info.span;
         match stmt.kind {
             StatementKind::Assign(box (ref place, ref rvalue)) => {
                 let local = self.place_to_local(span, place)?;
@@ -413,7 +420,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             }
             // These are not actually relevant for us here, so we can ignore them.
             StatementKind::StorageLive(_) | StatementKind::StorageDead(_) => Ok(()),
-            _ => self.error(Some(stmt.source_info.span), "unsupported statement")?,
+            _ => self.error(Some(source_info.span), "unsupported statement")?,
         }
     }
 
@@ -495,8 +502,8 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
         // We checked for a cyclic cfg above, so this should terminate.
         loop {
             debug!("AbstractConstBuilder: block={:?}", block);
-            for stmt in block.statements.iter() {
-                self.build_statement(stmt)?;
+            for (stmt, source_info) in block.statements.statements_and_source_info_iter() {
+                self.build_statement(stmt, source_info)?;
             }
 
             if let Some(next) = self.build_terminator(block.terminator())? {

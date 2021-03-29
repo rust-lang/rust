@@ -131,7 +131,11 @@ fn find_local_assigned_to_return_place(
     while seen.insert(block) {
         trace!("Looking for assignments to `_0` in {:?}", block);
 
-        let local = body[block].statements.iter().rev().find_map(as_local_assigned_to_return_place);
+        let local = body[block]
+            .statements
+            .statements_iter()
+            .rev()
+            .find_map(as_local_assigned_to_return_place);
         if local.is_some() {
             return local;
         }

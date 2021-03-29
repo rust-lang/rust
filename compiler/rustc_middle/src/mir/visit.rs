@@ -306,9 +306,15 @@ macro_rules! make_mir_visitor {
                     is_cleanup: _
                 } = data;
 
+                macro_rules! iter {
+                    (mut) => (statements.statements_and_source_info_iter_mut());
+                    () => (statements.statements_and_source_info_iter());
+                }
+
                 let mut index = 0;
-                for statement in statements {
+                for (statement, source_info) in iter!($($mutability)?) {
                     let location = Location { block, statement_index: index };
+                    self.visit_source_info(source_info);
                     self.visit_statement(statement, location);
                     index += 1;
                 }
@@ -369,11 +375,9 @@ macro_rules! make_mir_visitor {
                                statement: & $($mutability)? Statement<'tcx>,
                                location: Location) {
                 let Statement {
-                    source_info,
                     kind,
                 } = statement;
 
-                self.visit_source_info(source_info);
                 match kind {
                     StatementKind::Assign(
                         box(ref $($mutability)? place, ref $($mutability)? rvalue)
@@ -934,9 +938,11 @@ macro_rules! make_mir_visitor {
                         self.visit_terminator(terminator, location)
                     }
                 } else {
-                    let statement = & $($mutability)?
-                        basic_block.statements[location.statement_index];
-                    self.visit_statement(statement, location)
+                    macro_rules! stmt {
+                        (mut) => (basic_block.statements.statement_mut(location.statement_index));
+                        () => (basic_block.statements.statement(location.statement_index));
+                    }
+                    self.visit_statement(stmt!($($mutability)?), location)
                 }
             }
         }

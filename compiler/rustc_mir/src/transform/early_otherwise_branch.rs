@@ -347,7 +347,7 @@ impl<'a, 'tcx> Helper<'a, 'tcx> {
 
                 // find the place of the adt where the discriminant is being read from
                 // assume this is the last statement of the block
-                let place_of_adt_discr_read = match bb.statements.last()?.kind {
+                let place_of_adt_discr_read = match bb.statements.last_stmt()?.kind {
                     StatementKind::Assign(box (_, Rvalue::Discriminant(adt_place))) => {
                         Some(adt_place)
                     }

@@ -58,7 +58,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ConstGotoOptimizationFinder<'a, 'tcx> {
         let _: Option<_> = try {
             let target = terminator.kind.as_goto()?;
             // We only apply this optimization if the last statement is a const assignment
-            let last_statement = self.body.basic_blocks()[location.block].statements.last()?;
+            let last_statement = self.body.basic_blocks()[location.block].statements.last_stmt()?;
 
             if let (place, Rvalue::Use(Operand::Constant(_const))) =
                 last_statement.kind.as_assign()?

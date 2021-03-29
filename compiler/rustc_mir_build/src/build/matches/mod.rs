@@ -447,7 +447,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.push(
                     block,
                     Statement {
-                        source_info: ty_source_info,
                         kind: StatementKind::AscribeUserType(
                             box (place, user_ty),
                             // We always use invariant as the variance here. This is because the
@@ -467,6 +466,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             ty::Variance::Invariant,
                         ),
                     },
+                    ty_source_info,
                 );
 
                 self.schedule_drop_for_binding(var, irrefutable_pat.span, OutsideGuard);
@@ -600,7 +600,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> Place<'tcx> {
         let local_id = self.var_local_id(var, for_guard);
         let source_info = self.source_info(span);
-        self.cfg.push(block, Statement { source_info, kind: StatementKind::StorageLive(local_id) });
+        self.cfg.push(block, Statement { kind: StatementKind::StorageLive(local_id) }, source_info);
         let region_scope = self.region_scope_tree.var_scope(var.local_id);
         if schedule_drop {
             self.schedule_drop(span, region_scope, local_id, DropKind::Storage);
@@ -1955,12 +1955,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.cfg.push(
                 block,
                 Statement {
-                    source_info,
                     kind: StatementKind::AscribeUserType(
                         box (ascription.source, user_ty),
                         ascription.variance,
                     ),
                 },
+                source_info,
             );
         }
     }

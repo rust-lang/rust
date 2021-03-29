@@ -32,6 +32,7 @@
 #![feature(const_fn)]
 #![feature(const_panic)]
 #![feature(core_intrinsics)]
+#![feature(destructuring_assignment)]
 #![feature(discriminant_kind)]
 #![feature(never_type)]
 #![feature(extern_types)]

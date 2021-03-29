@@ -75,7 +75,9 @@ impl<'a, 'tcx> Visitor<'tcx> for PackedRefChecker<'a, 'tcx> {
 
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         // Make sure we know where in the MIR we are.
-        self.source_info = statement.source_info;
+        self.source_info = *self.body.basic_blocks()[location.block]
+            .statements
+            .source_info(location.statement_index);
         self.super_statement(statement, location);
     }
 

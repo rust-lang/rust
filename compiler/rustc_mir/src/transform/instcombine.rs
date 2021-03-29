@@ -15,12 +15,12 @@ impl<'tcx> MirPass<'tcx> for InstCombine {
         let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
         let ctx = InstCombineContext { tcx, local_decls };
         for block in basic_blocks.iter_mut() {
-            for statement in block.statements.iter_mut() {
+            for (statement, source_info) in block.statements.statements_and_source_info_iter_mut() {
                 match statement.kind {
                     StatementKind::Assign(box (_place, ref mut rvalue)) => {
-                        ctx.combine_bool_cmp(&statement.source_info, rvalue);
-                        ctx.combine_ref_deref(&statement.source_info, rvalue);
-                        ctx.combine_len(&statement.source_info, rvalue);
+                        ctx.combine_bool_cmp(source_info, rvalue);
+                        ctx.combine_ref_deref(source_info, rvalue);
+                        ctx.combine_len(source_info, rvalue);
                     }
                     _ => {}
                 }

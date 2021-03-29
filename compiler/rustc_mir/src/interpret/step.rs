@@ -61,7 +61,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         let old_frames = self.frame_idx();
 
-        if let Some(stmt) = basic_block.statements.get(loc.statement_index) {
+        if let Some(stmt) = basic_block.statements.statement_opt(loc.statement_index) {
             assert_eq!(old_frames, self.frame_idx());
             self.statement(stmt)?;
             return Ok(true);

@@ -63,7 +63,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ) {
         debug!("add_moved_or_invoked_closure_note: location={:?} place={:?}", location, place);
         let mut target = place.local_or_deref_local();
-        for stmt in &self.body[location.block].statements[location.statement_index..] {
+        for stmt in
+            self.body[location.block].statements.statements_iter().skip(location.statement_index)
+        {
             debug!("add_moved_or_invoked_closure_note: stmt={:?} target={:?}", stmt, target);
             if let StatementKind::Assign(box (into, Rvalue::Use(from))) = &stmt.kind {
                 debug!("add_fnonce_closure_note: into={:?} from={:?}", into, from);
@@ -774,10 +776,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ) -> UseSpans<'tcx> {
         use self::UseSpans::*;
 
-        let stmt = match self.body[location.block].statements.get(location.statement_index) {
-            Some(stmt) => stmt,
-            None => return OtherUse(self.body.source_info(location).span),
-        };
+        let stmt =
+            match self.body[location.block].statements.statement_opt(location.statement_index) {
+                Some(stmt) => stmt,
+                None => return OtherUse(self.body.source_info(location).span),
+            };
 
         debug!("move_spans: moved_place={:?} location={:?} stmt={:?}", moved_place, location, stmt);
         if let StatementKind::Assign(box (_, Rvalue::Aggregate(ref kind, ref places))) = stmt.kind {
@@ -812,12 +815,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 _ => {}
             }
         }
+        let stmt_source_info =
+            self.body[location.block].statements.source_info(location.statement_index);
 
         let normal_ret =
             if moved_place.projection.iter().any(|p| matches!(p, ProjectionElem::Downcast(..))) {
-                PatUse(stmt.source_info.span)
+                PatUse(stmt_source_info.span)
             } else {
-                OtherUse(stmt.source_info.span)
+                OtherUse(stmt_source_info.span)
             };
 
         // We are trying to find MIR of the form:
@@ -904,7 +909,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             });
 
             return FnSelfUse {
-                var_span: stmt.source_info.span,
+                var_span: stmt_source_info.span,
                 fn_call_span,
                 fn_span: self
                     .infcx
@@ -926,23 +931,28 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         use self::UseSpans::*;
         debug!("borrow_spans: use_span={:?} location={:?}", use_span, location);
 
-        let target = match self.body[location.block].statements.get(location.statement_index) {
-            Some(&Statement { kind: StatementKind::Assign(box (ref place, _)), .. }) => {
-                if let Some(local) = place.as_local() {
-                    local
-                } else {
-                    return OtherUse(use_span);
+        let target =
+            match self.body[location.block].statements.statement_opt(location.statement_index) {
+                Some(&Statement { kind: StatementKind::Assign(box (ref place, _)), .. }) => {
+                    if let Some(local) = place.as_local() {
+                        local
+                    } else {
+                        return OtherUse(use_span);
+                    }
                 }
-            }
-            _ => return OtherUse(use_span),
-        };
+                _ => return OtherUse(use_span),
+            };
 
         if self.body.local_kind(target) != LocalKind::Temp {
             // operands are always temporaries.
             return OtherUse(use_span);
         }
 
-        for stmt in &self.body[location.block].statements[location.statement_index + 1..] {
+        for stmt in self.body[location.block]
+            .statements
+            .statements_iter()
+            .skip(location.statement_index + 1)
+        {
             if let StatementKind::Assign(box (_, Rvalue::Aggregate(ref kind, ref places))) =
                 stmt.kind
             {
@@ -965,7 +975,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
             }
 
-            if use_span != stmt.source_info.span {
+            let stmt_source_info =
+                self.body[location.block].statements.source_info(location.statement_index);
+            if use_span != stmt_source_info.span {
                 break;
             }
         }

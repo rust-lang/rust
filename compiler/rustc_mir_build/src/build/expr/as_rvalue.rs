@@ -90,7 +90,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let result = this.local_decls.push(LocalDecl::new(expr.ty, expr_span).internal());
                 this.cfg.push(
                     block,
-                    Statement { source_info, kind: StatementKind::StorageLive(result) },
+                    Statement { kind: StatementKind::StorageLive(result) },
+                    source_info,
                 );
                 if let Some(scope) = scope {
                     // schedule a shallow free of that memory, lest we unwind:
@@ -405,7 +406,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let source_info = this.source_info(upvar_span);
         let temp = this.local_decls.push(LocalDecl::new(upvar_ty, upvar_span));
 
-        this.cfg.push(block, Statement { source_info, kind: StatementKind::StorageLive(temp) });
+        this.cfg.push(block, Statement { kind: StatementKind::StorageLive(temp) }, source_info);
 
         let arg_place_builder = unpack!(block = this.as_place_builder(block, arg));
 

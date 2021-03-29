@@ -432,7 +432,7 @@ impl<'tcx> Body<'tcx> {
     pub fn make_statement_nop(&mut self, location: Location) {
         let block = &mut self.basic_blocks[location.block];
         debug_assert!(location.statement_index < block.statements.len());
-        block.statements[location.statement_index].make_nop()
+        block.statements.make_nop(location.statement_index)
     }
 
     /// Returns the source info associated with `location`.
@@ -441,7 +441,7 @@ impl<'tcx> Body<'tcx> {
         let stmts = &block.statements;
         let idx = location.statement_index;
         if idx < stmts.len() {
-            &stmts[idx].source_info
+            stmts.source_info(idx)
         } else {
             assert_eq!(idx, stmts.len());
             &block.terminator().source_info
@@ -1154,7 +1154,7 @@ impl BasicBlock {
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
 pub struct BasicBlockData<'tcx> {
     /// List of statements in this block.
-    pub statements: Vec<Statement<'tcx>>,
+    pub statements: Statements<'tcx>,
 
     /// Terminator for this block.
     ///
@@ -1171,6 +1171,208 @@ pub struct BasicBlockData<'tcx> {
     /// generated (particularly for MSVC cleanup). Unwind blocks must
     /// only branch to other unwind blocks.
     pub is_cleanup: bool,
+}
+
+/// `Statement`s along with corresponding `SourceInfo`s.
+/// The abstraction allows for a memory layout where SourceInfo is not
+/// stored alongside the Statement. Since Statement is often iterated
+/// without accessing the SourceInfo, we can avoid loading the cacheline
+/// with SourceInfo's that are not going to be accessed.
+#[derive(Clone, Debug, Default, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+pub struct Statements<'tcx> {
+    statements: Vec<Statement<'tcx>>,
+    source_infos: Vec<SourceInfo>,
+}
+
+impl<'tcx> Statements<'tcx> {
+    pub fn new() -> Self {
+        Self { statements: vec![], source_infos: vec![] }
+    }
+
+    pub fn one(stmt: Statement<'tcx>, source_info: SourceInfo) -> Self {
+        Self { statements: vec![stmt], source_infos: vec![source_info] }
+    }
+
+    pub fn two(
+        stmt1: Statement<'tcx>,
+        source_info1: SourceInfo,
+        stmt2: Statement<'tcx>,
+        source_info2: SourceInfo,
+    ) -> Self {
+        Self { statements: vec![stmt1, stmt2], source_infos: vec![source_info1, source_info2] }
+    }
+
+    pub fn from_iter(iter: impl IntoIterator<Item = (Statement<'tcx>, SourceInfo)>) -> Self {
+        let (statements, source_infos) = iter.into_iter().unzip();
+        Self { statements, source_infos }
+    }
+
+    pub fn len(&self) -> usize {
+        self.statements.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.statements.len() == 0
+    }
+
+    pub fn make_nop(&mut self, idx: usize) {
+        self.statements[idx].make_nop()
+    }
+
+    pub fn source_info(&self, idx: usize) -> &SourceInfo {
+        &self.source_infos[idx]
+    }
+
+    pub fn source_info_mut(&mut self, idx: usize) -> &mut SourceInfo {
+        &mut self.source_infos[idx]
+    }
+
+    pub fn source_info_opt(&self, idx: usize) -> Option<&SourceInfo> {
+        self.source_infos.get(idx)
+    }
+
+    pub fn source_info_iter(&self) -> impl Iterator<Item = &SourceInfo> {
+        self.source_infos.iter()
+    }
+
+    pub fn source_info_iter_mut(&mut self) -> impl Iterator<Item = &mut SourceInfo> {
+        self.source_infos.iter_mut()
+    }
+
+    pub fn statement(&self, idx: usize) -> &Statement<'tcx> {
+        &self.statements[idx]
+    }
+
+    pub fn statement_opt(&self, idx: usize) -> Option<&Statement<'tcx>> {
+        self.statements.get(idx)
+    }
+
+    pub fn last_stmt(&self) -> Option<&Statement<'tcx>> {
+        self.statements.last()
+    }
+
+    pub fn statement_mut(&mut self, idx: usize) -> &mut Statement<'tcx> {
+        &mut self.statements[idx]
+    }
+
+    pub fn statements_iter(&self) -> std::slice::Iter<'_, Statement<'tcx>> {
+        self.statements.iter()
+    }
+
+    pub fn statements_iter_mut(&mut self) -> std::slice::IterMut<'_, Statement<'tcx>> {
+        self.statements.iter_mut()
+    }
+
+    pub fn statements_and_source_info_iter(
+        &self,
+    ) -> impl Iterator<Item = (&Statement<'tcx>, &SourceInfo)> {
+        self.statements.iter().zip(self.source_infos.iter())
+    }
+
+    pub fn statements_and_source_info_iter_mut(
+        &mut self,
+    ) -> impl Iterator<Item = (&mut Statement<'tcx>, &mut SourceInfo)> {
+        self.statements.iter_mut().zip(self.source_infos.iter_mut())
+    }
+
+    pub fn push(&mut self, stmt: Statement<'tcx>, source_info: SourceInfo) {
+        self.statements.push(stmt);
+        self.source_infos.push(source_info);
+    }
+
+    pub fn insert(&mut self, at: usize, stmt: Statement<'tcx>, source_info: SourceInfo) {
+        self.statements.insert(at, stmt);
+        self.source_infos.insert(at, source_info);
+    }
+
+    pub fn extend(
+        &mut self,
+        stmts: impl Iterator<Item = Statement<'tcx>>,
+        source_infos: impl Iterator<Item = SourceInfo>,
+    ) {
+        self.statements.extend(stmts);
+        self.source_infos.extend(source_infos);
+    }
+
+    pub fn rotate_right(&mut self, k: usize) {
+        self.statements.rotate_right(k);
+        self.source_infos.rotate_right(k);
+    }
+
+    pub fn retain<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&Statement<'tcx>) -> bool,
+    {
+        (self.statements, self.source_infos) = self
+            .statements
+            .drain(0..)
+            .zip(self.source_infos.iter())
+            .filter(|(stmt, _)| f(stmt))
+            .unzip();
+    }
+
+    pub fn reserve(&mut self, additional: usize) {
+        self.statements.reserve(additional);
+        self.source_infos.reserve(additional);
+    }
+
+    pub fn append(&mut self, other: &mut Self) {
+        self.statements.append(&mut other.statements);
+        self.source_infos.append(&mut other.source_infos);
+    }
+
+    pub fn expand_statements<F, I>(&mut self, mut f: F)
+    where
+        F: FnMut((&mut Statement<'tcx>, &mut SourceInfo)) -> Option<I>,
+        I: iter::TrustedLen<Item = (Statement<'tcx>, SourceInfo)>,
+    {
+        // Gather all the iterators we'll need to splice in, and their positions.
+        let mut splices: Vec<(usize, I)> = vec![];
+        let mut extra_stmts = 0;
+        for (i, (stmt, source_info)) in self.statements_and_source_info_iter_mut().enumerate() {
+            if let Some(mut new_stmts) = f((stmt, source_info)) {
+                if let Some(first) = new_stmts.next() {
+                    // We can already store the first new statement.
+                    *stmt = first.0;
+                    *source_info = first.1;
+
+                    // Save the other statements for optimized splicing.
+                    let remaining = new_stmts.size_hint().0;
+                    if remaining > 0 {
+                        splices.push((i + 1 + extra_stmts, new_stmts));
+                        extra_stmts += remaining;
+                    }
+                } else {
+                    stmt.make_nop();
+                }
+            }
+        }
+
+        // Splice in the new statements, from the end of the block.
+        // FIXME(eddyb) This could be more efficient with a "gap buffer"
+        // where a range of elements ("gap") is left uninitialized, with
+        // splicing adding new elements to the end of that gap and moving
+        // existing elements from before the gap to the end of the gap.
+        // For now, this is safe code, emulating a gap but initializing it.
+        let mut gap = self.statements.len()..self.statements.len() + extra_stmts;
+
+        self.statements.resize(gap.end, Statement { kind: StatementKind::Nop });
+        self.source_infos.resize(gap.end, SourceInfo::outermost(DUMMY_SP));
+        for (splice_start, new_stmts_and_source_infos) in splices.into_iter().rev() {
+            let splice_end = splice_start + new_stmts_and_source_infos.size_hint().0;
+            while gap.end > splice_end {
+                gap.start -= 1;
+                gap.end -= 1;
+                self.statements.swap(gap.start, gap.end);
+                self.source_infos.swap(gap.start, gap.end);
+            }
+            let (new_stmts, new_source_infos): (Vec<_>, Vec<_>) =
+                new_stmts_and_source_infos.unzip();
+            self.statements.splice(splice_start..splice_end, new_stmts);
+            self.source_infos.splice(splice_start..splice_end, new_source_infos);
+            gap.end = splice_start;
+        }
+    }
 }
 
 /// Information about an assertion failure.
@@ -1233,7 +1435,7 @@ pub type SuccessorsMut<'a> =
 
 impl<'tcx> BasicBlockData<'tcx> {
     pub fn new(terminator: Option<Terminator<'tcx>>) -> BasicBlockData<'tcx> {
-        BasicBlockData { statements: vec![], terminator, is_cleanup: false }
+        BasicBlockData { statements: Statements::new(), terminator, is_cleanup: false }
     }
 
     /// Accessor for terminator.
@@ -1252,64 +1454,19 @@ impl<'tcx> BasicBlockData<'tcx> {
     where
         F: FnMut(&mut Statement<'_>) -> bool,
     {
-        for s in &mut self.statements {
+        for s in self.statements.statements_iter_mut() {
             if !f(s) {
                 s.make_nop();
             }
         }
     }
 
-    pub fn expand_statements<F, I>(&mut self, mut f: F)
-    where
-        F: FnMut(&mut Statement<'tcx>) -> Option<I>,
-        I: iter::TrustedLen<Item = Statement<'tcx>>,
-    {
-        // Gather all the iterators we'll need to splice in, and their positions.
-        let mut splices: Vec<(usize, I)> = vec![];
-        let mut extra_stmts = 0;
-        for (i, s) in self.statements.iter_mut().enumerate() {
-            if let Some(mut new_stmts) = f(s) {
-                if let Some(first) = new_stmts.next() {
-                    // We can already store the first new statement.
-                    *s = first;
-
-                    // Save the other statements for optimized splicing.
-                    let remaining = new_stmts.size_hint().0;
-                    if remaining > 0 {
-                        splices.push((i + 1 + extra_stmts, new_stmts));
-                        extra_stmts += remaining;
-                    }
-                } else {
-                    s.make_nop();
-                }
-            }
-        }
-
-        // Splice in the new statements, from the end of the block.
-        // FIXME(eddyb) This could be more efficient with a "gap buffer"
-        // where a range of elements ("gap") is left uninitialized, with
-        // splicing adding new elements to the end of that gap and moving
-        // existing elements from before the gap to the end of the gap.
-        // For now, this is safe code, emulating a gap but initializing it.
-        let mut gap = self.statements.len()..self.statements.len() + extra_stmts;
-        self.statements.resize(
-            gap.end,
-            Statement { source_info: SourceInfo::outermost(DUMMY_SP), kind: StatementKind::Nop },
-        );
-        for (splice_start, new_stmts) in splices.into_iter().rev() {
-            let splice_end = splice_start + new_stmts.size_hint().0;
-            while gap.end > splice_end {
-                gap.start -= 1;
-                gap.end -= 1;
-                self.statements.swap(gap.start, gap.end);
-            }
-            self.statements.splice(splice_start..splice_end, new_stmts);
-            gap.end = splice_start;
-        }
-    }
-
     pub fn visitable(&self, index: usize) -> &dyn MirVisitable<'tcx> {
-        if index < self.statements.len() { &self.statements[index] } else { &self.terminator }
+        if index < self.statements.len() {
+            self.statements.statement(index)
+        } else {
+            &self.terminator
+        }
     }
 }
 
@@ -1446,13 +1603,12 @@ impl<O: fmt::Debug> fmt::Debug for AssertKind<O> {
 
 #[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
 pub struct Statement<'tcx> {
-    pub source_info: SourceInfo,
     pub kind: StatementKind<'tcx>,
 }
 
 // `Statement` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(Statement<'_>, 32);
+static_assert_size!(Statement<'_>, 16);
 
 impl Statement<'_> {
     /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
@@ -1463,10 +1619,7 @@ impl Statement<'_> {
 
     /// Changes a statement to a nop and returns the original statement.
     pub fn replace_nop(&mut self) -> Self {
-        Statement {
-            source_info: self.source_info,
-            kind: mem::replace(&mut self.kind, StatementKind::Nop),
-        }
+        Statement { kind: mem::replace(&mut self.kind, StatementKind::Nop) }
     }
 }
 

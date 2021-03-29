@@ -46,7 +46,7 @@ impl<'tcx> MirPatch<'tcx> {
         }
         let resume_block = resume_block.unwrap_or_else(|| {
             result.new_block(BasicBlockData {
-                statements: vec![],
+                statements: Statements::new(),
                 terminator: Some(Terminator {
                     source_info: SourceInfo::outermost(body.span),
                     kind: TerminatorKind::Resume,
@@ -149,16 +149,18 @@ impl<'tcx> MirPatch<'tcx> {
             debug!("MirPatch: adding statement {:?} at loc {:?}+{}", stmt, loc, delta);
             loc.statement_index += delta;
             let source_info = Self::source_info_for_index(&body[loc.block], loc);
-            body[loc.block]
-                .statements
-                .insert(loc.statement_index, Statement { source_info, kind: stmt });
+            body[loc.block].statements.insert(
+                loc.statement_index,
+                Statement { kind: stmt },
+                source_info,
+            );
             delta += 1;
         }
     }
 
     pub fn source_info_for_index(data: &BasicBlockData<'_>, loc: Location) -> SourceInfo {
-        match data.statements.get(loc.statement_index) {
-            Some(stmt) => stmt.source_info,
+        match data.statements.source_info_opt(loc.statement_index) {
+            Some(stmt_source_info) => *stmt_source_info,
             None => data.terminator().source_info,
         }
     }

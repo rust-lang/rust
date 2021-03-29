@@ -517,7 +517,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let kind = if let Some(&Statement {
                     kind: StatementKind::FakeRead(box (FakeReadCause::ForLet(_), _)),
                     ..
-                }) = block.statements.get(location.statement_index)
+                }) = block.statements.statement_opt(location.statement_index)
                 {
                     LaterUseKind::FakeLetRead
                 } else if self.was_captured_by_trait_object(borrow) {
@@ -562,7 +562,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // Start at the reserve location, find the place that we want to see cast to a trait object.
         let location = borrow.reserve_location;
         let block = &self.body[location.block];
-        let stmt = block.statements.get(location.statement_index);
+        let stmt = block.statements.statement_opt(location.statement_index);
         debug!("was_captured_by_trait_object: location={:?} stmt={:?}", location, stmt);
 
         // We make a `queue` vector that has the locations we want to visit. As of writing, this
@@ -590,7 +590,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             // We need to check the current location to find out if it is a terminator.
             let is_terminator = current_location.statement_index == block.statements.len();
             if !is_terminator {
-                let stmt = &block.statements[current_location.statement_index];
+                let stmt = block.statements.statement(current_location.statement_index);
                 debug!("was_captured_by_trait_object: stmt={:?}", stmt);
 
                 // The only kind of statement that we care about is assignments...

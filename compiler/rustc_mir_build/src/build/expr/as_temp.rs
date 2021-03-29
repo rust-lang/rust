@@ -86,8 +86,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Block { body: Block { expr: None, targeted_by_break: false, .. } }
                 if expr_ty.is_never() => {}
             _ => {
-                this.cfg
-                    .push(block, Statement { source_info, kind: StatementKind::StorageLive(temp) });
+                this.cfg.push(
+                    block,
+                    Statement { kind: StatementKind::StorageLive(temp) },
+                    source_info,
+                );
 
                 // In constants, `temp_lifetime` is `None` for temporaries that
                 // live for the `'static` lifetime. Thus we do not drop these

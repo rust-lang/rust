@@ -425,7 +425,7 @@ where
         debug!("open_drop_for_adt({:?}, {:?}, {:?})", self, adt, substs);
         if adt.variants.is_empty() {
             return self.elaborator.patch().new_block(BasicBlockData {
-                statements: vec![],
+                statements: Statements::new(),
                 terminator: Some(Terminator {
                     source_info: self.source_info,
                     kind: TerminatorKind::Unreachable,
@@ -582,7 +582,7 @@ where
         let discr = Place::from(self.new_temp(discr_ty));
         let discr_rv = Rvalue::Discriminant(self.place);
         let switch_block = BasicBlockData {
-            statements: vec![self.assign(discr, discr_rv)],
+            statements: Statements::one(self.assign(discr, discr_rv), self.source_info),
             terminator: Some(Terminator {
                 source_info: self.source_info,
                 kind: TerminatorKind::SwitchInt {
@@ -614,14 +614,17 @@ where
         let unit_temp = Place::from(self.new_temp(tcx.mk_unit()));
 
         let result = BasicBlockData {
-            statements: vec![self.assign(
-                Place::from(ref_place),
-                Rvalue::Ref(
-                    tcx.lifetimes.re_erased,
-                    BorrowKind::Mut { allow_two_phase_borrow: false },
-                    self.place,
+            statements: Statements::one(
+                self.assign(
+                    Place::from(ref_place),
+                    Rvalue::Ref(
+                        tcx.lifetimes.re_erased,
+                        BorrowKind::Mut { allow_two_phase_borrow: false },
+                        self.place,
+                    ),
                 ),
-            )],
+                self.source_info,
+            ),
             terminator: Some(Terminator {
                 kind: TerminatorKind::Call {
                     func: Operand::function_handle(
@@ -688,9 +691,14 @@ where
                 Rvalue::BinaryOp(BinOp::Add, box (move_(cur.into()), one)),
             )
         };
-
+        let statements = Statements::two(
+            self.assign(ptr, ptr_next),
+            self.source_info,
+            self.assign(Place::from(cur), cur_next),
+            self.source_info,
+        );
         let drop_block = BasicBlockData {
-            statements: vec![self.assign(ptr, ptr_next), self.assign(Place::from(cur), cur_next)],
+            statements: statements,
             is_cleanup: unwind.is_cleanup(),
             terminator: Some(Terminator {
                 source_info: self.source_info,
@@ -701,10 +709,13 @@ where
         let drop_block = self.elaborator.patch().new_block(drop_block);
 
         let loop_block = BasicBlockData {
-            statements: vec![self.assign(
-                can_go,
-                Rvalue::BinaryOp(BinOp::Eq, box (copy(Place::from(cur)), copy(length_or_end))),
-            )],
+            statements: Statements::one(
+                self.assign(
+                    can_go,
+                    Rvalue::BinaryOp(BinOp::Eq, box (copy(Place::from(cur)), copy(length_or_end))),
+                ),
+                self.source_info,
+            ),
             is_cleanup: unwind.is_cleanup(),
             terminator: Some(Terminator {
                 source_info: self.source_info,
@@ -764,10 +775,12 @@ where
         let len = Place::from(self.new_temp(tcx.types.usize));
 
         let base_block = BasicBlockData {
-            statements: vec![
+            statements: Statements::two(
                 self.assign(elem_size, Rvalue::NullaryOp(NullOp::SizeOf, ety)),
+                self.source_info,
                 self.assign(len, Rvalue::Len(self.place)),
-            ],
+                self.source_info,
+            ),
             is_cleanup: self.unwind.is_cleanup(),
             terminator: Some(Terminator {
                 source_info: self.source_info,
@@ -814,9 +827,16 @@ where
             // tmp = &raw mut P;
             // cur = tmp as *mut T;
             // end = Offset(cur, len);
-            vec![
+            let mut stmts = Statements::new();
+            stmts.push(
                 self.assign(tmp, Rvalue::AddressOf(Mutability::Mut, self.place)),
+                self.source_info,
+            );
+            stmts.push(
                 self.assign(cur, Rvalue::Cast(CastKind::Misc, Operand::Move(tmp), iter_ty)),
+                self.source_info,
+            );
+            stmts.push(
                 self.assign(
                     length_or_end,
                     Rvalue::BinaryOp(
@@ -824,11 +844,13 @@ where
                         box (Operand::Copy(cur), Operand::Move(length)),
                     ),
                 ),
-            ]
+                self.source_info,
+            );
+            stmts
         } else {
             // cur = 0 (length already pushed)
             let zero = self.constant_usize(0);
-            vec![self.assign(cur, Rvalue::Use(zero))]
+            Statements::one(self.assign(cur, Rvalue::Use(zero)), self.source_info)
         };
         let drop_block = self.elaborator.patch().new_block(BasicBlockData {
             statements: drop_block_stmts,
@@ -1021,7 +1043,7 @@ where
 
     fn new_block(&mut self, unwind: Unwind, k: TerminatorKind<'tcx>) -> BasicBlock {
         self.elaborator.patch().new_block(BasicBlockData {
-            statements: vec![],
+            statements: Statements::new(),
             terminator: Some(Terminator { source_info: self.source_info, kind: k }),
             is_cleanup: unwind.is_cleanup(),
         })
@@ -1040,6 +1062,6 @@ where
     }
 
     fn assign(&self, lhs: Place<'tcx>, rhs: Rvalue<'tcx>) -> Statement<'tcx> {
-        Statement { source_info: self.source_info, kind: StatementKind::Assign(box (lhs, rhs)) }
+        Statement { kind: StatementKind::Assign(box (lhs, rhs)) }
     }
 }

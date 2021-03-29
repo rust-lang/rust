@@ -19,15 +19,17 @@ pub fn expand_aggregate<'tcx>(
     kind: AggregateKind<'tcx>,
     source_info: SourceInfo,
     tcx: TyCtxt<'tcx>,
-) -> impl Iterator<Item = Statement<'tcx>> + TrustedLen {
+) -> impl Iterator<Item = (Statement<'tcx>, SourceInfo)> + TrustedLen {
     let mut set_discriminant = None;
     let active_field_index = match kind {
         AggregateKind::Adt(adt_def, variant_index, _, _, active_field_index) => {
             if adt_def.is_enum() {
-                set_discriminant = Some(Statement {
-                    kind: StatementKind::SetDiscriminant { place: box (lhs), variant_index },
+                set_discriminant = Some((
+                    Statement {
+                        kind: StatementKind::SetDiscriminant { place: box (lhs), variant_index },
+                    },
                     source_info,
-                });
+                ));
                 lhs = tcx.mk_place_downcast(lhs, adt_def, variant_index);
             }
             active_field_index
@@ -36,10 +38,12 @@ pub fn expand_aggregate<'tcx>(
             // Right now we only support initializing generators to
             // variant 0 (Unresumed).
             let variant_index = VariantIdx::new(0);
-            set_discriminant = Some(Statement {
-                kind: StatementKind::SetDiscriminant { place: box (lhs), variant_index },
+            set_discriminant = Some((
+                Statement {
+                    kind: StatementKind::SetDiscriminant { place: box (lhs), variant_index },
+                },
                 source_info,
-            });
+            ));
 
             // Operands are upvars stored on the base place, so no
             // downcast is necessary.
@@ -66,7 +70,10 @@ pub fn expand_aggregate<'tcx>(
                 let field = Field::new(active_field_index.unwrap_or(i));
                 tcx.mk_place_field(lhs, field, ty)
             };
-            Statement { source_info, kind: StatementKind::Assign(box (lhs_field, Rvalue::Use(op))) }
+            (
+                Statement { kind: StatementKind::Assign(box (lhs_field, Rvalue::Use(op))) },
+                source_info,
+            )
         })
         .chain(set_discriminant)
 }

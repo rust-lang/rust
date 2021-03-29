@@ -367,7 +367,7 @@ impl Inliner<'tcx> {
             }
             let blk = &callee_body.basic_blocks()[bb];
 
-            for stmt in &blk.statements {
+            for stmt in blk.statements.statements_iter() {
                 // Don't count StorageLive/StorageDead in the inlining cost.
                 match stmt.kind {
                     StatementKind::StorageLive(_)
@@ -518,10 +518,10 @@ impl Inliner<'tcx> {
                         );
                         let dest_ty = dest.ty(caller_body, self.tcx);
                         let temp = Place::from(self.new_call_temp(caller_body, &callsite, dest_ty));
-                        caller_body[callsite.block].statements.push(Statement {
-                            source_info: callsite.source_info,
-                            kind: StatementKind::Assign(box (temp, dest)),
-                        });
+                        caller_body[callsite.block].statements.push(
+                            Statement { kind: StatementKind::Assign(box (temp, dest)) },
+                            callsite.source_info,
+                        );
                         self.tcx.mk_place_deref(temp)
                     } else {
                         destination_place
@@ -583,10 +583,10 @@ impl Inliner<'tcx> {
                 for local in callee_body.vars_and_temps_iter() {
                     if integrator.always_live_locals.contains(local) {
                         let new_local = integrator.map_local(local);
-                        caller_body[callsite.block].statements.push(Statement {
-                            source_info: callsite.source_info,
-                            kind: StatementKind::StorageLive(new_local),
-                        });
+                        caller_body[callsite.block].statements.push(
+                            Statement { kind: StatementKind::StorageLive(new_local) },
+                            callsite.source_info,
+                        );
                     }
                 }
                 if let Some(block) = callsite.target {
@@ -596,10 +596,10 @@ impl Inliner<'tcx> {
                     for local in callee_body.vars_and_temps_iter().rev() {
                         if integrator.always_live_locals.contains(local) {
                             let new_local = integrator.map_local(local);
-                            caller_body[block].statements.push(Statement {
-                                source_info: callsite.source_info,
-                                kind: StatementKind::StorageDead(new_local),
-                            });
+                            caller_body[block].statements.push(
+                                Statement { kind: StatementKind::StorageDead(new_local) },
+                                callsite.source_info,
+                            );
                             n += 1;
                         }
                     }
@@ -727,10 +727,10 @@ impl Inliner<'tcx> {
         trace!("creating temp for argument {:?}", arg);
         let arg_ty = arg.ty(caller_body, self.tcx);
         let local = self.new_call_temp(caller_body, callsite, arg_ty);
-        caller_body[callsite.block].statements.push(Statement {
-            source_info: callsite.source_info,
-            kind: StatementKind::Assign(box (Place::from(local), Rvalue::Use(arg))),
-        });
+        caller_body[callsite.block].statements.push(
+            Statement { kind: StatementKind::Assign(box (Place::from(local), Rvalue::Use(arg))) },
+            callsite.source_info,
+        );
         local
     }
 
@@ -743,18 +743,15 @@ impl Inliner<'tcx> {
     ) -> Local {
         let local = caller_body.local_decls.push(LocalDecl::new(ty, callsite.source_info.span));
 
-        caller_body[callsite.block].statements.push(Statement {
-            source_info: callsite.source_info,
-            kind: StatementKind::StorageLive(local),
-        });
+        caller_body[callsite.block]
+            .statements
+            .push(Statement { kind: StatementKind::StorageLive(local) }, callsite.source_info);
 
         if let Some(block) = callsite.target {
             caller_body[block].statements.insert(
                 0,
-                Statement {
-                    source_info: callsite.source_info,
-                    kind: StatementKind::StorageDead(local),
-                },
+                Statement { kind: StatementKind::StorageDead(local) },
+                callsite.source_info,
             );
         }
 

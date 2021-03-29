@@ -564,7 +564,7 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
         location: Location,
     ) {
         debug!("MirBorrowckCtxt::process_statement({:?}, {:?}): {:?}", location, stmt, flow_state);
-        let span = stmt.source_info.span;
+        let span = self.body[location.block].statements.source_info(location.statement_index).span;
 
         self.check_activations(location, span, flow_state);
 
@@ -1441,7 +1441,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
                         let body = self.body;
                         let bbd = &body[loc.block];
-                        let stmt = &bbd.statements[loc.statement_index];
+                        let stmt = bbd.statements.statement(loc.statement_index);
                         debug!("temporary assigned in: stmt={:?}", stmt);
 
                         if let StatementKind::Assign(box (_, Rvalue::Ref(_, _, source))) = stmt.kind

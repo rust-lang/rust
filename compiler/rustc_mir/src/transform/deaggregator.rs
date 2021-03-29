@@ -10,7 +10,7 @@ impl<'tcx> MirPass<'tcx> for Deaggregator {
         let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
         let local_decls = &*local_decls;
         for bb in basic_blocks {
-            bb.expand_statements(|stmt| {
+            bb.statements.expand_statements(|(stmt, source_info)| {
                 // FIXME(eddyb) don't match twice on `stmt.kind` (post-NLL).
                 match stmt.kind {
                     // FIXME(#48193) Deaggregate arrays when it's cheaper to do so.
@@ -25,7 +25,7 @@ impl<'tcx> MirPass<'tcx> for Deaggregator {
                 }
 
                 let stmt = stmt.replace_nop();
-                let source_info = stmt.source_info;
+                let source_info = *source_info;
                 let (lhs, kind, operands) = match stmt.kind {
                     StatementKind::Assign(box (lhs, Rvalue::Aggregate(kind, operands))) => {
                         (lhs, kind, operands)

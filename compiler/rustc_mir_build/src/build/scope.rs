@@ -367,11 +367,8 @@ impl DropTree {
                 // Root nodes don't correspond to a drop.
                 DropKind::Storage if drop_idx == ROOT_NODE => {}
                 DropKind::Storage => {
-                    let stmt = Statement {
-                        source_info: drop_data.0.source_info,
-                        kind: StatementKind::StorageDead(drop_data.0.local),
-                    };
-                    cfg.push(block, stmt);
+                    let stmt = Statement { kind: StatementKind::StorageDead(drop_data.0.local) };
+                    cfg.push(block, stmt, drop_data.0.source_info);
                     let target = blocks[drop_data.1].unwrap();
                     if target != block {
                         // Diagnostics don't use this `Span` but debuginfo
@@ -949,11 +946,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             assert_eq!(local, cond_temp, "Drop scheduled on top of condition");
                             self.cfg.push(
                                 true_block,
-                                Statement { source_info, kind: StatementKind::StorageDead(local) },
+                                Statement { kind: StatementKind::StorageDead(local) },
+                                source_info,
                             );
                             self.cfg.push(
                                 false_block,
-                                Statement { source_info, kind: StatementKind::StorageDead(local) },
+                                Statement { kind: StatementKind::StorageDead(local) },
+                                source_info,
                             );
                         }
                     }
@@ -1177,7 +1176,7 @@ fn build_scope_drops<'tcx>(
                 }
                 // Only temps and vars need their storage dead.
                 assert!(local.index() > arg_count);
-                cfg.push(block, Statement { source_info, kind: StatementKind::StorageDead(local) });
+                cfg.push(block, Statement { kind: StatementKind::StorageDead(local) }, source_info);
             }
         }
     }

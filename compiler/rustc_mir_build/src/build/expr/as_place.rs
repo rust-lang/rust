@@ -495,7 +495,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     this.cfg.push(
                         block,
                         Statement {
-                            source_info,
                             kind: StatementKind::AscribeUserType(
                                 box (
                                     place,
@@ -504,6 +503,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 Variance::Invariant,
                             ),
                         },
+                        source_info,
                     );
                 }
                 block.and(place_builder)
@@ -521,7 +521,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     this.cfg.push(
                         block,
                         Statement {
-                            source_info,
                             kind: StatementKind::AscribeUserType(
                                 box (
                                     Place::from(temp),
@@ -530,6 +529,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 Variance::Invariant,
                             ),
                         },
+                        source_info,
                     );
                 }
                 block.and(PlaceBuilder::from(temp))

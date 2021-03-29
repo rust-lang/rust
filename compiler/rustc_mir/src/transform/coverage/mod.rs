@@ -20,7 +20,6 @@ use rustc_data_structures::graph::WithNumNodes;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_index::vec::IndexVec;
-use rustc_middle::hir;
 use rustc_middle::hir::map::blocks::FnLikeNode;
 use rustc_middle::ich::StableHashingContext;
 use rustc_middle::mir::coverage::*;
@@ -29,6 +28,7 @@ use rustc_middle::mir::{
     TerminatorKind,
 };
 use rustc_middle::ty::TyCtxt;
+use rustc_middle::{hir, mir::Statements};
 use rustc_span::def_id::DefId;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{CharPos, Pos, SourceFile, Span, Symbol};
@@ -436,7 +436,7 @@ fn inject_edge_counter_basic_block(
 ) -> BasicBlock {
     let span = mir_body[from_bb].terminator().source_info.span.shrink_to_hi();
     let new_bb = mir_body.basic_blocks_mut().push(BasicBlockData {
-        statements: vec![], // counter will be injected here
+        statements: Statements::new(), // counter will be injected here
         terminator: Some(Terminator {
             source_info: SourceInfo::outermost(span),
             kind: TerminatorKind::Goto { target: to_bb },
@@ -465,13 +465,12 @@ fn inject_statement(
     let data = &mut mir_body[bb];
     let source_info = data.terminator().source_info;
     let statement = Statement {
-        source_info,
         kind: StatementKind::Coverage(box Coverage {
             kind: counter_kind,
             code_region: some_code_region,
         }),
     };
-    data.statements.insert(0, statement);
+    data.statements.insert(0, statement, source_info);
 }
 
 // Non-code expressions are injected into the coverage map, without generating executable code.
@@ -482,10 +481,9 @@ fn inject_intermediate_expression(mir_body: &mut mir::Body<'tcx>, expression: Co
     let data = &mut mir_body[inject_in_bb];
     let source_info = data.terminator().source_info;
     let statement = Statement {
-        source_info,
         kind: StatementKind::Coverage(box Coverage { kind: expression, code_region: None }),
     };
-    data.statements.push(statement);
+    data.statements.push(statement, source_info);
 }
 
 /// Convert the Span into its file name, start line and column, and end line and column

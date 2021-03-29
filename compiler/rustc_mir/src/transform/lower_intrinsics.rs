@@ -26,33 +26,38 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                     }
                     sym::forget => {
                         if let Some((destination, target)) = *destination {
-                            block.statements.push(Statement {
-                                source_info: terminator.source_info,
-                                kind: StatementKind::Assign(box (
-                                    destination,
-                                    Rvalue::Use(Operand::Constant(box Constant {
-                                        span: terminator.source_info.span,
-                                        user_ty: None,
-                                        literal: ty::Const::zero_sized(tcx, tcx.types.unit).into(),
-                                    })),
-                                )),
-                            });
+                            block.statements.push(
+                                Statement {
+                                    kind: StatementKind::Assign(box (
+                                        destination,
+                                        Rvalue::Use(Operand::Constant(box Constant {
+                                            span: terminator.source_info.span,
+                                            user_ty: None,
+                                            literal: ty::Const::zero_sized(tcx, tcx.types.unit)
+                                                .into(),
+                                        })),
+                                    )),
+                                },
+                                terminator.source_info,
+                            );
                             terminator.kind = TerminatorKind::Goto { target };
                         }
                     }
                     sym::copy_nonoverlapping => {
                         let target = destination.unwrap().1;
                         let mut args = args.drain(..);
-                        block.statements.push(Statement {
-                            source_info: terminator.source_info,
-                            kind: StatementKind::CopyNonOverlapping(
-                                box rustc_middle::mir::CopyNonOverlapping {
-                                    src: args.next().unwrap(),
-                                    dst: args.next().unwrap(),
-                                    count: args.next().unwrap(),
-                                },
-                            ),
-                        });
+                        block.statements.push(
+                            Statement {
+                                kind: StatementKind::CopyNonOverlapping(
+                                    box rustc_middle::mir::CopyNonOverlapping {
+                                        src: args.next().unwrap(),
+                                        dst: args.next().unwrap(),
+                                        count: args.next().unwrap(),
+                                    },
+                                ),
+                            },
+                            terminator.source_info,
+                        );
                         assert_eq!(
                             args.next(),
                             None,
@@ -76,13 +81,15 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                                 sym::wrapping_mul => BinOp::Mul,
                                 _ => bug!("unexpected intrinsic"),
                             };
-                            block.statements.push(Statement {
-                                source_info: terminator.source_info,
-                                kind: StatementKind::Assign(box (
-                                    destination,
-                                    Rvalue::BinaryOp(bin_op, box (lhs, rhs)),
-                                )),
-                            });
+                            block.statements.push(
+                                Statement {
+                                    kind: StatementKind::Assign(box (
+                                        destination,
+                                        Rvalue::BinaryOp(bin_op, box (lhs, rhs)),
+                                    )),
+                                },
+                                terminator.source_info,
+                            );
                             terminator.kind = TerminatorKind::Goto { target };
                         }
                     }
@@ -94,13 +101,15 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                     sym::size_of => {
                         if let Some((destination, target)) = *destination {
                             let tp_ty = substs.type_at(0);
-                            block.statements.push(Statement {
-                                source_info: terminator.source_info,
-                                kind: StatementKind::Assign(box (
-                                    destination,
-                                    Rvalue::NullaryOp(NullOp::SizeOf, tp_ty),
-                                )),
-                            });
+                            block.statements.push(
+                                Statement {
+                                    kind: StatementKind::Assign(box (
+                                        destination,
+                                        Rvalue::NullaryOp(NullOp::SizeOf, tp_ty),
+                                    )),
+                                },
+                                terminator.source_info,
+                            );
                             terminator.kind = TerminatorKind::Goto { target };
                         }
                     }
@@ -109,13 +118,15 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                             (*destination, args[0].place())
                         {
                             let arg = tcx.mk_place_deref(arg);
-                            block.statements.push(Statement {
-                                source_info: terminator.source_info,
-                                kind: StatementKind::Assign(box (
-                                    destination,
-                                    Rvalue::Discriminant(arg),
-                                )),
-                            });
+                            block.statements.push(
+                                Statement {
+                                    kind: StatementKind::Assign(box (
+                                        destination,
+                                        Rvalue::Discriminant(arg),
+                                    )),
+                                },
+                                terminator.source_info,
+                            );
                             terminator.kind = TerminatorKind::Goto { target };
                         }
                     }

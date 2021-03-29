@@ -15,7 +15,9 @@ impl<'tcx> MirPass<'tcx> for RemoveZsts {
         let param_env = tcx.param_env(body.source.def_id());
         let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
         for block in basic_blocks.iter_mut() {
-            for statement in block.statements.iter_mut() {
+            for (statement, statement_source_info) in
+                block.statements.statements_and_source_info_iter_mut()
+            {
                 match statement.kind {
                     StatementKind::Assign(box (place, _)) => {
                         let place_ty = place.ty(local_decls, tcx).ty;
@@ -35,7 +37,7 @@ impl<'tcx> MirPass<'tcx> for RemoveZsts {
                         if tcx.consider_optimizing(|| {
                             format!(
                                 "RemoveZsts - Place: {:?} SourceInfo: {:?}",
-                                place, statement.source_info
+                                place, statement_source_info
                             )
                         }) {
                             statement.make_nop();

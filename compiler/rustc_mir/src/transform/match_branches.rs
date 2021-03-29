@@ -84,7 +84,7 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
             if first_stmts.len() != scnd_stmts.len() {
                 continue;
             }
-            for (f, s) in iter::zip(first_stmts, scnd_stmts) {
+            for (f, s) in iter::zip(first_stmts.statements_iter(), scnd_stmts.statements_iter()) {
                 match (&f.kind, &s.kind) {
                     // If two statements are exactly the same, we can optimize.
                     (f_s, s_s) if f_s == s_s => {}
@@ -114,9 +114,13 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
             // and bb_idx has a different terminator from both of them.
             let (from, first, second) = bbs.pick3_mut(bb_idx, first, second);
 
-            let new_stmts = iter::zip(&first.statements, &second.statements).map(|(f, s)| {
-                match (&f.kind, &s.kind) {
-                    (f_s, s_s) if f_s == s_s => (*f).clone(),
+            let new_stmts = iter::zip(
+                first.statements.statements_and_source_info_iter(),
+                second.statements.statements_iter(),
+            )
+            .map(|((f_stmt, f_source_info), s)| {
+                match (&f_stmt.kind, &s.kind) {
+                    (f_s, s_s) if f_s == s_s => ((*f_stmt).clone(), f_source_info),
 
                     (
                         StatementKind::Assign(box (lhs, Rvalue::Use(Operand::Constant(f_c)))),
@@ -127,7 +131,7 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
                         let s_b = s_c.literal.try_eval_bool(tcx, param_env).unwrap();
                         if f_b == s_b {
                             // Same value in both blocks. Use statement as is.
-                            (*f).clone()
+                            ((*f_stmt).clone(), f_source_info)
                         } else {
                             // Different value between blocks. Make value conditional on switch condition.
                             let size = tcx.layout_of(param_env.and(switch_ty)).unwrap().size;
@@ -142,26 +146,28 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
                                 op,
                                 box (Operand::Copy(Place::from(discr_local)), const_cmp),
                             );
-                            Statement {
-                                source_info: f.source_info,
-                                kind: StatementKind::Assign(box (*lhs, rhs)),
-                            }
+                            (
+                                Statement { kind: StatementKind::Assign(box (*lhs, rhs)) },
+                                f_source_info,
+                            )
                         }
                     }
-
                     _ => unreachable!(),
                 }
             });
 
             from.statements
-                .push(Statement { source_info, kind: StatementKind::StorageLive(discr_local) });
-            from.statements.push(Statement {
+                .push(Statement { kind: StatementKind::StorageLive(discr_local) }, source_info);
+            from.statements.push(
+                Statement {
+                    kind: StatementKind::Assign(box (Place::from(discr_local), Rvalue::Use(discr))),
+                },
                 source_info,
-                kind: StatementKind::Assign(box (Place::from(discr_local), Rvalue::Use(discr))),
-            });
-            from.statements.extend(new_stmts);
+            );
+            let (stms, source_infos): (Vec<_>, Vec<_>) = new_stmts.unzip();
+            from.statements.extend(stms.into_iter(), source_infos.into_iter());
             from.statements
-                .push(Statement { source_info, kind: StatementKind::StorageDead(discr_local) });
+                .push(Statement { kind: StatementKind::StorageDead(discr_local) }, source_info);
             from.terminator_mut().kind = first.terminator().kind.clone();
             should_cleanup = true;
         }

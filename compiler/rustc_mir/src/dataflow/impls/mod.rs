@@ -696,7 +696,7 @@ fn switch_on_enum_discriminant(
     block: &'mir mir::BasicBlockData<'tcx>,
     switch_on: mir::Place<'tcx>,
 ) -> Option<(mir::Place<'tcx>, &'tcx ty::AdtDef)> {
-    match block.statements.last().map(|stmt| &stmt.kind) {
+    match block.statements.last_stmt().map(|stmt| &stmt.kind) {
         Some(mir::StatementKind::Assign(box (lhs, mir::Rvalue::Discriminant(discriminated))))
             if *lhs == switch_on =>
         {

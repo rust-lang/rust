@@ -103,7 +103,7 @@ struct BasicBlockHashable<'tcx, 'a> {
 
 impl<'tcx, 'a> Hash for BasicBlockHashable<'tcx, 'a> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        hash_statements(state, self.basic_block_data.statements.iter());
+        hash_statements(state, self.basic_block_data.statements.statements_iter());
         // Note that since we only hash the kind, we lose span information if we deduplicate the blocks
         self.basic_block_data.terminator().kind.hash(state);
     }
@@ -115,8 +115,11 @@ impl<'tcx, 'a> PartialEq for BasicBlockHashable<'tcx, 'a> {
     fn eq(&self, other: &Self) -> bool {
         self.basic_block_data.statements.len() == other.basic_block_data.statements.len()
             && &self.basic_block_data.terminator().kind == &other.basic_block_data.terminator().kind
-            && iter::zip(&self.basic_block_data.statements, &other.basic_block_data.statements)
-                .all(|(x, y)| statement_eq(&x.kind, &y.kind))
+            && iter::zip(
+                self.basic_block_data.statements.statements_iter(),
+                other.basic_block_data.statements.statements_iter(),
+            )
+            .all(|(x, y)| statement_eq(&x.kind, &y.kind))
     }
 }
 

@@ -232,7 +232,7 @@ pub(super) fn gather_moves<'tcx>(
     builder.gather_args();
 
     for (bb, block) in body.basic_blocks().iter_enumerated() {
-        for (i, stmt) in block.statements.iter().enumerate() {
+        for (i, stmt) in block.statements.statements_iter().enumerate() {
             let source = Location { block: bb, statement_index: i };
             builder.gather_statement(source, stmt);
         }
@@ -312,7 +312,10 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             }
             StatementKind::SetDiscriminant { .. } => {
                 span_bug!(
-                    stmt.source_info.span,
+                    self.builder.body.basic_blocks()[self.loc.block]
+                        .statements
+                        .source_info(self.loc.statement_index)
+                        .span,
                     "SetDiscriminant should not exist during borrowck"
                 );
             }

@@ -32,7 +32,7 @@ impl RemoveNoopLandingPads {
         body: &Body<'_>,
         nop_landing_pads: &BitSet<BasicBlock>,
     ) -> bool {
-        for stmt in &body[bb].statements {
+        for stmt in body[bb].statements.statements_iter() {
             match &stmt.kind {
                 StatementKind::FakeRead(..)
                 | StatementKind::StorageLive(_)

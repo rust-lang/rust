@@ -49,7 +49,8 @@ fn bb_to_graph_node(block: BasicBlock, body: &Body<'_>, dark_mode: bool) -> Node
     };
 
     let style = NodeStyle { title_bg: Some(bgcolor.to_owned()), ..Default::default() };
-    let mut stmts: Vec<String> = data.statements.iter().map(|x| format!("{:?}", x)).collect();
+    let mut stmts: Vec<String> =
+        data.statements.statements_iter().map(|x| format!("{:?}", x)).collect();
 
     // add the terminator to the stmts, gsgdt can print it out seperately
     let mut terminator_head = String::new();

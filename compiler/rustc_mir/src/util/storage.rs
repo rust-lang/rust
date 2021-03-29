@@ -15,7 +15,7 @@ impl AlwaysLiveLocals {
         let mut always_live_locals = AlwaysLiveLocals(BitSet::new_filled(body.local_decls.len()));
 
         for block in body.basic_blocks() {
-            for statement in &block.statements {
+            for statement in block.statements.statements_iter() {
                 use mir::StatementKind::{StorageDead, StorageLive};
                 if let StorageLive(l) | StorageDead(l) = statement.kind {
                     always_live_locals.0.remove(l);

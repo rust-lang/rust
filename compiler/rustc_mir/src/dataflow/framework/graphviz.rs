@@ -369,7 +369,7 @@ where
             if A::Direction::is_forward() { it.next().unwrap() } else { it.next_back().unwrap() }
         };
 
-        for (i, statement) in body[block].statements.iter().enumerate() {
+        for (i, statement) in body[block].statements.statements_iter().enumerate() {
             let statement_str = format!("{:?}", statement);
             let index_str = format!("{}", i);
 

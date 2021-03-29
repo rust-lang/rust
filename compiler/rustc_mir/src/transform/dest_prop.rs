@@ -499,7 +499,7 @@ impl Conflicts<'a> {
 
             // First, go forwards for `MaybeInitializedLocals` and apply intra-statement/terminator
             // conflicts.
-            for (i, statement) in data.statements.iter().enumerate() {
+            for (i, statement) in data.statements.statements_iter().enumerate() {
                 this.record_statement_conflicts(statement);
 
                 let loc = Location { block, statement_index: i };

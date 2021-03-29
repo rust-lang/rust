@@ -153,7 +153,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
     let mut blocks = IndexVec::with_capacity(2);
     let block = |blocks: &mut IndexVec<_, _>, kind| {
         blocks.push(BasicBlockData {
-            statements: vec![],
+            statements: Statements::new(),
             terminator: Some(Terminator { source_info, kind }),
             is_cleanup: false,
         })
@@ -172,10 +172,8 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
             // Function arguments should be retagged, and we make this one raw.
             body.basic_blocks_mut()[START_BLOCK].statements.insert(
                 0,
-                Statement {
-                    source_info,
-                    kind: StatementKind::Retag(RetagKind::Raw, box (dropee_ptr)),
-                },
+                Statement { kind: StatementKind::Retag(RetagKind::Raw, box (dropee_ptr)) },
+                source_info,
             );
         }
         let patch = {
@@ -362,7 +360,7 @@ impl CloneShimBuilder<'tcx> {
 
     fn block(
         &mut self,
-        statements: Vec<Statement<'tcx>>,
+        statements: Statements<'tcx>,
         kind: TerminatorKind<'tcx>,
         is_cleanup: bool,
     ) -> BasicBlock {
@@ -383,7 +381,7 @@ impl CloneShimBuilder<'tcx> {
     }
 
     fn make_statement(&self, kind: StatementKind<'tcx>) -> Statement<'tcx> {
-        Statement { source_info: self.source_info(), kind }
+        Statement { kind }
     }
 
     fn copy_shim(&mut self) {
@@ -392,7 +390,11 @@ impl CloneShimBuilder<'tcx> {
             Place::return_place(),
             Rvalue::Use(Operand::Copy(rcvr)),
         )));
-        self.block(vec![ret_statement], TerminatorKind::Return, false);
+        self.block(
+            Statements::one(ret_statement, self.source_info()),
+            TerminatorKind::Return,
+            false,
+        );
     }
 
     fn make_place(&mut self, mutability: Mutability, ty: Ty<'tcx>) -> Place<'tcx> {
@@ -437,7 +439,7 @@ impl CloneShimBuilder<'tcx> {
 
         // `let loc = Clone::clone(ref_loc);`
         self.block(
-            vec![statement],
+            Statements::one(statement, self.source_info()),
             TerminatorKind::Call {
                 func,
                 args: vec![Operand::Move(ref_loc)],
@@ -468,7 +470,7 @@ impl CloneShimBuilder<'tcx> {
 
         // `if end != beg { goto loop_body; } else { goto loop_end; }`
         self.block(
-            vec![compute_cond],
+            Statements::one(compute_cond, self.source_info()),
             TerminatorKind::if_(tcx, Operand::Move(cond), loop_body, loop_end),
             is_cleanup,
         );
@@ -499,11 +501,14 @@ impl CloneShimBuilder<'tcx> {
         // `let mut beg = 0;`
         // `let end = len;`
         // `goto #1;`
-        let inits = vec![
+        let mut inits = Statements::one(
             self.make_statement(StatementKind::Assign(box (
                 Place::from(beg),
                 Rvalue::Use(Operand::Constant(self.make_usize(0))),
             ))),
+            self.source_info(),
+        );
+        inits.push(
             self.make_statement(StatementKind::Assign(box (
                 end,
                 Rvalue::Use(Operand::Constant(box Constant {
@@ -512,7 +517,8 @@ impl CloneShimBuilder<'tcx> {
                     literal: len.into(),
                 })),
             ))),
-        ];
+            self.source_info(),
+        );
         self.block(inits, TerminatorKind::Goto { target: BasicBlock::new(1) }, false);
 
         // BB #1: loop {
@@ -532,18 +538,21 @@ impl CloneShimBuilder<'tcx> {
         // BB #3
         // `beg = beg + 1;`
         // `goto #1`;
-        let statements = vec![self.make_statement(StatementKind::Assign(box (
-            Place::from(beg),
-            Rvalue::BinaryOp(
-                BinOp::Add,
-                box (Operand::Copy(Place::from(beg)), Operand::Constant(self.make_usize(1))),
-            ),
-        )))];
+        let statements = Statements::one(
+            self.make_statement(StatementKind::Assign(box (
+                Place::from(beg),
+                Rvalue::BinaryOp(
+                    BinOp::Add,
+                    box (Operand::Copy(Place::from(beg)), Operand::Constant(self.make_usize(1))),
+                ),
+            ))),
+            self.source_info(),
+        );
         self.block(statements, TerminatorKind::Goto { target: BasicBlock::new(1) }, false);
 
         // BB #4
         // `return dest;`
-        self.block(vec![], TerminatorKind::Return, false);
+        self.block(Statements::new(), TerminatorKind::Return, false);
 
         // BB #5 (cleanup)
         // `let end = beg;`
@@ -555,7 +564,11 @@ impl CloneShimBuilder<'tcx> {
             Place::from(beg),
             Rvalue::Use(Operand::Constant(self.make_usize(0))),
         )));
-        self.block(vec![init], TerminatorKind::Goto { target: BasicBlock::new(6) }, true);
+        self.block(
+            Statements::one(init, self.source_info()),
+            TerminatorKind::Goto { target: BasicBlock::new(6) },
+            true,
+        );
 
         // BB #6 (cleanup): loop {
         //     BB #7;
@@ -573,7 +586,7 @@ impl CloneShimBuilder<'tcx> {
         // BB #7 (cleanup)
         // `drop(dest[beg])`;
         self.block(
-            vec![],
+            Statements::new(),
             TerminatorKind::Drop {
                 place: self.tcx.mk_place_index(dest, beg),
                 target: BasicBlock::new(8),
@@ -592,10 +605,14 @@ impl CloneShimBuilder<'tcx> {
                 box (Operand::Copy(Place::from(beg)), Operand::Constant(self.make_usize(1))),
             ),
         )));
-        self.block(vec![statement], TerminatorKind::Goto { target: BasicBlock::new(6) }, true);
+        self.block(
+            Statements::one(statement, self.source_info()),
+            TerminatorKind::Goto { target: BasicBlock::new(6) },
+            true,
+        );
 
         // BB #9 (resume)
-        self.block(vec![], TerminatorKind::Resume, true);
+        self.block(Statements::new(), TerminatorKind::Resume, true);
     }
 
     fn tuple_like_shim<I>(&mut self, dest: Place<'tcx>, src: Place<'tcx>, tys: I)
@@ -624,7 +641,7 @@ impl CloneShimBuilder<'tcx> {
             if let Some((previous_field, previous_cleanup)) = previous_field.take() {
                 // Drop previous field and goto previous cleanup block.
                 self.block(
-                    vec![],
+                    Statements::new(),
                     TerminatorKind::Drop {
                         place: previous_field,
                         target: previous_cleanup,
@@ -634,13 +651,13 @@ impl CloneShimBuilder<'tcx> {
                 );
             } else {
                 // Nothing to drop, just resume.
-                self.block(vec![], TerminatorKind::Resume, true);
+                self.block(Statements::new(), TerminatorKind::Resume, true);
             }
 
             previous_field = Some((dest_field, cleanup_block));
         }
 
-        self.block(vec![], TerminatorKind::Return, false);
+        self.block(Statements::new(), TerminatorKind::Return, false);
     }
 }
 
@@ -728,7 +745,7 @@ fn build_call_shim<'tcx>(
         assert!(rcvr_adjustment.is_some());
         Place::from(Local::new(1 + 0))
     };
-    let mut statements = vec![];
+    let mut statements = Statements::new();
 
     let rcvr = rcvr_adjustment.map(|rcvr_adjustment| match rcvr_adjustment {
         Adjustment::Identity => Operand::Move(rcvr_place()),
@@ -746,13 +763,15 @@ fn build_call_shim<'tcx>(
                 .immutable(),
             );
             let borrow_kind = BorrowKind::Mut { allow_two_phase_borrow: false };
-            statements.push(Statement {
+            statements.push(
+                Statement {
+                    kind: StatementKind::Assign(box (
+                        Place::from(ref_rcvr),
+                        Rvalue::Ref(tcx.lifetimes.re_erased, borrow_kind, rcvr_place()),
+                    )),
+                },
                 source_info,
-                kind: StatementKind::Assign(box (
-                    Place::from(ref_rcvr),
-                    Rvalue::Ref(tcx.lifetimes.re_erased, borrow_kind, rcvr_place()),
-                )),
-            });
+            );
             Operand::Move(Place::from(ref_rcvr))
         }
     });
@@ -831,24 +850,24 @@ fn build_call_shim<'tcx>(
         // BB #1 - drop for Self
         block(
             &mut blocks,
-            vec![],
+            Statements::new(),
             TerminatorKind::Drop { place: rcvr_place(), target: BasicBlock::new(2), unwind: None },
             false,
         );
     }
     // BB #1/#2 - return
-    block(&mut blocks, vec![], TerminatorKind::Return, false);
+    block(&mut blocks, Statements::new(), TerminatorKind::Return, false);
     if let Some(Adjustment::RefMut) = rcvr_adjustment {
         // BB #3 - drop if closure panics
         block(
             &mut blocks,
-            vec![],
+            Statements::new(),
             TerminatorKind::Drop { place: rcvr_place(), target: BasicBlock::new(4), unwind: None },
             true,
         );
 
         // BB #4 - resume
-        block(&mut blocks, vec![], TerminatorKind::Resume, true);
+        block(&mut blocks, Statements::new(), TerminatorKind::Resume, true);
     }
 
     let mut body =
@@ -898,7 +917,7 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     // return;
     debug!("build_ctor: variant_index={:?}", variant_index);
 
-    let statements = expand_aggregate(
+    let statements = Statements::from_iter(expand_aggregate(
         Place::return_place(),
         adt_def.variants[variant_index].fields.iter().enumerate().map(|(idx, field_def)| {
             (Operand::Move(Place::from(Local::new(idx + 1))), field_def.ty(tcx, substs))
@@ -906,8 +925,7 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
         AggregateKind::Adt(adt_def, variant_index, substs, None, None),
         source_info,
         tcx,
-    )
-    .collect();
+    ));
 
     let start_block = BasicBlockData {
         statements,

@@ -86,9 +86,9 @@ impl CoverageVisitor {
 
     fn visit_body(&mut self, body: &Body<'_>) {
         for bb_data in body.basic_blocks().iter() {
-            for statement in bb_data.statements.iter() {
+            for (stmt_idx, statement) in bb_data.statements.statements_iter().enumerate() {
                 if let StatementKind::Coverage(box ref coverage) = statement.kind {
-                    if is_inlined(body, statement) {
+                    if is_inlined(body, bb_data.statements.source_info(stmt_idx)) {
                         continue;
                     }
                     self.visit_coverage(coverage);
@@ -141,10 +141,11 @@ fn covered_file_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<Symbol> {
     if tcx.is_mir_available(def_id) {
         let body = mir_body(tcx, def_id);
         for bb_data in body.basic_blocks().iter() {
-            for statement in bb_data.statements.iter() {
+            for (stmt_idx, statement) in bb_data.statements.statements_iter().enumerate() {
                 if let StatementKind::Coverage(box ref coverage) = statement.kind {
                     if let Some(code_region) = coverage.code_region.as_ref() {
-                        if is_inlined(body, statement) {
+                        let source_info = bb_data.statements.source_info(stmt_idx);
+                        if is_inlined(body, source_info) {
                             continue;
                         }
                         return Some(code_region.file_name);
@@ -161,23 +162,27 @@ fn covered_code_regions<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Vec<&'tcx Cod
     body.basic_blocks()
         .iter()
         .map(|data| {
-            data.statements.iter().filter_map(|statement| match statement.kind {
-                StatementKind::Coverage(box ref coverage) => {
-                    if is_inlined(body, statement) {
-                        None
-                    } else {
-                        coverage.code_region.as_ref() // may be None
+            data.statements.statements_iter().enumerate().filter_map(
+                move |(stmt_idx, statement)| {
+                    match statement.kind {
+                        StatementKind::Coverage(box ref coverage) => {
+                            if is_inlined(body, data.statements.source_info(stmt_idx)) {
+                                None
+                            } else {
+                                coverage.code_region.as_ref() // may be None
+                            }
+                        }
+                        _ => None,
                     }
-                }
-                _ => None,
-            })
+                },
+            )
         })
         .flatten()
         .collect()
 }
 
-fn is_inlined(body: &Body<'_>, statement: &Statement<'_>) -> bool {
-    let scope_data = &body.source_scopes[statement.source_info.scope];
+fn is_inlined(body: &Body<'_>, stmt_source_info: &SourceInfo) -> bool {
+    let scope_data = &body.source_scopes[stmt_source_info.scope];
     scope_data.inlined.is_some() || scope_data.inlined_parent_scope.is_some()
 }
 

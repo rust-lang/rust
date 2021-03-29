@@ -5,8 +5,8 @@ use crate::util::spanview::source_range_no_file;
 
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_middle::mir::{
-    self, AggregateKind, BasicBlock, FakeReadCause, Rvalue, Statement, StatementKind, Terminator,
-    TerminatorKind,
+    self, AggregateKind, BasicBlock, BasicBlockData, FakeReadCause, Rvalue, Statement,
+    StatementKind, Terminator, TerminatorKind,
 };
 use rustc_middle::ty::TyCtxt;
 
@@ -25,7 +25,7 @@ impl CoverageStatement {
     pub fn format(&self, tcx: TyCtxt<'tcx>, mir_body: &'a mir::Body<'tcx>) -> String {
         match *self {
             Self::Statement(bb, span, stmt_index) => {
-                let stmt = &mir_body[bb].statements[stmt_index];
+                let stmt = &mir_body[bb].statements.statement(stmt_index);
                 format!(
                     "{}: @{}[{}]: {:?}",
                     source_range_no_file(tcx, &span),
@@ -398,12 +398,12 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
             .flat_map(|&bb| {
                 let data = &self.mir_body[bb];
                 data.statements
-                    .iter()
+                    .statements_iter()
                     .enumerate()
                     .filter_map(move |(index, statement)| {
-                        filtered_statement_span(statement, self.body_span).map(|span| {
-                            CoverageSpan::for_statement(statement, span, bcb, bb, index)
-                        })
+                        filtered_statement_span(statement, self.body_span, data, index).map(
+                            |span| CoverageSpan::for_statement(statement, span, bcb, bb, index),
+                        )
                     })
                     .chain(
                         filtered_terminator_span(data.terminator(), self.body_span)
@@ -656,6 +656,8 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
 pub(super) fn filtered_statement_span(
     statement: &'a Statement<'tcx>,
     body_span: Span,
+    bbd: &BasicBlockData<'tcx>,
+    stmt_idx: usize,
 ) -> Option<Span> {
     match statement.kind {
         // These statements have spans that are often outside the scope of the executed source code
@@ -693,7 +695,7 @@ pub(super) fn filtered_statement_span(
         | StatementKind::LlvmInlineAsm(_)
         | StatementKind::Retag(_, _)
         | StatementKind::AscribeUserType(_, _) => {
-            Some(function_source_span(statement.source_info.span, body_span))
+            Some(function_source_span(bbd.statements.source_info(stmt_idx).span, body_span))
         }
     }
 }

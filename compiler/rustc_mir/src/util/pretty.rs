@@ -352,7 +352,7 @@ where
 
     // List of statements in the middle.
     let mut current_location = Location { block, statement_index: 0 };
-    for statement in &data.statements {
+    for (statement, stmt_source_info) in data.statements.statements_and_source_info_iter() {
         extra_data(PassWhere::BeforeLocation(current_location), w)?;
         let indented_body = format!("{0}{0}{1:?};", INDENT, statement);
         writeln!(
@@ -360,7 +360,7 @@ where
             "{:A$} // {}{}",
             indented_body,
             if tcx.sess.verbose() { format!("{:?}: ", current_location) } else { String::new() },
-            comment(tcx, statement.source_info),
+            comment(tcx, *stmt_source_info),
             A = ALIGN,
         )?;
 

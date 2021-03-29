@@ -1,5 +1,5 @@
 use rustc_errors::struct_span_err;
-use rustc_middle::mir;
+use rustc_middle::mir::{self, SourceInfo};
 
 use super::FunctionCx;
 use super::LocalRef;
@@ -8,10 +8,15 @@ use crate::traits::BuilderMethods;
 use crate::traits::*;
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
-    pub fn codegen_statement(&mut self, mut bx: Bx, statement: &mir::Statement<'tcx>) -> Bx {
+    pub fn codegen_statement(
+        &mut self,
+        mut bx: Bx,
+        statement: &mir::Statement<'tcx>,
+        source_info: &SourceInfo,
+    ) -> Bx {
         debug!("codegen_statement(statement={:?})", statement);
 
-        self.set_debug_loc(&mut bx, statement.source_info);
+        self.set_debug_loc(&mut bx, *source_info);
         match statement.kind {
             mir::StatementKind::Assign(box (ref place, ref rvalue)) => {
                 if let Some(index) = place.as_local() {
@@ -29,7 +34,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         LocalRef::Operand(Some(op)) => {
                             if !op.layout.is_zst() {
                                 span_bug!(
-                                    statement.source_info.span,
+                                    source_info.span,
                                     "operand {:?} already assigned",
                                     rvalue
                                 );
@@ -93,16 +98,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 );
 
                 if input_vals.len() == asm.inputs.len() {
-                    let res = bx.codegen_llvm_inline_asm(
-                        &asm.asm,
-                        outputs,
-                        input_vals,
-                        statement.source_info.span,
-                    );
+                    let res =
+                        bx.codegen_llvm_inline_asm(&asm.asm, outputs, input_vals, source_info.span);
                     if !res {
                         struct_span_err!(
                             bx.sess(),
-                            statement.source_info.span,
+                            source_info.span,
                             E0668,
                             "malformed inline assembly"
                         )
@@ -112,7 +113,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx
             }
             mir::StatementKind::Coverage(box ref coverage) => {
-                self.codegen_coverage(&mut bx, coverage.clone(), statement.source_info.scope);
+                self.codegen_coverage(&mut bx, coverage.clone(), source_info.scope);
                 bx
             }
             mir::StatementKind::CopyNonOverlapping(box mir::CopyNonOverlapping {

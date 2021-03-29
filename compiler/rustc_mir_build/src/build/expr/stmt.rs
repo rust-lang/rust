@@ -112,13 +112,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.cfg.push(
                     block,
                     Statement {
-                        source_info,
                         kind: StatementKind::LlvmInlineAsm(box LlvmInlineAsm {
                             asm: asm.clone(),
                             outputs,
                             inputs,
                         }),
                     },
+                    source_info,
                 );
                 this.block_context.pop();
                 block.unit()

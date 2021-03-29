@@ -1405,6 +1405,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn check_stmt(&mut self, body: &Body<'tcx>, stmt: &Statement<'tcx>, location: Location) {
         debug!("check_stmt: {:?}", stmt);
         let tcx = self.tcx();
+        let stmt_source_info =
+            || body.basic_blocks()[location.block].statements.source_info(location.statement_index);
         match stmt.kind {
             StatementKind::Assign(box (ref place, ref rv)) => {
                 // Assignments to temporaries are not "interesting";
@@ -1490,7 +1492,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     ty::Adt(adt, _) if adt.is_enum() => adt,
                     _ => {
                         span_bug!(
-                            stmt.source_info.span,
+                            stmt_source_info().span,
                             "bad set discriminant ({:?} = {:?}): lhs is not an enum",
                             place,
                             variant_index
@@ -1499,7 +1501,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 };
                 if variant_index.as_usize() >= adt.variants.len() {
                     span_bug!(
-                        stmt.source_info.span,
+                        stmt_source_info().span,
                         "bad set discriminant ({:?} = {:?}): value of of range",
                         place,
                         variant_index
@@ -1512,7 +1514,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     place_ty,
                     variance,
                     projection,
-                    Locations::All(stmt.source_info.span),
+                    Locations::All(stmt_source_info().span),
                     ConstraintCategory::TypeAnnotation,
                 ) {
                     let annotation = &self.user_type_annotations[projection.base];
@@ -1530,7 +1532,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping {
                 ..
             }) => span_bug!(
-                stmt.source_info.span,
+                stmt_source_info().span,
                 "Unexpected StatementKind::CopyNonOverlapping, should only appear after lowering_intrinsics",
             ),
             StatementKind::FakeRead(..)
@@ -2780,9 +2782,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
         for (block, block_data) in body.basic_blocks().iter_enumerated() {
             let mut location = Location { block, statement_index: 0 };
-            for stmt in &block_data.statements {
-                if !stmt.source_info.span.is_dummy() {
-                    self.last_span = stmt.source_info.span;
+            for (stmt, stmt_source_info) in block_data.statements.statements_and_source_info_iter()
+            {
+                if !stmt_source_info.span.is_dummy() {
+                    self.last_span = stmt_source_info.span;
                 }
                 self.check_stmt(body, stmt, location);
                 location.statement_index += 1;

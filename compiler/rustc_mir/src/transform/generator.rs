@@ -243,7 +243,7 @@ impl TransformVisitor<'tcx> {
         idx: VariantIdx,
         val: Operand<'tcx>,
         source_info: SourceInfo,
-    ) -> impl Iterator<Item = Statement<'tcx>> {
+    ) -> impl Iterator<Item = (Statement<'tcx>, SourceInfo)> {
         let kind = AggregateKind::Adt(self.state_adt_ref, idx, self.state_substs, None, None);
         assert_eq!(self.state_adt_ref.variants[idx].fields.len(), 1);
         let ty = self
@@ -270,10 +270,9 @@ impl TransformVisitor<'tcx> {
     }
 
     // Create a statement which changes the discriminant
-    fn set_discr(&self, state_disc: VariantIdx, source_info: SourceInfo) -> Statement<'tcx> {
+    fn set_discr(&self, state_disc: VariantIdx) -> Statement<'tcx> {
         let self_place = Place::from(SELF_ARG);
         Statement {
-            source_info,
             kind: StatementKind::SetDiscriminant {
                 place: box self_place,
                 variant_index: state_disc,
@@ -282,17 +281,15 @@ impl TransformVisitor<'tcx> {
     }
 
     // Create a statement which reads the discriminant into a temporary
-    fn get_discr(&self, body: &mut Body<'tcx>) -> (Statement<'tcx>, Place<'tcx>) {
+    fn get_discr(&self, body: &mut Body<'tcx>) -> (Statement<'tcx>, SourceInfo, Place<'tcx>) {
         let temp_decl = LocalDecl::new(self.discr_ty, body.span).internal();
         let local_decls_len = body.local_decls.push(temp_decl);
         let temp = Place::from(local_decls_len);
 
         let self_place = Place::from(SELF_ARG);
-        let assign = Statement {
-            source_info: SourceInfo::outermost(body.span),
-            kind: StatementKind::Assign(box (temp, Rvalue::Discriminant(self_place))),
-        };
-        (assign, temp)
+        let assign =
+            Statement { kind: StatementKind::Assign(box (temp, Rvalue::Discriminant(self_place))) };
+        (assign, SourceInfo::outermost(body.span), temp)
     }
 }
 
@@ -342,7 +339,9 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
         if let Some((state_idx, resume, v, drop)) = ret_val {
             let source_info = data.terminator().source_info;
             // We must assign the value first in case it gets declared dead below
-            data.statements.extend(self.make_state(state_idx, v, source_info));
+            let (stmts, source_infos): (Vec<_>, Vec<_>) =
+                self.make_state(state_idx, v, source_info).unzip();
+            data.statements.extend(stmts.into_iter(), source_infos.into_iter());
             let state = if let Some((resume, resume_arg)) = resume {
                 // Yield
                 let state = 3 + self.suspension_points.len();
@@ -369,7 +368,7 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
                 // Return
                 VariantIdx::new(RETURNED) // state for returned
             };
-            data.statements.push(self.set_discr(state, source_info));
+            data.statements.push(self.set_discr(state), source_info);
             data.terminator_mut().kind = TerminatorKind::Return;
         }
 
@@ -838,7 +837,7 @@ fn insert_switch<'tcx>(
     default: TerminatorKind<'tcx>,
 ) {
     let default_block = insert_term_block(body, default);
-    let (assign, discr) = transform.get_discr(body);
+    let (assign, assign_source_info, discr) = transform.get_discr(body);
     let switch_targets =
         SwitchTargets::new(cases.iter().map(|(i, bb)| ((*i) as u128, *bb)), default_block);
     let switch = TerminatorKind::SwitchInt {
@@ -851,7 +850,7 @@ fn insert_switch<'tcx>(
     body.basic_blocks_mut().raw.insert(
         0,
         BasicBlockData {
-            statements: vec![assign],
+            statements: Statements::one(assign, assign_source_info),
             terminator: Some(Terminator { source_info, kind: switch }),
             is_cleanup: false,
         },
@@ -953,10 +952,8 @@ fn create_generator_drop_shim<'tcx>(
         // Alias tracking must know we changed the type
         body.basic_blocks_mut()[START_BLOCK].statements.insert(
             0,
-            Statement {
-                source_info,
-                kind: StatementKind::Retag(RetagKind::Raw, box Place::from(SELF_ARG)),
-            },
+            Statement { kind: StatementKind::Retag(RetagKind::Raw, box Place::from(SELF_ARG)) },
+            source_info,
         )
     }
 
@@ -974,7 +971,7 @@ fn create_generator_drop_shim<'tcx>(
 fn insert_term_block<'tcx>(body: &mut Body<'tcx>, kind: TerminatorKind<'tcx>) -> BasicBlock {
     let source_info = SourceInfo::outermost(body.span);
     body.basic_blocks_mut().push(BasicBlockData {
-        statements: Vec::new(),
+        statements: Statements::new(),
         terminator: Some(Terminator { source_info, kind }),
         is_cleanup: false,
     })
@@ -1000,7 +997,7 @@ fn insert_panic_block<'tcx>(
 
     let source_info = SourceInfo::outermost(body.span);
     body.basic_blocks_mut().push(BasicBlockData {
-        statements: Vec::new(),
+        statements: Statements::new(),
         terminator: Some(Terminator { source_info, kind: term }),
         is_cleanup: false,
     });
@@ -1077,7 +1074,10 @@ fn create_generator_resume_function<'tcx>(
     if can_unwind {
         let source_info = SourceInfo::outermost(body.span);
         let poison_block = body.basic_blocks_mut().push(BasicBlockData {
-            statements: vec![transform.set_discr(VariantIdx::new(POISONED), source_info)],
+            statements: Statements::one(
+                transform.set_discr(VariantIdx::new(POISONED)),
+                source_info,
+            ),
             terminator: Some(Terminator { source_info, kind: TerminatorKind::Resume }),
             is_cleanup: true,
         });
@@ -1151,7 +1151,7 @@ fn insert_clean_drop(body: &mut Body<'_>) -> BasicBlock {
 
     // Create a block to destroy an unresumed generators. This can only destroy upvars.
     body.basic_blocks_mut().push(BasicBlockData {
-        statements: Vec::new(),
+        statements: Statements::new(),
         terminator: Some(Terminator { source_info, kind: term }),
         is_cleanup: false,
     })
@@ -1186,7 +1186,7 @@ fn create_cases<'tcx>(
         .filter_map(|point| {
             // Find the target for this suspension point, if applicable
             operation.target_block(point).map(|target| {
-                let mut statements = Vec::new();
+                let mut statements = Statements::new();
 
                 // Create StorageLive instructions for locals with live storage
                 for i in 0..(body.local_decls.len()) {
@@ -1203,20 +1203,22 @@ fn create_cases<'tcx>(
                         && !transform.always_live_locals.contains(l);
                     if needs_storage_live {
                         statements
-                            .push(Statement { source_info, kind: StatementKind::StorageLive(l) });
+                            .push(Statement { kind: StatementKind::StorageLive(l) }, source_info);
                     }
                 }
 
                 if operation == Operation::Resume {
                     // Move the resume argument to the destination place of the `Yield` terminator
                     let resume_arg = Local::new(2); // 0 = return, 1 = self
-                    statements.push(Statement {
+                    statements.push(
+                        Statement {
+                            kind: StatementKind::Assign(box (
+                                point.resume_arg,
+                                Rvalue::Use(Operand::Move(resume_arg.into())),
+                            )),
+                        },
                         source_info,
-                        kind: StatementKind::Assign(box (
-                            point.resume_arg,
-                            Rvalue::Use(Operand::Move(resume_arg.into())),
-                        )),
-                    });
+                    );
                 }
 
                 // Then jump to the real target
@@ -1291,12 +1293,12 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         stmts.insert(
             0,
             Statement {
-                source_info,
                 kind: StatementKind::Assign(box (
                     new_resume_local.into(),
                     Rvalue::Use(Operand::Move(resume_local.into())),
                 )),
             },
+            source_info,
         );
 
         let always_live_locals = storage::AlwaysLiveLocals::new(&body);

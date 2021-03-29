@@ -71,7 +71,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyComparisonIntegral {
 
             // delete comparison statement if it the value being switched on was moved, which means it can not be user later on
             if opt.can_remove_bin_op_stmt {
-                bb.statements[opt.bin_op_stmt_idx].make_nop();
+                bb.statements.make_nop(opt.bin_op_stmt_idx);
             } else {
                 // if the integer being compared to a const integral is being moved into the comparison,
                 // e.g `_2 = Eq(move _3, const 'x');`
@@ -80,7 +80,8 @@ impl<'tcx> MirPass<'tcx> for SimplifyComparisonIntegral {
                 // we convert the move in the comparison statement to a copy.
 
                 // unwrap is safe as we know this statement is an assign
-                let (_, rhs) = bb.statements[opt.bin_op_stmt_idx].kind.as_assign_mut().unwrap();
+                let (_, rhs) =
+                    bb.statements.statement_mut(opt.bin_op_stmt_idx).kind.as_assign_mut().unwrap();
 
                 use Operand::*;
                 match rhs {
@@ -97,7 +98,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyComparisonIntegral {
             let terminator = bb.terminator();
 
             // remove StorageDead (if it exists) being used in the assign of the comparison
-            for (stmt_idx, stmt) in bb.statements.iter().enumerate() {
+            for (stmt_idx, stmt) in bb.statements.statements_iter().enumerate() {
                 if !matches!(stmt.kind, StatementKind::StorageDead(local) if local == opt.to_switch_on.local)
                 {
                     continue;
@@ -107,10 +108,8 @@ impl<'tcx> MirPass<'tcx> for SimplifyComparisonIntegral {
                 for bb_idx in new_targets.all_targets() {
                     storage_deads_to_insert.push((
                         *bb_idx,
-                        Statement {
-                            source_info: terminator.source_info,
-                            kind: StatementKind::StorageDead(opt.to_switch_on.local),
-                        },
+                        Statement { kind: StatementKind::StorageDead(opt.to_switch_on.local) },
+                        terminator.source_info,
                     ));
                 }
             }
@@ -131,11 +130,11 @@ impl<'tcx> MirPass<'tcx> for SimplifyComparisonIntegral {
         }
 
         for (idx, bb_idx) in storage_deads_to_remove {
-            body.basic_blocks_mut()[bb_idx].statements[idx].make_nop();
+            body.basic_blocks_mut()[bb_idx].statements.make_nop(idx);
         }
 
-        for (idx, stmt) in storage_deads_to_insert {
-            body.basic_blocks_mut()[idx].statements.insert(0, stmt);
+        for (idx, stmt, source_info) in storage_deads_to_insert {
+            body.basic_blocks_mut()[idx].statements.insert(0, stmt, source_info);
         }
     }
 }
@@ -160,7 +159,7 @@ impl<'a, 'tcx> OptimizationFinder<'a, 'tcx> {
                     }?;
 
                 // find the statement that assigns the place being switched on
-                bb.statements.iter().enumerate().rev().find_map(|(stmt_idx, stmt)| {
+                bb.statements.statements_iter().enumerate().rev().find_map(|(stmt_idx, stmt)| {
                     match &stmt.kind {
                         rustc_middle::mir::StatementKind::Assign(box (lhs, rhs))
                             if *lhs == place_switched_on =>

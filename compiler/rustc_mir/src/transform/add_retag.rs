@@ -4,6 +4,8 @@
 //! of MIR building, and only after this pass we think of the program has having the
 //! normal MIR semantics.
 
+use std::iter;
+
 use crate::transform::MirPass;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -90,24 +92,30 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
         // PART 1
         // Retag arguments at the beginning of the start block.
         {
-            // FIXME: Consider using just the span covering the function
-            // argument declaration.
-            let source_info = SourceInfo::outermost(span);
             // Gather all arguments, skip return value.
-            let places = local_decls
+            let places: Vec<_> = local_decls
                 .iter_enumerated()
                 .skip(1)
                 .take(arg_count)
                 .map(|(local, _)| Place::from(local))
-                .filter(needs_retag);
+                .filter(needs_retag)
+                .collect();
+
+            // FIXME: Consider using just the span covering the function
+            // argument declaration.
+            let source_infos = iter::repeat(SourceInfo::outermost(span)).take(places.len());
+
             // Emit their retags.
-            basic_blocks[START_BLOCK].statements.splice(
-                0..0,
-                places.map(|place| Statement {
-                    source_info,
+            let statements = &mut basic_blocks[START_BLOCK].statements;
+            let old_length = statements.len();
+            statements.extend(
+                places.into_iter().map(|place| Statement {
                     kind: StatementKind::Retag(RetagKind::FnEntry, box (place)),
                 }),
+                source_infos,
             );
+            // move the newly added elements to the front
+            statements.rotate_right(statements.len() - old_length);
         }
 
         // PART 2
@@ -135,10 +143,8 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
         for (source_info, dest_place, dest_block) in returns {
             basic_blocks[dest_block].statements.insert(
                 0,
-                Statement {
-                    source_info,
-                    kind: StatementKind::Retag(RetagKind::Default, box (dest_place)),
-                },
+                Statement { kind: StatementKind::Retag(RetagKind::Default, box (dest_place)) },
+                source_info,
             );
         }
 
@@ -148,7 +154,7 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
             // We want to insert statements as we iterate.  To this end, we
             // iterate backwards using indices.
             for i in (0..block_data.statements.len()).rev() {
-                let (retag_kind, place) = match block_data.statements[i].kind {
+                let (retag_kind, place) = match block_data.statements.statement(i).kind {
                     // Retag-as-raw after escaping to a raw pointer, if the referent
                     // is not already a raw pointer.
                     StatementKind::Assign(box (lplace, Rvalue::AddressOf(_, ref rplace)))
@@ -172,10 +178,11 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
                     _ => continue,
                 };
                 // Insert a retag after the statement.
-                let source_info = block_data.statements[i].source_info;
+                let source_info = *block_data.statements.source_info(i);
                 block_data.statements.insert(
                     i + 1,
-                    Statement { source_info, kind: StatementKind::Retag(retag_kind, box (place)) },
+                    Statement { kind: StatementKind::Retag(retag_kind, box (place)) },
+                    source_info,
                 );
             }
         }

@@ -94,7 +94,10 @@ fn add_move_for_packed_drop<'tcx>(
     let temp = patch.new_temp(ty, terminator.source_info.span);
 
     let storage_dead_block = patch.new_block(BasicBlockData {
-        statements: vec![Statement { source_info, kind: StatementKind::StorageDead(temp) }],
+        statements: Statements::one(
+            Statement { kind: StatementKind::StorageDead(temp) },
+            source_info,
+        ),
         terminator: Some(Terminator { source_info, kind: TerminatorKind::Goto { target } }),
         is_cleanup,
     });

@@ -103,7 +103,9 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
     }
 
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
-        self.source_info = statement.source_info;
+        self.source_info = *self.body.basic_blocks()[location.block]
+            .statements
+            .source_info(location.statement_index);
         match statement.kind {
             StatementKind::Assign(..)
             | StatementKind::FakeRead(..)

@@ -60,7 +60,7 @@ impl AddCallGuards {
                 {
                     // It's a critical edge, break it
                     let call_guard = BasicBlockData {
-                        statements: vec![],
+                        statements: Statements::new(),
                         is_cleanup: block.is_cleanup,
                         terminator: Some(Terminator {
                             source_info,
