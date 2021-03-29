@@ -165,7 +165,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
     }
 
     fn metadata_loader(&self) -> Box<dyn MetadataLoader + Sync> {
-        Box::new(crate::metadata::CraneliftMetadataLoader)
+        Box::new(rustc_codegen_ssa::back::metadata::DefaultMetadataLoader)
     }
 
     fn provide(&self, _providers: &mut Providers) {}
