@@ -1,5 +1,4 @@
 //! Simple hierarchical profiler
-use once_cell::sync::Lazy;
 use std::{
     cell::RefCell,
     collections::{BTreeMap, HashSet},
@@ -11,6 +10,8 @@ use std::{
     },
     time::{Duration, Instant},
 };
+
+use once_cell::sync::Lazy;
 
 use crate::tree::{Idx, Tree};
 
@@ -56,12 +57,12 @@ type Label = &'static str;
 ///  0ms - profile
 ///      0ms - profile2
 /// ```
+#[inline]
 pub fn span(label: Label) -> ProfileSpan {
-    assert!(!label.is_empty());
+    debug_assert!(!label.is_empty());
 
-    if PROFILING_ENABLED.load(Ordering::Relaxed)
-        && PROFILE_STACK.with(|stack| stack.borrow_mut().push(label))
-    {
+    let enabled = PROFILING_ENABLED.load(Ordering::Relaxed);
+    if enabled && with_profile_stack(|stack| stack.push(label)) {
         ProfileSpan(Some(ProfilerImpl { label, detail: None }))
     } else {
         ProfileSpan(None)
@@ -85,14 +86,19 @@ impl ProfileSpan {
 }
 
 impl Drop for ProfilerImpl {
+    #[inline]
     fn drop(&mut self) {
-        PROFILE_STACK.with(|it| it.borrow_mut().pop(self.label, self.detail.take()));
+        with_profile_stack(|it| it.pop(self.label, self.detail.take()));
     }
 }
 
 static PROFILING_ENABLED: AtomicBool = AtomicBool::new(false);
 static FILTER: Lazy<RwLock<Filter>> = Lazy::new(Default::default);
-thread_local!(static PROFILE_STACK: RefCell<ProfileStack> = RefCell::new(ProfileStack::new()));
+
+fn with_profile_stack<T>(f: impl FnOnce(&mut ProfileStack) -> T) -> T {
+    thread_local!(static STACK: RefCell<ProfileStack> = RefCell::new(ProfileStack::new()));
+    STACK.with(|it| f(&mut *it.borrow_mut()))
+}
 
 #[derive(Default, Clone, Debug)]
 struct Filter {
