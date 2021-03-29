@@ -1549,23 +1549,6 @@ impl Disambiguator {
     fn from_str(link: &str) -> Result<Option<(Self, &str)>, (String, Range<usize>)> {
         use Disambiguator::{Kind, Namespace as NS, Primitive};
 
-        let find_suffix = || {
-            let suffixes = [
-                ("!()", DefKind::Macro(MacroKind::Bang)),
-                ("()", DefKind::Fn),
-                ("!", DefKind::Macro(MacroKind::Bang)),
-            ];
-            for &(suffix, kind) in &suffixes {
-                if let Some(link) = link.strip_suffix(suffix) {
-                    // Avoid turning `!` or `()` into an empty string
-                    if !link.is_empty() {
-                        return Some((Kind(kind), link));
-                    }
-                }
-            }
-            None
-        };
-
         if let Some(idx) = link.find('@') {
             let (prefix, rest) = link.split_at(idx);
             let d = match prefix {
@@ -1586,7 +1569,20 @@ impl Disambiguator {
             };
             Ok(Some((d, &rest[1..])))
         } else {
-            Ok(find_suffix())
+            let suffixes = [
+                ("!()", DefKind::Macro(MacroKind::Bang)),
+                ("()", DefKind::Fn),
+                ("!", DefKind::Macro(MacroKind::Bang)),
+            ];
+            for &(suffix, kind) in &suffixes {
+                if let Some(link) = link.strip_suffix(suffix) {
+                    // Avoid turning `!` or `()` into an empty string
+                    if !link.is_empty() {
+                        return Ok(Some((Kind(kind), link)));
+                    }
+                }
+            }
+            Ok(None)
         }
     }
 
