@@ -905,7 +905,7 @@ impl<T> BinaryHeap<T> {
     ///
     /// io::sink().write(heap.as_slice()).unwrap();
     /// ```
-    #[unstable(feature = "binary_heap_as_slice", issue = "82331")]
+    #[unstable(feature = "binary_heap_as_slice", issue = "83659")]
     pub fn as_slice(&self) -> &[T] {
         self.data.as_slice()
     }
