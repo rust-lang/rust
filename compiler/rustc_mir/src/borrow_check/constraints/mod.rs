@@ -3,7 +3,9 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::ty::RegionVid;
 use std::ops::Index;
 
-crate use rustc_middle::mir::regions::OutlivesConstraint;
+crate use rustc_middle::mir::regions::{
+    ConstraintSccIndex, OutlivesConstraint, OutlivesConstraintIndex,
+};
 
 crate mod graph;
 
@@ -67,17 +69,5 @@ impl Index<OutlivesConstraintIndex> for OutlivesConstraintSet {
 
     fn index(&self, i: OutlivesConstraintIndex) -> &Self::Output {
         &self.outlives[i]
-    }
-}
-
-rustc_index::newtype_index! {
-    pub struct OutlivesConstraintIndex {
-        DEBUG_FORMAT = "OutlivesConstraintIndex({})"
-    }
-}
-
-rustc_index::newtype_index! {
-    pub struct ConstraintSccIndex {
-        DEBUG_FORMAT = "ConstraintSccIndex({})"
     }
 }

@@ -18,6 +18,7 @@ mod tests;
 /// the index type for the graph nodes and `S` is the index type for
 /// the SCCs. We can map from each node to the SCC that it
 /// participates in, and we also have the successors of each SCC.
+#[derive(Debug, Encodable, Decodable)]
 pub struct Sccs<N: Idx, S: Idx> {
     /// For each node, what is the SCC index of the SCC to which it
     /// belongs.
@@ -27,6 +28,7 @@ pub struct Sccs<N: Idx, S: Idx> {
     scc_data: SccData<S>,
 }
 
+#[derive(Debug, Encodable, Decodable)]
 struct SccData<S: Idx> {
     /// For each SCC, the range of `all_successors` where its
     /// successors can be found.

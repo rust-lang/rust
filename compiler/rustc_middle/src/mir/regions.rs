@@ -101,3 +101,9 @@ impl fmt::Debug for OutlivesConstraint {
         write!(formatter, "({:?}: {:?}) due to {:?}", self.sup, self.sub, self.locations)
     }
 }
+
+rustc_index::newtype_index! {
+    pub struct ConstraintSccIndex {
+        DEBUG_FORMAT = "ConstraintSccIndex({})"
+    }
+}

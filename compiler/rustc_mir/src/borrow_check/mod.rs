@@ -452,7 +452,10 @@ fn do_mir_borrowck<'a, 'tcx>(
     let borrows_entry_sets = results.borrows.entry_sets;
 
     drop(mbcx.borrow_set);
+    drop(mbcx.regioncx);
 
+    let regioncx =
+        Rc::try_unwrap(regioncx).unwrap_or_else(|_| panic!("regioncx still has a pointer"));
     let result = BorrowCheckResult {
         concrete_opaque_types: opaque_type_values,
         closure_requirements: opt_closure_req,
@@ -463,6 +466,7 @@ fn do_mir_borrowck<'a, 'tcx>(
             borrows_entry_sets,
             body: Rc::try_unwrap(body).unwrap(),
             outlives_constraints: regioncx.constraints.outlives().iter().cloned().collect(),
+            constraint_sccs: Rc::try_unwrap(regioncx.constraint_sccs).unwrap(),
         },
     };
 

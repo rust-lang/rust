@@ -4,6 +4,7 @@ use std::hash::{BuildHasher, Hash};
 
 use crate::{Decodable, Decoder, Encodable, Encoder};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, LinkedList, VecDeque};
+use std::ops::Range;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -311,5 +312,18 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for Arc<[T]> {
     fn decode(d: &mut D) -> Result<Arc<[T]>, D::Error> {
         let vec: Vec<T> = Decodable::decode(d)?;
         Ok(vec.into())
+    }
+}
+
+impl<E: Encoder, T: Encodable<E>> Encodable<E> for Range<T> {
+    fn encode(&self, s: &mut E) -> Result<(), E::Error> {
+        self.start.encode(s)?;
+        self.end.encode(s)
+    }
+}
+
+impl<D: Decoder, T: Decodable<D>> Decodable<D> for Range<T> {
+    fn decode(d: &mut D) -> Result<Range<T>, D::Error> {
+        Ok(Range { start: T::decode(d)?, end: T::decode(d)? })
     }
 }

@@ -434,7 +434,7 @@ debug-logging = true
 
 # Build a multi-threaded rustc
 # FIXME(#75760): Some UI tests fail when this option is enabled.
-#parallel-compiler = false
+parallel-compiler = false
 
 # The default linker that will be hard-coded into the generated compiler for
 # targets that don't specify linker explicitly in their target specifications.

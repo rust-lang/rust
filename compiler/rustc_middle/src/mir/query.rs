@@ -4,11 +4,12 @@ use crate::ich::StableHashingContext;
 use crate::mir::{
     abstract_const,
     borrows::{BorrowIndex, BorrowSet},
-    regions::OutlivesConstraint,
+    regions::{ConstraintSccIndex, OutlivesConstraint},
     BasicBlock, Body, Location, Promoted,
 };
-use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::{self, RegionVid, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::graph::scc::Sccs;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::ErrorReported;
@@ -235,6 +236,7 @@ pub struct BorrowCheckIntermediates<'tcx> {
     pub borrows_out_of_scope_at_location: FxHashMap<Location, Vec<BorrowIndex>>,
     pub body: Body<'tcx>,
     pub outlives_constraints: Vec<OutlivesConstraint>,
+    pub constraint_sccs: Sccs<RegionVid, ConstraintSccIndex>,
 }
 
 #[derive(Debug, TyEncodable, TyDecodable)]

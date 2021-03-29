@@ -64,7 +64,7 @@ pub struct RegionInferenceContext<'tcx> {
     /// The SCC computed from `constraints` and the constraint
     /// graph. We have an edge from SCC A to SCC B if `A: B`. Used to
     /// compute the values of each region.
-    constraint_sccs: Rc<Sccs<RegionVid, ConstraintSccIndex>>,
+    pub(super) constraint_sccs: Rc<Sccs<RegionVid, ConstraintSccIndex>>,
 
     /// Reverse of the SCC constraint graph --  i.e., an edge `A -> B` exists if
     /// `B: A`. This is used to compute the universal regions that are required
