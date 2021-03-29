@@ -474,6 +474,7 @@ fn semantic_token_type_and_modifiers(
             HlMod::Callable => semantic_tokens::CALLABLE,
             HlMod::Static => lsp_types::SemanticTokenModifier::STATIC,
             HlMod::IntraDocLink => semantic_tokens::INTRA_DOC_LINK,
+            HlMod::Trait => semantic_tokens::TRAIT_MODIFIER,
             HlMod::Associated => continue,
         };
         mods |= modifier;

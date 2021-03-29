@@ -58,6 +58,8 @@ pub enum HlMod {
     Associated,
     /// Used for intra doc links in doc injection.
     IntraDocLink,
+    /// Used for trait items in impls.
+    Trait,
 
     /// Keep this last!
     Unsafe,
@@ -158,6 +160,7 @@ impl HlMod {
         HlMod::Callable,
         HlMod::Static,
         HlMod::Associated,
+        HlMod::Trait,
         HlMod::Unsafe,
     ];
 
@@ -174,6 +177,7 @@ impl HlMod {
             HlMod::IntraDocLink => "intra_doc_link",
             HlMod::Mutable => "mutable",
             HlMod::Static => "static",
+            HlMod::Trait => "trait",
             HlMod::Unsafe => "unsafe",
         }
     }

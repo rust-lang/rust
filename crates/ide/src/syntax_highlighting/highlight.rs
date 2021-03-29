@@ -1,6 +1,6 @@
 //! Computes color for a single element.
 
-use hir::{AsAssocItem, Semantics, VariantDef};
+use hir::{AsAssocItem, AssocItemContainer, Semantics, VariantDef};
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
     RootDatabase, SymbolKind,
@@ -275,6 +275,19 @@ fn highlight_def(db: &RootDatabase, def: Definition) -> Highlight {
             hir::ModuleDef::Module(_) => HlTag::Symbol(SymbolKind::Module),
             hir::ModuleDef::Function(func) => {
                 let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Function));
+                if let Some(item) = func.as_assoc_item(db) {
+                    match item.container(db) {
+                        AssocItemContainer::Impl(i) => {
+                            if i.target_trait(db).is_some() {
+                                h |= HlMod::Trait;
+                            }
+                        }
+                        AssocItemContainer::Trait(_t) => {
+                            h |= HlMod::Trait;
+                        }
+                    }
+                }
+
                 if func.as_assoc_item(db).is_some() {
                     h |= HlMod::Associated;
                     if func.self_param(db).is_none() {
@@ -362,6 +375,10 @@ fn highlight_method_call(
     if func.is_unsafe(sema.db) || sema.is_unsafe_method_call(&method_call) {
         h |= HlMod::Unsafe;
     }
+    if let Some(_t) = func.as_assoc_item(sema.db)?.containing_trait(sema.db) {
+        h |= HlMod::Trait
+    }
+
     if let Some(self_param) = func.self_param(sema.db) {
         match self_param.access(sema.db) {
             hir::Access::Shared => (),
