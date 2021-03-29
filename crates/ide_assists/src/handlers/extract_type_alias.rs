@@ -1,7 +1,4 @@
-use syntax::{
-    ast::{self, AstNode},
-    SyntaxKind,
-};
+use syntax::ast::{self, AstNode};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -27,28 +24,9 @@ pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext) -> Opti
         return None;
     }
 
-    let node = match ctx.covering_element() {
-        syntax::NodeOrToken::Node(node) => node,
-        syntax::NodeOrToken::Token(tok) => tok.parent()?,
-    };
-    let range = node.text_range();
-    let mut type_like_node = None;
-    for node in node.ancestors() {
-        if node.text_range() != range {
-            break;
-        }
-
-        let kind = node.kind();
-        if ast::Type::can_cast(kind) || kind == SyntaxKind::TYPE_ARG {
-            type_like_node = Some(node);
-            break;
-        }
-    }
-
-    let node = type_like_node?;
-
+    let node = ctx.find_node_at_range::<ast::Type>()?;
     let insert = ctx.find_node_at_offset::<ast::Item>()?.syntax().text_range().start();
-    let target = node.text_range();
+    let target = node.syntax().text_range();
 
     acc.add(
         AssistId("extract_type_alias", AssistKind::RefactorExtract),
