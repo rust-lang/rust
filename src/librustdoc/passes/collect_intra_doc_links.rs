@@ -950,6 +950,7 @@ impl LinkCollector<'_, '_> {
         }
 
         let link = ori_link.link.replace("`", "");
+        let no_backticks_range = range_between_backticks(&ori_link);
         let parts = link.split('#').collect::<Vec<_>>();
         let (link, extra_fragment) = if parts.len() > 2 {
             // A valid link can't have multiple #'s
@@ -976,8 +977,10 @@ impl LinkCollector<'_, '_> {
         let (mut path_str, disambiguator) = match Disambiguator::from_str(&link) {
             Ok(Some((d, path))) => (path.trim(), Some(d)),
             Ok(None) => (link.trim(), None),
-            Err(err_msg) => {
-                disambiguator_error(self.cx, &item, dox, ori_link.range, &err_msg);
+            Err((err_msg, relative_range)) => {
+                let disambiguator_range = (no_backticks_range.start + relative_range.start)
+                    ..(no_backticks_range.start + relative_range.end);
+                disambiguator_error(self.cx, &item, dox, disambiguator_range, &err_msg);
                 return None;
             }
         };
@@ -1491,6 +1494,27 @@ impl LinkCollector<'_, '_> {
     }
 }
 
+/// Get the section of a link between the backticks,
+/// or the whole link if there aren't any backticks.
+///
+/// For example:
+///
+/// ```text
+/// [`Foo`]
+///   ^^^
+/// ```
+fn range_between_backticks(ori_link: &MarkdownLink) -> Range<usize> {
+    let after_first_backtick_group = ori_link.link.bytes().position(|b| b != b'`').unwrap_or(0);
+    let before_second_backtick_group = ori_link
+        .link
+        .bytes()
+        .skip(after_first_backtick_group)
+        .position(|b| b == b'`')
+        .unwrap_or(ori_link.link.len());
+    (ori_link.range.start + after_first_backtick_group)
+        ..(ori_link.range.start + before_second_backtick_group)
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 /// Disambiguators for a link.
 enum Disambiguator {
@@ -1522,7 +1546,7 @@ impl Disambiguator {
     /// This returns `Ok(Some(...))` if a disambiguator was found,
     /// `Ok(None)` if no disambiguator was found, or `Err(...)`
     /// if there was a problem with the disambiguator.
-    fn from_str(link: &str) -> Result<Option<(Self, &str)>, String> {
+    fn from_str(link: &str) -> Result<Option<(Self, &str)>, (String, Range<usize>)> {
         use Disambiguator::{Kind, Namespace as NS, Primitive};
 
         let find_suffix = || {
@@ -1558,7 +1582,7 @@ impl Disambiguator {
                 "value" => NS(Namespace::ValueNS),
                 "macro" => NS(Namespace::MacroNS),
                 "prim" | "primitive" => Primitive,
-                _ => return Err(format!("unknown disambiguator `{}`", prefix)),
+                _ => return Err((format!("unknown disambiguator `{}`", prefix), 0..idx)),
             };
             Ok(Some((d, &rest[1..])))
         } else {
@@ -1994,12 +2018,7 @@ fn disambiguator_error(
     link_range: Range<usize>,
     msg: &str,
 ) {
-    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, msg, item, dox, &link_range, |diag, _sp| {
-        diag.note(
-            "the disambiguator is the part of the link before the `@` sign, \
-             or a suffix such as `()` for functions",
-        );
-    });
+    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, msg, item, dox, &link_range, |_diag, _sp| {});
 }
 
 /// Report an ambiguity error, where there were multiple possible resolutions.

@@ -1162,6 +1162,7 @@ crate fn plain_text_summary(md: &str) -> String {
     s
 }
 
+#[derive(Debug)]
 crate struct MarkdownLink {
     pub kind: LinkType,
     pub link: String,

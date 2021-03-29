@@ -2,7 +2,7 @@ error: unknown disambiguator `foo`
   --> $DIR/unknown-disambiguator.rs:1:17
    |
 LL | //! Linking to [foo@banana] and [`bar@banana!()`].
-   |                 ^^^^^^^^^^
+   |                 ^^^
    |
 note: the lint level is defined here
   --> $DIR/unknown-disambiguator.rs:8:9
@@ -10,31 +10,24 @@ note: the lint level is defined here
 LL | #![deny(warnings)]
    |         ^^^^^^^^
    = note: `#[deny(rustdoc::broken_intra_doc_links)]` implied by `#[deny(warnings)]`
-   = note: the disambiguator is the part of the link before the `@` sign, or a suffix such as `()` for functions
 
 error: unknown disambiguator `bar`
-  --> $DIR/unknown-disambiguator.rs:1:34
+  --> $DIR/unknown-disambiguator.rs:1:35
    |
 LL | //! Linking to [foo@banana] and [`bar@banana!()`].
-   |                                  ^^^^^^^^^^^^^^^
-   |
-   = note: the disambiguator is the part of the link before the `@` sign, or a suffix such as `()` for functions
+   |                                   ^^^
 
 error: unknown disambiguator ``
   --> $DIR/unknown-disambiguator.rs:4:31
    |
 LL | //! And to [no disambiguator](@nectarine) and [another](@apricot!()).
-   |                               ^^^^^^^^^^
-   |
-   = note: the disambiguator is the part of the link before the `@` sign, or a suffix such as `()` for functions
+   |                               ^
 
 error: unknown disambiguator ``
   --> $DIR/unknown-disambiguator.rs:4:57
    |
 LL | //! And to [no disambiguator](@nectarine) and [another](@apricot!()).
-   |                                                         ^^^^^^^^^^^
-   |
-   = note: the disambiguator is the part of the link before the `@` sign, or a suffix such as `()` for functions
+   |                                                         ^
 
 error: aborting due to 4 previous errors
 
