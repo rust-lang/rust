@@ -268,7 +268,7 @@ mod tests {
                 FoldKind::ArgList => "arglist",
                 FoldKind::Region => "region",
                 FoldKind::Consts => "consts",
-                FoldKind::Statics => "statics"
+                FoldKind::Statics => "statics",
             };
             assert_eq!(kind, &attr.unwrap());
         }
