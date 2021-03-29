@@ -17,6 +17,8 @@ pub enum FoldKind {
     Block,
     ArgList,
     Region,
+    Consts,
+    Statics,
 }
 
 #[derive(Debug)]
@@ -250,6 +252,8 @@ mod tests {
                 FoldKind::Block => "block",
                 FoldKind::ArgList => "arglist",
                 FoldKind::Region => "region",
+                FoldKind::Consts => "consts",
+                FoldKind::Statics => "statics"
             };
             assert_eq!(kind, &attr.unwrap());
         }
@@ -472,7 +476,7 @@ const SECOND_CONST: &str = "second";</fold>
     fn fold_consecutive_static() {
         check(
             r#"
-<fold consts>static FIRST_STATIC: &str = "first";
+<fold statics>static FIRST_STATIC: &str = "first";
 static SECOND_STATIC: &str = "second";</fold>
             "#,
         )
