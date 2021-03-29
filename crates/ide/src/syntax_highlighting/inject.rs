@@ -11,7 +11,8 @@ use syntax::{
 };
 
 use crate::{
-    doc_links::extract_definitions_from_markdown, Analysis, HlMod, HlRange, HlTag, RootDatabase,
+    doc_links::{extract_definitions_from_markdown, resolve_doc_path_for_def},
+    Analysis, HlMod, HlRange, HlTag, RootDatabase,
 };
 
 use super::{highlights::Highlights, injector::Injector};
@@ -190,7 +191,7 @@ pub(super) fn doc_comment(
                         extract_definitions_from_markdown(line)
                             .into_iter()
                             .filter_map(|(range, link, ns)| {
-                                Some(range).zip(validate_intra_doc_link(sema.db, &def, &link, ns))
+                                Some(range).zip(resolve_doc_path_for_def(sema.db, def, &link, ns))
                             })
                             .map(|(Range { start, end }, def)| {
                                 (
@@ -280,33 +281,6 @@ fn find_doc_string_in_attr(attr: &hir::Attr, it: &ast::Attr) -> Option<ast::Stri
                 })
         }
         _ => return None,
-    }
-}
-
-fn validate_intra_doc_link(
-    db: &RootDatabase,
-    def: &Definition,
-    link: &str,
-    ns: Option<hir::Namespace>,
-) -> Option<hir::ModuleDef> {
-    match def {
-        Definition::ModuleDef(def) => match def {
-            hir::ModuleDef::Module(it) => it.resolve_doc_path(db, &link, ns),
-            hir::ModuleDef::Function(it) => it.resolve_doc_path(db, &link, ns),
-            hir::ModuleDef::Adt(it) => it.resolve_doc_path(db, &link, ns),
-            hir::ModuleDef::Variant(it) => it.resolve_doc_path(db, &link, ns),
-            hir::ModuleDef::Const(it) => it.resolve_doc_path(db, &link, ns),
-            hir::ModuleDef::Static(it) => it.resolve_doc_path(db, &link, ns),
-            hir::ModuleDef::Trait(it) => it.resolve_doc_path(db, &link, ns),
-            hir::ModuleDef::TypeAlias(it) => it.resolve_doc_path(db, &link, ns),
-            hir::ModuleDef::BuiltinType(_) => None,
-        },
-        Definition::Macro(it) => it.resolve_doc_path(db, &link, ns),
-        Definition::Field(it) => it.resolve_doc_path(db, &link, ns),
-        Definition::SelfType(_)
-        | Definition::Local(_)
-        | Definition::GenericParam(_)
-        | Definition::Label(_) => None,
     }
 }
 
