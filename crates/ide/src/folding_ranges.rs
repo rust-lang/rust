@@ -32,6 +32,7 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
     let mut visited_comments = FxHashSet::default();
     let mut visited_imports = FxHashSet::default();
     let mut visited_mods = FxHashSet::default();
+    let mut visited_consts = FxHashSet::default();
     // regions can be nested, here is a LIFO buffer
     let mut regions_starts: Vec<TextSize> = vec![];
 
@@ -91,6 +92,13 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
                         contiguous_range_for_group_unless(&node, has_visibility, &mut visited_mods)
                     {
                         res.push(Fold { range, kind: FoldKind::Mods })
+                    }
+                }
+
+                // Fold groups of consts
+                if node.kind() == CONST && !visited_consts.contains(&node) {
+                    if let Some(range) = contiguous_range_for_group(&node, &mut visited_consts) {
+                        res.push(Fold { range, kind: FoldKind::Consts })
                     }
                 }
             }
