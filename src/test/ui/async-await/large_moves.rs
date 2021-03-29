@@ -2,6 +2,7 @@
 #![feature(large_assignments)]
 #![move_size_limit = "1000"]
 // build-fail
+// only-x86_64
 
 // edition:2018
 
