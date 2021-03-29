@@ -2,6 +2,7 @@ use super::write::CodegenContext;
 use crate::traits::*;
 use crate::ModuleCodegen;
 
+use rustc_data_structures::memmap::Mmap;
 use rustc_errors::FatalError;
 
 use std::ffi::CString;
@@ -93,7 +94,7 @@ impl<B: WriteBackendMethods> LtoModuleCodegen<B> {
 pub enum SerializedModule<M: ModuleBufferMethods> {
     Local(M),
     FromRlib(Vec<u8>),
-    FromUncompressedFile(memmap2::Mmap),
+    FromUncompressedFile(Mmap),
 }
 
 impl<M: ModuleBufferMethods> SerializedModule<M> {
