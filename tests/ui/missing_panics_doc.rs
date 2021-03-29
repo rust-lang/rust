@@ -112,3 +112,11 @@ fn inner_body_private(opt: Option<u32>) {
 pub fn unreachable() {
     unreachable!("This function panics")
 }
+
+/// #6970.
+/// This is okay because it is expansion of `debug_assert` family.
+pub fn debug_assertions() {
+    debug_assert!(false);
+    debug_assert_eq!(1, 2);
+    debug_assert_ne!(1, 2);
+}
