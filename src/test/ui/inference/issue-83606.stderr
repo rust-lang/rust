@@ -1,0 +1,11 @@
+error[E0282]: type annotations needed for `[usize; _]`
+  --> $DIR/issue-83606.rs:8:13
+   |
+LL |     let _ = foo("foo"); //<- Do not suggest `foo::<N>("foo");`!
+   |         -   ^^^ cannot infer the value of const parameter `N` declared on the function `foo`
+   |         |
+   |         consider giving this pattern the explicit type `[usize; _]`, where the type parameter `N` is specified
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.
