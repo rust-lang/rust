@@ -69,7 +69,6 @@ pub mod llvm {
 }
 
 mod llvm_util;
-mod metadata;
 mod mono_item;
 mod type_;
 mod type_of;
