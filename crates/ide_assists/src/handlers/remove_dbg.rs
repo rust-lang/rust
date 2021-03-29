@@ -475,33 +475,29 @@ fn foo() {
         );
         check_assist(
             remove_dbg,
-            r#"fn foo() {
-let test = $0dbg!();
+            r#"
+fn foo() {
+    let test = $0dbg!();
 }"#,
-            r#"fn foo() {
-let test = ();
-}"#,
-        );
-        check_assist(
-            remove_dbg,
-            r#"fn foo() {
-$0dbg!()
-}"#,
-            r#"fn foo() {
+            r#"
+fn foo() {
+    let test = ();
 }"#,
         );
         check_assist(
             remove_dbg,
-            r#"fn foo() {
-let t = {
-    println!("Hello, world");
-    $0dbg!()
-};
+            r#"
+fn foo() {
+    let t = {
+        println!("Hello, world");
+        $0dbg!()
+    };
 }"#,
-            r#"fn foo() {
-let t = {
-    println!("Hello, world");
-};
+            r#"
+fn foo() {
+    let t = {
+        println!("Hello, world");
+    };
 }"#,
         );
     }
