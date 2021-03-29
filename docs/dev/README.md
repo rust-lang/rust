@@ -135,12 +135,15 @@ panel and select `rust-analyzer`. This shows `eprintln!` as well. Note that
 
 To log all communication between the server and the client, there are two choices:
 
-* you can log on the server side, by running something like
+* You can log on the server side, by running something like
   ```
   env RA_LOG=lsp_server=debug code .
   ```
 
-* you can log on the client side, by enabling `"rust-analyzer.trace.server":
+  By default, logs go to stderr, `--log-file <PATH>` CLI argument overrides
+  that.
+
+* You can log on the client side, by enabling `"rust-analyzer.trace.server":
   "verbose"` workspace setting. These logs are shown in a separate tab in the
   output and could be used with LSP inspector. Kudos to
   [@DJMcNab](https://github.com/DJMcNab) for setting this awesome infra up!
