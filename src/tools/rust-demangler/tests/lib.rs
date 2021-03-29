@@ -1,6 +1,6 @@
 use rust_demangler::*;
 
-const MANGLED_LINES: &str = r"
+const MANGLED_INPUT: &str = r"
 _RNvC6_123foo3bar
 _RNqCs4fqI2P2rA04_11utf8_identsu30____7hkackfecea1cbdathfdh9hlq6y
 _RNCNCNgCs6DXkGYLi8lr_2cc5spawn00B5_
@@ -24,7 +24,7 @@ _RNvNtNtNtNtCs92dm3009vxr_4rand4rngs7adapter9reseeding4fork23FORK_HANDLER_REGIST
 
 #[test]
 fn test_demangle_lines() {
-    let demangled_lines = demangle_lines(MANGLED_LINES, None);
+    let demangled_lines = demangle_lines(MANGLED_INPUT.lines(), None);
     let mut iter = demangled_lines.iter();
     assert_eq!("", iter.next().unwrap());
     assert_eq!("123foo[0]::bar", iter.next().unwrap());
@@ -55,13 +55,12 @@ fn test_demangle_lines() {
         "rand[693ea8e72247470f]::rngs::adapter::reseeding::fork::FORK_HANDLER_REGISTERED.0.0",
         iter.next().unwrap()
     );
-    assert_eq!("", iter.next().unwrap());
     assert!(iter.next().is_none());
 }
 
 #[test]
 fn test_demangle_lines_no_crate_disambiguators() {
-    let demangled_lines = demangle_lines(MANGLED_LINES, Some(create_disambiguator_re()));
+    let demangled_lines = demangle_lines(MANGLED_INPUT.lines(), Some(create_disambiguator_re()));
     let mut iter = demangled_lines.iter();
     assert_eq!("", iter.next().unwrap());
     assert_eq!("123foo[0]::bar", iter.next().unwrap());
@@ -92,6 +91,5 @@ fn test_demangle_lines_no_crate_disambiguators() {
         "rand::rngs::adapter::reseeding::fork::FORK_HANDLER_REGISTERED.0.0",
         iter.next().unwrap()
     );
-    assert_eq!("", iter.next().unwrap());
     assert!(iter.next().is_none());
 }

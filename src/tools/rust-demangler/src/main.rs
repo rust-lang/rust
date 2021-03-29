@@ -90,7 +90,8 @@ fn main() -> io::Result<()> {
 
     let mut buffer = String::new();
     io::stdin().read_to_string(&mut buffer)?;
-    let demangled_lines = demangle_lines(&buffer, strip_crate_disambiguators);
+    let mut demangled_lines = demangle_lines(buffer.lines(), strip_crate_disambiguators);
+    demangled_lines.push("".to_string()); // ensure a trailing newline
     io::stdout().write_all(demangled_lines.join("\n").as_bytes())?;
     Ok(())
 }
