@@ -1,7 +1,10 @@
 //! Operations on ASCII `[u8]`.
 
+use crate::ascii;
+use crate::fmt::{self, Write};
 use crate::iter;
 use crate::mem;
+use crate::ops;
 
 #[lang = "slice_u8"]
 #[cfg(not(test))]
@@ -55,6 +58,95 @@ impl [u8] {
         for byte in self {
             byte.make_ascii_lowercase();
         }
+    }
+
+    /// Returns an iterator that produces an escaped version of this slice,
+    /// treating it as an ASCII string.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(inherent_ascii_escape)]
+    ///
+    /// let s = b"0\t\r\n'\"\\\x9d";
+    /// let escaped = s.escape_ascii().to_string();
+    /// assert_eq!(escaped, "0\\t\\r\\n\\'\\\"\\\\\\x9d");
+    /// ```
+    #[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+    pub fn escape_ascii(&self) -> EscapeAscii<'_> {
+        EscapeAscii { inner: self.iter().flat_map(EscapeByte) }
+    }
+}
+
+impl_fn_for_zst! {
+    #[derive(Clone)]
+    struct EscapeByte impl Fn = |byte: &u8| -> ascii::EscapeDefault {
+        ascii::escape_default(*byte)
+    };
+}
+
+/// An iterator over the escaped version of a byte slice.
+///
+/// This `struct` is created by the [`slice::escape_ascii`] method. See its
+/// documentation for more information.
+#[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+#[derive(Clone)]
+pub struct EscapeAscii<'a> {
+    inner: iter::FlatMap<super::Iter<'a, u8>, ascii::EscapeDefault, EscapeByte>,
+}
+
+#[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+impl<'a> iter::Iterator for EscapeAscii<'a> {
+    type Item = u8;
+    #[inline]
+    fn next(&mut self) -> Option<u8> {
+        self.inner.next()
+    }
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+    #[inline]
+    fn try_fold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R
+    where
+        Fold: FnMut(Acc, Self::Item) -> R,
+        R: ops::Try<Ok = Acc>,
+    {
+        self.inner.try_fold(init, fold)
+    }
+    #[inline]
+    fn fold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
+    where
+        Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        self.inner.fold(init, fold)
+    }
+    #[inline]
+    fn last(mut self) -> Option<u8> {
+        self.next_back()
+    }
+}
+
+#[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+impl<'a> iter::DoubleEndedIterator for EscapeAscii<'a> {
+    fn next_back(&mut self) -> Option<u8> {
+        self.inner.next_back()
+    }
+}
+#[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+impl<'a> iter::ExactSizeIterator for EscapeAscii<'a> {}
+#[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+impl<'a> iter::FusedIterator for EscapeAscii<'a> {}
+#[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+impl<'a> fmt::Display for EscapeAscii<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.clone().try_for_each(|b| f.write_char(b as char))
+    }
+}
+#[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+impl<'a> fmt::Debug for EscapeAscii<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.pad("EscapeAscii { .. }")
     }
 }
 
