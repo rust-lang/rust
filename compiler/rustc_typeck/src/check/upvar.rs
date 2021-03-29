@@ -34,6 +34,7 @@ use super::FnCtxt;
 
 use crate::expr_use_visitor as euv;
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::def_id::LocalDefId;
@@ -91,7 +92,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InferBorrowKindVisitor<'a, 'tcx> {
         if let hir::ExprKind::Closure(cc, _, body_id, _, _) = expr.kind {
             let body = self.fcx.tcx.hir().body(body_id);
             self.visit_body(body);
-            self.fcx.analyze_closure(expr.hir_id, expr.span, body, cc);
+            self.fcx.analyze_closure(expr.hir_id, expr.span, body_id, body, cc);
         }
 
         intravisit::walk_expr(self, expr);
@@ -104,6 +105,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         closure_hir_id: hir::HirId,
         span: Span,
+        body_id: hir::BodyId,
         body: &'tcx hir::Body<'tcx>,
         capture_clause: hir::CaptureBy,
     ) {
@@ -167,7 +169,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let closure_hir_id = self.tcx.hir().local_def_id_to_hir_id(local_def_id);
         if should_do_migration_analysis(self.tcx, closure_hir_id) {
-            self.perform_2229_migration_anaysis(closure_def_id, capture_clause, span);
+            self.perform_2229_migration_anaysis(closure_def_id, body_id, capture_clause, span);
         }
 
         // We now fake capture information for all variables that are mentioned within the closure
@@ -465,6 +467,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn perform_2229_migration_anaysis(
         &self,
         closure_def_id: DefId,
+        body_id: hir::BodyId,
         capture_clause: hir::CaptureBy,
         span: Span,
     ) {
@@ -488,7 +491,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let mut diagnostics_builder = lint.build(
                         "drop order affected for closure because of `capture_disjoint_fields`",
                     );
-                    diagnostics_builder.note(&migrations_text);
+                    let closure_body_span = self.tcx.hir().span(body_id.hir_id);
+                    let (sugg, app) =
+                        match self.tcx.sess.source_map().span_to_snippet(closure_body_span) {
+                            Ok(s) => (
+                                format!("{{ {} {} }}", migrations_text, s),
+                                Applicability::MachineApplicable,
+                            ),
+                            Err(_) => (migrations_text.clone(), Applicability::HasPlaceholders),
+                        };
+
+                    diagnostics_builder.span_suggestion(
+                        closure_body_span,
+                        &format!("You can restore original behavior adding `{}` to the closure/generator", migrations_text),
+                        sugg,
+                        app,
+                    );
                     diagnostics_builder.emit();
                 },
             );
@@ -1517,10 +1535,14 @@ fn should_do_migration_analysis(tcx: TyCtxt<'_>, closure_id: hir::HirId) -> bool
 
 fn migration_suggestion_for_2229(tcx: TyCtxt<'_>, need_migrations: &Vec<hir::HirId>) -> String {
     let need_migrations_strings =
-        need_migrations.iter().map(|v| format!("{}", var_name(tcx, *v))).collect::<Vec<_>>();
+        need_migrations.iter().map(|v| format!("&{}", var_name(tcx, *v))).collect::<Vec<_>>();
     let migrations_list_concat = need_migrations_strings.join(", ");
 
-    format!("drop(&({}));", migrations_list_concat)
+    if 1 == need_migrations.len() {
+        format!("let _ = {};", migrations_list_concat)
+    } else {
+        format!("let _ = ({});", migrations_list_concat)
+    }
 }
 
 /// Helper function to determine if we need to escalate CaptureKind from
