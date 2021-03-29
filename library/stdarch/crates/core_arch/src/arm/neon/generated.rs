@@ -2381,6 +2381,182 @@ pub unsafe fn vmlsl_u32(a: uint64x2_t, b: uint32x2_t, c: uint32x2_t) -> uint64x2
     simd_sub(a, vmull_u32(b, c))
 }
 
+/// Negate
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vneg.s8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(neg))]
+pub unsafe fn vneg_s8(a: int8x8_t) -> int8x8_t {
+    simd_neg(a)
+}
+
+/// Negate
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vneg.s8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(neg))]
+pub unsafe fn vnegq_s8(a: int8x16_t) -> int8x16_t {
+    simd_neg(a)
+}
+
+/// Negate
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vneg.s16"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(neg))]
+pub unsafe fn vneg_s16(a: int16x4_t) -> int16x4_t {
+    simd_neg(a)
+}
+
+/// Negate
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vneg.s16"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(neg))]
+pub unsafe fn vnegq_s16(a: int16x8_t) -> int16x8_t {
+    simd_neg(a)
+}
+
+/// Negate
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vneg.s32"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(neg))]
+pub unsafe fn vneg_s32(a: int32x2_t) -> int32x2_t {
+    simd_neg(a)
+}
+
+/// Negate
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vneg.s32"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(neg))]
+pub unsafe fn vnegq_s32(a: int32x4_t) -> int32x4_t {
+    simd_neg(a)
+}
+
+/// Negate
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vneg.f32"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fneg))]
+pub unsafe fn vneg_f32(a: float32x2_t) -> float32x2_t {
+    simd_neg(a)
+}
+
+/// Negate
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vneg.f32"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fneg))]
+pub unsafe fn vnegq_f32(a: float32x4_t) -> float32x4_t {
+    simd_neg(a)
+}
+
+/// Signed saturating negate
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqneg.s8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqneg))]
+pub unsafe fn vqneg_s8(a: int8x8_t) -> int8x8_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqneg.v8i8")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqneg.v8i8")]
+        fn vqneg_s8_(a: int8x8_t) -> int8x8_t;
+    }
+vqneg_s8_(a)
+}
+
+/// Signed saturating negate
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqneg.s8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqneg))]
+pub unsafe fn vqnegq_s8(a: int8x16_t) -> int8x16_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqneg.v16i8")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqneg.v16i8")]
+        fn vqnegq_s8_(a: int8x16_t) -> int8x16_t;
+    }
+vqnegq_s8_(a)
+}
+
+/// Signed saturating negate
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqneg.s16"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqneg))]
+pub unsafe fn vqneg_s16(a: int16x4_t) -> int16x4_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqneg.v4i16")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqneg.v4i16")]
+        fn vqneg_s16_(a: int16x4_t) -> int16x4_t;
+    }
+vqneg_s16_(a)
+}
+
+/// Signed saturating negate
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqneg.s16"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqneg))]
+pub unsafe fn vqnegq_s16(a: int16x8_t) -> int16x8_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqneg.v8i16")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqneg.v8i16")]
+        fn vqnegq_s16_(a: int16x8_t) -> int16x8_t;
+    }
+vqnegq_s16_(a)
+}
+
+/// Signed saturating negate
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqneg.s32"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqneg))]
+pub unsafe fn vqneg_s32(a: int32x2_t) -> int32x2_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqneg.v2i32")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqneg.v2i32")]
+        fn vqneg_s32_(a: int32x2_t) -> int32x2_t;
+    }
+vqneg_s32_(a)
+}
+
+/// Signed saturating negate
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqneg.s32"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqneg))]
+pub unsafe fn vqnegq_s32(a: int32x4_t) -> int32x4_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqneg.v4i32")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqneg.v4i32")]
+        fn vqnegq_s32_(a: int32x4_t) -> int32x4_t;
+    }
+vqnegq_s32_(a)
+}
+
 /// Saturating subtract
 #[inline]
 #[target_feature(enable = "neon")]
@@ -6663,6 +6839,118 @@ mod test {
         let c: u32x2 = u32x2::new(3, 3);
         let e: u64x2 = u64x2::new(0, 1);
         let r: u64x2 = transmute(vmlsl_u32(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vneg_s8() {
+        let a: i8x8 = i8x8::new(0, 1, -1, 2, -2, 3, -3, 4);
+        let e: i8x8 = i8x8::new(0, -1, 1, -2, 2, -3, 3, -4);
+        let r: i8x8 = transmute(vneg_s8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vnegq_s8() {
+        let a: i8x16 = i8x16::new(0, 1, -1, 2, -2, 3, -3, 4, -4, 5, -5, 6, -6, 7, -7, 8);
+        let e: i8x16 = i8x16::new(0, -1, 1, -2, 2, -3, 3, -4, 4, -5, 5, -6, 6, -7, 7, -8);
+        let r: i8x16 = transmute(vnegq_s8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vneg_s16() {
+        let a: i16x4 = i16x4::new(0, 1, -1, 2);
+        let e: i16x4 = i16x4::new(0, -1, 1, -2);
+        let r: i16x4 = transmute(vneg_s16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vnegq_s16() {
+        let a: i16x8 = i16x8::new(0, 1, -1, 2, -2, 3, -3, 4);
+        let e: i16x8 = i16x8::new(0, -1, 1, -2, 2, -3, 3, -4);
+        let r: i16x8 = transmute(vnegq_s16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vneg_s32() {
+        let a: i32x2 = i32x2::new(0, 1);
+        let e: i32x2 = i32x2::new(0, -1);
+        let r: i32x2 = transmute(vneg_s32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vnegq_s32() {
+        let a: i32x4 = i32x4::new(0, 1, -1, 2);
+        let e: i32x4 = i32x4::new(0, -1, 1, -2);
+        let r: i32x4 = transmute(vnegq_s32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vneg_f32() {
+        let a: f32x2 = f32x2::new(0., 1.);
+        let e: f32x2 = f32x2::new(0., -1.);
+        let r: f32x2 = transmute(vneg_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vnegq_f32() {
+        let a: f32x4 = f32x4::new(0., 1., -1., 2.);
+        let e: f32x4 = f32x4::new(0., -1., 1., -2.);
+        let r: f32x4 = transmute(vnegq_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vqneg_s8() {
+        let a: i8x8 = i8x8::new(-128, 0, 1, -1, 2, -2, 3, -3);
+        let e: i8x8 = i8x8::new(0x7F, 0, -1, 1, -2, 2, -3, 3);
+        let r: i8x8 = transmute(vqneg_s8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vqnegq_s8() {
+        let a: i8x16 = i8x16::new(-128, 0, 1, -1, 2, -2, 3, -3, 4, -4, 5, -5, 6, -6, 7, -7);
+        let e: i8x16 = i8x16::new(0x7F, 0, -1, 1, -2, 2, -3, 3, -4, 4, -5, 5, -6, 6, -7, 7);
+        let r: i8x16 = transmute(vqnegq_s8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vqneg_s16() {
+        let a: i16x4 = i16x4::new(-32768, 0, 1, -1);
+        let e: i16x4 = i16x4::new(0x7F_FF, 0, -1, 1);
+        let r: i16x4 = transmute(vqneg_s16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vqnegq_s16() {
+        let a: i16x8 = i16x8::new(-32768, 0, 1, -1, 2, -2, 3, -3);
+        let e: i16x8 = i16x8::new(0x7F_FF, 0, -1, 1, -2, 2, -3, 3);
+        let r: i16x8 = transmute(vqnegq_s16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vqneg_s32() {
+        let a: i32x2 = i32x2::new(-2147483648, 0);
+        let e: i32x2 = i32x2::new(0x7F_FF_FF_FF, 0);
+        let r: i32x2 = transmute(vqneg_s32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vqnegq_s32() {
+        let a: i32x4 = i32x4::new(-2147483648, 0, 1, -1);
+        let e: i32x4 = i32x4::new(0x7F_FF_FF_FF, 0, -1, 1);
+        let r: i32x4 = transmute(vqnegq_s32(transmute(a)));
         assert_eq!(r, e);
     }
 

@@ -1753,6 +1753,64 @@ pub unsafe fn vmlsl_high_u32(a: uint64x2_t, b: uint32x4_t, c: uint32x4_t) -> uin
     vmlsl_u32(a, b, c)
 }
 
+/// Negate
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(neg))]
+pub unsafe fn vneg_s64(a: int64x1_t) -> int64x1_t {
+    simd_neg(a)
+}
+
+/// Negate
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(neg))]
+pub unsafe fn vnegq_s64(a: int64x2_t) -> int64x2_t {
+    simd_neg(a)
+}
+
+/// Negate
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fneg))]
+pub unsafe fn vneg_f64(a: float64x1_t) -> float64x1_t {
+    simd_neg(a)
+}
+
+/// Negate
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fneg))]
+pub unsafe fn vnegq_f64(a: float64x2_t) -> float64x2_t {
+    simd_neg(a)
+}
+
+/// Signed saturating negate
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sqneg))]
+pub unsafe fn vqneg_s64(a: int64x1_t) -> int64x1_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqneg.v1i64")]
+        fn vqneg_s64_(a: int64x1_t) -> int64x1_t;
+    }
+    vqneg_s64_(a)
+}
+
+/// Signed saturating negate
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sqneg))]
+pub unsafe fn vqnegq_s64(a: int64x2_t) -> int64x2_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqneg.v2i64")]
+        fn vqnegq_s64_(a: int64x2_t) -> int64x2_t;
+    }
+    vqnegq_s64_(a)
+}
+
 /// Multiply
 #[inline]
 #[target_feature(enable = "neon")]
@@ -4358,6 +4416,54 @@ mod test {
         let c: u32x4 = u32x4::new(3, 3, 0, 1);
         let e: u64x2 = u64x2::new(14, 13);
         let r: u64x2 = transmute(vmlsl_high_u32(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vneg_s64() {
+        let a: i64x1 = i64x1::new(0);
+        let e: i64x1 = i64x1::new(0);
+        let r: i64x1 = transmute(vneg_s64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vnegq_s64() {
+        let a: i64x2 = i64x2::new(0, 1);
+        let e: i64x2 = i64x2::new(0, -1);
+        let r: i64x2 = transmute(vnegq_s64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vneg_f64() {
+        let a: f64 = 0.;
+        let e: f64 = 0.;
+        let r: f64 = transmute(vneg_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vnegq_f64() {
+        let a: f64x2 = f64x2::new(0., 1.);
+        let e: f64x2 = f64x2::new(0., -1.);
+        let r: f64x2 = transmute(vnegq_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vqneg_s64() {
+        let a: i64x1 = i64x1::new(-9223372036854775808);
+        let e: i64x1 = i64x1::new(0x7F_FF_FF_FF_FF_FF_FF_FF);
+        let r: i64x1 = transmute(vqneg_s64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vqnegq_s64() {
+        let a: i64x2 = i64x2::new(-9223372036854775808, 0);
+        let e: i64x2 = i64x2::new(0x7F_FF_FF_FF_FF_FF_FF_FF, 0);
+        let r: i64x2 = transmute(vqnegq_s64(transmute(a)));
         assert_eq!(r, e);
     }
 

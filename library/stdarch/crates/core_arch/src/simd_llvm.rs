@@ -43,6 +43,8 @@ extern "platform-intrinsic" {
     pub fn simd_or<T>(x: T, y: T) -> T;
     pub fn simd_xor<T>(x: T, y: T) -> T;
 
+    pub fn simd_neg<T>(x: T) -> T;
+
     pub fn simd_saturating_add<T>(x: T, y: T) -> T;
     pub fn simd_saturating_sub<T>(x: T, y: T) -> T;
 

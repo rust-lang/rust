@@ -918,6 +918,43 @@ validate 14, 13, 12, 11, 10, 9, 8, 7
 aarch64 = umlsl2
 generate uint16x8_t:uint8x16_t:uint8x16_t:uint16x8_t, uint32x4_t:uint16x8_t:uint16x8_t:uint32x4_t, uint64x2_t:uint32x4_t:uint32x4_t:uint64x2_t
 
+/// Negate
+name = vneg
+fn = simd_neg
+a = 0, 1, -1, 2, -2, 3, -3, 4, -4, 5, -5, 6, -6, 7, -7, 8
+validate 0, -1, 1, -2, 2, -3, 3, -4, 4, -5, 5, -6, 6, -7, 7, -8
+
+aarch64 = neg
+generate int64x*_t
+
+arm = vneg.s
+generate int*_t
+
+/// Negate
+name = vneg
+fn = simd_neg
+a = 0., 1., -1., 2., -2., 3., -3., 4.
+validate 0., -1., 1., -2., 2., -3., 3., -4.
+
+aarch64 = fneg
+generate float64x*_t
+
+arm = vneg.s
+generate float*_t
+
+/// Signed saturating negate
+name = vqneg
+a = MIN, 0, 1, -1, 2, -2, 3, -3, 4, -4, 5, -5, 6, -6, 7, -7
+validate MAX, 0, -1, 1, -2, 2, -3, 3, -4, 4, -5, 5, -6, 6, -7, 7
+link-arm = vqneg._EXT_
+link-aarch64 = sqneg._EXT_
+
+aarch64 = sqneg
+generate int64x*_t
+
+arm = vqneg.s
+generate int*_t
+
 /// Saturating subtract
 name = vqsub
 a = 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42
