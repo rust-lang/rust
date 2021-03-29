@@ -973,15 +973,10 @@ impl Clean<Item> for hir::ImplItem<'_> {
         let local_did = self.def_id.to_def_id();
         cx.with_param_env(local_did, |cx| {
             let inner = match self.kind {
-                hir::ImplItemKind::Const(ref ty, expr) => {
-                    ConstantItem(Constant {
-                        type_: ty.clean(cx),
-                        kind: ConstantKind::Local {
-                            def_id: local_did,
-                            body: expr,
-                        },
-                    })
-                }
+                hir::ImplItemKind::Const(ref ty, expr) => ConstantItem(Constant {
+                    type_: ty.clean(cx),
+                    kind: ConstantKind::Local { def_id: local_did, body: expr },
+                }),
                 hir::ImplItemKind::Fn(ref sig, body) => {
                     let mut m = (sig, &self.generics, body).clean(cx);
                     if m.header.constness == hir::Constness::Const
