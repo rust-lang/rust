@@ -32,12 +32,8 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                     trait_def_id, impl_def_id
                 );
                 let trait_ref = self.cx.tcx.impl_trait_ref(impl_def_id).unwrap();
-                let may_apply = self.cx.tcx.infer_ctxt().enter(|infcx| {
-                    match trait_ref.self_ty().kind() {
-                        ty::Param(_) => {}
-                        _ => return false,
-                    }
-
+                let is_param = matches!(trait_ref.self_ty().kind(), ty::Param(_));
+                let may_apply = is_param && self.cx.tcx.infer_ctxt().enter(|infcx| {
                     let substs = infcx.fresh_substs_for_item(DUMMY_SP, item_def_id);
                     let ty = ty.subst(infcx.tcx, substs);
                     let param_env = param_env.subst(infcx.tcx, substs);
