@@ -452,7 +452,14 @@ impl Step for Miri {
 
             cargo.add_rustc_lib_path(builder, compiler);
 
-            if !try_run(builder, &mut cargo.into()) {
+            let mut cargo = Command::from(cargo);
+            if !try_run(builder, &mut cargo) {
+                return;
+            }
+
+            // # Run `cargo test` with `-Zmir-opt-level=4`.
+            cargo.env("MIRIFLAGS", "-O -Zmir-opt-level=4");
+            if !try_run(builder, &mut cargo) {
                 return;
             }
 
