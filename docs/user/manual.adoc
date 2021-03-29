@@ -254,23 +254,10 @@ let g:LanguageClient_serverCommands = {
 
 ==== YouCompleteMe
 
-1. Install YouCompleteMe by following the instructions
-  https://github.com/ycm-core/lsp-examples#rust-rust-analyzer[here]
+Install YouCompleteMe by following the instructions
+  https://github.com/ycm-core/YouCompleteMe#installation[here].
 
-2. Configure by adding this to your vim/neovim config file (replacing the existing Rust-specific line if it exists):
-+
-[source,vim]
-----
-let g:ycm_language_server =
-\ [
-\   {
-\     'name': 'rust',
-\     'cmdline': ['rust-analyzer'],
-\     'filetypes': ['rust'],
-\     'project_root_files': ['Cargo.toml']
-\   }
-\ ]
-----
+rust-analyzer is the default in ycm, it should work out of the box.
 
 ==== ALE
 
