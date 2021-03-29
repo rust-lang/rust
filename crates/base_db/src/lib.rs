@@ -59,6 +59,8 @@ pub trait CheckCanceled {
         Self: Sized + panic::RefUnwindSafe,
         F: FnOnce(&Self) -> T + panic::UnwindSafe,
     {
+        // Uncomment to debug missing cancellations.
+        // let _span = profile::heartbeat_span();
         panic::catch_unwind(|| f(self)).map_err(|err| match err.downcast::<Canceled>() {
             Ok(canceled) => *canceled,
             Err(payload) => panic::resume_unwind(payload),
@@ -68,6 +70,7 @@ pub trait CheckCanceled {
 
 impl<T: salsa::Database> CheckCanceled for T {
     fn check_canceled(&self) {
+        // profile::heartbeat();
         if self.salsa_runtime().is_current_revision_canceled() {
             Canceled::throw()
         }

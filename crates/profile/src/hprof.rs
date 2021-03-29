@@ -69,6 +69,20 @@ pub fn span(label: Label) -> ProfileSpan {
     }
 }
 
+#[inline]
+pub fn heartbeat_span() -> HeartbeatSpan {
+    let enabled = PROFILING_ENABLED.load(Ordering::Relaxed);
+    HeartbeatSpan::new(enabled)
+}
+
+#[inline]
+pub fn heartbeat() {
+    let enabled = PROFILING_ENABLED.load(Ordering::Relaxed);
+    if enabled {
+        with_profile_stack(|it| it.heartbeat(1));
+    }
+}
+
 pub struct ProfileSpan(Option<ProfilerImpl>);
 
 struct ProfilerImpl {
@@ -92,6 +106,28 @@ impl Drop for ProfilerImpl {
     }
 }
 
+pub struct HeartbeatSpan {
+    enabled: bool,
+}
+
+impl HeartbeatSpan {
+    #[inline]
+    pub fn new(enabled: bool) -> Self {
+        if enabled {
+            with_profile_stack(|it| it.heartbeats(true))
+        }
+        Self { enabled }
+    }
+}
+
+impl Drop for HeartbeatSpan {
+    fn drop(&mut self) {
+        if self.enabled {
+            with_profile_stack(|it| it.heartbeats(false))
+        }
+    }
+}
+
 static PROFILING_ENABLED: AtomicBool = AtomicBool::new(false);
 static FILTER: Lazy<RwLock<Filter>> = Lazy::new(Default::default);
 
@@ -105,6 +141,7 @@ struct Filter {
     depth: usize,
     allowed: HashSet<String>,
     longer_than: Duration,
+    heartbeat_longer_than: Duration,
     version: usize,
 }
 
@@ -121,6 +158,7 @@ impl Filter {
         } else {
             Duration::new(0, 0)
         };
+        let heartbeat_longer_than = longer_than;
 
         let depth = if let Some(idx) = spec.rfind('@') {
             let depth: usize = spec[idx + 1..].parse().expect("invalid profile depth");
@@ -131,7 +169,7 @@ impl Filter {
         };
         let allowed =
             if spec == "*" { HashSet::new() } else { spec.split('|').map(String::from).collect() };
-        Filter { depth, allowed, longer_than, version: 0 }
+        Filter { depth, allowed, longer_than, heartbeat_longer_than, version: 0 }
     }
 
     fn install(mut self) {
@@ -143,9 +181,15 @@ impl Filter {
 }
 
 struct ProfileStack {
-    starts: Vec<Instant>,
+    frames: Vec<Frame>,
     filter: Filter,
     messages: Tree<Message>,
+    heartbeats: bool,
+}
+
+struct Frame {
+    t: Instant,
+    heartbeats: u32,
 }
 
 #[derive(Default)]
@@ -157,35 +201,49 @@ struct Message {
 
 impl ProfileStack {
     fn new() -> ProfileStack {
-        ProfileStack { starts: Vec::new(), messages: Tree::default(), filter: Default::default() }
+        ProfileStack {
+            frames: Vec::new(),
+            messages: Tree::default(),
+            filter: Default::default(),
+            heartbeats: false,
+        }
     }
 
     fn push(&mut self, label: Label) -> bool {
-        if self.starts.is_empty() {
+        if self.frames.is_empty() {
             if let Ok(f) = FILTER.try_read() {
                 if f.version > self.filter.version {
                     self.filter = f.clone();
                 }
             };
         }
-        if self.starts.len() > self.filter.depth {
+        if self.frames.len() > self.filter.depth {
             return false;
         }
         let allowed = &self.filter.allowed;
-        if self.starts.is_empty() && !allowed.is_empty() && !allowed.contains(label) {
+        if self.frames.is_empty() && !allowed.is_empty() && !allowed.contains(label) {
             return false;
         }
 
-        self.starts.push(Instant::now());
+        self.frames.push(Frame { t: Instant::now(), heartbeats: 0 });
         self.messages.start();
         true
     }
 
     fn pop(&mut self, label: Label, detail: Option<String>) {
-        let start = self.starts.pop().unwrap();
-        let duration = start.elapsed();
+        let frame = self.frames.pop().unwrap();
+        let duration = frame.t.elapsed();
+
+        if self.heartbeats {
+            self.heartbeat(frame.heartbeats);
+            let avg_span = duration / (frame.heartbeats + 1);
+            if avg_span > self.filter.heartbeat_longer_than {
+                eprintln!("Too few heartbeats {} ({}/{:?})?", label, frame.heartbeats, duration)
+            }
+        }
+
         self.messages.finish(Message { duration, label, detail });
-        if self.starts.is_empty() {
+        if self.frames.is_empty() {
             let longer_than = self.filter.longer_than;
             // Convert to millis for comparison to avoid problems with rounding
             // (otherwise we could print `0ms` despite user's `>0` filter when
@@ -196,6 +254,15 @@ impl ProfileStack {
                 }
             }
             self.messages.clear();
+        }
+    }
+
+    fn heartbeats(&mut self, yes: bool) {
+        self.heartbeats = yes;
+    }
+    fn heartbeat(&mut self, n: u32) {
+        if let Some(frame) = self.frames.last_mut() {
+            frame.heartbeats += n;
         }
     }
 }
