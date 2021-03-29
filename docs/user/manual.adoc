@@ -254,8 +254,8 @@ let g:LanguageClient_serverCommands = {
 
 ==== YouCompleteMe
 
-1. Install YouCompleteMe by following the instructions
-  https://github.com/ycm-core/YouCompleteMe#installation[here]
+Install YouCompleteMe by following the instructions
+  https://github.com/ycm-core/YouCompleteMe#installation[here].
 
 rust-analyzer is the default in ycm, it should work out of the box.
 
