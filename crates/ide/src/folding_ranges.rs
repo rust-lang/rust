@@ -457,4 +457,24 @@ calling_function(x,y);
 "#,
         )
     }
+
+    #[test]
+    fn fold_consecutive_const() {
+        check(
+            r#"
+<fold consts>const FIRST_CONST: &str = "first";
+const SECOND_CONST: &str = "second";</fold>
+            "#,
+        )
+    }
+
+    #[test]
+    fn fold_consecutive_static() {
+        check(
+            r#"
+<fold consts>static FIRST_STATIC: &str = "first";
+static SECOND_STATIC: &str = "second";</fold>
+            "#,
+        )
+    }
 }
