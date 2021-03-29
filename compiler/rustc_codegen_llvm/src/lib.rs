@@ -253,13 +253,8 @@ impl CodegenBackend for LlvmCodegenBackend {
         Box::new(metadata::LlvmMetadataLoader)
     }
 
-    fn provide(&self, providers: &mut ty::query::Providers) {
-        attributes::provide_both(providers);
-    }
-
-    fn provide_extern(&self, providers: &mut ty::query::Providers) {
-        attributes::provide_both(providers);
-    }
+    fn provide(&self, _providers: &mut ty::query::Providers) {}
+    fn provide_extern(&self, _providers: &mut ty::query::Providers) {}
 
     fn codegen_crate<'tcx>(
         &self,
