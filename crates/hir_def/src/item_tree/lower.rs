@@ -536,7 +536,10 @@ impl Ctx {
     fn lower_impl(&mut self, impl_def: &ast::Impl) -> Option<FileItemTreeId<Impl>> {
         let generic_params =
             self.lower_generic_params_and_inner_items(GenericsOwner::Impl, impl_def);
-        let target_trait = impl_def.trait_().map(|tr| self.lower_trait_ref(&tr));
+        // FIXME: If trait lowering fails, due to a non PathType for example, we treat this impl
+        // as if it was an non-trait impl. Ideally we want to create a unique missing ref that only
+        // equals itself.
+        let target_trait = impl_def.trait_().and_then(|tr| self.lower_trait_ref(&tr));
         let self_ty = self.lower_type_ref(&impl_def.self_ty()?);
         let is_negative = impl_def.excl_token().is_some();
 
@@ -740,9 +743,9 @@ impl Ctx {
         self.data().vis.alloc(vis)
     }
 
-    fn lower_trait_ref(&mut self, trait_ref: &ast::Type) -> Idx<TraitRef> {
-        let trait_ref = TraitRef::from_ast(&self.body_ctx, trait_ref.clone());
-        self.data().trait_refs.intern(trait_ref)
+    fn lower_trait_ref(&mut self, trait_ref: &ast::Type) -> Option<Idx<TraitRef>> {
+        let trait_ref = TraitRef::from_ast(&self.body_ctx, trait_ref.clone())?;
+        Some(self.data().trait_refs.intern(trait_ref))
     }
 
     fn lower_type_ref(&mut self, type_ref: &ast::Type) -> Idx<TypeRef> {

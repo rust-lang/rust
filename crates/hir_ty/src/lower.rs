@@ -670,10 +670,7 @@ impl<'a> TyLoweringContext<'a> {
         trait_ref: &HirTraitRef,
         explicit_self_ty: Option<Ty>,
     ) -> Option<TraitRef> {
-        match trait_ref {
-            HirTraitRef::Path(path) => self.lower_trait_ref_from_path(path, explicit_self_ty),
-            HirTraitRef::Error => None,
-        }
+        self.lower_trait_ref_from_path(&trait_ref.path, explicit_self_ty)
     }
 
     fn trait_ref_substs_from_path(
