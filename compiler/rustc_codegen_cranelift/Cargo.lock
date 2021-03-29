@@ -39,16 +39,16 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "cranelift-bforest"
-version = "0.70.0"
-source = "git+https://github.com/bytecodealliance/wasmtime/?branch=main#cdb60ec5a9df087262ae8960a31067e88cd80058"
+version = "0.72.0"
+source = "git+https://github.com/bytecodealliance/wasmtime/?branch=main#8e43e96410a14143d368273cf1e708f8094bb8e0"
 dependencies = [
  "cranelift-entity",
 ]
 
 [[package]]
 name = "cranelift-codegen"
-version = "0.70.0"
-source = "git+https://github.com/bytecodealliance/wasmtime/?branch=main#cdb60ec5a9df087262ae8960a31067e88cd80058"
+version = "0.72.0"
+source = "git+https://github.com/bytecodealliance/wasmtime/?branch=main#8e43e96410a14143d368273cf1e708f8094bb8e0"
 dependencies = [
  "byteorder",
  "cranelift-bforest",
@@ -65,8 +65,8 @@ dependencies = [
 
 [[package]]
 name = "cranelift-codegen-meta"
-version = "0.70.0"
-source = "git+https://github.com/bytecodealliance/wasmtime/?branch=main#cdb60ec5a9df087262ae8960a31067e88cd80058"
+version = "0.72.0"
+source = "git+https://github.com/bytecodealliance/wasmtime/?branch=main#8e43e96410a14143d368273cf1e708f8094bb8e0"
 dependencies = [
  "cranelift-codegen-shared",
  "cranelift-entity",
@@ -74,18 +74,18 @@ dependencies = [
 
 [[package]]
 name = "cranelift-codegen-shared"
-version = "0.70.0"
-source = "git+https://github.com/bytecodealliance/wasmtime/?branch=main#cdb60ec5a9df087262ae8960a31067e88cd80058"
+version = "0.72.0"
+source = "git+https://github.com/bytecodealliance/wasmtime/?branch=main#8e43e96410a14143d368273cf1e708f8094bb8e0"
 
 [[package]]
 name = "cranelift-entity"
-version = "0.70.0"
-source = "git+https://github.com/bytecodealliance/wasmtime/?branch=main#cdb60ec5a9df087262ae8960a31067e88cd80058"
+version = "0.72.0"
+source = "git+https://github.com/bytecodealliance/wasmtime/?branch=main#8e43e96410a14143d368273cf1e708f8094bb8e0"
 
 [[package]]
 name = "cranelift-frontend"
-version = "0.70.0"
-source = "git+https://github.com/bytecodealliance/wasmtime/?branch=main#cdb60ec5a9df087262ae8960a31067e88cd80058"
+version = "0.72.0"
+source = "git+https://github.com/bytecodealliance/wasmtime/?branch=main#8e43e96410a14143d368273cf1e708f8094bb8e0"
 dependencies = [
  "cranelift-codegen",
  "log",
@@ -95,8 +95,8 @@ dependencies = [
 
 [[package]]
 name = "cranelift-jit"
-version = "0.70.0"
-source = "git+https://github.com/bytecodealliance/wasmtime/?branch=main#cdb60ec5a9df087262ae8960a31067e88cd80058"
+version = "0.72.0"
+source = "git+https://github.com/bytecodealliance/wasmtime/?branch=main#8e43e96410a14143d368273cf1e708f8094bb8e0"
 dependencies = [
  "anyhow",
  "cranelift-codegen",
@@ -113,8 +113,8 @@ dependencies = [
 
 [[package]]
 name = "cranelift-module"
-version = "0.70.0"
-source = "git+https://github.com/bytecodealliance/wasmtime/?branch=main#cdb60ec5a9df087262ae8960a31067e88cd80058"
+version = "0.72.0"
+source = "git+https://github.com/bytecodealliance/wasmtime/?branch=main#8e43e96410a14143d368273cf1e708f8094bb8e0"
 dependencies = [
  "anyhow",
  "cranelift-codegen",
@@ -125,8 +125,8 @@ dependencies = [
 
 [[package]]
 name = "cranelift-native"
-version = "0.70.0"
-source = "git+https://github.com/bytecodealliance/wasmtime/?branch=main#cdb60ec5a9df087262ae8960a31067e88cd80058"
+version = "0.72.0"
+source = "git+https://github.com/bytecodealliance/wasmtime/?branch=main#8e43e96410a14143d368273cf1e708f8094bb8e0"
 dependencies = [
  "cranelift-codegen",
  "target-lexicon",
@@ -134,8 +134,8 @@ dependencies = [
 
 [[package]]
 name = "cranelift-object"
-version = "0.70.0"
-source = "git+https://github.com/bytecodealliance/wasmtime/?branch=main#cdb60ec5a9df087262ae8960a31067e88cd80058"
+version = "0.72.0"
+source = "git+https://github.com/bytecodealliance/wasmtime/?branch=main#8e43e96410a14143d368273cf1e708f8094bb8e0"
 dependencies = [
  "anyhow",
  "cranelift-codegen",
@@ -241,6 +241,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "memmap2"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04e3e85b970d650e2ae6d70592474087051c11c54da7f7b4949725c5735fbcc6"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "object"
 version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -310,6 +319,7 @@ dependencies = [
  "gimli",
  "indexmap",
  "libloading",
+ "memmap2",
  "object",
  "smallvec",
  "target-lexicon",

@@ -361,8 +361,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         let _ = self.cx.module.define_data(msg_id, &data_ctx);
 
         let local_msg_id = self.cx.module.declare_data_in_func(msg_id, self.bcx.func);
-        #[cfg(debug_assertions)]
-        {
+        if self.clif_comments.enabled() {
             self.add_comment(local_msg_id, msg);
         }
         self.bcx.ins().global_value(self.pointer_type, local_msg_id)

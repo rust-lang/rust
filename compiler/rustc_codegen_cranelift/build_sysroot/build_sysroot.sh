@@ -28,7 +28,7 @@ export __CARGO_DEFAULT_LIB_METADATA="cg_clif"
 if [[ "$1" != "--debug" ]]; then
     sysroot_channel='release'
     # FIXME Enable incremental again once rust-lang/rust#74946 is fixed
-    CARGO_INCREMENTAL=0 RUSTFLAGS="$RUSTFLAGS -Zmir-opt-level=2" cargo build --target "$TARGET_TRIPLE" --release
+    CARGO_INCREMENTAL=0 RUSTFLAGS="$RUSTFLAGS -Zmir-opt-level=3" cargo build --target "$TARGET_TRIPLE" --release
 else
     sysroot_channel='debug'
     cargo build --target "$TARGET_TRIPLE"
