@@ -463,11 +463,15 @@ fn main() {
         check_assist(remove_dbg, r#"fn foo() { $0dbg!(); }"#, r#"fn foo() { }"#);
         check_assist(
             remove_dbg,
-            r#"fn foo() {
-$0dbg!();
-}"#,
-            r#"fn foo() {
-}"#,
+            r#"
+fn foo() {
+    $0dbg!();
+}
+"#,
+            r#"
+fn foo() {
+}
+"#,
         );
         check_assist(
             remove_dbg,
