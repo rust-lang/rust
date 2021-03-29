@@ -1,5 +1,5 @@
 error: reference to packed field is unaligned
-  --> $DIR/unaligned_references.rs:15:17
+  --> $DIR/unaligned_references.rs:22:17
    |
 LL |         let _ = &good.ptr;
    |                 ^^^^^^^^^
@@ -14,7 +14,7 @@ LL | #![deny(unaligned_references)]
    = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
 
 error: reference to packed field is unaligned
-  --> $DIR/unaligned_references.rs:17:17
+  --> $DIR/unaligned_references.rs:24:17
    |
 LL |         let _ = &good.data;
    |                 ^^^^^^^^^^
@@ -24,7 +24,7 @@ LL |         let _ = &good.data;
    = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
 
 error: reference to packed field is unaligned
-  --> $DIR/unaligned_references.rs:20:17
+  --> $DIR/unaligned_references.rs:27:17
    |
 LL |         let _ = &good.data as *const _;
    |                 ^^^^^^^^^^
@@ -34,7 +34,7 @@ LL |         let _ = &good.data as *const _;
    = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
 
 error: reference to packed field is unaligned
-  --> $DIR/unaligned_references.rs:22:27
+  --> $DIR/unaligned_references.rs:29:27
    |
 LL |         let _: *const _ = &good.data;
    |                           ^^^^^^^^^^
@@ -44,7 +44,7 @@ LL |         let _: *const _ = &good.data;
    = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
 
 error: reference to packed field is unaligned
-  --> $DIR/unaligned_references.rs:25:17
+  --> $DIR/unaligned_references.rs:32:17
    |
 LL |         let _ = good.data.clone();
    |                 ^^^^^^^^^
@@ -54,7 +54,7 @@ LL |         let _ = good.data.clone();
    = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
 
 error: reference to packed field is unaligned
-  --> $DIR/unaligned_references.rs:28:17
+  --> $DIR/unaligned_references.rs:35:17
    |
 LL |         let _ = &good.data2[0];
    |                 ^^^^^^^^^^^^^^
@@ -63,5 +63,15 @@ LL |         let _ = &good.data2[0];
    = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
    = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
 
-error: aborting due to 6 previous errors
+error: reference to packed field is unaligned
+  --> $DIR/unaligned_references.rs:45:17
+   |
+LL |         let _ = &packed2.x;
+   |                 ^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #82523 <https://github.com/rust-lang/rust/issues/82523>
+   = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
+
+error: aborting due to 7 previous errors
 
