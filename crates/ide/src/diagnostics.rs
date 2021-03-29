@@ -165,7 +165,6 @@ pub(crate) fn diagnostics(
                     sema.diagnostics_display_range(d.display_source()).range,
                     d.message(),
                 )
-                .with_unused(true)
                 .with_fix(d.fix(&sema))
                 .with_code(Some(d.code())),
             );
