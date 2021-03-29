@@ -297,6 +297,7 @@ mod new_without_default;
 mod no_effect;
 mod non_copy_const;
 mod non_expressive_names;
+mod non_octal_unix_permissions;
 mod open_options;
 mod option_env_unwrap;
 mod option_if_let_else;
@@ -873,6 +874,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &non_expressive_names::JUST_UNDERSCORES_AND_DIGITS,
         &non_expressive_names::MANY_SINGLE_CHAR_NAMES,
         &non_expressive_names::SIMILAR_NAMES,
+        &non_octal_unix_permissions::NON_OCTAL_UNIX_PERMISSIONS,
         &open_options::NONSENSICAL_OPEN_OPTIONS,
         &option_env_unwrap::OPTION_ENV_UNWRAP,
         &option_if_let_else::OPTION_IF_LET_ELSE,
@@ -1057,6 +1059,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box implicit_saturating_sub::ImplicitSaturatingSub);
     store.register_late_pass(|| box default_numeric_fallback::DefaultNumericFallback);
     store.register_late_pass(|| box inconsistent_struct_constructor::InconsistentStructConstructor);
+    store.register_late_pass(|| box non_octal_unix_permissions::NonOctalUnixPermissions);
 
     let msrv = conf.msrv.as_ref().and_then(|s| {
         parse_msrv(s, None, None).or_else(|| {
@@ -1647,6 +1650,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&non_copy_const::DECLARE_INTERIOR_MUTABLE_CONST),
         LintId::of(&non_expressive_names::JUST_UNDERSCORES_AND_DIGITS),
         LintId::of(&non_expressive_names::MANY_SINGLE_CHAR_NAMES),
+        LintId::of(&non_octal_unix_permissions::NON_OCTAL_UNIX_PERMISSIONS),
         LintId::of(&open_options::NONSENSICAL_OPEN_OPTIONS),
         LintId::of(&option_env_unwrap::OPTION_ENV_UNWRAP),
         LintId::of(&overflow_check_conditional::OVERFLOW_CHECK_CONDITIONAL),
@@ -1987,6 +1991,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&misc::FLOAT_CMP),
         LintId::of(&misc::MODULO_ONE),
         LintId::of(&mut_key::MUTABLE_KEY_TYPE),
+        LintId::of(&non_octal_unix_permissions::NON_OCTAL_UNIX_PERMISSIONS),
         LintId::of(&open_options::NONSENSICAL_OPEN_OPTIONS),
         LintId::of(&option_env_unwrap::OPTION_ENV_UNWRAP),
         LintId::of(&ptr::MUT_FROM_REF),
