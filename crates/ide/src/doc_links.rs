@@ -98,6 +98,29 @@ pub(crate) fn remove_links(markdown: &str) -> String {
     out
 }
 
+/// Retrieve a link to documentation for the given symbol.
+pub(crate) fn external_docs(
+    db: &RootDatabase,
+    position: &FilePosition,
+) -> Option<DocumentationLink> {
+    let sema = Semantics::new(db);
+    let file = sema.parse(position.file_id).syntax().clone();
+    let token = pick_best(file.token_at_offset(position.offset))?;
+    let token = sema.descend_into_macros(token);
+
+    let node = token.parent()?;
+    let definition = match_ast! {
+        match node {
+            ast::NameRef(name_ref) => NameRefClass::classify(&sema, &name_ref).map(|d| d.referenced(sema.db)),
+            ast::Name(name) => NameClass::classify(&sema, &name).map(|d| d.referenced_or_defined(sema.db)),
+            _ => None,
+        }
+    };
+
+    get_doc_link(db, definition?)
+}
+
+/// Extracts all links from a given markdown text.
 pub(crate) fn extract_definitions_from_markdown(
     markdown: &str,
 ) -> Vec<(Range<usize>, String, Option<hir::Namespace>)> {
@@ -178,15 +201,15 @@ pub(crate) fn resolve_doc_path_for_def(
 ) -> Option<hir::ModuleDef> {
     match def {
         Definition::ModuleDef(def) => match def {
-            ModuleDef::Module(it) => it.resolve_doc_path(db, &link, ns),
-            ModuleDef::Function(it) => it.resolve_doc_path(db, &link, ns),
-            ModuleDef::Adt(it) => it.resolve_doc_path(db, &link, ns),
-            ModuleDef::Variant(it) => it.resolve_doc_path(db, &link, ns),
-            ModuleDef::Const(it) => it.resolve_doc_path(db, &link, ns),
-            ModuleDef::Static(it) => it.resolve_doc_path(db, &link, ns),
-            ModuleDef::Trait(it) => it.resolve_doc_path(db, &link, ns),
-            ModuleDef::TypeAlias(it) => it.resolve_doc_path(db, &link, ns),
-            ModuleDef::BuiltinType(_) => None,
+            hir::ModuleDef::Module(it) => it.resolve_doc_path(db, &link, ns),
+            hir::ModuleDef::Function(it) => it.resolve_doc_path(db, &link, ns),
+            hir::ModuleDef::Adt(it) => it.resolve_doc_path(db, &link, ns),
+            hir::ModuleDef::Variant(it) => it.resolve_doc_path(db, &link, ns),
+            hir::ModuleDef::Const(it) => it.resolve_doc_path(db, &link, ns),
+            hir::ModuleDef::Static(it) => it.resolve_doc_path(db, &link, ns),
+            hir::ModuleDef::Trait(it) => it.resolve_doc_path(db, &link, ns),
+            hir::ModuleDef::TypeAlias(it) => it.resolve_doc_path(db, &link, ns),
+            hir::ModuleDef::BuiltinType(_) => None,
         },
         Definition::Macro(it) => it.resolve_doc_path(db, &link, ns),
         Definition::Field(it) => it.resolve_doc_path(db, &link, ns),
@@ -326,28 +349,6 @@ fn rewrite_url_link(db: &RootDatabase, def: ModuleDef, target: &str) -> Option<S
         })
         .and_then(|url| url.join(target).ok())
         .map(|url| url.into_string())
-}
-
-/// Retrieve a link to documentation for the given symbol.
-pub(crate) fn external_docs(
-    db: &RootDatabase,
-    position: &FilePosition,
-) -> Option<DocumentationLink> {
-    let sema = Semantics::new(db);
-    let file = sema.parse(position.file_id).syntax().clone();
-    let token = pick_best(file.token_at_offset(position.offset))?;
-    let token = sema.descend_into_macros(token);
-
-    let node = token.parent()?;
-    let definition = match_ast! {
-        match node {
-            ast::NameRef(name_ref) => NameRefClass::classify(&sema, &name_ref).map(|d| d.referenced(sema.db)),
-            ast::Name(name) => NameClass::classify(&sema, &name).map(|d| d.referenced_or_defined(sema.db)),
-            _ => None,
-        }
-    };
-
-    get_doc_link(db, definition?)
 }
 
 /// Rewrites a markdown document, applying 'callback' to each link.
