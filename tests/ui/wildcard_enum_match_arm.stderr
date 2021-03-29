@@ -32,7 +32,7 @@ error: wildcard matches known variants and will also match future added variants
   --> $DIR/wildcard_enum_match_arm.rs:80:9
    |
 LL |         _ => {},
-   |         ^ help: try this: `ErrorKind::PermissionDenied | ErrorKind::ConnectionRefused | ErrorKind::ConnectionReset | ErrorKind::ConnectionAborted | ErrorKind::NotConnected | ErrorKind::AddrInUse | ErrorKind::AddrNotAvailable | ErrorKind::BrokenPipe | ErrorKind::AlreadyExists | ErrorKind::WouldBlock | ErrorKind::InvalidInput | ErrorKind::InvalidData | ErrorKind::TimedOut | ErrorKind::WriteZero | ErrorKind::Interrupted | ErrorKind::Other | ErrorKind::UnexpectedEof | _`
+   |         ^ help: try this: `ErrorKind::PermissionDenied | ErrorKind::ConnectionRefused | ErrorKind::ConnectionReset | ErrorKind::ConnectionAborted | ErrorKind::NotConnected | ErrorKind::AddrInUse | ErrorKind::AddrNotAvailable | ErrorKind::BrokenPipe | ErrorKind::AlreadyExists | ErrorKind::WouldBlock | ErrorKind::InvalidInput | ErrorKind::InvalidData | ErrorKind::TimedOut | ErrorKind::WriteZero | ErrorKind::Interrupted | ErrorKind::Other | ErrorKind::UnexpectedEof | ErrorKind::Unsupported | _`
 
 error: aborting due to 5 previous errors
 
