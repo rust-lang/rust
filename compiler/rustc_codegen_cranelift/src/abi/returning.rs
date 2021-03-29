@@ -84,10 +84,6 @@ pub(super) fn codegen_return_param<'tcx>(
         }
     };
 
-    #[cfg(not(debug_assertions))]
-    let _ = ret_param;
-
-    #[cfg(debug_assertions)]
     crate::abi::comments::add_arg_comment(
         fx,
         "ret",
@@ -146,7 +142,7 @@ pub(super) fn codegen_with_call_return_arg<'tcx, T>(
                 let results = fx
                     .bcx
                     .inst_results(call_inst)
-                    .into_iter()
+                    .iter()
                     .copied()
                     .collect::<SmallVec<[Value; 2]>>();
                 let result =

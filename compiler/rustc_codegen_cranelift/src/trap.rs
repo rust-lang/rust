@@ -17,8 +17,7 @@ fn codegen_print(fx: &mut FunctionCx<'_, '_, '_>, msg: &str) {
         )
         .unwrap();
     let puts = fx.cx.module.declare_func_in_func(puts, &mut fx.bcx.func);
-    #[cfg(debug_assertions)]
-    {
+    if fx.clif_comments.enabled() {
         fx.add_comment(puts, "puts");
     }
 

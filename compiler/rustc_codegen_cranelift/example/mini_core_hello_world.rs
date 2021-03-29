@@ -1,7 +1,4 @@
-#![feature(
-    no_core, start, lang_items, box_syntax, never_type, linkage,
-    extern_types, thread_local
-)]
+#![feature(no_core, lang_items, box_syntax, never_type, linkage, extern_types, thread_local)]
 #![no_core]
 #![allow(dead_code, non_camel_case_types)]
 
@@ -239,7 +236,7 @@ fn main() {
 
     assert_eq!(((|()| 42u8) as fn(()) -> u8)(()), 42);
 
-    #[cfg(not(jit))]
+    #[cfg(not(any(jit, windows)))]
     {
         extern {
             #[linkage = "extern_weak"]
@@ -292,7 +289,7 @@ fn main() {
 
     from_decimal_string();
 
-    #[cfg(not(jit))]
+    #[cfg(not(any(jit, windows)))]
     test_tls();
 
     #[cfg(all(not(jit), target_os = "linux"))]
