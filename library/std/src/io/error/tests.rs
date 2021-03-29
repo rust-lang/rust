@@ -1,4 +1,4 @@
-use super::{Custom, Error, ErrorKind, Repr};
+use super::{Custom, Error, ErrorKind};
 use crate::error;
 use crate::fmt;
 use crate::mem::size_of;
@@ -16,10 +16,10 @@ fn test_debug_error() {
     let msg = error_string(code);
     let kind = decode_error_kind(code);
     let err = Error {
-        repr: Repr::Custom(box Custom {
+        repr: box Custom {
             kind: ErrorKind::InvalidInput,
-            error: box Error { repr: super::Repr::Os(code) },
-        }),
+            error: box Error::from_raw_os_error(code),
+        },
     };
     let expected = format!(
         "Custom {{ \

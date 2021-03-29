@@ -90,6 +90,7 @@
 #![feature(coerce_unsized)]
 #![feature(const_btree_new)]
 #![feature(const_fn)]
+#![feature(const_box_from_raw)]
 #![feature(cow_is_borrowed)]
 #![feature(const_cow_is_borrowed)]
 #![feature(destructuring_assignment)]

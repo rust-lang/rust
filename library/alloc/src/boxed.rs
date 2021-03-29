@@ -752,7 +752,8 @@ impl<T: ?Sized> Box<T> {
     /// [`Layout`]: crate::Layout
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
-    pub unsafe fn from_raw(raw: *mut T) -> Self {
+    #[rustc_const_unstable(feature = "const_box_from_raw", issue = "none")]
+    pub const unsafe fn from_raw(raw: *mut T) -> Self {
         unsafe { Self::from_raw_in(raw, Global) }
     }
 }
@@ -807,7 +808,8 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// [`Layout`]: crate::Layout
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
-    pub unsafe fn from_raw_in(raw: *mut T, alloc: A) -> Self {
+    #[rustc_const_unstable(feature = "const_box_from_raw", issue = "none")]
+    pub const unsafe fn from_raw_in(raw: *mut T, alloc: A) -> Self {
         Box(unsafe { Unique::new_unchecked(raw) }, alloc)
     }
 

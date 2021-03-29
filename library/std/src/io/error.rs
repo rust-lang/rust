@@ -56,7 +56,7 @@ pub type Result<T> = result::Result<T, Error>;
 /// [`Seek`]: crate::io::Seek
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Error {
-    repr: Repr,
+    repr: Box<dyn IoError>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -65,19 +65,97 @@ impl fmt::Debug for Error {
         fmt::Debug::fmt(&self.repr, f)
     }
 }
+trait AsError: error::Error + Send + Sync {
+    fn as_error_ref(&self) -> &(dyn error::Error + Send + Sync + 'static);
+    fn as_error_mut(&mut self) -> &mut (dyn error::Error + Send + Sync + 'static);
+    fn into_error(self: Box<Self>) -> Box<(dyn error::Error + Send + Sync + 'static)>;
+}
+impl<T: error::Error + Send + Sync + 'static> AsError for T {
+    fn as_error_ref(&self) -> &(dyn error::Error + Send + Sync + 'static) {
+        self
+    }
+    fn as_error_mut(&mut self) -> &mut (dyn error::Error + Send + Sync + 'static) {
+        self
+    }
+    fn into_error(self: Box<Self>) -> Box<(dyn error::Error + Send + Sync + 'static)> {
+        self
+    }
+}
+trait IoError: AsError {
+    fn kind(&self) -> ErrorKind;
+}
 
-enum Repr {
-    Os(i32),
-    Simple(ErrorKind),
-    // &str is a fat pointer, but &&str is a thin pointer.
-    SimpleMessage(ErrorKind, &'static &'static str),
-    Custom(Box<Custom>),
+struct Os;
+
+impl Os {
+    fn code(&self) -> i32 {
+        let code = unsafe { core::mem::transmute::<_, isize>(self) } as i32;
+        if code == i32::MIN { 0 } else { code }
+    }
+}
+
+impl fmt::Debug for Os {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.debug_struct("Os")
+            .field("code", &self.code())
+            .field("kind", &self.kind())
+            .field("message", &sys::os::error_string(self.code()))
+            .finish()
+    }
+}
+
+impl fmt::Display for Os {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let detail = sys::os::error_string(self.code());
+        write!(fmt, "{} (os error {})", detail, self.code())
+    }
+}
+
+impl error::Error for Os {
+    #[allow(deprecated, deprecated_in_future)]
+    fn description(&self) -> &str {
+        self.kind().as_str()
+    }
+}
+
+impl IoError for Os {
+    fn kind(&self) -> ErrorKind {
+        sys::decode_error_kind(self.code())
+    }
 }
 
 #[derive(Debug)]
 struct Custom {
     kind: ErrorKind,
     error: Box<dyn error::Error + Send + Sync>,
+}
+
+impl IoError for Custom {
+    fn kind(&self) -> ErrorKind {
+        self.kind
+    }
+}
+
+impl fmt::Display for Custom {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.error.fmt(fmt)
+    }
+}
+
+impl error::Error for Custom {
+    #[allow(deprecated, deprecated_in_future)]
+    fn description(&self) -> &str {
+        self.error.description()
+    }
+
+    #[allow(deprecated)]
+    fn cause(&self) -> Option<&dyn error::Error> {
+        self.error.cause()
+    }
+
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        self.error.source()
+    }
 }
 
 /// A list specifying general categories of I/O error.
@@ -207,6 +285,80 @@ impl ErrorKind {
     }
 }
 
+struct ErrorKindZst;
+
+impl fmt::Debug for ErrorKindZst {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.debug_tuple("Kind").field(&self.kind()).finish()
+    }
+}
+
+impl fmt::Display for ErrorKindZst {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(fmt, "{}", self.kind().as_str())
+    }
+}
+
+impl error::Error for ErrorKindZst {
+    #[allow(deprecated, deprecated_in_future)]
+    fn description(&self) -> &str {
+        self.kind().as_str()
+    }
+}
+
+impl IoError for ErrorKindZst {
+    fn kind(&self) -> ErrorKind {
+        u8_to_error_kind(self as *const ErrorKindZst as usize as u8)
+    }
+}
+macro_rules! error_kind_to_u8 {
+    ($kind:expr => $m:ident) => {
+        match $kind {
+            ErrorKind::NotFound => $m!(1),
+            ErrorKind::PermissionDenied => $m!(2),
+            ErrorKind::ConnectionRefused => $m!(3),
+            ErrorKind::ConnectionReset => $m!(4),
+            ErrorKind::ConnectionAborted => $m!(5),
+            ErrorKind::NotConnected => $m!(6),
+            ErrorKind::AddrInUse => $m!(7),
+            ErrorKind::AddrNotAvailable => $m!(8),
+            ErrorKind::BrokenPipe => $m!(9),
+            ErrorKind::AlreadyExists => $m!(10),
+            ErrorKind::WouldBlock => $m!(11),
+            ErrorKind::InvalidInput => $m!(12),
+            ErrorKind::InvalidData => $m!(13),
+            ErrorKind::TimedOut => $m!(14),
+            ErrorKind::WriteZero => $m!(15),
+            ErrorKind::Interrupted => $m!(16),
+            ErrorKind::Other => $m!(17),
+            ErrorKind::UnexpectedEof => $m!(18),
+        }
+    };
+}
+#[inline(always)]
+fn u8_to_error_kind(n: u8) -> ErrorKind {
+    match n {
+        1 => ErrorKind::NotFound,
+        2 => ErrorKind::PermissionDenied,
+        3 => ErrorKind::ConnectionRefused,
+        4 => ErrorKind::ConnectionReset,
+        5 => ErrorKind::ConnectionAborted,
+        6 => ErrorKind::NotConnected,
+        7 => ErrorKind::AddrInUse,
+        8 => ErrorKind::AddrNotAvailable,
+        9 => ErrorKind::BrokenPipe,
+        10 => ErrorKind::AlreadyExists,
+        11 => ErrorKind::WouldBlock,
+        12 => ErrorKind::InvalidInput,
+        13 => ErrorKind::InvalidData,
+        14 => ErrorKind::TimedOut,
+        15 => ErrorKind::WriteZero,
+        16 => ErrorKind::Interrupted,
+        17 => ErrorKind::Other,
+        18 => ErrorKind::UnexpectedEof,
+        _ => unreachable!(),
+    }
+}
 /// Intended for use for errors not exposed to the user, where allocating onto
 /// the heap (for normal construction via Error::new) is too costly.
 #[stable(feature = "io_error_from_errorkind", since = "1.14.0")]
@@ -226,7 +378,13 @@ impl From<ErrorKind> for Error {
     /// ```
     #[inline]
     fn from(kind: ErrorKind) -> Error {
-        Error { repr: Repr::Simple(kind) }
+        macro_rules! as_usize {
+            ($n:literal) => {
+                $n as usize
+            };
+        }
+        let n: usize = error_kind_to_u8!(kind => as_usize);
+        Error { repr: unsafe { Box::from_raw(n as *mut ErrorKindZst) } }
     }
 }
 
@@ -258,7 +416,7 @@ impl Error {
     }
 
     fn _new(kind: ErrorKind, error: Box<dyn error::Error + Send + Sync>) -> Error {
-        Error { repr: Repr::Custom(Box::new(Custom { kind, error })) }
+        Error { repr: Box::new(Custom { kind, error }) }
     }
 
     /// Creates a new I/O error from a known kind of error as well as a
@@ -270,8 +428,48 @@ impl Error {
     /// `new_const<const MSG: &'static str>(kind: ErrorKind)`
     /// in the future, when const generics allow that.
     #[inline]
+    #[rustc_allow_const_fn_unstable(const_fn, const_box_from_raw)]
     pub(crate) const fn new_const(kind: ErrorKind, message: &'static &'static str) -> Error {
-        Self { repr: Repr::SimpleMessage(kind, message) }
+        struct SimpleMessage<const KIND: u8>;
+
+        impl<const KIND: u8> SimpleMessage<KIND> {
+            fn as_str(&self) -> &str {
+                unsafe { *(self as *const _ as *const &'static str) }
+            }
+        }
+        impl<const KIND: u8> core::fmt::Debug for SimpleMessage<KIND> {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.debug_struct("Custom")
+                    .field("kind", &self.kind())
+                    .field("error", &self.as_str())
+                    .finish()
+            }
+        }
+        impl<const KIND: u8> core::fmt::Display for SimpleMessage<KIND> {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.write_str(self.as_str())
+            }
+        }
+        impl<const KIND: u8> error::Error for SimpleMessage<KIND> {
+            #[allow(deprecated, deprecated_in_future)]
+            fn description(&self) -> &str {
+                self.as_str()
+            }
+        }
+        impl<const KIND: u8> IoError for SimpleMessage<KIND> {
+            fn kind(&self) -> ErrorKind {
+                u8_to_error_kind(KIND)
+            }
+        }
+        macro_rules! message {
+            ($n:literal) => {
+                Box::<SimpleMessage<{ $n }>>::from_raw_in(
+                    message as *const &'static str as *mut &'static str as *mut _,
+                    crate::alloc::Global,
+                )
+            };
+        }
+        Self { repr: unsafe { error_kind_to_u8!(kind => message) } }
     }
 
     /// Returns an error representing the last OS error which occurred.
@@ -321,7 +519,16 @@ impl Error {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn from_raw_os_error(code: i32) -> Error {
-        Error { repr: Repr::Os(code) }
+        assert_ne!(code, i32::MIN, "`i32::MIN` is not a valid error code");
+        Error {
+            repr: unsafe {
+                Box::from_raw(core::mem::transmute::<_, *mut Os>(if code == 0 {
+                    i32::MIN
+                } else {
+                    code
+                } as isize))
+            },
+        }
     }
 
     /// Returns the OS error that this error represents (if any).
@@ -356,12 +563,7 @@ impl Error {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn raw_os_error(&self) -> Option<i32> {
-        match self.repr {
-            Repr::Os(i) => Some(i),
-            Repr::Custom(..) => None,
-            Repr::Simple(..) => None,
-            Repr::SimpleMessage(..) => None,
-        }
+        self.repr.as_error_ref().downcast_ref::<Os>().map(|os| os.code())
     }
 
     /// Returns a reference to the inner error wrapped by this error (if any).
@@ -394,12 +596,7 @@ impl Error {
     #[stable(feature = "io_error_inner", since = "1.3.0")]
     #[inline]
     pub fn get_ref(&self) -> Option<&(dyn error::Error + Send + Sync + 'static)> {
-        match self.repr {
-            Repr::Os(..) => None,
-            Repr::Simple(..) => None,
-            Repr::SimpleMessage(..) => None,
-            Repr::Custom(ref c) => Some(&*c.error),
-        }
+        self.repr.as_error_ref().downcast_ref::<Custom>().map(|c| &*c.error)
     }
 
     /// Returns a mutable reference to the inner error wrapped by this error
@@ -467,12 +664,7 @@ impl Error {
     #[stable(feature = "io_error_inner", since = "1.3.0")]
     #[inline]
     pub fn get_mut(&mut self) -> Option<&mut (dyn error::Error + Send + Sync + 'static)> {
-        match self.repr {
-            Repr::Os(..) => None,
-            Repr::Simple(..) => None,
-            Repr::SimpleMessage(..) => None,
-            Repr::Custom(ref mut c) => Some(&mut *c.error),
-        }
+        self.repr.as_error_mut().downcast_mut::<Custom>().map(|c| &mut *c.error)
     }
 
     /// Consumes the `Error`, returning its inner error (if any).
@@ -505,12 +697,7 @@ impl Error {
     #[stable(feature = "io_error_inner", since = "1.3.0")]
     #[inline]
     pub fn into_inner(self) -> Option<Box<dyn error::Error + Send + Sync>> {
-        match self.repr {
-            Repr::Os(..) => None,
-            Repr::Simple(..) => None,
-            Repr::SimpleMessage(..) => None,
-            Repr::Custom(c) => Some(c.error),
-        }
+        self.repr.into_error().downcast::<Custom>().ok().map(|c| c.error)
     }
 
     /// Returns the corresponding [`ErrorKind`] for this error.
@@ -534,45 +721,14 @@ impl Error {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn kind(&self) -> ErrorKind {
-        match self.repr {
-            Repr::Os(code) => sys::decode_error_kind(code),
-            Repr::Custom(ref c) => c.kind,
-            Repr::Simple(kind) => kind,
-            Repr::SimpleMessage(kind, _) => kind,
-        }
-    }
-}
-
-impl fmt::Debug for Repr {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            Repr::Os(code) => fmt
-                .debug_struct("Os")
-                .field("code", &code)
-                .field("kind", &sys::decode_error_kind(code))
-                .field("message", &sys::os::error_string(code))
-                .finish(),
-            Repr::Custom(ref c) => fmt::Debug::fmt(&c, fmt),
-            Repr::Simple(kind) => fmt.debug_tuple("Kind").field(&kind).finish(),
-            Repr::SimpleMessage(kind, &message) => {
-                fmt.debug_struct("Error").field("kind", &kind).field("message", &message).finish()
-            }
-        }
+        self.repr.kind()
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.repr {
-            Repr::Os(code) => {
-                let detail = sys::os::error_string(code);
-                write!(fmt, "{} (os error {})", detail, code)
-            }
-            Repr::Custom(ref c) => c.error.fmt(fmt),
-            Repr::Simple(kind) => write!(fmt, "{}", kind.as_str()),
-            Repr::SimpleMessage(_, &msg) => msg.fmt(fmt),
-        }
+        self.repr.fmt(fmt)
     }
 }
 
@@ -580,30 +736,16 @@ impl fmt::Display for Error {
 impl error::Error for Error {
     #[allow(deprecated, deprecated_in_future)]
     fn description(&self) -> &str {
-        match self.repr {
-            Repr::Os(..) | Repr::Simple(..) => self.kind().as_str(),
-            Repr::SimpleMessage(_, &msg) => msg,
-            Repr::Custom(ref c) => c.error.description(),
-        }
+        self.repr.description()
     }
 
     #[allow(deprecated)]
     fn cause(&self) -> Option<&dyn error::Error> {
-        match self.repr {
-            Repr::Os(..) => None,
-            Repr::Simple(..) => None,
-            Repr::SimpleMessage(..) => None,
-            Repr::Custom(ref c) => c.error.cause(),
-        }
+        self.repr.cause()
     }
 
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        match self.repr {
-            Repr::Os(..) => None,
-            Repr::Simple(..) => None,
-            Repr::SimpleMessage(..) => None,
-            Repr::Custom(ref c) => c.error.source(),
-        }
+        self.repr.source()
     }
 }
 

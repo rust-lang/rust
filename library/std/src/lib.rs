@@ -241,6 +241,7 @@
 #![feature(char_internals)]
 #![feature(concat_idents)]
 #![feature(const_cstr_unchecked)]
+#![feature(const_box_from_raw)]
 #![feature(const_fn_floating_point_arithmetic)]
 #![feature(const_fn_transmute)]
 #![feature(const_fn)]
