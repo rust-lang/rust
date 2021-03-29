@@ -208,20 +208,26 @@ Release process is handled by `release`, `dist` and `promote` xtasks, `release` 
 
 Additionally, it assumes that remote for `rust-analyzer` is called `upstream` (I use `origin` to point to my fork).
 
+`release` calls the GitHub API calls to scrape pull request comments and categorize them in the changelog.
+This step uses the `curl` and `jq` applications, which need to be available in `PATH`.
+Finally, you need to obtain a GitHub personal access token and set the `GITHUB_TOKEN` environment variable.
+
 Release steps:
 
-1. Inside rust-analyzer, run `cargo xtask release`. This will:
+1. Set the `GITHUB_TOKEN` environment variable.
+2. Inside rust-analyzer, run `cargo xtask release`. This will:
    * checkout the `release` branch
    * reset it to `upstream/nightly`
    * push it to `upstream`. This triggers GitHub Actions which:
      * runs `cargo xtask dist` to package binaries and VS Code extension
      * makes a GitHub release
      * pushes VS Code extension to the marketplace
-   * create new changelog in `rust-analyzer.github.io`
-2. While the release is in progress, fill in the changelog
-3. Commit & push the changelog
-4. Tweet
-5. Inside `rust-analyzer`, run `cargo xtask promote` -- this will create a PR to rust-lang/rust updating rust-analyzer's submodule.
+   * call the GitHub API for PR details
+   * create a new changelog in `rust-analyzer.github.io`
+3. While the release is in progress, fill in the changelog
+4. Commit & push the changelog
+5. Tweet
+6. Inside `rust-analyzer`, run `cargo xtask promote` -- this will create a PR to rust-lang/rust updating rust-analyzer's submodule.
    Self-approve the PR.
 
 If the GitHub Actions release fails because of a transient problem like a timeout, you can re-run the job from the Actions console.
