@@ -181,7 +181,6 @@ impl<'a> OptimizeContext<'a> {
 
 pub(super) fn optimize_function(
     ctx: &mut Context,
-    #[cfg_attr(not(debug_assertions), allow(unused_variables))]
     clif_comments: &mut crate::pretty_clif::CommentWriter,
 ) {
     combine_stack_addr_with_load_store(&mut ctx.func);
@@ -192,8 +191,7 @@ pub(super) fn optimize_function(
 
     remove_unused_stack_addr_and_stack_load(&mut opt_ctx);
 
-    #[cfg(debug_assertions)]
-    {
+    if clif_comments.enabled() {
         for (&OrdStackSlot(stack_slot), usage) in &opt_ctx.stack_slot_usage_map {
             clif_comments.add_comment(stack_slot, format!("used by: {:?}", usage));
         }
@@ -209,25 +207,27 @@ pub(super) fn optimize_function(
         for load in users.stack_load.clone().into_iter() {
             let potential_stores = users.potential_stores_for_load(&opt_ctx.ctx, load);
 
-            #[cfg(debug_assertions)]
-            for &store in &potential_stores {
-                clif_comments.add_comment(
-                    load,
-                    format!(
-                        "Potential store -> load forwarding {} -> {} ({:?}, {:?})",
-                        opt_ctx.ctx.func.dfg.display_inst(store, None),
-                        opt_ctx.ctx.func.dfg.display_inst(load, None),
-                        spatial_overlap(&opt_ctx.ctx.func, store, load),
-                        temporal_order(&opt_ctx.ctx, store, load),
-                    ),
-                );
+            if clif_comments.enabled() {
+                for &store in &potential_stores {
+                    clif_comments.add_comment(
+                        load,
+                        format!(
+                            "Potential store -> load forwarding {} -> {} ({:?}, {:?})",
+                            opt_ctx.ctx.func.dfg.display_inst(store, None),
+                            opt_ctx.ctx.func.dfg.display_inst(load, None),
+                            spatial_overlap(&opt_ctx.ctx.func, store, load),
+                            temporal_order(&opt_ctx.ctx, store, load),
+                        ),
+                    );
+                }
             }
 
             match *potential_stores {
                 [] => {
-                    #[cfg(debug_assertions)]
-                    clif_comments
-                        .add_comment(load, "[BUG?] Reading uninitialized memory".to_string());
+                    if clif_comments.enabled() {
+                        clif_comments
+                            .add_comment(load, "[BUG?] Reading uninitialized memory".to_string());
+                    }
                 }
                 [store]
                     if spatial_overlap(&opt_ctx.ctx.func, store, load) == SpatialOverlap::Full
@@ -237,9 +237,12 @@ pub(super) fn optimize_function(
                     // Only one store could have been the origin of the value.
                     let stored_value = opt_ctx.ctx.func.dfg.inst_args(store)[0];
 
-                    #[cfg(debug_assertions)]
-                    clif_comments
-                        .add_comment(load, format!("Store to load forward {} -> {}", store, load));
+                    if clif_comments.enabled() {
+                        clif_comments.add_comment(
+                            load,
+                            format!("Store to load forward {} -> {}", store, load),
+                        );
+                    }
 
                     users.change_load_to_alias(&mut opt_ctx.ctx.func, load, stored_value);
                 }
@@ -250,33 +253,35 @@ pub(super) fn optimize_function(
         for store in users.stack_store.clone().into_iter() {
             let potential_loads = users.potential_loads_of_store(&opt_ctx.ctx, store);
 
-            #[cfg(debug_assertions)]
-            for &load in &potential_loads {
-                clif_comments.add_comment(
-                    store,
-                    format!(
-                        "Potential load from store {} <- {} ({:?}, {:?})",
-                        opt_ctx.ctx.func.dfg.display_inst(load, None),
-                        opt_ctx.ctx.func.dfg.display_inst(store, None),
-                        spatial_overlap(&opt_ctx.ctx.func, store, load),
-                        temporal_order(&opt_ctx.ctx, store, load),
-                    ),
-                );
+            if clif_comments.enabled() {
+                for &load in &potential_loads {
+                    clif_comments.add_comment(
+                        store,
+                        format!(
+                            "Potential load from store {} <- {} ({:?}, {:?})",
+                            opt_ctx.ctx.func.dfg.display_inst(load, None),
+                            opt_ctx.ctx.func.dfg.display_inst(store, None),
+                            spatial_overlap(&opt_ctx.ctx.func, store, load),
+                            temporal_order(&opt_ctx.ctx, store, load),
+                        ),
+                    );
+                }
             }
 
             if potential_loads.is_empty() {
                 // Never loaded; can safely remove all stores and the stack slot.
                 // FIXME also remove stores when there is always a next store before a load.
 
-                #[cfg(debug_assertions)]
-                clif_comments.add_comment(
-                    store,
-                    format!(
-                        "Remove dead stack store {} of {}",
-                        opt_ctx.ctx.func.dfg.display_inst(store, None),
-                        stack_slot.0
-                    ),
-                );
+                if clif_comments.enabled() {
+                    clif_comments.add_comment(
+                        store,
+                        format!(
+                            "Remove dead stack store {} of {}",
+                            opt_ctx.ctx.func.dfg.display_inst(store, None),
+                            stack_slot.0
+                        ),
+                    );
+                }
 
                 users.remove_dead_store(&mut opt_ctx.ctx.func, store);
             }

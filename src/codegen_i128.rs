@@ -32,18 +32,56 @@ pub(crate) fn maybe_codegen<'tcx>(
         BinOp::Add | BinOp::Sub if !checked => None,
         BinOp::Mul if !checked => {
             let val_ty = if is_signed { fx.tcx.types.i128 } else { fx.tcx.types.u128 };
-            Some(fx.easy_call("__multi3", &[lhs, rhs], val_ty))
+            if fx.tcx.sess.target.is_like_windows {
+                let ret_place = CPlace::new_stack_slot(fx, lhs.layout());
+                let (lhs_ptr, lhs_extra) = lhs.force_stack(fx);
+                let (rhs_ptr, rhs_extra) = rhs.force_stack(fx);
+                assert!(lhs_extra.is_none());
+                assert!(rhs_extra.is_none());
+                let args =
+                    [ret_place.to_ptr().get_addr(fx), lhs_ptr.get_addr(fx), rhs_ptr.get_addr(fx)];
+                fx.lib_call(
+                    "__multi3",
+                    vec![
+                        AbiParam::special(pointer_ty(fx.tcx), ArgumentPurpose::StructReturn),
+                        AbiParam::new(pointer_ty(fx.tcx)),
+                        AbiParam::new(pointer_ty(fx.tcx)),
+                    ],
+                    vec![],
+                    &args,
+                );
+                Some(ret_place.to_cvalue(fx))
+            } else {
+                Some(fx.easy_call("__multi3", &[lhs, rhs], val_ty))
+            }
         }
         BinOp::Add | BinOp::Sub | BinOp::Mul => {
             assert!(checked);
             let out_ty = fx.tcx.mk_tup([lhs.layout().ty, fx.tcx.types.bool].iter());
             let out_place = CPlace::new_stack_slot(fx, fx.layout_of(out_ty));
-            let param_types = vec![
-                AbiParam::special(pointer_ty(fx.tcx), ArgumentPurpose::StructReturn),
-                AbiParam::new(types::I128),
-                AbiParam::new(types::I128),
-            ];
-            let args = [out_place.to_ptr().get_addr(fx), lhs.load_scalar(fx), rhs.load_scalar(fx)];
+            let (param_types, args) = if fx.tcx.sess.target.is_like_windows {
+                let (lhs_ptr, lhs_extra) = lhs.force_stack(fx);
+                let (rhs_ptr, rhs_extra) = rhs.force_stack(fx);
+                assert!(lhs_extra.is_none());
+                assert!(rhs_extra.is_none());
+                (
+                    vec![
+                        AbiParam::special(pointer_ty(fx.tcx), ArgumentPurpose::StructReturn),
+                        AbiParam::new(pointer_ty(fx.tcx)),
+                        AbiParam::new(pointer_ty(fx.tcx)),
+                    ],
+                    [out_place.to_ptr().get_addr(fx), lhs_ptr.get_addr(fx), rhs_ptr.get_addr(fx)],
+                )
+            } else {
+                (
+                    vec![
+                        AbiParam::special(pointer_ty(fx.tcx), ArgumentPurpose::StructReturn),
+                        AbiParam::new(types::I128),
+                        AbiParam::new(types::I128),
+                    ],
+                    [out_place.to_ptr().get_addr(fx), lhs.load_scalar(fx), rhs.load_scalar(fx)],
+                )
+            };
             let name = match (bin_op, is_signed) {
                 (BinOp::Add, false) => "__rust_u128_addo",
                 (BinOp::Add, true) => "__rust_i128_addo",
@@ -57,20 +95,33 @@ pub(crate) fn maybe_codegen<'tcx>(
             Some(out_place.to_cvalue(fx))
         }
         BinOp::Offset => unreachable!("offset should only be used on pointers, not 128bit ints"),
-        BinOp::Div => {
+        BinOp::Div | BinOp::Rem => {
             assert!(!checked);
-            if is_signed {
-                Some(fx.easy_call("__divti3", &[lhs, rhs], fx.tcx.types.i128))
+            let name = match (bin_op, is_signed) {
+                (BinOp::Div, false) => "__udivti3",
+                (BinOp::Div, true) => "__divti3",
+                (BinOp::Rem, false) => "__umodti3",
+                (BinOp::Rem, true) => "__modti3",
+                _ => unreachable!(),
+            };
+            if fx.tcx.sess.target.is_like_windows {
+                let (lhs_ptr, lhs_extra) = lhs.force_stack(fx);
+                let (rhs_ptr, rhs_extra) = rhs.force_stack(fx);
+                assert!(lhs_extra.is_none());
+                assert!(rhs_extra.is_none());
+                let args = [lhs_ptr.get_addr(fx), rhs_ptr.get_addr(fx)];
+                let ret = fx.lib_call(
+                    name,
+                    vec![AbiParam::new(pointer_ty(fx.tcx)), AbiParam::new(pointer_ty(fx.tcx))],
+                    vec![AbiParam::new(types::I64X2)],
+                    &args,
+                )[0];
+                // FIXME use bitcast instead of store to get from i64x2 to i128
+                let ret_place = CPlace::new_stack_slot(fx, lhs.layout());
+                ret_place.to_ptr().store(fx, ret, MemFlags::trusted());
+                Some(ret_place.to_cvalue(fx))
             } else {
-                Some(fx.easy_call("__udivti3", &[lhs, rhs], fx.tcx.types.u128))
-            }
-        }
-        BinOp::Rem => {
-            assert!(!checked);
-            if is_signed {
-                Some(fx.easy_call("__modti3", &[lhs, rhs], fx.tcx.types.i128))
-            } else {
-                Some(fx.easy_call("__umodti3", &[lhs, rhs], fx.tcx.types.u128))
+                Some(fx.easy_call(name, &[lhs, rhs], lhs.layout().ty))
             }
         }
         BinOp::Lt | BinOp::Le | BinOp::Eq | BinOp::Ge | BinOp::Gt | BinOp::Ne => {

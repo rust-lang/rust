@@ -119,11 +119,10 @@ fn module_codegen(
         tcx.sess.opts.debuginfo != DebugInfo::None,
     );
     super::predefine_mono_items(&mut cx, &mono_items);
-    for (mono_item, (linkage, visibility)) in mono_items {
-        let linkage = crate::linkage::get_clif_linkage(mono_item, linkage, visibility);
+    for (mono_item, _) in mono_items {
         match mono_item {
             MonoItem::Fn(inst) => {
-                cx.tcx.sess.time("codegen fn", || crate::base::codegen_fn(&mut cx, inst, linkage));
+                cx.tcx.sess.time("codegen fn", || crate::base::codegen_fn(&mut cx, inst));
             }
             MonoItem::Static(def_id) => {
                 crate::constant::codegen_static(&mut cx.constants_cx, def_id)
@@ -163,6 +162,21 @@ pub(super) fn run_aot(
     metadata: EncodedMetadata,
     need_metadata_module: bool,
 ) -> Box<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>)> {
+    use rustc_span::symbol::sym;
+
+    let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
+    let subsystem = tcx.sess.first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
+    let windows_subsystem = subsystem.map(|subsystem| {
+        if subsystem != sym::windows && subsystem != sym::console {
+            tcx.sess.fatal(&format!(
+                "invalid windows subsystem `{}`, only \
+                                    `windows` and `console` are allowed",
+                subsystem
+            ));
+        }
+        subsystem.to_string()
+    });
+
     let mut work_products = FxHashMap::default();
 
     let cgus = if tcx.sess.opts.output_types.should_codegen() {
@@ -280,7 +294,7 @@ pub(super) fn run_aot(
             allocator_module,
             metadata_module,
             metadata,
-            windows_subsystem: None, // Windows is not yet supported
+            windows_subsystem,
             linker_info: LinkerInfo::new(tcx),
             crate_info: CrateInfo::new(tcx),
         },
