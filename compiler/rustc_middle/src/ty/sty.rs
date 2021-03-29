@@ -977,22 +977,6 @@ impl<T> Binder<T> {
         Binder(value)
     }
 
-    /// Wraps `value` in a binder without actually binding any currently
-    /// unbound variables.
-    ///
-    /// Note that this will shift all debrujin indices of escaping bound variables
-    /// by 1 to avoid accidential captures.
-    pub fn wrap_nonbinding(tcx: TyCtxt<'tcx>, value: T) -> Binder<T>
-    where
-        T: TypeFoldable<'tcx>,
-    {
-        if value.has_escaping_bound_vars() {
-            Binder::bind(super::fold::shift_vars(tcx, value, 1))
-        } else {
-            Binder::dummy(value)
-        }
-    }
-
     /// Skips the binder and returns the "bound" value. This is a
     /// risky thing to do because it's easy to get confused about
     /// De Bruijn indices and the like. It is usually better to
@@ -1157,18 +1141,6 @@ pub struct GenSig<'tcx> {
 
 pub type PolyGenSig<'tcx> = Binder<GenSig<'tcx>>;
 
-impl<'tcx> PolyGenSig<'tcx> {
-    pub fn resume_ty(&self) -> ty::Binder<Ty<'tcx>> {
-        self.map_bound_ref(|sig| sig.resume_ty)
-    }
-    pub fn yield_ty(&self) -> ty::Binder<Ty<'tcx>> {
-        self.map_bound_ref(|sig| sig.yield_ty)
-    }
-    pub fn return_ty(&self) -> ty::Binder<Ty<'tcx>> {
-        self.map_bound_ref(|sig| sig.return_ty)
-    }
-}
-
 /// Signature of a function type, which we have arbitrarily
 /// decided to use to refer to the input/output types.
 ///
@@ -1248,10 +1220,6 @@ impl<'tcx> ParamTy {
         ParamTy { index, name }
     }
 
-    pub fn for_self() -> ParamTy {
-        ParamTy::new(0, kw::SelfUpper)
-    }
-
     pub fn for_def(def: &ty::GenericParamDef) -> ParamTy {
         ParamTy::new(def.index, def.name)
     }
@@ -1269,17 +1237,13 @@ pub struct ParamConst {
     pub name: Symbol,
 }
 
-impl<'tcx> ParamConst {
+impl ParamConst {
     pub fn new(index: u32, name: Symbol) -> ParamConst {
         ParamConst { index, name }
     }
 
     pub fn for_def(def: &ty::GenericParamDef) -> ParamConst {
         ParamConst::new(def.index, def.name)
-    }
-
-    pub fn to_const(self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> &'tcx ty::Const<'tcx> {
-        tcx.mk_const_param(self.index, self.name, ty)
     }
 }
 
@@ -1577,35 +1541,6 @@ impl RegionKind {
         match *self {
             ty::ReLateBound(debruijn, _) => debruijn >= index,
             _ => false,
-        }
-    }
-
-    /// Adjusts any De Bruijn indices so as to make `to_binder` the
-    /// innermost binder. That is, if we have something bound at `to_binder`,
-    /// it will now be bound at INNERMOST. This is an appropriate thing to do
-    /// when moving a region out from inside binders:
-    ///
-    /// ```
-    ///             for<'a>   fn(for<'b>   for<'c>   fn(&'a u32), _)
-    /// // Binder:  D3           D2        D1            ^^
-    /// ```
-    ///
-    /// Here, the region `'a` would have the De Bruijn index D3,
-    /// because it is the bound 3 binders out. However, if we wanted
-    /// to refer to that region `'a` in the second argument (the `_`),
-    /// those two binders would not be in scope. In that case, we
-    /// might invoke `shift_out_to_binder(D3)`. This would adjust the
-    /// De Bruijn index of `'a` to D1 (the innermost binder).
-    ///
-    /// If we invoke `shift_out_to_binder` and the region is in fact
-    /// bound by one of the binders we are shifting out of, that is an
-    /// error (and should fail an assertion failure).
-    pub fn shifted_out_to_binder(&self, to_binder: ty::DebruijnIndex) -> RegionKind {
-        match *self {
-            ty::ReLateBound(debruijn, r) => {
-                ty::ReLateBound(debruijn.shifted_out_to_binder(to_binder), r)
-            }
-            r => r,
         }
     }
 

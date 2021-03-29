@@ -1,5 +1,5 @@
 // ignore-tidy-filelength
-use crate::def::{CtorKind, DefKind, Namespace, Res};
+use crate::def::{CtorKind, DefKind, Res};
 use crate::def_id::DefId;
 crate use crate::hir_id::HirId;
 use crate::{itemlikevisit, LangItem};
@@ -2118,15 +2118,6 @@ pub enum ImplItemKind<'hir> {
     TyAlias(&'hir Ty<'hir>),
 }
 
-impl ImplItemKind<'_> {
-    pub fn namespace(&self) -> Namespace {
-        match self {
-            ImplItemKind::TyAlias(..) => Namespace::TypeNS,
-            ImplItemKind::Const(..) | ImplItemKind::Fn(..) => Namespace::ValueNS,
-        }
-    }
-}
-
 // The name of the associated type for `Fn` return types.
 pub const FN_OUTPUT_NAME: Symbol = sym::Output;
 
@@ -2215,6 +2206,9 @@ impl PrimTy {
         Self::Str,
     ];
 
+    /// Like [`PrimTy::name`], but returns a &str instead of a symbol.
+    ///
+    /// Used by rustdoc.
     pub fn name_str(self) -> &'static str {
         match self {
             PrimTy::Int(i) => i.name_str(),

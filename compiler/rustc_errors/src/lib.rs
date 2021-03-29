@@ -691,10 +691,6 @@ impl Handler {
         db
     }
 
-    pub fn failure(&self, msg: &str) {
-        self.inner.borrow_mut().failure(msg);
-    }
-
     pub fn fatal(&self, msg: &str) -> FatalError {
         self.inner.borrow_mut().fatal(msg)
     }

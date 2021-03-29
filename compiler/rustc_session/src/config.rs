@@ -505,6 +505,7 @@ impl<'a> From<&'a ExternDepSpec> for rustc_lint_defs::ExternDepSpec {
 }
 
 impl Externs {
+    /// Used for testing.
     pub fn new(data: BTreeMap<String, ExternEntry>) -> Externs {
         Externs(data)
     }
@@ -601,13 +602,6 @@ impl Input {
         match *self {
             Input::File(ref ifile) => ifile.file_stem().unwrap().to_str().unwrap(),
             Input::Str { .. } => "rust_out",
-        }
-    }
-
-    pub fn get_input(&mut self) -> Option<&mut String> {
-        match *self {
-            Input::File(_) => None,
-            Input::Str { ref mut input, .. } => Some(input),
         }
     }
 
@@ -776,12 +770,6 @@ impl Options {
         self.incremental.is_some()
             || self.debugging_opts.dump_dep_graph
             || self.debugging_opts.query_dep_graph
-    }
-
-    #[inline(always)]
-    pub fn enable_dep_node_debug_strs(&self) -> bool {
-        cfg!(debug_assertions)
-            && (self.debugging_opts.query_dep_graph || self.debugging_opts.incremental_info)
     }
 
     pub fn file_path_mapping(&self) -> FilePathMapping {
@@ -1060,9 +1048,6 @@ mod opt {
     pub fn flag_s(a: S, b: S, c: S) -> R {
         stable(longer(a, b), move |opts| opts.optflag(a, b, c))
     }
-    pub fn flagopt_s(a: S, b: S, c: S, d: S) -> R {
-        stable(longer(a, b), move |opts| opts.optflagopt(a, b, c, d))
-    }
     pub fn flagmulti_s(a: S, b: S, c: S) -> R {
         stable(longer(a, b), move |opts| opts.optflagmulti(a, b, c))
     }
@@ -1072,15 +1057,6 @@ mod opt {
     }
     pub fn multi(a: S, b: S, c: S, d: S) -> R {
         unstable(longer(a, b), move |opts| opts.optmulti(a, b, c, d))
-    }
-    pub fn flag(a: S, b: S, c: S) -> R {
-        unstable(longer(a, b), move |opts| opts.optflag(a, b, c))
-    }
-    pub fn flagopt(a: S, b: S, c: S, d: S) -> R {
-        unstable(longer(a, b), move |opts| opts.optflagopt(a, b, c, d))
-    }
-    pub fn flagmulti(a: S, b: S, c: S) -> R {
-        unstable(longer(a, b), move |opts| opts.optflagmulti(a, b, c))
     }
 }
 
@@ -2459,7 +2435,7 @@ crate mod dep_tracking {
     }
 
     // This is a stable hash because BTreeMap is a sorted container
-    pub fn stable_hash(
+    crate fn stable_hash(
         sub_hashes: BTreeMap<&'static str, &dyn DepTrackingHash>,
         hasher: &mut DefaultHasher,
         error_format: ErrorOutputType,

@@ -146,6 +146,7 @@ impl<'a, 'b> RunCompiler<'a, 'b> {
     pub fn new(at_args: &'a [String], callbacks: &'b mut (dyn Callbacks + Send)) -> Self {
         Self { at_args, callbacks, file_loader: None, emitter: None, make_codegen_backend: None }
     }
+    /// Used by cg_clif.
     pub fn set_make_codegen_backend(
         &mut self,
         make_codegen_backend: Option<
@@ -155,10 +156,12 @@ impl<'a, 'b> RunCompiler<'a, 'b> {
         self.make_codegen_backend = make_codegen_backend;
         self
     }
+    /// Used by RLS.
     pub fn set_emitter(&mut self, emitter: Option<Box<dyn Write + Send>>) -> &mut Self {
         self.emitter = emitter;
         self
     }
+    /// Used by RLS.
     pub fn set_file_loader(
         &mut self,
         file_loader: Option<Box<dyn FileLoader + Send + Sync>>,

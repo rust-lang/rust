@@ -618,20 +618,10 @@ pub struct ProjectionPredicate<'tcx> {
 pub type PolyProjectionPredicate<'tcx> = Binder<ProjectionPredicate<'tcx>>;
 
 impl<'tcx> PolyProjectionPredicate<'tcx> {
-    /// Returns the `DefId` of the associated item being projected.
-    pub fn item_def_id(&self) -> DefId {
-        self.skip_binder().projection_ty.item_def_id
-    }
-
     /// Returns the `DefId` of the trait of the associated item being projected.
     #[inline]
     pub fn trait_def_id(&self, tcx: TyCtxt<'tcx>) -> DefId {
         self.skip_binder().projection_ty.trait_def_id(tcx)
-    }
-
-    #[inline]
-    pub fn projection_self_ty(&self) -> Binder<Ty<'tcx>> {
-        self.map_bound(|predicate| predicate.projection_ty.self_ty())
     }
 
     /// Get the [PolyTraitRef] required for this projection to be well formed.
@@ -1037,10 +1027,6 @@ impl WithOptConstParam<DefId> {
         }
 
         None
-    }
-
-    pub fn expect_local(self) -> WithOptConstParam<LocalDefId> {
-        self.as_local().unwrap()
     }
 
     pub fn is_local(self) -> bool {

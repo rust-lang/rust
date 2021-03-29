@@ -1176,11 +1176,7 @@ pub fn decode_syntax_context<
     Ok(new_ctxt)
 }
 
-pub fn num_syntax_ctxts() -> usize {
-    HygieneData::with(|data| data.syntax_context_data.len())
-}
-
-pub fn for_all_ctxts_in<E, F: FnMut((u32, SyntaxContext, &SyntaxContextData)) -> Result<(), E>>(
+fn for_all_ctxts_in<E, F: FnMut((u32, SyntaxContext, &SyntaxContextData)) -> Result<(), E>>(
     ctxts: impl Iterator<Item = SyntaxContext>,
     mut f: F,
 ) -> Result<(), E> {
@@ -1193,7 +1189,7 @@ pub fn for_all_ctxts_in<E, F: FnMut((u32, SyntaxContext, &SyntaxContextData)) ->
     Ok(())
 }
 
-pub fn for_all_expns_in<E, F: FnMut(u32, ExpnId, &ExpnData) -> Result<(), E>>(
+fn for_all_expns_in<E, F: FnMut(u32, ExpnId, &ExpnData) -> Result<(), E>>(
     expns: impl Iterator<Item = ExpnId>,
     mut f: F,
 ) -> Result<(), E> {
@@ -1202,16 +1198,6 @@ pub fn for_all_expns_in<E, F: FnMut(u32, ExpnId, &ExpnData) -> Result<(), E>>(
     });
     for (expn, data) in all_data.into_iter() {
         f(expn.0, expn, &data.unwrap_or_else(|| panic!("Missing data for {:?}", expn)))?;
-    }
-    Ok(())
-}
-
-pub fn for_all_data<E, F: FnMut((u32, SyntaxContext, &SyntaxContextData)) -> Result<(), E>>(
-    mut f: F,
-) -> Result<(), E> {
-    let all_data = HygieneData::with(|data| data.syntax_context_data.clone());
-    for (i, data) in all_data.into_iter().enumerate() {
-        f((i as u32, SyntaxContext(i as u32), &data))?;
     }
     Ok(())
 }
@@ -1226,14 +1212,6 @@ impl<D: Decoder> Decodable<D> for ExpnId {
     default fn decode(_: &mut D) -> Result<Self, D::Error> {
         panic!("cannot decode `ExpnId` with `{}`", std::any::type_name::<D>());
     }
-}
-
-pub fn for_all_expn_data<E, F: FnMut(u32, &ExpnData) -> Result<(), E>>(mut f: F) -> Result<(), E> {
-    let all_data = HygieneData::with(|data| data.expn_data.clone());
-    for (i, data) in all_data.into_iter().enumerate() {
-        f(i as u32, &data.unwrap_or_else(|| panic!("Missing ExpnData!")))?;
-    }
-    Ok(())
 }
 
 pub fn raw_encode_syntax_context<E: Encoder>(

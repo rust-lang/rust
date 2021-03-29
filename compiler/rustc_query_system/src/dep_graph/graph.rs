@@ -488,8 +488,8 @@ impl<K: DepKind> DepGraph<K> {
         self.data.is_some() && self.dep_node_index_of_opt(dep_node).is_some()
     }
 
-    #[inline]
-    pub fn dep_node_of(&self, dep_node_index: DepNodeIndex) -> DepNode<K> {
+    #[cfg(debug_assertions)]
+    fn dep_node_of(&self, dep_node_index: DepNodeIndex) -> DepNode<K> {
         let data = self.data.as_ref().unwrap();
         let previous = &data.previous;
         let data = data.current.data.lock();

@@ -379,24 +379,6 @@ impl<'tcx> Body<'tcx> {
         }
     }
 
-    /// Returns an iterator over all temporaries.
-    #[inline]
-    pub fn temps_iter<'a>(&'a self) -> impl Iterator<Item = Local> + 'a {
-        (self.arg_count + 1..self.local_decls.len()).filter_map(move |index| {
-            let local = Local::new(index);
-            if self.local_decls[local].is_user_variable() { None } else { Some(local) }
-        })
-    }
-
-    /// Returns an iterator over all user-declared locals.
-    #[inline]
-    pub fn vars_iter<'a>(&'a self) -> impl Iterator<Item = Local> + 'a {
-        (self.arg_count + 1..self.local_decls.len()).filter_map(move |index| {
-            let local = Local::new(index);
-            self.local_decls[local].is_user_variable().then_some(local)
-        })
-    }
-
     /// Returns an iterator over all user-declared mutable locals.
     #[inline]
     pub fn mut_vars_iter<'a>(&'a self) -> impl Iterator<Item = Local> + 'a {

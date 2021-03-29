@@ -1266,15 +1266,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.resolve_vars_if_possible(t).to_string()
     }
 
-    pub fn tys_to_string(&self, ts: &[Ty<'tcx>]) -> String {
-        let tstrs: Vec<String> = ts.iter().map(|t| self.ty_to_string(*t)).collect();
-        format!("({})", tstrs.join(", "))
-    }
-
-    pub fn trait_ref_to_string(&self, t: ty::TraitRef<'tcx>) -> String {
-        self.resolve_vars_if_possible(t).print_only_trait_path().to_string()
-    }
-
     /// If `TyVar(vid)` resolves to a type, return that type. Else, return the
     /// universe index of `TyVar(vid)`.
     pub fn probe_ty_var(&self, vid: TyVid) -> Result<Ty<'tcx>, ty::UniverseIndex> {
@@ -1703,14 +1694,6 @@ impl<'tcx> TypeTrace<'tcx> {
         b: &'tcx ty::Const<'tcx>,
     ) -> TypeTrace<'tcx> {
         TypeTrace { cause: cause.clone(), values: Consts(ExpectedFound::new(a_is_expected, a, b)) }
-    }
-
-    pub fn dummy(tcx: TyCtxt<'tcx>) -> TypeTrace<'tcx> {
-        let err = tcx.ty_error();
-        TypeTrace {
-            cause: ObligationCause::dummy(),
-            values: Types(ExpectedFound { expected: err, found: err }),
-        }
     }
 }
 

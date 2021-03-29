@@ -42,17 +42,8 @@ where
     pub fn pointer_ref(&self) -> &P::Target {
         self.raw.pointer_ref()
     }
-    pub fn pointer_mut(&mut self) -> &mut P::Target
-    where
-        P: std::ops::DerefMut,
-    {
-        self.raw.pointer_mut()
-    }
     pub fn tag(&self) -> T {
         self.raw.tag()
-    }
-    pub fn set_tag(&mut self, tag: T) {
-        self.raw.set_tag(tag);
     }
 }
 

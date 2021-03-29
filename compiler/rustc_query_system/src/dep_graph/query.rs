@@ -31,10 +31,6 @@ impl<K: DepKind> DepGraphQuery<K> {
         DepGraphQuery { graph, indices }
     }
 
-    pub fn contains_node(&self, node: &DepNode<K>) -> bool {
-        self.indices.contains_key(&node)
-    }
-
     pub fn nodes(&self) -> Vec<&DepNode<K>> {
         self.graph.all_nodes().iter().map(|n| &n.data).collect()
     }

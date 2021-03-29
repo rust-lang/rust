@@ -111,7 +111,7 @@ impl<'a> Labeller<'a> for LabelledGraph {
     fn node_label(&'a self, n: &Node) -> LabelText<'a> {
         match self.node_labels[*n] {
             Some(l) => LabelStr(l.into()),
-            None => LabelStr(id_name(n).name()),
+            None => LabelStr(id_name(n).name),
         }
     }
     fn edge_label(&'a self, e: &&'a Edge) -> LabelText<'a> {

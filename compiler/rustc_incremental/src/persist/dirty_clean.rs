@@ -74,16 +74,6 @@ const BASE_STRUCT: &[&str] =
     &[label_strs::generics_of, label_strs::predicates_of, label_strs::type_of];
 
 /// Trait definition `DepNode`s.
-const BASE_TRAIT_DEF: &[&str] = &[
-    label_strs::associated_item_def_ids,
-    label_strs::generics_of,
-    label_strs::object_safety_violations,
-    label_strs::predicates_of,
-    label_strs::specialization_graph_of,
-    label_strs::trait_def,
-    label_strs::trait_impls_of,
-];
-
 /// Extra `DepNode`s for functions and methods.
 const EXTRA_ASSOCIATED: &[&str] = &[label_strs::associated_item];
 
@@ -117,10 +107,6 @@ const LABELS_IMPL: &[&[&str]] = &[BASE_HIR, BASE_IMPL];
 
 /// Abstract data type (struct, enum, union) `DepNode`s.
 const LABELS_ADT: &[&[&str]] = &[BASE_HIR, BASE_STRUCT];
-
-/// Trait definition `DepNode`s.
-#[allow(dead_code)]
-const LABELS_TRAIT: &[&[&str]] = &[BASE_HIR, BASE_TRAIT_DEF];
 
 // FIXME: Struct/Enum/Unions Fields (there is currently no way to attach these)
 //

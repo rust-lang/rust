@@ -1037,10 +1037,6 @@ pub enum ExternalSourceKind {
 }
 
 impl ExternalSource {
-    pub fn is_absent(&self) -> bool {
-        !matches!(self, ExternalSource::Foreign { kind: ExternalSourceKind::Present(_), .. })
-    }
-
     pub fn get_source(&self) -> Option<&Lrc<String>> {
         match self {
             ExternalSource::Foreign { kind: ExternalSourceKind::Present(ref src), .. } => Some(src),
@@ -1433,9 +1429,6 @@ impl SourceFile {
         self.src.is_none()
     }
 
-    pub fn byte_length(&self) -> u32 {
-        self.end_pos.0 - self.start_pos.0
-    }
     pub fn count_lines(&self) -> usize {
         self.lines.len()
     }

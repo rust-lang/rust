@@ -20,7 +20,7 @@ use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitterWriter;
 use rustc_errors::emitter::{Emitter, EmitterWriter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, DiagnosticId, ErrorReported};
+use rustc_errors::{Diagnostic, DiagnosticBuilder, DiagnosticId, ErrorReported};
 use rustc_lint_defs::FutureBreakage;
 pub use rustc_span::crate_disambiguator::CrateDisambiguator;
 use rustc_span::edition::Edition;
@@ -241,8 +241,7 @@ pub struct PerfStats {
 enum DiagnosticBuilderMethod {
     Note,
     SpanNote,
-    SpanSuggestion(String), // suggestion
-                            // Add more variants as needed to support one-time diagnostics.
+    // Add more variants as needed to support one-time diagnostics.
 }
 
 /// Trait implemented by error types. This should not be implemented manually. Instead, use
@@ -551,15 +550,6 @@ impl Session {
                     let span = span_maybe.expect("`span_note` needs a span");
                     diag_builder.span_note(span, message);
                 }
-                DiagnosticBuilderMethod::SpanSuggestion(suggestion) => {
-                    let span = span_maybe.expect("`span_suggestion_*` needs a span");
-                    diag_builder.span_suggestion(
-                        span,
-                        message,
-                        suggestion,
-                        Applicability::Unspecified,
-                    );
-                }
             }
         }
     }
@@ -589,23 +579,6 @@ impl Session {
         self.diag_once(diag_builder, DiagnosticBuilderMethod::Note, msg_id, message, None);
     }
 
-    pub fn diag_span_suggestion_once<'a, 'b>(
-        &'a self,
-        diag_builder: &'b mut DiagnosticBuilder<'a>,
-        msg_id: DiagnosticMessageId,
-        span: Span,
-        message: &str,
-        suggestion: String,
-    ) {
-        self.diag_once(
-            diag_builder,
-            DiagnosticBuilderMethod::SpanSuggestion(suggestion),
-            msg_id,
-            message,
-            Some(span),
-        );
-    }
-
     #[inline]
     pub fn source_map(&self) -> &SourceMap {
         self.parse_sess.source_map()
@@ -630,9 +603,6 @@ impl Session {
     }
     pub fn verify_llvm_ir(&self) -> bool {
         self.opts.debugging_opts.verify_llvm_ir || option_env!("RUSTC_VERIFY_LLVM_IR").is_some()
-    }
-    pub fn borrowck_stats(&self) -> bool {
-        self.opts.debugging_opts.borrowck_stats
     }
     pub fn print_llvm_passes(&self) -> bool {
         self.opts.debugging_opts.print_llvm_passes
@@ -888,22 +858,6 @@ impl Session {
             &self.host_tlib_path,
             kind,
         )
-    }
-
-    pub fn set_incr_session_load_dep_graph(&self, load: bool) {
-        let mut incr_comp_session = self.incr_comp_session.borrow_mut();
-
-        if let IncrCompSession::Active { ref mut load_dep_graph, .. } = *incr_comp_session {
-            *load_dep_graph = load;
-        }
-    }
-
-    pub fn incr_session_load_dep_graph(&self) -> bool {
-        let incr_comp_session = self.incr_comp_session.borrow();
-        match *incr_comp_session {
-            IncrCompSession::Active { load_dep_graph, .. } => load_dep_graph,
-            _ => false,
-        }
     }
 
     pub fn init_incr_comp_session(

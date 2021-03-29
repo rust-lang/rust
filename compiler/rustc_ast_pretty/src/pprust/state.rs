@@ -2292,10 +2292,6 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_usize(&mut self, i: usize) {
-        self.s.word(i.to_string())
-    }
-
     crate fn print_name(&mut self, name: Symbol) {
         self.s.word(name.to_string());
         self.ann.post(self, AnnNode::Name(&name))

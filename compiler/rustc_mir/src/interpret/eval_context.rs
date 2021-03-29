@@ -232,6 +232,8 @@ impl<'mir, 'tcx, Tag, Extra> Frame<'mir, 'tcx, Tag, Extra> {
     /// this frame (can happen e.g. during frame initialization, and during unwinding on
     /// frames without cleanup code).
     /// We basically abuse `Result` as `Either`.
+    ///
+    /// Used by priroda.
     pub fn current_loc(&self) -> Result<mir::Location, Span> {
         self.loc
     }
@@ -457,11 +459,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     #[inline(always)]
     pub fn truncate(&self, value: u128, ty: TyAndLayout<'_>) -> u128 {
         ty.size.truncate(value)
-    }
-
-    #[inline]
-    pub fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_sized(self.tcx, self.param_env)
     }
 
     #[inline]

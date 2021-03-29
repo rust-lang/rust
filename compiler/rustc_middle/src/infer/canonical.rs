@@ -228,19 +228,11 @@ impl Certainty {
             Certainty::Ambiguous => false,
         }
     }
-
-    pub fn is_ambiguous(&self) -> bool {
-        !self.is_proven()
-    }
 }
 
 impl<'tcx, R> QueryResponse<'tcx, R> {
     pub fn is_proven(&self) -> bool {
         self.certainty.is_proven()
-    }
-
-    pub fn is_ambiguous(&self) -> bool {
-        !self.is_proven()
     }
 }
 

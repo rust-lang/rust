@@ -40,22 +40,6 @@ impl<
         }
     }
 
-    pub fn new_subgraph(
-        graph: &'a G,
-        graphviz_name: &str,
-        node_content_fn: NodeContentFn,
-        edge_labels_fn: EdgeLabelsFn,
-    ) -> Self {
-        Self {
-            graph,
-            is_subgraph: true,
-            graphviz_name: graphviz_name.to_owned(),
-            graph_label: None,
-            node_content_fn,
-            edge_labels_fn,
-        }
-    }
-
     pub fn set_graph_label(&mut self, graph_label: &str) {
         self.graph_label = Some(graph_label.to_owned());
     }
