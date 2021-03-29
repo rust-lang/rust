@@ -7,14 +7,11 @@ LL | #![feature(generic_associated_types)]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
 
-error[E0275]: overflow evaluating the requirement `<T as Foo>::Item: Sized`
-  --> $DIR/projection-bound-cycle-generic.rs:45:5
+error[E0275]: overflow evaluating the requirement `<Number<T> as Foo>::Item == _`
+  --> $DIR/projection-bound-cycle-generic.rs:26:5
    |
-LL | struct OnlySized<T> where T: Sized { f: T }
-   |                  - required by this bound in `OnlySized`
-...
-LL |     type Assoc = OnlySized<<T as Foo>::Item>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     type Item where [T]: Sized = [T];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error; 1 warning emitted
 
