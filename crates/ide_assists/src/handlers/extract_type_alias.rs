@@ -13,10 +13,10 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // ```
 // ->
 // ```
-// type ${0:Type} = (u8, u8, u8);
+// type $0Type = (u8, u8, u8);
 //
 // struct S {
-//     field: ${0:Type},
+//     field: Type,
 // }
 // ```
 pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
@@ -34,17 +34,12 @@ pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext) -> Opti
         target,
         |builder| {
             builder.edit_file(ctx.frange.file_id);
+            builder.replace(target, "Type");
             match ctx.config.snippet_cap {
                 Some(cap) => {
-                    builder.replace_snippet(cap, target, "${0:Type}");
-                    builder.insert_snippet(
-                        cap,
-                        insert,
-                        format!("type ${{0:Type}} = {};\n\n", node),
-                    );
+                    builder.insert_snippet(cap, insert, format!("type $0Type = {};\n\n", node));
                 }
                 None => {
-                    builder.replace(target, "Type");
                     builder.insert(insert, format!("type Type = {};\n\n", node));
                 }
             }
@@ -80,10 +75,10 @@ struct S {
 }
             ",
             r#"
-type ${0:Type} = u8;
+type $0Type = u8;
 
 struct S {
-    field: ${0:Type},
+    field: Type,
 }
             "#,
         );
@@ -103,10 +98,10 @@ fn f() {
             r#"
 fn generic<T>() {}
 
-type ${0:Type} = ();
+type $0Type = ();
 
 fn f() {
-    generic::<${0:Type}>();
+    generic::<Type>();
 }
             "#,
         );
@@ -124,10 +119,10 @@ struct S {
             ",
             r#"
 struct Vec<T> {}
-type ${0:Type} = Vec<u8>;
+type $0Type = Vec<u8>;
 
 struct S {
-    v: Vec<Vec<${0:Type}>>,
+    v: Vec<Vec<Type>>,
 }
             "#,
         );
@@ -143,10 +138,10 @@ struct S {
 }
             ",
             r#"
-type ${0:Type} = u8;
+type $0Type = u8;
 
 struct S {
-    field: (${0:Type},),
+    field: (Type,),
 }
             "#,
         );

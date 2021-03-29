@@ -338,10 +338,10 @@ struct S {
 }
 "#####,
         r#####"
-type ${0:Type} = (u8, u8, u8);
+type $0Type = (u8, u8, u8);
 
 struct S {
-    field: ${0:Type},
+    field: Type,
 }
 "#####,
     )
