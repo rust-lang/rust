@@ -424,7 +424,9 @@ nav.sub {
 	text-overflow: ellipsis;
 	margin: 0;
 }
-.docblock-short code {
+/* Wrap non-pre code blocks (`text`) but not (```text```). */
+.docblock > :not(pre) > code,
+.docblock-short > :not(pre) > code {
 	white-space: pre-wrap;
 }
 
