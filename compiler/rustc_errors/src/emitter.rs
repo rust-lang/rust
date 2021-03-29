@@ -1258,7 +1258,7 @@ impl EmitterWriter {
                 buffer.append(0, ": ", header_style);
             }
             for &(ref text, _) in msg.iter() {
-                buffer.append(0, text, header_style);
+                buffer.append(0, &replace_tabs(text), header_style);
             }
         }
 
