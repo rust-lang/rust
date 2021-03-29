@@ -1,6 +1,3 @@
-
-#![no_std]
-
 // @has impl_items.json "$.index[*][?(@.name=='Simple')]"
 pub struct Simple;
 
