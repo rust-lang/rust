@@ -241,15 +241,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "memmap2"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04e3e85b970d650e2ae6d70592474087051c11c54da7f7b4949725c5735fbcc6"
-dependencies = [
- "libc",
-]
-
-[[package]]
 name = "object"
 version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -319,7 +310,6 @@ dependencies = [
  "gimli",
  "indexmap",
  "libloading",
- "memmap2",
  "object",
  "smallvec",
  "target-lexicon",
