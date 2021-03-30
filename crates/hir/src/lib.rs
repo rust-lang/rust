@@ -44,6 +44,7 @@ use hir_def::{
     per_ns::PerNs,
     resolver::{HasResolver, Resolver},
     src::HasSource as _,
+    type_ref::TraitRef,
     AdtId, AssocContainerId, AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId,
     DefWithBodyId, EnumId, FunctionId, GenericDefId, HasModule, ImplId, LifetimeParamId,
     LocalEnumVariantId, LocalFieldId, Lookup, ModuleId, StaticId, StructId, TraitId, TypeAliasId,
@@ -1573,9 +1574,9 @@ impl Impl {
         };
 
         let filter = |impl_def: &Impl| {
-            let target_ty = impl_def.target_ty(db);
-            let rref = target_ty.remove_ref();
-            ty.equals_ctor(rref.as_ref().map_or(&target_ty.ty, |it| &it.ty))
+            let self_ty = impl_def.self_ty(db);
+            let rref = self_ty.remove_ref();
+            ty.equals_ctor(rref.as_ref().map_or(&self_ty.ty, |it| &it.ty))
         };
 
         let mut all = Vec::new();
@@ -1613,16 +1614,16 @@ impl Impl {
 
     // FIXME: the return type is wrong. This should be a hir version of
     // `TraitRef` (ie, resolved `TypeRef`).
-    pub fn target_trait(self, db: &dyn HirDatabase) -> Option<TypeRef> {
+    pub fn trait_(self, db: &dyn HirDatabase) -> Option<TraitRef> {
         db.impl_data(self.id).target_trait.clone()
     }
 
-    pub fn target_ty(self, db: &dyn HirDatabase) -> Type {
+    pub fn self_ty(self, db: &dyn HirDatabase) -> Type {
         let impl_data = db.impl_data(self.id);
         let resolver = self.id.resolver(db.upcast());
         let krate = self.id.lookup(db.upcast()).container.krate();
         let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
-        let ty = ctx.lower_ty(&impl_data.target_type);
+        let ty = ctx.lower_ty(&impl_data.self_ty);
         Type::new_with_resolver_inner(db, krate, &resolver, ty)
     }
 

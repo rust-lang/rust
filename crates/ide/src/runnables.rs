@@ -298,7 +298,7 @@ fn module_def_doctest(sema: &Semantics<RootDatabase>, def: hir::ModuleDef) -> Op
             // FIXME: this also looks very wrong
             if let Some(assoc_def) = assoc_def {
                 if let hir::AssocItemContainer::Impl(imp) = assoc_def.container(sema.db) {
-                    let ty = imp.target_ty(sema.db);
+                    let ty = imp.self_ty(sema.db);
                     if let Some(adt) = ty.as_adt() {
                         let name = adt.name(sema.db);
                         let idx = path.rfind(':').map_or(0, |idx| idx + 1);

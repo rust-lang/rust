@@ -31,7 +31,7 @@ use crate::{
     db::DefDatabase,
     generics::GenericParams,
     path::{path, AssociatedTypeBinding, GenericArgs, ImportAlias, ModPath, Path, PathKind},
-    type_ref::{Mutability, TypeBound, TypeRef},
+    type_ref::{Mutability, TraitRef, TypeBound, TypeRef},
     visibility::RawVisibility,
 };
 
@@ -147,6 +147,7 @@ impl ItemTree {
                 vis,
                 generics,
                 type_refs,
+                trait_refs,
                 inner_items,
             } = &mut **data;
 
@@ -173,6 +174,7 @@ impl ItemTree {
             generics.arena.shrink_to_fit();
             type_refs.arena.shrink_to_fit();
             type_refs.map.shrink_to_fit();
+            trait_refs.map.shrink_to_fit();
 
             inner_items.shrink_to_fit();
         }
@@ -295,6 +297,32 @@ impl TypeRefStorage {
     }
 }
 
+/// `TraitRef` interner.
+#[derive(Default, Debug, Eq, PartialEq)]
+struct TraitRefStorage {
+    arena: Arena<Arc<TraitRef>>,
+    map: FxHashMap<Arc<TraitRef>, Idx<Arc<TraitRef>>>,
+}
+
+impl TraitRefStorage {
+    // Note: We lie about the `Idx<TraitRef>` to hide the interner details.
+
+    fn intern(&mut self, ty: TraitRef) -> Idx<TraitRef> {
+        if let Some(id) = self.map.get(&ty) {
+            return Idx::from_raw(id.into_raw());
+        }
+
+        let ty = Arc::new(ty);
+        let idx = self.arena.alloc(ty.clone());
+        self.map.insert(ty, idx);
+        Idx::from_raw(idx.into_raw())
+    }
+
+    fn lookup(&self, id: Idx<TraitRef>) -> &TraitRef {
+        &self.arena[Idx::from_raw(id.into_raw())]
+    }
+}
+
 #[derive(Default, Debug, Eq, PartialEq)]
 struct ItemTreeData {
     imports: Arena<Import>,
@@ -319,6 +347,7 @@ struct ItemTreeData {
     vis: ItemVisibilities,
     generics: GenericParamsStorage,
     type_refs: TypeRefStorage,
+    trait_refs: TraitRefStorage,
 
     inner_items: FxHashMap<FileAstId<ast::BlockExpr>, SmallVec<[ModItem; 1]>>,
 }
@@ -556,6 +585,14 @@ impl Index<Idx<TypeRef>> for ItemTree {
     }
 }
 
+impl Index<Idx<TraitRef>> for ItemTree {
+    type Output = TraitRef;
+
+    fn index(&self, id: Idx<TraitRef>) -> &Self::Output {
+        self.data().trait_refs.lookup(id)
+    }
+}
+
 impl<N: ItemTreeNode> Index<FileItemTreeId<N>> for ItemTree {
     type Output = N;
     fn index(&self, id: FileItemTreeId<N>) -> &N {
@@ -692,8 +729,8 @@ pub struct Trait {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Impl {
     pub generic_params: GenericParamsId,
-    pub target_trait: Option<Idx<TypeRef>>,
-    pub target_type: Idx<TypeRef>,
+    pub target_trait: Option<Idx<TraitRef>>,
+    pub self_ty: Idx<TypeRef>,
     pub is_negative: bool,
     pub items: Box<[AssocItem]>,
     pub ast_id: FileAstId<ast::Impl>,

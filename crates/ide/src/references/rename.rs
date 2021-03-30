@@ -307,7 +307,7 @@ fn rename_to_self(sema: &Semantics<RootDatabase>, local: hir::Local) -> RenameRe
         hir::AssocItemContainer::Impl(impl_) => impl_,
     };
     let first_param_ty = first_param.ty();
-    let impl_ty = impl_.target_ty(sema.db);
+    let impl_ty = impl_.self_ty(sema.db);
     let (ty, self_param) = if impl_ty.remove_ref().is_some() {
         // if the impl is a ref to the type we can just match the `&T` with self directly
         (first_param_ty.clone(), "self")

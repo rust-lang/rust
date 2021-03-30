@@ -10,7 +10,7 @@ use crate::{
     body::Expander,
     db::DefDatabase,
     item_tree::{AssocItem, FunctionQualifier, ItemTreeId, ModItem, Param},
-    type_ref::{TypeBound, TypeRef},
+    type_ref::{TraitRef, TypeBound, TypeRef},
     visibility::RawVisibility,
     AssocContainerId, AssocItemId, ConstId, ConstLoc, FunctionId, FunctionLoc, HasModule, ImplId,
     Intern, Lookup, ModuleId, StaticId, TraitId, TypeAliasId, TypeAliasLoc,
@@ -156,8 +156,8 @@ impl TraitData {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImplData {
-    pub target_trait: Option<TypeRef>,
-    pub target_type: TypeRef,
+    pub target_trait: Option<TraitRef>,
+    pub self_ty: TypeRef,
     pub items: Vec<AssocItemId>,
     pub is_negative: bool,
 }
@@ -170,7 +170,7 @@ impl ImplData {
         let item_tree = impl_loc.id.item_tree(db);
         let impl_def = &item_tree[impl_loc.id.value];
         let target_trait = impl_def.target_trait.map(|id| item_tree[id].clone());
-        let target_type = item_tree[impl_def.target_type].clone();
+        let self_ty = item_tree[impl_def.self_ty].clone();
         let is_negative = impl_def.is_negative;
         let module_id = impl_loc.container;
         let container = AssocContainerId::ImplId(id);
@@ -187,7 +187,7 @@ impl ImplData {
         );
         let items = items.into_iter().map(|(_, item)| item).collect();
 
-        Arc::new(ImplData { target_trait, target_type, items, is_negative })
+        Arc::new(ImplData { target_trait, self_ty, items, is_negative })
     }
 }
 

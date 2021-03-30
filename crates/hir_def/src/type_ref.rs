@@ -51,6 +51,23 @@ impl Rawness {
     }
 }
 
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct TraitRef {
+    pub path: Path,
+}
+
+impl TraitRef {
+    /// Converts an `ast::PathType` to a `hir::TraitRef`.
+    pub(crate) fn from_ast(ctx: &LowerCtx, node: ast::Type) -> Option<Self> {
+        // FIXME: Use `Path::from_src`
+        match node {
+            ast::Type::PathType(path) => {
+                path.path().and_then(|it| ctx.lower_path(it)).map(|path| TraitRef { path })
+            }
+            _ => None,
+        }
+    }
+}
 /// Compare ty::Ty
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum TypeRef {

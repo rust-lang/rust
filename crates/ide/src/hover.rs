@@ -195,7 +195,7 @@ fn show_implementations_action(db: &RootDatabase, def: Definition) -> Option<Hov
     let adt = match def {
         Definition::ModuleDef(ModuleDef::Trait(it)) => return it.try_to_nav(db).map(to_action),
         Definition::ModuleDef(ModuleDef::Adt(it)) => Some(it),
-        Definition::SelfType(it) => it.target_ty(db).as_adt(),
+        Definition::SelfType(it) => it.self_ty(db).as_adt(),
         _ => None,
     }?;
     adt.try_to_nav(db).map(to_action)
@@ -318,7 +318,7 @@ fn definition_owner_name(db: &RootDatabase, def: &Definition) -> Option<String> 
         Definition::ModuleDef(md) => match md {
             ModuleDef::Function(f) => match f.as_assoc_item(db)?.container(db) {
                 AssocItemContainer::Trait(t) => Some(t.name(db)),
-                AssocItemContainer::Impl(i) => i.target_ty(db).as_adt().map(|adt| adt.name(db)),
+                AssocItemContainer::Impl(i) => i.self_ty(db).as_adt().map(|adt| adt.name(db)),
             },
             ModuleDef::Variant(e) => Some(e.parent_enum(db).name(db)),
             _ => None,
@@ -376,7 +376,7 @@ fn hover_for_definition(
         },
         Definition::Local(it) => hover_for_local(it, db),
         Definition::SelfType(impl_def) => {
-            impl_def.target_ty(db).as_adt().and_then(|adt| from_hir_fmt(db, adt, mod_path))
+            impl_def.self_ty(db).as_adt().and_then(|adt| from_hir_fmt(db, adt, mod_path))
         }
         Definition::GenericParam(it) => from_hir_fmt(db, it, None),
         Definition::Label(it) => Some(Markup::fenced_block(&it.name(db))),

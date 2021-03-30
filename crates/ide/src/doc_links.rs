@@ -237,7 +237,7 @@ fn get_doc_link(db: &RootDatabase, definition: Definition) -> Option<String> {
                 .and_then(|assoc| match assoc.container(db) {
                     AssocItemContainer::Trait(t) => Some(t.into()),
                     AssocItemContainer::Impl(impld) => {
-                        impld.target_ty(db).as_adt().map(|adt| adt.into())
+                        impld.self_ty(db).as_adt().map(|adt| adt.into())
                     }
                 })
                 .unwrap_or_else(|| f.clone().into()),

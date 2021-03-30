@@ -15,7 +15,7 @@ use hir_def::{
     generics::{TypeParamProvenance, WherePredicate, WherePredicateTypeTarget},
     path::{GenericArg, Path, PathSegment, PathSegments},
     resolver::{HasResolver, Resolver, TypeNs},
-    type_ref::{TypeBound, TypeRef},
+    type_ref::{TraitRef as HirTraitRef, TypeBound, TypeRef},
     AdtId, AssocContainerId, AssocItemId, ConstId, ConstParamId, EnumId, EnumVariantId, FunctionId,
     GenericDefId, HasModule, ImplId, LocalFieldId, Lookup, StaticId, StructId, TraitId,
     TypeAliasId, TypeParamId, UnionId, VariantId,
@@ -667,14 +667,10 @@ impl<'a> TyLoweringContext<'a> {
 
     fn lower_trait_ref(
         &self,
-        type_ref: &TypeRef,
+        trait_ref: &HirTraitRef,
         explicit_self_ty: Option<Ty>,
     ) -> Option<TraitRef> {
-        let path = match type_ref {
-            TypeRef::Path(path) => path,
-            _ => return None,
-        };
-        self.lower_trait_ref_from_path(path, explicit_self_ty)
+        self.lower_trait_ref_from_path(&trait_ref.path, explicit_self_ty)
     }
 
     fn trait_ref_substs_from_path(
@@ -1253,7 +1249,7 @@ pub(crate) fn impl_self_ty_query(db: &dyn HirDatabase, impl_id: ImplId) -> Binde
     let generics = generics(db.upcast(), impl_id.into());
     let ctx =
         TyLoweringContext::new(db, &resolver).with_type_param_mode(TypeParamLoweringMode::Variable);
-    Binders::new(generics.len(), ctx.lower_ty(&impl_data.target_type))
+    Binders::new(generics.len(), ctx.lower_ty(&impl_data.self_ty))
 }
 
 pub(crate) fn const_param_ty_query(db: &dyn HirDatabase, def: ConstParamId) -> Ty {
