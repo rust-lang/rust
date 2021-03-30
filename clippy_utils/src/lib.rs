@@ -61,10 +61,10 @@ use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{
-    def, Arm, BindingAnnotation, Block, Body, Constness, CrateItem, Expr, ExprKind, FieldDef, FnDecl, ForeignItem,
-    GenericArgs, GenericParam, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, LangItem, Lifetime, Local,
-    MacroDef, MatchSource, Node, Param, Pat, PatKind, Path, PathSegment, QPath, Stmt, TraitItem, TraitItemKind,
-    TraitRef, TyKind, Variant, Visibility,
+    def, Arm, BindingAnnotation, Block, Body, Constness, Expr, ExprKind, FieldDef, FnDecl, ForeignItem, GenericArgs,
+    GenericParam, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, LangItem, Lifetime, Local, MacroDef,
+    MatchSource, Mod, Node, Param, Pat, PatKind, Path, PathSegment, QPath, Stmt, TraitItem, TraitItemKind, TraitRef,
+    TyKind, Variant, Visibility,
 };
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::exports::Export;
@@ -743,7 +743,7 @@ pub fn get_node_span(node: Node<'_>) -> Option<Span> {
         | Node::Lifetime(Lifetime { span, .. })
         | Node::GenericParam(GenericParam { span, .. })
         | Node::Visibility(Visibility { span, .. })
-        | Node::Crate(CrateItem { span, .. }) => Some(*span),
+        | Node::Crate(Mod { inner: span, .. }) => Some(*span),
         Node::Ctor(_) | Node::AnonConst(_) => None,
     }
 }
