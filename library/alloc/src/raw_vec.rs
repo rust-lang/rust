@@ -315,8 +315,24 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// #   vector.push_all(&[1, 3, 5, 7, 9]);
     /// # }
     /// ```
+    #[inline]
     pub fn reserve(&mut self, len: usize, additional: usize) {
-        handle_reserve(self.try_reserve(len, additional));
+        // Callers expect this function to be very cheap when there is already sufficient capacity.
+        // Therefore, we move all the resizing and error-handling logic from grow_amortized and
+        // handle_reserve behind a call, while making sure that the this function is likely to be
+        // inlined as just a comparison and a call if the comparison fails.
+        #[cold]
+        fn do_reserve_and_handle<T, A: Allocator>(
+            slf: &mut RawVec<T, A>,
+            len: usize,
+            additional: usize,
+        ) {
+            handle_reserve(slf.grow_amortized(len, additional));
+        }
+
+        if self.needs_to_grow(len, additional) {
+            do_reserve_and_handle(self, len, additional);
+        }
     }
 
     /// The same as `reserve`, but returns on errors instead of panicking or aborting.
