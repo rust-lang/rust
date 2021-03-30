@@ -81,6 +81,8 @@ pub use crate::{
 // And the auto import completions, enabled with the `rust-analyzer.completion.autoimport.enable` setting and the corresponding LSP client capabilities.
 // Those are the additional completion options with automatic `use` import and options from all project importable items,
 // fuzzy matched agains the completion imput.
+//
+// image::https://user-images.githubusercontent.com/48062697/113020667-b72ab880-917a-11eb-8778-716cf26a0eb3.gif[]
 
 /// Main entry point for completion. We run completion as a two-phase process.
 ///

@@ -32,6 +32,8 @@ use text_edit::TextEdit;
 //   "when": "editorTextFocus && !suggestWidgetVisible && editorLangId == rust"
 // }
 // ----
+//
+// image::https://user-images.githubusercontent.com/48062697/113065578-04c21800-91b1-11eb-82b8-22b8c481e645.gif[]
 pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<TextEdit> {
     let parse = db.parse(position.file_id);
     let file = parse.tree();

@@ -61,6 +61,8 @@ use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
 // - `plain`: This setting does not impose any restrictions in imports.
 //
 // In `VS Code` the configuration for this is `rust-analyzer.assist.importPrefix`.
+//
+// image::https://user-images.githubusercontent.com/48062697/113020673-b85be580-917a-11eb-9022-59585f35d4f8.gif[]
 
 // Assist: auto_import
 //
