@@ -108,6 +108,19 @@ impl Step for Linkcheck {
     /// documentation to ensure we don't have a bunch of dead ones.
     fn run(self, builder: &Builder<'_>) {
         let host = self.host;
+        let hosts = &builder.hosts;
+        let targets = &builder.targets;
+
+        // if we have different hosts and targets, some things may be built for
+        // the host (e.g. rustc) and others for the target (e.g. std). The
+        // documentation built for each will contain broken links to
+        // docs built for the other platform (e.g. rustc linking to cargo)
+        if (hosts != targets) && !hosts.is_empty() && !targets.is_empty() {
+            panic!(
+                "Linkcheck currently does not support builds with different hosts and targets.
+You can skip linkcheck with --exclude src/tools/linkchecker"
+            );
+        }
 
         builder.info(&format!("Linkcheck ({})", host));
 
@@ -123,19 +136,6 @@ impl Step for Linkcheck {
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
         let run = run.path("src/tools/linkchecker");
-        let hosts = &builder.hosts;
-        let targets = &builder.targets;
-
-        // if we have different hosts and targets, some things may be built for
-        // the host (e.g. rustc) and others for the target (e.g. std). The
-        // documentation built for each will contain broken links to
-        // docs built for the other platform (e.g. rustc linking to cargo)
-        if (hosts != targets) && !hosts.is_empty() && !targets.is_empty() {
-            panic!(
-                "Linkcheck currently does not support builds with different hosts and targets.
-You can skip linkcheck with --exclude src/tools/linkchecker"
-            );
-        }
         run.default_condition(builder.config.docs)
     }
 
