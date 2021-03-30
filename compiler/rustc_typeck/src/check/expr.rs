@@ -973,7 +973,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         error: MethodError<'tcx>,
     ) {
         let rcvr = &args[0];
-        let try_alt_rcvr = |err: &mut DiagnosticBuilder<'_>, new_rcvr_t| {
+        let try_alt_rcvr = |err: &mut DiagnosticBuilder<'_>, new_rcvr_t, pre: &str, post: &str| {
             if let Some(new_rcvr_t) = new_rcvr_t {
                 if let Ok(pick) = self.lookup_probe(
                     span,
@@ -986,10 +986,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Make sure the method is defined for the *actual* receiver:
                     // we don't want to treat `Box<Self>` as a receiver if
                     // it only works because of an autoderef to `&self`
-                    if pick.autoderefs == 0 {
+                    if pick.autoderefs == 0
+                        // We don't want to suggest a container type when the missing method is
+                        // `.clone()`, otherwise we'd suggest `Arc::new(foo).clone()`, which is
+                        // far from what the user really wants.
+                        && Some(pick.item.container.id()) != self.tcx.lang_items().clone_trait()
+                    {
                         err.span_label(
                             pick.item.ident.span,
                             &format!("the method is available for `{}` here", new_rcvr_t),
+                        );
+                        err.multipart_suggestion(
+                            "consider wrapping the receiver expression with the appropriate type",
+                            vec![
+                                (rcvr.span.shrink_to_lo(), format!("{}({}", pre, post)),
+                                (rcvr.span.shrink_to_hi(), ")".to_string()),
+                            ],
+                            Applicability::MaybeIncorrect,
                         );
                     }
                 }
@@ -1008,10 +1021,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Try alternative arbitrary self types that could fulfill this call.
                 // FIXME: probe for all types that *could* be arbitrary self-types, not
                 // just this list.
-                try_alt_rcvr(&mut err, self.tcx.mk_lang_item(rcvr_t, LangItem::OwnedBox));
-                try_alt_rcvr(&mut err, self.tcx.mk_lang_item(rcvr_t, LangItem::Pin));
-                try_alt_rcvr(&mut err, self.tcx.mk_diagnostic_item(rcvr_t, sym::Arc));
-                try_alt_rcvr(&mut err, self.tcx.mk_diagnostic_item(rcvr_t, sym::Rc));
+                for (rcvr_t, post) in &[
+                    (rcvr_t, ""),
+                    (self.tcx.mk_mut_ref(&ty::ReErased, rcvr_t), "&mut "),
+                    (self.tcx.mk_imm_ref(&ty::ReErased, rcvr_t), "&"),
+                ] {
+                    for (rcvr_t, pre) in &[
+                        (self.tcx.mk_lang_item(rcvr_t, LangItem::OwnedBox), "Box::new"),
+                        (self.tcx.mk_lang_item(rcvr_t, LangItem::Pin), "Pin::new"),
+                        (self.tcx.mk_diagnostic_item(rcvr_t, sym::Arc), "Arc::new"),
+                        (self.tcx.mk_diagnostic_item(rcvr_t, sym::Rc), "Rc::new"),
+                    ] {
+                        try_alt_rcvr(&mut err, *rcvr_t, pre, post);
+                    }
+                }
             }
             err.emit();
         }
