@@ -25,8 +25,8 @@ LL |     type E = impl Copy;
    = note: required because it appears within the type `(S, T)`
 help: consider further restricting this bound
    |
-LL | impl<S: Default + Copy> Bar for S {
-   |                 ^^^^^^
+LL | impl<S: Default + std::marker::Copy> Bar for S {
+   |                 ^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `T: Copy` is not satisfied in `(S, T)`
   --> $DIR/issue-55872-1.rs:14:14
@@ -37,8 +37,8 @@ LL |     type E = impl Copy;
    = note: required because it appears within the type `(S, T)`
 help: consider further restricting this bound
    |
-LL |     fn foo<T: Default + Copy>() -> Self::E {
-   |                       ^^^^^^
+LL |     fn foo<T: Default + std::marker::Copy>() -> Self::E {
+   |                       ^^^^^^^^^^^^^^^^^^^
 
 error: type parameter `T` is part of concrete type but not used in parameter list for the `impl Trait` type alias
   --> $DIR/issue-55872-1.rs:18:37
