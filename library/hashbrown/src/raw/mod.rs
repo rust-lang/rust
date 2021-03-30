@@ -872,19 +872,17 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     /// This does not check if the given element already exists in the table.
     #[cfg_attr(feature = "inline-more", inline)]
     #[cfg(any(feature = "raw", feature = "rustc-internal-api"))]
-    pub fn insert_no_grow(&mut self, hash: u64, value: T) -> Bucket<T> {
-        unsafe {
-            let (index, old_ctrl) = self.table.prepare_insert_slot(hash);
-            let bucket = self.table.bucket(index);
+    pub unsafe fn insert_no_grow(&mut self, hash: u64, value: T) -> Bucket<T> {
+        let (index, old_ctrl) = self.table.prepare_insert_slot(hash);
+        let bucket = self.table.bucket(index);
 
-            // If we are replacing a DELETED entry then we don't need to update
-            // the load counter.
-            self.table.growth_left -= special_is_empty(old_ctrl) as usize;
+        // If we are replacing a DELETED entry then we don't need to update
+        // the load counter.
+        self.table.growth_left -= special_is_empty(old_ctrl) as usize;
 
-            bucket.write(value);
-            self.table.items += 1;
-            bucket
-        }
+        bucket.write(value);
+        self.table.items += 1;
+        bucket
     }
 
     /// Temporary removes a bucket, applying the given function to the removed
