@@ -165,22 +165,21 @@ fn type_to_unsigned_suffix(t: &str) -> &str {
     }
 }
 
-fn type_to_double_suffixes<'a>(out_t: &'a str, in_t: &'a str) -> &'a str {
-    match (out_t, in_t) {
-        ("float32x2_t", "float64x2_t") => "_f32_f64",
-        ("float64x2_t", "float32x2_t") => "_f64_f32",
-        ("float64x2_t", "float32x4_t") => "_f64_f32",
-        ("float32x4_t", "float64x2_t") => "_f32_f64",
-        ("int32x2_t", "float32x2_t") => "_s32_f32",
-        ("int32x4_t", "float32x4_t") => "q_s32_f32",
-        ("int64x1_t", "float64x1_t") => "_s64_f64",
-        ("int64x2_t", "float64x2_t") => "q_s64_f64",
-        ("uint32x2_t", "float32x2_t") => "_u32_f32",
-        ("uint32x4_t", "float32x4_t") => "q_u32_f32",
-        ("uint64x1_t", "float64x1_t") => "_u64_f64",
-        ("uint64x2_t", "float64x2_t") => "q_u64_f64",
-        (_, _) => panic!("unknown type: {}, {}", out_t, in_t),
+fn type_to_double_suffixes<'a>(out_t: &'a str, in_t: &'a str) -> String {
+    let mut str = String::new();
+    if type_to_suffix(in_t).starts_with("q") && type_to_suffix(out_t).starts_with("q") {
+        str.push_str("q");
     }
+    str.push_str(type_to_noq_suffix(out_t));
+    str.push_str(type_to_noq_suffix(in_t));
+    str
+}
+
+fn type_to_noq_double_suffixes<'a>(out_t: &'a str, in_t: &'a str) -> String {
+    let mut str = String::new();
+    str.push_str(type_to_noq_suffix(out_t));
+    str.push_str(type_to_noq_suffix(in_t));
+    str
 }
 
 fn type_to_noq_suffix(t: &str) -> &str {
@@ -197,6 +196,7 @@ fn type_to_noq_suffix(t: &str) -> &str {
         "float32x2_t" | "float32x4_t" => "_f32",
         "float64x1_t" | "float64x2_t" => "_f64",
         "poly8x8_t" | "poly8x16_t" => "_p8",
+        "poly16x4_t" | "poly16x8_t" => "_p16",
         "poly64x1_t" | "poly64x2_t" => "_p64",
         _ => panic!("unknown type: {}", t),
     }
@@ -207,6 +207,7 @@ enum Suffix {
     Normal,
     Double,
     NoQ,
+    NoQDouble,
 }
 
 fn type_to_global_type(t: &str) -> &str {
@@ -518,6 +519,11 @@ fn gen_aarch64(
             current_name,
             type_to_double_suffixes(out_t, in_t[1])
         ),
+        NoQDouble => format!(
+            "{}{}",
+            current_name,
+            type_to_noq_double_suffixes(out_t, in_t[1])
+        ),
     };
     let current_fn = if let Some(current_fn) = current_fn.clone() {
         if link_aarch64.is_some() {
@@ -771,6 +777,11 @@ fn gen_arm(
             "{}{}",
             current_name,
             type_to_double_suffixes(out_t, in_t[1])
+        ),
+        NoQDouble => format!(
+            "{}{}",
+            current_name,
+            type_to_noq_double_suffixes(out_t, in_t[1])
         ),
     };
     let current_aarch64 = current_aarch64
@@ -1113,7 +1124,9 @@ fn get_call(
         } else if fn_format[1] == "unsigned" {
             fn_name.push_str(type_to_unsigned_suffix(in_t[1]));
         } else if fn_format[1] == "doubleself" {
-            fn_name.push_str(type_to_double_suffixes(out_t, in_t[1]));
+            fn_name.push_str(&type_to_double_suffixes(out_t, in_t[1]));
+        } else if fn_format[1] == "noq_doubleself" {
+            fn_name.push_str(&type_to_noq_double_suffixes(out_t, in_t[1]));
         } else if fn_format[1] == "noqself" {
             fn_name.push_str(type_to_noq_suffix(in_t[1]));
         } else if fn_format[1] == "nosuffix" {
@@ -1255,6 +1268,8 @@ mod test {
             suffix = Double;
         } else if line.starts_with("no-q") {
             suffix = NoQ;
+        } else if line.starts_with("noq-double-suffixes") {
+            suffix = NoQDouble;
         } else if line.starts_with("a = ") {
             a = line[4..].split(',').map(|v| v.trim().to_string()).collect();
         } else if line.starts_with("b = ") {

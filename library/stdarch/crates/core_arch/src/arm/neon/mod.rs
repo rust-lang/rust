@@ -4411,60 +4411,6 @@ pub unsafe fn vmovq_n_f32(value: f32) -> float32x4_t {
     vdupq_n_f32(value)
 }
 
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpret_u64_u32(a: uint32x2_t) -> uint64x1_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpretq_s8_u8(a: uint8x16_t) -> int8x16_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpretq_u16_u8(a: uint8x16_t) -> uint16x8_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpretq_u32_u8(a: uint8x16_t) -> uint32x4_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpretq_u64_u8(a: uint8x16_t) -> uint64x2_t {
-    transmute(a)
-}
-
-/// Vector reinterpret cast operation
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(test, assert_instr(nop))]
-pub unsafe fn vreinterpretq_u8_s8(a: int8x16_t) -> uint8x16_t {
-    transmute(a)
-}
-
 /// Unsigned shift right
 #[inline]
 #[target_feature(enable = "neon")]
@@ -6149,16 +6095,6 @@ mod tests {
         let a = u64x2::new(1, 2);
         let e = u32x2::new(1, 2);
         let r: u32x2 = transmute(vqmovn_u64(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpret_u64_u32() {
-        let v: i8 = 42;
-        let e = i8x16::new(
-            42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42,
-        );
-        let r: i8x16 = transmute(vdupq_n_s8(v));
         assert_eq!(r, e);
     }
 
@@ -10518,43 +10454,6 @@ mod tests {
         );
     }
 
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpretq_s8_u8() {
-        let a = i8x16::new(-1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
-        let r: u8x16 = transmute(vreinterpretq_s8_u8(transmute(a)));
-        let e = u8x16::new(0xFF, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
-        assert_eq!(r, e)
-    }
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpretq_u16_u8() {
-        let a = u16x8::new(
-            0x01_00, 0x03_02, 0x05_04, 0x07_06, 0x09_08, 0x0B_0A, 0x0D_0C, 0x0F_0E,
-        );
-        let r: u8x16 = transmute(vreinterpretq_u16_u8(transmute(a)));
-        let e = u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
-        assert_eq!(r, e)
-    }
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpretq_u32_u8() {
-        let a = u32x4::new(0x03_02_01_00, 0x07_06_05_04, 0x0B_0A_09_08, 0x0F_0E_0D_0C);
-        let r: u8x16 = transmute(vreinterpretq_u32_u8(transmute(a)));
-        let e = u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
-        assert_eq!(r, e)
-    }
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpretq_u64_u8() {
-        let a: u64x2 = u64x2::new(0x07_06_05_04_03_02_01_00, 0x0F_0E_0D_0C_0B_0A_09_08);
-        let r: u8x16 = transmute(vreinterpretq_u64_u8(transmute(a)));
-        let e = u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
-        assert_eq!(r, e)
-    }
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vreinterpretq_u8_s8() {
-        let a = u8x16::new(0xFF, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
-        let r: i8x16 = transmute(vreinterpretq_u8_s8(transmute(a)));
-        let e = i8x16::new(-1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
-        assert_eq!(r, e)
-    }
     #[simd_test(enable = "neon")]
     unsafe fn test_vabs_s8() {
         let a = i8x8::new(-1, 0, 1, -2, 0, 2, -128, 127);

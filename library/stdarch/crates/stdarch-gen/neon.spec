@@ -733,7 +733,7 @@ generate float32x2_t:float64x2_t
 
 /// Floating-point convert to higher precision long
 name = vcvt_high
-double-suffixes
+noq-double-suffixes
 multi_fn = simd_shuffle2, b:float32x2_t, a, a, [2, 3]
 multi_fn = simd_cast, b
 a = -1.2, 1.2, 2.3, 3.4
@@ -754,7 +754,7 @@ generate float64x2_t:float32x2_t
 
 /// Floating-point convert to lower precision narrow
 name = vcvt_high
-double-suffixes
+noq-double-suffixes
 multi_fn = simd_shuffle4, a, {simd_cast, b}, [0, 1, 2, 3]
 a = -1.2, 1.2
 b = -2.3, 3.4
@@ -775,8 +775,8 @@ generate float64x2_t:float32x2_t
 
 /// Floating-point convert to lower precision narrow, rounding to odd
 name = vcvtx_high
-double-suffixes
-multi_fn = simd_shuffle4, a, {vcvtx-doubleself-noext, b}, [0, 1, 2, 3]
+noq-double-suffixes
+multi_fn = simd_shuffle4, a, {vcvtx-noq_doubleself-noext, b}, [0, 1, 2, 3]
 a = -1.0, 2.0
 b = -3.0, 4.0
 validate -1.0, 2.0, -3.0, 4.0
@@ -1416,6 +1416,186 @@ generate float64x*_t
 arm = vrecpe
 link-arm = vrecpe._EXT_
 generate float*_t
+
+/// Vector reinterpret cast operation
+name = vreinterpret
+double-suffixes
+fn = transmute
+a = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+validate 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+
+aarch64 = str
+generate poly64x1_t:int64x1_t, poly64x1_t:uint64x1_t, int64x1_t:poly64x1_t, uint64x1_t:poly64x1_t
+generate poly64x2_t:int64x2_t, poly64x2_t:uint64x2_t, int64x2_t:poly64x2_t, uint64x2_t:poly64x2_t
+
+arm = str
+generate uint8x8_t:int8x8_t, poly8x8_t:int8x8_t, poly16x4_t:int16x4_t, uint16x4_t:int16x4_t, uint32x2_t:int32x2_t, uint64x1_t:int64x1_t
+generate uint8x16_t:int8x16_t, poly8x16_t:int8x16_t, poly16x8_t:int16x8_t, uint16x8_t:int16x8_t, uint32x4_t:int32x4_t, uint64x2_t:int64x2_t
+generate poly8x8_t:uint8x8_t, int8x8_t:uint8x8_t, poly16x4_t:uint16x4_t, int16x4_t:uint16x4_t, int32x2_t:uint32x2_t, int64x1_t:uint64x1_t
+generate poly8x16_t:uint8x16_t, int8x16_t:uint8x16_t, poly16x8_t:uint16x8_t, int16x8_t:uint16x8_t, int32x4_t:uint32x4_t, int64x2_t:uint64x2_t
+generate int8x8_t:poly8x8_t, uint8x8_t:poly8x8_t, int16x4_t:poly16x4_t, uint16x4_t:poly16x4_t
+generate int8x16_t:poly8x16_t, uint8x16_t:poly8x16_t, int16x8_t:poly16x8_t, uint16x8_t:poly16x8_t
+
+/// Vector reinterpret cast operation
+name = vreinterpret
+double-suffixes
+fn = transmute
+a = 0, 1, 2, 3, 4, 5, 6, 7
+validate 0, 0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0, 7, 0
+
+aarch64 = str
+generate poly64x1_t:int32x2_t, poly64x1_t:uint32x2_t
+generate poly64x2_t:int32x4_t, poly64x2_t:uint32x4_t
+
+arm = str
+generate int16x4_t:int8x8_t, uint16x4_t:int8x8_t, poly16x4_t:int8x8_t, int32x2_t:int16x4_t, uint32x2_t:int16x4_t, int64x1_t:int32x2_t, uint64x1_t:int32x2_t
+generate int16x8_t:int8x16_t, uint16x8_t:int8x16_t, poly16x8_t:int8x16_t, int32x4_t:int16x8_t, uint32x4_t:int16x8_t, int64x2_t:int32x4_t, uint64x2_t:int32x4_t
+generate poly16x4_t:uint8x8_t, int16x4_t:uint8x8_t, uint16x4_t:uint8x8_t, int32x2_t:uint16x4_t, uint32x2_t:uint16x4_t, int64x1_t:uint32x2_t, uint64x1_t:uint32x2_t
+generate poly16x8_t:uint8x16_t, int16x8_t:uint8x16_t, uint16x8_t:uint8x16_t, int32x4_t:uint16x8_t, uint32x4_t:uint16x8_t, int64x2_t:uint32x4_t, uint64x2_t:uint32x4_t
+generate poly16x4_t:poly8x8_t, int16x4_t:poly8x8_t, uint16x4_t:poly8x8_t, int32x2_t:poly16x4_t, uint32x2_t:poly16x4_t
+generate poly16x8_t:poly8x16_t, int16x8_t:poly8x16_t, uint16x8_t:poly8x16_t, int32x4_t:poly16x8_t, uint32x4_t:poly16x8_t
+
+/// Vector reinterpret cast operation
+name = vreinterpret
+double-suffixes
+fn = transmute
+a = 0, 0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0, 7, 0
+validate 0, 1, 2, 3, 4, 5, 6, 7
+
+aarch64 = str
+generate int32x2_t:poly64x1_t, uint32x2_t:poly64x1_t
+generate int32x4_t:poly64x2_t, uint32x4_t:poly64x2_t
+
+arm = str
+generate poly8x8_t:int16x4_t, int8x8_t:int16x4_t, uint8x8_t:int16x4_t, poly16x4_t:int32x2_t, int16x4_t:int32x2_t, uint16x4_t:int32x2_t, int32x2_t:int64x1_t, uint32x2_t:int64x1_t
+generate poly8x16_t:int16x8_t, int8x16_t:int16x8_t, uint8x16_t:int16x8_t, poly16x8_t:int32x4_t, int16x8_t:int32x4_t, uint16x8_t:int32x4_t, int32x4_t:int64x2_t, uint32x4_t:int64x2_t
+generate poly8x8_t:uint16x4_t, int8x8_t:uint16x4_t, uint8x8_t:uint16x4_t, poly16x4_t:uint32x2_t, int16x4_t:uint32x2_t, uint16x4_t:uint32x2_t, int32x2_t:uint64x1_t, uint32x2_t:uint64x1_t
+generate poly8x16_t:uint16x8_t, int8x16_t:uint16x8_t, uint8x16_t:uint16x8_t, poly16x8_t:uint32x4_t, int16x8_t:uint32x4_t, uint16x8_t:uint32x4_t, int32x4_t:uint64x2_t, uint32x4_t:uint64x2_t
+generate poly8x8_t:poly16x4_t, int8x8_t:poly16x4_t, uint8x8_t:poly16x4_t
+generate poly8x16_t:poly16x8_t, int8x16_t:poly16x8_t, uint8x16_t:poly16x8_t
+
+/// Vector reinterpret cast operation
+name = vreinterpret
+double-suffixes
+fn = transmute
+a = 0, 1, 2, 3
+validate 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0
+
+aarch64 = str
+generate poly64x1_t:int16x4_t, poly64x1_t:uint16x4_t, poly64x1_t:poly16x4_t
+generate poly64x2_t:int16x8_t, poly64x2_t:uint16x8_t, poly64x2_t:poly16x8_t
+
+arm = str
+generate int32x2_t:int8x8_t, uint32x2_t:int8x8_t, int64x1_t:int16x4_t, uint64x1_t:int16x4_t
+generate int32x4_t:int8x16_t, uint32x4_t:int8x16_t, int64x2_t:int16x8_t, uint64x2_t:int16x8_t
+generate int32x2_t:uint8x8_t, uint32x2_t:uint8x8_t, int64x1_t:uint16x4_t, uint64x1_t:uint16x4_t
+generate int32x4_t:uint8x16_t, uint32x4_t:uint8x16_t, int64x2_t:uint16x8_t, uint64x2_t:uint16x8_t
+generate int32x2_t:poly8x8_t, uint32x2_t:poly8x8_t, int64x1_t:poly16x4_t, uint64x1_t:poly16x4_t
+generate int32x4_t:poly8x16_t, uint32x4_t:poly8x16_t, int64x2_t:poly16x8_t, uint64x2_t:poly16x8_t
+
+/// Vector reinterpret cast operation
+name = vreinterpret
+double-suffixes
+fn = transmute
+a = 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0
+validate 0, 1, 2, 3
+
+aarch64 = str
+generate poly16x4_t:poly64x1_t, int16x4_t:poly64x1_t, uint16x4_t:poly64x1_t
+generate poly16x8_t:poly64x2_t, int16x8_t:poly64x2_t, uint16x8_t:poly64x2_t
+
+arm = str
+generate poly8x8_t:int32x2_t, int8x8_t:int32x2_t, uint8x8_t:int32x2_t, poly16x4_t:int64x1_t, int16x4_t:int64x1_t, uint16x4_t:int64x1_t
+generate poly8x16_t:int32x4_t, int8x16_t:int32x4_t, uint8x16_t:int32x4_t, poly16x8_t:int64x2_t, int16x8_t:int64x2_t, uint16x8_t:int64x2_t
+generate poly8x8_t:uint32x2_t, int8x8_t:uint32x2_t, uint8x8_t:uint32x2_t, poly16x4_t:uint64x1_t, int16x4_t:uint64x1_t, uint16x4_t:uint64x1_t
+generate poly8x16_t:uint32x4_t, int8x16_t:uint32x4_t, uint8x16_t:uint32x4_t, poly16x8_t:uint64x2_t, int16x8_t:uint64x2_t, uint16x8_t:uint64x2_t
+
+/// Vector reinterpret cast operation
+name = vreinterpret
+double-suffixes
+fn = transmute
+a = 0, 1
+validate 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0
+
+aarch64 = str
+generate poly64x1_t:int8x8_t, poly64x1_t:uint8x8_t, poly64x1_t:poly8x8_t
+generate poly64x2_t:int8x16_t, poly64x2_t:uint8x16_t, poly64x2_t:poly8x16_t
+
+arm = str
+generate int64x1_t:int8x8_t, uint64x1_t:int8x8_t, int64x1_t:uint8x8_t, uint64x1_t:uint8x8_t, int64x1_t:poly8x8_t, uint64x1_t:poly8x8_t
+generate int64x2_t:int8x16_t, uint64x2_t:int8x16_t, int64x2_t:uint8x16_t, uint64x2_t:uint8x16_t, int64x2_t:poly8x16_t, uint64x2_t:poly8x16_t
+
+/// Vector reinterpret cast operation
+name = vreinterpret
+double-suffixes
+fn = transmute
+a = 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0
+validate 0, 1
+
+aarch64 = str
+generate poly8x8_t:poly64x1_t, int8x8_t:poly64x1_t, uint8x8_t:poly64x1_t
+generate poly8x16_t:poly64x2_t, int8x16_t:poly64x2_t, uint8x16_t:poly64x2_t
+
+arm = str
+generate poly8x8_t:int64x1_t, int8x8_t:int64x1_t, uint8x8_t:int64x1_t, poly8x8_t:uint64x1_t, int8x8_t:uint64x1_t, uint8x8_t:uint64x1_t
+generate poly8x16_t:int64x2_t, int8x16_t:int64x2_t, uint8x16_t:int64x2_t, poly8x16_t:uint64x2_t, int8x16_t:uint64x2_t, uint8x16_t:uint64x2_t
+
+/// Vector reinterpret cast operation
+name = vreinterpret
+double-suffixes
+fn = transmute
+a = 0., 0., 0., 0., 0., 0., 0., 0.
+validate 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+
+aarch64 = str
+generate float64x1_t:int8x8_t, float64x1_t:int16x4_t, float64x1_t:int32x2_t, float64x1_t:int64x1_t
+generate float64x2_t:int8x16_t, float64x2_t:int16x8_t, float64x2_t:int32x4_t, float64x2_t:int64x2_t
+generate float64x1_t:uint8x8_t, float64x1_t:uint16x4_t, float64x1_t:uint32x2_t, float64x1_t:uint64x1_t
+generate float64x2_t:uint8x16_t, float64x2_t:uint16x8_t, float64x2_t:uint32x4_t, float64x2_t:uint64x2_t
+generate float64x1_t:poly8x8_t, float64x1_t:poly16x4_t, float32x2_t:poly64x1_t, float64x1_t:poly64x1_t
+generate float64x2_t:poly8x16_t, float64x2_t:poly16x8_t, float32x4_t:poly64x2_t, float64x2_t:poly64x2_t
+
+arm = str
+generate float32x2_t:int8x8_t, float32x2_t:int16x4_t, float32x2_t:int32x2_t, float32x2_t:int64x1_t
+generate float32x4_t:int8x16_t, float32x4_t:int16x8_t, float32x4_t:int32x4_t, float32x4_t:int64x2_t
+generate float32x2_t:uint8x8_t, float32x2_t:uint16x4_t, float32x2_t:uint32x2_t, float32x2_t:uint64x1_t
+generate float32x4_t:uint8x16_t, float32x4_t:uint16x8_t, float32x4_t:uint32x4_t, float32x4_t:uint64x2_t
+generate float32x2_t:poly8x8_t, float32x2_t:poly16x4_t
+generate float32x4_t:poly8x16_t, float32x4_t:poly16x8_t
+
+/// Vector reinterpret cast operation
+name = vreinterpret
+double-suffixes
+fn = transmute
+a = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+validate 0., 0., 0., 0., 0., 0., 0., 0.
+
+aarch64 = str
+generate int8x8_t:float64x1_t, int16x4_t:float64x1_t, int32x2_t:float64x1_t, int64x1_t:float64x1_t
+generate int8x16_t:float64x2_t, int16x8_t:float64x2_t, int32x4_t:float64x2_t, int64x2_t:float64x2_t
+generate poly8x8_t:float64x1_t, uint16x4_t:float64x1_t, uint32x2_t:float64x1_t, uint64x1_t:float64x1_t
+generate poly8x16_t:float64x2_t, uint16x8_t:float64x2_t, uint32x4_t:float64x2_t, uint64x2_t:float64x2_t
+generate uint8x8_t:float64x1_t, poly16x4_t:float64x1_t, poly64x1_t:float64x1_t, poly64x1_t:float32x2_t
+generate uint8x16_t:float64x2_t, poly16x8_t:float64x2_t, poly64x2_t:float64x2_t, poly64x2_t:float32x4_t
+
+arm = str
+generate int8x8_t:float32x2_t, int16x4_t:float32x2_t, int32x2_t:float32x2_t, int64x1_t:float32x2_t
+generate int8x16_t:float32x4_t, int16x8_t:float32x4_t, int32x4_t:float32x4_t, int64x2_t:float32x4_t
+generate uint8x8_t:float32x2_t, uint16x4_t:float32x2_t, uint32x2_t:float32x2_t, uint64x1_t:float32x2_t
+generate uint8x16_t:float32x4_t, uint16x8_t:float32x4_t, uint32x4_t:float32x4_t, uint64x2_t:float32x4_t
+generate poly8x8_t:float32x2_t, poly16x4_t:float32x2_t
+generate poly8x16_t:float32x4_t, poly16x8_t:float32x4_t
+
+/// Vector reinterpret cast operation
+name = vreinterpret
+double-suffixes
+fn = transmute
+a = 0., 0., 0., 0., 0., 0., 0., 0.
+validate 0., 0., 0., 0., 0., 0., 0., 0.
+
+aarch64 = str
+generate float32x2_t:float64x1_t, float64x1_t:float32x2_t
+generate float32x4_t:float64x2_t, float64x2_t:float32x4_t
 
 /// Transpose vectors
 name = vtrn1
