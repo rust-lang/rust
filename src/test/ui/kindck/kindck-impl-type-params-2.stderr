@@ -7,7 +7,11 @@ LL | fn take_param<T:Foo>(foo: &T) { }
 LL |     take_param(&x);
    |                ^^ the trait `Copy` is not implemented for `Box<{integer}>`
    |
-   = note: required because of the requirements on the impl of `Foo` for `Box<{integer}>`
+note: required because of the requirements on the impl of `Foo` for `Box<{integer}>`
+  --> $DIR/kindck-impl-type-params-2.rs:6:14
+   |
+LL | impl<T:Copy> Foo for T {
+   |              ^^^     ^
 
 error: aborting due to previous error
 

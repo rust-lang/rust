@@ -1575,7 +1575,7 @@ impl<'tcx> TyCtxt<'tcx> {
             .filter(|item| item.kind == AssocKind::Fn && item.defaultness.has_value())
     }
 
-    fn item_name_from_hir(self, def_id: DefId) -> Option<Ident> {
+    pub fn item_name_from_hir(self, def_id: DefId) -> Option<Ident> {
         self.hir().get_if_local(def_id).and_then(|node| node.ident())
     }
 

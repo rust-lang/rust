@@ -26,7 +26,11 @@ LL |     mem::size_of::<Misc<U>>();
 LL | pub const fn size_of<T>() -> usize {
    |                      - required by this bound in `std::mem::size_of`
    |
-   = note: required because it appears within the type `Misc<U>`
+note: required because it appears within the type `Misc<U>`
+  --> $DIR/suggest-where-clause.rs:3:8
+   |
+LL | struct Misc<T:?Sized>(T);
+   |        ^^^^
 
 error[E0277]: the trait bound `u64: From<T>` is not satisfied
   --> $DIR/suggest-where-clause.rs:15:5
