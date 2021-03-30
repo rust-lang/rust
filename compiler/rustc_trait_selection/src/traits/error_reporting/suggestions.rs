@@ -28,6 +28,7 @@ use std::fmt;
 
 use super::InferCtxtPrivExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
+use rustc_middle::ty::print::with_no_trimmed_paths;
 
 #[derive(Debug)]
 pub enum GeneratorInteriorOrUpvar {
@@ -440,7 +441,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 {
                     // Missing generic type parameter bound.
                     let param_name = self_ty.to_string();
-                    let constraint = trait_ref.print_only_trait_path().to_string();
+                    let constraint =
+                        with_no_trimmed_paths(|| trait_ref.print_only_trait_path().to_string());
                     if suggest_constraining_type_param(
                         self.tcx,
                         generics,
