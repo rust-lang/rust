@@ -52,7 +52,7 @@ impl Drop for Scope {
 /// Usage:
 /// 1. Install gpref_tools (https://github.com/gperftools/gperftools), probably packaged with your Linux distro.
 /// 2. Build with `cpu_profiler` feature.
-/// 3. Tun the code, the *raw* output would be in the `./out.profile` file.
+/// 3. Run the code, the *raw* output would be in the `./out.profile` file.
 /// 4. Install pprof for visualization (https://github.com/google/pprof).
 /// 5. Bump sampling frequency to once per ms: `export CPUPROFILE_FREQUENCY=1000`
 /// 6. Use something like `pprof -svg target/release/rust-analyzer ./out.profile` to see the results.
@@ -60,8 +60,17 @@ impl Drop for Scope {
 /// For example, here's how I run profiling on NixOS:
 ///
 /// ```bash
-/// $ nix-shell -p gperftools --run \
-///     'cargo run --release -p rust-analyzer -- parse < ~/projects/rustbench/parser.rs > /dev/null'
+/// $ bat -p shell.nix
+/// with import <nixpkgs> {};
+/// mkShell {
+///   buildInputs = [ gperftools ];
+///   shellHook = ''
+///     export LD_LIBRARY_PATH="${gperftools}/lib:"
+///   '';
+/// }
+/// $ set -x CPUPROFILE_FREQUENCY 1000
+/// $ nix-shell --run 'cargo test --release --package rust-analyzer --lib -- benchmarks::benchmark_integrated_highlighting --exact --nocapture'
+/// $ pprof -svg target/release/deps/rust_analyzer-8739592dc93d63cb crates/rust-analyzer/out.profile > profile.svg
 /// ```
 ///
 /// See this diff for how to profile completions:
@@ -81,7 +90,9 @@ pub fn cpu_span() -> CpuSpan {
 
     #[cfg(not(feature = "cpu_profiler"))]
     {
-        eprintln!("cpu_profiler feature is disabled")
+        eprintln!(
+            r#"cpu profiling is disabled, uncomment `default = [ "cpu_profiler" ]` in Cargo.toml to enable."#
+        )
     }
 
     CpuSpan { _private: () }
@@ -91,7 +102,23 @@ impl Drop for CpuSpan {
     fn drop(&mut self) {
         #[cfg(feature = "cpu_profiler")]
         {
-            google_cpu_profiler::stop()
+            google_cpu_profiler::stop();
+            let profile_data = std::env::current_dir().unwrap().join("out.profile");
+            eprintln!("Profile data saved to:\n\n    {}\n", profile_data.display());
+            let mut cmd = std::process::Command::new("pprof");
+            cmd.arg("-svg").arg(std::env::current_exe().unwrap()).arg(&profile_data);
+            let out = cmd.output();
+
+            match out {
+                Ok(out) if out.status.success() => {
+                    let svg = profile_data.with_extension("svg");
+                    std::fs::write(&svg, &out.stdout).unwrap();
+                    eprintln!("Profile rendered to:\n\n    {}\n", svg.display());
+                }
+                _ => {
+                    eprintln!("Failed to run:\n\n   {:?}\n", cmd);
+                }
+            }
         }
     }
 }
