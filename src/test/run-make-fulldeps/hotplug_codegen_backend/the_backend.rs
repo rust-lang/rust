@@ -65,7 +65,7 @@ impl CodegenBackend for TheBackend {
             metadata_module: None,
             metadata,
             windows_subsystem: None,
-            linker_info: LinkerInfo::new(tcx),
+            linker_info: LinkerInfo::new(tcx, "fake_target_cpu".to_string()),
             crate_info: CrateInfo::new(tcx),
         })
     }
