@@ -467,6 +467,8 @@ impl Step for StartupObjects {
                         .arg("--target")
                         .arg(target.rustc_target_arg())
                         .arg("--emit=obj")
+                        .arg("--crate-type")
+                        .arg("rlib")
                         .arg("-o")
                         .arg(dst_file)
                         .arg(src_file),

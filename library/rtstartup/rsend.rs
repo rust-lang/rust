@@ -3,7 +3,6 @@
 #![feature(no_core)]
 #![feature(lang_items)]
 #![feature(auto_traits)]
-#![crate_type = "rlib"]
 #![no_core]
 
 #[lang = "sized"]
