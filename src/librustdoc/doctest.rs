@@ -141,7 +141,7 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
                 hir_collector.visit_testable(
                     "".to_string(),
                     CRATE_HIR_ID,
-                    krate.item.span,
+                    krate.item.inner,
                     |this| {
                         intravisit::walk_crate(this, krate);
                     },

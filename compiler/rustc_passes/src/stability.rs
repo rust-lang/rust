@@ -686,7 +686,7 @@ fn new_index(tcx: TyCtxt<'tcx>) -> Index<'tcx> {
 
         annotator.annotate(
             hir::CRATE_HIR_ID,
-            krate.item.span,
+            krate.item.inner,
             AnnotationKind::Required,
             InheritDeprecation::Yes,
             InheritConstStability::No,
@@ -885,7 +885,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     if tcx.stability().staged_api[&LOCAL_CRATE] {
         let krate = tcx.hir().krate();
         let mut missing = MissingStabilityAnnotations { tcx, access_levels };
-        missing.check_missing_stability(hir::CRATE_HIR_ID, krate.item.span);
+        missing.check_missing_stability(hir::CRATE_HIR_ID, krate.item.inner);
         intravisit::walk_crate(&mut missing, krate);
         krate.visit_all_item_likes(&mut missing.as_deep_visitor());
     }

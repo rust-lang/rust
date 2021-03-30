@@ -569,7 +569,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
 
         hir::Crate {
-            item: hir::CrateItem { module, span: c.span },
+            item: module,
             exported_macros: self.arena.alloc_from_iter(self.exported_macros),
             non_exported_macro_attrs: self.arena.alloc_from_iter(self.non_exported_macro_attrs),
             items: self.items,

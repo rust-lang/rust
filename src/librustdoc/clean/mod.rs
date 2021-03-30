@@ -129,7 +129,6 @@ impl Clean<ExternalCrate> for CrateNum {
             tcx.hir()
                 .krate()
                 .item
-                .module
                 .item_ids
                 .iter()
                 .filter_map(|&id| {
@@ -174,7 +173,6 @@ impl Clean<ExternalCrate> for CrateNum {
             tcx.hir()
                 .krate()
                 .item
-                .module
                 .item_ids
                 .iter()
                 .filter_map(|&id| {
