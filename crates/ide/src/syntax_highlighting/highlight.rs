@@ -283,7 +283,7 @@ fn highlight_def(db: &RootDatabase, def: Definition) -> Highlight {
 
                     match item.container(db) {
                         AssocItemContainer::Impl(i) => {
-                            if i.target_trait(db).is_some() {
+                            if i.trait_(db).is_some() {
                                 h |= HlMod::Trait;
                             }
                         }
@@ -308,7 +308,7 @@ fn highlight_def(db: &RootDatabase, def: Definition) -> Highlight {
                     h |= HlMod::Associated;
                     match item.container(db) {
                         AssocItemContainer::Impl(i) => {
-                            if i.target_trait(db).is_some() {
+                            if i.trait_(db).is_some() {
                                 h |= HlMod::Trait;
                             }
                         }
