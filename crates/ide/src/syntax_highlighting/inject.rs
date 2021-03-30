@@ -1,6 +1,6 @@
 //! "Recursive" Syntax highlighting for code in doctests and fixtures.
 
-use std::{mem, ops::Range};
+use std::mem;
 
 use either::Either;
 use hir::{HasAttrs, InFile, Semantics};
@@ -139,8 +139,28 @@ pub(super) fn doc_comment(
     // Replace the original, line-spanning comment ranges by new, only comment-prefix
     // spanning comment ranges.
     let mut new_comments = Vec::new();
-    let mut intra_doc_links = Vec::new();
     let mut string;
+
+    if let Some((docs, doc_mapping)) = attributes.docs_with_rangemap(sema.db) {
+        extract_definitions_from_markdown(docs.as_str())
+            .into_iter()
+            .filter_map(|(range, link, ns)| {
+                let def = resolve_doc_path_for_def(sema.db, def, &link, ns)?;
+                let InFile { file_id, value: range } = doc_mapping.map(range)?;
+                (file_id == node.file_id).then(|| (range, def))
+            })
+            .for_each(|(range, def)| {
+                hl.add(HlRange {
+                    range,
+                    highlight: module_def_to_hl_tag(def)
+                        | HlMod::Documentation
+                        | HlMod::Injected
+                        | HlMod::IntraDocLink,
+                    binding_hash: None,
+                })
+            });
+    }
+
     for attr in attributes.by_key("doc").attrs() {
         let InFile { file_id, value: src } = attrs_source_map.source_of(&attr);
         if file_id != node.file_id {
@@ -186,25 +206,7 @@ pub(super) fn doc_comment(
                     is_doctest = is_codeblock && is_rust;
                     continue;
                 }
-                None if !is_doctest => {
-                    intra_doc_links.extend(
-                        extract_definitions_from_markdown(line)
-                            .into_iter()
-                            .filter_map(|(range, link, ns)| {
-                                Some(range).zip(resolve_doc_path_for_def(sema.db, def, &link, ns))
-                            })
-                            .map(|(Range { start, end }, def)| {
-                                (
-                                    def,
-                                    TextRange::at(
-                                        prev_range_start + TextSize::from(start as u32),
-                                        TextSize::from((end - start) as u32),
-                                    ),
-                                )
-                            }),
-                    );
-                    continue;
-                }
+                None if !is_doctest => continue,
                 None => (),
             }
 
@@ -221,17 +223,6 @@ pub(super) fn doc_comment(
             inj.add(&line[pos.into()..], TextRange::new(pos, line_len) + prev_range_start);
             inj.add_unmapped("\n");
         }
-    }
-
-    for (def, range) in intra_doc_links {
-        hl.add(HlRange {
-            range,
-            highlight: module_def_to_hl_tag(def)
-                | HlMod::Documentation
-                | HlMod::Injected
-                | HlMod::IntraDocLink,
-            binding_hash: None,
-        });
     }
 
     if new_comments.is_empty() {

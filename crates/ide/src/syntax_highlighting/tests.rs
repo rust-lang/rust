@@ -544,9 +544,17 @@ impl Foo {
 }
 
 /// [`Foo`](Foo) is a struct
-/// [`all_the_links`](all_the_links) is this function
+/// This function is > [`all_the_links`](all_the_links) <
 /// [`noop`](noop) is a macro below
+/// [`Item`] is a struct in the module [`module`]
+///
+/// [`Item`]: module::Item
+/// [mix_and_match]: ThisShouldntResolve
 pub fn all_the_links() {}
+
+pub mod module {
+    pub struct Item;
+}
 
 /// ```
 /// noop!(1);

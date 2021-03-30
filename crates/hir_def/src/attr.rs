@@ -1,6 +1,10 @@
 //! A higher level attributes based on TokenTree, with also some shortcuts.
 
-use std::{ops, sync::Arc};
+use std::{
+    cmp::Ordering,
+    ops::{self, Range},
+    sync::Arc,
+};
 
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
@@ -12,7 +16,7 @@ use mbe::ast_to_token_tree;
 use smallvec::{smallvec, SmallVec};
 use syntax::{
     ast::{self, AstNode, AttrsOwner},
-    match_ast, AstToken, SmolStr, SyntaxNode,
+    match_ast, AstToken, SmolStr, SyntaxNode, TextRange, TextSize,
 };
 use tt::Subtree;
 
@@ -451,6 +455,54 @@ impl AttrsWithOwner {
                 .collect(),
         }
     }
+
+    pub fn docs_with_rangemap(
+        &self,
+        db: &dyn DefDatabase,
+    ) -> Option<(Documentation, DocsRangeMap)> {
+        // FIXME: code duplication in `docs` above
+        let docs = self.by_key("doc").attrs().flat_map(|attr| match attr.input.as_ref()? {
+            AttrInput::Literal(s) => Some((s, attr.index)),
+            AttrInput::TokenTree(_) => None,
+        });
+        let indent = docs
+            .clone()
+            .flat_map(|(s, _)| s.lines())
+            .filter(|line| !line.chars().all(|c| c.is_whitespace()))
+            .map(|line| line.chars().take_while(|c| c.is_whitespace()).count())
+            .min()
+            .unwrap_or(0);
+        let mut buf = String::new();
+        let mut mapping = Vec::new();
+        for (doc, idx) in docs {
+            // str::lines doesn't yield anything for the empty string
+            if !doc.is_empty() {
+                for line in doc.split('\n') {
+                    let line = line.trim_end();
+                    let (offset, line) = match line.char_indices().nth(indent) {
+                        Some((offset, _)) => (offset, &line[offset..]),
+                        None => (0, line),
+                    };
+                    let buf_offset = buf.len();
+                    buf.push_str(line);
+                    mapping.push((
+                        Range { start: buf_offset, end: buf.len() },
+                        idx,
+                        Range { start: offset, end: line.len() },
+                    ));
+                    buf.push('\n');
+                }
+            } else {
+                buf.push('\n');
+            }
+        }
+        buf.pop();
+        if buf.is_empty() {
+            None
+        } else {
+            Some((Documentation(buf), DocsRangeMap { mapping, source: self.source_map(db).attrs }))
+        }
+    }
 }
 
 fn inner_attributes(
@@ -504,6 +556,59 @@ impl AttrSourceMap {
             .get(attr.index as usize)
             .unwrap_or_else(|| panic!("cannot find `Attr` at index {}", attr.index))
             .as_ref()
+    }
+}
+
+/// A struct to map text ranges from [`Documentation`] back to TextRanges in the syntax tree.
+pub struct DocsRangeMap {
+    source: Vec<InFile<Either<ast::Attr, ast::Comment>>>,
+    // (docstring-line-range, attr_index, attr-string-range)
+    // a mapping from the text range of a line of the [`Documentation`] to the attribute index and
+    // the original (untrimmed) syntax doc line
+    mapping: Vec<(Range<usize>, u32, Range<usize>)>,
+}
+
+impl DocsRangeMap {
+    pub fn map(&self, range: Range<usize>) -> Option<InFile<TextRange>> {
+        let found = self
+            .mapping
+            .binary_search_by(|(probe, ..)| {
+                if probe.contains(&range.start) {
+                    Ordering::Equal
+                } else {
+                    probe.start.cmp(&range.end)
+                }
+            })
+            .ok()?;
+        let (line_docs_range, idx, original_line_src_range) = self.mapping[found].clone();
+        if range.end > line_docs_range.end {
+            return None;
+        }
+
+        let relative_range = Range {
+            start: range.start - line_docs_range.start,
+            end: range.end - line_docs_range.start,
+        };
+        let range_len = TextSize::from((range.end - range.start) as u32);
+
+        let &InFile { file_id, value: ref source } = &self.source[idx as usize];
+        match source {
+            Either::Left(_) => None, // FIXME, figure out a nice way to handle doc attributes here
+            // as well as for whats done in syntax highlight doc injection
+            Either::Right(comment) => {
+                let text_range = comment.syntax().text_range();
+                let range = TextRange::at(
+                    text_range.start()
+                        + TextSize::from(
+                            (comment.prefix().len()
+                                + original_line_src_range.start
+                                + relative_range.start) as u32,
+                        ),
+                    text_range.len().min(range_len),
+                );
+                Some(InFile { file_id, value: range })
+            }
+        }
     }
 }
 

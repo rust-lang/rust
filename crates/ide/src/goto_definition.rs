@@ -32,6 +32,7 @@ pub(crate) fn goto_definition(
     let parent = token.parent()?;
     if let Some(comment) = ast::Comment::cast(token) {
         let docs = doc_owner_to_def(&sema, &parent)?.docs(db)?;
+
         let (_, link, ns) = extract_positioned_link_from_comment(position.offset, &comment, docs)?;
         let def = doc_owner_to_def(&sema, &parent)?;
         let nav = resolve_doc_path_for_def(db, def, &link, ns)?.try_to_nav(db)?;
