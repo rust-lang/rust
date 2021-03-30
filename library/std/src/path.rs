@@ -2423,15 +2423,18 @@ impl Path {
     /// An example of proper error handling.
     /// ```no_run
     /// use std::path::Path;
-    /// use std::io::ErrorKind;
+    /// use std::io::{ self, ErrorKind};
     /// use std::fs;
-    /// let exists = match fs::metadata(Path::new("does_not_exist.txt")) {
-    ///     Ok(_) => true,
-    ///     Err(err) if err.kind() == ErrorKind::NotFound => false,
-    ///     Err(err) => return Err(err),
-    /// };
     ///
-    /// assert!(!exists);
+    /// fn main() -> io::Result<()> {
+    ///     let exists = match fs::metadata(Path::new("does_not_exist.txt")) {
+    ///         Ok(_) => true,
+    ///         Err(err) if err.kind() == ErrorKind::NotFound => false,
+    ///         Err(err) => return Err(err),
+    ///     };
+    ///
+    ///     assert!(!exists);
+    /// }
     /// ```
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn exists(&self) -> bool {
