@@ -796,7 +796,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         // StatementKind::FakeRead only contains a def_id if they are introduced as a result
         // of pattern matching within a closure.
-        if let StatementKind::FakeRead(cause, box ref place) = stmt.kind {
+        if let StatementKind::FakeRead(box (cause, ref place)) = stmt.kind {
             match cause {
                 FakeReadCause::ForMatchedPlace(Some(closure_def_id))
                 | FakeReadCause::ForLet(Some(closure_def_id)) => {

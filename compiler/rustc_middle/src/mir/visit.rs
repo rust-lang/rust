@@ -380,7 +380,7 @@ macro_rules! make_mir_visitor {
                     ) => {
                         self.visit_assign(place, rvalue, location);
                     }
-                    StatementKind::FakeRead(_, place) => {
+                    StatementKind::FakeRead(box (_, place)) => {
                         self.visit_place(
                             place,
                             PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect),

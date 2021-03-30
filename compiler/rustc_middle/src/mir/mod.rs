@@ -1470,7 +1470,7 @@ pub struct Statement<'tcx> {
 
 // `Statement` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(Statement<'_>, 40);
+static_assert_size!(Statement<'_>, 32);
 
 impl Statement<'_> {
     /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
@@ -1500,7 +1500,7 @@ pub enum StatementKind<'tcx> {
     ///
     /// Note that this also is emitted for regular `let` bindings to ensure that locals that are
     /// never accessed still get some sanity checks for, e.g., `let x: ! = ..;`
-    FakeRead(FakeReadCause, Box<Place<'tcx>>),
+    FakeRead(Box<(FakeReadCause, Place<'tcx>)>),
 
     /// Write the discriminant for a variant to the enum Place.
     SetDiscriminant { place: Box<Place<'tcx>>, variant_index: VariantIdx },
@@ -1646,7 +1646,9 @@ impl Debug for Statement<'_> {
         use self::StatementKind::*;
         match self.kind {
             Assign(box (ref place, ref rv)) => write!(fmt, "{:?} = {:?}", place, rv),
-            FakeRead(ref cause, ref place) => write!(fmt, "FakeRead({:?}, {:?})", cause, place),
+            FakeRead(box (ref cause, ref place)) => {
+                write!(fmt, "FakeRead({:?}, {:?})", cause, place)
+            }
             Retag(ref kind, ref place) => write!(
                 fmt,
                 "Retag({}{:?})",
