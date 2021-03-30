@@ -58,7 +58,7 @@ pub enum HlMod {
     Associated,
     /// Used for intra doc links in doc injection.
     IntraDocLink,
-    /// Used for trait items in impls.
+    /// Used for items in traits and trait impls.
     Trait,
 
     /// Keep this last!

@@ -276,6 +276,11 @@ fn highlight_def(db: &RootDatabase, def: Definition) -> Highlight {
             hir::ModuleDef::Function(func) => {
                 let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Function));
                 if let Some(item) = func.as_assoc_item(db) {
+                    h |= HlMod::Associated;
+                    if func.self_param(db).is_none() {
+                        h |= HlMod::Static
+                    }
+
                     match item.container(db) {
                         AssocItemContainer::Impl(i) => {
                             if i.target_trait(db).is_some() {
@@ -288,12 +293,6 @@ fn highlight_def(db: &RootDatabase, def: Definition) -> Highlight {
                     }
                 }
 
-                if func.as_assoc_item(db).is_some() {
-                    h |= HlMod::Associated;
-                    if func.self_param(db).is_none() {
-                        h |= HlMod::Static
-                    }
-                }
                 if func.is_unsafe(db) {
                     h |= HlMod::Unsafe;
                 }
@@ -305,9 +304,20 @@ fn highlight_def(db: &RootDatabase, def: Definition) -> Highlight {
             hir::ModuleDef::Variant(_) => HlTag::Symbol(SymbolKind::Variant),
             hir::ModuleDef::Const(konst) => {
                 let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Const));
-                if konst.as_assoc_item(db).is_some() {
-                    h |= HlMod::Associated
+                if let Some(item) = konst.as_assoc_item(db) {
+                    h |= HlMod::Associated;
+                    match item.container(db) {
+                        AssocItemContainer::Impl(i) => {
+                            if i.target_trait(db).is_some() {
+                                h |= HlMod::Trait;
+                            }
+                        }
+                        AssocItemContainer::Trait(_t) => {
+                            h |= HlMod::Trait;
+                        }
+                    }
                 }
+
                 return h;
             }
             hir::ModuleDef::Trait(_) => HlTag::Symbol(SymbolKind::Trait),
@@ -375,7 +385,7 @@ fn highlight_method_call(
     if func.is_unsafe(sema.db) || sema.is_unsafe_method_call(&method_call) {
         h |= HlMod::Unsafe;
     }
-    if let Some(_t) = func.as_assoc_item(sema.db)?.containing_trait(sema.db) {
+    if func.as_assoc_item(sema.db).and_then(|it| it.containing_trait(sema.db)).is_some() {
         h |= HlMod::Trait
     }
 
