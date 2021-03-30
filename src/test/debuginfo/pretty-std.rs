@@ -4,6 +4,7 @@
 // compile-flags:-g
 // min-gdb-version: 7.7
 // min-lldb-version: 310
+// min-cdb-version: 10.0.18317.1001
 
 // === GDB TESTS ===================================================================================
 
@@ -70,8 +71,12 @@
 // cdb-command: g
 
 // cdb-command: dx slice,d
-// cdb-check:slice,d [...]
-// NOTE: While slices have a .natvis entry that works in VS & VS Code, it fails in CDB 10.0.18362.1
+// cdb-check:slice,d          : { len=4 } [Type: slice<i32>]
+// cdb-check:    [len]            : 4 [Type: unsigned __int64]
+// cdb-check:    [0]              : 0 [Type: int]
+// cdb-check:    [1]              : 1 [Type: int]
+// cdb-check:    [2]              : 2 [Type: int]
+// cdb-check:    [3]              : 3 [Type: int]
 
 // cdb-command: dx vec,d
 // cdb-check:vec,d [...] : { len=4 } [Type: [...]::Vec<u64, alloc::alloc::Global>]
@@ -83,8 +88,7 @@
 // cdb-check:    [3]              : 7 [Type: unsigned __int64]
 
 // cdb-command: dx str_slice
-// cdb-check:str_slice [...]
-// NOTE: While string slices have a .natvis entry that works in VS & VS Code, it fails in CDB
+// cdb-check:str_slice        : "IAMA string slice!" [Type: str]
 
 // cdb-command: dx string
 // cdb-check:string           : "IAMA string!" [Type: [...]::String]
