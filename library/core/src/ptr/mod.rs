@@ -55,6 +55,14 @@
 //! has size 0, i.e., even if memory is not actually touched. Consider using
 //! [`NonNull::dangling`] in such cases.
 //!
+//! ## Allocated object
+//!
+//! For several operations, such as [`offset`] or field projections (`expr.field`), the notion of an
+//! "allocated object" becomes relevant. An allocated object is a contiguous region of memory.
+//! Common examples of allocated objects include stack-allocated variables (each variable is a
+//! separate allocated object), heap allocations (each allocation created by the global allocator is
+//! a separate allocated object), and `static` variables.
+//!
 //! [aliasing]: ../../nomicon/aliasing.html
 //! [book]: ../../book/ch19-01-unsafe-rust.html#dereferencing-a-raw-pointer
 //! [ub]: ../../reference/behavior-considered-undefined.html
