@@ -6,7 +6,7 @@ use crate::astconv::AstConv as _;
 use crate::check::cast;
 use crate::check::coercion::CoerceMany;
 use crate::check::fatally_break_rust;
-use crate::check::method::{probe, MethodError, SelfSource};
+use crate::check::method::SelfSource;
 use crate::check::report_unexpected_variant_res;
 use crate::check::BreakableCtxt;
 use crate::check::Diverges;
@@ -30,7 +30,6 @@ use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder,
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, QPath};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -461,7 +460,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.resolve_lang_item_path(lang_item, expr.span, expr.hir_id).1
     }
 
-    fn check_expr_path(&self, qpath: &hir::QPath<'_>, expr: &'tcx hir::Expr<'tcx>) -> Ty<'tcx> {
+    fn check_expr_path(
+        &self,
+        qpath: &'tcx hir::QPath<'tcx>,
+        expr: &'tcx hir::Expr<'tcx>,
+    ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let (res, opt_ty, segs) = self.resolve_ty_and_res_ufcs(qpath, expr.hir_id, expr.span);
         let ty = match res {
@@ -947,7 +950,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             Err(error) => {
                 if segment.ident.name != kw::Empty {
-                    self.report_extended_method_error(segment, span, args, rcvr_t, error);
+                    if let Some(mut err) = self.report_method_error(
+                        span,
+                        rcvr_t,
+                        segment.ident,
+                        SelfSource::MethodCall(&args[0]),
+                        error,
+                        Some(args),
+                    ) {
+                        err.emit();
+                    }
                 }
                 Err(())
             }
@@ -962,59 +974,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             DontTupleArguments,
             expected,
         )
-    }
-
-    fn report_extended_method_error(
-        &self,
-        segment: &hir::PathSegment<'_>,
-        span: Span,
-        args: &'tcx [hir::Expr<'tcx>],
-        rcvr_t: Ty<'tcx>,
-        error: MethodError<'tcx>,
-    ) {
-        let rcvr = &args[0];
-        let try_alt_rcvr = |err: &mut DiagnosticBuilder<'_>, new_rcvr_t| {
-            if let Some(new_rcvr_t) = new_rcvr_t {
-                if let Ok(pick) = self.lookup_probe(
-                    span,
-                    segment.ident,
-                    new_rcvr_t,
-                    rcvr,
-                    probe::ProbeScope::AllTraits,
-                ) {
-                    debug!("try_alt_rcvr: pick candidate {:?}", pick);
-                    // Make sure the method is defined for the *actual* receiver:
-                    // we don't want to treat `Box<Self>` as a receiver if
-                    // it only works because of an autoderef to `&self`
-                    if pick.autoderefs == 0 {
-                        err.span_label(
-                            pick.item.ident.span,
-                            &format!("the method is available for `{}` here", new_rcvr_t),
-                        );
-                    }
-                }
-            }
-        };
-
-        if let Some(mut err) = self.report_method_error(
-            span,
-            rcvr_t,
-            segment.ident,
-            SelfSource::MethodCall(rcvr),
-            error,
-            Some(args),
-        ) {
-            if let ty::Adt(..) = rcvr_t.kind() {
-                // Try alternative arbitrary self types that could fulfill this call.
-                // FIXME: probe for all types that *could* be arbitrary self-types, not
-                // just this list.
-                try_alt_rcvr(&mut err, self.tcx.mk_lang_item(rcvr_t, LangItem::OwnedBox));
-                try_alt_rcvr(&mut err, self.tcx.mk_lang_item(rcvr_t, LangItem::Pin));
-                try_alt_rcvr(&mut err, self.tcx.mk_diagnostic_item(rcvr_t, sym::Arc));
-                try_alt_rcvr(&mut err, self.tcx.mk_diagnostic_item(rcvr_t, sym::Rc));
-            }
-            err.emit();
-        }
     }
 
     fn check_expr_cast(

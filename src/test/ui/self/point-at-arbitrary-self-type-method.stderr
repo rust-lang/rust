@@ -9,6 +9,11 @@ LL |     fn foo(self: Box<Self>) {}
 ...
 LL |     A.foo();
    |       ^^^ method not found in `A`
+   |
+help: consider wrapping the receiver expression with the appropriate type
+   |
+LL |     Box::new(A).foo();
+   |     ^^^^^^^^^ ^
 
 error: aborting due to previous error
 
