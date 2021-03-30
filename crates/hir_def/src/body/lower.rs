@@ -759,7 +759,7 @@ impl ExprCollector<'_> {
                 }
             }
             ast::Pat::TupleStructPat(p) => {
-                let path = p.path().and_then(|path| self.expander.parse_path(path));
+                let path = p.path().and_then(|path| self.expander.parse_path(path)).map(Box::new);
                 let (args, ellipsis) = self.collect_tuple_pat(p.fields());
                 Pat::TupleStruct { path, args, ellipsis }
             }
@@ -769,7 +769,7 @@ impl ExprCollector<'_> {
                 Pat::Ref { pat, mutability }
             }
             ast::Pat::PathPat(p) => {
-                let path = p.path().and_then(|path| self.expander.parse_path(path));
+                let path = p.path().and_then(|path| self.expander.parse_path(path)).map(Box::new);
                 path.map(Pat::Path).unwrap_or(Pat::Missing)
             }
             ast::Pat::OrPat(p) => {
@@ -783,7 +783,7 @@ impl ExprCollector<'_> {
             }
             ast::Pat::WildcardPat(_) => Pat::Wild,
             ast::Pat::RecordPat(p) => {
-                let path = p.path().and_then(|path| self.expander.parse_path(path));
+                let path = p.path().and_then(|path| self.expander.parse_path(path)).map(Box::new);
                 let args: Vec<_> = p
                     .record_pat_field_list()
                     .expect("every struct should have a field list")
