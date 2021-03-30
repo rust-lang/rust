@@ -88,6 +88,7 @@ define_semantic_token_modifiers![
     (CONSUMING, "consuming"),
     (UNSAFE, "unsafe"),
     (ATTRIBUTE_MODIFIER, "attribute"),
+    (TRAIT_MODIFIER, "trait"),
     (CALLABLE, "callable"),
     (INTRA_DOC_LINK, "intraDocLink"),
 ];

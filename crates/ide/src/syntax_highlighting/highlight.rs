@@ -1,6 +1,6 @@
 //! Computes color for a single element.
 
-use hir::{AsAssocItem, Semantics, VariantDef};
+use hir::{AsAssocItem, AssocItemContainer, Semantics, VariantDef};
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
     RootDatabase, SymbolKind,
@@ -275,12 +275,24 @@ fn highlight_def(db: &RootDatabase, def: Definition) -> Highlight {
             hir::ModuleDef::Module(_) => HlTag::Symbol(SymbolKind::Module),
             hir::ModuleDef::Function(func) => {
                 let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Function));
-                if func.as_assoc_item(db).is_some() {
+                if let Some(item) = func.as_assoc_item(db) {
                     h |= HlMod::Associated;
                     if func.self_param(db).is_none() {
                         h |= HlMod::Static
                     }
+
+                    match item.container(db) {
+                        AssocItemContainer::Impl(i) => {
+                            if i.trait_(db).is_some() {
+                                h |= HlMod::Trait;
+                            }
+                        }
+                        AssocItemContainer::Trait(_t) => {
+                            h |= HlMod::Trait;
+                        }
+                    }
                 }
+
                 if func.is_unsafe(db) {
                     h |= HlMod::Unsafe;
                 }
@@ -292,9 +304,20 @@ fn highlight_def(db: &RootDatabase, def: Definition) -> Highlight {
             hir::ModuleDef::Variant(_) => HlTag::Symbol(SymbolKind::Variant),
             hir::ModuleDef::Const(konst) => {
                 let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Const));
-                if konst.as_assoc_item(db).is_some() {
-                    h |= HlMod::Associated
+                if let Some(item) = konst.as_assoc_item(db) {
+                    h |= HlMod::Associated;
+                    match item.container(db) {
+                        AssocItemContainer::Impl(i) => {
+                            if i.trait_(db).is_some() {
+                                h |= HlMod::Trait;
+                            }
+                        }
+                        AssocItemContainer::Trait(_t) => {
+                            h |= HlMod::Trait;
+                        }
+                    }
                 }
+
                 return h;
             }
             hir::ModuleDef::Trait(_) => HlTag::Symbol(SymbolKind::Trait),
@@ -362,6 +385,10 @@ fn highlight_method_call(
     if func.is_unsafe(sema.db) || sema.is_unsafe_method_call(&method_call) {
         h |= HlMod::Unsafe;
     }
+    if func.as_assoc_item(sema.db).and_then(|it| it.containing_trait(sema.db)).is_some() {
+        h |= HlMod::Trait
+    }
+
     if let Some(self_param) = func.self_param(sema.db) {
         match self_param.access(sema.db) {
             hir::Access::Shared => (),
