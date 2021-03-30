@@ -29,6 +29,12 @@ pub fn used_inline_function() {
     use_this_lib_crate();
 }
 
+
+
+
+
+
+
 #[inline(always)]
 pub fn used_only_from_bin_crate_generic_function<T: Debug>(arg: T) {
     println!("used_only_from_bin_crate_generic_function with {:?}", arg);
