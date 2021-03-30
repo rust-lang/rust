@@ -2434,6 +2434,7 @@ impl Path {
     ///     };
     ///
     ///     assert!(!exists);
+    ///     Ok(())
     /// }
     /// ```
     #[stable(feature = "path_ext", since = "1.5.0")]
