@@ -1,6 +1,9 @@
 //! Extracts, resolves and rewrites links and intra-doc links in markdown documentation.
 
-use std::{convert::TryFrom, iter::once, ops::Range};
+use std::{
+    convert::{TryFrom, TryInto},
+    iter::once,
+};
 
 use itertools::Itertools;
 use pulldown_cmark::{BrokenLink, CowStr, Event, InlineStr, LinkType, Options, Parser, Tag};
@@ -15,7 +18,9 @@ use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
     RootDatabase,
 };
-use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxNode, SyntaxToken, TokenAtOffset, T};
+use syntax::{
+    ast, match_ast, AstNode, SyntaxKind::*, SyntaxNode, SyntaxToken, TextRange, TokenAtOffset, T,
+};
 
 use crate::{FilePosition, Semantics};
 
@@ -115,7 +120,7 @@ pub(crate) fn external_docs(
 /// Extracts all links from a given markdown text.
 pub(crate) fn extract_definitions_from_markdown(
     markdown: &str,
-) -> Vec<(Range<usize>, String, Option<hir::Namespace>)> {
+) -> Vec<(TextRange, String, Option<hir::Namespace>)> {
     Parser::new_with_broken_link_callback(
         markdown,
         Options::empty(),
@@ -126,7 +131,11 @@ pub(crate) fn extract_definitions_from_markdown(
         if let Event::Start(Tag::Link(_, target, title)) = event {
             let link = if target.is_empty() { title } else { target };
             let (link, ns) = parse_intra_doc_link(&link);
-            Some((range, link.to_string(), ns))
+            Some((
+                TextRange::new(range.start.try_into().ok()?, range.end.try_into().ok()?),
+                link.to_string(),
+                ns,
+            ))
         } else {
             None
         }

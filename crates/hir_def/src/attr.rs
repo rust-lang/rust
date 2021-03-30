@@ -1,8 +1,8 @@
 //! A higher level attributes based on TokenTree, with also some shortcuts.
 
 use std::{
-    cmp::Ordering,
-    ops::{self, Range},
+    convert::{TryFrom, TryInto},
+    ops,
     sync::Arc,
 };
 
@@ -479,6 +479,7 @@ impl AttrsWithOwner {
             if !doc.is_empty() {
                 for line in doc.split('\n') {
                     let line = line.trim_end();
+                    let line_len = line.len();
                     let (offset, line) = match line.char_indices().nth(indent) {
                         Some((offset, _)) => (offset, &line[offset..]),
                         None => (0, line),
@@ -486,9 +487,9 @@ impl AttrsWithOwner {
                     let buf_offset = buf.len();
                     buf.push_str(line);
                     mapping.push((
-                        Range { start: buf_offset, end: buf.len() },
+                        TextRange::new(buf_offset.try_into().ok()?, buf.len().try_into().ok()?),
                         idx,
-                        Range { start: offset, end: line.len() },
+                        TextRange::new(offset.try_into().ok()?, line_len.try_into().ok()?),
                     ));
                     buf.push('\n');
                 }
@@ -565,31 +566,18 @@ pub struct DocsRangeMap {
     // (docstring-line-range, attr_index, attr-string-range)
     // a mapping from the text range of a line of the [`Documentation`] to the attribute index and
     // the original (untrimmed) syntax doc line
-    mapping: Vec<(Range<usize>, u32, Range<usize>)>,
+    mapping: Vec<(TextRange, u32, TextRange)>,
 }
 
 impl DocsRangeMap {
-    pub fn map(&self, range: Range<usize>) -> Option<InFile<TextRange>> {
-        let found = self
-            .mapping
-            .binary_search_by(|(probe, ..)| {
-                if probe.contains(&range.start) {
-                    Ordering::Equal
-                } else {
-                    probe.start.cmp(&range.end)
-                }
-            })
-            .ok()?;
+    pub fn map(&self, range: TextRange) -> Option<InFile<TextRange>> {
+        let found = self.mapping.binary_search_by(|(probe, ..)| probe.ordering(range)).ok()?;
         let (line_docs_range, idx, original_line_src_range) = self.mapping[found].clone();
-        if range.end > line_docs_range.end {
+        if !line_docs_range.contains_range(range) {
             return None;
         }
 
-        let relative_range = Range {
-            start: range.start - line_docs_range.start,
-            end: range.end - line_docs_range.start,
-        };
-        let range_len = TextSize::from((range.end - range.start) as u32);
+        let relative_range = range - line_docs_range.start();
 
         let &InFile { file_id, value: ref source } = &self.source[idx as usize];
         match source {
@@ -599,12 +587,10 @@ impl DocsRangeMap {
                 let text_range = comment.syntax().text_range();
                 let range = TextRange::at(
                     text_range.start()
-                        + TextSize::from(
-                            (comment.prefix().len()
-                                + original_line_src_range.start
-                                + relative_range.start) as u32,
-                        ),
-                    text_range.len().min(range_len),
+                        + TextSize::try_from(comment.prefix().len()).ok()?
+                        + original_line_src_range.start()
+                        + relative_range.start(),
+                    text_range.len().min(range.len()),
                 );
                 Some(InFile { file_id, value: range })
             }
