@@ -6921,6 +6921,102 @@ pub unsafe fn vabal_s32(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t {
     simd_add(a, simd_cast(e))
 }
 
+/// Singned saturating Absolute value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqabs.s8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqabs))]
+pub unsafe fn vqabs_s8(a: int8x8_t) -> int8x8_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqabs.v8i8")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqabs.v8i8")]
+        fn vqabs_s8_(a: int8x8_t) -> int8x8_t;
+    }
+vqabs_s8_(a)
+}
+
+/// Singned saturating Absolute value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqabs.s8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqabs))]
+pub unsafe fn vqabsq_s8(a: int8x16_t) -> int8x16_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqabs.v16i8")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqabs.v16i8")]
+        fn vqabsq_s8_(a: int8x16_t) -> int8x16_t;
+    }
+vqabsq_s8_(a)
+}
+
+/// Singned saturating Absolute value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqabs.s16"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqabs))]
+pub unsafe fn vqabs_s16(a: int16x4_t) -> int16x4_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqabs.v4i16")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqabs.v4i16")]
+        fn vqabs_s16_(a: int16x4_t) -> int16x4_t;
+    }
+vqabs_s16_(a)
+}
+
+/// Singned saturating Absolute value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqabs.s16"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqabs))]
+pub unsafe fn vqabsq_s16(a: int16x8_t) -> int16x8_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqabs.v8i16")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqabs.v8i16")]
+        fn vqabsq_s16_(a: int16x8_t) -> int16x8_t;
+    }
+vqabsq_s16_(a)
+}
+
+/// Singned saturating Absolute value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqabs.s32"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqabs))]
+pub unsafe fn vqabs_s32(a: int32x2_t) -> int32x2_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqabs.v2i32")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqabs.v2i32")]
+        fn vqabs_s32_(a: int32x2_t) -> int32x2_t;
+    }
+vqabs_s32_(a)
+}
+
+/// Singned saturating Absolute value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vqabs.s32"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sqabs))]
+pub unsafe fn vqabsq_s32(a: int32x4_t) -> int32x4_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqabs.v4i32")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqabs.v4i32")]
+        fn vqabsq_s32_(a: int32x4_t) -> int32x4_t;
+    }
+vqabsq_s32_(a)
+}
+
 #[cfg(test)]
 #[allow(overflowing_literals)]
 mod test {
@@ -12335,6 +12431,54 @@ mod test {
         let c: i32x2 = i32x2::new(10, 10);
         let e: i64x2 = i64x2::new(10, 10);
         let r: i64x2 = transmute(vabal_s32(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vqabs_s8() {
+        let a: i8x8 = i8x8::new(-128, 0x7F, -6, -5, -4, -3, -2, -1);
+        let e: i8x8 = i8x8::new(0x7F, 0x7F, 6, 5, 4, 3, 2, 1);
+        let r: i8x8 = transmute(vqabs_s8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vqabsq_s8() {
+        let a: i8x16 = i8x16::new(-128, 0x7F, -6, -5, -4, -3, -2, -1, 0, -127, 127, 1, 2, 3, 4, 5);
+        let e: i8x16 = i8x16::new(0x7F, 0x7F, 6, 5, 4, 3, 2, 1, 0, 127, 127, 1, 2, 3, 4, 5);
+        let r: i8x16 = transmute(vqabsq_s8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vqabs_s16() {
+        let a: i16x4 = i16x4::new(-32768, 0x7F_FF, -6, -5);
+        let e: i16x4 = i16x4::new(0x7F_FF, 0x7F_FF, 6, 5);
+        let r: i16x4 = transmute(vqabs_s16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vqabsq_s16() {
+        let a: i16x8 = i16x8::new(-32768, 0x7F_FF, -6, -5, -4, -3, -2, -1);
+        let e: i16x8 = i16x8::new(0x7F_FF, 0x7F_FF, 6, 5, 4, 3, 2, 1);
+        let r: i16x8 = transmute(vqabsq_s16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vqabs_s32() {
+        let a: i32x2 = i32x2::new(-2147483648, 0x7F_FF_FF_FF);
+        let e: i32x2 = i32x2::new(0x7F_FF_FF_FF, 0x7F_FF_FF_FF);
+        let r: i32x2 = transmute(vqabs_s32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vqabsq_s32() {
+        let a: i32x4 = i32x4::new(-2147483648, 0x7F_FF_FF_FF, -6, -5);
+        let e: i32x4 = i32x4::new(0x7F_FF_FF_FF, 0x7F_FF_FF_FF, 6, 5);
+        let r: i32x4 = transmute(vqabsq_s32(transmute(a)));
         assert_eq!(r, e);
     }
 }

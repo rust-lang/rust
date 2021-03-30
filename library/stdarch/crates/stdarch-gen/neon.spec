@@ -1844,3 +1844,27 @@ validate 20, 20
 
 aarch64 = sabal
 generate int64x2_t:int32x4_t:int32x4_t:int64x2_t
+
+////////////////////
+// Singned saturating Absolute value
+////////////////////
+
+/// Singned saturating Absolute value
+name = vqabs
+a = MIN, MAX, -6, -5, -4, -3, -2, -1, 0, -127, 127, 1, 2, 3, 4, 5
+validate MAX, MAX, 6, 5, 4, 3, 2, 1, 0, 127, 127, 1, 2, 3, 4, 5
+
+arm = vqabs.s
+aarch64 = sqabs
+link-arm = vqabs._EXT_
+link-aarch64 = sqabs._EXT_
+generate int*_t
+
+/// Singned saturating Absolute value
+name = vqabs
+a = MIN, -7
+validate MAX, 7
+
+aarch64 = sqabs
+link-aarch64 = sqabs._EXT_
+generate int64x*_t

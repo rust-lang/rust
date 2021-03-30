@@ -3653,6 +3653,32 @@ pub unsafe fn vabal_high_s32(a: int64x2_t, b: int32x4_t, c: int32x4_t) -> int64x
     simd_add(a, simd_cast(f))
 }
 
+/// Singned saturating Absolute value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sqabs))]
+pub unsafe fn vqabs_s64(a: int64x1_t) -> int64x1_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqabs.v1i64")]
+        fn vqabs_s64_(a: int64x1_t) -> int64x1_t;
+    }
+    vqabs_s64_(a)
+}
+
+/// Singned saturating Absolute value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sqabs))]
+pub unsafe fn vqabsq_s64(a: int64x2_t) -> int64x2_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sqabs.v2i64")]
+        fn vqabsq_s64_(a: int64x2_t) -> int64x2_t;
+    }
+    vqabsq_s64_(a)
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -7140,6 +7166,22 @@ mod test {
         let c: i32x4 = i32x4::new(10, 10, 10, 12);
         let e: i64x2 = i64x2::new(20, 20);
         let r: i64x2 = transmute(vabal_high_s32(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vqabs_s64() {
+        let a: i64x1 = i64x1::new(-9223372036854775808);
+        let e: i64x1 = i64x1::new(0x7F_FF_FF_FF_FF_FF_FF_FF);
+        let r: i64x1 = transmute(vqabs_s64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vqabsq_s64() {
+        let a: i64x2 = i64x2::new(-9223372036854775808, -7);
+        let e: i64x2 = i64x2::new(0x7F_FF_FF_FF_FF_FF_FF_FF, 7);
+        let r: i64x2 = transmute(vqabsq_s64(transmute(a)));
         assert_eq!(r, e);
     }
 }
