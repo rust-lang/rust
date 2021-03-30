@@ -648,7 +648,13 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             ty::ConstKind::Value(val) => collect_const_value(self.tcx, val, self.output),
             ty::ConstKind::Unevaluated(unevaluated) => {
                 match self.tcx.const_eval_resolve(param_env, unevaluated, None) {
-                    Ok(val) => collect_const_value(self.tcx, val, self.output),
+                    // The `monomorphize` call should have evaluated that constant already.
+                    Ok(val) => span_bug!(
+                        self.body.source_info(location).span,
+                        "collection encountered the unevaluated constant {} which evaluated to {:?}",
+                        substituted_constant,
+                        val
+                    ),
                     Err(ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted) => {}
                     Err(ErrorHandled::TooGeneric) => span_bug!(
                         self.body.source_info(location).span,
