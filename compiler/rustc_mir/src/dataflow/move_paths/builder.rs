@@ -293,8 +293,8 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 }
                 self.gather_rvalue(rval);
             }
-            StatementKind::FakeRead(_, place) => {
-                self.create_move_path(**place);
+            StatementKind::FakeRead(box (_, place)) => {
+                self.create_move_path(*place);
             }
             StatementKind::LlvmInlineAsm(ref asm) => {
                 for (output, kind) in iter::zip(&*asm.outputs, &asm.asm.outputs) {
