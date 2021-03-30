@@ -547,15 +547,18 @@ mod fn_keyword {}
 /// # fn code() { }
 /// # let iterator = 0..2;
 /// {
-///     let mut _iter = std::iter::IntoIterator::into_iter(iterator);
-///     loop {
-///         match _iter.next() {
-///             Some(loop_variable) => {
-///                 code()
-///             },
-///             None => break,
-///         }
-///     }
+///     let result = match IntoIterator::into_iter(iterator) {
+///         mut iter => loop {
+///             let next;
+///             match iter.next() {
+///                 Some(val) => next = val,
+///                 None => break,
+///             };
+///             let loop_variable = next;
+///             let () = { code(); };
+///         },
+///     };
+///     result
 /// }
 /// ```
 ///
