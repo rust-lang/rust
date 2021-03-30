@@ -797,22 +797,29 @@ pub fn get_parent_as_impl(tcx: TyCtxt<'_>, id: HirId) -> Option<&Impl<'_>> {
     }
 }
 
-/// Checks if the given expression is the else clause in the expression `if let .. {} else {}`
-pub fn is_else_clause_of_if_let_else(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
+/// Checks if the given expression is the else clause of either an `if` or `if let` expression.
+pub fn is_else_clause(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
     let map = tcx.hir();
     let mut iter = map.parent_iter(expr.hir_id);
-    let arm_id = match iter.next() {
-        Some((id, Node::Arm(..))) => id,
-        _ => return false,
-    };
     match iter.next() {
+        Some((arm_id, Node::Arm(..))) => matches!(
+            iter.next(),
+            Some((
+                _,
+                Node::Expr(Expr {
+                    kind: ExprKind::Match(_, [_, else_arm], MatchSource::IfLetDesugar { .. }),
+                    ..
+                })
+            ))
+            if else_arm.hir_id == arm_id
+        ),
         Some((
             _,
             Node::Expr(Expr {
-                kind: ExprKind::Match(_, [_, else_arm], kind),
+                kind: ExprKind::If(_, _, Some(else_expr)),
                 ..
             }),
-        )) => else_arm.hir_id == arm_id && matches!(kind, MatchSource::IfLetDesugar { .. }),
+        )) => else_expr.hir_id == expr.hir_id,
         _ => false,
     }
 }
