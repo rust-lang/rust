@@ -86,7 +86,7 @@ pub enum Expr {
         receiver: ExprId,
         method_name: Name,
         args: Vec<ExprId>,
-        generic_args: Option<GenericArgs>,
+        generic_args: Option<Box<GenericArgs>>,
     },
     Match {
         expr: ExprId,
@@ -106,7 +106,7 @@ pub enum Expr {
         expr: Option<ExprId>,
     },
     RecordLit {
-        path: Option<Path>,
+        path: Option<Box<Path>>,
         fields: Vec<RecordLitField>,
         spread: Option<ExprId>,
     },
@@ -131,7 +131,7 @@ pub enum Expr {
     },
     Cast {
         expr: ExprId,
-        type_ref: TypeRef,
+        type_ref: Box<TypeRef>,
     },
     Ref {
         expr: ExprId,
@@ -162,7 +162,7 @@ pub enum Expr {
     Lambda {
         args: Vec<PatId>,
         arg_types: Vec<Option<TypeRef>>,
-        ret_type: Option<TypeRef>,
+        ret_type: Option<Box<TypeRef>>,
         body: ExprId,
     },
     Tuple {
