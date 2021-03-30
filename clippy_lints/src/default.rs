@@ -84,22 +84,21 @@ impl LateLintPass<'_> for Default {
             if match_def_path(cx, def_id, &paths::DEFAULT_TRAIT_METHOD);
             // Detect and ignore <Foo as Default>::default() because these calls do explicitly name the type.
             if let QPath::Resolved(None, _path) = qpath;
+            let expr_ty = cx.typeck_results().expr_ty(expr);
+            if let ty::Adt(def, ..) = expr_ty.kind();
             then {
-                let expr_ty = cx.typeck_results().expr_ty(expr);
-                if let ty::Adt(def, ..) = expr_ty.kind() {
-                    // TODO: Work out a way to put "whatever the imported way of referencing
-                    // this type in this file" rather than a fully-qualified type.
-                    let replacement = format!("{}::default()", cx.tcx.def_path_str(def.did));
-                    span_lint_and_sugg(
-                        cx,
-                        DEFAULT_TRAIT_ACCESS,
-                        expr.span,
-                        &format!("calling `{}` is more clear than this expression", replacement),
-                        "try",
-                        replacement,
-                        Applicability::Unspecified, // First resolve the TODO above
-                    );
-                }
+                // TODO: Work out a way to put "whatever the imported way of referencing
+                // this type in this file" rather than a fully-qualified type.
+                let replacement = format!("{}::default()", cx.tcx.def_path_str(def.did));
+                span_lint_and_sugg(
+                    cx,
+                    DEFAULT_TRAIT_ACCESS,
+                    expr.span,
+                    &format!("calling `{}` is more clear than this expression", replacement),
+                    "try",
+                    replacement,
+                    Applicability::Unspecified, // First resolve the TODO above
+                );
             }
         }
     }
@@ -202,14 +201,14 @@ impl LateLintPass<'_> for Default {
                 let binding_type = if_chain! {
                     if let ty::Adt(adt_def, substs) = binding_type.kind();
                     if !substs.is_empty();
-                    let adt_def_ty_name = cx.tcx.item_name(adt_def.did);
-                    let generic_args = substs.iter().collect::<Vec<_>>();
-                    let tys_str = generic_args
-                        .iter()
-                        .map(ToString::to_string)
-                        .collect::<Vec<_>>()
-                        .join(", ");
                     then {
+                        let adt_def_ty_name = cx.tcx.item_name(adt_def.did);
+                        let generic_args = substs.iter().collect::<Vec<_>>();
+                        let tys_str = generic_args
+                            .iter()
+                            .map(ToString::to_string)
+                            .collect::<Vec<_>>()
+                            .join(", ");
                         format!("{}::<{}>", adt_def_ty_name, &tys_str)
                     } else {
                         binding_type.to_string()

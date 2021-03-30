@@ -116,8 +116,8 @@ fn check_arg<'tcx>(cx: &LateContext<'tcx>, arg: &'tcx Expr<'tcx>) -> Option<(Spa
         let ty = cx.tcx.erase_late_bound_regions(ret_ty);
         if ty.is_unit();
         then {
+            let body = cx.tcx.hir().body(body_id);
             if_chain! {
-                let body = cx.tcx.hir().body(body_id);
                 if let ExprKind::Block(block, _) = body.value.kind;
                 if block.expr.is_none();
                 if let Some(stmt) = block.stmts.last();

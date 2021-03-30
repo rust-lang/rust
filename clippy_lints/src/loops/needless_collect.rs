@@ -26,60 +26,59 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
         if chain_method.ident.name == sym!(collect) && is_trait_method(cx, &args[0], sym::Iterator);
         if let Some(ref generic_args) = chain_method.args;
         if let Some(GenericArg::Type(ref ty)) = generic_args.args.get(0);
+        let ty = cx.typeck_results().node_type(ty.hir_id);
+        if is_type_diagnostic_item(cx, ty, sym::vec_type)
+            || is_type_diagnostic_item(cx, ty, sym::vecdeque_type)
+            || match_type(cx, ty, &paths::BTREEMAP)
+            || is_type_diagnostic_item(cx, ty, sym::hashmap_type);
         then {
-            let ty = cx.typeck_results().node_type(ty.hir_id);
-            if is_type_diagnostic_item(cx, ty, sym::vec_type) ||
-                is_type_diagnostic_item(cx, ty, sym::vecdeque_type) ||
-                match_type(cx, ty, &paths::BTREEMAP) ||
-                is_type_diagnostic_item(cx, ty, sym::hashmap_type) {
-                if method.ident.name == sym!(len) {
-                    let span = shorten_needless_collect_span(expr);
-                    span_lint_and_sugg(
-                        cx,
-                        NEEDLESS_COLLECT,
-                        span,
-                        NEEDLESS_COLLECT_MSG,
-                        "replace with",
-                        "count()".to_string(),
-                        Applicability::MachineApplicable,
-                    );
-                }
-                if method.ident.name == sym!(is_empty) {
-                    let span = shorten_needless_collect_span(expr);
-                    span_lint_and_sugg(
-                        cx,
-                        NEEDLESS_COLLECT,
-                        span,
-                        NEEDLESS_COLLECT_MSG,
-                        "replace with",
-                        "next().is_none()".to_string(),
-                        Applicability::MachineApplicable,
-                    );
-                }
-                if method.ident.name == sym!(contains) {
-                    let contains_arg = snippet(cx, args[1].span, "??");
-                    let span = shorten_needless_collect_span(expr);
-                    span_lint_and_then(
-                        cx,
-                        NEEDLESS_COLLECT,
-                        span,
-                        NEEDLESS_COLLECT_MSG,
-                        |diag| {
-                            let (arg, pred) = contains_arg
-                                    .strip_prefix('&')
-                                    .map_or(("&x", &*contains_arg), |s| ("x", s));
-                            diag.span_suggestion(
-                                span,
-                                "replace with",
-                                format!(
-                                    "any(|{}| x == {})",
-                                    arg, pred
-                                ),
-                                Applicability::MachineApplicable,
-                            );
-                        }
-                    );
-                }
+            if method.ident.name == sym!(len) {
+                let span = shorten_needless_collect_span(expr);
+                span_lint_and_sugg(
+                    cx,
+                    NEEDLESS_COLLECT,
+                    span,
+                    NEEDLESS_COLLECT_MSG,
+                    "replace with",
+                    "count()".to_string(),
+                    Applicability::MachineApplicable,
+                );
+            }
+            if method.ident.name == sym!(is_empty) {
+                let span = shorten_needless_collect_span(expr);
+                span_lint_and_sugg(
+                    cx,
+                    NEEDLESS_COLLECT,
+                    span,
+                    NEEDLESS_COLLECT_MSG,
+                    "replace with",
+                    "next().is_none()".to_string(),
+                    Applicability::MachineApplicable,
+                );
+            }
+            if method.ident.name == sym!(contains) {
+                let contains_arg = snippet(cx, args[1].span, "??");
+                let span = shorten_needless_collect_span(expr);
+                span_lint_and_then(
+                    cx,
+                    NEEDLESS_COLLECT,
+                    span,
+                    NEEDLESS_COLLECT_MSG,
+                    |diag| {
+                        let (arg, pred) = contains_arg
+                                .strip_prefix('&')
+                                .map_or(("&x", &*contains_arg), |s| ("x", s));
+                        diag.span_suggestion(
+                            span,
+                            "replace with",
+                            format!(
+                                "any(|{}| x == {})",
+                                arg, pred
+                            ),
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                );
             }
         }
     }

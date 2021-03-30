@@ -217,9 +217,8 @@ fn check_else(cx: &EarlyContext<'_>, expr: &Expr) {
         if let Some(else_snippet) = snippet_opt(cx, else_span);
         if let Some(else_pos) = else_snippet.find("else");
         if else_snippet[else_pos..].contains('\n');
-        let else_desc = if is_if(else_) { "if" } else { "{..}" };
-
         then {
+            let else_desc = if is_if(else_) { "if" } else { "{..}" };
             span_lint_and_note(
                 cx,
                 SUSPICIOUS_ELSE_FORMATTING,

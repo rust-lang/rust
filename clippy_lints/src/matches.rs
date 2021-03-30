@@ -732,8 +732,8 @@ fn report_single_match_single_pattern(
         format!(" else {}", expr_block(cx, els, None, "..", Some(expr.span)))
     });
 
+    let (pat, pat_ref_count) = peel_hir_pat_refs(arms[0].pat);
     let (msg, sugg) = if_chain! {
-        let (pat, pat_ref_count) = peel_hir_pat_refs(arms[0].pat);
         if let PatKind::Path(_) | PatKind::Lit(_) = pat.kind;
         let (ty, ty_ref_count) = peel_mid_ty_refs(cx.typeck_results().expr_ty(ex));
         if let Some(trait_id) = cx.tcx.lang_items().structural_peq_trait();
@@ -1480,8 +1480,8 @@ fn check_match_single_binding<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[A
 
 /// Returns true if the `ex` match expression is in a local (`let`) statement
 fn opt_parent_let<'a>(cx: &LateContext<'a>, ex: &Expr<'a>) -> Option<&'a Local<'a>> {
+    let map = &cx.tcx.hir();
     if_chain! {
-        let map = &cx.tcx.hir();
         if let Some(Node::Expr(parent_arm_expr)) = map.find(map.get_parent_node(ex.hir_id));
         if let Some(Node::Local(parent_let_expr)) = map.find(map.get_parent_node(parent_arm_expr.hir_id));
         then {

@@ -225,34 +225,33 @@ fn is_default_equivalent_ctor(cx: &LateContext<'_>, def_id: DefId, path: &QPath<
 }
 
 fn check_replace_with_default(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'_>, expr_span: Span) {
-    if let ExprKind::Call(ref repl_func, _) = src.kind {
-        if_chain! {
-            if !in_external_macro(cx.tcx.sess, expr_span);
-            if let ExprKind::Path(ref repl_func_qpath) = repl_func.kind;
-            if let Some(repl_def_id) = cx.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id();
-            if is_diagnostic_assoc_item(cx, repl_def_id, sym::Default)
-                || is_default_equivalent_ctor(cx, repl_def_id, repl_func_qpath);
+    if_chain! {
+        if let ExprKind::Call(ref repl_func, _) = src.kind;
+        if !in_external_macro(cx.tcx.sess, expr_span);
+        if let ExprKind::Path(ref repl_func_qpath) = repl_func.kind;
+        if let Some(repl_def_id) = cx.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id();
+        if is_diagnostic_assoc_item(cx, repl_def_id, sym::Default)
+            || is_default_equivalent_ctor(cx, repl_def_id, repl_func_qpath);
 
-            then {
-                span_lint_and_then(
-                    cx,
-                    MEM_REPLACE_WITH_DEFAULT,
-                    expr_span,
-                    "replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`",
-                    |diag| {
-                        if !in_macro(expr_span) {
-                            let suggestion = format!("std::mem::take({})", snippet(cx, dest.span, ""));
+        then {
+            span_lint_and_then(
+                cx,
+                MEM_REPLACE_WITH_DEFAULT,
+                expr_span,
+                "replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`",
+                |diag| {
+                    if !in_macro(expr_span) {
+                        let suggestion = format!("std::mem::take({})", snippet(cx, dest.span, ""));
 
-                            diag.span_suggestion(
-                                expr_span,
-                                "consider using",
-                                suggestion,
-                                Applicability::MachineApplicable
-                            );
-                        }
+                        diag.span_suggestion(
+                            expr_span,
+                            "consider using",
+                            suggestion,
+                            Applicability::MachineApplicable
+                        );
                     }
-                );
-            }
+                }
+            );
         }
     }
 }

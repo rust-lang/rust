@@ -61,8 +61,8 @@ pub(super) fn check<'tcx>(
                         if_chain! {
                             if let ExprKind::Index(base_left, idx_left) = lhs.kind;
                             if let ExprKind::Index(base_right, idx_right) = rhs.kind;
-                            if is_slice_like(cx, cx.typeck_results().expr_ty(base_left))
-                                && is_slice_like(cx, cx.typeck_results().expr_ty(base_right));
+                            if is_slice_like(cx, cx.typeck_results().expr_ty(base_left));
+                            if is_slice_like(cx, cx.typeck_results().expr_ty(base_right));
                             if let Some((start_left, offset_left)) = get_details_from_idx(cx, &idx_left, &starts);
                             if let Some((start_right, offset_right)) = get_details_from_idx(cx, &idx_right, &starts);
 

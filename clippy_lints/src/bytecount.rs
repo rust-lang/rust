@@ -45,52 +45,48 @@ impl<'tcx> LateLintPass<'tcx> for ByteCount {
             if filter.ident.name == sym!(filter);
             if filter_args.len() == 2;
             if let ExprKind::Closure(_, _, body_id, _, _) = filter_args[1].kind;
+            let body = cx.tcx.hir().body(body_id);
+            if body.params.len() == 1;
+            if let Some(argname) = get_pat_name(&body.params[0].pat);
+            if let ExprKind::Binary(ref op, ref l, ref r) = body.value.kind;
+            if op.node == BinOpKind::Eq;
+            if match_type(cx,
+                       cx.typeck_results().expr_ty(&filter_args[0]).peel_refs(),
+                       &paths::SLICE_ITER);
             then {
-                let body = cx.tcx.hir().body(body_id);
-                if_chain! {
-                    if body.params.len() == 1;
-                    if let Some(argname) = get_pat_name(&body.params[0].pat);
-                    if let ExprKind::Binary(ref op, ref l, ref r) = body.value.kind;
-                    if op.node == BinOpKind::Eq;
-                    if match_type(cx,
-                               cx.typeck_results().expr_ty(&filter_args[0]).peel_refs(),
-                               &paths::SLICE_ITER);
-                    then {
-                        let needle = match get_path_name(l) {
-                            Some(name) if check_arg(name, argname, r) => r,
-                            _ => match get_path_name(r) {
-                                Some(name) if check_arg(name, argname, l) => l,
-                                _ => { return; }
-                            }
-                        };
-                        if ty::Uint(UintTy::U8) != *cx.typeck_results().expr_ty(needle).peel_refs().kind() {
-                            return;
-                        }
-                        let haystack = if let ExprKind::MethodCall(ref path, _, ref args, _) =
-                                filter_args[0].kind {
-                            let p = path.ident.name;
-                            if (p == sym::iter || p == sym!(iter_mut)) && args.len() == 1 {
-                                &args[0]
-                            } else {
-                                &filter_args[0]
-                            }
-                        } else {
-                            &filter_args[0]
-                        };
-                        let mut applicability = Applicability::MaybeIncorrect;
-                        span_lint_and_sugg(
-                            cx,
-                            NAIVE_BYTECOUNT,
-                            expr.span,
-                            "you appear to be counting bytes the naive way",
-                            "consider using the bytecount crate",
-                            format!("bytecount::count({}, {})",
-                                    snippet_with_applicability(cx, haystack.span, "..", &mut applicability),
-                                    snippet_with_applicability(cx, needle.span, "..", &mut applicability)),
-                            applicability,
-                        );
+                let needle = match get_path_name(l) {
+                    Some(name) if check_arg(name, argname, r) => r,
+                    _ => match get_path_name(r) {
+                        Some(name) if check_arg(name, argname, l) => l,
+                        _ => { return; }
                     }
                 };
+                if ty::Uint(UintTy::U8) != *cx.typeck_results().expr_ty(needle).peel_refs().kind() {
+                    return;
+                }
+                let haystack = if let ExprKind::MethodCall(ref path, _, ref args, _) =
+                        filter_args[0].kind {
+                    let p = path.ident.name;
+                    if (p == sym::iter || p == sym!(iter_mut)) && args.len() == 1 {
+                        &args[0]
+                    } else {
+                        &filter_args[0]
+                    }
+                } else {
+                    &filter_args[0]
+                };
+                let mut applicability = Applicability::MaybeIncorrect;
+                span_lint_and_sugg(
+                    cx,
+                    NAIVE_BYTECOUNT,
+                    expr.span,
+                    "you appear to be counting bytes the naive way",
+                    "consider using the bytecount crate",
+                    format!("bytecount::count({}, {})",
+                            snippet_with_applicability(cx, haystack.span, "..", &mut applicability),
+                            snippet_with_applicability(cx, needle.span, "..", &mut applicability)),
+                    applicability,
+                );
             }
         };
     }

@@ -113,8 +113,8 @@ fn check_manual_non_exhaustive_enum(cx: &EarlyContext<'_>, item: &Item, variants
             }
     }
 
+    let mut markers = variants.iter().filter(|v| is_non_exhaustive_marker(v));
     if_chain! {
-        let mut markers = variants.iter().filter(|v| is_non_exhaustive_marker(v));
         if let Some(marker) = markers.next();
         if markers.count() == 0 && variants.len() > 1;
         then {

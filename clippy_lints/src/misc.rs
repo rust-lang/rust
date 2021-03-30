@@ -308,46 +308,45 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
             if let PatKind::Binding(an, .., name, None) = local.pat.kind;
             if let Some(ref init) = local.init;
             if !higher::is_from_for_desugar(local);
+            if an == BindingAnnotation::Ref || an == BindingAnnotation::RefMut;
             then {
-                if an == BindingAnnotation::Ref || an == BindingAnnotation::RefMut {
-                    // use the macro callsite when the init span (but not the whole local span)
-                    // comes from an expansion like `vec![1, 2, 3]` in `let ref _ = vec![1, 2, 3];`
-                    let sugg_init = if init.span.from_expansion() && !local.span.from_expansion() {
-                        Sugg::hir_with_macro_callsite(cx, init, "..")
-                    } else {
-                        Sugg::hir(cx, init, "..")
-                    };
-                    let (mutopt, initref) = if an == BindingAnnotation::RefMut {
-                        ("mut ", sugg_init.mut_addr())
-                    } else {
-                        ("", sugg_init.addr())
-                    };
-                    let tyopt = if let Some(ref ty) = local.ty {
-                        format!(": &{mutopt}{ty}", mutopt=mutopt, ty=snippet(cx, ty.span, ".."))
-                    } else {
-                        String::new()
-                    };
-                    span_lint_hir_and_then(
-                        cx,
-                        TOPLEVEL_REF_ARG,
-                        init.hir_id,
-                        local.pat.span,
-                        "`ref` on an entire `let` pattern is discouraged, take a reference with `&` instead",
-                        |diag| {
-                            diag.span_suggestion(
-                                stmt.span,
-                                "try",
-                                format!(
-                                    "let {name}{tyopt} = {initref};",
-                                    name=snippet(cx, name.span, ".."),
-                                    tyopt=tyopt,
-                                    initref=initref,
-                                ),
-                                Applicability::MachineApplicable,
-                            );
-                        }
-                    );
-                }
+                // use the macro callsite when the init span (but not the whole local span)
+                // comes from an expansion like `vec![1, 2, 3]` in `let ref _ = vec![1, 2, 3];`
+                let sugg_init = if init.span.from_expansion() && !local.span.from_expansion() {
+                    Sugg::hir_with_macro_callsite(cx, init, "..")
+                } else {
+                    Sugg::hir(cx, init, "..")
+                };
+                let (mutopt, initref) = if an == BindingAnnotation::RefMut {
+                    ("mut ", sugg_init.mut_addr())
+                } else {
+                    ("", sugg_init.addr())
+                };
+                let tyopt = if let Some(ref ty) = local.ty {
+                    format!(": &{mutopt}{ty}", mutopt=mutopt, ty=snippet(cx, ty.span, ".."))
+                } else {
+                    String::new()
+                };
+                span_lint_hir_and_then(
+                    cx,
+                    TOPLEVEL_REF_ARG,
+                    init.hir_id,
+                    local.pat.span,
+                    "`ref` on an entire `let` pattern is discouraged, take a reference with `&` instead",
+                    |diag| {
+                        diag.span_suggestion(
+                            stmt.span,
+                            "try",
+                            format!(
+                                "let {name}{tyopt} = {initref};",
+                                name=snippet(cx, name.span, ".."),
+                                tyopt=tyopt,
+                                initref=initref,
+                            ),
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                );
             }
         };
         if_chain! {
@@ -462,21 +461,18 @@ fn check_nan(cx: &LateContext<'_>, expr: &Expr<'_>, cmp_expr: &Expr<'_>) {
     if_chain! {
         if !in_constant(cx, cmp_expr.hir_id);
         if let Some((value, _)) = constant(cx, cx.typeck_results(), expr);
+        if match value {
+            Constant::F32(num) => num.is_nan(),
+            Constant::F64(num) => num.is_nan(),
+            _ => false,
+        };
         then {
-            let needs_lint = match value {
-                Constant::F32(num) => num.is_nan(),
-                Constant::F64(num) => num.is_nan(),
-                _ => false,
-            };
-
-            if needs_lint {
-                span_lint(
-                    cx,
-                    CMP_NAN,
-                    cmp_expr.span,
-                    "doomed comparison with `NAN`, use `{f32,f64}::is_nan()` instead",
-                );
-            }
+            span_lint(
+                cx,
+                CMP_NAN,
+                cmp_expr.span,
+                "doomed comparison with `NAN`, use `{f32,f64}::is_nan()` instead",
+            );
         }
     }
 }

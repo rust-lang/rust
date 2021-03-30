@@ -94,13 +94,10 @@ impl<'tcx> Visitor<'tcx> for OppVisitor<'_, 'tcx> {
     type Map = Map<'tcx>;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if_chain! {
-            if let Some(mutex) = is_mutex_lock_call(self.cx, expr);
-            then {
-                self.found_mutex = Some(mutex);
-                self.mutex_lock_called = true;
-                return;
-            }
+        if let Some(mutex) = is_mutex_lock_call(self.cx, expr) {
+            self.found_mutex = Some(mutex);
+            self.mutex_lock_called = true;
+            return;
         }
         visit::walk_expr(self, expr);
     }
@@ -121,13 +118,10 @@ impl<'tcx> Visitor<'tcx> for ArmVisitor<'_, 'tcx> {
     type Map = Map<'tcx>;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
-        if_chain! {
-            if let Some(mutex) = is_mutex_lock_call(self.cx, expr);
-            then {
-                self.found_mutex = Some(mutex);
-                self.mutex_lock_called = true;
-                return;
-            }
+        if let Some(mutex) = is_mutex_lock_call(self.cx, expr) {
+            self.found_mutex = Some(mutex);
+            self.mutex_lock_called = true;
+            return;
         }
         visit::walk_expr(self, expr);
     }

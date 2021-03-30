@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::usage::mutated_variables;
 use clippy_utils::{is_trait_method, match_qpath, path_to_local_id, paths};
-use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_lint::LateContext;
@@ -54,18 +53,15 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Expr<
 fn check_expression<'tcx>(cx: &LateContext<'tcx>, arg_id: hir::HirId, expr: &'tcx hir::Expr<'_>) -> (bool, bool) {
     match &expr.kind {
         hir::ExprKind::Call(ref func, ref args) => {
-            if_chain! {
-                if let hir::ExprKind::Path(ref path) = func.kind;
-                then {
-                    if match_qpath(path, &paths::OPTION_SOME) {
-                        if path_to_local_id(&args[0], arg_id) {
-                            return (false, false)
-                        }
-                        return (true, false);
+            if let hir::ExprKind::Path(ref path) = func.kind {
+                if match_qpath(path, &paths::OPTION_SOME) {
+                    if path_to_local_id(&args[0], arg_id) {
+                        return (false, false);
                     }
-                    // We don't know. It might do anything.
-                    return (true, true);
+                    return (true, false);
                 }
+                // We don't know. It might do anything.
+                return (true, true);
             }
             (true, true)
         },

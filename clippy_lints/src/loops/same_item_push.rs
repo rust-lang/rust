@@ -63,8 +63,8 @@ pub(super) fn check<'tcx>(
                         match cx.qpath_res(qpath, pushed_item.hir_id) {
                             // immutable bindings that are initialized with literal or constant
                             Res::Local(hir_id) => {
+                                let node = cx.tcx.hir().get(hir_id);
                                 if_chain! {
-                                    let node = cx.tcx.hir().get(hir_id);
                                     if let Node::Binding(pat) = node;
                                     if let PatKind::Binding(bind_ann, ..) = pat.kind;
                                     if !matches!(bind_ann, BindingAnnotation::RefMut | BindingAnnotation::Mutable);

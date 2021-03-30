@@ -1882,11 +1882,10 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         if_chain! {
             if let TraitItemKind::Fn(ref sig, _) = item.kind;
             if let Some(first_arg_ty) = sig.decl.inputs.iter().next();
-            let first_arg_span = first_arg_ty.span;
-            let first_arg_ty = hir_ty_to_ty(cx.tcx, first_arg_ty);
-            let self_ty = TraitRef::identity(cx.tcx, item.def_id.to_def_id()).self_ty();
-
             then {
+                let first_arg_span = first_arg_ty.span;
+                let first_arg_ty = hir_ty_to_ty(cx.tcx, first_arg_ty);
+                let self_ty = TraitRef::identity(cx.tcx, item.def_id.to_def_id()).self_ty();
                 wrong_self_convention::check(
                     cx,
                     &item.ident.name.as_str(),
