@@ -4,10 +4,12 @@ use hir::Semantics;
 use ide_db::{base_db::FileRange, RootDatabase};
 use itertools::Itertools;
 use syntax::{
-    algo, ast, match_ast, AstNode, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode, TextRange,
+    algo, ast, match_ast, AstNode, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange,
+    TokenAtOffset,
 };
 use text_edit::{TextEdit, TextEditBuilder};
 
+#[derive(Copy, Clone, Debug)]
 pub enum Direction {
     Up,
     Down,
@@ -31,14 +33,19 @@ pub(crate) fn move_item(
     let sema = Semantics::new(db);
     let file = sema.parse(range.file_id);
 
-    let item = file.syntax().covering_element(range.range);
+    let item = if range.range.is_empty() {
+        SyntaxElement::Token(pick_best(file.syntax().token_at_offset(range.range.start()))?)
+    } else {
+        file.syntax().covering_element(range.range)
+    };
+
     find_ancestors(item, direction, range.range)
 }
 
 fn find_ancestors(item: SyntaxElement, direction: Direction, range: TextRange) -> Option<TextEdit> {
     let root = match item {
-        NodeOrToken::Node(node) => node,
-        NodeOrToken::Token(token) => token.parent()?,
+        SyntaxElement::Node(node) => node,
+        SyntaxElement::Token(token) => token.parent()?,
     };
 
     let movable = [
@@ -51,6 +58,11 @@ fn find_ancestors(item: SyntaxElement, direction: Direction, range: TextRange) -
         SyntaxKind::PARAM,
         SyntaxKind::LET_STMT,
         SyntaxKind::EXPR_STMT,
+        SyntaxKind::IF_EXPR,
+        SyntaxKind::FOR_EXPR,
+        SyntaxKind::LOOP_EXPR,
+        SyntaxKind::WHILE_EXPR,
+        SyntaxKind::RETURN_EXPR,
         SyntaxKind::MATCH_EXPR,
         SyntaxKind::MACRO_CALL,
         SyntaxKind::TYPE_ALIAS,
@@ -83,11 +95,11 @@ fn move_in_direction(
 ) -> Option<TextEdit> {
     match_ast! {
         match node {
-            ast::ArgList(it) => swap_sibling_in_list(it.args(), range, direction),
-            ast::GenericParamList(it) => swap_sibling_in_list(it.generic_params(), range, direction),
-            ast::GenericArgList(it) => swap_sibling_in_list(it.generic_args(), range, direction),
-            ast::VariantList(it) => swap_sibling_in_list(it.variants(), range, direction),
-            ast::TypeBoundList(it) => swap_sibling_in_list(it.bounds(), range, direction),
+            ast::ArgList(it) => swap_sibling_in_list(node, it.args(), range, direction),
+            ast::GenericParamList(it) => swap_sibling_in_list(node, it.generic_params(), range, direction),
+            ast::GenericArgList(it) => swap_sibling_in_list(node, it.generic_args(), range, direction),
+            ast::VariantList(it) => swap_sibling_in_list(node, it.variants(), range, direction),
+            ast::TypeBoundList(it) => swap_sibling_in_list(node, it.bounds(), range, direction),
             _ => Some(replace_nodes(node, &match direction {
                 Direction::Up => node.prev_sibling(),
                 Direction::Down => node.next_sibling(),
@@ -97,19 +109,27 @@ fn move_in_direction(
 }
 
 fn swap_sibling_in_list<A: AstNode + Clone, I: Iterator<Item = A>>(
+    node: &SyntaxNode,
     list: I,
     range: TextRange,
     direction: Direction,
 ) -> Option<TextEdit> {
-    let (l, r) = list
+    let list_lookup = list
         .tuple_windows()
         .filter(|(l, r)| match direction {
             Direction::Up => r.syntax().text_range().contains_range(range),
             Direction::Down => l.syntax().text_range().contains_range(range),
         })
-        .next()?;
+        .next();
 
-    Some(replace_nodes(l.syntax(), r.syntax()))
+    if let Some((l, r)) = list_lookup {
+        Some(replace_nodes(l.syntax(), r.syntax()))
+    } else {
+        // Cursor is beyond any movable list item (for example, on curly brace in enum).
+        // It's not necessary, that parent of list is movable (arg list's parent is not, for example),
+        // and we have to continue tree traversal to find suitable node.
+        find_ancestors(SyntaxElement::Node(node.parent()?), direction, range)
+    }
 }
 
 fn replace_nodes(first: &SyntaxNode, second: &SyntaxNode) -> TextEdit {
@@ -119,6 +139,18 @@ fn replace_nodes(first: &SyntaxNode, second: &SyntaxNode) -> TextEdit {
     algo::diff(second, first).into_text_edit(&mut edit);
 
     edit.finish()
+}
+
+fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
+    return tokens.max_by_key(priority);
+
+    fn priority(n: &SyntaxToken) -> usize {
+        match n.kind() {
+            SyntaxKind::IDENT | SyntaxKind::LIFETIME_IDENT => 2,
+            kind if kind.is_trivia() => 0,
+            _ => 1,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -260,6 +292,107 @@ fn main() {
             expect![[r#"
 fn main() {
     println!("All I want to say is...");
+    println!("Hello, world");
+}
+            "#]],
+            Direction::Up,
+        );
+        check(
+            r#"
+fn main() {
+    println!("Hello, world");
+
+    if true {
+        println!("Test");
+    }$0$0
+}
+            "#,
+            expect![[r#"
+fn main() {
+    if true {
+        println!("Test");
+    }
+
+    println!("Hello, world");
+}
+            "#]],
+            Direction::Up,
+        );
+        check(
+            r#"
+fn main() {
+    println!("Hello, world");
+
+    for i in 0..10 {
+        println!("Test");
+    }$0$0
+}
+            "#,
+            expect![[r#"
+fn main() {
+    for i in 0..10 {
+        println!("Test");
+    }
+
+    println!("Hello, world");
+}
+            "#]],
+            Direction::Up,
+        );
+        check(
+            r#"
+fn main() {
+    println!("Hello, world");
+
+    loop {
+        println!("Test");
+    }$0$0
+}
+            "#,
+            expect![[r#"
+fn main() {
+    loop {
+        println!("Test");
+    }
+
+    println!("Hello, world");
+}
+            "#]],
+            Direction::Up,
+        );
+        check(
+            r#"
+fn main() {
+    println!("Hello, world");
+
+    while true {
+        println!("Test");
+    }$0$0
+}
+            "#,
+            expect![[r#"
+fn main() {
+    while true {
+        println!("Test");
+    }
+
+    println!("Hello, world");
+}
+            "#]],
+            Direction::Up,
+        );
+        check(
+            r#"
+fn main() {
+    println!("Hello, world");
+
+    return 123;$0$0
+}
+            "#,
+            expect![[r#"
+fn main() {
+    return 123;
+
     println!("Hello, world");
 }
             "#]],
@@ -609,6 +742,115 @@ fn test() {
         fn inner() {}
     }
 }
+            "#]],
+            Direction::Up,
+        );
+    }
+
+    #[test]
+    fn test_cursor_at_item_start() {
+        check(
+            r#"
+$0$0#[derive(Debug)]
+enum FooBar {
+    Foo,
+    Bar,
+}
+
+fn main() {}
+            "#,
+            expect![[r#"
+fn main() {}
+
+#[derive(Debug)]
+enum FooBar {
+    Foo,
+    Bar,
+}
+            "#]],
+            Direction::Down,
+        );
+        check(
+            r#"
+$0$0enum FooBar {
+    Foo,
+    Bar,
+}
+
+fn main() {}
+            "#,
+            expect![[r#"
+fn main() {}
+
+enum FooBar {
+    Foo,
+    Bar,
+}
+            "#]],
+            Direction::Down,
+        );
+        check(
+            r#"
+struct Test;
+
+trait SomeTrait {}
+
+$0$0impl SomeTrait for Test {}
+
+fn main() {}
+            "#,
+            expect![[r#"
+struct Test;
+
+impl SomeTrait for Test {}
+
+trait SomeTrait {}
+
+fn main() {}
+            "#]],
+            Direction::Up,
+        );
+    }
+
+    #[test]
+    fn test_cursor_at_item_end() {
+        check(
+            r#"
+enum FooBar {
+    Foo,
+    Bar,
+}$0$0
+
+fn main() {}
+            "#,
+            expect![[r#"
+fn main() {}
+
+enum FooBar {
+    Foo,
+    Bar,
+}
+            "#]],
+            Direction::Down,
+        );
+        check(
+            r#"
+struct Test;
+
+trait SomeTrait {}
+
+impl SomeTrait for Test {}$0$0
+
+fn main() {}
+            "#,
+            expect![[r#"
+struct Test;
+
+impl SomeTrait for Test {}
+
+trait SomeTrait {}
+
+fn main() {}
             "#]],
             Direction::Up,
         );
