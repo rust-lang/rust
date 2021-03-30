@@ -1,5 +1,4 @@
-//~ERROR constructed but no error reported
-// compile-flags: -Ztreat-err-as-bug=2
+// compile-flags: -Ztreat-err-as-bug=1
 // build-fail
 // failure-status: 101
 // rustc-env:RUST_BACKTRACE=1

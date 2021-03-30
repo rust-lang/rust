@@ -452,7 +452,11 @@ impl Visitor<'tcx> for ExtraComments<'tcx> {
                 match literal {
                     ConstantKind::Ty(literal) => self.push(&format!("+ literal: {:?}", literal)),
                     ConstantKind::Val(val, ty) => {
-                        self.push(&format!("+ literal: {:?}, {}", val, ty))
+                        // To keep the diffs small, we render this almost like we render ty::Const
+                        self.push(&format!(
+                            "+ literal: Const {{ ty: {}, val: Value({:?}) }}",
+                            ty, val
+                        ))
                     }
                 }
             }

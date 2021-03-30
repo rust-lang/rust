@@ -1,5 +1,5 @@
 // build-fail
-//~^ ERROR cycle detected when normalizing `<() as Tr>::A`
+//~^ ERROR cycle detected when normalizing
 
 // Cyclic assoc. const defaults don't error unless *used*
 trait Tr {
