@@ -918,6 +918,21 @@ fn f() -> impl Iterator<Item$0 = u8> {}
     }
 
     #[test]
+    #[should_panic = "unresolved reference"]
+    fn unknown_assoc_ty() {
+        check(
+            r#"
+trait Iterator {
+    type Item;
+       //^^^^
+}
+
+fn f() -> impl Iterator<Invalid$0 = u8> {}
+            "#,
+        )
+    }
+
+    #[test]
     fn goto_def_for_assoc_ty_in_path_multiple() {
         check(
             r#"

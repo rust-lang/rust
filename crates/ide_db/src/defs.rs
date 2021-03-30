@@ -330,25 +330,30 @@ impl NameRefClass {
             }
         }
 
-        if ast::AssocTypeArg::cast(parent.clone()).is_some() {
-            // `Trait<Assoc = Ty>`
-            //        ^^^^^
-            let path = name_ref.syntax().ancestors().find_map(ast::Path::cast)?;
-            let resolved = sema.resolve_path(&path)?;
-            if let PathResolution::Def(ModuleDef::Trait(tr)) = resolved {
-                if let Some(ty) = tr
-                    .items(sema.db)
-                    .iter()
-                    .filter_map(|assoc| match assoc {
-                        hir::AssocItem::TypeAlias(it) => Some(*it),
-                        _ => None,
-                    })
-                    .find(|alias| &alias.name(sema.db).to_string() == &name_ref.text())
-                {
-                    return Some(NameRefClass::Definition(Definition::ModuleDef(
-                        ModuleDef::TypeAlias(ty),
-                    )));
+        if let Some(assoc_type_arg) = ast::AssocTypeArg::cast(parent.clone()) {
+            if assoc_type_arg.name_ref().as_ref() == Some(name_ref) {
+                // `Trait<Assoc = Ty>`
+                //        ^^^^^
+                let path = name_ref.syntax().ancestors().find_map(ast::Path::cast)?;
+                let resolved = sema.resolve_path(&path)?;
+                if let PathResolution::Def(ModuleDef::Trait(tr)) = resolved {
+                    // FIXME: resolve in supertraits
+                    if let Some(ty) = tr
+                        .items(sema.db)
+                        .iter()
+                        .filter_map(|assoc| match assoc {
+                            hir::AssocItem::TypeAlias(it) => Some(*it),
+                            _ => None,
+                        })
+                        .find(|alias| &alias.name(sema.db).to_string() == &name_ref.text())
+                    {
+                        return Some(NameRefClass::Definition(Definition::ModuleDef(
+                            ModuleDef::TypeAlias(ty),
+                        )));
+                    }
                 }
+
+                return None;
             }
         }
 
