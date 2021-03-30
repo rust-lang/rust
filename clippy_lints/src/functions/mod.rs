@@ -56,7 +56,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// **What it does:** Checks for public functions that dereference raw pointer
-    /// arguments but are not marked unsafe.
+    /// arguments but are not marked `unsafe`.
     ///
     /// **Why is this bad?** The function should probably be marked `unsafe`, since
     /// for an arbitrary raw pointer, there is no way of telling for sure if it is
@@ -165,7 +165,7 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// **What it does:** Checks for public functions that return a `Result`
     /// with an `Err` type of `()`. It suggests using a custom type that
-    /// implements [`std::error::Error`].
+    /// implements `std::error::Error`.
     ///
     /// **Why is this bad?** Unit does not implement `Error` and carries no
     /// further information about what went wrong.
