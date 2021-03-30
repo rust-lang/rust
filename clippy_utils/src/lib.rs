@@ -64,8 +64,8 @@ use rustc_hir::intravisit::{self, walk_expr, ErasedMap, NestedVisitorMap, Visito
 use rustc_hir::LangItem::{ResultErr, ResultOk};
 use rustc_hir::{
     def, Arm, BindingAnnotation, Block, Body, Constness, Destination, Expr, ExprKind, FnDecl, GenericArgs, HirId, Impl,
-    ImplItem, ImplItemKind, Item, ItemKind, LangItem, MatchSource, Node, Param, Pat, PatKind, Path, PathSegment, QPath,
-    Stmt, StmtKind, TraitItem, TraitItemKind, TraitRef, TyKind,
+    ImplItem, ImplItemKind, Item, ItemKind, LangItem, Local, MatchSource, Node, Param, Pat, PatKind, Path, PathSegment,
+    QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitRef, TyKind,
 };
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::exports::Export;
@@ -1312,48 +1312,7 @@ pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     did.map_or(false, |did| must_use_attr(&cx.tcx.get_attrs(did)).is_some())
 }
 
-pub fn get_expr_use_node(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> Option<Node<'tcx>> {
-    let map = tcx.hir();
-    let mut child_id = expr.hir_id;
-    let mut iter = map.parent_iter(child_id);
-    loop {
-        match iter.next() {
-            None => break None,
-            Some((id, Node::Block(_))) => child_id = id,
-            Some((id, Node::Arm(arm))) if arm.body.hir_id == child_id => child_id = id,
-            Some((_, Node::Expr(expr))) => match expr.kind {
-                ExprKind::Break(
-                    Destination {
-                        target_id: Ok(dest), ..
-                    },
-                    _,
-                ) => {
-                    iter = map.parent_iter(dest);
-                    child_id = dest;
-                },
-                ExprKind::DropTemps(_) | ExprKind::Block(..) => child_id = expr.hir_id,
-                ExprKind::If(control_expr, ..) | ExprKind::Match(control_expr, ..)
-                    if control_expr.hir_id != child_id =>
-                {
-                    child_id = expr.hir_id
-                },
-                _ => break Some(Node::Expr(expr)),
-            },
-            Some((_, node)) => break Some(node),
-        }
-    }
-}
-
-pub fn is_expr_used(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
-    !matches!(
-        get_expr_use_node(tcx, expr),
-        Some(Node::Stmt(Stmt {
-            kind: StmtKind::Expr(_) | StmtKind::Semi(_),
-            ..
-        }))
-    )
-}
-
+/// Gets the node where an expression is either used, or it's type is unified with another branch.
 pub fn get_expr_use_or_unification_node(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> Option<Node<'tcx>> {
     let map = tcx.hir();
     let mut child_id = expr.hir_id;
@@ -1374,16 +1333,26 @@ pub fn get_expr_use_or_unification_node(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> O
     }
 }
 
+/// Checks if the result of an expression is used, or it's type is unified with another branch.
 pub fn is_expr_used_or_unified(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
     !matches!(
         get_expr_use_or_unification_node(tcx, expr),
         None | Some(Node::Stmt(Stmt {
-            kind: StmtKind::Expr(_) | StmtKind::Semi(_),
+            kind: StmtKind::Expr(_)
+                | StmtKind::Semi(_)
+                | StmtKind::Local(Local {
+                    pat: Pat {
+                        kind: PatKind::Wild,
+                        ..
+                    },
+                    ..
+                }),
             ..
         }))
     )
 }
 
+/// Checks if the expression is the final expression returned from a block.
 pub fn is_expr_final_block_expr(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
     matches!(get_parent_node(tcx, expr.hir_id), Some(Node::Block(..)))
 }

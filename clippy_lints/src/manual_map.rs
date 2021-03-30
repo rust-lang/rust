@@ -2,13 +2,13 @@ use crate::{map_unit_fn::OPTION_MAP_UNIT_FN, matches::MATCH_AS_REF};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::ty::{is_type_diagnostic_item, peel_mid_ty_refs_is_mutable};
-use clippy_utils::{can_move_expr_to_closure, in_constant, is_allowed, is_else_clause, is_lang_ctor, match_var, peel_hir_expr_refs};
+use clippy_utils::{
+    can_move_expr_to_closure, in_constant, is_allowed, is_else_clause, is_lang_ctor, match_var, peel_hir_expr_refs,
+};
 use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
-use rustc_hir::{
-    Arm, BindingAnnotation, Block, Expr, ExprKind, MatchSource, Mutability, Pat, PatKind, QPath,
-};
+use rustc_hir::{Arm, BindingAnnotation, Block, Expr, ExprKind, MatchSource, Mutability, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};

@@ -77,40 +77,33 @@ impl<'tcx> LateLintPass<'tcx> for HashMapPass {
         let map_str = snippet_with_context(cx, contains_expr.map.span, contains_expr.call_ctxt, "..", &mut app).0;
         let key_str = snippet_with_context(cx, contains_expr.key.span, contains_expr.call_ctxt, "..", &mut app).0;
         let sugg = if let Some(else_expr) = else_expr {
-            // if .. { .. } else { .. }
             let else_search = match find_insert_calls(cx, &contains_expr, else_expr) {
-                Some(search) if !(then_search.edits.is_empty() && search.edits.is_empty()) => search,
-                _ => return,
+                Some(search) => search,
+                None => return,
             };
 
-            if then_search.edits.is_empty() || else_search.edits.is_empty() {
-                // if .. { insert } else { .. } or if .. { .. } else { then } of
-                let (then_str, else_str, entry_kind) = if else_search.edits.is_empty() {
-                    if contains_expr.negated {
-                        (
-                            then_search.snippet_vacant(cx, then_expr.span, &mut app),
-                            snippet_with_applicability(cx, else_expr.span, "{ .. }", &mut app),
-                            "Vacant(e)",
-                        )
-                    } else {
-                        (
-                            then_search.snippet_occupied(cx, then_expr.span, &mut app),
-                            snippet_with_applicability(cx, else_expr.span, "{ .. }", &mut app),
-                            "Occupied(mut e)",
-                        )
-                    }
-                } else if contains_expr.negated {
-                    (
+            if then_search.edits.is_empty() && else_search.edits.is_empty() {
+                // No insertions
+                return;
+            } else if then_search.edits.is_empty() || else_search.edits.is_empty() {
+                // if .. { insert } else { .. } or if .. { .. } else { insert }
+                let ((then_str, entry_kind), else_str) = match (else_search.edits.is_empty(), contains_expr.negated) {
+                    (true, true) => (
+                        then_search.snippet_vacant(cx, then_expr.span, &mut app),
+                        snippet_with_applicability(cx, else_expr.span, "{ .. }", &mut app),
+                    ),
+                    (true, false) => (
+                        then_search.snippet_occupied(cx, then_expr.span, &mut app),
+                        snippet_with_applicability(cx, else_expr.span, "{ .. }", &mut app),
+                    ),
+                    (false, true) => (
                         else_search.snippet_occupied(cx, else_expr.span, &mut app),
                         snippet_with_applicability(cx, then_expr.span, "{ .. }", &mut app),
-                        "Occupied(mut e)",
-                    )
-                } else {
-                    (
+                    ),
+                    (false, false) => (
                         else_search.snippet_vacant(cx, else_expr.span, &mut app),
                         snippet_with_applicability(cx, then_expr.span, "{ .. }", &mut app),
-                        "Vacant(e)",
-                    )
+                    ),
                 };
                 format!(
                     "if let {}::{} = {}.entry({}) {} else {}",
@@ -123,19 +116,15 @@ impl<'tcx> LateLintPass<'tcx> for HashMapPass {
                 )
             } else {
                 // if .. { insert } else { insert }
-                let (then_str, else_str, then_entry, else_entry) = if contains_expr.negated {
+                let ((then_str, then_entry), (else_str, else_entry)) = if contains_expr.negated {
                     (
                         then_search.snippet_vacant(cx, then_expr.span, &mut app),
                         else_search.snippet_occupied(cx, else_expr.span, &mut app),
-                        "Vacant(e)",
-                        "Occupied(mut e)",
                     )
                 } else {
                     (
                         then_search.snippet_occupied(cx, then_expr.span, &mut app),
                         else_search.snippet_vacant(cx, else_expr.span, &mut app),
-                        "Occupied(mut e)",
-                        "Vacant(e)",
                     )
                 };
                 let indent_str = snippet_indent(cx, expr.span);
@@ -153,19 +142,18 @@ impl<'tcx> LateLintPass<'tcx> for HashMapPass {
                     indent = indent_str,
                 )
             }
-        } else if then_search.edits.is_empty() {
-            // no insertions
-            return;
         } else {
+            if then_search.edits.is_empty() {
+                // no insertions
+                return;
+            }
+
             // if .. { insert }
             if !then_search.allow_insert_closure {
                 let (body_str, entry_kind) = if contains_expr.negated {
-                    (then_search.snippet_vacant(cx, then_expr.span, &mut app), "Vacant(e)")
+                    then_search.snippet_vacant(cx, then_expr.span, &mut app)
                 } else {
-                    (
-                        then_search.snippet_occupied(cx, then_expr.span, &mut app),
-                        "Occupied(mut e)",
-                    )
+                    then_search.snippet_occupied(cx, then_expr.span, &mut app)
                 };
                 format!(
                     "if let {}::{} = {}.entry({}) {}",
@@ -184,7 +172,8 @@ impl<'tcx> LateLintPass<'tcx> for HashMapPass {
                         format!("{}.entry({}).or_insert({});", map_str, key_str, value_str)
                     }
                 } else {
-                    // Todo: if let Some(v) = map.get_mut(k)
+                    // TODO: suggest using `if let Some(v) = map.get_mut(k) { .. }` here.
+                    // This would need to be a different lint.
                     return;
                 }
             } else {
@@ -192,7 +181,8 @@ impl<'tcx> LateLintPass<'tcx> for HashMapPass {
                 if contains_expr.negated {
                     format!("{}.entry({}).or_insert_with(|| {});", map_str, key_str, block_str)
                 } else {
-                    // Todo: if let Some(v) = map.get_mut(k)
+                    // TODO: suggest using `if let Some(v) = map.get_mut(k) { .. }` here.
+                    // This would need to be a different lint.
                     return;
                 }
             }
@@ -222,7 +212,7 @@ impl MapType {
             Self::BTree => "BTreeMap",
         }
     }
-    fn entry_path(self) -> &'staic str {
+    fn entry_path(self) -> &'static str {
         match self {
             Self::Hash => "std::collections::hash_map::Entry",
             Self::BTree => "std::collections::btree_map::Entry",
@@ -312,15 +302,16 @@ struct Insertion<'tcx> {
     value: &'tcx Expr<'tcx>,
 }
 
-// This visitor needs to do a multiple things:
-// * Find all usages of the map. Only insertions into the map which share the same key are
-//   permitted. All others will prevent the lint.
-// * Determine if the final statement executed is an insertion. This is needed to use `insert_with`.
-// * Determine if there's any sub-expression that can't be placed in a closure.
-// * Determine if there's only a single insert statement. This is needed to give better suggestions.
-
+/// This visitor needs to do a multiple things:
+/// * Find all usages of the map. An insertion can only be made before any other usages of the map.
+/// * Determine if there's an insertion using the same key. There's no need for the entry api
+///   otherwise.
+/// * Determine if the final statement executed is an insertion. This is needed to use
+///   `or_insert_with`.
+/// * Determine if there's any sub-expression that can't be placed in a closure.
+/// * Determine if there's only a single insert statement. `or_insert` can be used in this case.
 #[allow(clippy::struct_excessive_bools)]
-struct InsertSearcher<'cx, 'i, 'tcx> {
+struct InsertSearcher<'cx, 'tcx> {
     cx: &'cx LateContext<'tcx>,
     /// The map expression used in the contains call.
     map: &'tcx Expr<'tcx>,
@@ -334,13 +325,16 @@ struct InsertSearcher<'cx, 'i, 'tcx> {
     can_use_entry: bool,
     /// Whether this expression is the final expression in this code path. This may be a statement.
     in_tail_pos: bool,
-    // A single insert expression has a slightly different suggestion.
+    // Is this expression a single insert. A slightly better suggestion can be made in this case.
     is_single_insert: bool,
+    /// If the visitor has seen the map being used.
     is_map_used: bool,
-    edits: &'i mut Vec<Edit<'tcx>>,
+    /// The locations where changes need to be made for the suggestion.
+    edits: Vec<Edit<'tcx>>,
+    /// A stack of loops the visitor is currently in.
     loops: Vec<HirId>,
 }
-impl<'tcx> InsertSearcher<'_, '_, 'tcx> {
+impl<'tcx> InsertSearcher<'_, 'tcx> {
     /// Visit the expression as a branch in control flow. Multiple insert calls can be used, but
     /// only if they are on separate code paths. This will return whether the map was used in the
     /// given expression.
@@ -363,7 +357,7 @@ impl<'tcx> InsertSearcher<'_, '_, 'tcx> {
         self.in_tail_pos = in_tail_pos;
     }
 }
-impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, '_, 'tcx> {
+impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
     type Map = ErasedMap<'tcx>;
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
@@ -483,6 +477,7 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, '_, 'tcx> {
                 },
                 ExprKind::Loop(block, ..) => {
                     self.loops.push(expr.hir_id);
+                    self.is_single_insert = false;
                     self.allow_insert_closure &= !self.in_tail_pos;
                     // Don't allow insertions inside of a loop.
                     let edit_len = self.edits.len();
@@ -519,7 +514,13 @@ impl InsertSearchResults<'tcx> {
         self.is_single_insert.then(|| self.edits[0].as_insertion().unwrap())
     }
 
-    fn snippet_occupied(&self, cx: &LateContext<'_>, mut span: Span, app: &mut Applicability) -> String {
+    fn snippet(
+        &self,
+        cx: &LateContext<'_>,
+        mut span: Span,
+        app: &mut Applicability,
+        write_wrapped: impl Fn(&mut String, Insertion<'_>, SyntaxContext, &mut Applicability),
+    ) -> String {
         let ctxt = span.ctxt();
         let mut res = String::new();
         for insertion in self.edits.iter().filter_map(|e| e.as_insertion()) {
@@ -530,50 +531,12 @@ impl InsertSearchResults<'tcx> {
                 app,
             ));
             if is_expr_used_or_unified(cx.tcx, insertion.call) {
-                res.push_str("Some(e.insert(");
-                res.push_str(&snippet_with_context(cx, insertion.value.span, ctxt, "..", app).0);
-                res.push_str("))");
-            } else {
-                res.push_str("e.insert(");
-                res.push_str(&snippet_with_context(cx, insertion.value.span, ctxt, "..", app).0);
-                res.push(')');
-            }
-            span = span.trim_start(insertion.call.span).unwrap_or(DUMMY_SP);
-        }
-        res.push_str(&snippet_with_applicability(cx, span, "..", app));
-        res
-    }
-
-    fn snippet_vacant(&self, cx: &LateContext<'_>, mut span: Span, app: &mut Applicability) -> String {
-        let ctxt = span.ctxt();
-        let mut res = String::new();
-        for insertion in self.edits.iter().filter_map(|e| e.as_insertion()) {
-            res.push_str(&snippet_with_applicability(
-                cx,
-                span.until(insertion.call.span),
-                "..",
-                app,
-            ));
-            if is_expr_used_or_unified(cx.tcx, insertion.call) {
-                if is_expr_final_block_expr(cx.tcx, insertion.call) {
-                    let _ = write!(
-                        res,
-                        "e.insert({});\n{}None",
-                        snippet_with_context(cx, insertion.value.span, ctxt, "..", app).0,
-                        snippet_indent(cx, insertion.call.span).as_deref().unwrap_or(""),
-                    );
-                } else {
-                    let _ = write!(
-                        res,
-                        "{{ e.insert({}); None }}",
-                        snippet_with_context(cx, insertion.value.span, ctxt, "..", app).0,
-                    );
-                }
+                write_wrapped(&mut res, insertion, ctxt, app);
             } else {
                 let _ = write!(
                     res,
                     "e.insert({})",
-                    snippet_with_context(cx, insertion.value.span, ctxt, "..", app).0,
+                    snippet_with_context(cx, insertion.value.span, ctxt, "..", app).0
                 );
             }
             span = span.trim_start(insertion.call.span).unwrap_or(DUMMY_SP);
@@ -582,12 +545,50 @@ impl InsertSearchResults<'tcx> {
         res
     }
 
+    fn snippet_occupied(&self, cx: &LateContext<'_>, span: Span, app: &mut Applicability) -> (String, &'static str) {
+        (
+            self.snippet(cx, span, app, |res, insertion, ctxt, app| {
+                // Insertion into a map would return `Some(&mut value)`, but the entry returns `&mut value`
+                let _ = write!(
+                    res,
+                    "Some(e.insert({}))",
+                    snippet_with_context(cx, insertion.value.span, ctxt, "..", app).0
+                );
+            }),
+            "Occupied(mut e)",
+        )
+    }
+
+    fn snippet_vacant(&self, cx: &LateContext<'_>, span: Span, app: &mut Applicability) -> (String, &'static str) {
+        (
+            self.snippet(cx, span, app, |res, insertion, ctxt, app| {
+                // Insertion into a map would return `None`, but the entry returns a mutable reference.
+                let _ = if is_expr_final_block_expr(cx.tcx, insertion.call) {
+                    write!(
+                        res,
+                        "e.insert({});\n{}None",
+                        snippet_with_context(cx, insertion.value.span, ctxt, "..", app).0,
+                        snippet_indent(cx, insertion.call.span).as_deref().unwrap_or(""),
+                    )
+                } else {
+                    write!(
+                        res,
+                        "{{ e.insert({}); None }}",
+                        snippet_with_context(cx, insertion.value.span, ctxt, "..", app).0,
+                    )
+                };
+            }),
+            "Vacant(e)",
+        )
+    }
+
     fn snippet_closure(&self, cx: &LateContext<'_>, mut span: Span, app: &mut Applicability) -> String {
         let ctxt = span.ctxt();
         let mut res = String::new();
         for edit in &self.edits {
             match *edit {
                 Edit::Insertion(insertion) => {
+                    // Cut out the value from `map.insert(key, value)`
                     res.push_str(&snippet_with_applicability(
                         cx,
                         span.until(insertion.call.span),
@@ -598,6 +599,7 @@ impl InsertSearchResults<'tcx> {
                     span = span.trim_start(insertion.call.span).unwrap_or(DUMMY_SP);
                 },
                 Edit::RemoveSemi(semi_span) => {
+                    // Cut out the semicolon. This allows the value to be returned from the closure.
                     res.push_str(&snippet_with_applicability(cx, span.until(semi_span), "..", app));
                     span = span.trim_start(semi_span).unwrap_or(DUMMY_SP);
                 },
@@ -607,18 +609,18 @@ impl InsertSearchResults<'tcx> {
         res
     }
 }
+
 fn find_insert_calls(
     cx: &LateContext<'tcx>,
     contains_expr: &ContainsExpr<'tcx>,
     expr: &'tcx Expr<'_>,
 ) -> Option<InsertSearchResults<'tcx>> {
-    let mut edits = Vec::new();
     let mut s = InsertSearcher {
         cx,
         map: contains_expr.map,
         key: contains_expr.key,
         ctxt: expr.span.ctxt(),
-        edits: &mut edits,
+        edits: Vec::new(),
         is_map_used: false,
         allow_insert_closure: true,
         can_use_entry: true,
@@ -629,6 +631,7 @@ fn find_insert_calls(
     s.visit_expr(expr);
     let allow_insert_closure = s.allow_insert_closure;
     let is_single_insert = s.is_single_insert;
+    let edits = s.edits;
     s.can_use_entry.then(|| InsertSearchResults {
         edits,
         allow_insert_closure,

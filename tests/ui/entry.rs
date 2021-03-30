@@ -2,6 +2,7 @@
 
 #![allow(unused, clippy::needless_pass_by_value, clippy::collapsible_if)]
 #![warn(clippy::map_entry)]
+#![feature(asm)]
 
 use std::collections::{BTreeMap, HashMap};
 use std::hash::Hash;
@@ -10,13 +11,21 @@ macro_rules! m {
     ($e:expr) => {{ $e }};
 }
 
+macro_rules! insert {
+    ($map:expr, $key:expr, $val:expr) => {
+        $map.insert($key, $val)
+    };
+}
+
 fn foo() {}
 
-fn hash_map<K: Eq + Hash + Copy, V: Copy>(m: &mut HashMap<K, V>, k: K, v: V, v2: V) {
+fn hash_map<K: Eq + Hash + Copy, V: Copy>(m: &mut HashMap<K, V>, m2: &mut HashMap<K, V>, k: K, k2: K, v: V, v2: V) {
+    // or_insert(v)
     if !m.contains_key(&k) {
         m.insert(k, v);
     }
 
+    // semicolon on insert, use or_insert_with(..)
     if !m.contains_key(&k) {
         if true {
             m.insert(k, v);
@@ -25,6 +34,7 @@ fn hash_map<K: Eq + Hash + Copy, V: Copy>(m: &mut HashMap<K, V>, k: K, v: V, v2:
         }
     }
 
+    // semicolon on if, use or_insert_with(..)
     if !m.contains_key(&k) {
         if true {
             m.insert(k, v)
@@ -33,6 +43,7 @@ fn hash_map<K: Eq + Hash + Copy, V: Copy>(m: &mut HashMap<K, V>, k: K, v: V, v2:
         };
     }
 
+    // early return, use if let
     if !m.contains_key(&k) {
         if true {
             m.insert(k, v);
@@ -42,11 +53,13 @@ fn hash_map<K: Eq + Hash + Copy, V: Copy>(m: &mut HashMap<K, V>, k: K, v: V, v2:
         }
     }
 
+    // use or_insert_with(..)
     if !m.contains_key(&k) {
         foo();
         m.insert(k, v);
     }
 
+    // semicolon on insert and match, use or_insert_with(..)
     if !m.contains_key(&k) {
         match 0 {
             1 if true => {
@@ -58,18 +71,17 @@ fn hash_map<K: Eq + Hash + Copy, V: Copy>(m: &mut HashMap<K, V>, k: K, v: V, v2:
         };
     }
 
+    // one branch doesn't insert, use if let
     if !m.contains_key(&k) {
         match 0 {
-            0 => {},
-            1 => {
-                m.insert(k, v);
-            },
+            0 => foo(),
             _ => {
                 m.insert(k, v2);
             },
         };
     }
 
+    // use or_insert_with
     if !m.contains_key(&k) {
         foo();
         match 0 {
@@ -96,12 +108,48 @@ fn hash_map<K: Eq + Hash + Copy, V: Copy>(m: &mut HashMap<K, V>, k: K, v: V, v2:
         }
     }
 
+    // ok, insert in loop
+    if !m.contains_key(&k) {
+        for _ in 0..2 {
+            m.insert(k, v);
+        }
+    }
+
+    // macro_expansion test, use or_insert(..)
     if !m.contains_key(&m!(k)) {
         m.insert(m!(k), m!(v));
+    }
+
+    // ok, map used before insertion
+    if !m.contains_key(&k) {
+        let _ = m.len();
+        m.insert(k, v);
+    }
+
+    // ok, inline asm
+    if !m.contains_key(&k) {
+        unsafe { asm!("nop") }
+        m.insert(k, v);
+    }
+
+    // ok, different keys.
+    if !m.contains_key(&k) {
+        m.insert(k2, v);
+    }
+
+    // ok, different maps
+    if !m.contains_key(&k) {
+        m2.insert(k, v);
+    }
+
+    // ok, insert in macro
+    if !m.contains_key(&k) {
+        insert!(m, k, v);
     }
 }
 
 fn btree_map<K: Eq + Ord + Copy, V: Copy>(m: &mut BTreeMap<K, V>, k: K, v: V, v2: V) {
+    // insert then do something, use if let
     if !m.contains_key(&k) {
         m.insert(k, v);
         foo();

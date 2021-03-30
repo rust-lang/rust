@@ -1,5 +1,5 @@
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:16:5
+  --> $DIR/entry.rs:24:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |         m.insert(k, v);
@@ -9,7 +9,7 @@ LL | |     }
    = note: `-D clippy::map-entry` implied by `-D warnings`
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:20:5
+  --> $DIR/entry.rs:29:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |         if true {
@@ -31,7 +31,7 @@ LL |         }
  ...
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:28:5
+  --> $DIR/entry.rs:38:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |         if true {
@@ -53,7 +53,7 @@ LL |         }
  ...
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:36:5
+  --> $DIR/entry.rs:47:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |         if true {
@@ -75,7 +75,7 @@ LL |             return;
  ...
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:45:5
+  --> $DIR/entry.rs:57:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |         foo();
@@ -92,7 +92,7 @@ LL |     });
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:50:5
+  --> $DIR/entry.rs:63:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |         match 0 {
@@ -114,12 +114,12 @@ LL |             _ => {
  ...
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:61:5
+  --> $DIR/entry.rs:75:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |         match 0 {
-LL | |             0 => {},
-LL | |             1 => {
+LL | |             0 => foo(),
+LL | |             _ => {
 ...  |
 LL | |         };
 LL | |     }
@@ -129,14 +129,14 @@ help: try this
    |
 LL |     if let std::collections::hash_map::Entry::Vacant(e) = m.entry(k) {
 LL |         match 0 {
-LL |             0 => {},
-LL |             1 => {
-LL |                 e.insert(v);
+LL |             0 => foo(),
+LL |             _ => {
+LL |                 e.insert(v2);
 LL |             },
  ...
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:73:5
+  --> $DIR/entry.rs:85:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |         foo();
@@ -158,7 +158,7 @@ LL |             },
  ...
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:99:5
+  --> $DIR/entry.rs:119:5
    |
 LL | /     if !m.contains_key(&m!(k)) {
 LL | |         m.insert(m!(k), m!(v));
@@ -166,7 +166,7 @@ LL | |     }
    | |_____^ help: try this: `m.entry(m!(k)).or_insert_with(|| m!(v));`
 
 error: usage of `contains_key` followed by `insert` on a `BTreeMap`
-  --> $DIR/entry.rs:105:5
+  --> $DIR/entry.rs:153:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |         m.insert(k, v);
