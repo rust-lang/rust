@@ -15,10 +15,7 @@ use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
     RootDatabase,
 };
-use syntax::{
-    ast, match_ast, AstNode, AstToken, SyntaxKind::*, SyntaxNode, SyntaxToken, TextRange, TextSize,
-    TokenAtOffset, T,
-};
+use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxNode, SyntaxToken, TokenAtOffset, T};
 
 use crate::{FilePosition, Semantics};
 
@@ -119,77 +116,22 @@ pub(crate) fn external_docs(
 pub(crate) fn extract_definitions_from_markdown(
     markdown: &str,
 ) -> Vec<(Range<usize>, String, Option<hir::Namespace>)> {
-    extract_definitions_from_markdown_(markdown, &mut broken_link_clone_cb).collect()
-}
-
-fn extract_definitions_from_markdown_<'a>(
-    markdown: &'a str,
-    cb: &'a mut dyn FnMut(BrokenLink<'_>) -> Option<(CowStr<'a>, CowStr<'a>)>,
-) -> impl Iterator<Item = (Range<usize>, String, Option<hir::Namespace>)> + 'a {
-    Parser::new_with_broken_link_callback(markdown, Options::empty(), Some(cb))
-        .into_offset_iter()
-        .filter_map(|(event, range)| {
-            if let Event::Start(Tag::Link(_, target, title)) = event {
-                let link = if target.is_empty() { title } else { target };
-                let (link, ns) = parse_intra_doc_link(&link);
-                Some((range, link.to_string(), ns))
-            } else {
-                None
-            }
-        })
-}
-
-/// Extracts a link from a comment at the given position returning the spanning range, link and
-/// optionally it's namespace.
-pub(crate) fn extract_positioned_link_from_comment(
-    position: TextSize,
-    comment: &ast::Comment,
-    docs: hir::Documentation,
-) -> Option<(TextRange, String, Option<hir::Namespace>)> {
-    let doc_comment = comment.doc_comment()?.to_string() + "\n" + docs.as_str();
-    let comment_start =
-        comment.syntax().text_range().start() + TextSize::from(comment.prefix().len() as u32);
-    let len = comment.syntax().text_range().len().into();
-    let mut cb = broken_link_clone_cb;
-    // because pulldown_cmarks lifetimes are wrong we gotta dance around a few temporaries here
-    let res = extract_definitions_from_markdown_(&doc_comment, &mut cb)
-        .take_while(|&(Range { end, .. }, ..)| end < len)
-        .find_map(|(Range { start, end }, def_link, ns)| {
-            let range = TextRange::at(
-                comment_start + TextSize::from(start as u32),
-                TextSize::from((end - start) as u32),
-            );
-            range.contains(position).then(|| (range, def_link, ns))
-        });
-    res
-}
-
-/// Turns a syntax node into it's [`Definition`] if it can hold docs.
-pub(crate) fn doc_owner_to_def(
-    sema: &Semantics<RootDatabase>,
-    item: &SyntaxNode,
-) -> Option<Definition> {
-    let res: hir::ModuleDef = match_ast! {
-        match item {
-            ast::SourceFile(_it) => sema.scope(item).module()?.into(),
-            ast::Fn(it) => sema.to_def(&it)?.into(),
-            ast::Struct(it) => sema.to_def(&it)?.into(),
-            ast::Enum(it) => sema.to_def(&it)?.into(),
-            ast::Union(it) => sema.to_def(&it)?.into(),
-            ast::Trait(it) => sema.to_def(&it)?.into(),
-            ast::Const(it) => sema.to_def(&it)?.into(),
-            ast::Static(it) => sema.to_def(&it)?.into(),
-            ast::TypeAlias(it) => sema.to_def(&it)?.into(),
-            ast::Variant(it) => sema.to_def(&it)?.into(),
-            ast::Trait(it) => sema.to_def(&it)?.into(),
-            ast::Impl(it) => return sema.to_def(&it).map(Definition::SelfType),
-            ast::Macro(it) => return sema.to_def(&it).map(Definition::Macro),
-            ast::TupleField(it) => return sema.to_def(&it).map(Definition::Field),
-            ast::RecordField(it) => return sema.to_def(&it).map(Definition::Field),
-            _ => return None,
+    Parser::new_with_broken_link_callback(
+        markdown,
+        Options::empty(),
+        Some(&mut broken_link_clone_cb),
+    )
+    .into_offset_iter()
+    .filter_map(|(event, range)| {
+        if let Event::Start(Tag::Link(_, target, title)) = event {
+            let link = if target.is_empty() { title } else { target };
+            let (link, ns) = parse_intra_doc_link(&link);
+            Some((range, link.to_string(), ns))
+        } else {
+            None
         }
-    };
-    Some(Definition::ModuleDef(res))
+    })
+    .collect()
 }
 
 pub(crate) fn resolve_doc_path_for_def(
@@ -216,6 +158,33 @@ pub(crate) fn resolve_doc_path_for_def(
         | Definition::Local(_)
         | Definition::GenericParam(_)
         | Definition::Label(_) => None,
+    }
+}
+
+pub(crate) fn doc_attributes(
+    sema: &Semantics<RootDatabase>,
+    node: &SyntaxNode,
+) -> Option<(hir::AttrsWithOwner, Definition)> {
+    match_ast! {
+        match node {
+            ast::SourceFile(it)  => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Module(def)))),
+            ast::Module(it)      => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Module(def)))),
+            ast::Fn(it)          => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Function(def)))),
+            ast::Struct(it)      => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Struct(def))))),
+            ast::Union(it)       => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Union(def))))),
+            ast::Enum(it)        => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Enum(def))))),
+            ast::Variant(it)     => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Variant(def)))),
+            ast::Trait(it)       => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Trait(def)))),
+            ast::Static(it)      => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Static(def)))),
+            ast::Const(it)       => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Const(def)))),
+            ast::TypeAlias(it)   => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::TypeAlias(def)))),
+            ast::Impl(it)        => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::SelfType(def))),
+            ast::RecordField(it) => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::Field(def))),
+            ast::TupleField(it)  => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::Field(def))),
+            ast::Macro(it)       => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::Macro(def))),
+            // ast::Use(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
+            _ => return None
+        }
     }
 }
 

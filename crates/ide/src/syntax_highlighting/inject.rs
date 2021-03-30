@@ -3,15 +3,15 @@
 use std::mem;
 
 use either::Either;
-use hir::{HasAttrs, InFile, Semantics};
-use ide_db::{call_info::ActiveParameter, defs::Definition, SymbolKind};
+use hir::{InFile, Semantics};
+use ide_db::{call_info::ActiveParameter, SymbolKind};
 use syntax::{
     ast::{self, AstNode},
-    match_ast, AstToken, NodeOrToken, SyntaxNode, SyntaxToken, TextRange, TextSize,
+    AstToken, NodeOrToken, SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
 
 use crate::{
-    doc_links::{extract_definitions_from_markdown, resolve_doc_path_for_def},
+    doc_links::{doc_attributes, extract_definitions_from_markdown, resolve_doc_path_for_def},
     Analysis, HlMod, HlRange, HlTag, RootDatabase,
 };
 
@@ -89,33 +89,6 @@ const RUSTDOC_FENCE_TOKENS: &[&'static str] = &[
     "edition2018",
     "edition2021",
 ];
-
-fn doc_attributes<'node>(
-    sema: &Semantics<RootDatabase>,
-    node: &'node SyntaxNode,
-) -> Option<(hir::AttrsWithOwner, Definition)> {
-    match_ast! {
-        match node {
-            ast::SourceFile(it)  => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Module(def)))),
-            ast::Module(it)      => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Module(def)))),
-            ast::Fn(it)          => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Function(def)))),
-            ast::Struct(it)      => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Struct(def))))),
-            ast::Union(it)       => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Union(def))))),
-            ast::Enum(it)        => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Enum(def))))),
-            ast::Variant(it)     => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Variant(def)))),
-            ast::Trait(it)       => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Trait(def)))),
-            ast::Static(it)      => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Static(def)))),
-            ast::Const(it)       => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Const(def)))),
-            ast::TypeAlias(it)   => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::TypeAlias(def)))),
-            ast::Impl(it)        => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::SelfType(def))),
-            ast::RecordField(it) => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::Field(def))),
-            ast::TupleField(it)  => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::Field(def))),
-            ast::Macro(it)       => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::Macro(def))),
-            // ast::Use(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
-            _ => return None
-        }
-    }
-}
 
 /// Injection of syntax highlighting of doctests.
 pub(super) fn doc_comment(
