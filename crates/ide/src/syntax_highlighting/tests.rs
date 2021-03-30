@@ -659,6 +659,43 @@ fn foo() {
     );
 }
 
+#[test]
+fn test_highlight_trait_items() {
+    check_highlighting(
+        r#"
+struct Cat;
+
+trait Animal {
+    const SOUND: &'static str;
+
+    fn make_sound(&self) {
+        println!("{}", Self::SOUND);
+    }
+}
+
+impl Animal for Cat {
+    const SOUND: &'static str = "Meow!";
+}
+
+impl Cat {
+    const SPEED: u32 = 2;
+
+    fn run() {}
+}
+
+fn main() {
+    let cat = Cat;
+    cat.make_sound();
+    let _sound = Cat::SOUND;
+    let _speed = Cat::SPEED;
+    Cat::run();
+}
+"#,
+        expect_file!["./test_data/highlight_trait_items.html"],
+        false,
+    );
+}
+
 /// Highlights the code given by the `ra_fixture` argument, renders the
 /// result as HTML, and compares it with the HTML file given as `snapshot`.
 /// Note that the `snapshot` file is overwritten by the rendered HTML.
