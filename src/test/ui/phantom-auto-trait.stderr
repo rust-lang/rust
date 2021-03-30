@@ -7,9 +7,17 @@ LL | fn is_zen<T: Zen>(_: T) {}
 LL |     is_zen(x)
    |            ^ `T` cannot be shared between threads safely
    |
-   = note: required because of the requirements on the impl of `Zen` for `&T`
+note: required because of the requirements on the impl of `Zen` for `&T`
+  --> $DIR/phantom-auto-trait.rs:10:24
+   |
+LL | unsafe impl<'a, T: 'a> Zen for &'a T where T: Sync {}
+   |                        ^^^     ^^^^^
    = note: required because it appears within the type `PhantomData<&T>`
-   = note: required because it appears within the type `Guard<'_, T>`
+note: required because it appears within the type `Guard<'_, T>`
+  --> $DIR/phantom-auto-trait.rs:12:8
+   |
+LL | struct Guard<'a, T: 'a> {
+   |        ^^^^^
 help: consider restricting type parameter `T`
    |
 LL | fn not_sync<T: std::marker::Sync>(x: Guard<T>) {
@@ -24,10 +32,22 @@ LL | fn is_zen<T: Zen>(_: T) {}
 LL |     is_zen(x)
    |            ^ `T` cannot be shared between threads safely
    |
-   = note: required because of the requirements on the impl of `Zen` for `&T`
+note: required because of the requirements on the impl of `Zen` for `&T`
+  --> $DIR/phantom-auto-trait.rs:10:24
+   |
+LL | unsafe impl<'a, T: 'a> Zen for &'a T where T: Sync {}
+   |                        ^^^     ^^^^^
    = note: required because it appears within the type `PhantomData<&T>`
-   = note: required because it appears within the type `Guard<'_, T>`
-   = note: required because it appears within the type `Nested<Guard<'_, T>>`
+note: required because it appears within the type `Guard<'_, T>`
+  --> $DIR/phantom-auto-trait.rs:12:8
+   |
+LL | struct Guard<'a, T: 'a> {
+   |        ^^^^^
+note: required because it appears within the type `Nested<Guard<'_, T>>`
+  --> $DIR/phantom-auto-trait.rs:16:8
+   |
+LL | struct Nested<T>(T);
+   |        ^^^^^^
 help: consider restricting type parameter `T`
    |
 LL | fn nested_not_sync<T: std::marker::Sync>(x: Nested<Guard<T>>) {
