@@ -143,6 +143,7 @@ fn replace_nodes(first: &SyntaxNode, second: &SyntaxNode) -> TextEdit {
 
 fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
     return tokens.max_by_key(priority);
+
     fn priority(n: &SyntaxToken) -> usize {
         match n.kind() {
             SyntaxKind::IDENT | SyntaxKind::LIFETIME_IDENT => 2,
