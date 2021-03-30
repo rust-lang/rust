@@ -2424,7 +2424,7 @@ impl Path {
     /// use std::path::Path;
     /// use std::io::ErrorKind;
     /// use std::fs::metadata;
-    /// let exists = metadata(Path::new("does_not_exist.txt"))
+    /// let exists = fs::metadata(Path::new("does_not_exist.txt"))
     ///     .map(|_| true)
     ///     .or_else(|error| if error.kind() == ErrorKind::NotFound { Ok(false) } else { Err(error) } )
     ///     .expect("failed to check existence of a file");
