@@ -22,6 +22,94 @@
                 },
             },
             severity: Some(
+                Hint,
+            ),
+            code: Some(
+                String(
+                    "E0277",
+                ),
+            ),
+            code_description: Some(
+                CodeDescription {
+                    href: Url {
+                        scheme: "https",
+                        username: "",
+                        password: None,
+                        host: Some(
+                            Domain(
+                                "doc.rust-lang.org",
+                            ),
+                        ),
+                        port: None,
+                        path: "/error-index.html",
+                        query: None,
+                        fragment: Some(
+                            "E0277",
+                        ),
+                    },
+                },
+            ),
+            source: Some(
+                "rustc",
+            ),
+            message: "can\'t compare `{integer}` with `&str`\nthe trait `std::cmp::PartialEq<&str>` is not implemented for `{integer}`",
+            related_information: Some(
+                [
+                    DiagnosticRelatedInformation {
+                        location: Location {
+                            uri: Url {
+                                scheme: "file",
+                                username: "",
+                                password: None,
+                                host: None,
+                                port: None,
+                                path: "/test/%3C::core::macros::assert_eq%20macros%3E",
+                                query: None,
+                                fragment: None,
+                            },
+                            range: Range {
+                                start: Position {
+                                    line: 6,
+                                    character: 30,
+                                },
+                                end: Position {
+                                    line: 6,
+                                    character: 32,
+                                },
+                            },
+                        },
+                        message: "Exact error occurred here",
+                    },
+                ],
+            ),
+            tags: None,
+            data: None,
+        },
+        fixes: [],
+    },
+    MappedRustDiagnostic {
+        url: Url {
+            scheme: "file",
+            username: "",
+            password: None,
+            host: None,
+            port: None,
+            path: "/test/%3C::core::macros::assert_eq%20macros%3E",
+            query: None,
+            fragment: None,
+        },
+        diagnostic: Diagnostic {
+            range: Range {
+                start: Position {
+                    line: 6,
+                    character: 30,
+                },
+                end: Position {
+                    line: 6,
+                    character: 32,
+                },
+            },
+            severity: Some(
                 Error,
             ),
             code: Some(
@@ -53,7 +141,35 @@
                 "rustc",
             ),
             message: "can\'t compare `{integer}` with `&str`\nthe trait `std::cmp::PartialEq<&str>` is not implemented for `{integer}`",
-            related_information: None,
+            related_information: Some(
+                [
+                    DiagnosticRelatedInformation {
+                        location: Location {
+                            uri: Url {
+                                scheme: "file",
+                                username: "",
+                                password: None,
+                                host: None,
+                                port: None,
+                                path: "/test/src/main.rs",
+                                query: None,
+                                fragment: None,
+                            },
+                            range: Range {
+                                start: Position {
+                                    line: 1,
+                                    character: 4,
+                                },
+                                end: Position {
+                                    line: 1,
+                                    character: 26,
+                                },
+                            },
+                        },
+                        message: "Error originated from macro call here",
+                    },
+                ],
+            ),
             tags: None,
             data: None,
         },
