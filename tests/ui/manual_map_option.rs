@@ -7,6 +7,7 @@
     clippy::map_identity,
     clippy::unit_arg,
     clippy::match_ref_pats,
+    clippy::redundant_pattern_matching,
     dead_code
 )]
 
@@ -189,6 +190,14 @@ fn main() {
 
     // #6847
     if let Some(_) = Some(0) {
+        Some(0)
+    } else if let Some(x) = Some(0) {
+        Some(x + 1)
+    } else {
+        None
+    };
+
+    if true {
         Some(0)
     } else if let Some(x) = Some(0) {
         Some(x + 1)
