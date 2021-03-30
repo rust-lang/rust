@@ -1,8 +1,7 @@
 //! Various batch processing tasks, intended primarily for debugging.
 
-mod load_cargo;
+pub(crate) mod load_cargo;
 mod analysis_stats;
-mod analysis_bench;
 mod diagnostics;
 mod progress_report;
 mod ssr;
@@ -15,7 +14,6 @@ use syntax::{AstNode, SourceFile};
 use vfs::Vfs;
 
 pub use self::{
-    analysis_bench::{BenchCmd, BenchWhat, Position},
     analysis_stats::AnalysisStatsCmd,
     diagnostics::diagnostics,
     load_cargo::{load_workspace, load_workspace_at, LoadCargoConfig},

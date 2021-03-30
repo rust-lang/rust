@@ -1,10 +1,9 @@
 //! Grammar for the command-line arguments.
 #![allow(unreachable_pub)]
-use std::{env, path::PathBuf};
+use std::path::PathBuf;
 
 use ide_ssr::{SsrPattern, SsrRule};
-use rust_analyzer::cli::{BenchWhat, Position, Verbosity};
-use vfs::AbsPathBuf;
+use rust_analyzer::cli::Verbosity;
 
 xflags::xflags! {
     src "./src/bin/flags.rs"
@@ -74,27 +73,6 @@ xflags::xflags! {
             optional --with-proc-macro
         }
 
-        /// Benchmark specific analysis operation
-        cmd analysis-bench
-            /// Directory with Cargo.toml.
-            required path: PathBuf
-        {
-            /// Collect memory usage statistics.
-            optional --memory-usage
-
-            /// Compute syntax highlighting for this file
-            optional --highlight path: PathBuf
-            /// Compute completions at file:line:column location.
-            optional --complete location: Position
-            /// Compute goto definition at file:line:column location.
-            optional --goto-def location: Position
-
-            /// Load OUT_DIR values by running `cargo check` before analysis.
-            optional --load-output-dirs
-            /// Use proc-macro-srv for proc-macro expanding.
-            optional --with-proc-macro
-        }
-
         cmd diagnostics
             /// Directory with Cargo.toml.
             required path: PathBuf
@@ -142,7 +120,6 @@ pub enum RustAnalyzerCmd {
     Symbols(Symbols),
     Highlight(Highlight),
     AnalysisStats(AnalysisStats),
-    AnalysisBench(AnalysisBench),
     Diagnostics(Diagnostics),
     Ssr(Ssr),
     Search(Search),
@@ -179,18 +156,6 @@ pub struct AnalysisStats {
     pub only: Option<String>,
     pub with_deps: bool,
     pub no_sysroot: bool,
-    pub load_output_dirs: bool,
-    pub with_proc_macro: bool,
-}
-
-#[derive(Debug)]
-pub struct AnalysisBench {
-    pub path: PathBuf,
-
-    pub memory_usage: bool,
-    pub highlight: Option<PathBuf>,
-    pub complete: Option<Position>,
-    pub goto_def: Option<Position>,
     pub load_output_dirs: bool,
     pub with_proc_macro: bool,
 }
@@ -236,20 +201,6 @@ impl RustAnalyzer {
             0 => Verbosity::Normal,
             1 => Verbosity::Verbose,
             _ => Verbosity::Spammy,
-        }
-    }
-}
-
-impl AnalysisBench {
-    pub(crate) fn what(&self) -> BenchWhat {
-        match (&self.highlight, &self.complete, &self.goto_def) {
-            (Some(path), None, None) => {
-                let path = env::current_dir().unwrap().join(path);
-                BenchWhat::Highlight { path: AbsPathBuf::assert(path) }
-            }
-            (None, Some(position), None) => BenchWhat::Complete(position.clone()),
-            (None, None, Some(position)) => BenchWhat::GotoDef(position.clone()),
-            _ => panic!("exactly one of  `--highlight`, `--complete` or `--goto-def` must be set"),
         }
     }
 }

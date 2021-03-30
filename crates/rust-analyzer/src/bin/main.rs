@@ -9,7 +9,7 @@ use std::{convert::TryFrom, env, fs, path::Path, process};
 use lsp_server::Connection;
 use project_model::ProjectManifest;
 use rust_analyzer::{
-    cli::{self, AnalysisStatsCmd, BenchCmd},
+    cli::{self, AnalysisStatsCmd},
     config::Config,
     from_json,
     lsp_ext::supports_utf8,
@@ -80,17 +80,6 @@ fn try_main() -> Result<()> {
             with_proc_macro: cmd.with_proc_macro,
         }
         .run(verbosity)?,
-        flags::RustAnalyzerCmd::AnalysisBench(cmd) => {
-            let what = cmd.what();
-            BenchCmd {
-                memory_usage: cmd.memory_usage,
-                path: cmd.path,
-                load_output_dirs: cmd.load_output_dirs,
-                with_proc_macro: cmd.with_proc_macro,
-                what,
-            }
-            .run(verbosity)?
-        }
 
         flags::RustAnalyzerCmd::Diagnostics(cmd) => {
             cli::diagnostics(&cmd.path, cmd.load_output_dirs, cmd.with_proc_macro)?

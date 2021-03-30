@@ -39,6 +39,9 @@ mod op_queue;
 pub mod lsp_ext;
 pub mod config;
 
+#[cfg(test)]
+mod benchmarks;
+
 use serde::de::DeserializeOwned;
 use std::fmt;
 
