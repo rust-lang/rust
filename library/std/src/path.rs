@@ -2386,7 +2386,8 @@ impl Path {
         fs::read_dir(self)
     }
 
-    /// Returns `true` if the path points at an existing entity and syscall succeeds.
+    /// Returns `true` if the path points at an existing entity. False if it doesn't
+    /// **or** we can't tell.
     ///
     /// This function will traverse symbolic links to query information about the
     /// destination file. In case of broken symbolic links this will return `false`.
@@ -2423,11 +2424,13 @@ impl Path {
     /// ```no_run
     /// use std::path::Path;
     /// use std::io::ErrorKind;
-    /// use std::fs::metadata;
-    /// let exists = fs::metadata(Path::new("does_not_exist.txt"))
-    ///     .map(|_| true)
-    ///     .or_else(|error| if error.kind() == ErrorKind::NotFound { Ok(false) } else { Err(error) } )
-    ///     .expect("failed to check existence of a file");
+    /// use std::fs;
+    /// let exists = match fs::metadata(Path::new("does_not_exist.txt")) {
+    ///     Ok(_) => true,
+    ///     Err(err) if err.kind() == ErrorKind::NotFound => false,
+    ///     Err(err) => return Err(err),
+    /// };
+    ///
     /// assert!(!exists);
     /// ```
     #[stable(feature = "path_ext", since = "1.5.0")]
