@@ -2422,9 +2422,9 @@ impl Path {
     ///
     /// An example of proper error handling.
     /// ```no_run
-    /// use std::path::Path;
-    /// use std::io::{ self, ErrorKind};
     /// use std::fs;
+    /// use std::io::{self, ErrorKind};
+    /// use std::path::Path;
     ///
     /// fn main() -> io::Result<()> {
     ///     let exists = match fs::metadata(Path::new("does_not_exist.txt")) {
