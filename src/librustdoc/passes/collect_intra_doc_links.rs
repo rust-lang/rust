@@ -950,6 +950,7 @@ impl LinkCollector<'_, '_> {
         }
 
         let link = ori_link.link.replace("`", "");
+        let no_backticks_range = range_between_backticks(&ori_link);
         let parts = link.split('#').collect::<Vec<_>>();
         let (link, extra_fragment) = if parts.len() > 2 {
             // A valid link can't have multiple #'s
@@ -973,10 +974,15 @@ impl LinkCollector<'_, '_> {
         };
 
         // Parse and strip the disambiguator from the link, if present.
-        let (mut path_str, disambiguator) = if let Ok((d, path)) = Disambiguator::from_str(&link) {
-            (path.trim(), Some(d))
-        } else {
-            (link.trim(), None)
+        let (mut path_str, disambiguator) = match Disambiguator::from_str(&link) {
+            Ok(Some((d, path))) => (path.trim(), Some(d)),
+            Ok(None) => (link.trim(), None),
+            Err((err_msg, relative_range)) => {
+                let disambiguator_range = (no_backticks_range.start + relative_range.start)
+                    ..(no_backticks_range.start + relative_range.end);
+                disambiguator_error(self.cx, &item, dox, disambiguator_range, &err_msg);
+                return None;
+            }
         };
 
         if path_str.contains(|ch: char| !(ch.is_alphanumeric() || ":_<>, !*&;".contains(ch))) {
@@ -1488,6 +1494,27 @@ impl LinkCollector<'_, '_> {
     }
 }
 
+/// Get the section of a link between the backticks,
+/// or the whole link if there aren't any backticks.
+///
+/// For example:
+///
+/// ```text
+/// [`Foo`]
+///   ^^^
+/// ```
+fn range_between_backticks(ori_link: &MarkdownLink) -> Range<usize> {
+    let after_first_backtick_group = ori_link.link.bytes().position(|b| b != b'`').unwrap_or(0);
+    let before_second_backtick_group = ori_link
+        .link
+        .bytes()
+        .skip(after_first_backtick_group)
+        .position(|b| b == b'`')
+        .unwrap_or(ori_link.link.len());
+    (ori_link.range.start + after_first_backtick_group)
+        ..(ori_link.range.start + before_second_backtick_group)
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 /// Disambiguators for a link.
 enum Disambiguator {
@@ -1514,26 +1541,13 @@ impl Disambiguator {
         }
     }
 
-    /// Given a link, parse and return `(disambiguator, path_str)`
-    fn from_str(link: &str) -> Result<(Self, &str), ()> {
+    /// Given a link, parse and return `(disambiguator, path_str)`.
+    ///
+    /// This returns `Ok(Some(...))` if a disambiguator was found,
+    /// `Ok(None)` if no disambiguator was found, or `Err(...)`
+    /// if there was a problem with the disambiguator.
+    fn from_str(link: &str) -> Result<Option<(Self, &str)>, (String, Range<usize>)> {
         use Disambiguator::{Kind, Namespace as NS, Primitive};
-
-        let find_suffix = || {
-            let suffixes = [
-                ("!()", DefKind::Macro(MacroKind::Bang)),
-                ("()", DefKind::Fn),
-                ("!", DefKind::Macro(MacroKind::Bang)),
-            ];
-            for &(suffix, kind) in &suffixes {
-                if let Some(link) = link.strip_suffix(suffix) {
-                    // Avoid turning `!` or `()` into an empty string
-                    if !link.is_empty() {
-                        return Ok((Kind(kind), link));
-                    }
-                }
-            }
-            Err(())
-        };
 
         if let Some(idx) = link.find('@') {
             let (prefix, rest) = link.split_at(idx);
@@ -1551,11 +1565,24 @@ impl Disambiguator {
                 "value" => NS(Namespace::ValueNS),
                 "macro" => NS(Namespace::MacroNS),
                 "prim" | "primitive" => Primitive,
-                _ => return find_suffix(),
+                _ => return Err((format!("unknown disambiguator `{}`", prefix), 0..idx)),
             };
-            Ok((d, &rest[1..]))
+            Ok(Some((d, &rest[1..])))
         } else {
-            find_suffix()
+            let suffixes = [
+                ("!()", DefKind::Macro(MacroKind::Bang)),
+                ("()", DefKind::Fn),
+                ("!", DefKind::Macro(MacroKind::Bang)),
+            ];
+            for &(suffix, kind) in &suffixes {
+                if let Some(link) = link.strip_suffix(suffix) {
+                    // Avoid turning `!` or `()` into an empty string
+                    if !link.is_empty() {
+                        return Ok(Some((Kind(kind), link)));
+                    }
+                }
+            }
+            Ok(None)
         }
     }
 
@@ -1977,6 +2004,17 @@ fn anchor_failure(
             diag.span_label(sp, "contains invalid anchor");
         }
     });
+}
+
+/// Report an error in the link disambiguator.
+fn disambiguator_error(
+    cx: &DocContext<'_>,
+    item: &Item,
+    dox: &str,
+    link_range: Range<usize>,
+    msg: &str,
+) {
+    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, msg, item, dox, &link_range, |_diag, _sp| {});
 }
 
 /// Report an ambiguity error, where there were multiple possible resolutions.

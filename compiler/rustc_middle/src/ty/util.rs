@@ -699,7 +699,6 @@ impl<'tcx> ty::TyS<'tcx> {
     /// optimization as well as the rules around static values. Note
     /// that the `Freeze` trait is not exposed to end users and is
     /// effectively an implementation detail.
-    // FIXME: use `TyCtxtAt` instead of separate `Span`.
     pub fn is_freeze(&'tcx self, tcx_at: TyCtxtAt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
         self.is_trivially_freeze() || tcx_at.is_freeze_raw(param_env.and(self))
     }

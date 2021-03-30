@@ -1,51 +1,51 @@
 error[E0308]: mismatched types
-  --> $DIR/mismatch.rs:11:26
+  --> $DIR/mismatch.rs:11:28
    |
-LL |   let e: Example::<13> = ();
-   |          -------------   ^^ expected struct `Example`, found `()`
-   |          |
-   |          expected due to this
+LL |     let e: Example::<13> = ();
+   |            -------------   ^^ expected struct `Example`, found `()`
+   |            |
+   |            expected due to this
 
 error[E0308]: mismatched types
-  --> $DIR/mismatch.rs:13:32
+  --> $DIR/mismatch.rs:13:34
    |
-LL |   let e: Example2::<u32, 13> = ();
-   |          -------------------   ^^ expected struct `Example2`, found `()`
-   |          |
-   |          expected due to this
+LL |     let e: Example2::<u32, 13> = ();
+   |            -------------------   ^^ expected struct `Example2`, found `()`
+   |            |
+   |            expected due to this
    |
    = note: expected struct `Example2`
            found unit type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/mismatch.rs:15:32
+  --> $DIR/mismatch.rs:15:34
    |
-LL |   let e: Example3::<13, u32> = ();
-   |          -------------------   ^^ expected struct `Example3`, found `()`
-   |          |
-   |          expected due to this
+LL |     let e: Example3::<13, u32> = ();
+   |            -------------------   ^^ expected struct `Example3`, found `()`
+   |            |
+   |            expected due to this
    |
    = note: expected struct `Example3`
            found unit type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/mismatch.rs:17:26
+  --> $DIR/mismatch.rs:17:28
    |
-LL |   let e: Example3::<7> = ();
-   |          -------------   ^^ expected struct `Example3`, found `()`
-   |          |
-   |          expected due to this
+LL |     let e: Example3::<7> = ();
+   |            -------------   ^^ expected struct `Example3`, found `()`
+   |            |
+   |            expected due to this
    |
    = note: expected struct `Example3<7_usize>`
            found unit type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/mismatch.rs:21:26
+  --> $DIR/mismatch.rs:21:28
    |
-LL |   let e: Example4::<7> = ();
-   |          -------------   ^^ expected struct `Example4`, found `()`
-   |          |
-   |          expected due to this
+LL |     let e: Example4::<7> = ();
+   |            -------------   ^^ expected struct `Example4`, found `()`
+   |            |
+   |            expected due to this
 
 error: aborting due to 5 previous errors
 

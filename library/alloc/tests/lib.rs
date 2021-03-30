@@ -14,6 +14,7 @@
 #![feature(binary_heap_drain_sorted)]
 #![feature(slice_ptr_get)]
 #![feature(binary_heap_retain)]
+#![feature(binary_heap_as_slice)]
 #![feature(inplace_iteration)]
 #![feature(iter_map_while)]
 #![feature(vecdeque_binary_search)]
