@@ -539,7 +539,7 @@ impl Matrix {
         if let Some(Pat::Or(pat_ids)) = row.get_head().map(|pat_id| pat_id.as_pat(cx)) {
             // Or patterns are expanded here
             for pat_id in pat_ids {
-                self.0.push(PatStack::from_pattern(pat_id));
+                self.0.push(row.replace_head_with([pat_id].iter()));
             }
         } else {
             self.0.push(row);
@@ -1085,6 +1085,20 @@ fn main() {
     }
 
     #[test]
+    fn or_pattern_no_diagnostic() {
+        check_diagnostics(
+            r#"
+enum Either {A, B}
+
+fn main() {
+    match (Either::A, Either::B) {
+        (Either::A | Either::B, _) => (),
+    }
+}"#,
+        )
+    }
+
+    #[test]
     fn mismatched_types() {
         // Match statements with arms that don't match the
         // expression pattern do not fire this diagnostic.
@@ -1330,30 +1344,6 @@ fn enum_ref(never: &Never) {
 }
 fn bang(never: !) {
     match never {}
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn or_pattern_panic() {
-        check_diagnostics(
-            r#"
-pub enum Category { Infinity, Zero }
-
-fn panic(a: Category, b: Category) {
-    match (a, b) {
-        (Category::Zero | Category::Infinity, _) => (),
-        (_, Category::Zero | Category::Infinity) => (),
-    }
-
-    // FIXME: This is a false positive, but the code used to cause a panic in the match checker,
-    // so this acts as a regression test for that.
-    match (a, b) {
-        //^^^^^^ Missing match arm
-        (Category::Infinity, Category::Infinity) | (Category::Zero, Category::Zero) => (),
-        (Category::Infinity | Category::Zero, _) => (),
-    }
 }
 "#,
         );
