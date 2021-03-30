@@ -14,26 +14,31 @@ extern "C" {
     fn ProfilerStop();
 }
 
-static PROFILER_STATE: AtomicUsize = AtomicUsize::new(OFF);
 const OFF: usize = 0;
 const ON: usize = 1;
 const PENDING: usize = 2;
 
-pub fn start(path: &Path) {
-    if PROFILER_STATE.compare_and_swap(OFF, PENDING, Ordering::SeqCst) != OFF {
+fn transition(current: usize, new: usize) -> bool {
+    static STATE: AtomicUsize = AtomicUsize::new(OFF);
+
+    STATE.compare_exchange(current, new, Ordering::SeqCst, Ordering::SeqCst).is_ok()
+}
+
+pub(crate) fn start(path: &Path) {
+    if !transition(OFF, PENDING) {
         panic!("profiler already started");
     }
     let path = CString::new(path.display().to_string()).unwrap();
     if unsafe { ProfilerStart(path.as_ptr()) } == 0 {
         panic!("profiler failed to start")
     }
-    assert!(PROFILER_STATE.compare_and_swap(PENDING, ON, Ordering::SeqCst) == PENDING);
+    assert!(transition(PENDING, ON));
 }
 
-pub fn stop() {
-    if PROFILER_STATE.compare_and_swap(ON, PENDING, Ordering::SeqCst) != ON {
+pub(crate) fn stop() {
+    if !transition(ON, PENDING) {
         panic!("profiler is not started")
     }
     unsafe { ProfilerStop() };
-    assert!(PROFILER_STATE.compare_and_swap(PENDING, OFF, Ordering::SeqCst) == PENDING);
+    assert!(transition(PENDING, OFF));
 }

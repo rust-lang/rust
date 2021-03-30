@@ -51,6 +51,7 @@ fn benchmark_integrated_highlighting() {
     }
 
     profile::init_from("*>100");
+    // let _s = profile::heartbeat_span();
 
     {
         let _it = stdx::timeit("change");
@@ -63,6 +64,7 @@ fn benchmark_integrated_highlighting() {
 
     {
         let _it = stdx::timeit("after change");
+        let _span = profile::cpu_span();
         let analysis = host.analysis();
         analysis.highlight_as_html(file_id, false).unwrap();
     }
