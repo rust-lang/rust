@@ -10,8 +10,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, LOCAL_CRATE};
-use rustc_hir::definitions::DefPathHash;
-use rustc_hir::definitions::Definitions;
+use rustc_hir::definitions::{DefPathHash, DefPathTable};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_query_system::dep_graph::DepContext;
 use rustc_query_system::query::QueryContext;
@@ -167,22 +166,13 @@ crate struct RawDefId {
     pub index: u32,
 }
 
-fn make_local_def_path_hash_map(definitions: &Definitions) -> UnhashMap<DefPathHash, LocalDefId> {
-    UnhashMap::from_iter(
-        definitions
-            .def_path_table()
-            .all_def_path_hashes_and_def_ids(LOCAL_CRATE)
-            .map(|(hash, def_id)| (hash, def_id.as_local().unwrap())),
-    )
-}
-
 impl<'sess> OnDiskCache<'sess> {
     /// Creates a new `OnDiskCache` instance from the serialized data in `data`.
     pub fn new(
         sess: &'sess Session,
         data: Vec<u8>,
         start_pos: usize,
-        definitions: &Definitions,
+        def_path_table: &DefPathTable,
     ) -> Self {
         debug_assert!(sess.opts.incremental.is_some());
 
@@ -220,7 +210,11 @@ impl<'sess> OnDiskCache<'sess> {
             hygiene_context: Default::default(),
             foreign_def_path_hashes: footer.foreign_def_path_hashes,
             latest_foreign_def_path_hashes: Default::default(),
-            local_def_path_hash_to_def_id: make_local_def_path_hash_map(definitions),
+            local_def_path_hash_to_def_id: UnhashMap::from_iter(
+                def_path_table
+                    .all_def_path_hashes_and_def_ids(LOCAL_CRATE)
+                    .map(|(hash, def_id)| (hash, def_id.as_local().unwrap())),
+            ),
             def_path_hash_to_def_id_cache: Default::default(),
         }
     }
