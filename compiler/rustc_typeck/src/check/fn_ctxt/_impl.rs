@@ -905,12 +905,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Resolves an associated value path into a base type and associated constant, or method
     /// resolution. The newly resolved definition is written into `type_dependent_defs`.
-    pub fn resolve_ty_and_res_ufcs<'b>(
+    pub fn resolve_ty_and_res_ufcs(
         &self,
-        qpath: &'b QPath<'b>,
+        qpath: &'tcx QPath<'tcx>,
         hir_id: hir::HirId,
         span: Span,
-    ) -> (Res, Option<Ty<'tcx>>, &'b [hir::PathSegment<'b>]) {
+    ) -> (Res, Option<Ty<'tcx>>, &'tcx [hir::PathSegment<'tcx>]) {
         debug!("resolve_ty_and_res_ufcs: qpath={:?} hir_id={:?} span={:?}", qpath, hir_id, span);
         let (ty, qself, item_segment) = match *qpath {
             QPath::Resolved(ref opt_qself, ref path) => {

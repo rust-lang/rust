@@ -861,7 +861,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_pat_tuple_struct(
         &self,
         pat: &'tcx Pat<'tcx>,
-        qpath: &hir::QPath<'_>,
+        qpath: &'tcx hir::QPath<'tcx>,
         subpats: &'tcx [&'tcx Pat<'tcx>],
         ddpos: Option<usize>,
         expected: Ty<'tcx>,
