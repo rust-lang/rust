@@ -2959,6 +2959,7 @@ declare_lint_pass! {
         DISJOINT_CAPTURE_DROP_REORDER,
         LEGACY_DERIVE_HELPERS,
         PROC_MACRO_BACK_COMPAT,
+        DEPRECATED_CRATE_INFO_ATTRS,
     ]
 }
 
@@ -3130,6 +3131,53 @@ declare_lint! {
     "detects usage of old versions of certain proc-macro crates",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #83125 <https://github.com/rust-lang/rust/issues/83125>",
+        edition: None,
+        future_breakage: Some(FutureBreakage {
+            date: None
+        })
+    };
+}
+
+declare_lint! {
+    /// The `deprecated_crate_info_attrs` lint detects uses of the `#![crate_type]`
+    /// and `#![crate_name]` attributes to specify the crate type and name in the
+    /// source code.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #![crate_type = "lib"]
+    /// ```
+    ///
+    /// This will produce:
+    ///
+    /// ```text
+    /// warning: using deprecated `#![crate_type]` attribute
+    ///   ::: $DIR/group-compat-hack.rs:1:5
+    ///    |
+    /// LL |     #![crate_type = "lib"]
+    ///    |     ^^^^^^^^^^^^^^^^^^^^^^
+    ///    |
+    ///    = note: `#[warn(deprecated_crate_info_attrs)]` on by default
+    ///    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    ///    = note: for more information, see issue #XXXXX <https://github.com/rust-lang/rust/issues/XXXXX>
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// The `#![crate_type]` and `#![crate_name]` attributes require a hack in the
+    /// compiler to be able to change the used crate type and crate name after the
+    /// program has been parsed. Neither attribute works in combination with Cargo
+    /// as it explicitly passes `--crate-type` and `--crate-name` on the commandline,
+    /// which must match to the value used in the source code.
+    ///
+    /// To fix the warning use `--crate-type` on the commandline when running rustc
+    /// instead of `#![crate_type]` and `--crate-name` instead of `#![crate_name]`.
+    pub DEPRECATED_CRATE_INFO_ATTRS,
+    Warn,
+    "detects deprecated usage of #![crate_type] and #![crate_name]",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #XXXXX <https://github.com/rust-lang/rust/issues/XXXXX>", // FIXME
         edition: None,
         future_breakage: Some(FutureBreakage {
             date: None

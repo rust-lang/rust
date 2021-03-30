@@ -2961,3 +2961,23 @@ impl<'tcx> LateLintPass<'tcx> for ClashingExternDeclarations {
         }
     }
 }
+
+pub(crate) struct DeprecatedCrateInfoAttrs;
+
+impl_lint_pass!(DeprecatedCrateInfoAttrs => [DEPRECATED_CRATE_INFO_ATTRS]);
+
+impl EarlyLintPass for DeprecatedCrateInfoAttrs {
+    fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &ast::Crate) {
+        for attr in &krate.attrs {
+            if attr.has_name(sym::crate_type) {
+                cx.struct_span_lint(DEPRECATED_CRATE_INFO_ATTRS, attr.span, |lint| {
+                    lint.build("using deprecated `#![crate_type]` attribute").emit();
+                })
+            } else if attr.has_name(sym::crate_name) {
+                cx.struct_span_lint(DEPRECATED_CRATE_INFO_ATTRS, attr.span, |lint| {
+                    lint.build("using deprecated `#![crate_name]` attribute").emit();
+                })
+            }
+        }
+    }
+}

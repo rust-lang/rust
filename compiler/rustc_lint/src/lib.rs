@@ -132,6 +132,7 @@ macro_rules! early_lint_passes {
                 IncompleteFeatures: IncompleteFeatures,
                 RedundantSemicolons: RedundantSemicolons,
                 UnusedDocComment: UnusedDocComment,
+                DeprecatedCrateInfoAttrs: DeprecatedCrateInfoAttrs,
             ]
         );
     };
