@@ -547,15 +547,18 @@ mod fn_keyword {}
 /// # fn code() { }
 /// # let iterator = 0..2;
 /// {
-///     let mut _iter = std::iter::IntoIterator::into_iter(iterator);
-///     loop {
-///         match _iter.next() {
-///             Some(loop_variable) => {
-///                 code()
-///             },
-///             None => break,
-///         }
-///     }
+///     let result = match IntoIterator::into_iter(iterator) {
+///         mut iter => loop {
+///             let next;
+///             match iter.next() {
+///                 Some(val) => next = val,
+///                 None => break,
+///             };
+///             let loop_variable = next;
+///             let () = { code(); };
+///         },
+///     };
+///     result
 /// }
 /// ```
 ///
@@ -1310,7 +1313,11 @@ mod return_keyword {}
 /// [Reference]: ../reference/items/associated-items.html#methods
 mod self_keyword {}
 
-#[doc(keyword = "Self")]
+// FIXME: Once rustdoc can handle URL conflicts on case insensitive file systems, we can remove the
+// three next lines and put back: `#[doc(keyword = "Self")]`.
+#[doc(alias = "Self")]
+#[allow(rustc::existing_doc_keyword)]
+#[doc(keyword = "SelfTy")]
 //
 /// The implementing type within a [`trait`] or [`impl`] block, or the current type within a type
 /// definition.
