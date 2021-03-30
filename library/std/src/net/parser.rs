@@ -67,6 +67,11 @@ impl<'a> Parser<'a> {
         if self.state.is_empty() { result } else { None }.ok_or(AddrParseError(()))
     }
 
+    /// Peek the next character from the input
+    fn peek_char(&self) -> Option<char> {
+        self.state.first().map(|&b| char::from(b))
+    }
+
     /// Read the next character from the input
     fn read_char(&mut self) -> Option<char> {
         self.state.split_first().map(|(&b, tail)| {
@@ -132,7 +137,14 @@ impl<'a> Parser<'a> {
             let mut groups = [0; 4];
 
             for (i, slot) in groups.iter_mut().enumerate() {
-                *slot = p.read_separator('.', i, |p| p.read_number(10, None))?;
+                *slot = p.read_separator('.', i, |p| {
+                    // Disallow octal number in IP string.
+                    // https://tools.ietf.org/html/rfc6943#section-3.1.1
+                    match (p.peek_char(), p.read_number(10, None)) {
+                        (Some('0'), Some(number)) if number != 0 => None,
+                        (_, number) => number,
+                    }
+                })?;
             }
 
             Some(groups.into())
