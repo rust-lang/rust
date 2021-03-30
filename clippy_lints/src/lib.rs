@@ -550,6 +550,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         #[cfg(feature = "internal-lints")]
         &utils::internal_lints::DEFAULT_LINT,
         #[cfg(feature = "internal-lints")]
+        &utils::internal_lints::IF_CHAIN_STYLE,
+        #[cfg(feature = "internal-lints")]
         &utils::internal_lints::INTERNING_DEFINED_SYMBOL,
         #[cfg(feature = "internal-lints")]
         &utils::internal_lints::INVALID_PATHS,
@@ -1026,6 +1028,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         store.register_late_pass(|| box utils::inspector::DeepCodeInspector);
         store.register_late_pass(|| box utils::internal_lints::CollapsibleCalls);
         store.register_late_pass(|| box utils::internal_lints::CompilerLintFunctions::new());
+        store.register_late_pass(|| box utils::internal_lints::IfChainStyle);
         store.register_late_pass(|| box utils::internal_lints::InvalidPaths);
         store.register_late_pass(|| box utils::internal_lints::InterningDefinedSymbol::default());
         store.register_late_pass(|| box utils::internal_lints::LintWithoutLintPass::default());
@@ -1442,6 +1445,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&utils::internal_lints::COLLAPSIBLE_SPAN_LINT_CALLS),
         LintId::of(&utils::internal_lints::COMPILER_LINT_FUNCTIONS),
         LintId::of(&utils::internal_lints::DEFAULT_LINT),
+        LintId::of(&utils::internal_lints::IF_CHAIN_STYLE),
         LintId::of(&utils::internal_lints::INTERNING_DEFINED_SYMBOL),
         LintId::of(&utils::internal_lints::INVALID_PATHS),
         LintId::of(&utils::internal_lints::LINT_WITHOUT_LINT_PASS),
