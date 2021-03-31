@@ -13,13 +13,13 @@ use clippy_utils::{
 use clippy_utils::{paths, search_same, SpanlessEq, SpanlessHash};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::{
     self as hir, Arm, BindingAnnotation, Block, BorrowKind, Expr, ExprKind, Guard, HirId, Local, MatchSource,
     Mutability, Node, Pat, PatKind, PathSegment, QPath, RangeEnd, TyKind,
 };
+use rustc_hir::{HirIdMap, HirIdSet};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty, TyS, VariantDef};
@@ -1978,7 +1978,7 @@ fn lint_match_arms<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) {
             let min_index = usize::min(lindex, rindex);
             let max_index = usize::max(lindex, rindex);
 
-            let mut local_map: FxHashMap<HirId, HirId> = FxHashMap::default();
+            let mut local_map: HirIdMap<HirId> = HirIdMap::default();
             let eq_fallback = |a: &Expr<'_>, b: &Expr<'_>| {
                 if_chain! {
                     if let Some(a_id) = path_to_local(a);
@@ -2062,7 +2062,7 @@ fn pat_contains_local(pat: &Pat<'_>, id: HirId) -> bool {
 }
 
 /// Returns true if all the bindings in the `Pat` are in `ids` and vice versa
-fn bindings_eq(pat: &Pat<'_>, mut ids: FxHashSet<HirId>) -> bool {
+fn bindings_eq(pat: &Pat<'_>, mut ids: HirIdSet) -> bool {
     let mut result = true;
     pat.each_binding_or_first(&mut |_, id, _, _| result &= ids.remove(&id));
     result && ids.is_empty()
