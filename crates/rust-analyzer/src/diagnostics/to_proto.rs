@@ -35,7 +35,7 @@ fn diagnostic_severity(
 }
 
 /// Converts a Rust span to a LSP location
-fn convert_location(workspace_root: &Path, span: &DiagnosticSpan) -> lsp_types::Location {
+fn location(workspace_root: &Path, span: &DiagnosticSpan) -> lsp_types::Location {
     let file_name = workspace_root.join(&span.file_name);
     let uri = url_from_abs_path(&file_name);
 
@@ -56,7 +56,7 @@ fn diagnostic_related_information(
     span: &DiagnosticSpan,
 ) -> Option<lsp_types::DiagnosticRelatedInformation> {
     let message = span.label.clone()?;
-    let location = convert_location(workspace_root, span);
+    let location = location(workspace_root, span);
     Some(lsp_types::DiagnosticRelatedInformation { location, message })
 }
 
@@ -84,7 +84,7 @@ fn map_rust_child_diagnostic(
     let mut edit_map: HashMap<lsp_types::Url, Vec<lsp_types::TextEdit>> = HashMap::new();
     for &span in &spans {
         if let Some(suggested_replacement) = &span.suggested_replacement {
-            let location = convert_location(workspace_root, span);
+            let location = location(workspace_root, span);
             let edit = lsp_types::TextEdit::new(location.range, suggested_replacement.clone());
             edit_map.entry(location.uri).or_default().push(edit);
         }
@@ -93,7 +93,7 @@ fn map_rust_child_diagnostic(
     if edit_map.is_empty() {
         MappedRustChildDiagnostic::SubDiagnostic(SubDiagnostic {
             related: lsp_types::DiagnosticRelatedInformation {
-                location: convert_location(workspace_root, spans[0]),
+                location: location(workspace_root, spans[0]),
                 message: rd.message.clone(),
             },
             suggested_fix: None,
@@ -101,7 +101,7 @@ fn map_rust_child_diagnostic(
     } else {
         MappedRustChildDiagnostic::SubDiagnostic(SubDiagnostic {
             related: lsp_types::DiagnosticRelatedInformation {
-                location: convert_location(workspace_root, spans[0]),
+                location: location(workspace_root, spans[0]),
                 message: rd.message.clone(),
             },
             suggested_fix: Some(lsp_ext::CodeAction {
@@ -217,7 +217,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
     primary_spans
         .iter()
         .flat_map(|primary_span| {
-            let location = convert_location(workspace_root, &primary_span);
+            let primary_location = location(workspace_root, &primary_span);
 
             let mut message = message.clone();
             if needs_primary_span_label {
@@ -240,7 +240,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
             })
             .skip(1);
             for macro_span in macro_calls {
-                let in_macro_location = convert_location(workspace_root, &macro_span);
+                let in_macro_location = location(workspace_root, &macro_span);
                 related_info_macro_calls.push(lsp_types::DiagnosticRelatedInformation {
                     location: in_macro_location.clone(),
                     message: "Error originated from macro call here".to_string(),
@@ -248,7 +248,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                 // For the additional in-macro diagnostic we add the inverse message pointing to the error location in code.
                 let information_for_additional_diagnostic =
                     vec![lsp_types::DiagnosticRelatedInformation {
-                        location: location.clone(),
+                        location: primary_location.clone(),
                         message: "Exact error occurred here".to_string(),
                     }];
 
@@ -273,9 +273,9 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
 
             // Emit the primary diagnostic.
             diagnostics.push(MappedRustDiagnostic {
-                url: location.uri.clone(),
+                url: primary_location.uri.clone(),
                 diagnostic: lsp_types::Diagnostic {
-                    range: location.range,
+                    range: primary_location.range,
                     severity,
                     code: code.clone().map(lsp_types::NumberOrString::String),
                     code_description: code_description.clone(),
@@ -303,7 +303,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
             // This is useful because they will show up in the user's editor, unlike
             // `related_information`, which just produces hard-to-read links, at least in VS Code.
             let back_ref = lsp_types::DiagnosticRelatedInformation {
-                location,
+                location: primary_location,
                 message: "original diagnostic".to_string(),
             };
             for sub in &subdiagnostics {
