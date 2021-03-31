@@ -13,6 +13,7 @@ pub struct Mmap(Vec<u8>);
 
 #[cfg(not(target_arch = "wasm32"))]
 impl Mmap {
+    #[inline]
     pub unsafe fn map(file: File) -> io::Result<Self> {
         memmap2::Mmap::map(&file).map(Mmap)
     }
@@ -20,6 +21,7 @@ impl Mmap {
 
 #[cfg(target_arch = "wasm32")]
 impl Mmap {
+    #[inline]
     pub unsafe fn map(mut file: File) -> io::Result<Self> {
         use std::io::Read;
 
@@ -32,6 +34,7 @@ impl Mmap {
 impl Deref for Mmap {
     type Target = [u8];
 
+    #[inline]
     fn deref(&self) -> &[u8] {
         &*self.0
     }
