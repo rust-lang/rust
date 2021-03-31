@@ -425,7 +425,7 @@ you can even run the resulting program. Just add one of the following
 - `// run-pass` – compilation should succeed and we should run the
   resulting binary
 
-### Normalization
+### Output Normalization
 
 The compiler output is normalized to eliminate output difference between
 platforms, mainly about filenames.
@@ -500,3 +500,23 @@ Besides `normalize-stderr-32bit` and `-64bit`, one may use any target
 information or stage supported by [`ignore-X`](#ignoring-tests) here as well (e.g.
 `normalize-stderr-windows` or simply `normalize-stderr-test` for unconditional
 replacement).
+
+## Input Normalization
+
+Sometimes, you want to normalize the inputs to a test. For example, you may
+want to pass `// compile-flags: --x=y.rs`, where y.rs is some file in the test
+directory. In this case you can use input normalization. The following strings
+are replaced in header inputs:
+
+- {{cwd}}: The directory where compiletest is run from. This may not be the
+  root of the checkout, so you should avoid using it where possible.
+  - Example: `/path/to/rust`
+- {{src-base}}: The directory where the test is defined. This is equivalent to
+  `$DIR` for output normalization.
+  - Example: `/path/to/rust/src/test/ui/error-codes`
+- {{build-base}}: The base directory where the test's output goes. This is
+  equivalent to `$TEST_BUILD_DIR` for output normalization.
+  - Example: `/path/to/rust/build/x86_64-unknown-linux-gnu/test/ui`
+
+See [`src/test/ui/commandline-argfile.rs`](https://github.com/rust-lang/rust/blob/a5029ac0ab372aec515db2e718da6d7787f3d122/src/test/ui/commandline-argfile.rs)
+for an example of a test that uses input normalization.
