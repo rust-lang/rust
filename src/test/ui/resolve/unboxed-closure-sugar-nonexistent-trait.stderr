@@ -11,10 +11,9 @@ LL | fn g<F:Typedef(isize) -> isize>(x: F) {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^ type aliases cannot be used as traits
    |
 help: you might have meant to use `#![feature(trait_alias)]` instead of a `type` alias
-  --> $DIR/unboxed-closure-sugar-nonexistent-trait.rs:4:1
    |
-LL | type Typedef = isize;
-   | ^^^^^^^^^^^^^^^^^^^^^
+LL | trait Typedef = isize;
+   |
 
 error: aborting due to 2 previous errors
 
