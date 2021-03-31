@@ -61,11 +61,11 @@ function base_sysroot_tests() {
     $RUN_WRAPPER ./target/out/std_example arg
 
     echo "[AOT] subslice-patterns-const-eval"
-    $MY_RUSTC example/subslice-patterns-const-eval.rs --crate-type bin --target "$TARGET_TRIPLE"
+    $MY_RUSTC example/subslice-patterns-const-eval.rs --crate-type bin -Cpanic=abort --target "$TARGET_TRIPLE"
     $RUN_WRAPPER ./target/out/subslice-patterns-const-eval
 
     echo "[AOT] track-caller-attribute"
-    $MY_RUSTC example/track-caller-attribute.rs --crate-type bin --target "$TARGET_TRIPLE"
+    $MY_RUSTC example/track-caller-attribute.rs --crate-type bin -Cpanic=abort --target "$TARGET_TRIPLE"
     $RUN_WRAPPER ./target/out/track-caller-attribute
 
     echo "[AOT] mod_bench"

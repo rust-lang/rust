@@ -24,16 +24,7 @@ impl rustc_driver::Callbacks for CraneliftPassesCallbacks {
         self.time_passes = config.opts.prints.is_empty()
             && (config.opts.debugging_opts.time_passes || config.opts.debugging_opts.time);
 
-        if config.opts.test {
-            // Unwinding is not yet supported by cg_clif. `-Cpanic=abort` in combination with
-            // `-Zpanic-abort-tests` ensures that tests are run in a subprocess. This avoids
-            // crashing the test driver on panics, thereby allowing it to report the error and
-            // continue with other tests.
-            config.opts.cg.panic = Some(PanicStrategy::Abort);
-            // Avoid `-Cprefer-dynamic` in case of `-Cpanic=abort` as that will cause a dynamically
-            // linked libstd with `-Cpanic=unwind` to be linked in, which isn't allowed.
-            config.opts.cg.prefer_dynamic = false;
-        }
+        config.opts.cg.panic = Some(PanicStrategy::Abort);
         config.opts.debugging_opts.panic_abort_tests = true;
         config.opts.maybe_sysroot = Some(config.opts.maybe_sysroot.clone().unwrap_or_else(|| {
             std::env::current_exe().unwrap().parent().unwrap().parent().unwrap().to_owned()

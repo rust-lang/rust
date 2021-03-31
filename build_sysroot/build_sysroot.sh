@@ -23,7 +23,7 @@ rm -r target/*/{debug,release}/{build,deps,examples,libsysroot*,native} 2>/dev/n
 export CARGO_TARGET_DIR=target
 
 # Build libs
-export RUSTFLAGS="$RUSTFLAGS -Zforce-unstable-if-unmarked"
+export RUSTFLAGS="$RUSTFLAGS -Zforce-unstable-if-unmarked -Cpanic=abort"
 export __CARGO_DEFAULT_LIB_METADATA="cg_clif"
 if [[ "$1" != "--debug" ]]; then
     sysroot_channel='release'

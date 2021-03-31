@@ -1,4 +1,4 @@
-#![feature(start, box_syntax, core_intrinsics, alloc_prelude, alloc_error_handler, lang_items)]
+#![feature(start, box_syntax, core_intrinsics, alloc_prelude, alloc_error_handler)]
 #![no_std]
 
 extern crate alloc;
@@ -25,11 +25,6 @@ fn panic_handler(_: &core::panic::PanicInfo) -> ! {
 #[alloc_error_handler]
 fn alloc_error_handler(_: alloc::alloc::Layout) -> ! {
     core::intrinsics::abort();
-}
-
-#[lang = "eh_personality"]
-fn eh_personality() -> ! {
-    loop {}
 }
 
 #[start]

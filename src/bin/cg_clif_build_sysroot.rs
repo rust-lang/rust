@@ -44,11 +44,7 @@ impl rustc_driver::Callbacks for CraneliftPassesCallbacks {
             return;
         }
 
-        if config.opts.crate_name.as_deref() == Some("panic_abort") {
-            // panic_abort must always be built with `-Cpanic=abort`
-            config.opts.cg.panic = Some(PanicStrategy::Abort);
-        }
-
+        config.opts.cg.panic = Some(PanicStrategy::Abort);
         config.opts.debugging_opts.panic_abort_tests = true;
         config.opts.maybe_sysroot =
             Some(std::env::current_exe().unwrap().parent().unwrap().parent().unwrap().to_owned());
