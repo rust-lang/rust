@@ -42,14 +42,8 @@ use crate::intrinsics;
 /// assert_eq!(div_1(9, 1), 4);
 /// assert_eq!(div_1(11, u32::MAX), 0);
 /// ```
-#[inline]
 #[stable(feature = "unreachable", since = "1.27.0")]
-#[rustc_const_unstable(feature = "const_unreachable_unchecked", issue = "53188")]
-pub const unsafe fn unreachable_unchecked() -> ! {
-    // SAFETY: the safety contract for `intrinsics::unreachable` must
-    // be upheld by the caller.
-    unsafe { intrinsics::unreachable() }
-}
+pub use intrinsics::unreachable as unreachable_unchecked;
 
 /// Emits a machine instruction to signal the processor that it is running in
 /// a busy-wait spin-loop ("spin lock").

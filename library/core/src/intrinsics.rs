@@ -724,6 +724,7 @@ extern "rust-intrinsic" {
     /// reach code marked with this function.
     ///
     /// The stabilized version of this intrinsic is [`core::hint::unreachable_unchecked`](crate::hint::unreachable_unchecked).
+    #[stable(feature = "unreachable", since = "1.27.0")]
     #[rustc_const_unstable(feature = "const_unreachable_unchecked", issue = "53188")]
     pub fn unreachable() -> !;
 
@@ -769,13 +770,17 @@ extern "rust-intrinsic" {
     /// items of the same type, including alignment padding.
     ///
     /// The stabilized version of this intrinsic is [`core::mem::size_of`](crate::mem::size_of).
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_size_of", since = "1.40.0")]
+    #[rustc_promotable]
     pub fn size_of<T>() -> usize;
 
     /// The minimum alignment of a type.
     ///
     /// The stabilized version of this intrinsic is [`core::mem::align_of`](crate::mem::align_of).
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_min_align_of", since = "1.40.0")]
+    #[rustc_promotable]
     pub fn min_align_of<T>() -> usize;
     /// The preferred alignment of a type.
     ///
@@ -797,6 +802,7 @@ extern "rust-intrinsic" {
     /// Gets a static string slice containing the name of a type.
     ///
     /// The stabilized version of this intrinsic is [`core::any::type_name`](crate::any::type_name).
+    #[stable(feature = "type_name", since = "1.38.0")]
     #[rustc_const_unstable(feature = "const_type_name", issue = "63084")]
     pub fn type_name<T: ?Sized>() -> &'static str;
 
@@ -805,6 +811,7 @@ extern "rust-intrinsic" {
     /// crate it is invoked in.
     ///
     /// The stabilized version of this intrinsic is [`core::any::TypeId::of`](crate::any::TypeId::of).
+    #[stable(feature = "type_name", since = "1.38.0")]
     #[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
     pub fn type_id<T: ?Sized + 'static>() -> u64;
 
@@ -1091,6 +1098,7 @@ extern "rust-intrinsic" {
     /// `Copy`, then the return value of this function is unspecified.
     ///
     /// The stabilized version of this intrinsic is [`mem::needs_drop`](crate::mem::needs_drop).
+    #[stable(feature = "needs_drop", since = "1.21.0")]
     #[rustc_const_stable(feature = "const_needs_drop", since = "1.40.0")]
     pub fn needs_drop<T>() -> bool;
 
@@ -1159,10 +1167,12 @@ extern "rust-intrinsic" {
     /// Performs a volatile load from the `src` pointer.
     ///
     /// The stabilized version of this intrinsic is [`core::ptr::read_volatile`](crate::ptr::read_volatile).
+    #[stable(feature = "volatile", since = "1.9.0")]
     pub fn volatile_load<T>(src: *const T) -> T;
     /// Performs a volatile store to the `dst` pointer.
     ///
     /// The stabilized version of this intrinsic is [`core::ptr::write_volatile`](crate::ptr::write_volatile).
+    #[stable(feature = "volatile", since = "1.9.0")]
     pub fn volatile_store<T>(dst: *mut T, val: T);
 
     /// Performs a volatile load from the `src` pointer

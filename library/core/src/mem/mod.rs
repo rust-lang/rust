@@ -148,11 +148,8 @@ pub const fn forget<T>(t: T) {
 ///
 /// This function is just a shim intended to be removed when the `unsized_locals` feature gets
 /// stabilized.
-#[inline]
 #[unstable(feature = "forget_unsized", issue = "none")]
-pub fn forget_unsized<T: ?Sized>(t: T) {
-    intrinsics::forget(t)
-}
+pub use intrinsics::forget as forget_unsized;
 
 /// Returns the size of a type in bytes.
 ///
@@ -294,13 +291,8 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 /// ```
 ///
 /// [alignment]: align_of
-#[inline(always)]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_promotable]
-#[rustc_const_stable(feature = "const_size_of", since = "1.24.0")]
-pub const fn size_of<T>() -> usize {
-    intrinsics::size_of::<T>()
-}
+pub use intrinsics::size_of;
 
 /// Returns the size of the pointed-to value in bytes.
 ///
@@ -369,13 +361,8 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 /// let y: &[u8] = &x;
 /// assert_eq!(13, unsafe { mem::size_of_val_raw(y) });
 /// ```
-#[inline]
 #[unstable(feature = "layout_for_ptr", issue = "69835")]
-#[rustc_const_unstable(feature = "const_size_of_val_raw", issue = "46571")]
-pub const unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
-    // SAFETY: the caller must provide a valid raw pointer
-    unsafe { intrinsics::size_of_val(val) }
-}
+pub use intrinsics::size_of_val as size_of_val_raw;
 
 /// Returns the [ABI]-required minimum alignment of a type.
 ///
@@ -393,12 +380,9 @@ pub const unsafe fn size_of_val_raw<T: ?Sized>(val: *const T) -> usize {
 ///
 /// assert_eq!(4, mem::min_align_of::<i32>());
 /// ```
-#[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_deprecated(reason = "use `align_of` instead", since = "1.2.0")]
-pub fn min_align_of<T>() -> usize {
-    intrinsics::min_align_of::<T>()
-}
+pub use intrinsics::min_align_of;
 
 /// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to.
 ///
@@ -437,13 +421,8 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
 ///
 /// assert_eq!(4, mem::align_of::<i32>());
 /// ```
-#[inline(always)]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_promotable]
-#[rustc_const_stable(feature = "const_align_of", since = "1.24.0")]
-pub const fn align_of<T>() -> usize {
-    intrinsics::min_align_of::<T>()
-}
+pub use intrinsics::min_align_of as align_of;
 
 /// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to.
 ///
@@ -567,13 +546,9 @@ pub const unsafe fn align_of_val_raw<T: ?Sized>(val: *const T) -> usize {
 ///     }
 /// }
 /// ```
-#[inline]
 #[stable(feature = "needs_drop", since = "1.21.0")]
-#[rustc_const_stable(feature = "const_needs_drop", since = "1.36.0")]
 #[rustc_diagnostic_item = "needs_drop"]
-pub const fn needs_drop<T>() -> bool {
-    intrinsics::needs_drop::<T>()
-}
+pub use intrinsics::needs_drop;
 
 /// Returns the value of type `T` represented by the all-zero byte-pattern.
 ///
@@ -1043,9 +1018,5 @@ pub const fn discriminant<T>(v: &T) -> Discriminant<T> {
 /// assert_eq!(mem::variant_count::<Option<!>>(), 2);
 /// assert_eq!(mem::variant_count::<Result<!, !>>(), 2);
 /// ```
-#[inline(always)]
 #[unstable(feature = "variant_count", issue = "73662")]
-#[rustc_const_unstable(feature = "variant_count", issue = "73662")]
-pub const fn variant_count<T>() -> usize {
-    intrinsics::variant_count::<T>()
-}
+pub use intrinsics::variant_count;

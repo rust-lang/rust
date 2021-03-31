@@ -75,7 +75,7 @@
 use crate::cmp::Ordering;
 use crate::fmt;
 use crate::hash;
-use crate::intrinsics::{self, abort, is_aligned_and_not_null};
+use crate::intrinsics;
 use crate::mem::{self, MaybeUninit};
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1077,16 +1077,8 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 ///     assert_eq!(std::ptr::read_volatile(y), 12);
 /// }
 /// ```
-#[inline]
 #[stable(feature = "volatile", since = "1.9.0")]
-pub unsafe fn read_volatile<T>(src: *const T) -> T {
-    if cfg!(debug_assertions) && !is_aligned_and_not_null(src) {
-        // Not panicking to keep codegen impact smaller.
-        abort();
-    }
-    // SAFETY: the caller must uphold the safety contract for `volatile_load`.
-    unsafe { intrinsics::volatile_load(src) }
-}
+pub use intrinsics::volatile_load as read_volatile;
 
 /// Performs a volatile write of a memory location with the given value without
 /// reading or dropping the old value.
@@ -1148,18 +1140,8 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 ///     assert_eq!(std::ptr::read_volatile(y), 12);
 /// }
 /// ```
-#[inline]
 #[stable(feature = "volatile", since = "1.9.0")]
-pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
-    if cfg!(debug_assertions) && !is_aligned_and_not_null(dst) {
-        // Not panicking to keep codegen impact smaller.
-        abort();
-    }
-    // SAFETY: the caller must uphold the safety contract for `volatile_store`.
-    unsafe {
-        intrinsics::volatile_store(dst, src);
-    }
-}
+pub use intrinsics::volatile_store as write_volatile;
 
 /// Align pointer `p`.
 ///

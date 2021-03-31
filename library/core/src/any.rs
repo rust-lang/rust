@@ -492,10 +492,7 @@ impl TypeId {
 /// );
 /// ```
 #[stable(feature = "type_name", since = "1.38.0")]
-#[rustc_const_unstable(feature = "const_type_name", issue = "63084")]
-pub const fn type_name<T: ?Sized>() -> &'static str {
-    intrinsics::type_name::<T>()
-}
+pub use intrinsics::type_name;
 
 /// Returns the name of the type of the pointed-to value as a string slice.
 /// This is the same as `type_name::<T>()`, but can be used where the type of a
