@@ -3185,7 +3185,7 @@ impl<'test> TestCx<'test> {
                 }
                 if !self.props.dont_check_compiler_stderr {
                     let kind = if self.props.stderr_per_bitwidth {
-                        format!("{}bit.stderr", get_pointer_width(&self.config.target))
+                        format!("{}.stderr", get_pointer_width(&self.config.target))
                     } else {
                         String::from("stderr")
                     };

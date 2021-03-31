@@ -1,5 +1,5 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/union-ub.rs:32:1
+  --> $DIR/union-ub.rs:33:1
    |
 LL | const BAD_BOOL: bool = unsafe { DummyUnion { u8: 42 }.bool};
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 0x2a, but expected a boolean
@@ -10,7 +10,7 @@ LL | const BAD_BOOL: bool = unsafe { DummyUnion { u8: 42 }.bool};
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/union-ub.rs:34:1
+  --> $DIR/union-ub.rs:35:1
    |
 LL | const UNINIT_BOOL: bool = unsafe { DummyUnion { unit: () }.bool};
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized bytes, but expected a boolean

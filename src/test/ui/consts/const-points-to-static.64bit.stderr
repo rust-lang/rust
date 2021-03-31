@@ -1,5 +1,5 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const-points-to-static.rs:5:1
+  --> $DIR/const-points-to-static.rs:6:1
    |
 LL | const TEST: &u8 = &MY_STATIC;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a reference pointing to a static variable
@@ -12,7 +12,7 @@ LL | const TEST: &u8 = &MY_STATIC;
 warning: skipping const checks
    |
 help: skipping check that does not even have a feature gate
-  --> $DIR/const-points-to-static.rs:5:20
+  --> $DIR/const-points-to-static.rs:6:20
    |
 LL | const TEST: &u8 = &MY_STATIC;
    |                    ^^^^^^^^^

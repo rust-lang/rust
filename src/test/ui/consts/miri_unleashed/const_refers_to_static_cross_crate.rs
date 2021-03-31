@@ -1,5 +1,6 @@
 // compile-flags: -Zunleash-the-miri-inside-of-you
 // aux-build:static_cross_crate.rs
+// stderr-per-bitwidth
 #![allow(const_err)]
 
 #![feature(exclusive_range_pattern, half_open_range_patterns)]

@@ -1,5 +1,5 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/validate_never_arrays.rs:3:1
+  --> $DIR/validate_never_arrays.rs:4:1
    |
 LL | const _: &[!; 1] = unsafe { &*(1_usize as *const [!; 1]) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a value of the never type `!` at .<deref>[0]
@@ -10,7 +10,7 @@ LL | const _: &[!; 1] = unsafe { &*(1_usize as *const [!; 1]) };
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/validate_never_arrays.rs:6:1
+  --> $DIR/validate_never_arrays.rs:7:1
    |
 LL | const _: &[!] = unsafe { &*(1_usize as *const [!; 1]) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a value of the never type `!` at .<deref>[0]
@@ -21,7 +21,7 @@ LL | const _: &[!] = unsafe { &*(1_usize as *const [!; 1]) };
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/validate_never_arrays.rs:7:1
+  --> $DIR/validate_never_arrays.rs:8:1
    |
 LL | const _: &[!] = unsafe { &*(1_usize as *const [!; 42]) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a value of the never type `!` at .<deref>[0]

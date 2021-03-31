@@ -1,3 +1,4 @@
+// stderr-per-bitwidth
 #![feature(const_fn)]
 
 type Field1 = i32;

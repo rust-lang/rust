@@ -1,12 +1,12 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/transmute-const.rs:3:1
+  --> $DIR/const-err4.rs:9:11
    |
-LL | static FOO: bool = unsafe { mem::transmute(3u8) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 0x03, but expected a boolean
+LL |     Boo = [unsafe { Foo { b: () }.a }; 4][3],
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized bytes, but expected initialized plain (non-pointer) bytes
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 1, align: 1) {
-               03                                              │ .
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               __ __ __ __ __ __ __ __                         │ ░░░░░░░░
            }
 
 error: aborting due to previous error
