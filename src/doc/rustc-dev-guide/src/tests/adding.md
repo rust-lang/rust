@@ -510,7 +510,7 @@ are replaced in header inputs:
 
 - {{cwd}}: The directory where compiletest is run from. This may not be the
   root of the checkout, so you should avoid using it where possible.
-  - Example: `/path/to/rust`
+  - Examples: `/path/to/rust`, `/path/to/build/root`
 - {{src-base}}: The directory where the test is defined. This is equivalent to
   `$DIR` for output normalization.
   - Example: `/path/to/rust/src/test/ui/error-codes`
