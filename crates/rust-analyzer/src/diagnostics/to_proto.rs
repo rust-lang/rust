@@ -48,6 +48,22 @@ fn location(workspace_root: &Path, span: &DiagnosticSpan) -> lsp_types::Location
     lsp_types::Location { uri, range }
 }
 
+/// Extracts a suitable "primary" location from a rustc diagnostic.
+///
+/// This takes locations pointing into the standard library, or generally outside the current
+/// workspace into account and tries to avoid those, in case macros are involved.
+fn primary_location(workspace_root: &Path, span: &DiagnosticSpan) -> lsp_types::Location {
+    let span_stack = std::iter::successors(Some(span), |span| Some(&span.expansion.as_ref()?.span));
+    for span in span_stack {
+        let abs_path = workspace_root.join(&span.file_name);
+        if abs_path.starts_with(workspace_root) {
+            return location(workspace_root, span);
+        }
+    }
+
+    location(workspace_root, span)
+}
+
 /// Converts a secondary Rust span to a LSP related information
 ///
 /// If the span is unlabelled this will return `None`.
@@ -217,7 +233,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
     primary_spans
         .iter()
         .flat_map(|primary_span| {
-            let primary_location = location(workspace_root, &primary_span);
+            let primary_location = primary_location(workspace_root, &primary_span);
 
             let mut message = message.clone();
             if needs_primary_span_label {
@@ -235,14 +251,16 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
             // where the error originated
             // Also, we would generate an additional diagnostic, so that exact place of macro
             // will be highlighted in the error origin place.
-            let macro_calls = std::iter::successors(Some(*primary_span), |span| {
+            let span_stack = std::iter::successors(Some(*primary_span), |span| {
                 Some(&span.expansion.as_ref()?.span)
-            })
-            .skip(1);
-            for macro_span in macro_calls {
-                let in_macro_location = location(workspace_root, &macro_span);
+            });
+            for span in span_stack {
+                let secondary_location = location(workspace_root, &span);
+                if secondary_location == primary_location {
+                    continue;
+                }
                 related_info_macro_calls.push(lsp_types::DiagnosticRelatedInformation {
-                    location: in_macro_location.clone(),
+                    location: secondary_location.clone(),
                     message: "Error originated from macro call here".to_string(),
                 });
                 // For the additional in-macro diagnostic we add the inverse message pointing to the error location in code.
@@ -253,7 +271,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                     }];
 
                 let diagnostic = lsp_types::Diagnostic {
-                    range: in_macro_location.range,
+                    range: secondary_location.range,
                     // downgrade to hint if we're pointing at the macro
                     severity: Some(lsp_types::DiagnosticSeverity::Hint),
                     code: code.clone().map(lsp_types::NumberOrString::String),
@@ -265,7 +283,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                     data: None,
                 };
                 diagnostics.push(MappedRustDiagnostic {
-                    url: in_macro_location.uri,
+                    url: secondary_location.uri,
                     diagnostic,
                     fixes: Vec::new(),
                 });
