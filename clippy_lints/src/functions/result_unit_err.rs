@@ -57,9 +57,9 @@ fn check_result_unit_err(cx: &LateContext<'_>, decl: &hir::FnDecl<'_>, item_span
                 cx,
                 RESULT_UNIT_ERR,
                 fn_header_span,
-                "this returns a `Result<_, ()>",
+                "this returns a `Result<_, ()>`",
                 None,
-                "use a custom Error type instead",
+                "use a custom `Error` type instead",
             );
         }
     }
