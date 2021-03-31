@@ -373,6 +373,32 @@ fn recursive_inner_item_macro_rules() {
 }
 
 #[test]
+fn infer_macro_defining_block_with_items() {
+    check_infer(
+        r#"
+        macro_rules! foo {
+            () => {{
+                fn bar() -> usize { 0 }
+                bar()
+            }};
+        }
+        fn main() {
+            let _a = foo!();
+        }
+    "#,
+        expect![[r#"
+            !15..18 '{0}': usize
+            !16..17 '0': usize
+            !0..24 '{fnbar...bar()}': usize
+            !18..21 'bar': fn bar() -> usize
+            !18..23 'bar()': usize
+            98..122 '{     ...!(); }': ()
+            108..110 '_a': usize
+        "#]],
+    );
+}
+
+#[test]
 fn infer_type_value_macro_having_same_name() {
     check_infer(
         r#"

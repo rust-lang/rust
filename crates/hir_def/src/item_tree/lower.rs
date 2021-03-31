@@ -174,6 +174,12 @@ impl Ctx {
         let forced_vis = self.forced_visibility.take();
 
         let mut block_stack = Vec::new();
+
+        // if container itself is block, add it to the stack
+        if let Some(block) = ast::BlockExpr::cast(container.clone()) {
+            block_stack.push(self.source_ast_id_map.ast_id(&block));
+        }
+
         for event in container.preorder().skip(1) {
             match event {
                 WalkEvent::Enter(node) => {
