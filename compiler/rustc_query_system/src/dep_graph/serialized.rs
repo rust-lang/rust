@@ -157,11 +157,11 @@ impl<K: DepKind> EncoderState<K> {
         }
     }
 
-    #[instrument(skip(self, _record_graph))]
+    #[instrument(skip(self, record_graph))]
     fn encode_node(
         &mut self,
         node: &NodeInfo<K>,
-        _record_graph: &Option<Lock<DepGraphQuery<K>>>,
+        record_graph: &Option<Lock<DepGraphQuery<K>>>,
     ) -> DepNodeIndex {
         let index = DepNodeIndex::new(self.total_node_count);
         self.total_node_count += 1;
@@ -169,8 +169,7 @@ impl<K: DepKind> EncoderState<K> {
         let edge_count = node.edges.len();
         self.total_edge_count += edge_count;
 
-        #[cfg(debug_assertions)]
-        if let Some(record_graph) = &_record_graph {
+        if let Some(record_graph) = &record_graph {
             // Do not ICE when a query is called from within `with_query`.
             if let Some(record_graph) = &mut record_graph.try_lock() {
                 record_graph.push(index, node.node, &node.edges);
@@ -222,11 +221,8 @@ impl<K: DepKind + Encodable<FileEncoder>> GraphEncoder<K> {
         record_graph: bool,
         record_stats: bool,
     ) -> Self {
-        let record_graph = if cfg!(debug_assertions) && record_graph {
-            Some(Lock::new(DepGraphQuery::new(prev_node_count)))
-        } else {
-            None
-        };
+        let record_graph =
+            if record_graph { Some(Lock::new(DepGraphQuery::new(prev_node_count))) } else { None };
         let status = Lock::new(EncoderState::new(encoder, record_stats));
         GraphEncoder { status, record_graph }
     }
