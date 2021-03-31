@@ -3140,8 +3140,14 @@ impl<'test> TestCx<'test> {
         output_kind: TestOutput,
         explicit_format: bool,
     ) -> usize {
+        let stderr_bits = format!("{}.stderr", get_pointer_width(&self.config.target));
         let (stderr_kind, stdout_kind) = match output_kind {
-            TestOutput::Compile => (UI_STDERR, UI_STDOUT),
+            TestOutput::Compile => (
+                {
+                    if self.props.stderr_per_bitwidth { &stderr_bits } else { UI_STDERR }
+                },
+                UI_STDOUT,
+            ),
             TestOutput::Run => (UI_RUN_STDERR, UI_RUN_STDOUT),
         };
 
@@ -3181,15 +3187,12 @@ impl<'test> TestCx<'test> {
         match output_kind {
             TestOutput::Compile => {
                 if !self.props.dont_check_compiler_stdout {
-                    errors += self.compare_output("stdout", &normalized_stdout, &expected_stdout);
+                    errors +=
+                        self.compare_output(stdout_kind, &normalized_stdout, &expected_stdout);
                 }
                 if !self.props.dont_check_compiler_stderr {
-                    let kind = if self.props.stderr_per_bitwidth {
-                        format!("{}bit.stderr", get_pointer_width(&self.config.target))
-                    } else {
-                        String::from("stderr")
-                    };
-                    errors += self.compare_output(&kind, &normalized_stderr, &expected_stderr);
+                    errors +=
+                        self.compare_output(stderr_kind, &normalized_stderr, &expected_stderr);
                 }
             }
             TestOutput::Run => {

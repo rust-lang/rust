@@ -1,3 +1,6 @@
+// stderr-per-bitwidth
+// ignore-wasm32
+// ignore-wasm64
 #![feature(const_fn)]
 
 type Field1 = i32;

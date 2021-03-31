@@ -1,0 +1,124 @@
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-ref-ptr.rs:13:1
+   |
+LL | const UNALIGNED: &u16 = unsafe { mem::transmute(&[0u8; 4]) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered an unaligned reference (required 2 byte alignment but found 1)
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               ╾───────alloc2────────╼                         │ ╾──────╼
+           }
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-ref-ptr.rs:17:1
+   |
+LL | const UNALIGNED_BOX: Box<u16> = unsafe { mem::transmute(&[0u8; 4]) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered an unaligned box (required 2 byte alignment but found 1)
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               ╾───────alloc6────────╼                         │ ╾──────╼
+           }
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-ref-ptr.rs:21:1
+   |
+LL | const NULL: &u16 = unsafe { mem::transmute(0usize) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a NULL reference
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               00 00 00 00 00 00 00 00                         │ ........
+           }
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-ref-ptr.rs:24:1
+   |
+LL | const NULL_BOX: Box<u16> = unsafe { mem::transmute(0usize) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a NULL box
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               00 00 00 00 00 00 00 00                         │ ........
+           }
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-ref-ptr.rs:30:1
+   |
+LL | const REF_AS_USIZE: usize = unsafe { mem::transmute(&0) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer to alloc14, but expected initialized plain (non-pointer) bytes
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               ╾───────alloc14───────╼                         │ ╾──────╼
+           }
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-ref-ptr.rs:33:1
+   |
+LL | const REF_AS_USIZE_SLICE: &[usize] = &[unsafe { mem::transmute(&0) }];
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer at .<deref>, but expected plain (non-pointer) bytes
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               ╾───────alloc20───────╼                         │ ╾──────╼
+           }
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-ref-ptr.rs:36:1
+   |
+LL | const REF_AS_USIZE_BOX_SLICE: Box<[usize]> = unsafe { mem::transmute::<&[usize], _>(&[mem::transmute(&0)]) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer at .<deref>, but expected plain (non-pointer) bytes
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               ╾───────alloc25───────╼                         │ ╾──────╼
+           }
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-ref-ptr.rs:39:1
+   |
+LL | const USIZE_AS_REF: &'static u8 = unsafe { mem::transmute(1337usize) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a dangling reference (created from integer)
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               39 05 00 00 00 00 00 00                         │ 9.......
+           }
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-ref-ptr.rs:42:1
+   |
+LL | const USIZE_AS_BOX: Box<u8> = unsafe { mem::transmute(1337usize) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a dangling box (created from integer)
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               39 05 00 00 00 00 00 00                         │ 9.......
+           }
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-ref-ptr.rs:45:1
+   |
+LL | const UNINIT_PTR: *const i32 = unsafe { MaybeUninit { uninit: () }.init };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized raw pointer
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               __ __ __ __ __ __ __ __                         │ ░░░░░░░░
+           }
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-ref-ptr.rs:47:1
+   |
+LL | const UNINIT_FN_PTR: fn() = unsafe { MaybeUninit { uninit: () }.init };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized bytes, but expected a function pointer
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               __ __ __ __ __ __ __ __                         │ ░░░░░░░░
+           }
+
+error: aborting due to 11 previous errors
+
+For more information about this error, try `rustc --explain E0080`.
