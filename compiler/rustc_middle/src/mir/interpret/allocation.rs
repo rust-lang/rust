@@ -775,6 +775,13 @@ impl InitMask {
         }
     }
 
+    /// Returns an iterator, yielding a range of byte indexes for each contiguous region
+    /// of initialized or uninitialized bytes inside the range `start..end` (end-exclusive).
+    #[inline]
+    pub fn range_as_init_chunks(&self, start: Size, end: Size) -> InitChunkIter<'_> {
+        InitChunkIter::new(self, start, end)
+    }
+
     pub fn set_range(&mut self, start: Size, end: Size, new_state: bool) {
         let len = self.len;
         if end > len {
@@ -864,6 +871,50 @@ impl InitMask {
         let start = self.len;
         self.len += amount;
         self.set_range_inbounds(start, start + amount, new_state); // `Size` operation
+    }
+}
+
+/// Yields [`InitChunk`]s. See [`InitMask::range_as_init_chunks`].
+pub struct InitChunkIter<'a> {
+    init_mask: &'a InitMask,
+    /// The current byte index into `init_mask`.
+    start: Size,
+    /// The end byte index into `init_mask`.
+    end: Size,
+}
+
+/// A contiguous chunk of initialized or uninitialized memory.
+pub enum InitChunk {
+    Init(Range<Size>),
+    Uninit(Range<Size>),
+}
+
+impl<'a> InitChunkIter<'a> {
+    fn new(init_mask: &'a InitMask, start: Size, end: Size) -> Self {
+        assert!(start <= end);
+        assert!(end <= init_mask.len);
+        Self { init_mask, start, end }
+    }
+}
+
+impl<'a> Iterator for InitChunkIter<'a> {
+    type Item = InitChunk;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.start >= self.end {
+            return None;
+        }
+
+        let is_init = self.init_mask.get(self.start);
+        let end_of_chunk = (self.start.bytes()..self.end.bytes())
+            .map(Size::from_bytes)
+            .find(|&i| self.init_mask.get(i) != is_init)
+            .unwrap_or(self.end);
+        let range = self.start..end_of_chunk;
+
+        self.start = end_of_chunk;
+
+        Some(if is_init { InitChunk::Init(range) } else { InitChunk::Uninit(range) })
     }
 }
 
