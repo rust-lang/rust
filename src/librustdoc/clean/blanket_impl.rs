@@ -17,6 +17,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
     crate fn get_blanket_impls(&mut self, item_def_id: DefId) -> Vec<Item> {
         let param_env = self.cx.tcx.param_env(item_def_id);
         let ty = self.cx.tcx.type_of(item_def_id);
+        let dummy_cause = traits::ObligationCause::dummy();
 
         debug!("get_blanket_impls({:?})", ty);
         let mut impls = Vec::new();
@@ -45,8 +46,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
 
                     // Require the type the impl is implemented on to match
                     // our type, and ignore the impl if there was a mismatch.
-                    let cause = traits::ObligationCause::dummy();
-                    let eq_result = infcx.at(&cause, param_env).eq(trait_ref.self_ty(), ty);
+                    let eq_result = infcx.at(&dummy_cause, param_env).eq(trait_ref.self_ty(), ty);
                     if let Ok(InferOk { value: (), obligations }) = eq_result {
                         // FIXME(eddyb) ignoring `obligations` might cause false positives.
                         drop(obligations);
