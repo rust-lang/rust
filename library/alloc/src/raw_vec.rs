@@ -244,9 +244,7 @@ impl<T, A: Allocator> RawVec<T, A> {
             // We have an allocated chunk of memory, so we can bypass runtime
             // checks to get our current layout.
             unsafe {
-                let align = mem::align_of::<T>();
-                let size = mem::size_of::<T>() * self.cap;
-                let layout = Layout::from_size_align_unchecked(size, align);
+                let layout = Layout::array::<T>(self.cap).unwrap_unchecked();
                 Some((self.ptr.cast().into(), layout))
             }
         }
