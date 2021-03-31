@@ -295,7 +295,6 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
 pub(crate) fn codegen_terminator_call<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     span: Span,
-    current_block: Block,
     func: &Operand<'tcx>,
     args: &[Operand<'tcx>],
     destination: Option<(Place<'tcx>, BasicBlock)>,
@@ -357,7 +356,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         .map(|inst| fx.tcx.codegen_fn_attrs(inst.def_id()).flags.contains(CodegenFnAttrFlags::COLD))
         .unwrap_or(false);
     if is_cold {
-        fx.cold_blocks.insert(current_block);
+        // FIXME Mark current_block block as cold once Cranelift supports it
     }
 
     // Unpack arguments tuple for closures

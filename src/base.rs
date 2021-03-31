@@ -55,7 +55,6 @@ pub(crate) fn codegen_fn<'tcx>(cx: &mut crate::CodegenCx<'_, 'tcx>, instance: In
         block_map,
         local_map: IndexVec::with_capacity(mir.local_decls.len()),
         caller_location: None, // set by `codegen_fn_prelude`
-        cold_blocks: EntitySet::new(),
 
         clif_comments,
         source_info_set: indexmap::IndexSet::new(),
@@ -90,7 +89,6 @@ pub(crate) fn codegen_fn<'tcx>(cx: &mut crate::CodegenCx<'_, 'tcx>, instance: In
     let mut clif_comments = fx.clif_comments;
     let source_info_set = fx.source_info_set;
     let local_map = fx.local_map;
-    let cold_blocks = fx.cold_blocks;
 
     // Store function in context
     let context = &mut cx.cached_context;
@@ -107,7 +105,6 @@ pub(crate) fn codegen_fn<'tcx>(cx: &mut crate::CodegenCx<'_, 'tcx>, instance: In
             tcx,
             instance,
             context,
-            &cold_blocks,
             &mut clif_comments,
         );
     });
@@ -205,9 +202,8 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
             // Unwinding after panicking is not supported
             continue;
 
-            // FIXME once unwinding is supported uncomment next lines
-            // // Unwinding is unlikely to happen, so mark cleanup block's as cold.
-            // fx.cold_blocks.insert(block);
+            // FIXME Once unwinding is supported and Cranelift supports marking blocks as cold, do
+            // so for cleanup blocks.
         }
 
         fx.bcx.ins().nop();
@@ -262,7 +258,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
 
                 let target = fx.get_block(*target);
                 let failure = fx.bcx.create_block();
-                fx.cold_blocks.insert(failure);
+                // FIXME Mark failure block as cold once Cranelift supports it
 
                 if *expected {
                     fx.bcx.ins().brz(cond, failure, &[]);
@@ -358,7 +354,6 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
                     crate::abi::codegen_terminator_call(
                         fx,
                         *fn_span,
-                        block,
                         func,
                         args,
                         *destination,

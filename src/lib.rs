@@ -87,7 +87,6 @@ mod prelude {
 
     pub(crate) use rustc_index::vec::Idx;
 
-    pub(crate) use cranelift_codegen::entity::EntitySet;
     pub(crate) use cranelift_codegen::ir::condcodes::{FloatCC, IntCC};
     pub(crate) use cranelift_codegen::ir::function::Function;
     pub(crate) use cranelift_codegen::ir::types;
