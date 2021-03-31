@@ -74,6 +74,7 @@ pub(super) fn lower_path(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path>
                     // <T as Trait<A>>::Foo desugars to Trait<Self=T, A>::Foo
                     Some(trait_ref) => {
                         let path = Path::from_src(trait_ref.path()?, hygiene)?;
+                        let num_segments = path.mod_path.segments.len();
                         kind = path.mod_path.kind;
 
                         let mut prefix_segments = path.mod_path.segments;
@@ -85,7 +86,8 @@ pub(super) fn lower_path(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path>
                         generic_args.extend(prefix_args);
 
                         // Insert the type reference (T in the above example) as Self parameter for the trait
-                        let last_segment = generic_args.last_mut()?;
+                        let last_segment =
+                            generic_args.iter_mut().rev().nth(num_segments.saturating_sub(1))?;
                         if last_segment.is_none() {
                             *last_segment = Some(Arc::new(GenericArgs::empty()));
                         };

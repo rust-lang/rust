@@ -3370,3 +3370,46 @@ fn test() {
         "#]],
     )
 }
+
+#[test]
+fn qualified_path_as_qualified_trait() {
+    check_infer(
+        r#"
+mod foo {
+
+    pub trait Foo {
+        type Target;
+    }
+    pub trait Bar {
+        type Output;
+        fn boo() -> Self::Output {
+            loop {}
+        }
+    }
+}
+
+struct F;
+impl foo::Foo for F {
+    type Target = ();
+}
+impl foo::Bar for F {
+    type Output = <F as foo::Foo>::Target;
+}
+
+fn foo() {
+    use foo::Bar;
+    let x = <F as Bar>::boo();
+}
+
+        "#,
+        expect![[r#"
+            132..163 '{     ...     }': Bar::Output<Self>
+            146..153 'loop {}': !
+            151..153 '{}': ()
+            306..358 '{     ...o(); }': ()
+            334..335 'x': ()
+            338..353 '<F as Bar>::boo': fn boo<F>() -> <F as Bar>::Output
+            338..355 '<F as ...:boo()': ()
+        "#]],
+    );
+}
