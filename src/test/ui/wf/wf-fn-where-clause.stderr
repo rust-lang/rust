@@ -9,8 +9,8 @@ LL | fn foo<T,U>() where T: ExtraCopy<U>
    |
 help: consider further restricting type parameter `U`
    |
-LL | fn foo<T,U>() where T: ExtraCopy<U>, U: Copy
-   |                                    ^^^^^^^^^
+LL | fn foo<T,U>() where T: ExtraCopy<U>, U: std::marker::Copy
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the size for values of type `(dyn Copy + 'static)` cannot be known at compilation time
   --> $DIR/wf-fn-where-clause.rs:12:16
