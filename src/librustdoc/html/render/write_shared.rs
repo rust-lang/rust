@@ -44,11 +44,11 @@ enum SharedResource<'a> {
     /// This file will never change, no matter what toolchain is used to build it.
     ///
     /// It does not have a resource suffix.
-    Unversioned { name: &'a str },
+    Unversioned { name: &'static str },
     /// This file may change depending on the toolchain.
     ///
     /// It has a resource suffix.
-    ToolchainSpecific { basename: &'a str },
+    ToolchainSpecific { basename: &'static str },
     /// This file may change for any crate within a build.
     ///
     /// This differs from normal crate-specific files because it has a resource suffix.
@@ -157,11 +157,16 @@ pub(super) fn write_shared(
             &options.emit,
         )
     };
-    let write_toolchain = |p: &_, c: &_| {
+    // Toolchain resources should never be dynamic.
+    let write_toolchain = |p: &'static _, c: &'static _| {
         cx.write_shared(SharedResource::ToolchainSpecific { basename: p }, c, &options.emit)
     };
-    let write_crate =
-        |p, c: &_| cx.write_shared(SharedResource::CrateSpecific { basename: p }, c, &options.emit);
+
+    // Crate resources should always be dynamic.
+    let write_crate = |p: &_, make_content: &dyn Fn() -> Result<Vec<u8>, Error>| {
+        let content = make_content()?;
+        cx.write_shared(SharedResource::CrateSpecific { basename: p }, content, &options.emit)
+    };
 
     // Add all the static files. These may already exist, but we just
     // overwrite them anyway to make sure that they're fresh and up-to-date.
@@ -185,10 +190,8 @@ pub(super) fn write_shared(
             "ayu" => write_minify("ayu.css", static_files::themes::AYU)?,
             _ => {
                 // Handle added third-party themes
-                let content = try_err!(fs::read(&entry.path), &entry.path);
-                // This is not exactly right: if compiled a second time with the same toolchain but different CLI args, the file could be different.
-                // But docs.rs doesn't use this, so hopefully the issue doesn't come up.
-                write_toolchain(&format!("{}.{}", theme, extension), content.as_slice())?;
+                let filename = format!("{}.{}", theme, extension);
+                write_crate(&filename, &|| Ok(try_err!(fs::read(&entry.path), &entry.path)))?;
             }
         };
 
@@ -367,19 +370,22 @@ pub(super) fn write_shared(
         }
 
         let dst = cx.dst.join(&format!("source-files{}.js", cx.shared.resource_suffix));
-        let (mut all_sources, _krates) =
-            try_err!(collect(&dst, &krate.name.as_str(), "sourcesIndex"), &dst);
-        all_sources.push(format!(
-            "sourcesIndex[\"{}\"] = {};",
-            &krate.name,
-            hierarchy.to_json_string()
-        ));
-        all_sources.sort();
-        let v = format!(
-            "var N = null;var sourcesIndex = {{}};\n{}\ncreateSourceSidebar();\n",
-            all_sources.join("\n")
-        );
-        write_crate("source-files.js", &v)?;
+        let make_sources = || {
+            let (mut all_sources, _krates) =
+                try_err!(collect(&dst, &krate.name.as_str(), "sourcesIndex"), &dst);
+            all_sources.push(format!(
+                "sourcesIndex[\"{}\"] = {};",
+                &krate.name,
+                hierarchy.to_json_string()
+            ));
+            all_sources.sort();
+            Ok(format!(
+                "var N = null;var sourcesIndex = {{}};\n{}\ncreateSourceSidebar();\n",
+                all_sources.join("\n")
+            )
+            .into_bytes())
+        };
+        write_crate("source-files.js", &make_sources)?;
     }
 
     // Update the search index and crate list.
@@ -392,16 +398,17 @@ pub(super) fn write_shared(
     // Sort the indexes by crate so the file will be generated identically even
     // with rustdoc running in parallel.
     all_indexes.sort();
-    {
+    write_crate("search-index.js", &|| {
         let mut v = String::from("var searchIndex = JSON.parse('{\\\n");
         v.push_str(&all_indexes.join(",\\\n"));
         v.push_str("\\\n}');\ninitSearch(searchIndex);");
-        write_crate("search-index.js", &v)?;
-    }
+        Ok(v.into_bytes())
+    })?;
 
-    let crate_list =
-        format!("window.ALL_CRATES = [{}];", krates.iter().map(|k| format!("\"{}\"", k)).join(","));
-    write_crate("crates.js", &crate_list)?;
+    write_crate("crates.js", &|| {
+        let krates = krates.iter().map(|k| format!("\"{}\"", k)).join(",");
+        Ok(format!("window.ALL_CRATES = [{}];", krates).into_bytes())
+    })?;
 
     if options.enable_index_page {
         if let Some(index_page) = options.index_page.clone() {
