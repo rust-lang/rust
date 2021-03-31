@@ -49,6 +49,8 @@ pub(crate) const TRIGGER_CHARS: &str = ".=>";
 // ----
 // "editor.formatOnType": true,
 // ----
+//
+// image::https://user-images.githubusercontent.com/48062697/113166163-69758500-923a-11eb-81ee-eb33ec380399.gif[]
 pub(crate) fn on_char_typed(
     db: &RootDatabase,
     position: FilePosition,

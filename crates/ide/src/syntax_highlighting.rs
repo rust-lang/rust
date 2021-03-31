@@ -48,6 +48,8 @@ pub struct HlRange {
 //
 // The general rule is that a reference to an entity gets colored the same way as the entity itself.
 // We also give special modifier for `mut` and `&mut` local variables.
+//
+// image::https://user-images.githubusercontent.com/48062697/113164457-06cfb980-9239-11eb-819b-0f93e646acf8.png[]
 pub(crate) fn highlight(
     db: &RootDatabase,
     file_id: FileId,
