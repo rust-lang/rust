@@ -177,6 +177,8 @@ target | std | host | notes
 `avr-unknown-gnu-atmega328` | ✗ |  | AVR. Requires `-Z build-std=core`
 `hexagon-unknown-linux-musl` | ? |  |
 `i386-apple-ios` | ✓ |  | 32-bit x86 iOS
+`i386-unknown-linux-gnu` |   |   | 32-bit x86 Linux
+`i486-unknown-linux-gnu` |   |   | 32-bit x86 Linux
 `i686-apple-darwin` | ✓ | ✓ | 32-bit macOS (10.7+, Lion+)
 `i686-pc-windows-msvc` | ✓ |  | 32-bit Windows XP support
 `i686-unknown-uefi` | ? |  | 32-bit UEFI
