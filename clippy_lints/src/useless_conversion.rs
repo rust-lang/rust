@@ -103,25 +103,23 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                         );
                     }
                 }
-                if match_trait_method(cx, e, &paths::TRY_INTO_TRAIT) && &*name.ident.as_str() == "try_into" {
-                    if_chain! {
-                        let a = cx.typeck_results().expr_ty(e);
-                        let b = cx.typeck_results().expr_ty(&args[0]);
-                        if is_type_diagnostic_item(cx, a, sym::result_type);
-                        if let ty::Adt(_, substs) = a.kind();
-                        if let Some(a_type) = substs.types().next();
-                        if TyS::same_type(a_type, b);
-
-                        then {
-                            span_lint_and_help(
-                                cx,
-                                USELESS_CONVERSION,
-                                e.span,
-                                &format!("useless conversion to the same type: `{}`", b),
-                                None,
-                                "consider removing `.try_into()`",
-                            );
-                        }
+                if_chain! {
+                    if match_trait_method(cx, e, &paths::TRY_INTO_TRAIT) && &*name.ident.as_str() == "try_into";
+                    let a = cx.typeck_results().expr_ty(e);
+                    let b = cx.typeck_results().expr_ty(&args[0]);
+                    if is_type_diagnostic_item(cx, a, sym::result_type);
+                    if let ty::Adt(_, substs) = a.kind();
+                    if let Some(a_type) = substs.types().next();
+                    if TyS::same_type(a_type, b);
+                    then {
+                        span_lint_and_help(
+                            cx,
+                            USELESS_CONVERSION,
+                            e.span,
+                            &format!("useless conversion to the same type: `{}`", b),
+                            None,
+                            "consider removing `.try_into()`",
+                        );
                     }
                 }
             },
@@ -131,10 +129,9 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                     if args.len() == 1;
                     if let ExprKind::Path(ref qpath) = path.kind;
                     if let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id();
-                    let a = cx.typeck_results().expr_ty(e);
-                    let b = cx.typeck_results().expr_ty(&args[0]);
-
                     then {
+                        let a = cx.typeck_results().expr_ty(e);
+                        let b = cx.typeck_results().expr_ty(&args[0]);
                         if_chain! {
                             if match_def_path(cx, def_id, &paths::TRY_FROM);
                             if is_type_diagnostic_item(cx, a, sym::result_type);

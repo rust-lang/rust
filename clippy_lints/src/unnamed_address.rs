@@ -116,8 +116,8 @@ impl LateLintPass<'_> for UnnamedAddress {
         if_chain! {
             if let ExprKind::Binary(binop, ref left, ref right) = expr.kind;
             if is_comparison(binop.node);
-            if cx.typeck_results().expr_ty_adjusted(left).is_fn_ptr() &&
-                cx.typeck_results().expr_ty_adjusted(right).is_fn_ptr();
+            if cx.typeck_results().expr_ty_adjusted(left).is_fn_ptr();
+            if cx.typeck_results().expr_ty_adjusted(right).is_fn_ptr();
             if is_fn_def(cx, left) || is_fn_def(cx, right);
             then {
                 span_lint(

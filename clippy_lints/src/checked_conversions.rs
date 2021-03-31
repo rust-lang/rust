@@ -321,9 +321,8 @@ fn get_implementing_type<'a>(path: &QPath<'_>, candidates: &'a [&str], function:
         if path.ident.name.as_str() == function;
         if let TyKind::Path(QPath::Resolved(None, ref tp)) = &ty.kind;
         if let [int] = &*tp.segments;
-        let name = &int.ident.name.as_str();
-
         then {
+            let name = &int.ident.name.as_str();
             candidates.iter().find(|c| name == *c).cloned()
         } else {
             None
@@ -336,9 +335,8 @@ fn int_ty_to_sym<'tcx>(path: &QPath<'_>) -> Option<&'tcx str> {
     if_chain! {
         if let QPath::Resolved(_, ref path) = *path;
         if let [ty] = &*path.segments;
-        let name = &ty.ident.name.as_str();
-
         then {
+            let name = &ty.ident.name.as_str();
             INTS.iter().find(|c| name == *c).cloned()
         } else {
             None

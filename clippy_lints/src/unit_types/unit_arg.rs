@@ -19,9 +19,9 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if is_questionmark_desugar_marked_call(expr) {
         return;
     }
+    let map = &cx.tcx.hir();
+    let opt_parent_node = map.find(map.get_parent_node(expr.hir_id));
     if_chain! {
-        let map = &cx.tcx.hir();
-        let opt_parent_node = map.find(map.get_parent_node(expr.hir_id));
         if let Some(hir::Node::Expr(parent_expr)) = opt_parent_node;
         if is_questionmark_desugar_marked_call(parent_expr);
         then {

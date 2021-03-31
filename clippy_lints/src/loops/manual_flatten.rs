@@ -46,9 +46,8 @@ pub(super) fn check<'tcx>(
             let some_ctor = is_some_ctor(cx, path.res);
             let ok_ctor = is_ok_ctor(cx, path.res);
             if some_ctor || ok_ctor;
-            let if_let_type = if some_ctor { "Some" } else { "Ok" };
-
             then {
+                let if_let_type = if some_ctor { "Some" } else { "Ok" };
                 // Prepare the error message
                 let msg = format!("unnecessary `if let` since only the `{}` variant of the iterator element is used", if_let_type);
 

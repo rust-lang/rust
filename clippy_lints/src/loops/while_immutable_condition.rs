@@ -103,9 +103,8 @@ impl<'a, 'tcx> VarCollectorVisitor<'a, 'tcx> {
         if_chain! {
             if let ExprKind::Path(ref qpath) = ex.kind;
             if let QPath::Resolved(None, _) = *qpath;
-            let res = self.cx.qpath_res(qpath, ex.hir_id);
             then {
-                match res {
+                match self.cx.qpath_res(qpath, ex.hir_id) {
                     Res::Local(hir_id) => {
                         self.ids.insert(hir_id);
                     },

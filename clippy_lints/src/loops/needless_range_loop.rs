@@ -256,49 +256,47 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
             if let ExprKind::Path(ref seqpath) = seqexpr.kind;
             if let QPath::Resolved(None, ref seqvar) = *seqpath;
             if seqvar.segments.len() == 1;
+            let index_used_directly = path_to_local_id(idx, self.var);
+            let indexed_indirectly = {
+                let mut used_visitor = LocalUsedVisitor::new(self.cx, self.var);
+                walk_expr(&mut used_visitor, idx);
+                used_visitor.used
+            };
+            if indexed_indirectly || index_used_directly;
             then {
-                let index_used_directly = path_to_local_id(idx, self.var);
-                let indexed_indirectly = {
-                    let mut used_visitor = LocalUsedVisitor::new(self.cx, self.var);
-                    walk_expr(&mut used_visitor, idx);
-                    used_visitor.used
-                };
-
-                if indexed_indirectly || index_used_directly {
-                    if self.prefer_mutable {
-                        self.indexed_mut.insert(seqvar.segments[0].ident.name);
-                    }
-                    let res = self.cx.qpath_res(seqpath, seqexpr.hir_id);
-                    match res {
-                        Res::Local(hir_id) => {
-                            let parent_id = self.cx.tcx.hir().get_parent_item(expr.hir_id);
-                            let parent_def_id = self.cx.tcx.hir().local_def_id(parent_id);
-                            let extent = self.cx.tcx.region_scope_tree(parent_def_id).var_scope(hir_id.local_id);
-                            if indexed_indirectly {
-                                self.indexed_indirectly.insert(seqvar.segments[0].ident.name, Some(extent));
-                            }
-                            if index_used_directly {
-                                self.indexed_directly.insert(
-                                    seqvar.segments[0].ident.name,
-                                    (Some(extent), self.cx.typeck_results().node_type(seqexpr.hir_id)),
-                                );
-                            }
-                            return false;  // no need to walk further *on the variable*
+                if self.prefer_mutable {
+                    self.indexed_mut.insert(seqvar.segments[0].ident.name);
+                }
+                let res = self.cx.qpath_res(seqpath, seqexpr.hir_id);
+                match res {
+                    Res::Local(hir_id) => {
+                        let parent_id = self.cx.tcx.hir().get_parent_item(expr.hir_id);
+                        let parent_def_id = self.cx.tcx.hir().local_def_id(parent_id);
+                        let extent = self.cx.tcx.region_scope_tree(parent_def_id).var_scope(hir_id.local_id);
+                        if indexed_indirectly {
+                            self.indexed_indirectly.insert(seqvar.segments[0].ident.name, Some(extent));
                         }
-                        Res::Def(DefKind::Static | DefKind::Const, ..) => {
-                            if indexed_indirectly {
-                                self.indexed_indirectly.insert(seqvar.segments[0].ident.name, None);
-                            }
-                            if index_used_directly {
-                                self.indexed_directly.insert(
-                                    seqvar.segments[0].ident.name,
-                                    (None, self.cx.typeck_results().node_type(seqexpr.hir_id)),
-                                );
-                            }
-                            return false;  // no need to walk further *on the variable*
+                        if index_used_directly {
+                            self.indexed_directly.insert(
+                                seqvar.segments[0].ident.name,
+                                (Some(extent), self.cx.typeck_results().node_type(seqexpr.hir_id)),
+                            );
                         }
-                        _ => (),
+                        return false;  // no need to walk further *on the variable*
                     }
+                    Res::Def(DefKind::Static | DefKind::Const, ..) => {
+                        if indexed_indirectly {
+                            self.indexed_indirectly.insert(seqvar.segments[0].ident.name, None);
+                        }
+                        if index_used_directly {
+                            self.indexed_directly.insert(
+                                seqvar.segments[0].ident.name,
+                                (None, self.cx.typeck_results().node_type(seqexpr.hir_id)),
+                            );
+                        }
+                        return false;  // no need to walk further *on the variable*
+                    }
+                    _ => (),
                 }
             }
         }

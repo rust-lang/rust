@@ -371,8 +371,8 @@ fn extract_clippy_lint(lint: &NestedMetaItem) -> Option<SymbolStr> {
         if meta_item.path.segments.len() > 1;
         if let tool_name = meta_item.path.segments[0].ident;
         if tool_name.name == sym::clippy;
-        let lint_name = meta_item.path.segments.last().unwrap().ident.name;
         then {
+            let lint_name = meta_item.path.segments.last().unwrap().ident.name;
             return Some(lint_name.as_str());
         }
     }

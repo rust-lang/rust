@@ -113,8 +113,8 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
                     if_chain! {
                         if let hir::ExprKind::Call(ref closure, _) = expr.kind;
                         if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = closure.kind;
-                        if self.path.segments[0].ident == path.segments[0].ident
-                            && self.path.res == path.res;
+                        if self.path.segments[0].ident == path.segments[0].ident;
+                        if self.path.res == path.res;
                         then {
                             self.count += 1;
                         }

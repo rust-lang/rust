@@ -138,9 +138,8 @@ fn result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'t
     if_chain! {
         if let ty::Adt(_, subst) = ty.kind();
         if is_type_diagnostic_item(cx, ty, sym::result_type);
-        let err_ty = subst.type_at(1);
         then {
-            Some(err_ty)
+            Some(subst.type_at(1))
         } else {
             None
         }
@@ -156,10 +155,8 @@ fn poll_result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<
 
         if let ty::Adt(ready_def, ready_subst) = ready_ty.kind();
         if cx.tcx.is_diagnostic_item(sym::result_type, ready_def.did);
-        let err_ty = ready_subst.type_at(1);
-
         then {
-            Some(err_ty)
+            Some(ready_subst.type_at(1))
         } else {
             None
         }
@@ -179,10 +176,8 @@ fn poll_option_result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> 
 
         if let ty::Adt(some_def, some_subst) = some_ty.kind();
         if cx.tcx.is_diagnostic_item(sym::result_type, some_def.did);
-        let err_ty = some_subst.type_at(1);
-
         then {
-            Some(err_ty)
+            Some(some_subst.type_at(1))
         } else {
             None
         }
