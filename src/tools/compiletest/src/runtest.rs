@@ -1909,8 +1909,7 @@ impl<'test> TestCx<'test> {
         } else {
             Command::new(&self.config.rustdoc_path.clone().expect("no rustdoc built yet"))
         };
-        // FIXME Why is -L here?
-        rustc.arg(input_file); //.arg("-L").arg(&self.config.build_base);
+        rustc.arg(input_file);
 
         // Use a single thread for efficiency and a deterministic error message order
         rustc.arg("-Zthreads=1");
