@@ -213,6 +213,9 @@ pub(super) fn write_shared(
     let mut themes: Vec<&String> = themes.iter().collect();
     themes.sort();
 
+    // FIXME: this should probably not be a toolchain file since it depends on `--theme`.
+    // But it seems a shame to copy it over and over when it's almost always the same.
+    // Maybe we can change the representation to move this out of main.js?
     write_minify(
         "main.js",
         &static_files::MAIN_JS.replace(
@@ -238,7 +241,13 @@ pub(super) fn write_shared(
 
     if let Some(ref css) = cx.shared.layout.css_file_extension {
         let buffer = try_err!(fs::read_to_string(css), css);
-        write_minify("theme.css", &buffer)?;
+        // This varies based on the invocation, so it can't go through the write_minify wrapper.
+        cx.write_minify(
+            SharedResource::InvocationSpecific { basename: "theme.css" },
+            &buffer,
+            options.enable_minification,
+            &options.emit,
+        )?;
     }
     write_minify("normalize.css", static_files::NORMALIZE_CSS)?;
     for (name, contents) in &*FILES_UNVERSIONED {
