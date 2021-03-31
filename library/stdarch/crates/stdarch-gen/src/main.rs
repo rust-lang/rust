@@ -119,14 +119,14 @@ fn type_to_suffix(t: &str) -> &str {
 
 fn type_to_signed_suffix(t: &str) -> &str {
     match t {
-        "int8x8_t" | "uint8x8_t" => "_s8",
-        "int8x16_t" | "uint8x16_t" => "q_s8",
-        "int16x4_t" | "uint16x4_t" => "_s16",
-        "int16x8_t" | "uint16x8_t" => "q_s16",
+        "int8x8_t" | "uint8x8_t" | "poly8x8_t" => "_s8",
+        "int8x16_t" | "uint8x16_t" | "poly8x16_t" => "q_s8",
+        "int16x4_t" | "uint16x4_t" | "poly16x4_t" => "_s16",
+        "int16x8_t" | "uint16x8_t" | "poly16x8_t" => "q_s16",
         "int32x2_t" | "uint32x2_t" => "_s32",
         "int32x4_t" | "uint32x4_t" => "q_s32",
-        "int64x1_t" | "uint64x1_t" => "_s64",
-        "int64x2_t" | "uint64x2_t" => "q_s64",
+        "int64x1_t" | "uint64x1_t" | "poly64x1_t" => "_s64",
+        "int64x2_t" | "uint64x2_t" | "poly64x2_t" => "q_s64",
         /*
         "float16x4_t" => "_f16",
         "float16x8_t" => "q_f16",
@@ -328,6 +328,16 @@ fn type_to_half(t: &str) -> &str {
     }
 }
 
+fn asc(x: usize) -> &'static str {
+    match x {
+        2 => "[0, 1]",
+        4 => "[0, 1, 2, 3]",
+        8 => "[0, 1, 2, 3, 4, 5, 6, 7]",
+        16 => "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]",
+        _ => panic!("unknown transpose order of len {}", x),
+    }
+}
+
 fn transpose1(x: usize) -> &'static str {
     match x {
         2 => "[0, 2]",
@@ -481,6 +491,23 @@ fn bits_minus_one(t: &str) -> &'static str {
     }
 }
 
+fn half_bits(t: &str) -> &'static str {
+    match &t[..3] {
+        "u8x" => "4",
+        "u16" => "8",
+        "u32" => "16",
+        "u64" => "32",
+        "i8x" => "4",
+        "i16" => "8",
+        "i32" => "16",
+        "i64" => "32",
+        "p8x" => "4",
+        "p16" => "8",
+        "p64" => "32",
+        _ => panic!("Unknown bits for type {}", t),
+    }
+}
+
 fn map_val<'v>(t: &str, v: &'v str) -> &'v str {
     match v {
         "FALSE" => false_val(t),
@@ -490,6 +517,7 @@ fn map_val<'v>(t: &str, v: &'v str) -> &'v str {
         "FF" => ff_val(t),
         "BITS" => bits(t),
         "BITS_M1" => bits_minus_one(t),
+        "HFBITS" => half_bits(t),
         o => o,
     }
 }
@@ -554,14 +582,21 @@ fn gen_aarch64(
     let ext_c = if let Some(link_aarch64) = link_aarch64.clone() {
         let ext = type_to_ext(in_t[0]);
         let ext2 = type_to_ext(out_t);
+        let link_aarch64 = if link_aarch64.starts_with("llvm") {
+            link_aarch64.replace("_EXT_", ext).replace("_EXT2_", ext2)
+        } else {
+            let mut link = String::from("llvm.aarch64.neon.");
+            link.push_str(&link_aarch64);
+            link.replace("_EXT_", ext).replace("_EXT2_", ext2)
+        };
         format!(
             r#"#[allow(improper_ctypes)]
     extern "C" {{
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.{}")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "{}")]
         fn {}({}) -> {};
     }}
     "#,
-            link_aarch64.replace("_EXT_", ext).replace("_EXT2_", ext2),
+            link_aarch64,
             current_fn,
             match para_num {
                 1 => {
@@ -817,16 +852,30 @@ fn gen_arm(
         if let (Some(link_arm), Some(link_aarch64)) = (link_arm.clone(), link_aarch64.clone()) {
             let ext = type_to_ext(in_t[0]);
             let ext2 = type_to_ext(out_t);
+            let link_arm = if link_arm.starts_with("llvm") {
+                link_arm.replace("_EXT_", ext).replace("_EXT2_", ext2)
+            } else {
+                let mut link = String::from("llvm.arm.neon.");
+                link.push_str(&link_arm);
+                link.replace("_EXT_", ext).replace("_EXT2_", ext2)
+            };
+            let link_aarch64 = if link_aarch64.starts_with("llvm") {
+                link_aarch64.replace("_EXT_", ext).replace("_EXT2_", ext2)
+            } else {
+                let mut link = String::from("llvm.aarch64.neon.");
+                link.push_str(&link_aarch64);
+                link.replace("_EXT_", ext).replace("_EXT2_", ext2)
+            };
             format!(
                 r#"#[allow(improper_ctypes)]
     extern "C" {{
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.{}")]
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.{}")]
+        #[cfg_attr(target_arch = "arm", link_name = "{}")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "{}")]
         fn {}({}) -> {};
     }}
 "#,
-                link_arm.replace("_EXT_", ext).replace("_EXT2_", ext2),
-                link_aarch64.replace("_EXT_", ext).replace("_EXT2_", ext2),
+                link_arm,
+                link_aarch64,
                 current_fn,
                 match para_num {
                     1 => {
@@ -1066,6 +1115,10 @@ fn get_call(
                 re = Some((re_params[0].clone(), in_t[1].to_string()));
             } else if re_params[1] == "in_t" {
                 re = Some((re_params[0].clone(), in_t[1].to_string()));
+            } else if re_params[1] == "in_t0" {
+                re = Some((re_params[0].clone(), in_t[0].to_string()));
+            } else if re_params[1] == "in_t1" {
+                re = Some((re_params[0].clone(), in_t[1].to_string()));
             } else if re_params[1] == "out_t" {
                 re = Some((re_params[0].clone(), out_t.to_string()));
             } else if re_params[1] == "half" {
@@ -1096,6 +1149,9 @@ fn get_call(
                 s
             });
         return format!(r#"[{}]"#, &half[..half.len() - 2]);
+    }
+    if fn_name == "asc-out_len" {
+        return asc(type_len(out_t)).to_string();
     }
     if fn_name == "transpose-1-in_len" {
         return transpose1(type_len(in_t[1])).to_string();

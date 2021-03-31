@@ -3948,6 +3948,138 @@ pub unsafe fn vsubq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     simd_sub(a, b)
 }
 
+/// Subtract returning high narrow
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubhn))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(subhn))]
+pub unsafe fn vsubhn_s16(a: int16x8_t, b: int16x8_t) -> int8x8_t {
+    let c: i16x8 = i16x8::new(8, 8, 8, 8, 8, 8, 8, 8);
+    simd_cast(simd_shr(simd_sub(a, b), transmute(c)))
+}
+
+/// Subtract returning high narrow
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubhn))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(subhn))]
+pub unsafe fn vsubhn_s32(a: int32x4_t, b: int32x4_t) -> int16x4_t {
+    let c: i32x4 = i32x4::new(16, 16, 16, 16);
+    simd_cast(simd_shr(simd_sub(a, b), transmute(c)))
+}
+
+/// Subtract returning high narrow
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubhn))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(subhn))]
+pub unsafe fn vsubhn_s64(a: int64x2_t, b: int64x2_t) -> int32x2_t {
+    let c: i64x2 = i64x2::new(32, 32);
+    simd_cast(simd_shr(simd_sub(a, b), transmute(c)))
+}
+
+/// Subtract returning high narrow
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubhn))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(subhn))]
+pub unsafe fn vsubhn_u16(a: uint16x8_t, b: uint16x8_t) -> uint8x8_t {
+    let c: u16x8 = u16x8::new(8, 8, 8, 8, 8, 8, 8, 8);
+    simd_cast(simd_shr(simd_sub(a, b), transmute(c)))
+}
+
+/// Subtract returning high narrow
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubhn))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(subhn))]
+pub unsafe fn vsubhn_u32(a: uint32x4_t, b: uint32x4_t) -> uint16x4_t {
+    let c: u32x4 = u32x4::new(16, 16, 16, 16);
+    simd_cast(simd_shr(simd_sub(a, b), transmute(c)))
+}
+
+/// Subtract returning high narrow
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubhn))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(subhn))]
+pub unsafe fn vsubhn_u64(a: uint64x2_t, b: uint64x2_t) -> uint32x2_t {
+    let c: u64x2 = u64x2::new(32, 32);
+    simd_cast(simd_shr(simd_sub(a, b), transmute(c)))
+}
+
+/// Subtract returning high narrow
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubhn))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(subhn2))]
+pub unsafe fn vsubhn_high_s16(a: int8x8_t, b: int16x8_t, c: int16x8_t) -> int8x16_t {
+    let d: int8x8_t = vsubhn_s16(b, c);
+    simd_shuffle16(a, d, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+}
+
+/// Subtract returning high narrow
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubhn))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(subhn2))]
+pub unsafe fn vsubhn_high_s32(a: int16x4_t, b: int32x4_t, c: int32x4_t) -> int16x8_t {
+    let d: int16x4_t = vsubhn_s32(b, c);
+    simd_shuffle8(a, d, [0, 1, 2, 3, 4, 5, 6, 7])
+}
+
+/// Subtract returning high narrow
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubhn))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(subhn2))]
+pub unsafe fn vsubhn_high_s64(a: int32x2_t, b: int64x2_t, c: int64x2_t) -> int32x4_t {
+    let d: int32x2_t = vsubhn_s64(b, c);
+    simd_shuffle4(a, d, [0, 1, 2, 3])
+}
+
+/// Subtract returning high narrow
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubhn))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(subhn2))]
+pub unsafe fn vsubhn_high_u16(a: uint8x8_t, b: uint16x8_t, c: uint16x8_t) -> uint8x16_t {
+    let d: uint8x8_t = vsubhn_u16(b, c);
+    simd_shuffle16(a, d, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+}
+
+/// Subtract returning high narrow
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubhn))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(subhn2))]
+pub unsafe fn vsubhn_high_u32(a: uint16x4_t, b: uint32x4_t, c: uint32x4_t) -> uint16x8_t {
+    let d: uint16x4_t = vsubhn_u32(b, c);
+    simd_shuffle8(a, d, [0, 1, 2, 3, 4, 5, 6, 7])
+}
+
+/// Subtract returning high narrow
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsubhn))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(subhn2))]
+pub unsafe fn vsubhn_high_u64(a: uint32x2_t, b: uint64x2_t, c: uint64x2_t) -> uint32x4_t {
+    let d: uint32x2_t = vsubhn_u64(b, c);
+    simd_shuffle4(a, d, [0, 1, 2, 3])
+}
+
 /// Signed halving subtract
 #[inline]
 #[target_feature(enable = "neon")]
@@ -10219,6 +10351,120 @@ mod test {
         let b: f32x4 = f32x4::new(1.0, 2.0, 3.0, 4.0);
         let e: f32x4 = f32x4::new(0.0, 2.0, 0.0, 4.0);
         let r: f32x4 = transmute(vsubq_f32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vsubhn_s16() {
+        let a: i16x8 = i16x8::new(0x7F_FF, -32768, 1, 1, 0x7F_FF, -32768, 1, 1);
+        let b: i16x8 = i16x8::new(1, 0, 0, 0, 1, 0, 0, 0);
+        let e: i8x8 = i8x8::new(0x7F, -128, 0, 0, 0x7F, -128, 0, 0);
+        let r: i8x8 = transmute(vsubhn_s16(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vsubhn_s32() {
+        let a: i32x4 = i32x4::new(0x7F_FF_FF_FF, -2147483648, 1, 1);
+        let b: i32x4 = i32x4::new(1, 0, 0, 0);
+        let e: i16x4 = i16x4::new(0x7F_FF, -32768, 0, 0);
+        let r: i16x4 = transmute(vsubhn_s32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vsubhn_s64() {
+        let a: i64x2 = i64x2::new(0x7F_FF_FF_FF_FF_FF_FF_FF, -9223372036854775808);
+        let b: i64x2 = i64x2::new(1, 0);
+        let e: i32x2 = i32x2::new(0x7F_FF_FF_FF, -2147483648);
+        let r: i32x2 = transmute(vsubhn_s64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vsubhn_u16() {
+        let a: u16x8 = u16x8::new(0xFF_FF, 0, 1, 1, 0xFF_FF, 0, 1, 1);
+        let b: u16x8 = u16x8::new(1, 0, 0, 0, 1, 0, 0, 0);
+        let e: u8x8 = u8x8::new(0xFF, 0, 0, 0, 0xFF, 0, 0, 0);
+        let r: u8x8 = transmute(vsubhn_u16(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vsubhn_u32() {
+        let a: u32x4 = u32x4::new(0xFF_FF_FF_FF, 0, 1, 1);
+        let b: u32x4 = u32x4::new(1, 0, 0, 0);
+        let e: u16x4 = u16x4::new(0xFF_FF, 0, 0, 0);
+        let r: u16x4 = transmute(vsubhn_u32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vsubhn_u64() {
+        let a: u64x2 = u64x2::new(0xFF_FF_FF_FF_FF_FF_FF_FF, 0);
+        let b: u64x2 = u64x2::new(1, 0);
+        let e: u32x2 = u32x2::new(0xFF_FF_FF_FF, 0);
+        let r: u32x2 = transmute(vsubhn_u64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vsubhn_high_s16() {
+        let a: i8x8 = i8x8::new(0x7F, 0, 0x7F, 0, 0x7F, 0, 0x7F, 0);
+        let b: i16x8 = i16x8::new(0x7F_FF, 1, 0x7F_FF, 1, 0x7F_FF, 1, 0x7F_FF, 1);
+        let c: i16x8 = i16x8::new(1, 0, 1, 0, 1, 0, 1, 0);
+        let e: i8x16 = i8x16::new(0x7F, 0, 0x7F, 0, 0x7F, 0, 0x7F, 0, 0x7F, 0, 0x7F, 0, 0x7F, 0, 0x7F, 0);
+        let r: i8x16 = transmute(vsubhn_high_s16(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vsubhn_high_s32() {
+        let a: i16x4 = i16x4::new(0x7F_FF, 0, 0x7F_FF, 0);
+        let b: i32x4 = i32x4::new(0x7F_FF_FF_FF, 1, 0x7F_FF_FF_FF, 1);
+        let c: i32x4 = i32x4::new(1, 0, 1, 0);
+        let e: i16x8 = i16x8::new(0x7F_FF, 0, 0x7F_FF, 0, 0x7F_FF, 0, 0x7F_FF, 0);
+        let r: i16x8 = transmute(vsubhn_high_s32(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vsubhn_high_s64() {
+        let a: i32x2 = i32x2::new(0x7F_FF_FF_FF, 0);
+        let b: i64x2 = i64x2::new(0x7F_FF_FF_FF_FF_FF_FF_FF, 1);
+        let c: i64x2 = i64x2::new(1, 0);
+        let e: i32x4 = i32x4::new(0x7F_FF_FF_FF, 0, 0x7F_FF_FF_FF, 0);
+        let r: i32x4 = transmute(vsubhn_high_s64(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vsubhn_high_u16() {
+        let a: u8x8 = u8x8::new(0xFF, 0, 0xFF, 0, 0xFF, 0, 0xFF, 0);
+        let b: u16x8 = u16x8::new(0xFF_FF, 1, 0xFF_FF, 1, 0xFF_FF, 1, 0xFF_FF, 1);
+        let c: u16x8 = u16x8::new(1, 0, 1, 0, 1, 0, 1, 0);
+        let e: u8x16 = u8x16::new(0xFF, 0, 0xFF, 0, 0xFF, 0, 0xFF, 0, 0xFF, 0, 0xFF, 0, 0xFF, 0, 0xFF, 0);
+        let r: u8x16 = transmute(vsubhn_high_u16(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vsubhn_high_u32() {
+        let a: u16x4 = u16x4::new(0xFF_FF, 0, 0xFF_FF, 0);
+        let b: u32x4 = u32x4::new(0xFF_FF_FF_FF, 1, 0xFF_FF_FF_FF, 1);
+        let c: u32x4 = u32x4::new(1, 0, 1, 0);
+        let e: u16x8 = u16x8::new(0xFF_FF, 0, 0xFF_FF, 0, 0xFF_FF, 0, 0xFF_FF, 0);
+        let r: u16x8 = transmute(vsubhn_high_u32(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vsubhn_high_u64() {
+        let a: u32x2 = u32x2::new(0xFF_FF_FF_FF, 0);
+        let b: u64x2 = u64x2::new(0xFF_FF_FF_FF_FF_FF_FF_FF, 1);
+        let c: u64x2 = u64x2::new(1, 0);
+        let e: u32x4 = u32x4::new(0xFF_FF_FF_FF, 0, 0xFF_FF_FF_FF, 0);
+        let r: u32x4 = transmute(vsubhn_high_u64(transmute(a), transmute(b), transmute(c)));
         assert_eq!(r, e);
     }
 

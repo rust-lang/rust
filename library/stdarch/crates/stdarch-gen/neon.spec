@@ -1050,6 +1050,19 @@ validate 14, 13, 12, 11, 10, 9, 8, 7
 aarch64 = umlsl2
 generate uint16x8_t:uint8x16_t:uint8x16_t:uint16x8_t, uint32x4_t:uint16x8_t:uint16x8_t:uint32x4_t, uint64x2_t:uint32x4_t:uint32x4_t:uint64x2_t
 
+/// Extract narrow
+name = vmovn_high
+no-q
+multi_fn = simd_cast, c:in_t0, b
+multi_fn = simd_shuffle-out_len-noext, a, c, {asc-out_len}
+a = 0, 1, 2, 3, 2, 3, 4, 5
+b = 2, 3, 4, 5, 12, 13, 14, 15
+validate 0, 1, 2, 3, 2, 3, 4, 5, 2, 3, 4, 5, 12, 13, 14, 15
+
+aarch64 = xtn2
+generate int8x8_t:int16x8_t:int8x16_t, int16x4_t:int32x4_t:int16x8_t, int32x2_t:int64x2_t:int32x4_t
+generate uint8x8_t:uint16x8_t:uint8x16_t, uint16x4_t:uint32x4_t:uint16x8_t, uint32x2_t:uint64x2_t:uint32x4_t
+
 /// Negate
 name = vneg
 fn = simd_neg
@@ -1111,19 +1124,37 @@ a = 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42
 b = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
 validate 21, 22, 22, 23, 23, 24, 24, 25, 25, 26, 26, 27, 27, 28, 28, 29
 
-
 arm = vhadd.s
 aarch64 = uhadd
 link-aarch64 = uhadd._EXT_
 link-arm = vhaddu._EXT_
 generate uint*_t
 
-
 arm = vhadd.s
 aarch64 = shadd
 link-aarch64 = shadd._EXT_
 link-arm = vhadds._EXT_
 generate int*_t
+
+/// Reverse bit order
+name = vrbit
+a = 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30
+validate 0, 64, 32, 96, 16, 80, 48, 112, 8, 72, 40, 104, 24, 88, 56, 120
+
+aarch64 = rbit
+link-aarch64 = rbit._EXT_
+
+generate int8x8_t, int8x16_t
+
+/// Reverse bit order
+name = vrbit
+multi_fn = transmute, {vrbit-signed-noext, transmute(a)}
+a = 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30
+validate 0, 64, 32, 96, 16, 80, 48, 112, 8, 72, 40, 104, 24, 88, 56, 120
+
+aarch64 = rbit
+
+generate uint8x8_t, uint8x16_t, poly8x8_t, poly8x16_t
 
 /// Rounding halving add
 name = vrhadd
@@ -1142,6 +1173,69 @@ aarch64 = srhadd
 link-arm = vrhadds._EXT_
 link-aarch64 = srhadd._EXT_
 generate int*_t
+
+/// Floating-point round to integral exact, using current rounding mode
+name = vrndx
+a = -1.5, 0.5, 1.5, 2.5
+validate -2.0, 0.0, 2.0, 2.0
+
+aarch64 = frintx
+link-aarch64 = llvm.rint._EXT_
+generate float*_t, float64x*_t
+
+/// Floating-point round to integral, to nearest with ties to away
+name = vrnda
+a = -1.5, 0.5, 1.5, 2.5
+validate -2.0, 1.0, 2.0, 3.0
+
+aarch64 = frinta
+link-aarch64 = llvm.round._EXT_
+generate float*_t, float64x*_t
+
+/// Floating-point round to integral, to nearest with ties to even
+name = vrndn
+a = -1.5, 0.5, 1.5, 2.5
+validate -2.0, 0.0, 2.0, 2.0
+
+link-aarch64 = frintn._EXT_
+aarch64 = frintn
+generate float*_t, float64x*_t
+
+/// Floating-point round to integral, toward minus infinity
+name = vrndm
+a = -1.5, 0.5, 1.5, 2.5
+validate -2.0, 0.0, 1.0, 2.0
+
+aarch64 = frintm
+link-aarch64 = llvm.floor._EXT_
+generate float*_t, float64x*_t
+
+/// Floating-point round to integral, toward plus infinity
+name = vrndp
+a = -1.5, 0.5, 1.5, 2.5
+validate -1.0, 1.0, 2.0, 3.0
+
+aarch64 = frintp
+link-aarch64 = llvm.ceil._EXT_
+generate float*_t, float64x*_t
+
+/// Floating-point round to integral, toward zero
+name = vrnd
+a = -1.5, 0.5, 1.5, 2.5
+validate -1.0, 0.0, 1.0, 2.0
+
+aarch64 = frintz
+link-aarch64 = llvm.trunc._EXT_
+generate float*_t, float64x*_t
+
+/// Floating-point round to integral, using current rounding mode
+name = vrndi
+a = -1.5, 0.5, 1.5, 2.5
+validate -2.0, 0.0, 2.0, 2.0
+
+aarch64 = frinti
+link-aarch64 = llvm.nearbyint._EXT_
+generate float*_t, float64x*_t
 
 /// Saturating add
 name = vqadd
@@ -1295,6 +1389,35 @@ generate float64x*_t
 arm = vsub.
 generate float*_t
 
+/// Subtract returning high narrow
+name = vsubhn
+no-q
+multi_fn = fixed, c:in_t
+multi_fn = simd_cast, {simd_shr, {simd_sub}, transmute(c)}
+a = MAX, MIN, 1, 1, MAX, MIN, 1, 1
+b = 1, 0, 0, 0, 1, 0, 0, 0
+fixed = HFBITS, HFBITS, HFBITS, HFBITS, HFBITS, HFBITS, HFBITS, HFBITS, HFBITS, HFBITS, HFBITS, HFBITS, HFBITS, HFBITS, HFBITS, HFBITS
+validate MAX, MIN, 0, 0, MAX, MIN, 0, 0
+
+arm = vsubhn
+aarch64 = subhn
+generate int16x8_t:int8x8_t, int32x4_t:int16x4_t, int64x2_t:int32x2_t
+generate uint16x8_t:uint8x8_t, uint32x4_t:uint16x4_t, uint64x2_t:uint32x2_t
+
+/// Subtract returning high narrow
+name = vsubhn_high
+no-q
+multi_fn = vsubhn-noqself-noext, d:in_t0, b, c
+multi_fn = simd_shuffle-out_len-noext, a, d, {asc-out_len}
+a = MAX, 0, MAX, 0, MAX, 0, MAX, 0
+b = MAX, 1, MAX, 1, MAX, 1, MAX, 1
+c = 1, 0, 1, 0, 1, 0, 1, 0
+validate MAX, 0, MAX, 0, MAX, 0, MAX, 0, MAX, 0, MAX, 0, MAX, 0, MAX, 0
+
+arm = vsubhn
+aarch64 = subhn2
+generate int8x8_t:int16x8_t:int16x8_t:int8x16_t, int16x4_t:int32x4_t:int32x4_t:int16x8_t, int32x2_t:int64x2_t:int64x2_t:int32x4_t
+generate uint8x8_t:uint16x8_t:uint16x8_t:uint8x16_t, uint16x4_t:uint32x4_t:uint32x4_t:uint16x8_t, uint32x2_t:uint64x2_t:uint64x2_t:uint32x4_t
 
 /// Signed halving subtract
 name = vhsub
