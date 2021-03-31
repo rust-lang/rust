@@ -417,7 +417,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     where
         I: IntoIterator<Item = PredicateObligation<'tcx>> + std::fmt::Debug,
     {
-        let mut result = EvaluatedToOk;
+        let mut result = EvaluatedToOkModuloRegions;
         debug!(?predicates, "evaluate_predicates_recursively");
         for obligation in predicates {
             let eval = self.evaluate_predicate_recursively(stack, obligation.clone())?;
@@ -499,7 +499,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 ty::PredicateKind::ObjectSafe(trait_def_id) => {
                     if self.tcx().is_object_safe(trait_def_id) {
-                        Ok(EvaluatedToOk)
+                        Ok(EvaluatedToOkModuloRegions)
                     } else {
                         Ok(EvaluatedToErr)
                     }
@@ -530,7 +530,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     match self.infcx.closure_kind(closure_substs) {
                         Some(closure_kind) => {
                             if closure_kind.extends(kind) {
-                                Ok(EvaluatedToOk)
+                                Ok(EvaluatedToOkModuloRegions)
                             } else {
                                 Ok(EvaluatedToErr)
                             }
@@ -547,7 +547,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         obligation.param_env,
                         obligation.cause.span,
                     ) {
-                        Ok(()) => Ok(EvaluatedToOk),
+                        Ok(()) => Ok(EvaluatedToOkModuloRegions),
                         Err(NotConstEvaluatable::MentionsInfer) => Ok(EvaluatedToAmbig),
                         Err(NotConstEvaluatable::MentionsParam) => Ok(EvaluatedToErr),
                         Err(_) => Ok(EvaluatedToErr),
@@ -578,7 +578,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 .at(&obligation.cause, obligation.param_env)
                                 .eq(c1, c2)
                             {
-                                Ok(_) => Ok(EvaluatedToOk),
+                                Ok(_) => Ok(EvaluatedToOkModuloRegions),
                                 Err(_) => Ok(EvaluatedToErr),
                             }
                         }
@@ -736,7 +736,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 cycle.map(|stack| stack.obligation.predicate.without_const().to_predicate(tcx));
             if self.coinductive_match(cycle) {
                 debug!("evaluate_stack --> recursive, coinductive");
-                Some(EvaluatedToOk)
+                Some(EvaluatedToOkModuloRegions)
             } else {
                 debug!("evaluate_stack --> recursive, inductive");
                 Some(EvaluatedToRecur)
