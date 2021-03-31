@@ -761,14 +761,11 @@ impl InitMask {
         }
 
         // FIXME(oli-obk): optimize this for allocations larger than a block.
-        let idx = (start.bytes()..end.bytes()).map(Size::from_bytes).find(|&i| !self.get(i));
+        let idx = (start..end).find(|&i| !self.get(i));
 
         match idx {
             Some(idx) => {
-                let uninit_end = (idx.bytes()..end.bytes())
-                    .map(Size::from_bytes)
-                    .find(|&i| self.get(i))
-                    .unwrap_or(end);
+                let uninit_end = (idx..end).find(|&i| self.get(i)).unwrap_or(end);
                 Err(idx..uninit_end)
             }
             None => Ok(()),
@@ -906,10 +903,9 @@ impl<'a> Iterator for InitChunkIter<'a> {
         }
 
         let is_init = self.init_mask.get(self.start);
-        let end_of_chunk = (self.start.bytes()..self.end.bytes())
-            .map(Size::from_bytes)
-            .find(|&i| self.init_mask.get(i) != is_init)
-            .unwrap_or(self.end);
+        // FIXME(oli-obk): optimize this for allocations larger than a block.
+        let end_of_chunk =
+            (self.start..self.end).find(|&i| self.init_mask.get(i) != is_init).unwrap_or(self.end);
         let range = self.start..end_of_chunk;
 
         self.start = end_of_chunk;
