@@ -9,8 +9,8 @@ LL |     data: IsCopy<A>
    |
 help: consider restricting type parameter `A`
    |
-LL | struct SomeStruct<A: Copy> {
-   |                    ^^^^^^
+LL | struct SomeStruct<A: std::marker::Copy> {
+   |                    ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

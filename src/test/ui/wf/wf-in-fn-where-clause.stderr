@@ -9,8 +9,8 @@ LL |     where T: MustBeCopy<U>
    |
 help: consider further restricting type parameter `U`
    |
-LL |     where T: MustBeCopy<U>, U: Copy
-   |                           ^^^^^^^^^
+LL |     where T: MustBeCopy<U>, U: std::marker::Copy
+   |                           ^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
