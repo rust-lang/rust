@@ -2069,7 +2069,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 if !is_upvar_tys_infer_tuple {
                     let msg = format!("required because it appears within the type `{}`", ty);
                     match ty.kind() {
-                        ty::Adt(def, _) => match self.tcx.item_name_from_hir(def.did) {
+                        ty::Adt(def, _) => match self.tcx.opt_item_name(def.did) {
                             Some(ident) => err.span_note(ident.span, &msg),
                             None => err.note(&msg),
                         },
