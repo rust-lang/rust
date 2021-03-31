@@ -164,6 +164,7 @@ mod consts;
 mod utils;
 
 // begin lints modules, do not remove this comment, it’s used in `update_lints`
+mod absurd_extreme_comparisons;
 mod approx_const;
 mod arithmetic;
 mod as_conversions;
@@ -231,6 +232,7 @@ mod if_let_mutex;
 mod if_let_some_result;
 mod if_not_else;
 mod if_then_some_else_none;
+mod implicit_hasher;
 mod implicit_return;
 mod implicit_saturating_sub;
 mod inconsistent_struct_constructor;
@@ -241,6 +243,7 @@ mod inherent_to_string;
 mod inline_fn_without_body;
 mod int_plus_one;
 mod integer_division;
+mod invalid_upcast_comparisons;
 mod items_after_statements;
 mod large_const_arrays;
 mod large_enum_variant;
@@ -559,6 +562,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &utils::internal_lints::PRODUCE_ICE,
         #[cfg(feature = "internal-lints")]
         &utils::internal_lints::UNNECESSARY_SYMBOL_STR,
+        &absurd_extreme_comparisons::ABSURD_EXTREME_COMPARISONS,
         &approx_const::APPROX_CONSTANT,
         &arithmetic::FLOAT_ARITHMETIC,
         &arithmetic::INTEGER_ARITHMETIC,
@@ -683,6 +687,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &if_let_some_result::IF_LET_SOME_RESULT,
         &if_not_else::IF_NOT_ELSE,
         &if_then_some_else_none::IF_THEN_SOME_ELSE_NONE,
+        &implicit_hasher::IMPLICIT_HASHER,
         &implicit_return::IMPLICIT_RETURN,
         &implicit_saturating_sub::IMPLICIT_SATURATING_SUB,
         &inconsistent_struct_constructor::INCONSISTENT_STRUCT_CONSTRUCTOR,
@@ -696,6 +701,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &inline_fn_without_body::INLINE_FN_WITHOUT_BODY,
         &int_plus_one::INT_PLUS_ONE,
         &integer_division::INTEGER_DIVISION,
+        &invalid_upcast_comparisons::INVALID_UPCAST_COMPARISONS,
         &items_after_statements::ITEMS_AFTER_STATEMENTS,
         &large_const_arrays::LARGE_CONST_ARRAYS,
         &large_enum_variant::LARGE_ENUM_VARIANT,
@@ -957,11 +963,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &transmute::WRONG_TRANSMUTE,
         &transmuting_null::TRANSMUTING_NULL,
         &try_err::TRY_ERR,
-        &types::ABSURD_EXTREME_COMPARISONS,
         &types::BORROWED_BOX,
         &types::BOX_VEC,
-        &types::IMPLICIT_HASHER,
-        &types::INVALID_UPCAST_COMPARISONS,
         &types::LINKEDLIST,
         &types::OPTION_OPTION,
         &types::RC_BUFFER,
@@ -1030,7 +1033,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box await_holding_invalid::AwaitHolding);
     store.register_late_pass(|| box serde_api::SerdeApi);
     let vec_box_size_threshold = conf.vec_box_size_threshold;
-    store.register_late_pass(move || box types::Types::new(vec_box_size_threshold));
+    let type_complexity_threshold = conf.type_complexity_threshold;
+    store.register_late_pass(move || box types::Types::new(vec_box_size_threshold, type_complexity_threshold));
     store.register_late_pass(|| box booleans::NonminimalBool);
     store.register_late_pass(|| box eq_op::EqOp);
     store.register_late_pass(|| box enum_clike::UnportableVariant);
@@ -1093,8 +1097,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box main_recursion::MainRecursion::default());
     store.register_late_pass(|| box lifetimes::Lifetimes);
     store.register_late_pass(|| box entry::HashMapPass);
-    let type_complexity_threshold = conf.type_complexity_threshold;
-    store.register_late_pass(move || box types::TypeComplexity::new(type_complexity_threshold));
     store.register_late_pass(|| box minmax::MinMaxPass);
     store.register_late_pass(|| box open_options::OpenOptions);
     store.register_late_pass(|| box zero_div_zero::ZeroDiv);
@@ -1116,8 +1118,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box get_last_with_len::GetLastWithLen);
     store.register_late_pass(|| box drop_forget_ref::DropForgetRef);
     store.register_late_pass(|| box empty_enum::EmptyEnum);
-    store.register_late_pass(|| box types::AbsurdExtremeComparisons);
-    store.register_late_pass(|| box types::InvalidUpcastComparisons);
+    store.register_late_pass(|| box absurd_extreme_comparisons::AbsurdExtremeComparisons);
+    store.register_late_pass(|| box invalid_upcast_comparisons::InvalidUpcastComparisons);
     store.register_late_pass(|| box regex::Regex::default());
     store.register_late_pass(|| box copies::CopyAndPaste);
     store.register_late_pass(|| box copy_iterator::CopyIterator);
@@ -1161,7 +1163,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box infinite_iter::InfiniteIter);
     store.register_late_pass(|| box inline_fn_without_body::InlineFnWithoutBody);
     store.register_late_pass(|| box useless_conversion::UselessConversion::default());
-    store.register_late_pass(|| box types::ImplicitHasher);
+    store.register_late_pass(|| box implicit_hasher::ImplicitHasher);
     store.register_late_pass(|| box fallible_impl_from::FallibleImplFrom);
     store.register_late_pass(|| box double_comparison::DoubleComparisons);
     store.register_late_pass(|| box question_mark::QuestionMark);
@@ -1374,8 +1376,10 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&functions::MUST_USE_CANDIDATE),
         LintId::of(&functions::TOO_MANY_LINES),
         LintId::of(&if_not_else::IF_NOT_ELSE),
+        LintId::of(&implicit_hasher::IMPLICIT_HASHER),
         LintId::of(&implicit_saturating_sub::IMPLICIT_SATURATING_SUB),
         LintId::of(&infinite_iter::MAYBE_INFINITE_ITER),
+        LintId::of(&invalid_upcast_comparisons::INVALID_UPCAST_COMPARISONS),
         LintId::of(&items_after_statements::ITEMS_AFTER_STATEMENTS),
         LintId::of(&large_stack_arrays::LARGE_STACK_ARRAYS),
         LintId::of(&let_underscore::LET_UNDERSCORE_DROP),
@@ -1414,8 +1418,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&strings::STRING_ADD_ASSIGN),
         LintId::of(&trait_bounds::TRAIT_DUPLICATION_IN_BOUNDS),
         LintId::of(&trait_bounds::TYPE_REPETITION_IN_BOUNDS),
-        LintId::of(&types::IMPLICIT_HASHER),
-        LintId::of(&types::INVALID_UPCAST_COMPARISONS),
         LintId::of(&types::LINKEDLIST),
         LintId::of(&types::OPTION_OPTION),
         LintId::of(&unicode::NON_ASCII_LITERAL),
@@ -1445,6 +1447,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     ]);
 
     store.register_group(true, "clippy::all", Some("clippy"), vec![
+        LintId::of(&absurd_extreme_comparisons::ABSURD_EXTREME_COMPARISONS),
         LintId::of(&approx_const::APPROX_CONSTANT),
         LintId::of(&assertions_on_constants::ASSERTIONS_ON_CONSTANTS),
         LintId::of(&assign_ops::ASSIGN_OP_PATTERN),
@@ -1705,7 +1708,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&transmute::WRONG_TRANSMUTE),
         LintId::of(&transmuting_null::TRANSMUTING_NULL),
         LintId::of(&try_err::TRY_ERR),
-        LintId::of(&types::ABSURD_EXTREME_COMPARISONS),
         LintId::of(&types::BORROWED_BOX),
         LintId::of(&types::BOX_VEC),
         LintId::of(&types::REDUNDANT_ALLOCATION),
@@ -1945,6 +1947,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     ]);
 
     store.register_group(true, "clippy::correctness", Some("clippy_correctness"), vec![
+        LintId::of(&absurd_extreme_comparisons::ABSURD_EXTREME_COMPARISONS),
         LintId::of(&approx_const::APPROX_CONSTANT),
         LintId::of(&async_yields_async::ASYNC_YIELDS_ASYNC),
         LintId::of(&atomic_ordering::INVALID_ATOMIC_ORDERING),
@@ -2007,7 +2010,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&transmute::UNSOUND_COLLECTION_TRANSMUTE),
         LintId::of(&transmute::WRONG_TRANSMUTE),
         LintId::of(&transmuting_null::TRANSMUTING_NULL),
-        LintId::of(&types::ABSURD_EXTREME_COMPARISONS),
         LintId::of(&undropped_manually_drops::UNDROPPED_MANUALLY_DROPS),
         LintId::of(&unicode::INVISIBLE_CHARACTERS),
         LintId::of(&unit_return_expecting_ord::UNIT_RETURN_EXPECTING_ORD),
