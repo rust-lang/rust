@@ -506,6 +506,9 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
     }
 
     fn fold_mir_const(&mut self, c: mir::ConstantKind<'tcx>) -> mir::ConstantKind<'tcx> {
+        if !c.needs_subst() {
+            return c;
+        }
         c.super_fold_with(self)
     }
 }
