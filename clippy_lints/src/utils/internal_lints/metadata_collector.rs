@@ -27,8 +27,9 @@ use std::io::prelude::*;
 use std::path::Path;
 
 use crate::utils::internal_lints::is_lint_ref_type;
-use crate::utils::{
-    last_path_segment, match_function_call, match_path, match_type, paths, span_lint, walk_ptrs_ty_depth,
+use clippy_utils::{
+    diagnostics::span_lint, last_path_segment, match_function_call, match_path, paths, ty::match_type,
+    ty::walk_ptrs_ty_depth,
 };
 
 /// This is the output file of the lint collector.
@@ -107,7 +108,7 @@ pub struct MetadataCollector {
     ///
     /// We use a Heap here to have the lints added in alphabetic order in the export
     lints: BinaryHeap<LintMetadata>,
-    applicability_into: FxHashMap<String, ApplicabilityInfo>,
+    applicability_info: FxHashMap<String, ApplicabilityInfo>,
 }
 
 impl Drop for MetadataCollector {
@@ -120,7 +121,7 @@ impl Drop for MetadataCollector {
             return;
         }
 
-        let mut applicability_info = std::mem::take(&mut self.applicability_into);
+        let mut applicability_info = std::mem::take(&mut self.applicability_info);
 
         // Mapping the final data
         let mut lints = std::mem::take(&mut self.lints).into_sorted_vec();
@@ -272,7 +273,7 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
             }
 
             for (lint_name, applicability, is_multi_part) in emission_info.drain(..) {
-                let app_info = self.applicability_into.entry(lint_name).or_default();
+                let app_info = self.applicability_info.entry(lint_name).or_default();
                 app_info.applicability = applicability;
                 app_info.is_multi_part_suggestion = is_multi_part;
             }
@@ -354,7 +355,7 @@ fn lint_collection_error_item(cx: &LateContext<'_>, item: &Item<'_>, message: &s
         cx,
         INTERNAL_METADATA_COLLECTOR,
         item.ident.span,
-        &format!("Metadata collection error for `{}`: {}", item.ident.name, message),
+        &format!("metadata collection error for `{}`: {}", item.ident.name, message),
     );
 }
 
@@ -569,7 +570,7 @@ impl<'a, 'hir> IsMultiSpanScanner<'a, 'hir> {
     }
 
     /// Add a new single expression suggestion to the counter
-    fn add_singe_span_suggestion(&mut self) {
+    fn add_single_span_suggestion(&mut self) {
         self.suggestion_count += 1;
     }
 
@@ -604,7 +605,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for IsMultiSpanScanner<'a, 'hir> {
                     .any(|func_path| match_function_call(self.cx, fn_expr, func_path).is_some());
                 if found_function {
                     // These functions are all multi part suggestions
-                    self.add_singe_span_suggestion()
+                    self.add_single_span_suggestion()
                 }
             },
             ExprKind::MethodCall(path, _path_span, arg, _arg_span) => {
@@ -616,7 +617,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for IsMultiSpanScanner<'a, 'hir> {
                             if *is_multi_part {
                                 self.add_multi_part_suggestion();
                             } else {
-                                self.add_singe_span_suggestion();
+                                self.add_single_span_suggestion();
                             }
                             break;
                         }
