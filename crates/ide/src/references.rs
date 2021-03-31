@@ -48,6 +48,8 @@ pub struct Declaration {
 //
 // | VS Code | kbd:[Shift+Alt+F12]
 // |===
+//
+// image::https://user-images.githubusercontent.com/48062697/113020670-b7c34f00-917a-11eb-8003-370ac5f2b3cb.gif[]
 pub(crate) fn find_all_refs(
     sema: &Semantics<RootDatabase>,
     position: FilePosition,

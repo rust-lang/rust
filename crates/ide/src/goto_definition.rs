@@ -21,6 +21,8 @@ use crate::{
 //
 // | VS Code | kbd:[F12]
 // |===
+//
+// image::https://user-images.githubusercontent.com/48062697/113065563-025fbe00-91b1-11eb-83e4-a5a703610b23.gif[]
 pub(crate) fn goto_definition(
     db: &RootDatabase,
     position: FilePosition,

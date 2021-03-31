@@ -16,6 +16,8 @@ use crate::{display::TryToNav, FilePosition, NavigationTarget, RangeInfo};
 //
 // | VS Code | kbd:[Ctrl+F12]
 // |===
+//
+// image::https://user-images.githubusercontent.com/48062697/113065566-02f85480-91b1-11eb-9288-aaad8abd8841.gif[]
 pub(crate) fn goto_implementation(
     db: &RootDatabase,
     position: FilePosition,

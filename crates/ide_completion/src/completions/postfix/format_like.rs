@@ -13,6 +13,8 @@
 //   + `logi` -> `log::info!(...)`
 //   + `logw` -> `log::warn!(...)`
 //   + `loge` -> `log::error!(...)`
+//
+// image::https://user-images.githubusercontent.com/48062697/113020656-b560f500-917a-11eb-87de-02991f61beb8.gif[]
 
 use ide_db::helpers::SnippetCap;
 use syntax::ast::{self, AstToken};

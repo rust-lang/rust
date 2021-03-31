@@ -12,6 +12,8 @@ use crate::{display::TryToNav, FilePosition, NavigationTarget, RangeInfo};
 //
 // | VS Code | **Go to Type Definition*
 // |===
+//
+// image::https://user-images.githubusercontent.com/48062697/113020657-b560f500-917a-11eb-9007-0f809733a338.gif[]
 pub(crate) fn goto_type_definition(
     db: &RootDatabase,
     position: FilePosition,
