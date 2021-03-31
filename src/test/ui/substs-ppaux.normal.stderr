@@ -80,7 +80,11 @@ LL |     <str as Foo<u8>>::bar;
    |     ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`
-   = note: required because of the requirements on the impl of `Foo<'_, '_, u8>` for `str`
+note: required because of the requirements on the impl of `Foo<'_, '_, u8>` for `str`
+  --> $DIR/substs-ppaux.rs:11:17
+   |
+LL | impl<'a,'b,T,S> Foo<'a, 'b, S> for T {}
+   |                 ^^^^^^^^^^^^^^     ^
 
 error: aborting due to 5 previous errors
 

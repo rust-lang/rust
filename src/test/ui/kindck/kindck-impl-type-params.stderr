@@ -4,7 +4,11 @@ error[E0277]: `T` cannot be sent between threads safely
 LL |     let a = &t as &dyn Gettable<T>;
    |             ^^ `T` cannot be sent between threads safely
    |
-   = note: required because of the requirements on the impl of `Gettable<T>` for `S<T>`
+note: required because of the requirements on the impl of `Gettable<T>` for `S<T>`
+  --> $DIR/kindck-impl-type-params.rs:14:32
+   |
+LL | impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
+   |                                ^^^^^^^^^^^     ^^^^
    = note: required for the cast to the object type `dyn Gettable<T>`
 help: consider restricting type parameter `T`
    |
@@ -17,7 +21,11 @@ error[E0277]: the trait bound `T: Copy` is not satisfied
 LL |     let a = &t as &dyn Gettable<T>;
    |             ^^ the trait `Copy` is not implemented for `T`
    |
-   = note: required because of the requirements on the impl of `Gettable<T>` for `S<T>`
+note: required because of the requirements on the impl of `Gettable<T>` for `S<T>`
+  --> $DIR/kindck-impl-type-params.rs:14:32
+   |
+LL | impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
+   |                                ^^^^^^^^^^^     ^^^^
    = note: required for the cast to the object type `dyn Gettable<T>`
 help: consider restricting type parameter `T`
    |
@@ -30,7 +38,11 @@ error[E0277]: `T` cannot be sent between threads safely
 LL |     let a: &dyn Gettable<T> = &t;
    |                               ^^ `T` cannot be sent between threads safely
    |
-   = note: required because of the requirements on the impl of `Gettable<T>` for `S<T>`
+note: required because of the requirements on the impl of `Gettable<T>` for `S<T>`
+  --> $DIR/kindck-impl-type-params.rs:14:32
+   |
+LL | impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
+   |                                ^^^^^^^^^^^     ^^^^
    = note: required for the cast to the object type `dyn Gettable<T>`
 help: consider restricting type parameter `T`
    |
@@ -43,7 +55,11 @@ error[E0277]: the trait bound `T: Copy` is not satisfied
 LL |     let a: &dyn Gettable<T> = &t;
    |                               ^^ the trait `Copy` is not implemented for `T`
    |
-   = note: required because of the requirements on the impl of `Gettable<T>` for `S<T>`
+note: required because of the requirements on the impl of `Gettable<T>` for `S<T>`
+  --> $DIR/kindck-impl-type-params.rs:14:32
+   |
+LL | impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
+   |                                ^^^^^^^^^^^     ^^^^
    = note: required for the cast to the object type `dyn Gettable<T>`
 help: consider restricting type parameter `T`
    |
@@ -64,7 +80,11 @@ error[E0277]: the trait bound `String: Copy` is not satisfied
 LL |     let a = t as Box<dyn Gettable<String>>;
    |             ^ the trait `Copy` is not implemented for `String`
    |
-   = note: required because of the requirements on the impl of `Gettable<String>` for `S<String>`
+note: required because of the requirements on the impl of `Gettable<String>` for `S<String>`
+  --> $DIR/kindck-impl-type-params.rs:14:32
+   |
+LL | impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
+   |                                ^^^^^^^^^^^     ^^^^
    = note: required for the cast to the object type `dyn Gettable<String>`
 
 error[E0277]: the trait bound `Foo: Copy` is not satisfied
@@ -73,7 +93,11 @@ error[E0277]: the trait bound `Foo: Copy` is not satisfied
 LL |     let a: Box<dyn Gettable<Foo>> = t;
    |                                     ^ the trait `Copy` is not implemented for `Foo`
    |
-   = note: required because of the requirements on the impl of `Gettable<Foo>` for `S<Foo>`
+note: required because of the requirements on the impl of `Gettable<Foo>` for `S<Foo>`
+  --> $DIR/kindck-impl-type-params.rs:14:32
+   |
+LL | impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
+   |                                ^^^^^^^^^^^     ^^^^
    = note: required for the cast to the object type `dyn Gettable<Foo>`
 
 error: aborting due to 7 previous errors
