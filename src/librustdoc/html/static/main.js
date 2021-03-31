@@ -1338,17 +1338,11 @@ function hideThemeButtonState() {
                 var valGenerics = extractGenerics(val);
 
                 var paths = valLower.split("::");
-                var j;
-                for (j = 0, len = paths.length; j < len; ++j) {
-                    if (paths[j] === "") {
-                        paths.splice(j, 1);
-                        j -= 1;
-                    }
-                }
+                paths = paths.filter(function(segment) { return segment !== ""; });
                 val = paths[paths.length - 1];
                 var contains = paths.slice(0, paths.length > 1 ? paths.length - 1 : 1);
 
-                var lev;
+                var lev, j;
                 for (j = 0; j < nSearchWords; ++j) {
                     ty = searchIndex[j];
                     if (!ty || (filterCrates !== undefined && ty.crate !== filterCrates)) {
