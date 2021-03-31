@@ -1,21 +1,21 @@
 -include ../../run-make-fulldeps/tools.mk
 
-CRATE_ONLY = $(TMPDIR)/crate-only
+INVOCATION_ONLY = $(TMPDIR)/invocation-only
 TOOLCHAIN_ONLY = $(TMPDIR)/toolchain-only
 ALL_SHARED = $(TMPDIR)/all-shared
 
-all: crate-only toolchain-only all-shared
+all: invocation-only toolchain-only all-shared
 
-crate-only:
-	$(RUSTDOC) -Z unstable-options --emit=crate-specific --output $(CRATE_ONLY) --resource-suffix=-xxx --theme y.css x.rs
-	[ -e $(CRATE_ONLY)/search-index-xxx.js ]
-	[ -e $(CRATE_ONLY)/settings.html ]
-	[ -e $(CRATE_ONLY)/x/all.html ]
-	[ -e $(CRATE_ONLY)/x/index.html ]
+invocation-only:
+	$(RUSTDOC) -Z unstable-options --emit=invocation-specific --output $(INVOCATION_ONLY) --resource-suffix=-xxx --theme y.css x.rs
+	[ -e $(INVOCATION_ONLY)/search-index-xxx.js ]
+	[ -e $(INVOCATION_ONLY)/settings.html ]
+	[ -e $(INVOCATION_ONLY)/x/all.html ]
+	[ -e $(INVOCATION_ONLY)/x/index.html ]
 	# FIXME: this probably shouldn't have a suffix
-	[ -e $(CRATE_ONLY)/y-xxx.css ]
-	! [ -e $(CRATE_ONLY)/storage-xxx.js ]
-	! [ -e $(CRATE_ONLY)/SourceSerifPro-It.ttf.woff ]
+	[ -e $(INVOCATION_ONLY)/y-xxx.css ]
+	! [ -e $(INVOCATION_ONLY)/storage-xxx.js ]
+	! [ -e $(INVOCATION_ONLY)/SourceSerifPro-It.ttf.woff ]
 
 toolchain-only:
 	$(RUSTDOC) -Z unstable-options --emit=toolchain-shared-resources --output $(TOOLCHAIN_ONLY) --resource-suffix=-xxx x.rs

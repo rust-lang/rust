@@ -274,7 +274,7 @@ crate struct RenderOptions {
 crate enum EmitType {
     Unversioned,
     Toolchain,
-    CrateSpecific,
+    InvocationSpecific,
 }
 
 impl FromStr for EmitType {
@@ -285,7 +285,7 @@ impl FromStr for EmitType {
         match s {
             "unversioned-shared-resources" => Ok(Unversioned),
             "toolchain-shared-resources" => Ok(Toolchain),
-            "crate-specific" => Ok(CrateSpecific),
+            "invocation-specific" => Ok(InvocationSpecific),
             _ => Err(()),
         }
     }
@@ -293,7 +293,7 @@ impl FromStr for EmitType {
 
 impl RenderOptions {
     crate fn should_emit_crate(&self) -> bool {
-        self.emit.is_empty() || self.emit.contains(&EmitType::CrateSpecific)
+        self.emit.is_empty() || self.emit.contains(&EmitType::InvocationSpecific)
     }
 }
 

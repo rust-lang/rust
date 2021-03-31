@@ -49,10 +49,10 @@ enum SharedResource<'a> {
     ///
     /// It has a resource suffix.
     ToolchainSpecific { basename: &'static str },
-    /// This file may change for any crate within a build.
+    /// This file may change for any crate within a build, or based on the CLI arguments.
     ///
-    /// This differs from normal crate-specific files because it has a resource suffix.
-    CrateSpecific { basename: &'a str },
+    /// This differs from normal invocation-specific files because it has a resource suffix.
+    InvocationSpecific { basename: &'a str },
 }
 
 impl SharedResource<'_> {
@@ -61,7 +61,7 @@ impl SharedResource<'_> {
         match self {
             Unversioned { name }
             | ToolchainSpecific { basename: name }
-            | CrateSpecific { basename: name } => Path::new(name).extension(),
+            | InvocationSpecific { basename: name } => Path::new(name).extension(),
         }
     }
 
@@ -69,7 +69,7 @@ impl SharedResource<'_> {
         match self {
             SharedResource::Unversioned { name } => cx.dst.join(name),
             SharedResource::ToolchainSpecific { basename } => cx.suffix_path(basename),
-            SharedResource::CrateSpecific { basename } => cx.suffix_path(basename),
+            SharedResource::InvocationSpecific { basename } => cx.suffix_path(basename),
         }
     }
 
@@ -80,7 +80,7 @@ impl SharedResource<'_> {
         let kind = match self {
             SharedResource::Unversioned { .. } => EmitType::Unversioned,
             SharedResource::ToolchainSpecific { .. } => EmitType::Toolchain,
-            SharedResource::CrateSpecific { .. } => EmitType::CrateSpecific,
+            SharedResource::InvocationSpecific { .. } => EmitType::InvocationSpecific,
         };
         emit.contains(&kind)
     }
@@ -165,7 +165,7 @@ pub(super) fn write_shared(
     // Crate resources should always be dynamic.
     let write_crate = |p: &_, make_content: &dyn Fn() -> Result<Vec<u8>, Error>| {
         let content = make_content()?;
-        cx.write_shared(SharedResource::CrateSpecific { basename: p }, content, &options.emit)
+        cx.write_shared(SharedResource::InvocationSpecific { basename: p }, content, &options.emit)
     };
 
     // Add all the static files. These may already exist, but we just
