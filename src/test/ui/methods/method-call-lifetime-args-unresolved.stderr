@@ -1,18 +1,3 @@
-warning: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
-  --> $DIR/method-call-lifetime-args-unresolved.rs:2:15
-   |
-LL |     0.clone::<'a>();
-   |               ^^
-   | 
-  ::: $SRC_DIR/core/src/clone.rs:LL:COL
-   |
-LL |     fn clone(&self) -> Self;
-   |              - the late bound lifetime parameter is introduced here
-   |
-   = note: `#[warn(late_bound_lifetime_arguments)]` on by default
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #42868 <https://github.com/rust-lang/rust/issues/42868>
-
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/method-call-lifetime-args-unresolved.rs:2:15
    |
@@ -23,6 +8,6 @@ LL |     0.clone::<'a>();
    |
    = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0261`.

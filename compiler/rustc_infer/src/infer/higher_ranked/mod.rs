@@ -11,10 +11,10 @@ use rustc_middle::ty::{self, Binder, TypeFoldable};
 impl<'a, 'tcx> CombineFields<'a, 'tcx> {
     pub fn higher_ranked_sub<T>(
         &mut self,
-        a: Binder<T>,
-        b: Binder<T>,
+        a: Binder<'tcx, T>,
+        b: Binder<'tcx, T>,
         a_is_expected: bool,
-    ) -> RelateResult<'tcx, Binder<T>>
+    ) -> RelateResult<'tcx, Binder<'tcx, T>>
     where
         T: Relate<'tcx>,
     {
@@ -50,7 +50,10 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
 
             debug!("higher_ranked_sub: OK result={:?}", result);
 
-            Ok(ty::Binder::bind(result))
+            // We related `a_prime` and `b_prime`, which just had any bound vars
+            // replaced with placeholders or infer vars, respectively. Relating
+            // them should not introduce new bound vars.
+            Ok(ty::Binder::dummy(result))
         })
     }
 }
@@ -66,7 +69,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// the [rustc dev guide].
     ///
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
-    pub fn replace_bound_vars_with_placeholders<T>(&self, binder: ty::Binder<T>) -> T
+    pub fn replace_bound_vars_with_placeholders<T>(&self, binder: ty::Binder<'tcx, T>) -> T
     where
         T: TypeFoldable<'tcx>,
     {

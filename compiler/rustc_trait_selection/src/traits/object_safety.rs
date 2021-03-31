@@ -757,7 +757,7 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
     struct IllegalSelfTypeVisitor<'tcx> {
         tcx: TyCtxt<'tcx>,
         trait_def_id: DefId,
-        supertraits: Option<Vec<ty::PolyTraitRef<'tcx>>>,
+        supertraits: Option<Vec<DefId>>,
     }
 
     impl<'tcx> TypeVisitor<'tcx> for IllegalSelfTypeVisitor<'tcx> {
@@ -778,8 +778,10 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
                     // Compute supertraits of current trait lazily.
                     if self.supertraits.is_none() {
                         let trait_ref =
-                            ty::Binder::bind(ty::TraitRef::identity(self.tcx, self.trait_def_id));
-                        self.supertraits = Some(traits::supertraits(self.tcx, trait_ref).collect());
+                            ty::Binder::dummy(ty::TraitRef::identity(self.tcx, self.trait_def_id));
+                        self.supertraits = Some(
+                            traits::supertraits(self.tcx, trait_ref).map(|t| t.def_id()).collect(),
+                        );
                     }
 
                     // Determine whether the trait reference `Foo as
@@ -790,9 +792,11 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
                     // direct equality here because all of these types
                     // are part of the formal parameter listing, and
                     // hence there should be no inference variables.
-                    let projection_trait_ref = ty::Binder::bind(data.trait_ref(self.tcx));
-                    let is_supertrait_of_current_trait =
-                        self.supertraits.as_ref().unwrap().contains(&projection_trait_ref);
+                    let is_supertrait_of_current_trait = self
+                        .supertraits
+                        .as_ref()
+                        .unwrap()
+                        .contains(&data.trait_ref(self.tcx).def_id);
 
                     if is_supertrait_of_current_trait {
                         ControlFlow::CONTINUE // do not walk contained types, do not report error, do collect $200

@@ -312,7 +312,7 @@ impl Foo {
     // if we lower generics before the body, then the `HirId` for
     // things in the body will be affected. So if you start to see
     // `typeck` appear dirty, that might be the cause. -nmatsakis
-    #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
+    #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,fn_sig")]
     #[rustc_clean(cfg="cfail3")]
     pub fn add_lifetime_parameter_to_method<'a>(&self) { }
 }
@@ -360,7 +360,7 @@ impl Foo {
 impl Foo {
     #[rustc_clean(
         cfg="cfail2",
-        except="hir_owner,hir_owner_nodes,generics_of,predicates_of,type_of"
+        except="hir_owner,hir_owner_nodes,generics_of,predicates_of,type_of,fn_sig"
     )]
     #[rustc_clean(cfg="cfail3")]
     pub fn add_lifetime_bound_to_lifetime_param_of_method<'a, 'b: 'a>(&self) { }
@@ -388,7 +388,7 @@ impl Foo {
     // body will be affected. So if you start to see `typeck`
     // appear dirty, that might be the cause. -nmatsakis
     #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,generics_of,predicates_of,\
-                                        type_of")]
+                                        type_of,fn_sig")]
     #[rustc_clean(cfg="cfail3")]
     pub fn add_lifetime_bound_to_type_param_of_method<'a, T: 'a>(&self) { }
 }

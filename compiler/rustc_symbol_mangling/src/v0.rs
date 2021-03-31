@@ -181,7 +181,7 @@ impl SymbolMangler<'tcx> {
 
     fn in_binder<T>(
         mut self,
-        value: &ty::Binder<T>,
+        value: &ty::Binder<'tcx, T>,
         print_value: impl FnOnce(Self, &T) -> Result<Self, !>,
     ) -> Result<Self, !>
     where
@@ -318,7 +318,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
 
             // Late-bound lifetimes use indices starting at 1,
             // see `BinderLevel` for more details.
-            ty::ReLateBound(debruijn, ty::BoundRegion { kind: ty::BrAnon(i) }) => {
+            ty::ReLateBound(debruijn, ty::BoundRegion { kind: ty::BrAnon(i), .. }) => {
                 let binder = &self.binders[self.binders.len() - 1 - debruijn.index()];
                 let depth = binder.lifetime_depths.start + i;
 
@@ -483,7 +483,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
 
     fn print_dyn_existential(
         mut self,
-        predicates: &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>,
+        predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
     ) -> Result<Self::DynExistential, Self::Error> {
         for predicate in predicates {
             self = self.in_binder(&predicate, |mut cx, predicate| {

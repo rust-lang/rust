@@ -499,10 +499,9 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         closure_def_id: DefId,
         closure_substs: SubstsRef<'tcx>,
-    ) -> Option<ty::Binder<Ty<'tcx>>> {
+        env_region: ty::RegionKind,
+    ) -> Option<Ty<'tcx>> {
         let closure_ty = self.mk_closure(closure_def_id, closure_substs);
-        let br = ty::BoundRegion { kind: ty::BrEnv };
-        let env_region = ty::ReLateBound(ty::INNERMOST, br);
         let closure_kind_ty = closure_substs.as_closure().kind_ty();
         let closure_kind = closure_kind_ty.to_opt_closure_kind()?;
         let env_ty = match closure_kind {
@@ -510,7 +509,7 @@ impl<'tcx> TyCtxt<'tcx> {
             ty::ClosureKind::FnMut => self.mk_mut_ref(self.mk_region(env_region), closure_ty),
             ty::ClosureKind::FnOnce => closure_ty,
         };
-        Some(ty::Binder::bind(env_ty))
+        Some(env_ty)
     }
 
     /// Returns `true` if the node pointed to by `def_id` is a `static` item.

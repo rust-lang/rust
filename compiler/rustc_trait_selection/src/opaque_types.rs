@@ -697,7 +697,7 @@ where
 {
     fn visit_binder<T: TypeFoldable<'tcx>>(
         &mut self,
-        t: &ty::Binder<T>,
+        t: &ty::Binder<'tcx, T>,
     ) -> ControlFlow<Self::BreakTy> {
         t.as_ref().skip_binder().visit_with(self);
         ControlFlow::CONTINUE

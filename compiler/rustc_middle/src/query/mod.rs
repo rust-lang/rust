@@ -1290,6 +1290,10 @@ rustc_queries! {
         -> Option<Vec<ObjectLifetimeDefault>> {
         desc { "looking up lifetime defaults for a region on an item" }
     }
+    query late_bound_vars_map(_: LocalDefId)
+        -> Option<&'tcx FxHashMap<ItemLocalId, Vec<ty::BoundVariableKind>>> {
+        desc { "looking up late bound vars" }
+    }
 
     query visibility(def_id: DefId) -> ty::Visibility {
         eval_always

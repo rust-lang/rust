@@ -87,7 +87,8 @@ pub struct CtxtInterners<'tcx> {
     substs: InternedSet<'tcx, InternalSubsts<'tcx>>,
     canonical_var_infos: InternedSet<'tcx, List<CanonicalVarInfo<'tcx>>>,
     region: InternedSet<'tcx, RegionKind>,
-    poly_existential_predicates: InternedSet<'tcx, List<ty::Binder<ExistentialPredicate<'tcx>>>>,
+    poly_existential_predicates:
+        InternedSet<'tcx, List<ty::Binder<'tcx, ExistentialPredicate<'tcx>>>>,
     predicate: InternedSet<'tcx, PredicateInner<'tcx>>,
     predicates: InternedSet<'tcx, List<Predicate<'tcx>>>,
     projs: InternedSet<'tcx, List<ProjectionKind>>,
@@ -95,6 +96,7 @@ pub struct CtxtInterners<'tcx> {
     const_: InternedSet<'tcx, Const<'tcx>>,
     /// Const allocations.
     allocation: InternedSet<'tcx, Allocation>,
+    bound_variable_kinds: InternedSet<'tcx, List<ty::BoundVariableKind>>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -113,6 +115,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             place_elems: Default::default(),
             const_: Default::default(),
             allocation: Default::default(),
+            bound_variable_kinds: Default::default(),
         }
     }
 
@@ -136,7 +139,10 @@ impl<'tcx> CtxtInterners<'tcx> {
     }
 
     #[inline(never)]
-    fn intern_predicate(&self, kind: Binder<PredicateKind<'tcx>>) -> &'tcx PredicateInner<'tcx> {
+    fn intern_predicate(
+        &self,
+        kind: Binder<'tcx, PredicateKind<'tcx>>,
+    ) -> &'tcx PredicateInner<'tcx> {
         self.predicate
             .intern(kind, |kind| {
                 let flags = super::flags::FlagComputation::for_predicate(kind);
@@ -449,7 +455,7 @@ pub struct TypeckResults<'tcx> {
 
     /// Stores the type, expression, span and optional scope span of all types
     /// that are live across the yield of this generator (if a generator).
-    pub generator_interior_types: ty::Binder<Vec<GeneratorInteriorTypeCause<'tcx>>>,
+    pub generator_interior_types: ty::Binder<'tcx, Vec<GeneratorInteriorTypeCause<'tcx>>>,
 
     /// We sometimes treat byte string literals (which are of type `&[u8; N]`)
     /// as `&[u8]`, depending on the pattern  in which they are used.
@@ -804,7 +810,7 @@ impl CanonicalUserType<'tcx> {
                             ty::ReLateBound(debruijn, br) => {
                                 // We only allow a `ty::INNERMOST` index in substitutions.
                                 assert_eq!(*debruijn, ty::INNERMOST);
-                                cvar == br.assert_bound_var()
+                                cvar == br.var
                             }
                             _ => false,
                         },
@@ -1616,10 +1622,11 @@ nop_lift! {allocation; &'a Allocation => &'tcx Allocation}
 nop_lift! {predicate; &'a PredicateInner<'a> => &'tcx PredicateInner<'tcx>}
 
 nop_list_lift! {type_list; Ty<'a> => Ty<'tcx>}
-nop_list_lift! {poly_existential_predicates; ty::Binder<ExistentialPredicate<'a>> => ty::Binder<ExistentialPredicate<'tcx>>}
+nop_list_lift! {poly_existential_predicates; ty::Binder<'a, ExistentialPredicate<'a>> => ty::Binder<'tcx, ExistentialPredicate<'tcx>>}
 nop_list_lift! {predicates; Predicate<'a> => Predicate<'tcx>}
 nop_list_lift! {canonical_var_infos; CanonicalVarInfo<'a> => CanonicalVarInfo<'tcx>}
 nop_list_lift! {projs; ProjectionKind => ProjectionKind}
+nop_list_lift! {bound_variable_kinds; ty::BoundVariableKind => ty::BoundVariableKind}
 
 // This is the impl for `&'a InternalSubsts<'a>`.
 nop_list_lift! {substs; GenericArg<'a> => GenericArg<'tcx>}
@@ -1965,8 +1972,8 @@ impl<'tcx> Hash for Interned<'tcx, PredicateInner<'tcx>> {
     }
 }
 
-impl<'tcx> Borrow<Binder<PredicateKind<'tcx>>> for Interned<'tcx, PredicateInner<'tcx>> {
-    fn borrow<'a>(&'a self) -> &'a Binder<PredicateKind<'tcx>> {
+impl<'tcx> Borrow<Binder<'tcx, PredicateKind<'tcx>>> for Interned<'tcx, PredicateInner<'tcx>> {
+    fn borrow<'a>(&'a self) -> &'a Binder<'tcx, PredicateKind<'tcx>> {
         &self.0.kind
     }
 }
@@ -2072,10 +2079,11 @@ slice_interners!(
     substs: _intern_substs(GenericArg<'tcx>),
     canonical_var_infos: _intern_canonical_var_infos(CanonicalVarInfo<'tcx>),
     poly_existential_predicates:
-        _intern_poly_existential_predicates(ty::Binder<ExistentialPredicate<'tcx>>),
+        _intern_poly_existential_predicates(ty::Binder<'tcx, ExistentialPredicate<'tcx>>),
     predicates: _intern_predicates(Predicate<'tcx>),
     projs: _intern_projs(ProjectionKind),
     place_elems: _intern_place_elems(PlaceElem<'tcx>),
+    bound_variable_kinds: _intern_bound_variable_kinds(ty::BoundVariableKind),
 );
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -2158,7 +2166,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_predicate(self, binder: Binder<PredicateKind<'tcx>>) -> Predicate<'tcx> {
+    pub fn mk_predicate(self, binder: Binder<'tcx, PredicateKind<'tcx>>) -> Predicate<'tcx> {
         let inner = self.interners.intern_predicate(binder);
         Predicate { inner }
     }
@@ -2167,7 +2175,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn reuse_or_mk_predicate(
         self,
         pred: Predicate<'tcx>,
-        binder: Binder<PredicateKind<'tcx>>,
+        binder: Binder<'tcx, PredicateKind<'tcx>>,
     ) -> Predicate<'tcx> {
         if pred.kind() != binder { self.mk_predicate(binder) } else { pred }
     }
@@ -2334,7 +2342,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn mk_dynamic(
         self,
-        obj: &'tcx List<ty::Binder<ExistentialPredicate<'tcx>>>,
+        obj: &'tcx List<ty::Binder<'tcx, ExistentialPredicate<'tcx>>>,
         reg: ty::Region<'tcx>,
     ) -> Ty<'tcx> {
         self.mk_ty(Dynamic(obj, reg))
@@ -2361,7 +2369,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_generator_witness(self, types: ty::Binder<&'tcx List<Ty<'tcx>>>) -> Ty<'tcx> {
+    pub fn mk_generator_witness(self, types: ty::Binder<'tcx, &'tcx List<Ty<'tcx>>>) -> Ty<'tcx> {
         self.mk_ty(GeneratorWitness(types))
     }
 
@@ -2466,8 +2474,8 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn intern_poly_existential_predicates(
         self,
-        eps: &[ty::Binder<ExistentialPredicate<'tcx>>],
-    ) -> &'tcx List<ty::Binder<ExistentialPredicate<'tcx>>> {
+        eps: &[ty::Binder<'tcx, ExistentialPredicate<'tcx>>],
+    ) -> &'tcx List<ty::Binder<'tcx, ExistentialPredicate<'tcx>>> {
         assert!(!eps.is_empty());
         assert!(
             eps.array_windows()
@@ -2512,6 +2520,13 @@ impl<'tcx> TyCtxt<'tcx> {
         if ts.is_empty() { List::empty() } else { self._intern_canonical_var_infos(ts) }
     }
 
+    pub fn intern_bound_variable_kinds(
+        self,
+        ts: &[ty::BoundVariableKind],
+    ) -> &'tcx List<ty::BoundVariableKind> {
+        if ts.is_empty() { List::empty() } else { self._intern_bound_variable_kinds(ts) }
+    }
+
     pub fn mk_fn_sig<I>(
         self,
         inputs: I,
@@ -2533,8 +2548,8 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn mk_poly_existential_predicates<
         I: InternAs<
-            [ty::Binder<ExistentialPredicate<'tcx>>],
-            &'tcx List<ty::Binder<ExistentialPredicate<'tcx>>>,
+            [ty::Binder<'tcx, ExistentialPredicate<'tcx>>],
+            &'tcx List<ty::Binder<'tcx, ExistentialPredicate<'tcx>>>,
         >,
     >(
         self,
@@ -2570,6 +2585,15 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn mk_substs_trait(self, self_ty: Ty<'tcx>, rest: &[GenericArg<'tcx>]) -> SubstsRef<'tcx> {
         self.mk_substs(iter::once(self_ty.into()).chain(rest.iter().cloned()))
+    }
+
+    pub fn mk_bound_variable_kinds<
+        I: InternAs<[ty::BoundVariableKind], &'tcx List<ty::BoundVariableKind>>,
+    >(
+        self,
+        iter: I,
+    ) -> I::Output {
+        iter.intern_with(|xs| self.intern_bound_variable_kinds(xs))
     }
 
     /// Walks upwards from `id` to find a node which might change lint levels with attributes.
@@ -2647,6 +2671,17 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn object_lifetime_defaults(self, id: HirId) -> Option<Vec<ObjectLifetimeDefault>> {
         self.object_lifetime_defaults_map(id.owner)
+    }
+
+    pub fn late_bound_vars(self, id: HirId) -> &'tcx List<ty::BoundVariableKind> {
+        self.mk_bound_variable_kinds(
+            self.late_bound_vars_map(id.owner)
+                .and_then(|map| map.get(&id.local_id).cloned())
+                .unwrap_or_else(|| {
+                    bug!("No bound vars found for {:?} ({:?})", self.hir().node_to_string(id), id)
+                })
+                .iter(),
+        )
     }
 }
 

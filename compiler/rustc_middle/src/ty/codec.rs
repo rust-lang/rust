@@ -120,8 +120,9 @@ impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for Ty<'tcx> {
     }
 }
 
-impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Binder<ty::PredicateKind<'tcx>> {
+impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Binder<'tcx, ty::PredicateKind<'tcx>> {
     fn encode(&self, e: &mut E) -> Result<(), E::Error> {
+        self.bound_vars().encode(e)?;
         encode_with_shorthand(e, &self.skip_binder(), TyEncoder::predicate_shorthands)
     }
 }
@@ -226,18 +227,22 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for Ty<'tcx> {
     }
 }
 
-impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::Binder<ty::PredicateKind<'tcx>> {
-    fn decode(decoder: &mut D) -> Result<ty::Binder<ty::PredicateKind<'tcx>>, D::Error> {
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::Binder<'tcx, ty::PredicateKind<'tcx>> {
+    fn decode(decoder: &mut D) -> Result<ty::Binder<'tcx, ty::PredicateKind<'tcx>>, D::Error> {
+        let bound_vars = Decodable::decode(decoder)?;
         // Handle shorthands first, if we have an usize > 0x80.
-        Ok(ty::Binder::bind(if decoder.positioned_at_shorthand() {
-            let pos = decoder.read_usize()?;
-            assert!(pos >= SHORTHAND_OFFSET);
-            let shorthand = pos - SHORTHAND_OFFSET;
+        Ok(ty::Binder::bind_with_vars(
+            if decoder.positioned_at_shorthand() {
+                let pos = decoder.read_usize()?;
+                assert!(pos >= SHORTHAND_OFFSET);
+                let shorthand = pos - SHORTHAND_OFFSET;
 
-            decoder.with_position(shorthand, ty::PredicateKind::decode)?
-        } else {
-            ty::PredicateKind::decode(decoder)?
-        }))
+                decoder.with_position(shorthand, ty::PredicateKind::decode)?
+            } else {
+                ty::PredicateKind::decode(decoder)?
+            },
+            bound_vars,
+        ))
     }
 }
 
@@ -319,7 +324,7 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<Ty<'tcx>> {
 }
 
 impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D>
-    for ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>
+    for ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>
 {
     fn decode(decoder: &mut D) -> Result<&'tcx Self, D::Error> {
         let len = decoder.read_usize()?;
@@ -379,15 +384,23 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for [mir::abstract_const::N
     }
 }
 
+impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<ty::BoundVariableKind> {
+    fn decode(decoder: &mut D) -> Result<&'tcx Self, D::Error> {
+        let len = decoder.read_usize()?;
+        Ok(decoder.tcx().mk_bound_variable_kinds((0..len).map(|_| Decodable::decode(decoder)))?)
+    }
+}
+
 impl_decodable_via_ref! {
     &'tcx ty::TypeckResults<'tcx>,
     &'tcx ty::List<Ty<'tcx>>,
-    &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>,
+    &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
     &'tcx Allocation,
     &'tcx mir::Body<'tcx>,
     &'tcx mir::UnsafetyCheckResult,
     &'tcx mir::BorrowCheckResult<'tcx>,
-    &'tcx mir::coverage::CodeRegion
+    &'tcx mir::coverage::CodeRegion,
+    &'tcx ty::List<ty::BoundVariableKind>
 }
 
 #[macro_export]
@@ -488,14 +501,16 @@ macro_rules! implement_ty_decoder {
 macro_rules! impl_binder_encode_decode {
     ($($t:ty),+ $(,)?) => {
         $(
-            impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Binder<$t> {
+            impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Binder<'tcx, $t> {
                 fn encode(&self, e: &mut E) -> Result<(), E::Error> {
+                    self.bound_vars().encode(e)?;
                     self.as_ref().skip_binder().encode(e)
                 }
             }
-            impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::Binder<$t> {
+            impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::Binder<'tcx, $t> {
                 fn decode(decoder: &mut D) -> Result<Self, D::Error> {
-                    Ok(ty::Binder::bind(Decodable::decode(decoder)?))
+                    let bound_vars = Decodable::decode(decoder)?;
+                    Ok(ty::Binder::bind_with_vars(Decodable::decode(decoder)?, bound_vars))
                 }
             }
         )*

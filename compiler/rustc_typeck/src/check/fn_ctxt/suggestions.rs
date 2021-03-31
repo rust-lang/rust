@@ -55,7 +55,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Some((fn_decl, can_suggest)) = self.get_fn_decl(blk_id) {
             pointing_at_return_type =
                 self.suggest_missing_return_type(err, &fn_decl, expected, found, can_suggest);
-            self.suggest_missing_return_expr(err, expr, &fn_decl, expected, found);
+            let fn_id = self.tcx.hir().get_return_block(blk_id).unwrap();
+            self.suggest_missing_return_expr(err, expr, &fn_decl, expected, found, fn_id);
         }
         pointing_at_return_type
     }
@@ -479,6 +480,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fn_decl: &hir::FnDecl<'_>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
+        id: hir::HirId,
     ) {
         if !expected.is_unit() {
             return;
@@ -486,7 +488,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let found = self.resolve_vars_with_obligations(found);
         if let hir::FnRetTy::Return(ty) = fn_decl.output {
             let ty = <dyn AstConv<'_>>::ast_ty_to_ty(self, ty);
-            let ty = self.tcx.erase_late_bound_regions(Binder::bind(ty));
+            let bound_vars = self.tcx.late_bound_vars(id);
+            let ty = self.tcx.erase_late_bound_regions(Binder::bind_with_vars(ty, bound_vars));
             let ty = self.normalize_associated_types_in(expr.span, ty);
             if self.can_coerce(found, ty) {
                 err.multipart_suggestion(

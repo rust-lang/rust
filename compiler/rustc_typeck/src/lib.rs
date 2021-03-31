@@ -430,7 +430,7 @@ pub fn hir_ty_to_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty<'_>) -> Ty<'tcx> {
     let env_node_id = tcx.hir().get_parent_item(hir_ty.hir_id);
     let env_def_id = tcx.hir().local_def_id(env_node_id);
     let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id.to_def_id());
-    item_cx.to_ty(hir_ty)
+    <dyn AstConv<'_>>::ast_ty_to_ty(&item_cx, hir_ty)
 }
 
 pub fn hir_trait_to_predicates<'tcx>(
@@ -445,7 +445,7 @@ pub fn hir_trait_to_predicates<'tcx>(
     let env_def_id = tcx.hir().local_def_id(env_hir_id);
     let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id.to_def_id());
     let mut bounds = Bounds::default();
-    let _ = <dyn AstConv<'_>>::instantiate_poly_trait_ref_inner(
+    let _ = <dyn AstConv<'_>>::instantiate_poly_trait_ref(
         &item_cx,
         hir_trait,
         DUMMY_SP,

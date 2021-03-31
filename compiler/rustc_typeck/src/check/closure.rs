@@ -69,7 +69,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expr_def_id = self.tcx.hir().local_def_id(expr.hir_id);
 
         let ClosureSignatures { bound_sig, liberated_sig } =
-            self.sig_of_closure(expr_def_id.to_def_id(), decl, body, expected_sig);
+            self.sig_of_closure(expr.hir_id, expr_def_id.to_def_id(), decl, body, expected_sig);
 
         debug!("check_closure: ty_of_closure returns {:?}", liberated_sig);
 
@@ -288,15 +288,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn sig_of_closure(
         &self,
+        hir_id: hir::HirId,
         expr_def_id: DefId,
         decl: &hir::FnDecl<'_>,
         body: &hir::Body<'_>,
         expected_sig: Option<ExpectedSig<'tcx>>,
     ) -> ClosureSignatures<'tcx> {
         if let Some(e) = expected_sig {
-            self.sig_of_closure_with_expectation(expr_def_id, decl, body, e)
+            self.sig_of_closure_with_expectation(hir_id, expr_def_id, decl, body, e)
         } else {
-            self.sig_of_closure_no_expectation(expr_def_id, decl, body)
+            self.sig_of_closure_no_expectation(hir_id, expr_def_id, decl, body)
         }
     }
 
@@ -304,13 +305,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// types that the user gave into a signature.
     fn sig_of_closure_no_expectation(
         &self,
+        hir_id: hir::HirId,
         expr_def_id: DefId,
         decl: &hir::FnDecl<'_>,
         body: &hir::Body<'_>,
     ) -> ClosureSignatures<'tcx> {
         debug!("sig_of_closure_no_expectation()");
 
-        let bound_sig = self.supplied_sig_of_closure(expr_def_id, decl, body);
+        let bound_sig = self.supplied_sig_of_closure(hir_id, expr_def_id, decl, body);
 
         self.closure_sigs(expr_def_id, body, bound_sig)
     }
@@ -364,6 +366,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///   regions with depth 1, which are bound then by the closure.
     fn sig_of_closure_with_expectation(
         &self,
+        hir_id: hir::HirId,
         expr_def_id: DefId,
         decl: &hir::FnDecl<'_>,
         body: &hir::Body<'_>,
@@ -375,7 +378,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // expectation if things don't see to match up with what we
         // expect.
         if expected_sig.sig.c_variadic() != decl.c_variadic {
-            return self.sig_of_closure_no_expectation(expr_def_id, decl, body);
+            return self.sig_of_closure_no_expectation(hir_id, expr_def_id, decl, body);
         } else if expected_sig.sig.skip_binder().inputs_and_output.len() != decl.inputs.len() + 1 {
             return self.sig_of_closure_with_mismatched_number_of_arguments(
                 expr_def_id,
@@ -411,9 +414,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Along the way, it also writes out entries for types that the user
         // wrote into our typeck results, which are then later used by the privacy
         // check.
-        match self.check_supplied_sig_against_expectation(expr_def_id, decl, body, &closure_sigs) {
+        match self.check_supplied_sig_against_expectation(
+            hir_id,
+            expr_def_id,
+            decl,
+            body,
+            &closure_sigs,
+        ) {
             Ok(infer_ok) => self.register_infer_ok_obligations(infer_ok),
-            Err(_) => return self.sig_of_closure_no_expectation(expr_def_id, decl, body),
+            Err(_) => return self.sig_of_closure_no_expectation(hir_id, expr_def_id, decl, body),
         }
 
         closure_sigs
@@ -460,6 +469,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// strategy.
     fn check_supplied_sig_against_expectation(
         &self,
+        hir_id: hir::HirId,
         expr_def_id: DefId,
         decl: &hir::FnDecl<'_>,
         body: &hir::Body<'_>,
@@ -469,7 +479,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //
         // (See comment on `sig_of_closure_with_expectation` for the
         // meaning of these letters.)
-        let supplied_sig = self.supplied_sig_of_closure(expr_def_id, decl, body);
+        let supplied_sig = self.supplied_sig_of_closure(hir_id, expr_def_id, decl, body);
 
         debug!("check_supplied_sig_against_expectation: supplied_sig={:?}", supplied_sig);
 
@@ -534,6 +544,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Also, record this closure signature for later.
     fn supplied_sig_of_closure(
         &self,
+        hir_id: hir::HirId,
         expr_def_id: DefId,
         decl: &hir::FnDecl<'_>,
         body: &hir::Body<'_>,
@@ -544,6 +555,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             "supplied_sig_of_closure(decl={:?}, body.generator_kind={:?})",
             decl, body.generator_kind,
         );
+
+        let bound_vars = self.tcx.late_bound_vars(hir_id);
 
         // First, convert the types that the user supplied (if any).
         let supplied_arguments = decl.inputs.iter().map(|a| astconv.ast_ty_to_ty(a));
@@ -571,13 +584,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             },
         };
 
-        let result = ty::Binder::bind(self.tcx.mk_fn_sig(
-            supplied_arguments,
-            supplied_return,
-            decl.c_variadic,
-            hir::Unsafety::Normal,
-            Abi::RustCall,
-        ));
+        let result = ty::Binder::bind_with_vars(
+            self.tcx.mk_fn_sig(
+                supplied_arguments,
+                supplied_return,
+                decl.c_variadic,
+                hir::Unsafety::Normal,
+                Abi::RustCall,
+            ),
+            bound_vars,
+        );
 
         debug!("supplied_sig_of_closure: result={:?}", result);
 
