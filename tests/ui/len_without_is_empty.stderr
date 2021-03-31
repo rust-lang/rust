@@ -86,38 +86,38 @@ LL |     pub fn is_empty(&self) -> Option<bool> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: expected signature: `(&self) -> bool` or `(&self) -> Result<bool>
 
-error: this returns a `Result<_, ()>
+error: this returns a `Result<_, ()>`
   --> $DIR/len_without_is_empty.rs:230:5
    |
 LL |     pub fn len(&self) -> Result<usize, ()> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::result-unit-err` implied by `-D warnings`
-   = help: use a custom Error type instead
+   = help: use a custom `Error` type instead
 
-error: this returns a `Result<_, ()>
+error: this returns a `Result<_, ()>`
   --> $DIR/len_without_is_empty.rs:242:5
    |
 LL |     pub fn len(&self) -> Result<usize, ()> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: use a custom Error type instead
+   = help: use a custom `Error` type instead
 
-error: this returns a `Result<_, ()>
+error: this returns a `Result<_, ()>`
   --> $DIR/len_without_is_empty.rs:246:5
    |
 LL |     pub fn is_empty(&self) -> Result<bool, ()> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: use a custom Error type instead
+   = help: use a custom `Error` type instead
 
-error: this returns a `Result<_, ()>
+error: this returns a `Result<_, ()>`
   --> $DIR/len_without_is_empty.rs:253:5
    |
 LL |     pub fn len(&self) -> Result<usize, ()> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: use a custom Error type instead
+   = help: use a custom `Error` type instead
 
 error: aborting due to 12 previous errors
 
