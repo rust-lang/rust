@@ -548,6 +548,15 @@ pub(crate) unsafe fn optimize(
                     llvm::LLVMRustAddPass(fpm, find_pass("lint").unwrap());
                     continue;
                 }
+                if pass_name == "insert-gcov-profiling" || pass_name == "instrprof" {
+                    // Instrumentation must be inserted before optimization,
+                    // otherwise LLVM may optimize some functions away which
+                    // breaks llvm-cov.
+                    //
+                    // This mirrors what Clang does in lib/CodeGen/BackendUtil.cpp.
+                    llvm::LLVMRustAddPass(mpm, find_pass(pass_name).unwrap());
+                    continue;
+                }
 
                 if let Some(pass) = find_pass(pass_name) {
                     extra_passes.push(pass);

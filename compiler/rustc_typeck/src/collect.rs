@@ -2890,17 +2890,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                     .emit();
                     InlineAttr::None
                 } else if list_contains_name(&items[..], sym::always) {
-                    if tcx.sess.instrument_coverage() {
-                        // Fixes Issue #82875. Forced inlining allows LLVM to discard functions
-                        // marked with `#[inline(always)]`, which can break coverage reporting if
-                        // that function was referenced from a coverage map.
-                        //
-                        // FIXME(#83429): Is there a better place, e.g., in codegen, to check and
-                        // convert `Always` to `Hint`?
-                        InlineAttr::Hint
-                    } else {
-                        InlineAttr::Always
-                    }
+                    InlineAttr::Always
                 } else if list_contains_name(&items[..], sym::never) {
                     InlineAttr::Never
                 } else {

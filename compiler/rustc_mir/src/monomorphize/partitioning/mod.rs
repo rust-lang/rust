@@ -196,13 +196,7 @@ pub fn partition<'tcx>(
 
     // Next we try to make as many symbols "internal" as possible, so LLVM has
     // more freedom to optimize.
-    if !tcx.sess.link_dead_code() && !tcx.sess.instrument_coverage() {
-        // Disabled for `-Z instrument-coverage` because some LLVM optimizations can sometimes
-        // break coverage results. Tests that failed at certain optimization levels are now
-        // validated at those optimization levels (via `compile-flags` directive); for example:
-        //   * `src/test/run-make-fulldeps/coverage/async.rs` broke with `-C opt-level=1`
-        //   * `src/test/run-make-fulldeps/coverage/closure.rs` broke with `-C opt-level=2`, and
-        //     also required disabling `generate_gcu_internal_copies` in `rustc_middle/mir/mono.rs`
+    if !tcx.sess.link_dead_code() {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_internalize_symbols");
         partitioner.internalize_symbols(cx, &mut post_inlining);
     }
