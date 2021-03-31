@@ -2268,7 +2268,7 @@ impl<T: ?Sized + Debug> Debug for RefMut<'_, T> {
 }
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
-impl<T: ?Sized + Debug> Debug for UnsafeCell<T> {
+impl<T: ?Sized> Debug for UnsafeCell<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         f.pad("UnsafeCell")
     }
