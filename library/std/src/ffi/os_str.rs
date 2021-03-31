@@ -361,7 +361,7 @@ impl OsString {
 impl From<String> for OsString {
     /// Converts a [`String`] into a [`OsString`].
     ///
-    /// The conversion copies the data, and includes an allocation on the heap.
+    /// This conversion does not allocate or copy memory.
     #[inline]
     fn from(s: String) -> OsString {
         OsString { inner: Buf::from_string(s) }
