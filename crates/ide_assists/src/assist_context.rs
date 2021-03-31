@@ -13,7 +13,7 @@ use ide_db::{
     RootDatabase,
 };
 use syntax::{
-    algo::{self, find_node_at_offset, SyntaxRewriter},
+    algo::{self, find_node_at_offset, find_node_at_range, SyntaxRewriter},
     AstNode, AstToken, SourceFile, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxNodePtr,
     SyntaxToken, TextRange, TextSize, TokenAtOffset,
 };
@@ -88,6 +88,9 @@ impl<'a> AssistContext<'a> {
     }
     pub(crate) fn find_node_at_offset<N: AstNode>(&self) -> Option<N> {
         find_node_at_offset(self.source_file.syntax(), self.offset())
+    }
+    pub(crate) fn find_node_at_range<N: AstNode>(&self) -> Option<N> {
+        find_node_at_range(self.source_file.syntax(), self.frange.range)
     }
     pub(crate) fn find_node_at_offset_with_descend<N: AstNode>(&self) -> Option<N> {
         self.sema.find_node_at_offset_with_descend(self.source_file.syntax(), self.offset())

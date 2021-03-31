@@ -29,7 +29,7 @@ async function editorFromUri(uri: vscode.Uri): Promise<vscode.TextEditor | undef
 }
 
 export async function applySnippetTextEdits(editor: vscode.TextEditor, edits: vscode.TextEdit[]) {
-    let selection: vscode.Selection | undefined = undefined;
+    const selections: vscode.Selection[] = [];
     let lineDelta = 0;
     await editor.edit((builder) => {
         for (const indel of edits) {
@@ -44,18 +44,18 @@ export async function applySnippetTextEdits(editor: vscode.TextEditor, edits: vs
                     indel.range.start.character + placeholderStart
                     : prefix.length - lastNewline - 1;
                 const endColumn = startColumn + placeholderLength;
-                selection = new vscode.Selection(
+                selections.push(new vscode.Selection(
                     new vscode.Position(startLine, startColumn),
                     new vscode.Position(startLine, endColumn),
-                );
+                ));
                 builder.replace(indel.range, newText);
             } else {
-                lineDelta = countLines(indel.newText) - (indel.range.end.line - indel.range.start.line);
                 builder.replace(indel.range, indel.newText);
             }
+            lineDelta = countLines(indel.newText) - (indel.range.end.line - indel.range.start.line);
         }
     });
-    if (selection) editor.selection = selection;
+    if (selections.length > 0) editor.selections = selections;
 }
 
 function parseSnippet(snip: string): [string, [number, number]] | undefined {
