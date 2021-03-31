@@ -639,7 +639,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// `w[c]`.
     /// Notation:
     /// - Ty(place): Type of place
-    /// - `(a, b)`: Represents the function parameters `base_path_ty` and `captured_projs`
+    /// - `(a, b)`: Represents the function parameters `base_path_ty` and `captured_by_move_projs`
     /// respectively.
     /// ```
     ///                  (Ty(w), [ &[p, x], &[c] ])
@@ -700,7 +700,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         closure_def_id: DefId,
         closure_span: Span,
         base_path_ty: Ty<'tcx>,
-        captured_projs: Vec<&[Projection<'tcx>]>,
+        captured_by_move_projs: Vec<&[Projection<'tcx>]>,
     ) -> bool {
         let needs_drop = |ty: Ty<'tcx>| {
             ty.needs_drop(self.tcx, self.tcx.param_env(closure_def_id.expect_local()))
@@ -725,9 +725,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //
         // eg. If `a.b` is captured and we are processing `a.b`, then we can't have the closure also
         //     capture `a.b.c`, because that voilates min capture.
-        let is_completely_captured = captured_projs.iter().any(|projs| projs.is_empty());
+        let is_completely_captured = captured_by_move_projs.iter().any(|projs| projs.is_empty());
 
-        assert!(!is_completely_captured || (captured_projs.len() == 1));
+        assert!(!is_completely_captured || (captured_by_move_projs.len() == 1));
 
         if is_completely_captured {
             // The place is captured entirely, so doesn't matter if needs dtor, it will be drop
@@ -735,23 +735,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
 
-        if is_drop_defined_for_ty {
-            // If drop is implemented for this type then we need it to be fully captured,
-            // which we know it is not because of the previous check. Therefore we need to
-            // do migrate.
-            return true;
+        if captured_by_move_projs.is_empty() {
+            return needs_drop(base_path_ty);
         }
 
-        if captured_projs.is_empty() {
-            return needs_drop(base_path_ty);
+        if is_drop_defined_for_ty {
+            // If drop is implemented for this type then we need it to be fully captured,
+            // and we know it is not completely captured because of the previous checks.
+
+            // Note that this is a bug in the user code that will be reported by the
+            // borrow checker, since we can't move out of drop types.
+
+            // The bug exists in the user's code pre-migration, and we don't migrate here.
+            return false;
         }
 
         match base_path_ty.kind() {
             // Observations:
-            // - `captured_projs` is not empty. Therefore we can call
-            //   `captured_projs.first().unwrap()` safely.
-            // - All entries in `captured_projs` have atleast one projection.
-            //   Therefore we can call `captured_projs.first().unwrap().first().unwrap()` safely.
+            // - `captured_by_move_projs` is not empty. Therefore we can call
+            //   `captured_by_move_projs.first().unwrap()` safely.
+            // - All entries in `captured_by_move_projs` have atleast one projection.
+            //   Therefore we can call `captured_by_move_projs.first().unwrap().first().unwrap()` safely.
 
             // We don't capture derefs in case of move captures, which would have be applied to
             // access any further paths.
@@ -761,19 +765,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             ty::Adt(def, substs) => {
                 // Multi-varaint enums are captured in entirety,
-                // which would've been handled in the case of single empty slice in `captured_projs`.
+                // which would've been handled in the case of single empty slice in `captured_by_move_projs`.
                 assert_eq!(def.variants.len(), 1);
 
                 // Only Field projections can be applied to a non-box Adt.
                 assert!(
-                    captured_projs.iter().all(|projs| matches!(
+                    captured_by_move_projs.iter().all(|projs| matches!(
                         projs.first().unwrap().kind,
                         ProjectionKind::Field(..)
                     ))
                 );
                 def.variants.get(VariantIdx::new(0)).unwrap().fields.iter().enumerate().any(
                     |(i, field)| {
-                        let paths_using_field = captured_projs
+                        let paths_using_field = captured_by_move_projs
                             .iter()
                             .filter_map(|projs| {
                                 if let ProjectionKind::Field(field_idx, _) =
@@ -800,14 +804,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Tuple(..) => {
                 // Only Field projections can be applied to a tuple.
                 assert!(
-                    captured_projs.iter().all(|projs| matches!(
+                    captured_by_move_projs.iter().all(|projs| matches!(
                         projs.first().unwrap().kind,
                         ProjectionKind::Field(..)
                     ))
                 );
 
                 base_path_ty.tuple_fields().enumerate().any(|(i, element_ty)| {
-                    let paths_using_field = captured_projs
+                    let paths_using_field = captured_by_move_projs
                         .iter()
                         .filter_map(|projs| {
                             if let ProjectionKind::Field(field_idx, _) = projs.first().unwrap().kind
