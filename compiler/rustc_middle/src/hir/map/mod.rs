@@ -459,7 +459,7 @@ impl<'hir> Map<'hir> {
         let hir_id = self.local_def_id_to_hir_id(module);
         match self.get_entry(hir_id).node {
             Node::Item(&Item { span, kind: ItemKind::Mod(ref m), .. }) => (m, span, hir_id),
-            Node::Crate(item) => (&item.module, item.span, hir_id),
+            Node::Crate(item) => (&item, item.inner, hir_id),
             node => panic!("not a module: {:?}", node),
         }
     }
@@ -868,7 +868,7 @@ impl<'hir> Map<'hir> {
             Node::Visibility(v) => bug!("unexpected Visibility {:?}", v),
             Node::Local(local) => local.span,
             Node::MacroDef(macro_def) => macro_def.span,
-            Node::Crate(item) => item.span,
+            Node::Crate(item) => item.inner,
         };
         Some(span)
     }
