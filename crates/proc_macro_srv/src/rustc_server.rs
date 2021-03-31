@@ -534,8 +534,12 @@ impl server::Literal for Rustc {
     }
 
     fn integer(&mut self, n: &str) -> Self::Literal {
-        let n: i128 = n.parse().unwrap();
-        Literal { text: n.to_string().into(), id: tt::TokenId::unspecified() }
+        let n = if let Ok(n) = n.parse::<i128>() {
+            n.to_string()
+        } else {
+            n.parse::<u128>().unwrap().to_string()
+        };
+        return Literal { text: n.into(), id: tt::TokenId::unspecified() };
     }
 
     fn typed_integer(&mut self, n: &str, kind: &str) -> Self::Literal {
@@ -757,6 +761,17 @@ mod tests {
         assert_eq!(srv.string("hello_world").text, "\"hello_world\"");
         assert_eq!(srv.character('c').text, "'c'");
         assert_eq!(srv.byte_string(b"1234586\x88").text, "b\"1234586\\x88\"");
+
+        // u128::max
+        assert_eq!(
+            srv.integer("340282366920938463463374607431768211455").text,
+            "340282366920938463463374607431768211455"
+        );
+        // i128::min
+        assert_eq!(
+            srv.integer("-170141183460469231731687303715884105728").text,
+            "-170141183460469231731687303715884105728"
+        );
     }
 
     #[test]
