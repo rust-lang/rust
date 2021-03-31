@@ -291,6 +291,7 @@ mod needless_bool;
 mod needless_borrow;
 mod needless_borrowed_ref;
 mod needless_continue;
+mod needless_for_each;
 mod needless_pass_by_value;
 mod needless_question_mark;
 mod needless_update;
@@ -867,6 +868,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &needless_borrow::NEEDLESS_BORROW,
         &needless_borrowed_ref::NEEDLESS_BORROWED_REFERENCE,
         &needless_continue::NEEDLESS_CONTINUE,
+        &needless_for_each::NEEDLESS_FOR_EACH,
         &needless_pass_by_value::NEEDLESS_PASS_BY_VALUE,
         &needless_question_mark::NEEDLESS_QUESTION_MARK,
         &needless_update::NEEDLESS_UPDATE,
@@ -1045,6 +1047,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box ptr_eq::PtrEq);
     store.register_late_pass(|| box needless_bool::NeedlessBool);
     store.register_late_pass(|| box needless_bool::BoolComparison);
+    store.register_late_pass(|| box needless_for_each::NeedlessForEach);
     store.register_late_pass(|| box approx_const::ApproxConstant);
     store.register_late_pass(|| box misc::MiscLints);
     store.register_late_pass(|| box eta_reduction::EtaReduction);
@@ -1405,6 +1408,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&misc_early::UNSEPARATED_LITERAL_SUFFIX),
         LintId::of(&mut_mut::MUT_MUT),
         LintId::of(&needless_continue::NEEDLESS_CONTINUE),
+        LintId::of(&needless_for_each::NEEDLESS_FOR_EACH),
         LintId::of(&needless_pass_by_value::NEEDLESS_PASS_BY_VALUE),
         LintId::of(&non_expressive_names::SIMILAR_NAMES),
         LintId::of(&option_if_let_else::OPTION_IF_LET_ELSE),
