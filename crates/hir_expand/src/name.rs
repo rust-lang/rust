@@ -55,6 +55,15 @@ impl Name {
         }
     }
 
+    /// A fake name for things missing in the source code.
+    ///
+    /// For example, `impl Foo for {}` should be treated as a trait impl for a
+    /// type with a missing name. Similarly, `struct S { : u32 }` should have a
+    /// single field with a missing name.
+    ///
+    /// Ideally, we want a `gensym` semantics for missing names -- each missing
+    /// name is equal only to itself. It's not clear how to implement this in
+    /// salsa though, so we punt on that bit for a moment.
     pub fn missing() -> Name {
         Name::new_text("[missing name]".into())
     }
