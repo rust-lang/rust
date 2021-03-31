@@ -11,7 +11,8 @@ use rustc_codegen_ssa::traits::*;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::interpret::{
-    read_target_uint, Allocation, ErrorHandled, GlobalAlloc, Pointer, Scalar as InterpScalar,
+    read_target_uint, Allocation, ErrorHandled, GlobalAlloc, InitChunk, Pointer,
+    Scalar as InterpScalar,
 };
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::ty::{self, Instance, Ty};
@@ -19,12 +20,60 @@ use rustc_middle::{bug, span_bug};
 use rustc_target::abi::{
     AddressSpace, Align, HasDataLayout, LayoutOf, Primitive, Scalar, Size, WrappingRange,
 };
+use std::ops::Range;
 use tracing::debug;
 
 pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll Value {
     let mut llvals = Vec::with_capacity(alloc.relocations().len() + 1);
     let dl = cx.data_layout();
     let pointer_size = dl.pointer_size.bytes() as usize;
+
+    // Note: this function may call `inspect_with_uninit_and_ptr_outside_interpreter`,
+    // so `range` must be within the bounds of `alloc` and not within a relocation.
+    fn append_chunks_of_init_and_uninit_bytes<'ll, 'a, 'b>(
+        llvals: &mut Vec<&'ll Value>,
+        cx: &'a CodegenCx<'ll, 'b>,
+        alloc: &'a Allocation,
+        range: Range<usize>,
+    ) {
+        /// Allocations larger than this will only be codegen'd as entirely initialized or entirely undef.
+        /// This avoids compile time regressions when an alloc would have many chunks,
+        /// e.g. for `[(u64, u8); N]`, which has undef padding in each element.
+        const MAX_PARTIALLY_UNDEF_SIZE: usize = 1024;
+
+        let mut chunks = alloc
+            .init_mask()
+            .range_as_init_chunks(Size::from_bytes(range.start), Size::from_bytes(range.end));
+
+        let chunk_to_llval = move |chunk| match chunk {
+            InitChunk::Init(range) => {
+                let range = (range.start.bytes() as usize)..(range.end.bytes() as usize);
+                let bytes = alloc.inspect_with_uninit_and_ptr_outside_interpreter(range);
+                cx.const_bytes(bytes)
+            }
+            InitChunk::Uninit(range) => {
+                let len = range.end.bytes() - range.start.bytes();
+                cx.const_undef(cx.type_array(cx.type_i8(), len))
+            }
+        };
+
+        if range.len() > MAX_PARTIALLY_UNDEF_SIZE {
+            let llval = match (chunks.next(), chunks.next()) {
+                (Some(chunk), None) => {
+                    // exactly one chunk, either fully init or fully uninit
+                    chunk_to_llval(chunk)
+                }
+                _ => {
+                    // partially uninit
+                    let bytes = alloc.inspect_with_uninit_and_ptr_outside_interpreter(range);
+                    cx.const_bytes(bytes)
+                }
+            };
+            llvals.push(llval);
+        } else {
+            llvals.extend(chunks.map(chunk_to_llval));
+        }
+    }
 
     let mut next_offset = 0;
     for &(offset, alloc_id) in alloc.relocations().iter() {
@@ -34,12 +83,8 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll 
         if offset > next_offset {
             // This `inspect` is okay since we have checked that it is not within a relocation, it
             // is within the bounds of the allocation, and it doesn't affect interpreter execution
-            // (we inspect the result after interpreter execution). Any undef byte is replaced with
-            // some arbitrary byte value.
-            //
-            // FIXME: relay undef bytes to codegen as undef const bytes
-            let bytes = alloc.inspect_with_uninit_and_ptr_outside_interpreter(next_offset..offset);
-            llvals.push(cx.const_bytes(bytes));
+            // (we inspect the result after interpreter execution).
+            append_chunks_of_init_and_uninit_bytes(&mut llvals, cx, alloc, next_offset..offset);
         }
         let ptr_offset = read_target_uint(
             dl.endian,
@@ -70,12 +115,8 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll 
         let range = next_offset..alloc.len();
         // This `inspect` is okay since we have check that it is after all relocations, it is
         // within the bounds of the allocation, and it doesn't affect interpreter execution (we
-        // inspect the result after interpreter execution). Any undef byte is replaced with some
-        // arbitrary byte value.
-        //
-        // FIXME: relay undef bytes to codegen as undef const bytes
-        let bytes = alloc.inspect_with_uninit_and_ptr_outside_interpreter(range);
-        llvals.push(cx.const_bytes(bytes));
+        // inspect the result after interpreter execution).
+        append_chunks_of_init_and_uninit_bytes(&mut llvals, cx, alloc, range);
     }
 
     cx.const_struct(&llvals, true)

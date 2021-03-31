@@ -14,6 +14,8 @@
 #![feature(associated_type_bounds)]
 #![feature(exhaustive_patterns)]
 #![feature(min_specialization)]
+#![feature(step_trait)]
+#![feature(unchecked_math)]
 
 use std::path::{Path, PathBuf};
 

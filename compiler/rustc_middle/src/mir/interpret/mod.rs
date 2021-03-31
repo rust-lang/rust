@@ -125,7 +125,9 @@ pub use self::error::{
 
 pub use self::value::{get_slice_bytes, ConstAlloc, ConstValue, Scalar, ScalarMaybeUninit};
 
-pub use self::allocation::{alloc_range, AllocRange, Allocation, InitMask, Relocations};
+pub use self::allocation::{
+    alloc_range, AllocRange, Allocation, InitChunk, InitChunkIter, InitMask, Relocations,
+};
 
 pub use self::pointer::{Pointer, PointerArithmetic, Provenance};
 
