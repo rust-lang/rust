@@ -26,7 +26,9 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
             {
                 continue;
             }
-            self.cx.tcx.for_each_relevant_impl(trait_def_id, ty, |impl_def_id| {
+            // NOTE: doesn't use `for_each_relevant_impl` to avoid looking at anything besides blanket impls
+            let trait_impls = self.cx.tcx.trait_impls_of(trait_def_id);
+            for &impl_def_id in trait_impls.blanket_impls() {
                 debug!(
                     "get_blanket_impls: Considering impl for trait '{:?}' {:?}",
                     trait_def_id, impl_def_id
@@ -86,7 +88,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                     may_apply, trait_ref, ty
                 );
                 if !may_apply {
-                    return;
+                    continue;
                 }
 
                 self.cx.generated_synthetics.insert((ty, trait_def_id));
@@ -127,7 +129,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                         blanket_impl: Some(trait_ref.self_ty().clean(self.cx)),
                     }),
                 });
-            });
+            }
         }
         impls
     }
