@@ -398,7 +398,7 @@ where
 
     fn is_denormal(self) -> bool {
         self.category() == Category::Normal
-            && (self.0.is_denormal() || self.0.is_denormal() ||
+            && (self.0.is_denormal() || self.1.is_denormal() ||
           // (double)(Hi + Lo) == Hi defines a normal number.
           !(self.0 + self.1).value.bitwise_eq(self.0))
     }
