@@ -46,21 +46,17 @@ fn is_method<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, method_name: Sy
     }
 }
 
-fn is_option_filter_map<'tcx>(
-    cx: &LateContext<'tcx>,
-    filter_arg: &'tcx hir::Expr<'_>,
-    map_arg: &'tcx hir::Expr<'_>,
-) -> bool {
+fn is_option_filter_map<'tcx>(cx: &LateContext<'tcx>, filter_arg: &hir::Expr<'_>, map_arg: &hir::Expr<'_>) -> bool {
     is_method(cx, map_arg, sym::unwrap) && is_method(cx, filter_arg, sym!(is_some))
 }
 
 /// lint use of `filter().map()` for `Iterators`
-fn lint_filter_some_map_unwrap<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx hir::Expr<'_>,
-    filter_recv: &'tcx hir::Expr<'_>,
-    filter_arg: &'tcx hir::Expr<'_>,
-    map_arg: &'tcx hir::Expr<'_>,
+fn lint_filter_some_map_unwrap(
+    cx: &LateContext<'_>,
+    expr: &hir::Expr<'_>,
+    filter_recv: &hir::Expr<'_>,
+    filter_arg: &hir::Expr<'_>,
+    map_arg: &hir::Expr<'_>,
     target_span: Span,
     methods_span: Span,
 ) {
@@ -86,14 +82,28 @@ fn lint_filter_some_map_unwrap<'tcx>(
 }
 
 /// lint use of `filter().map()` or `find().map()` for `Iterators`
-pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, is_find: bool, target_span: Span) {
+#[allow(clippy::too_many_arguments)]
+pub(super) fn check<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &hir::Expr<'_>,
+    filter_recv: &hir::Expr<'_>,
+    filter_arg: &hir::Expr<'_>,
+    filter_span: Span,
+    map_recv: &hir::Expr<'_>,
+    map_arg: &hir::Expr<'_>,
+    map_span: Span,
+    is_find: bool,
+) {
+    lint_filter_some_map_unwrap(
+        cx,
+        expr,
+        filter_recv,
+        filter_arg,
+        map_arg,
+        map_span,
+        filter_span.with_hi(expr.span.hi()),
+    );
     if_chain! {
-            if let ExprKind::MethodCall(_, _, [map_recv, map_arg], map_span) = expr.kind;
-            if let ExprKind::MethodCall(_, _, [filter_recv, filter_arg], filter_span) = map_recv.kind;
-            then {
-              lint_filter_some_map_unwrap(cx, expr, filter_recv, filter_arg,
-                map_arg, target_span, filter_span.to(map_span));
-              if_chain! {
             if is_trait_method(cx, map_recv, sym::Iterator);
 
             // filter(|x| ...is_some())...
@@ -148,7 +158,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, is_
             };
             if SpanlessEq::new(cx).expr_fallback(eq_fallback).eq_expr(filter_arg, map_arg);
             then {
-                let span = filter_span.to(map_span);
+                let span = filter_span.with_hi(expr.span.hi());
                 let (filter_name, lint) = if is_find {
                     ("find", MANUAL_FIND_MAP)
                 } else {
@@ -160,7 +170,5 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, is_
                     snippet(cx, map_arg.span, ".."), to_opt);
                 span_lint_and_sugg(cx, lint, span, &msg, "try", sugg, Applicability::MachineApplicable);
             }
-        }
-        }
     }
 }

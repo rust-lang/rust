@@ -3,16 +3,15 @@ use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind};
+use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_span::sym;
 
 use super::BYTES_NTH;
 
-pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, iter_args: &'tcx [Expr<'tcx>]) {
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, recv: &'tcx Expr<'tcx>, n_arg: &'tcx Expr<'tcx>) {
     if_chain! {
-        if let ExprKind::MethodCall(_, _, ref args, _) = expr.kind;
-        let ty = cx.typeck_results().expr_ty(&iter_args[0]).peel_refs();
+        let ty = cx.typeck_results().expr_ty(recv).peel_refs();
         let caller_type = if is_type_diagnostic_item(cx, ty, sym::string_type) {
             Some("String")
         } else if ty.is_str() {
@@ -31,8 +30,8 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, iter_args: &'
                 "try",
                 format!(
                     "{}.as_bytes().get({})",
-                    snippet_with_applicability(cx, iter_args[0].span, "..", &mut applicability),
-                    snippet_with_applicability(cx, args[1].span, "..", &mut applicability)
+                    snippet_with_applicability(cx, recv.span, "..", &mut applicability),
+                    snippet_with_applicability(cx, n_arg.span, "..", &mut applicability)
                 ),
                 applicability,
             );

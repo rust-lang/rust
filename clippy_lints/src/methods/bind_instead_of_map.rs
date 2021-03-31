@@ -80,7 +80,7 @@ pub(crate) trait BindInsteadOfMap {
     fn lint_closure_autofixable(
         cx: &LateContext<'_>,
         expr: &hir::Expr<'_>,
-        args: &[hir::Expr<'_>],
+        recv: &hir::Expr<'_>,
         closure_expr: &hir::Expr<'_>,
         closure_args_span: Span,
     ) -> bool {
@@ -103,7 +103,7 @@ pub(crate) trait BindInsteadOfMap {
                 };
 
                 let closure_args_snip = snippet(cx, closure_args_span, "..");
-                let option_snip = snippet(cx, args[0].span, "..");
+                let option_snip = snippet(cx, recv.span, "..");
                 let note = format!("{}.{}({} {})", option_snip, Self::GOOD_METHOD_NAME, closure_args_snip, some_inner_snip);
                 span_lint_and_sugg(
                     cx,
@@ -158,17 +158,17 @@ pub(crate) trait BindInsteadOfMap {
     }
 
     /// Lint use of `_.and_then(|x| Some(y))` for `Option`s
-    fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) -> bool {
-        if !match_type(cx, cx.typeck_results().expr_ty(&args[0]), Self::TYPE_QPATH) {
+    fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>, arg: &hir::Expr<'_>) -> bool {
+        if !match_type(cx, cx.typeck_results().expr_ty(recv), Self::TYPE_QPATH) {
             return false;
         }
 
-        match args[1].kind {
+        match arg.kind {
             hir::ExprKind::Closure(_, _, body_id, closure_args_span, _) => {
                 let closure_body = cx.tcx.hir().body(body_id);
                 let closure_expr = remove_blocks(&closure_body.value);
 
-                if Self::lint_closure_autofixable(cx, expr, args, closure_expr, closure_args_span) {
+                if Self::lint_closure_autofixable(cx, expr, recv, closure_expr, closure_args_span) {
                     true
                 } else {
                     Self::lint_closure(cx, expr, closure_expr)
@@ -182,7 +182,7 @@ pub(crate) trait BindInsteadOfMap {
                     expr.span,
                     Self::no_op_msg().as_ref(),
                     "use the expression directly",
-                    snippet(cx, args[0].span, "..").into(),
+                    snippet(cx, recv.span, "..").into(),
                     Applicability::MachineApplicable,
                 );
                 true

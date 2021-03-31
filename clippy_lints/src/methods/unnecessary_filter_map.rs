@@ -10,12 +10,12 @@ use rustc_span::sym;
 
 use super::UNNECESSARY_FILTER_MAP;
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
+pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Expr<'_>) {
     if !is_trait_method(cx, expr, sym::Iterator) {
         return;
     }
 
-    if let hir::ExprKind::Closure(_, _, body_id, ..) = args[1].kind {
+    if let hir::ExprKind::Closure(_, _, body_id, ..) = arg.kind {
         let body = cx.tcx.hir().body(body_id);
         let arg_id = body.params[0].pat.hir_id;
         let mutates_arg =

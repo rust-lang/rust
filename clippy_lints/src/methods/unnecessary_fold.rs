@@ -11,11 +11,17 @@ use rustc_span::{source_map::Span, sym};
 
 use super::UNNECESSARY_FOLD;
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, fold_args: &[hir::Expr<'_>], fold_span: Span) {
+pub(super) fn check(
+    cx: &LateContext<'_>,
+    expr: &hir::Expr<'_>,
+    init: &hir::Expr<'_>,
+    acc: &hir::Expr<'_>,
+    fold_span: Span,
+) {
     fn check_fold_with_op(
         cx: &LateContext<'_>,
         expr: &hir::Expr<'_>,
-        fold_args: &[hir::Expr<'_>],
+        acc: &hir::Expr<'_>,
         fold_span: Span,
         op: hir::BinOpKind,
         replacement_method_name: &str,
@@ -23,7 +29,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, fold_args: &[hir
     ) {
         if_chain! {
             // Extract the body of the closure passed to fold
-            if let hir::ExprKind::Closure(_, _, body_id, _, _) = fold_args[2].kind;
+            if let hir::ExprKind::Closure(_, _, body_id, _, _) = acc.kind;
             let closure_body = cx.tcx.hir().body(body_id);
             let closure_expr = remove_blocks(&closure_body.value);
 
@@ -74,25 +80,14 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, fold_args: &[hir
         return;
     }
 
-    assert!(
-        fold_args.len() == 3,
-        "Expected fold_args to have three entries - the receiver, the initial value and the closure"
-    );
-
     // Check if the first argument to .fold is a suitable literal
-    if let hir::ExprKind::Lit(ref lit) = fold_args[1].kind {
+    if let hir::ExprKind::Lit(ref lit) = init.kind {
         match lit.node {
-            ast::LitKind::Bool(false) => {
-                check_fold_with_op(cx, expr, fold_args, fold_span, hir::BinOpKind::Or, "any", true)
-            },
-            ast::LitKind::Bool(true) => {
-                check_fold_with_op(cx, expr, fold_args, fold_span, hir::BinOpKind::And, "all", true)
-            },
-            ast::LitKind::Int(0, _) => {
-                check_fold_with_op(cx, expr, fold_args, fold_span, hir::BinOpKind::Add, "sum", false)
-            },
+            ast::LitKind::Bool(false) => check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::Or, "any", true),
+            ast::LitKind::Bool(true) => check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::And, "all", true),
+            ast::LitKind::Int(0, _) => check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::Add, "sum", false),
             ast::LitKind::Int(1, _) => {
-                check_fold_with_op(cx, expr, fold_args, fold_span, hir::BinOpKind::Mul, "product", false)
+                check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::Mul, "product", false)
             },
             _ => (),
         }
