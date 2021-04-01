@@ -953,7 +953,7 @@ pub fn build_target_config(opts: &Options, target_override: Option<Target>) -> T
             opts.error_format,
             &format!(
                 "Error loading target specification: {}. \
-            Use `--print target-list` for a list of built-in targets",
+                 Run `rustc --print target-list` for a list of built-in targets",
                 e
             ),
         )
