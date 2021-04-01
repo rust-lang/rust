@@ -137,7 +137,7 @@ impl<I, F, T> DedupByKey<I, F, T> {
 impl<I, F, K, T> Iterator for DedupByKey<I, F, T>
 where
     I: Iterator<Item = T>,
-    F: Fn(&T) -> K,
+    F: FnMut(&T) -> K,
     K: PartialEq,
 {
     type Item = T;
