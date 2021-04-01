@@ -26,6 +26,55 @@ optimizes it, and returns the improved MIR.
 [defid]: https://rustc-dev-guide.rust-lang.org/appendix/glossary.html#def-id
 [steal]: https://rustc-dev-guide.rust-lang.org/mir/passes.html?highlight=steal#stealing
 
+## Quickstart for adding a new optimization
+
+1. Make a Rust source file in `src/test/mir-opt` that shows the code you want to
+   optimize. This should be kept simple, so avoid `println!` or other formatting
+   code if it's not necessary for the optimization. The reason for this is that
+   `println!`, `format!`, etc. generate a lot of MIR that can make it harder to
+   understand what the optimization does to the test.
+
+2. Run `./x.py test --bless src/test/mir-opt/<your-test>.rs` to generate a MIR
+   dump. Read [this README][mir-opt-test-readme] for instructions on how to dump
+   things.
+
+3. Commit the current working directory state. The reason you should commit the
+   test output before you implement the optimization is so that you (and your
+   reviewers) can see a before/after diff of what the optimization changed.
+
+4. Implement a new optimization in [`compiler/rustc_mir/src/transform`].
+   The fastest and easiest way to do this is to
+
+   1. pick a small optimization (such as [`no_landing_pads`]) and copy it
+      to a new file,
+   2. add your optimization to one of the lists in the
+      [`run_optimization_passes()`] function,
+   3. and then start modifying the copied optimization.
+
+5. Rerun `./x.py test --bless src/test/mir-opt/<your-test>.rs` to regenerate the
+   MIR dumps. Look at the diffs to see if they are what you expect.
+
+6. Run `./x.py test src/test/ui` to see if your optimization broke anything.
+
+7. If there are issues with your optimization, experiment with it a bit and
+   repeat steps 5 and 6.
+
+8. Commit and open a PR. You can do this at any point, even if things aren't
+   working yet, so that you can ask for feedback on the PR. Open a "WIP" PR
+   (just prefix your PR title with `[WIP]` or otherwise note that it is a
+   work in progress) in that case.
+
+   Make sure to commit the blessed test output as well! It's necessary for CI to
+   pass and it's very helpful to reviewers.
+
+If you have any questions along the way, feel free to ask in
+`#t-compiler/wg-mir-opt` on Zulip.
+
+[mir-opt-test-readme]: https://github.com/rust-lang/rust/blob/master/src/test/mir-opt/README.md
+[`compiler/rustc_mir/src/transform`]: https://github.com/rust-lang/rust/tree/master/compiler/rustc_mir/src/transform
+[`no_landing_pads`]: https://github.com/rust-lang/rust/blob/master/compiler/rustc_mir/src/transform/no_landing_pads.rs
+[`run_optimization_passes()`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/fn.run_optimization_passes.html
+
 ## Defining optimization passes
 
 The list of passes run and the order in which they are run is defined by the
