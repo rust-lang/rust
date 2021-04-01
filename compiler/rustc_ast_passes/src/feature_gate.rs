@@ -313,7 +313,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     include => external_doc
                     cfg => doc_cfg
                     masked => doc_masked
-                    spotlight => doc_spotlight
+                    notable_trait => doc_notable_trait
                     keyword => doc_keyword
                 );
             }
