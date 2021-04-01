@@ -204,4 +204,12 @@ fn main() {
     } else {
         None
     };
+
+    // #6967
+    const fn f4() {
+        match Some(0) {
+            Some(x) => Some(x + 1),
+            None => None,
+        };
+    }
 }
