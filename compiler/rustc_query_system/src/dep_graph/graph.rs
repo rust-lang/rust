@@ -1,30 +1,32 @@
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::QueryInvocationId;
+use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, LockGuard, Lrc, Ordering};
+use rustc_data_structures::steal::Steal;
+use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc, Ordering};
 use rustc_data_structures::unlikely;
 use rustc_errors::Diagnostic;
-use rustc_index::vec::{Idx, IndexVec};
-use rustc_serialize::{Encodable, Encoder};
+use rustc_index::vec::IndexVec;
+use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 
 use parking_lot::{Condvar, Mutex};
 use smallvec::{smallvec, SmallVec};
 use std::collections::hash_map::Entry;
-use std::env;
 use std::hash::Hash;
 use std::marker::PhantomData;
 use std::mem;
-use std::ops::Range;
 use std::sync::atomic::Ordering::Relaxed;
 
-use super::debug::EdgeFilter;
 use super::prev::PreviousDepGraph;
 use super::query::DepGraphQuery;
-use super::serialized::SerializedDepNodeIndex;
+use super::serialized::{GraphEncoder, SerializedDepNodeIndex};
 use super::{DepContext, DepKind, DepNode, HasDepContext, WorkProductId};
 use crate::query::QueryContext;
+
+#[cfg(debug_assertions)]
+use {super::debug::EdgeFilter, std::env};
 
 #[derive(Clone)]
 pub struct DepGraph<K: DepKind> {
@@ -109,6 +111,9 @@ impl<K: DepKind> DepGraph<K> {
     pub fn new(
         prev_graph: PreviousDepGraph<K>,
         prev_work_products: FxHashMap<WorkProductId, WorkProduct>,
+        encoder: FileEncoder,
+        record_graph: bool,
+        record_stats: bool,
     ) -> DepGraph<K> {
         let prev_graph_node_count = prev_graph.node_count();
 
@@ -116,7 +121,12 @@ impl<K: DepKind> DepGraph<K> {
             data: Some(Lrc::new(DepGraphData {
                 previous_work_products: prev_work_products,
                 dep_node_debug: Default::default(),
-                current: CurrentDepGraph::new(prev_graph_node_count),
+                current: CurrentDepGraph::new(
+                    prev_graph_node_count,
+                    encoder,
+                    record_graph,
+                    record_stats,
+                ),
                 emitting_diagnostics: Default::default(),
                 emitting_diagnostics_cond_var: Condvar::new(),
                 previous: prev_graph,
@@ -136,62 +146,10 @@ impl<K: DepKind> DepGraph<K> {
         self.data.is_some()
     }
 
-    pub fn query(&self) -> DepGraphQuery<K> {
-        let data = self.data.as_ref().unwrap();
-        let previous = &data.previous;
-
-        // Note locking order: `prev_index_to_index`, then `data`.
-        let prev_index_to_index = data.current.prev_index_to_index.lock();
-        let data = data.current.data.lock();
-        let node_count = data.hybrid_indices.len();
-        let edge_count = self.edge_count(&data);
-
-        let mut nodes = Vec::with_capacity(node_count);
-        let mut edge_list_indices = Vec::with_capacity(node_count);
-        let mut edge_list_data = Vec::with_capacity(edge_count);
-
-        // See `DepGraph`'s `Encodable` implementation for notes on the approach used here.
-
-        edge_list_data.extend(data.unshared_edges.iter().map(|i| i.index()));
-
-        for &hybrid_index in data.hybrid_indices.iter() {
-            match hybrid_index.into() {
-                HybridIndex::New(new_index) => {
-                    nodes.push(data.new.nodes[new_index]);
-                    let edges = &data.new.edges[new_index];
-                    edge_list_indices.push((edges.start.index(), edges.end.index()));
-                }
-                HybridIndex::Red(red_index) => {
-                    nodes.push(previous.index_to_node(data.red.node_indices[red_index]));
-                    let edges = &data.red.edges[red_index];
-                    edge_list_indices.push((edges.start.index(), edges.end.index()));
-                }
-                HybridIndex::LightGreen(lg_index) => {
-                    nodes.push(previous.index_to_node(data.light_green.node_indices[lg_index]));
-                    let edges = &data.light_green.edges[lg_index];
-                    edge_list_indices.push((edges.start.index(), edges.end.index()));
-                }
-                HybridIndex::DarkGreen(prev_index) => {
-                    nodes.push(previous.index_to_node(prev_index));
-
-                    let edges_iter = previous
-                        .edge_targets_from(prev_index)
-                        .iter()
-                        .map(|&dst| prev_index_to_index[dst].unwrap().index());
-
-                    let start = edge_list_data.len();
-                    edge_list_data.extend(edges_iter);
-                    let end = edge_list_data.len();
-                    edge_list_indices.push((start, end));
-                }
-            }
+    pub fn with_query(&self, f: impl Fn(&DepGraphQuery<K>)) {
+        if let Some(data) = &self.data {
+            data.current.encoder.borrow().with_query(f)
         }
-
-        debug_assert_eq!(nodes.len(), node_count);
-        debug_assert_eq!(edge_list_indices.len(), node_count);
-        debug_assert_eq!(edge_list_data.len(), edge_count);
-
-        DepGraphQuery::new(&nodes[..], &edge_list_indices[..], &edge_list_data[..])
     }
 
     pub fn assert_ignored(&self) {
@@ -283,56 +241,16 @@ impl<K: DepKind> DepGraph<K> {
             let print_status = cfg!(debug_assertions) && dcx.sess().opts.debugging_opts.dep_tasks;
 
             // Intern the new `DepNode`.
-            let dep_node_index = if let Some(prev_index) = data.previous.node_to_index_opt(&key) {
-                // Determine the color and index of the new `DepNode`.
-                let (color, dep_node_index) = if let Some(current_fingerprint) = current_fingerprint
-                {
-                    if current_fingerprint == data.previous.fingerprint_by_index(prev_index) {
-                        if print_status {
-                            eprintln!("[task::green] {:?}", key);
-                        }
+            let (dep_node_index, prev_and_color) = data.current.intern_node(
+                dcx.profiler(),
+                &data.previous,
+                key,
+                edges,
+                current_fingerprint,
+                print_status,
+            );
 
-                        // This is a light green node: it existed in the previous compilation,
-                        // its query was re-executed, and it has the same result as before.
-                        let dep_node_index =
-                            data.current.intern_light_green_node(&data.previous, prev_index, edges);
-
-                        (DepNodeColor::Green(dep_node_index), dep_node_index)
-                    } else {
-                        if print_status {
-                            eprintln!("[task::red] {:?}", key);
-                        }
-
-                        // This is a red node: it existed in the previous compilation, its query
-                        // was re-executed, but it has a different result from before.
-                        let dep_node_index = data.current.intern_red_node(
-                            &data.previous,
-                            prev_index,
-                            edges,
-                            current_fingerprint,
-                        );
-
-                        (DepNodeColor::Red, dep_node_index)
-                    }
-                } else {
-                    if print_status {
-                        eprintln!("[task::unknown] {:?}", key);
-                    }
-
-                    // This is a red node, effectively: it existed in the previous compilation
-                    // session, its query was re-executed, but it doesn't compute a result hash
-                    // (i.e. it represents a `no_hash` query), so we have no way of determining
-                    // whether or not the result was the same as before.
-                    let dep_node_index = data.current.intern_red_node(
-                        &data.previous,
-                        prev_index,
-                        edges,
-                        Fingerprint::ZERO,
-                    );
-
-                    (DepNodeColor::Red, dep_node_index)
-                };
-
+            if let Some((prev_index, color)) = prev_and_color {
                 debug_assert!(
                     data.colors.get(prev_index).is_none(),
                     "DepGraph::with_task() - Duplicate DepNodeColor \
@@ -341,20 +259,7 @@ impl<K: DepKind> DepGraph<K> {
                 );
 
                 data.colors.insert(prev_index, color);
-                dep_node_index
-            } else {
-                if print_status {
-                    eprintln!("[task::new] {:?}", key);
-                }
-
-                // This is a new node: it didn't exist in the previous compilation session.
-                data.current.intern_new_node(
-                    &data.previous,
-                    key,
-                    edges,
-                    current_fingerprint.unwrap_or(Fingerprint::ZERO),
-                )
-            };
+            }
 
             (result, dep_node_index)
         } else {
@@ -368,7 +273,12 @@ impl<K: DepKind> DepGraph<K> {
 
     /// Executes something within an "anonymous" task, that is, a task the
     /// `DepNode` of which is determined by the list of inputs it read from.
-    pub fn with_anon_task<OP, R>(&self, dep_kind: K, op: OP) -> (R, DepNodeIndex)
+    pub fn with_anon_task<Ctxt: DepContext<DepKind = K>, OP, R>(
+        &self,
+        cx: Ctxt,
+        dep_kind: K,
+        op: OP,
+    ) -> (R, DepNodeIndex)
     where
         OP: FnOnce() -> R,
     {
@@ -396,7 +306,7 @@ impl<K: DepKind> DepGraph<K> {
             };
 
             let dep_node_index = data.current.intern_new_node(
-                &data.previous,
+                cx.profiler(),
                 target_dep_node,
                 task_deps.reads,
                 Fingerprint::ZERO,
@@ -451,7 +361,7 @@ impl<K: DepKind> DepGraph<K> {
                         {
                             if let Some(target) = task_deps.node {
                                 if let Some(ref forbidden_edge) = data.current.forbidden_edge {
-                                    let src = self.dep_node_of(dep_node_index);
+                                    let src = forbidden_edge.index_to_node.lock()[&dep_node_index];
                                     if forbidden_edge.test(&src, &target) {
                                         panic!("forbidden edge {:?} -> {:?} created", src, target)
                                     }
@@ -488,38 +398,6 @@ impl<K: DepKind> DepGraph<K> {
         self.data.is_some() && self.dep_node_index_of_opt(dep_node).is_some()
     }
 
-    #[cfg(debug_assertions)]
-    fn dep_node_of(&self, dep_node_index: DepNodeIndex) -> DepNode<K> {
-        let data = self.data.as_ref().unwrap();
-        let previous = &data.previous;
-        let data = data.current.data.lock();
-
-        match data.hybrid_indices[dep_node_index].into() {
-            HybridIndex::New(new_index) => data.new.nodes[new_index],
-            HybridIndex::Red(red_index) => previous.index_to_node(data.red.node_indices[red_index]),
-            HybridIndex::LightGreen(light_green_index) => {
-                previous.index_to_node(data.light_green.node_indices[light_green_index])
-            }
-            HybridIndex::DarkGreen(prev_index) => previous.index_to_node(prev_index),
-        }
-    }
-
-    #[inline]
-    pub fn fingerprint_of(&self, dep_node_index: DepNodeIndex) -> Fingerprint {
-        let data = self.data.as_ref().unwrap();
-        let previous = &data.previous;
-        let data = data.current.data.lock();
-
-        match data.hybrid_indices[dep_node_index].into() {
-            HybridIndex::New(new_index) => data.new.fingerprints[new_index],
-            HybridIndex::Red(red_index) => data.red.fingerprints[red_index],
-            HybridIndex::LightGreen(light_green_index) => {
-                previous.fingerprint_by_index(data.light_green.node_indices[light_green_index])
-            }
-            HybridIndex::DarkGreen(prev_index) => previous.fingerprint_by_index(prev_index),
-        }
-    }
-
     pub fn prev_fingerprint_of(&self, dep_node: &DepNode<K>) -> Option<Fingerprint> {
         self.data.as_ref().unwrap().previous.fingerprint_of(dep_node)
     }
@@ -554,29 +432,13 @@ impl<K: DepKind> DepGraph<K> {
         self.data.as_ref()?.dep_node_debug.borrow().get(&dep_node).cloned()
     }
 
-    fn edge_count(&self, node_data: &LockGuard<'_, DepNodeData<K>>) -> usize {
-        let data = self.data.as_ref().unwrap();
-        let previous = &data.previous;
-
-        let mut edge_count = node_data.unshared_edges.len();
-
-        for &hybrid_index in node_data.hybrid_indices.iter() {
-            if let HybridIndex::DarkGreen(prev_index) = hybrid_index.into() {
-                edge_count += previous.edge_targets_from(prev_index).len()
-            }
-        }
-
-        edge_count
-    }
-
-    pub fn node_color(&self, dep_node: &DepNode<K>) -> Option<DepNodeColor> {
+    fn node_color(&self, dep_node: &DepNode<K>) -> Option<DepNodeColor> {
         if let Some(ref data) = self.data {
             if let Some(prev_index) = data.previous.node_to_index_opt(dep_node) {
                 return data.colors.get(prev_index);
             } else {
-                // This is a node that did not exist in the previous compilation
-                // session, so we consider it to be red.
-                return Some(DepNodeColor::Red);
+                // This is a node that did not exist in the previous compilation session.
+                return None;
             }
         }
 
@@ -775,11 +637,13 @@ impl<K: DepKind> DepGraph<K> {
 
         // There may be multiple threads trying to mark the same dep node green concurrently
 
-        let dep_node_index = {
-            // We allocating an entry for the node in the current dependency graph and
-            // adding all the appropriate edges imported from the previous graph
-            data.current.intern_dark_green_node(&data.previous, prev_dep_node_index)
-        };
+        // We allocating an entry for the node in the current dependency graph and
+        // adding all the appropriate edges imported from the previous graph
+        let dep_node_index = data.current.promote_node_and_deps_to_current(
+            tcx.dep_context().profiler(),
+            &data.previous,
+            prev_dep_node_index,
+        );
 
         // ... emitting any stored diagnostic ...
 
@@ -862,6 +726,12 @@ impl<K: DepKind> DepGraph<K> {
         }
     }
 
+    // Returns true if the given node has been marked as red during the
+    // current compilation session. Used in various assertions
+    pub fn is_red(&self, dep_node: &DepNode<K>) -> bool {
+        self.node_color(dep_node) == Some(DepNodeColor::Red)
+    }
+
     // Returns true if the given node has been marked as green during the
     // current compilation session. Used in various assertions
     pub fn is_green(&self, dep_node: &DepNode<K>) -> bool {
@@ -911,247 +781,25 @@ impl<K: DepKind> DepGraph<K> {
     }
 
     pub fn print_incremental_info(&self) {
-        #[derive(Clone)]
-        struct Stat<Kind: DepKind> {
-            kind: Kind,
-            node_counter: u64,
-            edge_counter: u64,
+        if let Some(data) = &self.data {
+            data.current.encoder.borrow().print_incremental_info(
+                data.current.total_read_count.load(Relaxed),
+                data.current.total_duplicate_read_count.load(Relaxed),
+            )
         }
+    }
 
-        let data = self.data.as_ref().unwrap();
-        let prev = &data.previous;
-        let current = &data.current;
-        let data = current.data.lock();
-
-        let mut stats: FxHashMap<_, Stat<K>> = FxHashMap::with_hasher(Default::default());
-
-        for &hybrid_index in data.hybrid_indices.iter() {
-            let (kind, edge_count) = match hybrid_index.into() {
-                HybridIndex::New(new_index) => {
-                    let kind = data.new.nodes[new_index].kind;
-                    let edge_range = &data.new.edges[new_index];
-                    (kind, edge_range.end.as_usize() - edge_range.start.as_usize())
-                }
-                HybridIndex::Red(red_index) => {
-                    let kind = prev.index_to_node(data.red.node_indices[red_index]).kind;
-                    let edge_range = &data.red.edges[red_index];
-                    (kind, edge_range.end.as_usize() - edge_range.start.as_usize())
-                }
-                HybridIndex::LightGreen(lg_index) => {
-                    let kind = prev.index_to_node(data.light_green.node_indices[lg_index]).kind;
-                    let edge_range = &data.light_green.edges[lg_index];
-                    (kind, edge_range.end.as_usize() - edge_range.start.as_usize())
-                }
-                HybridIndex::DarkGreen(prev_index) => {
-                    let kind = prev.index_to_node(prev_index).kind;
-                    let edge_count = prev.edge_targets_from(prev_index).len();
-                    (kind, edge_count)
-                }
-            };
-
-            let stat = stats.entry(kind).or_insert(Stat { kind, node_counter: 0, edge_counter: 0 });
-            stat.node_counter += 1;
-            stat.edge_counter += edge_count as u64;
+    pub fn encode(&self, profiler: &SelfProfilerRef) -> FileEncodeResult {
+        if let Some(data) = &self.data {
+            data.current.encoder.steal().finish(profiler)
+        } else {
+            Ok(())
         }
-
-        let total_node_count = data.hybrid_indices.len();
-        let total_edge_count = self.edge_count(&data);
-
-        // Drop the lock guard.
-        std::mem::drop(data);
-
-        let mut stats: Vec<_> = stats.values().cloned().collect();
-        stats.sort_by_key(|s| -(s.node_counter as i64));
-
-        const SEPARATOR: &str = "[incremental] --------------------------------\
-                                 ----------------------------------------------\
-                                 ------------";
-
-        eprintln!("[incremental]");
-        eprintln!("[incremental] DepGraph Statistics");
-        eprintln!("{}", SEPARATOR);
-        eprintln!("[incremental]");
-        eprintln!("[incremental] Total Node Count: {}", total_node_count);
-        eprintln!("[incremental] Total Edge Count: {}", total_edge_count);
-
-        if cfg!(debug_assertions) {
-            let total_edge_reads = current.total_read_count.load(Relaxed);
-            let total_duplicate_edge_reads = current.total_duplicate_read_count.load(Relaxed);
-
-            eprintln!("[incremental] Total Edge Reads: {}", total_edge_reads);
-            eprintln!("[incremental] Total Duplicate Edge Reads: {}", total_duplicate_edge_reads);
-        }
-
-        eprintln!("[incremental]");
-
-        eprintln!(
-            "[incremental]  {:<36}| {:<17}| {:<12}| {:<17}|",
-            "Node Kind", "Node Frequency", "Node Count", "Avg. Edge Count"
-        );
-
-        eprintln!(
-            "[incremental] -------------------------------------\
-                  |------------------\
-                  |-------------\
-                  |------------------|"
-        );
-
-        for stat in stats {
-            let node_kind_ratio = (100.0 * (stat.node_counter as f64)) / (total_node_count as f64);
-            let node_kind_avg_edges = (stat.edge_counter as f64) / (stat.node_counter as f64);
-
-            eprintln!(
-                "[incremental]  {:<36}|{:>16.1}% |{:>12} |{:>17.1} |",
-                format!("{:?}", stat.kind),
-                node_kind_ratio,
-                stat.node_counter,
-                node_kind_avg_edges,
-            );
-        }
-
-        eprintln!("{}", SEPARATOR);
-        eprintln!("[incremental]");
     }
 
     fn next_virtual_depnode_index(&self) -> DepNodeIndex {
         let index = self.virtual_dep_node_index.fetch_add(1, Relaxed);
         DepNodeIndex::from_u32(index)
-    }
-}
-
-impl<E: Encoder, K: DepKind + Encodable<E>> Encodable<E> for DepGraph<K> {
-    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
-        // We used to serialize the dep graph by creating and serializing a `SerializedDepGraph`
-        // using data copied from the `DepGraph`. But copying created a large memory spike, so we
-        // now serialize directly from the `DepGraph` as if it's a `SerializedDepGraph`. Because we
-        // deserialize that data into a `SerializedDepGraph` in the next compilation session, we
-        // need `DepGraph`'s `Encodable` and `SerializedDepGraph`'s `Decodable` implementations to
-        // be in sync. If you update this encoding, be sure to update the decoding, and vice-versa.
-
-        let data = self.data.as_ref().unwrap();
-        let prev = &data.previous;
-
-        // Note locking order: `prev_index_to_index`, then `data`.
-        let prev_index_to_index = data.current.prev_index_to_index.lock();
-        let data = data.current.data.lock();
-        let new = &data.new;
-        let red = &data.red;
-        let lg = &data.light_green;
-
-        let node_count = data.hybrid_indices.len();
-        let edge_count = self.edge_count(&data);
-
-        // `rustc_middle::ty::query::OnDiskCache` expects nodes to be encoded in `DepNodeIndex`
-        // order. The edges in `edge_list_data` don't need to be in a particular order, as long as
-        // each node references its edges as a contiguous range within it. Therefore, we can encode
-        // `edge_list_data` directly from `unshared_edges`. It meets the above requirements, as
-        // each non-dark-green node already knows the range of edges to reference within it, which
-        // they'll encode in `edge_list_indices`. Dark green nodes, however, don't have their edges
-        // in `unshared_edges`, so need to add them to `edge_list_data`.
-
-        use HybridIndex::*;
-
-        // Encoded values (nodes, etc.) are explicitly typed below to avoid inadvertently
-        // serializing data in the wrong format (i.e. one incompatible with `SerializedDepGraph`).
-        e.emit_struct("SerializedDepGraph", 4, |e| {
-            e.emit_struct_field("nodes", 0, |e| {
-                // `SerializedDepGraph` expects this to be encoded as a sequence of `DepNode`s.
-                e.emit_seq(node_count, |e| {
-                    for (seq_index, &hybrid_index) in data.hybrid_indices.iter().enumerate() {
-                        let node: DepNode<K> = match hybrid_index.into() {
-                            New(i) => new.nodes[i],
-                            Red(i) => prev.index_to_node(red.node_indices[i]),
-                            LightGreen(i) => prev.index_to_node(lg.node_indices[i]),
-                            DarkGreen(prev_index) => prev.index_to_node(prev_index),
-                        };
-
-                        e.emit_seq_elt(seq_index, |e| node.encode(e))?;
-                    }
-
-                    Ok(())
-                })
-            })?;
-
-            e.emit_struct_field("fingerprints", 1, |e| {
-                // `SerializedDepGraph` expects this to be encoded as a sequence of `Fingerprints`s.
-                e.emit_seq(node_count, |e| {
-                    for (seq_index, &hybrid_index) in data.hybrid_indices.iter().enumerate() {
-                        let fingerprint: Fingerprint = match hybrid_index.into() {
-                            New(i) => new.fingerprints[i],
-                            Red(i) => red.fingerprints[i],
-                            LightGreen(i) => prev.fingerprint_by_index(lg.node_indices[i]),
-                            DarkGreen(prev_index) => prev.fingerprint_by_index(prev_index),
-                        };
-
-                        e.emit_seq_elt(seq_index, |e| fingerprint.encode(e))?;
-                    }
-
-                    Ok(())
-                })
-            })?;
-
-            e.emit_struct_field("edge_list_indices", 2, |e| {
-                // `SerializedDepGraph` expects this to be encoded as a sequence of `(u32, u32)`s.
-                e.emit_seq(node_count, |e| {
-                    // Dark green node edges start after the unshared (all other nodes') edges.
-                    let mut dark_green_edge_index = data.unshared_edges.len();
-
-                    for (seq_index, &hybrid_index) in data.hybrid_indices.iter().enumerate() {
-                        let edge_indices: (u32, u32) = match hybrid_index.into() {
-                            New(i) => (new.edges[i].start.as_u32(), new.edges[i].end.as_u32()),
-                            Red(i) => (red.edges[i].start.as_u32(), red.edges[i].end.as_u32()),
-                            LightGreen(i) => (lg.edges[i].start.as_u32(), lg.edges[i].end.as_u32()),
-                            DarkGreen(prev_index) => {
-                                let edge_count = prev.edge_targets_from(prev_index).len();
-                                let start = dark_green_edge_index as u32;
-                                dark_green_edge_index += edge_count;
-                                let end = dark_green_edge_index as u32;
-                                (start, end)
-                            }
-                        };
-
-                        e.emit_seq_elt(seq_index, |e| edge_indices.encode(e))?;
-                    }
-
-                    assert_eq!(dark_green_edge_index, edge_count);
-
-                    Ok(())
-                })
-            })?;
-
-            e.emit_struct_field("edge_list_data", 3, |e| {
-                // `SerializedDepGraph` expects this to be encoded as a sequence of
-                // `SerializedDepNodeIndex`.
-                e.emit_seq(edge_count, |e| {
-                    for (seq_index, &edge) in data.unshared_edges.iter().enumerate() {
-                        let serialized_edge = SerializedDepNodeIndex::new(edge.index());
-                        e.emit_seq_elt(seq_index, |e| serialized_edge.encode(e))?;
-                    }
-
-                    let mut seq_index = data.unshared_edges.len();
-
-                    for &hybrid_index in data.hybrid_indices.iter() {
-                        if let DarkGreen(prev_index) = hybrid_index.into() {
-                            for &edge in prev.edge_targets_from(prev_index) {
-                                // Dark green node edges are stored in the previous graph
-                                // and must be converted to edges in the current graph,
-                                // and then serialized as `SerializedDepNodeIndex`.
-                                let serialized_edge = SerializedDepNodeIndex::new(
-                                    prev_index_to_index[edge].as_ref().unwrap().index(),
-                                );
-
-                                e.emit_seq_elt(seq_index, |e| serialized_edge.encode(e))?;
-                                seq_index += 1;
-                            }
-                        }
-                    }
-
-                    assert_eq!(seq_index, edge_count);
-
-                    Ok(())
-                })
-            })
-        })
     }
 }
 
@@ -1193,216 +841,20 @@ pub struct WorkProduct {
     pub saved_file: Option<String>,
 }
 
-// The maximum value of the follow index types leaves the upper two bits unused
-// so that we can store multiple index types in `CompressedHybridIndex`, and use
-// those bits to encode which index type it contains.
-
-// Index type for `NewDepNodeData`.
-rustc_index::newtype_index! {
-    struct NewDepNodeIndex {
-        MAX = 0x7FFF_FFFF
-    }
-}
-
-// Index type for `RedDepNodeData`.
-rustc_index::newtype_index! {
-    struct RedDepNodeIndex {
-        MAX = 0x7FFF_FFFF
-    }
-}
-
-// Index type for `LightGreenDepNodeData`.
-rustc_index::newtype_index! {
-    struct LightGreenDepNodeIndex {
-        MAX = 0x7FFF_FFFF
-    }
-}
-
-/// Compressed representation of `HybridIndex` enum. Bits unused by the
-/// contained index types are used to encode which index type it contains.
-#[derive(Copy, Clone)]
-struct CompressedHybridIndex(u32);
-
-impl CompressedHybridIndex {
-    const NEW_TAG: u32 = 0b0000_0000_0000_0000_0000_0000_0000_0000;
-    const RED_TAG: u32 = 0b0100_0000_0000_0000_0000_0000_0000_0000;
-    const LIGHT_GREEN_TAG: u32 = 0b1000_0000_0000_0000_0000_0000_0000_0000;
-    const DARK_GREEN_TAG: u32 = 0b1100_0000_0000_0000_0000_0000_0000_0000;
-
-    const TAG_MASK: u32 = 0b1100_0000_0000_0000_0000_0000_0000_0000;
-    const INDEX_MASK: u32 = !Self::TAG_MASK;
-}
-
-impl From<NewDepNodeIndex> for CompressedHybridIndex {
-    #[inline]
-    fn from(index: NewDepNodeIndex) -> Self {
-        CompressedHybridIndex(Self::NEW_TAG | index.as_u32())
-    }
-}
-
-impl From<RedDepNodeIndex> for CompressedHybridIndex {
-    #[inline]
-    fn from(index: RedDepNodeIndex) -> Self {
-        CompressedHybridIndex(Self::RED_TAG | index.as_u32())
-    }
-}
-
-impl From<LightGreenDepNodeIndex> for CompressedHybridIndex {
-    #[inline]
-    fn from(index: LightGreenDepNodeIndex) -> Self {
-        CompressedHybridIndex(Self::LIGHT_GREEN_TAG | index.as_u32())
-    }
-}
-
-impl From<SerializedDepNodeIndex> for CompressedHybridIndex {
-    #[inline]
-    fn from(index: SerializedDepNodeIndex) -> Self {
-        CompressedHybridIndex(Self::DARK_GREEN_TAG | index.as_u32())
-    }
-}
-
-/// Contains an index into one of several node data collections. Elsewhere, we
-/// store `CompressedHyridIndex` instead of this to save space, but convert to
-/// this type during processing to take advantage of the enum match ergonomics.
-enum HybridIndex {
-    New(NewDepNodeIndex),
-    Red(RedDepNodeIndex),
-    LightGreen(LightGreenDepNodeIndex),
-    DarkGreen(SerializedDepNodeIndex),
-}
-
-impl From<CompressedHybridIndex> for HybridIndex {
-    #[inline]
-    fn from(hybrid_index: CompressedHybridIndex) -> Self {
-        let index = hybrid_index.0 & CompressedHybridIndex::INDEX_MASK;
-
-        match hybrid_index.0 & CompressedHybridIndex::TAG_MASK {
-            CompressedHybridIndex::NEW_TAG => HybridIndex::New(NewDepNodeIndex::from_u32(index)),
-            CompressedHybridIndex::RED_TAG => HybridIndex::Red(RedDepNodeIndex::from_u32(index)),
-            CompressedHybridIndex::LIGHT_GREEN_TAG => {
-                HybridIndex::LightGreen(LightGreenDepNodeIndex::from_u32(index))
-            }
-            CompressedHybridIndex::DARK_GREEN_TAG => {
-                HybridIndex::DarkGreen(SerializedDepNodeIndex::from_u32(index))
-            }
-            _ => unreachable!(),
-        }
-    }
-}
-
 // Index type for `DepNodeData`'s edges.
 rustc_index::newtype_index! {
     struct EdgeIndex { .. }
-}
-
-/// Data for nodes in the current graph, divided into different collections
-/// based on their presence in the previous graph, and if present, their color.
-/// We divide nodes this way because different types of nodes are able to share
-/// more or less data with the previous graph.
-///
-/// To enable more sharing, we distinguish between two kinds of green nodes.
-/// Light green nodes are nodes in the previous graph that have been marked
-/// green because we re-executed their queries and the results were the same as
-/// in the previous session. Dark green nodes are nodes in the previous graph
-/// that have been marked green because we were able to mark all of their
-/// dependencies green.
-///
-/// Both light and dark green nodes can share the dep node and fingerprint with
-/// the previous graph, but for light green nodes, we can't be sure that the
-/// edges may be shared without comparing them against the previous edges, so we
-/// store them directly (an approach in which we compare edges with the previous
-/// edges to see if they can be shared was evaluated, but was not found to be
-/// very profitable).
-///
-/// For dark green nodes, we can share everything with the previous graph, which
-/// is why the `HybridIndex::DarkGreen` enum variant contains the index of the
-/// node in the previous graph, and why we don't have a separate collection for
-/// dark green node data--the collection is the `PreviousDepGraph` itself.
-///
-/// (Note that for dark green nodes, the edges in the previous graph
-/// (`SerializedDepNodeIndex`s) must be converted to edges in the current graph
-/// (`DepNodeIndex`s). `CurrentDepGraph` contains `prev_index_to_index`, which
-/// can perform this conversion. It should always be possible, as by definition,
-/// a dark green node is one whose dependencies from the previous session have
-/// all been marked green--which means `prev_index_to_index` contains them.)
-///
-/// Node data is stored in parallel vectors to eliminate the padding between
-/// elements that would be needed to satisfy alignment requirements of the
-/// structure that would contain all of a node's data. We could group tightly
-/// packing subsets of node data together and use fewer vectors, but for
-/// consistency's sake, we use separate vectors for each piece of data.
-struct DepNodeData<K> {
-    /// Data for nodes not in previous graph.
-    new: NewDepNodeData<K>,
-
-    /// Data for nodes in previous graph that have been marked red.
-    red: RedDepNodeData,
-
-    /// Data for nodes in previous graph that have been marked light green.
-    light_green: LightGreenDepNodeData,
-
-    // Edges for all nodes other than dark-green ones. Edges for each node
-    // occupy a contiguous region of this collection, which a node can reference
-    // using two indices. Storing edges this way rather than using an `EdgesVec`
-    // for each node reduces memory consumption by a not insignificant amount
-    // when compiling large crates. The downside is that we have to copy into
-    // this collection the edges from the `EdgesVec`s that are built up during
-    // query execution. But this is mostly balanced out by the more efficient
-    // implementation of `DepGraph::serialize` enabled by this representation.
-    unshared_edges: IndexVec<EdgeIndex, DepNodeIndex>,
-
-    /// Mapping from `DepNodeIndex` to an index into a collection above.
-    /// Indicates which of the above collections contains a node's data.
-    ///
-    /// This collection is wasteful in time and space during incr-full builds,
-    /// because for those, all nodes are new. However, the waste is relatively
-    /// small, and the maintenance cost of avoiding using this for incr-full
-    /// builds is somewhat high and prone to bugginess. It does not seem worth
-    /// it at the time of this writing, but we may want to revisit the idea.
-    hybrid_indices: IndexVec<DepNodeIndex, CompressedHybridIndex>,
-}
-
-/// Data for nodes not in previous graph. Since we cannot share any data with
-/// the previous graph, so we must store all of such a node's data here.
-struct NewDepNodeData<K> {
-    nodes: IndexVec<NewDepNodeIndex, DepNode<K>>,
-    edges: IndexVec<NewDepNodeIndex, Range<EdgeIndex>>,
-    fingerprints: IndexVec<NewDepNodeIndex, Fingerprint>,
-}
-
-/// Data for nodes in previous graph that have been marked red. We can share the
-/// dep node with the previous graph, but the edges may be different, and the
-/// fingerprint is known to be different, so we store the latter two directly.
-struct RedDepNodeData {
-    node_indices: IndexVec<RedDepNodeIndex, SerializedDepNodeIndex>,
-    edges: IndexVec<RedDepNodeIndex, Range<EdgeIndex>>,
-    fingerprints: IndexVec<RedDepNodeIndex, Fingerprint>,
-}
-
-/// Data for nodes in previous graph that have been marked green because we
-/// re-executed their queries and the results were the same as in the previous
-/// session. We can share the dep node and the fingerprint with the previous
-/// graph, but the edges may be different, so we store them directly.
-struct LightGreenDepNodeData {
-    node_indices: IndexVec<LightGreenDepNodeIndex, SerializedDepNodeIndex>,
-    edges: IndexVec<LightGreenDepNodeIndex, Range<EdgeIndex>>,
 }
 
 /// `CurrentDepGraph` stores the dependency graph for the current session. It
 /// will be populated as we run queries or tasks. We never remove nodes from the
 /// graph: they are only added.
 ///
-/// The nodes in it are identified by a `DepNodeIndex`. Internally, this maps to
-/// a `HybridIndex`, which identifies which collection in the `data` field
-/// contains a node's data. Which collection is used for a node depends on
-/// whether the node was present in the `PreviousDepGraph`, and if so, the color
-/// of the node. Each type of node can share more or less data with the previous
-/// graph. When possible, we can store just the index of the node in the
-/// previous graph, rather than duplicating its data in our own collections.
-/// This is important, because these graph structures are some of the largest in
-/// the compiler.
+/// The nodes in it are identified by a `DepNodeIndex`. We avoid keeping the nodes
+/// in memory.  This is important, because these graph structures are some of the
+/// largest in the compiler.
 ///
-/// For the same reason, we also avoid storing `DepNode`s more than once as map
+/// For this reason, we avoid storing `DepNode`s more than once as map
 /// keys. The `new_node_to_index` map only contains nodes not in the previous
 /// graph, and we map nodes in the previous graph to indices via a two-step
 /// mapping. `PreviousDepGraph` maps from `DepNode` to `SerializedDepNodeIndex`,
@@ -1417,15 +869,15 @@ struct LightGreenDepNodeData {
 /// `new_node_to_index` and `data`, or `prev_index_to_index` and `data`. When
 /// manipulating both, we acquire `new_node_to_index` or `prev_index_to_index`
 /// first, and `data` second.
-pub(super) struct CurrentDepGraph<K> {
-    data: Lock<DepNodeData<K>>,
+pub(super) struct CurrentDepGraph<K: DepKind> {
+    encoder: Steal<GraphEncoder<K>>,
     new_node_to_index: Sharded<FxHashMap<DepNode<K>, DepNodeIndex>>,
     prev_index_to_index: Lock<IndexVec<SerializedDepNodeIndex, Option<DepNodeIndex>>>,
 
     /// Used to trap when a specific edge is added to the graph.
     /// This is used for debug purposes and is only active with `debug_assertions`.
-    #[allow(dead_code)]
-    forbidden_edge: Option<EdgeFilter>,
+    #[cfg(debug_assertions)]
+    forbidden_edge: Option<EdgeFilter<K>>,
 
     /// Anonymous `DepNode`s are nodes whose IDs we compute from the list of
     /// their edges. This has the beneficial side-effect that multiple anonymous
@@ -1447,7 +899,12 @@ pub(super) struct CurrentDepGraph<K> {
 }
 
 impl<K: DepKind> CurrentDepGraph<K> {
-    fn new(prev_graph_node_count: usize) -> CurrentDepGraph<K> {
+    fn new(
+        prev_graph_node_count: usize,
+        encoder: FileEncoder,
+        record_graph: bool,
+        record_stats: bool,
+    ) -> CurrentDepGraph<K> {
         use std::time::{SystemTime, UNIX_EPOCH};
 
         let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
@@ -1455,70 +912,29 @@ impl<K: DepKind> CurrentDepGraph<K> {
         let mut stable_hasher = StableHasher::new();
         nanos.hash(&mut stable_hasher);
 
-        let forbidden_edge = if cfg!(debug_assertions) {
-            match env::var("RUST_FORBID_DEP_GRAPH_EDGE") {
-                Ok(s) => match EdgeFilter::new(&s) {
-                    Ok(f) => Some(f),
-                    Err(err) => panic!("RUST_FORBID_DEP_GRAPH_EDGE invalid: {}", err),
-                },
-                Err(_) => None,
-            }
-        } else {
-            None
+        #[cfg(debug_assertions)]
+        let forbidden_edge = match env::var("RUST_FORBID_DEP_GRAPH_EDGE") {
+            Ok(s) => match EdgeFilter::new(&s) {
+                Ok(f) => Some(f),
+                Err(err) => panic!("RUST_FORBID_DEP_GRAPH_EDGE invalid: {}", err),
+            },
+            Err(_) => None,
         };
-
-        // Pre-allocate the dep node structures. We over-allocate a little so
-        // that we hopefully don't have to re-allocate during this compilation
-        // session. The over-allocation for new nodes is 2% plus a small
-        // constant to account for the fact that in very small crates 2% might
-        // not be enough. The allocation for red and green node data doesn't
-        // include a constant, as we don't want to allocate anything for these
-        // structures during full incremental builds, where they aren't used.
-        //
-        // These estimates are based on the distribution of node and edge counts
-        // seen in rustc-perf benchmarks, adjusted somewhat to account for the
-        // fact that these benchmarks aren't perfectly representative.
-        //
-        // FIXME Use a collection type that doesn't copy node and edge data and
-        // grow multiplicatively on reallocation. Without such a collection or
-        // solution having the same effect, there is a performance hazard here
-        // in both time and space, as growing these collections means copying a
-        // large amount of data and doubling already large buffer capacities. A
-        // solution for this will also mean that it's less important to get
-        // these estimates right.
-        let new_node_count_estimate = (prev_graph_node_count * 2) / 100 + 200;
-        let red_node_count_estimate = (prev_graph_node_count * 3) / 100;
-        let light_green_node_count_estimate = (prev_graph_node_count * 25) / 100;
-        let total_node_count_estimate = prev_graph_node_count + new_node_count_estimate;
-
-        let average_edges_per_node_estimate = 6;
-        let unshared_edge_count_estimate = average_edges_per_node_estimate
-            * (new_node_count_estimate + red_node_count_estimate + light_green_node_count_estimate);
 
         // We store a large collection of these in `prev_index_to_index` during
         // non-full incremental builds, and want to ensure that the element size
         // doesn't inadvertently increase.
         static_assert_size!(Option<DepNodeIndex>, 4);
 
+        let new_node_count_estimate = 102 * prev_graph_node_count / 100 + 200;
+
         CurrentDepGraph {
-            data: Lock::new(DepNodeData {
-                new: NewDepNodeData {
-                    nodes: IndexVec::with_capacity(new_node_count_estimate),
-                    edges: IndexVec::with_capacity(new_node_count_estimate),
-                    fingerprints: IndexVec::with_capacity(new_node_count_estimate),
-                },
-                red: RedDepNodeData {
-                    node_indices: IndexVec::with_capacity(red_node_count_estimate),
-                    edges: IndexVec::with_capacity(red_node_count_estimate),
-                    fingerprints: IndexVec::with_capacity(red_node_count_estimate),
-                },
-                light_green: LightGreenDepNodeData {
-                    node_indices: IndexVec::with_capacity(light_green_node_count_estimate),
-                    edges: IndexVec::with_capacity(light_green_node_count_estimate),
-                },
-                unshared_edges: IndexVec::with_capacity(unshared_edge_count_estimate),
-                hybrid_indices: IndexVec::with_capacity(total_node_count_estimate),
-            }),
+            encoder: Steal::new(GraphEncoder::new(
+                encoder,
+                prev_graph_node_count,
+                record_graph,
+                record_stats,
+            )),
             new_node_to_index: Sharded::new(|| {
                 FxHashMap::with_capacity_and_hasher(
                     new_node_count_estimate / sharded::SHARDS,
@@ -1527,89 +943,143 @@ impl<K: DepKind> CurrentDepGraph<K> {
             }),
             prev_index_to_index: Lock::new(IndexVec::from_elem_n(None, prev_graph_node_count)),
             anon_id_seed: stable_hasher.finish(),
+            #[cfg(debug_assertions)]
             forbidden_edge,
             total_read_count: AtomicU64::new(0),
             total_duplicate_read_count: AtomicU64::new(0),
         }
     }
 
+    #[cfg(debug_assertions)]
+    fn record_edge(&self, dep_node_index: DepNodeIndex, key: DepNode<K>) {
+        if let Some(forbidden_edge) = &self.forbidden_edge {
+            forbidden_edge.index_to_node.lock().insert(dep_node_index, key);
+        }
+    }
+
+    /// Writes the node to the current dep-graph and allocates a `DepNodeIndex` for it.
+    /// Assumes that this is a node that has no equivalent in the previous dep-graph.
     fn intern_new_node(
         &self,
-        prev_graph: &PreviousDepGraph<K>,
-        dep_node: DepNode<K>,
+        profiler: &SelfProfilerRef,
+        key: DepNode<K>,
         edges: EdgesVec,
-        fingerprint: Fingerprint,
+        current_fingerprint: Fingerprint,
     ) -> DepNodeIndex {
-        debug_assert!(
-            prev_graph.node_to_index_opt(&dep_node).is_none(),
-            "node in previous graph should be interned using one \
-            of `intern_red_node`, `intern_light_green_node`, etc."
-        );
-
-        match self.new_node_to_index.get_shard_by_value(&dep_node).lock().entry(dep_node) {
+        match self.new_node_to_index.get_shard_by_value(&key).lock().entry(key) {
             Entry::Occupied(entry) => *entry.get(),
             Entry::Vacant(entry) => {
-                let data = &mut *self.data.lock();
-                let new_index = data.new.nodes.push(dep_node);
-                add_edges(&mut data.unshared_edges, &mut data.new.edges, edges);
-                data.new.fingerprints.push(fingerprint);
-                let dep_node_index = data.hybrid_indices.push(new_index.into());
+                let dep_node_index =
+                    self.encoder.borrow().send(profiler, key, current_fingerprint, edges);
                 entry.insert(dep_node_index);
+                #[cfg(debug_assertions)]
+                self.record_edge(dep_node_index, key);
                 dep_node_index
             }
         }
     }
 
-    fn intern_red_node(
+    fn intern_node(
         &self,
+        profiler: &SelfProfilerRef,
         prev_graph: &PreviousDepGraph<K>,
-        prev_index: SerializedDepNodeIndex,
+        key: DepNode<K>,
         edges: EdgesVec,
-        fingerprint: Fingerprint,
-    ) -> DepNodeIndex {
-        self.debug_assert_not_in_new_nodes(prev_graph, prev_index);
+        fingerprint: Option<Fingerprint>,
+        print_status: bool,
+    ) -> (DepNodeIndex, Option<(SerializedDepNodeIndex, DepNodeColor)>) {
+        let print_status = cfg!(debug_assertions) && print_status;
 
-        let mut prev_index_to_index = self.prev_index_to_index.lock();
+        if let Some(prev_index) = prev_graph.node_to_index_opt(&key) {
+            // Determine the color and index of the new `DepNode`.
+            if let Some(fingerprint) = fingerprint {
+                if fingerprint == prev_graph.fingerprint_by_index(prev_index) {
+                    if print_status {
+                        eprintln!("[task::green] {:?}", key);
+                    }
 
-        match prev_index_to_index[prev_index] {
-            Some(dep_node_index) => dep_node_index,
-            None => {
-                let data = &mut *self.data.lock();
-                let red_index = data.red.node_indices.push(prev_index);
-                add_edges(&mut data.unshared_edges, &mut data.red.edges, edges);
-                data.red.fingerprints.push(fingerprint);
-                let dep_node_index = data.hybrid_indices.push(red_index.into());
-                prev_index_to_index[prev_index] = Some(dep_node_index);
-                dep_node_index
+                    // This is a green node: it existed in the previous compilation,
+                    // its query was re-executed, and it has the same result as before.
+                    let mut prev_index_to_index = self.prev_index_to_index.lock();
+
+                    let dep_node_index = match prev_index_to_index[prev_index] {
+                        Some(dep_node_index) => dep_node_index,
+                        None => {
+                            let dep_node_index =
+                                self.encoder.borrow().send(profiler, key, fingerprint, edges);
+                            prev_index_to_index[prev_index] = Some(dep_node_index);
+                            dep_node_index
+                        }
+                    };
+
+                    #[cfg(debug_assertions)]
+                    self.record_edge(dep_node_index, key);
+                    (dep_node_index, Some((prev_index, DepNodeColor::Green(dep_node_index))))
+                } else {
+                    if print_status {
+                        eprintln!("[task::red] {:?}", key);
+                    }
+
+                    // This is a red node: it existed in the previous compilation, its query
+                    // was re-executed, but it has a different result from before.
+                    let mut prev_index_to_index = self.prev_index_to_index.lock();
+
+                    let dep_node_index = match prev_index_to_index[prev_index] {
+                        Some(dep_node_index) => dep_node_index,
+                        None => {
+                            let dep_node_index =
+                                self.encoder.borrow().send(profiler, key, fingerprint, edges);
+                            prev_index_to_index[prev_index] = Some(dep_node_index);
+                            dep_node_index
+                        }
+                    };
+
+                    #[cfg(debug_assertions)]
+                    self.record_edge(dep_node_index, key);
+                    (dep_node_index, Some((prev_index, DepNodeColor::Red)))
+                }
+            } else {
+                if print_status {
+                    eprintln!("[task::unknown] {:?}", key);
+                }
+
+                // This is a red node, effectively: it existed in the previous compilation
+                // session, its query was re-executed, but it doesn't compute a result hash
+                // (i.e. it represents a `no_hash` query), so we have no way of determining
+                // whether or not the result was the same as before.
+                let mut prev_index_to_index = self.prev_index_to_index.lock();
+
+                let dep_node_index = match prev_index_to_index[prev_index] {
+                    Some(dep_node_index) => dep_node_index,
+                    None => {
+                        let dep_node_index =
+                            self.encoder.borrow().send(profiler, key, Fingerprint::ZERO, edges);
+                        prev_index_to_index[prev_index] = Some(dep_node_index);
+                        dep_node_index
+                    }
+                };
+
+                #[cfg(debug_assertions)]
+                self.record_edge(dep_node_index, key);
+                (dep_node_index, Some((prev_index, DepNodeColor::Red)))
             }
+        } else {
+            if print_status {
+                eprintln!("[task::new] {:?}", key);
+            }
+
+            let fingerprint = fingerprint.unwrap_or(Fingerprint::ZERO);
+
+            // This is a new node: it didn't exist in the previous compilation session.
+            let dep_node_index = self.intern_new_node(profiler, key, edges, fingerprint);
+
+            (dep_node_index, None)
         }
     }
 
-    fn intern_light_green_node(
+    fn promote_node_and_deps_to_current(
         &self,
-        prev_graph: &PreviousDepGraph<K>,
-        prev_index: SerializedDepNodeIndex,
-        edges: EdgesVec,
-    ) -> DepNodeIndex {
-        self.debug_assert_not_in_new_nodes(prev_graph, prev_index);
-
-        let mut prev_index_to_index = self.prev_index_to_index.lock();
-
-        match prev_index_to_index[prev_index] {
-            Some(dep_node_index) => dep_node_index,
-            None => {
-                let data = &mut *self.data.lock();
-                let light_green_index = data.light_green.node_indices.push(prev_index);
-                add_edges(&mut data.unshared_edges, &mut data.light_green.edges, edges);
-                let dep_node_index = data.hybrid_indices.push(light_green_index.into());
-                prev_index_to_index[prev_index] = Some(dep_node_index);
-                dep_node_index
-            }
-        }
-    }
-
-    fn intern_dark_green_node(
-        &self,
+        profiler: &SelfProfilerRef,
         prev_graph: &PreviousDepGraph<K>,
         prev_index: SerializedDepNodeIndex,
     ) -> DepNodeIndex {
@@ -1620,9 +1090,20 @@ impl<K: DepKind> CurrentDepGraph<K> {
         match prev_index_to_index[prev_index] {
             Some(dep_node_index) => dep_node_index,
             None => {
-                let mut data = self.data.lock();
-                let dep_node_index = data.hybrid_indices.push(prev_index.into());
+                let key = prev_graph.index_to_node(prev_index);
+                let dep_node_index = self.encoder.borrow().send(
+                    profiler,
+                    key,
+                    prev_graph.fingerprint_by_index(prev_index),
+                    prev_graph
+                        .edge_targets_from(prev_index)
+                        .iter()
+                        .map(|i| prev_index_to_index[*i].unwrap())
+                        .collect(),
+                );
                 prev_index_to_index[prev_index] = Some(dep_node_index);
+                #[cfg(debug_assertions)]
+                self.record_edge(dep_node_index, key);
                 dep_node_index
             }
         }
@@ -1640,18 +1121,6 @@ impl<K: DepKind> CurrentDepGraph<K> {
             "node from previous graph present in new node collection"
         );
     }
-}
-
-#[inline]
-fn add_edges<I: Idx>(
-    edges: &mut IndexVec<EdgeIndex, DepNodeIndex>,
-    edge_indices: &mut IndexVec<I, Range<EdgeIndex>>,
-    new_edges: EdgesVec,
-) {
-    let start = edges.next_index();
-    edges.extend(new_edges);
-    let end = edges.next_index();
-    edge_indices.push(start..end);
 }
 
 /// The capacity of the `reads` field `SmallVec`

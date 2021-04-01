@@ -5,7 +5,7 @@ use rustc_hir::definitions::Definitions;
 use rustc_middle::dep_graph::{PreviousDepGraph, SerializedDepGraph, WorkProduct, WorkProductId};
 use rustc_middle::ty::query::OnDiskCache;
 use rustc_serialize::opaque::Decoder;
-use rustc_serialize::Decodable as RustcDecodable;
+use rustc_serialize::Decodable;
 use rustc_session::Session;
 use std::path::Path;
 
@@ -120,7 +120,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
             // Decode the list of work_products
             let mut work_product_decoder = Decoder::new(&work_products_data[..], start_pos);
             let work_products: Vec<SerializedWorkProduct> =
-                RustcDecodable::decode(&mut work_product_decoder).unwrap_or_else(|e| {
+                Decodable::decode(&mut work_product_decoder).unwrap_or_else(|e| {
                     let msg = format!(
                         "Error decoding `work-products` from incremental \
                                     compilation session directory: {}",

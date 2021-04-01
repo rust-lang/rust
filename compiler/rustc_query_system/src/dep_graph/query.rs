@@ -1,34 +1,43 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::implementation::{Direction, Graph, NodeIndex, INCOMING};
+use rustc_index::vec::IndexVec;
 
-use super::{DepKind, DepNode};
+use super::{DepKind, DepNode, DepNodeIndex};
 
 pub struct DepGraphQuery<K> {
     pub graph: Graph<DepNode<K>, ()>,
     pub indices: FxHashMap<DepNode<K>, NodeIndex>,
+    pub dep_index_to_index: IndexVec<DepNodeIndex, Option<NodeIndex>>,
 }
 
 impl<K: DepKind> DepGraphQuery<K> {
-    pub fn new(
-        nodes: &[DepNode<K>],
-        edge_list_indices: &[(usize, usize)],
-        edge_list_data: &[usize],
-    ) -> DepGraphQuery<K> {
-        let mut graph = Graph::with_capacity(nodes.len(), edge_list_data.len());
-        let mut indices = FxHashMap::default();
-        for node in nodes {
-            indices.insert(*node, graph.add_node(*node));
-        }
+    pub fn new(prev_node_count: usize) -> DepGraphQuery<K> {
+        let node_count = prev_node_count + prev_node_count / 4;
+        let edge_count = 6 * node_count;
 
-        for (source, &(start, end)) in edge_list_indices.iter().enumerate() {
-            for &target in &edge_list_data[start..end] {
-                let source = indices[&nodes[source]];
-                let target = indices[&nodes[target]];
-                graph.add_edge(source, target, ());
+        let graph = Graph::with_capacity(node_count, edge_count);
+        let indices = FxHashMap::default();
+        let dep_index_to_index = IndexVec::new();
+
+        DepGraphQuery { graph, indices, dep_index_to_index }
+    }
+
+    pub fn push(&mut self, index: DepNodeIndex, node: DepNode<K>, edges: &[DepNodeIndex]) {
+        let source = self.graph.add_node(node);
+        if index.index() >= self.dep_index_to_index.len() {
+            self.dep_index_to_index.resize(index.index() + 1, None);
+        }
+        self.dep_index_to_index[index] = Some(source);
+        self.indices.insert(node, source);
+
+        for &target in edges.iter() {
+            let target = self.dep_index_to_index[target];
+            // We may miss the edges that are pushed while the `DepGraphQuery` is being accessed.
+            // Skip them to issues.
+            if let Some(target) = target {
+                self.graph.add_edge(source, target, ());
             }
         }
-
-        DepGraphQuery { graph, indices }
     }
 
     pub fn nodes(&self) -> Vec<&DepNode<K>> {

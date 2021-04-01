@@ -40,8 +40,9 @@ use rustc_graphviz as dot;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_middle::dep_graph::debug::{DepNodeFilter, EdgeFilter};
-use rustc_middle::dep_graph::{DepGraphQuery, DepKind, DepNode, DepNodeExt};
+use rustc_middle::dep_graph::{
+    DepGraphQuery, DepKind, DepNode, DepNodeExt, DepNodeFilter, EdgeFilter,
+};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::{sym, Symbol};
@@ -54,7 +55,7 @@ use std::io::{BufWriter, Write};
 pub fn assert_dep_graph(tcx: TyCtxt<'_>) {
     tcx.dep_graph.with_ignore(|| {
         if tcx.sess.opts.debugging_opts.dump_dep_graph {
-            dump_graph(tcx);
+            tcx.dep_graph.with_query(dump_graph);
         }
 
         if !tcx.sess.opts.debugging_opts.query_dep_graph {
@@ -200,29 +201,29 @@ fn check_paths<'tcx>(tcx: TyCtxt<'tcx>, if_this_changed: &Sources, then_this_wou
         }
         return;
     }
-    let query = tcx.dep_graph.query();
-    for &(_, source_def_id, ref source_dep_node) in if_this_changed {
-        let dependents = query.transitive_predecessors(source_dep_node);
-        for &(target_span, ref target_pass, _, ref target_dep_node) in then_this_would_need {
-            if !dependents.contains(&target_dep_node) {
-                tcx.sess.span_err(
-                    target_span,
-                    &format!(
-                        "no path from `{}` to `{}`",
-                        tcx.def_path_str(source_def_id),
-                        target_pass
-                    ),
-                );
-            } else {
-                tcx.sess.span_err(target_span, "OK");
+    tcx.dep_graph.with_query(|query| {
+        for &(_, source_def_id, ref source_dep_node) in if_this_changed {
+            let dependents = query.transitive_predecessors(source_dep_node);
+            for &(target_span, ref target_pass, _, ref target_dep_node) in then_this_would_need {
+                if !dependents.contains(&target_dep_node) {
+                    tcx.sess.span_err(
+                        target_span,
+                        &format!(
+                            "no path from `{}` to `{}`",
+                            tcx.def_path_str(source_def_id),
+                            target_pass
+                        ),
+                    );
+                } else {
+                    tcx.sess.span_err(target_span, "OK");
+                }
             }
         }
-    }
+    });
 }
 
-fn dump_graph(tcx: TyCtxt<'_>) {
+fn dump_graph(query: &DepGraphQuery) {
     let path: String = env::var("RUST_DEP_GRAPH").unwrap_or_else(|_| "dep_graph".to_string());
-    let query = tcx.dep_graph.query();
 
     let nodes = match env::var("RUST_DEP_GRAPH_FILTER") {
         Ok(string) => {

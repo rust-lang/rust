@@ -477,10 +477,7 @@ macro_rules! define_queries {
                         return
                     }
 
-                    debug_assert!(tcx.dep_graph
-                                     .node_color(dep_node)
-                                     .map(|c| c.is_green())
-                                     .unwrap_or(false));
+                    debug_assert!(tcx.dep_graph.is_green(dep_node));
 
                     let key = recover(*tcx, dep_node).unwrap_or_else(|| panic!("Failed to recover key for {:?} with hash {}", dep_node, dep_node.hash));
                     if queries::$name::cache_on_disk(tcx, &key, None) {
