@@ -254,14 +254,22 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
             let span_stack = std::iter::successors(Some(*primary_span), |span| {
                 Some(&span.expansion.as_ref()?.span)
             });
-            for span in span_stack {
+            for (i, span) in span_stack.enumerate() {
+                // First span is the original diagnostic, others are macro call locations that
+                // generated that code.
+                let is_in_macro_call = i != 0;
+
                 let secondary_location = location(workspace_root, &span);
                 if secondary_location == primary_location {
                     continue;
                 }
                 related_info_macro_calls.push(lsp_types::DiagnosticRelatedInformation {
                     location: secondary_location.clone(),
-                    message: "Error originated from macro call here".to_string(),
+                    message: if is_in_macro_call {
+                        "Error originated from macro call here".to_string()
+                    } else {
+                        "Actual error occurred here".to_string()
+                    },
                 });
                 // For the additional in-macro diagnostic we add the inverse message pointing to the error location in code.
                 let information_for_additional_diagnostic =
