@@ -361,7 +361,7 @@ impl OsString {
 impl From<String> for OsString {
     /// Converts a [`String`] into a [`OsString`].
     ///
-    /// The conversion copies the data, and includes an allocation on the heap.
+    /// This conversion does not allocate or copy memory.
     #[inline]
     fn from(s: String) -> OsString {
         OsString { inner: Buf::from_string(s) }
@@ -858,7 +858,7 @@ impl From<Cow<'_, OsStr>> for Box<OsStr> {
 
 #[stable(feature = "os_string_from_box", since = "1.18.0")]
 impl From<Box<OsStr>> for OsString {
-    /// Converts a [`Box`]`<`[`OsStr`]`>` into a `OsString` without copying or
+    /// Converts a [`Box`]`<`[`OsStr`]`>` into an [`OsString`] without copying or
     /// allocating.
     #[inline]
     fn from(boxed: Box<OsStr>) -> OsString {
