@@ -1,3 +1,4 @@
+use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_driver::abort_on_err;
@@ -22,7 +23,7 @@ use rustc_session::DiagnosticOutput;
 use rustc_session::Session;
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
@@ -348,42 +349,65 @@ crate fn create_config(
 }
 
 crate fn create_resolver<'a>(
-    externs: config::Externs,
     queries: &Queries<'a>,
     sess: &Session,
 ) -> Rc<RefCell<interface::BoxedResolver>> {
-    let extern_names: Vec<String> = externs
-        .iter()
-        .filter(|(_, entry)| entry.add_prelude)
-        .map(|(name, _)| name)
-        .cloned()
-        .collect();
-
     let parts = abort_on_err(queries.expansion(), sess).peek();
-    let resolver = parts.1.borrow();
+    let (krate, resolver, _) = &*parts;
+    let resolver = resolver.borrow().clone();
 
-    // Before we actually clone it, let's force all the extern'd crates to
-    // actually be loaded, just in case they're only referred to inside
-    // intra-doc links
-    resolver.borrow_mut().access(|resolver| {
-        sess.time("load_extern_crates", || {
-            for extern_name in &extern_names {
-                debug!("loading extern crate {}", extern_name);
-                if let Err(()) = resolver
-                    .resolve_str_path_error(
-                        DUMMY_SP,
-                        extern_name,
-                        TypeNS,
-                        LocalDefId { local_def_index: CRATE_DEF_INDEX }.to_def_id(),
-                  ) {
-                    warn!("unable to resolve external crate {} (do you have an unused `--extern` crate?)", extern_name)
-                  }
+    // Letting the resolver escape at the end of the function leads to inconsistencies between the
+    // crates the TyCtxt sees and the resolver sees (because the resolver could load more crates
+    // after escaping). Hopefully `IntraLinkCrateLoader` gets all the crates we need ...
+    struct IntraLinkCrateLoader {
+        current_mod: DefId,
+        resolver: Rc<RefCell<interface::BoxedResolver>>,
+    }
+    impl ast::visit::Visitor<'_> for IntraLinkCrateLoader {
+        fn visit_attribute(&mut self, attr: &ast::Attribute) {
+            use crate::html::markdown::{markdown_links, MarkdownLink};
+            use crate::passes::collect_intra_doc_links::Disambiguator;
+
+            if let Some(doc) = attr.doc_str() {
+                for MarkdownLink { link, .. } in markdown_links(&doc.as_str()) {
+                    // FIXME: this misses a *lot* of the preprocessing done in collect_intra_doc_links
+                    // I think most of it shouldn't be necessary since we only need the crate prefix?
+                    let path_str = match Disambiguator::from_str(&link) {
+                        Ok(x) => x.map_or(link.as_str(), |(_, p)| p),
+                        Err(_) => continue,
+                    };
+                    self.resolver.borrow_mut().access(|resolver| {
+                        let _ = resolver.resolve_str_path_error(
+                            attr.span,
+                            path_str,
+                            TypeNS,
+                            self.current_mod,
+                        );
+                    });
+                }
             }
-        });
-    });
+            ast::visit::walk_attribute(self, attr);
+        }
 
-    // Now we're good to clone the resolver because everything should be loaded
-    resolver.clone()
+        fn visit_item(&mut self, item: &ast::Item) {
+            use rustc_ast_lowering::ResolverAstLowering;
+
+            if let ast::ItemKind::Mod(..) = item.kind {
+                let new_mod =
+                    self.resolver.borrow_mut().access(|resolver| resolver.local_def_id(item.id));
+                let old_mod = mem::replace(&mut self.current_mod, new_mod.to_def_id());
+                ast::visit::walk_item(self, item);
+                self.current_mod = old_mod;
+            } else {
+                ast::visit::walk_item(self, item);
+            }
+        }
+    }
+    let crate_id = LocalDefId { local_def_index: CRATE_DEF_INDEX }.to_def_id();
+    let mut loader = IntraLinkCrateLoader { current_mod: crate_id, resolver };
+    ast::visit::walk_crate(&mut loader, krate);
+
+    loader.resolver
 }
 
 crate fn run_global_ctxt(
