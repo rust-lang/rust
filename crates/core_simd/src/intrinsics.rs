@@ -62,4 +62,10 @@ extern "platform-intrinsic" {
     pub(crate) fn simd_shuffle16<T, U>(x: T, y: T, idx: [u32; 16]) -> U;
     pub(crate) fn simd_shuffle32<T, U>(x: T, y: T, idx: [u32; 32]) -> U;
     pub(crate) fn simd_shuffle64<T, U>(x: T, y: T, idx: [u32; 64]) -> U;
+
+    // {s,u}add.sat
+    pub(crate) fn simd_saturating_add<T>(x: T, y: T) -> T;
+
+    // {s,u}sub.sat
+    pub(crate) fn simd_saturating_sub<T>(x: T, y: T) -> T;
 }
