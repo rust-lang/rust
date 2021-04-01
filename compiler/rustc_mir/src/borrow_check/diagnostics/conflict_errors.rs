@@ -1728,7 +1728,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         impl<'tcx> Visitor<'tcx> for FakeReadCauseFinder<'tcx> {
             fn visit_statement(&mut self, statement: &Statement<'tcx>, _: Location) {
                 match statement {
-                    Statement { kind: StatementKind::FakeRead(cause, box place), .. }
+                    Statement { kind: StatementKind::FakeRead(box (cause, place)), .. }
                         if *place == self.place =>
                     {
                         self.cause = Some(*cause);

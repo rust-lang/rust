@@ -76,7 +76,7 @@ For revisions in Pull Requests (PR):
 5:14-5:32: @0[9]: _5 = move _6 as &amp;[&amp;str] (Pointer(Unsize))
 5:34-5:46: @0[17]: _14 = &amp;_1
 5:5-5:48: @0[18]: _13 = (move _14,)
-5:5-5:48: @0[20]: FakeRead(ForMatchedPlace, _13)
+5:5-5:48: @0[20]: FakeRead(ForMatchedPlace(None), _13)
 5:5-5:48: @0[22]: _15 = (_13.0: &amp;u32)
 5:5-5:48: @0[25]: _17 = &amp;(*_15)
 5:5-5:48: @0[27]: _18 = &lt;u32 as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r u32, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))

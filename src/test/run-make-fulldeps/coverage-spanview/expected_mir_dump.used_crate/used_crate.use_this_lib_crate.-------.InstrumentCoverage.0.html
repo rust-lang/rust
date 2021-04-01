@@ -76,7 +76,7 @@ For revisions in Pull Requests (PR):
 58:20-58:36: @2[7]: _5 = move _6
 58:20-58:36: @2[8]: _4 = move _5 as std::boxed::Box&lt;[i32]&gt; (Pointer(Unsize))
 58:20-58:36: @4.Call: _3 = std::slice::&lt;impl [i32]&gt;::into_vec::&lt;std::alloc::Global&gt;(move _4) -&gt; [return: bb5, unwind: bb12]
-58:9-58:17: @5[1]: FakeRead(ForLet, _3)
+58:9-58:17: @5[1]: FakeRead(ForLet(None), _3)
 59:52-59:60: @5[4]: _8 = move _3
 59:5-59:61: @5.Call: _7 = used_only_from_this_lib_crate_generic_function::&lt;std::vec::Vec&lt;i32&gt;&gt;(move _8) -&gt; [return: bb6, unwind: bb9]
 60:5-60:91: @6.Call: _9 = used_only_from_this_lib_crate_generic_function::&lt;&amp;str&gt;(const &quot;used ONLY from library used_crate.rs&quot;) -&gt; [return: bb7, unwind: bb10]
@@ -89,7 +89,7 @@ For revisions in Pull Requests (PR):
 58:20-58:36: @2[7]: _5 = move _6
 58:20-58:36: @2[8]: _4 = move _5 as std::boxed::Box&lt;[i32]&gt; (Pointer(Unsize))
 58:20-58:36: @4.Call: _3 = std::slice::&lt;impl [i32]&gt;::into_vec::&lt;std::alloc::Global&gt;(move _4) -&gt; [return: bb5, unwind: bb12]
-58:9-58:17: @5[1]: FakeRead(ForLet, _3)
+58:9-58:17: @5[1]: FakeRead(ForLet(None), _3)
 59:52-59:60: @5[4]: _8 = move _3
 59:5-59:61: @5.Call: _7 = used_only_from_this_lib_crate_generic_function::&lt;std::vec::Vec&lt;i32&gt;&gt;(move _8) -&gt; [return: bb6, unwind: bb9]
 60:5-60:91: @6.Call: _9 = used_only_from_this_lib_crate_generic_function::&lt;&amp;str&gt;(const &quot;used ONLY from library used_crate.rs&quot;) -&gt; [return: bb7, unwind: bb10]
@@ -102,7 +102,7 @@ For revisions in Pull Requests (PR):
 58:20-58:36: @2[7]: _5 = move _6
 58:20-58:36: @2[8]: _4 = move _5 as std::boxed::Box&lt;[i32]&gt; (Pointer(Unsize))
 58:20-58:36: @4.Call: _3 = std::slice::&lt;impl [i32]&gt;::into_vec::&lt;std::alloc::Global&gt;(move _4) -&gt; [return: bb5, unwind: bb12]
-58:9-58:17: @5[1]: FakeRead(ForLet, _3)
+58:9-58:17: @5[1]: FakeRead(ForLet(None), _3)
 59:52-59:60: @5[4]: _8 = move _3
 59:5-59:61: @5.Call: _7 = used_only_from_this_lib_crate_generic_function::&lt;std::vec::Vec&lt;i32&gt;&gt;(move _8) -&gt; [return: bb6, unwind: bb9]
 60:5-60:91: @6.Call: _9 = used_only_from_this_lib_crate_generic_function::&lt;&amp;str&gt;(const &quot;used ONLY from library used_crate.rs&quot;) -&gt; [return: bb7, unwind: bb10]
@@ -115,7 +115,7 @@ For revisions in Pull Requests (PR):
 58:20-58:36: @2[7]: _5 = move _6
 58:20-58:36: @2[8]: _4 = move _5 as std::boxed::Box&lt;[i32]&gt; (Pointer(Unsize))
 58:20-58:36: @4.Call: _3 = std::slice::&lt;impl [i32]&gt;::into_vec::&lt;std::alloc::Global&gt;(move _4) -&gt; [return: bb5, unwind: bb12]
-58:9-58:17: @5[1]: FakeRead(ForLet, _3)
+58:9-58:17: @5[1]: FakeRead(ForLet(None), _3)
 59:52-59:60: @5[4]: _8 = move _3
 59:5-59:61: @5.Call: _7 = used_only_from_this_lib_crate_generic_function::&lt;std::vec::Vec&lt;i32&gt;&gt;(move _8) -&gt; [return: bb6, unwind: bb9]
 60:5-60:91: @6.Call: _9 = used_only_from_this_lib_crate_generic_function::&lt;&amp;str&gt;(const &quot;used ONLY from library used_crate.rs&quot;) -&gt; [return: bb7, unwind: bb10]
@@ -128,7 +128,7 @@ For revisions in Pull Requests (PR):
 58:20-58:36: @2[7]: _5 = move _6
 58:20-58:36: @2[8]: _4 = move _5 as std::boxed::Box&lt;[i32]&gt; (Pointer(Unsize))
 58:20-58:36: @4.Call: _3 = std::slice::&lt;impl [i32]&gt;::into_vec::&lt;std::alloc::Global&gt;(move _4) -&gt; [return: bb5, unwind: bb12]
-58:9-58:17: @5[1]: FakeRead(ForLet, _3)
+58:9-58:17: @5[1]: FakeRead(ForLet(None), _3)
 59:52-59:60: @5[4]: _8 = move _3
 59:5-59:61: @5.Call: _7 = used_only_from_this_lib_crate_generic_function::&lt;std::vec::Vec&lt;i32&gt;&gt;(move _8) -&gt; [return: bb6, unwind: bb9]
 60:5-60:91: @6.Call: _9 = used_only_from_this_lib_crate_generic_function::&lt;&amp;str&gt;(const &quot;used ONLY from library used_crate.rs&quot;) -&gt; [return: bb7, unwind: bb10]
@@ -141,7 +141,7 @@ For revisions in Pull Requests (PR):
 58:20-58:36: @2[7]: _5 = move _6
 58:20-58:36: @2[8]: _4 = move _5 as std::boxed::Box&lt;[i32]&gt; (Pointer(Unsize))
 58:20-58:36: @4.Call: _3 = std::slice::&lt;impl [i32]&gt;::into_vec::&lt;std::alloc::Global&gt;(move _4) -&gt; [return: bb5, unwind: bb12]
-58:9-58:17: @5[1]: FakeRead(ForLet, _3)
+58:9-58:17: @5[1]: FakeRead(ForLet(None), _3)
 59:52-59:60: @5[4]: _8 = move _3
 59:5-59:61: @5.Call: _7 = used_only_from_this_lib_crate_generic_function::&lt;std::vec::Vec&lt;i32&gt;&gt;(move _8) -&gt; [return: bb6, unwind: bb9]
 60:5-60:91: @6.Call: _9 = used_only_from_this_lib_crate_generic_function::&lt;&amp;str&gt;(const &quot;used ONLY from library used_crate.rs&quot;) -&gt; [return: bb7, unwind: bb10]
@@ -154,7 +154,7 @@ For revisions in Pull Requests (PR):
 58:20-58:36: @2[7]: _5 = move _6
 58:20-58:36: @2[8]: _4 = move _5 as std::boxed::Box&lt;[i32]&gt; (Pointer(Unsize))
 58:20-58:36: @4.Call: _3 = std::slice::&lt;impl [i32]&gt;::into_vec::&lt;std::alloc::Global&gt;(move _4) -&gt; [return: bb5, unwind: bb12]
-58:9-58:17: @5[1]: FakeRead(ForLet, _3)
+58:9-58:17: @5[1]: FakeRead(ForLet(None), _3)
 59:52-59:60: @5[4]: _8 = move _3
 59:5-59:61: @5.Call: _7 = used_only_from_this_lib_crate_generic_function::&lt;std::vec::Vec&lt;i32&gt;&gt;(move _8) -&gt; [return: bb6, unwind: bb9]
 60:5-60:91: @6.Call: _9 = used_only_from_this_lib_crate_generic_function::&lt;&amp;str&gt;(const &quot;used ONLY from library used_crate.rs&quot;) -&gt; [return: bb7, unwind: bb10]
@@ -167,7 +167,7 @@ For revisions in Pull Requests (PR):
 58:20-58:36: @2[7]: _5 = move _6
 58:20-58:36: @2[8]: _4 = move _5 as std::boxed::Box&lt;[i32]&gt; (Pointer(Unsize))
 58:20-58:36: @4.Call: _3 = std::slice::&lt;impl [i32]&gt;::into_vec::&lt;std::alloc::Global&gt;(move _4) -&gt; [return: bb5, unwind: bb12]
-58:9-58:17: @5[1]: FakeRead(ForLet, _3)
+58:9-58:17: @5[1]: FakeRead(ForLet(None), _3)
 59:52-59:60: @5[4]: _8 = move _3
 59:5-59:61: @5.Call: _7 = used_only_from_this_lib_crate_generic_function::&lt;std::vec::Vec&lt;i32&gt;&gt;(move _8) -&gt; [return: bb6, unwind: bb9]
 60:5-60:91: @6.Call: _9 = used_only_from_this_lib_crate_generic_function::&lt;&amp;str&gt;(const &quot;used ONLY from library used_crate.rs&quot;) -&gt; [return: bb7, unwind: bb10]
@@ -180,7 +180,7 @@ For revisions in Pull Requests (PR):
 58:20-58:36: @2[7]: _5 = move _6
 58:20-58:36: @2[8]: _4 = move _5 as std::boxed::Box&lt;[i32]&gt; (Pointer(Unsize))
 58:20-58:36: @4.Call: _3 = std::slice::&lt;impl [i32]&gt;::into_vec::&lt;std::alloc::Global&gt;(move _4) -&gt; [return: bb5, unwind: bb12]
-58:9-58:17: @5[1]: FakeRead(ForLet, _3)
+58:9-58:17: @5[1]: FakeRead(ForLet(None), _3)
 59:52-59:60: @5[4]: _8 = move _3
 59:5-59:61: @5.Call: _7 = used_only_from_this_lib_crate_generic_function::&lt;std::vec::Vec&lt;i32&gt;&gt;(move _8) -&gt; [return: bb6, unwind: bb9]
 60:5-60:91: @6.Call: _9 = used_only_from_this_lib_crate_generic_function::&lt;&amp;str&gt;(const &quot;used ONLY from library used_crate.rs&quot;) -&gt; [return: bb7, unwind: bb10]

@@ -71,19 +71,19 @@ For revisions in Pull Requests (PR):
 <body>
 <div class="code" style="counter-reset: line 14"><span class="line"><span><span class="code even" style="--layer: 1" title="16:20-16:22: @0[2]: _4 = &amp;(*_1)
 16:13-16:23: @0.Call: _3 = length::&lt;T&gt;(move _4) -&gt; [return: bb1, unwind: bb22]
-16:9-16:10: @1[1]: FakeRead(ForLet, _3)
+16:9-16:10: @1[1]: FakeRead(ForLet(None), _3)
 17:8-17:9: @1[4]: _6 = _2
 17:13-17:14: @1[6]: _7 = _3
 17:8-17:14: @1[7]: _5 = Eq(move _6, move _7)"><span class="annotation">@0,1⦊</span>fn permutate&lt;T: Copy + Display&gt;(xs: &amp;mut [T], k: usize) {</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="16:20-16:22: @0[2]: _4 = &amp;(*_1)
 16:13-16:23: @0.Call: _3 = length::&lt;T&gt;(move _4) -&gt; [return: bb1, unwind: bb22]
-16:9-16:10: @1[1]: FakeRead(ForLet, _3)
+16:9-16:10: @1[1]: FakeRead(ForLet(None), _3)
 17:8-17:9: @1[4]: _6 = _2
 17:13-17:14: @1[6]: _7 = _3
 17:8-17:14: @1[7]: _5 = Eq(move _6, move _7)">    let n = length(xs);</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="16:20-16:22: @0[2]: _4 = &amp;(*_1)
 16:13-16:23: @0.Call: _3 = length::&lt;T&gt;(move _4) -&gt; [return: bb1, unwind: bb22]
-16:9-16:10: @1[1]: FakeRead(ForLet, _3)
+16:9-16:10: @1[1]: FakeRead(ForLet(None), _3)
 17:8-17:9: @1[4]: _6 = _2
 17:13-17:14: @1[6]: _7 = _3
 17:8-17:14: @1[7]: _5 = Eq(move _6, move _7)">    if k == n<span class="annotation">⦉@0,1</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="18:17-18:19: @2[2]: _9 = &amp;(*_1)
@@ -101,7 +101,7 @@ For revisions in Pull Requests (PR):
 20:13-20:14: @14[3]: _26 = _25
 20:13-20:14: @14[4]: _19 = move _26
 20:13-20:14: @14[5]: _20 = const ()
-20:13-20:14: @14[13]: FakeRead(ForLet, _28)"><span class="annotation">@12,14,15,16,17,18⦊</span>i<span class="annotation">⦉@12,14,15,16,17,18</span></span></span><span class="code" style="--layer: 0"> in </span><span><span class="code even" style="--layer: 1" title="20:18-20:19: @5[3]: _15 = _2
+20:13-20:14: @14[13]: FakeRead(ForLet(None), _28)"><span class="annotation">@12,14,15,16,17,18⦊</span>i<span class="annotation">⦉@12,14,15,16,17,18</span></span></span><span class="code" style="--layer: 0"> in </span><span><span class="code even" style="--layer: 1" title="20:18-20:19: @5[3]: _15 = _2
 20:21-20:22: @5[5]: _16 = _3"><span class="annotation">@5,7⦊</span>k..n<span class="annotation">⦉@5,7</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="21:18-21:20: @14[17]: _31 = &amp;mut (*_1)
 21:22-21:23: @14[19]: _32 = _28
 21:25-21:26: @14[21]: _33 = _2

@@ -72,7 +72,7 @@ For revisions in Pull Requests (PR):
 <div class="code" style="counter-reset: line 72"><span class="line"><span><span class="code even" style="--layer: 1"><span class="annotation">@0⦊</span>fn main() <span class="annotation">⦉@0</span></span></span><span class="code" style="--layer: 0">{</span></span>
 <span class="line"><span class="code" style="--layer: 0">    if </span><span><span class="code even" style="--layer: 1" title="74:8-74:12: @0[1]: _1 = const true"><span class="annotation">@0⦊</span>true<span class="annotation">⦉@0</span></span></span><span class="code" style="--layer: 0"> {</span></span>
 <span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code odd" style="--layer: 1" title="75:9-75:26: @4[0]: _2 = const ()"><span class="annotation">@4⦊</span></span></span><span class="code even" style="--layer: 2" title="75:9-75:26: @3[1]: _15 = core::panicking::AssertKind::Eq
-75:9-75:26: @3[2]: FakeRead(ForLet, _15)
+75:9-75:26: @3[2]: FakeRead(ForLet(None), _15)
 75:9-75:26: @3[5]: _17 = move _15
 75:9-75:26: @3[8]: _19 = &amp;(*_8)
 75:9-75:26: @3[9]: _18 = &amp;(*_19)
@@ -82,7 +82,7 @@ For revisions in Pull Requests (PR):
 75:9-75:26: @3.Call: core::panicking::assert_failed::&lt;i32, i32&gt;(move _17, move _18, move _20, move _22) -&gt; bb8"><span class="annotation">@3⦊</span>assert_eq!(1, 1);<span class="annotation">⦉@3</span></span><span><span class="code odd" style="--layer: 1" title="75:9-75:26: @4[0]: _2 = const ()"><span class="annotation">⦉@4</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">    } else {</span></span>
 <span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code even" style="--layer: 1" title="77:9-77:26: @6[0]: _23 = const ()"><span class="annotation">@6⦊</span></span></span><span class="code even" style="--layer: 2" title="77:9-77:26: @5[1]: _36 = core::panicking::AssertKind::Eq
-77:9-77:26: @5[2]: FakeRead(ForLet, _36)
+77:9-77:26: @5[2]: FakeRead(ForLet(None), _36)
 77:9-77:26: @5[5]: _38 = move _36
 77:9-77:26: @5[8]: _40 = &amp;(*_29)
 77:9-77:26: @5[9]: _39 = &amp;(*_40)
