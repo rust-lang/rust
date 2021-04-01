@@ -60,10 +60,9 @@ use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{
-    def, Arm, BindingAnnotation, Block, Body, Constness, CrateItem, Expr, ExprKind, FieldDef, FnDecl, ForeignItem,
-    GenericArgs, GenericParam, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, LangItem, Lifetime, Local,
-    MacroDef, MatchSource, Node, Param, Pat, PatKind, Path, PathSegment, QPath, Stmt, TraitItem, TraitItemKind,
-    TraitRef, TyKind, Variant, Visibility,
+    def, Arm, BindingAnnotation, Block, Body, Constness, Expr, ExprKind, FnDecl, GenericArgs, HirId, Impl, ImplItem,
+    ImplItemKind, Item, ItemKind, LangItem, MatchSource, Node, Param, Pat, PatKind, Path, PathSegment, QPath,
+    TraitItem, TraitItemKind, TraitRef, TyKind,
 };
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::exports::Export;
@@ -75,7 +74,7 @@ use rustc_session::Session;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::original_sp;
 use rustc_span::sym;
-use rustc_span::symbol::{kw, Ident, Symbol};
+use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::Integer;
 
@@ -710,41 +709,6 @@ fn line_span<T: LintContext>(cx: &T, span: Span) -> Span {
     let line_no = source_map_and_line.line;
     let line_start = source_map_and_line.sf.lines[line_no];
     Span::new(line_start, span.hi(), span.ctxt())
-}
-
-/// Gets the span of the node, if there is one.
-pub fn get_node_span(node: Node<'_>) -> Option<Span> {
-    match node {
-        Node::Param(Param { span, .. })
-        | Node::Item(Item { span, .. })
-        | Node::ForeignItem(ForeignItem { span, .. })
-        | Node::TraitItem(TraitItem { span, .. })
-        | Node::ImplItem(ImplItem { span, .. })
-        | Node::Variant(Variant { span, .. })
-        | Node::Field(FieldDef { span, .. })
-        | Node::Expr(Expr { span, .. })
-        | Node::Stmt(Stmt { span, .. })
-        | Node::PathSegment(PathSegment {
-            ident: Ident { span, .. },
-            ..
-        })
-        | Node::Ty(hir::Ty { span, .. })
-        | Node::TraitRef(TraitRef {
-            path: Path { span, .. },
-            ..
-        })
-        | Node::Binding(Pat { span, .. })
-        | Node::Pat(Pat { span, .. })
-        | Node::Arm(Arm { span, .. })
-        | Node::Block(Block { span, .. })
-        | Node::Local(Local { span, .. })
-        | Node::MacroDef(MacroDef { span, .. })
-        | Node::Lifetime(Lifetime { span, .. })
-        | Node::GenericParam(GenericParam { span, .. })
-        | Node::Visibility(Visibility { span, .. })
-        | Node::Crate(CrateItem { span, .. }) => Some(*span),
-        Node::Ctor(_) | Node::AnonConst(_) => None,
-    }
 }
 
 /// Gets the parent node, if any.
