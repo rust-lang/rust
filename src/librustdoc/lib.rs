@@ -533,6 +533,12 @@ fn opts() -> Vec<RustcOptGroup> {
                 "emit",
                 "Comma separated list of types of output for rustdoc to emit",
                 "[unversioned-shared-resources,toolchain-shared-resources,invocation-specific]",
+        stable("no-source", |o| {
+            o.optflag(
+                "",
+                "no-source",
+                "Prevent source code generation in HTML output format generation. \
+                 This is the same as using the `#![doc(html_no_source)]` attribute.",
             )
         }),
     ]

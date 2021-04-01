@@ -331,7 +331,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             generate_search_filter,
         };
         let mut issue_tracker_base_url = None;
-        let mut include_sources = true;
+        let mut include_sources = !options.no_source;
 
         // Crawl the crate attributes looking for attributes which control how we're
         // going to emit HTML

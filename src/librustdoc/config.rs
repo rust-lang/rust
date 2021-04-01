@@ -268,6 +268,8 @@ crate struct RenderOptions {
     crate generate_redirect_map: bool,
     crate unstable_features: rustc_feature::UnstableFeatures,
     crate emit: Vec<EmitType>,
+    /// Whether the source code should be rendered as HTML.
+    pub no_source: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -622,6 +624,7 @@ impl Options {
         let document_hidden = matches.opt_present("document-hidden-items");
         let run_check = matches.opt_present("check");
         let generate_redirect_map = matches.opt_present("generate-redirect-map");
+        let no_source = matches.opt_present("no-source");
 
         let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
@@ -684,6 +687,7 @@ impl Options {
                     crate_name.as_deref(),
                 ),
                 emit,
+                no_source,
             },
             crate_name,
             output_format,
