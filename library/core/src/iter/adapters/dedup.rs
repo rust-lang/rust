@@ -88,10 +88,6 @@ where
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.last.is_none() {
-            self.last = self.inner.next();
-        }
-
         let last_item = self.last.as_ref()?;
         let mut next = loop {
             let curr = self.inner.next();
@@ -148,10 +144,6 @@ where
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.last.is_none() {
-            self.last = self.inner.next();
-        }
-
         let last_item = self.last.as_ref()?;
         let mut next = loop {
             let curr = self.inner.next();
