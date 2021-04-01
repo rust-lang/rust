@@ -479,7 +479,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         if !need_migrations.is_empty() {
-            let migrations_text = migration_suggestion_for_2229(self.tcx, &need_migrations);
+            let (migration_string, migrated_variables_concat) =
+                migration_suggestion_for_2229(self.tcx, &need_migrations);
 
             let local_def_id = closure_def_id.expect_local();
             let closure_hir_id = self.tcx.hir().local_def_id_to_hir_id(local_def_id);
@@ -495,15 +496,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let (sugg, app) =
                         match self.tcx.sess.source_map().span_to_snippet(closure_body_span) {
                             Ok(s) => (
-                                format!("{{ {} {} }}", migrations_text, s),
+                                format!("{{ {}; {} }}", migration_string, s),
                                 Applicability::MachineApplicable,
                             ),
-                            Err(_) => (migrations_text.clone(), Applicability::HasPlaceholders),
+                            Err(_) => (migration_string.clone(), Applicability::HasPlaceholders),
                         };
+
+                    let diagnostic_msg = format!(
+                        "`{}` causes {} to be fully captured",
+                        migration_string, migrated_variables_concat
+                    );
 
                     diagnostics_builder.span_suggestion(
                         closure_body_span,
-                        &format!("You can restore original behavior adding `{}` to the closure/generator", migrations_text),
+                        &diagnostic_msg,
                         sugg,
                         app,
                     );
@@ -1537,16 +1543,29 @@ fn should_do_migration_analysis(tcx: TyCtxt<'_>, closure_id: hir::HirId) -> bool
     !matches!(level, lint::Level::Allow)
 }
 
-fn migration_suggestion_for_2229(tcx: TyCtxt<'_>, need_migrations: &Vec<hir::HirId>) -> String {
-    let need_migrations_strings =
-        need_migrations.iter().map(|v| format!("&{}", var_name(tcx, *v))).collect::<Vec<_>>();
-    let migrations_list_concat = need_migrations_strings.join(", ");
+/// Return a two string tuple (s1, s2)
+/// - s1: Line of code that is needed for the migration: eg: `let _ = (&x, ...)`.
+/// - s2: Comma separated names of the variables being migrated.
+fn migration_suggestion_for_2229(
+    tcx: TyCtxt<'_>,
+    need_migrations: &Vec<hir::HirId>,
+) -> (String, String) {
+    let need_migrations_variables =
+        need_migrations.iter().map(|v| var_name(tcx, *v)).collect::<Vec<_>>();
 
-    if 1 == need_migrations.len() {
-        format!("let _ = {};", migrations_list_concat)
+    let migration_ref_concat =
+        need_migrations_variables.iter().map(|v| format!("&{}", v)).collect::<Vec<_>>().join(", ");
+
+    let migration_string = if 1 == need_migrations.len() {
+        format!("let _ = {}", migration_ref_concat)
     } else {
-        format!("let _ = ({});", migrations_list_concat)
-    }
+        format!("let _ = ({})", migration_ref_concat)
+    };
+
+    let migrated_variables_concat =
+        need_migrations_variables.iter().map(|v| format!("`{}`", v)).collect::<Vec<_>>().join(", ");
+
+    (migration_string, migrated_variables_concat)
 }
 
 /// Helper function to determine if we need to escalate CaptureKind from
