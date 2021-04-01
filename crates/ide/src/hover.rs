@@ -3858,6 +3858,27 @@ trait A {
         );
         check(
             r#"
+fn foo<T: A>() {
+    let _: <T>::Assoc$0;
+}
+
+trait A {
+    type Assoc;
+}"#,
+            expect![[r#"
+                *Assoc*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                type Assoc
+                ```
+            "#]],
+        );
+        check(
+            r#"
 trait A where
     Self::Assoc$0: ,
 {
@@ -3874,6 +3895,6 @@ trait A where
                 type Assoc
                 ```
             "#]],
-        )
+        );
     }
 }
