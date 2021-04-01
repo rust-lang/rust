@@ -146,7 +146,7 @@ impl<'a> TyLoweringContext<'a> {
         self.lower_ty_ext(type_ref).0
     }
 
-    fn lower_ty_ext(&self, type_ref: &TypeRef) -> (Ty, Option<TypeNs>) {
+    pub fn lower_ty_ext(&self, type_ref: &TypeRef) -> (Ty, Option<TypeNs>) {
         let mut res = None;
         let ty = match type_ref {
             TypeRef::Never => TyKind::Never.intern(&Interner),

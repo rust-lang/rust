@@ -20,7 +20,7 @@ use hir_def::{
 use hir_expand::{hygiene::Hygiene, name::AsName, HirFileId, InFile};
 use hir_ty::{
     diagnostics::{record_literal_missing_fields, record_pattern_missing_fields},
-    InferenceResult, Substitution,
+    InferenceResult, Substitution, TyLoweringContext,
 };
 use syntax::{
     ast::{self, AstNode},
@@ -466,7 +466,21 @@ fn resolve_hir_path_(
     prefer_value_ns: bool,
 ) -> Option<PathResolution> {
     let types = || {
-        resolver.resolve_path_in_type_ns_fully(db.upcast(), path.mod_path()).map(|ty| match ty {
+        let (ty, unresolved) = match path.type_anchor() {
+            Some(type_ref) => {
+                let (_, res) = TyLoweringContext::new(db, resolver).lower_ty_ext(type_ref);
+                res.map(|ty_ns| (ty_ns, path.segments().first()))
+            }
+            None => {
+                let (ty, remaining) =
+                    resolver.resolve_path_in_type_ns(db.upcast(), path.mod_path())?;
+                match remaining {
+                    Some(remaining) if remaining > 1 => None,
+                    _ => Some((ty, path.segments().get(1))),
+                }
+            }
+        }?;
+        let res = match ty {
             TypeNs::SelfType(it) => PathResolution::SelfType(it.into()),
             TypeNs::GenericParam(id) => PathResolution::TypeParam(TypeParam { id }),
             TypeNs::AdtSelfType(it) | TypeNs::AdtId(it) => {
@@ -476,7 +490,17 @@ fn resolve_hir_path_(
             TypeNs::TypeAliasId(it) => PathResolution::Def(TypeAlias::from(it).into()),
             TypeNs::BuiltinType(it) => PathResolution::Def(BuiltinType::from(it).into()),
             TypeNs::TraitId(it) => PathResolution::Def(Trait::from(it).into()),
-        })
+        };
+        match unresolved {
+            Some(unresolved) => res
+                .assoc_type_shorthand_candidates(db, |name, alias| {
+                    (name == unresolved.name).then(|| alias)
+                })
+                .map(TypeAlias::from)
+                .map(Into::into)
+                .map(PathResolution::Def),
+            None => Some(res),
+        }
     };
 
     let body_owner = resolver.body_owner();
