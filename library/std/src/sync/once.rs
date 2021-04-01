@@ -471,7 +471,7 @@ fn wait(state_and_queue: &AtomicUsize, mut current_state: usize) {
             // If the managing thread happens to signal and unpark us before we
             // can park ourselves, the result could be this thread never gets
             // unparked. Luckily `park` comes with the guarantee that if it got
-            // an `unpark` just before on an unparked thread is does not park.
+            // an `unpark` just before on an unparked thread it does not park.
             thread::park();
         }
         break;
