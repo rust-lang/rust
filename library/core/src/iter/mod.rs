@@ -425,7 +425,7 @@ pub use self::adapters::{
 };
 #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
 pub use self::adapters::{Intersperse, IntersperseWith};
-#[unstable(feature = "iter_dedup", reason = "recently added", issue = "none")]
+#[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
 pub use self::adapters::{Dedup, DedupBy, DedupByKey};
 
 pub(crate) use self::adapters::try_process;

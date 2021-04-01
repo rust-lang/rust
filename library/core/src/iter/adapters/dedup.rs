@@ -8,7 +8,7 @@ use crate::mem::swap;
 ///
 /// [`dedup`]: Iterator::dedup
 /// [`Iterator`]: trait.Iterator.html
-#[unstable(feature = "iter_dedup", reason = "recently added", issue = "none")]
+#[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
 #[derive(Debug, Clone, Copy)]
 pub struct Dedup<I, T> {
     inner: I,
@@ -21,7 +21,7 @@ impl<I, T> Dedup<I, T> {
     }
 }
 
-#[unstable(feature = "iter_dedup", reason = "recently added", issue = "none")]
+#[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
 impl<I, T> Iterator for Dedup<I, T>
 where
     I: Iterator<Item = T>,
@@ -63,7 +63,7 @@ where
 ///
 /// [`dedup_by`]: Iterator::dedup_by
 /// [`Iterator`]: trait.Iterator.html
-#[unstable(feature = "iter_dedup", reason = "recently added", issue = "none")]
+#[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
 #[derive(Debug, Clone, Copy)]
 pub struct DedupBy<I, F, T> {
     inner: I,
@@ -81,7 +81,7 @@ impl<I, F, T> DedupBy<I, F, T> {
     }
 }
 
-#[unstable(feature = "iter_dedup", reason = "recently added", issue = "none")]
+#[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
 impl<I, F, T> Iterator for DedupBy<I, F, T>
 where
     I: Iterator<Item = T>,
@@ -123,7 +123,7 @@ where
 ///
 /// [`dedup_by_key`]: Iterator::dedup_by_key
 /// [`Iterator`]: trait.Iterator.html
-#[unstable(feature = "iter_dedup", reason = "recently added", issue = "none")]
+#[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
 #[derive(Debug, Clone, Copy)]
 pub struct DedupByKey<I, F, T> {
     inner: I,
@@ -141,7 +141,7 @@ impl<I, F, T> DedupByKey<I, F, T> {
     }
 }
 
-#[unstable(feature = "iter_dedup", reason = "recently added", issue = "none")]
+#[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
 impl<I, F, K, T> Iterator for DedupByKey<I, F, T>
 where
     I: Iterator<Item = T>,

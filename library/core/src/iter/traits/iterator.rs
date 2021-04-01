@@ -1708,7 +1708,7 @@ pub trait Iterator {
     /// assert_eq!(iter.next(), Some(2));
     /// assert_eq!(iter.next(), None);
     /// ```
-    #[unstable(feature = "iter_dedup", reason = "recently added", issue = "none")]
+    #[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
     #[inline]
     fn dedup(self) -> Dedup<Self, Self::Item>
     where
@@ -1738,7 +1738,7 @@ pub trait Iterator {
     /// assert_eq!(iter.next(), Some("bar"));
     /// assert_eq!(iter.next(), None);
     /// ```
-    #[unstable(feature = "iter_dedup", reason = "recently added", issue = "none")]
+    #[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
     #[inline]
     fn dedup_by<F>(self, same_bucket: F) -> DedupBy<Self, F, Self::Item>
     where
@@ -1766,7 +1766,7 @@ pub trait Iterator {
     /// assert_eq!(iter.next(), Some(20));
     /// assert_eq!(iter.next(), None);
     /// ```
-    #[unstable(feature = "iter_dedup", reason = "recently added", issue = "none")]
+    #[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
     #[inline]
     fn dedup_by_key<F, K>(self, key: F) -> DedupByKey<Self, F, Self::Item>
     where
