@@ -1715,6 +1715,7 @@ pub trait Iterator {
     fn dedup(self) -> Dedup<Self, Self::Item>
     where
         Self: Sized,
+        Self::Item: PartialEq,
     {
         Dedup::new(self)
     }
@@ -1747,7 +1748,7 @@ pub trait Iterator {
     fn dedup_by<F>(self, same_bucket: F) -> DedupBy<Self, F, Self::Item>
     where
         Self: Sized,
-        F: Fn(&Self::Item, &Self::Item) -> bool,
+        F: FnMut(&Self::Item, &Self::Item) -> bool,
     {
         DedupBy::new(self, same_bucket)
     }
@@ -1777,7 +1778,7 @@ pub trait Iterator {
     fn dedup_by_key<F, K>(self, key: F) -> DedupByKey<Self, F, Self::Item>
     where
         Self: Sized,
-        F: Fn(&Self::Item) -> K,
+        F: FnMut(&Self::Item) -> K,
         K: PartialEq,
     {
         DedupByKey::new(self, key)
