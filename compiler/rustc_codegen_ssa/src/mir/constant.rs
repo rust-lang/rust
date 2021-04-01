@@ -57,15 +57,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> (Bx::Value, Ty<'tcx>) {
         constant
             .map(|val| {
-                let field_ty = ty.builtin_index().unwrap();
-                let c = ty::Const::from_value(bx.tcx(), val, ty);
                 let values: Vec<_> = bx
                     .tcx()
-                    .destructure_const(ty::ParamEnv::reveal_all().and(&c))
+                    .destructure_const(ty::ParamEnv::reveal_all().and((val, ty)))
                     .fields
                     .iter()
-                    .map(|field| {
-                        if let Some(prim) = field.val.try_to_scalar() {
+                    .map(|(field, field_ty)| {
+                        if let Some(prim) = field.try_to_scalar() {
                             let layout = bx.layout_of(field_ty);
                             let scalar = match layout.abi {
                                 Abi::Scalar(ref x) => x,
@@ -78,7 +76,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     })
                     .collect();
                 let llval = bx.const_struct(&values, false);
-                (llval, c.ty)
+                (llval, ty)
             })
             .unwrap_or_else(|_| {
                 bx.tcx().sess.span_err(span, "could not evaluate shuffle_indices at compile time");

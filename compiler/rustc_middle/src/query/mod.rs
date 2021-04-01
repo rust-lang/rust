@@ -828,7 +828,7 @@ rustc_queries! {
     /// Destructure a constant ADT or array into its variant index and its
     /// field values.
     query destructure_const(
-        key: ty::ParamEnvAnd<'tcx, &'tcx ty::Const<'tcx>>
+        key: ty::ParamEnvAnd<'tcx, (ConstValue<'tcx>, Ty<'tcx>)>
     ) -> mir::DestructuredConst<'tcx> {
         desc { "destructure constant" }
     }
@@ -836,8 +836,8 @@ rustc_queries! {
     /// Dereference a constant reference or raw pointer and turn the result into a constant
     /// again.
     query deref_const(
-        key: ty::ParamEnvAnd<'tcx, &'tcx ty::Const<'tcx>>
-    ) -> &'tcx ty::Const<'tcx> {
+        key: ty::ParamEnvAnd<'tcx, (ConstValue<'tcx>, Ty<'tcx>)>
+    ) -> (ConstValue<'tcx>, Ty<'tcx>) {
         desc { "deref constant" }
     }
 

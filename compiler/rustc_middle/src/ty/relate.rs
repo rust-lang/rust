@@ -546,7 +546,7 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
         (ty::ConstKind::Param(a_p), ty::ConstKind::Param(b_p)) => a_p.index == b_p.index,
         (ty::ConstKind::Placeholder(p1), ty::ConstKind::Placeholder(p2)) => p1 == p2,
         (ty::ConstKind::Value(a_val), ty::ConstKind::Value(b_val)) => {
-            check_const_value_eq(relation, a_val, b_val, a, b)?
+            check_const_value_eq(relation, a_val, b_val, a.ty, b.ty)?
         }
 
         (ty::ConstKind::Unevaluated(au), ty::ConstKind::Unevaluated(bu))
@@ -585,10 +585,8 @@ fn check_const_value_eq<R: TypeRelation<'tcx>>(
     relation: &mut R,
     a_val: ConstValue<'tcx>,
     b_val: ConstValue<'tcx>,
-    // FIXME(oli-obk): these arguments should go away with valtrees
-    a: &'tcx ty::Const<'tcx>,
-    b: &'tcx ty::Const<'tcx>,
-    // FIXME(oli-obk): this should just be `bool` with valtrees
+    a_ty: Ty<'tcx>,
+    b_ty: Ty<'tcx>,
 ) -> RelateResult<'tcx, bool> {
     let tcx = relation.tcx();
     Ok(match (a_val, b_val) {
@@ -610,13 +608,20 @@ fn check_const_value_eq<R: TypeRelation<'tcx>>(
         }
 
         (ConstValue::ByRef { .. }, ConstValue::ByRef { .. }) => {
-            let a_destructured = tcx.destructure_const(relation.param_env().and(a));
-            let b_destructured = tcx.destructure_const(relation.param_env().and(b));
+            let a_destructured = tcx.destructure_const(relation.param_env().and((a_val, a_ty)));
+            let b_destructured = tcx.destructure_const(relation.param_env().and((b_val, b_ty)));
 
             // Both the variant and each field have to be equal.
             if a_destructured.variant == b_destructured.variant {
-                for (a_field, b_field) in iter::zip(a_destructured.fields, b_destructured.fields) {
-                    relation.consts(a_field, b_field)?;
+                for (&(a_val, a_ty), &(b_val, b_ty)) in
+                    iter::zip(a_destructured.fields, b_destructured.fields)
+                {
+                    let is_match = check_const_value_eq(relation, a_val, b_val, a_ty, b_ty)?;
+                    if !is_match {
+                        let a = ty::Const::from_value(relation.tcx(), a_val, a_ty);
+                        let b = ty::Const::from_value(relation.tcx(), b_val, b_ty);
+                        return Err(TypeError::ConstMismatch(expected_found(relation, a, b)));
+                    }
                 }
 
                 true

@@ -61,15 +61,15 @@ pub fn provide(providers: &mut Providers) {
     providers.mir_callgraph_reachable = transform::inline::cycle::mir_callgraph_reachable;
     providers.mir_inliner_callees = transform::inline::cycle::mir_inliner_callees;
     providers.destructure_const = |tcx, param_env_and_value| {
-        let (param_env, value) = param_env_and_value.into_parts();
-        const_eval::destructure_const(tcx, param_env, value)
+        let (param_env, (value, ty)) = param_env_and_value.into_parts();
+        const_eval::destructure_const(tcx, param_env, value, ty)
     };
     providers.const_to_valtree = |tcx, param_env_and_value| {
         let (param_env, raw) = param_env_and_value.into_parts();
         const_eval::const_to_valtree(tcx, param_env, raw)
     };
     providers.deref_const = |tcx, param_env_and_value| {
-        let (param_env, value) = param_env_and_value.into_parts();
-        const_eval::deref_const(tcx, param_env, value)
+        let (param_env, (value, ty)) = param_env_and_value.into_parts();
+        const_eval::deref_const(tcx, param_env, value, ty)
     };
 }

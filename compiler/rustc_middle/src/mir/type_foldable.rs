@@ -367,3 +367,13 @@ impl<'tcx> TypeFoldable<'tcx> for ConstantKind<'tcx> {
         }
     }
 }
+
+impl<'tcx> TypeFoldable<'tcx> for interpret::ConstValue<'tcx> {
+    fn super_fold_with<F: TypeFolder<'tcx>>(self, _folder: &mut F) -> Self {
+        self
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        ControlFlow::CONTINUE
+    }
+}

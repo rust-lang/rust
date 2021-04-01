@@ -2544,6 +2544,27 @@ impl ConstantKind<'tcx> {
     }
 
     #[inline]
+    /// Panics if the value cannot be evaluated or doesn't contain a valid integer of the given type.
+    pub fn eval_bits(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> u128 {
+        match self {
+            Self::Ty(ct) => ct.eval_bits(tcx, param_env, ty),
+            Self::Val(val, t) => {
+                assert_eq!(*t, ty);
+                let size = tcx
+                    .layout_of(param_env.with_reveal_all_normalized(tcx).and(ty))
+                    .expect("could not normalize type")
+                    .size;
+                val.try_to_scalar_int().unwrap().assert_bits(size)
+            }
+        }
+    }
+
+    #[inline]
     pub fn try_eval_bool(&self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Option<bool> {
         match self {
             Self::Ty(ct) => ct.try_eval_bool(tcx, param_env),

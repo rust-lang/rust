@@ -311,6 +311,15 @@ impl<'tcx> Key for &'tcx ty::Const<'tcx> {
     }
 }
 
+impl<'tcx> Key for (mir::interpret::ConstValue<'tcx>, Ty<'tcx>) {
+    fn query_crate_is_local(&self) -> bool {
+        true
+    }
+    fn default_span(&self, _: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+}
+
 impl<'tcx> Key for Ty<'tcx> {
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {

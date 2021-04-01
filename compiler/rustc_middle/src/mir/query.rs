@@ -16,7 +16,7 @@ use smallvec::SmallVec;
 use std::cell::Cell;
 use std::fmt::{self, Debug};
 
-use super::{Field, SourceInfo};
+use super::{interpret::ConstValue, Field, SourceInfo};
 
 #[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
 pub enum UnsafetyViolationKind {
@@ -379,7 +379,7 @@ pub enum ClosureOutlivesSubject<'tcx> {
 #[derive(Copy, Clone, Debug, HashStable)]
 pub struct DestructuredConst<'tcx> {
     pub variant: Option<VariantIdx>,
-    pub fields: &'tcx [&'tcx ty::Const<'tcx>],
+    pub fields: &'tcx [(ConstValue<'tcx>, Ty<'tcx>)],
 }
 
 /// Coverage information summarized from a MIR if instrumented for source code coverage (see

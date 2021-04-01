@@ -3,7 +3,7 @@
 use std::convert::TryFrom;
 
 use rustc_hir::Mutability;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{
     mir::{self, interpret::ConstAlloc},
     ty::ScalarInt,
@@ -139,14 +139,15 @@ fn const_to_valtree_inner<'tcx>(
 pub(crate) fn destructure_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    val: &'tcx ty::Const<'tcx>,
+    val: ConstValue<'tcx>,
+    ty: Ty<'tcx>,
 ) -> mir::DestructuredConst<'tcx> {
     trace!("destructure_const: {:?}", val);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
-    let op = ecx.const_to_op(val, None).unwrap();
+    let op = ecx.const_val_to_op(val, ty, None).unwrap();
 
     // We go to `usize` as we cannot allocate anything bigger anyway.
-    let (field_count, variant, down) = match val.ty.kind() {
+    let (field_count, variant, down) = match op.layout.ty.kind() {
         ty::Array(_, len) => (usize::try_from(len.eval_usize(tcx, param_env)).unwrap(), None, op),
         ty::Adt(def, _) if def.variants.is_empty() => {
             return mir::DestructuredConst { variant: None, fields: &[] };
@@ -163,7 +164,7 @@ pub(crate) fn destructure_const<'tcx>(
     let fields_iter = (0..field_count).map(|i| {
         let field_op = ecx.operand_field(&down, i).unwrap();
         let val = op_to_const(&ecx, &field_op);
-        ty::Const::from_value(tcx, val, field_op.layout.ty)
+        (val, field_op.layout.ty)
     });
     let fields = tcx.arena.alloc_from_iter(fields_iter);
 
@@ -173,11 +174,12 @@ pub(crate) fn destructure_const<'tcx>(
 pub(crate) fn deref_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    val: &'tcx ty::Const<'tcx>,
-) -> &'tcx ty::Const<'tcx> {
+    val: ConstValue<'tcx>,
+    ty: Ty<'tcx>,
+) -> (ConstValue<'tcx>, Ty<'tcx>) {
     trace!("deref_const: {:?}", val);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
-    let op = ecx.const_to_op(val, None).unwrap();
+    let op = ecx.const_val_to_op(val, ty, None).unwrap();
     let mplace = ecx.deref_operand(&op).unwrap();
     if let Scalar::Ptr(ptr) = mplace.ptr {
         assert_eq!(
@@ -203,5 +205,5 @@ pub(crate) fn deref_const<'tcx>(
         },
     };
 
-    tcx.mk_const(ty::Const { val: ty::ConstKind::Value(op_to_const(&ecx, &mplace.into())), ty })
+    (op_to_const(&ecx, &mplace.into()), ty)
 }
