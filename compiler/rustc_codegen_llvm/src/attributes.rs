@@ -13,6 +13,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::{OptLevel, SanitizerSet};
 use rustc_session::Session;
+use rustc_target::spec::abi::Abi;
 use rustc_target::spec::StackProbeType;
 
 use crate::attributes;
@@ -289,7 +290,7 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
     // The target doesn't care; the subtarget reads our attribute.
     apply_tune_cpu_attr(cx, llfn);
 
-    let function_features = codegen_fn_attrs
+    let mut function_features = codegen_fn_attrs
         .target_features
         .iter()
         .map(|f| {
@@ -301,6 +302,18 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
             InstructionSetAttr::ArmT32 => "+thumb-mode".to_string(),
         }))
         .collect::<Vec<String>>();
+
+    // The `"wasm"` abi on wasm targets automatically enables the `+multivalue`
+    // feature because the purpose of the wasm abi is to match the WebAssembly
+    // specification, which has this feature. This won't be needed when LLVM
+    // enables this `multivalue` feature by default.
+    if cx.tcx.sess.target.arch == "wasm32" && !cx.tcx.is_closure(instance.def_id()) {
+        let abi = cx.tcx.fn_sig(instance.def_id()).abi();
+        if abi == Abi::Wasm {
+            function_features.push("+multivalue".to_string());
+        }
+    }
+
     if !function_features.is_empty() {
         let mut global_features = llvm_util::llvm_global_features(cx.tcx.sess);
         global_features.extend(function_features.into_iter());
