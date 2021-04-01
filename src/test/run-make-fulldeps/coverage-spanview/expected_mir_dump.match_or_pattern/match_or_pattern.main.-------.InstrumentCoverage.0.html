@@ -73,108 +73,108 @@ For revisions in Pull Requests (PR):
 7:19-7:35: @1[0]: _3 = &amp;_4
 7:19-7:41: @1.Call: _2 = &lt;std::env::Args as std::iter::ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb36]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
-7:9-7:16: @2[3]: FakeRead(ForLet, _1)
+7:9-7:16: @2[3]: FakeRead(ForLet(None), _1)
 9:21-9:22: @3[2]: _5 = const 0_u8
-9:9-9:14: @3[3]: FakeRead(ForLet, _5)
+9:9-9:14: @3[3]: FakeRead(ForLet(None), _5)
 9:16-9:18: @3[4]: AscribeUserType(_5, o, UserTypeProjection { base: UserType(1), projs: [] })
 10:21-10:22: @3[6]: _6 = const 0_u8
-10:9-10:14: @3[7]: FakeRead(ForLet, _6)
+10:9-10:14: @3[7]: FakeRead(ForLet(None), _6)
 10:16-10:18: @3[8]: AscribeUserType(_6, o, UserTypeProjection { base: UserType(3), projs: [] })
 11:8-11:15: @3[11]: _8 = _1"><span class="annotation">@0,1,2,3⦊</span>fn main() {</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = std::env::args() -&gt; [return: bb1, unwind: bb37]
 7:19-7:35: @1[0]: _3 = &amp;_4
 7:19-7:41: @1.Call: _2 = &lt;std::env::Args as std::iter::ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb36]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
-7:9-7:16: @2[3]: FakeRead(ForLet, _1)
+7:9-7:16: @2[3]: FakeRead(ForLet(None), _1)
 9:21-9:22: @3[2]: _5 = const 0_u8
-9:9-9:14: @3[3]: FakeRead(ForLet, _5)
+9:9-9:14: @3[3]: FakeRead(ForLet(None), _5)
 9:16-9:18: @3[4]: AscribeUserType(_5, o, UserTypeProjection { base: UserType(1), projs: [] })
 10:21-10:22: @3[6]: _6 = const 0_u8
-10:9-10:14: @3[7]: FakeRead(ForLet, _6)
+10:9-10:14: @3[7]: FakeRead(ForLet(None), _6)
 10:16-10:18: @3[8]: AscribeUserType(_6, o, UserTypeProjection { base: UserType(3), projs: [] })
 11:8-11:15: @3[11]: _8 = _1">    // Initialize test constants in a way that cannot be determined at compile time, to ensure</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = std::env::args() -&gt; [return: bb1, unwind: bb37]
 7:19-7:35: @1[0]: _3 = &amp;_4
 7:19-7:41: @1.Call: _2 = &lt;std::env::Args as std::iter::ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb36]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
-7:9-7:16: @2[3]: FakeRead(ForLet, _1)
+7:9-7:16: @2[3]: FakeRead(ForLet(None), _1)
 9:21-9:22: @3[2]: _5 = const 0_u8
-9:9-9:14: @3[3]: FakeRead(ForLet, _5)
+9:9-9:14: @3[3]: FakeRead(ForLet(None), _5)
 9:16-9:18: @3[4]: AscribeUserType(_5, o, UserTypeProjection { base: UserType(1), projs: [] })
 10:21-10:22: @3[6]: _6 = const 0_u8
-10:9-10:14: @3[7]: FakeRead(ForLet, _6)
+10:9-10:14: @3[7]: FakeRead(ForLet(None), _6)
 10:16-10:18: @3[8]: AscribeUserType(_6, o, UserTypeProjection { base: UserType(3), projs: [] })
 11:8-11:15: @3[11]: _8 = _1">    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = std::env::args() -&gt; [return: bb1, unwind: bb37]
 7:19-7:35: @1[0]: _3 = &amp;_4
 7:19-7:41: @1.Call: _2 = &lt;std::env::Args as std::iter::ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb36]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
-7:9-7:16: @2[3]: FakeRead(ForLet, _1)
+7:9-7:16: @2[3]: FakeRead(ForLet(None), _1)
 9:21-9:22: @3[2]: _5 = const 0_u8
-9:9-9:14: @3[3]: FakeRead(ForLet, _5)
+9:9-9:14: @3[3]: FakeRead(ForLet(None), _5)
 9:16-9:18: @3[4]: AscribeUserType(_5, o, UserTypeProjection { base: UserType(1), projs: [] })
 10:21-10:22: @3[6]: _6 = const 0_u8
-10:9-10:14: @3[7]: FakeRead(ForLet, _6)
+10:9-10:14: @3[7]: FakeRead(ForLet(None), _6)
 10:16-10:18: @3[8]: AscribeUserType(_6, o, UserTypeProjection { base: UserType(3), projs: [] })
 11:8-11:15: @3[11]: _8 = _1">    // dependent conditions.</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = std::env::args() -&gt; [return: bb1, unwind: bb37]
 7:19-7:35: @1[0]: _3 = &amp;_4
 7:19-7:41: @1.Call: _2 = &lt;std::env::Args as std::iter::ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb36]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
-7:9-7:16: @2[3]: FakeRead(ForLet, _1)
+7:9-7:16: @2[3]: FakeRead(ForLet(None), _1)
 9:21-9:22: @3[2]: _5 = const 0_u8
-9:9-9:14: @3[3]: FakeRead(ForLet, _5)
+9:9-9:14: @3[3]: FakeRead(ForLet(None), _5)
 9:16-9:18: @3[4]: AscribeUserType(_5, o, UserTypeProjection { base: UserType(1), projs: [] })
 10:21-10:22: @3[6]: _6 = const 0_u8
-10:9-10:14: @3[7]: FakeRead(ForLet, _6)
+10:9-10:14: @3[7]: FakeRead(ForLet(None), _6)
 10:16-10:18: @3[8]: AscribeUserType(_6, o, UserTypeProjection { base: UserType(3), projs: [] })
 11:8-11:15: @3[11]: _8 = _1">    let is_true = std::env::args().len() == 1;</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = std::env::args() -&gt; [return: bb1, unwind: bb37]
 7:19-7:35: @1[0]: _3 = &amp;_4
 7:19-7:41: @1.Call: _2 = &lt;std::env::Args as std::iter::ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb36]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
-7:9-7:16: @2[3]: FakeRead(ForLet, _1)
+7:9-7:16: @2[3]: FakeRead(ForLet(None), _1)
 9:21-9:22: @3[2]: _5 = const 0_u8
-9:9-9:14: @3[3]: FakeRead(ForLet, _5)
+9:9-9:14: @3[3]: FakeRead(ForLet(None), _5)
 9:16-9:18: @3[4]: AscribeUserType(_5, o, UserTypeProjection { base: UserType(1), projs: [] })
 10:21-10:22: @3[6]: _6 = const 0_u8
-10:9-10:14: @3[7]: FakeRead(ForLet, _6)
+10:9-10:14: @3[7]: FakeRead(ForLet(None), _6)
 10:16-10:18: @3[8]: AscribeUserType(_6, o, UserTypeProjection { base: UserType(3), projs: [] })
 11:8-11:15: @3[11]: _8 = _1"></span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = std::env::args() -&gt; [return: bb1, unwind: bb37]
 7:19-7:35: @1[0]: _3 = &amp;_4
 7:19-7:41: @1.Call: _2 = &lt;std::env::Args as std::iter::ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb36]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
-7:9-7:16: @2[3]: FakeRead(ForLet, _1)
+7:9-7:16: @2[3]: FakeRead(ForLet(None), _1)
 9:21-9:22: @3[2]: _5 = const 0_u8
-9:9-9:14: @3[3]: FakeRead(ForLet, _5)
+9:9-9:14: @3[3]: FakeRead(ForLet(None), _5)
 9:16-9:18: @3[4]: AscribeUserType(_5, o, UserTypeProjection { base: UserType(1), projs: [] })
 10:21-10:22: @3[6]: _6 = const 0_u8
-10:9-10:14: @3[7]: FakeRead(ForLet, _6)
+10:9-10:14: @3[7]: FakeRead(ForLet(None), _6)
 10:16-10:18: @3[8]: AscribeUserType(_6, o, UserTypeProjection { base: UserType(3), projs: [] })
 11:8-11:15: @3[11]: _8 = _1">    let mut a: u8 = 0;</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = std::env::args() -&gt; [return: bb1, unwind: bb37]
 7:19-7:35: @1[0]: _3 = &amp;_4
 7:19-7:41: @1.Call: _2 = &lt;std::env::Args as std::iter::ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb36]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
-7:9-7:16: @2[3]: FakeRead(ForLet, _1)
+7:9-7:16: @2[3]: FakeRead(ForLet(None), _1)
 9:21-9:22: @3[2]: _5 = const 0_u8
-9:9-9:14: @3[3]: FakeRead(ForLet, _5)
+9:9-9:14: @3[3]: FakeRead(ForLet(None), _5)
 9:16-9:18: @3[4]: AscribeUserType(_5, o, UserTypeProjection { base: UserType(1), projs: [] })
 10:21-10:22: @3[6]: _6 = const 0_u8
-10:9-10:14: @3[7]: FakeRead(ForLet, _6)
+10:9-10:14: @3[7]: FakeRead(ForLet(None), _6)
 10:16-10:18: @3[8]: AscribeUserType(_6, o, UserTypeProjection { base: UserType(3), projs: [] })
 11:8-11:15: @3[11]: _8 = _1">    let mut b: u8 = 0;</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = std::env::args() -&gt; [return: bb1, unwind: bb37]
 7:19-7:35: @1[0]: _3 = &amp;_4
 7:19-7:41: @1.Call: _2 = &lt;std::env::Args as std::iter::ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb36]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
-7:9-7:16: @2[3]: FakeRead(ForLet, _1)
+7:9-7:16: @2[3]: FakeRead(ForLet(None), _1)
 9:21-9:22: @3[2]: _5 = const 0_u8
-9:9-9:14: @3[3]: FakeRead(ForLet, _5)
+9:9-9:14: @3[3]: FakeRead(ForLet(None), _5)
 9:16-9:18: @3[4]: AscribeUserType(_5, o, UserTypeProjection { base: UserType(1), projs: [] })
 10:21-10:22: @3[6]: _6 = const 0_u8
-10:9-10:14: @3[7]: FakeRead(ForLet, _6)
+10:9-10:14: @3[7]: FakeRead(ForLet(None), _6)
 10:16-10:18: @3[8]: AscribeUserType(_6, o, UserTypeProjection { base: UserType(3), projs: [] })
 11:8-11:15: @3[11]: _8 = _1">    if is_true<span class="annotation">⦉@0,1,2,3</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="12:9-12:14: @4[0]: _5 = const 2_u8
 13:9-13:14: @4[1]: _6 = const 0_u8
@@ -191,7 +191,7 @@ For revisions in Pull Requests (PR):
 <span class="line"><span class="code" style="--layer: 0">    match </span><span><span class="code odd" style="--layer: 1" title="15:12-15:13: @6[5]: _11 = _5
 15:15-15:16: @6[7]: _12 = _6
 15:11-15:17: @6[8]: _10 = (move _11, move _12)
-15:11-15:17: @6[11]: FakeRead(ForMatchedPlace, _10)"><span class="annotation">@6⦊</span>(a, b)<span class="annotation">⦉@6</span></span></span><span class="code" style="--layer: 0"> {</span></span>
+15:11-15:17: @6[11]: FakeRead(ForMatchedPlace(None), _10)"><span class="annotation">@6⦊</span>(a, b)<span class="annotation">⦉@6</span></span></span><span class="code" style="--layer: 0"> {</span></span>
 <span class="line"><span class="code" style="--layer: 0">        // Or patterns generate MIR `SwitchInt` with multiple targets to the same `BasicBlock`.</span></span>
 <span class="line"><span class="code" style="--layer: 0">        // This test confirms a fix for Issue #79569.</span></span>
 <span class="line"><span class="code" style="--layer: 0">        (0 | 1, 2 | 3) =&gt; </span><span><span class="code even" style="--layer: 1" title="18:27-18:29: @10[0]: _9 = const ()"><span class="annotation">@9,10⦊</span>{}<span class="annotation">⦉@9,10</span></span></span><span class="code" style="--layer: 0"></span></span>
@@ -212,7 +212,7 @@ For revisions in Pull Requests (PR):
 <span class="line"><span class="code" style="--layer: 0">    match </span><span><span class="code odd" style="--layer: 1" title="25:12-25:13: @14[5]: _17 = _5
 25:15-25:16: @14[7]: _18 = _6
 25:11-25:17: @14[8]: _16 = (move _17, move _18)
-25:11-25:17: @14[11]: FakeRead(ForMatchedPlace, _16)"><span class="annotation">@14⦊</span>(a, b)<span class="annotation">⦉@14</span></span></span><span class="code" style="--layer: 0"> {</span></span>
+25:11-25:17: @14[11]: FakeRead(ForMatchedPlace(None), _16)"><span class="annotation">@14⦊</span>(a, b)<span class="annotation">⦉@14</span></span></span><span class="code" style="--layer: 0"> {</span></span>
 <span class="line"><span class="code" style="--layer: 0">        (0 | 1, 2 | 3) =&gt; </span><span><span class="code even" style="--layer: 1" title="26:27-26:29: @18[0]: _15 = const ()"><span class="annotation">@17,18⦊</span>{}<span class="annotation">⦉@17,18</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">        _ =&gt; </span><span><span class="code odd" style="--layer: 1" title="27:14-27:16: @15[0]: _15 = const ()"><span class="annotation">@15⦊</span>{}<span class="annotation">⦉@15</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">    }</span></span>
@@ -231,7 +231,7 @@ For revisions in Pull Requests (PR):
 <span class="line"><span class="code" style="--layer: 0">    match </span><span><span class="code odd" style="--layer: 1" title="33:12-33:13: @22[5]: _23 = _5
 33:15-33:16: @22[7]: _24 = _6
 33:11-33:17: @22[8]: _22 = (move _23, move _24)
-33:11-33:17: @22[11]: FakeRead(ForMatchedPlace, _22)"><span class="annotation">@22⦊</span>(a, b)<span class="annotation">⦉@22</span></span></span><span class="code" style="--layer: 0"> {</span></span>
+33:11-33:17: @22[11]: FakeRead(ForMatchedPlace(None), _22)"><span class="annotation">@22⦊</span>(a, b)<span class="annotation">⦉@22</span></span></span><span class="code" style="--layer: 0"> {</span></span>
 <span class="line"><span class="code" style="--layer: 0">        (0 | 1, 2 | 3) =&gt; </span><span><span class="code even" style="--layer: 1" title="34:27-34:29: @26[0]: _21 = const ()"><span class="annotation">@25,26⦊</span>{}<span class="annotation">⦉@25,26</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">        _ =&gt; </span><span><span class="code odd" style="--layer: 1" title="35:14-35:16: @23[0]: _21 = const ()"><span class="annotation">@23⦊</span>{}<span class="annotation">⦉@23</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">    }</span></span>
@@ -250,7 +250,7 @@ For revisions in Pull Requests (PR):
 <span class="line"><span class="code" style="--layer: 0">    match </span><span><span class="code odd" style="--layer: 1" title="41:12-41:13: @30[4]: _28 = _5
 41:15-41:16: @30[6]: _29 = _6
 41:11-41:17: @30[7]: _27 = (move _28, move _29)
-41:11-41:17: @30[10]: FakeRead(ForMatchedPlace, _27)"><span class="annotation">@30⦊</span>(a, b)<span class="annotation">⦉@30</span></span></span><span class="code" style="--layer: 0"> {</span></span>
+41:11-41:17: @30[10]: FakeRead(ForMatchedPlace(None), _27)"><span class="annotation">@30⦊</span>(a, b)<span class="annotation">⦉@30</span></span></span><span class="code" style="--layer: 0"> {</span></span>
 <span class="line"><span class="code" style="--layer: 0">        (0 | 1, 2 | 3) =&gt; </span><span><span class="code even" style="--layer: 1" title="42:27-42:29: @34[0]: _0 = const ()"><span class="annotation">@33,34⦊</span>{}<span class="annotation">⦉@33,34</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">        _ =&gt; </span><span><span class="code odd" style="--layer: 1" title="43:14-43:16: @31[0]: _0 = const ()"><span class="annotation">@31⦊</span>{}<span class="annotation">⦉@31</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">    }</span></span>

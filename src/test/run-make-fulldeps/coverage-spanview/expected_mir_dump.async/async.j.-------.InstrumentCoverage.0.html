@@ -69,26 +69,26 @@ For revisions in Pull Requests (PR):
 </style>
 </head>
 <body>
-<div class="code" style="counter-reset: line 48"><span class="line"><span><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace, _1)"><span class="annotation">@0,3,4⦊</span>fn j(x: u8) {</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace, _1)">    // non-async versions of `c()`, `d()`, and `f()` to make it similar to async `i()`.</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace, _1)">    fn c(x: u8) -&gt; u8 {</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace, _1)">        if x == 8 {</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace, _1)">            1 // This line appears covered, but the 1-character expression span covering the `1`</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace, _1)">              // is not executed. (`llvm-cov show` displays a `^0` below the `1` ). This is because</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace, _1)">              // `fn j()` executes the open brace for the funciton body, followed by the function's</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace, _1)">              // first executable statement, `match x`. Inner function declarations are not</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace, _1)">              // "visible" to the MIR for `j()`, so the code region counts all lines between the</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace, _1)">              // open brace and the first statement as executed, which is, in a sense, true.</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace, _1)">              // `llvm-cov show` overcomes this kind of situation by showing the actual counts</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace, _1)">              // of the enclosed coverages, (that is, the `1` expression was not executed, and</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace, _1)">              // accurately displays a `0`).</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace, _1)">        } else {</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace, _1)">            0</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace, _1)">        }</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace, _1)">    }</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace, _1)">    fn d() -&gt; u8 { 1 }</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace, _1)">    fn f() -&gt; u8 { 1 }</span></span>
-<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace, _1)">    match x<span class="annotation">⦉@0,3,4</span></span></span><span class="code" style="--layer: 0"> {</span></span>
+<div class="code" style="counter-reset: line 48"><span class="line"><span><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace(None), _1)"><span class="annotation">@0,3,4⦊</span>fn j(x: u8) {</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace(None), _1)">    // non-async versions of `c()`, `d()`, and `f()` to make it similar to async `i()`.</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace(None), _1)">    fn c(x: u8) -&gt; u8 {</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace(None), _1)">        if x == 8 {</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace(None), _1)">            1 // This line appears covered, but the 1-character expression span covering the `1`</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace(None), _1)">              // is not executed. (`llvm-cov show` displays a `^0` below the `1` ). This is because</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace(None), _1)">              // `fn j()` executes the open brace for the funciton body, followed by the function's</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace(None), _1)">              // first executable statement, `match x`. Inner function declarations are not</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace(None), _1)">              // "visible" to the MIR for `j()`, so the code region counts all lines between the</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace(None), _1)">              // open brace and the first statement as executed, which is, in a sense, true.</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace(None), _1)">              // `llvm-cov show` overcomes this kind of situation by showing the actual counts</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace(None), _1)">              // of the enclosed coverages, (that is, the `1` expression was not executed, and</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace(None), _1)">              // accurately displays a `0`).</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace(None), _1)">        } else {</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace(None), _1)">            0</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace(None), _1)">        }</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace(None), _1)">    }</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace(None), _1)">    fn d() -&gt; u8 { 1 }</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace(None), _1)">    fn f() -&gt; u8 { 1 }</span></span>
+<span class="line"><span class="code even" style="--layer: 1" title="68:11-68:12: @0[0]: FakeRead(ForMatchedPlace(None), _1)">    match x<span class="annotation">⦉@0,3,4</span></span></span><span class="code" style="--layer: 0"> {</span></span>
 <span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code odd" style="--layer: 1" title="69:9-69:10: @5[3]: _2 = _1"><span class="annotation">@5,7⦊</span>y<span class="annotation">⦉@5,7</span></span></span><span class="code" style="--layer: 0"> if </span><span><span class="code even" style="--layer: 1" title="69:16-69:17: @3[5]: _6 = _1
 69:14-69:18: @3.Call: _5 = j::c(move _6) -&gt; [return: bb4, unwind: bb13]
 69:22-69:23: @4[3]: _8 = (*_3)
