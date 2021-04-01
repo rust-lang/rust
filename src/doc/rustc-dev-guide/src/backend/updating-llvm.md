@@ -67,7 +67,7 @@ Example PRs look like:
 ## Feature updates
 
 > Note that this information is as of the time of this writing <!-- date:
-2018-12 --> (December 2018). The process for updating LLVM changes with
+2021-04 --> (April 2021). The process for updating LLVM changes with
 practically all LLVM updates, so this may be out of date!
 
 Unlike bugfixes, updating to pick up a new feature of LLVM typically requires a
@@ -75,7 +75,7 @@ lot more work. This is where we can't reasonably cherry-pick commits backwards
 so we need to do a full update. There's a lot of stuff to do here, so let's go
 through each in detail.
 
-1. Create a new branch in the rust-lang/llvm-project repository. This branch
+1. Create a new branch in the [rust-lang/llvm-project repository]. This branch
    should be named `rustc/a.b-yyyy-mm-dd` where `a.b` is the current version
    number of LLVM in-tree at the time of the branch and the remaining part is
    today's date. Move this branch to the commit in LLVM that you'd like, which
@@ -119,12 +119,12 @@ through each in detail.
    Ideally, build LLVM and test it on a few platforms:
 
    * Linux
-   * OSX
+   * macOS
    * Windows
 
    and afterwards run some docker containers that CI also does:
 
-   * `./src/ci/docker/run.sh wasm32-unknown`
+   * `./src/ci/docker/run.sh wasm32`
    * `./src/ci/docker/run.sh arm-android`
    * `./src/ci/docker/run.sh dist-various-1`
    * `./src/ci/docker/run.sh dist-various-2`
@@ -136,15 +136,17 @@ through each in detail.
    `src/llvm-project` and will likely also change [`llvm-wrapper`] as well.
 
 For prior art, previous LLVM updates look like
-[#55835](https://github.com/rust-lang/rust/pull/55835)
-[#47828](https://github.com/rust-lang/rust/pull/47828)
 [#62474](https://github.com/rust-lang/rust/pull/62474)
-[#62592](https://github.com/rust-lang/rust/pull/62592). Note that sometimes it's
+[#62592](https://github.com/rust-lang/rust/pull/62592)
+[#67759](https://github.com/rust-lang/rust/pull/67759)
+[#73526](https://github.com/rust-lang/rust/pull/73526)
+[#81451](https://github.com/rust-lang/rust/pull/81451). Note that sometimes it's
 easiest to land [`llvm-wrapper`] compatibility as a PR before actually updating
 `src/llvm-project`. This way while you're working through LLVM issues others
 interested in trying out the new LLVM can benefit from work you've done to
 update the C++ bindings.
 
+[rust-lang/llvm-project repository]: https://github.com/rust-lang/llvm-project
 [`llvm-wrapper`]: https://github.com/rust-lang/rust/tree/master/compiler/rustc_llvm/llvm-wrapper
 
 ### Caveats and gotchas
@@ -155,9 +157,11 @@ keep in mind while going through them:
 * LLVM bugs are hard to find, don't hesitate to ask for help! Bisection is
   definitely your friend here (yes LLVM takes forever to build, yet bisection is
   still your friend)
-* If you've got general questions, @alexcrichton can help you out.
+* If you've got general questions, [wg-llvm] can help you out.
 * Creating branches is a privileged operation on GitHub, so you'll need someone
   with write access to create the branches for you most likely.
+
+[wg-llvm]: https://rust-lang.zulipchat.com/#narrow/stream/187780-t-compiler.2Fwg-llvm
 
 ## New LLVM Release Updates
 
