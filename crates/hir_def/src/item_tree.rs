@@ -694,7 +694,7 @@ pub enum ModKind {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct MacroCall {
     /// Path to the called macro.
-    pub path: ModPath,
+    pub path: Interned<ModPath>,
     pub ast_id: FileAstId<ast::MacroCall>,
 }
 

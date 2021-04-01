@@ -2,6 +2,7 @@
 
 mod lower_use;
 
+use crate::intern::Interned;
 use std::sync::Arc;
 
 use either::Either;
@@ -74,10 +75,11 @@ pub(super) fn lower_path(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path>
                     // <T as Trait<A>>::Foo desugars to Trait<Self=T, A>::Foo
                     Some(trait_ref) => {
                         let path = Path::from_src(trait_ref.path()?, hygiene)?;
+                        let mod_path = (*path.mod_path).clone();
                         let num_segments = path.mod_path.segments.len();
-                        kind = path.mod_path.kind;
+                        kind = mod_path.kind;
 
-                        let mut prefix_segments = path.mod_path.segments;
+                        let mut prefix_segments = mod_path.segments;
                         prefix_segments.reverse();
                         segments.extend(prefix_segments);
 
@@ -140,7 +142,7 @@ pub(super) fn lower_path(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path>
         }
     }
 
-    let mod_path = ModPath::from_segments(kind, segments);
+    let mod_path = Interned::new(ModPath::from_segments(kind, segments));
     return Some(Path { type_anchor, mod_path, generic_args });
 
     fn qualifier(path: &ast::Path) -> Option<ast::Path> {

@@ -15,6 +15,7 @@ use rustc_hash::FxHasher;
 
 type InternMap<T> = DashMap<Arc<T>, (), BuildHasherDefault<FxHasher>>;
 
+#[derive(Hash)]
 pub struct Interned<T: Internable> {
     arc: Arc<T>,
 }
@@ -152,6 +153,6 @@ macro_rules! impl_internable {
     )+ };
 }
 
-impl_internable!(crate::type_ref::TypeRef, crate::type_ref::TraitRef);
+impl_internable!(crate::type_ref::TypeRef, crate::type_ref::TraitRef, crate::path::ModPath);
 
 // endregion

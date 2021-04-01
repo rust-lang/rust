@@ -18,6 +18,7 @@ use tt::Subtree;
 
 use crate::{
     db::DefDatabase,
+    intern::Interned,
     item_tree::{ItemTreeId, ItemTreeNode},
     nameres::ModuleSource,
     path::{ModPath, PathKind},
@@ -98,7 +99,7 @@ impl RawAttrs {
                 Either::Right(comment) => comment.doc_comment().map(|doc| Attr {
                     index: i as u32,
                     input: Some(AttrInput::Literal(SmolStr::new(doc))),
-                    path: ModPath::from(hir_expand::name!(doc)),
+                    path: Interned::new(ModPath::from(hir_expand::name!(doc))),
                 }),
             })
             .collect::<Arc<_>>();
@@ -510,7 +511,7 @@ impl AttrSourceMap {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Attr {
     index: u32,
-    pub(crate) path: ModPath,
+    pub(crate) path: Interned<ModPath>,
     pub(crate) input: Option<AttrInput>,
 }
 
@@ -524,7 +525,7 @@ pub enum AttrInput {
 
 impl Attr {
     fn from_src(ast: ast::Attr, hygiene: &Hygiene, index: u32) -> Option<Attr> {
-        let path = ModPath::from_src(ast.path()?, hygiene)?;
+        let path = Interned::new(ModPath::from_src(ast.path()?, hygiene)?);
         let input = if let Some(ast::Expr::Literal(lit)) = ast.expr() {
             let value = match lit.kind() {
                 ast::LiteralKind::String(string) => string.value()?.into(),
