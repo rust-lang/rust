@@ -51,8 +51,8 @@ LL |     type C where Self: Copy = String;
    = note: the requirement `Fooy<T>: Copy` appears on the associated impl type but not on the corresponding associated trait type
 help: consider restricting type parameter `T`
    |
-LL | impl<T: Copy> Foo for Fooy<T> {
-   |       ^^^^^^
+LL | impl<T: std::marker::Copy> Foo for Fooy<T> {
+   |       ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors
 
