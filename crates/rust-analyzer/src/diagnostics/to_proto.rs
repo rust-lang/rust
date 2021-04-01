@@ -34,6 +34,12 @@ fn diagnostic_severity(
     Some(res)
 }
 
+/// Checks whether a file name is from macro invocation and does not refer to an actual file.
+fn is_dummy_macro_file(file_name: &str) -> bool {
+    // FIXME: current rustc does not seem to emit `<macro file>` files anymore?
+    file_name.starts_with('<') && file_name.ends_with('>')
+}
+
 /// Converts a Rust span to a LSP location
 fn location(workspace_root: &Path, span: &DiagnosticSpan) -> lsp_types::Location {
     let file_name = workspace_root.join(&span.file_name);
@@ -54,14 +60,16 @@ fn location(workspace_root: &Path, span: &DiagnosticSpan) -> lsp_types::Location
 /// workspace into account and tries to avoid those, in case macros are involved.
 fn primary_location(workspace_root: &Path, span: &DiagnosticSpan) -> lsp_types::Location {
     let span_stack = std::iter::successors(Some(span), |span| Some(&span.expansion.as_ref()?.span));
-    for span in span_stack {
+    for span in span_stack.clone() {
         let abs_path = workspace_root.join(&span.file_name);
-        if abs_path.starts_with(workspace_root) {
+        if !is_dummy_macro_file(&span.file_name) && abs_path.starts_with(workspace_root) {
             return location(workspace_root, span);
         }
     }
 
-    location(workspace_root, span)
+    // Fall back to the outermost macro invocation if no suitable span comes up.
+    let last_span = span_stack.last().unwrap();
+    location(workspace_root, last_span)
 }
 
 /// Converts a secondary Rust span to a LSP related information
@@ -255,6 +263,10 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                 Some(&span.expansion.as_ref()?.span)
             });
             for (i, span) in span_stack.enumerate() {
+                if is_dummy_macro_file(&span.file_name) {
+                    continue;
+                }
+
                 // First span is the original diagnostic, others are macro call locations that
                 // generated that code.
                 let is_in_macro_call = i != 0;
