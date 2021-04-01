@@ -258,7 +258,7 @@ impl<'a> InferenceContext<'a> {
                             .push(ty.clone())
                             .fill(std::iter::repeat_with(|| self.table.new_type_var()))
                             .build();
-                        self.obligations.push(
+                        self.push_obligation(
                             TraitRef {
                                 trait_id: to_chalk_trait_id(trait_),
                                 substitution: trait_substs.clone(),
