@@ -1186,9 +1186,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
             }
             None => self
-                .loop_scopes
-                .last()
-                .cloned()
+                .loop_scope
                 .map(|id| Ok(self.lower_node_id(id)))
                 .unwrap_or(Err(hir::LoopIdError::OutsideLoopScope)),
         };
@@ -1208,18 +1206,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn with_catch_scope<T>(&mut self, catch_id: NodeId, f: impl FnOnce(&mut Self) -> T) -> T {
-        let len = self.catch_scopes.len();
-        self.catch_scopes.push(catch_id);
-
+        let old_scope = self.catch_scope.replace(catch_id);
         let result = f(self);
-        assert_eq!(
-            len + 1,
-            self.catch_scopes.len(),
-            "catch scopes should be added and removed in stack order"
-        );
-
-        self.catch_scopes.pop().unwrap();
-
+        self.catch_scope = old_scope;
         result
     }
 
@@ -1228,17 +1217,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let was_in_loop_condition = self.is_in_loop_condition;
         self.is_in_loop_condition = false;
 
-        let len = self.loop_scopes.len();
-        self.loop_scopes.push(loop_id);
-
+        let old_scope = self.loop_scope.replace(loop_id);
         let result = f(self);
-        assert_eq!(
-            len + 1,
-            self.loop_scopes.len(),
-            "loop scopes should be added and removed in stack order"
-        );
-
-        self.loop_scopes.pop().unwrap();
+        self.loop_scope = old_scope;
 
         self.is_in_loop_condition = was_in_loop_condition;
 
@@ -1565,8 +1546,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 unstable_span,
             );
             let thin_attrs = ThinVec::from(attrs);
-            let catch_scope = self.catch_scopes.last().copied();
-            let ret_expr = if let Some(catch_node) = catch_scope {
+            let ret_expr = if let Some(catch_node) = self.catch_scope {
                 let target_id = Ok(self.lower_node_id(catch_node));
                 self.arena.alloc(self.expr(
                     try_span,

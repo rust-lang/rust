@@ -64,7 +64,6 @@ use rustc_span::{Span, DUMMY_SP};
 
 use smallvec::SmallVec;
 use std::collections::BTreeMap;
-use std::mem;
 use tracing::{debug, trace};
 
 macro_rules! arena_vec {
@@ -117,8 +116,8 @@ struct LoweringContext<'a, 'hir: 'a> {
     /// outside of an `async fn`.
     current_item: Option<Span>,
 
-    catch_scopes: Vec<NodeId>,
-    loop_scopes: Vec<NodeId>,
+    catch_scope: Option<NodeId>,
+    loop_scope: Option<NodeId>,
     is_in_loop_condition: bool,
     is_in_trait_impl: bool,
     is_in_dyn_type: bool,
@@ -323,8 +322,8 @@ pub fn lower_crate<'a, 'hir>(
         bodies: BTreeMap::new(),
         modules: BTreeMap::new(),
         attrs: BTreeMap::default(),
-        catch_scopes: Vec::new(),
-        loop_scopes: Vec::new(),
+        catch_scope: None,
+        loop_scope: None,
         is_in_loop_condition: false,
         is_in_trait_impl: false,
         is_in_dyn_type: false,
@@ -911,11 +910,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let was_in_loop_condition = self.is_in_loop_condition;
         self.is_in_loop_condition = false;
 
-        let catch_scopes = mem::take(&mut self.catch_scopes);
-        let loop_scopes = mem::take(&mut self.loop_scopes);
+        let catch_scope = self.catch_scope.take();
+        let loop_scope = self.loop_scope.take();
         let ret = f(self);
-        self.catch_scopes = catch_scopes;
-        self.loop_scopes = loop_scopes;
+        self.catch_scope = catch_scope;
+        self.loop_scope = loop_scope;
 
         self.is_in_loop_condition = was_in_loop_condition;
 
