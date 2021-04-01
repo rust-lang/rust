@@ -1134,9 +1134,9 @@ impl<'a, 'b> DefIdTree for &'a Resolver<'b> {
 /// This interface is used through the AST→HIR step, to embed full paths into the HIR. After that
 /// the resolver is no longer needed as all the relevant information is inline.
 impl ResolverAstLowering for Resolver<'_> {
-    fn def_key(&mut self, id: DefId) -> DefKey {
+    fn def_key(&self, id: DefId) -> DefKey {
         if let Some(id) = id.as_local() {
-            self.definitions().def_key(id)
+            self.definitions.def_key(id)
         } else {
             self.cstore().def_key(id)
         }
@@ -1163,20 +1163,27 @@ impl ResolverAstLowering for Resolver<'_> {
         self.partial_res_map.get(&id).cloned()
     }
 
-    fn get_import_res(&mut self, id: NodeId) -> PerNS<Option<Res>> {
+    fn get_import_res(&self, id: NodeId) -> PerNS<Option<Res>> {
         self.import_res_map.get(&id).cloned().unwrap_or_default()
     }
 
-    fn get_label_res(&mut self, id: NodeId) -> Option<NodeId> {
+    fn get_label_res(&self, id: NodeId) -> Option<NodeId> {
         self.label_res_map.get(&id).cloned()
-    }
-
-    fn definitions(&mut self) -> &mut Definitions {
-        &mut self.definitions
     }
 
     fn create_stable_hashing_context(&self) -> StableHashingContext<'_> {
         StableHashingContext::new(self.session, &self.definitions, self.crate_loader.cstore())
+    }
+
+    fn definitions(&self) -> &Definitions {
+        &self.definitions
+    }
+
+    fn init_def_id_to_hir_id_mapping(
+        &mut self,
+        mapping: IndexVec<LocalDefId, Option<rustc_hir::HirId>>,
+    ) {
+        self.definitions.init_def_id_to_hir_id_mapping(mapping)
     }
 
     fn lint_buffer(&mut self) -> &mut LintBuffer {
