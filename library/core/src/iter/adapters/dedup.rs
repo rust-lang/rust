@@ -3,11 +3,10 @@ use crate::mem::swap;
 /// An iterator that removes all but the first of consecutive elements in a
 /// given iterator according to the [`PartialEq`] trait implementation.
 ///
-/// This `struct` is created by the [`dedup`] method on [`Iterator`]. See its
-/// documentation for more.
+/// This `struct` is created by [`Iterator::dedup`].
+/// See its documentation for more.
 ///
-/// [`dedup`]: Iterator::dedup
-/// [`Iterator`]: trait.Iterator.html
+/// [`Iterator::dedup`]: Iterator::dedup
 #[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
 #[derive(Debug, Clone, Copy)]
 pub struct Dedup<I, T> {
@@ -15,9 +14,13 @@ pub struct Dedup<I, T> {
     last: Option<T>,
 }
 
-impl<I, T> Dedup<I, T> {
-    pub(crate) const fn new(inner: I) -> Self {
-        Self { inner, last: None }
+impl<I, T> Dedup<I, T>
+where
+    I: Iterator<Item = T>,
+{
+    pub(crate) fn new(inner: I) -> Self {
+        let mut inner = inner;
+        Self { last: inner.next(), inner }
     }
 }
 
@@ -30,10 +33,6 @@ where
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.last.is_none() {
-            self.last = self.inner.next();
-        }
-
         let last_item = self.last.as_ref()?;
         let mut next = loop {
             let curr = self.inner.next();
@@ -58,11 +57,10 @@ where
 /// An iterator that removes all but the first of consecutive elements in a
 /// given iterator satisfying a given equality relation.
 ///
-/// This `struct` is created by the [`dedup_by`] method on [`Iterator`].
+/// This `struct` is created by [`Iterator::dedup_by`].
 /// See its documentation for more.
 ///
-/// [`dedup_by`]: Iterator::dedup_by
-/// [`Iterator`]: trait.Iterator.html
+/// [`Iterator::dedup_by`]: Iterator::dedup_by
 #[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
 #[derive(Debug, Clone, Copy)]
 pub struct DedupBy<I, F, T> {
@@ -71,9 +69,13 @@ pub struct DedupBy<I, F, T> {
     last: Option<T>,
 }
 
-impl<I, F, T> DedupBy<I, F, T> {
-    pub(crate) const fn new(inner: I, same_bucket: F) -> Self {
-        Self { inner, same_bucket, last: None }
+impl<I, F, T> DedupBy<I, F, T>
+where
+    I: Iterator<Item = T>,
+{
+    pub(crate) fn new(inner: I, same_bucket: F) -> Self {
+        let mut inner = inner;
+        Self { last: inner.next(), inner, same_bucket }
     }
 }
 
@@ -114,11 +116,10 @@ where
 /// An iterator that removes all but the first of consecutive elements in a
 /// given iterator that resolve to the same key.
 ///
-/// This `struct` is created by the [`dedup_by_key`] method on [`Iterator`].
+/// This `struct` is created by [`Iterator::dedup_by_key`].
 /// See its documentation for more.
 ///
-/// [`dedup_by_key`]: Iterator::dedup_by_key
-/// [`Iterator`]: trait.Iterator.html
+/// [`Iterator::dedup_by_key`]: Iterator::dedup_by_key
 #[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
 #[derive(Debug, Clone, Copy)]
 pub struct DedupByKey<I, F, T> {
@@ -127,9 +128,13 @@ pub struct DedupByKey<I, F, T> {
     last: Option<T>,
 }
 
-impl<I, F, T> DedupByKey<I, F, T> {
-    pub(crate) const fn new(inner: I, key: F) -> Self {
-        Self { inner, key, last: None }
+impl<I, F, T> DedupByKey<I, F, T>
+where
+    I: Iterator<Item = T>,
+{
+    pub(crate) fn new(inner: I, key: F) -> Self {
+        let mut inner = inner;
+        Self { last: inner.next(), inner, key }
     }
 }
 
