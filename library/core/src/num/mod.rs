@@ -37,6 +37,7 @@ mod uint_macros; // import uint_impl!
 
 mod error;
 mod nonzero;
+mod sealed_traits;
 mod wrapping;
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -64,6 +65,13 @@ pub use error::TryFromIntError;
     issue = "22639"
 )]
 pub use error::IntErrorKind;
+
+#[unstable(
+    feature = "sealed_int_traits",
+    reason = "can be used to write generic code over primitive integers",
+    issue = "none"
+)]
+pub use sealed_traits::{Int, SignedInt, UnsignedInt};
 
 macro_rules! usize_isize_to_xe_bytes_doc {
     () => {
