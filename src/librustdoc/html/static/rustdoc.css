@@ -173,12 +173,9 @@ code, pre, a.test-arrow {
 	border-radius: 3px;
 	padding: 0 0.1em;
 }
-.docblock pre code, .docblock-short pre code, .docblock code.spotlight {
+.docblock pre code, .docblock-short pre code {
 	padding: 0;
 	padding-right: 1ex;
-}
-.docblock code.spotlight :last-child {
-	padding-bottom: 0.6em;
 }
 pre {
 	padding: 14px;
