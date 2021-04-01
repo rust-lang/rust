@@ -16,12 +16,12 @@ struct ConstainsDropField(Foo, Foo);
 fn test_precise_analysis_drop_paths_not_captured_by_move() {
     let t = ConstainsDropField(Foo(10), Foo(20));
 
-    let c = || {
+    let c = || { let _ = &t; {
     //~^ ERROR: drop order affected for closure because of `capture_disjoint_fields`
     //~| HELP: `let _ = &t` causes `t` to be fully captured
         let _t = t.0;
         let _t = &t.1;
-    };
+    } };
 
     c();
 }
@@ -39,13 +39,13 @@ struct U(T, T);
 fn test_precise_analysis_long_path_missing() {
     let u = U(T(S, S), T(S, S));
 
-    let c = || {
+    let c = || { let _ = &u; {
     //~^ ERROR: drop order affected for closure because of `capture_disjoint_fields`
     //~| HELP: `let _ = &u` causes `u` to be fully captured
         let _x = u.0.0;
         let _x = u.0.1;
         let _x = u.1.0;
-    };
+    } };
 
     c();
 }
