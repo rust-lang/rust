@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{indent_of, reindent_multiline, snippet};
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{is_trait_method, path_to_local_id, remove_blocks, SpanlessEq};
+use clippy_utils::{is_trait_method, path_to_local_id, peel_blocks, SpanlessEq};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -25,7 +25,7 @@ fn is_method<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, method_name: Sy
         },
         hir::ExprKind::Closure(_, _, c, _, _) => {
             let body = cx.tcx.hir().body(*c);
-            let closure_expr = remove_blocks(&body.value);
+            let closure_expr = peel_blocks(&body.value);
             let arg_id = body.params[0].pat.hir_id;
             match closure_expr.kind {
                 hir::ExprKind::MethodCall(hir::PathSegment { ident, .. }, _, args, _) => {

@@ -1224,6 +1224,25 @@ pub fn get_parent_as_impl(tcx: TyCtxt<'_>, id: HirId) -> Option<&Impl<'_>> {
     }
 }
 
+/// Removes blocks around an expression, only if the block contains just one expression
+/// and no statements.
+///
+/// Examples:
+///  * `{}`       -> `{}`
+///  * `{ x }`    -> `x`
+///  * `{{ x }}`  -> `x`
+///  * `{ x; }`   -> `{ x; }`
+///  * `{ x; y }` -> `{ x; y }`
+pub fn peel_blocks<'tcx>(mut expr: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {
+    while let ExprKind::Block(block, ..) = expr.kind {
+        match (block.stmts.is_empty(), block.expr.as_ref()) {
+            (true, Some(e)) => expr = e,
+            _ => break,
+        }
+    }
+    expr
+}
+
 /// Checks if the given expression is the else clause of either an `if` or `if let` expression.
 pub fn is_else_clause(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
     let mut iter = tcx.hir().parent_iter(expr.hir_id);
@@ -1403,20 +1422,6 @@ pub fn recurse_or_patterns<'tcx, F: FnMut(&'tcx Pat<'tcx>)>(pat: &'tcx Pat<'tcx>
 /// implementations have.
 pub fn is_automatically_derived(attrs: &[ast::Attribute]) -> bool {
     has_attr(attrs, sym::automatically_derived)
-}
-
-/// Remove blocks around an expression.
-///
-/// Ie. `x`, `{ x }` and `{{{{ x }}}}` all give `x`. `{ x; y }` and `{}` return
-/// themselves.
-pub fn remove_blocks<'tcx>(mut expr: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {
-    while let ExprKind::Block(block, ..) = expr.kind {
-        match (block.stmts.is_empty(), block.expr.as_ref()) {
-            (true, Some(e)) => expr = e,
-            _ => break,
-        }
-    }
-    expr
 }
 
 pub fn is_self(slf: &Param<'_>) -> bool {
