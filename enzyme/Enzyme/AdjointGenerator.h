@@ -1842,6 +1842,7 @@ public:
       }
 
       switch (ID) {
+
       case Intrinsic::nvvm_barrier0_popc:
       case Intrinsic::nvvm_barrier0_and:
       case Intrinsic::nvvm_barrier0_or: {

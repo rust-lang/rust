@@ -2175,6 +2175,7 @@ void TypeAnalyzer::visitIntrinsicInst(llvm::IntrinsicInst &I) {
     updateAnalysis(I.getOperand(0), TypeTree(BaseType::Integer).Only(-1), &I);
     return;
 
+#if LLVM_VERSION_MAJOR >= 9
   case Intrinsic::nvvm_wmma_m16n16k16_store_d_f32_col:
   case Intrinsic::nvvm_wmma_m16n16k16_store_d_f32_col_stride:
   case Intrinsic::nvvm_wmma_m16n16k16_store_d_f32_row:
@@ -2475,6 +2476,7 @@ void TypeAnalyzer::visitIntrinsicInst(llvm::IntrinsicInst &I) {
         &I);
     return;
   }
+#endif
 
   case Intrinsic::nvvm_ldu_global_i:
   case Intrinsic::nvvm_ldu_global_p:
@@ -3578,6 +3580,21 @@ std::set<int64_t> FnTypeInfo::knownIntegralValues(
       }
     }
   };
+  if (auto II = dyn_cast<IntrinsicInst>(val)) {
+    switch (II->getIntrinsicID()) {
+
+    case Intrinsic::nvvm_read_ptx_sreg_tid_x:
+    case Intrinsic::nvvm_read_ptx_sreg_tid_y:
+    case Intrinsic::nvvm_read_ptx_sreg_tid_z:
+    case Intrinsic::nvvm_read_ptx_sreg_ctaid_x:
+    case Intrinsic::nvvm_read_ptx_sreg_ctaid_y:
+    case Intrinsic::nvvm_read_ptx_sreg_ctaid_z:
+      insert(0);
+      break;
+    default:
+      break;
+    }
+  }
   if (auto LI = dyn_cast<LoadInst>(val)) {
     if (auto AI = dyn_cast<AllocaInst>(LI->getPointerOperand())) {
       StoreInst *SI = nullptr;
