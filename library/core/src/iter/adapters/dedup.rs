@@ -73,11 +73,7 @@ pub struct DedupBy<I, F, T> {
 
 impl<I, F, T> DedupBy<I, F, T> {
     pub(crate) const fn new(inner: I, same_bucket: F) -> Self {
-        Self {
-            inner,
-            same_bucket,
-            last: None,
-        }
+        Self { inner, same_bucket, last: None }
     }
 }
 
@@ -133,11 +129,7 @@ pub struct DedupByKey<I, F, T> {
 
 impl<I, F, T> DedupByKey<I, F, T> {
     pub(crate) const fn new(inner: I, key: F) -> Self {
-        Self {
-            inner,
-            key,
-            last: None,
-        }
+        Self { inner, key, last: None }
     }
 }
 
