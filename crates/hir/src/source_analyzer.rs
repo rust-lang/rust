@@ -466,7 +466,8 @@ fn resolve_hir_path_(
     prefer_value_ns: bool,
 ) -> Option<PathResolution> {
     let types = || {
-        resolver.resolve_path_in_type_ns_fully(db.upcast(), path.mod_path()).map(|ty| match ty {
+        let (ty, remaining) = resolver.resolve_path_in_type_ns(db.upcast(), path.mod_path())?;
+        let res = match ty {
             TypeNs::SelfType(it) => PathResolution::SelfType(it.into()),
             TypeNs::GenericParam(id) => PathResolution::TypeParam(TypeParam { id }),
             TypeNs::AdtSelfType(it) | TypeNs::AdtId(it) => {
@@ -476,7 +477,21 @@ fn resolve_hir_path_(
             TypeNs::TypeAliasId(it) => PathResolution::Def(TypeAlias::from(it).into()),
             TypeNs::BuiltinType(it) => PathResolution::Def(BuiltinType::from(it).into()),
             TypeNs::TraitId(it) => PathResolution::Def(Trait::from(it).into()),
-        })
+        };
+        match remaining {
+            Some(1) => {
+                let unresolved = path.segments().get(1)?;
+                res.assoc_type_shorthand_candidates(db, |name, alias| {
+                    (name == unresolved.name).then(|| alias)
+                })
+                .map(TypeAlias::from)
+                .map(Into::into)
+                .map(PathResolution::Def)
+            }
+            // ambiguous
+            Some(_) => None,
+            None => Some(res),
+        }
     };
 
     let body_owner = resolver.body_owner();

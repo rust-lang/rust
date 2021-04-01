@@ -24,7 +24,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
     };
 
     // Add associated types on type parameters and `Self`.
-    resolution.assoc_type_shorthand_candidates(ctx.db, |alias| {
+    resolution.assoc_type_shorthand_candidates(ctx.db, |_, alias| {
         acc.add_type_alias(ctx, alias);
         None::<()>
     });

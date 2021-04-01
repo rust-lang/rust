@@ -76,9 +76,11 @@ impl PathResolution {
     pub fn assoc_type_shorthand_candidates<R>(
         &self,
         db: &dyn HirDatabase,
-        mut cb: impl FnMut(TypeAlias) -> Option<R>,
+        mut cb: impl FnMut(&Name, TypeAlias) -> Option<R>,
     ) -> Option<R> {
-        associated_type_shorthand_candidates(db, self.in_type_ns()?, |_, _, id| cb(id.into()))
+        associated_type_shorthand_candidates(db, self.in_type_ns()?, |name, _, id| {
+            cb(name, id.into())
+        })
     }
 }
 
