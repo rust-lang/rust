@@ -10,9 +10,9 @@
 
 // Functions
 extern "rust-intrinsic" fn f1() {} //~ ERROR intrinsics are subject to change
-//~^ ERROR intrinsic must be in
+                                   //~^ ERROR intrinsic must be in
 extern "platform-intrinsic" fn f2() {} //~ ERROR platform intrinsics are experimental
-//~^ ERROR intrinsic must be in
+                                       //~^ ERROR intrinsic must be in
 extern "vectorcall" fn f3() {} //~ ERROR vectorcall is experimental and subject to change
 extern "rust-call" fn f4(_: ()) {} //~ ERROR rust-call ABI is subject to change
 extern "msp430-interrupt" fn f5() {} //~ ERROR msp430-interrupt ABI is experimental
@@ -21,13 +21,14 @@ extern "x86-interrupt" fn f7() {} //~ ERROR x86-interrupt ABI is experimental
 extern "thiscall" fn f8() {} //~ ERROR thiscall is experimental and subject to change
 extern "amdgpu-kernel" fn f9() {} //~ ERROR amdgpu-kernel ABI is experimental and subject to change
 extern "efiapi" fn f10() {} //~ ERROR efiapi ABI is experimental and subject to change
+extern "wasm" fn f11() {} //~ ERROR wasm ABI is experimental and subject to change
 
 // Methods in trait definition
 trait Tr {
     extern "rust-intrinsic" fn m1(); //~ ERROR intrinsics are subject to change
-    //~^ ERROR intrinsic must be in
+                                     //~^ ERROR intrinsic must be in
     extern "platform-intrinsic" fn m2(); //~ ERROR platform intrinsics are experimental
-    //~^ ERROR intrinsic must be in
+                                         //~^ ERROR intrinsic must be in
     extern "vectorcall" fn m3(); //~ ERROR vectorcall is experimental and subject to change
     extern "rust-call" fn m4(_: ()); //~ ERROR rust-call ABI is subject to change
     extern "msp430-interrupt" fn m5(); //~ ERROR msp430-interrupt ABI is experimental
@@ -36,6 +37,7 @@ trait Tr {
     extern "thiscall" fn m8(); //~ ERROR thiscall is experimental and subject to change
     extern "amdgpu-kernel" fn m9(); //~ ERROR amdgpu-kernel ABI is experimental and subject to change
     extern "efiapi" fn m10(); //~ ERROR efiapi ABI is experimental and subject to change
+    extern "wasm" fn m11() {} //~ ERROR wasm ABI is experimental and subject to change
 
     extern "vectorcall" fn dm3() {} //~ ERROR vectorcall is experimental and subject to change
     extern "rust-call" fn dm4(_: ()) {} //~ ERROR rust-call ABI is subject to change
@@ -45,6 +47,7 @@ trait Tr {
     extern "thiscall" fn dm8() {} //~ ERROR thiscall is experimental and subject to change
     extern "amdgpu-kernel" fn dm9() {} //~ ERROR amdgpu-kernel ABI is experimental and subject to change
     extern "efiapi" fn dm10() {} //~ ERROR efiapi ABI is experimental and subject to change
+    extern "wasm" fn dm11() {} //~ ERROR wasm ABI is experimental and subject to change
 }
 
 struct S;
@@ -52,9 +55,9 @@ struct S;
 // Methods in trait impl
 impl Tr for S {
     extern "rust-intrinsic" fn m1() {} //~ ERROR intrinsics are subject to change
-    //~^ ERROR intrinsic must be in
+                                       //~^ ERROR intrinsic must be in
     extern "platform-intrinsic" fn m2() {} //~ ERROR platform intrinsics are experimental
-    //~^ ERROR intrinsic must be in
+                                           //~^ ERROR intrinsic must be in
     extern "vectorcall" fn m3() {} //~ ERROR vectorcall is experimental and subject to change
     extern "rust-call" fn m4(_: ()) {} //~ ERROR rust-call ABI is subject to change
     extern "msp430-interrupt" fn m5() {} //~ ERROR msp430-interrupt ABI is experimental
@@ -63,14 +66,15 @@ impl Tr for S {
     extern "thiscall" fn m8() {} //~ ERROR thiscall is experimental and subject to change
     extern "amdgpu-kernel" fn m9() {} //~ ERROR amdgpu-kernel ABI is experimental and subject to change
     extern "efiapi" fn m10() {} //~ ERROR efiapi ABI is experimental and subject to change
+    extern "wasm" fn m11() {} //~ ERROR wasm ABI is experimental and subject to change
 }
 
 // Methods in inherent impl
 impl S {
     extern "rust-intrinsic" fn im1() {} //~ ERROR intrinsics are subject to change
-    //~^ ERROR intrinsic must be in
+                                        //~^ ERROR intrinsic must be in
     extern "platform-intrinsic" fn im2() {} //~ ERROR platform intrinsics are experimental
-    //~^ ERROR intrinsic must be in
+                                            //~^ ERROR intrinsic must be in
     extern "vectorcall" fn im3() {} //~ ERROR vectorcall is experimental and subject to change
     extern "rust-call" fn im4(_: ()) {} //~ ERROR rust-call ABI is subject to change
     extern "msp430-interrupt" fn im5() {} //~ ERROR msp430-interrupt ABI is experimental
@@ -79,6 +83,7 @@ impl S {
     extern "thiscall" fn im8() {} //~ ERROR thiscall is experimental and subject to change
     extern "amdgpu-kernel" fn im9() {} //~ ERROR amdgpu-kernel ABI is experimental and subject to change
     extern "efiapi" fn im10() {} //~ ERROR efiapi ABI is experimental and subject to change
+    extern "wasm" fn im11() {} //~ ERROR wasm ABI is experimental and subject to change
 }
 
 // Function pointer types
@@ -87,11 +92,12 @@ type A2 = extern "platform-intrinsic" fn(); //~ ERROR platform intrinsics are ex
 type A3 = extern "vectorcall" fn(); //~ ERROR vectorcall is experimental and subject to change
 type A4 = extern "rust-call" fn(_: ()); //~ ERROR rust-call ABI is subject to change
 type A5 = extern "msp430-interrupt" fn(); //~ ERROR msp430-interrupt ABI is experimental
-type A6 = extern "ptx-kernel" fn (); //~ ERROR PTX ABIs are experimental and subject to change
+type A6 = extern "ptx-kernel" fn(); //~ ERROR PTX ABIs are experimental and subject to change
 type A7 = extern "x86-interrupt" fn(); //~ ERROR x86-interrupt ABI is experimental
 type A8 = extern "thiscall" fn(); //~ ERROR thiscall is experimental and subject to change
 type A9 = extern "amdgpu-kernel" fn(); //~ ERROR amdgpu-kernel ABI is experimental and subject to change
 type A10 = extern "efiapi" fn(); //~ ERROR efiapi ABI is experimental and subject to change
+type A11 = extern "wasm" fn(); //~ ERROR wasm ABI is experimental and subject to change
 
 // Foreign modules
 extern "rust-intrinsic" {} //~ ERROR intrinsics are subject to change
@@ -104,5 +110,6 @@ extern "x86-interrupt" {} //~ ERROR x86-interrupt ABI is experimental
 extern "thiscall" {} //~ ERROR thiscall is experimental and subject to change
 extern "amdgpu-kernel" {} //~ ERROR amdgpu-kernel ABI is experimental and subject to change
 extern "efiapi" {} //~ ERROR efiapi ABI is experimental and subject to change
+extern "wasm" {} //~ ERROR wasm ABI is experimental and subject to change
 
 fn main() {}

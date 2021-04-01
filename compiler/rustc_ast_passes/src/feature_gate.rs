@@ -196,6 +196,14 @@ impl<'a> PostExpansionVisitor<'a> {
                     "thiscall-unwind ABI is experimental and subject to change"
                 );
             }
+            "wasm" => {
+                gate_feature_post!(
+                    &self,
+                    wasm_abi,
+                    span,
+                    "wasm ABI is experimental and subject to change"
+                );
+            }
             abi => self
                 .sess
                 .parse_sess
