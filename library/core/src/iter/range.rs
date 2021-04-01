@@ -9,15 +9,8 @@ use super::{FusedIterator, TrustedLen, TrustedRandomAccess};
 ///
 /// The *successor* operation moves towards values that compare greater.
 /// The *predecessor* operation moves towards values that compare lesser.
-///
-/// # Safety
-///
-/// This trait is `unsafe` because its implementation must be correct for
-/// the safety of `unsafe trait TrustedLen` implementations, and the results
-/// of using this trait can otherwise be trusted by `unsafe` code to be correct
-/// and fulfill the listed obligations.
 #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
-pub unsafe trait Step: Clone + PartialOrd + Sized {
+pub trait Step: Clone + PartialOrd + Sized {
     /// Returns the number of *successor* steps required to get from `start` to `end`.
     ///
     /// Returns `None` if the number of steps would overflow `usize`
@@ -237,7 +230,7 @@ macro_rules! step_integer_impls {
         $(
             #[allow(unreachable_patterns)]
             #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
-            unsafe impl Step for $u_narrower {
+            impl Step for $u_narrower {
                 step_identical_methods!();
 
                 #[inline]
@@ -269,7 +262,7 @@ macro_rules! step_integer_impls {
 
             #[allow(unreachable_patterns)]
             #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
-            unsafe impl Step for $i_narrower {
+            impl Step for $i_narrower {
                 step_identical_methods!();
 
                 #[inline]
@@ -333,7 +326,7 @@ macro_rules! step_integer_impls {
         $(
             #[allow(unreachable_patterns)]
             #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
-            unsafe impl Step for $u_wider {
+            impl Step for $u_wider {
                 step_identical_methods!();
 
                 #[inline]
@@ -358,7 +351,7 @@ macro_rules! step_integer_impls {
 
             #[allow(unreachable_patterns)]
             #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
-            unsafe impl Step for $i_wider {
+            impl Step for $i_wider {
                 step_identical_methods!();
 
                 #[inline]
@@ -408,7 +401,7 @@ step_integer_impls! {
 }
 
 #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
-unsafe impl Step for char {
+impl Step for char {
     #[inline]
     fn steps_between(&start: &char, &end: &char) -> Option<usize> {
         let start = start as u32;
@@ -519,8 +512,8 @@ impl<A: Step> Iterator for ops::Range<A> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         if self.start < self.end {
-            // SAFETY: just checked precondition
-            let n = unsafe { Step::forward_unchecked(self.start.clone(), 1) };
+            let n =
+                Step::forward_checked(self.start.clone(), 1).expect("`Step` invariants not upheld");
             Some(mem::replace(&mut self.start, n))
         } else {
             None
@@ -541,8 +534,8 @@ impl<A: Step> Iterator for ops::Range<A> {
     fn nth(&mut self, n: usize) -> Option<A> {
         if let Some(plus_n) = Step::forward_checked(self.start.clone(), n) {
             if plus_n < self.end {
-                // SAFETY: just checked precondition
-                self.start = unsafe { Step::forward_unchecked(plus_n.clone(), 1) };
+                self.start =
+                    Step::forward_checked(plus_n.clone(), 1).expect("`Step` invariants not upheld");
                 return Some(plus_n);
             }
         }
@@ -632,8 +625,8 @@ impl<A: Step> DoubleEndedIterator for ops::Range<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         if self.start < self.end {
-            // SAFETY: just checked precondition
-            self.end = unsafe { Step::backward_unchecked(self.end.clone(), 1) };
+            self.end =
+                Step::backward_checked(self.end.clone(), 1).expect("`Step` invariants not upheld");
             Some(self.end.clone())
         } else {
             None
@@ -644,8 +637,8 @@ impl<A: Step> DoubleEndedIterator for ops::Range<A> {
     fn nth_back(&mut self, n: usize) -> Option<A> {
         if let Some(minus_n) = Step::backward_checked(self.end.clone(), n) {
             if minus_n > self.start {
-                // SAFETY: just checked precondition
-                self.end = unsafe { Step::backward_unchecked(minus_n, 1) };
+                self.end =
+                    Step::backward_checked(minus_n, 1).expect("`Step` invariants not upheld");
                 return Some(self.end.clone());
             }
         }
@@ -711,8 +704,8 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
         }
         let is_iterating = self.start < self.end;
         Some(if is_iterating {
-            // SAFETY: just checked precondition
-            let n = unsafe { Step::forward_unchecked(self.start.clone(), 1) };
+            let n =
+                Step::forward_checked(self.start.clone(), 1).expect("`Step` invariants not upheld");
             mem::replace(&mut self.start, n)
         } else {
             self.exhausted = true;
@@ -774,8 +767,8 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
         let mut accum = init;
 
         while self.start < self.end {
-            // SAFETY: just checked precondition
-            let n = unsafe { Step::forward_unchecked(self.start.clone(), 1) };
+            let n =
+                Step::forward_checked(self.start.clone(), 1).expect("`Step` invariants not upheld");
             let n = mem::replace(&mut self.start, n);
             accum = f(accum, n)?;
         }
@@ -828,8 +821,8 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
         }
         let is_iterating = self.start < self.end;
         Some(if is_iterating {
-            // SAFETY: just checked precondition
-            let n = unsafe { Step::backward_unchecked(self.end.clone(), 1) };
+            let n =
+                Step::backward_checked(self.end.clone(), 1).expect("`Step` invariants not upheld");
             mem::replace(&mut self.end, n)
         } else {
             self.exhausted = true;
@@ -879,8 +872,8 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
         let mut accum = init;
 
         while self.start < self.end {
-            // SAFETY: just checked precondition
-            let n = unsafe { Step::backward_unchecked(self.end.clone(), 1) };
+            let n =
+                Step::backward_checked(self.end.clone(), 1).expect("`Step` invariants not upheld");
             let n = mem::replace(&mut self.end, n);
             accum = f(accum, n)?;
         }

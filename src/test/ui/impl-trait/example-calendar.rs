@@ -157,7 +157,7 @@ impl<'a, 'b> std::ops::Add<&'b NaiveDate> for &'a NaiveDate {
     }
 }
 
-unsafe impl std::iter::Step for NaiveDate {
+impl std::iter::Step for NaiveDate {
     fn steps_between(_: &Self, _: &Self) -> Option<usize> {
         unimplemented!()
     }

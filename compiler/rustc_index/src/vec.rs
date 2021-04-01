@@ -184,7 +184,7 @@ macro_rules! newtype_index {
             }
         }
 
-        unsafe impl ::std::iter::Step for $type {
+        impl ::std::iter::Step for $type {
             #[inline]
             fn steps_between(start: &Self, end: &Self) -> Option<usize> {
                 <usize as ::std::iter::Step>::steps_between(
