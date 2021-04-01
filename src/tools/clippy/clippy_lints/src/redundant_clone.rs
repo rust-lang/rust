@@ -133,12 +133,10 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
             }
 
             // `{ cloned = &arg; clone(move cloned); }` or `{ cloned = &arg; to_path_buf(cloned); }`
-            let (cloned, cannot_move_out) = unwrap_or_continue!(find_stmt_assigns_to(cx, mir, arg, from_borrow, bb));
+            let (cloned, cannot_move_out) =
+                unwrap_or_continue!(find_stmt_assigns_to(cx, mir, arg, from_borrow, bb));
 
-            let loc = mir::Location {
-                block: bb,
-                statement_index: bbdata.statements.len(),
-            };
+            let loc = mir::Location { block: bb, statement_index: bbdata.statements.len() };
 
             // `Local` to be cloned, and a local of `clone` call's destination
             let (local, ret_local) = if from_borrow {
@@ -192,7 +190,8 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                 // StorageDead(pred_arg);
                 // res = to_path_buf(cloned);
                 // ```
-                if cannot_move_out || !possible_borrower.only_borrowers(&[arg, cloned], local, loc) {
+                if cannot_move_out || !possible_borrower.only_borrowers(&[arg, cloned], local, loc)
+                {
                     continue;
                 }
 
@@ -221,11 +220,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
 
             let span = terminator.source_info.span;
             let scope = terminator.source_info.scope;
-            let node = mir.source_scopes[scope]
-                .local_data
-                .as_ref()
-                .assert_crate_local()
-                .lint_root;
+            let node = mir.source_scopes[scope].local_data.as_ref().assert_crate_local().lint_root;
 
             if_chain! {
                 if let Some(snip) = snippet_opt(cx, span);
@@ -303,7 +298,7 @@ fn find_stmt_assigns_to<'tcx>(
     by_ref: bool,
     bb: mir::BasicBlock,
 ) -> Option<(mir::Local, CannotMoveOut)> {
-    let rvalue = mir.basic_blocks()[bb].statements.iter().rev().find_map(|stmt| {
+    let rvalue = mir.basic_blocks()[bb].statements.statements_iter().rev().find_map(|stmt| {
         if let mir::StatementKind::Assign(box (mir::Place { local, .. }, v)) = &stmt.kind {
             return if *local == to_local { Some(v) } else { None };
         }
@@ -312,16 +307,17 @@ fn find_stmt_assigns_to<'tcx>(
     })?;
 
     match (by_ref, &*rvalue) {
-        (true, mir::Rvalue::Ref(_, _, place)) | (false, mir::Rvalue::Use(mir::Operand::Copy(place))) => {
+        (true, mir::Rvalue::Ref(_, _, place))
+        | (false, mir::Rvalue::Use(mir::Operand::Copy(place))) => {
             Some(base_local_and_movability(cx, mir, *place))
-        },
+        }
         (false, mir::Rvalue::Ref(_, _, place)) => {
             if let [mir::ProjectionElem::Deref] = place.as_ref().projection {
                 Some(base_local_and_movability(cx, mir, *place))
             } else {
                 None
             }
-        },
+        }
         _ => None,
     }
 }
@@ -367,25 +363,31 @@ struct CloneUsage {
     /// Whether the clone value is mutated.
     clone_consumed_or_mutated: bool,
 }
-fn visit_clone_usage(cloned: mir::Local, clone: mir::Local, mir: &mir::Body<'_>, bb: mir::BasicBlock) -> CloneUsage {
+fn visit_clone_usage(
+    cloned: mir::Local,
+    clone: mir::Local,
+    mir: &mir::Body<'_>,
+    bb: mir::BasicBlock,
+) -> CloneUsage {
     struct V {
         cloned: mir::Local,
         clone: mir::Local,
         result: CloneUsage,
     }
     impl<'tcx> mir::visit::Visitor<'tcx> for V {
-        fn visit_basic_block_data(&mut self, block: mir::BasicBlock, data: &mir::BasicBlockData<'tcx>) {
+        fn visit_basic_block_data(
+            &mut self,
+            block: mir::BasicBlock,
+            data: &mir::BasicBlockData<'tcx>,
+        ) {
             let statements = &data.statements;
-            for (statement_index, statement) in statements.iter().enumerate() {
+            for (statement_index, statement) in statements.statements_iter().enumerate() {
                 self.visit_statement(statement, mir::Location { block, statement_index });
             }
 
             self.visit_terminator(
                 data.terminator(),
-                mir::Location {
-                    block,
-                    statement_index: statements.len(),
-                },
+                mir::Location { block, statement_index: statements.len() },
             );
         }
 
@@ -399,21 +401,22 @@ fn visit_clone_usage(cloned: mir::Local, clone: mir::Local, mir: &mir::Body<'_>,
                 )
             {
                 self.result.cloned_used = true;
-                self.result.cloned_consume_or_mutate_loc = self.result.cloned_consume_or_mutate_loc.or_else(|| {
-                    matches!(
-                        ctx,
-                        PlaceContext::NonMutatingUse(NonMutatingUseContext::Move)
-                            | PlaceContext::MutatingUse(MutatingUseContext::Borrow)
-                    )
-                    .then(|| loc)
-                });
+                self.result.cloned_consume_or_mutate_loc =
+                    self.result.cloned_consume_or_mutate_loc.or_else(|| {
+                        matches!(
+                            ctx,
+                            PlaceContext::NonMutatingUse(NonMutatingUseContext::Move)
+                                | PlaceContext::MutatingUse(MutatingUseContext::Borrow)
+                        )
+                        .then(|| loc)
+                    });
             } else if local == self.clone {
                 match ctx {
                     PlaceContext::NonMutatingUse(NonMutatingUseContext::Move)
                     | PlaceContext::MutatingUse(MutatingUseContext::Borrow) => {
                         self.result.clone_consumed_or_mutated = true;
-                    },
-                    _ => {},
+                    }
+                    _ => {}
                 }
             }
         }
@@ -426,29 +429,19 @@ fn visit_clone_usage(cloned: mir::Local, clone: mir::Local, mir: &mir::Body<'_>,
         // TODO: Actually check for mutation of non-temporaries.
         clone_consumed_or_mutated: mir.local_kind(clone) != mir::LocalKind::Temp,
     };
-    traversal::ReversePostorder::new(mir, bb)
-        .skip(1)
-        .fold(init, |usage, (tbb, tdata)| {
-            // Short-circuit
-            if (usage.cloned_used && usage.clone_consumed_or_mutated) ||
+    traversal::ReversePostorder::new(mir, bb).skip(1).fold(init, |usage, (tbb, tdata)| {
+        // Short-circuit
+        if (usage.cloned_used && usage.clone_consumed_or_mutated) ||
                 // Give up on loops
                 tdata.terminator().successors().any(|s| *s == bb)
-            {
-                return CloneUsage {
-                    cloned_used: true,
-                    clone_consumed_or_mutated: true,
-                    ..usage
-                };
-            }
+        {
+            return CloneUsage { cloned_used: true, clone_consumed_or_mutated: true, ..usage };
+        }
 
-            let mut v = V {
-                cloned,
-                clone,
-                result: usage,
-            };
-            v.visit_basic_block_data(tbb, tdata);
-            v.result
-        })
+        let mut v = V { cloned, clone, result: usage };
+        v.visit_basic_block_data(tbb, tdata);
+        v.result
+    })
 }
 
 /// Determines liveness of each local purely based on `StorageLive`/`Dead`.
@@ -474,7 +467,12 @@ impl<'tcx> AnalysisDomain<'tcx> for MaybeStorageLive {
 impl<'tcx> GenKillAnalysis<'tcx> for MaybeStorageLive {
     type Idx = mir::Local;
 
-    fn statement_effect(&self, trans: &mut impl GenKill<Self::Idx>, stmt: &mir::Statement<'tcx>, _: mir::Location) {
+    fn statement_effect(
+        &self,
+        trans: &mut impl GenKill<Self::Idx>,
+        stmt: &mir::Statement<'tcx>,
+        _: mir::Location,
+    ) {
         match stmt.kind {
             mir::StatementKind::StorageLive(l) => trans.gen(l),
             mir::StatementKind::StorageDead(l) => trans.kill(l),
@@ -513,11 +511,7 @@ struct PossibleBorrowerVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> PossibleBorrowerVisitor<'a, 'tcx> {
     fn new(cx: &'a LateContext<'tcx>, body: &'a mir::Body<'tcx>) -> Self {
-        Self {
-            possible_borrower: TransitiveRelation::default(),
-            cx,
-            body,
-        }
+        Self { possible_borrower: TransitiveRelation::default(), cx, body }
     }
 
     fn into_map(
@@ -547,21 +541,22 @@ impl<'a, 'tcx> PossibleBorrowerVisitor<'a, 'tcx> {
         }
 
         let bs = BitSet::new_empty(self.body.local_decls.len());
-        PossibleBorrowerMap {
-            map,
-            maybe_live,
-            bitset: (bs.clone(), bs),
-        }
+        PossibleBorrowerMap { map, maybe_live, bitset: (bs.clone(), bs) }
     }
 }
 
 impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'tcx> {
-    fn visit_assign(&mut self, place: &mir::Place<'tcx>, rvalue: &mir::Rvalue<'_>, _location: mir::Location) {
+    fn visit_assign(
+        &mut self,
+        place: &mir::Place<'tcx>,
+        rvalue: &mir::Rvalue<'_>,
+        _location: mir::Location,
+    ) {
         let lhs = place.local;
         match rvalue {
             mir::Rvalue::Ref(_, _, borrowed) => {
                 self.possible_borrower.add(borrowed.local, lhs);
-            },
+            }
             other => {
                 if ContainsRegion
                     .visit_ty(place.ty(&self.body.local_decls, self.cx.tcx).ty)
@@ -574,7 +569,7 @@ impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'tcx> {
                         self.possible_borrower.add(rhs, lhs);
                     }
                 });
-            },
+            }
         }
     }
 
@@ -596,7 +591,7 @@ impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'tcx> {
                 match op {
                     mir::Operand::Copy(p) | mir::Operand::Move(p) => {
                         self.possible_borrower.add(p.local, *dest);
-                    },
+                    }
                     mir::Operand::Constant(..) => (),
                 }
             }
@@ -615,7 +610,9 @@ impl TypeVisitor<'_> for ContainsRegion {
 }
 
 fn rvalue_locals(rvalue: &mir::Rvalue<'_>, mut visit: impl FnMut(mir::Local)) {
-    use rustc_middle::mir::Rvalue::{Aggregate, BinaryOp, Cast, CheckedBinaryOp, Repeat, UnaryOp, Use};
+    use rustc_middle::mir::Rvalue::{
+        Aggregate, BinaryOp, Cast, CheckedBinaryOp, Repeat, UnaryOp, Use,
+    };
 
     let mut visit_op = |op: &mir::Operand<'_>| match op {
         mir::Operand::Copy(p) | mir::Operand::Move(p) => visit(p.local),
@@ -644,7 +641,12 @@ struct PossibleBorrowerMap<'a, 'tcx> {
 
 impl PossibleBorrowerMap<'_, '_> {
     /// Returns true if the set of borrowers of `borrowed` living at `at` matches with `borrowers`.
-    fn only_borrowers(&mut self, borrowers: &[mir::Local], borrowed: mir::Local, at: mir::Location) -> bool {
+    fn only_borrowers(
+        &mut self,
+        borrowers: &[mir::Local],
+        borrowed: mir::Local,
+        at: mir::Location,
+    ) -> bool {
         self.maybe_live.seek_after_primary_effect(at);
 
         self.bitset.0.clear();

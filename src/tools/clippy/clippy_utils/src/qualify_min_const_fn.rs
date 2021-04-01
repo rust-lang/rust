@@ -1,7 +1,7 @@
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{
-    Body, CastKind, NullOp, Operand, Place, ProjectionElem, Rvalue, Statement, StatementKind, Terminator,
+    Body, CastKind, NullOp, Operand, Place, ProjectionElem, Rvalue, Statement, StatementKind, SourceInfo, Terminator,
     TerminatorKind,
 };
 use rustc_middle::ty::subst::GenericArgKind;
@@ -71,8 +71,8 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>) -> McfResult {
 
     for bb in body.basic_blocks() {
         check_terminator(tcx, body, bb.terminator())?;
-        for stmt in &bb.statements {
-            check_statement(tcx, body, def_id, stmt)?;
+        for (stmt, source_info) in bb.statements.statements_and_source_info_iter() {
+            check_statement(tcx, body, def_id, stmt, source_info)?;
         }
     }
     Ok(())
@@ -204,8 +204,8 @@ fn check_rvalue(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, def_id: DefId, rvalue: &Rv
     }
 }
 
-fn check_statement(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, def_id: DefId, statement: &Statement<'tcx>) -> McfResult {
-    let span = statement.source_info.span;
+fn check_statement(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, def_id: DefId, statement: &Statement<'tcx>, stmt_source_info: &SourceInfo) -> McfResult {
+    let span = stmt_source_info.span;
     match &statement.kind {
         StatementKind::Assign(box (place, rval)) => {
             check_place(tcx, *place, span, body)?;
