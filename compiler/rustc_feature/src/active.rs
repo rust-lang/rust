@@ -645,6 +645,9 @@ declare_features! (
     /// Allows using `#[repr(align(...))]` on function items
     (active, fn_align, "1.53.0", Some(82232), None),
 
+    /// Allows `extern "wasm" fn`
+    (active, wasm_abi, "1.53.0", Some(83788), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

@@ -13,6 +13,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::OptLevel;
 use rustc_session::Session;
+use rustc_target::spec::abi::Abi;
 use rustc_target::spec::{SanitizerSet, StackProbeType};
 
 use crate::attributes;
@@ -293,7 +294,7 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
     // The target doesn't care; the subtarget reads our attribute.
     apply_tune_cpu_attr(cx, llfn);
 
-    let function_features = codegen_fn_attrs
+    let mut function_features = codegen_fn_attrs
         .target_features
         .iter()
         .map(|f| {
@@ -305,23 +306,10 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
             InstructionSetAttr::ArmT32 => "+thumb-mode".to_string(),
         }))
         .collect::<Vec<String>>();
-    if !function_features.is_empty() {
-        let mut global_features = llvm_util::llvm_global_features(cx.tcx.sess);
-        global_features.extend(function_features.into_iter());
-        let features = global_features.join(",");
-        let val = CString::new(features).unwrap();
-        llvm::AddFunctionAttrStringValue(
-            llfn,
-            llvm::AttributePlace::Function,
-            cstr!("target-features"),
-            &val,
-        );
-    }
 
-    // Note that currently the `wasm-import-module` doesn't do anything, but
-    // eventually LLVM 7 should read this and ferry the appropriate import
-    // module to the output file.
     if cx.tcx.sess.target.is_like_wasm {
+        // If this function is an import from the environment but the wasm
+        // import has a specific module/name, apply them here.
         if let Some(module) = wasm_import_module(cx.tcx, instance.def_id()) {
             llvm::AddFunctionAttrStringValue(
                 llfn,
@@ -340,6 +328,30 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
                 &name,
             );
         }
+
+        // The `"wasm"` abi on wasm targets automatically enables the
+        // `+multivalue` feature because the purpose of the wasm abi is to match
+        // the WebAssembly specification, which has this feature. This won't be
+        // needed when LLVM enables this `multivalue` feature by default.
+        if !cx.tcx.is_closure(instance.def_id()) {
+            let abi = cx.tcx.fn_sig(instance.def_id()).abi();
+            if abi == Abi::Wasm {
+                function_features.push("+multivalue".to_string());
+            }
+        }
+    }
+
+    if !function_features.is_empty() {
+        let mut global_features = llvm_util::llvm_global_features(cx.tcx.sess);
+        global_features.extend(function_features.into_iter());
+        let features = global_features.join(",");
+        let val = CString::new(features).unwrap();
+        llvm::AddFunctionAttrStringValue(
+            llfn,
+            llvm::AttributePlace::Function,
+            cstr!("target-features"),
+            &val,
+        );
     }
 }
 
