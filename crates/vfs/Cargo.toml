@@ -14,3 +14,4 @@ rustc-hash = "1.0"
 fst = "0.4"
 
 paths = { path = "../paths", version = "0.0.0" }
+indexmap = "1.6.2"
