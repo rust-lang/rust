@@ -374,6 +374,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    /// Returns whether the given expression is an `else if`.
+    crate fn is_else_if_block(&self, expr: &hir::Expr<'_>) -> bool {
+        if let hir::ExprKind::If(..) = expr.kind {
+            let parent_id = self.tcx.hir().get_parent_node(expr.hir_id);
+            if let Some(Node::Expr(hir::Expr {
+                kind: hir::ExprKind::If(_, _, Some(else_expr)),
+                ..
+            })) = self.tcx.hir().find(parent_id)
+            {
+                return else_expr.hir_id == expr.hir_id;
+            }
+        }
+        false
+    }
+
     /// This function is used to determine potential "simple" improvements or users' errors and
     /// provide them useful help. For example:
     ///
@@ -660,12 +675,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 };
                                 let suggestion = if is_struct_pat_shorthand_field {
                                     format!("{}: *{}", code, code)
+                                } else if self.is_else_if_block(expr) {
+                                    // Don't suggest nonsense like `else *if`
+                                    return None;
                                 } else if let Some(expr) = self.maybe_get_block_expr(expr.hir_id) {
-                                    if let Ok(inner_code) = sm.span_to_snippet(expr.span) {
-                                        format!("*{}", inner_code)
-                                    } else {
-                                        format!("*{}", code)
-                                    }
+                                    format!("*{}", sm.span_to_snippet(expr.span).unwrap_or(code))
                                 } else {
                                     format!("*{}", code)
                                 };

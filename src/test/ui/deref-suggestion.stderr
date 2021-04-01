@@ -125,16 +125,6 @@ LL | ||     };
    | ||_____|
    | |______`if` and `else` have incompatible types
    |        expected `i32`, found `&{integer}`
-   |
-help: consider dereferencing the borrow
-   |
-LL |     } else *if true {
-LL |
-LL |         b
-LL |     } else {
-LL |         &0
-LL |     };
-   |
 
 error: aborting due to 13 previous errors
 
