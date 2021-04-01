@@ -410,6 +410,10 @@ impl<T> Vec<T> {
     ///
     /// [Capacity and reallocation]: #capacity-and-reallocation
     ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity exceeds `isize::MAX` bytes.
+    ///
     /// # Examples
     ///
     /// ```
@@ -540,6 +544,10 @@ impl<T, A: Allocator> Vec<T, A> {
     /// *[Capacity and reallocation]*.
     ///
     /// [Capacity and reallocation]: #capacity-and-reallocation
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity exceeds `isize::MAX` bytes.
     ///
     /// # Examples
     ///

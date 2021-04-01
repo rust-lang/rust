@@ -46,10 +46,13 @@ where
     fn from_iter(iterator: I) -> Self {
         let mut vector = match iterator.size_hint() {
             (_, Some(upper)) => Vec::with_capacity(upper),
-            _ => Vec::new(),
+            // TrustedLen contract guarantees that `size_hint() == (_, None)` means that there
+            // are more than `usize::MAX` elements.
+            // Since the previous branch would eagerly panic if the capacity is too large
+            // (via `with_capacity`) we do the same here.
+            _ => panic!("capacity overflow"),
         };
-        // must delegate to spec_extend() since extend() itself delegates
-        // to spec_from for empty Vecs
+        // reuse extend specialization for TrustedLen
         vector.spec_extend(iterator);
         vector
     }
