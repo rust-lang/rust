@@ -655,8 +655,13 @@ impl<A: Step> DoubleEndedIterator for ops::Range<A> {
     }
 }
 
-#[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<A: Step> TrustedLen for ops::Range<A> {}
+macro_rules! impl_trusted_len_for_range {
+    ($($type:ty)*) => {$(
+        #[unstable(feature = "trusted_len", issue = "37572")]
+        unsafe impl TrustedLen for ops::Range<$type> {}
+    )*}
+}
+impl_trusted_len_for_range![char i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize];
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<A: Step> FusedIterator for ops::Range<A> {}
@@ -687,8 +692,13 @@ impl<A: Step> Iterator for ops::RangeFrom<A> {
 #[stable(feature = "fused", since = "1.26.0")]
 impl<A: Step> FusedIterator for ops::RangeFrom<A> {}
 
-#[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<A: Step> TrustedLen for ops::RangeFrom<A> {}
+macro_rules! impl_trusted_len_for_range_from {
+    ($($type:ty)*) => {$(
+        #[unstable(feature = "trusted_len", issue = "37572")]
+        unsafe impl TrustedLen for ops::RangeFrom<$type> {}
+    )*}
+}
+impl_trusted_len_for_range_from![char i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize];
 
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 impl<A: Step> Iterator for ops::RangeInclusive<A> {
@@ -899,8 +909,13 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
     }
 }
 
-#[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<A: Step> TrustedLen for ops::RangeInclusive<A> {}
+macro_rules! impl_trusted_len_for_range_inclusive {
+    ($($type:ty)*) => {$(
+        #[unstable(feature = "trusted_len", issue = "37572")]
+        unsafe impl TrustedLen for ops::RangeInclusive<$type> {}
+    )*}
+}
+impl_trusted_len_for_range_inclusive![char i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize];
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<A: Step> FusedIterator for ops::RangeInclusive<A> {}
