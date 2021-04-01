@@ -66,11 +66,7 @@ pub use error::TryFromIntError;
 )]
 pub use error::IntErrorKind;
 
-#[unstable(
-    feature = "sealed_int_traits",
-    reason = "can be used to write generic code over primitive integers",
-    issue = "none"
-)]
+#[unstable(feature = "sealed_int_traits", issue = "none")]
 pub use sealed_traits::{Int, SignedInt, UnsignedInt};
 
 macro_rules! usize_isize_to_xe_bytes_doc {

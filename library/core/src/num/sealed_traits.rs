@@ -10,11 +10,7 @@ use crate::ops::{Shl, ShlAssign, Shr, ShrAssign};
 use crate::str::FromStr;
 
 mod sealed {
-    #[unstable(
-        feature = "sealed_int_traits",
-        reason = "can be used to write generic code over primitive integers",
-        issue = "none"
-    )]
+    #[unstable(feature = "sealed_int_traits", issue = "none")]
     pub trait Sealed {}
 }
 use sealed::Sealed;
@@ -24,11 +20,7 @@ use sealed::Sealed;
 /// This trait is sealed and cannot be implemented for more types; it is
 /// implemented for [`i8`], [`i16`], [`i32`], [`i64`], [`i128`], [`isize`],
 /// [`u8`], [`u16`], [`u32`], [`u64`], [`u128`] and [`usize`].
-#[unstable(
-    feature = "sealed_int_traits",
-    reason = "can be used to write generic code over primitive integers",
-    issue = "none"
-)]
+#[unstable(feature = "sealed_int_traits", issue = "none")]
 pub trait Int
 where
     Self: Copy + Default + Hash + Ord,
@@ -542,11 +534,7 @@ where
 ///
 /// This trait is sealed and cannot be implemented for more types; it is
 /// implemented for [`i8`], [`i16`], [`i32`], [`i64`], [`i128`] and [`isize`].
-#[unstable(
-    feature = "sealed_int_traits",
-    reason = "can be used to write generic code over primitive integers",
-    issue = "none"
-)]
+#[unstable(feature = "sealed_int_traits", issue = "none")]
 pub trait SignedInt: Int + Neg<Output = Self> {
     /// An unsigned integer type with the same number of bits as `Self`.
     type Unsigned: UnsignedInt;
@@ -613,11 +601,7 @@ pub trait SignedInt: Int + Neg<Output = Self> {
 ///
 /// This trait is sealed and cannot be implemented for more types; it is
 /// implemented for [`u8`], [`u16`], [`u32`], [`u64`], [`u128`] and [`usize`].
-#[unstable(
-    feature = "sealed_int_traits",
-    reason = "can be used to write generic code over primitive integers",
-    issue = "none"
-)]
+#[unstable(feature = "sealed_int_traits", issue = "none")]
 pub trait UnsignedInt: Int {
     /// Returns `true` if and only if `self == 2^k` for some `k`.
     fn is_power_of_two(self) -> bool;
@@ -637,6 +621,11 @@ pub trait UnsignedInt: Int {
     /// Returns the smallest power of two greater than or equal to `n`. If the
     /// next power of two is greater than the type's maximum value,
     /// the return value is wrapped to `0`.
+    #[unstable(
+        feature = "wrapping_next_power_of_two",
+        issue = "32463",
+        reason = "needs decision on wrapping behaviour"
+    )]
     fn wrapping_next_power_of_two(self) -> Self;
 }
 
@@ -665,18 +654,10 @@ macro_rules! delegate {
 
 macro_rules! impl_common {
     ($Int:ty) => {
-        #[unstable(
-            feature = "sealed_int_traits",
-            reason = "can be used to write generic code over primitive integers",
-            issue = "none"
-        )]
+        #[unstable(feature = "sealed_int_traits", issue = "none")]
         impl Sealed for $Int {}
 
-        #[unstable(
-            feature = "sealed_int_traits",
-            reason = "can be used to write generic code over primitive integers",
-            issue = "none"
-        )]
+        #[unstable(feature = "sealed_int_traits", issue = "none")]
         impl Int for $Int {
             type Bytes = [u8; mem::size_of::<$Int>()];
             const MIN: Self = Self::MIN;
@@ -760,11 +741,7 @@ macro_rules! impl_signed_unsigned {
     ($SignedInt:ty, $UnsignedInt:ty) => {
         impl_common! { $SignedInt }
 
-        #[unstable(
-            feature = "sealed_int_traits",
-            reason = "can be used to write generic code over primitive integers",
-            issue = "none"
-        )]
+        #[unstable(feature = "sealed_int_traits", issue = "none")]
         impl SignedInt for $SignedInt {
             type Unsigned = $UnsignedInt;
             delegate! { fn checked_abs(self) -> Option<Self> }
@@ -781,11 +758,7 @@ macro_rules! impl_signed_unsigned {
 
         impl_common! { $UnsignedInt }
 
-        #[unstable(
-            feature = "sealed_int_traits",
-            reason = "can be used to write generic code over primitive integers",
-            issue = "none"
-        )]
+        #[unstable(feature = "sealed_int_traits", issue = "none")]
         impl UnsignedInt for $UnsignedInt {
             delegate! { fn is_power_of_two(self) -> bool }
             delegate! { fn next_power_of_two(self) -> Self }
