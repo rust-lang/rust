@@ -159,7 +159,7 @@ struct LoweringContext<'a, 'hir: 'a> {
 }
 
 pub trait ResolverAstLowering {
-    fn def_key(&mut self, id: DefId) -> DefKey;
+    fn def_key(&self, id: DefId) -> DefKey;
 
     fn def_span(&self, id: LocalDefId) -> Span;
 
@@ -171,16 +171,14 @@ pub trait ResolverAstLowering {
     fn get_partial_res(&self, id: NodeId) -> Option<PartialRes>;
 
     /// Obtains per-namespace resolutions for `use` statement with the given `NodeId`.
-    fn get_import_res(&mut self, id: NodeId) -> PerNS<Option<Res<NodeId>>>;
+    fn get_import_res(&self, id: NodeId) -> PerNS<Option<Res<NodeId>>>;
 
     /// Obtains resolution for a label with the given `NodeId`.
-    fn get_label_res(&mut self, id: NodeId) -> Option<NodeId>;
-
-    /// We must keep the set of definitions up to date as we add nodes that weren't in the AST.
-    /// This should only return `None` during testing.
-    fn definitions(&mut self) -> &mut Definitions;
+    fn get_label_res(&self, id: NodeId) -> Option<NodeId>;
 
     fn create_stable_hashing_context(&self) -> StableHashingContext<'_>;
+
+    fn definitions(&self) -> &Definitions;
 
     fn lint_buffer(&mut self) -> &mut LintBuffer;
 
