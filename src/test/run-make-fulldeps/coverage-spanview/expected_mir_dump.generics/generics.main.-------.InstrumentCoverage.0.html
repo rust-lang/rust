@@ -70,99 +70,99 @@ For revisions in Pull Requests (PR):
 </head>
 <body>
 <div class="code" style="counter-reset: line 21"><span class="line"><span><span class="code even" style="--layer: 1" title="23:27-23:51: @0[1]: _1 = Firework::&lt;i32&gt; { strength: const 1_i32 }
-23:9-23:24: @0[2]: FakeRead(ForLet, _1)
+23:9-23:24: @0[2]: FakeRead(ForLet(None), _1)
 24:5-24:16: @0[5]: _3 = &amp;mut _1
 24:5-24:32: @0.Call: _2 = Firework::&lt;i32&gt;::set_strength(move _3, const 2_i32) -&gt; [return: bb1, unwind: bb15]
 26:19-26:47: @1[3]: _4 = Firework::&lt;f64&gt; { strength: const 100.09999999999999f64 }
-26:9-26:16: @1[4]: FakeRead(ForLet, _4)
+26:9-26:16: @1[4]: FakeRead(ForLet(None), _4)
 27:5-27:8: @1[7]: _6 = &amp;mut _4
 27:5-27:28: @1.Call: _5 = Firework::&lt;f64&gt;::set_strength(move _6, const 200.09999999999999f64) -&gt; [return: bb2, unwind: bb14]
 28:5-28:8: @2[4]: _8 = &amp;mut _4
 28:5-28:28: @2.Call: _7 = Firework::&lt;f64&gt;::set_strength(move _8, const 300.30000000000001f64) -&gt; [return: bb3, unwind: bb14]
 30:8-30:12: @3[4]: _10 = const true"><span class="annotation">@0,1,2,3⦊</span>fn main() -&gt; Result&lt;(),u8&gt; {</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="23:27-23:51: @0[1]: _1 = Firework::&lt;i32&gt; { strength: const 1_i32 }
-23:9-23:24: @0[2]: FakeRead(ForLet, _1)
+23:9-23:24: @0[2]: FakeRead(ForLet(None), _1)
 24:5-24:16: @0[5]: _3 = &amp;mut _1
 24:5-24:32: @0.Call: _2 = Firework::&lt;i32&gt;::set_strength(move _3, const 2_i32) -&gt; [return: bb1, unwind: bb15]
 26:19-26:47: @1[3]: _4 = Firework::&lt;f64&gt; { strength: const 100.09999999999999f64 }
-26:9-26:16: @1[4]: FakeRead(ForLet, _4)
+26:9-26:16: @1[4]: FakeRead(ForLet(None), _4)
 27:5-27:8: @1[7]: _6 = &amp;mut _4
 27:5-27:28: @1.Call: _5 = Firework::&lt;f64&gt;::set_strength(move _6, const 200.09999999999999f64) -&gt; [return: bb2, unwind: bb14]
 28:5-28:8: @2[4]: _8 = &amp;mut _4
 28:5-28:28: @2.Call: _7 = Firework::&lt;f64&gt;::set_strength(move _8, const 300.30000000000001f64) -&gt; [return: bb3, unwind: bb14]
 30:8-30:12: @3[4]: _10 = const true">    let mut firecracker = Firework { strength: 1 };</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="23:27-23:51: @0[1]: _1 = Firework::&lt;i32&gt; { strength: const 1_i32 }
-23:9-23:24: @0[2]: FakeRead(ForLet, _1)
+23:9-23:24: @0[2]: FakeRead(ForLet(None), _1)
 24:5-24:16: @0[5]: _3 = &amp;mut _1
 24:5-24:32: @0.Call: _2 = Firework::&lt;i32&gt;::set_strength(move _3, const 2_i32) -&gt; [return: bb1, unwind: bb15]
 26:19-26:47: @1[3]: _4 = Firework::&lt;f64&gt; { strength: const 100.09999999999999f64 }
-26:9-26:16: @1[4]: FakeRead(ForLet, _4)
+26:9-26:16: @1[4]: FakeRead(ForLet(None), _4)
 27:5-27:8: @1[7]: _6 = &amp;mut _4
 27:5-27:28: @1.Call: _5 = Firework::&lt;f64&gt;::set_strength(move _6, const 200.09999999999999f64) -&gt; [return: bb2, unwind: bb14]
 28:5-28:8: @2[4]: _8 = &amp;mut _4
 28:5-28:28: @2.Call: _7 = Firework::&lt;f64&gt;::set_strength(move _8, const 300.30000000000001f64) -&gt; [return: bb3, unwind: bb14]
 30:8-30:12: @3[4]: _10 = const true">    firecracker.set_strength(2);</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="23:27-23:51: @0[1]: _1 = Firework::&lt;i32&gt; { strength: const 1_i32 }
-23:9-23:24: @0[2]: FakeRead(ForLet, _1)
+23:9-23:24: @0[2]: FakeRead(ForLet(None), _1)
 24:5-24:16: @0[5]: _3 = &amp;mut _1
 24:5-24:32: @0.Call: _2 = Firework::&lt;i32&gt;::set_strength(move _3, const 2_i32) -&gt; [return: bb1, unwind: bb15]
 26:19-26:47: @1[3]: _4 = Firework::&lt;f64&gt; { strength: const 100.09999999999999f64 }
-26:9-26:16: @1[4]: FakeRead(ForLet, _4)
+26:9-26:16: @1[4]: FakeRead(ForLet(None), _4)
 27:5-27:8: @1[7]: _6 = &amp;mut _4
 27:5-27:28: @1.Call: _5 = Firework::&lt;f64&gt;::set_strength(move _6, const 200.09999999999999f64) -&gt; [return: bb2, unwind: bb14]
 28:5-28:8: @2[4]: _8 = &amp;mut _4
 28:5-28:28: @2.Call: _7 = Firework::&lt;f64&gt;::set_strength(move _8, const 300.30000000000001f64) -&gt; [return: bb3, unwind: bb14]
 30:8-30:12: @3[4]: _10 = const true"></span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="23:27-23:51: @0[1]: _1 = Firework::&lt;i32&gt; { strength: const 1_i32 }
-23:9-23:24: @0[2]: FakeRead(ForLet, _1)
+23:9-23:24: @0[2]: FakeRead(ForLet(None), _1)
 24:5-24:16: @0[5]: _3 = &amp;mut _1
 24:5-24:32: @0.Call: _2 = Firework::&lt;i32&gt;::set_strength(move _3, const 2_i32) -&gt; [return: bb1, unwind: bb15]
 26:19-26:47: @1[3]: _4 = Firework::&lt;f64&gt; { strength: const 100.09999999999999f64 }
-26:9-26:16: @1[4]: FakeRead(ForLet, _4)
+26:9-26:16: @1[4]: FakeRead(ForLet(None), _4)
 27:5-27:8: @1[7]: _6 = &amp;mut _4
 27:5-27:28: @1.Call: _5 = Firework::&lt;f64&gt;::set_strength(move _6, const 200.09999999999999f64) -&gt; [return: bb2, unwind: bb14]
 28:5-28:8: @2[4]: _8 = &amp;mut _4
 28:5-28:28: @2.Call: _7 = Firework::&lt;f64&gt;::set_strength(move _8, const 300.30000000000001f64) -&gt; [return: bb3, unwind: bb14]
 30:8-30:12: @3[4]: _10 = const true">    let mut tnt = Firework { strength: 100.1 };</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="23:27-23:51: @0[1]: _1 = Firework::&lt;i32&gt; { strength: const 1_i32 }
-23:9-23:24: @0[2]: FakeRead(ForLet, _1)
+23:9-23:24: @0[2]: FakeRead(ForLet(None), _1)
 24:5-24:16: @0[5]: _3 = &amp;mut _1
 24:5-24:32: @0.Call: _2 = Firework::&lt;i32&gt;::set_strength(move _3, const 2_i32) -&gt; [return: bb1, unwind: bb15]
 26:19-26:47: @1[3]: _4 = Firework::&lt;f64&gt; { strength: const 100.09999999999999f64 }
-26:9-26:16: @1[4]: FakeRead(ForLet, _4)
+26:9-26:16: @1[4]: FakeRead(ForLet(None), _4)
 27:5-27:8: @1[7]: _6 = &amp;mut _4
 27:5-27:28: @1.Call: _5 = Firework::&lt;f64&gt;::set_strength(move _6, const 200.09999999999999f64) -&gt; [return: bb2, unwind: bb14]
 28:5-28:8: @2[4]: _8 = &amp;mut _4
 28:5-28:28: @2.Call: _7 = Firework::&lt;f64&gt;::set_strength(move _8, const 300.30000000000001f64) -&gt; [return: bb3, unwind: bb14]
 30:8-30:12: @3[4]: _10 = const true">    tnt.set_strength(200.1);</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="23:27-23:51: @0[1]: _1 = Firework::&lt;i32&gt; { strength: const 1_i32 }
-23:9-23:24: @0[2]: FakeRead(ForLet, _1)
+23:9-23:24: @0[2]: FakeRead(ForLet(None), _1)
 24:5-24:16: @0[5]: _3 = &amp;mut _1
 24:5-24:32: @0.Call: _2 = Firework::&lt;i32&gt;::set_strength(move _3, const 2_i32) -&gt; [return: bb1, unwind: bb15]
 26:19-26:47: @1[3]: _4 = Firework::&lt;f64&gt; { strength: const 100.09999999999999f64 }
-26:9-26:16: @1[4]: FakeRead(ForLet, _4)
+26:9-26:16: @1[4]: FakeRead(ForLet(None), _4)
 27:5-27:8: @1[7]: _6 = &amp;mut _4
 27:5-27:28: @1.Call: _5 = Firework::&lt;f64&gt;::set_strength(move _6, const 200.09999999999999f64) -&gt; [return: bb2, unwind: bb14]
 28:5-28:8: @2[4]: _8 = &amp;mut _4
 28:5-28:28: @2.Call: _7 = Firework::&lt;f64&gt;::set_strength(move _8, const 300.30000000000001f64) -&gt; [return: bb3, unwind: bb14]
 30:8-30:12: @3[4]: _10 = const true">    tnt.set_strength(300.3);</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="23:27-23:51: @0[1]: _1 = Firework::&lt;i32&gt; { strength: const 1_i32 }
-23:9-23:24: @0[2]: FakeRead(ForLet, _1)
+23:9-23:24: @0[2]: FakeRead(ForLet(None), _1)
 24:5-24:16: @0[5]: _3 = &amp;mut _1
 24:5-24:32: @0.Call: _2 = Firework::&lt;i32&gt;::set_strength(move _3, const 2_i32) -&gt; [return: bb1, unwind: bb15]
 26:19-26:47: @1[3]: _4 = Firework::&lt;f64&gt; { strength: const 100.09999999999999f64 }
-26:9-26:16: @1[4]: FakeRead(ForLet, _4)
+26:9-26:16: @1[4]: FakeRead(ForLet(None), _4)
 27:5-27:8: @1[7]: _6 = &amp;mut _4
 27:5-27:28: @1.Call: _5 = Firework::&lt;f64&gt;::set_strength(move _6, const 200.09999999999999f64) -&gt; [return: bb2, unwind: bb14]
 28:5-28:8: @2[4]: _8 = &amp;mut _4
 28:5-28:28: @2.Call: _7 = Firework::&lt;f64&gt;::set_strength(move _8, const 300.30000000000001f64) -&gt; [return: bb3, unwind: bb14]
 30:8-30:12: @3[4]: _10 = const true"></span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="23:27-23:51: @0[1]: _1 = Firework::&lt;i32&gt; { strength: const 1_i32 }
-23:9-23:24: @0[2]: FakeRead(ForLet, _1)
+23:9-23:24: @0[2]: FakeRead(ForLet(None), _1)
 24:5-24:16: @0[5]: _3 = &amp;mut _1
 24:5-24:32: @0.Call: _2 = Firework::&lt;i32&gt;::set_strength(move _3, const 2_i32) -&gt; [return: bb1, unwind: bb15]
 26:19-26:47: @1[3]: _4 = Firework::&lt;f64&gt; { strength: const 100.09999999999999f64 }
-26:9-26:16: @1[4]: FakeRead(ForLet, _4)
+26:9-26:16: @1[4]: FakeRead(ForLet(None), _4)
 27:5-27:8: @1[7]: _6 = &amp;mut _4
 27:5-27:28: @1.Call: _5 = Firework::&lt;f64&gt;::set_strength(move _6, const 200.09999999999999f64) -&gt; [return: bb2, unwind: bb14]
 28:5-28:8: @2[4]: _8 = &amp;mut _4
@@ -173,7 +173,7 @@ For revisions in Pull Requests (PR):
 31:18-31:41: @4[8]: _16 = &amp;(*_17)
 31:18-31:41: @4[9]: _15 = move _16 as &amp;[&amp;str] (Pointer(Unsize))
 31:9-31:43: @4[15]: _23 = ()
-31:9-31:43: @4[16]: FakeRead(ForMatchedPlace, _23)
+31:9-31:43: @4[16]: FakeRead(ForMatchedPlace(None), _23)
 31:9-31:43: @4[17]: _26 = const main::promoted[0]
 31:9-31:43: @4[18]: _21 = &amp;(*_26)
 31:9-31:43: @4[19]: _20 = &amp;(*_21)
@@ -187,7 +187,7 @@ For revisions in Pull Requests (PR):
 31:18-31:41: @4[8]: _16 = &amp;(*_17)
 31:18-31:41: @4[9]: _15 = move _16 as &amp;[&amp;str] (Pointer(Unsize))
 31:9-31:43: @4[15]: _23 = ()
-31:9-31:43: @4[16]: FakeRead(ForMatchedPlace, _23)
+31:9-31:43: @4[16]: FakeRead(ForMatchedPlace(None), _23)
 31:9-31:43: @4[17]: _26 = const main::promoted[0]
 31:9-31:43: @4[18]: _21 = &amp;(*_26)
 31:9-31:43: @4[19]: _20 = &amp;(*_21)

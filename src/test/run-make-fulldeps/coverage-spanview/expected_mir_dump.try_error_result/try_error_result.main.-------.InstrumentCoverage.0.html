@@ -70,11 +70,11 @@ For revisions in Pull Requests (PR):
 </head>
 <body>
 <div class="code" style="counter-reset: line 11"><span class="line"><span><span class="code even" style="--layer: 1" title="14:21-14:23: @0[1]: _1 = const 10_i32
-13:9-14:18: @0[2]: FakeRead(ForLet, _1)"><span class="annotation">@0,1⦊</span>fn main() -&gt; Result&lt;(),()&gt; {</span></span>
+13:9-14:18: @0[2]: FakeRead(ForLet(None), _1)"><span class="annotation">@0,1⦊</span>fn main() -&gt; Result&lt;(),()&gt; {</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="14:21-14:23: @0[1]: _1 = const 10_i32
-13:9-14:18: @0[2]: FakeRead(ForLet, _1)">    let mut</span></span>
+13:9-14:18: @0[2]: FakeRead(ForLet(None), _1)">    let mut</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="14:21-14:23: @0[1]: _1 = const 10_i32
-13:9-14:18: @0[2]: FakeRead(ForLet, _1)">        countdown = 10<span class="annotation">⦉@0,1</span></span></span><span class="code" style="--layer: 0"></span></span>
+13:9-14:18: @0[2]: FakeRead(ForLet(None), _1)">        countdown = 10<span class="annotation">⦉@0,1</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">    ;</span></span>
 <span class="line"><span class="code" style="--layer: 0">    for</span></span>
 <span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code odd" style="--layer: 1" title="17:9-17:10: @8[1]: _13 = ((_9 as Some).0: i32)
@@ -85,7 +85,7 @@ For revisions in Pull Requests (PR):
 <span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code even" style="--layer: 1" title="19:9-19:14: @3[5]: _11 = &amp;mut _5
 19:9-19:14: @3[6]: _10 = &amp;mut (*_11)
 19:9-19:14: @3.Call: _9 = &lt;std::ops::Range&lt;i32&gt; as std::iter::Iterator&gt;::next(move _10) -&gt; [return: bb4, unwind: bb39]
-19:9-19:14: @4[1]: FakeRead(ForMatchedPlace, _9)"><span class="annotation">@2,3,4⦊</span>0..10<span class="annotation">⦉@2,3,4</span></span></span><span class="code" style="--layer: 0"></span></span>
+19:9-19:14: @4[1]: FakeRead(ForMatchedPlace(None), _9)"><span class="annotation">@2,3,4⦊</span>0..10<span class="annotation">⦉@2,3,4</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">    {</span></span>
 <span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code odd" style="--layer: 1" title="21:9-22:17: @8[12]: _17 = CheckedSub(_1, const 1_i32)
 21:9-22:17: @9[0]: _1 = move (_17.0: i32)

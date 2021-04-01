@@ -73,65 +73,65 @@ For revisions in Pull Requests (PR):
 7:19-7:35: @1[0]: _3 = &amp;_4
 7:19-7:41: @1.Call: _2 = &lt;std::env::Args as std::iter::ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb20]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
-7:9-7:16: @2[3]: FakeRead(ForLet, _1)
+7:9-7:16: @2[3]: FakeRead(ForLet(None), _1)
 9:25-9:26: @3[2]: _5 = const 1_i32
-9:9-9:22: @3[3]: FakeRead(ForLet, _5)
+9:9-9:22: @3[3]: FakeRead(ForLet(None), _5)
 10:8-10:15: @3[6]: _7 = _1"><span class="annotation">@0,1,2,3⦊</span>fn main() {</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = std::env::args() -&gt; [return: bb1, unwind: bb21]
 7:19-7:35: @1[0]: _3 = &amp;_4
 7:19-7:41: @1.Call: _2 = &lt;std::env::Args as std::iter::ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb20]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
-7:9-7:16: @2[3]: FakeRead(ForLet, _1)
+7:9-7:16: @2[3]: FakeRead(ForLet(None), _1)
 9:25-9:26: @3[2]: _5 = const 1_i32
-9:9-9:22: @3[3]: FakeRead(ForLet, _5)
+9:9-9:22: @3[3]: FakeRead(ForLet(None), _5)
 10:8-10:15: @3[6]: _7 = _1">    // Initialize test constants in a way that cannot be determined at compile time, to ensure</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = std::env::args() -&gt; [return: bb1, unwind: bb21]
 7:19-7:35: @1[0]: _3 = &amp;_4
 7:19-7:41: @1.Call: _2 = &lt;std::env::Args as std::iter::ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb20]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
-7:9-7:16: @2[3]: FakeRead(ForLet, _1)
+7:9-7:16: @2[3]: FakeRead(ForLet(None), _1)
 9:25-9:26: @3[2]: _5 = const 1_i32
-9:9-9:22: @3[3]: FakeRead(ForLet, _5)
+9:9-9:22: @3[3]: FakeRead(ForLet(None), _5)
 10:8-10:15: @3[6]: _7 = _1">    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = std::env::args() -&gt; [return: bb1, unwind: bb21]
 7:19-7:35: @1[0]: _3 = &amp;_4
 7:19-7:41: @1.Call: _2 = &lt;std::env::Args as std::iter::ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb20]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
-7:9-7:16: @2[3]: FakeRead(ForLet, _1)
+7:9-7:16: @2[3]: FakeRead(ForLet(None), _1)
 9:25-9:26: @3[2]: _5 = const 1_i32
-9:9-9:22: @3[3]: FakeRead(ForLet, _5)
+9:9-9:22: @3[3]: FakeRead(ForLet(None), _5)
 10:8-10:15: @3[6]: _7 = _1">    // dependent conditions.</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = std::env::args() -&gt; [return: bb1, unwind: bb21]
 7:19-7:35: @1[0]: _3 = &amp;_4
 7:19-7:41: @1.Call: _2 = &lt;std::env::Args as std::iter::ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb20]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
-7:9-7:16: @2[3]: FakeRead(ForLet, _1)
+7:9-7:16: @2[3]: FakeRead(ForLet(None), _1)
 9:25-9:26: @3[2]: _5 = const 1_i32
-9:9-9:22: @3[3]: FakeRead(ForLet, _5)
+9:9-9:22: @3[3]: FakeRead(ForLet(None), _5)
 10:8-10:15: @3[6]: _7 = _1">    let is_true = std::env::args().len() == 1;</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = std::env::args() -&gt; [return: bb1, unwind: bb21]
 7:19-7:35: @1[0]: _3 = &amp;_4
 7:19-7:41: @1.Call: _2 = &lt;std::env::Args as std::iter::ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb20]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
-7:9-7:16: @2[3]: FakeRead(ForLet, _1)
+7:9-7:16: @2[3]: FakeRead(ForLet(None), _1)
 9:25-9:26: @3[2]: _5 = const 1_i32
-9:9-9:22: @3[3]: FakeRead(ForLet, _5)
+9:9-9:22: @3[3]: FakeRead(ForLet(None), _5)
 10:8-10:15: @3[6]: _7 = _1"></span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = std::env::args() -&gt; [return: bb1, unwind: bb21]
 7:19-7:35: @1[0]: _3 = &amp;_4
 7:19-7:41: @1.Call: _2 = &lt;std::env::Args as std::iter::ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb20]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
-7:9-7:16: @2[3]: FakeRead(ForLet, _1)
+7:9-7:16: @2[3]: FakeRead(ForLet(None), _1)
 9:25-9:26: @3[2]: _5 = const 1_i32
-9:9-9:22: @3[3]: FakeRead(ForLet, _5)
+9:9-9:22: @3[3]: FakeRead(ForLet(None), _5)
 10:8-10:15: @3[6]: _7 = _1">    let mut countdown = 1;</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="7:19-7:35: @0.Call: _4 = std::env::args() -&gt; [return: bb1, unwind: bb21]
 7:19-7:35: @1[0]: _3 = &amp;_4
 7:19-7:41: @1.Call: _2 = &lt;std::env::Args as std::iter::ExactSizeIterator&gt;::len(move _3) -&gt; [return: bb2, unwind: bb20]
 7:19-7:46: @2[1]: _1 = Eq(move _2, const 1_usize)
-7:9-7:16: @2[3]: FakeRead(ForLet, _1)
+7:9-7:16: @2[3]: FakeRead(ForLet(None), _1)
 9:25-9:26: @3[2]: _5 = const 1_i32
-9:9-9:22: @3[3]: FakeRead(ForLet, _5)
+9:9-9:22: @3[3]: FakeRead(ForLet(None), _5)
 10:8-10:15: @3[6]: _7 = _1">    if is_true<span class="annotation">⦉@0,1,2,3</span></span></span><span class="code" style="--layer: 0"> </span><span><span class="code odd" style="--layer: 1" title="11:9-11:22: @4[0]: _5 = const 0_i32
 10:16-12:6: @4[1]: _6 = const ()"><span class="annotation">@4⦊</span>{</span></span>
 <span class="line"><span class="code odd" style="--layer: 1" title="11:9-11:22: @4[0]: _5 = const 0_i32
@@ -148,12 +148,12 @@ For revisions in Pull Requests (PR):
 <span class="line"><span class="code" style="--layer: 0">        </span><span><span class="code even" style="--layer: 1" title="17:9-17:13: @9[5]: _16 = &amp;mut _10
 17:9-17:13: @9[6]: _15 = &amp;mut (*_16)
 17:9-17:13: @9.Call: _14 = &lt;std::ops::Range&lt;i32&gt; as std::iter::Iterator&gt;::next(move _15) -&gt; [return: bb10, unwind: bb21]
-17:9-17:13: @10[1]: FakeRead(ForMatchedPlace, _14)"><span class="annotation">@8,9,10⦊</span>0..2<span class="annotation">⦉@8,9,10</span></span></span><span class="code" style="--layer: 0"></span></span>
+17:9-17:13: @10[1]: FakeRead(ForMatchedPlace(None), _14)"><span class="annotation">@8,9,10⦊</span>0..2<span class="annotation">⦉@8,9,10</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">    {</span></span>
 <span class="line"><span class="code" style="--layer: 0">        let z</span></span>
 <span class="line"><span class="code" style="--layer: 0">        ;</span></span>
 <span class="line"><span class="code" style="--layer: 0">        match</span></span>
-<span class="line"><span class="code" style="--layer: 0">            </span><span><span class="code odd" style="--layer: 1" title="22:13-22:22: @14[13]: FakeRead(ForMatchedPlace, _5)"><span class="annotation">@12,14,16⦊</span>countdown<span class="annotation">⦉@12,14,16</span></span></span><span class="code" style="--layer: 0"></span></span>
+<span class="line"><span class="code" style="--layer: 0">            </span><span><span class="code odd" style="--layer: 1" title="22:13-22:22: @14[13]: FakeRead(ForMatchedPlace(None), _5)"><span class="annotation">@12,14,16⦊</span>countdown<span class="annotation">⦉@12,14,16</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">        {</span></span>
 <span class="line"><span class="code" style="--layer: 0">            </span><span><span class="code even" style="--layer: 1" title="24:13-24:14: @17[3]: _23 = _5"><span class="annotation">@17⦊</span>x<span class="annotation">⦉@17</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">            if</span></span>
@@ -167,49 +167,49 @@ For revisions in Pull Requests (PR):
 <span class="line"><span class="code" style="--layer: 0">            </span><span><span class="code even" style="--layer: 1" title="31:21-31:30: @17[5]: _27 = _5
 31:17-31:30: @17[6]: _22 = move _27
 33:25-33:34: @17[9]: _28 = _5
-33:21-33:22: @17[10]: FakeRead(ForLet, _28)
+33:21-33:22: @17[10]: FakeRead(ForLet(None), _28)
 35:17-35:31: @17[11]: _5 = const 10_i32
 30:13-37:14: @17[12]: _21 = const ()"><span class="annotation">@17⦊</span>{</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="31:21-31:30: @17[5]: _27 = _5
 31:17-31:30: @17[6]: _22 = move _27
 33:25-33:34: @17[9]: _28 = _5
-33:21-33:22: @17[10]: FakeRead(ForLet, _28)
+33:21-33:22: @17[10]: FakeRead(ForLet(None), _28)
 35:17-35:31: @17[11]: _5 = const 10_i32
 30:13-37:14: @17[12]: _21 = const ()">                z = countdown</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="31:21-31:30: @17[5]: _27 = _5
 31:17-31:30: @17[6]: _22 = move _27
 33:25-33:34: @17[9]: _28 = _5
-33:21-33:22: @17[10]: FakeRead(ForLet, _28)
+33:21-33:22: @17[10]: FakeRead(ForLet(None), _28)
 35:17-35:31: @17[11]: _5 = const 10_i32
 30:13-37:14: @17[12]: _21 = const ()">                ;</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="31:21-31:30: @17[5]: _27 = _5
 31:17-31:30: @17[6]: _22 = move _27
 33:25-33:34: @17[9]: _28 = _5
-33:21-33:22: @17[10]: FakeRead(ForLet, _28)
+33:21-33:22: @17[10]: FakeRead(ForLet(None), _28)
 35:17-35:31: @17[11]: _5 = const 10_i32
 30:13-37:14: @17[12]: _21 = const ()">                let y = countdown</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="31:21-31:30: @17[5]: _27 = _5
 31:17-31:30: @17[6]: _22 = move _27
 33:25-33:34: @17[9]: _28 = _5
-33:21-33:22: @17[10]: FakeRead(ForLet, _28)
+33:21-33:22: @17[10]: FakeRead(ForLet(None), _28)
 35:17-35:31: @17[11]: _5 = const 10_i32
 30:13-37:14: @17[12]: _21 = const ()">                ;</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="31:21-31:30: @17[5]: _27 = _5
 31:17-31:30: @17[6]: _22 = move _27
 33:25-33:34: @17[9]: _28 = _5
-33:21-33:22: @17[10]: FakeRead(ForLet, _28)
+33:21-33:22: @17[10]: FakeRead(ForLet(None), _28)
 35:17-35:31: @17[11]: _5 = const 10_i32
 30:13-37:14: @17[12]: _21 = const ()">                countdown = 10</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="31:21-31:30: @17[5]: _27 = _5
 31:17-31:30: @17[6]: _22 = move _27
 33:25-33:34: @17[9]: _28 = _5
-33:21-33:22: @17[10]: FakeRead(ForLet, _28)
+33:21-33:22: @17[10]: FakeRead(ForLet(None), _28)
 35:17-35:31: @17[11]: _5 = const 10_i32
 30:13-37:14: @17[12]: _21 = const ()">                ;</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="31:21-31:30: @17[5]: _27 = _5
 31:17-31:30: @17[6]: _22 = move _27
 33:25-33:34: @17[9]: _28 = _5
-33:21-33:22: @17[10]: FakeRead(ForLet, _28)
+33:21-33:22: @17[10]: FakeRead(ForLet(None), _28)
 35:17-35:31: @17[11]: _5 = const 10_i32
 30:13-37:14: @17[12]: _21 = const ()">            }<span class="annotation">⦉@17</span></span></span><span class="code" style="--layer: 0"></span></span>
 <span class="line"><span class="code" style="--layer: 0">            _</span></span>

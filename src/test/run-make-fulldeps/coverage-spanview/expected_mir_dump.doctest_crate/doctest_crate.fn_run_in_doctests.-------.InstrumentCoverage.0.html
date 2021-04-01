@@ -70,9 +70,9 @@ For revisions in Pull Requests (PR):
 </head>
 <body>
 <div class="code" style="counter-reset: line 1"><span class="line"><span><span class="code even" style="--layer: 1"><span class="annotation">@0⦊</span>pub fn fn_run_in_doctests(conditional: usize) <span class="annotation">⦉@0</span></span></span><span class="code" style="--layer: 0">{</span></span>
-<span class="line"><span class="code" style="--layer: 0">    match </span><span><span class="code even" style="--layer: 1" title="3:11-3:22: @0[0]: FakeRead(ForMatchedPlace, _1)"><span class="annotation">@0⦊</span>conditional<span class="annotation">⦉@0</span></span></span><span class="code" style="--layer: 0"> {</span></span>
+<span class="line"><span class="code" style="--layer: 0">    match </span><span><span class="code even" style="--layer: 1" title="3:11-3:22: @0[0]: FakeRead(ForMatchedPlace(None), _1)"><span class="annotation">@0⦊</span>conditional<span class="annotation">⦉@0</span></span></span><span class="code" style="--layer: 0"> {</span></span>
 <span class="line"><span class="code" style="--layer: 0">        1 =&gt; </span><span><span class="code odd" style="--layer: 1" title="4:14-4:30: @7[0]: _0 = const ()"><span class="annotation">@7⦊</span></span></span><span class="code even" style="--layer: 2" title="4:14-4:30: @6[1]: _14 = core::panicking::AssertKind::Eq
-4:14-4:30: @6[2]: FakeRead(ForLet, _14)
+4:14-4:30: @6[2]: FakeRead(ForLet(None), _14)
 4:14-4:30: @6[5]: _16 = move _14
 4:14-4:30: @6[8]: _18 = &amp;(*_7)
 4:14-4:30: @6[9]: _17 = &amp;(*_18)
@@ -81,7 +81,7 @@ For revisions in Pull Requests (PR):
 4:14-4:30: @6[15]: _21 = std::option::Option::&lt;std::fmt::Arguments&gt;::None
 4:14-4:30: @6.Call: core::panicking::assert_failed::&lt;i32, i32&gt;(move _16, move _17, move _19, move _21) -&gt; bb17"><span class="annotation">@6⦊</span>assert_eq!(1, 1)<span class="annotation">⦉@6</span></span><span><span class="code odd" style="--layer: 1" title="4:14-4:30: @7[0]: _0 = const ()"><span class="annotation">⦉@7</span></span></span><span class="code" style="--layer: 0">, // this is run,</span></span>
 <span class="line"><span class="code" style="--layer: 0">        2 =&gt; </span><span><span class="code even" style="--layer: 1" title="5:14-5:30: @10[0]: _0 = const ()"><span class="annotation">@10⦊</span></span></span><span class="code even" style="--layer: 2" title="5:14-5:30: @9[1]: _34 = core::panicking::AssertKind::Eq
-5:14-5:30: @9[2]: FakeRead(ForLet, _34)
+5:14-5:30: @9[2]: FakeRead(ForLet(None), _34)
 5:14-5:30: @9[5]: _36 = move _34
 5:14-5:30: @9[8]: _38 = &amp;(*_27)
 5:14-5:30: @9[9]: _37 = &amp;(*_38)
@@ -90,7 +90,7 @@ For revisions in Pull Requests (PR):
 5:14-5:30: @9[15]: _41 = std::option::Option::&lt;std::fmt::Arguments&gt;::None
 5:14-5:30: @9.Call: core::panicking::assert_failed::&lt;i32, i32&gt;(move _36, move _37, move _39, move _41) -&gt; bb17"><span class="annotation">@9⦊</span>assert_eq!(1, 1)<span class="annotation">⦉@9</span></span><span><span class="code even" style="--layer: 1" title="5:14-5:30: @10[0]: _0 = const ()"><span class="annotation">⦉@10</span></span></span><span class="code" style="--layer: 0">, // this,</span></span>
 <span class="line"><span class="code" style="--layer: 0">        3 =&gt; </span><span><span class="code odd" style="--layer: 1" title="6:14-6:30: @13[0]: _0 = const ()"><span class="annotation">@13⦊</span></span></span><span class="code even" style="--layer: 2" title="6:14-6:30: @12[1]: _54 = core::panicking::AssertKind::Eq
-6:14-6:30: @12[2]: FakeRead(ForLet, _54)
+6:14-6:30: @12[2]: FakeRead(ForLet(None), _54)
 6:14-6:30: @12[5]: _56 = move _54
 6:14-6:30: @12[8]: _58 = &amp;(*_47)
 6:14-6:30: @12[9]: _57 = &amp;(*_58)
@@ -99,7 +99,7 @@ For revisions in Pull Requests (PR):
 6:14-6:30: @12[15]: _61 = std::option::Option::&lt;std::fmt::Arguments&gt;::None
 6:14-6:30: @12.Call: core::panicking::assert_failed::&lt;i32, i32&gt;(move _56, move _57, move _59, move _61) -&gt; bb17"><span class="annotation">@12⦊</span>assert_eq!(1, 1)<span class="annotation">⦉@12</span></span><span><span class="code odd" style="--layer: 1" title="6:14-6:30: @13[0]: _0 = const ()"><span class="annotation">⦉@13</span></span></span><span class="code" style="--layer: 0">, // and this too</span></span>
 <span class="line"><span class="code" style="--layer: 0">        _ =&gt; </span><span><span class="code even" style="--layer: 1" title="7:14-7:30: @15[0]: _0 = const ()"><span class="annotation">@15⦊</span></span></span><span class="code even" style="--layer: 2" title="7:14-7:30: @14[1]: _74 = core::panicking::AssertKind::Eq
-7:14-7:30: @14[2]: FakeRead(ForLet, _74)
+7:14-7:30: @14[2]: FakeRead(ForLet(None), _74)
 7:14-7:30: @14[5]: _76 = move _74
 7:14-7:30: @14[8]: _78 = &amp;(*_67)
 7:14-7:30: @14[9]: _77 = &amp;(*_78)

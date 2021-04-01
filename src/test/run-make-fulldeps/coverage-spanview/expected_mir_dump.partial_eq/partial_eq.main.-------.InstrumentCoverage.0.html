@@ -70,9 +70,9 @@ For revisions in Pull Requests (PR):
 </head>
 <body>
 <div class="code" style="counter-reset: line 20"><span class="line"><span><span class="code even" style="--layer: 1" title="22:25-22:46: @0.Call: _1 = Version::new(const 3_usize, const 2_usize, const 1_usize) -&gt; [return: bb1, unwind: bb9]
-22:9-22:22: @1[0]: FakeRead(ForLet, _1)
+22:9-22:22: @1[0]: FakeRead(ForLet(None), _1)
 23:25-23:46: @1.Call: _2 = Version::new(const 3_usize, const 3_usize, const 0_usize) -&gt; [return: bb2, unwind: bb9]
-23:9-23:22: @2[0]: FakeRead(ForLet, _2)
+23:9-23:22: @2[0]: FakeRead(ForLet(None), _2)
 25:14-25:32: @2[7]: _33 = const main::promoted[0]
 25:14-25:32: @2[8]: _8 = &amp;(*_33)
 25:14-25:32: @2[9]: _7 = &amp;(*_8)
@@ -84,7 +84,7 @@ For revisions in Pull Requests (PR):
 25:64-25:93: @2.Call: _18 = &lt;Version as std::cmp::PartialOrd&gt;::lt(move _19, move _20) -&gt; [return: bb3, unwind: bb9]
 25:64-25:93: @3[2]: _17 = &amp;_18
 25:5-25:95: @3[3]: _14 = (move _15, move _16, move _17)
-25:5-25:95: @3[7]: FakeRead(ForMatchedPlace, _14)
+25:5-25:95: @3[7]: FakeRead(ForMatchedPlace(None), _14)
 25:5-25:95: @3[9]: _21 = (_14.0: &amp;Version)
 25:5-25:95: @3[11]: _22 = (_14.1: &amp;Version)
 25:5-25:95: @3[13]: _23 = (_14.2: &amp;bool)
@@ -107,9 +107,9 @@ For revisions in Pull Requests (PR):
 21:11-26:2: @8[9]: _0 = const ()
 26:2-26:2: @8.Return: return"><span class="annotation">@0,1,2,3,4,5,6,7,8⦊</span>fn main() {</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="22:25-22:46: @0.Call: _1 = Version::new(const 3_usize, const 2_usize, const 1_usize) -&gt; [return: bb1, unwind: bb9]
-22:9-22:22: @1[0]: FakeRead(ForLet, _1)
+22:9-22:22: @1[0]: FakeRead(ForLet(None), _1)
 23:25-23:46: @1.Call: _2 = Version::new(const 3_usize, const 3_usize, const 0_usize) -&gt; [return: bb2, unwind: bb9]
-23:9-23:22: @2[0]: FakeRead(ForLet, _2)
+23:9-23:22: @2[0]: FakeRead(ForLet(None), _2)
 25:14-25:32: @2[7]: _33 = const main::promoted[0]
 25:14-25:32: @2[8]: _8 = &amp;(*_33)
 25:14-25:32: @2[9]: _7 = &amp;(*_8)
@@ -121,7 +121,7 @@ For revisions in Pull Requests (PR):
 25:64-25:93: @2.Call: _18 = &lt;Version as std::cmp::PartialOrd&gt;::lt(move _19, move _20) -&gt; [return: bb3, unwind: bb9]
 25:64-25:93: @3[2]: _17 = &amp;_18
 25:5-25:95: @3[3]: _14 = (move _15, move _16, move _17)
-25:5-25:95: @3[7]: FakeRead(ForMatchedPlace, _14)
+25:5-25:95: @3[7]: FakeRead(ForMatchedPlace(None), _14)
 25:5-25:95: @3[9]: _21 = (_14.0: &amp;Version)
 25:5-25:95: @3[11]: _22 = (_14.1: &amp;Version)
 25:5-25:95: @3[13]: _23 = (_14.2: &amp;bool)
@@ -144,9 +144,9 @@ For revisions in Pull Requests (PR):
 21:11-26:2: @8[9]: _0 = const ()
 26:2-26:2: @8.Return: return">    let version_3_2_1 = Version::new(3, 2, 1);</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="22:25-22:46: @0.Call: _1 = Version::new(const 3_usize, const 2_usize, const 1_usize) -&gt; [return: bb1, unwind: bb9]
-22:9-22:22: @1[0]: FakeRead(ForLet, _1)
+22:9-22:22: @1[0]: FakeRead(ForLet(None), _1)
 23:25-23:46: @1.Call: _2 = Version::new(const 3_usize, const 3_usize, const 0_usize) -&gt; [return: bb2, unwind: bb9]
-23:9-23:22: @2[0]: FakeRead(ForLet, _2)
+23:9-23:22: @2[0]: FakeRead(ForLet(None), _2)
 25:14-25:32: @2[7]: _33 = const main::promoted[0]
 25:14-25:32: @2[8]: _8 = &amp;(*_33)
 25:14-25:32: @2[9]: _7 = &amp;(*_8)
@@ -158,7 +158,7 @@ For revisions in Pull Requests (PR):
 25:64-25:93: @2.Call: _18 = &lt;Version as std::cmp::PartialOrd&gt;::lt(move _19, move _20) -&gt; [return: bb3, unwind: bb9]
 25:64-25:93: @3[2]: _17 = &amp;_18
 25:5-25:95: @3[3]: _14 = (move _15, move _16, move _17)
-25:5-25:95: @3[7]: FakeRead(ForMatchedPlace, _14)
+25:5-25:95: @3[7]: FakeRead(ForMatchedPlace(None), _14)
 25:5-25:95: @3[9]: _21 = (_14.0: &amp;Version)
 25:5-25:95: @3[11]: _22 = (_14.1: &amp;Version)
 25:5-25:95: @3[13]: _23 = (_14.2: &amp;bool)
@@ -181,9 +181,9 @@ For revisions in Pull Requests (PR):
 21:11-26:2: @8[9]: _0 = const ()
 26:2-26:2: @8.Return: return">    let version_3_3_0 = Version::new(3, 3, 0);</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="22:25-22:46: @0.Call: _1 = Version::new(const 3_usize, const 2_usize, const 1_usize) -&gt; [return: bb1, unwind: bb9]
-22:9-22:22: @1[0]: FakeRead(ForLet, _1)
+22:9-22:22: @1[0]: FakeRead(ForLet(None), _1)
 23:25-23:46: @1.Call: _2 = Version::new(const 3_usize, const 3_usize, const 0_usize) -&gt; [return: bb2, unwind: bb9]
-23:9-23:22: @2[0]: FakeRead(ForLet, _2)
+23:9-23:22: @2[0]: FakeRead(ForLet(None), _2)
 25:14-25:32: @2[7]: _33 = const main::promoted[0]
 25:14-25:32: @2[8]: _8 = &amp;(*_33)
 25:14-25:32: @2[9]: _7 = &amp;(*_8)
@@ -195,7 +195,7 @@ For revisions in Pull Requests (PR):
 25:64-25:93: @2.Call: _18 = &lt;Version as std::cmp::PartialOrd&gt;::lt(move _19, move _20) -&gt; [return: bb3, unwind: bb9]
 25:64-25:93: @3[2]: _17 = &amp;_18
 25:5-25:95: @3[3]: _14 = (move _15, move _16, move _17)
-25:5-25:95: @3[7]: FakeRead(ForMatchedPlace, _14)
+25:5-25:95: @3[7]: FakeRead(ForMatchedPlace(None), _14)
 25:5-25:95: @3[9]: _21 = (_14.0: &amp;Version)
 25:5-25:95: @3[11]: _22 = (_14.1: &amp;Version)
 25:5-25:95: @3[13]: _23 = (_14.2: &amp;bool)
@@ -218,9 +218,9 @@ For revisions in Pull Requests (PR):
 21:11-26:2: @8[9]: _0 = const ()
 26:2-26:2: @8.Return: return"></span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="22:25-22:46: @0.Call: _1 = Version::new(const 3_usize, const 2_usize, const 1_usize) -&gt; [return: bb1, unwind: bb9]
-22:9-22:22: @1[0]: FakeRead(ForLet, _1)
+22:9-22:22: @1[0]: FakeRead(ForLet(None), _1)
 23:25-23:46: @1.Call: _2 = Version::new(const 3_usize, const 3_usize, const 0_usize) -&gt; [return: bb2, unwind: bb9]
-23:9-23:22: @2[0]: FakeRead(ForLet, _2)
+23:9-23:22: @2[0]: FakeRead(ForLet(None), _2)
 25:14-25:32: @2[7]: _33 = const main::promoted[0]
 25:14-25:32: @2[8]: _8 = &amp;(*_33)
 25:14-25:32: @2[9]: _7 = &amp;(*_8)
@@ -232,7 +232,7 @@ For revisions in Pull Requests (PR):
 25:64-25:93: @2.Call: _18 = &lt;Version as std::cmp::PartialOrd&gt;::lt(move _19, move _20) -&gt; [return: bb3, unwind: bb9]
 25:64-25:93: @3[2]: _17 = &amp;_18
 25:5-25:95: @3[3]: _14 = (move _15, move _16, move _17)
-25:5-25:95: @3[7]: FakeRead(ForMatchedPlace, _14)
+25:5-25:95: @3[7]: FakeRead(ForMatchedPlace(None), _14)
 25:5-25:95: @3[9]: _21 = (_14.0: &amp;Version)
 25:5-25:95: @3[11]: _22 = (_14.1: &amp;Version)
 25:5-25:95: @3[13]: _23 = (_14.2: &amp;bool)
@@ -255,9 +255,9 @@ For revisions in Pull Requests (PR):
 21:11-26:2: @8[9]: _0 = const ()
 26:2-26:2: @8.Return: return">    println!("{:?} &lt; {:?} = {}", version_3_2_1, version_3_3_0, version_3_2_1 &lt; version_3_3_0);</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="22:25-22:46: @0.Call: _1 = Version::new(const 3_usize, const 2_usize, const 1_usize) -&gt; [return: bb1, unwind: bb9]
-22:9-22:22: @1[0]: FakeRead(ForLet, _1)
+22:9-22:22: @1[0]: FakeRead(ForLet(None), _1)
 23:25-23:46: @1.Call: _2 = Version::new(const 3_usize, const 3_usize, const 0_usize) -&gt; [return: bb2, unwind: bb9]
-23:9-23:22: @2[0]: FakeRead(ForLet, _2)
+23:9-23:22: @2[0]: FakeRead(ForLet(None), _2)
 25:14-25:32: @2[7]: _33 = const main::promoted[0]
 25:14-25:32: @2[8]: _8 = &amp;(*_33)
 25:14-25:32: @2[9]: _7 = &amp;(*_8)
@@ -269,7 +269,7 @@ For revisions in Pull Requests (PR):
 25:64-25:93: @2.Call: _18 = &lt;Version as std::cmp::PartialOrd&gt;::lt(move _19, move _20) -&gt; [return: bb3, unwind: bb9]
 25:64-25:93: @3[2]: _17 = &amp;_18
 25:5-25:95: @3[3]: _14 = (move _15, move _16, move _17)
-25:5-25:95: @3[7]: FakeRead(ForMatchedPlace, _14)
+25:5-25:95: @3[7]: FakeRead(ForMatchedPlace(None), _14)
 25:5-25:95: @3[9]: _21 = (_14.0: &amp;Version)
 25:5-25:95: @3[11]: _22 = (_14.1: &amp;Version)
 25:5-25:95: @3[13]: _23 = (_14.2: &amp;bool)
