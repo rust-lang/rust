@@ -761,18 +761,22 @@ impl InitMask {
         }
 
         // FIXME(oli-obk): optimize this for allocations larger than a block.
-        let idx = (start.bytes()..end.bytes()).map(Size::from_bytes).find(|&i| !self.get(i));
+        let idx = (start..end).find(|&i| !self.get(i));
 
         match idx {
             Some(idx) => {
-                let uninit_end = (idx.bytes()..end.bytes())
-                    .map(Size::from_bytes)
-                    .find(|&i| self.get(i))
-                    .unwrap_or(end);
+                let uninit_end = (idx..end).find(|&i| self.get(i)).unwrap_or(end);
                 Err(idx..uninit_end)
             }
             None => Ok(()),
         }
+    }
+
+    /// Returns an iterator, yielding a range of byte indexes for each contiguous region
+    /// of initialized or uninitialized bytes inside the range `start..end` (end-exclusive).
+    #[inline]
+    pub fn range_as_init_chunks(&self, start: Size, end: Size) -> InitChunkIter<'_> {
+        InitChunkIter::new(self, start, end)
     }
 
     pub fn set_range(&mut self, start: Size, end: Size, new_state: bool) {
@@ -864,6 +868,49 @@ impl InitMask {
         let start = self.len;
         self.len += amount;
         self.set_range_inbounds(start, start + amount, new_state); // `Size` operation
+    }
+}
+
+/// Yields [`InitChunk`]s. See [`InitMask::range_as_init_chunks`].
+pub struct InitChunkIter<'a> {
+    init_mask: &'a InitMask,
+    /// The current byte index into `init_mask`.
+    start: Size,
+    /// The end byte index into `init_mask`.
+    end: Size,
+}
+
+/// A contiguous chunk of initialized or uninitialized memory.
+pub enum InitChunk {
+    Init(Range<Size>),
+    Uninit(Range<Size>),
+}
+
+impl<'a> InitChunkIter<'a> {
+    fn new(init_mask: &'a InitMask, start: Size, end: Size) -> Self {
+        assert!(start <= end);
+        assert!(end <= init_mask.len);
+        Self { init_mask, start, end }
+    }
+}
+
+impl<'a> Iterator for InitChunkIter<'a> {
+    type Item = InitChunk;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.start >= self.end {
+            return None;
+        }
+
+        let is_init = self.init_mask.get(self.start);
+        // FIXME(oli-obk): optimize this for allocations larger than a block.
+        let end_of_chunk =
+            (self.start..self.end).find(|&i| self.init_mask.get(i) != is_init).unwrap_or(self.end);
+        let range = self.start..end_of_chunk;
+
+        self.start = end_of_chunk;
+
+        Some(if is_init { InitChunk::Init(range) } else { InitChunk::Uninit(range) })
     }
 }
 

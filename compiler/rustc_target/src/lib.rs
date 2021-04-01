@@ -15,6 +15,9 @@
 #![feature(never_type)]
 #![feature(associated_type_bounds)]
 #![feature(exhaustive_patterns)]
+#![feature(step_trait)]
+#![feature(step_trait_ext)]
+#![feature(unchecked_math)]
 
 #[macro_use]
 extern crate rustc_macros;

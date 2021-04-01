@@ -43,7 +43,7 @@ pub fn inline_enum_const() -> E<i8, i16> {
 #[no_mangle]
 pub fn low_align_const() -> E<i16, [i16; 3]> {
     // Check that low_align_const and high_align_const use the same constant
-    // CHECK: memcpy.p0i8.p0i8.i{{(32|64)}}(i8* align 2 %1, i8* align 2 getelementptr inbounds (<{ [8 x i8] }>, <{ [8 x i8] }>* [[LOW_HIGH]], i32 0, i32 0, i32 0), i{{(32|64)}} 8, i1 false)
+    // CHECK: memcpy.p0i8.p0i8.i{{(32|64)}}(i8* align 2 %1, i8* align 2 getelementptr inbounds (<{ [4 x i8], [4 x i8] }>, <{ [4 x i8], [4 x i8] }>* [[LOW_HIGH]], i32 0, i32 0, i32 0), i{{(32|64)}} 8, i1 false)
     *&E::A(0)
 }
 
@@ -51,6 +51,6 @@ pub fn low_align_const() -> E<i16, [i16; 3]> {
 #[no_mangle]
 pub fn high_align_const() -> E<i16, i32> {
     // Check that low_align_const and high_align_const use the same constant
-    // CHECK: memcpy.p0i8.p0i8.i{{(32|64)}}(i8* align 4 %1, i8* align 4 getelementptr inbounds (<{ [8 x i8] }>, <{ [8 x i8] }>* [[LOW_HIGH]], i32 0, i32 0, i32 0), i{{(32|64)}} 8, i1 false)
+    // CHECK: memcpy.p0i8.p0i8.i{{(32|64)}}(i8* align 4 %1, i8* align 4 getelementptr inbounds (<{ [4 x i8], [4 x i8] }>, <{ [4 x i8], [4 x i8] }>* [[LOW_HIGH]], i32 0, i32 0, i32 0), i{{(32|64)}} 8, i1 false)
     *&E::A(0)
 }

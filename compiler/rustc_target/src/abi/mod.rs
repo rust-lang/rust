@@ -5,6 +5,7 @@ use crate::spec::Target;
 
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
+use std::iter::Step;
 use std::num::NonZeroUsize;
 use std::ops::{Add, AddAssign, Deref, Mul, Range, RangeInclusive, Sub};
 use std::str::FromStr;
@@ -430,6 +431,43 @@ impl AddAssign for Size {
     #[inline]
     fn add_assign(&mut self, other: Size) {
         *self = *self + other;
+    }
+}
+
+unsafe impl Step for Size {
+    #[inline]
+    fn steps_between(start: &Self, end: &Self) -> Option<usize> {
+        u64::steps_between(&start.bytes(), &end.bytes())
+    }
+
+    #[inline]
+    fn forward_checked(start: Self, count: usize) -> Option<Self> {
+        u64::forward_checked(start.bytes(), count).map(Self::from_bytes)
+    }
+
+    #[inline]
+    fn forward(start: Self, count: usize) -> Self {
+        Self::from_bytes(u64::forward(start.bytes(), count))
+    }
+
+    #[inline]
+    unsafe fn forward_unchecked(start: Self, count: usize) -> Self {
+        Self::from_bytes(u64::forward_unchecked(start.bytes(), count))
+    }
+
+    #[inline]
+    fn backward_checked(start: Self, count: usize) -> Option<Self> {
+        u64::backward_checked(start.bytes(), count).map(Self::from_bytes)
+    }
+
+    #[inline]
+    fn backward(start: Self, count: usize) -> Self {
+        Self::from_bytes(u64::backward(start.bytes(), count))
+    }
+
+    #[inline]
+    unsafe fn backward_unchecked(start: Self, count: usize) -> Self {
+        Self::from_bytes(u64::backward_unchecked(start.bytes(), count))
     }
 }
 
