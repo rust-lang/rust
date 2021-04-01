@@ -19,8 +19,8 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::Lock;
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_serialize::opaque::{self, FileEncodeResult, FileEncoder, IntEncodedWithFixedSize};
-use rustc_serialize::{Decodable, Decoder, Encodable};
+use rustc_serialize::opaque::{self, FileEncodeResult, FileEncoder};
+use rustc_serialize::{Decodable, Decoder, Encodable, IntEncodedWithFixedSize};
 use smallvec::SmallVec;
 use std::convert::TryInto;
 
