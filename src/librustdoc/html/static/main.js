@@ -219,6 +219,15 @@ function hideThemeButtonState() {
     var titleBeforeSearch = document.title;
     var searchTitle = null;
 
+    function removeEmptyStringsFromArray(x) {
+        for (var i = 0, len = x.length; i < len; ++i) {
+            if (x[i] === "") {
+                x.splice(i, 1);
+                i -= 1;
+            }
+        }
+    }
+
     function clearInputTimeout() {
         if (searchTimeout !== null) {
             clearTimeout(searchTimeout);
@@ -756,7 +765,7 @@ function hideThemeButtonState() {
                 results = {}, results_in_args = {}, results_returned = {},
                 split = valLower.split("::");
 
-            split = split.filter(function(segment) { return segment !== ""; });
+            removeEmptyStringsFromArray(split);
 
             function transformResults(results, isType) {
                 var out = [];
@@ -1338,7 +1347,7 @@ function hideThemeButtonState() {
                 var valGenerics = extractGenerics(val);
 
                 var paths = valLower.split("::");
-                paths = paths.filter(function(segment) { return segment !== ""; });
+                removeEmptyStringsFromArray(paths);
                 val = paths[paths.length - 1];
                 var contains = paths.slice(0, paths.length > 1 ? paths.length - 1 : 1);
 
