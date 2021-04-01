@@ -7,7 +7,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc, Ordering};
 use rustc_index::vec::IndexVec;
-use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
+use rustc_serialize::raw::{FileEncodeResult, FileEncoder};
 use smallvec::{smallvec, SmallVec};
 use std::assert_matches::assert_matches;
 use std::collections::hash_map::Entry;
