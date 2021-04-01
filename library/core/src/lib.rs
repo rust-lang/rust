@@ -62,6 +62,7 @@
 #![warn(missing_debug_implementations)]
 #![allow(explicit_outlives_requirements)]
 #![feature(rustc_allow_const_fn_unstable)]
+#![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
 #![feature(arbitrary_self_types)]
 #![feature(asm)]
