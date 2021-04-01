@@ -65,7 +65,7 @@ crate struct Crate {
 #[derive(Clone, Debug)]
 crate struct TraitWithExtraInfo {
     crate trait_: Trait,
-    crate is_spotlight: bool,
+    crate is_notable: bool,
 }
 
 #[derive(Clone, Debug)]

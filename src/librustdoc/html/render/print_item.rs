@@ -10,9 +10,9 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
 
 use super::{
-    collect_paths_for_type, document, ensure_trailing_slash, item_ty_to_strs, render_assoc_item,
-    render_assoc_items, render_attributes, render_impl, render_stability_since_raw, spotlight_decl,
-    write_srclink, AssocItemLink, Context,
+    collect_paths_for_type, document, ensure_trailing_slash, item_ty_to_strs, notable_traits_decl,
+    render_assoc_item, render_assoc_items, render_attributes, render_impl,
+    render_stability_since_raw, write_srclink, AssocItemLink, Context,
 };
 use crate::clean::{self, GetDefId};
 use crate::formats::cache::Cache;
@@ -381,7 +381,7 @@ fn item_function(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, f: &clean::
     write!(
         w,
         "{vis}{constness}{asyncness}{unsafety}{abi}fn \
-         {name}{generics}{decl}{spotlight}{where_clause}</pre>",
+         {name}{generics}{decl}{notable_traits}{where_clause}</pre>",
         vis = it.visibility.print_with_space(cx.tcx(), it.def_id, cx.cache()),
         constness = f.header.constness.print_with_space(),
         asyncness = f.header.asyncness.print_with_space(),
@@ -391,7 +391,7 @@ fn item_function(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, f: &clean::
         generics = f.generics.print(cx.cache(), cx.tcx()),
         where_clause = print_where_clause(&f.generics, cx.cache(), cx.tcx(), 0, true),
         decl = f.decl.full_print(cx.cache(), cx.tcx(), header_len, 0, f.header.asyncness),
-        spotlight = spotlight_decl(&f.decl, cx.cache(), cx.tcx()),
+        notable_traits = notable_traits_decl(&f.decl, cx.cache(), cx.tcx()),
     );
     document(w, cx, it, None)
 }
