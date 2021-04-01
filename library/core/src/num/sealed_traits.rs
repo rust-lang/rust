@@ -1,6 +1,7 @@
 use crate::fmt::{Binary, Debug, Display, LowerExp, LowerHex, Octal, UpperExp, UpperHex};
 use crate::hash::Hash;
 use crate::iter::{Product, Sum};
+use crate::mem;
 use crate::num::ParseIntError;
 use crate::ops::{Add, AddAssign, Neg, Sub, SubAssign};
 use crate::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not};
@@ -638,3 +639,165 @@ pub trait UnsignedInt: Int {
     /// the return value is wrapped to `0`.
     fn wrapping_next_power_of_two(self) -> Self;
 }
+
+macro_rules! delegate {
+    (fn $method:ident($($param:ident: $Param:ty),*) -> $Ret:ty) => {
+        #[inline]
+        fn $method($($param: $Param),*) -> $Ret {
+            Self::$method($($param),*)
+        }
+    };
+    (fn $method:ident(self $(, $param:ident: $Param:ty)*) -> $Ret:ty) => {
+        #[inline]
+        fn $method(self $(, $param: $Param)*) -> $Ret {
+            self.$method($($param),*)
+        }
+    };
+    (unsafe fn $method:ident(self $(, $param:ident: $Param:ty)*) -> $Ret:ty) => {
+        #[inline]
+        unsafe fn $method(self $(, $param: $Param)*) -> $Ret {
+            // SAFETY: the caller must uphold the safety contract for the trait
+            // method, which is the same as for the inherent method called here.
+            unsafe { self.$method($($param),*) }
+        }
+    };
+}
+
+macro_rules! impl_common {
+    ($Int:ty) => {
+        #[unstable(
+            feature = "sealed_int_traits",
+            reason = "can be used to write generic code over primitive integers",
+            issue = "none"
+        )]
+        impl Sealed for $Int {}
+
+        #[unstable(
+            feature = "sealed_int_traits",
+            reason = "can be used to write generic code over primitive integers",
+            issue = "none"
+        )]
+        impl Int for $Int {
+            type Bytes = [u8; mem::size_of::<$Int>()];
+            const MIN: Self = Self::MIN;
+            const MAX: Self = Self::MAX;
+            const BITS: u32 = Self::BITS;
+            delegate! { fn from_str_radix(src: &str, radix:u32) -> Result<Self, ParseIntError> }
+            delegate! { fn count_ones(self) -> u32 }
+            delegate! { fn count_zeros(self) -> u32 }
+            delegate! { fn leading_zeros(self) -> u32 }
+            delegate! { fn trailing_zeros(self) -> u32 }
+            delegate! { fn leading_ones(self) -> u32 }
+            delegate! { fn trailing_ones(self) -> u32 }
+            delegate! { fn rotate_left(self, n: u32) -> Self }
+            delegate! { fn rotate_right(self, n: u32) -> Self }
+            delegate! { fn swap_bytes(self) -> Self }
+            delegate! { fn reverse_bits(self) -> Self }
+            delegate! { fn from_be(x: Self) -> Self }
+            delegate! { fn from_le(x: Self) -> Self }
+            delegate! { fn to_be(self) -> Self }
+            delegate! { fn to_le(self) -> Self }
+            delegate! { fn checked_add(self, rhs: Self) -> Option<Self> }
+            delegate! { unsafe fn unchecked_add(self, rhs: Self) -> Self }
+            delegate! { fn checked_sub(self, rhs: Self) -> Option<Self> }
+            delegate! { unsafe fn unchecked_sub(self, rhs: Self) -> Self }
+            delegate! { fn checked_mul(self, rhs: Self) -> Option<Self> }
+            delegate! { unsafe fn unchecked_mul(self, rhs: Self) -> Self }
+            delegate! { fn checked_div(self, rhs: Self) -> Option<Self> }
+            delegate! { fn checked_div_euclid(self, rhs: Self) -> Option<Self> }
+            delegate! { fn checked_rem(self, rhs: Self) -> Option<Self> }
+            delegate! { fn checked_rem_euclid(self, rhs: Self) -> Option<Self> }
+            delegate! { fn checked_neg(self) -> Option<Self> }
+            delegate! { fn checked_shl(self, rhs: u32) -> Option<Self> }
+            delegate! { fn checked_shr(self, rhs: u32) -> Option<Self> }
+            delegate! { fn checked_pow(self, exp: u32) -> Option<Self> }
+            delegate! { fn saturating_add(self, rhs: Self) -> Self }
+            delegate! { fn saturating_sub(self, rhs: Self) -> Self }
+            delegate! { fn saturating_mul(self, rhs: Self) -> Self }
+            delegate! { fn saturating_pow(self, exp: u32) -> Self }
+            delegate! { fn wrapping_add(self, rhs: Self) -> Self }
+            delegate! { fn wrapping_sub(self, rhs: Self) -> Self }
+            delegate! { fn wrapping_mul(self, rhs: Self) -> Self }
+            delegate! { fn wrapping_div(self, rhs: Self) -> Self }
+            delegate! { fn wrapping_div_euclid(self, rhs: Self) -> Self }
+            delegate! { fn wrapping_rem(self, rhs: Self) -> Self }
+            delegate! { fn wrapping_rem_euclid(self, rhs: Self) -> Self }
+            delegate! { fn wrapping_neg(self) -> Self }
+            delegate! { fn wrapping_shl(self, rhs: u32) -> Self }
+            delegate! { fn wrapping_shr(self, rhs: u32) -> Self }
+            delegate! { fn wrapping_pow(self, exp: u32) -> Self }
+            delegate! { fn overflowing_add(self, rhs: Self) -> (Self, bool) }
+            delegate! { fn overflowing_sub(self, rhs: Self) -> (Self, bool) }
+            delegate! { fn overflowing_mul(self, rhs: Self) -> (Self, bool) }
+            delegate! { fn overflowing_div(self, rhs: Self) -> (Self, bool) }
+            delegate! { fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) }
+            delegate! { fn overflowing_rem(self, rhs: Self) -> (Self, bool) }
+            delegate! { fn overflowing_rem_euclid(self, rhs: Self) -> (Self, bool) }
+            delegate! { fn overflowing_neg(self) -> (Self, bool) }
+            delegate! { fn overflowing_shl(self, rhs: u32) -> (Self, bool) }
+            delegate! { fn overflowing_shr(self, rhs: u32) -> (Self, bool) }
+            delegate! { fn overflowing_pow(self, exp: u32) -> (Self, bool) }
+            delegate! { fn pow(self, exp: u32) -> Self }
+            delegate! { fn div_euclid(self, rhs: Self) -> Self }
+            delegate! { fn rem_euclid(self, rhs: Self) -> Self }
+            delegate! { fn to_be_bytes(self) -> Self::Bytes }
+            delegate! { fn to_le_bytes(self) -> Self::Bytes }
+            delegate! { fn to_ne_bytes(self) -> Self::Bytes }
+
+            #[inline]
+            fn as_ne_bytes(&self) -> &Self::Bytes {
+                self.as_ne_bytes()
+            }
+
+            delegate! { fn from_be_bytes(bytes: Self::Bytes) -> Self }
+            delegate! { fn from_le_bytes(bytes: Self::Bytes) -> Self }
+            delegate! { fn from_ne_bytes(bytes: Self::Bytes) -> Self }
+        }
+    };
+}
+
+macro_rules! impl_signed_unsigned {
+    ($SignedInt:ty, $UnsignedInt:ty) => {
+        impl_common! { $SignedInt }
+
+        #[unstable(
+            feature = "sealed_int_traits",
+            reason = "can be used to write generic code over primitive integers",
+            issue = "none"
+        )]
+        impl SignedInt for $SignedInt {
+            type Unsigned = $UnsignedInt;
+            delegate! { fn checked_abs(self) -> Option<Self> }
+            delegate! { fn saturating_neg(self) -> Self }
+            delegate! { fn saturating_abs(self) -> Self }
+            delegate! { fn wrapping_abs(self) -> Self }
+            delegate! { fn unsigned_abs(self) -> Self::Unsigned }
+            delegate! { fn overflowing_abs(self) -> (Self, bool) }
+            delegate! { fn abs(self) -> Self }
+            delegate! { fn signum(self) -> Self }
+            delegate! { fn is_positive(self) -> bool }
+            delegate! { fn is_negative(self) -> bool }
+        }
+
+        impl_common! { $UnsignedInt }
+
+        #[unstable(
+            feature = "sealed_int_traits",
+            reason = "can be used to write generic code over primitive integers",
+            issue = "none"
+        )]
+        impl UnsignedInt for $UnsignedInt {
+            delegate! { fn is_power_of_two(self) -> bool }
+            delegate! { fn next_power_of_two(self) -> Self }
+            delegate! { fn checked_next_power_of_two(self) -> Option<Self> }
+            delegate! { fn wrapping_next_power_of_two(self) -> Self }
+        }
+    };
+}
+
+impl_signed_unsigned! { i8, u8 }
+impl_signed_unsigned! { i16, u16 }
+impl_signed_unsigned! { i32, u32 }
+impl_signed_unsigned! { i64, u64 }
+impl_signed_unsigned! { i128, u128 }
+impl_signed_unsigned! { isize, usize }
