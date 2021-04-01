@@ -500,6 +500,7 @@ dependencies = [
  "base_db",
  "cfg",
  "cov-mark",
+ "dashmap",
  "drop_bomb",
  "either",
  "expect-test",

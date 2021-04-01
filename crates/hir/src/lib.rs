@@ -957,7 +957,7 @@ impl SelfParam {
         func_data
             .params
             .first()
-            .map(|param| match *param {
+            .map(|param| match &**param {
                 TypeRef::Reference(.., mutability) => match mutability {
                     hir_def::type_ref::Mutability::Shared => Access::Shared,
                     hir_def::type_ref::Mutability::Mut => Access::Exclusive,
@@ -1011,7 +1011,7 @@ impl Const {
     }
 
     pub fn type_ref(self, db: &dyn HirDatabase) -> TypeRef {
-        db.const_data(self.id).type_ref.clone()
+        db.const_data(self.id).type_ref.as_ref().clone()
     }
 }
 
@@ -1101,7 +1101,7 @@ impl TypeAlias {
     }
 
     pub fn type_ref(self, db: &dyn HirDatabase) -> Option<TypeRef> {
-        db.type_alias_data(self.id).type_ref.clone()
+        db.type_alias_data(self.id).type_ref.as_deref().cloned()
     }
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
@@ -1615,7 +1615,7 @@ impl Impl {
     // FIXME: the return type is wrong. This should be a hir version of
     // `TraitRef` (ie, resolved `TypeRef`).
     pub fn trait_(self, db: &dyn HirDatabase) -> Option<TraitRef> {
-        db.impl_data(self.id).target_trait.clone()
+        db.impl_data(self.id).target_trait.as_deref().cloned()
     }
 
     pub fn self_ty(self, db: &dyn HirDatabase) -> Type {

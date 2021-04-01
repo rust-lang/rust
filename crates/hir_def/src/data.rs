@@ -9,6 +9,7 @@ use crate::{
     attr::Attrs,
     body::Expander,
     db::DefDatabase,
+    intern::Interned,
     item_tree::{AssocItem, FunctionQualifier, ItemTreeId, ModItem, Param},
     type_ref::{TraitRef, TypeBound, TypeRef},
     visibility::RawVisibility,
@@ -19,8 +20,8 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunctionData {
     pub name: Name,
-    pub params: Vec<TypeRef>,
-    pub ret_type: TypeRef,
+    pub params: Vec<Interned<TypeRef>>,
+    pub ret_type: Interned<TypeRef>,
     pub attrs: Attrs,
     /// True if the first param is `self`. This is relevant to decide whether this
     /// can be called as a method.
@@ -57,11 +58,11 @@ impl FunctionData {
             params: enabled_params
                 .clone()
                 .filter_map(|id| match &item_tree[id] {
-                    Param::Normal(ty) => Some(item_tree[*ty].clone()),
+                    Param::Normal(ty) => Some(ty.clone()),
                     Param::Varargs => None,
                 })
                 .collect(),
-            ret_type: item_tree[func.ret_type].clone(),
+            ret_type: func.ret_type.clone(),
             attrs: item_tree.attrs(db, krate, ModItem::from(loc.id.value).into()),
             has_self_param: func.has_self_param,
             has_body: func.has_body,
@@ -76,7 +77,7 @@ impl FunctionData {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypeAliasData {
     pub name: Name,
-    pub type_ref: Option<TypeRef>,
+    pub type_ref: Option<Interned<TypeRef>>,
     pub visibility: RawVisibility,
     pub is_extern: bool,
     /// Bounds restricting the type alias itself (eg. `type Ty: Bound;` in a trait or impl).
@@ -94,7 +95,7 @@ impl TypeAliasData {
 
         Arc::new(TypeAliasData {
             name: typ.name.clone(),
-            type_ref: typ.type_ref.map(|id| item_tree[id].clone()),
+            type_ref: typ.type_ref.clone(),
             visibility: item_tree[typ.visibility].clone(),
             is_extern: typ.is_extern,
             bounds: typ.bounds.to_vec(),
@@ -156,8 +157,8 @@ impl TraitData {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImplData {
-    pub target_trait: Option<TraitRef>,
-    pub self_ty: TypeRef,
+    pub target_trait: Option<Interned<TraitRef>>,
+    pub self_ty: Interned<TypeRef>,
     pub items: Vec<AssocItemId>,
     pub is_negative: bool,
 }
@@ -169,8 +170,8 @@ impl ImplData {
 
         let item_tree = impl_loc.id.item_tree(db);
         let impl_def = &item_tree[impl_loc.id.value];
-        let target_trait = impl_def.target_trait.map(|id| item_tree[id].clone());
-        let self_ty = item_tree[impl_def.self_ty].clone();
+        let target_trait = impl_def.target_trait.clone();
+        let self_ty = impl_def.self_ty.clone();
         let is_negative = impl_def.is_negative;
         let module_id = impl_loc.container;
         let container = AssocContainerId::ImplId(id);
@@ -195,7 +196,7 @@ impl ImplData {
 pub struct ConstData {
     /// const _: () = ();
     pub name: Option<Name>,
-    pub type_ref: TypeRef,
+    pub type_ref: Interned<TypeRef>,
     pub visibility: RawVisibility,
 }
 
@@ -207,7 +208,7 @@ impl ConstData {
 
         Arc::new(ConstData {
             name: konst.name.clone(),
-            type_ref: item_tree[konst.type_ref].clone(),
+            type_ref: konst.type_ref.clone(),
             visibility: item_tree[konst.visibility].clone(),
         })
     }
@@ -216,7 +217,7 @@ impl ConstData {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StaticData {
     pub name: Option<Name>,
-    pub type_ref: TypeRef,
+    pub type_ref: Interned<TypeRef>,
     pub visibility: RawVisibility,
     pub mutable: bool,
     pub is_extern: bool,
@@ -230,7 +231,7 @@ impl StaticData {
 
         Arc::new(StaticData {
             name: Some(statik.name.clone()),
-            type_ref: item_tree[statik.type_ref].clone(),
+            type_ref: statik.type_ref.clone(),
             visibility: item_tree[statik.visibility].clone(),
             mutable: statik.mutable,
             is_extern: statik.is_extern,

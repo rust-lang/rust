@@ -11,6 +11,7 @@ doctest = false
 
 [dependencies]
 cov-mark = { version = "1.1", features = ["thread-local"] }
+dashmap = { version = "4.0.2", features = ["raw-api"] }
 log = "0.4.8"
 once_cell = "1.3.1"
 rustc-hash = "1.1.0"
