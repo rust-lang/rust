@@ -1,9 +1,9 @@
 #![allow(dead_code, clippy::eval_order_dependence)]
-#![deny(clippy::if_same_then_else, clippy::shared_code_in_if_blocks)]
+#![deny(clippy::if_same_then_else, clippy::branches_sharing_code)]
 
-// This tests the shared_code_in_if_blocks lint at the start of blocks
+// This tests valid if blocks that shouldn't trigger the lint
 
-// Tests with value references are includes in "shared_code_at_bot.rs"
+// Tests with value references are includes in "shared_code_at_bottom.rs"
 
 fn valid_examples() {
     let x = 2;

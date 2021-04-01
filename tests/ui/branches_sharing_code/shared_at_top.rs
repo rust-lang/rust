@@ -1,7 +1,7 @@
 #![allow(dead_code, clippy::eval_order_dependence)]
-#![deny(clippy::if_same_then_else, clippy::shared_code_in_if_blocks)]
+#![deny(clippy::if_same_then_else, clippy::branches_sharing_code)]
 
-// This tests the shared_code_in_if_blocks lint at the start of blocks
+// This tests the branches_sharing_code lint at the start of blocks
 
 fn simple_examples() {
     let x = 0;

@@ -1,7 +1,8 @@
-use crate::utils::{
-    both, count_eq, eq_expr_value, first_line_of_span, get_enclosing_block, get_parent_expr, if_sequence, in_macro,
-    indent_of, parent_node_is_if_expr, reindent_multiline, run_lints, search_same, snippet, snippet_opt,
-    span_lint_and_note, span_lint_and_then, ContainsName, SpanlessEq, SpanlessHash,
+use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_then};
+use clippy_utils::source::{first_line_of_span, indent_of, reindent_multiline, snippet, snippet_opt};
+use clippy_utils::{
+    both, count_eq, eq_expr_value, get_enclosing_block, get_parent_expr, if_sequence, in_macro, parent_node_is_if_expr,
+    run_lints, search_same, ContainsName, SpanlessEq, SpanlessHash,
 };
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
@@ -141,7 +142,7 @@ declare_clippy_lint! {
     ///     42
     /// };
     /// ```
-    pub SHARED_CODE_IN_IF_BLOCKS,
+    pub BRANCHES_SHARING_CODE,
     complexity,
     "`if` statement with shared code in all blocks"
 }
@@ -150,7 +151,7 @@ declare_lint_pass!(CopyAndPaste => [
     IFS_SAME_COND,
     SAME_FUNCTIONS_IN_IF_CONDITION,
     IF_SAME_THEN_ELSE,
-    SHARED_CODE_IN_IF_BLOCKS
+    BRANCHES_SHARING_CODE
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for CopyAndPaste {
@@ -173,17 +174,17 @@ impl<'tcx> LateLintPass<'tcx> for CopyAndPaste {
                 lint_same_cond(cx, &conds);
                 lint_same_fns_in_if_cond(cx, &conds);
                 // Block duplication
-                lint_same_then_else(cx, &blocks, conds.len() != blocks.len(), expr);
+                lint_same_then_else(cx, &blocks, conds.len() == blocks.len(), expr);
             }
         }
     }
 }
 
-/// Implementation of `SHARED_CODE_IN_IF_BLOCKS` and `IF_SAME_THEN_ELSE` if the blocks are equal.
+/// Implementation of `BRANCHES_SHARING_CODE` and `IF_SAME_THEN_ELSE` if the blocks are equal.
 fn lint_same_then_else<'tcx>(
     cx: &LateContext<'tcx>,
     blocks: &[&Block<'tcx>],
-    has_unconditional_else: bool,
+    has_conditional_else: bool,
     expr: &'tcx Expr<'_>,
 ) {
     // We only lint ifs with multiple blocks
@@ -195,8 +196,8 @@ fn lint_same_then_else<'tcx>(
     let has_expr = blocks[0].expr.is_some();
     let (start_eq, mut end_eq, expr_eq) = scan_block_for_eq(cx, blocks);
 
-    // SHARED_CODE_IN_IF_BLOCKS prerequisites
-    if !has_unconditional_else || (start_eq == 0 && end_eq == 0 && (has_expr && !expr_eq)) {
+    // BRANCHES_SHARING_CODE prerequisites
+    if has_conditional_else || (start_eq == 0 && end_eq == 0 && (has_expr && !expr_eq)) {
         return;
     }
 
@@ -210,7 +211,7 @@ fn lint_same_then_else<'tcx>(
             intravisit::walk_stmt(&mut start_walker, stmt);
         }
 
-        emit_shared_code_in_if_blocks_lint(
+        emit_branches_sharing_code_lint(
             cx,
             start_eq,
             0,
@@ -277,7 +278,7 @@ fn lint_same_then_else<'tcx>(
             });
         }
 
-        emit_shared_code_in_if_blocks_lint(
+        emit_branches_sharing_code_lint(
             cx,
             start_eq,
             end_eq,
@@ -298,7 +299,7 @@ fn scan_block_for_eq(cx: &LateContext<'tcx>, blocks: &[&Block<'tcx>]) -> (usize,
         let r_stmts = win[1].stmts;
 
         // `SpanlessEq` now keeps track of the locals and is therefore context sensitive clippy#6752.
-        // The comparison therefor needs to be done in a way that builds the correct context.
+        // The comparison therefore needs to be done in a way that builds the correct context.
         let mut evaluator = SpanlessEq::new(cx);
         let mut evaluator = evaluator.inter_expr();
 
@@ -387,7 +388,7 @@ fn check_for_warn_of_moved_symbol(
     })
 }
 
-fn emit_shared_code_in_if_blocks_lint(
+fn emit_branches_sharing_code_lint(
     cx: &LateContext<'tcx>,
     start_stmts: usize,
     end_stmts: usize,
@@ -472,7 +473,7 @@ fn emit_shared_code_in_if_blocks_lint(
         let (place_str, span, sugg) = suggestions.pop().unwrap();
         let msg = format!("all if blocks contain the same code at the {}", place_str);
         let help = format!("consider moving the {} statements out like this", place_str);
-        span_lint_and_then(cx, SHARED_CODE_IN_IF_BLOCKS, span, msg.as_str(), |diag| {
+        span_lint_and_then(cx, BRANCHES_SHARING_CODE, span, msg.as_str(), |diag| {
             diag.span_suggestion(span, help.as_str(), sugg, Applicability::Unspecified);
 
             add_optional_msgs(diag);
@@ -482,7 +483,7 @@ fn emit_shared_code_in_if_blocks_lint(
         let (_, start_span, start_sugg) = suggestions.pop().unwrap();
         span_lint_and_then(
             cx,
-            SHARED_CODE_IN_IF_BLOCKS,
+            BRANCHES_SHARING_CODE,
             start_span,
             "all if blocks contain the same code at the start and the end. Here at the start",
             move |diag| {

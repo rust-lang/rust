@@ -1,5 +1,5 @@
 #![deny(clippy::panicking_unwrap, clippy::unnecessary_unwrap)]
-#![allow(clippy::if_same_then_else, clippy::shared_code_in_if_blocks)]
+#![allow(clippy::if_same_then_else, clippy::branches_sharing_code)]
 
 fn test_complex_conditions() {
     let x: Result<(), ()> = Ok(());

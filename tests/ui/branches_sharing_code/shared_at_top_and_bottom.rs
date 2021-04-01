@@ -1,7 +1,7 @@
 #![allow(dead_code)]
-#![deny(clippy::if_same_then_else, clippy::shared_code_in_if_blocks)]
+#![deny(clippy::if_same_then_else, clippy::branches_sharing_code)]
 
-// shared_code_in_if_blocks at the top and bottom of the if blocks
+// branches_sharing_code at the top and bottom of the if blocks
 
 struct DataPack {
     id: u32,

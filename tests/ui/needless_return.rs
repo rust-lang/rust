@@ -4,7 +4,7 @@
 #![allow(
     clippy::if_same_then_else,
     clippy::single_match,
-    clippy::shared_code_in_if_blocks,
+    clippy::branches_sharing_code,
     clippy::needless_bool
 )]
 #![warn(clippy::needless_return)]

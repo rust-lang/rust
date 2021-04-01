@@ -47,7 +47,7 @@ pub mod usage;
 pub mod visitors;
 
 pub use self::attrs::*;
-pub use self::hir_utils::{both, eq_expr_value, over, SpanlessEq, SpanlessHash};
+pub use self::hir_utils::{both, count_eq, eq_expr_value, over, SpanlessEq, SpanlessHash};
 
 use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault;
