@@ -129,29 +129,28 @@ impl<T> Canonicalized<T> {
         solution: Canonical<Substitution>,
     ) {
         // the solution may contain new variables, which we need to convert to new inference vars
-        let new_vars = Substitution(
-            solution
-                .binders
-                .iter(&Interner)
-                .map(|k| match k.kind {
-                    VariableKind::Ty(TyVariableKind::General) => ctx.table.new_type_var(),
-                    VariableKind::Ty(TyVariableKind::Integer) => ctx.table.new_integer_var(),
-                    VariableKind::Ty(TyVariableKind::Float) => ctx.table.new_float_var(),
-                    // HACK: Chalk can sometimes return new lifetime variables. We
-                    // want to just skip them, but to not mess up the indices of
-                    // other variables, we'll just create a new type variable in
-                    // their place instead. This should not matter (we never see the
-                    // actual *uses* of the lifetime variable).
-                    VariableKind::Lifetime => ctx.table.new_type_var(),
-                    _ => panic!("const variable in solution"),
-                })
-                .collect(),
+        let new_vars = Substitution::from_iter(
+            &Interner,
+            solution.binders.iter(&Interner).map(|k| match k.kind {
+                VariableKind::Ty(TyVariableKind::General) => ctx.table.new_type_var(),
+                VariableKind::Ty(TyVariableKind::Integer) => ctx.table.new_integer_var(),
+                VariableKind::Ty(TyVariableKind::Float) => ctx.table.new_float_var(),
+                // HACK: Chalk can sometimes return new lifetime variables. We
+                // want to just skip them, but to not mess up the indices of
+                // other variables, we'll just create a new type variable in
+                // their place instead. This should not matter (we never see the
+                // actual *uses* of the lifetime variable).
+                VariableKind::Lifetime => ctx.table.new_type_var(),
+                _ => panic!("const variable in solution"),
+            }),
         );
-        for (i, ty) in solution.value.into_iter().enumerate() {
+        for (i, ty) in solution.value.iter(&Interner).enumerate() {
             let (v, k) = self.free_vars[i];
             // eagerly replace projections in the type; we may be getting types
             // e.g. from where clauses where this hasn't happened yet
-            let ty = ctx.normalize_associated_types_in(ty.clone().subst_bound_vars(&new_vars));
+            let ty = ctx.normalize_associated_types_in(
+                ty.assert_ty_ref(&Interner).clone().subst_bound_vars(&new_vars),
+            );
             ctx.table.unify(&TyKind::InferenceVar(v, k).intern(&Interner), &ty);
         }
     }
@@ -163,13 +162,13 @@ pub fn could_unify(t1: &Ty, t2: &Ty) -> bool {
 
 pub(crate) fn unify(tys: &Canonical<(Ty, Ty)>) -> Option<Substitution> {
     let mut table = InferenceTable::new();
-    let vars = Substitution(
+    let vars = Substitution::from_iter(
+        &Interner,
         tys.binders
             .iter(&Interner)
             // we always use type vars here because we want everything to
             // fallback to Unknown in the end (kind of hacky, as below)
-            .map(|_| table.new_type_var())
-            .collect(),
+            .map(|_| table.new_type_var()),
     );
     let ty1_with_vars = tys.value.0.clone().subst_bound_vars(&vars);
     let ty2_with_vars = tys.value.1.clone().subst_bound_vars(&vars);
@@ -178,7 +177,8 @@ pub(crate) fn unify(tys: &Canonical<(Ty, Ty)>) -> Option<Substitution> {
     }
     // default any type vars that weren't unified back to their original bound vars
     // (kind of hacky)
-    for (i, var) in vars.iter().enumerate() {
+    for (i, var) in vars.iter(&Interner).enumerate() {
+        let var = var.assert_ty_ref(&Interner);
         if &*table.resolve_ty_shallow(var) == var {
             table.unify(
                 var,
@@ -188,7 +188,10 @@ pub(crate) fn unify(tys: &Canonical<(Ty, Ty)>) -> Option<Substitution> {
     }
     Some(
         Substitution::builder(tys.binders.len(&Interner))
-            .fill(vars.iter().map(|v| table.resolve_ty_completely(v.clone())))
+            .fill(
+                vars.iter(&Interner)
+                    .map(|v| table.resolve_ty_completely(v.assert_ty_ref(&Interner).clone())),
+            )
             .build(),
     )
 }
@@ -284,7 +287,9 @@ impl InferenceTable {
         substs2: &Substitution,
         depth: usize,
     ) -> bool {
-        substs1.0.iter().zip(substs2.0.iter()).all(|(t1, t2)| self.unify_inner(t1, t2, depth))
+        substs1.0.iter().zip(substs2.0.iter()).all(|(t1, t2)| {
+            self.unify_inner(t1.assert_ty_ref(&Interner), t2.assert_ty_ref(&Interner), depth)
+        })
     }
 
     fn unify_inner(&mut self, ty1: &Ty, ty2: &Ty, depth: usize) -> bool {

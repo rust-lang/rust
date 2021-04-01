@@ -24,9 +24,10 @@ mod tests;
 #[cfg(test)]
 mod test_db;
 
-use std::{iter, mem, ops::Deref, sync::Arc};
+use std::{iter, mem, sync::Arc};
 
 use base_db::salsa;
+use chalk_ir::cast::{CastTo, Caster};
 use hir_def::{
     builtin_type::BuiltinType, expr::ExprId, type_ref::Rawness, AssocContainerId, FunctionId,
     GenericDefId, HasModule, LifetimeParamId, Lookup, TraitId, TypeAliasId, TypeParamId,
@@ -109,7 +110,7 @@ impl ProjectionTy {
     }
 
     pub fn self_type_parameter(&self) -> &Ty {
-        &self.substitution[0]
+        &self.substitution.interned(&Interner)[0].assert_ty_ref(&Interner)
     }
 
     fn trait_(&self, db: &dyn HirDatabase) -> TraitId {
@@ -324,9 +325,72 @@ impl Ty {
     }
 }
 
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub struct GenericArg {
+    interned: GenericArgData,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub enum GenericArgData {
+    Ty(Ty),
+}
+
+impl GenericArg {
+    /// Constructs a generic argument using `GenericArgData`.
+    pub fn new(_interner: &Interner, data: GenericArgData) -> Self {
+        GenericArg { interned: data }
+    }
+
+    /// Gets the interned value.
+    pub fn interned(&self) -> &GenericArgData {
+        &self.interned
+    }
+
+    /// Asserts that this is a type argument.
+    pub fn assert_ty_ref(&self, interner: &Interner) -> &Ty {
+        self.ty(interner).unwrap()
+    }
+
+    /// Checks whether the generic argument is a type.
+    pub fn is_ty(&self, _interner: &Interner) -> bool {
+        match self.interned() {
+            GenericArgData::Ty(_) => true,
+        }
+    }
+
+    /// Returns the type if it is one, `None` otherwise.
+    pub fn ty(&self, _interner: &Interner) -> Option<&Ty> {
+        match self.interned() {
+            GenericArgData::Ty(t) => Some(t),
+        }
+    }
+}
+
+impl TypeWalk for GenericArg {
+    fn walk(&self, f: &mut impl FnMut(&Ty)) {
+        match &self.interned {
+            GenericArgData::Ty(ty) => {
+                ty.walk(f);
+            }
+        }
+    }
+
+    fn walk_mut_binders(
+        &mut self,
+        f: &mut impl FnMut(&mut Ty, DebruijnIndex),
+        binders: DebruijnIndex,
+    ) {
+        match &mut self.interned {
+            GenericArgData::Ty(ty) => {
+                ty.walk_mut_binders(f, binders);
+            }
+        }
+    }
+}
+
 /// A list of substitutions for generic parameters.
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub struct Substitution(SmallVec<[Ty; 2]>);
+pub struct Substitution(SmallVec<[GenericArg; 2]>);
 
 impl TypeWalk for Substitution {
     fn walk(&self, f: &mut impl FnMut(&Ty)) {
@@ -347,18 +411,34 @@ impl TypeWalk for Substitution {
 }
 
 impl Substitution {
-    pub fn interned(&self, _: &Interner) -> &[Ty] {
+    pub fn interned(&self, _: &Interner) -> &[GenericArg] {
         &self.0
     }
 
-    pub fn empty() -> Substitution {
+    pub fn len(&self, _: &Interner) -> usize {
+        self.0.len()
+    }
+
+    pub fn is_empty(&self, _: &Interner) -> bool {
+        self.0.is_empty()
+    }
+
+    pub fn at(&self, _: &Interner, i: usize) -> &GenericArg {
+        &self.0[i]
+    }
+
+    pub fn empty(_: &Interner) -> Substitution {
         Substitution(SmallVec::new())
+    }
+
+    pub fn iter(&self, _: &Interner) -> std::slice::Iter<'_, GenericArg> {
+        self.0.iter()
     }
 
     pub fn single(ty: Ty) -> Substitution {
         Substitution({
             let mut v = SmallVec::new();
-            v.push(ty);
+            v.push(ty.cast(&Interner));
             v
         })
     }
@@ -371,15 +451,11 @@ impl Substitution {
         Substitution(self.0[self.0.len() - std::cmp::min(self.0.len(), n)..].into())
     }
 
-    pub fn as_single(&self) -> &Ty {
-        if self.0.len() != 1 {
-            panic!("expected substs of len 1, got {:?}", self);
-        }
-        &self.0[0]
-    }
-
-    pub fn from_iter(_interner: &Interner, elements: impl IntoIterator<Item = Ty>) -> Self {
-        Substitution(elements.into_iter().collect())
+    pub fn from_iter(
+        interner: &Interner,
+        elements: impl IntoIterator<Item = impl CastTo<GenericArg>>,
+    ) -> Self {
+        Substitution(elements.into_iter().casted(interner).collect())
     }
 
     /// Return Substs that replace each parameter by itself (i.e. `Ty::Param`).
@@ -387,11 +463,11 @@ impl Substitution {
         db: &dyn HirDatabase,
         generic_params: &Generics,
     ) -> Substitution {
-        Substitution(
+        Substitution::from_iter(
+            &Interner,
             generic_params
                 .iter()
-                .map(|(id, _)| TyKind::Placeholder(to_placeholder_idx(db, id)).intern(&Interner))
-                .collect(),
+                .map(|(id, _)| TyKind::Placeholder(to_placeholder_idx(db, id)).intern(&Interner)),
         )
     }
 
@@ -403,12 +479,12 @@ impl Substitution {
 
     /// Return Substs that replace each parameter by a bound variable.
     pub(crate) fn bound_vars(generic_params: &Generics, debruijn: DebruijnIndex) -> Substitution {
-        Substitution(
+        Substitution::from_iter(
+            &Interner,
             generic_params
                 .iter()
                 .enumerate()
-                .map(|(idx, _)| TyKind::BoundVar(BoundVar::new(debruijn, idx)).intern(&Interner))
-                .collect(),
+                .map(|(idx, _)| TyKind::BoundVar(BoundVar::new(debruijn, idx)).intern(&Interner)),
         )
     }
 
@@ -435,18 +511,18 @@ pub fn param_idx(db: &dyn HirDatabase, id: TypeParamId) -> Option<usize> {
 
 #[derive(Debug, Clone)]
 pub struct SubstsBuilder {
-    vec: Vec<Ty>,
+    vec: Vec<GenericArg>,
     param_count: usize,
 }
 
 impl SubstsBuilder {
     pub fn build(self) -> Substitution {
         assert_eq!(self.vec.len(), self.param_count);
-        Substitution(self.vec.into())
+        Substitution::from_iter(&Interner, self.vec)
     }
 
-    pub fn push(mut self, ty: Ty) -> Self {
-        self.vec.push(ty);
+    pub fn push(mut self, ty: impl CastTo<GenericArg>) -> Self {
+        self.vec.push(ty.cast(&Interner));
         self
     }
 
@@ -465,25 +541,17 @@ impl SubstsBuilder {
         self.fill(iter::repeat(TyKind::Unknown.intern(&Interner)))
     }
 
-    pub fn fill(mut self, filler: impl Iterator<Item = Ty>) -> Self {
-        self.vec.extend(filler.take(self.remaining()));
+    pub fn fill(mut self, filler: impl Iterator<Item = impl CastTo<GenericArg>>) -> Self {
+        self.vec.extend(filler.take(self.remaining()).casted(&Interner));
         assert_eq!(self.remaining(), 0);
         self
     }
 
     pub fn use_parent_substs(mut self, parent_substs: &Substitution) -> Self {
         assert!(self.vec.is_empty());
-        assert!(parent_substs.len() <= self.param_count);
-        self.vec.extend(parent_substs.iter().cloned());
+        assert!(parent_substs.len(&Interner) <= self.param_count);
+        self.vec.extend(parent_substs.iter(&Interner).cloned());
         self
-    }
-}
-
-impl Deref for Substitution {
-    type Target = [Ty];
-
-    fn deref(&self) -> &[Ty] {
-        &self.0
     }
 }
 
@@ -535,7 +603,7 @@ impl<T: Clone> Binders<&T> {
 impl<T: TypeWalk> Binders<T> {
     /// Substitutes all variables.
     pub fn subst(self, subst: &Substitution) -> T {
-        assert_eq!(subst.len(), self.num_binders);
+        assert_eq!(subst.len(&Interner), self.num_binders);
         self.value.subst_bound_vars(subst)
     }
 }
@@ -563,7 +631,7 @@ pub struct TraitRef {
 
 impl TraitRef {
     pub fn self_type_parameter(&self) -> &Ty {
-        &self.substitution[0]
+        &self.substitution.at(&Interner, 0).assert_ty_ref(&Interner)
     }
 
     pub fn hir_trait_id(&self) -> TraitId {
@@ -699,14 +767,20 @@ impl CallableSig {
                 .shift_bound_vars_out(DebruijnIndex::ONE)
                 .interned(&Interner)
                 .iter()
-                .cloned()
+                .map(|arg| arg.assert_ty_ref(&Interner).clone())
                 .collect(),
             is_varargs: fn_ptr.sig.variadic,
         }
     }
 
     pub fn from_substs(substs: &Substitution) -> CallableSig {
-        CallableSig { params_and_return: substs.iter().cloned().collect(), is_varargs: false }
+        CallableSig {
+            params_and_return: substs
+                .iter(&Interner)
+                .map(|arg| arg.assert_ty_ref(&Interner).clone())
+                .collect(),
+            is_varargs: false,
+        }
     }
 
     pub fn params(&self) -> &[Ty] {
@@ -738,7 +812,7 @@ impl TypeWalk for CallableSig {
 
 impl Ty {
     pub fn unit() -> Self {
-        TyKind::Tuple(0, Substitution::empty()).intern(&Interner)
+        TyKind::Tuple(0, Substitution::empty(&Interner)).intern(&Interner)
     }
 
     pub fn adt_ty(adt: hir_def::AdtId, substs: Substitution) -> Ty {
@@ -908,7 +982,7 @@ impl Ty {
                 Some(sig.subst(&parameters))
             }
             TyKind::Closure(.., substs) => {
-                let sig_param = &substs[0];
+                let sig_param = substs.at(&Interner, 0).assert_ty_ref(&Interner);
                 sig_param.callable_sig(db)
             }
             _ => None,
@@ -960,7 +1034,7 @@ impl Ty {
                                 0,
                                 WhereClause::Implemented(TraitRef {
                                     trait_id: to_chalk_trait_id(future_trait),
-                                    substitution: Substitution::empty(),
+                                    substitution: Substitution::empty(&Interner),
                                 }),
                             );
                             Some(vec![impl_bound])
@@ -1109,7 +1183,10 @@ pub trait TypeWalk {
             &mut |ty, binders| {
                 if let &mut TyKind::BoundVar(bound) = ty.interned_mut() {
                     if bound.debruijn >= binders {
-                        *ty = substs.0[bound.index].clone().shift_bound_vars(binders);
+                        *ty = substs.0[bound.index]
+                            .assert_ty_ref(&Interner)
+                            .clone()
+                            .shift_bound_vars(binders);
                     }
                 }
             },
@@ -1156,12 +1233,12 @@ impl TypeWalk for Ty {
     fn walk(&self, f: &mut impl FnMut(&Ty)) {
         match self.interned(&Interner) {
             TyKind::Alias(AliasTy::Projection(p_ty)) => {
-                for t in p_ty.substitution.iter() {
+                for t in p_ty.substitution.iter(&Interner) {
                     t.walk(f);
                 }
             }
             TyKind::Alias(AliasTy::Opaque(o_ty)) => {
-                for t in o_ty.substitution.iter() {
+                for t in o_ty.substitution.iter(&Interner) {
                     t.walk(f);
                 }
             }
@@ -1175,7 +1252,7 @@ impl TypeWalk for Ty {
             }
             _ => {
                 if let Some(substs) = self.substs() {
-                    for t in substs.iter() {
+                    for t in substs.iter(&Interner) {
                         t.walk(f);
                     }
                 }

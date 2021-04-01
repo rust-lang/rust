@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use log::debug;
 
-use chalk_ir::{fold::shift::Shift, CanonicalVarKinds, GenericArg};
+use chalk_ir::{fold::shift::Shift, CanonicalVarKinds};
 use chalk_solve::rust_ir::{self, OpaqueTyDatumBound, WellKnownTrait};
 
 use base_db::{salsa::InternKey, CrateId};
@@ -80,7 +80,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
     fn impls_for_trait(
         &self,
         trait_id: TraitId,
-        parameters: &[GenericArg<Interner>],
+        parameters: &[chalk_ir::GenericArg<Interner>],
         binders: &CanonicalVarKinds<Interner>,
     ) -> Vec<ImplId> {
         debug!("impls_for_trait {:?}", trait_id);
@@ -308,7 +308,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         _closure_id: chalk_ir::ClosureId<Interner>,
         _substs: &chalk_ir::Substitution<Interner>,
     ) -> chalk_ir::Substitution<Interner> {
-        Substitution::empty().to_chalk(self.db)
+        Substitution::empty(&Interner).to_chalk(self.db)
     }
 
     fn trait_name(&self, trait_id: chalk_ir::TraitId<Interner>) -> String {
@@ -439,7 +439,7 @@ pub(crate) fn trait_datum_query(
         lang_attr(db.upcast(), trait_).and_then(|name| well_known_trait_from_lang_attr(&name));
     let trait_datum = TraitDatum {
         id: trait_id,
-        binders: make_binders(trait_datum_bound, bound_vars.len()),
+        binders: make_binders(trait_datum_bound, bound_vars.len(&Interner)),
         flags,
         associated_ty_ids,
         well_known,
@@ -577,7 +577,7 @@ fn impl_def_datum(
         .collect();
     debug!("impl_datum: {:?}", impl_datum_bound);
     let impl_datum = ImplDatum {
-        binders: make_binders(impl_datum_bound, bound_vars.len()),
+        binders: make_binders(impl_datum_bound, bound_vars.len(&Interner)),
         impl_type,
         polarity,
         associated_ty_value_ids,

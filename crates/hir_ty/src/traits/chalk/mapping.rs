@@ -13,7 +13,7 @@ use crate::{
     db::HirDatabase,
     primitive::UintTy,
     traits::{Canonical, DomainGoal},
-    AliasTy, CallableDefId, FnPointer, InEnvironment, OpaqueTy, ProjectionTy,
+    AliasTy, CallableDefId, FnPointer, GenericArg, InEnvironment, OpaqueTy, ProjectionTy,
     QuantifiedWhereClause, Scalar, Substitution, TraitRef, Ty, TypeWalk, WhereClause,
 };
 
@@ -137,7 +137,7 @@ impl ToChalk for Ty {
                     db,
                     substitution.0.shifted_out(&Interner).expect("fn ptr should have no binders"),
                 );
-                TyKind::Function(FnPointer { num_args: (substs.len() - 1), sig, substs })
+                TyKind::Function(FnPointer { num_args: (substs.len(&Interner) - 1), sig, substs })
             }
             chalk_ir::TyKind::BoundVar(idx) => TyKind::BoundVar(idx),
             chalk_ir::TyKind::InferenceVar(_iv, _kind) => TyKind::Unknown,
@@ -216,24 +216,39 @@ fn array_to_chalk(db: &dyn HirDatabase, ty: Ty) -> chalk_ir::Ty<Interner> {
     chalk_ir::TyKind::Array(arg, const_).intern(&Interner)
 }
 
+impl ToChalk for GenericArg {
+    type Chalk = chalk_ir::GenericArg<Interner>;
+
+    fn to_chalk(self, db: &dyn HirDatabase) -> Self::Chalk {
+        match self.interned {
+            crate::GenericArgData::Ty(ty) => ty.to_chalk(db).cast(&Interner),
+        }
+    }
+
+    fn from_chalk(db: &dyn HirDatabase, chalk: Self::Chalk) -> Self {
+        match chalk.interned() {
+            chalk_ir::GenericArgData::Ty(ty) => Ty::from_chalk(db, ty.clone()).cast(&Interner),
+            chalk_ir::GenericArgData::Lifetime(_) => unimplemented!(),
+            chalk_ir::GenericArgData::Const(_) => unimplemented!(),
+        }
+    }
+}
+
 impl ToChalk for Substitution {
     type Chalk = chalk_ir::Substitution<Interner>;
 
     fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::Substitution<Interner> {
-        chalk_ir::Substitution::from_iter(&Interner, self.iter().map(|ty| ty.clone().to_chalk(db)))
+        chalk_ir::Substitution::from_iter(
+            &Interner,
+            self.iter(&Interner).map(|ty| ty.clone().to_chalk(db)),
+        )
     }
 
     fn from_chalk(
         db: &dyn HirDatabase,
         parameters: chalk_ir::Substitution<Interner>,
     ) -> Substitution {
-        let tys = parameters
-            .iter(&Interner)
-            .map(|p| match p.ty(&Interner) {
-                Some(ty) => from_chalk(db, ty.clone()),
-                None => unimplemented!(),
-            })
-            .collect();
+        let tys = parameters.iter(&Interner).map(|p| from_chalk(db, p.clone())).collect();
         Substitution(tys)
     }
 }
@@ -531,7 +546,7 @@ pub(super) fn generic_predicate_to_inline_bound(
                 // have the expected self type
                 return None;
             }
-            let args_no_self = trait_ref.substitution[1..]
+            let args_no_self = trait_ref.substitution.interned(&Interner)[1..]
                 .iter()
                 .map(|ty| ty.clone().to_chalk(db).cast(&Interner))
                 .collect();
@@ -543,7 +558,7 @@ pub(super) fn generic_predicate_to_inline_bound(
                 return None;
             }
             let trait_ = projection_ty.trait_(db);
-            let args_no_self = projection_ty.substitution[1..]
+            let args_no_self = projection_ty.substitution.interned(&Interner)[1..]
                 .iter()
                 .map(|ty| ty.clone().to_chalk(db).cast(&Interner))
                 .collect();

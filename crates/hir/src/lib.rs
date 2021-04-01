@@ -1829,9 +1829,11 @@ impl Type {
         );
 
         match db.trait_solve(self.krate, goal)? {
-            Solution::Unique(SolutionVariables(subst)) => {
-                subst.value.first().map(|ty| self.derived(ty.clone()))
-            }
+            Solution::Unique(SolutionVariables(subst)) => subst
+                .value
+                .interned(&Interner)
+                .first()
+                .map(|ty| self.derived(ty.assert_ty_ref(&Interner).clone())),
             Solution::Ambig(_) => None,
         }
     }
@@ -1889,7 +1891,9 @@ impl Type {
                 | TyKind::Tuple(_, substs)
                 | TyKind::OpaqueType(_, substs)
                 | TyKind::FnDef(_, substs)
-                | TyKind::Closure(_, substs) => substs.iter().any(go),
+                | TyKind::Closure(_, substs) => {
+                    substs.iter(&Interner).filter_map(|a| a.ty(&Interner)).any(go)
+                }
 
                 TyKind::Array(ty) | TyKind::Slice(ty) | TyKind::Raw(_, ty) | TyKind::Ref(_, ty) => {
                     go(ty)
@@ -1928,7 +1932,10 @@ impl Type {
 
     pub fn tuple_fields(&self, _db: &dyn HirDatabase) -> Vec<Type> {
         if let TyKind::Tuple(_, substs) = &self.ty.interned(&Interner) {
-            substs.iter().map(|ty| self.derived(ty.clone())).collect()
+            substs
+                .iter(&Interner)
+                .map(|ty| self.derived(ty.assert_ty_ref(&Interner).clone()))
+                .collect()
         } else {
             Vec::new()
         }
@@ -1973,8 +1980,9 @@ impl Type {
             .strip_references()
             .substs()
             .into_iter()
-            .flat_map(|substs| substs.iter())
-            .map(move |ty| self.derived(ty.clone()))
+            .flat_map(|substs| substs.iter(&Interner))
+            .filter_map(|arg| arg.ty(&Interner).cloned())
+            .map(move |ty| self.derived(ty))
     }
 
     pub fn iterate_method_candidates<T>(
@@ -2080,7 +2088,7 @@ impl Type {
             substs: &Substitution,
             cb: &mut impl FnMut(Type),
         ) {
-            for ty in substs.iter() {
+            for ty in substs.iter(&Interner).filter_map(|a| a.ty(&Interner)) {
                 walk_type(db, &type_.derived(ty.clone()), cb);
             }
         }
@@ -2096,7 +2104,12 @@ impl Type {
                     WhereClause::Implemented(trait_ref) => {
                         cb(type_.clone());
                         // skip the self type. it's likely the type we just got the bounds from
-                        for ty in trait_ref.substitution.iter().skip(1) {
+                        for ty in trait_ref
+                            .substitution
+                            .iter(&Interner)
+                            .skip(1)
+                            .filter_map(|a| a.ty(&Interner))
+                        {
                             walk_type(db, &type_.derived(ty.clone()), cb);
                         }
                     }
