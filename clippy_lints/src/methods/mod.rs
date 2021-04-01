@@ -206,6 +206,13 @@ declare_clippy_lint! {
     /// |`to_`  | not `_mut` |`self`                 | `Copy`       |
     /// |`to_`  | not `_mut` |`&self`                | not `Copy`   |
     ///
+    /// Note: Clippy doesn't trigger methods with `to_` prefix in:
+    /// - Traits definition.
+    /// Clippy can not tell if a type that implements a trait is `Copy` or not.
+    /// - Traits implementation, when `&self` is taken.
+    /// The method signature is controlled by the trait and often `&self` is required for all types that implement the trait
+    /// (see e.g. the `std::string::ToString` trait).
+    ///
     /// Please find more info here:
     /// https://rust-lang.github.io/api-guidelines/naming.html#ad-hoc-conversions-follow-as_-to_-into_-conventions-c-conv
     ///
@@ -1772,7 +1779,6 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         let self_ty = cx.tcx.type_of(item.def_id);
 
         let implements_trait = matches!(item.kind, hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }));
-
         if_chain! {
             if let hir::ImplItemKind::Fn(ref sig, id) = impl_item.kind;
             if let Some(first_arg) = iter_input_pats(&sig.decl, cx.tcx.hir().body(id)).next();
@@ -1824,6 +1830,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                     self_ty,
                     first_arg_ty,
                     first_arg.pat.span,
+                    implements_trait,
                     false
                 );
             }
@@ -1893,6 +1900,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                     self_ty,
                     first_arg_ty,
                     first_arg_span,
+                    false,
                     true
                 );
             }
