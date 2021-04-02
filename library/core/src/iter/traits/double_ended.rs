@@ -1,3 +1,4 @@
+use super::super::{TrustedLen, TrustedRandomAccess};
 use crate::ops::{ControlFlow, Try};
 
 /// An iterator able to yield elements from both ends.
@@ -278,16 +279,12 @@ pub trait DoubleEndedIterator: Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iter_rfold", since = "1.27.0")]
-    fn rfold<B, F>(mut self, init: B, mut f: F) -> B
+    fn rfold<B, F>(self, init: B, f: F) -> B
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        let mut accum = init;
-        while let Some(x) = self.next_back() {
-            accum = f(accum, x);
-        }
-        accum
+        self.rfold_spec(init, f)
     }
 
     /// Searches for an element of an iterator from the back that satisfies a predicate.
@@ -359,5 +356,73 @@ impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
     }
     fn nth_back(&mut self, n: usize) -> Option<I::Item> {
         (**self).nth_back(n)
+    }
+}
+
+trait SpecIteratorDefaultImpls: DoubleEndedIterator {
+    fn rfold_spec<B, F>(self, init: B, f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B;
+}
+
+impl<T> SpecIteratorDefaultImpls for T
+where
+    T: DoubleEndedIterator,
+{
+    #[inline]
+    default fn rfold_spec<B, F>(mut self, init: B, mut f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        let mut accum = init;
+        while let Some(x) = self.next_back() {
+            accum = f(accum, x);
+        }
+        accum
+    }
+}
+
+impl<T> SpecIteratorDefaultImpls for T
+where
+    T: DoubleEndedIterator + Sized + TrustedLen,
+{
+    #[inline]
+    default fn rfold_spec<B, F>(mut self, init: B, mut f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        let mut accum = init;
+        while self.size_hint().1.is_none() {
+            accum = f(accum, self.next_back().unwrap())
+        }
+        for _ in 0..self.size_hint().1.unwrap() {
+            accum = f(accum, self.next_back().unwrap());
+        }
+        accum
+    }
+}
+
+impl<T> SpecIteratorDefaultImpls for T
+where
+    T: DoubleEndedIterator + Sized + TrustedLen + TrustedRandomAccess,
+{
+    #[inline]
+    fn rfold_spec<B, F>(mut self, init: B, mut f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        let mut accum = init;
+        // SAFETY: every element is only read once, as required by the
+        // TrustedRandomAccess contract
+        unsafe {
+            for i in (0..self.size()).rev() {
+                accum = f(accum, self.__iterator_get_unchecked(i))
+            }
+        }
+        accum
     }
 }

@@ -18,23 +18,6 @@ fn test_cloned() {
 }
 
 #[test]
-fn test_cloned_side_effects() {
-    let mut count = 0;
-    {
-        let iter = [1, 2, 3]
-            .iter()
-            .map(|x| {
-                count += 1;
-                x
-            })
-            .cloned()
-            .zip(&[1]);
-        for _ in iter {}
-    }
-    assert_eq!(count, 2);
-}
-
-#[test]
 fn test_cloned_try_folds() {
     let a = [1, 2, 3, 4, 5, 6, 7, 8, 9];
     let f = &|acc, x| i32::checked_add(2 * acc, x);

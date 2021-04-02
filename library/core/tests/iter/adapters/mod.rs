@@ -20,8 +20,6 @@ mod take;
 mod take_while;
 mod zip;
 
-use core::cell::Cell;
-
 /// An iterator that panics whenever `next` or next_back` is called
 /// after `None` has already been returned. This does not violate
 /// `Iterator`'s contract. Used to test that iterator adaptors don't
@@ -157,29 +155,5 @@ impl<'a, T> Iterator for CycleIter<'a, T> {
         self.index += 1;
         self.index %= 1 + self.data.len();
         elt
-    }
-}
-
-#[derive(Debug)]
-struct CountClone(Cell<i32>);
-
-impl CountClone {
-    pub fn new() -> Self {
-        Self(Cell::new(0))
-    }
-}
-
-impl PartialEq<i32> for CountClone {
-    fn eq(&self, rhs: &i32) -> bool {
-        self.0.get() == *rhs
-    }
-}
-
-impl Clone for CountClone {
-    fn clone(&self) -> Self {
-        let ret = CountClone(self.0.clone());
-        let n = self.0.get();
-        self.0.set(n + 1);
-        ret
     }
 }

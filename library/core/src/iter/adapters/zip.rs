@@ -231,16 +231,6 @@ where
             unsafe {
                 Some((self.a.__iterator_get_unchecked(i), self.b.__iterator_get_unchecked(i)))
             }
-        } else if A::MAY_HAVE_SIDE_EFFECT && self.index < self.a_len {
-            let i = self.index;
-            self.index += 1;
-            self.len += 1;
-            // match the base implementation's potential side effects
-            // SAFETY: we just checked that `i` < `self.a.len()`
-            unsafe {
-                self.a.__iterator_get_unchecked(i);
-            }
-            None
         } else {
             None
         }
@@ -257,22 +247,7 @@ where
         let delta = cmp::min(n, self.len - self.index);
         let end = self.index + delta;
         while self.index < end {
-            let i = self.index;
             self.index += 1;
-            if A::MAY_HAVE_SIDE_EFFECT {
-                // SAFETY: the usage of `cmp::min` to calculate `delta`
-                // ensures that `end` is smaller than or equal to `self.len`,
-                // so `i` is also smaller than `self.len`.
-                unsafe {
-                    self.a.__iterator_get_unchecked(i);
-                }
-            }
-            if B::MAY_HAVE_SIDE_EFFECT {
-                // SAFETY: same as above.
-                unsafe {
-                    self.b.__iterator_get_unchecked(i);
-                }
-            }
         }
 
         self.super_nth(n - delta)
@@ -284,28 +259,6 @@ where
         A: DoubleEndedIterator + ExactSizeIterator,
         B: DoubleEndedIterator + ExactSizeIterator,
     {
-        if A::MAY_HAVE_SIDE_EFFECT || B::MAY_HAVE_SIDE_EFFECT {
-            let sz_a = self.a.size();
-            let sz_b = self.b.size();
-            // Adjust a, b to equal length, make sure that only the first call
-            // of `next_back` does this, otherwise we will break the restriction
-            // on calls to `self.next_back()` after calling `get_unchecked()`.
-            if sz_a != sz_b {
-                let sz_a = self.a.size();
-                if A::MAY_HAVE_SIDE_EFFECT && sz_a > self.len {
-                    for _ in 0..sz_a - self.len {
-                        self.a.next_back();
-                    }
-                    self.a_len = self.len;
-                }
-                let sz_b = self.b.size();
-                if B::MAY_HAVE_SIDE_EFFECT && sz_b > self.len {
-                    for _ in 0..sz_b - self.len {
-                        self.b.next_back();
-                    }
-                }
-            }
-        }
         if self.index < self.len {
             self.len -= 1;
             self.a_len -= 1;

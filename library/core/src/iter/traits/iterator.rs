@@ -5,13 +5,13 @@
 use crate::cmp::{self, Ordering};
 use crate::ops::{ControlFlow, Try};
 
-use super::super::TrustedRandomAccess;
 use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
 use super::super::{FlatMap, Flatten};
 use super::super::{FromIterator, Intersperse, IntersperseWith, Product, Sum, Zip};
 use super::super::{
     Inspect, Map, MapWhile, Peekable, Rev, Scan, Skip, SkipWhile, StepBy, Take, TakeWhile,
 };
+use super::super::{TrustedLen, TrustedRandomAccess};
 
 fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
 
@@ -2125,16 +2125,12 @@ pub trait Iterator {
     #[doc(alias = "inject")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn fold<B, F>(mut self, init: B, mut f: F) -> B
+    fn fold<B, F>(self, init: B, f: F) -> B
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        let mut accum = init;
-        while let Some(x) = self.next() {
-            accum = f(accum, x);
-        }
-        accum
+        self.fold_spec(init, f)
     }
 
     /// Reduces the elements to a single one, by repeatedly applying a reducing
@@ -3418,5 +3414,73 @@ impl<I: Iterator + ?Sized> Iterator for &mut I {
     }
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         (**self).nth(n)
+    }
+}
+
+trait SpecIteratorDefaultImpls: Iterator {
+    fn fold_spec<B, F>(self, init: B, f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B;
+}
+
+impl<T> SpecIteratorDefaultImpls for T
+where
+    T: Iterator,
+{
+    #[inline]
+    default fn fold_spec<B, F>(mut self, init: B, mut f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        let mut accum = init;
+        while let Some(x) = self.next() {
+            accum = f(accum, x);
+        }
+        accum
+    }
+}
+
+impl<T> SpecIteratorDefaultImpls for T
+where
+    T: Iterator + Sized + TrustedLen,
+{
+    #[inline]
+    default fn fold_spec<B, F>(mut self, init: B, mut f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        let mut accum = init;
+        while self.size_hint().1.is_none() {
+            accum = f(accum, self.next().unwrap());
+        }
+        for _ in 0..self.size_hint().1.unwrap() {
+            accum = f(accum, self.next().unwrap())
+        }
+        accum
+    }
+}
+
+impl<T> SpecIteratorDefaultImpls for T
+where
+    T: Iterator + Sized + TrustedLen + TrustedRandomAccess,
+{
+    #[inline]
+    fn fold_spec<B, F>(mut self, init: B, mut f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        let mut accum = init;
+        // SAFETY: every element is only read once, as required by the
+        // TrustedRandomAccess contract
+        unsafe {
+            for i in 0..self.size() {
+                accum = f(accum, self.__iterator_get_unchecked(i))
+            }
+        }
+        accum
     }
 }
