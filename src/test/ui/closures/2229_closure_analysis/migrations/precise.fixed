@@ -18,7 +18,7 @@ fn test_precise_analysis_drop_paths_not_captured_by_move() {
 
     let c = || { let _ = &t; 
     //~^ ERROR: drop order affected for closure because of `capture_disjoint_fields`
-    //~| HELP: `let _ = &t` causes `t` to be fully captured
+    //~| HELP: add a dummy let to cause `t` to be fully captured
         let _t = t.0;
         let _t = &t.1;
     };
@@ -41,7 +41,7 @@ fn test_precise_analysis_long_path_missing() {
 
     let c = || { let _ = &u; 
     //~^ ERROR: drop order affected for closure because of `capture_disjoint_fields`
-    //~| HELP: `let _ = &u` causes `u` to be fully captured
+    //~| HELP: add a dummy let to cause `u` to be fully captured
         let _x = u.0.0;
         let _x = u.0.1;
         let _x = u.1.0;

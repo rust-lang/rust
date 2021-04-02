@@ -511,8 +511,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         };
 
                     let diagnostic_msg = format!(
-                        "`{}` causes {} to be fully captured",
-                        migration_string, migrated_variables_concat
+                        "add a dummy let to cause {} to be fully captured",
+                        migrated_variables_concat
                     );
 
                     diagnostics_builder.span_suggestion(
