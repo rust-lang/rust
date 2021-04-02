@@ -1318,20 +1318,29 @@ h4 > .notable-traits {
 	outline: none;
 }
 
-.help-button {
-	right: 30px;
-	font-family: "Fira Sans", Arial, sans-serif;
-	text-align: center;
-	font-size: 17px;
-}
-
-#theme-picker, #settings-menu, .help-button {
+#theme-picker, #settings-menu, .help-button, #copy-path {
 	padding: 4px;
 	width: 27px;
 	height: 29px;
 	border: 1px solid;
 	border-radius: 3px;
 	cursor: pointer;
+}
+
+.help-button {
+	right: 30px;
+	font-family: "Fira Sans", Arial, sans-serif;
+	text-align: center;
+	font-size: 17px;
+	padding-top: 2px;
+}
+
+#copy-path {
+	height: 30px;
+	font-size: 18px;
+	margin-left: 10px;
+	padding: 0 6px;
+	width: 28px;
 }
 
 #theme-choices {

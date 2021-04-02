@@ -73,6 +73,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer)
         }
     }
     write!(buf, "<a class=\"{}\" href=\"\">{}</a>", item.type_(), item.name.as_ref().unwrap());
+    write!(buf, "<button id=\"copy-path\" onclick=\"copy_path(this)\">⎘</button>");
 
     buf.write_str("</span>"); // in-band
     buf.write_str("<span class=\"out-of-band\">");

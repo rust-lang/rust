@@ -3061,3 +3061,28 @@ function hideThemeButtonState() {
     window.onhashchange = onHashChange;
     setupSearchLoader();
 }());
+
+function copy_path(but) {
+    var parent = but.parentElement;
+    var path = [];
+
+    onEach(parent.childNodes, function(child) {
+        if (child.tagName === 'A') {
+            path.push(child.textContent);
+        }
+    });
+
+    var el = document.createElement('textarea');
+    el.value = 'use ' + path.join('::') + ';';
+    el.setAttribute('readonly', '');
+    // To not make it appear on the screen.
+    el.style.position = 'absolute';
+    el.style.left = '-9999px';
+
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+
+    but.textContent = '✓';
+}

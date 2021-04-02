@@ -33,3 +33,8 @@ rules.
 	/* Since there is no toggle (the "[-]") when JS is disabled, no need for this margin either. */
 	margin-left: 0 !important;
 }
+
+#copy-path {
+	/* It requires JS to work so no need to display it in this case. */
+	display: none;
+}
