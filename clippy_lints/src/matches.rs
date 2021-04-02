@@ -1733,15 +1733,17 @@ mod redundant_pattern_match {
         }
     }
 
-    // Check if the drop order for a type matters
+    /// Checks if the drop order for a type matters. Some std types implement drop solely to
+    /// deallocate memory. For these types, and composites containing them, changing the drop order
+    /// won't result in any observable side effects.
     fn type_needs_ordered_drop(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         if !ty.needs_drop(cx.tcx, cx.param_env) {
             false
-        } else if cx
+        } else if !cx
             .tcx
             .lang_items()
             .drop_trait()
-            .map_or(false, |id| !implements_trait(cx, ty, id, &[]))
+            .map_or(false, |id| implements_trait(cx, ty, id, &[]))
         {
             // This type doesn't implement drop, so no side effects here.
             // Check if any component type has any.
