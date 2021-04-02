@@ -89,10 +89,10 @@ extern "system" {
 static HEAP: AtomicPtr<c_void> = AtomicPtr::new(ptr::null_mut());
 
 // Get a handle to the default heap of the current process, or null if the operation fails.
-// SAFETY: If this operation is successful, `HEAP` will be successfully initialized and contain
+// If this operation is successful, `HEAP` will be successfully initialized and contain
 // a non-null handle returned by `GetProcessHeap`.
 #[inline]
-unsafe fn init_or_get_process_heap() -> c::HANDLE {
+fn init_or_get_process_heap() -> c::HANDLE {
     let heap = HEAP.load(Ordering::Relaxed);
     if heap.is_null() {
         // `HEAP` has not yet been successfully initialized
@@ -100,7 +100,7 @@ unsafe fn init_or_get_process_heap() -> c::HANDLE {
         if !heap.is_null() {
             // SAFETY: No locking is needed because within the same process,
             // successful calls to `GetProcessHeap` will always return the same value, even on different threads.
-            HEAP.store(heap, Ordering::Relaxed);
+            HEAP.store(heap, Ordering::Release);
 
             // SAFETY: `HEAP` contains a non-null handle returned by `GetProcessHeap`
             heap
@@ -114,16 +114,25 @@ unsafe fn init_or_get_process_heap() -> c::HANDLE {
     }
 }
 
+// Get a non-null handle to the default heap of the current process.
+// SAFETY: `HEAP` must have been successfully initialized.
+#[inline]
+unsafe fn get_process_heap() -> c::HANDLE {
+    HEAP.load(Ordering::Acquire)
+}
+
 // Header containing a pointer to the start of an allocated block.
 // SAFETY: Size and alignment must be <= `MIN_ALIGN`.
 #[repr(C)]
 struct Header(*mut u8);
 
 // Allocate a block of optionally zeroed memory for a given `layout`.
-// SAFETY: Returns a pointer satisfying the guarantees of `System` about allocated pointers.
+// SAFETY: Returns a pointer satisfying the guarantees of `System` about allocated pointers,
+// or null if the operation fails. If this returns non-null `HEAP` will have been successfully
+// initialized.
 #[inline]
 unsafe fn allocate(layout: Layout, zeroed: bool) -> *mut u8 {
-    let heap = unsafe { init_or_get_process_heap() };
+    let heap = init_or_get_process_heap();
     if heap.is_null() {
         // Allocation has failed, could not get the current process heap.
         return ptr::null_mut();
@@ -209,11 +218,11 @@ unsafe impl GlobalAlloc for System {
         };
 
         // SAFETY: because `ptr` has been successfully allocated with this allocator,
-        // `HEAP` must have been successfully initialized and contain a non-null handle
-        // returned by `GetProcessHeap`.
-        let heap = HEAP.load(Ordering::Relaxed);
+        // `HEAP` must have been successfully initialized.
+        let heap = unsafe { get_process_heap() };
 
-        // SAFETY: `block` is a pointer to the start of an allocated block.
+        // SAFETY: `heap` is a non-null handle returned by `GetProcessHeap`,
+        // `block` is a pointer to the start of an allocated block.
         unsafe {
             let err = HeapFree(heap, 0, block as c::LPVOID);
             debug_assert!(err != 0, "Failed to free heap memory: {}", c::GetLastError());
@@ -224,11 +233,11 @@ unsafe impl GlobalAlloc for System {
     unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
         if layout.align() <= MIN_ALIGN {
             // SAFETY: because `ptr` has been successfully allocated with this allocator,
-            // `HEAP` must have been successfully initialized and contain a non-null handle
-            // returned by `GetProcessHeap`.
-            let heap = HEAP.load(Ordering::Relaxed);
+            // `HEAP` must have been successfully initialized.
+            let heap = unsafe { get_process_heap() };
 
-            // SAFETY: `ptr` is a pointer to the start of an allocated block.
+            // SAFETY: `heap` is a non-null handle returned by `GetProcessHeap`,
+            // `ptr` is a pointer to the start of an allocated block.
             // The returned pointer points to the start of an allocated block.
             unsafe { HeapReAlloc(heap, 0, ptr as c::LPVOID, new_size) as *mut u8 }
         } else {
