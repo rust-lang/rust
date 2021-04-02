@@ -223,10 +223,7 @@ unsafe impl GlobalAlloc for System {
 
         // SAFETY: `heap` is a non-null handle returned by `GetProcessHeap`,
         // `block` is a pointer to the start of an allocated block.
-        unsafe {
-            let err = HeapFree(heap, 0, block as c::LPVOID);
-            debug_assert!(err != 0, "Failed to free heap memory: {}", c::GetLastError());
-        }
+        unsafe { HeapFree(heap, 0, block as c::LPVOID) };
     }
 
     #[inline]
