@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../../run-make-fulldeps/tools.mk
 
 # Test that hir-tree output doesn't crash and includes
 # the string constant we would expect to see.
