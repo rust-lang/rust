@@ -204,6 +204,9 @@ macro_rules! newtype_index {
             }
         }
 
+        // Safety: The implementation of `Step` upholds all invariants.
+        unsafe impl ::std::iter::TrustedStep for $type {}
+
         impl From<$type> for u32 {
             #[inline]
             fn from(v: $type) -> u32 {

@@ -10,6 +10,8 @@
 #![feature(in_band_lifetimes)]
 #![feature(iter_zip)]
 #![feature(nll)]
+#![feature(min_specialization)]
+#![feature(trusted_step)]
 #![recursion_limit = "256"]
 
 #[macro_use]

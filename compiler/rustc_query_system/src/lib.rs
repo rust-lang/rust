@@ -6,6 +6,7 @@
 #![feature(iter_zip)]
 #![feature(min_specialization)]
 #![feature(stmt_expr_attributes)]
+#![feature(trusted_step)]
 
 #[macro_use]
 extern crate tracing;

@@ -3,7 +3,16 @@ use crate::convert::TryFrom;
 use crate::mem;
 use crate::ops::{self, Try};
 
-use super::{FusedIterator, TrustedLen, TrustedRandomAccess};
+use super::{FusedIterator, TrustedLen, TrustedRandomAccess, TrustedStep};
+
+// Safety: All invariants are upheld.
+macro_rules! unsafe_impl_trusted_step {
+    ($($type:ty)*) => {$(
+        #[unstable(feature = "trusted_step", issue = "85731")]
+        unsafe impl TrustedStep for $type {}
+    )*};
+}
+unsafe_impl_trusted_step![char i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize];
 
 /// Objects that have a notion of *successor* and *predecessor* operations.
 ///
@@ -505,12 +514,24 @@ macro_rules! range_incl_exact_iter_impl {
     )*)
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Step> Iterator for ops::Range<A> {
+/// Specialization implementations for `Range`.
+trait RangeIteratorImpl {
+    type Item;
+
+    // Iterator
+    fn spec_next(&mut self) -> Option<Self::Item>;
+    fn spec_nth(&mut self, n: usize) -> Option<Self::Item>;
+
+    // DoubleEndedIterator
+    fn spec_next_back(&mut self) -> Option<Self::Item>;
+    fn spec_nth_back(&mut self, n: usize) -> Option<Self::Item>;
+}
+
+impl<A: Step> RangeIteratorImpl for ops::Range<A> {
     type Item = A;
 
     #[inline]
-    fn next(&mut self) -> Option<A> {
+    default fn spec_next(&mut self) -> Option<A> {
         if self.start < self.end {
             let n =
                 Step::forward_checked(self.start.clone(), 1).expect("`Step` invariants not upheld");
@@ -518,6 +539,107 @@ impl<A: Step> Iterator for ops::Range<A> {
         } else {
             None
         }
+    }
+
+    #[inline]
+    default fn spec_nth(&mut self, n: usize) -> Option<A> {
+        if let Some(plus_n) = Step::forward_checked(self.start.clone(), n) {
+            if plus_n < self.end {
+                self.start =
+                    Step::forward_checked(plus_n.clone(), 1).expect("`Step` invariants not upheld");
+                return Some(plus_n);
+            }
+        }
+
+        self.start = self.end.clone();
+        None
+    }
+
+    #[inline]
+    default fn spec_next_back(&mut self) -> Option<A> {
+        if self.start < self.end {
+            self.end =
+                Step::backward_checked(self.end.clone(), 1).expect("`Step` invariants not upheld");
+            Some(self.end.clone())
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    default fn spec_nth_back(&mut self, n: usize) -> Option<A> {
+        if let Some(minus_n) = Step::backward_checked(self.end.clone(), n) {
+            if minus_n > self.start {
+                self.end =
+                    Step::backward_checked(minus_n, 1).expect("`Step` invariants not upheld");
+                return Some(self.end.clone());
+            }
+        }
+
+        self.end = self.start.clone();
+        None
+    }
+}
+
+impl<T: TrustedStep> RangeIteratorImpl for ops::Range<T> {
+    #[inline]
+    fn spec_next(&mut self) -> Option<T> {
+        if self.start < self.end {
+            // SAFETY: just checked precondition
+            let n = unsafe { Step::forward_unchecked(self.start.clone(), 1) };
+            Some(mem::replace(&mut self.start, n))
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn spec_nth(&mut self, n: usize) -> Option<T> {
+        if let Some(plus_n) = Step::forward_checked(self.start.clone(), n) {
+            if plus_n < self.end {
+                // SAFETY: just checked precondition
+                self.start = unsafe { Step::forward_unchecked(plus_n.clone(), 1) };
+                return Some(plus_n);
+            }
+        }
+
+        self.start = self.end.clone();
+        None
+    }
+
+    #[inline]
+    fn spec_next_back(&mut self) -> Option<T> {
+        if self.start < self.end {
+            // SAFETY: just checked precondition
+            self.end = unsafe { Step::backward_unchecked(self.end.clone(), 1) };
+            Some(self.end.clone())
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn spec_nth_back(&mut self, n: usize) -> Option<T> {
+        if let Some(minus_n) = Step::backward_checked(self.end.clone(), n) {
+            if minus_n > self.start {
+                // SAFETY: just checked precondition
+                self.end = unsafe { Step::backward_unchecked(minus_n, 1) };
+                return Some(self.end.clone());
+            }
+        }
+
+        self.end = self.start.clone();
+        None
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<A: Step> Iterator for ops::Range<A> {
+    type Item = A;
+
+    #[inline]
+    fn next(&mut self) -> Option<A> {
+        self.spec_next()
     }
 
     #[inline]
@@ -532,16 +654,7 @@ impl<A: Step> Iterator for ops::Range<A> {
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<A> {
-        if let Some(plus_n) = Step::forward_checked(self.start.clone(), n) {
-            if plus_n < self.end {
-                self.start =
-                    Step::forward_checked(plus_n.clone(), 1).expect("`Step` invariants not upheld");
-                return Some(plus_n);
-            }
-        }
-
-        self.start = self.end.clone();
-        None
+        self.spec_nth(n)
     }
 
     #[inline]
@@ -624,37 +737,36 @@ range_incl_exact_iter_impl! {
 impl<A: Step> DoubleEndedIterator for ops::Range<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
-        if self.start < self.end {
-            self.end =
-                Step::backward_checked(self.end.clone(), 1).expect("`Step` invariants not upheld");
-            Some(self.end.clone())
-        } else {
-            None
-        }
+        self.spec_next_back()
     }
 
     #[inline]
     fn nth_back(&mut self, n: usize) -> Option<A> {
-        if let Some(minus_n) = Step::backward_checked(self.end.clone(), n) {
-            if minus_n > self.start {
-                self.end =
-                    Step::backward_checked(minus_n, 1).expect("`Step` invariants not upheld");
-                return Some(self.end.clone());
-            }
-        }
-
-        self.end = self.start.clone();
-        None
+        self.spec_nth_back(n)
     }
 }
 
-macro_rules! impl_trusted_len_for_range {
-    ($($type:ty)*) => {$(
-        #[unstable(feature = "trusted_len", issue = "37572")]
-        unsafe impl TrustedLen for ops::Range<$type> {}
-    )*}
-}
-impl_trusted_len_for_range![char i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize];
+// Safety:
+// The following invariants for `Step::steps_between` exist:
+//
+// > * `steps_between(&a, &b) == Some(n)` only if `a <= b`
+// >   * Note that `a <= b` does _not_ imply `steps_between(&a, &b) != None`;
+// >     this is the case when it would require more than `usize::MAX` steps to
+// >     get to `b`
+// > * `steps_between(&a, &b) == None` if `a > b`
+//
+// The first invariant is what is generally required for `TrustedLen` to be
+// sound. The note addendum satisfies an additional `TrustedLen` invariant.
+//
+// > The upper bound must only be `None` if the actual iterator length is larger
+// > than `usize::MAX`
+//
+// The second invariant logically follows the first so long as the `PartialOrd`
+// implementation is correct; regardless it is explicitly stated. If `a < b`
+// then `(0, Some(0))` is returned by `ops::Range<A: Step>::size_hint`. As such
+// the second invariant is upheld.
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<A: TrustedStep> TrustedLen for ops::Range<A> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<A: Step> FusedIterator for ops::Range<A> {}
@@ -682,23 +794,38 @@ impl<A: Step> Iterator for ops::RangeFrom<A> {
     }
 }
 
+// Safety: See above implementation for `ops::Range<A>`
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<A: TrustedStep> TrustedLen for ops::RangeFrom<A> {}
+
 #[stable(feature = "fused", since = "1.26.0")]
 impl<A: Step> FusedIterator for ops::RangeFrom<A> {}
 
-macro_rules! impl_trusted_len_for_range_from {
-    ($($type:ty)*) => {$(
-        #[unstable(feature = "trusted_len", issue = "37572")]
-        unsafe impl TrustedLen for ops::RangeFrom<$type> {}
-    )*}
-}
-impl_trusted_len_for_range_from![char i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize];
+trait RangeInclusiveIteratorImpl {
+    type Item;
 
-#[stable(feature = "inclusive_range", since = "1.26.0")]
-impl<A: Step> Iterator for ops::RangeInclusive<A> {
+    // Iterator
+    fn spec_next(&mut self) -> Option<Self::Item>;
+    fn spec_try_fold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>;
+
+    // DoubleEndedIterator
+    fn spec_next_back(&mut self) -> Option<Self::Item>;
+    fn spec_try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>;
+}
+
+impl<A: Step> RangeInclusiveIteratorImpl for ops::RangeInclusive<A> {
     type Item = A;
 
     #[inline]
-    fn next(&mut self) -> Option<A> {
+    default fn spec_next(&mut self) -> Option<A> {
         if self.is_empty() {
             return None;
         }
@@ -711,6 +838,182 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
             self.exhausted = true;
             self.start.clone()
         })
+    }
+
+    #[inline]
+    default fn spec_try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, A) -> R,
+        R: Try<Output = B>,
+    {
+        if self.is_empty() {
+            return try { init };
+        }
+
+        let mut accum = init;
+
+        while self.start < self.end {
+            let n =
+                Step::forward_checked(self.start.clone(), 1).expect("`Step` invariants not upheld");
+            let n = mem::replace(&mut self.start, n);
+            accum = f(accum, n)?;
+        }
+
+        self.exhausted = true;
+
+        if self.start == self.end {
+            accum = f(accum, self.start.clone())?;
+        }
+
+        try { accum }
+    }
+
+    #[inline]
+    default fn spec_next_back(&mut self) -> Option<A> {
+        if self.is_empty() {
+            return None;
+        }
+        let is_iterating = self.start < self.end;
+        Some(if is_iterating {
+            let n =
+                Step::backward_checked(self.end.clone(), 1).expect("`Step` invariants not upheld");
+            mem::replace(&mut self.end, n)
+        } else {
+            self.exhausted = true;
+            self.end.clone()
+        })
+    }
+
+    #[inline]
+    default fn spec_try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, A) -> R,
+        R: Try<Output = B>,
+    {
+        if self.is_empty() {
+            return try { init };
+        }
+
+        let mut accum = init;
+
+        while self.start < self.end {
+            let n =
+                Step::backward_checked(self.end.clone(), 1).expect("`Step` invariants not upheld");
+            let n = mem::replace(&mut self.end, n);
+            accum = f(accum, n)?;
+        }
+
+        self.exhausted = true;
+
+        if self.start == self.end {
+            accum = f(accum, self.start.clone())?;
+        }
+
+        try { accum }
+    }
+}
+
+impl<T: TrustedStep> RangeInclusiveIteratorImpl for ops::RangeInclusive<T> {
+    #[inline]
+    fn spec_next(&mut self) -> Option<T> {
+        if self.is_empty() {
+            return None;
+        }
+        let is_iterating = self.start < self.end;
+        Some(if is_iterating {
+            // SAFETY: just checked precondition
+            let n = unsafe { Step::forward_unchecked(self.start.clone(), 1) };
+            mem::replace(&mut self.start, n)
+        } else {
+            self.exhausted = true;
+            self.start.clone()
+        })
+    }
+
+    #[inline]
+    fn spec_try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, T) -> R,
+        R: Try<Output = B>,
+    {
+        if self.is_empty() {
+            return try { init };
+        }
+
+        let mut accum = init;
+
+        while self.start < self.end {
+            // SAFETY: just checked precondition
+            let n = unsafe { Step::forward_unchecked(self.start.clone(), 1) };
+            let n = mem::replace(&mut self.start, n);
+            accum = f(accum, n)?;
+        }
+
+        self.exhausted = true;
+
+        if self.start == self.end {
+            accum = f(accum, self.start.clone())?;
+        }
+
+        try { accum }
+    }
+
+    #[inline]
+    fn spec_next_back(&mut self) -> Option<T> {
+        if self.is_empty() {
+            return None;
+        }
+        let is_iterating = self.start < self.end;
+        Some(if is_iterating {
+            // SAFETY: just checked precondition
+            let n = unsafe { Step::backward_unchecked(self.end.clone(), 1) };
+            mem::replace(&mut self.end, n)
+        } else {
+            self.exhausted = true;
+            self.end.clone()
+        })
+    }
+
+    #[inline]
+    fn spec_try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, T) -> R,
+        R: Try<Output = B>,
+    {
+        if self.is_empty() {
+            return try { init };
+        }
+
+        let mut accum = init;
+
+        while self.start < self.end {
+            // SAFETY: just checked precondition
+            let n = unsafe { Step::backward_unchecked(self.end.clone(), 1) };
+            let n = mem::replace(&mut self.end, n);
+            accum = f(accum, n)?;
+        }
+
+        self.exhausted = true;
+
+        if self.start == self.end {
+            accum = f(accum, self.start.clone())?;
+        }
+
+        try { accum }
+    }
+}
+
+#[stable(feature = "inclusive_range", since = "1.26.0")]
+impl<A: Step> Iterator for ops::RangeInclusive<A> {
+    type Item = A;
+
+    #[inline]
+    fn next(&mut self) -> Option<A> {
+        self.spec_next()
     }
 
     #[inline]
@@ -754,32 +1057,13 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
     }
 
     #[inline]
-    fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
         R: Try<Output = B>,
     {
-        if self.is_empty() {
-            return try { init };
-        }
-
-        let mut accum = init;
-
-        while self.start < self.end {
-            let n =
-                Step::forward_checked(self.start.clone(), 1).expect("`Step` invariants not upheld");
-            let n = mem::replace(&mut self.start, n);
-            accum = f(accum, n)?;
-        }
-
-        self.exhausted = true;
-
-        if self.start == self.end {
-            accum = f(accum, self.start.clone())?;
-        }
-
-        try { accum }
+        self.spec_try_fold(init, f)
     }
 
     #[inline]
@@ -816,18 +1100,7 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
 impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
-        if self.is_empty() {
-            return None;
-        }
-        let is_iterating = self.start < self.end;
-        Some(if is_iterating {
-            let n =
-                Step::backward_checked(self.end.clone(), 1).expect("`Step` invariants not upheld");
-            mem::replace(&mut self.end, n)
-        } else {
-            self.exhausted = true;
-            self.end.clone()
-        })
+        self.spec_next_back()
     }
 
     #[inline]
@@ -859,32 +1132,13 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
     }
 
     #[inline]
-    fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    fn try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
         R: Try<Output = B>,
     {
-        if self.is_empty() {
-            return try { init };
-        }
-
-        let mut accum = init;
-
-        while self.start < self.end {
-            let n =
-                Step::backward_checked(self.end.clone(), 1).expect("`Step` invariants not upheld");
-            let n = mem::replace(&mut self.end, n);
-            accum = f(accum, n)?;
-        }
-
-        self.exhausted = true;
-
-        if self.start == self.end {
-            accum = f(accum, self.start.clone())?;
-        }
-
-        try { accum }
+        self.spec_try_rfold(init, f)
     }
 
     #[inline]
@@ -902,13 +1156,9 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
     }
 }
 
-macro_rules! impl_trusted_len_for_range_inclusive {
-    ($($type:ty)*) => {$(
-        #[unstable(feature = "trusted_len", issue = "37572")]
-        unsafe impl TrustedLen for ops::RangeInclusive<$type> {}
-    )*}
-}
-impl_trusted_len_for_range_inclusive![char i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize];
+// Safety: See above implementation for `ops::Range<A>`
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<A: TrustedStep> TrustedLen for ops::RangeInclusive<A> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<A: Step> FusedIterator for ops::RangeInclusive<A> {}

@@ -17,6 +17,8 @@
 #![feature(iter_zip)]
 #![feature(label_break_value)]
 #![feature(nll)]
+#![feature(min_specialization)]
+#![feature(trusted_step)]
 #![recursion_limit = "256"]
 
 #[macro_use]
