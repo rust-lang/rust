@@ -7,7 +7,7 @@ use std::{
     sync::Arc,
 };
 
-use crate::{body::LowerCtx, type_ref::LifetimeRef};
+use crate::{body::LowerCtx, intern::Interned, type_ref::LifetimeRef};
 use base_db::CrateId;
 use hir_expand::{
     hygiene::Hygiene,
@@ -48,7 +48,7 @@ pub enum ImportAlias {
 
 impl ModPath {
     pub fn from_src(path: ast::Path, hygiene: &Hygiene) -> Option<ModPath> {
-        lower::lower_path(path, hygiene).map(|it| it.mod_path)
+        lower::lower_path(path, hygiene).map(|it| (*it.mod_path).clone())
     }
 
     pub fn from_segments(kind: PathKind, segments: impl IntoIterator<Item = Name>) -> ModPath {
@@ -123,7 +123,7 @@ pub struct Path {
     /// Type based path like `<T>::foo`.
     /// Note that paths like `<Type as Trait>::foo` are desugard to `Trait::<Self=Type>::foo`.
     type_anchor: Option<Box<TypeRef>>,
-    mod_path: ModPath,
+    mod_path: Interned<ModPath>,
     /// Invariant: the same len as `self.mod_path.segments`
     generic_args: Vec<Option<Arc<GenericArgs>>>,
 }
@@ -176,7 +176,7 @@ impl Path {
         path: ModPath,
         generic_args: Vec<Option<Arc<GenericArgs>>>,
     ) -> Path {
-        Path { type_anchor: None, mod_path: path, generic_args }
+        Path { type_anchor: None, mod_path: Interned::new(path), generic_args }
     }
 
     pub fn kind(&self) -> &PathKind {
@@ -204,10 +204,10 @@ impl Path {
         }
         let res = Path {
             type_anchor: self.type_anchor.clone(),
-            mod_path: ModPath::from_segments(
+            mod_path: Interned::new(ModPath::from_segments(
                 self.mod_path.kind.clone(),
                 self.mod_path.segments[..self.mod_path.segments.len() - 1].iter().cloned(),
-            ),
+            )),
             generic_args: self.generic_args[..self.generic_args.len() - 1].to_vec(),
         };
         Some(res)
@@ -283,7 +283,7 @@ impl From<Name> for Path {
     fn from(name: Name) -> Path {
         Path {
             type_anchor: None,
-            mod_path: ModPath::from_segments(PathKind::Plain, iter::once(name)),
+            mod_path: Interned::new(ModPath::from_segments(PathKind::Plain, iter::once(name))),
             generic_args: vec![None],
         }
     }

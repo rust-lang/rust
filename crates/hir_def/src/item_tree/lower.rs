@@ -362,7 +362,7 @@ impl Ctx {
                         }
                     }
                 };
-                let ty = self.data().type_refs.intern(self_type);
+                let ty = Interned::new(self_type);
                 let idx = self.data().params.alloc(Param::Normal(ty));
                 self.add_attrs(idx.into(), RawAttrs::new(&self_param, &self.hygiene));
                 has_self_param = true;
@@ -372,7 +372,7 @@ impl Ctx {
                     Some(_) => self.data().params.alloc(Param::Varargs),
                     None => {
                         let type_ref = TypeRef::from_ast_opt(&self.body_ctx, param.ty());
-                        let ty = self.data().type_refs.intern(type_ref);
+                        let ty = Interned::new(type_ref);
                         self.data().params.alloc(Param::Normal(ty))
                     }
                 };
@@ -394,8 +394,6 @@ impl Ctx {
         } else {
             ret_type
         };
-
-        let ret_type = self.data().type_refs.intern(ret_type);
 
         let has_body = func.body().is_some();
 
@@ -428,7 +426,7 @@ impl Ctx {
             qualifier,
             is_in_extern_block: false,
             params,
-            ret_type,
+            ret_type: Interned::new(ret_type),
             ast_id,
         };
         res.generic_params = self.lower_generic_params(GenericsOwner::Function(&res), func);
@@ -608,7 +606,7 @@ impl Ctx {
     }
 
     fn lower_macro_call(&mut self, m: &ast::MacroCall) -> Option<FileItemTreeId<MacroCall>> {
-        let path = ModPath::from_src(m.path()?, &self.hygiene)?;
+        let path = Interned::new(ModPath::from_src(m.path()?, &self.hygiene)?);
         let ast_id = self.source_ast_id_map.ast_id(m);
         let res = MacroCall { path, ast_id };
         Some(id(self.data().macro_calls.alloc(res)))
@@ -694,8 +692,7 @@ impl Ctx {
                 generics.fill(&self.body_ctx, sm, node);
                 // lower `impl Trait` in arguments
                 for id in func.params.clone() {
-                    if let Param::Normal(ty) = self.data().params[id] {
-                        let ty = self.data().type_refs.lookup(ty);
+                    if let Param::Normal(ty) = &self.data().params[id] {
                         generics.fill_implicit_impl_trait_args(ty);
                     }
                 }
@@ -749,20 +746,20 @@ impl Ctx {
         self.data().vis.alloc(vis)
     }
 
-    fn lower_trait_ref(&mut self, trait_ref: &ast::Type) -> Option<Idx<TraitRef>> {
+    fn lower_trait_ref(&mut self, trait_ref: &ast::Type) -> Option<Interned<TraitRef>> {
         let trait_ref = TraitRef::from_ast(&self.body_ctx, trait_ref.clone())?;
-        Some(self.data().trait_refs.intern(trait_ref))
+        Some(Interned::new(trait_ref))
     }
 
-    fn lower_type_ref(&mut self, type_ref: &ast::Type) -> Idx<TypeRef> {
+    fn lower_type_ref(&mut self, type_ref: &ast::Type) -> Interned<TypeRef> {
         let tyref = TypeRef::from_ast(&self.body_ctx, type_ref.clone());
-        self.data().type_refs.intern(tyref)
+        Interned::new(tyref)
     }
 
-    fn lower_type_ref_opt(&mut self, type_ref: Option<ast::Type>) -> Idx<TypeRef> {
+    fn lower_type_ref_opt(&mut self, type_ref: Option<ast::Type>) -> Interned<TypeRef> {
         match type_ref.map(|ty| self.lower_type_ref(&ty)) {
             Some(it) => it,
-            None => self.data().type_refs.intern(TypeRef::Error),
+            None => Interned::new(TypeRef::Error),
         }
     }
 

@@ -15,6 +15,7 @@ use tt::{Delimiter, DelimiterKind, Leaf, Subtree, TokenTree};
 use crate::{
     body::{CfgExpander, LowerCtx},
     db::DefDatabase,
+    intern::Interned,
     item_tree::{AttrOwner, Field, Fields, ItemTree, ModItem, RawVisibilityId},
     src::HasChildSource,
     src::HasSource,
@@ -58,7 +59,7 @@ pub enum VariantData {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FieldData {
     pub name: Name,
-    pub type_ref: TypeRef,
+    pub type_ref: Interned<TypeRef>,
     pub visibility: RawVisibility,
 }
 
@@ -292,7 +293,7 @@ fn lower_struct(
                     || Either::Left(fd.clone()),
                     || FieldData {
                         name: Name::new_tuple_field(i),
-                        type_ref: TypeRef::from_ast_opt(&ctx, fd.ty()),
+                        type_ref: Interned::new(TypeRef::from_ast_opt(&ctx, fd.ty())),
                         visibility: RawVisibility::from_ast(db, ast.with_value(fd.visibility())),
                     },
                 );
@@ -309,7 +310,7 @@ fn lower_struct(
                     || Either::Right(fd.clone()),
                     || FieldData {
                         name: fd.name().map(|n| n.as_name()).unwrap_or_else(Name::missing),
-                        type_ref: TypeRef::from_ast_opt(&ctx, fd.ty()),
+                        type_ref: Interned::new(TypeRef::from_ast_opt(&ctx, fd.ty())),
                         visibility: RawVisibility::from_ast(db, ast.with_value(fd.visibility())),
                     },
                 );
@@ -358,7 +359,7 @@ fn lower_field(
 ) -> FieldData {
     FieldData {
         name: field.name.clone(),
-        type_ref: item_tree[field.type_ref].clone(),
+        type_ref: field.type_ref.clone(),
         visibility: item_tree[override_visibility.unwrap_or(field.visibility)].clone(),
     }
 }

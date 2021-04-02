@@ -49,6 +49,7 @@ pub mod import_map;
 
 #[cfg(test)]
 mod test_db;
+mod intern;
 
 use std::{
     hash::{Hash, Hasher},

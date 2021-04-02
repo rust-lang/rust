@@ -1464,7 +1464,7 @@ impl ModCollector<'_, '_> {
     }
 
     fn collect_macro_call(&mut self, mac: &MacroCall) {
-        let mut ast_id = AstIdWithPath::new(self.file_id, mac.ast_id, mac.path.clone());
+        let mut ast_id = AstIdWithPath::new(self.file_id, mac.ast_id, (*mac.path).clone());
 
         // Case 1: try to resolve in legacy scope and expand macro_rules
         let mut error = None;

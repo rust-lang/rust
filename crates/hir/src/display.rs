@@ -91,7 +91,7 @@ impl HirDisplay for Function {
         let ret_type = if !qual.is_async {
             &data.ret_type
         } else {
-            match &data.ret_type {
+            match &*data.ret_type {
                 TypeRef::ImplTrait(bounds) => match &bounds[0] {
                     TypeBound::Path(path) => {
                         path.segments().iter().last().unwrap().args_and_bindings.unwrap().bindings
