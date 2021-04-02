@@ -8,14 +8,11 @@ edition = "2018"
 test = false
 doctest = false
 
-[build-dependencies]
-rand = "0.7"
-
 [dependencies]
 # For fuzzing tests we want a deterministic seedable RNG. We also eliminate potential
 # problems with system RNGs on the variety of platforms this crate is tested on.
 # `xoshiro128**` is used for its quality, size, and speed at generating `u32` shift amounts.
-rand_xoshiro = "0.4"
+rand_xoshiro = "0.6"
 
 [dependencies.compiler_builtins]
 path = ".."
