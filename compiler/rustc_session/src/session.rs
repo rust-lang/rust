@@ -1,7 +1,7 @@
 use crate::cgu_reuse_tracker::CguReuseTracker;
 use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, SizeKind, VariantInfo};
-use crate::config::{self, CrateType, OutputType, PrintRequest, SanitizerSet, SwitchWithOptPath};
+use crate::config::{self, CrateType, OutputType, PrintRequest, SwitchWithOptPath};
 use crate::filesearch;
 use crate::lint::{self, LintId};
 use crate::parse::ParseSess;
@@ -28,7 +28,7 @@ use rustc_span::source_map::{FileLoader, MultiSpan, RealFileLoader, SourceMap, S
 use rustc_span::{sym, SourceFileHashAlgorithm, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{CodeModel, PanicStrategy, RelocModel, RelroLevel};
-use rustc_target::spec::{SplitDebuginfo, Target, TargetTriple, TlsModel};
+use rustc_target::spec::{SanitizerSet, SplitDebuginfo, Target, TargetTriple, TlsModel};
 
 use std::cell::{self, RefCell};
 use std::env;
@@ -1517,59 +1517,22 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         );
     }
 
-    const ASAN_SUPPORTED_TARGETS: &[&str] = &[
-        "aarch64-apple-darwin",
-        "aarch64-fuchsia",
-        "aarch64-unknown-linux-gnu",
-        "x86_64-apple-darwin",
-        "x86_64-fuchsia",
-        "x86_64-unknown-freebsd",
-        "x86_64-unknown-linux-gnu",
-    ];
-    const LSAN_SUPPORTED_TARGETS: &[&str] = &[
-        "aarch64-apple-darwin",
-        "aarch64-unknown-linux-gnu",
-        "x86_64-apple-darwin",
-        "x86_64-unknown-linux-gnu",
-    ];
-    const MSAN_SUPPORTED_TARGETS: &[&str] =
-        &["aarch64-unknown-linux-gnu", "x86_64-unknown-freebsd", "x86_64-unknown-linux-gnu"];
-    const TSAN_SUPPORTED_TARGETS: &[&str] = &[
-        "aarch64-apple-darwin",
-        "aarch64-unknown-linux-gnu",
-        "x86_64-apple-darwin",
-        "x86_64-unknown-freebsd",
-        "x86_64-unknown-linux-gnu",
-    ];
-    const HWASAN_SUPPORTED_TARGETS: &[&str] =
-        &["aarch64-linux-android", "aarch64-unknown-linux-gnu"];
-
-    // Sanitizers can only be used on some tested platforms.
-    for s in sess.opts.debugging_opts.sanitizer {
-        let supported_targets = match s {
-            SanitizerSet::ADDRESS => ASAN_SUPPORTED_TARGETS,
-            SanitizerSet::LEAK => LSAN_SUPPORTED_TARGETS,
-            SanitizerSet::MEMORY => MSAN_SUPPORTED_TARGETS,
-            SanitizerSet::THREAD => TSAN_SUPPORTED_TARGETS,
-            SanitizerSet::HWADDRESS => HWASAN_SUPPORTED_TARGETS,
-            _ => panic!("unrecognized sanitizer {}", s),
-        };
-        if !supported_targets.contains(&&*sess.opts.target_triple.triple()) {
-            sess.err(&format!(
-                "`-Zsanitizer={}` only works with targets: {}",
-                s,
-                supported_targets.join(", ")
-            ));
-        }
-        let conflicting = sess.opts.debugging_opts.sanitizer - s;
-        if !conflicting.is_empty() {
-            sess.err(&format!(
-                "`-Zsanitizer={}` is incompatible with `-Zsanitizer={}`",
-                s, conflicting,
-            ));
-            // Don't report additional errors.
-            break;
-        }
+    // Sanitizers can only be used on platforms that we know have working sanitizer codegen.
+    let supported_sanitizers = sess.target.options.supported_sanitizers;
+    let unsupported_sanitizers = sess.opts.debugging_opts.sanitizer - supported_sanitizers;
+    match unsupported_sanitizers.into_iter().count() {
+        0 => {}
+        1 => sess
+            .err(&format!("{} sanitizer is not supported for this target", unsupported_sanitizers)),
+        _ => sess.err(&format!(
+            "{} sanitizers are not supported for this target",
+            unsupported_sanitizers
+        )),
+    }
+    // Cannot mix and match sanitizers.
+    let mut sanitizer_iter = sess.opts.debugging_opts.sanitizer.into_iter();
+    if let (Some(first), Some(second)) = (sanitizer_iter.next(), sanitizer_iter.next()) {
+        sess.err(&format!("`-Zsanitizer={}` is incompatible with `-Zsanitizer={}`", first, second));
     }
 }
 

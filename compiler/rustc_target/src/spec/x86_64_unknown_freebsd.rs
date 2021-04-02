@@ -1,4 +1,4 @@
-use crate::spec::{LinkerFlavor, StackProbeType, Target};
+use crate::spec::{LinkerFlavor, SanitizerSet, StackProbeType, Target};
 
 pub fn target() -> Target {
     let mut base = super::freebsd_base::opts();
@@ -6,6 +6,7 @@ pub fn target() -> Target {
     base.max_atomic_width = Some(64);
     base.pre_link_args.entry(LinkerFlavor::Gcc).or_default().push("-m64".to_string());
     base.stack_probes = StackProbeType::InlineOrCall { min_llvm_version_for_inline: (11, 0, 1) };
+    base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::MEMORY | SanitizerSet::THREAD;
 
     Target {
         llvm_target: "x86_64-unknown-freebsd".to_string(),

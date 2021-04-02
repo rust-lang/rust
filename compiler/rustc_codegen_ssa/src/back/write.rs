@@ -27,12 +27,12 @@ use rustc_middle::middle::exported_symbols::SymbolExportLevel;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::cgu_reuse_tracker::CguReuseTracker;
 use rustc_session::config::{self, CrateType, Lto, OutputFilenames, OutputType};
-use rustc_session::config::{Passes, SanitizerSet, SwitchWithOptPath};
+use rustc_session::config::{Passes, SwitchWithOptPath};
 use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{BytePos, FileName, InnerSpan, Pos, Span};
-use rustc_target::spec::{MergeFunctions, PanicStrategy};
+use rustc_target::spec::{MergeFunctions, PanicStrategy, SanitizerSet};
 
 use std::any::Any;
 use std::fs;

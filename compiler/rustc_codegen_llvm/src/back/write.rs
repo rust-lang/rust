@@ -23,11 +23,11 @@ use rustc_fs_util::{link_or_copy, path_to_c_string};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{self, Lto, OutputType, Passes, SanitizerSet, SwitchWithOptPath};
+use rustc_session::config::{self, Lto, OutputType, Passes, SwitchWithOptPath};
 use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::InnerSpan;
-use rustc_target::spec::{CodeModel, RelocModel, SplitDebuginfo};
+use rustc_target::spec::{CodeModel, RelocModel, SanitizerSet, SplitDebuginfo};
 use tracing::debug;
 
 use libc::{c_char, c_int, c_uint, c_void, size_t};
