@@ -1767,7 +1767,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
                     }
                     diag.emit();
 
-                    ty::Binder::bind(fn_sig, tcx)
+                    ty::Binder::dummy(fn_sig)
                 }
                 None => <dyn AstConv<'_>>::ty_of_fn(
                     &icx,
@@ -1811,10 +1811,13 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
             let ty = tcx.type_of(tcx.hir().get_parent_did(hir_id).to_def_id());
             let inputs =
                 data.fields().iter().map(|f| tcx.type_of(tcx.hir().local_def_id(f.hir_id)));
-            ty::Binder::bind(
-                tcx.mk_fn_sig(inputs, ty, false, hir::Unsafety::Normal, abi::Abi::Rust),
-                tcx,
-            )
+            ty::Binder::dummy(tcx.mk_fn_sig(
+                inputs,
+                ty,
+                false,
+                hir::Unsafety::Normal,
+                abi::Abi::Rust,
+            ))
         }
 
         Expr(&hir::Expr { kind: hir::ExprKind::Closure(..), .. }) => {
@@ -2098,7 +2101,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                 param.bounds.iter().for_each(|bound| match bound {
                     hir::GenericBound::Outlives(lt) => {
                         let bound = <dyn AstConv<'_>>::ast_region_to_region(&icx, &lt, None);
-                        let outlives = ty::Binder::bind(ty::OutlivesPredicate(region, bound), tcx);
+                        let outlives = ty::Binder::dummy(ty::OutlivesPredicate(region, bound));
                         predicates.insert((outlives.to_predicate(tcx), lt.span));
                     }
                     _ => bug!(),

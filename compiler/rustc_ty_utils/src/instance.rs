@@ -1,6 +1,7 @@
 use rustc_errors::ErrorReported;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_middle::ty::fold::BoundVarsCollector;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Instance, TyCtxt, TypeFoldable};
 use rustc_span::{sym, DUMMY_SP};
@@ -115,7 +116,12 @@ fn resolve_associated_item<'tcx>(
     );
 
     let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_substs);
-    let vtbl = tcx.codegen_fulfill_obligation((param_env, ty::Binder::bind(trait_ref, tcx)))?;
+    // FIXME: we should instead track bound variables from their origin,
+    //        rather than using the `BoundVarsCollector` (cc #83825)
+    let mut bound_vars_collector = BoundVarsCollector::new();
+    trait_ref.visit_with(&mut bound_vars_collector);
+    let trait_binder = ty::Binder::bind_with_vars(trait_ref, bound_vars_collector.into_vars(tcx));
+    let vtbl = tcx.codegen_fulfill_obligation((param_env, trait_binder))?;
 
     // Now that we know which impl is being used, we can dispatch to
     // the actual function:
