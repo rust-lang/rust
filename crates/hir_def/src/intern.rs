@@ -25,7 +25,7 @@ impl<T: Internable> Interned<T> {
         let storage = T::storage().get();
         let shard_idx = storage.determine_map(&obj);
         let shard = &storage.shards()[shard_idx];
-        let shard = shard.upgradeable_read();
+        let mut shard = shard.write();
 
         // Atomically,
         // - check if `obj` is already in the map
@@ -43,10 +43,7 @@ impl<T: Internable> Interned<T> {
         let arc = Arc::new(obj);
         let arc2 = arc.clone();
 
-        {
-            let mut shard = shard.upgrade();
-            shard.insert(arc2, SharedValue::new(()));
-        }
+        shard.insert(arc2, SharedValue::new(()));
 
         Self { arc }
     }
