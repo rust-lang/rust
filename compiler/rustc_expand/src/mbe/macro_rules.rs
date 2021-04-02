@@ -969,7 +969,7 @@ fn check_matcher_core(
                                         &OR_PATTERNS_BACK_COMPAT,
                                         span,
                                         ast::CRATE_NODE_ID,
-                                        &*format!("the meaning of the pat fragment specific is changing in Rust 2021, which may affect this macro",),
+                                        &*format!("the meaning of the `pat` fragment specifier is changing in Rust 2021, which may affect this macro",),
                                         BuiltinLintDiagnostics::OrPatternsBackCompat(
                                             span, suggestion,
                                         ),
