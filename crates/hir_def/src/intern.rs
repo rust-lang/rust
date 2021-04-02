@@ -90,14 +90,16 @@ impl<T: Internable + ?Sized> Interned<T> {
 }
 
 /// Compares interned `Ref`s using pointer equality.
-impl<T: Internable + ?Sized> PartialEq for Interned<T> {
+impl<T: Internable> PartialEq for Interned<T> {
+    // NOTE: No `?Sized` because `ptr_eq` doesn't work right with trait objects.
+
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         Arc::ptr_eq(&self.arc, &other.arc)
     }
 }
 
-impl<T: Internable + ?Sized> Eq for Interned<T> {}
+impl<T: Internable> Eq for Interned<T> {}
 
 impl<T: Internable + ?Sized> AsRef<T> for Interned<T> {
     #[inline]
@@ -148,7 +150,7 @@ pub trait Internable: Hash + Eq + 'static {
 }
 
 macro_rules! impl_internable {
-    ( $($t:ty),+ $(,)? ) => { $(
+    ( $($t:path),+ $(,)? ) => { $(
         impl Internable for $t {
             fn storage() -> &'static InternStorage<Self> {
                 static STORAGE: InternStorage<$t> = InternStorage::new();
