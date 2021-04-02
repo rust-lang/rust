@@ -22,7 +22,7 @@ pub(super) fn check<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) {
 fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) {
     if_chain! {
         if let ExprKind::MethodCall(ref method, _, ref args, _) = expr.kind;
-        if let ExprKind::MethodCall(ref chain_method, _, _, _) = args[0].kind;
+        if let ExprKind::MethodCall(ref chain_method, method0_span, _, _) = args[0].kind;
         if chain_method.ident.name == sym!(collect) && is_trait_method(cx, &args[0], sym::Iterator);
         if let Some(ref generic_args) = chain_method.args;
         if let Some(GenericArg::Type(ref ty)) = generic_args.args.get(0);
@@ -31,55 +31,28 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
             || is_type_diagnostic_item(cx, ty, sym::vecdeque_type)
             || match_type(cx, ty, &paths::BTREEMAP)
             || is_type_diagnostic_item(cx, ty, sym::hashmap_type);
-        then {
-            if method.ident.name == sym!(len) {
-                let span = shorten_needless_collect_span(expr);
-                span_lint_and_sugg(
-                    cx,
-                    NEEDLESS_COLLECT,
-                    span,
-                    NEEDLESS_COLLECT_MSG,
-                    "replace with",
-                    "count()".to_string(),
-                    Applicability::MachineApplicable,
-                );
-            }
-            if method.ident.name == sym!(is_empty) {
-                let span = shorten_needless_collect_span(expr);
-                span_lint_and_sugg(
-                    cx,
-                    NEEDLESS_COLLECT,
-                    span,
-                    NEEDLESS_COLLECT_MSG,
-                    "replace with",
-                    "next().is_none()".to_string(),
-                    Applicability::MachineApplicable,
-                );
-            }
-            if method.ident.name == sym!(contains) {
+        if let Some(sugg) = match &*method.ident.name.as_str() {
+            "len" => Some("count()".to_string()),
+            "is_empty" => Some("next().is_none()".to_string()),
+            "contains" => {
                 let contains_arg = snippet(cx, args[1].span, "??");
-                let span = shorten_needless_collect_span(expr);
-                span_lint_and_then(
-                    cx,
-                    NEEDLESS_COLLECT,
-                    span,
-                    NEEDLESS_COLLECT_MSG,
-                    |diag| {
-                        let (arg, pred) = contains_arg
-                                .strip_prefix('&')
-                                .map_or(("&x", &*contains_arg), |s| ("x", s));
-                        diag.span_suggestion(
-                            span,
-                            "replace with",
-                            format!(
-                                "any(|{}| x == {})",
-                                arg, pred
-                            ),
-                            Applicability::MachineApplicable,
-                        );
-                    }
-                );
+                let (arg, pred) = contains_arg
+                    .strip_prefix('&')
+                    .map_or(("&x", &*contains_arg), |s| ("x", s));
+                Some(format!("any(|{}| x == {})", arg, pred))
             }
+            _ => None,
+        };
+        then {
+            span_lint_and_sugg(
+                cx,
+                NEEDLESS_COLLECT,
+                method0_span.with_hi(expr.span.hi()),
+                NEEDLESS_COLLECT_MSG,
+                "replace with",
+                sugg,
+                Applicability::MachineApplicable,
+            );
         }
     }
 }
@@ -268,15 +241,4 @@ fn detect_iter_and_into_iters<'tcx>(block: &'tcx Block<'tcx>, identifier: Ident)
     };
     visitor.visit_block(block);
     if visitor.seen_other { None } else { Some(visitor.uses) }
-}
-
-fn shorten_needless_collect_span(expr: &Expr<'_>) -> Span {
-    if_chain! {
-        if let ExprKind::MethodCall(.., args, _) = &expr.kind;
-        if let ExprKind::MethodCall(_, span, ..) = &args[0].kind;
-        then {
-            return expr.span.with_lo(span.lo());
-        }
-    }
-    unreachable!();
 }
