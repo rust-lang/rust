@@ -59,9 +59,9 @@
 //!
 //! ### Discovering roots
 //!
-//! The roots of the mono item graph correspond to the non-generic
+//! The roots of the mono item graph correspond to the public non-generic
 //! syntactic items in the source code. We find them by walking the HIR of the
-//! crate, and whenever we hit upon a function, method, or static item, we
+//! crate, and whenever we hit upon a public function, method, or static item, we
 //! create a mono item consisting of the items DefId and, since we only
 //! consider non-generic items, an empty type-substitution set.
 //!
