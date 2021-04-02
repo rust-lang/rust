@@ -18,7 +18,8 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_feature::Features;
-use rustc_lint_defs::builtin::SEMICOLON_IN_EXPRESSIONS_FROM_MACROS;
+use rustc_lint_defs::builtin::{OR_PATTERNS_BACK_COMPAT, SEMICOLON_IN_EXPRESSIONS_FROM_MACROS};
+use rustc_lint_defs::BuiltinLintDiagnostics;
 use rustc_parse::parser::Parser;
 use rustc_session::parse::ParseSess;
 use rustc_session::Session;
@@ -951,8 +952,32 @@ fn check_matcher_core(
         // Now `last` holds the complete set of NT tokens that could
         // end the sequence before SUFFIX. Check that every one works with `suffix`.
         for token in &last.tokens {
-            if let TokenTree::MetaVarDecl(_, name, Some(kind)) = *token {
+            if let TokenTree::MetaVarDecl(span, name, Some(kind)) = *token {
                 for next_token in &suffix_first.tokens {
+                    // Check if the old pat is used and the next token is `|`.
+                    if let NonterminalKind::Pat2015 { inferred: true } = kind {
+                        if let TokenTree::Token(token) = next_token {
+                            if let BinOp(token) = token.kind {
+                                if let token::BinOpToken::Or = token {
+                                    // It is suggestion to use pat2015, for example: $x:pat -> $x:pat2015.
+                                    let suggestion = quoted_tt_to_string(&TokenTree::MetaVarDecl(
+                                        span,
+                                        name,
+                                        Some(NonterminalKind::Pat2015 { inferred: false }),
+                                    ));
+                                    sess.buffer_lint_with_diagnostic(
+                                        &OR_PATTERNS_BACK_COMPAT,
+                                        span,
+                                        ast::CRATE_NODE_ID,
+                                        &*format!("the meaning of the `pat` fragment specifier is changing in Rust 2021, which may affect this macro",),
+                                        BuiltinLintDiagnostics::OrPatternsBackCompat(
+                                            span, suggestion,
+                                        ),
+                                    );
+                                }
+                            }
+                        }
+                    }
                     match is_in_follow(next_token, kind) {
                         IsInFollow::Yes => {}
                         IsInFollow::No(possible) => {
@@ -1080,11 +1105,22 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                     _ => IsInFollow::No(TOKENS),
                 }
             }
-            NonterminalKind::Pat2015 { .. } | NonterminalKind::Pat2021 { .. } => {
+            NonterminalKind::Pat2015 { .. } => {
                 const TOKENS: &[&str] = &["`=>`", "`,`", "`=`", "`|`", "`if`", "`in`"];
                 match tok {
                     TokenTree::Token(token) => match token.kind {
                         FatArrow | Comma | Eq | BinOp(token::Or) => IsInFollow::Yes,
+                        Ident(name, false) if name == kw::If || name == kw::In => IsInFollow::Yes,
+                        _ => IsInFollow::No(TOKENS),
+                    },
+                    _ => IsInFollow::No(TOKENS),
+                }
+            }
+            NonterminalKind::Pat2021 { .. } => {
+                const TOKENS: &[&str] = &["`=>`", "`,`", "`=`", "`if`", "`in`"];
+                match tok {
+                    TokenTree::Token(token) => match token.kind {
+                        FatArrow | Comma | Eq => IsInFollow::Yes,
                         Ident(name, false) if name == kw::If || name == kw::In => IsInFollow::Yes,
                         _ => IsInFollow::No(TOKENS),
                     },
