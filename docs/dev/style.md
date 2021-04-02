@@ -806,8 +806,47 @@ if let Some(expected_type) = ctx.expected_type.as_ref() {
 }
 ```
 
-**Rational:** `match` is almost always more compact.
+**Rationale:** `match` is almost always more compact.
 The `else` branch can get a more precise pattern: `None` or `Err(_)` instead of `_`.
+
+## Helper Functions
+
+Avoid creating singe-use helper functions:
+
+```rust
+// GOOD
+let buf = {
+    let mut buf = get_empty_buf(&mut arena);
+    buf.add_item(item);
+    buf
+};
+
+// BAD
+
+let buf = prepare_buf(&mut arena, item);
+
+...
+
+fn prepare_buf(arena: &mut Arena, item: Item) -> ItemBuf {
+    let mut res = get_empty_buf(&mut arena);
+    res.add_item(item);
+    res
+}
+```
+
+Exception: if you want to make use of `return` or `?`.
+
+**Rationale:** single-use functions change frequently, adding or removing parameters adds churn.
+A block serves just as well to delineate a bit of logic, but has access to all the context.
+Re-using originally single-purpose function often leads to bad coupling.
+
+## Helper Variables
+
+Introduce helper variables freely, especially for multiline conditions.
+
+**Rationale:** like blocks, single-use variables are a cognitively cheap abstraction, as they have access to all the context.
+Extra variables help during debugging, they make it easy to print/view important intermediate results.
+Giving a name to a condition in `if` expression often improves clarity and leads to a nicer formatted code.
 
 ## Token names
 
