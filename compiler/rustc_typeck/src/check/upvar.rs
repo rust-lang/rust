@@ -495,10 +495,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let closure_body_span = self.tcx.hir().span(body_id.hir_id);
                     let (sugg, app) =
                         match self.tcx.sess.source_map().span_to_snippet(closure_body_span) {
-                            Ok(s) => (
-                                format!("{{ {}; {} }}", migration_string, s),
-                                Applicability::MachineApplicable,
-                            ),
+                            Ok(s) => {
+                                let trimmed = s.trim_start();
+
+                                // If the closure contains a block then replace the opening brace
+                                // with "{ let _ = (..); "
+                                let sugg = if let Some('{') = trimmed.chars().next() {
+                                    format!("{{ {}; {}", migration_string, &trimmed[1..])
+                                } else {
+                                    format!("{{ {}; {} }}", migration_string, s)
+                                };
+                                (sugg, Applicability::MachineApplicable)
+                            }
                             Err(_) => (migration_string.clone(), Applicability::HasPlaceholders),
                         };
 

@@ -18,7 +18,7 @@ LL | #![deny(disjoint_capture_drop_reorder)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: `let _ = (&t, &t1, &t2)` causes `t`, `t1`, `t2` to be fully captured
    |
-LL |     let c = || { let _ = (&t, &t1, &t2); {
+LL |     let c = || { let _ = (&t, &t1, &t2); 
 LL |
 LL |
 LL | 
@@ -41,7 +41,7 @@ LL | |     };
    |
 help: `let _ = (&t, &t1)` causes `t`, `t1` to be fully captured
    |
-LL |     let c = || { let _ = (&t, &t1); {
+LL |     let c = || { let _ = (&t, &t1); 
 LL |
 LL |
 LL |         let _t = t.0;
@@ -63,12 +63,12 @@ LL | |     };
    |
 help: `let _ = &t` causes `t` to be fully captured
    |
-LL |     let c = || { let _ = &t; {
+LL |     let c = || { let _ = &t; 
 LL |
 LL |
 LL |         let _t = t.0;
 LL |         println!("{}", t1.1);
-LL |     } };
+LL |     };
    |
 
 error: drop order affected for closure because of `capture_disjoint_fields`
@@ -85,12 +85,12 @@ LL | |     };
    |
 help: `let _ = &t` causes `t` to be fully captured
    |
-LL |     let c = || { let _ = &t; {
+LL |     let c = || { let _ = &t; 
 LL |
 LL |
 LL |         let _t = t.0;
 LL |         let _t1 = t1.0;
-LL |     } };
+LL |     };
    |
 
 error: drop order affected for closure because of `capture_disjoint_fields`
@@ -107,12 +107,12 @@ LL | |     };
    |
 help: `let _ = &t` causes `t` to be fully captured
    |
-LL |     let c = || { let _ = &t; {
+LL |     let c = || { let _ = &t; 
 LL |
 LL |
 LL |         let _t = t.0;
 LL |         let _s = s.0;
-LL |     } };
+LL |     };
    |
 
 error: drop order affected for closure because of `capture_disjoint_fields`
@@ -128,11 +128,11 @@ LL | |     };
    |
 help: `let _ = (&t1, &t)` causes `t1`, `t` to be fully captured
    |
-LL |     let c = move || { let _ = (&t1, &t); {
+LL |     let c = move || { let _ = (&t1, &t); 
 LL |
 LL |
 LL |         println!("{} {}", t1.1, t.1);
-LL |     } };
+LL |     };
    |
 
 error: drop order affected for closure because of `capture_disjoint_fields`
@@ -148,11 +148,11 @@ LL | |     };
    |
 help: `let _ = &t` causes `t` to be fully captured
    |
-LL |     let c = || { let _ = &t; {
+LL |     let c = || { let _ = &t; 
 LL |
 LL |
 LL |         let _t = t.0;
-LL |     } };
+LL |     };
    |
 
 error: aborting due to 7 previous errors
