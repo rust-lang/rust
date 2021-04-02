@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../../run-make-fulldeps/tools.mk
 
 all:
 	$(RUSTC) success.rs; [ $$? -eq 0 ]
