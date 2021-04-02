@@ -3,6 +3,7 @@ use std::convert::TryFrom;
 use std::ffi::OsStr;
 use std::fmt;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_session::config::{self, parse_crate_types_from_list, parse_externs, CrateType};
@@ -266,6 +267,34 @@ crate struct RenderOptions {
     /// If `true`, generate a JSON file in the crate folder instead of HTML redirection files.
     crate generate_redirect_map: bool,
     crate unstable_features: rustc_feature::UnstableFeatures,
+    crate emit: Vec<EmitType>,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+crate enum EmitType {
+    Unversioned,
+    Toolchain,
+    InvocationSpecific,
+}
+
+impl FromStr for EmitType {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        use EmitType::*;
+        match s {
+            "unversioned-shared-resources" => Ok(Unversioned),
+            "toolchain-shared-resources" => Ok(Toolchain),
+            "invocation-specific" => Ok(InvocationSpecific),
+            _ => Err(()),
+        }
+    }
+}
+
+impl RenderOptions {
+    crate fn should_emit_crate(&self) -> bool {
+        self.emit.is_empty() || self.emit.contains(&EmitType::InvocationSpecific)
+    }
 }
 
 impl Options {
@@ -333,6 +362,19 @@ impl Options {
 
         // check for deprecated options
         check_deprecated_options(&matches, &diag);
+
+        let mut emit = Vec::new();
+        for list in matches.opt_strs("emit") {
+            for kind in list.split(',') {
+                match kind.parse() {
+                    Ok(kind) => emit.push(kind),
+                    Err(()) => {
+                        diag.err(&format!("unrecognized emission type: {}", kind));
+                        return Err(1);
+                    }
+                }
+            }
+        }
 
         let to_check = matches.opt_strs("check-theme");
         if !to_check.is_empty() {
@@ -641,6 +683,7 @@ impl Options {
                 unstable_features: rustc_feature::UnstableFeatures::from_environment(
                     crate_name.as_deref(),
                 ),
+                emit,
             },
             crate_name,
             output_format,

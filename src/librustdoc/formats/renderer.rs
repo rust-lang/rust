@@ -63,9 +63,14 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
 ) -> Result<(), Error> {
     let prof = &tcx.sess.prof;
 
+    let emit_crate = options.should_emit_crate();
     let (mut format_renderer, krate) = prof
         .extra_verbose_generic_activity("create_renderer", T::descr())
         .run(|| T::init(krate, options, edition, cache, tcx))?;
+
+    if !emit_crate {
+        return Ok(());
+    }
 
     // Render the crate documentation
     let crate_name = krate.name;
