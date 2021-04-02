@@ -340,6 +340,8 @@ impl<'a> InferenceContext<'a> {
             // no change
             return;
         }
+        let _span = profile::span("resolve_obligations_as_possible");
+
         self.last_obligations_check = Some(self.table.revision);
         let obligations = mem::replace(&mut self.obligations, Vec::new());
         for obligation in obligations {
