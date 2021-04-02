@@ -54,20 +54,22 @@ pub(super) fn collect_defs(
 ) -> DefMap {
     let crate_graph = db.crate_graph();
 
-    // populate external prelude
-    for dep in &crate_graph[def_map.krate].dependencies {
-        log::debug!("crate dep {:?} -> {:?}", dep.name, dep.crate_id);
-        let dep_def_map = db.crate_def_map(dep.crate_id);
-        def_map
-            .extern_prelude
-            .insert(dep.as_name(), dep_def_map.module_id(dep_def_map.root).into());
+    if block.is_none() {
+        // populate external prelude
+        for dep in &crate_graph[def_map.krate].dependencies {
+            log::debug!("crate dep {:?} -> {:?}", dep.name, dep.crate_id);
+            let dep_def_map = db.crate_def_map(dep.crate_id);
+            def_map
+                .extern_prelude
+                .insert(dep.as_name(), dep_def_map.module_id(dep_def_map.root).into());
 
-        // look for the prelude
-        // If the dependency defines a prelude, we overwrite an already defined
-        // prelude. This is necessary to import the "std" prelude if a crate
-        // depends on both "core" and "std".
-        if dep_def_map.prelude.is_some() {
-            def_map.prelude = dep_def_map.prelude;
+            // look for the prelude
+            // If the dependency defines a prelude, we overwrite an already defined
+            // prelude. This is necessary to import the "std" prelude if a crate
+            // depends on both "core" and "std".
+            if dep_def_map.prelude.is_some() {
+                def_map.prelude = dep_def_map.prelude;
+            }
         }
     }
 

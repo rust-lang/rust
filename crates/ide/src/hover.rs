@@ -3897,4 +3897,46 @@ trait A where
             "#]],
         );
     }
+
+    #[test]
+    fn string_shadowed_with_inner_items() {
+        check(
+            r#"
+//- /main.rs crate:main deps:alloc
+
+/// Custom `String` type.
+struct String;
+
+fn f() {
+    let _: String$0;
+
+    fn inner() {}
+}
+
+//- /alloc.rs crate:alloc
+#[prelude_import]
+pub use string::*;
+
+mod string {
+    /// This is `alloc::String`.
+    pub struct String;
+}
+            "#,
+            expect![[r#"
+                *String*
+
+                ```rust
+                main
+                ```
+
+                ```rust
+                struct String
+                ```
+
+                ---
+
+                Custom `String` type.
+            "#]],
+        )
+    }
 }
