@@ -210,6 +210,8 @@ macro_rules! int_impl {
                 self
             }
 
+            // It makes writing macros easier if this is implemented for both signed and unsigned
+            #[allow(clippy::wrong_self_convention)]
             fn from_unsigned(me: $uty) -> Self {
                 me
             }
