@@ -68,7 +68,7 @@ pub fn run(check: bool, verbose: bool) {
                 continue;
             }
 
-            success &= rustfmt(context, &path)?;
+            success &= rustfmt(context, path)?;
         }
 
         Ok(success)

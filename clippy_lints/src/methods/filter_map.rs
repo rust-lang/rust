@@ -19,7 +19,7 @@ use super::OPTION_FILTER_MAP;
 
 fn is_method<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, method_name: Symbol) -> bool {
     match &expr.kind {
-        hir::ExprKind::Path(QPath::TypeRelative(_, ref mname)) => mname.ident.name == method_name,
+        hir::ExprKind::Path(QPath::TypeRelative(_, mname)) => mname.ident.name == method_name,
         hir::ExprKind::Path(QPath::Resolved(_, segments)) => {
             segments.segments.last().unwrap().ident.name == method_name
         },
@@ -28,7 +28,7 @@ fn is_method<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, method_name: Sy
             let closure_expr = remove_blocks(&body.value);
             let arg_id = body.params[0].pat.hir_id;
             match closure_expr.kind {
-                hir::ExprKind::MethodCall(hir::PathSegment { ident, .. }, _, ref args, _) => {
+                hir::ExprKind::MethodCall(hir::PathSegment { ident, .. }, _, args, _) => {
                     if_chain! {
                     if ident.name == method_name;
                     if let hir::ExprKind::Path(path) = &args[0].kind;
@@ -61,7 +61,7 @@ fn lint_filter_some_map_unwrap(
     methods_span: Span,
 ) {
     let iterator = is_trait_method(cx, expr, sym::Iterator);
-    let option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&filter_recv), sym::option_type);
+    let option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(filter_recv), sym::option_type);
     if (iterator || option) && is_option_filter_map(cx, filter_arg, map_arg) {
         let msg = "`filter` for `Some` followed by `unwrap`";
         let help = "consider using `flatten` instead";

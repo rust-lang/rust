@@ -21,10 +21,10 @@ pub(super) fn check<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) {
 }
 fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) {
     if_chain! {
-        if let ExprKind::MethodCall(ref method, _, ref args, _) = expr.kind;
-        if let ExprKind::MethodCall(ref chain_method, method0_span, _, _) = args[0].kind;
+        if let ExprKind::MethodCall(method, _, args, _) = expr.kind;
+        if let ExprKind::MethodCall(chain_method, method0_span, _, _) = args[0].kind;
         if chain_method.ident.name == sym!(collect) && is_trait_method(cx, &args[0], sym::Iterator);
-        if let Some(ref generic_args) = chain_method.args;
+        if let Some(generic_args) = chain_method.args;
         if let Some(GenericArg::Type(ref ty)) = generic_args.args.get(0);
         let ty = cx.typeck_results().node_type(ty.hir_id);
         if is_type_diagnostic_item(cx, ty, sym::vec_type)
@@ -58,16 +58,16 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
 }
 
 fn check_needless_collect_indirect_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) {
-    if let ExprKind::Block(ref block, _) = expr.kind {
-        for ref stmt in block.stmts {
+    if let ExprKind::Block(block, _) = expr.kind {
+        for stmt in block.stmts {
             if_chain! {
                 if let StmtKind::Local(
                     Local { pat: Pat { hir_id: pat_id, kind: PatKind::Binding(_, _, ident, .. ), .. },
-                    init: Some(ref init_expr), .. }
+                    init: Some(init_expr), .. }
                 ) = stmt.kind;
-                if let ExprKind::MethodCall(ref method_name, collect_span, &[ref iter_source], ..) = init_expr.kind;
-                if method_name.ident.name == sym!(collect) && is_trait_method(cx, &init_expr, sym::Iterator);
-                if let Some(ref generic_args) = method_name.args;
+                if let ExprKind::MethodCall(method_name, collect_span, &[ref iter_source], ..) = init_expr.kind;
+                if method_name.ident.name == sym!(collect) && is_trait_method(cx, init_expr, sym::Iterator);
+                if let Some(generic_args) = method_name.args;
                 if let Some(GenericArg::Type(ref ty)) = generic_args.args.get(0);
                 if let ty = cx.typeck_results().node_type(ty.hir_id);
                 if is_type_diagnostic_item(cx, ty, sym::vec_type) ||
@@ -165,8 +165,8 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor {
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         // Check function calls on our collection
         if_chain! {
-            if let ExprKind::MethodCall(method_name, _, ref args, _) = &expr.kind;
-            if let Some(Expr { kind: ExprKind::Path(QPath::Resolved(_, ref path)), .. }) = args.get(0);
+            if let ExprKind::MethodCall(method_name, _, args, _) = &expr.kind;
+            if let Some(Expr { kind: ExprKind::Path(QPath::Resolved(_, path)), .. }) = args.get(0);
             if let &[name] = &path.segments;
             if name.ident == self.target;
             then {
@@ -193,7 +193,7 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor {
         }
         // Check if the collection is used for anything else
         if_chain! {
-            if let Expr { kind: ExprKind::Path(QPath::Resolved(_, ref path)), .. } = expr;
+            if let Expr { kind: ExprKind::Path(QPath::Resolved(_, path)), .. } = expr;
             if let &[name] = &path.segments;
             if name.ident == self.target;
             then {

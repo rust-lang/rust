@@ -100,9 +100,9 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_span: Spa
         applicability: &mut Applicability,
     ) -> Vec<String> {
         if_chain! {
-            if let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, ref format_arg) = a.kind;
-            if let hir::ExprKind::Match(ref format_arg_expr, _, _) = format_arg.kind;
-            if let hir::ExprKind::Tup(ref format_arg_expr_tup) = format_arg_expr.kind;
+            if let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, format_arg) = a.kind;
+            if let hir::ExprKind::Match(format_arg_expr, _, _) = format_arg.kind;
+            if let hir::ExprKind::Tup(format_arg_expr_tup) = format_arg_expr.kind;
 
             then {
                 format_arg_expr_tup
@@ -155,7 +155,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_span: Spa
         if block.stmts.len() == 1;
         if let hir::StmtKind::Local(local) = &block.stmts[0].kind;
         if let Some(arg_root) = &local.init;
-        if let hir::ExprKind::Call(ref inner_fun, ref inner_args) = arg_root.kind;
+        if let hir::ExprKind::Call(inner_fun, inner_args) = arg_root.kind;
         if is_expn_of(inner_fun.span, "format").is_some() && inner_args.len() == 1;
         if let hir::ExprKind::Call(_, format_args) = &inner_args[0].kind;
         then {

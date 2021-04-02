@@ -44,7 +44,7 @@ declare_lint_pass!(AbsurdExtremeComparisons => [ABSURD_EXTREME_COMPARISONS]);
 
 impl<'tcx> LateLintPass<'tcx> for AbsurdExtremeComparisons {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let ExprKind::Binary(ref cmp, ref lhs, ref rhs) = expr.kind {
+        if let ExprKind::Binary(ref cmp, lhs, rhs) = expr.kind {
             if let Some((culprit, result)) = detect_absurd_comparison(cx, cmp.node, lhs, rhs) {
                 if !expr.span.from_expansion() {
                     let msg = "this comparison involving the minimum or maximum element for this \
@@ -95,7 +95,7 @@ enum AbsurdComparisonResult {
 }
 
 fn is_cast_between_fixed_and_target<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
-    if let ExprKind::Cast(ref cast_exp, _) = expr.kind {
+    if let ExprKind::Cast(cast_exp, _) = expr.kind {
         let precast_ty = cx.typeck_results().expr_ty(cast_exp);
         let cast_ty = cx.typeck_results().expr_ty(expr);
 

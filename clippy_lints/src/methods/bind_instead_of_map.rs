@@ -71,7 +71,7 @@ pub(crate) trait BindInsteadOfMap {
         closure_args_span: Span,
     ) -> bool {
         if_chain! {
-            if let hir::ExprKind::Call(ref some_expr, [inner_expr]) = closure_expr.kind;
+            if let hir::ExprKind::Call(some_expr, [inner_expr]) = closure_expr.kind;
             if let hir::ExprKind::Path(QPath::Resolved(_, path)) = some_expr.kind;
             if Self::is_variant(cx, path.res);
             if !contains_return(inner_expr);
@@ -107,7 +107,7 @@ pub(crate) trait BindInsteadOfMap {
         let can_sugg: bool = find_all_ret_expressions(cx, closure_expr, |ret_expr| {
             if_chain! {
                 if !in_macro(ret_expr.span);
-                if let hir::ExprKind::Call(ref func_path, [arg]) = ret_expr.kind;
+                if let hir::ExprKind::Call(func_path, [arg]) = ret_expr.kind;
                 if let hir::ExprKind::Path(QPath::Resolved(_, path)) = func_path.kind;
                 if Self::is_variant(cx, path.res);
                 if !contains_return(arg);

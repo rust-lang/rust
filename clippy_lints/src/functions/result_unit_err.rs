@@ -18,7 +18,7 @@ pub(super) fn check_item(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         let is_public = cx.access_levels.is_exported(item.hir_id());
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
         if is_public {
-            check_result_unit_err(cx, &sig.decl, item.span, fn_header_span);
+            check_result_unit_err(cx, sig.decl, item.span, fn_header_span);
         }
     }
 }
@@ -28,7 +28,7 @@ pub(super) fn check_impl_item(cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<
         let is_public = cx.access_levels.is_exported(item.hir_id());
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
         if is_public && trait_ref_of_method(cx, item.hir_id()).is_none() {
-            check_result_unit_err(cx, &sig.decl, item.span, fn_header_span);
+            check_result_unit_err(cx, sig.decl, item.span, fn_header_span);
         }
     }
 }
@@ -38,7 +38,7 @@ pub(super) fn check_trait_item(cx: &LateContext<'tcx>, item: &'tcx hir::TraitIte
         let is_public = cx.access_levels.is_exported(item.hir_id());
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
         if is_public {
-            check_result_unit_err(cx, &sig.decl, item.span, fn_header_span);
+            check_result_unit_err(cx, sig.decl, item.span, fn_header_span);
         }
     }
 }
@@ -46,7 +46,7 @@ pub(super) fn check_trait_item(cx: &LateContext<'tcx>, item: &'tcx hir::TraitIte
 fn check_result_unit_err(cx: &LateContext<'_>, decl: &hir::FnDecl<'_>, item_span: Span, fn_header_span: Span) {
     if_chain! {
         if !in_external_macro(cx.sess(), item_span);
-        if let hir::FnRetTy::Return(ref ty) = decl.output;
+        if let hir::FnRetTy::Return(ty) = decl.output;
         let ty = hir_ty_to_ty(cx.tcx, ty);
         if is_type_diagnostic_item(cx, ty, sym::result_type);
         if let ty::Adt(_, substs) = ty.kind();

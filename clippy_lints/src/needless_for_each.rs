@@ -70,7 +70,7 @@ impl LateLintPass<'_> for NeedlessForEach {
                 ExprKind::Array(..) | ExprKind::Call(..) | ExprKind::Path(..)
             );
             // Checks the type of the `iter` method receiver is NOT a user defined type.
-            if has_iter_method(cx, cx.typeck_results().expr_ty(&iter_recv)).is_some();
+            if has_iter_method(cx, cx.typeck_results().expr_ty(iter_recv)).is_some();
             // Skip the lint if the body is not block because this is simpler than `for` loop.
             // e.g. `v.iter().for_each(f)` is simpler and clearer than using `for` loop.
             if let ExprKind::Closure(_, _, body_id, ..) = for_each_arg.kind;

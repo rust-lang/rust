@@ -49,7 +49,7 @@ pub(super) fn check_trait_item(
         if sig.header.abi == Abi::Rust {
             check_arg_number(
                 cx,
-                &sig.decl,
+                sig.decl,
                 item.span.with_hi(sig.decl.output.span().hi()),
                 too_many_arguments_threshold,
             );

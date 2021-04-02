@@ -18,7 +18,7 @@ pub(super) fn check<'tcx>(
     body: &'tcx Expr<'_>,
     span: Span,
 ) {
-    if let ExprKind::Block(ref block, _) = body.kind {
+    if let ExprKind::Block(block, _) = body.kind {
         // Ensure the `if let` statement is the only expression or statement in the for-loop
         let inner_expr = if block.stmts.len() == 1 && block.expr.is_none() {
             let match_stmt = &block.stmts[0];
@@ -36,7 +36,7 @@ pub(super) fn check<'tcx>(
         if_chain! {
             if let Some(inner_expr) = inner_expr;
             if let ExprKind::Match(
-                ref match_expr, ref match_arms, MatchSource::IfLetDesugar{ contains_else_clause: false }
+                match_expr, match_arms, MatchSource::IfLetDesugar{ contains_else_clause: false }
             ) = inner_expr.kind;
             // Ensure match_expr in `if let` statement is the same as the pat from the for-loop
             if let PatKind::Binding(_, pat_hir_id, _, _) = pat.kind;

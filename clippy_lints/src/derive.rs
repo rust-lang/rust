@@ -199,7 +199,7 @@ fn check_hash_peq<'tcx>(
         then {
             // Look for the PartialEq implementations for `ty`
             cx.tcx.for_each_relevant_impl(peq_trait_def_id, ty, |impl_id| {
-                let peq_is_automatically_derived = is_automatically_derived(&cx.tcx.get_attrs(impl_id));
+                let peq_is_automatically_derived = is_automatically_derived(cx.tcx.get_attrs(impl_id));
 
                 if peq_is_automatically_derived == hash_is_automatically_derived {
                     return;
@@ -253,7 +253,7 @@ fn check_ord_partial_ord<'tcx>(
         then {
             // Look for the PartialOrd implementations for `ty`
             cx.tcx.for_each_relevant_impl(partial_ord_trait_def_id, ty, |impl_id| {
-                let partial_ord_is_automatically_derived = is_automatically_derived(&cx.tcx.get_attrs(impl_id));
+                let partial_ord_is_automatically_derived = is_automatically_derived(cx.tcx.get_attrs(impl_id));
 
                 if partial_ord_is_automatically_derived == ord_is_automatically_derived {
                     return;

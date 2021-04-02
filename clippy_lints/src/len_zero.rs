@@ -121,7 +121,7 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
             return;
         }
 
-        if let ItemKind::Trait(_, _, _, _, ref trait_items) = item.kind {
+        if let ItemKind::Trait(_, _, _, _, trait_items) = item.kind {
             check_trait_items(cx, item, trait_items);
         }
     }
@@ -162,7 +162,7 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
             return;
         }
 
-        if let ExprKind::Binary(Spanned { node: cmp, .. }, ref left, ref right) = expr.kind {
+        if let ExprKind::Binary(Spanned { node: cmp, .. }, left, right) = expr.kind {
             match cmp {
                 BinOpKind::Eq => {
                     check_cmp(cx, expr.span, left, right, "", 0); // len == 0
@@ -372,8 +372,7 @@ fn check_for_is_empty(
 }
 
 fn check_cmp(cx: &LateContext<'_>, span: Span, method: &Expr<'_>, lit: &Expr<'_>, op: &str, compare_to: u32) {
-    if let (&ExprKind::MethodCall(ref method_path, _, ref args, _), &ExprKind::Lit(ref lit)) = (&method.kind, &lit.kind)
-    {
+    if let (&ExprKind::MethodCall(method_path, _, args, _), &ExprKind::Lit(ref lit)) = (&method.kind, &lit.kind) {
         // check if we are in an is_empty() method
         if let Some(name) = get_item_name(cx, method) {
             if name.as_str() == "is_empty" {
@@ -451,7 +450,7 @@ fn is_empty_string(expr: &Expr<'_>) -> bool {
 }
 
 fn is_empty_array(expr: &Expr<'_>) -> bool {
-    if let ExprKind::Array(ref arr) = expr.kind {
+    if let ExprKind::Array(arr) = expr.kind {
         return arr.is_empty();
     }
     false
@@ -480,17 +479,17 @@ fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
             cx.tcx
                 .associated_items(*imp)
                 .in_definition_order()
-                .any(|item| is_is_empty(cx, &item))
+                .any(|item| is_is_empty(cx, item))
         })
     }
 
     let ty = &cx.typeck_results().expr_ty(expr).peel_refs();
     match ty.kind() {
-        ty::Dynamic(ref tt, ..) => tt.principal().map_or(false, |principal| {
+        ty::Dynamic(tt, ..) => tt.principal().map_or(false, |principal| {
             cx.tcx
                 .associated_items(principal.def_id())
                 .in_definition_order()
-                .any(|item| is_is_empty(cx, &item))
+                .any(|item| is_is_empty(cx, item))
         }),
         ty::Projection(ref proj) => has_is_empty_impl(cx, proj.item_def_id),
         ty::Adt(id, _) => has_is_empty_impl(cx, id.did),

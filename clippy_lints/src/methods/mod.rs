@@ -1740,10 +1740,10 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         check_methods(cx, expr, self.msrv.as_ref());
 
         match expr.kind {
-            hir::ExprKind::Call(ref func, ref args) => {
+            hir::ExprKind::Call(func, args) => {
                 from_iter_instead_of_collect::check(cx, expr, args, &func.kind);
             },
-            hir::ExprKind::MethodCall(ref method_call, ref method_span, ref args, _) => {
+            hir::ExprKind::MethodCall(method_call, ref method_span, args, _) => {
                 or_fun_call::check(cx, expr, *method_span, &method_call.ident.as_str(), args);
                 expect_fun_call::check(cx, expr, *method_span, &method_call.ident.as_str(), args);
                 clone_on_copy::check(cx, expr, method_call.ident.name, args);
@@ -1753,9 +1753,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 into_iter_on_ref::check(cx, expr, *method_span, method_call.ident.name, args);
                 single_char_pattern::check(cx, expr, method_call.ident.name, args);
             },
-            hir::ExprKind::Binary(op, ref lhs, ref rhs)
-                if op.node == hir::BinOpKind::Eq || op.node == hir::BinOpKind::Ne =>
-            {
+            hir::ExprKind::Binary(op, lhs, rhs) if op.node == hir::BinOpKind::Eq || op.node == hir::BinOpKind::Ne => {
                 let mut info = BinaryExprInfo {
                     expr,
                     chain: lhs,
@@ -1763,7 +1761,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                     eq: op.node == hir::BinOpKind::Eq,
                 };
                 lint_binary_expr_with_method_call(cx, &mut info);
-            }
+            },
             _ => (),
         }
     }
@@ -1781,7 +1779,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         let implements_trait = matches!(item.kind, hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }));
         if_chain! {
             if let hir::ImplItemKind::Fn(ref sig, id) = impl_item.kind;
-            if let Some(first_arg) = iter_input_pats(&sig.decl, cx.tcx.hir().body(id)).next();
+            if let Some(first_arg) = iter_input_pats(sig.decl, cx.tcx.hir().body(id)).next();
 
             let method_sig = cx.tcx.fn_sig(impl_item.def_id);
             let method_sig = cx.tcx.erase_late_bound_regions(method_sig);
@@ -1801,7 +1799,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                             method_config.output_type.matches(&sig.decl.output) &&
                             method_config.self_kind.matches(cx, self_ty, first_arg_ty) &&
                             fn_header_equals(method_config.fn_header, sig.header) &&
-                            method_config.lifetime_param_cond(&impl_item)
+                            method_config.lifetime_param_cond(impl_item)
                         {
                             span_lint_and_help(
                                 cx,
@@ -2272,10 +2270,10 @@ impl OutType {
         let is_unit = |ty: &hir::Ty<'_>| matches!(ty.kind, hir::TyKind::Tup(&[]));
         match (self, ty) {
             (Self::Unit, &hir::FnRetTy::DefaultReturn(_)) => true,
-            (Self::Unit, &hir::FnRetTy::Return(ref ty)) if is_unit(ty) => true,
-            (Self::Bool, &hir::FnRetTy::Return(ref ty)) if is_bool(ty) => true,
-            (Self::Any, &hir::FnRetTy::Return(ref ty)) if !is_unit(ty) => true,
-            (Self::Ref, &hir::FnRetTy::Return(ref ty)) => matches!(ty.kind, hir::TyKind::Rptr(_, _)),
+            (Self::Unit, &hir::FnRetTy::Return(ty)) if is_unit(ty) => true,
+            (Self::Bool, &hir::FnRetTy::Return(ty)) if is_bool(ty) => true,
+            (Self::Any, &hir::FnRetTy::Return(ty)) if !is_unit(ty) => true,
+            (Self::Ref, &hir::FnRetTy::Return(ty)) => matches!(ty.kind, hir::TyKind::Rptr(_, _)),
             _ => false,
         }
     }

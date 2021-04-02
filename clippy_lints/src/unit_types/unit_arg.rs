@@ -54,7 +54,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
 
 fn is_questionmark_desugar_marked_call(expr: &Expr<'_>) -> bool {
     use rustc_span::hygiene::DesugaringKind;
-    if let ExprKind::Call(ref callee, _) = expr.kind {
+    if let ExprKind::Call(callee, _) = expr.kind {
         callee.span.is_desugaring(DesugaringKind::QuestionMark)
     } else {
         false

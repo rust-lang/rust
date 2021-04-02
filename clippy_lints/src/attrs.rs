@@ -602,7 +602,7 @@ fn check_mismatched_target_os(cx: &EarlyContext<'_>, attr: &Attribute) {
             if let NestedMetaItem::MetaItem(meta) = item {
                 match &meta.kind {
                     MetaItemKind::List(list) => {
-                        mismatched.extend(find_mismatched_target_os(&list));
+                        mismatched.extend(find_mismatched_target_os(list));
                     },
                     MetaItemKind::Word => {
                         if_chain! {
@@ -629,7 +629,7 @@ fn check_mismatched_target_os(cx: &EarlyContext<'_>, attr: &Attribute) {
         then {
             let mess = "operating system used in target family position";
 
-            span_lint_and_then(cx, MISMATCHED_TARGET_OS, attr.span, &mess, |diag| {
+            span_lint_and_then(cx, MISMATCHED_TARGET_OS, attr.span, mess, |diag| {
                 // Avoid showing the unix suggestion multiple times in case
                 // we have more than one mismatch for unix-like systems
                 let mut unix_suggested = false;

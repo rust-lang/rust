@@ -45,7 +45,7 @@ pub(super) fn check<'tcx>(
                 then {
                     if let hir::PatKind::Ref(..) = closure_arg.pat.kind {
                         Some(search_snippet.replacen('&', "", 1))
-                    } else if let PatKind::Binding(_, _, ident, _) = strip_pat_refs(&closure_arg.pat).kind {
+                    } else if let PatKind::Binding(_, _, ident, _) = strip_pat_refs(closure_arg.pat).kind {
                         let name = &*ident.name.as_str();
                         Some(search_snippet.replace(&format!("*{}", name), name))
                     } else {
@@ -108,8 +108,8 @@ pub(super) fn check<'tcx>(
             }
         };
         if_chain! {
-            if is_string_or_str_slice(&search_recv);
-            if is_string_or_str_slice(&search_arg);
+            if is_string_or_str_slice(search_recv);
+            if is_string_or_str_slice(search_arg);
             then {
                 let msg = format!("called `{}()` after calling `find()` on a string", option_check_method);
                 match option_check_method {

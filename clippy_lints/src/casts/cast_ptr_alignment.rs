@@ -10,7 +10,7 @@ use rustc_target::abi::LayoutOf;
 use super::CAST_PTR_ALIGNMENT;
 
 pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-    if let ExprKind::Cast(ref cast_expr, cast_to) = expr.kind {
+    if let ExprKind::Cast(cast_expr, cast_to) = expr.kind {
         if is_hir_ty_cfg_dependant(cx, cast_to) {
             return;
         }

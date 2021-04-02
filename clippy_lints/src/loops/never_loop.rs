@@ -5,7 +5,7 @@ use rustc_lint::LateContext;
 use std::iter::{once, Iterator};
 
 pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-    if let ExprKind::Loop(ref block, _, _, _) = expr.kind {
+    if let ExprKind::Loop(block, _, _, _) = expr.kind {
         match never_loop_block(block, expr.hir_id) {
             NeverLoopResult::AlwaysBreak => span_lint(cx, NEVER_LOOP, expr.span, "this loop never actually loops"),
             NeverLoopResult::MayContinueMainLoop | NeverLoopResult::Otherwise => (),
@@ -76,36 +76,36 @@ fn never_loop_expr_seq<'a, T: Iterator<Item = &'a Expr<'a>>>(es: &mut T, main_lo
 
 fn stmt_to_expr<'tcx>(stmt: &Stmt<'tcx>) -> Option<&'tcx Expr<'tcx>> {
     match stmt.kind {
-        StmtKind::Semi(ref e, ..) | StmtKind::Expr(ref e, ..) => Some(e),
-        StmtKind::Local(ref local) => local.init.as_deref(),
+        StmtKind::Semi(e, ..) | StmtKind::Expr(e, ..) => Some(e),
+        StmtKind::Local(local) => local.init.as_deref(),
         StmtKind::Item(..) => None,
     }
 }
 
 fn never_loop_expr(expr: &Expr<'_>, main_loop_id: HirId) -> NeverLoopResult {
     match expr.kind {
-        ExprKind::Box(ref e)
-        | ExprKind::Unary(_, ref e)
-        | ExprKind::Cast(ref e, _)
-        | ExprKind::Type(ref e, _)
-        | ExprKind::Field(ref e, _)
-        | ExprKind::AddrOf(_, _, ref e)
-        | ExprKind::Struct(_, _, Some(ref e))
-        | ExprKind::Repeat(ref e, _)
-        | ExprKind::DropTemps(ref e) => never_loop_expr(e, main_loop_id),
-        ExprKind::Array(ref es) | ExprKind::MethodCall(_, _, ref es, _) | ExprKind::Tup(ref es) => {
+        ExprKind::Box(e)
+        | ExprKind::Unary(_, e)
+        | ExprKind::Cast(e, _)
+        | ExprKind::Type(e, _)
+        | ExprKind::Field(e, _)
+        | ExprKind::AddrOf(_, _, e)
+        | ExprKind::Struct(_, _, Some(e))
+        | ExprKind::Repeat(e, _)
+        | ExprKind::DropTemps(e) => never_loop_expr(e, main_loop_id),
+        ExprKind::Array(es) | ExprKind::MethodCall(_, _, es, _) | ExprKind::Tup(es) => {
             never_loop_expr_all(&mut es.iter(), main_loop_id)
         },
-        ExprKind::Call(ref e, ref es) => never_loop_expr_all(&mut once(&**e).chain(es.iter()), main_loop_id),
-        ExprKind::Binary(_, ref e1, ref e2)
-        | ExprKind::Assign(ref e1, ref e2, _)
-        | ExprKind::AssignOp(_, ref e1, ref e2)
-        | ExprKind::Index(ref e1, ref e2) => never_loop_expr_all(&mut [&**e1, &**e2].iter().cloned(), main_loop_id),
-        ExprKind::Loop(ref b, _, _, _) => {
+        ExprKind::Call(e, es) => never_loop_expr_all(&mut once(e).chain(es.iter()), main_loop_id),
+        ExprKind::Binary(_, e1, e2)
+        | ExprKind::Assign(e1, e2, _)
+        | ExprKind::AssignOp(_, e1, e2)
+        | ExprKind::Index(e1, e2) => never_loop_expr_all(&mut [e1, e2].iter().cloned(), main_loop_id),
+        ExprKind::Loop(b, _, _, _) => {
             // Break can come from the inner loop so remove them.
             absorb_break(&never_loop_block(b, main_loop_id))
         },
-        ExprKind::If(ref e, ref e2, ref e3) => {
+        ExprKind::If(e, e2, ref e3) => {
             let e1 = never_loop_expr(e, main_loop_id);
             let e2 = never_loop_expr(e2, main_loop_id);
             let e3 = e3
@@ -113,7 +113,7 @@ fn never_loop_expr(expr: &Expr<'_>, main_loop_id: HirId) -> NeverLoopResult {
                 .map_or(NeverLoopResult::Otherwise, |e| never_loop_expr(e, main_loop_id));
             combine_seq(e1, combine_branches(e2, e3))
         },
-        ExprKind::Match(ref e, ref arms, _) => {
+        ExprKind::Match(e, arms, _) => {
             let e = never_loop_expr(e, main_loop_id);
             if arms.is_empty() {
                 e
@@ -122,7 +122,7 @@ fn never_loop_expr(expr: &Expr<'_>, main_loop_id: HirId) -> NeverLoopResult {
                 combine_seq(e, arms)
             }
         },
-        ExprKind::Block(ref b, _) => never_loop_block(b, main_loop_id),
+        ExprKind::Block(b, _) => never_loop_block(b, main_loop_id),
         ExprKind::Continue(d) => {
             let id = d
                 .target_id
@@ -136,7 +136,7 @@ fn never_loop_expr(expr: &Expr<'_>, main_loop_id: HirId) -> NeverLoopResult {
         ExprKind::Break(_, ref e) | ExprKind::Ret(ref e) => e.as_ref().map_or(NeverLoopResult::AlwaysBreak, |e| {
             combine_seq(never_loop_expr(e, main_loop_id), NeverLoopResult::AlwaysBreak)
         }),
-        ExprKind::InlineAsm(ref asm) => asm
+        ExprKind::InlineAsm(asm) => asm
             .operands
             .iter()
             .map(|(o, _)| match o {

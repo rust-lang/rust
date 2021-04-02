@@ -77,10 +77,10 @@ pub(super) fn check<'tcx>(
                         }
                     }
                 },
-                hir::ExprKind::AddrOf(hir::BorrowKind::Ref, m, ref inner) if same_mutability(m) => {
+                hir::ExprKind::AddrOf(hir::BorrowKind::Ref, m, inner) if same_mutability(m) => {
                     if_chain! {
-                        if let hir::ExprKind::Unary(hir::UnOp::Deref, ref inner1) = inner.kind;
-                        if let hir::ExprKind::Unary(hir::UnOp::Deref, ref inner2) = inner1.kind;
+                        if let hir::ExprKind::Unary(hir::UnOp::Deref, inner1) = inner.kind;
+                        if let hir::ExprKind::Unary(hir::UnOp::Deref, inner2) = inner1.kind;
                         then {
                             path_to_local_id(inner2, closure_body.params[0].pat.hir_id)
                         } else {

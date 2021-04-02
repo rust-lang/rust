@@ -48,9 +48,9 @@ impl<'tcx> Visitor<'tcx> for TypeComplexityVisitor {
             TyKind::Path(..) | TyKind::Slice(..) | TyKind::Tup(..) | TyKind::Array(..) => (10 * self.nest, 1),
 
             // function types bring a lot of overhead
-            TyKind::BareFn(ref bare) if bare.abi == Abi::Rust => (50 * self.nest, 1),
+            TyKind::BareFn(bare) if bare.abi == Abi::Rust => (50 * self.nest, 1),
 
-            TyKind::TraitObject(ref param_bounds, _, _) => {
+            TyKind::TraitObject(param_bounds, _, _) => {
                 let has_lifetime_parameters = param_bounds.iter().any(|bound| {
                     bound
                         .bound_generic_params

@@ -27,7 +27,7 @@ pub(super) fn check_fn(
 pub(super) fn check_trait_item(cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
     if let hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(eid)) = item.kind {
         let body = cx.tcx.hir().body(eid);
-        check_raw_ptr(cx, sig.header.unsafety, &sig.decl, body, item.hir_id());
+        check_raw_ptr(cx, sig.header.unsafety, sig.decl, body, item.hir_id());
     }
 }
 
@@ -77,7 +77,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
         match expr.kind {
-            hir::ExprKind::Call(ref f, args) => {
+            hir::ExprKind::Call(f, args) => {
                 let ty = self.typeck_results.expr_ty(f);
 
                 if type_is_unsafe_function(self.cx, ty) {
@@ -96,7 +96,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
                     }
                 }
             },
-            hir::ExprKind::Unary(hir::UnOp::Deref, ref ptr) => self.check_arg(ptr),
+            hir::ExprKind::Unary(hir::UnOp::Deref, ptr) => self.check_arg(ptr),
             _ => (),
         }
 
