@@ -280,22 +280,31 @@ pub fn snippet_with_context(
     default: &'a str,
     applicability: &mut Applicability,
 ) -> (Cow<'a, str>, bool) {
-    let outer_span = hygiene::walk_chain(span, outer);
-    let (span, is_macro_call) = if outer_span.ctxt() == outer {
-        (outer_span, span.ctxt() != outer)
-    } else {
-        // The span is from a macro argument, and the outer context is the macro using the argument
-        if *applicability != Applicability::Unspecified {
-            *applicability = Applicability::MaybeIncorrect;
-        }
-        // TODO: get the argument span.
-        (span, false)
-    };
+    let (span, is_macro_call) = walk_span_to_context(span, outer).map_or_else(
+        || {
+            // The span is from a macro argument, and the outer context is the macro using the argument
+            if *applicability != Applicability::Unspecified {
+                *applicability = Applicability::MaybeIncorrect;
+            }
+            // TODO: get the argument span.
+            (span, false)
+        },
+        |outer_span| (outer_span, span.ctxt() != outer),
+    );
 
     (
         snippet_with_applicability(cx, span, default, applicability),
         is_macro_call,
     )
+}
+
+/// Walks the span up to the target context, thereby returning the macro call site if the span is
+/// inside a macro expansion, or the original span if it is not. Note this will return `None` in the
+/// case of the span being in a macro expansion, but the target context is from expanding a macro
+/// argument.
+pub fn walk_span_to_context(span: Span, outer: SyntaxContext) -> Option<Span> {
+    let outer_span = hygiene::walk_chain(span, outer);
+    (outer_span.ctxt() == outer).then(|| outer_span)
 }
 
 /// Removes block comments from the given `Vec` of lines.
