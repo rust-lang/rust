@@ -3,10 +3,11 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{indent_of, reindent_multiline, snippet_opt};
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::usage::contains_return_break_continue_macro;
-use clippy_utils::{in_constant, match_qpath, path_to_local_id, paths, sugg};
+use clippy_utils::{in_constant, is_lang_ctor, path_to_local_id, sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{Arm, Expr, ExprKind, Pat, PatKind};
+use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
+use rustc_hir::{Arm, Expr, ExprKind, PatKind};
 use rustc_lint::LintContext;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
@@ -68,23 +69,21 @@ impl Case {
 }
 
 fn lint_manual_unwrap_or<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-    fn applicable_or_arm<'a>(arms: &'a [Arm<'a>]) -> Option<&'a Arm<'a>> {
+    fn applicable_or_arm<'a>(cx: &LateContext<'_>, arms: &'a [Arm<'a>]) -> Option<&'a Arm<'a>> {
         if_chain! {
             if arms.len() == 2;
             if arms.iter().all(|arm| arm.guard.is_none());
-            if let Some((idx, or_arm)) = arms.iter().enumerate().find(|(_, arm)|
+            if let Some((idx, or_arm)) = arms.iter().enumerate().find(|(_, arm)| {
                 match arm.pat.kind {
-                    PatKind::Path(ref some_qpath) =>
-                        match_qpath(some_qpath, &paths::OPTION_NONE),
-                    PatKind::TupleStruct(ref err_qpath, &[Pat { kind: PatKind::Wild, .. }], _) =>
-                        match_qpath(err_qpath, &paths::RESULT_ERR),
+                    PatKind::Path(ref qpath) => is_lang_ctor(cx, qpath, OptionNone),
+                    PatKind::TupleStruct(ref qpath, &[pat], _) =>
+                        matches!(pat.kind, PatKind::Wild) && is_lang_ctor(cx, qpath, ResultErr),
                     _ => false,
                 }
-            );
+            });
             let unwrap_arm = &arms[1 - idx];
-            if let PatKind::TupleStruct(ref unwrap_qpath, &[unwrap_pat], _) = unwrap_arm.pat.kind;
-            if match_qpath(unwrap_qpath, &paths::OPTION_SOME)
-                || match_qpath(unwrap_qpath, &paths::RESULT_OK);
+            if let PatKind::TupleStruct(ref qpath, &[unwrap_pat], _) = unwrap_arm.pat.kind;
+            if is_lang_ctor(cx, qpath, OptionSome) || is_lang_ctor(cx, qpath, ResultOk);
             if let PatKind::Binding(_, binding_hir_id, ..) = unwrap_pat.kind;
             if path_to_local_id(unwrap_arm.body, binding_hir_id);
             if !contains_return_break_continue_macro(or_arm.body);
@@ -106,7 +105,7 @@ fn lint_manual_unwrap_or<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         } else {
             None
         };
-        if let Some(or_arm) = applicable_or_arm(match_arms);
+        if let Some(or_arm) = applicable_or_arm(cx, match_arms);
         if let Some(or_body_snippet) = snippet_opt(cx, or_arm.body.span);
         if let Some(indent) = indent_of(cx, expr.span);
         if constant_simple(cx, cx.typeck_results(), or_arm.body).is_some();

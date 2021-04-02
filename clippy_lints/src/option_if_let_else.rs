@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::paths;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::usage::contains_return_break_continue_macro;
-use clippy_utils::{eager_or_lazy, get_enclosing_block, in_macro, match_qpath};
+use clippy_utils::{eager_or_lazy, get_enclosing_block, in_macro, is_lang_ctor};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
+use rustc_hir::LangItem::OptionSome;
 use rustc_hir::{Arm, BindingAnnotation, Block, Expr, ExprKind, MatchSource, Mutability, PatKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -164,7 +164,7 @@ fn detect_option_if_let_else<'tcx>(
         if arms.len() == 2;
         if !is_result_ok(cx, cond_expr); // Don't lint on Result::ok because a different lint does it already
         if let PatKind::TupleStruct(struct_qpath, &[inner_pat], _) = &arms[0].pat.kind;
-        if match_qpath(struct_qpath, &paths::OPTION_SOME);
+        if is_lang_ctor(cx, struct_qpath, OptionSome);
         if let PatKind::Binding(bind_annotation, _, id, _) = &inner_pat.kind;
         if !contains_return_break_continue_macro(arms[0].body);
         if !contains_return_break_continue_macro(arms[1].body);

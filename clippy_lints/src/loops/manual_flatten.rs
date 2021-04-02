@@ -1,10 +1,11 @@
 use super::utils::make_iterator_snippet;
 use super::MANUAL_FLATTEN;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::{is_ok_ctor, is_some_ctor, path_to_local_id};
+use clippy_utils::{is_lang_ctor, path_to_local_id};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, MatchSource, Pat, PatKind, QPath, StmtKind};
+use rustc_hir::LangItem::{OptionSome, ResultOk};
+use rustc_hir::{Expr, ExprKind, MatchSource, Pat, PatKind, StmtKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::source_map::Span;
@@ -42,9 +43,9 @@ pub(super) fn check<'tcx>(
             if let PatKind::Binding(_, pat_hir_id, _, _) = pat.kind;
             if path_to_local_id(match_expr, pat_hir_id);
             // Ensure the `if let` statement is for the `Some` variant of `Option` or the `Ok` variant of `Result`
-            if let PatKind::TupleStruct(QPath::Resolved(None, path), _, _) = match_arms[0].pat.kind;
-            let some_ctor = is_some_ctor(cx, path.res);
-            let ok_ctor = is_ok_ctor(cx, path.res);
+            if let PatKind::TupleStruct(ref qpath, _, _) = match_arms[0].pat.kind;
+            let some_ctor = is_lang_ctor(cx, qpath, OptionSome);
+            let ok_ctor = is_lang_ctor(cx, qpath, ResultOk);
             if some_ctor || ok_ctor;
             then {
                 let if_let_type = if some_ctor { "Some" } else { "Ok" };

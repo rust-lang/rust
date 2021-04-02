@@ -1,12 +1,13 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_lang_ctor;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{eq_expr_value, match_def_path, match_qpath, paths};
+use clippy_utils::{eq_expr_value, match_qpath};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{def, BindingAnnotation, Block, Expr, ExprKind, MatchSource, PatKind, StmtKind};
+use rustc_hir::LangItem::OptionNone;
+use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, MatchSource, PatKind, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
@@ -156,15 +157,7 @@ impl QuestionMark {
                 false
             },
             ExprKind::Ret(Some(expr)) => Self::expression_returns_none(cx, expr),
-            ExprKind::Path(ref qp) => {
-                if let Res::Def(DefKind::Ctor(def::CtorOf::Variant, def::CtorKind::Const), def_id) =
-                    cx.qpath_res(qp, expression.hir_id)
-                {
-                    return match_def_path(cx, def_id, &paths::OPTION_NONE);
-                }
-
-                false
-            },
+            ExprKind::Path(ref qpath) => is_lang_ctor(cx, qpath, OptionNone),
             _ => false,
         }
     }

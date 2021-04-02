@@ -7,7 +7,7 @@ use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item, match_type, peel_mid_ty_refs};
 use clippy_utils::visitors::LocalUsedVisitor;
 use clippy_utils::{
-    get_parent_expr, in_macro, is_allowed, is_expn_of, is_refutable, is_wild, match_qpath, meets_msrv, path_to_local,
+    get_parent_expr, in_macro, is_allowed, is_expn_of, is_lang_ctor, is_refutable, is_wild, meets_msrv, path_to_local,
     path_to_local_id, peel_hir_pat_refs, peel_n_hir_expr_refs, recurse_or_patterns, remove_blocks, strip_pat_refs,
 };
 use clippy_utils::{paths, search_same, SpanlessEq, SpanlessHash};
@@ -15,6 +15,7 @@ use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def::{CtorKind, DefKind, Res};
+use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::{
     self as hir, Arm, BindingAnnotation, Block, BorrowKind, Expr, ExprKind, Guard, HirId, Local, MatchSource,
     Mutability, Node, Pat, PatKind, PathSegment, QPath, RangeEnd, TyKind,
@@ -1188,10 +1189,10 @@ fn check_match_ref_pats(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], e
 
 fn check_match_as_ref(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
     if arms.len() == 2 && arms[0].guard.is_none() && arms[1].guard.is_none() {
-        let arm_ref: Option<BindingAnnotation> = if is_none_arm(&arms[0]) {
-            is_ref_some_arm(&arms[1])
-        } else if is_none_arm(&arms[1]) {
-            is_ref_some_arm(&arms[0])
+        let arm_ref: Option<BindingAnnotation> = if is_none_arm(cx, &arms[0]) {
+            is_ref_some_arm(cx, &arms[1])
+        } else if is_none_arm(cx, &arms[1]) {
+            is_ref_some_arm(cx, &arms[0])
         } else {
             None
         };
@@ -1574,20 +1575,20 @@ fn is_unit_expr(expr: &Expr<'_>) -> bool {
 }
 
 // Checks if arm has the form `None => None`
-fn is_none_arm(arm: &Arm<'_>) -> bool {
-    matches!(arm.pat.kind, PatKind::Path(ref path) if match_qpath(path, &paths::OPTION_NONE))
+fn is_none_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
+    matches!(arm.pat.kind, PatKind::Path(ref qpath) if is_lang_ctor(cx, qpath, OptionNone))
 }
 
 // Checks if arm has the form `Some(ref v) => Some(v)` (checks for `ref` and `ref mut`)
-fn is_ref_some_arm(arm: &Arm<'_>) -> Option<BindingAnnotation> {
+fn is_ref_some_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> Option<BindingAnnotation> {
     if_chain! {
-        if let PatKind::TupleStruct(ref path, pats, _) = arm.pat.kind;
-        if pats.len() == 1 && match_qpath(path, &paths::OPTION_SOME);
+        if let PatKind::TupleStruct(ref qpath, pats, _) = arm.pat.kind;
+        if is_lang_ctor(cx, qpath, OptionSome);
         if let PatKind::Binding(rb, .., ident, _) = pats[0].kind;
         if rb == BindingAnnotation::Ref || rb == BindingAnnotation::RefMut;
         if let ExprKind::Call(e, args) = remove_blocks(arm.body).kind;
         if let ExprKind::Path(ref some_path) = e.kind;
-        if match_qpath(some_path, &paths::OPTION_SOME) && args.len() == 1;
+        if is_lang_ctor(cx, some_path, OptionSome) && args.len() == 1;
         if let ExprKind::Path(QPath::Resolved(_, path2)) = args[0].kind;
         if path2.segments.len() == 1 && ident.name == path2.segments[0].ident.name;
         then {
@@ -1699,10 +1700,11 @@ mod redundant_pattern_match {
     use super::REDUNDANT_PATTERN_MATCHING;
     use clippy_utils::diagnostics::span_lint_and_then;
     use clippy_utils::source::snippet;
-    use clippy_utils::{is_trait_method, match_qpath, paths};
+    use clippy_utils::{is_lang_ctor, is_trait_method, match_qpath, paths};
     use if_chain::if_chain;
     use rustc_ast::ast::LitKind;
     use rustc_errors::Applicability;
+    use rustc_hir::LangItem::{OptionNone, OptionSome, PollPending, PollReady, ResultErr, ResultOk};
     use rustc_hir::{Arm, Expr, ExprKind, MatchSource, PatKind, QPath};
     use rustc_lint::LateContext;
     use rustc_span::sym;
@@ -1734,13 +1736,13 @@ mod redundant_pattern_match {
         let good_method = match kind {
             PatKind::TupleStruct(ref path, patterns, _) if patterns.len() == 1 => {
                 if let PatKind::Wild = patterns[0].kind {
-                    if match_qpath(path, &paths::RESULT_OK) {
+                    if is_lang_ctor(cx, path, ResultOk) {
                         "is_ok()"
-                    } else if match_qpath(path, &paths::RESULT_ERR) {
+                    } else if is_lang_ctor(cx, path, ResultErr) {
                         "is_err()"
-                    } else if match_qpath(path, &paths::OPTION_SOME) {
+                    } else if is_lang_ctor(cx, path, OptionSome) {
                         "is_some()"
-                    } else if match_qpath(path, &paths::POLL_READY) {
+                    } else if is_lang_ctor(cx, path, PollReady) {
                         "is_ready()"
                     } else if match_qpath(path, &paths::IPADDR_V4) {
                         "is_ipv4()"
@@ -1754,9 +1756,9 @@ mod redundant_pattern_match {
                 }
             },
             PatKind::Path(ref path) => {
-                if match_qpath(path, &paths::OPTION_NONE) {
+                if is_lang_ctor(cx, path, OptionNone) {
                     "is_none()"
-                } else if match_qpath(path, &paths::POLL_PENDING) {
+                } else if is_lang_ctor(cx, path, PollPending) {
                     "is_pending()"
                 } else {
                     return;

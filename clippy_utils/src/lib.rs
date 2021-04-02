@@ -56,9 +56,10 @@ use if_chain::if_chain;
 use rustc_ast::ast::{self, Attribute, BorrowKind, LitKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
-use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::LangItem::{ResultErr, ResultOk};
 use rustc_hir::{
     def, Arm, BindingAnnotation, Block, Body, Constness, Expr, ExprKind, FnDecl, GenericArgs, HirId, Impl, ImplItem,
     ImplItemKind, Item, ItemKind, LangItem, MatchSource, Node, Param, Pat, PatKind, Path, PathSegment, QPath,
@@ -219,6 +220,19 @@ pub fn in_constant(cx: &LateContext<'_>, id: HirId) -> bool {
         }) => sig.header.constness == Constness::Const,
         _ => false,
     }
+}
+
+/// Checks if a `QPath` resolves to a constructor of a `LangItem`.
+/// For example, use this to check whether a function call or a pattern is `Some(..)`.
+pub fn is_lang_ctor(cx: &LateContext<'_>, qpath: &QPath<'_>, lang_item: LangItem) -> bool {
+    if let QPath::Resolved(_, path) = qpath {
+        if let Res::Def(DefKind::Ctor(..), ctor_id) = path.res {
+            if let Ok(item_id) = cx.tcx.lang_items().require(lang_item) {
+                return cx.tcx.parent(ctor_id) == Some(item_id);
+            }
+        }
+    }
+    false
 }
 
 /// Returns `true` if this `span` was expanded by any macro.
@@ -1010,11 +1024,11 @@ pub fn iter_input_pats<'tcx>(decl: &FnDecl<'_>, body: &'tcx Body<'_>) -> impl It
 
 /// Checks if a given expression is a match expression expanded from the `?`
 /// operator or the `try` macro.
-pub fn is_try<'tcx>(expr: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
-    fn is_ok(arm: &Arm<'_>) -> bool {
+pub fn is_try<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
+    fn is_ok(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
         if_chain! {
             if let PatKind::TupleStruct(ref path, ref pat, None) = arm.pat.kind;
-            if match_qpath(path, &paths::RESULT_OK[1..]);
+            if is_lang_ctor(cx, path, ResultOk);
             if let PatKind::Binding(_, hir_id, _, None) = pat[0].kind;
             if path_to_local_id(arm.body, hir_id);
             then {
@@ -1024,9 +1038,9 @@ pub fn is_try<'tcx>(expr: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
         false
     }
 
-    fn is_err(arm: &Arm<'_>) -> bool {
+    fn is_err(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
         if let PatKind::TupleStruct(ref path, _, _) = arm.pat.kind {
-            match_qpath(path, &paths::RESULT_ERR[1..])
+            is_lang_ctor(cx, path, ResultErr)
         } else {
             false
         }
@@ -1042,8 +1056,8 @@ pub fn is_try<'tcx>(expr: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
             if arms.len() == 2;
             if arms[0].guard.is_none();
             if arms[1].guard.is_none();
-            if (is_ok(&arms[0]) && is_err(&arms[1])) ||
-                (is_ok(&arms[1]) && is_err(&arms[0]));
+            if (is_ok(cx, &arms[0]) && is_err(cx, &arms[1])) ||
+                (is_ok(cx, &arms[1]) && is_err(cx, &arms[0]));
             then {
                 return Some(expr);
             }
@@ -1455,28 +1469,4 @@ pub fn is_hir_ty_cfg_dependant(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
             false
         }
     }
-}
-
-/// Check if the resolution of a given path is an `Ok` variant of `Result`.
-pub fn is_ok_ctor(cx: &LateContext<'_>, res: Res) -> bool {
-    if let Some(ok_id) = cx.tcx.lang_items().result_ok_variant() {
-        if let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Fn), id) = res {
-            if let Some(variant_id) = cx.tcx.parent(id) {
-                return variant_id == ok_id;
-            }
-        }
-    }
-    false
-}
-
-/// Check if the resolution of a given path is a `Some` variant of `Option`.
-pub fn is_some_ctor(cx: &LateContext<'_>, res: Res) -> bool {
-    if let Some(some_id) = cx.tcx.lang_items().option_some_variant() {
-        if let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Fn), id) = res {
-            if let Some(variant_id) = cx.tcx.parent(id) {
-                return variant_id == some_id;
-            }
-        }
-    }
-    false
 }
