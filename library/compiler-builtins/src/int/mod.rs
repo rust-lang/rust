@@ -84,7 +84,7 @@ pub trait Int:
 
 macro_rules! int_impl_common {
     ($ty:ty) => {
-        const BITS: u32 = <Self>::BITS;
+        const BITS: u32 = <Self as Int>::ZERO.count_zeros();
         const SIGNED: bool = Self::MIN != Self::ZERO;
 
         const ZERO: Self = 0;
