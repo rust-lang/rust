@@ -30,7 +30,7 @@ crate use self::unindent_comments::UNINDENT_COMMENTS;
 mod propagate_doc_cfg;
 crate use self::propagate_doc_cfg::PROPAGATE_DOC_CFG;
 
-mod collect_intra_doc_links;
+crate mod collect_intra_doc_links;
 crate use self::collect_intra_doc_links::COLLECT_INTRA_DOC_LINKS;
 
 mod doc_test_lints;
