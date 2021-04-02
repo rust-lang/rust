@@ -30,8 +30,8 @@ LL | fn underconstrained<U>(_: U) -> Underconstrained<U> {
    |
 help: consider restricting type parameter `U`
    |
-LL | fn underconstrained<U: Debug>(_: U) -> Underconstrained<U> {
-   |                      ^^^^^^^
+LL | fn underconstrained<U: std::fmt::Debug>(_: U) -> Underconstrained<U> {
+   |                      ^^^^^^^^^^^^^^^^^
 
 error[E0277]: `V` doesn't implement `Debug`
   --> $DIR/generic_underconstrained2.rs:21:43
@@ -44,8 +44,8 @@ LL | fn underconstrained2<U, V>(_: U, _: V) -> Underconstrained2<V> {
    |
 help: consider restricting type parameter `V`
    |
-LL | fn underconstrained2<U, V: Debug>(_: U, _: V) -> Underconstrained2<V> {
-   |                          ^^^^^^^
+LL | fn underconstrained2<U, V: std::fmt::Debug>(_: U, _: V) -> Underconstrained2<V> {
+   |                          ^^^^^^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors; 1 warning emitted
 

@@ -9,8 +9,8 @@ LL |     x: dyn Object<MustBeCopy<T>>
    |
 help: consider restricting type parameter `T`
    |
-LL | struct Bar<T: Copy> {
-   |             ^^^^^^
+LL | struct Bar<T: std::marker::Copy> {
+   |             ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

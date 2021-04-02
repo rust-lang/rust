@@ -69,8 +69,8 @@ LL |     type Pointer2<U32> = Box<U32>;
    |
 help: consider restricting type parameter `U32`
    |
-LL |     type Pointer2<U32: Clone> = Box<U32>;
-   |                      ^^^^^^^
+LL |     type Pointer2<U32: std::clone::Clone> = Box<U32>;
+   |                      ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 8 previous errors
 
