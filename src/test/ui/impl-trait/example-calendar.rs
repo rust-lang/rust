@@ -3,7 +3,6 @@
 
 #![feature(fn_traits,
            step_trait,
-           step_trait_ext,
            unboxed_closures,
 )]
 

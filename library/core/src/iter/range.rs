@@ -57,7 +57,6 @@ pub trait Step: Clone + PartialOrd + Sized {
     ///
     /// * `Step::forward_checked(a, n) == (0..n).try_fold(a, |x, _| Step::forward_checked(&x, 1))`
     ///   * Corollary: `Step::forward_checked(&a, 0) == Some(a)`
-    #[unstable(feature = "step_trait_ext", reason = "recently added", issue = "42168")]
     fn forward_checked(start: Self, count: usize) -> Option<Self>;
 
     /// Returns the value that would be obtained by taking the *successor*
@@ -83,7 +82,6 @@ pub trait Step: Clone + PartialOrd + Sized {
     ///   * Corollary: `Step::forward(a, 0) == a`
     /// * `Step::forward(a, n) >= a`
     /// * `Step::backward(Step::forward(a, n), n) == a`
-    #[unstable(feature = "step_trait_ext", reason = "recently added", issue = "42168")]
     fn forward(start: Self, count: usize) -> Self {
         Step::forward_checked(start, count).expect("overflow in `Step::forward`")
     }
@@ -108,7 +106,6 @@ pub trait Step: Clone + PartialOrd + Sized {
     /// For any `a` and `n`, where no overflow occurs:
     ///
     /// * `Step::forward_unchecked(a, n)` is equivalent to `Step::forward(a, n)`
-    #[unstable(feature = "step_trait_ext", reason = "recently added", issue = "42168")]
     unsafe fn forward_unchecked(start: Self, count: usize) -> Self {
         Step::forward(start, count)
     }
@@ -129,7 +126,6 @@ pub trait Step: Clone + PartialOrd + Sized {
     ///
     /// * `Step::backward_checked(a, n) == (0..n).try_fold(a, |x, _| Step::backward_checked(&x, 1))`
     ///   * Corollary: `Step::backward_checked(&a, 0) == Some(a)`
-    #[unstable(feature = "step_trait_ext", reason = "recently added", issue = "42168")]
     fn backward_checked(start: Self, count: usize) -> Option<Self>;
 
     /// Returns the value that would be obtained by taking the *predecessor*
@@ -155,7 +151,6 @@ pub trait Step: Clone + PartialOrd + Sized {
     ///   * Corollary: `Step::backward(a, 0) == a`
     /// * `Step::backward(a, n) <= a`
     /// * `Step::forward(Step::backward(a, n), n) == a`
-    #[unstable(feature = "step_trait_ext", reason = "recently added", issue = "42168")]
     fn backward(start: Self, count: usize) -> Self {
         Step::backward_checked(start, count).expect("overflow in `Step::backward`")
     }
@@ -180,7 +175,6 @@ pub trait Step: Clone + PartialOrd + Sized {
     /// For any `a` and `n`, where no overflow occurs:
     ///
     /// * `Step::backward_unchecked(a, n)` is equivalent to `Step::backward(a, n)`
-    #[unstable(feature = "step_trait_ext", reason = "recently added", issue = "42168")]
     unsafe fn backward_unchecked(start: Self, count: usize) -> Self {
         Step::backward(start, count)
     }
