@@ -56,7 +56,7 @@
    46|      1|//!     println!("called some_func()");
    47|      1|//! }
    48|       |//!
-   49|       |//! #[derive(Debug)]
+   49|      0|//! #[derive(Debug)]
    50|       |//! struct SomeError;
    51|       |//!
    52|       |//! extern crate doctest_crate;
