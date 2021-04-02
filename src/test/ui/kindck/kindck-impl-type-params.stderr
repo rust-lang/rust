@@ -8,8 +8,8 @@ LL |     let a = &t as &dyn Gettable<T>;
    = note: required for the cast to the object type `dyn Gettable<T>`
 help: consider restricting type parameter `T`
    |
-LL | fn f<T: Send>(val: T) {
-   |       ^^^^^^
+LL | fn f<T: std::marker::Send>(val: T) {
+   |       ^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `T: Copy` is not satisfied
   --> $DIR/kindck-impl-type-params.rs:18:13
@@ -21,8 +21,8 @@ LL |     let a = &t as &dyn Gettable<T>;
    = note: required for the cast to the object type `dyn Gettable<T>`
 help: consider restricting type parameter `T`
    |
-LL | fn f<T: Copy>(val: T) {
-   |       ^^^^^^
+LL | fn f<T: std::marker::Copy>(val: T) {
+   |       ^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `T` cannot be sent between threads safely
   --> $DIR/kindck-impl-type-params.rs:25:31
@@ -34,8 +34,8 @@ LL |     let a: &dyn Gettable<T> = &t;
    = note: required for the cast to the object type `dyn Gettable<T>`
 help: consider restricting type parameter `T`
    |
-LL | fn g<T: Send>(val: T) {
-   |       ^^^^^^
+LL | fn g<T: std::marker::Send>(val: T) {
+   |       ^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `T: Copy` is not satisfied
   --> $DIR/kindck-impl-type-params.rs:25:31
@@ -47,8 +47,8 @@ LL |     let a: &dyn Gettable<T> = &t;
    = note: required for the cast to the object type `dyn Gettable<T>`
 help: consider restricting type parameter `T`
    |
-LL | fn g<T: Copy>(val: T) {
-   |       ^^^^^^
+LL | fn g<T: std::marker::Copy>(val: T) {
+   |       ^^^^^^^^^^^^^^^^^^^
 
 error[E0477]: the type `&'a isize` does not fulfill the required lifetime
   --> $DIR/kindck-impl-type-params.rs:32:13
