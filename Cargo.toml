@@ -45,6 +45,8 @@ exclude = [
   # not all `Cargo.toml` files are available, so we exclude the `x` binary,
   # so it can be invoked before the current checkout is set up.
   "src/tools/x",
+  # stdarch has its own Cargo workspace
+  "library/stdarch",
 ]
 
 [profile.release.package.compiler_builtins]
