@@ -71,3 +71,15 @@ pub fn discriminant<T>(t: T) {
     core::intrinsics::discriminant_value(&());
     core::intrinsics::discriminant_value(&E::B);
 }
+
+// EMIT_MIR lower_intrinsics.copy_nonoverlapping.LowerIntrinsics.diff
+pub fn copy_nonoverlapping() {
+    let src = 42;
+    let mut dst_1 = 1;
+    let mut dst_2 = 2;
+
+    unsafe {
+        std::intrinsics::copy_nonoverlapping(&src as *const _, &mut dst_1 as *mut _, 1);
+        std::intrinsics::copy_nonoverlapping(&src as *const _, &mut dst_2 as *mut _, 1);
+    }
+}
