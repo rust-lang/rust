@@ -6,7 +6,7 @@
 #![allow(unused_features)]
 #![cfg_attr(thumb, no_main)]
 #![deny(dead_code)]
-#![feature(llvm_asm)]
+#![feature(test)]
 #![feature(lang_items)]
 #![feature(start)]
 #![feature(allocator_api)]
@@ -276,13 +276,8 @@ mod intrinsics {
 }
 
 fn run() {
+    use core::hint::black_box as bb;
     use intrinsics::*;
-
-    // A copy of "test::black_box". Used to prevent LLVM from optimizing away the intrinsics during LTO
-    fn bb<T>(dummy: T) -> T {
-        unsafe { llvm_asm!("" : : "r"(&dummy)) }
-        dummy
-    }
 
     bb(aeabi_d2f(bb(2.)));
     bb(aeabi_d2i(bb(2.)));
