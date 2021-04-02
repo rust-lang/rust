@@ -78,6 +78,41 @@ macro_rules! impl_int_arith {
             pub fn saturating_sub(self, second: Self) -> Self {
                 unsafe { crate::intrinsics::simd_saturating_sub(self, second) }
             }
+
+            /// Lanewise saturating absolute value, implemented in Rust.
+            ///
+            /// # Examples
+            /// # use core_simd::*;
+            #[doc = concat!("# use core::", stringify!($n), "::{MIN, MAX};")]
+            #[doc = concat!("let x = ", stringify!($name), "::splat([MIN, -2, 0, 3]);")]
+            /// let unsat = x.abs();
+            /// let sat = x.saturating_abs();
+            #[doc = concat!("assert_eq!(unsat, ", stringify!($name), "::from_array([MIN, 2, 0, 3]);")]
+            #[doc = concat!("assert_eq!(sat, ", stringify!($name), "::from_array([MAX, 2, 0, 3]));")]
+            /// ```
+            #[inline]
+            pub fn saturating_abs(self) -> Self {
+                // arith shift for -1 or 0 mask based on sign bit, giving 2s complement
+                const SHR: $n = <$n>::BITS as $n - 1;
+                let m = self >> SHR;
+                (self^m).saturating_sub(m)
+            }
+
+            /// Lanewise saturating negation, implemented in Rust.
+            ///
+            /// # Examples
+            /// # use core_simd::*;
+            #[doc = concat!("# use core::", stringify!($n), "::{MIN, MAX};")]
+            #[doc = concat!("let x = ", stringify!($name), "::splat([MIN, -2, 3, MAX]);")]
+            /// let unsat = -x;
+            /// let sat = x.saturating_neg();
+            #[doc = concat!("assert_eq!(unsat, ", stringify!($name), "::from_array([MIN, 2, -3, MIN + 1]);")]
+            #[doc = concat!("assert_eq!(sat, ", stringify!($name), "::from_array([MAX, 2, -3, MIN + 1]));")]
+            /// ```
+            #[inline]
+            pub fn saturating_neg(self) -> Self {
+                Self::splat(0).saturating_sub(self)
+            }
         })+
     }
 }
