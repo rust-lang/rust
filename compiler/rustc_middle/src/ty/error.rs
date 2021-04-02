@@ -511,13 +511,18 @@ impl<T> Trait<T> for X {
                             "consider constraining the associated type `{}` to `{}`",
                             values.found, values.expected,
                         );
-                        if !self.suggest_constraint(
+                        if !(self.suggest_constraining_opaque_associated_type(
+                            db,
+                            &msg,
+                            proj_ty,
+                            values.expected,
+                        ) || self.suggest_constraint(
                             db,
                             &msg,
                             body_owner_def_id,
                             proj_ty,
                             values.expected,
-                        ) {
+                        )) {
                             db.help(&msg);
                             db.note(
                                 "for more information, visit \
@@ -701,20 +706,7 @@ impl<T> Trait<T> for X {
             }
         }
 
-        if let ty::Opaque(def_id, _) = *proj_ty.self_ty().kind() {
-            // When the expected `impl Trait` is not defined in the current item, it will come from
-            // a return type. This can occur when dealing with `TryStream` (#71035).
-            if self.constrain_associated_type_structured_suggestion(
-                db,
-                self.def_span(def_id),
-                &assoc,
-                proj_ty.trait_ref_and_own_substs(self).1,
-                values.found,
-                &msg,
-            ) {
-                return;
-            }
-        }
+        self.suggest_constraining_opaque_associated_type(db, &msg, proj_ty, values.found);
 
         if self.point_at_associated_type(db, body_owner_def_id, values.found) {
             return;
@@ -749,6 +741,30 @@ fn foo(&self) -> Self::T { String::new() }
 }
 ```",
             );
+        }
+    }
+
+    /// When the expected `impl Trait` is not defined in the current item, it will come from
+    /// a return type. This can occur when dealing with `TryStream` (#71035).
+    fn suggest_constraining_opaque_associated_type(
+        self,
+        db: &mut DiagnosticBuilder<'_>,
+        msg: &str,
+        proj_ty: &ty::ProjectionTy<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> bool {
+        let assoc = self.associated_item(proj_ty.item_def_id);
+        if let ty::Opaque(def_id, _) = *proj_ty.self_ty().kind() {
+            self.constrain_associated_type_structured_suggestion(
+                db,
+                self.def_span(def_id),
+                &assoc,
+                proj_ty.trait_ref_and_own_substs(self).1,
+                ty,
+                &msg,
+            )
+        } else {
+            false
         }
     }
 
