@@ -55,9 +55,9 @@ https://www.tedinski.com/2018/02/06/system-boundaries.html
 We try to be very conservative with usage of crates.io dependencies.
 Don't use small "helper" crates (exception: `itertools` is allowed).
 If there's some general reusable bit of code you need, consider adding it to the `stdx` crate.
+A useful exercise is to read Cargo.lock and see if some of the *transitive* dependencies do not make sense for rust-analyzer.
 
-**Rationale:** keep compile times low, create ecosystem pressure for faster
-compiles, reduce the number of things which might break.
+**Rationale:** keep compile times low, create ecosystem pressure for faster compiles, reduce the number of things which might break.
 
 ## Commit Style
 
