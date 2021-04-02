@@ -1,5 +1,6 @@
 // Type substitutions.
 
+use crate::mir;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::sty::{ClosureSubsts, GeneratorSubsts};
@@ -505,6 +506,11 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
         } else {
             c.super_fold_with(self)
         }
+    }
+
+    #[inline]
+    fn fold_mir_const(&mut self, c: mir::ConstantKind<'tcx>) -> mir::ConstantKind<'tcx> {
+        c.super_fold_with(self)
     }
 }
 

@@ -47,7 +47,7 @@
           _19 = const discriminant::<T>::promoted[2]; // scope 0 at $DIR/lower_intrinsics.rs:70:42: 70:44
                                            // ty::Const
                                            // + ty: &i32
-                                           // + val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:27 ~ lower_intrinsics[8787]::discriminant), const_param_did: None }, substs: [T], promoted: Some(promoted[2]) })
+                                           // + val: Unevaluated(discriminant, [T], Some(promoted[2]))
                                            // mir::Constant
                                            // + span: $DIR/lower_intrinsics.rs:70:42: 70:44
                                            // + literal: Const { ty: &i32, val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:27 ~ lower_intrinsics[8787]::discriminant), const_param_did: None }, substs: [T], promoted: Some(promoted[2]) }) }
@@ -71,7 +71,7 @@
           _18 = const discriminant::<T>::promoted[1]; // scope 0 at $DIR/lower_intrinsics.rs:71:42: 71:45
                                            // ty::Const
                                            // + ty: &()
-                                           // + val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:27 ~ lower_intrinsics[8787]::discriminant), const_param_did: None }, substs: [T], promoted: Some(promoted[1]) })
+                                           // + val: Unevaluated(discriminant, [T], Some(promoted[1]))
                                            // mir::Constant
                                            // + span: $DIR/lower_intrinsics.rs:71:42: 71:45
                                            // + literal: Const { ty: &(), val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:27 ~ lower_intrinsics[8787]::discriminant), const_param_did: None }, substs: [T], promoted: Some(promoted[1]) }) }
@@ -95,7 +95,7 @@
           _17 = const discriminant::<T>::promoted[0]; // scope 0 at $DIR/lower_intrinsics.rs:72:42: 72:47
                                            // ty::Const
                                            // + ty: &E
-                                           // + val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:27 ~ lower_intrinsics[8787]::discriminant), const_param_did: None }, substs: [T], promoted: Some(promoted[0]) })
+                                           // + val: Unevaluated(discriminant, [T], Some(promoted[0]))
                                            // mir::Constant
                                            // + span: $DIR/lower_intrinsics.rs:72:42: 72:47
                                            // + literal: Const { ty: &E, val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:27 ~ lower_intrinsics[8787]::discriminant), const_param_did: None }, substs: [T], promoted: Some(promoted[0]) }) }

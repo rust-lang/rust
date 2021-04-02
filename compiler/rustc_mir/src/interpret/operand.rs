@@ -570,7 +570,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         match val {
             mir::ConstantKind::Ty(ct) => self.const_to_op(ct, layout),
-            mir::ConstantKind::Val(val, ty) => self.const_val_to_op(*val, ty, None),
+            mir::ConstantKind::Val(val, ty) => self.const_val_to_op(*val, ty, layout),
         }
     }
 

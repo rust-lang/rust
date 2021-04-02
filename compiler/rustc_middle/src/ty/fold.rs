@@ -30,6 +30,7 @@
 //!
 //! These methods return true to indicate that the visitor has found what it is
 //! looking for, and does not need to visit anything else.
+use crate::mir;
 use crate::ty::{self, flags::FlagComputation, Binder, Ty, TyCtxt, TypeFlags};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -179,6 +180,10 @@ pub trait TypeFolder<'tcx>: Sized {
 
     fn fold_const(&mut self, c: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
         c.super_fold_with(self)
+    }
+
+    fn fold_mir_const(&mut self, c: mir::ConstantKind<'tcx>) -> mir::ConstantKind<'tcx> {
+        bug!("most type folders should not be folding MIR datastructures: {:?}", c)
     }
 }
 

@@ -246,6 +246,18 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
             })
     }
 
+    fn field_pats(
+        &self,
+        vals: impl Iterator<Item = &'tcx ty::Const<'tcx>>,
+    ) -> Result<Vec<FieldPat<'tcx>>, FallbackToConstRef> {
+        vals.enumerate()
+            .map(|(idx, val)| {
+                let field = Field::new(idx);
+                Ok(FieldPat { field, pattern: self.recur(val, false)? })
+            })
+            .collect()
+    }
+
     // Recursive helper for `to_pat`; invoke that (instead of calling this directly).
     fn recur(
         &self,
@@ -256,16 +268,6 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
         let span = self.span;
         let tcx = self.tcx();
         let param_env = self.param_env;
-
-        let field_pats = |vals: &[&'tcx ty::Const<'tcx>]| -> Result<_, _> {
-            vals.iter()
-                .enumerate()
-                .map(|(idx, val)| {
-                    let field = Field::new(idx);
-                    Ok(FieldPat { field, pattern: self.recur(val, false)? })
-                })
-                .collect()
-        };
 
         let kind = match cv.ty.kind() {
             ty::Float(_) => {
@@ -361,12 +363,12 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     variant_index: destructured
                         .variant
                         .expect("destructed const of adt without variant id"),
-                    subpatterns: field_pats(destructured.fields)?,
+                    subpatterns: self.field_pats(destructured.fields.iter().copied())?,
                 }
             }
             ty::Tuple(_) | ty::Adt(_, _) => {
                 let destructured = tcx.destructure_const(param_env.and(cv));
-                PatKind::Leaf { subpatterns: field_pats(destructured.fields)? }
+                PatKind::Leaf { subpatterns: self.field_pats(destructured.fields.iter().copied())? }
             }
             ty::Array(..) => PatKind::Array {
                 prefix: tcx

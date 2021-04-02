@@ -2392,7 +2392,8 @@ pub struct Constant<'tcx> {
     pub literal: ConstantKind<'tcx>,
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, TyEncodable, TyDecodable, Hash, HashStable, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, TyEncodable, TyDecodable, Hash, HashStable, Debug)]
+#[derive(Lift)]
 pub enum ConstantKind<'tcx> {
     /// This constant came from the type system
     Ty(&'tcx ty::Const<'tcx>),
@@ -2691,7 +2692,13 @@ impl<'tcx> Display for Constant<'tcx> {
             ty::FnDef(..) => {}
             _ => write!(fmt, "const ")?,
         }
-        match self.literal {
+        Display::fmt(&self.literal, fmt)
+    }
+}
+
+impl<'tcx> Display for ConstantKind<'tcx> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        match *self {
             ConstantKind::Ty(c) => pretty_print_const(c, fmt, true),
             ConstantKind::Val(val, ty) => pretty_print_const_value(val, ty, fmt, true),
         }

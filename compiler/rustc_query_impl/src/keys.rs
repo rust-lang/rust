@@ -255,6 +255,15 @@ impl<'tcx> Key for GenericArg<'tcx> {
     }
 }
 
+impl<'tcx> Key for mir::ConstantKind<'tcx> {
+    fn query_crate(&self) -> CrateNum {
+        LOCAL_CRATE
+    }
+    fn default_span(&self, _: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+}
+
 impl<'tcx> Key for &'tcx ty::Const<'tcx> {
     fn query_crate(&self) -> CrateNum {
         LOCAL_CRATE

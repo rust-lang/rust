@@ -184,7 +184,6 @@ use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::GrowableBitSet;
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{AllocId, ConstValue};
 use rustc_middle::mir::interpret::{ErrorHandled, GlobalAlloc, Scalar};
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
@@ -193,6 +192,7 @@ use rustc_middle::mir::{self, Local, Location};
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCast};
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::{self, GenericParamDefKind, Instance, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::{middle::codegen_fn_attrs::CodegenFnAttrFlags, mir::visit::TyContext};
 use rustc_session::config::EntryFnType;
 use rustc_span::source_map::{dummy_spanned, respan, Span, Spanned, DUMMY_SP};
 use smallvec::SmallVec;
@@ -638,6 +638,35 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         self.super_rvalue(rvalue, location);
     }
 
+    /// This does not walk the constant, as it has been handled entirely here and trying
+    /// to walk it would attempt to evaluate the `ty::Const` inside, which doesn't necessarily
+    /// work, as some constants cannot be represented in the type system.
+    fn visit_constant(&mut self, constant: &mir::Constant<'tcx>, location: Location) {
+        let literal = self.monomorphize(constant.literal);
+        let val = match literal {
+            mir::ConstantKind::Val(val, _) => val,
+            mir::ConstantKind::Ty(ct) => match ct.val {
+                ty::ConstKind::Value(val) => val,
+                ty::ConstKind::Unevaluated(ct) => {
+                    let param_env = ty::ParamEnv::reveal_all();
+                    match self.tcx.const_eval_resolve(param_env, ct, None) {
+                        // The `monomorphize` call should have evaluated that constant already.
+                        Ok(val) => val,
+                        Err(ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted) => return,
+                        Err(ErrorHandled::TooGeneric) => span_bug!(
+                            self.body.source_info(location).span,
+                            "collection encountered polymorphic constant: {:?}",
+                            literal
+                        ),
+                    }
+                }
+                _ => return,
+            },
+        };
+        collect_const_value(self.tcx, val, self.output);
+        self.visit_ty(literal.ty(), TyContext::Location(location));
+    }
+
     fn visit_const(&mut self, constant: &&'tcx ty::Const<'tcx>, location: Location) {
         debug!("visiting const {:?} @ {:?}", *constant, location);
 
@@ -648,7 +677,13 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             ty::ConstKind::Value(val) => collect_const_value(self.tcx, val, self.output),
             ty::ConstKind::Unevaluated(unevaluated) => {
                 match self.tcx.const_eval_resolve(param_env, unevaluated, None) {
-                    Ok(val) => collect_const_value(self.tcx, val, self.output),
+                    // The `monomorphize` call should have evaluated that constant already.
+                    Ok(val) => span_bug!(
+                        self.body.source_info(location).span,
+                        "collection encountered the unevaluated constant {} which evaluated to {:?}",
+                        substituted_constant,
+                        val
+                    ),
                     Err(ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted) => {}
                     Err(ErrorHandled::TooGeneric) => span_bug!(
                         self.body.source_info(location).span,

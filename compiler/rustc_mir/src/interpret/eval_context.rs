@@ -524,6 +524,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
+    #[inline(always)]
     pub fn layout_of_local(
         &self,
         frame: &Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>,
