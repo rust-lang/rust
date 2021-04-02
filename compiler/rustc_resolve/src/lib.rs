@@ -1037,7 +1037,6 @@ pub struct Resolver<'a> {
     /// and how the `impl Trait` fragments were introduced.
     invocation_parents: FxHashMap<LocalExpnId, (LocalDefId, ImplTraitContext)>,
 
-    next_disambiguator: FxHashMap<(LocalDefId, DefPathData), u32>,
     /// Some way to know that we are in a *trait* impl in `visit_assoc_item`.
     /// FIXME: Replace with a more general AST map (together with some other fields).
     trait_impl_items: FxHashSet<LocalDefId>,
@@ -1230,16 +1229,7 @@ impl ResolverAstLowering for Resolver<'_> {
             self.definitions.def_key(self.node_id_to_def_id[&node_id]),
         );
 
-        // Find the next free disambiguator for this key.
-        let next_disambiguator = &mut self.next_disambiguator;
-        let next_disambiguator = |parent, data| {
-            let next_disamb = next_disambiguator.entry((parent, data)).or_insert(0);
-            let disambiguator = *next_disamb;
-            *next_disamb = next_disamb.checked_add(1).expect("disambiguator overflow");
-            disambiguator
-        };
-
-        let def_id = self.definitions.create_def(parent, data, expn_id, next_disambiguator, span);
+        let def_id = self.definitions.create_def(parent, data, expn_id, span);
 
         // Some things for which we allocate `LocalDefId`s don't correspond to
         // anything in the AST, so they don't have a `NodeId`. For these cases
@@ -1406,7 +1396,6 @@ impl<'a> Resolver<'a> {
             def_id_to_node_id,
             placeholder_field_indices: Default::default(),
             invocation_parents,
-            next_disambiguator: Default::default(),
             trait_impl_items: Default::default(),
             legacy_const_generic_args: Default::default(),
             item_generics_num_lifetimes: Default::default(),

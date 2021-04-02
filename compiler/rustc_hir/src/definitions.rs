@@ -29,6 +29,7 @@ pub struct DefPathTable {
     index_to_key: IndexVec<DefIndex, DefKey>,
     def_path_hashes: IndexVec<DefIndex, DefPathHash>,
     def_path_hash_to_index: DefPathHashMap,
+    next_disambiguator: FxHashMap<(LocalDefId, DefPathData), u32>,
 }
 
 impl DefPathTable {
@@ -380,7 +381,6 @@ impl Definitions {
         parent: LocalDefId,
         data: DefPathData,
         expn_id: ExpnId,
-        mut next_disambiguator: impl FnMut(LocalDefId, DefPathData) -> u32,
         span: Span,
     ) -> LocalDefId {
         debug!("create_def(parent={:?}, data={:?}, expn_id={:?})", parent, data, expn_id);
@@ -388,7 +388,13 @@ impl Definitions {
         // The root node must be created with `create_root_def()`.
         assert!(data != DefPathData::CrateRoot);
 
-        let disambiguator = next_disambiguator(parent, data);
+        // Find the next free disambiguator for this key.
+        let disambiguator = {
+            let next_disamb = self.table.next_disambiguator.entry((parent, data)).or_insert(0);
+            let disambiguator = *next_disamb;
+            *next_disamb = next_disamb.checked_add(1).expect("disambiguator overflow");
+            disambiguator
+        };
         let key = DefKey {
             parent: Some(parent.local_def_index),
             disambiguated_data: DisambiguatedDefPathData { data, disambiguator },
