@@ -50,7 +50,9 @@ where
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (0, self.inner.size_hint().1)
+        let min = self.last.as_ref().map(|_| 1).unwrap_or(0);
+        let max = self.inner.size_hint().1;
+        (min, max)
     }
 }
 
@@ -105,7 +107,9 @@ where
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (0, self.inner.size_hint().1)
+        let min = self.last.as_ref().map(|_| 1).unwrap_or(0);
+        let max = self.inner.size_hint().1;
+        (min, max)
     }
 }
 
@@ -161,6 +165,8 @@ where
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (0, self.inner.size_hint().1)
+        let min = self.last.as_ref().map(|_| 1).unwrap_or(0);
+        let max = self.inner.size_hint().1;
+        (min, max)
     }
 }

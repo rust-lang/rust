@@ -1693,6 +1693,9 @@ pub trait Iterator {
     /// Removes all but the first of consecutive elements in the iterator according to the
     /// [`PartialEq`] trait implementation.
     ///
+    /// For an iterator yielding infinitely many consecutive duplicates,
+    /// this may result in an infinite loop.
+    ///
     /// If the iterator is sorted, this removes all duplicates.
     ///
     /// # Examples
@@ -1726,6 +1729,9 @@ pub trait Iterator {
     /// The `same_bucket` function is passed a references to two elements from the iterator and
     /// must determine if the elements compare equal.
     ///
+    /// For an iterator yielding infinitely many consecutive duplicates,
+    /// this may result in an infinite loop.
+    ///
     /// If the iterator is sorted, this removes all duplicates.
     ///
     /// # Examples
@@ -1755,6 +1761,9 @@ pub trait Iterator {
 
     /// Removes all but the first of consecutive elements in the iterator that
     /// resolve to the same key.
+    ///
+    /// For an iterator yielding infinitely many consecutive duplicates,
+    /// this may result in an infinite loop.
     ///
     /// If the iterator is sorted, this removes all duplicates.
     ///
