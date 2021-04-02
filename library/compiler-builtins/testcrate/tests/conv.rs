@@ -95,6 +95,8 @@ macro_rules! f_to_i {
     };
 }
 
+// AArch64 tests are currently broken due to https://github.com/rust-lang/rust/issues/83467
+#[cfg(not(target_arch = "aarch64"))]
 #[test]
 fn float_to_int() {
     use compiler_builtins::float::conv::{
