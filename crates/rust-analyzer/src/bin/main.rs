@@ -133,7 +133,7 @@ mod tracing_setup {
 }
 
 fn run_server() -> Result<()> {
-    log::info!("server will start");
+    log::info!("server version {} will start", env!("REV"));
 
     let (connection, io_threads) = Connection::stdio();
 
