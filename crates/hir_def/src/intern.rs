@@ -53,31 +53,38 @@ impl<T: Internable> Interned<T> {
 }
 
 impl<T: Internable + ?Sized> Drop for Interned<T> {
+    #[inline]
     fn drop(&mut self) {
         // When the last `Ref` is dropped, remove the object from the global map.
         if Arc::strong_count(&self.arc) == 2 {
             // Only `self` and the global map point to the object.
 
-            let storage = T::storage().get();
-            let shard_idx = storage.determine_map(&self.arc);
-            let shard = &storage.shards()[shard_idx];
-            let mut shard = shard.write();
+            self.drop_slow();
+        }
+    }
+}
 
-            // FIXME: avoid double lookup
-            let (arc, _) =
-                shard.get_key_value(&self.arc).expect("interned value removed prematurely");
+impl<T: Internable + ?Sized> Interned<T> {
+    #[cold]
+    fn drop_slow(&mut self) {
+        let storage = T::storage().get();
+        let shard_idx = storage.determine_map(&self.arc);
+        let shard = &storage.shards()[shard_idx];
+        let mut shard = shard.write();
 
-            if Arc::strong_count(arc) != 2 {
-                // Another thread has interned another copy
-                return;
-            }
+        // FIXME: avoid double lookup
+        let (arc, _) = shard.get_key_value(&self.arc).expect("interned value removed prematurely");
 
-            shard.remove(&self.arc);
+        if Arc::strong_count(arc) != 2 {
+            // Another thread has interned another copy
+            return;
+        }
 
-            // Shrink the backing storage if the shard is less than 50% occupied.
-            if shard.len() * 2 < shard.capacity() {
-                shard.shrink_to_fit();
-            }
+        shard.remove(&self.arc);
+
+        // Shrink the backing storage if the shard is less than 50% occupied.
+        if shard.len() * 2 < shard.capacity() {
+            shard.shrink_to_fit();
         }
     }
 }
