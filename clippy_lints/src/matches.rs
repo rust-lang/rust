@@ -983,6 +983,11 @@ impl CommonPrefixSearcher<'a> {
     }
 }
 
+fn is_doc_hidden(cx: &LateContext<'_>, variant_def: &VariantDef) -> bool {
+    let attrs = cx.tcx.get_attrs(variant_def.def_id);
+    clippy_utils::attrs::is_doc_hidden(attrs)
+}
+
 #[allow(clippy::too_many_lines)]
 fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
     let ty = cx.typeck_results().expr_ty(ex).peel_refs();
@@ -1102,7 +1107,7 @@ fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) 
 
     match missing_variants.as_slice() {
         [] => (),
-        [x] if !adt_def.is_variant_list_non_exhaustive() => span_lint_and_sugg(
+        [x] if !adt_def.is_variant_list_non_exhaustive() && !is_doc_hidden(cx, x) => span_lint_and_sugg(
             cx,
             MATCH_WILDCARD_FOR_SINGLE_VARIANTS,
             wildcard_span,

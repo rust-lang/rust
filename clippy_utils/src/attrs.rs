@@ -1,4 +1,4 @@
-use rustc_ast::ast;
+use rustc_ast::{ast, attr};
 use rustc_errors::Applicability;
 use rustc_session::Session;
 use rustc_span::sym;
@@ -147,4 +147,14 @@ pub fn get_unique_inner_attr(sess: &Session, attrs: &[ast::Attribute], name: &'s
 /// `proc_macro_derive` or `proc_macro_attribute`, false otherwise
 pub fn is_proc_macro(sess: &Session, attrs: &[ast::Attribute]) -> bool {
     attrs.iter().any(|attr| sess.is_proc_macro_attr(attr))
+}
+
+/// Return true if the attributes contain `#[doc(hidden)]`
+pub fn is_doc_hidden(attrs: &[ast::Attribute]) -> bool {
+    #[allow(clippy::filter_map)]
+    attrs
+        .iter()
+        .filter(|attr| attr.has_name(sym::doc))
+        .flat_map(ast::Attribute::meta_item_list)
+        .any(|l| attr::list_contains_name(&l, sym::hidden))
 }
