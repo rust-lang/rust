@@ -1,11 +1,11 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::io;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
-use std::sync::mpsc::channel;
+use std::sync::mpsc::{channel, Receiver};
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -16,10 +16,7 @@ use rustc_span::{symbol::sym, Symbol};
 use super::cache::{build_index, ExternalLocation};
 use super::print_item::{full_path, item_path, print_item};
 use super::write_shared::write_shared;
-use super::{
-    print_sidebar, settings, AllTypes, NameDoc, SharedContext, StylePath, BASIC_KEYWORDS,
-    CURRENT_DEPTH,
-};
+use super::{print_sidebar, settings, AllTypes, NameDoc, StylePath, BASIC_KEYWORDS, CURRENT_DEPTH};
 
 use crate::clean::{self, AttributesExt};
 use crate::config::RenderOptions;
@@ -77,6 +74,74 @@ crate struct Context<'tcx> {
 // `Context` is cloned a lot, so we don't want the size to grow unexpectedly.
 #[cfg(target_arch = "x86_64")]
 rustc_data_structures::static_assert_size!(Context<'_>, 152);
+
+/// Shared mutable state used in [`Context`] and elsewhere.
+crate struct SharedContext<'tcx> {
+    crate tcx: TyCtxt<'tcx>,
+    /// The path to the crate root source minus the file name.
+    /// Used for simplifying paths to the highlighted source code files.
+    crate src_root: PathBuf,
+    /// This describes the layout of each page, and is not modified after
+    /// creation of the context (contains info like the favicon and added html).
+    crate layout: layout::Layout,
+    /// This flag indicates whether `[src]` links should be generated or not. If
+    /// the source files are present in the html rendering, then this will be
+    /// `true`.
+    crate include_sources: bool,
+    /// The local file sources we've emitted and their respective url-paths.
+    crate local_sources: FxHashMap<PathBuf, String>,
+    /// Whether the collapsed pass ran
+    collapsed: bool,
+    /// The base-URL of the issue tracker for when an item has been tagged with
+    /// an issue number.
+    pub(super) issue_tracker_base_url: Option<String>,
+    /// The directories that have already been created in this doc run. Used to reduce the number
+    /// of spurious `create_dir_all` calls.
+    created_dirs: RefCell<FxHashSet<PathBuf>>,
+    /// This flag indicates whether listings of modules (in the side bar and documentation itself)
+    /// should be ordered alphabetically or in order of appearance (in the source code).
+    pub(super) sort_modules_alphabetically: bool,
+    /// Additional CSS files to be added to the generated docs.
+    crate style_files: Vec<StylePath>,
+    /// Suffix to be added on resource files (if suffix is "-v2" then "light.css" becomes
+    /// "light-v2.css").
+    crate resource_suffix: String,
+    /// Optional path string to be used to load static files on output pages. If not set, uses
+    /// combinations of `../` to reach the documentation root.
+    crate static_root_path: Option<String>,
+    /// The fs handle we are working with.
+    crate fs: DocFS,
+    /// The default edition used to parse doctests.
+    crate edition: Edition,
+    pub(super) codes: ErrorCodes,
+    pub(super) playground: Option<markdown::Playground>,
+    all: RefCell<AllTypes>,
+    /// Storage for the errors produced while generating documentation so they
+    /// can be printed together at the end.
+    errors: Receiver<String>,
+    /// `None` by default, depends on the `generate-redirect-map` option flag. If this field is set
+    /// to `Some(...)`, it'll store redirections and then generate a JSON file at the top level of
+    /// the crate.
+    redirections: Option<RefCell<FxHashMap<String, String>>>,
+}
+
+impl SharedContext<'_> {
+    crate fn ensure_dir(&self, dst: &Path) -> Result<(), Error> {
+        let mut dirs = self.created_dirs.borrow_mut();
+        if !dirs.contains(dst) {
+            try_err!(self.fs.create_dir_all(dst), dst);
+            dirs.insert(dst.to_path_buf());
+        }
+
+        Ok(())
+    }
+
+    /// Based on whether the `collapse-docs` pass was run, return either the `doc_value` or the
+    /// `collapsed_doc_value` of the given item.
+    crate fn maybe_collapsed_doc_value<'a>(&self, item: &'a clean::Item) -> Option<String> {
+        if self.collapsed { item.collapsed_doc_value() } else { item.doc_value() }
+    }
+}
 
 impl<'tcx> Context<'tcx> {
     pub(super) fn tcx(&self) -> TyCtxt<'tcx> {

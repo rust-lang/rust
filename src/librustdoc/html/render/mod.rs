@@ -35,32 +35,30 @@ mod write_shared;
 crate use context::*;
 crate use write_shared::FILES_UNVERSIONED;
 
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::collections::VecDeque;
 use std::default::Default;
 use std::fmt;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::str;
 use std::string::ToString;
-use std::sync::mpsc::Receiver;
 
 use itertools::Itertools;
 use rustc_ast_pretty::pprust;
 use rustc_attr::{Deprecation, StabilityLevel};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::Mutability;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::edition::Edition;
 use rustc_span::symbol::{kw, sym, Symbol};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 
 use crate::clean::{self, GetDefId, RenderedLink, SelfTy, TypeKind};
-use crate::docfs::{DocFS, PathError};
+use crate::docfs::PathError;
 use crate::error::Error;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
@@ -70,8 +68,7 @@ use crate::html::format::{
     href, print_abi_with_space, print_default_space, print_generic_bounds, print_where_clause,
     Buffer, PrintWithSpace,
 };
-use crate::html::layout;
-use crate::html::markdown::{self, ErrorCodes, Markdown, MarkdownHtml, MarkdownSummaryLine};
+use crate::html::markdown::{Markdown, MarkdownHtml, MarkdownSummaryLine};
 
 /// A pair of name and its optional document.
 crate type NameDoc = (String, Option<String>);
@@ -80,74 +77,6 @@ crate fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
     crate::html::format::display_fn(move |f| {
         if !v.ends_with('/') && !v.is_empty() { write!(f, "{}/", v) } else { f.write_str(v) }
     })
-}
-
-/// Shared mutable state used in [`Context`] and elsewhere.
-crate struct SharedContext<'tcx> {
-    crate tcx: TyCtxt<'tcx>,
-    /// The path to the crate root source minus the file name.
-    /// Used for simplifying paths to the highlighted source code files.
-    crate src_root: PathBuf,
-    /// This describes the layout of each page, and is not modified after
-    /// creation of the context (contains info like the favicon and added html).
-    crate layout: layout::Layout,
-    /// This flag indicates whether `[src]` links should be generated or not. If
-    /// the source files are present in the html rendering, then this will be
-    /// `true`.
-    crate include_sources: bool,
-    /// The local file sources we've emitted and their respective url-paths.
-    crate local_sources: FxHashMap<PathBuf, String>,
-    /// Whether the collapsed pass ran
-    collapsed: bool,
-    /// The base-URL of the issue tracker for when an item has been tagged with
-    /// an issue number.
-    issue_tracker_base_url: Option<String>,
-    /// The directories that have already been created in this doc run. Used to reduce the number
-    /// of spurious `create_dir_all` calls.
-    created_dirs: RefCell<FxHashSet<PathBuf>>,
-    /// This flag indicates whether listings of modules (in the side bar and documentation itself)
-    /// should be ordered alphabetically or in order of appearance (in the source code).
-    sort_modules_alphabetically: bool,
-    /// Additional CSS files to be added to the generated docs.
-    crate style_files: Vec<StylePath>,
-    /// Suffix to be added on resource files (if suffix is "-v2" then "light.css" becomes
-    /// "light-v2.css").
-    crate resource_suffix: String,
-    /// Optional path string to be used to load static files on output pages. If not set, uses
-    /// combinations of `../` to reach the documentation root.
-    crate static_root_path: Option<String>,
-    /// The fs handle we are working with.
-    crate fs: DocFS,
-    /// The default edition used to parse doctests.
-    crate edition: Edition,
-    codes: ErrorCodes,
-    playground: Option<markdown::Playground>,
-    all: RefCell<AllTypes>,
-    /// Storage for the errors produced while generating documentation so they
-    /// can be printed together at the end.
-    errors: Receiver<String>,
-    /// `None` by default, depends on the `generate-redirect-map` option flag. If this field is set
-    /// to `Some(...)`, it'll store redirections and then generate a JSON file at the top level of
-    /// the crate.
-    redirections: Option<RefCell<FxHashMap<String, String>>>,
-}
-
-impl SharedContext<'_> {
-    crate fn ensure_dir(&self, dst: &Path) -> Result<(), Error> {
-        let mut dirs = self.created_dirs.borrow_mut();
-        if !dirs.contains(dst) {
-            try_err!(self.fs.create_dir_all(dst), dst);
-            dirs.insert(dst.to_path_buf());
-        }
-
-        Ok(())
-    }
-
-    /// Based on whether the `collapse-docs` pass was run, return either the `doc_value` or the
-    /// `collapsed_doc_value` of the given item.
-    crate fn maybe_collapsed_doc_value<'a>(&self, item: &'a clean::Item) -> Option<String> {
-        if self.collapsed { item.collapsed_doc_value() } else { item.doc_value() }
-    }
 }
 
 // Helper structs for rendering items/sidebars and carrying along contextual
