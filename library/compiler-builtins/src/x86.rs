@@ -16,26 +16,27 @@ use core::intrinsics;
 ))]
 #[naked]
 #[no_mangle]
-pub unsafe fn ___chkstk_ms() {
-    llvm_asm!("
-        push   %ecx
-        push   %eax
-        cmp    $$0x1000,%eax
-        lea    12(%esp),%ecx
-        jb     1f
-    2:
-        sub    $$0x1000,%ecx
-        test   %ecx,(%ecx)
-        sub    $$0x1000,%eax
-        cmp    $$0x1000,%eax
-        ja     2b
-    1:
-        sub    %eax,%ecx
-        test   %ecx,(%ecx)
-        pop    %eax
-        pop    %ecx
-        ret" ::: "memory" : "volatile");
-    intrinsics::unreachable();
+pub unsafe extern "C" fn ___chkstk_ms() {
+    asm!(
+        "push   %ecx",
+        "push   %eax",
+        "cmp    $0x1000,%eax",
+        "lea    12(%esp),%ecx",
+        "jb     1f",
+        "2:",
+        "sub    $0x1000,%ecx",
+        "test   %ecx,(%ecx)",
+        "sub    $0x1000,%eax",
+        "cmp    $0x1000,%eax",
+        "ja     2b",
+        "1:",
+        "sub    %eax,%ecx",
+        "test   %ecx,(%ecx)",
+        "pop    %eax",
+        "pop    %ecx",
+        "ret",
+        options(noreturn, att_syntax)
+    );
 }
 
 // FIXME: __alloca should be an alias to __chkstk
@@ -47,10 +48,11 @@ pub unsafe fn ___chkstk_ms() {
 ))]
 #[naked]
 #[no_mangle]
-pub unsafe fn __alloca() {
-    llvm_asm!("jmp ___chkstk   // Jump to ___chkstk since fallthrough may be unreliable"
-         ::: "memory" : "volatile");
-    intrinsics::unreachable();
+pub unsafe extern "C" fn __alloca() {
+    asm!(
+        "jmp ___chkstk", // Jump to ___chkstk since fallthrough may be unreliable"
+        options(noreturn, att_syntax)
+    );
 }
 
 #[cfg(all(
@@ -61,27 +63,27 @@ pub unsafe fn __alloca() {
 ))]
 #[naked]
 #[no_mangle]
-pub unsafe fn ___chkstk() {
-    llvm_asm!("
-        push   %ecx
-        cmp    $$0x1000,%eax
-        lea    8(%esp),%ecx     // esp before calling this routine -> ecx
-        jb     1f
-    2:
-        sub    $$0x1000,%ecx
-        test   %ecx,(%ecx)
-        sub    $$0x1000,%eax
-        cmp    $$0x1000,%eax
-        ja     2b
-    1:
-        sub    %eax,%ecx
-        test   %ecx,(%ecx)
-
-        lea    4(%esp),%eax     // load pointer to the return address into eax
-        mov    %ecx,%esp        // install the new top of stack pointer into esp
-        mov    -4(%eax),%ecx    // restore ecx
-        push   (%eax)           // push return address onto the stack
-        sub    %esp,%eax        // restore the original value in eax
-        ret" ::: "memory" : "volatile");
-    intrinsics::unreachable();
+pub unsafe extern "C" fn ___chkstk() {
+    asm!(
+        "push   %ecx",
+        "cmp    $0x1000,%eax",
+        "lea    8(%esp),%ecx", // esp before calling this routine -> ecx
+        "jb     1f",
+        "2:",
+        "sub    $0x1000,%ecx",
+        "test   %ecx,(%ecx)",
+        "sub    $0x1000,%eax",
+        "cmp    $0x1000,%eax",
+        "ja     2b",
+        "1:",
+        "sub    %eax,%ecx",
+        "test   %ecx,(%ecx)",
+        "lea    4(%esp),%eax",  // load pointer to the return address into eax
+        "mov    %ecx,%esp",     // install the new top of stack pointer into esp
+        "mov    -4(%eax),%ecx", // restore ecx
+        "push   (%eax)",        // push return address onto the stack
+        "sub    %esp,%eax",     // restore the original value in eax
+        "ret",
+        options(noreturn, att_syntax)
+    );
 }
