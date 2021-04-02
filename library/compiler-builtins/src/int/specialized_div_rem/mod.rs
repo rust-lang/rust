@@ -1,5 +1,12 @@
 // TODO: when `unsafe_block_in_unsafe_fn` is stabilized, remove this
 #![allow(unused_unsafe)]
+// The functions are complex with many branches, and explicit
+// `return`s makes it clear where function exit points are
+#![allow(clippy::needless_return)]
+#![allow(clippy::comparison_chain)]
+// Clippy is confused by the complex configuration
+#![allow(clippy::if_same_then_else)]
+#![allow(clippy::needless_bool)]
 
 //! This `specialized_div_rem` module is originally from version 1.0.0 of the
 //! `specialized-div-rem` crate. Note that `for` loops with ranges are not used in this

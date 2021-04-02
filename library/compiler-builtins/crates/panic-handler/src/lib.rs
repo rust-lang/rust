@@ -1,4 +1,4 @@
-// Hack of a crate until rust-lang/rust#51647 is fixed
+//! This is needed for tests on targets that require a `#[panic_handler]` function
 
 #![feature(no_core)]
 #![no_core]

@@ -1,3 +1,5 @@
+#![allow(unused_macros)]
+
 use testcrate::*;
 
 macro_rules! mul {
@@ -86,7 +88,7 @@ macro_rules! float_mul {
                 let mul0 = x * y;
                 let mul1: $f = $fn(x, y);
                 // multiplication of subnormals is not currently handled
-                if !(Float::is_subnormal(&mul0) || Float::is_subnormal(&mul1)) {
+                if !(Float::is_subnormal(mul0) || Float::is_subnormal(mul1)) {
                     if !Float::eq_repr(mul0, mul1) {
                         panic!(
                             "{}({}, {}): std: {}, builtins: {}",
@@ -110,5 +112,19 @@ fn float_mul() {
     float_mul!(
         f32, __mulsf3;
         f64, __muldf3;
+    );
+}
+
+#[cfg(target_arch = "arm")]
+#[test]
+fn float_mul_arm() {
+    use compiler_builtins::float::{
+        mul::{__muldf3vfp, __mulsf3vfp},
+        Float,
+    };
+
+    float_mul!(
+        f32, __mulsf3vfp;
+        f64, __muldf3vfp;
     );
 }

@@ -1,3 +1,5 @@
+#![allow(unused_macros)]
+
 use compiler_builtins::int::sdiv::{__divmoddi4, __divmodsi4, __divmodti4};
 use compiler_builtins::int::udiv::{__udivmoddi4, __udivmodsi4, __udivmodti4, u128_divide_sparc};
 use testcrate::*;
@@ -108,7 +110,7 @@ macro_rules! float {
                 let quo0 = x / y;
                 let quo1: $i = $fn(x, y);
                 // division of subnormals is not currently handled
-                if !(Float::is_subnormal(&quo0) || Float::is_subnormal(&quo1)) {
+                if !(Float::is_subnormal(quo0) || Float::is_subnormal(quo1)) {
                     if !Float::eq_repr(quo0, quo1) {
                         panic!(
                             "{}({}, {}): std: {}, builtins: {}",
@@ -132,5 +134,19 @@ fn float_div() {
     float!(
         f32, __divsf3;
         f64, __divdf3;
+    );
+}
+
+#[cfg(target_arch = "arm")]
+#[test]
+fn float_div_arm() {
+    use compiler_builtins::float::{
+        div::{__divdf3vfp, __divsf3vfp},
+        Float,
+    };
+
+    float!(
+        f32, __divsf3vfp;
+        f64, __divdf3vfp;
     );
 }

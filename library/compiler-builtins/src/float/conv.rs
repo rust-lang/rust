@@ -1,90 +1,88 @@
 use float::Float;
-use int::Int;
+use int::{CastInto, Int};
 
-macro_rules! int_to_float {
-    ($i:expr, $ity:ty, $fty:ty) => {{
-        let i = $i;
-        if i == 0 {
-            return 0.0;
-        }
+fn int_to_float<I: Int, F: Float>(i: I) -> F
+where
+    F::Int: CastInto<u32>,
+    F::Int: CastInto<I>,
+    I::UnsignedInt: CastInto<F::Int>,
+    u32: CastInto<F::Int>,
+{
+    if i == I::ZERO {
+        return F::ZERO;
+    }
 
-        let mant_dig = <$fty>::SIGNIFICAND_BITS + 1;
-        let exponent_bias = <$fty>::EXPONENT_BIAS;
+    let two = I::UnsignedInt::ONE + I::UnsignedInt::ONE;
+    let four = two + two;
+    let sign = i < I::ZERO;
+    let mut x = Int::abs_diff(i, I::ZERO);
 
-        let n = <$ity as Int>::BITS;
-        let (s, a) = i.extract_sign();
-        let mut a = a;
+    // number of significant digits in the integer
+    let i_sd = I::BITS - x.leading_zeros();
+    // significant digits for the float, including implicit bit
+    let f_sd = F::SIGNIFICAND_BITS + 1;
 
-        // number of significant digits
-        let sd = n - a.leading_zeros();
+    // exponent
+    let mut exp = i_sd - 1;
 
-        // exponent
-        let mut e = sd - 1;
+    if I::BITS < f_sd {
+        return F::from_parts(
+            sign,
+            (exp + F::EXPONENT_BIAS).cast(),
+            x.cast() << (f_sd - exp - 1),
+        );
+    }
 
-        if <$ity as Int>::BITS < mant_dig {
-            return <$fty>::from_parts(
-                s,
-                (e + exponent_bias) as <$fty as Float>::Int,
-                (a as <$fty as Float>::Int) << (mant_dig - e - 1),
-            );
-        }
-
-        a = if sd > mant_dig {
-            /* start:  0000000000000000000001xxxxxxxxxxxxxxxxxxxxxxPQxxxxxxxxxxxxxxxxxx
-             *  finish: 000000000000000000000000000000000000001xxxxxxxxxxxxxxxxxxxxxxPQR
-             *                                                12345678901234567890123456
-             *  1 = msb 1 bit
-             *  P = bit MANT_DIG-1 bits to the right of 1
-             *  Q = bit MANT_DIG bits to the right of 1
-             *  R = "or" of all bits to the right of Q
-             */
-            let mant_dig_plus_one = mant_dig + 1;
-            let mant_dig_plus_two = mant_dig + 2;
-            a = if sd == mant_dig_plus_one {
-                a << 1
-            } else if sd == mant_dig_plus_two {
-                a
-            } else {
-                (a >> (sd - mant_dig_plus_two)) as <$ity as Int>::UnsignedInt
-                    | ((a & <$ity as Int>::UnsignedInt::max_value())
-                        .wrapping_shl((n + mant_dig_plus_two) - sd)
-                        != 0) as <$ity as Int>::UnsignedInt
-            };
-
-            /* finish: */
-            a |= ((a & 4) != 0) as <$ity as Int>::UnsignedInt; /* Or P into R */
-            a += 1; /* round - this step may add a significant bit */
-            a >>= 2; /* dump Q and R */
-
-            /* a is now rounded to mant_dig or mant_dig+1 bits */
-            if (a & (1 << mant_dig)) != 0 {
-                a >>= 1;
-                e += 1;
-            }
-            a
-        /* a is now rounded to mant_dig bits */
+    x = if i_sd > f_sd {
+        // start:  0000000000000000000001xxxxxxxxxxxxxxxxxxxxxxPQxxxxxxxxxxxxxxxxxx
+        // finish: 000000000000000000000000000000000000001xxxxxxxxxxxxxxxxxxxxxxPQR
+        //                                               12345678901234567890123456
+        // 1 = the implicit bit
+        // P = bit f_sd-1 bits to the right of 1
+        // Q = bit f_sd bits to the right of 1
+        // R = "or" of all bits to the right of Q
+        let f_sd_add2 = f_sd + 2;
+        x = if i_sd == (f_sd + 1) {
+            x << 1
+        } else if i_sd == f_sd_add2 {
+            x
         } else {
-            a.wrapping_shl(mant_dig - sd)
-            /* a is now rounded to mant_dig bits */
+            (x >> (i_sd - f_sd_add2))
+                | Int::from_bool(
+                    (x & I::UnsignedInt::MAX).wrapping_shl((I::BITS + f_sd_add2) - i_sd)
+                        != Int::ZERO,
+                )
         };
 
-        <$fty>::from_parts(
-            s,
-            (e + exponent_bias) as <$fty as Float>::Int,
-            a as <$fty as Float>::Int,
-        )
-    }};
+        // R |= P
+        x |= Int::from_bool((x & four) != I::UnsignedInt::ZERO);
+        // round - this step may add a significant bit
+        x += Int::ONE;
+        // dump Q and R
+        x >>= 2;
+
+        // a is now rounded to f_sd or f_sd+1 bits
+        if (x & (I::UnsignedInt::ONE << f_sd)) != Int::ZERO {
+            x >>= 1;
+            exp += 1;
+        }
+        x
+    } else {
+        x.wrapping_shl(f_sd - i_sd)
+    };
+
+    F::from_parts(sign, (exp + F::EXPONENT_BIAS).cast(), x.cast())
 }
 
 intrinsics! {
     #[arm_aeabi_alias = __aeabi_i2f]
     pub extern "C" fn __floatsisf(i: i32) -> f32 {
-        int_to_float!(i, i32, f32)
+        int_to_float(i)
     }
 
     #[arm_aeabi_alias = __aeabi_i2d]
     pub extern "C" fn __floatsidf(i: i32) -> f64 {
-        int_to_float!(i, i32, f64)
+        int_to_float(i)
     }
 
     #[maybe_use_optimized_c_shim]
@@ -95,7 +93,7 @@ intrinsics! {
         if cfg!(target_arch = "x86_64") {
             i as f32
         } else {
-            int_to_float!(i, i64, f32)
+            int_to_float(i)
         }
     }
 
@@ -107,181 +105,172 @@ intrinsics! {
         if cfg!(target_arch = "x86_64") {
             i as f64
         } else {
-            int_to_float!(i, i64, f64)
+            int_to_float(i)
         }
     }
 
     #[unadjusted_on_win64]
     pub extern "C" fn __floattisf(i: i128) -> f32 {
-        int_to_float!(i, i128, f32)
+        int_to_float(i)
     }
 
     #[unadjusted_on_win64]
     pub extern "C" fn __floattidf(i: i128) -> f64 {
-        int_to_float!(i, i128, f64)
+        int_to_float(i)
     }
 
     #[arm_aeabi_alias = __aeabi_ui2f]
     pub extern "C" fn __floatunsisf(i: u32) -> f32 {
-        int_to_float!(i, u32, f32)
+        int_to_float(i)
     }
 
     #[arm_aeabi_alias = __aeabi_ui2d]
     pub extern "C" fn __floatunsidf(i: u32) -> f64 {
-        int_to_float!(i, u32, f64)
+        int_to_float(i)
     }
 
     #[maybe_use_optimized_c_shim]
     #[arm_aeabi_alias = __aeabi_ul2f]
     pub extern "C" fn __floatundisf(i: u64) -> f32 {
-        int_to_float!(i, u64, f32)
+        int_to_float(i)
     }
 
     #[maybe_use_optimized_c_shim]
     #[arm_aeabi_alias = __aeabi_ul2d]
     pub extern "C" fn __floatundidf(i: u64) -> f64 {
-        int_to_float!(i, u64, f64)
+        int_to_float(i)
     }
 
     #[unadjusted_on_win64]
     pub extern "C" fn __floatuntisf(i: u128) -> f32 {
-        int_to_float!(i, u128, f32)
+        int_to_float(i)
     }
 
     #[unadjusted_on_win64]
     pub extern "C" fn __floatuntidf(i: u128) -> f64 {
-        int_to_float!(i, u128, f64)
+        int_to_float(i)
     }
 }
 
-#[derive(PartialEq)]
-enum Sign {
-    Positive,
-    Negative,
-}
+fn float_to_int<F: Float, I: Int>(f: F) -> I
+where
+    F::ExpInt: CastInto<u32>,
+    u32: CastInto<F::ExpInt>,
+    F::Int: CastInto<I>,
+{
+    // converting NaNs is UB, so we don't consider them
 
-macro_rules! float_to_int {
-    ($f:expr, $fty:ty, $ity:ty) => {{
-        let f = $f;
-        let fixint_min = <$ity>::min_value();
-        let fixint_max = <$ity>::max_value();
-        let fixint_bits = <$ity as Int>::BITS as usize;
-        let fixint_unsigned = fixint_min == 0;
+    let sign = f.sign();
+    let mut exp = f.exp();
 
-        let sign_bit = <$fty>::SIGN_MASK;
-        let significand_bits = <$fty>::SIGNIFICAND_BITS as usize;
-        let exponent_bias = <$fty>::EXPONENT_BIAS as usize;
-        //let exponent_max = <$fty>::exponent_max() as usize;
+    // if less than one or unsigned & negative
+    if (exp < F::EXPONENT_BIAS.cast()) || (!I::SIGNED && sign) {
+        return I::ZERO;
+    }
+    exp -= F::EXPONENT_BIAS.cast();
 
-        // Break a into sign, exponent, significand
-        let a_rep = <$fty>::repr(f);
-        let a_abs = a_rep & !sign_bit;
-
-        // this is used to work around -1 not being available for unsigned
-        let sign = if (a_rep & sign_bit) == 0 {
-            Sign::Positive
+    // If the value is too large for `I`, saturate.
+    let bits: F::ExpInt = I::BITS.cast();
+    let max = if I::SIGNED {
+        bits - F::ExpInt::ONE
+    } else {
+        bits
+    };
+    if max <= exp {
+        return if sign {
+            // It happens that I::MIN is handled correctly
+            I::MIN
         } else {
-            Sign::Negative
+            I::MAX
         };
-        let mut exponent = (a_abs >> significand_bits) as usize;
-        let significand = (a_abs & <$fty>::SIGNIFICAND_MASK) | <$fty>::IMPLICIT_BIT;
+    };
 
-        // if < 1 or unsigned & negative
-        if exponent < exponent_bias || fixint_unsigned && sign == Sign::Negative {
-            return 0;
-        }
-        exponent -= exponent_bias;
+    // `0 <= exp < max`
 
-        // If the value is infinity, saturate.
-        // If the value is too large for the integer type, 0.
-        if exponent
-            >= (if fixint_unsigned {
-                fixint_bits
-            } else {
-                fixint_bits - 1
-            })
-        {
-            return if sign == Sign::Positive {
-                fixint_max
-            } else {
-                fixint_min
-            };
-        }
-        // If 0 <= exponent < significand_bits, right shift to get the result.
-        // Otherwise, shift left.
-        // (sign - 1) will never overflow as negative signs are already returned as 0 for unsigned
-        let r = if exponent < significand_bits {
-            (significand >> (significand_bits - exponent)) as $ity
+    // If 0 <= exponent < F::SIGNIFICAND_BITS, right shift to get the result. Otherwise, shift left.
+    let sig_bits: F::ExpInt = F::SIGNIFICAND_BITS.cast();
+    // The larger integer has to be casted into, or else the shift overflows
+    let r: I = if F::Int::BITS < I::BITS {
+        let tmp: I = if exp < sig_bits {
+            f.imp_frac().cast() >> (sig_bits - exp).cast()
         } else {
-            (significand as $ity) << (exponent - significand_bits)
+            f.imp_frac().cast() << (exp - sig_bits).cast()
         };
-
-        if sign == Sign::Negative {
-            (!r).wrapping_add(1)
+        tmp
+    } else {
+        let tmp: F::Int = if exp < sig_bits {
+            f.imp_frac() >> (sig_bits - exp).cast()
         } else {
-            r
-        }
-    }};
+            f.imp_frac() << (exp - sig_bits).cast()
+        };
+        tmp.cast()
+    };
+
+    if sign {
+        r.wrapping_neg()
+    } else {
+        r
+    }
 }
 
 intrinsics! {
     #[arm_aeabi_alias = __aeabi_f2iz]
     pub extern "C" fn __fixsfsi(f: f32) -> i32 {
-        float_to_int!(f, f32, i32)
+        float_to_int(f)
     }
 
     #[arm_aeabi_alias = __aeabi_f2lz]
     pub extern "C" fn __fixsfdi(f: f32) -> i64 {
-        float_to_int!(f, f32, i64)
+        float_to_int(f)
     }
 
     #[unadjusted_on_win64]
     pub extern "C" fn __fixsfti(f: f32) -> i128 {
-        float_to_int!(f, f32, i128)
+        float_to_int(f)
     }
 
     #[arm_aeabi_alias = __aeabi_d2iz]
     pub extern "C" fn __fixdfsi(f: f64) -> i32 {
-        float_to_int!(f, f64, i32)
+        float_to_int(f)
     }
 
     #[arm_aeabi_alias = __aeabi_d2lz]
     pub extern "C" fn __fixdfdi(f: f64) -> i64 {
-        float_to_int!(f, f64, i64)
+        float_to_int(f)
     }
 
     #[unadjusted_on_win64]
     pub extern "C" fn __fixdfti(f: f64) -> i128 {
-        float_to_int!(f, f64, i128)
+        float_to_int(f)
     }
 
     #[arm_aeabi_alias = __aeabi_f2uiz]
     pub extern "C" fn __fixunssfsi(f: f32) -> u32 {
-        float_to_int!(f, f32, u32)
+        float_to_int(f)
     }
 
     #[arm_aeabi_alias = __aeabi_f2ulz]
     pub extern "C" fn __fixunssfdi(f: f32) -> u64 {
-        float_to_int!(f, f32, u64)
+        float_to_int(f)
     }
 
     #[unadjusted_on_win64]
     pub extern "C" fn __fixunssfti(f: f32) -> u128 {
-        float_to_int!(f, f32, u128)
+        float_to_int(f)
     }
 
     #[arm_aeabi_alias = __aeabi_d2uiz]
     pub extern "C" fn __fixunsdfsi(f: f64) -> u32 {
-        float_to_int!(f, f64, u32)
+        float_to_int(f)
     }
 
     #[arm_aeabi_alias = __aeabi_d2ulz]
     pub extern "C" fn __fixunsdfdi(f: f64) -> u64 {
-        float_to_int!(f, f64, u64)
+        float_to_int(f)
     }
 
     #[unadjusted_on_win64]
     pub extern "C" fn __fixunsdfti(f: f64) -> u128 {
-        float_to_int!(f, f64, u128)
+        float_to_int(f)
     }
 }

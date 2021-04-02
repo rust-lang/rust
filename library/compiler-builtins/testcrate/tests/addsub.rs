@@ -1,3 +1,5 @@
+#![allow(unused_macros)]
+
 use testcrate::*;
 
 macro_rules! sum {
@@ -105,5 +107,20 @@ fn float_addsub() {
     float_sum!(
         f32, __addsf3, __subsf3;
         f64, __adddf3, __subdf3;
+    );
+}
+
+#[cfg(target_arch = "arm")]
+#[test]
+fn float_addsub_arm() {
+    use compiler_builtins::float::{
+        add::{__adddf3vfp, __addsf3vfp},
+        sub::{__subdf3vfp, __subsf3vfp},
+        Float,
+    };
+
+    float_sum!(
+        f32, __addsf3vfp, __subsf3vfp;
+        f64, __adddf3vfp, __subdf3vfp;
     );
 }

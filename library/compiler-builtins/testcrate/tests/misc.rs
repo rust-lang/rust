@@ -1,3 +1,7 @@
+// makes configuration easier
+#![allow(unused_macros)]
+
+use compiler_builtins::float::Float;
 use testcrate::*;
 
 /// Make sure that the the edge case tester and randomized tester don't break, and list examples of
@@ -89,46 +93,87 @@ fn leading_zeros() {
     })
 }
 
-#[test]
-fn float_extend() {
-    fuzz_float(N, |x: f32| {
-        let tmp0 = x as f64;
-        let tmp1: f64 = compiler_builtins::float::extend::__extendsfdf2(x);
-        if !compiler_builtins::float::Float::eq_repr(tmp0, tmp1) {
-            panic!("__extendsfdf2({}): std: {}, builtins: {}", x, tmp0, tmp1);
-        }
-    });
+macro_rules! extend {
+    ($fX:ident, $fD:ident, $fn:ident) => {
+        fuzz_float(N, |x: $fX| {
+            let tmp0 = x as $fD;
+            let tmp1: $fD = $fn(x);
+            if !Float::eq_repr(tmp0, tmp1) {
+                panic!(
+                    "{}({}): std: {}, builtins: {}",
+                    stringify!($fn),
+                    x,
+                    tmp0,
+                    tmp1
+                );
+            }
+        });
+    };
 }
 
-// This doesn't quite work because of issues related to
+#[test]
+fn float_extend() {
+    use compiler_builtins::float::extend::__extendsfdf2;
+
+    extend!(f32, f64, __extendsfdf2);
+}
+
+#[cfg(target_arch = "arm")]
+#[test]
+fn float_extend_arm() {
+    use compiler_builtins::float::extend::__extendsfdf2vfp;
+
+    extend!(f32, f64, __extendsfdf2vfp);
+}
+
+// This is approximate because of issues related to
 // https://github.com/rust-lang/rust/issues/73920.
-// TODO how do we resolve this?
-/*
+// TODO how do we resolve this indeterminacy?
 macro_rules! pow {
-    ($($f:ty, $fn:ident);*;) => {
+    ($($f:ty, $tolerance:expr, $fn:ident);*;) => {
         $(
             fuzz_float_2(N, |x: $f, y: $f| {
-                let n = y as i32;
-                let tmp0: $f = x.powi(n);
-                let tmp1: $f = $fn(x, n);
-                if tmp0 != tmp1 {
-                    panic!(
-                        "{}({}, {}): std: {}, builtins: {}",
-                        stringify!($fn), x, y, tmp0, tmp1
-                    );
+                if !(Float::is_subnormal(x) || Float::is_subnormal(y) || x.is_nan()) {
+                    let n = y.to_bits() & !<$f as Float>::SIGNIFICAND_MASK;
+                    let n = (n as <$f as Float>::SignedInt) >> <$f as Float>::SIGNIFICAND_BITS;
+                    let n = n as i32;
+                    let tmp0: $f = x.powi(n);
+                    let tmp1: $f = $fn(x, n);
+                    let (a, b) = if tmp0 < tmp1 {
+                        (tmp0, tmp1)
+                    } else {
+                        (tmp1, tmp0)
+                    };
+                    let good = {
+                        if a == b {
+                            // handles infinity equality
+                            true
+                        } else if a < $tolerance {
+                            b < $tolerance
+                        } else {
+                            let quo = b / a;
+                            (quo < (1. + $tolerance)) && (quo > (1. - $tolerance))
+                        }
+                    };
+                    if !good {
+                        panic!(
+                            "{}({}, {}): std: {}, builtins: {}",
+                            stringify!($fn), x, n, tmp0, tmp1
+                        );
+                    }
                 }
             });
         )*
     };
 }
 
+#[cfg(not(all(target_arch = "x86", not(target_feature = "sse"))))]
 #[test]
 fn float_pow() {
     use compiler_builtins::float::pow::{__powidf2, __powisf2};
 
     pow!(
-        f32, __powisf2;
-        f64, __powidf2;
+        f32, 1e-4, __powisf2;
+        f64, 1e-12, __powidf2;
     );
 }
-*/

@@ -137,9 +137,8 @@ where
             a_significand <<= shift;
             a_exponent -= shift;
         }
-    } else
-    /* addition */
-    {
+    } else {
+        // addition
         a_significand += b_significand;
 
         // If the addition carried up, we need to right-shift the result and

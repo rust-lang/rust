@@ -181,7 +181,7 @@ where
         product_high += product_high & one;
     }
 
-    return F::from_repr(product_high);
+    F::from_repr(product_high)
 }
 
 intrinsics! {
