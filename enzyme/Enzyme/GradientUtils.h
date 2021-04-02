@@ -106,6 +106,7 @@ public:
   DominatorTree &OrigDT;
   PostDominatorTree &OrigPDT;
   LoopInfo &OrigLI;
+  ScalarEvolution& OrigSE;
   std::shared_ptr<ActivityAnalyzer> ATA;
   SmallVector<BasicBlock *, 12> originalBlocks;
   ValueMap<BasicBlock *, BasicBlock *> reverseBlocks;
@@ -733,6 +734,7 @@ public:
         OrigPDT(Logic.PPC.FAM.getResult<llvm::PostDominatorTreeAnalysis>(
             *oldFunc_)),
         OrigLI(Logic.PPC.FAM.getResult<llvm::LoopAnalysis>(*oldFunc_)),
+        OrigSE(Logic.PPC.FAM.getResult<llvm::ScalarEvolutionAnalysis>(*oldFunc_)),
         ATA(new ActivityAnalyzer(
             Logic.PPC, Logic.PPC.getAAResultsFromFunction(oldFunc_), TLI_,
             constantvalues_, activevals_, ActiveReturn)),

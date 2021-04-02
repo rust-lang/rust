@@ -43,6 +43,8 @@
 
 #include "llvm/Support/CommandLine.h"
 
+#include "llvm/IR/Dominators.h"
+
 #if LLVM_VERSION_MAJOR >= 10
 #include "llvm/IR/IntrinsicsNVPTX.h"
 #endif
@@ -598,6 +600,102 @@ allPredecessorsOf(llvm::Instruction *inst,
     }
     for (auto suc : llvm::predecessors(BB)) {
       todo.push_back(suc);
+    }
+  }
+}
+
+/// Call the function f for all instructions that happen before inst
+/// If the function returns true, the iteration will early exit
+static inline void
+allDomPredecessorsOf(llvm::Instruction *inst, llvm::DominatorTree &DT,
+                  std::function<bool(llvm::Instruction *)> f) {
+
+  for (auto uinst = inst->getPrevNode(); uinst != nullptr;
+       uinst = uinst->getPrevNode()) {
+    if (f(uinst))
+      return;
+  }
+
+  std::deque<llvm::BasicBlock *> todo;
+  std::set<llvm::BasicBlock *> done;
+  for (auto suc : llvm::predecessors(inst->getParent())) {
+    todo.push_back(suc);
+  }
+  while (todo.size()) {
+    auto BB = todo.front();
+    todo.pop_front();
+    if (done.count(BB))
+      continue;
+    done.insert(BB);
+
+    if (DT.properlyDominates(BB, inst->getParent())) {
+      llvm::BasicBlock::reverse_iterator I = BB->rbegin(), E = BB->rend();
+      for (; I != E; ++I) {
+        if (f(&*I))
+          return;
+        if (&*I == inst)
+          break;
+      }
+      for (auto suc : llvm::predecessors(BB)) {
+        todo.push_back(suc);
+      }
+    }
+  }
+}
+
+
+
+/// Call the function f for all instructions that happen before inst
+/// If the function returns true, the iteration will early exit
+static inline void
+allUnsyncdPredecessorsOf(llvm::Instruction *inst,
+                         std::function<bool(llvm::Instruction *)> f,
+                         std::function<void()> preEntry) {
+
+  for (auto uinst = inst->getPrevNode(); uinst != nullptr;
+       uinst = uinst->getPrevNode()) {
+    if (auto II = llvm::dyn_cast<llvm::IntrinsicInst>(uinst)) {
+      if (II->getIntrinsicID() == llvm::Intrinsic::nvvm_barrier0) {
+        return;
+      }
+    }
+    if (f(uinst))
+      return;
+  }
+
+  std::deque<llvm::BasicBlock *> todo;
+  std::set<llvm::BasicBlock *> done;
+  for (auto suc : llvm::predecessors(inst->getParent())) {
+    todo.push_back(suc);
+  }
+  while (todo.size()) {
+    auto BB = todo.front();
+    todo.pop_front();
+    if (done.count(BB))
+      continue;
+    done.insert(BB);
+
+    bool syncd = false;
+    llvm::BasicBlock::reverse_iterator I = BB->rbegin(), E = BB->rend();
+    for (; I != E; ++I) {
+      if (auto II = llvm::dyn_cast<llvm::IntrinsicInst>(&*I)) {
+        if (II->getIntrinsicID() == llvm::Intrinsic::nvvm_barrier0) {
+          syncd = true;
+          break;
+        }
+      }
+      if (f(&*I))
+        return;
+      if (&*I == inst)
+        break;
+    }
+    if (!syncd) {
+      for (auto suc : llvm::predecessors(BB)) {
+        todo.push_back(suc);
+      }
+      if (&BB->getParent()->getEntryBlock() == BB) {
+        preEntry();
+      }
     }
   }
 }

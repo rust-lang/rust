@@ -2596,10 +2596,12 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
     if (inLoop) {
       bool first = true;
       for (LoopContext idx = lc;; getContext(idx.parent->getHeader(), idx)) {
-        if (!isOriginalBlock(*BuilderM.GetInsertBlock())) {
-          available[idx.var] = BuilderM.CreateLoad(idx.antivaralloc);
-        } else {
-          available[idx.var] = idx.var;
+        if (available.count(idx.var) == 0) {
+          if (!isOriginalBlock(*BuilderM.GetInsertBlock())) {
+            available[idx.var] = BuilderM.CreateLoad(idx.antivaralloc);
+          } else {
+            available[idx.var] = idx.var;
+          }
         }
         if (!first && idx.var == inst)
           return available[idx.var];
@@ -2794,6 +2796,156 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
             }
           }
         }
+
+        auto scev1 = OrigSE.getSCEV(origInst->getPointerOperand());
+        if (scev1 != OrigSE.getCouldNotCompute()) {
+          llvm::errs() << " scev1: " << *scev1 << " - " << *origInst << "\n";
+          Value *storeValue = nullptr;
+          ValueToValueMapTy newavail;
+          for (const auto &pair : available) {
+            assert(pair.first->getType() == pair.second->getType());
+            newavail[pair.first] = pair.second;
+          }
+          allDomPredecessorsOf(origInst, OrigDT, [&](Instruction* pred) {
+            if (auto SI = dyn_cast<StoreInst>(pred)) {
+              //auto NewSI = cast<StoreInst>(getNewFromOriginal(SI));
+#if LLVM_VERSION_MAJOR >= 12
+              auto si2obj = getUnderlyingObject(SI->getPointerOperand(), 100);
+#else
+              auto si2obj =
+                GetUnderlyingObject(SI->getPointerOperand(),
+                                    oldFunc->getParent()->getDataLayout(), 100);
+#endif
+
+              if (si2obj != orig_liobj) return false;
+
+              bool lastStore = true;
+              bool interveningSync = false;
+              allInstructionsBetween(OrigLI, SI, origInst, [&](Instruction *potentialAlias) {
+                if (!potentialAlias->mayWriteToMemory()) return false;
+                if (!writesToMemoryReadBy(OrigAA, origInst, potentialAlias)) return false;
+
+                if (auto II = dyn_cast<IntrinsicInst>(potentialAlias)) {
+                  if (II->getIntrinsicID() == Intrinsic::nvvm_barrier0) {
+                    interveningSync = DT.dominates(SI, II) && DT.dominates(II, origInst);
+                    allUnsyncdPredecessorsOf(II, [&](Instruction *mid) {
+                      llvm::errs() << " seen: " << *mid << "\n";
+                      if (!mid->mayWriteToMemory())
+                        return false;
+
+                      if (mid == SI)return false;
+
+                      if (!writesToMemoryReadBy(OrigAA, origInst, potentialAlias)) {
+                        return false;
+                      }
+                      llvm::errs() << " store from: " << *mid << " via " << *potentialAlias << "\n";
+                      lastStore = false;
+                      return true;
+                    }, [&]() {
+                      // if gone past entry
+                      if (mode != DerivativeMode::Both) {
+                        llvm::errs() << " pentry\n";
+                        lastStore = false;
+                      }
+                    });
+                    if (!lastStore)
+                      return true;
+                    else
+                      return false;
+                  }
+                }
+
+                lastStore = false;
+                return true;
+              });
+
+              if (!lastStore) return false;
+
+              auto scev2 = OrigSE.getSCEV(SI->getPointerOperand());
+              llvm::errs() << " + scev2: " << *scev2 << " - " << *SI->getPointerOperand() << " SI: " << *SI << "\n";
+              bool legal = scev1 == scev2;
+              if (auto ar2 = dyn_cast<SCEVAddRecExpr>(scev2)) {
+                if (auto ar1 = dyn_cast<SCEVAddRecExpr>(scev1)) {
+                  if (ar2->getStart() != OrigSE.getCouldNotCompute() &&
+                      ar1->getStart() == ar2->getStart() &&
+                      ar2->getStepRecurrence(OrigSE) != OrigSE.getCouldNotCompute() &&
+                      ar1->getStepRecurrence(OrigSE) ==
+                      ar2->getStepRecurrence(OrigSE)
+                      ) {
+
+                    LoopContext l1;
+                    getContext(getNewFromOriginal(ar1->getLoop()->getHeader()), l1);
+                    LoopContext l2;
+                    getContext(getNewFromOriginal(ar2->getLoop()->getHeader()), l2);
+                    if (!l1.dynamic && !l2.dynamic) {
+                      // TODO IF len(ar2) >= len(ar1) then we can replace li with
+                      // li2
+                      if (l1.trueLimit == l2.trueLimit) {
+                        const Loop* L1 = ar1->getLoop();
+                        while (L1) {
+                          if (L1 == ar2->getLoop()) return false;
+                          L1 = L1->getParentLoop();
+                        }
+                        newavail[l2.var] = available[l1.var];
+                        legal = true;
+                      } 
+                    }
+                  }
+                }
+              }
+              if (!legal) {
+                Value *sval = SI->getPointerOperand();
+                Value *lval = origInst->getPointerOperand();
+                while (auto CI = dyn_cast<CastInst>(sval)) sval = CI->getOperand(0);
+                while (auto CI = dyn_cast<CastInst>(lval)) lval = CI->getOperand(0);
+                if (auto sgep = dyn_cast<GetElementPtrInst>(sval)) {
+                  if (auto lgep = dyn_cast<GetElementPtrInst>(lval)) {
+                    if (sgep->getPointerOperand() == lgep->getPointerOperand()) {
+                      SmallVector<Value*, 3> svals;
+                      for (auto &v : sgep->indices()) {
+                        Value *q = v;
+                        while (auto CI = dyn_cast<CastInst>(q)) q = CI->getOperand(0);
+                        svals.push_back(q);
+                      }
+                      SmallVector<Value*, 3> lvals;
+                      for (auto &v : lgep->indices()) {
+                        Value *q = v;
+                        while (auto CI = dyn_cast<CastInst>(q)) q = CI->getOperand(0);
+                        lvals.push_back(q);
+                      }
+                      for (int i=0; i<svals.size(); i++) {
+                        auto ss = OrigSE.getSCEV(svals[i]);
+                        auto ls = OrigSE.getSCEV(lvals[i]);
+                        if (cast<IntegerType>(ss->getType())->getBitWidth() > cast<IntegerType>(ls->getType())->getBitWidth()) {
+                          ls = OrigSE.getZeroExtendExpr(ls, ss->getType());
+                        }
+                        if (cast<IntegerType>(ss->getType())->getBitWidth() < cast<IntegerType>(ls->getType())->getBitWidth()) {
+                          ls = OrigSE.getTruncateExpr(ls, ss->getType());
+                        }
+                        llvm::errs() << " ls: " << *ls << " ss: " << *ss << "\n";
+                        if (ls != ss)
+                          llvm::errs() << *OrigSE.getEqualPredicate(ls, ss) << "\n";
+                      }
+                    }
+                  }
+                }
+              }
+              if (!legal) return false;
+              storeValue = getNewFromOriginal(SI->getValueOperand());
+              return true;
+            }
+            return false;
+          });
+
+          if (storeValue) {
+            llvm::errs() << " replacing use of val: " << *val << " with " << *storeValue << "\n";
+            Value *out = lookupM(storeValue, BuilderM, newavail, tryLegalRecomputeCheck);
+            if (out->getType() != val->getType())
+              out = BuilderM.CreateBitCast(out, val->getType());
+            return out;
+          }
+        }
+
       }
 
       auto loadSize = (li->getParent()

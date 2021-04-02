@@ -245,45 +245,37 @@ struct CacheAnalysis {
         }
         if (auto II = dyn_cast<IntrinsicInst>(inst2)) {
           if (II->getIntrinsicID() == Intrinsic::nvvm_barrier0) {
-            IntrinsicInst *other = nullptr;
-            allPredecessorsOf(II, [&](Instruction *p) {
-              if (auto I2 = dyn_cast<IntrinsicInst>(p)) {
-                if (I2->getIntrinsicID() == Intrinsic::nvvm_barrier0 &&
-                    I2 != II) {
-                  if (DT.dominates(I2, II)) {
-                    other = I2;
-                    return true;
-                  }
-                  return false;
-                }
+            allUnsyncdPredecessorsOf(II, [&](Instruction *mid) {
+              if (!mid->mayWriteToMemory())
+                return false;
+
+              if (unnecessaryInstructions.count(mid)) {
+                return false;
               }
-              return false;
-            });
-            if (other) {
-              allInstructionsBetween(OrigLI, other, II, [&](Instruction *mid) {
-                if (!mid->mayWriteToMemory())
-                  return false;
 
-                if (unnecessaryInstructions.count(mid)) {
-                  return false;
-                }
+              if (!writesToMemoryReadBy(AA, &li, mid)) {
+                return false;
+              }
 
-                if (!writesToMemoryReadBy(AA, &li, mid)) {
-                  return false;
-                }
-
-                can_modref = true;
+              can_modref = true;
+              EmitWarning("Uncacheable", li.getDebugLoc(), oldFunc,
+                          li.getParent(), "Load may need caching ", li,
+                          " due to ", *mid, " via ", *II);
+              return true;
+            }, [&]() {
+              // if gone past entry
+              if (!topLevel) {
                 EmitWarning("Uncacheable", li.getDebugLoc(), oldFunc,
                             li.getParent(), "Load may need caching ", li,
-                            " due to ", *other, " via ", *other, " to ", *II);
-                return true;
-              });
-              if (can_modref)
-                return true;
-              else
-                return false;
-            }
-            llvm::errs() << " no dominating barrier of: " << *II << "\n";
+                            " due to entry via ", *II);
+                can_modref = true;
+              }
+            });
+            if (can_modref)
+              return true;
+            else
+              return false;
+
           }
         }
         can_modref = true;
