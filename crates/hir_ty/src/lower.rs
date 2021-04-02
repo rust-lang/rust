@@ -821,24 +821,38 @@ pub fn associated_type_shorthand_candidates<R>(
     res: TypeNs,
     mut cb: impl FnMut(&Name, &TraitRef, TypeAliasId) -> Option<R>,
 ) -> Option<R> {
-    let traits_from_env: Vec<_> = match res {
-        TypeNs::SelfType(impl_id) => match db.impl_trait(impl_id) {
-            None => vec![],
-            // FIXME: how to correctly handle higher-ranked bounds here?
-            Some(trait_ref) => vec![trait_ref.value.shift_bound_vars_out(DebruijnIndex::ONE)],
-        },
+    let mut search = |t| {
+        for t in all_super_trait_refs(db, t) {
+            let data = db.trait_data(t.hir_trait_id());
+
+            for (name, assoc_id) in &data.items {
+                if let AssocItemId::TypeAliasId(alias) = assoc_id {
+                    if let Some(result) = cb(name, &t, *alias) {
+                        return Some(result);
+                    }
+                }
+            }
+        }
+        None
+    };
+
+    match res {
+        // FIXME: how to correctly handle higher-ranked bounds here?
+        TypeNs::SelfType(impl_id) => {
+            search(db.impl_trait(impl_id)?.value.shift_bound_vars_out(DebruijnIndex::ONE))
+        }
         TypeNs::GenericParam(param_id) => {
             let predicates = db.generic_predicates_for_param(param_id);
-            let mut traits_: Vec<_> = predicates
-                .iter()
-                .filter_map(|pred| match &pred.value.value {
-                    // FIXME: how to correctly handle higher-ranked bounds here?
-                    WhereClause::Implemented(tr) => {
-                        Some(tr.clone().shift_bound_vars_out(DebruijnIndex::ONE))
-                    }
-                    _ => None,
-                })
-                .collect();
+            let res = predicates.iter().find_map(|pred| match &pred.value.value {
+                // FIXME: how to correctly handle higher-ranked bounds here?
+                WhereClause::Implemented(tr) => {
+                    search(tr.clone().shift_bound_vars_out(DebruijnIndex::ONE))
+                }
+                _ => None,
+            });
+            if let res @ Some(_) = res {
+                return res;
+            }
             // Handle `Self::Type` referring to own associated type in trait definitions
             if let GenericDefId::TraitId(trait_id) = param_id.parent {
                 let generics = generics(db.upcast(), trait_id.into());
@@ -849,30 +863,13 @@ pub fn associated_type_shorthand_candidates<R>(
                         trait_id: to_chalk_trait_id(trait_id),
                         substitution: Substitution::bound_vars(&generics, DebruijnIndex::INNERMOST),
                     };
-                    traits_.push(trait_ref);
+                    return search(trait_ref);
                 }
             }
-            traits_
+            None
         }
-        _ => vec![],
-    };
-
-    for t in traits_from_env.into_iter().flat_map(move |t| all_super_trait_refs(db, t)) {
-        let data = db.trait_data(t.hir_trait_id());
-
-        for (name, assoc_id) in &data.items {
-            match assoc_id {
-                AssocItemId::TypeAliasId(alias) => {
-                    if let Some(result) = cb(name, &t, *alias) {
-                        return Some(result);
-                    }
-                }
-                AssocItemId::FunctionId(_) | AssocItemId::ConstId(_) => {}
-            }
-        }
+        _ => None,
     }
-
-    None
 }
 
 /// Build the type of all specific fields of a struct or enum variant.
