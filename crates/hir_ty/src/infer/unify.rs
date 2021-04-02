@@ -231,6 +231,7 @@ pub(crate) struct TypeVariableData {
 pub(crate) struct InferenceTable {
     pub(super) var_unification_table: InPlaceUnificationTable<TypeVarId>,
     pub(super) type_variable_table: TypeVariableTable,
+    pub(super) revision: u32,
 }
 
 impl InferenceTable {
@@ -238,6 +239,7 @@ impl InferenceTable {
         InferenceTable {
             var_unification_table: InPlaceUnificationTable::new(),
             type_variable_table: TypeVariableTable { inner: Vec::new() },
+            revision: 0,
         }
     }
 
@@ -360,7 +362,10 @@ impl InferenceTable {
                 == self.type_variable_table.is_diverging(*tv2) =>
             {
                 // both type vars are unknown since we tried to resolve them
-                self.var_unification_table.union(tv1.to_inner(), tv2.to_inner());
+                if !self.var_unification_table.unioned(tv1.to_inner(), tv2.to_inner()) {
+                    self.var_unification_table.union(tv1.to_inner(), tv2.to_inner());
+                    self.revision += 1;
+                }
                 true
             }
 
@@ -398,6 +403,7 @@ impl InferenceTable {
                     tv.to_inner(),
                     TypeVarValue::Known(other.clone().intern(&Interner)),
                 );
+                self.revision += 1;
                 true
             }
 

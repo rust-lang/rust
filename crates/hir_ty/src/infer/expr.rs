@@ -99,7 +99,7 @@ impl<'a> InferenceContext<'a> {
             environment: trait_env,
         });
         if self.db.trait_solve(krate, goal.value).is_some() {
-            self.obligations.push(implements_fn_trait);
+            self.push_obligation(implements_fn_trait);
             let output_proj_ty = crate::ProjectionTy {
                 associated_ty_id: to_assoc_type_id(output_assoc_type),
                 substitution: substs,
@@ -964,7 +964,7 @@ impl<'a> InferenceContext<'a> {
                 let (predicate, binders) =
                     predicate.clone().subst(parameters).into_value_and_skipped_binders();
                 always!(binders == 0); // quantified where clauses not yet handled
-                self.obligations.push(predicate.cast(&Interner));
+                self.push_obligation(predicate.cast(&Interner));
             }
             // add obligation for trait implementation, if this is a trait method
             match def {
@@ -974,7 +974,7 @@ impl<'a> InferenceContext<'a> {
                         // construct a TraitRef
                         let substs =
                             parameters.prefix(generics(self.db.upcast(), trait_.into()).len());
-                        self.obligations.push(
+                        self.push_obligation(
                             TraitRef { trait_id: to_chalk_trait_id(trait_), substitution: substs }
                                 .cast(&Interner),
                         );

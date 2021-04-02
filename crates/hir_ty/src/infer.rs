@@ -210,6 +210,7 @@ struct InferenceContext<'a> {
     table: unify::InferenceTable,
     trait_env: Arc<TraitEnvironment>,
     obligations: Vec<DomainGoal>,
+    last_obligations_check: Option<u32>,
     result: InferenceResult,
     /// The return type of the function being inferred, or the closure if we're
     /// currently within one.
@@ -245,6 +246,7 @@ impl<'a> InferenceContext<'a> {
             result: InferenceResult::default(),
             table: unify::InferenceTable::new(),
             obligations: Vec::default(),
+            last_obligations_check: None,
             return_ty: TyKind::Unknown.intern(&Interner), // set in collect_fn_signature
             trait_env: owner
                 .as_generic_def_id()
@@ -334,6 +336,11 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn resolve_obligations_as_possible(&mut self) {
+        if self.last_obligations_check == Some(self.table.revision) {
+            // no change
+            return;
+        }
+        self.last_obligations_check = Some(self.table.revision);
         let obligations = mem::replace(&mut self.obligations, Vec::new());
         for obligation in obligations {
             let in_env = InEnvironment::new(self.trait_env.env.clone(), obligation.clone());
@@ -358,6 +365,11 @@ impl<'a> InferenceContext<'a> {
                 }
             };
         }
+    }
+
+    fn push_obligation(&mut self, o: DomainGoal) {
+        self.obligations.push(o);
+        self.last_obligations_check = None;
     }
 
     fn unify(&mut self, ty1: &Ty, ty2: &Ty) -> bool {
@@ -408,8 +420,8 @@ impl<'a> InferenceContext<'a> {
                     }),
                     ty: ty.clone(),
                 };
-                self.obligations.push(trait_ref.cast(&Interner));
-                self.obligations.push(alias_eq.cast(&Interner));
+                self.push_obligation(trait_ref.cast(&Interner));
+                self.push_obligation(alias_eq.cast(&Interner));
                 self.resolve_ty_as_possible(ty)
             }
             None => self.err_ty(),
@@ -436,7 +448,7 @@ impl<'a> InferenceContext<'a> {
         let var = self.table.new_type_var();
         let alias_eq = AliasEq { alias: AliasTy::Projection(proj_ty), ty: var.clone() };
         let obligation = alias_eq.cast(&Interner);
-        self.obligations.push(obligation);
+        self.push_obligation(obligation);
         var
     }
 
