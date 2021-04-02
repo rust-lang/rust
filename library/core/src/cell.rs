@@ -1034,6 +1034,52 @@ impl<T: ?Sized> RefCell<T> {
         self.get_mut()
     }
 
+    /// Assert that a single leaked immutable guard has been cleaned up.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(cell_leak)]
+    /// use std::cell::{RefCell, Ref};
+    ///
+    /// let mut c = RefCell::new(0);
+    /// Ref::leak(c.borrow());
+    ///
+    /// assert!(c.try_borrow_mut().is_err());
+    /// c.drop_leak();
+    /// assert!(c.try_borrow_mut().is_ok());
+    /// ```
+    #[unstable(feature = "cell_leak", issue = "69099")]
+    pub unsafe fn drop_leak(&self) {
+        self.borrow.update(|x| {
+            assert!(x > 0, "Cell not borrowed immutably");
+            x - 1
+        });
+    }
+
+    /// Assert that a single leaked mutable guard has been cleaned up.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(cell_leak)]
+    /// use std::cell::{RefCell, RefMut};
+    ///
+    /// let mut c = RefCell::new(0);
+    /// RefMut::leak(c.borrow_mut());
+    ///
+    /// assert!(c.try_borrow().is_err());
+    /// c.drop_leak_mut();
+    /// assert!(c.try_borrow().is_ok());
+    /// ```
+    #[unstable(feature = "cell_leak", issue = "69099")]
+    pub unsafe fn drop_leak_mut(&self) {
+        self.borrow.update(|x| {
+            assert!(x < 0, "Cell not borrowed mutably");
+            x + 1
+        });
+    }
+
     /// Immutably borrows the wrapped value, returning an error if the value is
     /// currently mutably borrowed.
     ///
