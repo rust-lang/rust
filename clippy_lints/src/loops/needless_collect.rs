@@ -102,7 +102,7 @@ fn check_needless_collect_indirect_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCo
                                     (iter_call.span, iter_replacement)
                                 ],
                                 Applicability::MachineApplicable,// MaybeIncorrect,
-                            ).emit();
+                            );
                         },
                     );
                 }
