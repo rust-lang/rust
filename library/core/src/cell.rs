@@ -1046,7 +1046,7 @@ impl<T: ?Sized> RefCell<T> {
     /// Ref::leak(c.borrow());
     ///
     /// assert!(c.try_borrow_mut().is_err());
-    /// c.drop_leak();
+    /// unsafe { c.drop_leak() };
     /// assert!(c.try_borrow_mut().is_ok());
     /// ```
     #[unstable(feature = "cell_leak", issue = "69099")]
@@ -1069,7 +1069,7 @@ impl<T: ?Sized> RefCell<T> {
     /// RefMut::leak(c.borrow_mut());
     ///
     /// assert!(c.try_borrow().is_err());
-    /// c.drop_leak_mut();
+    /// unsafe { c.drop_leak_mut() };
     /// assert!(c.try_borrow().is_ok());
     /// ```
     #[unstable(feature = "cell_leak", issue = "69099")]
