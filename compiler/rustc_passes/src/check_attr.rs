@@ -9,7 +9,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 
 use rustc_ast::{Attribute, Lit, LitKind, NestedMetaItem};
-use rustc_errors::{pluralize, struct_span_err};
+use rustc_errors::{pluralize, struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
@@ -648,10 +648,10 @@ impl CheckAttrVisitor<'tcx> {
                         | sym::masked
                         | sym::no_default_passes
                         | sym::no_inline
+                        | sym::notable_trait
                         | sym::passes
                         | sym::plugins
                         | sym::primitive
-                        | sym::spotlight
                         | sym::test => {}
 
                         _ => {
@@ -660,11 +660,23 @@ impl CheckAttrVisitor<'tcx> {
                                 hir_id,
                                 i_meta.span,
                                 |lint| {
-                                    let msg = format!(
+                                    let mut diag = lint.build(&format!(
                                         "unknown `doc` attribute `{}`",
                                         rustc_ast_pretty::pprust::path_to_string(&i_meta.path),
-                                    );
-                                    lint.build(&msg).emit();
+                                    ));
+                                    if i_meta.has_name(sym::spotlight) {
+                                        diag.note(
+                                            "`doc(spotlight)` was renamed to `doc(notable_trait)`",
+                                        );
+                                        diag.span_suggestion_short(
+                                            i_meta.span,
+                                            "use `notable_trait` instead",
+                                            String::from("notable_trait"),
+                                            Applicability::MachineApplicable,
+                                        );
+                                        diag.note("`doc(spotlight)` is now a no-op");
+                                    }
+                                    diag.emit();
                                 },
                             );
                             is_valid = false;
