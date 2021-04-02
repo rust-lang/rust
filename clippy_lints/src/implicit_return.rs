@@ -1,5 +1,6 @@
 use clippy_utils::{
     diagnostics::span_lint_and_sugg,
+    get_async_fn_body, is_async_fn,
     source::{snippet_with_applicability, snippet_with_context, walk_span_to_context},
     visitors::visit_break_exprs,
 };
@@ -219,6 +220,14 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitReturn {
             return;
         }
 
-        lint_implicit_returns(cx, &body.value, body.value.span.ctxt(), None);
+        let expr = if is_async_fn(kind) {
+            match get_async_fn_body(cx.tcx, body) {
+                Some(e) => e,
+                None => return,
+            }
+        } else {
+            &body.value
+        };
+        lint_implicit_returns(cx, expr, expr.span.ctxt(), None);
     }
 }

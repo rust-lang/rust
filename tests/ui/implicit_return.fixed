@@ -1,3 +1,4 @@
+// edition:2018
 // run-rustfix
 
 #![warn(clippy::implicit_return)]
@@ -120,6 +121,11 @@ fn divergent_test() -> bool {
         panic!()
     }
     diverge()
+}
+
+// issue #6940
+async fn foo() -> bool {
+    return true
 }
 
 fn main() {}
