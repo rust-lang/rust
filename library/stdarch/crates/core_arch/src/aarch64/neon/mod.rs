@@ -15,6 +15,7 @@ use crate::{
 };
 #[cfg(test)]
 use stdarch_test::assert_instr;
+use core::hint::unreachable_unchecked;
 
 types! {
     /// ARM-specific 64-bit wide vector of one packed `f64`.
@@ -1427,6 +1428,29 @@ pub unsafe fn vpmaxq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     vpmaxq_f64_(a, b)
 }
 
+/// Extract vector from pair of vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(str, N = 0))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vext_p64<const N: i32>(a: poly64x1_t, _b: poly64x1_t) -> poly64x1_t {
+    if N != 0 {
+        unreachable_unchecked()
+    }
+    a
+}
+
+/// Extract vector from pair of vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(str, N = 0))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vext_f64<const N: i32>(a: float64x1_t, _b: float64x1_t) -> float64x1_t {
+    if N != 0 {
+        unreachable_unchecked()
+    }
+    a
+}
 /// Vector combine
 #[inline]
 #[target_feature(enable = "neon")]
@@ -3467,6 +3491,24 @@ mod tests {
         let b = f64x2::new(0., 3.);
         let e = f64x2::new(1., 3.);
         let r: f64x2 = transmute(vpmaxq_f64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vext_p64() {
+        let a: i64x1 = i64x1::new(0);
+        let b: i64x1 = i64x1::new(1);
+        let e: i64x1 = i64x1::new(0);
+        let r: i64x1 = transmute(vext_p64::<0>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vext_f64() {
+        let a: f64x1 = f64x1::new(0.);
+        let b: f64x1 = f64x1::new(1.);
+        let e: f64x1 = f64x1::new(0.);
+        let r: f64x1 = transmute(vext_f64::<0>(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 

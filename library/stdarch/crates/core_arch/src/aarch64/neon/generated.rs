@@ -1664,6 +1664,34 @@ pub unsafe fn vcvtpq_u64_f64(a: float64x2_t) -> uint64x2_t {
     vcvtpq_u64_f64_(a)
 }
 
+/// Extract vector from pair of vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ext, N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vextq_p64<const N: i32>(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
+    static_assert_imm1!(N);
+    match N & 0b1 {
+        0 => simd_shuffle2(a, b, [0, 1]),
+        1 => simd_shuffle2(a, b, [1, 2]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Extract vector from pair of vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ext, N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vextq_f64<const N: i32>(a: float64x2_t, b: float64x2_t) -> float64x2_t {
+    static_assert_imm1!(N);
+    match N & 0b1 {
+        0 => simd_shuffle2(a, b, [0, 1]),
+        1 => simd_shuffle2(a, b, [1, 2]),
+        _ => unreachable_unchecked(),
+    }
+}
+
 /// Floating-point multiply-add to accumulator
 #[inline]
 #[target_feature(enable = "neon")]
@@ -5611,6 +5639,24 @@ mod test {
         let a: f64x2 = f64x2::new(1.1, 2.1);
         let e: u64x2 = u64x2::new(2, 3);
         let r: u64x2 = transmute(vcvtpq_u64_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vextq_p64() {
+        let a: i64x2 = i64x2::new(0, 8);
+        let b: i64x2 = i64x2::new(9, 11);
+        let e: i64x2 = i64x2::new(8, 9);
+        let r: i64x2 = transmute(vextq_p64::<1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vextq_f64() {
+        let a: f64x2 = f64x2::new(0., 2.);
+        let b: f64x2 = f64x2::new(3., 4.);
+        let e: f64x2 = f64x2::new(2., 3.);
+        let r: f64x2 = transmute(vextq_f64::<1>(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 

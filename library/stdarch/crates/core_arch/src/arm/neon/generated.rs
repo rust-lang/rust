@@ -2044,6 +2044,416 @@ pub unsafe fn vcvtq_u32_f32(a: float32x4_t) -> uint32x4_t {
     simd_cast(a)
 }
 
+/// Extract vector from pair of vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vext.8", N = 4))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 4))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vext_s8<const N: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
+    static_assert_imm3!(N);
+    match N & 0b111 {
+        0 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
+        2 => simd_shuffle8(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
+        3 => simd_shuffle8(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
+        4 => simd_shuffle8(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
+        5 => simd_shuffle8(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
+        6 => simd_shuffle8(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
+        7 => simd_shuffle8(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Extract vector from pair of vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vext.8", N = 8))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 8))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vextq_s8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t {
+    static_assert_imm4!(N);
+    match N & 0b1111 {
+        0 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        1 => simd_shuffle16(a, b, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]),
+        2 => simd_shuffle16(a, b, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]),
+        3 => simd_shuffle16(a, b, [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]),
+        4 => simd_shuffle16(a, b, [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]),
+        5 => simd_shuffle16(a, b, [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]),
+        6 => simd_shuffle16(a, b, [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]),
+        7 => simd_shuffle16(a, b, [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]),
+        8 => simd_shuffle16(a, b, [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]),
+        9 => simd_shuffle16(a, b, [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]),
+        10 => simd_shuffle16(a, b, [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]),
+        11 => simd_shuffle16(a, b, [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]),
+        12 => simd_shuffle16(a, b, [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]),
+        13 => simd_shuffle16(a, b, [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]),
+        14 => simd_shuffle16(a, b, [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]),
+        15 => simd_shuffle16(a, b, [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Extract vector from pair of vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vext.8", N = 2))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 2))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vext_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
+    static_assert_imm2!(N);
+    match N & 0b11 {
+        0 => simd_shuffle4(a, b, [0, 1, 2, 3]),
+        1 => simd_shuffle4(a, b, [1, 2, 3, 4]),
+        2 => simd_shuffle4(a, b, [2, 3, 4, 5]),
+        3 => simd_shuffle4(a, b, [3, 4, 5, 6]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Extract vector from pair of vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vext.8", N = 4))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 4))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vextq_s16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
+    static_assert_imm3!(N);
+    match N & 0b111 {
+        0 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
+        2 => simd_shuffle8(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
+        3 => simd_shuffle8(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
+        4 => simd_shuffle8(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
+        5 => simd_shuffle8(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
+        6 => simd_shuffle8(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
+        7 => simd_shuffle8(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Extract vector from pair of vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vext.8", N = 1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vext_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
+    static_assert_imm1!(N);
+    match N & 0b1 {
+        0 => simd_shuffle2(a, b, [0, 1]),
+        1 => simd_shuffle2(a, b, [1, 2]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Extract vector from pair of vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vext.8", N = 2))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 2))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vextq_s32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
+    static_assert_imm2!(N);
+    match N & 0b11 {
+        0 => simd_shuffle4(a, b, [0, 1, 2, 3]),
+        1 => simd_shuffle4(a, b, [1, 2, 3, 4]),
+        2 => simd_shuffle4(a, b, [2, 3, 4, 5]),
+        3 => simd_shuffle4(a, b, [3, 4, 5, 6]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Extract vector from pair of vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vext.8", N = 4))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 4))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vext_u8<const N: i32>(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
+    static_assert_imm3!(N);
+    match N & 0b111 {
+        0 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
+        2 => simd_shuffle8(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
+        3 => simd_shuffle8(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
+        4 => simd_shuffle8(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
+        5 => simd_shuffle8(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
+        6 => simd_shuffle8(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
+        7 => simd_shuffle8(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Extract vector from pair of vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vext.8", N = 8))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 8))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vextq_u8<const N: i32>(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
+    static_assert_imm4!(N);
+    match N & 0b1111 {
+        0 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        1 => simd_shuffle16(a, b, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]),
+        2 => simd_shuffle16(a, b, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]),
+        3 => simd_shuffle16(a, b, [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]),
+        4 => simd_shuffle16(a, b, [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]),
+        5 => simd_shuffle16(a, b, [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]),
+        6 => simd_shuffle16(a, b, [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]),
+        7 => simd_shuffle16(a, b, [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]),
+        8 => simd_shuffle16(a, b, [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]),
+        9 => simd_shuffle16(a, b, [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]),
+        10 => simd_shuffle16(a, b, [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]),
+        11 => simd_shuffle16(a, b, [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]),
+        12 => simd_shuffle16(a, b, [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]),
+        13 => simd_shuffle16(a, b, [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]),
+        14 => simd_shuffle16(a, b, [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]),
+        15 => simd_shuffle16(a, b, [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Extract vector from pair of vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vext.8", N = 2))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 2))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vext_u16<const N: i32>(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
+    static_assert_imm2!(N);
+    match N & 0b11 {
+        0 => simd_shuffle4(a, b, [0, 1, 2, 3]),
+        1 => simd_shuffle4(a, b, [1, 2, 3, 4]),
+        2 => simd_shuffle4(a, b, [2, 3, 4, 5]),
+        3 => simd_shuffle4(a, b, [3, 4, 5, 6]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Extract vector from pair of vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vext.8", N = 4))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 4))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vextq_u16<const N: i32>(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
+    static_assert_imm3!(N);
+    match N & 0b111 {
+        0 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
+        2 => simd_shuffle8(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
+        3 => simd_shuffle8(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
+        4 => simd_shuffle8(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
+        5 => simd_shuffle8(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
+        6 => simd_shuffle8(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
+        7 => simd_shuffle8(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Extract vector from pair of vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vext.8", N = 1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vext_u32<const N: i32>(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
+    static_assert_imm1!(N);
+    match N & 0b1 {
+        0 => simd_shuffle2(a, b, [0, 1]),
+        1 => simd_shuffle2(a, b, [1, 2]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Extract vector from pair of vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vext.8", N = 2))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 2))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vextq_u32<const N: i32>(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
+    static_assert_imm2!(N);
+    match N & 0b11 {
+        0 => simd_shuffle4(a, b, [0, 1, 2, 3]),
+        1 => simd_shuffle4(a, b, [1, 2, 3, 4]),
+        2 => simd_shuffle4(a, b, [2, 3, 4, 5]),
+        3 => simd_shuffle4(a, b, [3, 4, 5, 6]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Extract vector from pair of vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vext.8", N = 4))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 4))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vext_p8<const N: i32>(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
+    static_assert_imm3!(N);
+    match N & 0b111 {
+        0 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
+        2 => simd_shuffle8(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
+        3 => simd_shuffle8(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
+        4 => simd_shuffle8(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
+        5 => simd_shuffle8(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
+        6 => simd_shuffle8(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
+        7 => simd_shuffle8(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Extract vector from pair of vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vext.8", N = 8))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 8))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vextq_p8<const N: i32>(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
+    static_assert_imm4!(N);
+    match N & 0b1111 {
+        0 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        1 => simd_shuffle16(a, b, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]),
+        2 => simd_shuffle16(a, b, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]),
+        3 => simd_shuffle16(a, b, [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]),
+        4 => simd_shuffle16(a, b, [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]),
+        5 => simd_shuffle16(a, b, [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]),
+        6 => simd_shuffle16(a, b, [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]),
+        7 => simd_shuffle16(a, b, [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]),
+        8 => simd_shuffle16(a, b, [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]),
+        9 => simd_shuffle16(a, b, [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]),
+        10 => simd_shuffle16(a, b, [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]),
+        11 => simd_shuffle16(a, b, [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]),
+        12 => simd_shuffle16(a, b, [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]),
+        13 => simd_shuffle16(a, b, [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]),
+        14 => simd_shuffle16(a, b, [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]),
+        15 => simd_shuffle16(a, b, [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Extract vector from pair of vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vext.8", N = 2))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 2))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vext_p16<const N: i32>(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
+    static_assert_imm2!(N);
+    match N & 0b11 {
+        0 => simd_shuffle4(a, b, [0, 1, 2, 3]),
+        1 => simd_shuffle4(a, b, [1, 2, 3, 4]),
+        2 => simd_shuffle4(a, b, [2, 3, 4, 5]),
+        3 => simd_shuffle4(a, b, [3, 4, 5, 6]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Extract vector from pair of vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vext.8", N = 4))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 4))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vextq_p16<const N: i32>(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
+    static_assert_imm3!(N);
+    match N & 0b111 {
+        0 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
+        2 => simd_shuffle8(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
+        3 => simd_shuffle8(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
+        4 => simd_shuffle8(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
+        5 => simd_shuffle8(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
+        6 => simd_shuffle8(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
+        7 => simd_shuffle8(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Extract vector from pair of vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov, N = 1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vextq_s64<const N: i32>(a: int64x2_t, b: int64x2_t) -> int64x2_t {
+    static_assert_imm1!(N);
+    match N & 0b1 {
+        0 => simd_shuffle2(a, b, [0, 1]),
+        1 => simd_shuffle2(a, b, [1, 2]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Extract vector from pair of vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vmov, N = 1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vextq_u64<const N: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
+    static_assert_imm1!(N);
+    match N & 0b1 {
+        0 => simd_shuffle2(a, b, [0, 1]),
+        1 => simd_shuffle2(a, b, [1, 2]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Extract vector from pair of vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vext.8", N = 1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vext_f32<const N: i32>(a: float32x2_t, b: float32x2_t) -> float32x2_t {
+    static_assert_imm1!(N);
+    match N & 0b1 {
+        0 => simd_shuffle2(a, b, [0, 1]),
+        1 => simd_shuffle2(a, b, [1, 2]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Extract vector from pair of vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vext.8", N = 2))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 2))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vextq_f32<const N: i32>(a: float32x4_t, b: float32x4_t) -> float32x4_t {
+    static_assert_imm2!(N);
+    match N & 0b11 {
+        0 => simd_shuffle4(a, b, [0, 1, 2, 3]),
+        1 => simd_shuffle4(a, b, [1, 2, 3, 4]),
+        2 => simd_shuffle4(a, b, [2, 3, 4, 5]),
+        3 => simd_shuffle4(a, b, [3, 4, 5, 6]),
+        _ => unreachable_unchecked(),
+    }
+}
+
 /// Multiply-add to accumulator
 #[inline]
 #[target_feature(enable = "neon")]
@@ -8984,6 +9394,186 @@ mod test {
         let a: f32x4 = f32x4::new(1.1, 2.1, 2.9, 3.9);
         let e: u32x4 = u32x4::new(1, 2, 2, 3);
         let r: u32x4 = transmute(vcvtq_u32_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vext_s8() {
+        let a: i8x8 = i8x8::new(0, 8, 8, 9, 8, 9, 9, 11);
+        let b: i8x8 = i8x8::new(9, 11, 14, 15, 16, 17, 18, 19);
+        let e: i8x8 = i8x8::new(8, 9, 9, 11, 9, 11, 14, 15);
+        let r: i8x8 = transmute(vext_s8::<4>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vextq_s8() {
+        let a: i8x16 = i8x16::new(0, 8, 8, 9, 8, 9, 9, 11, 8, 9, 9, 11, 9, 11, 14, 15);
+        let b: i8x16 = i8x16::new(9, 11, 14, 15, 16, 17, 18, 19, 0, 8, 8, 9, 8, 9, 9, 11);
+        let e: i8x16 = i8x16::new(8, 9, 9, 11, 9, 11, 14, 15, 9, 11, 14, 15, 16, 17, 18, 19);
+        let r: i8x16 = transmute(vextq_s8::<8>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vext_s16() {
+        let a: i16x4 = i16x4::new(0, 8, 8, 9);
+        let b: i16x4 = i16x4::new(9, 11, 14, 15);
+        let e: i16x4 = i16x4::new(8, 9, 9, 11);
+        let r: i16x4 = transmute(vext_s16::<2>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vextq_s16() {
+        let a: i16x8 = i16x8::new(0, 8, 8, 9, 8, 9, 9, 11);
+        let b: i16x8 = i16x8::new(9, 11, 14, 15, 16, 17, 18, 19);
+        let e: i16x8 = i16x8::new(8, 9, 9, 11, 9, 11, 14, 15);
+        let r: i16x8 = transmute(vextq_s16::<4>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vext_s32() {
+        let a: i32x2 = i32x2::new(0, 8);
+        let b: i32x2 = i32x2::new(9, 11);
+        let e: i32x2 = i32x2::new(8, 9);
+        let r: i32x2 = transmute(vext_s32::<1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vextq_s32() {
+        let a: i32x4 = i32x4::new(0, 8, 8, 9);
+        let b: i32x4 = i32x4::new(9, 11, 14, 15);
+        let e: i32x4 = i32x4::new(8, 9, 9, 11);
+        let r: i32x4 = transmute(vextq_s32::<2>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vext_u8() {
+        let a: u8x8 = u8x8::new(0, 8, 8, 9, 8, 9, 9, 11);
+        let b: u8x8 = u8x8::new(9, 11, 14, 15, 16, 17, 18, 19);
+        let e: u8x8 = u8x8::new(8, 9, 9, 11, 9, 11, 14, 15);
+        let r: u8x8 = transmute(vext_u8::<4>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vextq_u8() {
+        let a: u8x16 = u8x16::new(0, 8, 8, 9, 8, 9, 9, 11, 8, 9, 9, 11, 9, 11, 14, 15);
+        let b: u8x16 = u8x16::new(9, 11, 14, 15, 16, 17, 18, 19, 0, 8, 8, 9, 8, 9, 9, 11);
+        let e: u8x16 = u8x16::new(8, 9, 9, 11, 9, 11, 14, 15, 9, 11, 14, 15, 16, 17, 18, 19);
+        let r: u8x16 = transmute(vextq_u8::<8>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vext_u16() {
+        let a: u16x4 = u16x4::new(0, 8, 8, 9);
+        let b: u16x4 = u16x4::new(9, 11, 14, 15);
+        let e: u16x4 = u16x4::new(8, 9, 9, 11);
+        let r: u16x4 = transmute(vext_u16::<2>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vextq_u16() {
+        let a: u16x8 = u16x8::new(0, 8, 8, 9, 8, 9, 9, 11);
+        let b: u16x8 = u16x8::new(9, 11, 14, 15, 16, 17, 18, 19);
+        let e: u16x8 = u16x8::new(8, 9, 9, 11, 9, 11, 14, 15);
+        let r: u16x8 = transmute(vextq_u16::<4>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vext_u32() {
+        let a: u32x2 = u32x2::new(0, 8);
+        let b: u32x2 = u32x2::new(9, 11);
+        let e: u32x2 = u32x2::new(8, 9);
+        let r: u32x2 = transmute(vext_u32::<1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vextq_u32() {
+        let a: u32x4 = u32x4::new(0, 8, 8, 9);
+        let b: u32x4 = u32x4::new(9, 11, 14, 15);
+        let e: u32x4 = u32x4::new(8, 9, 9, 11);
+        let r: u32x4 = transmute(vextq_u32::<2>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vext_p8() {
+        let a: i8x8 = i8x8::new(0, 8, 8, 9, 8, 9, 9, 11);
+        let b: i8x8 = i8x8::new(9, 11, 14, 15, 16, 17, 18, 19);
+        let e: i8x8 = i8x8::new(8, 9, 9, 11, 9, 11, 14, 15);
+        let r: i8x8 = transmute(vext_p8::<4>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vextq_p8() {
+        let a: i8x16 = i8x16::new(0, 8, 8, 9, 8, 9, 9, 11, 8, 9, 9, 11, 9, 11, 14, 15);
+        let b: i8x16 = i8x16::new(9, 11, 14, 15, 16, 17, 18, 19, 0, 8, 8, 9, 8, 9, 9, 11);
+        let e: i8x16 = i8x16::new(8, 9, 9, 11, 9, 11, 14, 15, 9, 11, 14, 15, 16, 17, 18, 19);
+        let r: i8x16 = transmute(vextq_p8::<8>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vext_p16() {
+        let a: i16x4 = i16x4::new(0, 8, 8, 9);
+        let b: i16x4 = i16x4::new(9, 11, 14, 15);
+        let e: i16x4 = i16x4::new(8, 9, 9, 11);
+        let r: i16x4 = transmute(vext_p16::<2>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vextq_p16() {
+        let a: i16x8 = i16x8::new(0, 8, 8, 9, 8, 9, 9, 11);
+        let b: i16x8 = i16x8::new(9, 11, 14, 15, 16, 17, 18, 19);
+        let e: i16x8 = i16x8::new(8, 9, 9, 11, 9, 11, 14, 15);
+        let r: i16x8 = transmute(vextq_p16::<4>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vextq_s64() {
+        let a: i64x2 = i64x2::new(0, 8);
+        let b: i64x2 = i64x2::new(9, 11);
+        let e: i64x2 = i64x2::new(8, 9);
+        let r: i64x2 = transmute(vextq_s64::<1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vextq_u64() {
+        let a: u64x2 = u64x2::new(0, 8);
+        let b: u64x2 = u64x2::new(9, 11);
+        let e: u64x2 = u64x2::new(8, 9);
+        let r: u64x2 = transmute(vextq_u64::<1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vext_f32() {
+        let a: f32x2 = f32x2::new(0., 2.);
+        let b: f32x2 = f32x2::new(3., 4.);
+        let e: f32x2 = f32x2::new(2., 3.);
+        let r: f32x2 = transmute(vext_f32::<1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vextq_f32() {
+        let a: f32x4 = f32x4::new(0., 2., 2., 3.);
+        let b: f32x4 = f32x4::new(3., 4., 5., 6.);
+        let e: f32x4 = f32x4::new(2., 3., 3., 4.);
+        let r: f32x4 = transmute(vextq_f32::<2>(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 

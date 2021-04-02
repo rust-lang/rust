@@ -83,6 +83,40 @@ fn type_len(t: &str) -> usize {
     }
 }
 
+fn type_exp_len(t: &str) -> usize {
+    match t {
+        "int8x8_t" => 3,
+        "int8x16_t" => 4,
+        "int16x4_t" => 2,
+        "int16x8_t" => 3,
+        "int32x2_t" => 1,
+        "int32x4_t" => 2,
+        "int64x1_t" => 0,
+        "int64x2_t" => 1,
+        "uint8x8_t" => 3,
+        "uint8x16_t" => 4,
+        "uint16x4_t" => 2,
+        "uint16x8_t" => 3,
+        "uint32x2_t" => 1,
+        "uint32x4_t" => 2,
+        "uint64x1_t" => 0,
+        "uint64x2_t" => 1,
+        "float16x4_t" => 2,
+        "float16x8_t" => 3,
+        "float32x2_t" => 1,
+        "float32x4_t" => 2,
+        "float64x1_t" => 0,
+        "float64x2_t" => 1,
+        "poly8x8_t" => 3,
+        "poly8x16_t" => 4,
+        "poly16x4_t" => 2,
+        "poly16x8_t" => 3,
+        "poly64x1_t" => 0,
+        "poly64x2_t" => 1,
+        _ => panic!("unknown type: {}", t),
+    }
+}
+
 fn type_to_suffix(t: &str) -> &str {
     match t {
         "int8x8_t" => "_s8",
@@ -328,14 +362,17 @@ fn type_to_half(t: &str) -> &str {
     }
 }
 
-fn asc(x: usize) -> &'static str {
-    match x {
-        2 => "[0, 1]",
-        4 => "[0, 1, 2, 3]",
-        8 => "[0, 1, 2, 3, 4, 5, 6, 7]",
-        16 => "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]",
-        _ => panic!("unknown transpose order of len {}", x),
+fn asc(start: i32, len: usize) -> String {
+    let mut s = String::from("[");
+    for i in 0..len {
+        if i != 0 {
+            s.push_str(", ");
+        }
+        let n = start + i as i32;
+        s.push_str(&n.to_string());
     }
+    s.push_str("]");
+    s
 }
 
 fn transpose1(x: usize) -> &'static str {
@@ -508,6 +545,74 @@ fn half_bits(t: &str) -> &'static str {
     }
 }
 
+fn type_len_str(t: &str) -> &'static str {
+    match t {
+        "int8x8_t" => "8",
+        "int8x16_t" => "16",
+        "int16x4_t" => "4",
+        "int16x8_t" => "8",
+        "int32x2_t" => "2",
+        "int32x4_t" => "4",
+        "int64x1_t" => "1",
+        "int64x2_t" => "2",
+        "uint8x8_t" => "8",
+        "uint8x16_t" => "16",
+        "uint16x4_t" => "4",
+        "uint16x8_t" => "8",
+        "uint32x2_t" => "2",
+        "uint32x4_t" => "4",
+        "uint64x1_t" => "1",
+        "uint64x2_t" => "2",
+        "float16x4_t" => "4",
+        "float16x8_t" => "8",
+        "float32x2_t" => "2",
+        "float32x4_t" => "4",
+        "float64x1_t" => "1",
+        "float64x2_t" => "2",
+        "poly8x8_t" => "8",
+        "poly8x16_t" => "16",
+        "poly16x4_t" => "4",
+        "poly16x8_t" => "8",
+        "poly64x1_t" => "1",
+        "poly64x2_t" => "2",
+        _ => panic!("unknown type: {}", t),
+    }
+}
+
+fn type_half_len_str(t: &str) -> &'static str {
+    match t {
+        "int8x8_t" => "4",
+        "int8x16_t" => "8",
+        "int16x4_t" => "2",
+        "int16x8_t" => "4",
+        "int32x2_t" => "1",
+        "int32x4_t" => "2",
+        "int64x1_t" => "0",
+        "int64x2_t" => "1",
+        "uint8x8_t" => "4",
+        "uint8x16_t" => "8",
+        "uint16x4_t" => "2",
+        "uint16x8_t" => "4",
+        "uint32x2_t" => "1",
+        "uint32x4_t" => "2",
+        "uint64x1_t" => "0",
+        "uint64x2_t" => "1",
+        "float16x4_t" => "2",
+        "float16x8_t" => "4",
+        "float32x2_t" => "1",
+        "float32x4_t" => "2",
+        "float64x1_t" => "0",
+        "float64x2_t" => "1",
+        "poly8x8_t" => "4",
+        "poly8x16_t" => "8",
+        "poly16x4_t" => "2",
+        "poly16x8_t" => "4",
+        "poly64x1_t" => "0",
+        "poly64x2_t" => "1",
+        _ => panic!("unknown type: {}", t),
+    }
+}
+
 fn map_val<'v>(t: &str, v: &'v str) -> &'v str {
     match v {
         "FALSE" => false_val(t),
@@ -518,6 +623,8 @@ fn map_val<'v>(t: &str, v: &'v str) -> &'v str {
         "BITS" => bits(t),
         "BITS_M1" => bits_minus_one(t),
         "HFBITS" => half_bits(t),
+        "LEN" => type_len_str(t),
+        "HFLEN" => type_half_len_str(t),
         o => o,
     }
 }
@@ -529,9 +636,16 @@ fn gen_aarch64(
     current_name: &str,
     current_aarch64: &Option<String>,
     link_aarch64: &Option<String>,
+    constn: &Option<String>,
     in_t: &[&str; 3],
     out_t: &str,
-    current_tests: &[(Vec<String>, Vec<String>, Vec<String>, Vec<String>)],
+    current_tests: &[(
+        Vec<String>,
+        Vec<String>,
+        Vec<String>,
+        Option<String>,
+        Vec<String>,
+    )],
     suffix: Suffix,
     para_num: i32,
     fixed: &Vec<String>,
@@ -621,27 +735,54 @@ fn gen_aarch64(
             if i > 0 {
                 calls.push_str("\n    ");
             }
-            calls.push_str(&get_call(&multi_fn[i], current_name, in_t, out_t, fixed));
+            calls.push_str(&get_call(
+                &multi_fn[i],
+                current_name,
+                in_t,
+                out_t,
+                fixed,
+                None,
+            ));
         }
         calls
     } else {
         String::new()
     };
+    let const_declare = if let Some(constn) = constn {
+        format!(r#"<const {}: i32>"#, constn)
+    } else {
+        String::new()
+    };
+    let const_assert = if let Some(constn) = constn {
+        format!(
+            r#", {} = {}"#,
+            constn,
+            map_val(in_t[1], current_tests[0].3.as_ref().unwrap())
+        )
+    } else {
+        String::new()
+    };
+    let const_legacy = if constn.is_some() {
+        format!("\n#[rustc_legacy_const_generics({})]", para_num)
+    } else {
+        String::new()
+    };
     let call = match (multi_calls.len(), para_num, fixed.len()) {
         (0, 1, 0) => format!(
-            r#"pub unsafe fn {}(a: {}) -> {} {{
+            r#"pub unsafe fn {}{}(a: {}) -> {} {{
     {}{}(a)
 }}"#,
-            name, in_t[0], out_t, ext_c, current_fn,
+            name, const_declare, in_t[0], out_t, ext_c, current_fn,
         ),
         (0, 1, _) => {
             let fixed: Vec<String> = fixed.iter().take(type_len(in_t[0])).cloned().collect();
             format!(
-                r#"pub unsafe fn {}(a: {}) -> {} {{
+                r#"pub unsafe fn {}{}(a: {}) -> {} {{
     let b{};
     {}{}(a, transmute(b))
 }}"#,
                 name,
+                const_declare,
                 in_t[0],
                 out_t,
                 values(in_t[0], &fixed),
@@ -650,34 +791,34 @@ fn gen_aarch64(
             )
         }
         (0, 2, _) => format!(
-            r#"pub unsafe fn {}(a: {}, b: {}) -> {} {{
+            r#"pub unsafe fn {}{}(a: {}, b: {}) -> {} {{
     {}{}(a, b)
 }}"#,
-            name, in_t[0], in_t[1], out_t, ext_c, current_fn,
+            name, const_declare, in_t[0], in_t[1], out_t, ext_c, current_fn,
         ),
         (0, 3, _) => format!(
-            r#"pub unsafe fn {}(a: {}, b: {}, c: {}) -> {} {{
+            r#"pub unsafe fn {}{}(a: {}, b: {}, c: {}) -> {} {{
     {}{}(a, b, c)
 }}"#,
-            name, in_t[0], in_t[1], in_t[2], out_t, ext_c, current_fn,
+            name, const_declare, in_t[0], in_t[1], in_t[2], out_t, ext_c, current_fn,
         ),
         (_, 1, _) => format!(
-            r#"pub unsafe fn {}(a: {}) -> {} {{
+            r#"pub unsafe fn {}{}(a: {}) -> {} {{
     {}{}
 }}"#,
-            name, in_t[0], out_t, ext_c, multi_calls,
+            name, const_declare, in_t[0], out_t, ext_c, multi_calls,
         ),
         (_, 2, _) => format!(
-            r#"pub unsafe fn {}(a: {}, b: {}) -> {} {{
+            r#"pub unsafe fn {}{}(a: {}, b: {}) -> {} {{
     {}{}
 }}"#,
-            name, in_t[0], in_t[1], out_t, ext_c, multi_calls,
+            name, const_declare, in_t[0], in_t[1], out_t, ext_c, multi_calls,
         ),
         (_, 3, _) => format!(
-            r#"pub unsafe fn {}(a: {}, b: {}, c: {}) -> {} {{
+            r#"pub unsafe fn {}{}(a: {}, b: {}, c: {}) -> {} {{
     {}{}
 }}"#,
-            name, in_t[0], in_t[1], in_t[2], out_t, ext_c, multi_calls,
+            name, const_declare, in_t[0], in_t[1], in_t[2], out_t, ext_c, multi_calls,
         ),
         (_, _, _) => String::new(),
     };
@@ -686,10 +827,10 @@ fn gen_aarch64(
 {}
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr({}))]
+#[cfg_attr(test, assert_instr({}{}))]{}
 {}
 "#,
-        current_comment, current_aarch64, call
+        current_comment, current_aarch64, const_assert, const_legacy, call
     );
 
     let test = gen_test(
@@ -708,7 +849,13 @@ fn gen_test(
     name: &str,
     in_t: &[&str; 3],
     out_t: &str,
-    current_tests: &[(Vec<String>, Vec<String>, Vec<String>, Vec<String>)],
+    current_tests: &[(
+        Vec<String>,
+        Vec<String>,
+        Vec<String>,
+        Option<String>,
+        Vec<String>,
+    )],
     len_in: [usize; 3],
     len_out: usize,
     para_num: i32,
@@ -719,11 +866,16 @@ fn gen_test(
     unsafe fn test_{}() {{"#,
         name,
     );
-    for (a, b, c, e) in current_tests {
+    for (a, b, c, n, e) in current_tests {
         let a: Vec<String> = a.iter().take(len_in[0]).cloned().collect();
         let b: Vec<String> = b.iter().take(len_in[1]).cloned().collect();
         let c: Vec<String> = c.iter().take(len_in[2]).cloned().collect();
         let e: Vec<String> = e.iter().take(len_out).cloned().collect();
+        let const_value = if let Some(constn) = n {
+            format!(r#"::<{}>"#, map_val(in_t[1], constn))
+        } else {
+            String::new()
+        };
         let t = {
             match para_num {
                 1 => {
@@ -731,13 +883,14 @@ fn gen_test(
                         r#"
         let a{};
         let e{};
-        let r: {} = transmute({}(transmute(a)));
+        let r: {} = transmute({}{}(transmute(a)));
         assert_eq!(r, e);
 "#,
                         values(in_t[0], &a),
                         values(out_t, &e),
                         type_to_global_type(out_t),
-                        name
+                        name,
+                        const_value
                     )
                 }
                 2 => {
@@ -746,14 +899,15 @@ fn gen_test(
         let a{};
         let b{};
         let e{};
-        let r: {} = transmute({}(transmute(a), transmute(b)));
+        let r: {} = transmute({}{}(transmute(a), transmute(b)));
         assert_eq!(r, e);
 "#,
                         values(in_t[0], &a),
                         values(in_t[1], &b),
                         values(out_t, &e),
                         type_to_global_type(out_t),
-                        name
+                        name,
+                        const_value
                     )
                 }
                 3 => {
@@ -763,7 +917,7 @@ fn gen_test(
         let b{};
         let c{};
         let e{};
-        let r: {} = transmute({}(transmute(a), transmute(b), transmute(c)));
+        let r: {} = transmute({}{}(transmute(a), transmute(b), transmute(c)));
         assert_eq!(r, e);
 "#,
                         values(in_t[0], &a),
@@ -771,7 +925,8 @@ fn gen_test(
                         values(in_t[2], &c),
                         values(out_t, &e),
                         type_to_global_type(out_t),
-                        name
+                        name,
+                        const_value
                     )
                 }
                 _ => {
@@ -795,9 +950,16 @@ fn gen_arm(
     link_arm: &Option<String>,
     current_aarch64: &Option<String>,
     link_aarch64: &Option<String>,
+    constn: &Option<String>,
     in_t: &[&str; 3],
     out_t: &str,
-    current_tests: &[(Vec<String>, Vec<String>, Vec<String>, Vec<String>)],
+    current_tests: &[(
+        Vec<String>,
+        Vec<String>,
+        Vec<String>,
+        Option<String>,
+        Vec<String>,
+    )],
     suffix: Suffix,
     para_num: i32,
     fixed: &Vec<String>,
@@ -900,27 +1062,54 @@ fn gen_arm(
             if i > 0 {
                 calls.push_str("\n    ");
             }
-            calls.push_str(&get_call(&multi_fn[i], current_name, in_t, out_t, fixed));
+            calls.push_str(&get_call(
+                &multi_fn[i],
+                current_name,
+                in_t,
+                out_t,
+                fixed,
+                None,
+            ));
         }
         calls
     } else {
         String::new()
     };
+    let const_declare = if let Some(constn) = constn {
+        format!(r#"<const {}: i32>"#, constn)
+    } else {
+        String::new()
+    };
+    let const_assert = if let Some(constn) = constn {
+        format!(
+            r#", {} = {}"#,
+            constn,
+            map_val(in_t[1], current_tests[0].3.as_ref().unwrap())
+        )
+    } else {
+        String::new()
+    };
+    let const_legacy = if constn.is_some() {
+        format!("\n#[rustc_legacy_const_generics({})]", para_num)
+    } else {
+        String::new()
+    };
     let call = match (multi_calls.len(), para_num, fixed.len()) {
         (0, 1, 0) => format!(
-            r#"pub unsafe fn {}(a: {}) -> {} {{
+            r#"pub unsafe fn {}{}(a: {}) -> {} {{
     {}{}(a)
 }}"#,
-            name, in_t[0], out_t, ext_c, current_fn,
+            name, const_declare, in_t[0], out_t, ext_c, current_fn,
         ),
         (0, 1, _) => {
             let fixed: Vec<String> = fixed.iter().take(type_len(in_t[0])).cloned().collect();
             format!(
-                r#"pub unsafe fn {}(a: {}) -> {} {{
+                r#"pub unsafe fn {}{}(a: {}) -> {} {{
     let b{};
     {}{}(a, transmute(b))
 }}"#,
                 name,
+                const_declare,
                 in_t[0],
                 out_t,
                 values(in_t[0], &fixed),
@@ -929,34 +1118,34 @@ fn gen_arm(
             )
         }
         (0, 2, _) => format!(
-            r#"pub unsafe fn {}(a: {}, b: {}) -> {} {{
+            r#"pub unsafe fn {}{}(a: {}, b: {}) -> {} {{
     {}{}(a, b)
 }}"#,
-            name, in_t[0], in_t[1], out_t, ext_c, current_fn,
+            name, const_declare, in_t[0], in_t[1], out_t, ext_c, current_fn,
         ),
         (0, 3, _) => format!(
-            r#"pub unsafe fn {}(a: {}, b: {}, c: {}) -> {} {{
+            r#"pub unsafe fn {}{}(a: {}, b: {}, c: {}) -> {} {{
     {}{}(a, b)
 }}"#,
-            name, in_t[0], in_t[1], in_t[2], out_t, ext_c, current_fn,
+            name, const_declare, in_t[0], in_t[1], in_t[2], out_t, ext_c, current_fn,
         ),
         (_, 1, _) => format!(
-            r#"pub unsafe fn {}(a: {}) -> {} {{
+            r#"pub unsafe fn {}{}(a: {}) -> {} {{
     {}{}
 }}"#,
-            name, in_t[0], out_t, ext_c, multi_calls,
+            name, const_declare, in_t[0], out_t, ext_c, multi_calls,
         ),
         (_, 2, _) => format!(
-            r#"pub unsafe fn {}(a: {}, b: {}) -> {} {{
+            r#"pub unsafe fn {}{}(a: {}, b: {}) -> {} {{
     {}{}
 }}"#,
-            name, in_t[0], in_t[1], out_t, ext_c, multi_calls,
+            name, const_declare, in_t[0], in_t[1], out_t, ext_c, multi_calls,
         ),
         (_, 3, _) => format!(
-            r#"pub unsafe fn {}(a: {}, b: {}, c: {}) -> {} {{
+            r#"pub unsafe fn {}{}(a: {}, b: {}, c: {}) -> {} {{
     {}{}
 }}"#,
-            name, in_t[0], in_t[1], in_t[2], out_t, ext_c, multi_calls,
+            name, const_declare, in_t[0], in_t[1], in_t[2], out_t, ext_c, multi_calls,
         ),
         (_, _, _) => String::new(),
     };
@@ -966,13 +1155,16 @@ fn gen_arm(
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr({}))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr({}))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr({}{}))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr({}{}))]{}
 {}
 "#,
         current_comment,
         expand_intrinsic(&current_arm, in_t[1]),
+        const_assert,
         expand_intrinsic(&current_aarch64, in_t[1]),
+        const_assert,
+        const_legacy,
         call,
     );
     let test = gen_test(
@@ -1070,10 +1262,73 @@ fn get_call(
     in_t: &[&str; 3],
     out_t: &str,
     fixed: &Vec<String>,
+    n: Option<i32>,
 ) -> String {
     let params: Vec<_> = in_str.split(',').map(|v| v.trim().to_string()).collect();
     assert!(params.len() > 0);
     let mut fn_name = params[0].clone();
+    if fn_name == "transpose-1-in_len" {
+        return transpose1(type_len(in_t[1])).to_string();
+    }
+    if fn_name == "transpose-2-in_len" {
+        return transpose2(type_len(in_t[1])).to_string();
+    }
+    if fn_name == "zip-1-in_len" {
+        return zip1(type_len(in_t[1])).to_string();
+    }
+    if fn_name == "zip-2-in_len" {
+        return zip2(type_len(in_t[1])).to_string();
+    }
+    if fn_name.starts_with("asc") {
+        let fn_format: Vec<_> = fn_name.split('-').map(|v| v.to_string()).collect();
+        let start = match &*fn_format[1] {
+            "0" => 0,
+            "n" => n.unwrap(),
+            s => s.parse::<i32>().unwrap(),
+        };
+        let len = match &*fn_format[2] {
+            "out_len" => type_len(out_t),
+            "in_len" => type_len(in_t[1]),
+            _ => 0,
+        };
+        return asc(start, len);
+    }
+    if fn_name.starts_with("static_assert_imm") {
+        let fn_format: Vec<_> = fn_name.split('-').map(|v| v.to_string()).collect();
+        let len = match &*fn_format[1] {
+            "out_exp_len" => type_exp_len(out_t),
+            "in_exp_len" => type_exp_len(in_t[1]),
+            _ => 0,
+        };
+        let sa = format!(r#"static_assert_imm{}!({});"#, len, fn_format[2]);
+        return sa;
+    }
+    if fn_name.starts_with("matchn") {
+        let fn_format: Vec<_> = fn_name.split('-').map(|v| v.to_string()).collect();
+        let len = match &*fn_format[1] {
+            "out_exp_len" => type_exp_len(out_t),
+            "in_exp_len" => type_exp_len(in_t[1]),
+            _ => 0,
+        };
+        let mut call = format!("match N & 0b{} {{\n", "1".repeat(len));
+        let mut sub_call = String::new();
+        for p in 1..params.len() {
+            if !sub_call.is_empty() {
+                sub_call.push_str(", ");
+            }
+            sub_call.push_str(&params[p]);
+        }
+        for i in 0..(2u32.pow(len as u32) as usize) {
+            let sub_match = format!(
+                "        {} => {},\n",
+                i,
+                get_call(&sub_call, current_name, in_t, out_t, fixed, Some(i as i32))
+            );
+            call.push_str(&sub_match);
+        }
+        call.push_str("        _ => unreachable_unchecked(),\n    }");
+        return call;
+    }
     let mut re: Option<(String, String)> = None;
     let mut param_str = String::new();
     let mut i = 1;
@@ -1104,6 +1359,7 @@ fn get_call(
                 in_t,
                 out_t,
                 fixed,
+                n.clone(),
             );
             if !param_str.is_empty() {
                 param_str.push_str(", ");
@@ -1149,21 +1405,6 @@ fn get_call(
                 s
             });
         return format!(r#"[{}]"#, &half[..half.len() - 2]);
-    }
-    if fn_name == "asc-out_len" {
-        return asc(type_len(out_t)).to_string();
-    }
-    if fn_name == "transpose-1-in_len" {
-        return transpose1(type_len(in_t[1])).to_string();
-    }
-    if fn_name == "transpose-2-in_len" {
-        return transpose2(type_len(in_t[1])).to_string();
-    }
-    if fn_name == "zip-1-in_len" {
-        return zip1(type_len(in_t[1])).to_string();
-    }
-    if fn_name == "zip-2-in_len" {
-        return zip2(type_len(in_t[1])).to_string();
     }
     if fn_name.contains('-') {
         let fn_format: Vec<_> = fn_name.split('-').map(|v| v.to_string()).collect();
@@ -1225,13 +1466,21 @@ fn main() -> io::Result<()> {
     let mut current_aarch64: Option<String> = None;
     let mut link_arm: Option<String> = None;
     let mut link_aarch64: Option<String> = None;
+    let mut constn: Option<String> = None;
     let mut para_num = 2;
     let mut suffix: Suffix = Normal;
     let mut a: Vec<String> = Vec::new();
     let mut b: Vec<String> = Vec::new();
     let mut c: Vec<String> = Vec::new();
+    let mut n: Option<String> = None;
     let mut fixed: Vec<String> = Vec::new();
-    let mut current_tests: Vec<(Vec<String>, Vec<String>, Vec<String>, Vec<String>)> = Vec::new();
+    let mut current_tests: Vec<(
+        Vec<String>,
+        Vec<String>,
+        Vec<String>,
+        Option<String>,
+        Vec<String>,
+    )> = Vec::new();
     let mut multi_fn: Vec<String> = Vec::new();
 
     //
@@ -1302,12 +1551,14 @@ mod test {
             link_aarch64 = None;
             link_arm = None;
             current_tests = Vec::new();
+            constn = None;
             para_num = 2;
             suffix = Normal;
             a = Vec::new();
             b = Vec::new();
             c = Vec::new();
             fixed = Vec::new();
+            n = None;
             multi_fn = Vec::new();
         } else if line.starts_with("//") {
         } else if line.starts_with("name = ") {
@@ -1316,6 +1567,8 @@ mod test {
             current_fn = Some(String::from(&line[5..]));
         } else if line.starts_with("multi_fn = ") {
             multi_fn.push(String::from(&line[11..]));
+        } else if line.starts_with("constn = ") {
+            constn = Some(String::from(&line[9..]));
         } else if line.starts_with("arm = ") {
             current_arm = Some(String::from(&line[6..]));
         } else if line.starts_with("aarch64 = ") {
@@ -1332,11 +1585,13 @@ mod test {
             b = line[4..].split(',').map(|v| v.trim().to_string()).collect();
         } else if line.starts_with("c = ") {
             c = line[4..].split(',').map(|v| v.trim().to_string()).collect();
+        } else if line.starts_with("n = ") {
+            n = Some(String::from(&line[4..]));
         } else if line.starts_with("fixed = ") {
             fixed = line[8..].split(',').map(|v| v.trim().to_string()).collect();
         } else if line.starts_with("validate ") {
             let e = line[9..].split(',').map(|v| v.trim().to_string()).collect();
-            current_tests.push((a.clone(), b.clone(), c.clone(), e));
+            current_tests.push((a.clone(), b.clone(), c.clone(), n.clone(), e));
         } else if line.starts_with("link-aarch64 = ") {
             link_aarch64 = Some(String::from(&line[15..]));
         } else if line.starts_with("link-arm = ") {
@@ -1391,6 +1646,7 @@ mod test {
                         &link_arm,
                         &current_aarch64,
                         &link_aarch64,
+                        &constn,
                         &in_t,
                         &out_t,
                         &current_tests,
@@ -1408,6 +1664,7 @@ mod test {
                         &current_name,
                         &current_aarch64,
                         &link_aarch64,
+                        &constn,
                         &in_t,
                         &out_t,
                         &current_tests,

@@ -890,6 +890,52 @@ aarch64 = fcvtpu
 link-aarch64 = fcvtpu._EXT2_._EXT_
 generate float32x2_t:uint32x2_t, float32x4_t:uint32x4_t, float64x1_t:uint64x1_t, float64x2_t:uint64x2_t
 
+/// Extract vector from pair of vectors
+name = vext
+constn = N
+multi_fn = static_assert_imm-out_exp_len-N
+multi_fn = matchn-out_exp_len, simd_shuffle-out_len-noext, a, b, {asc-n-out_len}
+a = 0, 8, 8, 9, 8, 9, 9, 11, 8, 9, 9, 11, 9, 11, 14, 15
+b = 9, 11, 14, 15, 16, 17, 18, 19, 0, 8, 8, 9, 8, 9, 9, 11
+n = HFLEN
+validate 8, 9, 9, 11, 9, 11, 14, 15, 9, 11, 14, 15, 16, 17, 18, 19
+
+arm = "vext.8"
+aarch64 = ext
+generate int*_t, uint*_t, poly8x8_t, poly8x16_t, poly16x4_t, poly16x8_t
+
+/// Extract vector from pair of vectors
+name = vext
+constn = N
+multi_fn = static_assert_imm-out_exp_len-N
+multi_fn = matchn-out_exp_len, simd_shuffle-out_len-noext, a, b, {asc-n-out_len}
+a = 0, 8, 8, 9, 8, 9, 9, 11, 8, 9, 9, 11, 9, 11, 14, 15
+b = 9, 11, 14, 15, 16, 17, 18, 19, 0, 8, 8, 9, 8, 9, 9, 11
+n = HFLEN
+validate 8, 9, 9, 11, 9, 11, 14, 15, 9, 11, 14, 15, 16, 17, 18, 19
+
+aarch64 = ext
+generate poly64x2_t
+
+arm = vmov
+generate int64x2_t, uint64x2_t
+
+/// Extract vector from pair of vectors
+name = vext
+constn = N
+multi_fn = static_assert_imm-out_exp_len-N
+multi_fn = matchn-out_exp_len, simd_shuffle-out_len-noext, a, b, {asc-n-out_len}
+a = 0., 2., 2., 3.
+b = 3., 4., 5., 6.,
+n = HFLEN
+validate 2., 3., 3., 4.
+
+aarch64 = ext
+generate float64x2_t
+
+arm = "vext.8"
+generate float*_t
+
 /// Multiply-add to accumulator
 name = vmla
 multi_fn = simd_add, a, {simd_mul, b, c}
@@ -1054,7 +1100,7 @@ generate uint16x8_t:uint8x16_t:uint8x16_t:uint16x8_t, uint32x4_t:uint16x8_t:uint
 name = vmovn_high
 no-q
 multi_fn = simd_cast, c:in_t0, b
-multi_fn = simd_shuffle-out_len-noext, a, c, {asc-out_len}
+multi_fn = simd_shuffle-out_len-noext, a, c, {asc-0-out_len}
 a = 0, 1, 2, 3, 2, 3, 4, 5
 b = 2, 3, 4, 5, 12, 13, 14, 15
 validate 0, 1, 2, 3, 2, 3, 4, 5, 2, 3, 4, 5, 12, 13, 14, 15
@@ -1408,7 +1454,7 @@ generate uint16x8_t:uint8x8_t, uint32x4_t:uint16x4_t, uint64x2_t:uint32x2_t
 name = vsubhn_high
 no-q
 multi_fn = vsubhn-noqself-noext, d:in_t0, b, c
-multi_fn = simd_shuffle-out_len-noext, a, d, {asc-out_len}
+multi_fn = simd_shuffle-out_len-noext, a, d, {asc-0-out_len}
 a = MAX, 0, MAX, 0, MAX, 0, MAX, 0
 b = MAX, 1, MAX, 1, MAX, 1, MAX, 1
 c = 1, 0, 1, 0, 1, 0, 1, 0
