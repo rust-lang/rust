@@ -79,17 +79,6 @@ crate struct Context<'tcx> {
 rustc_data_structures::static_assert_size!(Context<'_>, 152);
 
 impl<'tcx> Context<'tcx> {
-    pub(super) fn path(&self, filename: &str) -> PathBuf {
-        // We use splitn vs Path::extension here because we might get a filename
-        // like `style.min.css` and we want to process that into
-        // `style-suffix.min.css`.  Path::extension would just return `css`
-        // which would result in `style.min-suffix.css` which isn't what we
-        // want.
-        let (base, ext) = filename.split_once('.').unwrap();
-        let filename = format!("{}{}.{}", base, self.shared.resource_suffix, ext);
-        self.dst.join(&filename)
-    }
-
     pub(super) fn tcx(&self) -> TyCtxt<'tcx> {
         self.shared.tcx
     }
@@ -301,6 +290,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
     ) -> Result<(Self, clean::Crate), Error> {
         // need to save a copy of the options for rendering the index page
         let md_opts = options.clone();
+        let emit_crate = options.should_emit_crate();
         let RenderOptions {
             output,
             external_html,
@@ -406,7 +396,9 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
 
         let dst = output;
         scx.ensure_dir(&dst)?;
-        krate = sources::render(&dst, &mut scx, krate)?;
+        if emit_crate {
+            krate = sources::render(&dst, &mut scx, krate)?;
+        }
 
         // Build our search index
         let index = build_index(&krate, &mut cache, tcx);
@@ -489,7 +481,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             |buf: &mut Buffer| all.print(buf),
             &self.shared.style_files,
         );
-        self.shared.fs.write(&final_file, v.as_bytes())?;
+        self.shared.fs.write(final_file, v.as_bytes())?;
 
         // Generating settings page.
         page.title = "Rustdoc settings";

@@ -13,8 +13,8 @@ use serde::Serialize;
 
 use super::{collect_paths_for_type, ensure_trailing_slash, Context, BASIC_KEYWORDS};
 use crate::clean::Crate;
-use crate::config::RenderOptions;
-use crate::docfs::{DocFS, PathError};
+use crate::config::{EmitType, RenderOptions};
+use crate::docfs::PathError;
 use crate::error::Error;
 use crate::formats::FormatRenderer;
 use crate::html::{layout, static_files};
@@ -40,6 +40,102 @@ crate static FILES_UNVERSIONED: Lazy<FxHashMap<&str, &[u8]>> = Lazy::new(|| {
     }
 });
 
+enum SharedResource<'a> {
+    /// This file will never change, no matter what toolchain is used to build it.
+    ///
+    /// It does not have a resource suffix.
+    Unversioned { name: &'static str },
+    /// This file may change depending on the toolchain.
+    ///
+    /// It has a resource suffix.
+    ToolchainSpecific { basename: &'static str },
+    /// This file may change for any crate within a build, or based on the CLI arguments.
+    ///
+    /// This differs from normal invocation-specific files because it has a resource suffix.
+    InvocationSpecific { basename: &'a str },
+}
+
+impl SharedResource<'_> {
+    fn extension(&self) -> Option<&OsStr> {
+        use SharedResource::*;
+        match self {
+            Unversioned { name }
+            | ToolchainSpecific { basename: name }
+            | InvocationSpecific { basename: name } => Path::new(name).extension(),
+        }
+    }
+
+    fn path(&self, cx: &Context<'_>) -> PathBuf {
+        match self {
+            SharedResource::Unversioned { name } => cx.dst.join(name),
+            SharedResource::ToolchainSpecific { basename } => cx.suffix_path(basename),
+            SharedResource::InvocationSpecific { basename } => cx.suffix_path(basename),
+        }
+    }
+
+    fn should_emit(&self, emit: &[EmitType]) -> bool {
+        if emit.is_empty() {
+            return true;
+        }
+        let kind = match self {
+            SharedResource::Unversioned { .. } => EmitType::Unversioned,
+            SharedResource::ToolchainSpecific { .. } => EmitType::Toolchain,
+            SharedResource::InvocationSpecific { .. } => EmitType::InvocationSpecific,
+        };
+        emit.contains(&kind)
+    }
+}
+
+impl Context<'_> {
+    fn suffix_path(&self, filename: &str) -> PathBuf {
+        // We use splitn vs Path::extension here because we might get a filename
+        // like `style.min.css` and we want to process that into
+        // `style-suffix.min.css`.  Path::extension would just return `css`
+        // which would result in `style.min-suffix.css` which isn't what we
+        // want.
+        let (base, ext) = filename.split_once('.').unwrap();
+        let filename = format!("{}{}.{}", base, self.shared.resource_suffix, ext);
+        self.dst.join(&filename)
+    }
+
+    fn write_shared<C: AsRef<[u8]>>(
+        &self,
+        resource: SharedResource<'_>,
+        contents: C,
+        emit: &[EmitType],
+    ) -> Result<(), Error> {
+        if resource.should_emit(emit) {
+            self.shared.fs.write(resource.path(self), contents)
+        } else {
+            Ok(())
+        }
+    }
+
+    fn write_minify(
+        &self,
+        resource: SharedResource<'_>,
+        contents: &str,
+        minify: bool,
+        emit: &[EmitType],
+    ) -> Result<(), Error> {
+        let tmp;
+        let contents = if minify {
+            tmp = if resource.extension() == Some(&OsStr::new("css")) {
+                minifier::css::minify(contents).map_err(|e| {
+                    Error::new(format!("failed to minify CSS file: {}", e), resource.path(self))
+                })?
+            } else {
+                minifier::js::minify(contents)
+            };
+            tmp.as_bytes()
+        } else {
+            contents.as_bytes()
+        };
+
+        self.write_shared(resource, contents, emit)
+    }
+}
+
 pub(super) fn write_shared(
     cx: &Context<'_>,
     krate: &Crate,
@@ -52,27 +148,31 @@ pub(super) fn write_shared(
     let lock_file = cx.dst.join(".lock");
     let _lock = try_err!(flock::Lock::new(&lock_file, true, true, true), &lock_file);
 
+    // The weird `: &_` is to work around a borrowck bug: https://github.com/rust-lang/rust/issues/41078#issuecomment-293646723
+    let write_minify = |p, c: &_| {
+        cx.write_minify(
+            SharedResource::ToolchainSpecific { basename: p },
+            c,
+            options.enable_minification,
+            &options.emit,
+        )
+    };
+    // Toolchain resources should never be dynamic.
+    let write_toolchain = |p: &'static _, c: &'static _| {
+        cx.write_shared(SharedResource::ToolchainSpecific { basename: p }, c, &options.emit)
+    };
+
+    // Crate resources should always be dynamic.
+    let write_crate = |p: &_, make_content: &dyn Fn() -> Result<Vec<u8>, Error>| {
+        let content = make_content()?;
+        cx.write_shared(SharedResource::InvocationSpecific { basename: p }, content, &options.emit)
+    };
+
     // Add all the static files. These may already exist, but we just
     // overwrite them anyway to make sure that they're fresh and up-to-date.
-
-    write_minify(
-        &cx.shared.fs,
-        cx.path("rustdoc.css"),
-        static_files::RUSTDOC_CSS,
-        options.enable_minification,
-    )?;
-    write_minify(
-        &cx.shared.fs,
-        cx.path("settings.css"),
-        static_files::SETTINGS_CSS,
-        options.enable_minification,
-    )?;
-    write_minify(
-        &cx.shared.fs,
-        cx.path("noscript.css"),
-        static_files::NOSCRIPT_CSS,
-        options.enable_minification,
-    )?;
+    write_minify("rustdoc.css", static_files::RUSTDOC_CSS)?;
+    write_minify("settings.css", static_files::SETTINGS_CSS)?;
+    write_minify("noscript.css", static_files::NOSCRIPT_CSS)?;
 
     // To avoid "light.css" to be overwritten, we'll first run over the received themes and only
     // then we'll run over the "official" styles.
@@ -85,106 +185,73 @@ pub(super) fn write_shared(
 
         // Handle the official themes
         match theme {
-            "light" => write_minify(
-                &cx.shared.fs,
-                cx.path("light.css"),
-                static_files::themes::LIGHT,
-                options.enable_minification,
-            )?,
-            "dark" => write_minify(
-                &cx.shared.fs,
-                cx.path("dark.css"),
-                static_files::themes::DARK,
-                options.enable_minification,
-            )?,
-            "ayu" => write_minify(
-                &cx.shared.fs,
-                cx.path("ayu.css"),
-                static_files::themes::AYU,
-                options.enable_minification,
-            )?,
+            "light" => write_minify("light.css", static_files::themes::LIGHT)?,
+            "dark" => write_minify("dark.css", static_files::themes::DARK)?,
+            "ayu" => write_minify("ayu.css", static_files::themes::AYU)?,
             _ => {
                 // Handle added third-party themes
-                let content = try_err!(fs::read(&entry.path), &entry.path);
-                cx.shared
-                    .fs
-                    .write(cx.path(&format!("{}.{}", theme, extension)), content.as_slice())?;
+                let filename = format!("{}.{}", theme, extension);
+                write_crate(&filename, &|| Ok(try_err!(fs::read(&entry.path), &entry.path)))?;
             }
         };
 
         themes.insert(theme.to_owned());
     }
 
-    let write = |p, c| cx.shared.fs.write(p, c);
     if (*cx.shared).layout.logo.is_empty() {
-        write(cx.path("rust-logo.png"), static_files::RUST_LOGO)?;
+        write_toolchain("rust-logo.png", static_files::RUST_LOGO)?;
     }
     if (*cx.shared).layout.favicon.is_empty() {
-        write(cx.path("favicon.svg"), static_files::RUST_FAVICON_SVG)?;
-        write(cx.path("favicon-16x16.png"), static_files::RUST_FAVICON_PNG_16)?;
-        write(cx.path("favicon-32x32.png"), static_files::RUST_FAVICON_PNG_32)?;
+        write_toolchain("favicon.svg", static_files::RUST_FAVICON_SVG)?;
+        write_toolchain("favicon-16x16.png", static_files::RUST_FAVICON_PNG_16)?;
+        write_toolchain("favicon-32x32.png", static_files::RUST_FAVICON_PNG_32)?;
     }
-    write(cx.path("brush.svg"), static_files::BRUSH_SVG)?;
-    write(cx.path("wheel.svg"), static_files::WHEEL_SVG)?;
-    write(cx.path("down-arrow.svg"), static_files::DOWN_ARROW_SVG)?;
+    write_toolchain("brush.svg", static_files::BRUSH_SVG)?;
+    write_toolchain("wheel.svg", static_files::WHEEL_SVG)?;
+    write_toolchain("down-arrow.svg", static_files::DOWN_ARROW_SVG)?;
 
     let mut themes: Vec<&String> = themes.iter().collect();
     themes.sort();
 
+    // FIXME: this should probably not be a toolchain file since it depends on `--theme`.
+    // But it seems a shame to copy it over and over when it's almost always the same.
+    // Maybe we can change the representation to move this out of main.js?
     write_minify(
-        &cx.shared.fs,
-        cx.path("main.js"),
+        "main.js",
         &static_files::MAIN_JS.replace(
             "/* INSERT THEMES HERE */",
             &format!(" = {}", serde_json::to_string(&themes).unwrap()),
         ),
-        options.enable_minification,
     )?;
-    write_minify(
-        &cx.shared.fs,
-        cx.path("settings.js"),
-        static_files::SETTINGS_JS,
-        options.enable_minification,
-    )?;
+    write_minify("settings.js", static_files::SETTINGS_JS)?;
     if cx.shared.include_sources {
-        write_minify(
-            &cx.shared.fs,
-            cx.path("source-script.js"),
-            static_files::sidebar::SOURCE_SCRIPT,
-            options.enable_minification,
-        )?;
+        write_minify("source-script.js", static_files::sidebar::SOURCE_SCRIPT)?;
     }
 
     {
         write_minify(
-            &cx.shared.fs,
-            cx.path("storage.js"),
+            "storage.js",
             &format!(
                 "var resourcesSuffix = \"{}\";{}",
                 cx.shared.resource_suffix,
                 static_files::STORAGE_JS
             ),
-            options.enable_minification,
         )?;
     }
 
     if let Some(ref css) = cx.shared.layout.css_file_extension {
-        let out = cx.path("theme.css");
         let buffer = try_err!(fs::read_to_string(css), css);
-        if !options.enable_minification {
-            cx.shared.fs.write(&out, &buffer)?;
-        } else {
-            write_minify(&cx.shared.fs, out, &buffer, options.enable_minification)?;
-        }
+        // This varies based on the invocation, so it can't go through the write_minify wrapper.
+        cx.write_minify(
+            SharedResource::InvocationSpecific { basename: "theme.css" },
+            &buffer,
+            options.enable_minification,
+            &options.emit,
+        )?;
     }
-    write_minify(
-        &cx.shared.fs,
-        cx.path("normalize.css"),
-        static_files::NORMALIZE_CSS,
-        options.enable_minification,
-    )?;
-    for (file, contents) in &*FILES_UNVERSIONED {
-        write(cx.dst.join(file), contents)?;
+    write_minify("normalize.css", static_files::NORMALIZE_CSS)?;
+    for (name, contents) in &*FILES_UNVERSIONED {
+        cx.write_shared(SharedResource::Unversioned { name }, contents, &options.emit)?;
     }
 
     fn collect(path: &Path, krate: &str, key: &str) -> io::Result<(Vec<String>, Vec<String>)> {
@@ -312,19 +379,22 @@ pub(super) fn write_shared(
         }
 
         let dst = cx.dst.join(&format!("source-files{}.js", cx.shared.resource_suffix));
-        let (mut all_sources, _krates) =
-            try_err!(collect(&dst, &krate.name.as_str(), "sourcesIndex"), &dst);
-        all_sources.push(format!(
-            "sourcesIndex[\"{}\"] = {};",
-            &krate.name,
-            hierarchy.to_json_string()
-        ));
-        all_sources.sort();
-        let v = format!(
-            "var N = null;var sourcesIndex = {{}};\n{}\ncreateSourceSidebar();\n",
-            all_sources.join("\n")
-        );
-        cx.shared.fs.write(&dst, v.as_bytes())?;
+        let make_sources = || {
+            let (mut all_sources, _krates) =
+                try_err!(collect(&dst, &krate.name.as_str(), "sourcesIndex"), &dst);
+            all_sources.push(format!(
+                "sourcesIndex[\"{}\"] = {};",
+                &krate.name,
+                hierarchy.to_json_string()
+            ));
+            all_sources.sort();
+            Ok(format!(
+                "var N = null;var sourcesIndex = {{}};\n{}\ncreateSourceSidebar();\n",
+                all_sources.join("\n")
+            )
+            .into_bytes())
+        };
+        write_crate("source-files.js", &make_sources)?;
     }
 
     // Update the search index and crate list.
@@ -337,17 +407,17 @@ pub(super) fn write_shared(
     // Sort the indexes by crate so the file will be generated identically even
     // with rustdoc running in parallel.
     all_indexes.sort();
-    {
+    write_crate("search-index.js", &|| {
         let mut v = String::from("var searchIndex = JSON.parse('{\\\n");
         v.push_str(&all_indexes.join(",\\\n"));
         v.push_str("\\\n}');\ninitSearch(searchIndex);");
-        cx.shared.fs.write(&dst, &v)?;
-    }
+        Ok(v.into_bytes())
+    })?;
 
-    let crate_list_dst = cx.dst.join(&format!("crates{}.js", cx.shared.resource_suffix));
-    let crate_list =
-        format!("window.ALL_CRATES = [{}];", krates.iter().map(|k| format!("\"{}\"", k)).join(","));
-    cx.shared.fs.write(&crate_list_dst, &crate_list)?;
+    write_crate("crates.js", &|| {
+        let krates = krates.iter().map(|k| format!("\"{}\"", k)).join(",");
+        Ok(format!("window.ALL_CRATES = [{}];", krates).into_bytes())
+    })?;
 
     if options.enable_index_page {
         if let Some(index_page) = options.index_page.clone() {
@@ -480,22 +550,4 @@ pub(super) fn write_shared(
         cx.shared.fs.write(&mydst, &v)?;
     }
     Ok(())
-}
-
-fn write_minify(
-    fs: &DocFS,
-    dst: PathBuf,
-    contents: &str,
-    enable_minification: bool,
-) -> Result<(), Error> {
-    if enable_minification {
-        if dst.extension() == Some(&OsStr::new("css")) {
-            let res = try_none!(minifier::css::minify(contents).ok(), &dst);
-            fs.write(dst, res.as_bytes())
-        } else {
-            fs.write(dst, minifier::js::minify(contents).as_bytes())
-        }
-    } else {
-        fs.write(dst, contents.as_bytes())
-    }
 }
