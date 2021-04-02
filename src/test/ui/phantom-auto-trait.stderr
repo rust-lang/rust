@@ -12,8 +12,8 @@ LL |     is_zen(x)
    = note: required because it appears within the type `Guard<'_, T>`
 help: consider restricting type parameter `T`
    |
-LL | fn not_sync<T: Sync>(x: Guard<T>) {
-   |              ^^^^^^
+LL | fn not_sync<T: std::marker::Sync>(x: Guard<T>) {
+   |              ^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `T` cannot be shared between threads safely
   --> $DIR/phantom-auto-trait.rs:26:12
@@ -30,8 +30,8 @@ LL |     is_zen(x)
    = note: required because it appears within the type `Nested<Guard<'_, T>>`
 help: consider restricting type parameter `T`
    |
-LL | fn nested_not_sync<T: Sync>(x: Nested<Guard<T>>) {
-   |                     ^^^^^^
+LL | fn nested_not_sync<T: std::marker::Sync>(x: Nested<Guard<T>>) {
+   |                     ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

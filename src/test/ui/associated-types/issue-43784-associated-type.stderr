@@ -9,8 +9,8 @@ LL |     type Assoc = T;
    |
 help: consider restricting type parameter `T`
    |
-LL | impl<T: Copy> Complete for T {
-   |       ^^^^^^
+LL | impl<T: std::marker::Copy> Complete for T {
+   |       ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

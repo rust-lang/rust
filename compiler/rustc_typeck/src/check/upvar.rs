@@ -34,6 +34,7 @@ use super::FnCtxt;
 
 use crate::expr_use_visitor as euv;
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::def_id::LocalDefId;
@@ -91,7 +92,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InferBorrowKindVisitor<'a, 'tcx> {
         if let hir::ExprKind::Closure(cc, _, body_id, _, _) = expr.kind {
             let body = self.fcx.tcx.hir().body(body_id);
             self.visit_body(body);
-            self.fcx.analyze_closure(expr.hir_id, expr.span, body, cc);
+            self.fcx.analyze_closure(expr.hir_id, expr.span, body_id, body, cc);
         }
 
         intravisit::walk_expr(self, expr);
@@ -104,6 +105,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         closure_hir_id: hir::HirId,
         span: Span,
+        body_id: hir::BodyId,
         body: &'tcx hir::Body<'tcx>,
         capture_clause: hir::CaptureBy,
     ) {
@@ -167,7 +169,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let closure_hir_id = self.tcx.hir().local_def_id_to_hir_id(local_def_id);
         if should_do_migration_analysis(self.tcx, closure_hir_id) {
-            self.perform_2229_migration_anaysis(closure_def_id, capture_clause, span);
+            self.perform_2229_migration_anaysis(closure_def_id, body_id, capture_clause, span);
         }
 
         // We now fake capture information for all variables that are mentioned within the closure
@@ -465,6 +467,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn perform_2229_migration_anaysis(
         &self,
         closure_def_id: DefId,
+        body_id: hir::BodyId,
         capture_clause: hir::CaptureBy,
         span: Span,
     ) {
@@ -476,7 +479,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         if !need_migrations.is_empty() {
-            let migrations_text = migration_suggestion_for_2229(self.tcx, &need_migrations);
+            let (migration_string, migrated_variables_concat) =
+                migration_suggestion_for_2229(self.tcx, &need_migrations);
 
             let local_def_id = closure_def_id.expect_local();
             let closure_hir_id = self.tcx.hir().local_def_id_to_hir_id(local_def_id);
@@ -488,7 +492,35 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let mut diagnostics_builder = lint.build(
                         "drop order affected for closure because of `capture_disjoint_fields`",
                     );
-                    diagnostics_builder.note(&migrations_text);
+                    let closure_body_span = self.tcx.hir().span(body_id.hir_id);
+                    let (sugg, app) =
+                        match self.tcx.sess.source_map().span_to_snippet(closure_body_span) {
+                            Ok(s) => {
+                                let trimmed = s.trim_start();
+
+                                // If the closure contains a block then replace the opening brace
+                                // with "{ let _ = (..); "
+                                let sugg = if let Some('{') = trimmed.chars().next() {
+                                    format!("{{ {}; {}", migration_string, &trimmed[1..])
+                                } else {
+                                    format!("{{ {}; {} }}", migration_string, s)
+                                };
+                                (sugg, Applicability::MachineApplicable)
+                            }
+                            Err(_) => (migration_string.clone(), Applicability::HasPlaceholders),
+                        };
+
+                    let diagnostic_msg = format!(
+                        "add a dummy let to cause {} to be fully captured",
+                        migrated_variables_concat
+                    );
+
+                    diagnostics_builder.span_suggestion(
+                        closure_body_span,
+                        &diagnostic_msg,
+                        sugg,
+                        app,
+                    );
                     diagnostics_builder.emit();
                 },
             );
@@ -621,7 +653,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// `w[c]`.
     /// Notation:
     /// - Ty(place): Type of place
-    /// - `(a, b)`: Represents the function parameters `base_path_ty` and `captured_projs`
+    /// - `(a, b)`: Represents the function parameters `base_path_ty` and `captured_by_move_projs`
     /// respectively.
     /// ```
     ///                  (Ty(w), [ &[p, x], &[c] ])
@@ -682,7 +714,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         closure_def_id: DefId,
         closure_span: Span,
         base_path_ty: Ty<'tcx>,
-        captured_projs: Vec<&[Projection<'tcx>]>,
+        captured_by_move_projs: Vec<&[Projection<'tcx>]>,
     ) -> bool {
         let needs_drop = |ty: Ty<'tcx>| {
             ty.needs_drop(self.tcx, self.tcx.param_env(closure_def_id.expect_local()))
@@ -707,9 +739,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //
         // eg. If `a.b` is captured and we are processing `a.b`, then we can't have the closure also
         //     capture `a.b.c`, because that voilates min capture.
-        let is_completely_captured = captured_projs.iter().any(|projs| projs.is_empty());
+        let is_completely_captured = captured_by_move_projs.iter().any(|projs| projs.is_empty());
 
-        assert!(!is_completely_captured || (captured_projs.len() == 1));
+        assert!(!is_completely_captured || (captured_by_move_projs.len() == 1));
 
         if is_completely_captured {
             // The place is captured entirely, so doesn't matter if needs dtor, it will be drop
@@ -717,23 +749,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
 
-        if is_drop_defined_for_ty {
-            // If drop is implemented for this type then we need it to be fully captured,
-            // which we know it is not because of the previous check. Therefore we need to
-            // do migrate.
-            return true;
+        if captured_by_move_projs.is_empty() {
+            return needs_drop(base_path_ty);
         }
 
-        if captured_projs.is_empty() {
-            return needs_drop(base_path_ty);
+        if is_drop_defined_for_ty {
+            // If drop is implemented for this type then we need it to be fully captured,
+            // and we know it is not completely captured because of the previous checks.
+
+            // Note that this is a bug in the user code that will be reported by the
+            // borrow checker, since we can't move out of drop types.
+
+            // The bug exists in the user's code pre-migration, and we don't migrate here.
+            return false;
         }
 
         match base_path_ty.kind() {
             // Observations:
-            // - `captured_projs` is not empty. Therefore we can call
-            //   `captured_projs.first().unwrap()` safely.
-            // - All entries in `captured_projs` have atleast one projection.
-            //   Therefore we can call `captured_projs.first().unwrap().first().unwrap()` safely.
+            // - `captured_by_move_projs` is not empty. Therefore we can call
+            //   `captured_by_move_projs.first().unwrap()` safely.
+            // - All entries in `captured_by_move_projs` have atleast one projection.
+            //   Therefore we can call `captured_by_move_projs.first().unwrap().first().unwrap()` safely.
 
             // We don't capture derefs in case of move captures, which would have be applied to
             // access any further paths.
@@ -743,19 +779,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             ty::Adt(def, substs) => {
                 // Multi-varaint enums are captured in entirety,
-                // which would've been handled in the case of single empty slice in `captured_projs`.
+                // which would've been handled in the case of single empty slice in `captured_by_move_projs`.
                 assert_eq!(def.variants.len(), 1);
 
                 // Only Field projections can be applied to a non-box Adt.
                 assert!(
-                    captured_projs.iter().all(|projs| matches!(
+                    captured_by_move_projs.iter().all(|projs| matches!(
                         projs.first().unwrap().kind,
                         ProjectionKind::Field(..)
                     ))
                 );
                 def.variants.get(VariantIdx::new(0)).unwrap().fields.iter().enumerate().any(
                     |(i, field)| {
-                        let paths_using_field = captured_projs
+                        let paths_using_field = captured_by_move_projs
                             .iter()
                             .filter_map(|projs| {
                                 if let ProjectionKind::Field(field_idx, _) =
@@ -782,14 +818,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Tuple(..) => {
                 // Only Field projections can be applied to a tuple.
                 assert!(
-                    captured_projs.iter().all(|projs| matches!(
+                    captured_by_move_projs.iter().all(|projs| matches!(
                         projs.first().unwrap().kind,
                         ProjectionKind::Field(..)
                     ))
                 );
 
                 base_path_ty.tuple_fields().enumerate().any(|(i, element_ty)| {
-                    let paths_using_field = captured_projs
+                    let paths_using_field = captured_by_move_projs
                         .iter()
                         .filter_map(|projs| {
                             if let ProjectionKind::Field(field_idx, _) = projs.first().unwrap().kind
@@ -1515,12 +1551,29 @@ fn should_do_migration_analysis(tcx: TyCtxt<'_>, closure_id: hir::HirId) -> bool
     !matches!(level, lint::Level::Allow)
 }
 
-fn migration_suggestion_for_2229(tcx: TyCtxt<'_>, need_migrations: &Vec<hir::HirId>) -> String {
-    let need_migrations_strings =
-        need_migrations.iter().map(|v| format!("{}", var_name(tcx, *v))).collect::<Vec<_>>();
-    let migrations_list_concat = need_migrations_strings.join(", ");
+/// Return a two string tuple (s1, s2)
+/// - s1: Line of code that is needed for the migration: eg: `let _ = (&x, ...)`.
+/// - s2: Comma separated names of the variables being migrated.
+fn migration_suggestion_for_2229(
+    tcx: TyCtxt<'_>,
+    need_migrations: &Vec<hir::HirId>,
+) -> (String, String) {
+    let need_migrations_variables =
+        need_migrations.iter().map(|v| var_name(tcx, *v)).collect::<Vec<_>>();
 
-    format!("drop(&({}));", migrations_list_concat)
+    let migration_ref_concat =
+        need_migrations_variables.iter().map(|v| format!("&{}", v)).collect::<Vec<_>>().join(", ");
+
+    let migration_string = if 1 == need_migrations.len() {
+        format!("let _ = {}", migration_ref_concat)
+    } else {
+        format!("let _ = ({})", migration_ref_concat)
+    };
+
+    let migrated_variables_concat =
+        need_migrations_variables.iter().map(|v| format!("`{}`", v)).collect::<Vec<_>>().join(", ");
+
+    (migration_string, migrated_variables_concat)
 }
 
 /// Helper function to determine if we need to escalate CaptureKind from

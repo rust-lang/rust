@@ -527,6 +527,14 @@ fn opts() -> Vec<RustcOptGroup> {
         unstable("print", |o| {
             o.optmulti("", "print", "Rustdoc information to print on stdout", "[unversioned-files]")
         }),
+        unstable("emit", |o| {
+            o.optmulti(
+                "",
+                "emit",
+                "Comma separated list of types of output for rustdoc to emit",
+                "[unversioned-shared-resources,toolchain-shared-resources,invocation-specific]",
+            )
+        }),
     ]
 }
 

@@ -1,5 +1,5 @@
 error: drop order affected for closure because of `capture_disjoint_fields`
-  --> $DIR/significant_drop.rs:24:13
+  --> $DIR/significant_drop.rs:25:13
    |
 LL |       let c = || {
    |  _____________^
@@ -12,14 +12,22 @@ LL | |     };
    | |_____^
    |
 note: the lint level is defined here
-  --> $DIR/significant_drop.rs:1:9
+  --> $DIR/significant_drop.rs:2:9
    |
 LL | #![deny(disjoint_capture_drop_reorder)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: drop(&(t, t1, t2));
+help: add a dummy let to cause `t`, `t1`, `t2` to be fully captured
+   |
+LL |     let c = || { let _ = (&t, &t1, &t2); 
+LL |
+LL |
+LL |         let _t = t.0;
+LL |         let _t1 = t1.0;
+LL |         let _t2 = t2.0;
+ ...
 
 error: drop order affected for closure because of `capture_disjoint_fields`
-  --> $DIR/significant_drop.rs:42:13
+  --> $DIR/significant_drop.rs:43:13
    |
 LL |       let c = || {
    |  _____________^
@@ -31,10 +39,18 @@ LL | |         let _t2 = t2;
 LL | |     };
    | |_____^
    |
-   = note: drop(&(t, t1));
+help: add a dummy let to cause `t`, `t1` to be fully captured
+   |
+LL |     let c = || { let _ = (&t, &t1); 
+LL |
+LL |
+LL |         let _t = t.0;
+LL |         let _t1 = t1.0;
+LL |         let _t2 = t2;
+ ...
 
 error: drop order affected for closure because of `capture_disjoint_fields`
-  --> $DIR/significant_drop.rs:58:13
+  --> $DIR/significant_drop.rs:59:13
    |
 LL |       let c = || {
    |  _____________^
@@ -45,10 +61,18 @@ LL | |         println!("{:?}", t1.1);
 LL | |     };
    | |_____^
    |
-   = note: drop(&(t));
+help: add a dummy let to cause `t` to be fully captured
+   |
+LL |     let c = || { let _ = &t; 
+LL |
+LL |
+LL |         let _t = t.0;
+LL |         println!("{:?}", t1.1);
+LL |     };
+   |
 
 error: drop order affected for closure because of `capture_disjoint_fields`
-  --> $DIR/significant_drop.rs:75:13
+  --> $DIR/significant_drop.rs:76:13
    |
 LL |       let c = || {
    |  _____________^
@@ -58,10 +82,17 @@ LL | |         let _t = t.0;
 LL | |     };
    | |_____^
    |
-   = note: drop(&(t));
+help: add a dummy let to cause `t` to be fully captured
+   |
+LL |     let c = || { let _ = &t; 
+LL |
+LL |
+LL |         let _t = t.0;
+LL |     };
+   |
 
 error: drop order affected for closure because of `capture_disjoint_fields`
-  --> $DIR/significant_drop.rs:90:13
+  --> $DIR/significant_drop.rs:91:13
    |
 LL |       let c = || {
    |  _____________^
@@ -71,10 +102,17 @@ LL | |         let _t = t.0;
 LL | |     };
    | |_____^
    |
-   = note: drop(&(t));
+help: add a dummy let to cause `t` to be fully captured
+   |
+LL |     let c = || { let _ = &t; 
+LL |
+LL |
+LL |         let _t = t.0;
+LL |     };
+   |
 
 error: drop order affected for closure because of `capture_disjoint_fields`
-  --> $DIR/significant_drop.rs:105:13
+  --> $DIR/significant_drop.rs:104:13
    |
 LL |       let c = || {
    |  _____________^
@@ -84,10 +122,17 @@ LL | |         let _t = t.1;
 LL | |     };
    | |_____^
    |
-   = note: drop(&(t));
+help: add a dummy let to cause `t` to be fully captured
+   |
+LL |     let c = || { let _ = &t; 
+LL |
+LL |
+LL |         let _t = t.1;
+LL |     };
+   |
 
 error: drop order affected for closure because of `capture_disjoint_fields`
-  --> $DIR/significant_drop.rs:120:13
+  --> $DIR/significant_drop.rs:119:13
    |
 LL |       let c = move || {
    |  _____________^
@@ -97,7 +142,14 @@ LL | |         println!("{:?} {:?}", t1.1, t.1);
 LL | |     };
    | |_____^
    |
-   = note: drop(&(t1, t));
+help: add a dummy let to cause `t1`, `t` to be fully captured
+   |
+LL |     let c = move || { let _ = (&t1, &t); 
+LL |
+LL |
+LL |         println!("{:?} {:?}", t1.1, t.1);
+LL |     };
+   |
 
 error: aborting due to 7 previous errors
 
