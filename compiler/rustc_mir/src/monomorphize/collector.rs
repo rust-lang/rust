@@ -66,7 +66,8 @@
 //! consider non-generic items, an empty type-substitution set. (In eager
 //! collection mode, during incremental compilation, all non-generic functions
 //! are considered as roots, as well as when the `-Clink-dead-code` option is
-//! specified. Functions marked `#[no_mangle]` also always act as roots.)
+//! specified. Functions marked `#[no_mangle]` and functions called by inlinable
+//! functions also always act as roots.)
 //!
 //! ### Finding neighbor nodes
 //! Given a mono item node, we can discover neighbors by inspecting its
