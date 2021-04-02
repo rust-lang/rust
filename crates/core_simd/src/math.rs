@@ -80,6 +80,7 @@ macro_rules! impl_int_arith {
             }
 
             /// Lanewise saturating absolute value, implemented in Rust.
+            /// As abs(), except the MIN value becomes MAX instead of itself.
             ///
             /// # Examples
             /// # use core_simd::*;
@@ -99,6 +100,7 @@ macro_rules! impl_int_arith {
             }
 
             /// Lanewise saturating negation, implemented in Rust.
+            /// As neg(), except the MIN value becomes MAX instead of itself.
             ///
             /// # Examples
             /// # use core_simd::*;
