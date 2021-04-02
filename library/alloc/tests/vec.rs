@@ -1,3 +1,4 @@
+use alloc::boxed::Box;
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::collections::TryReserveError::*;
@@ -1056,14 +1057,14 @@ fn test_from_iter_specialization_panic_during_drop_leaks() {
 
     #[derive(Debug)]
     enum Droppable {
-        DroppedTwice(Box<i32>),
+        DroppedTwice,
         PanicOnDrop,
     }
 
     impl Drop for Droppable {
         fn drop(&mut self) {
             match self {
-                Droppable::DroppedTwice(_) => {
+                Droppable::DroppedTwice => {
                     unsafe {
                         DROP_COUNTER += 1;
                     }
@@ -1078,12 +1079,21 @@ fn test_from_iter_specialization_panic_during_drop_leaks() {
         }
     }
 
+    let mut to_free: *mut Droppable = core::ptr::null_mut();
+    let mut cap = 0;
+
     let _ = std::panic::catch_unwind(AssertUnwindSafe(|| {
-        let v = vec![Droppable::DroppedTwice(Box::new(123)), Droppable::PanicOnDrop];
+        let mut v = vec![Droppable::DroppedTwice, Droppable::PanicOnDrop];
+        to_free = v.as_mut_ptr();
+        cap = v.capacity();
         let _ = v.into_iter().take(0).collect::<Vec<_>>();
     }));
 
     assert_eq!(unsafe { DROP_COUNTER }, 1);
+    // clean up the leak to keep miri happy
+    unsafe {
+        Vec::from_raw_parts(to_free, 0, cap);
+    }
 }
 
 #[test]
