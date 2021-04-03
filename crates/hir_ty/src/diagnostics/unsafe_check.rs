@@ -110,7 +110,7 @@ fn walk_unsafe(
             }
         }
         Expr::UnaryOp { expr, op: UnaryOp::Deref } => {
-            if let TyKind::Raw(..) = &infer[*expr].interned(&Interner) {
+            if let TyKind::Raw(..) = &infer[*expr].kind(&Interner) {
                 unsafe_exprs.push(UnsafeExpr { expr: current, inside_unsafe_block });
             }
         }

@@ -138,7 +138,7 @@ pub(crate) fn trait_solve_query(
         ..
     })) = &goal.value.goal
     {
-        if let TyKind::BoundVar(_) = projection_ty.self_type_parameter().interned(&Interner) {
+        if let TyKind::BoundVar(_) = projection_ty.self_type_parameter().kind(&Interner) {
             // Hack: don't ask Chalk to normalize with an unknown self type, it'll say that's impossible
             return Some(Solution::Ambig(Guidance::Unknown));
         }

@@ -292,7 +292,7 @@ impl HirDisplay for Ty {
             return write!(f, "{}", TYPE_HINT_TRUNCATION);
         }
 
-        match self.interned(&Interner) {
+        match self.kind(&Interner) {
             TyKind::Never => write!(f, "!")?,
             TyKind::Str => write!(f, "str")?,
             TyKind::Scalar(Scalar::Bool) => write!(f, "bool")?,
@@ -314,7 +314,7 @@ impl HirDisplay for Ty {
                 let ty_display =
                     t.into_displayable(f.db, f.max_size, f.omit_verbose_types, f.display_target);
 
-                if matches!(self.interned(&Interner), TyKind::Raw(..)) {
+                if matches!(self.kind(&Interner), TyKind::Raw(..)) {
                     write!(
                         f,
                         "*{}",
@@ -336,7 +336,7 @@ impl HirDisplay for Ty {
 
                 // FIXME: all this just to decide whether to use parentheses...
                 let datas;
-                let predicates: Vec<_> = match t.interned(&Interner) {
+                let predicates: Vec<_> = match t.kind(&Interner) {
                     TyKind::Dyn(dyn_ty) if dyn_ty.bounds.skip_binders().interned().len() > 1 => {
                         dyn_ty.bounds.skip_binders().interned().iter().cloned().collect()
                     }
@@ -473,7 +473,7 @@ impl HirDisplay for Ty {
                                 let mut default_from = 0;
                                 for (i, parameter) in parameters.iter(&Interner).enumerate() {
                                     match (
-                                        parameter.assert_ty_ref(&Interner).interned(&Interner),
+                                        parameter.assert_ty_ref(&Interner).kind(&Interner),
                                         default_parameters.get(i),
                                     ) {
                                         (&TyKind::Unknown, _) | (_, None) => {

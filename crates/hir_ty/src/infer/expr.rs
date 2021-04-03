@@ -455,7 +455,7 @@ impl<'a> InferenceContext<'a> {
                             })
                             .unwrap_or(true)
                     };
-                    match canonicalized.decanonicalize_ty(derefed_ty.value).interned(&Interner) {
+                    match canonicalized.decanonicalize_ty(derefed_ty.value).kind(&Interner) {
                         TyKind::Tuple(_, substs) => name.as_tuple_index().and_then(|idx| {
                             substs
                                 .interned(&Interner)
@@ -577,7 +577,7 @@ impl<'a> InferenceContext<'a> {
                         None => self.err_ty(),
                     },
                     UnaryOp::Neg => {
-                        match inner_ty.interned(&Interner) {
+                        match inner_ty.kind(&Interner) {
                             // Fast path for builtins
                             TyKind::Scalar(Scalar::Int(_))
                             | TyKind::Scalar(Scalar::Uint(_))
@@ -590,7 +590,7 @@ impl<'a> InferenceContext<'a> {
                         }
                     }
                     UnaryOp::Not => {
-                        match inner_ty.interned(&Interner) {
+                        match inner_ty.kind(&Interner) {
                             // Fast path for builtins
                             TyKind::Scalar(Scalar::Bool)
                             | TyKind::Scalar(Scalar::Int(_))
@@ -696,7 +696,7 @@ impl<'a> InferenceContext<'a> {
                 }
             }
             Expr::Tuple { exprs } => {
-                let mut tys = match expected.ty.interned(&Interner) {
+                let mut tys = match expected.ty.kind(&Interner) {
                     TyKind::Tuple(_, substs) => substs
                         .iter(&Interner)
                         .map(|a| a.assert_ty_ref(&Interner).clone())
@@ -713,7 +713,7 @@ impl<'a> InferenceContext<'a> {
                 TyKind::Tuple(tys.len(), Substitution::from_iter(&Interner, tys)).intern(&Interner)
             }
             Expr::Array(array) => {
-                let elem_ty = match expected.ty.interned(&Interner) {
+                let elem_ty = match expected.ty.kind(&Interner) {
                     TyKind::Array(st) | TyKind::Slice(st) => st.clone(),
                     _ => self.table.new_type_var(),
                 };
@@ -961,7 +961,7 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn register_obligations_for_call(&mut self, callable_ty: &Ty) {
-        if let TyKind::FnDef(fn_def, parameters) = callable_ty.interned(&Interner) {
+        if let TyKind::FnDef(fn_def, parameters) = callable_ty.kind(&Interner) {
             let def: CallableDefId = from_chalk(self.db, *fn_def);
             let generic_predicates = self.db.generic_predicates(def.into());
             for predicate in generic_predicates.iter() {

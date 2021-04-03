@@ -49,7 +49,7 @@ impl<'a, 'b> Canonicalizer<'a, 'b> {
 
     fn do_canonicalize<T: TypeWalk>(&mut self, t: T, binders: DebruijnIndex) -> T {
         t.fold_binders(
-            &mut |ty, binders| match ty.interned(&Interner) {
+            &mut |ty, binders| match ty.kind(&Interner) {
                 &TyKind::InferenceVar(var, kind) => {
                     let inner = var.to_inner();
                     if self.var_stack.contains(&inner) {
@@ -304,7 +304,7 @@ impl InferenceTable {
         let ty1 = self.resolve_ty_shallow(ty1);
         let ty2 = self.resolve_ty_shallow(ty2);
         if ty1.equals_ctor(&ty2) {
-            match (ty1.interned(&Interner), ty2.interned(&Interner)) {
+            match (ty1.kind(&Interner), ty2.kind(&Interner)) {
                 (TyKind::Adt(_, substs1), TyKind::Adt(_, substs2))
                 | (TyKind::FnDef(_, substs1), TyKind::FnDef(_, substs2))
                 | (
@@ -329,7 +329,7 @@ impl InferenceTable {
     }
 
     pub(super) fn unify_inner_trivial(&mut self, ty1: &Ty, ty2: &Ty, depth: usize) -> bool {
-        match (ty1.interned(&Interner), ty2.interned(&Interner)) {
+        match (ty1.kind(&Interner), ty2.kind(&Interner)) {
             (TyKind::Unknown, _) | (_, TyKind::Unknown) => true,
 
             (TyKind::Placeholder(p1), TyKind::Placeholder(p2)) if *p1 == *p2 => true,
@@ -458,7 +458,7 @@ impl InferenceTable {
             if i > 0 {
                 cov_mark::hit!(type_var_resolves_to_int_var);
             }
-            match ty.interned(&Interner) {
+            match ty.kind(&Interner) {
                 TyKind::InferenceVar(tv, _) => {
                     let inner = tv.to_inner();
                     match self.var_unification_table.inlined_probe_value(inner).known() {
@@ -481,7 +481,7 @@ impl InferenceTable {
     /// be resolved as far as possible, i.e. contain no type variables with
     /// known type.
     fn resolve_ty_as_possible_inner(&mut self, tv_stack: &mut Vec<TypeVarId>, ty: Ty) -> Ty {
-        ty.fold(&mut |ty| match ty.interned(&Interner) {
+        ty.fold(&mut |ty| match ty.kind(&Interner) {
             &TyKind::InferenceVar(tv, kind) => {
                 let inner = tv.to_inner();
                 if tv_stack.contains(&inner) {
@@ -508,7 +508,7 @@ impl InferenceTable {
     /// Resolves the type completely; type variables without known type are
     /// replaced by TyKind::Unknown.
     fn resolve_ty_completely_inner(&mut self, tv_stack: &mut Vec<TypeVarId>, ty: Ty) -> Ty {
-        ty.fold(&mut |ty| match ty.interned(&Interner) {
+        ty.fold(&mut |ty| match ty.kind(&Interner) {
             &TyKind::InferenceVar(tv, kind) => {
                 let inner = tv.to_inner();
                 if tv_stack.contains(&inner) {

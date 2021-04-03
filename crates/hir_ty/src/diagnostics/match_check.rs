@@ -626,7 +626,7 @@ pub(super) fn is_useful(
     // - enum with no variants
     // - `!` type
     // In those cases, no match arm is useful.
-    match cx.infer[cx.match_expr].strip_references().interned(&Interner) {
+    match cx.infer[cx.match_expr].strip_references().kind(&Interner) {
         TyKind::Adt(AdtId(hir_def::AdtId::EnumId(enum_id)), ..) => {
             if cx.db.enum_data(*enum_id).variants.is_empty() {
                 return Ok(Usefulness::NotUseful);

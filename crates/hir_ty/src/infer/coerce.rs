@@ -36,7 +36,7 @@ impl<'a> InferenceContext<'a> {
             ty1.clone()
         } else {
             if let (TyKind::FnDef(..), TyKind::FnDef(..)) =
-                (ty1.interned(&Interner), ty2.interned(&Interner))
+                (ty1.kind(&Interner), ty2.kind(&Interner))
             {
                 cov_mark::hit!(coerce_fn_reification);
                 // Special case: two function types. Try to coerce both to
@@ -55,7 +55,7 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn coerce_inner(&mut self, mut from_ty: Ty, to_ty: &Ty) -> bool {
-        match (from_ty.interned(&Interner), to_ty.interned(&Interner)) {
+        match (from_ty.kind(&Interner), to_ty.kind(&Interner)) {
             // Never type will make type variable to fallback to Never Type instead of Unknown.
             (TyKind::Never, TyKind::InferenceVar(tv, TyVariableKind::General)) => {
                 self.table.type_variable_table.set_diverging(*tv, true);
@@ -73,7 +73,7 @@ impl<'a> InferenceContext<'a> {
         }
 
         // Pointer weakening and function to pointer
-        match (from_ty.interned_mut(), to_ty.interned(&Interner)) {
+        match (from_ty.interned_mut(), to_ty.kind(&Interner)) {
             // `*mut T` -> `*const T`
             // `&mut T` -> `&T`
             (TyKind::Raw(m1, ..), TyKind::Raw(m2 @ Mutability::Not, ..))
@@ -111,7 +111,7 @@ impl<'a> InferenceContext<'a> {
         }
 
         // Auto Deref if cannot coerce
-        match (from_ty.interned(&Interner), to_ty.interned(&Interner)) {
+        match (from_ty.kind(&Interner), to_ty.kind(&Interner)) {
             // FIXME: DerefMut
             (TyKind::Ref(_, st1), TyKind::Ref(_, st2)) => self.unify_autoderef_behind_ref(st1, st2),
 
