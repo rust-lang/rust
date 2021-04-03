@@ -1,6 +1,7 @@
 use crate::def::{CtorOf, DefKind, Res};
 use crate::def_id::DefId;
 use crate::hir::{self, HirId, PatKind};
+use rustc_data_structures::stable_set::FxHashSet;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
@@ -118,8 +119,10 @@ impl hir::Pat<'_> {
             }
             _ => true,
         });
-        variants.sort();
-        variants.dedup();
+        // We remove duplicates by inserting into a `FxHashSet` to avoid re-ordering
+        // the bounds
+        let mut duplicates = FxHashSet::default();
+        variants.retain(|def_id| duplicates.insert(*def_id));
         variants
     }
 
