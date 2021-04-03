@@ -21,6 +21,36 @@ struct UnsafetyVisitor<'tcx> {
 }
 
 impl<'tcx> UnsafetyVisitor<'tcx> {
+    fn in_safety_context<R>(
+        &mut self,
+        safety_context: SafetyContext,
+        f: impl FnOnce(&mut Self) -> R,
+    ) {
+        if let (
+            SafetyContext::UnsafeBlock { span: enclosing_span, .. },
+            SafetyContext::UnsafeBlock { span: block_span, hir_id, .. },
+        ) = (self.safety_context, safety_context)
+        {
+            self.warn_unused_unsafe(
+                hir_id,
+                block_span,
+                Some(self.tcx.sess.source_map().guess_head_span(enclosing_span)),
+            );
+            f(self);
+        } else {
+            let prev_context = self.safety_context;
+            self.safety_context = safety_context;
+
+            f(self);
+
+            if let SafetyContext::UnsafeBlock { used: false, span, hir_id } = self.safety_context {
+                self.warn_unused_unsafe(hir_id, span, self.body_unsafety.unsafe_fn_sig_span());
+            }
+            self.safety_context = prev_context;
+            return;
+        }
+    }
+
     fn requires_unsafe(&mut self, span: Span, kind: UnsafeOpKind) {
         let (description, note) = kind.description_and_note();
         let unsafe_op_in_unsafe_fn_allowed = self.unsafe_op_in_unsafe_fn_allowed();
@@ -100,40 +130,25 @@ impl<'tcx> UnsafetyVisitor<'tcx> {
 impl<'thir, 'tcx> Visitor<'thir, 'tcx> for UnsafetyVisitor<'tcx> {
     fn visit_block(&mut self, block: &Block<'thir, 'tcx>) {
         if let BlockSafety::ExplicitUnsafe(hir_id) = block.safety_mode {
-            if let SafetyContext::UnsafeBlock { span: enclosing_span, .. } = self.safety_context {
-                self.warn_unused_unsafe(
-                    hir_id,
-                    block.span,
-                    Some(self.tcx.sess.source_map().guess_head_span(enclosing_span)),
-                );
-            } else {
-                let prev_context = self.safety_context;
-                self.safety_context =
-                    SafetyContext::UnsafeBlock { span: block.span, hir_id, used: false };
-                visit::walk_block(self, block);
-                if let SafetyContext::UnsafeBlock { used: false, span, hir_id } =
-                    self.safety_context
-                {
-                    self.warn_unused_unsafe(hir_id, span, self.body_unsafety.unsafe_fn_sig_span());
-                }
-                self.safety_context = prev_context;
-                return;
-            }
+            self.in_safety_context(
+                SafetyContext::UnsafeBlock { span: block.span, hir_id, used: false },
+                |this| visit::walk_block(this, block),
+            );
+        } else {
+            visit::walk_block(self, block);
         }
-
-        visit::walk_block(self, block);
     }
 
     fn visit_expr(&mut self, expr: &'thir Expr<'thir, 'tcx>) {
         match expr.kind {
-            ExprKind::Scope { value, lint_level: LintLevel::Explicit(hir_id), .. } => {
+            ExprKind::Scope { value, lint_level: LintLevel::Explicit(hir_id), region_scope: _ } => {
                 let prev_id = self.hir_context;
                 self.hir_context = hir_id;
                 self.visit_expr(value);
                 self.hir_context = prev_id;
                 return;
             }
-            ExprKind::Call { fun, .. } => {
+            ExprKind::Call { fun, ty: _, args: _, from_hir_call: _, fn_span: _ } => {
                 if fun.ty.fn_sig(self.tcx).unsafety() == hir::Unsafety::Unsafe {
                     self.requires_unsafe(expr.span, CallToUnsafeFunction);
                 }
