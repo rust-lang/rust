@@ -735,7 +735,14 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                     });
                                 }
                             };
-                            fragment_kind.expect_from_annotatables(items)
+                            if fragment_kind == AstFragmentKind::Expr && items.is_empty() {
+                                let msg =
+                                    "removing an expression is not supported in this position";
+                                self.cx.span_err(span, msg);
+                                fragment_kind.dummy(span)
+                            } else {
+                                fragment_kind.expect_from_annotatables(items)
+                            }
                         }
                         Err(mut err) => {
                             err.emit();
