@@ -395,39 +395,51 @@ impl Ctx {
             ret_type
         };
 
-        let has_body = func.body().is_some();
+        let abi = func.abi().map(|abi| {
+            // FIXME: Abi::abi() -> Option<SyntaxToken>?
+            match abi.syntax().last_token() {
+                Some(tok) if tok.kind() == SyntaxKind::STRING => {
+                    // FIXME: Better way to unescape?
+                    Interned::new_str(tok.text().trim_matches('"'))
+                }
+                _ => {
+                    // `extern` default to be `extern "C"`.
+                    Interned::new_str("C")
+                }
+            }
+        });
 
         let ast_id = self.source_ast_id_map.ast_id(func);
-        let qualifier = FunctionQualifier {
-            is_default: func.default_token().is_some(),
-            is_const: func.const_token().is_some(),
-            is_async: func.async_token().is_some(),
-            is_unsafe: func.unsafe_token().is_some(),
-            abi: func.abi().map(|abi| {
-                // FIXME: Abi::abi() -> Option<SyntaxToken>?
-                match abi.syntax().last_token() {
-                    Some(tok) if tok.kind() == SyntaxKind::STRING => {
-                        // FIXME: Better way to unescape?
-                        tok.text().trim_matches('"').into()
-                    }
-                    _ => {
-                        // `extern` default to be `extern "C"`.
-                        "C".into()
-                    }
-                }
-            }),
-        };
+
+        let mut flags = FnFlags::empty();
+        if func.body().is_some() {
+            flags |= FnFlags::HAS_BODY;
+        }
+        if has_self_param {
+            flags |= FnFlags::HAS_SELF_PARAM;
+        }
+        if func.default_token().is_some() {
+            flags |= FnFlags::IS_DEFAULT;
+        }
+        if func.const_token().is_some() {
+            flags |= FnFlags::IS_CONST;
+        }
+        if func.async_token().is_some() {
+            flags |= FnFlags::IS_ASYNC;
+        }
+        if func.unsafe_token().is_some() {
+            flags |= FnFlags::IS_UNSAFE;
+        }
+
         let mut res = Function {
             name,
             visibility,
             generic_params: GenericParamsId::EMPTY,
-            has_self_param,
-            has_body,
-            qualifier,
-            is_in_extern_block: false,
+            abi,
             params,
             ret_type: Interned::new(ret_type),
             ast_id,
+            flags,
         };
         res.generic_params = self.lower_generic_params(GenericsOwner::Function(&res), func);
 
@@ -640,8 +652,10 @@ impl Ctx {
                         ast::ExternItem::Fn(ast) => {
                             let func_id = self.lower_function(&ast)?;
                             let func = &mut self.data().functions[func_id.index];
-                            func.qualifier.is_unsafe = is_intrinsic_fn_unsafe(&func.name);
-                            func.is_in_extern_block = true;
+                            if is_intrinsic_fn_unsafe(&func.name) {
+                                func.flags |= FnFlags::IS_UNSAFE;
+                            }
+                            func.flags |= FnFlags::IS_IN_EXTERN_BLOCK;
                             func_id.into()
                         }
                         ast::ExternItem::Static(ast) => {

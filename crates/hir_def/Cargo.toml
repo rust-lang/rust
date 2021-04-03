@@ -10,6 +10,7 @@ edition = "2018"
 doctest = false
 
 [dependencies]
+bitflags = "1.2.1"
 cov-mark = { version = "1.1", features = ["thread-local"] }
 dashmap = { version = "4.0.2", features = ["raw-api"] }
 log = "0.4.8"

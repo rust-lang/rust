@@ -10,7 +10,7 @@ use crate::{
     body::Expander,
     db::DefDatabase,
     intern::Interned,
-    item_tree::{AssocItem, FunctionQualifier, ItemTreeId, ModItem, Param},
+    item_tree::{AssocItem, FnFlags, ItemTreeId, ModItem, Param},
     type_ref::{TraitRef, TypeBound, TypeRef},
     visibility::RawVisibility,
     AssocContainerId, AssocItemId, ConstId, ConstLoc, FunctionId, FunctionLoc, HasModule, ImplId,
@@ -23,14 +23,9 @@ pub struct FunctionData {
     pub params: Vec<Interned<TypeRef>>,
     pub ret_type: Interned<TypeRef>,
     pub attrs: Attrs,
-    /// True if the first param is `self`. This is relevant to decide whether this
-    /// can be called as a method.
-    pub has_self_param: bool,
-    pub has_body: bool,
-    pub qualifier: FunctionQualifier,
-    pub is_in_extern_block: bool,
-    pub is_varargs: bool,
     pub visibility: RawVisibility,
+    pub abi: Option<Interned<str>>,
+    flags: FnFlags,
 }
 
 impl FunctionData {
@@ -53,6 +48,11 @@ impl FunctionData {
             .next_back()
             .map_or(false, |param| matches!(item_tree[param], Param::Varargs));
 
+        let mut flags = func.flags;
+        if is_varargs {
+            flags |= FnFlags::IS_VARARGS;
+        }
+
         Arc::new(FunctionData {
             name: func.name.clone(),
             params: enabled_params
@@ -64,13 +64,44 @@ impl FunctionData {
                 .collect(),
             ret_type: func.ret_type.clone(),
             attrs: item_tree.attrs(db, krate, ModItem::from(loc.id.value).into()),
-            has_self_param: func.has_self_param,
-            has_body: func.has_body,
-            qualifier: func.qualifier.clone(),
-            is_in_extern_block: func.is_in_extern_block,
-            is_varargs,
             visibility: item_tree[func.visibility].clone(),
+            abi: func.abi.clone(),
+            flags,
         })
+    }
+
+    pub fn has_body(&self) -> bool {
+        self.flags.contains(FnFlags::HAS_BODY)
+    }
+
+    /// True if the first param is `self`. This is relevant to decide whether this
+    /// can be called as a method.
+    pub fn has_self_param(&self) -> bool {
+        self.flags.contains(FnFlags::HAS_SELF_PARAM)
+    }
+
+    pub fn is_default(&self) -> bool {
+        self.flags.contains(FnFlags::IS_DEFAULT)
+    }
+
+    pub fn is_const(&self) -> bool {
+        self.flags.contains(FnFlags::IS_CONST)
+    }
+
+    pub fn is_async(&self) -> bool {
+        self.flags.contains(FnFlags::IS_ASYNC)
+    }
+
+    pub fn is_unsafe(&self) -> bool {
+        self.flags.contains(FnFlags::IS_UNSAFE)
+    }
+
+    pub fn is_in_extern_block(&self) -> bool {
+        self.flags.contains(FnFlags::IS_IN_EXTERN_BLOCK)
+    }
+
+    pub fn is_varargs(&self) -> bool {
+        self.flags.contains(FnFlags::IS_VARARGS)
     }
 }
 
