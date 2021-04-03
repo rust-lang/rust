@@ -514,10 +514,9 @@ impl<'a> InferenceContext<'a> {
                 }
             }
             TypeNs::TypeAliasId(it) => {
-                let substs = Substitution::build_for_def(self.db, it)
+                let ty = TyBuilder::def_ty(self.db, it.into())
                     .fill(std::iter::repeat_with(|| self.table.new_type_var()))
                     .build();
-                let ty = self.db.ty(it.into()).subst(&substs);
                 let variant = ty_variant(&ty);
                 forbid_unresolved_segments((ty, variant), unresolved)
             }

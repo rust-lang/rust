@@ -28,7 +28,10 @@ mod chalk_ext;
 use std::{iter, mem, sync::Arc};
 
 use base_db::salsa;
-use chalk_ir::cast::{CastTo, Caster};
+use chalk_ir::{
+    cast::{CastTo, Caster},
+    interner::HasInterner,
+};
 use hir_def::{
     builtin_type::BuiltinType, expr::ExprId, type_ref::Rawness, AssocContainerId, FunctionId,
     GenericDefId, HasModule, LifetimeParamId, Lookup, TraitId, TypeAliasId, TypeParamId,
@@ -490,13 +493,6 @@ impl Substitution {
         )
     }
 
-    pub fn build_for_def(db: &dyn HirDatabase, def: impl Into<GenericDefId>) -> SubstsBuilder {
-        let def = def.into();
-        let params = generics(db.upcast(), def);
-        let param_count = params.len();
-        Substitution::builder(param_count)
-    }
-
     pub(crate) fn build_for_generics(generic_params: &Generics) -> SubstsBuilder {
         Substitution::builder(generic_params.len())
     }
@@ -894,6 +890,18 @@ impl TyBuilder<()> {
             }
         }
     }
+
+    pub fn subst_for_def(db: &dyn HirDatabase, def: impl Into<GenericDefId>) -> TyBuilder<()> {
+        let def = def.into();
+        let params = generics(db.upcast(), def);
+        let param_count = params.len();
+        TyBuilder::new((), param_count)
+    }
+
+    pub fn build(self) -> Substitution {
+        let ((), subst) = self.build_internal();
+        subst
+    }
 }
 
 impl TyBuilder<hir_def::AdtId> {
@@ -953,6 +961,28 @@ impl TyBuilder<TypeAliasId> {
     pub fn build(self) -> ProjectionTy {
         let (type_alias, substitution) = self.build_internal();
         ProjectionTy { associated_ty_id: to_assoc_type_id(type_alias), substitution }
+    }
+}
+
+impl<T: TypeWalk + HasInterner<Interner = Interner>> TyBuilder<Binders<T>> {
+    fn subst_binders(b: Binders<T>) -> Self {
+        let param_count = b.num_binders;
+        TyBuilder::new(b, param_count)
+    }
+
+    pub fn build(self) -> T {
+        let (b, subst) = self.build_internal();
+        b.subst(&subst)
+    }
+}
+
+impl TyBuilder<Binders<Ty>> {
+    pub fn def_ty(db: &dyn HirDatabase, def: TyDefId) -> TyBuilder<Binders<Ty>> {
+        TyBuilder::subst_binders(db.ty(def.into()))
+    }
+
+    pub fn impl_self_ty(db: &dyn HirDatabase, def: hir_def::ImplId) -> TyBuilder<Binders<Ty>> {
+        TyBuilder::subst_binders(db.impl_self_ty(def))
     }
 }
 

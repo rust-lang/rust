@@ -1702,10 +1702,9 @@ impl Type {
     fn from_def(
         db: &dyn HirDatabase,
         krate: CrateId,
-        def: impl HasResolver + Into<TyDefId> + Into<GenericDefId>,
+        def: impl HasResolver + Into<TyDefId>,
     ) -> Type {
-        let substs = Substitution::build_for_def(db, def).fill_with_unknown().build();
-        let ty = db.ty(def.into()).subst(&substs);
+        let ty = TyBuilder::def_ty(db, def.into()).fill_with_unknown().build();
         Type::new(db, krate, def, ty)
     }
 
