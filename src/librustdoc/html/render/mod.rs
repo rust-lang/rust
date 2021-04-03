@@ -283,24 +283,6 @@ crate struct StylePath {
 
 thread_local!(crate static CURRENT_DEPTH: Cell<usize> = Cell::new(0));
 
-crate const INITIAL_IDS: [&'static str; 15] = [
-    "main",
-    "search",
-    "help",
-    "TOC",
-    "render-detail",
-    "associated-types",
-    "associated-const",
-    "required-methods",
-    "provided-methods",
-    "implementors",
-    "synthetic-implementors",
-    "implementors-list",
-    "synthetic-implementors-list",
-    "methods",
-    "implementations",
-];
-
 fn write_srclink(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer) {
     if let Some(l) = cx.src_href(item) {
         write!(buf, "<a class=\"srclink\" href=\"{}\" title=\"goto source code\">[src]</a>", l)
