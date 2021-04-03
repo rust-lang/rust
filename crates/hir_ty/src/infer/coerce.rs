@@ -8,7 +8,8 @@ use chalk_ir::{cast::Cast, Mutability, TyVariableKind};
 use hir_def::lang_item::LangItemTarget;
 
 use crate::{
-    autoderef, to_chalk_trait_id, traits::Solution, Interner, Substitution, TraitRef, Ty, TyKind,
+    autoderef, to_chalk_trait_id, traits::Solution, Interner, Substitution, TraitRef, Ty,
+    TyBuilder, TyKind,
 };
 
 use super::{InEnvironment, InferenceContext};
@@ -44,8 +45,8 @@ impl<'a> InferenceContext<'a> {
                 // https://github.com/rust-lang/rust/blob/7b805396bf46dce972692a6846ce2ad8481c5f85/src/librustc_typeck/check/coercion.rs#L877-L916
                 let sig1 = ty1.callable_sig(self.db).expect("FnDef without callable sig");
                 let sig2 = ty2.callable_sig(self.db).expect("FnDef without callable sig");
-                let ptr_ty1 = Ty::fn_ptr(sig1);
-                let ptr_ty2 = Ty::fn_ptr(sig2);
+                let ptr_ty1 = TyBuilder::fn_ptr(sig1);
+                let ptr_ty2 = TyBuilder::fn_ptr(sig2);
                 self.coerce_merge_branch(&ptr_ty1, &ptr_ty2)
             } else {
                 cov_mark::hit!(coerce_merge_fail_fallback);
@@ -95,7 +96,7 @@ impl<'a> InferenceContext<'a> {
             (TyKind::FnDef(..), TyKind::Function { .. }) => match from_ty.callable_sig(self.db) {
                 None => return false,
                 Some(sig) => {
-                    from_ty = Ty::fn_ptr(sig);
+                    from_ty = TyBuilder::fn_ptr(sig);
                 }
             },
 

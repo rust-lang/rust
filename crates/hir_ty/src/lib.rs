@@ -818,20 +818,20 @@ impl TyBuilder {
     pub fn unit() -> Ty {
         TyKind::Tuple(0, Substitution::empty(&Interner)).intern(&Interner)
     }
-}
 
-impl Ty {
-    pub fn adt_ty(adt: hir_def::AdtId, substs: Substitution) -> Ty {
-        TyKind::Adt(AdtId(adt), substs).intern(&Interner)
-    }
-
-    pub fn fn_ptr(sig: CallableSig) -> Self {
+    pub fn fn_ptr(sig: CallableSig) -> Ty {
         TyKind::Function(FnPointer {
             num_args: sig.params().len(),
             sig: FnSig { abi: (), safety: Safety::Safe, variadic: sig.is_varargs },
             substs: Substitution::from_iter(&Interner, sig.params_and_return.iter().cloned()),
         })
         .intern(&Interner)
+    }
+}
+
+impl Ty {
+    pub fn adt_ty(adt: hir_def::AdtId, substs: Substitution) -> Ty {
+        TyKind::Adt(AdtId(adt), substs).intern(&Interner)
     }
 
     pub fn builtin(builtin: BuiltinType) -> Self {
