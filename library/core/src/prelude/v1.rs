@@ -81,10 +81,6 @@ pub use crate::macros::builtin::derive;
 pub use crate::macros::builtin::cfg_accessible;
 
 #[cfg(not(bootstrap))]
-#[unstable(
-    feature = "cfg_eval",
-    issue = "82679",
-    reason = "`cfg_eval` is a recently implemented feature"
-)]
+#[stable(feature = "cfg_eval", since = "1.53.0")]
 #[doc(no_inline)]
 pub use crate::macros::builtin::cfg_eval;

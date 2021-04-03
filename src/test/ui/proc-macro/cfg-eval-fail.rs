@@ -1,4 +1,3 @@
-#![feature(cfg_eval)]
 #![feature(stmt_expr_attributes)]
 
 fn main() {

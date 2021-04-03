@@ -279,6 +279,8 @@ declare_features! (
     (accepted, unsafe_block_in_unsafe_fn, "1.52.0", Some(71668), None),
     /// Allows the use of or-patterns (e.g., `0 | 1`).
     (accepted, or_patterns, "1.53.0", Some(54883), None),
+    /// Allows macro attributes to observe output of `#[derive]`.
+    (accepted, macro_attributes_in_derive_output, "1.53.0", Some(81119), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features

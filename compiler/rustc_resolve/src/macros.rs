@@ -303,36 +303,6 @@ impl<'a> ResolverExpand for Resolver<'a> {
         if let Res::Def(_, _) = res {
             let normal_module_def_id = self.macro_def_scope(invoc_id).nearest_parent_mod;
             self.definitions.add_parent_module_of_macro_def(invoc_id, normal_module_def_id);
-
-            // Gate macro attributes in `#[derive]` output.
-            if !self.session.features_untracked().macro_attributes_in_derive_output
-                && kind == MacroKind::Attr
-                && ext.builtin_name != Some(sym::derive)
-            {
-                let mut expn_id = parent_scope.expansion;
-                loop {
-                    // Helper attr table is a quick way to determine whether the attr is `derive`.
-                    if self.helper_attrs.contains_key(&expn_id) {
-                        feature_err(
-                            &self.session.parse_sess,
-                            sym::macro_attributes_in_derive_output,
-                            path.span,
-                            "macro attributes in `#[derive]` output are unstable",
-                        )
-                        .emit();
-                        break;
-                    } else {
-                        let expn_data = expn_id.expn_data();
-                        match expn_data.kind {
-                            ExpnKind::Root
-                            | ExpnKind::Macro(MacroKind::Bang | MacroKind::Derive, _) => {
-                                break;
-                            }
-                            _ => expn_id = expn_data.parent,
-                        }
-                    }
-                }
-            }
         }
 
         Ok(ext)
