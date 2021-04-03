@@ -1517,7 +1517,7 @@ fn range_between_backticks(ori_link: &MarkdownLink) -> Range<usize> {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 /// Disambiguators for a link.
-enum Disambiguator {
+crate enum Disambiguator {
     /// `prim@`
     ///
     /// This is buggy, see <https://github.com/rust-lang/rust/pull/77875#discussion_r503583103>
@@ -1546,7 +1546,7 @@ impl Disambiguator {
     /// This returns `Ok(Some(...))` if a disambiguator was found,
     /// `Ok(None)` if no disambiguator was found, or `Err(...)`
     /// if there was a problem with the disambiguator.
-    fn from_str(link: &str) -> Result<Option<(Self, &str)>, (String, Range<usize>)> {
+    crate fn from_str(link: &str) -> Result<Option<(Self, &str)>, (String, Range<usize>)> {
         use Disambiguator::{Kind, Namespace as NS, Primitive};
 
         if let Some(idx) = link.find('@') {
