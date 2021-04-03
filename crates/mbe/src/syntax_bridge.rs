@@ -325,9 +325,6 @@ trait TokenConvertor {
         while self.peek().is_some() {
             self.collect_leaf(&mut subtree.token_trees);
         }
-        if subtree.token_trees.is_empty() {
-            return None;
-        }
         if subtree.token_trees.len() == 1 {
             if let tt::TokenTree::Subtree(first) = &subtree.token_trees[0] {
                 return Some(first.clone());
