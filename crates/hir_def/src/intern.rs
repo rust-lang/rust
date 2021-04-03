@@ -3,17 +3,20 @@
 //! Eventually this should probably be replaced with salsa-based interning.
 
 use std::{
+    collections::HashMap,
     fmt::{self, Debug},
     hash::{BuildHasherDefault, Hash},
     ops::Deref,
     sync::Arc,
 };
 
-use dashmap::{DashMap, SharedValue};
+use dashmap::{lock::RwLockWriteGuard, DashMap, SharedValue};
 use once_cell::sync::OnceCell;
 use rustc_hash::FxHasher;
 
 type InternMap<T> = DashMap<Arc<T>, (), BuildHasherDefault<FxHasher>>;
+type Guard<T> =
+    RwLockWriteGuard<'static, HashMap<Arc<T>, SharedValue<()>, BuildHasherDefault<FxHasher>>>;
 
 #[derive(Hash)]
 pub struct Interned<T: Internable + ?Sized> {
@@ -22,10 +25,22 @@ pub struct Interned<T: Internable + ?Sized> {
 
 impl<T: Internable> Interned<T> {
     pub fn new(obj: T) -> Self {
+        match Interned::lookup(&obj) {
+            Ok(this) => this,
+            Err(shard) => {
+                let arc = Arc::new(obj);
+                Self::alloc(arc, shard)
+            }
+        }
+    }
+}
+
+impl<T: Internable + ?Sized> Interned<T> {
+    fn lookup(obj: &T) -> Result<Self, Guard<T>> {
         let storage = T::storage().get();
-        let shard_idx = storage.determine_map(&obj);
+        let shard_idx = storage.determine_map(obj);
         let shard = &storage.shards()[shard_idx];
-        let mut shard = shard.write();
+        let shard = shard.write();
 
         // Atomically,
         // - check if `obj` is already in the map
@@ -34,18 +49,32 @@ impl<T: Internable> Interned<T> {
         // This needs to be atomic (locking the shard) to avoid races with other thread, which could
         // insert the same object between us looking it up and inserting it.
 
-        // FIXME: avoid double lookup by using raw entry API (once stable, or when hashbrown can be
-        // plugged into dashmap)
-        if let Some((arc, _)) = shard.get_key_value(&obj) {
-            return Self { arc: arc.clone() };
+        // FIXME: avoid double lookup/hashing by using raw entry API (once stable, or when
+        // hashbrown can be plugged into dashmap)
+        match shard.get_key_value(obj) {
+            Some((arc, _)) => Ok(Self { arc: arc.clone() }),
+            None => Err(shard),
         }
+    }
 
-        let arc = Arc::new(obj);
+    fn alloc(arc: Arc<T>, mut shard: Guard<T>) -> Self {
         let arc2 = arc.clone();
 
         shard.insert(arc2, SharedValue::new(()));
 
         Self { arc }
+    }
+}
+
+impl Interned<str> {
+    pub fn new_str(s: &str) -> Self {
+        match Interned::lookup(s) {
+            Ok(this) => this,
+            Err(shard) => {
+                let arc = Arc::<str>::from(s);
+                Self::alloc(arc, shard)
+            }
+        }
     }
 }
 
@@ -97,6 +126,14 @@ impl<T: Internable> PartialEq for Interned<T> {
 }
 
 impl<T: Internable> Eq for Interned<T> {}
+
+impl PartialEq for Interned<str> {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.arc, &other.arc)
+    }
+}
+
+impl Eq for Interned<str> {}
 
 impl<T: Internable + ?Sized> AsRef<T> for Interned<T> {
     #[inline]
@@ -157,4 +194,4 @@ macro_rules! impl_internable {
     )+ };
 }
 
-impl_internable!(crate::type_ref::TypeRef, crate::type_ref::TraitRef, crate::path::ModPath);
+impl_internable!(crate::type_ref::TypeRef, crate::type_ref::TraitRef, crate::path::ModPath, str);
