@@ -1524,6 +1524,10 @@ fnptr_impls_args! { A, B, C, D, E, F, G, H, I, J, K, L }
 /// as all other references. This macro can create a raw pointer *without* creating
 /// a reference first.
 ///
+/// Note, however, that the `expr` in `addr_of!(expr)` is still subject to all
+/// the usual rules. In particular, `addr_of!(*ptr::null())` is Undefined
+/// Behavior because it dereferences a NULL pointer.
+///
 /// # Example
 ///
 /// ```
@@ -1561,6 +1565,10 @@ pub macro addr_of($place:expr) {
 /// before casting it to a raw pointer, and that reference is subject to the same rules
 /// as all other references. This macro can create a raw pointer *without* creating
 /// a reference first.
+///
+/// Note, however, that the `expr` in `addr_of_mut!(expr)` is still subject to all
+/// the usual rules. In particular, `addr_of_mut!(*ptr::null_mut())` is Undefined
+/// Behavior because it dereferences a NULL pointer.
 ///
 /// # Examples
 ///
