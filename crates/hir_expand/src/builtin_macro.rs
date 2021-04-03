@@ -584,7 +584,7 @@ mod tests {
                 };
 
                 let args = macro_call.token_tree().unwrap();
-                let parsed_args = mbe::ast_to_token_tree(&args).unwrap().0;
+                let parsed_args = mbe::ast_to_token_tree(&args).0;
                 let call_id = AstId::new(file_id.into(), ast_id_map.ast_id(&macro_call));
 
                 let arg_id = db.intern_eager_expansion({

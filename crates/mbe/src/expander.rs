@@ -159,8 +159,7 @@ mod tests {
         let macro_definition =
             source_file.syntax().descendants().find_map(ast::MacroRules::cast).unwrap();
 
-        let (definition_tt, _) =
-            ast_to_token_tree(&macro_definition.token_tree().unwrap()).unwrap();
+        let (definition_tt, _) = ast_to_token_tree(&macro_definition.token_tree().unwrap());
         crate::MacroRules::parse(&definition_tt).unwrap()
     }
 
@@ -169,8 +168,7 @@ mod tests {
         let macro_invocation =
             source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
 
-        let (invocation_tt, _) =
-            ast_to_token_tree(&macro_invocation.token_tree().unwrap()).unwrap();
+        let (invocation_tt, _) = ast_to_token_tree(&macro_invocation.token_tree().unwrap());
 
         expand_rules(&rules.rules, &invocation_tt)
     }

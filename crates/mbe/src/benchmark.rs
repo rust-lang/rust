@@ -65,7 +65,7 @@ fn macro_rules_fixtures_tt() -> FxHashMap<String, tt::Subtree> {
         .filter_map(ast::MacroRules::cast)
         .map(|rule| {
             let id = rule.name().unwrap().to_string();
-            let (def_tt, _) = ast_to_token_tree(&rule.token_tree().unwrap()).unwrap();
+            let (def_tt, _) = ast_to_token_tree(&rule.token_tree().unwrap());
             (id, def_tt)
         })
         .collect()
