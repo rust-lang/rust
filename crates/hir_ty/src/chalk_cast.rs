@@ -15,35 +15,6 @@ macro_rules! has_interner {
     };
 }
 
-has_interner!(WhereClause);
-has_interner!(DomainGoal);
-has_interner!(GenericArg);
-has_interner!(Ty);
-
-impl CastTo<WhereClause> for TraitRef {
-    fn cast_to(self, _interner: &Interner) -> WhereClause {
-        WhereClause::Implemented(self)
-    }
-}
-
-impl CastTo<WhereClause> for AliasEq {
-    fn cast_to(self, _interner: &Interner) -> WhereClause {
-        WhereClause::AliasEq(self)
-    }
-}
-
-impl CastTo<DomainGoal> for WhereClause {
-    fn cast_to(self, _interner: &Interner) -> DomainGoal {
-        DomainGoal::Holds(self)
-    }
-}
-
-impl CastTo<GenericArg> for Ty {
-    fn cast_to(self, interner: &Interner) -> GenericArg {
-        GenericArg::new(interner, GenericArgData::Ty(self))
-    }
-}
-
 macro_rules! transitive_impl {
     ($a:ty, $b:ty, $c:ty) => {
         impl CastTo<$c> for $a {
@@ -53,21 +24,3 @@ macro_rules! transitive_impl {
         }
     };
 }
-
-// In Chalk, these can be done as blanket impls, but that doesn't work here
-// because of coherence
-
-transitive_impl!(TraitRef, WhereClause, DomainGoal);
-transitive_impl!(AliasEq, WhereClause, DomainGoal);
-
-macro_rules! reflexive_impl {
-    ($a:ty) => {
-        impl CastTo<$a> for $a {
-            fn cast_to(self, _interner: &Interner) -> $a {
-                self
-            }
-        }
-    };
-}
-
-reflexive_impl!(GenericArg);
