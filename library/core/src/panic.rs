@@ -5,6 +5,20 @@
 mod location;
 mod panic_info;
 mod unwind_safe;
+#[unstable(
+    feature = "panic_internals",
+    reason = "internal details of the implementation of the `panic!` and related macros",
+    issue = "none"
+)]
+#[doc(hidden)]
+pub mod assert_info;
+#[unstable(
+    feature = "panic_internals",
+    reason = "internal details of the implementation of the `panic!` and related macros",
+    issue = "none"
+)]
+#[doc(hidden)]
+pub mod extra_info;
 
 use crate::any::Any;
 
@@ -36,7 +50,10 @@ pub macro panic_2015 {
         $crate::panicking::panic_display(&$arg)
     ),
     ($fmt:expr, $($arg:tt)+) => (
-        $crate::panicking::panic_fmt($crate::const_format_args!($fmt, $($arg)+))
+        $crate::panicking::panic_fmt(
+            $crate::const_format_args!($fmt, $($arg)+),
+            $crate::option::Option::None,
+        )
     ),
 }
 
@@ -54,7 +71,10 @@ pub macro panic_2021 {
         $crate::panicking::panic_display(&$arg)
     ),
     ($($t:tt)+) => (
-        $crate::panicking::panic_fmt($crate::const_format_args!($($t)+))
+        $crate::panicking::panic_fmt(
+            $crate::const_format_args!($($t)+),
+            $crate::option::Option::None,
+        )
     ),
 }
 

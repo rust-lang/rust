@@ -9,6 +9,7 @@
 
 #![deny(unsafe_op_in_unsafe_fn)]
 
+use core::panic::extra_info::ExtraInfo;
 use core::panic::{BoxMeUp, Location, PanicInfo};
 
 use crate::any::Any;
@@ -492,11 +493,17 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
 
     let loc = info.location().unwrap(); // The current implementation always returns Some
     let msg = info.message().unwrap(); // The current implementation always returns Some
+
     crate::sys_common::backtrace::__rust_end_short_backtrace(move || {
         if let Some(msg) = msg.as_str() {
-            rust_panic_with_hook(&mut StrPanicPayload(msg), info.message(), loc);
+            rust_panic_with_hook(&mut StrPanicPayload(msg), info.message(), loc, info.extra_info());
         } else {
-            rust_panic_with_hook(&mut PanicPayload::new(msg), info.message(), loc);
+            rust_panic_with_hook(
+                &mut PanicPayload::new(msg),
+                info.message(),
+                loc,
+                info.extra_info(),
+            );
         }
     })
 }
@@ -519,7 +526,7 @@ pub fn begin_panic<M: Any + Send>(msg: M) -> ! {
 
     let loc = Location::caller();
     return crate::sys_common::backtrace::__rust_end_short_backtrace(move || {
-        rust_panic_with_hook(&mut PanicPayload::new(msg), None, loc)
+        rust_panic_with_hook(&mut PanicPayload::new(msg), None, loc, None)
     });
 
     struct PanicPayload<A> {
@@ -564,6 +571,7 @@ fn rust_panic_with_hook(
     payload: &mut dyn BoxMeUp,
     message: Option<&fmt::Arguments<'_>>,
     location: &Location<'_>,
+    extra_info: Option<ExtraInfo<'_>>,
 ) -> ! {
     let (must_abort, panics) = panic_count::increase();
 
@@ -599,10 +607,12 @@ fn rust_panic_with_hook(
             Hook::Default if panic_output().is_none() => {}
             Hook::Default => {
                 info.set_payload(payload.get());
+                info.set_extra_info(extra_info);
                 default_hook(&info);
             }
             Hook::Custom(ptr) => {
                 info.set_payload(payload.get());
+                info.set_extra_info(extra_info);
                 (*ptr)(&info);
             }
         };

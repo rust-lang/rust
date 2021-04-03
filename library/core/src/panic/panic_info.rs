@@ -1,5 +1,7 @@
 use crate::any::Any;
 use crate::fmt;
+use crate::panic::assert_info::AssertInfo;
+use crate::panic::extra_info::ExtraInfo;
 use crate::panic::Location;
 
 /// A struct providing information about a panic.
@@ -31,6 +33,7 @@ pub struct PanicInfo<'a> {
     payload: &'a (dyn Any + Send),
     message: Option<&'a fmt::Arguments<'a>>,
     location: &'a Location<'a>,
+    extra_info: Option<ExtraInfo<'a>>,
 }
 
 impl<'a> PanicInfo<'a> {
@@ -46,7 +49,7 @@ impl<'a> PanicInfo<'a> {
         location: &'a Location<'a>,
     ) -> Self {
         struct NoPayload;
-        PanicInfo { location, message, payload: &NoPayload }
+        PanicInfo { location, message, payload: &NoPayload, extra_info: None }
     }
 
     #[unstable(
@@ -123,6 +126,40 @@ impl<'a> PanicInfo<'a> {
         // NOTE: If this is changed to sometimes return None,
         // deal with that case in std::panicking::default_hook and core::panicking::panic_fmt.
         Some(&self.location)
+    }
+
+    #[unstable(
+        feature = "panic_internals",
+        reason = "internal details of the implementation of the `panic!` and related macros",
+        issue = "none"
+    )]
+    #[doc(hidden)]
+    #[inline]
+    pub fn set_extra_info(&mut self, info: Option<ExtraInfo<'a>>) {
+        self.extra_info = info;
+    }
+
+    #[unstable(
+        feature = "panic_internals",
+        reason = "internal details of the implementation of the `panic!` and related macros",
+        issue = "none"
+    )]
+    #[doc(hidden)]
+    #[inline]
+    pub fn extra_info(&self) -> Option<ExtraInfo<'_>> {
+        self.extra_info
+    }
+
+    /// Get the information about the assertion that caused the panic.
+    ///
+    /// Returns `None` if the panic was not caused by an assertion.
+    #[unstable(
+        feature = "panic_internals",
+        reason = "internal details of the implementation of the `panic!` and related macros",
+        issue = "none"
+    )]
+    pub fn assert_info(&self) -> Option<&AssertInfo<'_>> {
+        if let Some(ExtraInfo::AssertInfo(x)) = &self.extra_info { Some(x) } else { None }
     }
 }
 

@@ -27,6 +27,8 @@
 )]
 
 use crate::fmt;
+use crate::panic::assert_info::{AssertInfo, Assertion, BinaryAssertion};
+use crate::panic::extra_info::ExtraInfo;
 use crate::panic::{Location, PanicInfo};
 
 /// The underlying implementation of libcore's `panic!` macro when no formatting is used.
@@ -47,14 +49,14 @@ pub fn panic(expr: &'static str) -> ! {
     // truncation and padding (even though none is used here). Using
     // Arguments::new_v1 may allow the compiler to omit Formatter::pad from the
     // output binary, saving up to a few kilobytes.
-    panic_fmt(fmt::Arguments::new_v1(&[expr], &[]));
+    panic_fmt(fmt::Arguments::new_v1(&[expr], &[]), None);
 }
 
 #[inline]
 #[track_caller]
 #[lang = "panic_str"] // needed for const-evaluated panics
 pub fn panic_str(expr: &str) -> ! {
-    panic_fmt(format_args!("{}", expr));
+    panic_fmt(format_args!("{}", expr), None);
 }
 
 #[inline]
@@ -89,7 +91,7 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
 #[lang = "panic_fmt"] // needed for const-evaluated panics
-pub fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
+pub fn panic_fmt(fmt: fmt::Arguments<'_>, extra_info: Option<ExtraInfo<'_>>) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
         super::intrinsics::abort()
     }
@@ -101,7 +103,8 @@ pub fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
         fn panic_impl(pi: &PanicInfo<'_>) -> !;
     }
 
-    let pi = PanicInfo::internal_constructor(Some(&fmt), Location::caller());
+    let mut pi = PanicInfo::internal_constructor(Some(&fmt), Location::caller());
+    pi.set_extra_info(extra_info);
 
     // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
     unsafe { panic_impl(&pi) }
@@ -134,15 +137,17 @@ pub enum AssertKind {
 #[doc(hidden)]
 pub fn assert_failed<T, U>(
     kind: AssertKind,
-    left: &T,
-    right: &U,
+    left_expr: &'static str,
+    left_val: &T,
+    right_expr: &'static str,
+    right_val: &U,
     args: Option<fmt::Arguments<'_>>,
 ) -> !
 where
     T: fmt::Debug + ?Sized,
     U: fmt::Debug + ?Sized,
 {
-    assert_failed_inner(kind, &left, &right, args)
+    assert_failed_inner(kind, left_expr, &left_val, right_expr, &right_val, args)
 }
 
 /// Internal function for `assert_match!`
@@ -150,8 +155,9 @@ where
 #[track_caller]
 #[doc(hidden)]
 pub fn assert_matches_failed<T: fmt::Debug + ?Sized>(
-    left: &T,
-    right: &str,
+    left_expr: &'static str,
+    left_val: &T,
+    right_pattern: &'static str,
     args: Option<fmt::Arguments<'_>>,
 ) -> ! {
     // Use the Display implementation to display the pattern.
@@ -161,15 +167,24 @@ pub fn assert_matches_failed<T: fmt::Debug + ?Sized>(
             fmt::Display::fmt(self.0, f)
         }
     }
-    assert_failed_inner(AssertKind::Match, &left, &Pattern(right), args);
+    assert_failed_inner(
+        AssertKind::Match,
+        left_expr,
+        &left_val,
+        right_pattern,
+        &Pattern(right_pattern),
+        args,
+    );
 }
 
 /// Non-generic version of the above functions, to avoid code bloat.
 #[track_caller]
 fn assert_failed_inner(
     kind: AssertKind,
-    left: &dyn fmt::Debug,
-    right: &dyn fmt::Debug,
+    left_expr: &'static str,
+    left_val: &dyn fmt::Debug,
+    right_expr: &'static str,
+    right_val: &dyn fmt::Debug,
     args: Option<fmt::Arguments<'_>>,
 ) -> ! {
     let op = match kind {
@@ -179,17 +194,41 @@ fn assert_failed_inner(
     };
 
     match args {
-        Some(args) => panic!(
-            r#"assertion failed: `(left {} right)`
+        Some(args) => panic_fmt(
+            format_args!(
+                r#"assertion failed: `(left {} right)`
   left: `{:?}`,
  right: `{:?}`: {}"#,
-            op, left, right, args
+                op, left_val, right_val, args
+            ),
+            Some(ExtraInfo::AssertInfo(&AssertInfo {
+                assertion: Assertion::Binary(BinaryAssertion {
+                    op,
+                    left_expr,
+                    right_expr,
+                    left_val,
+                    right_val,
+                }),
+                message: Some(args),
+            })),
         ),
-        None => panic!(
-            r#"assertion failed: `(left {} right)`
+        None => panic_fmt(
+            format_args!(
+                r#"assertion failed: `(left {} right)`
   left: `{:?}`,
  right: `{:?}`"#,
-            op, left, right,
+                op, left_val, right_val
+            ),
+            Some(ExtraInfo::AssertInfo(&AssertInfo {
+                assertion: Assertion::Binary(BinaryAssertion {
+                    op,
+                    left_expr,
+                    right_expr,
+                    left_val,
+                    right_val,
+                }),
+                message: None,
+            })),
         ),
     }
 }
