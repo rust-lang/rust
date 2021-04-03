@@ -547,7 +547,7 @@ declare_lint! {
     /// Also consider if you intended to use an _inner attribute_ (with a `!`
     /// such as `#![allow(unused)]`) which applies to the item the attribute
     /// is within, or an _outer attribute_ (without a `!` such as
-    /// `#[allow(unsued)]`) which applies to the item *following* the
+    /// `#[allow(unused)]`) which applies to the item *following* the
     /// attribute.
     ///
     /// [attributes]: https://doc.rust-lang.org/reference/attributes.html
