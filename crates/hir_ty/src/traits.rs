@@ -173,20 +173,7 @@ fn solution_from_chalk(
     db: &dyn HirDatabase,
     solution: chalk_solve::Solution<Interner>,
 ) -> Solution {
-    match solution {
-        chalk_solve::Solution::Unique(constr_subst) => {
-            Solution::Unique(from_chalk(db, constr_subst))
-        }
-        chalk_solve::Solution::Ambig(chalk_solve::Guidance::Definite(subst)) => {
-            Solution::Ambig(Guidance::Definite(from_chalk(db, subst)))
-        }
-        chalk_solve::Solution::Ambig(chalk_solve::Guidance::Suggested(subst)) => {
-            Solution::Ambig(Guidance::Suggested(from_chalk(db, subst)))
-        }
-        chalk_solve::Solution::Ambig(chalk_solve::Guidance::Unknown) => {
-            Solution::Ambig(Guidance::Unknown)
-        }
-    }
+    solution
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
