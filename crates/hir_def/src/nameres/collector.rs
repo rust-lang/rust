@@ -23,6 +23,7 @@ use crate::{
     attr::Attrs,
     db::DefDatabase,
     derive_macro_as_call_id,
+    intern::Interned,
     item_scope::{ImportType, PerNsGlobImports},
     item_tree::{
         self, FileItemTreeId, ItemTree, ItemTreeId, MacroCall, MacroDef, MacroRules, Mod, ModItem,
@@ -139,7 +140,7 @@ enum ImportSource {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct Import {
-    path: ModPath,
+    path: Interned<ModPath>,
     alias: Option<ImportAlias>,
     visibility: RawVisibility,
     is_glob: bool,
@@ -181,7 +182,10 @@ impl Import {
         let attrs = &tree.attrs(db, krate, ModItem::from(id.value).into());
         let visibility = &tree[it.visibility];
         Self {
-            path: ModPath::from_segments(PathKind::Plain, iter::once(it.name.clone())),
+            path: Interned::new(ModPath::from_segments(
+                PathKind::Plain,
+                iter::once(it.name.clone()),
+            )),
             alias: it.alias.clone(),
             visibility: visibility.clone(),
             is_glob: false,

@@ -529,7 +529,7 @@ impl<N: ItemTreeNode> Index<FileItemTreeId<N>> for ItemTree {
 /// A desugared `use` import.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Import {
-    pub path: ModPath,
+    pub path: Interned<ModPath>,
     pub alias: Option<ImportAlias>,
     pub visibility: RawVisibilityId,
     pub is_glob: bool,

@@ -577,7 +577,7 @@ impl Ctx {
             &self.hygiene,
             |path, _use_tree, is_glob, alias| {
                 imports.push(id(tree.imports.alloc(Import {
-                    path,
+                    path: Interned::new(path),
                     alias,
                     visibility,
                     is_glob,
