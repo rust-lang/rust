@@ -3812,7 +3812,6 @@ dependencies = [
  "itertools 0.9.0",
  "jobserver",
  "libc",
- "memmap2",
  "pathdiff",
  "rustc_apfloat",
  "rustc_ast",
@@ -3847,6 +3846,7 @@ dependencies = [
  "jobserver",
  "libc",
  "measureme",
+ "memmap2",
  "parking_lot",
  "rustc-hash",
  "rustc-rayon",
@@ -4146,7 +4146,6 @@ name = "rustc_metadata"
 version = "0.0.0"
 dependencies = [
  "libc",
- "memmap2",
  "rustc_ast",
  "rustc_attr",
  "rustc_data_structures",

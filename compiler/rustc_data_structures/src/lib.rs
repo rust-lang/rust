@@ -84,6 +84,7 @@ pub mod snapshot_map;
 pub mod stable_map;
 pub mod svh;
 pub use ena::snapshot_vec;
+pub mod memmap;
 pub mod sorted_map;
 pub mod stable_set;
 #[macro_use]

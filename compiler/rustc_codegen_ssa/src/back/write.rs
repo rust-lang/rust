@@ -10,6 +10,7 @@ use crate::{
 use crate::traits::*;
 use jobserver::{Acquired, Client};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::profiling::TimingGuard;
 use rustc_data_structures::profiling::VerboseTimingGuard;
@@ -1958,7 +1959,7 @@ pub fn submit_pre_lto_module_to_llvm<B: ExtraBackendMethods>(
         .unwrap_or_else(|e| panic!("failed to open bitcode file `{}`: {}", bc_path.display(), e));
 
     let mmap = unsafe {
-        memmap2::Mmap::map(&file).unwrap_or_else(|e| {
+        Mmap::map(file).unwrap_or_else(|e| {
             panic!("failed to mmap bitcode file `{}`: {}", bc_path.display(), e)
         })
     };
