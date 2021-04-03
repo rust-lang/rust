@@ -575,7 +575,7 @@ fn write_out_deps(
             .iter()
             .filter(|fmap| fmap.is_real_file())
             .filter(|fmap| !fmap.is_imported())
-            .map(|fmap| escape_dep_filename(&fmap.unmapped_path.as_ref().unwrap_or(&fmap.name)))
+            .map(|fmap| escape_dep_filename(&fmap.name))
             .collect();
 
         if let Some(ref backend) = sess.opts.debugging_opts.codegen_backend {
@@ -587,15 +587,15 @@ fn write_out_deps(
                 for cnum in resolver.cstore().crates_untracked() {
                     let source = resolver.cstore().crate_source_untracked(cnum);
                     if let Some((path, _)) = source.dylib {
-                        let file_name = FileName::Real(RealFileName::Named(path));
+                        let file_name = FileName::Real(RealFileName::LocalPath(path));
                         files.push(escape_dep_filename(&file_name));
                     }
                     if let Some((path, _)) = source.rlib {
-                        let file_name = FileName::Real(RealFileName::Named(path));
+                        let file_name = FileName::Real(RealFileName::LocalPath(path));
                         files.push(escape_dep_filename(&file_name));
                     }
                     if let Some((path, _)) = source.rmeta {
-                        let file_name = FileName::Real(RealFileName::Named(path));
+                        let file_name = FileName::Real(RealFileName::LocalPath(path));
                         files.push(escape_dep_filename(&file_name));
                     }
                 }

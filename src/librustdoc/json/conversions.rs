@@ -66,12 +66,7 @@ impl JsonRenderer<'_> {
                 let hi = span.hi(self.sess());
                 let lo = span.lo(self.sess());
                 Some(Span {
-                    filename: match name {
-                        rustc_span::RealFileName::Named(path) => path,
-                        rustc_span::RealFileName::Devirtualized { local_path, virtual_name: _ } => {
-                            local_path
-                        }
-                    },
+                    filename: name.into_local_path(),
                     begin: (lo.line, lo.col.to_usize()),
                     end: (hi.line, hi.col.to_usize()),
                 })

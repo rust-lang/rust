@@ -1072,7 +1072,7 @@ impl<'a> ExtCtxt<'a> {
         // after macro expansion (that is, they are unhygienic).
         if !path.is_absolute() {
             let callsite = span.source_callsite();
-            let mut result = match self.source_map().span_to_unmapped_path(callsite) {
+            let mut result = match self.source_map().span_to_filename(callsite) {
                 FileName::Real(name) => name.into_local_path(),
                 FileName::DocTest(path, _) => path,
                 other => {

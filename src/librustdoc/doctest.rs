@@ -883,8 +883,6 @@ impl Tester for Collector {
             self.compiling_test_count.fetch_add(1, Ordering::SeqCst);
         }
 
-        // FIXME(#44940): if doctests ever support path remapping, then this filename
-        // needs to be the result of `SourceMap::span_to_unmapped_path`.
         let path = match &filename {
             FileName::Real(path) => path.local_path().to_path_buf(),
             _ => PathBuf::from(r"doctest.rs"),

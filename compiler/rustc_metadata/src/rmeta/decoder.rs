@@ -1635,9 +1635,11 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             if let Some(virtual_dir) = virtual_rust_source_base_dir {
                 if let Some(real_dir) = &sess.opts.real_rust_source_base_dir {
                     if let rustc_span::FileName::Real(old_name) = name {
-                        if let rustc_span::RealFileName::Named(one_path) = old_name {
-                            if let Ok(rest) = one_path.strip_prefix(virtual_dir) {
-                                let virtual_name = one_path.clone();
+                        if let rustc_span::RealFileName::Remapped { local_path: _, virtual_name } =
+                            old_name
+                        {
+                            if let Ok(rest) = virtual_name.strip_prefix(virtual_dir) {
+                                let virtual_name = virtual_name.clone();
 
                                 // The std library crates are in
                                 // `$sysroot/lib/rustlib/src/rust/library`, whereas other crates
@@ -1673,7 +1675,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                                     virtual_name.display(),
                                     new_path.display(),
                                 );
-                                let new_name = rustc_span::RealFileName::Devirtualized {
+                                let new_name = rustc_span::RealFileName::Remapped {
                                     local_path: new_path,
                                     virtual_name,
                                 };
@@ -1694,7 +1696,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     // containing the information we need.
                     let rustc_span::SourceFile {
                         mut name,
-                        name_was_remapped,
                         src_hash,
                         start_pos,
                         end_pos,
@@ -1709,8 +1710,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     // If this file's path has been remapped to `/rustc/$hash`,
                     // we might be able to reverse that (also see comments above,
                     // on `try_to_translate_virtual_to_real`).
-                    // FIXME(eddyb) we could check `name_was_remapped` here,
-                    // but in practice it seems to be always `false`.
                     try_to_translate_virtual_to_real(&mut name);
 
                     let source_length = (end_pos - start_pos).to_usize();
@@ -1735,7 +1734,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
                     let local_version = sess.source_map().new_imported_source_file(
                         name,
-                        name_was_remapped,
                         src_hash,
                         name_hash,
                         source_length,

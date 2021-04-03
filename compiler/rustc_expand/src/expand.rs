@@ -361,7 +361,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     // FIXME: Avoid visiting the crate as a `Mod` item,
     // make crate a first class expansion target instead.
     pub fn expand_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
-        let file_path = match self.cx.source_map().span_to_unmapped_path(krate.span) {
+        let file_path = match self.cx.source_map().span_to_filename(krate.span) {
             FileName::Real(name) => name.into_local_path(),
             other => PathBuf::from(other.to_string()),
         };

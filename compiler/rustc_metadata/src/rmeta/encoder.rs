@@ -28,9 +28,12 @@ use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::{self, SymbolName, Ty, TyCtxt};
 use rustc_serialize::{opaque, Encodable, Encoder};
 use rustc_session::config::CrateType;
-use rustc_span::hygiene::{ExpnDataEncodeMode, HygieneEncodeContext, MacroKind};
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{self, ExternalSource, FileName, SourceFile, Span, SyntaxContext};
+use rustc_span::{
+    hygiene::{ExpnDataEncodeMode, HygieneEncodeContext, MacroKind},
+    RealFileName,
+};
 use rustc_target::abi::VariantIdx;
 use std::hash::Hash;
 use std::num::NonZeroUsize;
@@ -485,18 +488,22 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             })
             .map(|(_, source_file)| {
                 let mut adapted = match source_file.name {
-                    // This path of this SourceFile has been modified by
-                    // path-remapping, so we use it verbatim (and avoid
-                    // cloning the whole map in the process).
-                    _ if source_file.name_was_remapped => source_file.clone(),
-
-                    // Otherwise expand all paths to absolute paths because
-                    // any relative paths are potentially relative to a
-                    // wrong directory.
                     FileName::Real(ref name) => {
-                        let name = name.stable_name();
+                        // Expand all local paths to absolute paths because
+                        // any relative paths are potentially relative to a
+                        // wrong directory.
                         let mut adapted = (**source_file).clone();
-                        adapted.name = Path::new(&working_dir).join(name).into();
+                        adapted.name = match name {
+                            RealFileName::LocalPath(local_path) => {
+                                Path::new(&working_dir).join(local_path).into()
+                            }
+                            RealFileName::Remapped { local_path, virtual_name } => {
+                                FileName::Real(RealFileName::Remapped {
+                                    local_path: Path::new(&working_dir).join(local_path),
+                                    virtual_name: virtual_name.clone(),
+                                })
+                            }
+                        };
                         adapted.name_hash = {
                             let mut hasher: StableHasher = StableHasher::new();
                             adapted.name.hash(&mut hasher);

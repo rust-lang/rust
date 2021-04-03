@@ -113,17 +113,16 @@ pub fn with_default_session_globals<R>(f: impl FnOnce() -> R) -> R {
 // deserialization.
 scoped_tls::scoped_thread_local!(pub static SESSION_GLOBALS: SessionGlobals);
 
-// FIXME: Perhaps this should not implement Rustc{Decodable, Encodable}
-//
 // FIXME: We should use this enum or something like it to get rid of the
 // use of magic `/rust/1.x/...` paths across the board.
 #[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Hash)]
 #[derive(HashStable_Generic, Decodable, Encodable)]
 pub enum RealFileName {
-    Named(PathBuf),
-    /// For de-virtualized paths (namely paths into libstd that have been mapped
-    /// to the appropriate spot on the local host's file system),
-    Devirtualized {
+    LocalPath(PathBuf),
+    /// For remapped paths (namely paths into libstd that have been mapped
+    /// to the appropriate spot on the local host's file system, and local file
+    /// system paths that have been remapped with `FilePathMapping`),
+    Remapped {
         /// `local_path` is the (host-dependent) local path to the file.
         local_path: PathBuf,
         /// `virtual_name` is the stable path rustc will store internally within
@@ -137,8 +136,8 @@ impl RealFileName {
     /// Avoid embedding this in build artifacts; see `stable_name()` for that.
     pub fn local_path(&self) -> &Path {
         match self {
-            RealFileName::Named(p)
-            | RealFileName::Devirtualized { local_path: p, virtual_name: _ } => &p,
+            RealFileName::LocalPath(p)
+            | RealFileName::Remapped { local_path: p, virtual_name: _ } => &p,
         }
     }
 
@@ -146,19 +145,19 @@ impl RealFileName {
     /// Avoid embedding this in build artifacts; see `stable_name()` for that.
     pub fn into_local_path(self) -> PathBuf {
         match self {
-            RealFileName::Named(p)
-            | RealFileName::Devirtualized { local_path: p, virtual_name: _ } => p,
+            RealFileName::LocalPath(p)
+            | RealFileName::Remapped { local_path: p, virtual_name: _ } => p,
         }
     }
 
     /// Returns the path suitable for embedding into build artifacts. Note that
-    /// a virtualized path will not correspond to a valid file system path; see
+    /// a remapped path will not correspond to a valid file system path; see
     /// `local_path()` for something that is more likely to return paths into the
     /// local host file system.
     pub fn stable_name(&self) -> &Path {
         match self {
-            RealFileName::Named(p)
-            | RealFileName::Devirtualized { local_path: _, virtual_name: p } => &p,
+            RealFileName::LocalPath(p)
+            | RealFileName::Remapped { local_path: _, virtual_name: p } => &p,
         }
     }
 }
@@ -214,7 +213,7 @@ impl std::fmt::Display for FileName {
 impl From<PathBuf> for FileName {
     fn from(p: PathBuf) -> Self {
         assert!(!p.to_string_lossy().ends_with('>'));
-        FileName::Real(RealFileName::Named(p))
+        FileName::Real(RealFileName::LocalPath(p))
     }
 }
 
@@ -1124,11 +1123,6 @@ pub struct SourceFile {
     /// originate from files has names between angle brackets by convention
     /// (e.g., `<anon>`).
     pub name: FileName,
-    /// `true` if the `name` field above has been modified by `--remap-path-prefix`.
-    pub name_was_remapped: bool,
-    /// The unmapped path of the file that the source came from.
-    /// Set to `None` if the `SourceFile` was imported from an external crate.
-    pub unmapped_path: Option<FileName>,
     /// The complete source code.
     pub src: Option<Lrc<String>>,
     /// The source code's hash.
@@ -1158,7 +1152,6 @@ impl<S: Encoder> Encodable<S> for SourceFile {
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_struct("SourceFile", 8, |s| {
             s.emit_struct_field("name", 0, |s| self.name.encode(s))?;
-            s.emit_struct_field("name_was_remapped", 1, |s| self.name_was_remapped.encode(s))?;
             s.emit_struct_field("src_hash", 2, |s| self.src_hash.encode(s))?;
             s.emit_struct_field("start_pos", 3, |s| self.start_pos.encode(s))?;
             s.emit_struct_field("end_pos", 4, |s| self.end_pos.encode(s))?;
@@ -1233,8 +1226,6 @@ impl<D: Decoder> Decodable<D> for SourceFile {
     fn decode(d: &mut D) -> Result<SourceFile, D::Error> {
         d.read_struct("SourceFile", 8, |d| {
             let name: FileName = d.read_struct_field("name", 0, |d| Decodable::decode(d))?;
-            let name_was_remapped: bool =
-                d.read_struct_field("name_was_remapped", 1, |d| Decodable::decode(d))?;
             let src_hash: SourceFileHash =
                 d.read_struct_field("src_hash", 2, |d| Decodable::decode(d))?;
             let start_pos: BytePos =
@@ -1278,8 +1269,6 @@ impl<D: Decoder> Decodable<D> for SourceFile {
             let cnum: CrateNum = d.read_struct_field("cnum", 10, |d| Decodable::decode(d))?;
             Ok(SourceFile {
                 name,
-                name_was_remapped,
-                unmapped_path: None,
                 start_pos,
                 end_pos,
                 src: None,
@@ -1307,8 +1296,6 @@ impl fmt::Debug for SourceFile {
 impl SourceFile {
     pub fn new(
         name: FileName,
-        name_was_remapped: bool,
-        unmapped_path: FileName,
         mut src: String,
         start_pos: BytePos,
         hash_kind: SourceFileHashAlgorithm,
@@ -1330,8 +1317,6 @@ impl SourceFile {
 
         SourceFile {
             name,
-            name_was_remapped,
-            unmapped_path: Some(unmapped_path),
             src: Some(Lrc::new(src)),
             src_hash,
             external_src: Lock::new(ExternalSource::Unneeded),

@@ -16,8 +16,7 @@ impl<'a> SpanUtils<'a> {
 
     pub fn make_filename_string(&self, file: &SourceFile) -> String {
         match &file.name {
-            FileName::Real(name) if !file.name_was_remapped => {
-                let path = name.local_path();
+            FileName::Real(RealFileName::LocalPath(path)) => {
                 if path.is_absolute() {
                     self.sess
                         .source_map()
@@ -30,8 +29,11 @@ impl<'a> SpanUtils<'a> {
                     self.sess.working_dir.0.join(&path).display().to_string()
                 }
             }
-            // If the file name is already remapped, we assume the user
+            // If the file name was remapped, we assume the user
             // configured it the way they wanted to, so use that directly
+            FileName::Real(RealFileName::Remapped { local_path: _, virtual_name }) => {
+                virtual_name.display().to_string()
+            }
             filename => filename.to_string(),
         }
     }

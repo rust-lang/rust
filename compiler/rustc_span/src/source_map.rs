@@ -15,11 +15,11 @@ pub use crate::*;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{AtomicU32, Lrc, MappedReadGuard, ReadGuard, RwLock};
-use std::cmp;
-use std::convert::TryFrom;
 use std::hash::Hash;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
+use std::{clone::Clone, cmp};
+use std::{convert::TryFrom, unreachable};
 
 use std::fs;
 use std::io;
@@ -127,30 +127,16 @@ pub struct StableSourceFileId(u128);
 // StableSourceFileId, perhaps built atop source_file.name_hash.
 impl StableSourceFileId {
     pub fn new(source_file: &SourceFile) -> StableSourceFileId {
-        StableSourceFileId::new_from_pieces(
-            &source_file.name,
-            source_file.name_was_remapped,
-            source_file.unmapped_path.as_ref(),
-        )
+        StableSourceFileId::new_from_name(&source_file.name)
     }
 
-    fn new_from_pieces(
-        name: &FileName,
-        name_was_remapped: bool,
-        unmapped_path: Option<&FileName>,
-    ) -> StableSourceFileId {
+    fn new_from_name(name: &FileName) -> StableSourceFileId {
         let mut hasher = StableHasher::new();
 
-        if let FileName::Real(real_name) = name {
-            // rust-lang/rust#70924: Use the stable (virtualized) name when
-            // available. (We do not want artifacts from transient file system
-            // paths for libstd to leak into our build artifacts.)
-            real_name.stable_name().hash(&mut hasher)
-        } else {
-            name.hash(&mut hasher);
-        }
-        name_was_remapped.hash(&mut hasher);
-        unmapped_path.hash(&mut hasher);
+        // If name was remapped, we need to take both the local path
+        // and stablised path into account, in case two different paths were
+        // mapped to the same
+        name.hash(&mut hasher);
 
         StableSourceFileId(hasher.finish())
     }
@@ -283,35 +269,15 @@ impl SourceMap {
 
     fn try_new_source_file(
         &self,
-        mut filename: FileName,
+        filename: FileName,
         src: String,
     ) -> Result<Lrc<SourceFile>, OffsetOverflowError> {
-        // The path is used to determine the directory for loading submodules and
-        // include files, so it must be before remapping.
         // Note that filename may not be a valid path, eg it may be `<anon>` etc,
         // but this is okay because the directory determined by `path.pop()` will
         // be empty, so the working directory will be used.
-        let unmapped_path = filename.clone();
+        let (filename, _) = self.path_mapping.map_filename_prefix(&filename);
 
-        let was_remapped;
-        if let FileName::Real(real_filename) = &mut filename {
-            match real_filename {
-                RealFileName::Named(path_to_be_remapped)
-                | RealFileName::Devirtualized {
-                    local_path: path_to_be_remapped,
-                    virtual_name: _,
-                } => {
-                    let mapped = self.path_mapping.map_prefix(path_to_be_remapped.clone());
-                    was_remapped = mapped.1;
-                    *path_to_be_remapped = mapped.0;
-                }
-            }
-        } else {
-            was_remapped = false;
-        }
-
-        let file_id =
-            StableSourceFileId::new_from_pieces(&filename, was_remapped, Some(&unmapped_path));
+        let file_id = StableSourceFileId::new_from_name(&filename);
 
         let lrc_sf = match self.source_file_by_stable_id(file_id) {
             Some(lrc_sf) => lrc_sf,
@@ -320,8 +286,6 @@ impl SourceMap {
 
                 let source_file = Lrc::new(SourceFile::new(
                     filename,
-                    was_remapped,
-                    unmapped_path,
                     src,
                     Pos::from_usize(start_pos),
                     self.hash_kind,
@@ -345,7 +309,6 @@ impl SourceMap {
     pub fn new_imported_source_file(
         &self,
         filename: FileName,
-        name_was_remapped: bool,
         src_hash: SourceFileHash,
         name_hash: u128,
         source_len: usize,
@@ -382,8 +345,6 @@ impl SourceMap {
 
         let source_file = Lrc::new(SourceFile {
             name: filename,
-            name_was_remapped,
-            unmapped_path: None,
             src: None,
             src_hash,
             external_src: Lock::new(ExternalSource::Foreign {
@@ -472,14 +433,6 @@ impl SourceMap {
 
     pub fn span_to_filename(&self, sp: Span) -> FileName {
         self.lookup_char_pos(sp.lo()).file.name.clone()
-    }
-
-    pub fn span_to_unmapped_path(&self, sp: Span) -> FileName {
-        self.lookup_char_pos(sp.lo())
-            .file
-            .unmapped_path
-            .clone()
-            .expect("`SourceMap::span_to_unmapped_path` called for imported `SourceFile`?")
     }
 
     pub fn is_multiline(&self, sp: Span) -> bool {
@@ -1046,9 +999,26 @@ impl FilePathMapping {
     fn map_filename_prefix(&self, file: &FileName) -> (FileName, bool) {
         match file {
             FileName::Real(realfile) => {
-                let path = realfile.local_path();
-                let (path, mapped) = self.map_prefix(path.to_path_buf());
-                (FileName::Real(RealFileName::Named(path)), mapped)
+                // If the file is the Name variant with only local_path, then clearly we want to map that
+                // to a virtual_name
+                // If the file is already remapped, then we want to map virtual_name further
+                // but we leave local_path alone
+                let path = realfile.stable_name();
+                let (mapped_path, mapped) = self.map_prefix(path.to_path_buf());
+                if mapped {
+                    let mapped_realfile = match realfile {
+                        RealFileName::LocalPath(local_path)
+                        | RealFileName::Remapped { local_path, virtual_name: _ } => {
+                            RealFileName::Remapped {
+                                local_path: local_path.clone(),
+                                virtual_name: mapped_path,
+                            }
+                        }
+                    };
+                    (FileName::Real(mapped_realfile), mapped)
+                } else {
+                    unreachable!("attempted to remap an already remapped filename");
+                }
             }
             other => (other.clone(), false),
         }

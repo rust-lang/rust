@@ -229,7 +229,6 @@ fn t10() {
 
     let SourceFile {
         name,
-        name_was_remapped,
         src_hash,
         start_pos,
         end_pos,
@@ -243,7 +242,6 @@ fn t10() {
 
     let imported_src_file = sm.new_imported_source_file(
         name,
-        name_was_remapped,
         src_hash,
         name_hash,
         (end_pos - start_pos).to_usize(),
