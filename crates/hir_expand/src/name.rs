@@ -208,6 +208,8 @@ pub mod known {
         line,
         module_path,
         assert,
+        core_panic,
+        std_panic,
         stringify,
         concat,
         include,
