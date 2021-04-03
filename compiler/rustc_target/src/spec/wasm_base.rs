@@ -75,7 +75,6 @@ pub fn options() -> TargetOptions {
         exe_suffix: ".wasm".to_string(),
         dll_prefix: String::new(),
         dll_suffix: ".wasm".to_string(),
-        linker_is_gnu: false,
         eh_frame_header: false,
 
         max_atomic_width: Some(64),

@@ -45,9 +45,6 @@ pub fn target() -> Target {
 
             main_needs_argc_argv: false,
 
-            // No thread-local storage (just use a static Cell)
-            has_elf_tls: false,
-
             // don't have atomic compare-and-swap
             atomic_cas: false,
             has_thumb_interworking: true,
