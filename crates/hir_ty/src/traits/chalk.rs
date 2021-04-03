@@ -22,7 +22,7 @@ use crate::{
     to_assoc_type_id, to_chalk_trait_id,
     utils::generics,
     AliasEq, AliasTy, BoundVar, CallableDefId, DebruijnIndex, FnDefId, ProjectionTy, Substitution,
-    TraitRef, Ty, TyKind, WhereClause,
+    TraitRef, Ty, TyBuilder, TyKind, WhereClause,
 };
 use mapping::{
     convert_where_clauses, generic_predicate_to_inline_bound, make_binders, TypeAliasAsValue,
@@ -300,7 +300,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         _closure_id: chalk_ir::ClosureId<Interner>,
         _substs: &chalk_ir::Substitution<Interner>,
     ) -> chalk_ir::Binders<chalk_ir::Ty<Interner>> {
-        let ty = Ty::unit().to_chalk(self.db);
+        let ty = TyBuilder::unit().to_chalk(self.db);
         make_binders(ty, 0)
     }
     fn closure_fn_substitution(

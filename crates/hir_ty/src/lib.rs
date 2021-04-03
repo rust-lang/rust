@@ -23,6 +23,7 @@ pub mod diagnostics;
 mod tests;
 #[cfg(test)]
 mod test_db;
+mod chalk_ext;
 
 use std::{iter, mem, sync::Arc};
 
@@ -42,6 +43,7 @@ use crate::{
 };
 
 pub use autoderef::autoderef;
+pub use chalk_ext::TyExt;
 pub use infer::{could_unify, InferenceResult, InferenceVar};
 pub use lower::{
     associated_type_shorthand_candidates, callable_item_sig, CallableDefId, ImplTraitLoweringMode,
@@ -813,14 +815,12 @@ impl TypeWalk for CallableSig {
 struct TyBuilder {}
 
 impl TyBuilder {
-
+    pub fn unit() -> Ty {
+        TyKind::Tuple(0, Substitution::empty(&Interner)).intern(&Interner)
+    }
 }
 
 impl Ty {
-    pub fn unit() -> Self {
-        TyKind::Tuple(0, Substitution::empty(&Interner)).intern(&Interner)
-    }
-
     pub fn adt_ty(adt: hir_def::AdtId, substs: Substitution) -> Ty {
         TyKind::Adt(AdtId(adt), substs).intern(&Interner)
     }

@@ -23,7 +23,7 @@ use crate::{
     traits::{chalk::from_chalk, FnTrait, InEnvironment},
     utils::{generics, variant_data, Generics},
     AdtId, Binders, CallableDefId, DomainGoal, FnPointer, FnSig, Interner, Rawness, Scalar,
-    Substitution, TraitRef, Ty, TyKind,
+    Substitution, TraitRef, Ty, TyBuilder, TyKind,
 };
 
 use super::{
@@ -138,7 +138,7 @@ impl<'a> InferenceContext<'a> {
                 both_arms_diverge &= mem::replace(&mut self.diverges, Diverges::Maybe);
                 let else_ty = match else_branch {
                     Some(else_branch) => self.infer_expr_inner(*else_branch, &expected),
-                    None => Ty::unit(),
+                    None => TyBuilder::unit(),
                 };
                 both_arms_diverge &= self.diverges;
 
@@ -193,7 +193,7 @@ impl<'a> InferenceContext<'a> {
                     break_ty: self.table.new_type_var(),
                     label: label.map(|label| self.body[label].name.clone()),
                 });
-                self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
+                self.infer_expr(*body, &Expectation::has_type(TyBuilder::unit()));
 
                 let ctxt = self.breakables.pop().expect("breakable stack broken");
                 if ctxt.may_break {
@@ -217,11 +217,11 @@ impl<'a> InferenceContext<'a> {
                     *condition,
                     &Expectation::has_type(TyKind::Scalar(Scalar::Bool).intern(&Interner)),
                 );
-                self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
+                self.infer_expr(*body, &Expectation::has_type(TyBuilder::unit()));
                 let _ctxt = self.breakables.pop().expect("breakable stack broken");
                 // the body may not run, so it diverging doesn't mean we diverge
                 self.diverges = Diverges::Maybe;
-                Ty::unit()
+                TyBuilder::unit()
             }
             Expr::For { iterable, body, pat, label } => {
                 let iterable_ty = self.infer_expr(*iterable, &Expectation::none());
@@ -236,11 +236,11 @@ impl<'a> InferenceContext<'a> {
 
                 self.infer_pat(*pat, &pat_ty, BindingMode::default());
 
-                self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
+                self.infer_expr(*body, &Expectation::has_type(TyBuilder::unit()));
                 let _ctxt = self.breakables.pop().expect("breakable stack broken");
                 // the body may not run, so it diverging doesn't mean we diverge
                 self.diverges = Diverges::Maybe;
-                Ty::unit()
+                TyBuilder::unit()
             }
             Expr::Lambda { body, args, ret_type, arg_types } => {
                 assert_eq!(args.len(), arg_types.len());
@@ -360,7 +360,7 @@ impl<'a> InferenceContext<'a> {
                 let val_ty = if let Some(expr) = expr {
                     self.infer_expr(*expr, &Expectation::none())
                 } else {
-                    Ty::unit()
+                    TyBuilder::unit()
                 };
 
                 let last_ty =
@@ -386,7 +386,7 @@ impl<'a> InferenceContext<'a> {
                 if let Some(expr) = expr {
                     self.infer_expr_coerce(*expr, &Expectation::has_type(self.return_ty.clone()));
                 } else {
-                    let unit = Ty::unit();
+                    let unit = TyBuilder::unit();
                     self.coerce(&unit, &self.return_ty.clone());
                 }
                 TyKind::Never.intern(&Interner)
@@ -828,8 +828,8 @@ impl<'a> InferenceContext<'a> {
                 // we don't even make an attempt at coercion
                 self.table.new_maybe_never_var()
             } else {
-                self.coerce(&Ty::unit(), &expected.coercion_target());
-                Ty::unit()
+                self.coerce(&TyBuilder::unit(), &expected.coercion_target());
+                TyBuilder::unit()
             }
         };
         ty

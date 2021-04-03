@@ -15,7 +15,7 @@ use crate::{
         MissingPatFields, RemoveThisSemicolon,
     },
     utils::variant_data,
-    AdtId, InferenceResult, Interner, Ty, TyKind,
+    AdtId, InferenceResult, Interner, TyExt, TyKind,
 };
 
 pub(crate) use hir_def::{
@@ -423,7 +423,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             None => return,
         };
 
-        if mismatch.actual != Ty::unit() || mismatch.expected != *possible_tail_ty {
+        if !mismatch.actual.is_unit() || mismatch.expected != *possible_tail_ty {
             return;
         }
 
