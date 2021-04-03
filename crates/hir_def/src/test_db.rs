@@ -265,4 +265,17 @@ impl TestDB {
 
         assert_eq!(annotations, actual);
     }
+
+    pub(crate) fn check_no_diagnostics(&self) {
+        let db: &TestDB = self;
+        let annotations = db.extract_annotations();
+        assert!(annotations.is_empty());
+
+        let mut has_diagnostics = false;
+        db.diagnostics(|_| {
+            has_diagnostics = true;
+        });
+
+        assert!(!has_diagnostics);
+    }
 }

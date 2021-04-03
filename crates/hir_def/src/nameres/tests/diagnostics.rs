@@ -7,6 +7,11 @@ fn check_diagnostics(ra_fixture: &str) {
     db.check_diagnostics();
 }
 
+fn check_no_diagnostics(ra_fixture: &str) {
+    let db: TestDB = TestDB::with_files(ra_fixture);
+    db.check_no_diagnostics();
+}
+
 #[test]
 fn unresolved_import() {
     check_diagnostics(
@@ -197,6 +202,21 @@ fn builtin_macro_fails_expansion() {
 
           include!("doesntexist");
         //^^^^^^^^^^^^^^^^^^^^^^^^ failed to load file `doesntexist`
+        "#,
+    );
+}
+
+#[test]
+fn include_macro_should_allow_empty_content() {
+    check_no_diagnostics(
+        r#"
+        //- /lib.rs
+          #[rustc_builtin_macro]
+          macro_rules! include { () => {} }
+
+          include!("bar.rs");
+        //- /bar.rs
+          // empty
         "#,
     );
 }
