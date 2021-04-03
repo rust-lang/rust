@@ -498,6 +498,7 @@ version = "0.0.0"
 dependencies = [
  "anymap",
  "base_db",
+ "bitflags",
  "cfg",
  "cov-mark",
  "dashmap",

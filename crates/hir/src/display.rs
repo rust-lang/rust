@@ -20,22 +20,21 @@ impl HirDisplay for Function {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         let data = f.db.function_data(self.id);
         write_visibility(self.module(f.db).id, self.visibility(f.db), f)?;
-        let qual = &data.qualifier;
-        if qual.is_default {
+        if data.is_default() {
             write!(f, "default ")?;
         }
-        if qual.is_const {
+        if data.is_const() {
             write!(f, "const ")?;
         }
-        if qual.is_async {
+        if data.is_async() {
             write!(f, "async ")?;
         }
-        if qual.is_unsafe {
+        if data.is_unsafe() {
             write!(f, "unsafe ")?;
         }
-        if let Some(abi) = &qual.abi {
+        if let Some(abi) = &data.abi {
             // FIXME: String escape?
-            write!(f, "extern \"{}\" ", abi)?;
+            write!(f, "extern \"{}\" ", &**abi)?;
         }
         write!(f, "fn {}", data.name)?;
 
@@ -68,7 +67,7 @@ impl HirDisplay for Function {
                 write!(f, ", ")?;
             } else {
                 first = false;
-                if data.has_self_param {
+                if data.has_self_param() {
                     write_self_param(type_ref, f)?;
                     continue;
                 }
@@ -88,7 +87,7 @@ impl HirDisplay for Function {
         // `FunctionData::ret_type` will be `::core::future::Future<Output = ...>` for async fns.
         // Use ugly pattern match to strip the Future trait.
         // Better way?
-        let ret_type = if !qual.is_async {
+        let ret_type = if !data.is_async() {
             &data.ret_type
         } else {
             match &*data.ret_type {

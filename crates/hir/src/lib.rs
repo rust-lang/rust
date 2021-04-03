@@ -832,7 +832,7 @@ impl Function {
     }
 
     pub fn self_param(self, db: &dyn HirDatabase) -> Option<SelfParam> {
-        if !db.function_data(self.id).has_self_param {
+        if !db.function_data(self.id).has_self_param() {
             return None;
         }
         Some(SelfParam { func: self.id })
@@ -864,7 +864,7 @@ impl Function {
     }
 
     pub fn is_unsafe(self, db: &dyn HirDatabase) -> bool {
-        db.function_data(self.id).qualifier.is_unsafe
+        db.function_data(self.id).is_unsafe()
     }
 
     pub fn diagnostics(self, db: &dyn HirDatabase, sink: &mut DiagnosticSink) {
@@ -878,7 +878,7 @@ impl Function {
     ///
     /// This is false in the case of required (not provided) trait methods.
     pub fn has_body(self, db: &dyn HirDatabase) -> bool {
-        db.function_data(self.id).has_body
+        db.function_data(self.id).has_body()
     }
 
     /// A textual representation of the HIR of this function for debugging purposes.

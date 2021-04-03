@@ -24,7 +24,7 @@ use la_arena::{Arena, Idx, RawIdx};
 use profile::Count;
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
-use syntax::{ast, match_ast, SmolStr, SyntaxKind};
+use syntax::{ast, match_ast, SyntaxKind};
 
 use crate::{
     attr::{Attrs, RawAttrs},
@@ -529,7 +529,7 @@ impl<N: ItemTreeNode> Index<FileItemTreeId<N>> for ItemTree {
 /// A desugared `use` import.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Import {
-    pub path: ModPath,
+    pub path: Interned<ModPath>,
     pub alias: Option<ImportAlias>,
     pub visibility: RawVisibilityId,
     pub is_glob: bool,
@@ -556,15 +556,11 @@ pub struct Function {
     pub name: Name,
     pub visibility: RawVisibilityId,
     pub generic_params: GenericParamsId,
-    pub has_self_param: bool,
-    pub has_body: bool,
-    pub qualifier: FunctionQualifier,
-    /// Whether the function is located in an `extern` block (*not* whether it is an
-    /// `extern "abi" fn`).
-    pub is_in_extern_block: bool,
+    pub abi: Option<Interned<str>>,
     pub params: IdRange<Param>,
     pub ret_type: Interned<TypeRef>,
     pub ast_id: FileAstId<ast::Fn>,
+    pub(crate) flags: FnFlags,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -573,13 +569,20 @@ pub enum Param {
     Varargs,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FunctionQualifier {
-    pub is_default: bool,
-    pub is_const: bool,
-    pub is_async: bool,
-    pub is_unsafe: bool,
-    pub abi: Option<SmolStr>,
+bitflags::bitflags! {
+    /// NOTE: Shared with `FunctionData`
+    pub(crate) struct FnFlags: u8 {
+        const HAS_SELF_PARAM = 1 << 0;
+        const HAS_BODY = 1 << 1;
+        const IS_DEFAULT = 1 << 2;
+        const IS_CONST = 1 << 3;
+        const IS_ASYNC = 1 << 4;
+        const IS_UNSAFE = 1 << 5;
+        /// Whether the function is located in an `extern` block (*not* whether it is an
+        /// `extern "abi" fn`).
+        const IS_IN_EXTERN_BLOCK = 1 << 6;
+        const IS_VARARGS = 1 << 7;
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

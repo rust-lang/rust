@@ -1054,7 +1054,7 @@ fn fn_sig_for_fn(db: &dyn HirDatabase, def: FunctionId) -> PolyFnSig {
     let ret = (&ctx_ret).lower_ty(&data.ret_type);
     let generics = generics(db.upcast(), def.into());
     let num_binders = generics.len();
-    Binders::new(num_binders, CallableSig::from_params_and_return(params, ret, data.is_varargs))
+    Binders::new(num_binders, CallableSig::from_params_and_return(params, ret, data.is_varargs()))
 }
 
 /// Build the declared type of a function. This should not need to look at the
