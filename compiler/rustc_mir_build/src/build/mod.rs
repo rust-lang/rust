@@ -1,7 +1,7 @@
 use crate::build;
 use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::scope::DropKind;
-use crate::thir::{build_thir, Arena, BindingMode, Expr, LintLevel, Pat, PatKind};
+use crate::thir::{build_thir, BindingMode, Expr, ExprId, LintLevel, Pat, PatKind, Thir};
 use rustc_attr::{self as attr, UnwindAttr};
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
@@ -88,7 +88,6 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
     // If we don't have a specialized span for the body, just use the
     // normal def span.
     let span_with_body = span_with_body.unwrap_or_else(|| tcx.hir().span(id));
-    let arena = Arena::default();
 
     tcx.infer_ctxt().enter(|infcx| {
         let body = if let Some(ErrorReported) = typeck_results.tainted_by_errors {
@@ -105,7 +104,7 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
             };
 
             let body = tcx.hir().body(body_id);
-            let thir = build_thir(tcx, def, &arena, &body.value);
+            let (thir, expr) = build_thir(tcx, def, &body.value);
             let ty = tcx.type_of(fn_def_id);
             let mut abi = fn_sig.abi;
             let implicit_argument = match ty.kind() {
@@ -181,6 +180,7 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
             };
 
             let mut mir = build::construct_fn(
+                &thir,
                 &infcx,
                 def,
                 id,
@@ -190,7 +190,7 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
                 return_ty,
                 return_ty_span,
                 body,
-                thir,
+                expr,
                 span_with_body,
             );
             if yield_ty.is_some() {
@@ -213,9 +213,9 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
             let return_ty = typeck_results.node_type(id);
 
             let ast_expr = &tcx.hir().body(body_id).value;
-            let thir = build_thir(tcx, def, &arena, ast_expr);
+            let (thir, expr) = build_thir(tcx, def, ast_expr);
 
-            build::construct_const(&infcx, thir, def, id, return_ty, return_ty_span)
+            build::construct_const(&thir, &infcx, expr, def, id, return_ty, return_ty_span)
         };
 
         lints::check(tcx, &body);
@@ -323,6 +323,7 @@ struct Builder<'a, 'tcx> {
     region_scope_tree: &'tcx region::ScopeTree,
     param_env: ty::ParamEnv<'tcx>,
 
+    thir: &'a Thir<'tcx>,
     cfg: CFG<'tcx>,
 
     def_id: DefId,
@@ -633,6 +634,7 @@ struct ArgInfo<'tcx>(
 );
 
 fn construct_fn<'tcx, A>(
+    thir: &Thir<'tcx>,
     infcx: &InferCtxt<'_, 'tcx>,
     fn_def: ty::WithOptConstParam<LocalDefId>,
     fn_id: hir::HirId,
@@ -642,7 +644,7 @@ fn construct_fn<'tcx, A>(
     return_ty: Ty<'tcx>,
     return_ty_span: Span,
     body: &'tcx hir::Body<'tcx>,
-    expr: &Expr<'_, 'tcx>,
+    expr: ExprId,
     span_with_body: Span,
 ) -> Body<'tcx>
 where
@@ -654,6 +656,7 @@ where
     let span = tcx.hir().span(fn_id);
 
     let mut builder = Builder::new(
+        thir,
         infcx,
         fn_def,
         fn_id,
@@ -683,7 +686,7 @@ where
                         fn_def.did.to_def_id(),
                         &arguments,
                         arg_scope,
-                        expr,
+                        &thir[expr],
                     )
                 }))
             }));
@@ -708,8 +711,9 @@ where
 }
 
 fn construct_const<'a, 'tcx>(
+    thir: &'a Thir<'tcx>,
     infcx: &'a InferCtxt<'a, 'tcx>,
-    expr: &Expr<'_, 'tcx>,
+    expr: ExprId,
     def: ty::WithOptConstParam<LocalDefId>,
     hir_id: hir::HirId,
     const_ty: Ty<'tcx>,
@@ -717,11 +721,21 @@ fn construct_const<'a, 'tcx>(
 ) -> Body<'tcx> {
     let tcx = infcx.tcx;
     let span = tcx.hir().span(hir_id);
-    let mut builder =
-        Builder::new(infcx, def, hir_id, span, 0, Safety::Safe, const_ty, const_ty_span, None);
+    let mut builder = Builder::new(
+        thir,
+        infcx,
+        def,
+        hir_id,
+        span,
+        0,
+        Safety::Safe,
+        const_ty,
+        const_ty_span,
+        None,
+    );
 
     let mut block = START_BLOCK;
-    unpack!(block = builder.expr_into_dest(Place::return_place(), block, &expr));
+    unpack!(block = builder.expr_into_dest(Place::return_place(), block, &thir[expr]));
 
     let source_info = builder.source_info(span);
     builder.cfg.terminate(block, source_info, TerminatorKind::Return);
@@ -761,22 +775,48 @@ fn construct_error<'a, 'tcx>(
         hir::BodyOwnerKind::Const => 0,
         hir::BodyOwnerKind::Static(_) => 0,
     };
-    let mut builder =
-        Builder::new(infcx, def, hir_id, span, num_params, Safety::Safe, ty, span, generator_kind);
-    let source_info = builder.source_info(span);
+    let mut cfg = CFG { basic_blocks: IndexVec::new() };
+    let mut source_scopes = IndexVec::new();
+    let mut local_decls = IndexVec::from_elem_n(LocalDecl::new(ty, span), 1);
+
+    cfg.start_new_block();
+    source_scopes.push(SourceScopeData {
+        span,
+        parent_scope: None,
+        inlined: None,
+        inlined_parent_scope: None,
+        local_data: ClearCrossCrate::Set(SourceScopeLocalData {
+            lint_root: hir_id,
+            safety: Safety::Safe,
+        }),
+    });
+    let source_info = SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE };
+
     // Some MIR passes will expect the number of parameters to match the
     // function declaration.
     for _ in 0..num_params {
-        builder.local_decls.push(LocalDecl::with_source_info(ty, source_info));
+        local_decls.push(LocalDecl::with_source_info(ty, source_info));
     }
-    builder.cfg.terminate(START_BLOCK, source_info, TerminatorKind::Unreachable);
-    let mut body = builder.finish();
+    cfg.terminate(START_BLOCK, source_info, TerminatorKind::Unreachable);
+
+    let mut body = Body::new(
+        MirSource::item(def.did.to_def_id()),
+        cfg.basic_blocks,
+        source_scopes,
+        local_decls,
+        IndexVec::new(),
+        num_params,
+        vec![],
+        span,
+        generator_kind,
+    );
     body.generator.as_mut().map(|gen| gen.yield_ty = Some(ty));
     body
 }
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn new(
+        thir: &'a Thir<'tcx>,
         infcx: &'a InferCtxt<'a, 'tcx>,
         def: ty::WithOptConstParam<LocalDefId>,
         hir_id: hir::HirId,
@@ -803,6 +843,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let lint_level = LintLevel::Explicit(hir_id);
         let mut builder = Builder {
+            thir,
             tcx,
             infcx,
             typeck_results: tcx.typeck_opt_const_arg(def),
@@ -866,7 +907,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         fn_def_id: DefId,
         arguments: &[ArgInfo<'tcx>],
         argument_scope: region::Scope,
-        expr: &Expr<'_, 'tcx>,
+        expr: &Expr<'tcx>,
     ) -> BlockAnd<()> {
         // Allocate locals for the function arguments
         for &ArgInfo(ty, _, arg_opt, _) in arguments.iter() {

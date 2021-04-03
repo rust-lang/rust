@@ -13,7 +13,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn stmt_expr(
         &mut self,
         mut block: BasicBlock,
-        expr: &Expr<'_, 'tcx>,
+        expr: &Expr<'tcx>,
         statement_scope: Option<region::Scope>,
     ) -> BlockAnd<()> {
         let this = self;
@@ -24,10 +24,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match expr.kind {
             ExprKind::Scope { region_scope, lint_level, value } => {
                 this.in_scope((region_scope, source_info), lint_level, |this| {
-                    this.stmt_expr(block, value, statement_scope)
+                    this.stmt_expr(block, &this.thir[value], statement_scope)
                 })
             }
             ExprKind::Assign { lhs, rhs } => {
+                let lhs = &this.thir[lhs];
+                let rhs = &this.thir[rhs];
                 let lhs_span = lhs.span;
 
                 // Note: we evaluate assignments right-to-left. This
@@ -61,6 +63,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // only affects weird things like `x += {x += 1; x}`
                 // -- is that equal to `x + (x + 1)` or `2*(x+1)`?
 
+                let lhs = &this.thir[lhs];
+                let rhs = &this.thir[rhs];
                 let lhs_ty = lhs.ty;
 
                 debug!("stmt_expr AssignOp block_context.push(SubExpr) : {:?}", expr);
@@ -87,24 +91,30 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Break { label, value } => this.break_scope(
                 block,
-                value.as_deref(),
+                value.map(|value| &this.thir[value]),
                 BreakableTarget::Break(label),
                 source_info,
             ),
-            ExprKind::Return { value } => {
-                this.break_scope(block, value.as_deref(), BreakableTarget::Return, source_info)
-            }
-            ExprKind::LlvmInlineAsm { asm, outputs, inputs } => {
+            ExprKind::Return { value } => this.break_scope(
+                block,
+                value.map(|value| &this.thir[value]),
+                BreakableTarget::Return,
+                source_info,
+            ),
+            ExprKind::LlvmInlineAsm { asm, ref outputs, ref inputs } => {
                 debug!("stmt_expr LlvmInlineAsm block_context.push(SubExpr) : {:?}", expr);
                 this.block_context.push(BlockFrame::SubExpr);
                 let outputs = outputs
                     .into_iter()
-                    .map(|output| unpack!(block = this.as_place(block, &output)))
+                    .copied()
+                    .map(|output| unpack!(block = this.as_place(block, &this.thir[output])))
                     .collect::<Vec<_>>()
                     .into_boxed_slice();
                 let inputs = inputs
                     .into_iter()
+                    .copied()
                     .map(|input| {
+                        let input = &this.thir[input];
                         (input.span, unpack!(block = this.as_local_operand(block, &input)))
                     })
                     .collect::<Vec<_>>()
@@ -139,14 +149,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // than the entirety of block(s) surrounding it.
                 let adjusted_span = (|| {
                     if let ExprKind::Block { body } = &expr.kind {
-                        if let Some(tail_expr) = &body.expr {
-                            let mut expr = &*tail_expr;
+                        if let Some(tail_expr) = body.expr {
+                            let mut expr = &this.thir[tail_expr];
                             while let ExprKind::Block {
                                 body: Block { expr: Some(nested_expr), .. },
                             }
-                            | ExprKind::Scope { value: nested_expr, .. } = &expr.kind
+                            | ExprKind::Scope { value: nested_expr, .. } = expr.kind
                             {
-                                expr = nested_expr;
+                                expr = &this.thir[nested_expr];
                             }
                             this.block_context.push(BlockFrame::TailExpr {
                                 tail_result_is_ignored: true,
