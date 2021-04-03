@@ -609,6 +609,7 @@ fn should_abort_on_panic(tcx: TyCtxt<'_>, fn_def_id: LocalDefId, abi: Abi) -> bo
                 | AvrInterrupt
                 | AvrNonBlockingInterrupt
                 | CCmseNonSecureCall
+                | Wasm
                 | RustIntrinsic
                 | PlatformIntrinsic
                 | Unadjusted => true,
