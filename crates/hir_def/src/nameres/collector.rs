@@ -1402,8 +1402,18 @@ impl ModCollector<'_, '_> {
 
         // Case 1: builtin macros
         if attrs.by_key("rustc_builtin_macro").exists() {
+            // `#[rustc_builtin_macro = "builtin_name"]` overrides the `macro_rules!` name.
+            let name;
+            let name = match attrs.by_key("rustc_builtin_macro").string_value() {
+                Some(it) => {
+                    // FIXME: a hacky way to create a Name from string.
+                    name = tt::Ident { text: it.clone(), id: tt::TokenId::unspecified() }.as_name();
+                    &name
+                }
+                None => &mac.name,
+            };
             let krate = self.def_collector.def_map.krate;
-            if let Some(macro_id) = find_builtin_macro(&mac.name, krate, ast_id) {
+            if let Some(macro_id) = find_builtin_macro(name, krate, ast_id) {
                 self.def_collector.define_macro_rules(
                     self.module_id,
                     mac.name.clone(),
