@@ -533,7 +533,7 @@ impl Attr {
             };
             Some(AttrInput::Literal(value))
         } else if let Some(tt) = ast.token_tree() {
-            Some(AttrInput::TokenTree(ast_to_token_tree(&tt)?.0))
+            Some(AttrInput::TokenTree(ast_to_token_tree(&tt).0))
         } else {
             None
         };

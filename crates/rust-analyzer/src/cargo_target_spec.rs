@@ -201,7 +201,7 @@ mod tests {
         let cfg_expr = {
             let source_file = ast::SourceFile::parse(cfg).ok().unwrap();
             let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
-            let (tt, _) = ast_to_token_tree(&tt).unwrap();
+            let (tt, _) = ast_to_token_tree(&tt);
             CfgExpr::parse(&tt)
         };
 

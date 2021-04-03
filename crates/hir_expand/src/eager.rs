@@ -106,7 +106,7 @@ pub fn expand_eager_macro(
     mut diagnostic_sink: &mut dyn FnMut(mbe::ExpandError),
 ) -> Result<EagerMacroId, ErrorEmitted> {
     let parsed_args = diagnostic_sink.option_with(
-        || Some(mbe::ast_to_token_tree(&macro_call.value.token_tree()?)?.0),
+        || Some(mbe::ast_to_token_tree(&macro_call.value.token_tree()?).0),
         || err("malformed macro invocation"),
     )?;
 
@@ -161,7 +161,7 @@ pub fn expand_eager_macro(
 }
 
 fn to_subtree(node: &SyntaxNode) -> Option<tt::Subtree> {
-    let mut subtree = mbe::syntax_node_to_token_tree(node)?.0;
+    let mut subtree = mbe::syntax_node_to_token_tree(node).0;
     subtree.delimiter = None;
     Some(subtree)
 }

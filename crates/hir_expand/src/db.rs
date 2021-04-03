@@ -119,7 +119,7 @@ pub fn expand_hypothetical(
     token_to_map: syntax::SyntaxToken,
 ) -> Option<(SyntaxNode, syntax::SyntaxToken)> {
     let macro_file = MacroFile { macro_call_id: actual_macro_call };
-    let (tt, tmap_1) = mbe::syntax_node_to_token_tree(hypothetical_args.syntax()).unwrap();
+    let (tt, tmap_1) = mbe::syntax_node_to_token_tree(hypothetical_args.syntax());
     let range =
         token_to_map.text_range().checked_sub(hypothetical_args.syntax().text_range().start())?;
     let token_id = tmap_1.token_by_range(range)?;
@@ -143,10 +143,7 @@ fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Option<Arc<(TokenExpander,
         MacroDefKind::Declarative(ast_id) => match ast_id.to_node(db) {
             syntax::ast::Macro::MacroRules(macro_rules) => {
                 let arg = macro_rules.token_tree()?;
-                let (tt, tmap) = mbe::ast_to_token_tree(&arg).or_else(|| {
-                    log::warn!("fail on macro_rules to token tree: {:#?}", arg);
-                    None
-                })?;
+                let (tt, tmap) = mbe::ast_to_token_tree(&arg);
                 let rules = match MacroRules::parse(&tt) {
                     Ok(it) => it,
                     Err(err) => {
@@ -159,10 +156,7 @@ fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Option<Arc<(TokenExpander,
             }
             syntax::ast::Macro::MacroDef(macro_def) => {
                 let arg = macro_def.body()?;
-                let (tt, tmap) = mbe::ast_to_token_tree(&arg).or_else(|| {
-                    log::warn!("fail on macro_def to token tree: {:#?}", arg);
-                    None
-                })?;
+                let (tt, tmap) = mbe::ast_to_token_tree(&arg);
                 let rules = match MacroDef::parse(&tt) {
                     Ok(it) => it,
                     Err(err) => {
@@ -202,7 +196,7 @@ fn macro_arg_text(db: &dyn AstDatabase, id: MacroCallId) -> Option<GreenNode> {
 
 fn macro_arg(db: &dyn AstDatabase, id: MacroCallId) -> Option<Arc<(tt::Subtree, mbe::TokenMap)>> {
     let arg = db.macro_arg_text(id)?;
-    let (tt, tmap) = mbe::syntax_node_to_token_tree(&SyntaxNode::new_root(arg))?;
+    let (tt, tmap) = mbe::syntax_node_to_token_tree(&SyntaxNode::new_root(arg));
     Some(Arc::new((tt, tmap)))
 }
 
