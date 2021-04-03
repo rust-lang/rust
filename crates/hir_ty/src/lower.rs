@@ -860,10 +860,9 @@ pub fn associated_type_shorthand_candidates<R>(
                 if generics.params.types[param_id.local_id].provenance
                     == TypeParamProvenance::TraitSelf
                 {
-                    let trait_ref = TraitRef {
-                        trait_id: to_chalk_trait_id(trait_id),
-                        substitution: Substitution::bound_vars(&generics, DebruijnIndex::INNERMOST),
-                    };
+                    let trait_ref = TyBuilder::trait_ref(db, trait_id)
+                        .fill_with_bound_vars(DebruijnIndex::INNERMOST, 0)
+                        .build();
                     return search(trait_ref);
                 }
             }
