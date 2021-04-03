@@ -250,13 +250,9 @@ fn add_unused_function_coverage(
             // Insert at least one real counter so the LLVM CoverageMappingReader will find expected
             // definitions.
             function_coverage.add_counter(UNUSED_FUNCTION_COUNTER_ID, code_region.clone());
+        } else {
+            function_coverage.add_unreachable_region(code_region.clone());
         }
-        // Add a Zero Counter for every code region.
-        //
-        // Even though the first coverage region already has an actual Counter, `llvm-cov` will not
-        // always report it. Re-adding an unreachable region (zero counter) for the same region
-        // seems to help produce the expected coverage.
-        function_coverage.add_unreachable_region(code_region.clone());
     }
 
     if let Some(coverage_context) = cx.coverage_context() {

@@ -36,7 +36,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     let fn_name = bx.get_pgo_func_name_var(instance);
                     let hash = bx.const_u64(function_source_hash);
                     let num_counters = bx.const_u32(coverageinfo.num_counters);
-                    let index = bx.const_u32(u32::from(id));
+                    let index = bx.const_u32(id.zero_based_index());
                     debug!(
                         "codegen intrinsic instrprof.increment(fn_name={:?}, hash={:?}, num_counters={:?}, index={:?})",
                         fn_name, hash, num_counters, index,
