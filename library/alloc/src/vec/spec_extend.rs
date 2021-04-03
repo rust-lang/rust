@@ -35,9 +35,7 @@ where
             );
         }
         if let Some(additional) = high {
-            if additional > self.capacity().wrapping_sub(self.len()) {
-                self.reserve(additional);
-            }
+            self.reserve(additional);
             unsafe {
                 let mut ptr = self.as_mut_ptr().add(self.len());
                 let mut local_len = SetLenOnDrop::new(&mut self.len);
