@@ -50,7 +50,18 @@ where
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.last.is_some() { (1, self.inner.size_hint().1) } else { (0, Some(0)) }
+        if self.last.is_some() {
+            // If we have a last item stored, the iterator can yield at most
+            // as many items at the inner iterator plus the stored one. Yet we
+            // can only guarantee that the iterator yields at least one more item
+            // since all other items in the inner iterator might be duplicates.
+            let (_, max) = self.inner.size_hint();
+            (1, max.and_then(|k| k.checked_add(1)))
+        } else {
+            // If the last item we got from the inner iterator is `None`,
+            // the iterator is empty.
+            (0, Some(0))
+        }
     }
 }
 
@@ -105,7 +116,18 @@ where
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.last.is_some() { (1, self.inner.size_hint().1) } else { (0, Some(0)) }
+        if self.last.is_some() {
+            // If we have a last item stored, the iterator can yield at most
+            // as many items at the inner iterator plus the stored one. Yet we
+            // can only guarantee that the iterator yields at least one more item
+            // since all other items in the inner iterator might be duplicates.
+            let (_, max) = self.inner.size_hint();
+            (1, max.and_then(|k| k.checked_add(1)))
+        } else {
+            // If the last item we got from the inner iterator is `None`,
+            // the iterator is empty.
+            (0, Some(0))
+        }
     }
 }
 
@@ -161,6 +183,17 @@ where
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.last.is_some() { (1, self.inner.size_hint().1) } else { (0, Some(0)) }
+        if self.last.is_some() {
+            // If we have a last item stored, the iterator can yield at most
+            // as many items at the inner iterator plus the stored one. Yet we
+            // can only guarantee that the iterator yields at least one more item
+            // since all other items in the inner iterator might be duplicates.
+            let (_, max) = self.inner.size_hint();
+            (1, max.and_then(|k| k.checked_add(1)))
+        } else {
+            // If the last item we got from the inner iterator is `None`,
+            // the iterator is empty.
+            (0, Some(0))
+        }
     }
 }
