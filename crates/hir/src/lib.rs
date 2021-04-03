@@ -59,7 +59,7 @@ use hir_ty::{
     traits::{FnTrait, Solution, SolutionVariables},
     AliasEq, AliasTy, BoundVar, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast,
     DebruijnIndex, InEnvironment, Interner, ProjectionTy, QuantifiedWhereClause, Scalar,
-    Substitution, TraitEnvironment, Ty, TyDefId, TyKind, TyVariableKind, WhereClause,
+    Substitution, TraitEnvironment, Ty, TyBuilder, TyDefId, TyKind, TyVariableKind, WhereClause,
 };
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
@@ -1129,7 +1129,7 @@ pub struct BuiltinType {
 impl BuiltinType {
     pub fn ty(self, db: &dyn HirDatabase, module: Module) -> Type {
         let resolver = module.id.resolver(db.upcast());
-        Type::new_with_resolver(db, &resolver, Ty::builtin(self.inner))
+        Type::new_with_resolver(db, &resolver, TyBuilder::builtin(self.inner))
             .expect("crate not present in resolver")
     }
 

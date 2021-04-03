@@ -877,6 +877,23 @@ impl TyBuilder<()> {
         })
         .intern(&Interner)
     }
+
+    pub fn builtin(builtin: BuiltinType) -> Ty {
+        match builtin {
+            BuiltinType::Char => TyKind::Scalar(Scalar::Char).intern(&Interner),
+            BuiltinType::Bool => TyKind::Scalar(Scalar::Bool).intern(&Interner),
+            BuiltinType::Str => TyKind::Str.intern(&Interner),
+            BuiltinType::Int(t) => {
+                TyKind::Scalar(Scalar::Int(primitive::int_ty_from_builtin(t))).intern(&Interner)
+            }
+            BuiltinType::Uint(t) => {
+                TyKind::Scalar(Scalar::Uint(primitive::uint_ty_from_builtin(t))).intern(&Interner)
+            }
+            BuiltinType::Float(t) => {
+                TyKind::Scalar(Scalar::Float(primitive::float_ty_from_builtin(t))).intern(&Interner)
+            }
+        }
+    }
 }
 
 impl TyBuilder<hir_def::AdtId> {
@@ -911,23 +928,6 @@ impl TyBuilder<hir_def::AdtId> {
 }
 
 impl Ty {
-    pub fn builtin(builtin: BuiltinType) -> Self {
-        match builtin {
-            BuiltinType::Char => TyKind::Scalar(Scalar::Char).intern(&Interner),
-            BuiltinType::Bool => TyKind::Scalar(Scalar::Bool).intern(&Interner),
-            BuiltinType::Str => TyKind::Str.intern(&Interner),
-            BuiltinType::Int(t) => {
-                TyKind::Scalar(Scalar::Int(primitive::int_ty_from_builtin(t))).intern(&Interner)
-            }
-            BuiltinType::Uint(t) => {
-                TyKind::Scalar(Scalar::Uint(primitive::uint_ty_from_builtin(t))).intern(&Interner)
-            }
-            BuiltinType::Float(t) => {
-                TyKind::Scalar(Scalar::Float(primitive::float_ty_from_builtin(t))).intern(&Interner)
-            }
-        }
-    }
-
     pub fn as_reference(&self) -> Option<(&Ty, Mutability)> {
         match self.kind(&Interner) {
             TyKind::Ref(mutability, ty) => Some((ty, *mutability)),

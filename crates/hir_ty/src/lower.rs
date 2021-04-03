@@ -1216,7 +1216,7 @@ impl_from!(FunctionId, StructId, UnionId, EnumVariantId, ConstId, StaticId for V
 /// namespace.
 pub(crate) fn ty_query(db: &dyn HirDatabase, def: TyDefId) -> Binders<Ty> {
     match def {
-        TyDefId::BuiltinType(it) => Binders::new(0, Ty::builtin(it)),
+        TyDefId::BuiltinType(it) => Binders::new(0, TyBuilder::builtin(it)),
         TyDefId::AdtId(it) => type_for_adt(db, it),
         TyDefId::TypeAliasId(it) => type_for_type_alias(db, it),
     }
