@@ -8,7 +8,7 @@ use chalk_ir::{cast::Cast, Mutability, TyVariableKind};
 use hir_def::lang_item::LangItemTarget;
 
 use crate::{
-    autoderef, to_chalk_trait_id, traits::Solution, Interner, Substitution, TraitRef, Ty,
+    autoderef, traits::Solution, Interner, Ty,
     TyBuilder, TyKind,
 };
 
@@ -131,18 +131,15 @@ impl<'a> InferenceContext<'a> {
             _ => return None,
         };
 
-        let generic_params = crate::utils::generics(self.db.upcast(), coerce_unsized_trait.into());
-        if generic_params.len() != 2 {
-            // The CoerceUnsized trait should have two generic params: Self and T.
-            return None;
-        }
+        let trait_ref = {
+            let b = TyBuilder::trait_ref(self.db, coerce_unsized_trait);
+            if b.remaining() != 2 {
+                // The CoerceUnsized trait should have two generic params: Self and T.
+                return None;
+            }
+            b.push(from_ty.clone()).push(to_ty.clone()).build()
+        };
 
-        let substs = Substitution::build_for_generics(&generic_params)
-            .push(from_ty.clone())
-            .push(to_ty.clone())
-            .build();
-        let trait_ref =
-            TraitRef { trait_id: to_chalk_trait_id(coerce_unsized_trait), substitution: substs };
         let goal = InEnvironment::new(self.trait_env.env.clone(), trait_ref.cast(&Interner));
 
         let canonicalizer = self.canonicalizer();
