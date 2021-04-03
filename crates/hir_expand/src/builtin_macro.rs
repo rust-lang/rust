@@ -1,10 +1,10 @@
 //! Builtin macro
 use crate::{
     db::AstDatabase, name, quote, AstId, CrateId, EagerMacroId, LazyMacroId, MacroCallId,
-    MacroDefId, MacroDefKind, TextSize,
+    MacroCallLoc, MacroDefId, MacroDefKind, TextSize,
 };
 
-use base_db::{AnchoredPath, FileId};
+use base_db::{AnchoredPath, Edition, FileId};
 use cfg::CfgExpr;
 use either::Either;
 use mbe::{parse_exprs_with_sep, parse_to_token_tree, ExpandResult};
@@ -111,6 +111,8 @@ register_builtin! {
     (llvm_asm, LlvmAsm) => asm_expand,
     (asm, Asm) => asm_expand,
     (cfg, Cfg) => cfg_expand,
+    (core_panic, CorePanic) => panic_expand,
+    (std_panic, StdPanic) => panic_expand,
 
     EAGER:
     (compile_error, CompileError) => compile_error_expand,
@@ -282,6 +284,25 @@ fn cfg_expand(
     let enabled = db.crate_graph()[loc.krate].cfg_options.check(&expr) != Some(false);
     let expanded = if enabled { quote!(true) } else { quote!(false) };
     ExpandResult::ok(expanded)
+}
+
+fn panic_expand(
+    db: &dyn AstDatabase,
+    id: LazyMacroId,
+    tt: &tt::Subtree,
+) -> ExpandResult<tt::Subtree> {
+    let loc: MacroCallLoc = db.lookup_intern_macro(id);
+    // Expand to a macro call `$crate::panic::panic_{edition}`
+    let krate = tt::Ident { text: "$crate".into(), id: tt::TokenId::unspecified() };
+    let mut call = if db.crate_graph()[loc.krate].edition == Edition::Edition2021 {
+        quote!(#krate::panic::panic_2021!)
+    } else {
+        quote!(#krate::panic::panic_2015!)
+    };
+
+    // Pass the original arguments
+    call.token_trees.push(tt::TokenTree::Subtree(tt.clone()));
+    ExpandResult::ok(call)
 }
 
 fn unquote_str(lit: &tt::Literal) -> Option<String> {
