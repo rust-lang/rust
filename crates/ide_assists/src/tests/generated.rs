@@ -292,6 +292,21 @@ fn main() {
 }
 
 #[test]
+fn doctest_convert_tuple_struct_to_named_struct() {
+    check_doc_test(
+        "convert_tuple_struct_to_named_struct",
+        r#####"
+struct Inner;
+struct A$0(Inner);
+"#####,
+        r#####"
+struct Inner;
+struct A { field1: Inner }
+"#####,
+    )
+}
+
+#[test]
 fn doctest_expand_glob_import() {
     check_doc_test(
         "expand_glob_import",

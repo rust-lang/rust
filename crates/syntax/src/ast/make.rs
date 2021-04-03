@@ -133,6 +133,17 @@ pub fn use_(visibility: Option<ast::Visibility>, use_tree: ast::UseTree) -> ast:
     ast_from_text(&format!("{}use {};", visibility, use_tree))
 }
 
+pub fn record_expr(path: ast::Path, fields: ast::RecordExprFieldList) -> ast::RecordExpr {
+    ast_from_text(&format!("fn f() {{ {} {} }}", path, fields))
+}
+
+pub fn record_expr_field_list(
+    fields: impl IntoIterator<Item = ast::RecordExprField>,
+) -> ast::RecordExprFieldList {
+    let fields = fields.into_iter().join(", ");
+    ast_from_text(&format!("fn f() {{ S {{ {} }} }}", fields))
+}
+
 pub fn record_expr_field(name: ast::NameRef, expr: Option<ast::Expr>) -> ast::RecordExprField {
     return match expr {
         Some(expr) => from_text(&format!("{}: {}", name, expr)),
@@ -323,6 +334,21 @@ pub fn record_pat(path: ast::Path, pats: impl IntoIterator<Item = ast::Pat>) -> 
     fn from_text(text: &str) -> ast::RecordPat {
         ast_from_text(&format!("fn f({}: ())", text))
     }
+}
+
+pub fn record_pat_with_fields(path: ast::Path, fields: ast::RecordPatFieldList) -> ast::RecordPat {
+    ast_from_text(&format!("fn f({} {}: ()))", path, fields))
+}
+
+pub fn record_pat_field_list(
+    fields: impl IntoIterator<Item = ast::RecordPatField>,
+) -> ast::RecordPatFieldList {
+    let fields = fields.into_iter().join(", ");
+    ast_from_text(&format!("fn f(S {{ {} }}: ()))", fields))
+}
+
+pub fn record_pat_field(name_ref: ast::NameRef, pat: ast::Pat) -> ast::RecordPatField {
+    ast_from_text(&format!("fn f(S {{ {}: {} }}: ()))", name_ref, pat))
 }
 
 /// Returns a `BindPat` if the path has just one segment, a `PathPat` otherwise.

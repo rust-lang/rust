@@ -430,6 +430,15 @@ impl<'a> FindUsages<'a> {
         sink: &mut dyn FnMut(FileId, FileReference) -> bool,
     ) -> bool {
         match NameRefClass::classify(self.sema, &name_ref) {
+            Some(NameRefClass::Definition(def)) if &def == self.def => {
+                let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
+                let reference = FileReference {
+                    range,
+                    name: ast::NameLike::NameRef(name_ref.clone()),
+                    access: reference_access(&def, &name_ref),
+                };
+                sink(file_id, reference)
+            }
             Some(NameRefClass::Definition(Definition::SelfType(impl_))) => {
                 let ty = impl_.self_ty(self.sema.db);
 
@@ -447,15 +456,6 @@ impl<'a> FindUsages<'a> {
                 }
 
                 false
-            }
-            Some(NameRefClass::Definition(def)) if &def == self.def => {
-                let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
-                let reference = FileReference {
-                    range,
-                    name: ast::NameLike::NameRef(name_ref.clone()),
-                    access: reference_access(&def, &name_ref),
-                };
-                sink(file_id, reference)
             }
             Some(NameRefClass::FieldShorthand { local_ref: local, field_ref: field }) => {
                 let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
