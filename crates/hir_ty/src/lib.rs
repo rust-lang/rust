@@ -810,6 +810,12 @@ impl TypeWalk for CallableSig {
     }
 }
 
+struct TyBuilder {}
+
+impl TyBuilder {
+
+}
+
 impl Ty {
     pub fn unit() -> Self {
         TyKind::Tuple(0, Substitution::empty(&Interner)).intern(&Interner)
