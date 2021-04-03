@@ -9,11 +9,13 @@ use std::sync::Arc;
 use std::{slice, vec};
 
 use arrayvec::ArrayVec;
+
 use rustc_ast::attr;
 use rustc_ast::util::comments::beautify_doc_string;
 use rustc_ast::{self as ast, AttrStyle};
 use rustc_attr::{ConstStability, Deprecation, Stability, StabilityLevel};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_feature::UnstableFeatures;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Res};
@@ -54,7 +56,7 @@ crate struct Crate {
     crate src: FileName,
     crate module: Item,
     crate externs: Vec<(CrateNum, ExternalCrate)>,
-    crate primitives: Vec<(DefId, PrimitiveType)>,
+    crate primitives: ThinVec<(DefId, PrimitiveType)>,
     // These are later on moved into `CACHEKEY`, leaving the map empty.
     // Only here so that they can be filtered through the rustdoc passes.
     crate external_traits: Rc<RefCell<FxHashMap<DefId, TraitWithExtraInfo>>>,
@@ -73,8 +75,8 @@ crate struct ExternalCrate {
     crate name: Symbol,
     crate src: FileName,
     crate attrs: Attributes,
-    crate primitives: Vec<(DefId, PrimitiveType)>,
-    crate keywords: Vec<(DefId, Symbol)>,
+    crate primitives: ThinVec<(DefId, PrimitiveType)>,
+    crate keywords: ThinVec<(DefId, Symbol)>,
 }
 
 /// Anything with a source location and set of attributes and, optionally, a
