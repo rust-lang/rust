@@ -59,11 +59,15 @@
 //!
 //! ### Discovering roots
 //!
-//! The roots of the mono item graph correspond to the non-generic
+//! The roots of the mono item graph correspond to the public non-generic
 //! syntactic items in the source code. We find them by walking the HIR of the
-//! crate, and whenever we hit upon a function, method, or static item, we
-//! create a mono item consisting of the items DefId and, since we only
-//! consider non-generic items, an empty type-substitution set.
+//! crate, and whenever we hit upon a public function, method, or static item,
+//! we create a mono item consisting of the items DefId and, since we only
+//! consider non-generic items, an empty type-substitution set. (In eager
+//! collection mode, during incremental compilation, all non-generic functions
+//! are considered as roots, as well as when the `-Clink-dead-code` option is
+//! specified. Functions marked `#[no_mangle]` and functions called by inlinable
+//! functions also always act as roots.)
 //!
 //! ### Finding neighbor nodes
 //! Given a mono item node, we can discover neighbors by inspecting its

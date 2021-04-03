@@ -116,7 +116,7 @@ crate struct Cache {
     // even though the trait itself is not exported. This can happen if a trait
     // was defined in function/expression scope, since the impl will be picked
     // up by `collect-trait-impls` but the trait won't be scraped out in the HIR
-    // crawl. In order to prevent crashes when looking for spotlight traits or
+    // crawl. In order to prevent crashes when looking for notable traits or
     // when gathering trait documentation on a type, hold impls here while
     // folding and add them to the cache later on if we find the trait.
     orphan_trait_impls: Vec<(DefId, FxHashSet<DefId>, Impl)>,
@@ -227,7 +227,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         if let clean::TraitItem(ref t) = *item.kind {
             self.cache.traits.entry(item.def_id).or_insert_with(|| clean::TraitWithExtraInfo {
                 trait_: t.clone(),
-                is_spotlight: item.attrs.has_doc_flag(sym::notable_trait),
+                is_notable: item.attrs.has_doc_flag(sym::notable_trait),
             });
         }
 
