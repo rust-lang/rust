@@ -1791,11 +1791,8 @@ impl Target {
 
                 // Additionally look in the sysroot under `lib/rustlib/<triple>/target.json`
                 // as a fallback.
-                let p = sysroot
-                    .join("lib")
-                    .join("rustlib")
-                    .join(&target_triple)
-                    .join("target.json");
+                let p =
+                    sysroot.join("lib").join("rustlib").join(&target_triple).join("target.json");
                 if p.is_file() {
                     return load_file(&p);
                 }
