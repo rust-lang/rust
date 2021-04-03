@@ -47,7 +47,7 @@ does is call the `main()` that's in this crate's `lib.rs`, though.)
   * The completed docs will be available in `build/$TARGET/doc/std`, though the
     bundle is meant to be used as though you would copy out the `doc` folder to
     a web server, since that's where the CSS/JS and landing page are.
-* Use `x.py test src/test/rustdoc*` to run the tests using a stage1 rustdoc.
+* Use `./x.py test src/test/rustdoc*` to run the tests using a stage1 rustdoc.
   * See [Rustdoc internals] for more information about tests.
 * Most of the HTML printing code is in `html/format.rs` and `html/render.rs`.
   It's in a bunch of `fmt::Display` implementations and supplementary
