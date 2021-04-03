@@ -1,5 +1,4 @@
 #![feature(extern_types)]
-#![feature(non_ascii_idents)]
 
 extern "C" {
     type 一; //~ items in `extern` blocks cannot use non-ascii identifiers

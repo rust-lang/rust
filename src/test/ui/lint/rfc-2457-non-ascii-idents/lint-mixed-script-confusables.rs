@@ -1,4 +1,3 @@
-#![feature(non_ascii_idents)]
 #![deny(mixed_script_confusables)]
 
 struct ΑctuallyNotLatin;
