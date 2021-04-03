@@ -1091,7 +1091,7 @@ fn test_from_iter_specialization_panic_during_drop_leaks() {
     assert_eq!(unsafe { DROP_COUNTER }, 1);
     // clean up the leak to keep miri happy
     unsafe {
-        Vec::from_raw_parts(to_free, 0, cap);
+        drop(Vec::from_raw_parts(to_free, 0, cap));
     }
 }
 
