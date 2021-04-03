@@ -3,7 +3,7 @@
 
 use std::mem;
 
-use chalk_ir::DebruijnIndex;
+use chalk_ir::{interner::HasInterner, DebruijnIndex};
 
 use crate::{
     utils::make_mut_slice, AliasEq, AliasTy, Binders, CallableSig, FnSubst, GenericArg,
@@ -320,7 +320,7 @@ impl TypeWalk for Substitution {
     }
 }
 
-impl<T: TypeWalk> TypeWalk for Binders<T> {
+impl<T: TypeWalk + HasInterner<Interner = Interner>> TypeWalk for Binders<T> {
     fn walk(&self, f: &mut impl FnMut(&Ty)) {
         self.skip_binders().walk(f);
     }

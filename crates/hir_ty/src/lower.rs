@@ -8,7 +8,7 @@
 use std::{iter, sync::Arc};
 
 use base_db::CrateId;
-use chalk_ir::{cast::Cast, Mutability, Safety};
+use chalk_ir::{cast::Cast, interner::HasInterner, Mutability, Safety};
 use hir_def::{
     adt::StructKind,
     builtin_type::BuiltinType,
@@ -1307,6 +1307,6 @@ pub(crate) fn lower_to_chalk_mutability(m: hir_def::type_ref::Mutability) -> Mut
     }
 }
 
-fn make_binders<T>(generics: &Generics, value: T) -> Binders<T> {
+fn make_binders<T: HasInterner<Interner = Interner>>(generics: &Generics, value: T) -> Binders<T> {
     crate::make_only_type_binders(generics.len(), value)
 }

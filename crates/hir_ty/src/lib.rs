@@ -33,7 +33,11 @@ mod test_db;
 use std::sync::Arc;
 
 use base_db::salsa;
-use chalk_ir::UintTy;
+use chalk_ir::{
+    cast::{CastTo, Caster},
+    interner::HasInterner,
+    UintTy,
+};
 use hir_def::{
     expr::ExprId, type_ref::Rawness, ConstParamId, LifetimeParamId, TraitId, TypeAliasId,
     TypeParamId,
@@ -115,12 +119,15 @@ pub fn param_idx(db: &dyn HirDatabase, id: TypeParamId) -> Option<usize> {
 
 pub fn wrap_empty_binders<T>(value: T) -> Binders<T>
 where
-    T: TypeWalk,
+    T: TypeWalk + HasInterner<Interner = Interner>,
 {
     Binders::empty(&Interner, value.shifted_in_from(DebruijnIndex::ONE))
 }
 
-pub fn make_only_type_binders<T>(num_vars: usize, value: T) -> Binders<T> {
+pub fn make_only_type_binders<T: HasInterner<Interner = Interner>>(
+    num_vars: usize,
+    value: T,
+) -> Binders<T> {
     Binders::new(
         VariableKinds::from_iter(
             &Interner,
@@ -132,7 +139,7 @@ pub fn make_only_type_binders<T>(num_vars: usize, value: T) -> Binders<T> {
 }
 
 // FIXME: get rid of this
-pub fn make_canonical<T>(
+pub fn make_canonical<T: HasInterner<Interner = Interner>>(
     value: T,
     kinds: impl IntoIterator<Item = TyVariableKind>,
 ) -> Canonical<T> {

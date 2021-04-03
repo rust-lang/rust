@@ -5,7 +5,10 @@ use chalk_ir::{
     interner::HasInterner,
 };
 
-use crate::{AliasEq, DomainGoal, GenericArg, GenericArgData, Interner, TraitRef, Ty, WhereClause};
+use crate::{
+    AliasEq, CallableSig, DomainGoal, GenericArg, GenericArgData, Interner, PolyFnSig,
+    ReturnTypeImplTraits, TraitRef, Ty, WhereClause,
+};
 
 macro_rules! has_interner {
     ($t:ty) => {
@@ -24,3 +27,6 @@ macro_rules! transitive_impl {
         }
     };
 }
+
+has_interner!(CallableSig);
+has_interner!(ReturnTypeImplTraits);

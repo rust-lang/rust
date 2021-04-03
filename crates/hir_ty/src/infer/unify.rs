@@ -2,7 +2,9 @@
 
 use std::borrow::Cow;
 
-use chalk_ir::{FloatTy, IntTy, TyVariableKind, UniverseIndex, VariableKind};
+use chalk_ir::{
+    interner::HasInterner, FloatTy, IntTy, TyVariableKind, UniverseIndex, VariableKind,
+};
 use ena::unify::{InPlaceUnificationTable, NoError, UnifyKey, UnifyValue};
 
 use super::{DomainGoal, InferenceContext};
@@ -34,7 +36,10 @@ where
 }
 
 #[derive(Debug)]
-pub(super) struct Canonicalized<T> {
+pub(super) struct Canonicalized<T>
+where
+    T: HasInterner<Interner = Interner>,
+{
     pub(super) value: Canonical<T>,
     free_vars: Vec<(InferenceVar, TyVariableKind)>,
 }
@@ -76,7 +81,10 @@ impl<'a, 'b> Canonicalizer<'a, 'b> {
         )
     }
 
-    fn into_canonicalized<T>(self, result: T) -> Canonicalized<T> {
+    fn into_canonicalized<T: HasInterner<Interner = Interner>>(
+        self,
+        result: T,
+    ) -> Canonicalized<T> {
         let kinds = self
             .free_vars
             .iter()
@@ -108,7 +116,7 @@ impl<'a, 'b> Canonicalizer<'a, 'b> {
     }
 }
 
-impl<T> Canonicalized<T> {
+impl<T: HasInterner<Interner = Interner>> Canonicalized<T> {
     pub(super) fn decanonicalize_ty(&self, ty: Ty) -> Ty {
         ty.fold_binders(
             &mut |ty, binders| {
