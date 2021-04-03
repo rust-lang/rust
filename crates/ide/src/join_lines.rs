@@ -88,8 +88,11 @@ fn remove_newline(edit: &mut TextEditBuilder, token: &SyntaxToken, offset: TextS
     }
 
     // The node is between two other nodes
-    let prev = token.prev_sibling_or_token().unwrap();
-    let next = token.next_sibling_or_token().unwrap();
+    let (prev, next) = match (token.prev_sibling_or_token(), token.next_sibling_or_token()) {
+        (Some(prev), Some(next)) => (prev, next),
+        _ => return,
+    };
+
     if is_trailing_comma(prev.kind(), next.kind()) {
         // Removes: trailing comma, newline (incl. surrounding whitespace)
         edit.delete(TextRange::new(prev.text_range().start(), token.text_range().end()));
@@ -826,6 +829,17 @@ fn main() {
 $0hello world
 ";
 }
+"#,
+        );
+    }
+    #[test]
+    fn join_last_line_empty() {
+        check_join_lines(
+            r#"
+fn main() {$0}
+"#,
+            r#"
+fn main() {$0}
 "#,
         );
     }
