@@ -493,10 +493,6 @@ impl Substitution {
         )
     }
 
-    pub(crate) fn build_for_generics(generic_params: &Generics) -> SubstsBuilder {
-        Substitution::builder(generic_params.len())
-    }
-
     fn builder(param_count: usize) -> SubstsBuilder {
         SubstsBuilder { vec: Vec::with_capacity(param_count), param_count }
     }

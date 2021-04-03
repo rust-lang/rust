@@ -19,11 +19,11 @@ use crate::{
     lower::lower_to_chalk_mutability,
     method_resolution, op,
     primitive::{self, UintTy},
-    to_assoc_type_id, to_chalk_trait_id,
+    to_chalk_trait_id,
     traits::{chalk::from_chalk, FnTrait, InEnvironment},
     utils::{generics, variant_data, Generics},
-    AdtId, Binders, CallableDefId, DomainGoal, FnPointer, FnSig, Interner, Rawness, Scalar,
-    Substitution, TraitRef, Ty, TyBuilder, TyKind,
+    AdtId, Binders, CallableDefId, FnPointer, FnSig, Interner, Rawness, Scalar, Substitution,
+    TraitRef, Ty, TyBuilder, TyKind,
 };
 
 use super::{
@@ -73,38 +73,34 @@ impl<'a> InferenceContext<'a> {
         let fn_once_trait = FnTrait::FnOnce.get_id(self.db, krate)?;
         let output_assoc_type =
             self.db.trait_data(fn_once_trait).associated_type_by_name(&name![Output])?;
-        let generic_params = generics(self.db.upcast(), fn_once_trait.into());
-        if generic_params.len() != 2 {
-            return None;
-        }
 
-        let mut param_builder = Substitution::builder(num_args);
         let mut arg_tys = vec![];
-        for _ in 0..num_args {
-            let arg = self.table.new_type_var();
-            param_builder = param_builder.push(arg.clone());
-            arg_tys.push(arg);
-        }
-        let parameters = param_builder.build();
+        let parameters = Substitution::builder(num_args)
+            .fill(repeat_with(|| {
+                let arg = self.table.new_type_var();
+                arg_tys.push(arg.clone());
+                arg
+            }))
+            .build();
         let arg_ty = TyKind::Tuple(num_args, parameters).intern(&Interner);
-        let substs =
-            Substitution::build_for_generics(&generic_params).push(ty.clone()).push(arg_ty).build();
+
+        let projection = {
+            let b = TyBuilder::assoc_type_projection(self.db, output_assoc_type);
+            if b.remaining() != 2 {
+                return None;
+            }
+            b.push(ty.clone()).push(arg_ty).build()
+        };
 
         let trait_env = self.trait_env.env.clone();
-        let implements_fn_trait: DomainGoal =
-            TraitRef { trait_id: to_chalk_trait_id(fn_once_trait), substitution: substs.clone() }
-                .cast(&Interner);
-        let goal = self.canonicalizer().canonicalize_obligation(InEnvironment {
-            goal: implements_fn_trait.clone(),
+        let obligation = InEnvironment {
+            goal: projection.trait_ref(self.db).cast(&Interner),
             environment: trait_env,
-        });
-        if self.db.trait_solve(krate, goal.value).is_some() {
-            self.push_obligation(implements_fn_trait);
-            let output_proj_ty = crate::ProjectionTy {
-                associated_ty_id: to_assoc_type_id(output_assoc_type),
-                substitution: substs,
-            };
-            let return_ty = self.normalize_projection_ty(output_proj_ty);
+        };
+        let canonical = self.canonicalizer().canonicalize_obligation(obligation.clone());
+        if self.db.trait_solve(krate, canonical.value).is_some() {
+            self.push_obligation(obligation.goal);
+            let return_ty = self.normalize_projection_ty(projection);
             Some((arg_tys, return_ty))
         } else {
             None
