@@ -1540,6 +1540,12 @@ fnptr_impls_args! { A, B, C, D, E, F, G, H, I, J, K, L }
 /// let raw_f2 = ptr::addr_of!(packed.f2);
 /// assert_eq!(unsafe { raw_f2.read_unaligned() }, 2);
 /// ```
+///
+/// See [`addr_of_mut`] for how to create a pointer to ininitialized data.
+/// Doing that with `addr_of` would not make much sense since one could only
+/// read the data, and that would be Undefined Behavior.
+///
+/// [`addr_of_mut`]: macro.addr_of_mut.html
 #[stable(feature = "raw_ref_macros", since = "1.51.0")]
 #[rustc_macro_transparency = "semitransparent"]
 #[allow_internal_unstable(raw_ref_op)]
@@ -1556,7 +1562,9 @@ pub macro addr_of($place:expr) {
 /// as all other references. This macro can create a raw pointer *without* creating
 /// a reference first.
 ///
-/// # Example
+/// # Examples
+///
+/// **Creating a pointer to unaligned data:**
 ///
 /// ```
 /// use std::ptr;
@@ -1572,6 +1580,23 @@ pub macro addr_of($place:expr) {
 /// let raw_f2 = ptr::addr_of_mut!(packed.f2);
 /// unsafe { raw_f2.write_unaligned(42); }
 /// assert_eq!({packed.f2}, 42); // `{...}` forces copying the field instead of creating a reference.
+/// ```
+///
+/// **Creating a pointer to uninitialized data:**
+///
+/// ```rust
+/// use std::{ptr, mem::MaybeUninit};
+///
+/// struct Demo {
+///     field: bool,
+/// }
+///
+/// let mut uninit = MaybeUninit::<Demo>::uninit();
+/// // `&uninit.as_mut().field` would create a reference to an uninitialized `bool`,
+/// // and thus be Undefined Behavior!
+/// let f1_ptr = unsafe { ptr::addr_of_mut!((*uninit.as_mut_ptr()).field) };
+/// unsafe { f1_ptr.write(true); }
+/// let init = unsafe { uninit.assume_init() };
 /// ```
 #[stable(feature = "raw_ref_macros", since = "1.51.0")]
 #[rustc_macro_transparency = "semitransparent"]
