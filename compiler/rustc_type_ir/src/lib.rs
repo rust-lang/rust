@@ -1,7 +1,3 @@
-#![feature(never_type)]
-#![feature(const_panic)]
-#![feature(control_flow_enum)]
-
 #[macro_use]
 extern crate bitflags;
 #[macro_use]
