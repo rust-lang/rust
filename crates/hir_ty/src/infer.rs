@@ -325,7 +325,7 @@ impl<'a> InferenceContext<'a> {
 
     /// Replaces Ty::Unknown by a new type var, so we can maybe still infer it.
     fn insert_type_vars_shallow(&mut self, ty: Ty) -> Ty {
-        match ty.interned(&Interner) {
+        match ty.kind(&Interner) {
             TyKind::Unknown => self.table.new_type_var(),
             _ => ty,
         }
@@ -438,7 +438,7 @@ impl<'a> InferenceContext<'a> {
     /// to do it as well.
     fn normalize_associated_types_in(&mut self, ty: Ty) -> Ty {
         let ty = self.resolve_ty_as_possible(ty);
-        ty.fold(&mut |ty| match ty.interned(&Interner) {
+        ty.fold(&mut |ty| match ty.kind(&Interner) {
             TyKind::Alias(AliasTy::Projection(proj_ty)) => {
                 self.normalize_projection_ty(proj_ty.clone())
             }

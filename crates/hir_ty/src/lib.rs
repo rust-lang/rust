@@ -312,7 +312,7 @@ impl TyKind {
 }
 
 impl Ty {
-    pub fn interned(&self, _interner: &Interner) -> &TyKind {
+    pub fn kind(&self, _interner: &Interner) -> &TyKind {
         &self.0
     }
 
@@ -846,14 +846,14 @@ impl Ty {
     }
 
     pub fn as_reference(&self) -> Option<(&Ty, Mutability)> {
-        match self.interned(&Interner) {
+        match self.kind(&Interner) {
             TyKind::Ref(mutability, ty) => Some((ty, *mutability)),
             _ => None,
         }
     }
 
     pub fn as_reference_or_ptr(&self) -> Option<(&Ty, Rawness, Mutability)> {
-        match self.interned(&Interner) {
+        match self.kind(&Interner) {
             TyKind::Ref(mutability, ty) => Some((ty, Rawness::Ref, *mutability)),
             TyKind::Raw(mutability, ty) => Some((ty, Rawness::RawPtr, *mutability)),
             _ => None,
@@ -863,7 +863,7 @@ impl Ty {
     pub fn strip_references(&self) -> &Ty {
         let mut t: &Ty = self;
 
-        while let TyKind::Ref(_mutability, ty) = t.interned(&Interner) {
+        while let TyKind::Ref(_mutability, ty) = t.kind(&Interner) {
             t = ty;
         }
 
@@ -871,21 +871,21 @@ impl Ty {
     }
 
     pub fn as_adt(&self) -> Option<(hir_def::AdtId, &Substitution)> {
-        match self.interned(&Interner) {
+        match self.kind(&Interner) {
             TyKind::Adt(AdtId(adt), parameters) => Some((*adt, parameters)),
             _ => None,
         }
     }
 
     pub fn as_tuple(&self) -> Option<&Substitution> {
-        match self.interned(&Interner) {
+        match self.kind(&Interner) {
             TyKind::Tuple(_, substs) => Some(substs),
             _ => None,
         }
     }
 
     pub fn as_generic_def(&self, db: &dyn HirDatabase) -> Option<GenericDefId> {
-        match *self.interned(&Interner) {
+        match *self.kind(&Interner) {
             TyKind::Adt(AdtId(adt), ..) => Some(adt.into()),
             TyKind::FnDef(callable, ..) => {
                 Some(db.lookup_intern_callable_def(callable.into()).into())
@@ -897,15 +897,15 @@ impl Ty {
     }
 
     pub fn is_never(&self) -> bool {
-        matches!(self.interned(&Interner), TyKind::Never)
+        matches!(self.kind(&Interner), TyKind::Never)
     }
 
     pub fn is_unknown(&self) -> bool {
-        matches!(self.interned(&Interner), TyKind::Unknown)
+        matches!(self.kind(&Interner), TyKind::Unknown)
     }
 
     pub fn equals_ctor(&self, other: &Ty) -> bool {
-        match (self.interned(&Interner), other.interned(&Interner)) {
+        match (self.kind(&Interner), other.kind(&Interner)) {
             (TyKind::Adt(adt, ..), TyKind::Adt(adt2, ..)) => adt == adt2,
             (TyKind::Slice(_), TyKind::Slice(_)) | (TyKind::Array(_), TyKind::Array(_)) => true,
             (TyKind::FnDef(def_id, ..), TyKind::FnDef(def_id2, ..)) => def_id == def_id2,
@@ -934,7 +934,7 @@ impl Ty {
 
     /// If this is a `dyn Trait` type, this returns the `Trait` part.
     fn dyn_trait_ref(&self) -> Option<&TraitRef> {
-        match self.interned(&Interner) {
+        match self.kind(&Interner) {
             TyKind::Dyn(dyn_ty) => {
                 dyn_ty.bounds.value.interned().get(0).and_then(|b| match b.skip_binders() {
                     WhereClause::Implemented(trait_ref) => Some(trait_ref),
@@ -951,7 +951,7 @@ impl Ty {
     }
 
     fn builtin_deref(&self) -> Option<Ty> {
-        match self.interned(&Interner) {
+        match self.kind(&Interner) {
             TyKind::Ref(.., ty) => Some(ty.clone()),
             TyKind::Raw(.., ty) => Some(ty.clone()),
             _ => None,
@@ -959,7 +959,7 @@ impl Ty {
     }
 
     pub fn callable_def(&self, db: &dyn HirDatabase) -> Option<CallableDefId> {
-        match self.interned(&Interner) {
+        match self.kind(&Interner) {
             &TyKind::FnDef(def, ..) => Some(db.lookup_intern_callable_def(def.into())),
             _ => None,
         }
@@ -974,7 +974,7 @@ impl Ty {
     }
 
     pub fn callable_sig(&self, db: &dyn HirDatabase) -> Option<CallableSig> {
-        match self.interned(&Interner) {
+        match self.kind(&Interner) {
             TyKind::Function(fn_ptr) => Some(CallableSig::from_fn_ptr(fn_ptr)),
             TyKind::FnDef(def, parameters) => {
                 let callable_def = db.lookup_intern_callable_def((*def).into());
@@ -992,7 +992,7 @@ impl Ty {
     /// Returns the type parameters of this type if it has some (i.e. is an ADT
     /// or function); so if `self` is `Option<u32>`, this returns the `u32`.
     pub fn substs(&self) -> Option<&Substitution> {
-        match self.interned(&Interner) {
+        match self.kind(&Interner) {
             TyKind::Adt(_, substs)
             | TyKind::FnDef(_, substs)
             | TyKind::Function(FnPointer { substs, .. })
@@ -1018,7 +1018,7 @@ impl Ty {
     }
 
     pub fn impl_trait_bounds(&self, db: &dyn HirDatabase) -> Option<Vec<QuantifiedWhereClause>> {
-        match self.interned(&Interner) {
+        match self.kind(&Interner) {
             TyKind::OpaqueType(opaque_ty_id, ..) => {
                 match db.lookup_intern_impl_trait_id((*opaque_ty_id).into()) {
                     ImplTraitId::AsyncBlockTypeImplTrait(def, _expr) => {
@@ -1093,7 +1093,7 @@ impl Ty {
     }
 
     pub fn associated_type_parent_trait(&self, db: &dyn HirDatabase) -> Option<TraitId> {
-        match self.interned(&Interner) {
+        match self.kind(&Interner) {
             TyKind::AssociatedType(id, ..) => {
                 match from_assoc_type_id(*id).lookup(db.upcast()).container {
                     AssocContainerId::TraitId(trait_id) => Some(trait_id),
@@ -1201,7 +1201,7 @@ pub trait TypeWalk {
         Self: Sized,
     {
         self.fold_binders(
-            &mut |ty, binders| match ty.interned(&Interner) {
+            &mut |ty, binders| match ty.kind(&Interner) {
                 TyKind::BoundVar(bound) if bound.debruijn >= binders => {
                     TyKind::BoundVar(bound.shifted_in_from(n)).intern(&Interner)
                 }
@@ -1217,7 +1217,7 @@ pub trait TypeWalk {
         Self: Sized + std::fmt::Debug,
     {
         self.fold_binders(
-            &mut |ty, binders| match ty.interned(&Interner) {
+            &mut |ty, binders| match ty.kind(&Interner) {
                 TyKind::BoundVar(bound) if bound.debruijn >= binders => {
                     TyKind::BoundVar(bound.shifted_out_to(n).unwrap_or(bound.clone()))
                         .intern(&Interner)
@@ -1231,7 +1231,7 @@ pub trait TypeWalk {
 
 impl TypeWalk for Ty {
     fn walk(&self, f: &mut impl FnMut(&Ty)) {
-        match self.interned(&Interner) {
+        match self.kind(&Interner) {
             TyKind::Alias(AliasTy::Projection(p_ty)) => {
                 for t in p_ty.substitution.iter(&Interner) {
                     t.walk(f);

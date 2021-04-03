@@ -47,7 +47,7 @@ impl TyFingerprint {
     /// have impls: if we have some `struct S`, we can have an `impl S`, but not
     /// `impl &S`. Hence, this will return `None` for reference types and such.
     pub fn for_impl(ty: &Ty) -> Option<TyFingerprint> {
-        let fp = match *ty.interned(&Interner) {
+        let fp = match *ty.kind(&Interner) {
             TyKind::Str => TyFingerprint::Str,
             TyKind::Never => TyFingerprint::Never,
             TyKind::Slice(..) => TyFingerprint::Slice,
@@ -243,7 +243,7 @@ impl Ty {
 
         let mod_to_crate_ids = |module: ModuleId| Some(std::iter::once(module.krate()).collect());
 
-        let lang_item_targets = match self.interned(&Interner) {
+        let lang_item_targets = match self.kind(&Interner) {
             TyKind::Adt(AdtId(def_id), _) => {
                 return mod_to_crate_ids(def_id.module(db.upcast()));
             }
@@ -563,7 +563,7 @@ fn iterate_trait_method_candidates(
     // if ty is `dyn Trait`, the trait doesn't need to be in scope
     let inherent_trait =
         self_ty.value.dyn_trait().into_iter().flat_map(|t| all_super_traits(db.upcast(), t));
-    let env_traits = if let TyKind::Placeholder(_) = self_ty.value.interned(&Interner) {
+    let env_traits = if let TyKind::Placeholder(_) = self_ty.value.kind(&Interner) {
         // if we have `T: Trait` in the param env, the trait doesn't need to be in scope
         env.traits_in_scope_from_clauses(&self_ty.value)
             .flat_map(|t| all_super_traits(db.upcast(), t))
@@ -741,7 +741,7 @@ pub(crate) fn inherent_impl_substs(
 fn fallback_bound_vars(s: Substitution, num_vars_to_keep: usize) -> Substitution {
     s.fold_binders(
         &mut |ty, binders| {
-            if let TyKind::BoundVar(bound) = ty.interned(&Interner) {
+            if let TyKind::BoundVar(bound) = ty.kind(&Interner) {
                 if bound.index >= num_vars_to_keep && bound.debruijn >= binders {
                     TyKind::Unknown.intern(&Interner)
                 } else {
@@ -839,9 +839,7 @@ fn autoderef_method_receiver(
 ) -> Vec<Canonical<Ty>> {
     let mut deref_chain: Vec<_> = autoderef::autoderef(db, Some(krate), ty).collect();
     // As a last step, we can do array unsizing (that's the only unsizing that rustc does for method receivers!)
-    if let Some(TyKind::Array(parameters)) =
-        deref_chain.last().map(|ty| ty.value.interned(&Interner))
-    {
+    if let Some(TyKind::Array(parameters)) = deref_chain.last().map(|ty| ty.value.kind(&Interner)) {
         let kinds = deref_chain.last().unwrap().binders.clone();
         let unsized_ty = TyKind::Slice(parameters.clone()).intern(&Interner);
         deref_chain.push(Canonical { value: unsized_ty, binders: kinds })

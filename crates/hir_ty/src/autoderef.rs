@@ -131,7 +131,7 @@ fn deref_by_trait(
             // new variables in that case
 
             for i in 1..vars.0.binders.len(&Interner) {
-                if vars.0.value.at(&Interner, i - 1).assert_ty_ref(&Interner).interned(&Interner)
+                if vars.0.value.at(&Interner, i - 1).assert_ty_ref(&Interner).kind(&Interner)
                     != &TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, i - 1))
                 {
                     warn!("complex solution for derefing {:?}: {:?}, ignoring", ty.goal, solution);

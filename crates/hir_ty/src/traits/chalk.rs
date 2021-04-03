@@ -92,7 +92,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
             ty: &Ty,
             binders: &CanonicalVarKinds<Interner>,
         ) -> Option<chalk_ir::TyVariableKind> {
-            if let TyKind::BoundVar(bv) = ty.interned(&Interner) {
+            if let TyKind::BoundVar(bv) = ty.kind(&Interner) {
                 let binders = binders.as_slice(&Interner);
                 if bv.debruijn == DebruijnIndex::INNERMOST {
                     if let chalk_ir::VariableKind::Ty(tk) = binders[bv.index].kind {

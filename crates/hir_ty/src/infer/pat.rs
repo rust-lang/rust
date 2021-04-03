@@ -211,7 +211,7 @@ impl<'a> InferenceContext<'a> {
                 return inner_ty;
             }
             Pat::Slice { prefix, slice, suffix } => {
-                let (container_ty, elem_ty): (fn(_) -> _, _) = match expected.interned(&Interner) {
+                let (container_ty, elem_ty): (fn(_) -> _, _) = match expected.kind(&Interner) {
                     TyKind::Array(st) => (TyKind::Array, st.clone()),
                     TyKind::Slice(st) => (TyKind::Slice, st.clone()),
                     _ => (TyKind::Slice, self.err_ty()),

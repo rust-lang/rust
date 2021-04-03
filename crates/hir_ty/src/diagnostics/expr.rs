@@ -378,7 +378,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             _ => return,
         };
 
-        let (params, required) = match mismatch.expected.interned(&Interner) {
+        let (params, required) = match mismatch.expected.kind(&Interner) {
             TyKind::Adt(AdtId(hir_def::AdtId::EnumId(enum_id)), ref parameters)
                 if *enum_id == core_result_enum =>
             {

@@ -1711,22 +1711,22 @@ impl Type {
     }
 
     pub fn is_unit(&self) -> bool {
-        matches!(self.ty.interned(&Interner), TyKind::Tuple(0, ..))
+        matches!(self.ty.kind(&Interner), TyKind::Tuple(0, ..))
     }
     pub fn is_bool(&self) -> bool {
-        matches!(self.ty.interned(&Interner), TyKind::Scalar(Scalar::Bool))
+        matches!(self.ty.kind(&Interner), TyKind::Scalar(Scalar::Bool))
     }
 
     pub fn is_mutable_reference(&self) -> bool {
-        matches!(self.ty.interned(&Interner), TyKind::Ref(hir_ty::Mutability::Mut, ..))
+        matches!(self.ty.kind(&Interner), TyKind::Ref(hir_ty::Mutability::Mut, ..))
     }
 
     pub fn is_usize(&self) -> bool {
-        matches!(self.ty.interned(&Interner), TyKind::Scalar(Scalar::Uint(UintTy::Usize)))
+        matches!(self.ty.kind(&Interner), TyKind::Scalar(Scalar::Uint(UintTy::Usize)))
     }
 
     pub fn remove_ref(&self) -> Option<Type> {
-        match &self.ty.interned(&Interner) {
+        match &self.ty.kind(&Interner) {
             TyKind::Ref(.., ty) => Some(self.derived(ty.clone())),
             _ => None,
         }
@@ -1855,15 +1855,15 @@ impl Type {
     }
 
     pub fn is_closure(&self) -> bool {
-        matches!(&self.ty.interned(&Interner), TyKind::Closure { .. })
+        matches!(&self.ty.kind(&Interner), TyKind::Closure { .. })
     }
 
     pub fn is_fn(&self) -> bool {
-        matches!(&self.ty.interned(&Interner), TyKind::FnDef(..) | TyKind::Function { .. })
+        matches!(&self.ty.kind(&Interner), TyKind::FnDef(..) | TyKind::Function { .. })
     }
 
     pub fn is_packed(&self, db: &dyn HirDatabase) -> bool {
-        let adt_id = match self.ty.interned(&Interner) {
+        let adt_id = match self.ty.kind(&Interner) {
             &TyKind::Adt(hir_ty::AdtId(adt_id), ..) => adt_id,
             _ => return false,
         };
@@ -1876,14 +1876,14 @@ impl Type {
     }
 
     pub fn is_raw_ptr(&self) -> bool {
-        matches!(&self.ty.interned(&Interner), TyKind::Raw(..))
+        matches!(&self.ty.kind(&Interner), TyKind::Raw(..))
     }
 
     pub fn contains_unknown(&self) -> bool {
         return go(&self.ty);
 
         fn go(ty: &Ty) -> bool {
-            match ty.interned(&Interner) {
+            match ty.kind(&Interner) {
                 TyKind::Unknown => true,
 
                 TyKind::Adt(_, substs)
@@ -1914,7 +1914,7 @@ impl Type {
     }
 
     pub fn fields(&self, db: &dyn HirDatabase) -> Vec<(Field, Type)> {
-        let (variant_id, substs) = match self.ty.interned(&Interner) {
+        let (variant_id, substs) = match self.ty.kind(&Interner) {
             &TyKind::Adt(hir_ty::AdtId(AdtId::StructId(s)), ref substs) => (s.into(), substs),
             &TyKind::Adt(hir_ty::AdtId(AdtId::UnionId(u)), ref substs) => (u.into(), substs),
             _ => return Vec::new(),
@@ -1931,7 +1931,7 @@ impl Type {
     }
 
     pub fn tuple_fields(&self, _db: &dyn HirDatabase) -> Vec<Type> {
-        if let TyKind::Tuple(_, substs) = &self.ty.interned(&Interner) {
+        if let TyKind::Tuple(_, substs) = &self.ty.kind(&Interner) {
             substs
                 .iter(&Interner)
                 .map(|ty| self.derived(ty.assert_ty_ref(&Interner).clone()))
@@ -2120,7 +2120,7 @@ impl Type {
 
         fn walk_type(db: &dyn HirDatabase, type_: &Type, cb: &mut impl FnMut(Type)) {
             let ty = type_.ty.strip_references();
-            match ty.interned(&Interner) {
+            match ty.kind(&Interner) {
                 TyKind::Adt(..) => {
                     cb(type_.derived(ty.clone()));
                 }
