@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+## [1.4.37] 2021-04-03
+
+### Changed
+
+- `rustc-ap-*` crates updated to v712.0.0
+
+### Fixed
+- Resolve idempotence issue related to indentation of macro defs that contain or-patterns with inner comments ([#4603](https://github.com/rust-lang/rustfmt/issues/4603))
+- Addressed various clippy and rustc warnings
+
+### Install/Download Options
+- **crates.io package** - *pending*
+- **rustup (nightly)** - *pending*
+- **GitHub Release Binaries** - [Release v1.4.37](https://github.com/rust-lang/rustfmt/releases/tag/v1.4.37)
+- **Build from source** - [Tag v1.4.37](https://github.com/rust-lang/rustfmt/tree/v1.4.37), see instructions for how to [install rustfmt from source][install-from-source]
+
 ## [1.4.36] 2021-02-07
 
 ### Changed
