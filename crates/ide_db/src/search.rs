@@ -4,10 +4,13 @@
 //! get a super-set of matches. Then, we we confirm each match using precise
 //! name resolution.
 
-use std::{convert::TryInto, mem};
+use std::{convert::TryInto, iter, mem};
 
 use base_db::{FileId, FileRange, SourceDatabase, SourceDatabaseExt};
-use hir::{DefWithBody, HasAttrs, HasSource, InFile, ModuleSource, Semantics, Visibility};
+use either::Either;
+use hir::{
+    DefWithBody, HasAttrs, HasSource, InFile, ModuleDef, ModuleSource, Semantics, Visibility,
+};
 use once_cell::unsync::Lazy;
 use rustc_hash::FxHashMap;
 use syntax::{ast, match_ast, AstNode, TextRange, TextSize};
@@ -295,7 +298,7 @@ impl Definition {
     }
 
     pub fn usages<'a>(&'a self, sema: &'a Semantics<RootDatabase>) -> FindUsages<'a> {
-        FindUsages { def: self, sema, scope: None }
+        FindUsages { def: self, sema, scope: None, include_self_kw_refs: false }
     }
 }
 
@@ -303,9 +306,15 @@ pub struct FindUsages<'a> {
     def: &'a Definition,
     sema: &'a Semantics<'a, RootDatabase>,
     scope: Option<SearchScope>,
+    include_self_kw_refs: bool,
 }
 
 impl<'a> FindUsages<'a> {
+    pub fn include_self_kw_refs(mut self, include: bool) -> FindUsages<'a> {
+        self.include_self_kw_refs = include;
+        self
+    }
+
     pub fn in_scope(self, scope: SearchScope) -> FindUsages<'a> {
         self.set_scope(Some(scope))
     }
@@ -352,6 +361,8 @@ impl<'a> FindUsages<'a> {
         };
 
         let pat = name.as_str();
+        let search_for_self = self.include_self_kw_refs;
+
         for (file_id, search_range) in search_scope {
             let text = sema.db.file_text(file_id);
             let search_range =
@@ -359,7 +370,13 @@ impl<'a> FindUsages<'a> {
 
             let tree = Lazy::new(|| sema.parse(file_id).syntax().clone());
 
-            for (idx, _) in text.match_indices(pat) {
+            let matches = text.match_indices(pat).chain(if search_for_self {
+                Either::Left(text.match_indices("Self"))
+            } else {
+                Either::Right(iter::empty())
+            });
+
+            for (idx, _) in matches {
                 let offset: TextSize = idx.try_into().unwrap();
                 if !search_range.contains_inclusive(offset) {
                     continue;
@@ -413,6 +430,24 @@ impl<'a> FindUsages<'a> {
         sink: &mut dyn FnMut(FileId, FileReference) -> bool,
     ) -> bool {
         match NameRefClass::classify(self.sema, &name_ref) {
+            Some(NameRefClass::Definition(Definition::SelfType(impl_))) => {
+                let ty = impl_.self_ty(self.sema.db);
+
+                if let Some(adt) = ty.as_adt() {
+                    if &Definition::ModuleDef(ModuleDef::Adt(adt)) == self.def {
+                        let FileRange { file_id, range } =
+                            self.sema.original_range(name_ref.syntax());
+                        let reference = FileReference {
+                            range,
+                            name: ast::NameLike::NameRef(name_ref.clone()),
+                            access: None,
+                        };
+                        return sink(file_id, reference);
+                    }
+                }
+
+                false
+            }
             Some(NameRefClass::Definition(def)) if &def == self.def => {
                 let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
                 let reference = FileReference {
