@@ -2912,7 +2912,7 @@ declare_lint! {
     /// lint, you can first cast to a `usize` and then to the integer type, e.g. `ptr as usize as
     /// u32`.
     pub INVALID_PTR_TO_INT_CAST,
-    Allow,
+    Deny,
     "detects pointers casts to integer types other than `usize` or `u64`",
 }
 
