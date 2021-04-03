@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 // min-lldb-version: 310
 // ignore-gdb-version: 7.11.90 - 7.12.9
 // ignore-test // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155

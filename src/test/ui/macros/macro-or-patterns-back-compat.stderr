@@ -1,29 +1,29 @@
 error: the meaning of the `pat` fragment specifier is changing in Rust 2021, which may affect this macro
-  --> $DIR/macro-or-patterns-back-compat.rs:7:21
+  --> $DIR/macro-or-patterns-back-compat.rs:6:21
    |
 LL | macro_rules! foo { ($x:pat | $y:pat) => {} }
    |                     ^^^^^^ help: use pat2015 to preserve semantics: `$x:pat2015`
    |
 note: the lint level is defined here
-  --> $DIR/macro-or-patterns-back-compat.rs:5:9
+  --> $DIR/macro-or-patterns-back-compat.rs:4:9
    |
 LL | #![deny(or_patterns_back_compat)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: the meaning of the `pat` fragment specifier is changing in Rust 2021, which may affect this macro
-  --> $DIR/macro-or-patterns-back-compat.rs:8:23
+  --> $DIR/macro-or-patterns-back-compat.rs:7:23
    |
 LL | macro_rules! bar { ($($x:pat)+ | $($y:pat)+) => {} }
    |                       ^^^^^^ help: use pat2015 to preserve semantics: `$x:pat2015`
 
 error: the meaning of the `pat` fragment specifier is changing in Rust 2021, which may affect this macro
-  --> $DIR/macro-or-patterns-back-compat.rs:11:21
+  --> $DIR/macro-or-patterns-back-compat.rs:10:21
    |
 LL | macro_rules! ogg { ($x:pat | $y:pat2015) => {} }
    |                     ^^^^^^ help: use pat2015 to preserve semantics: `$x:pat2015`
 
 error: the meaning of the `pat` fragment specifier is changing in Rust 2021, which may affect this macro
-  --> $DIR/macro-or-patterns-back-compat.rs:13:26
+  --> $DIR/macro-or-patterns-back-compat.rs:12:26
    |
 LL |     ( $expr:expr , $( $( $pat:pat )|+ => $expr_arm:expr ),+ ) => {
    |                          ^^^^^^^^ help: use pat2015 to preserve semantics: `$pat:pat2015`

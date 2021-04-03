@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 // run-rustfix
 
 #![feature(edition_macro_pats)]
