@@ -754,7 +754,7 @@ impl CallableSig {
 
     pub fn from_fn_ptr(fn_ptr: &FnPointer) -> CallableSig {
         CallableSig {
-            // FIXME: what to do about lifetime params?
+            // FIXME: what to do about lifetime params? -> return PolyFnSig
             params_and_return: fn_ptr
                 .substs
                 .clone()
@@ -764,16 +764,6 @@ impl CallableSig {
                 .map(|arg| arg.assert_ty_ref(&Interner).clone())
                 .collect(),
             is_varargs: fn_ptr.sig.variadic,
-        }
-    }
-
-    pub fn from_substs(substs: &Substitution) -> CallableSig {
-        CallableSig {
-            params_and_return: substs
-                .iter(&Interner)
-                .map(|arg| arg.assert_ty_ref(&Interner).clone())
-                .collect(),
-            is_varargs: false,
         }
     }
 
