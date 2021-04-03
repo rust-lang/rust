@@ -792,7 +792,10 @@ fn pat_constructor(cx: &MatchCheckCtx, pat: PatIdOrWild) -> MatchCheckResult<Opt
         Pat::Tuple { .. } => {
             let pat_id = pat.as_id().expect("we already know this pattern is not a wild");
             Some(Constructor::Tuple {
-                arity: cx.infer.type_of_pat[pat_id].as_tuple().ok_or(MatchCheckErr::Unknown)?.len(),
+                arity: cx.infer.type_of_pat[pat_id]
+                    .as_tuple()
+                    .ok_or(MatchCheckErr::Unknown)?
+                    .len(&Interner),
             })
         }
         Pat::Lit(lit_expr) => match cx.body.exprs[lit_expr] {

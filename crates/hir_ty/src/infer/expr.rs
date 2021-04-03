@@ -266,7 +266,7 @@ impl<'a> InferenceContext<'a> {
                 let sig_ty = TyKind::Function(FnPointer {
                     num_args: sig_tys.len() - 1,
                     sig: FnSig { abi: (), safety: chalk_ir::Safety::Safe, variadic: false },
-                    substs: Substitution(sig_tys.clone().into()),
+                    substs: Substitution::from_iter(&Interner, sig_tys.clone()),
                 })
                 .intern(&Interner);
                 let closure_id = self.db.intern_closure((self.owner, tgt_expr)).into();
@@ -406,7 +406,7 @@ impl<'a> InferenceContext<'a> {
 
                 self.unify(&ty, &expected.ty);
 
-                let substs = ty.substs().cloned().unwrap_or_else(Substitution::empty);
+                let substs = ty.substs().cloned().unwrap_or_else(|| Substitution::empty(&Interner));
                 let field_types = def_id.map(|it| self.db.field_types(it)).unwrap_or_default();
                 let variant_data = def_id.map(|it| variant_data(self.db.upcast(), it));
                 for field in fields.iter() {
@@ -456,9 +456,13 @@ impl<'a> InferenceContext<'a> {
                             .unwrap_or(true)
                     };
                     match canonicalized.decanonicalize_ty(derefed_ty.value).interned(&Interner) {
-                        TyKind::Tuple(_, substs) => {
-                            name.as_tuple_index().and_then(|idx| substs.0.get(idx).cloned())
-                        }
+                        TyKind::Tuple(_, substs) => name.as_tuple_index().and_then(|idx| {
+                            substs
+                                .interned(&Interner)
+                                .get(idx)
+                                .map(|a| a.assert_ty_ref(&Interner))
+                                .cloned()
+                        }),
                         TyKind::Adt(AdtId(hir_def::AdtId::StructId(s)), parameters) => {
                             let local_id = self.db.struct_data(*s).variant_data.field(name)?;
                             let field = FieldId { parent: (*s).into(), local_id };
@@ -635,7 +639,7 @@ impl<'a> InferenceContext<'a> {
                 let rhs_ty = rhs.map(|e| self.infer_expr(e, &rhs_expect));
                 match (range_type, lhs_ty, rhs_ty) {
                     (RangeOp::Exclusive, None, None) => match self.resolve_range_full() {
-                        Some(adt) => Ty::adt_ty(adt, Substitution::empty()),
+                        Some(adt) => Ty::adt_ty(adt, Substitution::empty(&Interner)),
                         None => self.err_ty(),
                     },
                     (RangeOp::Exclusive, None, Some(ty)) => match self.resolve_range_to() {
@@ -694,8 +698,8 @@ impl<'a> InferenceContext<'a> {
             Expr::Tuple { exprs } => {
                 let mut tys = match expected.ty.interned(&Interner) {
                     TyKind::Tuple(_, substs) => substs
-                        .iter()
-                        .cloned()
+                        .iter(&Interner)
+                        .map(|a| a.assert_ty_ref(&Interner).clone())
                         .chain(repeat_with(|| self.table.new_type_var()))
                         .take(exprs.len())
                         .collect::<Vec<_>>(),
@@ -706,7 +710,7 @@ impl<'a> InferenceContext<'a> {
                     self.infer_expr_coerce(*expr, &Expectation::has_type(ty.clone()));
                 }
 
-                TyKind::Tuple(tys.len(), Substitution(tys.into())).intern(&Interner)
+                TyKind::Tuple(tys.len(), Substitution::from_iter(&Interner, tys)).intern(&Interner)
             }
             Expr::Array(array) => {
                 let elem_ty = match expected.ty.interned(&Interner) {
@@ -953,7 +957,7 @@ impl<'a> InferenceContext<'a> {
             substs.push(self.err_ty());
         }
         assert_eq!(substs.len(), total_len);
-        Substitution(substs.into())
+        Substitution::from_iter(&Interner, substs)
     }
 
     fn register_obligations_for_call(&mut self, callable_ty: &Ty) {

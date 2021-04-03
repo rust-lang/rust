@@ -178,9 +178,10 @@ impl<'a> TyLoweringContext<'a> {
             }
             TypeRef::Placeholder => TyKind::Unknown.intern(&Interner),
             TypeRef::Fn(params, is_varargs) => {
-                let substs = Substitution(params.iter().map(|tr| self.lower_ty(tr)).collect());
+                let substs =
+                    Substitution::from_iter(&Interner, params.iter().map(|tr| self.lower_ty(tr)));
                 TyKind::Function(FnPointer {
-                    num_args: substs.len() - 1,
+                    num_args: substs.len(&Interner) - 1,
                     sig: FnSig { abi: (), safety: Safety::Safe, variadic: *is_varargs },
                     substs,
                 })
@@ -625,7 +626,7 @@ impl<'a> TyLoweringContext<'a> {
 
                 for default_ty in defaults.iter().skip(substs.len()) {
                     // each default can depend on the previous parameters
-                    let substs_so_far = Substitution(substs.clone().into());
+                    let substs_so_far = Substitution::from_iter(&Interner, substs.clone());
                     substs.push(default_ty.clone().subst(&substs_so_far));
                 }
             }
@@ -638,7 +639,7 @@ impl<'a> TyLoweringContext<'a> {
         }
         assert_eq!(substs.len(), total_len);
 
-        Substitution(substs.into())
+        Substitution::from_iter(&Interner, substs)
     }
 
     fn lower_trait_ref_from_path(
@@ -1062,7 +1063,7 @@ fn type_for_fn(db: &dyn HirDatabase, def: FunctionId) -> Binders<Ty> {
     let generics = generics(db.upcast(), def.into());
     let substs = Substitution::bound_vars(&generics, DebruijnIndex::INNERMOST);
     Binders::new(
-        substs.len(),
+        substs.len(&Interner),
         TyKind::FnDef(CallableDefId::FunctionId(def).to_chalk(db), substs).intern(&Interner),
     )
 }
@@ -1107,7 +1108,7 @@ fn type_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> Binders<T
     let generics = generics(db.upcast(), def.into());
     let substs = Substitution::bound_vars(&generics, DebruijnIndex::INNERMOST);
     Binders::new(
-        substs.len(),
+        substs.len(&Interner),
         TyKind::FnDef(CallableDefId::StructId(def).to_chalk(db), substs).intern(&Interner),
     )
 }
@@ -1134,7 +1135,7 @@ fn type_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId) -
     let generics = generics(db.upcast(), def.parent.into());
     let substs = Substitution::bound_vars(&generics, DebruijnIndex::INNERMOST);
     Binders::new(
-        substs.len(),
+        substs.len(&Interner),
         TyKind::FnDef(CallableDefId::EnumVariantId(def).to_chalk(db), substs).intern(&Interner),
     )
 }
@@ -1142,7 +1143,7 @@ fn type_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId) -
 fn type_for_adt(db: &dyn HirDatabase, adt: AdtId) -> Binders<Ty> {
     let generics = generics(db.upcast(), adt.into());
     let substs = Substitution::bound_vars(&generics, DebruijnIndex::INNERMOST);
-    Binders::new(substs.len(), Ty::adt_ty(adt, substs))
+    Binders::new(substs.len(&Interner), Ty::adt_ty(adt, substs))
 }
 
 fn type_for_type_alias(db: &dyn HirDatabase, t: TypeAliasId) -> Binders<Ty> {

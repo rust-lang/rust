@@ -5,7 +5,7 @@ use chalk_ir::{
     interner::HasInterner,
 };
 
-use crate::{AliasEq, DomainGoal, Interner, TraitRef, WhereClause};
+use crate::{AliasEq, DomainGoal, GenericArg, GenericArgData, Interner, TraitRef, Ty, WhereClause};
 
 macro_rules! has_interner {
     ($t:ty) => {
@@ -17,6 +17,8 @@ macro_rules! has_interner {
 
 has_interner!(WhereClause);
 has_interner!(DomainGoal);
+has_interner!(GenericArg);
+has_interner!(Ty);
 
 impl CastTo<WhereClause> for TraitRef {
     fn cast_to(self, _interner: &Interner) -> WhereClause {
@@ -36,6 +38,12 @@ impl CastTo<DomainGoal> for WhereClause {
     }
 }
 
+impl CastTo<GenericArg> for Ty {
+    fn cast_to(self, interner: &Interner) -> GenericArg {
+        GenericArg::new(interner, GenericArgData::Ty(self))
+    }
+}
+
 macro_rules! transitive_impl {
     ($a:ty, $b:ty, $c:ty) => {
         impl CastTo<$c> for $a {
@@ -51,3 +59,15 @@ macro_rules! transitive_impl {
 
 transitive_impl!(TraitRef, WhereClause, DomainGoal);
 transitive_impl!(AliasEq, WhereClause, DomainGoal);
+
+macro_rules! reflexive_impl {
+    ($a:ty) => {
+        impl CastTo<$a> for $a {
+            fn cast_to(self, _interner: &Interner) -> $a {
+                self
+            }
+        }
+    };
+}
+
+reflexive_impl!(GenericArg);

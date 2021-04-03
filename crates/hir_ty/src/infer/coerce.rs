@@ -100,7 +100,7 @@ impl<'a> InferenceContext<'a> {
             },
 
             (TyKind::Closure(.., substs), TyKind::Function { .. }) => {
-                from_ty = substs[0].clone();
+                from_ty = substs.at(&Interner, 0).assert_ty_ref(&Interner).clone();
             }
 
             _ => {}

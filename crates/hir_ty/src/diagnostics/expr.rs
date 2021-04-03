@@ -392,7 +392,9 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             _ => return,
         };
 
-        if params.len() > 0 && params[0] == mismatch.actual {
+        if params.len(&Interner) > 0
+            && params.at(&Interner, 0).ty(&Interner) == Some(&mismatch.actual)
+        {
             let (_, source_map) = db.body_with_source_map(self.owner);
 
             if let Ok(source_ptr) = source_map.expr_syntax(id) {

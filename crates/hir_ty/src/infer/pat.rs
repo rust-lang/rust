@@ -35,7 +35,7 @@ impl<'a> InferenceContext<'a> {
         }
         self.unify(&ty, expected);
 
-        let substs = ty.substs().cloned().unwrap_or_else(Substitution::empty);
+        let substs = ty.substs().cloned().unwrap_or_else(|| Substitution::empty(&Interner));
 
         let field_tys = def.map(|it| self.db.field_types(it)).unwrap_or_default();
         let (pre, post) = match ellipsis {
@@ -74,7 +74,7 @@ impl<'a> InferenceContext<'a> {
 
         self.unify(&ty, expected);
 
-        let substs = ty.substs().cloned().unwrap_or_else(Substitution::empty);
+        let substs = ty.substs().cloned().unwrap_or_else(|| Substitution::empty(&Interner));
 
         let field_tys = def.map(|it| self.db.field_types(it)).unwrap_or_default();
         for subpat in subpats {
@@ -134,7 +134,8 @@ impl<'a> InferenceContext<'a> {
                 };
                 let n_uncovered_patterns = expectations.len().saturating_sub(args.len());
                 let err_ty = self.err_ty();
-                let mut expectations_iter = expectations.iter().chain(repeat(&err_ty));
+                let mut expectations_iter =
+                    expectations.iter().map(|a| a.assert_ty_ref(&Interner)).chain(repeat(&err_ty));
                 let mut infer_pat = |(&pat, ty)| self.infer_pat(pat, ty, default_bm);
 
                 let mut inner_tys = Vec::with_capacity(n_uncovered_patterns + args.len());
@@ -142,7 +143,8 @@ impl<'a> InferenceContext<'a> {
                 inner_tys.extend(expectations_iter.by_ref().take(n_uncovered_patterns).cloned());
                 inner_tys.extend(post.iter().zip(expectations_iter).map(infer_pat));
 
-                TyKind::Tuple(inner_tys.len(), Substitution(inner_tys.into())).intern(&Interner)
+                TyKind::Tuple(inner_tys.len(), Substitution::from_iter(&Interner, inner_tys))
+                    .intern(&Interner)
             }
             Pat::Or(ref pats) => {
                 if let Some((first_pat, rest)) = pats.split_first() {
@@ -236,9 +238,10 @@ impl<'a> InferenceContext<'a> {
             Pat::Box { inner } => match self.resolve_boxed_box() {
                 Some(box_adt) => {
                     let (inner_ty, alloc_ty) = match expected.as_adt() {
-                        Some((adt, subst)) if adt == box_adt => {
-                            (subst[0].clone(), subst.get(1).cloned())
-                        }
+                        Some((adt, subst)) if adt == box_adt => (
+                            subst.at(&Interner, 0).assert_ty_ref(&Interner).clone(),
+                            subst.interned(&Interner).get(1).and_then(|a| a.ty(&Interner).cloned()),
+                        ),
                         _ => (self.result.standard_types.unknown.clone(), None),
                     };
 

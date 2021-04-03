@@ -720,7 +720,7 @@ pub(crate) fn inherent_impl_substs(
             chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General),
             UniverseIndex::ROOT,
         ))
-        .take(vars.len()),
+        .take(vars.len(&Interner)),
     );
     let tys = Canonical {
         binders: CanonicalVarKinds::from_iter(&Interner, kinds),
@@ -732,7 +732,8 @@ pub(crate) fn inherent_impl_substs(
     // Unknown. I think this can only really happen if self_ty contained
     // Unknown, and in that case we want the result to contain Unknown in those
     // places again.
-    substs.map(|s| fallback_bound_vars(s.suffix(vars.len()), self_ty.binders.len(&Interner)))
+    substs
+        .map(|s| fallback_bound_vars(s.suffix(vars.len(&Interner)), self_ty.binders.len(&Interner)))
 }
 
 /// This replaces any 'free' Bound vars in `s` (i.e. those with indices past
@@ -821,7 +822,7 @@ fn generic_implements_goal(
             chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General),
             UniverseIndex::ROOT,
         ))
-        .take(substs.len() - 1),
+        .take(substs.len(&Interner) - 1),
     );
     let trait_ref = TraitRef { trait_id: to_chalk_trait_id(trait_), substitution: substs };
     let obligation = trait_ref.cast(&Interner);

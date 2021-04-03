@@ -131,7 +131,7 @@ fn deref_by_trait(
             // new variables in that case
 
             for i in 1..vars.0.binders.len(&Interner) {
-                if vars.0.value[i - 1].interned(&Interner)
+                if vars.0.value.at(&Interner, i - 1).assert_ty_ref(&Interner).interned(&Interner)
                     != &TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, i - 1))
                 {
                     warn!("complex solution for derefing {:?}: {:?}, ignoring", ty.goal, solution);
@@ -139,7 +139,12 @@ fn deref_by_trait(
                 }
             }
             Some(Canonical {
-                value: vars.0.value[vars.0.value.len() - 1].clone(),
+                value: vars
+                    .0
+                    .value
+                    .at(&Interner, vars.0.value.len(&Interner) - 1)
+                    .assert_ty_ref(&Interner)
+                    .clone(),
                 binders: vars.0.binders.clone(),
             })
         }
