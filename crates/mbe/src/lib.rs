@@ -220,9 +220,11 @@ impl MacroDef {
             while src.len() > 0 {
                 let rule = Rule::parse(&mut src, true)?;
                 rules.push(rule);
-                if let Err(()) = src.expect_char(';') {
+                if let Err(()) = src.expect_any_char(&[';', ',']) {
                     if src.len() > 0 {
-                        return Err(ParseError::Expected("expected `;`".to_string()));
+                        return Err(ParseError::Expected(
+                            "expected `;` or `,` to delimit rules".to_string(),
+                        ));
                     }
                     break;
                 }

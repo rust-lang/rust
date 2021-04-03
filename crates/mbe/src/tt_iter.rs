@@ -34,6 +34,17 @@ impl<'a> TtIter<'a> {
         }
     }
 
+    pub(crate) fn expect_any_char(&mut self, chars: &[char]) -> Result<(), ()> {
+        match self.next() {
+            Some(tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: c, .. })))
+                if chars.contains(c) =>
+            {
+                Ok(())
+            }
+            _ => Err(()),
+        }
+    }
+
     pub(crate) fn expect_subtree(&mut self) -> Result<&'a tt::Subtree, ()> {
         match self.next() {
             Some(tt::TokenTree::Subtree(it)) => Ok(it),
