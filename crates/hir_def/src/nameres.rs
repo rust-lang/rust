@@ -409,6 +409,17 @@ impl DefMap {
             }
         }
     }
+
+    fn shrink_to_fit(&mut self) {
+        self.extern_prelude.shrink_to_fit();
+        self.exported_proc_macros.shrink_to_fit();
+        self.diagnostics.shrink_to_fit();
+        self.modules.shrink_to_fit();
+        for (_, module) in self.modules.iter_mut() {
+            module.children.shrink_to_fit();
+            module.scope.shrink_to_fit();
+        }
+    }
 }
 
 impl ModuleData {
