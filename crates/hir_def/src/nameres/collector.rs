@@ -109,7 +109,9 @@ pub(super) fn collect_defs(
         }
     }
     collector.collect();
-    collector.finish()
+    let mut def_map = collector.finish();
+    def_map.shrink_to_fit();
+    def_map
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

@@ -285,6 +285,17 @@ impl ItemScope {
             buf.push('\n');
         }
     }
+
+    pub(crate) fn shrink_to_fit(&mut self) {
+        self.types.shrink_to_fit();
+        self.values.shrink_to_fit();
+        self.macros.shrink_to_fit();
+        self.unresolved.shrink_to_fit();
+        self.defs.shrink_to_fit();
+        self.impls.shrink_to_fit();
+        self.unnamed_trait_imports.shrink_to_fit();
+        self.legacy_macros.shrink_to_fit();
+    }
 }
 
 impl PerNs {
