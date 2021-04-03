@@ -812,9 +812,59 @@ impl TypeWalk for CallableSig {
     }
 }
 
-struct TyBuilder {}
+pub struct TyBuilder<D> {
+    data: D,
+    vec: SmallVec<[GenericArg; 2]>,
+    param_count: usize,
+}
 
-impl TyBuilder {
+impl<D> TyBuilder<D> {
+    fn new(data: D, param_count: usize) -> TyBuilder<D> {
+        TyBuilder { data, param_count, vec: SmallVec::with_capacity(param_count) }
+    }
+
+    fn build_internal(self) -> (D, Substitution) {
+        assert_eq!(self.vec.len(), self.param_count);
+        // FIXME: would be good to have a way to construct a chalk_ir::Substitution from the interned form
+        let subst = Substitution(self.vec);
+        (self.data, subst)
+    }
+
+    pub fn push(mut self, arg: impl CastTo<GenericArg>) -> Self {
+        self.vec.push(arg.cast(&Interner));
+        self
+    }
+
+    fn remaining(&self) -> usize {
+        self.param_count - self.vec.len()
+    }
+
+    pub fn fill_with_bound_vars(self, debruijn: DebruijnIndex, starting_from: usize) -> Self {
+        self.fill(
+            (starting_from..)
+                .map(|idx| TyKind::BoundVar(BoundVar::new(debruijn, idx)).intern(&Interner)),
+        )
+    }
+
+    pub fn fill_with_unknown(self) -> Self {
+        self.fill(iter::repeat(TyKind::Unknown.intern(&Interner)))
+    }
+
+    pub fn fill(mut self, filler: impl Iterator<Item = impl CastTo<GenericArg>>) -> Self {
+        self.vec.extend(filler.take(self.remaining()).casted(&Interner));
+        assert_eq!(self.remaining(), 0);
+        self
+    }
+
+    pub fn use_parent_substs(mut self, parent_substs: &Substitution) -> Self {
+        assert!(self.vec.is_empty());
+        assert!(parent_substs.len(&Interner) <= self.param_count);
+        self.vec.extend(parent_substs.iter(&Interner).cloned());
+        self
+    }
+}
+
+impl TyBuilder<()> {
     pub fn unit() -> Ty {
         TyKind::Tuple(0, Substitution::empty(&Interner)).intern(&Interner)
     }
@@ -829,11 +879,38 @@ impl TyBuilder {
     }
 }
 
-impl Ty {
-    pub fn adt_ty(adt: hir_def::AdtId, substs: Substitution) -> Ty {
-        TyKind::Adt(AdtId(adt), substs).intern(&Interner)
+impl TyBuilder<hir_def::AdtId> {
+    pub fn adt(db: &dyn HirDatabase, adt: hir_def::AdtId) -> TyBuilder<hir_def::AdtId> {
+        let generics = generics(db.upcast(), adt.into());
+        let param_count = generics.len();
+        TyBuilder::new(adt, param_count)
     }
 
+    pub fn fill_with_defaults(
+        mut self,
+        db: &dyn HirDatabase,
+        mut fallback: impl FnMut() -> Ty,
+    ) -> Self {
+        let defaults = db.generic_defaults(self.data.into());
+        for default_ty in defaults.iter().skip(self.vec.len()) {
+            if default_ty.skip_binders().is_unknown() {
+                self.vec.push(fallback().cast(&Interner));
+            } else {
+                // each default can depend on the previous parameters
+                let subst_so_far = Substitution(self.vec.clone());
+                self.vec.push(default_ty.clone().subst(&subst_so_far).cast(&Interner));
+            }
+        }
+        self
+    }
+
+    pub fn build(self) -> Ty {
+        let (adt, subst) = self.build_internal();
+        TyKind::Adt(AdtId(adt), subst).intern(&Interner)
+    }
+}
+
+impl Ty {
     pub fn builtin(builtin: BuiltinType) -> Self {
         match builtin {
             BuiltinType::Char => TyKind::Scalar(Scalar::Char).intern(&Interner),

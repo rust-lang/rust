@@ -36,7 +36,7 @@ use crate::{
     AliasEq, AliasTy, Binders, BoundVar, CallableSig, DebruijnIndex, DynTy, FnPointer, FnSig,
     ImplTraitId, OpaqueTy, PolyFnSig, ProjectionTy, QuantifiedWhereClause, QuantifiedWhereClauses,
     ReturnTypeImplTrait, ReturnTypeImplTraits, Substitution, TraitEnvironment, TraitRef, Ty,
-    TyKind, TypeWalk, WhereClause,
+    TyBuilder, TyKind, TypeWalk, WhereClause,
 };
 
 #[derive(Debug)]
@@ -1141,9 +1141,10 @@ fn type_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId) -
 }
 
 fn type_for_adt(db: &dyn HirDatabase, adt: AdtId) -> Binders<Ty> {
-    let generics = generics(db.upcast(), adt.into());
-    let substs = Substitution::bound_vars(&generics, DebruijnIndex::INNERMOST);
-    Binders::new(substs.len(&Interner), Ty::adt_ty(adt, substs))
+    let b = TyBuilder::adt(db, adt);
+    let num_binders = b.remaining();
+    let ty = b.fill_with_bound_vars(DebruijnIndex::INNERMOST, 0).build();
+    Binders::new(num_binders, ty)
 }
 
 fn type_for_type_alias(db: &dyn HirDatabase, t: TypeAliasId) -> Binders<Ty> {

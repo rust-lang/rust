@@ -539,17 +539,10 @@ impl<'a> InferenceContext<'a> {
             Expr::Box { expr } => {
                 let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
                 if let Some(box_) = self.resolve_boxed_box() {
-                    let mut sb =
-                        Substitution::build_for_generics(&generics(self.db.upcast(), box_.into()));
-                    sb = sb.push(inner_ty);
-                    match self.db.generic_defaults(box_.into()).get(1) {
-                        Some(alloc_ty) if !alloc_ty.value.is_unknown() && sb.remaining() > 0 => {
-                            sb = sb.push(alloc_ty.value.clone());
-                        }
-                        _ => (),
-                    }
-                    sb = sb.fill(repeat_with(|| self.table.new_type_var()));
-                    Ty::adt_ty(box_, sb.build())
+                    TyBuilder::adt(self.db, box_)
+                        .push(inner_ty)
+                        .fill_with_defaults(self.db, || self.table.new_type_var())
+                        .build()
                 } else {
                     self.err_ty()
                 }
@@ -639,31 +632,31 @@ impl<'a> InferenceContext<'a> {
                 let rhs_ty = rhs.map(|e| self.infer_expr(e, &rhs_expect));
                 match (range_type, lhs_ty, rhs_ty) {
                     (RangeOp::Exclusive, None, None) => match self.resolve_range_full() {
-                        Some(adt) => Ty::adt_ty(adt, Substitution::empty(&Interner)),
+                        Some(adt) => TyBuilder::adt(self.db, adt).build(),
                         None => self.err_ty(),
                     },
                     (RangeOp::Exclusive, None, Some(ty)) => match self.resolve_range_to() {
-                        Some(adt) => Ty::adt_ty(adt, Substitution::single(ty)),
+                        Some(adt) => TyBuilder::adt(self.db, adt).push(ty).build(),
                         None => self.err_ty(),
                     },
                     (RangeOp::Inclusive, None, Some(ty)) => {
                         match self.resolve_range_to_inclusive() {
-                            Some(adt) => Ty::adt_ty(adt, Substitution::single(ty)),
+                            Some(adt) => TyBuilder::adt(self.db, adt).push(ty).build(),
                             None => self.err_ty(),
                         }
                     }
                     (RangeOp::Exclusive, Some(_), Some(ty)) => match self.resolve_range() {
-                        Some(adt) => Ty::adt_ty(adt, Substitution::single(ty)),
+                        Some(adt) => TyBuilder::adt(self.db, adt).push(ty).build(),
                         None => self.err_ty(),
                     },
                     (RangeOp::Inclusive, Some(_), Some(ty)) => {
                         match self.resolve_range_inclusive() {
-                            Some(adt) => Ty::adt_ty(adt, Substitution::single(ty)),
+                            Some(adt) => TyBuilder::adt(self.db, adt).push(ty).build(),
                             None => self.err_ty(),
                         }
                     }
                     (RangeOp::Exclusive, Some(ty), None) => match self.resolve_range_from() {
-                        Some(adt) => Ty::adt_ty(adt, Substitution::single(ty)),
+                        Some(adt) => TyBuilder::adt(self.db, adt).push(ty).build(),
                         None => self.err_ty(),
                     },
                     (RangeOp::Inclusive, _, None) => self.err_ty(),
