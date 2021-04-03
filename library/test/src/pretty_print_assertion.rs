@@ -83,7 +83,7 @@ fn print_pretty_bool_assertion(macro_name: &'static str, assert: &BoolAssertion)
 }
 
 fn print_plain_binary_assertion(macro_name: &'static str, assert: &BinaryAssertion<'_>) {
-    if macro_name == "assert_eq" || macro_name == "assert_ne" {
+    if is_specalized_macro(macro_name) {
         eprint!(
             concat!(
                 "Assertion:\n",
@@ -116,7 +116,7 @@ fn print_plain_binary_assertion(macro_name: &'static str, assert: &BinaryAsserti
 }
 
 fn print_pretty_binary_assertion(macro_name: &'static str, assert: &BinaryAssertion<'_>) {
-    if macro_name == "assert_eq" || macro_name == "assert_ne" {
+    if is_specalized_macro(macro_name) {
         eprint!(
             concat!(
                 "{bold}Assertion:{reset}\n",
@@ -165,4 +165,10 @@ fn print_plain_message(message: &std::fmt::Arguments<'_>) {
 
 fn print_pretty_message(message: &std::fmt::Arguments<'_>) {
     eprintln!("{bold}Message:{reset}\n  {msg}", bold = BOLD, reset = RESET, msg = message,);
+}
+
+fn is_specalized_macro(macro_name: &str) -> bool {
+    // Specialized macros already imply the operator in their name,
+    // so we print them without repeating the operator.
+    macro_name == "assert_eq" || macro_name == "assert_neq" || macro_name == "assert_matches"
 }
