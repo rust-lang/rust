@@ -1,15 +1,14 @@
 /// Implemented for bitmask sizes that are supported by the implementation.
-pub trait LanesAtMost64 {}
+pub trait LanesAtMost32 {}
 
 macro_rules! impl_for {
     { $name:ident } => {
-        impl LanesAtMost64 for $name<1> {}
-        impl LanesAtMost64 for $name<2> {}
-        impl LanesAtMost64 for $name<4> {}
-        impl LanesAtMost64 for $name<8> {}
-        impl LanesAtMost64 for $name<16> {}
-        impl LanesAtMost64 for $name<32> {}
-        impl LanesAtMost64 for $name<64> {}
+        impl LanesAtMost32 for $name<1> {}
+        impl LanesAtMost32 for $name<2> {}
+        impl LanesAtMost32 for $name<4> {}
+        impl LanesAtMost32 for $name<8> {}
+        impl LanesAtMost32 for $name<16> {}
+        impl LanesAtMost32 for $name<32> {}
     }
 }
 

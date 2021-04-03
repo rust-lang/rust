@@ -9,8 +9,8 @@ macro_rules! impl_float_vector {
 
         impl<const LANES: usize> $name<LANES>
         where
-            Self: crate::LanesAtMost64,
-            crate::$bits_ty<LANES>: crate::LanesAtMost64,
+            Self: crate::LanesAtMost32,
+            crate::$bits_ty<LANES>: crate::LanesAtMost32,
         {
             /// Raw transmutation to an unsigned integer vector type with the
             /// same size and number of lanes.
@@ -39,9 +39,9 @@ macro_rules! impl_float_vector {
 
         impl<const LANES: usize> $name<LANES>
         where
-            Self: crate::LanesAtMost64,
-            crate::$bits_ty<LANES>: crate::LanesAtMost64,
-            crate::$mask_impl_ty<LANES>: crate::LanesAtMost64,
+            Self: crate::LanesAtMost32,
+            crate::$bits_ty<LANES>: crate::LanesAtMost32,
+            crate::$mask_impl_ty<LANES>: crate::LanesAtMost32,
         {
             /// Returns true for each lane if it has a positive sign, including
             /// `+0.0`, `NaN`s with positive sign bit and positive infinity.
@@ -96,7 +96,7 @@ macro_rules! impl_float_vector {
 #[repr(simd)]
 pub struct SimdF32<const LANES: usize>([f32; LANES])
 where
-    Self: crate::LanesAtMost64;
+    Self: crate::LanesAtMost32;
 
 impl_float_vector! { SimdF32, f32, SimdU32, Mask32, SimdI32 }
 
@@ -108,7 +108,7 @@ from_transmute_x86! { unsafe f32x8 => __m256 }
 #[repr(simd)]
 pub struct SimdF64<const LANES: usize>([f64; LANES])
 where
-    Self: crate::LanesAtMost64;
+    Self: crate::LanesAtMost32;
 
 impl_float_vector! { SimdF64, f64, SimdU64, Mask64, SimdI64 }
 

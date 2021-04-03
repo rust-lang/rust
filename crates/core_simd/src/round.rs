@@ -4,7 +4,7 @@ macro_rules! implement {
     } => {
         impl<const LANES: usize> crate::$type<LANES>
         where
-            Self: crate::LanesAtMost64,
+            Self: crate::LanesAtMost32,
         {
             /// Returns the largest integer less than or equal to each lane.
             #[cfg(feature = "std")]
@@ -25,8 +25,8 @@ macro_rules! implement {
 
         impl<const LANES: usize> crate::$type<LANES>
         where
-            Self: crate::LanesAtMost64,
-            crate::$int_type<LANES>: crate::LanesAtMost64,
+            Self: crate::LanesAtMost32,
+            crate::$int_type<LANES>: crate::LanesAtMost32,
         {
             /// Rounds toward zero and converts to the same-width integer type, assuming that
             /// the value is finite and fits in that type.

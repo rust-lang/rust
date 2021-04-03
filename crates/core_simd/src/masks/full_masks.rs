@@ -20,16 +20,16 @@ macro_rules! define_mask {
         #[repr(transparent)]
         pub struct $name<const $lanes: usize>($type)
         where
-            $type: crate::LanesAtMost64;
+            $type: crate::LanesAtMost32;
 
         impl<const LANES: usize> Copy for $name<LANES>
         where
-            $type: crate::LanesAtMost64,
+            $type: crate::LanesAtMost32,
         {}
 
         impl<const LANES: usize> Clone for $name<LANES>
         where
-            $type: crate::LanesAtMost64,
+            $type: crate::LanesAtMost32,
         {
             #[inline]
             fn clone(&self) -> Self {
@@ -39,7 +39,7 @@ macro_rules! define_mask {
 
         impl<const $lanes: usize> $name<$lanes>
         where
-            $type: crate::LanesAtMost64,
+            $type: crate::LanesAtMost32,
         {
             /// Construct a mask by setting all lanes to the given value.
             pub fn splat(value: bool) -> Self {
@@ -98,7 +98,7 @@ macro_rules! define_mask {
 
         impl<const $lanes: usize> core::convert::From<bool> for $name<$lanes>
         where
-            $type: crate::LanesAtMost64,
+            $type: crate::LanesAtMost32,
         {
             fn from(value: bool) -> Self {
                 Self::splat(value)
@@ -107,7 +107,7 @@ macro_rules! define_mask {
 
         impl<const $lanes: usize> core::convert::TryFrom<$type> for $name<$lanes>
         where
-            $type: crate::LanesAtMost64,
+            $type: crate::LanesAtMost32,
         {
             type Error = TryFromMaskError;
             fn try_from(value: $type) -> Result<Self, Self::Error> {
@@ -121,7 +121,7 @@ macro_rules! define_mask {
 
         impl<const $lanes: usize> core::convert::From<$name<$lanes>> for $type
         where
-            $type: crate::LanesAtMost64,
+            $type: crate::LanesAtMost32,
         {
             fn from(value: $name<$lanes>) -> Self {
                 value.0
@@ -130,8 +130,8 @@ macro_rules! define_mask {
 
         impl<const $lanes: usize> core::convert::From<crate::BitMask<$lanes>> for $name<$lanes>
         where
-            $type: crate::LanesAtMost64,
-            crate::BitMask<$lanes>: crate::LanesAtMost64,
+            $type: crate::LanesAtMost32,
+            crate::BitMask<$lanes>: crate::LanesAtMost32,
         {
             fn from(value: crate::BitMask<$lanes>) -> Self {
                 // TODO use an intrinsic to do this efficiently (with LLVM's sext instruction)
@@ -145,8 +145,8 @@ macro_rules! define_mask {
 
         impl<const $lanes: usize> core::convert::From<$name<$lanes>> for crate::BitMask<$lanes>
         where
-            $type: crate::LanesAtMost64,
-            crate::BitMask<$lanes>: crate::LanesAtMost64,
+            $type: crate::LanesAtMost32,
+            crate::BitMask<$lanes>: crate::LanesAtMost32,
         {
             fn from(value: $name<$lanes>) -> Self {
                 // TODO use an intrinsic to do this efficiently (with LLVM's trunc instruction)
@@ -160,7 +160,7 @@ macro_rules! define_mask {
 
         impl<const $lanes: usize> core::fmt::Debug for $name<$lanes>
         where
-            $type: crate::LanesAtMost64,
+            $type: crate::LanesAtMost32,
         {
             fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
                 f.debug_list()
@@ -171,7 +171,7 @@ macro_rules! define_mask {
 
         impl<const $lanes: usize> core::fmt::Binary for $name<$lanes>
         where
-            $type: crate::LanesAtMost64,
+            $type: crate::LanesAtMost32,
         {
             fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
                 core::fmt::Binary::fmt(&self.0, f)
@@ -180,7 +180,7 @@ macro_rules! define_mask {
 
         impl<const $lanes: usize> core::fmt::Octal for $name<$lanes>
         where
-            $type: crate::LanesAtMost64,
+            $type: crate::LanesAtMost32,
         {
             fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
                 core::fmt::Octal::fmt(&self.0, f)
@@ -189,7 +189,7 @@ macro_rules! define_mask {
 
         impl<const $lanes: usize> core::fmt::LowerHex for $name<$lanes>
         where
-            $type: crate::LanesAtMost64,
+            $type: crate::LanesAtMost32,
         {
             fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
                 core::fmt::LowerHex::fmt(&self.0, f)
@@ -198,7 +198,7 @@ macro_rules! define_mask {
 
         impl<const $lanes: usize> core::fmt::UpperHex for $name<$lanes>
         where
-            $type: crate::LanesAtMost64,
+            $type: crate::LanesAtMost32,
         {
             fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
                 core::fmt::UpperHex::fmt(&self.0, f)
@@ -207,7 +207,7 @@ macro_rules! define_mask {
 
         impl<const LANES: usize> core::ops::BitAnd for $name<LANES>
         where
-            $type: crate::LanesAtMost64,
+            $type: crate::LanesAtMost32,
         {
             type Output = Self;
             #[inline]
@@ -218,7 +218,7 @@ macro_rules! define_mask {
 
         impl<const LANES: usize> core::ops::BitAnd<bool> for $name<LANES>
         where
-            $type: crate::LanesAtMost64,
+            $type: crate::LanesAtMost32,
         {
             type Output = Self;
             #[inline]
@@ -229,7 +229,7 @@ macro_rules! define_mask {
 
         impl<const LANES: usize> core::ops::BitAnd<$name<LANES>> for bool
         where
-            $type: crate::LanesAtMost64,
+            $type: crate::LanesAtMost32,
         {
             type Output = $name<LANES>;
             #[inline]
@@ -240,7 +240,7 @@ macro_rules! define_mask {
 
         impl<const LANES: usize> core::ops::BitOr for $name<LANES>
         where
-            $type: crate::LanesAtMost64,
+            $type: crate::LanesAtMost32,
         {
             type Output = Self;
             #[inline]
@@ -251,7 +251,7 @@ macro_rules! define_mask {
 
         impl<const LANES: usize> core::ops::BitOr<bool> for $name<LANES>
         where
-            $type: crate::LanesAtMost64,
+            $type: crate::LanesAtMost32,
         {
             type Output = Self;
             #[inline]
@@ -262,7 +262,7 @@ macro_rules! define_mask {
 
         impl<const LANES: usize> core::ops::BitOr<$name<LANES>> for bool
         where
-            $type: crate::LanesAtMost64,
+            $type: crate::LanesAtMost32,
         {
             type Output = $name<LANES>;
             #[inline]
@@ -273,7 +273,7 @@ macro_rules! define_mask {
 
         impl<const LANES: usize> core::ops::BitXor for $name<LANES>
         where
-            $type: crate::LanesAtMost64,
+            $type: crate::LanesAtMost32,
         {
             type Output = Self;
             #[inline]
@@ -284,7 +284,7 @@ macro_rules! define_mask {
 
         impl<const LANES: usize> core::ops::BitXor<bool> for $name<LANES>
         where
-            $type: crate::LanesAtMost64,
+            $type: crate::LanesAtMost32,
         {
             type Output = Self;
             #[inline]
@@ -295,7 +295,7 @@ macro_rules! define_mask {
 
         impl<const LANES: usize> core::ops::BitXor<$name<LANES>> for bool
         where
-            $type: crate::LanesAtMost64,
+            $type: crate::LanesAtMost32,
         {
             type Output = $name<LANES>;
             #[inline]
@@ -306,7 +306,7 @@ macro_rules! define_mask {
 
         impl<const LANES: usize> core::ops::Not for $name<LANES>
         where
-            $type: crate::LanesAtMost64,
+            $type: crate::LanesAtMost32,
         {
             type Output = $name<LANES>;
             #[inline]
@@ -317,7 +317,7 @@ macro_rules! define_mask {
 
         impl<const LANES: usize> core::ops::BitAndAssign for $name<LANES>
         where
-            $type: crate::LanesAtMost64,
+            $type: crate::LanesAtMost32,
         {
             #[inline]
             fn bitand_assign(&mut self, rhs: Self) {
@@ -327,7 +327,7 @@ macro_rules! define_mask {
 
         impl<const LANES: usize> core::ops::BitAndAssign<bool> for $name<LANES>
         where
-            $type: crate::LanesAtMost64,
+            $type: crate::LanesAtMost32,
         {
             #[inline]
             fn bitand_assign(&mut self, rhs: bool) {
@@ -337,7 +337,7 @@ macro_rules! define_mask {
 
         impl<const LANES: usize> core::ops::BitOrAssign for $name<LANES>
         where
-            $type: crate::LanesAtMost64,
+            $type: crate::LanesAtMost32,
         {
             #[inline]
             fn bitor_assign(&mut self, rhs: Self) {
@@ -347,7 +347,7 @@ macro_rules! define_mask {
 
         impl<const LANES: usize> core::ops::BitOrAssign<bool> for $name<LANES>
         where
-            $type: crate::LanesAtMost64,
+            $type: crate::LanesAtMost32,
         {
             #[inline]
             fn bitor_assign(&mut self, rhs: bool) {
@@ -357,7 +357,7 @@ macro_rules! define_mask {
 
         impl<const LANES: usize> core::ops::BitXorAssign for $name<LANES>
         where
-            $type: crate::LanesAtMost64,
+            $type: crate::LanesAtMost32,
         {
             #[inline]
             fn bitxor_assign(&mut self, rhs: Self) {
@@ -367,7 +367,7 @@ macro_rules! define_mask {
 
         impl<const LANES: usize> core::ops::BitXorAssign<bool> for $name<LANES>
         where
-            $type: crate::LanesAtMost64,
+            $type: crate::LanesAtMost32,
         {
             #[inline]
             fn bitxor_assign(&mut self, rhs: bool) {

@@ -24,6 +24,5 @@ macro_rules! impl_shuffle_2pow_lanes {
         impl_shuffle_lane!{ $name, simd_shuffle8, 8 }
         impl_shuffle_lane!{ $name, simd_shuffle16, 16 }
         impl_shuffle_lane!{ $name, simd_shuffle32, 32 }
-        impl_shuffle_lane!{ $name, simd_shuffle64, 64 }
     }
 }

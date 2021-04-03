@@ -269,21 +269,21 @@ macro_rules! test_lanes {
 
                 fn implementation<const $lanes: usize>()
                 where
-                    core_simd::SimdU8<$lanes>: core_simd::LanesAtMost64,
-                    core_simd::SimdU16<$lanes>: core_simd::LanesAtMost64,
-                    core_simd::SimdU32<$lanes>: core_simd::LanesAtMost64,
-                    core_simd::SimdU64<$lanes>: core_simd::LanesAtMost64,
-                    core_simd::SimdU128<$lanes>: core_simd::LanesAtMost64,
-                    core_simd::SimdUsize<$lanes>: core_simd::LanesAtMost64,
-                    core_simd::SimdI8<$lanes>: core_simd::LanesAtMost64,
-                    core_simd::SimdI16<$lanes>: core_simd::LanesAtMost64,
-                    core_simd::SimdI32<$lanes>: core_simd::LanesAtMost64,
-                    core_simd::SimdI64<$lanes>: core_simd::LanesAtMost64,
-                    core_simd::SimdI128<$lanes>: core_simd::LanesAtMost64,
-                    core_simd::SimdIsize<$lanes>: core_simd::LanesAtMost64,
-                    core_simd::SimdF32<$lanes>: core_simd::LanesAtMost64,
-                    core_simd::SimdF64<$lanes>: core_simd::LanesAtMost64,
-                    core_simd::BitMask<$lanes>: core_simd::LanesAtMost64,
+                    core_simd::SimdU8<$lanes>: core_simd::LanesAtMost32,
+                    core_simd::SimdU16<$lanes>: core_simd::LanesAtMost32,
+                    core_simd::SimdU32<$lanes>: core_simd::LanesAtMost32,
+                    core_simd::SimdU64<$lanes>: core_simd::LanesAtMost32,
+                    core_simd::SimdU128<$lanes>: core_simd::LanesAtMost32,
+                    core_simd::SimdUsize<$lanes>: core_simd::LanesAtMost32,
+                    core_simd::SimdI8<$lanes>: core_simd::LanesAtMost32,
+                    core_simd::SimdI16<$lanes>: core_simd::LanesAtMost32,
+                    core_simd::SimdI32<$lanes>: core_simd::LanesAtMost32,
+                    core_simd::SimdI64<$lanes>: core_simd::LanesAtMost32,
+                    core_simd::SimdI128<$lanes>: core_simd::LanesAtMost32,
+                    core_simd::SimdIsize<$lanes>: core_simd::LanesAtMost32,
+                    core_simd::SimdF32<$lanes>: core_simd::LanesAtMost32,
+                    core_simd::SimdF64<$lanes>: core_simd::LanesAtMost32,
+                    core_simd::BitMask<$lanes>: core_simd::LanesAtMost32,
                 $body
 
                 #[cfg(target_arch = "wasm32")]
@@ -324,12 +324,6 @@ macro_rules! test_lanes {
                 fn lanes_32() {
                     implementation::<32>();
                 }
-
-                #[test]
-                #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
-                fn lanes_64() {
-                    implementation::<64>();
-                }
             }
         )*
     }
@@ -347,21 +341,21 @@ macro_rules! test_lanes_panic {
 
                 fn implementation<const $lanes: usize>()
                 where
-                    core_simd::SimdU8<$lanes>: core_simd::LanesAtMost64,
-                    core_simd::SimdU16<$lanes>: core_simd::LanesAtMost64,
-                    core_simd::SimdU32<$lanes>: core_simd::LanesAtMost64,
-                    core_simd::SimdU64<$lanes>: core_simd::LanesAtMost64,
-                    core_simd::SimdU128<$lanes>: core_simd::LanesAtMost64,
-                    core_simd::SimdUsize<$lanes>: core_simd::LanesAtMost64,
-                    core_simd::SimdI8<$lanes>: core_simd::LanesAtMost64,
-                    core_simd::SimdI16<$lanes>: core_simd::LanesAtMost64,
-                    core_simd::SimdI32<$lanes>: core_simd::LanesAtMost64,
-                    core_simd::SimdI64<$lanes>: core_simd::LanesAtMost64,
-                    core_simd::SimdI128<$lanes>: core_simd::LanesAtMost64,
-                    core_simd::SimdIsize<$lanes>: core_simd::LanesAtMost64,
-                    core_simd::SimdF32<$lanes>: core_simd::LanesAtMost64,
-                    core_simd::SimdF64<$lanes>: core_simd::LanesAtMost64,
-                    core_simd::BitMask<$lanes>: core_simd::LanesAtMost64,
+                    core_simd::SimdU8<$lanes>: core_simd::LanesAtMost32,
+                    core_simd::SimdU16<$lanes>: core_simd::LanesAtMost32,
+                    core_simd::SimdU32<$lanes>: core_simd::LanesAtMost32,
+                    core_simd::SimdU64<$lanes>: core_simd::LanesAtMost32,
+                    core_simd::SimdU128<$lanes>: core_simd::LanesAtMost32,
+                    core_simd::SimdUsize<$lanes>: core_simd::LanesAtMost32,
+                    core_simd::SimdI8<$lanes>: core_simd::LanesAtMost32,
+                    core_simd::SimdI16<$lanes>: core_simd::LanesAtMost32,
+                    core_simd::SimdI32<$lanes>: core_simd::LanesAtMost32,
+                    core_simd::SimdI64<$lanes>: core_simd::LanesAtMost32,
+                    core_simd::SimdI128<$lanes>: core_simd::LanesAtMost32,
+                    core_simd::SimdIsize<$lanes>: core_simd::LanesAtMost32,
+                    core_simd::SimdF32<$lanes>: core_simd::LanesAtMost32,
+                    core_simd::SimdF64<$lanes>: core_simd::LanesAtMost32,
+                    core_simd::BitMask<$lanes>: core_simd::LanesAtMost32,
                 $body
 
                 #[test]
@@ -398,12 +392,6 @@ macro_rules! test_lanes_panic {
                 #[should_panic]
                 fn lanes_32() {
                     implementation::<32>();
-                }
-
-                #[test]
-                #[should_panic]
-                fn lanes_64() {
-                    implementation::<64>();
                 }
             }
         )*
