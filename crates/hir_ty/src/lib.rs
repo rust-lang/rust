@@ -17,7 +17,6 @@ mod chalk_cast;
 mod chalk_ext;
 mod builder;
 mod walk;
-mod types;
 
 pub mod display;
 pub mod db;
@@ -48,7 +47,6 @@ pub use lower::{
     TyDefId, TyLoweringContext, ValueTyDefId,
 };
 pub use traits::{chalk::Interner, TraitEnvironment};
-pub use types::*;
 pub use walk::TypeWalk;
 
 pub use chalk_ir::{
@@ -65,6 +63,21 @@ pub type PlaceholderIndex = chalk_ir::PlaceholderIndex;
 pub type VariableKind = chalk_ir::VariableKind<Interner>;
 pub type VariableKinds = chalk_ir::VariableKinds<Interner>;
 pub type CanonicalVarKinds = chalk_ir::CanonicalVarKinds<Interner>;
+pub type Binders<T> = chalk_ir::Binders<T>;
+pub type Substitution = chalk_ir::Substitution<Interner>;
+pub type GenericArg = chalk_ir::GenericArg<Interner>;
+pub type GenericArgData = chalk_ir::GenericArgData<Interner>;
+
+pub type Ty = chalk_ir::Ty<Interner>;
+pub type TyKind = chalk_ir::TyKind<Interner>;
+pub type DynTy = chalk_ir::DynTy<Interner>;
+pub type FnPointer = chalk_ir::FnPointer<Interner>;
+// pub type FnSubst = chalk_ir::FnSubst<Interner>;
+pub use chalk_ir::FnSubst;
+pub type ProjectionTy = chalk_ir::ProjectionTy<Interner>;
+pub type AliasTy = chalk_ir::AliasTy<Interner>;
+pub type OpaqueTy = chalk_ir::OpaqueTy<Interner>;
+pub type InferenceVar = chalk_ir::InferenceVar;
 
 pub type Lifetime = chalk_ir::Lifetime<Interner>;
 pub type LifetimeData = chalk_ir::LifetimeData<Interner>;
@@ -78,6 +91,14 @@ pub type ConcreteConst = chalk_ir::ConcreteConst<Interner>;
 pub type ChalkTraitId = chalk_ir::TraitId<Interner>;
 
 pub type FnSig = chalk_ir::FnSig<Interner>;
+
+pub type InEnvironment<T> = chalk_ir::InEnvironment<T>;
+pub type DomainGoal = chalk_ir::DomainGoal<Interner>;
+pub type AliasEq = chalk_ir::AliasEq<Interner>;
+pub type Solution = chalk_solve::Solution<Interner>;
+pub type ConstrainedSubst = chalk_ir::ConstrainedSubst<Interner>;
+pub type Guidance = chalk_solve::Guidance<Interner>;
+pub type WhereClause = chalk_ir::WhereClause<Interner>;
 
 // FIXME: get rid of this
 pub fn subst_prefix(s: &Substitution, n: usize) -> Substitution {
@@ -121,6 +142,14 @@ pub fn make_canonical<T>(
     Canonical { value, binders: chalk_ir::CanonicalVarKinds::from_iter(&Interner, kinds) }
 }
 
+pub type TraitRef = chalk_ir::TraitRef<Interner>;
+
+pub type QuantifiedWhereClause = Binders<WhereClause>;
+
+pub type QuantifiedWhereClauses = chalk_ir::QuantifiedWhereClauses<Interner>;
+
+pub type Canonical<T> = chalk_ir::Canonical<T>;
+
 /// A function signature as seen by type inference: Several parameter types and
 /// one return type.
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -163,8 +192,6 @@ impl CallableSig {
         &self.params_and_return[self.params_and_return.len() - 1]
     }
 }
-
-impl Ty {}
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub enum ImplTraitId {

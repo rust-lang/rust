@@ -408,7 +408,7 @@ impl TypeWalk for AliasEq {
     }
 }
 
-impl TypeWalk for FnSubst {
+impl TypeWalk for FnSubst<Interner> {
     fn walk(&self, f: &mut impl FnMut(&Ty)) {
         self.0.walk(f)
     }
