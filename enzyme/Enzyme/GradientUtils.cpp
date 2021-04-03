@@ -3090,10 +3090,16 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                                   /*extraSize*/ lim);
 
               auto dst_arg = v.CreateBitCast(
-                  outer, Type::getInt8PtrTy(inst->getContext()));
+                  outer,
+                  Type::getInt8PtrTy(
+                      inst->getContext(),
+                      cast<PointerType>(outer->getType())->getAddressSpace()));
               scopeInstructions[cache].push_back(cast<Instruction>(dst_arg));
               auto src_arg = v.CreateBitCast(
-                  start, Type::getInt8PtrTy(inst->getContext()));
+                  start,
+                  Type::getInt8PtrTy(
+                      inst->getContext(),
+                      cast<PointerType>(start->getType())->getAddressSpace()));
               auto len_arg =
                   v.CreateMul(ConstantInt::get(lim->getType(), loadSize), lim,
                               "", true, true);
