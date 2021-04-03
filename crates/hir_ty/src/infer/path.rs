@@ -10,9 +10,7 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 
-use crate::{
-    method_resolution, to_chalk_trait_id, Interner, Substitution, Ty, TyKind, ValueTyDefId,
-};
+use crate::{method_resolution, Interner, Substitution, Ty, TyBuilder, TyKind, ValueTyDefId};
 
 use super::{ExprOrPatId, InferenceContext, TraitRef};
 
@@ -254,18 +252,12 @@ impl<'a> InferenceContext<'a> {
                     }
                     AssocContainerId::TraitId(trait_) => {
                         // we're picking this method
-                        let trait_substs = Substitution::build_for_def(self.db, trait_)
+                        let trait_ref = TyBuilder::trait_ref(self.db, trait_)
                             .push(ty.clone())
                             .fill(std::iter::repeat_with(|| self.table.new_type_var()))
                             .build();
-                        self.push_obligation(
-                            TraitRef {
-                                trait_id: to_chalk_trait_id(trait_),
-                                substitution: trait_substs.clone(),
-                            }
-                            .cast(&Interner),
-                        );
-                        Some(trait_substs)
+                        self.push_obligation(trait_ref.clone().cast(&Interner));
+                        Some(trait_ref.substitution)
                     }
                     AssocContainerId::ModuleId(_) => None,
                 };

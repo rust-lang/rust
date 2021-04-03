@@ -42,7 +42,7 @@ use super::{
 };
 use crate::{
     db::HirDatabase, infer::diagnostics::InferenceDiagnostic, lower::ImplTraitLoweringMode,
-    to_assoc_type_id, to_chalk_trait_id, AliasEq, AliasTy, Interner, TyKind,
+    to_assoc_type_id, AliasEq, AliasTy, Interner, TyBuilder, TyKind,
 };
 
 // This lint has a false positive here. See the link below for details.
@@ -409,16 +409,14 @@ impl<'a> InferenceContext<'a> {
                     _ => panic!("resolve_associated_type called with non-associated type"),
                 };
                 let ty = self.table.new_type_var();
-                let substs = Substitution::build_for_def(self.db, res_assoc_ty)
+                let trait_ref = TyBuilder::trait_ref(self.db, trait_)
                     .push(inner_ty)
                     .fill(params.iter().cloned())
                     .build();
-                let trait_ref =
-                    TraitRef { trait_id: to_chalk_trait_id(trait_), substitution: substs.clone() };
                 let alias_eq = AliasEq {
                     alias: AliasTy::Projection(ProjectionTy {
                         associated_ty_id: to_assoc_type_id(res_assoc_ty),
-                        substitution: substs,
+                        substitution: trait_ref.substitution.clone(),
                     }),
                     ty: ty.clone(),
                 };

@@ -927,6 +927,35 @@ impl TyBuilder<hir_def::AdtId> {
     }
 }
 
+impl TyBuilder<TraitId> {
+    pub fn trait_ref(db: &dyn HirDatabase, trait_id: TraitId) -> TyBuilder<TraitId> {
+        let generics = generics(db.upcast(), trait_id.into());
+        let param_count = generics.len();
+        TyBuilder::new(trait_id, param_count)
+    }
+
+    pub fn build(self) -> TraitRef {
+        let (trait_id, substitution) = self.build_internal();
+        TraitRef { trait_id: to_chalk_trait_id(trait_id), substitution }
+    }
+}
+
+impl TyBuilder<TypeAliasId> {
+    pub fn assoc_type_projection(
+        db: &dyn HirDatabase,
+        type_alias: TypeAliasId,
+    ) -> TyBuilder<TypeAliasId> {
+        let generics = generics(db.upcast(), type_alias.into());
+        let param_count = generics.len();
+        TyBuilder::new(type_alias, param_count)
+    }
+
+    pub fn build(self) -> ProjectionTy {
+        let (type_alias, substitution) = self.build_internal();
+        ProjectionTy { associated_ty_id: to_assoc_type_id(type_alias), substitution }
+    }
+}
+
 impl Ty {
     pub fn as_reference(&self) -> Option<(&Ty, Mutability)> {
         match self.kind(&Interner) {

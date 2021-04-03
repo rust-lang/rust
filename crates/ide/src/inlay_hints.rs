@@ -234,7 +234,7 @@ fn hint_iterator(
             hir::AssocItem::TypeAlias(alias) if alias.name(db) == known::Item => Some(alias),
             _ => None,
         })?;
-        if let Some(ty) = ty.normalize_trait_assoc_type(db, iter_trait, &[], assoc_type_item) {
+        if let Some(ty) = ty.normalize_trait_assoc_type(db, &[], assoc_type_item) {
             const LABEL_START: &str = "impl Iterator<Item = ";
             const LABEL_END: &str = ">";
 
