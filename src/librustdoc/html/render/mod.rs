@@ -1998,7 +1998,7 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
                 );
                 write_sidebar_links(out, blanket_format);
             }
-            
+
             if let Some(impl_) = v
                 .iter()
                 .filter(|i| i.inner_impl().trait_.is_some())
