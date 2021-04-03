@@ -13,11 +13,9 @@ use log::{info, warn};
 
 use crate::{
     db::HirDatabase,
-    to_assoc_type_id, to_chalk_trait_id,
     traits::{InEnvironment, Solution},
-    utils::generics,
-    AliasEq, AliasTy, BoundVar, Canonical, CanonicalVarKinds, DebruijnIndex, Interner,
-    ProjectionTy, Substitution, TraitRef, Ty, TyKind,
+    AliasEq, AliasTy, BoundVar, Canonical, CanonicalVarKinds, DebruijnIndex, Interner, Ty,
+    TyBuilder, TyKind,
 };
 
 const AUTODEREF_RECURSION_LIMIT: usize = 10;
@@ -57,21 +55,20 @@ fn deref_by_trait(
     };
     let target = db.trait_data(deref_trait).associated_type_by_name(&name![Target])?;
 
-    let generic_params = generics(db.upcast(), target.into());
-    if generic_params.len() != 1 {
-        // the Target type + Deref trait should only have one generic parameter,
-        // namely Deref's Self type
-        return None;
-    }
+    let projection = {
+        let b = TyBuilder::assoc_type_projection(db, target);
+        if b.remaining() != 1 {
+            // the Target type + Deref trait should only have one generic parameter,
+            // namely Deref's Self type
+            return None;
+        }
+        b.push(ty.goal.value.clone()).build()
+    };
 
     // FIXME make the Canonical / bound var handling nicer
 
-    let parameters =
-        Substitution::build_for_generics(&generic_params).push(ty.goal.value.clone()).build();
-
     // Check that the type implements Deref at all
-    let trait_ref =
-        TraitRef { trait_id: to_chalk_trait_id(deref_trait), substitution: parameters.clone() };
+    let trait_ref = projection.trait_ref(db);
     let implements_goal = Canonical {
         binders: ty.goal.binders.clone(),
         value: InEnvironment {
@@ -84,11 +81,8 @@ fn deref_by_trait(
     }
 
     // Now do the assoc type projection
-    let projection = AliasEq {
-        alias: AliasTy::Projection(ProjectionTy {
-            associated_ty_id: to_assoc_type_id(target),
-            substitution: parameters,
-        }),
+    let alias_eq = AliasEq {
+        alias: AliasTy::Projection(projection),
         ty: TyKind::BoundVar(BoundVar::new(
             DebruijnIndex::INNERMOST,
             ty.goal.binders.len(&Interner),
@@ -96,9 +90,7 @@ fn deref_by_trait(
         .intern(&Interner),
     };
 
-    let obligation = projection.cast(&Interner);
-
-    let in_env = InEnvironment { goal: obligation, environment: ty.environment };
+    let in_env = InEnvironment { goal: alias_eq.cast(&Interner), environment: ty.environment };
 
     let canonical = Canonical {
         value: in_env,
