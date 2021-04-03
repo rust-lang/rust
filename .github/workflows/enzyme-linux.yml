@@ -31,7 +31,8 @@ jobs:
             sudo apt-get install -y llvm-7-tools;
             echo /usr/lib/llvm-7/bin >> $GITHUB_PATH;
           fi
-          sudo pip install lit
+          sudo python -m pip install --upgrade pip setuptools
+          sudo python -m pip install lit
           sudo touch /usr/lib/llvm-${{ matrix.llvm }}/bin/yaml-bench
     - uses: actions/checkout@v1
       with:

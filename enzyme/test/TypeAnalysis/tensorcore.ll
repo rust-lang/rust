@@ -1,6 +1,6 @@
-; RUN: %opt < %s %loadEnzyme -print-type-analysis -type-analysis-func=tload -o /dev/null | FileCheck %s --check-prefixes=LCHECK
-; RUN: %opt < %s %loadEnzyme -print-type-analysis -type-analysis-func=tstore -o /dev/null | FileCheck %s --check-prefixes=SCHECK
-; RUN: %opt < %s %loadEnzyme -print-type-analysis -type-analysis-func=tmm -o /dev/null | FileCheck %s --check-prefixes=MCHECK
+; RUN: if [ %llvmver -ge 9 ]; then %opt < %s %loadEnzyme -print-type-analysis -type-analysis-func=tload -o /dev/null | FileCheck %s --check-prefixes=LCHECK; fi
+; RUN: if [ %llvmver -ge 9 ]; then %opt < %s %loadEnzyme -print-type-analysis -type-analysis-func=tstore -o /dev/null | FileCheck %s --check-prefixes=SCHECK; fi
+; RUN: if [ %llvmver -ge 9 ]; then %opt < %s %loadEnzyme -print-type-analysis -type-analysis-func=tmm -o /dev/null | FileCheck %s --check-prefixes=MCHECK; fi
 
 ; ModuleID = 'cuda.cu'
 source_filename = "cuda.cu"
