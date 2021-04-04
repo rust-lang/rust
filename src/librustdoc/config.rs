@@ -507,7 +507,6 @@ impl Options {
         let edition = config::parse_crate_edition(&matches);
 
         let mut id_map = html::markdown::IdMap::new();
-        id_map.populate(&html::render::INITIAL_IDS);
         let external_html = match ExternalHtml::load(
             &matches.opt_strs("html-in-header"),
             &matches.opt_strs("html-before-content"),
