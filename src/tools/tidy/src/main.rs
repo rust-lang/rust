@@ -31,7 +31,7 @@ fn main() {
 
     // Checks that only make sense for the compiler.
     errors::check(&compiler_path, &mut bad);
-    error_codes_check::check(&src_path, &mut bad);
+    error_codes_check::check(&[&src_path, &compiler_path], &mut bad);
 
     // Checks that only make sense for the std libs.
     pal::check(&library_path, &mut bad);
