@@ -86,6 +86,7 @@ pub const OPTION_SOME: [&str; 4] = ["core", "option", "Option", "Some"];
 pub const ORD: [&str; 3] = ["core", "cmp", "Ord"];
 pub const OS_STRING_AS_OS_STR: [&str; 5] = ["std", "ffi", "os_str", "OsString", "as_os_str"];
 pub const OS_STR_TO_OS_STRING: [&str; 5] = ["std", "ffi", "os_str", "OsStr", "to_os_string"];
+pub(super) const PANICKING_ASSERT_FAILED_INNER: [&str; 3] = ["core", "panicking", "assert_failed_inner"];
 pub(super) const PANICKING_PANIC: [&str; 3] = ["core", "panicking", "panic"];
 pub(super) const PANICKING_PANIC_FMT: [&str; 3] = ["core", "panicking", "panic_fmt"];
 pub(super) const PANICKING_PANIC_STR: [&str; 3] = ["core", "panicking", "panic_str"];
