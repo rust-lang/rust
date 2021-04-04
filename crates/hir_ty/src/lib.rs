@@ -462,12 +462,6 @@ impl Substitution {
     ) -> Self {
         Substitution(elements.into_iter().casted(interner).collect())
     }
-
-    /// Return Substs that replace each parameter by itself (i.e. `Ty::Param`).
-    pub fn type_params(db: &dyn HirDatabase, def: impl Into<GenericDefId>) -> Substitution {
-        let params = generics(db.upcast(), def.into());
-        params.type_params_subst(db)
-    }
 }
 
 /// Return an index of a parameter in the generic type parameter list by it's id.
@@ -944,7 +938,7 @@ impl Ty {
                 let param_data = &generic_params.types[id.local_id];
                 match param_data.provenance {
                     hir_def::generics::TypeParamProvenance::ArgumentImplTrait => {
-                        let substs = Substitution::type_params(db, id.parent);
+                        let substs = TyBuilder::type_params_subst(db, id.parent);
                         let predicates = db
                             .generic_predicates(id.parent)
                             .into_iter()

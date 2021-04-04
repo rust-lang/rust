@@ -19,8 +19,7 @@ use crate::{
     db::HirDatabase, from_assoc_type_id, from_foreign_def_id, from_placeholder_idx, primitive,
     to_assoc_type_id, traits::chalk::from_chalk, utils::generics, AdtId, AliasEq, AliasTy,
     CallableDefId, CallableSig, DomainGoal, GenericArg, ImplTraitId, Interner, Lifetime, OpaqueTy,
-    ProjectionTy, QuantifiedWhereClause, Scalar, TraitRef, Ty, TyExt, TyKind,
-    WhereClause,
+    ProjectionTy, QuantifiedWhereClause, Scalar, TraitRef, Ty, TyExt, TyKind, WhereClause,
 };
 
 pub struct HirFormatter<'a> {

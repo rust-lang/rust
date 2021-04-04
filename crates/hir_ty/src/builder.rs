@@ -99,6 +99,11 @@ impl TyBuilder<()> {
         }
     }
 
+    pub fn type_params_subst(db: &dyn HirDatabase, def: impl Into<GenericDefId>) -> Substitution {
+        let params = generics(db.upcast(), def.into());
+        params.type_params_subst(db)
+    }
+
     pub fn subst_for_def(db: &dyn HirDatabase, def: impl Into<GenericDefId>) -> TyBuilder<()> {
         let def = def.into();
         let params = generics(db.upcast(), def);

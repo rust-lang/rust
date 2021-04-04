@@ -470,12 +470,13 @@ impl<'a> TyLoweringContext<'a> {
                             TypeParamLoweringMode::Placeholder => {
                                 // if we're lowering to placeholders, we have to put
                                 // them in now
-                                let s = Substitution::type_params(
-                                    self.db,
+                                let generics = generics(
+                                    self.db.upcast(),
                                     self.resolver.generic_def().expect(
                                         "there should be generics if there's a generic param",
                                     ),
                                 );
+                                let s = generics.type_params_subst(self.db);
                                 t.substitution.clone().subst_bound_vars(&s)
                             }
                             TypeParamLoweringMode::Variable => t.substitution.clone(),
@@ -963,7 +964,7 @@ pub(crate) fn trait_environment_query(
         // function default implementations (and hypothetical code
         // inside consts or type aliases)
         cov_mark::hit!(trait_self_implements_self);
-        let substs = Substitution::type_params(db, trait_id);
+        let substs = TyBuilder::type_params_subst(db, trait_id);
         let trait_ref = TraitRef { trait_id: to_chalk_trait_id(trait_id), substitution: substs };
         let pred = WhereClause::Implemented(trait_ref);
         let program_clause: chalk_ir::ProgramClause<Interner> = pred.to_chalk(db).cast(&Interner);
