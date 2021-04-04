@@ -368,7 +368,6 @@ bootstrap_tool!(
     Compiletest, "src/tools/compiletest", "compiletest", is_unstable_tool = true;
     BuildManifest, "src/tools/build-manifest", "build-manifest";
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client";
-    RustDemangler, "src/tools/rust-demangler", "rust-demangler";
     RustInstaller, "src/tools/rust-installer", "fabricate", is_external_tool = true;
     RustdocTheme, "src/tools/rustdoc-themes", "rustdoc-themes";
     ExpandYamlAnchors, "src/tools/expand-yaml-anchors", "expand-yaml-anchors";
@@ -719,6 +718,7 @@ tool_extended!((self, builder),
         });
         self.extra_features.push("clippy".to_owned());
     };
+    RustDemangler, rust_demangler, "src/tools/rust-demangler", "rust-demangler", stable=false, in_tree=true, {};
     Rustfmt, rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, {};
     RustAnalyzer, rust_analyzer, "src/tools/rust-analyzer/crates/rust-analyzer", "rust-analyzer", stable=false, {};
 );
