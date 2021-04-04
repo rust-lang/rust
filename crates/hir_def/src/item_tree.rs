@@ -569,20 +569,21 @@ pub enum Param {
     Varargs,
 }
 
-bitflags::bitflags! {
-    /// NOTE: Shared with `FunctionData`
-    pub(crate) struct FnFlags: u8 {
-        const HAS_SELF_PARAM = 1 << 0;
-        const HAS_BODY = 1 << 1;
-        const IS_DEFAULT = 1 << 2;
-        const IS_CONST = 1 << 3;
-        const IS_ASYNC = 1 << 4;
-        const IS_UNSAFE = 1 << 5;
-        /// Whether the function is located in an `extern` block (*not* whether it is an
-        /// `extern "abi" fn`).
-        const IS_IN_EXTERN_BLOCK = 1 << 6;
-        const IS_VARARGS = 1 << 7;
-    }
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
+pub(crate) struct FnFlags {
+    pub(crate) bits: u8,
+}
+impl FnFlags {
+    pub(crate) const HAS_SELF_PARAM: u8 = 1 << 0;
+    pub(crate) const HAS_BODY: u8 = 1 << 1;
+    pub(crate) const IS_DEFAULT: u8 = 1 << 2;
+    pub(crate) const IS_CONST: u8 = 1 << 3;
+    pub(crate) const IS_ASYNC: u8 = 1 << 4;
+    pub(crate) const IS_UNSAFE: u8 = 1 << 5;
+    /// Whether the function is located in an `extern` block (*not* whether it is an
+    /// `extern "abi" fn`).
+    pub(crate) const IS_IN_EXTERN_BLOCK: u8 = 1 << 6;
+    pub(crate) const IS_VARARGS: u8 = 1 << 7;
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
