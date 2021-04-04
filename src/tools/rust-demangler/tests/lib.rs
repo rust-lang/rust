@@ -22,74 +22,63 @@ _RNvC9backtrace3foo.llvm.A5310EB9
 _RNvNtNtNtNtCs92dm3009vxr_4rand4rngs7adapter9reseeding4fork23FORK_HANDLER_REGISTERED.0.0
 ";
 
+const DEMANGLED_OUTPUT: &str = r"
+123foo[0]::bar
+utf8_idents[317d481089b8c8fe]::საჭმელად_გემრიელი_სადილი
+cc[4d6468d6c9fd4bb3]::spawn::{closure#0}::{closure#0}
+<core[846817f741e54dfd]::slice::Iter<u8> as core[846817f741e54dfd]::iter::iterator::Iterator>::rposition::<core[846817f741e54dfd]::slice::memchr::memrchr::{closure#1}>::{closure#0}
+alloc[f15a878b47eb696b]::alloc::box_free::<dyn alloc[f15a878b47eb696b]::boxed::FnBox<(), Output = ()>>
+INtC8arrayvec8ArrayVechKj7b_E
+<const_generic[317d481089b8c8fe]::Unsigned<11: u8>>
+<const_generic[317d481089b8c8fe]::Signed<152: i16>>
+<const_generic[317d481089b8c8fe]::Signed<-11: i8>>
+<const_generic[317d481089b8c8fe]::Bool<false: bool>>
+<const_generic[317d481089b8c8fe]::Bool<true: bool>>
+<const_generic[317d481089b8c8fe]::Char<'v': char>>
+<const_generic[317d481089b8c8fe]::Char<'\n': char>>
+<const_generic[317d481089b8c8fe]::Char<'∂': char>>
+<const_generic[317d481089b8c8fe]::Foo<_>>::foo::FOO
+foo[0]
+foo[0]
+backtrace[0]::foo
+rand[693ea8e72247470f]::rngs::adapter::reseeding::fork::FORK_HANDLER_REGISTERED.0.0
+";
+
+const DEMANGLED_OUTPUT_NO_CRATE_DISAMBIGUATORS: &str = r"
+123foo[0]::bar
+utf8_idents::საჭმელად_გემრიელი_სადილი
+cc::spawn::{closure#0}::{closure#0}
+<core::slice::Iter<u8> as core::iter::iterator::Iterator>::rposition::<core::slice::memchr::memrchr::{closure#1}>::{closure#0}
+alloc::alloc::box_free::<dyn alloc::boxed::FnBox<(), Output = ()>>
+INtC8arrayvec8ArrayVechKj7b_E
+<const_generic::Unsigned<11: u8>>
+<const_generic::Signed<152: i16>>
+<const_generic::Signed<-11: i8>>
+<const_generic::Bool<false: bool>>
+<const_generic::Bool<true: bool>>
+<const_generic::Char<'v': char>>
+<const_generic::Char<'\n': char>>
+<const_generic::Char<'∂': char>>
+<const_generic::Foo<_>>::foo::FOO
+foo[0]
+foo[0]
+backtrace[0]::foo
+rand::rngs::adapter::reseeding::fork::FORK_HANDLER_REGISTERED.0.0
+";
+
 #[test]
 fn test_demangle_lines() {
     let demangled_lines = demangle_lines(MANGLED_INPUT.lines(), None);
-    let mut iter = demangled_lines.iter();
-    assert_eq!("", iter.next().unwrap());
-    assert_eq!("123foo[0]::bar", iter.next().unwrap());
-    assert_eq!("utf8_idents[317d481089b8c8fe]::საჭმელად_გემრიელი_სადილი", iter.next().unwrap());
-    assert_eq!("cc[4d6468d6c9fd4bb3]::spawn::{closure#0}::{closure#0}", iter.next().unwrap());
-    assert_eq!(
-        "<core[846817f741e54dfd]::slice::Iter<u8> as core[846817f741e54dfd]::iter::iterator::Iterator>::rposition::<core[846817f741e54dfd]::slice::memchr::memrchr::{closure#1}>::{closure#0}",
-        iter.next().unwrap()
-    );
-    assert_eq!(
-        "alloc[f15a878b47eb696b]::alloc::box_free::<dyn alloc[f15a878b47eb696b]::boxed::FnBox<(), Output = ()>>",
-        iter.next().unwrap()
-    );
-    assert_eq!("INtC8arrayvec8ArrayVechKj7b_E", iter.next().unwrap());
-    assert_eq!("<const_generic[317d481089b8c8fe]::Unsigned<11: u8>>", iter.next().unwrap());
-    assert_eq!("<const_generic[317d481089b8c8fe]::Signed<152: i16>>", iter.next().unwrap());
-    assert_eq!("<const_generic[317d481089b8c8fe]::Signed<-11: i8>>", iter.next().unwrap());
-    assert_eq!("<const_generic[317d481089b8c8fe]::Bool<false: bool>>", iter.next().unwrap());
-    assert_eq!("<const_generic[317d481089b8c8fe]::Bool<true: bool>>", iter.next().unwrap());
-    assert_eq!("<const_generic[317d481089b8c8fe]::Char<'v': char>>", iter.next().unwrap());
-    assert_eq!("<const_generic[317d481089b8c8fe]::Char<'\\n': char>>", iter.next().unwrap());
-    assert_eq!("<const_generic[317d481089b8c8fe]::Char<'∂': char>>", iter.next().unwrap());
-    assert_eq!("<const_generic[317d481089b8c8fe]::Foo<_>>::foo::FOO", iter.next().unwrap());
-    assert_eq!("foo[0]", iter.next().unwrap());
-    assert_eq!("foo[0]", iter.next().unwrap());
-    assert_eq!("backtrace[0]::foo", iter.next().unwrap());
-    assert_eq!(
-        "rand[693ea8e72247470f]::rngs::adapter::reseeding::fork::FORK_HANDLER_REGISTERED.0.0",
-        iter.next().unwrap()
-    );
-    assert!(iter.next().is_none());
+    for (expected, actual) in DEMANGLED_OUTPUT.lines().zip(demangled_lines) {
+        assert_eq!(expected, actual);
+    }
 }
 
 #[test]
 fn test_demangle_lines_no_crate_disambiguators() {
     let demangled_lines = demangle_lines(MANGLED_INPUT.lines(), Some(create_disambiguator_re()));
-    let mut iter = demangled_lines.iter();
-    assert_eq!("", iter.next().unwrap());
-    assert_eq!("123foo[0]::bar", iter.next().unwrap());
-    assert_eq!("utf8_idents::საჭმელად_გემრიელი_სადილი", iter.next().unwrap());
-    assert_eq!("cc::spawn::{closure#0}::{closure#0}", iter.next().unwrap());
-    assert_eq!(
-        "<core::slice::Iter<u8> as core::iter::iterator::Iterator>::rposition::<core::slice::memchr::memrchr::{closure#1}>::{closure#0}",
-        iter.next().unwrap()
-    );
-    assert_eq!(
-        "alloc::alloc::box_free::<dyn alloc::boxed::FnBox<(), Output = ()>>",
-        iter.next().unwrap()
-    );
-    assert_eq!("INtC8arrayvec8ArrayVechKj7b_E", iter.next().unwrap());
-    assert_eq!("<const_generic::Unsigned<11: u8>>", iter.next().unwrap());
-    assert_eq!("<const_generic::Signed<152: i16>>", iter.next().unwrap());
-    assert_eq!("<const_generic::Signed<-11: i8>>", iter.next().unwrap());
-    assert_eq!("<const_generic::Bool<false: bool>>", iter.next().unwrap());
-    assert_eq!("<const_generic::Bool<true: bool>>", iter.next().unwrap());
-    assert_eq!("<const_generic::Char<'v': char>>", iter.next().unwrap());
-    assert_eq!("<const_generic::Char<'\\n': char>>", iter.next().unwrap());
-    assert_eq!("<const_generic::Char<'∂': char>>", iter.next().unwrap());
-    assert_eq!("<const_generic::Foo<_>>::foo::FOO", iter.next().unwrap());
-    assert_eq!("foo[0]", iter.next().unwrap());
-    assert_eq!("foo[0]", iter.next().unwrap());
-    assert_eq!("backtrace[0]::foo", iter.next().unwrap());
-    assert_eq!(
-        "rand::rngs::adapter::reseeding::fork::FORK_HANDLER_REGISTERED.0.0",
-        iter.next().unwrap()
-    );
-    assert!(iter.next().is_none());
+    for (expected, actual) in DEMANGLED_OUTPUT_NO_CRATE_DISAMBIGUATORS.lines().zip(demangled_lines)
+    {
+        assert_eq!(expected, actual);
+    }
 }

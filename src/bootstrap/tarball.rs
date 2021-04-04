@@ -68,7 +68,7 @@ impl OverlayKind {
         match self {
             OverlayKind::Rust => builder.rust_version(),
             OverlayKind::LLVM => builder.rust_version(),
-            OverlayKind::RustDemangler => builder.rust_version(),
+            OverlayKind::RustDemangler => builder.release_num("rust-demangler"),
             OverlayKind::Cargo => {
                 builder.cargo_info.version(builder, &builder.release_num("cargo"))
             }

@@ -1,18 +1,15 @@
 # rust-demangler
 
-Demangles rustc mangled names.
+_Demangles rustc mangled names._
 
-This tool uses the [rustc-demangle](https://crates.io/crates/rustc-demangle)
-crate to convert an input buffer of newline-separated mangled names into their
-demangled translations.
+`rust-demangler` supports the requirements of the [`llvm-cov show -Xdemangler`
+option](https://llvm.org/docs/CommandGuide/llvm-cov.html#cmdoption-llvm-cov-show-xdemangler),
+to perform Rust-specific symbol demangling:
 
-This tool takes a list of mangled names (one per line) on standard input, and
-prints a corresponding list of demangled names. The tool is designed to support
-programs that can leverage a third-party demangler, such as `llvm-cov`, via the
-`-Xdemangler=<path-to-demangler>` option.
+> _The demangler is expected to read a newline-separated list of symbols from
+> stdin and write a newline-separated list of the same length to stdout._
 
-To use `rust-demangler` with `llvm-cov` for example, add the `-Xdemangler=...`
-option:
+To use `rust-demangler` with `llvm-cov` for example:
 
 ```shell
 $ TARGET="${PWD}/build/x86_64-unknown-linux-gnu"
@@ -20,6 +17,16 @@ $ "${TARGET}"/llvm/bin/llvm-cov show \
   --Xdemangler=path/to/rust-demangler \
   --instr-profile=main.profdata ./main --show-line-counts-or-regions
 ```
+
+`rust-demangler` is a Rust "extended tool", used in Rust compiler tests, and
+optionally included in Rust distributions that enable coverage profiling. Symbol
+demangling is implemented using the
+[rustc-demangle](https://crates.io/crates/rustc-demangle) crate.
+
+_(Note, for Rust developers, the third-party tool
+[`rustfilt`](https://crates.io/crates/rustfilt) also supports `llvm-cov` symbol
+demangling. `rustfilt` is a more generalized tool that searches any body of
+text, using pattern matching, to find and demangle Rust symbols.)_
 
 ## License
 

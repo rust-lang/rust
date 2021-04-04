@@ -393,6 +393,9 @@ impl Step for RustDemangler {
         t!(fs::create_dir_all(&dir));
 
         cargo.env("RUST_DEMANGLER_DRIVER_PATH", rust_demangler);
+
+        cargo.arg("--").args(builder.config.cmd.test_args());
+
         cargo.add_rustc_lib_path(builder, compiler);
 
         builder.run(&mut cargo.into());

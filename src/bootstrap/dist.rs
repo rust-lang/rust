@@ -1253,7 +1253,7 @@ pub struct RustDemangler {
 }
 
 impl Step for RustDemangler {
-    type Output = GeneratedTarball;
+    type Output = Option<GeneratedTarball>;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1271,10 +1271,16 @@ impl Step for RustDemangler {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
+    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let compiler = self.compiler;
         let target = self.target;
         assert!(builder.config.extended);
+
+        // Only build this extended tool if explicitly included in `tools`, or if `profiler = true`
+        let profiler = builder.config.profiler_enabled(target);
+        if !builder.config.tools.as_ref().map_or(profiler, |t| t.contains("rust-demangler")) {
+            return None;
+        }
 
         let rust_demangler = builder
             .ensure(tool::RustDemangler { compiler, target, extra_features: Vec::new() })
@@ -1286,7 +1292,7 @@ impl Step for RustDemangler {
         tarball.is_preview(true);
         tarball.add_file(&rust_demangler, "bin", 0o755);
         tarball.add_legal_and_readme_to("share/doc/rust-demangler");
-        tarball.generate()
+        Some(tarball.generate())
     }
 }
 
@@ -1326,14 +1332,7 @@ impl Step for Extended {
         let rustc_installer = builder.ensure(Rustc { compiler: builder.compiler(stage, target) });
         let cargo_installer = builder.ensure(Cargo { compiler, target });
         let rustfmt_installer = builder.ensure(Rustfmt { compiler, target });
-        let profiler = builder.config.profiler_enabled(target);
-        let install_rust_demangler =
-            builder.config.tools.as_ref().map_or(profiler, |t| t.contains("rust-demangler"));
-        let rust_demangler_installer = if install_rust_demangler {
-            Some(builder.ensure(RustDemangler { compiler, target }))
-        } else {
-            None
-        };
+        let rust_demangler_installer = builder.ensure(RustDemangler { compiler, target });
         let rls_installer = builder.ensure(Rls { compiler, target });
         let rust_analyzer_installer = builder.ensure(RustAnalyzer { compiler, target });
         let llvm_tools_installer = builder.ensure(LlvmTools { target });
@@ -1359,14 +1358,12 @@ impl Step for Extended {
         let mut tarballs = Vec::new();
         tarballs.push(rustc_installer);
         tarballs.push(cargo_installer);
+        tarballs.push(clippy_installer);
+        tarballs.extend(rust_demangler_installer.clone());
         tarballs.extend(rls_installer.clone());
         tarballs.extend(rust_analyzer_installer.clone());
-        tarballs.push(clippy_installer);
         tarballs.extend(miri_installer.clone());
         tarballs.extend(rustfmt_installer.clone());
-        if let Some(rust_demangler_installer) = rust_demangler_installer {
-            tarballs.push(rust_demangler_installer);
-        }
         tarballs.extend(llvm_tools_installer);
         if let Some(analysis_installer) = analysis_installer {
             tarballs.push(analysis_installer);
@@ -1421,6 +1418,9 @@ impl Step for Extended {
 
         let xform = |p: &Path| {
             let mut contents = t!(fs::read_to_string(p));
+            if rust_demangler_installer.is_none() {
+                contents = filter(&contents, "rust-demangler");
+            }
             if rls_installer.is_none() {
                 contents = filter(&contents, "rls");
             }
@@ -1468,11 +1468,10 @@ impl Step for Extended {
             prepare("rust-docs");
             prepare("rust-std");
             prepare("rust-analysis");
-            if install_rust_demangler {
+            prepare("clippy");
+            if rust_demangler_installer.is_some() {
                 prepare("rust-demangler");
             }
-            prepare("clippy");
-
             if rls_installer.is_some() {
                 prepare("rls");
             }
@@ -1520,6 +1519,8 @@ impl Step for Extended {
                     "rust-analyzer-preview".to_string()
                 } else if name == "clippy" {
                     "clippy-preview".to_string()
+                } else if name == "rust-demangler" {
+                    "rust-demangler-preview".to_string()
                 } else if name == "miri" {
                     "miri-preview".to_string()
                 } else {
@@ -1534,12 +1535,12 @@ impl Step for Extended {
             prepare("rustc");
             prepare("cargo");
             prepare("rust-analysis");
-            if install_rust_demangler {
-                prepare("rust-demangler");
-            }
             prepare("rust-docs");
             prepare("rust-std");
             prepare("clippy");
+            if rust_demangler_installer.is_some() {
+                prepare("rust-demangler");
+            }
             if rls_installer.is_some() {
                 prepare("rls");
             }
@@ -1681,7 +1682,7 @@ impl Step for Extended {
                     .arg("-t")
                     .arg(etc.join("msi/remove-duplicates.xsl")),
             );
-            if install_rust_demangler {
+            if rust_demangler_installer.is_some() {
                 builder.run(
                     Command::new(&heat)
                         .current_dir(&exe)
@@ -1773,6 +1774,9 @@ impl Step for Extended {
                     .arg(&input);
                 add_env(builder, &mut cmd, target);
 
+                if rust_demangler_installer.is_some() {
+                    cmd.arg("-dRustDemanglerDir=rust-demangler");
+                }
                 if rls_installer.is_some() {
                     cmd.arg("-dRlsDir=rls");
                 }
@@ -1795,7 +1799,7 @@ impl Step for Extended {
             candle("CargoGroup.wxs".as_ref());
             candle("StdGroup.wxs".as_ref());
             candle("ClippyGroup.wxs".as_ref());
-            if install_rust_demangler {
+            if rust_demangler_installer.is_some() {
                 candle("RustDemanglerGroup.wxs".as_ref());
             }
             if rls_installer.is_some() {
@@ -1844,7 +1848,7 @@ impl Step for Extended {
             if rust_analyzer_installer.is_some() {
                 cmd.arg("RustAnalyzerGroup.wixobj");
             }
-            if install_rust_demangler {
+            if rust_demangler_installer.is_some() {
                 cmd.arg("RustDemanglerGroup.wixobj");
             }
             if miri_installer.is_some() {
