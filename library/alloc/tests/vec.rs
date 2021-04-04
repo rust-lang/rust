@@ -1004,9 +1004,9 @@ fn test_from_iter_specialization_with_iterator_adapters() {
         .map_while(Option::Some)
         .peekable()
         .skip(1)
-        .map(|e| std::num::NonZeroUsize::new(e));
+        .map(|e| if e != usize::MAX { Ok(std::num::NonZeroUsize::new(e)) } else { Err(()) });
     assert_in_place_trait(&iter);
-    let sink = iter.collect::<Vec<_>>();
+    let sink = iter.collect::<Result<Vec<_>, _>>().unwrap();
     let sinkptr = sink.as_ptr();
     assert_eq!(srcptr, sinkptr as *const usize);
 }
@@ -1078,12 +1078,21 @@ fn test_from_iter_specialization_panic_during_drop_leaks() {
         }
     }
 
+    let mut to_free: *mut Droppable = core::ptr::null_mut();
+    let mut cap = 0;
+
     let _ = std::panic::catch_unwind(AssertUnwindSafe(|| {
-        let v = vec![Droppable::DroppedTwice(Box::new(123)), Droppable::PanicOnDrop];
+        let mut v = vec![Droppable::DroppedTwice(Box::new(123)), Droppable::PanicOnDrop];
+        to_free = v.as_mut_ptr();
+        cap = v.capacity();
         let _ = v.into_iter().take(0).collect::<Vec<_>>();
     }));
 
     assert_eq!(unsafe { DROP_COUNTER }, 1);
+    // clean up the leak to keep miri happy
+    unsafe {
+        drop(Vec::from_raw_parts(to_free, 0, cap));
+    }
 }
 
 #[test]

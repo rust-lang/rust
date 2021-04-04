@@ -456,6 +456,10 @@ impl Externs {
     pub fn iter(&self) -> BTreeMapIter<'_, String, ExternEntry> {
         self.0.iter()
     }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
 }
 
 impl ExternEntry {
@@ -698,6 +702,7 @@ impl Default for Options {
             remap_path_prefix: Vec::new(),
             edition: DEFAULT_EDITION,
             json_artifact_notifications: false,
+            json_unused_externs: false,
             pretty: None,
         }
     }
@@ -1196,15 +1201,23 @@ pub fn parse_color(matches: &getopts::Matches) -> ColorConfig {
     }
 }
 
+/// Possible json config files
+pub struct JsonConfig {
+    pub json_rendered: HumanReadableErrorType,
+    pub json_artifact_notifications: bool,
+    pub json_unused_externs: bool,
+}
+
 /// Parse the `--json` flag.
 ///
 /// The first value returned is how to render JSON diagnostics, and the second
 /// is whether or not artifact notifications are enabled.
-pub fn parse_json(matches: &getopts::Matches) -> (HumanReadableErrorType, bool) {
+pub fn parse_json(matches: &getopts::Matches) -> JsonConfig {
     let mut json_rendered: fn(ColorConfig) -> HumanReadableErrorType =
         HumanReadableErrorType::Default;
     let mut json_color = ColorConfig::Never;
     let mut json_artifact_notifications = false;
+    let mut json_unused_externs = false;
     for option in matches.opt_strs("json") {
         // For now conservatively forbid `--color` with `--json` since `--json`
         // won't actually be emitting any colors and anything colorized is
@@ -1221,6 +1234,7 @@ pub fn parse_json(matches: &getopts::Matches) -> (HumanReadableErrorType, bool) 
                 "diagnostic-short" => json_rendered = HumanReadableErrorType::Short,
                 "diagnostic-rendered-ansi" => json_color = ColorConfig::Always,
                 "artifacts" => json_artifact_notifications = true,
+                "unused-externs" => json_unused_externs = true,
                 s => early_error(
                     ErrorOutputType::default(),
                     &format!("unknown `--json` option `{}`", s),
@@ -1228,7 +1242,12 @@ pub fn parse_json(matches: &getopts::Matches) -> (HumanReadableErrorType, bool) 
             }
         }
     }
-    (json_rendered(json_color), json_artifact_notifications)
+
+    JsonConfig {
+        json_rendered: json_rendered(json_color),
+        json_artifact_notifications,
+        json_unused_externs,
+    }
 }
 
 /// Parses the `--error-format` flag.
@@ -1806,7 +1825,8 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let edition = parse_crate_edition(matches);
 
-    let (json_rendered, json_artifact_notifications) = parse_json(matches);
+    let JsonConfig { json_rendered, json_artifact_notifications, json_unused_externs } =
+        parse_json(matches);
 
     let error_format = parse_error_format(matches, color, json_rendered);
 
@@ -1818,6 +1838,14 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let mut debugging_opts = build_debugging_options(matches, error_format);
     check_debug_option_stability(&debugging_opts, error_format, json_rendered);
+
+    if !debugging_opts.unstable_options && json_unused_externs {
+        early_error(
+            error_format,
+            "the `-Z unstable-options` flag must also be passed to enable \
+            the flag `--json=unused-externs`",
+        );
+    }
 
     let output_types = parse_output_types(&debugging_opts, matches, error_format);
 
@@ -1979,6 +2007,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         remap_path_prefix,
         edition,
         json_artifact_notifications,
+        json_unused_externs,
         pretty,
     }
 }

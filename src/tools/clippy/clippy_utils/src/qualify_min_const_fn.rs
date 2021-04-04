@@ -212,7 +212,7 @@ fn check_statement(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, def_id: DefId, statemen
             check_rvalue(tcx, body, def_id, rval, span)
         }
 
-        StatementKind::FakeRead(_, place) |
+        StatementKind::FakeRead(box (_, place)) => check_place(tcx, *place, span, body),
         // just an assignment
         StatementKind::SetDiscriminant { place, .. } => check_place(tcx, **place, span, body),
 
