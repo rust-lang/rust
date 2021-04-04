@@ -99,8 +99,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
         let body = self.db.body(func.into());
 
         // Recursively validate inner scope items, such as static variables and constants.
-        let db = self.db;
-        for block_def_map in body.block_scopes.iter().filter_map(|block| db.block_def_map(*block)) {
+        for (_, block_def_map) in body.blocks(self.db.upcast()) {
             for (_, module) in block_def_map.modules() {
                 for def_id in module.scope.declarations() {
                     let mut validator = DeclValidator::new(self.db, self.krate, self.sink);

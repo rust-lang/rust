@@ -226,7 +226,7 @@ pub struct Body {
     /// The `ExprId` of the actual body expression.
     pub body_expr: ExprId,
     /// Block expressions in this body that may contain inner items.
-    pub block_scopes: Vec<BlockId>,
+    block_scopes: Vec<BlockId>,
     _c: Count<Self>,
 }
 
@@ -308,6 +308,16 @@ impl Body {
 
     pub(crate) fn body_query(db: &dyn DefDatabase, def: DefWithBodyId) -> Arc<Body> {
         db.body_with_source_map(def).0
+    }
+
+    /// Returns an iterator over all block expressions in this body that define inner items.
+    pub fn blocks<'a>(
+        &'a self,
+        db: &'a dyn DefDatabase,
+    ) -> impl Iterator<Item = (BlockId, Arc<DefMap>)> + '_ {
+        self.block_scopes
+            .iter()
+            .filter_map(move |block| db.block_def_map(*block).map(|map| (*block, map)))
     }
 
     fn new(

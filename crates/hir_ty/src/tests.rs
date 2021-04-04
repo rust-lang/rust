@@ -288,7 +288,7 @@ fn visit_module(
     }
 
     fn visit_body(db: &TestDB, body: &Body, cb: &mut dyn FnMut(DefWithBodyId)) {
-        for def_map in body.block_scopes.iter().filter_map(|block| db.block_def_map(*block)) {
+        for (_, def_map) in body.blocks(db) {
             for (mod_id, _) in def_map.modules() {
                 visit_module(db, &def_map, mod_id, cb);
             }
