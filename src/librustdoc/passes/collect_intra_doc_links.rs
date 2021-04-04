@@ -611,7 +611,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         ty::AssocKind::Const => "associatedconstant",
                         ty::AssocKind::Type => "associatedtype",
                     };
-                    Some(if extra_fragment.is_some() {
+                    return Some(if extra_fragment.is_some() {
                         Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(
                             root_res,
                         )))
@@ -621,51 +621,41 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         // Store the kind in a side channel so that only the disambiguator logic looks at it.
                         self.kind_side_channel.set(Some((kind.as_def_kind(), id)));
                         Ok((root_res, Some(format!("{}.{}", out, item_name))))
-                    })
-                } else if ns == Namespace::ValueNS {
-                    debug!("looking for variants or fields named {} for {:?}", item_name, did);
-                    // FIXME(jynelson): why is this different from
-                    // `variant_field`?
-                    match tcx.type_of(did).kind() {
-                        ty::Adt(def, _) => {
-                            let field = if def.is_enum() {
-                                def.all_fields().find(|item| item.ident.name == item_name)
-                            } else {
-                                def.non_enum_variant()
-                                    .fields
-                                    .iter()
-                                    .find(|item| item.ident.name == item_name)
-                            };
-                            field.map(|item| {
-                                if extra_fragment.is_some() {
-                                    let res = Res::Def(
-                                        if def.is_enum() {
-                                            DefKind::Variant
-                                        } else {
-                                            DefKind::Field
-                                        },
-                                        item.did,
-                                    );
-                                    Err(ErrorKind::AnchorFailure(
-                                        AnchorFailure::RustdocAnchorConflict(res),
-                                    ))
-                                } else {
-                                    Ok((
-                                        root_res,
-                                        Some(format!(
-                                            "{}.{}",
-                                            if def.is_enum() { "variant" } else { "structfield" },
-                                            item.ident
-                                        )),
-                                    ))
-                                }
-                            })
-                        }
-                        _ => None,
-                    }
-                } else {
-                    None
+                    });
                 }
+
+                if ns != Namespace::ValueNS {
+                    return None;
+                }
+                debug!("looking for variants or fields named {} for {:?}", item_name, did);
+                // FIXME: this doesn't really belong in `associated_item` (maybe `variant_field` is better?)
+                // NOTE: it's different from variant_field because it resolves fields and variants,
+                // not variant fields (2 path segments, not 3).
+                let def = match tcx.type_of(did).kind() {
+                    ty::Adt(def, _) => def,
+                    _ => return None,
+                };
+                let field = if def.is_enum() {
+                    def.all_fields().find(|item| item.ident.name == item_name)
+                } else {
+                    def.non_enum_variant().fields.iter().find(|item| item.ident.name == item_name)
+                }?;
+                Some(if extra_fragment.is_some() {
+                    let res = Res::Def(
+                        if def.is_enum() { DefKind::Variant } else { DefKind::Field },
+                        field.did,
+                    );
+                    Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(res)))
+                } else {
+                    Ok((
+                        root_res,
+                        Some(format!(
+                            "{}.{}",
+                            if def.is_enum() { "variant" } else { "structfield" },
+                            field.ident
+                        )),
+                    ))
+                })
             }
             Res::Def(DefKind::Trait, did) => tcx
                 .associated_items(did)
