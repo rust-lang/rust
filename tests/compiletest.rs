@@ -42,7 +42,7 @@ fn run_tests(mode: &str, path: &str, target: &str) {
         config.run_lib_path = PathBuf::from(lib_path);
         config.compile_lib_path = PathBuf::from(lib_path);
     }
-    config.filter = env::args().nth(1);
+    config.filters = env::args().nth(1).into_iter().collect();
     config.host = get_host();
     config.src_base = PathBuf::from(path);
     config.target = target.to_owned();
