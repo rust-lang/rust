@@ -189,7 +189,9 @@ impl<'a> Classifier<'a> {
             // leading identifier.
             TokenKind::Bang if self.in_macro => {
                 self.in_macro = false;
-                Class::Macro
+                sink(Highlight::Token { text, class: None });
+                sink(Highlight::ExitSpan);
+                return;
             }
 
             // Assume that '&' or '*' is the reference or dereference operator
@@ -298,7 +300,9 @@ impl<'a> Classifier<'a> {
             },
             TokenKind::Ident | TokenKind::RawIdent if lookahead == Some(TokenKind::Bang) => {
                 self.in_macro = true;
-                Class::Macro
+                sink(Highlight::EnterSpan { class: Class::Macro });
+                sink(Highlight::Token { text, class: None });
+                return;
             }
             TokenKind::Ident => match text {
                 "ref" | "mut" => Class::RefKeyWord,
