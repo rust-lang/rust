@@ -15,7 +15,7 @@ doctest = false # and no doc tests
 
 [dependencies]
 directories = "3"
-rustc_version = "0.2.3"
+rustc_version = "0.3"
 serde_json = "1.0.40"
 
 # A noop dependency that changes in the Rust repository, it's a bit of a hack.
@@ -28,4 +28,4 @@ rustc-workspace-hack = "1.0.0"
 serde = { version = "*", features = ["derive"] }
 
 [build-dependencies]
-vergen = "3"
+vergen = { version = "5", default_features = false, features = ["git"] }
