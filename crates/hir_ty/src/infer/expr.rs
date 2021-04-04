@@ -20,10 +20,10 @@ use crate::{
     method_resolution, op,
     primitive::{self, UintTy},
     to_chalk_trait_id,
-    traits::{chalk::from_chalk, FnTrait, InEnvironment},
+    traits::{chalk::from_chalk, FnTrait},
     utils::{generics, variant_data, Generics},
-    AdtId, Binders, CallableDefId, FnPointer, FnSig, Interner, Rawness, Scalar, Substitution,
-    TraitRef, Ty, TyBuilder, TyKind,
+    AdtId, Binders, CallableDefId, FnPointer, FnSig, InEnvironment, Interner, Rawness, Scalar,
+    Substitution, TraitRef, Ty, TyBuilder, TyKind,
 };
 
 use super::{

@@ -49,7 +49,7 @@ pub use lower::{
     associated_type_shorthand_candidates, callable_item_sig, CallableDefId, ImplTraitLoweringMode,
     TyDefId, TyLoweringContext, ValueTyDefId,
 };
-pub use traits::{AliasEq, DomainGoal, InEnvironment, TraitEnvironment};
+pub use traits::TraitEnvironment;
 pub use types::*;
 pub use walk::TypeWalk;
 

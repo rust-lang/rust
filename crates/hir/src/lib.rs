@@ -55,10 +55,11 @@ use hir_ty::{
     autoderef, could_unify,
     method_resolution::{self, TyFingerprint},
     primitive::UintTy,
-    traits::{FnTrait, Solution, SolutionVariables},
+    traits::FnTrait,
     AliasEq, AliasTy, BoundVar, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast,
-    DebruijnIndex, InEnvironment, Interner, QuantifiedWhereClause, Scalar, Substitution,
-    TraitEnvironment, Ty, TyBuilder, TyDefId, TyKind, TyVariableKind, WhereClause,
+    DebruijnIndex, InEnvironment, Interner, QuantifiedWhereClause, Scalar, Solution,
+    SolutionVariables, Substitution, TraitEnvironment, Ty, TyBuilder, TyDefId, TyKind,
+    TyVariableKind, WhereClause,
 };
 use itertools::Itertools;
 use rustc_hash::FxHashSet;

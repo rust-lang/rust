@@ -11,7 +11,7 @@ use hir_def::LifetimeParamId;
 use smallvec::SmallVec;
 
 use crate::{
-    AliasEq, AssocTypeId, CanonicalVarKinds, ChalkTraitId, ClosureId, FnDefId, FnSig, ForeignDefId,
+    AssocTypeId, CanonicalVarKinds, ChalkTraitId, ClosureId, FnDefId, FnSig, ForeignDefId,
     InferenceVar, Interner, OpaqueTyId, PlaceholderIndex,
 };
 
@@ -351,4 +351,66 @@ impl QuantifiedWhereClauses {
 pub struct Canonical<T> {
     pub value: T,
     pub binders: CanonicalVarKinds,
+}
+
+/// Something (usually a goal), along with an environment.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct InEnvironment<T> {
+    pub environment: chalk_ir::Environment<Interner>,
+    pub goal: T,
+}
+
+impl<T> InEnvironment<T> {
+    pub fn new(environment: chalk_ir::Environment<Interner>, value: T) -> InEnvironment<T> {
+        InEnvironment { environment, goal: value }
+    }
+}
+
+/// Something that needs to be proven (by Chalk) during type checking, e.g. that
+/// a certain type implements a certain trait. Proving the Obligation might
+/// result in additional information about inference variables.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum DomainGoal {
+    Holds(WhereClause),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct AliasEq {
+    pub alias: AliasTy,
+    pub ty: Ty,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SolutionVariables(pub Canonical<Substitution>);
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+/// A (possible) solution for a proposed goal.
+pub enum Solution {
+    /// The goal indeed holds, and there is a unique value for all existential
+    /// variables.
+    Unique(SolutionVariables),
+
+    /// The goal may be provable in multiple ways, but regardless we may have some guidance
+    /// for type inference. In this case, we don't return any lifetime
+    /// constraints, since we have not "committed" to any particular solution
+    /// yet.
+    Ambig(Guidance),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+/// When a goal holds ambiguously (e.g., because there are multiple possible
+/// solutions), we issue a set of *guidance* back to type inference.
+pub enum Guidance {
+    /// The existential variables *must* have the given values if the goal is
+    /// ever to hold, but that alone isn't enough to guarantee the goal will
+    /// actually hold.
+    Definite(SolutionVariables),
+
+    /// There are multiple plausible values for the existentials, but the ones
+    /// here are suggested as the preferred choice heuristically. These should
+    /// be used for inference fallback only.
+    Suggested(SolutionVariables),
+
+    /// There's no useful information to feed back to type inference
+    Unknown,
 }

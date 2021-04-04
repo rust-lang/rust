@@ -123,7 +123,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
         &self,
         krate: CrateId,
         goal: crate::Canonical<crate::InEnvironment<crate::DomainGoal>>,
-    ) -> Option<crate::traits::Solution>;
+    ) -> Option<crate::Solution>;
 
     #[salsa::invoke(crate::traits::chalk::program_clauses_for_chalk_env_query)]
     fn program_clauses_for_chalk_env(

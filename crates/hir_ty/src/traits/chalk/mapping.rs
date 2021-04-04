@@ -10,11 +10,9 @@ use base_db::salsa::InternKey;
 use hir_def::{GenericDefId, TypeAliasId};
 
 use crate::{
-    db::HirDatabase,
-    primitive::UintTy,
-    traits::{Canonical, DomainGoal},
-    AliasTy, CallableDefId, FnPointer, GenericArg, InEnvironment, OpaqueTy, ProjectionTy,
-    QuantifiedWhereClause, Scalar, Substitution, TraitRef, Ty, TypeWalk, WhereClause,
+    db::HirDatabase, primitive::UintTy, AliasTy, CallableDefId, Canonical, DomainGoal, FnPointer,
+    GenericArg, InEnvironment, OpaqueTy, ProjectionTy, QuantifiedWhereClause, Scalar, Substitution,
+    TraitRef, Ty, TypeWalk, WhereClause,
 };
 
 use super::interner::*;
