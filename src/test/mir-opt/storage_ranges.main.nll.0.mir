@@ -39,7 +39,7 @@ fn main() -> () {
     bb0: {
         StorageLive(_1);                 // scope 0 at $DIR/storage_ranges.rs:4:9: 4:10
         _1 = const 0_i32;                // scope 0 at $DIR/storage_ranges.rs:4:13: 4:14
-        FakeRead(ForLet, _1);            // scope 0 at $DIR/storage_ranges.rs:4:9: 4:10
+        FakeRead(ForLet(None), _1);      // scope 0 at $DIR/storage_ranges.rs:4:9: 4:10
         StorageLive(_2);                 // scope 1 at $DIR/storage_ranges.rs:5:5: 7:6
         StorageLive(_3);                 // scope 1 at $DIR/storage_ranges.rs:6:13: 6:14
         StorageLive(_4);                 // scope 1 at $DIR/storage_ranges.rs:6:18: 6:25
@@ -48,14 +48,14 @@ fn main() -> () {
         _4 = Option::<i32>::Some(move _5); // scope 1 at $DIR/storage_ranges.rs:6:18: 6:25
         StorageDead(_5);                 // scope 1 at $DIR/storage_ranges.rs:6:24: 6:25
         _3 = &_4;                        // scope 1 at $DIR/storage_ranges.rs:6:17: 6:25
-        FakeRead(ForLet, _3);            // scope 1 at $DIR/storage_ranges.rs:6:13: 6:14
+        FakeRead(ForLet(None), _3);      // scope 1 at $DIR/storage_ranges.rs:6:13: 6:14
         _2 = const ();                   // scope 1 at $DIR/storage_ranges.rs:5:5: 7:6
         StorageDead(_4);                 // scope 1 at $DIR/storage_ranges.rs:7:5: 7:6
         StorageDead(_3);                 // scope 1 at $DIR/storage_ranges.rs:7:5: 7:6
         StorageDead(_2);                 // scope 1 at $DIR/storage_ranges.rs:7:5: 7:6
         StorageLive(_6);                 // scope 1 at $DIR/storage_ranges.rs:8:9: 8:10
         _6 = const 1_i32;                // scope 1 at $DIR/storage_ranges.rs:8:13: 8:14
-        FakeRead(ForLet, _6);            // scope 1 at $DIR/storage_ranges.rs:8:9: 8:10
+        FakeRead(ForLet(None), _6);      // scope 1 at $DIR/storage_ranges.rs:8:9: 8:10
         _0 = const ();                   // scope 0 at $DIR/storage_ranges.rs:3:11: 9:2
         StorageDead(_6);                 // scope 1 at $DIR/storage_ranges.rs:9:1: 9:2
         StorageDead(_1);                 // scope 0 at $DIR/storage_ranges.rs:9:1: 9:2
