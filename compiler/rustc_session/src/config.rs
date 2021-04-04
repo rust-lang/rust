@@ -822,6 +822,9 @@ pub fn default_configuration(sess: &Session) -> CrateConfig {
         }
     }
     ret.insert((sym::target_arch, Some(Symbol::intern(arch))));
+    if sess.target.is_like_wasm {
+        ret.insert((sym::wasm, None));
+    }
     ret.insert((sym::target_endian, Some(Symbol::intern(end.as_str()))));
     ret.insert((sym::target_pointer_width, Some(Symbol::intern(&wordsz))));
     ret.insert((sym::target_env, Some(Symbol::intern(env))));

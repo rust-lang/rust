@@ -10,11 +10,11 @@
 //! This target is more or less managed by the Rust and WebAssembly Working
 //! Group nowadays at <https://github.com/rustwasm>.
 
-use super::wasm32_base;
+use super::wasm_base;
 use super::{LinkerFlavor, LldFlavor, Target};
 
 pub fn target() -> Target {
-    let mut options = wasm32_base::options();
+    let mut options = wasm_base::options();
     options.os = "unknown".to_string();
     options.linker_flavor = LinkerFlavor::Lld(LldFlavor::Wasm);
     let clang_args = options.pre_link_args.entry(LinkerFlavor::Gcc).or_default();

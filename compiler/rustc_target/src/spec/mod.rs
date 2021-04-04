@@ -79,7 +79,7 @@ mod solaris_base;
 mod thumb_base;
 mod uefi_msvc_base;
 mod vxworks_base;
-mod wasm32_base;
+mod wasm_base;
 mod windows_gnu_base;
 mod windows_msvc_base;
 mod windows_uwp_gnu_base;
@@ -842,6 +842,7 @@ supported_targets! {
     ("wasm32-unknown-emscripten", wasm32_unknown_emscripten),
     ("wasm32-unknown-unknown", wasm32_unknown_unknown),
     ("wasm32-wasi", wasm32_wasi),
+    ("wasm64-unknown-unknown", wasm64_unknown_unknown),
 
     ("thumbv6m-none-eabi", thumbv6m_none_eabi),
     ("thumbv7m-none-eabi", thumbv7m_none_eabi),
@@ -1076,6 +1077,8 @@ pub struct TargetOptions {
     pub is_like_emscripten: bool,
     /// Whether the target toolchain is like Fuchsia's.
     pub is_like_fuchsia: bool,
+    /// Whether a target toolchain is like WASM.
+    pub is_like_wasm: bool,
     /// Version of DWARF to use if not using the default.
     /// Useful because some platforms (osx, bsd) only want up to DWARF2.
     pub dwarf_version: Option<u32>,
@@ -1295,6 +1298,7 @@ impl Default for TargetOptions {
             is_like_emscripten: false,
             is_like_msvc: false,
             is_like_fuchsia: false,
+            is_like_wasm: false,
             dwarf_version: None,
             linker_is_gnu: false,
             allows_weak_linkage: true,
@@ -1789,6 +1793,7 @@ impl Target {
         key!(is_like_msvc, bool);
         key!(is_like_emscripten, bool);
         key!(is_like_fuchsia, bool);
+        key!(is_like_wasm, bool);
         key!(dwarf_version, Option<u32>);
         key!(linker_is_gnu, bool);
         key!(allows_weak_linkage, bool);
@@ -2027,6 +2032,7 @@ impl ToJson for Target {
         target_option_val!(is_like_msvc);
         target_option_val!(is_like_emscripten);
         target_option_val!(is_like_fuchsia);
+        target_option_val!(is_like_wasm);
         target_option_val!(dwarf_version);
         target_option_val!(linker_is_gnu);
         target_option_val!(allows_weak_linkage);
