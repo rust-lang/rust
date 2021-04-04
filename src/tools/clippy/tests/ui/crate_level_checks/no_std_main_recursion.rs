@@ -1,8 +1,8 @@
+// compile-flags: -Clink-arg=-nostartfiles
 // ignore-macos
 // ignore-windows
 
-#![feature(lang_items, link_args, start, libc)]
-#![link_args = "-nostartfiles"]
+#![feature(lang_items, start, libc)]
 #![no_std]
 
 use core::panic::PanicInfo;
