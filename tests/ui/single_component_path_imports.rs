@@ -25,3 +25,10 @@ mod hello_mod {
     #[allow(dead_code)]
     fn hello_mod() {}
 }
+
+mod hi_mod {
+    use self::regex::{Regex, RegexSet};
+    use regex;
+    #[allow(dead_code)]
+    fn hi_mod() {}
+}
