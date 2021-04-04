@@ -113,6 +113,7 @@ mod sty;
 
 // Data types
 
+#[derive(Debug)]
 pub struct ResolverOutputs {
     pub definitions: rustc_hir::definitions::Definitions,
     pub cstore: Box<CrateStoreDyn>,

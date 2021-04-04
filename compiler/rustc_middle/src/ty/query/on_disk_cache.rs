@@ -584,7 +584,9 @@ impl<'sess> OnDiskCache<'sess> {
                 debug!("def_path_hash_to_def_id({:?})", hash);
                 // Check if the `DefPathHash` corresponds to a definition in the current
                 // crate
-                if let Some(def_id) = tcx.definitions.local_def_path_hash_to_def_id(hash) {
+                if let Some(def_id) =
+                    tcx.untracked_resolutions.definitions.local_def_path_hash_to_def_id(hash)
+                {
                     let def_id = def_id.to_def_id();
                     e.insert(Some(def_id));
                     return Some(def_id);
@@ -612,7 +614,11 @@ impl<'sess> OnDiskCache<'sess> {
                 debug_assert_ne!(krate, LOCAL_CRATE);
                 // Try to find a definition in the current session, using the previous `DefIndex`
                 // as an initial guess.
-                let opt_def_id = tcx.cstore.def_path_hash_to_def_id(krate, raw_def_id.index, hash);
+                let opt_def_id = tcx.untracked_resolutions.cstore.def_path_hash_to_def_id(
+                    krate,
+                    raw_def_id.index,
+                    hash,
+                );
                 debug!("def_path_to_def_id({:?}): opt_def_id = {:?}", hash, opt_def_id);
                 e.insert(opt_def_id);
                 opt_def_id
