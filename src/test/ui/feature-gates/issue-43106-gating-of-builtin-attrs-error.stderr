@@ -1,5 +1,5 @@
 error: attribute must be of the form `#[inline]` or `#[inline(always|never)]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:41:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:40:5
    |
 LL |     #[inline = "2100"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^
@@ -9,67 +9,67 @@ LL |     #[inline = "2100"] fn f() { }
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
 
 error: `main` attribute can only be used on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:110:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:109:1
    |
 LL | #[main]
    | ^^^^^^^
 
 error: `main` attribute can only be used on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:113:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:112:17
    |
 LL |     mod inner { #![main] }
    |                 ^^^^^^^^
 
 error: `main` attribute can only be used on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:118:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:117:5
    |
 LL |     #[main] struct S;
    |     ^^^^^^^
 
 error: `main` attribute can only be used on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:121:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:120:5
    |
 LL |     #[main] type T = S;
    |     ^^^^^^^
 
 error: `main` attribute can only be used on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:124:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:123:5
    |
 LL |     #[main] impl S { }
    |     ^^^^^^^
 
 error: `start` attribute can only be used on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:128:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:127:1
    |
 LL | #[start]
    | ^^^^^^^^
 
 error: `start` attribute can only be used on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:131:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:130:17
    |
 LL |     mod inner { #![start] }
    |                 ^^^^^^^^^
 
 error: `start` attribute can only be used on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:136:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:135:5
    |
 LL |     #[start] struct S;
    |     ^^^^^^^^
 
 error: `start` attribute can only be used on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:139:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:138:5
    |
 LL |     #[start] type T = S;
    |     ^^^^^^^^
 
 error: `start` attribute can only be used on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:142:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:141:5
    |
 LL |     #[start] impl S { }
    |     ^^^^^^^^
 
 error[E0518]: attribute should be applied to function or closure
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:32:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:31:1
    |
 LL |   #[inline]
    |   ^^^^^^^^^
@@ -84,7 +84,7 @@ LL | | }
    | |_- not a function or closure
 
 error: attribute should be applied to an `extern crate` item
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:60:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:59:1
    |
 LL |   #[no_link]
    |   ^^^^^^^^^^
@@ -99,7 +99,7 @@ LL | | }
    | |_- not an `extern crate` item
 
 error: attribute should be applied to a function or static
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:86:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:85:1
    |
 LL |   #[export_name = "2200"]
    |   ^^^^^^^^^^^^^^^^^^^^^^^
@@ -114,133 +114,133 @@ LL | | }
    | |_- not a function or static
 
 error: attribute should be applied to an `extern crate` item
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:26:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:25:1
    |
 LL | #![no_link]
    | ^^^^^^^^^^^
 
 error: attribute should be applied to a function or static
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:28:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:27:1
    |
 LL | #![export_name = "2200"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0518]: attribute should be applied to function or closure
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:30:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:29:1
    |
 LL | #![inline]
    | ^^^^^^^^^^
 
 error: `macro_export` attribute cannot be used at crate level
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:13:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:12:1
    |
 LL | #![macro_export]
    | ^^^^^^^^^^^^^^^^
 
 error: `main` attribute cannot be used at crate level
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:15:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:14:1
    |
 LL | #![main]
    | ^^^^^^^^
 
 error: `start` attribute cannot be used at crate level
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:17:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:16:1
    |
 LL | #![start]
    | ^^^^^^^^^
 
 error: `repr` attribute cannot be used at crate level
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:19:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:18:1
    |
 LL | #![repr()]
    | ^^^^^^^^^^
 
 error: `path` attribute cannot be used at crate level
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:21:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:20:1
    |
 LL | #![path = "3800"]
    | ^^^^^^^^^^^^^^^^^
 
 error: `automatically_derived` attribute cannot be used at crate level
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:23:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:22:1
    |
 LL | #![automatically_derived]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0518]: attribute should be applied to function or closure
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:37:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:36:17
    |
 LL |     mod inner { #![inline] }
    |     ------------^^^^^^^^^^-- not a function or closure
 
 error[E0518]: attribute should be applied to function or closure
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:47:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:46:5
    |
 LL |     #[inline] struct S;
    |     ^^^^^^^^^ --------- not a function or closure
 
 error[E0518]: attribute should be applied to function or closure
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:51:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:50:5
    |
 LL |     #[inline] type T = S;
    |     ^^^^^^^^^ ----------- not a function or closure
 
 error[E0518]: attribute should be applied to function or closure
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:55:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:54:5
    |
 LL |     #[inline] impl S { }
    |     ^^^^^^^^^ ---------- not a function or closure
 
 error: attribute should be applied to an `extern crate` item
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:65:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:64:17
    |
 LL |     mod inner { #![no_link] }
    |     ------------^^^^^^^^^^^-- not an `extern crate` item
 
 error: attribute should be applied to an `extern crate` item
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:69:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:68:5
    |
 LL |     #[no_link] fn f() { }
    |     ^^^^^^^^^^ ---------- not an `extern crate` item
 
 error: attribute should be applied to an `extern crate` item
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:73:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:72:5
    |
 LL |     #[no_link] struct S;
    |     ^^^^^^^^^^ --------- not an `extern crate` item
 
 error: attribute should be applied to an `extern crate` item
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:77:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:76:5
    |
 LL |     #[no_link]type T = S;
    |     ^^^^^^^^^^----------- not an `extern crate` item
 
 error: attribute should be applied to an `extern crate` item
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:81:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:80:5
    |
 LL |     #[no_link] impl S { }
    |     ^^^^^^^^^^ ---------- not an `extern crate` item
 
 error: attribute should be applied to a function or static
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:91:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:90:17
    |
 LL |     mod inner { #![export_name="2200"] }
    |     ------------^^^^^^^^^^^^^^^^^^^^^^-- not a function or static
 
 error: attribute should be applied to a function or static
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:97:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:96:5
    |
 LL |     #[export_name = "2200"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^ --------- not a function or static
 
 error: attribute should be applied to a function or static
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:101:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:100:5
    |
 LL |     #[export_name = "2200"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^ ----------- not a function or static
 
 error: attribute should be applied to a function or static
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:105:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:104:5
    |
 LL |     #[export_name = "2200"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^ ---------- not a function or static

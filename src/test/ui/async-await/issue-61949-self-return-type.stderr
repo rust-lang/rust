@@ -1,5 +1,5 @@
 error[E0760]: `async fn` return type cannot contain a projection or `Self` that references lifetimes from a parent scope
-  --> $DIR/issue-61949-self-return-type.rs:11:40
+  --> $DIR/issue-61949-self-return-type.rs:10:40
    |
 LL |     pub async fn new(_bar: &'a i32) -> Self {
    |                                        ^^^^ help: consider spelling out the type instead: `Foo<'a>`

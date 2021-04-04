@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 // First a module with inner documentation
 
 // @has issue_55364/subone/index.html
