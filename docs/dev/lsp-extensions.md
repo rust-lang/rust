@@ -602,8 +602,7 @@ interface TestInfo {
 
 This request is sent from client to server to move item under cursor or selection in some direction.
 
-**Method:** `experimental/moveItemUp`
-**Method:** `experimental/moveItemDown`
+**Method:** `experimental/moveItem`
 
 **Request:** `MoveItemParams`
 
