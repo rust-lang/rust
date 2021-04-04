@@ -909,7 +909,8 @@ fn extract_gdb_version(full_version_line: &str) -> Option<u32> {
     // This particular form is documented in the GNU coding standards:
     // https://www.gnu.org/prep/standards/html_node/_002d_002dversion.html#g_t_002d_002dversion
 
-    let mut splits = full_version_line.rsplit(' ');
+    let unbracketed_part = full_version_line.split('[').next().unwrap();
+    let mut splits = unbracketed_part.trim_end().rsplit(' ');
     let version_string = splits.next().unwrap();
 
     let mut splits = version_string.split('.');
