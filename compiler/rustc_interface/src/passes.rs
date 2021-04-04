@@ -691,6 +691,13 @@ pub fn prepare_outputs(
         }
     }
 
+    if let Some(ref dir) = compiler.temps_dir {
+        if fs::create_dir_all(dir).is_err() {
+            sess.err("failed to find or create the directory specified by `--temps-dir`");
+            return Err(ErrorReported);
+        }
+    }
+
     write_out_deps(sess, boxed_resolver, &outputs, &output_paths);
 
     let only_dep_info = sess.opts.output_types.contains_key(&OutputType::DepInfo)
@@ -700,12 +707,6 @@ pub fn prepare_outputs(
         if let Some(ref dir) = compiler.output_dir {
             if fs::create_dir_all(dir).is_err() {
                 sess.err("failed to find or create the directory specified by `--out-dir`");
-                return Err(ErrorReported);
-            }
-        }
-        if let Some(ref dir) = compiler.temps_dir {
-            if fs::create_dir_all(dir).is_err() {
-                sess.err("failed to find or create the directory specified by `--temps-dir`");
                 return Err(ErrorReported);
             }
         }
