@@ -190,6 +190,8 @@ use crate::ptr;
 ///     let ptr = uninit.as_mut_ptr();
 ///
 ///     // Initializing the `name` field
+///     // Using `write` instead of assignment via `=` to not call `drop` on the
+///     // old, uninitialized value.
 ///     unsafe { addr_of_mut!((*ptr).name).write("Bob".to_string()); }
 ///
 ///     // Initializing the `list` field
