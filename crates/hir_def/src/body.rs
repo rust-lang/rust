@@ -317,7 +317,7 @@ impl Body {
     ) -> impl Iterator<Item = (BlockId, Arc<DefMap>)> + '_ {
         self.block_scopes
             .iter()
-            .filter_map(move |block| db.block_def_map(*block).map(|map| (*block, map)))
+            .map(move |block| (*block, db.block_def_map(*block).expect("block ID without DefMap")))
     }
 
     fn new(
