@@ -2030,7 +2030,7 @@ pub fn provide(providers: &mut Providers) {
 
 fn visibility(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Visibility {
     let def_id = def_id.expect_local();
-    match tcx.visibilities.get(&def_id) {
+    match tcx.resolutions(()).visibilities.get(&def_id) {
         Some(vis) => *vis,
         None => {
             let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);

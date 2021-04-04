@@ -112,6 +112,7 @@ mod sty;
 
 // Data types
 
+#[derive(Debug)]
 pub struct ResolverOutputs {
     pub definitions: rustc_hir::definitions::Definitions,
     pub cstore: Box<CrateStoreDyn>,
@@ -127,7 +128,7 @@ pub struct ResolverOutputs {
     pub main_def: Option<MainDefinition>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct MainDefinition {
     pub res: Res<ast::NodeId>,
     pub is_import: bool,
