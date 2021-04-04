@@ -2684,12 +2684,20 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
 
   gutils->eraseFictiousPHIs();
 
+  BasicBlock *entry = &gutils->newFunc->getEntryBlock();
+
   if (topLevel) {
-    IRBuilder<> entryBuilder(gutils->inversionAllocs,
-                             gutils->inversionAllocs->begin());
-    bool seenshared = false;
+    BasicBlock *sharedBlock = nullptr;
     for (auto &g : gutils->newFunc->getParent()->globals()) {
       if (hasMetadata(&g, "enzyme_internalshadowglobal")) {
+        IRBuilder<> entryBuilder(gutils->inversionAllocs,
+                                gutils->inversionAllocs->begin());
+
+        if (g.getType()->getAddressSpace() == 3) {
+          if (sharedBlock == nullptr)
+            sharedBlock = BasicBlock::Create(entry->getContext(), "shblock", gutils->newFunc);
+          entryBuilder.SetInsertPoint(sharedBlock);
+        }
         auto store = entryBuilder.CreateStore(
             Constant::getNullValue(g.getValueType()), &g);
 #if LLVM_VERSION_MAJOR >= 11
@@ -2700,22 +2708,49 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
 #else
         store->setAlignment(g.getAlignment());
 #endif
-        if (g.getType()->getAddressSpace() == 3) {
-          seenshared = true;
-        }
       }
     }
-    if (seenshared) {
-      cast<CallInst>(entryBuilder.CreateCall(
+    if (sharedBlock) {
+      BasicBlock *OldEntryInsts = entry->splitBasicBlock(entry->begin());
+      entry->getTerminator()->eraseFromParent();
+      IRBuilder <>ebuilder(entry);
+
+      Value *tx = ebuilder.CreateCall(Intrinsic::getDeclaration(gutils->newFunc->getParent(), Intrinsic::nvvm_read_ptx_sreg_tid_x));
+      tx = ebuilder.CreateICmpEQ(tx, ConstantInt::get(tx->getType(), 0));
+      Value *ty = ebuilder.CreateCall(Intrinsic::getDeclaration(gutils->newFunc->getParent(), Intrinsic::nvvm_read_ptx_sreg_tid_y));
+      ty = ebuilder.CreateICmpEQ(ty, ConstantInt::get(ty->getType(), 0));
+      Value *tz = ebuilder.CreateCall(Intrinsic::getDeclaration(gutils->newFunc->getParent(), Intrinsic::nvvm_read_ptx_sreg_tid_z));
+      tz = ebuilder.CreateICmpEQ(tz, ConstantInt::get(tz->getType(), 0));
+
+      ebuilder.CreateCondBr(ebuilder.CreateAnd(ebuilder.CreateAnd(tx, ty), tz), sharedBlock, OldEntryInsts);
+
+      IRBuilder <>instbuilder(OldEntryInsts, OldEntryInsts->begin());
+
+      cast<CallInst>(instbuilder.CreateCall(
           Intrinsic::getDeclaration(gutils->newFunc->getParent(),
                                     Intrinsic::nvvm_barrier0),
           {}));
+      OldEntryInsts->moveAfter(entry);
+      sharedBlock->moveAfter(entry);
+      IRBuilder <>sbuilder(sharedBlock);
+      sbuilder.CreateBr(OldEntryInsts);
+      SmallVector<AllocaInst*, 3> AIs;
+      for(auto &I : *OldEntryInsts) {
+        if (auto AI = dyn_cast<AllocaInst>(&I))
+          AIs.push_back(AI);
+      }
+      for (auto AI : AIs)
+        AI->moveBefore(entry->getFirstNonPHIOrDbgOrLifetime());
+      entry = OldEntryInsts;
     }
   }
 
   while (gutils->inversionAllocs->size() > 0) {
-    gutils->inversionAllocs->back().moveBefore(
-        gutils->newFunc->getEntryBlock().getFirstNonPHIOrDbgOrLifetime());
+    Instruction *inst = &gutils->inversionAllocs->back();
+    if (isa<AllocaInst>(inst))
+      inst->moveBefore(&gutils->newFunc->getEntryBlock().front());
+    else
+      inst->moveBefore(entry->getFirstNonPHIOrDbgOrLifetime());
   }
 
   (IRBuilder<>(gutils->inversionAllocs)).CreateUnreachable();
