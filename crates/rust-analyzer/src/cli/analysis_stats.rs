@@ -9,10 +9,11 @@ use std::{
 
 use hir::{
     db::{AstDatabase, DefDatabase, HirDatabase},
-    AssocItem, Crate, HasSource, HirDisplay, ModuleDef,
+    AssocItem, Crate, Function, HasSource, HirDisplay, ModuleDef,
 };
 use hir_def::FunctionId;
 use hir_ty::TypeWalk;
+use ide::{AnalysisHost, RootDatabase};
 use ide_db::base_db::{
     salsa::{self, ParallelDatabase},
     SourceDatabaseExt,
@@ -24,6 +25,7 @@ use rayon::prelude::*;
 use rustc_hash::FxHashSet;
 use stdx::format_to;
 use syntax::AstNode;
+use vfs::Vfs;
 
 use crate::cli::{
     load_cargo::{load_workspace_at, LoadCargoConfig},
@@ -51,6 +53,7 @@ pub struct AnalysisStatsCmd {
     pub path: PathBuf,
     pub load_output_dirs: bool,
     pub with_proc_macro: bool,
+    pub skip_inference: bool,
 }
 
 impl AnalysisStatsCmd {
@@ -128,6 +131,39 @@ impl AnalysisStatsCmd {
             shuffle(&mut rng, &mut funcs);
         }
 
+        if !self.skip_inference {
+            self.run_inference(&host, db, &vfs, &funcs, verbosity);
+        }
+
+        let total_span = analysis_sw.elapsed();
+        eprintln!("{:<20} {}", "Total:", total_span);
+        report_metric("total time", total_span.time.as_millis() as u64, "ms");
+        if let Some(instructions) = total_span.instructions {
+            report_metric("total instructions", instructions, "#instr");
+        }
+        if let Some(memory) = total_span.memory {
+            report_metric("total memory", memory.allocated.megabytes() as u64, "MB");
+        }
+
+        if env::var("RA_COUNT").is_ok() {
+            eprintln!("{}", profile::countme::get_all());
+        }
+
+        if self.memory_usage && verbosity.is_verbose() {
+            print_memory_usage(host, vfs);
+        }
+
+        Ok(())
+    }
+
+    fn run_inference(
+        &self,
+        host: &AnalysisHost,
+        db: &RootDatabase,
+        vfs: &Vfs,
+        funcs: &[Function],
+        verbosity: Verbosity,
+    ) {
         let mut bar = match verbosity {
             Verbosity::Quiet | Verbosity::Spammy => ProgressReport::hidden(),
             _ if self.parallel => ProgressReport::hidden(),
@@ -154,7 +190,7 @@ impl AnalysisStatsCmd {
         let mut num_exprs_unknown = 0;
         let mut num_exprs_partially_unknown = 0;
         let mut num_type_mismatches = 0;
-        for f in funcs {
+        for f in funcs.iter().copied() {
             let name = f.name(db);
             let full_name = f
                 .module(db)
@@ -296,26 +332,6 @@ impl AnalysisStatsCmd {
         report_metric("type mismatches", num_type_mismatches, "#");
 
         eprintln!("{:<20} {}", "Inference:", inference_sw.elapsed());
-
-        let total_span = analysis_sw.elapsed();
-        eprintln!("{:<20} {}", "Total:", total_span);
-        report_metric("total time", total_span.time.as_millis() as u64, "ms");
-        if let Some(instructions) = total_span.instructions {
-            report_metric("total instructions", instructions, "#instr");
-        }
-        if let Some(memory) = total_span.memory {
-            report_metric("total memory", memory.allocated.megabytes() as u64, "MB");
-        }
-
-        if env::var("RA_COUNT").is_ok() {
-            eprintln!("{}", profile::countme::get_all());
-        }
-
-        if self.memory_usage && verbosity.is_verbose() {
-            print_memory_usage(host, vfs);
-        }
-
-        Ok(())
     }
 
     fn stop_watch(&self) -> StopWatch {
