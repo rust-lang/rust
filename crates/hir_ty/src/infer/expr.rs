@@ -75,14 +75,13 @@ impl<'a> InferenceContext<'a> {
             self.db.trait_data(fn_once_trait).associated_type_by_name(&name![Output])?;
 
         let mut arg_tys = vec![];
-        let parameters = Substitution::builder(num_args)
+        let arg_ty = TyBuilder::tuple(num_args)
             .fill(repeat_with(|| {
                 let arg = self.table.new_type_var();
                 arg_tys.push(arg.clone());
                 arg
             }))
             .build();
-        let arg_ty = TyKind::Tuple(num_args, parameters).intern(&Interner);
 
         let projection = {
             let b = TyBuilder::assoc_type_projection(self.db, output_assoc_type);

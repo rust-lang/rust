@@ -492,61 +492,11 @@ impl Substitution {
                 .map(|(idx, _)| TyKind::BoundVar(BoundVar::new(debruijn, idx)).intern(&Interner)),
         )
     }
-
-    fn builder(param_count: usize) -> SubstsBuilder {
-        SubstsBuilder { vec: Vec::with_capacity(param_count), param_count }
-    }
 }
 
 /// Return an index of a parameter in the generic type parameter list by it's id.
 pub fn param_idx(db: &dyn HirDatabase, id: TypeParamId) -> Option<usize> {
     generics(db.upcast(), id.parent).param_idx(id)
-}
-
-#[derive(Debug, Clone)]
-pub struct SubstsBuilder {
-    vec: Vec<GenericArg>,
-    param_count: usize,
-}
-
-impl SubstsBuilder {
-    pub fn build(self) -> Substitution {
-        assert_eq!(self.vec.len(), self.param_count);
-        Substitution::from_iter(&Interner, self.vec)
-    }
-
-    pub fn push(mut self, ty: impl CastTo<GenericArg>) -> Self {
-        self.vec.push(ty.cast(&Interner));
-        self
-    }
-
-    fn remaining(&self) -> usize {
-        self.param_count - self.vec.len()
-    }
-
-    pub fn fill_with_bound_vars(self, debruijn: DebruijnIndex, starting_from: usize) -> Self {
-        self.fill(
-            (starting_from..)
-                .map(|idx| TyKind::BoundVar(BoundVar::new(debruijn, idx)).intern(&Interner)),
-        )
-    }
-
-    pub fn fill_with_unknown(self) -> Self {
-        self.fill(iter::repeat(TyKind::Unknown.intern(&Interner)))
-    }
-
-    pub fn fill(mut self, filler: impl Iterator<Item = impl CastTo<GenericArg>>) -> Self {
-        self.vec.extend(filler.take(self.remaining()).casted(&Interner));
-        assert_eq!(self.remaining(), 0);
-        self
-    }
-
-    pub fn use_parent_substs(mut self, parent_substs: &Substitution) -> Self {
-        assert!(self.vec.is_empty());
-        assert!(parent_substs.len(&Interner) <= self.param_count);
-        self.vec.extend(parent_substs.iter(&Interner).cloned());
-        self
-    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
@@ -921,6 +871,18 @@ impl TyBuilder<hir_def::AdtId> {
     }
 }
 
+struct Tuple(usize);
+impl TyBuilder<Tuple> {
+    pub fn tuple(size: usize) -> TyBuilder<Tuple> {
+        TyBuilder::new(Tuple(size), size)
+    }
+
+    pub fn build(self) -> Ty {
+        let (Tuple(size), subst) = self.build_internal();
+        TyKind::Tuple(size, subst).intern(&Interner)
+    }
+}
+
 impl TyBuilder<TraitId> {
     pub fn trait_ref(db: &dyn HirDatabase, trait_id: TraitId) -> TyBuilder<TraitId> {
         let generics = generics(db.upcast(), trait_id.into());
@@ -969,6 +931,10 @@ impl TyBuilder<Binders<Ty>> {
 
     pub fn impl_self_ty(db: &dyn HirDatabase, def: hir_def::ImplId) -> TyBuilder<Binders<Ty>> {
         TyBuilder::subst_binders(db.impl_self_ty(def))
+    }
+
+    pub fn value_ty(db: &dyn HirDatabase, def: ValueTyDefId) -> TyBuilder<Binders<Ty>> {
+        TyBuilder::subst_binders(db.value_ty(def))
     }
 }
 

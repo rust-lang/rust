@@ -186,14 +186,11 @@ pub(crate) fn unify(tys: &Canonical<(Ty, Ty)>) -> Option<Substitution> {
             );
         }
     }
-    Some(
-        Substitution::builder(tys.binders.len(&Interner))
-            .fill(
-                vars.iter(&Interner)
-                    .map(|v| table.resolve_ty_completely(v.assert_ty_ref(&Interner).clone())),
-            )
-            .build(),
-    )
+    Some(Substitution::from_iter(
+        &Interner,
+        vars.iter(&Interner)
+            .map(|v| table.resolve_ty_completely(v.assert_ty_ref(&Interner).clone())),
+    ))
 }
 
 #[derive(Clone, Debug)]
