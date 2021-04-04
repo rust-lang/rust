@@ -71,6 +71,8 @@ xflags::xflags! {
             optional --load-output-dirs
             /// Use proc-macro-srv for proc-macro expanding.
             optional --with-proc-macro
+            /// Only resolve names, don't run type inference.
+            optional --skip-inference
         }
 
         cmd diagnostics
@@ -158,6 +160,7 @@ pub struct AnalysisStats {
     pub no_sysroot: bool,
     pub load_output_dirs: bool,
     pub with_proc_macro: bool,
+    pub skip_inference: bool,
 }
 
 #[derive(Debug)]

@@ -78,6 +78,7 @@ fn try_main() -> Result<()> {
             path: cmd.path,
             load_output_dirs: cmd.load_output_dirs,
             with_proc_macro: cmd.with_proc_macro,
+            skip_inference: cmd.skip_inference,
         }
         .run(verbosity)?,
 
