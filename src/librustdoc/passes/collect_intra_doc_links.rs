@@ -788,7 +788,7 @@ fn is_derive_trait_collision<T>(ns: &PerNS<Result<(Res, T), ResolutionFailure<'_
 }
 
 impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
-    fn fold_item(&mut self, mut item: Item) -> Option<Item> {
+    fn fold_item(&mut self, item: Item) -> Option<Item> {
         use rustc_middle::ty::DefIdTree;
 
         let parent_node = if item.is_fake() {
@@ -873,7 +873,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             for md_link in markdown_links(&doc) {
                 let link = self.resolve_link(&item, &doc, &self_name, parent_node, krate, md_link);
                 if let Some(link) = link {
-                    item.attrs.links.push(link);
+                    self.cx.cache.intra_doc_links.entry(item.def_id).or_default().push(link);
                 }
             }
         }
