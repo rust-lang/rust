@@ -487,6 +487,7 @@ impl<'a> fmt::Display for Display<'a> {
                         "windows" => "Windows",
                         _ => "",
                     },
+                    (sym::wasm, None) => "WebAssembly",
                     (sym::target_arch, Some(arch)) => match &*arch.as_str() {
                         "aarch64" => "AArch64",
                         "arm" => "ARM",
@@ -498,7 +499,7 @@ impl<'a> fmt::Display for Display<'a> {
                         "powerpc64" => "PowerPC-64",
                         "s390x" => "s390x",
                         "sparc64" => "SPARC64",
-                        "wasm32" => "WebAssembly",
+                        "wasm32" | "wasm64" => "WebAssembly",
                         "x86" => "x86",
                         "x86_64" => "x86-64",
                         _ => "",
