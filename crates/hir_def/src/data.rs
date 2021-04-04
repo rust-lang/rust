@@ -50,7 +50,7 @@ impl FunctionData {
 
         let mut flags = func.flags;
         if is_varargs {
-            flags |= FnFlags::IS_VARARGS;
+            flags.bits |= FnFlags::IS_VARARGS;
         }
 
         Arc::new(FunctionData {
@@ -71,37 +71,37 @@ impl FunctionData {
     }
 
     pub fn has_body(&self) -> bool {
-        self.flags.contains(FnFlags::HAS_BODY)
+        self.flags.bits & FnFlags::HAS_BODY != 0
     }
 
     /// True if the first param is `self`. This is relevant to decide whether this
     /// can be called as a method.
     pub fn has_self_param(&self) -> bool {
-        self.flags.contains(FnFlags::HAS_SELF_PARAM)
+        self.flags.bits & FnFlags::HAS_SELF_PARAM != 0
     }
 
     pub fn is_default(&self) -> bool {
-        self.flags.contains(FnFlags::IS_DEFAULT)
+        self.flags.bits & FnFlags::IS_DEFAULT != 0
     }
 
     pub fn is_const(&self) -> bool {
-        self.flags.contains(FnFlags::IS_CONST)
+        self.flags.bits & FnFlags::IS_CONST != 0
     }
 
     pub fn is_async(&self) -> bool {
-        self.flags.contains(FnFlags::IS_ASYNC)
+        self.flags.bits & FnFlags::IS_ASYNC != 0
     }
 
     pub fn is_unsafe(&self) -> bool {
-        self.flags.contains(FnFlags::IS_UNSAFE)
+        self.flags.bits & FnFlags::IS_UNSAFE != 0
     }
 
     pub fn is_in_extern_block(&self) -> bool {
-        self.flags.contains(FnFlags::IS_IN_EXTERN_BLOCK)
+        self.flags.bits & FnFlags::IS_IN_EXTERN_BLOCK != 0
     }
 
     pub fn is_varargs(&self) -> bool {
-        self.flags.contains(FnFlags::IS_VARARGS)
+        self.flags.bits & FnFlags::IS_VARARGS != 0
     }
 }
 
