@@ -1,5 +1,5 @@
 error[E0390]: only a single inherent implementation marked with `#[lang = "str"]` is allowed for the `str` primitive
-  --> $DIR/single-primitive-inherent-impl.rs:11:1
+  --> $DIR/single-primitive-inherent-impl.rs:9:1
    |
 LL | / impl str {
 LL | |

@@ -1,6 +1,5 @@
 // Need a fix for LLDB first...
 // ignore-lldb
-// ignore-tidy-linelength
 
 // FIXME: LLVM generates invalid debug info for variables requiring
 // dynamic stack realignment, which is the case on s390x for vector

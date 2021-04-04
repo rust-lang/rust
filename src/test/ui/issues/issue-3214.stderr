@@ -1,5 +1,5 @@
 error[E0401]: can't use generic parameters from outer function
-  --> $DIR/issue-3214.rs:5:12
+  --> $DIR/issue-3214.rs:3:12
    |
 LL | fn foo<T>() {
    |    --- - type parameter from outer function
@@ -10,7 +10,7 @@ LL |         x: T,
    |            ^ use of generic parameter from outer function
 
 error[E0107]: this struct takes 0 type arguments but 1 type argument was supplied
-  --> $DIR/issue-3214.rs:8:22
+  --> $DIR/issue-3214.rs:6:22
    |
 LL |     impl<T> Drop for Foo<T> {
    |                      ^^^--- help: remove these generics
@@ -18,13 +18,13 @@ LL |     impl<T> Drop for Foo<T> {
    |                      expected 0 type arguments
    |
 note: struct defined here, with 0 type parameters
-  --> $DIR/issue-3214.rs:4:12
+  --> $DIR/issue-3214.rs:2:12
    |
 LL |     struct Foo {
    |            ^^^
 
 error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/issue-3214.rs:8:10
+  --> $DIR/issue-3214.rs:6:10
    |
 LL |     impl<T> Drop for Foo<T> {
    |          ^ unconstrained type parameter
