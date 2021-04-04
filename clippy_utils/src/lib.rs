@@ -1172,7 +1172,6 @@ pub fn match_panic_call<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> O
         .or_else(|| match_function_call(cx, expr, &paths::PANICKING_PANIC))
         .or_else(|| match_function_call(cx, expr, &paths::PANICKING_PANIC_FMT))
         .or_else(|| match_function_call(cx, expr, &paths::PANICKING_PANIC_STR))
-        .or_else(|| match_function_call(cx, expr, &paths::PANICKING_ASSERT_FAILED_INNER))
 }
 
 pub fn match_panic_def_id(cx: &LateContext<'_>, did: DefId) -> bool {
@@ -1182,7 +1181,6 @@ pub fn match_panic_def_id(cx: &LateContext<'_>, did: DefId) -> bool {
         || match_def_path(cx, did, &paths::PANICKING_PANIC)
         || match_def_path(cx, did, &paths::PANICKING_PANIC_FMT)
         || match_def_path(cx, did, &paths::PANICKING_PANIC_STR)
-        || match_def_path(cx, did, &paths::PANICKING_ASSERT_FAILED_INNER)
 }
 
 /// Returns the list of condition expressions and the list of blocks in a
