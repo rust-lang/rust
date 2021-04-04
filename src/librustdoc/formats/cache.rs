@@ -309,15 +309,8 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                             parent,
                             parent_idx: None,
                             search_type: get_index_search_type(&item, &self.empty_cache, self.tcx),
+                            aliases: item.attrs.get_doc_aliases(),
                         });
-
-                        for alias in item.attrs.get_doc_aliases() {
-                            self.cache
-                                .aliases
-                                .entry(alias.to_lowercase())
-                                .or_insert(Vec::new())
-                                .push(self.cache.search_index.len() - 1);
-                        }
                     }
                 }
                 (Some(parent), None) if is_inherent_impl_item => {

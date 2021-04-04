@@ -164,6 +164,7 @@ crate struct IndexItem {
     crate parent: Option<DefId>,
     crate parent_idx: Option<usize>,
     crate search_type: Option<IndexItemFunctionType>,
+    crate aliases: Box<[String]>,
 }
 
 /// A type used for the search index.
