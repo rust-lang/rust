@@ -161,7 +161,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
-        debug!(">> type-checking: expr={:?} expected={:?}", expr, expected);
+        debug!(">> type-checking: expected={:?}, expr={:?} ", expected, expr);
 
         // True if `expr` is a `Try::from_ok(())` that is a result of desugaring a try block
         // without the final expr (e.g. `try { return; }`). We don't want to generate an
@@ -224,7 +224,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
-        debug!("check_expr_kind(expr={:?}, expected={:?})", expr, expected);
+        debug!("check_expr_kind(expected={:?}, expr={:?})", expected, expr);
 
         let tcx = self.tcx;
         match expr.kind {

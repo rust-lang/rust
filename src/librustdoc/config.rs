@@ -154,6 +154,8 @@ crate struct Options {
     /// If this option is set to `true`, rustdoc will only run checks and not generate
     /// documentation.
     crate run_check: bool,
+    /// Whether doctests should emit unused externs
+    crate json_unused_externs: bool,
 }
 
 impl fmt::Debug for Options {
@@ -352,7 +354,8 @@ impl Options {
         }
 
         let color = config::parse_color(&matches);
-        let (json_rendered, _artifacts) = config::parse_json(&matches);
+        let config::JsonConfig { json_rendered, json_unused_externs, .. } =
+            config::parse_json(&matches);
         let error_format = config::parse_error_format(&matches, color, json_rendered);
 
         let codegen_options = build_codegen_options(matches, error_format);
@@ -507,7 +510,6 @@ impl Options {
         let edition = config::parse_crate_edition(&matches);
 
         let mut id_map = html::markdown::IdMap::new();
-        id_map.populate(&html::render::INITIAL_IDS);
         let external_html = match ExternalHtml::load(
             &matches.opt_strs("html-in-header"),
             &matches.opt_strs("html-before-content"),
@@ -687,6 +689,7 @@ impl Options {
             },
             crate_name,
             output_format,
+            json_unused_externs,
         })
     }
 

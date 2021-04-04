@@ -39,6 +39,9 @@ fn test_extract_gdb_version() {
         7012000: "GNU gdb (GDB) 7.12",
         7012000: "GNU gdb (GDB) 7.12.20161027-git",
         7012050: "GNU gdb (GDB) 7.12.50.20161027-git",
+
+        9002000: "GNU gdb (Ubuntu 9.2-0ubuntu1~20.04) 9.2",
+        10001000: "GNU gdb (GDB) 10.1 [GDB v10.1 for FreeBSD]",
     }
 }
 

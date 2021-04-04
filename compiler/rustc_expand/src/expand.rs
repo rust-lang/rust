@@ -515,7 +515,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             invocations.reserve(derives.len());
                             derives
                                 .into_iter()
-                                .map(|(_exts, path)| {
+                                .map(|(path, _exts)| {
                                     // FIXME: Consider using the derive resolutions (`_exts`)
                                     // instead of enqueuing the derives to be resolved again later.
                                     let expn_id = ExpnId::fresh(None);

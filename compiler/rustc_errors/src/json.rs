@@ -159,6 +159,19 @@ impl Emitter for JsonEmitter {
         }
     }
 
+    fn emit_unused_externs(&mut self, lint_level: &str, unused_externs: &[&str]) {
+        let data = UnusedExterns { lint_level, unused_extern_names: unused_externs };
+        let result = if self.pretty {
+            writeln!(&mut self.dst, "{}", as_pretty_json(&data))
+        } else {
+            writeln!(&mut self.dst, "{}", as_json(&data))
+        }
+        .and_then(|_| self.dst.flush());
+        if let Err(e) = result {
+            panic!("failed to print unused externs: {:?}", e);
+        }
+    }
+
     fn source_map(&self) -> Option<&Lrc<SourceMap>> {
         Some(&self.sm)
     }
@@ -320,6 +333,18 @@ struct FutureBreakageItem {
 #[derive(Encodable)]
 struct FutureIncompatReport {
     future_incompat_report: Vec<FutureBreakageItem>,
+}
+
+// NOTE: Keep this in sync with the equivalent structs in rustdoc's
+// doctest component (as well as cargo).
+// We could unify this struct the one in rustdoc but they have different
+// ownership semantics, so doing so would create wasteful allocations.
+#[derive(Encodable)]
+struct UnusedExterns<'a, 'b, 'c> {
+    /// The severity level of the unused dependencies lint
+    lint_level: &'a str,
+    /// List of unused externs by their names.
+    unused_extern_names: &'b [&'c str],
 }
 
 impl Diagnostic {
