@@ -282,13 +282,29 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Miscellaneous
             "SystemFunction036" => {
+                // This is really 'RtlGenRandom'.
                 check_abi(abi, Abi::System { unwind: false })?;
-                // The actual name of 'RtlGenRandom'
                 let &[ref ptr, ref len] = check_arg_count(args)?;
                 let ptr = this.read_scalar(ptr)?.check_init()?;
                 let len = this.read_scalar(len)?.to_u32()?;
                 this.gen_random(ptr, len.into())?;
                 this.write_scalar(Scalar::from_bool(true), dest)?;
+            }
+            "BCryptGenRandom" => {
+                check_abi(abi, Abi::System { unwind: false })?;
+                let &[ref algorithm, ref ptr, ref len, ref flags] = check_arg_count(args)?;
+                let algorithm = this.read_scalar(algorithm)?;
+                let ptr = this.read_scalar(ptr)?.check_init()?;
+                let len = this.read_scalar(len)?.to_u32()?;
+                let flags = this.read_scalar(flags)?.to_u32()?;
+                if flags != 2 { // BCRYPT_USE_SYSTEM_PREFERRED_RNG
+                    throw_unsup_format!("BCryptGenRandom is supported only with the BCRYPT_USE_SYSTEM_PREFERRED_RNG flag");
+                }
+                if algorithm.to_machine_usize(this)? != 0 {
+                    throw_unsup_format!("BCryptGenRandom algorithm must be NULL when the flag is BCRYPT_USE_SYSTEM_PREFERRED_RNG");
+                }
+                this.gen_random(ptr, len.into())?;
+                this.write_null(dest)?; // STATUS_SUCCESS
             }
             "GetConsoleScreenBufferInfo" => {
                 check_abi(abi, Abi::System { unwind: false })?;
