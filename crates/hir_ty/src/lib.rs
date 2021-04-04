@@ -14,6 +14,8 @@ mod lower;
 pub(crate) mod infer;
 pub(crate) mod utils;
 mod chalk_cast;
+mod chalk_ext;
+mod builder;
 
 pub mod display;
 pub mod db;
@@ -24,24 +26,27 @@ mod tests;
 #[cfg(test)]
 mod test_db;
 
-use std::{iter, mem, sync::Arc};
+use std::{mem, sync::Arc};
 
-use base_db::salsa;
 use chalk_ir::cast::{CastTo, Caster};
-use hir_def::{
-    builtin_type::BuiltinType, expr::ExprId, type_ref::Rawness, AssocContainerId, FunctionId,
-    GenericDefId, HasModule, LifetimeParamId, Lookup, TraitId, TypeAliasId, TypeParamId,
-};
 use itertools::Itertools;
 use smallvec::SmallVec;
+
+use base_db::salsa;
+use hir_def::{
+    expr::ExprId, type_ref::Rawness, AssocContainerId, FunctionId, GenericDefId, HasModule,
+    LifetimeParamId, Lookup, TraitId, TypeAliasId, TypeParamId,
+};
 
 use crate::{
     db::HirDatabase,
     display::HirDisplay,
-    utils::{generics, make_mut_slice, Generics},
+    utils::{generics, make_mut_slice},
 };
 
 pub use autoderef::autoderef;
+pub use builder::TyBuilder;
+pub use chalk_ext::TyExt;
 pub use infer::{could_unify, InferenceResult, InferenceVar};
 pub use lower::{
     associated_type_shorthand_candidates, callable_item_sig, CallableDefId, ImplTraitLoweringMode,
@@ -457,102 +462,11 @@ impl Substitution {
     ) -> Self {
         Substitution(elements.into_iter().casted(interner).collect())
     }
-
-    /// Return Substs that replace each parameter by itself (i.e. `Ty::Param`).
-    pub(crate) fn type_params_for_generics(
-        db: &dyn HirDatabase,
-        generic_params: &Generics,
-    ) -> Substitution {
-        Substitution::from_iter(
-            &Interner,
-            generic_params
-                .iter()
-                .map(|(id, _)| TyKind::Placeholder(to_placeholder_idx(db, id)).intern(&Interner)),
-        )
-    }
-
-    /// Return Substs that replace each parameter by itself (i.e. `Ty::Param`).
-    pub fn type_params(db: &dyn HirDatabase, def: impl Into<GenericDefId>) -> Substitution {
-        let params = generics(db.upcast(), def.into());
-        Substitution::type_params_for_generics(db, &params)
-    }
-
-    /// Return Substs that replace each parameter by a bound variable.
-    pub(crate) fn bound_vars(generic_params: &Generics, debruijn: DebruijnIndex) -> Substitution {
-        Substitution::from_iter(
-            &Interner,
-            generic_params
-                .iter()
-                .enumerate()
-                .map(|(idx, _)| TyKind::BoundVar(BoundVar::new(debruijn, idx)).intern(&Interner)),
-        )
-    }
-
-    pub fn build_for_def(db: &dyn HirDatabase, def: impl Into<GenericDefId>) -> SubstsBuilder {
-        let def = def.into();
-        let params = generics(db.upcast(), def);
-        let param_count = params.len();
-        Substitution::builder(param_count)
-    }
-
-    pub(crate) fn build_for_generics(generic_params: &Generics) -> SubstsBuilder {
-        Substitution::builder(generic_params.len())
-    }
-
-    fn builder(param_count: usize) -> SubstsBuilder {
-        SubstsBuilder { vec: Vec::with_capacity(param_count), param_count }
-    }
 }
 
 /// Return an index of a parameter in the generic type parameter list by it's id.
 pub fn param_idx(db: &dyn HirDatabase, id: TypeParamId) -> Option<usize> {
     generics(db.upcast(), id.parent).param_idx(id)
-}
-
-#[derive(Debug, Clone)]
-pub struct SubstsBuilder {
-    vec: Vec<GenericArg>,
-    param_count: usize,
-}
-
-impl SubstsBuilder {
-    pub fn build(self) -> Substitution {
-        assert_eq!(self.vec.len(), self.param_count);
-        Substitution::from_iter(&Interner, self.vec)
-    }
-
-    pub fn push(mut self, ty: impl CastTo<GenericArg>) -> Self {
-        self.vec.push(ty.cast(&Interner));
-        self
-    }
-
-    fn remaining(&self) -> usize {
-        self.param_count - self.vec.len()
-    }
-
-    pub fn fill_with_bound_vars(self, debruijn: DebruijnIndex, starting_from: usize) -> Self {
-        self.fill(
-            (starting_from..)
-                .map(|idx| TyKind::BoundVar(BoundVar::new(debruijn, idx)).intern(&Interner)),
-        )
-    }
-
-    pub fn fill_with_unknown(self) -> Self {
-        self.fill(iter::repeat(TyKind::Unknown.intern(&Interner)))
-    }
-
-    pub fn fill(mut self, filler: impl Iterator<Item = impl CastTo<GenericArg>>) -> Self {
-        self.vec.extend(filler.take(self.remaining()).casted(&Interner));
-        assert_eq!(self.remaining(), 0);
-        self
-    }
-
-    pub fn use_parent_substs(mut self, parent_substs: &Substitution) -> Self {
-        assert!(self.vec.is_empty());
-        assert!(parent_substs.len(&Interner) <= self.param_count);
-        self.vec.extend(parent_substs.iter(&Interner).cloned());
-        self
-    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
@@ -760,7 +674,7 @@ impl CallableSig {
 
     pub fn from_fn_ptr(fn_ptr: &FnPointer) -> CallableSig {
         CallableSig {
-            // FIXME: what to do about lifetime params?
+            // FIXME: what to do about lifetime params? -> return PolyFnSig
             params_and_return: fn_ptr
                 .substs
                 .clone()
@@ -770,16 +684,6 @@ impl CallableSig {
                 .map(|arg| arg.assert_ty_ref(&Interner).clone())
                 .collect(),
             is_varargs: fn_ptr.sig.variadic,
-        }
-    }
-
-    pub fn from_substs(substs: &Substitution) -> CallableSig {
-        CallableSig {
-            params_and_return: substs
-                .iter(&Interner)
-                .map(|arg| arg.assert_ty_ref(&Interner).clone())
-                .collect(),
-            is_varargs: false,
         }
     }
 
@@ -811,40 +715,6 @@ impl TypeWalk for CallableSig {
 }
 
 impl Ty {
-    pub fn unit() -> Self {
-        TyKind::Tuple(0, Substitution::empty(&Interner)).intern(&Interner)
-    }
-
-    pub fn adt_ty(adt: hir_def::AdtId, substs: Substitution) -> Ty {
-        TyKind::Adt(AdtId(adt), substs).intern(&Interner)
-    }
-
-    pub fn fn_ptr(sig: CallableSig) -> Self {
-        TyKind::Function(FnPointer {
-            num_args: sig.params().len(),
-            sig: FnSig { abi: (), safety: Safety::Safe, variadic: sig.is_varargs },
-            substs: Substitution::from_iter(&Interner, sig.params_and_return.iter().cloned()),
-        })
-        .intern(&Interner)
-    }
-
-    pub fn builtin(builtin: BuiltinType) -> Self {
-        match builtin {
-            BuiltinType::Char => TyKind::Scalar(Scalar::Char).intern(&Interner),
-            BuiltinType::Bool => TyKind::Scalar(Scalar::Bool).intern(&Interner),
-            BuiltinType::Str => TyKind::Str.intern(&Interner),
-            BuiltinType::Int(t) => {
-                TyKind::Scalar(Scalar::Int(primitive::int_ty_from_builtin(t))).intern(&Interner)
-            }
-            BuiltinType::Uint(t) => {
-                TyKind::Scalar(Scalar::Uint(primitive::uint_ty_from_builtin(t))).intern(&Interner)
-            }
-            BuiltinType::Float(t) => {
-                TyKind::Scalar(Scalar::Float(primitive::float_ty_from_builtin(t))).intern(&Interner)
-            }
-        }
-    }
-
     pub fn as_reference(&self) -> Option<(&Ty, Mutability)> {
         match self.kind(&Interner) {
             TyKind::Ref(mutability, ty) => Some((ty, *mutability)),
@@ -1068,7 +938,7 @@ impl Ty {
                 let param_data = &generic_params.types[id.local_id];
                 match param_data.provenance {
                     hir_def::generics::TypeParamProvenance::ArgumentImplTrait => {
-                        let substs = Substitution::type_params(db, id.parent);
+                        let substs = TyBuilder::type_params_subst(db, id.parent);
                         let predicates = db
                             .generic_predicates(id.parent)
                             .into_iter()

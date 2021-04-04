@@ -10,9 +10,7 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 
-use crate::{
-    method_resolution, to_chalk_trait_id, Interner, Substitution, Ty, TyKind, ValueTyDefId,
-};
+use crate::{method_resolution, Interner, Substitution, Ty, TyBuilder, TyKind, ValueTyDefId};
 
 use super::{ExprOrPatId, InferenceContext, TraitRef};
 
@@ -82,7 +80,7 @@ impl<'a> InferenceContext<'a> {
             }
             ValueNs::ImplSelf(impl_id) => {
                 let generics = crate::utils::generics(self.db.upcast(), impl_id.into());
-                let substs = Substitution::type_params_for_generics(self.db, &generics);
+                let substs = generics.type_params_subst(self.db);
                 let ty = self.db.impl_self_ty(impl_id).subst(&substs);
                 if let Some((AdtId::StructId(struct_id), substs)) = ty.as_adt() {
                     let ty = self.db.value_ty(struct_id.into()).subst(&substs);
@@ -95,16 +93,13 @@ impl<'a> InferenceContext<'a> {
             ValueNs::GenericParam(it) => return Some(self.db.const_param_ty(it)),
         };
 
-        let ty = self.db.value_ty(typable);
-        // self_subst is just for the parent
         let parent_substs = self_subst.unwrap_or_else(|| Substitution::empty(&Interner));
         let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver);
         let substs = ctx.substs_from_path(path, typable, true);
-        let full_substs = Substitution::builder(substs.len(&Interner))
+        let ty = TyBuilder::value_ty(self.db, typable)
             .use_parent_substs(&parent_substs)
             .fill(substs.interned(&Interner)[parent_substs.len(&Interner)..].iter().cloned())
             .build();
-        let ty = ty.subst(&full_substs);
         Some(ty)
     }
 
@@ -245,7 +240,7 @@ impl<'a> InferenceContext<'a> {
                 };
                 let substs = match container {
                     AssocContainerId::ImplId(impl_id) => {
-                        let impl_substs = Substitution::build_for_def(self.db, impl_id)
+                        let impl_substs = TyBuilder::subst_for_def(self.db, impl_id)
                             .fill(iter::repeat_with(|| self.table.new_type_var()))
                             .build();
                         let impl_self_ty = self.db.impl_self_ty(impl_id).subst(&impl_substs);
@@ -254,18 +249,12 @@ impl<'a> InferenceContext<'a> {
                     }
                     AssocContainerId::TraitId(trait_) => {
                         // we're picking this method
-                        let trait_substs = Substitution::build_for_def(self.db, trait_)
+                        let trait_ref = TyBuilder::trait_ref(self.db, trait_)
                             .push(ty.clone())
                             .fill(std::iter::repeat_with(|| self.table.new_type_var()))
                             .build();
-                        self.push_obligation(
-                            TraitRef {
-                                trait_id: to_chalk_trait_id(trait_),
-                                substitution: trait_substs.clone(),
-                            }
-                            .cast(&Interner),
-                        );
-                        Some(trait_substs)
+                        self.push_obligation(trait_ref.clone().cast(&Interner));
+                        Some(trait_ref.substitution)
                     }
                     AssocContainerId::ModuleId(_) => None,
                 };

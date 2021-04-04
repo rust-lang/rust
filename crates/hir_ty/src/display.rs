@@ -19,7 +19,7 @@ use crate::{
     db::HirDatabase, from_assoc_type_id, from_foreign_def_id, from_placeholder_idx, primitive,
     to_assoc_type_id, traits::chalk::from_chalk, utils::generics, AdtId, AliasEq, AliasTy,
     CallableDefId, CallableSig, DomainGoal, GenericArg, ImplTraitId, Interner, Lifetime, OpaqueTy,
-    ProjectionTy, QuantifiedWhereClause, Scalar, Substitution, TraitRef, Ty, TyKind, WhereClause,
+    ProjectionTy, QuantifiedWhereClause, Scalar, TraitRef, Ty, TyExt, TyKind, WhereClause,
 };
 
 pub struct HirFormatter<'a> {
@@ -423,7 +423,7 @@ impl HirDisplay for Ty {
                 f.write_joined(sig.params(), ", ")?;
                 write!(f, ")")?;
                 let ret = sig.ret();
-                if *ret != Ty::unit() {
+                if !ret.is_unit() {
                     let ret_display = ret.into_displayable(
                         f.db,
                         f.max_size,
@@ -591,7 +591,7 @@ impl HirDisplay for Ty {
                         write!(f, "{}", param_data.name.clone().unwrap_or_else(Name::missing))?
                     }
                     TypeParamProvenance::ArgumentImplTrait => {
-                        let substs = Substitution::type_params_for_generics(f.db, &generics);
+                        let substs = generics.type_params_subst(f.db);
                         let bounds = f
                             .db
                             .generic_predicates(id.parent)
@@ -663,7 +663,7 @@ impl HirDisplay for CallableSig {
         }
         write!(f, ")")?;
         let ret = self.ret();
-        if *ret != Ty::unit() {
+        if !ret.is_unit() {
             let ret_display =
                 ret.into_displayable(f.db, f.max_size, f.omit_verbose_types, f.display_target);
             write!(f, " -> {}", ret_display)?;

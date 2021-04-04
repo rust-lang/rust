@@ -2,7 +2,7 @@
 //! query, but can't be computed directly from `*Data` (ie, which need a `db`).
 use std::sync::Arc;
 
-use chalk_ir::DebruijnIndex;
+use chalk_ir::{BoundVar, DebruijnIndex};
 use hir_def::{
     adt::VariantData,
     db::DefDatabase,
@@ -16,7 +16,7 @@ use hir_def::{
 };
 use hir_expand::name::{name, Name};
 
-use crate::{db::HirDatabase, TraitRef, TypeWalk, WhereClause};
+use crate::{db::HirDatabase, Interner, Substitution, TraitRef, TyKind, TypeWalk, WhereClause};
 
 fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> Vec<TraitId> {
     let resolver = trait_.resolver(db);
@@ -248,6 +248,26 @@ impl Generics {
         } else {
             self.parent_generics.as_ref().and_then(|g| g.find_param(param))
         }
+    }
+
+    /// Returns a Substitution that replaces each parameter by a bound variable.
+    pub(crate) fn bound_vars_subst(&self, debruijn: DebruijnIndex) -> Substitution {
+        Substitution::from_iter(
+            &Interner,
+            self.iter()
+                .enumerate()
+                .map(|(idx, _)| TyKind::BoundVar(BoundVar::new(debruijn, idx)).intern(&Interner)),
+        )
+    }
+
+    /// Returns a Substitution that replaces each parameter by itself (i.e. `Ty::Param`).
+    pub(crate) fn type_params_subst(&self, db: &dyn HirDatabase) -> Substitution {
+        Substitution::from_iter(
+            &Interner,
+            self.iter().map(|(id, _)| {
+                TyKind::Placeholder(crate::to_placeholder_idx(db, id)).intern(&Interner)
+            }),
+        )
     }
 }
 

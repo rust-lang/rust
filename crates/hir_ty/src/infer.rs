@@ -38,11 +38,11 @@ use syntax::SmolStr;
 
 use super::{
     traits::{DomainGoal, Guidance, Solution},
-    InEnvironment, ProjectionTy, Substitution, TraitEnvironment, TraitRef, Ty, TypeWalk,
+    InEnvironment, ProjectionTy, TraitEnvironment, TraitRef, Ty, TypeWalk,
 };
 use crate::{
     db::HirDatabase, infer::diagnostics::InferenceDiagnostic, lower::ImplTraitLoweringMode,
-    to_assoc_type_id, to_chalk_trait_id, AliasEq, AliasTy, Interner, TyKind,
+    to_assoc_type_id, AliasEq, AliasTy, Interner, TyBuilder, TyKind,
 };
 
 // This lint has a false positive here. See the link below for details.
@@ -409,16 +409,14 @@ impl<'a> InferenceContext<'a> {
                     _ => panic!("resolve_associated_type called with non-associated type"),
                 };
                 let ty = self.table.new_type_var();
-                let substs = Substitution::build_for_def(self.db, res_assoc_ty)
+                let trait_ref = TyBuilder::trait_ref(self.db, trait_)
                     .push(inner_ty)
                     .fill(params.iter().cloned())
                     .build();
-                let trait_ref =
-                    TraitRef { trait_id: to_chalk_trait_id(trait_), substitution: substs.clone() };
                 let alias_eq = AliasEq {
                     alias: AliasTy::Projection(ProjectionTy {
                         associated_ty_id: to_assoc_type_id(res_assoc_ty),
-                        substitution: substs,
+                        substitution: trait_ref.substitution.clone(),
                     }),
                     ty: ty.clone(),
                 };
@@ -489,7 +487,7 @@ impl<'a> InferenceContext<'a> {
             }
             TypeNs::SelfType(impl_id) => {
                 let generics = crate::utils::generics(self.db.upcast(), impl_id.into());
-                let substs = Substitution::type_params_for_generics(self.db, &generics);
+                let substs = generics.type_params_subst(self.db);
                 let ty = self.db.impl_self_ty(impl_id).subst(&substs);
                 match unresolved {
                     None => {
@@ -516,10 +514,9 @@ impl<'a> InferenceContext<'a> {
                 }
             }
             TypeNs::TypeAliasId(it) => {
-                let substs = Substitution::build_for_def(self.db, it)
+                let ty = TyBuilder::def_ty(self.db, it.into())
                     .fill(std::iter::repeat_with(|| self.table.new_type_var()))
                     .build();
-                let ty = self.db.ty(it.into()).subst(&substs);
                 let variant = ty_variant(&ty);
                 forbid_unresolved_segments((ty, variant), unresolved)
             }

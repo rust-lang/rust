@@ -13,9 +13,8 @@ use hir_expand::name::Name;
 
 use super::{BindingMode, Expectation, InferenceContext};
 use crate::{
-    lower::lower_to_chalk_mutability,
-    utils::{generics, variant_data},
-    Interner, Substitution, Ty, TyKind,
+    lower::lower_to_chalk_mutability, utils::variant_data, Interner, Substitution, Ty, TyBuilder,
+    TyKind,
 };
 
 impl<'a> InferenceContext<'a> {
@@ -246,23 +245,12 @@ impl<'a> InferenceContext<'a> {
                     };
 
                     let inner_ty = self.infer_pat(*inner, &inner_ty, default_bm);
-                    let mut sb = Substitution::build_for_generics(&generics(
-                        self.db.upcast(),
-                        box_adt.into(),
-                    ));
-                    sb = sb.push(inner_ty);
-                    if sb.remaining() == 1 {
-                        sb = sb.push(match alloc_ty {
-                            Some(alloc_ty) if !alloc_ty.is_unknown() => alloc_ty,
-                            _ => match self.db.generic_defaults(box_adt.into()).get(1) {
-                                Some(alloc_ty) if !alloc_ty.value.is_unknown() => {
-                                    alloc_ty.value.clone()
-                                }
-                                _ => self.table.new_type_var(),
-                            },
-                        });
+                    let mut b = TyBuilder::adt(self.db, box_adt).push(inner_ty);
+
+                    if let Some(alloc_ty) = alloc_ty {
+                        b = b.push(alloc_ty);
                     }
-                    Ty::adt_ty(box_adt, sb.build())
+                    b.fill_with_defaults(self.db, || self.table.new_type_var()).build()
                 }
                 None => self.err_ty(),
             },

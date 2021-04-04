@@ -55,11 +55,10 @@ use hir_ty::{
     autoderef, could_unify,
     method_resolution::{self, TyFingerprint},
     primitive::UintTy,
-    to_assoc_type_id,
     traits::{FnTrait, Solution, SolutionVariables},
     AliasEq, AliasTy, BoundVar, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast,
-    DebruijnIndex, InEnvironment, Interner, ProjectionTy, QuantifiedWhereClause, Scalar,
-    Substitution, TraitEnvironment, Ty, TyDefId, TyKind, TyVariableKind, WhereClause,
+    DebruijnIndex, InEnvironment, Interner, QuantifiedWhereClause, Scalar, Substitution,
+    TraitEnvironment, Ty, TyBuilder, TyDefId, TyKind, TyVariableKind, WhereClause,
 };
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
@@ -515,7 +514,7 @@ impl Field {
             VariantDef::Union(it) => it.id.into(),
             VariantDef::Variant(it) => it.parent.id.into(),
         };
-        let substs = Substitution::type_params(db, generic_def_id);
+        let substs = TyBuilder::type_params_subst(db, generic_def_id);
         let ty = db.field_types(var_id)[self.id].clone().subst(&substs);
         Type::new(db, self.parent.module(db).id.krate(), var_id, ty)
     }
@@ -1129,7 +1128,7 @@ pub struct BuiltinType {
 impl BuiltinType {
     pub fn ty(self, db: &dyn HirDatabase, module: Module) -> Type {
         let resolver = module.id.resolver(db.upcast());
-        Type::new_with_resolver(db, &resolver, Ty::builtin(self.inner))
+        Type::new_with_resolver(db, &resolver, TyBuilder::builtin(self.inner))
             .expect("crate not present in resolver")
     }
 
@@ -1502,7 +1501,7 @@ impl TypeParam {
         let resolver = self.id.parent.resolver(db.upcast());
         let krate = self.id.parent.module(db.upcast()).krate();
         let ty = params.get(local_idx)?.clone();
-        let subst = Substitution::type_params(db, self.id.parent);
+        let subst = TyBuilder::type_params_subst(db, self.id.parent);
         let ty = ty.subst(&subst.prefix(local_idx));
         Some(Type::new_with_resolver_inner(db, krate, &resolver, ty))
     }
@@ -1703,10 +1702,9 @@ impl Type {
     fn from_def(
         db: &dyn HirDatabase,
         krate: CrateId,
-        def: impl HasResolver + Into<TyDefId> + Into<GenericDefId>,
+        def: impl HasResolver + Into<TyDefId>,
     ) -> Type {
-        let substs = Substitution::build_for_def(db, def).fill_with_unknown().build();
-        let ty = db.ty(def.into()).subst(&substs);
+        let ty = TyBuilder::def_ty(db, def.into()).fill_with_unknown().build();
         Type::new(db, krate, def, ty)
     }
 
@@ -1785,13 +1783,10 @@ impl Type {
     }
 
     pub fn impls_trait(&self, db: &dyn HirDatabase, trait_: Trait, args: &[Type]) -> bool {
-        let trait_ref = hir_ty::TraitRef {
-            trait_id: hir_ty::to_chalk_trait_id(trait_.id),
-            substitution: Substitution::build_for_def(db, trait_.id)
-                .push(self.ty.clone())
-                .fill(args.iter().map(|t| t.ty.clone()))
-                .build(),
-        };
+        let trait_ref = TyBuilder::trait_ref(db, trait_.id)
+            .push(self.ty.clone())
+            .fill(args.iter().map(|t| t.ty.clone()))
+            .build();
 
         let goal = Canonical {
             value: hir_ty::InEnvironment::new(self.env.env.clone(), trait_ref.cast(&Interner)),
@@ -1804,11 +1799,10 @@ impl Type {
     pub fn normalize_trait_assoc_type(
         &self,
         db: &dyn HirDatabase,
-        trait_: Trait,
         args: &[Type],
         alias: TypeAlias,
     ) -> Option<Type> {
-        let subst = Substitution::build_for_def(db, trait_.id)
+        let projection = TyBuilder::assoc_type_projection(db, alias.id)
             .push(self.ty.clone())
             .fill(args.iter().map(|t| t.ty.clone()))
             .build();
@@ -1816,10 +1810,7 @@ impl Type {
             InEnvironment::new(
                 self.env.env.clone(),
                 AliasEq {
-                    alias: AliasTy::Projection(ProjectionTy {
-                        associated_ty_id: to_assoc_type_id(alias.id),
-                        substitution: subst,
-                    }),
+                    alias: AliasTy::Projection(projection),
                     ty: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0))
                         .intern(&Interner),
                 }

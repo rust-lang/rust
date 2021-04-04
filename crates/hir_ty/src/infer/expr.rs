@@ -19,11 +19,11 @@ use crate::{
     lower::lower_to_chalk_mutability,
     method_resolution, op,
     primitive::{self, UintTy},
-    to_assoc_type_id, to_chalk_trait_id,
+    to_chalk_trait_id,
     traits::{chalk::from_chalk, FnTrait, InEnvironment},
     utils::{generics, variant_data, Generics},
-    AdtId, Binders, CallableDefId, DomainGoal, FnPointer, FnSig, Interner, Rawness, Scalar,
-    Substitution, TraitRef, Ty, TyKind,
+    AdtId, Binders, CallableDefId, FnPointer, FnSig, Interner, Rawness, Scalar, Substitution,
+    TraitRef, Ty, TyBuilder, TyKind,
 };
 
 use super::{
@@ -73,38 +73,33 @@ impl<'a> InferenceContext<'a> {
         let fn_once_trait = FnTrait::FnOnce.get_id(self.db, krate)?;
         let output_assoc_type =
             self.db.trait_data(fn_once_trait).associated_type_by_name(&name![Output])?;
-        let generic_params = generics(self.db.upcast(), fn_once_trait.into());
-        if generic_params.len() != 2 {
-            return None;
-        }
 
-        let mut param_builder = Substitution::builder(num_args);
         let mut arg_tys = vec![];
-        for _ in 0..num_args {
-            let arg = self.table.new_type_var();
-            param_builder = param_builder.push(arg.clone());
-            arg_tys.push(arg);
-        }
-        let parameters = param_builder.build();
-        let arg_ty = TyKind::Tuple(num_args, parameters).intern(&Interner);
-        let substs =
-            Substitution::build_for_generics(&generic_params).push(ty.clone()).push(arg_ty).build();
+        let arg_ty = TyBuilder::tuple(num_args)
+            .fill(repeat_with(|| {
+                let arg = self.table.new_type_var();
+                arg_tys.push(arg.clone());
+                arg
+            }))
+            .build();
+
+        let projection = {
+            let b = TyBuilder::assoc_type_projection(self.db, output_assoc_type);
+            if b.remaining() != 2 {
+                return None;
+            }
+            b.push(ty.clone()).push(arg_ty).build()
+        };
 
         let trait_env = self.trait_env.env.clone();
-        let implements_fn_trait: DomainGoal =
-            TraitRef { trait_id: to_chalk_trait_id(fn_once_trait), substitution: substs.clone() }
-                .cast(&Interner);
-        let goal = self.canonicalizer().canonicalize_obligation(InEnvironment {
-            goal: implements_fn_trait.clone(),
+        let obligation = InEnvironment {
+            goal: projection.trait_ref(self.db).cast(&Interner),
             environment: trait_env,
-        });
-        if self.db.trait_solve(krate, goal.value).is_some() {
-            self.push_obligation(implements_fn_trait);
-            let output_proj_ty = crate::ProjectionTy {
-                associated_ty_id: to_assoc_type_id(output_assoc_type),
-                substitution: substs,
-            };
-            let return_ty = self.normalize_projection_ty(output_proj_ty);
+        };
+        let canonical = self.canonicalizer().canonicalize_obligation(obligation.clone());
+        if self.db.trait_solve(krate, canonical.value).is_some() {
+            self.push_obligation(obligation.goal);
+            let return_ty = self.normalize_projection_ty(projection);
             Some((arg_tys, return_ty))
         } else {
             None
@@ -138,7 +133,7 @@ impl<'a> InferenceContext<'a> {
                 both_arms_diverge &= mem::replace(&mut self.diverges, Diverges::Maybe);
                 let else_ty = match else_branch {
                     Some(else_branch) => self.infer_expr_inner(*else_branch, &expected),
-                    None => Ty::unit(),
+                    None => TyBuilder::unit(),
                 };
                 both_arms_diverge &= self.diverges;
 
@@ -193,7 +188,7 @@ impl<'a> InferenceContext<'a> {
                     break_ty: self.table.new_type_var(),
                     label: label.map(|label| self.body[label].name.clone()),
                 });
-                self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
+                self.infer_expr(*body, &Expectation::has_type(TyBuilder::unit()));
 
                 let ctxt = self.breakables.pop().expect("breakable stack broken");
                 if ctxt.may_break {
@@ -217,11 +212,11 @@ impl<'a> InferenceContext<'a> {
                     *condition,
                     &Expectation::has_type(TyKind::Scalar(Scalar::Bool).intern(&Interner)),
                 );
-                self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
+                self.infer_expr(*body, &Expectation::has_type(TyBuilder::unit()));
                 let _ctxt = self.breakables.pop().expect("breakable stack broken");
                 // the body may not run, so it diverging doesn't mean we diverge
                 self.diverges = Diverges::Maybe;
-                Ty::unit()
+                TyBuilder::unit()
             }
             Expr::For { iterable, body, pat, label } => {
                 let iterable_ty = self.infer_expr(*iterable, &Expectation::none());
@@ -236,11 +231,11 @@ impl<'a> InferenceContext<'a> {
 
                 self.infer_pat(*pat, &pat_ty, BindingMode::default());
 
-                self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
+                self.infer_expr(*body, &Expectation::has_type(TyBuilder::unit()));
                 let _ctxt = self.breakables.pop().expect("breakable stack broken");
                 // the body may not run, so it diverging doesn't mean we diverge
                 self.diverges = Diverges::Maybe;
-                Ty::unit()
+                TyBuilder::unit()
             }
             Expr::Lambda { body, args, ret_type, arg_types } => {
                 assert_eq!(args.len(), arg_types.len());
@@ -360,7 +355,7 @@ impl<'a> InferenceContext<'a> {
                 let val_ty = if let Some(expr) = expr {
                     self.infer_expr(*expr, &Expectation::none())
                 } else {
-                    Ty::unit()
+                    TyBuilder::unit()
                 };
 
                 let last_ty =
@@ -386,7 +381,7 @@ impl<'a> InferenceContext<'a> {
                 if let Some(expr) = expr {
                     self.infer_expr_coerce(*expr, &Expectation::has_type(self.return_ty.clone()));
                 } else {
-                    let unit = Ty::unit();
+                    let unit = TyBuilder::unit();
                     self.coerce(&unit, &self.return_ty.clone());
                 }
                 TyKind::Never.intern(&Interner)
@@ -539,17 +534,10 @@ impl<'a> InferenceContext<'a> {
             Expr::Box { expr } => {
                 let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
                 if let Some(box_) = self.resolve_boxed_box() {
-                    let mut sb =
-                        Substitution::build_for_generics(&generics(self.db.upcast(), box_.into()));
-                    sb = sb.push(inner_ty);
-                    match self.db.generic_defaults(box_.into()).get(1) {
-                        Some(alloc_ty) if !alloc_ty.value.is_unknown() && sb.remaining() > 0 => {
-                            sb = sb.push(alloc_ty.value.clone());
-                        }
-                        _ => (),
-                    }
-                    sb = sb.fill(repeat_with(|| self.table.new_type_var()));
-                    Ty::adt_ty(box_, sb.build())
+                    TyBuilder::adt(self.db, box_)
+                        .push(inner_ty)
+                        .fill_with_defaults(self.db, || self.table.new_type_var())
+                        .build()
                 } else {
                     self.err_ty()
                 }
@@ -639,31 +627,31 @@ impl<'a> InferenceContext<'a> {
                 let rhs_ty = rhs.map(|e| self.infer_expr(e, &rhs_expect));
                 match (range_type, lhs_ty, rhs_ty) {
                     (RangeOp::Exclusive, None, None) => match self.resolve_range_full() {
-                        Some(adt) => Ty::adt_ty(adt, Substitution::empty(&Interner)),
+                        Some(adt) => TyBuilder::adt(self.db, adt).build(),
                         None => self.err_ty(),
                     },
                     (RangeOp::Exclusive, None, Some(ty)) => match self.resolve_range_to() {
-                        Some(adt) => Ty::adt_ty(adt, Substitution::single(ty)),
+                        Some(adt) => TyBuilder::adt(self.db, adt).push(ty).build(),
                         None => self.err_ty(),
                     },
                     (RangeOp::Inclusive, None, Some(ty)) => {
                         match self.resolve_range_to_inclusive() {
-                            Some(adt) => Ty::adt_ty(adt, Substitution::single(ty)),
+                            Some(adt) => TyBuilder::adt(self.db, adt).push(ty).build(),
                             None => self.err_ty(),
                         }
                     }
                     (RangeOp::Exclusive, Some(_), Some(ty)) => match self.resolve_range() {
-                        Some(adt) => Ty::adt_ty(adt, Substitution::single(ty)),
+                        Some(adt) => TyBuilder::adt(self.db, adt).push(ty).build(),
                         None => self.err_ty(),
                     },
                     (RangeOp::Inclusive, Some(_), Some(ty)) => {
                         match self.resolve_range_inclusive() {
-                            Some(adt) => Ty::adt_ty(adt, Substitution::single(ty)),
+                            Some(adt) => TyBuilder::adt(self.db, adt).push(ty).build(),
                             None => self.err_ty(),
                         }
                     }
                     (RangeOp::Exclusive, Some(ty), None) => match self.resolve_range_from() {
-                        Some(adt) => Ty::adt_ty(adt, Substitution::single(ty)),
+                        Some(adt) => TyBuilder::adt(self.db, adt).push(ty).build(),
                         None => self.err_ty(),
                     },
                     (RangeOp::Inclusive, _, None) => self.err_ty(),
@@ -828,8 +816,8 @@ impl<'a> InferenceContext<'a> {
                 // we don't even make an attempt at coercion
                 self.table.new_maybe_never_var()
             } else {
-                self.coerce(&Ty::unit(), &expected.coercion_target());
-                Ty::unit()
+                self.coerce(&TyBuilder::unit(), &expected.coercion_target());
+                TyBuilder::unit()
             }
         };
         ty

@@ -2,12 +2,12 @@
 use chalk_ir::TyVariableKind;
 use hir_def::expr::{ArithOp, BinaryOp, CmpOp};
 
-use crate::{Interner, Scalar, Ty, TyKind};
+use crate::{Interner, Scalar, Ty, TyBuilder, TyKind};
 
 pub(super) fn binary_op_return_ty(op: BinaryOp, lhs_ty: Ty, rhs_ty: Ty) -> Ty {
     match op {
         BinaryOp::LogicOp(_) | BinaryOp::CmpOp(_) => TyKind::Scalar(Scalar::Bool).intern(&Interner),
-        BinaryOp::Assignment { .. } => Ty::unit(),
+        BinaryOp::Assignment { .. } => TyBuilder::unit(),
         BinaryOp::ArithOp(ArithOp::Shl) | BinaryOp::ArithOp(ArithOp::Shr) => {
             match lhs_ty.kind(&Interner) {
                 TyKind::Scalar(Scalar::Int(_))

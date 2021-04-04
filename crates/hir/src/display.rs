@@ -13,7 +13,7 @@ use syntax::ast::{self, NameOwner};
 
 use crate::{
     Adt, Const, ConstParam, Enum, Field, Function, GenericParam, HasVisibility, LifetimeParam,
-    Module, Static, Struct, Substitution, Trait, Type, TypeAlias, TypeParam, Union, Variant,
+    Module, Static, Struct, Trait, TyBuilder, Type, TypeAlias, TypeParam, Union, Variant,
 };
 
 impl HirDisplay for Function {
@@ -234,7 +234,7 @@ impl HirDisplay for TypeParam {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         write!(f, "{}", self.name(f.db))?;
         let bounds = f.db.generic_predicates_for_param(self.id);
-        let substs = Substitution::type_params(f.db, self.id.parent);
+        let substs = TyBuilder::type_params_subst(f.db, self.id.parent);
         let predicates = bounds.iter().cloned().map(|b| b.subst(&substs)).collect::<Vec<_>>();
         if !(predicates.is_empty() || f.omit_verbose_types()) {
             write_bounds_like_dyn_trait_with_prefix(":", &predicates, f)?;

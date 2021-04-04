@@ -19,10 +19,9 @@ use crate::{
     db::HirDatabase,
     from_foreign_def_id,
     primitive::{self, FloatTy, IntTy, UintTy},
-    to_chalk_trait_id,
     utils::all_super_traits,
     AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, FnPointer, FnSig, ForeignDefId,
-    InEnvironment, Interner, Scalar, Substitution, TraitEnvironment, TraitRef, Ty, TyKind,
+    InEnvironment, Interner, Scalar, Substitution, TraitEnvironment, Ty, TyBuilder, TyKind,
     TypeWalk,
 };
 
@@ -710,7 +709,7 @@ pub(crate) fn inherent_impl_substs(
 ) -> Option<Substitution> {
     // we create a var for each type parameter of the impl; we need to keep in
     // mind here that `self_ty` might have vars of its own
-    let vars = Substitution::build_for_def(db, impl_id)
+    let vars = TyBuilder::subst_for_def(db, impl_id)
         .fill_with_bound_vars(DebruijnIndex::INNERMOST, self_ty.binders.len(&Interner))
         .build();
     let self_ty_with_vars = db.impl_self_ty(impl_id).subst(&vars);
@@ -761,13 +760,13 @@ fn transform_receiver_ty(
     self_ty: &Canonical<Ty>,
 ) -> Option<Ty> {
     let substs = match function_id.lookup(db.upcast()).container {
-        AssocContainerId::TraitId(_) => Substitution::build_for_def(db, function_id)
+        AssocContainerId::TraitId(_) => TyBuilder::subst_for_def(db, function_id)
             .push(self_ty.value.clone())
             .fill_with_unknown()
             .build(),
         AssocContainerId::ImplId(impl_id) => {
             let impl_substs = inherent_impl_substs(db, impl_id, &self_ty)?;
-            Substitution::build_for_def(db, function_id)
+            TyBuilder::subst_for_def(db, function_id)
                 .use_parent_substs(&impl_substs)
                 .fill_with_unknown()
                 .build()
@@ -813,7 +812,7 @@ fn generic_implements_goal(
     self_ty: Canonical<Ty>,
 ) -> Canonical<InEnvironment<super::DomainGoal>> {
     let mut kinds = self_ty.binders.interned().to_vec();
-    let substs = super::Substitution::build_for_def(db, trait_)
+    let trait_ref = TyBuilder::trait_ref(db, trait_)
         .push(self_ty.value)
         .fill_with_bound_vars(DebruijnIndex::INNERMOST, kinds.len())
         .build();
@@ -822,9 +821,8 @@ fn generic_implements_goal(
             chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General),
             UniverseIndex::ROOT,
         ))
-        .take(substs.len(&Interner) - 1),
+        .take(trait_ref.substitution.len(&Interner) - 1),
     );
-    let trait_ref = TraitRef { trait_id: to_chalk_trait_id(trait_), substitution: substs };
     let obligation = trait_ref.cast(&Interner);
     Canonical {
         binders: CanonicalVarKinds::from_iter(&Interner, kinds),
