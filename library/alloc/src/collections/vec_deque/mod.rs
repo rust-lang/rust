@@ -2534,6 +2534,51 @@ impl<T> VecDeque<T> {
     {
         self.binary_search_by(|k| f(k).cmp(b))
     }
+
+    /// Returns the index of the partition point according to the given predicate
+    /// (the index of the first element of the second partition).
+    ///
+    /// The deque is assumed to be partitioned according to the given predicate.
+    /// This means that all elements for which the predicate returns true are at the start of the deque
+    /// and all elements for which the predicate returns false are at the end.
+    /// For example, [7, 15, 3, 5, 4, 12, 6] is a partitioned under the predicate x % 2 != 0
+    /// (all odd numbers are at the start, all even at the end).
+    ///
+    /// If this deque is not partitioned, the returned result is unspecified and meaningless,
+    /// as this method performs a kind of binary search.
+    ///
+    /// See also [`binary_search`], [`binary_search_by`], and [`binary_search_by_key`].
+    ///
+    /// [`binary_search`]: slice::binary_search
+    /// [`binary_search_by`]: slice::binary_search_by
+    /// [`binary_search_by_key`]: slice::binary_search_by_key
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vecdeque_binary_search)]
+    /// use std::collections::VecDeque;
+    ///
+    /// let deque: VecDeque<_> = vec![1, 2, 3, 3, 5, 6, 7].into();
+    /// let i = deque.partition_point(|&x| x < 5);
+    ///
+    /// assert_eq!(i, 4);
+    /// assert!(deque.iter().take(i).all(|&x| x < 5));
+    /// assert!(deque.iter().skip(i).all(|&x| !(x < 5)));
+    /// ```
+    #[unstable(feature = "vecdeque_binary_search", issue = "78021")]
+    pub fn partition_point<P>(&self, mut pred: P) -> usize
+    where
+        P: FnMut(&T) -> bool,
+    {
+        let (front, back) = self.as_slices();
+
+        if let Some(true) = back.first().map(|v| pred(v)) {
+            back.partition_point(pred) + front.len()
+        } else {
+            front.partition_point(pred)
+        }
+    }
 }
 
 impl<T: Clone> VecDeque<T> {
