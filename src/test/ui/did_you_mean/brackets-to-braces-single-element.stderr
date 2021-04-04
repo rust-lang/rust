@@ -23,11 +23,13 @@ LL | const B: &[u32] = &[ 1 ];
    |                    ~   ~
 
 error[E0308]: mismatched types
-  --> $DIR/brackets-to-braces-single-element.rs:7:27
+  --> $DIR/brackets-to-braces-single-element.rs:7:23
    |
 LL | const C: &&[u32; 1] = &&{ 1 };
-   |                           ^ expected array `[u32; 1]`, found integer
+   |                       ^^^^^^^ expected array `[u32; 1]`, found integer
    |
+   = note: expected reference `&'static &'static [u32; 1]`
+              found reference `&&{integer}`
 help: to create an array, use square brackets instead of curly braces
    |
 LL | const C: &&[u32; 1] = &&[ 1 ];

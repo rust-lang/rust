@@ -7,7 +7,9 @@ use crate::check::cast;
 use crate::check::coercion::CoerceMany;
 use crate::check::fatally_break_rust;
 use crate::check::method::SelfSource;
-use crate::check::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExpectation};
+use crate::check::Expectation::{
+    self, ExpectCastableToType, ExpectHasType, ExpectRvalueDeref, NoExpectation,
+};
 use crate::check::{
     report_unexpected_variant_res, BreakableCtxt, Diverges, DynamicCoerceMany, FnCtxt, Needs,
     TupleArgumentsFlag::DontTupleArguments,
@@ -437,7 +439,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // the last field of a struct can be unsized.
                         ExpectHasType(*ty)
                     } else {
-                        Expectation::rvalue_hint(self, *ty)
+                        ExpectRvalueDeref(*ty)
                     }
                 }
                 _ => NoExpectation,
