@@ -377,7 +377,6 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         ns: Namespace,
         module_id: DefId,
         item_name: Symbol,
-        item_str: &'path str,
     ) -> Result<(Res, Option<String>), ErrorKind<'path>> {
         let tcx = self.cx.tcx;
 
@@ -399,7 +398,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     .map(|out| {
                         (
                             Res::Primitive(prim_ty),
-                            Some(format!("{}#{}.{}", prim_ty.as_str(), out, item_str)),
+                            Some(format!("{}#{}.{}", prim_ty.as_str(), out, item_name)),
                         )
                     })
             })
@@ -413,7 +412,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 ResolutionFailure::NotResolved {
                     module_id,
                     partial_res: Some(Res::Primitive(prim_ty)),
-                    unresolved: item_str.into(),
+                    unresolved: item_name.to_string().into(),
                 }
                 .into()
             })
@@ -490,8 +489,6 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         module_id: DefId,
         extra_fragment: &Option<String>,
     ) -> Result<(Res, Option<String>), ErrorKind<'path>> {
-        let tcx = self.cx.tcx;
-
         if let Some(res) = self.resolve_path(path_str, ns, module_id) {
             match res {
                 // FIXME(#76467): make this fallthrough to lookup the associated
@@ -534,29 +531,44 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 }
             })?;
 
-        // FIXME: are these both necessary?
-        let ty_res = if let Some(ty_res) = resolve_primitive(&path_root, TypeNS)
+        // FIXME(#83862): this arbitrarily gives precedence to primitives over modules to support
+        // links to primitives when `#[doc(primitive)]` is present. It should give an ambiguity
+        // error instead and special case *only* modules with `#[doc(primitive)]`, not all
+        // primitives.
+        resolve_primitive(&path_root, TypeNS)
             .or_else(|| self.resolve_path(&path_root, TypeNS, module_id))
-        {
-            ty_res
-        } else {
-            // FIXME: this is duplicated on the end of this function.
-            return if ns == Namespace::ValueNS {
-                self.variant_field(path_str, module_id)
-            } else {
-                Err(ResolutionFailure::NotResolved {
-                    module_id,
-                    partial_res: None,
-                    unresolved: path_root.into(),
+            .and_then(|ty_res| {
+                self.resolve_associated_item(ty_res, item_name, ns, module_id, extra_fragment)
+            })
+            .unwrap_or_else(|| {
+                if ns == Namespace::ValueNS {
+                    self.variant_field(path_str, module_id)
+                } else {
+                    Err(ResolutionFailure::NotResolved {
+                        module_id,
+                        partial_res: None,
+                        unresolved: path_root.into(),
+                    }
+                    .into())
                 }
-                .into())
-            };
-        };
+            })
+    }
 
-        let res = match ty_res {
-            Res::Primitive(prim) => Some(
-                self.resolve_primitive_associated_item(prim, ns, module_id, item_name, item_str),
-            ),
+    fn resolve_associated_item(
+        &mut self,
+        root_res: Res,
+        item_name: Symbol,
+        ns: Namespace,
+        module_id: DefId,
+        extra_fragment: &Option<String>,
+        // lol this is so bad
+    ) -> Option<Result<(Res, Option<String>), ErrorKind<'static>>> {
+        let tcx = self.cx.tcx;
+
+        match root_res {
+            Res::Primitive(prim) => {
+                Some(self.resolve_primitive_associated_item(prim, ns, module_id, item_name))
+            }
             Res::Def(
                 DefKind::Struct
                 | DefKind::Union
@@ -600,13 +612,15 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         ty::AssocKind::Type => "associatedtype",
                     };
                     Some(if extra_fragment.is_some() {
-                        Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(ty_res)))
+                        Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(
+                            root_res,
+                        )))
                     } else {
                         // HACK(jynelson): `clean` expects the type, not the associated item
                         // but the disambiguator logic expects the associated item.
                         // Store the kind in a side channel so that only the disambiguator logic looks at it.
                         self.kind_side_channel.set(Some((kind.as_def_kind(), id)));
-                        Ok((ty_res, Some(format!("{}.{}", out, item_str))))
+                        Ok((root_res, Some(format!("{}.{}", out, item_name))))
                     })
                 } else if ns == Namespace::ValueNS {
                     debug!("looking for variants or fields named {} for {:?}", item_name, did);
@@ -637,7 +651,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                                     ))
                                 } else {
                                     Ok((
-                                        ty_res,
+                                        root_res,
                                         Some(format!(
                                             "{}.{}",
                                             if def.is_enum() { "variant" } else { "structfield" },
@@ -670,26 +684,16 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     };
 
                     if extra_fragment.is_some() {
-                        Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(ty_res)))
+                        Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(
+                            root_res,
+                        )))
                     } else {
                         let res = Res::Def(item.kind.as_def_kind(), item.def_id);
-                        Ok((res, Some(format!("{}.{}", kind, item_str))))
+                        Ok((res, Some(format!("{}.{}", kind, item_name))))
                     }
                 }),
             _ => None,
-        };
-        res.unwrap_or_else(|| {
-            if ns == Namespace::ValueNS {
-                self.variant_field(path_str, module_id)
-            } else {
-                Err(ResolutionFailure::NotResolved {
-                    module_id,
-                    partial_res: Some(ty_res),
-                    unresolved: item_str.into(),
-                }
-                .into())
-            }
-        })
+        }
     }
 
     /// Used for reporting better errors.
