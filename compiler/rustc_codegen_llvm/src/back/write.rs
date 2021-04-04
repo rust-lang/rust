@@ -410,7 +410,7 @@ fn get_pgo_use_path(config: &ModuleConfig) -> Option<CString> {
 
 pub(crate) fn should_use_new_llvm_pass_manager(config: &ModuleConfig) -> bool {
     // The new pass manager is disabled by default.
-    config.new_llvm_pass_manager
+    config.new_llvm_pass_manager.unwrap_or(false)
 }
 
 pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
