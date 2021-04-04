@@ -14,6 +14,10 @@ pub mod convert {
     pub trait From<T> {
         fn from(t: T) -> Self;
     }
+
+    pub trait Into<T> {
+        pub fn into(self) -> T;
+    }
 }
 
 pub mod default {
@@ -120,7 +124,7 @@ pub mod option {
 pub mod prelude {
     pub use crate::{
         cmp::Ord,
-        convert::From,
+        convert::{From, Into},
         default::Default,
         iter::{IntoIterator, Iterator},
         ops::{Fn, FnMut, FnOnce},

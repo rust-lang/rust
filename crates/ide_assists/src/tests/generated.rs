@@ -206,6 +206,38 @@ const _: i32 = 0b1010;
 }
 
 #[test]
+fn doctest_convert_into_to_from() {
+    check_doc_test(
+        "convert_into_to_from",
+        r#####"
+//- /lib.rs crate:core
+pub mod convert { pub trait Into<T> { pub fn into(self) -> T; } }
+//- /lib.rs crate:main deps:core
+use core::convert::Into;
+impl $0Into<Thing> for usize {
+    fn into(self) -> Thing {
+        Thing {
+            b: self.to_string(),
+            a: self
+        }
+    }
+}
+"#####,
+        r#####"
+use core::convert::Into;
+impl From<usize> for Thing {
+    fn from(val: usize) -> Self {
+        Thing {
+            b: val.to_string(),
+            a: val
+        }
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_convert_iter_for_each_to_for() {
     check_doc_test(
         "convert_iter_for_each_to_for",
