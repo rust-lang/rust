@@ -16,7 +16,8 @@ issue_1705 = { path = "issue-1705" }
 
 [dev-dependencies]
 rand = { version = "0.8", features = ["small_rng"] }
-getrandom = { version = "0.2" }
+getrandom_1 = { package = "getrandom", version = "0.1" }
+getrandom_2 = { package = "getrandom", version = "0.2" }
 serde_derive = "1.0" # not actually used, but exercises some unique code path (`--extern` .so file)
 
 [lib]

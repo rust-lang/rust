@@ -24,9 +24,10 @@ fn does_not_work_on_miri() {
 
 #[test]
 fn entropy_rng() {
-    // Test `getrandom` directly.
+    // Test `getrandom` directly (in multiple different versions).
     let mut data = vec![0; 16];
-    getrandom::getrandom(&mut data).unwrap();
+    getrandom_1::getrandom(&mut data).unwrap();
+    getrandom_2::getrandom(&mut data).unwrap();
 
     // Try seeding with "real" entropy.
     let mut rng = SmallRng::from_entropy();
