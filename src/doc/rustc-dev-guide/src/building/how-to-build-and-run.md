@@ -33,6 +33,9 @@ settings (and possibly others, such as `llvm.ccache`):
 
 ```toml
 [llvm]
+# Whether to use Rust CI built LLVM instead of locally building it.
+download-ci-llvm = true
+
 # Indicates whether the LLVM assertions are enabled or not
 assertions = true
 
