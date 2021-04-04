@@ -90,11 +90,8 @@ pub use crate::intrinsics::copy;
 #[doc(inline)]
 pub use crate::intrinsics::write_bytes;
 
-#[cfg(not(bootstrap))]
 mod metadata;
-#[cfg(not(bootstrap))]
 pub(crate) use metadata::PtrRepr;
-#[cfg(not(bootstrap))]
 #[unstable(feature = "ptr_metadata", issue = "81513")]
 pub use metadata::{from_raw_parts, from_raw_parts_mut, metadata, DynMetadata, Pointee, Thin};
 
@@ -236,33 +233,6 @@ pub const fn null_mut<T>() -> *mut T {
     0 as *mut T
 }
 
-#[cfg(bootstrap)]
-#[repr(C)]
-pub(crate) union Repr<T> {
-    pub(crate) rust: *const [T],
-    rust_mut: *mut [T],
-    pub(crate) raw: FatPtr<T>,
-}
-
-#[cfg(bootstrap)]
-#[repr(C)]
-pub(crate) struct FatPtr<T> {
-    data: *const T,
-    pub(crate) len: usize,
-}
-
-#[cfg(bootstrap)]
-// Manual impl needed to avoid `T: Clone` bound.
-impl<T> Clone for FatPtr<T> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-#[cfg(bootstrap)]
-// Manual impl needed to avoid `T: Copy` bound.
-impl<T> Copy for FatPtr<T> {}
-
 /// Forms a raw slice from a pointer and a length.
 ///
 /// The `len` argument is the number of **elements**, not the number of bytes.
@@ -287,14 +257,6 @@ impl<T> Copy for FatPtr<T> {}
 #[stable(feature = "slice_from_raw_parts", since = "1.42.0")]
 #[rustc_const_unstable(feature = "const_slice_from_raw_parts", issue = "67456")]
 pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
-    #[cfg(bootstrap)]
-    {
-        // SAFETY: Accessing the value from the `Repr` union is safe since *const [T]
-        // and FatPtr have the same memory layouts. Only std can make this
-        // guarantee.
-        unsafe { Repr { raw: FatPtr { data, len } }.rust }
-    }
-    #[cfg(not(bootstrap))]
     from_raw_parts(data.cast(), len)
 }
 
@@ -327,13 +289,6 @@ pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
 #[stable(feature = "slice_from_raw_parts", since = "1.42.0")]
 #[rustc_const_unstable(feature = "const_slice_from_raw_parts", issue = "67456")]
 pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
-    #[cfg(bootstrap)]
-    {
-        // SAFETY: Accessing the value from the `Repr` union is safe since *mut [T]
-        // and FatPtr have the same memory layouts
-        unsafe { Repr { raw: FatPtr { data, len } }.rust_mut }
-    }
-    #[cfg(not(bootstrap))]
     from_raw_parts_mut(data.cast(), len)
 }
 

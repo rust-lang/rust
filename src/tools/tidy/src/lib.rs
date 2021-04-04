@@ -3,8 +3,6 @@
 //! This library contains the tidy lints and exposes it
 //! to be used by tools.
 
-#![cfg_attr(bootstrap, feature(str_split_once))]
-
 use std::fs::File;
 use std::io::Read;
 use walkdir::{DirEntry, WalkDir};

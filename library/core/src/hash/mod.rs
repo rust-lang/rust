@@ -691,29 +691,9 @@ mod impls {
     impl<T: ?Sized> Hash for *const T {
         #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
-            #[cfg(not(bootstrap))]
-            {
-                let (address, metadata) = self.to_raw_parts();
-                state.write_usize(address as usize);
-                metadata.hash(state);
-            }
-            #[cfg(bootstrap)]
-            {
-                if mem::size_of::<Self>() == mem::size_of::<usize>() {
-                    // Thin pointer
-                    state.write_usize(*self as *const () as usize);
-                } else {
-                    // Fat pointer
-                    // SAFETY: we are accessing the memory occupied by `self`
-                    // which is guaranteed to be valid.
-                    // This assumes a fat pointer can be represented by a `(usize, usize)`,
-                    // which is safe to do in `std` because it is shipped and kept in sync
-                    // with the implementation of fat pointers in `rustc`.
-                    let (a, b) = unsafe { *(self as *const Self as *const (usize, usize)) };
-                    state.write_usize(a);
-                    state.write_usize(b);
-                }
-            }
+            let (address, metadata) = self.to_raw_parts();
+            state.write_usize(address as usize);
+            metadata.hash(state);
         }
     }
 
@@ -721,29 +701,9 @@ mod impls {
     impl<T: ?Sized> Hash for *mut T {
         #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
-            #[cfg(not(bootstrap))]
-            {
-                let (address, metadata) = self.to_raw_parts();
-                state.write_usize(address as usize);
-                metadata.hash(state);
-            }
-            #[cfg(bootstrap)]
-            {
-                if mem::size_of::<Self>() == mem::size_of::<usize>() {
-                    // Thin pointer
-                    state.write_usize(*self as *const () as usize);
-                } else {
-                    // Fat pointer
-                    // SAFETY: we are accessing the memory occupied by `self`
-                    // which is guaranteed to be valid.
-                    // This assumes a fat pointer can be represented by a `(usize, usize)`,
-                    // which is safe to do in `std` because it is shipped and kept in sync
-                    // with the implementation of fat pointers in `rustc`.
-                    let (a, b) = unsafe { *(self as *const Self as *const (usize, usize)) };
-                    state.write_usize(a);
-                    state.write_usize(b);
-                }
-            }
+            let (address, metadata) = self.to_raw_parts();
+            state.write_usize(address as usize);
+            metadata.hash(state);
         }
     }
 }
