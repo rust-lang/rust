@@ -291,7 +291,7 @@ fn run_test(
     for debugging_option_str in &options.debugging_opts_strs {
         compiler.arg("-Z").arg(&debugging_option_str);
     }
-    if no_run && !compile_fail {
+    if (no_run || options.no_run) && !compile_fail {
         compiler.arg("--emit=metadata");
     }
     compiler.arg("--target").arg(match target {
@@ -361,7 +361,7 @@ fn run_test(
         }
     }
 
-    if no_run {
+    if no_run || options.no_run {
         return Ok(());
     }
 

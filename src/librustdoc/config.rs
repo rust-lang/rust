@@ -121,6 +121,8 @@ crate struct Options {
     /// For example, using ignore-foo to ignore running the doctest on any target that
     /// contains "foo" as a substring
     crate enable_per_target_ignores: bool,
+    /// Compile test but do not run them.
+    crate no_run: bool,
 
     /// The path to a rustc-like binary to build tests with. If not set, we
     /// default to loading from `$sysroot/bin/rustc`.
@@ -196,6 +198,7 @@ impl fmt::Debug for Options {
             .field("runtool_args", &self.runtool_args)
             .field("enable-per-target-ignores", &self.enable_per_target_ignores)
             .field("run_check", &self.run_check)
+            .field("no_run", &self.no_run)
             .finish()
     }
 }
@@ -622,6 +625,7 @@ impl Options {
         let document_hidden = matches.opt_present("document-hidden-items");
         let run_check = matches.opt_present("check");
         let generate_redirect_map = matches.opt_present("generate-redirect-map");
+        let no_run = matches.opt_present("no-run");
 
         let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
@@ -658,6 +662,7 @@ impl Options {
             enable_per_target_ignores,
             test_builder,
             run_check,
+            no_run,
             render_options: RenderOptions {
                 output,
                 external_html,
