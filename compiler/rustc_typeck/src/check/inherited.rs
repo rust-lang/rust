@@ -13,7 +13,7 @@ use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt};
 use rustc_span::{self, Span};
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::opaque_types::OpaqueTypeDecl;
-use rustc_trait_selection::traits::{self, TraitEngine, TraitEngineExt};
+use rustc_trait_selection::traits::{self, ObligationCause, TraitEngine, TraitEngineExt};
 
 use std::cell::RefCell;
 use std::ops::Deref;
@@ -162,7 +162,23 @@ impl Inherited<'a, 'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        let ok = self.partially_normalize_associated_types_in(span, body_id, param_env, value);
+        self.normalize_associated_types_in_with_cause(
+            ObligationCause::misc(span, body_id),
+            param_env,
+            value,
+        )
+    }
+
+    pub(super) fn normalize_associated_types_in_with_cause<T>(
+        &self,
+        cause: ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        value: T,
+    ) -> T
+    where
+        T: TypeFoldable<'tcx>,
+    {
+        let ok = self.partially_normalize_associated_types_in(cause, param_env, value);
         self.register_infer_ok_obligations(ok)
     }
 }

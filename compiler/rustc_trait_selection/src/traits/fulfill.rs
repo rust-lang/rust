@@ -717,6 +717,10 @@ fn substs_infer_vars<'a, 'tcx>(
 fn to_fulfillment_error<'tcx>(
     error: Error<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>>,
 ) -> FulfillmentError<'tcx> {
-    let obligation = error.backtrace.into_iter().next().unwrap().obligation;
-    FulfillmentError::new(obligation, error.error)
+    let mut iter = error.backtrace.into_iter();
+    let obligation = iter.next().unwrap().obligation;
+    // The root obligation is the last item in the backtrace - if there's only
+    // one item, then it's the same as the main obligation
+    let root_obligation = iter.next_back().map_or_else(|| obligation.clone(), |e| e.obligation);
+    FulfillmentError::new(obligation, error.error, root_obligation)
 }

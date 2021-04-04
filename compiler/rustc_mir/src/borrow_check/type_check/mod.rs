@@ -2070,24 +2070,26 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 debug!("check_rvalue: is_const_fn={:?}", is_const_fn);
 
                                 let def_id = body.source.def_id().expect_local();
-                                self.infcx.report_selection_error(
-                                    &traits::Obligation::new(
-                                        ObligationCause::new(
-                                            span,
-                                            self.tcx().hir().local_def_id_to_hir_id(def_id),
-                                            traits::ObligationCauseCode::RepeatVec(is_const_fn),
-                                        ),
-                                        self.param_env,
-                                        ty::Binder::dummy(ty::TraitRef::new(
-                                            self.tcx().require_lang_item(
-                                                LangItem::Copy,
-                                                Some(self.last_span),
-                                            ),
-                                            tcx.mk_substs_trait(ty, &[]),
-                                        ))
-                                        .without_const()
-                                        .to_predicate(self.tcx()),
+                                let obligation = traits::Obligation::new(
+                                    ObligationCause::new(
+                                        span,
+                                        self.tcx().hir().local_def_id_to_hir_id(def_id),
+                                        traits::ObligationCauseCode::RepeatVec(is_const_fn),
                                     ),
+                                    self.param_env,
+                                    ty::Binder::dummy(ty::TraitRef::new(
+                                        self.tcx().require_lang_item(
+                                            LangItem::Copy,
+                                            Some(self.last_span),
+                                        ),
+                                        tcx.mk_substs_trait(ty, &[]),
+                                    ))
+                                    .without_const()
+                                    .to_predicate(self.tcx()),
+                                );
+                                self.infcx.report_selection_error(
+                                    obligation.clone(),
+                                    &obligation,
                                     &traits::SelectionError::Unimplemented,
                                     false,
                                     false,

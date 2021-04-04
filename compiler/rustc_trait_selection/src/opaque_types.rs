@@ -1,5 +1,5 @@
 use crate::infer::InferCtxtExt as _;
-use crate::traits::{self, PredicateObligation};
+use crate::traits::{self, ObligationCause, PredicateObligation};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::vec_map::VecMap;
@@ -1051,8 +1051,11 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             item_bounds.iter().map(|(bound, _)| bound.subst(tcx, substs)).collect();
 
         let param_env = tcx.param_env(def_id);
-        let InferOk { value: bounds, obligations } =
-            infcx.partially_normalize_associated_types_in(span, self.body_id, param_env, bounds);
+        let InferOk { value: bounds, obligations } = infcx.partially_normalize_associated_types_in(
+            ObligationCause::misc(span, self.body_id),
+            param_env,
+            bounds,
+        );
         self.obligations.extend(obligations);
 
         debug!("instantiate_opaque_types: bounds={:?}", bounds);

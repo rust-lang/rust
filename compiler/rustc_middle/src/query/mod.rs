@@ -1713,4 +1713,18 @@ rustc_queries! {
     query limits(key: ()) -> Limits {
         desc { "looking up limits" }
     }
+
+    /// Performs an HIR-based well-formed check on the item with the given `HirId`. If
+    /// we get an `Umimplemented` error that matches the provided `Predicate`, return
+    /// the cause of the newly created obligation.
+    ///
+    /// This is only used by error-reporting code to get a better cause (in particular, a better
+    /// span) for an *existing* error. Therefore, it is best-effort, and may never handle
+    /// all of the cases that the normal `ty::Ty`-based wfcheck does. This is fine,
+    /// because the `ty::Ty`-based wfcheck is always run.
+    query diagnostic_hir_wf_check(key: (ty::Predicate<'tcx>, hir::HirId)) -> Option<traits::ObligationCause<'tcx>> {
+        eval_always
+        no_hash
+        desc { "performing HIR wf-checking for predicate {:?} at item {:?}", key.0, key.1 }
+    }
 }
