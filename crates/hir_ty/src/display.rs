@@ -19,7 +19,7 @@ use crate::{
     db::HirDatabase, from_assoc_type_id, from_foreign_def_id, from_placeholder_idx, primitive,
     to_assoc_type_id, traits::chalk::from_chalk, utils::generics, AdtId, AliasEq, AliasTy,
     CallableDefId, CallableSig, DomainGoal, GenericArg, ImplTraitId, Interner, Lifetime, OpaqueTy,
-    ProjectionTy, QuantifiedWhereClause, Scalar, Substitution, TraitRef, Ty, TyExt, TyKind,
+    ProjectionTy, QuantifiedWhereClause, Scalar, TraitRef, Ty, TyExt, TyKind,
     WhereClause,
 };
 
@@ -592,7 +592,7 @@ impl HirDisplay for Ty {
                         write!(f, "{}", param_data.name.clone().unwrap_or_else(Name::missing))?
                     }
                     TypeParamProvenance::ArgumentImplTrait => {
-                        let substs = Substitution::type_params_for_generics(f.db, &generics);
+                        let substs = generics.type_params_subst(f.db);
                         let bounds = f
                             .db
                             .generic_predicates(id.parent)

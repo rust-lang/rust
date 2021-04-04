@@ -41,7 +41,7 @@ use hir_def::{
 use crate::{
     db::HirDatabase,
     display::HirDisplay,
-    utils::{generics, make_mut_slice, Generics},
+    utils::{generics, make_mut_slice},
 };
 
 pub use autoderef::autoderef;
@@ -464,33 +464,9 @@ impl Substitution {
     }
 
     /// Return Substs that replace each parameter by itself (i.e. `Ty::Param`).
-    pub(crate) fn type_params_for_generics(
-        db: &dyn HirDatabase,
-        generic_params: &Generics,
-    ) -> Substitution {
-        Substitution::from_iter(
-            &Interner,
-            generic_params
-                .iter()
-                .map(|(id, _)| TyKind::Placeholder(to_placeholder_idx(db, id)).intern(&Interner)),
-        )
-    }
-
-    /// Return Substs that replace each parameter by itself (i.e. `Ty::Param`).
     pub fn type_params(db: &dyn HirDatabase, def: impl Into<GenericDefId>) -> Substitution {
         let params = generics(db.upcast(), def.into());
-        Substitution::type_params_for_generics(db, &params)
-    }
-
-    /// Return Substs that replace each parameter by a bound variable.
-    pub(crate) fn bound_vars(generic_params: &Generics, debruijn: DebruijnIndex) -> Substitution {
-        Substitution::from_iter(
-            &Interner,
-            generic_params
-                .iter()
-                .enumerate()
-                .map(|(idx, _)| TyKind::BoundVar(BoundVar::new(debruijn, idx)).intern(&Interner)),
-        )
+        params.type_params_subst(db)
     }
 }
 

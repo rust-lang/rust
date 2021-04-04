@@ -234,7 +234,7 @@ impl<'a> TyLoweringContext<'a> {
                         let impl_trait_id = ImplTraitId::ReturnTypeImplTrait(func, idx);
                         let opaque_ty_id = self.db.intern_impl_trait_id(impl_trait_id).into();
                         let generics = generics(self.db.upcast(), func.into());
-                        let parameters = Substitution::bound_vars(&generics, self.in_binders);
+                        let parameters = generics.bound_vars_subst(self.in_binders);
                         TyKind::Alias(AliasTy::Opaque(OpaqueTy {
                             opaque_ty_id,
                             substitution: parameters,
@@ -411,24 +411,16 @@ impl<'a> TyLoweringContext<'a> {
             TypeNs::SelfType(impl_id) => {
                 let generics = generics(self.db.upcast(), impl_id.into());
                 let substs = match self.type_param_mode {
-                    TypeParamLoweringMode::Placeholder => {
-                        Substitution::type_params_for_generics(self.db, &generics)
-                    }
-                    TypeParamLoweringMode::Variable => {
-                        Substitution::bound_vars(&generics, self.in_binders)
-                    }
+                    TypeParamLoweringMode::Placeholder => generics.type_params_subst(self.db),
+                    TypeParamLoweringMode::Variable => generics.bound_vars_subst(self.in_binders),
                 };
                 self.db.impl_self_ty(impl_id).subst(&substs)
             }
             TypeNs::AdtSelfType(adt) => {
                 let generics = generics(self.db.upcast(), adt.into());
                 let substs = match self.type_param_mode {
-                    TypeParamLoweringMode::Placeholder => {
-                        Substitution::type_params_for_generics(self.db, &generics)
-                    }
-                    TypeParamLoweringMode::Variable => {
-                        Substitution::bound_vars(&generics, self.in_binders)
-                    }
+                    TypeParamLoweringMode::Placeholder => generics.type_params_subst(self.db),
+                    TypeParamLoweringMode::Variable => generics.bound_vars_subst(self.in_binders),
                 };
                 self.db.ty(adt.into()).subst(&substs)
             }
@@ -1060,7 +1052,7 @@ fn fn_sig_for_fn(db: &dyn HirDatabase, def: FunctionId) -> PolyFnSig {
 /// function body.
 fn type_for_fn(db: &dyn HirDatabase, def: FunctionId) -> Binders<Ty> {
     let generics = generics(db.upcast(), def.into());
-    let substs = Substitution::bound_vars(&generics, DebruijnIndex::INNERMOST);
+    let substs = generics.bound_vars_subst(DebruijnIndex::INNERMOST);
     Binders::new(
         substs.len(&Interner),
         TyKind::FnDef(CallableDefId::FunctionId(def).to_chalk(db), substs).intern(&Interner),
@@ -1105,7 +1097,7 @@ fn type_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> Binders<T
         return type_for_adt(db, def.into());
     }
     let generics = generics(db.upcast(), def.into());
-    let substs = Substitution::bound_vars(&generics, DebruijnIndex::INNERMOST);
+    let substs = generics.bound_vars_subst(DebruijnIndex::INNERMOST);
     Binders::new(
         substs.len(&Interner),
         TyKind::FnDef(CallableDefId::StructId(def).to_chalk(db), substs).intern(&Interner),
@@ -1132,7 +1124,7 @@ fn type_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId) -
         return type_for_adt(db, def.parent.into());
     }
     let generics = generics(db.upcast(), def.parent.into());
-    let substs = Substitution::bound_vars(&generics, DebruijnIndex::INNERMOST);
+    let substs = generics.bound_vars_subst(DebruijnIndex::INNERMOST);
     Binders::new(
         substs.len(&Interner),
         TyKind::FnDef(CallableDefId::EnumVariantId(def).to_chalk(db), substs).intern(&Interner),

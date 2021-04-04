@@ -38,7 +38,7 @@ use syntax::SmolStr;
 
 use super::{
     traits::{DomainGoal, Guidance, Solution},
-    InEnvironment, ProjectionTy, Substitution, TraitEnvironment, TraitRef, Ty, TypeWalk,
+    InEnvironment, ProjectionTy, TraitEnvironment, TraitRef, Ty, TypeWalk,
 };
 use crate::{
     db::HirDatabase, infer::diagnostics::InferenceDiagnostic, lower::ImplTraitLoweringMode,
@@ -487,7 +487,7 @@ impl<'a> InferenceContext<'a> {
             }
             TypeNs::SelfType(impl_id) => {
                 let generics = crate::utils::generics(self.db.upcast(), impl_id.into());
-                let substs = Substitution::type_params_for_generics(self.db, &generics);
+                let substs = generics.type_params_subst(self.db);
                 let ty = self.db.impl_self_ty(impl_id).subst(&substs);
                 match unresolved {
                     None => {
