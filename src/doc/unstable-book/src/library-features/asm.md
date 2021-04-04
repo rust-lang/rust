@@ -306,13 +306,19 @@ fn call_foo(arg: i32) {
             sym foo,
             // 1st argument in rdi, which is caller-saved
             inout("rdi") arg => _,
-            // All caller-saved registers must be marked as clobberred
+            // All caller-saved registers must be marked as clobbered
             out("rax") _, out("rcx") _, out("rdx") _, out("rsi") _,
             out("r8") _, out("r9") _, out("r10") _, out("r11") _,
             out("xmm0") _, out("xmm1") _, out("xmm2") _, out("xmm3") _,
             out("xmm4") _, out("xmm5") _, out("xmm6") _, out("xmm7") _,
             out("xmm8") _, out("xmm9") _, out("xmm10") _, out("xmm11") _,
             out("xmm12") _, out("xmm13") _, out("xmm14") _, out("xmm15") _,
+            // Also mark AVX-512 registers as clobbered. This is accepted by the
+            // compiler even if AVX-512 is not enabled on the current target.
+            out("xmm16") _, out("xmm17") _, out("xmm18") _, out("xmm19") _,
+            out("xmm20") _, out("xmm21") _, out("xmm22") _, out("xmm13") _,
+            out("xmm24") _, out("xmm25") _, out("xmm26") _, out("xmm27") _,
+            out("xmm28") _, out("xmm29") _, out("xmm30") _, out("xmm31") _,
         )
     }
 }
