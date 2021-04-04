@@ -1548,8 +1548,6 @@ fnptr_impls_args! { A, B, C, D, E, F, G, H, I, J, K, L }
 /// See [`addr_of_mut`] for how to create a pointer to ininitialized data.
 /// Doing that with `addr_of` would not make much sense since one could only
 /// read the data, and that would be Undefined Behavior.
-///
-/// [`addr_of_mut`]: macro.addr_of_mut.html
 #[stable(feature = "raw_ref_macros", since = "1.51.0")]
 #[rustc_macro_transparency = "semitransparent"]
 #[allow_internal_unstable(raw_ref_op)]
