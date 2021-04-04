@@ -287,14 +287,25 @@ impl ItemScope {
     }
 
     pub(crate) fn shrink_to_fit(&mut self) {
-        self.types.shrink_to_fit();
-        self.values.shrink_to_fit();
-        self.macros.shrink_to_fit();
-        self.unresolved.shrink_to_fit();
-        self.defs.shrink_to_fit();
-        self.impls.shrink_to_fit();
-        self.unnamed_trait_imports.shrink_to_fit();
-        self.legacy_macros.shrink_to_fit();
+        // Exhaustive match to require handling new fields.
+        let Self {
+            types,
+            values,
+            macros,
+            unresolved,
+            defs,
+            impls,
+            unnamed_trait_imports,
+            legacy_macros,
+        } = self;
+        types.shrink_to_fit();
+        values.shrink_to_fit();
+        macros.shrink_to_fit();
+        unresolved.shrink_to_fit();
+        defs.shrink_to_fit();
+        impls.shrink_to_fit();
+        unnamed_trait_imports.shrink_to_fit();
+        legacy_macros.shrink_to_fit();
     }
 }
 
