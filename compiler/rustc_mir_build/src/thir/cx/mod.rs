@@ -3,7 +3,7 @@
 //! etc., and instead goes through the `Cx` for most of its work.
 
 use crate::thir::util::UserAnnotatedTyHelpers;
-use crate::thir::*;
+use crate::thir::pattern::pat_from_hir;
 
 use rustc_ast as ast;
 use rustc_hir as hir;
@@ -11,7 +11,9 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::Node;
 use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
+use rustc_middle::thir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_span::Span;
 
 pub fn build_thir<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -79,7 +81,7 @@ impl<'tcx> Cx<'tcx> {
             Node::Pat(p) | Node::Binding(p) => p,
             node => bug!("pattern became {:?}", node),
         };
-        Pat::from_hir(self.tcx, self.param_env, self.typeck_results(), p)
+        pat_from_hir(self.tcx, self.param_env, self.typeck_results(), p)
     }
 }
 

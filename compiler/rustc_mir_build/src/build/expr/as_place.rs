@@ -3,7 +3,7 @@
 use crate::build::expr::category::Category;
 use crate::build::ForGuard::{OutsideGuard, RefWithinGuard};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
-use crate::thir::*;
+use rustc_middle::thir::*;
 use rustc_hir::def_id::DefId;
 use rustc_hir::HirId;
 use rustc_middle::hir::place::ProjectionKind as HirProjectionKind;

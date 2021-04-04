@@ -1,6 +1,5 @@
 use crate::thir::cx::Cx;
 use crate::thir::util::UserAnnotatedTyHelpers;
-use crate::thir::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
@@ -8,14 +7,18 @@ use rustc_index::vec::Idx;
 use rustc_middle::hir::place::Place as HirPlace;
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::hir::place::ProjectionKind as HirProjectionKind;
+use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::Scalar;
-use rustc_middle::mir::BorrowKind;
+use rustc_middle::mir::{BinOp, BorrowKind, Field, UnOp};
+use rustc_middle::thir::*;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, PointerCast,
 };
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
-use rustc_middle::ty::{self, AdtKind, Ty};
+use rustc_middle::ty::{self, AdtKind, Ty, UpvarSubsts, UserType};
+use rustc_span::def_id::DefId;
 use rustc_span::Span;
+use rustc_target::abi::VariantIdx;
 
 impl<'tcx> Cx<'tcx> {
     crate fn mirror_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> ExprId {

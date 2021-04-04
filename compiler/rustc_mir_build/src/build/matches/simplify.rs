@@ -15,8 +15,8 @@
 use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::matches::{Ascription, Binding, Candidate, MatchPair};
 use crate::build::Builder;
-use crate::thir::{self, *};
 use rustc_hir::RangeEnd;
+use rustc_middle::thir::{self, *};
 use rustc_middle::ty;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_target::abi::{Integer, Size};
@@ -152,7 +152,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match *match_pair.pattern.kind {
             PatKind::AscribeUserType {
                 ref subpattern,
-                ascription: thir::pattern::Ascription { variance, user_ty, user_ty_span },
+                ascription: thir::Ascription { variance, user_ty, user_ty_span },
             } => {
                 // Apply the type ascription to the value at `match_pair.place`, which is the
                 candidate.ascriptions.push(Ascription {

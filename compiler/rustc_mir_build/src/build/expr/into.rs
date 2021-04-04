@@ -2,7 +2,7 @@
 
 use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
-use crate::thir::*;
+use rustc_middle::thir::*;
 use rustc_ast::InlineAsmOptions;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -337,8 +337,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.unit()
             }
             ExprKind::InlineAsm { template, ref operands, options, line_spans } => {
-                use crate::thir;
-                use rustc_middle::mir;
+                use rustc_middle::{mir, thir};
                 let operands = operands
                     .into_iter()
                     .map(|op| match *op {

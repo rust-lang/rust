@@ -2,7 +2,7 @@
 
 use crate::build::scope::DropKind;
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
-use crate::thir::*;
+use rustc_middle::thir::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;

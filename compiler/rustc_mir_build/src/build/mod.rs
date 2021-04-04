@@ -1,7 +1,8 @@
 use crate::build;
 use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::scope::DropKind;
-use crate::thir::{build_thir, BindingMode, Expr, ExprId, LintLevel, Pat, PatKind, Thir};
+use crate::thir::build_thir;
+use crate::thir::pattern::pat_from_hir;
 use rustc_attr::{self as attr, UnwindAttr};
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
@@ -13,6 +14,7 @@ use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
+use rustc_middle::thir::{BindingMode, Expr, ExprId, LintLevel, PatKind, Thir};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeckResults};
 use rustc_span::symbol::{kw, sym};
@@ -1016,7 +1018,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Node::Pat(pat) | Node::Binding(pat) => pat,
                     node => bug!("pattern became {:?}", node),
                 };
-                let pattern = Pat::from_hir(tcx, self.param_env, self.typeck_results, pat);
+                let pattern = pat_from_hir(tcx, self.param_env, self.typeck_results, pat);
                 let original_source_scope = self.source_scope;
                 let span = pattern.span;
                 self.set_correct_source_scope_for_arg(arg.hir_id, original_source_scope, span);
