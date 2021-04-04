@@ -1,7 +1,8 @@
+// ignore-tidy-filelength
 // Local js definitions:
 /* global addClass, getSettingValue, hasClass */
 /* global onEach, onEachLazy, hasOwnProperty, removeClass, updateLocalStorage */
-/* global hideThemeButtonState, showThemeButtonState */
+/* global switchTheme, useSystemTheme */
 
 if (!String.prototype.startsWith) {
     String.prototype.startsWith = function(searchString, position) {
@@ -84,12 +85,15 @@ function getSearchElement() {
     return document.getElementById("search");
 }
 
+var THEME_PICKER_ELEMENT_ID = "theme-picker";
+var THEMES_ELEMENT_ID = "theme-choices";
+
 function getThemesElement() {
-    return document.getElementById("theme-choices");
+    return document.getElementById(THEMES_ELEMENT_ID);
 }
 
 function getThemePickerElement() {
-    return document.getElementById("theme-picker");
+    return document.getElementById(THEME_PICKER_ELEMENT_ID);
 }
 
 // Returns the current URL without any query parameter or hash.
@@ -106,6 +110,65 @@ function focusSearchBar() {
 function defocusSearchBar() {
     getSearchInput().blur();
 }
+
+function showThemeButtonState() {
+    var themePicker = getThemePickerElement();
+    var themeChoices = getThemesElement();
+
+    themeChoices.style.display = "block";
+    themePicker.style.borderBottomRightRadius = "0";
+    themePicker.style.borderBottomLeftRadius = "0";
+}
+
+function hideThemeButtonState() {
+    var themePicker = getThemePickerElement();
+    var themeChoices = getThemesElement();
+
+    themeChoices.style.display = "none";
+    themePicker.style.borderBottomRightRadius = "3px";
+    themePicker.style.borderBottomLeftRadius = "3px";
+}
+
+// Set up the theme picker list.
+(function () {
+    var themeChoices = getThemesElement();
+    var themePicker = getThemePickerElement();
+    var availableThemes/* INSERT THEMES HERE */;
+
+    function switchThemeButtonState() {
+        if (themeChoices.style.display === "block") {
+            hideThemeButtonState();
+        } else {
+            showThemeButtonState();
+        }
+    }
+
+    function handleThemeButtonsBlur(e) {
+        var active = document.activeElement;
+        var related = e.relatedTarget;
+
+        if (active.id !== THEME_PICKER_ELEMENT_ID &&
+            (!active.parentNode || active.parentNode.id !== THEMES_ELEMENT_ID) &&
+            (!related ||
+             (related.id !== THEME_PICKER_ELEMENT_ID &&
+              (!related.parentNode || related.parentNode.id !== THEMES_ELEMENT_ID)))) {
+            hideThemeButtonState();
+        }
+    }
+
+    themePicker.onclick = switchThemeButtonState;
+    themePicker.onblur = handleThemeButtonsBlur;
+    availableThemes.forEach(function(item) {
+        var but = document.createElement("button");
+        but.textContent = item;
+        but.onclick = function() {
+            switchTheme(window.currentTheme, window.mainTheme, item, true);
+            useSystemTheme(false);
+        };
+        but.onblur = handleThemeButtonsBlur;
+        themeChoices.appendChild(but);
+    });
+}());
 
 (function() {
     "use strict";
@@ -374,28 +437,35 @@ function defocusSearchBar() {
         }
     }
 
-    function getHelpElement() {
-        buildHelperPopup();
+    function getHelpElement(build) {
+        if (build !== false) {
+            buildHelperPopup();
+        }
         return document.getElementById("help");
     }
 
     function displayHelp(display, ev, help) {
-        help = help ? help : getHelpElement();
         if (display === true) {
+            help = help ? help : getHelpElement(true);
             if (hasClass(help, "hidden")) {
                 ev.preventDefault();
                 removeClass(help, "hidden");
                 addClass(document.body, "blur");
             }
-        } else if (hasClass(help, "hidden") === false) {
-            ev.preventDefault();
-            addClass(help, "hidden");
-            removeClass(document.body, "blur");
+        } else {
+            // No need to build the help popup if we want to hide it in case it hasn't been
+            // built yet...
+            help = help ? help : getHelpElement(false);
+            if (help && hasClass(help, "hidden") === false) {
+                ev.preventDefault();
+                addClass(help, "hidden");
+                removeClass(document.body, "blur");
+            }
         }
     }
 
     function handleEscape(ev) {
-        var help = getHelpElement();
+        var help = getHelpElement(false);
         var search = getSearchElement();
         if (hasClass(help, "hidden") === false) {
             displayHelp(false, ev, help);
@@ -453,8 +523,7 @@ function defocusSearchBar() {
                 break;
 
             default:
-                var themePicker = getThemePickerElement();
-                if (themePicker.parentNode.contains(ev.target)) {
+                if (getThemePickerElement().parentNode.contains(ev.target)) {
                     handleThemeKeyDown(ev);
                 }
             }
@@ -467,7 +536,7 @@ function defocusSearchBar() {
         switch (getVirtualKey(ev)) {
         case "ArrowUp":
             ev.preventDefault();
-            if (active.previousElementSibling && ev.target.id !== "theme-picker") {
+            if (active.previousElementSibling && ev.target.id !== THEME_PICKER_ELEMENT_ID) {
                 active.previousElementSibling.focus();
             } else {
                 showThemeButtonState();
@@ -476,7 +545,7 @@ function defocusSearchBar() {
             break;
         case "ArrowDown":
             ev.preventDefault();
-            if (active.nextElementSibling && ev.target.id !== "theme-picker") {
+            if (active.nextElementSibling && ev.target.id !== THEME_PICKER_ELEMENT_ID) {
                 active.nextElementSibling.focus();
             } else {
                 showThemeButtonState();
@@ -486,7 +555,7 @@ function defocusSearchBar() {
         case "Enter":
         case "Return":
         case "Space":
-            if (ev.target.id === "theme-picker" && themes.style.display === "none") {
+            if (ev.target.id === THEME_PICKER_ELEMENT_ID && themes.style.display === "none") {
                 ev.preventDefault();
                 showThemeButtonState();
                 themes.firstElementChild.focus();
@@ -558,6 +627,7 @@ function defocusSearchBar() {
     }());
 
     document.addEventListener("click", function(ev) {
+        var helpElem = getHelpElement(false);
         if (hasClass(ev.target, "help-button")) {
             displayHelp(true, ev);
         } else if (hasClass(ev.target, "collapse-toggle")) {
@@ -566,11 +636,10 @@ function defocusSearchBar() {
             collapseDocs(ev.target.parentNode, "toggle");
         } else if (ev.target.tagName === "SPAN" && hasClass(ev.target.parentNode, "line-numbers")) {
             handleSourceHighlight(ev);
-        } else if (hasClass(getHelpElement(), "hidden") === false) {
-            var help = getHelpElement();
-            var is_inside_help_popup = ev.target !== help && help.contains(ev.target);
+        } else if (helpElem && hasClass(helpElem, "hidden") === false) {
+            var is_inside_help_popup = ev.target !== helpElem && helpElem.contains(ev.target);
             if (is_inside_help_popup === false) {
-                addClass(help, "hidden");
+                addClass(helpElem, "hidden");
                 removeClass(document.body, "blur");
             }
         } else {
@@ -2992,3 +3061,28 @@ function defocusSearchBar() {
     window.onhashchange = onHashChange;
     setupSearchLoader();
 }());
+
+function copy_path(but) {
+    var parent = but.parentElement;
+    var path = [];
+
+    onEach(parent.childNodes, function(child) {
+        if (child.tagName === 'A') {
+            path.push(child.textContent);
+        }
+    });
+
+    var el = document.createElement('textarea');
+    el.value = 'use ' + path.join('::') + ';';
+    el.setAttribute('readonly', '');
+    // To not make it appear on the screen.
+    el.style.position = 'absolute';
+    el.style.left = '-9999px';
+
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+
+    but.textContent = '✓';
+}

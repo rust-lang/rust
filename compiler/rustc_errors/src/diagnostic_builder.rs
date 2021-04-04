@@ -30,15 +30,6 @@ struct DiagnosticBuilderInner<'a> {
     allow_suggestions: bool,
 }
 
-/// This is a helper macro for [`forward!`] that allows automatically adding documentation
-/// that uses tokens from [`forward!`]'s input.
-macro_rules! forward_inner_docs {
-    ($e:expr => $i:item) => {
-        #[doc = $e]
-        $i
-    };
-}
-
 /// In general, the `DiagnosticBuilder` uses deref to allow access to
 /// the fields and methods of the embedded `diagnostic` in a
 /// transparent way. *However,* many of the methods are intended to
@@ -54,11 +45,14 @@ macro_rules! forward {
         pub fn $n:ident(&self, $($name:ident: $ty:ty),* $(,)?) -> &Self
     ) => {
         $(#[$attrs])*
-        forward_inner_docs!(concat!("See [`Diagnostic::", stringify!($n), "()`].") =>
+        // we always document with --document-private-items
+        #[cfg_attr(not(bootstrap), allow(rustdoc::private_intra_doc_links))]
+        #[cfg_attr(bootstrap, allow(private_intra_doc_links))]
+        #[doc = concat!("See [`Diagnostic::", stringify!($n), "()`].")]
         pub fn $n(&self, $($name: $ty),*) -> &Self {
             self.diagnostic.$n($($name),*);
             self
-        });
+        }
     };
 
     // Forward pattern for &mut self -> &mut Self
@@ -67,11 +61,14 @@ macro_rules! forward {
         pub fn $n:ident(&mut self, $($name:ident: $ty:ty),* $(,)?) -> &mut Self
     ) => {
         $(#[$attrs])*
-        forward_inner_docs!(concat!("See [`Diagnostic::", stringify!($n), "()`].") =>
+        #[doc = concat!("See [`Diagnostic::", stringify!($n), "()`].")]
+        // we always document with --document-private-items
+        #[cfg_attr(not(bootstrap), allow(rustdoc::private_intra_doc_links))]
+        #[cfg_attr(bootstrap, allow(private_intra_doc_links))]
         pub fn $n(&mut self, $($name: $ty),*) -> &mut Self {
             self.0.diagnostic.$n($($name),*);
             self
-        });
+        }
     };
 
     // Forward pattern for &mut self -> &mut Self, with generic parameters.
@@ -84,11 +81,14 @@ macro_rules! forward {
         ) -> &mut Self
     ) => {
         $(#[$attrs])*
-        forward_inner_docs!(concat!("See [`Diagnostic::", stringify!($n), "()`].") =>
+        #[doc = concat!("See [`Diagnostic::", stringify!($n), "()`].")]
+        // we always document with --document-private-items
+        #[cfg_attr(not(bootstrap), allow(rustdoc::private_intra_doc_links))]
+        #[cfg_attr(bootstrap, allow(private_intra_doc_links))]
         pub fn $n<$($generic: $bound),*>(&mut self, $($name: $ty),*) -> &mut Self {
             self.0.diagnostic.$n($($name),*);
             self
-        });
+        }
     };
 }
 
@@ -164,19 +164,6 @@ impl<'a> DiagnosticBuilder<'a> {
     /// unless handler has disabled such buffering.
     pub fn buffer(self, buffered_diagnostics: &mut Vec<Diagnostic>) {
         buffered_diagnostics.extend(self.into_diagnostic().map(|(diag, _)| diag));
-    }
-
-    /// Convenience function for internal use, clients should use one of the
-    /// span_* methods instead.
-    pub fn sub<S: Into<MultiSpan>>(
-        &mut self,
-        level: Level,
-        message: &str,
-        span: Option<S>,
-    ) -> &mut Self {
-        let span = span.map(|s| s.into()).unwrap_or_else(MultiSpan::new);
-        self.0.diagnostic.sub(level, message, span, None);
-        self
     }
 
     /// Delay emission of this diagnostic as a bug.
@@ -276,20 +263,6 @@ impl<'a> DiagnosticBuilder<'a> {
             return self;
         }
         self.0.diagnostic.multipart_suggestion(msg, suggestion, applicability);
-        self
-    }
-
-    /// See [`Diagnostic::multipart_suggestions()`].
-    pub fn multipart_suggestions(
-        &mut self,
-        msg: &str,
-        suggestions: Vec<Vec<(Span, String)>>,
-        applicability: Applicability,
-    ) -> &mut Self {
-        if !self.0.allow_suggestions {
-            return self;
-        }
-        self.0.diagnostic.multipart_suggestions(msg, suggestions, applicability);
         self
     }
 

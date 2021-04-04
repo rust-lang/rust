@@ -25,14 +25,14 @@
           _3 = &raw mut (_1.0: i32);       // scope 2 at $DIR/const_prop_miscompile.rs:14:10: 14:22
           (*_3) = const 5_i32;             // scope 2 at $DIR/const_prop_miscompile.rs:14:9: 14:26
           StorageDead(_3);                 // scope 2 at $DIR/const_prop_miscompile.rs:14:26: 14:27
-          _2 = const ();                   // scope 2 at $DIR/const_prop_miscompile.rs:13:5: 15:6
+          nop;                             // scope 2 at $DIR/const_prop_miscompile.rs:13:5: 15:6
           StorageDead(_2);                 // scope 1 at $DIR/const_prop_miscompile.rs:15:5: 15:6
           StorageLive(_4);                 // scope 1 at $DIR/const_prop_miscompile.rs:16:9: 16:10
           StorageLive(_5);                 // scope 1 at $DIR/const_prop_miscompile.rs:16:13: 16:20
           _5 = (_1.0: i32);                // scope 1 at $DIR/const_prop_miscompile.rs:16:15: 16:18
           _4 = Eq(move _5, const 5_i32);   // scope 1 at $DIR/const_prop_miscompile.rs:16:13: 16:25
           StorageDead(_5);                 // scope 1 at $DIR/const_prop_miscompile.rs:16:24: 16:25
-          _0 = const ();                   // scope 0 at $DIR/const_prop_miscompile.rs:11:10: 17:2
+          nop;                             // scope 0 at $DIR/const_prop_miscompile.rs:11:10: 17:2
           StorageDead(_4);                 // scope 1 at $DIR/const_prop_miscompile.rs:17:1: 17:2
           StorageDead(_1);                 // scope 0 at $DIR/const_prop_miscompile.rs:17:1: 17:2
           return;                          // scope 0 at $DIR/const_prop_miscompile.rs:17:2: 17:2

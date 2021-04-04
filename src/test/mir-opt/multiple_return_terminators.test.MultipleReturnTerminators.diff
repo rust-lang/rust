@@ -4,24 +4,8 @@
   fn test(_1: bool) -> () {
       debug x => _1;                       // in scope 0 at $DIR/multiple_return_terminators.rs:4:9: 4:10
       let mut _0: ();                      // return place in scope 0 at $DIR/multiple_return_terminators.rs:4:18: 4:18
-      let mut _2: bool;                    // in scope 0 at $DIR/multiple_return_terminators.rs:5:8: 5:9
   
       bb0: {
-          StorageLive(_2);                 // scope 0 at $DIR/multiple_return_terminators.rs:5:8: 5:9
-          _2 = _1;                         // scope 0 at $DIR/multiple_return_terminators.rs:5:8: 5:9
-          switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/multiple_return_terminators.rs:5:5: 9:6
-      }
-  
-      bb1: {
-          goto -> bb3;                     // scope 0 at $DIR/multiple_return_terminators.rs:5:5: 9:6
-      }
-  
-      bb2: {
-          goto -> bb3;                     // scope 0 at $DIR/multiple_return_terminators.rs:5:5: 9:6
-      }
-  
-      bb3: {
-          StorageDead(_2);                 // scope 0 at $DIR/multiple_return_terminators.rs:9:5: 9:6
           return;                          // scope 0 at $DIR/multiple_return_terminators.rs:10:2: 10:2
       }
   }

@@ -23,8 +23,6 @@
 -         StorageLive(_1);                 // scope 0 at $DIR/simplify-locals-removes-unused-consts.rs:13:20: 13:28
 -         StorageLive(_2);                 // scope 0 at $DIR/simplify-locals-removes-unused-consts.rs:13:21: 13:23
 -         StorageLive(_3);                 // scope 0 at $DIR/simplify-locals-removes-unused-consts.rs:13:25: 13:27
--         (_1.0: ()) = const ();           // scope 0 at $DIR/simplify-locals-removes-unused-consts.rs:13:20: 13:28
--         (_1.1: ()) = const ();           // scope 0 at $DIR/simplify-locals-removes-unused-consts.rs:13:20: 13:28
 -         StorageDead(_3);                 // scope 0 at $DIR/simplify-locals-removes-unused-consts.rs:13:27: 13:28
 -         StorageDead(_2);                 // scope 0 at $DIR/simplify-locals-removes-unused-consts.rs:13:27: 13:28
 -         StorageDead(_1);                 // scope 0 at $DIR/simplify-locals-removes-unused-consts.rs:13:28: 13:29
@@ -32,8 +30,6 @@
 -         StorageLive(_5);                 // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:14:13: 14:21
 -         StorageLive(_6);                 // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:14:14: 14:16
 -         StorageLive(_7);                 // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:14:18: 14:20
--         (_5.0: ()) = const ();           // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:14:13: 14:21
--         (_5.1: ()) = const ();           // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:14:13: 14:21
 -         StorageDead(_7);                 // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:14:20: 14:21
 -         StorageDead(_6);                 // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:14:20: 14:21
 -         _4 = use_zst(const ((), ())) -> bb1; // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:14:5: 14:22
@@ -71,7 +67,6 @@
 -         StorageDead(_9);                 // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:16:34: 16:35
 -         StorageDead(_11);                // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:16:35: 16:36
 -         StorageDead(_8);                 // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:16:35: 16:36
--         _0 = const ();                   // scope 0 at $DIR/simplify-locals-removes-unused-consts.rs:12:11: 17:2
 +         StorageDead(_2);                 // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:16:35: 16:36
           return;                          // scope 0 at $DIR/simplify-locals-removes-unused-consts.rs:17:2: 17:2
       }

@@ -10,6 +10,7 @@ use crate::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_hir as ast;
 use rustc_hir::def_id::DefId;
+use rustc_span::DUMMY_SP;
 use rustc_target::spec::abi;
 use std::iter;
 
@@ -31,15 +32,6 @@ pub trait TypeRelation<'tcx>: Sized {
     /// Returns `true` if the value `a` is the "expected" type in the
     /// relation. Just affects error messages.
     fn a_is_expected(&self) -> bool;
-
-    /// Whether we should look into the substs of unevaluated constants
-    /// even if `feature(const_evaluatable_checked)` is active.
-    ///
-    /// This is needed in `combine` to prevent accidentially creating
-    /// infinite types as we abuse `TypeRelation` to walk a type there.
-    fn visit_ct_substs(&self) -> bool {
-        false
-    }
 
     fn with_cause<F, R>(&mut self, _cause: Cause, f: F) -> R
     where
@@ -101,9 +93,9 @@ pub trait TypeRelation<'tcx>: Sized {
 
     fn binders<T>(
         &mut self,
-        a: ty::Binder<T>,
-        b: ty::Binder<T>,
-    ) -> RelateResult<'tcx, ty::Binder<T>>
+        a: ty::Binder<'tcx, T>,
+        b: ty::Binder<'tcx, T>,
+    ) -> RelateResult<'tcx, ty::Binder<'tcx, T>>
     where
         T: Relate<'tcx>;
 }
@@ -148,7 +140,7 @@ pub fn relate_substs<R: TypeRelation<'tcx>>(
 ) -> RelateResult<'tcx, SubstsRef<'tcx>> {
     let tcx = relation.tcx();
 
-    let params = a_subst.iter().zip(b_subst).enumerate().map(|(i, (a, b))| {
+    let params = iter::zip(a_subst, b_subst).enumerate().map(|(i, (a, b))| {
         let variance = variances.map_or(ty::Invariant, |v| v[i]);
         relation.relate_with_variance(variance, a, b)
     });
@@ -178,12 +170,8 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
             return Err(TypeError::ArgCount);
         }
 
-        let inputs_and_output = a
-            .inputs()
-            .iter()
-            .cloned()
-            .zip(b.inputs().iter().cloned())
-            .map(|x| (x, false))
+        let inputs_and_output = iter::zip(a.inputs(), b.inputs())
+            .map(|(&a, &b)| ((a, b), false))
             .chain(iter::once(((a.output(), b.output()), true)))
             .map(|((a, b), is_output)| {
                 if is_output {
@@ -307,7 +295,7 @@ impl<'tcx> Relate<'tcx> for GeneratorWitness<'tcx> {
     ) -> RelateResult<'tcx, GeneratorWitness<'tcx>> {
         assert_eq!(a.0.len(), b.0.len());
         let tcx = relation.tcx();
-        let types = tcx.mk_type_list(a.0.iter().zip(b.0).map(|(a, b)| relation.relate(a, b)))?;
+        let types = tcx.mk_type_list(iter::zip(a.0, b.0).map(|(a, b)| relation.relate(a, b)))?;
         Ok(GeneratorWitness(types))
     }
 }
@@ -431,9 +419,9 @@ pub fn super_relate_tys<R: TypeRelation<'tcx>>(
                     let sz_a = sz_a.try_eval_usize(tcx, relation.param_env());
                     let sz_b = sz_b.try_eval_usize(tcx, relation.param_env());
                     match (sz_a, sz_b) {
-                        (Some(sz_a_val), Some(sz_b_val)) => Err(TypeError::FixedArraySize(
-                            expected_found(relation, sz_a_val, sz_b_val),
-                        )),
+                        (Some(sz_a_val), Some(sz_b_val)) if sz_a_val != sz_b_val => Err(
+                            TypeError::FixedArraySize(expected_found(relation, sz_a_val, sz_b_val)),
+                        ),
                         _ => Err(err),
                     }
                 }
@@ -448,7 +436,7 @@ pub fn super_relate_tys<R: TypeRelation<'tcx>>(
         (&ty::Tuple(as_), &ty::Tuple(bs)) => {
             if as_.len() == bs.len() {
                 Ok(tcx.mk_tup(
-                    as_.iter().zip(bs).map(|(a, b)| relation.relate(a.expect_ty(), b.expect_ty())),
+                    iter::zip(as_, bs).map(|(a, b)| relation.relate(a.expect_ty(), b.expect_ty())),
                 )?)
             } else if !(as_.is_empty() || bs.is_empty()) {
                 Err(TypeError::TupleSize(expected_found(relation, as_.len(), bs.len())))
@@ -499,11 +487,14 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
 
     // FIXME(oli-obk): once const generics can have generic types, this assertion
     // will likely get triggered. Move to `normalize_erasing_regions` at that point.
-    assert_eq!(
-        tcx.erase_regions(a.ty),
-        tcx.erase_regions(b.ty),
-        "cannot relate constants of different types"
-    );
+    let a_ty = tcx.erase_regions(a.ty);
+    let b_ty = tcx.erase_regions(b.ty);
+    if a_ty != b_ty {
+        relation.tcx().sess.delay_span_bug(
+            DUMMY_SP,
+            &format!("cannot relate constants of different types: {} != {}", a_ty, b_ty),
+        );
+    }
 
     let eagerly_eval = |x: &'tcx ty::Const<'tcx>| x.eval(tcx, relation.param_env());
     let a = eagerly_eval(a);
@@ -527,24 +518,26 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
             check_const_value_eq(relation, a_val, b_val, a, b)?
         }
 
-        (
-            ty::ConstKind::Unevaluated(a_def, a_substs, None),
-            ty::ConstKind::Unevaluated(b_def, b_substs, None),
-        ) if tcx.features().const_evaluatable_checked && !relation.visit_ct_substs() => {
-            tcx.try_unify_abstract_consts(((a_def, a_substs), (b_def, b_substs)))
+        (ty::ConstKind::Unevaluated(au), ty::ConstKind::Unevaluated(bu))
+            if tcx.features().const_evaluatable_checked =>
+        {
+            tcx.try_unify_abstract_consts(((au.def, au.substs), (bu.def, bu.substs)))
         }
 
         // While this is slightly incorrect, it shouldn't matter for `min_const_generics`
         // and is the better alternative to waiting until `const_evaluatable_checked` can
         // be stabilized.
-        (
-            ty::ConstKind::Unevaluated(a_def, a_substs, a_promoted),
-            ty::ConstKind::Unevaluated(b_def, b_substs, b_promoted),
-        ) if a_def == b_def && a_promoted == b_promoted => {
+        (ty::ConstKind::Unevaluated(au), ty::ConstKind::Unevaluated(bu))
+            if au.def == bu.def && au.promoted == bu.promoted =>
+        {
             let substs =
-                relation.relate_with_variance(ty::Variance::Invariant, a_substs, b_substs)?;
+                relation.relate_with_variance(ty::Variance::Invariant, au.substs, bu.substs)?;
             return Ok(tcx.mk_const(ty::Const {
-                val: ty::ConstKind::Unevaluated(a_def, substs, a_promoted),
+                val: ty::ConstKind::Unevaluated(ty::Unevaluated {
+                    def: au.def,
+                    substs,
+                    promoted: au.promoted,
+                }),
                 ty: a.ty,
             }));
         }
@@ -587,9 +580,7 @@ fn check_const_value_eq<R: TypeRelation<'tcx>>(
 
             // Both the variant and each field have to be equal.
             if a_destructured.variant == b_destructured.variant {
-                for (a_field, b_field) in
-                    a_destructured.fields.iter().zip(b_destructured.fields.iter())
-                {
+                for (a_field, b_field) in iter::zip(a_destructured.fields, b_destructured.fields) {
                     relation.consts(a_field, b_field)?;
                 }
 
@@ -603,7 +594,7 @@ fn check_const_value_eq<R: TypeRelation<'tcx>>(
     })
 }
 
-impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>> {
+impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>> {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: Self,
@@ -625,13 +616,12 @@ impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'
             return Err(TypeError::ExistentialMismatch(expected_found(relation, a, b)));
         }
 
-        let v = a_v.into_iter().zip(b_v.into_iter()).map(|(ep_a, ep_b)| {
+        let v = iter::zip(a_v, b_v).map(|(ep_a, ep_b)| {
             use crate::ty::ExistentialPredicate::*;
             match (ep_a.skip_binder(), ep_b.skip_binder()) {
-                (Trait(a), Trait(b)) => Ok(ty::Binder::bind(Trait(
-                    relation.relate(ep_a.rebind(a), ep_b.rebind(b))?.skip_binder(),
-                ))),
-                (Projection(a), Projection(b)) => Ok(ty::Binder::bind(Projection(
+                (Trait(a), Trait(b)) => Ok(ep_a
+                    .rebind(Trait(relation.relate(ep_a.rebind(a), ep_b.rebind(b))?.skip_binder()))),
+                (Projection(a), Projection(b)) => Ok(ep_a.rebind(Projection(
                     relation.relate(ep_a.rebind(a), ep_b.rebind(b))?.skip_binder(),
                 ))),
                 (AutoTrait(a), AutoTrait(b)) if a == b => Ok(ep_a.rebind(AutoTrait(a))),
@@ -694,12 +684,12 @@ impl<'tcx> Relate<'tcx> for &'tcx ty::Const<'tcx> {
     }
 }
 
-impl<'tcx, T: Relate<'tcx>> Relate<'tcx> for ty::Binder<T> {
+impl<'tcx, T: Relate<'tcx>> Relate<'tcx> for ty::Binder<'tcx, T> {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
-        a: ty::Binder<T>,
-        b: ty::Binder<T>,
-    ) -> RelateResult<'tcx, ty::Binder<T>> {
+        a: ty::Binder<'tcx, T>,
+        b: ty::Binder<'tcx, T>,
+    ) -> RelateResult<'tcx, ty::Binder<'tcx, T>> {
         relation.binders(a, b)
     }
 }

@@ -5,7 +5,7 @@ use crate::lint;
 use crate::search_paths::SearchPath;
 use crate::utils::NativeLibKind;
 
-use rustc_target::spec::{CodeModel, LinkerFlavor, MergeFunctions, PanicStrategy};
+use rustc_target::spec::{CodeModel, LinkerFlavor, MergeFunctions, PanicStrategy, SanitizerSet};
 use rustc_target::spec::{RelocModel, RelroLevel, SplitDebuginfo, TargetTriple, TlsModel};
 
 use rustc_feature::UnstableFeatures;
@@ -262,6 +262,7 @@ macro_rules! options {
         pub const parse_linker_flavor: &str = ::rustc_target::spec::LinkerFlavor::one_of();
         pub const parse_optimization_fuel: &str = "crate=integer";
         pub const parse_mir_spanview: &str = "`statement` (default), `terminator`, or `block`";
+        pub const parse_instrument_coverage: &str = "`all` (default), `except-unused-generics`, `except-unused-functions`, or `off`";
         pub const parse_unpretty: &str = "`string` or `string=string`";
         pub const parse_treat_err_as_bug: &str = "either no value or a number bigger than 0";
         pub const parse_lto: &str =
@@ -592,6 +593,41 @@ macro_rules! options {
             true
         }
 
+        fn parse_instrument_coverage(slot: &mut Option<InstrumentCoverage>, v: Option<&str>) -> bool {
+            if v.is_some() {
+                let mut bool_arg = None;
+                if parse_opt_bool(&mut bool_arg, v) {
+                    *slot = if bool_arg.unwrap() {
+                        Some(InstrumentCoverage::All)
+                    } else {
+                        None
+                    };
+                    return true
+                }
+            }
+
+            let v = match v {
+                None => {
+                    *slot = Some(InstrumentCoverage::All);
+                    return true;
+                }
+                Some(v) => v,
+            };
+
+            *slot = Some(match v {
+                "all" => InstrumentCoverage::All,
+                "except-unused-generics" | "except_unused_generics" => {
+                    InstrumentCoverage::ExceptUnusedGenerics
+                }
+                "except-unused-functions" | "except_unused_functions" => {
+                    InstrumentCoverage::ExceptUnusedFunctions
+                }
+                "off" | "no" | "n" | "false" | "0" => InstrumentCoverage::Off,
+                _ => return false,
+            });
+            true
+        }
+
         fn parse_treat_err_as_bug(slot: &mut Option<NonZeroUsize>, v: Option<&str>) -> bool {
             match v {
                 Some(s) => { *slot = s.parse().ok(); slot.is_some() }
@@ -870,8 +906,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         (default: no)"),
     borrowck: String = ("migrate".to_string(), parse_string, [UNTRACKED],
         "select which borrowck is used (`mir` or `migrate`) (default: `migrate`)"),
-    borrowck_stats: bool = (false, parse_bool, [UNTRACKED],
-        "gather borrowck statistics (default: no)"),
     cgu_partitioning_strategy: Option<String> = (None, parse_opt_string, [TRACKED],
         "the codegen unit partitioning strategy to use"),
     chalk: bool = (false, parse_bool, [TRACKED],
@@ -967,12 +1001,14 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "control whether `#[inline]` functions are in all CGUs"),
     input_stats: bool = (false, parse_bool, [UNTRACKED],
         "gather statistics about the input (default: no)"),
-    instrument_coverage: bool = (false, parse_bool, [TRACKED],
+    instrument_coverage: Option<InstrumentCoverage> = (None, parse_instrument_coverage, [TRACKED],
         "instrument the generated code to support LLVM source-based code coverage \
         reports (note, the compiler build config must include `profiler = true`, \
         and is mutually exclusive with `-C profile-generate`/`-C profile-use`); \
         implies `-Z symbol-mangling-version=v0`; disables/overrides some Rust \
-        optimizations (default: no)"),
+        optimizations. Optional values are: `=all` (default coverage), \
+        `=except-unused-generics`, `=except-unused-functions`, or `=off` \
+        (default: instrument-coverage=off)"),
     instrument_mcount: bool = (false, parse_bool, [TRACKED],
         "insert function instrument code for mcount-based tracing (default: no)"),
     keep_hygiene_data: bool = (false, parse_bool, [UNTRACKED],
@@ -997,8 +1033,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         (default: no)"),
     mir_opt_level: Option<usize> = (None, parse_opt_uint, [TRACKED],
         "MIR optimization level (0-4; default: 1 in non optimized builds and 2 in optimized builds)"),
-    mutable_noalias: bool = (false, parse_bool, [TRACKED],
-        "emit noalias metadata for mutable references (default: no)"),
+    mutable_noalias: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "emit noalias metadata for mutable references (default: yes for LLVM >= 12, otherwise no)"),
     new_llvm_pass_manager: bool = (false, parse_bool, [TRACKED],
         "use new LLVM pass manager (default: no)"),
     nll_facts: bool = (false, parse_bool, [UNTRACKED],

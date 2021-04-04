@@ -26,6 +26,7 @@ const ARM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("vfp2", Some(sym::arm_target_feature)),
     ("vfp3", Some(sym::arm_target_feature)),
     ("vfp4", Some(sym::arm_target_feature)),
+    ("fp-armv8", Some(sym::arm_target_feature)),
     // This is needed for inline assembly, but shouldn't be stabilized as-is
     // since it should be enabled per-function using #[instruction_set], not
     // #[target_feature].

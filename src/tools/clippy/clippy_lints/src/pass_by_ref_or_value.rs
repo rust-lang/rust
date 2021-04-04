@@ -1,6 +1,10 @@
 use std::cmp;
+use std::iter;
 
-use crate::utils::{is_copy, is_self_ty, snippet, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_self_ty;
+use clippy_utils::source::snippet;
+use clippy_utils::ty::is_copy;
 use if_chain::if_chain;
 use rustc_ast::attr;
 use rustc_errors::Applicability;
@@ -119,7 +123,7 @@ impl<'tcx> PassByRefOrValue {
 
         let fn_body = cx.enclosing_body.map(|id| cx.tcx.hir().body(id));
 
-        for (index, (input, &ty)) in decl.inputs.iter().zip(fn_sig.inputs()).enumerate() {
+        for (index, (input, &ty)) in iter::zip(decl.inputs, fn_sig.inputs()).enumerate() {
             // All spans generated from a proc-macro invocation are the same...
             match span {
                 Some(s) if s == input.span => return,

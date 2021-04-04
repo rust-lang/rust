@@ -360,7 +360,7 @@ impl String {
     /// let s = String::new();
     /// ```
     #[inline]
-    #[rustc_const_stable(feature = "const_string_new", since = "1.32.0")]
+    #[rustc_const_stable(feature = "const_string_new", since = "1.39.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn new() -> String {
         String { vec: Vec::new() }
@@ -1202,6 +1202,62 @@ impl String {
         ch
     }
 
+    /// Remove all matches of pattern `pat` in the `String`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(string_remove_matches)]
+    /// let mut s = String::from("Trees are not green, the sky is not blue.");
+    /// s.remove_matches("not ");
+    /// assert_eq!("Trees are green, the sky is blue.", s);
+    /// ```
+    ///
+    /// Matches will be detected and removed iteratively, so in cases where
+    /// patterns overlap, only the first pattern will be removed:
+    ///
+    /// ```
+    /// #![feature(string_remove_matches)]
+    /// let mut s = String::from("banana");
+    /// s.remove_matches("ana");
+    /// assert_eq!("bna", s);
+    /// ```
+    #[unstable(feature = "string_remove_matches", reason = "new API", issue = "72826")]
+    pub fn remove_matches<'a, P>(&'a mut self, pat: P)
+    where
+        P: for<'x> Pattern<'x>,
+    {
+        use core::str::pattern::Searcher;
+
+        let matches = {
+            let mut searcher = pat.into_searcher(self);
+            let mut matches = Vec::new();
+
+            while let Some(m) = searcher.next_match() {
+                matches.push(m);
+            }
+
+            matches
+        };
+
+        let len = self.len();
+        let mut shrunk_by = 0;
+
+        // SAFETY: start and end will be on utf8 byte boundaries per
+        // the Searcher docs
+        unsafe {
+            for (start, end) in matches {
+                ptr::copy(
+                    self.vec.as_mut_ptr().add(end - shrunk_by),
+                    self.vec.as_mut_ptr().add(start - shrunk_by),
+                    len - end,
+                );
+                shrunk_by += end - start;
+            }
+            self.vec.set_len(len - shrunk_by);
+        }
+    }
+
     /// Retains only the characters specified by the predicate.
     ///
     /// In other words, remove all characters `c` such that `f(c)` returns `false`.
@@ -1233,37 +1289,44 @@ impl String {
     where
         F: FnMut(char) -> bool,
     {
-        let len = self.len();
-        let mut del_bytes = 0;
-        let mut idx = 0;
-
-        unsafe {
-            self.vec.set_len(0);
+        struct SetLenOnDrop<'a> {
+            s: &'a mut String,
+            idx: usize,
+            del_bytes: usize,
         }
 
-        while idx < len {
-            let ch = unsafe { self.get_unchecked(idx..len).chars().next().unwrap() };
+        impl<'a> Drop for SetLenOnDrop<'a> {
+            fn drop(&mut self) {
+                let new_len = self.idx - self.del_bytes;
+                debug_assert!(new_len <= self.s.len());
+                unsafe { self.s.vec.set_len(new_len) };
+            }
+        }
+
+        let len = self.len();
+        let mut guard = SetLenOnDrop { s: self, idx: 0, del_bytes: 0 };
+
+        while guard.idx < len {
+            let ch = unsafe { guard.s.get_unchecked(guard.idx..len).chars().next().unwrap() };
             let ch_len = ch.len_utf8();
 
             if !f(ch) {
-                del_bytes += ch_len;
-            } else if del_bytes > 0 {
+                guard.del_bytes += ch_len;
+            } else if guard.del_bytes > 0 {
                 unsafe {
                     ptr::copy(
-                        self.vec.as_ptr().add(idx),
-                        self.vec.as_mut_ptr().add(idx - del_bytes),
+                        guard.s.vec.as_ptr().add(guard.idx),
+                        guard.s.vec.as_mut_ptr().add(guard.idx - guard.del_bytes),
                         ch_len,
                     );
                 }
             }
 
             // Point idx to the next char
-            idx += ch_len;
+            guard.idx += ch_len;
         }
 
-        unsafe {
-            self.vec.set_len(len - del_bytes);
-        }
+        drop(guard);
     }
 
     /// Inserts a character into this `String` at a byte position.

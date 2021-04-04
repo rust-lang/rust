@@ -452,7 +452,11 @@ impl Visitor<'tcx> for ExtraComments<'tcx> {
                 match literal {
                     ConstantKind::Ty(literal) => self.push(&format!("+ literal: {:?}", literal)),
                     ConstantKind::Val(val, ty) => {
-                        self.push(&format!("+ literal: {:?}, {}", val, ty))
+                        // To keep the diffs small, we render this almost like we render ty::Const
+                        self.push(&format!(
+                            "+ literal: Const {{ ty: {}, val: Value({:?}) }}",
+                            ty, val
+                        ))
                     }
                 }
             }
@@ -465,7 +469,21 @@ impl Visitor<'tcx> for ExtraComments<'tcx> {
         if use_verbose(ty) {
             self.push("ty::Const");
             self.push(&format!("+ ty: {:?}", ty));
-            self.push(&format!("+ val: {:?}", val));
+            let val = match val {
+                ty::ConstKind::Param(p) => format!("Param({})", p),
+                ty::ConstKind::Infer(infer) => format!("Infer({:?})", infer),
+                ty::ConstKind::Bound(idx, var) => format!("Bound({:?}, {:?})", idx, var),
+                ty::ConstKind::Placeholder(ph) => format!("PlaceHolder({:?})", ph),
+                ty::ConstKind::Unevaluated(uv) => format!(
+                    "Unevaluated({}, {:?}, {:?})",
+                    self.tcx.def_path_str(uv.def.did),
+                    uv.substs,
+                    uv.promoted
+                ),
+                ty::ConstKind::Value(val) => format!("Value({:?})", val),
+                ty::ConstKind::Error(_) => format!("Error"),
+            };
+            self.push(&format!("+ val: {}", val));
         }
     }
 

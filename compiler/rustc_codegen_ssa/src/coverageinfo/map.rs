@@ -31,25 +31,42 @@ pub struct Expression {
 pub struct FunctionCoverage<'tcx> {
     instance: Instance<'tcx>,
     source_hash: u64,
+    is_used: bool,
     counters: IndexVec<CounterValueReference, Option<CodeRegion>>,
     expressions: IndexVec<InjectedExpressionIndex, Option<Expression>>,
     unreachable_regions: Vec<CodeRegion>,
 }
 
 impl<'tcx> FunctionCoverage<'tcx> {
+    /// Creates a new set of coverage data for a used (called) function.
     pub fn new(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Self {
+        Self::create(tcx, instance, true)
+    }
+
+    /// Creates a new set of coverage data for an unused (never called) function.
+    pub fn unused(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Self {
+        Self::create(tcx, instance, false)
+    }
+
+    fn create(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>, is_used: bool) -> Self {
         let coverageinfo = tcx.coverageinfo(instance.def_id());
         debug!(
-            "FunctionCoverage::new(instance={:?}) has coverageinfo={:?}",
-            instance, coverageinfo
+            "FunctionCoverage::new(instance={:?}) has coverageinfo={:?}. is_used={}",
+            instance, coverageinfo, is_used
         );
         Self {
             instance,
             source_hash: 0, // will be set with the first `add_counter()`
+            is_used,
             counters: IndexVec::from_elem_n(None, coverageinfo.num_counters as usize),
             expressions: IndexVec::from_elem_n(None, coverageinfo.num_expressions as usize),
             unreachable_regions: Vec::new(),
         }
+    }
+
+    /// Returns true for a used (called) function, and false for an unused function.
+    pub fn is_used(&self) -> bool {
+        self.is_used
     }
 
     /// Sets the function source hash value. If called multiple times for the same function, all
@@ -128,8 +145,8 @@ impl<'tcx> FunctionCoverage<'tcx> {
         &'a self,
     ) -> (Vec<CounterExpression>, impl Iterator<Item = (Counter, &'a CodeRegion)>) {
         assert!(
-            self.source_hash != 0,
-            "No counters provided the source_hash for function: {:?}",
+            self.source_hash != 0 || !self.is_used,
+            "No counters provided the source_hash for used function: {:?}",
             self.instance
         );
 
@@ -146,9 +163,7 @@ impl<'tcx> FunctionCoverage<'tcx> {
         self.counters.iter_enumerated().filter_map(|(index, entry)| {
             // Option::map() will return None to filter out missing counters. This may happen
             // if, for example, a MIR-instrumented counter is removed during an optimization.
-            entry.as_ref().map(|region| {
-                (Counter::counter_value_reference(index as CounterValueReference), region)
-            })
+            entry.as_ref().map(|region| (Counter::counter_value_reference(index), region))
         })
     }
 
@@ -189,9 +204,15 @@ impl<'tcx> FunctionCoverage<'tcx> {
             if id == ExpressionOperandId::ZERO {
                 Some(Counter::zero())
             } else if id.index() < self.counters.len() {
+                debug_assert!(
+                    id.index() > 0,
+                    "ExpressionOperandId indexes for counters are 1-based, but this id={}",
+                    id.index()
+                );
                 // Note: Some codegen-injected Counters may be only referenced by `Expression`s,
                 // and may not have their own `CodeRegion`s,
                 let index = CounterValueReference::from(id.index());
+                // Note, the conversion to LLVM `Counter` adjusts the index to be zero-based.
                 Some(Counter::counter_value_reference(index))
             } else {
                 let index = self.expression_index(u32::from(id));
@@ -216,19 +237,60 @@ impl<'tcx> FunctionCoverage<'tcx> {
             let optional_region = &expression.region;
             let Expression { lhs, op, rhs, .. } = *expression;
 
-            if let Some(Some((lhs_counter, rhs_counter))) =
-                id_to_counter(&new_indexes, lhs).map(|lhs_counter| {
+            if let Some(Some((lhs_counter, mut rhs_counter))) = id_to_counter(&new_indexes, lhs)
+                .map(|lhs_counter| {
                     id_to_counter(&new_indexes, rhs).map(|rhs_counter| (lhs_counter, rhs_counter))
                 })
             {
+                if lhs_counter.is_zero() && op.is_subtract() {
+                    // The left side of a subtraction was probably optimized out. As an example,
+                    // a branch condition might be evaluated as a constant expression, and the
+                    // branch could be removed, dropping unused counters in the process.
+                    //
+                    // Since counters are unsigned, we must assume the result of the expression
+                    // can be no more and no less than zero. An expression known to evaluate to zero
+                    // does not need to be added to the coverage map.
+                    //
+                    // Coverage test `loops_branches.rs` includes multiple variations of branches
+                    // based on constant conditional (literal `true` or `false`), and demonstrates
+                    // that the expected counts are still correct.
+                    debug!(
+                        "Expression subtracts from zero (assume unreachable): \
+                        original_index={:?}, lhs={:?}, op={:?}, rhs={:?}, region={:?}",
+                        original_index, lhs, op, rhs, optional_region,
+                    );
+                    rhs_counter = Counter::zero();
+                }
                 debug_assert!(
-                    (lhs_counter.id as usize)
-                        < usize::max(self.counters.len(), self.expressions.len())
+                    lhs_counter.is_zero()
+                        // Note: with `as usize` the ID _could_ overflow/wrap if `usize = u16`
+                        || ((lhs_counter.zero_based_id() as usize)
+                            <= usize::max(self.counters.len(), self.expressions.len())),
+                    "lhs id={} > both counters.len()={} and expressions.len()={}
+                    ({:?} {:?} {:?})",
+                    lhs_counter.zero_based_id(),
+                    self.counters.len(),
+                    self.expressions.len(),
+                    lhs_counter,
+                    op,
+                    rhs_counter,
                 );
+
                 debug_assert!(
-                    (rhs_counter.id as usize)
-                        < usize::max(self.counters.len(), self.expressions.len())
+                    rhs_counter.is_zero()
+                        // Note: with `as usize` the ID _could_ overflow/wrap if `usize = u16`
+                        || ((rhs_counter.zero_based_id() as usize)
+                            <= usize::max(self.counters.len(), self.expressions.len())),
+                    "rhs id={} > both counters.len()={} and expressions.len()={}
+                    ({:?} {:?} {:?})",
+                    rhs_counter.zero_based_id(),
+                    self.counters.len(),
+                    self.expressions.len(),
+                    lhs_counter,
+                    op,
+                    rhs_counter,
                 );
+
                 // Both operands exist. `Expression` operands exist in `self.expressions` and have
                 // been assigned a `new_index`.
                 let mapped_expression_index =
@@ -251,11 +313,15 @@ impl<'tcx> FunctionCoverage<'tcx> {
                     expression_regions.push((Counter::expression(mapped_expression_index), region));
                 }
             } else {
-                debug!(
-                    "Ignoring expression with one or more missing operands: \
-                    original_index={:?}, lhs={:?}, op={:?}, rhs={:?}, region={:?}",
-                    original_index, lhs, op, rhs, optional_region,
-                )
+                bug!(
+                    "expression has one or more missing operands \
+                      original_index={:?}, lhs={:?}, op={:?}, rhs={:?}, region={:?}",
+                    original_index,
+                    lhs,
+                    op,
+                    rhs,
+                    optional_region,
+                );
             }
         }
         (counter_expressions, expression_regions.into_iter())

@@ -1,11 +1,12 @@
-use crate::spec::{LinkerFlavor, Target, TargetOptions};
+use crate::spec::{LinkerFlavor, SanitizerSet, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = super::apple_base::opts("macos");
     base.cpu = "apple-a12".to_string();
     base.max_atomic_width = Some(128);
-    base.pre_link_args.insert(LinkerFlavor::Gcc, vec!["-arch".to_string(), "arm64".to_string()]);
+    base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::LEAK | SanitizerSet::THREAD;
 
+    base.pre_link_args.insert(LinkerFlavor::Gcc, vec!["-arch".to_string(), "arm64".to_string()]);
     base.link_env_remove.extend(super::apple_base::macos_link_env_remove());
 
     // Clang automatically chooses a more specific target based on

@@ -4,7 +4,7 @@ use rustc_ast_pretty::pprust;
 use rustc_errors::PResult;
 use rustc_span::symbol::{kw, Ident};
 
-use crate::parser::pat::{GateOr, RecoverComma};
+use crate::parser::pat::RecoverComma;
 use crate::parser::{FollowedByType, ForceCollect, Parser, PathStyle};
 
 impl<'a> Parser<'a> {
@@ -61,7 +61,7 @@ impl<'a> Parser<'a> {
                 },
                 _ => false,
             },
-            NonterminalKind::Pat2018 { .. } | NonterminalKind::Pat2021 { .. } => match token.kind {
+            NonterminalKind::Pat2015 { .. } | NonterminalKind::Pat2021 { .. } => match token.kind {
                 token::Ident(..) |                  // box, ref, mut, and other identifiers (can stricten)
                 token::OpenDelim(token::Paren) |    // tuple pattern
                 token::OpenDelim(token::Bracket) |  // slice pattern
@@ -118,32 +118,17 @@ impl<'a> Parser<'a> {
                     return Err(self.struct_span_err(self.token.span, "expected a statement"));
                 }
             },
-            NonterminalKind::Pat2018 { .. } | NonterminalKind::Pat2021 { .. } => {
+            NonterminalKind::Pat2015 { .. } | NonterminalKind::Pat2021 { .. } => {
                 token::NtPat(self.collect_tokens_no_attrs(|this| match kind {
-                    NonterminalKind::Pat2018 { .. } => this.parse_pat_no_top_alt(None),
+                    NonterminalKind::Pat2015 { .. } => this.parse_pat_no_top_alt(None),
                     NonterminalKind::Pat2021 { .. } => {
-                        this.parse_pat_allow_top_alt(None, GateOr::Yes, RecoverComma::No)
+                        this.parse_pat_allow_top_alt(None, RecoverComma::No)
                     }
                     _ => unreachable!(),
                 })?)
             }
 
-            // If there are attributes present, then `parse_expr` will end up collecting tokens,
-            // turning the outer `collect_tokens_no_attrs` into a no-op due to the already present
-            // tokens. If there are *not* attributes present, then the outer
-            // `collect_tokens_no_attrs` will ensure that we will end up collecting tokens for the
-            // expressions.
-            //
-            // This is less efficient than it could be, since the outer `collect_tokens_no_attrs`
-            // still needs to snapshot the `TokenCursor` before calling `parse_expr`, even when
-            // `parse_expr` will end up collecting tokens. Ideally, this would work more like
-            // `parse_item`, and take in a `ForceCollect` parameter. However, this would require
-            // adding a `ForceCollect` parameter in a bunch of places in expression parsing
-            // for little gain. If the perf impact from this turns out to be noticeable, we should
-            // revisit this apporach.
-            NonterminalKind::Expr => {
-                token::NtExpr(self.collect_tokens_no_attrs(|this| this.parse_expr())?)
-            }
+            NonterminalKind::Expr => token::NtExpr(self.parse_expr_force_collect()?),
             NonterminalKind::Literal => {
                 // The `:literal` matcher does not support attributes
                 token::NtLiteral(

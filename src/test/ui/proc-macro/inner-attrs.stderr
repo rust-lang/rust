@@ -1,0 +1,32 @@
+error: expected non-macro inner attribute, found attribute macro `print_target_and_args`
+  --> $DIR/inner-attrs.rs:27:9
+   |
+LL |     (#![print_target_and_args(fifth)] 1, 2);
+   |         ^^^^^^^^^^^^^^^^^^^^^ not a non-macro inner attribute
+
+error: expected non-macro inner attribute, found attribute macro `print_target_and_args`
+  --> $DIR/inner-attrs.rs:43:9
+   |
+LL |     [#![print_target_and_args(sixth)] 1 , 2];
+   |         ^^^^^^^^^^^^^^^^^^^^^ not a non-macro inner attribute
+
+error: expected non-macro inner attribute, found attribute macro `print_target_and_args`
+  --> $DIR/inner-attrs.rs:45:9
+   |
+LL |     [#![print_target_and_args(seventh)] true ; 5];
+   |         ^^^^^^^^^^^^^^^^^^^^^ not a non-macro inner attribute
+
+error: expected non-macro inner attribute, found attribute macro `print_target_and_args`
+  --> $DIR/inner-attrs.rs:49:12
+   |
+LL |         #![print_target_and_args(eighth)]
+   |            ^^^^^^^^^^^^^^^^^^^^^ not a non-macro inner attribute
+
+error: expected non-macro inner attribute, found attribute macro `print_target_and_args`
+  --> $DIR/inner-attrs.rs:54:19
+   |
+LL |     MyStruct { #![print_target_and_args(ninth)] field: true };
+   |                   ^^^^^^^^^^^^^^^^^^^^^ not a non-macro inner attribute
+
+error: aborting due to 5 previous errors
+

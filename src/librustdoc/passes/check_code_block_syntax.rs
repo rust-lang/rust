@@ -86,7 +86,7 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
                 // We couldn't calculate the span of the markdown block that had the error, so our
                 // diagnostics are going to be a bit lacking.
                 let mut diag = self.cx.sess().struct_span_warn(
-                    super::span_of_attrs(&item.attrs).unwrap_or(item.source.span()),
+                    super::span_of_attrs(&item.attrs).unwrap_or(item.span.inner()),
                     "doc comment contains an invalid Rust code block",
                 );
 
@@ -110,7 +110,7 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
 impl<'a, 'tcx> DocFolder for SyntaxChecker<'a, 'tcx> {
     fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
         if let Some(dox) = &item.attrs.collapsed_doc_value() {
-            let sp = span_of_attrs(&item.attrs).unwrap_or(item.source.span());
+            let sp = span_of_attrs(&item.attrs).unwrap_or(item.span.inner());
             let extra = crate::html::markdown::ExtraInfo::new_did(self.cx.tcx, item.def_id, sp);
             for code_block in markdown::rust_code_blocks(&dox, &extra) {
                 self.check_rust_syntax(&item, &dox, code_block);

@@ -1,29 +1,29 @@
 error: top-level or-patterns are not allowed in function parameters
-  --> $DIR/or-patterns-syntactic-fail.rs:17:13
+  --> $DIR/or-patterns-syntactic-fail.rs:15:13
    |
 LL |     fn fun1(A | B: E) {}
    |             ^^^^^ help: wrap the pattern in parentheses: `(A | B)`
 
 error: top-level or-patterns are not allowed in function parameters
-  --> $DIR/or-patterns-syntactic-fail.rs:20:13
+  --> $DIR/or-patterns-syntactic-fail.rs:18:13
    |
 LL |     fn fun2(| A | B: E) {}
    |             ^^^^^^^ help: wrap the pattern in parentheses: `(A | B)`
 
 error: top-level or-patterns are not allowed in `let` bindings
-  --> $DIR/or-patterns-syntactic-fail.rs:25:9
+  --> $DIR/or-patterns-syntactic-fail.rs:23:9
    |
 LL |     let A | B: E = A;
    |         ^^^^^ help: wrap the pattern in parentheses: `(A | B)`
 
 error: top-level or-patterns are not allowed in `let` bindings
-  --> $DIR/or-patterns-syntactic-fail.rs:28:9
+  --> $DIR/or-patterns-syntactic-fail.rs:26:9
    |
 LL |     let | A | B: E = A;
    |         ^^^^^^^ help: wrap the pattern in parentheses: `(A | B)`
 
 error[E0369]: no implementation for `E | ()`
-  --> $DIR/or-patterns-syntactic-fail.rs:13:22
+  --> $DIR/or-patterns-syntactic-fail.rs:11:22
    |
 LL |     let _ = |A | B: E| ();
    |                  ----^ -- ()

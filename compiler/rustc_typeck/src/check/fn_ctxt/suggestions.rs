@@ -55,7 +55,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Some((fn_decl, can_suggest)) = self.get_fn_decl(blk_id) {
             pointing_at_return_type =
                 self.suggest_missing_return_type(err, &fn_decl, expected, found, can_suggest);
-            self.suggest_missing_return_expr(err, expr, &fn_decl, expected, found);
+            let fn_id = self.tcx.hir().get_return_block(blk_id).unwrap();
+            self.suggest_missing_return_expr(err, expr, &fn_decl, expected, found, fn_id);
         }
         pointing_at_return_type
     }
@@ -218,8 +219,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.is_hir_id_from_struct_pattern_shorthand_field(expr.hir_id, expr.span);
             let methods = self.get_conversion_methods(expr.span, expected, found, expr.hir_id);
             if let Ok(expr_text) = self.sess().source_map().span_to_snippet(expr.span) {
-                let mut suggestions = iter::repeat(&expr_text)
-                    .zip(methods.iter())
+                let mut suggestions = iter::zip(iter::repeat(&expr_text), &methods)
                     .filter_map(|(receiver, method)| {
                         let method_call = format!(".{}()", method.ident);
                         if receiver.ends_with(&method_call) {
@@ -480,6 +480,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fn_decl: &hir::FnDecl<'_>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
+        id: hir::HirId,
     ) {
         if !expected.is_unit() {
             return;
@@ -487,7 +488,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let found = self.resolve_vars_with_obligations(found);
         if let hir::FnRetTy::Return(ty) = fn_decl.output {
             let ty = <dyn AstConv<'_>>::ast_ty_to_ty(self, ty);
-            let ty = self.tcx.erase_late_bound_regions(Binder::bind(ty));
+            let bound_vars = self.tcx.late_bound_vars(id);
+            let ty = self.tcx.erase_late_bound_regions(Binder::bind_with_vars(ty, bound_vars));
             let ty = self.normalize_associated_types_in(expr.span, ty);
             if self.can_coerce(found, ty) {
                 err.multipart_suggestion(

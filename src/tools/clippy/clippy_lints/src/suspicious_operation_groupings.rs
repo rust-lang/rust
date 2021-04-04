@@ -1,5 +1,6 @@
-use crate::utils::ast_utils::{eq_id, is_useless_with_eq_exprs, IdentIter};
-use crate::utils::{snippet_with_applicability, span_lint_and_sugg};
+use clippy_utils::ast_utils::{eq_id, is_useless_with_eq_exprs, IdentIter};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet_with_applicability;
 use core::ops::{Add, AddAssign};
 use if_chain::if_chain;
 use rustc_ast::ast::{BinOpKind, Expr, ExprKind, StmtKind};

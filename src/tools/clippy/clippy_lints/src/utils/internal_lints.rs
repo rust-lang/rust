@@ -1,8 +1,8 @@
 use crate::consts::{constant_simple, Constant};
-use crate::utils::{
-    is_expn_of, match_def_path, match_qpath, match_type, method_calls, path_to_res, paths, run_lints, snippet,
-    span_lint, span_lint_and_help, span_lint_and_sugg, SpanlessEq,
-};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg};
+use clippy_utils::source::snippet;
+use clippy_utils::ty::match_type;
+use clippy_utils::{is_expn_of, match_def_path, match_qpath, method_calls, path_to_res, paths, run_lints, SpanlessEq};
 use if_chain::if_chain;
 use rustc_ast::ast::{Crate as AstCrate, ItemKind, LitKind, ModKind, NodeId};
 use rustc_ast::visit::FnKind;

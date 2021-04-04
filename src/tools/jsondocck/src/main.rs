@@ -239,7 +239,20 @@ fn check_command(command: Command, cache: &mut Cache) -> Result<(), CkError> {
             let val = cache.get_value(&command.args[0])?;
             let results = select(&val, &command.args[1]).unwrap();
             let pat = string_to_value(&command.args[2], cache);
-            results.len() == 1 && results[0] == pat.as_ref()
+            let is = results.len() == 1 && results[0] == pat.as_ref();
+            if !command.negated && !is {
+                return Err(CkError::FailedCheck(
+                    format!(
+                        "{} matched to {:?}, but expected {:?}",
+                        &command.args[1],
+                        results,
+                        pat.as_ref()
+                    ),
+                    command,
+                ));
+            } else {
+                is
+            }
         }
         CommandKind::Set => {
             // @set <name> = <path> <jsonpath>
@@ -299,7 +312,10 @@ fn check_command(command: Command, cache: &mut Cache) -> Result<(), CkError> {
 
 fn string_to_value<'a>(s: &str, cache: &'a Cache) -> Cow<'a, Value> {
     if s.starts_with("$") {
-        Cow::Borrowed(&cache.variables[&s[1..]])
+        Cow::Borrowed(&cache.variables.get(&s[1..]).unwrap_or_else(|| {
+            // FIXME(adotinthevoid): Show line number
+            panic!("No variable: `{}`. Current state: `{:?}`", &s[1..], cache.variables)
+        }))
     } else {
         Cow::Owned(serde_json::from_str(s).unwrap())
     }

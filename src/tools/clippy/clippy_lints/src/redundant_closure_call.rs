@@ -1,4 +1,5 @@
-use crate::utils::{snippet_with_applicability, span_lint, span_lint_and_then};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
+use clippy_utils::source::snippet_with_applicability;
 use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_ast::visit as ast_visit;

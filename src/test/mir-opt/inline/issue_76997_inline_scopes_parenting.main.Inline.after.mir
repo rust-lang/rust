@@ -28,7 +28,6 @@ fn main() -> () {
         StorageLive(_5);                 // scope 1 at $DIR/issue-76997-inline-scopes-parenting.rs:6:5: 6:10
         _5 = move (_3.0: ());            // scope 1 at $DIR/issue-76997-inline-scopes-parenting.rs:6:5: 6:10
         StorageLive(_6);                 // scope 2 at $DIR/issue-76997-inline-scopes-parenting.rs:6:5: 6:10
-        _6 = const ();                   // scope 2 at $DIR/issue-76997-inline-scopes-parenting.rs:6:5: 6:10
         StorageDead(_6);                 // scope 2 at $DIR/issue-76997-inline-scopes-parenting.rs:6:5: 6:10
         StorageDead(_5);                 // scope 1 at $DIR/issue-76997-inline-scopes-parenting.rs:6:5: 6:10
         StorageDead(_4);                 // scope 1 at $DIR/issue-76997-inline-scopes-parenting.rs:6:9: 6:10

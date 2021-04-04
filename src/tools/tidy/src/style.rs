@@ -16,6 +16,7 @@
 //! A number of these checks can be opted-out of with various directives of the form:
 //! `// ignore-tidy-CHECK-NAME`.
 
+use regex::Regex;
 use std::path::Path;
 
 /// Error code markdown is restricted to 80 columns because they can be
@@ -40,6 +41,19 @@ const LLVM_UNREACHABLE_INFO: &str = r"\
 C++ code used llvm_unreachable, which triggers undefined behavior
 when executed when assertions are disabled.
 Use llvm::report_fatal_error for increased robustness.";
+
+const ANNOTATIONS_TO_IGNORE: &[&str] = &[
+    "// @!has",
+    "// @has",
+    "// @matches",
+    "// CHECK",
+    "// EMIT_MIR",
+    "// compile-flags",
+    "// error-pattern",
+    "// gdb",
+    "// lldb",
+    "// normalize-stderr-test",
+];
 
 /// Parser states for `line_is_url`.
 #[derive(Clone, Copy, PartialEq)]
@@ -92,12 +106,20 @@ fn line_is_url(is_error_code: bool, columns: usize, line: &str) -> bool {
     state == EXP_END
 }
 
+/// Returns `true` if `line` can be ignored. This is the case when it contains
+/// an annotation that is explicitly ignored.
+fn should_ignore(line: &str) -> bool {
+    // Matches test annotations like `//~ ERROR text`.
+    // This mirrors the regex in src/tools/compiletest/src/runtest.rs, please
+    // update both if either are changed.
+    let re = Regex::new("\\s*//(\\[.*\\])?~.*").unwrap();
+    re.is_match(line) || ANNOTATIONS_TO_IGNORE.iter().any(|a| line.contains(a))
+}
+
 /// Returns `true` if `line` is allowed to be longer than the normal limit.
-/// Currently there is only one exception, for long URLs, but more
-/// may be added in the future.
 fn long_line_is_ok(extension: &str, is_error_code: bool, max_columns: usize, line: &str) -> bool {
     if extension != "md" || is_error_code {
-        if line_is_url(is_error_code, max_columns, line) {
+        if line_is_url(is_error_code, max_columns, line) || should_ignore(line) {
             return true;
         }
     } else if extension == "md" {
@@ -357,9 +379,11 @@ pub fn check(path: &Path, bad: &mut bool) {
         if let Directive::Ignore(false) = skip_tab {
             tidy_error!(bad, "{}: ignoring tab characters unnecessarily", file.display());
         }
-        if let Directive::Ignore(false) = skip_line_length {
-            tidy_error!(bad, "{}: ignoring line length unnecessarily", file.display());
-        }
+        // FIXME: Temporarily disabled to simplify landing the ignore-rules for the line
+        // length check (https://github.com/rust-lang/rust/issues/77548):
+        //if let Directive::Ignore(false) = skip_line_length {
+        //    tidy_error!(bad, "{}: ignoring line length unnecessarily", file.display());
+        //}
         if let Directive::Ignore(false) = skip_file_length {
             tidy_error!(bad, "{}: ignoring file length unnecessarily", file.display());
         }

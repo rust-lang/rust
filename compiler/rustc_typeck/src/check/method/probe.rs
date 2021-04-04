@@ -742,15 +742,15 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
         debug!("assemble_inherent_impl_probe {:?}", impl_def_id);
 
-        let (impl_ty, impl_substs) = self.impl_ty_and_substs(impl_def_id);
-        let impl_ty = impl_ty.subst(self.tcx, impl_substs);
-
         for item in self.impl_or_trait_item(impl_def_id) {
             if !self.has_applicable_self(&item) {
                 // No receiver declared. Not a candidate.
                 self.record_static_candidate(ImplSource(impl_def_id));
                 continue;
             }
+
+            let (impl_ty, impl_substs) = self.impl_ty_and_substs(impl_def_id);
+            let impl_ty = impl_ty.subst(self.tcx, impl_substs);
 
             // Determine the receiver type that the method itself expects.
             let xform_tys = self.xform_self_ty(&item, impl_ty, impl_substs);
@@ -1700,7 +1700,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                             // In general, during probe we erase regions.
                             self.tcx.lifetimes.re_erased.into()
                         }
-                        GenericParamDefKind::Type { .. } | GenericParamDefKind::Const => {
+                        GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
                             self.var_for_def(self.span, param)
                         }
                     }
@@ -1753,7 +1753,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     ///    region got replaced with the same variable, which requires a bit more coordination
     ///    and/or tracking the substitution and
     ///    so forth.
-    fn erase_late_bound_regions<T>(&self, value: ty::Binder<T>) -> T
+    fn erase_late_bound_regions<T>(&self, value: ty::Binder<'tcx, T>) -> T
     where
         T: TypeFoldable<'tcx>,
     {

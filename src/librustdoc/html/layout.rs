@@ -88,7 +88,6 @@ crate fn render<T: Print, S: Print>(
         </button>\
         <div id=\"theme-choices\" role=\"menu\"></div>\
     </div>\
-    <script src=\"{static_root_path}theme{suffix}.js\"></script>\
     <nav class=\"sub\">\
         <form class=\"search-form\">\
             <div class=\"search-container\">\

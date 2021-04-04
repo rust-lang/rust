@@ -1,3 +1,6 @@
+use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::paths;
+use clippy_utils::ty::{is_normalizable, is_type_diagnostic_item, match_type};
 use if_chain::if_chain;
 use rustc_hir::{self as hir, HirId, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
@@ -6,8 +9,6 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
 use rustc_target::abi::LayoutOf as _;
 use rustc_typeck::hir_ty_to_ty;
-
-use crate::utils::{is_normalizable, is_type_diagnostic_item, match_type, paths, span_lint_and_help};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for maps with zero-sized value types anywhere in the code.

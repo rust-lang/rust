@@ -1,7 +1,7 @@
 // Test cases where a changing struct appears in the signature of fns
 // and methods.
 
-// compile-flags: -Z query-dep-graph
+// compile-flags: -Z query-dep-graph -C incremental=tmp/dep-graph-struct-signature
 
 #![feature(rustc_attrs)]
 #![allow(dead_code)]

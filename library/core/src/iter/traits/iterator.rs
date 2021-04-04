@@ -81,8 +81,8 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
     ),
     on(
         _Self = "[]",
-        label = "borrow the array with `&` or call `.iter()` on it to iterate over it",
-        note = "arrays are not iterators, but slices like the following are: `&[1, 2, 3]`"
+        label = "arrays do not yet implement `IntoIterator`; try using `std::array::IntoIter::new(arr)`",
+        note = "see <https://github.com/rust-lang/rust/pull/65819> for more details"
     ),
     on(
         _Self = "{integral}",
@@ -92,7 +92,8 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
     label = "`{Self}` is not an iterator",
     message = "`{Self}` is not an iterator"
 )]
-#[doc(spotlight)]
+#[cfg_attr(bootstrap, doc(spotlight))]
+#[cfg_attr(not(bootstrap), doc(notable_trait))]
 #[rustc_diagnostic_item = "Iterator"]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub trait Iterator {
@@ -1012,7 +1013,7 @@ pub trait Iterator {
     ///
     /// Because the closure passed to `skip_while()` takes a reference, and many
     /// iterators iterate over references, this leads to a possibly confusing
-    /// situation, where the type of the closure is a double reference:
+    /// situation, where the type of the closure argument is a double reference:
     ///
     /// ```
     /// let a = [-1, 0, 1];
@@ -1228,7 +1229,11 @@ pub trait Iterator {
 
     /// Creates an iterator that skips the first `n` elements.
     ///
-    /// After they have been consumed, the rest of the elements are yielded.
+    /// `skip(n)` skips elements until `n` elements are skipped or the end of the
+    /// iterator is reached (whichever happens first). After that, all the remaining
+    /// elements are yielded. In particular, if the original iterator is too short,
+    /// then the returned iterator is empty.
+    ///
     /// Rather than overriding this method directly, instead override the `nth` method.
     ///
     /// # Examples
@@ -1252,7 +1257,14 @@ pub trait Iterator {
         Skip::new(self, n)
     }
 
-    /// Creates an iterator that yields its first `n` elements.
+    /// Creates an iterator that yields the first `n` elements, or fewer
+    /// if the underlying iterator ends sooner.
+    ///
+    /// `take(n)` yields elements until `n` elements are yielded or the end of
+    /// the iterator is reached (whichever happens first).
+    /// The returned iterator is a prefix of length `n` if the original iterator
+    /// contains at least `n` elements, otherwise it contains all of the
+    /// (fewer than `n`) elements of the original iterator.
     ///
     /// # Examples
     ///

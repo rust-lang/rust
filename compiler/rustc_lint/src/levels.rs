@@ -564,10 +564,6 @@ impl<'s> LintLevelsBuilder<'s> {
         self.id_to_set.insert(id, self.cur);
     }
 
-    pub fn build(self) -> LintLevelSets {
-        self.sets
-    }
-
     pub fn build_map(self) -> LintLevelMap {
         LintLevelMap { sets: self.sets, id_to_set: self.id_to_set }
     }

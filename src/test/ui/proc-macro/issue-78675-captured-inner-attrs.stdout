@@ -1,6 +1,7 @@
 PRINT-BANG INPUT (DISPLAY): foo ! { #[fake_attr] mod bar {
     #![doc = r" Foo"]
 } }
+PRINT-BANG DEEP-RE-COLLECTED (DISPLAY): foo ! { #[fake_attr] mod bar { # ! [doc = r" Foo"] } }
 PRINT-BANG INPUT (DEBUG): TokenStream [
     Ident {
         ident: "foo",

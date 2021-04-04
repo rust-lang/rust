@@ -130,7 +130,7 @@ impl FileType {
 
 impl fmt::Debug for ReadDir {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ReadDir").finish()
+        f.debug_struct("ReadDir").finish_non_exhaustive()
     }
 }
 
@@ -670,7 +670,7 @@ fn open_parent(p: &Path) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
 }
 
 pub fn osstr2str(f: &OsStr) -> io::Result<&str> {
-    f.to_str().ok_or_else(|| io::Error::new(io::ErrorKind::Other, "input must be utf-8"))
+    f.to_str().ok_or_else(|| io::Error::new_const(io::ErrorKind::Other, &"input must be utf-8"))
 }
 
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {

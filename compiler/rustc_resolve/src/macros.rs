@@ -17,14 +17,15 @@ use rustc_errors::struct_span_err;
 use rustc_expand::base::Annotatable;
 use rustc_expand::base::{Indeterminate, ResolverExpand, SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::compile_declarative_macro;
-use rustc_expand::expand::{AstFragment, Invocation, InvocationKind};
+use rustc_expand::expand::{AstFragment, Invocation, InvocationKind, SupportsMacroExpansion};
 use rustc_feature::is_builtin_attr_name;
 use rustc_hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc_hir::def_id;
 use rustc_hir::PrimTy;
 use rustc_middle::middle::stability;
 use rustc_middle::ty;
-use rustc_session::lint::builtin::{LEGACY_DERIVE_HELPERS, SOFT_UNSTABLE, UNUSED_MACROS};
+use rustc_session::lint::builtin::{LEGACY_DERIVE_HELPERS, PROC_MACRO_DERIVE_RESOLUTION_FALLBACK};
+use rustc_session::lint::builtin::{SOFT_UNSTABLE, UNUSED_MACROS};
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
@@ -278,12 +279,12 @@ impl<'a> ResolverExpand for Resolver<'a> {
 
         // Derives are not included when `invocations` are collected, so we have to add them here.
         let parent_scope = &ParentScope { derives, ..parent_scope };
-        let require_inert = !invoc.fragment_kind.supports_macro_expansion();
+        let supports_macro_expansion = invoc.fragment_kind.supports_macro_expansion();
         let node_id = self.lint_node_id(eager_expansion_root);
         let (ext, res) = self.smart_resolve_macro_path(
             path,
             kind,
-            require_inert,
+            supports_macro_expansion,
             inner_attr,
             parent_scope,
             node_id,
@@ -457,7 +458,7 @@ impl<'a> Resolver<'a> {
         &mut self,
         path: &ast::Path,
         kind: MacroKind,
-        require_inert: bool,
+        supports_macro_expansion: SupportsMacroExpansion,
         inner_attr: bool,
         parent_scope: &ParentScope<'a>,
         node_id: NodeId,
@@ -505,8 +506,17 @@ impl<'a> Resolver<'a> {
 
         let unexpected_res = if ext.macro_kind() != kind {
             Some((kind.article(), kind.descr_expected()))
-        } else if require_inert && matches!(res, Res::Def(..)) {
-            Some(("a", "non-macro attribute"))
+        } else if matches!(res, Res::Def(..)) {
+            match supports_macro_expansion {
+                SupportsMacroExpansion::No => Some(("a", "non-macro attribute")),
+                SupportsMacroExpansion::Yes { supports_inner_attrs } => {
+                    if inner_attr && !supports_inner_attrs {
+                        Some(("a", "non-macro inner attribute"))
+                    } else {
+                        None
+                    }
+                }
+            }
         } else {
             None
         };
@@ -633,7 +643,7 @@ impl<'a> Resolver<'a> {
     crate fn early_resolve_ident_in_lexical_scope(
         &mut self,
         orig_ident: Ident,
-        scope_set: ScopeSet,
+        scope_set: ScopeSet<'a>,
         parent_scope: &ParentScope<'a>,
         record_used: bool,
         force: bool,
@@ -660,6 +670,7 @@ impl<'a> Resolver<'a> {
             ScopeSet::All(ns, is_import) => (ns, None, is_import),
             ScopeSet::AbsolutePath(ns) => (ns, None, false),
             ScopeSet::Macro(macro_kind) => (MacroNS, Some(macro_kind), false),
+            ScopeSet::Late(ns, ..) => (ns, None, false),
         };
 
         // This is *the* result, resolution from the scope closest to the resolved identifier.
@@ -768,19 +779,34 @@ impl<'a> Resolver<'a> {
                             Err((Determinacy::Determined, _)) => Err(Determinacy::Determined),
                         }
                     }
-                    Scope::Module(module) => {
+                    Scope::Module(module, derive_fallback_lint_id) => {
                         let adjusted_parent_scope = &ParentScope { module, ..*parent_scope };
                         let binding = this.resolve_ident_in_module_unadjusted_ext(
                             ModuleOrUniformRoot::Module(module),
                             ident,
                             ns,
                             adjusted_parent_scope,
-                            true,
+                            !matches!(scope_set, ScopeSet::Late(..)),
                             record_used,
                             path_span,
                         );
                         match binding {
                             Ok(binding) => {
+                                if let Some(lint_id) = derive_fallback_lint_id {
+                                    this.lint_buffer.buffer_lint_with_diagnostic(
+                                        PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
+                                        lint_id,
+                                        orig_ident.span,
+                                        &format!(
+                                            "cannot find {} `{}` in this scope",
+                                            ns.descr(),
+                                            ident
+                                        ),
+                                        BuiltinLintDiagnostics::ProcMacroDeriveResolutionFallback(
+                                            orig_ident.span,
+                                        ),
+                                    );
+                                }
                                 let misc_flags = if ptr::eq(module, this.graph_root) {
                                     Flags::MISC_SUGGEST_CRATE
                                 } else if module.is_normal() {
@@ -864,7 +890,7 @@ impl<'a> Resolver<'a> {
                     Ok((binding, flags))
                         if sub_namespace_match(binding.macro_kind(), macro_kind) =>
                     {
-                        if !record_used {
+                        if !record_used || matches!(scope_set, ScopeSet::Late(..)) {
                             return Some(Ok(binding));
                         }
 

@@ -13,6 +13,7 @@ pub use serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::Lock;
+use rustc_serialize::{opaque::FileEncoder, Encodable};
 use rustc_session::Session;
 
 use std::fmt;
@@ -59,7 +60,7 @@ impl<T: DepContext> HasDepContext for T {
 }
 
 /// Describe the different families of dependency nodes.
-pub trait DepKind: Copy + fmt::Debug + Eq + Hash {
+pub trait DepKind: Copy + fmt::Debug + Eq + Hash + Send + Encodable<FileEncoder> + 'static {
     const NULL: Self;
 
     /// Return whether this kind always require evaluation.

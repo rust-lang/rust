@@ -1,5 +1,5 @@
 // ignore-tidy-filelength
-use crate::def::{CtorKind, DefKind, Namespace, Res};
+use crate::def::{CtorKind, DefKind, Res};
 use crate::def_id::DefId;
 crate use crate::hir_id::HirId;
 use crate::{itemlikevisit, LangItem};
@@ -402,7 +402,7 @@ pub enum TraitBoundModifier {
 /// `typeck::collect::compute_bounds` matches these against
 /// the "special" built-in traits (see `middle::lang_items`) and
 /// detects `Copy`, `Send` and `Sync`.
-#[derive(Debug, HashStable_Generic)]
+#[derive(Clone, Debug, HashStable_Generic)]
 pub enum GenericBound<'hir> {
     Trait(PolyTraitRef<'hir>, TraitBoundModifier),
     // FIXME(davidtwco): Introduce `PolyTraitRef::LangItem`
@@ -625,13 +625,6 @@ pub struct ModuleItems {
     pub foreign_items: BTreeSet<ForeignItemId>,
 }
 
-/// A type representing only the top-level module.
-#[derive(Encodable, Debug, HashStable_Generic)]
-pub struct CrateItem<'hir> {
-    pub module: Mod<'hir>,
-    pub span: Span,
-}
-
 /// The top-level data structure that stores the entire contents of
 /// the crate currently being compiled.
 ///
@@ -640,7 +633,7 @@ pub struct CrateItem<'hir> {
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
 #[derive(Debug)]
 pub struct Crate<'hir> {
-    pub item: CrateItem<'hir>,
+    pub item: Mod<'hir>,
     pub exported_macros: &'hir [MacroDef<'hir>],
     // Attributes from non-exported macros, kept only for collecting the library feature list.
     pub non_exported_macro_attrs: &'hir [Attribute],
@@ -2118,15 +2111,6 @@ pub enum ImplItemKind<'hir> {
     TyAlias(&'hir Ty<'hir>),
 }
 
-impl ImplItemKind<'_> {
-    pub fn namespace(&self) -> Namespace {
-        match self {
-            ImplItemKind::TyAlias(..) => Namespace::TypeNS,
-            ImplItemKind::Const(..) | ImplItemKind::Fn(..) => Namespace::ValueNS,
-        }
-    }
-}
-
 // The name of the associated type for `Fn` return types.
 pub const FN_OUTPUT_NAME: Symbol = sym::Output;
 
@@ -2215,6 +2199,9 @@ impl PrimTy {
         Self::Str,
     ];
 
+    /// Like [`PrimTy::name`], but returns a &str instead of a symbol.
+    ///
+    /// Used by rustdoc.
     pub fn name_str(self) -> &'static str {
         match self {
             PrimTy::Int(i) => i.name_str(),
@@ -2569,7 +2556,7 @@ pub enum UseKind {
 /// that the `ref_id` is for. Note that `ref_id`'s value is not the `HirId` of the
 /// trait being referred to but just a unique `HirId` that serves as a key
 /// within the resolution map.
-#[derive(Debug, HashStable_Generic)]
+#[derive(Clone, Debug, HashStable_Generic)]
 pub struct TraitRef<'hir> {
     pub path: &'hir Path<'hir>,
     // Don't hash the `ref_id`. It is tracked via the thing it is used to access.
@@ -2588,7 +2575,7 @@ impl TraitRef<'_> {
     }
 }
 
-#[derive(Debug, HashStable_Generic)]
+#[derive(Clone, Debug, HashStable_Generic)]
 pub struct PolyTraitRef<'hir> {
     /// The `'a` in `for<'a> Foo<&'a T>`.
     pub bound_generic_params: &'hir [GenericParam<'hir>],
@@ -2989,7 +2976,7 @@ pub enum Node<'hir> {
     GenericParam(&'hir GenericParam<'hir>),
     Visibility(&'hir Visibility<'hir>),
 
-    Crate(&'hir CrateItem<'hir>),
+    Crate(&'hir Mod<'hir>),
 }
 
 impl<'hir> Node<'hir> {

@@ -27,6 +27,7 @@ use crate::ty::{self, BoundVar, List, Region, TyCtxt};
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use smallvec::SmallVec;
+use std::iter;
 use std::ops::Index;
 
 /// A "canonicalized" type `V` is one where all free inference
@@ -227,19 +228,11 @@ impl Certainty {
             Certainty::Ambiguous => false,
         }
     }
-
-    pub fn is_ambiguous(&self) -> bool {
-        !self.is_proven()
-    }
 }
 
 impl<'tcx, R> QueryResponse<'tcx, R> {
     pub fn is_proven(&self) -> bool {
         self.certainty.is_proven()
-    }
-
-    pub fn is_ambiguous(&self) -> bool {
-        !self.is_proven()
     }
 }
 
@@ -284,7 +277,7 @@ impl<'tcx, V> Canonical<'tcx, V> {
 }
 
 pub type QueryOutlivesConstraint<'tcx> =
-    ty::Binder<ty::OutlivesPredicate<GenericArg<'tcx>, Region<'tcx>>>;
+    ty::Binder<'tcx, ty::OutlivesPredicate<GenericArg<'tcx>, Region<'tcx>>>;
 
 TrivialTypeFoldableAndLiftImpls! {
     for <'tcx> {
@@ -315,16 +308,14 @@ impl<'tcx> CanonicalVarValues<'tcx> {
         use crate::ty::subst::GenericArgKind;
 
         CanonicalVarValues {
-            var_values: self
-                .var_values
-                .iter()
-                .zip(0..)
+            var_values: iter::zip(&self.var_values, 0..)
                 .map(|(kind, i)| match kind.unpack() {
                     GenericArgKind::Type(..) => {
                         tcx.mk_ty(ty::Bound(ty::INNERMOST, ty::BoundVar::from_u32(i).into())).into()
                     }
                     GenericArgKind::Lifetime(..) => {
-                        let br = ty::BoundRegion { kind: ty::BrAnon(i) };
+                        let br =
+                            ty::BoundRegion { var: ty::BoundVar::from_u32(i), kind: ty::BrAnon(i) };
                         tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br)).into()
                     }
                     GenericArgKind::Const(ct) => tcx

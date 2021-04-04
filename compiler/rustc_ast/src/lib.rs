@@ -14,9 +14,10 @@
 #![feature(const_fn_transmute)]
 #![feature(const_panic)]
 #![feature(crate_visibility_modifier)]
+#![feature(iter_zip)]
 #![feature(label_break_value)]
 #![feature(nll)]
-#![feature(or_patterns)]
+#![cfg_attr(bootstrap, feature(or_patterns))]
 #![recursion_limit = "256"]
 
 #[macro_use]

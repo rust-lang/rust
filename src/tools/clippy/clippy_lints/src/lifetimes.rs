@@ -1,4 +1,5 @@
-use crate::utils::{in_macro, span_lint, trait_ref_of_method};
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::{in_macro, trait_ref_of_method};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::intravisit::{
     walk_fn_decl, walk_generic_param, walk_generics, walk_item, walk_param_bound, walk_poly_trait_ref, walk_ty,

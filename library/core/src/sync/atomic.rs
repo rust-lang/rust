@@ -283,7 +283,7 @@ impl AtomicBool {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_atomic_new", since = "1.32.0")]
+    #[rustc_const_stable(feature = "const_atomic_new", since = "1.24.0")]
     pub const fn new(v: bool) -> AtomicBool {
         AtomicBool { v: UnsafeCell::new(v as u8) }
     }
@@ -883,7 +883,7 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_atomic_new", since = "1.32.0")]
+    #[rustc_const_stable(feature = "const_atomic_new", since = "1.24.0")]
     pub const fn new(p: *mut T) -> AtomicPtr<T> {
         AtomicPtr { p: UnsafeCell::new(p) }
     }
@@ -2276,7 +2276,7 @@ macro_rules! atomic_int_ptr_sized {
             stable(feature = "atomic_access", since = "1.15.0"),
             stable(feature = "atomic_from", since = "1.23.0"),
             stable(feature = "atomic_nand", since = "1.27.0"),
-            rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
+            rustc_const_stable(feature = "const_integer_atomics", since = "1.24.0"),
             stable(feature = "rust1", since = "1.0.0"),
             "isize",
             "",
@@ -2296,7 +2296,7 @@ macro_rules! atomic_int_ptr_sized {
             stable(feature = "atomic_access", since = "1.15.0"),
             stable(feature = "atomic_from", since = "1.23.0"),
             stable(feature = "atomic_nand", since = "1.27.0"),
-            rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
+            rustc_const_stable(feature = "const_integer_atomics", since = "1.24.0"),
             stable(feature = "rust1", since = "1.0.0"),
             "usize",
             "",

@@ -32,10 +32,9 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(int_bits_const)]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::BITS, ", stringify!($BITS), ");")]
         /// ```
-        #[unstable(feature = "int_bits_const", issue = "76904")]
+        #[stable(feature = "int_bits_const", since = "1.53.0")]
         pub const BITS: u32 = $BITS;
 
         /// Converts a string slice in a given base to an integer.
@@ -1589,11 +1588,11 @@ macro_rules! int_impl {
 
         /// Calculates the quotient of Euclidean division of `self` by `rhs`.
         ///
-        /// This computes the integer `n` such that `self = n * rhs + self.rem_euclid(rhs)`,
-        /// with `0 <= self.rem_euclid(rhs) < rhs`.
+        /// This computes the integer `q` such that `self = q * rhs + r`, with
+        /// `r = self.rem_euclid(rhs)` and `0 <= r < abs(rhs)`.
         ///
-        /// In other words, the result is `self / rhs` rounded to the integer `n`
-        /// such that `self >= n * rhs`.
+        /// In other words, the result is `self / rhs` rounded to the integer `q`
+        /// such that `self >= q * rhs`.
         /// If `self > 0`, this is equal to round towards zero (the default in Rust);
         /// if `self < 0`, this is equal to round towards +/- infinity.
         ///

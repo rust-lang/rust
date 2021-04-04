@@ -1628,7 +1628,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
             out_elem
         );
     }
-    macro_rules! arith {
+    macro_rules! arith_binary {
         ($($name: ident: $($($p: ident),* => $call: ident),*;)*) => {
             $(if name == sym::$name {
                 match in_elem.kind() {
@@ -1644,7 +1644,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
             })*
         }
     }
-    arith! {
+    arith_binary! {
         simd_add: Uint, Int => add, Float => fadd;
         simd_sub: Uint, Int => sub, Float => fsub;
         simd_mul: Uint, Int => mul, Float => fmul;
@@ -1658,6 +1658,25 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
         simd_fmax: Float => maxnum;
         simd_fmin: Float => minnum;
 
+    }
+    macro_rules! arith_unary {
+        ($($name: ident: $($($p: ident),* => $call: ident),*;)*) => {
+            $(if name == sym::$name {
+                match in_elem.kind() {
+                    $($(ty::$p(_))|* => {
+                        return Ok(bx.$call(args[0].immediate()))
+                    })*
+                    _ => {},
+                }
+                require!(false,
+                         "unsupported operation on `{}` with element `{}`",
+                         in_ty,
+                         in_elem)
+            })*
+        }
+    }
+    arith_unary! {
+        simd_neg: Int => neg, Float => fneg;
     }
 
     if name == sym::simd_saturating_add || name == sym::simd_saturating_sub {

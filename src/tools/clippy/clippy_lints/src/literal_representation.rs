@@ -1,10 +1,11 @@
 //! Lints concerned with the grouping of digits with underscores in integral or
 //! floating-point literal expressions.
 
-use crate::utils::{
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet_opt;
+use clippy_utils::{
     in_macro,
     numeric_literal::{NumericLiteral, Radix},
-    snippet_opt, span_lint_and_sugg,
 };
 use if_chain::if_chain;
 use rustc_ast::ast::{Expr, ExprKind, Lit, LitKind};
@@ -12,6 +13,7 @@ use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use std::iter;
 
 declare_clippy_lint! {
     /// **What it does:** Warns if a long integral or floating-point constant does
@@ -348,7 +350,7 @@ impl LiteralDigitGrouping {
 
         let group_sizes: Vec<usize> = num_lit.integer.split('_').map(str::len).collect();
         if UUID_GROUP_LENS.len() == group_sizes.len() {
-            UUID_GROUP_LENS.iter().zip(&group_sizes).all(|(&a, &b)| a == b)
+            iter::zip(&UUID_GROUP_LENS, &group_sizes).all(|(&a, &b)| a == b)
         } else {
             false
         }

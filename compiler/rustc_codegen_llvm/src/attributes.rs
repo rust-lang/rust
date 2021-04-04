@@ -11,9 +11,9 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_session::config::{OptLevel, SanitizerSet};
+use rustc_session::config::OptLevel;
 use rustc_session::Session;
-use rustc_target::spec::StackProbeType;
+use rustc_target::spec::{SanitizerSet, StackProbeType};
 
 use crate::attributes;
 use crate::llvm::AttributePlace::Function;

@@ -169,9 +169,9 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         (Path(lq, lp), Path(rq, rp)) => both(lq, rq, |l, r| eq_qself(l, r)) && eq_path(lp, rp),
         (MacCall(l), MacCall(r)) => eq_mac_call(l, r),
         (Struct(lse), Struct(rse)) => {
-            eq_path(&lse.path, &rse.path) &&
-            eq_struct_rest(&lse.rest, &rse.rest) &&
-            unordered_over(&lse.fields, &rse.fields, |l, r| eq_field(l, r))
+            eq_path(&lse.path, &rse.path)
+                && eq_struct_rest(&lse.rest, &rse.rest)
+                && unordered_over(&lse.fields, &rse.fields, |l, r| eq_field(l, r))
         },
         _ => false,
     }
@@ -408,6 +408,10 @@ pub fn eq_use_tree(l: &UseTree, r: &UseTree) -> bool {
     eq_path(&l.prefix, &r.prefix) && eq_use_tree_kind(&l.kind, &r.kind)
 }
 
+pub fn eq_anon_const(l: &AnonConst, r: &AnonConst) -> bool {
+    eq_expr(&l.value, &r.value)
+}
+
 pub fn eq_use_tree_kind(l: &UseTreeKind, r: &UseTreeKind) -> bool {
     use UseTreeKind::*;
     match (l, r) {
@@ -416,10 +420,6 @@ pub fn eq_use_tree_kind(l: &UseTreeKind, r: &UseTreeKind) -> bool {
         (Nested(l), Nested(r)) => over(l, r, |(l, _), (r, _)| eq_use_tree(l, r)),
         _ => false,
     }
-}
-
-pub fn eq_anon_const(l: &AnonConst, r: &AnonConst) -> bool {
-    eq_expr(&l.value, &r.value)
 }
 
 pub fn eq_defaultness(l: Defaultness, r: Defaultness) -> bool {

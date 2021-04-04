@@ -45,6 +45,7 @@ pub struct MethodCallee<'tcx> {
     pub sig: ty::FnSig<'tcx>,
 }
 
+#[derive(Debug)]
 pub enum MethodError<'tcx> {
     // Did not find an applicable method, but we did find various near-misses that may work.
     NoMatch(NoMatchData<'tcx>),
@@ -66,6 +67,7 @@ pub enum MethodError<'tcx> {
 
 // Contains a list of static methods that may apply, a list of unsatisfied trait predicates which
 // could lead to matches if satisfied, and a list of not-in-scope traits which may work.
+#[derive(Debug)]
 pub struct NoMatchData<'tcx> {
     pub static_candidates: Vec<CandidateSource>,
     pub unsatisfied_predicates: Vec<(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>)>,
@@ -308,7 +310,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Construct a trait-reference `self_ty : Trait<input_tys>`
         let substs = InternalSubsts::for_item(self.tcx, trait_def_id, |param, _| {
             match param.kind {
-                GenericParamDefKind::Lifetime | GenericParamDefKind::Const => {}
+                GenericParamDefKind::Lifetime | GenericParamDefKind::Const { .. } => {}
                 GenericParamDefKind::Type { .. } => {
                     if param.index == 0 {
                         return self_ty.into();
@@ -397,7 +399,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         obligations.extend(traits::predicates_for_generics(cause.clone(), self.param_env, bounds));
 
         // Also add an obligation for the method type being well-formed.
-        let method_ty = tcx.mk_fn_ptr(ty::Binder::bind(fn_sig));
+        let method_ty = tcx.mk_fn_ptr(ty::Binder::bind(fn_sig, tcx));
         debug!(
             "lookup_in_trait_adjusted: matched method method_ty={:?} obligation={:?}",
             method_ty, obligation

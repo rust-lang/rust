@@ -69,24 +69,12 @@ impl DiagnosticStyledString {
     pub fn highlighted<S: Into<String>>(t: S) -> DiagnosticStyledString {
         DiagnosticStyledString(vec![StringPart::Highlighted(t.into())])
     }
-
-    pub fn content(&self) -> String {
-        self.0.iter().map(|x| x.content()).collect::<String>()
-    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum StringPart {
     Normal(String),
     Highlighted(String),
-}
-
-impl StringPart {
-    pub fn content(&self) -> &str {
-        match self {
-            &StringPart::Normal(ref s) | &StringPart::Highlighted(ref s) => s,
-        }
-    }
 }
 
 impl Diagnostic {
@@ -156,7 +144,7 @@ impl Diagnostic {
         self
     }
 
-    pub fn note_expected_found(
+    crate fn note_expected_found(
         &mut self,
         expected_label: &dyn fmt::Display,
         expected: DiagnosticStyledString,
@@ -166,7 +154,7 @@ impl Diagnostic {
         self.note_expected_found_extra(expected_label, expected, found_label, found, &"", &"")
     }
 
-    pub fn note_unsuccessful_coercion(
+    crate fn note_unsuccessful_coercion(
         &mut self,
         expected: DiagnosticStyledString,
         found: DiagnosticStyledString,
@@ -256,33 +244,33 @@ impl Diagnostic {
 
     /// Prints the span with a note above it.
     /// This is like [`Diagnostic::note()`], but it gets its own span.
-    pub fn span_note<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self {
+    crate fn span_note<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self {
         self.sub(Level::Note, msg, sp.into(), None);
         self
     }
 
     /// Add a warning attached to this diagnostic.
-    pub fn warn(&mut self, msg: &str) -> &mut Self {
+    crate fn warn(&mut self, msg: &str) -> &mut Self {
         self.sub(Level::Warning, msg, MultiSpan::new(), None);
         self
     }
 
     /// Prints the span with a warning above it.
     /// This is like [`Diagnostic::warn()`], but it gets its own span.
-    pub fn span_warn<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self {
+    crate fn span_warn<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self {
         self.sub(Level::Warning, msg, sp.into(), None);
         self
     }
 
     /// Add a help message attached to this diagnostic.
-    pub fn help(&mut self, msg: &str) -> &mut Self {
+    crate fn help(&mut self, msg: &str) -> &mut Self {
         self.sub(Level::Help, msg, MultiSpan::new(), None);
         self
     }
 
     /// Prints the span with some help above it.
     /// This is like [`Diagnostic::help()`], but it gets its own span.
-    pub fn span_help<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self {
+    crate fn span_help<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self {
         self.sub(Level::Help, msg, sp.into(), None);
         self
     }
@@ -303,36 +291,6 @@ impl Diagnostic {
                     .map(|(span, snippet)| SubstitutionPart { snippet, span })
                     .collect(),
             }],
-            msg: msg.to_owned(),
-            style: SuggestionStyle::ShowCode,
-            applicability,
-            tool_metadata: Default::default(),
-        });
-        self
-    }
-
-    /// Show multiple suggestions that have multiple parts.
-    /// See also [`Diagnostic::multipart_suggestion()`].
-    pub fn multipart_suggestions(
-        &mut self,
-        msg: &str,
-        suggestions: Vec<Vec<(Span, String)>>,
-        applicability: Applicability,
-    ) -> &mut Self {
-        assert!(!suggestions.is_empty());
-        for s in &suggestions {
-            assert!(!s.is_empty());
-        }
-        self.suggestions.push(CodeSuggestion {
-            substitutions: suggestions
-                .into_iter()
-                .map(|suggestion| Substitution {
-                    parts: suggestion
-                        .into_iter()
-                        .map(|(span, snippet)| SubstitutionPart { snippet, span })
-                        .collect(),
-                })
-                .collect(),
             msg: msg.to_owned(),
             style: SuggestionStyle::ShowCode,
             applicability,
@@ -567,7 +525,7 @@ impl Diagnostic {
         self.code.clone()
     }
 
-    pub fn set_primary_message<M: Into<String>>(&mut self, msg: M) -> &mut Self {
+    crate fn set_primary_message<M: Into<String>>(&mut self, msg: M) -> &mut Self {
         self.message[0] = (msg.into(), Style::NoStyle);
         self
     }
@@ -582,6 +540,8 @@ impl Diagnostic {
 
     /// Convenience function for internal use, clients should use one of the
     /// public methods above.
+    ///
+    /// Used by `proc_macro_server` for implementing `server::Diagnostic`.
     pub fn sub(
         &mut self,
         level: Level,

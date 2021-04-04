@@ -1,13 +1,13 @@
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::numeric_literal::NumericLiteral;
+use clippy_utils::source::snippet_opt;
+use if_chain::if_chain;
 use rustc_ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Lit, UnOp};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, FloatTy, InferTy, Ty};
-
-use if_chain::if_chain;
-
-use crate::utils::{numeric_literal::NumericLiteral, snippet_opt, span_lint, span_lint_and_sugg};
 
 use super::UNNECESSARY_CAST;
 
@@ -44,9 +44,18 @@ pub(super) fn check(
                 lint_unnecessary_cast(cx, expr, &literal_str, cast_from, cast_to);
             },
             LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed) => {},
+            LitKind::Int(_, LitIntType::Signed(_) | LitIntType::Unsigned(_))
+            | LitKind::Float(_, LitFloatType::Suffixed(_))
+                if cast_from.kind() == cast_to.kind() =>
+            {
+                if let Some(src) = snippet_opt(cx, lit.span) {
+                    let num_lit = NumericLiteral::from_lit_kind(&src, &lit.node).unwrap();
+                    lint_unnecessary_cast(cx, expr, num_lit.integer, cast_from, cast_to);
+                }
+            },
             _ => {
                 if cast_from.kind() == cast_to.kind() && !in_external_macro(cx.sess(), expr.span) {
-                    span_lint(
+                    span_lint_and_sugg(
                         cx,
                         UNNECESSARY_CAST,
                         expr.span,
@@ -54,6 +63,9 @@ pub(super) fn check(
                             "casting to the same type is unnecessary (`{}` -> `{}`)",
                             cast_from, cast_to
                         ),
+                        "try",
+                        literal_str,
+                        Applicability::MachineApplicable,
                     );
                     return true;
                 }

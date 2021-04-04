@@ -252,8 +252,13 @@ fn liberated_closure_env_ty(
         _ => bug!("closure expr does not have closure type: {:?}", closure_ty),
     };
 
-    let closure_env_ty = tcx.closure_env_ty(closure_def_id, closure_substs).unwrap();
-    tcx.erase_late_bound_regions(closure_env_ty)
+    let bound_vars =
+        tcx.mk_bound_variable_kinds(std::iter::once(ty::BoundVariableKind::Region(ty::BrEnv)));
+    let br =
+        ty::BoundRegion { var: ty::BoundVar::from_usize(bound_vars.len() - 1), kind: ty::BrEnv };
+    let env_region = ty::ReLateBound(ty::INNERMOST, br);
+    let closure_env_ty = tcx.closure_env_ty(closure_def_id, closure_substs, env_region).unwrap();
+    tcx.erase_late_bound_regions(ty::Binder::bind_with_vars(closure_env_ty, bound_vars))
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -881,7 +886,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let hir_typeck_results = self.typeck_results;
 
         // In analyze_closure() in upvar.rs we gathered a list of upvars used by a
-        // indexed closure and we stored in a map called closure_captures in TypeckResults
+        // indexed closure and we stored in a map called closure_min_captures in TypeckResults
         // with the closure's DefId. Here, we run through that vec of UpvarIds for
         // the given closure and use the necessary information to create upvar
         // debuginfo and to fill `self.upvar_mutbls`.

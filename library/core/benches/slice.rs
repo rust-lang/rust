@@ -114,3 +114,16 @@ rotate!(rotate_16_usize_4, 16, |i| [i; 4]);
 rotate!(rotate_16_usize_5, 16, |i| [i; 5]);
 rotate!(rotate_64_usize_4, 64, |i| [i; 4]);
 rotate!(rotate_64_usize_5, 64, |i| [i; 5]);
+
+#[bench]
+fn fill_byte_sized(b: &mut Bencher) {
+    #[derive(Copy, Clone)]
+    struct NewType(u8);
+
+    let mut ary = [NewType(0); 1024];
+
+    b.iter(|| {
+        let slice = &mut ary[..];
+        black_box(slice.fill(black_box(NewType(42))));
+    });
+}

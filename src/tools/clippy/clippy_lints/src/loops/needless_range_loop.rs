@@ -1,8 +1,10 @@
 use super::NEEDLESS_RANGE_LOOP;
-use crate::utils::visitors::LocalUsedVisitor;
-use crate::utils::{
-    contains_name, has_iter_method, higher, is_integer_const, match_trait_method, multispan_sugg, path_to_local_id,
-    paths, snippet, span_lint_and_then, sugg, SpanlessEq,
+use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
+use clippy_utils::source::snippet;
+use clippy_utils::ty::has_iter_method;
+use clippy_utils::visitors::LocalUsedVisitor;
+use clippy_utils::{
+    contains_name, higher, is_integer_const, match_trait_method, path_to_local_id, paths, sugg, SpanlessEq,
 };
 use if_chain::if_chain;
 use rustc_ast::ast;
@@ -15,7 +17,7 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::middle::region;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::{sym, Symbol};
-use std::iter::Iterator;
+use std::iter::{self, Iterator};
 use std::mem;
 
 /// Checks for looping over a range and then indexing a sequence with it.
@@ -367,7 +369,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
             },
             ExprKind::MethodCall(_, _, args, _) => {
                 let def_id = self.cx.typeck_results().type_dependent_def_id(expr.hir_id).unwrap();
-                for (ty, expr) in self.cx.tcx.fn_sig(def_id).inputs().skip_binder().iter().zip(args) {
+                for (ty, expr) in iter::zip(self.cx.tcx.fn_sig(def_id).inputs().skip_binder(), args) {
                     self.prefer_mutable = false;
                     if let ty::Ref(_, _, mutbl) = *ty.kind() {
                         if mutbl == Mutability::Mut {

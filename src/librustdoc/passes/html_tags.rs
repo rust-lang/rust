@@ -181,7 +181,7 @@ impl<'a, 'tcx> DocFolder for InvalidHtmlTagsLinter<'a, 'tcx> {
                 let sp = match super::source_span_for_markdown_range(tcx, &dox, range, &item.attrs)
                 {
                     Some(sp) => sp,
-                    None => span_of_attrs(&item.attrs).unwrap_or(item.source.span()),
+                    None => span_of_attrs(&item.attrs).unwrap_or(item.span.inner()),
                 };
                 tcx.struct_span_lint_hir(crate::lint::INVALID_HTML_TAGS, hir_id, sp, |lint| {
                     lint.build(msg).emit()

@@ -32,8 +32,9 @@ use rustc_target::spec::abi::Abi;
 
 use crate::clean::cfg::Cfg;
 use crate::clean::external_path;
-use crate::clean::inline;
+use crate::clean::inline::{self, print_inlined_const};
 use crate::clean::types::Type::{QPath, ResolvedPath};
+use crate::clean::utils::{is_literal_expr, print_const_expr, print_evaluated_const};
 use crate::clean::Clean;
 use crate::core::DocContext;
 use crate::formats::cache::Cache;
@@ -51,7 +52,7 @@ thread_local!(crate static MAX_DEF_IDX: RefCell<FxHashMap<CrateNum, DefIndex>> =
 crate struct Crate {
     crate name: Symbol,
     crate src: FileName,
-    crate module: Option<Item>,
+    crate module: Item,
     crate externs: Vec<(CrateNum, ExternalCrate)>,
     crate primitives: Vec<(DefId, PrimitiveType)>,
     // These are later on moved into `CACHEKEY`, leaving the map empty.
@@ -64,7 +65,7 @@ crate struct Crate {
 #[derive(Clone, Debug)]
 crate struct TraitWithExtraInfo {
     crate trait_: Trait,
-    crate is_spotlight: bool,
+    crate is_notable: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -81,12 +82,14 @@ crate struct ExternalCrate {
 /// directly to the AST's concept of an item; it's a strict superset.
 #[derive(Clone)]
 crate struct Item {
-    /// Stringified span
-    crate source: Span,
-    /// Not everything has a name. E.g., impls
+    crate span: Span,
+    /// The name of this item.
+    /// Optional because not every item has a name, e.g. impls.
     crate name: Option<Symbol>,
     crate attrs: Box<Attributes>,
     crate visibility: Visibility,
+    /// Information about this item that is specific to what kind of item it is.
+    /// E.g., struct vs enum vs function.
     crate kind: Box<ItemKind>,
     crate def_id: DefId,
 }
@@ -100,7 +103,7 @@ impl fmt::Debug for Item {
         let def_id: &dyn fmt::Debug = if self.is_fake() { &"**FAKE**" } else { &self.def_id };
 
         fmt.debug_struct("Item")
-            .field("source", &self.source)
+            .field("source", &self.span)
             .field("name", &self.name)
             .field("attrs", &self.attrs)
             .field("kind", &self.kind)
@@ -165,7 +168,7 @@ impl Item {
         debug!("name={:?}, def_id={:?}", name, def_id);
 
         // `span_if_local()` lies about functions and only gives the span of the function signature
-        let source = def_id.as_local().map_or_else(
+        let span = def_id.as_local().map_or_else(
             || cx.tcx.def_span(def_id),
             |local| {
                 let hir = cx.tcx.hir();
@@ -177,7 +180,7 @@ impl Item {
             def_id,
             kind: box kind,
             name,
-            source: source.clean(cx),
+            span: span.clean(cx),
             attrs,
             visibility: cx.tcx.visibility(def_id).clean(cx),
         }
@@ -559,6 +562,8 @@ impl<'a> FromIterator<&'a DocFragment> for String {
     }
 }
 
+/// The attributes on an [`Item`], including attributes like `#[derive(...)]` and `#[inline]`,
+/// as well as doc comments.
 #[derive(Clone, Debug, Default)]
 crate struct Attributes {
     crate doc_strings: Vec<DocFragment>,
@@ -910,12 +915,23 @@ impl Attributes {
     }
 
     crate fn get_doc_aliases(&self) -> FxHashSet<String> {
-        self.other_attrs
-            .lists(sym::doc)
-            .filter(|a| a.has_name(sym::alias))
-            .filter_map(|a| a.value_str().map(|s| s.to_string()))
-            .filter(|v| !v.is_empty())
-            .collect::<FxHashSet<_>>()
+        let mut aliases = FxHashSet::default();
+
+        for attr in self.other_attrs.lists(sym::doc).filter(|a| a.has_name(sym::alias)) {
+            if let Some(values) = attr.meta_item_list() {
+                for l in values {
+                    match l.literal().unwrap().kind {
+                        ast::LitKind::Str(s, _) => {
+                            aliases.insert(s.as_str().to_string());
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+            } else {
+                aliases.insert(attr.value_str().map(|s| s.to_string()).unwrap());
+            }
+        }
+        aliases
     }
 }
 
@@ -1787,8 +1803,13 @@ impl From<hir::PrimTy> for PrimitiveType {
 
 #[derive(Copy, Clone, Debug)]
 crate enum Visibility {
+    /// `pub`
     Public,
+    /// Visibility inherited from parent.
+    ///
+    /// For example, this is the visibility of private items and of enum variants.
     Inherited,
+    /// `pub(crate)`, `pub(super)`, or `pub(in path::to::somewhere)`
     Restricted(DefId),
 }
 
@@ -1837,7 +1858,8 @@ crate enum Variant {
     Struct(VariantStruct),
 }
 
-/// Small wrapper around `rustc_span::Span` that adds helper methods and enforces calling `source_callsite`.
+/// Small wrapper around [`rustc_span::Span]` that adds helper methods
+/// and enforces calling [`rustc_span::Span::source_callsite()`].
 #[derive(Clone, Debug)]
 crate struct Span(rustc_span::Span);
 
@@ -1849,12 +1871,12 @@ impl Span {
         Self(sp.source_callsite())
     }
 
-    crate fn dummy() -> Self {
-        Self(rustc_span::DUMMY_SP)
+    crate fn inner(&self) -> rustc_span::Span {
+        self.0
     }
 
-    crate fn span(&self) -> rustc_span::Span {
-        self.0
+    crate fn dummy() -> Self {
+        Self(rustc_span::DUMMY_SP)
     }
 
     crate fn is_dummy(&self) -> bool {
@@ -1967,9 +1989,58 @@ crate struct Static {
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 crate struct Constant {
     crate type_: Type,
-    crate expr: String,
-    crate value: Option<String>,
-    crate is_literal: bool,
+    crate kind: ConstantKind,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+crate enum ConstantKind {
+    /// This is the wrapper around `ty::Const` for a non-local constant. Because it doesn't have a
+    /// `BodyId`, we need to handle it on its own.
+    ///
+    /// Note that `ty::Const` includes generic parameters, and may not always be uniquely identified
+    /// by a DefId. So this field must be different from `Extern`.
+    TyConst { expr: String },
+    /// A constant (expression) that's not an item or associated item. These are usually found
+    /// nested inside types (e.g., array lengths) or expressions (e.g., repeat counts), and also
+    /// used to define explicit discriminant values for enum variants.
+    Anonymous { body: BodyId },
+    /// A constant from a different crate.
+    Extern { def_id: DefId },
+    /// `const FOO: u32 = ...;`
+    Local { def_id: DefId, body: BodyId },
+}
+
+impl Constant {
+    crate fn expr(&self, tcx: TyCtxt<'_>) -> String {
+        match self.kind {
+            ConstantKind::TyConst { ref expr } => expr.clone(),
+            ConstantKind::Extern { def_id } => print_inlined_const(tcx, def_id),
+            ConstantKind::Local { body, .. } | ConstantKind::Anonymous { body } => {
+                print_const_expr(tcx, body)
+            }
+        }
+    }
+
+    crate fn value(&self, tcx: TyCtxt<'_>) -> Option<String> {
+        match self.kind {
+            ConstantKind::TyConst { .. } | ConstantKind::Anonymous { .. } => None,
+            ConstantKind::Extern { def_id } | ConstantKind::Local { def_id, .. } => {
+                print_evaluated_const(tcx, def_id)
+            }
+        }
+    }
+
+    crate fn is_literal(&self, tcx: TyCtxt<'_>) -> bool {
+        match self.kind {
+            ConstantKind::TyConst { .. } => false,
+            ConstantKind::Extern { def_id } => def_id.as_local().map_or(false, |def_id| {
+                is_literal_expr(tcx, tcx.hir().local_def_id_to_hir_id(def_id))
+            }),
+            ConstantKind::Local { body, .. } | ConstantKind::Anonymous { body } => {
+                is_literal_expr(tcx, body.hir_id)
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

@@ -1,5 +1,6 @@
-use crate::utils::visitors::LocalUsedVisitor;
-use crate::utils::{path_to_local, span_lint_and_then, SpanlessEq};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::visitors::LocalUsedVisitor;
+use clippy_utils::{path_to_local, SpanlessEq};
 use if_chain::if_chain;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::{Arm, Expr, ExprKind, Guard, HirId, Pat, PatKind, QPath, StmtKind, UnOp};

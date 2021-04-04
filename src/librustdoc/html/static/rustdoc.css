@@ -48,14 +48,21 @@
 	font-weight: 400;
 	/* Avoid using locally installed font because bad versions are in circulation:
 	 * see https://github.com/rust-lang/rust/issues/24355 */
-	src: url("SourceCodePro-Regular.woff") format('woff');
+	src: url("SourceCodePro-Regular.ttf.woff") format('woff');
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Source Code Pro';
+	font-style: italic;
+	font-weight: 400;
+	src: url("SourceCodePro-It.ttf.woff") format('woff');
 	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Code Pro';
 	font-style: normal;
 	font-weight: 600;
-	src: url("SourceCodePro-Semibold.woff") format('woff');
+	src: url("SourceCodePro-Semibold.ttf.woff") format('woff');
 	font-display: swap;
 }
 
@@ -166,12 +173,9 @@ code, pre, a.test-arrow {
 	border-radius: 3px;
 	padding: 0 0.1em;
 }
-.docblock pre code, .docblock-short pre code, .docblock code.spotlight {
+.docblock pre code, .docblock-short pre code {
 	padding: 0;
 	padding-right: 1ex;
-}
-.docblock code.spotlight :last-child {
-	padding-bottom: 0.6em;
 }
 pre {
 	padding: 14px;
@@ -417,7 +421,9 @@ nav.sub {
 	text-overflow: ellipsis;
 	margin: 0;
 }
-.docblock-short code {
+/* Wrap non-pre code blocks (`text`) but not (```text```). */
+.docblock > :not(pre) > code,
+.docblock-short > :not(pre) > code {
 	white-space: pre-wrap;
 }
 
@@ -849,6 +855,15 @@ body.blur > :not(#help) {
 
 .stab .emoji {
 	font-size: 1.5em;
+}
+
+/* Black one-pixel outline around emoji shapes */
+.emoji {
+	text-shadow:
+		1px 0 0 black,
+		-1px 0 0 black,
+		0  1px 0 black,
+		0 -1px 0 black;
 }
 
 .module-item .stab {
@@ -1300,20 +1315,29 @@ h4 > .notable-traits {
 	outline: none;
 }
 
-.help-button {
-	right: 30px;
-	font-family: "Fira Sans", Arial, sans-serif;
-	text-align: center;
-	font-size: 17px;
-}
-
-#theme-picker, #settings-menu, .help-button {
+#theme-picker, #settings-menu, .help-button, #copy-path {
 	padding: 4px;
 	width: 27px;
 	height: 29px;
 	border: 1px solid;
 	border-radius: 3px;
 	cursor: pointer;
+}
+
+.help-button {
+	right: 30px;
+	font-family: "Fira Sans", Arial, sans-serif;
+	text-align: center;
+	font-size: 17px;
+	padding-top: 2px;
+}
+
+#copy-path {
+	height: 30px;
+	font-size: 18px;
+	margin-left: 10px;
+	padding: 0 6px;
+	width: 28px;
 }
 
 #theme-choices {
@@ -1346,7 +1370,7 @@ h4 > .notable-traits {
 	to prevent an overlay between the "collapse toggle" and the information tooltip.
 	However, it's not needed with smaller screen width because the doc/code block is always put
 	"one line" below. */
-	.information:first-child > .tooltip {
+	.docblock > .information:first-child > .tooltip {
 		margin-top: 16px;
 	}
 }

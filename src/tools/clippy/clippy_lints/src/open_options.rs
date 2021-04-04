@@ -1,4 +1,6 @@
-use crate::utils::{match_type, paths, span_lint};
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::paths;
+use clippy_utils::ty::match_type;
 use rustc_ast::ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};

@@ -430,6 +430,8 @@ impl ScopeTree {
 
     /// Returns `true` if `subscope` is equal to or is lexically nested inside `superscope`, and
     /// `false` otherwise.
+    ///
+    /// Used by clippy.
     pub fn is_subscope_of(&self, subscope: Scope, superscope: Scope) -> bool {
         let mut s = subscope;
         debug!("is_subscope_of({:?}, {:?})", subscope, superscope);

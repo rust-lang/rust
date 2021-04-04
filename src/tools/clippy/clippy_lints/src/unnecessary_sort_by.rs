@@ -1,5 +1,6 @@
-use crate::utils;
-use crate::utils::sugg::Sugg;
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::sugg::Sugg;
+use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Mutability, Param, Pat, PatKind, Path, PathSegment, QPath};
@@ -8,6 +9,7 @@ use rustc_middle::ty::{self, subst::GenericArgKind};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
 use rustc_span::symbol::Ident;
+use std::iter;
 
 declare_clippy_lint! {
     /// **What it does:**
@@ -78,17 +80,15 @@ fn mirrored_exprs(
             mirrored_exprs(cx, left_expr, a_ident, right_expr, b_ident)
         },
         // Two arrays with mirrored contents
-        (ExprKind::Array(left_exprs), ExprKind::Array(right_exprs)) => left_exprs
-            .iter()
-            .zip(right_exprs.iter())
-            .all(|(left, right)| mirrored_exprs(cx, left, a_ident, right, b_ident)),
+        (ExprKind::Array(left_exprs), ExprKind::Array(right_exprs)) => {
+            iter::zip(*left_exprs, *right_exprs)
+                .all(|(left, right)| mirrored_exprs(cx, left, a_ident, right, b_ident))
+        }
         // The two exprs are function calls.
         // Check to see that the function itself and its arguments are mirrored
         (ExprKind::Call(left_expr, left_args), ExprKind::Call(right_expr, right_args)) => {
             mirrored_exprs(cx, left_expr, a_ident, right_expr, b_ident)
-                && left_args
-                    .iter()
-                    .zip(right_args.iter())
+                && iter::zip(*left_args, *right_args)
                     .all(|(left, right)| mirrored_exprs(cx, left, a_ident, right, b_ident))
         },
         // The two exprs are method calls.
@@ -99,16 +99,14 @@ fn mirrored_exprs(
             ExprKind::MethodCall(right_segment, _, right_args, _),
         ) => {
             left_segment.ident == right_segment.ident
-                && left_args
-                    .iter()
-                    .zip(right_args.iter())
+                && iter::zip(*left_args, *right_args)
                     .all(|(left, right)| mirrored_exprs(cx, left, a_ident, right, b_ident))
-        },
+        }
         // Two tuples with mirrored contents
-        (ExprKind::Tup(left_exprs), ExprKind::Tup(right_exprs)) => left_exprs
-            .iter()
-            .zip(right_exprs.iter())
-            .all(|(left, right)| mirrored_exprs(cx, left, a_ident, right, b_ident)),
+        (ExprKind::Tup(left_exprs), ExprKind::Tup(right_exprs)) => {
+            iter::zip(*left_exprs, *right_exprs)
+                .all(|(left, right)| mirrored_exprs(cx, left, a_ident, right, b_ident))
+        }
         // Two binary ops, which are the same operation and which have mirrored arguments
         (ExprKind::Binary(left_op, left_left, left_right), ExprKind::Binary(right_op, right_left, right_right)) => {
             left_op.node == right_op.node
@@ -145,9 +143,7 @@ fn mirrored_exprs(
                 },
             )),
         ) => {
-            (left_segments
-                .iter()
-                .zip(right_segments.iter())
+            (iter::zip(*left_segments, *right_segments)
                 .all(|(left, right)| left.ident == right.ident)
                 && left_segments
                     .iter()
@@ -176,7 +172,7 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<LintTrigger> {
         if let name = name_ident.ident.name.to_ident_string();
         if name == "sort_by" || name == "sort_unstable_by";
         if let [vec, Expr { kind: ExprKind::Closure(_, _, closure_body_id, _, _), .. }] = args;
-        if utils::is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(vec), sym::vec_type);
+        if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(vec), sym::vec_type);
         if let closure_body = cx.tcx.hir().body(*closure_body_id);
         if let &[
             Param { pat: Pat { kind: PatKind::Binding(_, _, left_ident, _), .. }, ..},
@@ -232,7 +228,7 @@ fn expr_borrows(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 impl LateLintPass<'_> for UnnecessarySortBy {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         match detect_lint(cx, expr) {
-            Some(LintTrigger::SortByKey(trigger)) => utils::span_lint_and_sugg(
+            Some(LintTrigger::SortByKey(trigger)) => span_lint_and_sugg(
                 cx,
                 UNNECESSARY_SORT_BY,
                 expr.span,
@@ -255,7 +251,7 @@ impl LateLintPass<'_> for UnnecessarySortBy {
                     Applicability::MachineApplicable
                 },
             ),
-            Some(LintTrigger::Sort(trigger)) => utils::span_lint_and_sugg(
+            Some(LintTrigger::Sort(trigger)) => span_lint_and_sugg(
                 cx,
                 UNNECESSARY_SORT_BY,
                 expr.span,

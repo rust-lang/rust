@@ -459,7 +459,7 @@ impl<'hir> Map<'hir> {
         let hir_id = self.local_def_id_to_hir_id(module);
         match self.get_entry(hir_id).node {
             Node::Item(&Item { span, kind: ItemKind::Mod(ref m), .. }) => (m, span, hir_id),
-            Node::Crate(item) => (&item.module, item.span, hir_id),
+            Node::Crate(item) => (&item, item.inner, hir_id),
             node => panic!("not a module: {:?}", node),
         }
     }
@@ -548,24 +548,6 @@ impl<'hir> Map<'hir> {
     /// until the crate root is reached. Prefer this over your own loop using `get_parent_node`.
     pub fn parent_iter(&self, current_id: HirId) -> ParentHirIterator<'_, 'hir> {
         ParentHirIterator { current_id, map: self }
-    }
-
-    /// Checks if the node is an argument. An argument is a local variable whose
-    /// immediate parent is an item or a closure.
-    pub fn is_argument(&self, id: HirId) -> bool {
-        match self.find(id) {
-            Some(Node::Binding(_)) => (),
-            _ => return false,
-        }
-        matches!(
-            self.find(self.get_parent_node(id)),
-            Some(
-                Node::Item(_)
-                    | Node::TraitItem(_)
-                    | Node::ImplItem(_)
-                    | Node::Expr(Expr { kind: ExprKind::Closure(..), .. }),
-            )
-        )
     }
 
     /// Checks if the node is left-hand side of an assignment.
@@ -779,17 +761,6 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn expect_variant_data(&self, id: HirId) -> &'hir VariantData<'hir> {
-        match self.find(id) {
-            Some(
-                Node::Ctor(vd)
-                | Node::Item(Item { kind: ItemKind::Struct(vd, _) | ItemKind::Union(vd, _), .. }),
-            ) => vd,
-            Some(Node::Variant(variant)) => &variant.data,
-            _ => bug!("expected struct or variant, found {}", self.node_to_string(id)),
-        }
-    }
-
     pub fn expect_variant(&self, id: HirId) -> &'hir Variant<'hir> {
         match self.find(id) {
             Some(Node::Variant(variant)) => variant,
@@ -897,7 +868,7 @@ impl<'hir> Map<'hir> {
             Node::Visibility(v) => bug!("unexpected Visibility {:?}", v),
             Node::Local(local) => local.span,
             Node::MacroDef(macro_def) => macro_def.span,
-            Node::Crate(item) => item.span,
+            Node::Crate(item) => item.inner,
         };
         Some(span)
     }

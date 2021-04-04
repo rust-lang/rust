@@ -41,11 +41,11 @@ impl DocFolder for SourceCollector<'_, '_> {
         // then we need to render it out to the filesystem.
         if self.scx.include_sources
             // skip all synthetic "files"
-            && item.source.filename(self.sess()).is_real()
+            && item.span.filename(self.sess()).is_real()
             // skip non-local files
-            && item.source.cnum(self.sess()) == LOCAL_CRATE
+            && item.span.cnum(self.sess()) == LOCAL_CRATE
         {
-            let filename = item.source.filename(self.sess());
+            let filename = item.span.filename(self.sess());
             // If it turns out that we couldn't read this file, then we probably
             // can't read any of the files (generating html output from json or
             // something like that), so just don't include sources for the
@@ -54,12 +54,10 @@ impl DocFolder for SourceCollector<'_, '_> {
             self.scx.include_sources = match self.emit_source(&filename) {
                 Ok(()) => true,
                 Err(e) => {
-                    println!(
-                        "warning: source code was requested to be rendered, \
-                         but processing `{}` had an error: {}",
-                        filename, e
+                    self.scx.tcx.sess.span_err(
+                        item.span.inner(),
+                        &format!("failed to render source code for `{}`: {}", filename, e),
                     );
-                    println!("         skipping rendering of source code");
                     false
                 }
             };

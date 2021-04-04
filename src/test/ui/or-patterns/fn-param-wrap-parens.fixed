@@ -2,7 +2,6 @@
 
 // run-rustfix
 
-#![feature(or_patterns)]
 #![allow(warnings)]
 
 fn main() {}

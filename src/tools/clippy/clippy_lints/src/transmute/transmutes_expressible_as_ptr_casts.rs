@@ -1,6 +1,7 @@
 use super::utils::can_be_expressed_as_pointer_cast;
 use super::TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS;
-use crate::utils::{span_lint_and_then, sugg};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::sugg;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;

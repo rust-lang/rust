@@ -4,7 +4,7 @@ use std::process::ExitStatus;
 
 #[cfg(not(unix))]
 pub fn get_exit_code(status: ExitStatus) -> Result<i32, String> {
-    status.code().ok_or("received no exit code from child process".into())
+    status.code().ok_or_else(|| "received no exit code from child process".into())
 }
 
 #[cfg(unix)]

@@ -42,6 +42,7 @@ use rustc_trait_selection::traits::{
 };
 
 use std::collections::hash_map::Entry;
+use std::iter;
 use std::slice;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -904,12 +905,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Resolves an associated value path into a base type and associated constant, or method
     /// resolution. The newly resolved definition is written into `type_dependent_defs`.
-    pub fn resolve_ty_and_res_ufcs<'b>(
+    pub fn resolve_ty_and_res_ufcs(
         &self,
-        qpath: &'b QPath<'b>,
+        qpath: &'tcx QPath<'tcx>,
         hir_id: hir::HirId,
         span: Span,
-    ) -> (Res, Option<Ty<'tcx>>, &'b [hir::PathSegment<'b>]) {
+    ) -> (Res, Option<Ty<'tcx>>, &'tcx [hir::PathSegment<'tcx>]) {
         debug!("resolve_ty_and_res_ufcs: qpath={:?} hir_id={:?} span={:?}", qpath, hir_id, span);
         let (ty, qself, item_segment) = match *qpath {
             QPath::Resolved(ref opt_qself, ref path) => {
@@ -1146,7 +1147,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (
                         hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds: last_bounds, .. }),
                         hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds: exp_bounds, .. }),
-                    ) if last_bounds.iter().zip(exp_bounds.iter()).all(|(left, right)| {
+                    ) if iter::zip(*last_bounds, *exp_bounds).all(|(left, right)| {
                         match (left, right) {
                             (
                                 hir::GenericBound::Trait(tl, ml),
@@ -1405,7 +1406,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
                         self.fcx.to_ty(ty).into()
                     }
-                    (GenericParamDefKind::Const, GenericArg::Const(ct)) => {
+                    (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
                         self.fcx.const_arg_to_const(&ct.value, param.def_id).into()
                     }
                     _ => unreachable!(),
@@ -1443,10 +1444,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.fcx.var_for_def(self.span, param)
                         }
                     }
-                    GenericParamDefKind::Const => {
-                        // FIXME(const_generics_defaults)
-                        // No const parameters were provided, we have to infer them.
-                        self.fcx.var_for_def(self.span, param)
+                    GenericParamDefKind::Const { has_default, .. } => {
+                        if !infer_args && has_default {
+                            tcx.const_param_default(param.def_id).into()
+                        } else {
+                            self.fcx.var_for_def(self.span, param)
+                        }
                     }
                 }
             }
@@ -1459,7 +1462,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &[][..],
                 has_self,
                 self_ty,
-                arg_count,
+                &arg_count,
                 &mut CreateCtorSubstsContext {
                     fcx: self,
                     span,

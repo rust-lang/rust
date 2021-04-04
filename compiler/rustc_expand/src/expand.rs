@@ -22,7 +22,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, PResult};
 use rustc_feature::Features;
-use rustc_parse::parser::{AttemptLocalParseRecovery, ForceCollect, GateOr, Parser, RecoverComma};
+use rustc_parse::parser::{AttemptLocalParseRecovery, ForceCollect, Parser, RecoverComma};
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::UNUSED_DOC_COMMENTS;
 use rustc_session::lint::BuiltinLintDiagnostics;
@@ -206,30 +206,36 @@ ast_fragments! {
     }
 }
 
+pub enum SupportsMacroExpansion {
+    No,
+    Yes { supports_inner_attrs: bool },
+}
+
 impl AstFragmentKind {
     crate fn dummy(self, span: Span) -> AstFragment {
         self.make_from(DummyResult::any(span)).expect("couldn't create a dummy AST fragment")
     }
 
-    /// Fragment supports macro expansion and not just inert attributes, `cfg` and `cfg_attr`.
-    pub fn supports_macro_expansion(self) -> bool {
+    pub fn supports_macro_expansion(self) -> SupportsMacroExpansion {
         match self {
             AstFragmentKind::OptExpr
             | AstFragmentKind::Expr
-            | AstFragmentKind::Pat
-            | AstFragmentKind::Ty
             | AstFragmentKind::Stmts
-            | AstFragmentKind::Items
+            | AstFragmentKind::Ty
+            | AstFragmentKind::Pat => SupportsMacroExpansion::Yes { supports_inner_attrs: false },
+            AstFragmentKind::Items
             | AstFragmentKind::TraitItems
             | AstFragmentKind::ImplItems
-            | AstFragmentKind::ForeignItems => true,
+            | AstFragmentKind::ForeignItems => {
+                SupportsMacroExpansion::Yes { supports_inner_attrs: true }
+            }
             AstFragmentKind::Arms
             | AstFragmentKind::Fields
             | AstFragmentKind::FieldPats
             | AstFragmentKind::GenericParams
             | AstFragmentKind::Params
             | AstFragmentKind::StructFields
-            | AstFragmentKind::Variants => false,
+            | AstFragmentKind::Variants => SupportsMacroExpansion::No,
         }
     }
 
@@ -917,7 +923,7 @@ pub fn parse_ast_fragment<'a>(
         }
         AstFragmentKind::Ty => AstFragment::Ty(this.parse_ty()?),
         AstFragmentKind::Pat => {
-            AstFragment::Pat(this.parse_pat_allow_top_alt(None, GateOr::Yes, RecoverComma::No)?)
+            AstFragment::Pat(this.parse_pat_allow_top_alt(None, RecoverComma::No)?)
         }
         AstFragmentKind::Arms
         | AstFragmentKind::Fields

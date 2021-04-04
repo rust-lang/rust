@@ -58,7 +58,6 @@
 +         _6 = _4;                         // scope 3 at $DIR/cycle.rs:14:10: 14:11
           StorageDead(_6);                 // scope 3 at $DIR/cycle.rs:14:11: 14:12
           StorageDead(_5);                 // scope 3 at $DIR/cycle.rs:14:12: 14:13
-          _0 = const ();                   // scope 0 at $DIR/cycle.rs:8:11: 15:2
 -         StorageDead(_3);                 // scope 2 at $DIR/cycle.rs:15:1: 15:2
 -         StorageDead(_2);                 // scope 1 at $DIR/cycle.rs:15:1: 15:2
 -         StorageDead(_1);                 // scope 0 at $DIR/cycle.rs:15:1: 15:2

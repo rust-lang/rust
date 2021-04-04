@@ -31,8 +31,9 @@
 //! in the HIR, especially for multiple identifiers.
 
 #![feature(crate_visibility_modifier)]
-#![feature(or_patterns)]
+#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(box_patterns)]
+#![feature(iter_zip)]
 #![recursion_limit = "256"]
 
 use rustc_ast::node_id::NodeMap;
@@ -520,10 +521,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         }
                         self.visit_fn_ret_ty(&f.decl.output)
                     }
-                    TyKind::ImplTrait(def_node_id, _) => {
-                        self.lctx.allocate_hir_id_counter(def_node_id);
-                        visit::walk_ty(self, t);
-                    }
                     _ => visit::walk_ty(self, t),
                 }
             }
@@ -572,7 +569,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
 
         hir::Crate {
-            item: hir::CrateItem { module, span: c.span },
+            item: module,
             exported_macros: self.arena.alloc_from_iter(self.exported_macros),
             non_exported_macro_attrs: self.arena.alloc_from_iter(self.non_exported_macro_attrs),
             items: self.items,
@@ -1431,14 +1428,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         // Add a definition for the in-band `Param`.
                         let def_id = self.resolver.local_def_id(def_node_id);
 
-                        self.allocate_hir_id_counter(def_node_id);
-
-                        let hir_bounds = self.with_hir_id_owner(def_node_id, |this| {
-                            this.lower_param_bounds(
-                                bounds,
-                                ImplTraitContext::Universal(in_band_ty_params, parent_def_id),
-                            )
-                        });
+                        let hir_bounds = self.lower_param_bounds(
+                            bounds,
+                            ImplTraitContext::Universal(in_band_ty_params, parent_def_id),
+                        );
                         // Set the name to `impl Bound1 + Bound2`.
                         let ident = Ident::from_str_and_span(&pprust::ty_to_string(t), span);
                         in_band_ty_params.push(hir::GenericParam {
@@ -2290,7 +2283,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         this.lower_ty(&ty, ImplTraitContext::disallowed())
                     });
                 let default = default.as_ref().map(|def| self.lower_anon_const(def));
-
                 (hir::ParamName::Plain(param.ident), hir::GenericParamKind::Const { ty, default })
             }
         };

@@ -3,8 +3,6 @@
 
 // run-pass
 
-#![feature(or_patterns)]
-
 #[derive(Debug)]
 enum Test {
     Foo,

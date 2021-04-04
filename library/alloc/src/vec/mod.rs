@@ -58,7 +58,7 @@ use core::convert::TryFrom;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::intrinsics::{arith_offset, assume};
-use core::iter::FromIterator;
+use core::iter::{self, FromIterator};
 use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop, MaybeUninit};
 use core::ops::{self, Index, IndexMut, Range, RangeBounds};
@@ -267,12 +267,12 @@ mod spec_extend;
 /// unspecified, and you should use the appropriate methods to modify these.
 /// The pointer will never be null, so this type is null-pointer-optimized.
 ///
-/// However, the pointer may not actually point to allocated memory. In particular,
+/// However, the pointer might not actually point to allocated memory. In particular,
 /// if you construct a `Vec` with capacity 0 via [`Vec::new`], [`vec![]`][`vec!`],
 /// [`Vec::with_capacity(0)`][`Vec::with_capacity`], or by calling [`shrink_to_fit`]
 /// on an empty Vec, it will not allocate memory. Similarly, if you store zero-sized
 /// types inside a `Vec`, it will not allocate space for them. *Note that in this case
-/// the `Vec` may not report a [`capacity`] of 0*. `Vec` will allocate if and only
+/// the `Vec` might not report a [`capacity`] of 0*. `Vec` will allocate if and only
 /// if [`mem::size_of::<T>`]`() * capacity() > 0`. In general, `Vec`'s allocation
 /// details are very subtle &mdash; if you intend to allocate memory using a `Vec`
 /// and use it for something else (either to pass to unsafe code, or to build your
@@ -347,7 +347,7 @@ mod spec_extend;
 /// whatever is most efficient or otherwise easy to implement. Do not rely on
 /// removed data to be erased for security purposes. Even if you drop a `Vec`, its
 /// buffer may simply be reused by another `Vec`. Even if you zero a `Vec`'s memory
-/// first, that may not actually happen because the optimizer does not consider
+/// first, that might not actually happen because the optimizer does not consider
 /// this a side-effect that must be preserved. There is one case which we will
 /// not break, however: using `unsafe` code to write to the excess capacity,
 /// and then increasing the length to match, is always valid.
@@ -409,6 +409,10 @@ impl<T> Vec<T> {
     /// *[Capacity and reallocation]*.
     ///
     /// [Capacity and reallocation]: #capacity-and-reallocation
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity exceeds `isize::MAX` bytes.
     ///
     /// # Examples
     ///
@@ -540,6 +544,10 @@ impl<T, A: Allocator> Vec<T, A> {
     /// *[Capacity and reallocation]*.
     ///
     /// [Capacity and reallocation]: #capacity-and-reallocation
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity exceeds `isize::MAX` bytes.
     ///
     /// # Examples
     ///
@@ -2268,11 +2276,8 @@ impl<T: Clone, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
         // - caller guaratees that src is a valid index
         let to_clone = unsafe { this.get_unchecked(src) };
 
-        to_clone
-            .iter()
-            .cloned()
-            .zip(spare.iter_mut())
-            .map(|(src, dst)| dst.write(src))
+        iter::zip(to_clone, spare)
+            .map(|(src, dst)| dst.write(src.clone()))
             // Note:
             // - Element was just initialized with `MaybeUninit::write`, so it's ok to increace len
             // - len is increased after each element to prevent leaks (see issue #82533)
@@ -2712,6 +2717,13 @@ impl<T, A: Allocator> AsMut<[T]> for Vec<T, A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone> From<&[T]> for Vec<T> {
+    /// Allocate a `Vec<T>` and fill it by cloning `s`'s items.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(Vec::from(&[1, 2, 3][..]), vec![1, 2, 3]);
+    /// ```
     #[cfg(not(test))]
     fn from(s: &[T]) -> Vec<T> {
         s.to_vec()
@@ -2724,6 +2736,13 @@ impl<T: Clone> From<&[T]> for Vec<T> {
 
 #[stable(feature = "vec_from_mut", since = "1.19.0")]
 impl<T: Clone> From<&mut [T]> for Vec<T> {
+    /// Allocate a `Vec<T>` and fill it by cloning `s`'s items.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(Vec::from(&mut [1, 2, 3][..]), vec![1, 2, 3]);
+    /// ```
     #[cfg(not(test))]
     fn from(s: &mut [T]) -> Vec<T> {
         s.to_vec()
@@ -2740,6 +2759,13 @@ impl<T, const N: usize> From<[T; N]> for Vec<T> {
     fn from(s: [T; N]) -> Vec<T> {
         <[T]>::into_vec(box s)
     }
+    /// Allocate a `Vec<T>` and move `s`'s items into it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(Vec::from([1, 2, 3]), vec![1, 2, 3]);
+    /// ```
     #[cfg(test)]
     fn from(s: [T; N]) -> Vec<T> {
         crate::slice::into_vec(box s)
@@ -2751,6 +2777,20 @@ impl<'a, T> From<Cow<'a, [T]>> for Vec<T>
 where
     [T]: ToOwned<Owned = Vec<T>>,
 {
+    /// Convert a clone-on-write slice into a vector.
+    ///
+    /// If `s` already owns a `Vec<T>`, it will be returned directly.
+    /// If `s` is borrowing a slice, a new `Vec<T>` will be allocated and
+    /// filled by cloning `s`'s items into it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use std::borrow::Cow;
+    /// let o: Cow<[i32]> = Cow::Owned(vec![1, 2, 3]);
+    /// let b: Cow<[i32]> = Cow::Borrowed(&[1, 2, 3]);
+    /// assert_eq!(Vec::from(o), Vec::from(b));
+    /// ```
     fn from(s: Cow<'a, [T]>) -> Vec<T> {
         s.into_owned()
     }
@@ -2760,6 +2800,15 @@ where
 #[cfg(not(test))]
 #[stable(feature = "vec_from_box", since = "1.18.0")]
 impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A> {
+    /// Convert a boxed slice into a vector by transferring ownership of
+    /// the existing heap allocation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let b: Box<[i32]> = vec![1, 2, 3].into_boxed_slice();
+    /// assert_eq!(Vec::from(b), vec![1, 2, 3]);
+    /// ```
     fn from(s: Box<[T], A>) -> Self {
         let len = s.len();
         Self { buf: RawVec::from_box(s), len }
@@ -2770,6 +2819,16 @@ impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A> {
 #[cfg(not(test))]
 #[stable(feature = "box_from_vec", since = "1.20.0")]
 impl<T, A: Allocator> From<Vec<T, A>> for Box<[T], A> {
+    /// Convert a vector into a boxed slice.
+    ///
+    /// If `v` has excess capacity, its items will be moved into a
+    /// newly-allocated buffer with exactly the right capacity.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(Box::from(vec![1, 2, 3]), vec![1, 2, 3].into_boxed_slice());
+    /// ```
     fn from(v: Vec<T, A>) -> Self {
         v.into_boxed_slice()
     }
@@ -2777,6 +2836,13 @@ impl<T, A: Allocator> From<Vec<T, A>> for Box<[T], A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<&str> for Vec<u8> {
+    /// Allocate a `Vec<u8>` and fill it with a UTF-8 string.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(Vec::from("123"), vec![b'1', b'2', b'3']);
+    /// ```
     fn from(s: &str) -> Vec<u8> {
         From::from(s.as_bytes())
     }

@@ -441,10 +441,13 @@ impl<T: ?Sized + Default> Default for Mutex<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + fmt::Debug> fmt::Debug for Mutex<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut d = f.debug_struct("Mutex");
         match self.try_lock() {
-            Ok(guard) => f.debug_struct("Mutex").field("data", &&*guard).finish(),
+            Ok(guard) => {
+                d.field("data", &&*guard);
+            }
             Err(TryLockError::Poisoned(err)) => {
-                f.debug_struct("Mutex").field("data", &&**err.get_ref()).finish()
+                d.field("data", &&**err.get_ref());
             }
             Err(TryLockError::WouldBlock) => {
                 struct LockedPlaceholder;
@@ -453,10 +456,11 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Mutex<T> {
                         f.write_str("<locked>")
                     }
                 }
-
-                f.debug_struct("Mutex").field("data", &LockedPlaceholder).finish()
+                d.field("data", &LockedPlaceholder);
             }
         }
+        d.field("poisoned", &self.poison.get());
+        d.finish_non_exhaustive()
     }
 }
 

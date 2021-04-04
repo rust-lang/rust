@@ -333,7 +333,7 @@ where
         let ret = f(g.buf);
         if str::from_utf8(&g.buf[g.len..]).is_err() {
             ret.and_then(|_| {
-                Err(Error::new(ErrorKind::InvalidData, "stream did not contain valid UTF-8"))
+                Err(Error::new_const(ErrorKind::InvalidData, &"stream did not contain valid UTF-8"))
             })
         } else {
             g.len = g.buf.len();
@@ -429,7 +429,7 @@ pub(crate) fn default_read_exact<R: Read + ?Sized>(this: &mut R, mut buf: &mut [
         }
     }
     if !buf.is_empty() {
-        Err(Error::new(ErrorKind::UnexpectedEof, "failed to fill whole buffer"))
+        Err(Error::new_const(ErrorKind::UnexpectedEof, &"failed to fill whole buffer"))
     } else {
         Ok(())
     }
@@ -505,7 +505,8 @@ pub(crate) fn default_read_exact<R: Read + ?Sized>(this: &mut R, mut buf: &mut [
 /// [`std::io`]: self
 /// [`File`]: crate::fs::File
 #[stable(feature = "rust1", since = "1.0.0")]
-#[doc(spotlight)]
+#[cfg_attr(bootstrap, doc(spotlight))]
+#[cfg_attr(not(bootstrap), doc(notable_trait))]
 pub trait Read {
     /// Pull some bytes from this source into the specified buffer, returning
     /// how many bytes were read.
@@ -514,8 +515,8 @@ pub trait Read {
     /// waiting for data, but if an object needs to block for a read and cannot,
     /// it will typically signal this via an [`Err`] return value.
     ///
-    /// If the return value of this method is [`Ok(n)`], then it must be
-    /// guaranteed that `0 <= n <= buf.len()`. A nonzero `n` value indicates
+    /// If the return value of this method is [`Ok(n)`], then implementations must
+    /// guarantee that `0 <= n <= buf.len()`. A nonzero `n` value indicates
     /// that the buffer `buf` has been filled in with `n` bytes of data from this
     /// source. If `n` is `0`, then it can indicate one of two scenarios:
     ///
@@ -528,6 +529,11 @@ pub trait Read {
     /// even when the reader is not at the end of the stream yet.
     /// This may happen for example because fewer bytes are actually available right now
     /// (e. g. being close to end-of-file) or because read() was interrupted by a signal.
+    ///
+    /// As this trait is safe to implement, callers cannot rely on `n <= buf.len()` for safety.
+    /// Extra care needs to be taken when `unsafe` functions are used to access the read bytes.
+    /// Callers have to ensure that no unchecked out-of-bounds accesses are possible even if
+    /// `n > buf.len()`.
     ///
     /// No guarantees are provided about the contents of `buf` when this
     /// function is called, implementations cannot rely on any property of the
@@ -1291,7 +1297,8 @@ impl Initializer {
 ///
 /// [`write_all`]: Write::write_all
 #[stable(feature = "rust1", since = "1.0.0")]
-#[doc(spotlight)]
+#[cfg_attr(bootstrap, doc(spotlight))]
+#[cfg_attr(not(bootstrap), doc(notable_trait))]
 pub trait Write {
     /// Write a buffer into this writer, returning how many bytes were written.
     ///
@@ -1432,7 +1439,10 @@ pub trait Write {
         while !buf.is_empty() {
             match self.write(buf) {
                 Ok(0) => {
-                    return Err(Error::new(ErrorKind::WriteZero, "failed to write whole buffer"));
+                    return Err(Error::new_const(
+                        ErrorKind::WriteZero,
+                        &"failed to write whole buffer",
+                    ));
                 }
                 Ok(n) => buf = &buf[n..],
                 Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
@@ -1497,7 +1507,10 @@ pub trait Write {
         while !bufs.is_empty() {
             match self.write_vectored(bufs) {
                 Ok(0) => {
-                    return Err(Error::new(ErrorKind::WriteZero, "failed to write whole buffer"));
+                    return Err(Error::new_const(
+                        ErrorKind::WriteZero,
+                        &"failed to write whole buffer",
+                    ));
                 }
                 Ok(n) => bufs = IoSlice::advance(bufs, n),
                 Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
@@ -1571,7 +1584,7 @@ pub trait Write {
                 if output.error.is_err() {
                     output.error
                 } else {
-                    Err(Error::new(ErrorKind::Other, "formatter error"))
+                    Err(Error::new_const(ErrorKind::Other, &"formatter error"))
                 }
             }
         }
@@ -2103,6 +2116,7 @@ pub trait BufRead: Read {
 ///
 /// [`chain`]: Read::chain
 #[stable(feature = "rust1", since = "1.0.0")]
+#[derive(Debug)]
 pub struct Chain<T, U> {
     first: T,
     second: U,
@@ -2181,13 +2195,6 @@ impl<T, U> Chain<T, U> {
     #[stable(feature = "more_io_inner_methods", since = "1.20.0")]
     pub fn get_mut(&mut self) -> (&mut T, &mut U) {
         (&mut self.first, &mut self.second)
-    }
-}
-
-#[stable(feature = "std_debug", since = "1.16.0")]
-impl<T: fmt::Debug, U: fmt::Debug> fmt::Debug for Chain<T, U> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Chain").field("t", &self.first).field("u", &self.second).finish()
     }
 }
 

@@ -55,6 +55,14 @@
 //! has size 0, i.e., even if memory is not actually touched. Consider using
 //! [`NonNull::dangling`] in such cases.
 //!
+//! ## Allocated object
+//!
+//! For several operations, such as [`offset`] or field projections (`expr.field`), the notion of an
+//! "allocated object" becomes relevant. An allocated object is a contiguous region of memory.
+//! Common examples of allocated objects include stack-allocated variables (each variable is a
+//! separate allocated object), heap allocations (each allocation created by the global allocator is
+//! a separate allocated object), and `static` variables.
+//!
 //! [aliasing]: ../../nomicon/aliasing.html
 //! [book]: ../../book/ch19-01-unsafe-rust.html#dereferencing-a-raw-pointer
 //! [ub]: ../../reference/behavior-considered-undefined.html
@@ -205,7 +213,7 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 #[inline(always)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
-#[rustc_const_stable(feature = "const_ptr_null", since = "1.32.0")]
+#[rustc_const_stable(feature = "const_ptr_null", since = "1.24.0")]
 pub const fn null<T>() -> *const T {
     0 as *const T
 }
@@ -223,7 +231,7 @@ pub const fn null<T>() -> *const T {
 #[inline(always)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
-#[rustc_const_stable(feature = "const_ptr_null", since = "1.32.0")]
+#[rustc_const_stable(feature = "const_ptr_null", since = "1.24.0")]
 pub const fn null_mut<T>() -> *mut T {
     0 as *mut T
 }
@@ -767,6 +775,7 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 ///     unaligned: 0x01020304,
 /// };
 ///
+/// #[allow(unaligned_references)]
 /// let v = unsafe {
 ///     // Here we attempt to take the address of a 32-bit integer which is not aligned.
 ///     let unaligned =
@@ -960,6 +969,7 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 /// let v = 0x01020304;
 /// let mut packed: Packed = unsafe { std::mem::zeroed() };
 ///
+/// #[allow(unaligned_references)]
 /// let v = unsafe {
 ///     // Here we attempt to take the address of a 32-bit integer which is not aligned.
 ///     let unaligned =

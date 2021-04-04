@@ -9,7 +9,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_hir::Mutability;
 use rustc_metadata::creader::LoadedMacro;
-use rustc_middle::ty;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir::const_eval::is_min_const_fn;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -459,7 +459,7 @@ fn build_module(
                 items.push(clean::Item {
                     name: None,
                     attrs: box clean::Attributes::default(),
-                    source: clean::Span::dummy(),
+                    span: clean::Span::dummy(),
                     def_id: DefId::local(CRATE_DEF_INDEX),
                     visibility: clean::Public,
                     kind: box clean::ImportItem(clean::Import::new_simple(
@@ -490,23 +490,19 @@ fn build_module(
     clean::Module { items, is_crate: false }
 }
 
-crate fn print_inlined_const(cx: &DocContext<'_>, did: DefId) -> String {
+crate fn print_inlined_const(tcx: TyCtxt<'_>, did: DefId) -> String {
     if let Some(did) = did.as_local() {
-        let hir_id = cx.tcx.hir().local_def_id_to_hir_id(did);
-        rustc_hir_pretty::id_to_string(&cx.tcx.hir(), hir_id)
+        let hir_id = tcx.hir().local_def_id_to_hir_id(did);
+        rustc_hir_pretty::id_to_string(&tcx.hir(), hir_id)
     } else {
-        cx.tcx.rendered_const(did)
+        tcx.rendered_const(did)
     }
 }
 
-fn build_const(cx: &mut DocContext<'_>, did: DefId) -> clean::Constant {
+fn build_const(cx: &mut DocContext<'_>, def_id: DefId) -> clean::Constant {
     clean::Constant {
-        type_: cx.tcx.type_of(did).clean(cx),
-        expr: print_inlined_const(cx, did),
-        value: clean::utils::print_evaluated_const(cx, did),
-        is_literal: did.as_local().map_or(false, |did| {
-            clean::utils::is_literal_expr(cx, cx.tcx.hir().local_def_id_to_hir_id(did))
-        }),
+        type_: cx.tcx.type_of(def_id).clean(cx),
+        kind: clean::ConstantKind::Extern { def_id },
     }
 }
 
@@ -628,7 +624,7 @@ crate fn record_extern_trait(cx: &mut DocContext<'_>, did: DefId) {
 
     let trait_ = clean::TraitWithExtraInfo {
         trait_,
-        is_spotlight: clean::utils::has_doc_flag(cx.tcx.get_attrs(did), sym::spotlight),
+        is_notable: clean::utils::has_doc_flag(cx.tcx.get_attrs(did), sym::notable_trait),
     };
     cx.external_traits.borrow_mut().insert(did, trait_);
     cx.active_extern_traits.remove(&did);

@@ -39,11 +39,11 @@ fn osstr_as_utf8_bytes(path: &OsStr) -> &[u8] {
     #[cfg(unix)]
     {
         use std::os::unix::ffi::OsStrExt;
-        return path.as_bytes();
+        path.as_bytes()
     }
     #[cfg(not(unix))]
     {
-        return path.to_str().unwrap().as_bytes();
+        path.to_str().unwrap().as_bytes()
     }
 }
 

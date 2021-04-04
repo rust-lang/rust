@@ -12,6 +12,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
 use std::collections::hash_map::Entry;
 use std::collections::VecDeque;
+use std::iter;
 
 // FIXME(twk): this is obviously not nice to duplicate like that
 #[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]
@@ -83,7 +84,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
         let trait_ref = ty::TraitRef { def_id: trait_did, substs: tcx.mk_substs_trait(ty, &[]) };
 
-        let trait_pred = ty::Binder::bind(trait_ref);
+        let trait_pred = ty::Binder::dummy(trait_ref);
 
         let bail_out = tcx.infer_ctxt().enter(|infcx| {
             let mut selcx = SelectionContext::with_negative(&infcx, true);
@@ -279,7 +280,7 @@ impl AutoTraitFinder<'tcx> {
 
         let mut already_visited = FxHashSet::default();
         let mut predicates = VecDeque::new();
-        predicates.push_back(ty::Binder::bind(ty::TraitPredicate {
+        predicates.push_back(ty::Binder::dummy(ty::TraitPredicate {
             trait_ref: ty::TraitRef {
                 def_id: trait_did,
                 substs: infcx.tcx.mk_substs_trait(ty, &[]),
@@ -428,7 +429,9 @@ impl AutoTraitFinder<'tcx> {
                         return true;
                     }
 
-                    for (new_region, old_region) in new_substs.regions().zip(old_substs.regions()) {
+                    for (new_region, old_region) in
+                        iter::zip(new_substs.regions(), old_substs.regions())
+                    {
                         match (new_region, old_region) {
                             // If both predicates have an `ReLateBound` (a HRTB) in the
                             // same spot, we do nothing.
@@ -803,12 +806,10 @@ impl AutoTraitFinder<'tcx> {
                 }
                 ty::PredicateKind::ConstEquate(c1, c2) => {
                     let evaluate = |c: &'tcx ty::Const<'tcx>| {
-                        if let ty::ConstKind::Unevaluated(def, substs, promoted) = c.val {
+                        if let ty::ConstKind::Unevaluated(unevaluated) = c.val {
                             match select.infcx().const_eval_resolve(
                                 obligation.param_env,
-                                def,
-                                substs,
-                                promoted,
+                                unevaluated,
                                 Some(obligation.cause.span),
                             ) {
                                 Ok(val) => Ok(ty::Const::from_value(select.tcx(), val, c.ty)),

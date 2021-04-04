@@ -1,7 +1,7 @@
 use super::WHILE_IMMUTABLE_CONDITION;
 use crate::consts::constant;
-use crate::utils::span_lint_and_then;
-use crate::utils::usage::mutated_variables;
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::usage::mutated_variables;
 use if_chain::if_chain;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::{DefKind, Res};

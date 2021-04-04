@@ -163,3 +163,35 @@ mod issue6307 {
         fn to_mut(&mut self);
     }
 }
+
+mod issue6727 {
+    trait ToU64 {
+        fn to_u64(self) -> u64;
+        fn to_u64_v2(&self) -> u64;
+    }
+
+    #[derive(Clone, Copy)]
+    struct FooCopy;
+
+    impl ToU64 for FooCopy {
+        fn to_u64(self) -> u64 {
+            1
+        }
+        // trigger lint
+        fn to_u64_v2(&self) -> u64 {
+            1
+        }
+    }
+
+    struct FooNoCopy;
+
+    impl ToU64 for FooNoCopy {
+        // trigger lint
+        fn to_u64(self) -> u64 {
+            2
+        }
+        fn to_u64_v2(&self) -> u64 {
+            2
+        }
+    }
+}

@@ -127,11 +127,8 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
         crate_items.push(&*item);
     }
 
-    let crate_doc = krate
-        .module
-        .as_ref()
-        .map(|module| module.doc_value().map_or_else(String::new, |s| short_markdown_summary(&s)))
-        .unwrap_or_default();
+    let crate_doc =
+        krate.module.doc_value().map_or_else(String::new, |s| short_markdown_summary(&s));
 
     struct CrateData<'a> {
         doc: String,

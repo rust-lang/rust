@@ -1,7 +1,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
-#![feature(or_patterns)]
+#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(control_flow_enum)]
 #![feature(try_blocks)]
 #![feature(associated_type_defaults)]
@@ -928,8 +928,11 @@ impl ReachEverythingInTheInterfaceVisitor<'_, 'tcx> {
                         self.visit(self.ev.tcx.type_of(param.def_id));
                     }
                 }
-                GenericParamDefKind::Const => {
+                GenericParamDefKind::Const { has_default, .. } => {
                     self.visit(self.ev.tcx.type_of(param.def_id));
+                    if has_default {
+                        self.visit(self.ev.tcx.const_param_default(param.def_id));
+                    }
                 }
             }
         }
@@ -1741,7 +1744,8 @@ impl SearchInterfaceForPrivateItemsVisitor<'tcx> {
                         self.visit(self.tcx.type_of(param.def_id));
                     }
                 }
-                GenericParamDefKind::Const => {
+                // FIXME(const_evaluatable_checked): May want to look inside const here
+                GenericParamDefKind::Const { .. } => {
                     self.visit(self.tcx.type_of(param.def_id));
                 }
             }

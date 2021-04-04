@@ -67,7 +67,9 @@ pub enum IpAddr {
 ///
 /// `Ipv4Addr` provides a [`FromStr`] implementation. The four octets are in decimal
 /// notation, divided by `.` (this is called "dot-decimal notation").
+/// Notably, octal numbers and hexadecimal numbers are not allowed per [IETF RFC 6943].
 ///
+/// [IETF RFC 6943]: https://tools.ietf.org/html/rfc6943#section-3.1.1
 /// [`FromStr`]: crate::str::FromStr
 ///
 /// # Examples

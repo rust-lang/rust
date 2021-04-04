@@ -129,7 +129,6 @@ impl Clean<ExternalCrate> for CrateNum {
             tcx.hir()
                 .krate()
                 .item
-                .module
                 .item_ids
                 .iter()
                 .filter_map(|&id| {
@@ -174,7 +173,6 @@ impl Clean<ExternalCrate> for CrateNum {
             tcx.hir()
                 .krate()
                 .item
-                .module
                 .item_ids
                 .iter()
                 .filter_map(|&id| {
@@ -231,11 +229,11 @@ impl Clean<Item> for doctree::Module<'_> {
 
         let what_rustc_thinks = Item::from_hir_id_and_parts(
             self.id,
-            self.name,
+            Some(self.name),
             ModuleItem(Module { is_crate: self.is_crate, items }),
             cx,
         );
-        Item { source: span.clean(cx), ..what_rustc_thinks }
+        Item { span: span.clean(cx), ..what_rustc_thinks }
     }
 }
 
@@ -354,7 +352,7 @@ impl Clean<Lifetime> for hir::Lifetime {
         match def {
             Some(
                 rl::Region::EarlyBound(_, node_id, _)
-                | rl::Region::LateBound(_, node_id, _)
+                | rl::Region::LateBound(_, _, node_id, _)
                 | rl::Region::Free(_, node_id),
             ) => {
                 if let Some(lt) = cx.lt_substs.get(&node_id).cloned() {
@@ -398,9 +396,7 @@ impl Clean<Constant> for hir::ConstArg {
                 .tcx
                 .type_of(cx.tcx.hir().body_owner_def_id(self.value.body).to_def_id())
                 .clean(cx),
-            expr: print_const_expr(cx.tcx, self.value.body),
-            value: None,
-            is_literal: is_literal_expr(cx, self.value.body.hir_id),
+            kind: ConstantKind::Anonymous { body: self.value.body },
         }
     }
 }
@@ -415,7 +411,7 @@ impl Clean<Option<Lifetime>> for ty::RegionKind {
     fn clean(&self, _cx: &mut DocContext<'_>) -> Option<Lifetime> {
         match *self {
             ty::ReStatic => Some(Lifetime::statik()),
-            ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name) }) => {
+            ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name), .. }) => {
                 Some(Lifetime(name))
             }
             ty::ReEarlyBound(ref data) => Some(Lifetime(data.name)),
@@ -1135,7 +1131,7 @@ impl Clean<Item> for ty::AssocItem {
             ty::AssocKind::Const => {
                 let ty = tcx.type_of(self.def_id);
                 let default = if self.defaultness.has_value() {
-                    Some(inline::print_inlined_const(cx, self.def_id))
+                    Some(inline::print_inlined_const(tcx, self.def_id))
                 } else {
                     None
                 };
@@ -1745,11 +1741,10 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
 
 impl<'tcx> Clean<Constant> for ty::Const<'tcx> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Constant {
+        // FIXME: instead of storing the stringified expression, store `self` directly instead.
         Constant {
             type_: self.ty.clean(cx),
-            expr: format!("{}", self),
-            value: None,
-            is_literal: false,
+            kind: ConstantKind::TyConst { expr: self.to_string() },
         }
     }
 }
@@ -1953,9 +1948,7 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
                 }
                 ItemKind::Const(ty, body_id) => ConstantItem(Constant {
                     type_: ty.clean(cx),
-                    expr: print_const_expr(cx.tcx, body_id),
-                    value: print_evaluated_const(cx, def_id),
-                    is_literal: is_literal_expr(cx, body_id.hir_id),
+                    kind: ConstantKind::Local { body: body_id, def_id },
                 }),
                 ItemKind::OpaqueTy(ref ty) => OpaqueTyItem(OpaqueTy {
                     bounds: ty.bounds.clean(cx),
@@ -2132,7 +2125,7 @@ fn clean_extern_crate(
     vec![Item {
         name: Some(name),
         attrs: box attrs.clean(cx),
-        source: krate.span.clean(cx),
+        span: krate.span.clean(cx),
         def_id: crate_def_id,
         visibility: krate.vis.clean(cx),
         kind: box ExternCrateItem { src: orig_name },

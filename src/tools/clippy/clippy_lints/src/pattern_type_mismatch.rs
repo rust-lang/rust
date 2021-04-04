@@ -1,6 +1,7 @@
-use crate::utils::{last_path_segment, span_lint_and_help};
+use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::last_path_segment;
 use rustc_hir::{
-    intravisit, Body, Expr, ExprKind, PatField, FnDecl, HirId, LocalSource, MatchSource, Mutability, Pat, PatKind,
+    intravisit, Body, Expr, ExprKind, FnDecl, HirId, LocalSource, MatchSource, Mutability, Pat, PatField, PatKind,
     QPath, Stmt, StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -9,6 +10,7 @@ use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{AdtDef, FieldDef, Ty, TyKind, VariantDef};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
+use std::iter;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for patterns that aren't exact representations of the types
@@ -133,7 +135,7 @@ impl<'tcx> LateLintPass<'tcx> for PatternTypeMismatch {
         hir_id: HirId,
     ) {
         if let Some(fn_sig) = cx.typeck_results().liberated_fn_sigs().get(hir_id) {
-            for (param, ty) in body.params.iter().zip(fn_sig.inputs().iter()) {
+            for (param, ty) in iter::zip(body.params, fn_sig.inputs()) {
                 apply_lint(cx, &param.pat, ty, DerefPossible::Impossible);
             }
         }

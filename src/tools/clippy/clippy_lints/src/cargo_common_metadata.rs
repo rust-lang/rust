@@ -2,7 +2,8 @@
 
 use std::path::PathBuf;
 
-use crate::utils::{run_lints, span_lint};
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::run_lints;
 use rustc_hir::{hir_id::CRATE_HIR_ID, Crate};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};

@@ -10,6 +10,7 @@ use crate::{
 use crate::traits::*;
 use jobserver::{Acquired, Client};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::profiling::TimingGuard;
 use rustc_data_structures::profiling::VerboseTimingGuard;
@@ -27,12 +28,12 @@ use rustc_middle::middle::exported_symbols::SymbolExportLevel;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::cgu_reuse_tracker::CguReuseTracker;
 use rustc_session::config::{self, CrateType, Lto, OutputFilenames, OutputType};
-use rustc_session::config::{Passes, SanitizerSet, SwitchWithOptPath};
+use rustc_session::config::{Passes, SwitchWithOptPath};
 use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{BytePos, FileName, InnerSpan, Pos, Span};
-use rustc_target::spec::{MergeFunctions, PanicStrategy};
+use rustc_target::spec::{MergeFunctions, PanicStrategy, SanitizerSet};
 
 use std::any::Any;
 use std::fs;
@@ -176,7 +177,7 @@ impl ModuleConfig {
 
                     // The rustc option `-Zinstrument_coverage` injects intrinsic calls to
                     // `llvm.instrprof.increment()`, which requires the LLVM `instrprof` pass.
-                    if sess.opts.debugging_opts.instrument_coverage {
+                    if sess.instrument_coverage() {
                         passes.push("instrprof".to_owned());
                     }
                     passes
@@ -1958,7 +1959,7 @@ pub fn submit_pre_lto_module_to_llvm<B: ExtraBackendMethods>(
         .unwrap_or_else(|e| panic!("failed to open bitcode file `{}`: {}", bc_path.display(), e));
 
     let mmap = unsafe {
-        memmap::Mmap::map(&file).unwrap_or_else(|e| {
+        Mmap::map(file).unwrap_or_else(|e| {
             panic!("failed to mmap bitcode file `{}`: {}", bc_path.display(), e)
         })
     };

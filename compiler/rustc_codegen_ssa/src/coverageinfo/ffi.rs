@@ -24,20 +24,38 @@ pub enum CounterKind {
 pub struct Counter {
     // Important: The layout (order and types of fields) must match its C++ counterpart.
     pub kind: CounterKind,
-    pub id: u32,
+    id: u32,
 }
 
 impl Counter {
+    /// Constructs a new `Counter` of kind `Zero`. For this `CounterKind`, the
+    /// `id` is not used.
     pub fn zero() -> Self {
         Self { kind: CounterKind::Zero, id: 0 }
     }
 
+    /// Constructs a new `Counter` of kind `CounterValueReference`, and converts
+    /// the given 1-based counter_id to the required 0-based equivalent for
+    /// the `Counter` encoding.
     pub fn counter_value_reference(counter_id: CounterValueReference) -> Self {
-        Self { kind: CounterKind::CounterValueReference, id: counter_id.into() }
+        Self { kind: CounterKind::CounterValueReference, id: counter_id.zero_based_index() }
     }
 
+    /// Constructs a new `Counter` of kind `Expression`.
     pub fn expression(mapped_expression_index: MappedExpressionIndex) -> Self {
         Self { kind: CounterKind::Expression, id: mapped_expression_index.into() }
+    }
+
+    /// Returns true if the `Counter` kind is `Zero`.
+    pub fn is_zero(&self) -> bool {
+        matches!(self.kind, CounterKind::Zero)
+    }
+
+    /// An explicitly-named function to get the ID value, making it more obvious
+    /// that the stored value is now 0-based.
+    pub fn zero_based_id(&self) -> u32 {
+        debug_assert!(!self.is_zero(), "`id` is undefined for CounterKind::Zero");
+        self.id
     }
 }
 

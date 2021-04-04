@@ -81,3 +81,10 @@ Then, when looking for it through the `rustdoc` search, if you enter "x" or
 "big", search will show the `BigX` struct first.
 
 There are some limitations on the doc alias names though: you can't use `"` or whitespace.
+
+You can add multiple aliases at the same time by using a list:
+
+```rust,no_run
+#[doc(alias("x", "big"))]
+pub struct BigX;
+```

@@ -1,5 +1,8 @@
 //! lint on manually implemented checked conversions that could be transformed into `try_from`
 
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::{meets_msrv, SpanlessEq};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -8,8 +11,6 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-
-use crate::utils::{meets_msrv, snippet_with_applicability, span_lint_and_sugg, SpanlessEq};
 
 const CHECKED_CONVERSIONS_MSRV: RustcVersion = RustcVersion::new(1, 34, 0);
 

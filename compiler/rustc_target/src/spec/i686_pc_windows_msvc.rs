@@ -14,10 +14,10 @@ pub fn target() -> Target {
         // https://docs.microsoft.com/en-us/cpp/build/reference/safeseh-image-has-safe-exception-handlers
         "/SAFESEH".to_string(),
     ];
-    base.pre_link_args.get_mut(&LinkerFlavor::Msvc).unwrap().extend(pre_link_args_msvc.clone());
+    base.pre_link_args.entry(LinkerFlavor::Msvc).or_default().extend(pre_link_args_msvc.clone());
     base.pre_link_args
-        .get_mut(&LinkerFlavor::Lld(LldFlavor::Link))
-        .unwrap()
+        .entry(LinkerFlavor::Lld(LldFlavor::Link))
+        .or_default()
         .extend(pre_link_args_msvc);
 
     Target {

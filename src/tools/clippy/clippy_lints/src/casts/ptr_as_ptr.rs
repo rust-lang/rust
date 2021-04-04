@@ -1,15 +1,14 @@
 use std::borrow::Cow;
 
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::meets_msrv;
+use clippy_utils::sugg::Sugg;
+use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Mutability, TyKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, TypeAndMut};
 use rustc_semver::RustcVersion;
-
-use if_chain::if_chain;
-
-use crate::utils::sugg::Sugg;
-use crate::utils::{meets_msrv, span_lint_and_sugg};
 
 use super::PTR_AS_PTR;
 

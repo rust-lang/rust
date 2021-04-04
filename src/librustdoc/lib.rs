@@ -8,7 +8,7 @@
 #![feature(box_syntax)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
-#![feature(or_patterns)]
+#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(test)]
 #![feature(crate_visibility_modifier)]
 #![feature(never_type)]
@@ -31,6 +31,7 @@ extern crate tracing;
 //
 // Dependencies listed in Cargo.toml do not need `extern crate`.
 extern crate rustc_ast;
+extern crate rustc_ast_lowering;
 extern crate rustc_ast_pretty;
 extern crate rustc_attr;
 extern crate rustc_data_structures;
@@ -527,6 +528,14 @@ fn opts() -> Vec<RustcOptGroup> {
         unstable("print", |o| {
             o.optmulti("", "print", "Rustdoc information to print on stdout", "[unversioned-files]")
         }),
+        unstable("emit", |o| {
+            o.optmulti(
+                "",
+                "emit",
+                "Comma separated list of types of output for rustdoc to emit",
+                "[unversioned-shared-resources,toolchain-shared-resources,invocation-specific]",
+            )
+        }),
     ]
 }
 
@@ -637,7 +646,6 @@ fn main_options(options: config::Options) -> MainResult {
     let default_passes = options.default_passes;
     let output_format = options.output_format;
     // FIXME: fix this clone (especially render_options)
-    let externs = options.externs.clone();
     let manual_passes = options.manual_passes.clone();
     let render_options = options.render_options.clone();
     let config = core::create_config(options);
@@ -649,7 +657,7 @@ fn main_options(options: config::Options) -> MainResult {
             // We need to hold on to the complete resolver, so we cause everything to be
             // cloned for the analysis passes to use. Suboptimal, but necessary in the
             // current architecture.
-            let resolver = core::create_resolver(externs, queries, &sess);
+            let resolver = core::create_resolver(queries, &sess);
 
             if sess.has_errors() {
                 sess.fatal("Compilation failed, aborting rustdoc");

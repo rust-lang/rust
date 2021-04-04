@@ -93,6 +93,12 @@ rustc_queries! {
         desc { |tcx| "computing the optional const parameter of `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 
+    /// Given the def_id of a const-generic parameter, computes the associated default const
+    /// parameter. e.g. `fn example<const N: usize=3>` called on `N` would return `3`.
+    query const_param_default(param: DefId) -> &'tcx ty::Const<'tcx> {
+        desc { |tcx| "compute const default for a given parameter `{}`", tcx.def_path_str(param)  }
+    }
+
     /// Records the type of every item.
     query type_of(key: DefId) -> Ty<'tcx> {
         desc { |tcx| "computing type of `{}`", tcx.def_path_str(key) }
@@ -328,7 +334,10 @@ rustc_queries! {
 
     /// Returns the name of the file that contains the function body, if instrumented for coverage.
     query covered_file_name(key: DefId) -> Option<Symbol> {
-        desc { |tcx| "retrieving the covered file name, if instrumented, for `{}`", tcx.def_path_str(key) }
+        desc {
+            |tcx| "retrieving the covered file name, if instrumented, for `{}`",
+            tcx.def_path_str(key)
+        }
         storage(ArenaCacheSelector<'tcx>)
         cache_on_disk_if { key.is_local() }
     }
@@ -336,7 +345,10 @@ rustc_queries! {
     /// Returns the `CodeRegions` for a function that has instrumented coverage, in case the
     /// function was optimized out before codegen, and before being added to the Coverage Map.
     query covered_code_regions(key: DefId) -> Vec<&'tcx mir::coverage::CodeRegion> {
-        desc { |tcx| "retrieving the covered `CodeRegion`s, if instrumented, for `{}`", tcx.def_path_str(key) }
+        desc {
+            |tcx| "retrieving the covered `CodeRegion`s, if instrumented, for `{}`",
+            tcx.def_path_str(key)
+        }
         storage(ArenaCacheSelector<'tcx>)
         cache_on_disk_if { key.is_local() }
     }
@@ -993,6 +1005,10 @@ rustc_queries! {
     query is_freeze_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is freeze", env.value }
     }
+    /// Query backing `TyS::is_unpin`.
+    query is_unpin_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+        desc { "computing whether `{}` is `Unpin`", env.value }
+    }
     /// Query backing `TyS::needs_drop`.
     query needs_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` needs drop", env.value }
@@ -1242,8 +1258,19 @@ rustc_queries! {
         desc { "looking up link arguments for a crate" }
     }
 
-    /// Lifetime resolution. See `middle::resolve_lifetimes`.
-    query resolve_lifetimes(_: CrateNum) -> ResolveLifetimes {
+    /// Does lifetime resolution, but does not descend into trait items. This
+    /// should only be used for resolving lifetimes of on trait definitions,
+    /// and is used to avoid cycles. Importantly, `resolve_lifetimes` still visits
+    /// the same lifetimes and is responsible for diagnostics.
+    /// See `rustc_resolve::late::lifetimes for details.
+    query resolve_lifetimes_trait_definition(_: LocalDefId) -> ResolveLifetimes {
+        storage(ArenaCacheSelector<'tcx>)
+        desc { "resolving lifetimes for a trait definition" }
+    }
+    /// Does lifetime resolution on items. Importantly, we can't resolve
+    /// lifetimes directly on things like trait methods, because of trait params.
+    /// See `rustc_resolve::late::lifetimes for details.
+    query resolve_lifetimes(_: LocalDefId) -> ResolveLifetimes {
         storage(ArenaCacheSelector<'tcx>)
         desc { "resolving lifetimes" }
     }
@@ -1255,9 +1282,17 @@ rustc_queries! {
         Option<(LocalDefId, &'tcx FxHashSet<ItemLocalId>)> {
         desc { "testing if a region is late bound" }
     }
+    /// For a given item (like a struct), gets the default lifetimes to be used
+    /// for each paramter if a trait object were to be passed for that parameter.
+    /// For example, for `struct Foo<'a, T, U>`, this would be `['static, 'static]`.
+    /// For `struct Foo<'a, T: 'a, U>`, this would instead be `['a, 'static]`.
     query object_lifetime_defaults_map(_: LocalDefId)
-        -> Option<&'tcx FxHashMap<ItemLocalId, Vec<ObjectLifetimeDefault>>> {
-        desc { "looking up lifetime defaults for a region" }
+        -> Option<Vec<ObjectLifetimeDefault>> {
+        desc { "looking up lifetime defaults for a region on an item" }
+    }
+    query late_bound_vars_map(_: LocalDefId)
+        -> Option<&'tcx FxHashMap<ItemLocalId, Vec<ty::BoundVariableKind>>> {
+        desc { "looking up late bound vars" }
     }
 
     query visibility(def_id: DefId) -> ty::Visibility {
@@ -1448,6 +1483,13 @@ rustc_queries! {
     query normalize_generic_arg_after_erasing_regions(
         goal: ParamEnvAnd<'tcx, GenericArg<'tcx>>
     ) -> GenericArg<'tcx> {
+        desc { "normalizing `{}`", goal.value }
+    }
+
+    /// Do not call this query directly: invoke `normalize_erasing_regions` instead.
+    query normalize_mir_const_after_erasing_regions(
+        goal: ParamEnvAnd<'tcx, mir::ConstantKind<'tcx>>
+    ) -> mir::ConstantKind<'tcx> {
         desc { "normalizing `{}`", goal.value }
     }
 

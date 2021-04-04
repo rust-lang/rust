@@ -28,7 +28,10 @@ impl Command {
         let envp = self.capture_env();
 
         if self.saw_nul() {
-            return Err(io::Error::new(ErrorKind::InvalidInput, "nul byte found in provided data"));
+            return Err(io::Error::new_const(
+                ErrorKind::InvalidInput,
+                &"nul byte found in provided data",
+            ));
         }
 
         let (ours, theirs) = self.setup_io(default, needs_stdin)?;
@@ -48,41 +51,35 @@ impl Command {
         // a lock any more because the parent won't do anything and the child is
         // in its own process. Thus the parent drops the lock guard while the child
         // forgets it to avoid unlocking it on a new thread, which would be invalid.
-        let (env_lock, result) = unsafe { (sys::os::env_read_lock(), cvt(libc::fork())?) };
+        let (env_lock, pid) = unsafe { (sys::os::env_read_lock(), cvt(libc::fork())?) };
 
-        let pid = unsafe {
-            match result {
-                0 => {
-                    mem::forget(env_lock);
-                    drop(input);
-                    let Err(err) = self.do_exec(theirs, envp.as_ref());
-                    let errno = err.raw_os_error().unwrap_or(libc::EINVAL) as u32;
-                    let errno = errno.to_be_bytes();
-                    let bytes = [
-                        errno[0],
-                        errno[1],
-                        errno[2],
-                        errno[3],
-                        CLOEXEC_MSG_FOOTER[0],
-                        CLOEXEC_MSG_FOOTER[1],
-                        CLOEXEC_MSG_FOOTER[2],
-                        CLOEXEC_MSG_FOOTER[3],
-                    ];
-                    // pipe I/O up to PIPE_BUF bytes should be atomic, and then
-                    // we want to be sure we *don't* run at_exit destructors as
-                    // we're being torn down regardless
-                    rtassert!(output.write(&bytes).is_ok());
-                    libc::_exit(1)
-                }
-                n => {
-                    drop(env_lock);
-                    n
-                }
-            }
-        };
+        if pid == 0 {
+            mem::forget(env_lock);
+            drop(input);
+            let Err(err) = unsafe { self.do_exec(theirs, envp.as_ref()) };
+            let errno = err.raw_os_error().unwrap_or(libc::EINVAL) as u32;
+            let errno = errno.to_be_bytes();
+            let bytes = [
+                errno[0],
+                errno[1],
+                errno[2],
+                errno[3],
+                CLOEXEC_MSG_FOOTER[0],
+                CLOEXEC_MSG_FOOTER[1],
+                CLOEXEC_MSG_FOOTER[2],
+                CLOEXEC_MSG_FOOTER[3],
+            ];
+            // pipe I/O up to PIPE_BUF bytes should be atomic, and then
+            // we want to be sure we *don't* run at_exit destructors as
+            // we're being torn down regardless
+            rtassert!(output.write(&bytes).is_ok());
+            unsafe { libc::_exit(1) }
+        }
+
+        drop(env_lock);
+        drop(output);
 
         let mut p = Process { pid, status: None };
-        drop(output);
         let mut bytes = [0; 8];
 
         // loop to handle EINTR
@@ -118,7 +115,10 @@ impl Command {
         let envp = self.capture_env();
 
         if self.saw_nul() {
-            return io::Error::new(ErrorKind::InvalidInput, "nul byte found in provided data");
+            return io::Error::new_const(
+                ErrorKind::InvalidInput,
+                &"nul byte found in provided data",
+            );
         }
 
         match self.setup_io(default, true) {
@@ -442,9 +442,9 @@ impl Process {
         // and used for another process, and we probably shouldn't be killing
         // random processes, so just return an error.
         if self.status.is_some() {
-            Err(Error::new(
+            Err(Error::new_const(
                 ErrorKind::InvalidInput,
-                "invalid argument: can't kill an exited process",
+                &"invalid argument: can't kill an exited process",
             ))
         } else {
             cvt(unsafe { libc::kill(self.pid, libc::SIGKILL) }).map(drop)
@@ -529,7 +529,7 @@ impl From<c_int> for ExitStatus {
 impl fmt::Display for ExitStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(code) = self.code() {
-            write!(f, "exit code: {}", code)
+            write!(f, "exit status: {}", code)
         } else if let Some(signal) = self.signal() {
             if self.core_dumped() {
                 write!(f, "signal: {} (core dumped)", signal)

@@ -1,7 +1,6 @@
 use crate::rmeta::table::{FixedSizeEncoding, TableBuilder};
 use crate::rmeta::*;
 
-use rustc_data_structures::fingerprint::{Fingerprint, FingerprintEncoder};
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{join, par_iter, Lrc, ParallelIterator};
@@ -116,6 +115,7 @@ impl<'a, 'tcx> Encoder for EncodeContext<'a, 'tcx> {
         emit_f32(f32);
         emit_char(char);
         emit_str(&str);
+        emit_raw_bytes(&[u8]);
     }
 }
 
@@ -307,12 +307,6 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
     }
 }
 
-impl<'a, 'tcx> FingerprintEncoder for EncodeContext<'a, 'tcx> {
-    fn encode_fingerprint(&mut self, f: &Fingerprint) -> Result<(), Self::Error> {
-        self.opaque.encode_fingerprint(f)
-    }
-}
-
 impl<'a, 'tcx> TyEncoder<'tcx> for EncodeContext<'a, 'tcx> {
     const CLEAR_CROSS_CRATE: bool = true;
 
@@ -433,7 +427,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     fn encode_info_for_items(&mut self) {
         let krate = self.tcx.hir().krate();
-        self.encode_info_for_mod(CRATE_DEF_ID, &krate.item.module);
+        self.encode_info_for_mod(CRATE_DEF_ID, &krate.item);
 
         // Proc-macro crates only export proc-macro items, which are looked
         // up using `proc_macro_data`
@@ -836,6 +830,76 @@ fn should_encode_mir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> (bool, bool) {
     }
 }
 
+fn should_encode_variances(def_kind: DefKind) -> bool {
+    match def_kind {
+        DefKind::Struct
+        | DefKind::Union
+        | DefKind::Enum
+        | DefKind::Variant
+        | DefKind::Fn
+        | DefKind::Ctor(..)
+        | DefKind::AssocFn => true,
+        DefKind::Mod
+        | DefKind::Field
+        | DefKind::AssocTy
+        | DefKind::AssocConst
+        | DefKind::TyParam
+        | DefKind::ConstParam
+        | DefKind::Static
+        | DefKind::Const
+        | DefKind::ForeignMod
+        | DefKind::TyAlias
+        | DefKind::OpaqueTy
+        | DefKind::Impl
+        | DefKind::Trait
+        | DefKind::TraitAlias
+        | DefKind::Macro(..)
+        | DefKind::ForeignTy
+        | DefKind::Use
+        | DefKind::LifetimeParam
+        | DefKind::AnonConst
+        | DefKind::GlobalAsm
+        | DefKind::Closure
+        | DefKind::Generator
+        | DefKind::ExternCrate => false,
+    }
+}
+
+fn should_encode_generics(def_kind: DefKind) -> bool {
+    match def_kind {
+        DefKind::Struct
+        | DefKind::Union
+        | DefKind::Enum
+        | DefKind::Variant
+        | DefKind::Trait
+        | DefKind::TyAlias
+        | DefKind::ForeignTy
+        | DefKind::TraitAlias
+        | DefKind::AssocTy
+        | DefKind::Fn
+        | DefKind::Const
+        | DefKind::Static
+        | DefKind::Ctor(..)
+        | DefKind::AssocFn
+        | DefKind::AssocConst
+        | DefKind::AnonConst
+        | DefKind::OpaqueTy
+        | DefKind::Impl
+        | DefKind::Closure
+        | DefKind::Generator => true,
+        DefKind::Mod
+        | DefKind::Field
+        | DefKind::ForeignMod
+        | DefKind::TyParam
+        | DefKind::ConstParam
+        | DefKind::Macro(..)
+        | DefKind::Use
+        | DefKind::LifetimeParam
+        | DefKind::GlobalAsm
+        | DefKind::ExternCrate => false,
+    }
+}
+
 impl EncodeContext<'a, 'tcx> {
     fn encode_def_ids(&mut self) {
         if self.is_proc_macro {
@@ -864,6 +928,22 @@ impl EncodeContext<'a, 'tcx> {
                 self.encode_const_stability(def_id);
                 self.encode_deprecation(def_id);
             }
+            if should_encode_variances(def_kind) {
+                let v = self.tcx.variances_of(def_id);
+                record!(self.tables.variances[def_id] <- v);
+            }
+            if should_encode_generics(def_kind) {
+                let g = tcx.generics_of(def_id);
+                record!(self.tables.generics[def_id] <- g);
+                record!(self.tables.explicit_predicates[def_id] <- self.tcx.explicit_predicates_of(def_id));
+                let inferred_outlives = self.tcx.inferred_outlives_of(def_id);
+                if !inferred_outlives.is_empty() {
+                    record!(self.tables.inferred_outlives[def_id] <- inferred_outlives);
+                }
+            }
+            if let DefKind::Trait | DefKind::TraitAlias = def_kind {
+                record!(self.tables.super_predicates[def_id] <- self.tcx.super_predicates_of(def_id));
+            }
         }
         let inherent_impls = tcx.crate_inherent_impls(LOCAL_CRATE);
         for (def_id, implementations) in inherent_impls.inherent_impls.iter() {
@@ -876,11 +956,6 @@ impl EncodeContext<'a, 'tcx> {
                 def_id.index
             }));
         }
-    }
-
-    fn encode_variances_of(&mut self, def_id: DefId) {
-        debug!("EncodeContext::encode_variances_of({:?})", def_id);
-        record!(self.tables.variances[def_id] <- self.tcx.variances_of(def_id));
     }
 
     fn encode_item_type(&mut self, def_id: DefId) {
@@ -913,12 +988,7 @@ impl EncodeContext<'a, 'tcx> {
             if let Some(ctor_def_id) = variant.ctor_def_id {
                 record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(ctor_def_id));
             }
-            // FIXME(eddyb) is this ever used?
-            self.encode_variances_of(def_id);
         }
-        self.encode_generics(def_id);
-        self.encode_explicit_predicates(def_id);
-        self.encode_inferred_outlives(def_id);
     }
 
     fn encode_enum_variant_ctor(&mut self, def: &ty::AdtDef, index: VariantIdx) {
@@ -939,11 +1009,7 @@ impl EncodeContext<'a, 'tcx> {
         self.encode_item_type(def_id);
         if variant.ctor_kind == CtorKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
-            self.encode_variances_of(def_id);
         }
-        self.encode_generics(def_id);
-        self.encode_explicit_predicates(def_id);
-        self.encode_inferred_outlives(def_id);
     }
 
     fn encode_info_for_mod(&mut self, local_def_id: LocalDefId, md: &hir::Mod<'_>) {
@@ -1002,9 +1068,6 @@ impl EncodeContext<'a, 'tcx> {
         record!(self.tables.kind[def_id] <- EntryKind::Field);
         self.encode_ident_span(def_id, field.ident);
         self.encode_item_type(def_id);
-        self.encode_generics(def_id);
-        self.encode_explicit_predicates(def_id);
-        self.encode_inferred_outlives(def_id);
     }
 
     fn encode_struct_ctor(&mut self, adt_def: &ty::AdtDef, def_id: DefId) {
@@ -1023,35 +1086,7 @@ impl EncodeContext<'a, 'tcx> {
         self.encode_item_type(def_id);
         if variant.ctor_kind == CtorKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
-            self.encode_variances_of(def_id);
         }
-        self.encode_generics(def_id);
-        self.encode_explicit_predicates(def_id);
-        self.encode_inferred_outlives(def_id);
-    }
-
-    fn encode_generics(&mut self, def_id: DefId) {
-        debug!("EncodeContext::encode_generics({:?})", def_id);
-        record!(self.tables.generics[def_id] <- self.tcx.generics_of(def_id));
-    }
-
-    fn encode_explicit_predicates(&mut self, def_id: DefId) {
-        debug!("EncodeContext::encode_explicit_predicates({:?})", def_id);
-        record!(self.tables.explicit_predicates[def_id] <-
-            self.tcx.explicit_predicates_of(def_id));
-    }
-
-    fn encode_inferred_outlives(&mut self, def_id: DefId) {
-        debug!("EncodeContext::encode_inferred_outlives({:?})", def_id);
-        let inferred_outlives = self.tcx.inferred_outlives_of(def_id);
-        if !inferred_outlives.is_empty() {
-            record!(self.tables.inferred_outlives[def_id] <- inferred_outlives);
-        }
-    }
-
-    fn encode_super_predicates(&mut self, def_id: DefId) {
-        debug!("EncodeContext::encode_super_predicates({:?})", def_id);
-        record!(self.tables.super_predicates[def_id] <- self.tcx.super_predicates_of(def_id));
     }
 
     fn encode_explicit_item_bounds(&mut self, def_id: DefId) {
@@ -1128,11 +1163,7 @@ impl EncodeContext<'a, 'tcx> {
         }
         if trait_item.kind == ty::AssocKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
-            self.encode_variances_of(def_id);
         }
-        self.encode_generics(def_id);
-        self.encode_explicit_predicates(def_id);
-        self.encode_inferred_outlives(def_id);
     }
 
     fn encode_info_for_impl_item(&mut self, def_id: DefId) {
@@ -1189,11 +1220,7 @@ impl EncodeContext<'a, 'tcx> {
         self.encode_item_type(def_id);
         if impl_item.kind == ty::AssocKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
-            self.encode_variances_of(def_id);
         }
-        self.encode_generics(def_id);
-        self.encode_explicit_predicates(def_id);
-        self.encode_inferred_outlives(def_id);
     }
 
     fn encode_fn_param_names_for_body(&mut self, body_id: hir::BodyId) -> Lazy<[Ident]> {
@@ -1458,37 +1485,6 @@ impl EncodeContext<'a, 'tcx> {
                 record!(self.tables.impl_trait_ref[def_id] <- trait_ref);
             }
         }
-        match item.kind {
-            hir::ItemKind::Enum(..)
-            | hir::ItemKind::Struct(..)
-            | hir::ItemKind::Union(..)
-            | hir::ItemKind::Fn(..) => self.encode_variances_of(def_id),
-            _ => {}
-        }
-        match item.kind {
-            hir::ItemKind::Static(..)
-            | hir::ItemKind::Const(..)
-            | hir::ItemKind::Fn(..)
-            | hir::ItemKind::TyAlias(..)
-            | hir::ItemKind::Enum(..)
-            | hir::ItemKind::Struct(..)
-            | hir::ItemKind::Union(..)
-            | hir::ItemKind::Impl { .. }
-            | hir::ItemKind::OpaqueTy(..)
-            | hir::ItemKind::Trait(..)
-            | hir::ItemKind::TraitAlias(..) => {
-                self.encode_generics(def_id);
-                self.encode_explicit_predicates(def_id);
-                self.encode_inferred_outlives(def_id);
-            }
-            _ => {}
-        }
-        match item.kind {
-            hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..) => {
-                self.encode_super_predicates(def_id);
-            }
-            _ => {}
-        }
     }
 
     /// Serialize the text of exported macros
@@ -1529,7 +1525,6 @@ impl EncodeContext<'a, 'tcx> {
         if let ty::Closure(def_id, substs) = *ty.kind() {
             record!(self.tables.fn_sig[def_id] <- substs.as_closure().sig());
         }
-        self.encode_generics(def_id.to_def_id());
     }
 
     fn encode_info_for_anon_const(&mut self, def_id: LocalDefId) {
@@ -1541,9 +1536,6 @@ impl EncodeContext<'a, 'tcx> {
 
         record!(self.tables.kind[def_id.to_def_id()] <- EntryKind::AnonConst(qualifs, const_data));
         self.encode_item_type(def_id.to_def_id());
-        self.encode_generics(def_id.to_def_id());
-        self.encode_explicit_predicates(def_id.to_def_id());
-        self.encode_inferred_outlives(def_id.to_def_id());
     }
 
     fn encode_native_libraries(&mut self) -> Lazy<[NativeLib]> {
@@ -1822,11 +1814,7 @@ impl EncodeContext<'a, 'tcx> {
         self.encode_item_type(def_id);
         if let hir::ForeignItemKind::Fn(..) = nitem.kind {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
-            self.encode_variances_of(def_id);
         }
-        self.encode_generics(def_id);
-        self.encode_explicit_predicates(def_id);
-        self.encode_inferred_outlives(def_id);
     }
 }
 
@@ -1888,13 +1876,12 @@ impl EncodeContext<'a, 'tcx> {
                         default.is_some(),
                     );
                 }
-                GenericParamKind::Const { .. } => {
-                    self.encode_info_for_generic_param(
-                        def_id.to_def_id(),
-                        EntryKind::ConstParam,
-                        true,
-                    );
-                    // FIXME(const_generics_defaults)
+                GenericParamKind::Const { ref default, .. } => {
+                    let def_id = def_id.to_def_id();
+                    self.encode_info_for_generic_param(def_id, EntryKind::ConstParam, true);
+                    if default.is_some() {
+                        record!(self.tables.const_defaults[def_id] <- self.tcx.const_param_default(def_id))
+                    }
                 }
             }
         }
@@ -2070,10 +2057,10 @@ pub(super) fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
 
 fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
     let mut encoder = opaque::Encoder::new(vec![]);
-    encoder.emit_raw_bytes(METADATA_HEADER);
+    encoder.emit_raw_bytes(METADATA_HEADER).unwrap();
 
     // Will be filled with the root position after encoding everything.
-    encoder.emit_raw_bytes(&[0, 0, 0, 0]);
+    encoder.emit_raw_bytes(&[0, 0, 0, 0]).unwrap();
 
     let source_map_files = tcx.sess.source_map().files();
     let source_file_cache = (source_map_files[0].clone(), 0);

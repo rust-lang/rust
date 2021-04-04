@@ -708,8 +708,8 @@ impl Config {
         self.parse_name_value_directive(line, "aux-crate").map(|r| {
             let mut parts = r.trim().splitn(2, '=');
             (
-                parts.next().expect("aux-crate name").to_string(),
-                parts.next().expect("aux-crate value").to_string(),
+                parts.next().expect("missing aux-crate name (e.g. log=log.rs)").to_string(),
+                parts.next().expect("missing aux-crate value (e.g. log=log.rs)").to_string(),
             )
         })
     }
@@ -973,7 +973,11 @@ fn parse_normalization_string(line: &mut &str) -> Option<String> {
 }
 
 pub fn extract_llvm_version(version: &str) -> Option<u32> {
-    let version_without_suffix = version.trim_end_matches("git").split('-').next().unwrap();
+    let pat = |c: char| !c.is_ascii_digit() && c != '.';
+    let version_without_suffix = match version.find(pat) {
+        Some(pos) => &version[..pos],
+        None => version,
+    };
     let components: Vec<u32> = version_without_suffix
         .split('.')
         .map(|s| s.parse().expect("Malformed version component"))

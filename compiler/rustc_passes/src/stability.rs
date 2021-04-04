@@ -22,6 +22,7 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
 use std::cmp::Ordering;
+use std::iter;
 use std::mem::replace;
 use std::num::NonZeroU32;
 
@@ -214,7 +215,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             {
                 // Explicit version of iter::order::lt to handle parse errors properly
                 for (dep_v, stab_v) in
-                    dep_since.as_str().split('.').zip(stab_since.as_str().split('.'))
+                    iter::zip(dep_since.as_str().split('.'), stab_since.as_str().split('.'))
                 {
                     match stab_v.parse::<u64>() {
                         Err(_) => {
@@ -507,10 +508,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
 
     fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam<'tcx>) {
         let kind = match &p.kind {
-            // FIXME(const_generics_defaults)
-            hir::GenericParamKind::Type { default, .. } if default.is_some() => {
-                AnnotationKind::Container
-            }
+            // Allow stability attributes on default generic arguments.
+            hir::GenericParamKind::Type { default: Some(_), .. }
+            | hir::GenericParamKind::Const { default: Some(_), .. } => AnnotationKind::Container,
             _ => AnnotationKind::Prohibited,
         };
 
@@ -686,7 +686,7 @@ fn new_index(tcx: TyCtxt<'tcx>) -> Index<'tcx> {
 
         annotator.annotate(
             hir::CRATE_HIR_ID,
-            krate.item.span,
+            krate.item.inner,
             AnnotationKind::Required,
             InheritDeprecation::Yes,
             InheritConstStability::No,
@@ -885,7 +885,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     if tcx.stability().staged_api[&LOCAL_CRATE] {
         let krate = tcx.hir().krate();
         let mut missing = MissingStabilityAnnotations { tcx, access_levels };
-        missing.check_missing_stability(hir::CRATE_HIR_ID, krate.item.span);
+        missing.check_missing_stability(hir::CRATE_HIR_ID, krate.item.inner);
         intravisit::walk_crate(&mut missing, krate);
         krate.visit_all_item_likes(&mut missing.as_deep_visitor());
     }

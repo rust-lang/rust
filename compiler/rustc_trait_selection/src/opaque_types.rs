@@ -697,7 +697,7 @@ where
 {
     fn visit_binder<T: TypeFoldable<'tcx>>(
         &mut self,
-        t: &ty::Binder<T>,
+        t: &ty::Binder<'tcx, T>,
     ) -> ControlFlow<Self::BreakTy> {
         t.as_ref().skip_binder().visit_with(self);
         ControlFlow::CONTINUE
@@ -1171,7 +1171,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             // This also instantiates nested instances of `impl Trait`.
             let predicate = self.instantiate_opaque_types_in_map(predicate);
 
-            let cause = traits::ObligationCause::new(span, self.body_id, traits::MiscObligation);
+            let cause = traits::ObligationCause::new(span, self.body_id, traits::OpaqueType);
 
             // Require that the predicate holds for the concrete type.
             debug!("instantiate_opaque_types: predicate={:?}", predicate);

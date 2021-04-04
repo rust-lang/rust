@@ -4,8 +4,6 @@
 
 // check-pass
 
-#![feature(or_patterns)]
-
 fn main() {
     // One level:
     let (Ok(a) | Err(a)) = Ok(0);

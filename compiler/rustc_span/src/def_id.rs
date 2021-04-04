@@ -160,6 +160,8 @@ impl DefPathHash {
     }
 
     /// Returns the crate-local part of the [DefPathHash].
+    ///
+    /// Used for tests.
     #[inline]
     pub fn local_hash(&self) -> u64 {
         self.0.as_value().1

@@ -33,7 +33,6 @@
           _4 = (_1.0: u32);                // scope 2 at $DIR/union.rs:15:19: 15:24
           StorageDead(_4);                 // scope 1 at $DIR/union.rs:15:26: 15:27
           StorageDead(_3);                 // scope 1 at $DIR/union.rs:15:27: 15:28
-          _0 = const ();                   // scope 0 at $DIR/union.rs:8:11: 16:2
           StorageDead(_1);                 // scope 0 at $DIR/union.rs:16:1: 16:2
           return;                          // scope 0 at $DIR/union.rs:16:2: 16:2
       }

@@ -1,6 +1,6 @@
 [package]
 name = "clippy"
-version = "0.1.52"
+version = "0.1.53"
 authors = ["The Rust Clippy Developers"]
 description = "A bunch of helpful lints to avoid common pitfalls in Rust"
 repository = "https://github.com/rust-lang/rust-clippy"
@@ -37,6 +37,8 @@ clippy-mini-macro-test = { version = "0.2", path = "mini-macro" }
 serde = { version = "1.0", features = ["derive"] }
 derive-new = "0.5"
 regex = "1.4"
+quote = "1"
+syn = { version = "1", features = ["full"] }
 
 # A noop dependency that changes in the Rust repository, it's a bit of a hack.
 # See the `src/tools/rustc-workspace-hack/README.md` file in `rust-lang/rust`

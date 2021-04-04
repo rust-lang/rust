@@ -2,7 +2,6 @@
 
 // edition:2018
 
-#![feature(or_patterns)]
 #![allow(non_camel_case_types)]
 
 fn main() {}

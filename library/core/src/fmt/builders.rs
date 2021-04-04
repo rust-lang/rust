@@ -165,7 +165,6 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(debug_non_exhaustive)]
     /// use std::fmt;
     ///
     /// struct Bar {
@@ -186,7 +185,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     ///     "Bar { bar: 10, .. }",
     /// );
     /// ```
-    #[unstable(feature = "debug_non_exhaustive", issue = "67364")]
+    #[stable(feature = "debug_non_exhaustive", since = "1.53.0")]
     pub fn finish_non_exhaustive(&mut self) -> fmt::Result {
         self.result = self.result.and_then(|_| {
             // Draw non-exhaustive dots (`..`), and open brace if necessary (no fields).

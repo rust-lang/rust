@@ -9,7 +9,7 @@ pub mod specialization_graph;
 mod structural_impls;
 
 use crate::infer::canonical::Canonical;
-use crate::mir::interpret::ErrorHandled;
+use crate::mir::abstract_const::NotConstEvaluatable;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, AdtKind, Ty, TyCtxt};
 
@@ -323,6 +323,9 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// #[feature(trivial_bounds)] is not enabled
     TrivialBound,
+
+    /// If `X` is the concrete type of an opaque type `impl Y`, then `X` must implement `Y`
+    OpaqueType,
 }
 
 impl ObligationCauseCode<'_> {
@@ -341,7 +344,7 @@ impl ObligationCauseCode<'_> {
 
 // `ObligationCauseCode` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(ObligationCauseCode<'_>, 32);
+static_assert_size!(ObligationCauseCode<'_>, 40);
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum StatementAsExpression {
@@ -398,7 +401,7 @@ pub enum SelectionError<'tcx> {
         ty::error::TypeError<'tcx>,
     ),
     TraitNotObjectSafe(DefId),
-    ConstEvalFailure(ErrorHandled),
+    NotConstEvaluatable(NotConstEvaluatable),
     Overflow,
 }
 

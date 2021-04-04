@@ -1,6 +1,6 @@
 #![allow(unused_assignments, dead_code)]
 
-// compile-flags: --edition=2018
+// compile-flags: --edition=2018 -C opt-level=1 # fix in rustc_mir/monomorphize/partitioning/mod.rs
 
 async fn c(x: u8) -> u8 {
     if x == 8 {
@@ -63,7 +63,7 @@ fn j(x: u8) {
             0
         }
     }
-    fn d() -> u8 { 1 }
+    fn d() -> u8 { 1 } // inner function is defined in-line, but the function is not executed
     fn f() -> u8 { 1 }
     match x {
         y if c(x) == y + 1 => { d(); }
@@ -109,11 +109,11 @@ mod executor {
 
     pub fn block_on<F: Future>(mut future: F) -> F::Output {
         let mut future = unsafe { Pin::new_unchecked(&mut future) };
-
+        use std::hint::unreachable_unchecked;
         static VTABLE: RawWakerVTable = RawWakerVTable::new(
-            |_| unimplemented!("clone"),
-            |_| unimplemented!("wake"),
-            |_| unimplemented!("wake_by_ref"),
+            |_| unsafe { unreachable_unchecked() }, // clone
+            |_| unsafe { unreachable_unchecked() }, // wake
+            |_| unsafe { unreachable_unchecked() }, // wake_by_ref
             |_| (),
         );
         let waker = unsafe { Waker::from_raw(RawWaker::new(core::ptr::null(), &VTABLE)) };

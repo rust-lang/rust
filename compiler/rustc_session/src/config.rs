@@ -10,7 +10,6 @@ use crate::{early_error, early_warn, Session};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::impl_stable_hash_via_hash;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
 use rustc_target::abi::{Align, TargetDataLayout};
 use rustc_target::spec::{SplitDebuginfo, Target, TargetTriple};
@@ -35,66 +34,6 @@ use std::fmt;
 use std::iter::{self, FromIterator};
 use std::path::{Path, PathBuf};
 use std::str::{self, FromStr};
-
-bitflags! {
-    #[derive(Default, Encodable, Decodable)]
-    pub struct SanitizerSet: u8 {
-        const ADDRESS = 1 << 0;
-        const LEAK    = 1 << 1;
-        const MEMORY  = 1 << 2;
-        const THREAD  = 1 << 3;
-        const HWADDRESS  = 1 << 4;
-    }
-}
-
-/// Formats a sanitizer set as a comma separated list of sanitizers' names.
-impl fmt::Display for SanitizerSet {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut first = true;
-        for s in *self {
-            let name = match s {
-                SanitizerSet::ADDRESS => "address",
-                SanitizerSet::LEAK => "leak",
-                SanitizerSet::MEMORY => "memory",
-                SanitizerSet::THREAD => "thread",
-                SanitizerSet::HWADDRESS => "hwaddress",
-                _ => panic!("unrecognized sanitizer {:?}", s),
-            };
-            if !first {
-                f.write_str(",")?;
-            }
-            f.write_str(name)?;
-            first = false;
-        }
-        Ok(())
-    }
-}
-
-impl IntoIterator for SanitizerSet {
-    type Item = SanitizerSet;
-    type IntoIter = std::vec::IntoIter<SanitizerSet>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        [
-            SanitizerSet::ADDRESS,
-            SanitizerSet::LEAK,
-            SanitizerSet::MEMORY,
-            SanitizerSet::THREAD,
-            SanitizerSet::HWADDRESS,
-        ]
-        .iter()
-        .copied()
-        .filter(|&s| self.contains(s))
-        .collect::<Vec<_>>()
-        .into_iter()
-    }
-}
-
-impl<CTX> HashStable<CTX> for SanitizerSet {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        self.bits().hash_stable(ctx, hasher);
-    }
-}
 
 /// The different settings that the `-Z strip` flag can have.
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
@@ -182,6 +121,37 @@ pub enum MirSpanview {
     Terminator,
     /// `-Z dump_mir_spanview=block`
     Block,
+}
+
+/// The different settings that the `-Z instrument-coverage` flag can have.
+///
+/// Coverage instrumentation now supports combining `-Z instrument-coverage`
+/// with compiler and linker optimization (enabled with `-O` or `-C opt-level=1`
+/// and higher). Nevertheless, there are many variables, depending on options
+/// selected, code structure, and enabled attributes. If errors are encountered,
+/// either while compiling or when generating `llvm-cov show` reports, consider
+/// lowering the optimization level, including or excluding `-C link-dead-code`,
+/// or using `-Z instrument-coverage=except-unused-functions` or `-Z
+/// instrument-coverage=except-unused-generics`.
+///
+/// Note that `ExceptUnusedFunctions` means: When `mapgen.rs` generates the
+/// coverage map, it will not attempt to generate synthetic functions for unused
+/// (and not code-generated) functions (whether they are generic or not). As a
+/// result, non-codegenned functions will not be included in the coverage map,
+/// and will not appear, as covered or uncovered, in coverage reports.
+///
+/// `ExceptUnusedGenerics` will add synthetic functions to the coverage map,
+/// unless the function has type parameters.
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum InstrumentCoverage {
+    /// Default `-Z instrument-coverage` or `-Z instrument-coverage=statement`
+    All,
+    /// `-Z instrument-coverage=except-unused-generics`
+    ExceptUnusedGenerics,
+    /// `-Z instrument-coverage=except-unused-functions`
+    ExceptUnusedFunctions,
+    /// `-Z instrument-coverage=off` (or `no`, etc.)
+    Off,
 }
 
 #[derive(Clone, PartialEq, Hash)]
@@ -474,6 +444,7 @@ impl<'a> From<&'a ExternDepSpec> for rustc_lint_defs::ExternDepSpec {
 }
 
 impl Externs {
+    /// Used for testing.
     pub fn new(data: BTreeMap<String, ExternEntry>) -> Externs {
         Externs(data)
     }
@@ -570,13 +541,6 @@ impl Input {
         match *self {
             Input::File(ref ifile) => ifile.file_stem().unwrap().to_str().unwrap(),
             Input::Str { .. } => "rust_out",
-        }
-    }
-
-    pub fn get_input(&mut self) -> Option<&mut String> {
-        match *self {
-            Input::File(_) => None,
-            Input::Str { ref mut input, .. } => Some(input),
         }
     }
 
@@ -745,12 +709,6 @@ impl Options {
         self.incremental.is_some()
             || self.debugging_opts.dump_dep_graph
             || self.debugging_opts.query_dep_graph
-    }
-
-    #[inline(always)]
-    pub fn enable_dep_node_debug_strs(&self) -> bool {
-        cfg!(debug_assertions)
-            && (self.debugging_opts.query_dep_graph || self.debugging_opts.incremental_info)
     }
 
     pub fn file_path_mapping(&self) -> FilePathMapping {
@@ -934,7 +892,7 @@ pub fn build_target_config(opts: &Options, target_override: Option<Target>) -> T
             opts.error_format,
             &format!(
                 "Error loading target specification: {}. \
-            Use `--print target-list` for a list of built-in targets",
+                 Run `rustc --print target-list` for a list of built-in targets",
                 e
             ),
         )
@@ -1029,9 +987,6 @@ mod opt {
     pub fn flag_s(a: S, b: S, c: S) -> R {
         stable(longer(a, b), move |opts| opts.optflag(a, b, c))
     }
-    pub fn flagopt_s(a: S, b: S, c: S, d: S) -> R {
-        stable(longer(a, b), move |opts| opts.optflagopt(a, b, c, d))
-    }
     pub fn flagmulti_s(a: S, b: S, c: S) -> R {
         stable(longer(a, b), move |opts| opts.optflagmulti(a, b, c))
     }
@@ -1041,15 +996,6 @@ mod opt {
     }
     pub fn multi(a: S, b: S, c: S, d: S) -> R {
         unstable(longer(a, b), move |opts| opts.optmulti(a, b, c, d))
-    }
-    pub fn flag(a: S, b: S, c: S) -> R {
-        unstable(longer(a, b), move |opts| opts.optflag(a, b, c))
-    }
-    pub fn flagopt(a: S, b: S, c: S, d: S) -> R {
-        unstable(longer(a, b), move |opts| opts.optflagopt(a, b, c, d))
-    }
-    pub fn flagmulti(a: S, b: S, c: S) -> R {
-        unstable(longer(a, b), move |opts| opts.optflagmulti(a, b, c))
     }
 }
 
@@ -1911,7 +1857,9 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         );
     }
 
-    if debugging_opts.instrument_coverage {
+    if debugging_opts.instrument_coverage.is_some()
+        && debugging_opts.instrument_coverage != Some(InstrumentCoverage::Off)
+    {
         if cg.profile_generate.enabled() || cg.profile_use.is_some() {
             early_error(
                 error_format,
@@ -2274,7 +2222,7 @@ impl PpMode {
 
     pub fn needs_analysis(&self) -> bool {
         use PpMode::*;
-        matches!(*self, Mir | MirCFG)
+        matches!(*self, Mir | MirCFG | ThirTree)
     }
 }
 
@@ -2298,8 +2246,8 @@ impl PpMode {
 /// how the hash should be calculated when adding a new command-line argument.
 crate mod dep_tracking {
     use super::{
-        CFGuard, CrateType, DebugInfo, ErrorOutputType, LinkerPluginLto, LtoCli, OptLevel,
-        OutputTypes, Passes, SanitizerSet, SourceFileHashAlgorithm, SwitchWithOptPath,
+        CFGuard, CrateType, DebugInfo, ErrorOutputType, InstrumentCoverage, LinkerPluginLto,
+        LtoCli, OptLevel, OutputTypes, Passes, SourceFileHashAlgorithm, SwitchWithOptPath,
         SymbolManglingVersion, TrimmedDefPaths,
     };
     use crate::lint;
@@ -2308,7 +2256,7 @@ crate mod dep_tracking {
     use rustc_feature::UnstableFeatures;
     use rustc_span::edition::Edition;
     use rustc_target::spec::{CodeModel, MergeFunctions, PanicStrategy, RelocModel};
-    use rustc_target::spec::{RelroLevel, SplitDebuginfo, TargetTriple, TlsModel};
+    use rustc_target::spec::{RelroLevel, SanitizerSet, SplitDebuginfo, TargetTriple, TlsModel};
     use std::collections::hash_map::DefaultHasher;
     use std::collections::BTreeMap;
     use std::hash::Hash;
@@ -2364,6 +2312,7 @@ crate mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Option<WasiExecModel>);
     impl_dep_tracking_hash_via_hash!(Option<PanicStrategy>);
     impl_dep_tracking_hash_via_hash!(Option<RelroLevel>);
+    impl_dep_tracking_hash_via_hash!(Option<InstrumentCoverage>);
     impl_dep_tracking_hash_via_hash!(Option<lint::Level>);
     impl_dep_tracking_hash_via_hash!(Option<PathBuf>);
     impl_dep_tracking_hash_via_hash!(CrateType);
@@ -2425,7 +2374,7 @@ crate mod dep_tracking {
     }
 
     // This is a stable hash because BTreeMap is a sorted container
-    pub fn stable_hash(
+    crate fn stable_hash(
         sub_hashes: BTreeMap<&'static str, &dyn DepTrackingHash>,
         hasher: &mut DefaultHasher,
         error_format: ErrorOutputType,

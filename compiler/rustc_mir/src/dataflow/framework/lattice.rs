@@ -40,6 +40,7 @@
 
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
+use std::iter;
 
 /// A [partially ordered set][poset] that has a [least upper bound][lub] for any pair of elements
 /// in the set.
@@ -110,7 +111,7 @@ impl<I: Idx, T: JoinSemiLattice> JoinSemiLattice for IndexVec<I, T> {
         assert_eq!(self.len(), other.len());
 
         let mut changed = false;
-        for (a, b) in self.iter_mut().zip(other.iter()) {
+        for (a, b) in iter::zip(self, other) {
             changed |= a.join(b);
         }
         changed
@@ -122,7 +123,7 @@ impl<I: Idx, T: MeetSemiLattice> MeetSemiLattice for IndexVec<I, T> {
         assert_eq!(self.len(), other.len());
 
         let mut changed = false;
-        for (a, b) in self.iter_mut().zip(other.iter()) {
+        for (a, b) in iter::zip(self, other) {
             changed |= a.meet(b);
         }
         changed

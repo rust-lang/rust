@@ -47,7 +47,12 @@ where
                 });
             }
         } else {
-            self.extend_desugared(iterator)
+            // Per TrustedLen contract a `None` upper bound means that the iterator length
+            // truly exceeds usize::MAX, which would eventually lead to a capacity overflow anyway.
+            // Since the other branch already panics eagerly (via `reserve()`) we do the same here.
+            // This avoids additional codegen for a fallback code path which would eventually
+            // panic anyway.
+            panic!("capacity overflow");
         }
     }
 }

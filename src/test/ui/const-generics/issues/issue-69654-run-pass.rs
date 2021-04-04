@@ -1,4 +1,3 @@
-// run-pass
 #![feature(const_generics)]
 #![allow(incomplete_features, unused_braces)]
 
@@ -15,4 +14,5 @@ where
 
 fn main() {
     Foo::foo();
+    //~^ ERROR the function or associated item
 }

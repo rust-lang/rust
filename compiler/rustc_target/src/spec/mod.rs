@@ -37,6 +37,7 @@
 use crate::abi::Endian;
 use crate::spec::abi::{lookup as lookup_abi, Abi};
 use crate::spec::crt_objects::{CrtObjects, CrtObjectsFallback};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_serialize::json::{Json, ToJson};
 use rustc_span::symbol::{sym, Symbol};
 use std::collections::BTreeMap;
@@ -511,38 +512,6 @@ impl fmt::Display for SplitDebuginfo {
     }
 }
 
-macro_rules! supported_targets {
-    ( $(($( $triple:literal, )+ $module:ident ),)+ ) => {
-        $(mod $module;)+
-
-        /// List of supported targets
-        pub const TARGETS: &[&str] = &[$($($triple),+),+];
-
-        fn load_builtin(target: &str) -> Option<Target> {
-            let mut t = match target {
-                $( $($triple)|+ => $module::target(), )+
-                _ => return None,
-            };
-            t.is_builtin = true;
-            debug!("got builtin target: {:?}", t);
-            Some(t)
-        }
-
-        #[cfg(test)]
-        mod tests {
-            mod tests_impl;
-
-            // Cannot put this into a separate file without duplication, make an exception.
-            $(
-                #[test] // `#[test]`
-                fn $module() {
-                    tests_impl::test_target(super::$module::target());
-                }
-            )+
-        }
-    };
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum StackProbeType {
     /// Don't emit any stack probes.
@@ -618,6 +587,117 @@ impl ToJson for StackProbeType {
             .collect(),
         })
     }
+}
+
+bitflags::bitflags! {
+    #[derive(Default, Encodable, Decodable)]
+    pub struct SanitizerSet: u8 {
+        const ADDRESS = 1 << 0;
+        const LEAK    = 1 << 1;
+        const MEMORY  = 1 << 2;
+        const THREAD  = 1 << 3;
+        const HWADDRESS = 1 << 4;
+    }
+}
+
+impl SanitizerSet {
+    /// Return sanitizer's name
+    ///
+    /// Returns none if the flags is a set of sanitizers numbering not exactly one.
+    fn as_str(self) -> Option<&'static str> {
+        Some(match self {
+            SanitizerSet::ADDRESS => "address",
+            SanitizerSet::LEAK => "leak",
+            SanitizerSet::MEMORY => "memory",
+            SanitizerSet::THREAD => "thread",
+            SanitizerSet::HWADDRESS => "hwaddress",
+            _ => return None,
+        })
+    }
+}
+
+/// Formats a sanitizer set as a comma separated list of sanitizers' names.
+impl fmt::Display for SanitizerSet {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut first = true;
+        for s in *self {
+            let name = s.as_str().unwrap_or_else(|| panic!("unrecognized sanitizer {:?}", s));
+            if !first {
+                f.write_str(", ")?;
+            }
+            f.write_str(name)?;
+            first = false;
+        }
+        Ok(())
+    }
+}
+
+impl IntoIterator for SanitizerSet {
+    type Item = SanitizerSet;
+    type IntoIter = std::vec::IntoIter<SanitizerSet>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        [
+            SanitizerSet::ADDRESS,
+            SanitizerSet::LEAK,
+            SanitizerSet::MEMORY,
+            SanitizerSet::THREAD,
+            SanitizerSet::HWADDRESS,
+        ]
+        .iter()
+        .copied()
+        .filter(|&s| self.contains(s))
+        .collect::<Vec<_>>()
+        .into_iter()
+    }
+}
+
+impl<CTX> HashStable<CTX> for SanitizerSet {
+    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        self.bits().hash_stable(ctx, hasher);
+    }
+}
+
+impl ToJson for SanitizerSet {
+    fn to_json(&self) -> Json {
+        self.into_iter()
+            .map(|v| Some(v.as_str()?.to_json()))
+            .collect::<Option<Vec<_>>>()
+            .unwrap_or(Vec::new())
+            .to_json()
+    }
+}
+
+macro_rules! supported_targets {
+    ( $(($( $triple:literal, )+ $module:ident ),)+ ) => {
+        $(mod $module;)+
+
+        /// List of supported targets
+        pub const TARGETS: &[&str] = &[$($($triple),+),+];
+
+        fn load_builtin(target: &str) -> Option<Target> {
+            let mut t = match target {
+                $( $($triple)|+ => $module::target(), )+
+                _ => return None,
+            };
+            t.is_builtin = true;
+            debug!("got builtin target: {:?}", t);
+            Some(t)
+        }
+
+        #[cfg(test)]
+        mod tests {
+            mod tests_impl;
+
+            // Cannot put this into a separate file without duplication, make an exception.
+            $(
+                #[test] // `#[test]`
+                fn $module() {
+                    tests_impl::test_target(super::$module::target());
+                }
+            )+
+        }
+    };
 }
 
 supported_targets! {
@@ -1111,6 +1191,10 @@ pub struct TargetOptions {
     /// unwinders.
     pub requires_uwtable: bool,
 
+    /// Whether or not to emit `uwtable` attributes on functions if `-C force-unwind-tables`
+    /// is not specified and `uwtable` is not required on this target.
+    pub default_uwtable: bool,
+
     /// Whether or not SIMD types are passed by reference in the Rust ABI,
     /// typically required if a target can be compiled with a mixed set of
     /// target features. This is `true` by default, and `false` for targets like
@@ -1160,6 +1244,13 @@ pub struct TargetOptions {
     /// How to handle split debug information, if at all. Specifying `None` has
     /// target-specific meaning.
     pub split_debuginfo: SplitDebuginfo,
+
+    /// The sanitizers supported by this target
+    ///
+    /// Note that the support here is at a codegen level. If the machine code with sanitizer
+    /// enabled can generated on this target, but the necessary supporting libraries are not
+    /// distributed with the target, the sanitizer should still appear in this list for the target.
+    pub supported_sanitizers: SanitizerSet,
 }
 
 impl Default for TargetOptions {
@@ -1248,6 +1339,7 @@ impl Default for TargetOptions {
             default_hidden_visibility: false,
             emit_debug_gdb_scripts: true,
             requires_uwtable: false,
+            default_uwtable: false,
             simd_types_indirect: true,
             limit_rdylib_exports: true,
             override_export_symbols: None,
@@ -1260,6 +1352,7 @@ impl Default for TargetOptions {
             eh_frame_header: true,
             has_thumb_interworking: false,
             split_debuginfo: SplitDebuginfo::Off,
+            supported_sanitizers: SanitizerSet::empty(),
         }
     }
 }
@@ -1546,6 +1639,24 @@ impl Target {
                     )),
                 }).unwrap_or(Ok(()))
             } );
+            ($key_name:ident, SanitizerSet) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                obj.find(&name[..]).and_then(|o| o.as_array()).and_then(|a| {
+                    for s in a {
+                        base.$key_name |= match s.as_string() {
+                            Some("address") => SanitizerSet::ADDRESS,
+                            Some("leak") => SanitizerSet::LEAK,
+                            Some("memory") => SanitizerSet::MEMORY,
+                            Some("thread") => SanitizerSet::THREAD,
+                            Some("hwaddress") => SanitizerSet::HWADDRESS,
+                            Some(s) => return Some(Err(format!("unknown sanitizer {}", s))),
+                            _ => return Some(Err(format!("not a string: {:?}", s))),
+                        };
+                    }
+                    Some(Ok(()))
+                }).unwrap_or(Ok(()))
+            } );
+
             ($key_name:ident, crt_objects_fallback) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
@@ -1711,6 +1822,7 @@ impl Target {
         key!(default_hidden_visibility, bool);
         key!(emit_debug_gdb_scripts, bool);
         key!(requires_uwtable, bool);
+        key!(default_uwtable, bool);
         key!(simd_types_indirect, bool);
         key!(limit_rdylib_exports, bool);
         key!(override_export_symbols, opt_list);
@@ -1723,6 +1835,7 @@ impl Target {
         key!(eh_frame_header, bool);
         key!(has_thumb_interworking, bool);
         key!(split_debuginfo, SplitDebuginfo)?;
+        key!(supported_sanitizers, SanitizerSet)?;
 
         // NB: The old name is deprecated, but support for it is retained for
         // compatibility.
@@ -1947,6 +2060,7 @@ impl ToJson for Target {
         target_option_val!(default_hidden_visibility);
         target_option_val!(emit_debug_gdb_scripts);
         target_option_val!(requires_uwtable);
+        target_option_val!(default_uwtable);
         target_option_val!(simd_types_indirect);
         target_option_val!(limit_rdylib_exports);
         target_option_val!(override_export_symbols);
@@ -1959,6 +2073,7 @@ impl ToJson for Target {
         target_option_val!(eh_frame_header);
         target_option_val!(has_thumb_interworking);
         target_option_val!(split_debuginfo);
+        target_option_val!(supported_sanitizers);
 
         if default.unsupported_abis != self.unsupported_abis {
             d.insert(

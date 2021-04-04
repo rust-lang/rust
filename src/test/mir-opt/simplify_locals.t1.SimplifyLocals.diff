@@ -15,7 +15,6 @@
 -         _1 = (*_2);                      // scope 1 at $DIR/simplify-locals.rs:44:14: 44:15
 -         StorageDead(_2);                 // scope 0 at $DIR/simplify-locals.rs:44:17: 44:18
 -         StorageDead(_1);                 // scope 0 at $DIR/simplify-locals.rs:44:17: 44:18
--         _0 = const ();                   // scope 0 at $DIR/simplify-locals.rs:42:9: 45:2
           return;                          // scope 0 at $DIR/simplify-locals.rs:45:2: 45:2
       }
   }

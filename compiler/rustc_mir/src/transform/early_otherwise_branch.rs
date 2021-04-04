@@ -26,6 +26,11 @@ pub struct EarlyOtherwiseBranch;
 
 impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        //  FIXME(#78496)
+        if !tcx.sess.opts.debugging_opts.unsound_mir_opts {
+            return;
+        }
+
         if tcx.sess.mir_opt_level() < 3 {
             return;
         }

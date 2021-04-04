@@ -1,10 +1,12 @@
-use crate::utils::{match_def_path, paths, snippet, span_lint_and_then, walk_ptrs_ty_depth};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::source::snippet;
+use clippy_utils::ty::walk_ptrs_ty_depth;
+use clippy_utils::{match_def_path, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-
 use std::iter;
 
 declare_clippy_lint! {

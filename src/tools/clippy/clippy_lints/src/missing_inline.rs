@@ -1,4 +1,4 @@
-use crate::utils::span_lint;
+use clippy_utils::diagnostics::span_lint;
 use rustc_ast::ast;
 use rustc_hir as hir;
 use rustc_lint::{self, LateContext, LateLintPass, LintContext};

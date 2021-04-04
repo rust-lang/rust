@@ -450,12 +450,12 @@ impl<'a> Resolver<'a> {
                     self.session,
                     span,
                     E0128,
-                    "type parameters with a default cannot use \
+                    "generic parameters with a default cannot use \
                                                 forward declared identifiers"
                 );
                 err.span_label(
                     span,
-                    "defaulted type parameters cannot be forward declared".to_string(),
+                    "defaulted generic parameters cannot be forward declared".to_string(),
                 );
                 err
             }
@@ -606,7 +606,7 @@ impl<'a> Resolver<'a> {
     /// Lookup typo candidate in scope for a macro or import.
     fn early_lookup_typo_candidate(
         &mut self,
-        scope_set: ScopeSet,
+        scope_set: ScopeSet<'a>,
         parent_scope: &ParentScope<'a>,
         ident: Ident,
         filter_fn: &impl Fn(Res) -> bool,
@@ -662,7 +662,7 @@ impl<'a> Resolver<'a> {
                     let root_module = this.resolve_crate_root(root_ident);
                     this.add_module_candidates(root_module, &mut suggestions, filter_fn);
                 }
-                Scope::Module(module) => {
+                Scope::Module(module, _) => {
                     this.add_module_candidates(module, &mut suggestions, filter_fn);
                 }
                 Scope::RegisteredAttrs => {

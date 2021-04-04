@@ -1,3 +1,6 @@
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet;
+use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, ExprKind};
@@ -5,13 +8,10 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::Symbol;
 
-use if_chain::if_chain;
-
-use crate::utils::{snippet, span_lint_and_sugg};
-
 declare_clippy_lint! {
-    /// **What it does:** Checks for struct constructors where the order of the field init
-    /// shorthand in the constructor is inconsistent with the order in the struct definition.
+    /// **What it does:** Checks for struct constructors where all fields are shorthand and
+    /// the order of the field init shorthand in the constructor is inconsistent
+    /// with the order in the struct definition.
     ///
     /// **Why is this bad?** Since the order of fields in a constructor doesn't affect the
     /// resulted instance as the below example indicates,
@@ -25,11 +25,11 @@ declare_clippy_lint! {
     /// let x = 1;
     /// let y = 2;
     ///
-    /// // This assertion never fails.
+    /// // This assertion never fails:
     /// assert_eq!(Foo { x, y }, Foo { y, x });
     /// ```
     ///
-    /// inconsistent order means nothing and just decreases readability and consistency.
+    /// inconsistent order can be confusing and decreases readability and consistency.
     ///
     /// **Known problems:** None.
     ///
@@ -42,6 +42,7 @@ declare_clippy_lint! {
     /// }
     /// let x = 1;
     /// let y = 2;
+    ///
     /// Foo { y, x };
     /// ```
     ///
@@ -107,7 +108,7 @@ impl LateLintPass<'_> for InconsistentStructConstructor {
                     cx,
                     INCONSISTENT_STRUCT_CONSTRUCTOR,
                     expr.span,
-                    "inconsistent struct constructor",
+                    "struct constructor field order is inconsistent with struct definition field order",
                     "try",
                     sugg,
                     Applicability::MachineApplicable,

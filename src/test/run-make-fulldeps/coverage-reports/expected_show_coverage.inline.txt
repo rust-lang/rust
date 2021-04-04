@@ -47,7 +47,7 @@
    46|      6|}
    47|       |
    48|       |#[inline(always)]
-   49|       |fn error() {
-   50|       |    panic!("error");
-   51|       |}
+   49|      0|fn error() {
+   50|      0|    panic!("error");
+   51|      0|}
 

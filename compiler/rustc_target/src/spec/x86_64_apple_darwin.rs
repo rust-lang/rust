@@ -1,4 +1,4 @@
-use crate::spec::{LinkerFlavor, StackProbeType, Target, TargetOptions};
+use crate::spec::{LinkerFlavor, SanitizerSet, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = super::apple_base::opts("macos");
@@ -11,6 +11,7 @@ pub fn target() -> Target {
     );
     base.link_env_remove.extend(super::apple_base::macos_link_env_remove());
     base.stack_probes = StackProbeType::InlineOrCall { min_llvm_version_for_inline: (11, 0, 1) };
+    base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::LEAK | SanitizerSet::THREAD;
 
     // Clang automatically chooses a more specific target based on
     // MACOSX_DEPLOYMENT_TARGET.  To enable cross-language LTO to work
