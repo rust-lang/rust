@@ -302,7 +302,8 @@ impl Body {
             }
         };
         let expander = Expander::new(db, file_id, module);
-        let (body, source_map) = Body::new(db, expander, params, body);
+        let (mut body, source_map) = Body::new(db, expander, params, body);
+        body.shrink_to_fit();
         (Arc::new(body), Arc::new(source_map))
     }
 
@@ -327,6 +328,15 @@ impl Body {
         body: Option<ast::Expr>,
     ) -> (Body, BodySourceMap) {
         lower::lower(db, expander, params, body)
+    }
+
+    fn shrink_to_fit(&mut self) {
+        let Self { _c: _, body_expr: _, block_scopes, exprs, labels, params, pats } = self;
+        block_scopes.shrink_to_fit();
+        exprs.shrink_to_fit();
+        labels.shrink_to_fit();
+        params.shrink_to_fit();
+        pats.shrink_to_fit();
     }
 }
 
