@@ -928,7 +928,10 @@ pub(crate) fn handle_formatting(
 
     if !output.status.success() {
         match output.status.code() {
-            Some(1) if !captured_stderr.contains("not installed") => {
+            Some(1)
+                if !captured_stderr.contains("not installed")
+                    && !captured_stderr.contains("not available") =>
+            {
                 // While `rustfmt` doesn't have a specific exit code for parse errors this is the
                 // likely cause exiting with 1. Most Language Servers swallow parse errors on
                 // formatting because otherwise an error is surfaced to the user on top of the
