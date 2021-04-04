@@ -574,7 +574,7 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
 
                 self.mutate_place(location, (*lhs, span), Shallow(None), JustWrite, flow_state);
             }
-            StatementKind::FakeRead(_, box ref place) => {
+            StatementKind::FakeRead(box (_, ref place)) => {
                 // Read for match doesn't access any memory and is used to
                 // assert that a place is safe and live. So we don't have to
                 // do any checks here.

@@ -683,10 +683,10 @@ pub(super) fn filtered_statement_span(
         // and `_1` is the `Place` for `somenum`.
         //
         // If and when the Issue is resolved, remove this special case match pattern:
-        StatementKind::FakeRead(cause, _) if cause == FakeReadCause::ForGuardBinding => None,
+        StatementKind::FakeRead(box (cause, _)) if cause == FakeReadCause::ForGuardBinding => None,
 
         // Retain spans from all other statements
-        StatementKind::FakeRead(_, _) // Not including `ForGuardBinding`
+        StatementKind::FakeRead(box (_, _)) // Not including `ForGuardBinding`
         | StatementKind::CopyNonOverlapping(..)
         | StatementKind::Assign(_)
         | StatementKind::SetDiscriminant { .. }

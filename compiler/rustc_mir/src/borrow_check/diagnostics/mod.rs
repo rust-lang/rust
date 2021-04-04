@@ -7,8 +7,8 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItemGroup;
 use rustc_hir::GeneratorKind;
 use rustc_middle::mir::{
-    AggregateKind, Constant, Field, Local, LocalInfo, LocalKind, Location, Operand, Place,
-    PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
+    AggregateKind, Constant, FakeReadCause, Field, Local, LocalInfo, LocalKind, Location, Operand,
+    Place, PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
 };
 use rustc_middle::ty::print::Print;
 use rustc_middle::ty::{self, DefIdTree, Instance, Ty, TyCtxt};
@@ -787,6 +787,24 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     debug!("move_spans: def_id={:?} places={:?}", def_id, places);
                     if let Some((args_span, generator_kind, var_span)) =
                         self.closure_span(*def_id, moved_place, places)
+                    {
+                        return ClosureUse { generator_kind, args_span, var_span };
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        // StatementKind::FakeRead only contains a def_id if they are introduced as a result
+        // of pattern matching within a closure.
+        if let StatementKind::FakeRead(box (cause, ref place)) = stmt.kind {
+            match cause {
+                FakeReadCause::ForMatchedPlace(Some(closure_def_id))
+                | FakeReadCause::ForLet(Some(closure_def_id)) => {
+                    debug!("move_spans: def_id={:?} place={:?}", closure_def_id, place);
+                    let places = &[Operand::Move(*place)];
+                    if let Some((args_span, generator_kind, var_span)) =
+                        self.closure_span(closure_def_id, moved_place, places)
                     {
                         return ClosureUse { generator_kind, args_span, var_span };
                     }

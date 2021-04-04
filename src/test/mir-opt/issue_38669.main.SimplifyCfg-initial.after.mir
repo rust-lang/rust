@@ -14,7 +14,7 @@ fn main() -> () {
     bb0: {
         StorageLive(_1);                 // scope 0 at $DIR/issue-38669.rs:5:9: 5:25
         _1 = const false;                // scope 0 at $DIR/issue-38669.rs:5:28: 5:33
-        FakeRead(ForLet, _1);            // scope 0 at $DIR/issue-38669.rs:5:9: 5:25
+        FakeRead(ForLet(None), _1);      // scope 0 at $DIR/issue-38669.rs:5:9: 5:25
         goto -> bb1;                     // scope 1 at $DIR/issue-38669.rs:6:5: 11:6
     }
 
