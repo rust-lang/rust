@@ -87,7 +87,11 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
         }
     }
 
-    let Cache { ref mut search_index, ref paths, ref mut aliases, .. } = *cache;
+    let Cache { ref mut search_index, ref paths, .. } = *cache;
+
+    // Aliases added through `#[doc(alias = "...")]`. Since a few items can have the same alias,
+    // we need the alias element to have an array of items.
+    let mut aliases: BTreeMap<String, Vec<usize>> = BTreeMap::new();
 
     // Sort search index items. This improves the compressibility of the search index.
     search_index.sort_unstable_by(|k1, k2| {
@@ -210,7 +214,7 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
             doc: crate_doc,
             items: crate_items,
             paths: crate_paths,
-            aliases,
+            aliases: &aliases,
         })
         .expect("failed serde conversion")
         // All these `replace` calls are because we have to go through JS string for JSON content.
