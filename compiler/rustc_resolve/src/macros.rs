@@ -376,7 +376,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
             has_derive_copy: false,
         });
         let parent_scope = self.invocation_parent_scopes[&expn_id];
-        for (path, opt_ext) in &mut entry.resolutions {
+        for (i, (path, opt_ext)) in entry.resolutions.iter_mut().enumerate() {
             if opt_ext.is_none() {
                 *opt_ext = Some(
                     match self.resolve_macro_path(
@@ -391,7 +391,9 @@ impl<'a> ResolverExpand for Resolver<'a> {
                                 let last_seg = path.segments.last().unwrap();
                                 let span = last_seg.ident.span.normalize_to_macros_2_0();
                                 entry.helper_attrs.extend(
-                                    ext.helper_attrs.iter().map(|name| Ident::new(*name, span)),
+                                    ext.helper_attrs
+                                        .iter()
+                                        .map(|name| (i, Ident::new(*name, span))),
                                 );
                             }
                             entry.has_derive_copy |= ext.builtin_name == Some(sym::Copy);
@@ -407,9 +409,10 @@ impl<'a> ResolverExpand for Resolver<'a> {
                 );
             }
         }
-        // If we get to here, then `derive_data` for the given `expn_id` will only be accessed by
-        // `take_derive_resolutions` later, so we can steal `helper_attrs` instead of cloning them.
-        self.helper_attrs.insert(expn_id, mem::take(&mut entry.helper_attrs));
+        // Sort helpers in a stable way independent from the derive resolution order.
+        entry.helper_attrs.sort_by_key(|(i, _)| *i);
+        self.helper_attrs
+            .insert(expn_id, entry.helper_attrs.iter().map(|(_, ident)| *ident).collect());
         // Mark this derive as having `Copy` either if it has `Copy` itself or if its parent derive
         // has `Copy`, to support cases like `#[derive(Clone, Copy)] #[derive(Debug)]`.
         if entry.has_derive_copy || self.has_derive_copy(parent_scope.expansion) {

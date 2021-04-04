@@ -853,7 +853,7 @@ enum BuiltinMacroState {
 
 struct DeriveData {
     resolutions: DeriveResolutions,
-    helper_attrs: Vec<Ident>,
+    helper_attrs: Vec<(usize, Ident)>,
     has_derive_copy: bool,
 }
 
