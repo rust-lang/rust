@@ -1,5 +1,5 @@
 // build-fail
-
+// compile-flags: -Ccodegen-units=16
 #![feature(linkage)]
 
 mod dep1 {
