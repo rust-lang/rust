@@ -1,0 +1,22 @@
+error[E0004]: non-exhaustive patterns: `A(false)`, `B(false)` and `C(false)` not covered
+  --> $DIR/issue-56379.rs:8:11
+   |
+LL | / enum Foo {
+LL | |     A(bool),
+   | |     - not covered
+LL | |     B(bool),
+   | |     - not covered
+LL | |     C(bool),
+   | |     - not covered
+LL | | }
+   | |_- `Foo` defined here
+...
+LL |       match Foo::A(true) {
+   |             ^^^^^^^^^^^^ patterns `A(false)`, `B(false)` and `C(false)` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `Foo`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0004`.

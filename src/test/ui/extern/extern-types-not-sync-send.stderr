@@ -1,7 +1,7 @@
 error[E0277]: `A` cannot be shared between threads safely
   --> $DIR/extern-types-not-sync-send.rs:13:19
    |
-LL | fn assert_sync<T: ?Sized + Sync>() { }
+LL | fn assert_sync<T: ?Sized + Sync>() {}
    |                            ---- required by this bound in `assert_sync`
 ...
 LL |     assert_sync::<A>();
@@ -12,7 +12,7 @@ LL |     assert_sync::<A>();
 error[E0277]: `A` cannot be sent between threads safely
   --> $DIR/extern-types-not-sync-send.rs:16:19
    |
-LL | fn assert_send<T: ?Sized + Send>() { }
+LL | fn assert_send<T: ?Sized + Send>() {}
    |                            ---- required by this bound in `assert_send`
 ...
 LL |     assert_send::<A>();

@@ -31,6 +31,7 @@ where
 /// implementing the `Clone` trait. But `Clone` works only for going from `&T`
 /// to `T`. The `ToOwned` trait generalizes `Clone` to construct owned data
 /// from any borrow of a given type.
+#[cfg_attr(not(test), rustc_diagnostic_item = "ToOwned")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ToOwned {
     /// The resulting type after obtaining ownership.
@@ -102,6 +103,11 @@ where
 /// non-mutating methods directly on the data it encloses. If mutation
 /// is desired, `to_mut` will obtain a mutable reference to an owned
 /// value, cloning if necessary.
+///
+/// If you need reference-counting pointers, note that
+/// [`Rc::make_mut`][crate::rc::Rc::make_mut] and
+/// [`Arc::make_mut`][crate::sync::Arc::make_mut] can provide clone-on-write
+/// functionality as well.
 ///
 /// # Examples
 ///

@@ -1,8 +1,8 @@
 error: invalid linkage specified
-  --> $DIR/linkage3.rs:10:24
+  --> $DIR/linkage3.rs:11:5
    |
-LL |     #[linkage = "foo"] static foo: *const i32;
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^
+LL |     static foo: *const i32;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

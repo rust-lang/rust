@@ -1,14 +1,8 @@
 error: extern block cannot be declared unsafe
   --> $DIR/unsafe-foreign-mod.rs:1:1
    |
-LL | unsafe extern {
-   | ^^^^^^
-
-error: extern block cannot be declared unsafe
-  --> $DIR/unsafe-foreign-mod.rs:5:1
-   |
 LL | unsafe extern "C" {
    | ^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

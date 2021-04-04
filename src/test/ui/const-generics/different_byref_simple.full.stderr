@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/different_byref_simple.rs:12:9
+  --> $DIR/different_byref_simple.rs:11:9
    |
 LL |     u = ConstUsize::<4> {};
    |         ^^^^^^^^^^^^^^^^^^ expected `3_usize`, found `4_usize`

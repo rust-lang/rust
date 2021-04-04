@@ -113,7 +113,7 @@ fn get_arm_identity_info<'a, 'tcx>(
         test: impl Fn(&'a Statement<'tcx>) -> bool,
         mut action: impl FnMut(usize, &'a Statement<'tcx>),
     ) {
-        while stmt_iter.peek().map(|(_, stmt)| test(stmt)).unwrap_or(false) {
+        while stmt_iter.peek().map_or(false, |(_, stmt)| test(stmt)) {
             let (idx, stmt) = stmt_iter.next().unwrap();
 
             action(idx, stmt);
@@ -246,14 +246,19 @@ fn get_arm_identity_info<'a, 'tcx>(
         tmp_assigned_vars.insert(*r);
     }
 
-    let dbg_info_to_adjust: Vec<_> =
-        debug_info
-            .iter()
-            .enumerate()
-            .filter_map(|(i, var_info)| {
-                if tmp_assigned_vars.contains(var_info.place.local) { Some(i) } else { None }
-            })
-            .collect();
+    let dbg_info_to_adjust: Vec<_> = debug_info
+        .iter()
+        .enumerate()
+        .filter_map(|(i, var_info)| {
+            if let VarDebugInfoContents::Place(p) = var_info.value {
+                if tmp_assigned_vars.contains(p.local) {
+                    return Some(i);
+                }
+            }
+
+            None
+        })
+        .collect();
 
     Some(ArmIdentityInfo {
         local_temp_0: local_tmp_s0,
@@ -301,7 +306,7 @@ fn optimization_applies<'tcx>(
         return false;
     }
 
-    // Verify the assigment chain consists of the form b = a; c = b; d = c; etc...
+    // Verify the assignment chain consists of the form b = a; c = b; d = c; etc...
     if opt_info.field_tmp_assignments.is_empty() {
         trace!("NO: no assignments found");
         return false;
@@ -340,9 +345,11 @@ fn optimization_applies<'tcx>(
     // Check that debug info only points to full Locals and not projections.
     for dbg_idx in &opt_info.dbg_info_to_adjust {
         let dbg_info = &var_debug_info[*dbg_idx];
-        if !dbg_info.place.projection.is_empty() {
-            trace!("NO: debug info for {:?} had a projection {:?}", dbg_info.name, dbg_info.place);
-            return false;
+        if let VarDebugInfoContents::Place(p) = dbg_info.value {
+            if !p.projection.is_empty() {
+                trace!("NO: debug info for {:?} had a projection {:?}", dbg_info.name, p);
+                return false;
+            }
         }
     }
 
@@ -423,9 +430,15 @@ impl<'tcx> MirPass<'tcx> for SimplifyArmIdentity {
                 // Fix the debug info to point to the right local
                 for dbg_index in opt_info.dbg_info_to_adjust {
                     let dbg_info = &mut debug_info[dbg_index];
-                    assert!(dbg_info.place.projection.is_empty());
-                    dbg_info.place.local = opt_info.local_0;
-                    dbg_info.place.projection = opt_info.dbg_projection;
+                    assert!(
+                        matches!(dbg_info.value, VarDebugInfoContents::Place(_)),
+                        "value was not a Place"
+                    );
+                    if let VarDebugInfoContents::Place(p) = &mut dbg_info.value {
+                        assert!(p.projection.is_empty());
+                        p.local = opt_info.local_0;
+                        p.projection = opt_info.dbg_projection;
+                    }
                 }
 
                 trace!("block is now {:?}", bb.statements);
@@ -622,7 +635,7 @@ impl<'a, 'tcx> SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
                     })
                     .peekable();
 
-                let bb_first = iter_bbs_reachable.peek().map(|(idx, _)| *idx).unwrap_or(&targets_and_values[0]);
+                let bb_first = iter_bbs_reachable.peek().map_or(&targets_and_values[0], |(idx, _)| *idx);
                 let mut all_successors_equivalent = StatementEquality::TrivialEqual;
 
                 // All successor basic blocks must be equal or contain statements that are pairwise considered equal.
@@ -683,8 +696,8 @@ impl<'a, 'tcx> SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
     /// _0 = move _1;           // bb2
     /// ```
     /// In this case the two statements are equal iff
-    /// 1: _0 is an enum where the variant index 0 is fieldless, and
-    /// 2:  bb1 was targeted by a switch where the discriminant of _1 was switched on
+    /// - `_0` is an enum where the variant index 0 is fieldless, and
+    /// -  bb1 was targeted by a switch where the discriminant of `_1` was switched on
     fn statement_equality(
         &self,
         adt_matched_on: Place<'tcx>,

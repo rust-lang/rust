@@ -154,7 +154,7 @@ extern "C" {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(cfg = "cfail2", except = "hir_owner_nodes")]
+#[rustc_dirty(cfg = "cfail2", except = "hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg = "cfail3")]
 #[link_args = "-foo -bar -baz"]
 extern "C" {
@@ -169,7 +169,7 @@ extern "C" {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(cfg = "cfail2", except = "hir_owner_nodes")]
+#[rustc_dirty(cfg = "cfail2", except = "hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg = "cfail3")]
 #[link(name = "bar")]
 extern "C" {

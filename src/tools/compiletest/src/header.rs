@@ -48,6 +48,7 @@ impl EarlyProps {
         let has_lsan = util::LSAN_SUPPORTED_TARGETS.contains(&&*config.target);
         let has_msan = util::MSAN_SUPPORTED_TARGETS.contains(&&*config.target);
         let has_tsan = util::TSAN_SUPPORTED_TARGETS.contains(&&*config.target);
+        let has_hwasan = util::HWASAN_SUPPORTED_TARGETS.contains(&&*config.target);
 
         iter_header(testfile, None, rdr, &mut |ln| {
             // we should check if any only-<platform> exists and if it exists
@@ -98,6 +99,10 @@ impl EarlyProps {
                 }
 
                 if !has_tsan && config.parse_name_directive(ln, "needs-sanitizer-thread") {
+                    props.ignore = true;
+                }
+
+                if !has_hwasan && config.parse_name_directive(ln, "needs-sanitizer-hwaddress") {
                     props.ignore = true;
                 }
 
@@ -333,6 +338,8 @@ pub struct TestProps {
     pub assembly_output: Option<String>,
     // If true, the test is expected to ICE
     pub should_ice: bool,
+    // If true, the stderr is expected to be different across bit-widths.
+    pub stderr_per_bitwidth: bool,
 }
 
 impl TestProps {
@@ -372,6 +379,7 @@ impl TestProps {
             rustfix_only_machine_applicable: false,
             assembly_output: None,
             should_ice: false,
+            stderr_per_bitwidth: false,
         }
     }
 
@@ -538,14 +546,15 @@ impl TestProps {
                 if self.assembly_output.is_none() {
                     self.assembly_output = config.parse_assembly_output(ln);
                 }
+
+                if !self.stderr_per_bitwidth {
+                    self.stderr_per_bitwidth = config.parse_stderr_per_bitwidth(ln);
+                }
             });
         }
 
         if self.failure_status == -1 {
-            self.failure_status = match config.mode {
-                Mode::RunFail => 101,
-                _ => 1,
-            };
+            self.failure_status = 1;
         }
         if self.should_ice {
             self.failure_status = 101;
@@ -699,8 +708,8 @@ impl Config {
         self.parse_name_value_directive(line, "aux-crate").map(|r| {
             let mut parts = r.trim().splitn(2, '=');
             (
-                parts.next().expect("aux-crate name").to_string(),
-                parts.next().expect("aux-crate value").to_string(),
+                parts.next().expect("missing aux-crate name (e.g. log=log.rs)").to_string(),
+                parts.next().expect("missing aux-crate value (e.g. log=log.rs)").to_string(),
             )
         })
     }
@@ -775,6 +784,10 @@ impl Config {
 
     fn parse_ignore_pass(&self, line: &str) -> bool {
         self.parse_name_directive(line, "ignore-pass")
+    }
+
+    fn parse_stderr_per_bitwidth(&self, line: &str) -> bool {
+        self.parse_name_directive(line, "stderr-per-bitwidth")
     }
 
     fn parse_assembly_output(&self, line: &str) -> Option<String> {
@@ -852,6 +865,8 @@ impl Config {
                 Some(CompareMode::Nll) => name == "compare-mode-nll",
                 Some(CompareMode::Polonius) => name == "compare-mode-polonius",
                 Some(CompareMode::Chalk) => name == "compare-mode-chalk",
+                Some(CompareMode::SplitDwarf) => name == "compare-mode-split-dwarf",
+                Some(CompareMode::SplitDwarfSingle) => name == "compare-mode-split-dwarf-single",
                 None => false,
             } ||
             (cfg!(debug_assertions) && name == "debug") ||
@@ -958,7 +973,11 @@ fn parse_normalization_string(line: &mut &str) -> Option<String> {
 }
 
 pub fn extract_llvm_version(version: &str) -> Option<u32> {
-    let version_without_suffix = version.trim_end_matches("git").split('-').next().unwrap();
+    let pat = |c: char| !c.is_ascii_digit() && c != '.';
+    let version_without_suffix = match version.find(pat) {
+        Some(pos) => &version[..pos],
+        None => version,
+    };
     let components: Vec<u32> = version_without_suffix
         .split('.')
         .map(|s| s.parse().expect("Malformed version component"))

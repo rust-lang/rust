@@ -12,6 +12,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
 use std::collections::hash_map::Entry;
 use std::collections::VecDeque;
+use std::iter;
 
 // FIXME(twk): this is obviously not nice to duplicate like that
 #[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]
@@ -35,10 +36,7 @@ pub enum AutoTraitResult<A> {
 #[allow(dead_code)]
 impl<A> AutoTraitResult<A> {
     fn is_auto(&self) -> bool {
-        match *self {
-            AutoTraitResult::PositiveImpl(_) | AutoTraitResult::NegativeImpl => true,
-            _ => false,
-        }
+        matches!(self, AutoTraitResult::PositiveImpl(_) | AutoTraitResult::NegativeImpl)
     }
 }
 
@@ -80,13 +78,13 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         ty: Ty<'tcx>,
         orig_env: ty::ParamEnv<'tcx>,
         trait_did: DefId,
-        auto_trait_callback: impl Fn(&InferCtxt<'_, 'tcx>, AutoTraitInfo<'tcx>) -> A,
+        mut auto_trait_callback: impl FnMut(AutoTraitInfo<'tcx>) -> A,
     ) -> AutoTraitResult<A> {
         let tcx = self.tcx;
 
         let trait_ref = ty::TraitRef { def_id: trait_did, substs: tcx.mk_substs_trait(ty, &[]) };
 
-        let trait_pred = ty::Binder::bind(trait_ref);
+        let trait_pred = ty::Binder::dummy(trait_ref);
 
         let bail_out = tcx.infer_ctxt().enter(|infcx| {
             let mut selcx = SelectionContext::with_negative(&infcx, true);
@@ -214,7 +212,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
             let info = AutoTraitInfo { full_user_env, region_data, vid_to_region };
 
-            AutoTraitResult::PositiveImpl(auto_trait_callback(&infcx, info))
+            AutoTraitResult::PositiveImpl(auto_trait_callback(info))
         })
     }
 }
@@ -282,7 +280,7 @@ impl AutoTraitFinder<'tcx> {
 
         let mut already_visited = FxHashSet::default();
         let mut predicates = VecDeque::new();
-        predicates.push_back(ty::Binder::bind(ty::TraitPredicate {
+        predicates.push_back(ty::Binder::dummy(ty::TraitPredicate {
             trait_ref: ty::TraitRef {
                 def_id: trait_did,
                 substs: infcx.tcx.mk_substs_trait(ty, &[]),
@@ -308,8 +306,8 @@ impl AutoTraitFinder<'tcx> {
                 infcx.resolve_vars_if_possible(Obligation::new(dummy_cause.clone(), new_env, pred));
             let result = select.select(&obligation);
 
-            match &result {
-                &Ok(Some(ref impl_source)) => {
+            match result {
+                Ok(Some(ref impl_source)) => {
                     // If we see an explicit negative impl (e.g., `impl !Send for MyStruct`),
                     // we immediately bail out, since it's impossible for us to continue.
 
@@ -342,8 +340,8 @@ impl AutoTraitFinder<'tcx> {
                         return None;
                     }
                 }
-                &Ok(None) => {}
-                &Err(SelectionError::Unimplemented) => {
+                Ok(None) => {}
+                Err(SelectionError::Unimplemented) => {
                     if self.is_param_no_infer(pred.skip_binder().trait_ref.substs) {
                         already_visited.remove(&pred);
                         self.add_user_pred(
@@ -417,9 +415,9 @@ impl AutoTraitFinder<'tcx> {
         let mut should_add_new = true;
         user_computed_preds.retain(|&old_pred| {
             if let (
-                ty::PredicateAtom::Trait(new_trait, _),
-                ty::PredicateAtom::Trait(old_trait, _),
-            ) = (new_pred.skip_binders(), old_pred.skip_binders())
+                ty::PredicateKind::Trait(new_trait, _),
+                ty::PredicateKind::Trait(old_trait, _),
+            ) = (new_pred.kind().skip_binder(), old_pred.kind().skip_binder())
             {
                 if new_trait.def_id() == old_trait.def_id() {
                     let new_substs = new_trait.trait_ref.substs;
@@ -431,7 +429,9 @@ impl AutoTraitFinder<'tcx> {
                         return true;
                     }
 
-                    for (new_region, old_region) in new_substs.regions().zip(old_substs.regions()) {
+                    for (new_region, old_region) in
+                        iter::zip(new_substs.regions(), old_substs.regions())
+                    {
                         match (new_region, old_region) {
                             // If both predicates have an `ReLateBound` (a HRTB) in the
                             // same spot, we do nothing.
@@ -601,10 +601,7 @@ impl AutoTraitFinder<'tcx> {
     }
 
     fn is_self_referential_projection(&self, p: ty::PolyProjectionPredicate<'_>) -> bool {
-        match *p.ty().skip_binder().kind() {
-            ty::Projection(proj) if proj == p.skip_binder().projection_ty => true,
-            _ => false,
-        }
+        matches!(*p.ty().skip_binder().kind(), ty::Projection(proj) if proj == p.skip_binder().projection_ty)
     }
 
     fn evaluate_nested_obligations(
@@ -639,18 +636,16 @@ impl AutoTraitFinder<'tcx> {
             // We check this by calling is_of_param on the relevant types
             // from the various possible predicates
 
-            let bound_predicate = predicate.bound_atom();
+            let bound_predicate = predicate.kind();
             match bound_predicate.skip_binder() {
-                ty::PredicateAtom::Trait(p, _) => {
-                    if self.is_param_no_infer(p.trait_ref.substs)
-                        && !only_projections
-                        && is_new_pred
-                    {
-                        self.add_user_pred(computed_preds, predicate);
-                    }
+                ty::PredicateKind::Trait(p, _) => {
+                    // Add this to `predicates` so that we end up calling `select`
+                    // with it. If this predicate ends up being unimplemented,
+                    // then `evaluate_predicates` will handle adding it the `ParamEnv`
+                    // if possible.
                     predicates.push_back(bound_predicate.rebind(p));
                 }
-                ty::PredicateAtom::Projection(p) => {
+                ty::PredicateKind::Projection(p) => {
                     let p = bound_predicate.rebind(p);
                     debug!(
                         "evaluate_nested_obligations: examining projection predicate {:?}",
@@ -780,13 +775,13 @@ impl AutoTraitFinder<'tcx> {
                         }
                     }
                 }
-                ty::PredicateAtom::RegionOutlives(binder) => {
+                ty::PredicateKind::RegionOutlives(binder) => {
                     let binder = bound_predicate.rebind(binder);
                     if select.infcx().region_outlives_predicate(&dummy_cause, binder).is_err() {
                         return false;
                     }
                 }
-                ty::PredicateAtom::TypeOutlives(binder) => {
+                ty::PredicateKind::TypeOutlives(binder) => {
                     let binder = bound_predicate.rebind(binder);
                     match (
                         binder.no_bound_vars(),
@@ -809,14 +804,12 @@ impl AutoTraitFinder<'tcx> {
                         _ => {}
                     };
                 }
-                ty::PredicateAtom::ConstEquate(c1, c2) => {
+                ty::PredicateKind::ConstEquate(c1, c2) => {
                     let evaluate = |c: &'tcx ty::Const<'tcx>| {
-                        if let ty::ConstKind::Unevaluated(def, substs, promoted) = c.val {
+                        if let ty::ConstKind::Unevaluated(unevaluated) = c.val {
                             match select.infcx().const_eval_resolve(
                                 obligation.param_env,
-                                def,
-                                substs,
-                                promoted,
+                                unevaluated,
                                 Some(obligation.cause.span),
                             ) {
                                 Ok(val) => Ok(ty::Const::from_value(select.tcx(), val, c.ty)),
@@ -869,7 +862,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionReplacer<'a, 'tcx> {
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         (match r {
-            &ty::ReVar(vid) => self.vid_to_region.get(&vid).cloned(),
+            ty::ReVar(vid) => self.vid_to_region.get(vid).cloned(),
             _ => None,
         })
         .unwrap_or_else(|| r.super_fold_with(self))

@@ -59,8 +59,9 @@ use crate::os::unix::io::{AsRawFd, FromRawFd, RawFd};
 use crate::os::unix::net::UnixStream;
 use crate::process::{ChildStderr, ChildStdin, ChildStdout};
 use crate::ptr;
-use crate::sync::atomic::{AtomicBool, Ordering};
+use crate::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use crate::sys::cvt;
+use libc::{EBADF, EINVAL, ENOSYS, EOPNOTSUPP, EOVERFLOW, EPERM, EXDEV};
 
 #[cfg(test)]
 mod tests;
@@ -491,8 +492,15 @@ impl CopyResult {
     }
 }
 
-/// linux-specific implementation that will attempt to use copy_file_range for copy offloading
-/// as the name says, it only works on regular files
+/// Invalid file descriptor.
+///
+/// Valid file descriptors are guaranteed to be positive numbers (see `open()` manpage)
+/// while negative values are used to indicate errors.
+/// Thus -1 will never be overlap with a valid open file.
+const INVALID_FD: RawFd = -1;
+
+/// Linux-specific implementation that will attempt to use copy_file_range for copy offloading.
+/// As the name says, it only works on regular files.
 ///
 /// Callers must handle fallback to a generic copy loop.
 /// `Fallback` may indicate non-zero number of bytes already written
@@ -500,9 +508,13 @@ impl CopyResult {
 pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> CopyResult {
     use crate::cmp;
 
+    const NOT_PROBED: u8 = 0;
+    const UNAVAILABLE: u8 = 1;
+    const AVAILABLE: u8 = 2;
+
     // Kernel prior to 4.5 don't have copy_file_range
     // We store the availability in a global to avoid unnecessary syscalls
-    static HAS_COPY_FILE_RANGE: AtomicBool = AtomicBool::new(true);
+    static HAS_COPY_FILE_RANGE: AtomicU8 = AtomicU8::new(NOT_PROBED);
 
     syscall! {
         fn copy_file_range(
@@ -515,39 +527,39 @@ pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> 
         ) -> libc::ssize_t
     }
 
-    let has_copy_file_range = HAS_COPY_FILE_RANGE.load(Ordering::Relaxed);
+    match HAS_COPY_FILE_RANGE.load(Ordering::Relaxed) {
+        NOT_PROBED => {
+            // EPERM can indicate seccomp filters or an immutable file.
+            // To distinguish these cases we probe with invalid file descriptors which should result in EBADF if the syscall is supported
+            // and some other error (ENOSYS or EPERM) if it's not available
+            let result = unsafe {
+                cvt(copy_file_range(INVALID_FD, ptr::null_mut(), INVALID_FD, ptr::null_mut(), 1, 0))
+            };
+
+            if matches!(result.map_err(|e| e.raw_os_error()), Err(Some(EBADF))) {
+                HAS_COPY_FILE_RANGE.store(AVAILABLE, Ordering::Relaxed);
+            } else {
+                HAS_COPY_FILE_RANGE.store(UNAVAILABLE, Ordering::Relaxed);
+                return CopyResult::Fallback(0);
+            }
+        }
+        UNAVAILABLE => return CopyResult::Fallback(0),
+        _ => {}
+    };
+
     let mut written = 0u64;
     while written < max_len {
-        let copy_result = if has_copy_file_range {
-            let bytes_to_copy = cmp::min(max_len - written, usize::MAX as u64);
-            // cap to 1GB chunks in case u64::MAX is passed as max_len and the file has a non-zero seek position
-            // this allows us to copy large chunks without hitting EOVERFLOW,
-            // unless someone sets a file offset close to u64::MAX - 1GB, in which case a fallback would be required
-            let bytes_to_copy = cmp::min(bytes_to_copy as usize, 0x4000_0000usize);
-            let copy_result = unsafe {
-                // We actually don't have to adjust the offsets,
-                // because copy_file_range adjusts the file offset automatically
-                cvt(copy_file_range(
-                    reader,
-                    ptr::null_mut(),
-                    writer,
-                    ptr::null_mut(),
-                    bytes_to_copy,
-                    0,
-                ))
-            };
-            if let Err(ref copy_err) = copy_result {
-                match copy_err.raw_os_error() {
-                    Some(libc::ENOSYS | libc::EPERM | libc::EOPNOTSUPP) => {
-                        HAS_COPY_FILE_RANGE.store(false, Ordering::Relaxed);
-                    }
-                    _ => {}
-                }
-            }
-            copy_result
-        } else {
-            Err(Error::from_raw_os_error(libc::ENOSYS))
+        let bytes_to_copy = cmp::min(max_len - written, usize::MAX as u64);
+        // cap to 1GB chunks in case u64::MAX is passed as max_len and the file has a non-zero seek position
+        // this allows us to copy large chunks without hitting EOVERFLOW,
+        // unless someone sets a file offset close to u64::MAX - 1GB, in which case a fallback would be required
+        let bytes_to_copy = cmp::min(bytes_to_copy as usize, 0x4000_0000usize);
+        let copy_result = unsafe {
+            // We actually don't have to adjust the offsets,
+            // because copy_file_range adjusts the file offset automatically
+            cvt(copy_file_range(reader, ptr::null_mut(), writer, ptr::null_mut(), bytes_to_copy, 0))
         };
+
         match copy_result {
             Ok(0) if written == 0 => {
                 // fallback to work around several kernel bugs where copy_file_range will fail to
@@ -562,16 +574,20 @@ pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> 
             Err(err) => {
                 return match err.raw_os_error() {
                     // when file offset + max_length > u64::MAX
-                    Some(libc::EOVERFLOW) => CopyResult::Fallback(written),
-                    Some(
-                        libc::ENOSYS | libc::EXDEV | libc::EINVAL | libc::EPERM | libc::EOPNOTSUPP,
-                    ) => {
+                    Some(EOVERFLOW) => CopyResult::Fallback(written),
+                    Some(ENOSYS | EXDEV | EINVAL | EPERM | EOPNOTSUPP | EBADF) => {
                         // Try fallback io::copy if either:
-                        // - Kernel version is < 4.5 (ENOSYS)
+                        // - Kernel version is < 4.5 (ENOSYS¹)
                         // - Files are mounted on different fs (EXDEV)
                         // - copy_file_range is broken in various ways on RHEL/CentOS 7 (EOPNOTSUPP)
-                        // - copy_file_range is disallowed, for example by seccomp (EPERM)
+                        // - copy_file_range file is immutable or syscall is blocked by seccomp¹ (EPERM)
                         // - copy_file_range cannot be used with pipes or device nodes (EINVAL)
+                        // - the writer fd was opened with O_APPEND (EBADF²)
+                        //
+                        // ¹ these cases should be detected by the initial probe but we handle them here
+                        //   anyway in case syscall interception changes during runtime
+                        // ² actually invalid file descriptors would cause this too, but in that case
+                        //   the fallback code path is expected to encounter the same error again
                         assert_eq!(written, 0);
                         CopyResult::Fallback(0)
                     }
@@ -635,7 +651,7 @@ fn sendfile_splice(mode: SpliceMode, reader: RawFd, writer: RawFd, len: u64) -> 
             Ok(ret) => written += ret as u64,
             Err(err) => {
                 return match err.raw_os_error() {
-                    Some(libc::ENOSYS | libc::EPERM) => {
+                    Some(ENOSYS | EPERM) => {
                         // syscall not supported (ENOSYS)
                         // syscall is disallowed, e.g. by seccomp (EPERM)
                         match mode {
@@ -645,12 +661,12 @@ fn sendfile_splice(mode: SpliceMode, reader: RawFd, writer: RawFd, len: u64) -> 
                         assert_eq!(written, 0);
                         CopyResult::Fallback(0)
                     }
-                    Some(libc::EINVAL) => {
+                    Some(EINVAL) => {
                         // splice/sendfile do not support this particular file descriptor (EINVAL)
                         assert_eq!(written, 0);
                         CopyResult::Fallback(0)
                     }
-                    Some(os_err) if mode == SpliceMode::Sendfile && os_err == libc::EOVERFLOW => {
+                    Some(os_err) if mode == SpliceMode::Sendfile && os_err == EOVERFLOW => {
                         CopyResult::Fallback(written)
                     }
                     _ => CopyResult::Error(err, written),

@@ -1,12 +1,16 @@
 use std::cmp;
+use std::iter;
 
-use crate::utils::{is_copy, is_self_ty, snippet, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_self_ty;
+use clippy_utils::source::snippet;
+use clippy_utils::ty::is_copy;
 use if_chain::if_chain;
 use rustc_ast::attr;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{BindingAnnotation, Body, FnDecl, HirId, ItemKind, MutTy, Mutability, Node, PatKind};
+use rustc_hir::{BindingAnnotation, Body, FnDecl, HirId, Impl, ItemKind, MutTy, Mutability, Node, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -63,7 +67,7 @@ declare_clippy_lint! {
     ///
     /// **Why is this bad?** Arguments passed by value might result in an unnecessary
     /// shallow copy, taking up more space in the stack and requiring a call to
-    /// `memcpy`, which which can be expensive.
+    /// `memcpy`, which can be expensive.
     ///
     /// **Example:**
     ///
@@ -119,7 +123,7 @@ impl<'tcx> PassByRefOrValue {
 
         let fn_body = cx.enclosing_body.map(|id| cx.tcx.hir().body(id));
 
-        for (index, (input, &ty)) in decl.inputs.iter().zip(fn_sig.inputs()).enumerate() {
+        for (index, (input, &ty)) in iter::zip(decl.inputs, fn_sig.inputs()).enumerate() {
             // All spans generated from a proc-macro invocation are the same...
             match span {
                 Some(s) if s == input.span => return,
@@ -206,7 +210,7 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
         }
 
         if let hir::TraitItemKind::Fn(method_sig, _) = &item.kind {
-            self.check_poly_fn(cx, item.hir_id, &*method_sig.decl, None);
+            self.check_poly_fn(cx, item.hir_id(), &*method_sig.decl, None);
         }
     }
 
@@ -224,10 +228,11 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
         }
 
         match kind {
-            FnKind::ItemFn(.., header, _, attrs) => {
+            FnKind::ItemFn(.., header, _) => {
                 if header.abi != Abi::Rust {
                     return;
                 }
+                let attrs = cx.tcx.hir().attrs(hir_id);
                 for a in attrs {
                     if let Some(meta_items) = a.meta_item_list() {
                         if a.has_name(sym::proc_macro_derive)
@@ -239,14 +244,15 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
                 }
             },
             FnKind::Method(..) => (),
-            FnKind::Closure(..) => return,
+            FnKind::Closure => return,
         }
 
         // Exclude non-inherent impls
         if let Some(Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(hir_id)) {
-            if matches!(item.kind, ItemKind::Impl{ of_trait: Some(_), .. } |
-            ItemKind::Trait(..))
-            {
+            if matches!(
+                item.kind,
+                ItemKind::Impl(Impl { of_trait: Some(_), .. }) | ItemKind::Trait(..)
+            ) {
                 return;
             }
         }

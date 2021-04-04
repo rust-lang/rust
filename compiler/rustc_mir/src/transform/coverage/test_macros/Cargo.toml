@@ -7,6 +7,3 @@ edition = "2018"
 [lib]
 proc-macro = true
 doctest = false
-
-[dependencies]
-proc-macro2 = "1"

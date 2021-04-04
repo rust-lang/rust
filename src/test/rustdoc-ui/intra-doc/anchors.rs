@@ -1,4 +1,4 @@
-#![deny(broken_intra_doc_links)]
+#![deny(rustdoc::broken_intra_doc_links)]
 
 // A few tests on anchors.
 

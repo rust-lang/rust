@@ -1,3 +1,5 @@
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::position_before_rarrow;
 use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_ast::visit::FnKind;
@@ -6,8 +8,6 @@ use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::BytePos;
-
-use crate::utils::{position_before_rarrow, span_lint_and_sugg};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for unit (`()`) expressions that can be removed.
@@ -120,7 +120,7 @@ fn is_unit_expr(expr: &ast::Expr) -> bool {
 
 fn lint_unneeded_unit_return(cx: &EarlyContext<'_>, ty: &ast::Ty, span: Span) {
     let (ret_span, appl) = if let Ok(fn_source) = cx.sess().source_map().span_to_snippet(span.with_hi(ty.span.hi())) {
-        position_before_rarrow(fn_source).map_or((ty.span, Applicability::MaybeIncorrect), |rpos| {
+        position_before_rarrow(&fn_source).map_or((ty.span, Applicability::MaybeIncorrect), |rpos| {
             (
                 #[allow(clippy::cast_possible_truncation)]
                 ty.span.with_lo(BytePos(span.lo().0 + rpos as u32)),

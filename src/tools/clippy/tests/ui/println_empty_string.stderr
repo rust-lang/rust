@@ -12,5 +12,17 @@ error: using `println!("")`
 LL |         _ => println!(""),
    |              ^^^^^^^^^^^^ help: replace it with: `println!()`
 
-error: aborting due to 2 previous errors
+error: using `eprintln!("")`
+  --> $DIR/println_empty_string.rs:13:5
+   |
+LL |     eprintln!("");
+   |     ^^^^^^^^^^^^^ help: replace it with: `eprintln!()`
+
+error: using `eprintln!("")`
+  --> $DIR/println_empty_string.rs:16:14
+   |
+LL |         _ => eprintln!(""),
+   |              ^^^^^^^^^^^^^ help: replace it with: `eprintln!()`
+
+error: aborting due to 4 previous errors
 

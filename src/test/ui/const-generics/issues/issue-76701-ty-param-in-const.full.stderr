@@ -1,5 +1,5 @@
 error: constant expression depends on a generic parameter
-  --> $DIR/issue-76701-ty-param-in-const.rs:6:21
+  --> $DIR/issue-76701-ty-param-in-const.rs:5:21
    |
 LL | fn ty_param<T>() -> [u8; std::mem::size_of::<T>()] {
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL | fn ty_param<T>() -> [u8; std::mem::size_of::<T>()] {
    = note: this may fail depending on what value the parameter takes
 
 error: constant expression depends on a generic parameter
-  --> $DIR/issue-76701-ty-param-in-const.rs:12:37
+  --> $DIR/issue-76701-ty-param-in-const.rs:11:37
    |
 LL | fn const_param<const N: usize>() -> [u8; N + 1] {
    |                                     ^^^^^^^^^^^

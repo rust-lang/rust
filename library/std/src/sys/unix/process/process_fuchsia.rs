@@ -22,9 +22,9 @@ impl Command {
         let envp = self.capture_env();
 
         if self.saw_nul() {
-            return Err(io::Error::new(
+            return Err(io::Error::new_const(
                 io::ErrorKind::InvalidInput,
-                "nul byte found in provided data",
+                &"nul byte found in provided data",
             ));
         }
 
@@ -37,7 +37,10 @@ impl Command {
 
     pub fn exec(&mut self, default: Stdio) -> io::Error {
         if self.saw_nul() {
-            return io::Error::new(io::ErrorKind::InvalidInput, "nul byte found in provided data");
+            return io::Error::new_const(
+                io::ErrorKind::InvalidInput,
+                &"nul byte found in provided data",
+            );
         }
 
         match self.setup_io(default, true) {
@@ -182,9 +185,9 @@ impl Process {
             ))?;
         }
         if actual != 1 {
-            return Err(io::Error::new(
+            return Err(io::Error::new_const(
                 io::ErrorKind::InvalidData,
-                "Failed to get exit status of process",
+                &"Failed to get exit status of process",
             ));
         }
         Ok(ExitStatus(proc_info.return_code))
@@ -220,9 +223,9 @@ impl Process {
             ))?;
         }
         if actual != 1 {
-            return Err(io::Error::new(
+            return Err(io::Error::new_const(
                 io::ErrorKind::InvalidData,
-                "Failed to get exit status of process",
+                &"Failed to get exit status of process",
             ));
         }
         Ok(Some(ExitStatus(proc_info.return_code)))
@@ -244,6 +247,50 @@ impl ExitStatus {
 
     pub fn signal(&self) -> Option<i32> {
         None
+    }
+
+    // FIXME: The actually-Unix implementation in process_unix.rs uses WSTOPSIG, WCOREDUMP et al.
+    // I infer from the implementation of `success`, `code` and `signal` above that these are not
+    // available on Fuchsia.
+    //
+    // It does not appear that Fuchsia is Unix-like enough to implement ExitStatus (or indeed many
+    // other things from std::os::unix) properly.  This veneer is always going to be a bodge.  So
+    // while I don't know if these implementations are actually correct, I think they will do for
+    // now at least.
+    pub fn core_dumped(&self) -> bool {
+        false
+    }
+    pub fn stopped_signal(&self) -> Option<i32> {
+        None
+    }
+    pub fn continued(&self) -> bool {
+        false
+    }
+
+    pub fn into_raw(&self) -> c_int {
+        // We don't know what someone who calls into_raw() will do with this value, but it should
+        // have the conventional Unix representation.  Despite the fact that this is not
+        // standardised in SuS or POSIX, all Unix systems encode the signal and exit status the
+        // same way.  (Ie the WIFEXITED, WEXITSTATUS etc. macros have identical behaviour on every
+        // Unix.)
+        //
+        // The caller of `std::os::unix::into_raw` is probably wanting a Unix exit status, and may
+        // do their own shifting and masking, or even pass the status to another computer running a
+        // different Unix variant.
+        //
+        // The other view would be to say that the caller on Fuchsia ought to know that `into_raw`
+        // will give a raw Fuchsia status (whatever that is - I don't know, personally).  That is
+        // not possible here becaause we must return a c_int because that's what Unix (including
+        // SuS and POSIX) say a wait status is, but Fuchsia apparently uses a u64, so it won't
+        // necessarily fit.
+        //
+        // It seems to me that that the right answer would be to provide std::os::fuchsia with its
+        // own ExitStatusExt, rather that trying to provide a not very convincing imitation of
+        // Unix.  Ie, std::os::unix::process:ExitStatusExt ought not to exist on Fuchsia.  But
+        // fixing this up that is beyond the scope of my efforts now.
+        let exit_status_as_if_unix: u8 = self.0.try_into().expect("Fuchsia process return code bigger than 8 bits, but std::os::unix::ExitStatusExt::into_raw() was called to try to convert the value into a traditional Unix-style wait status, which cannot represent values greater than 255.");
+        let wait_status_as_if_unix = (exit_status_as_if_unix as c_int) << 8;
+        wait_status_as_if_unix
     }
 }
 

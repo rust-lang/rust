@@ -1,6 +1,11 @@
+// aux-build:macro_rules.rs
+
 #![allow(dead_code)]
 #![allow(unused_variables)]
 #![warn(clippy::large_enum_variant)]
+
+#[macro_use]
+extern crate macro_rules;
 
 enum LargeEnum {
     A(i32),
@@ -51,4 +56,6 @@ enum LargeEnumOk {
     LargeB([i32; 8001]),
 }
 
-fn main() {}
+fn main() {
+    large_enum_variant!();
+}

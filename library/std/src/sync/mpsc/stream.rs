@@ -322,12 +322,15 @@ impl<T> Packet<T> {
         // (because there is a bounded number of senders).
         let mut steals = unsafe { *self.queue.consumer_addition().steals.get() };
         while {
-            let cnt = self.queue.producer_addition().cnt.compare_and_swap(
+            match self.queue.producer_addition().cnt.compare_exchange(
                 steals,
                 DISCONNECTED,
                 Ordering::SeqCst,
-            );
-            cnt != DISCONNECTED && cnt != steals
+                Ordering::SeqCst,
+            ) {
+                Ok(_) => false,
+                Err(old) => old != DISCONNECTED,
+            }
         } {
             while self.queue.pop().is_some() {
                 steals += 1;

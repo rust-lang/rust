@@ -47,6 +47,17 @@ impl<T: ?Sized> *mut T {
         self as _
     }
 
+    /// Decompose a (possibly wide) pointer into is address and metadata components.
+    ///
+    /// The pointer can be later reconstructed with [`from_raw_parts_mut`].
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "ptr_metadata", issue = "81513")]
+    #[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
+    #[inline]
+    pub const fn to_raw_parts(self) -> (*mut (), <T as super::Pointee>::Metadata) {
+        (self.cast(), super::metadata(self))
+    }
+
     /// Returns `None` if the pointer is null, or else returns a shared reference to
     /// the value wrapped in `Some`. If the value may be uninitialized, [`as_uninit_ref`]
     /// must be used instead.
@@ -178,8 +189,7 @@ impl<T: ?Sized> *mut T {
     /// Behavior:
     ///
     /// * Both the starting and resulting pointer must be either in bounds or one
-    ///   byte past the end of the same allocated object. Note that in Rust,
-    ///   every (stack-allocated) variable is considered a separate allocated object.
+    ///   byte past the end of the same [allocated object].
     ///
     /// * The computed offset, **in bytes**, cannot overflow an `isize`.
     ///
@@ -204,6 +214,7 @@ impl<T: ?Sized> *mut T {
     /// enables more aggressive compiler optimizations.
     ///
     /// [`wrapping_offset`]: #method.wrapping_offset
+    /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Examples
     ///
@@ -238,28 +249,29 @@ impl<T: ?Sized> *mut T {
     ///
     /// # Safety
     ///
-    /// The resulting pointer does not need to be in bounds, but it is
-    /// potentially hazardous to dereference (which requires `unsafe`).
+    /// This operation itself is always safe, but using the resulting pointer is not.
     ///
-    /// In particular, the resulting pointer remains attached to the same allocated
-    /// object that `self` points to. It may *not* be used to access a
-    /// different allocated object. Note that in Rust,
-    /// every (stack-allocated) variable is considered a separate allocated object.
+    /// The resulting pointer "remembers" the [allocated object] that `self` points to; it may not
+    /// be used to read or write other allocated objects.
     ///
-    /// In other words, `x.wrapping_offset((y as usize).wrapping_sub(x as usize) / size_of::<T>())`
-    /// is *not* the same as `y`, and dereferencing it is undefined behavior
-    /// unless `x` and `y` point into the same allocated object.
+    /// In other words, `let z = x.wrapping_offset((y as isize) - (x as isize))` does *not* make `z`
+    /// the same as `y` even if we assume `T` has size `1` and there is no overflow: `z` is still
+    /// attached to the object `x` is attached to, and dereferencing it is Undefined Behavior unless
+    /// `x` and `y` point into the same allocated object.
     ///
-    /// Compared to [`offset`], this method basically delays the requirement of staying
-    /// within the same allocated object: [`offset`] is immediate Undefined Behavior when
-    /// crossing object boundaries; `wrapping_offset` produces a pointer but still leads
-    /// to Undefined Behavior if that pointer is dereferenced. [`offset`] can be optimized
-    /// better and is thus preferable in performance-sensitive code.
+    /// Compared to [`offset`], this method basically delays the requirement of staying within the
+    /// same allocated object: [`offset`] is immediate Undefined Behavior when crossing object
+    /// boundaries; `wrapping_offset` produces a pointer but still leads to Undefined Behavior if a
+    /// pointer is dereferenced when it is out-of-bounds of the object it is attached to. [`offset`]
+    /// can be optimized better and is thus preferable in performance-sensitive code.
     ///
-    /// If you need to cross object boundaries, cast the pointer to an integer and
-    /// do the arithmetic there.
+    /// The delayed check only considers the value of the pointer that was dereferenced, not the
+    /// intermediate values used during the computation of the final result. For example,
+    /// `x.wrapping_offset(o).wrapping_offset(o.wrapping_neg())` is always the same as `x`. In other
+    /// words, leaving the allocated object and then re-entering it later is permitted.
     ///
     /// [`offset`]: #method.offset
+    /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Examples
     ///
@@ -470,31 +482,37 @@ impl<T: ?Sized> *mut T {
     /// Behavior:
     ///
     /// * Both the starting and other pointer must be either in bounds or one
-    ///   byte past the end of the same allocated object. Note that in Rust,
-    ///   every (stack-allocated) variable is considered a separate allocated object.
+    ///   byte past the end of the same [allocated object].
     ///
     /// * Both pointers must be *derived from* a pointer to the same object.
     ///   (See below for an example.)
     ///
-    /// * The distance between the pointers, **in bytes**, cannot overflow an `isize`.
-    ///
     /// * The distance between the pointers, in bytes, must be an exact multiple
     ///   of the size of `T`.
     ///
+    /// * The distance between the pointers, **in bytes**, cannot overflow an `isize`.
+    ///
     /// * The distance being in bounds cannot rely on "wrapping around" the address space.
     ///
-    /// The compiler and standard library generally try to ensure allocations
-    /// never reach a size where an offset is a concern. For instance, `Vec`
-    /// and `Box` ensure they never allocate more than `isize::MAX` bytes, so
-    /// `ptr_into_vec.offset_from(vec.as_ptr())` is always safe.
+    /// Rust types are never larger than `isize::MAX` and Rust allocations never wrap around the
+    /// address space, so two pointers within some value of any Rust type `T` will always satisfy
+    /// the last two conditions. The standard library also generally ensures that allocations
+    /// never reach a size where an offset is a concern. For instance, `Vec` and `Box` ensure they
+    /// never allocate more than `isize::MAX` bytes, so `ptr_into_vec.offset_from(vec.as_ptr())`
+    /// always satisfies the last two conditions.
     ///
-    /// Most platforms fundamentally can't even construct such an allocation.
+    /// Most platforms fundamentally can't even construct such a large allocation.
     /// For instance, no known 64-bit platform can ever serve a request
     /// for 2<sup>63</sup> bytes due to page-table limitations or splitting the address space.
     /// However, some 32-bit and 16-bit platforms may successfully serve a request for
     /// more than `isize::MAX` bytes with things like Physical Address
     /// Extension. As such, memory acquired directly from allocators or memory
     /// mapped files *may* be too large to handle with this function.
+    /// (Note that [`offset`] and [`add`] also have a similar limitation and hence cannot be used on
+    /// such large allocations either.)
+    ///
+    /// [`add`]: #method.add
+    /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Panics
     ///
@@ -554,8 +572,7 @@ impl<T: ?Sized> *mut T {
     /// Behavior:
     ///
     /// * Both the starting and resulting pointer must be either in bounds or one
-    ///   byte past the end of the same allocated object. Note that in Rust,
-    ///   every (stack-allocated) variable is considered a separate allocated object.
+    ///   byte past the end of the same [allocated object].
     ///
     /// * The computed offset, **in bytes**, cannot overflow an `isize`.
     ///
@@ -618,8 +635,7 @@ impl<T: ?Sized> *mut T {
     /// Behavior:
     ///
     /// * Both the starting and resulting pointer must be either in bounds or one
-    ///   byte past the end of the same allocated object. Note that in Rust,
-    ///   every (stack-allocated) variable is considered a separate allocated object.
+    ///   byte past the end of the same [allocated object].
     ///
     /// * The computed offset cannot exceed `isize::MAX` **bytes**.
     ///
@@ -644,6 +660,7 @@ impl<T: ?Sized> *mut T {
     /// enables more aggressive compiler optimizations.
     ///
     /// [`wrapping_sub`]: #method.wrapping_sub
+    /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Examples
     ///
@@ -678,24 +695,29 @@ impl<T: ?Sized> *mut T {
     ///
     /// # Safety
     ///
-    /// The resulting pointer does not need to be in bounds, but it is
-    /// potentially hazardous to dereference (which requires `unsafe`).
+    /// This operation itself is always safe, but using the resulting pointer is not.
     ///
-    /// In particular, the resulting pointer remains attached to the same allocated
-    /// object that `self` points to. It may *not* be used to access a
-    /// different allocated object. Note that in Rust,
-    /// every (stack-allocated) variable is considered a separate allocated object.
+    /// The resulting pointer "remembers" the [allocated object] that `self` points to; it may not
+    /// be used to read or write other allocated objects.
     ///
-    /// Compared to [`add`], this method basically delays the requirement of staying
-    /// within the same allocated object: [`add`] is immediate Undefined Behavior when
-    /// crossing object boundaries; `wrapping_add` produces a pointer but still leads
-    /// to Undefined Behavior if that pointer is dereferenced. [`add`] can be optimized
-    /// better and is thus preferable in performance-sensitive code.
+    /// In other words, `let z = x.wrapping_add((y as usize) - (x as usize))` does *not* make `z`
+    /// the same as `y` even if we assume `T` has size `1` and there is no overflow: `z` is still
+    /// attached to the object `x` is attached to, and dereferencing it is Undefined Behavior unless
+    /// `x` and `y` point into the same allocated object.
     ///
-    /// If you need to cross object boundaries, cast the pointer to an integer and
-    /// do the arithmetic there.
+    /// Compared to [`add`], this method basically delays the requirement of staying within the
+    /// same allocated object: [`add`] is immediate Undefined Behavior when crossing object
+    /// boundaries; `wrapping_add` produces a pointer but still leads to Undefined Behavior if a
+    /// pointer is dereferenced when it is out-of-bounds of the object it is attached to. [`add`]
+    /// can be optimized better and is thus preferable in performance-sensitive code.
+    ///
+    /// The delayed check only considers the value of the pointer that was dereferenced, not the
+    /// intermediate values used during the computation of the final result. For example,
+    /// `x.wrapping_add(o).wrapping_sub(o)` is always the same as `x`. In other words, leaving the
+    /// allocated object and then re-entering it later is permitted.
     ///
     /// [`add`]: #method.add
+    /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Examples
     ///
@@ -728,31 +750,36 @@ impl<T: ?Sized> *mut T {
     }
 
     /// Calculates the offset from a pointer using wrapping arithmetic.
-    /// (convenience for `.wrapping_offset((count as isize).wrapping_sub())`)
+    /// (convenience for `.wrapping_offset((count as isize).wrapping_neg())`)
     ///
     /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
     ///
-    /// The resulting pointer does not need to be in bounds, but it is
-    /// potentially hazardous to dereference (which requires `unsafe`).
+    /// This operation itself is always safe, but using the resulting pointer is not.
     ///
-    /// In particular, the resulting pointer remains attached to the same allocated
-    /// object that `self` points to. It may *not* be used to access a
-    /// different allocated object. Note that in Rust,
-    /// every (stack-allocated) variable is considered a separate allocated object.
+    /// The resulting pointer "remembers" the [allocated object] that `self` points to; it may not
+    /// be used to read or write other allocated objects.
     ///
-    /// Compared to [`sub`], this method basically delays the requirement of staying
-    /// within the same allocated object: [`sub`] is immediate Undefined Behavior when
-    /// crossing object boundaries; `wrapping_sub` produces a pointer but still leads
-    /// to Undefined Behavior if that pointer is dereferenced. [`sub`] can be optimized
-    /// better and is thus preferable in performance-sensitive code.
+    /// In other words, `let z = x.wrapping_sub((x as usize) - (y as usize))` does *not* make `z`
+    /// the same as `y` even if we assume `T` has size `1` and there is no overflow: `z` is still
+    /// attached to the object `x` is attached to, and dereferencing it is Undefined Behavior unless
+    /// `x` and `y` point into the same allocated object.
     ///
-    /// If you need to cross object boundaries, cast the pointer to an integer and
-    /// do the arithmetic there.
+    /// Compared to [`sub`], this method basically delays the requirement of staying within the
+    /// same allocated object: [`sub`] is immediate Undefined Behavior when crossing object
+    /// boundaries; `wrapping_sub` produces a pointer but still leads to Undefined Behavior if a
+    /// pointer is dereferenced when it is out-of-bounds of the object it is attached to. [`sub`]
+    /// can be optimized better and is thus preferable in performance-sensitive code.
+    ///
+    /// The delayed check only considers the value of the pointer that was dereferenced, not the
+    /// intermediate values used during the computation of the final result. For example,
+    /// `x.wrapping_add(o).wrapping_sub(o)` is always the same as `x`. In other words, leaving the
+    /// allocated object and then re-entering it later is permitted.
     ///
     /// [`sub`]: #method.sub
+    /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Examples
     ///
@@ -832,8 +859,9 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::read`]: crate::ptr::read()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[rustc_const_unstable(feature = "const_ptr_read", issue = "80377")]
     #[inline]
-    pub unsafe fn read(self) -> T
+    pub const unsafe fn read(self) -> T
     where
         T: Sized,
     {
@@ -870,8 +898,9 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::read_unaligned`]: crate::ptr::read_unaligned()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[rustc_const_unstable(feature = "const_ptr_read", issue = "80377")]
     #[inline]
-    pub unsafe fn read_unaligned(self) -> T
+    pub const unsafe fn read_unaligned(self) -> T
     where
         T: Sized,
     {
@@ -887,9 +916,10 @@ impl<T: ?Sized> *mut T {
     /// See [`ptr::copy`] for safety concerns and examples.
     ///
     /// [`ptr::copy`]: crate::ptr::copy()
+    #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
-    pub unsafe fn copy_to(self, dest: *mut T, count: usize)
+    pub const unsafe fn copy_to(self, dest: *mut T, count: usize)
     where
         T: Sized,
     {
@@ -905,9 +935,10 @@ impl<T: ?Sized> *mut T {
     /// See [`ptr::copy_nonoverlapping`] for safety concerns and examples.
     ///
     /// [`ptr::copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping()
+    #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
-    pub unsafe fn copy_to_nonoverlapping(self, dest: *mut T, count: usize)
+    pub const unsafe fn copy_to_nonoverlapping(self, dest: *mut T, count: usize)
     where
         T: Sized,
     {
@@ -923,9 +954,10 @@ impl<T: ?Sized> *mut T {
     /// See [`ptr::copy`] for safety concerns and examples.
     ///
     /// [`ptr::copy`]: crate::ptr::copy()
+    #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
-    pub unsafe fn copy_from(self, src: *const T, count: usize)
+    pub const unsafe fn copy_from(self, src: *const T, count: usize)
     where
         T: Sized,
     {
@@ -941,9 +973,10 @@ impl<T: ?Sized> *mut T {
     /// See [`ptr::copy_nonoverlapping`] for safety concerns and examples.
     ///
     /// [`ptr::copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping()
+    #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
-    pub unsafe fn copy_from_nonoverlapping(self, src: *const T, count: usize)
+    pub const unsafe fn copy_from_nonoverlapping(self, src: *const T, count: usize)
     where
         T: Sized,
     {
@@ -970,8 +1003,9 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::write`]: crate::ptr::write()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[rustc_const_unstable(feature = "const_ptr_write", issue = "none")]
     #[inline]
-    pub unsafe fn write(self, val: T)
+    pub const unsafe fn write(self, val: T)
     where
         T: Sized,
     {
@@ -1024,8 +1058,9 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::write_unaligned`]: crate::ptr::write_unaligned()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[rustc_const_unstable(feature = "const_ptr_write", issue = "none")]
     #[inline]
-    pub unsafe fn write_unaligned(self, val: T)
+    pub const unsafe fn write_unaligned(self, val: T)
     where
         T: Sized,
     {
@@ -1140,9 +1175,14 @@ impl<T> *mut [T] {
     #[unstable(feature = "slice_ptr_len", issue = "71146")]
     #[rustc_const_unstable(feature = "const_slice_ptr_len", issue = "71146")]
     pub const fn len(self) -> usize {
-        // SAFETY: this is safe because `*const [T]` and `FatPtr<T>` have the same layout.
-        // Only `std` can make this guarantee.
-        unsafe { Repr { rust_mut: self }.raw }.len
+        #[cfg(bootstrap)]
+        {
+            // SAFETY: this is safe because `*const [T]` and `FatPtr<T>` have the same layout.
+            // Only `std` can make this guarantee.
+            unsafe { Repr { rust_mut: self }.raw }.len
+        }
+        #[cfg(not(bootstrap))]
+        metadata(self)
     }
 
     /// Returns a raw pointer to the slice's buffer.
@@ -1211,7 +1251,7 @@ impl<T> *mut [T] {
     /// * The pointer must be [valid] for reads for `ptr.len() * mem::size_of::<T>()` many bytes,
     ///   and it must be properly aligned. This means in particular:
     ///
-    ///     * The entire memory range of this slice must be contained within a single allocated object!
+    ///     * The entire memory range of this slice must be contained within a single [allocated object]!
     ///       Slices can never span across multiple allocated objects.
     ///
     ///     * The pointer must be aligned even for zero-length slices. One
@@ -1233,8 +1273,7 @@ impl<T> *mut [T] {
     /// See also [`slice::from_raw_parts`][].
     ///
     /// [valid]: crate::ptr#safety
-    /// [`NonNull::dangling()`]: NonNull::dangling
-    /// [`pointer::offset`]: ../std/primitive.pointer.html#method.offset
+    /// [allocated object]: crate::ptr#allocated-object
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
     pub unsafe fn as_uninit_slice<'a>(self) -> Option<&'a [MaybeUninit<T>]> {
@@ -1263,7 +1302,7 @@ impl<T> *mut [T] {
     /// * The pointer must be [valid] for reads and writes for `ptr.len() * mem::size_of::<T>()`
     ///   many bytes, and it must be properly aligned. This means in particular:
     ///
-    ///     * The entire memory range of this slice must be contained within a single allocated object!
+    ///     * The entire memory range of this slice must be contained within a single [allocated object]!
     ///       Slices can never span across multiple allocated objects.
     ///
     ///     * The pointer must be aligned even for zero-length slices. One
@@ -1285,8 +1324,7 @@ impl<T> *mut [T] {
     /// See also [`slice::from_raw_parts_mut`][].
     ///
     /// [valid]: crate::ptr#safety
-    /// [`NonNull::dangling()`]: NonNull::dangling
-    /// [`pointer::offset`]: ../std/primitive.pointer.html#method.offset
+    /// [allocated object]: crate::ptr#allocated-object
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
     pub unsafe fn as_uninit_slice_mut<'a>(self) -> Option<&'a mut [MaybeUninit<T>]> {

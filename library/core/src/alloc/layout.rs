@@ -4,6 +4,12 @@ use crate::mem;
 use crate::num::NonZeroUsize;
 use crate::ptr::NonNull;
 
+// While this function is used in one place and its implementation
+// could be inlined, the previous attempts to do so made rustc
+// slower:
+//
+// * https://github.com/rust-lang/rust/pull/72189
+// * https://github.com/rust-lang/rust/pull/79827
 const fn size_align<T>() -> (usize, usize) {
     (mem::size_of::<T>(), mem::align_of::<T>())
 }
@@ -87,7 +93,7 @@ impl Layout {
     /// This function is unsafe as it does not verify the preconditions from
     /// [`Layout::from_size_align`].
     #[stable(feature = "alloc_layout", since = "1.28.0")]
-    #[rustc_const_stable(feature = "alloc_layout", since = "1.28.0")]
+    #[rustc_const_stable(feature = "alloc_layout", since = "1.36.0")]
     #[inline]
     pub const unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Self {
         // SAFETY: the caller must ensure that `align` is greater than zero.
@@ -158,7 +164,6 @@ impl Layout {
     ///       [`Layout::for_value`] on a reference to an extern type tail.
     ///     - otherwise, it is conservatively not allowed to call this function.
     ///
-    /// [slice]: ../../std/primitive.slice.html
     /// [trait object]: ../../book/ch17-02-trait-objects.html
     /// [extern type]: ../../unstable-book/language-features/extern-types.html
     #[unstable(feature = "layout_for_ptr", issue = "69835")]
@@ -394,7 +399,7 @@ impl Layout {
 
 #[stable(feature = "alloc_layout", since = "1.28.0")]
 #[rustc_deprecated(
-    since = "1.51.0",
+    since = "1.52.0",
     reason = "Name does not follow std convention, use LayoutError",
     suggestion = "LayoutError"
 )]
@@ -403,7 +408,7 @@ pub type LayoutErr = LayoutError;
 /// The parameters given to `Layout::from_size_align`
 /// or some other `Layout` constructor
 /// do not satisfy its documented constraints.
-#[stable(feature = "alloc_layout_error", since = "1.49.0")]
+#[stable(feature = "alloc_layout_error", since = "1.50.0")]
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct LayoutError {
     private: (),

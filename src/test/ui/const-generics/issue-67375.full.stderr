@@ -1,5 +1,5 @@
 warning: cannot use constants which depend on generic parameters in types
-  --> $DIR/issue-67375.rs:9:12
+  --> $DIR/issue-67375.rs:8:12
    |
 LL |     inner: [(); { [|_: &T| {}; 0].len() }],
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL |     inner: [(); { [|_: &T| {}; 0].len() }],
    = note: for more information, see issue #76200 <https://github.com/rust-lang/rust/issues/76200>
 
 error[E0392]: parameter `T` is never used
-  --> $DIR/issue-67375.rs:7:12
+  --> $DIR/issue-67375.rs:6:12
    |
 LL | struct Bug<T> {
    |            ^ unused parameter

@@ -11,10 +11,12 @@ note: the lint level is defined here
    |
 LL | #![warn(const_err)]
    |         ^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
    = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: erroneous constant used
-  --> $DIR/panic-assoc-never-type.rs:16:13
+  --> $DIR/panic-assoc-never-type.rs:17:13
    |
 LL |     let _ = PrintName::VOID;
    |             ^^^^^^^^^^^^^^^ referenced constant has errors

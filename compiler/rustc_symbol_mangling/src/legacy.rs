@@ -56,7 +56,15 @@ pub(super) fn mangle(
     let hash = get_symbol_hash(tcx, instance, instance_ty, instantiating_crate);
 
     let mut printer = SymbolPrinter { tcx, path: SymbolPath::new(), keep_within_component: false }
-        .print_def_path(def_id, &[])
+        .print_def_path(
+            def_id,
+            if let ty::InstanceDef::DropGlue(_, _) = instance.def {
+                // Add the name of the dropped type to the symbol name
+                &*instance.substs
+            } else {
+                &[]
+            },
+        )
         .unwrap();
 
     if let ty::InstanceDef::VtableShim(..) = instance.def {
@@ -222,7 +230,7 @@ impl Printer<'tcx> for SymbolPrinter<'tcx> {
 
     fn print_dyn_existential(
         mut self,
-        predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
+        predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
     ) -> Result<Self::DynExistential, Self::Error> {
         let mut first = true;
         for p in predicates {

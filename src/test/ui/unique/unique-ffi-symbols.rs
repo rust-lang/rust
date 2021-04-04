@@ -3,12 +3,12 @@
 // whenever the item path wasn't enough to disambiguate between them.
 fn main() {
     let a = {
-        extern fn good() -> i32 { return 0; }
-        good as extern fn() -> i32
+        extern "C" fn good() -> i32 { return 0; }
+        good as extern "C" fn() -> i32
     };
     let b = {
-        extern fn good() -> i32 { return 5; }
-        good as extern fn() -> i32
+        extern "C" fn good() -> i32 { return 5; }
+        good as extern "C" fn() -> i32
     };
 
     assert!(a != b);

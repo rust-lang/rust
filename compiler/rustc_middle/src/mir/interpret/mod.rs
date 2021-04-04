@@ -132,7 +132,6 @@ pub use self::pointer::{Pointer, PointerArithmetic};
 /// Uniquely identifies one of the following:
 /// - A constant
 /// - A static
-/// - A const fn where all arguments (if any) are zero-sized types
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, Lift)]
 pub struct GlobalId<'tcx> {
@@ -588,13 +587,4 @@ pub fn read_target_uint(endianness: Endian, mut source: &[u8]) -> Result<u128, i
     };
     debug_assert!(source.len() == 0); // We should have consumed the source buffer.
     uint
-}
-
-/// Computes the unsigned absolute value without wrapping or panicking.
-#[inline]
-pub fn uabs(value: i64) -> u64 {
-    // The only tricky part here is if value == i64::MIN. In that case,
-    // wrapping_abs() returns i64::MIN == -2^63. Casting this value to a u64
-    // gives 2^63, the correct value.
-    value.wrapping_abs() as u64
 }

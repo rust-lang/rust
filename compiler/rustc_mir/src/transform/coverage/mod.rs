@@ -30,6 +30,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
+use rustc_span::source_map::SourceMap;
 use rustc_span::{CharPos, Pos, SourceFile, Span, Symbol};
 
 /// A simple error message wrapper for `coverage::Error`s.
@@ -78,6 +79,14 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
             return;
         }
 
+        match mir_body.basic_blocks()[mir::START_BLOCK].terminator().kind {
+            TerminatorKind::Unreachable => {
+                trace!("InstrumentCoverage skipped for unreachable `START_BLOCK`");
+                return;
+            }
+            _ => {}
+        }
+
         trace!("InstrumentCoverage starting for {:?}", mir_source.def_id());
         Instrumentor::new(&self.name(), tcx, mir_body).inject_counters();
         trace!("InstrumentCoverage starting for {:?}", mir_source.def_id());
@@ -88,6 +97,7 @@ struct Instrumentor<'a, 'tcx> {
     pass_name: &'a str,
     tcx: TyCtxt<'tcx>,
     mir_body: &'a mut mir::Body<'tcx>,
+    source_file: Lrc<SourceFile>,
     fn_sig_span: Span,
     body_span: Span,
     basic_coverage_blocks: CoverageGraph,
@@ -96,9 +106,13 @@ struct Instrumentor<'a, 'tcx> {
 
 impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     fn new(pass_name: &'a str, tcx: TyCtxt<'tcx>, mir_body: &'a mut mir::Body<'tcx>) -> Self {
+        let source_map = tcx.sess.source_map();
         let (some_fn_sig, hir_body) = fn_sig_and_body(tcx, mir_body.source.def_id());
         let body_span = hir_body.value.span;
-        let fn_sig_span = match some_fn_sig {
+        let source_file = source_map.lookup_source_file(body_span.lo());
+        let fn_sig_span = match some_fn_sig.filter(|fn_sig| {
+            Lrc::ptr_eq(&source_file, &source_map.lookup_source_file(fn_sig.span.hi()))
+        }) {
             Some(fn_sig) => fn_sig.span.with_hi(body_span.lo()),
             None => body_span.shrink_to_lo(),
         };
@@ -108,6 +122,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             pass_name,
             tcx,
             mir_body,
+            source_file,
             fn_sig_span,
             body_span,
             basic_coverage_blocks,
@@ -268,8 +283,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let tcx = self.tcx;
         let source_map = tcx.sess.source_map();
         let body_span = self.body_span;
-        let source_file = source_map.lookup_source_file(body_span.lo());
-        let file_name = Symbol::intern(&source_file.name.to_string());
+        let file_name = Symbol::intern(&self.source_file.name.to_string());
 
         let mut bcb_counters = IndexVec::from_elem_n(None, self.basic_coverage_blocks.num_nodes());
         for covspan in coverage_spans {
@@ -285,11 +299,20 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                 bug!("Every BasicCoverageBlock should have a Counter or Expression");
             };
             graphviz_data.add_bcb_coverage_span_with_counter(bcb, &covspan, &counter_kind);
+
+            debug!(
+                "Calling make_code_region(file_name={}, source_file={:?}, span={}, body_span={})",
+                file_name,
+                self.source_file,
+                source_map.span_to_string(span),
+                source_map.span_to_string(body_span)
+            );
+
             inject_statement(
                 self.mir_body,
                 counter_kind,
-                self.bcb_last_bb(bcb),
-                Some(make_code_region(file_name, &source_file, span, body_span)),
+                self.bcb_leader_bb(bcb),
+                Some(make_code_region(source_map, file_name, &self.source_file, span, body_span)),
             );
         }
     }
@@ -448,7 +471,7 @@ fn inject_statement(
             code_region: some_code_region,
         }),
     };
-    data.statements.push(statement);
+    data.statements.insert(0, statement);
 }
 
 // Non-code expressions are injected into the coverage map, without generating executable code.
@@ -467,6 +490,7 @@ fn inject_intermediate_expression(mir_body: &mut mir::Body<'tcx>, expression: Co
 
 /// Convert the Span into its file name, start line and column, and end line and column
 fn make_code_region(
+    source_map: &SourceMap,
     file_name: Symbol,
     source_file: &Lrc<SourceFile>,
     span: Span,
@@ -486,6 +510,8 @@ fn make_code_region(
     } else {
         source_file.lookup_file_pos(span.hi())
     };
+    let start_line = source_map.doctest_offset_line(&source_file.name, start_line);
+    let end_line = source_map.doctest_offset_line(&source_file.name, end_line);
     CodeRegion {
         file_name,
         start_line: start_line as u32,

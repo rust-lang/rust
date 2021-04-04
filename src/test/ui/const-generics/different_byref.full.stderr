@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/different_byref.rs:13:9
+  --> $DIR/different_byref.rs:12:9
    |
 LL |     x = Const::<{ [4] }> {};
    |         ^^^^^^^^^^^^^^^^^^^ expected `3_usize`, found `4_usize`

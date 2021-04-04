@@ -1,5 +1,6 @@
 # needs-profiler-support
 # ignore-windows-gnu
+# min-llvm-version: 11.0
 
 # FIXME(mati865): MinGW GCC miscompiles compiler-rt profiling library but with Clang it works
 # properly. Since we only have GCC on the CI ignore the test for now.
@@ -9,11 +10,13 @@
 BASEDIR=../coverage-reports
 SOURCEDIR=../coverage
 
-# The `llvm-cov show` flag `--debug`, used to generate the `counters` output files, is only enabled
-# if LLVM assertions are enabled. Requires Rust config `llvm/optimize` and not
+# The `llvm-cov show` flag `--debug`, used to generate the `counters` output files, is only
+# enabled if LLVM assertions are enabled. This requires Rust config `llvm/optimize` and not
 # `llvm/release_debuginfo`. Note that some CI builds disable debug assertions (by setting
-# `NO_LLVM_ASSERTIONS=1`), so it is not OK to fail the test, but `bless`ed test results cannot be
-# generated without debug assertions.
+# `NO_LLVM_ASSERTIONS=1`), so the tests must still pass even if the `--debug` flag is
+# not supported. (Note that `counters` files are only produced in the `$(TMPDIR)`
+# directory, for inspection and debugging support. They are *not* copied to `expected_*`
+# files when `--bless`ed.)
 LLVM_COV_DEBUG := $(shell \
 		"$(LLVM_BIN_DIR)"/llvm-cov show --debug 2>&1 | \
 		grep -q "Unknown command line argument '--debug'"; \
@@ -51,35 +54,20 @@ endif
 # Yes these `--ignore-filename-regex=` options are included in all invocations of `llvm-cov show`
 # for now, but it is effectively ignored for all tests that don't include this file anyway.
 #
-# Note that it's also possible the `_counters.<test>.txt` and `<test>.json` files may order
-# results from multiple files inconsistently, which might also have to be accomodated if and when
-# we allow `llvm-cov` to produce results for multiple files. (The path separators appear to be
-# normalized to `/` in those files, thankfully.) But since we are ignoring results for all but one
-# file, this workaround addresses those potential issues as well.
+# (Note that it's also possible the `_counters.<test>.txt` and `<test>.json` files (if generated)
+# may order results from multiple files inconsistently, which might also have to be accomodated
+# if and when we allow `llvm-cov` to produce results for multiple files. Note, the path separators
+# appear to be normalized to `/` in those files, thankfully.)
 LLVM_COV_IGNORE_FILES=\
-	--ignore-filename-regex=uses_crate.rs
+	--ignore-filename-regex='(uses_crate.rs|uses_inline_crate.rs)'
 
-# When generating `expected_*` results (using `x.py test --bless`), the `--debug` flag is forced.
-# If assertions are disabled, the command will fail with an error, rather than attempt to generate
-# only partial results.
-ifdef RUSTC_BLESS_TEST
-DEBUG_FLAG=--debug
-endif
-
-ifeq ($(LLVM_VERSION_11_PLUS),true)
 all: $(patsubst $(SOURCEDIR)/lib/%.rs,%,$(wildcard $(SOURCEDIR)/lib/*.rs)) $(patsubst $(SOURCEDIR)/%.rs,%,$(wildcard $(SOURCEDIR)/*.rs))
-else
-$(info Rust option `-Z instrument-coverage` requires LLVM 11 or higher. Test skipped.)
-all:
-endif
 
 # Ensure there are no `expected` results for tests that may have been removed or renamed
 .PHONY: clear_expected_if_blessed
 clear_expected_if_blessed:
 ifdef RUSTC_BLESS_TEST
-	rm -f expected_export_coverage.*.json
-	rm -f expected_show_coverage.*.txt
-	rm -f expected_show_coverage_counters.*.txt
+	rm -f expected_*
 endif
 
 -include clear_expected_if_blessed
@@ -87,19 +75,19 @@ endif
 %: $(SOURCEDIR)/lib/%.rs
 	# Compile the test library with coverage instrumentation
 	$(RUSTC) $(SOURCEDIR)/lib/$@.rs \
-			$$( grep -q '^\/\/ require-rust-edition-2018' $(SOURCEDIR)/lib/$@.rs && echo "--edition=2018" ) \
+			$$( sed -n 's/^\/\/ compile-flags: \([^#]*\).*/\1/p' $(SOURCEDIR)/lib/$@.rs ) \
 			--crate-type rlib -Zinstrument-coverage
 
 %: $(SOURCEDIR)/%.rs
 	# Compile the test program with coverage instrumentation
 	$(RUSTC) $(SOURCEDIR)/$@.rs \
-			$$( grep -q '^\/\/ require-rust-edition-2018' $(SOURCEDIR)/$@.rs && echo "--edition=2018" ) \
+			$$( sed -n 's/^\/\/ compile-flags: \([^#]*\).*/\1/p' $(SOURCEDIR)/$@.rs ) \
 			-L "$(TMPDIR)" -Zinstrument-coverage
 
 	# Run it in order to generate some profiling data,
 	# with `LLVM_PROFILE_FILE=<profdata_file>` environment variable set to
 	# output the coverage stats for this run.
-	LLVM_PROFILE_FILE="$(TMPDIR)"/$@.profraw \
+	LLVM_PROFILE_FILE="$(TMPDIR)"/$@-%p.profraw \
 			$(call RUN,$@) || \
 			( \
 				status=$$?; \
@@ -109,9 +97,16 @@ endif
 				) \
 			)
 
+	# Run it through rustdoc as well to cover doctests
+	LLVM_PROFILE_FILE="$(TMPDIR)"/$@-%p.profraw \
+			$(RUSTDOC) --crate-name workaround_for_79771 --test $(SOURCEDIR)/$@.rs \
+			$$( sed -n 's/^\/\/ compile-flags: \([^#]*\).*/\1/p' $(SOURCEDIR)/$@.rs ) \
+			-L "$(TMPDIR)" -Zinstrument-coverage \
+			-Z unstable-options --persist-doctests=$(TMPDIR)/rustdoc-$@
+
 	# Postprocess the profiling data so it can be used by the llvm-cov tool
 	"$(LLVM_BIN_DIR)"/llvm-profdata merge --sparse \
-			"$(TMPDIR)"/$@.profraw \
+			"$(TMPDIR)"/$@-*.profraw \
 			-o "$(TMPDIR)"/$@.profdata
 
 	# Generate a coverage report using `llvm-cov show`.
@@ -122,8 +117,15 @@ endif
 			--show-line-counts-or-regions \
 			--instr-profile="$(TMPDIR)"/$@.profdata \
 			$(call BIN,"$(TMPDIR)"/$@) \
-		> "$(TMPDIR)"/actual_show_coverage.$@.txt \
-		2> "$(TMPDIR)"/show_coverage_stderr.$@.txt || \
+			$$( \
+				for file in $(TMPDIR)/rustdoc-$@/*/rust_out; \
+				do \
+				[ -x "$$file" ] && printf "%s %s " -object $$file; \
+				done \
+			) \
+		2> "$(TMPDIR)"/show_coverage_stderr.$@.txt \
+		| "$(PYTHON)" $(BASEDIR)/normalize_paths.py \
+		> "$(TMPDIR)"/actual_show_coverage.$@.txt || \
 	( status=$$? ; \
 		>&2 cat "$(TMPDIR)"/show_coverage_stderr.$@.txt ; \
 		exit $$status \
@@ -140,22 +142,26 @@ endif
 ifdef RUSTC_BLESS_TEST
 	cp "$(TMPDIR)"/actual_show_coverage.$@.txt \
 			expected_show_coverage.$@.txt
-	cp "$(TMPDIR)"/actual_show_coverage_counters.$@.txt \
-			expected_show_coverage_counters.$@.txt
 else
-	# Compare the show coverage output (`--bless` refreshes `typical` files)
-	# Note `llvm-cov show` output for some programs can vary, but can be ignored
-	# by inserting `// ignore-llvm-cov-show-diffs` at the top of the source file.
+	# Compare the show coverage output (`--bless` refreshes `typical` files).
 	#
-	# FIXME(richkadel): It looks like most past variations seem to have been mitigated. None of the
-	# Rust test source samples have the `// ignore-llvm-cov-show-diffs` anymore. The main variation
-	# I had seen (and is still present in the new `coverage/lib/used_crate.rs`) is the `llvm-cov show`
-	# reporting of multiple instantiations of a generic function with different type substitutions.
-	# For some reason, `llvm-cov show` can report these in a non-deterministic order, breaking the
-	# `diff` comparision. I was able to work around the problem with `diff --ignore-matching-lines=RE`
+	# FIXME(richkadel): None of the Rust test source samples have the
+	# `// ignore-llvm-cov-show-diffs` anymore. This directive exists to work around a limitation
+	# with `llvm-cov show`. When reporting coverage for multiple instantiations of a generic function,
+	# with different type substitutions, `llvm-cov show` prints these in a non-deterministic order,
+	# breaking the `diff` comparision.
+	#
+	# A partial workaround is implemented below, with `diff --ignore-matching-lines=RE`
 	# to ignore each line prefixing each generic instantiation coverage code region.
+	#
+	# This workaround only works if the coverage counts are identical across all reported
+	# instantiations. If there is no way to ensure this, you may need to apply the
+	# `// ignore-llvm-cov-show-diffs` directive, and check for differences using the
+	# `.json` files to validate that results have not changed. (Until then, the JSON
+	# files are redundant, so there is no need to generate `expected_*.json` files or
+	# compare actual JSON results.)
 
-	$(DIFF) --ignore-matching-lines='::<.*>.*:$$' \
+	$(DIFF) --ignore-matching-lines='^  | .*::<.*>.*:$$' --ignore-matching-lines='^  | <.*>::.*:$$' \
 		expected_show_coverage.$@.txt "$(TMPDIR)"/actual_show_coverage.$@.txt || \
 		( grep -q '^\/\/ ignore-llvm-cov-show-diffs' $(SOURCEDIR)/$@.rs && \
 			>&2 echo 'diff failed, but suppressed with `// ignore-llvm-cov-show-diffs` in $(SOURCEDIR)/$@.rs' \
@@ -163,41 +169,4 @@ else
 		( >&2 echo 'diff failed, and not suppressed without `// ignore-llvm-cov-show-diffs` in $(SOURCEDIR)/$@.rs'; \
 			false \
 		)
-
-ifdef DEBUG_FLAG
-	$(DIFF) expected_show_coverage_counters.$@.txt "$(TMPDIR)"/actual_show_coverage_counters.$@.txt || \
-		( grep -q '^\/\/ ignore-llvm-cov-show-diffs' $(SOURCEDIR)/$@.rs && \
-			>&2 echo 'diff failed, but suppressed with `// ignore-llvm-cov-show-diffs` in $(SOURCEDIR)/$@.rs' \
-		) || \
-		( >&2 echo 'diff failed, and not suppressed without `// ignore-llvm-cov-show-diffs` in $(SOURCEDIR)/$@.rs'; \
-			>&2 echo '(Ignore anyway until mangled function names in "counters" files are demangled.)' \
-		)
-
-		# FIXME(richkadel): Apply the demangler to the `*_show_coverage_counters.*.txt` files,
-		# so the crate disambiguator differences will be stripped away. At that point, these files
-		# will be less likely to vary, and the last `echo` above (starting with "Ignore anyway")
-		# can be replaced with `false` to fail the test.
-endif
-
-endif
-
-	# Generate a coverage report in JSON, using `llvm-cov export`, and fail if
-	# there are differences from the expected output.
-	"$(LLVM_BIN_DIR)"/llvm-cov export \
-			$(LLVM_COV_IGNORE_FILES) \
-			--summary-only \
-			--instr-profile="$(TMPDIR)"/$@.profdata \
-			$(call BIN,"$(TMPDIR)"/$@) \
-		| "$(PYTHON)" $(BASEDIR)/prettify_json.py \
-		> "$(TMPDIR)"/actual_export_coverage.$@.json
-	# FIXME(richkadel): With the addition of `--ignore-matching-lines=RE` to ignore the
-	# non-deterministically-ordered coverage results for multiple instantiations of generics with
-	# differing type substitutions, I probably don't need the `.json` files anymore (and may not
-	# need `prettify_json.py` either).
-
-ifdef RUSTC_BLESS_TEST
-	cp "$(TMPDIR)"/actual_export_coverage.$@.json expected_export_coverage.$@.json
-else
-	# Check that exported JSON coverage data matches what we expect (`--bless` refreshes `expected`)
-	$(DIFF) expected_export_coverage.$@.json "$(TMPDIR)"/actual_export_coverage.$@.json
 endif

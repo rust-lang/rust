@@ -25,7 +25,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Goto { target } => self.go_to_block(target),
 
             SwitchInt { ref discr, ref targets, switch_ty } => {
-                let discr = self.read_immediate(self.eval_operand(discr, None)?)?;
+                let discr = self.read_immediate(&self.eval_operand(discr, None)?)?;
                 trace!("SwitchInt({:?})", *discr);
                 assert_eq!(discr.layout.ty, switch_ty);
 
@@ -38,8 +38,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     let res = self
                         .overflowing_binary_op(
                             mir::BinOp::Eq,
-                            discr,
-                            ImmTy::from_uint(const_int, discr.layout),
+                            &discr,
+                            &ImmTy::from_uint(const_int, discr.layout),
                         )?
                         .0;
                     if res.to_bool()? {
@@ -58,7 +58,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let (fn_val, abi) = match *func.layout.ty.kind() {
                     ty::FnPtr(sig) => {
                         let caller_abi = sig.abi();
-                        let fn_ptr = self.read_scalar(func)?.check_init()?;
+                        let fn_ptr = self.read_scalar(&func)?.check_init()?;
                         let fn_val = self.memory.get_fn(fn_ptr)?;
                         (fn_val, caller_abi)
                     }
@@ -78,8 +78,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     ),
                 };
                 let args = self.eval_operands(args)?;
+                let dest_place;
                 let ret = match destination {
-                    Some((dest, ret)) => Some((self.eval_place(dest)?, ret)),
+                    Some((dest, ret)) => {
+                        dest_place = self.eval_place(dest)?;
+                        Some((&dest_place, ret))
+                    }
                     None => None,
                 };
                 self.eval_fn_call(fn_val, abi, &args[..], ret, *cleanup)?;
@@ -96,12 +100,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 trace!("TerminatorKind::drop: {:?}, type {}", place, ty);
 
                 let instance = Instance::resolve_drop_in_place(*self.tcx, ty);
-                self.drop_in_place(place, instance, target, unwind)?;
+                self.drop_in_place(&place, instance, target, unwind)?;
             }
 
             Assert { ref cond, expected, ref msg, target, cleanup } => {
                 let cond_val =
-                    self.read_immediate(self.eval_operand(cond, None)?)?.to_scalar()?.to_bool()?;
+                    self.read_immediate(&self.eval_operand(cond, None)?)?.to_scalar()?.to_bool()?;
                 if expected == cond_val {
                     self.go_to_block(target);
                 } else {
@@ -110,7 +114,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             Abort => {
-                M::abort(self)?;
+                M::abort(self, "the program aborted execution".to_owned())?;
             }
 
             // When we encounter Resume, we've finished unwinding
@@ -180,7 +184,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &mut self,
         rust_abi: bool,
         caller_arg: &mut impl Iterator<Item = OpTy<'tcx, M::PointerTag>>,
-        callee_arg: PlaceTy<'tcx, M::PointerTag>,
+        callee_arg: &PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
         if rust_abi && callee_arg.layout.is_zst() {
             // Nothing to do.
@@ -202,7 +206,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             )
         }
         // We allow some transmutes here
-        self.copy_op_transmute(caller_arg, callee_arg)
+        self.copy_op_transmute(&caller_arg, callee_arg)
     }
 
     /// Call this function -- pushing the stack frame and initializing the arguments.
@@ -211,7 +215,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         fn_val: FnVal<'tcx, M::ExtraFnVal>,
         caller_abi: Abi,
         args: &[OpTy<'tcx, M::PointerTag>],
-        ret: Option<(PlaceTy<'tcx, M::PointerTag>, mir::BasicBlock)>,
+        ret: Option<(&PlaceTy<'tcx, M::PointerTag>, mir::BasicBlock)>,
         unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
         trace!("eval_fn_call: {:#?}", fn_val);
@@ -219,7 +223,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let instance = match fn_val {
             FnVal::Instance(instance) => instance,
             FnVal::Other(extra) => {
-                return M::call_extra_fn(self, extra, args, ret, unwind);
+                return M::call_extra_fn(self, extra, caller_abi, args, ret, unwind);
             }
         };
 
@@ -244,9 +248,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             };
             if normalize_abi(caller_abi) != normalize_abi(callee_abi) {
                 throw_ub_format!(
-                    "calling a function with ABI {:?} using caller ABI {:?}",
-                    callee_abi,
-                    caller_abi
+                    "calling a function with ABI {} using caller ABI {}",
+                    callee_abi.name(),
+                    caller_abi.name()
                 )
             }
         }
@@ -264,10 +268,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | ty::InstanceDef::CloneShim(..)
             | ty::InstanceDef::Item(_) => {
                 // We need MIR for this fn
-                let body = match M::find_mir_or_eval_fn(self, instance, args, ret, unwind)? {
-                    Some(body) => body,
-                    None => return Ok(()),
-                };
+                let body =
+                    match M::find_mir_or_eval_fn(self, instance, caller_abi, args, ret, unwind)? {
+                        Some(body) => body,
+                        None => return Ok(()),
+                    };
 
                 self.push_stack_frame(
                     instance,
@@ -313,7 +318,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     let caller_args: Cow<'_, [OpTy<'tcx, M::PointerTag>]> =
                         if caller_abi == Abi::RustCall && !args.is_empty() {
                             // Untuple
-                            let (&untuple_arg, args) = args.split_last().unwrap();
+                            let (untuple_arg, args) = args.split_last().unwrap();
                             trace!("eval_fn_call: Will pass last argument by untupling");
                             Cow::from(
                                 args.iter()
@@ -343,12 +348,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         if Some(local) == body.spread_arg {
                             // Must be a tuple
                             for i in 0..dest.layout.fields.count() {
-                                let dest = self.place_field(dest, i)?;
-                                self.pass_argument(rust_abi, &mut caller_iter, dest)?;
+                                let dest = self.place_field(&dest, i)?;
+                                self.pass_argument(rust_abi, &mut caller_iter, &dest)?;
                             }
                         } else {
                             // Normal argument
-                            self.pass_argument(rust_abi, &mut caller_iter, dest)?;
+                            self.pass_argument(rust_abi, &mut caller_iter, &dest)?;
                         }
                     }
                     // Now we should have no more caller args
@@ -396,7 +401,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let receiver_place = match args[0].layout.ty.builtin_deref(true) {
                     Some(_) => {
                         // Built-in pointer.
-                        self.deref_operand(args[0])?
+                        self.deref_operand(&args[0])?
                     }
                     None => {
                         // Unsized self.
@@ -425,7 +430,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     fn drop_in_place(
         &mut self,
-        place: PlaceTy<'tcx, M::PointerTag>,
+        place: &PlaceTy<'tcx, M::PointerTag>,
         instance: ty::Instance<'tcx>,
         target: mir::BasicBlock,
         unwind: Option<mir::BasicBlock>,
@@ -439,7 +444,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let (instance, place) = match place.layout.ty.kind() {
             ty::Dynamic(..) => {
                 // Dropping a trait object.
-                self.unpack_dyn_trait(place)?
+                self.unpack_dyn_trait(&place)?
             }
             _ => (instance, place),
         };
@@ -456,7 +461,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             FnVal::Instance(instance),
             Abi::Rust,
             &[arg.into()],
-            Some((dest.into(), target)),
+            Some((&dest.into(), target)),
             unwind,
         )
     }

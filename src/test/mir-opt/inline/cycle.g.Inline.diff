@@ -1,0 +1,25 @@
+- // MIR for `g` before Inline
++ // MIR for `g` after Inline
+  
+  fn g() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/cycle.rs:11:8: 11:8
+      let _1: ();                          // in scope 0 at $DIR/cycle.rs:12:5: 12:12
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/cycle.rs:12:5: 12:12
+          _1 = f::<fn() {main}>(main) -> bb1; // scope 0 at $DIR/cycle.rs:12:5: 12:12
+                                           // mir::Constant
+                                           // + span: $DIR/cycle.rs:12:5: 12:6
+                                           // + literal: Const { ty: fn(fn() {main}) {f::<fn() {main}>}, val: Value(Scalar(<ZST>)) }
+                                           // mir::Constant
+                                           // + span: $DIR/cycle.rs:12:7: 12:11
+                                           // + literal: Const { ty: fn() {main}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb1: {
+          StorageDead(_1);                 // scope 0 at $DIR/cycle.rs:12:12: 12:13
+          _0 = const ();                   // scope 0 at $DIR/cycle.rs:11:8: 13:2
+          return;                          // scope 0 at $DIR/cycle.rs:13:2: 13:2
+      }
+  }
+  

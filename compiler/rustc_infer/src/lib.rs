@@ -19,15 +19,16 @@
 #![feature(const_fn)]
 #![feature(const_panic)]
 #![feature(extend_one)]
+#![feature(iter_zip)]
 #![feature(never_type)]
-#![feature(or_patterns)]
+#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(in_band_lifetimes)]
 #![feature(control_flow_enum)]
 #![recursion_limit = "512"] // For rustdoc
 
 #[macro_use]
 extern crate rustc_macros;
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 #[macro_use]
 extern crate rustc_data_structures;
 #[macro_use]

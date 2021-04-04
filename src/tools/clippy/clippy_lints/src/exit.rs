@@ -1,4 +1,5 @@
-use crate::utils::{is_entrypoint_fn, match_def_path, paths, qpath_res, span_lint};
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::{is_entrypoint_fn, match_def_path, paths};
 use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind, Item, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
@@ -29,7 +30,7 @@ impl<'tcx> LateLintPass<'tcx> for Exit {
         if_chain! {
             if let ExprKind::Call(ref path_expr, ref _args) = e.kind;
             if let ExprKind::Path(ref path) = path_expr.kind;
-            if let Some(def_id) = qpath_res(cx, path, path_expr.hir_id).opt_def_id();
+            if let Some(def_id) = cx.qpath_res(path, path_expr.hir_id).opt_def_id();
             if match_def_path(cx, def_id, &paths::EXIT);
             then {
                 let parent = cx.tcx.hir().get_parent_item(e.hir_id);

@@ -80,6 +80,11 @@ declare_features! (
      Some("subsumed by `#![feature(allocator_internals)]`")),
     /// Allows identifying crates that contain sanitizer runtimes.
     (removed, sanitizer_runtime, "1.17.0", None, None, None),
+    /// Allows `#[doc(spotlight)]`.
+    /// The attribute was renamed to `#[doc(notable_trait)]`
+    /// and the feature to `doc_notable_trait`.
+    (removed, doc_spotlight, "1.22.0", Some(45040), None,
+     Some("renamed to `doc_notable_trait`")),
     (removed, proc_macro_mod, "1.27.0", Some(54727), None,
      Some("subsumed by `#![feature(proc_macro_hygiene)]`")),
     (removed, proc_macro_expr, "1.27.0", Some(54727), None,
@@ -97,13 +102,16 @@ declare_features! (
     (removed, extern_in_paths, "1.33.0", Some(55600), None,
      Some("subsumed by `::foo::bar` paths")),
     (removed, quote, "1.33.0", Some(29601), None, None),
+    /// Allows `[x; N]` where `x` is a constant (RFC 2203).
+    (removed, const_in_array_repeat_expressions,  "1.37.0", Some(49147), None,
+     Some("removed due to causing promotable bugs")),
     /// Allows using `#[unsafe_destructor_blind_to_params]` (RFC 1238).
     (removed, dropck_parametricity, "1.38.0", Some(28498), None, None),
     (removed, await_macro, "1.38.0", Some(50547), None,
      Some("subsumed by `.await` syntax")),
     /// Allows defining `existential type`s.
     (removed, existential_type, "1.38.0", Some(63063), None,
-     Some("removed in favor of `#![feature(type_alias_impl_trait)]`")),
+     Some("removed in favor of `#![feature(min_type_alias_impl_trait)]`")),
     /// Allows using the macros:
     /// + `__diagnostic_used`
     /// + `__register_diagnostic`

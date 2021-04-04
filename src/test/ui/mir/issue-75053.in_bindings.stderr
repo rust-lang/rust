@@ -1,0 +1,24 @@
+warning: the feature `impl_trait_in_bindings` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/issue-75053.rs:7:34
+   |
+LL | #![cfg_attr(in_bindings, feature(impl_trait_in_bindings))]
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
+
+error[E0282]: type annotations needed
+  --> $DIR/issue-75053.rs:52:38
+   |
+LL |     type O;
+   |     ------- `<Self as MyIndex<T>>::O` defined here
+...
+LL |     let _pos: Phantom1<DummyT<()>> = Scope::new().my_index();
+   |                                      ^^^^^^^^^^-------------
+   |                                      |
+   |                                      this method call resolves to `<Self as MyIndex<T>>::O`
+   |                                      cannot infer type for type parameter `T`
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0282`.

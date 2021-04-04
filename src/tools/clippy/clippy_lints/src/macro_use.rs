@@ -1,4 +1,6 @@
-use crate::utils::{in_macro, snippet, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::in_macro;
+use clippy_utils::source::snippet;
 use hir::def::{DefKind, Res};
 use if_chain::if_chain;
 use rustc_ast::ast;
@@ -105,10 +107,10 @@ impl MacroUseImports {
 impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
         if_chain! {
-            if cx.sess().opts.edition == Edition::Edition2018;
+            if cx.sess().opts.edition >= Edition::Edition2018;
             if let hir::ItemKind::Use(path, _kind) = &item.kind;
-            if let Some(mac_attr) = item
-                .attrs
+            let attrs = cx.tcx.hir().attrs(item.hir_id());
+            if let Some(mac_attr) = attrs
                 .iter()
                 .find(|attr| attr.ident().map(|s| s.to_string()) == Some("macro_use".to_string()));
             if let Res::Def(DefKind::Mod, id) = path.res;
@@ -160,7 +162,7 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
             let found_idx = self.mac_refs.iter().position(|mac| import.ends_with(&mac.name));
 
             if let Some(idx) = found_idx {
-                let _ = self.mac_refs.remove(idx);
+                self.mac_refs.remove(idx);
                 let seg = import.split("::").collect::<Vec<_>>();
 
                 match seg.as_slice() {

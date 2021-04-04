@@ -26,6 +26,11 @@ LL |     A(u8, u8),
 ...
 LL |         E::A(x @ ..) => {
    |         ^^^^^^^^^^^^ expected 2 fields, found 1
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |         E::A(x @ .., _) => {
+   |                    ^^^
 
 error: aborting due to 3 previous errors
 

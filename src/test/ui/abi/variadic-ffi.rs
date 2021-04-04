@@ -5,7 +5,7 @@
 use std::ffi::VaList;
 
 #[link(name = "rust_test_helpers", kind = "static")]
-extern {
+extern "C" {
     fn rust_interesting_average(_: u64, ...) -> f64;
 
     // FIXME: we need to disable this lint for `VaList`,
@@ -61,7 +61,7 @@ pub fn main() {
     }
 
     // A function that takes a function pointer
-    unsafe fn call(fp: unsafe extern fn(u64, ...) -> f64) {
+    unsafe fn call(fp: unsafe extern "C" fn(u64, ...) -> f64) {
         let (x1, x2, x3, x4) = (10i64, 10.0f64, 20i64, 20.0f64);
         assert_eq!(fp(2, x1, x2, x3, x4) as i64, 30);
     }
@@ -70,7 +70,7 @@ pub fn main() {
         call(rust_interesting_average);
 
         // Make a function pointer, pass indirectly
-        let x: unsafe extern fn(u64, ...) -> f64 = rust_interesting_average;
+        let x: unsafe extern "C" fn(u64, ...) -> f64 = rust_interesting_average;
         call(x);
     }
 

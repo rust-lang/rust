@@ -11,38 +11,52 @@ note: the lint level is defined here
    |
 LL | #![deny(const_err)]
    |         ^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-err-early.rs:4:19
+  --> $DIR/const-err-early.rs:5:19
    |
 LL | pub const B: u8 = 200u8 + 200u8;
    | ------------------^^^^^^^^^^^^^-
    |                   |
    |                   attempt to compute `200_u8 + 200_u8`, which would overflow
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-err-early.rs:5:19
+  --> $DIR/const-err-early.rs:7:19
    |
 LL | pub const C: u8 = 200u8 * 4;
    | ------------------^^^^^^^^^-
    |                   |
    |                   attempt to compute `200_u8 * 4_u8`, which would overflow
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-err-early.rs:6:19
+  --> $DIR/const-err-early.rs:9:19
    |
 LL | pub const D: u8 = 42u8 - (42u8 + 1);
    | ------------------^^^^^^^^^^^^^^^^^-
    |                   |
    |                   attempt to compute `42_u8 - 43_u8`, which would overflow
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-err-early.rs:7:19
+  --> $DIR/const-err-early.rs:11:19
    |
 LL | pub const E: u8 = [5u8][1];
    | ------------------^^^^^^^^-
    |                   |
    |                   index out of bounds: the length is 1 but the index is 1
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: aborting due to 5 previous errors
 

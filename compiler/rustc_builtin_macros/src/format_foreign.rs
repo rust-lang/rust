@@ -312,7 +312,7 @@ pub mod printf {
                 return Some((Substitution::Escape, &s[start + 2..]));
             }
 
-            Cur::new_at(&s[..], start)
+            Cur::new_at(s, start)
         };
 
         // This is meant to be a translation of the following regex:
@@ -580,10 +580,7 @@ pub mod printf {
     }
 
     fn is_flag(c: &char) -> bool {
-        match c {
-            '0' | '-' | '+' | ' ' | '#' | '\'' => true,
-            _ => false,
-        }
+        matches!(c, '0' | '-' | '+' | ' ' | '#' | '\'')
     }
 
     #[cfg(test)]
@@ -676,7 +673,7 @@ pub mod shell {
                 _ => { /* fall-through */ }
             }
 
-            Cur::new_at(&s[..], start)
+            Cur::new_at(s, start)
         };
 
         let at = at.at_next_cp()?;

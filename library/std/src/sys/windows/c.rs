@@ -31,6 +31,8 @@ pub type WORD = u16;
 pub type CHAR = c_char;
 pub type ULONG_PTR = usize;
 pub type ULONG = c_ulong;
+pub type NTSTATUS = LONG;
+pub type ACCESS_MASK = DWORD;
 
 pub type LPBOOL = *mut BOOL;
 pub type LPBYTE = *mut BYTE;
@@ -283,7 +285,7 @@ pub const FD_SETSIZE: usize = 64;
 
 pub const STACK_SIZE_PARAM_IS_A_RESERVATION: DWORD = 0x00010000;
 
-pub const HEAP_ZERO_MEMORY: DWORD = 0x00000008;
+pub const STATUS_SUCCESS: NTSTATUS = 0x00000000;
 
 #[repr(C)]
 #[cfg(not(target_pointer_width = "64"))]
@@ -971,6 +973,7 @@ extern "system" {
     pub fn freeaddrinfo(res: *mut ADDRINFOA);
 
     pub fn GetProcAddress(handle: HMODULE, name: LPCSTR) -> *mut c_void;
+    pub fn GetModuleHandleA(lpModuleName: LPCSTR) -> HMODULE;
     pub fn GetModuleHandleW(lpModuleName: LPCWSTR) -> HMODULE;
 
     pub fn GetSystemTimeAsFileTime(lpSystemTimeAsFileTime: LPFILETIME);
@@ -1012,10 +1015,59 @@ extern "system" {
         timeout: *const timeval,
     ) -> c_int;
 
-    pub fn GetProcessHeap() -> HANDLE;
-    pub fn HeapAlloc(hHeap: HANDLE, dwFlags: DWORD, dwBytes: SIZE_T) -> LPVOID;
-    pub fn HeapReAlloc(hHeap: HANDLE, dwFlags: DWORD, lpMem: LPVOID, dwBytes: SIZE_T) -> LPVOID;
-    pub fn HeapFree(hHeap: HANDLE, dwFlags: DWORD, lpMem: LPVOID) -> BOOL;
+    // >= Vista / Server 2008
+    // https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-createsymboliclinkw
+    pub fn CreateSymbolicLinkW(
+        lpSymlinkFileName: LPCWSTR,
+        lpTargetFileName: LPCWSTR,
+        dwFlags: DWORD,
+    ) -> BOOLEAN;
+
+    // >= Vista / Server 2008
+    // https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfinalpathnamebyhandlew
+    pub fn GetFinalPathNameByHandleW(
+        hFile: HANDLE,
+        lpszFilePath: LPCWSTR,
+        cchFilePath: DWORD,
+        dwFlags: DWORD,
+    ) -> DWORD;
+
+    // >= Vista / Server 2003
+    // https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreadstackguarantee
+    #[cfg(not(target_vendor = "uwp"))]
+    pub fn SetThreadStackGuarantee(_size: *mut c_ulong) -> BOOL;
+
+    // >= Vista / Server 2008
+    // https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-setfileinformationbyhandle
+    pub fn SetFileInformationByHandle(
+        hFile: HANDLE,
+        FileInformationClass: FILE_INFO_BY_HANDLE_CLASS,
+        lpFileInformation: LPVOID,
+        dwBufferSize: DWORD,
+    ) -> BOOL;
+
+    // >= Vista / Server 2008
+    // https://docs.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-sleepconditionvariablesrw
+    pub fn SleepConditionVariableSRW(
+        ConditionVariable: PCONDITION_VARIABLE,
+        SRWLock: PSRWLOCK,
+        dwMilliseconds: DWORD,
+        Flags: ULONG,
+    ) -> BOOL;
+
+    // >= Vista / Server 2008
+    // https://docs.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-wakeconditionvariable
+    pub fn WakeConditionVariable(ConditionVariable: PCONDITION_VARIABLE);
+    pub fn WakeAllConditionVariable(ConditionVariable: PCONDITION_VARIABLE);
+
+    // >= Vista / Server 2008
+    // https://docs.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-acquiresrwlockexclusive
+    pub fn AcquireSRWLockExclusive(SRWLock: PSRWLOCK);
+    pub fn AcquireSRWLockShared(SRWLock: PSRWLOCK);
+    pub fn ReleaseSRWLockExclusive(SRWLock: PSRWLOCK);
+    pub fn ReleaseSRWLockShared(SRWLock: PSRWLOCK);
+    pub fn TryAcquireSRWLockExclusive(SRWLock: PSRWLOCK) -> BOOLEAN;
+    pub fn TryAcquireSRWLockShared(SRWLock: PSRWLOCK) -> BOOLEAN;
 }
 
 // Functions that aren't available on every version of Windows that we support,
@@ -1023,65 +1075,64 @@ extern "system" {
 compat_fn! {
     "kernel32":
 
-    pub fn CreateSymbolicLinkW(_lpSymlinkFileName: LPCWSTR,
-                               _lpTargetFileName: LPCWSTR,
-                               _dwFlags: DWORD) -> BOOLEAN {
-        SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0
-    }
-    pub fn GetFinalPathNameByHandleW(_hFile: HANDLE,
-                                     _lpszFilePath: LPCWSTR,
-                                     _cchFilePath: DWORD,
-                                     _dwFlags: DWORD) -> DWORD {
-        SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0
-    }
-    #[cfg(not(target_vendor = "uwp"))]
-    pub fn SetThreadStackGuarantee(_size: *mut c_ulong) -> BOOL {
-        SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0
-    }
+    // >= Win10 1607
+    // https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreaddescription
     pub fn SetThreadDescription(hThread: HANDLE,
                                 lpThreadDescription: LPCWSTR) -> HRESULT {
         SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); E_NOTIMPL
     }
-    pub fn SetFileInformationByHandle(_hFile: HANDLE,
-                    _FileInformationClass: FILE_INFO_BY_HANDLE_CLASS,
-                    _lpFileInformation: LPVOID,
-                    _dwBufferSize: DWORD) -> BOOL {
-        SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0
-    }
+
+    // >= Win8 / Server 2012
+    // https://docs.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemtimepreciseasfiletime
     pub fn GetSystemTimePreciseAsFileTime(lpSystemTimeAsFileTime: LPFILETIME)
                                           -> () {
         GetSystemTimeAsFileTime(lpSystemTimeAsFileTime)
     }
-    pub fn SleepConditionVariableSRW(ConditionVariable: PCONDITION_VARIABLE,
-                                     SRWLock: PSRWLOCK,
-                                     dwMilliseconds: DWORD,
-                                     Flags: ULONG) -> BOOL {
-        panic!("condition variables not available")
+}
+
+compat_fn! {
+    "api-ms-win-core-synch-l1-2-0":
+
+    // >= Windows 8 / Server 2012
+    // https://docs.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-waitonaddress
+    pub fn WaitOnAddress(
+        Address: LPVOID,
+        CompareAddress: LPVOID,
+        AddressSize: SIZE_T,
+        dwMilliseconds: DWORD
+    ) -> BOOL {
+        panic!("WaitOnAddress not available")
     }
-    pub fn WakeConditionVariable(ConditionVariable: PCONDITION_VARIABLE)
-                                 -> () {
-        panic!("condition variables not available")
+    pub fn WakeByAddressSingle(Address: LPVOID) -> () {
+        // If this api is unavailable, there cannot be anything waiting, because
+        // WaitOnAddress would've panicked. So it's fine to do nothing here.
     }
-    pub fn WakeAllConditionVariable(ConditionVariable: PCONDITION_VARIABLE)
-                                    -> () {
-        panic!("condition variables not available")
+}
+
+compat_fn! {
+    "ntdll":
+    pub fn NtCreateKeyedEvent(
+        KeyedEventHandle: LPHANDLE,
+        DesiredAccess: ACCESS_MASK,
+        ObjectAttributes: LPVOID,
+        Flags: ULONG
+    ) -> NTSTATUS {
+        panic!("keyed events not available")
     }
-    pub fn AcquireSRWLockExclusive(SRWLock: PSRWLOCK) -> () {
-        panic!("rwlocks not available")
+    pub fn NtReleaseKeyedEvent(
+        EventHandle: HANDLE,
+        Key: LPVOID,
+        Alertable: BOOLEAN,
+        Timeout: PLARGE_INTEGER
+    ) -> NTSTATUS {
+        panic!("keyed events not available")
     }
-    pub fn AcquireSRWLockShared(SRWLock: PSRWLOCK) -> () {
-        panic!("rwlocks not available")
-    }
-    pub fn ReleaseSRWLockExclusive(SRWLock: PSRWLOCK) -> () {
-        panic!("rwlocks not available")
-    }
-    pub fn ReleaseSRWLockShared(SRWLock: PSRWLOCK) -> () {
-        panic!("rwlocks not available")
-    }
-    pub fn TryAcquireSRWLockExclusive(SRWLock: PSRWLOCK) -> BOOLEAN {
-        panic!("rwlocks not available")
-    }
-    pub fn TryAcquireSRWLockShared(SRWLock: PSRWLOCK) -> BOOLEAN {
-        panic!("rwlocks not available")
+    pub fn NtWaitForKeyedEvent(
+        EventHandle: HANDLE,
+        Key: LPVOID,
+        Alertable: BOOLEAN,
+        Timeout: PLARGE_INTEGER
+    ) -> NTSTATUS {
+        panic!("keyed events not available")
     }
 }

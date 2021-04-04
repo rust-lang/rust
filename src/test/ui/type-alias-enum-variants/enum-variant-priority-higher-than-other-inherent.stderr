@@ -5,12 +5,6 @@ LL |     <E>::V();
    |     ^^^^^^-- supplied 0 arguments
    |     |
    |     expected 1 argument
-   |
-note: tuple variant defined here
-  --> $DIR/enum-variant-priority-higher-than-other-inherent.rs:5:5
-   |
-LL |     V(u8)
-   |     ^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/enum-variant-priority-higher-than-other-inherent.rs:22:17

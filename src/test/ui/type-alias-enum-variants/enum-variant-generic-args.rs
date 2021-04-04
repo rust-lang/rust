@@ -16,10 +16,10 @@ impl<T> Enum<T> {
         //~^ ERROR type arguments are not allowed for this type [E0109]
         Self::<()>::TSVariant(());
         //~^ ERROR type arguments are not allowed for this type [E0109]
-        //~^^ ERROR mismatched types [E0308]
+        //~| ERROR mismatched types [E0308]
         Self::<()>::TSVariant::<()>(());
         //~^ ERROR type arguments are not allowed for this type [E0109]
-        //~^^ ERROR type arguments are not allowed for this type [E0109]
+        //~| ERROR type arguments are not allowed for this type [E0109]
     }
 
     fn s_variant() {
@@ -27,14 +27,14 @@ impl<T> Enum<T> {
         //~^ ERROR mismatched types [E0308]
         Self::SVariant::<()> { v: () };
         //~^ ERROR type arguments are not allowed for this type [E0109]
-        //~^^ ERROR mismatched types [E0308]
+        //~| ERROR mismatched types [E0308]
         Self::<()>::SVariant { v: () };
         //~^ ERROR type arguments are not allowed for this type [E0109]
-        //~^^ ERROR mismatched types [E0308]
+        //~| ERROR mismatched types [E0308]
         Self::<()>::SVariant::<()> { v: () };
         //~^ ERROR type arguments are not allowed for this type [E0109]
-        //~^^ ERROR type arguments are not allowed for this type [E0109]
-        //~^^^ ERROR mismatched types [E0308]
+        //~| ERROR type arguments are not allowed for this type [E0109]
+        //~| ERROR mismatched types [E0308]
     }
 
     fn u_variant() {
@@ -44,7 +44,7 @@ impl<T> Enum<T> {
         //~^ ERROR type arguments are not allowed for this type [E0109]
         Self::<()>::UVariant::<()>;
         //~^ ERROR type arguments are not allowed for this type [E0109]
-        //~^^ ERROR type arguments are not allowed for this type [E0109]
+        //~| ERROR type arguments are not allowed for this type [E0109]
     }
 }
 
@@ -62,10 +62,10 @@ fn main() {
     AliasFixed::TSVariant::<()>(());
     //~^ ERROR type arguments are not allowed for this type [E0109]
     AliasFixed::<()>::TSVariant(());
-    //~^ ERROR wrong number of type arguments: expected 0, found 1 [E0107]
+    //~^ ERROR this type alias takes 0 type arguments but 1 type argument was supplied [E0107]
     AliasFixed::<()>::TSVariant::<()>(());
     //~^ ERROR type arguments are not allowed for this type [E0109]
-    //~^^ ERROR wrong number of type arguments: expected 0, found 1 [E0107]
+    //~| ERROR this type alias takes 0 type arguments but 1 type argument was supplied [E0107]
 
     // Struct variant
 
@@ -80,10 +80,10 @@ fn main() {
     AliasFixed::SVariant::<()> { v: () };
     //~^ ERROR type arguments are not allowed for this type [E0109]
     AliasFixed::<()>::SVariant { v: () };
-    //~^ ERROR wrong number of type arguments: expected 0, found 1 [E0107]
+    //~^ ERROR this type alias takes 0 type arguments but 1 type argument was supplied [E0107]
     AliasFixed::<()>::SVariant::<()> { v: () };
     //~^ ERROR type arguments are not allowed for this type [E0109]
-    //~^^ ERROR wrong number of type arguments: expected 0, found 1 [E0107]
+    //~| ERROR this type alias takes 0 type arguments but 1 type argument was supplied [E0107]
 
     // Unit variant
 
@@ -98,8 +98,8 @@ fn main() {
     AliasFixed::UVariant::<()>;
     //~^ ERROR type arguments are not allowed for this type [E0109]
     AliasFixed::<()>::UVariant;
-    //~^ ERROR wrong number of type arguments: expected 0, found 1 [E0107]
+    //~^ ERROR this type alias takes 0 type arguments but 1 type argument was supplied [E0107]
     AliasFixed::<()>::UVariant::<()>;
     //~^ ERROR type arguments are not allowed for this type [E0109]
-    //~^^ ERROR wrong number of type arguments: expected 0, found 1 [E0107]
+    //~| ERROR this type alias takes 0 type arguments but 1 type argument was supplied [E0107]
 }

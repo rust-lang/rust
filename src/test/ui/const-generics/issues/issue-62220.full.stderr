@@ -1,5 +1,5 @@
 error: constant expression depends on a generic parameter
-  --> $DIR/issue-62220.rs:13:27
+  --> $DIR/issue-62220.rs:12:27
    |
 LL |     pub fn trunc(self) -> (TruncatedVector<T, { N }>, T) {
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

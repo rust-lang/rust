@@ -21,6 +21,21 @@ CGREP := "$(S)/src/etc/cat-and-grep.sh"
 # diff with common flags for multi-platform diffs against text output
 DIFF := diff -u --strip-trailing-cr
 
+# Some of the Rust CI platforms use `/bin/dash` to run `shell` script in
+# Makefiles. Other platforms, including many developer platforms, default to
+# `/bin/bash`. (In many cases, `make` is actually using `/bin/sh`, but `sh`
+# is configured to execute one or the other shell binary). `dash` features
+# support only a small subset of `bash` features, so `dash` can be thought of as
+# the lowest common denominator, and tests should be validated against `dash`
+# whenever possible. Most developer platforms include `/bin/dash`, but to ensure
+# tests still work when `/bin/dash`, if not available, this `SHELL` override is
+# conditional:
+ifndef IS_WINDOWS # dash interprets backslashes in executable paths incorrectly
+ifneq (,$(wildcard /bin/dash))
+SHELL := /bin/dash
+endif
+endif
+
 # This is the name of the binary we will generate and run; use this
 # e.g. for `$(CC) -o $(RUN_BINFILE)`.
 RUN_BINFILE = $(TMPDIR)/$(1)

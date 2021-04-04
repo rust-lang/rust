@@ -83,9 +83,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 return;
             }
 
-            sym::unreachable => {
-                return;
-            }
             sym::va_start => bx.va_start(args[0].immediate()),
             sym::va_end => bx.va_end(args[0].immediate()),
             sym::size_of_val => {
@@ -106,8 +103,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     bx.const_usize(bx.layout_of(tp_ty).align.abi.bytes())
                 }
             }
-            sym::size_of
-            | sym::pref_align_of
+            sym::pref_align_of
             | sym::min_align_of
             | sym::needs_drop
             | sym::type_id
@@ -119,10 +115,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     .unwrap();
                 OperandRef::from_const(bx, value, ret_ty).immediate_or_packed_pair(bx)
             }
-            // Effectively no-op
-            sym::forget => {
-                return;
-            }
             sym::offset => {
                 let ptr = args[0].immediate();
                 let offset = args[1].immediate();
@@ -132,19 +124,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let ptr = args[0].immediate();
                 let offset = args[1].immediate();
                 bx.gep(ptr, &[offset])
-            }
-
-            sym::copy_nonoverlapping => {
-                copy_intrinsic(
-                    bx,
-                    false,
-                    false,
-                    substs.type_at(0),
-                    args[1].immediate(),
-                    args[0].immediate(),
-                    args[2].immediate(),
-                );
-                return;
             }
             sym::copy => {
                 copy_intrinsic(
@@ -218,9 +197,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             sym::add_with_overflow
             | sym::sub_with_overflow
             | sym::mul_with_overflow
-            | sym::wrapping_add
-            | sym::wrapping_sub
-            | sym::wrapping_mul
             | sym::unchecked_div
             | sym::unchecked_rem
             | sym::unchecked_shl
@@ -254,9 +230,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                             return;
                         }
-                        sym::wrapping_add => bx.add(args[0].immediate(), args[1].immediate()),
-                        sym::wrapping_sub => bx.sub(args[0].immediate(), args[1].immediate()),
-                        sym::wrapping_mul => bx.mul(args[0].immediate(), args[1].immediate()),
                         sym::exact_div => {
                             if signed {
                                 bx.exactsdiv(args[0].immediate(), args[1].immediate())
@@ -437,16 +410,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 match split[1] {
                     "cxchg" | "cxchgweak" => {
                         let ty = substs.type_at(0);
-                        if int_type_width_signed(ty, bx.tcx()).is_some() {
+                        if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_unsafe_ptr() {
                             let weak = split[1] == "cxchgweak";
-                            let pair = bx.atomic_cmpxchg(
-                                args[0].immediate(),
-                                args[1].immediate(),
-                                args[2].immediate(),
-                                order,
-                                failorder,
-                                weak,
-                            );
+                            let mut dst = args[0].immediate();
+                            let mut cmp = args[1].immediate();
+                            let mut src = args[2].immediate();
+                            if ty.is_unsafe_ptr() {
+                                // Some platforms do not support atomic operations on pointers,
+                                // so we cast to integer first.
+                                let ptr_llty = bx.type_ptr_to(bx.type_isize());
+                                dst = bx.pointercast(dst, ptr_llty);
+                                cmp = bx.ptrtoint(cmp, bx.type_isize());
+                                src = bx.ptrtoint(src, bx.type_isize());
+                            }
+                            let pair = bx.atomic_cmpxchg(dst, cmp, src, order, failorder, weak);
                             let val = bx.extract_value(pair, 0);
                             let success = bx.extract_value(pair, 1);
                             let val = bx.from_immediate(val);
@@ -464,9 +441,23 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                     "load" => {
                         let ty = substs.type_at(0);
-                        if int_type_width_signed(ty, bx.tcx()).is_some() {
-                            let size = bx.layout_of(ty).size;
-                            bx.atomic_load(args[0].immediate(), order, size)
+                        if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_unsafe_ptr() {
+                            let layout = bx.layout_of(ty);
+                            let size = layout.size;
+                            let mut source = args[0].immediate();
+                            if ty.is_unsafe_ptr() {
+                                // Some platforms do not support atomic operations on pointers,
+                                // so we cast to integer first...
+                                let ptr_llty = bx.type_ptr_to(bx.type_isize());
+                                source = bx.pointercast(source, ptr_llty);
+                            }
+                            let result = bx.atomic_load(source, order, size);
+                            if ty.is_unsafe_ptr() {
+                                // ... and then cast the result back to a pointer
+                                bx.inttoptr(result, bx.backend_type(layout))
+                            } else {
+                                result
+                            }
                         } else {
                             return invalid_monomorphization(ty);
                         }
@@ -474,9 +465,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                     "store" => {
                         let ty = substs.type_at(0);
-                        if int_type_width_signed(ty, bx.tcx()).is_some() {
+                        if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_unsafe_ptr() {
                             let size = bx.layout_of(ty).size;
-                            bx.atomic_store(args[1].immediate(), args[0].immediate(), order, size);
+                            let mut val = args[1].immediate();
+                            let mut ptr = args[0].immediate();
+                            if ty.is_unsafe_ptr() {
+                                // Some platforms do not support atomic operations on pointers,
+                                // so we cast to integer first.
+                                let ptr_llty = bx.type_ptr_to(bx.type_isize());
+                                ptr = bx.pointercast(ptr, ptr_llty);
+                                val = bx.ptrtoint(val, bx.type_isize());
+                            }
+                            bx.atomic_store(val, ptr, order, size);
                             return;
                         } else {
                             return invalid_monomorphization(ty);
@@ -511,8 +511,19 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         };
 
                         let ty = substs.type_at(0);
-                        if int_type_width_signed(ty, bx.tcx()).is_some() {
-                            bx.atomic_rmw(atom_op, args[0].immediate(), args[1].immediate(), order)
+                        if int_type_width_signed(ty, bx.tcx()).is_some()
+                            || (ty.is_unsafe_ptr() && op == "xchg")
+                        {
+                            let mut ptr = args[0].immediate();
+                            let mut val = args[1].immediate();
+                            if ty.is_unsafe_ptr() {
+                                // Some platforms do not support atomic operations on pointers,
+                                // so we cast to integer first.
+                                let ptr_llty = bx.type_ptr_to(bx.type_isize());
+                                ptr = bx.pointercast(ptr, ptr_llty);
+                                val = bx.ptrtoint(val, bx.type_isize());
+                            }
+                            bx.atomic_rmw(atom_op, ptr, val, order)
                         } else {
                             return invalid_monomorphization(ty);
                         }

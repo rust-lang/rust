@@ -35,9 +35,11 @@ changelog-seen = 2
 # Unless you're developing for a target where Rust CI doesn't build a compiler
 # toolchain or changing LLVM locally, you probably want to set this to true.
 #
-# It's currently false by default due to being newly added; please file bugs if
-# enabling this did not work for you on x86_64-unknown-linux-gnu.
-# Other target triples are currently not supported; see #77084.
+# This is false by default so that distributions don't unexpectedly download
+# LLVM from the internet.
+#
+# All tier 1 targets are currently supported; set this to `"if-supported"` if
+# you are not sure whether you're on a tier 1 target.
 #
 # We also currently only support this when building LLVM for the build triple.
 #
@@ -206,6 +208,11 @@ changelog-seen = 2
 # documentation.
 #docs = true
 
+# Flag to specify whether CSS, JavaScript, and HTML are minified when
+# docs are generated. JSON is always minified, because it's enormous,
+# and generated in already-minified form from the beginning.
+#docs-minification = true
+
 # Indicate whether the compiler should be documented in addition to the standard
 # library and facade crates.
 #compiler-docs = false
@@ -252,10 +259,11 @@ changelog-seen = 2
 # be built if `extended = true`.
 #extended = false
 
-# Installs chosen set of extended tools if `extended = true`. By default builds all.
-# If chosen tool failed to build the installation fails. If `extended = false`, this
-# option is ignored.
-#tools = ["cargo", "rls", "clippy", "rustfmt", "analysis", "src"]
+# Installs chosen set of extended tools if `extended = true`. By default builds
+# all extended tools except `rust-demangler`, unless the target is also being
+# built with `profiler = true`. If chosen tool failed to build the installation
+# fails. If `extended = false`, this option is ignored.
+#tools = ["cargo", "rls", "clippy", "rustfmt", "analysis", "src"] # + "rust-demangler" if `profiler`
 
 # Verbosity level: 0 == not verbose, 1 == verbose, 2 == very verbose
 #verbose = 0
@@ -287,6 +295,12 @@ changelog-seen = 2
 # Print out how long each rustbuild step took (mostly intended for CI and
 # tracking over time)
 #print-step-timings = false
+
+# Print out resource usage data for each rustbuild step, as defined by the Unix
+# struct rusage. (Note that this setting is completely unstable: the data it
+# captures, what platforms it supports, the format of its associated output, and
+# this setting's very existence, are all subject to change.)
+#print-step-rusage = false
 
 # =============================================================================
 # General install configuration options
@@ -355,6 +369,12 @@ changelog-seen = 2
 #       hours to build.
 #
 #debug = false
+
+# Whether to download the stage 1 and 2 compilers from CI.
+# This is mostly useful for tools; if you have changes to `compiler/` they will be ignored.
+#
+# FIXME: currently, this also uses the downloaded compiler for stage0, but that causes unnecessary rebuilds.
+#download-rustc = false
 
 # Number of codegen units to use for each compiler invocation. A value of 0
 # means "the number of cores on this machine", and 1+ is passed through to the
@@ -425,6 +445,14 @@ changelog-seen = 2
 # Debuginfo level for the test suites run with compiletest.
 # FIXME(#61117): Some tests fail when this option is enabled.
 #debuginfo-level-tests = 0
+
+# Whether to run `dsymutil` on Apple platforms to gather debug info into .dSYM
+# bundles. `dsymutil` adds time to builds for no clear benefit, and also makes
+# it more difficult for debuggers to find debug info. The compiler currently
+# defaults to running `dsymutil` to preserve its historical default, but when
+# compiling the compiler itself, we skip it by default since we know it's safe
+# to do so in that case.
+#run-dsymutil = false
 
 # Whether or not `panic!`s generate backtraces (RUST_BACKTRACE)
 #backtrace = true
@@ -615,7 +643,9 @@ changelog-seen = 2
 # The full path to the musl libdir.
 #musl-libdir = musl-root/lib
 
-# The root location of the `wasm32-wasi` sysroot.
+# The root location of the `wasm32-wasi` sysroot. Only used for the
+# `wasm32-wasi` target. If you are building wasm32-wasi target, make sure to
+# create a `[target.wasm32-wasi]` section and move this field there.
 #wasi-root = "..."
 
 # Used in testing for configuring where the QEMU images are located, you
@@ -661,3 +691,7 @@ changelog-seen = 2
 
 # Whether to allow failures when building tools
 #missing-tools = false
+
+# List of compression formats to use when generating dist tarballs. The list of
+# formats is provided to rust-installer, which must support all of them.
+#compression-formats = ["gz", "xz"]

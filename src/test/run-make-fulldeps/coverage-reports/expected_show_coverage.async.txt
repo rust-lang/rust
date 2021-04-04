@@ -1,6 +1,6 @@
     1|       |#![allow(unused_assignments, dead_code)]
     2|       |
-    3|       |// require-rust-edition-2018
+    3|       |// compile-flags: --edition=2018 -C opt-level=1 # fix in rustc_mir/monomorphize/partitioning/mod.rs
     4|       |
     5|      1|async fn c(x: u8) -> u8 {
     6|      1|    if x == 8 {
@@ -66,7 +66,8 @@
    63|      1|            0
    64|      1|        }
    65|      1|    }
-   66|      1|    fn d() -> u8 { 1 }
+   66|      1|    fn d() -> u8 { 1 } // inner function is defined in-line, but the function is not executed
+                  ^0
    67|      1|    fn f() -> u8 { 1 }
    68|      1|    match x {
    69|      1|        y if c(x) == y + 1 => { d(); }
@@ -115,11 +116,14 @@
   109|       |
   110|      1|    pub fn block_on<F: Future>(mut future: F) -> F::Output {
   111|      1|        let mut future = unsafe { Pin::new_unchecked(&mut future) };
-  112|      1|
+  112|      1|        use std::hint::unreachable_unchecked;
   113|      1|        static VTABLE: RawWakerVTable = RawWakerVTable::new(
-  114|      1|            |_| unimplemented!("clone"),
-  115|      1|            |_| unimplemented!("wake"),
-  116|      1|            |_| unimplemented!("wake_by_ref"),
+  114|      1|            |_| unsafe { unreachable_unchecked() }, // clone
+                              ^0
+  115|      1|            |_| unsafe { unreachable_unchecked() }, // wake
+                              ^0
+  116|      1|            |_| unsafe { unreachable_unchecked() }, // wake_by_ref
+                              ^0
   117|      1|            |_| (),
   118|      1|        );
   119|      1|        let waker = unsafe { Waker::from_raw(RawWaker::new(core::ptr::null(), &VTABLE)) };

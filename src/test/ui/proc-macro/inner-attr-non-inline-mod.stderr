@@ -1,0 +1,40 @@
+error[E0658]: inner macro attributes are unstable
+  --> $DIR/module_with_attrs.rs:4:4
+   |
+LL | #![print_attr]
+   |    ^^^^^^^^^^
+   |
+   = note: see issue #54726 <https://github.com/rust-lang/rust/issues/54726> for more information
+   = help: add `#![feature(custom_inner_attributes)]` to the crate attributes to enable
+
+error[E0658]: non-inline modules in proc macro input are unstable
+  --> $DIR/inner-attr-non-inline-mod.rs:14:1
+   |
+LL | mod module_with_attrs;
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
+   = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
+
+error[E0658]: custom inner attributes are unstable
+  --> $DIR/inner-attr-non-inline-mod.rs:14:1
+   |
+LL | mod module_with_attrs;
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #54726 <https://github.com/rust-lang/rust/issues/54726> for more information
+   = help: add `#![feature(custom_inner_attributes)]` to the crate attributes to enable
+
+error: custom inner attributes are unstable
+  --> $DIR/module_with_attrs.rs:3:4
+   |
+LL | #![rustfmt::skip]
+   |    ^^^^^^^^^^^^^
+   |
+   = note: `#[deny(soft_unstable)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

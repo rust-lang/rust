@@ -21,16 +21,14 @@ struct LayoutTest<'tcx> {
 
 impl ItemLikeVisitor<'tcx> for LayoutTest<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        let item_def_id = self.tcx.hir().local_def_id(item.hir_id);
-
         match item.kind {
             ItemKind::TyAlias(..)
             | ItemKind::Enum(..)
             | ItemKind::Struct(..)
             | ItemKind::Union(..) => {
-                for attr in self.tcx.get_attrs(item_def_id.to_def_id()).iter() {
+                for attr in self.tcx.get_attrs(item.def_id.to_def_id()).iter() {
                     if self.tcx.sess.check_name(attr, sym::rustc_layout) {
-                        self.dump_layout_of(item_def_id, item, attr);
+                        self.dump_layout_of(item.def_id, item, attr);
                     }
                 }
             }

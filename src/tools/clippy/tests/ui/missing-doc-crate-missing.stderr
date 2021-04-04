@@ -1,4 +1,4 @@
-error: missing documentation for crate
+error: missing documentation for the crate
   --> $DIR/missing-doc-crate-missing.rs:1:1
    |
 LL | / #![warn(clippy::missing_docs_in_private_items)]

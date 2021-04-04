@@ -5,6 +5,7 @@ use rustc_middle::mir::{BorrowKind, Mutability, Operand};
 use rustc_middle::mir::{InlineAsmOperand, Terminator, TerminatorKind};
 use rustc_middle::mir::{Statement, StatementKind};
 use rustc_middle::ty::TyCtxt;
+use std::iter;
 
 use crate::dataflow::indexes::BorrowIndex;
 
@@ -69,7 +70,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                 self.mutate_place(location, **place, Shallow(None), JustWrite);
             }
             StatementKind::LlvmInlineAsm(asm) => {
-                for (o, output) in asm.asm.outputs.iter().zip(asm.outputs.iter()) {
+                for (o, output) in iter::zip(&asm.asm.outputs, &*asm.outputs) {
                     if o.is_indirect {
                         // FIXME(eddyb) indirect inline asm outputs should
                         // be encoded through MIR place derefs instead.
@@ -91,6 +92,15 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                 for (_, input) in asm.inputs.iter() {
                     self.consume_operand(location, input);
                 }
+            }
+            StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping {
+                ref src,
+                ref dst,
+                ref count,
+            }) => {
+                self.consume_operand(location, src);
+                self.consume_operand(location, dst);
+                self.consume_operand(location, count);
             }
             StatementKind::Nop
             | StatementKind::Coverage(..)
@@ -165,7 +175,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                 self.consume_operand(location, value);
 
                 // Invalidate all borrows of local places
-                let borrow_set = self.borrow_set.clone();
+                let borrow_set = self.borrow_set;
                 let resume = self.location_table.start_index(resume.start_location());
                 for (i, data) in borrow_set.iter_enumerated() {
                     if borrow_of_local_data(data.borrowed_place) {
@@ -177,7 +187,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
             }
             TerminatorKind::Resume | TerminatorKind::Return | TerminatorKind::GeneratorDrop => {
                 // Invalidate all borrows of local places
-                let borrow_set = self.borrow_set.clone();
+                let borrow_set = self.borrow_set;
                 let start = self.location_table.start_index(location);
                 for (i, data) in borrow_set.iter_enumerated() {
                     if borrow_of_local_data(data.borrowed_place) {
@@ -326,8 +336,8 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
                 );
             }
 
-            Rvalue::BinaryOp(_bin_op, ref operand1, ref operand2)
-            | Rvalue::CheckedBinaryOp(_bin_op, ref operand1, ref operand2) => {
+            Rvalue::BinaryOp(_bin_op, box (ref operand1, ref operand2))
+            | Rvalue::CheckedBinaryOp(_bin_op, box (ref operand1, ref operand2)) => {
                 self.consume_operand(location, operand1);
                 self.consume_operand(location, operand2);
             }
@@ -369,7 +379,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
         );
         let tcx = self.tcx;
         let body = self.body;
-        let borrow_set = self.borrow_set.clone();
+        let borrow_set = self.borrow_set;
         let indices = self.borrow_set.indices();
         each_borrow_involving_path(
             self,
@@ -377,7 +387,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
             body,
             location,
             (sd, place),
-            &borrow_set.clone(),
+            borrow_set,
             indices,
             |this, borrow_index, borrow| {
                 match (rw, borrow.kind) {

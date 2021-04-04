@@ -20,7 +20,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{BodyOwnerKind, HirId};
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_infer::infer::{InferCtxt, NLLRegionVariableOrigin};
+use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt};
@@ -393,7 +393,7 @@ struct UniversalRegionsBuilder<'cx, 'tcx> {
     param_env: ty::ParamEnv<'tcx>,
 }
 
-const FR: NLLRegionVariableOrigin = NLLRegionVariableOrigin::FreeRegion;
+const FR: NllRegionVariableOrigin = NllRegionVariableOrigin::FreeRegion;
 
 impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
     fn build(self) -> UniversalRegions<'tcx> {
@@ -486,7 +486,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
         let root_empty = self
             .infcx
-            .next_nll_region_var(NLLRegionVariableOrigin::RootEmptyRegion)
+            .next_nll_region_var(NllRegionVariableOrigin::RootEmptyRegion)
             .to_region_vid();
 
         UniversalRegions {
@@ -580,7 +580,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
         let global_mapping = iter::once((tcx.lifetimes.re_static, fr_static));
         let subst_mapping =
-            identity_substs.regions().zip(fr_substs.regions().map(|r| r.to_region_vid()));
+            iter::zip(identity_substs.regions(), fr_substs.regions().map(|r| r.to_region_vid()));
 
         UniversalRegionIndices { indices: global_mapping.chain(subst_mapping).collect() }
     }
@@ -589,31 +589,45 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         &self,
         indices: &UniversalRegionIndices<'tcx>,
         defining_ty: DefiningTy<'tcx>,
-    ) -> ty::Binder<&'tcx ty::List<Ty<'tcx>>> {
+    ) -> ty::Binder<'tcx, &'tcx ty::List<Ty<'tcx>>> {
         let tcx = self.infcx.tcx;
         match defining_ty {
             DefiningTy::Closure(def_id, substs) => {
                 assert_eq!(self.mir_def.did.to_def_id(), def_id);
                 let closure_sig = substs.as_closure().sig();
                 let inputs_and_output = closure_sig.inputs_and_output();
-                let closure_ty = tcx.closure_env_ty(def_id, substs).unwrap();
-                ty::Binder::fuse(closure_ty, inputs_and_output, |closure_ty, inputs_and_output| {
-                    // The "inputs" of the closure in the
-                    // signature appear as a tuple.  The MIR side
-                    // flattens this tuple.
-                    let (&output, tuplized_inputs) = inputs_and_output.split_last().unwrap();
-                    assert_eq!(tuplized_inputs.len(), 1, "multiple closure inputs");
-                    let inputs = match tuplized_inputs[0].kind() {
-                        ty::Tuple(inputs) => inputs,
-                        _ => bug!("closure inputs not a tuple: {:?}", tuplized_inputs[0]),
-                    };
+                let bound_vars = tcx.mk_bound_variable_kinds(
+                    inputs_and_output
+                        .bound_vars()
+                        .iter()
+                        .chain(iter::once(ty::BoundVariableKind::Region(ty::BrEnv))),
+                );
+                let br = ty::BoundRegion {
+                    var: ty::BoundVar::from_usize(bound_vars.len() - 1),
+                    kind: ty::BrEnv,
+                };
+                let env_region = ty::ReLateBound(ty::INNERMOST, br);
+                let closure_ty = tcx.closure_env_ty(def_id, substs, env_region).unwrap();
 
+                // The "inputs" of the closure in the
+                // signature appear as a tuple.  The MIR side
+                // flattens this tuple.
+                let (&output, tuplized_inputs) =
+                    inputs_and_output.skip_binder().split_last().unwrap();
+                assert_eq!(tuplized_inputs.len(), 1, "multiple closure inputs");
+                let inputs = match tuplized_inputs[0].kind() {
+                    ty::Tuple(inputs) => inputs,
+                    _ => bug!("closure inputs not a tuple: {:?}", tuplized_inputs[0]),
+                };
+
+                ty::Binder::bind_with_vars(
                     tcx.mk_type_list(
                         iter::once(closure_ty)
                             .chain(inputs.iter().map(|k| k.expect_ty()))
                             .chain(iter::once(output)),
-                    )
-                })
+                    ),
+                    bound_vars,
+                )
             }
 
             DefiningTy::Generator(def_id, substs, movability) => {
@@ -647,7 +661,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 trait InferCtxtExt<'tcx> {
     fn replace_free_regions_with_nll_infer_vars<T>(
         &self,
-        origin: NLLRegionVariableOrigin,
+        origin: NllRegionVariableOrigin,
         value: T,
     ) -> T
     where
@@ -655,9 +669,9 @@ trait InferCtxtExt<'tcx> {
 
     fn replace_bound_regions_with_nll_infer_vars<T>(
         &self,
-        origin: NLLRegionVariableOrigin,
+        origin: NllRegionVariableOrigin,
         all_outlive_scope: LocalDefId,
-        value: ty::Binder<T>,
+        value: ty::Binder<'tcx, T>,
         indices: &mut UniversalRegionIndices<'tcx>,
     ) -> T
     where
@@ -673,7 +687,7 @@ trait InferCtxtExt<'tcx> {
 impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
     fn replace_free_regions_with_nll_infer_vars<T>(
         &self,
-        origin: NLLRegionVariableOrigin,
+        origin: NllRegionVariableOrigin,
         value: T,
     ) -> T
     where
@@ -684,9 +698,9 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
 
     fn replace_bound_regions_with_nll_infer_vars<T>(
         &self,
-        origin: NLLRegionVariableOrigin,
+        origin: NllRegionVariableOrigin,
         all_outlive_scope: LocalDefId,
-        value: ty::Binder<T>,
+        value: ty::Binder<'tcx, T>,
         indices: &mut UniversalRegionIndices<'tcx>,
     ) -> T
     where
@@ -700,7 +714,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
             debug!("replace_bound_regions_with_nll_infer_vars: br={:?}", br);
             let liberated_region = self.tcx.mk_region(ty::ReFree(ty::FreeRegion {
                 scope: all_outlive_scope.to_def_id(),
-                bound_region: br,
+                bound_region: br.kind,
             }));
             let region_vid = self.next_nll_region_var(origin);
             indices.insert_late_bound_region(liberated_region, region_vid.to_region_vid());
@@ -788,14 +802,14 @@ fn for_each_late_bound_region_defined_on<'tcx>(
     fn_def_id: DefId,
     mut f: impl FnMut(ty::Region<'tcx>),
 ) {
-    if let Some(late_bounds) = tcx.is_late_bound_map(fn_def_id.expect_local()) {
-        for late_bound in late_bounds.iter() {
-            let hir_id = HirId { owner: fn_def_id.expect_local(), local_id: *late_bound };
+    if let Some((owner, late_bounds)) = tcx.is_late_bound_map(fn_def_id.expect_local()) {
+        for &late_bound in late_bounds.iter() {
+            let hir_id = HirId { owner, local_id: late_bound };
             let name = tcx.hir().name(hir_id);
             let region_def_id = tcx.hir().local_def_id(hir_id);
             let liberated_region = tcx.mk_region(ty::ReFree(ty::FreeRegion {
-                scope: fn_def_id,
-                bound_region: ty::BoundRegion::BrNamed(region_def_id.to_def_id(), name),
+                scope: owner.to_def_id(),
+                bound_region: ty::BoundRegionKind::BrNamed(region_def_id.to_def_id(), name),
             }));
             f(liberated_region);
         }

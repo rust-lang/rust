@@ -3,6 +3,8 @@ error: expected `;`, found keyword `as`
    |
 LL | use foo::* as baz;
    |            ^^ expected `;`
+   |
+   = note: the wildcard token must be last on the path
 
 error: aborting due to previous error
 

@@ -14,7 +14,7 @@ use std::ffi::OsString;
 use std::fs;
 use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::time::SystemTime;
 use test::ColorConfig;
 use tracing::*;
@@ -43,6 +43,10 @@ fn main() {
         panic!("Can't find Valgrind to run Valgrind tests");
     }
 
+    if !config.has_tidy && config.mode == Mode::Rustdoc {
+        eprintln!("warning: `tidy` is not installed; diffs will not be generated");
+    }
+
     log_config(&config);
     run_tests(config);
 }
@@ -56,6 +60,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optopt("", "rust-demangler-path", "path to rust-demangler to use in tests", "PATH")
         .reqopt("", "lldb-python", "path to python to use for doc tests", "PATH")
         .reqopt("", "docck-python", "path to python to use for doc tests", "PATH")
+        .optopt("", "jsondocck-path", "path to jsondocck to use for doc tests", "PATH")
         .optopt("", "valgrind-path", "path to Valgrind executable for Valgrind tests", "PROGRAM")
         .optflag("", "force-valgrind", "fail if Valgrind tests cannot be run under Valgrind")
         .optopt("", "run-clang-based-tests-with", "path to Clang executable", "PATH")
@@ -67,7 +72,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "",
             "mode",
             "which sort of compile tests to run",
-            "compile-fail | run-fail | run-pass-valgrind | pretty | debug-info | codegen | rustdoc \
+            "run-pass-valgrind | pretty | debug-info | codegen | rustdoc \
             | rustdoc-json | codegen-units | incremental | run-make | ui | js-doc-test | mir-opt | assembly",
         )
         .reqopt(
@@ -121,6 +126,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .reqopt("", "llvm-components", "list of LLVM components built in", "LIST")
         .optopt("", "llvm-bin-dir", "Path to LLVM's `bin` directory", "PATH")
         .optopt("", "nodejs", "the name of nodejs", "PATH")
+        .optopt("", "npm", "the name of npm", "PATH")
         .optopt("", "remote-test-client", "path to the remote test client", "PATH")
         .optopt(
             "",
@@ -189,6 +195,17 @@ pub fn parse_config(args: Vec<String>) -> Config {
 
     let src_base = opt_path(matches, "src-base");
     let run_ignored = matches.opt_present("ignored");
+    let mode = matches.opt_str("mode").unwrap().parse().expect("invalid mode");
+    let has_tidy = if mode == Mode::Rustdoc {
+        Command::new("tidy")
+            .arg("--version")
+            .stdout(Stdio::null())
+            .status()
+            .map_or(false, |status| status.success())
+    } else {
+        // Avoid spawning an external command when we know tidy won't be used.
+        false
+    };
     Config {
         bless: matches.opt_present("bless"),
         compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
@@ -198,6 +215,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         rust_demangler_path: matches.opt_str("rust-demangler-path").map(PathBuf::from),
         lldb_python: matches.opt_str("lldb-python").unwrap(),
         docck_python: matches.opt_str("docck-python").unwrap(),
+        jsondocck_path: matches.opt_str("jsondocck-path"),
         valgrind_path: matches.opt_str("valgrind-path"),
         force_valgrind: matches.opt_present("force-valgrind"),
         run_clang_based_tests_with: matches.opt_str("run-clang-based-tests-with"),
@@ -206,11 +224,11 @@ pub fn parse_config(args: Vec<String>) -> Config {
         src_base,
         build_base: opt_path(matches, "build-base"),
         stage_id: matches.opt_str("stage-id").unwrap(),
-        mode: matches.opt_str("mode").unwrap().parse().expect("invalid mode"),
+        mode,
         suite: matches.opt_str("suite").unwrap(),
         debugger: None,
         run_ignored,
-        filter: matches.free.first().cloned(),
+        filters: matches.free.clone(),
         filter_exact: matches.opt_present("exact"),
         force_pass_mode: matches.opt_str("pass").map(|mode| {
             mode.parse::<PassMode>()
@@ -244,6 +262,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         remote_test_client: matches.opt_str("remote-test-client").map(PathBuf::from),
         compare_mode: matches.opt_str("compare-mode").map(CompareMode::parse),
         rustfix_coverage: matches.opt_present("rustfix-coverage"),
+        has_tidy,
 
         cc: matches.opt_str("cc").unwrap(),
         cxx: matches.opt_str("cxx").unwrap(),
@@ -252,6 +271,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         linker: matches.opt_str("linker"),
         llvm_components: matches.opt_str("llvm-components").unwrap(),
         nodejs: matches.opt_str("nodejs"),
+        npm: matches.opt_str("npm"),
     }
 }
 
@@ -268,7 +288,7 @@ pub fn log_config(config: &Config) {
     logv(c, format!("stage_id: {}", config.stage_id));
     logv(c, format!("mode: {}", config.mode));
     logv(c, format!("run_ignored: {}", config.run_ignored));
-    logv(c, format!("filter: {}", opt_str(&config.filter)));
+    logv(c, format!("filters: {:?}", config.filters));
     logv(c, format!("filter_exact: {}", config.filter_exact));
     logv(
         c,
@@ -453,7 +473,7 @@ fn configure_lldb(config: &Config) -> Option<Config> {
 pub fn test_opts(config: &Config) -> test::TestOpts {
     test::TestOpts {
         exclude_should_panic: false,
-        filter: config.filter.clone(),
+        filters: config.filters.clone(),
         filter_exact: config.filter_exact,
         run_ignored: if config.run_ignored { test::RunIgnored::Yes } else { test::RunIgnored::No },
         format: if config.quiet { test::OutputFormat::Terse } else { test::OutputFormat::Pretty },

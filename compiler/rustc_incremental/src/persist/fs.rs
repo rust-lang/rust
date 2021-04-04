@@ -122,6 +122,7 @@ mod tests;
 
 const LOCK_FILE_EXT: &str = ".lock";
 const DEP_GRAPH_FILENAME: &str = "dep-graph.bin";
+const STAGING_DEP_GRAPH_FILENAME: &str = "dep-graph.part.bin";
 const WORK_PRODUCTS_FILENAME: &str = "work-products.bin";
 const QUERY_CACHE_FILENAME: &str = "query-cache.bin";
 
@@ -133,6 +134,9 @@ const INT_ENCODE_BASE: usize = base_n::CASE_INSENSITIVE;
 
 pub fn dep_graph_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, DEP_GRAPH_FILENAME)
+}
+pub fn staging_dep_graph_path(sess: &Session) -> PathBuf {
+    in_incr_comp_dir_sess(sess, STAGING_DEP_GRAPH_FILENAME)
 }
 pub fn dep_graph_path_from(incr_comp_session_dir: &Path) -> PathBuf {
     in_incr_comp_dir(incr_comp_session_dir, DEP_GRAPH_FILENAME)
@@ -440,12 +444,12 @@ fn copy_files(sess: &Session, target_dir: &Path, source_dir: &Path) -> Result<bo
     }
 
     if sess.opts.debugging_opts.incremental_info {
-        println!(
+        eprintln!(
             "[incremental] session directory: \
                   {} files hard-linked",
             files_linked
         );
-        println!(
+        eprintln!(
             "[incremental] session directory: \
                  {} files copied",
             files_copied
@@ -922,22 +926,24 @@ fn all_except_most_recent(
 /// before passing it to std::fs::remove_dir_all(). This will convert the path
 /// into the '\\?\' format, which supports much longer paths.
 fn safe_remove_dir_all(p: &Path) -> io::Result<()> {
-    if p.exists() {
-        let canonicalized = p.canonicalize()?;
-        std_fs::remove_dir_all(canonicalized)
-    } else {
-        Ok(())
-    }
+    let canonicalized = match std_fs::canonicalize(p) {
+        Ok(canonicalized) => canonicalized,
+        Err(err) if err.kind() == io::ErrorKind::NotFound => return Ok(()),
+        Err(err) => return Err(err),
+    };
+
+    std_fs::remove_dir_all(canonicalized)
 }
 
 fn safe_remove_file(p: &Path) -> io::Result<()> {
-    if p.exists() {
-        let canonicalized = p.canonicalize()?;
-        match std_fs::remove_file(canonicalized) {
-            Err(ref err) if err.kind() == io::ErrorKind::NotFound => Ok(()),
-            result => result,
-        }
-    } else {
-        Ok(())
+    let canonicalized = match std_fs::canonicalize(p) {
+        Ok(canonicalized) => canonicalized,
+        Err(err) if err.kind() == io::ErrorKind::NotFound => return Ok(()),
+        Err(err) => return Err(err),
+    };
+
+    match std_fs::remove_file(canonicalized) {
+        Err(err) if err.kind() == io::ErrorKind::NotFound => Ok(()),
+        result => result,
     }
 }

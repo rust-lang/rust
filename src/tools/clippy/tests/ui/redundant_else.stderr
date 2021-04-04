@@ -1,0 +1,80 @@
+error: redundant else block
+  --> $DIR/redundant_else.rs:10:16
+   |
+LL |           } else {
+   |  ________________^
+LL | |             println!("yet don't pull down your hedge.");
+LL | |         }
+   | |_________^
+   |
+   = note: `-D clippy::redundant-else` implied by `-D warnings`
+   = help: remove the `else` block and move the contents out
+
+error: redundant else block
+  --> $DIR/redundant_else.rs:17:16
+   |
+LL |           } else {
+   |  ________________^
+LL | |             println!("shall rise up with fleas.");
+LL | |         }
+   | |_________^
+   |
+   = help: remove the `else` block and move the contents out
+
+error: redundant else block
+  --> $DIR/redundant_else.rs:26:16
+   |
+LL |           } else {
+   |  ________________^
+LL | |             println!("You may delay, but time will not.");
+LL | |         }
+   | |_________^
+   |
+   = help: remove the `else` block and move the contents out
+
+error: redundant else block
+  --> $DIR/redundant_else.rs:35:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         println!("A fat kitchen makes a lean will.");
+LL | |     }
+   | |_____^
+   |
+   = help: remove the `else` block and move the contents out
+
+error: redundant else block
+  --> $DIR/redundant_else.rs:42:16
+   |
+LL |           } else {
+   |  ________________^
+LL | |             1
+LL | |         }
+   | |_________^
+   |
+   = help: remove the `else` block and move the contents out
+
+error: redundant else block
+  --> $DIR/redundant_else.rs:52:16
+   |
+LL |           } else {
+   |  ________________^
+LL | |             2
+LL | |         }
+   | |_________^
+   |
+   = help: remove the `else` block and move the contents out
+
+error: redundant else block
+  --> $DIR/redundant_else.rs:61:16
+   |
+LL |           } else {
+   |  ________________^
+LL | |             1
+LL | |         }
+   | |_________^
+   |
+   = help: remove the `else` block and move the contents out
+
+error: aborting due to 7 previous errors
+

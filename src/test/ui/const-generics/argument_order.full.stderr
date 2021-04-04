@@ -1,11 +1,11 @@
 error: lifetime parameters must be declared prior to const parameters
-  --> $DIR/argument_order.rs:12:32
+  --> $DIR/argument_order.rs:11:32
    |
 LL | struct AlsoBad<const N: usize, 'a, T, 'b, const M: usize, U> {
    |               -----------------^^-----^^-------------------- help: reorder the parameters: lifetimes, then consts and types: `<'a, 'b, const N: usize, T, const M: usize, U>`
 
 error[E0747]: lifetime provided when a type was expected
-  --> $DIR/argument_order.rs:20:23
+  --> $DIR/argument_order.rs:19:23
    |
 LL |     let _: AlsoBad<7, 'static, u32, 'static, 17, u16>;
    |                       ^^^^^^^

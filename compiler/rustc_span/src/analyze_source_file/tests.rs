@@ -12,7 +12,7 @@ macro_rules! test {
             let (lines, multi_byte_chars, non_narrow_chars) =
                 analyze_source_file($text, BytePos($source_file_start_pos));
 
-            let expected_lines: Vec<BytePos> = $lines.into_iter().map(|pos| BytePos(pos)).collect();
+            let expected_lines: Vec<BytePos> = $lines.into_iter().map(BytePos).collect();
 
             assert_eq!(lines, expected_lines);
 

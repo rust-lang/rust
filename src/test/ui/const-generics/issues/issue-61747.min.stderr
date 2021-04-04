@@ -1,5 +1,5 @@
 error: generic parameters may not be used in const operations
-  --> $DIR/issue-61747.rs:8:30
+  --> $DIR/issue-61747.rs:7:30
    |
 LL |     fn successor() -> Const<{C + 1}> {
    |                              ^ cannot perform const operation using `C`

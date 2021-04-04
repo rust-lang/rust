@@ -1,0 +1,30 @@
+error[E0107]: missing generics for associated type `MapLike::VRefCont`
+  --> $DIR/issue-79422.rs:21:10
+   |
+LL |     type VRefCont<'a>: RefCont<'a, V>;
+   |          ^^^^^^^^ expected 1 lifetime argument
+   |
+note: associated type defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/issue-79422.rs:21:10
+   |
+LL |     type VRefCont<'a>: RefCont<'a, V>;
+   |          ^^^^^^^^ --
+help: use angle brackets to add missing lifetime argument
+   |
+LL |     type VRefCont<'a><'a>: RefCont<'a, V>;
+   |                  ^^^^
+
+error[E0271]: type mismatch resolving `<BTreeMap<u8, u8> as MapLike<u8, u8>>::VRefCont<'static> == (dyn RefCont<'_, u8> + 'static)`
+  --> $DIR/issue-79422.rs:43:13
+   |
+LL |     let m = Box::new(std::collections::BTreeMap::<u8, u8>::new())
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected trait object `dyn RefCont`, found reference
+   |
+   = note: expected trait object `(dyn RefCont<'_, u8> + 'static)`
+                 found reference `&'static u8`
+   = note: required for the cast to the object type `dyn MapLike<u8, u8, VRefCont = (dyn RefCont<'_, u8> + 'static)>`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0107, E0271.
+For more information about an error, try `rustc --explain E0107`.

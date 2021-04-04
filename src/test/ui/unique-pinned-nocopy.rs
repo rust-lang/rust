@@ -9,6 +9,6 @@ impl Drop for R {
 
 fn main() {
     let i = Box::new(R { b: true });
-    let _j = i.clone(); //~ ERROR no method named `clone` found
+    let _j = i.clone(); //~ ERROR the method
     println!("{:?}", i);
 }

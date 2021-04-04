@@ -9,6 +9,7 @@ const fn foo() -> i32 {
     unsafe {
         let _ = intrinsics::const_allocate(4, 3) as * mut i32;
         //~^ error: any use of this value will cause an error [const_err]
+        //~| WARN this was previously accepted by the compiler but is being phased out
     }
     1
 

@@ -1,4 +1,5 @@
 use core::cell::Cell;
+use core::cmp::Ordering;
 use core::result::Result::{Err, Ok};
 
 #[test]
@@ -64,6 +65,17 @@ fn test_binary_search() {
     assert_eq!(b.binary_search(&6), Err(4));
     assert_eq!(b.binary_search(&7), Ok(4));
     assert_eq!(b.binary_search(&8), Err(5));
+
+    let b = [(); usize::MAX];
+    assert_eq!(b.binary_search(&()), Ok(usize::MAX / 2));
+}
+
+#[test]
+fn test_binary_search_by_overflow() {
+    let b = [(); usize::MAX];
+    assert_eq!(b.binary_search_by(|_| Ordering::Equal), Ok(usize::MAX / 2));
+    assert_eq!(b.binary_search_by(|_| Ordering::Greater), Err(0));
+    assert_eq!(b.binary_search_by(|_| Ordering::Less), Err(usize::MAX));
 }
 
 #[test]
@@ -73,13 +85,13 @@ fn test_binary_search_implementation_details() {
     let b = [1, 1, 2, 2, 3, 3, 3];
     assert_eq!(b.binary_search(&1), Ok(1));
     assert_eq!(b.binary_search(&2), Ok(3));
-    assert_eq!(b.binary_search(&3), Ok(6));
+    assert_eq!(b.binary_search(&3), Ok(5));
     let b = [1, 1, 1, 1, 1, 3, 3, 3, 3];
     assert_eq!(b.binary_search(&1), Ok(4));
-    assert_eq!(b.binary_search(&3), Ok(8));
+    assert_eq!(b.binary_search(&3), Ok(7));
     let b = [1, 1, 1, 1, 3, 3, 3, 3, 3];
-    assert_eq!(b.binary_search(&1), Ok(3));
-    assert_eq!(b.binary_search(&3), Ok(8));
+    assert_eq!(b.binary_search(&1), Ok(2));
+    assert_eq!(b.binary_search(&3), Ok(4));
 }
 
 #[test]
@@ -1982,6 +1994,7 @@ fn test_copy_within_panics_dest_too_long() {
     // The length is only 13, so a slice of length 4 starting at index 10 is out of bounds.
     bytes.copy_within(0..4, 10);
 }
+
 #[test]
 #[should_panic(expected = "slice index starts at 2 but ends at 1")]
 fn test_copy_within_panics_src_inverted() {

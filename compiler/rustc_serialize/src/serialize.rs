@@ -33,6 +33,7 @@ pub trait Encoder {
     fn emit_f32(&mut self, v: f32) -> Result<(), Self::Error>;
     fn emit_char(&mut self, v: char) -> Result<(), Self::Error>;
     fn emit_str(&mut self, v: &str) -> Result<(), Self::Error>;
+    fn emit_raw_bytes(&mut self, s: &[u8]) -> Result<(), Self::Error>;
 
     // Compound types:
     #[inline]
@@ -224,6 +225,7 @@ pub trait Decoder {
     fn read_f32(&mut self) -> Result<f32, Self::Error>;
     fn read_char(&mut self) -> Result<char, Self::Error>;
     fn read_str(&mut self) -> Result<Cow<'_, str>, Self::Error>;
+    fn read_raw_bytes_into(&mut self, s: &mut [u8]) -> Result<(), Self::Error>;
 
     // Compound types:
     #[inline]
@@ -527,7 +529,7 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for Rc<T> {
 }
 
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for [T] {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
+    default fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_seq(self.len(), |s| {
             for (i, e) in self.iter().enumerate() {
                 s.emit_seq_elt(i, |s| e.encode(s))?
@@ -545,7 +547,7 @@ impl<S: Encoder, T: Encodable<S>> Encodable<S> for Vec<T> {
 }
 
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for Vec<T> {
-    fn decode(d: &mut D) -> Result<Vec<T>, D::Error> {
+    default fn decode(d: &mut D) -> Result<Vec<T>, D::Error> {
         d.read_seq(|d, len| {
             let mut v = Vec::with_capacity(len);
             for i in 0..len {
@@ -591,13 +593,8 @@ where
     [T]: ToOwned<Owned = Vec<T>>,
 {
     fn decode(d: &mut D) -> Result<Cow<'static, [T]>, D::Error> {
-        d.read_seq(|d, len| {
-            let mut v = Vec::with_capacity(len);
-            for i in 0..len {
-                v.push(d.read_seq_elt(i, |d| Decodable::decode(d))?);
-            }
-            Ok(Cow::Owned(v))
-        })
+        let v: Vec<T> = Decodable::decode(d)?;
+        Ok(Cow::Owned(v))
     }
 }
 

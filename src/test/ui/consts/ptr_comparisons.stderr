@@ -6,42 +6,51 @@ LL |         unsafe { intrinsics::offset(self, count) }
    |                  |
    |                  inbounds test failed: pointer must be in-bounds at offset $TWO_WORDS, but is outside bounds of alloc2 which has size $WORD
    |                  inside `ptr::const_ptr::<impl *const usize>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-   |                  inside `_` at $DIR/ptr_comparisons.rs:62:34
+   |                  inside `_` at $DIR/ptr_comparisons.rs:61:34
    | 
-  ::: $DIR/ptr_comparisons.rs:62:1
+  ::: $DIR/ptr_comparisons.rs:61:1
    |
 LL | const _: *const usize = unsafe { (FOO as *const usize).offset(2) };
    | -------------------------------------------------------------------
    |
    = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/ptr_comparisons.rs:67:14
+  --> $DIR/ptr_comparisons.rs:66:33
    |
 LL | / const _: *const u8 =
 LL | |
-LL | |     unsafe { std::ptr::raw_const!((*(FOO as *const usize as *const [u8; 1000]))[999]) };
-   | |______________^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^__-
-   |                |
-   |                memory access failed: pointer must be in-bounds at offset 1000, but is outside bounds of alloc2 which has size $WORD
+LL | |     unsafe { std::ptr::addr_of!((*(FOO as *const usize as *const [u8; 1000]))[999]) };
+   | |_________________________________^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^___-
+   |                                   |
+   |                                   memory access failed: pointer must be in-bounds at offset 1000, but is outside bounds of alloc2 which has size $WORD
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/ptr_comparisons.rs:70:27
+  --> $DIR/ptr_comparisons.rs:72:27
    |
 LL | const _: usize = unsafe { std::mem::transmute::<*const usize, usize>(FOO) + 4 };
    | --------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                           |
-   |                           "pointer-to-integer cast" needs an rfc before being allowed inside constants
+   |                           cannot cast pointer to integer because it was not created by cast from integer
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/ptr_comparisons.rs:75:27
+  --> $DIR/ptr_comparisons.rs:79:27
    |
 LL | const _: usize = unsafe { *std::mem::transmute::<&&usize, &usize>(&FOO) + 4 };
    | --------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                           |
-   |                           "pointer-to-integer cast" needs an rfc before being allowed inside constants
+   |                           cannot cast pointer to integer because it was not created by cast from integer
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: aborting due to 4 previous errors
 

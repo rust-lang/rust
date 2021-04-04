@@ -1,8 +1,9 @@
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::ty::{implements_trait, match_type};
+use clippy_utils::{get_trait_def_id, higher, match_qpath, paths};
 use rustc_hir::{BorrowKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-
-use crate::utils::{get_trait_def_id, higher, implements_trait, match_qpath, match_type, paths, span_lint};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for iteration that is guaranteed to be infinite.
@@ -89,11 +90,7 @@ impl Finiteness {
 impl From<bool> for Finiteness {
     #[must_use]
     fn from(b: bool) -> Self {
-        if b {
-            Infinite
-        } else {
-            Finite
-        }
+        if b { Infinite } else { Finite }
     }
 }
 

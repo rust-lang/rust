@@ -76,7 +76,11 @@ impl App {
                         self.path(&path),
                         self.path(&dest_path)
                     ),
-                    Mode::Check => format!("{} is not up to date", self.path(&dest_path)),
+                    Mode::Check => format!(
+                        "{} is not up to date; please run \
+                        `x.py run src/tools/expand-yaml-anchors`.",
+                        self.path(&dest_path)
+                    ),
                 })?;
             }
         }
@@ -87,7 +91,8 @@ impl App {
         let content = std::fs::read_to_string(source)
             .with_context(|| format!("failed to read {}", self.path(source)))?;
 
-        let mut buf = HEADER_MESSAGE.replace("{source}", &self.path(source).to_string());
+        let mut buf =
+            HEADER_MESSAGE.replace("{source}", &self.path(source).to_string().replace("\\", "/"));
 
         let documents = YamlLoader::load_from_str(&content)
             .with_context(|| format!("failed to parse {}", self.path(source)))?;

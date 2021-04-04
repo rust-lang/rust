@@ -14,6 +14,8 @@
 //! A few exceptions are allowed as there's known bugs in rustdoc, but this
 //! should catch the majority of "broken link" cases.
 
+#![cfg_attr(bootstrap, feature(str_split_once))]
+
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::env;
@@ -31,20 +33,6 @@ use crate::Redirect::*;
 // are cases where that does not work
 // [(generated_documentation_page, &[broken_links])]
 const LINKCHECK_EXCEPTIONS: &[(&str, &[&str])] = &[
-    // These are methods on slice, and `Self` does not work on primitive impls
-    // in intra-doc links (primitive impls are weird)
-    // https://github.com/rust-lang/rust/issues/62834 is necessary to be
-    // able to link to slices
-    (
-        "std/io/struct.IoSlice.html",
-        &[
-            "#method.as_mut_ptr",
-            "#method.sort_by_key",
-            "#method.make_ascii_uppercase",
-            "#method.make_ascii_lowercase",
-            "#method.get_unchecked_mut",
-        ],
-    ),
     // These try to link to std::collections, but are defined in alloc
     // https://github.com/rust-lang/rust/issues/74481
     ("std/collections/btree_map/struct.BTreeMap.html", &["#insert-and-complex-keys"]),
@@ -232,11 +220,12 @@ fn check(cache: &mut Cache, root: &Path, file: &Path, errors: &mut bool) -> Opti
         {
             return;
         }
-        let mut parts = url.splitn(2, '#');
-        let url = parts.next().unwrap();
-        let fragment = parts.next();
-        let mut parts = url.splitn(2, '?');
-        let url = parts.next().unwrap();
+        let (url, fragment) = match url.split_once('#') {
+            None => (url, None),
+            Some((url, fragment)) => (url, Some(fragment)),
+        };
+        // NB: the `splitn` always succeeds, even if the delimiter is not present.
+        let url = url.splitn(2, '?').next().unwrap();
 
         // Once we've plucked out the URL, parse it using our base url and
         // then try to extract a file path.

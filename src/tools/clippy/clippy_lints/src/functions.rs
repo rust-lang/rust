@@ -1,7 +1,9 @@
-use crate::utils::{
-    attr_by_name, attrs::is_proc_macro, is_must_use_ty, is_trait_impl_item, is_type_diagnostic_item, iter_input_pats,
-    last_path_segment, match_def_path, must_use_attr, qpath_res, return_ty, snippet, snippet_opt, span_lint,
-    span_lint_and_help, span_lint_and_then, trait_ref_of_method, type_is_unsafe_function,
+use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_then};
+use clippy_utils::source::{snippet, snippet_opt};
+use clippy_utils::ty::{is_must_use_ty, is_type_diagnostic_item, type_is_unsafe_function};
+use clippy_utils::{
+    attr_by_name, attrs::is_proc_macro, is_trait_impl_item, iter_input_pats, match_def_path, must_use_attr,
+    path_to_local, return_ty, trait_ref_of_method,
 };
 use if_chain::if_chain;
 use rustc_ast::ast::Attribute;
@@ -9,7 +11,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit;
-use rustc_hir::{def::Res, def_id::DefId};
+use rustc_hir::{def::Res, def_id::DefId, QPath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
@@ -251,9 +253,9 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
         hir_id: hir::HirId,
     ) {
         let unsafety = match kind {
-            intravisit::FnKind::ItemFn(_, _, hir::FnHeader { unsafety, .. }, _, _) => unsafety,
-            intravisit::FnKind::Method(_, sig, _, _) => sig.header.unsafety,
-            intravisit::FnKind::Closure(_) => return,
+            intravisit::FnKind::ItemFn(_, _, hir::FnHeader { unsafety, .. }, _) => unsafety,
+            intravisit::FnKind::Method(_, sig, _) => sig.header.unsafety,
+            intravisit::FnKind::Closure => return,
         };
 
         // don't warn for implementations, it's not their fault
@@ -267,9 +269,8 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
                         ..
                     },
                     _,
-                    _,
                 )
-                | intravisit::FnKind::ItemFn(_, _, hir::FnHeader { abi: Abi::Rust, .. }, _, _) => {
+                | intravisit::FnKind::ItemFn(_, _, hir::FnHeader { abi: Abi::Rust, .. }, _) => {
                     self.check_arg_number(cx, decl, span.with_hi(decl.output.span().hi()))
                 },
                 _ => {},
@@ -281,24 +282,25 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
-        let attr = must_use_attr(&item.attrs);
+        let attrs = cx.tcx.hir().attrs(item.hir_id());
+        let attr = must_use_attr(attrs);
         if let hir::ItemKind::Fn(ref sig, ref _generics, ref body_id) = item.kind {
-            let is_public = cx.access_levels.is_exported(item.hir_id);
+            let is_public = cx.access_levels.is_exported(item.hir_id());
             let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
             if is_public {
                 check_result_unit_err(cx, &sig.decl, item.span, fn_header_span);
             }
             if let Some(attr) = attr {
-                check_needless_must_use(cx, &sig.decl, item.hir_id, item.span, fn_header_span, attr);
+                check_needless_must_use(cx, &sig.decl, item.hir_id(), item.span, fn_header_span, attr);
                 return;
             }
-            if is_public && !is_proc_macro(cx.sess(), &item.attrs) && attr_by_name(&item.attrs, "no_mangle").is_none() {
+            if is_public && !is_proc_macro(cx.sess(), attrs) && attr_by_name(attrs, "no_mangle").is_none() {
                 check_must_use_candidate(
                     cx,
                     &sig.decl,
                     cx.tcx.hir().body(*body_id),
                     item.span,
-                    item.hir_id,
+                    item.hir_id(),
                     item.span.with_hi(sig.decl.output.span().hi()),
                     "this function could have a `#[must_use]` attribute",
                 );
@@ -308,24 +310,23 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'_>) {
         if let hir::ImplItemKind::Fn(ref sig, ref body_id) = item.kind {
-            let is_public = cx.access_levels.is_exported(item.hir_id);
+            let is_public = cx.access_levels.is_exported(item.hir_id());
             let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
-            if is_public && trait_ref_of_method(cx, item.hir_id).is_none() {
+            if is_public && trait_ref_of_method(cx, item.hir_id()).is_none() {
                 check_result_unit_err(cx, &sig.decl, item.span, fn_header_span);
             }
-            let attr = must_use_attr(&item.attrs);
+            let attrs = cx.tcx.hir().attrs(item.hir_id());
+            let attr = must_use_attr(attrs);
             if let Some(attr) = attr {
-                check_needless_must_use(cx, &sig.decl, item.hir_id, item.span, fn_header_span, attr);
-            } else if is_public
-                && !is_proc_macro(cx.sess(), &item.attrs)
-                && trait_ref_of_method(cx, item.hir_id).is_none()
+                check_needless_must_use(cx, &sig.decl, item.hir_id(), item.span, fn_header_span, attr);
+            } else if is_public && !is_proc_macro(cx.sess(), attrs) && trait_ref_of_method(cx, item.hir_id()).is_none()
             {
                 check_must_use_candidate(
                     cx,
                     &sig.decl,
                     cx.tcx.hir().body(*body_id),
                     item.span,
-                    item.hir_id,
+                    item.hir_id(),
                     item.span.with_hi(sig.decl.output.span().hi()),
                     "this method could have a `#[must_use]` attribute",
                 );
@@ -339,27 +340,28 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
             if sig.header.abi == Abi::Rust {
                 self.check_arg_number(cx, &sig.decl, item.span.with_hi(sig.decl.output.span().hi()));
             }
-            let is_public = cx.access_levels.is_exported(item.hir_id);
+            let is_public = cx.access_levels.is_exported(item.hir_id());
             let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
             if is_public {
                 check_result_unit_err(cx, &sig.decl, item.span, fn_header_span);
             }
 
-            let attr = must_use_attr(&item.attrs);
+            let attrs = cx.tcx.hir().attrs(item.hir_id());
+            let attr = must_use_attr(attrs);
             if let Some(attr) = attr {
-                check_needless_must_use(cx, &sig.decl, item.hir_id, item.span, fn_header_span, attr);
+                check_needless_must_use(cx, &sig.decl, item.hir_id(), item.span, fn_header_span, attr);
             }
             if let hir::TraitFn::Provided(eid) = *eid {
                 let body = cx.tcx.hir().body(eid);
-                Self::check_raw_ptr(cx, sig.header.unsafety, &sig.decl, body, item.hir_id);
+                Self::check_raw_ptr(cx, sig.header.unsafety, &sig.decl, body, item.hir_id());
 
-                if attr.is_none() && is_public && !is_proc_macro(cx.sess(), &item.attrs) {
+                if attr.is_none() && is_public && !is_proc_macro(cx.sess(), attrs) {
                     check_must_use_candidate(
                         cx,
                         &sig.decl,
                         body,
                         item.span,
-                        item.hir_id,
+                        item.hir_id(),
                         item.span.with_hi(sig.decl.output.span().hi()),
                         "this method could have a `#[must_use]` attribute",
                     );
@@ -405,13 +407,10 @@ impl<'tcx> Functions {
                     break;
                 }
                 if in_comment {
-                    match line.find("*/") {
-                        Some(i) => {
-                            line = &line[i + 2..];
-                            in_comment = false;
-                            continue;
-                        },
-                        None => break,
+                    if let Some(i) = line.find("*/") {
+                        line = &line[i + 2..];
+                        in_comment = false;
+                        continue;
                     }
                 } else {
                     let multi_idx = line.find("/*").unwrap_or_else(|| line.len());
@@ -423,8 +422,8 @@ impl<'tcx> Functions {
                         in_comment = true;
                         continue;
                     }
-                    break;
                 }
+                break;
             }
             if code_in_line {
                 line_count += 1;
@@ -473,12 +472,11 @@ fn check_result_unit_err(cx: &LateContext<'_>, decl: &hir::FnDecl<'_>, item_span
     if_chain! {
         if !in_external_macro(cx.sess(), item_span);
         if let hir::FnRetTy::Return(ref ty) = decl.output;
-        if let hir::TyKind::Path(ref qpath) = ty.kind;
-        if is_type_diagnostic_item(cx, hir_ty_to_ty(cx.tcx, ty), sym::result_type);
-        if let Some(ref args) = last_path_segment(qpath).args;
-        if let [_, hir::GenericArg::Type(ref err_ty)] = args.args;
-        if let hir::TyKind::Tup(t) = err_ty.kind;
-        if t.is_empty();
+        let ty = hir_ty_to_ty(cx.tcx, ty);
+        if is_type_diagnostic_item(cx, ty, sym::result_type);
+        if let ty::Adt(_, substs) = ty.kind();
+        let err_ty = substs.type_at(1);
+        if err_ty.is_unit();
         then {
             span_lint_and_help(
                 cx,
@@ -518,7 +516,7 @@ fn check_needless_must_use(
                 );
             },
         );
-    } else if !attr.is_value_str() && is_must_use_ty(cx, return_ty(cx, item_id)) {
+    } else if !attr.value_str().is_some() && is_must_use_ty(cx, return_ty(cx, item_id)) {
         span_lint_and_help(
             cx,
             DOUBLE_MUST_USE,
@@ -647,7 +645,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
                     }
                 }
             },
-            hir::ExprKind::Unary(hir::UnOp::UnDeref, ref ptr) => self.check_arg(ptr),
+            hir::ExprKind::Unary(hir::UnOp::Deref, ref ptr) => self.check_arg(ptr),
             _ => (),
         }
 
@@ -661,16 +659,14 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> DerefVisitor<'a, 'tcx> {
     fn check_arg(&self, ptr: &hir::Expr<'_>) {
-        if let hir::ExprKind::Path(ref qpath) = ptr.kind {
-            if let Res::Local(id) = qpath_res(self.cx, qpath, ptr.hir_id) {
-                if self.ptrs.contains(&id) {
-                    span_lint(
-                        self.cx,
-                        NOT_UNSAFE_PTR_ARG_DEREF,
-                        ptr.span,
-                        "this public function dereferences a raw pointer but is not marked `unsafe`",
-                    );
-                }
+        if let Some(id) = path_to_local(ptr) {
+            if self.ptrs.contains(&id) {
+                span_lint(
+                    self.cx,
+                    NOT_UNSAFE_PTR_ARG_DEREF,
+                    ptr.span,
+                    "this public function dereferences a raw pointer but is not marked `unsafe`",
+                );
             }
         }
     }
@@ -701,7 +697,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
                             arg.span,
                             &mut tys,
                         )
-                        && is_mutated_static(self.cx, arg)
+                        && is_mutated_static(arg)
                     {
                         self.mutates_static = true;
                         return;
@@ -710,7 +706,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
                 }
             },
             Assign(ref target, ..) | AssignOp(_, ref target, _) | AddrOf(_, hir::Mutability::Mut, ref target) => {
-                self.mutates_static |= is_mutated_static(self.cx, target)
+                self.mutates_static |= is_mutated_static(target)
             },
             _ => {},
         }
@@ -721,12 +717,13 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
     }
 }
 
-fn is_mutated_static(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> bool {
+fn is_mutated_static(e: &hir::Expr<'_>) -> bool {
     use hir::ExprKind::{Field, Index, Path};
 
     match e.kind {
-        Path(ref qpath) => !matches!(qpath_res(cx, qpath, e.hir_id), Res::Local(_)),
-        Field(ref inner, _) | Index(ref inner, _) => is_mutated_static(cx, inner),
+        Path(QPath::Resolved(_, path)) => !matches!(path.res, Res::Local(_)),
+        Path(_) => true,
+        Field(ref inner, _) | Index(ref inner, _) => is_mutated_static(inner),
         _ => false,
     }
 }

@@ -24,8 +24,7 @@ use rustc_index::vec::{Idx, IndexVec};
 /// to insert into the middle of the sorted array. Users should avoid mutating this data structure
 /// in-place.
 ///
-/// [`IndexVec`]: ../../rustc_index/vec/struct.IndexVec.html
-/// [`SortedMap`]: ../sorted_map/struct.SortedMap.html
+/// [`SortedMap`]: super::SortedMap
 #[derive(Clone, Debug)]
 pub struct SortedIndexMultiMap<I: Idx, K, V> {
     /// The elements of the map in insertion order.

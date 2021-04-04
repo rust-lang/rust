@@ -3,13 +3,19 @@
 	font-family: 'Fira Sans';
 	font-style: normal;
 	font-weight: 400;
-	src: local('Fira Sans'), url("FiraSans-Regular.woff") format('woff');
+	src: local('Fira Sans'),
+		url("FiraSans-Regular.woff2") format("woff2"),
+		url("FiraSans-Regular.woff") format('woff');
+	font-display: swap;
 }
 @font-face {
 	font-family: 'Fira Sans';
 	font-style: normal;
 	font-weight: 500;
-	src: local('Fira Sans Medium'), url("FiraSans-Medium.woff") format('woff');
+	src: local('Fira Sans Medium'),
+		url("FiraSans-Medium.woff2") format("woff2"),
+		url("FiraSans-Medium.woff") format('woff');
+	font-display: swap;
 }
 
 /* See SourceSerifPro-LICENSE.txt for the Source Serif Pro license. */
@@ -18,18 +24,21 @@
 	font-style: normal;
 	font-weight: 400;
 	src: local('Source Serif Pro'), url("SourceSerifPro-Regular.ttf.woff") format('woff');
+	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Serif Pro';
 	font-style: italic;
 	font-weight: 400;
 	src: local('Source Serif Pro Italic'), url("SourceSerifPro-It.ttf.woff") format('woff');
+	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Serif Pro';
 	font-style: normal;
 	font-weight: 700;
 	src: local('Source Serif Pro Bold'), url("SourceSerifPro-Bold.ttf.woff") format('woff');
+	font-display: swap;
 }
 
 /* See SourceCodePro-LICENSE.txt for the Source Code Pro license. */
@@ -39,13 +48,22 @@
 	font-weight: 400;
 	/* Avoid using locally installed font because bad versions are in circulation:
 	 * see https://github.com/rust-lang/rust/issues/24355 */
-	src: url("SourceCodePro-Regular.woff") format('woff');
+	src: url("SourceCodePro-Regular.ttf.woff") format('woff');
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Source Code Pro';
+	font-style: italic;
+	font-weight: 400;
+	src: url("SourceCodePro-It.ttf.woff") format('woff');
+	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Code Pro';
 	font-style: normal;
 	font-weight: 600;
-	src: url("SourceCodePro-Semibold.woff") format('woff');
+	src: url("SourceCodePro-Semibold.ttf.woff") format('woff');
+	font-display: swap;
 }
 
 * {
@@ -122,12 +140,15 @@ h3.impl, h3.method, h3.type {
 h1, h2, h3, h4,
 .sidebar, a.source, .search-input, .content table td:first-child > a,
 .collapse-toggle, div.item-list .out-of-band,
-#source-sidebar, #sidebar-toggle {
-	font-family: "Fira Sans", sans-serif;
+#source-sidebar, #sidebar-toggle,
+/* This selector is for the items listed in the "all items" page. */
+#main > ul.docblock > li > a {
+	font-family: "Fira Sans", Arial, sans-serif;
 }
 
 .content ul.crate a.crate {
-	font: 16px/1.6 "Fira Sans";
+	font-size: 16px/1.6;
+	font-family: "Fira Sans", Arial, sans-serif;
 }
 
 ol, ul {
@@ -152,11 +173,9 @@ code, pre, a.test-arrow {
 	border-radius: 3px;
 	padding: 0 0.1em;
 }
-.docblock pre code, .docblock-short pre code, .docblock code.spotlight {
+.docblock pre code, .docblock-short pre code {
 	padding: 0;
-}
-.docblock code.spotlight :last-child {
-	padding-bottom: 0.6em;
+	padding-right: 1ex;
 }
 pre {
 	padding: 14px;
@@ -333,10 +352,10 @@ nav.sub {
 .rustdoc:not(.source) .example-wrap {
 	display: inline-flex;
 	margin-bottom: 10px;
-	position: relative;
 }
 
 .example-wrap {
+	position: relative;
 	width: 100%;
 }
 
@@ -402,7 +421,9 @@ nav.sub {
 	text-overflow: ellipsis;
 	margin: 0;
 }
-.docblock code, .docblock-short code {
+/* Wrap non-pre code blocks (`text`) but not (```text```). */
+.docblock > :not(pre) > code,
+.docblock-short > :not(pre) > code {
 	white-space: pre-wrap;
 }
 
@@ -468,7 +489,7 @@ h4 > code, h3 > code, .invisible > code {
 }
 #main > .since {
 	top: inherit;
-	font-family: "Fira Sans", sans-serif;
+	font-family: "Fira Sans", Arial, sans-serif;
 }
 
 .content table:not(.table-display) {
@@ -677,6 +698,7 @@ a {
 	width: calc(100% - 63px);
 }
 #crate-search {
+	min-width: 115px;
 	margin-top: 5px;
 	padding: 6px;
 	padding-right: 19px;
@@ -795,6 +817,7 @@ body.blur > :not(#help) {
 	float: left;
 	clear: left;
 	display: block;
+	margin-right: 0.5rem;
 }
 #help > div > span {
 	text-align: center;
@@ -832,6 +855,15 @@ body.blur > :not(#help) {
 
 .stab .emoji {
 	font-size: 1.5em;
+}
+
+/* Black one-pixel outline around emoji shapes */
+.emoji {
+	text-shadow:
+		1px 0 0 black,
+		-1px 0 0 black,
+		0  1px 0 black,
+		0 -1px 0 black;
 }
 
 .module-item .stab {
@@ -1079,20 +1111,29 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	cursor: pointer;
 }
 
-.tooltip .tooltiptext {
-	width: 120px;
+.tooltip::after {
 	display: none;
 	text-align: center;
 	padding: 5px 3px 3px 3px;
 	border-radius: 6px;
 	margin-left: 5px;
-	top: -5px;
-	left: 105%;
-	z-index: 10;
 	font-size: 16px;
 }
 
-.tooltip .tooltiptext::after {
+.tooltip.ignore::after {
+	content: "This example is not tested";
+}
+.tooltip.compile_fail::after {
+	content: "This example deliberately fails to compile";
+}
+.tooltip.should_panic::after {
+	content: "This example panics";
+}
+.tooltip.edition::after {
+	content: "This code runs with edition " attr(data-edition);
+}
+
+.tooltip::before {
 	content: " ";
 	position: absolute;
 	top: 50%;
@@ -1100,9 +1141,10 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	margin-top: -5px;
 	border-width: 5px;
 	border-style: solid;
+	display: none;
 }
 
-.tooltip:hover .tooltiptext {
+.tooltip:hover::before, .tooltip:hover::after {
 	display: inline;
 }
 
@@ -1176,21 +1218,22 @@ pre.rust {
 	height: 35px;
 }
 
-#titles > div {
+#titles > button {
 	float: left;
 	width: 33.3%;
 	text-align: center;
 	font-size: 18px;
 	cursor: pointer;
+	border: 0;
 	border-top: 2px solid;
 }
 
-#titles > div:not(:last-child) {
+#titles > button:not(:last-child) {
 	margin-right: 1px;
 	width: calc(33.3% - 1px);
 }
 
-#titles > div > div.count {
+#titles > button > div.count {
 	display: inline-block;
 	font-size: 16px;
 }
@@ -1272,20 +1315,29 @@ h4 > .notable-traits {
 	outline: none;
 }
 
-.help-button {
-	right: 30px;
-	font-family: "Fira Sans",sans-serif;
-	text-align: center;
-	font-size: 17px;
-}
-
-#theme-picker, #settings-menu, .help-button {
+#theme-picker, #settings-menu, .help-button, #copy-path {
 	padding: 4px;
 	width: 27px;
 	height: 29px;
 	border: 1px solid;
 	border-radius: 3px;
 	cursor: pointer;
+}
+
+.help-button {
+	right: 30px;
+	font-family: "Fira Sans", Arial, sans-serif;
+	text-align: center;
+	font-size: 17px;
+	padding-top: 2px;
+}
+
+#copy-path {
+	height: 30px;
+	font-size: 18px;
+	margin-left: 10px;
+	padding: 0 6px;
+	width: 28px;
 }
 
 #theme-choices {
@@ -1316,9 +1368,9 @@ h4 > .notable-traits {
 @media (min-width: 701px) {
 	/* In case there is no documentation before a code block, we need to add some margin at the top
 	to prevent an overlay between the "collapse toggle" and the information tooltip.
-	However, it's needed needed with smaller screen width because the doc/code block is always put
+	However, it's not needed with smaller screen width because the doc/code block is always put
 	"one line" below. */
-	.information:first-child > .tooltip {
+	.docblock > .information:first-child > .tooltip {
 		margin-top: 16px;
 	}
 }
@@ -1399,6 +1451,7 @@ h4 > .notable-traits {
 	.sidebar > .block.version {
 		border-bottom: none;
 		margin-top: 12px;
+		margin-bottom: 0;
 	}
 
 	nav.sub {
@@ -1410,7 +1463,7 @@ h4 > .notable-traits {
 		margin-left: 0px;
 	}
 
-	#main {
+	#main, #search {
 		margin-top: 45px;
 		padding: 0;
 	}
@@ -1459,7 +1512,7 @@ h4 > .notable-traits {
 		top: 24px;
 	}
 
-	#titles > div > div.count {
+	#titles > button > div.count {
 		float: left;
 		width: 100%;
 	}
@@ -1474,6 +1527,14 @@ h4 > .notable-traits {
 		margin-left: 0;
 		background-color: rgba(0,0,0,0);
 		height: 100%;
+	}
+	/*
+	This allows to prevent the version text to overflow the sidebar title on mobile mode when the
+	sidebar is displayed (after clicking on the "hamburger" button).
+	*/
+	.sidebar.mobile > div.version {
+		overflow: hidden;
+		max-height: 33px;
 	}
 	.sidebar {
 		width: calc(100% + 30px);
@@ -1564,14 +1625,21 @@ h4 > .notable-traits {
 	}
 }
 
-@media (max-width: 416px) {
-	#titles, #titles > div {
+@media (max-width: 464px) {
+	#titles, #titles > button {
 		height: 73px;
+	}
+
+	/* This is to prevent the search bar from being underneath the <section>
+	 * element following it.
+	 */
+	#main, #search {
+		margin-top: 100px;
 	}
 
 	#main > table:not(.table-display) td {
 		word-break: break-word;
-		min-width: 10%;
+		width: 50%;
 	}
 
 	.search-container > div {
@@ -1602,6 +1670,10 @@ h4 > .notable-traits {
 
 	#settings-menu {
 		top: 7px;
+	}
+
+	.docblock {
+		margin-left: 12px;
 	}
 }
 

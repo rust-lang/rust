@@ -1,10 +1,10 @@
 //! Reading and writing of the rustc metadata for rlibs and dylibs
 
-use std::convert::TryFrom;
 use std::fs::File;
 use std::path::Path;
 
 use rustc_codegen_ssa::METADATA_FILENAME;
+use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::owning_ref::OwningRef;
 use rustc_data_structures::rustc_erase_owner;
 use rustc_data_structures::sync::MetadataRef;
@@ -17,38 +17,43 @@ use crate::backend::WriteMetadata;
 
 pub(crate) struct CraneliftMetadataLoader;
 
+fn load_metadata_with(
+    path: &Path,
+    f: impl for<'a> FnOnce(&'a [u8]) -> Result<&'a [u8], String>,
+) -> Result<MetadataRef, String> {
+    let file = File::open(path).map_err(|e| format!("{:?}", e))?;
+    let data = unsafe { Mmap::map(file) }.map_err(|e| format!("{:?}", e))?;
+    let metadata = OwningRef::new(data).try_map(f)?;
+    return Ok(rustc_erase_owner!(metadata.map_owner_box()));
+}
+
 impl MetadataLoader for CraneliftMetadataLoader {
     fn get_rlib_metadata(&self, _target: &Target, path: &Path) -> Result<MetadataRef, String> {
-        let mut archive = ar::Archive::new(File::open(path).map_err(|e| format!("{:?}", e))?);
-        // Iterate over all entries in the archive:
-        while let Some(entry_result) = archive.next_entry() {
-            let mut entry = entry_result.map_err(|e| format!("{:?}", e))?;
-            if entry.header().identifier() == METADATA_FILENAME.as_bytes() {
-                let mut buf = Vec::with_capacity(
-                    usize::try_from(entry.header().size())
-                        .expect("Rlib metadata file too big to load into memory."),
-                );
-                ::std::io::copy(&mut entry, &mut buf).map_err(|e| format!("{:?}", e))?;
-                let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf);
-                return Ok(rustc_erase_owner!(buf.map_owner_box()));
-            }
-        }
+        load_metadata_with(path, |data| {
+            let archive = object::read::archive::ArchiveFile::parse(&*data)
+                .map_err(|e| format!("{:?}", e))?;
 
-        Err("couldn't find metadata entry".to_string())
+            for entry_result in archive.members() {
+                let entry = entry_result.map_err(|e| format!("{:?}", e))?;
+                if entry.name() == METADATA_FILENAME.as_bytes() {
+                    return Ok(entry.data());
+                }
+            }
+
+            Err("couldn't find metadata entry".to_string())
+        })
     }
 
     fn get_dylib_metadata(&self, _target: &Target, path: &Path) -> Result<MetadataRef, String> {
         use object::{Object, ObjectSection};
-        let file = std::fs::read(path).map_err(|e| format!("read:{:?}", e))?;
-        let file = object::File::parse(&file).map_err(|e| format!("parse: {:?}", e))?;
-        let buf = file
-            .section_by_name(".rustc")
-            .ok_or("no .rustc section")?
-            .data()
-            .map_err(|e| format!("failed to read .rustc section: {:?}", e))?
-            .to_owned();
-        let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf);
-        Ok(rustc_erase_owner!(buf.map_owner_box()))
+
+        load_metadata_with(path, |data| {
+            let file = object::File::parse(&data).map_err(|e| format!("parse: {:?}", e))?;
+            file.section_by_name(".rustc")
+                .ok_or("no .rustc section")?
+                .data()
+                .map_err(|e| format!("failed to read .rustc section: {:?}", e))
+        })
     }
 }
 
@@ -94,9 +99,7 @@ pub(crate) fn write_metadata<P: WriteMetadata>(
 
     assert!(kind == MetadataKind::Compressed);
     let mut compressed = tcx.metadata_encoding_version();
-    FrameEncoder::new(&mut compressed)
-        .write_all(&metadata.raw_data)
-        .unwrap();
+    FrameEncoder::new(&mut compressed).write_all(&metadata.raw_data).unwrap();
 
     product.add_rustc_section(
         rustc_middle::middle::exported_symbols::metadata_symbol_name(tcx),

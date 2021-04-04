@@ -1,19 +1,11 @@
-error[E0277]: the size for values of type `T` cannot be known at compilation time
+error: generic parameters may not be used in const operations
   --> $DIR/feature-gate-lazy_normalization_consts.rs:6:23
    |
-LL | pub const fn sof<T>() -> usize {
-   |                  - required by this bound in `sof`
-...
-LL | fn test<T>() {
-   |         - this type parameter needs to be `Sized`
 LL |     let _: [u8; sof::<T>()];
-   |                       ^ doesn't have a size known at compile-time
+   |                       ^ cannot perform const operation using `T`
    |
-help: consider relaxing the implicit `Sized` restriction
-   |
-LL | pub const fn sof<T: ?Sized>() -> usize {
-   |                   ^^^^^^^^
+   = note: type parameters may not be used in const expressions
+   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0277`.

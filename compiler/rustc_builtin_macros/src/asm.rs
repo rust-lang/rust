@@ -7,8 +7,10 @@ use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_expand::base::{self, *};
 use rustc_parse::parser::Parser;
 use rustc_parse_format as parse;
+use rustc_session::lint;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{InnerSpan, Span};
+use rustc_target::asm::InlineAsmArch;
 
 struct AsmArgs {
     templates: Vec<P<ast::Expr>>,
@@ -424,6 +426,40 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, sp: Span, args: AsmArgs) -> P<ast
 
         let template_str = &template_str.as_str();
         let template_snippet = ecx.source_map().span_to_snippet(template_sp).ok();
+
+        if let Some(InlineAsmArch::X86 | InlineAsmArch::X86_64) = ecx.sess.asm_arch {
+            let find_span = |needle: &str| -> Span {
+                if let Some(snippet) = &template_snippet {
+                    if let Some(pos) = snippet.find(needle) {
+                        let end = pos
+                            + &snippet[pos..]
+                                .find(|c| matches!(c, '\n' | ';' | '\\' | '"'))
+                                .unwrap_or(snippet[pos..].len() - 1);
+                        let inner = InnerSpan::new(pos, end);
+                        return template_sp.from_inner(inner);
+                    }
+                }
+                template_sp
+            };
+
+            if template_str.contains(".intel_syntax") {
+                ecx.parse_sess().buffer_lint(
+                    lint::builtin::BAD_ASM_STYLE,
+                    find_span(".intel_syntax"),
+                    ecx.resolver.lint_node_id(ecx.current_expansion.id),
+                    "avoid using `.intel_syntax`, Intel syntax is the default",
+                );
+            }
+            if template_str.contains(".att_syntax") {
+                ecx.parse_sess().buffer_lint(
+                    lint::builtin::BAD_ASM_STYLE,
+                    find_span(".att_syntax"),
+                    ecx.resolver.lint_node_id(ecx.current_expansion.id),
+                    "avoid using `.att_syntax`, prefer using `options(att_syntax)` instead",
+                );
+            }
+        }
+
         let mut parser = parse::Parser::new(
             template_str,
             str_style,

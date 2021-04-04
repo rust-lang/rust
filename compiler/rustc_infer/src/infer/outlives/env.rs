@@ -92,11 +92,6 @@ impl<'a, 'tcx> OutlivesEnvironment<'tcx> {
         &self.region_bound_pairs_map
     }
 
-    /// Returns ownership of the `free_region_map`.
-    pub fn into_free_region_map(self) -> FreeRegionMap<'tcx> {
-        self.free_region_map
-    }
-
     /// This is a hack to support the old-skool regionck, which
     /// processes region constraints from the main function and the
     /// closure together. In that context, when we enter a closure, we

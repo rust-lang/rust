@@ -201,7 +201,6 @@ build/
     # Output for all compiletest-based test suites
     test/
       ui/
-      compile-fail/
       debuginfo/
       ...
 

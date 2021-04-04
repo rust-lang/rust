@@ -16,10 +16,12 @@ use crate::interpret::{
 #[derive(Clone, Debug)]
 pub enum ConstEvalErrKind {
     NeedsRfc(String),
+    PtrToIntCast,
     ConstAccessesStatic,
     ModifiedGlobal,
     AssertFailure(AssertKind<ConstInt>),
     Panic { msg: Symbol, line: u32, col: u32, file: Symbol },
+    Abort(String),
 }
 
 // The errors become `MachineStop` with plain strings when being raised.
@@ -38,6 +40,12 @@ impl fmt::Display for ConstEvalErrKind {
             NeedsRfc(ref msg) => {
                 write!(f, "\"{}\" needs an rfc before being allowed inside constants", msg)
             }
+            PtrToIntCast => {
+                write!(
+                    f,
+                    "cannot cast pointer to integer because it was not created by cast from integer"
+                )
+            }
             ConstAccessesStatic => write!(f, "constant accesses static"),
             ModifiedGlobal => {
                 write!(f, "modifying a static's initial value from another static's initializer")
@@ -46,6 +54,7 @@ impl fmt::Display for ConstEvalErrKind {
             Panic { msg, line, col, file } => {
                 write!(f, "the evaluated program panicked at '{}', {}:{}:{}", msg, file, line, col)
             }
+            Abort(ref msg) => write!(f, "{}", msg),
         }
     }
 }
@@ -75,7 +84,11 @@ impl<'tcx> ConstEvalErr<'tcx> {
     {
         error.print_backtrace();
         let stacktrace = ecx.generate_stacktrace();
-        ConstEvalErr { error: error.kind, stacktrace, span: span.unwrap_or_else(|| ecx.cur_span()) }
+        ConstEvalErr {
+            error: error.into_kind(),
+            stacktrace,
+            span: span.unwrap_or_else(|| ecx.cur_span()),
+        }
     }
 
     pub fn struct_error(

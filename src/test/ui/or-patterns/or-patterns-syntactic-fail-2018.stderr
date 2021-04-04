@@ -1,0 +1,20 @@
+error: no rules expected the token `|`
+  --> $DIR/or-patterns-syntactic-fail-2018.rs:14:15
+   |
+LL | macro_rules! accept_pat {
+   | ----------------------- when calling this macro
+...
+LL | accept_pat!(p | q);
+   |               ^ no rules expected this token in macro call
+
+error: no rules expected the token `|`
+  --> $DIR/or-patterns-syntactic-fail-2018.rs:15:13
+   |
+LL | macro_rules! accept_pat {
+   | ----------------------- when calling this macro
+...
+LL | accept_pat!(|p| q);
+   |             ^ no rules expected this token in macro call
+
+error: aborting due to 2 previous errors
+

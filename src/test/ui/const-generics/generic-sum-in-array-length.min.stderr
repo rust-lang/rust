@@ -1,5 +1,5 @@
 error: generic parameters may not be used in const operations
-  --> $DIR/generic-sum-in-array-length.rs:7:53
+  --> $DIR/generic-sum-in-array-length.rs:6:53
    |
 LL | fn foo<const A: usize, const B: usize>(bar: [usize; A + B]) {}
    |                                                     ^ cannot perform const operation using `A`
@@ -8,7 +8,7 @@ LL | fn foo<const A: usize, const B: usize>(bar: [usize; A + B]) {}
    = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/generic-sum-in-array-length.rs:7:57
+  --> $DIR/generic-sum-in-array-length.rs:6:57
    |
 LL | fn foo<const A: usize, const B: usize>(bar: [usize; A + B]) {}
    |                                                         ^ cannot perform const operation using `B`

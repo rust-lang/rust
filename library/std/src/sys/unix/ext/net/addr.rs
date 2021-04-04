@@ -2,7 +2,7 @@ use crate::ffi::OsStr;
 use crate::os::unix::ffi::OsStrExt;
 use crate::path::Path;
 use crate::sys::cvt;
-use crate::{ascii, fmt, io, mem};
+use crate::{ascii, fmt, io, iter, mem};
 
 // FIXME(#43348): Make libc adapt #[doc(cfg(...))] so we don't need these fake definitions here?
 #[cfg(not(unix))]
@@ -29,19 +29,19 @@ pub(super) unsafe fn sockaddr_un(path: &Path) -> io::Result<(libc::sockaddr_un, 
     let bytes = path.as_os_str().as_bytes();
 
     if bytes.contains(&0) {
-        return Err(io::Error::new(
+        return Err(io::Error::new_const(
             io::ErrorKind::InvalidInput,
-            "paths may not contain interior null bytes",
+            &"paths may not contain interior null bytes",
         ));
     }
 
     if bytes.len() >= addr.sun_path.len() {
-        return Err(io::Error::new(
+        return Err(io::Error::new_const(
             io::ErrorKind::InvalidInput,
-            "path must be shorter than SUN_LEN",
+            &"path must be shorter than SUN_LEN",
         ));
     }
-    for (dst, src) in addr.sun_path.iter_mut().zip(bytes.iter()) {
+    for (dst, src) in iter::zip(&mut addr.sun_path, bytes) {
         *dst = *src as libc::c_char;
     }
     // null byte for pathname addresses is already there because we zeroed the
@@ -118,9 +118,9 @@ impl SocketAddr {
             // linux returns zero bytes of address
             len = sun_path_offset(&addr) as libc::socklen_t; // i.e., zero-length address
         } else if addr.sun_family != libc::AF_UNIX as libc::sa_family_t {
-            return Err(io::Error::new(
+            return Err(io::Error::new_const(
                 io::ErrorKind::InvalidInput,
-                "file descriptor did not correspond to a Unix socket",
+                &"file descriptor did not correspond to a Unix socket",
             ));
         }
 

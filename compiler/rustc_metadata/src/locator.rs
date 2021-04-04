@@ -216,6 +216,7 @@ use crate::creader::Library;
 use crate::rmeta::{rustc_version, MetadataBlob, METADATA_HEADER};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::owning_ref::OwningRef;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
@@ -224,6 +225,7 @@ use rustc_middle::middle::cstore::{CrateSource, MetadataLoader};
 use rustc_session::config::{self, CrateType};
 use rustc_session::filesearch::{FileDoesntMatch, FileMatches, FileSearch};
 use rustc_session::search_paths::PathKind;
+use rustc_session::utils::CanonicalizedPath;
 use rustc_session::{CrateDisambiguator, Session};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
@@ -231,7 +233,6 @@ use rustc_target::spec::{Target, TargetTriple};
 
 use snap::read::FrameDecoder;
 use std::io::{Read, Result as IoResult, Write};
-use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::{cmp, fmt, fs};
 use tracing::{debug, info, warn};
@@ -244,7 +245,7 @@ crate struct CrateLocator<'a> {
 
     // Immutable per-search configuration.
     crate_name: Symbol,
-    exact_paths: Vec<PathBuf>,
+    exact_paths: Vec<CanonicalizedPath>,
     pub hash: Option<Svh>,
     pub host_hash: Option<Svh>,
     extra_filename: Option<&'a str>,
@@ -315,7 +316,7 @@ impl<'a> CrateLocator<'a> {
                     .into_iter()
                     .filter_map(|entry| entry.files())
                     .flatten()
-                    .map(PathBuf::from)
+                    .cloned()
                     .collect()
             } else {
                 // SVH being specified means this is a transitive dependency,
@@ -664,13 +665,19 @@ impl<'a> CrateLocator<'a> {
         let mut rmetas = FxHashMap::default();
         let mut dylibs = FxHashMap::default();
         for loc in &self.exact_paths {
-            if !loc.exists() {
-                return Err(CrateError::ExternLocationNotExist(self.crate_name, loc.clone()));
+            if !loc.canonicalized().exists() {
+                return Err(CrateError::ExternLocationNotExist(
+                    self.crate_name,
+                    loc.original().clone(),
+                ));
             }
-            let file = match loc.file_name().and_then(|s| s.to_str()) {
+            let file = match loc.original().file_name().and_then(|s| s.to_str()) {
                 Some(file) => file,
                 None => {
-                    return Err(CrateError::ExternLocationNotFile(self.crate_name, loc.clone()));
+                    return Err(CrateError::ExternLocationNotFile(
+                        self.crate_name,
+                        loc.original().clone(),
+                    ));
                 }
             };
 
@@ -685,7 +692,8 @@ impl<'a> CrateLocator<'a> {
                 // e.g. symbolic links. If we canonicalize too early, we resolve
                 // the symlink, the file type is lost and we might treat rlibs and
                 // rmetas as dylibs.
-                let loc_canon = fs::canonicalize(&loc).unwrap_or_else(|_| loc.clone());
+                let loc_canon = loc.canonicalized().clone();
+                let loc = loc.original();
                 if loc.file_name().unwrap().to_str().unwrap().ends_with(".rlib") {
                     rlibs.insert(loc_canon, PathKind::ExternFlag);
                 } else if loc.file_name().unwrap().to_str().unwrap().ends_with(".rmeta") {
@@ -695,7 +703,7 @@ impl<'a> CrateLocator<'a> {
                 }
             } else {
                 self.rejected_via_filename
-                    .push(CrateMismatch { path: loc.clone(), got: String::new() });
+                    .push(CrateMismatch { path: loc.original().clone(), got: String::new() });
             }
         }
 
@@ -718,19 +726,6 @@ impl<'a> CrateLocator<'a> {
         })
     }
 }
-
-/// A trivial wrapper for `Mmap` that implements `StableDeref`.
-struct StableDerefMmap(memmap::Mmap);
-
-impl Deref for StableDerefMmap {
-    type Target = [u8];
-
-    fn deref(&self) -> &[u8] {
-        self.0.deref()
-    }
-}
-
-unsafe impl stable_deref_trait::StableDeref for StableDerefMmap {}
 
 fn get_metadata_section(
     target: &Target,
@@ -771,11 +766,11 @@ fn get_metadata_section(
             // mmap the file, because only a small fraction of it is read.
             let file = std::fs::File::open(filename)
                 .map_err(|_| format!("failed to open rmeta metadata: '{}'", filename.display()))?;
-            let mmap = unsafe { memmap::Mmap::map(&file) };
+            let mmap = unsafe { Mmap::map(file) };
             let mmap = mmap
                 .map_err(|_| format!("failed to mmap rmeta metadata: '{}'", filename.display()))?;
 
-            rustc_erase_owner!(OwningRef::new(StableDerefMmap(mmap)).map_owner_box())
+            rustc_erase_owner!(OwningRef::new(mmap).map_owner_box())
         }
     };
     let blob = MetadataBlob::new(raw_bytes);
@@ -880,6 +875,7 @@ crate enum CrateError {
     MultipleMatchingCrates(Symbol, FxHashMap<Svh, Library>),
     SymbolConflictsCurrent(Symbol),
     SymbolConflictsOthers(Symbol),
+    StableCrateIdCollision(Symbol, Symbol),
     DlOpen(String),
     DlSym(String),
     LocatorCombined(CombinedLocatorError),
@@ -962,6 +958,13 @@ impl CrateError {
                  `-C metadata`. This will result in symbol conflicts between the two.",
                 root_name,
             ),
+            CrateError::StableCrateIdCollision(crate_name0, crate_name1) => {
+                let msg = format!(
+                    "found crates (`{}` and `{}`) with colliding StableCrateId values.",
+                    crate_name0, crate_name1
+                );
+                sess.struct_span_err(span, &msg)
+            }
             CrateError::DlOpen(s) | CrateError::DlSym(s) => sess.struct_span_err(span, &s),
             CrateError::LocatorCombined(locator) => {
                 let crate_name = locator.crate_name;

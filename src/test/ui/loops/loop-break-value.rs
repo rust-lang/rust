@@ -90,4 +90,9 @@ fn main() {
         break; //~ ERROR mismatched types
         break 4;
     };
+
+    'LOOP: for _ in 0 .. 9 {
+        break LOOP;
+        //~^ ERROR cannot find value `LOOP` in this scope
+    }
 }

@@ -873,12 +873,12 @@ pub fn test_decompositions_windows() {
     );
 
     t!("\\\\.\\foo/bar",
-    iter: ["\\\\.\\foo/bar", "\\"],
+    iter: ["\\\\.\\foo", "\\", "bar"],
     has_root: true,
     is_absolute: true,
-    parent: None,
-    file_name: None,
-    file_stem: None,
+    parent: Some("\\\\.\\foo/"),
+    file_name: Some("bar"),
+    file_stem: Some("bar"),
     extension: None
     );
 

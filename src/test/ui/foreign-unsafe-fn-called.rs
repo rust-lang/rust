@@ -1,5 +1,5 @@
 mod test {
-    extern {
+    extern "C" {
         pub fn free();
     }
 }

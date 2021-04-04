@@ -16,13 +16,13 @@ static b: bool = true;
 
 mod rustrt {
     #[cfg(bogus)]
-    extern {
+    extern "C" {
         // This symbol doesn't exist and would be a link error if this
         // module was codegened
         pub fn bogus();
     }
 
-    extern {}
+    extern "C" {}
 }
 
 #[cfg(bogus)]
@@ -31,52 +31,56 @@ type t = isize;
 type t = bool;
 
 #[cfg(bogus)]
-enum tg { foo, }
+enum tg {
+    foo,
+}
 
-enum tg { bar, }
-
-#[cfg(bogus)]
-struct r {
-  i: isize,
+enum tg {
+    bar,
 }
 
 #[cfg(bogus)]
-fn r(i:isize) -> r {
-    r {
-        i: i
-    }
+struct r {
+    i: isize,
+}
+
+#[cfg(bogus)]
+fn r(i: isize) -> r {
+    r { i: i }
 }
 
 struct r {
-  i: isize,
+    i: isize,
 }
 
-fn r(i:isize) -> r {
-    r {
-        i: i
-    }
+fn r(i: isize) -> r {
+    r { i: i }
 }
 
 #[cfg(bogus)]
 mod m {
     // This needs to parse but would fail in typeck. Since it's not in
     // the current config it should not be typechecked.
-    pub fn bogus() { return 0; }
+    pub fn bogus() {
+        return 0;
+    }
 }
 
 mod m {
     // Submodules have slightly different code paths than the top-level
     // module, so let's make sure this jazz works here as well
     #[cfg(bogus)]
-    pub fn f() { }
+    pub fn f() {}
 
-    pub fn f() { }
+    pub fn f() {}
 }
 
 // Since the bogus configuration isn't defined main will just be
 // parsed, but nothing further will be done with it
 #[cfg(bogus)]
-pub fn main() { panic!() }
+pub fn main() {
+    panic!()
+}
 
 pub fn main() {
     // Exercise some of the configured items in ways that wouldn't be possible
@@ -90,8 +94,10 @@ pub fn main() {
 
 fn test_in_fn_ctxt() {
     #[cfg(bogus)]
-    fn f() { panic!() }
-    fn f() { }
+    fn f() {
+        panic!()
+    }
+    fn f() {}
     f();
 
     #[cfg(bogus)]
@@ -102,7 +108,7 @@ fn test_in_fn_ctxt() {
 
 mod test_foreign_items {
     pub mod rustrt {
-        extern {
+        extern "C" {
             #[cfg(bogus)]
             pub fn write() -> String;
             pub fn write() -> String;
@@ -117,19 +123,19 @@ mod test_use_statements {
 
 mod test_methods {
     struct Foo {
-        bar: usize
+        bar: usize,
     }
 
     impl Fooable for Foo {
         #[cfg(bogus)]
-        fn what(&self) { }
+        fn what(&self) {}
 
-        fn what(&self) { }
+        fn what(&self) {}
 
         #[cfg(bogus)]
-        fn the(&self) { }
+        fn the(&self) {}
 
-        fn the(&self) { }
+        fn the(&self) {}
     }
 
     trait Fooable {

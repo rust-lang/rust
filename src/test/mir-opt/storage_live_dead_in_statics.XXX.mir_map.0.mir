@@ -143,9 +143,52 @@ static XXX: &Foo = {
         StorageLive(_48);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:21:25: 21:31
         _48 = (const 0_u32, const 3_u32); // scope 0 at $DIR/storage_live_dead_in_statics.rs:21:25: 21:31
         _6 = [move _7, move _8, move _9, move _10, move _11, move _12, move _13, move _14, move _15, move _16, move _17, move _18, move _19, move _20, move _21, move _22, move _23, move _24, move _25, move _26, move _27, move _28, move _29, move _30, move _31, move _32, move _33, move _34, move _35, move _36, move _37, move _38, move _39, move _40, move _41, move _42, move _43, move _44, move _45, move _46, move _47, move _48]; // scope 0 at $DIR/storage_live_dead_in_statics.rs:7:12: 22:6
+        StorageDead(_48);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_47);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_46);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_45);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_44);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_43);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_42);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_41);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_40);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_39);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_38);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_37);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_36);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_35);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_34);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_33);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_32);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_31);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_30);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_29);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_28);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_27);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_26);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_25);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_24);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_23);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_22);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_21);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_20);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_19);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_18);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_17);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_16);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_15);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_14);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_13);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_12);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_11);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_10);                // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_9);                 // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_8);                 // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
+        StorageDead(_7);                 // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
         _5 = &_6;                        // scope 0 at $DIR/storage_live_dead_in_statics.rs:7:11: 22:6
         _4 = &(*_5);                     // scope 0 at $DIR/storage_live_dead_in_statics.rs:7:11: 22:6
         _3 = move _4 as &[(u32, u32)] (Pointer(Unsize)); // scope 0 at $DIR/storage_live_dead_in_statics.rs:7:11: 22:6
+        StorageDead(_4);                 // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
         _2 = Foo { tup: const "hi", data: move _3 }; // scope 0 at $DIR/storage_live_dead_in_statics.rs:5:29: 23:2
                                          // ty::Const
                                          // + ty: &str
@@ -153,6 +196,7 @@ static XXX: &Foo = {
                                          // mir::Constant
                                          // + span: $DIR/storage_live_dead_in_statics.rs:6:10: 6:14
                                          // + literal: Const { ty: &str, val: Value(Slice { data: Allocation { bytes: [104, 105], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [3], len: Size { raw: 2 } }, size: Size { raw: 2 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 2 }) }
+        StorageDead(_3);                 // scope 0 at $DIR/storage_live_dead_in_statics.rs:23:1: 23:2
         _1 = &_2;                        // scope 0 at $DIR/storage_live_dead_in_statics.rs:5:28: 23:2
         _0 = &(*_1);                     // scope 0 at $DIR/storage_live_dead_in_statics.rs:5:28: 23:2
         StorageDead(_5);                 // scope 0 at $DIR/storage_live_dead_in_statics.rs:23:1: 23:2

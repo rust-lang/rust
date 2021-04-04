@@ -1,8 +1,16 @@
-error[E0107]: wrong number of type arguments: expected 0, found 1
+error[E0107]: this trait takes 0 type arguments but 1 type argument was supplied
   --> $DIR/unboxed-closure-sugar-wrong-trait.rs:5:8
    |
 LL | fn f<F:Trait(isize) -> isize>(x: F) {}
-   |        ^^^^^^^^^^^^ unexpected type argument
+   |        ^^^^^------- help: remove these parenthetical generics
+   |        |
+   |        expected 0 type arguments
+   |
+note: trait defined here, with 0 type parameters
+  --> $DIR/unboxed-closure-sugar-wrong-trait.rs:3:7
+   |
+LL | trait Trait {}
+   |       ^^^^^
 
 error[E0220]: associated type `Output` not found for `Trait`
   --> $DIR/unboxed-closure-sugar-wrong-trait.rs:5:24

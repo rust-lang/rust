@@ -139,7 +139,6 @@ static TARGETS: &[&str] = &[
     "x86_64-linux-android",
     "x86_64-pc-windows-gnu",
     "x86_64-pc-windows-msvc",
-    "x86_64-rumprun-netbsd",
     "x86_64-sun-solaris",
     "x86_64-pc-solaris",
     "x86_64-unknown-freebsd",
@@ -254,24 +253,26 @@ impl Builder {
         t!(self.checksums.store_cache());
     }
 
-    /// If a tool does not pass its tests, don't ship it.
+    /// If a tool does not pass its tests on *any* of Linux and Windows, don't ship
+    /// it on *all* targets, because tools like Miri can "cross-run" programs for
+    /// different targets, for example, run a program for `x86_64-pc-windows-msvc`
+    /// on `x86_64-unknown-linux-gnu`.
     /// Right now, we do this only for Miri.
     fn check_toolstate(&mut self) {
-        let toolstates: Option<HashMap<String, String>> =
-            File::open(self.input.join("toolstates-linux.json"))
+        for file in &["toolstates-linux.json", "toolstates-windows.json"] {
+            let toolstates: Option<HashMap<String, String>> = File::open(self.input.join(file))
                 .ok()
                 .and_then(|f| serde_json::from_reader(&f).ok());
-        let toolstates = toolstates.unwrap_or_else(|| {
-            println!(
-                "WARNING: `toolstates-linux.json` missing/malformed; \
-                assuming all tools failed"
-            );
-            HashMap::default() // Use empty map if anything went wrong.
-        });
-        // Mark some tools as missing based on toolstate.
-        if toolstates.get("miri").map(|s| &*s as &str) != Some("test-pass") {
-            println!("Miri tests are not passing, removing component");
-            self.versions.disable_version(&PkgType::Miri);
+            let toolstates = toolstates.unwrap_or_else(|| {
+                println!("WARNING: `{}` missing/malformed; assuming all tools failed", file);
+                HashMap::default() // Use empty map if anything went wrong.
+            });
+            // Mark some tools as missing based on toolstate.
+            if toolstates.get("miri").map(|s| &*s as &str) != Some("test-pass") {
+                println!("Miri tests are not passing, removing component");
+                self.versions.disable_version(&PkgType::Miri);
+                break;
+            }
         }
     }
 
@@ -299,6 +300,7 @@ impl Builder {
         let mut package = |name, targets| self.package(name, &mut manifest.pkg, targets);
         package("rustc", HOSTS);
         package("rustc-dev", HOSTS);
+        package("reproducible-artifacts", HOSTS);
         package("rustc-docs", HOSTS);
         package("cargo", HOSTS);
         package("rust-mingw", MINGW);

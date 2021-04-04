@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `(): Foo<N>` is not satisfied
-  --> $DIR/exhaustive-value.rs:267:5
+  --> $DIR/exhaustive-value.rs:266:5
    |
 LL |     fn test() {}
    |     --------- required by `Foo::test`

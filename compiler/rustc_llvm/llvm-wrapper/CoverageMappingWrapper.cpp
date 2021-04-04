@@ -8,14 +8,32 @@
 
 using namespace llvm;
 
+struct LLVMRustCounterMappingRegion {
+  coverage::Counter Count;
+  uint32_t FileID;
+  uint32_t ExpandedFileID;
+  uint32_t LineStart;
+  uint32_t ColumnStart;
+  uint32_t LineEnd;
+  uint32_t ColumnEnd;
+  coverage::CounterMappingRegion::RegionKind Kind;
+};
+
 extern "C" void LLVMRustCoverageWriteFilenamesSectionToBuffer(
     const char* const Filenames[],
     size_t FilenamesLen,
     RustStringRef BufferOut) {
+#if LLVM_VERSION_GE(13,0)
+  SmallVector<std::string,32> FilenameRefs;
+  for (size_t i = 0; i < FilenamesLen; i++) {
+    FilenameRefs.push_back(std::string(Filenames[i]));
+  }
+#else
   SmallVector<StringRef,32> FilenameRefs;
   for (size_t i = 0; i < FilenamesLen; i++) {
     FilenameRefs.push_back(StringRef(Filenames[i]));
   }
+#endif
   auto FilenamesWriter = coverage::CoverageFilenamesSectionWriter(
     makeArrayRef(FilenameRefs));
   RawRustStringOstream OS(BufferOut);
@@ -27,13 +45,22 @@ extern "C" void LLVMRustCoverageWriteMappingToBuffer(
     unsigned NumVirtualFileMappingIDs,
     const coverage::CounterExpression *Expressions,
     unsigned NumExpressions,
-    coverage::CounterMappingRegion *MappingRegions,
+    LLVMRustCounterMappingRegion *RustMappingRegions,
     unsigned NumMappingRegions,
     RustStringRef BufferOut) {
+  // Convert from FFI representation to LLVM representation.
+  SmallVector<coverage::CounterMappingRegion, 0> MappingRegions;
+  MappingRegions.reserve(NumMappingRegions);
+  for (const auto &Region : makeArrayRef(RustMappingRegions, NumMappingRegions)) {
+    MappingRegions.emplace_back(
+        Region.Count, Region.FileID, Region.ExpandedFileID,
+        Region.LineStart, Region.ColumnStart, Region.LineEnd, Region.ColumnEnd,
+        Region.Kind);
+  }
   auto CoverageMappingWriter = coverage::CoverageMappingWriter(
       makeArrayRef(VirtualFileMappingIDs, NumVirtualFileMappingIDs),
       makeArrayRef(Expressions, NumExpressions),
-      makeMutableArrayRef(MappingRegions, NumMappingRegions));
+      MappingRegions);
   RawRustStringOstream OS(BufferOut);
   CoverageMappingWriter.write(OS);
 }

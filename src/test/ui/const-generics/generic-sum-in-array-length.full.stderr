@@ -1,5 +1,5 @@
 error: constant expression depends on a generic parameter
-  --> $DIR/generic-sum-in-array-length.rs:7:45
+  --> $DIR/generic-sum-in-array-length.rs:6:45
    |
 LL | fn foo<const A: usize, const B: usize>(bar: [usize; A + B]) {}
    |                                             ^^^^^^^^^^^^^^

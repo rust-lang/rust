@@ -25,8 +25,8 @@ LL |         fn f3();
 error: incorrect function inside `extern` block
   --> $DIR/fn-body-optional-semantic-fail.rs:25:12
    |
-LL |     extern {
-   |     ------ `extern` blocks define existing foreign functions and functions inside of them cannot have a body
+LL |     extern "C" {
+   |     ---------- `extern` blocks define existing foreign functions and functions inside of them cannot have a body
 LL |         fn f5(); // OK.
 LL |         fn f6() {}
    |            ^^   -- help: remove the invalid body: `;`

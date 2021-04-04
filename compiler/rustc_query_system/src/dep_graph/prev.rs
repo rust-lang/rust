@@ -3,7 +3,7 @@ use super::{DepKind, DepNode};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 
-#[derive(Debug, Encodable, Decodable)]
+#[derive(Debug)]
 pub struct PreviousDepGraph<K: DepKind> {
     data: SerializedDepGraph<K>,
     index: FxHashMap<DepNode<K>, SerializedDepNodeIndex>,
@@ -33,11 +33,6 @@ impl<K: DepKind> PreviousDepGraph<K> {
     #[inline]
     pub fn index_to_node(&self, dep_node_index: SerializedDepNodeIndex) -> DepNode<K> {
         self.data.nodes[dep_node_index]
-    }
-
-    #[inline]
-    pub fn node_to_index(&self, dep_node: &DepNode<K>) -> SerializedDepNodeIndex {
-        self.index[dep_node]
     }
 
     #[inline]

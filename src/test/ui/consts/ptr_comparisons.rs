@@ -9,8 +9,7 @@
     core_intrinsics,
     const_raw_ptr_comparison,
     const_ptr_offset,
-    const_raw_ptr_deref,
-    raw_ref_macros
+    const_raw_ptr_deref
 )]
 
 const FOO: &usize = &42;
@@ -64,15 +63,22 @@ const _: *const usize = unsafe { (FOO as *const usize).offset(2) };
 
 const _: *const u8 =
 //~^ NOTE
-    unsafe { std::ptr::raw_const!((*(FOO as *const usize as *const [u8; 1000]))[999]) };
+    unsafe { std::ptr::addr_of!((*(FOO as *const usize as *const [u8; 1000]))[999]) };
 //~^ ERROR any use of this value will cause an error
+//~| NOTE
+//~| WARN this was previously accepted by the compiler but is being phased out
+//~| NOTE
 
 const _: usize = unsafe { std::mem::transmute::<*const usize, usize>(FOO) + 4 };
 //~^ ERROR any use of this value will cause an error
-//~| NOTE "pointer-to-integer cast" needs an rfc
+//~| NOTE cannot cast pointer to integer
+//~| NOTE
+//~| WARN this was previously accepted by the compiler but is being phased out
 //~| NOTE
 
 const _: usize = unsafe { *std::mem::transmute::<&&usize, &usize>(&FOO) + 4 };
 //~^ ERROR any use of this value will cause an error
-//~| NOTE "pointer-to-integer cast" needs an rfc
+//~| NOTE cannot cast pointer to integer
+//~| NOTE
+//~| WARN this was previously accepted by the compiler but is being phased out
 //~| NOTE

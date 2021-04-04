@@ -5,15 +5,16 @@ pub use crate::options::*;
 
 use crate::lint;
 use crate::search_paths::SearchPath;
-use crate::utils::NativeLibKind;
+use crate::utils::{CanonicalizedPath, NativeLibKind};
 use crate::{early_error, early_warn, Session};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::impl_stable_hash_via_hash;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
 use rustc_target::abi::{Align, TargetDataLayout};
-use rustc_target::spec::{Target, TargetTriple};
+use rustc_target::spec::{SplitDebuginfo, Target, TargetTriple};
+
+use rustc_serialize::json;
 
 use crate::parse::CrateConfig;
 use rustc_feature::UnstableFeatures;
@@ -33,58 +34,6 @@ use std::fmt;
 use std::iter::{self, FromIterator};
 use std::path::{Path, PathBuf};
 use std::str::{self, FromStr};
-
-bitflags! {
-    #[derive(Default, Encodable, Decodable)]
-    pub struct SanitizerSet: u8 {
-        const ADDRESS = 1 << 0;
-        const LEAK    = 1 << 1;
-        const MEMORY  = 1 << 2;
-        const THREAD  = 1 << 3;
-    }
-}
-
-/// Formats a sanitizer set as a comma separated list of sanitizers' names.
-impl fmt::Display for SanitizerSet {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut first = true;
-        for s in *self {
-            let name = match s {
-                SanitizerSet::ADDRESS => "address",
-                SanitizerSet::LEAK => "leak",
-                SanitizerSet::MEMORY => "memory",
-                SanitizerSet::THREAD => "thread",
-                _ => panic!("unrecognized sanitizer {:?}", s),
-            };
-            if !first {
-                f.write_str(",")?;
-            }
-            f.write_str(name)?;
-            first = false;
-        }
-        Ok(())
-    }
-}
-
-impl IntoIterator for SanitizerSet {
-    type Item = SanitizerSet;
-    type IntoIter = std::vec::IntoIter<SanitizerSet>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        [SanitizerSet::ADDRESS, SanitizerSet::LEAK, SanitizerSet::MEMORY, SanitizerSet::THREAD]
-            .iter()
-            .copied()
-            .filter(|&s| self.contains(s))
-            .collect::<Vec<_>>()
-            .into_iter()
-    }
-}
-
-impl<CTX> HashStable<CTX> for SanitizerSet {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        self.bits().hash_stable(ctx, hasher);
-    }
-}
 
 /// The different settings that the `-Z strip` flag can have.
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
@@ -172,6 +121,37 @@ pub enum MirSpanview {
     Terminator,
     /// `-Z dump_mir_spanview=block`
     Block,
+}
+
+/// The different settings that the `-Z instrument-coverage` flag can have.
+///
+/// Coverage instrumentation now supports combining `-Z instrument-coverage`
+/// with compiler and linker optimization (enabled with `-O` or `-C opt-level=1`
+/// and higher). Nevertheless, there are many variables, depending on options
+/// selected, code structure, and enabled attributes. If errors are encountered,
+/// either while compiling or when generating `llvm-cov show` reports, consider
+/// lowering the optimization level, including or excluding `-C link-dead-code`,
+/// or using `-Z instrument-coverage=except-unused-functions` or `-Z
+/// instrument-coverage=except-unused-generics`.
+///
+/// Note that `ExceptUnusedFunctions` means: When `mapgen.rs` generates the
+/// coverage map, it will not attempt to generate synthetic functions for unused
+/// (and not code-generated) functions (whether they are generic or not). As a
+/// result, non-codegenned functions will not be included in the coverage map,
+/// and will not appear, as covered or uncovered, in coverage reports.
+///
+/// `ExceptUnusedGenerics` will add synthetic functions to the coverage map,
+/// unless the function has type parameters.
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum InstrumentCoverage {
+    /// Default `-Z instrument-coverage` or `-Z instrument-coverage=statement`
+    All,
+    /// `-Z instrument-coverage=except-unused-generics`
+    ExceptUnusedGenerics,
+    /// `-Z instrument-coverage=except-unused-functions`
+    ExceptUnusedFunctions,
+    /// `-Z instrument-coverage=off` (or `no`, etc.)
+    Off,
 }
 
 #[derive(Clone, PartialEq, Hash)]
@@ -344,7 +324,7 @@ impl Default for TrimmedDefPaths {
 /// Use tree-based collections to cheaply get a deterministic `Hash` implementation.
 /// *Do not* switch `BTreeMap` out for an unsorted container type! That would break
 /// dependency tracking for command-line arguments.
-#[derive(Clone, Hash)]
+#[derive(Clone, Hash, Debug)]
 pub struct OutputTypes(BTreeMap<OutputType, Option<PathBuf>>);
 
 impl_stable_hash_via_hash!(OutputTypes);
@@ -386,6 +366,20 @@ impl OutputTypes {
             OutputType::Metadata | OutputType::DepInfo => false,
         })
     }
+
+    // Returns `true` if any of the output types require linking.
+    pub fn should_link(&self) -> bool {
+        self.0.keys().any(|k| match *k {
+            OutputType::Bitcode
+            | OutputType::Assembly
+            | OutputType::LlvmAssembly
+            | OutputType::Mir
+            | OutputType::Metadata
+            | OutputType::Object
+            | OutputType::DepInfo => false,
+            OutputType::Exe => true,
+        })
+    }
 }
 
 /// Use tree-based collections to cheaply get a deterministic `Hash` implementation.
@@ -393,6 +387,9 @@ impl OutputTypes {
 /// would break dependency tracking for command-line arguments.
 #[derive(Clone)]
 pub struct Externs(BTreeMap<String, ExternEntry>);
+
+#[derive(Clone)]
+pub struct ExternDepSpecs(BTreeMap<String, ExternDepSpec>);
 
 #[derive(Clone, Debug)]
 pub struct ExternEntry {
@@ -422,10 +419,32 @@ pub enum ExternLocation {
     /// which one to use.
     ///
     /// Added via `--extern prelude_name=some_file.rlib`
-    ExactPaths(BTreeSet<String>),
+    ExactPaths(BTreeSet<CanonicalizedPath>),
+}
+
+/// Supplied source location of a dependency - for example in a build specification
+/// file like Cargo.toml. We support several syntaxes: if it makes sense to reference
+/// a file and line, then the build system can specify that. On the other hand, it may
+/// make more sense to have an arbitrary raw string.
+#[derive(Clone, PartialEq)]
+pub enum ExternDepSpec {
+    /// Raw string
+    Raw(String),
+    /// Raw data in json format
+    Json(json::Json),
+}
+
+impl<'a> From<&'a ExternDepSpec> for rustc_lint_defs::ExternDepSpec {
+    fn from(from: &'a ExternDepSpec) -> Self {
+        match from {
+            ExternDepSpec::Raw(s) => rustc_lint_defs::ExternDepSpec::Raw(s.clone()),
+            ExternDepSpec::Json(json) => rustc_lint_defs::ExternDepSpec::Json(json.clone()),
+        }
+    }
 }
 
 impl Externs {
+    /// Used for testing.
     pub fn new(data: BTreeMap<String, ExternEntry>) -> Externs {
         Externs(data)
     }
@@ -444,10 +463,29 @@ impl ExternEntry {
         ExternEntry { location, is_private_dep: false, add_prelude: false }
     }
 
-    pub fn files(&self) -> Option<impl Iterator<Item = &String>> {
+    pub fn files(&self) -> Option<impl Iterator<Item = &CanonicalizedPath>> {
         match &self.location {
             ExternLocation::ExactPaths(set) => Some(set.iter()),
             _ => None,
+        }
+    }
+}
+
+impl ExternDepSpecs {
+    pub fn new(data: BTreeMap<String, ExternDepSpec>) -> ExternDepSpecs {
+        ExternDepSpecs(data)
+    }
+
+    pub fn get(&self, key: &str) -> Option<&ExternDepSpec> {
+        self.0.get(key)
+    }
+}
+
+impl fmt::Display for ExternDepSpec {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ExternDepSpec::Raw(raw) => fmt.write_str(raw),
+            ExternDepSpec::Json(json) => json::as_json(json).fmt(fmt),
         }
     }
 }
@@ -506,13 +544,6 @@ impl Input {
         }
     }
 
-    pub fn get_input(&mut self) -> Option<&mut String> {
-        match *self {
-            Input::File(_) => None,
-            Input::Str { ref mut input, .. } => Some(input),
-        }
-    }
-
     pub fn source_name(&self) -> FileName {
         match *self {
             Input::File(ref ifile) => ifile.clone().into(),
@@ -521,7 +552,7 @@ impl Input {
     }
 }
 
-#[derive(Clone, Hash)]
+#[derive(Clone, Hash, Debug)]
 pub struct OutputFilenames {
     pub out_directory: PathBuf,
     filestem: String,
@@ -533,6 +564,7 @@ impl_stable_hash_via_hash!(OutputFilenames);
 
 pub const RLINK_EXT: &str = "rlink";
 pub const RUST_CGU_EXT: &str = "rcgu";
+pub const DWARF_OBJECT_EXT: &str = "dwo";
 
 impl OutputFilenames {
     pub fn new(
@@ -566,7 +598,12 @@ impl OutputFilenames {
         self.temp_path_ext(extension, codegen_unit_name)
     }
 
-    /// Like temp_path, but also supports things where there is no corresponding
+    /// Like `temp_path`, but specifically for dwarf objects.
+    pub fn temp_path_dwo(&self, codegen_unit_name: Option<&str>) -> PathBuf {
+        self.temp_path_ext(DWARF_OBJECT_EXT, codegen_unit_name)
+    }
+
+    /// Like `temp_path`, but also supports things where there is no corresponding
     /// OutputType, like noopt-bitcode or lto-bitcode.
     pub fn temp_path_ext(&self, ext: &str, codegen_unit_name: Option<&str>) -> PathBuf {
         let mut extension = String::new();
@@ -592,6 +629,26 @@ impl OutputFilenames {
         let mut path = self.out_directory.join(&self.filestem);
         path.set_extension(extension);
         path
+    }
+
+    /// Returns the path for the Split DWARF file - this can differ depending on which Split DWARF
+    /// mode is being used, which is the logic that this function is intended to encapsulate.
+    pub fn split_dwarf_path(
+        &self,
+        split_debuginfo_kind: SplitDebuginfo,
+        cgu_name: Option<&str>,
+    ) -> Option<PathBuf> {
+        let obj_out = self.temp_path(OutputType::Object, cgu_name);
+        let dwo_out = self.temp_path_dwo(cgu_name);
+        match split_debuginfo_kind {
+            SplitDebuginfo::Off => None,
+            // Single mode doesn't change how DWARF is emitted, but does add Split DWARF attributes
+            // (pointing at the path which is being determined here). Use the path to the current
+            // object file.
+            SplitDebuginfo::Packed => Some(obj_out),
+            // Split mode emits the DWARF into a different file, use that path.
+            SplitDebuginfo::Unpacked => Some(dwo_out),
+        }
     }
 }
 
@@ -628,6 +685,7 @@ impl Default for Options {
             cg: basic_codegen_options(),
             error_format: ErrorOutputType::default(),
             externs: Externs(BTreeMap::new()),
+            extern_dep_specs: ExternDepSpecs(BTreeMap::new()),
             crate_name: None,
             alt_std_name: None,
             libs: Vec::new(),
@@ -651,12 +709,6 @@ impl Options {
         self.incremental.is_some()
             || self.debugging_opts.dump_dep_graph
             || self.debugging_opts.query_dep_graph
-    }
-
-    #[inline(always)]
-    pub fn enable_dep_node_debug_strs(&self) -> bool {
-        cfg!(debug_assertions)
-            && (self.debugging_opts.query_dep_graph || self.debugging_opts.incremental_info)
     }
 
     pub fn file_path_mapping(&self) -> FilePathMapping {
@@ -691,6 +743,10 @@ impl DebuggingOptions {
             macro_backtrace: self.macro_backtrace,
             deduplicate_diagnostics: self.deduplicate_diagnostics,
         }
+    }
+
+    pub fn get_symbol_mangling_version(&self) -> SymbolManglingVersion {
+        self.symbol_mangling_version.unwrap_or(SymbolManglingVersion::Legacy)
     }
 }
 
@@ -761,7 +817,7 @@ pub fn default_configuration(sess: &Session) -> CrateConfig {
         }
     }
     ret.insert((sym::target_arch, Some(Symbol::intern(arch))));
-    ret.insert((sym::target_endian, Some(Symbol::intern(end))));
+    ret.insert((sym::target_endian, Some(Symbol::intern(end.as_str()))));
     ret.insert((sym::target_pointer_width, Some(Symbol::intern(&wordsz))));
     ret.insert((sym::target_env, Some(Symbol::intern(env))));
     ret.insert((sym::target_vendor, Some(Symbol::intern(vendor))));
@@ -836,7 +892,7 @@ pub fn build_target_config(opts: &Options, target_override: Option<Target>) -> T
             opts.error_format,
             &format!(
                 "Error loading target specification: {}. \
-            Use `--print target-list` for a list of built-in targets",
+                 Run `rustc --print target-list` for a list of built-in targets",
                 e
             ),
         )
@@ -931,9 +987,6 @@ mod opt {
     pub fn flag_s(a: S, b: S, c: S) -> R {
         stable(longer(a, b), move |opts| opts.optflag(a, b, c))
     }
-    pub fn flagopt_s(a: S, b: S, c: S, d: S) -> R {
-        stable(longer(a, b), move |opts| opts.optflagopt(a, b, c, d))
-    }
     pub fn flagmulti_s(a: S, b: S, c: S) -> R {
         stable(longer(a, b), move |opts| opts.optflagmulti(a, b, c))
     }
@@ -943,15 +996,6 @@ mod opt {
     }
     pub fn multi(a: S, b: S, c: S, d: S) -> R {
         unstable(longer(a, b), move |opts| opts.optmulti(a, b, c, d))
-    }
-    pub fn flag(a: S, b: S, c: S) -> R {
-        unstable(longer(a, b), move |opts| opts.optflag(a, b, c))
-    }
-    pub fn flagopt(a: S, b: S, c: S, d: S) -> R {
-        unstable(longer(a, b), move |opts| opts.optflagopt(a, b, c, d))
-    }
-    pub fn flagmulti(a: S, b: S, c: S) -> R {
-        unstable(longer(a, b), move |opts| opts.optflagmulti(a, b, c))
     }
 }
 
@@ -1049,6 +1093,12 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "extern",
             "Specify where an external rust library is located",
             "NAME[=PATH]",
+        ),
+        opt::multi_s(
+            "",
+            "extern-location",
+            "Location where an external crate dependency is specified",
+            "NAME=LOCATION",
         ),
         opt::opt_s("", "sysroot", "Override the system root", "PATH"),
         opt::multi("Z", "", "Set internal debugging options", "FLAG"),
@@ -1235,7 +1285,7 @@ pub fn parse_error_format(
     error_format
 }
 
-fn parse_crate_edition(matches: &getopts::Matches) -> Edition {
+pub fn parse_crate_edition(matches: &getopts::Matches) -> Edition {
     let edition = match matches.opt_str("edition") {
         Some(arg) => Edition::from_str(&arg).unwrap_or_else(|_| {
             early_error(
@@ -1250,12 +1300,11 @@ fn parse_crate_edition(matches: &getopts::Matches) -> Edition {
         None => DEFAULT_EDITION,
     };
 
-    if !edition.is_stable() && !nightly_options::match_is_nightly_build(matches) {
+    if !edition.is_stable() && !nightly_options::is_unstable_enabled(matches) {
         early_error(
             ErrorOutputType::default(),
             &format!(
-                "edition {} is unstable and only \
-                     available for nightly builds of rustc.",
+                "edition {} is unstable and only available with -Z unstable-options.",
                 edition,
             ),
         )
@@ -1296,8 +1345,10 @@ fn parse_output_types(
     if !debugging_opts.parse_only {
         for list in matches.opt_strs("emit") {
             for output_type in list.split(',') {
-                let mut parts = output_type.splitn(2, '=');
-                let shorthand = parts.next().unwrap();
+                let (shorthand, path) = match output_type.split_once('=') {
+                    None => (output_type, None),
+                    Some((shorthand, path)) => (shorthand, Some(PathBuf::from(path))),
+                };
                 let output_type = OutputType::from_shorthand(shorthand).unwrap_or_else(|| {
                     early_error(
                         error_format,
@@ -1308,7 +1359,6 @@ fn parse_output_types(
                         ),
                     )
                 });
-                let path = parts.next().map(PathBuf::from);
                 output_types.insert(output_type, path);
             }
         }
@@ -1452,11 +1502,10 @@ fn parse_opt_level(
     let max_c = matches
         .opt_strs_pos("C")
         .into_iter()
-        .flat_map(
-            |(i, s)| {
-                if let Some("opt-level") = s.splitn(2, '=').next() { Some(i) } else { None }
-            },
-        )
+        .flat_map(|(i, s)| {
+            // NB: This can match a string without `=`.
+            if let Some("opt-level") = s.splitn(2, '=').next() { Some(i) } else { None }
+        })
         .max();
     if max_o > max_c {
         OptLevel::Default
@@ -1491,11 +1540,10 @@ fn select_debuginfo(
     let max_c = matches
         .opt_strs_pos("C")
         .into_iter()
-        .flat_map(
-            |(i, s)| {
-                if let Some("debuginfo") = s.splitn(2, '=').next() { Some(i) } else { None }
-            },
-        )
+        .flat_map(|(i, s)| {
+            // NB: This can match a string without `=`.
+            if let Some("debuginfo") = s.splitn(2, '=').next() { Some(i) } else { None }
+        })
         .max();
     if max_g > max_c {
         DebugInfo::Full
@@ -1528,23 +1576,26 @@ fn parse_libs(
         .map(|s| {
             // Parse string of the form "[KIND=]lib[:new_name]",
             // where KIND is one of "dylib", "framework", "static".
-            let mut parts = s.splitn(2, '=');
-            let kind = parts.next().unwrap();
-            let (name, kind) = match (parts.next(), kind) {
-                (None, name) => (name, NativeLibKind::Unspecified),
-                (Some(name), "dylib") => (name, NativeLibKind::Dylib),
-                (Some(name), "framework") => (name, NativeLibKind::Framework),
-                (Some(name), "static") => (name, NativeLibKind::StaticBundle),
-                (Some(name), "static-nobundle") => (name, NativeLibKind::StaticNoBundle),
-                (_, s) => {
-                    early_error(
-                        error_format,
-                        &format!(
-                            "unknown library kind `{}`, expected \
-                             one of dylib, framework, or static",
-                            s
-                        ),
-                    );
+            let (name, kind) = match s.split_once('=') {
+                None => (s, NativeLibKind::Unspecified),
+                Some((kind, name)) => {
+                    let kind = match kind {
+                        "dylib" => NativeLibKind::Dylib,
+                        "framework" => NativeLibKind::Framework,
+                        "static" => NativeLibKind::StaticBundle,
+                        "static-nobundle" => NativeLibKind::StaticNoBundle,
+                        s => {
+                            early_error(
+                                error_format,
+                                &format!(
+                                    "unknown library kind `{}`, expected \
+                                     one of dylib, framework, or static",
+                                    s
+                                ),
+                            );
+                        }
+                    };
+                    (name.to_string(), kind)
                 }
             };
             if kind == NativeLibKind::StaticNoBundle
@@ -1556,10 +1607,11 @@ fn parse_libs(
                      accepted on the nightly compiler",
                 );
             }
-            let mut name_parts = name.splitn(2, ':');
-            let name = name_parts.next().unwrap();
-            let new_name = name_parts.next();
-            (name.to_owned(), new_name.map(|n| n.to_owned()), kind)
+            let (name, new_name) = match name.split_once(':') {
+                None => (name, None),
+                Some((name, new_name)) => (name.to_string(), Some(new_name.to_owned())),
+            };
+            (name, new_name, kind)
         })
         .collect()
 }
@@ -1580,21 +1632,16 @@ pub fn parse_externs(
     let is_unstable_enabled = debugging_opts.unstable_options;
     let mut externs: BTreeMap<String, ExternEntry> = BTreeMap::new();
     for arg in matches.opt_strs("extern") {
-        let mut parts = arg.splitn(2, '=');
-        let name = parts
-            .next()
-            .unwrap_or_else(|| early_error(error_format, "--extern value must not be empty"));
-        let path = parts.next().map(|s| s.to_string());
-
-        let mut name_parts = name.splitn(2, ':');
-        let first_part = name_parts.next();
-        let second_part = name_parts.next();
-        let (options, name) = match (first_part, second_part) {
-            (Some(opts), Some(name)) => (Some(opts), name),
-            (Some(name), None) => (None, name),
-            (None, None) => early_error(error_format, "--extern name must not be empty"),
-            _ => unreachable!(),
+        let (name, path) = match arg.split_once('=') {
+            None => (arg, None),
+            Some((name, path)) => (name.to_string(), Some(Path::new(path))),
         };
+        let (options, name) = match name.split_once(':') {
+            None => (None, name),
+            Some((opts, name)) => (Some(opts), name.to_string()),
+        };
+
+        let path = path.map(|p| CanonicalizedPath::new(p));
 
         let entry = externs.entry(name.to_owned());
 
@@ -1675,6 +1722,68 @@ pub fn parse_externs(
     Externs(externs)
 }
 
+fn parse_extern_dep_specs(
+    matches: &getopts::Matches,
+    debugging_opts: &DebuggingOptions,
+    error_format: ErrorOutputType,
+) -> ExternDepSpecs {
+    let is_unstable_enabled = debugging_opts.unstable_options;
+    let mut map = BTreeMap::new();
+
+    for arg in matches.opt_strs("extern-location") {
+        if !is_unstable_enabled {
+            early_error(
+                error_format,
+                "`--extern-location` option is unstable: set `-Z unstable-options`",
+            );
+        }
+
+        let mut parts = arg.splitn(2, '=');
+        let name = parts.next().unwrap_or_else(|| {
+            early_error(error_format, "`--extern-location` value must not be empty")
+        });
+        let loc = parts.next().unwrap_or_else(|| {
+            early_error(
+                error_format,
+                &format!("`--extern-location`: specify location for extern crate `{}`", name),
+            )
+        });
+
+        let locparts: Vec<_> = loc.split(":").collect();
+        let spec = match &locparts[..] {
+            ["raw", ..] => {
+                // Don't want `:` split string
+                let raw = loc.splitn(2, ':').nth(1).unwrap_or_else(|| {
+                    early_error(error_format, "`--extern-location`: missing `raw` location")
+                });
+                ExternDepSpec::Raw(raw.to_string())
+            }
+            ["json", ..] => {
+                // Don't want `:` split string
+                let raw = loc.splitn(2, ':').nth(1).unwrap_or_else(|| {
+                    early_error(error_format, "`--extern-location`: missing `json` location")
+                });
+                let json = json::from_str(raw).unwrap_or_else(|_| {
+                    early_error(
+                        error_format,
+                        &format!("`--extern-location`: malformed json location `{}`", raw),
+                    )
+                });
+                ExternDepSpec::Json(json)
+            }
+            [bad, ..] => early_error(
+                error_format,
+                &format!("unknown location type `{}`: use `raw` or `json`", bad),
+            ),
+            [] => early_error(error_format, "missing location specification"),
+        };
+
+        map.insert(name.to_string(), spec);
+    }
+
+    ExternDepSpecs::new(map)
+}
+
 fn parse_remap_path_prefix(
     matches: &getopts::Matches,
     error_format: ErrorOutputType,
@@ -1682,17 +1791,12 @@ fn parse_remap_path_prefix(
     matches
         .opt_strs("remap-path-prefix")
         .into_iter()
-        .map(|remap| {
-            let mut parts = remap.rsplitn(2, '='); // reverse iterator
-            let to = parts.next();
-            let from = parts.next();
-            match (from, to) {
-                (Some(from), Some(to)) => (PathBuf::from(from), PathBuf::from(to)),
-                _ => early_error(
-                    error_format,
-                    "--remap-path-prefix must contain '=' between FROM and TO",
-                ),
-            }
+        .map(|remap| match remap.rsplit_once('=') {
+            None => early_error(
+                error_format,
+                "--remap-path-prefix must contain '=' between FROM and TO",
+            ),
+            Some((from, to)) => (PathBuf::from(from), PathBuf::from(to)),
         })
         .collect()
 }
@@ -1753,7 +1857,9 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         );
     }
 
-    if debugging_opts.instrument_coverage {
+    if debugging_opts.instrument_coverage.is_some()
+        && debugging_opts.instrument_coverage != Some(InstrumentCoverage::Off)
+    {
         if cg.profile_generate.enabled() || cg.profile_use.is_some() {
             early_error(
                 error_format,
@@ -1766,7 +1872,19 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         // and reversible name mangling. Note, LLVM coverage tools can analyze coverage over
         // multiple runs, including some changes to source code; so mangled names must be consistent
         // across compilations.
-        debugging_opts.symbol_mangling_version = SymbolManglingVersion::V0;
+        match debugging_opts.symbol_mangling_version {
+            None => {
+                debugging_opts.symbol_mangling_version = Some(SymbolManglingVersion::V0);
+            }
+            Some(SymbolManglingVersion::Legacy) => {
+                early_warn(
+                    error_format,
+                    "-Z instrument-coverage requires symbol mangling version `v0`, \
+                    but `-Z symbol-mangling-version=legacy` was specified",
+                );
+            }
+            Some(SymbolManglingVersion::V0) => {}
+        }
     }
 
     if let Ok(graphviz_font) = std::env::var("RUSTC_GRAPHVIZ_FONT") {
@@ -1812,12 +1930,22 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     }
 
     let externs = parse_externs(matches, &debugging_opts, error_format);
+    let extern_dep_specs = parse_extern_dep_specs(matches, &debugging_opts, error_format);
 
     let crate_name = matches.opt_str("crate-name");
 
     let remap_path_prefix = parse_remap_path_prefix(matches, error_format);
 
     let pretty = parse_pretty(matches, &debugging_opts, error_format);
+
+    if !debugging_opts.unstable_options
+        && !target_triple.triple().contains("apple")
+        && cg.split_debuginfo.is_some()
+    {
+        {
+            early_error(error_format, "`-Csplit-debuginfo` is unstable on this platform");
+        }
+    }
 
     Options {
         crate_types,
@@ -1839,6 +1967,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         error_format,
         externs,
         unstable_features: UnstableFeatures::from_environment(crate_name.as_deref()),
+        extern_dep_specs,
         crate_name,
         alt_std_name: None,
         libs,
@@ -1859,40 +1988,24 @@ fn parse_pretty(
     debugging_opts: &DebuggingOptions,
     efmt: ErrorOutputType,
 ) -> Option<PpMode> {
-    let pretty = if debugging_opts.unstable_options {
-        matches.opt_default("pretty", "normal").map(|a| {
-            // stable pretty-print variants only
-            parse_pretty_inner(efmt, &a, false)
-        })
-    } else {
-        None
-    };
-
-    return if pretty.is_none() {
-        debugging_opts.unpretty.as_ref().map(|a| {
-            // extended with unstable pretty-print variants
-            parse_pretty_inner(efmt, &a, true)
-        })
-    } else {
-        pretty
-    };
-
     fn parse_pretty_inner(efmt: ErrorOutputType, name: &str, extended: bool) -> PpMode {
         use PpMode::*;
-        use PpSourceMode::*;
         let first = match (name, extended) {
-            ("normal", _) => PpmSource(PpmNormal),
-            ("identified", _) => PpmSource(PpmIdentified),
-            ("everybody_loops", true) => PpmSource(PpmEveryBodyLoops),
-            ("expanded", _) => PpmSource(PpmExpanded),
-            ("expanded,identified", _) => PpmSource(PpmExpandedIdentified),
-            ("expanded,hygiene", _) => PpmSource(PpmExpandedHygiene),
-            ("hir", true) => PpmHir(PpmNormal),
-            ("hir,identified", true) => PpmHir(PpmIdentified),
-            ("hir,typed", true) => PpmHir(PpmTyped),
-            ("hir-tree", true) => PpmHirTree(PpmNormal),
-            ("mir", true) => PpmMir,
-            ("mir-cfg", true) => PpmMirCFG,
+            ("normal", _) => Source(PpSourceMode::Normal),
+            ("identified", _) => Source(PpSourceMode::Identified),
+            ("everybody_loops", true) => Source(PpSourceMode::EveryBodyLoops),
+            ("expanded", _) => Source(PpSourceMode::Expanded),
+            ("expanded,identified", _) => Source(PpSourceMode::ExpandedIdentified),
+            ("expanded,hygiene", _) => Source(PpSourceMode::ExpandedHygiene),
+            ("ast-tree", true) => AstTree(PpAstTreeMode::Normal),
+            ("ast-tree,expanded", true) => AstTree(PpAstTreeMode::Expanded),
+            ("hir", true) => Hir(PpHirMode::Normal),
+            ("hir,identified", true) => Hir(PpHirMode::Identified),
+            ("hir,typed", true) => Hir(PpHirMode::Typed),
+            ("hir-tree", true) => HirTree,
+            ("thir-tree", true) => ThirTree,
+            ("mir", true) => Mir,
+            ("mir-cfg", true) => MirCFG,
             _ => {
                 if extended {
                     early_error(
@@ -1901,8 +2014,8 @@ fn parse_pretty(
                             "argument to `unpretty` must be one of `normal`, \
                                         `expanded`, `identified`, `expanded,identified`, \
                                         `expanded,hygiene`, `everybody_loops`, \
-                                        `hir`, `hir,identified`, `hir,typed`, `hir-tree`, \
-                                        `mir` or `mir-cfg`; got {}",
+                                        `ast-tree`, `ast-tree,expanded`, `hir`, `hir,identified`, \
+                                        `hir,typed`, `hir-tree`, `mir` or `mir-cfg`; got {}",
                             name
                         ),
                     );
@@ -1921,6 +2034,18 @@ fn parse_pretty(
         tracing::debug!("got unpretty option: {:?}", first);
         first
     }
+
+    if debugging_opts.unstable_options {
+        if let Some(a) = matches.opt_default("pretty", "normal") {
+            // stable pretty-print variants only
+            return Some(parse_pretty_inner(efmt, &a, false));
+        }
+    }
+
+    debugging_opts.unpretty.as_ref().map(|a| {
+        // extended with unstable pretty-print variants
+        parse_pretty_inner(efmt, &a, true)
+    })
 }
 
 pub fn make_crate_type_option() -> RustcOptGroup {
@@ -2028,22 +2153,54 @@ impl fmt::Display for CrateType {
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum PpSourceMode {
-    PpmNormal,
-    PpmEveryBodyLoops,
-    PpmExpanded,
-    PpmIdentified,
-    PpmExpandedIdentified,
-    PpmExpandedHygiene,
-    PpmTyped,
+    /// `--pretty=normal`
+    Normal,
+    /// `-Zunpretty=everybody_loops`
+    EveryBodyLoops,
+    /// `--pretty=expanded`
+    Expanded,
+    /// `--pretty=identified`
+    Identified,
+    /// `--pretty=expanded,identified`
+    ExpandedIdentified,
+    /// `--pretty=expanded,hygiene`
+    ExpandedHygiene,
+}
+
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub enum PpAstTreeMode {
+    /// `-Zunpretty=ast`
+    Normal,
+    /// `-Zunpretty=ast,expanded`
+    Expanded,
+}
+
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub enum PpHirMode {
+    /// `-Zunpretty=hir`
+    Normal,
+    /// `-Zunpretty=hir,identified`
+    Identified,
+    /// `-Zunpretty=hir,typed`
+    Typed,
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum PpMode {
-    PpmSource(PpSourceMode),
-    PpmHir(PpSourceMode),
-    PpmHirTree(PpSourceMode),
-    PpmMir,
-    PpmMirCFG,
+    /// Options that print the source code, i.e.
+    /// `--pretty` and `-Zunpretty=everybody_loops`
+    Source(PpSourceMode),
+    AstTree(PpAstTreeMode),
+    /// Options that print the HIR, i.e. `-Zunpretty=hir`
+    Hir(PpHirMode),
+    /// `-Zunpretty=hir-tree`
+    HirTree,
+    /// `-Zunpretty=thir-tree`
+    ThirTree,
+    /// `-Zunpretty=mir`
+    Mir,
+    /// `-Zunpretty=mir-cfg`
+    MirCFG,
 }
 
 impl PpMode {
@@ -2051,22 +2208,21 @@ impl PpMode {
         use PpMode::*;
         use PpSourceMode::*;
         match *self {
-            PpmSource(PpmNormal | PpmIdentified) => false,
+            Source(Normal | Identified) | AstTree(PpAstTreeMode::Normal) => false,
 
-            PpmSource(
-                PpmExpanded | PpmEveryBodyLoops | PpmExpandedIdentified | PpmExpandedHygiene,
-            )
-            | PpmHir(_)
-            | PpmHirTree(_)
-            | PpmMir
-            | PpmMirCFG => true,
-            PpmSource(PpmTyped) => panic!("invalid state"),
+            Source(Expanded | EveryBodyLoops | ExpandedIdentified | ExpandedHygiene)
+            | AstTree(PpAstTreeMode::Expanded)
+            | Hir(_)
+            | HirTree
+            | ThirTree
+            | Mir
+            | MirCFG => true,
         }
     }
 
     pub fn needs_analysis(&self) -> bool {
         use PpMode::*;
-        matches!(*self, PpmMir | PpmMirCFG)
+        matches!(*self, Mir | MirCFG | ThirTree)
     }
 }
 
@@ -2090,19 +2246,21 @@ impl PpMode {
 /// how the hash should be calculated when adding a new command-line argument.
 crate mod dep_tracking {
     use super::{
-        CFGuard, CrateType, DebugInfo, ErrorOutputType, LinkerPluginLto, LtoCli, OptLevel,
-        OutputTypes, Passes, SanitizerSet, SourceFileHashAlgorithm, SwitchWithOptPath,
+        CFGuard, CrateType, DebugInfo, ErrorOutputType, InstrumentCoverage, LinkerPluginLto,
+        LtoCli, OptLevel, OutputTypes, Passes, SourceFileHashAlgorithm, SwitchWithOptPath,
         SymbolManglingVersion, TrimmedDefPaths,
     };
     use crate::lint;
+    use crate::options::WasiExecModel;
     use crate::utils::NativeLibKind;
     use rustc_feature::UnstableFeatures;
     use rustc_span::edition::Edition;
     use rustc_target::spec::{CodeModel, MergeFunctions, PanicStrategy, RelocModel};
-    use rustc_target::spec::{RelroLevel, TargetTriple, TlsModel};
+    use rustc_target::spec::{RelroLevel, SanitizerSet, SplitDebuginfo, TargetTriple, TlsModel};
     use std::collections::hash_map::DefaultHasher;
     use std::collections::BTreeMap;
     use std::hash::Hash;
+    use std::num::NonZeroUsize;
     use std::path::PathBuf;
 
     pub trait DepTrackingHash {
@@ -2143,6 +2301,7 @@ crate mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(lint::Level);
     impl_dep_tracking_hash_via_hash!(Option<bool>);
     impl_dep_tracking_hash_via_hash!(Option<usize>);
+    impl_dep_tracking_hash_via_hash!(Option<NonZeroUsize>);
     impl_dep_tracking_hash_via_hash!(Option<String>);
     impl_dep_tracking_hash_via_hash!(Option<(String, u64)>);
     impl_dep_tracking_hash_via_hash!(Option<Vec<String>>);
@@ -2150,8 +2309,10 @@ crate mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Option<RelocModel>);
     impl_dep_tracking_hash_via_hash!(Option<CodeModel>);
     impl_dep_tracking_hash_via_hash!(Option<TlsModel>);
+    impl_dep_tracking_hash_via_hash!(Option<WasiExecModel>);
     impl_dep_tracking_hash_via_hash!(Option<PanicStrategy>);
     impl_dep_tracking_hash_via_hash!(Option<RelroLevel>);
+    impl_dep_tracking_hash_via_hash!(Option<InstrumentCoverage>);
     impl_dep_tracking_hash_via_hash!(Option<lint::Level>);
     impl_dep_tracking_hash_via_hash!(Option<PathBuf>);
     impl_dep_tracking_hash_via_hash!(CrateType);
@@ -2170,8 +2331,9 @@ crate mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(TargetTriple);
     impl_dep_tracking_hash_via_hash!(Edition);
     impl_dep_tracking_hash_via_hash!(LinkerPluginLto);
+    impl_dep_tracking_hash_via_hash!(Option<SplitDebuginfo>);
     impl_dep_tracking_hash_via_hash!(SwitchWithOptPath);
-    impl_dep_tracking_hash_via_hash!(SymbolManglingVersion);
+    impl_dep_tracking_hash_via_hash!(Option<SymbolManglingVersion>);
     impl_dep_tracking_hash_via_hash!(Option<SourceFileHashAlgorithm>);
     impl_dep_tracking_hash_via_hash!(TrimmedDefPaths);
 
@@ -2212,7 +2374,7 @@ crate mod dep_tracking {
     }
 
     // This is a stable hash because BTreeMap is a sorted container
-    pub fn stable_hash(
+    crate fn stable_hash(
         sub_hashes: BTreeMap<&'static str, &dyn DepTrackingHash>,
         hasher: &mut DefaultHasher,
         error_format: ErrorOutputType,

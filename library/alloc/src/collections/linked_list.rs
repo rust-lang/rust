@@ -35,6 +35,7 @@ mod tests;
 /// array-based containers are generally faster,
 /// more memory efficient, and make better use of CPU cache.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "LinkedList")]
 pub struct LinkedList<T> {
     head: Option<NonNull<Node<T>>>,
     tail: Option<NonNull<Node<T>>>,
@@ -593,6 +594,7 @@ impl<T> LinkedList<T> {
     /// dl.push_back(3);
     /// assert_eq!(dl.len(), 3);
     /// ```
+    #[doc(alias = "length")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> usize {
@@ -1098,68 +1100,6 @@ impl<T> ExactSizeIterator for IterMut<'_, T> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for IterMut<'_, T> {}
-
-impl<T> IterMut<'_, T> {
-    /// Inserts the given element just after the element most recently returned by `.next()`.
-    /// The inserted element does not appear in the iteration.
-    ///
-    /// This method will be removed soon.
-    #[inline]
-    #[unstable(
-        feature = "linked_list_extras",
-        reason = "this is probably better handled by a cursor type -- we'll see",
-        issue = "27794"
-    )]
-    #[rustc_deprecated(
-        reason = "Deprecated in favor of CursorMut methods. This method will be removed soon.",
-        since = "1.47.0"
-    )]
-    pub fn insert_next(&mut self, element: T) {
-        match self.head {
-            // `push_back` is okay with aliasing `element` references
-            None => self.list.push_back(element),
-            Some(head) => unsafe {
-                let prev = match head.as_ref().prev {
-                    // `push_front` is okay with aliasing nodes
-                    None => return self.list.push_front(element),
-                    Some(prev) => prev,
-                };
-
-                let node = Some(
-                    Box::leak(box Node { next: Some(head), prev: Some(prev), element }).into(),
-                );
-
-                // Not creating references to entire nodes to not invalidate the
-                // reference to `element` we handed to the user.
-                (*prev.as_ptr()).next = node;
-                (*head.as_ptr()).prev = node;
-
-                self.list.len += 1;
-            },
-        }
-    }
-
-    /// Provides a reference to the next element, without changing the iterator.
-    ///
-    /// This method will be removed soon.
-    #[inline]
-    #[unstable(
-        feature = "linked_list_extras",
-        reason = "this is probably better handled by a cursor type -- we'll see",
-        issue = "27794"
-    )]
-    #[rustc_deprecated(
-        reason = "Deprecated in favor of CursorMut methods. This method will be removed soon.",
-        since = "1.47.0"
-    )]
-    pub fn peek_next(&mut self) -> Option<&mut T> {
-        if self.len == 0 {
-            None
-        } else {
-            unsafe { self.head.as_mut().map(|node| &mut node.as_mut().element) }
-        }
-    }
-}
 
 /// A cursor over a `LinkedList`.
 ///

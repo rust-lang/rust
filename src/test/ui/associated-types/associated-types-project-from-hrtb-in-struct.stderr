@@ -1,4 +1,4 @@
-error[E0212]: cannot extract an associated type from a higher-ranked trait bound in this context
+error[E0212]: cannot use the associated type of a trait with uninferred generic parameters
   --> $DIR/associated-types-project-from-hrtb-in-struct.rs:11:12
    |
 LL |     field: I::A
@@ -10,7 +10,7 @@ LL | struct SomeStruct<'a, I: for<'x> Foo<&'x isize>> {
 LL |     field: <I as Foo<&'a isize>>::A
    |
 
-error[E0212]: cannot extract an associated type from a higher-ranked trait bound in this context
+error[E0212]: cannot use the associated type of a trait with uninferred generic parameters
   --> $DIR/associated-types-project-from-hrtb-in-struct.rs:16:18
    |
 LL |     TupleVariant(I::A),
@@ -22,7 +22,7 @@ LL | enum SomeEnum<'c, 'b, I: for<'a> Foo<&'a isize>> {
 LL |     TupleVariant(<I as Foo<&'c isize>>::A),
    |
 
-error[E0212]: cannot extract an associated type from a higher-ranked trait bound in this context
+error[E0212]: cannot use the associated type of a trait with uninferred generic parameters
   --> $DIR/associated-types-project-from-hrtb-in-struct.rs:18:28
    |
 LL |     StructVariant { field: I::A },
@@ -36,7 +36,7 @@ LL |
 LL |     StructVariant { field: <I as Foo<&'c isize>>::A },
    |
 
-error[E0212]: cannot extract an associated type from a higher-ranked trait bound in this context
+error[E0212]: cannot use the associated type of a trait with uninferred generic parameters
   --> $DIR/associated-types-project-from-hrtb-in-struct.rs:35:12
    |
 LL |     field: I::A,
@@ -51,3 +51,4 @@ LL |     field: <I as Foo<&'bb &'bb isize>>::A,
 
 error: aborting due to 4 previous errors
 
+For more information about this error, try `rustc --explain E0212`.

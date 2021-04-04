@@ -3,7 +3,6 @@
 
 #![cfg_attr(full, feature(const_generics))]
 #![cfg_attr(full, allow(incomplete_features))]
-#![cfg_attr(min, feature(min_const_generics))]
 
 pub fn function_with_str<const STRING: &'static str>() -> &'static str {
     //[min]~^ ERROR `&'static str` is forbidden

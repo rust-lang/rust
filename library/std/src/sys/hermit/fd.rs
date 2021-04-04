@@ -46,7 +46,7 @@ impl FileDesc {
         self.duplicate_path(&[])
     }
     pub fn duplicate_path(&self, _path: &[u8]) -> io::Result<FileDesc> {
-        Err(io::Error::new(ErrorKind::Other, "duplicate isn't supported"))
+        Err(io::Error::new_const(ErrorKind::Other, &"duplicate isn't supported"))
     }
 
     pub fn nonblocking(&self) -> io::Result<bool> {
@@ -54,11 +54,11 @@ impl FileDesc {
     }
 
     pub fn set_cloexec(&self) -> io::Result<()> {
-        Err(io::Error::new(ErrorKind::Other, "cloexec isn't supported"))
+        Err(io::Error::new_const(ErrorKind::Other, &"cloexec isn't supported"))
     }
 
     pub fn set_nonblocking(&self, _nonblocking: bool) -> io::Result<()> {
-        Err(io::Error::new(ErrorKind::Other, "nonblocking isn't supported"))
+        Err(io::Error::new_const(ErrorKind::Other, &"nonblocking isn't supported"))
     }
 }
 

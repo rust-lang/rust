@@ -9,13 +9,13 @@
     8|       |
     9|      1|fn main() -> Result<(),u8> {
    10|      1|    let mut countdown = 10;
-   11|     10|    while countdown > 0 {
-   12|     10|        if countdown == 1 {
-   13|      0|            might_fail_assert(3);
+   11|     11|    while countdown > 0 {
+   12|     11|        if countdown == 1 {
+   13|      1|            might_fail_assert(3);
    14|     10|        } else if countdown < 5 {
    15|      3|            might_fail_assert(2);
    16|      6|        }
-   17|      9|        countdown -= 1;
+   17|     10|        countdown -= 1;
    18|       |    }
    19|      0|    Ok(())
    20|      0|}

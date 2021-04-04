@@ -1,8 +1,8 @@
-error[E0670]: `async fn` is not permitted in the 2015 edition
+error[E0670]: `async fn` is not permitted in Rust 2015
   --> $DIR/async-block-2015.rs:1:1
    |
 LL | async fn foo() {
-   | ^^^^^ to use `async fn`, switch to Rust 2018
+   | ^^^^^ to use `async fn`, switch to Rust 2018 or later
    |
    = help: set `edition = "2018"` in `Cargo.toml`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
@@ -11,7 +11,7 @@ error: expected identifier, found keyword `let`
   --> $DIR/async-block-2015.rs:11:9
    |
 LL |     let y = async {
-   |             ----- `async` blocks are only allowed in the 2018 edition
+   |             ----- `async` blocks are only allowed in Rust 2018 or later
 LL |         let x = 42;
    |         ^^^ expected identifier, found keyword
    |
@@ -22,7 +22,7 @@ error: expected identifier, found `42`
   --> $DIR/async-block-2015.rs:19:9
    |
 LL |     let z = async {
-   |             ----- `async` blocks are only allowed in the 2018 edition
+   |             ----- `async` blocks are only allowed in Rust 2018 or later
 LL |         42
    |         ^^ expected identifier
    |
@@ -33,7 +33,7 @@ error[E0422]: cannot find struct, variant or union type `async` in this scope
   --> $DIR/async-block-2015.rs:7:13
    |
 LL |     let x = async {};
-   |             ^^^^^ `async` blocks are only allowed in the 2018 edition
+   |             ^^^^^ `async` blocks are only allowed in Rust 2018 or later
 
 error: aborting due to 4 previous errors
 

@@ -127,8 +127,10 @@ LL | /// ```text
 warning: could not parse code block as Rust code
   --> $DIR/invalid-syntax.rs:92:9
    |
-LL | ///     \____/
-   |         ^^^^^^
+LL |   ///     \____/
+   |  _________^
+LL | | ///
+   | |_
    |
    = note: error from rustc: unknown start of token: \
 

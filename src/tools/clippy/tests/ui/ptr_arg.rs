@@ -2,6 +2,7 @@
 #![warn(clippy::ptr_arg)]
 
 use std::borrow::Cow;
+use std::path::PathBuf;
 
 fn do_vec(x: &Vec<i64>) {
     //Nothing here
@@ -17,6 +18,15 @@ fn do_str(x: &String) {
 }
 
 fn do_str_mut(x: &mut String) {
+    // no error here
+    //Nothing here either
+}
+
+fn do_path(x: &PathBuf) {
+    //Nothing here either
+}
+
+fn do_path_mut(x: &mut PathBuf) {
     // no error here
     //Nothing here either
 }
@@ -48,6 +58,14 @@ fn cloned(x: &Vec<u8>) -> Vec<u8> {
 }
 
 fn str_cloned(x: &String) -> String {
+    let a = x.clone();
+    let b = x.clone();
+    let c = b.clone();
+    let d = a.clone().clone().clone();
+    x.clone()
+}
+
+fn path_cloned(x: &PathBuf) -> PathBuf {
     let a = x.clone();
     let b = x.clone();
     let c = b.clone();
@@ -87,10 +105,12 @@ impl Foo2 for String {
 // Check that the allow attribute on parameters is honored
 mod issue_5644 {
     use std::borrow::Cow;
+    use std::path::PathBuf;
 
     fn allowed(
         #[allow(clippy::ptr_arg)] _v: &Vec<u32>,
         #[allow(clippy::ptr_arg)] _s: &String,
+        #[allow(clippy::ptr_arg)] _p: &PathBuf,
         #[allow(clippy::ptr_arg)] _c: &Cow<[i32]>,
     ) {
     }
@@ -100,6 +120,7 @@ mod issue_5644 {
         fn allowed(
             #[allow(clippy::ptr_arg)] _v: &Vec<u32>,
             #[allow(clippy::ptr_arg)] _s: &String,
+            #[allow(clippy::ptr_arg)] _p: &PathBuf,
             #[allow(clippy::ptr_arg)] _c: &Cow<[i32]>,
         ) {
         }
@@ -109,8 +130,28 @@ mod issue_5644 {
         fn allowed(
             #[allow(clippy::ptr_arg)] _v: &Vec<u32>,
             #[allow(clippy::ptr_arg)] _s: &String,
+            #[allow(clippy::ptr_arg)] _p: &PathBuf,
             #[allow(clippy::ptr_arg)] _c: &Cow<[i32]>,
         ) {
         }
+    }
+}
+
+mod issue6509 {
+    use std::path::PathBuf;
+
+    fn foo_vec(vec: &Vec<u8>) {
+        let _ = vec.clone().pop();
+        let _ = vec.clone().clone();
+    }
+
+    fn foo_path(path: &PathBuf) {
+        let _ = path.clone().pop();
+        let _ = path.clone().clone();
+    }
+
+    fn foo_str(str: &PathBuf) {
+        let _ = str.clone().pop();
+        let _ = str.clone().clone();
     }
 }

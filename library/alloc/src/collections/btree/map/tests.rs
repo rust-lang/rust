@@ -1,4 +1,6 @@
-use super::super::{node, DeterministicRng};
+use super::super::testing::crash_test::{CrashTestDummy, Panic};
+use super::super::testing::ord_chaos::{Cyclic3, Governed, Governor};
+use super::super::testing::rng::DeterministicRng;
 use super::Entry::{Occupied, Vacant};
 use super::*;
 use crate::boxed::Box;
@@ -14,9 +16,6 @@ use std::ops::Bound::{self, Excluded, Included, Unbounded};
 use std::ops::RangeBounds;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
-
-mod ord_chaos;
-use ord_chaos::{Cyclic3, Governed, Governor};
 
 // Capacity of a tree with a single level,
 // i.e., a tree who's root is a leaf node at height 0.
@@ -111,11 +110,23 @@ impl<K, V> BTreeMap<K, V> {
             }
         }
     }
+
+    // Transform the tree to minimize wasted space, obtaining fewer nodes that
+    // are mostly filled up to their capacity. The same compact tree could have
+    // been obtained by inserting keys in a shrewd order.
+    fn compact(&mut self)
+    where
+        K: Ord,
+    {
+        let iter = mem::take(self).into_iter();
+        let root = BTreeMap::ensure_is_owned(&mut self.root);
+        root.bulk_push(iter, &mut self.length);
+    }
 }
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> {
     fn assert_min_len(self, min_len: usize) {
-        assert!(self.len() >= min_len, "{} < {}", self.len(), min_len);
+        assert!(self.len() >= min_len, "node len {} < {}", self.len(), min_len);
         if let node::ForceResult::Internal(node) = self.force() {
             for idx in 0..=node.len() {
                 let edge = unsafe { Handle::new_edge(node, idx) };
@@ -125,8 +136,9 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> 
     }
 }
 
-// Tests our value of MIN_INSERTS_HEIGHT_2. It may change according to the
-// implementation of insertion, but it's best to be aware of when it does.
+// Tests our value of MIN_INSERTS_HEIGHT_2. Failure may mean you just need to
+// adapt that value to match a change in node::CAPACITY or the choices made
+// during insertion, otherwise other test cases may fail or be less useful.
 #[test]
 fn test_levels() {
     let mut map = BTreeMap::new();
@@ -764,8 +776,7 @@ fn test_range_backwards_4() {
 }
 
 #[test]
-#[should_panic]
-fn test_range_backwards_5() {
+fn test_range_finding_ill_order_in_map() {
     let mut map = BTreeMap::new();
     map.insert(Cyclic3::B, ());
     // Lacking static_assert, call `range` conditionally, to emphasise that
@@ -774,6 +785,46 @@ fn test_range_backwards_5() {
     if Cyclic3::C < Cyclic3::A {
         map.range(Cyclic3::C..=Cyclic3::A);
     }
+}
+
+#[test]
+fn test_range_finding_ill_order_in_range_ord() {
+    // Has proper order the first time asked, then flips around.
+    struct EvilTwin(i32);
+
+    impl PartialOrd for EvilTwin {
+        fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+            Some(self.cmp(other))
+        }
+    }
+
+    static COMPARES: AtomicUsize = AtomicUsize::new(0);
+    impl Ord for EvilTwin {
+        fn cmp(&self, other: &Self) -> Ordering {
+            let ord = self.0.cmp(&other.0);
+            if COMPARES.fetch_add(1, SeqCst) > 0 { ord.reverse() } else { ord }
+        }
+    }
+
+    impl PartialEq for EvilTwin {
+        fn eq(&self, other: &Self) -> bool {
+            self.0.eq(&other.0)
+        }
+    }
+
+    impl Eq for EvilTwin {}
+
+    #[derive(PartialEq, Eq, PartialOrd, Ord)]
+    struct CompositeKey(i32, EvilTwin);
+
+    impl Borrow<EvilTwin> for CompositeKey {
+        fn borrow(&self) -> &EvilTwin {
+            &self.1
+        }
+    }
+
+    let map = (0..12).map(|i| (CompositeKey(i, EvilTwin(i)), ())).collect::<BTreeMap<_, _>>();
+    map.range(EvilTwin(5)..=EvilTwin(7));
 }
 
 #[test]
@@ -1083,91 +1134,62 @@ mod test_drain_filter {
 
     #[test]
     fn drop_panic_leak() {
-        static PREDS: AtomicUsize = AtomicUsize::new(0);
-        static DROPS: AtomicUsize = AtomicUsize::new(0);
+        let a = CrashTestDummy::new(0);
+        let b = CrashTestDummy::new(1);
+        let c = CrashTestDummy::new(2);
+        let mut map = BTreeMap::new();
+        map.insert(a.spawn(Panic::Never), ());
+        map.insert(b.spawn(Panic::InDrop), ());
+        map.insert(c.spawn(Panic::Never), ());
 
-        struct D;
-        impl Drop for D {
-            fn drop(&mut self) {
-                if DROPS.fetch_add(1, SeqCst) == 1 {
-                    panic!("panic in `drop`");
-                }
-            }
-        }
+        catch_unwind(move || drop(map.drain_filter(|dummy, _| dummy.query(true)))).unwrap_err();
 
-        // Keys are multiples of 4, so that each key is counted by a hexadecimal digit.
-        let mut map = (0..3).map(|i| (i * 4, D)).collect::<BTreeMap<_, _>>();
-
-        catch_unwind(move || {
-            drop(map.drain_filter(|i, _| {
-                PREDS.fetch_add(1usize << i, SeqCst);
-                true
-            }))
-        })
-        .unwrap_err();
-
-        assert_eq!(PREDS.load(SeqCst), 0x011);
-        assert_eq!(DROPS.load(SeqCst), 3);
+        assert_eq!(a.queried(), 1);
+        assert_eq!(b.queried(), 1);
+        assert_eq!(c.queried(), 0);
+        assert_eq!(a.dropped(), 1);
+        assert_eq!(b.dropped(), 1);
+        assert_eq!(c.dropped(), 1);
     }
 
     #[test]
     fn pred_panic_leak() {
-        static PREDS: AtomicUsize = AtomicUsize::new(0);
-        static DROPS: AtomicUsize = AtomicUsize::new(0);
+        let a = CrashTestDummy::new(0);
+        let b = CrashTestDummy::new(1);
+        let c = CrashTestDummy::new(2);
+        let mut map = BTreeMap::new();
+        map.insert(a.spawn(Panic::Never), ());
+        map.insert(b.spawn(Panic::InQuery), ());
+        map.insert(c.spawn(Panic::InQuery), ());
 
-        struct D;
-        impl Drop for D {
-            fn drop(&mut self) {
-                DROPS.fetch_add(1, SeqCst);
-            }
-        }
+        catch_unwind(AssertUnwindSafe(|| drop(map.drain_filter(|dummy, _| dummy.query(true)))))
+            .unwrap_err();
 
-        // Keys are multiples of 4, so that each key is counted by a hexadecimal digit.
-        let mut map = (0..3).map(|i| (i * 4, D)).collect::<BTreeMap<_, _>>();
-
-        catch_unwind(AssertUnwindSafe(|| {
-            drop(map.drain_filter(|i, _| {
-                PREDS.fetch_add(1usize << i, SeqCst);
-                match i {
-                    0 => true,
-                    _ => panic!(),
-                }
-            }))
-        }))
-        .unwrap_err();
-
-        assert_eq!(PREDS.load(SeqCst), 0x011);
-        assert_eq!(DROPS.load(SeqCst), 1);
+        assert_eq!(a.queried(), 1);
+        assert_eq!(b.queried(), 1);
+        assert_eq!(c.queried(), 0);
+        assert_eq!(a.dropped(), 1);
+        assert_eq!(b.dropped(), 0);
+        assert_eq!(c.dropped(), 0);
         assert_eq!(map.len(), 2);
-        assert_eq!(map.first_entry().unwrap().key(), &4);
-        assert_eq!(map.last_entry().unwrap().key(), &8);
+        assert_eq!(map.first_entry().unwrap().key().id(), 1);
+        assert_eq!(map.last_entry().unwrap().key().id(), 2);
         map.check();
     }
 
     // Same as above, but attempt to use the iterator again after the panic in the predicate
     #[test]
     fn pred_panic_reuse() {
-        static PREDS: AtomicUsize = AtomicUsize::new(0);
-        static DROPS: AtomicUsize = AtomicUsize::new(0);
-
-        struct D;
-        impl Drop for D {
-            fn drop(&mut self) {
-                DROPS.fetch_add(1, SeqCst);
-            }
-        }
-
-        // Keys are multiples of 4, so that each key is counted by a hexadecimal digit.
-        let mut map = (0..3).map(|i| (i * 4, D)).collect::<BTreeMap<_, _>>();
+        let a = CrashTestDummy::new(0);
+        let b = CrashTestDummy::new(1);
+        let c = CrashTestDummy::new(2);
+        let mut map = BTreeMap::new();
+        map.insert(a.spawn(Panic::Never), ());
+        map.insert(b.spawn(Panic::InQuery), ());
+        map.insert(c.spawn(Panic::InQuery), ());
 
         {
-            let mut it = map.drain_filter(|i, _| {
-                PREDS.fetch_add(1usize << i, SeqCst);
-                match i {
-                    0 => true,
-                    _ => panic!(),
-                }
-            });
+            let mut it = map.drain_filter(|dummy, _| dummy.query(true));
             catch_unwind(AssertUnwindSafe(|| while it.next().is_some() {})).unwrap_err();
             // Iterator behaviour after a panic is explicitly unspecified,
             // so this is just the current implementation:
@@ -1175,11 +1197,15 @@ mod test_drain_filter {
             assert!(matches!(result, Ok(None)));
         }
 
-        assert_eq!(PREDS.load(SeqCst), 0x011);
-        assert_eq!(DROPS.load(SeqCst), 1);
+        assert_eq!(a.queried(), 1);
+        assert_eq!(b.queried(), 1);
+        assert_eq!(c.queried(), 0);
+        assert_eq!(a.dropped(), 1);
+        assert_eq!(b.dropped(), 0);
+        assert_eq!(c.dropped(), 0);
         assert_eq!(map.len(), 2);
-        assert_eq!(map.first_entry().unwrap().key(), &4);
-        assert_eq!(map.last_entry().unwrap().key(), &8);
+        assert_eq!(map.first_entry().unwrap().key().id(), 1);
+        assert_eq!(map.last_entry().unwrap().key().id(), 2);
         map.check();
     }
 }
@@ -1209,6 +1235,51 @@ fn test_borrow() {
         let mut map = BTreeMap::new();
         map.insert(Rc::new(0), 1);
         assert_eq!(map[&0], 1);
+    }
+
+    #[allow(dead_code)]
+    fn get<T: Ord>(v: &BTreeMap<Box<T>, ()>, t: &T) {
+        v.get(t);
+    }
+
+    #[allow(dead_code)]
+    fn get_mut<T: Ord>(v: &mut BTreeMap<Box<T>, ()>, t: &T) {
+        v.get_mut(t);
+    }
+
+    #[allow(dead_code)]
+    fn get_key_value<T: Ord>(v: &BTreeMap<Box<T>, ()>, t: &T) {
+        v.get_key_value(t);
+    }
+
+    #[allow(dead_code)]
+    fn contains_key<T: Ord>(v: &BTreeMap<Box<T>, ()>, t: &T) {
+        v.contains_key(t);
+    }
+
+    #[allow(dead_code)]
+    fn range<T: Ord>(v: &BTreeMap<Box<T>, ()>, t: T) {
+        v.range(t..);
+    }
+
+    #[allow(dead_code)]
+    fn range_mut<T: Ord>(v: &mut BTreeMap<Box<T>, ()>, t: T) {
+        v.range_mut(t..);
+    }
+
+    #[allow(dead_code)]
+    fn remove<T: Ord>(v: &mut BTreeMap<Box<T>, ()>, t: &T) {
+        v.remove(t);
+    }
+
+    #[allow(dead_code)]
+    fn remove_entry<T: Ord>(v: &mut BTreeMap<Box<T>, ()>, t: &T) {
+        v.remove_entry(t);
+    }
+
+    #[allow(dead_code)]
+    fn split_off<T: Ord>(v: &mut BTreeMap<Box<T>, ()>, t: &T) {
+        v.split_off(t);
     }
 }
 
@@ -1342,6 +1413,43 @@ fn test_bad_zst() {
 }
 
 #[test]
+fn test_clear() {
+    let mut map = BTreeMap::new();
+    for &len in &[MIN_INSERTS_HEIGHT_1, MIN_INSERTS_HEIGHT_2, 0, NODE_CAPACITY] {
+        for i in 0..len {
+            map.insert(i, ());
+        }
+        assert_eq!(map.len(), len);
+        map.clear();
+        map.check();
+        assert!(map.is_empty());
+    }
+}
+
+#[test]
+fn test_clear_drop_panic_leak() {
+    let a = CrashTestDummy::new(0);
+    let b = CrashTestDummy::new(1);
+    let c = CrashTestDummy::new(2);
+
+    let mut map = BTreeMap::new();
+    map.insert(a.spawn(Panic::Never), ());
+    map.insert(b.spawn(Panic::InDrop), ());
+    map.insert(c.spawn(Panic::Never), ());
+
+    catch_unwind(AssertUnwindSafe(|| map.clear())).unwrap_err();
+    assert_eq!(a.dropped(), 1);
+    assert_eq!(b.dropped(), 1);
+    assert_eq!(c.dropped(), 1);
+    assert_eq!(map.len(), 0);
+
+    drop(map);
+    assert_eq!(a.dropped(), 1);
+    assert_eq!(b.dropped(), 1);
+    assert_eq!(c.dropped(), 1);
+}
+
+#[test]
 fn test_clone() {
     let mut map = BTreeMap::new();
     let size = MIN_INSERTS_HEIGHT_1;
@@ -1384,6 +1492,35 @@ fn test_clone() {
     assert_eq!(map.len(), MIN_INSERTS_HEIGHT_2);
     assert_eq!(map, map.clone());
     map.check();
+}
+
+#[test]
+fn test_clone_panic_leak() {
+    let a = CrashTestDummy::new(0);
+    let b = CrashTestDummy::new(1);
+    let c = CrashTestDummy::new(2);
+
+    let mut map = BTreeMap::new();
+    map.insert(a.spawn(Panic::Never), ());
+    map.insert(b.spawn(Panic::InClone), ());
+    map.insert(c.spawn(Panic::Never), ());
+
+    catch_unwind(|| map.clone()).unwrap_err();
+    assert_eq!(a.cloned(), 1);
+    assert_eq!(b.cloned(), 1);
+    assert_eq!(c.cloned(), 0);
+    assert_eq!(a.dropped(), 1);
+    assert_eq!(b.dropped(), 0);
+    assert_eq!(c.dropped(), 0);
+    assert_eq!(map.len(), 3);
+
+    drop(map);
+    assert_eq!(a.cloned(), 1);
+    assert_eq!(b.cloned(), 1);
+    assert_eq!(c.cloned(), 0);
+    assert_eq!(a.dropped(), 2);
+    assert_eq!(b.dropped(), 1);
+    assert_eq!(c.dropped(), 1);
 }
 
 #[test]
@@ -1609,6 +1746,47 @@ fn test_send() {
 }
 
 #[allow(dead_code)]
+fn test_ord_absence() {
+    fn map<K>(mut map: BTreeMap<K, ()>) {
+        map.is_empty();
+        map.len();
+        map.clear();
+        map.iter();
+        map.iter_mut();
+        map.keys();
+        map.values();
+        map.values_mut();
+        if true {
+            map.into_values();
+        } else if true {
+            map.into_iter();
+        } else {
+            map.into_keys();
+        }
+    }
+
+    fn map_debug<K: Debug>(mut map: BTreeMap<K, ()>) {
+        format!("{:?}", map);
+        format!("{:?}", map.iter());
+        format!("{:?}", map.iter_mut());
+        format!("{:?}", map.keys());
+        format!("{:?}", map.values());
+        format!("{:?}", map.values_mut());
+        if true {
+            format!("{:?}", map.into_iter());
+        } else if true {
+            format!("{:?}", map.into_keys());
+        } else {
+            format!("{:?}", map.into_values());
+        }
+    }
+
+    fn map_clone<K: Clone>(mut map: BTreeMap<K, ()>) {
+        map.clone_from(&map.clone());
+    }
+}
+
+#[allow(dead_code)]
 fn test_const() {
     const MAP: &'static BTreeMap<(), ()> = &BTreeMap::new();
     const LEN: usize = MAP.len();
@@ -1621,11 +1799,11 @@ fn test_occupied_entry_key() {
     let key = "hello there";
     let value = "value goes here";
     assert!(a.is_empty());
-    a.insert(key.clone(), value.clone());
+    a.insert(key, value);
     assert_eq!(a.len(), 1);
     assert_eq!(a[key], value);
 
-    match a.entry(key.clone()) {
+    match a.entry(key) {
         Vacant(_) => panic!(),
         Occupied(e) => assert_eq!(key, *e.key()),
     }
@@ -1641,11 +1819,11 @@ fn test_vacant_entry_key() {
     let value = "value goes here";
 
     assert!(a.is_empty());
-    match a.entry(key.clone()) {
+    match a.entry(key) {
         Occupied(_) => panic!(),
         Vacant(e) => {
             assert_eq!(key, *e.key());
-            e.insert(value.clone());
+            e.insert(value);
         }
     }
     assert_eq!(a.len(), 1);
@@ -1679,17 +1857,29 @@ fn test_first_last_entry() {
 }
 
 #[test]
-fn test_insert_into_full_left() {
-    let mut map: BTreeMap<_, _> = (0..NODE_CAPACITY).map(|i| (i * 2, ())).collect();
-    assert!(map.insert(NODE_CAPACITY, ()).is_none());
-    map.check();
+fn test_insert_into_full_height_0() {
+    let size = NODE_CAPACITY;
+    for pos in 0..=size {
+        let mut map: BTreeMap<_, _> = (0..size).map(|i| (i * 2 + 1, ())).collect();
+        assert!(map.insert(pos * 2, ()).is_none());
+        map.check();
+    }
 }
 
 #[test]
-fn test_insert_into_full_right() {
-    let mut map: BTreeMap<_, _> = (0..NODE_CAPACITY).map(|i| (i * 2, ())).collect();
-    assert!(map.insert(NODE_CAPACITY + 2, ()).is_none());
-    map.check();
+fn test_insert_into_full_height_1() {
+    let size = NODE_CAPACITY + 1 + NODE_CAPACITY;
+    for pos in 0..=size {
+        let mut map: BTreeMap<_, _> = (0..size).map(|i| (i * 2 + 1, ())).collect();
+        map.compact();
+        let root_node = map.root.as_ref().unwrap().reborrow();
+        assert_eq!(root_node.len(), 1);
+        assert_eq!(root_node.first_leaf_edge().into_node().len(), NODE_CAPACITY);
+        assert_eq!(root_node.last_leaf_edge().into_node().len(), NODE_CAPACITY);
+
+        assert!(map.insert(pos * 2, ()).is_none());
+        map.check();
+    }
 }
 
 macro_rules! create_append_test {
@@ -1750,29 +1940,21 @@ create_append_test!(test_append_1700, 1700);
 
 #[test]
 fn test_append_drop_leak() {
-    static DROPS: AtomicUsize = AtomicUsize::new(0);
-
-    struct D;
-
-    impl Drop for D {
-        fn drop(&mut self) {
-            if DROPS.fetch_add(1, SeqCst) == 0 {
-                panic!("panic in `drop`");
-            }
-        }
-    }
-
+    let a = CrashTestDummy::new(0);
+    let b = CrashTestDummy::new(1);
+    let c = CrashTestDummy::new(2);
     let mut left = BTreeMap::new();
     let mut right = BTreeMap::new();
-    left.insert(0, D);
-    left.insert(1, D); // first to be dropped during append
-    left.insert(2, D);
-    right.insert(1, D);
-    right.insert(2, D);
+    left.insert(a.spawn(Panic::Never), ());
+    left.insert(b.spawn(Panic::InDrop), ()); // first duplicate key, dropped during append
+    left.insert(c.spawn(Panic::Never), ());
+    right.insert(b.spawn(Panic::Never), ());
+    right.insert(c.spawn(Panic::Never), ());
 
     catch_unwind(move || left.append(&mut right)).unwrap_err();
-
-    assert_eq!(DROPS.load(SeqCst), 5);
+    assert_eq!(a.dropped(), 1);
+    assert_eq!(b.dropped(), 1); // should be 2 were it not for Rust issue #47949
+    assert_eq!(c.dropped(), 2);
 }
 
 #[test]
@@ -1797,7 +1979,6 @@ fn test_append_ord_chaos() {
 }
 
 fn rand_data(len: usize) -> Vec<(u32, u32)> {
-    assert!(len * 2 <= 70029); // from that point on numbers repeat
     let mut rng = DeterministicRng::new();
     Vec::from_iter((0..len).map(|_| (rng.next(), rng.next())))
 }
@@ -1863,6 +2044,25 @@ fn test_split_off_tiny_right_height_2() {
 }
 
 #[test]
+fn test_split_off_halfway() {
+    let mut rng = DeterministicRng::new();
+    for &len in &[NODE_CAPACITY, 25, 50, 75, 100] {
+        let mut data = Vec::from_iter((0..len).map(|_| (rng.next(), ())));
+        // Insertion in non-ascending order creates some variation in node length.
+        let mut map = BTreeMap::from_iter(data.iter().copied());
+        data.sort();
+        let small_keys = data.iter().take(len / 2).map(|kv| kv.0);
+        let large_keys = data.iter().skip(len / 2).map(|kv| kv.0);
+        let split_key = large_keys.clone().next().unwrap();
+        let right = map.split_off(&split_key);
+        map.check();
+        right.check();
+        assert!(map.keys().copied().eq(small_keys));
+        assert!(right.keys().copied().eq(large_keys));
+    }
+}
+
+#[test]
 fn test_split_off_large_random_sorted() {
     // Miri is too slow
     let mut data = if cfg!(miri) { rand_data(529) } else { rand_data(1529) };
@@ -1881,51 +2081,42 @@ fn test_split_off_large_random_sorted() {
 
 #[test]
 fn test_into_iter_drop_leak_height_0() {
-    static DROPS: AtomicUsize = AtomicUsize::new(0);
-
-    struct D;
-
-    impl Drop for D {
-        fn drop(&mut self) {
-            if DROPS.fetch_add(1, SeqCst) == 3 {
-                panic!("panic in `drop`");
-            }
-        }
-    }
-
+    let a = CrashTestDummy::new(0);
+    let b = CrashTestDummy::new(1);
+    let c = CrashTestDummy::new(2);
+    let d = CrashTestDummy::new(3);
+    let e = CrashTestDummy::new(4);
     let mut map = BTreeMap::new();
-    map.insert("a", D);
-    map.insert("b", D);
-    map.insert("c", D);
-    map.insert("d", D);
-    map.insert("e", D);
+    map.insert("a", a.spawn(Panic::Never));
+    map.insert("b", b.spawn(Panic::Never));
+    map.insert("c", c.spawn(Panic::Never));
+    map.insert("d", d.spawn(Panic::InDrop));
+    map.insert("e", e.spawn(Panic::Never));
 
     catch_unwind(move || drop(map.into_iter())).unwrap_err();
 
-    assert_eq!(DROPS.load(SeqCst), 5);
+    assert_eq!(a.dropped(), 1);
+    assert_eq!(b.dropped(), 1);
+    assert_eq!(c.dropped(), 1);
+    assert_eq!(d.dropped(), 1);
+    assert_eq!(e.dropped(), 1);
 }
 
 #[test]
 fn test_into_iter_drop_leak_height_1() {
     let size = MIN_INSERTS_HEIGHT_1;
-    static DROPS: AtomicUsize = AtomicUsize::new(0);
-    static PANIC_POINT: AtomicUsize = AtomicUsize::new(0);
-
-    struct D;
-    impl Drop for D {
-        fn drop(&mut self) {
-            if DROPS.fetch_add(1, SeqCst) == PANIC_POINT.load(SeqCst) {
-                panic!("panic in `drop`");
-            }
-        }
-    }
-
     for panic_point in vec![0, 1, size - 2, size - 1] {
-        DROPS.store(0, SeqCst);
-        PANIC_POINT.store(panic_point, SeqCst);
-        let map: BTreeMap<_, _> = (0..size).map(|i| (i, D)).collect();
+        let dummies: Vec<_> = (0..size).map(|i| CrashTestDummy::new(i)).collect();
+        let map: BTreeMap<_, _> = (0..size)
+            .map(|i| {
+                let panic = if i == panic_point { Panic::InDrop } else { Panic::Never };
+                (dummies[i].spawn(Panic::Never), dummies[i].spawn(panic))
+            })
+            .collect();
         catch_unwind(move || drop(map.into_iter())).unwrap_err();
-        assert_eq!(DROPS.load(SeqCst), size);
+        for i in 0..size {
+            assert_eq!(dummies[i].dropped(), 2);
+        }
     }
 }
 

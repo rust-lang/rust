@@ -7,11 +7,18 @@ on:
 jobs:
   build:
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
 
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+          - os: macos-latest
+          # cross-compile from Linux to Windows using mingw
+          - os: ubuntu-latest
+            env:
+              TARGET_TRIPLE: x86_64-pc-windows-gnu
 
     steps:
     - uses: actions/checkout@v2
@@ -36,6 +43,12 @@ jobs:
         path: target
         key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
 
+    - name: Install MinGW toolchain and wine
+      if: matrix.os == 'ubuntu-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
+      run: |
+        sudo apt-get install -y gcc-mingw-w64-x86-64 wine-stable
+        rustup target add x86_64-pc-windows-gnu
+
     - name: Prepare dependencies
       run: |
         git config --global user.email "user@example.com"
@@ -43,6 +56,8 @@ jobs:
         ./prepare.sh
 
     - name: Test
+      env:
+        TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
       run: |
         # Enable backtraces for easier debugging
         export RUST_BACKTRACE=1
@@ -51,12 +66,16 @@ jobs:
         export COMPILE_RUNS=2
         export RUN_RUNS=2
 
+        # Enable extra checks
+        export CG_CLIF_ENABLE_VERIFIER=1
+
         ./test.sh
 
     - name: Package prebuilt cg_clif
       run: tar cvfJ cg_clif.tar.xz build
 
     - name: Upload prebuilt cg_clif
+      if: matrix.env.TARGET_TRIPLE != 'x86_64-pc-windows-gnu'
       uses: actions/upload-artifact@v2
       with:
         name: cg_clif-${{ runner.os }}

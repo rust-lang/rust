@@ -22,6 +22,9 @@ use super::Recover;
 /// It is a logic error for an item to be modified in such a way that the item's ordering relative
 /// to any other item, as determined by the [`Ord`] trait, changes while it is in the set. This is
 /// normally only possible through [`Cell`], [`RefCell`], global state, I/O, or unsafe code.
+/// The behavior resulting from such a logic error is not specified, but will not result in
+/// undefined behavior. This could include panics, incorrect results, aborts, memory leaks, and
+/// non-termination.
 ///
 /// [`Ord`]: core::cmp::Ord
 /// [`Cell`]: core::cell::Cell
@@ -58,6 +61,7 @@ use super::Recover;
 /// ```
 #[derive(Hash, PartialEq, Eq, Ord, PartialOrd)]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "BTreeSet")]
 pub struct BTreeSet<T> {
     map: BTreeMap<T, ()>,
 }
@@ -219,7 +223,7 @@ impl<T: fmt::Debug> fmt::Debug for Union<'_, T> {
 // and it's a power of two to make that division cheap.
 const ITER_PERFORMANCE_TIPPING_SIZE_DIFF: usize = 16;
 
-impl<T: Ord> BTreeSet<T> {
+impl<T> BTreeSet<T> {
     /// Makes a new, empty `BTreeSet`.
     ///
     /// Does not allocate anything on its own.
@@ -234,7 +238,10 @@ impl<T: Ord> BTreeSet<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
-    pub const fn new() -> BTreeSet<T> {
+    pub const fn new() -> BTreeSet<T>
+    where
+        T: Ord,
+    {
         BTreeSet { map: BTreeMap::new() }
     }
 
@@ -264,7 +271,7 @@ impl<T: Ord> BTreeSet<T> {
     pub fn range<K: ?Sized, R>(&self, range: R) -> Range<'_, T>
     where
         K: Ord,
-        T: Borrow<K>,
+        T: Borrow<K> + Ord,
         R: RangeBounds<K>,
     {
         Range { iter: self.map.range(range) }
@@ -291,7 +298,10 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(diff, [1]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn difference<'a>(&'a self, other: &'a BTreeSet<T>) -> Difference<'a, T> {
+    pub fn difference<'a>(&'a self, other: &'a BTreeSet<T>) -> Difference<'a, T>
+    where
+        T: Ord,
+    {
         let (self_min, self_max) =
             if let (Some(self_min), Some(self_max)) = (self.first(), self.last()) {
                 (self_min, self_max)
@@ -349,10 +359,10 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(sym_diff, [1, 3]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn symmetric_difference<'a>(
-        &'a self,
-        other: &'a BTreeSet<T>,
-    ) -> SymmetricDifference<'a, T> {
+    pub fn symmetric_difference<'a>(&'a self, other: &'a BTreeSet<T>) -> SymmetricDifference<'a, T>
+    where
+        T: Ord,
+    {
         SymmetricDifference(MergeIterInner::new(self.iter(), other.iter()))
     }
 
@@ -377,7 +387,10 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(intersection, [2]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn intersection<'a>(&'a self, other: &'a BTreeSet<T>) -> Intersection<'a, T> {
+    pub fn intersection<'a>(&'a self, other: &'a BTreeSet<T>) -> Intersection<'a, T>
+    where
+        T: Ord,
+    {
         let (self_min, self_max) =
             if let (Some(self_min), Some(self_max)) = (self.first(), self.last()) {
                 (self_min, self_max)
@@ -425,7 +438,10 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(union, [1, 2]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn union<'a>(&'a self, other: &'a BTreeSet<T>) -> Union<'a, T> {
+    pub fn union<'a>(&'a self, other: &'a BTreeSet<T>) -> Union<'a, T>
+    where
+        T: Ord,
+    {
         Union(MergeIterInner::new(self.iter(), other.iter()))
     }
 
@@ -464,7 +480,7 @@ impl<T: Ord> BTreeSet<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool
     where
-        T: Borrow<Q>,
+        T: Borrow<Q> + Ord,
         Q: Ord,
     {
         self.map.contains_key(value)
@@ -488,7 +504,7 @@ impl<T: Ord> BTreeSet<T> {
     #[stable(feature = "set_recovery", since = "1.9.0")]
     pub fn get<Q: ?Sized>(&self, value: &Q) -> Option<&T>
     where
-        T: Borrow<Q>,
+        T: Borrow<Q> + Ord,
         Q: Ord,
     {
         Recover::get(&self.map, value)
@@ -512,7 +528,10 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(a.is_disjoint(&b), false);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_disjoint(&self, other: &BTreeSet<T>) -> bool {
+    pub fn is_disjoint(&self, other: &BTreeSet<T>) -> bool
+    where
+        T: Ord,
+    {
         self.intersection(other).next().is_none()
     }
 
@@ -534,7 +553,10 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(set.is_subset(&sup), false);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_subset(&self, other: &BTreeSet<T>) -> bool {
+    pub fn is_subset(&self, other: &BTreeSet<T>) -> bool
+    where
+        T: Ord,
+    {
         // Same result as self.difference(other).next().is_none()
         // but the code below is faster (hugely in some cases).
         if self.len() > other.len() {
@@ -610,7 +632,10 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(set.is_superset(&sub), true);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_superset(&self, other: &BTreeSet<T>) -> bool {
+    pub fn is_superset(&self, other: &BTreeSet<T>) -> bool
+    where
+        T: Ord,
+    {
         other.is_subset(self)
     }
 
@@ -625,15 +650,18 @@ impl<T: Ord> BTreeSet<T> {
     /// #![feature(map_first_last)]
     /// use std::collections::BTreeSet;
     ///
-    /// let mut map = BTreeSet::new();
-    /// assert_eq!(map.first(), None);
-    /// map.insert(1);
-    /// assert_eq!(map.first(), Some(&1));
-    /// map.insert(2);
-    /// assert_eq!(map.first(), Some(&1));
+    /// let mut set = BTreeSet::new();
+    /// assert_eq!(set.first(), None);
+    /// set.insert(1);
+    /// assert_eq!(set.first(), Some(&1));
+    /// set.insert(2);
+    /// assert_eq!(set.first(), Some(&1));
     /// ```
     #[unstable(feature = "map_first_last", issue = "62924")]
-    pub fn first(&self) -> Option<&T> {
+    pub fn first(&self) -> Option<&T>
+    where
+        T: Ord,
+    {
         self.map.first_key_value().map(|(k, _)| k)
     }
 
@@ -648,15 +676,18 @@ impl<T: Ord> BTreeSet<T> {
     /// #![feature(map_first_last)]
     /// use std::collections::BTreeSet;
     ///
-    /// let mut map = BTreeSet::new();
-    /// assert_eq!(map.first(), None);
-    /// map.insert(1);
-    /// assert_eq!(map.last(), Some(&1));
-    /// map.insert(2);
-    /// assert_eq!(map.last(), Some(&2));
+    /// let mut set = BTreeSet::new();
+    /// assert_eq!(set.last(), None);
+    /// set.insert(1);
+    /// assert_eq!(set.last(), Some(&1));
+    /// set.insert(2);
+    /// assert_eq!(set.last(), Some(&2));
     /// ```
     #[unstable(feature = "map_first_last", issue = "62924")]
-    pub fn last(&self) -> Option<&T> {
+    pub fn last(&self) -> Option<&T>
+    where
+        T: Ord,
+    {
         self.map.last_key_value().map(|(k, _)| k)
     }
 
@@ -678,8 +709,11 @@ impl<T: Ord> BTreeSet<T> {
     /// assert!(set.is_empty());
     /// ```
     #[unstable(feature = "map_first_last", issue = "62924")]
-    pub fn pop_first(&mut self) -> Option<T> {
-        self.map.first_entry().map(|entry| entry.remove_entry().0)
+    pub fn pop_first(&mut self) -> Option<T>
+    where
+        T: Ord,
+    {
+        self.map.pop_first().map(|kv| kv.0)
     }
 
     /// Removes the last value from the set and returns it, if any.
@@ -700,8 +734,11 @@ impl<T: Ord> BTreeSet<T> {
     /// assert!(set.is_empty());
     /// ```
     #[unstable(feature = "map_first_last", issue = "62924")]
-    pub fn pop_last(&mut self) -> Option<T> {
-        self.map.last_entry().map(|entry| entry.remove_entry().0)
+    pub fn pop_last(&mut self) -> Option<T>
+    where
+        T: Ord,
+    {
+        self.map.pop_last().map(|kv| kv.0)
     }
 
     /// Adds a value to the set.
@@ -725,7 +762,10 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(set.len(), 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn insert(&mut self, value: T) -> bool {
+    pub fn insert(&mut self, value: T) -> bool
+    where
+        T: Ord,
+    {
         self.map.insert(value, ()).is_none()
     }
 
@@ -745,7 +785,10 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(set.get(&[][..]).unwrap().capacity(), 10);
     /// ```
     #[stable(feature = "set_recovery", since = "1.9.0")]
-    pub fn replace(&mut self, value: T) -> Option<T> {
+    pub fn replace(&mut self, value: T) -> Option<T>
+    where
+        T: Ord,
+    {
         Recover::replace(&mut self.map, value)
     }
 
@@ -767,10 +810,11 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(set.remove(&2), true);
     /// assert_eq!(set.remove(&2), false);
     /// ```
+    #[doc(alias = "delete")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove<Q: ?Sized>(&mut self, value: &Q) -> bool
     where
-        T: Borrow<Q>,
+        T: Borrow<Q> + Ord,
         Q: Ord,
     {
         self.map.remove(value).is_some()
@@ -794,7 +838,7 @@ impl<T: Ord> BTreeSet<T> {
     #[stable(feature = "set_recovery", since = "1.9.0")]
     pub fn take<Q: ?Sized>(&mut self, value: &Q) -> Option<T>
     where
-        T: Borrow<Q>,
+        T: Borrow<Q> + Ord,
         Q: Ord,
     {
         Recover::take(&mut self.map, value)
@@ -819,6 +863,7 @@ impl<T: Ord> BTreeSet<T> {
     #[unstable(feature = "btree_retain", issue = "79025")]
     pub fn retain<F>(&mut self, mut f: F)
     where
+        T: Ord,
         F: FnMut(&T) -> bool,
     {
         self.drain_filter(|v| !f(v));
@@ -853,7 +898,10 @@ impl<T: Ord> BTreeSet<T> {
     /// assert!(a.contains(&5));
     /// ```
     #[stable(feature = "btree_append", since = "1.11.0")]
-    pub fn append(&mut self, other: &mut Self) {
+    pub fn append(&mut self, other: &mut Self)
+    where
+        T: Ord,
+    {
         self.map.append(&mut other.map);
     }
 
@@ -889,7 +937,7 @@ impl<T: Ord> BTreeSet<T> {
     #[stable(feature = "btree_split_off", since = "1.11.0")]
     pub fn split_off<Q: ?Sized + Ord>(&mut self, key: &Q) -> Self
     where
-        T: Borrow<Q>,
+        T: Borrow<Q> + Ord,
     {
         BTreeSet { map: self.map.split_off(key) }
     }
@@ -924,13 +972,12 @@ impl<T: Ord> BTreeSet<T> {
     #[unstable(feature = "btree_drain_filter", issue = "70530")]
     pub fn drain_filter<'a, F>(&'a mut self, pred: F) -> DrainFilter<'a, T, F>
     where
+        T: Ord,
         F: 'a + FnMut(&T) -> bool,
     {
         DrainFilter { pred, inner: self.map.drain_filter_inner() }
     }
-}
 
-impl<T> BTreeSet<T> {
     /// Gets an iterator that visits the values in the `BTreeSet` in ascending order.
     ///
     /// # Examples
@@ -975,6 +1022,7 @@ impl<T> BTreeSet<T> {
     /// v.insert(1);
     /// assert_eq!(v.len(), 1);
     /// ```
+    #[doc(alias = "length")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_btree_new", issue = "71835")]
     pub const fn len(&self) -> usize {

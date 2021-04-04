@@ -1,0 +1,16 @@
+COPYRIGHT.txt
+FiraSans-LICENSE.txt
+FiraSans-Medium.woff
+FiraSans-Medium.woff2
+FiraSans-Regular.woff
+FiraSans-Regular.woff2
+LICENSE-APACHE.txt
+LICENSE-MIT.txt
+SourceCodePro-It.ttf.woff
+SourceCodePro-LICENSE.txt
+SourceCodePro-Regular.ttf.woff
+SourceCodePro-Semibold.ttf.woff
+SourceSerifPro-Bold.ttf.woff
+SourceSerifPro-It.ttf.woff
+SourceSerifPro-LICENSE.md
+SourceSerifPro-Regular.ttf.woff

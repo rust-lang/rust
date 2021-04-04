@@ -5,7 +5,16 @@ LL |     type Item = impl Bug;
    |                 ^^^^^^^^
    |
    = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
-   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+   = help: add `#![feature(min_type_alias_impl_trait)]` to the crate attributes to enable
+
+error[E0658]: type alias impl trait is not permitted here
+  --> $DIR/issue-60371.rs:14:37
+   |
+LL |     const FUN: fn() -> Self::Item = || ();
+   |                                     ^^^^^
+   |
+   = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
+   = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
 
 error[E0277]: the trait bound `(): Bug` is not satisfied
   --> $DIR/issue-60371.rs:10:17
@@ -22,7 +31,7 @@ error: could not find defining uses
 LL |     type Item = impl Bug;
    |                 ^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0277, E0658.
 For more information about an error, try `rustc --explain E0277`.

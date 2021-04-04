@@ -6,6 +6,7 @@ LL |     let _ = async || {};
    |
    = note: see issue #62290 <https://github.com/rust-lang/rust/issues/62290> for more information
    = help: add `#![feature(async_closure)]` to the crate attributes to enable
+   = help: to use an async block, remove the `||`: `async {`
 
 error: aborting due to previous error
 

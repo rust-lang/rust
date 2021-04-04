@@ -40,10 +40,8 @@ fn to_format_or_not_to_format() {
     }
 
     #[cfg(std)] {
-        // FIXME: compile-fail says "expected error not found" even though
-        //        rustc does emit an error
-        // eprintln!("{}",);
-        // <DISABLED> [std]~^ ERROR no arguments
+        eprintln!("{}",);
+        //[std]~^ ERROR no arguments
     }
 
     #[cfg(std)] {
@@ -63,10 +61,8 @@ fn to_format_or_not_to_format() {
     }
 
     #[cfg(std)] {
-        // FIXME: compile-fail says "expected error not found" even though
-        //        rustc does emit an error
-        // println!("{}",);
-        // <DISABLED> [std]~^ ERROR no arguments
+        println!("{}",);
+        //[std]~^ ERROR no arguments
     }
 
     unimplemented!("{}",);
@@ -82,11 +78,9 @@ fn to_format_or_not_to_format() {
             //[core]~^ ERROR no arguments
             //[std]~^^ ERROR no arguments
 
-            // FIXME: compile-fail says "expected error not found" even though
-            //        rustc does emit an error
-            // writeln!(f, "{}",)?;
-            // <DISABLED> [core]~^ ERROR no arguments
-            // <DISABLED> [std]~^^ ERROR no arguments
+            writeln!(f, "{}",)?;
+            //[core]~^ ERROR no arguments
+            //[std]~^^ ERROR no arguments
             Ok(())
         }
     }

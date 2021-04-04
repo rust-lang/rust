@@ -1,6 +1,7 @@
 use crate::def::{CtorOf, DefKind, Res};
 use crate::def_id::DefId;
 use crate::hir::{self, HirId, PatKind};
+use rustc_data_structures::stable_set::FxHashSet;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
@@ -89,26 +90,6 @@ impl hir::Pat<'_> {
         })
     }
 
-    /// Checks if the pattern contains any patterns that bind something to
-    /// an ident, e.g., `foo`, or `Foo(foo)` or `foo @ Bar(..)`.
-    pub fn contains_bindings(&self) -> bool {
-        self.satisfies(|p| matches!(p.kind, PatKind::Binding(..)))
-    }
-
-    /// Checks if the pattern satisfies the given predicate on some sub-pattern.
-    fn satisfies(&self, pred: impl Fn(&hir::Pat<'_>) -> bool) -> bool {
-        let mut satisfies = false;
-        self.walk_short(|p| {
-            if pred(p) {
-                satisfies = true;
-                false // Found one, can short circuit now.
-            } else {
-                true
-            }
-        });
-        satisfies
-    }
-
     pub fn simple_ident(&self) -> Option<Ident> {
         match self.kind {
             PatKind::Binding(
@@ -138,8 +119,10 @@ impl hir::Pat<'_> {
             }
             _ => true,
         });
-        variants.sort();
-        variants.dedup();
+        // We remove duplicates by inserting into a `FxHashSet` to avoid re-ordering
+        // the bounds
+        let mut duplicates = FxHashSet::default();
+        variants.retain(|def_id| duplicates.insert(*def_id));
         variants
     }
 

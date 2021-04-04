@@ -1,2 +1,2 @@
-#[my_attr = !] //~ ERROR unexpected token: `!`
+#[my_attr = !] //~ ERROR expected expression, found `]`
 fn main() {}

@@ -1,4 +1,0 @@
-error: the crate `depends` cannot depend on a crate that needs a panic runtime, but it depends on `needs_panic_runtime`
-
-error: aborting due to previous error
-

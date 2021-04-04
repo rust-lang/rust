@@ -140,7 +140,7 @@ impl AscribeUserTypeCx<'me, 'tcx> {
             self.relate(self_ty, Variance::Invariant, impl_self_ty)?;
 
             self.prove_predicate(
-                ty::PredicateAtom::WellFormed(impl_self_ty.into()).to_predicate(self.tcx()),
+                ty::PredicateKind::WellFormed(impl_self_ty.into()).to_predicate(self.tcx()),
             );
         }
 
@@ -155,7 +155,7 @@ impl AscribeUserTypeCx<'me, 'tcx> {
         // them?  This would only be relevant if some input
         // type were ill-formed but did not appear in `ty`,
         // which...could happen with normalization...
-        self.prove_predicate(ty::PredicateAtom::WellFormed(ty.into()).to_predicate(self.tcx()));
+        self.prove_predicate(ty::PredicateKind::WellFormed(ty.into()).to_predicate(self.tcx()));
         Ok(())
     }
 }

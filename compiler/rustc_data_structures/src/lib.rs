@@ -13,10 +13,8 @@
 #![feature(unboxed_closures)]
 #![feature(generator_trait)]
 #![feature(fn_traits)]
-#![feature(int_bits_const)]
 #![feature(min_specialization)]
-#![cfg_attr(bootstrap, feature(optin_builtin_traits))]
-#![cfg_attr(not(bootstrap), feature(auto_traits))]
+#![feature(auto_traits)]
 #![feature(nll)]
 #![feature(allow_internal_unstable)]
 #![feature(hash_raw_entry)]
@@ -27,7 +25,6 @@
 #![feature(thread_id_value)]
 #![feature(extend_one)]
 #![feature(const_panic)]
-#![feature(min_const_generics)]
 #![feature(new_uninit)]
 #![feature(once_cell)]
 #![feature(maybe_uninit_uninit_array)]
@@ -71,7 +68,6 @@ pub mod base_n;
 pub mod binary_search_util;
 pub mod box_region;
 pub mod captures;
-pub mod const_cstr;
 pub mod flock;
 pub mod functor;
 pub mod fx;
@@ -88,6 +84,7 @@ pub mod snapshot_map;
 pub mod stable_map;
 pub mod svh;
 pub use ena::snapshot_vec;
+pub mod memmap;
 pub mod sorted_map;
 pub mod stable_set;
 #[macro_use]

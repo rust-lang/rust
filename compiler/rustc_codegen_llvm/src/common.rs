@@ -314,6 +314,7 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 }
 
+/// Get the [LLVM type][Type] of a [`Value`].
 pub fn val_ty(v: &Value) -> &Type {
     unsafe { llvm::LLVMTypeOf(v) }
 }

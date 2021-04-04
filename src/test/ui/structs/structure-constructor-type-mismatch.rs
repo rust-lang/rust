@@ -1,3 +1,5 @@
+// ignore-tidy-linelength
+
 struct Point<T> {
     x: T,
     y: T,
@@ -45,13 +47,13 @@ fn main() {
         y: 8,
     };
 
-    let pt3 = PointF::<i32> { //~ ERROR wrong number of type arguments
+    let pt3 = PointF::<i32> { //~ ERROR this type alias takes 0 type arguments but 1 type argument was supplied
         x: 9,  //~ ERROR mismatched types
         y: 10, //~ ERROR mismatched types
     };
 
     match (Point { x: 1, y: 2 }) {
-        PointF::<u32> { .. } => {} //~ ERROR wrong number of type arguments
+        PointF::<u32> { .. } => {} //~ ERROR this type alias takes 0 type arguments but 1 type argument was supplied
         //~^ ERROR mismatched types
     }
 

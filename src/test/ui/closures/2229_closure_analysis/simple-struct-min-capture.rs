@@ -32,9 +32,11 @@ fn main() {
     //~| ERROR: Min Capture analysis includes:
         p.x += 10;
         //~^ NOTE: Capturing p[(0, 0)] -> MutBorrow
-        //~| NOTE: Min Capture p[] -> MutBorrow
+        //~| NOTE: p[] captured as MutBorrow here
         println!("{:?}", p);
         //~^ NOTE: Capturing p[] -> ImmBorrow
+        //~| NOTE: Min Capture p[] -> MutBorrow
+        //~| NOTE: p[] used here
     };
 
     c();

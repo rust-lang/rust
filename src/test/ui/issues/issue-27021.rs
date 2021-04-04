@@ -1,6 +1,6 @@
 // run-pass
 
-// This test is bogus (i.e., should be compile-fail) during the period
+// This test is bogus (i.e., should be check-fail) during the period
 // where #54986 is implemented and #54987 is *not* implemented. For
 // now: just ignore it
 //

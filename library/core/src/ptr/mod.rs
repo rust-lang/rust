@@ -1,6 +1,6 @@
 //! Manually manage memory through raw pointers.
 //!
-//! *[See also the pointer primitive types](../../std/primitive.pointer.html).*
+//! *[See also the pointer primitive types](pointer).*
 //!
 //! # Safety
 //!
@@ -55,19 +55,27 @@
 //! has size 0, i.e., even if memory is not actually touched. Consider using
 //! [`NonNull::dangling`] in such cases.
 //!
+//! ## Allocated object
+//!
+//! For several operations, such as [`offset`] or field projections (`expr.field`), the notion of an
+//! "allocated object" becomes relevant. An allocated object is a contiguous region of memory.
+//! Common examples of allocated objects include stack-allocated variables (each variable is a
+//! separate allocated object), heap allocations (each allocation created by the global allocator is
+//! a separate allocated object), and `static` variables.
+//!
 //! [aliasing]: ../../nomicon/aliasing.html
 //! [book]: ../../book/ch19-01-unsafe-rust.html#dereferencing-a-raw-pointer
 //! [ub]: ../../reference/behavior-considered-undefined.html
 //! [zst]: ../../nomicon/exotic-sizes.html#zero-sized-types-zsts
 //! [atomic operations]: crate::sync::atomic
-//! [`offset`]: ../../std/primitive.pointer.html#method.offset
+//! [`offset`]: pointer::offset
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::cmp::Ordering;
 use crate::fmt;
 use crate::hash;
-use crate::intrinsics::{self, abort, is_aligned_and_not_null, is_nonoverlapping};
+use crate::intrinsics::{self, abort, is_aligned_and_not_null};
 use crate::mem::{self, MaybeUninit};
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -81,6 +89,14 @@ pub use crate::intrinsics::copy;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(inline)]
 pub use crate::intrinsics::write_bytes;
+
+#[cfg(not(bootstrap))]
+mod metadata;
+#[cfg(not(bootstrap))]
+pub(crate) use metadata::PtrRepr;
+#[cfg(not(bootstrap))]
+#[unstable(feature = "ptr_metadata", issue = "81513")]
+pub use metadata::{from_raw_parts, from_raw_parts_mut, metadata, DynMetadata, Pointee, Thin};
 
 mod non_null;
 #[stable(feature = "nonnull", since = "1.25.0")]
@@ -197,7 +213,7 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 #[inline(always)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
-#[rustc_const_stable(feature = "const_ptr_null", since = "1.32.0")]
+#[rustc_const_stable(feature = "const_ptr_null", since = "1.24.0")]
 pub const fn null<T>() -> *const T {
     0 as *const T
 }
@@ -215,11 +231,12 @@ pub const fn null<T>() -> *const T {
 #[inline(always)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
-#[rustc_const_stable(feature = "const_ptr_null", since = "1.32.0")]
+#[rustc_const_stable(feature = "const_ptr_null", since = "1.24.0")]
 pub const fn null_mut<T>() -> *mut T {
     0 as *mut T
 }
 
+#[cfg(bootstrap)]
 #[repr(C)]
 pub(crate) union Repr<T> {
     pub(crate) rust: *const [T],
@@ -227,12 +244,14 @@ pub(crate) union Repr<T> {
     pub(crate) raw: FatPtr<T>,
 }
 
+#[cfg(bootstrap)]
 #[repr(C)]
 pub(crate) struct FatPtr<T> {
     data: *const T,
     pub(crate) len: usize,
 }
 
+#[cfg(bootstrap)]
 // Manual impl needed to avoid `T: Clone` bound.
 impl<T> Clone for FatPtr<T> {
     fn clone(&self) -> Self {
@@ -240,6 +259,7 @@ impl<T> Clone for FatPtr<T> {
     }
 }
 
+#[cfg(bootstrap)]
 // Manual impl needed to avoid `T: Copy` bound.
 impl<T> Copy for FatPtr<T> {}
 
@@ -267,10 +287,15 @@ impl<T> Copy for FatPtr<T> {}
 #[stable(feature = "slice_from_raw_parts", since = "1.42.0")]
 #[rustc_const_unstable(feature = "const_slice_from_raw_parts", issue = "67456")]
 pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
-    // SAFETY: Accessing the value from the `Repr` union is safe since *const [T]
-    // and FatPtr have the same memory layouts. Only std can make this
-    // guarantee.
-    unsafe { Repr { raw: FatPtr { data, len } }.rust }
+    #[cfg(bootstrap)]
+    {
+        // SAFETY: Accessing the value from the `Repr` union is safe since *const [T]
+        // and FatPtr have the same memory layouts. Only std can make this
+        // guarantee.
+        unsafe { Repr { raw: FatPtr { data, len } }.rust }
+    }
+    #[cfg(not(bootstrap))]
+    from_raw_parts(data.cast(), len)
 }
 
 /// Performs the same functionality as [`slice_from_raw_parts`], except that a
@@ -302,9 +327,14 @@ pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
 #[stable(feature = "slice_from_raw_parts", since = "1.42.0")]
 #[rustc_const_unstable(feature = "const_slice_from_raw_parts", issue = "67456")]
 pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
-    // SAFETY: Accessing the value from the `Repr` union is safe since *mut [T]
-    // and FatPtr have the same memory layouts
-    unsafe { Repr { raw: FatPtr { data, len } }.rust_mut }
+    #[cfg(bootstrap)]
+    {
+        // SAFETY: Accessing the value from the `Repr` union is safe since *mut [T]
+        // and FatPtr have the same memory layouts
+        unsafe { Repr { raw: FatPtr { data, len } }.rust_mut }
+    }
+    #[cfg(not(bootstrap))]
+    from_raw_parts_mut(data.cast(), len)
 }
 
 /// Swaps the values at two mutable locations of the same type, without
@@ -372,7 +402,8 @@ pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
+#[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+pub const unsafe fn swap<T>(x: *mut T, y: *mut T) {
     // Give ourselves some scratch space to work with.
     // We do not have to worry about drops: `MaybeUninit` does nothing when dropped.
     let mut tmp = MaybeUninit::<T>::uninit();
@@ -429,16 +460,8 @@ pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
 /// ```
 #[inline]
 #[stable(feature = "swap_nonoverlapping", since = "1.27.0")]
-pub unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
-    if cfg!(debug_assertions)
-        && !(is_aligned_and_not_null(x)
-            && is_aligned_and_not_null(y)
-            && is_nonoverlapping(x, y, count))
-    {
-        // Not panicking to keep codegen impact smaller.
-        abort();
-    }
-
+#[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
     let x = x as *mut u8;
     let y = y as *mut u8;
     let len = mem::size_of::<T>() * count;
@@ -448,7 +471,8 @@ pub unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
 }
 
 #[inline]
-pub(crate) unsafe fn swap_nonoverlapping_one<T>(x: *mut T, y: *mut T) {
+#[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+pub(crate) const unsafe fn swap_nonoverlapping_one<T>(x: *mut T, y: *mut T) {
     // For types smaller than the block optimization below,
     // just swap directly to avoid pessimizing codegen.
     if mem::size_of::<T>() < 32 {
@@ -466,7 +490,8 @@ pub(crate) unsafe fn swap_nonoverlapping_one<T>(x: *mut T, y: *mut T) {
 }
 
 #[inline]
-unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
+#[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+const unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
     // The approach here is to utilize simd to swap x & y efficiently. Testing reveals
     // that swapping either 32 bytes or 64 bytes at a time is most efficient for Intel
     // Haswell E processors. LLVM is more able to optimize if we give a struct a
@@ -490,7 +515,7 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
         let t = t.as_mut_ptr() as *mut u8;
 
         // SAFETY: As `i < len`, and as the caller must guarantee that `x` and `y` are valid
-        // for `len` bytes, `x + i` and `y + i` must be valid adresses, which fulfills the
+        // for `len` bytes, `x + i` and `y + i` must be valid addresses, which fulfills the
         // safety contract for `add`.
         //
         // Also, the caller must guarantee that `x` and `y` are valid for writes, properly aligned,
@@ -567,7 +592,8 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
+#[rustc_const_unstable(feature = "const_replace", issue = "83164")]
+pub const unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
     // SAFETY: the caller must guarantee that `dst` is valid to be
     // cast to a mutable reference (valid for writes, aligned, initialized),
     // and cannot overlap `src` since `dst` must point to a distinct
@@ -685,8 +711,8 @@ pub unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
 /// [valid]: self#safety
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub unsafe fn read<T>(src: *const T) -> T {
-    // `copy_nonoverlapping` takes care of debug_assert.
+#[rustc_const_unstable(feature = "const_ptr_read", issue = "80377")]
+pub const unsafe fn read<T>(src: *const T) -> T {
     let mut tmp = MaybeUninit::<T>::uninit();
     // SAFETY: the caller must guarantee that `src` is valid for reads.
     // `src` cannot overlap `tmp` because `tmp` was just allocated on
@@ -749,6 +775,7 @@ pub unsafe fn read<T>(src: *const T) -> T {
 ///     unaligned: 0x01020304,
 /// };
 ///
+/// #[allow(unaligned_references)]
 /// let v = unsafe {
 ///     // Here we attempt to take the address of a 32-bit integer which is not aligned.
 ///     let unaligned =
@@ -784,8 +811,8 @@ pub unsafe fn read<T>(src: *const T) -> T {
 /// ```
 #[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
-pub unsafe fn read_unaligned<T>(src: *const T) -> T {
-    // `copy_nonoverlapping` takes care of debug_assert.
+#[rustc_const_unstable(feature = "const_ptr_read", issue = "80377")]
+pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
     let mut tmp = MaybeUninit::<T>::uninit();
     // SAFETY: the caller must guarantee that `src` is valid for reads.
     // `src` cannot overlap `tmp` because `tmp` was just allocated on
@@ -880,13 +907,16 @@ pub unsafe fn read_unaligned<T>(src: *const T) -> T {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub unsafe fn write<T>(dst: *mut T, src: T) {
-    if cfg!(debug_assertions) && !is_aligned_and_not_null(dst) {
-        // Not panicking to keep codegen impact smaller.
-        abort();
+#[rustc_const_unstable(feature = "const_ptr_write", issue = "none")]
+pub const unsafe fn write<T>(dst: *mut T, src: T) {
+    // SAFETY: the caller must guarantee that `dst` is valid for writes.
+    // `dst` cannot overlap `src` because the caller has mutable access
+    // to `dst` while `src` is owned by this function.
+    unsafe {
+        copy_nonoverlapping(&src as *const T, dst, 1);
+        // We are calling the intrinsic directly to avoid function calls in the generated code.
+        intrinsics::forget(src);
     }
-    // SAFETY: the caller must uphold the safety contract for `move_val_init`.
-    unsafe { intrinsics::move_val_init(&mut *dst, src) }
 }
 
 /// Overwrites a memory location with the given value without reading or
@@ -939,6 +969,7 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 /// let v = 0x01020304;
 /// let mut packed: Packed = unsafe { std::mem::zeroed() };
 ///
+/// #[allow(unaligned_references)]
 /// let v = unsafe {
 ///     // Here we attempt to take the address of a 32-bit integer which is not aligned.
 ///     let unaligned =
@@ -974,15 +1005,16 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 /// ```
 #[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
-pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
+#[rustc_const_unstable(feature = "const_ptr_write", issue = "none")]
+pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
     // SAFETY: the caller must guarantee that `dst` is valid for writes.
     // `dst` cannot overlap `src` because the caller has mutable access
     // to `dst` while `src` is owned by this function.
     unsafe {
-        // `copy_nonoverlapping` takes care of debug_assert.
         copy_nonoverlapping(&src as *const T as *const u8, dst as *mut u8, mem::size_of::<T>());
+        // We are calling the intrinsic directly to avoid function calls in the generated code.
+        intrinsics::forget(src);
     }
-    mem::forget(src);
 }
 
 /// Performs a volatile read of the value from `src` without moving it. This
@@ -1495,7 +1527,6 @@ fnptr_impls_args! { A, B, C, D, E, F, G, H, I, J, K, L }
 /// # Example
 ///
 /// ```
-/// #![feature(raw_ref_macros)]
 /// use std::ptr;
 ///
 /// #[repr(packed)]
@@ -1506,14 +1537,14 @@ fnptr_impls_args! { A, B, C, D, E, F, G, H, I, J, K, L }
 ///
 /// let packed = Packed { f1: 1, f2: 2 };
 /// // `&packed.f2` would create an unaligned reference, and thus be Undefined Behavior!
-/// let raw_f2 = ptr::raw_const!(packed.f2);
+/// let raw_f2 = ptr::addr_of!(packed.f2);
 /// assert_eq!(unsafe { raw_f2.read_unaligned() }, 2);
 /// ```
-#[unstable(feature = "raw_ref_macros", issue = "73394")]
+#[stable(feature = "raw_ref_macros", since = "1.51.0")]
 #[rustc_macro_transparency = "semitransparent"]
 #[allow_internal_unstable(raw_ref_op)]
-pub macro raw_const($e:expr) {
-    &raw const $e
+pub macro addr_of($place:expr) {
+    &raw const $place
 }
 
 /// Create a `mut` raw pointer to a place, without creating an intermediate reference.
@@ -1528,7 +1559,6 @@ pub macro raw_const($e:expr) {
 /// # Example
 ///
 /// ```
-/// #![feature(raw_ref_macros)]
 /// use std::ptr;
 ///
 /// #[repr(packed)]
@@ -1539,13 +1569,13 @@ pub macro raw_const($e:expr) {
 ///
 /// let mut packed = Packed { f1: 1, f2: 2 };
 /// // `&mut packed.f2` would create an unaligned reference, and thus be Undefined Behavior!
-/// let raw_f2 = ptr::raw_mut!(packed.f2);
+/// let raw_f2 = ptr::addr_of_mut!(packed.f2);
 /// unsafe { raw_f2.write_unaligned(42); }
 /// assert_eq!({packed.f2}, 42); // `{...}` forces copying the field instead of creating a reference.
 /// ```
-#[unstable(feature = "raw_ref_macros", issue = "73394")]
+#[stable(feature = "raw_ref_macros", since = "1.51.0")]
 #[rustc_macro_transparency = "semitransparent"]
 #[allow_internal_unstable(raw_ref_op)]
-pub macro raw_mut($e:expr) {
-    &raw mut $e
+pub macro addr_of_mut($place:expr) {
+    &raw mut $place
 }

@@ -1,4 +1,6 @@
-use crate::utils::{differing_macro_contexts, snippet_opt, span_lint_and_help, span_lint_and_note};
+use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_note};
+use clippy_utils::differing_macro_contexts;
+use clippy_utils::source::snippet_opt;
 use if_chain::if_chain;
 use rustc_ast::ast::{BinOpKind, Block, Expr, ExprKind, StmtKind, UnOp};
 use rustc_lint::{EarlyContext, EarlyLintPass};

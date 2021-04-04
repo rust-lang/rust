@@ -36,20 +36,20 @@ unsafe extern "C" fn tcs_init(secondary: bool) {
     }
 
     // Try to atomically swap UNINIT with BUSY. The returned state can be:
-    match RELOC_STATE.compare_and_swap(UNINIT, BUSY, Ordering::Acquire) {
+    match RELOC_STATE.compare_exchange(UNINIT, BUSY, Ordering::Acquire, Ordering::Acquire) {
         // This thread just obtained the lock and other threads will observe BUSY
-        UNINIT => {
+        Ok(_) => {
             reloc::relocate_elf_rela();
             RELOC_STATE.store(DONE, Ordering::Release);
         }
         // We need to wait until the initialization is done.
-        BUSY => {
+        Err(BUSY) => {
             while RELOC_STATE.load(Ordering::Acquire) == BUSY {
                 core::hint::spin_loop();
             }
         }
         // Initialization is done.
-        DONE => {}
+        Err(DONE) => {}
         _ => unreachable!(),
     }
 }

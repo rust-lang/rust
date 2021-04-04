@@ -167,5 +167,16 @@ LL |             unwrapped
 LL |         })
    |
 
-error: aborting due to 11 previous errors
+error: this match could be replaced by its body itself
+  --> $DIR/match_single_binding.rs:112:5
+   |
+LL | /     match match y {
+LL | |         0 => 1,
+LL | |         _ => 2,
+LL | |     } {
+LL | |         _ => println!("Single branch"),
+LL | |     }
+   | |_____^ help: consider using the match body instead: `println!("Single branch");`
+
+error: aborting due to 12 previous errors
 

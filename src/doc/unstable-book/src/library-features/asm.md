@@ -405,7 +405,7 @@ When required, options are specified as the final argument.
 
 The following ABNF specifies the general syntax:
 
-```ignore
+```text
 dir_spec := "in" / "out" / "lateout" / "inout" / "inlateout"
 reg_spec := <register class> / "<explicit register>"
 operand_expr := expr / "_" / expr "=>" expr / expr "=>" "_"

@@ -1,3 +1,6 @@
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::source::snippet_opt;
+use clippy_utils::{fn_def_id, in_macro, match_qpath};
 use if_chain::if_chain;
 use rustc_ast::ast::Attribute;
 use rustc_errors::Applicability;
@@ -10,8 +13,6 @@ use rustc_middle::ty::subst::GenericArgKind;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::sym;
-
-use crate::utils::{fn_def_id, in_macro, match_qpath, snippet_opt, span_lint_and_sugg, span_lint_and_then};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `let`-bindings, which are subsequently
@@ -81,7 +82,7 @@ impl<'tcx> LateLintPass<'tcx> for Return {
             if let Some(stmt) = block.stmts.iter().last();
             if let StmtKind::Local(local) = &stmt.kind;
             if local.ty.is_none();
-            if local.attrs.is_empty();
+            if cx.tcx.hir().attrs(local.hir_id).is_empty();
             if let Some(initexpr) = &local.init;
             if let PatKind::Binding(.., ident, _) = local.pat.kind;
             if let ExprKind::Path(qpath) = &retexpr.kind;
@@ -131,7 +132,16 @@ impl<'tcx> LateLintPass<'tcx> for Return {
         _: HirId,
     ) {
         match kind {
-            FnKind::Closure(_) => check_final_expr(cx, &body.value, Some(body.value.span), RetReplacement::Empty),
+            FnKind::Closure => {
+                // when returning without value in closure, replace this `return`
+                // with an empty block to prevent invalid suggestion (see #6501)
+                let replacement = if let ExprKind::Ret(None) = &body.value.kind {
+                    RetReplacement::Block
+                } else {
+                    RetReplacement::Empty
+                };
+                check_final_expr(cx, &body.value, Some(body.value.span), replacement)
+            },
             FnKind::ItemFn(..) | FnKind::Method(..) => {
                 if let ExprKind::Block(ref block, _) = body.value.kind {
                     check_block_return(cx, block);
@@ -168,7 +178,8 @@ fn check_final_expr<'tcx>(
         // simple return is always "bad"
         ExprKind::Ret(ref inner) => {
             // allow `#[cfg(a)] return a; #[cfg(b)] return b;`
-            if !expr.attrs.iter().any(attr_is_cfg) {
+            let attrs = cx.tcx.hir().attrs(expr.hir_id);
+            if !attrs.iter().any(attr_is_cfg) {
                 let borrows = inner.map_or(false, |inner| last_statement_borrows(cx, inner));
                 if !borrows {
                     emit_return_lint(
@@ -184,6 +195,14 @@ fn check_final_expr<'tcx>(
         ExprKind::Block(ref block, _) => {
             check_block_return(cx, block);
         },
+        ExprKind::If(_, then, else_clause_opt) => {
+            if let ExprKind::Block(ref ifblock, _) = then.kind {
+                check_block_return(cx, ifblock);
+            }
+            if let Some(else_clause) = else_clause_opt {
+                check_final_expr(cx, else_clause, None, RetReplacement::Empty);
+            }
+        },
         // a match expr, check all arms
         // an if/if let expr, check both exprs
         // note, if without else is going to be a type checking error anyways
@@ -194,10 +213,7 @@ fn check_final_expr<'tcx>(
                     check_final_expr(cx, &arm.body, Some(arm.body.span), RetReplacement::Block);
                 }
             },
-            MatchSource::IfDesugar {
-                contains_else_clause: true,
-            }
-            | MatchSource::IfLetDesugar {
+            MatchSource::IfLetDesugar {
                 contains_else_clause: true,
             } => {
                 if let ExprKind::Block(ref ifblock, _) = arms[0].body.kind {
@@ -212,6 +228,9 @@ fn check_final_expr<'tcx>(
 }
 
 fn emit_return_lint(cx: &LateContext<'_>, ret_span: Span, inner_span: Option<Span>, replacement: RetReplacement) {
+    if ret_span.from_expansion() {
+        return;
+    }
     match inner_span {
         Some(inner_span) => {
             if in_external_macro(cx.tcx.sess, inner_span) || inner_span.from_expansion() {

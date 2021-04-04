@@ -10,19 +10,16 @@ mod rustrt {
     extern crate libc;
 
     #[link(name = "rust_test_helpers", kind = "static")]
-    extern {
-        pub fn rust_dbg_call(cb: extern "C" fn(libc::uintptr_t) -> libc::uintptr_t,
-                             data: libc::uintptr_t)
-                             -> libc::uintptr_t;
+    extern "C" {
+        pub fn rust_dbg_call(
+            cb: extern "C" fn(libc::uintptr_t) -> libc::uintptr_t,
+            data: libc::uintptr_t,
+        ) -> libc::uintptr_t;
     }
 }
 
-extern fn cb(data: libc::uintptr_t) -> libc::uintptr_t {
-    if data == 1 {
-        data
-    } else {
-        count(data - 1) + 1
-    }
+extern "C" fn cb(data: libc::uintptr_t) -> libc::uintptr_t {
+    if data == 1 { data } else { count(data - 1) + 1 }
 }
 
 fn count(n: libc::uintptr_t) -> libc::uintptr_t {

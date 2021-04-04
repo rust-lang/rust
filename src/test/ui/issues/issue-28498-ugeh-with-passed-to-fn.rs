@@ -3,7 +3,7 @@
 // Demonstrate the use of the unguarded escape hatch with a type param in negative position
 // to assert that destructor will not access any dead data.
 //
-// Compare with compile-fail/issue28498-reject-lifetime-param.rs
+// Compare with ui/span/issue28498-reject-lifetime-param.rs
 
 // Demonstrate that a type param in negative position causes dropck to reject code
 // that might indirectly access previously dropped value.

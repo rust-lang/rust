@@ -1,5 +1,5 @@
-#[link(name="foo", kind="raw-dylib")]
+#[link(name = "foo", kind = "raw-dylib")]
 //~^ ERROR: kind="raw-dylib" is unstable
-extern {}
+extern "C" {}
 
 fn main() {}

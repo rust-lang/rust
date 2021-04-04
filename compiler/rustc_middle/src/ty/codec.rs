@@ -18,7 +18,6 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::Span;
-use std::convert::{TryFrom, TryInto};
 use std::hash::Hash;
 use std::intrinsics;
 use std::marker::DiscriminantKind;
@@ -43,36 +42,21 @@ impl<'tcx, E: TyEncoder<'tcx>> EncodableWithShorthand<'tcx, E> for Ty<'tcx> {
     }
 }
 
-impl<'tcx, E: TyEncoder<'tcx>> EncodableWithShorthand<'tcx, E> for ty::Predicate<'tcx> {
+impl<'tcx, E: TyEncoder<'tcx>> EncodableWithShorthand<'tcx, E> for ty::PredicateKind<'tcx> {
     type Variant = ty::PredicateKind<'tcx>;
+
+    #[inline]
     fn variant(&self) -> &Self::Variant {
-        self.kind()
-    }
-}
-
-pub trait OpaqueEncoder: Encoder {
-    fn opaque(&mut self) -> &mut rustc_serialize::opaque::Encoder;
-    fn encoder_position(&self) -> usize;
-}
-
-impl OpaqueEncoder for rustc_serialize::opaque::Encoder {
-    #[inline]
-    fn opaque(&mut self) -> &mut rustc_serialize::opaque::Encoder {
         self
-    }
-    #[inline]
-    fn encoder_position(&self) -> usize {
-        self.position()
     }
 }
 
 pub trait TyEncoder<'tcx>: Encoder {
     const CLEAR_CROSS_CRATE: bool;
 
-    fn tcx(&self) -> TyCtxt<'tcx>;
     fn position(&self) -> usize;
     fn type_shorthands(&mut self) -> &mut FxHashMap<Ty<'tcx>, usize>;
-    fn predicate_shorthands(&mut self) -> &mut FxHashMap<ty::Predicate<'tcx>, usize>;
+    fn predicate_shorthands(&mut self) -> &mut FxHashMap<ty::PredicateKind<'tcx>, usize>;
     fn encode_alloc_id(&mut self, alloc_id: &AllocId) -> Result<(), Self::Error>;
 }
 
@@ -96,7 +80,8 @@ where
     E: TyEncoder<'tcx>,
     M: for<'b> Fn(&'b mut E) -> &'b mut FxHashMap<T, usize>,
     T: EncodableWithShorthand<'tcx, E>,
-    <T::Variant as DiscriminantKind>::Discriminant: Ord + TryFrom<usize>,
+    // The discriminant and shorthand must have the same size.
+    T::Variant: DiscriminantKind<Discriminant = isize>,
 {
     let existing_shorthand = cache(encoder).get(value).copied();
     if let Some(shorthand) = existing_shorthand {
@@ -112,7 +97,7 @@ where
     // The shorthand encoding uses the same usize as the
     // discriminant, with an offset so they can't conflict.
     let discriminant = intrinsics::discriminant_value(variant);
-    assert!(discriminant < SHORTHAND_OFFSET.try_into().ok().unwrap());
+    assert!(SHORTHAND_OFFSET > discriminant as usize);
 
     let shorthand = start + SHORTHAND_OFFSET;
 
@@ -135,9 +120,16 @@ impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for Ty<'tcx> {
     }
 }
 
+impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Binder<'tcx, ty::PredicateKind<'tcx>> {
+    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
+        self.bound_vars().encode(e)?;
+        encode_with_shorthand(e, &self.skip_binder(), TyEncoder::predicate_shorthands)
+    }
+}
+
 impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Predicate<'tcx> {
     fn encode(&self, e: &mut E) -> Result<(), E::Error> {
-        encode_with_shorthand(e, self, TyEncoder::predicate_shorthands)
+        self.kind().encode(e)
     }
 }
 
@@ -197,7 +189,7 @@ pub trait TyDecoder<'tcx>: Decoder {
 }
 
 #[inline]
-pub fn decode_arena_allocable<'tcx, D, T: ArenaAllocatable<'tcx> + Decodable<D>>(
+fn decode_arena_allocable<'tcx, D, T: ArenaAllocatable<'tcx> + Decodable<D>>(
     decoder: &mut D,
 ) -> Result<&'tcx T, D::Error>
 where
@@ -207,7 +199,7 @@ where
 }
 
 #[inline]
-pub fn decode_arena_allocable_slice<'tcx, D, T: ArenaAllocatable<'tcx> + Decodable<D>>(
+fn decode_arena_allocable_slice<'tcx, D, T: ArenaAllocatable<'tcx> + Decodable<D>>(
     decoder: &mut D,
 ) -> Result<&'tcx [T], D::Error>
 where
@@ -235,18 +227,28 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for Ty<'tcx> {
     }
 }
 
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::Binder<'tcx, ty::PredicateKind<'tcx>> {
+    fn decode(decoder: &mut D) -> Result<ty::Binder<'tcx, ty::PredicateKind<'tcx>>, D::Error> {
+        let bound_vars = Decodable::decode(decoder)?;
+        // Handle shorthands first, if we have an usize > 0x80.
+        Ok(ty::Binder::bind_with_vars(
+            if decoder.positioned_at_shorthand() {
+                let pos = decoder.read_usize()?;
+                assert!(pos >= SHORTHAND_OFFSET);
+                let shorthand = pos - SHORTHAND_OFFSET;
+
+                decoder.with_position(shorthand, ty::PredicateKind::decode)?
+            } else {
+                ty::PredicateKind::decode(decoder)?
+            },
+            bound_vars,
+        ))
+    }
+}
+
 impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::Predicate<'tcx> {
     fn decode(decoder: &mut D) -> Result<ty::Predicate<'tcx>, D::Error> {
-        // Handle shorthands first, if we have an usize > 0x80.
-        let predicate_kind = if decoder.positioned_at_shorthand() {
-            let pos = decoder.read_usize()?;
-            assert!(pos >= SHORTHAND_OFFSET);
-            let shorthand = pos - SHORTHAND_OFFSET;
-
-            decoder.with_position(shorthand, ty::PredicateKind::decode)
-        } else {
-            ty::PredicateKind::decode(decoder)
-        }?;
+        let predicate_kind = Decodable::decode(decoder)?;
         let predicate = decoder.tcx().mk_predicate(predicate_kind);
         Ok(predicate)
     }
@@ -256,7 +258,7 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for SubstsRef<'tcx> {
     fn decode(decoder: &mut D) -> Result<Self, D::Error> {
         let len = decoder.read_usize()?;
         let tcx = decoder.tcx();
-        Ok(tcx.mk_substs((0..len).map(|_| Decodable::decode(decoder)))?)
+        tcx.mk_substs((0..len).map(|_| Decodable::decode(decoder)))
     }
 }
 
@@ -317,20 +319,32 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::AdtDef {
 impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<Ty<'tcx>> {
     fn decode(decoder: &mut D) -> Result<&'tcx Self, D::Error> {
         let len = decoder.read_usize()?;
-        Ok(decoder.tcx().mk_type_list((0..len).map(|_| Decodable::decode(decoder)))?)
+        decoder.tcx().mk_type_list((0..len).map(|_| Decodable::decode(decoder)))
     }
 }
 
-impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<ty::ExistentialPredicate<'tcx>> {
+impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D>
+    for ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>
+{
     fn decode(decoder: &mut D) -> Result<&'tcx Self, D::Error> {
         let len = decoder.read_usize()?;
-        Ok(decoder.tcx().mk_existential_predicates((0..len).map(|_| Decodable::decode(decoder)))?)
+        decoder.tcx().mk_poly_existential_predicates((0..len).map(|_| Decodable::decode(decoder)))
     }
 }
 
 impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::Const<'tcx> {
     fn decode(decoder: &mut D) -> Result<&'tcx Self, D::Error> {
         Ok(decoder.tcx().mk_const(Decodable::decode(decoder)?))
+    }
+}
+
+impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for [ty::ValTree<'tcx>] {
+    fn decode(decoder: &mut D) -> Result<&'tcx Self, D::Error> {
+        Ok(decoder.tcx().arena.alloc_from_iter(
+            (0..decoder.read_usize()?)
+                .map(|_| Decodable::decode(decoder))
+                .collect::<Result<Vec<_>, _>>()?,
+        ))
     }
 }
 
@@ -370,15 +384,23 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for [mir::abstract_const::N
     }
 }
 
+impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<ty::BoundVariableKind> {
+    fn decode(decoder: &mut D) -> Result<&'tcx Self, D::Error> {
+        let len = decoder.read_usize()?;
+        Ok(decoder.tcx().mk_bound_variable_kinds((0..len).map(|_| Decodable::decode(decoder)))?)
+    }
+}
+
 impl_decodable_via_ref! {
     &'tcx ty::TypeckResults<'tcx>,
     &'tcx ty::List<Ty<'tcx>>,
-    &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
+    &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
     &'tcx Allocation,
     &'tcx mir::Body<'tcx>,
     &'tcx mir::UnsafetyCheckResult,
     &'tcx mir::BorrowCheckResult<'tcx>,
-    &'tcx mir::coverage::CodeRegion
+    &'tcx mir::coverage::CodeRegion,
+    &'tcx ty::List<ty::BoundVariableKind>
 }
 
 #[macro_export]
@@ -463,10 +485,42 @@ macro_rules! implement_ty_decoder {
                     read_str -> Cow<'_, str>;
                 }
 
+                #[inline]
+                fn read_raw_bytes_into(&mut self, bytes: &mut [u8]) -> Result<(), Self::Error> {
+                    self.opaque.read_raw_bytes_into(bytes)
+                }
+
                 fn error(&mut self, err: &str) -> Self::Error {
                     self.opaque.error(err)
                 }
             }
         }
     }
+}
+
+macro_rules! impl_binder_encode_decode {
+    ($($t:ty),+ $(,)?) => {
+        $(
+            impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Binder<'tcx, $t> {
+                fn encode(&self, e: &mut E) -> Result<(), E::Error> {
+                    self.bound_vars().encode(e)?;
+                    self.as_ref().skip_binder().encode(e)
+                }
+            }
+            impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::Binder<'tcx, $t> {
+                fn decode(decoder: &mut D) -> Result<Self, D::Error> {
+                    let bound_vars = Decodable::decode(decoder)?;
+                    Ok(ty::Binder::bind_with_vars(Decodable::decode(decoder)?, bound_vars))
+                }
+            }
+        )*
+    }
+}
+
+impl_binder_encode_decode! {
+    &'tcx ty::List<Ty<'tcx>>,
+    ty::FnSig<'tcx>,
+    ty::ExistentialPredicate<'tcx>,
+    ty::TraitRef<'tcx>,
+    Vec<ty::GeneratorInteriorTypeCause<'tcx>>,
 }

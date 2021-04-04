@@ -88,26 +88,28 @@ Book][unstable-doc-cfg] and [its tracking issue][issue-doc-cfg].
 [unstable-doc-cfg]: ../unstable-book/language-features/doc-cfg.html
 [issue-doc-cfg]: https://github.com/rust-lang/rust/issues/43781
 
-### Adding your trait to the "Important Traits" dialog
+### Adding your trait to the "Notable traits" dialog
 
-Rustdoc keeps a list of a few traits that are believed to be "fundamental" to a given type when
-implemented on it. These traits are intended to be the primary interface for their types, and are
-often the only thing available to be documented on their types. For this reason, Rustdoc will track
-when a given type implements one of these traits and call special attention to it when a function
-returns one of these types. This is the "Important Traits" dialog, visible as a circle-i button next
-to the function, which, when clicked, shows the dialog.
+Rustdoc keeps a list of a few traits that are believed to be "fundamental" to
+types that implement them. These traits are intended to be the primary interface
+for their implementers, and are often most of the API available to be documented
+on their types. For this reason, Rustdoc will track when a given type implements
+one of these traits and call special attention to it when a function returns one
+of these types. This is the "Notable traits" dialog, accessible as a circled `i`
+button next to the function, which, when clicked, shows the dialog.
 
-In the standard library, the traits that qualify for inclusion are `Iterator`, `io::Read`, and
-`io::Write`. However, rather than being implemented as a hard-coded list, these traits have a
-special marker attribute on them: `#[doc(spotlight)]`. This means that you could apply this
-attribute to your own trait to include it in the "Important Traits" dialog in documentation.
+In the standard library, some of the traits that are part of this list are
+`Iterator`, `Future`, `io::Read`, and `io::Write`. However, rather than being
+implemented as a hard-coded list, these traits have a special marker attribute
+on them: `#[doc(notable_trait)]`. This means that you can apply this attribute
+to your own trait to include it in the "Notable traits" dialog in documentation.
 
-The `#[doc(spotlight)]` attribute currently requires the `#![feature(doc_spotlight)]` feature gate.
-For more information, see [its chapter in the Unstable Book][unstable-spotlight] and [its tracking
-issue][issue-spotlight].
+The `#[doc(notable_trait)]` attribute currently requires the `#![feature(doc_notable_trait)]`
+feature gate. For more information, see [its chapter in the Unstable Book][unstable-notable_trait]
+and [its tracking issue][issue-notable_trait].
 
-[unstable-spotlight]: ../unstable-book/language-features/doc-spotlight.html
-[issue-spotlight]: https://github.com/rust-lang/rust/issues/45040
+[unstable-notable_trait]: ../unstable-book/language-features/doc-notable-trait.html
+[issue-notable_trait]: https://github.com/rust-lang/rust/issues/45040
 
 ### Exclude certain dependencies from documentation
 
@@ -339,6 +341,30 @@ Some methodology notes about what rustdoc counts in this metric:
 
 Public items that are not documented can be seen with the built-in `missing_docs` lint. Private
 items that are not documented can be seen with Clippy's `missing_docs_in_private_items` lint.
+
+## `-w`/`--output-format`: output format
+
+When using
+[`--show-coverage`](https://doc.rust-lang.org/nightly/rustdoc/unstable-features.html#--show-coverage-get-statistics-about-code-documentation-coverage),
+passing `--output-format json` will display the coverage information in JSON format. For example,
+here is the JSON for a file with one documented item and one undocumented item:
+
+```rust
+/// This item has documentation
+pub fn foo() {}
+
+pub fn no_documentation() {}
+```
+
+```json
+{"no_std.rs":{"total":3,"with_docs":1,"total_examples":3,"with_examples":0}}
+```
+
+Note that the third item is the crate root, which in this case is undocumented.
+
+When not using `--show-coverage`, `--output-format json` emits documentation in the experimental
+[JSON format](https://github.com/rust-lang/rfcs/pull/2963). `--output-format html` has no effect,
+and is also accepted on stable toolchains.
 
 ### `--enable-per-target-ignores`: allow `ignore-foo` style filters for doctests
 

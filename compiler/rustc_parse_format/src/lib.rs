@@ -10,7 +10,7 @@
     test(attr(deny(warnings)))
 )]
 #![feature(nll)]
-#![feature(or_patterns)]
+#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(bool_to_option)]
 
 pub use Alignment::*;
@@ -213,11 +213,13 @@ impl<'a> Iterator for Parser<'a> {
                         Some(String(self.string(pos + 1)))
                     } else {
                         let arg = self.argument();
-                        if let Some(end) = self.must_consume('}') {
-                            let start = self.to_span_index(pos);
-                            let end = self.to_span_index(end + 1);
+                        if let Some(rbrace_byte_idx) = self.must_consume('}') {
+                            let lbrace_inner_offset = self.to_span_index(pos);
+                            let rbrace_inner_offset = self.to_span_index(rbrace_byte_idx);
                             if self.is_literal {
-                                self.arg_places.push(start.to(end));
+                                self.arg_places.push(
+                                    lbrace_inner_offset.to(InnerOffset(rbrace_inner_offset.0 + 1)),
+                                );
                             }
                         }
                         Some(NextArgument(arg))
@@ -347,7 +349,7 @@ impl<'a> Parser<'a> {
         let mut pos = pos;
         // This handles the raw string case, the raw argument is the number of #
         // in r###"..."### (we need to add one because of the `r`).
-        let raw = self.style.map(|raw| raw + 1).unwrap_or(0);
+        let raw = self.style.map_or(0, |raw| raw + 1);
         for skip in &self.skips {
             if pos > *skip {
                 pos += 1;
@@ -730,30 +732,29 @@ fn find_skips_from_snippet(
     str_style: Option<usize>,
 ) -> (Vec<usize>, bool) {
     let snippet = match snippet {
-        Some(ref s) if s.starts_with('"') || s.starts_with("r#") => s,
+        Some(ref s) if s.starts_with('"') || s.starts_with("r\"") || s.starts_with("r#") => s,
         _ => return (vec![], false),
     };
 
     fn find_skips(snippet: &str, is_raw: bool) -> Vec<usize> {
-        let mut eat_ws = false;
-        let mut s = snippet.chars().enumerate().peekable();
+        let mut s = snippet.char_indices().peekable();
         let mut skips = vec![];
         while let Some((pos, c)) = s.next() {
             match (c, s.peek()) {
                 // skip whitespace and empty lines ending in '\\'
                 ('\\', Some((next_pos, '\n'))) if !is_raw => {
-                    eat_ws = true;
                     skips.push(pos);
                     skips.push(*next_pos);
                     let _ = s.next();
-                }
-                ('\\', Some((next_pos, '\n' | 'n' | 't'))) if eat_ws => {
-                    skips.push(pos);
-                    skips.push(*next_pos);
-                    let _ = s.next();
-                }
-                (' ' | '\n' | '\t', _) if eat_ws => {
-                    skips.push(pos);
+
+                    while let Some((pos, c)) = s.peek() {
+                        if matches!(c, ' ' | '\n' | '\t') {
+                            skips.push(*pos);
+                            let _ = s.next();
+                        } else {
+                            break;
+                        }
+                    }
                 }
                 ('\\', Some((next_pos, 'n' | 't' | 'r' | '0' | '\\' | '\'' | '\"'))) => {
                     skips.push(*next_pos);
@@ -804,17 +805,13 @@ fn find_skips_from_snippet(
                         }
                     }
                 }
-                _ if eat_ws => {
-                    // `take_while(|c| c.is_whitespace())`
-                    eat_ws = false;
-                }
                 _ => {}
             }
         }
         skips
     }
 
-    let r_start = str_style.map(|r| r + 1).unwrap_or(0);
+    let r_start = str_style.map_or(0, |r| r + 1);
     let r_end = str_style.unwrap_or(0);
     let s = &snippet[r_start + 1..snippet.len() - r_end - 1];
     (find_skips(s, str_style.is_some()), true)

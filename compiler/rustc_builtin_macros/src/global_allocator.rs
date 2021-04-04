@@ -5,7 +5,7 @@ use rustc_ast::expand::allocator::{
 };
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, Attribute, Expr, FnHeader, FnSig, Generics, Param, StmtKind};
-use rustc_ast::{ItemKind, Mutability, Stmt, Ty, TyKind, Unsafe};
+use rustc_ast::{FnKind, ItemKind, Mutability, Stmt, Ty, TyKind, Unsafe};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
@@ -14,31 +14,31 @@ pub fn expand(
     ecx: &mut ExtCtxt<'_>,
     _span: Span,
     meta_item: &ast::MetaItem,
-    mut item: Annotatable,
+    item: Annotatable,
 ) -> Vec<Annotatable> {
     check_builtin_macro_attribute(ecx, meta_item, sym::global_allocator);
 
-    let not_static = |item: Annotatable| {
-        ecx.sess.parse_sess.span_diagnostic.span_err(item.span(), "allocators must be statics");
-        vec![item]
-    };
     let orig_item = item.clone();
-    let mut is_stmt = false;
+    let not_static = || {
+        ecx.sess.parse_sess.span_diagnostic.span_err(item.span(), "allocators must be statics");
+        vec![orig_item.clone()]
+    };
 
     // Allow using `#[global_allocator]` on an item statement
-    if let Annotatable::Stmt(stmt) = &item {
-        if let StmtKind::Item(item_) = &stmt.kind {
-            item = Annotatable::Item(item_.clone());
-            is_stmt = true;
-        }
-    }
-
-    let item = match item {
+    // FIXME - if we get deref patterns, use them to reduce duplication here
+    let (item, is_stmt) = match &item {
         Annotatable::Item(item) => match item.kind {
-            ItemKind::Static(..) => item,
-            _ => return not_static(Annotatable::Item(item)),
+            ItemKind::Static(..) => (item, false),
+            _ => return not_static(),
         },
-        _ => return not_static(item),
+        Annotatable::Stmt(stmt) => match &stmt.kind {
+            StmtKind::Item(item_) => match item_.kind {
+                ItemKind::Static(..) => (item_, true),
+                _ => return not_static(),
+            },
+            _ => return not_static(),
+        },
+        _ => return not_static(),
     };
 
     // Generate a bunch of new items using the AllocFnFactory
@@ -85,7 +85,8 @@ impl AllocFnFactory<'_, '_> {
         let header = FnHeader { unsafety: Unsafe::Yes(self.span), ..FnHeader::default() };
         let sig = FnSig { decl, header, span: self.span };
         let block = Some(self.cx.block_expr(output_expr));
-        let kind = ItemKind::Fn(ast::Defaultness::Final, sig, Generics::default(), block);
+        let kind =
+            ItemKind::Fn(box FnKind(ast::Defaultness::Final, sig, Generics::default(), block));
         let item = self.cx.item(
             self.span,
             Ident::from_str_and_span(&self.kind.fn_name(method.name), self.span),

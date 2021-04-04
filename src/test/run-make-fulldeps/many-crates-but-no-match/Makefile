@@ -1,9 +1,8 @@
 -include ../tools.mk
 
-# Modelled after compile-fail/changing-crates test, but this one puts
+# Modelled after ui/changing-crates.rs test, but this one puts
 # more than one (mismatching) candidate crate into the search path,
-# which did not appear directly expressible in compile-fail/aux-build
-# infrastructure.
+# which did not appear directly expressible in UI testing infrastructure.
 #
 # Note that we move the built libraries into target direcrtories rather than
 # use the `--out-dir` option because the `../tools.mk` file already bakes a

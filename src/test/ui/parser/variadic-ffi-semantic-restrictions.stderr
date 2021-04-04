@@ -47,34 +47,34 @@ LL | extern "C" fn f2_3(..., x: isize) {}
    |                    ^^^
 
 error: only foreign or `unsafe extern "C" functions may be C-variadic
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:23:26
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:23:30
    |
-LL | extern fn f3_1(x: isize, ...) {}
-   |                          ^^^
+LL | extern "C" fn f3_1(x: isize, ...) {}
+   |                              ^^^
 
 error: C-variadic function must be declared with at least one named argument
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:26:16
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:26:20
    |
-LL | extern fn f3_2(...) {}
-   |                ^^^
+LL | extern "C" fn f3_2(...) {}
+   |                    ^^^
 
 error: only foreign or `unsafe extern "C" functions may be C-variadic
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:26:16
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:26:20
    |
-LL | extern fn f3_2(...) {}
-   |                ^^^
+LL | extern "C" fn f3_2(...) {}
+   |                    ^^^
 
 error: `...` must be the last argument of a C-variadic function
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:30:16
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:30:20
    |
-LL | extern fn f3_3(..., x: isize) {}
-   |                ^^^
+LL | extern "C" fn f3_3(..., x: isize) {}
+   |                    ^^^
 
 error: only foreign or `unsafe extern "C" functions may be C-variadic
-  --> $DIR/variadic-ffi-semantic-restrictions.rs:30:16
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:30:20
    |
-LL | extern fn f3_3(..., x: isize) {}
-   |                ^^^
+LL | extern "C" fn f3_3(..., x: isize) {}
+   |                    ^^^
 
 error: C-variadic function must be declared with at least one named argument
   --> $DIR/variadic-ffi-semantic-restrictions.rs:35:13

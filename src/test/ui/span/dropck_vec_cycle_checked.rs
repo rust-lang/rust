@@ -1,6 +1,6 @@
 // Reject mixing cyclic structure and Drop when using Vec.
 //
-// (Compare against compile-fail/dropck_arr_cycle_checked.rs)
+// (Compare against ui/span/dropck_arr_cycle_checked.rs)
 
 use std::cell::Cell;
 use id::Id;

@@ -2,8 +2,8 @@
 //!
 //! This lint is **warn** by default
 
-use crate::utils::{is_type_diagnostic_item, span_lint};
-use rustc_ast::ast;
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_hir::Expr;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
@@ -77,8 +77,8 @@ impl<'tcx> LateLintPass<'tcx> for Mutex {
                         atomic_name
                     );
                     match *mutex_param.kind() {
-                        ty::Uint(t) if t != ast::UintTy::Usize => span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
-                        ty::Int(t) if t != ast::IntTy::Isize => span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
+                        ty::Uint(t) if t != ty::UintTy::Usize => span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
+                        ty::Int(t) if t != ty::IntTy::Isize => span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
                         _ => span_lint(cx, MUTEX_ATOMIC, expr.span, &msg),
                     };
                 }

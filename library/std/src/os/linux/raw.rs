@@ -247,17 +247,17 @@ mod arch {
     use crate::os::raw::{c_int, c_long};
 
     #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub type blkcnt_t = u64;
+    pub type blkcnt_t = i64;
     #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub type blksize_t = u64;
+    pub type blksize_t = i32;
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub type ino_t = u64;
     #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub type nlink_t = u64;
+    pub type nlink_t = u32;
     #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub type off_t = u64;
+    pub type off_t = i64;
     #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub type time_t = i64;
+    pub type time_t = c_long;
 
     #[repr(C)]
     #[derive(Clone)]
@@ -288,15 +288,15 @@ mod arch {
         #[stable(feature = "raw_ext", since = "1.1.0")]
         pub st_blocks: i64,
         #[stable(feature = "raw_ext", since = "1.1.0")]
-        pub st_atime: i64,
+        pub st_atime: time_t,
         #[stable(feature = "raw_ext", since = "1.1.0")]
         pub st_atime_nsec: c_long,
         #[stable(feature = "raw_ext", since = "1.1.0")]
-        pub st_mtime: i64,
+        pub st_mtime: time_t,
         #[stable(feature = "raw_ext", since = "1.1.0")]
         pub st_mtime_nsec: c_long,
         #[stable(feature = "raw_ext", since = "1.1.0")]
-        pub st_ctime: i64,
+        pub st_ctime: time_t,
         #[stable(feature = "raw_ext", since = "1.1.0")]
         pub st_ctime_nsec: c_long,
         #[stable(feature = "raw_ext", since = "1.1.0")]

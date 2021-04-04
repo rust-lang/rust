@@ -2,7 +2,7 @@ use crate::os::unix::prelude::*;
 
 use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;
-use crate::io::{self, Error, ErrorKind, IoSlice, IoSliceMut, SeekFrom};
+use crate::io::{self, Error, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem;
 use crate::path::{Path, PathBuf};
 use crate::ptr;
@@ -357,17 +357,17 @@ impl FileAttr {
                         tv_nsec: ext.stx_btime.tv_nsec as _,
                     }))
                 } else {
-                    Err(io::Error::new(
+                    Err(io::Error::new_const(
                         io::ErrorKind::Other,
-                        "creation time is not available for the filesystem",
+                        &"creation time is not available for the filesystem",
                     ))
                 };
             }
         }
 
-        Err(io::Error::new(
+        Err(io::Error::new_const(
             io::ErrorKind::Other,
-            "creation time is not available on this platform \
+            &"creation time is not available on this platform \
                             currently",
         ))
     }
@@ -1152,14 +1152,12 @@ pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
 
 fn open_from(from: &Path) -> io::Result<(crate::fs::File, crate::fs::Metadata)> {
     use crate::fs::File;
+    use crate::sys_common::fs::NOT_FILE_ERROR;
 
     let reader = File::open(from)?;
     let metadata = reader.metadata()?;
     if !metadata.is_file() {
-        return Err(Error::new(
-            ErrorKind::InvalidInput,
-            "the source path is not an existing regular file",
-        ));
+        return Err(NOT_FILE_ERROR);
     }
     Ok((reader, metadata))
 }

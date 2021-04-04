@@ -1,80 +1,80 @@
-error[E0670]: `async fn` is not permitted in the 2015 edition
+error[E0670]: `async fn` is not permitted in Rust 2015
   --> $DIR/edition-deny-async-fns-2015.rs:3:1
    |
 LL | async fn foo() {}
-   | ^^^^^ to use `async fn`, switch to Rust 2018
+   | ^^^^^ to use `async fn`, switch to Rust 2018 or later
    |
    = help: set `edition = "2018"` in `Cargo.toml`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
-error[E0670]: `async fn` is not permitted in the 2015 edition
+error[E0670]: `async fn` is not permitted in Rust 2015
   --> $DIR/edition-deny-async-fns-2015.rs:5:12
    |
 LL | fn baz() { async fn foo() {} }
-   |            ^^^^^ to use `async fn`, switch to Rust 2018
+   |            ^^^^^ to use `async fn`, switch to Rust 2018 or later
    |
    = help: set `edition = "2018"` in `Cargo.toml`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
-error[E0670]: `async fn` is not permitted in the 2015 edition
+error[E0670]: `async fn` is not permitted in Rust 2015
   --> $DIR/edition-deny-async-fns-2015.rs:7:1
    |
 LL | async fn async_baz() {
-   | ^^^^^ to use `async fn`, switch to Rust 2018
+   | ^^^^^ to use `async fn`, switch to Rust 2018 or later
    |
    = help: set `edition = "2018"` in `Cargo.toml`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
-error[E0670]: `async fn` is not permitted in the 2015 edition
+error[E0670]: `async fn` is not permitted in Rust 2015
   --> $DIR/edition-deny-async-fns-2015.rs:8:5
    |
 LL |     async fn bar() {}
-   |     ^^^^^ to use `async fn`, switch to Rust 2018
+   |     ^^^^^ to use `async fn`, switch to Rust 2018 or later
    |
    = help: set `edition = "2018"` in `Cargo.toml`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
-error[E0670]: `async fn` is not permitted in the 2015 edition
+error[E0670]: `async fn` is not permitted in Rust 2015
   --> $DIR/edition-deny-async-fns-2015.rs:14:5
    |
 LL |     async fn foo() {}
-   |     ^^^^^ to use `async fn`, switch to Rust 2018
+   |     ^^^^^ to use `async fn`, switch to Rust 2018 or later
    |
    = help: set `edition = "2018"` in `Cargo.toml`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
-error[E0670]: `async fn` is not permitted in the 2015 edition
+error[E0670]: `async fn` is not permitted in Rust 2015
   --> $DIR/edition-deny-async-fns-2015.rs:18:5
    |
 LL |     async fn foo() {}
-   |     ^^^^^ to use `async fn`, switch to Rust 2018
+   |     ^^^^^ to use `async fn`, switch to Rust 2018 or later
    |
    = help: set `edition = "2018"` in `Cargo.toml`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
-error[E0670]: `async fn` is not permitted in the 2015 edition
+error[E0670]: `async fn` is not permitted in Rust 2015
   --> $DIR/edition-deny-async-fns-2015.rs:36:9
    |
 LL |         async fn bar() {}
-   |         ^^^^^ to use `async fn`, switch to Rust 2018
+   |         ^^^^^ to use `async fn`, switch to Rust 2018 or later
    |
    = help: set `edition = "2018"` in `Cargo.toml`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
-error[E0670]: `async fn` is not permitted in the 2015 edition
+error[E0670]: `async fn` is not permitted in Rust 2015
   --> $DIR/edition-deny-async-fns-2015.rs:26:9
    |
 LL |         async fn foo() {}
-   |         ^^^^^ to use `async fn`, switch to Rust 2018
+   |         ^^^^^ to use `async fn`, switch to Rust 2018 or later
    |
    = help: set `edition = "2018"` in `Cargo.toml`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
-error[E0670]: `async fn` is not permitted in the 2015 edition
+error[E0670]: `async fn` is not permitted in Rust 2015
   --> $DIR/edition-deny-async-fns-2015.rs:31:13
    |
 LL |             async fn bar() {}
-   |             ^^^^^ to use `async fn`, switch to Rust 2018
+   |             ^^^^^ to use `async fn`, switch to Rust 2018 or later
    |
    = help: set `edition = "2018"` in `Cargo.toml`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide

@@ -4,20 +4,24 @@ use crate::fs;
 use crate::io::{self, Error, ErrorKind};
 use crate::path::Path;
 
+pub(crate) const NOT_FILE_ERROR: Error = Error::new_const(
+    ErrorKind::InvalidInput,
+    &"the source path is neither a regular file nor a symlink to a regular file",
+);
+
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
-    if !from.is_file() {
-        return Err(Error::new(
-            ErrorKind::InvalidInput,
-            "the source path is not an existing regular file",
-        ));
+    let mut reader = fs::File::open(from)?;
+    let metadata = reader.metadata()?;
+
+    if !metadata.is_file() {
+        return Err(NOT_FILE_ERROR);
     }
 
-    let mut reader = fs::File::open(from)?;
     let mut writer = fs::File::create(to)?;
-    let perm = reader.metadata()?.permissions();
+    let perm = metadata.permissions();
 
     let ret = io::copy(&mut reader, &mut writer)?;
-    fs::set_permissions(to, perm)?;
+    writer.set_permissions(perm)?;
     Ok(ret)
 }
 

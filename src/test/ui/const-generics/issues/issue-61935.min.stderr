@@ -1,5 +1,5 @@
 error: generic parameters may not be used in const operations
-  --> $DIR/issue-61935.rs:10:23
+  --> $DIR/issue-61935.rs:9:23
    |
 LL |         Self:FooImpl<{N==0}>
    |                       ^ cannot perform const operation using `N`

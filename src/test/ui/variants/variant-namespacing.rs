@@ -1,6 +1,6 @@
 // aux-build:variant-namespacing.rs
 
-enum E {
+pub enum E {
     Struct { a: u8 },
     Tuple(u8),
     Unit,

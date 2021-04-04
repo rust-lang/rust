@@ -1,4 +1,6 @@
-use crate::utils::{in_macro, snippet, snippet_with_applicability, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::in_macro;
+use clippy_utils::source::{snippet, snippet_with_applicability};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{
@@ -7,7 +9,8 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::BytePos;
+use rustc_span::symbol::kw;
+use rustc_span::{sym, BytePos};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `use Enum::*`.
@@ -112,7 +115,7 @@ impl LateLintPass<'_> for WildcardImports {
         if_chain! {
             if let ItemKind::Use(use_path, UseKind::Glob) = &item.kind;
             if self.warn_on_all || !self.check_exceptions(item, use_path.segments);
-            let used_imports = cx.tcx.names_imported_by_glob_use(item.hir_id.owner);
+            let used_imports = cx.tcx.names_imported_by_glob_use(item.def_id);
             if !used_imports.is_empty(); // Already handled by `unused_imports`
             then {
                 let mut applicability = Applicability::MachineApplicable;
@@ -198,12 +201,12 @@ impl WildcardImports {
 // Allow "...prelude::..::*" imports.
 // Many crates have a prelude, and it is imported as a glob by design.
 fn is_prelude_import(segments: &[PathSegment<'_>]) -> bool {
-    segments.iter().any(|ps| ps.ident.as_str() == "prelude")
+    segments.iter().any(|ps| ps.ident.name == sym::prelude)
 }
 
 // Allow "super::*" imports in tests.
 fn is_super_only_import(segments: &[PathSegment<'_>]) -> bool {
-    segments.len() == 1 && segments[0].ident.as_str() == "super"
+    segments.len() == 1 && segments[0].ident.name == kw::Super
 }
 
 fn is_test_module_or_function(item: &Item<'_>) -> bool {

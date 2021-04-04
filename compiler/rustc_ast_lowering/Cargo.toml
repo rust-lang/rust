@@ -19,4 +19,4 @@ rustc_span = { path = "../rustc_span" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_session = { path = "../rustc_session" }
 rustc_ast = { path = "../rustc_ast" }
-smallvec = { version = "1.0", features = ["union", "may_dangle"] }
+smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }

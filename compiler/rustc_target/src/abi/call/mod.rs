@@ -27,10 +27,16 @@ mod x86_win64;
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum PassMode {
     /// Ignore the argument.
+    ///
+    /// The argument is either uninhabited or a ZST.
     Ignore,
     /// Pass the argument directly.
+    ///
+    /// The argument has a layout abi of `Scalar`, `Vector` or in rare cases `Aggregate`.
     Direct(ArgAttributes),
     /// Pass a pair's elements directly in two arguments.
+    ///
+    /// The argument has a layout abi of `ScalarPair`.
     Pair(ArgAttributes, ArgAttributes),
     /// Pass the argument after casting it, to either
     /// a single uniform or a pair of registers.
@@ -59,7 +65,10 @@ mod attr_impl {
             const NoCapture = 1 << 2;
             const NonNull   = 1 << 3;
             const ReadOnly  = 1 << 4;
-            const InReg     = 1 << 8;
+            const InReg     = 1 << 5;
+            // NoAlias on &mut arguments can only be used with LLVM >= 12 due to miscompiles
+            // in earlier versions. FIXME: Remove this distinction once possible.
+            const NoAliasMutRef = 1 << 6;
         }
     }
 }
@@ -97,7 +106,12 @@ impl ArgAttributes {
     }
 
     pub fn ext(&mut self, ext: ArgExtension) -> &mut Self {
-        assert!(self.arg_ext == ArgExtension::None || self.arg_ext == ext);
+        assert!(
+            self.arg_ext == ArgExtension::None || self.arg_ext == ext,
+            "cannot set {:?} when {:?} is already set",
+            ext,
+            self.arg_ext
+        );
         self.arg_ext = ext;
         self
     }
@@ -434,28 +448,49 @@ pub struct ArgAbi<'a, Ty> {
 }
 
 impl<'a, Ty> ArgAbi<'a, Ty> {
-    pub fn new(layout: TyAndLayout<'a, Ty>) -> Self {
-        ArgAbi { layout, pad: None, mode: PassMode::Direct(ArgAttributes::new()) }
+    pub fn new(
+        cx: &impl HasDataLayout,
+        layout: TyAndLayout<'a, Ty>,
+        scalar_attrs: impl Fn(&TyAndLayout<'a, Ty>, &abi::Scalar, Size) -> ArgAttributes,
+    ) -> Self {
+        let mode = match &layout.abi {
+            Abi::Uninhabited => PassMode::Ignore,
+            Abi::Scalar(scalar) => PassMode::Direct(scalar_attrs(&layout, scalar, Size::ZERO)),
+            Abi::ScalarPair(a, b) => PassMode::Pair(
+                scalar_attrs(&layout, a, Size::ZERO),
+                scalar_attrs(&layout, b, a.value.size(cx).align_to(b.value.align(cx).abi)),
+            ),
+            Abi::Vector { .. } => PassMode::Direct(ArgAttributes::new()),
+            Abi::Aggregate { .. } => PassMode::Direct(ArgAttributes::new()),
+        };
+        ArgAbi { layout, pad: None, mode }
     }
 
-    pub fn make_indirect(&mut self) {
-        assert_eq!(self.mode, PassMode::Direct(ArgAttributes::new()));
-
-        // Start with fresh attributes for the pointer.
+    fn indirect_pass_mode(layout: &TyAndLayout<'a, Ty>) -> PassMode {
         let mut attrs = ArgAttributes::new();
 
         // For non-immediate arguments the callee gets its own copy of
         // the value on the stack, so there are no aliases. It's also
         // program-invisible so can't possibly capture
         attrs.set(ArgAttribute::NoAlias).set(ArgAttribute::NoCapture).set(ArgAttribute::NonNull);
-        attrs.pointee_size = self.layout.size;
+        attrs.pointee_size = layout.size;
         // FIXME(eddyb) We should be doing this, but at least on
         // i686-pc-windows-msvc, it results in wrong stack offsets.
-        // attrs.pointee_align = Some(self.layout.align.abi);
+        // attrs.pointee_align = Some(layout.align.abi);
 
-        let extra_attrs = self.layout.is_unsized().then_some(ArgAttributes::new());
+        let extra_attrs = layout.is_unsized().then_some(ArgAttributes::new());
 
-        self.mode = PassMode::Indirect { attrs, extra_attrs, on_stack: false };
+        PassMode::Indirect { attrs, extra_attrs, on_stack: false }
+    }
+
+    pub fn make_indirect(&mut self) {
+        match self.mode {
+            PassMode::Direct(_) | PassMode::Pair(_, _) => {}
+            PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: false } => return,
+            _ => panic!("Tried to make {:?} indirect", self.mode),
+        }
+
+        self.mode = Self::indirect_pass_mode(&self.layout);
     }
 
     pub fn make_indirect_byval(&mut self) {
@@ -486,7 +521,6 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     }
 
     pub fn cast_to<T: Into<CastTarget>>(&mut self, target: T) {
-        assert_eq!(self.mode, PassMode::Direct(ArgAttributes::new()));
         self.mode = PassMode::Cast(target.into());
     }
 
@@ -495,7 +529,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     }
 
     pub fn is_indirect(&self) -> bool {
-        matches!(self.mode, PassMode::Indirect {..})
+        matches!(self.mode, PassMode::Indirect { .. })
     }
 
     pub fn is_sized_indirect(&self) -> bool {
@@ -520,6 +554,7 @@ pub enum Conv {
 
     // Target-specific calling conventions.
     ArmAapcs,
+    CCmseNonSecureCall,
 
     Msp430Intr,
 
@@ -571,6 +606,13 @@ impl<'a, Ty> FnAbi<'a, Ty> {
         Ty: TyAndLayoutMethods<'a, C> + Copy,
         C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout + HasTargetSpec,
     {
+        if abi == spec::abi::Abi::X86Interrupt {
+            if let Some(arg) = self.args.first_mut() {
+                arg.make_indirect_byval();
+            }
+            return Ok(());
+        }
+
         match &cx.target_spec().arch[..] {
             "x86" => {
                 let flavor = if abi == spec::abi::Abi::Fastcall {
@@ -605,10 +647,11 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "nvptx64" => nvptx64::compute_abi_info(self),
             "hexagon" => hexagon::compute_abi_info(self),
             "riscv32" | "riscv64" => riscv::compute_abi_info(cx, self),
-            "wasm32" if cx.target_spec().os != "emscripten" => {
-                wasm32_bindgen_compat::compute_abi_info(self)
-            }
-            "wasm32" | "asmjs" => wasm32::compute_abi_info(cx, self),
+            "wasm32" => match cx.target_spec().os.as_str() {
+                "emscripten" | "wasi" => wasm32::compute_abi_info(cx, self),
+                _ => wasm32_bindgen_compat::compute_abi_info(self),
+            },
+            "asmjs" => wasm32::compute_abi_info(cx, self),
             a => return Err(format!("unrecognized arch \"{}\" in target specification", a)),
         }
 

@@ -1,14 +1,30 @@
-error[E0107]: wrong number of type arguments: expected 0, found 1
+error[E0107]: this trait takes 0 type arguments but 1 type argument was supplied
   --> $DIR/seq-args.rs:4:13
    |
-LL | impl<T> Seq<T> for Vec<T> {
-   |             ^ unexpected type argument
-
-error[E0107]: wrong number of type arguments: expected 0, found 1
-  --> $DIR/seq-args.rs:7:10
+LL |     impl<T> Seq<T> for Vec<T> {
+   |             ^^^--- help: remove these generics
+   |             |
+   |             expected 0 type arguments
    |
-LL | impl Seq<bool> for u32 {
-   |          ^^^^ unexpected type argument
+note: trait defined here, with 0 type parameters
+  --> $DIR/seq-args.rs:2:11
+   |
+LL |     trait Seq { }
+   |           ^^^
+
+error[E0107]: this trait takes 0 type arguments but 1 type argument was supplied
+  --> $DIR/seq-args.rs:9:10
+   |
+LL |     impl Seq<bool> for u32 {
+   |          ^^^------ help: remove these generics
+   |          |
+   |          expected 0 type arguments
+   |
+note: trait defined here, with 0 type parameters
+  --> $DIR/seq-args.rs:2:11
+   |
+LL |     trait Seq { }
+   |           ^^^
 
 error: aborting due to 2 previous errors
 

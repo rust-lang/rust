@@ -33,8 +33,6 @@ impl<I: FusedIterator + ?Sized> FusedIterator for &mut I {}
 ///
 /// This trait must only be implemented when the contract is upheld. Consumers
 /// of this trait must inspect [`Iterator::size_hint()`]’s upper bound.
-///
-/// [`usize::MAX`]: crate::usize::MAX
 #[unstable(feature = "trusted_len", issue = "37572")]
 #[rustc_unsafe_specialization_marker]
 pub unsafe trait TrustedLen: Iterator {}
@@ -45,12 +43,14 @@ unsafe impl<I: TrustedLen + ?Sized> TrustedLen for &mut I {}
 /// An iterator that when yielding an item will have taken at least one element
 /// from its underlying [`SourceIter`].
 ///
-/// Calling [`next()`] guarantees that at least one value of the iterator's underlying source
-/// has been moved out and the result of the iterator chain could be inserted in its place,
-/// assuming structural constraints of the source allow such an insertion.
+/// Calling any method that advances the iterator, e.g.  [`next()`] or [`try_fold()`],
+/// guarantees that for each step at least one value of the iterator's underlying source
+/// has been moved out and the result of the iterator chain could be inserted
+/// in its place, assuming structural constraints of the source allow such an insertion.
 /// In other words this trait indicates that an iterator pipeline can be collected in place.
 ///
 /// [`SourceIter`]: crate::iter::SourceIter
 /// [`next()`]: Iterator::next
+/// [`try_fold()`]: Iterator::try_fold
 #[unstable(issue = "none", feature = "inplace_iteration")]
 pub unsafe trait InPlaceIterable: Iterator {}

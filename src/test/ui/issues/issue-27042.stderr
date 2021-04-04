@@ -4,7 +4,7 @@ warning: denote infinite loops with `loop { ... }`
 LL | /         'b:
 LL | |
 LL | |         while true { break }; // but here we cite the whole loop
-   | |____________________________^ help: use `loop`
+   | |__________________^ help: use `loop`
    |
    = note: `#[warn(while_true)]` on by default
 

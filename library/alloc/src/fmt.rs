@@ -19,6 +19,10 @@
 //! format!("{value}", value=4);      // => "4"
 //! format!("{} {}", 1, 2);           // => "1 2"
 //! format!("{:04}", 42);             // => "0042" with leading zeros
+//! format!("{:#?}", (100, 200));     // => "(
+//!                                   //       100,
+//!                                   //       200,
+//!                                   //     )"
 //! ```
 //!
 //! From these, you can see that the first argument is a format string. It is
@@ -157,13 +161,12 @@
 //!
 //! * `+` - This is intended for numeric types and indicates that the sign
 //!         should always be printed. Positive signs are never printed by
-//!         default, and the negative sign is only printed by default for the
-//!         `Signed` trait. This flag indicates that the correct sign (`+` or `-`)
-//!         should always be printed.
+//!         default, and the negative sign is only printed by default for signed values.
+//!         This flag indicates that the correct sign (`+` or `-`) should always be printed.
 //! * `-` - Currently not used
 //! * `#` - This flag indicates that the "alternate" form of printing should
 //!         be used. The alternate forms are:
-//!     * `#?` - pretty-print the [`Debug`] formatting
+//!     * `#?` - pretty-print the [`Debug`] formatting (adds linebreaks and indentation)
 //!     * `#x` - precedes the argument with a `0x`
 //!     * `#X` - precedes the argument with a `0x`
 //!     * `#b` - precedes the argument with a `0b`
@@ -282,21 +285,22 @@
 //! `%`. The actual grammar for the formatting syntax is:
 //!
 //! ```text
-//! format_string := <text> [ maybe-format <text> ] *
-//! maybe-format := '{' '{' | '}' '}' | <format>
+//! format_string := text [ maybe_format text ] *
+//! maybe_format := '{' '{' | '}' '}' | format
 //! format := '{' [ argument ] [ ':' format_spec ] '}'
 //! argument := integer | identifier
 //!
-//! format_spec := [[fill]align][sign]['#']['0'][width]['.' precision][type]
+//! format_spec := [[fill]align][sign]['#']['0'][width]['.' precision]type
 //! fill := character
 //! align := '<' | '^' | '>'
 //! sign := '+' | '-'
 //! width := count
 //! precision := count | '*'
-//! type := identifier | '?' | ''
+//! type := '' | '?' | 'x?' | 'X?' | identifier
 //! count := parameter | integer
 //! parameter := argument '$'
 //! ```
+//! In the above grammar, `text` may not contain any `'{'` or `'}'` characters.
 //!
 //! # Formatting traits
 //!

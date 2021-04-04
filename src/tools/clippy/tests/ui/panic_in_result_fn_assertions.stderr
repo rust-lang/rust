@@ -1,0 +1,57 @@
+error: used `unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertion in a function that returns `Result`
+  --> $DIR/panic_in_result_fn_assertions.rs:7:5
+   |
+LL | /     fn result_with_assert_with_message(x: i32) -> Result<bool, String> // should emit lint
+LL | |     {
+LL | |         assert!(x == 5, "wrong argument");
+LL | |         Ok(true)
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::panic-in-result-fn` implied by `-D warnings`
+   = help: `unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+  --> $DIR/panic_in_result_fn_assertions.rs:9:9
+   |
+LL |         assert!(x == 5, "wrong argument");
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: used `unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertion in a function that returns `Result`
+  --> $DIR/panic_in_result_fn_assertions.rs:13:5
+   |
+LL | /     fn result_with_assert_eq(x: i32) -> Result<bool, String> // should emit lint
+LL | |     {
+LL | |         assert_eq!(x, 5);
+LL | |         Ok(true)
+LL | |     }
+   | |_____^
+   |
+   = help: `unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+  --> $DIR/panic_in_result_fn_assertions.rs:15:9
+   |
+LL |         assert_eq!(x, 5);
+   |         ^^^^^^^^^^^^^^^^^
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: used `unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertion in a function that returns `Result`
+  --> $DIR/panic_in_result_fn_assertions.rs:19:5
+   |
+LL | /     fn result_with_assert_ne(x: i32) -> Result<bool, String> // should emit lint
+LL | |     {
+LL | |         assert_ne!(x, 1);
+LL | |         Ok(true)
+LL | |     }
+   | |_____^
+   |
+   = help: `unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+  --> $DIR/panic_in_result_fn_assertions.rs:21:9
+   |
+LL |         assert_ne!(x, 1);
+   |         ^^^^^^^^^^^^^^^^^
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+

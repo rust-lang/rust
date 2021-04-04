@@ -5,4 +5,4 @@ inputs. This investigation was kicked off by #38714, which revealed
 some pretty deep flaws in the ad-hoc way that we were doing things
 before.
 
-See also `src/test/compile-fail/closure-expected-type`.
+See also `src/test/ui/closure-expected-type`.

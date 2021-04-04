@@ -46,18 +46,8 @@ impl rustc_driver::Callbacks for CraneliftPassesCallbacks {
 
         config.opts.cg.panic = Some(PanicStrategy::Abort);
         config.opts.debugging_opts.panic_abort_tests = true;
-        config.opts.maybe_sysroot = Some(
-            std::env::current_exe()
-                .unwrap()
-                .parent()
-                .unwrap()
-                .parent()
-                .unwrap()
-                .parent()
-                .unwrap()
-                .join("build_sysroot")
-                .join("sysroot"),
-        );
+        config.opts.maybe_sysroot =
+            Some(std::env::current_exe().unwrap().parent().unwrap().parent().unwrap().to_owned());
     }
 }
 
@@ -92,9 +82,7 @@ fn main() {
         let mut run_compiler = rustc_driver::RunCompiler::new(&args, &mut callbacks);
         if use_clif {
             run_compiler.set_make_codegen_backend(Some(Box::new(move |_| {
-                Box::new(rustc_codegen_cranelift::CraneliftCodegenBackend {
-                    config: rustc_codegen_cranelift::BackendConfig { use_jit: false },
-                })
+                Box::new(rustc_codegen_cranelift::CraneliftCodegenBackend { config: None })
             })));
         }
         run_compiler.run()

@@ -1,4 +1,4 @@
-#![feature(or_patterns)]
+#![cfg_attr(bootstrap, feature(or_patterns))]
 #![recursion_limit = "256"]
 
 use rustc_ast as ast;
@@ -16,6 +16,7 @@ use rustc_target::spec::abi::Abi;
 
 use std::borrow::Cow;
 use std::cell::Cell;
+use std::collections::BTreeMap;
 use std::vec;
 
 pub fn id_to_string(map: &dyn rustc_hir::intravisit::Map<'_>, hir_id: hir::HirId) -> String {
@@ -54,7 +55,7 @@ pub const NO_ANN: &dyn PpAnn = &NoAnn;
 impl PpAnn for hir::Crate<'_> {
     fn nested(&self, state: &mut State<'_>, nested: Nested) {
         match nested {
-            Nested::Item(id) => state.print_item(self.item(id.id)),
+            Nested::Item(id) => state.print_item(self.item(id)),
             Nested::TraitItem(id) => state.print_trait_item(self.trait_item(id)),
             Nested::ImplItem(id) => state.print_impl_item(self.impl_item(id)),
             Nested::ForeignItem(id) => state.print_foreign_item(self.foreign_item(id)),
@@ -69,7 +70,7 @@ impl PpAnn for hir::Crate<'_> {
 impl PpAnn for &dyn rustc_hir::intravisit::Map<'_> {
     fn nested(&self, state: &mut State<'_>, nested: Nested) {
         match nested {
-            Nested::Item(id) => state.print_item(self.item(id.id)),
+            Nested::Item(id) => state.print_item(self.item(id)),
             Nested::TraitItem(id) => state.print_trait_item(self.trait_item(id)),
             Nested::ImplItem(id) => state.print_impl_item(self.impl_item(id)),
             Nested::ForeignItem(id) => state.print_foreign_item(self.foreign_item(id)),
@@ -82,6 +83,7 @@ impl PpAnn for &dyn rustc_hir::intravisit::Map<'_> {
 pub struct State<'a> {
     pub s: pp::Printer,
     comments: Option<Comments<'a>>,
+    attrs: &'a BTreeMap<hir::HirId, &'a [ast::Attribute]>,
     ann: &'a (dyn PpAnn + 'a),
 }
 
@@ -112,7 +114,7 @@ impl<'a> State<'a> {
             Node::Lifetime(a) => self.print_lifetime(&a),
             Node::Visibility(a) => self.print_visibility(&a),
             Node::GenericParam(_) => panic!("cannot print Node::GenericParam"),
-            Node::Field(_) => panic!("cannot print StructField"),
+            Node::Field(_) => panic!("cannot print Node::Field"),
             // These cases do not carry enough information in the
             // `hir_map` to reconstruct their full structure for pretty
             // printing.
@@ -138,9 +140,6 @@ impl std::ops::DerefMut for State<'_> {
 }
 
 impl<'a> PrintState<'a> for State<'a> {
-    fn insert_extra_parens(&self) -> bool {
-        true
-    }
     fn comments(&mut self) -> &mut Option<Comments<'a>> {
         &mut self.comments
     }
@@ -166,12 +165,12 @@ pub fn print_crate<'a>(
     input: String,
     ann: &'a dyn PpAnn,
 ) -> String {
-    let mut s = State::new_from_input(sm, filename, input, ann);
+    let mut s = State::new_from_input(sm, filename, input, &krate.attrs, ann);
 
     // When printing the AST, we sometimes need to inject `#[no_std]` here.
     // Since you can't compile the HIR, it's not necessary.
 
-    s.print_mod(&krate.item.module, &krate.item.attrs);
+    s.print_mod(&krate.item, s.attrs(hir::CRATE_HIR_ID));
     s.print_remaining_comments();
     s.s.eof()
 }
@@ -181,9 +180,19 @@ impl<'a> State<'a> {
         sm: &'a SourceMap,
         filename: FileName,
         input: String,
+        attrs: &'a BTreeMap<hir::HirId, &[ast::Attribute]>,
         ann: &'a dyn PpAnn,
     ) -> State<'a> {
-        State { s: pp::mk_printer(), comments: Some(Comments::new(sm, filename, input)), ann }
+        State {
+            s: pp::mk_printer(),
+            comments: Some(Comments::new(sm, filename, input)),
+            attrs,
+            ann,
+        }
+    }
+
+    fn attrs(&self, id: hir::HirId) -> &'a [ast::Attribute] {
+        self.attrs.get(&id).map_or(&[], |la| *la)
     }
 }
 
@@ -191,7 +200,8 @@ pub fn to_string<F>(ann: &dyn PpAnn, f: F) -> String
 where
     F: FnOnce(&mut State<'_>),
 {
-    let mut printer = State { s: pp::mk_printer(), comments: None, ann };
+    let mut printer =
+        State { s: pp::mk_printer(), comments: None, attrs: &BTreeMap::default(), ann };
     f(&mut printer);
     printer.s.eof()
 }
@@ -209,10 +219,6 @@ pub fn generic_params_to_string(generic_params: &[GenericParam<'_>]) -> String {
 
 pub fn bounds_to_string<'b>(bounds: impl IntoIterator<Item = &'b hir::GenericBound<'b>>) -> String {
     to_string(NO_ANN, |s| s.print_bounds("", bounds))
-}
-
-pub fn param_to_string(arg: &hir::Param<'_>) -> String {
-    to_string(NO_ANN, |s| s.print_param(arg))
 }
 
 pub fn ty_to_string(ty: &hir::Ty<'_>) -> String {
@@ -395,12 +401,15 @@ impl<'a> State<'a> {
                     &f.decl,
                     None,
                     &f.generic_params,
-                    &f.param_names[..],
+                    f.param_names,
                 );
             }
             hir::TyKind::OpaqueDef(..) => self.s.word("/*impl Trait*/"),
             hir::TyKind::Path(ref qpath) => self.print_qpath(qpath, false),
-            hir::TyKind::TraitObject(bounds, ref lifetime) => {
+            hir::TyKind::TraitObject(bounds, ref lifetime, syntax) => {
+                if syntax == ast::TraitObjectSyntax::Dyn {
+                    self.word_space("dyn");
+                }
                 let mut first = true;
                 for bound in bounds {
                     if first {
@@ -444,7 +453,7 @@ impl<'a> State<'a> {
     pub fn print_foreign_item(&mut self, item: &hir::ForeignItem<'_>) {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
-        self.print_outer_attributes(&item.attrs);
+        self.print_outer_attributes(self.attrs(item.hir_id()));
         match item.kind {
             hir::ForeignItemKind::Fn(ref decl, ref arg_names, ref generics) => {
                 self.head("");
@@ -552,7 +561,8 @@ impl<'a> State<'a> {
     pub fn print_item(&mut self, item: &hir::Item<'_>) {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
-        self.print_outer_attributes(&item.attrs);
+        let attrs = self.attrs(item.hir_id());
+        self.print_outer_attributes(attrs);
         self.ann.pre(self, AnnNode::Item(item));
         match item.kind {
             hir::ItemKind::ExternCrate(orig_name) => {
@@ -637,14 +647,14 @@ impl<'a> State<'a> {
                 self.print_ident(item.ident);
                 self.nbsp();
                 self.bopen();
-                self.print_mod(_mod, &item.attrs);
+                self.print_mod(_mod, attrs);
                 self.bclose(item.span);
             }
             hir::ItemKind::ForeignMod { abi, items } => {
                 self.head("extern");
                 self.word_nbsp(abi.to_string());
                 self.bopen();
-                self.print_inner_attributes(item.attrs);
+                self.print_inner_attributes(self.attrs(item.hir_id()));
                 for item in items {
                     self.ann.nested(self, Nested::ForeignItem(item.id));
                 }
@@ -687,7 +697,7 @@ impl<'a> State<'a> {
                 self.head(visibility_qualified(&item.vis, "union"));
                 self.print_struct(struct_def, generics, item.ident.name, item.span, true);
             }
-            hir::ItemKind::Impl {
+            hir::ItemKind::Impl(hir::Impl {
                 unsafety,
                 polarity,
                 defaultness,
@@ -697,7 +707,7 @@ impl<'a> State<'a> {
                 ref of_trait,
                 ref self_ty,
                 items,
-            } => {
+            }) => {
                 self.head("");
                 self.print_visibility(&item.vis);
                 self.print_defaultness(defaultness);
@@ -728,7 +738,7 @@ impl<'a> State<'a> {
 
                 self.s.space();
                 self.bopen();
-                self.print_inner_attributes(&item.attrs);
+                self.print_inner_attributes(attrs);
                 for impl_item in items {
                     self.ann.nested(self, Nested::ImplItem(impl_item.id));
                 }
@@ -825,7 +835,7 @@ impl<'a> State<'a> {
         for v in variants {
             self.space_if_not_bol();
             self.maybe_print_comment(v.span.lo());
-            self.print_outer_attributes(&v.attrs);
+            self.print_outer_attributes(self.attrs(v.id));
             self.ibox(INDENT_UNIT);
             self.print_variant(v);
             self.s.word(",");
@@ -879,7 +889,7 @@ impl<'a> State<'a> {
                     self.popen();
                     self.commasep(Inconsistent, struct_def.fields(), |s, field| {
                         s.maybe_print_comment(field.span.lo());
-                        s.print_outer_attributes(&field.attrs);
+                        s.print_outer_attributes(s.attrs(field.hir_id));
                         s.print_visibility(&field.vis);
                         s.print_type(&field.ty)
                     });
@@ -901,7 +911,7 @@ impl<'a> State<'a> {
                 for field in struct_def.fields() {
                     self.hardbreak_if_not_bol();
                     self.maybe_print_comment(field.span.lo());
-                    self.print_outer_attributes(&field.attrs);
+                    self.print_outer_attributes(self.attrs(field.hir_id));
                     self.print_visibility(&field.vis);
                     self.print_ident(field.ident);
                     self.word_nbsp(":");
@@ -937,10 +947,10 @@ impl<'a> State<'a> {
     }
 
     pub fn print_trait_item(&mut self, ti: &hir::TraitItem<'_>) {
-        self.ann.pre(self, AnnNode::SubItem(ti.hir_id));
+        self.ann.pre(self, AnnNode::SubItem(ti.hir_id()));
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(ti.span.lo());
-        self.print_outer_attributes(&ti.attrs);
+        self.print_outer_attributes(self.attrs(ti.hir_id()));
         match ti.kind {
             hir::TraitItemKind::Const(ref ty, default) => {
                 let vis =
@@ -972,14 +982,14 @@ impl<'a> State<'a> {
                 );
             }
         }
-        self.ann.post(self, AnnNode::SubItem(ti.hir_id))
+        self.ann.post(self, AnnNode::SubItem(ti.hir_id()))
     }
 
     pub fn print_impl_item(&mut self, ii: &hir::ImplItem<'_>) {
-        self.ann.pre(self, AnnNode::SubItem(ii.hir_id));
+        self.ann.pre(self, AnnNode::SubItem(ii.hir_id()));
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(ii.span.lo());
-        self.print_outer_attributes(&ii.attrs);
+        self.print_outer_attributes(self.attrs(ii.hir_id()));
         self.print_defaultness(ii.defaultness);
 
         match ii.kind {
@@ -998,7 +1008,7 @@ impl<'a> State<'a> {
                 self.print_associated_type(ii.ident, &ii.generics, None, Some(ty));
             }
         }
-        self.ann.post(self, AnnNode::SubItem(ii.hir_id))
+        self.ann.post(self, AnnNode::SubItem(ii.hir_id()))
     }
 
     pub fn print_local(&mut self, init: Option<&hir::Expr<'_>>, decl: impl Fn(&mut Self)) {
@@ -1083,6 +1093,50 @@ impl<'a> State<'a> {
         self.ann.post(self, AnnNode::Block(blk))
     }
 
+    fn print_else(&mut self, els: Option<&hir::Expr<'_>>) {
+        match els {
+            Some(_else) => {
+                match _else.kind {
+                    // "another else-if"
+                    hir::ExprKind::If(ref i, ref then, ref e) => {
+                        self.cbox(INDENT_UNIT - 1);
+                        self.ibox(0);
+                        self.s.word(" else if ");
+                        self.print_expr_as_cond(&i);
+                        self.s.space();
+                        self.print_expr(&then);
+                        self.print_else(e.as_ref().map(|e| &**e))
+                    }
+                    // "final else"
+                    hir::ExprKind::Block(ref b, _) => {
+                        self.cbox(INDENT_UNIT - 1);
+                        self.ibox(0);
+                        self.s.word(" else ");
+                        self.print_block(&b)
+                    }
+                    // BLEAH, constraints would be great here
+                    _ => {
+                        panic!("print_if saw if with weird alternative");
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    pub fn print_if(
+        &mut self,
+        test: &hir::Expr<'_>,
+        blk: &hir::Expr<'_>,
+        elseopt: Option<&hir::Expr<'_>>,
+    ) {
+        self.head("if");
+        self.print_expr_as_cond(test);
+        self.s.space();
+        self.print_expr(blk);
+        self.print_else(elseopt)
+    }
+
     pub fn print_anon_const(&mut self, constant: &hir::AnonConst) {
         self.ann.nested(self, Nested::Body(constant.body))
     }
@@ -1152,14 +1206,14 @@ impl<'a> State<'a> {
     fn print_expr_struct(
         &mut self,
         qpath: &hir::QPath<'_>,
-        fields: &[hir::Field<'_>],
+        fields: &[hir::ExprField<'_>],
         wth: &Option<&hir::Expr<'_>>,
     ) {
         self.print_qpath(qpath, true);
         self.s.word("{");
         self.commasep_cmnt(
             Consistent,
-            &fields[..],
+            fields,
             |s, field| {
                 s.ibox(INDENT_UNIT);
                 if !field.is_shorthand {
@@ -1216,7 +1270,7 @@ impl<'a> State<'a> {
         self.s.word(".");
         self.print_ident(segment.ident);
 
-        let generic_args = segment.generic_args();
+        let generic_args = segment.args();
         if !generic_args.args.is_empty() || !generic_args.bindings.is_empty() {
             self.print_generic_args(generic_args, segment.infer_args, true);
         }
@@ -1280,7 +1334,7 @@ impl<'a> State<'a> {
 
     pub fn print_expr(&mut self, expr: &hir::Expr<'_>) {
         self.maybe_print_comment(expr.span.lo());
-        self.print_outer_attributes(&expr.attrs);
+        self.print_outer_attributes(self.attrs(expr.hir_id));
         self.ibox(INDENT_UNIT);
         self.ann.pre(self, AnnNode::Expr(expr));
         match expr.kind {
@@ -1352,7 +1406,10 @@ impl<'a> State<'a> {
                 // Print `}`:
                 self.bclose_maybe_open(expr.span, true);
             }
-            hir::ExprKind::Loop(ref blk, opt_label, _) => {
+            hir::ExprKind::If(ref test, ref blk, ref elseopt) => {
+                self.print_if(&test, &blk, elseopt.as_ref().map(|e| &**e));
+            }
+            hir::ExprKind::Loop(ref blk, opt_label, _, _) => {
                 if let Some(label) = opt_label {
                     self.print_ident(label.ident);
                     self.word_space(":");
@@ -1640,19 +1697,8 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_usize(&mut self, i: usize) {
-        self.s.word(i.to_string())
-    }
-
     pub fn print_name(&mut self, name: Symbol) {
         self.print_ident(Ident::with_dummy_span(name))
-    }
-
-    pub fn print_for_decl(&mut self, loc: &hir::Local<'_>, coll: &hir::Expr<'_>) {
-        self.print_local_decl(loc);
-        self.s.space();
-        self.word_space("in");
-        self.print_expr(coll)
     }
 
     pub fn print_path(&mut self, path: &hir::Path<'_>, colons_before_params: bool) {
@@ -1664,11 +1710,7 @@ impl<'a> State<'a> {
             }
             if segment.ident.name != kw::PathRoot {
                 self.print_ident(segment.ident);
-                self.print_generic_args(
-                    segment.generic_args(),
-                    segment.infer_args,
-                    colons_before_params,
-                );
+                self.print_generic_args(segment.args(), segment.infer_args, colons_before_params);
             }
         }
     }
@@ -1676,7 +1718,7 @@ impl<'a> State<'a> {
     pub fn print_path_segment(&mut self, segment: &hir::PathSegment<'_>) {
         if segment.ident.name != kw::PathRoot {
             self.print_ident(segment.ident);
-            self.print_generic_args(segment.generic_args(), segment.infer_args, false);
+            self.print_generic_args(segment.args(), segment.infer_args, false);
         }
     }
 
@@ -1696,7 +1738,7 @@ impl<'a> State<'a> {
                     if segment.ident.name != kw::PathRoot {
                         self.print_ident(segment.ident);
                         self.print_generic_args(
-                            segment.generic_args(),
+                            segment.args(),
                             segment.infer_args,
                             colons_before_params,
                         );
@@ -1708,7 +1750,7 @@ impl<'a> State<'a> {
                 let item_segment = path.segments.last().unwrap();
                 self.print_ident(item_segment.ident);
                 self.print_generic_args(
-                    item_segment.generic_args(),
+                    item_segment.args(),
                     item_segment.infer_args,
                     colons_before_params,
                 )
@@ -1728,7 +1770,7 @@ impl<'a> State<'a> {
                 self.s.word("::");
                 self.print_ident(item_segment.ident);
                 self.print_generic_args(
-                    item_segment.generic_args(),
+                    item_segment.args(),
                     item_segment.infer_args,
                     colons_before_params,
                 )
@@ -1800,6 +1842,7 @@ impl<'a> State<'a> {
             for binding in generic_args.bindings.iter() {
                 start_or_comma(self);
                 self.print_ident(binding.ident);
+                self.print_generic_args(binding.gen_args, false, false);
                 self.s.space();
                 match generic_args.bindings[0].kind {
                     hir::TypeBindingKind::Equality { ref ty } => {
@@ -1979,26 +2022,35 @@ impl<'a> State<'a> {
     }
 
     pub fn print_param(&mut self, arg: &hir::Param<'_>) {
-        self.print_outer_attributes(&arg.attrs);
+        self.print_outer_attributes(self.attrs(arg.hir_id));
         self.print_pat(&arg.pat);
     }
 
     pub fn print_arm(&mut self, arm: &hir::Arm<'_>) {
         // I have no idea why this check is necessary, but here it
         // is :(
-        if arm.attrs.is_empty() {
+        if self.attrs(arm.hir_id).is_empty() {
             self.s.space();
         }
         self.cbox(INDENT_UNIT);
         self.ann.pre(self, AnnNode::Arm(arm));
         self.ibox(0);
-        self.print_outer_attributes(&arm.attrs);
+        self.print_outer_attributes(&self.attrs(arm.hir_id));
         self.print_pat(&arm.pat);
         self.s.space();
         if let Some(ref g) = arm.guard {
             match g {
                 hir::Guard::If(e) => {
                     self.word_space("if");
+                    self.print_expr(&e);
+                    self.s.space();
+                }
+                hir::Guard::IfLet(pat, e) => {
+                    self.word_nbsp("if");
+                    self.word_nbsp("let");
+                    self.print_pat(&pat);
+                    self.s.space();
+                    self.word_space("=");
                     self.print_expr(&e);
                     self.s.space();
                 }
@@ -2196,9 +2248,14 @@ impl<'a> State<'a> {
                     self.print_type(&default)
                 }
             }
-            GenericParamKind::Const { ref ty } => {
+            GenericParamKind::Const { ref ty, ref default } => {
                 self.word_space(":");
-                self.print_type(ty)
+                self.print_type(ty);
+                if let Some(ref default) = default {
+                    self.s.space();
+                    self.word_space("=");
+                    self.print_anon_const(&default)
+                }
             }
         }
     }
@@ -2221,19 +2278,19 @@ impl<'a> State<'a> {
             }
 
             match predicate {
-                &hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
-                    ref bound_generic_params,
-                    ref bounded_ty,
+                hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
+                    bound_generic_params,
+                    bounded_ty,
                     bounds,
                     ..
                 }) => {
                     self.print_formal_generic_params(bound_generic_params);
                     self.print_type(&bounded_ty);
-                    self.print_bounds(":", bounds);
+                    self.print_bounds(":", *bounds);
                 }
-                &hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate {
-                    ref lifetime,
-                    ref bounds,
+                hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate {
+                    lifetime,
+                    bounds,
                     ..
                 }) => {
                     self.print_lifetime(lifetime);
@@ -2252,10 +2309,8 @@ impl<'a> State<'a> {
                         }
                     }
                 }
-                &hir::WherePredicate::EqPredicate(hir::WhereEqPredicate {
-                    ref lhs_ty,
-                    ref rhs_ty,
-                    ..
+                hir::WherePredicate::EqPredicate(hir::WhereEqPredicate {
+                    lhs_ty, rhs_ty, ..
                 }) => {
                     self.print_type(lhs_ty);
                     self.s.space();
@@ -2360,24 +2415,6 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_opt_abi_and_extern_if_nondefault(&mut self, opt_abi: Option<Abi>) {
-        match opt_abi {
-            Some(Abi::Rust) => {}
-            Some(abi) => {
-                self.word_nbsp("extern");
-                self.word_nbsp(abi.to_string())
-            }
-            None => {}
-        }
-    }
-
-    pub fn print_extern_opt_abi(&mut self, opt_abi: Option<Abi>) {
-        if let Some(abi) = opt_abi {
-            self.word_nbsp("extern");
-            self.word_nbsp(abi.to_string())
-        }
-    }
-
     pub fn print_fn_header_info(&mut self, header: hir::FnHeader, vis: &hir::Visibility<'_>) {
         self.s.word(visibility_qualified(vis, ""));
 
@@ -2426,7 +2463,13 @@ impl<'a> State<'a> {
 //
 // Duplicated from `parse::classify`, but adapted for the HIR.
 fn expr_requires_semi_to_be_stmt(e: &hir::Expr<'_>) -> bool {
-    !matches!(e.kind, hir::ExprKind::Match(..) | hir::ExprKind::Block(..) | hir::ExprKind::Loop(..))
+    !matches!(
+        e.kind,
+        hir::ExprKind::If(..)
+            | hir::ExprKind::Match(..)
+            | hir::ExprKind::Block(..)
+            | hir::ExprKind::Loop(..)
+    )
 }
 
 /// This statement requires a semicolon after it.

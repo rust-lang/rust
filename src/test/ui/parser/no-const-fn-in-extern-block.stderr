@@ -1,8 +1,8 @@
 error: functions in `extern` blocks cannot have qualifiers
   --> $DIR/no-const-fn-in-extern-block.rs:2:14
    |
-LL | extern {
-   | ------ in this `extern` block
+LL | extern "C" {
+   | ---------- in this `extern` block
 LL |     const fn foo();
    |              ^^^
    |
@@ -14,8 +14,8 @@ LL |     fn foo();
 error: functions in `extern` blocks cannot have qualifiers
   --> $DIR/no-const-fn-in-extern-block.rs:4:21
    |
-LL | extern {
-   | ------ in this `extern` block
+LL | extern "C" {
+   | ---------- in this `extern` block
 ...
 LL |     const unsafe fn bar();
    |                     ^^^

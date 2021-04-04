@@ -188,7 +188,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(reexport_test_harness_main, Normal, template!(NameValueStr: "name")),
 
     // Macros:
-    ungated!(derive, Normal, template!(List: "Trait1, Trait2, ...")),
     ungated!(automatically_derived, Normal, template!(Word)),
     // FIXME(#14407)
     ungated!(macro_use, Normal, template!(Word, List: "name1, name2, ...")),
@@ -442,7 +441,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Internal attributes, Macro related:
     // ==========================================================================
 
-    rustc_attr!(rustc_builtin_macro, AssumedUsed, template!(Word), IMPL_DETAIL),
+    rustc_attr!(rustc_builtin_macro, AssumedUsed, template!(Word, NameValueStr: "name"), IMPL_DETAIL),
     rustc_attr!(rustc_proc_macro_decls, Normal, template!(Word), INTERNAL_UNSTABLE),
     rustc_attr!(
         rustc_macro_transparency, AssumedUsed,
@@ -471,6 +470,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     rustc_attr!(rustc_promotable, AssumedUsed, template!(Word), IMPL_DETAIL),
     rustc_attr!(rustc_args_required_const, AssumedUsed, template!(List: "N"), INTERNAL_UNSTABLE),
+    rustc_attr!(rustc_legacy_const_generics, AssumedUsed, template!(List: "N"), INTERNAL_UNSTABLE),
 
     // ==========================================================================
     // Internal attributes, Layout related:

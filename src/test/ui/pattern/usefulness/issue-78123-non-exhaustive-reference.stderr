@@ -1,0 +1,16 @@
+error[E0004]: non-exhaustive patterns: type `&A` is non-empty
+  --> $DIR/issue-78123-non-exhaustive-reference.rs:5:11
+   |
+LL | enum A {}
+   | --------- `A` defined here
+...
+LL |     match a {}
+   |           ^
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `&A`
+   = note: references are always considered inhabited
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0004`.

@@ -143,8 +143,8 @@ impl<'a> LintExtractor<'a> {
                     Some((lineno, line)) => {
                         let line = line.trim();
                         if let Some(text) = line.strip_prefix("/// ") {
-                            doc_lines.push(text.trim().to_string());
-                        } else if line.starts_with("///") {
+                            doc_lines.push(text.to_string());
+                        } else if line == "///" {
                             doc_lines.push("".to_string());
                         } else if line.starts_with("// ") {
                             // Ignore comments.

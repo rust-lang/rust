@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-67945-1.rs:14:20
+  --> $DIR/issue-67945-1.rs:13:20
    |
 LL | struct Bug<S> {
    |            - this type parameter
@@ -13,7 +13,7 @@ LL |         let x: S = MaybeUninit::uninit();
                        found union `MaybeUninit<_>`
 
 error[E0392]: parameter `S` is never used
-  --> $DIR/issue-67945-1.rs:11:12
+  --> $DIR/issue-67945-1.rs:10:12
    |
 LL | struct Bug<S> {
    |            ^ unused parameter

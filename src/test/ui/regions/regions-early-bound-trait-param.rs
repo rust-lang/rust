@@ -117,7 +117,7 @@ pub fn main() {
     let m : Box<dyn Trait> = make_val();
     // assert_eq!(object_invoke1(&*m), (4,5));
     //            ~~~~~~~~~~~~~~~~~~~
-    // this call yields a compilation error; see compile-fail/dropck-object-cycle.rs
+    // this call yields a compilation error; see ui/span/dropck-object-cycle.rs
     // for details.
     assert_eq!(object_invoke2(&*m), 5);
 

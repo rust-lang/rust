@@ -1,5 +1,5 @@
 error: generic parameters may not be used in const operations
-  --> $DIR/issue-67945-1.rs:14:16
+  --> $DIR/issue-67945-1.rs:13:16
    |
 LL |         let x: S = MaybeUninit::uninit();
    |                ^ cannot perform const operation using `S`
@@ -8,7 +8,7 @@ LL |         let x: S = MaybeUninit::uninit();
    = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/issue-67945-1.rs:17:45
+  --> $DIR/issue-67945-1.rs:16:45
    |
 LL |         let b = &*(&x as *const _ as *const S);
    |                                             ^ cannot perform const operation using `S`
@@ -17,7 +17,7 @@ LL |         let b = &*(&x as *const _ as *const S);
    = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error[E0392]: parameter `S` is never used
-  --> $DIR/issue-67945-1.rs:11:12
+  --> $DIR/issue-67945-1.rs:10:12
    |
 LL | struct Bug<S> {
    |            ^ unused parameter

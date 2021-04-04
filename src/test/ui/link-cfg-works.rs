@@ -4,10 +4,10 @@
 
 #![feature(link_cfg)]
 
-extern crate link_cfg_works_transitive_rlib;
 extern crate link_cfg_works_transitive_dylib;
+extern crate link_cfg_works_transitive_rlib;
 
 #[link(name = "foo", cfg(foo))]
-extern {}
+extern "C" {}
 
 fn main() {}

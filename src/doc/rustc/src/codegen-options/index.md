@@ -299,9 +299,9 @@ opt-level=0`](#opt-level)). That is:
 * When `-C lto` is not specified:
   * `codegen-units=1`: disable LTO.
   * `opt-level=0`: disable LTO.
-* When `-C lto=true`:
-  * `lto=true`: 16 codegen units, perform fat LTO across crates.
-  * `codegen-units=1` + `lto=true`: 1 codegen unit, fat LTO across crates.
+* When `-C lto` is specified:
+  * `lto`: 16 codegen units, perform fat LTO across crates.
+  * `codegen-units=1` + `lto`: 1 codegen unit, fat LTO across crates.
 
 See also [linker-plugin-lto](#linker-plugin-lto) for cross-language LTO.
 
@@ -492,6 +492,34 @@ point instructions in software. It takes one of the following values:
 * `y`, `yes`, `on`, or no value: use soft floats.
 * `n`, `no`, or `off`: use hardware floats (the default).
 
+## split-debuginfo
+
+This option controls the emission of "split debuginfo" for debug information
+that `rustc` generates. The default behavior of this option is
+platform-specific, and not all possible values for this option work on all
+platform. Possible values are:
+
+* `off` - This is the default for platforms with ELF binaries and windows-gnu
+  (not Windows MSVC and not macOS). This typically means that dwarf debug
+  information can be found in the final artifact in sections of the executable.
+  This option is not supported on Windows MSVC. On macOS this options prevents
+  the final execution of `dsymutil` to generate debuginfo.
+
+* `packed` - This is the default for Windows MSVC and macOS platforms. The term
+  "packed" here means that all the debug information is packed into a separate
+  file from the main executable. On Windows MSVC this is a `*.pdb` file, on
+  macOS this is a `*.dSYM` folder, and on other platforms this is a `*.dwp`
+  files.
+
+* `unpacked` - This means that debug information will be found in separate
+  files for each compilation unit (object file). This is not supported on
+  Windows MSVC. On macOS this means the original object files will contain
+  debug information. On other Unix platforms this means that `*.dwo` files will
+  contain debug information.
+
+Note that `packed` and `unpacked` gated behind `-Zunstable-options` on
+non-macOS platforms at this time.
+
 ## target-cpu
 
 This instructs `rustc` to generate code specifically for a particular processor.
@@ -499,7 +527,7 @@ This instructs `rustc` to generate code specifically for a particular processor.
 You can run `rustc --print target-cpus` to see the valid options to pass
 here. Each target has a default base CPU. Special values include:
 
-* `native` can be passed to use the processor of the host machine. 
+* `native` can be passed to use the processor of the host machine.
 * `generic` refers to an LLVM target with minimal features but modern tuning.
 
 ## target-feature

@@ -1,10 +1,10 @@
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests;
 
-use crate::fmt;
-use crate::marker;
+use crate::marker::PhantomPinned;
 use crate::ops::Deref;
 use crate::panic::{RefUnwindSafe, UnwindSafe};
+use crate::pin::Pin;
 use crate::sys::mutex as sys;
 
 /// A re-entrant mutual exclusion
@@ -15,6 +15,7 @@ use crate::sys::mutex as sys;
 pub struct ReentrantMutex<T> {
     inner: sys::ReentrantMutex,
     data: T,
+    _pinned: PhantomPinned,
 }
 
 unsafe impl<T: Send> Send for ReentrantMutex<T> {}
@@ -37,10 +38,10 @@ impl<T> RefUnwindSafe for ReentrantMutex<T> {}
 /// guarded data.
 #[must_use = "if unused the ReentrantMutex will immediately unlock"]
 pub struct ReentrantMutexGuard<'a, T: 'a> {
-    lock: &'a ReentrantMutex<T>,
+    lock: Pin<&'a ReentrantMutex<T>>,
 }
 
-impl<T> !marker::Send for ReentrantMutexGuard<'_, T> {}
+impl<T> !Send for ReentrantMutexGuard<'_, T> {}
 
 impl<T> ReentrantMutex<T> {
     /// Creates a new reentrant mutex in an unlocked state.
@@ -51,7 +52,11 @@ impl<T> ReentrantMutex<T> {
     /// once this mutex is in its final resting place, and only then are the
     /// lock/unlock methods safe.
     pub const unsafe fn new(t: T) -> ReentrantMutex<T> {
-        ReentrantMutex { inner: sys::ReentrantMutex::uninitialized(), data: t }
+        ReentrantMutex {
+            inner: sys::ReentrantMutex::uninitialized(),
+            data: t,
+            _pinned: PhantomPinned,
+        }
     }
 
     /// Initializes this mutex so it's ready for use.
@@ -60,8 +65,8 @@ impl<T> ReentrantMutex<T> {
     ///
     /// Unsafe to call more than once, and must be called after this will no
     /// longer move in memory.
-    pub unsafe fn init(&self) {
-        self.inner.init();
+    pub unsafe fn init(self: Pin<&mut Self>) {
+        self.get_unchecked_mut().inner.init()
     }
 
     /// Acquires a mutex, blocking the current thread until it is able to do so.
@@ -76,9 +81,9 @@ impl<T> ReentrantMutex<T> {
     /// If another user of this mutex panicked while holding the mutex, then
     /// this call will return failure if the mutex would otherwise be
     /// acquired.
-    pub fn lock(&self) -> ReentrantMutexGuard<'_, T> {
+    pub fn lock(self: Pin<&Self>) -> ReentrantMutexGuard<'_, T> {
         unsafe { self.inner.lock() }
-        ReentrantMutexGuard::new(&self)
+        ReentrantMutexGuard { lock: self }
     }
 
     /// Attempts to acquire this lock.
@@ -93,8 +98,12 @@ impl<T> ReentrantMutex<T> {
     /// If another user of this mutex panicked while holding the mutex, then
     /// this call will return failure if the mutex would otherwise be
     /// acquired.
-    pub fn try_lock(&self) -> Option<ReentrantMutexGuard<'_, T>> {
-        if unsafe { self.inner.try_lock() } { Some(ReentrantMutexGuard::new(&self)) } else { None }
+    pub fn try_lock(self: Pin<&Self>) -> Option<ReentrantMutexGuard<'_, T>> {
+        if unsafe { self.inner.try_lock() } {
+            Some(ReentrantMutexGuard { lock: self })
+        } else {
+            None
+        }
     }
 }
 
@@ -104,30 +113,6 @@ impl<T> Drop for ReentrantMutex<T> {
         // this mutex (it's up to the user to arrange for a mutex to get
         // dropped, that's not our job)
         unsafe { self.inner.destroy() }
-    }
-}
-
-impl<T: fmt::Debug + 'static> fmt::Debug for ReentrantMutex<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.try_lock() {
-            Some(guard) => f.debug_struct("ReentrantMutex").field("data", &*guard).finish(),
-            None => {
-                struct LockedPlaceholder;
-                impl fmt::Debug for LockedPlaceholder {
-                    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                        f.write_str("<locked>")
-                    }
-                }
-
-                f.debug_struct("ReentrantMutex").field("data", &LockedPlaceholder).finish()
-            }
-        }
-    }
-}
-
-impl<'mutex, T> ReentrantMutexGuard<'mutex, T> {
-    fn new(lock: &'mutex ReentrantMutex<T>) -> ReentrantMutexGuard<'mutex, T> {
-        ReentrantMutexGuard { lock }
     }
 }
 

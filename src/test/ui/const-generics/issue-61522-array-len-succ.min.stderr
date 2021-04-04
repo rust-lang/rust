@@ -1,5 +1,5 @@
 error: generic parameters may not be used in const operations
-  --> $DIR/issue-61522-array-len-succ.rs:7:45
+  --> $DIR/issue-61522-array-len-succ.rs:6:45
    |
 LL | pub struct MyArray<const COUNT: usize>([u8; COUNT + 1]);
    |                                             ^^^^^ cannot perform const operation using `COUNT`
@@ -8,7 +8,7 @@ LL | pub struct MyArray<const COUNT: usize>([u8; COUNT + 1]);
    = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/issue-61522-array-len-succ.rs:12:30
+  --> $DIR/issue-61522-array-len-succ.rs:11:30
    |
 LL |     fn inner(&self) -> &[u8; COUNT + 1] {
    |                              ^^^^^ cannot perform const operation using `COUNT`

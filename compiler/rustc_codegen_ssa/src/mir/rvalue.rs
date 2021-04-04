@@ -325,7 +325,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                                 let er = scalar.valid_range_exclusive(bx.cx());
                                 if er.end != er.start
-                                    && scalar.valid_range.end() > scalar.valid_range.start()
+                                    && scalar.valid_range.end() >= scalar.valid_range.start()
                                 {
                                     // We want `table[e as usize ± k]` to not
                                     // have bound checks, and this is the most
@@ -424,7 +424,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 (bx, operand)
             }
 
-            mir::Rvalue::BinaryOp(op, ref lhs, ref rhs) => {
+            mir::Rvalue::BinaryOp(op, box (ref lhs, ref rhs)) => {
                 let lhs = self.codegen_operand(&mut bx, lhs);
                 let rhs = self.codegen_operand(&mut bx, rhs);
                 let llresult = match (lhs.val, rhs.val) {
@@ -453,7 +453,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 };
                 (bx, operand)
             }
-            mir::Rvalue::CheckedBinaryOp(op, ref lhs, ref rhs) => {
+            mir::Rvalue::CheckedBinaryOp(op, box (ref lhs, ref rhs)) => {
                 let lhs = self.codegen_operand(&mut bx, lhs);
                 let rhs = self.codegen_operand(&mut bx, rhs);
                 let result = self.codegen_scalar_checked_binop(
@@ -489,6 +489,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             mir::Rvalue::Discriminant(ref place) => {
                 let discr_ty = rvalue.ty(self.mir, bx.tcx());
+                let discr_ty = self.monomorphize(discr_ty);
                 let discr = self
                     .codegen_place(&mut bx, place.as_ref())
                     .codegen_get_discr(&mut bx, discr_ty);

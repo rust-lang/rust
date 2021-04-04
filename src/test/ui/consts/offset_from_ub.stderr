@@ -20,6 +20,8 @@ LL | | };
    | |__-
    |
    = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
@@ -38,6 +40,9 @@ LL | |
 LL | |     unsafe { (42 as *const u8).offset_from(&5u8) as usize }
 LL | | };
    | |__-
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
@@ -59,6 +64,9 @@ LL | |     let field_ptr = &data[1] as *const u8 as *const u16;
 LL | |     unsafe { field_ptr.offset_from(base_ptr as *const u16) }
 LL | | };
    | |__-
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
@@ -78,6 +86,9 @@ LL | |     let ptr = 0 as *const u8;
 LL | |     unsafe { ptr.offset_from(ptr) }
 LL | | };
    | |__-
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
@@ -98,6 +109,9 @@ LL | |     let ptr2 = 16 as *const u8;
 LL | |     unsafe { ptr2.offset_from(ptr1) }
 LL | | };
    | |__-
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: aborting due to 5 previous errors
 

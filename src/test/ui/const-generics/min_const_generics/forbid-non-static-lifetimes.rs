@@ -1,5 +1,3 @@
-#![feature(min_const_generics)]
-
 // This test checks that non-static lifetimes are prohibited under `min_const_generics`. It
 // currently emits an error with `min_const_generics`. This will ICE under `const_generics`.
 

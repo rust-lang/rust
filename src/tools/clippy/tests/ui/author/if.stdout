@@ -1,7 +1,7 @@
 if_chain! {
     if let StmtKind::Local(ref local) = stmt.kind;
     if let Some(ref init) = local.init;
-    if let Some((ref cond, ref then, Some(else_))) = higher::if_block(&init);
+    if let ExprKind::If(ref cond, ref then, Some(ref else_)) = init.kind;
     if let ExprKind::Block(ref block) = else_.kind;
     if let Some(trailing_expr) = &block.expr;
     if block.stmts.len() == 1;

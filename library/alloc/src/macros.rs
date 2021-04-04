@@ -29,20 +29,26 @@
 /// to the same boxed integer value, not five references pointing to independently
 /// boxed integers.
 ///
+/// Also, note that `vec![expr; 0]` is allowed, and produces an empty vector.
+/// This will still evaluate `expr`, however, and immediately drop the resulting value, so
+/// be mindful of side effects.
+///
 /// [`Vec`]: crate::vec::Vec
 #[cfg(not(test))]
+#[doc(alias = "alloc")]
+#[doc(alias = "malloc")]
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow_internal_unstable(box_syntax)]
+#[allow_internal_unstable(box_syntax, liballoc_internals)]
 macro_rules! vec {
     () => (
-        $crate::vec::Vec::new()
+        $crate::__rust_force_expr!($crate::vec::Vec::new())
     );
     ($elem:expr; $n:expr) => (
-        $crate::vec::from_elem($elem, $n)
+        $crate::__rust_force_expr!($crate::vec::from_elem($elem, $n))
     );
     ($($x:expr),+ $(,)?) => (
-        <[_]>::into_vec(box [$($x),+])
+        $crate::__rust_force_expr!(<[_]>::into_vec(box [$($x),+]))
     );
 }
 
@@ -101,9 +107,20 @@ macro_rules! vec {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "format_macro")]
 macro_rules! format {
     ($($arg:tt)*) => {{
         let res = $crate::fmt::format($crate::__export::format_args!($($arg)*));
         res
     }}
+}
+
+/// Force AST node to an expression to improve diagnostics in pattern position.
+#[doc(hidden)]
+#[macro_export]
+#[unstable(feature = "liballoc_internals", issue = "none", reason = "implementation detail")]
+macro_rules! __rust_force_expr {
+    ($e:expr) => {
+        $e
+    };
 }

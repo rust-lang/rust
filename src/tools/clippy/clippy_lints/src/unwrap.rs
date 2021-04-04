@@ -1,7 +1,6 @@
-use crate::utils::{
-    differing_macro_contexts, higher::if_block, is_type_diagnostic_item, span_lint_and_then,
-    usage::is_potentially_mutated,
-};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::{differing_macro_contexts, usage::is_potentially_mutated};
 use if_chain::if_chain;
 use rustc_hir::intravisit::{walk_expr, walk_fn, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, HirId, Path, QPath, UnOp};
@@ -109,7 +108,7 @@ fn collect_unwrap_info<'tcx>(
             },
             _ => (),
         }
-    } else if let ExprKind::Unary(UnOp::UnNot, expr) = &expr.kind {
+    } else if let ExprKind::Unary(UnOp::Not, expr) = &expr.kind {
         return collect_unwrap_info(cx, expr, branch, !invert);
     } else {
         if_chain! {
@@ -158,7 +157,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
         if in_external_macro(self.cx.tcx.sess, expr.span) {
             return;
         }
-        if let Some((cond, then, els)) = if_block(&expr) {
+        if let ExprKind::If(cond, then, els) = &expr.kind {
             walk_expr(self, cond);
             self.visit_branch(cond, then, false);
             if let Some(els) = els {

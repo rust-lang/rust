@@ -1,6 +1,6 @@
 //! Unicode string slices.
 //!
-//! *[See also the `str` primitive type](../../std/primitive.str.html).*
+//! *[See also the `str` primitive type](str).*
 //!
 //! The `&str` type is one of the two main string types, the other being `String`.
 //! Unlike its `String` counterpart, its contents are borrowed.
@@ -46,6 +46,8 @@ pub use core::str::pattern;
 pub use core::str::EncodeUtf16;
 #[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
 pub use core::str::SplitAsciiWhitespace;
+#[stable(feature = "split_inclusive", since = "1.53.0")]
+pub use core::str::SplitInclusive;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::SplitWhitespace;
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -90,8 +92,8 @@ impl<S: Borrow<str>> Join<&str> for [S] {
     }
 }
 
-macro_rules! spezialize_for_lengths {
-    ($separator:expr, $target:expr, $iter:expr; $($num:expr),*) => {
+macro_rules! specialize_for_lengths {
+    ($separator:expr, $target:expr, $iter:expr; $($num:expr),*) => {{
         let mut target = $target;
         let iter = $iter;
         let sep_bytes = $separator;
@@ -102,7 +104,8 @@ macro_rules! spezialize_for_lengths {
                 $num => {
                     for s in iter {
                         copy_slice_and_advance!(target, sep_bytes);
-                        copy_slice_and_advance!(target, s.borrow().as_ref());
+                        let content_bytes = s.borrow().as_ref();
+                        copy_slice_and_advance!(target, content_bytes);
                     }
                 },
             )*
@@ -110,11 +113,13 @@ macro_rules! spezialize_for_lengths {
                 // arbitrary non-zero size fallback
                 for s in iter {
                     copy_slice_and_advance!(target, sep_bytes);
-                    copy_slice_and_advance!(target, s.borrow().as_ref());
+                    let content_bytes = s.borrow().as_ref();
+                    copy_slice_and_advance!(target, content_bytes);
                 }
             }
         }
-    };
+        target
+    }}
 }
 
 macro_rules! copy_slice_and_advance {
@@ -153,30 +158,33 @@ where
     // if the `len` calculation overflows, we'll panic
     // we would have run out of memory anyway and the rest of the function requires
     // the entire Vec pre-allocated for safety
-    let len = sep_len
+    let reserved_len = sep_len
         .checked_mul(iter.len())
         .and_then(|n| {
             slice.iter().map(|s| s.borrow().as_ref().len()).try_fold(n, usize::checked_add)
         })
         .expect("attempt to join into collection with len > usize::MAX");
 
-    // crucial for safety
-    let mut result = Vec::with_capacity(len);
-    assert!(result.capacity() >= len);
+    // prepare an uninitialized buffer
+    let mut result = Vec::with_capacity(reserved_len);
+    debug_assert!(result.capacity() >= reserved_len);
 
     result.extend_from_slice(first.borrow().as_ref());
 
     unsafe {
-        {
-            let pos = result.len();
-            let target = result.get_unchecked_mut(pos..len);
+        let pos = result.len();
+        let target = result.get_unchecked_mut(pos..reserved_len);
 
-            // copy separator and slices over without bounds checks
-            // generate loops with hardcoded offsets for small separators
-            // massive improvements possible (~ x2)
-            spezialize_for_lengths!(sep, target, iter; 0, 1, 2, 3, 4);
-        }
-        result.set_len(len);
+        // copy separator and slices over without bounds checks
+        // generate loops with hardcoded offsets for small separators
+        // massive improvements possible (~ x2)
+        let remain = specialize_for_lengths!(sep, target, iter; 0, 1, 2, 3, 4);
+
+        // A weird borrow implementation may return different
+        // slices for the length calculation and the actual copy.
+        // Make sure we don't expose uninitialized bytes to the caller.
+        let result_len = reserved_len - remain.len();
+        result.set_len(result_len);
     }
     result
 }
@@ -388,7 +396,7 @@ impl str {
         }
 
         fn case_ignoreable_then_cased<I: Iterator<Item = char>>(iter: I) -> bool {
-            use core::unicode::derived_property::{Case_Ignorable, Cased};
+            use core::unicode::{Case_Ignorable, Cased};
             match iter.skip_while(|&c| Case_Ignorable(c)).next() {
                 Some(c) => Cased(c),
                 None => false,
@@ -450,8 +458,6 @@ impl str {
     }
 
     /// Converts a [`Box<str>`] into a [`String`] without copying or allocating.
-    ///
-    /// [`Box<str>`]: Box
     ///
     /// # Examples
     ///

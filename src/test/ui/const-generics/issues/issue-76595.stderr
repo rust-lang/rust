@@ -1,8 +1,20 @@
-error[E0107]: wrong number of generic arguments: expected 2, found 1
+error[E0107]: this function takes 2 generic arguments but only 1 generic argument was supplied
   --> $DIR/issue-76595.rs:15:5
    |
 LL |     test::<2>();
-   |     ^^^^^^^^^ expected 2 generic arguments
+   |     ^^^^   - supplied 1 generic argument
+   |     |
+   |     expected 2 generic arguments
+   |
+note: function defined here, with 2 generic parameters: `T`, `P`
+  --> $DIR/issue-76595.rs:10:4
+   |
+LL | fn test<T, const P: usize>() where Bool<{core::mem::size_of::<T>() > 4}>: True {
+   |    ^^^^ -        -
+help: add missing generic argument
+   |
+LL |     test::<2, P>();
+   |             ^^^
 
 error: aborting due to previous error
 

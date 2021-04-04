@@ -1,22 +1,14 @@
-error[E0080]: evaluation of constant expression failed
-  --> $DIR/const_fn_ptr_fail2.rs:20:5
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_fn_ptr_fail2.rs:20:16
    |
 LL |     assert_eq!(Y, 4);
-   |     ^^^^^^^^^^^-^^^^^
-   |                |
-   |                referenced constant has errors
-   |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   |                ^ referenced constant has errors
 
-error[E0080]: evaluation of constant expression failed
-  --> $DIR/const_fn_ptr_fail2.rs:22:5
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_fn_ptr_fail2.rs:22:16
    |
 LL |     assert_eq!(Z, 4);
-   |     ^^^^^^^^^^^-^^^^^
-   |                |
-   |                referenced constant has errors
-   |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   |                ^ referenced constant has errors
 
 warning: skipping const checks
    |

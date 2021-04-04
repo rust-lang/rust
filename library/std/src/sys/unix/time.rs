@@ -237,7 +237,7 @@ mod inner {
         // `denom` field.
         //
         // Encoding this as a single `AtomicU64` allows us to use `Relaxed`
-        // operations, as we are only interested in in the effects on a single
+        // operations, as we are only interested in the effects on a single
         // memory location.
         static INFO_BITS: AtomicU64 = AtomicU64::new(0);
 

@@ -1,5 +1,6 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
+use super::fd::WasiFd;
 use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;
 use crate::io::{self, IoSlice, IoSliceMut, SeekFrom};
@@ -9,7 +10,6 @@ use crate::os::wasi::ffi::{OsStrExt, OsStringExt};
 use crate::path::{Path, PathBuf};
 use crate::ptr;
 use crate::sync::Arc;
-use crate::sys::fd::WasiFd;
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
 use crate::sys_common::FromInner;
@@ -130,7 +130,7 @@ impl FileType {
 
 impl fmt::Debug for ReadDir {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ReadDir").finish()
+        f.debug_struct("ReadDir").finish_non_exhaustive()
     }
 }
 
@@ -557,12 +557,8 @@ pub fn symlink(original: &Path, link: &Path) -> io::Result<()> {
 pub fn link(original: &Path, link: &Path) -> io::Result<()> {
     let (original, original_file) = open_parent(original)?;
     let (link, link_file) = open_parent(link)?;
-    original.link(
-        wasi::LOOKUPFLAGS_SYMLINK_FOLLOW,
-        osstr2str(original_file.as_ref())?,
-        &link,
-        osstr2str(link_file.as_ref())?,
-    )
+    // Pass 0 as the flags argument, meaning don't follow symlinks.
+    original.link(0, osstr2str(original_file.as_ref())?, &link, osstr2str(link_file.as_ref())?)
 }
 
 pub fn stat(p: &Path) -> io::Result<FileAttr> {
@@ -627,39 +623,54 @@ fn open_at(fd: &WasiFd, path: &Path, opts: &OpenOptions) -> io::Result<File> {
 /// to any pre-opened file descriptor.
 fn open_parent(p: &Path) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
     let p = CString::new(p.as_os_str().as_bytes())?;
-    unsafe {
-        let mut ret = ptr::null();
-        let fd = __wasilibc_find_relpath(p.as_ptr(), &mut ret);
-        if fd == -1 {
-            let msg = format!(
-                "failed to find a pre-opened file descriptor \
-                 through which {:?} could be opened",
-                p
+    let mut buf = Vec::<u8>::with_capacity(512);
+    loop {
+        unsafe {
+            let mut relative_path = buf.as_ptr().cast();
+            let mut abs_prefix = ptr::null();
+            let fd = __wasilibc_find_relpath(
+                p.as_ptr(),
+                &mut abs_prefix,
+                &mut relative_path,
+                buf.capacity(),
             );
-            return Err(io::Error::new(io::ErrorKind::Other, msg));
+            if fd == -1 {
+                if io::Error::last_os_error().raw_os_error() == Some(libc::ENOMEM) {
+                    // Trigger the internal buffer resizing logic of `Vec` by requiring
+                    // more space than the current capacity.
+                    let cap = buf.capacity();
+                    buf.set_len(cap);
+                    buf.reserve(1);
+                    continue;
+                }
+                let msg = format!(
+                    "failed to find a pre-opened file descriptor \
+                     through which {:?} could be opened",
+                    p
+                );
+                return Err(io::Error::new(io::ErrorKind::Other, msg));
+            }
+            let relative = CStr::from_ptr(relative_path).to_bytes().to_vec();
+
+            return Ok((
+                ManuallyDrop::new(WasiFd::from_raw(fd as u32)),
+                PathBuf::from(OsString::from_vec(relative)),
+            ));
         }
-        let path = Path::new(OsStr::from_bytes(CStr::from_ptr(ret).to_bytes()));
-
-        // FIXME: right now `path` is a pointer into `p`, the `CString` above.
-        // When we return `p` is deallocated and we can't use it, so we need to
-        // currently separately allocate `path`. If this becomes an issue though
-        // we should probably turn this into a closure-taking interface or take
-        // `&CString` and then pass off `&Path` tied to the same lifetime.
-        let path = path.to_path_buf();
-
-        return Ok((ManuallyDrop::new(WasiFd::from_raw(fd as u32)), path));
     }
 
     extern "C" {
         pub fn __wasilibc_find_relpath(
             path: *const libc::c_char,
+            abs_prefix: *mut *const libc::c_char,
             relative_path: *mut *const libc::c_char,
+            relative_path_len: libc::size_t,
         ) -> libc::c_int;
     }
 }
 
 pub fn osstr2str(f: &OsStr) -> io::Result<&str> {
-    f.to_str().ok_or_else(|| io::Error::new(io::ErrorKind::Other, "input must be utf-8"))
+    f.to_str().ok_or_else(|| io::Error::new_const(io::ErrorKind::Other, &"input must be utf-8"))
 }
 
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {

@@ -1,5 +1,5 @@
 //! Tests that assignment in both branches of an `if` are eliminated.
-
+// compile-flags: -Zunsound-mir-opts
 fn val() -> i32 {
     1
 }

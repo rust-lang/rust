@@ -31,7 +31,7 @@ parameters (e.g. pointers), globals, etc. `#[ffi_pure]` functions are not
 referentially-transparent, and are therefore more relaxed than `#[ffi_const]`
 functions.
 
-However, accesing global memory through volatile or atomic reads can violate the
+However, accessing global memory through volatile or atomic reads can violate the
 requirement that two consecutive function calls shall return the same value.
 
 A `pure` function that returns unit has no effect on the abstract machine's

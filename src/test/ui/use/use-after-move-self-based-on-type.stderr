@@ -8,7 +8,7 @@ LL |         self.bar();
 LL |         return self.x;
    |                ^^^^^^ value used here after move
    |
-note: this function consumes the receiver `self` by taking ownership of it, which moves `self`
+note: this function takes ownership of the receiver `self`, which moves `self`
   --> $DIR/use-after-move-self-based-on-type.rs:15:16
    |
 LL |     pub fn bar(self) {}

@@ -4,7 +4,7 @@
 pushd $(dirname "$0")/../
 source build/config.sh
 popd
-PROFILE=$1 OUTPUT=$2 exec $RUSTC $RUSTFLAGS --jit $0
+PROFILE=$1 OUTPUT=$2 exec $RUSTC $RUSTFLAGS -Cllvm-args=mode=jit -Cprefer-dynamic $0
 #*/
 
 //! This program filters away uninteresting samples and trims uninteresting frames for stackcollapse

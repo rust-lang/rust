@@ -1,3 +1,4 @@
+// stderr-per-bitwidth
 #![feature(rustc_attrs)]
 #![allow(const_err, invalid_value)] // make sure we cannot allow away the errors tested here
 
@@ -16,6 +17,7 @@ const OUT_OF_BOUNDS_PTR: NonNull<u8> = { unsafe {
     let ptr: &[u8; 256] = mem::transmute(&0u8); // &0 gets promoted so it does not dangle
     // Use address-of-element for pointer arithmetic. This could wrap around to NULL!
     let out_of_bounds_ptr = &ptr[255]; //~ ERROR any use of this value will cause an error
+    //~| WARN this was previously accepted by the compiler but is being phased out
     mem::transmute(out_of_bounds_ptr)
 } };
 

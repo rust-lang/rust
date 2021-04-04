@@ -1,4 +1,4 @@
-warning: lint `raw_pointer_derive` has been removed: `using derive with raw pointers is ok`
+warning: lint `raw_pointer_derive` has been removed: using derive with raw pointers is ok
   --> $DIR/lint-removed.rs:6:8
    |
 LL | #[deny(raw_pointer_derive)]

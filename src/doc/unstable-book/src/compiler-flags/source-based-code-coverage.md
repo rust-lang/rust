@@ -118,17 +118,17 @@ LLVM's supplies two tools—`llvm-profdata` and `llvm-cov`—that process covera
 * If you are building the Rust compiler from source, you can optionally use the bundled LLVM tools, built from source. Those tool binaries can typically be found in your build platform directory at something like: `rust/build/x86_64-unknown-linux-gnu/llvm/bin/llvm-*`.
 * You can install compatible versions of these tools via `rustup`.
 
-The `rustup` option is guaranteed to install a compatible version of the LLVM tools, but they can be hard to find. We recommend [`cargo-bintools`], which installs Rust-specific wrappers around these and other LLVM tools, so you can invoke them via `cargo` commands!
+The `rustup` option is guaranteed to install a compatible version of the LLVM tools, but they can be hard to find. We recommend [`cargo-binutils`], which installs Rust-specific wrappers around these and other LLVM tools, so you can invoke them via `cargo` commands!
 
 ```shell
 $ rustup component add llvm-tools-preview
 $ cargo install cargo-binutils
-$ cargo profdata -- --help  # note the additional "--" preceeding the tool-specific arguments
+$ cargo profdata -- --help  # note the additional "--" preceding the tool-specific arguments
 ```
 
 ## Creating coverage reports
 
-Raw profiles have to be indexed before they can be used to generate coverage reports. This is done using [`llvm-profdata merge`] (or `cargo cov -- merge`), which can combine multiple raw profiles and index them at the same time:
+Raw profiles have to be indexed before they can be used to generate coverage reports. This is done using [`llvm-profdata merge`] (or `cargo profdata -- merge`), which can combine multiple raw profiles and index them at the same time:
 
 ```shell
 $ llvm-profdata merge -sparse formatjson5.profraw -o formatjson5.profdata
@@ -213,18 +213,101 @@ Then run the `cov` tool, with the `profdata` file and all test binaries:
 $ cargo cov -- report \
     --use-color --ignore-filename-regex='/.cargo/registry' \
     --instr-profile=json5format.profdata \
-    target/debug/deps/lib-30768f9c53506dc5 \
-    target/debug/deps/json5format-fececd4653271682
+    --object target/debug/deps/lib-30768f9c53506dc5 \
+    --object target/debug/deps/json5format-fececd4653271682
 $ cargo cov -- show \
     --use-color --ignore-filename-regex='/.cargo/registry' \
     --instr-profile=json5format.profdata \
-    target/debug/deps/lib-30768f9c53506dc5 \
-    target/debug/deps/json5format-fececd4653271682 \
+    --object target/debug/deps/lib-30768f9c53506dc5 \
+    --object target/debug/deps/json5format-fececd4653271682 \
     --show-instantiations --show-line-counts-or-regions \
     --Xdemangler=rustfilt | less -R
 ```
 
 _Note the command line option `--ignore-filename-regex=/.cargo/registry`, which excludes the sources for dependencies from the coverage results._
+
+### Tips for listing the binaries automatically
+
+For `bash` users, one suggested way to automatically complete the `cov` command with the list of binaries is with a command like:
+
+```bash
+$ cargo cov -- report \
+    $( \
+      for file in \
+        $( \
+          RUSTFLAGS="-Zinstrument-coverage" \
+            cargo test --tests --no-run --message-format=json \
+              | jq -r "select(.profile.test == true) | .filenames[]" \
+              | grep -v dSYM - \
+        ); \
+      do \
+        printf "%s %s " -object $file; \
+      done \
+    ) \
+  --instr-profile=json5format.profdata --summary-only # and/or other options
+```
+
+Adding `--no-run --message-format=json` to the _same_ `cargo test` command used to run
+the tests (including the same environment variables and flags) generates output in a JSON
+format that `jq` can easily query.
+
+The `printf` command takes this list and generates the `--object <binary>` arguments
+for each listed test binary.
+
+### Including doc tests
+
+The previous examples run `cargo test` with `--tests`, which excludes doc tests.[^79417]
+
+To include doc tests in the coverage results, drop the `--tests` flag, and apply the
+`-Zinstrument-coverage` flag, and some doc-test-specific options in the
+`RUSTDOCFLAGS` environment variable. (The `cargo profdata` command does not change.)
+
+```bash
+$ RUSTFLAGS="-Zinstrument-coverage" \
+  RUSTDOCFLAGS="-Zinstrument-coverage -Zunstable-options --persist-doctests target/debug/doctestbins" \
+  LLVM_PROFILE_FILE="json5format-%m.profraw" \
+    cargo test
+$ cargo profdata -- merge \
+    -sparse json5format-*.profraw -o json5format.profdata
+```
+
+The `-Zunstable-options --persist-doctests` flag is required, to save the test binaries
+(with their coverage maps) for `llvm-cov`.
+
+```bash
+$ cargo cov -- report \
+    $( \
+      for file in \
+        $( \
+          RUSTFLAGS="-Zinstrument-coverage" \
+          RUSTDOCFLAGS="-Zinstrument-coverage -Zunstable-options --persist-doctests target/debug/doctestbins" \
+            cargo test --no-run --message-format=json \
+              | jq -r "select(.profile.test == true) | .filenames[]" \
+              | grep -v dSYM - \
+        ) \
+        target/debug/doctestbins/*/rust_out; \
+      do \
+        [[ -x $file ]] && printf "%s %s " -object $file; \
+      done \
+    ) \
+  --instr-profile=json5format.profdata --summary-only # and/or other options
+```
+
+Note, the differences in this `cargo cov` command, compared with the version without
+doc tests, include:
+
+* The `cargo test ... --no-run` command is updated with the same environment variables
+  and flags used to _build_ the tests, _including_ the doc tests. (`LLVM_PROFILE_FILE`
+  is only used when _running_ the tests.)
+* The file glob pattern `target/debug/doctestbins/*/rust_out` adds the `rust_out`
+  binaries generated for doc tests (note, however, that some `rust_out` files may not
+  be executable binaries).
+* `[[ -x $file ]] &&` filters the files passed on to the `printf`, to include only
+  executable binaries.
+
+[^79417]: There is ongoing work to resolve a known issue
+[(#79417)](https://github.com/rust-lang/rust/issues/79417) that doc test coverage
+generates incorrect source line numbers in `llvm-cov show` results.
 
 ## Other references
 
@@ -237,7 +320,7 @@ Rust's implementation and workflow for source-based code coverage is based on th
 [rustc-dev-guide-how-to-build-and-run]: https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html
 [`rustfilt`]: https://crates.io/crates/rustfilt
 [`json5format`]: https://crates.io/crates/json5format
-[`cargo-bintools`]: https://crates.io/crates/cargo-bintools
+[`cargo-binutils`]: https://crates.io/crates/cargo-binutils
 [`llvm-profdata merge`]: https://llvm.org/docs/CommandGuide/llvm-profdata.html#profdata-merge
 [`llvm-cov report`]: https://llvm.org/docs/CommandGuide/llvm-cov.html#llvm-cov-report
 [`llvm-cov show`]: https://llvm.org/docs/CommandGuide/llvm-cov.html#llvm-cov-show

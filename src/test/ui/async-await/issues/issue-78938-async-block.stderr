@@ -1,0 +1,21 @@
+error[E0373]: async block may outlive the current function, but it borrows `room_ref`, which is owned by the current function
+  --> $DIR/issue-78938-async-block.rs:8:39
+   |
+LL |       let gameloop_handle = spawn(async {
+   |  _______________________________________^
+LL | |         game_loop(Arc::clone(&room_ref))
+   | |                               -------- `room_ref` is borrowed here
+LL | |     });
+   | |_____^ may outlive borrowed value `room_ref`
+   |
+   = note: async blocks are not executed immediately and must either take a reference or ownership of outside variables they use
+help: to force the async block to take ownership of `room_ref` (and any other referenced variables), use the `move` keyword
+   |
+LL |     let gameloop_handle = spawn(async move {
+LL |         game_loop(Arc::clone(&room_ref))
+LL |     });
+   |
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0373`.

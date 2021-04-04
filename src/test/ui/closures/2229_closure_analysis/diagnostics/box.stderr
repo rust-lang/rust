@@ -1,0 +1,55 @@
+warning: the feature `capture_disjoint_fields` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/box.rs:3:12
+   |
+LL | #![feature(capture_disjoint_fields)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
+
+error[E0506]: cannot assign to `e.0.0.m.x` because it is borrowed
+  --> $DIR/box.rs:22:5
+   |
+LL |     let mut c = || {
+   |                 -- borrow of `e.0.0.m.x` occurs here
+LL |         e.0.0.m.x = format!("not-x");
+   |         - borrow occurs due to use in closure
+...
+LL |     e.0.0.m.x = format!("not-x");
+   |     ^^^^^^^^^ assignment to borrowed `e.0.0.m.x` occurs here
+LL |
+LL |     c();
+   |     - borrow later used here
+
+error[E0502]: cannot borrow `e.0.0.m.x` as immutable because it is also borrowed as mutable
+  --> $DIR/box.rs:39:20
+   |
+LL |     let mut c = || {
+   |                 -- mutable borrow occurs here
+LL |         e.0.0.m.x = format!("not-x");
+   |         - first borrow occurs due to use of `e.0.0.m.x` in closure
+...
+LL |     println!("{}", e.0.0.m.x);
+   |                    ^^^^^^^^^ immutable borrow occurs here
+LL |
+LL |     c();
+   |     - mutable borrow later used here
+
+error[E0506]: cannot assign to `e.0.0.m.x` because it is borrowed
+  --> $DIR/box.rs:56:5
+   |
+LL |     let c = || {
+   |             -- borrow of `e.0.0.m.x` occurs here
+LL |         println!("{}", e.0.0.m.x);
+   |                        - borrow occurs due to use in closure
+...
+LL |     e.0.0.m.x = format!("not-x");
+   |     ^^^^^^^^^ assignment to borrowed `e.0.0.m.x` occurs here
+LL |
+LL |     c();
+   |     - borrow later used here
+
+error: aborting due to 3 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0502, E0506.
+For more information about an error, try `rustc --explain E0502`.

@@ -1,8 +1,8 @@
-use crate::utils::sugg::Sugg;
-use crate::utils::{
-    get_parent_expr, is_type_diagnostic_item, match_def_path, match_trait_method, paths, snippet,
-    snippet_with_macro_callsite, span_lint_and_help, span_lint_and_sugg,
-};
+use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
+use clippy_utils::source::{snippet, snippet_with_macro_callsite};
+use clippy_utils::sugg::Sugg;
+use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::{get_parent_expr, match_def_path, match_trait_method, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, HirId, MatchSource};
@@ -80,10 +80,10 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                         );
                     }
                 }
-                if match_trait_method(cx, e, &paths::INTO_ITERATOR) && &*name.ident.as_str() == "into_iter" {
+                if match_trait_method(cx, e, &paths::INTO_ITERATOR) && name.ident.name == sym::into_iter {
                     if let Some(parent_expr) = get_parent_expr(cx, e) {
                         if let ExprKind::MethodCall(ref parent_name, ..) = parent_expr.kind {
-                            if &*parent_name.ident.as_str() != "into_iter" {
+                            if parent_name.ident.name != sym::into_iter {
                                 return;
                             }
                         }

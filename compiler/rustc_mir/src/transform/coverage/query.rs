@@ -1,16 +1,14 @@
 use super::*;
 
 use rustc_middle::mir::coverage::*;
-use rustc_middle::mir::visit::Visitor;
-use rustc_middle::mir::{self, Coverage, CoverageInfo, Location};
+use rustc_middle::mir::{self, Body, Coverage, CoverageInfo};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::DefId;
 
-/// The `query` provider for `CoverageInfo`, requested by `codegen_coverage()` (to inject each
-/// counter) and `FunctionCoverage::new()` (to extract the coverage map metadata from the MIR).
+/// A `query` provider for retrieving coverage information injected into MIR.
 pub(crate) fn provide(providers: &mut Providers) {
-    providers.coverageinfo = |tcx, def_id| coverageinfo_from_mir(tcx, def_id);
+    providers.coverageinfo = |tcx, def_id| coverageinfo(tcx, def_id);
     providers.covered_file_name = |tcx, def_id| covered_file_name(tcx, def_id);
     providers.covered_code_regions = |tcx, def_id| covered_code_regions(tcx, def_id);
 }
@@ -85,10 +83,21 @@ impl CoverageVisitor {
             }
         }
     }
-}
 
-impl Visitor<'_> for CoverageVisitor {
-    fn visit_coverage(&mut self, coverage: &Coverage, _location: Location) {
+    fn visit_body(&mut self, body: &Body<'_>) {
+        for bb_data in body.basic_blocks().iter() {
+            for statement in bb_data.statements.iter() {
+                if let StatementKind::Coverage(box ref coverage) = statement.kind {
+                    if is_inlined(body, statement) {
+                        continue;
+                    }
+                    self.visit_coverage(coverage);
+                }
+            }
+        }
+    }
+
+    fn visit_coverage(&mut self, coverage: &Coverage) {
         if self.add_missing_operands {
             match coverage.kind {
                 CoverageKind::Expression { lhs, rhs, .. } => {
@@ -111,8 +120,8 @@ impl Visitor<'_> for CoverageVisitor {
     }
 }
 
-fn coverageinfo_from_mir<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> CoverageInfo {
-    let mir_body = tcx.optimized_mir(def_id);
+fn coverageinfo<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> CoverageInfo {
+    let mir_body = mir_body(tcx, def_id);
 
     let mut coverage_visitor = CoverageVisitor {
         // num_counters always has at least the `ZERO` counter.
@@ -129,32 +138,54 @@ fn coverageinfo_from_mir<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> CoverageInfo
 }
 
 fn covered_file_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<Symbol> {
-    let mir_body = tcx.optimized_mir(def_id);
-    for bb_data in mir_body.basic_blocks().iter() {
-        for statement in bb_data.statements.iter() {
-            if let StatementKind::Coverage(box ref coverage) = statement.kind {
-                if let Some(code_region) = coverage.code_region.as_ref() {
-                    return Some(code_region.file_name);
+    if tcx.is_mir_available(def_id) {
+        let body = mir_body(tcx, def_id);
+        for bb_data in body.basic_blocks().iter() {
+            for statement in bb_data.statements.iter() {
+                if let StatementKind::Coverage(box ref coverage) = statement.kind {
+                    if let Some(code_region) = coverage.code_region.as_ref() {
+                        if is_inlined(body, statement) {
+                            continue;
+                        }
+                        return Some(code_region.file_name);
+                    }
                 }
             }
         }
     }
-    None
+    return None;
 }
 
 fn covered_code_regions<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Vec<&'tcx CodeRegion> {
-    let mir_body: &'tcx mir::Body<'tcx> = tcx.optimized_mir(def_id);
-    mir_body
-        .basic_blocks()
+    let body = mir_body(tcx, def_id);
+    body.basic_blocks()
         .iter()
         .map(|data| {
             data.statements.iter().filter_map(|statement| match statement.kind {
                 StatementKind::Coverage(box ref coverage) => {
-                    coverage.code_region.as_ref() // may be None
+                    if is_inlined(body, statement) {
+                        None
+                    } else {
+                        coverage.code_region.as_ref() // may be None
+                    }
                 }
                 _ => None,
             })
         })
         .flatten()
         .collect()
+}
+
+fn is_inlined(body: &Body<'_>, statement: &Statement<'_>) -> bool {
+    let scope_data = &body.source_scopes[statement.source_info.scope];
+    scope_data.inlined.is_some() || scope_data.inlined_parent_scope.is_some()
+}
+
+/// This function ensures we obtain the correct MIR for the given item irrespective of
+/// whether that means const mir or runtime mir. For `const fn` this opts for runtime
+/// mir.
+fn mir_body<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx mir::Body<'tcx> {
+    let id = ty::WithOptConstParam::unknown(def_id);
+    let def = ty::InstanceDef::Item(id);
+    tcx.instance_mir(def)
 }

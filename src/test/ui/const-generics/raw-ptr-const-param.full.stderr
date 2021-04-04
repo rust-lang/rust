@@ -1,5 +1,5 @@
 error: using raw pointers as const generic parameters is forbidden
-  --> $DIR/raw-ptr-const-param.rs:7:23
+  --> $DIR/raw-ptr-const-param.rs:6:23
    |
 LL | struct Const<const P: *const u32>;
    |                       ^^^^^^^^^^

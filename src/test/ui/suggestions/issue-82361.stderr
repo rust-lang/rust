@@ -1,0 +1,48 @@
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/issue-82361.rs:10:9
+   |
+LL | /     if true {
+LL | |         a
+   | |         - expected because of this
+LL | |     } else {
+LL | |         b
+   | |         ^
+   | |         |
+   | |         expected `usize`, found `&usize`
+   | |         help: consider dereferencing the borrow: `*b`
+LL | |     };
+   | |_____- `if` and `else` have incompatible types
+
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/issue-82361.rs:16:9
+   |
+LL | /     if true {
+LL | |         1
+   | |         - expected because of this
+LL | |     } else {
+LL | |         &1
+   | |         -^
+   | |         |
+   | |         expected integer, found `&{integer}`
+   | |         help: consider removing the `&`
+LL | |     };
+   | |_____- `if` and `else` have incompatible types
+
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/issue-82361.rs:22:9
+   |
+LL | /     if true {
+LL | |         1
+   | |         - expected because of this
+LL | |     } else {
+LL | |         &mut 1
+   | |         -----^
+   | |         |
+   | |         expected integer, found `&mut {integer}`
+   | |         help: consider removing the `&mut`
+LL | |     };
+   | |_____- `if` and `else` have incompatible types
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

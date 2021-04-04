@@ -1,6 +1,6 @@
 use super::{probe, MethodCallee};
 
-use crate::astconv::{AstConv, CreateSubstsForGenericArgsCtxt};
+use crate::astconv::{AstConv, CreateSubstsForGenericArgsCtxt, IsMethodCall};
 use crate::check::{callee, FnCtxt};
 use crate::hir::def_id::DefId;
 use crate::hir::GenericArg;
@@ -15,6 +15,7 @@ use rustc_middle::ty::{self, GenericParamDefKind, Ty};
 use rustc_span::Span;
 use rustc_trait_selection::traits;
 
+use std::iter;
 use std::ops::Deref;
 
 struct ConfirmContext<'a, 'tcx> {
@@ -31,6 +32,7 @@ impl<'a, 'tcx> Deref for ConfirmContext<'a, 'tcx> {
     }
 }
 
+#[derive(Debug)]
 pub struct ConfirmResult<'tcx> {
     pub callee: MethodCallee<'tcx>,
     pub illegal_sized_bound: Option<Span>,
@@ -117,7 +119,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // We won't add these if we encountered an illegal sized bound, so that we can use
         // a custom error in that case.
         if illegal_sized_bound.is_none() {
-            let method_ty = self.tcx.mk_fn_ptr(ty::Binder::bind(method_sig));
+            let method_ty = self.tcx.mk_fn_ptr(ty::Binder::bind(method_sig, self.tcx));
             self.add_obligations(method_ty, all_substs, method_predicates);
         }
 
@@ -154,32 +156,46 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         let mut target =
             self.structurally_resolved_type(autoderef.span(), autoderef.final_ty(false));
 
-        if let Some(mutbl) = pick.autoref {
-            let region = self.next_region_var(infer::Autoref(self.span, pick.item));
-            target = self.tcx.mk_ref(region, ty::TypeAndMut { mutbl, ty: target });
-            let mutbl = match mutbl {
-                hir::Mutability::Not => AutoBorrowMutability::Not,
-                hir::Mutability::Mut => AutoBorrowMutability::Mut {
-                    // Method call receivers are the primary use case
-                    // for two-phase borrows.
-                    allow_two_phase_borrow: AllowTwoPhase::Yes,
-                },
-            };
-            adjustments
-                .push(Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)), target });
+        match &pick.autoref_or_ptr_adjustment {
+            Some(probe::AutorefOrPtrAdjustment::Autoref { mutbl, unsize }) => {
+                let region = self.next_region_var(infer::Autoref(self.span, pick.item));
+                target = self.tcx.mk_ref(region, ty::TypeAndMut { mutbl: *mutbl, ty: target });
+                let mutbl = match mutbl {
+                    hir::Mutability::Not => AutoBorrowMutability::Not,
+                    hir::Mutability::Mut => AutoBorrowMutability::Mut {
+                        // Method call receivers are the primary use case
+                        // for two-phase borrows.
+                        allow_two_phase_borrow: AllowTwoPhase::Yes,
+                    },
+                };
+                adjustments.push(Adjustment {
+                    kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
+                    target,
+                });
 
-            if let Some(unsize_target) = pick.unsize {
-                target = self
-                    .tcx
-                    .mk_ref(region, ty::TypeAndMut { mutbl: mutbl.into(), ty: unsize_target });
-                adjustments.push(Adjustment { kind: Adjust::Pointer(PointerCast::Unsize), target });
+                if let Some(unsize_target) = unsize {
+                    target = self
+                        .tcx
+                        .mk_ref(region, ty::TypeAndMut { mutbl: mutbl.into(), ty: unsize_target });
+                    adjustments
+                        .push(Adjustment { kind: Adjust::Pointer(PointerCast::Unsize), target });
+                }
             }
-        } else {
-            // No unsizing should be performed without autoref (at
-            // least during method dispach). This is because we
-            // currently only unsize `[T;N]` to `[T]`, and naturally
-            // that must occur being a reference.
-            assert!(pick.unsize.is_none());
+            Some(probe::AutorefOrPtrAdjustment::ToConstPtr) => {
+                target = match target.kind() {
+                    ty::RawPtr(ty::TypeAndMut { ty, mutbl }) => {
+                        assert_eq!(*mutbl, hir::Mutability::Mut);
+                        self.tcx.mk_ptr(ty::TypeAndMut { mutbl: hir::Mutability::Not, ty })
+                    }
+                    other => panic!("Cannot adjust receiver type {:?} to const ptr", other),
+                };
+
+                adjustments.push(Adjustment {
+                    kind: Adjust::Pointer(PointerCast::MutToConstPointer),
+                    target,
+                });
+            }
+            None => {}
         }
 
         self.register_predicates(autoderef.into_obligations());
@@ -298,8 +314,14 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // If they were not explicitly supplied, just construct fresh
         // variables.
         let generics = self.tcx.generics_of(pick.item.def_id);
-        let arg_count_correct = AstConv::check_generic_arg_count_for_call(
-            self.tcx, self.span, &generics, &seg, true, // `is_method_call`
+
+        let arg_count_correct = <dyn AstConv<'_>>::check_generic_arg_count_for_call(
+            self.tcx,
+            self.span,
+            pick.item.def_id,
+            &generics,
+            seg,
+            IsMethodCall::Yes,
         );
 
         // Create subst for early-bound lifetime parameters, combining
@@ -331,12 +353,13 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             ) -> subst::GenericArg<'tcx> {
                 match (&param.kind, arg) {
                     (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
-                        AstConv::ast_region_to_region(self.cfcx.fcx, lt, Some(param)).into()
+                        <dyn AstConv<'_>>::ast_region_to_region(self.cfcx.fcx, lt, Some(param))
+                            .into()
                     }
                     (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
                         self.cfcx.to_ty(ty).into()
                     }
-                    (GenericParamDefKind::Const, GenericArg::Const(ct)) => {
+                    (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
                         self.cfcx.const_arg_to_const(&ct.value, param.def_id).into()
                     }
                     _ => unreachable!(),
@@ -352,13 +375,13 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 self.cfcx.var_for_def(self.cfcx.span, param)
             }
         }
-        AstConv::create_substs_for_generic_args(
+        <dyn AstConv<'_>>::create_substs_for_generic_args(
             self.tcx,
             pick.item.def_id,
             parent_substs,
             false,
             None,
-            arg_count_correct,
+            &arg_count_correct,
             &mut MethodSubstsCtxt { cfcx: self, pick, seg },
         )
     }
@@ -472,12 +495,9 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
         traits::elaborate_predicates(self.tcx, predicates.predicates.iter().copied())
             // We don't care about regions here.
-            .filter_map(|obligation| match obligation.predicate.skip_binders() {
-                ty::PredicateAtom::Trait(trait_pred, _) if trait_pred.def_id() == sized_def_id => {
-                    let span = predicates
-                        .predicates
-                        .iter()
-                        .zip(predicates.spans.iter())
+            .filter_map(|obligation| match obligation.predicate.kind().skip_binder() {
+                ty::PredicateKind::Trait(trait_pred, _) if trait_pred.def_id() == sized_def_id => {
+                    let span = iter::zip(&predicates.predicates, &predicates.spans)
                         .find_map(
                             |(p, span)| {
                                 if *p == obligation.predicate { Some(*span) } else { None }
@@ -501,6 +521,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 self.tcx,
                 self.span,
                 Some(self.self_expr.span),
+                self.call_expr.span,
                 trait_def_id,
             ),
             ty::ImplContainer(..) => {}
@@ -529,7 +550,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         upcast_trait_refs.into_iter().next().unwrap()
     }
 
-    fn replace_bound_vars_with_fresh_vars<T>(&self, value: ty::Binder<T>) -> T
+    fn replace_bound_vars_with_fresh_vars<T>(&self, value: ty::Binder<'tcx, T>) -> T
     where
         T: TypeFoldable<'tcx>,
     {

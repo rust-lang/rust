@@ -1,12 +1,12 @@
-// Make sure that underscore imports have the same hygiene considerations as
-// other imports.
+// Make sure that underscore imports have the same hygiene considerations as other imports.
+
+// check-pass
 
 #![feature(decl_macro)]
 
 mod x {
     pub use std::ops::Deref as _;
 }
-
 
 macro glob_import() {
     pub use crate::x::*;
@@ -35,6 +35,6 @@ fn main() {
     use crate::z::*;
     glob_import!();
     underscore_import!();
-    (&()).deref();              //~ ERROR no method named `deref`
-    (&mut ()).deref_mut();      //~ ERROR no method named `deref_mut`
+    (&()).deref();
+    (&mut ()).deref_mut();
 }

@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/issue-77092.rs:13:26
+  --> $DIR/issue-77092.rs:11:26
    |
 LL |         println!("{:?}", take_array_from_mut(&mut arr, i));
    |                          ^^^^^^^^^^^^^^^^^^^ cannot infer the value of const parameter `N` declared on the function `take_array_from_mut`

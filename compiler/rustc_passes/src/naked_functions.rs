@@ -46,7 +46,7 @@ impl<'tcx> Visitor<'tcx> for CheckNakedFunctions<'tcx> {
         let fn_header;
 
         match fk {
-            FnKind::Closure(..) => {
+            FnKind::Closure => {
                 // Closures with a naked attribute are rejected during attribute
                 // check. Don't validate them any further.
                 return;
@@ -62,7 +62,8 @@ impl<'tcx> Visitor<'tcx> for CheckNakedFunctions<'tcx> {
             }
         }
 
-        let naked = fk.attrs().iter().any(|attr| attr.has_name(sym::naked));
+        let attrs = self.tcx.hir().attrs(hir_id);
+        let naked = attrs.iter().any(|attr| attr.has_name(sym::naked));
         if naked {
             let body = self.tcx.hir().body(body_id);
             check_abi(self.tcx, hir_id, fn_header.abi, ident_span);
@@ -149,7 +150,7 @@ impl<'tcx> Visitor<'tcx> for CheckParameters<'tcx> {
 fn check_asm<'tcx>(tcx: TyCtxt<'tcx>, hir_id: HirId, body: &'tcx hir::Body<'tcx>, fn_span: Span) {
     let mut this = CheckInlineAssembly { tcx, items: Vec::new() };
     this.visit_body(body);
-    if let &[(ItemKind::Asm, _)] = &this.items[..] {
+    if let [(ItemKind::Asm, _)] = this.items[..] {
         // Ok.
     } else {
         tcx.struct_span_lint_hir(UNSUPPORTED_NAKED_FUNCTIONS, hir_id, fn_span, |lint| {
@@ -201,6 +202,7 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
             | ExprKind::Type(..)
             | ExprKind::Loop(..)
             | ExprKind::Match(..)
+            | ExprKind::If(..)
             | ExprKind::Closure(..)
             | ExprKind::Assign(..)
             | ExprKind::AssignOp(..)

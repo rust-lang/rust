@@ -266,7 +266,7 @@ a {
 
 .stab.portability > code {
 	color: #e6e1cf;
-	background-color: transparent;
+	background: none;
 }
 
 #help > div {
@@ -388,13 +388,13 @@ pre.ignore:hover, .information:hover + pre.ignore {
 	color: #39AFD7;
 }
 
-.tooltip .tooltiptext {
+.tooltip::after {
 	background-color: #314559;
 	color: #c5c5c5;
 	border: 1px solid #5c6773;
 }
 
-.tooltip .tooltiptext::after {
+.tooltip::before {
 	border-color: transparent #314559 transparent transparent;
 }
 
@@ -403,22 +403,22 @@ pre.ignore:hover, .information:hover + pre.ignore {
 	border-color: #5c6773;
 }
 
-#titles > div.selected {
+#titles > button.selected {
 	background-color: #141920 !important;
 	border-bottom: 1px solid #ffb44c !important;
 	border-top: none;
 }
 
-#titles > div:not(.selected) {
+#titles > button:not(.selected) {
 	background-color: transparent !important;
 	border: none;
 }
 
-#titles > div:hover {
+#titles > button:hover {
 	border-bottom: 1px solid rgba(242, 151, 24, 0.3);
 }
 
-#titles > div > div.count {
+#titles > button > div.count {
 	color: #888;
 }
 
@@ -434,7 +434,7 @@ above the `@media (max-width: 700px)` rules due to a bug in the css checker */
 .block a.current.derive,.content span.macro,.content a.macro,.block a.current.macro {}
 .content .highlighted.trait {}
 .content span.struct,.content a.struct,.block a.current.struct {}
-#titles>div:hover,#titles>div.selected {}
+#titles>button:hover,#titles>button.selected {}
 .content .highlighted.traitalias {}
 .content span.type,.content a.type,.block a.current.type {}
 .content span.union,.content a.union,.block a.current.union {}
@@ -498,7 +498,7 @@ kbd {
 	box-shadow-color: #c6cbd1;
 }
 
-#theme-picker, #settings-menu, .help-button {
+#theme-picker, #settings-menu, .help-button, #copy-path {
 	border-color: #5c6773;
 	background-color: #0f1419;
 	color: #fff;
@@ -510,7 +510,8 @@ kbd {
 
 #theme-picker:hover, #theme-picker:focus,
 #settings-menu:hover, #settings-menu:focus,
-.help-button:hover, .help-button:focus {
+.help-button:hover, .help-button:focus,
+#copy-path:hover, #copy-path:focus {
 	border-color: #e0e0e0;
 }
 

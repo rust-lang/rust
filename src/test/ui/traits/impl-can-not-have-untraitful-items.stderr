@@ -1,0 +1,22 @@
+error[E0438]: const `BAR` is not a member of trait `A`
+  --> $DIR/impl-can-not-have-untraitful-items.rs:4:5
+   |
+LL |     const BAR: () = ();
+   |     ^^^^^^^^^^^^^^^^^^^ not a member of trait `A`
+
+error[E0437]: type `Baz` is not a member of trait `A`
+  --> $DIR/impl-can-not-have-untraitful-items.rs:5:5
+   |
+LL |     type Baz = ();
+   |     ^^^^^^^^^^^^^^ not a member of trait `A`
+
+error[E0407]: method `foo` is not a member of trait `A`
+  --> $DIR/impl-can-not-have-untraitful-items.rs:6:5
+   |
+LL |     fn foo(&self) { }
+   |     ^^^^^^^^^^^^^^^^^ not a member of trait `A`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0407, E0437, E0438.
+For more information about an error, try `rustc --explain E0407`.

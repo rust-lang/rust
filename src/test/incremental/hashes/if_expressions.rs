@@ -94,7 +94,7 @@ pub fn add_else_branch(x: bool) -> u32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,typeck")]
 #[rustc_clean(cfg="cfail3")]
 pub fn add_else_branch(x: bool) -> u32 {
     let mut ret = 1;

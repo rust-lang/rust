@@ -1,4 +1,4 @@
-//! The Rust Prelude.
+//! # The Rust Prelude
 //!
 //! Rust comes with a variety of things in its standard library. However, if
 //! you had to manually import every single thing that you used, it would be
@@ -26,56 +26,55 @@
 //! # Prelude contents
 //!
 //! The current version of the prelude (version 1) lives in
-//! [`std::prelude::v1`], and re-exports the following.
+//! [`std::prelude::v1`], and re-exports the following:
 //!
-//! * [`std::marker`]::{[`Copy`], [`Send`], [`Sized`], [`Sync`], [`Unpin`]}. The
-//!   marker traits indicate fundamental properties of types.
-//! * [`std::ops`]::{[`Drop`], [`Fn`], [`FnMut`], [`FnOnce`]}. Various
+//! * <code>[std::marker]::{[Copy], [Send], [Sized], [Sync], [Unpin]}</code>,
+//!   marker traits that indicate fundamental properties of types.
+//! * <code>[std::ops]::{[Drop], [Fn], [FnMut], [FnOnce]}</code>, various
 //!   operations for both destructors and overloading `()`.
-//! * [`std::mem`]::[`drop`][`mem::drop`], a convenience function for explicitly
+//! * <code>[std::mem]::[drop][mem::drop]</code>, a convenience function for explicitly
 //!   dropping a value.
-//! * [`std::boxed`]::[`Box`], a way to allocate values on the heap.
-//! * [`std::borrow`]::[`ToOwned`], The conversion trait that defines
+//! * <code>[std::boxed]::[Box]</code>, a way to allocate values on the heap.
+//! * <code>[std::borrow]::[ToOwned]</code>, the conversion trait that defines
 //!   [`to_owned`], the generic method for creating an owned type from a
 //!   borrowed type.
-//! * [`std::clone`]::[`Clone`], the ubiquitous trait that defines
-//!   [`clone`][`Clone::clone`], the method for producing a copy of a value.
-//! * [`std::cmp`]::{[`PartialEq`], [`PartialOrd`], [`Eq`], [`Ord`] }. The
+//! * <code>[std::clone]::[Clone]</code>, the ubiquitous trait that defines
+//!   [`clone`][Clone::clone], the method for producing a copy of a value.
+//! * <code>[std::cmp]::{[PartialEq], [PartialOrd], [Eq], [Ord]}</code>, the
 //!   comparison traits, which implement the comparison operators and are often
 //!   seen in trait bounds.
-//! * [`std::convert`]::{[`AsRef`], [`AsMut`], [`Into`], [`From`]}. Generic
+//! * <code>[std::convert]::{[AsRef], [AsMut], [Into], [From]}</code>, generic
 //!   conversions, used by savvy API authors to create overloaded methods.
-//! * [`std::default`]::[`Default`], types that have default values.
-//! * [`std::iter`]::{[`Iterator`], [`Extend`], [`IntoIterator`],
-//!   [`DoubleEndedIterator`], [`ExactSizeIterator`]}. Iterators of various
+//! * <code>[std::default]::[Default]</code>, types that have default values.
+//! * <code>[std::iter]::{[Iterator], [Extend], [IntoIterator], [DoubleEndedIterator], [ExactSizeIterator]}</code>,
+//!   iterators of various
 //!   kinds.
-//! * [`std::option`]::[`Option`]::{[`self`][`Option`], [`Some`], [`None`]}. A
+//! * <code>[std::option]::[Option]::{[self][Option], [Some], [None]}</code>, a
 //!   type which expresses the presence or absence of a value. This type is so
 //!   commonly used, its variants are also exported.
-//! * [`std::result`]::[`Result`]::{[`self`][`Result`], [`Ok`], [`Err`]}. A type
+//! * <code>[std::result]::[Result]::{[self][Result], [Ok], [Err]}</code>, a type
 //!   for functions that may succeed or fail. Like [`Option`], its variants are
 //!   exported as well.
-//! * [`std::string`]::{[`String`], [`ToString`]}, heap allocated strings.
-//! * [`std::vec`]::[`Vec`], a growable, heap-allocated
-//!   vector.
+//! * <code>[std::string]::{[String], [ToString]}</code>, heap-allocated strings.
+//! * <code>[std::vec]::[Vec]</code>, a growable, heap-allocated vector.
 //!
-//! [`mem::drop`]: crate::mem::drop
-//! [`std::borrow`]: crate::borrow
-//! [`std::boxed`]: crate::boxed
-//! [`std::clone`]: crate::clone
-//! [`std::cmp`]: crate::cmp
-//! [`std::convert`]: crate::convert
-//! [`std::default`]: crate::default
-//! [`std::iter`]: crate::iter
-//! [`std::marker`]: crate::marker
-//! [`std::mem`]: crate::mem
-//! [`std::ops`]: crate::ops
-//! [`std::option`]: crate::option
+//! [mem::drop]: crate::mem::drop
+//! [std::borrow]: crate::borrow
+//! [std::boxed]: crate::boxed
+//! [std::clone]: crate::clone
+//! [std::cmp]: crate::cmp
+//! [std::convert]: crate::convert
+//! [std::default]: crate::default
+//! [std::iter]: crate::iter
+//! [std::marker]: crate::marker
+//! [std::mem]: crate::mem
+//! [std::ops]: crate::ops
+//! [std::option]: crate::option
 //! [`std::prelude::v1`]: v1
-//! [`std::result`]: crate::result
-//! [`std::slice`]: crate::slice
-//! [`std::string`]: crate::string
-//! [`std::vec`]: mod@crate::vec
+//! [std::result]: crate::result
+//! [std::slice]: crate::slice
+//! [std::string]: crate::string
+//! [std::vec]: mod@crate::vec
 //! [`to_owned`]: crate::borrow::ToOwned::to_owned
 //! [book-closures]: ../../book/ch13-01-closures.html
 //! [book-dtor]: ../../book/ch15-03-drop.html
@@ -85,3 +84,37 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 pub mod v1;
+
+/// The 2015 version of the prelude of The Rust Standard Library.
+///
+/// See the [module-level documentation](self) for more.
+#[unstable(feature = "prelude_2015", issue = "none")]
+pub mod rust_2015 {
+    #[unstable(feature = "prelude_2015", issue = "none")]
+    #[doc(no_inline)]
+    pub use super::v1::*;
+}
+
+/// The 2018 version of the prelude of The Rust Standard Library.
+///
+/// See the [module-level documentation](self) for more.
+#[unstable(feature = "prelude_2018", issue = "none")]
+pub mod rust_2018 {
+    #[unstable(feature = "prelude_2018", issue = "none")]
+    #[doc(no_inline)]
+    pub use super::v1::*;
+}
+
+/// The 2021 version of the prelude of The Rust Standard Library.
+///
+/// See the [module-level documentation](self) for more.
+#[unstable(feature = "prelude_2021", issue = "none")]
+pub mod rust_2021 {
+    #[unstable(feature = "prelude_2021", issue = "none")]
+    #[doc(no_inline)]
+    pub use super::v1::*;
+
+    #[unstable(feature = "prelude_2021", issue = "none")]
+    #[doc(no_inline)]
+    pub use core::prelude::rust_2021::*;
+}

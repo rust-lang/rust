@@ -1,22 +1,48 @@
-error[E0107]: wrong number of lifetime arguments: expected 2, found 1
+error[E0107]: this struct takes 2 lifetime arguments but only 1 lifetime argument was supplied
   --> $DIR/E0107.rs:11:11
    |
 LL |     buzz: Buzz<'a>,
-   |           ^^^^^^^^ expected 2 lifetime arguments
+   |           ^^^^ -- supplied 1 lifetime argument
+   |           |
+   |           expected 2 lifetime arguments
+   |
+note: struct defined here, with 2 lifetime parameters: `'a`, `'b`
+  --> $DIR/E0107.rs:2:8
+   |
+LL | struct Buzz<'a, 'b>(&'a str, &'b str);
+   |        ^^^^ --  --
+help: add missing lifetime argument
+   |
+LL |     buzz: Buzz<'a, 'b>,
+   |                  ^^^^
 
-error[E0107]: wrong number of lifetime arguments: expected 0, found 1
-  --> $DIR/E0107.rs:14:14
+error[E0107]: this enum takes 0 lifetime arguments but 1 lifetime argument was supplied
+  --> $DIR/E0107.rs:15:10
    |
 LL |     bar: Bar<'a>,
-   |              ^^ unexpected lifetime argument
+   |          ^^^---- help: remove these generics
+   |          |
+   |          expected 0 lifetime arguments
+   |
+note: enum defined here, with 0 lifetime parameters
+  --> $DIR/E0107.rs:4:6
+   |
+LL | enum Bar {
+   |      ^^^
 
-error[E0107]: wrong number of lifetime arguments: expected 1, found 3
-  --> $DIR/E0107.rs:17:19
+error[E0107]: this struct takes 1 lifetime argument but 3 lifetime arguments were supplied
+  --> $DIR/E0107.rs:19:11
    |
 LL |     foo2: Foo<'a, 'b, 'c>,
-   |                   ^^  ^^ unexpected lifetime argument
-   |                   |
-   |                   unexpected lifetime argument
+   |           ^^^   -------- help: remove these lifetime arguments
+   |           |
+   |           expected 1 lifetime argument
+   |
+note: struct defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/E0107.rs:1:8
+   |
+LL | struct Foo<'a>(&'a str);
+   |        ^^^ --
 
 error: aborting due to 3 previous errors
 

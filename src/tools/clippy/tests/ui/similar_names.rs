@@ -101,3 +101,8 @@ pub(crate) struct DirSizes {
     pub(crate) numb_reg_cache_entries: u64,
     pub(crate) numb_reg_src_checkouts: u64,
 }
+
+fn ignore_underscore_prefix() {
+    let hello: ();
+    let _hello: ();
+}

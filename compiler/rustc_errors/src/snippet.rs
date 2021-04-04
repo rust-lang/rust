@@ -121,14 +121,6 @@ impl Annotation {
         matches!(self.annotation_type, AnnotationType::MultilineLine(_))
     }
 
-    pub fn is_multiline(&self) -> bool {
-        matches!(self.annotation_type,
-            AnnotationType::Multiline(_)
-            | AnnotationType::MultilineStart(_)
-            | AnnotationType::MultilineLine(_)
-            | AnnotationType::MultilineEnd(_))
-    }
-
     pub fn len(&self) -> usize {
         // Account for usize underflows
         if self.end_col > self.start_col {
@@ -158,7 +150,10 @@ impl Annotation {
 
     pub fn takes_space(&self) -> bool {
         // Multiline annotations always have to keep vertical space.
-        matches!(self.annotation_type, AnnotationType::MultilineStart(_) | AnnotationType::MultilineEnd(_))
+        matches!(
+            self.annotation_type,
+            AnnotationType::MultilineStart(_) | AnnotationType::MultilineEnd(_)
+        )
     }
 }
 

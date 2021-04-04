@@ -6,18 +6,19 @@ use crate::rmeta::{CrateDep, CrateMetadata, CrateNumMap, CrateRoot, MetadataBlob
 
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::{self as ast, *};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
 use rustc_expand::base::SyntaxExtension;
-use rustc_hir::def_id::{CrateNum, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_index::vec::IndexVec;
 use rustc_middle::middle::cstore::{CrateDepKind, CrateSource, ExternCrate};
 use rustc_middle::middle::cstore::{ExternCrateSource, MetadataLoaderDyn};
 use rustc_middle::ty::TyCtxt;
+use rustc_serialize::json::ToJson;
 use rustc_session::config::{self, CrateType, ExternLocation};
-use rustc_session::lint;
+use rustc_session::lint::{self, BuiltinLintDiagnostics, ExternDepSpec};
 use rustc_session::output::validate_crate_name;
 use rustc_session::search_paths::PathKind;
 use rustc_session::{CrateDisambiguator, Session};
@@ -27,8 +28,9 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 
 use proc_macro::bridge::client::ProcMacro;
+use std::collections::BTreeMap;
 use std::path::Path;
-use std::{cmp, env, fs};
+use std::{cmp, env};
 use tracing::{debug, info};
 
 #[derive(Clone)]
@@ -40,6 +42,10 @@ pub struct CStore {
     allocator_kind: Option<AllocatorKind>,
     /// This crate has a `#[global_allocator]` item.
     has_global_allocator: bool,
+
+    /// This map is used to verify we get no hash conflicts between
+    /// `StableCrateId` values.
+    stable_crate_ids: FxHashMap<StableCrateId, CrateNum>,
 }
 
 pub struct CrateLoader<'a> {
@@ -192,6 +198,11 @@ impl<'a> CrateLoader<'a> {
         metadata_loader: &'a MetadataLoaderDyn,
         local_crate_name: &str,
     ) -> Self {
+        let local_crate_stable_id =
+            StableCrateId::new(local_crate_name, sess.local_crate_disambiguator());
+        let mut stable_crate_ids = FxHashMap::default();
+        stable_crate_ids.insert(local_crate_stable_id, LOCAL_CRATE);
+
         CrateLoader {
             sess,
             metadata_loader,
@@ -205,6 +216,7 @@ impl<'a> CrateLoader<'a> {
                 injected_panic_runtime: None,
                 allocator_kind: None,
                 has_global_allocator: false,
+                stable_crate_ids,
             },
             used_extern_options: Default::default(),
         }
@@ -252,9 +264,10 @@ impl<'a> CrateLoader<'a> {
                 // Only use `--extern crate_name=path` here, not `--extern crate_name`.
                 if let Some(mut files) = entry.files() {
                     if files.any(|l| {
-                        let l = fs::canonicalize(l).unwrap_or(l.clone().into());
-                        source.dylib.as_ref().map(|p| &p.0) == Some(&l)
-                            || source.rlib.as_ref().map(|p| &p.0) == Some(&l)
+                        let l = l.canonicalized();
+                        source.dylib.as_ref().map(|(p, _)| p) == Some(l)
+                            || source.rlib.as_ref().map(|(p, _)| p) == Some(l)
+                            || source.rmeta.as_ref().map(|(p, _)| p) == Some(l)
                     }) {
                         ret = Some(cnum);
                     }
@@ -310,6 +323,20 @@ impl<'a> CrateLoader<'a> {
         res
     }
 
+    fn verify_no_stable_crate_id_hash_conflicts(
+        &mut self,
+        root: &CrateRoot<'_>,
+        cnum: CrateNum,
+    ) -> Result<(), CrateError> {
+        if let Some(existing) = self.cstore.stable_crate_ids.insert(root.stable_crate_id(), cnum) {
+            let crate_name0 = root.name();
+            let crate_name1 = self.cstore.get_crate_data(existing).name();
+            return Err(CrateError::StableCrateIdCollision(crate_name0, crate_name1));
+        }
+
+        Ok(())
+    }
+
     fn register_crate(
         &mut self,
         host_lib: Option<Library>,
@@ -323,10 +350,9 @@ impl<'a> CrateLoader<'a> {
         let Library { source, metadata } = lib;
         let crate_root = metadata.get_root();
         let host_hash = host_lib.as_ref().map(|lib| lib.metadata.get_root().hash());
-        self.verify_no_symbol_conflicts(&crate_root)?;
 
         let private_dep =
-            self.sess.opts.externs.get(&name.as_str()).map(|e| e.is_private_dep).unwrap_or(false);
+            self.sess.opts.externs.get(&name.as_str()).map_or(false, |e| e.is_private_dep);
 
         // Claim this crate number and cache it
         let cnum = self.cstore.alloc_new_crate_num();
@@ -364,6 +390,14 @@ impl<'a> CrateLoader<'a> {
         } else {
             None
         };
+
+        // Perform some verification *after* resolve_crate_deps() above is
+        // known to have been successful. It seems that - in error cases - the
+        // cstore can be in a temporarily invalid state between cnum allocation
+        // and dependency resolution and the verification code would produce
+        // ICEs in that case (see #83045).
+        self.verify_no_symbol_conflicts(&crate_root)?;
+        self.verify_no_stable_crate_id_hash_conflicts(&crate_root, cnum)?;
 
         let crate_metadata = CrateMetadata::new(
             self.sess,
@@ -706,13 +740,20 @@ impl<'a> CrateLoader<'a> {
         self.inject_dependency_if(cnum, "a panic runtime", &|data| data.needs_panic_runtime());
     }
 
-    fn inject_profiler_runtime(&mut self) {
-        if (self.sess.opts.debugging_opts.instrument_coverage
+    fn inject_profiler_runtime(&mut self, krate: &ast::Crate) {
+        if (self.sess.instrument_coverage()
             || self.sess.opts.debugging_opts.profile
             || self.sess.opts.cg.profile_generate.enabled())
             && !self.sess.opts.debugging_opts.no_profiler_runtime
         {
             info!("loading profiler");
+
+            if self.sess.contains_name(&krate.attrs, sym::no_core) {
+                self.sess.err(
+                    "`profiler_builtins` crate (required by compiler options) \
+                               is not compatible with crate attribute `#![no_core]`",
+                );
+            }
 
             let name = sym::profiler_builtins;
             let cnum = self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit, None);
@@ -863,8 +904,25 @@ impl<'a> CrateLoader<'a> {
                 // Don't worry about pathless `--extern foo` sysroot references
                 continue;
             }
-            if !self.used_extern_options.contains(&Symbol::intern(name)) {
-                self.sess.parse_sess.buffer_lint(
+            if self.used_extern_options.contains(&Symbol::intern(name)) {
+                continue;
+            }
+
+            // Got a real unused --extern
+            let diag = match self.sess.opts.extern_dep_specs.get(name) {
+                Some(loc) => BuiltinLintDiagnostics::ExternDepSpec(name.clone(), loc.into()),
+                None => {
+                    // If we don't have a specific location, provide a json encoding of the `--extern`
+                    // option.
+                    let meta: BTreeMap<String, String> =
+                        std::iter::once(("name".to_string(), name.to_string())).collect();
+                    BuiltinLintDiagnostics::ExternDepSpec(
+                        name.clone(),
+                        ExternDepSpec::Json(meta.to_json()),
+                    )
+                }
+            };
+            self.sess.parse_sess.buffer_lint_with_diagnostic(
                     lint::builtin::UNUSED_CRATE_DEPENDENCIES,
                     span,
                     ast::CRATE_NODE_ID,
@@ -873,13 +931,13 @@ impl<'a> CrateLoader<'a> {
                         name,
                         self.local_crate_name,
                         name),
+                    diag,
                 );
-            }
         }
     }
 
     pub fn postprocess(&mut self, krate: &ast::Crate) {
-        self.inject_profiler_runtime();
+        self.inject_profiler_runtime(krate);
         self.inject_allocator_crate(krate);
         self.inject_panic_runtime(krate);
 

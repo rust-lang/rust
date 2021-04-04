@@ -121,6 +121,7 @@ use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::{self, BasicBlock, TerminatorKind};
 use rustc_middle::ty::TyCtxt;
 
+use std::iter;
 use std::lazy::SyncOnceCell;
 
 pub const NESTED_INDENT: &str = "    ";
@@ -130,7 +131,7 @@ const RUSTC_COVERAGE_DEBUG_OPTIONS: &str = "RUSTC_COVERAGE_DEBUG_OPTIONS";
 pub(super) fn debug_options<'a>() -> &'a DebugOptions {
     static DEBUG_OPTIONS: SyncOnceCell<DebugOptions> = SyncOnceCell::new();
 
-    &DEBUG_OPTIONS.get_or_init(|| DebugOptions::from_env())
+    &DEBUG_OPTIONS.get_or_init(DebugOptions::from_env)
 }
 
 /// Parses and maintains coverage-specific debug options captured from the environment variable
@@ -148,40 +149,46 @@ impl DebugOptions {
 
         if let Ok(env_debug_options) = std::env::var(RUSTC_COVERAGE_DEBUG_OPTIONS) {
             for setting_str in env_debug_options.replace(" ", "").replace("-", "_").split(',') {
-                let mut setting = setting_str.splitn(2, '=');
-                match setting.next() {
-                    Some(option) if option == "allow_unused_expressions" => {
-                        allow_unused_expressions = bool_option_val(option, setting.next());
+                let (option, value) = match setting_str.split_once('=') {
+                    None => (setting_str, None),
+                    Some((k, v)) => (k, Some(v)),
+                };
+                match option {
+                    "allow_unused_expressions" => {
+                        allow_unused_expressions = bool_option_val(option, value);
                         debug!(
                             "{} env option `allow_unused_expressions` is set to {}",
                             RUSTC_COVERAGE_DEBUG_OPTIONS, allow_unused_expressions
                         );
                     }
-                    Some(option) if option == "counter_format" => {
-                        if let Some(strval) = setting.next() {
-                            counter_format = counter_format_option_val(strval);
-                            debug!(
-                                "{} env option `counter_format` is set to {:?}",
-                                RUSTC_COVERAGE_DEBUG_OPTIONS, counter_format
-                            );
-                        } else {
-                            bug!(
-                                "`{}` option in environment variable {} requires one or more \
-                                plus-separated choices (a non-empty subset of \
-                                `id+block+operation`)",
-                                option,
-                                RUSTC_COVERAGE_DEBUG_OPTIONS
-                            );
-                        }
+                    "counter_format" => {
+                        match value {
+                            None => {
+                                bug!(
+                                    "`{}` option in environment variable {} requires one or more \
+                                    plus-separated choices (a non-empty subset of \
+                                    `id+block+operation`)",
+                                    option,
+                                    RUSTC_COVERAGE_DEBUG_OPTIONS
+                                );
+                            }
+                            Some(val) => {
+                                counter_format = counter_format_option_val(val);
+                                debug!(
+                                    "{} env option `counter_format` is set to {:?}",
+                                    RUSTC_COVERAGE_DEBUG_OPTIONS, counter_format
+                                );
+                            }
+                        };
                     }
-                    Some("") => {}
-                    Some(invalid) => bug!(
-                        "Unsupported setting `{}` in environment variable {}",
-                        invalid,
-                        RUSTC_COVERAGE_DEBUG_OPTIONS
-                    ),
-                    None => {}
-                }
+                    _ => {
+                        bug!(
+                            "Unsupported setting `{}` in environment variable {}",
+                            option,
+                            RUSTC_COVERAGE_DEBUG_OPTIONS
+                        )
+                    }
+                };
             }
         }
 
@@ -279,10 +286,8 @@ impl DebugCounters {
                 ),
             };
             counters
-                .insert(id.into(), DebugCounter::new(counter_kind.clone(), some_block_label))
-                .expect_none(
-                    "attempt to add the same counter_kind to DebugCounters more than once",
-                );
+                .try_insert(id, DebugCounter::new(counter_kind.clone(), some_block_label))
+                .expect("attempt to add the same counter_kind to DebugCounters more than once");
         }
     }
 
@@ -334,7 +339,7 @@ impl DebugCounters {
         if self.some_counters.is_some() && (counter_format.block || !counter_format.id) {
             let counters = self.some_counters.as_ref().unwrap();
             if let Some(DebugCounter { some_block_label: Some(block_label), .. }) =
-                counters.get(&id.into())
+                counters.get(&id)
             {
                 return if counter_format.id {
                     format!("{}#{}", block_label, id.index())
@@ -424,7 +429,7 @@ impl GraphvizData {
         {
             bcb_to_coverage_spans_with_counters
                 .entry(bcb)
-                .or_insert_with(|| Vec::new())
+                .or_insert_with(Vec::new)
                 .push((coverage_span.clone(), counter_kind.clone()));
         }
     }
@@ -450,7 +455,7 @@ impl GraphvizData {
         if let Some(bcb_to_dependency_counters) = self.some_bcb_to_dependency_counters.as_mut() {
             bcb_to_dependency_counters
                 .entry(bcb)
-                .or_insert_with(|| Vec::new())
+                .or_insert_with(Vec::new)
                 .push(counter_kind.clone());
         }
     }
@@ -473,9 +478,9 @@ impl GraphvizData {
         counter_kind: &CoverageKind,
     ) {
         if let Some(edge_to_counter) = self.some_edge_to_counter.as_mut() {
-            edge_to_counter.insert((from_bcb, to_bb), counter_kind.clone()).expect_none(
-                "invalid attempt to insert more than one edge counter for the same edge",
-            );
+            edge_to_counter
+                .try_insert((from_bcb, to_bb), counter_kind.clone())
+                .expect("invalid attempt to insert more than one edge counter for the same edge");
         }
     }
 
@@ -521,8 +526,8 @@ impl UsedExpressions {
     pub fn add_expression_operands(&mut self, expression: &CoverageKind) {
         if let Some(used_expression_operands) = self.some_used_expression_operands.as_mut() {
             if let CoverageKind::Expression { id, lhs, rhs, .. } = *expression {
-                used_expression_operands.entry(lhs).or_insert_with(|| Vec::new()).push(id);
-                used_expression_operands.entry(rhs).or_insert_with(|| Vec::new()).push(id);
+                used_expression_operands.entry(lhs).or_insert_with(Vec::new).push(id);
+                used_expression_operands.entry(rhs).or_insert_with(Vec::new).push(id);
             }
         }
     }
@@ -699,9 +704,7 @@ pub(super) fn dump_coverage_graphviz(
         let edge_counters = from_terminator
             .successors()
             .map(|&successor_bb| graphviz_data.get_edge_counter(from_bcb, successor_bb));
-        edge_labels
-            .iter()
-            .zip(edge_counters)
+        iter::zip(&edge_labels, edge_counters)
             .map(|(label, some_counter)| {
                 if let Some(counter) = some_counter {
                     format!("{}\n{}", label, debug_counters.format_counter(counter))

@@ -1,5 +1,5 @@
 error: struct update has no effect, all the fields in the struct have already been specified
-  --> $DIR/needless_update.rs:13:23
+  --> $DIR/needless_update.rs:19:23
    |
 LL |     S { a: 1, b: 1, ..base };
    |                       ^^^^

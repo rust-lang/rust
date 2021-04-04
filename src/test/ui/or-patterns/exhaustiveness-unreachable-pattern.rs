@@ -1,4 +1,3 @@
-#![feature(or_patterns)]
 #![deny(unreachable_patterns)]
 
 // We wrap patterns in a tuple because top-level or-patterns were special-cased.
@@ -48,6 +47,25 @@ fn main() {
         (1 | 1,) => {} //~ ERROR unreachable
         _ => {}
     }
+    match 0 {
+        (0 | 1) | 1 => {} //~ ERROR unreachable
+        _ => {}
+    }
+    match 0 {
+        // We get two errors because recursive or-pattern expansion means we don't notice the two
+        // errors span a whole pattern. This could be better but doesn't matter much
+        0 | (0 | 0) => {}
+        //~^ ERROR unreachable
+        //~| ERROR unreachable
+        _ => {}
+    }
+    match None {
+        // There is only one error that correctly points to the whole subpattern
+        Some(0) |
+            Some( //~ ERROR unreachable
+                0 | 0) => {}
+        _ => {}
+    }
     match [0; 2] {
         [0
             | 0 //~ ERROR unreachable
@@ -63,6 +81,35 @@ fn main() {
         [1 //~ ERROR unreachable
             | 2, ..] => {}
         _ => {}
+    }
+    match &[][..] {
+        [true] => {}
+        [true | false, ..] => {}
+        _ => {}
+    }
+    match &[][..] {
+        [false] => {}
+        [true, ..] => {}
+        [true //~ ERROR unreachable
+            | false, ..] => {}
+        _ => {}
+    }
+    match (true, None) {
+        (true, Some(_)) => {}
+        (false, Some(true)) => {}
+        (true | false, None | Some(true //~ ERROR unreachable
+                                   | false)) => {}
+    }
+    macro_rules! t_or_f {
+        () => {
+            (true //~ ERROR unreachable
+            | false)
+        };
+    }
+    match (true, None) {
+        (true, Some(_)) => {}
+        (false, Some(true)) => {}
+        (true | false, None | Some(t_or_f!())) => {}
     }
     match Some(0) {
         Some(0) => {}

@@ -1,0 +1,28 @@
+warning: the feature `generic_associated_types` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/issue-76535.rs:1:12
+   |
+LL | #![feature(generic_associated_types)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
+
+error[E0107]: missing generics for associated type `SuperTrait::SubType`
+  --> $DIR/issue-76535.rs:7:10
+   |
+LL |     type SubType<'a>: SubTrait;
+   |          ^^^^^^^ expected 1 lifetime argument
+   |
+note: associated type defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/issue-76535.rs:7:10
+   |
+LL |     type SubType<'a>: SubTrait;
+   |          ^^^^^^^ --
+help: use angle brackets to add missing lifetime argument
+   |
+LL |     type SubType<'a><'a>: SubTrait;
+   |                 ^^^^
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0107`.

@@ -2,15 +2,21 @@ use crate::base::ExtCtxt;
 
 use rustc_ast as ast;
 use rustc_ast::token;
-use rustc_ast::tokenstream::{self, DelimSpan, Spacing::*, TokenStream, TreeAndSpacing};
+use rustc_ast::token::Nonterminal;
+use rustc_ast::token::NtIdent;
+use rustc_ast::tokenstream::{self, CanSynthesizeMissingTokens};
+use rustc_ast::tokenstream::{DelimSpan, Spacing::*, TokenStream, TreeAndSpacing};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::Diagnostic;
+use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
+use rustc_lint_defs::BuiltinLintDiagnostics;
 use rustc_parse::lexer::nfc_normalize;
 use rustc_parse::{nt_to_tokenstream, parse_stream_from_source_str};
 use rustc_session::parse::ParseSess;
+use rustc_span::hygiene::ExpnKind;
 use rustc_span::symbol::{self, kw, sym, Symbol};
-use rustc_span::{BytePos, FileName, MultiSpan, Pos, SourceFile, Span};
+use rustc_span::{BytePos, FileName, MultiSpan, Pos, RealFileName, SourceFile, Span};
 
 use pm::bridge::{server, TokenTree};
 use pm::{Delimiter, Level, LineColumn, Spacing};
@@ -47,11 +53,11 @@ impl ToInternal<token::DelimToken> for Delimiter {
     }
 }
 
-impl FromInternal<(TreeAndSpacing, &'_ ParseSess, &'_ mut Vec<Self>)>
+impl FromInternal<(TreeAndSpacing, &'_ mut Vec<Self>, &mut Rustc<'_>)>
     for TokenTree<Group, Punct, Ident, Literal>
 {
     fn from_internal(
-        ((tree, spacing), sess, stack): (TreeAndSpacing, &ParseSess, &mut Vec<Self>),
+        ((tree, spacing), stack, rustc): (TreeAndSpacing, &mut Vec<Self>, &mut Rustc<'_>),
     ) -> Self {
         use rustc_ast::token::*;
 
@@ -140,10 +146,10 @@ impl FromInternal<(TreeAndSpacing, &'_ ParseSess, &'_ mut Vec<Self>)>
             SingleQuote => op!('\''),
 
             Ident(name, false) if name == kw::DollarCrate => tt!(Ident::dollar_crate()),
-            Ident(name, is_raw) => tt!(Ident::new(sess, name, is_raw)),
+            Ident(name, is_raw) => tt!(Ident::new(rustc.sess, name, is_raw)),
             Lifetime(name) => {
                 let ident = symbol::Ident::new(name, span).without_first_quote();
-                stack.push(tt!(Ident::new(sess, ident.name, false)));
+                stack.push(tt!(Ident::new(rustc.sess, ident.name, false)));
                 tt!(Punct::new('\'', true))
             }
             Literal(lit) => tt!(Literal { lit }),
@@ -173,17 +179,15 @@ impl FromInternal<(TreeAndSpacing, &'_ ParseSess, &'_ mut Vec<Self>)>
             }
 
             Interpolated(nt) => {
-                if let Some((name, is_raw)) =
-                    nt.ident_name_compatibility_hack(span, sess.source_map())
-                {
-                    TokenTree::Ident(Ident::new(sess, name.name, is_raw, name.span))
+                if let Some((name, is_raw)) = ident_name_compatibility_hack(&nt, span, rustc) {
+                    TokenTree::Ident(Ident::new(rustc.sess, name.name, is_raw, name.span))
                 } else {
-                    let stream = nt_to_tokenstream(&nt, sess, span);
+                    let stream = nt_to_tokenstream(&nt, rustc.sess, CanSynthesizeMissingTokens::No);
                     TokenTree::Group(Group {
                         delimiter: Delimiter::None,
                         stream,
                         span: DelimSpan::from_single(span),
-                        flatten: nt.pretty_printing_compatibility_hack(),
+                        flatten: crate::base::pretty_printing_compatibility_hack(&nt, rustc.sess),
                     })
                 }
             }
@@ -445,7 +449,7 @@ impl server::TokenStreamIter for Rustc<'_> {
         loop {
             let tree = iter.stack.pop().or_else(|| {
                 let next = iter.cursor.next_with_spacing()?;
-                Some(TokenTree::from_internal((next, self.sess, &mut iter.stack)))
+                Some(TokenTree::from_internal((next, &mut iter.stack, self)))
             })?;
             // A hack used to pass AST fragments to attribute and derive macros
             // as a single nonterminal token instead of a token stream.
@@ -709,4 +713,101 @@ impl server::Span for Rustc<'_> {
     fn source_text(&mut self, span: Self::Span) -> Option<String> {
         self.sess.source_map().span_to_snippet(span).ok()
     }
+}
+
+// See issue #74616 for details
+fn ident_name_compatibility_hack(
+    nt: &Nonterminal,
+    orig_span: Span,
+    rustc: &mut Rustc<'_>,
+) -> Option<(rustc_span::symbol::Ident, bool)> {
+    if let NtIdent(ident, is_raw) = nt {
+        if let ExpnKind::Macro(_, macro_name) = orig_span.ctxt().outer_expn_data().kind {
+            let source_map = rustc.sess.source_map();
+            let filename = source_map.span_to_filename(orig_span);
+            if let FileName::Real(RealFileName::Named(path)) = filename {
+                let matches_prefix = |prefix, filename| {
+                    // Check for a path that ends with 'prefix*/src/<filename>'
+                    let mut iter = path.components().rev();
+                    iter.next().and_then(|p| p.as_os_str().to_str()) == Some(filename)
+                        && iter.next().and_then(|p| p.as_os_str().to_str()) == Some("src")
+                        && iter
+                            .next()
+                            .and_then(|p| p.as_os_str().to_str())
+                            .map_or(false, |p| p.starts_with(prefix))
+                };
+
+                let time_macros_impl =
+                    macro_name == sym::impl_macros && matches_prefix("time-macros-impl", "lib.rs");
+                let js_sys = macro_name == sym::arrays && matches_prefix("js-sys", "lib.rs");
+                if time_macros_impl || js_sys {
+                    let snippet = source_map.span_to_snippet(orig_span);
+                    if snippet.as_deref() == Ok("$name") {
+                        if time_macros_impl {
+                            rustc.sess.buffer_lint_with_diagnostic(
+                                &PROC_MACRO_BACK_COMPAT,
+                                orig_span,
+                                ast::CRATE_NODE_ID,
+                                "using an old version of `time-macros-impl`",
+                                BuiltinLintDiagnostics::ProcMacroBackCompat(
+                                "the `time-macros-impl` crate will stop compiling in futures version of Rust. \
+                                Please update to the latest version of the `time` crate to avoid breakage".to_string())
+                            );
+                            return Some((*ident, *is_raw));
+                        }
+                        if js_sys {
+                            if let Some(c) = path
+                                .components()
+                                .flat_map(|c| c.as_os_str().to_str())
+                                .find(|c| c.starts_with("js-sys"))
+                            {
+                                let mut version = c.trim_start_matches("js-sys-").split(".");
+                                if version.next() == Some("0")
+                                    && version.next() == Some("3")
+                                    && version
+                                        .next()
+                                        .and_then(|c| c.parse::<u32>().ok())
+                                        .map_or(false, |v| v < 40)
+                                {
+                                    rustc.sess.buffer_lint_with_diagnostic(
+                                        &PROC_MACRO_BACK_COMPAT,
+                                        orig_span,
+                                        ast::CRATE_NODE_ID,
+                                        "using an old version of `js-sys`",
+                                        BuiltinLintDiagnostics::ProcMacroBackCompat(
+                                        "older versions of the `js-sys` crate will stop compiling in future versions of Rust; \
+                                        please update to `js-sys` v0.3.40 or above".to_string())
+                                    );
+                                    return Some((*ident, *is_raw));
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if macro_name == sym::tuple_from_req && matches_prefix("actix-web", "extract.rs") {
+                    let snippet = source_map.span_to_snippet(orig_span);
+                    if snippet.as_deref() == Ok("$T") {
+                        if let FileName::Real(RealFileName::Named(macro_path)) =
+                            source_map.span_to_filename(rustc.def_site)
+                        {
+                            if macro_path.to_string_lossy().contains("pin-project-internal-0.") {
+                                rustc.sess.buffer_lint_with_diagnostic(
+                                    &PROC_MACRO_BACK_COMPAT,
+                                    orig_span,
+                                    ast::CRATE_NODE_ID,
+                                    "using an old version of `actix-web`",
+                                    BuiltinLintDiagnostics::ProcMacroBackCompat(
+                                    "the version of `actix-web` you are using might stop compiling in future versions of Rust; \
+                                    please update to the latest version of the `actix-web` crate to avoid breakage".to_string())
+                                );
+                                return Some((*ident, *is_raw));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
 }

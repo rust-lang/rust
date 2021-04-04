@@ -15,7 +15,7 @@ Respanned: TokenStream [Ident { ident: "$crate", span: $DIR/auxiliary/make-macro
 
 #![no_std /* 0#0 */]
 #[prelude_import /* 0#1 */]
-use core /* 0#1 */::prelude /* 0#1 */::v1 /* 0#1 */::*;
+use core /* 0#1 */::prelude /* 0#1 */::rust_2018 /* 0#1 */::*;
 #[macro_use /* 0#1 */]
 extern crate core /* 0#1 */;
 #[macro_use /* 0#1 */]

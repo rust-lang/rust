@@ -1,4 +1,4 @@
-error: expected type, found reserved keyword `box`
+error: expected type, found `<[_]>::into_vec(box [0, 1])`
   --> $DIR/issue-47666.rs:3:25
    |
 LL |     let _ = Option:Some(vec![0, 1]);

@@ -36,7 +36,11 @@ pub fn tokens() -> (WaitToken, SignalToken) {
 
 impl SignalToken {
     pub fn signal(&self) -> bool {
-        let wake = !self.inner.woken.compare_and_swap(false, true, Ordering::SeqCst);
+        let wake = self
+            .inner
+            .woken
+            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+            .is_ok();
         if wake {
             self.inner.thread.unpark();
         }

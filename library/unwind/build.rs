@@ -4,6 +4,10 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     let target = env::var("TARGET").expect("TARGET was not set");
 
+    if cfg!(feature = "system-llvm-libunwind") {
+        return;
+    }
+
     if cfg!(feature = "llvm-libunwind")
         && ((target.contains("linux") && !target.contains("musl")) || target.contains("fuchsia"))
     {
@@ -18,8 +22,6 @@ fn main() {
         }
     } else if target.contains("freebsd") {
         println!("cargo:rustc-link-lib=gcc_s");
-    } else if target.contains("rumprun") {
-        println!("cargo:rustc-link-lib=unwind");
     } else if target.contains("netbsd") {
         println!("cargo:rustc-link-lib=gcc_s");
     } else if target.contains("openbsd") {

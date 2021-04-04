@@ -8,10 +8,12 @@
 #![feature(bool_to_option)]
 #![feature(const_cstr_unchecked)]
 #![feature(crate_visibility_modifier)]
+#![feature(extended_key_value_attributes)]
 #![feature(extern_types)]
 #![feature(in_band_lifetimes)]
+#![feature(iter_zip)]
 #![feature(nll)]
-#![feature(or_patterns)]
+#![cfg_attr(bootstrap, feature(or_patterns))]
 #![recursion_limit = "256"]
 
 use back::write::{create_informational_target_machine, create_target_machine};
@@ -19,7 +21,9 @@ use back::write::{create_informational_target_machine, create_target_machine};
 pub use llvm_util::target_features;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
-use rustc_codegen_ssa::back::write::{CodegenContext, FatLTOInput, ModuleConfig};
+use rustc_codegen_ssa::back::write::{
+    CodegenContext, FatLTOInput, ModuleConfig, TargetMachineFactoryConfig, TargetMachineFactoryFn,
+};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule};
@@ -34,7 +38,6 @@ use rustc_span::symbol::Symbol;
 
 use std::any::Any;
 use std::ffi::CStr;
-use std::sync::Arc;
 
 mod back {
     pub mod archive;
@@ -109,7 +112,7 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
         &self,
         sess: &Session,
         optlvl: OptLevel,
-    ) -> Arc<dyn Fn() -> Result<&'static mut llvm::TargetMachine, String> + Send + Sync> {
+    ) -> TargetMachineFactoryFn<Self> {
         back::write::target_machine_factory(sess, optlvl)
     }
     fn target_cpu<'b>(&self, sess: &'b Session) -> &'b str {
@@ -159,7 +162,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         module: &ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> Result<(), FatalError> {
-        back::write::optimize(cgcx, diag_handler, module, config)
+        Ok(back::write::optimize(cgcx, diag_handler, module, config))
     }
     unsafe fn optimize_thin(
         cgcx: &CodegenContext<Self>,
@@ -297,21 +300,19 @@ impl CodegenBackend for LlvmCodegenBackend {
         codegen_results: CodegenResults,
         outputs: &OutputFilenames,
     ) -> Result<(), ErrorReported> {
+        use crate::back::archive::LlvmArchiveBuilder;
+        use rustc_codegen_ssa::back::link::link_binary;
+
         // Run the linker on any artifacts that resulted from the LLVM run.
         // This should produce either a finished executable or library.
-        sess.time("link_crate", || {
-            use crate::back::archive::LlvmArchiveBuilder;
-            use rustc_codegen_ssa::back::link::link_binary;
-
-            let target_cpu = crate::llvm_util::target_cpu(sess);
-            link_binary::<LlvmArchiveBuilder<'_>>(
-                sess,
-                &codegen_results,
-                outputs,
-                &codegen_results.crate_name.as_str(),
-                target_cpu,
-            );
-        });
+        let target_cpu = crate::llvm_util::target_cpu(sess);
+        link_binary::<LlvmArchiveBuilder<'_>>(
+            sess,
+            &codegen_results,
+            outputs,
+            &codegen_results.crate_name.as_str(),
+            target_cpu,
+        );
 
         Ok(())
     }
@@ -331,7 +332,7 @@ impl ModuleLlvm {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(tcx.sess.fewer_names());
             let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;
-            ModuleLlvm { llmod_raw, llcx, tm: create_target_machine(tcx) }
+            ModuleLlvm { llmod_raw, llcx, tm: create_target_machine(tcx, mod_name) }
         }
     }
 
@@ -352,7 +353,8 @@ impl ModuleLlvm {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(cgcx.fewer_names);
             let llmod_raw = back::lto::parse_module(llcx, name, buffer, handler)?;
-            let tm = match (cgcx.tm_factory.0)() {
+            let tm_factory_config = TargetMachineFactoryConfig::new(&cgcx, name.to_str().unwrap());
+            let tm = match (cgcx.tm_factory)(tm_factory_config) {
                 Ok(m) => m,
                 Err(e) => {
                     handler.struct_err(&e).emit();

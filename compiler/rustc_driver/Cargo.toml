@@ -9,9 +9,10 @@ crate-type = ["dylib"]
 
 [dependencies]
 libc = "0.2"
-tracing = { version = "0.1.18" }
-tracing-subscriber = { version = "0.2.13", default-features = false, features = ["fmt", "env-filter", "smallvec", "parking_lot", "ansi"] }
-tracing-tree = "0.1.6"
+atty = "0.2"
+tracing = { version = "0.1.25" }
+tracing-subscriber = { version = "0.2.16", default-features = false, features = ["fmt", "env-filter", "smallvec", "parking_lot", "ansi"] }
+tracing-tree = "0.1.9"
 rustc_middle = { path = "../rustc_middle" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
 rustc_target = { path = "../rustc_target" }
@@ -33,6 +34,8 @@ rustc_interface = { path = "../rustc_interface" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_span = { path = "../rustc_span" }
+rustc_mir_build = { path = "../rustc_mir_build" }
+rustc_typeck = { path = "../rustc_typeck" }
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["consoleapi", "debugapi", "processenv"] }

@@ -1,3 +1,6 @@
+use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then, span_lint_hir_and_then};
+use clippy_utils::source::{snippet, snippet_opt};
+use clippy_utils::ty::implements_trait;
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -12,13 +15,13 @@ use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::{ExpnKind, Span};
+use rustc_span::symbol::sym;
 
 use crate::consts::{constant, Constant};
-use crate::utils::sugg::Sugg;
-use crate::utils::{
-    get_item_name, get_parent_expr, higher, implements_trait, in_constant, is_integer_const, iter_input_pats,
-    last_path_segment, match_qpath, match_trait_method, paths, snippet, snippet_opt, span_lint, span_lint_and_sugg,
-    span_lint_and_then, span_lint_hir_and_then, unsext, SpanlessEq,
+use clippy_utils::sugg::Sugg;
+use clippy_utils::{
+    get_item_name, get_parent_expr, higher, in_constant, is_diagnostic_assoc_item, is_integer_const, iter_input_pats,
+    last_path_segment, match_qpath, unsext, SpanlessEq,
 };
 
 declare_clippy_lint! {
@@ -278,7 +281,7 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
         span: Span,
         _: HirId,
     ) {
-        if let FnKind::Closure(_) = k {
+        if let FnKind::Closure = k {
             // Does not apply to closures
             return;
         }
@@ -292,7 +295,7 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
                     TOPLEVEL_REF_ARG,
                     arg.pat.span,
                     "`ref` directly on a function argument is ignored. \
-                    Consider using a reference type instead.",
+                    Consider using a reference type instead",
                 );
             }
         }
@@ -422,7 +425,7 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
                 expr.span,
                 &format!(
                     "used binding `{}` which is prefixed with an underscore. A leading \
-                     underscore signals that a binding will not be used.",
+                     underscore signals that a binding will not be used",
                     binding
                 ),
             );
@@ -502,7 +505,7 @@ fn is_allowed<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
 // Return true if `expr` is the result of `signum()` invoked on a float value.
 fn is_signum(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     // The negation of a signum is still a signum
-    if let ExprKind::Unary(UnOp::UnNeg, ref child_expr) = expr.kind {
+    if let ExprKind::Unary(UnOp::Neg, ref child_expr) = expr.kind {
         return is_signum(cx, &child_expr);
     }
 
@@ -554,11 +557,16 @@ fn check_to_owned(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left:
 
     let (arg_ty, snip) = match expr.kind {
         ExprKind::MethodCall(.., ref args, _) if args.len() == 1 => {
-            if match_trait_method(cx, expr, &paths::TO_STRING) || match_trait_method(cx, expr, &paths::TO_OWNED) {
-                (cx.typeck_results().expr_ty(&args[0]), snippet(cx, args[0].span, ".."))
-            } else {
-                return;
-            }
+            if_chain!(
+                if let Some(expr_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
+                if is_diagnostic_assoc_item(cx, expr_def_id, sym::ToString)
+                    || is_diagnostic_assoc_item(cx, expr_def_id, sym::ToOwned);
+                then {
+                    (cx.typeck_results().expr_ty(&args[0]), snippet(cx, args[0].span, ".."))
+                } else {
+                    return;
+                }
+            )
         },
         ExprKind::Call(ref path, ref v) if v.len() == 1 => {
             if let ExprKind::Path(ref path) = path.kind {
@@ -586,7 +594,7 @@ fn check_to_owned(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left:
         return;
     }
 
-    let other_gets_derefed = matches!(other.kind, ExprKind::Unary(UnOp::UnDeref, _));
+    let other_gets_derefed = matches!(other.kind, ExprKind::Unary(UnOp::Deref, _));
 
     let lint_span = if other_gets_derefed {
         expr.span.to(other.span)

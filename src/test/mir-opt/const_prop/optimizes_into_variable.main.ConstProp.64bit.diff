@@ -27,9 +27,6 @@
 -         _2 = CheckedAdd(const 2_i32, const 2_i32); // scope 0 at $DIR/optimizes_into_variable.rs:12:13: 12:18
 -         assert(!move (_2.1: bool), "attempt to compute `{} + {}`, which would overflow", const 2_i32, const 2_i32) -> bb1; // scope 0 at $DIR/optimizes_into_variable.rs:12:13: 12:18
 +         _2 = const (4_i32, false);       // scope 0 at $DIR/optimizes_into_variable.rs:12:13: 12:18
-+                                          // ty::Const
-+                                          // + ty: (i32, bool)
-+                                          // + val: Value(ByRef { alloc: Allocation { bytes: [4, 0, 0, 0, 0, 0, 0, 0], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [31], len: Size { raw: 8 } }, size: Size { raw: 8 }, align: Align { pow2: 2 }, mutability: Not, extra: () }, offset: Size { raw: 0 } })
 +                                          // mir::Constant
 +                                          // + span: $DIR/optimizes_into_variable.rs:12:13: 12:18
 +                                          // + literal: Const { ty: (i32, bool), val: Value(ByRef { alloc: Allocation { bytes: [4, 0, 0, 0, 0, 0, 0, 0], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [31], len: Size { raw: 8 } }, size: Size { raw: 8 }, align: Align { pow2: 2 }, mutability: Not, extra: () }, offset: Size { raw: 0 } }) }
@@ -63,7 +60,7 @@
 -         _8 = (_9.1: u32);                // scope 2 at $DIR/optimizes_into_variable.rs:14:13: 14:38
 +         _8 = const 42_u32;               // scope 2 at $DIR/optimizes_into_variable.rs:14:13: 14:38
           StorageDead(_9);                 // scope 2 at $DIR/optimizes_into_variable.rs:14:38: 14:39
-          _0 = const ();                   // scope 0 at $DIR/optimizes_into_variable.rs:11:11: 15:2
+          nop;                             // scope 0 at $DIR/optimizes_into_variable.rs:11:11: 15:2
           StorageDead(_8);                 // scope 2 at $DIR/optimizes_into_variable.rs:15:1: 15:2
           StorageDead(_3);                 // scope 1 at $DIR/optimizes_into_variable.rs:15:1: 15:2
           StorageDead(_1);                 // scope 0 at $DIR/optimizes_into_variable.rs:15:1: 15:2

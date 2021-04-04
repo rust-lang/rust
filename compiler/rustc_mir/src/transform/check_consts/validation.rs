@@ -3,6 +3,7 @@
 use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorReported};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId, LangItem};
+use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
@@ -188,6 +189,9 @@ pub struct Validator<'mir, 'tcx> {
     /// The span of the current statement.
     span: Span,
 
+    /// A set that stores for each local whether it has a `StorageDead` for it somewhere.
+    local_has_storage_dead: Option<BitSet<Local>>,
+
     error_emitted: Option<ErrorReported>,
     secondary_errors: Vec<Diagnostic>,
 }
@@ -206,6 +210,7 @@ impl Validator<'mir, 'tcx> {
             span: ccx.body.span,
             ccx,
             qualifs: Default::default(),
+            local_has_storage_dead: None,
             error_emitted: None,
             secondary_errors: Vec::new(),
         }
@@ -217,7 +222,7 @@ impl Validator<'mir, 'tcx> {
 
         // `async` functions cannot be `const fn`. This is checked during AST lowering, so there's
         // no need to emit duplicate errors here.
-        if is_async_fn(self.ccx) || body.generator_kind.is_some() {
+        if is_async_fn(self.ccx) || body.generator.is_some() {
             tcx.sess.delay_span_bug(body.span, "`async` functions cannot be `const fn`");
             return;
         }
@@ -280,6 +285,27 @@ impl Validator<'mir, 'tcx> {
         } else {
             assert!(self.tcx.sess.has_errors());
         }
+    }
+
+    fn local_has_storage_dead(&mut self, local: Local) -> bool {
+        let ccx = self.ccx;
+        self.local_has_storage_dead
+            .get_or_insert_with(|| {
+                struct StorageDeads {
+                    locals: BitSet<Local>,
+                }
+                impl Visitor<'tcx> for StorageDeads {
+                    fn visit_statement(&mut self, stmt: &Statement<'tcx>, _: Location) {
+                        if let StatementKind::StorageDead(l) = stmt.kind {
+                            self.locals.insert(l);
+                        }
+                    }
+                }
+                let mut v = StorageDeads { locals: BitSet::new_empty(ccx.body.local_decls.len()) };
+                v.visit_body(ccx.body);
+                v.locals
+            })
+            .contains(local)
     }
 
     pub fn qualifs_in_return_place(&mut self) -> ConstQualifs {
@@ -385,24 +411,24 @@ impl Validator<'mir, 'tcx> {
         loop {
             let predicates = tcx.predicates_of(current);
             for (predicate, _) in predicates.predicates {
-                match predicate.skip_binders() {
-                    ty::PredicateAtom::RegionOutlives(_)
-                    | ty::PredicateAtom::TypeOutlives(_)
-                    | ty::PredicateAtom::WellFormed(_)
-                    | ty::PredicateAtom::Projection(_)
-                    | ty::PredicateAtom::ConstEvaluatable(..)
-                    | ty::PredicateAtom::ConstEquate(..)
-                    | ty::PredicateAtom::TypeWellFormedFromEnv(..) => continue,
-                    ty::PredicateAtom::ObjectSafe(_) => {
+                match predicate.kind().skip_binder() {
+                    ty::PredicateKind::RegionOutlives(_)
+                    | ty::PredicateKind::TypeOutlives(_)
+                    | ty::PredicateKind::WellFormed(_)
+                    | ty::PredicateKind::Projection(_)
+                    | ty::PredicateKind::ConstEvaluatable(..)
+                    | ty::PredicateKind::ConstEquate(..)
+                    | ty::PredicateKind::TypeWellFormedFromEnv(..) => continue,
+                    ty::PredicateKind::ObjectSafe(_) => {
                         bug!("object safe predicate on function: {:#?}", predicate)
                     }
-                    ty::PredicateAtom::ClosureKind(..) => {
+                    ty::PredicateKind::ClosureKind(..) => {
                         bug!("closure kind predicate on function: {:#?}", predicate)
                     }
-                    ty::PredicateAtom::Subtype(_) => {
+                    ty::PredicateKind::Subtype(_) => {
                         bug!("subtype predicate on function: {:#?}", predicate)
                     }
-                    ty::PredicateAtom::Trait(pred, constness) => {
+                    ty::PredicateKind::Trait(pred, constness) => {
                         if Some(pred.def_id()) == tcx.lang_items().sized_trait() {
                             continue;
                         }
@@ -440,6 +466,29 @@ impl Validator<'mir, 'tcx> {
             }
         }
     }
+
+    fn check_mut_borrow(&mut self, local: Local, kind: hir::BorrowKind) {
+        match self.const_kind() {
+            // In a const fn all borrows are transient or point to the places given via
+            // references in the arguments (so we already checked them with
+            // TransientMutBorrow/MutBorrow as appropriate).
+            // The borrow checker guarantees that no new non-transient borrows are created.
+            // NOTE: Once we have heap allocations during CTFE we need to figure out
+            // how to prevent `const fn` to create long-lived allocations that point
+            // to mutable memory.
+            hir::ConstContext::ConstFn => self.check_op(ops::TransientMutBorrow(kind)),
+            _ => {
+                // Locals with StorageDead do not live beyond the evaluation and can
+                // thus safely be borrowed without being able to be leaked to the final
+                // value of the constant.
+                if self.local_has_storage_dead(local) {
+                    self.check_op(ops::TransientMutBorrow(kind));
+                } else {
+                    self.check_op(ops::MutBorrow(kind));
+                }
+            }
+        }
+    }
 }
 
 impl Visitor<'tcx> for Validator<'mir, 'tcx> {
@@ -466,7 +515,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
         // Special-case reborrows to be more like a copy of a reference.
         match *rvalue {
             Rvalue::Ref(_, kind, place) => {
-                if let Some(reborrowed_proj) = place_as_reborrow(self.tcx, self.body, place) {
+                if let Some(reborrowed_place_ref) = place_as_reborrow(self.tcx, self.body, place) {
                     let ctx = match kind {
                         BorrowKind::Shared => {
                             PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow)
@@ -481,21 +530,21 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                             PlaceContext::MutatingUse(MutatingUseContext::Borrow)
                         }
                     };
-                    self.visit_local(&place.local, ctx, location);
-                    self.visit_projection(place.local, reborrowed_proj, ctx, location);
+                    self.visit_local(&reborrowed_place_ref.local, ctx, location);
+                    self.visit_projection(reborrowed_place_ref, ctx, location);
                     return;
                 }
             }
             Rvalue::AddressOf(mutbl, place) => {
-                if let Some(reborrowed_proj) = place_as_reborrow(self.tcx, self.body, place) {
+                if let Some(reborrowed_place_ref) = place_as_reborrow(self.tcx, self.body, place) {
                     let ctx = match mutbl {
                         Mutability::Not => {
                             PlaceContext::NonMutatingUse(NonMutatingUseContext::AddressOf)
                         }
                         Mutability::Mut => PlaceContext::MutatingUse(MutatingUseContext::AddressOf),
                     };
-                    self.visit_local(&place.local, ctx, location);
-                    self.visit_projection(place.local, reborrowed_proj, ctx, location);
+                    self.visit_local(&reborrowed_place_ref.local, ctx, location);
+                    self.visit_projection(reborrowed_place_ref, ctx, location);
                     return;
                 }
             }
@@ -536,15 +585,15 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
 
                 if !is_allowed {
                     if let BorrowKind::Mut { .. } = kind {
-                        self.check_op(ops::MutBorrow(hir::BorrowKind::Ref));
+                        self.check_mut_borrow(place.local, hir::BorrowKind::Ref)
                     } else {
                         self.check_op(ops::CellBorrow);
                     }
                 }
             }
 
-            Rvalue::AddressOf(Mutability::Mut, _) => {
-                self.check_op(ops::MutBorrow(hir::BorrowKind::Raw))
+            Rvalue::AddressOf(Mutability::Mut, ref place) => {
+                self.check_mut_borrow(place.local, hir::BorrowKind::Raw)
             }
 
             Rvalue::Ref(_, BorrowKind::Shared | BorrowKind::Shallow, ref place)
@@ -556,7 +605,29 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 );
 
                 if borrowed_place_has_mut_interior {
-                    self.check_op(ops::CellBorrow);
+                    match self.const_kind() {
+                        // In a const fn all borrows are transient or point to the places given via
+                        // references in the arguments (so we already checked them with
+                        // TransientCellBorrow/CellBorrow as appropriate).
+                        // The borrow checker guarantees that no new non-transient borrows are created.
+                        // NOTE: Once we have heap allocations during CTFE we need to figure out
+                        // how to prevent `const fn` to create long-lived allocations that point
+                        // to (interior) mutable memory.
+                        hir::ConstContext::ConstFn => self.check_op(ops::TransientCellBorrow),
+                        _ => {
+                            // Locals with StorageDead are definitely not part of the final constant value, and
+                            // it is thus inherently safe to permit such locals to have their
+                            // address taken as we can't end up with a reference to them in the
+                            // final value.
+                            // Note: This is only sound if every local that has a `StorageDead` has a
+                            // `StorageDead` in every control flow path leading to a `return` terminator.
+                            if self.local_has_storage_dead(place.local) {
+                                self.check_op(ops::TransientCellBorrow);
+                            } else {
+                                self.check_op(ops::CellBorrow);
+                            }
+                        }
+                    }
                 }
             }
 
@@ -613,8 +684,8 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 }
             }
 
-            Rvalue::BinaryOp(op, ref lhs, ref rhs)
-            | Rvalue::CheckedBinaryOp(op, ref lhs, ref rhs) => {
+            Rvalue::BinaryOp(op, box (ref lhs, ref rhs))
+            | Rvalue::CheckedBinaryOp(op, box (ref lhs, ref rhs)) => {
                 let lhs_ty = lhs.ty(self.body, self.tcx);
                 let rhs_ty = rhs.ty(self.body, self.tcx);
 
@@ -722,34 +793,34 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         trace!("visit_statement: statement={:?} location={:?}", statement, location);
 
-        match statement.kind {
-            StatementKind::Assign(..) | StatementKind::SetDiscriminant { .. } => {
-                self.super_statement(statement, location);
-            }
+        self.super_statement(statement, location);
 
+        match statement.kind {
             StatementKind::LlvmInlineAsm { .. } => {
-                self.super_statement(statement, location);
                 self.check_op(ops::InlineAsm);
             }
 
-            StatementKind::FakeRead(..)
+            StatementKind::Assign(..)
+            | StatementKind::SetDiscriminant { .. }
+            | StatementKind::FakeRead(..)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
             | StatementKind::Retag { .. }
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
+            | StatementKind::CopyNonOverlapping(..)
             | StatementKind::Nop => {}
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         use rustc_target::spec::abi::Abi::RustIntrinsic;
 
-        trace!("visit_terminator: terminator={:?} location={:?}", terminator, location);
         self.super_terminator(terminator, location);
 
         match &terminator.kind {
-            TerminatorKind::Call { func, .. } => {
+            TerminatorKind::Call { func, args, .. } => {
                 let ConstCx { tcx, body, param_env, .. } = *self.ccx;
                 let caller = self.def_id().to_def_id();
 
@@ -769,8 +840,9 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
 
                 // Attempting to call a trait method?
                 if let Some(trait_id) = tcx.trait_of_item(callee) {
+                    trace!("attempting to call a trait method");
                     if !self.tcx.features().const_trait_impl {
-                        self.check_op(ops::FnCallNonConst(callee));
+                        self.check_op(ops::FnCallNonConst);
                         return;
                     }
 
@@ -778,9 +850,12 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                     let obligation = Obligation::new(
                         ObligationCause::dummy(),
                         param_env,
-                        Binder::bind(TraitPredicate {
-                            trait_ref: TraitRef::from_method(tcx, trait_id, substs),
-                        }),
+                        Binder::bind(
+                            TraitPredicate {
+                                trait_ref: TraitRef::from_method(tcx, trait_id, substs),
+                            },
+                            tcx,
+                        ),
                     );
 
                     let implsrc = tcx.infer_ctxt().enter(|infcx| {
@@ -810,9 +885,17 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 }
 
                 // At this point, we are calling a function, `callee`, whose `DefId` is known...
-
                 if is_lang_panic_fn(tcx, callee) {
                     self.check_op(ops::Panic);
+
+                    // const-eval of the `begin_panic` fn assumes the argument is `&str`
+                    if Some(callee) == tcx.lang_items().begin_panic_fn() {
+                        match args[0].ty(&self.ccx.body.local_decls, tcx).kind() {
+                            ty::Ref(_, ty, _) if ty.is_str() => (),
+                            _ => self.check_op(ops::PanicNonStr),
+                        }
+                    }
+
                     return;
                 }
 
@@ -824,25 +907,26 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                     return;
                 }
 
+                let is_intrinsic = tcx.fn_sig(callee).abi() == RustIntrinsic;
+
                 // HACK: This is to "unstabilize" the `transmute` intrinsic
                 // within const fns. `transmute` is allowed in all other const contexts.
                 // This won't really scale to more intrinsics or functions. Let's allow const
                 // transmutes in const fn before we add more hacks to this.
-                if tcx.fn_sig(callee).abi() == RustIntrinsic
-                    && tcx.item_name(callee) == sym::transmute
-                {
+                if is_intrinsic && tcx.item_name(callee) == sym::transmute {
                     self.check_op(ops::Transmute);
                     return;
                 }
 
                 if !tcx.is_const_fn_raw(callee) {
-                    self.check_op(ops::FnCallNonConst(callee));
+                    self.check_op(ops::FnCallNonConst);
                     return;
                 }
 
                 // If the `const fn` we are trying to call is not const-stable, ensure that we have
                 // the proper feature gate enabled.
                 if let Some(gate) = is_unstable_const_fn(tcx, callee) {
+                    trace!(?gate, "calling unstable const fn");
                     if self.span.allows_unstable(gate) {
                         return;
                     }
@@ -857,12 +941,14 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                     // If this crate is not using stability attributes, or the caller is not claiming to be a
                     // stable `const fn`, that is all that is required.
                     if !self.ccx.is_const_stable_const_fn() {
+                        trace!("crate not using stability attributes or caller not stably const");
                         return;
                     }
 
                     // Otherwise, we are something const-stable calling a const-unstable fn.
 
                     if super::rustc_allow_const_fn_unstable(tcx, caller, gate) {
+                        trace!("rustc_allow_const_fn_unstable gate active");
                         return;
                     }
 
@@ -876,10 +962,16 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 let callee_is_unstable_unmarked = tcx.lookup_const_stability(callee).is_none()
                     && tcx.lookup_stability(callee).map_or(false, |s| s.level.is_unstable());
                 if callee_is_unstable_unmarked {
-                    if self.ccx.is_const_stable_const_fn() {
+                    trace!("callee_is_unstable_unmarked");
+                    // We do not use `const` modifiers for intrinsic "functions", as intrinsics are
+                    // `extern` funtions, and these have no way to get marked `const`. So instead we
+                    // use `rustc_const_(un)stable` attributes to mean that the intrinsic is `const`
+                    if self.ccx.is_const_stable_const_fn() || is_intrinsic {
                         self.check_op(ops::FnCallUnstable(callee, None));
+                        return;
                     }
                 }
+                trace!("permitting call");
             }
 
             // Forbid all `Drop` terminators unless the place being dropped is a local with no
@@ -959,28 +1051,28 @@ fn place_as_reborrow(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     place: Place<'tcx>,
-) -> Option<&'a [PlaceElem<'tcx>]> {
-    place.projection.split_last().and_then(|(outermost, inner)| {
-        if outermost != &ProjectionElem::Deref {
-            return None;
-        }
+) -> Option<PlaceRef<'tcx>> {
+    match place.as_ref().last_projection() {
+        Some((place_base, ProjectionElem::Deref)) => {
+            // A borrow of a `static` also looks like `&(*_1)` in the MIR, but `_1` is a `const`
+            // that points to the allocation for the static. Don't treat these as reborrows.
+            if body.local_decls[place_base.local].is_ref_to_static() {
+                None
+            } else {
+                // Ensure the type being derefed is a reference and not a raw pointer.
+                // This is sufficient to prevent an access to a `static mut` from being marked as a
+                // reborrow, even if the check above were to disappear.
+                let inner_ty = place_base.ty(body, tcx).ty;
 
-        // A borrow of a `static` also looks like `&(*_1)` in the MIR, but `_1` is a `const`
-        // that points to the allocation for the static. Don't treat these as reborrows.
-        if body.local_decls[place.local].is_ref_to_static() {
-            return None;
+                if let ty::Ref(..) = inner_ty.kind() {
+                    return Some(place_base);
+                } else {
+                    return None;
+                }
+            }
         }
-
-        // Ensure the type being derefed is a reference and not a raw pointer.
-        //
-        // This is sufficient to prevent an access to a `static mut` from being marked as a
-        // reborrow, even if the check above were to disappear.
-        let inner_ty = Place::ty_from(place.local, inner, body, tcx).ty;
-        match inner_ty.kind() {
-            ty::Ref(..) => Some(inner),
-            _ => None,
-        }
-    })
+        _ => None,
+    }
 }
 
 fn is_int_bool_or_char(ty: Ty<'_>) -> bool {

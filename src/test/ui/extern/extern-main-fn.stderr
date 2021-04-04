@@ -1,8 +1,8 @@
 error[E0580]: `main` function has wrong type
   --> $DIR/extern-main-fn.rs:1:1
    |
-LL | extern fn main() {}
-   | ^^^^^^^^^^^^^^^^ expected "Rust" fn, found "C" fn
+LL | extern "C" fn main() {}
+   | ^^^^^^^^^^^^^^^^^^^^ expected "Rust" fn, found "C" fn
    |
    = note: expected fn pointer `fn()`
               found fn pointer `extern "C" fn()`

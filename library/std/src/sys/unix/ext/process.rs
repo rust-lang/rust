@@ -6,12 +6,16 @@ use crate::ffi::OsStr;
 use crate::io;
 use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 use crate::process;
+use crate::sealed::Sealed;
 use crate::sys;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 
 /// Unix-specific extensions to the [`process::Command`] builder.
+///
+/// This trait is sealed: it cannot be implemented outside the standard library.
+/// This is so that future additional methods are not breaking changes.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait CommandExt {
+pub trait CommandExt: Sealed {
     /// Sets the child process's user ID. This translates to a
     /// `setuid` call in the child process. Failure in the `setuid`
     /// call will cause the spawn to fail.
@@ -29,6 +33,15 @@ pub trait CommandExt {
         &mut self,
         #[cfg(not(target_os = "vxworks"))] id: u32,
         #[cfg(target_os = "vxworks")] id: u16,
+    ) -> &mut process::Command;
+
+    /// Sets the supplementary group IDs for the calling process. Translates to
+    /// a `setgroups` call in the child process.
+    #[unstable(feature = "setgroups", issue = "38527", reason = "")]
+    fn groups(
+        &mut self,
+        #[cfg(not(target_os = "vxworks"))] groups: &[u32],
+        #[cfg(target_os = "vxworks")] groups: &[u16],
     ) -> &mut process::Command;
 
     /// Schedules a closure to be run just before the `exec` function is
@@ -49,8 +62,13 @@ pub trait CommandExt {
     /// `fork`. This primarily means that any modifications made to memory on
     /// behalf of this closure will **not** be visible to the parent process.
     /// This is often a very constrained environment where normal operations
-    /// like `malloc` or acquiring a mutex are not guaranteed to work (due to
+    /// like `malloc`, accessing environment variables through [`std::env`]
+    /// or acquiring a mutex are not guaranteed to work (due to
     /// other threads perhaps still running when the `fork` was run).
+    ///
+    /// For further details refer to the [POSIX fork() specification]
+    /// and the equivalent documentation for any targeted
+    /// platform, especially the requirements around *async-signal-safety*.
     ///
     /// This also means that all resources such as file descriptors and
     /// memory-mapped regions got duplicated. It is your responsibility to make
@@ -60,6 +78,10 @@ pub trait CommandExt {
     /// When this closure is run, aspects such as the stdio file descriptors and
     /// working directory have successfully been changed, so output to these
     /// locations may not appear where intended.
+    ///
+    /// [POSIX fork() specification]:
+    ///     https://pubs.opengroup.org/onlinepubs/9699919799/functions/fork.html
+    /// [`std::env`]: mod@crate::env
     #[stable(feature = "process_pre_exec", since = "1.34.0")]
     unsafe fn pre_exec<F>(&mut self, f: F) -> &mut process::Command
     where
@@ -141,6 +163,15 @@ impl CommandExt for process::Command {
         self
     }
 
+    fn groups(
+        &mut self,
+        #[cfg(not(target_os = "vxworks"))] groups: &[u32],
+        #[cfg(target_os = "vxworks")] groups: &[u16],
+    ) -> &mut process::Command {
+        self.as_inner_mut().groups(groups);
+        self
+    }
+
     unsafe fn pre_exec<F>(&mut self, f: F) -> &mut process::Command
     where
         F: FnMut() -> io::Result<()> + Send + Sync + 'static,
@@ -150,6 +181,8 @@ impl CommandExt for process::Command {
     }
 
     fn exec(&mut self) -> io::Error {
+        // NOTE: This may *not* be safe to call after `libc::fork`, because it
+        // may allocate. That may be worth fixing at some point in the future.
         self.as_inner_mut().exec(sys::process::Stdio::Inherit)
     }
 
@@ -163,16 +196,53 @@ impl CommandExt for process::Command {
 }
 
 /// Unix-specific extensions to [`process::ExitStatus`].
+///
+/// On Unix, `ExitStatus` **does not necessarily represent an exit status**, as passed to the
+/// `exit` system call or returned by [`ExitStatus::code()`](crate::process::ExitStatus::code).
+/// It represents **any wait status**, as returned by one of the `wait` family of system calls.
+///
+/// This is because a Unix wait status (a Rust `ExitStatus`) can represent a Unix exit status, but
+/// can also represent other kinds of process event.
+///
+/// This trait is sealed: it cannot be implemented outside the standard library.
+/// This is so that future additional methods are not breaking changes.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait ExitStatusExt {
-    /// Creates a new `ExitStatus` from the raw underlying `i32` return value of
-    /// a process.
+pub trait ExitStatusExt: Sealed {
+    /// Creates a new `ExitStatus` from the raw underlying integer status value from `wait`
+    ///
+    /// The value should be a **wait status, not an exit status**.
     #[stable(feature = "exit_status_from", since = "1.12.0")]
     fn from_raw(raw: i32) -> Self;
 
     /// If the process was terminated by a signal, returns that signal.
+    ///
+    /// In other words, if `WIFSIGNALED`, this returns `WTERMSIG`.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn signal(&self) -> Option<i32>;
+
+    /// If the process was terminated by a signal, says whether it dumped core.
+    #[unstable(feature = "unix_process_wait_more", issue = "80695")]
+    fn core_dumped(&self) -> bool;
+
+    /// If the process was stopped by a signal, returns that signal.
+    ///
+    /// In other words, if `WIFSTOPPED`, this returns `WSTOPSIG`.  This is only possible if the status came from
+    /// a `wait` system call which was passed `WUNTRACED`, and was then converted into an `ExitStatus`.
+    #[unstable(feature = "unix_process_wait_more", issue = "80695")]
+    fn stopped_signal(&self) -> Option<i32>;
+
+    /// Whether the process was continued from a stopped status.
+    ///
+    /// Ie, `WIFCONTINUED`.  This is only possible if the status came from a `wait` system call
+    /// which was passed `WCONTINUED`, and was then converted into an `ExitStatus`.
+    #[unstable(feature = "unix_process_wait_more", issue = "80695")]
+    fn continued(&self) -> bool;
+
+    /// Returns the underlying raw `wait` status.
+    ///
+    /// The returned integer is a **wait status, not an exit status**.
+    #[unstable(feature = "unix_process_wait_more", issue = "80695")]
+    fn into_raw(self) -> i32;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -183,6 +253,22 @@ impl ExitStatusExt for process::ExitStatus {
 
     fn signal(&self) -> Option<i32> {
         self.as_inner().signal()
+    }
+
+    fn core_dumped(&self) -> bool {
+        self.as_inner().core_dumped()
+    }
+
+    fn stopped_signal(&self) -> Option<i32> {
+        self.as_inner().stopped_signal()
+    }
+
+    fn continued(&self) -> bool {
+        self.as_inner().continued()
+    }
+
+    fn into_raw(self) -> i32 {
+        self.as_inner().into_raw().into()
     }
 }
 

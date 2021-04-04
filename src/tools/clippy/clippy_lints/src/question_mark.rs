@@ -1,3 +1,8 @@
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::sugg::Sugg;
+use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::{eq_expr_value, match_def_path, match_qpath, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -5,12 +10,6 @@ use rustc_hir::{def, BindingAnnotation, Block, Expr, ExprKind, MatchSource, PatK
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
-
-use crate::utils::sugg::Sugg;
-use crate::utils::{
-    eq_expr_value, higher, is_type_diagnostic_item, match_def_path, match_qpath, paths, snippet_with_applicability,
-    span_lint_and_sugg,
-};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for expressions that could be replaced by the question mark operator.
@@ -50,7 +49,7 @@ impl QuestionMark {
     /// If it matches, it will suggest to use the question mark operator instead
     fn check_is_none_and_early_return_none(cx: &LateContext<'_>, expr: &Expr<'_>) {
         if_chain! {
-            if let Some((if_expr, body, else_)) = higher::if_block(&expr);
+            if let ExprKind::If(if_expr, body, else_) = &expr.kind;
             if let ExprKind::MethodCall(segment, _, args, _) = &if_expr.kind;
             if segment.ident.name == sym!(is_none);
             if Self::expression_returns_none(cx, body);

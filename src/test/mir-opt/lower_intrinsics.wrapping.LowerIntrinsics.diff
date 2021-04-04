@@ -79,5 +79,9 @@
           StorageDead(_3);                 // scope 0 at $DIR/lower_intrinsics.rs:10:1: 10:2
           return;                          // scope 0 at $DIR/lower_intrinsics.rs:10:2: 10:2
       }
+  
+      bb4 (cleanup): {
+          resume;                          // scope 0 at $DIR/lower_intrinsics.rs:6:1: 10:2
+      }
   }
   

@@ -3,9 +3,8 @@
 
 // Test a function that takes/returns a u32.
 
-
 #[link(name = "rust_test_helpers", kind = "static")]
-extern {
+extern "C" {
     pub fn rust_dbg_extern_identity_u32(v: u32) -> u32;
 }
 

@@ -1,7 +1,7 @@
 error[E0458]: unknown kind: `wonderful_unicorn`
   --> $DIR/E0458.rs:1:8
    |
-LL | #[link(kind = "wonderful_unicorn")] extern {}
+LL | #[link(kind = "wonderful_unicorn")] extern "C" {}
    | -------^^^^^^^^^^^^^^^^^^^^^^^^^^--
    |        |
    |        unknown kind
@@ -9,7 +9,7 @@ LL | #[link(kind = "wonderful_unicorn")] extern {}
 error[E0459]: `#[link(...)]` specified without `name = "foo"`
   --> $DIR/E0458.rs:1:1
    |
-LL | #[link(kind = "wonderful_unicorn")] extern {}
+LL | #[link(kind = "wonderful_unicorn")] extern "C" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `name` argument
 
 error: aborting due to 2 previous errors

@@ -22,7 +22,7 @@
           _1 = move _2 as *const fn() (Misc); // scope 0 at $DIR/reify_fn_ptr.rs:4:13: 4:41
           StorageDead(_2);                 // scope 0 at $DIR/reify_fn_ptr.rs:4:40: 4:41
           StorageDead(_1);                 // scope 0 at $DIR/reify_fn_ptr.rs:4:41: 4:42
-          _0 = const ();                   // scope 0 at $DIR/reify_fn_ptr.rs:3:11: 5:2
+          nop;                             // scope 0 at $DIR/reify_fn_ptr.rs:3:11: 5:2
           return;                          // scope 0 at $DIR/reify_fn_ptr.rs:5:2: 5:2
       }
   }

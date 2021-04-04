@@ -4,4 +4,4 @@
 #![crate_type = "rlib"]
 
 #[link(name = "foo", cfg(foo))]
-extern {}
+extern "C" {}

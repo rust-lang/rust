@@ -1,17 +1,11 @@
-error[E0277]: the trait bound `A: Foo` is not satisfied
-  --> $DIR/associated-const-type-parameter-arrays.rs:16:23
+error: generic parameters may not be used in const operations
+  --> $DIR/associated-const-type-parameter-arrays.rs:16:24
    |
-LL |     const Y: usize;
-   |     --------------- required by `Foo::Y`
-...
 LL |     let _array: [u32; <A as Foo>::Y];
-   |                       ^^^^^^^^^^^^^ the trait `Foo` is not implemented for `A`
+   |                        ^ cannot perform const operation using `A`
    |
-help: consider further restricting this bound
-   |
-LL | pub fn test<A: Foo + Foo, B: Foo>() {
-   |                    ^^^^^
+   = note: type parameters may not be used in const expressions
+   = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0277`.

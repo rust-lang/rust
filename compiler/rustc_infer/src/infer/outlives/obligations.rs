@@ -186,28 +186,6 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
             }
         }
     }
-
-    /// Processes a single ad-hoc region obligation that was not
-    /// registered in advance.
-    pub fn type_must_outlive(
-        &self,
-        region_bound_pairs: &RegionBoundPairs<'tcx>,
-        implicit_region_bound: Option<ty::Region<'tcx>>,
-        param_env: ty::ParamEnv<'tcx>,
-        origin: infer::SubregionOrigin<'tcx>,
-        ty: Ty<'tcx>,
-        region: ty::Region<'tcx>,
-    ) {
-        let outlives = &mut TypeOutlives::new(
-            self,
-            self.tcx,
-            region_bound_pairs,
-            implicit_region_bound,
-            param_env,
-        );
-        let ty = self.resolve_vars_if_possible(ty);
-        outlives.type_must_outlive(origin, ty, region);
-    }
 }
 
 /// The `TypeOutlives` struct has the job of "lowering" a `T: 'a`

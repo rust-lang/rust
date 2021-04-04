@@ -1,5 +1,6 @@
 use crate::consts::{constant_context, Constant};
-use crate::utils::{match_qpath, paths, span_lint};
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::{match_qpath, paths};
 use if_chain::if_chain;
 use rustc_ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
@@ -27,7 +28,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(TransmutingNull => [TRANSMUTING_NULL]);
 
-const LINT_MSG: &str = "transmuting a known null pointer into a reference.";
+const LINT_MSG: &str = "transmuting a known null pointer into a reference";
 
 impl<'tcx> LateLintPass<'tcx> for TransmutingNull {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {

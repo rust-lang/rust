@@ -1,9 +1,17 @@
-error[E0492]: cannot borrow a constant which may contain interior mutability, create a static instead
-  --> $DIR/E0492.rs:4:34
+error[E0492]: constants cannot refer to interior mutable data
+  --> $DIR/E0492.rs:4:33
    |
-LL | static B: &'static AtomicUsize = &A;
-   |                                  ^^
+LL | const B: &'static AtomicUsize = &A;
+   |                                 ^^ this borrow of an interior mutable value may end up in the final value
 
-error: aborting due to previous error
+error[E0492]: statics cannot refer to interior mutable data
+  --> $DIR/E0492.rs:5:34
+   |
+LL | static C: &'static AtomicUsize = &A;
+   |                                  ^^ this borrow of an interior mutable value may end up in the final value
+   |
+   = help: to fix this, the value can be extracted to a separate `static` item and then referenced
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0492`.

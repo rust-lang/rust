@@ -26,7 +26,7 @@ enum Bär { //~ ERROR non-ascii idents
     }
 }
 
-extern {
+extern "C" {
     fn qüx();  //~ ERROR non-ascii idents
 }
 

@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 #[cfg(test)]
 mod tests;
 
@@ -15,7 +17,7 @@ use crate::iter::{FromIterator, FusedIterator};
 use crate::ops::Index;
 use crate::sys;
 
-/// A hash map implemented with quadratic probing and SIMD lookup.
+/// A [hash map] implemented with quadratic probing and SIMD lookup.
 ///
 /// By default, `HashMap` uses a hashing algorithm selected to provide
 /// resistance against HashDoS attacks. The algorithm is randomly seeded, and a
@@ -52,11 +54,15 @@ use crate::sys;
 /// hash, as determined by the [`Hash`] trait, or its equality, as determined by
 /// the [`Eq`] trait, changes while it is in the map. This is normally only
 /// possible through [`Cell`], [`RefCell`], global state, I/O, or unsafe code.
+/// The behavior resulting from such a logic error is not specified, but will
+/// not result in undefined behavior. This could include panics, incorrect results,
+/// aborts, memory leaks, and non-termination.
 ///
 /// The hash table implementation is a Rust port of Google's [SwissTable].
 /// The original C++ version of SwissTable can be found [here], and this
 /// [CppCon talk] gives an overview of how the algorithm works.
 ///
+/// [hash map]: crate::collections#use-a-hashmap-when
 /// [hashing algorithms available on crates.io]: https://crates.io/keywords/hasher
 /// [SwissTable]: https://abseil.io/blog/20180927-swisstables
 /// [here]: https://github.com/abseil/abseil-cpp/blob/master/absl/container/internal/raw_hash_set.h
@@ -195,7 +201,6 @@ use crate::sys;
 /// // use the values stored in map
 /// ```
 
-#[derive(Clone)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "hashmap_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct HashMap<K, V, S = RandomState> {
@@ -449,6 +454,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// a.insert(1, "a");
     /// assert_eq!(a.len(), 1);
     /// ```
+    #[doc(alias = "length")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> usize {
         self.base.len()
@@ -655,8 +661,7 @@ where
     /// down no lower than the supplied limit while maintaining the internal rules
     /// and possibly leaving some space in accordance with the resize policy.
     ///
-    /// Panics if the current capacity is smaller than the supplied
-    /// minimum capacity.
+    /// If the current capacity is less than the lower limit, this is a no-op.
     ///
     /// # Examples
     ///
@@ -676,7 +681,6 @@ where
     #[inline]
     #[unstable(feature = "shrink_to", reason = "new API", issue = "56431")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
-        assert!(self.capacity() >= min_capacity, "Tried to shrink to a larger capacity");
         self.base.shrink_to(min_capacity);
     }
 
@@ -841,6 +845,37 @@ where
         self.base.insert(k, v)
     }
 
+    /// Tries to insert a key-value pair into the map, and returns
+    /// a mutable reference to the value in the entry.
+    ///
+    /// If the map already had this key present, nothing is updated, and
+    /// an error containing the occupied entry and the value is returned.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(map_try_insert)]
+    ///
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    /// assert_eq!(map.try_insert(37, "a").unwrap(), &"a");
+    ///
+    /// let err = map.try_insert(37, "b").unwrap_err();
+    /// assert_eq!(err.entry.key(), &37);
+    /// assert_eq!(err.entry.get(), &"a");
+    /// assert_eq!(err.value, "b");
+    /// ```
+    #[unstable(feature = "map_try_insert", issue = "82766")]
+    pub fn try_insert(&mut self, key: K, value: V) -> Result<&mut V, OccupiedError<'_, K, V>> {
+        match self.entry(key) {
+            Occupied(entry) => Err(OccupiedError { entry, value }),
+            Vacant(entry) => Ok(entry.insert(value)),
+        }
+    }
+
     /// Removes a key from the map, returning the value at the key if the key
     /// was previously in the map.
     ///
@@ -858,6 +893,7 @@ where
     /// assert_eq!(map.remove(&1), Some("a"));
     /// assert_eq!(map.remove(&1), None);
     /// ```
+    #[doc(alias = "delete")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove<Q: ?Sized>(&mut self, k: &Q) -> Option<V>
@@ -1026,6 +1062,24 @@ where
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn raw_entry(&self) -> RawEntryBuilder<'_, K, V, S> {
         RawEntryBuilder { map: self }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<K, V, S> Clone for HashMap<K, V, S>
+where
+    K: Clone,
+    V: Clone,
+    S: Clone,
+{
+    #[inline]
+    fn clone(&self) -> Self {
+        Self { base: self.base.clone() }
+    }
+
+    #[inline]
+    fn clone_from(&mut self, other: &Self) {
+        self.base.clone_from(&other.base);
     }
 }
 
@@ -1739,7 +1793,7 @@ impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 impl<K, V, S> Debug for RawEntryBuilderMut<'_, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("RawEntryBuilder").finish()
+        f.debug_struct("RawEntryBuilder").finish_non_exhaustive()
     }
 }
 
@@ -1759,21 +1813,21 @@ impl<K: Debug, V: Debug, S> Debug for RawOccupiedEntryMut<'_, K, V, S> {
         f.debug_struct("RawOccupiedEntryMut")
             .field("key", self.key())
             .field("value", self.get())
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 impl<K, V, S> Debug for RawVacantEntryMut<'_, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("RawVacantEntryMut").finish()
+        f.debug_struct("RawVacantEntryMut").finish_non_exhaustive()
     }
 }
 
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 impl<K, V, S> Debug for RawEntryBuilder<'_, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("RawEntryBuilder").finish()
+        f.debug_struct("RawEntryBuilder").finish_non_exhaustive()
     }
 }
 
@@ -1813,7 +1867,10 @@ pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
 #[stable(feature = "debug_hash_map", since = "1.12.0")]
 impl<K: Debug, V: Debug> Debug for OccupiedEntry<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("OccupiedEntry").field("key", self.key()).field("value", self.get()).finish()
+        f.debug_struct("OccupiedEntry")
+            .field("key", self.key())
+            .field("value", self.get())
+            .finish_non_exhaustive()
     }
 }
 
@@ -1828,6 +1885,41 @@ pub struct VacantEntry<'a, K: 'a, V: 'a> {
 impl<K: Debug, V> Debug for VacantEntry<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("VacantEntry").field(self.key()).finish()
+    }
+}
+
+/// The error returned by [`try_insert`](HashMap::try_insert) when the key already exists.
+///
+/// Contains the occupied entry, and the value that was not inserted.
+#[unstable(feature = "map_try_insert", issue = "82766")]
+pub struct OccupiedError<'a, K: 'a, V: 'a> {
+    /// The entry in the map that was already occupied.
+    pub entry: OccupiedEntry<'a, K, V>,
+    /// The value which was not inserted, because the entry was already occupied.
+    pub value: V,
+}
+
+#[unstable(feature = "map_try_insert", issue = "82766")]
+impl<K: Debug, V: Debug> Debug for OccupiedError<'_, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("OccupiedError")
+            .field("key", self.entry.key())
+            .field("old_value", self.entry.get())
+            .field("new_value", &self.value)
+            .finish_non_exhaustive()
+    }
+}
+
+#[unstable(feature = "map_try_insert", issue = "82766")]
+impl<'a, K: Debug, V: Debug> fmt::Display for OccupiedError<'a, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "failed to insert {:?}, key {:?} already exists with value {:?}",
+            self.value,
+            self.entry.key(),
+            self.entry.get(),
+        )
     }
 }
 
@@ -2219,14 +2311,16 @@ impl<'a, K, V> Entry<'a, K, V> {
         }
     }
 
-    /// Ensures a value is in the entry by inserting, if empty, the result of the default function,
-    /// which takes the key as its argument, and returns a mutable reference to the value in the
-    /// entry.
+    /// Ensures a value is in the entry by inserting, if empty, the result of the default function.
+    /// This method allows for generating key-derived values for insertion by providing the default
+    /// function a reference to the key that was moved during the `.entry(key)` method call.
+    ///
+    /// The reference to the moved key is provided so that cloning or copying the key is
+    /// unnecessary, unlike with `.or_insert_with(|| ... )`.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(or_insert_with_key)]
     /// use std::collections::HashMap;
     ///
     /// let mut map: HashMap<&str, usize> = HashMap::new();
@@ -2236,7 +2330,7 @@ impl<'a, K, V> Entry<'a, K, V> {
     /// assert_eq!(map["poneyland"], 9);
     /// ```
     #[inline]
-    #[unstable(feature = "or_insert_with_key", issue = "71024")]
+    #[stable(feature = "or_insert_with_key", since = "1.50.0")]
     pub fn or_insert_with_key<F: FnOnce(&K) -> V>(self, default: F) -> &'a mut V {
         match self {
             Occupied(entry) => entry.into_mut(),

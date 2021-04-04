@@ -161,7 +161,10 @@ use super::SpecExtend;
 /// It is a logic error for an item to be modified in such a way that the
 /// item's ordering relative to any other item, as determined by the `Ord`
 /// trait, changes while it is in the heap. This is normally only possible
-/// through `Cell`, `RefCell`, global state, I/O, or unsafe code.
+/// through `Cell`, `RefCell`, global state, I/O, or unsafe code. The
+/// behavior resulting from such a logic error is not specified, but will
+/// not result in undefined behavior. This could include panics, incorrect
+/// results, aborts, memory leaks, and non-termination.
 ///
 /// # Examples
 ///
@@ -244,6 +247,7 @@ use super::SpecExtend;
 /// [peek]: BinaryHeap::peek
 /// [peek\_mut]: BinaryHeap::peek_mut
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "BinaryHeap")]
 pub struct BinaryHeap<T> {
     data: Vec<T>,
 }
@@ -272,7 +276,8 @@ impl<T: Ord + fmt::Debug> fmt::Debug for PeekMut<'_, T> {
 impl<T: Ord> Drop for PeekMut<'_, T> {
     fn drop(&mut self) {
         if self.sift {
-            self.heap.sift_down(0);
+            // SAFETY: PeekMut is only instantiated for non-empty heaps.
+            unsafe { self.heap.sift_down(0) };
         }
     }
 }
@@ -428,7 +433,8 @@ impl<T: Ord> BinaryHeap<T> {
         self.data.pop().map(|mut item| {
             if !self.is_empty() {
                 swap(&mut item, &mut self.data[0]);
-                self.sift_down_to_bottom(0);
+                // SAFETY: !self.is_empty() means that self.len() > 0
+                unsafe { self.sift_down_to_bottom(0) };
             }
             item
         })
@@ -470,7 +476,9 @@ impl<T: Ord> BinaryHeap<T> {
     pub fn push(&mut self, item: T) {
         let old_len = self.len();
         self.data.push(item);
-        self.sift_up(0, old_len);
+        // SAFETY: Since we pushed a new item it means that
+        //  old_len = self.len() - 1 < self.len()
+        unsafe { self.sift_up(0, old_len) };
     }
 
     /// Consumes the `BinaryHeap` and returns a vector in sorted
@@ -503,7 +511,10 @@ impl<T: Ord> BinaryHeap<T> {
                 let ptr = self.data.as_mut_ptr();
                 ptr::swap(ptr, ptr.add(end));
             }
-            self.sift_down_range(0, end);
+            // SAFETY: `end` goes from `self.len() - 1` to 1 (both included) so:
+            //  0 < 1 <= end <= self.len() - 1 < self.len()
+            //  Which means 0 < end and end < self.len().
+            unsafe { self.sift_down_range(0, end) };
         }
         self.into_vec()
     }
@@ -516,47 +527,84 @@ impl<T: Ord> BinaryHeap<T> {
     // the hole is filled back at the end of its scope, even on panic.
     // Using a hole reduces the constant factor compared to using swaps,
     // which involves twice as many moves.
-    fn sift_up(&mut self, start: usize, pos: usize) -> usize {
-        unsafe {
-            // Take out the value at `pos` and create a hole.
-            let mut hole = Hole::new(&mut self.data, pos);
 
-            while hole.pos() > start {
-                let parent = (hole.pos() - 1) / 2;
-                if hole.element() <= hole.get(parent) {
-                    break;
-                }
-                hole.move_to(parent);
+    /// # Safety
+    ///
+    /// The caller must guarantee that `pos < self.len()`.
+    unsafe fn sift_up(&mut self, start: usize, pos: usize) -> usize {
+        // Take out the value at `pos` and create a hole.
+        // SAFETY: The caller guarantees that pos < self.len()
+        let mut hole = unsafe { Hole::new(&mut self.data, pos) };
+
+        while hole.pos() > start {
+            let parent = (hole.pos() - 1) / 2;
+
+            // SAFETY: hole.pos() > start >= 0, which means hole.pos() > 0
+            //  and so hole.pos() - 1 can't underflow.
+            //  This guarantees that parent < hole.pos() so
+            //  it's a valid index and also != hole.pos().
+            if hole.element() <= unsafe { hole.get(parent) } {
+                break;
             }
-            hole.pos()
+
+            // SAFETY: Same as above
+            unsafe { hole.move_to(parent) };
         }
+
+        hole.pos()
     }
 
     /// Take an element at `pos` and move it down the heap,
     /// while its children are larger.
-    fn sift_down_range(&mut self, pos: usize, end: usize) {
-        unsafe {
-            let mut hole = Hole::new(&mut self.data, pos);
-            let mut child = 2 * pos + 1;
-            while child < end - 1 {
-                // compare with the greater of the two children
-                child += (hole.get(child) <= hole.get(child + 1)) as usize;
-                // if we are already in order, stop.
-                if hole.element() >= hole.get(child) {
-                    return;
-                }
-                hole.move_to(child);
-                child = 2 * hole.pos() + 1;
+    ///
+    /// # Safety
+    ///
+    /// The caller must guarantee that `pos < end <= self.len()`.
+    unsafe fn sift_down_range(&mut self, pos: usize, end: usize) {
+        // SAFETY: The caller guarantees that pos < end <= self.len().
+        let mut hole = unsafe { Hole::new(&mut self.data, pos) };
+        let mut child = 2 * hole.pos() + 1;
+
+        // Loop invariant: child == 2 * hole.pos() + 1.
+        while child <= end.saturating_sub(2) {
+            // compare with the greater of the two children
+            // SAFETY: child < end - 1 < self.len() and
+            //  child + 1 < end <= self.len(), so they're valid indexes.
+            //  child == 2 * hole.pos() + 1 != hole.pos() and
+            //  child + 1 == 2 * hole.pos() + 2 != hole.pos().
+            // FIXME: 2 * hole.pos() + 1 or 2 * hole.pos() + 2 could overflow
+            //  if T is a ZST
+            child += unsafe { hole.get(child) <= hole.get(child + 1) } as usize;
+
+            // if we are already in order, stop.
+            // SAFETY: child is now either the old child or the old child+1
+            //  We already proven that both are < self.len() and != hole.pos()
+            if hole.element() >= unsafe { hole.get(child) } {
+                return;
             }
-            if child == end - 1 && hole.element() < hole.get(child) {
-                hole.move_to(child);
-            }
+
+            // SAFETY: same as above.
+            unsafe { hole.move_to(child) };
+            child = 2 * hole.pos() + 1;
+        }
+
+        // SAFETY: && short circuit, which means that in the
+        //  second condition it's already true that child == end - 1 < self.len().
+        if child == end - 1 && hole.element() < unsafe { hole.get(child) } {
+            // SAFETY: child is already proven to be a valid index and
+            //  child == 2 * hole.pos() + 1 != hole.pos().
+            unsafe { hole.move_to(child) };
         }
     }
 
-    fn sift_down(&mut self, pos: usize) {
+    /// # Safety
+    ///
+    /// The caller must guarantee that `pos < self.len()`.
+    unsafe fn sift_down(&mut self, pos: usize) {
         let len = self.len();
-        self.sift_down_range(pos, len);
+        // SAFETY: pos < len is guaranteed by the caller and
+        //  obviously len = self.len() <= self.len().
+        unsafe { self.sift_down_range(pos, len) };
     }
 
     /// Take an element at `pos` and move it all the way down the heap,
@@ -564,30 +612,54 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// Note: This is faster when the element is known to be large / should
     /// be closer to the bottom.
-    fn sift_down_to_bottom(&mut self, mut pos: usize) {
+    ///
+    /// # Safety
+    ///
+    /// The caller must guarantee that `pos < self.len()`.
+    unsafe fn sift_down_to_bottom(&mut self, mut pos: usize) {
         let end = self.len();
         let start = pos;
-        unsafe {
-            let mut hole = Hole::new(&mut self.data, pos);
-            let mut child = 2 * pos + 1;
-            while child < end - 1 {
-                child += (hole.get(child) <= hole.get(child + 1)) as usize;
-                hole.move_to(child);
-                child = 2 * hole.pos() + 1;
-            }
-            if child == end - 1 {
-                hole.move_to(child);
-            }
-            pos = hole.pos;
+
+        // SAFETY: The caller guarantees that pos < self.len().
+        let mut hole = unsafe { Hole::new(&mut self.data, pos) };
+        let mut child = 2 * hole.pos() + 1;
+
+        // Loop invariant: child == 2 * hole.pos() + 1.
+        while child <= end.saturating_sub(2) {
+            // SAFETY: child < end - 1 < self.len() and
+            //  child + 1 < end <= self.len(), so they're valid indexes.
+            //  child == 2 * hole.pos() + 1 != hole.pos() and
+            //  child + 1 == 2 * hole.pos() + 2 != hole.pos().
+            // FIXME: 2 * hole.pos() + 1 or 2 * hole.pos() + 2 could overflow
+            //  if T is a ZST
+            child += unsafe { hole.get(child) <= hole.get(child + 1) } as usize;
+
+            // SAFETY: Same as above
+            unsafe { hole.move_to(child) };
+            child = 2 * hole.pos() + 1;
         }
-        self.sift_up(start, pos);
+
+        if child == end - 1 {
+            // SAFETY: child == end - 1 < self.len(), so it's a valid index
+            //  and child == 2 * hole.pos() + 1 != hole.pos().
+            unsafe { hole.move_to(child) };
+        }
+        pos = hole.pos();
+        drop(hole);
+
+        // SAFETY: pos is the position in the hole and was already proven
+        //  to be a valid index.
+        unsafe { self.sift_up(start, pos) };
     }
 
     fn rebuild(&mut self) {
         let mut n = self.len() / 2;
         while n > 0 {
             n -= 1;
-            self.sift_down(n);
+            // SAFETY: n starts from self.len() / 2 and goes down to 0.
+            //  The only case when !(n < self.len()) is if
+            //  self.len() == 0, but it's ruled out by the loop condition.
+            unsafe { self.sift_down(n) };
         }
     }
 
@@ -630,10 +702,16 @@ impl<T: Ord> BinaryHeap<T> {
         // and about 2 * (len1 + len2) comparisons in the worst case
         // while `extend` takes O(len2 * log(len1)) operations
         // and about 1 * len2 * log_2(len1) comparisons in the worst case,
-        // assuming len1 >= len2.
+        // assuming len1 >= len2. For larger heaps, the crossover point
+        // no longer follows this reasoning and was determined empirically.
         #[inline]
         fn better_to_rebuild(len1: usize, len2: usize) -> bool {
-            2 * (len1 + len2) < len2 * log2_fast(len1)
+            let tot_len = len1 + len2;
+            if tot_len <= 2048 {
+                2 * tot_len < len2 * log2_fast(len1)
+            } else {
+                2 * tot_len < len2 * 11
+            }
         }
 
         if better_to_rebuild(self.len(), other.len()) {
@@ -861,8 +939,7 @@ impl<T> BinaryHeap<T> {
     /// The capacity will remain at least as large as both the length
     /// and the supplied value.
     ///
-    /// Panics if the current capacity is smaller than the supplied
-    /// minimum capacity.
+    /// If the current capacity is less than the lower limit, this is a no-op.
     ///
     /// # Examples
     ///
@@ -879,6 +956,27 @@ impl<T> BinaryHeap<T> {
     #[unstable(feature = "shrink_to", reason = "new API", issue = "56431")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.data.shrink_to(min_capacity)
+    }
+
+    /// Returns a slice of all values in the underlying vector, in arbitrary
+    /// order.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(binary_heap_as_slice)]
+    /// use std::collections::BinaryHeap;
+    /// use std::io::{self, Write};
+    ///
+    /// let heap = BinaryHeap::from(vec![1, 2, 3, 4, 5, 6, 7]);
+    ///
+    /// io::sink().write(heap.as_slice()).unwrap();
+    /// ```
+    #[unstable(feature = "binary_heap_as_slice", issue = "83659")]
+    pub fn as_slice(&self) -> &[T] {
+        self.data.as_slice()
     }
 
     /// Consumes the `BinaryHeap` and returns the underlying vector
@@ -915,6 +1013,7 @@ impl<T> BinaryHeap<T> {
     ///
     /// assert_eq!(heap.len(), 2);
     /// ```
+    #[doc(alias = "length")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> usize {
         self.data.len()

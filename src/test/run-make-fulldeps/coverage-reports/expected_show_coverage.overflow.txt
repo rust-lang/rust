@@ -14,15 +14,15 @@
    14|       |
    15|      1|fn main() -> Result<(),u8> {
    16|      1|    let mut countdown = 10;
-   17|     10|    while countdown > 0 {
-   18|     10|        if countdown == 1 {
-   19|      0|            let result = might_overflow(10);
-   20|      0|            println!("Result: {}", result);
+   17|     11|    while countdown > 0 {
+   18|     11|        if countdown == 1 {
+   19|      1|            let result = might_overflow(10);
+   20|      1|            println!("Result: {}", result);
    21|     10|        } else if countdown < 5 {
    22|      3|            let result = might_overflow(1);
    23|      3|            println!("Result: {}", result);
    24|      6|        }
-   25|      9|        countdown -= 1;
+   25|     10|        countdown -= 1;
    26|       |    }
    27|      0|    Ok(())
    28|      0|}

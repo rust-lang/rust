@@ -108,7 +108,7 @@ pub fn sockaddr_to_addr(storage: &c::sockaddr_storage, len: usize) -> io::Result
                 *(storage as *const _ as *const c::sockaddr_in6)
             })))
         }
-        _ => Err(Error::new(ErrorKind::InvalidInput, "invalid argument")),
+        _ => Err(Error::new_const(ErrorKind::InvalidInput, &"invalid argument")),
     }
 }
 
@@ -171,17 +171,14 @@ impl TryFrom<&str> for LookupHost {
             ($e:expr, $msg:expr) => {
                 match $e {
                     Some(r) => r,
-                    None => return Err(io::Error::new(io::ErrorKind::InvalidInput, $msg)),
+                    None => return Err(io::Error::new_const(io::ErrorKind::InvalidInput, &$msg)),
                 }
             };
         }
 
         // split the string by ':' and convert the second part to u16
-        let mut parts_iter = s.rsplitn(2, ':');
-        let port_str = try_opt!(parts_iter.next(), "invalid socket address");
-        let host = try_opt!(parts_iter.next(), "invalid socket address");
+        let (host, port_str) = try_opt!(s.rsplit_once(':'), "invalid socket address");
         let port: u16 = try_opt!(port_str.parse().ok(), "invalid port value");
-
         (host, port).try_into()
     }
 }

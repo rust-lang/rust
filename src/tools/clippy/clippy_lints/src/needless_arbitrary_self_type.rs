@@ -1,4 +1,5 @@
-use crate::utils::{in_macro, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::in_macro;
 use if_chain::if_chain;
 use rustc_ast::ast::{BindingMode, Lifetime, Mutability, Param, PatKind, Path, TyKind};
 use rustc_errors::Applicability;

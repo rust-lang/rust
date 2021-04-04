@@ -13,7 +13,7 @@ type TypeWalkerStack<'tcx> = SmallVec<[GenericArg<'tcx>; 8]>;
 pub struct TypeWalker<'tcx> {
     stack: TypeWalkerStack<'tcx>,
     last_subtree: usize,
-    visited: SsoHashSet<GenericArg<'tcx>>,
+    pub visited: SsoHashSet<GenericArg<'tcx>>,
 }
 
 /// An iterator for walking the type tree.
@@ -195,8 +195,8 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
                 | ty::ConstKind::Value(_)
                 | ty::ConstKind::Error(_) => {}
 
-                ty::ConstKind::Unevaluated(_, substs, _) => {
-                    stack.extend(substs.iter().rev());
+                ty::ConstKind::Unevaluated(ct) => {
+                    stack.extend(ct.substs.iter().rev());
                 }
             }
         }

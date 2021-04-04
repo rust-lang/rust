@@ -90,7 +90,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(never_type)]
 #![feature(nll)]
-#![feature(or_patterns)]
+#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(in_band_lifetimes)]
 #![recursion_limit = "256"]
 
@@ -245,7 +245,7 @@ fn compute_symbol_name(
     // 2. we favor `instantiating_crate` where possible (i.e. when `Some`)
     let mangling_version_crate = instantiating_crate.unwrap_or(def_id.krate);
     let mangling_version = if mangling_version_crate == LOCAL_CRATE {
-        tcx.sess.opts.debugging_opts.symbol_mangling_version
+        tcx.sess.opts.debugging_opts.get_symbol_mangling_version()
     } else {
         tcx.symbol_mangling_version(mangling_version_crate)
     };

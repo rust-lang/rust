@@ -1,0 +1,44 @@
+error: lifetime may not live long enough
+  --> $DIR/issue-79187-2.rs:9:24
+   |
+LL |     take_foo(|a: &i32| a);
+   |                  -   - ^ returning this value requires that `'1` must outlive `'2`
+   |                  |   |
+   |                  |   return type of closure is &'2 i32
+   |                  let's call the lifetime of this reference `'1`
+
+error: lifetime may not live long enough
+  --> $DIR/issue-79187-2.rs:10:34
+   |
+LL |     take_foo(|a: &i32| -> &i32 { a });
+   |                  -        -      ^ returning this value requires that `'1` must outlive `'2`
+   |                  |        |
+   |                  |        let's call the lifetime of this reference `'2`
+   |                  let's call the lifetime of this reference `'1`
+
+error: higher-ranked subtype error
+  --> $DIR/issue-79187-2.rs:8:5
+   |
+LL |     take_foo(|a| a);
+   |     ^^^^^^^^^^^^^^^
+
+error: higher-ranked subtype error
+  --> $DIR/issue-79187-2.rs:8:5
+   |
+LL |     take_foo(|a| a);
+   |     ^^^^^^^^^^^^^^^
+
+error: higher-ranked subtype error
+  --> $DIR/issue-79187-2.rs:9:5
+   |
+LL |     take_foo(|a: &i32| a);
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: higher-ranked subtype error
+  --> $DIR/issue-79187-2.rs:10:5
+   |
+LL |     take_foo(|a: &i32| -> &i32 { a });
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

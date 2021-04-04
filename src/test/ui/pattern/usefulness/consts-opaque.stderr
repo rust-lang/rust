@@ -1,11 +1,11 @@
 error: to use a constant of type `Foo` in a pattern, `Foo` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/consts-opaque.rs:34:9
+  --> $DIR/consts-opaque.rs:30:9
    |
 LL |         FOO => {}
    |         ^^^
 
 error: unreachable pattern
-  --> $DIR/consts-opaque.rs:36:9
+  --> $DIR/consts-opaque.rs:32:9
    |
 LL |         _ => {} // should not be emitting unreachable warning
    |         ^
@@ -17,19 +17,19 @@ LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: to use a constant of type `Foo` in a pattern, `Foo` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/consts-opaque.rs:41:9
+  --> $DIR/consts-opaque.rs:37:9
    |
 LL |         FOO_REF => {}
    |         ^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/consts-opaque.rs:43:9
+  --> $DIR/consts-opaque.rs:39:9
    |
 LL |         Foo(_) => {} // should not be emitting unreachable warning
    |         ^^^^^^
 
 warning: to use a constant of type `Foo` in a pattern, `Foo` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/consts-opaque.rs:49:9
+  --> $DIR/consts-opaque.rs:45:9
    |
 LL |         FOO_REF_REF => {}
    |         ^^^^^^^^^^^
@@ -39,13 +39,13 @@ LL |         FOO_REF_REF => {}
    = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/62411>
 
 error: to use a constant of type `Bar` in a pattern, `Bar` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/consts-opaque.rs:57:9
+  --> $DIR/consts-opaque.rs:53:9
    |
 LL |         BAR => {} // should not be emitting unreachable warning
    |         ^^^
 
 error: unreachable pattern
-  --> $DIR/consts-opaque.rs:57:9
+  --> $DIR/consts-opaque.rs:53:9
    |
 LL |         Bar => {}
    |         --- matches any value
@@ -53,7 +53,7 @@ LL |         BAR => {} // should not be emitting unreachable warning
    |         ^^^ unreachable pattern
 
 error: unreachable pattern
-  --> $DIR/consts-opaque.rs:60:9
+  --> $DIR/consts-opaque.rs:56:9
    |
 LL |         Bar => {}
    |         --- matches any value
@@ -62,19 +62,19 @@ LL |         _ => {}
    |         ^ unreachable pattern
 
 error: to use a constant of type `Bar` in a pattern, `Bar` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/consts-opaque.rs:65:9
+  --> $DIR/consts-opaque.rs:61:9
    |
 LL |         BAR => {}
    |         ^^^
 
 error: unreachable pattern
-  --> $DIR/consts-opaque.rs:67:9
+  --> $DIR/consts-opaque.rs:63:9
    |
 LL |         Bar => {} // should not be emitting unreachable warning
    |         ^^^
 
 error: unreachable pattern
-  --> $DIR/consts-opaque.rs:69:9
+  --> $DIR/consts-opaque.rs:65:9
    |
 LL |         Bar => {} // should not be emitting unreachable warning
    |         --- matches any value
@@ -83,76 +83,88 @@ LL |         _ => {}
    |         ^ unreachable pattern
 
 error: to use a constant of type `Bar` in a pattern, `Bar` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/consts-opaque.rs:74:9
+  --> $DIR/consts-opaque.rs:70:9
    |
 LL |         BAR => {}
    |         ^^^
 
 error: to use a constant of type `Bar` in a pattern, `Bar` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/consts-opaque.rs:76:9
+  --> $DIR/consts-opaque.rs:72:9
    |
 LL |         BAR => {} // should not be emitting unreachable warning
    |         ^^^
 
 error: unreachable pattern
-  --> $DIR/consts-opaque.rs:76:9
+  --> $DIR/consts-opaque.rs:72:9
    |
 LL |         BAR => {} // should not be emitting unreachable warning
    |         ^^^
 
 error: unreachable pattern
-  --> $DIR/consts-opaque.rs:79:9
+  --> $DIR/consts-opaque.rs:75:9
    |
 LL |         _ => {} // should not be emitting unreachable warning
    |         ^
 
 error: to use a constant of type `Baz` in a pattern, `Baz` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/consts-opaque.rs:84:9
+  --> $DIR/consts-opaque.rs:80:9
    |
 LL |         BAZ => {}
    |         ^^^
 
 error: unreachable pattern
-  --> $DIR/consts-opaque.rs:86:9
+  --> $DIR/consts-opaque.rs:82:9
    |
 LL |         Baz::Baz1 => {} // should not be emitting unreachable warning
    |         ^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/consts-opaque.rs:88:9
+  --> $DIR/consts-opaque.rs:84:9
    |
 LL |         _ => {}
    |         ^
 
 error: to use a constant of type `Baz` in a pattern, `Baz` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/consts-opaque.rs:94:9
+  --> $DIR/consts-opaque.rs:90:9
    |
 LL |         BAZ => {}
    |         ^^^
 
 error: unreachable pattern
-  --> $DIR/consts-opaque.rs:96:9
+  --> $DIR/consts-opaque.rs:92:9
    |
 LL |         _ => {}
    |         ^
 
 error: to use a constant of type `Baz` in a pattern, `Baz` must be annotated with `#[derive(PartialEq, Eq)]`
-  --> $DIR/consts-opaque.rs:101:9
+  --> $DIR/consts-opaque.rs:97:9
    |
 LL |         BAZ => {}
    |         ^^^
 
 error: unreachable pattern
-  --> $DIR/consts-opaque.rs:103:9
+  --> $DIR/consts-opaque.rs:99:9
    |
 LL |         Baz::Baz2 => {} // should not be emitting unreachable warning
    |         ^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/consts-opaque.rs:105:9
+  --> $DIR/consts-opaque.rs:101:9
    |
 LL |         _ => {} // should not be emitting unreachable warning
    |         ^
 
-error: aborting due to 22 previous errors; 1 warning emitted
+error: unreachable pattern
+  --> $DIR/consts-opaque.rs:127:9
+   |
+LL |         WRAPQUUX => {} // detected unreachable because we do inspect the `Wrap` layer
+   |         ^^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/consts-opaque.rs:141:9
+   |
+LL |         WHOKNOWSQUUX => {} // detected unreachable because we do inspect the `WhoKnows` layer
+   |         ^^^^^^^^^^^^
+
+error: aborting due to 24 previous errors; 1 warning emitted
 

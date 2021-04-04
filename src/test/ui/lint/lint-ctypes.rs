@@ -5,6 +5,7 @@
 
 extern crate libc;
 
+use std::cell::UnsafeCell;
 use std::marker::PhantomData;
 
 trait Bar { }
@@ -20,7 +21,7 @@ pub type I32Pair = (i32, i32);
 #[repr(C)]
 pub struct ZeroSize;
 pub type RustFn = fn();
-pub type RustBadRet = extern fn() -> Box<u32>;
+pub type RustBadRet = extern "C" fn() -> Box<u32>;
 pub type CVoidRet = ();
 pub struct Foo;
 #[repr(transparent)]
@@ -43,7 +44,7 @@ pub struct TransparentCustomZst(i32, ZeroSize);
 #[repr(C)]
 pub struct ZeroSizeWithPhantomData(::std::marker::PhantomData<i32>);
 
-extern {
+extern "C" {
     pub fn ptr_type1(size: *const Foo); //~ ERROR: uses type `Foo`
     pub fn ptr_type2(size: *const Foo); //~ ERROR: uses type `Foo`
     pub fn slice_type(p: &[u32]); //~ ERROR: uses type `[u32]`
@@ -70,15 +71,20 @@ extern {
     pub fn transparent_fn(p: TransparentBadFn); //~ ERROR: uses type `Box<u32>`
     pub fn raw_array(arr: [u8; 8]); //~ ERROR: uses type `[u8; 8]`
 
+    pub fn no_niche_a(a: Option<UnsafeCell<extern fn()>>);
+    //~^ ERROR: uses type `Option<UnsafeCell<extern "C" fn()>>`
+    pub fn no_niche_b(b: Option<UnsafeCell<&i32>>);
+    //~^ ERROR: uses type `Option<UnsafeCell<&i32>>`
+
     pub static static_u128_type: u128; //~ ERROR: uses type `u128`
     pub static static_u128_array_type: [u128; 16]; //~ ERROR: uses type `u128`
 
-    pub fn good3(fptr: Option<extern fn()>);
+    pub fn good3(fptr: Option<extern "C" fn()>);
     pub fn good4(aptr: &[u8; 4 as usize]);
     pub fn good5(s: StructWithProjection);
     pub fn good6(s: StructWithProjectionAndLifetime);
-    pub fn good7(fptr: extern fn() -> ());
-    pub fn good8(fptr: extern fn() -> !);
+    pub fn good7(fptr: extern "C" fn() -> ());
+    pub fn good8(fptr: extern "C" fn() -> !);
     pub fn good9() -> ();
     pub fn good10() -> CVoidRet;
     pub fn good11(size: isize);
@@ -96,12 +102,12 @@ extern {
 }
 
 #[allow(improper_ctypes)]
-extern {
+extern "C" {
     pub fn good19(_: &String);
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-extern {
+extern "C" {
     pub fn good1(size: *const libc::c_int);
     pub fn good2(size: *const libc::c_uint);
 }

@@ -1,4 +1,6 @@
-use crate::utils::{match_def_path, paths, snippet, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet;
+use clippy_utils::{match_def_path, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
@@ -8,7 +10,7 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 declare_clippy_lint! {
     /// **What it does:** Checks usage of `std::fs::create_dir` and suggest using `std::fs::create_dir_all` instead.
     ///
-    /// **Why is this bad?** Sometimes `std::fs::crate_dir` is mistakenly chosen over `std::fs::create_dir_all`.
+    /// **Why is this bad?** Sometimes `std::fs::create_dir` is mistakenly chosen over `std::fs::create_dir_all`.
     ///
     /// **Known problems:** None.
     ///

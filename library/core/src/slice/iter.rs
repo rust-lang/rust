@@ -1,3 +1,4 @@
+// ignore-tidy-filelength
 //! Definitions of a bunch of iterators for `[T]`.
 
 #[macro_use] // import iterator! and forward_iterator!
@@ -50,7 +51,7 @@ fn size_from_ptr<T>(_: *const T) -> usize {
 /// Basic usage:
 ///
 /// ```
-/// // First, we declare a type which has `iter` method to get the `Iter` struct (&[usize here]):
+/// // First, we declare a type which has `iter` method to get the `Iter` struct (`&[usize]` here):
 /// let slice = &[1, 2, 3];
 ///
 /// // Then, we iterate over it:
@@ -59,8 +60,8 @@ fn size_from_ptr<T>(_: *const T) -> usize {
 /// }
 /// ```
 ///
-/// [`iter`]: ../../std/primitive.slice.html#method.iter
-/// [slices]: ../../std/primitive.slice.html
+/// [`iter`]: slice::iter
+/// [slices]: slice
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
     ptr: NonNull<T>,
@@ -111,7 +112,7 @@ impl<'a, T> Iter<'a, T> {
     ///
     /// ```
     /// // First, we declare a type which has the `iter` method to get the `Iter`
-    /// // struct (&[usize here]):
+    /// // struct (`&[usize]` here):
     /// let slice = &[1, 2, 3];
     ///
     /// // Then, we get the iterator:
@@ -166,7 +167,7 @@ impl<T> AsRef<[T]> for Iter<'_, T> {
 ///
 /// ```
 /// // First, we declare a type which has `iter_mut` method to get the `IterMut`
-/// // struct (&[usize here]):
+/// // struct (`&[usize]` here):
 /// let mut slice = &mut [1, 2, 3];
 ///
 /// // Then, we iterate over it and increment each element value:
@@ -178,8 +179,8 @@ impl<T> AsRef<[T]> for Iter<'_, T> {
 /// println!("{:?}", slice);
 /// ```
 ///
-/// [`iter_mut`]: ../../std/primitive.slice.html#method.iter_mut
-/// [slices]: ../../std/primitive.slice.html
+/// [`iter_mut`]: slice::iter_mut
+/// [slices]: slice
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T: 'a> {
     ptr: NonNull<T>,
@@ -245,7 +246,7 @@ impl<'a, T> IterMut<'a, T> {
     ///
     /// ```
     /// // First, we declare a type which has `iter_mut` method to get the `IterMut`
-    /// // struct (&[usize here]):
+    /// // struct (`&[usize]` here):
     /// let mut slice = &mut [1, 2, 3];
     ///
     /// {
@@ -285,7 +286,6 @@ impl<'a, T> IterMut<'a, T> {
     /// Basic usage:
     ///
     /// ```
-    /// # #![feature(slice_iter_mut_as_slice)]
     /// let mut slice: &mut [usize] = &mut [1, 2, 3];
     ///
     /// // First, we get the iterator:
@@ -298,9 +298,16 @@ impl<'a, T> IterMut<'a, T> {
     /// // Now `as_slice` returns "[2, 3]":
     /// assert_eq!(iter.as_slice(), &[2, 3]);
     /// ```
-    #[unstable(feature = "slice_iter_mut_as_slice", reason = "recently added", issue = "58957")]
+    #[stable(feature = "slice_iter_mut_as_slice", since = "1.53.0")]
     pub fn as_slice(&self) -> &[T] {
         self.make_slice()
+    }
+}
+
+#[stable(feature = "slice_iter_mut_as_slice", since = "1.53.0")]
+impl<T> AsRef<[T]> for IterMut<'_, T> {
+    fn as_ref(&self) -> &[T] {
+        self.as_slice()
     }
 }
 
@@ -327,16 +334,18 @@ pub(super) trait SplitIter: DoubleEndedIterator {
 /// let mut iter = slice.split(|num| num % 3 == 0);
 /// ```
 ///
-/// [`split`]: ../../std/primitive.slice.html#method.split
-/// [slices]: ../../std/primitive.slice.html
+/// [`split`]: slice::split
+/// [slices]: slice
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Split<'a, T: 'a, P>
 where
     P: FnMut(&T) -> bool,
 {
-    v: &'a [T],
+    // Used for `SplitWhitespace` and `SplitAsciiWhitespace` `as_str` methods
+    pub(crate) v: &'a [T],
     pred: P,
-    finished: bool,
+    // Used for `SplitAsciiWhitespace` `as_str` method
+    pub(crate) finished: bool,
 }
 
 impl<'a, T: 'a, P: FnMut(&T) -> bool> Split<'a, T, P> {
@@ -445,15 +454,13 @@ impl<T, P> FusedIterator for Split<'_, T, P> where P: FnMut(&T) -> bool {}
 /// # Example
 ///
 /// ```
-/// #![feature(split_inclusive)]
-///
 /// let slice = [10, 40, 33, 20];
 /// let mut iter = slice.split_inclusive(|num| num % 3 == 0);
 /// ```
 ///
-/// [`split_inclusive`]: ../../std/primitive.slice.html#method.split_inclusive
-/// [slices]: ../../std/primitive.slice.html
-#[unstable(feature = "split_inclusive", issue = "72360")]
+/// [`split_inclusive`]: slice::split_inclusive
+/// [slices]: slice
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 pub struct SplitInclusive<'a, T: 'a, P>
 where
     P: FnMut(&T) -> bool,
@@ -470,7 +477,7 @@ impl<'a, T: 'a, P: FnMut(&T) -> bool> SplitInclusive<'a, T, P> {
     }
 }
 
-#[unstable(feature = "split_inclusive", issue = "72360")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<T: fmt::Debug, P> fmt::Debug for SplitInclusive<'_, T, P>
 where
     P: FnMut(&T) -> bool,
@@ -484,7 +491,7 @@ where
 }
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
-#[unstable(feature = "split_inclusive", issue = "72360")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<T, P> Clone for SplitInclusive<'_, T, P>
 where
     P: Clone + FnMut(&T) -> bool,
@@ -494,7 +501,7 @@ where
     }
 }
 
-#[unstable(feature = "split_inclusive", issue = "72360")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<'a, T, P> Iterator for SplitInclusive<'a, T, P>
 where
     P: FnMut(&T) -> bool,
@@ -523,7 +530,7 @@ where
     }
 }
 
-#[unstable(feature = "split_inclusive", issue = "72360")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<'a, T, P> DoubleEndedIterator for SplitInclusive<'a, T, P>
 where
     P: FnMut(&T) -> bool,
@@ -548,7 +555,7 @@ where
     }
 }
 
-#[unstable(feature = "split_inclusive", issue = "72360")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<T, P> FusedIterator for SplitInclusive<'_, T, P> where P: FnMut(&T) -> bool {}
 
 /// An iterator over the mutable subslices of the vector which are separated
@@ -563,8 +570,8 @@ impl<T, P> FusedIterator for SplitInclusive<'_, T, P> where P: FnMut(&T) -> bool
 /// let iter = v.split_mut(|num| *num % 3 == 0);
 /// ```
 ///
-/// [`split_mut`]: ../../std/primitive.slice.html#method.split_mut
-/// [slices]: ../../std/primitive.slice.html
+/// [`split_mut`]: slice::split_mut
+/// [slices]: slice
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SplitMut<'a, T: 'a, P>
 where
@@ -688,15 +695,13 @@ impl<T, P> FusedIterator for SplitMut<'_, T, P> where P: FnMut(&T) -> bool {}
 /// # Example
 ///
 /// ```
-/// #![feature(split_inclusive)]
-///
 /// let mut v = [10, 40, 30, 20, 60, 50];
 /// let iter = v.split_inclusive_mut(|num| *num % 3 == 0);
 /// ```
 ///
-/// [`split_inclusive_mut`]: ../../std/primitive.slice.html#method.split_inclusive_mut
-/// [slices]: ../../std/primitive.slice.html
-#[unstable(feature = "split_inclusive", issue = "72360")]
+/// [`split_inclusive_mut`]: slice::split_inclusive_mut
+/// [slices]: slice
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 pub struct SplitInclusiveMut<'a, T: 'a, P>
 where
     P: FnMut(&T) -> bool,
@@ -713,7 +718,7 @@ impl<'a, T: 'a, P: FnMut(&T) -> bool> SplitInclusiveMut<'a, T, P> {
     }
 }
 
-#[unstable(feature = "split_inclusive", issue = "72360")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<T: fmt::Debug, P> fmt::Debug for SplitInclusiveMut<'_, T, P>
 where
     P: FnMut(&T) -> bool,
@@ -726,7 +731,7 @@ where
     }
 }
 
-#[unstable(feature = "split_inclusive", issue = "72360")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<'a, T, P> Iterator for SplitInclusiveMut<'a, T, P>
 where
     P: FnMut(&T) -> bool,
@@ -766,7 +771,7 @@ where
     }
 }
 
-#[unstable(feature = "split_inclusive", issue = "72360")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<'a, T, P> DoubleEndedIterator for SplitInclusiveMut<'a, T, P>
 where
     P: FnMut(&T) -> bool,
@@ -800,7 +805,7 @@ where
     }
 }
 
-#[unstable(feature = "split_inclusive", issue = "72360")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<T, P> FusedIterator for SplitInclusiveMut<'_, T, P> where P: FnMut(&T) -> bool {}
 
 /// An iterator over subslices separated by elements that match a predicate
@@ -815,8 +820,8 @@ impl<T, P> FusedIterator for SplitInclusiveMut<'_, T, P> where P: FnMut(&T) -> b
 /// let iter = slice.rsplit(|num| *num == 0);
 /// ```
 ///
-/// [`rsplit`]: ../../std/primitive.slice.html#method.rsplit
-/// [slices]: ../../std/primitive.slice.html
+/// [`rsplit`]: slice::rsplit
+/// [slices]: slice
 #[stable(feature = "slice_rsplit", since = "1.27.0")]
 #[derive(Clone)] // Is this correct, or does it incorrectly require `T: Clone`?
 pub struct RSplit<'a, T: 'a, P>
@@ -901,8 +906,8 @@ impl<T, P> FusedIterator for RSplit<'_, T, P> where P: FnMut(&T) -> bool {}
 /// let iter = slice.rsplit_mut(|num| *num == 0);
 /// ```
 ///
-/// [`rsplit_mut`]: ../../std/primitive.slice.html#method.rsplit_mut
-/// [slices]: ../../std/primitive.slice.html
+/// [`rsplit_mut`]: slice::rsplit_mut
+/// [slices]: slice
 #[stable(feature = "slice_rsplit", since = "1.27.0")]
 pub struct RSplitMut<'a, T: 'a, P>
 where
@@ -1020,8 +1025,8 @@ impl<T, I: SplitIter<Item = T>> Iterator for GenericSplitN<I> {
 /// let iter = slice.splitn(2, |num| *num % 3 == 0);
 /// ```
 ///
-/// [`splitn`]: ../../std/primitive.slice.html#method.splitn
-/// [slices]: ../../std/primitive.slice.html
+/// [`splitn`]: slice::splitn
+/// [slices]: slice
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SplitN<'a, T: 'a, P>
 where
@@ -1060,8 +1065,8 @@ where
 /// let iter = slice.rsplitn(2, |num| *num % 3 == 0);
 /// ```
 ///
-/// [`rsplitn`]: ../../std/primitive.slice.html#method.rsplitn
-/// [slices]: ../../std/primitive.slice.html
+/// [`rsplitn`]: slice::rsplitn
+/// [slices]: slice
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RSplitN<'a, T: 'a, P>
 where
@@ -1099,8 +1104,8 @@ where
 /// let iter = slice.splitn_mut(2, |num| *num % 3 == 0);
 /// ```
 ///
-/// [`splitn_mut`]: ../../std/primitive.slice.html#method.splitn_mut
-/// [slices]: ../../std/primitive.slice.html
+/// [`splitn_mut`]: slice::splitn_mut
+/// [slices]: slice
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SplitNMut<'a, T: 'a, P>
 where
@@ -1139,8 +1144,8 @@ where
 /// let iter = slice.rsplitn_mut(2, |num| *num % 3 == 0);
 /// ```
 ///
-/// [`rsplitn_mut`]: ../../std/primitive.slice.html#method.rsplitn_mut
-/// [slices]: ../../std/primitive.slice.html
+/// [`rsplitn_mut`]: slice::rsplitn_mut
+/// [slices]: slice
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RSplitNMut<'a, T: 'a, P>
 where
@@ -1182,8 +1187,8 @@ forward_iterator! { RSplitNMut: T, &'a mut [T] }
 /// let iter = slice.windows(2);
 /// ```
 ///
-/// [`windows`]: ../../std/primitive.slice.html#method.windows
-/// [slices]: ../../std/primitive.slice.html
+/// [`windows`]: slice::windows
+/// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Windows<'a, T: 'a> {
@@ -1308,9 +1313,7 @@ impl<T> FusedIterator for Windows<'_, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for Windows<'a, T> {
-    fn may_have_side_effect() -> bool {
-        false
-    }
+    const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
 
 /// An iterator over a slice in (non-overlapping) chunks (`chunk_size` elements at a
@@ -1328,8 +1331,8 @@ unsafe impl<'a, T> TrustedRandomAccess for Windows<'a, T> {
 /// let iter = slice.chunks(2);
 /// ```
 ///
-/// [`chunks`]: ../../std/primitive.slice.html#method.chunks
-/// [slices]: ../../std/primitive.slice.html
+/// [`chunks`]: slice::chunks
+/// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Chunks<'a, T: 'a> {
@@ -1476,9 +1479,7 @@ impl<T> FusedIterator for Chunks<'_, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for Chunks<'a, T> {
-    fn may_have_side_effect() -> bool {
-        false
-    }
+    const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
 
 /// An iterator over a slice in (non-overlapping) mutable chunks (`chunk_size`
@@ -1496,8 +1497,8 @@ unsafe impl<'a, T> TrustedRandomAccess for Chunks<'a, T> {
 /// let iter = slice.chunks_mut(2);
 /// ```
 ///
-/// [`chunks_mut`]: ../../std/primitive.slice.html#method.chunks_mut
-/// [slices]: ../../std/primitive.slice.html
+/// [`chunks_mut`]: slice::chunks_mut
+/// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ChunksMut<'a, T: 'a> {
@@ -1641,9 +1642,7 @@ impl<T> FusedIterator for ChunksMut<'_, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for ChunksMut<'a, T> {
-    fn may_have_side_effect() -> bool {
-        false
-    }
+    const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
 
 /// An iterator over a slice in (non-overlapping) chunks (`chunk_size` elements at a
@@ -1662,9 +1661,9 @@ unsafe impl<'a, T> TrustedRandomAccess for ChunksMut<'a, T> {
 /// let iter = slice.chunks_exact(2);
 /// ```
 ///
-/// [`chunks_exact`]: ../../std/primitive.slice.html#method.chunks_exact
+/// [`chunks_exact`]: slice::chunks_exact
 /// [`remainder`]: ChunksExact::remainder
-/// [slices]: ../../std/primitive.slice.html
+/// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "chunks_exact", since = "1.31.0")]
 pub struct ChunksExact<'a, T: 'a> {
@@ -1797,9 +1796,7 @@ impl<T> FusedIterator for ChunksExact<'_, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for ChunksExact<'a, T> {
-    fn may_have_side_effect() -> bool {
-        false
-    }
+    const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
 
 /// An iterator over a slice in (non-overlapping) mutable chunks (`chunk_size`
@@ -1818,9 +1815,9 @@ unsafe impl<'a, T> TrustedRandomAccess for ChunksExact<'a, T> {
 /// let iter = slice.chunks_exact_mut(2);
 /// ```
 ///
-/// [`chunks_exact_mut`]: ../../std/primitive.slice.html#method.chunks_exact_mut
+/// [`chunks_exact_mut`]: slice::chunks_exact_mut
 /// [`into_remainder`]: ChunksExactMut::into_remainder
-/// [slices]: ../../std/primitive.slice.html
+/// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "chunks_exact", since = "1.31.0")]
 pub struct ChunksExactMut<'a, T: 'a> {
@@ -1950,9 +1947,7 @@ impl<T> FusedIterator for ChunksExactMut<'_, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for ChunksExactMut<'a, T> {
-    fn may_have_side_effect() -> bool {
-        false
-    }
+    const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
 
 /// A windowed iterator over a slice in overlapping chunks (`N` elements at a
@@ -1969,8 +1964,8 @@ unsafe impl<'a, T> TrustedRandomAccess for ChunksExactMut<'a, T> {
 /// let iter = slice.array_windows::<2>();
 /// ```
 ///
-/// [`array_windows`]: ../../std/primitive.slice.html#method.array_windows
-/// [slices]: ../../std/primitive.slice.html
+/// [`array_windows`]: slice::array_windows
+/// [slices]: slice
 #[derive(Debug, Clone, Copy)]
 #[unstable(feature = "array_windows", issue = "75027")]
 pub struct ArrayWindows<'a, T: 'a, const N: usize> {
@@ -2090,9 +2085,9 @@ impl<T, const N: usize> ExactSizeIterator for ArrayWindows<'_, T, N> {
 /// let iter = slice.array_chunks::<2>();
 /// ```
 ///
-/// [`array_chunks`]: ../../std/primitive.slice.html#method.array_chunks
+/// [`array_chunks`]: slice::array_chunks
 /// [`remainder`]: ArrayChunks::remainder
-/// [slices]: ../../std/primitive.slice.html
+/// [slices]: slice
 #[derive(Debug)]
 #[unstable(feature = "array_chunks", issue = "74985")]
 pub struct ArrayChunks<'a, T: 'a, const N: usize> {
@@ -2189,9 +2184,7 @@ impl<T, const N: usize> FusedIterator for ArrayChunks<'_, T, N> {}
 #[doc(hidden)]
 #[unstable(feature = "array_chunks", issue = "74985")]
 unsafe impl<'a, T, const N: usize> TrustedRandomAccess for ArrayChunks<'a, T, N> {
-    fn may_have_side_effect() -> bool {
-        false
-    }
+    const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
 
 /// An iterator over a slice in (non-overlapping) mutable chunks (`N` elements
@@ -2212,9 +2205,9 @@ unsafe impl<'a, T, const N: usize> TrustedRandomAccess for ArrayChunks<'a, T, N>
 /// let iter = slice.array_chunks_mut::<2>();
 /// ```
 ///
-/// [`array_chunks_mut`]: ../../std/primitive.slice.html#method.array_chunks_mut
+/// [`array_chunks_mut`]: slice::array_chunks_mut
 /// [`into_remainder`]: ../../std/slice/struct.ArrayChunksMut.html#method.into_remainder
-/// [slices]: ../../std/primitive.slice.html
+/// [slices]: slice
 #[derive(Debug)]
 #[unstable(feature = "array_chunks", issue = "74985")]
 pub struct ArrayChunksMut<'a, T: 'a, const N: usize> {
@@ -2303,9 +2296,7 @@ impl<T, const N: usize> FusedIterator for ArrayChunksMut<'_, T, N> {}
 #[doc(hidden)]
 #[unstable(feature = "array_chunks", issue = "74985")]
 unsafe impl<'a, T, const N: usize> TrustedRandomAccess for ArrayChunksMut<'a, T, N> {
-    fn may_have_side_effect() -> bool {
-        false
-    }
+    const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
 
 /// An iterator over a slice in (non-overlapping) chunks (`chunk_size` elements at a
@@ -2323,8 +2314,8 @@ unsafe impl<'a, T, const N: usize> TrustedRandomAccess for ArrayChunksMut<'a, T,
 /// let iter = slice.rchunks(2);
 /// ```
 ///
-/// [`rchunks`]: ../../std/primitive.slice.html#method.rchunks
-/// [slices]: ../../std/primitive.slice.html
+/// [`rchunks`]: slice::rchunks
+/// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "rchunks", since = "1.31.0")]
 pub struct RChunks<'a, T: 'a> {
@@ -2467,9 +2458,7 @@ impl<T> FusedIterator for RChunks<'_, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for RChunks<'a, T> {
-    fn may_have_side_effect() -> bool {
-        false
-    }
+    const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
 
 /// An iterator over a slice in (non-overlapping) mutable chunks (`chunk_size`
@@ -2487,8 +2476,8 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunks<'a, T> {
 /// let iter = slice.rchunks_mut(2);
 /// ```
 ///
-/// [`rchunks_mut`]: ../../std/primitive.slice.html#method.rchunks_mut
-/// [slices]: ../../std/primitive.slice.html
+/// [`rchunks_mut`]: slice::rchunks_mut
+/// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "rchunks", since = "1.31.0")]
 pub struct RChunksMut<'a, T: 'a> {
@@ -2630,9 +2619,7 @@ impl<T> FusedIterator for RChunksMut<'_, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for RChunksMut<'a, T> {
-    fn may_have_side_effect() -> bool {
-        false
-    }
+    const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
 
 /// An iterator over a slice in (non-overlapping) chunks (`chunk_size` elements at a
@@ -2651,9 +2638,9 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksMut<'a, T> {
 /// let iter = slice.rchunks_exact(2);
 /// ```
 ///
-/// [`rchunks_exact`]: ../../std/primitive.slice.html#method.rchunks_exact
+/// [`rchunks_exact`]: slice::rchunks_exact
 /// [`remainder`]: ChunksExact::remainder
-/// [slices]: ../../std/primitive.slice.html
+/// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "rchunks", since = "1.31.0")]
 pub struct RChunksExact<'a, T: 'a> {
@@ -2790,9 +2777,7 @@ impl<T> FusedIterator for RChunksExact<'_, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for RChunksExact<'a, T> {
-    fn may_have_side_effect() -> bool {
-        false
-    }
+    const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
 
 /// An iterator over a slice in (non-overlapping) mutable chunks (`chunk_size`
@@ -2811,9 +2796,9 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksExact<'a, T> {
 /// let iter = slice.rchunks_exact_mut(2);
 /// ```
 ///
-/// [`rchunks_exact_mut`]: ../../std/primitive.slice.html#method.rchunks_exact_mut
+/// [`rchunks_exact_mut`]: slice::rchunks_exact_mut
 /// [`into_remainder`]: ChunksExactMut::into_remainder
-/// [slices]: ../../std/primitive.slice.html
+/// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "rchunks", since = "1.31.0")]
 pub struct RChunksExactMut<'a, T: 'a> {
@@ -2947,23 +2932,190 @@ impl<T> FusedIterator for RChunksExactMut<'_, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for RChunksExactMut<'a, T> {
-    fn may_have_side_effect() -> bool {
-        false
-    }
+    const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for Iter<'a, T> {
-    fn may_have_side_effect() -> bool {
-        false
-    }
+    const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccess for IterMut<'a, T> {
-    fn may_have_side_effect() -> bool {
-        false
+    const MAY_HAVE_SIDE_EFFECT: bool = false;
+}
+
+/// An iterator over slice in (non-overlapping) chunks separated by a predicate.
+///
+/// This struct is created by the [`group_by`] method on [slices].
+///
+/// [`group_by`]: slice::group_by
+/// [slices]: slice
+#[unstable(feature = "slice_group_by", issue = "80552")]
+pub struct GroupBy<'a, T: 'a, P> {
+    slice: &'a [T],
+    predicate: P,
+}
+
+#[unstable(feature = "slice_group_by", issue = "80552")]
+impl<'a, T: 'a, P> GroupBy<'a, T, P> {
+    pub(super) fn new(slice: &'a [T], predicate: P) -> Self {
+        GroupBy { slice, predicate }
+    }
+}
+
+#[unstable(feature = "slice_group_by", issue = "80552")]
+impl<'a, T: 'a, P> Iterator for GroupBy<'a, T, P>
+where
+    P: FnMut(&T, &T) -> bool,
+{
+    type Item = &'a [T];
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.slice.is_empty() {
+            None
+        } else {
+            let mut len = 1;
+            let mut iter = self.slice.windows(2);
+            while let Some([l, r]) = iter.next() {
+                if (self.predicate)(l, r) { len += 1 } else { break }
+            }
+            let (head, tail) = self.slice.split_at(len);
+            self.slice = tail;
+            Some(head)
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.slice.is_empty() { (0, Some(0)) } else { (1, Some(self.slice.len())) }
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<Self::Item> {
+        self.next_back()
+    }
+}
+
+#[unstable(feature = "slice_group_by", issue = "80552")]
+impl<'a, T: 'a, P> DoubleEndedIterator for GroupBy<'a, T, P>
+where
+    P: FnMut(&T, &T) -> bool,
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        if self.slice.is_empty() {
+            None
+        } else {
+            let mut len = 1;
+            let mut iter = self.slice.windows(2);
+            while let Some([l, r]) = iter.next_back() {
+                if (self.predicate)(l, r) { len += 1 } else { break }
+            }
+            let (head, tail) = self.slice.split_at(self.slice.len() - len);
+            self.slice = head;
+            Some(tail)
+        }
+    }
+}
+
+#[unstable(feature = "slice_group_by", issue = "80552")]
+impl<'a, T: 'a, P> FusedIterator for GroupBy<'a, T, P> where P: FnMut(&T, &T) -> bool {}
+
+#[unstable(feature = "slice_group_by", issue = "80552")]
+impl<'a, T: 'a + fmt::Debug, P> fmt::Debug for GroupBy<'a, T, P> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("GroupBy").field("slice", &self.slice).finish()
+    }
+}
+
+/// An iterator over slice in (non-overlapping) mutable chunks separated
+/// by a predicate.
+///
+/// This struct is created by the [`group_by_mut`] method on [slices].
+///
+/// [`group_by_mut`]: slice::group_by_mut
+/// [slices]: slice
+#[unstable(feature = "slice_group_by", issue = "80552")]
+pub struct GroupByMut<'a, T: 'a, P> {
+    slice: &'a mut [T],
+    predicate: P,
+}
+
+#[unstable(feature = "slice_group_by", issue = "80552")]
+impl<'a, T: 'a, P> GroupByMut<'a, T, P> {
+    pub(super) fn new(slice: &'a mut [T], predicate: P) -> Self {
+        GroupByMut { slice, predicate }
+    }
+}
+
+#[unstable(feature = "slice_group_by", issue = "80552")]
+impl<'a, T: 'a, P> Iterator for GroupByMut<'a, T, P>
+where
+    P: FnMut(&T, &T) -> bool,
+{
+    type Item = &'a mut [T];
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.slice.is_empty() {
+            None
+        } else {
+            let mut len = 1;
+            let mut iter = self.slice.windows(2);
+            while let Some([l, r]) = iter.next() {
+                if (self.predicate)(l, r) { len += 1 } else { break }
+            }
+            let slice = mem::take(&mut self.slice);
+            let (head, tail) = slice.split_at_mut(len);
+            self.slice = tail;
+            Some(head)
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.slice.is_empty() { (0, Some(0)) } else { (1, Some(self.slice.len())) }
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<Self::Item> {
+        self.next_back()
+    }
+}
+
+#[unstable(feature = "slice_group_by", issue = "80552")]
+impl<'a, T: 'a, P> DoubleEndedIterator for GroupByMut<'a, T, P>
+where
+    P: FnMut(&T, &T) -> bool,
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        if self.slice.is_empty() {
+            None
+        } else {
+            let mut len = 1;
+            let mut iter = self.slice.windows(2);
+            while let Some([l, r]) = iter.next_back() {
+                if (self.predicate)(l, r) { len += 1 } else { break }
+            }
+            let slice = mem::take(&mut self.slice);
+            let (head, tail) = slice.split_at_mut(slice.len() - len);
+            self.slice = head;
+            Some(tail)
+        }
+    }
+}
+
+#[unstable(feature = "slice_group_by", issue = "80552")]
+impl<'a, T: 'a, P> FusedIterator for GroupByMut<'a, T, P> where P: FnMut(&T, &T) -> bool {}
+
+#[unstable(feature = "slice_group_by", issue = "80552")]
+impl<'a, T: 'a + fmt::Debug, P> fmt::Debug for GroupByMut<'a, T, P> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("GroupByMut").field("slice", &self.slice).finish()
     }
 }

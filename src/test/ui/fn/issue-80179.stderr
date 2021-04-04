@@ -1,0 +1,21 @@
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/issue-80179.rs:10:24
+   |
+LL | fn returns_fn_ptr() -> _ {
+   |                        ^
+   |                        |
+   |                        not allowed in type signatures
+   |                        help: replace with the correct return type: `fn() -> i32`
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/issue-80179.rs:18:25
+   |
+LL | fn returns_closure() -> _ {
+   |                         ^ not allowed in type signatures
+   |
+   = help: consider using an `Fn`, `FnMut`, or `FnOnce` trait bound
+   = note: for more information on `Fn` traits and closure types, see https://doc.rust-lang.org/book/ch13-01-closures.html
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0121`.

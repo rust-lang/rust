@@ -7,6 +7,7 @@
 //! goes along from the output of the previous stage.
 
 use std::borrow::Cow;
+use std::collections::HashSet;
 use std::env;
 use std::fs;
 use std::io::prelude::*;
@@ -26,7 +27,7 @@ use crate::config::TargetSelection;
 use crate::dist;
 use crate::native;
 use crate::tool::SourceType;
-use crate::util::{exe, is_dylib, symlink_dir};
+use crate::util::{exe, is_debug_info, is_dylib, symlink_dir};
 use crate::{Compiler, DependencyType, GitRepo, Mode};
 
 #[derive(Debug, PartialOrd, Ord, Copy, Clone, PartialEq, Eq, Hash)]
@@ -40,7 +41,10 @@ impl Step for Std {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.all_krates("test")
+        // When downloading stage1, the standard library has already been copied to the sysroot, so
+        // there's no need to rebuild it.
+        let download_rustc = run.builder.config.download_rustc;
+        run.all_krates("test").default_condition(!download_rustc)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -58,6 +62,12 @@ impl Step for Std {
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
         let compiler = self.compiler;
+
+        // These artifacts were already copied (in `impl Step for Sysroot`).
+        // Don't recompile them.
+        if builder.config.download_rustc {
+            return;
+        }
 
         if builder.config.keep_stage.contains(&compiler.stage)
             || builder.config.keep_stage_std.contains(&compiler.stage)
@@ -174,7 +184,9 @@ fn copy_self_contained_objects(
     // To do that we have to distribute musl startup objects as a part of Rust toolchain
     // and link with them manually in the self-contained mode.
     if target.contains("musl") {
-        let srcdir = builder.musl_libdir(target).unwrap();
+        let srcdir = builder.musl_libdir(target).unwrap_or_else(|| {
+            panic!("Target {:?} does not have a \"musl-libdir\" key", target.triple)
+        });
         for &obj in &["crt1.o", "Scrt1.o", "rcrt1.o", "crti.o", "crtn.o"] {
             copy_and_stamp(
                 builder,
@@ -185,16 +197,29 @@ fn copy_self_contained_objects(
                 DependencyType::TargetSelfContained,
             );
         }
+        for &obj in &["crtbegin.o", "crtbeginS.o", "crtend.o", "crtendS.o"] {
+            let src = compiler_file(builder, builder.cc(target), target, obj);
+            let target = libdir_self_contained.join(obj);
+            builder.copy(&src, &target);
+            target_deps.push((target, DependencyType::TargetSelfContained));
+        }
     } else if target.ends_with("-wasi") {
-        let srcdir = builder.wasi_root(target).unwrap().join("lib/wasm32-wasi");
-        copy_and_stamp(
-            builder,
-            &libdir_self_contained,
-            &srcdir,
-            "crt1.o",
-            &mut target_deps,
-            DependencyType::TargetSelfContained,
-        );
+        let srcdir = builder
+            .wasi_root(target)
+            .unwrap_or_else(|| {
+                panic!("Target {:?} does not have a \"wasi-root\" key", target.triple)
+            })
+            .join("lib/wasm32-wasi");
+        for &obj in &["crt1-command.o", "crt1-reactor.o"] {
+            copy_and_stamp(
+                builder,
+                &libdir_self_contained,
+                &srcdir,
+                obj,
+                &mut target_deps,
+                DependencyType::TargetSelfContained,
+            );
+        }
     } else if target.contains("windows-gnu") {
         for obj in ["crt2.o", "dllcrt2.o"].iter() {
             let src = compiler_file(builder, builder.cc(target), target, obj);
@@ -355,21 +380,39 @@ fn copy_sanitizers(
         let dst = libdir.join(&runtime.name);
         builder.copy(&runtime.path, &dst);
 
-        if target == "x86_64-apple-darwin" {
-            // Update the library install name reflect the fact it has been renamed.
-            let status = Command::new("install_name_tool")
-                .arg("-id")
-                .arg(format!("@rpath/{}", runtime.name))
-                .arg(&dst)
-                .status()
-                .expect("failed to execute `install_name_tool`");
-            assert!(status.success());
+        if target == "x86_64-apple-darwin" || target == "aarch64-apple-darwin" {
+            // Update the library’s install name to reflect that it has has been renamed.
+            apple_darwin_update_library_name(&dst, &format!("@rpath/{}", &runtime.name));
+            // Upon renaming the install name, the code signature of the file will invalidate,
+            // so we will sign it again.
+            apple_darwin_sign_file(&dst);
         }
 
         target_deps.push(dst);
     }
 
     target_deps
+}
+
+fn apple_darwin_update_library_name(library_path: &Path, new_name: &str) {
+    let status = Command::new("install_name_tool")
+        .arg("-id")
+        .arg(new_name)
+        .arg(library_path)
+        .status()
+        .expect("failed to execute `install_name_tool`");
+    assert!(status.success());
+}
+
+fn apple_darwin_sign_file(file_path: &Path) {
+    let status = Command::new("codesign")
+        .arg("-f") // Force to rewrite the existing signature
+        .arg("-s")
+        .arg("-")
+        .arg(file_path)
+        .status()
+        .expect("failed to execute `codesign`");
+    assert!(status.success());
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -470,6 +513,13 @@ impl Step for Rustc {
         let compiler = self.compiler;
         let target = self.target;
 
+        if builder.config.download_rustc {
+            // Copy the existing artifacts instead of rebuilding them.
+            // NOTE: this path is only taken for tools linking to rustc-dev.
+            builder.ensure(Sysroot { compiler });
+            return;
+        }
+
         builder.ensure(Std { compiler, target });
 
         if builder.config.keep_stage.contains(&compiler.stage) {
@@ -500,6 +550,41 @@ impl Step for Rustc {
 
         let mut cargo = builder.cargo(compiler, Mode::Rustc, SourceType::InTree, target, "build");
         rustc_cargo(builder, &mut cargo, target);
+
+        if builder.config.rust_profile_use.is_some()
+            && builder.config.rust_profile_generate.is_some()
+        {
+            panic!("Cannot use and generate PGO profiles at the same time");
+        }
+
+        let is_collecting = if let Some(path) = &builder.config.rust_profile_generate {
+            if compiler.stage == 1 {
+                cargo.rustflag(&format!("-Cprofile-generate={}", path));
+                // Apparently necessary to avoid overflowing the counters during
+                // a Cargo build profile
+                cargo.rustflag("-Cllvm-args=-vp-counters-per-site=4");
+                true
+            } else {
+                false
+            }
+        } else if let Some(path) = &builder.config.rust_profile_use {
+            if compiler.stage == 1 {
+                cargo.rustflag(&format!("-Cprofile-use={}", path));
+                cargo.rustflag("-Cllvm-args=-pgo-warn-missing-function");
+                true
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+        if is_collecting {
+            // Ensure paths to Rust sources are relative, not absolute.
+            cargo.rustflag(&format!(
+                "-Cllvm-args=-static-func-strip-dirname-prefix={}",
+                builder.config.src.components().count()
+            ));
+        }
 
         builder.info(&format!(
             "Building stage{} compiler artifacts ({} -> {})",
@@ -752,7 +837,7 @@ fn copy_codegen_backends_to_sysroot(
     // Here we're looking for the output dylib of the `CodegenBackend` step and
     // we're copying that into the `codegen-backends` folder.
     let dst = builder.sysroot_codegen_backends(target_compiler);
-    t!(fs::create_dir_all(&dst));
+    t!(fs::create_dir_all(&dst), dst);
 
     if builder.config.dry_run {
         return;
@@ -848,6 +933,18 @@ impl Step for Sysroot {
         let _ = fs::remove_dir_all(&sysroot);
         t!(fs::create_dir_all(&sysroot));
 
+        // If we're downloading a compiler from CI, we can use the same compiler for all stages other than 0.
+        if builder.config.download_rustc {
+            assert_eq!(
+                builder.config.build, compiler.host,
+                "Cross-compiling is not yet supported with `download-rustc`",
+            );
+            // Copy the compiler into the correct sysroot.
+            let stage0_dir = builder.config.out.join(&*builder.config.build.triple).join("stage0");
+            builder.cp_r(&stage0_dir, &sysroot);
+            return INTERNER.intern_path(sysroot);
+        }
+
         // Symlink the source root into the same location inside the sysroot,
         // where `rust-src` component would go (`$sysroot/lib/rustlib/src/rust`),
         // so that any tools relying on `rust-src` also work for local builds,
@@ -919,12 +1016,15 @@ impl Step for Assemble {
         // produce some other architecture compiler we need to start from
         // `build` to get there.
         //
-        // FIXME: Perhaps we should download those libraries?
-        //        It would make builds faster...
-        //
         // FIXME: It may be faster if we build just a stage 1 compiler and then
         //        use that to bootstrap this compiler forward.
         let build_compiler = builder.compiler(target_compiler.stage - 1, builder.config.build);
+
+        // If we're downloading a compiler from CI, we can use the same compiler for all stages other than 0.
+        if builder.config.download_rustc {
+            builder.ensure(Sysroot { compiler: target_compiler });
+            return target_compiler;
+        }
 
         // Build the libraries for this compiler to link to (i.e., the libraries
         // it uses at runtime). NOTE: Crates the target compiler compiles don't
@@ -956,28 +1056,57 @@ impl Step for Assemble {
         builder.info(&format!("Assembling stage{} compiler ({})", stage, host));
 
         // Link in all dylibs to the libdir
+        let stamp = librustc_stamp(builder, build_compiler, target_compiler.host);
+        let proc_macros = builder
+            .read_stamp_file(&stamp)
+            .into_iter()
+            .filter_map(|(path, dependency_type)| {
+                if dependency_type == DependencyType::Host {
+                    Some(path.file_name().unwrap().to_owned().into_string().unwrap())
+                } else {
+                    None
+                }
+            })
+            .collect::<HashSet<_>>();
+
         let sysroot = builder.sysroot(target_compiler);
         let rustc_libdir = builder.rustc_libdir(target_compiler);
         t!(fs::create_dir_all(&rustc_libdir));
         let src_libdir = builder.sysroot_libdir(build_compiler, host);
         for f in builder.read_dir(&src_libdir) {
             let filename = f.file_name().into_string().unwrap();
-            if is_dylib(&filename) {
+            if (is_dylib(&filename) || is_debug_info(&filename)) && !proc_macros.contains(&filename)
+            {
                 builder.copy(&f.path(), &rustc_libdir.join(&filename));
             }
         }
 
         copy_codegen_backends_to_sysroot(builder, build_compiler, target_compiler);
 
+        // We prepend this bin directory to the user PATH when linking Rust binaries. To
+        // avoid shadowing the system LLD we rename the LLD we provide to `rust-lld`.
         let libdir = builder.sysroot_libdir(target_compiler, target_compiler.host);
+        let libdir_bin = libdir.parent().unwrap().join("bin");
+        t!(fs::create_dir_all(&libdir_bin));
+
         if let Some(lld_install) = lld_install {
             let src_exe = exe("lld", target_compiler.host);
             let dst_exe = exe("rust-lld", target_compiler.host);
-            // we prepend this bin directory to the user PATH when linking Rust binaries. To
-            // avoid shadowing the system LLD we rename the LLD we provide to `rust-lld`.
-            let dst = libdir.parent().unwrap().join("bin");
-            t!(fs::create_dir_all(&dst));
-            builder.copy(&lld_install.join("bin").join(&src_exe), &dst.join(&dst_exe));
+            builder.copy(&lld_install.join("bin").join(&src_exe), &libdir_bin.join(&dst_exe));
+        }
+
+        // Similarly, copy `llvm-dwp` into libdir for Split DWARF. Only copy it when the LLVM
+        // backend is used to avoid unnecessarily building LLVM and because LLVM is not checked
+        // out by default when the LLVM backend is not enabled.
+        if builder.config.rust_codegen_backends.contains(&INTERNER.intern_str("llvm")) {
+            let src_exe = exe("llvm-dwp", target_compiler.host);
+            let dst_exe = exe("rust-llvm-dwp", target_compiler.host);
+            let llvm_config_bin = builder.ensure(native::Llvm { target: target_compiler.host });
+            if !builder.config.dry_run {
+                let llvm_bin_dir = output(Command::new(llvm_config_bin).arg("--bindir"));
+                let llvm_bin_dir = Path::new(llvm_bin_dir.trim());
+                builder.copy(&llvm_bin_dir.join(&src_exe), &libdir_bin.join(&dst_exe));
+            }
         }
 
         // Ensure that `libLLVM.so` ends up in the newly build compiler directory,
@@ -1064,6 +1193,7 @@ pub fn run_cargo(
             if !(filename.ends_with(".rlib")
                 || filename.ends_with(".lib")
                 || filename.ends_with(".a")
+                || is_debug_info(&filename)
                 || is_dylib(&filename)
                 || (is_check && filename.ends_with(".rmeta")))
             {

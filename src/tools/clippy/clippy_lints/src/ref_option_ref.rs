@@ -1,10 +1,12 @@
-use crate::utils::{last_path_segment, snippet, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::last_path_segment;
+use clippy_utils::source::snippet;
+use if_chain::if_chain;
+use rustc_errors::Applicability;
 use rustc_hir::{GenericArg, Mutability, Ty, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-
-use if_chain::if_chain;
-use rustc_errors::Applicability;
+use rustc_span::symbol::sym;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `&Option<&T>`.
@@ -12,7 +14,7 @@ declare_clippy_lint! {
     /// **Why is this bad?** Since `&` is Copy, it's useless to have a
     /// reference on `Option<&T>`.
     ///
-    /// **Known problems:** It may be irrevelent to use this lint on
+    /// **Known problems:** It may be irrelevant to use this lint on
     /// public API code as it will make a breaking change to apply it.
     ///
     /// **Example:**
@@ -41,7 +43,7 @@ impl<'tcx> LateLintPass<'tcx> for RefOptionRef {
             if let Some(res) = last.res;
             if let Some(def_id) = res.opt_def_id();
 
-            if cx.tcx.is_diagnostic_item(sym!(option_type), def_id);
+            if cx.tcx.is_diagnostic_item(sym::option_type, def_id);
             if let Some(ref params) = last_path_segment(qpath).args ;
             if !params.parenthesized;
             if let Some(inner_ty) = params.args.iter().find_map(|arg| match arg {

@@ -2,7 +2,8 @@ use crate::consts::{
     constant, constant_simple, Constant,
     Constant::{Int, F32, F64},
 };
-use crate::utils::{eq_expr_value, get_parent_expr, higher, numeric_literal, span_lint_and_sugg, sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::{eq_expr_value, get_parent_expr, numeric_literal, sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, PathSegment, UnOp};
@@ -129,7 +130,7 @@ fn get_specialized_log_method(cx: &LateContext<'_>, base: &Expr<'_>) -> Option<&
 fn prepare_receiver_sugg<'a>(cx: &LateContext<'_>, mut expr: &'a Expr<'a>) -> Sugg<'a> {
     let mut suggestion = Sugg::hir(cx, expr, "..");
 
-    if let ExprKind::Unary(UnOp::UnNeg, inner_expr) = &expr.kind {
+    if let ExprKind::Unary(UnOp::Neg, inner_expr) = &expr.kind {
         expr = &inner_expr;
     }
 
@@ -541,12 +542,12 @@ fn is_zero(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 /// If the two expressions are not negations of each other, then it
 /// returns None.
 fn are_negated<'a>(cx: &LateContext<'_>, expr1: &'a Expr<'a>, expr2: &'a Expr<'a>) -> Option<(bool, &'a Expr<'a>)> {
-    if let ExprKind::Unary(UnOp::UnNeg, expr1_negated) = &expr1.kind {
+    if let ExprKind::Unary(UnOp::Neg, expr1_negated) = &expr1.kind {
         if eq_expr_value(cx, expr1_negated, expr2) {
             return Some((false, expr2));
         }
     }
-    if let ExprKind::Unary(UnOp::UnNeg, expr2_negated) = &expr2.kind {
+    if let ExprKind::Unary(UnOp::Neg, expr2_negated) = &expr2.kind {
         if eq_expr_value(cx, expr1, expr2_negated) {
             return Some((true, expr1));
         }
@@ -556,11 +557,11 @@ fn are_negated<'a>(cx: &LateContext<'_>, expr1: &'a Expr<'a>, expr2: &'a Expr<'a
 
 fn check_custom_abs(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if_chain! {
-        if let Some((cond, body, Some(else_body))) = higher::if_block(&expr);
+        if let ExprKind::If(cond, body, else_body) = expr.kind;
         if let ExprKind::Block(block, _) = body.kind;
         if block.stmts.is_empty();
         if let Some(if_body_expr) = block.expr;
-        if let ExprKind::Block(else_block, _) = else_body.kind;
+        if let Some(ExprKind::Block(else_block, _)) = else_body.map(|el| &el.kind);
         if else_block.stmts.is_empty();
         if let Some(else_body_expr) = else_block.expr;
         if let Some((if_expr_positive, body)) = are_negated(cx, if_body_expr, else_body_expr);

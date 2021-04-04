@@ -14,7 +14,7 @@ crate const UNINDENT_COMMENTS: Pass = Pass {
     description: "removes excess indentation on comments in order for markdown to like it",
 };
 
-crate fn unindent_comments(krate: clean::Crate, _: &DocContext<'_>) -> clean::Crate {
+crate fn unindent_comments(krate: clean::Crate, _: &mut DocContext<'_>) -> clean::Crate {
     CommentCleaner.fold_crate(krate)
 }
 
@@ -68,7 +68,7 @@ fn unindent_fragments(docs: &mut Vec<DocFragment>) {
     let min_indent = match docs
         .iter()
         .map(|fragment| {
-            fragment.doc.lines().fold(usize::MAX, |min_indent, line| {
+            fragment.doc.as_str().lines().fold(usize::MAX, |min_indent, line| {
                 if line.chars().all(|c| c.is_whitespace()) {
                     min_indent
                 } else {
@@ -87,7 +87,7 @@ fn unindent_fragments(docs: &mut Vec<DocFragment>) {
     };
 
     for fragment in docs {
-        if fragment.doc.lines().count() == 0 {
+        if fragment.doc.as_str().lines().count() == 0 {
             continue;
         }
 
@@ -97,18 +97,6 @@ fn unindent_fragments(docs: &mut Vec<DocFragment>) {
             min_indent
         };
 
-        fragment.doc = fragment
-            .doc
-            .lines()
-            .map(|line| {
-                if line.chars().all(|c| c.is_whitespace()) {
-                    line.to_string()
-                } else {
-                    assert!(line.len() >= min_indent);
-                    line[min_indent..].to_string()
-                }
-            })
-            .collect::<Vec<_>>()
-            .join("\n");
+        fragment.indent = min_indent;
     }
 }

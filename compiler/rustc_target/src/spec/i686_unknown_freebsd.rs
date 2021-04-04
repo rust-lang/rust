@@ -1,13 +1,13 @@
-use crate::spec::{LinkerFlavor, Target};
+use crate::spec::{LinkerFlavor, StackProbeType, Target};
 
 pub fn target() -> Target {
     let mut base = super::freebsd_base::opts();
     base.cpu = "pentium4".to_string();
     base.max_atomic_width = Some(64);
-    let pre_link_args = base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap();
+    let pre_link_args = base.pre_link_args.entry(LinkerFlavor::Gcc).or_default();
     pre_link_args.push("-m32".to_string());
     pre_link_args.push("-Wl,-znotext".to_string());
-    base.stack_probes = true;
+    base.stack_probes = StackProbeType::InlineOrCall { min_llvm_version_for_inline: (11, 0, 1) };
 
     Target {
         llvm_target: "i686-unknown-freebsd".to_string(),

@@ -6,13 +6,15 @@ extern crate libc;
 
 #[cfg(target_os = "macos")]
 #[link(name = "CoreFoundation", kind = "framework")]
-extern {
+extern "C" {
     fn CFRunLoopGetTypeID() -> libc::c_ulong;
 }
 
 #[cfg(target_os = "macos")]
 pub fn main() {
-    unsafe { CFRunLoopGetTypeID(); }
+    unsafe {
+        CFRunLoopGetTypeID();
+    }
 }
 
 #[cfg(not(target_os = "macos"))]

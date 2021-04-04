@@ -68,11 +68,13 @@ RUN ./build-binutils.sh
 COPY host-x86_64/dist-x86_64-linux/build-gcc.sh /tmp/
 RUN ./build-gcc.sh && apt-get remove -y gcc g++
 
-# Debian 6 has Python 2.6 by default, but LLVM needs 2.7+
 COPY host-x86_64/dist-x86_64-linux/build-python.sh /tmp/
-RUN ./build-python.sh
+# Build Python 2.7 needed for Clang 10.
+RUN ./build-python.sh 2.7.12
+# Build Python 3 needed for LLVM 12.
+RUN ./build-python.sh 3.9.1
 
-# LLVM needs cmake 3.4.3 or higher, and is planning to raise to 3.13.4.
+# LLVM needs cmake 3.13.4 or higher.
 COPY host-x86_64/dist-x86_64-linux/build-cmake.sh /tmp/
 RUN ./build-cmake.sh
 
@@ -84,6 +86,8 @@ ENV CC=clang CXX=clang++
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
+
+ENV PGO_HOST=x86_64-unknown-linux-gnu
 
 ENV HOSTS=x86_64-unknown-linux-gnu
 
@@ -98,9 +102,10 @@ ENV RUST_CONFIGURE_ARGS \
       --set llvm.thin-lto=true \
       --set llvm.ninja=false \
       --set rust.jemalloc
-ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS \
-        --include-default-paths \
-        src/tools/build-manifest
+ENV SCRIPT ../src/ci/pgo.sh python2.7 ../x.py dist \
+    --host $HOSTS --target $HOSTS \
+    --include-default-paths \
+    src/tools/build-manifest
 ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=clang
 
 # This is the only builder which will create source tarballs

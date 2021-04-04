@@ -58,7 +58,7 @@ mod tests;
 const INITIAL_CAPACITY: usize = 7; // 2^3 - 1
 const MINIMUM_CAPACITY: usize = 1; // 2 - 1
 
-const MAXIMUM_ZST_CAPACITY: usize = 1 << (core::mem::size_of::<usize>() * 8 - 1); // Largest possible power of two
+const MAXIMUM_ZST_CAPACITY: usize = 1 << (usize::BITS - 1); // Largest possible power of two
 
 /// A double-ended queue implemented with a growable ring buffer.
 ///
@@ -761,8 +761,7 @@ impl<T> VecDeque<T> {
     /// The capacity will remain at least as large as both the length
     /// and the supplied value.
     ///
-    /// Panics if the current capacity is smaller than the supplied
-    /// minimum capacity.
+    /// If the current capacity is less than the lower limit, this is a no-op.
     ///
     /// # Examples
     ///
@@ -780,10 +779,9 @@ impl<T> VecDeque<T> {
     /// ```
     #[unstable(feature = "shrink_to", reason = "new API", issue = "56431")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
-        assert!(self.capacity() >= min_capacity, "Tried to shrink to a larger capacity");
-
-        // +1 since the ringbuffer always leaves one space empty
-        // len + 1 can't overflow for an existing, well-formed ringbuffer.
+        let min_capacity = cmp::min(min_capacity, self.capacity());
+        // We don't have to worry about an overflow as neither `self.len()` nor `self.capacity()`
+        // can ever be `usize::MAX`. +1 as the ringbuffer always leaves one space empty.
         let target_cap = cmp::max(cmp::max(min_capacity, self.len()) + 1, MINIMUM_CAPACITY + 1)
             .next_power_of_two();
 
@@ -1038,6 +1036,7 @@ impl<T> VecDeque<T> {
     /// v.push_back(1);
     /// assert_eq!(v.len(), 1);
     /// ```
+    #[doc(alias = "length")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> usize {
         count(self.tail, self.head, self.cap())
@@ -1064,7 +1063,7 @@ impl<T> VecDeque<T> {
     where
         R: RangeBounds<usize>,
     {
-        let Range { start, end } = range.assert_len(self.len());
+        let Range { start, end } = slice::range(range, ..self.len());
         let tail = self.wrap_add(self.tail, start);
         let head = self.wrap_add(self.tail, end);
         (tail, head)
@@ -1080,8 +1079,6 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(deque_range)]
-    ///
     /// use std::collections::VecDeque;
     ///
     /// let v: VecDeque<_> = vec![1, 2, 3].into_iter().collect();
@@ -1093,7 +1090,7 @@ impl<T> VecDeque<T> {
     /// assert_eq!(all.len(), 3);
     /// ```
     #[inline]
-    #[unstable(feature = "deque_range", issue = "74217")]
+    #[stable(feature = "deque_range", since = "1.51.0")]
     pub fn range<R>(&self, range: R) -> Iter<'_, T>
     where
         R: RangeBounds<usize>,
@@ -1117,8 +1114,6 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(deque_range)]
-    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut v: VecDeque<_> = vec![1, 2, 3].into_iter().collect();
@@ -1134,7 +1129,7 @@ impl<T> VecDeque<T> {
     /// assert_eq!(v, vec![2, 4, 12]);
     /// ```
     #[inline]
-    #[unstable(feature = "deque_range", issue = "74217")]
+    #[stable(feature = "deque_range", since = "1.51.0")]
     pub fn range_mut<R>(&mut self, range: R) -> IterMut<'_, T>
     where
         R: RangeBounds<usize>,
@@ -1295,7 +1290,7 @@ impl<T> VecDeque<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn front(&self) -> Option<&T> {
-        if !self.is_empty() { Some(&self[0]) } else { None }
+        self.get(0)
     }
 
     /// Provides a mutable reference to the front element, or `None` if the
@@ -1319,7 +1314,7 @@ impl<T> VecDeque<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn front_mut(&mut self) -> Option<&mut T> {
-        if !self.is_empty() { Some(&mut self[0]) } else { None }
+        self.get_mut(0)
     }
 
     /// Provides a reference to the back element, or `None` if the `VecDeque` is
@@ -1339,7 +1334,7 @@ impl<T> VecDeque<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn back(&self) -> Option<&T> {
-        if !self.is_empty() { Some(&self[self.len() - 1]) } else { None }
+        self.get(self.len().wrapping_sub(1))
     }
 
     /// Provides a mutable reference to the back element, or `None` if the
@@ -1363,8 +1358,7 @@ impl<T> VecDeque<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn back_mut(&mut self) -> Option<&mut T> {
-        let len = self.len();
-        if !self.is_empty() { Some(&mut self[len - 1]) } else { None }
+        self.get_mut(self.len().wrapping_sub(1))
     }
 
     /// Removes the first element and returns it, or `None` if the `VecDeque` is
@@ -1469,6 +1463,8 @@ impl<T> VecDeque<T> {
 
     #[inline]
     fn is_contiguous(&self) -> bool {
+        // FIXME: Should we consider `head == 0` to mean
+        // that `self` is contiguous?
         self.tail <= self.head
     }
 
@@ -2198,7 +2194,7 @@ impl<T> VecDeque<T> {
         if self.is_contiguous() {
             let tail = self.tail;
             let head = self.head;
-            return unsafe { &mut self.buffer_as_mut_slice()[tail..head] };
+            return unsafe { RingSlices::ring_slices(self.buffer_as_mut_slice(), head, tail).0 };
         }
 
         let buf = self.buf.ptr();
@@ -2224,7 +2220,13 @@ impl<T> VecDeque<T> {
                 self.tail = 0;
                 self.head = len;
             }
-        } else if free >= self.head {
+        } else if free > self.head {
+            // FIXME: We currently do not consider ....ABCDEFGH
+            // to be contiguous because `head` would be `0` in this
+            // case. While we probably want to change this it
+            // isn't trivial as a few places expect `is_contiguous`
+            // to mean that we can just slice using `buf[tail..head]`.
+
             // there is enough free space to copy the head in one go,
             // this means that we first shift the tail forwards, and then
             // copy the head to the correct position.
@@ -2238,7 +2240,7 @@ impl<T> VecDeque<T> {
                 // ...ABCDEFGH.
 
                 self.tail = self.head;
-                self.head = self.tail + len;
+                self.head = self.wrap_add(self.tail, len);
             }
         } else {
             // free is smaller than both head and tail,
@@ -2278,7 +2280,7 @@ impl<T> VecDeque<T> {
 
         let tail = self.tail;
         let head = self.head;
-        unsafe { &mut self.buffer_as_mut_slice()[tail..head] }
+        unsafe { RingSlices::ring_slices(self.buffer_as_mut_slice(), head, tail).0 }
     }
 
     /// Rotates the double-ended queue `mid` places to the left.
@@ -2642,9 +2644,13 @@ impl<A: Ord> Ord for VecDeque<A> {
 impl<A: Hash> Hash for VecDeque<A> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.len().hash(state);
-        let (a, b) = self.as_slices();
-        Hash::hash_slice(a, state);
-        Hash::hash_slice(b, state);
+        // It's not possible to use Hash::hash_slice on slices
+        // returned by as_slices method as their length can vary
+        // in otherwise identical deques.
+        //
+        // Hasher only guarantees equivalence for the exact same
+        // set of calls to its methods.
+        self.iter().for_each(|elem| elem.hash(state));
     }
 }
 
@@ -2777,23 +2783,26 @@ impl<T> From<Vec<T>> for VecDeque<T> {
     /// This avoids reallocating where possible, but the conditions for that are
     /// strict, and subject to change, and so shouldn't be relied upon unless the
     /// `Vec<T>` came from `From<VecDeque<T>>` and hasn't been reallocated.
-    fn from(other: Vec<T>) -> Self {
-        unsafe {
-            let mut other = ManuallyDrop::new(other);
-            let other_buf = other.as_mut_ptr();
-            let mut buf = RawVec::from_raw_parts(other_buf, other.capacity());
-            let len = other.len();
-
-            // We need to extend the buf if it's not a power of two, too small
-            // or doesn't have at least one free space
-            if !buf.capacity().is_power_of_two()
-                || (buf.capacity() < (MINIMUM_CAPACITY + 1))
-                || (buf.capacity() == len)
-            {
-                let cap = cmp::max(buf.capacity() + 1, MINIMUM_CAPACITY + 1).next_power_of_two();
-                buf.reserve_exact(len, cap - len);
+    fn from(mut other: Vec<T>) -> Self {
+        let len = other.len();
+        if mem::size_of::<T>() == 0 {
+            // There's no actual allocation for ZSTs to worry about capacity,
+            // but `VecDeque` can't handle as much length as `Vec`.
+            assert!(len < MAXIMUM_ZST_CAPACITY, "capacity overflow");
+        } else {
+            // We need to resize if the capacity is not a power of two, too small or
+            // doesn't have at least one free space. We do this while it's still in
+            // the `Vec` so the items will drop on panic.
+            let min_cap = cmp::max(MINIMUM_CAPACITY, len) + 1;
+            let cap = cmp::max(min_cap, other.capacity()).next_power_of_two();
+            if other.capacity() != cap {
+                other.reserve_exact(cap - len);
             }
+        }
 
+        unsafe {
+            let (other_buf, len, capacity) = other.into_raw_parts();
+            let buf = RawVec::from_raw_parts(other_buf, capacity);
             VecDeque { tail: 0, head: len, buf }
         }
     }
@@ -2839,7 +2848,7 @@ impl<T> From<VecDeque<T>> for Vec<T> {
             let len = other.len();
             let cap = other.cap();
 
-            if other.head != 0 {
+            if other.tail != 0 {
                 ptr::copy(buf.add(other.tail), buf, len);
             }
             Vec::from_raw_parts(buf, len, cap)

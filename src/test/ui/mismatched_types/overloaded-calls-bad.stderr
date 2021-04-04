@@ -11,6 +11,12 @@ LL |     let ans = s();
    |               ^-- supplied 0 arguments
    |               |
    |               expected 1 argument
+   |
+note: associated function defined here
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
+   |
+LL |     extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
+   |                           ^^^^^^^^
 
 error[E0057]: this function takes 1 argument but 2 arguments were supplied
   --> $DIR/overloaded-calls-bad.rs:31:15
@@ -19,6 +25,12 @@ LL |     let ans = s("burma", "shave");
    |               ^ -------  ------- supplied 2 arguments
    |               |
    |               expected 1 argument
+   |
+note: associated function defined here
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
+   |
+LL |     extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
+   |                           ^^^^^^^^
 
 error: aborting due to 3 previous errors
 

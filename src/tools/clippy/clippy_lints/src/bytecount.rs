@@ -1,12 +1,12 @@
-use crate::utils::{
-    contains_name, get_pat_name, match_type, paths, single_segment_path, snippet_with_applicability, span_lint_and_sugg,
-};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::ty::match_type;
+use clippy_utils::{contains_name, get_pat_name, paths, single_segment_path};
 use if_chain::if_chain;
-use rustc_ast::ast::UintTy;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
+use rustc_middle::ty::{self, UintTy};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
 use rustc_span::Symbol;
@@ -29,7 +29,7 @@ declare_clippy_lint! {
     /// &vec.iter().filter(|x| **x == 0u8).count(); // use bytecount::count instead
     /// ```
     pub NAIVE_BYTECOUNT,
-    perf,
+    pedantic,
     "use of naive `<slice>.filter(|&x| x == y).count()` to count byte values"
 }
 
@@ -102,7 +102,7 @@ fn check_arg(name: Symbol, arg: Symbol, needle: &Expr<'_>) -> bool {
 
 fn get_path_name(expr: &Expr<'_>) -> Option<Symbol> {
     match expr.kind {
-        ExprKind::Box(ref e) | ExprKind::AddrOf(BorrowKind::Ref, _, ref e) | ExprKind::Unary(UnOp::UnDeref, ref e) => {
+        ExprKind::Box(ref e) | ExprKind::AddrOf(BorrowKind::Ref, _, ref e) | ExprKind::Unary(UnOp::Deref, ref e) => {
             get_path_name(e)
         },
         ExprKind::Block(ref b, _) => {

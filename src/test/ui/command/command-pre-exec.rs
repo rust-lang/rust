@@ -45,20 +45,6 @@ fn main() {
 
     let output = unsafe {
         Command::new(&me)
-            .arg("test2")
-            .pre_exec(|| {
-                env::set_var("FOO", "BAR");
-                Ok(())
-            })
-            .output()
-            .unwrap()
-    };
-    assert!(output.status.success());
-    assert!(output.stderr.is_empty());
-    assert!(output.stdout.is_empty());
-
-    let output = unsafe {
-        Command::new(&me)
             .arg("test3")
             .pre_exec(|| {
                 env::set_current_dir("/").unwrap();

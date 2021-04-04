@@ -1,63 +1,31 @@
-error[E0133]: assignment to non-`Copy` union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:21:5
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:31:5
    |
-LL |     u3.a = ManuallyDrop::new(T::default());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ assignment to non-`Copy` union field
+LL |     *(u.p) = 13;
+   |     ^^^^^^^^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: assignment to union field that might need dropping is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:35:5
+   |
+LL |     u.a = (RefCell::new(0), 1);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ assignment to union field that might need dropping
+   |
+   = note: the previous content of the field will be dropped, which causes undefined behavior if the field was not properly initialized
+
+error[E0133]: assignment to union field that might need dropping is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:36:5
+   |
+LL |     u.a.0 = RefCell::new(0);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ assignment to union field that might need dropping
    |
    = note: the previous content of the field will be dropped, which causes undefined behavior if the field was not properly initialized
 
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:22:6
+  --> $DIR/union-unsafe.rs:43:6
    |
 LL |     *u3.a = T::default();
-   |      ^^^^ access to union field
-   |
-   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
-
-error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:28:6
-   |
-LL |     *u3.a = T::default();
-   |      ^^^^ access to union field
-   |
-   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
-
-error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:36:13
-   |
-LL |     let a = u1.a;
-   |             ^^^^ access to union field
-   |
-   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
-
-error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:39:14
-   |
-LL |     let U1 { a } = u1;
-   |              ^ access to union field
-   |
-   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
-
-error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:40:20
-   |
-LL |     if let U1 { a: 12 } = u1 {}
-   |                    ^^ access to union field
-   |
-   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
-
-error[E0133]: assignment to non-`Copy` union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:44:5
-   |
-LL |     u2.a = ManuallyDrop::new(String::from("new"));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ assignment to non-`Copy` union field
-   |
-   = note: the previous content of the field will be dropped, which causes undefined behavior if the field was not properly initialized
-
-error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:45:6
-   |
-LL |     *u2.a = String::from("new");
    |      ^^^^ access to union field
    |
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
@@ -65,21 +33,53 @@ LL |     *u2.a = String::from("new");
 error[E0133]: access to union field is unsafe and requires unsafe function or block
   --> $DIR/union-unsafe.rs:49:6
    |
+LL |     *u3.a = T::default();
+   |      ^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:57:13
+   |
+LL |     let a = u1.a;
+   |             ^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:60:14
+   |
+LL |     let U1 { a } = u1;
+   |              ^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:61:20
+   |
+LL |     if let U1 { a: 12 } = u1 {}
+   |                    ^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:66:6
+   |
+LL |     *u2.a = String::from("new");
+   |      ^^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
+
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union-unsafe.rs:70:6
+   |
 LL |     *u3.a = 1;
    |      ^^^^ access to union field
    |
    = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
-error[E0133]: assignment to non-`Copy` union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:52:5
-   |
-LL |     u3.a = ManuallyDrop::new(String::from("new"));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ assignment to non-`Copy` union field
-   |
-   = note: the previous content of the field will be dropped, which causes undefined behavior if the field was not properly initialized
-
 error[E0133]: access to union field is unsafe and requires unsafe function or block
-  --> $DIR/union-unsafe.rs:53:6
+  --> $DIR/union-unsafe.rs:74:6
    |
 LL |     *u3.a = String::from("new");
    |      ^^^^ access to union field

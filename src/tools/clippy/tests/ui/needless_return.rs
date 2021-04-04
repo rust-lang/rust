@@ -86,6 +86,40 @@ fn borrows_but_not_last(value: bool) -> String {
     }
 }
 
+macro_rules! needed_return {
+    ($e:expr) => {
+        if $e > 3 {
+            return;
+        }
+    };
+}
+
+fn test_return_in_macro() {
+    // This will return and the macro below won't be executed. Removing the `return` from the macro
+    // will change semantics.
+    needed_return!(10);
+    needed_return!(0);
+}
+
+mod issue6501 {
+    fn foo(bar: Result<(), ()>) {
+        bar.unwrap_or_else(|_| return)
+    }
+
+    fn test_closure() {
+        let _ = || {
+            return;
+        };
+        let _ = || return;
+    }
+
+    struct Foo;
+    #[allow(clippy::unnecessary_lazy_evaluations)]
+    fn bar(res: Result<Foo, u8>) -> Foo {
+        res.unwrap_or_else(|_| return Foo)
+    }
+}
+
 fn main() {
     let _ = test_end_of_fn();
     let _ = test_no_semicolon();

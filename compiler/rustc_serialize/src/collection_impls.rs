@@ -11,12 +11,8 @@ use smallvec::{Array, SmallVec};
 
 impl<S: Encoder, A: Array<Item: Encodable<S>>> Encodable<S> for SmallVec<A> {
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_seq(self.len(), |s| {
-            for (i, e) in self.iter().enumerate() {
-                s.emit_seq_elt(i, |s| e.encode(s))?;
-            }
-            Ok(())
-        })
+        let slice: &[A::Item] = self;
+        slice.encode(s)
     }
 }
 
@@ -292,46 +288,28 @@ where
 
 impl<E: Encoder, T: Encodable<E>> Encodable<E> for Rc<[T]> {
     fn encode(&self, s: &mut E) -> Result<(), E::Error> {
-        s.emit_seq(self.len(), |s| {
-            for (index, e) in self.iter().enumerate() {
-                s.emit_seq_elt(index, |s| e.encode(s))?;
-            }
-            Ok(())
-        })
+        let slice: &[T] = self;
+        slice.encode(s)
     }
 }
 
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for Rc<[T]> {
     fn decode(d: &mut D) -> Result<Rc<[T]>, D::Error> {
-        d.read_seq(|d, len| {
-            let mut vec = Vec::with_capacity(len);
-            for index in 0..len {
-                vec.push(d.read_seq_elt(index, |d| Decodable::decode(d))?);
-            }
-            Ok(vec.into())
-        })
+        let vec: Vec<T> = Decodable::decode(d)?;
+        Ok(vec.into())
     }
 }
 
 impl<E: Encoder, T: Encodable<E>> Encodable<E> for Arc<[T]> {
     fn encode(&self, s: &mut E) -> Result<(), E::Error> {
-        s.emit_seq(self.len(), |s| {
-            for (index, e) in self.iter().enumerate() {
-                s.emit_seq_elt(index, |s| e.encode(s))?;
-            }
-            Ok(())
-        })
+        let slice: &[T] = self;
+        slice.encode(s)
     }
 }
 
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for Arc<[T]> {
     fn decode(d: &mut D) -> Result<Arc<[T]>, D::Error> {
-        d.read_seq(|d, len| {
-            let mut vec = Vec::with_capacity(len);
-            for index in 0..len {
-                vec.push(d.read_seq_elt(index, |d| Decodable::decode(d))?);
-            }
-            Ok(vec.into())
-        })
+        let vec: Vec<T> = Decodable::decode(d)?;
+        Ok(vec.into())
     }
 }

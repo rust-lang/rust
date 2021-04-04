@@ -130,6 +130,8 @@ pub trait Linker {
     fn group_end(&mut self);
     fn linker_plugin_lto(&mut self);
     fn add_eh_frame_header(&mut self) {}
+    fn add_no_exec(&mut self) {}
+    fn add_as_needed(&mut self) {}
     fn finalize(&mut self);
 }
 
@@ -313,6 +315,10 @@ impl<'a> Linker for GccLinker<'a> {
             LinkOutputKind::StaticDylib => {
                 self.cmd.arg("-static");
                 self.build_dylib(out_filename);
+            }
+            LinkOutputKind::WasiReactorExe => {
+                self.linker_arg("--entry");
+                self.linker_arg("_initialize");
             }
         }
         // VxWorks compiler driver introduced `--static-crt` flag specifically for rustc,
@@ -637,6 +643,20 @@ impl<'a> Linker for GccLinker<'a> {
     fn add_eh_frame_header(&mut self) {
         self.linker_arg("--eh-frame-hdr");
     }
+
+    fn add_no_exec(&mut self) {
+        if self.sess.target.is_like_windows {
+            self.linker_arg("--nxcompat");
+        } else if self.sess.target.linker_is_gnu {
+            self.linker_arg("-znoexecstack");
+        }
+    }
+
+    fn add_as_needed(&mut self) {
+        if self.sess.target.linker_is_gnu {
+            self.linker_arg("--as-needed");
+        }
+    }
 }
 
 pub struct MsvcLinker<'a> {
@@ -661,6 +681,9 @@ impl<'a> Linker for MsvcLinker<'a> {
                 let mut arg: OsString = "/IMPLIB:".into();
                 arg.push(out_filename.with_extension("dll.lib"));
                 self.cmd.arg(arg);
+            }
+            LinkOutputKind::WasiReactorExe => {
+                panic!("can't link as reactor on non-wasi target");
             }
         }
     }
@@ -870,6 +893,10 @@ impl<'a> Linker for MsvcLinker<'a> {
 
     fn linker_plugin_lto(&mut self) {
         // Do nothing
+    }
+
+    fn add_no_exec(&mut self) {
+        self.cmd.arg("/NXCOMPAT");
     }
 }
 
@@ -1084,6 +1111,10 @@ impl<'a> Linker for WasmLd<'a> {
             | LinkOutputKind::StaticPicExe => {}
             LinkOutputKind::DynamicDylib | LinkOutputKind::StaticDylib => {
                 self.cmd.arg("--no-entry");
+            }
+            LinkOutputKind::WasiReactorExe => {
+                self.cmd.arg("--entry");
+                self.cmd.arg("_initialize");
             }
         }
     }

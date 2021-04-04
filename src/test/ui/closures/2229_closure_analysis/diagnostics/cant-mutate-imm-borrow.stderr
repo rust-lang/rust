@@ -1,0 +1,21 @@
+warning: the feature `capture_disjoint_fields` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/cant-mutate-imm-borrow.rs:4:12
+   |
+LL | #![feature(capture_disjoint_fields)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
+
+error[E0596]: cannot borrow `z.0.0.0` as mutable, as it is behind a `&` reference
+  --> $DIR/cant-mutate-imm-borrow.rs:14:17
+   |
+LL |     let mut c = || {
+   |                 ^^ cannot borrow as mutable
+LL |
+LL |         z.0.0.0 = format!("X1");
+   |         - mutable borrow occurs due to use of `z.0.0.0` in closure
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0596`.

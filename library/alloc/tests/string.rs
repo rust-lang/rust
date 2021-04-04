@@ -1,7 +1,11 @@
 use std::borrow::Cow;
+use std::cell::Cell;
 use std::collections::TryReserveError::*;
+use std::ops::Bound;
 use std::ops::Bound::*;
+use std::ops::RangeBounds;
 use std::panic;
+use std::str;
 
 pub trait IntoCow<'a, B: ?Sized>
 where
@@ -362,6 +366,33 @@ fn remove_bad() {
 }
 
 #[test]
+fn test_remove_matches() {
+    let mut s = "abc".to_string();
+
+    s.remove_matches('b');
+    assert_eq!(s, "ac");
+    s.remove_matches('b');
+    assert_eq!(s, "ac");
+
+    let mut s = "abcb".to_string();
+
+    s.remove_matches('b');
+    assert_eq!(s, "ac");
+
+    let mut s = "ศไทย中华Việt Nam; foobarศ".to_string();
+    s.remove_matches('ศ');
+    assert_eq!(s, "ไทย中华Việt Nam; foobar");
+
+    let mut s = "".to_string();
+    s.remove_matches("");
+    assert_eq!(s, "");
+
+    let mut s = "aaaaa".to_string();
+    s.remove_matches('a');
+    assert_eq!(s, "");
+}
+
+#[test]
 fn test_retain() {
     let mut s = String::from("α_β_γ");
 
@@ -559,6 +590,52 @@ fn test_replace_range_unbounded() {
     let mut s = String::from("12345");
     s.replace_range(.., "");
     assert_eq!(s, "");
+}
+
+#[test]
+fn test_replace_range_evil_start_bound() {
+    struct EvilRange(Cell<bool>);
+
+    impl RangeBounds<usize> for EvilRange {
+        fn start_bound(&self) -> Bound<&usize> {
+            Bound::Included(if self.0.get() {
+                &1
+            } else {
+                self.0.set(true);
+                &0
+            })
+        }
+        fn end_bound(&self) -> Bound<&usize> {
+            Bound::Unbounded
+        }
+    }
+
+    let mut s = String::from("🦀");
+    s.replace_range(EvilRange(Cell::new(false)), "");
+    assert_eq!(Ok(""), str::from_utf8(s.as_bytes()));
+}
+
+#[test]
+fn test_replace_range_evil_end_bound() {
+    struct EvilRange(Cell<bool>);
+
+    impl RangeBounds<usize> for EvilRange {
+        fn start_bound(&self) -> Bound<&usize> {
+            Bound::Included(&0)
+        }
+        fn end_bound(&self) -> Bound<&usize> {
+            Bound::Excluded(if self.0.get() {
+                &3
+            } else {
+                self.0.set(true);
+                &4
+            })
+        }
+    }
+
+    let mut s = String::from("🦀");
+    s.replace_range(EvilRange(Cell::new(false)), "");
+    assert_eq!(Ok(""), str::from_utf8(s.as_bytes()));
 }
 
 #[test]

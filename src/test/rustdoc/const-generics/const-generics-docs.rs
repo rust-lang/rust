@@ -1,6 +1,5 @@
 // edition:2018
 // aux-build: extern_crate.rs
-#![feature(min_const_generics)]
 #![crate_name = "foo"]
 
 extern crate extern_crate;

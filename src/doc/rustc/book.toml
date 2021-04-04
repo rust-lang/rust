@@ -3,3 +3,6 @@ authors = ["The Rust Project Developers"]
 multilingual = false
 src = "src"
 title = "The rustc book"
+
+[output.html]
+git-repository-url = "https://github.com/rust-lang/rust/tree/master/src/doc/rustc"

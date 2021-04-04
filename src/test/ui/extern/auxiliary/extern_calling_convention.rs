@@ -15,7 +15,7 @@ pub extern "win64" fn foo(a: isize, b: isize, c: isize, d: isize) {
 
 #[inline(never)]
 #[cfg(not(target_arch = "x86_64"))]
-pub extern fn foo(a: isize, b: isize, c: isize, d: isize) {
+pub extern "C" fn foo(a: isize, b: isize, c: isize, d: isize) {
     assert_eq!(a, 1);
     assert_eq!(b, 2);
     assert_eq!(c, 3);

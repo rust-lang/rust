@@ -1,5 +1,5 @@
 error: constant expression depends on a generic parameter
-  --> $DIR/issue-68977.rs:35:44
+  --> $DIR/issue-68977.rs:34:44
    |
 LL |     FxpStorageHelper<INT_BITS, FRAC_BITS>: FxpStorage,
    |                                            ^^^^^^^^^^

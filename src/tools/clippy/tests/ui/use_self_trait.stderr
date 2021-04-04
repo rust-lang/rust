@@ -84,11 +84,5 @@ error: unnecessary structure name repetition
 LL |     fn mul(self, rhs: Bad) -> Bad {
    |                               ^^^ help: use the applicable keyword: `Self`
 
-error: unnecessary structure name repetition
-  --> $DIR/use_self_trait.rs:50:9
-   |
-LL |         Bad
-   |         ^^^ help: use the applicable keyword: `Self`
-
-error: aborting due to 15 previous errors
+error: aborting due to 14 previous errors
 

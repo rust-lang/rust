@@ -43,7 +43,7 @@ jobs:
           - name: mingw-check
             os: ubuntu-latest-xl
             env: {}
-          - name: x86_64-gnu-llvm-9
+          - name: x86_64-gnu-llvm-10
             os: ubuntu-latest-xl
             env: {}
           - name: x86_64-gnu-tools
@@ -63,7 +63,7 @@ jobs:
         run: "echo \"[CI_PR_NUMBER=$num]\""
         env:
           num: "${{ github.event.number }}"
-        if: "success() && !env.SKIP_JOBS && github.event_name == 'pull_request'"
+        if: "success() && !env.SKIP_JOB && github.event_name == 'pull_request'"
       - name: add extra environment variables
         run: src/ci/scripts/setup-environment.sh
         env:
@@ -265,7 +265,7 @@ jobs:
           - name: x86_64-gnu-distcheck
             os: ubuntu-latest-xl
             env: {}
-          - name: x86_64-gnu-llvm-9
+          - name: x86_64-gnu-llvm-10
             env:
               RUST_BACKTRACE: 1
             os: ubuntu-latest-xl
@@ -349,6 +349,7 @@ jobs:
             env:
               SCRIPT: src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --save-toolstates=/tmp/toolstate/toolstates.json"
+              DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
             os: windows-latest-xl
           - name: i686-mingw-1
             env:
@@ -424,7 +425,7 @@ jobs:
         run: "echo \"[CI_PR_NUMBER=$num]\""
         env:
           num: "${{ github.event.number }}"
-        if: "success() && !env.SKIP_JOBS && github.event_name == 'pull_request'"
+        if: "success() && !env.SKIP_JOB && github.event_name == 'pull_request'"
       - name: add extra environment variables
         run: src/ci/scripts/setup-environment.sh
         env:
@@ -531,7 +532,7 @@ jobs:
         run: "echo \"[CI_PR_NUMBER=$num]\""
         env:
           num: "${{ github.event.number }}"
-        if: "success() && !env.SKIP_JOBS && github.event_name == 'pull_request'"
+        if: "success() && !env.SKIP_JOB && github.event_name == 'pull_request'"
       - name: add extra environment variables
         run: src/ci/scripts/setup-environment.sh
         env:
@@ -621,7 +622,7 @@ jobs:
     if: "github.event_name == 'push' && github.ref == 'refs/heads/master' && github.repository == 'rust-lang-ci/rust'"
     steps:
       - name: checkout the source code
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
         with:
           fetch-depth: 2
       - name: publish toolstate

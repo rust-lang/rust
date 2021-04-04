@@ -1,0 +1,14 @@
+PRINT-BANG INPUT (DISPLAY): ;
+PRINT-BANG INPUT (DEBUG): TokenStream [
+    Group {
+        delimiter: None,
+        stream: TokenStream [
+            Punct {
+                ch: ';',
+                spacing: Alone,
+                span: $DIR/issue-80760-empty-stmt.rs:25:17: 25:18 (#0),
+            },
+        ],
+        span: $DIR/issue-80760-empty-stmt.rs:13:21: 13:23 (#4),
+    },
+]

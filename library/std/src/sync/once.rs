@@ -65,7 +65,7 @@
 //       must do so with Release ordering to make the result available.
 //     - `wait` inserts `Waiter` nodes as a pointer in `state_and_queue`, and
 //       needs to make the nodes available with Release ordering. The load in
-//       its `compare_and_swap` can be Relaxed because it only has to compare
+//       its `compare_exchange` can be Relaxed because it only has to compare
 //       the atomic, not to read other data.
 //     - `WaiterQueue::Drop` must see the `Waiter` nodes, so it must load
 //       `state_and_queue` with Acquire ordering.
@@ -110,7 +110,7 @@ use crate::thread::{self, Thread};
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Once {
-    // `state_and_queue` is actually an a pointer to a `Waiter` with extra state
+    // `state_and_queue` is actually a pointer to a `Waiter` with extra state
     // bits, so we add the `PhantomData` appropriately.
     state_and_queue: AtomicUsize,
     _marker: marker::PhantomData<*const Waiter>,
@@ -125,7 +125,7 @@ unsafe impl Send for Once {}
 
 /// State yielded to [`Once::call_once_force()`]’s closure parameter. The state
 /// can be used to query the poison status of the [`Once`].
-#[unstable(feature = "once_poison", issue = "33577")]
+#[stable(feature = "once_poison", since = "1.51.0")]
 #[derive(Debug)]
 pub struct OnceState {
     poisoned: bool,
@@ -280,8 +280,6 @@ impl Once {
     /// # Examples
     ///
     /// ```
-    /// #![feature(once_poison)]
-    ///
     /// use std::sync::Once;
     /// use std::thread;
     ///
@@ -301,13 +299,13 @@ impl Once {
     ///
     /// // call_once_force will still run and reset the poisoned state
     /// INIT.call_once_force(|state| {
-    ///     assert!(state.poisoned());
+    ///     assert!(state.is_poisoned());
     /// });
     ///
     /// // once any success happens, we stop propagating the poison
     /// INIT.call_once(|| {});
     /// ```
-    #[unstable(feature = "once_poison", issue = "33577")]
+    #[stable(feature = "once_poison", since = "1.51.0")]
     pub fn call_once_force<F>(&self, f: F)
     where
         F: FnOnce(&OnceState),
@@ -395,12 +393,13 @@ impl Once {
                 }
                 POISONED | INCOMPLETE => {
                     // Try to register this thread as the one RUNNING.
-                    let old = self.state_and_queue.compare_and_swap(
+                    let exchange_result = self.state_and_queue.compare_exchange(
                         state_and_queue,
                         RUNNING,
                         Ordering::Acquire,
+                        Ordering::Acquire,
                     );
-                    if old != state_and_queue {
+                    if let Err(old) = exchange_result {
                         state_and_queue = old;
                         continue;
                     }
@@ -452,8 +451,13 @@ fn wait(state_and_queue: &AtomicUsize, mut current_state: usize) {
 
         // Try to slide in the node at the head of the linked list, making sure
         // that another thread didn't just replace the head of the linked list.
-        let old = state_and_queue.compare_and_swap(current_state, me | RUNNING, Ordering::Release);
-        if old != current_state {
+        let exchange_result = state_and_queue.compare_exchange(
+            current_state,
+            me | RUNNING,
+            Ordering::Release,
+            Ordering::Relaxed,
+        );
+        if let Err(old) = exchange_result {
             current_state = old;
             continue;
         }
@@ -467,7 +471,7 @@ fn wait(state_and_queue: &AtomicUsize, mut current_state: usize) {
             // If the managing thread happens to signal and unpark us before we
             // can park ourselves, the result could be this thread never gets
             // unparked. Luckily `park` comes with the guarantee that if it got
-            // an `unpark` just before on an unparked thread is does not park.
+            // an `unpark` just before on an unparked thread it does not park.
             thread::park();
         }
         break;
@@ -520,8 +524,6 @@ impl OnceState {
     /// A poisoned [`Once`]:
     ///
     /// ```
-    /// #![feature(once_poison)]
-    ///
     /// use std::sync::Once;
     /// use std::thread;
     ///
@@ -534,24 +536,22 @@ impl OnceState {
     /// assert!(handle.join().is_err());
     ///
     /// INIT.call_once_force(|state| {
-    ///     assert!(state.poisoned());
+    ///     assert!(state.is_poisoned());
     /// });
     /// ```
     ///
     /// An unpoisoned [`Once`]:
     ///
     /// ```
-    /// #![feature(once_poison)]
-    ///
     /// use std::sync::Once;
     ///
     /// static INIT: Once = Once::new();
     ///
     /// INIT.call_once_force(|state| {
-    ///     assert!(!state.poisoned());
+    ///     assert!(!state.is_poisoned());
     /// });
-    #[unstable(feature = "once_poison", issue = "33577")]
-    pub fn poisoned(&self) -> bool {
+    #[stable(feature = "once_poison", since = "1.51.0")]
+    pub fn is_poisoned(&self) -> bool {
         self.poisoned
     }
 

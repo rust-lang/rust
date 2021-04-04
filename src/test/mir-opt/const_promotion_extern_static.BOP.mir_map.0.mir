@@ -1,0 +1,17 @@
+// MIR for `BOP` 0 mir_map
+
+static BOP: &i32 = {
+    let mut _0: &i32;                    // return place in scope 0 at $DIR/const-promotion-extern-static.rs:16:13: 16:17
+    let _1: &i32;                        // in scope 0 at $DIR/const-promotion-extern-static.rs:16:20: 16:23
+    let _2: i32;                         // in scope 0 at $DIR/const-promotion-extern-static.rs:16:21: 16:23
+
+    bb0: {
+        StorageLive(_1);                 // scope 0 at $DIR/const-promotion-extern-static.rs:16:20: 16:23
+        StorageLive(_2);                 // scope 0 at $DIR/const-promotion-extern-static.rs:16:21: 16:23
+        _2 = const 13_i32;               // scope 0 at $DIR/const-promotion-extern-static.rs:16:21: 16:23
+        _1 = &_2;                        // scope 0 at $DIR/const-promotion-extern-static.rs:16:20: 16:23
+        _0 = &(*_1);                     // scope 0 at $DIR/const-promotion-extern-static.rs:16:20: 16:23
+        StorageDead(_1);                 // scope 0 at $DIR/const-promotion-extern-static.rs:16:22: 16:23
+        return;                          // scope 0 at $DIR/const-promotion-extern-static.rs:16:1: 16:24
+    }
+}

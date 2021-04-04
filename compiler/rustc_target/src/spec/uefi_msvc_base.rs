@@ -9,7 +9,7 @@
 // the timer-interrupt. Device-drivers are required to use polling-based models. Furthermore, all
 // code runs in the same environment, no process separation is supported.
 
-use crate::spec::{LinkerFlavor, LldFlavor, PanicStrategy, TargetOptions};
+use crate::spec::{LinkerFlavor, LldFlavor, PanicStrategy, StackProbeType, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     let mut base = super::msvc_base::opts();
@@ -30,10 +30,10 @@ pub fn opts() -> TargetOptions {
         // exit (default for applications).
         "/subsystem:efi_application".to_string(),
     ];
-    base.pre_link_args.get_mut(&LinkerFlavor::Msvc).unwrap().extend(pre_link_args_msvc.clone());
+    base.pre_link_args.entry(LinkerFlavor::Msvc).or_default().extend(pre_link_args_msvc.clone());
     base.pre_link_args
-        .get_mut(&LinkerFlavor::Lld(LldFlavor::Link))
-        .unwrap()
+        .entry(LinkerFlavor::Lld(LldFlavor::Link))
+        .or_default()
         .extend(pre_link_args_msvc);
 
     TargetOptions {
@@ -43,7 +43,9 @@ pub fn opts() -> TargetOptions {
         exe_suffix: ".efi".to_string(),
         allows_weak_linkage: false,
         panic_strategy: PanicStrategy::Abort,
-        stack_probes: true,
+        // LLVM does not emit inline assembly because the LLVM target does not get considered as…
+        // "Windows".
+        stack_probes: StackProbeType::Call,
         singlethread: true,
         linker: Some("rust-lld".to_string()),
         ..base

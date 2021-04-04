@@ -1,5 +1,9 @@
 // Needed for `type Y = impl Trait<_>` and `type B = _;`
-#![feature(type_alias_impl_trait, associated_type_defaults)]
+#![feature(associated_type_defaults)]
+// revisions: min_tait full_tait
+#![feature(min_type_alias_impl_trait)]
+#![cfg_attr(full_tait, feature(type_alias_impl_trait))]
+//[full_tait]~^ WARN incomplete
 // This test checks that it is not possible to enable global type
 // inference by using the `_` type placeholder.
 
@@ -208,3 +212,15 @@ impl Qux for Struct {
     const D: _ = 42;
     //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
 }
+
+fn map<T>(_: fn() -> Option<&'static T>) -> Option<T> {
+    None
+}
+
+fn value() -> Option<&'static _> {
+//~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+    Option::<&'static u8>::None
+}
+
+const _: Option<_> = map(value);
+//~^ ERROR the type placeholder `_` is not allowed within types on item signatures

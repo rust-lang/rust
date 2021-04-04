@@ -1,5 +1,5 @@
 // Local js definitions:
-/* global getCurrentValue, getVirtualKey, updateLocalStorage, updateSystemTheme */
+/* global getSettingValue, getVirtualKey, onEachLazy, updateLocalStorage, updateSystemTheme */
 
 (function () {
     function changeSetting(settingName, value) {

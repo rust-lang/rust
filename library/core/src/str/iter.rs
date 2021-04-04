@@ -47,12 +47,7 @@ impl<'a> Iterator for Chars<'a> {
     #[inline]
     fn count(self) -> usize {
         // length in `char` is equal to the number of non-continuation bytes
-        let bytes_len = self.iter.len();
-        let mut cont_bytes = 0;
-        for &byte in self.iter {
-            cont_bytes += utf8_is_cont_byte(byte) as usize;
-        }
-        bytes_len - cont_bytes
+        self.iter.filter(|&&byte| !utf8_is_cont_byte(byte)).count()
     }
 
     #[inline]
@@ -326,10 +321,7 @@ unsafe impl TrustedLen for Bytes<'_> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl TrustedRandomAccess for Bytes<'_> {
-    #[inline]
-    fn may_have_side_effect() -> bool {
-        false
-    }
+    const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
 
 /// This macro generates a Clone impl for string pattern API
@@ -1174,7 +1166,7 @@ pub struct SplitAsciiWhitespace<'a> {
 /// See its documentation for more.
 ///
 /// [`split_inclusive`]: str::split_inclusive
-#[unstable(feature = "split_inclusive", issue = "72360")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 pub struct SplitInclusive<'a, P: Pattern<'a>>(pub(super) SplitInternal<'a, P>);
 
 #[stable(feature = "split_whitespace", since = "1.1.0")]
@@ -1208,6 +1200,30 @@ impl<'a> DoubleEndedIterator for SplitWhitespace<'a> {
 #[stable(feature = "fused", since = "1.26.0")]
 impl FusedIterator for SplitWhitespace<'_> {}
 
+impl<'a> SplitWhitespace<'a> {
+    /// Returns remainder of the splitted string
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(str_split_whitespace_as_str)]
+    ///
+    /// let mut split = "Mary had a little lamb".split_whitespace();
+    /// assert_eq!(split.as_str(), "Mary had a little lamb");
+    ///
+    /// split.next();
+    /// assert_eq!(split.as_str(), "had a little lamb");
+    ///
+    /// split.by_ref().for_each(drop);
+    /// assert_eq!(split.as_str(), "");
+    /// ```
+    #[inline]
+    #[unstable(feature = "str_split_whitespace_as_str", issue = "77998")]
+    pub fn as_str(&self) -> &'a str {
+        self.inner.iter.as_str()
+    }
+}
+
 #[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
 impl<'a> Iterator for SplitAsciiWhitespace<'a> {
     type Item = &'a str;
@@ -1239,7 +1255,36 @@ impl<'a> DoubleEndedIterator for SplitAsciiWhitespace<'a> {
 #[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
 impl FusedIterator for SplitAsciiWhitespace<'_> {}
 
-#[unstable(feature = "split_inclusive", issue = "72360")]
+impl<'a> SplitAsciiWhitespace<'a> {
+    /// Returns remainder of the splitted string
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(str_split_whitespace_as_str)]
+    ///
+    /// let mut split = "Mary had a little lamb".split_ascii_whitespace();
+    /// assert_eq!(split.as_str(), "Mary had a little lamb");
+    ///
+    /// split.next();
+    /// assert_eq!(split.as_str(), "had a little lamb");
+    ///
+    /// split.by_ref().for_each(drop);
+    /// assert_eq!(split.as_str(), "");
+    /// ```
+    #[inline]
+    #[unstable(feature = "str_split_whitespace_as_str", issue = "77998")]
+    pub fn as_str(&self) -> &'a str {
+        if self.inner.iter.iter.finished {
+            return "";
+        }
+
+        // SAFETY: Slice is created from str.
+        unsafe { crate::str::from_utf8_unchecked(&self.inner.iter.iter.v) }
+    }
+}
+
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<'a, P: Pattern<'a>> Iterator for SplitInclusive<'a, P> {
     type Item = &'a str;
 
@@ -1249,7 +1294,7 @@ impl<'a, P: Pattern<'a>> Iterator for SplitInclusive<'a, P> {
     }
 }
 
-#[unstable(feature = "split_inclusive", issue = "72360")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<'a, P: Pattern<'a, Searcher: fmt::Debug>> fmt::Debug for SplitInclusive<'a, P> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SplitInclusive").field("0", &self.0).finish()
@@ -1257,14 +1302,14 @@ impl<'a, P: Pattern<'a, Searcher: fmt::Debug>> fmt::Debug for SplitInclusive<'a,
 }
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
-#[unstable(feature = "split_inclusive", issue = "72360")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<'a, P: Pattern<'a, Searcher: Clone>> Clone for SplitInclusive<'a, P> {
     fn clone(&self) -> Self {
         SplitInclusive(self.0.clone())
     }
 }
 
-#[unstable(feature = "split_inclusive", issue = "72360")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<'a, P: Pattern<'a, Searcher: ReverseSearcher<'a>>> DoubleEndedIterator
     for SplitInclusive<'a, P>
 {
@@ -1274,7 +1319,7 @@ impl<'a, P: Pattern<'a, Searcher: ReverseSearcher<'a>>> DoubleEndedIterator
     }
 }
 
-#[unstable(feature = "split_inclusive", issue = "72360")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<'a, P: Pattern<'a>> FusedIterator for SplitInclusive<'a, P> {}
 
 impl<'a, P: Pattern<'a>> SplitInclusive<'a, P> {
@@ -1284,7 +1329,6 @@ impl<'a, P: Pattern<'a>> SplitInclusive<'a, P> {
     ///
     /// ```
     /// #![feature(str_split_inclusive_as_str)]
-    /// #![feature(split_inclusive)]
     /// let mut split = "Mary had a little lamb".split_inclusive(' ');
     /// assert_eq!(split.as_str(), "Mary had a little lamb");
     /// split.next();

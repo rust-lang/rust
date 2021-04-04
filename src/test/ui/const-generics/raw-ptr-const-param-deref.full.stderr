@@ -1,11 +1,11 @@
 error: using raw pointers as const generic parameters is forbidden
-  --> $DIR/raw-ptr-const-param-deref.rs:10:23
+  --> $DIR/raw-ptr-const-param-deref.rs:9:23
    |
 LL | struct Const<const P: *const u32>;
    |                       ^^^^^^^^^^
 
 error: using raw pointers as const generic parameters is forbidden
-  --> $DIR/raw-ptr-const-param-deref.rs:12:15
+  --> $DIR/raw-ptr-const-param-deref.rs:11:15
    |
 LL | impl<const P: *const u32> Const<P> {
    |               ^^^^^^^^^^

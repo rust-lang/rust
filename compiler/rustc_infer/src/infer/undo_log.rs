@@ -15,7 +15,7 @@ pub struct Snapshot<'tcx> {
     _marker: PhantomData<&'tcx ()>,
 }
 
-/// Records the 'undo' data fora single operation that affects some form of inference variable.
+/// Records the "undo" data for a single operation that affects some form of inference variable.
 pub(crate) enum UndoLog<'tcx> {
     TypeVariables(type_variable::UndoLog<'tcx>),
     ConstUnificationTable(sv::UndoLog<ut::Delegate<ty::ConstVid<'tcx>>>),
@@ -165,10 +165,6 @@ impl<'tcx> InferCtxtInner<'tcx> {
 }
 
 impl<'tcx> InferCtxtUndoLogs<'tcx> {
-    pub fn actions_since_snapshot(&self, snapshot: &Snapshot<'tcx>) -> &[UndoLog<'tcx>] {
-        &self.logs[snapshot.undo_len..]
-    }
-
     pub fn start_snapshot(&mut self) -> Snapshot<'tcx> {
         self.num_open_snapshots += 1;
         Snapshot { undo_len: self.logs.len(), _marker: PhantomData }

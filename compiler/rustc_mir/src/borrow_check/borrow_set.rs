@@ -149,7 +149,7 @@ impl<'tcx> BorrowSet<'tcx> {
     }
 
     crate fn activations_at_location(&self, location: Location) -> &[BorrowIndex] {
-        self.activation_map.get(&location).map(|activations| &activations[..]).unwrap_or(&[])
+        self.activation_map.get(&location).map_or(&[], |activations| &activations[..])
     }
 
     crate fn len(&self) -> usize {

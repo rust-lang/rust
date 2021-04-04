@@ -1,0 +1,26 @@
+warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/issue-50452-fail.rs:1:12
+   |
+LL | #![feature(specialization)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
+   = help: consider using `min_specialization` instead, which is more stable and complete
+
+error[E0520]: `foo` specializes an item from a parent `impl`, but that item is not marked `default`
+  --> $DIR/issue-50452-fail.rs:10:5
+   |
+LL |       fn foo() {}
+   |       ^^^^^^^^^^^ cannot specialize default item `foo`
+...
+LL | / impl<T> Foo for T {
+LL | |     fn foo() {}
+LL | | }
+   | |_- parent `impl` is here
+   |
+   = note: to specialize, `foo` in the parent `impl` must be marked `default`
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0520`.

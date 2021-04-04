@@ -1,7 +1,6 @@
 // run-pass
 // revisions: full min
 #![cfg_attr(full, feature(const_generics))]
-#![cfg_attr(min, feature(min_const_generics))]
 #![allow(incomplete_features)]
 
 struct Foo;

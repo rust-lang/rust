@@ -86,7 +86,7 @@ pub fn my_id() -> u32 {
         if MY_ID == 0 {
             let mut cur = NEXT_ID.load(SeqCst);
             MY_ID = loop {
-                let next = cur.checked_add(1).unwrap_or_else(|| crate::arch::wasm32::unreachable());
+                let next = cur.checked_add(1).unwrap_or_else(|| crate::process::abort());
                 match NEXT_ID.compare_exchange(cur, next, SeqCst, SeqCst) {
                     Ok(_) => break next,
                     Err(i) => cur = i,

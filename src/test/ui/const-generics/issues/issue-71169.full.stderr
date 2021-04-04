@@ -1,11 +1,11 @@
 error[E0770]: the type of const parameters must not depend on other generic parameters
-  --> $DIR/issue-71169.rs:6:43
+  --> $DIR/issue-71169.rs:5:43
    |
 LL | fn foo<const LEN: usize, const DATA: [u8; LEN]>() {}
    |                                           ^^^ the type must not depend on the parameter `LEN`
 
 error: constant expression depends on a generic parameter
-  --> $DIR/issue-71169.rs:11:14
+  --> $DIR/issue-71169.rs:10:14
    |
 LL |     foo::<4, DATA>();
    |              ^^^^

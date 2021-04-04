@@ -45,6 +45,10 @@ check-aux:
 		src/tools/cargo \
 		src/tools/cargotest \
 		$(BOOTSTRAP_ARGS)
+check-aux-and-gui: check-aux
+	$(Q)$(BOOTSTRAP) test --stage 2 \
+		src/test/rustdoc-gui \
+		$(BOOTSTRAP_ARGS)
 check-bootstrap:
 	$(Q)$(CFG_PYTHON) $(CFG_SRC_DIR)src/bootstrap/bootstrap_test.py
 dist:
@@ -66,7 +70,6 @@ check-stage2-T-x86_64-unknown-linux-musl-H-x86_64-unknown-linux-gnu:
 
 TESTS_IN_2 := \
 	src/test/ui \
-	src/test/compile-fail \
 	src/tools/linkchecker
 
 ci-subset-1:
@@ -75,8 +78,7 @@ ci-subset-2:
 	$(Q)$(BOOTSTRAP) test --stage 2 $(TESTS_IN_2)
 
 TESTS_IN_MINGW_2 := \
-	src/test/ui \
-	src/test/compile-fail
+	src/test/ui
 
 ci-mingw-subset-1:
 	$(Q)$(BOOTSTRAP) test --stage 2 $(TESTS_IN_MINGW_2:%=--exclude %)

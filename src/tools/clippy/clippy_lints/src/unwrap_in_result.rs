@@ -1,6 +1,10 @@
-use crate::utils::{is_type_diagnostic_item, method_chain_args, return_ty, span_lint_and_then};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::{method_chain_args, return_ty};
 use if_chain::if_chain;
 use rustc_hir as hir;
+use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::{Expr, ImplItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty;
@@ -57,17 +61,14 @@ impl<'tcx> LateLintPass<'tcx> for UnwrapInResult {
             // first check if it's a method or function
             if let hir::ImplItemKind::Fn(ref _signature, _) = impl_item.kind;
             // checking if its return type is `result` or `option`
-            if is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id), sym::result_type)
-                || is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id), sym::option_type);
+            if is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id()), sym::result_type)
+                || is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id()), sym::option_type);
             then {
                 lint_impl_body(cx, impl_item.span, impl_item);
             }
         }
     }
 }
-
-use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::{Expr, ImplItemKind};
 
 struct FindExpectUnwrap<'a, 'tcx> {
     lcx: &'a LateContext<'tcx>,
@@ -114,10 +115,9 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_item: &'tc
         if let ImplItemKind::Fn(_, body_id) = impl_item.kind;
         then {
             let body = cx.tcx.hir().body(body_id);
-            let impl_item_def_id = cx.tcx.hir().local_def_id(impl_item.hir_id);
             let mut fpu = FindExpectUnwrap {
                 lcx: cx,
-                typeck_results: cx.tcx.typeck(impl_item_def_id),
+                typeck_results: cx.tcx.typeck(impl_item.def_id),
                 result: Vec::new(),
             };
             fpu.visit_expr(&body.value);

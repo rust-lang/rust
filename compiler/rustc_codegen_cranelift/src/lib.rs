@@ -1,18 +1,8 @@
-#![feature(
-    rustc_private,
-    decl_macro,
-    type_alias_impl_trait,
-    associated_type_bounds,
-    never_type,
-    try_blocks,
-    hash_drain_filter
-)]
+#![feature(rustc_private, decl_macro, never_type, hash_drain_filter)]
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
 #![warn(unreachable_pub)]
 
-#[cfg(feature = "jit")]
-extern crate libc;
 extern crate snap;
 #[macro_use]
 extern crate rustc_middle;
@@ -26,7 +16,6 @@ extern crate rustc_incremental;
 extern crate rustc_index;
 extern crate rustc_session;
 extern crate rustc_span;
-extern crate rustc_symbol_mangling;
 extern crate rustc_target;
 
 // This prevents duplicating functions and statics that are already part of the host rustc process.
@@ -34,6 +23,7 @@ extern crate rustc_target;
 extern crate rustc_driver;
 
 use std::any::Any;
+use std::str::FromStr;
 
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::CodegenResults;
@@ -53,12 +43,12 @@ mod abi;
 mod allocator;
 mod analyze;
 mod archive;
-mod atomic_shim;
 mod backend;
 mod base;
 mod cast;
 mod codegen_i128;
 mod common;
+mod compiler_builtins;
 mod constant;
 mod debuginfo;
 mod discriminant;
@@ -81,7 +71,6 @@ mod vtable;
 mod prelude {
     pub(crate) use std::convert::{TryFrom, TryInto};
 
-    pub(crate) use rustc_ast::ast::{FloatTy, IntTy, UintTy};
     pub(crate) use rustc_span::Span;
 
     pub(crate) use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -89,7 +78,8 @@ mod prelude {
     pub(crate) use rustc_middle::mir::{self, *};
     pub(crate) use rustc_middle::ty::layout::{self, TyAndLayout};
     pub(crate) use rustc_middle::ty::{
-        self, FnSig, Instance, InstanceDef, ParamEnv, Ty, TyCtxt, TypeAndMut, TypeFoldable,
+        self, FloatTy, Instance, InstanceDef, IntTy, ParamEnv, Ty, TyCtxt, TypeAndMut,
+        TypeFoldable, UintTy,
     };
     pub(crate) use rustc_target::abi::{Abi, LayoutOf, Scalar, Size, VariantIdx};
 
@@ -129,9 +119,9 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
     }
 }
 
-struct CodegenCx<'tcx, M: Module> {
+struct CodegenCx<'m, 'tcx: 'm> {
     tcx: TyCtxt<'tcx>,
-    module: M,
+    module: &'m mut dyn Module,
     global_asm: String,
     constants_cx: ConstantCx,
     cached_context: Context,
@@ -140,14 +130,20 @@ struct CodegenCx<'tcx, M: Module> {
     unwind_context: UnwindContext<'tcx>,
 }
 
-impl<'tcx, M: Module> CodegenCx<'tcx, M> {
-    fn new(tcx: TyCtxt<'tcx>, module: M, debug_info: bool) -> Self {
-        let unwind_context = UnwindContext::new(tcx, module.isa());
-        let debug_context = if debug_info {
-            Some(DebugContext::new(tcx, module.isa()))
-        } else {
-            None
-        };
+impl<'m, 'tcx> CodegenCx<'m, 'tcx> {
+    fn new(
+        tcx: TyCtxt<'tcx>,
+        backend_config: BackendConfig,
+        module: &'m mut dyn Module,
+        debug_info: bool,
+    ) -> Self {
+        let unwind_context = UnwindContext::new(
+            tcx,
+            module.isa(),
+            matches!(backend_config.codegen_mode, CodegenMode::Aot),
+        );
+        let debug_context =
+            if debug_info { Some(DebugContext::new(tcx, module.isa())) } else { None };
         CodegenCx {
             tcx,
             module,
@@ -160,30 +156,70 @@ impl<'tcx, M: Module> CodegenCx<'tcx, M> {
         }
     }
 
-    fn finalize(mut self) -> (M, String, Option<DebugContext<'tcx>>, UnwindContext<'tcx>) {
-        self.constants_cx.finalize(self.tcx, &mut self.module);
-        (
-            self.module,
-            self.global_asm,
-            self.debug_context,
-            self.unwind_context,
-        )
+    fn finalize(self) -> (String, Option<DebugContext<'tcx>>, UnwindContext<'tcx>) {
+        self.constants_cx.finalize(self.tcx, self.module);
+        (self.global_asm, self.debug_context, self.unwind_context)
     }
 }
 
 #[derive(Copy, Clone, Debug)]
+pub enum CodegenMode {
+    Aot,
+    Jit,
+    JitLazy,
+}
+
+impl Default for CodegenMode {
+    fn default() -> Self {
+        CodegenMode::Aot
+    }
+}
+
+impl FromStr for CodegenMode {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "aot" => Ok(CodegenMode::Aot),
+            "jit" => Ok(CodegenMode::Jit),
+            "jit-lazy" => Ok(CodegenMode::JitLazy),
+            _ => Err(format!("Unknown codegen mode `{}`", s)),
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, Default)]
 pub struct BackendConfig {
-    pub use_jit: bool,
+    pub codegen_mode: CodegenMode,
+}
+
+impl BackendConfig {
+    fn from_opts(opts: &[String]) -> Result<Self, String> {
+        let mut config = BackendConfig::default();
+        for opt in opts {
+            if let Some((name, value)) = opt.split_once('=') {
+                match name {
+                    "mode" => config.codegen_mode = value.parse()?,
+                    _ => return Err(format!("Unknown option `{}`", name)),
+                }
+            } else {
+                return Err(format!("Invalid option `{}`", opt));
+            }
+        }
+        Ok(config)
+    }
 }
 
 pub struct CraneliftCodegenBackend {
-    pub config: BackendConfig,
+    pub config: Option<BackendConfig>,
 }
 
 impl CodegenBackend for CraneliftCodegenBackend {
     fn init(&self, sess: &Session) {
-        if sess.lto() != rustc_session::config::Lto::No && sess.opts.cg.embed_bitcode {
-            sess.warn("LTO is not supported. You may get a linker error.");
+        use rustc_session::config::Lto;
+        match sess.lto() {
+            Lto::No | Lto::ThinLocal => {}
+            Lto::Thin | Lto::Fat => sess.warn("LTO is not supported. You may get a linker error."),
         }
     }
 
@@ -198,17 +234,19 @@ impl CodegenBackend for CraneliftCodegenBackend {
         vec![]
     }
 
-    fn codegen_crate<'tcx>(
+    fn codegen_crate(
         &self,
-        tcx: TyCtxt<'tcx>,
+        tcx: TyCtxt<'_>,
         metadata: EncodedMetadata,
         need_metadata_module: bool,
     ) -> Box<dyn Any> {
-        let res = driver::codegen_crate(tcx, metadata, need_metadata_module, self.config);
-
-        rustc_symbol_mangling::test::report_symbol_names(tcx);
-
-        res
+        let config = if let Some(config) = self.config {
+            config
+        } else {
+            BackendConfig::from_opts(&tcx.sess.opts.cg.llvm_args)
+                .unwrap_or_else(|err| tcx.sess.fatal(&err))
+        };
+        driver::codegen_crate(tcx, metadata, need_metadata_module, config)
     }
 
     fn join_codegen(
@@ -229,18 +267,14 @@ impl CodegenBackend for CraneliftCodegenBackend {
     ) -> Result<(), ErrorReported> {
         use rustc_codegen_ssa::back::link::link_binary;
 
-        let _timer = sess.prof.generic_activity("link_crate");
-
-        sess.time("linking", || {
-            let target_cpu = crate::target_triple(sess).to_string();
-            link_binary::<crate::archive::ArArchiveBuilder<'_>>(
-                sess,
-                &codegen_results,
-                outputs,
-                &codegen_results.crate_name.as_str(),
-                &target_cpu,
-            );
-        });
+        let target_cpu = crate::target_triple(sess).to_string();
+        link_binary::<crate::archive::ArArchiveBuilder<'_>>(
+            sess,
+            &codegen_results,
+            outputs,
+            &codegen_results.crate_name.as_str(),
+            &target_cpu,
+        );
 
         Ok(())
     }
@@ -250,28 +284,17 @@ fn target_triple(sess: &Session) -> target_lexicon::Triple {
     sess.target.llvm_target.parse().unwrap()
 }
 
-fn build_isa(sess: &Session, enable_pic: bool) -> Box<dyn isa::TargetIsa + 'static> {
+fn build_isa(sess: &Session) -> Box<dyn isa::TargetIsa + 'static> {
     use target_lexicon::BinaryFormat;
 
     let target_triple = crate::target_triple(sess);
 
     let mut flags_builder = settings::builder();
-    if enable_pic {
-        flags_builder.enable("is_pic").unwrap();
-    } else {
-        flags_builder.set("is_pic", "false").unwrap();
-    }
+    flags_builder.enable("is_pic").unwrap();
     flags_builder.set("enable_probestack", "false").unwrap(); // __cranelift_probestack is not provided
-    flags_builder
-        .set(
-            "enable_verifier",
-            if cfg!(debug_assertions) {
-                "true"
-            } else {
-                "false"
-            },
-        )
-        .unwrap();
+    let enable_verifier =
+        cfg!(debug_assertions) || std::env::var("CG_CLIF_ENABLE_VERIFIER").is_ok();
+    flags_builder.set("enable_verifier", if enable_verifier { "true" } else { "false" }).unwrap();
 
     let tls_model = match target_triple.binary_format {
         BinaryFormat::Elf => "elf_gd",
@@ -283,25 +306,23 @@ fn build_isa(sess: &Session, enable_pic: bool) -> Box<dyn isa::TargetIsa + 'stat
 
     flags_builder.set("enable_simd", "true").unwrap();
 
-    // FIXME(CraneStation/cranelift#732) fix LICM in presence of jump tables
-    /*
+    flags_builder.set("enable_llvm_abi_extensions", "true").unwrap();
+
     use rustc_session::config::OptLevel;
     match sess.opts.optimize {
         OptLevel::No => {
             flags_builder.set("opt_level", "none").unwrap();
         }
         OptLevel::Less | OptLevel::Default => {}
-        OptLevel::Aggressive => {
+        OptLevel::Size | OptLevel::SizeMin | OptLevel::Aggressive => {
             flags_builder.set("opt_level", "speed_and_size").unwrap();
         }
-        OptLevel::Size | OptLevel::SizeMin => {
-            sess.warn("Optimizing for size is not supported. Just ignoring the request");
-        }
-    }*/
+    }
 
     let flags = settings::Flags::new(flags_builder);
 
-    let mut isa_builder = cranelift_codegen::isa::lookup(target_triple).unwrap();
+    let variant = cranelift_codegen::isa::BackendVariant::MachInst;
+    let mut isa_builder = cranelift_codegen::isa::lookup_variant(target_triple, variant).unwrap();
     // Don't use "haswell", as it implies `has_lzcnt`.macOS CI is still at Ivy Bridge EP, so `lzcnt`
     // is interpreted as `bsr`.
     isa_builder.enable("nehalem").unwrap();
@@ -311,7 +332,5 @@ fn build_isa(sess: &Session, enable_pic: bool) -> Box<dyn isa::TargetIsa + 'stat
 /// This is the entrypoint for a hot plugged rustc_codegen_cranelift
 #[no_mangle]
 pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
-    Box::new(CraneliftCodegenBackend {
-        config: BackendConfig { use_jit: false },
-    })
+    Box::new(CraneliftCodegenBackend { config: None })
 }

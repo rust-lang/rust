@@ -1,24 +1,35 @@
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::subst::GenericArg;
 use rustc_middle::ty::{self, ParamEnvAnd, TyCtxt, TypeFoldable};
 use rustc_trait_selection::traits::query::normalize::AtExt;
 use rustc_trait_selection::traits::{Normalized, ObligationCause};
 use std::sync::atomic::Ordering;
 
 crate fn provide(p: &mut Providers) {
-    *p = Providers { normalize_generic_arg_after_erasing_regions, ..*p };
+    *p = Providers {
+        normalize_generic_arg_after_erasing_regions: |tcx, goal| {
+            debug!("normalize_generic_arg_after_erasing_regions(goal={:#?})", goal);
+
+            tcx.sess
+                .perf_stats
+                .normalize_generic_arg_after_erasing_regions
+                .fetch_add(1, Ordering::Relaxed);
+            normalize_after_erasing_regions(tcx, goal)
+        },
+        normalize_mir_const_after_erasing_regions: |tcx, goal| {
+            normalize_after_erasing_regions(tcx, goal)
+        },
+        ..*p
+    };
 }
 
-fn normalize_generic_arg_after_erasing_regions<'tcx>(
+#[instrument(level = "debug", skip(tcx))]
+fn normalize_after_erasing_regions<'tcx, T: TypeFoldable<'tcx> + PartialEq + Copy>(
     tcx: TyCtxt<'tcx>,
-    goal: ParamEnvAnd<'tcx, GenericArg<'tcx>>,
-) -> GenericArg<'tcx> {
-    debug!("normalize_generic_arg_after_erasing_regions(goal={:#?})", goal);
-
+    goal: ParamEnvAnd<'tcx, T>,
+) -> T {
     let ParamEnvAnd { param_env, value } = goal;
-    tcx.sess.perf_stats.normalize_generic_arg_after_erasing_regions.fetch_add(1, Ordering::Relaxed);
     tcx.infer_ctxt().enter(|infcx| {
         let cause = ObligationCause::dummy();
         match infcx.at(&cause, param_env).normalize(value) {
@@ -46,16 +57,16 @@ fn normalize_generic_arg_after_erasing_regions<'tcx>(
 }
 
 fn not_outlives_predicate(p: &ty::Predicate<'tcx>) -> bool {
-    match p.skip_binders() {
-        ty::PredicateAtom::RegionOutlives(..) | ty::PredicateAtom::TypeOutlives(..) => false,
-        ty::PredicateAtom::Trait(..)
-        | ty::PredicateAtom::Projection(..)
-        | ty::PredicateAtom::WellFormed(..)
-        | ty::PredicateAtom::ObjectSafe(..)
-        | ty::PredicateAtom::ClosureKind(..)
-        | ty::PredicateAtom::Subtype(..)
-        | ty::PredicateAtom::ConstEvaluatable(..)
-        | ty::PredicateAtom::ConstEquate(..)
-        | ty::PredicateAtom::TypeWellFormedFromEnv(..) => true,
+    match p.kind().skip_binder() {
+        ty::PredicateKind::RegionOutlives(..) | ty::PredicateKind::TypeOutlives(..) => false,
+        ty::PredicateKind::Trait(..)
+        | ty::PredicateKind::Projection(..)
+        | ty::PredicateKind::WellFormed(..)
+        | ty::PredicateKind::ObjectSafe(..)
+        | ty::PredicateKind::ClosureKind(..)
+        | ty::PredicateKind::Subtype(..)
+        | ty::PredicateKind::ConstEvaluatable(..)
+        | ty::PredicateKind::ConstEquate(..)
+        | ty::PredicateKind::TypeWellFormedFromEnv(..) => true,
     }
 }

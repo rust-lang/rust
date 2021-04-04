@@ -5,8 +5,8 @@ use syn::parse::{Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::{
-    braced, parenthesized, parse_macro_input, AttrStyle, Attribute, Block, Error, Expr, Ident,
-    ReturnType, Token, Type,
+    braced, parenthesized, parse_macro_input, parse_quote, AttrStyle, Attribute, Block, Error,
+    Expr, Ident, ReturnType, Token, Type,
 };
 
 mod kw {
@@ -97,7 +97,7 @@ impl Parse for QueryModifier {
             Ok(QueryModifier::Cache(args, block))
         } else if modifier == "load_cached" {
             // Parse a load_cached modifier like:
-            // `load_cached(tcx, id) { tcx.queries.on_disk_cache.try_load_query_result(tcx, id) }`
+            // `load_cached(tcx, id) { tcx.on_disk_cache.try_load_query_result(tcx, id) }`
             let args;
             parenthesized!(args in input);
             let tcx = args.parse()?;
@@ -189,25 +189,6 @@ impl<T: Parse> Parse for List<T> {
     }
 }
 
-/// A named group containing queries.
-///
-/// For now, the name is not used any more, but the capability remains interesting for future
-/// developments of the query system.
-struct Group {
-    #[allow(unused)]
-    name: Ident,
-    queries: List<Query>,
-}
-
-impl Parse for Group {
-    fn parse(input: ParseStream<'_>) -> Result<Self> {
-        let name: Ident = input.parse()?;
-        let content;
-        braced!(content in input);
-        Ok(Group { name, queries: content.parse()? })
-    }
-}
-
 struct QueryModifiers {
     /// The description of the query.
     desc: (Option<Ident>, Punctuated<Expr, Token![,]>),
@@ -272,6 +253,40 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
                 if desc.is_some() {
                     panic!("duplicate modifier `desc` for query `{}`", query.name);
                 }
+                // If there are no doc-comments, give at least some idea of what
+                // it does by showing the query description.
+                if query.doc_comments.is_empty() {
+                    use ::syn::*;
+                    let mut list = list.iter();
+                    let format_str: String = match list.next() {
+                        Some(&Expr::Lit(ExprLit { lit: Lit::Str(ref lit_str), .. })) => {
+                            lit_str.value().replace("`{}`", "{}") // We add them later anyways for consistency
+                        }
+                        _ => panic!("Expected a string literal"),
+                    };
+                    let mut fmt_fragments = format_str.split("{}");
+                    let mut doc_string = fmt_fragments.next().unwrap().to_string();
+                    list.map(::quote::ToTokens::to_token_stream).zip(fmt_fragments).for_each(
+                        |(tts, next_fmt_fragment)| {
+                            use ::core::fmt::Write;
+                            write!(
+                                &mut doc_string,
+                                " `{}` {}",
+                                tts.to_string().replace(" . ", "."),
+                                next_fmt_fragment,
+                            )
+                            .unwrap();
+                        },
+                    );
+                    let doc_string = format!(
+                        "[query description - consider adding a doc-comment!] {}",
+                        doc_string
+                    );
+                    let comment = parse_quote! {
+                        #[doc = #doc_string]
+                    };
+                    query.doc_comments.push(comment);
+                }
                 desc = Some((tcx, list));
             }
             QueryModifier::FatalCycle => {
@@ -329,7 +344,6 @@ fn add_query_description_impl(
     impls: &mut proc_macro2::TokenStream,
 ) {
     let name = &query.name;
-    let arg = &query.arg;
     let key = &query.key.0;
 
     // Find out if we should cache the query on disk
@@ -339,7 +353,7 @@ fn add_query_description_impl(
             quote! {
                 #[inline]
                 fn try_load_from_disk(
-                    #tcx: TyCtxt<'tcx>,
+                    #tcx: QueryCtxt<'tcx>,
                     #id: SerializedDepNodeIndex
                 ) -> Option<Self::Value> {
                     #block
@@ -350,10 +364,10 @@ fn add_query_description_impl(
             quote! {
                 #[inline]
                 fn try_load_from_disk(
-                    tcx: TyCtxt<'tcx>,
+                    tcx: QueryCtxt<'tcx>,
                     id: SerializedDepNodeIndex
                 ) -> Option<Self::Value> {
-                    tcx.queries.on_disk_cache.as_ref().and_then(|c| c.try_load_query_result(tcx, id))
+                    tcx.on_disk_cache.as_ref()?.try_load_query_result(*tcx, id)
                 }
             }
         };
@@ -364,21 +378,21 @@ fn add_query_description_impl(
                 let t = &(t.0).0;
                 quote! { #t }
             })
-            .unwrap_or(quote! { _ });
+            .unwrap_or_else(|| quote! { _ });
         let value = args
             .as_ref()
             .map(|t| {
                 let t = &(t.1).0;
                 quote! { #t }
             })
-            .unwrap_or(quote! { _ });
+            .unwrap_or_else(|| quote! { _ });
         // expr is a `Block`, meaning that `{ #expr }` gets expanded
         // to `{ { stmts... } }`, which triggers the `unused_braces` lint.
         quote! {
             #[inline]
             #[allow(unused_variables, unused_braces)]
             fn cache_on_disk(
-                #tcx: TyCtxt<'tcx>,
+                #tcx: QueryCtxt<'tcx>,
                 #key: &Self::Key,
                 #value: Option<&Self::Value>
             ) -> bool {
@@ -395,20 +409,18 @@ fn add_query_description_impl(
     };
 
     let (tcx, desc) = modifiers.desc;
-    let tcx = tcx.as_ref().map(|t| quote! { #t }).unwrap_or(quote! { _ });
+    let tcx = tcx.as_ref().map_or_else(|| quote! { _ }, |t| quote! { #t });
 
     let desc = quote! {
         #[allow(unused_variables)]
-        fn describe(
-            #tcx: TyCtxt<'tcx>,
-            #key: #arg,
-        ) -> Cow<'static, str> {
+        fn describe(tcx: QueryCtxt<'tcx>, key: Self::Key) -> String {
+            let (#tcx, #key) = (*tcx, key);
             ::rustc_middle::ty::print::with_no_trimmed_paths(|| format!(#desc).into())
         }
     };
 
     impls.extend(quote! {
-        impl<'tcx> QueryDescription<TyCtxt<'tcx>> for queries::#name<'tcx> {
+        impl<'tcx> QueryDescription<QueryCtxt<'tcx>> for queries::#name<'tcx> {
             #desc
             #cache
         }
@@ -416,75 +428,74 @@ fn add_query_description_impl(
 }
 
 pub fn rustc_queries(input: TokenStream) -> TokenStream {
-    let groups = parse_macro_input!(input as List<Group>);
+    let queries = parse_macro_input!(input as List<Query>);
 
     let mut query_stream = quote! {};
     let mut query_description_stream = quote! {};
     let mut dep_node_def_stream = quote! {};
     let mut cached_queries = quote! {};
 
-    for group in groups.0 {
-        for mut query in group.queries.0 {
-            let modifiers = process_modifiers(&mut query);
-            let name = &query.name;
-            let arg = &query.arg;
-            let result_full = &query.result;
-            let result = match query.result {
-                ReturnType::Default => quote! { -> () },
-                _ => quote! { #result_full },
-            };
+    for mut query in queries.0 {
+        let modifiers = process_modifiers(&mut query);
+        let name = &query.name;
+        let arg = &query.arg;
+        let result_full = &query.result;
+        let result = match query.result {
+            ReturnType::Default => quote! { -> () },
+            _ => quote! { #result_full },
+        };
 
-            if modifiers.cache.is_some() {
-                cached_queries.extend(quote! {
-                    #name,
-                });
-            }
-
-            let mut attributes = Vec::new();
-
-            // Pass on the fatal_cycle modifier
-            if modifiers.fatal_cycle {
-                attributes.push(quote! { fatal_cycle });
-            };
-            // Pass on the storage modifier
-            if let Some(ref ty) = modifiers.storage {
-                attributes.push(quote! { storage(#ty) });
-            };
-            // Pass on the cycle_delay_bug modifier
-            if modifiers.cycle_delay_bug {
-                attributes.push(quote! { cycle_delay_bug });
-            };
-            // Pass on the no_hash modifier
-            if modifiers.no_hash {
-                attributes.push(quote! { no_hash });
-            };
-            // Pass on the anon modifier
-            if modifiers.anon {
-                attributes.push(quote! { anon });
-            };
-            // Pass on the eval_always modifier
-            if modifiers.eval_always {
-                attributes.push(quote! { eval_always });
-            };
-
-            let attribute_stream = quote! {#(#attributes),*};
-            let doc_comments = query.doc_comments.iter();
-            // Add the query to the group
-            query_stream.extend(quote! {
-                #(#doc_comments)*
-                [#attribute_stream] fn #name(#arg) #result,
+        if modifiers.cache.is_some() {
+            cached_queries.extend(quote! {
+                #name,
             });
-
-            // Create a dep node for the query
-            dep_node_def_stream.extend(quote! {
-                [#attribute_stream] #name(#arg),
-            });
-
-            add_query_description_impl(&query, modifiers, &mut query_description_stream);
         }
+
+        let mut attributes = Vec::new();
+
+        // Pass on the fatal_cycle modifier
+        if modifiers.fatal_cycle {
+            attributes.push(quote! { fatal_cycle });
+        };
+        // Pass on the storage modifier
+        if let Some(ref ty) = modifiers.storage {
+            attributes.push(quote! { storage(#ty) });
+        };
+        // Pass on the cycle_delay_bug modifier
+        if modifiers.cycle_delay_bug {
+            attributes.push(quote! { cycle_delay_bug });
+        };
+        // Pass on the no_hash modifier
+        if modifiers.no_hash {
+            attributes.push(quote! { no_hash });
+        };
+        // Pass on the anon modifier
+        if modifiers.anon {
+            attributes.push(quote! { anon });
+        };
+        // Pass on the eval_always modifier
+        if modifiers.eval_always {
+            attributes.push(quote! { eval_always });
+        };
+
+        let attribute_stream = quote! {#(#attributes),*};
+        let doc_comments = query.doc_comments.iter();
+        // Add the query to the group
+        query_stream.extend(quote! {
+            #(#doc_comments)*
+            [#attribute_stream] fn #name(#arg) #result,
+        });
+
+        // Create a dep node for the query
+        dep_node_def_stream.extend(quote! {
+            [#attribute_stream] #name(#arg),
+        });
+
+        add_query_description_impl(&query, modifiers, &mut query_description_stream);
     }
 
     TokenStream::from(quote! {
+        #[macro_export]
         macro_rules! rustc_query_append {
             ([$($macro:tt)*][$($other:tt)*]) => {
                 $($macro)* {
@@ -504,12 +515,15 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                 );
             }
         }
+        #[macro_export]
         macro_rules! rustc_cached_queries {
             ($($macro:tt)*) => {
                 $($macro)*(#cached_queries);
             }
         }
-
-        #query_description_stream
+        #[macro_export]
+        macro_rules! rustc_query_description {
+            () => { #query_description_stream }
+        }
     })
 }

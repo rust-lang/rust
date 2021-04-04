@@ -13,7 +13,6 @@ use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{MultiSpan, Span, Symbol};
 
-use std::path::PathBuf;
 use std::str;
 
 /// The set of keys (and, optionally, values) that define the compilation
@@ -119,10 +118,9 @@ pub struct ParseSess {
     pub unstable_features: UnstableFeatures,
     pub config: CrateConfig,
     pub edition: Edition,
+    pub missing_fragment_specifiers: Lock<FxHashMap<Span, NodeId>>,
     /// Places where raw identifiers were used. This is used for feature-gating raw identifiers.
     pub raw_identifier_spans: Lock<Vec<Span>>,
-    /// Used to determine and report recursive module inclusions.
-    pub included_mod_stack: Lock<Vec<PathBuf>>,
     source_map: Lrc<SourceMap>,
     pub buffered_lints: Lock<Vec<BufferedEarlyLint>>,
     /// Contains the spans of block expressions that could have been incomplete based on the
@@ -137,9 +135,12 @@ pub struct ParseSess {
     pub env_depinfo: Lock<FxHashSet<(Symbol, Option<Symbol>)>>,
     /// All the type ascriptions expressions that have had a suggestion for likely path typo.
     pub type_ascription_path_suggestions: Lock<FxHashSet<Span>>,
+    /// Whether cfg(version) should treat the current release as incomplete
+    pub assume_incomplete_release: bool,
 }
 
 impl ParseSess {
+    /// Used for testing.
     pub fn new(file_path_mapping: FilePathMapping) -> Self {
         let sm = Lrc::new(SourceMap::new(file_path_mapping));
         let handler = Handler::with_tty_emitter(ColorConfig::Auto, true, None, Some(sm.clone()));
@@ -152,8 +153,8 @@ impl ParseSess {
             unstable_features: UnstableFeatures::from_environment(None),
             config: FxHashSet::default(),
             edition: ExpnId::root().expn_data().edition,
+            missing_fragment_specifiers: Default::default(),
             raw_identifier_spans: Lock::new(Vec::new()),
-            included_mod_stack: Lock::new(vec![]),
             source_map,
             buffered_lints: Lock::new(vec![]),
             ambiguous_block_expr_parse: Lock::new(FxHashMap::default()),
@@ -162,6 +163,7 @@ impl ParseSess {
             reached_eof: Lock::new(false),
             env_depinfo: Default::default(),
             type_ascription_path_suggestions: Default::default(),
+            assume_incomplete_release: false,
         }
     }
 

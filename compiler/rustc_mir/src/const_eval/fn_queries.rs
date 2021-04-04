@@ -126,7 +126,7 @@ fn is_const_impl_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     matches!(
         node,
         hir::Node::Item(hir::Item {
-            kind: hir::ItemKind::Impl { constness: hir::Constness::Const, .. },
+            kind: hir::ItemKind::Impl(hir::Impl { constness: hir::Constness::Const, .. }),
             ..
         })
     )

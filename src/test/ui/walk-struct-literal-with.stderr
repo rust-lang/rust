@@ -8,7 +8,7 @@ LL |     let end = Mine{other_val:1, ..start.make_string_bar()};
 LL |     println!("{}", start.test);
    |                    ^^^^^^^^^^ value borrowed here after move
    |
-note: this function consumes the receiver `self` by taking ownership of it, which moves `start`
+note: this function takes ownership of the receiver `self`, which moves `start`
   --> $DIR/walk-struct-literal-with.rs:7:28
    |
 LL |     fn make_string_bar(mut self) -> Mine{

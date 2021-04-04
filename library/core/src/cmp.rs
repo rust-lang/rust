@@ -29,16 +29,20 @@ use self::Ordering::*;
 ///
 /// This trait allows for partial equality, for types that do not have a full
 /// equivalence relation. For example, in floating point numbers `NaN != NaN`,
-/// so floating point types implement `PartialEq` but not [`Eq`].
+/// so floating point types implement `PartialEq` but not [`trait@Eq`].
 ///
-/// Formally, the equality must be (for all `a`, `b` and `c`):
+/// Formally, the equality must be (for all `a`, `b`, `c` of type `A`, `B`,
+/// `C`):
 ///
-/// - symmetric: `a == b` implies `b == a`; and
-/// - transitive: `a == b` and `b == c` implies `a == c`.
+/// - **Symmetric**: if `A: PartialEq<B>` and `B: PartialEq<A>`, then **`a == b`
+///   implies `b == a`**; and
 ///
-/// Note that these requirements mean that the trait itself must be implemented
-/// symmetrically and transitively: if `T: PartialEq<U>` and `U: PartialEq<V>`
-/// then `U: PartialEq<T>` and `T: PartialEq<V>`.
+/// - **Transitive**: if `A: PartialEq<B>` and `B: PartialEq<C>` and `A:
+///   PartialEq<C>`, then **`a == b` and `b == c` implies `a == c`**.
+///
+/// Note that the `B: PartialEq<A>` (symmetric) and `A: PartialEq<C>`
+/// (transitive) impls are not forced to exist, but these requirements apply
+/// whenever they do exist.
 ///
 /// ## Derivable
 ///
@@ -325,6 +329,120 @@ pub enum Ordering {
 }
 
 impl Ordering {
+    /// Returns `true` if the ordering is the `Equal` variant.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ordering_helpers)]
+    /// use std::cmp::Ordering;
+    ///
+    /// assert_eq!(Ordering::Less.is_eq(), false);
+    /// assert_eq!(Ordering::Equal.is_eq(), true);
+    /// assert_eq!(Ordering::Greater.is_eq(), false);
+    /// ```
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "ordering_helpers", issue = "79885")]
+    pub const fn is_eq(self) -> bool {
+        matches!(self, Equal)
+    }
+
+    /// Returns `true` if the ordering is not the `Equal` variant.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ordering_helpers)]
+    /// use std::cmp::Ordering;
+    ///
+    /// assert_eq!(Ordering::Less.is_ne(), true);
+    /// assert_eq!(Ordering::Equal.is_ne(), false);
+    /// assert_eq!(Ordering::Greater.is_ne(), true);
+    /// ```
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "ordering_helpers", issue = "79885")]
+    pub const fn is_ne(self) -> bool {
+        !matches!(self, Equal)
+    }
+
+    /// Returns `true` if the ordering is the `Less` variant.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ordering_helpers)]
+    /// use std::cmp::Ordering;
+    ///
+    /// assert_eq!(Ordering::Less.is_lt(), true);
+    /// assert_eq!(Ordering::Equal.is_lt(), false);
+    /// assert_eq!(Ordering::Greater.is_lt(), false);
+    /// ```
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "ordering_helpers", issue = "79885")]
+    pub const fn is_lt(self) -> bool {
+        matches!(self, Less)
+    }
+
+    /// Returns `true` if the ordering is the `Greater` variant.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ordering_helpers)]
+    /// use std::cmp::Ordering;
+    ///
+    /// assert_eq!(Ordering::Less.is_gt(), false);
+    /// assert_eq!(Ordering::Equal.is_gt(), false);
+    /// assert_eq!(Ordering::Greater.is_gt(), true);
+    /// ```
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "ordering_helpers", issue = "79885")]
+    pub const fn is_gt(self) -> bool {
+        matches!(self, Greater)
+    }
+
+    /// Returns `true` if the ordering is either the `Less` or `Equal` variant.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ordering_helpers)]
+    /// use std::cmp::Ordering;
+    ///
+    /// assert_eq!(Ordering::Less.is_le(), true);
+    /// assert_eq!(Ordering::Equal.is_le(), true);
+    /// assert_eq!(Ordering::Greater.is_le(), false);
+    /// ```
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "ordering_helpers", issue = "79885")]
+    pub const fn is_le(self) -> bool {
+        !matches!(self, Greater)
+    }
+
+    /// Returns `true` if the ordering is either the `Greater` or `Equal` variant.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ordering_helpers)]
+    /// use std::cmp::Ordering;
+    ///
+    /// assert_eq!(Ordering::Less.is_ge(), false);
+    /// assert_eq!(Ordering::Equal.is_ge(), true);
+    /// assert_eq!(Ordering::Greater.is_ge(), true);
+    /// ```
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "ordering_helpers", issue = "79885")]
+    pub const fn is_ge(self) -> bool {
+        !matches!(self, Less)
+    }
+
     /// Reverses the `Ordering`.
     ///
     /// * `Less` becomes `Greater`.
@@ -427,7 +545,7 @@ impl Ordering {
     /// assert_eq!(result, Ordering::Equal);
     ///
     /// let x: (i64, i64, i64) = (1, 2, 7);
-    /// let y: (i64, i64, i64)  = (1, 5, 3);
+    /// let y: (i64, i64, i64) = (1, 5, 3);
     /// let result = x.0.cmp(&y.0).then_with(|| x.1.cmp(&y.1)).then_with(|| x.2.cmp(&y.2));
     ///
     /// assert_eq!(result, Ordering::Less);
@@ -461,6 +579,7 @@ impl Ordering {
 /// ```
 #[derive(PartialEq, Eq, Debug, Copy, Clone, Default, Hash)]
 #[stable(feature = "reverse_cmp_key", since = "1.19.0")]
+#[repr(transparent)]
 pub struct Reverse<T>(#[stable(feature = "reverse_cmp_key", since = "1.19.0")] pub T);
 
 #[stable(feature = "reverse_cmp_key", since = "1.19.0")]
@@ -1122,7 +1241,7 @@ mod impls {
     impl PartialOrd for bool {
         #[inline]
         fn partial_cmp(&self, other: &bool) -> Option<Ordering> {
-            (*self as u8).partial_cmp(&(*other as u8))
+            Some(self.cmp(other))
         }
     }
 

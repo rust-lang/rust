@@ -1,5 +1,7 @@
-use crate::utils::paths::FUTURE_FROM_GENERATOR;
-use crate::utils::{match_function_call, position_before_rarrow, snippet_block, snippet_opt, span_lint_and_then};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::match_function_call;
+use clippy_utils::paths::FUTURE_FROM_GENERATOR;
+use clippy_utils::source::{position_before_rarrow, snippet_block, snippet_opt};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
@@ -9,7 +11,7 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
     /// **What it does:** It checks for manual implementations of `async` functions.
@@ -69,7 +71,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
                     |diag| {
                         if_chain! {
                             if let Some(header_snip) = snippet_opt(cx, header_span);
-                            if let Some(ret_pos) = position_before_rarrow(header_snip.clone());
+                            if let Some(ret_pos) = position_before_rarrow(&header_snip);
                             if let Some((ret_sugg, ret_snip)) = suggested_ret(cx, output);
                             then {
                                 let help = format!("make the function `async` and {}", ret_sugg);
@@ -102,7 +104,7 @@ fn future_trait_ref<'tcx>(
 ) -> Option<(&'tcx TraitRef<'tcx>, Vec<LifetimeName>)> {
     if_chain! {
         if let TyKind::OpaqueDef(item_id, bounds) = ty.kind;
-        let item = cx.tcx.hir().item(item_id.id);
+        let item = cx.tcx.hir().item(item_id);
         if let ItemKind::OpaqueTy(opaque) = &item.kind;
         if let Some(trait_ref) = opaque.bounds.iter().find_map(|bound| {
             if let GenericBound::Trait(poly, _) = bound {
@@ -137,7 +139,7 @@ fn future_output_ty<'tcx>(trait_ref: &'tcx TraitRef<'tcx>) -> Option<&'tcx Ty<'t
         if let Some(args) = segment.args;
         if args.bindings.len() == 1;
         let binding = &args.bindings[0];
-        if binding.ident.as_str() == "Output";
+        if binding.ident.name == sym::Output;
         if let TypeBindingKind::Equality{ty: output} = binding.kind;
         then {
             return Some(output)

@@ -1,5 +1,5 @@
 error: expressions must be enclosed in braces to be used as const generic arguments
-  --> $DIR/closing-args-token.rs:11:9
+  --> $DIR/closing-args-token.rs:10:9
    |
 LL |     S::<5 + 2 >> 7>;
    |         ^^^^^
@@ -10,7 +10,7 @@ LL |     S::<{ 5 + 2 } >> 7>;
    |         ^       ^
 
 error: comparison operators cannot be chained
-  --> $DIR/closing-args-token.rs:11:16
+  --> $DIR/closing-args-token.rs:10:16
    |
 LL |     S::<5 + 2 >> 7>;
    |                ^  ^
@@ -21,7 +21,7 @@ LL |     S::<5 + 2 >> 7 && 7>;
    |                    ^^^^
 
 error: comparison operators cannot be chained
-  --> $DIR/closing-args-token.rs:17:20
+  --> $DIR/closing-args-token.rs:16:20
    |
 LL |     S::<{ 5 + 2 } >> 7>;
    |                    ^  ^
@@ -32,13 +32,13 @@ LL |     S::<{ 5 + 2 } >> 7 && 7>;
    |                        ^^^^
 
 error: expected expression, found `;`
-  --> $DIR/closing-args-token.rs:22:16
+  --> $DIR/closing-args-token.rs:21:16
    |
 LL |     T::<0 >= 3>;
    |                ^ expected expression
 
 error: comparison operators cannot be chained
-  --> $DIR/closing-args-token.rs:28:12
+  --> $DIR/closing-args-token.rs:27:12
    |
 LL |     T::<x >>= 2 > 0>;
    |            ^^   ^

@@ -1,13 +1,15 @@
-use crate::utils::{
-    indent_of, is_type_diagnostic_item, match_qpath, paths, reindent_multiline, snippet_opt, span_lint_and_sugg,
-};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::{indent_of, reindent_multiline, snippet_opt};
+use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::{match_qpath, path_to_local_id, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{def, Expr, ExprKind, PatKind, QPath};
+use rustc_hir::{Expr, ExprKind, PatKind};
 use rustc_lint::LintContext;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::symbol::sym;
 
 declare_clippy_lint! {
     /// **What it does:**
@@ -20,9 +22,6 @@ declare_clippy_lint! {
     ///
     /// **Examples:**
     /// ```rust
-    /// let foo: Option<i32> = None;
-    /// foo.map_or(Err("error"), |v| Ok(v));
-    ///
     /// let foo: Option<i32> = None;
     /// foo.map_or(Err("error"), |v| Ok(v));
     /// ```
@@ -51,7 +50,7 @@ impl LateLintPass<'_> for ManualOkOr {
             if args.len() == 3;
             let method_receiver = &args[0];
             let ty = cx.typeck_results().expr_ty(method_receiver);
-            if is_type_diagnostic_item(cx, ty, sym!(option_type));
+            if is_type_diagnostic_item(cx, ty, sym::option_type);
             let or_expr = &args[1];
             if is_ok_wrapping(cx, &args[2]);
             if let ExprKind::Call(Expr { kind: ExprKind::Path(err_path), .. }, &[ref err_arg]) = or_expr.kind;
@@ -92,8 +91,6 @@ fn is_ok_wrapping(cx: &LateContext<'_>, map_expr: &Expr<'_>) -> bool {
         if let PatKind::Binding(_, param_id, ..) = body.params[0].pat.kind;
         if let ExprKind::Call(Expr { kind: ExprKind::Path(ok_path), .. }, &[ref ok_arg]) = body.value.kind;
         if match_qpath(ok_path, &paths::RESULT_OK);
-        if let ExprKind::Path(QPath::Resolved(_, ok_arg_path)) = ok_arg.kind;
-        if let def::Res::Local(ok_arg_path_id) = ok_arg_path.res;
-        then { param_id == ok_arg_path_id } else { false }
+        then { path_to_local_id(ok_arg, param_id) } else { false }
     }
 }

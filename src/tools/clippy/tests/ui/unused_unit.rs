@@ -11,6 +11,7 @@
 
 #![deny(clippy::unused_unit)]
 #![allow(dead_code)]
+#![allow(clippy::from_over_into)]
 
 struct Unitter;
 impl Unitter {

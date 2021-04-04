@@ -3,6 +3,8 @@
 //! This library contains the tidy lints and exposes it
 //! to be used by tools.
 
+#![cfg_attr(bootstrap, feature(str_split_once))]
+
 use std::fs::File;
 use std::io::Read;
 use walkdir::{DirEntry, WalkDir};
@@ -26,6 +28,10 @@ macro_rules! t {
 }
 
 macro_rules! tidy_error {
+    ($bad:expr, $fmt:expr) => ({
+        *$bad = true;
+        eprintln!("tidy error: {}", $fmt);
+    });
     ($bad:expr, $fmt:expr, $($arg:tt)*) => ({
         *$bad = true;
         eprint!("tidy error: ");
@@ -34,7 +40,6 @@ macro_rules! tidy_error {
 }
 
 pub mod bins;
-pub mod cargo;
 pub mod debug_artifacts;
 pub mod deps;
 pub mod edition;

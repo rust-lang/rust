@@ -25,10 +25,6 @@ enum Baz {
 impl Eq for Baz {}
 const BAZ: Baz = Baz::Baz1;
 
-type Quux = fn(usize, usize) -> usize;
-fn quux(a: usize, b: usize) -> usize { a + b }
-const QUUX: Quux = quux;
-
 fn main() {
     match FOO {
         FOO => {}
@@ -106,9 +102,44 @@ fn main() {
         //~^ ERROR unreachable pattern
     }
 
+    type Quux = fn(usize, usize) -> usize;
+    fn quux(a: usize, b: usize) -> usize { a + b }
+    const QUUX: Quux = quux;
+
     match QUUX {
         QUUX => {}
         QUUX => {}
         _ => {}
+    }
+
+    #[derive(PartialEq, Eq)]
+    struct Wrap<T>(T);
+    const WRAPQUUX: Wrap<Quux> = Wrap(quux);
+
+    match WRAPQUUX {
+        WRAPQUUX => {}
+        WRAPQUUX => {}
+        Wrap(_) => {}
+    }
+
+    match WRAPQUUX {
+        Wrap(_) => {}
+        WRAPQUUX => {} // detected unreachable because we do inspect the `Wrap` layer
+        //~^ ERROR unreachable pattern
+    }
+
+    #[derive(PartialEq, Eq)]
+    enum WhoKnows<T> {
+        Yay(T),
+        Nope,
+    };
+    const WHOKNOWSQUUX: WhoKnows<Quux> = WhoKnows::Yay(quux);
+
+    match WHOKNOWSQUUX {
+        WHOKNOWSQUUX => {}
+        WhoKnows::Yay(_) => {}
+        WHOKNOWSQUUX => {} // detected unreachable because we do inspect the `WhoKnows` layer
+        //~^ ERROR unreachable pattern
+        WhoKnows::Nope => {}
     }
 }

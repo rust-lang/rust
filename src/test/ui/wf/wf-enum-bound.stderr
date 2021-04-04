@@ -9,8 +9,8 @@ LL |     where T: ExtraCopy<U>
    |
 help: consider further restricting type parameter `U`
    |
-LL |     where T: ExtraCopy<U>, U: Copy
-   |                          ^^^^^^^^^
+LL |     where T: ExtraCopy<U>, U: std::marker::Copy
+   |                          ^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

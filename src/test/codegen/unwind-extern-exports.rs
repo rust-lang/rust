@@ -11,7 +11,7 @@
 // "C" ABI
 // pub extern fn foo() {} // FIXME right now we don't abort-on-panic but add `nounwind` nevertheless
 #[unwind(allowed)]
-pub extern fn foo_allowed() {}
+pub extern "C" fn foo_allowed() {}
 
 // "Rust"
 // (`extern "Rust"` could be removed as all `fn` get it implicitly; we leave it in for clarity.)

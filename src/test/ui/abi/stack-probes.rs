@@ -11,13 +11,13 @@
 // ignore-emscripten no processes
 // ignore-sgx no processes
 
+use std::env;
 use std::mem::MaybeUninit;
 use std::process::Command;
 use std::thread;
-use std::env;
 
 #[link(name = "rust_test_helpers", kind = "static")]
-extern {
+extern "C" {
     #[link_name = "rust_dbg_extern_identity_u64"]
     fn black_box(u: u64);
 }
@@ -30,7 +30,7 @@ fn main() {
             "child-thread" => thread::spawn(|| recurse(&MaybeUninit::uninit())).join().unwrap(),
             _ => panic!(),
         }
-        return
+        return;
     }
 
     let me = env::current_exe().unwrap();

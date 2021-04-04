@@ -1,5 +1,5 @@
 error[E0573]: expected type, found const parameter `C`
-  --> $DIR/struct-with-invalid-const-param.rs:8:23
+  --> $DIR/struct-with-invalid-const-param.rs:7:23
    |
 LL | struct S<const C: u8>(C);
    |                       ^ not a type

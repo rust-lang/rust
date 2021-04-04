@@ -15,6 +15,7 @@ use std::collections::BTreeMap;
 
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty;
+use rustc_span::Symbol;
 
 use crate::clean;
 use crate::clean::GenericArgs as PP;
@@ -78,7 +79,7 @@ crate fn merge_bounds(
     cx: &clean::DocContext<'_>,
     bounds: &mut Vec<clean::GenericBound>,
     trait_did: DefId,
-    name: &str,
+    name: Symbol,
     rhs: &clean::Type,
 ) -> bool {
     !bounds.iter_mut().any(|b| {
@@ -100,7 +101,7 @@ crate fn merge_bounds(
         match last.args {
             PP::AngleBracketed { ref mut bindings, .. } => {
                 bindings.push(clean::TypeBinding {
-                    name: name.to_string(),
+                    name,
                     kind: clean::TypeBindingKind::Equality { ty: rhs.clone() },
                 });
             }
@@ -128,7 +129,7 @@ fn trait_is_same_or_supertrait(cx: &DocContext<'_>, child: DefId, trait_: DefId)
         .predicates
         .iter()
         .filter_map(|(pred, _)| {
-            if let ty::PredicateAtom::Trait(pred, _) = pred.skip_binders() {
+            if let ty::PredicateKind::Trait(pred, _) = pred.kind().skip_binder() {
                 if pred.trait_ref.self_ty() == self_ty { Some(pred.def_id()) } else { None }
             } else {
                 None

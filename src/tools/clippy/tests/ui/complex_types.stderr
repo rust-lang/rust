@@ -21,7 +21,7 @@ LL |     f: Vec<Vec<Box<(u32, u32, u32, u32)>>>,
 error: very complex type used. Consider factoring parts into `type` definitions
   --> $DIR/complex_types.rs:14:11
    |
-LL | struct TS(Vec<Vec<Box<(u32, u32, u32, u32)>>>);
+LL | struct Ts(Vec<Vec<Box<(u32, u32, u32, u32)>>>);
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: very complex type used. Consider factoring parts into `type` definitions

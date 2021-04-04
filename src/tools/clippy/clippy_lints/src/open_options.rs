@@ -1,4 +1,6 @@
-use crate::utils::{match_type, paths, span_lint};
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::paths;
+use clippy_utils::ty::match_type;
 use rustc_ast::ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -69,15 +71,11 @@ fn get_open_options(cx: &LateContext<'_>, argument: &Expr<'_>, options: &mut Vec
                         ..
                     } = *span
                     {
-                        if lit {
-                            Argument::True
-                        } else {
-                            Argument::False
-                        }
+                        if lit { Argument::True } else { Argument::False }
                     } else {
-                        return; // The function is called with a literal
-                                // which is not a boolean literal. This is theoretically
-                                // possible, but not very likely.
+                        // The function is called with a literal which is not a boolean literal.
+                        // This is theoretically possible, but not very likely.
+                        return;
                     }
                 },
                 _ => Argument::Unknown,

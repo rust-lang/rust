@@ -30,6 +30,7 @@ fn declare_raw_fn(
     cx: &CodegenCx<'ll, '_>,
     name: &str,
     callconv: llvm::CallConv,
+    unnamed: llvm::UnnamedAddr,
     ty: &'ll Type,
 ) -> &'ll Value {
     debug!("declare_raw_fn(name={:?}, ty={:?})", name, ty);
@@ -38,9 +39,7 @@ fn declare_raw_fn(
     };
 
     llvm::SetFunctionCallConv(llfn, callconv);
-    // Function addresses in Rust are never significant, allowing functions to
-    // be merged.
-    llvm::SetUnnamedAddress(llfn, llvm::UnnamedAddr::Global);
+    llvm::SetUnnamedAddress(llfn, unnamed);
 
     if cx.tcx.sess.opts.cg.no_redzone.unwrap_or(cx.tcx.sess.target.disable_redzone) {
         llvm::Attribute::NoRedZone.apply_llfn(Function, llfn);
@@ -68,8 +67,13 @@ impl CodegenCx<'ll, 'tcx> {
     ///
     /// If there’s a value with the same name already declared, the function will
     /// update the declaration and return existing Value instead.
-    pub fn declare_cfn(&self, name: &str, fn_type: &'ll Type) -> &'ll Value {
-        declare_raw_fn(self, name, llvm::CCallConv, fn_type)
+    pub fn declare_cfn(
+        &self,
+        name: &str,
+        unnamed: llvm::UnnamedAddr,
+        fn_type: &'ll Type,
+    ) -> &'ll Value {
+        declare_raw_fn(self, name, llvm::CCallConv, unnamed, fn_type)
     }
 
     /// Declare a Rust function.
@@ -79,7 +83,15 @@ impl CodegenCx<'ll, 'tcx> {
     pub fn declare_fn(&self, name: &str, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> &'ll Value {
         debug!("declare_rust_fn(name={:?}, fn_abi={:?})", name, fn_abi);
 
-        let llfn = declare_raw_fn(self, name, fn_abi.llvm_cconv(), fn_abi.llvm_type(self));
+        // Function addresses in Rust are never significant, allowing functions to
+        // be merged.
+        let llfn = declare_raw_fn(
+            self,
+            name,
+            fn_abi.llvm_cconv(),
+            llvm::UnnamedAddr::Global,
+            fn_abi.llvm_type(self),
+        );
         fn_abi.apply_attrs_llfn(self, llfn);
         llfn
     }

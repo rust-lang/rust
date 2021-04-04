@@ -1,7 +1,7 @@
 // Reject mixing cyclic structure and Drop when using fixed length
 // arrays.
 //
-// (Compare against compile-fail/dropck_vec_cycle_checked.rs)
+// (Compare against ui/span/dropck_vec_cycle_checked.rs)
 
 
 

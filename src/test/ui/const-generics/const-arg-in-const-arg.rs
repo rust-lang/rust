@@ -2,7 +2,6 @@
 // FIXME(const_generics): This test currently causes an ICE because
 // we don't yet correctly deal with lifetimes, reenable this test once
 // this is fixed.
-#![cfg_attr(min, feature(min_const_generics))]
 
 const fn foo<T>() -> usize { std::mem::size_of::<T>() }
 const fn bar<const N: usize>() -> usize { N }

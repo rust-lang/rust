@@ -202,7 +202,7 @@ impl Drop for Thread {
     not(target_os = "linux"),
     not(target_os = "freebsd"),
     not(target_os = "macos"),
-    not(all(target_os = "netbsd", not(target_vendor = "rumprun"))),
+    not(target_os = "netbsd"),
     not(target_os = "openbsd"),
     not(target_os = "solaris")
 ))]
@@ -222,7 +222,7 @@ pub mod guard {
     target_os = "linux",
     target_os = "freebsd",
     target_os = "macos",
-    all(target_os = "netbsd", not(target_vendor = "rumprun")),
+    target_os = "netbsd",
     target_os = "openbsd",
     target_os = "solaris"
 ))]
@@ -231,6 +231,7 @@ pub mod guard {
     use libc::{mmap, mprotect};
     use libc::{MAP_ANON, MAP_FAILED, MAP_FIXED, MAP_PRIVATE, PROT_NONE, PROT_READ, PROT_WRITE};
 
+    use crate::io;
     use crate::ops::Range;
     use crate::sync::atomic::{AtomicUsize, Ordering};
     use crate::sys::os;
@@ -342,6 +343,20 @@ pub mod guard {
             // it can eventually grow to. It cannot be used to determine
             // the position of kernel's stack guard.
             None
+        } else if cfg!(target_os = "freebsd") {
+            // FreeBSD's stack autogrows, and optionally includes a guard page
+            // at the bottom.  If we try to remap the bottom of the stack
+            // ourselves, FreeBSD's guard page moves upwards.  So we'll just use
+            // the builtin guard page.
+            let stackaddr = get_stack_start_aligned()?;
+            let guardaddr = stackaddr as usize;
+            // Technically the number of guard pages is tunable and controlled
+            // by the security.bsd.stack_guard_page sysctl, but there are
+            // few reasons to change it from the default.  The default value has
+            // been 1 ever since FreeBSD 11.1 and 10.4.
+            const GUARD_PAGES: usize = 1;
+            let guard = guardaddr..guardaddr + GUARD_PAGES * page_size;
+            Some(guard)
         } else {
             // Reallocate the last page of the stack.
             // This ensures SIGBUS will be raised on
@@ -361,18 +376,17 @@ pub mod guard {
                 0,
             );
             if result != stackaddr || result == MAP_FAILED {
-                panic!("failed to allocate a guard page");
+                panic!("failed to allocate a guard page: {}", io::Error::last_os_error());
             }
 
             let result = mprotect(stackaddr, page_size, PROT_NONE);
             if result != 0 {
-                panic!("failed to protect the guard page");
+                panic!("failed to protect the guard page: {}", io::Error::last_os_error());
             }
 
             let guardaddr = stackaddr as usize;
-            let offset = if cfg!(target_os = "freebsd") { 2 } else { 1 };
 
-            Some(guardaddr..guardaddr + offset * page_size)
+            Some(guardaddr..guardaddr + page_size)
         }
     }
 
@@ -416,11 +430,7 @@ pub mod guard {
             assert_eq!(libc::pthread_attr_getstack(&attr, &mut stackaddr, &mut size), 0);
 
             let stackaddr = stackaddr as usize;
-            ret = if cfg!(target_os = "freebsd") {
-                // FIXME does freebsd really fault *below* the guard addr?
-                let guardaddr = stackaddr - guardsize;
-                Some(guardaddr - PAGE_SIZE.load(Ordering::Relaxed)..guardaddr)
-            } else if cfg!(target_os = "netbsd") {
+            ret = if cfg!(any(target_os = "freebsd", target_os = "netbsd")) {
                 Some(stackaddr - guardsize..stackaddr)
             } else if cfg!(all(target_os = "linux", target_env = "musl")) {
                 Some(stackaddr - guardsize..stackaddr)

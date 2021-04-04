@@ -72,7 +72,7 @@ impl NonConstOp for FnCallIndirect {
 
 /// A function call where the callee is not marked as `const`.
 #[derive(Debug)]
-pub struct FnCallNonConst(pub DefId);
+pub struct FnCallNonConst;
 impl NonConstOp for FnCallNonConst {
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         struct_span_err!(
@@ -209,30 +209,79 @@ impl NonConstOp for LiveDrop {
 }
 
 #[derive(Debug)]
-pub struct CellBorrow;
-impl NonConstOp for CellBorrow {
+/// A borrow of a type that contains an `UnsafeCell` somewhere. The borrow never escapes to
+/// the final value of the constant.
+pub struct TransientCellBorrow;
+impl NonConstOp for TransientCellBorrow {
+    fn status_in_item(&self, _: &ConstCx<'_, '_>) -> Status {
+        Status::Unstable(sym::const_refs_to_cell)
+    }
+    fn importance(&self) -> DiagnosticImportance {
+        // The cases that cannot possibly work will already emit a `CellBorrow`, so we should
+        // not additionally emit a feature gate error if activating the feature gate won't work.
+        DiagnosticImportance::Secondary
+    }
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
-        struct_span_err!(
-            ccx.tcx.sess,
+        feature_err(
+            &ccx.tcx.sess.parse_sess,
+            sym::const_refs_to_cell,
             span,
-            E0492,
-            "cannot borrow a constant which may contain \
-            interior mutability, create a static instead"
+            "cannot borrow here, since the borrowed element may contain interior mutability",
         )
     }
 }
 
 #[derive(Debug)]
+/// A borrow of a type that contains an `UnsafeCell` somewhere. The borrow might escape to
+/// the final value of the constant, and thus we cannot allow this (for now). We may allow
+/// it in the future for static items.
+pub struct CellBorrow;
+impl NonConstOp for CellBorrow {
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
+        let mut err = struct_span_err!(
+            ccx.tcx.sess,
+            span,
+            E0492,
+            "{}s cannot refer to interior mutable data",
+            ccx.const_kind(),
+        );
+        err.span_label(
+            span,
+            format!("this borrow of an interior mutable value may end up in the final value"),
+        );
+        if let hir::ConstContext::Static(_) = ccx.const_kind() {
+            err.help(
+                "to fix this, the value can be extracted to a separate \
+                `static` item and then referenced",
+            );
+        }
+        if ccx.tcx.sess.teach(&err.get_code().unwrap()) {
+            err.note(
+                "A constant containing interior mutable data behind a reference can allow you
+                 to modify that data. This would make multiple uses of a constant to be able to
+                 see different values and allow circumventing the `Send` and `Sync` requirements
+                 for shared mutable data, which is unsound.",
+            );
+        }
+        err
+    }
+}
+
+#[derive(Debug)]
+/// This op is for `&mut` borrows in the trailing expression of a constant
+/// which uses the "enclosing scopes rule" to leak its locals into anonymous
+/// static or const items.
 pub struct MutBorrow(pub hir::BorrowKind);
 
 impl NonConstOp for MutBorrow {
-    fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
-        // Forbid everywhere except in const fn with a feature gate
-        if ccx.const_kind() == hir::ConstContext::ConstFn {
-            Status::Unstable(sym::const_mut_refs)
-        } else {
-            Status::Forbidden
-        }
+    fn status_in_item(&self, _ccx: &ConstCx<'_, '_>) -> Status {
+        Status::Forbidden
+    }
+
+    fn importance(&self) -> DiagnosticImportance {
+        // If there were primary errors (like non-const function calls), do not emit further
+        // errors about mutable references.
+        DiagnosticImportance::Secondary
     }
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
@@ -241,25 +290,15 @@ impl NonConstOp for MutBorrow {
             hir::BorrowKind::Ref => "",
         };
 
-        let mut err = if ccx.const_kind() == hir::ConstContext::ConstFn {
-            feature_err(
-                &ccx.tcx.sess.parse_sess,
-                sym::const_mut_refs,
-                span,
-                &format!("{}mutable references are not allowed in {}s", raw, ccx.const_kind()),
-            )
-        } else {
-            let mut err = struct_span_err!(
-                ccx.tcx.sess,
-                span,
-                E0764,
-                "{}mutable references are not allowed in {}s",
-                raw,
-                ccx.const_kind(),
-            );
-            err.span_label(span, format!("`&{}mut` is only allowed in `const fn`", raw));
-            err
-        };
+        let mut err = struct_span_err!(
+            ccx.tcx.sess,
+            span,
+            E0764,
+            "{}mutable references are not allowed in the final value of {}s",
+            raw,
+            ccx.const_kind(),
+        );
+
         if ccx.tcx.sess.teach(&err.get_code().unwrap()) {
             err.note(
                 "References in statics and constants may only refer \
@@ -277,6 +316,29 @@ impl NonConstOp for MutBorrow {
 }
 
 #[derive(Debug)]
+pub struct TransientMutBorrow(pub hir::BorrowKind);
+
+impl NonConstOp for TransientMutBorrow {
+    fn status_in_item(&self, _: &ConstCx<'_, '_>) -> Status {
+        Status::Unstable(sym::const_mut_refs)
+    }
+
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
+        let raw = match self.0 {
+            hir::BorrowKind::Raw => "raw ",
+            hir::BorrowKind::Ref => "",
+        };
+
+        feature_err(
+            &ccx.tcx.sess.parse_sess,
+            sym::const_mut_refs,
+            span,
+            &format!("{}mutable references are not allowed in {}s", raw, ccx.const_kind()),
+        )
+    }
+}
+
+#[derive(Debug)]
 pub struct MutDeref;
 impl NonConstOp for MutDeref {
     fn status_in_item(&self, _: &ConstCx<'_, '_>) -> Status {
@@ -284,7 +346,7 @@ impl NonConstOp for MutDeref {
     }
 
     fn importance(&self) -> DiagnosticImportance {
-        // Usually a side-effect of a `MutBorrow` somewhere.
+        // Usually a side-effect of a `TransientMutBorrow` somewhere.
         DiagnosticImportance::Secondary
     }
 
@@ -311,6 +373,18 @@ impl NonConstOp for Panic {
             sym::const_panic,
             span,
             &format!("panicking in {}s is unstable", ccx.const_kind()),
+        )
+    }
+}
+
+/// A call to a `panic()` lang item where the first argument is _not_ a `&str`.
+#[derive(Debug)]
+pub struct PanicNonStr;
+impl NonConstOp for PanicNonStr {
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
+        ccx.tcx.sess.struct_span_err(
+            span,
+            "argument to `panic!()` in a const context must have type `&str`",
         )
     }
 }

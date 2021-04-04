@@ -48,6 +48,17 @@ const MICROS_PER_SEC: u64 = 1_000_000;
 ///
 /// let ten_millis = Duration::from_millis(10);
 /// ```
+///
+/// # Formatting `Duration` values
+///
+/// `Duration` intentionally does not have a `Display` impl, as there are a
+/// variety of ways to format spans of time for human readability. `Duration`
+/// provides a `Debug` impl that shows the full precision of the value.
+///
+/// The `Debug` output uses the non-ASCII "µs" suffix for microseconds. If your
+/// program output may appear in contexts that cannot rely on full Unicode
+/// compatibility, you may wish to format `Duration` objects yourself or use a
+/// crate to do so.
 #[stable(feature = "duration", since = "1.3.0")]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct Duration {
@@ -1067,13 +1078,23 @@ impl fmt::Debug for Duration {
         }
 
         if self.secs > 0 {
-            fmt_decimal(f, self.secs, self.nanos, 100_000_000)?;
+            fmt_decimal(f, self.secs, self.nanos, NANOS_PER_SEC / 10)?;
             f.write_str("s")
-        } else if self.nanos >= 1_000_000 {
-            fmt_decimal(f, self.nanos as u64 / 1_000_000, self.nanos % 1_000_000, 100_000)?;
+        } else if self.nanos >= NANOS_PER_MILLI {
+            fmt_decimal(
+                f,
+                (self.nanos / NANOS_PER_MILLI) as u64,
+                self.nanos % NANOS_PER_MILLI,
+                NANOS_PER_MILLI / 10,
+            )?;
             f.write_str("ms")
-        } else if self.nanos >= 1_000 {
-            fmt_decimal(f, self.nanos as u64 / 1_000, self.nanos % 1_000, 100)?;
+        } else if self.nanos >= NANOS_PER_MICRO {
+            fmt_decimal(
+                f,
+                (self.nanos / NANOS_PER_MICRO) as u64,
+                self.nanos % NANOS_PER_MICRO,
+                NANOS_PER_MICRO / 10,
+            )?;
             f.write_str("µs")
         } else {
             fmt_decimal(f, self.nanos as u64, 0, 1)?;

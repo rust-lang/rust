@@ -1,3 +1,4 @@
+// stderr-per-bitwidth
 // ignore-tidy-linelength
 #![allow(unused)]
 #![allow(const_err)] // make sure we cannot allow away the errors tested here
@@ -7,6 +8,12 @@ use std::mem;
 // normalize-stderr-test "offset \d+" -> "offset N"
 // normalize-stderr-test "alloc\d+" -> "allocN"
 // normalize-stderr-test "size \d+" -> "size N"
+
+/// A newtype wrapper to prevent MIR generation from inserting reborrows that would affect the error
+/// message. Use this whenever the message is "any use of this value will cause an error" instead of
+/// "it is undefined behavior to use this value".
+#[repr(transparent)]
+struct W<T>(T);
 
 #[repr(C)]
 union MaybeUninit<T: Copy> {
@@ -95,13 +102,13 @@ const RAW_SLICE_LENGTH_UNINIT: *const [u8] = unsafe {
 
 // # trait object
 // bad trait object
-const TRAIT_OBJ_SHORT_VTABLE_1: &dyn Trait = unsafe { mem::transmute((&92u8, &3u8)) };
+const TRAIT_OBJ_SHORT_VTABLE_1: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, &3u8))) };
 //~^ ERROR it is undefined behavior to use this value
 // bad trait object
-const TRAIT_OBJ_SHORT_VTABLE_2: &dyn Trait = unsafe { mem::transmute((&92u8, &3u64)) };
+const TRAIT_OBJ_SHORT_VTABLE_2: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, &3u64))) };
 //~^ ERROR it is undefined behavior to use this value
 // bad trait object
-const TRAIT_OBJ_INT_VTABLE: &dyn Trait = unsafe { mem::transmute((&92u8, 4usize)) };
+const TRAIT_OBJ_INT_VTABLE: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, 4usize))) };
 //~^ ERROR it is undefined behavior to use this value
 const TRAIT_OBJ_UNALIGNED_VTABLE: &dyn Trait = unsafe { mem::transmute((&92u8, &[0u8; 128])) };
 //~^ ERROR it is undefined behavior to use this value
@@ -109,7 +116,7 @@ const TRAIT_OBJ_BAD_DROP_FN_NULL: &dyn Trait = unsafe { mem::transmute((&92u8, &
 //~^ ERROR it is undefined behavior to use this value
 const TRAIT_OBJ_BAD_DROP_FN_INT: &dyn Trait = unsafe { mem::transmute((&92u8, &[1usize; 8])) };
 //~^ ERROR it is undefined behavior to use this value
-const TRAIT_OBJ_BAD_DROP_FN_NOT_FN_PTR: &dyn Trait = unsafe { mem::transmute((&92u8, &[&42u8; 8])) };
+const TRAIT_OBJ_BAD_DROP_FN_NOT_FN_PTR: W<&dyn Trait> = unsafe { mem::transmute(W((&92u8, &[&42u8; 8]))) };
 //~^ ERROR it is undefined behavior to use this value
 
 // bad data *inside* the trait object

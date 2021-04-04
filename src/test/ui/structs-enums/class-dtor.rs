@@ -5,7 +5,7 @@
 // pretty-expanded FIXME #23616
 
 struct cat {
-  done : extern fn(usize),
+  done : extern "C" fn(usize),
   meows : usize,
 }
 
@@ -15,7 +15,7 @@ impl Drop for cat {
     }
 }
 
-fn cat(done: extern fn(usize)) -> cat {
+fn cat(done: extern "C" fn(usize)) -> cat {
     cat {
         meows: 0,
         done: done

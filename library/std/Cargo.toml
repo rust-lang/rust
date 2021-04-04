@@ -16,11 +16,11 @@ cfg-if = { version = "0.1.8", features = ['rustc-dep-of-std'] }
 panic_unwind = { path = "../panic_unwind", optional = true }
 panic_abort = { path = "../panic_abort" }
 core = { path = "../core" }
-libc = { version = "0.2.79", default-features = false, features = ['rustc-dep-of-std'] }
-compiler_builtins = { version = "0.1.35" }
+libc = { version = "0.2.88", default-features = false, features = ['rustc-dep-of-std'] }
+compiler_builtins = { version = "0.1.39" }
 profiler_builtins = { path = "../profiler_builtins", optional = true }
 unwind = { path = "../unwind" }
-hashbrown = { version = "0.9.0", default-features = false, features = ['rustc-dep-of-std'] }
+hashbrown = { version = "0.11", default-features = false, features = ['rustc-dep-of-std'] }
 
 # Dependencies of the `backtrace` crate
 addr2line = { version = "0.14.0", optional = true, default-features = false }
@@ -60,7 +60,7 @@ panic-unwind = ["panic_unwind"]
 profiler = ["profiler_builtins"]
 compiler-builtins-c = ["alloc/compiler-builtins-c"]
 compiler-builtins-mem = ["alloc/compiler-builtins-mem"]
-compiler-builtins-asm = ["alloc/compiler-builtins-asm"]
+compiler-builtins-no-asm = ["alloc/compiler-builtins-no-asm"]
 compiler-builtins-mangled-names = ["alloc/compiler-builtins-mangled-names"]
 llvm-libunwind = ["unwind/llvm-libunwind"]
 system-llvm-libunwind = ["unwind/system-llvm-libunwind"]

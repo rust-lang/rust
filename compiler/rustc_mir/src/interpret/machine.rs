@@ -9,6 +9,8 @@ use std::hash::Hash;
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::def_id::DefId;
+use rustc_target::abi::Size;
+use rustc_target::spec::abi::Abi;
 
 use super::{
     AllocId, Allocation, AllocationExtra, CheckInAllocMsg, Frame, ImmTy, InterpCx, InterpResult,
@@ -130,6 +132,16 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Whether to enforce the validity invariant
     fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
 
+    /// Entry point for obtaining the MIR of anything that should get evaluated.
+    /// So not just functions and shims, but also const/static initializers, anonymous
+    /// constants, ...
+    fn load_mir(
+        ecx: &InterpCx<'mir, 'tcx, Self>,
+        instance: ty::InstanceDef<'tcx>,
+    ) -> InterpResult<'tcx, &'tcx mir::Body<'tcx>> {
+        Ok(ecx.tcx.instance_mir(instance))
+    }
+
     /// Entry point to all function calls.
     ///
     /// Returns either the mir to use for the call, or `None` if execution should
@@ -143,8 +155,9 @@ pub trait Machine<'mir, 'tcx>: Sized {
     fn find_mir_or_eval_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
+        abi: Abi,
         args: &[OpTy<'tcx, Self::PointerTag>],
-        ret: Option<(PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,
+        ret: Option<(&PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,
         unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>>;
 
@@ -153,8 +166,9 @@ pub trait Machine<'mir, 'tcx>: Sized {
     fn call_extra_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         fn_val: Self::ExtraFnVal,
+        abi: Abi,
         args: &[OpTy<'tcx, Self::PointerTag>],
-        ret: Option<(PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,
+        ret: Option<(&PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,
         unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx>;
 
@@ -164,7 +178,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::PointerTag>],
-        ret: Option<(PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,
+        ret: Option<(&PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,
         unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx>;
 
@@ -176,7 +190,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     ) -> InterpResult<'tcx>;
 
     /// Called to evaluate `Abort` MIR terminator.
-    fn abort(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx, !> {
+    fn abort(_ecx: &mut InterpCx<'mir, 'tcx, Self>, _msg: String) -> InterpResult<'tcx, !> {
         throw_unsup_format!("aborting execution is not supported")
     }
 
@@ -186,14 +200,14 @@ pub trait Machine<'mir, 'tcx>: Sized {
     fn binary_ptr_op(
         ecx: &InterpCx<'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
-        left: ImmTy<'tcx, Self::PointerTag>,
-        right: ImmTy<'tcx, Self::PointerTag>,
+        left: &ImmTy<'tcx, Self::PointerTag>,
+        right: &ImmTy<'tcx, Self::PointerTag>,
     ) -> InterpResult<'tcx, (Scalar<Self::PointerTag>, bool, Ty<'tcx>)>;
 
     /// Heap allocations via the `box` keyword.
     fn box_alloc(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        dest: PlaceTy<'tcx, Self::PointerTag>,
+        dest: &PlaceTy<'tcx, Self::PointerTag>,
     ) -> InterpResult<'tcx>;
 
     /// Called to read the specified `local` from the `frame`.
@@ -299,12 +313,21 @@ pub trait Machine<'mir, 'tcx>: Sized {
         Ok(())
     }
 
+    /// Called after initializing static memory using the interpreter.
+    fn after_static_mem_initialized(
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _ptr: Pointer<Self::PointerTag>,
+        _size: Size,
+    ) -> InterpResult<'tcx> {
+        Ok(())
+    }
+
     /// Executes a retagging operation
     #[inline]
     fn retag(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _kind: mir::RetagKind,
-        _place: PlaceTy<'tcx, Self::PointerTag>,
+        _place: &PlaceTy<'tcx, Self::PointerTag>,
     ) -> InterpResult<'tcx> {
         Ok(())
     }
@@ -395,8 +418,9 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     fn call_extra_fn(
         _ecx: &mut InterpCx<$mir, $tcx, Self>,
         fn_val: !,
+        _abi: Abi,
         _args: &[OpTy<$tcx>],
-        _ret: Option<(PlaceTy<$tcx>, mir::BasicBlock)>,
+        _ret: Option<(&PlaceTy<$tcx>, mir::BasicBlock)>,
         _unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<$tcx> {
         match fn_val {}

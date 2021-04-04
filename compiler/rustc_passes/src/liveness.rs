@@ -95,7 +95,7 @@ use rustc_hir::{Expr, ExprKind, HirId, HirIdMap, HirIdSet, QPath};
 use rustc_index::vec::IndexVec;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, DefIdTree, TyCtxt};
+use rustc_middle::ty::{self, DefIdTree, RootVariableMinCaptureList, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
@@ -103,7 +103,10 @@ use rustc_span::Span;
 use std::collections::VecDeque;
 use std::io;
 use std::io::prelude::*;
+use std::iter;
 use std::rc::Rc;
+
+mod rwu_table;
 
 rustc_index::newtype_index! {
     pub struct Variable {
@@ -329,6 +332,7 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             }
         }
 
+<<<<<<< HEAD
         // Allow todo! macro
         /*
             Skips checking for unused variables when the trailing expression
@@ -372,6 +376,9 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
         }
 
         if let Some(captures) = maps.tcx.typeck(local_def_id).closure_captures.get(&def_id) {
+=======
+        if let Some(captures) = maps.tcx.typeck(local_def_id).closure_min_captures.get(&def_id) {
+>>>>>>> master
             for &var_hir_id in captures.keys() {
                 let var_name = maps.tcx.hir().name(var_hir_id);
                 maps.add_variable(Upvar(var_hir_id, var_name));
@@ -400,19 +407,24 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
 
     fn visit_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) {
         self.add_from_pat(&arm.pat);
+        if let Some(hir::Guard::IfLet(ref pat, _)) = arm.guard {
+            self.add_from_pat(pat);
+        }
         intravisit::walk_arm(self, arm);
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
-        let is_shorthand = match param.pat.kind {
-            rustc_hir::PatKind::Struct(..) => true,
-            _ => false,
-        };
         param.pat.each_binding(|_bm, hir_id, _x, ident| {
-            let var = if is_shorthand {
-                Local(LocalInfo { id: hir_id, name: ident.name, is_shorthand: true })
-            } else {
-                Param(hir_id, ident.name)
+            let var = match param.pat.kind {
+                rustc_hir::PatKind::Struct(_, fields, _) => Local(LocalInfo {
+                    id: hir_id,
+                    name: ident.name,
+                    is_shorthand: fields
+                        .iter()
+                        .find(|f| f.ident == ident)
+                        .map_or(false, |f| f.is_shorthand),
+                }),
+                _ => Param(hir_id, ident.name),
             };
             self.add_variable(var);
         });
@@ -443,10 +455,10 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
                 if let Some(captures) = self
                     .tcx
                     .typeck(closure_def_id)
-                    .closure_captures
+                    .closure_min_captures
                     .get(&closure_def_id.to_def_id())
                 {
-                    // If closure captures is Some, upvars_mentioned must also be Some
+                    // If closure_min_captures is Some, upvars_mentioned must also be Some
                     let upvars = self.tcx.upvars_mentioned(closure_def_id).unwrap();
                     call_caps.extend(captures.keys().map(|var_id| {
                         let upvar = upvars[var_id];
@@ -459,7 +471,7 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             }
 
             // live nodes required for interesting control flow:
-            hir::ExprKind::Match(..) | hir::ExprKind::Loop(..) => {
+            hir::ExprKind::If(..) | hir::ExprKind::Match(..) | hir::ExprKind::Loop(..) => {
                 self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
                 intravisit::walk_expr(self, expr);
             }
@@ -510,162 +522,18 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
 // Actually we compute just a bit more than just liveness, but we use
 // the same basic propagation framework in all cases.
 
-#[derive(Clone, Copy)]
-struct RWU {
-    reader: bool,
-    writer: bool,
-    used: bool,
-}
-
-/// Conceptually, this is like a `Vec<Vec<RWU>>`. But the number of
-/// RWU`s can get very large, so it uses a more compact representation.
-struct RWUTable {
-    /// Total number of live nodes.
-    live_nodes: usize,
-    /// Total number of variables.
-    vars: usize,
-
-    /// A compressed representation of `RWU`s.
-    ///
-    /// Each word represents 2 different `RWU`s packed together. Each packed RWU
-    /// is stored in 4 bits: a reader bit, a writer bit, a used bit and a
-    /// padding bit.
-    ///
-    /// The data for each live node is contiguous and starts at a word boundary,
-    /// so there might be an unused space left.
-    words: Vec<u8>,
-    /// Number of words per each live node.
-    live_node_words: usize,
-}
-
-impl RWUTable {
-    const RWU_READER: u8 = 0b0001;
-    const RWU_WRITER: u8 = 0b0010;
-    const RWU_USED: u8 = 0b0100;
-    const RWU_MASK: u8 = 0b1111;
-
-    /// Size of packed RWU in bits.
-    const RWU_BITS: usize = 4;
-    /// Size of a word in bits.
-    const WORD_BITS: usize = std::mem::size_of::<u8>() * 8;
-    /// Number of packed RWUs that fit into a single word.
-    const WORD_RWU_COUNT: usize = Self::WORD_BITS / Self::RWU_BITS;
-
-    fn new(live_nodes: usize, vars: usize) -> RWUTable {
-        let live_node_words = (vars + Self::WORD_RWU_COUNT - 1) / Self::WORD_RWU_COUNT;
-        Self { live_nodes, vars, live_node_words, words: vec![0u8; live_node_words * live_nodes] }
-    }
-
-    fn word_and_shift(&self, ln: LiveNode, var: Variable) -> (usize, u32) {
-        assert!(ln.index() < self.live_nodes);
-        assert!(var.index() < self.vars);
-
-        let var = var.index();
-        let word = var / Self::WORD_RWU_COUNT;
-        let shift = Self::RWU_BITS * (var % Self::WORD_RWU_COUNT);
-        (ln.index() * self.live_node_words + word, shift as u32)
-    }
-
-    fn pick2_rows_mut(&mut self, a: LiveNode, b: LiveNode) -> (&mut [u8], &mut [u8]) {
-        assert!(a.index() < self.live_nodes);
-        assert!(b.index() < self.live_nodes);
-        assert!(a != b);
-
-        let a_start = a.index() * self.live_node_words;
-        let b_start = b.index() * self.live_node_words;
-
-        unsafe {
-            let ptr = self.words.as_mut_ptr();
-            (
-                std::slice::from_raw_parts_mut(ptr.add(a_start), self.live_node_words),
-                std::slice::from_raw_parts_mut(ptr.add(b_start), self.live_node_words),
-            )
-        }
-    }
-
-    fn copy(&mut self, dst: LiveNode, src: LiveNode) {
-        if dst == src {
-            return;
-        }
-
-        let (dst_row, src_row) = self.pick2_rows_mut(dst, src);
-        dst_row.copy_from_slice(src_row);
-    }
-
-    /// Sets `dst` to the union of `dst` and `src`, returns true if `dst` was
-    /// changed.
-    fn union(&mut self, dst: LiveNode, src: LiveNode) -> bool {
-        if dst == src {
-            return false;
-        }
-
-        let mut changed = false;
-        let (dst_row, src_row) = self.pick2_rows_mut(dst, src);
-        for (dst_word, src_word) in dst_row.iter_mut().zip(src_row.iter()) {
-            let old = *dst_word;
-            let new = *dst_word | src_word;
-            *dst_word = new;
-            changed |= old != new;
-        }
-        changed
-    }
-
-    fn get_reader(&self, ln: LiveNode, var: Variable) -> bool {
-        let (word, shift) = self.word_and_shift(ln, var);
-        (self.words[word] >> shift) & Self::RWU_READER != 0
-    }
-
-    fn get_writer(&self, ln: LiveNode, var: Variable) -> bool {
-        let (word, shift) = self.word_and_shift(ln, var);
-        (self.words[word] >> shift) & Self::RWU_WRITER != 0
-    }
-
-    fn get_used(&self, ln: LiveNode, var: Variable) -> bool {
-        let (word, shift) = self.word_and_shift(ln, var);
-        (self.words[word] >> shift) & Self::RWU_USED != 0
-    }
-
-    fn get(&self, ln: LiveNode, var: Variable) -> RWU {
-        let (word, shift) = self.word_and_shift(ln, var);
-        let rwu_packed = self.words[word] >> shift;
-        RWU {
-            reader: rwu_packed & Self::RWU_READER != 0,
-            writer: rwu_packed & Self::RWU_WRITER != 0,
-            used: rwu_packed & Self::RWU_USED != 0,
-        }
-    }
-
-    fn set(&mut self, ln: LiveNode, var: Variable, rwu: RWU) {
-        let mut packed = 0;
-        if rwu.reader {
-            packed |= Self::RWU_READER;
-        }
-        if rwu.writer {
-            packed |= Self::RWU_WRITER;
-        }
-        if rwu.used {
-            packed |= Self::RWU_USED;
-        }
-
-        let (word, shift) = self.word_and_shift(ln, var);
-        let word = &mut self.words[word];
-        *word = (*word & !(Self::RWU_MASK << shift)) | (packed << shift)
-    }
-}
-
 const ACC_READ: u32 = 1;
 const ACC_WRITE: u32 = 2;
 const ACC_USE: u32 = 4;
 
 struct Liveness<'a, 'tcx> {
     ir: &'a mut IrMaps<'tcx>,
-    body_owner: LocalDefId,
     typeck_results: &'a ty::TypeckResults<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     upvars: Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>>,
-    closure_captures: Option<&'tcx FxIndexMap<hir::HirId, ty::UpvarId>>,
+    closure_min_captures: Option<&'tcx RootVariableMinCaptureList<'tcx>>,
     successors: IndexVec<LiveNode, Option<LiveNode>>,
-    rwu_table: RWUTable,
+    rwu_table: rwu_table::RWUTable,
 
     /// A live node representing a point of execution before closure entry &
     /// after closure exit. Used to calculate liveness of captured variables
@@ -687,8 +555,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         let typeck_results = ir.tcx.typeck(body_owner);
         let param_env = ir.tcx.param_env(body_owner);
         let upvars = ir.tcx.upvars_mentioned(body_owner);
-        let closure_captures = typeck_results.closure_captures.get(&body_owner.to_def_id());
-
+        let closure_min_captures = typeck_results.closure_min_captures.get(&body_owner.to_def_id());
         let closure_ln = ir.add_live_node(ClosureNode);
         let exit_ln = ir.add_live_node(ExitNode);
 
@@ -697,13 +564,12 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
         Liveness {
             ir,
-            body_owner,
             typeck_results,
             param_env,
             upvars,
-            closure_captures,
+            closure_min_captures,
             successors: IndexVec::from_elem_n(None, num_live_nodes),
-            rwu_table: RWUTable::new(num_live_nodes, num_vars),
+            rwu_table: rwu_table::RWUTable::new(num_live_nodes, num_vars),
             closure_ln,
             exit_ln,
             break_ln: Default::default(),
@@ -823,19 +689,13 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         debug!("init_from_succ(ln={}, succ={})", self.ln_str(ln), self.ln_str(succ_ln));
     }
 
-    fn merge_from_succ(&mut self, ln: LiveNode, succ_ln: LiveNode, first_merge: bool) -> bool {
+    fn merge_from_succ(&mut self, ln: LiveNode, succ_ln: LiveNode) -> bool {
         if ln == succ_ln {
             return false;
         }
 
         let changed = self.rwu_table.union(ln, succ_ln);
-        debug!(
-            "merge_from_succ(ln={:?}, succ={}, first_merge={}, changed={})",
-            ln,
-            self.ln_str(succ_ln),
-            first_merge,
-            changed
-        );
+        debug!("merge_from_succ(ln={:?}, succ={}, changed={})", ln, self.ln_str(succ_ln), changed);
         changed
     }
 
@@ -844,7 +704,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     // this) so we just clear out all the data.
     fn define(&mut self, writer: LiveNode, var: Variable) {
         let used = self.rwu_table.get_used(writer, var);
-        self.rwu_table.set(writer, var, RWU { reader: false, writer: false, used });
+        self.rwu_table.set(writer, var, rwu_table::RWU { reader: false, writer: false, used });
         debug!("{:?} defines {:?}: {}", writer, var, self.ln_str(writer));
     }
 
@@ -891,25 +751,27 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         // if they are live on the entry to the closure, since only the closure
         // itself can access them on subsequent calls.
 
-        if let Some(closure_captures) = self.closure_captures {
+        if let Some(closure_min_captures) = self.closure_min_captures {
             // Mark upvars captured by reference as used after closure exits.
-            // Since closure_captures is Some, upvars must exists too.
-            let upvars = self.upvars.unwrap();
-            for (&var_hir_id, upvar_id) in closure_captures {
-                let upvar = upvars[&var_hir_id];
-                match self.typeck_results.upvar_capture(*upvar_id) {
-                    ty::UpvarCapture::ByRef(_) => {
-                        let var = self.variable(var_hir_id, upvar.span);
-                        self.acc(self.exit_ln, var, ACC_READ | ACC_USE);
+            for (&var_hir_id, min_capture_list) in closure_min_captures {
+                for captured_place in min_capture_list {
+                    match captured_place.info.capture_kind {
+                        ty::UpvarCapture::ByRef(_) => {
+                            let var = self.variable(
+                                var_hir_id,
+                                captured_place.get_capture_kind_span(self.ir.tcx),
+                            );
+                            self.acc(self.exit_ln, var, ACC_READ | ACC_USE);
+                        }
+                        ty::UpvarCapture::ByValue(_) => {}
                     }
-                    ty::UpvarCapture::ByValue(_) => {}
                 }
             }
         }
 
         let succ = self.propagate_through_expr(&body.value, self.exit_ln);
 
-        if self.closure_captures.is_none() {
+        if self.closure_min_captures.is_none() {
             // Either not a closure, or closure without any captured variables.
             // No need to determine liveness of captured variables, since there
             // are none.
@@ -935,7 +797,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         };
 
         // Propagate through calls to the closure.
-        let mut first_merge = true;
         loop {
             self.init_from_succ(self.closure_ln, succ);
             for param in body.params {
@@ -945,10 +806,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 })
             }
 
-            if !self.merge_from_succ(self.exit_ln, self.closure_ln, first_merge) {
+            if !self.merge_from_succ(self.exit_ln, self.closure_ln) {
                 break;
             }
-            first_merge = false;
             assert_eq!(succ, self.propagate_through_expr(&body.value, self.exit_ln));
         }
 
@@ -1035,7 +895,30 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
             // Note that labels have been resolved, so we don't need to look
             // at the label ident
-            hir::ExprKind::Loop(ref blk, _, _) => self.propagate_through_loop(expr, &blk, succ),
+            hir::ExprKind::Loop(ref blk, ..) => self.propagate_through_loop(expr, &blk, succ),
+
+            hir::ExprKind::If(ref cond, ref then, ref else_opt) => {
+                //
+                //     (cond)
+                //       |
+                //       v
+                //     (expr)
+                //     /   \
+                //    |     |
+                //    v     v
+                //  (then)(els)
+                //    |     |
+                //    v     v
+                //   (  succ  )
+                //
+                let else_ln =
+                    self.propagate_through_opt_expr(else_opt.as_ref().map(|e| &**e), succ);
+                let then_ln = self.propagate_through_expr(&then, succ);
+                let ln = self.live_node(expr.hir_id, expr.span);
+                self.init_from_succ(ln, else_ln);
+                self.merge_from_succ(ln, then_ln);
+                self.propagate_through_expr(&cond, ln)
+            }
 
             hir::ExprKind::Match(ref e, arms, _) => {
                 //
@@ -1054,17 +937,18 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 //
                 let ln = self.live_node(expr.hir_id, expr.span);
                 self.init_empty(ln, succ);
-                let mut first_merge = true;
                 for arm in arms {
                     let body_succ = self.propagate_through_expr(&arm.body, succ);
 
-                    let guard_succ = self.propagate_through_opt_expr(
-                        arm.guard.as_ref().map(|hir::Guard::If(e)| *e),
-                        body_succ,
-                    );
+                    let guard_succ = arm.guard.as_ref().map_or(body_succ, |g| match g {
+                        hir::Guard::If(e) => self.propagate_through_expr(e, body_succ),
+                        hir::Guard::IfLet(pat, e) => {
+                            let let_bind = self.define_bindings_in_pat(pat, body_succ);
+                            self.propagate_through_expr(e, let_bind)
+                        }
+                    });
                     let arm_succ = self.define_bindings_in_pat(&arm.pat, guard_succ);
-                    self.merge_from_succ(ln, arm_succ, first_merge);
-                    first_merge = false;
+                    self.merge_from_succ(ln, arm_succ);
                 }
                 self.propagate_through_expr(&e, ln)
             }
@@ -1175,7 +1059,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
                 let ln = self.live_node(expr.hir_id, expr.span);
                 self.init_from_succ(ln, succ);
-                self.merge_from_succ(ln, r_succ, false);
+                self.merge_from_succ(ln, r_succ);
 
                 self.propagate_through_expr(&l, ln)
             }
@@ -1256,7 +1140,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 let ia = &asm.inner;
                 let outputs = asm.outputs_exprs;
                 let inputs = asm.inputs_exprs;
-                let succ = ia.outputs.iter().zip(outputs).rev().fold(succ, |succ, (o, output)| {
+                let succ = iter::zip(&ia.outputs, outputs).rev().fold(succ, |succ, (o, output)| {
                     // see comment on places
                     // in propagate_through_place_components()
                     if o.is_indirect {
@@ -1383,7 +1267,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         match path.res {
             Res::Local(hid) => {
                 let in_upvars = self.upvars.map_or(false, |u| u.contains_key(&hid));
-                let in_captures = self.closure_captures.map_or(false, |c| c.contains_key(&hid));
+                let in_captures = self.closure_min_captures.map_or(false, |c| c.contains_key(&hid));
 
                 match (in_upvars, in_captures) {
                     (false, _) | (true, true) => self.access_var(hir_id, hid, succ, acc, path.span),
@@ -1419,7 +1303,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         */
 
         // first iteration:
-        let mut first_merge = true;
         let ln = self.live_node(expr.hir_id, expr.span);
         self.init_empty(ln, succ);
         debug!("propagate_through_loop: using id for loop body {} {:?}", expr.hir_id, body);
@@ -1431,8 +1314,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         let body_ln = self.propagate_through_block(body, ln);
 
         // repeat until fixed point is reached:
-        while self.merge_from_succ(ln, body_ln, first_merge) {
-            first_merge = false;
+        while self.merge_from_succ(ln, body_ln) {
             assert_eq!(body_ln, self.propagate_through_block(body, ln));
         }
 
@@ -1509,7 +1391,7 @@ fn check_expr<'tcx>(this: &mut Liveness<'_, 'tcx>, expr: &'tcx Expr<'tcx>) {
             }
 
             // Output operands must be places
-            for (o, output) in asm.inner.outputs.iter().zip(asm.outputs_exprs) {
+            for (o, output) in iter::zip(&asm.inner.outputs, asm.outputs_exprs) {
                 if !o.is_indirect {
                     this.check_place(output);
                 }
@@ -1528,6 +1410,7 @@ fn check_expr<'tcx>(this: &mut Liveness<'_, 'tcx>, expr: &'tcx Expr<'tcx>) {
         | hir::ExprKind::Tup(..)
         | hir::ExprKind::Binary(..)
         | hir::ExprKind::Cast(..)
+        | hir::ExprKind::If(..)
         | hir::ExprKind::DropTemps(..)
         | hir::ExprKind::Unary(..)
         | hir::ExprKind::Ret(..)
@@ -1574,7 +1457,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
 
     fn should_warn(&self, var: Variable) -> Option<String> {
         let name = self.ir.variable_name(var);
-        if name == kw::Invalid {
+        if name == kw::Empty {
             return None;
         }
         let name: &str = &name.as_str();
@@ -1585,51 +1468,51 @@ impl<'tcx> Liveness<'_, 'tcx> {
     }
 
     fn warn_about_unused_upvars(&self, entry_ln: LiveNode) {
-        let closure_captures = match self.closure_captures {
+        let closure_min_captures = match self.closure_min_captures {
             None => return,
-            Some(closure_captures) => closure_captures,
+            Some(closure_min_captures) => closure_min_captures,
         };
 
-        // If closure_captures is Some(), upvars must be Some() too.
-        let upvars = self.upvars.unwrap();
-        for &var_hir_id in closure_captures.keys() {
-            let upvar = upvars[&var_hir_id];
-            let var = self.variable(var_hir_id, upvar.span);
-            let upvar_id = ty::UpvarId {
-                var_path: ty::UpvarPath { hir_id: var_hir_id },
-                closure_expr_id: self.body_owner,
-            };
-            match self.typeck_results.upvar_capture(upvar_id) {
-                ty::UpvarCapture::ByValue(_) => {}
-                ty::UpvarCapture::ByRef(..) => continue,
-            };
-            if self.used_on_entry(entry_ln, var) {
-                if !self.live_on_entry(entry_ln, var) {
+        // If closure_min_captures is Some(), upvars must be Some() too.
+        for (&var_hir_id, min_capture_list) in closure_min_captures {
+            for captured_place in min_capture_list {
+                match captured_place.info.capture_kind {
+                    ty::UpvarCapture::ByValue(_) => {}
+                    ty::UpvarCapture::ByRef(..) => continue,
+                };
+                let span = captured_place.get_capture_kind_span(self.ir.tcx);
+                let var = self.variable(var_hir_id, span);
+                if self.used_on_entry(entry_ln, var) {
+                    if !self.live_on_entry(entry_ln, var) {
+                        if let Some(name) = self.should_warn(var) {
+                            self.ir.tcx.struct_span_lint_hir(
+                                lint::builtin::UNUSED_ASSIGNMENTS,
+                                var_hir_id,
+                                vec![span],
+                                |lint| {
+                                    lint.build(&format!(
+                                        "value captured by `{}` is never read",
+                                        name
+                                    ))
+                                    .help("did you mean to capture by reference instead?")
+                                    .emit();
+                                },
+                            );
+                        }
+                    }
+                } else {
                     if let Some(name) = self.should_warn(var) {
                         self.ir.tcx.struct_span_lint_hir(
-                            lint::builtin::UNUSED_ASSIGNMENTS,
+                            lint::builtin::UNUSED_VARIABLES,
                             var_hir_id,
-                            vec![upvar.span],
+                            vec![span],
                             |lint| {
-                                lint.build(&format!("value captured by `{}` is never read", name))
+                                lint.build(&format!("unused variable: `{}`", name))
                                     .help("did you mean to capture by reference instead?")
                                     .emit();
                             },
                         );
                     }
-                }
-            } else {
-                if let Some(name) = self.should_warn(var) {
-                    self.ir.tcx.struct_span_lint_hir(
-                        lint::builtin::UNUSED_VARIABLES,
-                        var_hir_id,
-                        vec![upvar.span],
-                        |lint| {
-                            lint.build(&format!("unused variable: `{}`", name))
-                                .help("did you mean to capture by reference instead?")
-                                .emit();
-                        },
-                    );
                 }
             }
         }
@@ -1657,12 +1540,13 @@ impl<'tcx> Liveness<'_, 'tcx> {
         // bindings, and we also consider the first pattern to be the "authoritative" set of ids.
         // However, we should take the ids and spans of variables with the same name from the later
         // patterns so the suggestions to prefix with underscores will apply to those too.
-        let mut vars: FxIndexMap<Symbol, (LiveNode, Variable, Vec<(HirId, Span)>)> = <_>::default();
+        let mut vars: FxIndexMap<Symbol, (LiveNode, Variable, Vec<(HirId, Span, Span)>)> =
+            <_>::default();
 
         pat.each_binding(|_, hir_id, pat_sp, ident| {
             let ln = entry_ln.unwrap_or_else(|| self.live_node(hir_id, pat_sp));
             let var = self.variable(hir_id, ident.span);
-            let id_and_sp = (hir_id, pat_sp);
+            let id_and_sp = (hir_id, pat_sp, ident.span);
             vars.entry(self.ir.variable_name(var))
                 .and_modify(|(.., hir_ids_and_spans)| hir_ids_and_spans.push(id_and_sp))
                 .or_insert_with(|| (ln, var, vec![id_and_sp]));
@@ -1671,7 +1555,8 @@ impl<'tcx> Liveness<'_, 'tcx> {
         for (_, (ln, var, hir_ids_and_spans)) in vars {
             if self.used_on_entry(ln, var) {
                 let id = hir_ids_and_spans[0].0;
-                let spans = hir_ids_and_spans.into_iter().map(|(_, sp)| sp).collect();
+                let spans =
+                    hir_ids_and_spans.into_iter().map(|(_, _, ident_span)| ident_span).collect();
                 on_used_on_entry(spans, id, ln, var);
             } else {
                 self.report_unused(hir_ids_and_spans, ln, var);
@@ -1679,7 +1564,12 @@ impl<'tcx> Liveness<'_, 'tcx> {
         }
     }
 
-    fn report_unused(&self, hir_ids_and_spans: Vec<(HirId, Span)>, ln: LiveNode, var: Variable) {
+    fn report_unused(
+        &self,
+        hir_ids_and_spans: Vec<(HirId, Span, Span)>,
+        ln: LiveNode,
+        var: Variable,
+    ) {
         let first_hir_id = hir_ids_and_spans[0].0;
 
         if let Some(name) = self.should_warn(var).filter(|name| name != "self") {
@@ -1693,7 +1583,10 @@ impl<'tcx> Liveness<'_, 'tcx> {
                 self.ir.tcx.struct_span_lint_hir(
                     lint::builtin::UNUSED_VARIABLES,
                     first_hir_id,
-                    hir_ids_and_spans.into_iter().map(|(_, sp)| sp).collect::<Vec<_>>(),
+                    hir_ids_and_spans
+                        .into_iter()
+                        .map(|(_, _, ident_span)| ident_span)
+                        .collect::<Vec<_>>(),
                     |lint| {
                         lint.build(&format!("variable `{}` is assigned to, but never used", name))
                             .note(&format!("consider using `_{}` instead", name))
@@ -1701,54 +1594,67 @@ impl<'tcx> Liveness<'_, 'tcx> {
                     },
                 )
             } else {
-                self.ir.tcx.struct_span_lint_hir(
-                    lint::builtin::UNUSED_VARIABLES,
-                    first_hir_id,
-                    hir_ids_and_spans.iter().map(|(_, sp)| *sp).collect::<Vec<_>>(),
-                    |lint| {
-                        let mut err = lint.build(&format!("unused variable: `{}`", name));
+                let (shorthands, non_shorthands): (Vec<_>, Vec<_>) =
+                    hir_ids_and_spans.iter().copied().partition(|(hir_id, _, ident_span)| {
+                        let var = self.variable(*hir_id, *ident_span);
+                        self.ir.variable_is_shorthand(var)
+                    });
 
-                        let (shorthands, non_shorthands): (Vec<_>, Vec<_>) =
-                            hir_ids_and_spans.into_iter().partition(|(hir_id, span)| {
-                                let var = self.variable(*hir_id, *span);
-                                self.ir.variable_is_shorthand(var)
-                            });
+                // If we have both shorthand and non-shorthand, prefer the "try ignoring
+                // the field" message, and suggest `_` for the non-shorthands. If we only
+                // have non-shorthand, then prefix with an underscore instead.
+                if !shorthands.is_empty() {
+                    let shorthands = shorthands
+                        .into_iter()
+                        .map(|(_, pat_span, _)| (pat_span, format!("{}: _", name)))
+                        .chain(
+                            non_shorthands
+                                .into_iter()
+                                .map(|(_, pat_span, _)| (pat_span, "_".to_string())),
+                        )
+                        .collect::<Vec<_>>();
 
-                        let mut shorthands = shorthands
-                            .into_iter()
-                            .map(|(_, span)| (span, format!("{}: _", name)))
-                            .collect::<Vec<_>>();
-
-                        // If we have both shorthand and non-shorthand, prefer the "try ignoring
-                        // the field" message, and suggest `_` for the non-shorthands. If we only
-                        // have non-shorthand, then prefix with an underscore instead.
-                        if !shorthands.is_empty() {
-                            shorthands.extend(
-                                non_shorthands
-                                    .into_iter()
-                                    .map(|(_, span)| (span, "_".to_string()))
-                                    .collect::<Vec<_>>(),
-                            );
-
+                    self.ir.tcx.struct_span_lint_hir(
+                        lint::builtin::UNUSED_VARIABLES,
+                        first_hir_id,
+                        hir_ids_and_spans
+                            .iter()
+                            .map(|(_, pat_span, _)| *pat_span)
+                            .collect::<Vec<_>>(),
+                        |lint| {
+                            let mut err = lint.build(&format!("unused variable: `{}`", name));
                             err.multipart_suggestion(
                                 "try ignoring the field",
                                 shorthands,
                                 Applicability::MachineApplicable,
                             );
-                        } else {
+                            err.emit()
+                        },
+                    );
+                } else {
+                    let non_shorthands = non_shorthands
+                        .into_iter()
+                        .map(|(_, _, ident_span)| (ident_span, format!("_{}", name)))
+                        .collect::<Vec<_>>();
+
+                    self.ir.tcx.struct_span_lint_hir(
+                        lint::builtin::UNUSED_VARIABLES,
+                        first_hir_id,
+                        hir_ids_and_spans
+                            .iter()
+                            .map(|(_, _, ident_span)| *ident_span)
+                            .collect::<Vec<_>>(),
+                        |lint| {
+                            let mut err = lint.build(&format!("unused variable: `{}`", name));
                             err.multipart_suggestion(
                                 "if this is intentional, prefix it with an underscore",
-                                non_shorthands
-                                    .into_iter()
-                                    .map(|(_, span)| (span, format!("_{}", name)))
-                                    .collect::<Vec<_>>(),
+                                non_shorthands,
                                 Applicability::MachineApplicable,
                             );
-                        }
-
-                        err.emit()
-                    },
-                );
+                            err.emit()
+                        },
+                    );
+                }
             }
         }
     }

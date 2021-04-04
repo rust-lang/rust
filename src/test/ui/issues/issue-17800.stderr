@@ -2,7 +2,12 @@ error[E0769]: tuple variant `MyOption::MySome` written as struct variant
   --> $DIR/issue-17800.rs:8:9
    |
 LL |         MyOption::MySome { x: 42 } => (),
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the tuple variant pattern syntax instead: `MyOption::MySome(42)`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use the tuple variant pattern syntax instead
+   |
+LL |         MyOption::MySome(42) => (),
+   |                         ^^^^
 
 error: aborting due to previous error
 

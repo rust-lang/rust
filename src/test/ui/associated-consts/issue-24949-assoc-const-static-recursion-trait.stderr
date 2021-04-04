@@ -30,7 +30,7 @@ note: ...which requires const-evaluating + checking `<impl at $DIR/issue-24949-a
    |
 LL |     const BAR: u32 = TRAIT_REF_BAR;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires optimizing MIR for `<impl at $DIR/issue-24949-assoc-const-static-recursion-trait.rs:11:1: 13:2>::BAR`...
+note: ...which requires caching mir of `<impl at $DIR/issue-24949-assoc-const-static-recursion-trait.rs:11:1: 13:2>::BAR` for CTFE...
   --> $DIR/issue-24949-assoc-const-static-recursion-trait.rs:12:5
    |
 LL |     const BAR: u32 = TRAIT_REF_BAR;

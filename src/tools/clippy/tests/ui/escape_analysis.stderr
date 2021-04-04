@@ -12,5 +12,17 @@ error: local variable doesn't need to be boxed here
 LL | pub fn new(_needs_name: Box<PeekableSeekable<&()>>) -> () {}
    |            ^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: local variable doesn't need to be boxed here
+  --> $DIR/escape_analysis.rs:195:44
+   |
+LL |         fn default_impl_x(self: Box<Self>, x: Box<u32>) -> u32 {
+   |                                            ^
+
+error: local variable doesn't need to be boxed here
+  --> $DIR/escape_analysis.rs:202:16
+   |
+LL |         fn foo(x: Box<u32>) {}
+   |                ^
+
+error: aborting due to 4 previous errors
 

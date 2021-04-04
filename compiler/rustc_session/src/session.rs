@@ -1,14 +1,13 @@
 use crate::cgu_reuse_tracker::CguReuseTracker;
 use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, SizeKind, VariantInfo};
-use crate::config::{self, CrateType, OutputType, PrintRequest, SanitizerSet, SwitchWithOptPath};
+use crate::config::{self, CrateType, OutputType, PrintRequest, SwitchWithOptPath};
 use crate::filesearch;
 use crate::lint::{self, LintId};
 use crate::parse::ParseSess;
 use crate::search_paths::{PathKind, SearchPath};
 
 pub use rustc_ast::attr::MarkedAttrs;
-pub use rustc_ast::crate_disambiguator::CrateDisambiguator;
 pub use rustc_ast::Attribute;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -21,14 +20,15 @@ use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitterWriter;
 use rustc_errors::emitter::{Emitter, EmitterWriter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, DiagnosticId, ErrorReported};
+use rustc_errors::{Diagnostic, DiagnosticBuilder, DiagnosticId, ErrorReported};
 use rustc_lint_defs::FutureBreakage;
+pub use rustc_span::crate_disambiguator::CrateDisambiguator;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{FileLoader, MultiSpan, RealFileLoader, SourceMap, Span};
 use rustc_span::{sym, SourceFileHashAlgorithm, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{CodeModel, PanicStrategy, RelocModel, RelroLevel};
-use rustc_target::spec::{Target, TargetTriple, TlsModel};
+use rustc_target::spec::{SanitizerSet, SplitDebuginfo, Target, TargetTriple, TlsModel};
 
 use std::cell::{self, RefCell};
 use std::env;
@@ -77,6 +77,7 @@ impl Limit {
 
     /// Check that `value` is within the limit. Ensures that the same comparisons are used
     /// throughout the compiler, as mismatches can cause ICEs, see #72540.
+    #[inline]
     pub fn value_within_limit(&self, value: usize) -> bool {
         value <= self.0
     }
@@ -240,8 +241,7 @@ pub struct PerfStats {
 enum DiagnosticBuilderMethod {
     Note,
     SpanNote,
-    SpanSuggestion(String), // suggestion
-                            // Add more variants as needed to support one-time diagnostics.
+    // Add more variants as needed to support one-time diagnostics.
 }
 
 /// Trait implemented by error types. This should not be implemented manually. Instead, use
@@ -347,10 +347,12 @@ impl Session {
         self.crate_types.set(crate_types).expect("`crate_types` was initialized twice")
     }
 
+    #[inline]
     pub fn recursion_limit(&self) -> Limit {
         self.recursion_limit.get().copied().unwrap()
     }
 
+    #[inline]
     pub fn type_length_limit(&self) -> Limit {
         self.type_length_limit.get().copied().unwrap()
     }
@@ -548,15 +550,6 @@ impl Session {
                     let span = span_maybe.expect("`span_note` needs a span");
                     diag_builder.span_note(span, message);
                 }
-                DiagnosticBuilderMethod::SpanSuggestion(suggestion) => {
-                    let span = span_maybe.expect("`span_suggestion_*` needs a span");
-                    diag_builder.span_suggestion(
-                        span,
-                        message,
-                        suggestion,
-                        Applicability::Unspecified,
-                    );
-                }
             }
         }
     }
@@ -586,23 +579,6 @@ impl Session {
         self.diag_once(diag_builder, DiagnosticBuilderMethod::Note, msg_id, message, None);
     }
 
-    pub fn diag_span_suggestion_once<'a, 'b>(
-        &'a self,
-        diag_builder: &'b mut DiagnosticBuilder<'a>,
-        msg_id: DiagnosticMessageId,
-        span: Span,
-        message: &str,
-        suggestion: String,
-    ) {
-        self.diag_once(
-            diag_builder,
-            DiagnosticBuilderMethod::SpanSuggestion(suggestion),
-            msg_id,
-            message,
-            Some(span),
-        );
-    }
-
     #[inline]
     pub fn source_map(&self) -> &SourceMap {
         self.parse_sess.source_map()
@@ -628,14 +604,17 @@ impl Session {
     pub fn verify_llvm_ir(&self) -> bool {
         self.opts.debugging_opts.verify_llvm_ir || option_env!("RUSTC_VERIFY_LLVM_IR").is_some()
     }
-    pub fn borrowck_stats(&self) -> bool {
-        self.opts.debugging_opts.borrowck_stats
-    }
     pub fn print_llvm_passes(&self) -> bool {
         self.opts.debugging_opts.print_llvm_passes
     }
     pub fn binary_dep_depinfo(&self) -> bool {
         self.opts.debugging_opts.binary_dep_depinfo
+    }
+    pub fn mir_opt_level(&self) -> usize {
+        self.opts
+            .debugging_opts
+            .mir_opt_level
+            .unwrap_or_else(|| if self.opts.optimize != config::OptLevel::No { 2 } else { 1 })
     }
 
     /// Gets the features enabled for the current compilation session.
@@ -796,6 +775,22 @@ impl Session {
         self.opts.debugging_opts.tls_model.unwrap_or(self.target.tls_model)
     }
 
+    pub fn is_wasi_reactor(&self) -> bool {
+        self.target.options.os == "wasi"
+            && matches!(
+                self.opts.debugging_opts.wasi_exec_model,
+                Some(config::WasiExecModel::Reactor)
+            )
+    }
+
+    pub fn split_debuginfo(&self) -> SplitDebuginfo {
+        self.opts.cg.split_debuginfo.unwrap_or(self.target.split_debuginfo)
+    }
+
+    pub fn target_can_use_split_dwarf(&self) -> bool {
+        !self.target.is_like_windows && !self.target.is_like_osx
+    }
+
     pub fn must_not_eliminate_frame_pointers(&self) -> bool {
         // "mcount" function relies on stack pointer.
         // See <https://sourceware.org/binutils/docs/gprof/Implementation.html>.
@@ -831,7 +826,7 @@ impl Session {
         } else if self.target.requires_uwtable {
             true
         } else {
-            self.opts.cg.force_unwind_tables.unwrap_or(false)
+            self.opts.cg.force_unwind_tables.unwrap_or(self.target.default_uwtable)
         }
     }
 
@@ -863,22 +858,6 @@ impl Session {
             &self.host_tlib_path,
             kind,
         )
-    }
-
-    pub fn set_incr_session_load_dep_graph(&self, load: bool) {
-        let mut incr_comp_session = self.incr_comp_session.borrow_mut();
-
-        if let IncrCompSession::Active { ref mut load_dep_graph, .. } = *incr_comp_session {
-            *load_dep_graph = load;
-        }
-    }
-
-    pub fn incr_session_load_dep_graph(&self) -> bool {
-        let incr_comp_session = self.incr_comp_session.borrow();
-        match *incr_comp_session {
-            IncrCompSession::Active { load_dep_graph, .. } => load_dep_graph,
-            _ => false,
-        }
     }
 
     pub fn init_incr_comp_session(
@@ -943,19 +922,19 @@ impl Session {
     }
 
     pub fn print_perf_stats(&self) {
-        println!(
+        eprintln!(
             "Total time spent computing symbol hashes:      {}",
             duration_to_secs_str(*self.perf_stats.symbol_hash_time.lock())
         );
-        println!(
+        eprintln!(
             "Total queries canonicalized:                   {}",
             self.perf_stats.queries_canonicalized.load(Ordering::Relaxed)
         );
-        println!(
+        eprintln!(
             "normalize_generic_arg_after_erasing_regions:   {}",
             self.perf_stats.normalize_generic_arg_after_erasing_regions.load(Ordering::Relaxed)
         );
-        println!(
+        eprintln!(
             "normalize_projection_ty:                       {}",
             self.perf_stats.normalize_projection_ty.load(Ordering::Relaxed)
         );
@@ -1076,6 +1055,11 @@ impl Session {
         self.opts.edition >= Edition::Edition2018
     }
 
+    /// Are we allowed to use features from the Rust 2021 edition?
+    pub fn rust_2021(&self) -> bool {
+        self.opts.edition >= Edition::Edition2021
+    }
+
     pub fn edition(&self) -> Edition {
         self.opts.edition
     }
@@ -1105,14 +1089,27 @@ impl Session {
         self.opts.optimize != config::OptLevel::No
         // AddressSanitizer uses lifetimes to detect use after scope bugs.
         // MemorySanitizer uses lifetimes to detect use of uninitialized stack variables.
-        || self.opts.debugging_opts.sanitizer.intersects(SanitizerSet::ADDRESS | SanitizerSet::MEMORY)
+        // HWAddressSanitizer will use lifetimes to detect use after scope bugs in the future.
+        || self.opts.debugging_opts.sanitizer.intersects(SanitizerSet::ADDRESS | SanitizerSet::MEMORY | SanitizerSet::HWADDRESS)
     }
 
     pub fn link_dead_code(&self) -> bool {
-        match self.opts.cg.link_dead_code {
-            Some(explicitly_set) => explicitly_set,
-            None => false,
-        }
+        self.opts.cg.link_dead_code.unwrap_or(false)
+    }
+
+    pub fn instrument_coverage(&self) -> bool {
+        self.opts.debugging_opts.instrument_coverage.unwrap_or(config::InstrumentCoverage::Off)
+            != config::InstrumentCoverage::Off
+    }
+
+    pub fn instrument_coverage_except_unused_generics(&self) -> bool {
+        self.opts.debugging_opts.instrument_coverage.unwrap_or(config::InstrumentCoverage::Off)
+            == config::InstrumentCoverage::ExceptUnusedGenerics
+    }
+
+    pub fn instrument_coverage_except_unused_functions(&self) -> bool {
+        self.opts.debugging_opts.instrument_coverage.unwrap_or(config::InstrumentCoverage::Off)
+            == config::InstrumentCoverage::ExceptUnusedFunctions
     }
 
     pub fn mark_attr_known(&self, attr: &Attribute) {
@@ -1326,7 +1323,8 @@ pub fn build_session(
         None
     };
 
-    let parse_sess = ParseSess::with_span_handler(span_diagnostic, source_map);
+    let mut parse_sess = ParseSess::with_span_handler(span_diagnostic, source_map);
+    parse_sess.assume_incomplete_release = sopts.debugging_opts.assume_incomplete_release;
     let sysroot = match &sopts.maybe_sysroot {
         Some(sysroot) => sysroot.clone(),
         None => filesearch::get_or_default_sysroot(),
@@ -1348,7 +1346,7 @@ pub fn build_session(
 
     let optimization_fuel_crate = sopts.debugging_opts.fuel.as_ref().map(|i| i.0.clone());
     let optimization_fuel = Lock::new(OptimizationFuel {
-        remaining: sopts.debugging_opts.fuel.as_ref().map(|i| i.1).unwrap_or(0),
+        remaining: sopts.debugging_opts.fuel.as_ref().map_or(0, |i| i.1),
         out_of_fuel: false,
     });
     let print_fuel_crate = sopts.debugging_opts.print_fuel.clone();
@@ -1519,50 +1517,22 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         );
     }
 
-    const ASAN_SUPPORTED_TARGETS: &[&str] = &[
-        "aarch64-fuchsia",
-        "aarch64-unknown-linux-gnu",
-        "x86_64-apple-darwin",
-        "x86_64-fuchsia",
-        "x86_64-unknown-freebsd",
-        "x86_64-unknown-linux-gnu",
-    ];
-    const LSAN_SUPPORTED_TARGETS: &[&str] =
-        &["aarch64-unknown-linux-gnu", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu"];
-    const MSAN_SUPPORTED_TARGETS: &[&str] =
-        &["aarch64-unknown-linux-gnu", "x86_64-unknown-freebsd", "x86_64-unknown-linux-gnu"];
-    const TSAN_SUPPORTED_TARGETS: &[&str] = &[
-        "aarch64-unknown-linux-gnu",
-        "x86_64-apple-darwin",
-        "x86_64-unknown-freebsd",
-        "x86_64-unknown-linux-gnu",
-    ];
-
-    // Sanitizers can only be used on some tested platforms.
-    for s in sess.opts.debugging_opts.sanitizer {
-        let supported_targets = match s {
-            SanitizerSet::ADDRESS => ASAN_SUPPORTED_TARGETS,
-            SanitizerSet::LEAK => LSAN_SUPPORTED_TARGETS,
-            SanitizerSet::MEMORY => MSAN_SUPPORTED_TARGETS,
-            SanitizerSet::THREAD => TSAN_SUPPORTED_TARGETS,
-            _ => panic!("unrecognized sanitizer {}", s),
-        };
-        if !supported_targets.contains(&&*sess.opts.target_triple.triple()) {
-            sess.err(&format!(
-                "`-Zsanitizer={}` only works with targets: {}",
-                s,
-                supported_targets.join(", ")
-            ));
-        }
-        let conflicting = sess.opts.debugging_opts.sanitizer - s;
-        if !conflicting.is_empty() {
-            sess.err(&format!(
-                "`-Zsanitizer={}` is incompatible with `-Zsanitizer={}`",
-                s, conflicting,
-            ));
-            // Don't report additional errors.
-            break;
-        }
+    // Sanitizers can only be used on platforms that we know have working sanitizer codegen.
+    let supported_sanitizers = sess.target.options.supported_sanitizers;
+    let unsupported_sanitizers = sess.opts.debugging_opts.sanitizer - supported_sanitizers;
+    match unsupported_sanitizers.into_iter().count() {
+        0 => {}
+        1 => sess
+            .err(&format!("{} sanitizer is not supported for this target", unsupported_sanitizers)),
+        _ => sess.err(&format!(
+            "{} sanitizers are not supported for this target",
+            unsupported_sanitizers
+        )),
+    }
+    // Cannot mix and match sanitizers.
+    let mut sanitizer_iter = sess.opts.debugging_opts.sanitizer.into_iter();
+    if let (Some(first), Some(second)) = (sanitizer_iter.next(), sanitizer_iter.next()) {
+        sess.err(&format!("`-Zsanitizer={}` is incompatible with `-Zsanitizer={}`", first, second));
     }
 }
 

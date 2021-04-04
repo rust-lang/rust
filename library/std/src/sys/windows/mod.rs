@@ -35,6 +35,7 @@ pub mod rwlock;
 pub mod thread;
 pub mod thread_local_dtor;
 pub mod thread_local_key;
+pub mod thread_parker;
 pub mod time;
 cfg_if::cfg_if! {
     if #[cfg(not(target_vendor = "uwp"))] {
@@ -129,9 +130,9 @@ pub fn to_u16s<S: AsRef<OsStr>>(s: S) -> crate::io::Result<Vec<u16>> {
     fn inner(s: &OsStr) -> crate::io::Result<Vec<u16>> {
         let mut maybe_result: Vec<u16> = s.encode_wide().collect();
         if unrolled_find_u16s(0, &maybe_result).is_some() {
-            return Err(crate::io::Error::new(
+            return Err(crate::io::Error::new_const(
                 ErrorKind::InvalidInput,
-                "strings passed to WinAPI cannot contain NULs",
+                &"strings passed to WinAPI cannot contain NULs",
             ));
         }
         maybe_result.push(0);

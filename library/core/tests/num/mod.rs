@@ -29,7 +29,10 @@ mod u8;
 mod bignum;
 mod dec2flt;
 mod flt2dec;
+mod ops;
+mod wrapping;
 
+mod ieee754;
 mod nan;
 
 /// Adds the attribute to all items in the block.

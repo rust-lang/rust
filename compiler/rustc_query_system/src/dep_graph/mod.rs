@@ -13,9 +13,8 @@ pub use serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::Lock;
-use rustc_data_structures::thin_vec::ThinVec;
-use rustc_errors::Diagnostic;
-use rustc_span::def_id::DefPathHash;
+use rustc_serialize::{opaque::FileEncoder, Encodable};
+use rustc_session::Session;
 
 use std::fmt;
 use std::hash::Hash;
@@ -27,42 +26,41 @@ pub trait DepContext: Copy {
     /// Create a hashing context for hashing new results.
     fn create_stable_hashing_context(&self) -> Self::StableHashingContext;
 
-    fn debug_dep_tasks(&self) -> bool;
-    fn debug_dep_node(&self) -> bool;
+    /// Access the DepGraph.
+    fn dep_graph(&self) -> &DepGraph<Self::DepKind>;
 
-    /// Try to force a dep node to execute and see if it's green.
-    fn try_force_from_dep_node(&self, dep_node: &DepNode<Self::DepKind>) -> bool;
-
-    fn register_reused_dep_path_hash(&self, hash: DefPathHash);
-
-    /// Return whether the current session is tainted by errors.
-    fn has_errors_or_delayed_span_bugs(&self) -> bool;
-
-    /// Return the diagnostic handler.
-    fn diagnostic(&self) -> &rustc_errors::Handler;
-
-    /// Load data from the on-disk cache.
-    fn try_load_from_on_disk_cache(&self, dep_node: &DepNode<Self::DepKind>);
-
-    /// Load diagnostics associated to the node in the previous session.
-    fn load_diagnostics(&self, prev_dep_node_index: SerializedDepNodeIndex) -> Vec<Diagnostic>;
-
-    /// Register diagnostics for the given node, for use in next session.
-    fn store_diagnostics(&self, dep_node_index: DepNodeIndex, diagnostics: ThinVec<Diagnostic>);
-
-    /// Register diagnostics for the given node, for use in next session.
-    fn store_diagnostics_for_anon_node(
-        &self,
-        dep_node_index: DepNodeIndex,
-        diagnostics: ThinVec<Diagnostic>,
-    );
+    fn register_reused_dep_node(&self, dep_node: &DepNode<Self::DepKind>);
 
     /// Access the profiler.
     fn profiler(&self) -> &SelfProfilerRef;
+
+    /// Access the compiler session.
+    fn sess(&self) -> &Session;
+}
+
+pub trait HasDepContext: Copy {
+    type DepKind: self::DepKind;
+    type StableHashingContext;
+    type DepContext: self::DepContext<
+        DepKind = Self::DepKind,
+        StableHashingContext = Self::StableHashingContext,
+    >;
+
+    fn dep_context(&self) -> &Self::DepContext;
+}
+
+impl<T: DepContext> HasDepContext for T {
+    type DepKind = T::DepKind;
+    type StableHashingContext = T::StableHashingContext;
+    type DepContext = Self;
+
+    fn dep_context(&self) -> &Self::DepContext {
+        self
+    }
 }
 
 /// Describe the different families of dependency nodes.
-pub trait DepKind: Copy + fmt::Debug + Eq + Ord + Hash {
+pub trait DepKind: Copy + fmt::Debug + Eq + Hash + Send + Encodable<FileEncoder> + 'static {
     const NULL: Self;
 
     /// Return whether this kind always require evaluation.

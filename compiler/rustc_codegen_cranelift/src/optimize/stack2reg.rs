@@ -175,16 +175,13 @@ impl<'a> OptimizeContext<'a> {
             }
         }
 
-        OptimizeContext {
-            ctx,
-            stack_slot_usage_map,
-        }
+        OptimizeContext { ctx, stack_slot_usage_map }
     }
 }
 
 pub(super) fn optimize_function(
     ctx: &mut Context,
-    #[cfg_attr(not(debug_assertions), allow(unused_variables))] clif_comments: &mut crate::pretty_clif::CommentWriter,
+    clif_comments: &mut crate::pretty_clif::CommentWriter,
 ) {
     combine_stack_addr_with_load_store(&mut ctx.func);
 
@@ -194,8 +191,7 @@ pub(super) fn optimize_function(
 
     remove_unused_stack_addr_and_stack_load(&mut opt_ctx);
 
-    #[cfg(debug_assertions)]
-    {
+    if clif_comments.enabled() {
         for (&OrdStackSlot(stack_slot), usage) in &opt_ctx.stack_slot_usage_map {
             clif_comments.add_comment(stack_slot, format!("used by: {:?}", usage));
         }
@@ -211,25 +207,27 @@ pub(super) fn optimize_function(
         for load in users.stack_load.clone().into_iter() {
             let potential_stores = users.potential_stores_for_load(&opt_ctx.ctx, load);
 
-            #[cfg(debug_assertions)]
-            for &store in &potential_stores {
-                clif_comments.add_comment(
-                    load,
-                    format!(
-                        "Potential store -> load forwarding {} -> {} ({:?}, {:?})",
-                        opt_ctx.ctx.func.dfg.display_inst(store, None),
-                        opt_ctx.ctx.func.dfg.display_inst(load, None),
-                        spatial_overlap(&opt_ctx.ctx.func, store, load),
-                        temporal_order(&opt_ctx.ctx, store, load),
-                    ),
-                );
+            if clif_comments.enabled() {
+                for &store in &potential_stores {
+                    clif_comments.add_comment(
+                        load,
+                        format!(
+                            "Potential store -> load forwarding {} -> {} ({:?}, {:?})",
+                            opt_ctx.ctx.func.dfg.display_inst(store, None),
+                            opt_ctx.ctx.func.dfg.display_inst(load, None),
+                            spatial_overlap(&opt_ctx.ctx.func, store, load),
+                            temporal_order(&opt_ctx.ctx, store, load),
+                        ),
+                    );
+                }
             }
 
             match *potential_stores {
                 [] => {
-                    #[cfg(debug_assertions)]
-                    clif_comments
-                        .add_comment(load, "[BUG?] Reading uninitialized memory".to_string());
+                    if clif_comments.enabled() {
+                        clif_comments
+                            .add_comment(load, "[BUG?] Reading uninitialized memory".to_string());
+                    }
                 }
                 [store]
                     if spatial_overlap(&opt_ctx.ctx.func, store, load) == SpatialOverlap::Full
@@ -239,9 +237,12 @@ pub(super) fn optimize_function(
                     // Only one store could have been the origin of the value.
                     let stored_value = opt_ctx.ctx.func.dfg.inst_args(store)[0];
 
-                    #[cfg(debug_assertions)]
-                    clif_comments
-                        .add_comment(load, format!("Store to load forward {} -> {}", store, load));
+                    if clif_comments.enabled() {
+                        clif_comments.add_comment(
+                            load,
+                            format!("Store to load forward {} -> {}", store, load),
+                        );
+                    }
 
                     users.change_load_to_alias(&mut opt_ctx.ctx.func, load, stored_value);
                 }
@@ -252,33 +253,35 @@ pub(super) fn optimize_function(
         for store in users.stack_store.clone().into_iter() {
             let potential_loads = users.potential_loads_of_store(&opt_ctx.ctx, store);
 
-            #[cfg(debug_assertions)]
-            for &load in &potential_loads {
-                clif_comments.add_comment(
-                    store,
-                    format!(
-                        "Potential load from store {} <- {} ({:?}, {:?})",
-                        opt_ctx.ctx.func.dfg.display_inst(load, None),
-                        opt_ctx.ctx.func.dfg.display_inst(store, None),
-                        spatial_overlap(&opt_ctx.ctx.func, store, load),
-                        temporal_order(&opt_ctx.ctx, store, load),
-                    ),
-                );
+            if clif_comments.enabled() {
+                for &load in &potential_loads {
+                    clif_comments.add_comment(
+                        store,
+                        format!(
+                            "Potential load from store {} <- {} ({:?}, {:?})",
+                            opt_ctx.ctx.func.dfg.display_inst(load, None),
+                            opt_ctx.ctx.func.dfg.display_inst(store, None),
+                            spatial_overlap(&opt_ctx.ctx.func, store, load),
+                            temporal_order(&opt_ctx.ctx, store, load),
+                        ),
+                    );
+                }
             }
 
             if potential_loads.is_empty() {
                 // Never loaded; can safely remove all stores and the stack slot.
                 // FIXME also remove stores when there is always a next store before a load.
 
-                #[cfg(debug_assertions)]
-                clif_comments.add_comment(
-                    store,
-                    format!(
-                        "Remove dead stack store {} of {}",
-                        opt_ctx.ctx.func.dfg.display_inst(store, None),
-                        stack_slot.0
-                    ),
-                );
+                if clif_comments.enabled() {
+                    clif_comments.add_comment(
+                        store,
+                        format!(
+                            "Remove dead stack store {} of {}",
+                            opt_ctx.ctx.func.dfg.display_inst(store, None),
+                            stack_slot.0
+                        ),
+                    );
+                }
 
                 users.remove_dead_store(&mut opt_ctx.ctx.func, store);
             }
@@ -296,12 +299,7 @@ fn combine_stack_addr_with_load_store(func: &mut Function) {
     while let Some(_block) = cursor.next_block() {
         while let Some(inst) = cursor.next_inst() {
             match cursor.func.dfg[inst] {
-                InstructionData::Load {
-                    opcode: Opcode::Load,
-                    arg: addr,
-                    flags: _,
-                    offset,
-                } => {
+                InstructionData::Load { opcode: Opcode::Load, arg: addr, flags: _, offset } => {
                     if cursor.func.dfg.ctrl_typevar(inst) == types::I128
                         || cursor.func.dfg.ctrl_typevar(inst).is_vector()
                     {
@@ -391,20 +389,14 @@ fn remove_unused_stack_addr_and_stack_load(opt_ctx: &mut OptimizeContext<'_>) {
         stack_slot_users
             .stack_addr
             .drain_filter(|inst| {
-                stack_addr_load_insts_users
-                    .get(inst)
-                    .map(|users| users.is_empty())
-                    .unwrap_or(true)
+                stack_addr_load_insts_users.get(inst).map(|users| users.is_empty()).unwrap_or(true)
             })
             .for_each(|inst| StackSlotUsage::remove_unused_stack_addr(&mut func, inst));
 
         stack_slot_users
             .stack_load
             .drain_filter(|inst| {
-                stack_addr_load_insts_users
-                    .get(inst)
-                    .map(|users| users.is_empty())
-                    .unwrap_or(true)
+                stack_addr_load_insts_users.get(inst).map(|users| users.is_empty()).unwrap_or(true)
             })
             .for_each(|inst| StackSlotUsage::remove_unused_load(&mut func, inst));
     }
@@ -415,11 +407,8 @@ fn try_get_stack_slot_and_offset_for_addr(
     addr: Value,
 ) -> Option<(StackSlot, Offset32)> {
     if let ValueDef::Result(addr_inst, 0) = func.dfg.value_def(addr) {
-        if let InstructionData::StackLoad {
-            opcode: Opcode::StackAddr,
-            stack_slot,
-            offset,
-        } = func.dfg[addr_inst]
+        if let InstructionData::StackLoad { opcode: Opcode::StackAddr, stack_slot, offset } =
+            func.dfg[addr_inst]
         {
             return Some((stack_slot, offset));
         }
@@ -437,16 +426,8 @@ enum SpatialOverlap {
 fn spatial_overlap(func: &Function, src: Inst, dest: Inst) -> SpatialOverlap {
     fn inst_info(func: &Function, inst: Inst) -> (StackSlot, Offset32, u32) {
         match func.dfg[inst] {
-            InstructionData::StackLoad {
-                opcode: Opcode::StackAddr,
-                stack_slot,
-                offset,
-            }
-            | InstructionData::StackLoad {
-                opcode: Opcode::StackLoad,
-                stack_slot,
-                offset,
-            }
+            InstructionData::StackLoad { opcode: Opcode::StackAddr, stack_slot, offset }
+            | InstructionData::StackLoad { opcode: Opcode::StackLoad, stack_slot, offset }
             | InstructionData::StackStore {
                 opcode: Opcode::StackStore,
                 stack_slot,
@@ -471,10 +452,7 @@ fn spatial_overlap(func: &Function, src: Inst, dest: Inst) -> SpatialOverlap {
     }
 
     let src_end: i64 = src_offset.try_add_i64(i64::from(src_size)).unwrap().into();
-    let dest_end: i64 = dest_offset
-        .try_add_i64(i64::from(dest_size))
-        .unwrap()
-        .into();
+    let dest_end: i64 = dest_offset.try_add_i64(i64::from(dest_size)).unwrap().into();
     if src_end <= dest_offset.into() || dest_end <= src_offset.into() {
         return SpatialOverlap::No;
     }

@@ -1,4 +1,6 @@
-use crate::utils::{contains_name, higher, iter_input_pats, snippet, span_lint_and_then};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::source::snippet;
+use clippy_utils::{contains_name, higher, iter_input_pats};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     Block, Body, Expr, ExprKind, FnDecl, Guard, HirId, Local, MutTy, Pat, PatKind, Path, QPath, StmtKind, Ty, TyKind,
@@ -325,12 +327,19 @@ fn check_expr<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, bindings: &mut
         | ExprKind::Field(ref e, _)
         | ExprKind::AddrOf(_, _, ref e)
         | ExprKind::Box(ref e) => check_expr(cx, e, bindings),
-        ExprKind::Block(ref block, _) | ExprKind::Loop(ref block, _, _) => check_block(cx, block, bindings),
+        ExprKind::Block(ref block, _) | ExprKind::Loop(ref block, ..) => check_block(cx, block, bindings),
         // ExprKind::Call
         // ExprKind::MethodCall
         ExprKind::Array(v) | ExprKind::Tup(v) => {
             for e in v {
                 check_expr(cx, e, bindings)
+            }
+        },
+        ExprKind::If(ref cond, ref then, ref otherwise) => {
+            check_expr(cx, cond, bindings);
+            check_expr(cx, &**then, bindings);
+            if let Some(ref o) = *otherwise {
+                check_expr(cx, o, bindings);
             }
         },
         ExprKind::Match(ref init, arms, _) => {
@@ -342,6 +351,10 @@ fn check_expr<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, bindings: &mut
                 if let Some(ref guard) = arm.guard {
                     match guard {
                         Guard::If(if_expr) => check_expr(cx, if_expr, bindings),
+                        Guard::IfLet(guard_pat, guard_expr) => {
+                            check_pat(cx, guard_pat, Some(*guard_expr), guard_pat.span, bindings);
+                            check_expr(cx, guard_expr, bindings);
+                        },
                     }
                 }
                 check_expr(cx, &arm.body, bindings);
@@ -378,12 +391,12 @@ fn is_self_shadow(name: Symbol, expr: &Expr<'_>) -> bool {
         ExprKind::Block(ref block, _) => {
             block.stmts.is_empty() && block.expr.as_ref().map_or(false, |e| is_self_shadow(name, e))
         },
-        ExprKind::Unary(op, ref inner) => (UnOp::UnDeref == op) && is_self_shadow(name, inner),
+        ExprKind::Unary(op, ref inner) => (UnOp::Deref == op) && is_self_shadow(name, inner),
         ExprKind::Path(QPath::Resolved(_, ref path)) => path_eq_name(name, path),
         _ => false,
     }
 }
 
 fn path_eq_name(name: Symbol, path: &Path<'_>) -> bool {
-    !path.is_global() && path.segments.len() == 1 && path.segments[0].ident.as_str() == name.as_str()
+    !path.is_global() && path.segments.len() == 1 && path.segments[0].ident.name == name
 }

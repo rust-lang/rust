@@ -6,7 +6,7 @@ LL |     val.0.into_iter().next();
 LL |     val.0;
    |     ^^^^^ value used here after move
    |
-note: this function consumes the receiver `self` by taking ownership of it, which moves `val.0`
+note: this function takes ownership of the receiver `self`, which moves `val.0`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
    |
 LL |     fn into_iter(self) -> Self::IntoIter;
@@ -23,7 +23,7 @@ LL |     foo.use_self();
 LL |     foo;
    |     ^^^ value used here after move
    |
-note: this function consumes the receiver `self` by taking ownership of it, which moves `foo`
+note: this function takes ownership of the receiver `self`, which moves `foo`
   --> $DIR/move-fn-self-receiver.rs:13:17
    |
 LL |     fn use_self(self) {}
@@ -49,7 +49,7 @@ LL |     boxed_foo.use_box_self();
 LL |     boxed_foo;
    |     ^^^^^^^^^ value used here after move
    |
-note: this function consumes the receiver `self` by taking ownership of it, which moves `boxed_foo`
+note: this function takes ownership of the receiver `self`, which moves `boxed_foo`
   --> $DIR/move-fn-self-receiver.rs:14:21
    |
 LL |     fn use_box_self(self: Box<Self>) {}
@@ -65,7 +65,7 @@ LL |     pin_box_foo.use_pin_box_self();
 LL |     pin_box_foo;
    |     ^^^^^^^^^^^ value used here after move
    |
-note: this function consumes the receiver `self` by taking ownership of it, which moves `pin_box_foo`
+note: this function takes ownership of the receiver `self`, which moves `pin_box_foo`
   --> $DIR/move-fn-self-receiver.rs:15:25
    |
 LL |     fn use_pin_box_self(self: Pin<Box<Self>>) {}
@@ -91,7 +91,7 @@ LL |     rc_foo.use_rc_self();
 LL |     rc_foo;
    |     ^^^^^^ value used here after move
    |
-note: this function consumes the receiver `self` by taking ownership of it, which moves `rc_foo`
+note: this function takes ownership of the receiver `self`, which moves `rc_foo`
   --> $DIR/move-fn-self-receiver.rs:16:20
    |
 LL |     fn use_rc_self(self: Rc<Self>) {}
@@ -146,13 +146,22 @@ LL |     for _val in container.custom_into_iter() {}
 LL |     container;
    |     ^^^^^^^^^ value used here after move
    |
-note: this function consumes the receiver `self` by taking ownership of it, which moves `container`
+note: this function takes ownership of the receiver `self`, which moves `container`
   --> $DIR/move-fn-self-receiver.rs:23:25
    |
 LL |     fn custom_into_iter(self) -> impl Iterator<Item = bool> {
    |                         ^^^^
 
-error: aborting due to 11 previous errors
+error[E0382]: use of moved value: `foo2`
+  --> $DIR/move-fn-self-receiver.rs:75:9
+   |
+LL |     let foo2 = Foo;
+   |         ---- move occurs because `foo2` has type `Foo`, which does not implement the `Copy` trait
+LL |     loop {
+LL |         foo2.use_self();
+   |         ^^^^ ---------- `foo2` moved due to this method call, in previous iteration of loop
+
+error: aborting due to 12 previous errors
 
 Some errors have detailed explanations: E0382, E0505.
 For more information about an error, try `rustc --explain E0382`.

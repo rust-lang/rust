@@ -1,5 +1,3 @@
-#![feature(min_const_generics)]
-
 struct Bar<T>(T);
 
 trait Baz {

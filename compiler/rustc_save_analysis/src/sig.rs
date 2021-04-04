@@ -55,7 +55,7 @@ pub fn foreign_item_signature(
 
 /// Signature for a struct or tuple field declaration.
 /// Does not include a trailing comma.
-pub fn field_signature(field: &hir::StructField<'_>, scx: &SaveContext<'_>) -> Option<Signature> {
+pub fn field_signature(field: &hir::FieldDef<'_>, scx: &SaveContext<'_>) -> Option<Signature> {
     if !scx.config.signatures {
         return None;
     }
@@ -317,8 +317,8 @@ impl<'hir> Sig for hir::Ty<'hir> {
                 Ok(replace_text(nested_ty, text))
             }
             hir::TyKind::OpaqueDef(item_id, _) => {
-                let item = scx.tcx.hir().item(item_id.id);
-                item.make(offset, Some(item_id.id), scx)
+                let item = scx.tcx.hir().item(item_id);
+                item.make(offset, Some(item_id.hir_id()), scx)
             }
             hir::TyKind::Typeof(_) | hir::TyKind::Infer | hir::TyKind::Err => Err("Ty"),
         }
@@ -327,7 +327,7 @@ impl<'hir> Sig for hir::Ty<'hir> {
 
 impl<'hir> Sig for hir::Item<'hir> {
     fn make(&self, offset: usize, _parent_id: Option<hir::HirId>, scx: &SaveContext<'_>) -> Result {
-        let id = Some(self.hir_id);
+        let id = Some(self.hir_id());
 
         match self.kind {
             hir::ItemKind::Static(ref ty, m, ref body) => {
@@ -337,7 +337,7 @@ impl<'hir> Sig for hir::Item<'hir> {
                 }
                 let name = self.ident.to_string();
                 let defs = vec![SigElement {
-                    id: id_from_hir_id(self.hir_id, scx),
+                    id: id_from_def_id(self.def_id.to_def_id()),
                     start: offset + text.len(),
                     end: offset + text.len() + name.len(),
                 }];
@@ -359,7 +359,7 @@ impl<'hir> Sig for hir::Item<'hir> {
                 let mut text = "const ".to_owned();
                 let name = self.ident.to_string();
                 let defs = vec![SigElement {
-                    id: id_from_hir_id(self.hir_id, scx),
+                    id: id_from_def_id(self.def_id.to_def_id()),
                     start: offset + text.len(),
                     end: offset + text.len() + name.len(),
                 }];
@@ -391,7 +391,7 @@ impl<'hir> Sig for hir::Item<'hir> {
                 text.push_str("fn ");
 
                 let mut sig =
-                    name_and_generics(text, offset, generics, self.hir_id, self.ident, scx)?;
+                    name_and_generics(text, offset, generics, self.hir_id(), self.ident, scx)?;
 
                 sig.text.push('(');
                 for i in decl.inputs {
@@ -420,7 +420,7 @@ impl<'hir> Sig for hir::Item<'hir> {
                 let mut text = "mod ".to_owned();
                 let name = self.ident.to_string();
                 let defs = vec![SigElement {
-                    id: id_from_hir_id(self.hir_id, scx),
+                    id: id_from_def_id(self.def_id.to_def_id()),
                     start: offset + text.len(),
                     end: offset + text.len() + name.len(),
                 }];
@@ -433,7 +433,7 @@ impl<'hir> Sig for hir::Item<'hir> {
             hir::ItemKind::TyAlias(ref ty, ref generics) => {
                 let text = "type ".to_owned();
                 let mut sig =
-                    name_and_generics(text, offset, generics, self.hir_id, self.ident, scx)?;
+                    name_and_generics(text, offset, generics, self.hir_id(), self.ident, scx)?;
 
                 sig.text.push_str(" = ");
                 let ty = ty.make(offset + sig.text.len(), id, scx)?;
@@ -445,21 +445,21 @@ impl<'hir> Sig for hir::Item<'hir> {
             hir::ItemKind::Enum(_, ref generics) => {
                 let text = "enum ".to_owned();
                 let mut sig =
-                    name_and_generics(text, offset, generics, self.hir_id, self.ident, scx)?;
+                    name_and_generics(text, offset, generics, self.hir_id(), self.ident, scx)?;
                 sig.text.push_str(" {}");
                 Ok(sig)
             }
             hir::ItemKind::Struct(_, ref generics) => {
                 let text = "struct ".to_owned();
                 let mut sig =
-                    name_and_generics(text, offset, generics, self.hir_id, self.ident, scx)?;
+                    name_and_generics(text, offset, generics, self.hir_id(), self.ident, scx)?;
                 sig.text.push_str(" {}");
                 Ok(sig)
             }
             hir::ItemKind::Union(_, ref generics) => {
                 let text = "union ".to_owned();
                 let mut sig =
-                    name_and_generics(text, offset, generics, self.hir_id, self.ident, scx)?;
+                    name_and_generics(text, offset, generics, self.hir_id(), self.ident, scx)?;
                 sig.text.push_str(" {}");
                 Ok(sig)
             }
@@ -475,7 +475,7 @@ impl<'hir> Sig for hir::Item<'hir> {
                 }
                 text.push_str("trait ");
                 let mut sig =
-                    name_and_generics(text, offset, generics, self.hir_id, self.ident, scx)?;
+                    name_and_generics(text, offset, generics, self.hir_id(), self.ident, scx)?;
 
                 if !bounds.is_empty() {
                     sig.text.push_str(": ");
@@ -490,7 +490,7 @@ impl<'hir> Sig for hir::Item<'hir> {
                 let mut text = String::new();
                 text.push_str("trait ");
                 let mut sig =
-                    name_and_generics(text, offset, generics, self.hir_id, self.ident, scx)?;
+                    name_and_generics(text, offset, generics, self.hir_id(), self.ident, scx)?;
 
                 if !bounds.is_empty() {
                     sig.text.push_str(" = ");
@@ -501,7 +501,7 @@ impl<'hir> Sig for hir::Item<'hir> {
 
                 Ok(sig)
             }
-            hir::ItemKind::Impl {
+            hir::ItemKind::Impl(hir::Impl {
                 unsafety,
                 polarity,
                 defaultness,
@@ -511,7 +511,7 @@ impl<'hir> Sig for hir::Item<'hir> {
                 ref of_trait,
                 ref self_ty,
                 items: _,
-            } => {
+            }) => {
                 let mut text = String::new();
                 if let hir::Defaultness::Default { .. } = defaultness {
                     text.push_str("default ");
@@ -614,9 +614,13 @@ impl<'hir> Sig for hir::Generics<'hir> {
                 start: offset + text.len(),
                 end: offset + text.len() + param_text.as_str().len(),
             });
-            if let hir::GenericParamKind::Const { ref ty } = param.kind {
+            if let hir::GenericParamKind::Const { ref ty, default } = param.kind {
                 param_text.push_str(": ");
                 param_text.push_str(&ty_to_string(&ty));
+                if let Some(default) = default {
+                    param_text.push_str(" = ");
+                    param_text.push_str(&id_to_string(&scx.tcx.hir(), default.hir_id));
+                }
             }
             if !param.bounds.is_empty() {
                 param_text.push_str(": ");
@@ -652,7 +656,7 @@ impl<'hir> Sig for hir::Generics<'hir> {
     }
 }
 
-impl<'hir> Sig for hir::StructField<'hir> {
+impl<'hir> Sig for hir::FieldDef<'hir> {
     fn make(&self, offset: usize, _parent_id: Option<hir::HirId>, scx: &SaveContext<'_>) -> Result {
         let mut text = String::new();
 
@@ -733,14 +737,14 @@ impl<'hir> Sig for hir::Variant<'hir> {
 
 impl<'hir> Sig for hir::ForeignItem<'hir> {
     fn make(&self, offset: usize, _parent_id: Option<hir::HirId>, scx: &SaveContext<'_>) -> Result {
-        let id = Some(self.hir_id);
+        let id = Some(self.hir_id());
         match self.kind {
             hir::ForeignItemKind::Fn(decl, _, ref generics) => {
                 let mut text = String::new();
                 text.push_str("fn ");
 
                 let mut sig =
-                    name_and_generics(text, offset, generics, self.hir_id, self.ident, scx)?;
+                    name_and_generics(text, offset, generics, self.hir_id(), self.ident, scx)?;
 
                 sig.text.push('(');
                 for i in decl.inputs {
@@ -771,7 +775,7 @@ impl<'hir> Sig for hir::ForeignItem<'hir> {
                 }
                 let name = self.ident.to_string();
                 let defs = vec![SigElement {
-                    id: id_from_hir_id(self.hir_id, scx),
+                    id: id_from_def_id(self.def_id.to_def_id()),
                     start: offset + text.len(),
                     end: offset + text.len() + name.len(),
                 }];
@@ -787,7 +791,7 @@ impl<'hir> Sig for hir::ForeignItem<'hir> {
                 let mut text = "type ".to_owned();
                 let name = self.ident.to_string();
                 let defs = vec![SigElement {
-                    id: id_from_hir_id(self.hir_id, scx),
+                    id: id_from_def_id(self.def_id.to_def_id()),
                     start: offset + text.len(),
                     end: offset + text.len() + name.len(),
                 }];

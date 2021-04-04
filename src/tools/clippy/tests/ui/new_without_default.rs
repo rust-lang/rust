@@ -159,4 +159,19 @@ impl NewNotEqualToDerive {
     }
 }
 
+// see #6933
+pub struct FooGenerics<T>(std::marker::PhantomData<T>);
+impl<T> FooGenerics<T> {
+    pub fn new() -> Self {
+        Self(Default::default())
+    }
+}
+
+pub struct BarGenerics<T>(std::marker::PhantomData<T>);
+impl<T: Copy> BarGenerics<T> {
+    pub fn new() -> Self {
+        Self(Default::default())
+    }
+}
+
 fn main() {}

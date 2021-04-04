@@ -2,25 +2,25 @@ error: lifetime parameters must be declared prior to type parameters
   --> $DIR/lifetime-before-type-params.rs:2:13
    |
 LL | fn first<T, 'a, 'b>() {}
-   |         ----^^--^^- help: reorder the parameters: lifetimes, then types: `<'a, 'b, T>`
+   |         ----^^--^^- help: reorder the parameters: lifetimes, then types, then consts: `<'a, 'b, T>`
 
 error: lifetime parameters must be declared prior to type parameters
   --> $DIR/lifetime-before-type-params.rs:4:18
    |
 LL | fn second<'a, T, 'b>() {}
-   |          --------^^- help: reorder the parameters: lifetimes, then types: `<'a, 'b, T>`
+   |          --------^^- help: reorder the parameters: lifetimes, then types, then consts: `<'a, 'b, T>`
 
 error: lifetime parameters must be declared prior to type parameters
   --> $DIR/lifetime-before-type-params.rs:6:16
    |
 LL | fn third<T, U, 'a>() {}
-   |         -------^^- help: reorder the parameters: lifetimes, then types: `<'a, T, U>`
+   |         -------^^- help: reorder the parameters: lifetimes, then types, then consts: `<'a, T, U>`
 
 error: lifetime parameters must be declared prior to type parameters
   --> $DIR/lifetime-before-type-params.rs:8:18
    |
 LL | fn fourth<'a, T, 'b, U, 'c, V>() {}
-   |          --------^^-----^^---- help: reorder the parameters: lifetimes, then types: `<'a, 'b, 'c, T, U, V>`
+   |          --------^^-----^^---- help: reorder the parameters: lifetimes, then types, then consts: `<'a, 'b, 'c, T, U, V>`
 
 error: aborting due to 4 previous errors
 

@@ -1,20 +1,24 @@
 use crate::consts::{constant_simple, Constant};
-use crate::utils::{
-    is_expn_of, match_def_path, match_qpath, match_type, method_calls, path_to_res, paths, qpath_res, run_lints,
-    snippet, span_lint, span_lint_and_help, span_lint_and_sugg, SpanlessEq,
-};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg};
+use clippy_utils::source::snippet;
+use clippy_utils::ty::match_type;
+use clippy_utils::{is_expn_of, match_def_path, match_qpath, method_calls, path_to_res, paths, run_lints, SpanlessEq};
 use if_chain::if_chain;
-use rustc_ast::ast::{Crate as AstCrate, ItemKind, LitKind, NodeId};
+use rustc_ast::ast::{Crate as AstCrate, ItemKind, LitKind, ModKind, NodeId};
 use rustc_ast::visit::FnKind;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::DefId;
 use rustc_hir::hir_id::CRATE_HIR_ID;
 use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
-use rustc_hir::{Crate, Expr, ExprKind, HirId, Item, MutTy, Mutability, Node, Path, StmtKind, Ty, TyKind};
+use rustc_hir::{
+    BinOpKind, Crate, Expr, ExprKind, HirId, Item, MutTy, Mutability, Node, Path, StmtKind, Ty, TyKind, UnOp,
+};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
+use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::{Span, Spanned};
@@ -247,21 +251,62 @@ declare_clippy_lint! {
     "invalid path"
 }
 
+declare_clippy_lint! {
+    /// **What it does:**
+    /// Checks for interning symbols that have already been pre-interned and defined as constants.
+    ///
+    /// **Why is this bad?**
+    /// It's faster and easier to use the symbol constant.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// Bad:
+    /// ```rust,ignore
+    /// let _ = sym!(f32);
+    /// ```
+    ///
+    /// Good:
+    /// ```rust,ignore
+    /// let _ = sym::f32;
+    /// ```
+    pub INTERNING_DEFINED_SYMBOL,
+    internal,
+    "interning a symbol that is pre-interned and defined as a constant"
+}
+
+declare_clippy_lint! {
+    /// **What it does:** Checks for unnecessary conversion from Symbol to a string.
+    ///
+    /// **Why is this bad?** It's faster use symbols directly intead of strings.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// Bad:
+    /// ```rust,ignore
+    /// symbol.as_str() == "clippy";
+    /// ```
+    ///
+    /// Good:
+    /// ```rust,ignore
+    /// symbol == sym::clippy;
+    /// ```
+    pub UNNECESSARY_SYMBOL_STR,
+    internal,
+    "unnecessary conversion between Symbol and string"
+}
+
 declare_lint_pass!(ClippyLintsInternal => [CLIPPY_LINTS_INTERNAL]);
 
 impl EarlyLintPass for ClippyLintsInternal {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &AstCrate) {
-        if let Some(utils) = krate
-            .module
-            .items
-            .iter()
-            .find(|item| item.ident.name.as_str() == "utils")
-        {
-            if let ItemKind::Mod(ref utils_mod) = utils.kind {
-                if let Some(paths) = utils_mod.items.iter().find(|item| item.ident.name.as_str() == "paths") {
-                    if let ItemKind::Mod(ref paths_mod) = paths.kind {
+        if let Some(utils) = krate.items.iter().find(|item| item.ident.name.as_str() == "utils") {
+            if let ItemKind::Mod(_, ModKind::Loaded(ref items, ..)) = utils.kind {
+                if let Some(paths) = items.iter().find(|item| item.ident.name.as_str() == "paths") {
+                    if let ItemKind::Mod(_, ModKind::Loaded(ref items, ..)) = paths.kind {
                         let mut last_name: Option<SymbolStr> = None;
-                        for item in &*paths_mod.items {
+                        for item in items {
                             let name = item.ident.as_str();
                             if let Some(ref last_name) = last_name {
                                 if **last_name > *name {
@@ -293,7 +338,7 @@ impl_lint_pass!(LintWithoutLintPass => [DEFAULT_LINT, LINT_WITHOUT_LINT_PASS]);
 
 impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if !run_lints(cx, &[DEFAULT_LINT], item.hir_id) {
+        if !run_lints(cx, &[DEFAULT_LINT], item.hir_id()) {
             return;
         }
 
@@ -327,11 +372,11 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
         } else if is_expn_of(item.span, "impl_lint_pass").is_some()
             || is_expn_of(item.span, "declare_lint_pass").is_some()
         {
-            if let hir::ItemKind::Impl {
+            if let hir::ItemKind::Impl(hir::Impl {
                 of_trait: None,
                 items: ref impl_item_refs,
                 ..
-            } = item.kind
+            }) = item.kind
             {
                 let mut collector = LintCollector {
                     output: &mut self.registered_lints,
@@ -343,7 +388,7 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
                         .find(|iiref| iiref.ident.as_str() == "get_lints")
                         .expect("LintPass needs to implement get_lints")
                         .id
-                        .hir_id,
+                        .hir_id(),
                 );
                 collector.visit_expr(&cx.tcx.hir().body(body_id).value);
             }
@@ -710,7 +755,7 @@ impl<'tcx> LateLintPass<'tcx> for MatchTypeOnDiagItem {
             // Extract the path to the matched type
             if let Some(segments) = path_to_matched_type(cx, ty_path);
             let segments: Vec<&str> = segments.iter().map(|sym| &**sym).collect();
-            if let Some(ty_did) = path_to_res(cx, &segments[..]).and_then(|res| res.opt_def_id());
+            if let Some(ty_did) = path_to_res(cx, &segments[..]).opt_def_id();
             // Check if the matched type is a diagnostic item
             let diag_items = cx.tcx.diagnostic_items(ty_did.krate);
             if let Some(item_name) = diag_items.iter().find_map(|(k, v)| if *v == ty_did { Some(k) } else { None });
@@ -737,7 +782,7 @@ fn path_to_matched_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Ve
 
     match &expr.kind {
         ExprKind::AddrOf(.., expr) => return path_to_matched_type(cx, expr),
-        ExprKind::Path(qpath) => match qpath_res(cx, qpath, expr.hir_id) {
+        ExprKind::Path(qpath) => match cx.qpath_res(qpath, expr.hir_id) {
             Res::Local(hir_id) => {
                 let parent_id = cx.tcx.hir().get_parent_node(hir_id);
                 if let Some(Node::Local(local)) = cx.tcx.hir().find(parent_id) {
@@ -783,7 +828,7 @@ fn path_to_matched_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Ve
 // This is not a complete resolver for paths. It works on all the paths currently used in the paths
 // module.  That's all it does and all it needs to do.
 pub fn check_path(cx: &LateContext<'_>, path: &[&str]) -> bool {
-    if path_to_res(cx, path).is_some() {
+    if path_to_res(cx, path) != Res::Err {
         return true;
     }
 
@@ -791,15 +836,13 @@ pub fn check_path(cx: &LateContext<'_>, path: &[&str]) -> bool {
     // implementations of native types. Check lang items.
     let path_syms: Vec<_> = path.iter().map(|p| Symbol::intern(p)).collect();
     let lang_items = cx.tcx.lang_items();
-    for lang_item in lang_items.items() {
-        if let Some(def_id) = lang_item {
-            let lang_item_path = cx.get_def_path(*def_id);
-            if path_syms.starts_with(&lang_item_path) {
-                if let [item] = &path_syms[lang_item_path.len()..] {
-                    for child in cx.tcx.item_children(*def_id) {
-                        if child.ident.name == *item {
-                            return true;
-                        }
+    for item_def_id in lang_items.items().iter().flatten() {
+        let lang_item_path = cx.get_def_path(*item_def_id);
+        if path_syms.starts_with(&lang_item_path) {
+            if let [item] = &path_syms[lang_item_path.len()..] {
+                for child in cx.tcx.item_children(*item_def_id) {
+                    if child.ident.name == *item {
+                        return true;
                     }
                 }
             }
@@ -813,7 +856,7 @@ declare_lint_pass!(InvalidPaths => [INVALID_PATHS]);
 
 impl<'tcx> LateLintPass<'tcx> for InvalidPaths {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        let local_def_id = &cx.tcx.parent_module(item.hir_id);
+        let local_def_id = &cx.tcx.parent_module(item.hir_id());
         let mod_name = &cx.tcx.item_name(local_def_id.to_def_id());
         if_chain! {
             if mod_name.as_str() == "paths";
@@ -837,6 +880,186 @@ impl<'tcx> LateLintPass<'tcx> for InvalidPaths {
             then {
                 span_lint(cx, CLIPPY_LINTS_INTERNAL, item.span, "invalid path");
             }
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct InterningDefinedSymbol {
+    // Maps the symbol value to the constant DefId.
+    symbol_map: FxHashMap<u32, DefId>,
+}
+
+impl_lint_pass!(InterningDefinedSymbol => [INTERNING_DEFINED_SYMBOL, UNNECESSARY_SYMBOL_STR]);
+
+impl<'tcx> LateLintPass<'tcx> for InterningDefinedSymbol {
+    fn check_crate(&mut self, cx: &LateContext<'_>, _: &Crate<'_>) {
+        if !self.symbol_map.is_empty() {
+            return;
+        }
+
+        for &module in &[&paths::KW_MODULE, &paths::SYM_MODULE] {
+            if let Some(def_id) = path_to_res(cx, module).opt_def_id() {
+                for item in cx.tcx.item_children(def_id).iter() {
+                    if_chain! {
+                        if let Res::Def(DefKind::Const, item_def_id) = item.res;
+                        let ty = cx.tcx.type_of(item_def_id);
+                        if match_type(cx, ty, &paths::SYMBOL);
+                        if let Ok(ConstValue::Scalar(value)) = cx.tcx.const_eval_poly(item_def_id);
+                        if let Ok(value) = value.to_u32();
+                        then {
+                            self.symbol_map.insert(value, item_def_id);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        if_chain! {
+            if let ExprKind::Call(func, [arg]) = &expr.kind;
+            if let ty::FnDef(def_id, _) = cx.typeck_results().expr_ty(func).kind();
+            if match_def_path(cx, *def_id, &paths::SYMBOL_INTERN);
+            if let Some(Constant::Str(arg)) = constant_simple(cx, cx.typeck_results(), arg);
+            let value = Symbol::intern(&arg).as_u32();
+            if let Some(&def_id) = self.symbol_map.get(&value);
+            then {
+                span_lint_and_sugg(
+                    cx,
+                    INTERNING_DEFINED_SYMBOL,
+                    is_expn_of(expr.span, "sym").unwrap_or(expr.span),
+                    "interning a defined symbol",
+                    "try",
+                    cx.tcx.def_path_str(def_id),
+                    Applicability::MachineApplicable,
+                );
+            }
+        }
+        if let ExprKind::Binary(op, left, right) = expr.kind {
+            if matches!(op.node, BinOpKind::Eq | BinOpKind::Ne) {
+                let data = [
+                    (left, self.symbol_str_expr(left, cx)),
+                    (right, self.symbol_str_expr(right, cx)),
+                ];
+                match data {
+                    // both operands are a symbol string
+                    [(_, Some(left)), (_, Some(right))] => {
+                        span_lint_and_sugg(
+                            cx,
+                            UNNECESSARY_SYMBOL_STR,
+                            expr.span,
+                            "unnecessary `Symbol` to string conversion",
+                            "try",
+                            format!(
+                                "{} {} {}",
+                                left.as_symbol_snippet(cx),
+                                op.node.as_str(),
+                                right.as_symbol_snippet(cx),
+                            ),
+                            Applicability::MachineApplicable,
+                        );
+                    },
+                    // one of the operands is a symbol string
+                    [(expr, Some(symbol)), _] | [_, (expr, Some(symbol))] => {
+                        // creating an owned string for comparison
+                        if matches!(symbol, SymbolStrExpr::Expr { is_to_owned: true, .. }) {
+                            span_lint_and_sugg(
+                                cx,
+                                UNNECESSARY_SYMBOL_STR,
+                                expr.span,
+                                "unnecessary string allocation",
+                                "try",
+                                format!("{}.as_str()", symbol.as_symbol_snippet(cx)),
+                                Applicability::MachineApplicable,
+                            );
+                        }
+                    },
+                    // nothing found
+                    [(_, None), (_, None)] => {},
+                }
+            }
+        }
+    }
+}
+
+impl InterningDefinedSymbol {
+    fn symbol_str_expr<'tcx>(&self, expr: &'tcx Expr<'tcx>, cx: &LateContext<'tcx>) -> Option<SymbolStrExpr<'tcx>> {
+        static IDENT_STR_PATHS: &[&[&str]] = &[&paths::IDENT_AS_STR, &paths::TO_STRING_METHOD];
+        static SYMBOL_STR_PATHS: &[&[&str]] = &[
+            &paths::SYMBOL_AS_STR,
+            &paths::SYMBOL_TO_IDENT_STRING,
+            &paths::TO_STRING_METHOD,
+        ];
+        // SymbolStr might be de-referenced: `&*symbol.as_str()`
+        let call = if_chain! {
+            if let ExprKind::AddrOf(_, _, e) = expr.kind;
+            if let ExprKind::Unary(UnOp::Deref, e) = e.kind;
+            then { e } else { expr }
+        };
+        if_chain! {
+            // is a method call
+            if let ExprKind::MethodCall(_, _, [item], _) = call.kind;
+            if let Some(did) = cx.typeck_results().type_dependent_def_id(call.hir_id);
+            let ty = cx.typeck_results().expr_ty(item);
+            // ...on either an Ident or a Symbol
+            if let Some(is_ident) = if match_type(cx, ty, &paths::SYMBOL) {
+                Some(false)
+            } else if match_type(cx, ty, &paths::IDENT) {
+                Some(true)
+            } else {
+                None
+            };
+            // ...which converts it to a string
+            let paths = if is_ident { IDENT_STR_PATHS } else { SYMBOL_STR_PATHS };
+            if let Some(path) = paths.iter().find(|path| match_def_path(cx, did, path));
+            then {
+                let is_to_owned = path.last().unwrap().ends_with("string");
+                return Some(SymbolStrExpr::Expr {
+                    item,
+                    is_ident,
+                    is_to_owned,
+                });
+            }
+        }
+        // is a string constant
+        if let Some(Constant::Str(s)) = constant_simple(cx, cx.typeck_results(), expr) {
+            let value = Symbol::intern(&s).as_u32();
+            // ...which matches a symbol constant
+            if let Some(&def_id) = self.symbol_map.get(&value) {
+                return Some(SymbolStrExpr::Const(def_id));
+            }
+        }
+        None
+    }
+}
+
+enum SymbolStrExpr<'tcx> {
+    /// a string constant with a corresponding symbol constant
+    Const(DefId),
+    /// a "symbol to string" expression like `symbol.as_str()`
+    Expr {
+        /// part that evaluates to `Symbol` or `Ident`
+        item: &'tcx Expr<'tcx>,
+        is_ident: bool,
+        /// whether an owned `String` is created like `to_ident_string()`
+        is_to_owned: bool,
+    },
+}
+
+impl<'tcx> SymbolStrExpr<'tcx> {
+    /// Returns a snippet that evaluates to a `Symbol` and is const if possible
+    fn as_symbol_snippet(&self, cx: &LateContext<'_>) -> Cow<'tcx, str> {
+        match *self {
+            Self::Const(def_id) => cx.tcx.def_path_str(def_id).into(),
+            Self::Expr { item, is_ident, .. } => {
+                let mut snip = snippet(cx, item.span.source_callsite(), "..");
+                if is_ident {
+                    // get `Ident.name`
+                    snip.to_mut().push_str(".name");
+                }
+                snip
+            },
         }
     }
 }

@@ -1,4 +1,17 @@
+// aux-build:proc_macro_derive.rs
+// aux-build:macro_rules.rs
+
 #![warn(clippy::field_reassign_with_default)]
+
+#[macro_use]
+extern crate proc_macro_derive;
+#[macro_use]
+extern crate macro_rules;
+
+// Don't lint on derives that derive `Default`
+// See https://github.com/rust-lang/rust-clippy/issues/6545
+#[derive(FieldReassignWithDefault)]
+struct DerivedStruct;
 
 #[derive(Default)]
 struct A {
@@ -11,6 +24,11 @@ struct B {
     j: i64,
 }
 
+#[derive(Default)]
+struct C {
+    i: Vec<i32>,
+    j: i64,
+}
 /// Implements .next() that returns a different number each time.
 struct SideEffect(i32);
 
@@ -107,4 +125,41 @@ fn main() {
     x.i = side_effect.next();
     x.j = 2;
     x.i = side_effect.next();
+
+    // don't lint - some private fields
+    let mut x = m::F::default();
+    x.a = 1;
+
+    // don't expand macros in the suggestion (#6522)
+    let mut a: C = C::default();
+    a.i = vec![1];
+
+    // Don't lint in external macros
+    field_reassign_with_default!();
+
+    // be sure suggestion is correct with generics
+    let mut a: Wrapper<bool> = Default::default();
+    a.i = true;
+
+    let mut a: WrapperMulti<i32, i64> = Default::default();
+    a.i = 42;
+}
+
+mod m {
+    #[derive(Default)]
+    pub struct F {
+        pub a: u64,
+        b: u64,
+    }
+}
+
+#[derive(Default)]
+struct Wrapper<T> {
+    i: T,
+}
+
+#[derive(Default)]
+struct WrapperMulti<T, U> {
+    i: T,
+    j: U,
 }

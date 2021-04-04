@@ -309,31 +309,6 @@ pub struct RegionSnapshot {
     any_unifications: bool,
 }
 
-/// When working with placeholder regions, we often wish to find all of
-/// the regions that are either reachable from a placeholder region, or
-/// which can reach a placeholder region, or both. We call such regions
-/// *tainted* regions. This struct allows you to decide what set of
-/// tainted regions you want.
-#[derive(Debug)]
-pub struct TaintDirections {
-    incoming: bool,
-    outgoing: bool,
-}
-
-impl TaintDirections {
-    pub fn incoming() -> Self {
-        TaintDirections { incoming: true, outgoing: false }
-    }
-
-    pub fn outgoing() -> Self {
-        TaintDirections { incoming: false, outgoing: true }
-    }
-
-    pub fn both() -> Self {
-        TaintDirections { incoming: true, outgoing: true }
-    }
-}
-
 impl<'tcx> RegionConstraintStorage<'tcx> {
     pub fn new() -> Self {
         Self::default()
@@ -470,11 +445,6 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     /// Returns the universe for the given variable.
     pub fn var_universe(&self, vid: RegionVid) -> ty::UniverseIndex {
         self.var_infos[vid].universe
-    }
-
-    /// Returns the origin for the given variable.
-    pub fn var_origin(&self, vid: RegionVid) -> RegionVariableOrigin {
-        self.var_infos[vid].origin
     }
 
     fn add_constraint(&mut self, constraint: Constraint<'tcx>, origin: SubregionOrigin<'tcx>) {
@@ -793,16 +763,6 @@ impl<'tcx> VerifyBound<'tcx> {
             vb
         } else {
             VerifyBound::AnyBound(vec![self, vb])
-        }
-    }
-
-    pub fn and(self, vb: VerifyBound<'tcx>) -> VerifyBound<'tcx> {
-        if self.must_hold() && vb.must_hold() {
-            self
-        } else if self.cannot_hold() && vb.cannot_hold() {
-            self
-        } else {
-            VerifyBound::AllBounds(vec![self, vb])
         }
     }
 }

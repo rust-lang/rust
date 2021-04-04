@@ -1,5 +1,5 @@
 error[E0207]: the const parameter `N` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/issue-68366.rs:12:13
+  --> $DIR/issue-68366.rs:11:13
    |
 LL | impl <const N: usize> Collatz<{Some(N)}> {}
    |             ^ unconstrained const parameter
@@ -8,7 +8,7 @@ LL | impl <const N: usize> Collatz<{Some(N)}> {}
    = note: proving the result of expressions other than the parameter are unique is not supported
 
 error[E0207]: the const parameter `N` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/issue-68366.rs:18:12
+  --> $DIR/issue-68366.rs:17:12
    |
 LL | impl<const N: usize> Foo {}
    |            ^ unconstrained const parameter

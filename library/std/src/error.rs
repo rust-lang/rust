@@ -30,20 +30,26 @@ use crate::mem::transmute;
 use crate::num;
 use crate::str;
 use crate::string;
+use crate::sync::Arc;
 
 /// `Error` is a trait representing the basic expectations for error values,
-/// i.e., values of type `E` in [`Result<T, E>`]. Errors must describe
-/// themselves through the [`Display`] and [`Debug`] traits, and may provide
-/// cause chain information:
+/// i.e., values of type `E` in [`Result<T, E>`].
 ///
-/// [`Error::source()`] is generally used when errors cross
-/// "abstraction boundaries". If one module must report an error that is caused
-/// by an error from a lower-level module, it can allow accessing that error
-/// via [`Error::source()`]. This makes it possible for the high-level
-/// module to provide its own errors while also revealing some of the
+/// Errors must describe themselves through the [`Display`] and [`Debug`]
+/// traits. Error messages are typically concise lowercase sentences without
+/// trailing punctuation:
+///
+/// ```
+/// let err = "NaN".parse::<u32>().unwrap_err();
+/// assert_eq!(err.to_string(), "invalid digit found in string");
+/// ```
+///
+/// Errors may provide cause chain information. [`Error::source()`] is generally
+/// used when errors cross "abstraction boundaries". If one module must report
+/// an error that is caused by an error from a lower-level module, it can allow
+/// accessing that error via [`Error::source()`]. This makes it possible for the
+/// high-level module to provide its own errors while also revealing some of the
 /// implementation for debugging via `source` chains.
-///
-/// [`Result<T, E>`]: Result
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Error: Debug + Display {
     /// The lower-level source of this error, if any.
@@ -471,6 +477,24 @@ impl Error for char::DecodeUtf16Error {
     }
 }
 
+#[unstable(feature = "map_try_insert", issue = "82766")]
+impl<'a, K: Debug + Ord, V: Debug> Error
+    for crate::collections::btree_map::OccupiedError<'a, K, V>
+{
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "key already exists"
+    }
+}
+
+#[unstable(feature = "map_try_insert", issue = "82766")]
+impl<'a, K: Debug, V: Debug> Error for crate::collections::hash_map::OccupiedError<'a, K, V> {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "key already exists"
+    }
+}
+
 #[stable(feature = "box_error", since = "1.8.0")]
 impl<T: Error> Error for Box<T> {
     #[allow(deprecated, deprecated_in_future)]
@@ -485,6 +509,48 @@ impl<T: Error> Error for Box<T> {
 
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         Error::source(&**self)
+    }
+}
+
+#[stable(feature = "error_by_ref", since = "1.51.0")]
+impl<'a, T: Error + ?Sized> Error for &'a T {
+    #[allow(deprecated, deprecated_in_future)]
+    fn description(&self) -> &str {
+        Error::description(&**self)
+    }
+
+    #[allow(deprecated)]
+    fn cause(&self) -> Option<&dyn Error> {
+        Error::cause(&**self)
+    }
+
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        Error::source(&**self)
+    }
+
+    fn backtrace(&self) -> Option<&Backtrace> {
+        Error::backtrace(&**self)
+    }
+}
+
+#[stable(feature = "arc_error", since = "1.52.0")]
+impl<T: Error + ?Sized> Error for Arc<T> {
+    #[allow(deprecated, deprecated_in_future)]
+    fn description(&self) -> &str {
+        Error::description(&**self)
+    }
+
+    #[allow(deprecated)]
+    fn cause(&self) -> Option<&dyn Error> {
+        Error::cause(&**self)
+    }
+
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        Error::source(&**self)
+    }
+
+    fn backtrace(&self) -> Option<&Backtrace> {
+        Error::backtrace(&**self)
     }
 }
 

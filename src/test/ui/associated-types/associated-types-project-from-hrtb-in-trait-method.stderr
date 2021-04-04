@@ -1,10 +1,10 @@
-error[E0212]: cannot extract an associated type from a higher-ranked trait bound in this context
+error[E0212]: cannot use the associated type of a trait with uninferred generic parameters
   --> $DIR/associated-types-project-from-hrtb-in-trait-method.rs:13:32
    |
 LL |     fn some_method(&self, arg: I::A);
    |                                ^^^^ help: use a fully qualified path with inferred lifetimes: `<I as Foo<&isize>>::A`
 
-error[E0212]: cannot extract an associated type from a higher-ranked trait bound in this context
+error[E0212]: cannot use the associated type of a trait with uninferred generic parameters
   --> $DIR/associated-types-project-from-hrtb-in-trait-method.rs:32:24
    |
 LL |     fn mango(&self) -> X::Assoc {
@@ -12,3 +12,4 @@ LL |     fn mango(&self) -> X::Assoc {
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0212`.

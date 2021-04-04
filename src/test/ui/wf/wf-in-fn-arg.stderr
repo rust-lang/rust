@@ -9,8 +9,8 @@ LL | fn bar<T>(_: &MustBeCopy<T>)
    |
 help: consider restricting type parameter `T`
    |
-LL | fn bar<T: Copy>(_: &MustBeCopy<T>)
-   |         ^^^^^^
+LL | fn bar<T: std::marker::Copy>(_: &MustBeCopy<T>)
+   |         ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

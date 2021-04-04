@@ -1,4 +1,4 @@
-extern fn f() {
+extern "C" fn f() {
 }
 
 fn is_fn<F>(_: F) where F: Fn() {}

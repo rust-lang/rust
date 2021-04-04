@@ -40,7 +40,7 @@ note: associated function defined here
 LL |     fn two(self, _: isize, _: isize) -> Foo { self }
    |        ^^^ ----  --------  --------
 
-error[E0599]: no method named `take` found for struct `Foo` in the current scope
+error[E0599]: the method `take` exists for struct `Foo`, but its trait bounds were not satisfied
   --> $DIR/method-call-err-msg.rs:19:7
    |
 LL | pub struct Foo;
@@ -50,9 +50,9 @@ LL | pub struct Foo;
    | doesn't satisfy `Foo: Iterator`
 ...
 LL |      .take()
-   |       ^^^^ method not found in `Foo`
+   |       ^^^^ method cannot be called on `Foo` due to unsatisfied trait bounds
    |
-   = note: the method `take` exists but the following trait bounds were not satisfied:
+   = note: the following trait bounds were not satisfied:
            `Foo: Iterator`
            which is required by `&mut Foo: Iterator`
    = help: items from traits can only be used if the trait is implemented and in scope

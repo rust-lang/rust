@@ -47,7 +47,7 @@ impl Step for ToolBuild {
     fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
         let compiler = self.compiler;
         let target = self.target;
-        let tool = self.tool;
+        let mut tool = self.tool;
         let path = self.path;
         let is_optional_tool = self.is_optional_tool;
 
@@ -208,6 +208,12 @@ impl Step for ToolBuild {
                 None
             }
         } else {
+            // HACK(#82501): on Windows, the tools directory gets added to PATH when running tests, and
+            // compiletest confuses HTML tidy with the in-tree tidy. Name the in-tree tidy something
+            // different so the problem doesn't come up.
+            if tool == "tidy" {
+                tool = "rust-tidy";
+            }
             let cargo_out =
                 builder.cargo_out(compiler, self.mode, target).join(exe(tool, compiler.host));
             let bin = builder.tools_dir(compiler).join(exe(tool, compiler.host));
@@ -362,11 +368,11 @@ bootstrap_tool!(
     Compiletest, "src/tools/compiletest", "compiletest", is_unstable_tool = true;
     BuildManifest, "src/tools/build-manifest", "build-manifest";
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client";
-    RustDemangler, "src/tools/rust-demangler", "rust-demangler";
     RustInstaller, "src/tools/rust-installer", "fabricate", is_external_tool = true;
     RustdocTheme, "src/tools/rustdoc-themes", "rustdoc-themes";
     ExpandYamlAnchors, "src/tools/expand-yaml-anchors", "expand-yaml-anchors";
     LintDocs, "src/tools/lint-docs", "lint-docs";
+    JsonDocCk, "src/tools/jsondocck", "jsondocck";
 );
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
@@ -375,7 +381,15 @@ pub struct ErrorIndex {
 }
 
 impl ErrorIndex {
-    pub fn command(builder: &Builder<'_>, compiler: Compiler) -> Command {
+    pub fn command(builder: &Builder<'_>) -> Command {
+        // This uses stage-1 to match the behavior of building rustdoc.
+        // Error-index-generator links with the rustdoc library, so we want to
+        // use the same librustdoc to avoid building rustdoc twice (and to
+        // avoid building the compiler an extra time). This uses
+        // saturating_sub to deal with building with stage 0. (Using stage 0
+        // isn't recommended, since it will fail if any new error index tests
+        // use new syntax, but it should work otherwise.)
+        let compiler = builder.compiler(builder.top_stage.saturating_sub(1), builder.config.build);
         let mut cmd = Command::new(builder.ensure(ErrorIndex { compiler }));
         add_dylib_path(
             vec![PathBuf::from(&builder.sysroot_libdir(compiler, compiler.host))],
@@ -395,8 +409,14 @@ impl Step for ErrorIndex {
     fn make_run(run: RunConfig<'_>) {
         // Compile the error-index in the same stage as rustdoc to avoid
         // recompiling rustdoc twice if we can.
-        let host = run.builder.config.build;
-        let compiler = run.builder.compiler_for(run.builder.top_stage, host, host);
+        //
+        // NOTE: This `make_run` isn't used in normal situations, only if you
+        // manually build the tool with `x.py build
+        // src/tools/error-index-generator` which almost nobody does.
+        // Normally, `x.py test` or `x.py doc` will use the
+        // `ErrorIndex::command` function instead.
+        let compiler =
+            run.builder.compiler(run.builder.top_stage.saturating_sub(1), run.builder.config.build);
         run.builder.ensure(ErrorIndex { compiler });
     }
 
@@ -563,7 +583,7 @@ impl Step for Cargo {
     }
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
-        builder
+        let cargo_bin_path = builder
             .ensure(ToolBuild {
                 compiler: self.compiler,
                 target: self.target,
@@ -574,7 +594,40 @@ impl Step for Cargo {
                 source_type: SourceType::Submodule,
                 extra_features: Vec::new(),
             })
-            .expect("expected to build -- essential tool")
+            .expect("expected to build -- essential tool");
+
+        let build_cred = |name, path| {
+            // These credential helpers are currently experimental.
+            // Any build failures will be ignored.
+            let _ = builder.ensure(ToolBuild {
+                compiler: self.compiler,
+                target: self.target,
+                tool: name,
+                mode: Mode::ToolRustc,
+                path,
+                is_optional_tool: true,
+                source_type: SourceType::Submodule,
+                extra_features: Vec::new(),
+            });
+        };
+
+        if self.target.contains("windows") {
+            build_cred(
+                "cargo-credential-wincred",
+                "src/tools/cargo/crates/credential/cargo-credential-wincred",
+            );
+        }
+        if self.target.contains("apple-darwin") {
+            build_cred(
+                "cargo-credential-macos-keychain",
+                "src/tools/cargo/crates/credential/cargo-credential-macos-keychain",
+            );
+        }
+        build_cred(
+            "cargo-credential-1password",
+            "src/tools/cargo/crates/credential/cargo-credential-1password",
+        );
+        cargo_bin_path
     }
 }
 
@@ -665,6 +718,7 @@ tool_extended!((self, builder),
         });
         self.extra_features.push("clippy".to_owned());
     };
+    RustDemangler, rust_demangler, "src/tools/rust-demangler", "rust-demangler", stable=false, in_tree=true, {};
     Rustfmt, rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, {};
     RustAnalyzer, rust_analyzer, "src/tools/rust-analyzer/crates/rust-analyzer", "rust-analyzer", stable=false, {};
 );

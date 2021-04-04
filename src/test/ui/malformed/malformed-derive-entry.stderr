@@ -14,7 +14,7 @@ error: malformed `derive` attribute input
   --> $DIR/malformed-derive-entry.rs:11:1
    |
 LL | #[derive]
-   | ^^^^^^^^^ help: missing traits to be derived: `#[derive(Trait1, Trait2, ...)]`
+   | ^^^^^^^^^ help: must be of the form: `#[derive(Trait1, Trait2, ...)]`
 
 error[E0277]: the trait bound `Test1: Clone` is not satisfied
   --> $DIR/malformed-derive-entry.rs:1:10

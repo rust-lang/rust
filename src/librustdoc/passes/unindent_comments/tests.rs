@@ -1,21 +1,27 @@
 use super::*;
 use rustc_span::source_map::DUMMY_SP;
+use rustc_span::symbol::Symbol;
+use rustc_span::with_default_session_globals;
 
 fn create_doc_fragment(s: &str) -> Vec<DocFragment> {
     vec![DocFragment {
         line: 0,
         span: DUMMY_SP,
         parent_module: None,
-        doc: s.to_string(),
+        doc: Symbol::intern(s),
         kind: DocFragmentKind::SugaredDoc,
+        need_backline: false,
+        indent: 0,
     }]
 }
 
 #[track_caller]
 fn run_test(input: &str, expected: &str) {
-    let mut s = create_doc_fragment(input);
-    unindent_fragments(&mut s);
-    assert_eq!(s[0].doc, expected);
+    with_default_session_globals(|| {
+        let mut s = create_doc_fragment(input);
+        unindent_fragments(&mut s);
+        assert_eq!(&s.iter().collect::<String>(), expected);
+    });
 }
 
 #[test]

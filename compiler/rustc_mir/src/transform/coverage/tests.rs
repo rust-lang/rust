@@ -327,7 +327,7 @@ macro_rules! assert_successors {
 fn test_covgraph_goto_switchint() {
     let mir_body = goto_switchint();
     if false {
-        println!("basic_blocks = {}", debug_basic_blocks(&mir_body));
+        eprintln!("basic_blocks = {}", debug_basic_blocks(&mir_body));
     }
     let basic_coverage_blocks = graph::CoverageGraph::from_mir(&mir_body);
     print_coverage_graphviz("covgraph_goto_switchint ", &mir_body, &basic_coverage_blocks);
@@ -583,11 +583,11 @@ fn test_find_loop_backedges_none() {
     let mir_body = goto_switchint();
     let basic_coverage_blocks = graph::CoverageGraph::from_mir(&mir_body);
     if false {
-        println!(
+        eprintln!(
             "basic_coverage_blocks = {:?}",
             basic_coverage_blocks.iter_enumerated().collect::<Vec<_>>()
         );
-        println!("successors = {:?}", basic_coverage_blocks.successors);
+        eprintln!("successors = {:?}", basic_coverage_blocks.successors);
     }
     let backedges = graph::find_loop_backedges(&basic_coverage_blocks);
     assert_eq!(

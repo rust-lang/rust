@@ -15,6 +15,8 @@ fn main() {
     let stderr = ::std::io::stderr();
     let mut stderr = stderr.lock();
 
+    // FIXME support lazy jit when multi threading
+    #[cfg(not(lazy_jit))]
     std::thread::spawn(move || {
         println!("Hello from another thread!");
     });

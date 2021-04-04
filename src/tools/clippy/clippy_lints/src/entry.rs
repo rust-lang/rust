@@ -1,6 +1,8 @@
-use crate::utils::SpanlessEq;
-use crate::utils::{get_item_name, higher, is_type_diagnostic_item, match_type, paths, snippet, snippet_opt};
-use crate::utils::{snippet_with_applicability, span_lint_and_then};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::source::{snippet, snippet_opt, snippet_with_applicability};
+use clippy_utils::ty::{is_type_diagnostic_item, match_type};
+use clippy_utils::SpanlessEq;
+use clippy_utils::{get_item_name, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
@@ -9,6 +11,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for uses of `contains_key` + `insert` on `HashMap`
@@ -54,8 +57,8 @@ declare_lint_pass!(HashMapPass => [MAP_ENTRY]);
 
 impl<'tcx> LateLintPass<'tcx> for HashMapPass {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let Some((ref check, ref then_block, ref else_block)) = higher::if_block(&expr) {
-            if let ExprKind::Unary(UnOp::UnNot, ref check) = check.kind {
+        if let ExprKind::If(ref check, ref then_block, ref else_block) = expr.kind {
+            if let ExprKind::Unary(UnOp::Not, ref check) = check.kind {
                 if let Some((ty, map, key)) = check_cond(cx, check) {
                     // in case of `if !m.contains_key(&k) { m.insert(k, v); }`
                     // we can give a better error message
@@ -111,7 +114,7 @@ fn check_cond<'a>(cx: &LateContext<'_>, check: &'a Expr<'a>) -> Option<(&'static
             return if match_type(cx, obj_ty, &paths::BTREEMAP) {
                 Some(("BTreeMap", map, key))
             }
-            else if is_type_diagnostic_item(cx, obj_ty, sym!(hashmap_type)) {
+            else if is_type_diagnostic_item(cx, obj_ty, sym::hashmap_type) {
                 Some(("HashMap", map, key))
             }
             else {

@@ -1,7 +1,8 @@
-use crate::utils::sugg::Sugg;
-use crate::utils::{
-    differing_macro_contexts, eq_expr_value, is_type_diagnostic_item, snippet_with_applicability, span_lint_and_then,
-};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::sugg::Sugg;
+use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::{differing_macro_contexts, eq_expr_value};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, PatKind, QPath, StmtKind};
@@ -91,7 +92,7 @@ fn check_manual_swap(cx: &LateContext<'_>, block: &Block<'_>) {
             if let ExprKind::Path(QPath::Resolved(None, ref rhs2)) = rhs2.kind;
             if rhs2.segments.len() == 1;
 
-            if ident.as_str() == rhs2.segments[0].ident.as_str();
+            if ident.name == rhs2.segments[0].ident.name;
             if eq_expr_value(cx, tmp_init, lhs1);
             if eq_expr_value(cx, rhs1, lhs2);
             then {
@@ -199,7 +200,7 @@ fn check_for_slice<'a>(cx: &LateContext<'_>, lhs1: &'a Expr<'_>, lhs2: &'a Expr<
                 if matches!(ty.kind(), ty::Slice(_))
                     || matches!(ty.kind(), ty::Array(_, _))
                     || is_type_diagnostic_item(cx, ty, sym::vec_type)
-                    || is_type_diagnostic_item(cx, ty, sym!(vecdeque_type))
+                    || is_type_diagnostic_item(cx, ty, sym::vecdeque_type)
                 {
                     return Slice::Swappable(lhs1, idx1, idx2);
                 }

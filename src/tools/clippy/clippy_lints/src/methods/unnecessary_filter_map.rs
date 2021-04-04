@@ -1,18 +1,17 @@
-use crate::utils::paths;
-use crate::utils::usage::mutated_variables;
-use crate::utils::{match_qpath, match_trait_method, span_lint};
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::usage::mutated_variables;
+use clippy_utils::{is_trait_method, match_qpath, path_to_local_id, paths};
+use if_chain::if_chain;
 use rustc_hir as hir;
-use rustc_hir::def::Res;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
-
-use if_chain::if_chain;
+use rustc_span::sym;
 
 use super::UNNECESSARY_FILTER_MAP;
 
-pub(super) fn lint(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
-    if !match_trait_method(cx, expr, &paths::ITERATOR) {
+pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
+    if !is_trait_method(cx, expr, sym::Iterator) {
         return;
     }
 
@@ -59,20 +58,13 @@ fn check_expression<'tcx>(cx: &LateContext<'tcx>, arg_id: hir::HirId, expr: &'tc
                 if let hir::ExprKind::Path(ref path) = func.kind;
                 then {
                     if match_qpath(path, &paths::OPTION_SOME) {
-                        if_chain! {
-                            if let hir::ExprKind::Path(path) = &args[0].kind;
-                            if let Res::Local(ref local) = cx.qpath_res(path, args[0].hir_id);
-                            then {
-                                if arg_id == *local {
-                                    return (false, false)
-                                }
-                            }
+                        if path_to_local_id(&args[0], arg_id) {
+                            return (false, false)
                         }
                         return (true, false);
-                    } else {
-                        // We don't know. It might do anything.
-                        return (true, true);
                     }
+                    // We don't know. It might do anything.
+                    return (true, true);
                 }
             }
             (true, true)
@@ -90,6 +82,12 @@ fn check_expression<'tcx>(cx: &LateContext<'tcx>, arg_id: hir::HirId, expr: &'tc
                 found_filtering |= f;
             }
             (found_mapping, found_filtering)
+        },
+        // There must be an else_arm or there will be a type error
+        hir::ExprKind::If(_, ref if_arm, Some(ref else_arm)) => {
+            let if_check = check_expression(cx, arg_id, if_arm);
+            let else_check = check_expression(cx, arg_id, else_arm);
+            (if_check.0 | else_check.0, if_check.1 | else_check.1)
         },
         hir::ExprKind::Path(path) if match_qpath(path, &paths::OPTION_NONE) => (false, true),
         _ => (true, true),

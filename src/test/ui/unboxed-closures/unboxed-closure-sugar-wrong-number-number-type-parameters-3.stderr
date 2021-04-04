@@ -1,8 +1,16 @@
-error[E0107]: wrong number of type arguments: expected 3, found 1
+error[E0107]: this trait takes 3 type arguments but only 1 type argument was supplied
   --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters-3.rs:5:16
    |
 LL | fn foo(_: &dyn Three())
-   |                ^^^^^^^ expected 3 type arguments
+   |                ^^^^^-- supplied 1 type argument
+   |                |
+   |                expected 3 type arguments
+   |
+note: trait defined here, with 3 type parameters: `A`, `B`, `C`
+  --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters-3.rs:3:7
+   |
+LL | trait Three<A,B,C> { fn dummy(&self) -> (A,B,C); }
+   |       ^^^^^ - - -
 
 error[E0220]: associated type `Output` not found for `Three<(), [type error], [type error]>`
   --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters-3.rs:5:16

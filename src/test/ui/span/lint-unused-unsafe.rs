@@ -5,7 +5,7 @@
 
 
 mod foo {
-    extern {
+    extern "C" {
         pub fn bar();
     }
 }

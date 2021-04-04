@@ -26,11 +26,3 @@ pub fn issue75636<'a>(iter: &[&'a str]) -> Box<[&'a str]> {
     // CHECK-NOT: panic
     iter.iter().copied().collect()
 }
-
-// Sanity-check that we do see a possible panic for an arbitrary `Vec::shrink_to`.
-// CHECK-LABEL: @shrink_to
-#[no_mangle]
-pub fn shrink_to(vec: &mut Vec<u32>) {
-    // CHECK: panic
-    vec.shrink_to(42);
-}

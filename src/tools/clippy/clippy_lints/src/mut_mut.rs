@@ -1,4 +1,5 @@
-use crate::utils::{higher, span_lint};
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::higher;
 use rustc_hir as hir;
 use rustc_hir::intravisit;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -52,7 +53,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
             return;
         }
 
-        if let Some((_, arg, body)) = higher::for_loop(expr) {
+        if let Some((_, arg, body, _)) = higher::for_loop(expr) {
             // A `for` loop lowers to:
             // ```rust
             // match ::std::iter::Iterator::next(&mut iter) {

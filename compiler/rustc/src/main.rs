@@ -4,7 +4,7 @@ fn main() {
     // Note that we're pulling in a static copy of jemalloc which means that to
     // pull it in we need to actually reference its symbols for it to get
     // linked. The two crates we link to here, std and rustc_driver, are both
-    // dynamic libraries. That means to pull in jemalloc we need to actually
+    // dynamic libraries. That means to pull in jemalloc we actually need to
     // reference allocation symbols one way or another (as this file is the only
     // object code in the rustc executable).
     #[cfg(feature = "jemalloc-sys")]
@@ -24,6 +24,20 @@ fn main() {
         static _F5: unsafe extern "C" fn(*mut c_void, usize) -> *mut c_void = jemalloc_sys::realloc;
         #[used]
         static _F6: unsafe extern "C" fn(*mut c_void) = jemalloc_sys::free;
+
+        // On OSX, jemalloc doesn't directly override malloc/free, but instead
+        // registers itself with the allocator's zone APIs in a ctor. However,
+        // the linker doesn't seem to consider ctors as "used" when statically
+        // linking, so we need to explicitly depend on the function.
+        #[cfg(target_os = "macos")]
+        {
+            extern "C" {
+                fn _rjem_je_zone_register();
+            }
+
+            #[used]
+            static _F7: unsafe extern "C" fn() = _rjem_je_zone_register;
+        }
     }
 
     rustc_driver::set_sigpipe_handler();

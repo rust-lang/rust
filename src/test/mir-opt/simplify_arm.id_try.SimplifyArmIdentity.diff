@@ -1,7 +1,7 @@
 - // MIR for `id_try` before SimplifyArmIdentity
 + // MIR for `id_try` after SimplifyArmIdentity
   
-  fn id_try(_1: std::result::Result<u8, i32>) -> std::result::Result<u8, i32> {
+  fn id_try(_1: Result<u8, i32>) -> Result<u8, i32> {
       debug r => _1;                       // in scope 0 at $DIR/simplify-arm.rs:23:11: 23:12
       let mut _0: std::result::Result<u8, i32>; // return place in scope 0 at $DIR/simplify-arm.rs:23:34: 23:49
       let _2: u8;                          // in scope 0 at $DIR/simplify-arm.rs:24:9: 24:10
@@ -26,7 +26,7 @@
 -                 debug t => _9;           // in scope 7 at $DIR/simplify-arm.rs:24:14: 24:15
 +                 debug t => ((_0 as Err).0: i32); // in scope 7 at $DIR/simplify-arm.rs:24:14: 24:15
               }
-              scope 8 (inlined <std::result::Result<u8, i32> as Try>::from_error) { // at $DIR/simplify-arm.rs:24:13: 24:15
+              scope 8 (inlined <Result<u8, i32> as Try>::from_error) { // at $DIR/simplify-arm.rs:24:13: 24:15
 -                 debug v => _8;           // in scope 8 at $DIR/simplify-arm.rs:24:13: 24:15
 +                 debug v => ((_0 as Err).0: i32); // in scope 8 at $DIR/simplify-arm.rs:24:13: 24:15
                   let mut _12: i32;        // in scope 8 at $DIR/simplify-arm.rs:24:13: 24:15
@@ -39,7 +39,7 @@
           scope 5 {
           }
       }
-      scope 6 (inlined <std::result::Result<u8, i32> as Try>::into_result) { // at $DIR/simplify-arm.rs:24:13: 24:15
+      scope 6 (inlined <Result<u8, i32> as Try>::into_result) { // at $DIR/simplify-arm.rs:24:13: 24:15
           debug self => _4;                // in scope 6 at $DIR/simplify-arm.rs:24:13: 24:15
       }
   

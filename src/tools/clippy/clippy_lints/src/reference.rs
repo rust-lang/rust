@@ -1,4 +1,7 @@
-use crate::utils::{in_macro, snippet_opt, snippet_with_applicability, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::in_macro;
+use clippy_utils::source::{snippet_opt, snippet_with_applicability};
+use clippy_utils::sugg::Sugg;
 use if_chain::if_chain;
 use rustc_ast::ast::{Expr, ExprKind, Mutability, UnOp};
 use rustc_errors::Applicability;
@@ -110,6 +113,12 @@ declare_clippy_lint! {
     /// let point = Point(30, 20);
     /// let x = (&point).0;
     /// ```
+    /// Use instead:
+    /// ```rust
+    /// # struct Point(u32, u32);
+    /// # let point = Point(30, 20);
+    /// let x = point.0;
+    /// ```
     pub REF_IN_DEREF,
     complexity,
     "Use of reference in auto dereference expression."
@@ -124,14 +133,19 @@ impl EarlyLintPass for RefInDeref {
             if let ExprKind::Paren(ref parened) = object.kind;
             if let ExprKind::AddrOf(_, _, ref inner) = parened.kind;
             then {
-                let mut applicability = Applicability::MachineApplicable;
+                let applicability = if inner.span.from_expansion() {
+                    Applicability::MaybeIncorrect
+                } else {
+                    Applicability::MachineApplicable
+                };
+                let sugg = Sugg::ast(cx, inner, "_").maybe_par();
                 span_lint_and_sugg(
                     cx,
                     REF_IN_DEREF,
                     object.span,
                     "creating a reference that is immediately dereferenced",
                     "try this",
-                    snippet_with_applicability(cx, inner.span, "_", &mut applicability).to_string(),
+                    sugg.to_string(),
                     applicability,
                 );
             }

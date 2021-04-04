@@ -1,7 +1,7 @@
 #![feature(extern_types)]
 
 #[link(name = "ctest", kind = "static")]
-extern {
+extern "C" {
     type data;
 
     fn data_create(magic: u32) -> *mut data;

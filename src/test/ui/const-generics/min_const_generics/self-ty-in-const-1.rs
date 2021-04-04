@@ -1,5 +1,3 @@
-#![feature(min_const_generics)]
-
 trait Foo {
     fn t1() -> [u8; std::mem::size_of::<Self>()]; //~ERROR generic parameters
 }

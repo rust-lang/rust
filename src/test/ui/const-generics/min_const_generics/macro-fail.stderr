@@ -1,5 +1,5 @@
 error: expected type, found `{`
-  --> $DIR/macro-fail.rs:31:27
+  --> $DIR/macro-fail.rs:29:27
    |
 LL | fn make_marker() -> impl Marker<gimme_a_const!(marker)> {
    |                                 ----------------------
@@ -13,7 +13,7 @@ LL |       ($rusty: ident) => {{ let $rusty = 3; *&$rusty }}
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: expected type, found `{`
-  --> $DIR/macro-fail.rs:31:27
+  --> $DIR/macro-fail.rs:29:27
    |
 LL |   Example::<gimme_a_const!(marker)>
    |             ----------------------
@@ -27,7 +27,7 @@ LL |       ($rusty: ident) => {{ let $rusty = 3; *&$rusty }}
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: expected type, found `{`
-  --> $DIR/macro-fail.rs:6:10
+  --> $DIR/macro-fail.rs:4:10
    |
 LL |     () => {{
    |  __________^
@@ -46,7 +46,7 @@ LL |     let _fail = Example::<external_macro!()>;
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: unexpected end of macro invocation
-  --> $DIR/macro-fail.rs:41:25
+  --> $DIR/macro-fail.rs:39:25
    |
 LL |     macro_rules! gimme_a_const {
    |     -------------------------- when calling this macro
@@ -55,25 +55,25 @@ LL |   let _fail = Example::<gimme_a_const!()>;
    |                         ^^^^^^^^^^^^^^^^ missing tokens in macro arguments
 
 error[E0747]: type provided when a constant was expected
-  --> $DIR/macro-fail.rs:16:33
+  --> $DIR/macro-fail.rs:14:33
    |
 LL | fn make_marker() -> impl Marker<gimme_a_const!(marker)> {
    |                                 ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0747]: type provided when a constant was expected
-  --> $DIR/macro-fail.rs:18:13
+  --> $DIR/macro-fail.rs:16:13
    |
 LL |   Example::<gimme_a_const!(marker)>
    |             ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0747]: type provided when a constant was expected
-  --> $DIR/macro-fail.rs:38:25
+  --> $DIR/macro-fail.rs:36:25
    |
 LL |   let _fail = Example::<external_macro!()>;
    |                         ^^^^^^^^^^^^^^^^^
 
 error[E0747]: type provided when a constant was expected
-  --> $DIR/macro-fail.rs:41:25
+  --> $DIR/macro-fail.rs:39:25
    |
 LL |   let _fail = Example::<gimme_a_const!()>;
    |                         ^^^^^^^^^^^^^^^^

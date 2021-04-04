@@ -1,10 +1,10 @@
-error: A function with the "rust-call" ABI must take a single non-self argument that is a tuple
+error: functions with the "rust-call" ABI must take a single non-self argument that is a tuple
   --> $DIR/overloaded-calls-nontuple.rs:11:5
    |
 LL |     extern "rust-call" fn call_mut(&mut self, z: isize) -> isize {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: A function with the "rust-call" ABI must take a single non-self argument that is a tuple
+error: functions with the "rust-call" ABI must take a single non-self argument that is a tuple
   --> $DIR/overloaded-calls-nontuple.rs:19:5
    |
 LL |     extern "rust-call" fn call_once(mut self, z: isize) -> isize { self.call_mut(z) }

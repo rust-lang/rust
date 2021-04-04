@@ -45,6 +45,10 @@ macro_rules! forward {
         pub fn $n:ident(&self, $($name:ident: $ty:ty),* $(,)?) -> &Self
     ) => {
         $(#[$attrs])*
+        // we always document with --document-private-items
+        #[cfg_attr(not(bootstrap), allow(rustdoc::private_intra_doc_links))]
+        #[cfg_attr(bootstrap, allow(private_intra_doc_links))]
+        #[doc = concat!("See [`Diagnostic::", stringify!($n), "()`].")]
         pub fn $n(&self, $($name: $ty),*) -> &Self {
             self.diagnostic.$n($($name),*);
             self
@@ -57,24 +61,31 @@ macro_rules! forward {
         pub fn $n:ident(&mut self, $($name:ident: $ty:ty),* $(,)?) -> &mut Self
     ) => {
         $(#[$attrs])*
+        #[doc = concat!("See [`Diagnostic::", stringify!($n), "()`].")]
+        // we always document with --document-private-items
+        #[cfg_attr(not(bootstrap), allow(rustdoc::private_intra_doc_links))]
+        #[cfg_attr(bootstrap, allow(private_intra_doc_links))]
         pub fn $n(&mut self, $($name: $ty),*) -> &mut Self {
             self.0.diagnostic.$n($($name),*);
             self
         }
     };
 
-    // Forward pattern for &mut self -> &mut Self, with S: Into<MultiSpan>
-    // type parameter. No obvious way to make this more generic.
+    // Forward pattern for &mut self -> &mut Self, with generic parameters.
     (
         $(#[$attrs:meta])*
-        pub fn $n:ident<S: Into<MultiSpan>>(
+        pub fn $n:ident<$($generic:ident: $bound:path),*>(
             &mut self,
             $($name:ident: $ty:ty),*
             $(,)?
         ) -> &mut Self
     ) => {
         $(#[$attrs])*
-        pub fn $n<S: Into<MultiSpan>>(&mut self, $($name: $ty),*) -> &mut Self {
+        #[doc = concat!("See [`Diagnostic::", stringify!($n), "()`].")]
+        // we always document with --document-private-items
+        #[cfg_attr(not(bootstrap), allow(rustdoc::private_intra_doc_links))]
+        #[cfg_attr(bootstrap, allow(private_intra_doc_links))]
+        pub fn $n<$($generic: $bound),*>(&mut self, $($name: $ty),*) -> &mut Self {
             self.0.diagnostic.$n($($name),*);
             self
         }
@@ -116,7 +127,7 @@ impl<'a> DiagnosticBuilder<'a> {
 
     /// Stashes diagnostic for possible later improvement in a different,
     /// later stage of the compiler. The diagnostic can be accessed with
-    /// the provided `span` and `key` through `.steal_diagnostic` on `Handler`.
+    /// the provided `span` and `key` through [`Handler::steal_diagnostic()`].
     ///
     /// As with `buffer`, this is unless the handler has disabled such buffering.
     pub fn stash(self, span: Span, key: StashKey) {
@@ -155,19 +166,6 @@ impl<'a> DiagnosticBuilder<'a> {
         buffered_diagnostics.extend(self.into_diagnostic().map(|(diag, _)| diag));
     }
 
-    /// Convenience function for internal use, clients should use one of the
-    /// span_* methods instead.
-    pub fn sub<S: Into<MultiSpan>>(
-        &mut self,
-        level: Level,
-        message: &str,
-        span: Option<S>,
-    ) -> &mut Self {
-        let span = span.map(|s| s.into()).unwrap_or_else(MultiSpan::new);
-        self.0.diagnostic.sub(level, message, span, None);
-        self
-    }
-
     /// Delay emission of this diagnostic as a bug.
     ///
     /// This can be useful in contexts where an error indicates a bug but
@@ -202,7 +200,7 @@ impl<'a> DiagnosticBuilder<'a> {
     }
 
     /// Labels all the given spans with the provided label.
-    /// See `span_label` for more information.
+    /// See [`Diagnostic::span_label()`] for more information.
     pub fn span_labels(
         &mut self,
         spans: impl IntoIterator<Item = Span>,
@@ -233,7 +231,7 @@ impl<'a> DiagnosticBuilder<'a> {
         found_extra: &dyn fmt::Display,
     ) -> &mut Self);
 
-    forward!(pub fn note_unsuccessfull_coercion(
+    forward!(pub fn note_unsuccessful_coercion(
         &mut self,
         expected: DiagnosticStyledString,
         found: DiagnosticStyledString,
@@ -254,6 +252,7 @@ impl<'a> DiagnosticBuilder<'a> {
         msg: &str,
     ) -> &mut Self);
 
+    /// See [`Diagnostic::multipart_suggestion()`].
     pub fn multipart_suggestion(
         &mut self,
         msg: &str,
@@ -267,19 +266,7 @@ impl<'a> DiagnosticBuilder<'a> {
         self
     }
 
-    pub fn multipart_suggestions(
-        &mut self,
-        msg: &str,
-        suggestions: Vec<Vec<(Span, String)>>,
-        applicability: Applicability,
-    ) -> &mut Self {
-        if !self.0.allow_suggestions {
-            return self;
-        }
-        self.0.diagnostic.multipart_suggestions(msg, suggestions, applicability);
-        self
-    }
-
+    /// See [`Diagnostic::tool_only_multipart_suggestion()`].
     pub fn tool_only_multipart_suggestion(
         &mut self,
         msg: &str,
@@ -293,6 +280,7 @@ impl<'a> DiagnosticBuilder<'a> {
         self
     }
 
+    /// See [`Diagnostic::span_suggestion()`].
     pub fn span_suggestion(
         &mut self,
         sp: Span,
@@ -307,6 +295,7 @@ impl<'a> DiagnosticBuilder<'a> {
         self
     }
 
+    /// See [`Diagnostic::span_suggestions()`].
     pub fn span_suggestions(
         &mut self,
         sp: Span,
@@ -321,6 +310,7 @@ impl<'a> DiagnosticBuilder<'a> {
         self
     }
 
+    /// See [`Diagnostic::span_suggestion_short()`].
     pub fn span_suggestion_short(
         &mut self,
         sp: Span,
@@ -335,6 +325,7 @@ impl<'a> DiagnosticBuilder<'a> {
         self
     }
 
+    /// See [`Diagnostic::span_suggestion_verbose()`].
     pub fn span_suggestion_verbose(
         &mut self,
         sp: Span,
@@ -349,6 +340,7 @@ impl<'a> DiagnosticBuilder<'a> {
         self
     }
 
+    /// See [`Diagnostic::span_suggestion_hidden()`].
     pub fn span_suggestion_hidden(
         &mut self,
         sp: Span,
@@ -363,6 +355,7 @@ impl<'a> DiagnosticBuilder<'a> {
         self
     }
 
+    /// See [`Diagnostic::tool_only_span_suggestion()`] for more information.
     pub fn tool_only_span_suggestion(
         &mut self,
         sp: Span,
@@ -377,22 +370,26 @@ impl<'a> DiagnosticBuilder<'a> {
         self
     }
 
+    forward!(pub fn set_primary_message<M: Into<String>>(&mut self, msg: M) -> &mut Self);
     forward!(pub fn set_span<S: Into<MultiSpan>>(&mut self, sp: S) -> &mut Self);
     forward!(pub fn code(&mut self, s: DiagnosticId) -> &mut Self);
 
+    /// Allow attaching suggestions this diagnostic.
+    /// If this is set to `false`, then any suggestions attached with the `span_suggestion_*`
+    /// methods after this is set to `false` will be ignored.
     pub fn allow_suggestions(&mut self, allow: bool) -> &mut Self {
         self.0.allow_suggestions = allow;
         self
     }
 
     /// Convenience function for internal use, clients should use one of the
-    /// struct_* methods on Handler.
+    /// `struct_*` methods on [`Handler`].
     crate fn new(handler: &'a Handler, level: Level, message: &str) -> DiagnosticBuilder<'a> {
         DiagnosticBuilder::new_with_code(handler, level, None, message)
     }
 
     /// Convenience function for internal use, clients should use one of the
-    /// struct_* methods on Handler.
+    /// `struct_*` methods on [`Handler`].
     crate fn new_with_code(
         handler: &'a Handler,
         level: Level,

@@ -1,5 +1,5 @@
 error: generic parameters may not be used in const operations
-  --> $DIR/issue-68977.rs:29:17
+  --> $DIR/issue-68977.rs:28:17
    |
 LL |     PhantomU8<{(INT_BITS + FRAC_BITS + 7) / 8}>;
    |                 ^^^^^^^^ cannot perform const operation using `INT_BITS`
@@ -8,7 +8,7 @@ LL |     PhantomU8<{(INT_BITS + FRAC_BITS + 7) / 8}>;
    = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/issue-68977.rs:29:28
+  --> $DIR/issue-68977.rs:28:28
    |
 LL |     PhantomU8<{(INT_BITS + FRAC_BITS + 7) / 8}>;
    |                            ^^^^^^^^^ cannot perform const operation using `FRAC_BITS`

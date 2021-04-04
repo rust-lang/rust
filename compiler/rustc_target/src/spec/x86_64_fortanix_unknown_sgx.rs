@@ -4,9 +4,6 @@ use super::{LinkerFlavor, LldFlavor, PanicStrategy, Target, TargetOptions};
 
 pub fn target() -> Target {
     const PRE_LINK_ARGS: &[&str] = &[
-        "--as-needed",
-        "-z",
-        "noexecstack",
         "-e",
         "elf_entry",
         "-Bstatic",

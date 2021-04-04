@@ -1,0 +1,11 @@
+error[E0277]: expected a `FnOnce<(&str,)>` closure, found `unsafe extern "rust-intrinsic" fn(_) -> _ {transmute::<_, _>}`
+  --> $DIR/coerce-unsafe-to-closure.rs:2:44
+   |
+LL |     let x: Option<&[u8]> = Some("foo").map(std::mem::transmute);
+   |                                            ^^^^^^^^^^^^^^^^^^^ expected an `FnOnce<(&str,)>` closure, found `unsafe extern "rust-intrinsic" fn(_) -> _ {transmute::<_, _>}`
+   |
+   = help: the trait `FnOnce<(&str,)>` is not implemented for `unsafe extern "rust-intrinsic" fn(_) -> _ {transmute::<_, _>}`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

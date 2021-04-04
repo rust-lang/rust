@@ -7,7 +7,7 @@
 
 
 pub use extern_foo as x;
-extern {
+extern "C" {
     pub fn extern_foo();
 }
 
@@ -47,7 +47,7 @@ mod blah {
     // `malloc` below, which are also used.
     enum c_void {}
 
-    extern {
+    extern "C" {
         fn free(p: *const c_void);
         fn malloc(size: usize) -> *const c_void;
     }
@@ -58,7 +58,7 @@ mod blah {
 }
 
 enum c_void {} //~ ERROR: enum is never used
-extern {
+extern "C" {
     fn free(p: *const c_void); //~ ERROR: function is never used
 }
 

@@ -1,6 +1,4 @@
 // check-pass
-#![feature(min_const_generics)]
-
 struct Foo<const N: usize>;
 
 impl<const N: usize> Foo<N> {

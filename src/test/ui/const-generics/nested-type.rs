@@ -2,7 +2,6 @@
 
 #![cfg_attr(full, feature(const_generics))]
 #![cfg_attr(full, allow(incomplete_features))]
-#![cfg_attr(min, feature(min_const_generics))]
 
 struct Foo<const N: [u8; { //[min]~ ERROR `[u8; _]` is forbidden
     struct Foo<const N: usize>;

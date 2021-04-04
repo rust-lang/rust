@@ -1,0 +1,9 @@
+error[E0158]: const parameters cannot be referenced in patterns
+  --> $DIR/const-param.rs:8:9
+   |
+LL |         N => {}
+   |         ^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0158`.

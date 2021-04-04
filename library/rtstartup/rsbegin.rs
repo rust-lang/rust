@@ -14,8 +14,7 @@
 
 #![feature(no_core)]
 #![feature(lang_items)]
-#![cfg_attr(bootstrap, feature(optin_builtin_traits))]
-#![cfg_attr(not(bootstrap), feature(auto_traits))]
+#![feature(auto_traits)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(non_camel_case_types)]

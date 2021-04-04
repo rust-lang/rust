@@ -12,7 +12,7 @@
 //! In this code, we report errors on each `rustc_if_this_changed`
 //! annotation. If a path exists in all cases, then we would report
 //! "all path(s) exist". Otherwise, we report: "no path to `foo`" for
-//! each case where no path exists. `compile-fail` tests can then be
+//! each case where no path exists. `ui` tests can then be
 //! used to check when paths exist or do not.
 //!
 //! The full form of the `rustc_if_this_changed` annotation is
@@ -40,8 +40,9 @@ use rustc_graphviz as dot;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_middle::dep_graph::debug::{DepNodeFilter, EdgeFilter};
-use rustc_middle::dep_graph::{DepGraphQuery, DepKind, DepNode, DepNodeExt};
+use rustc_middle::dep_graph::{
+    DepGraphQuery, DepKind, DepNode, DepNodeExt, DepNodeFilter, EdgeFilter,
+};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::{sym, Symbol};
@@ -54,7 +55,11 @@ use std::io::{BufWriter, Write};
 pub fn assert_dep_graph(tcx: TyCtxt<'_>) {
     tcx.dep_graph.with_ignore(|| {
         if tcx.sess.opts.debugging_opts.dump_dep_graph {
-            dump_graph(tcx);
+            tcx.dep_graph.with_query(dump_graph);
+        }
+
+        if !tcx.sess.opts.debugging_opts.query_dep_graph {
+            return;
         }
 
         // if the `rustc_attrs` feature is not enabled, then the
@@ -68,7 +73,7 @@ pub fn assert_dep_graph(tcx: TyCtxt<'_>) {
         let (if_this_changed, then_this_would_need) = {
             let mut visitor =
                 IfThisChanged { tcx, if_this_changed: vec![], then_this_would_need: vec![] };
-            visitor.process_attrs(hir::CRATE_HIR_ID, &tcx.hir().krate().item.attrs);
+            visitor.process_attrs(hir::CRATE_HIR_ID);
             tcx.hir().krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
             (visitor.if_this_changed, visitor.then_this_would_need)
         };
@@ -113,9 +118,10 @@ impl IfThisChanged<'tcx> {
         value
     }
 
-    fn process_attrs(&mut self, hir_id: hir::HirId, attrs: &[ast::Attribute]) {
+    fn process_attrs(&mut self, hir_id: hir::HirId) {
         let def_id = self.tcx.hir().local_def_id(hir_id);
         let def_path_hash = self.tcx.def_path_hash(def_id.to_def_id());
+        let attrs = self.tcx.hir().attrs(hir_id);
         for attr in attrs {
             if self.tcx.sess.check_name(attr, sym::rustc_if_this_changed) {
                 let dep_node_interned = self.argument(attr);
@@ -167,23 +173,23 @@ impl Visitor<'tcx> for IfThisChanged<'tcx> {
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        self.process_attrs(item.hir_id, &item.attrs);
+        self.process_attrs(item.hir_id());
         intravisit::walk_item(self, item);
     }
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
-        self.process_attrs(trait_item.hir_id, &trait_item.attrs);
+        self.process_attrs(trait_item.hir_id());
         intravisit::walk_trait_item(self, trait_item);
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
-        self.process_attrs(impl_item.hir_id, &impl_item.attrs);
+        self.process_attrs(impl_item.hir_id());
         intravisit::walk_impl_item(self, impl_item);
     }
 
-    fn visit_struct_field(&mut self, s: &'tcx hir::StructField<'tcx>) {
-        self.process_attrs(s.hir_id, &s.attrs);
-        intravisit::walk_struct_field(self, s);
+    fn visit_field_def(&mut self, s: &'tcx hir::FieldDef<'tcx>) {
+        self.process_attrs(s.hir_id);
+        intravisit::walk_field_def(self, s);
     }
 }
 
@@ -195,29 +201,29 @@ fn check_paths<'tcx>(tcx: TyCtxt<'tcx>, if_this_changed: &Sources, then_this_wou
         }
         return;
     }
-    let query = tcx.dep_graph.query();
-    for &(_, source_def_id, ref source_dep_node) in if_this_changed {
-        let dependents = query.transitive_predecessors(source_dep_node);
-        for &(target_span, ref target_pass, _, ref target_dep_node) in then_this_would_need {
-            if !dependents.contains(&target_dep_node) {
-                tcx.sess.span_err(
-                    target_span,
-                    &format!(
-                        "no path from `{}` to `{}`",
-                        tcx.def_path_str(source_def_id),
-                        target_pass
-                    ),
-                );
-            } else {
-                tcx.sess.span_err(target_span, "OK");
+    tcx.dep_graph.with_query(|query| {
+        for &(_, source_def_id, ref source_dep_node) in if_this_changed {
+            let dependents = query.transitive_predecessors(source_dep_node);
+            for &(target_span, ref target_pass, _, ref target_dep_node) in then_this_would_need {
+                if !dependents.contains(&target_dep_node) {
+                    tcx.sess.span_err(
+                        target_span,
+                        &format!(
+                            "no path from `{}` to `{}`",
+                            tcx.def_path_str(source_def_id),
+                            target_pass
+                        ),
+                    );
+                } else {
+                    tcx.sess.span_err(target_span, "OK");
+                }
             }
         }
-    }
+    });
 }
 
-fn dump_graph(tcx: TyCtxt<'_>) {
+fn dump_graph(query: &DepGraphQuery) {
     let path: String = env::var("RUST_DEP_GRAPH").unwrap_or_else(|_| "dep_graph".to_string());
-    let query = tcx.dep_graph.query();
 
     let nodes = match env::var("RUST_DEP_GRAPH_FILTER") {
         Ok(string) => {
@@ -310,13 +316,13 @@ fn filter_nodes<'q>(
     sources: &Option<FxHashSet<&'q DepNode>>,
     targets: &Option<FxHashSet<&'q DepNode>>,
 ) -> FxHashSet<&'q DepNode> {
-    if let &Some(ref sources) = sources {
-        if let &Some(ref targets) = targets {
+    if let Some(sources) = sources {
+        if let Some(targets) = targets {
             walk_between(query, sources, targets)
         } else {
             walk_nodes(query, sources, OUTGOING)
         }
-    } else if let &Some(ref targets) = targets {
+    } else if let Some(targets) = targets {
         walk_nodes(query, targets, INCOMING)
     } else {
         query.nodes().into_iter().collect()

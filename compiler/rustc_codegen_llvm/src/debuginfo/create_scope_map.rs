@@ -1,4 +1,4 @@
-use super::metadata::{file_metadata, UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER};
+use super::metadata::file_metadata;
 use super::utils::DIB;
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext};
 use rustc_codegen_ssa::traits::*;
@@ -102,8 +102,8 @@ fn make_mir_scope(
                 DIB(cx),
                 parent_scope.dbg_scope.unwrap(),
                 file_metadata,
-                loc.line.unwrap_or(UNKNOWN_LINE_NUMBER),
-                loc.col.unwrap_or(UNKNOWN_COLUMN_NUMBER),
+                loc.line,
+                loc.col,
             )
         },
     };

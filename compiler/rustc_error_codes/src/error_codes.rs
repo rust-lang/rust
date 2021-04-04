@@ -103,7 +103,6 @@ E0198: include_str!("./error_codes/E0198.md"),
 E0199: include_str!("./error_codes/E0199.md"),
 E0200: include_str!("./error_codes/E0200.md"),
 E0201: include_str!("./error_codes/E0201.md"),
-E0202: include_str!("./error_codes/E0202.md"),
 E0203: include_str!("./error_codes/E0203.md"),
 E0204: include_str!("./error_codes/E0204.md"),
 E0205: include_str!("./error_codes/E0205.md"),
@@ -111,6 +110,7 @@ E0206: include_str!("./error_codes/E0206.md"),
 E0207: include_str!("./error_codes/E0207.md"),
 E0210: include_str!("./error_codes/E0210.md"),
 E0211: include_str!("./error_codes/E0211.md"),
+E0212: include_str!("./error_codes/E0212.md"),
 E0214: include_str!("./error_codes/E0214.md"),
 E0220: include_str!("./error_codes/E0220.md"),
 E0221: include_str!("./error_codes/E0221.md"),
@@ -266,6 +266,7 @@ E0516: include_str!("./error_codes/E0516.md"),
 E0517: include_str!("./error_codes/E0517.md"),
 E0518: include_str!("./error_codes/E0518.md"),
 E0520: include_str!("./error_codes/E0520.md"),
+E0521: include_str!("./error_codes/E0521.md"),
 E0522: include_str!("./error_codes/E0522.md"),
 E0524: include_str!("./error_codes/E0524.md"),
 E0525: include_str!("./error_codes/E0525.md"),
@@ -283,7 +284,12 @@ E0537: include_str!("./error_codes/E0537.md"),
 E0538: include_str!("./error_codes/E0538.md"),
 E0539: include_str!("./error_codes/E0539.md"),
 E0541: include_str!("./error_codes/E0541.md"),
+E0542: include_str!("./error_codes/E0542.md"),
+E0543: include_str!("./error_codes/E0543.md"),
+E0545: include_str!("./error_codes/E0545.md"),
 E0546: include_str!("./error_codes/E0546.md"),
+E0547: include_str!("./error_codes/E0547.md"),
+E0549: include_str!("./error_codes/E0549.md"),
 E0550: include_str!("./error_codes/E0550.md"),
 E0551: include_str!("./error_codes/E0551.md"),
 E0552: include_str!("./error_codes/E0552.md"),
@@ -463,6 +469,8 @@ E0776: include_str!("./error_codes/E0776.md"),
 E0777: include_str!("./error_codes/E0777.md"),
 E0778: include_str!("./error_codes/E0778.md"),
 E0779: include_str!("./error_codes/E0779.md"),
+E0780: include_str!("./error_codes/E0780.md"),
+E0781: include_str!("./error_codes/E0781.md"),
 ;
 //  E0006, // merged with E0005
 //  E0008, // cannot bind by-move into a pattern guard
@@ -503,7 +511,6 @@ E0779: include_str!("./error_codes/E0779.md"),
 //  E0196, // cannot determine a type for this closure
     E0208,
 //  E0209, // builtin traits can only be implemented on structs or enums
-    E0212, // cannot extract an associated type from a higher-ranked trait bound
 //  E0213, // associated types are not accepted in this context
 //  E0215, // angle-bracket notation is not stable with `Fn`
 //  E0216, // parenthetical notation is only stable with `Fn`
@@ -596,19 +603,11 @@ E0779: include_str!("./error_codes/E0779.md"),
     E0514, // metadata version mismatch
     E0519, // local crate and dependency have same (crate-name, disambiguator)
     // two dependencies have same (crate-name, disambiguator) but different SVH
-    E0521, // borrowed data escapes outside of closure
     E0523,
 //  E0526, // shuffle indices are not constant
 //  E0540, // multiple rustc_deprecated attributes
-    E0542, // missing 'since'
-    E0543, // missing 'reason'
     E0544, // multiple stability levels
-    E0545, // incorrect 'issue'
-    E0547, // missing 'issue'
 //  E0548, // replaced with a generic attribute input check
-    // rustc_deprecated attribute must be paired with either stable or unstable
-    // attribute
-    E0549,
     E0553, // multiple rustc_const_unstable attributes
 //  E0555, // replaced with a generic attribute input check
 //  E0558, // replaced with a generic attribute input check

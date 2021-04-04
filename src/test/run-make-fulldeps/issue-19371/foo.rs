@@ -57,6 +57,7 @@ fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
         diagnostic_output: DiagnosticOutput::Default,
         stderr: None,
         lint_caps: Default::default(),
+        parse_sess_created: None,
         register_lints: None,
         override_queries: None,
         make_codegen_backend: None,

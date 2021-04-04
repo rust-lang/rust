@@ -2,13 +2,16 @@
 authors = ["The Rust Project Developers"]
 name = "alloc"
 version = "0.0.0"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/rust-lang/rust.git"
+description = "The Rust core allocation and collections library"
 autotests = false
 autobenches = false
 edition = "2018"
 
 [dependencies]
 core = { path = "../core" }
-compiler_builtins = { version = "0.1.10", features = ['rustc-dep-of-std'] }
+compiler_builtins = { version = "0.1.39", features = ['rustc-dep-of-std'] }
 
 [dev-dependencies]
 rand = "0.7"
@@ -31,5 +34,5 @@ harness = false
 [features]
 compiler-builtins-mem = ['compiler_builtins/mem']
 compiler-builtins-c = ["compiler_builtins/c"]
-compiler-builtins-asm = ["compiler_builtins/asm"]
+compiler-builtins-no-asm = ["compiler_builtins/no-asm"]
 compiler-builtins-mangled-names = ["compiler_builtins/mangled-names"]

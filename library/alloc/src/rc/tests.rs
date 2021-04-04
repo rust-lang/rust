@@ -319,6 +319,23 @@ fn test_unsized() {
 }
 
 #[test]
+fn test_maybe_thin_unsized() {
+    // If/when custom thin DSTs exist, this test should be updated to use one
+    use std::ffi::{CStr, CString};
+
+    let x: Rc<CStr> = Rc::from(CString::new("swordfish").unwrap().into_boxed_c_str());
+    assert_eq!(format!("{:?}", x), "\"swordfish\"");
+    let y: Weak<CStr> = Rc::downgrade(&x);
+    drop(x);
+
+    // At this point, the weak points to a dropped DST
+    assert!(y.upgrade().is_none());
+    // But we still need to be able to get the alloc layout to drop.
+    // CStr has no drop glue, but custom DSTs might, and need to work.
+    drop(y);
+}
+
+#[test]
 fn test_from_owned() {
     let foo = 123;
     let foo_rc = Rc::from(foo);

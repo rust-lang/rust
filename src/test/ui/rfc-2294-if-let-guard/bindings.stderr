@@ -1,0 +1,15 @@
+error[E0425]: cannot find value `y` in this scope
+  --> $DIR/bindings.rs:7:14
+   |
+LL |         _ => y,
+   |              ^ not found in this scope
+
+error[E0425]: cannot find value `y` in this scope
+  --> $DIR/bindings.rs:9:5
+   |
+LL |     y
+   |     ^ not found in this scope
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

@@ -43,6 +43,12 @@ print-type-size     variant `Three`: 0 bytes
 print-type-size         field `.0`: 0 bytes
 print-type-size     variant `Four`: 0 bytes
 print-type-size         field `.0`: 0 bytes
+print-type-size type: `MyNotNegativeOne`: 4 bytes, alignment: 4 bytes
+print-type-size     field `._i`: 4 bytes
+print-type-size type: `MyOption<MyNotNegativeOne>`: 4 bytes, alignment: 4 bytes
+print-type-size     variant `Some`: 4 bytes
+print-type-size         field `.0`: 4 bytes
+print-type-size     variant `None`: 0 bytes
 print-type-size type: `MyOption<char>`: 4 bytes, alignment: 4 bytes
 print-type-size     variant `Some`: 4 bytes
 print-type-size         field `.0`: 4 bytes

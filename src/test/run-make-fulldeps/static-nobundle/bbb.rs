@@ -2,7 +2,7 @@
 #![feature(static_nobundle)]
 
 #[link(name = "aaa", kind = "static-nobundle")]
-extern {
+extern "C" {
     pub fn native_func();
 }
 

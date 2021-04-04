@@ -16,7 +16,7 @@ pub extern crate rustc_plugin_impl as plugin;
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::{traits::CodegenBackend, CodegenResults};
-use rustc_data_structures::profiling::print_time_passes_entry;
+use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::SeqCst;
 use rustc_errors::registry::{InvalidErrorCode, Registry};
 use rustc_errors::{ErrorReported, PResult};
@@ -27,7 +27,6 @@ use rustc_interface::{interface, Queries};
 use rustc_lint::LintStore;
 use rustc_metadata::locator;
 use rustc_middle::middle::cstore::MetadataLoader;
-use rustc_middle::ty::TyCtxt;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
 use rustc_serialize::json::{self, ToJson};
@@ -55,7 +54,7 @@ use std::process::{self, Command, Stdio};
 use std::str;
 use std::time::Instant;
 
-mod args;
+pub mod args;
 pub mod pretty;
 
 /// Exit status code used for successful compilation and help output.
@@ -147,6 +146,7 @@ impl<'a, 'b> RunCompiler<'a, 'b> {
     pub fn new(at_args: &'a [String], callbacks: &'b mut (dyn Callbacks + Send)) -> Self {
         Self { at_args, callbacks, file_loader: None, emitter: None, make_codegen_backend: None }
     }
+    /// Used by cg_clif.
     pub fn set_make_codegen_backend(
         &mut self,
         make_codegen_backend: Option<
@@ -156,10 +156,12 @@ impl<'a, 'b> RunCompiler<'a, 'b> {
         self.make_codegen_backend = make_codegen_backend;
         self
     }
+    /// Used by RLS.
     pub fn set_emitter(&mut self, emitter: Option<Box<dyn Write + Send>>) -> &mut Self {
         self.emitter = emitter;
         self
     }
+    /// Used by RLS.
     pub fn set_file_loader(
         &mut self,
         file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
@@ -188,16 +190,8 @@ fn run_compiler(
         Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>,
     >,
 ) -> interface::Result<()> {
-    let mut args = Vec::new();
-    for arg in at_args {
-        match args::arg_expand(arg.clone()) {
-            Ok(arg) => args.extend(arg),
-            Err(err) => early_error(
-                ErrorOutputType::default(),
-                &format!("Failed to load argument file: {}", err),
-            ),
-        }
-    }
+    let args = args::arg_expand_all(at_args);
+
     let diagnostic_output = emitter.map_or(DiagnosticOutput::Default, DiagnosticOutput::Raw);
     let matches = match handle_options(&args) {
         Some(matches) => matches,
@@ -224,6 +218,7 @@ fn run_compiler(
             diagnostic_output,
             stderr: None,
             lint_caps: Default::default(),
+            parse_sess_created: None,
             register_lints: None,
             override_queries: None,
             make_codegen_backend: make_codegen_backend.take().unwrap(),
@@ -307,6 +302,7 @@ fn run_compiler(
         diagnostic_output,
         stderr: None,
         lint_caps: Default::default(),
+        parse_sess_created: None,
         register_lints: None,
         override_queries: None,
         make_codegen_backend: make_codegen_backend.unwrap(),
@@ -546,24 +542,12 @@ impl Compilation {
 #[derive(Copy, Clone)]
 pub struct RustcDefaultCalls;
 
-// FIXME remove these and use winapi 0.3 instead
-// Duplicates: bootstrap/compile.rs, librustc_errors/emitter.rs
-#[cfg(unix)]
 fn stdout_isatty() -> bool {
-    unsafe { libc::isatty(libc::STDOUT_FILENO) != 0 }
+    atty::is(atty::Stream::Stdout)
 }
 
-#[cfg(windows)]
-fn stdout_isatty() -> bool {
-    use winapi::um::consoleapi::GetConsoleMode;
-    use winapi::um::processenv::GetStdHandle;
-    use winapi::um::winbase::STD_OUTPUT_HANDLE;
-
-    unsafe {
-        let handle = GetStdHandle(STD_OUTPUT_HANDLE);
-        let mut out = 0;
-        GetConsoleMode(handle, &mut out) != 0
-    }
+fn stderr_isatty() -> bool {
+    atty::is(atty::Stream::Stderr)
 }
 
 fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
@@ -603,7 +587,7 @@ fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
     }
 }
 
-fn show_content_with_pager(content: &String) {
+fn show_content_with_pager(content: &str) {
     let pager_name = env::var_os("PAGER").unwrap_or_else(|| {
         if cfg!(windows) { OsString::from("more.com") } else { OsString::from("less") }
     });
@@ -810,7 +794,7 @@ pub fn version(binary: &str, matches: &getopts::Matches) {
         println!("commit-date: {}", unw(util::commit_date_str()));
         println!("host: {}", config::host_triple());
         println!("release: {}", unw(util::release_str()));
-        if cfg!(llvm) {
+        if cfg!(feature = "llvm") {
             get_builtin_codegen_backend("llvm")().print_version();
         }
     }
@@ -833,7 +817,7 @@ fn usage(verbose: bool, include_unstable_options: bool, nightly_build: bool) {
     } else {
         "\n    --help -v           Print the full set of options rustc accepts"
     };
-    let at_path = if verbose && nightly_build {
+    let at_path = if verbose {
         "    @path               Read newline separated options from `path`\n"
     } else {
         ""
@@ -914,7 +898,12 @@ Available lint options:
     let print_lints = |lints: Vec<&Lint>| {
         for lint in lints {
             let name = lint.name_lower().replace("_", "-");
-            println!("    {}  {:7.7}  {}", padded(&name), lint.default_level.as_str(), lint.desc);
+            println!(
+                "    {}  {:7.7}  {}",
+                padded(&name),
+                lint.default_level(sess.edition()).as_str(),
+                lint.desc
+            );
         }
         println!("\n");
     };
@@ -1099,7 +1088,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     }
 
     if cg_flags.iter().any(|x| *x == "passes=list") {
-        if cfg!(llvm) {
+        if cfg!(feature = "llvm") {
             get_builtin_codegen_backend("llvm")().print_passes();
         }
         return None;
@@ -1248,11 +1237,11 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     }
 
     // If backtraces are enabled, also print the query stack
-    let backtrace = env::var_os("RUST_BACKTRACE").map(|x| &x != "0").unwrap_or(false);
+    let backtrace = env::var_os("RUST_BACKTRACE").map_or(false, |x| &x != "0");
 
     let num_frames = if backtrace { None } else { Some(2) };
 
-    TyCtxt::try_print_query_stack(&handler, num_frames);
+    interface::try_print_query_stack(&handler, num_frames);
 
     #[cfg(windows)]
     unsafe {
@@ -1290,7 +1279,7 @@ pub fn init_env_logger(env: &str) {
         Ok(value) => match value.as_ref() {
             "always" => true,
             "never" => false,
-            "auto" => stdout_isatty(),
+            "auto" => stderr_isatty(),
             _ => early_error(
                 ErrorOutputType::default(),
                 &format!(
@@ -1299,7 +1288,7 @@ pub fn init_env_logger(env: &str) {
                 ),
             ),
         },
-        Err(std::env::VarError::NotPresent) => stdout_isatty(),
+        Err(std::env::VarError::NotPresent) => stderr_isatty(),
         Err(std::env::VarError::NotUnicode(_value)) => early_error(
             ErrorOutputType::default(),
             "non-Unicode log color value: expected one of always, never, or auto",
@@ -1324,7 +1313,8 @@ pub fn init_env_logger(env: &str) {
 }
 
 pub fn main() -> ! {
-    let start = Instant::now();
+    let start_time = Instant::now();
+    let start_rss = get_resident_set_size();
     init_rustc_env_logger();
     let mut callbacks = TimePassesCallbacks::default();
     install_ice_hook();
@@ -1342,7 +1332,11 @@ pub fn main() -> ! {
             .collect::<Vec<_>>();
         RunCompiler::new(&args, &mut callbacks).run()
     });
-    // The extra `\t` is necessary to align this label with the others.
-    print_time_passes_entry(callbacks.time_passes, "\ttotal", start.elapsed());
+
+    if callbacks.time_passes {
+        let end_rss = get_resident_set_size();
+        print_time_passes_entry("total", start_time.elapsed(), start_rss, end_rss);
+    }
+
     process::exit(exit_code)
 }

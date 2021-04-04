@@ -1,6 +1,6 @@
 #![crate_type = "cdylib"]
 
 #[no_mangle]
-pub extern fn foo() -> u32 {
+pub extern "C" fn foo() -> u32 {
     3
 }

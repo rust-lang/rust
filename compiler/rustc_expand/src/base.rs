@@ -1,18 +1,20 @@
 use crate::expand::{self, AstFragment, Invocation};
-use crate::module::DirectoryOwnership;
+use crate::module::DirOwnership;
 
 use rustc_ast::ptr::P;
-use rustc_ast::token;
-use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::token::{self, Nonterminal};
+use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, LazyTokenStream, TokenStream};
 use rustc_ast::visit::{AssocCtxt, Visitor};
-use rustc_ast::{self as ast, Attribute, NodeId, PatKind};
-use rustc_attr::{self as attr, Deprecation, HasAttrs, Stability};
+use rustc_ast::{self as ast, AstLike, Attribute, Item, NodeId, PatKind};
+use rustc_attr::{self as attr, Deprecation, Stability};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{DiagnosticBuilder, ErrorReported};
+use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
+use rustc_lint_defs::BuiltinLintDiagnostics;
 use rustc_parse::{self, nt_to_tokenstream, parser, MACRO_ARGUMENTS};
 use rustc_session::{parse::ParseSess, Limit, Session};
-use rustc_span::def_id::{DefId, LOCAL_CRATE};
+use rustc_span::def_id::DefId;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnId, ExpnKind};
 use rustc_span::source_map::SourceMap;
@@ -36,15 +38,15 @@ pub enum Annotatable {
     Stmt(P<ast::Stmt>),
     Expr(P<ast::Expr>),
     Arm(ast::Arm),
-    Field(ast::Field),
-    FieldPat(ast::FieldPat),
+    ExprField(ast::ExprField),
+    PatField(ast::PatField),
     GenericParam(ast::GenericParam),
     Param(ast::Param),
-    StructField(ast::StructField),
+    FieldDef(ast::FieldDef),
     Variant(ast::Variant),
 }
 
-impl HasAttrs for Annotatable {
+impl AstLike for Annotatable {
     fn attrs(&self) -> &[Attribute] {
         match *self {
             Annotatable::Item(ref item) => &item.attrs,
@@ -54,11 +56,11 @@ impl HasAttrs for Annotatable {
             Annotatable::Stmt(ref stmt) => stmt.attrs(),
             Annotatable::Expr(ref expr) => &expr.attrs,
             Annotatable::Arm(ref arm) => &arm.attrs,
-            Annotatable::Field(ref field) => &field.attrs,
-            Annotatable::FieldPat(ref fp) => &fp.attrs,
+            Annotatable::ExprField(ref field) => &field.attrs,
+            Annotatable::PatField(ref fp) => &fp.attrs,
             Annotatable::GenericParam(ref gp) => &gp.attrs,
             Annotatable::Param(ref p) => &p.attrs,
-            Annotatable::StructField(ref sf) => &sf.attrs,
+            Annotatable::FieldDef(ref sf) => &sf.attrs,
             Annotatable::Variant(ref v) => &v.attrs(),
         }
     }
@@ -72,12 +74,30 @@ impl HasAttrs for Annotatable {
             Annotatable::Stmt(stmt) => stmt.visit_attrs(f),
             Annotatable::Expr(expr) => expr.visit_attrs(f),
             Annotatable::Arm(arm) => arm.visit_attrs(f),
-            Annotatable::Field(field) => field.visit_attrs(f),
-            Annotatable::FieldPat(fp) => fp.visit_attrs(f),
+            Annotatable::ExprField(field) => field.visit_attrs(f),
+            Annotatable::PatField(fp) => fp.visit_attrs(f),
             Annotatable::GenericParam(gp) => gp.visit_attrs(f),
             Annotatable::Param(p) => p.visit_attrs(f),
-            Annotatable::StructField(sf) => sf.visit_attrs(f),
+            Annotatable::FieldDef(sf) => sf.visit_attrs(f),
             Annotatable::Variant(v) => v.visit_attrs(f),
+        }
+    }
+
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
+        match self {
+            Annotatable::Item(item) => item.tokens_mut(),
+            Annotatable::TraitItem(trait_item) => trait_item.tokens_mut(),
+            Annotatable::ImplItem(impl_item) => impl_item.tokens_mut(),
+            Annotatable::ForeignItem(foreign_item) => foreign_item.tokens_mut(),
+            Annotatable::Stmt(stmt) => stmt.tokens_mut(),
+            Annotatable::Expr(expr) => expr.tokens_mut(),
+            Annotatable::Arm(arm) => arm.tokens_mut(),
+            Annotatable::ExprField(field) => field.tokens_mut(),
+            Annotatable::PatField(fp) => fp.tokens_mut(),
+            Annotatable::GenericParam(gp) => gp.tokens_mut(),
+            Annotatable::Param(p) => p.tokens_mut(),
+            Annotatable::FieldDef(sf) => sf.tokens_mut(),
+            Annotatable::Variant(v) => v.tokens_mut(),
         }
     }
 }
@@ -92,11 +112,11 @@ impl Annotatable {
             Annotatable::Stmt(ref stmt) => stmt.span,
             Annotatable::Expr(ref expr) => expr.span,
             Annotatable::Arm(ref arm) => arm.span,
-            Annotatable::Field(ref field) => field.span,
-            Annotatable::FieldPat(ref fp) => fp.pat.span,
+            Annotatable::ExprField(ref field) => field.span,
+            Annotatable::PatField(ref fp) => fp.pat.span,
             Annotatable::GenericParam(ref gp) => gp.ident.span,
             Annotatable::Param(ref p) => p.span,
-            Annotatable::StructField(ref sf) => sf.span,
+            Annotatable::FieldDef(ref sf) => sf.span,
             Annotatable::Variant(ref v) => v.span,
         }
     }
@@ -110,17 +130,17 @@ impl Annotatable {
             Annotatable::Stmt(stmt) => visitor.visit_stmt(stmt),
             Annotatable::Expr(expr) => visitor.visit_expr(expr),
             Annotatable::Arm(arm) => visitor.visit_arm(arm),
-            Annotatable::Field(field) => visitor.visit_field(field),
-            Annotatable::FieldPat(fp) => visitor.visit_field_pattern(fp),
+            Annotatable::ExprField(field) => visitor.visit_expr_field(field),
+            Annotatable::PatField(fp) => visitor.visit_pat_field(fp),
             Annotatable::GenericParam(gp) => visitor.visit_generic_param(gp),
             Annotatable::Param(p) => visitor.visit_param(p),
-            Annotatable::StructField(sf) => visitor.visit_struct_field(sf),
+            Annotatable::FieldDef(sf) => visitor.visit_field_def(sf),
             Annotatable::Variant(v) => visitor.visit_variant(v),
         }
     }
 
-    crate fn into_tokens(self, sess: &ParseSess) -> TokenStream {
-        let nt = match self {
+    crate fn into_nonterminal(self) -> Nonterminal {
+        match self {
             Annotatable::Item(item) => token::NtItem(item),
             Annotatable::TraitItem(item) | Annotatable::ImplItem(item) => {
                 token::NtItem(P(item.and_then(ast::AssocItem::into_item)))
@@ -131,14 +151,20 @@ impl Annotatable {
             Annotatable::Stmt(stmt) => token::NtStmt(stmt.into_inner()),
             Annotatable::Expr(expr) => token::NtExpr(expr),
             Annotatable::Arm(..)
-            | Annotatable::Field(..)
-            | Annotatable::FieldPat(..)
+            | Annotatable::ExprField(..)
+            | Annotatable::PatField(..)
             | Annotatable::GenericParam(..)
             | Annotatable::Param(..)
-            | Annotatable::StructField(..)
+            | Annotatable::FieldDef(..)
             | Annotatable::Variant(..) => panic!("unexpected annotatable"),
-        };
-        nt_to_tokenstream(&nt, sess, DUMMY_SP)
+        }
+    }
+
+    crate fn into_tokens(self, sess: &ParseSess) -> TokenStream {
+        // Tokens of an attribute target may be invalidated by some outer `#[derive]` performing
+        // "full configuration" (attributes following derives on the same item should be the most
+        // common case), that's why synthesizing tokens is allowed.
+        nt_to_tokenstream(&self.into_nonterminal(), sess, CanSynthesizeMissingTokens::Yes)
     }
 
     pub fn expect_item(self) -> P<ast::Item> {
@@ -190,16 +216,16 @@ impl Annotatable {
         }
     }
 
-    pub fn expect_field(self) -> ast::Field {
+    pub fn expect_expr_field(self) -> ast::ExprField {
         match self {
-            Annotatable::Field(field) => field,
+            Annotatable::ExprField(field) => field,
             _ => panic!("expected field"),
         }
     }
 
-    pub fn expect_field_pattern(self) -> ast::FieldPat {
+    pub fn expect_pat_field(self) -> ast::PatField {
         match self {
-            Annotatable::FieldPat(fp) => fp,
+            Annotatable::PatField(fp) => fp,
             _ => panic!("expected field pattern"),
         }
     }
@@ -218,9 +244,9 @@ impl Annotatable {
         }
     }
 
-    pub fn expect_struct_field(self) -> ast::StructField {
+    pub fn expect_field_def(self) -> ast::FieldDef {
         match self {
-            Annotatable::StructField(sf) => sf,
+            Annotatable::FieldDef(sf) => sf,
             _ => panic!("expected struct field"),
         }
     }
@@ -229,25 +255,6 @@ impl Annotatable {
         match self {
             Annotatable::Variant(v) => v,
             _ => panic!("expected variant"),
-        }
-    }
-
-    pub fn derive_allowed(&self) -> bool {
-        match *self {
-            Annotatable::Stmt(ref stmt) => match stmt.kind {
-                ast::StmtKind::Item(ref item) => matches!(
-                    item.kind,
-                    ast::ItemKind::Struct(..) | ast::ItemKind::Enum(..) | ast::ItemKind::Union(..)
-                ),
-                _ => false,
-            },
-            Annotatable::Item(ref item) => match item.kind {
-                ast::ItemKind::Struct(..) | ast::ItemKind::Enum(..) | ast::ItemKind::Union(..) => {
-                    true
-                }
-                _ => false,
-            },
-            _ => false,
         }
     }
 }
@@ -425,11 +432,11 @@ pub trait MacResult {
         None
     }
 
-    fn make_fields(self: Box<Self>) -> Option<SmallVec<[ast::Field; 1]>> {
+    fn make_expr_fields(self: Box<Self>) -> Option<SmallVec<[ast::ExprField; 1]>> {
         None
     }
 
-    fn make_field_patterns(self: Box<Self>) -> Option<SmallVec<[ast::FieldPat; 1]>> {
+    fn make_pat_fields(self: Box<Self>) -> Option<SmallVec<[ast::PatField; 1]>> {
         None
     }
 
@@ -441,7 +448,7 @@ pub trait MacResult {
         None
     }
 
-    fn make_struct_fields(self: Box<Self>) -> Option<SmallVec<[ast::StructField; 1]>> {
+    fn make_field_defs(self: Box<Self>) -> Option<SmallVec<[ast::FieldDef; 1]>> {
         None
     }
 
@@ -625,11 +632,11 @@ impl MacResult for DummyResult {
         Some(SmallVec::new())
     }
 
-    fn make_fields(self: Box<DummyResult>) -> Option<SmallVec<[ast::Field; 1]>> {
+    fn make_expr_fields(self: Box<DummyResult>) -> Option<SmallVec<[ast::ExprField; 1]>> {
         Some(SmallVec::new())
     }
 
-    fn make_field_patterns(self: Box<DummyResult>) -> Option<SmallVec<[ast::FieldPat; 1]>> {
+    fn make_pat_fields(self: Box<DummyResult>) -> Option<SmallVec<[ast::PatField; 1]>> {
         Some(SmallVec::new())
     }
 
@@ -641,7 +648,7 @@ impl MacResult for DummyResult {
         Some(SmallVec::new())
     }
 
-    fn make_struct_fields(self: Box<DummyResult>) -> Option<SmallVec<[ast::StructField; 1]>> {
+    fn make_field_defs(self: Box<DummyResult>) -> Option<SmallVec<[ast::FieldDef; 1]>> {
         Some(SmallVec::new())
     }
 
@@ -725,9 +732,7 @@ pub struct SyntaxExtension {
     pub edition: Edition,
     /// Built-in macros have a couple of special properties like availability
     /// in `#[no_implicit_prelude]` modules, so we have to keep this flag.
-    pub is_builtin: bool,
-    /// We have to identify macros providing a `Copy` impl early for compatibility reasons.
-    pub is_derive_copy: bool,
+    pub builtin_name: Option<Symbol>,
 }
 
 impl SyntaxExtension {
@@ -755,8 +760,7 @@ impl SyntaxExtension {
             deprecation: None,
             helper_attrs: Vec::new(),
             edition,
-            is_builtin: false,
-            is_derive_copy: false,
+            builtin_name: None,
             kind,
         }
     }
@@ -772,8 +776,8 @@ impl SyntaxExtension {
         name: Symbol,
         attrs: &[ast::Attribute],
     ) -> SyntaxExtension {
-        let allow_internal_unstable = attr::allow_internal_unstable(sess, &attrs)
-            .map(|features| features.collect::<Vec<Symbol>>().into());
+        let allow_internal_unstable =
+            attr::allow_internal_unstable(sess, &attrs).collect::<Vec<Symbol>>();
 
         let mut local_inner_macros = false;
         if let Some(macro_export) = sess.find_by_name(attrs, sym::macro_export) {
@@ -782,26 +786,34 @@ impl SyntaxExtension {
             }
         }
 
-        let is_builtin = sess.contains_name(attrs, sym::rustc_builtin_macro);
+        let builtin_name = sess
+            .find_by_name(attrs, sym::rustc_builtin_macro)
+            .map(|a| a.value_str().unwrap_or(name));
         let (stability, const_stability) = attr::find_stability(&sess, attrs, span);
-        if const_stability.is_some() {
+        if let Some((_, sp)) = const_stability {
             sess.parse_sess
                 .span_diagnostic
-                .span_err(span, "macros cannot have const stability attributes");
+                .struct_span_err(sp, "macros cannot have const stability attributes")
+                .span_label(sp, "invalid const stability attribute")
+                .span_label(
+                    sess.source_map().guess_head_span(span),
+                    "const stability attribute affects this macro",
+                )
+                .emit();
         }
 
         SyntaxExtension {
             kind,
             span,
-            allow_internal_unstable,
+            allow_internal_unstable: (!allow_internal_unstable.is_empty())
+                .then(|| allow_internal_unstable.into()),
             allow_internal_unsafe: sess.contains_name(attrs, sym::allow_internal_unsafe),
             local_inner_macros,
-            stability,
+            stability: stability.map(|(s, _)| s),
             deprecation: attr::find_deprecation(&sess, attrs).map(|(d, _)| d),
             helper_attrs,
             edition,
-            is_builtin,
-            is_derive_copy: is_builtin && name == sym::Copy,
+            builtin_name,
         }
     }
 
@@ -839,26 +851,18 @@ impl SyntaxExtension {
         descr: Symbol,
         macro_def_id: Option<DefId>,
     ) -> ExpnData {
-        ExpnData {
-            kind: ExpnKind::Macro(self.macro_kind(), descr),
+        ExpnData::new(
+            ExpnKind::Macro(self.macro_kind(), descr),
             parent,
             call_site,
-            def_site: self.span,
-            allow_internal_unstable: self.allow_internal_unstable.clone(),
-            allow_internal_unsafe: self.allow_internal_unsafe,
-            local_inner_macros: self.local_inner_macros,
-            edition: self.edition,
+            self.span,
+            self.allow_internal_unstable.clone(),
+            self.allow_internal_unsafe,
+            self.local_inner_macros,
+            self.edition,
             macro_def_id,
-            krate: LOCAL_CRATE,
-            orig_id: None,
-        }
+        )
     }
-}
-
-/// Result of resolving a macro invocation.
-pub enum InvocationRes {
-    Single(Lrc<SyntaxExtension>),
-    DeriveContainer(Vec<Lrc<SyntaxExtension>>),
 }
 
 /// Error type that denotes indeterminacy.
@@ -869,7 +873,7 @@ pub trait ResolverExpand {
 
     fn resolve_dollar_crates(&mut self);
     fn visit_ast_fragment_with_placeholders(&mut self, expn_id: ExpnId, fragment: &AstFragment);
-    fn register_builtin_macro(&mut self, ident: Ident, ext: SyntaxExtension);
+    fn register_builtin_macro(&mut self, name: Symbol, ext: SyntaxExtensionKind);
 
     fn expansion_for_ast_pass(
         &mut self,
@@ -886,24 +890,53 @@ pub trait ResolverExpand {
         invoc: &Invocation,
         eager_expansion_root: ExpnId,
         force: bool,
-    ) -> Result<InvocationRes, Indeterminate>;
+    ) -> Result<Lrc<SyntaxExtension>, Indeterminate>;
 
     fn check_unused_macros(&mut self);
 
     /// Some parent node that is close enough to the given macro call.
-    fn lint_node_id(&mut self, expn_id: ExpnId) -> NodeId;
+    fn lint_node_id(&self, expn_id: ExpnId) -> NodeId;
 
     // Resolver interfaces for specific built-in macros.
     /// Does `#[derive(...)]` attribute with the given `ExpnId` have built-in `Copy` inside it?
     fn has_derive_copy(&self, expn_id: ExpnId) -> bool;
+    /// Resolve paths inside the `#[derive(...)]` attribute with the given `ExpnId`.
+    fn resolve_derives(
+        &mut self,
+        expn_id: ExpnId,
+        derives: Vec<ast::Path>,
+        force: bool,
+    ) -> Result<(), Indeterminate>;
+    /// Take resolutions for paths inside the `#[derive(...)]` attribute with the given `ExpnId`
+    /// back from resolver.
+    fn take_derive_resolutions(
+        &mut self,
+        expn_id: ExpnId,
+    ) -> Option<Vec<(Lrc<SyntaxExtension>, ast::Path)>>;
     /// Path resolution logic for `#[cfg_accessible(path)]`.
     fn cfg_accessible(&mut self, expn_id: ExpnId, path: &ast::Path) -> Result<bool, Indeterminate>;
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct ModuleData {
+    /// Path to the module starting from the crate name, like `my_crate::foo::bar`.
     pub mod_path: Vec<Ident>,
-    pub directory: PathBuf,
+    /// Stack of paths to files loaded by out-of-line module items,
+    /// used to detect and report recursive module inclusions.
+    pub file_path_stack: Vec<PathBuf>,
+    /// Directory to search child module files in,
+    /// often (but not necessarily) the parent of the top file path on the `file_path_stack`.
+    pub dir_path: PathBuf,
+}
+
+impl ModuleData {
+    pub fn with_dir_path(&self, dir_path: PathBuf) -> ModuleData {
+        ModuleData {
+            mod_path: self.mod_path.clone(),
+            file_path_stack: self.file_path_stack.clone(),
+            dir_path,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -911,9 +944,12 @@ pub struct ExpansionData {
     pub id: ExpnId,
     pub depth: usize,
     pub module: Rc<ModuleData>,
-    pub directory_ownership: DirectoryOwnership,
+    pub dir_ownership: DirOwnership,
     pub prior_type_ascription: Option<(Span, bool)>,
 }
+
+type OnExternModLoaded<'a> =
+    Option<&'a dyn Fn(Ident, Vec<Attribute>, Vec<P<Item>>, Span) -> (Vec<Attribute>, Vec<P<Item>>)>;
 
 /// One of these is made during expansion and incrementally updated as we go;
 /// when a macro expansion occurs, the resulting nodes have the `backtrace()
@@ -930,7 +966,9 @@ pub struct ExtCtxt<'a> {
     pub force_mode: bool,
     pub expansions: FxHashMap<Span, Vec<String>>,
     /// Called directly after having parsed an external `mod foo;` in expansion.
-    pub(super) extern_mod_loaded: Option<&'a dyn Fn(&ast::Crate)>,
+    ///
+    /// `Ident` is the module name.
+    pub(super) extern_mod_loaded: OnExternModLoaded<'a>,
 }
 
 impl<'a> ExtCtxt<'a> {
@@ -938,7 +976,7 @@ impl<'a> ExtCtxt<'a> {
         sess: &'a Session,
         ecfg: expand::ExpansionConfig<'a>,
         resolver: &'a mut dyn ResolverExpand,
-        extern_mod_loaded: Option<&'a dyn Fn(&ast::Crate)>,
+        extern_mod_loaded: OnExternModLoaded<'a>,
     ) -> ExtCtxt<'a> {
         ExtCtxt {
             sess,
@@ -950,8 +988,8 @@ impl<'a> ExtCtxt<'a> {
             current_expansion: ExpansionData {
                 id: ExpnId::root(),
                 depth: 0,
-                module: Rc::new(ModuleData { mod_path: Vec::new(), directory: PathBuf::new() }),
-                directory_ownership: DirectoryOwnership::Owned { relative: None },
+                module: Default::default(),
+                dir_ownership: DirOwnership::Owned { relative: None },
                 prior_type_ascription: None,
             },
             force_mode: false,
@@ -1050,6 +1088,10 @@ impl<'a> ExtCtxt<'a> {
         iter::once(Ident::new(kw::DollarCrate, def_site))
             .chain(components.iter().map(|&s| Ident::with_dummy_span(s)))
             .collect()
+    }
+    pub fn def_site_path(&self, components: &[Symbol]) -> Vec<Ident> {
+        let def_site = self.with_def_site_ctxt(DUMMY_SP);
+        components.iter().map(|&s| Ident::new(s, def_site)).collect()
     }
 
     pub fn check_unused_macros(&mut self) {
@@ -1200,4 +1242,42 @@ pub fn get_exprs_from_tts(
         }
     }
     Some(es)
+}
+
+/// This nonterminal looks like some specific enums from
+/// `proc-macro-hack` and `procedural-masquerade` crates.
+/// We need to maintain some special pretty-printing behavior for them due to incorrect
+/// asserts in old versions of those crates and their wide use in the ecosystem.
+/// See issue #73345 for more details.
+/// FIXME(#73933): Remove this eventually.
+pub(crate) fn pretty_printing_compatibility_hack(nt: &Nonterminal, sess: &ParseSess) -> bool {
+    let item = match nt {
+        Nonterminal::NtItem(item) => item,
+        Nonterminal::NtStmt(stmt) => match &stmt.kind {
+            ast::StmtKind::Item(item) => item,
+            _ => return false,
+        },
+        _ => return false,
+    };
+
+    let name = item.ident.name;
+    if name == sym::ProceduralMasqueradeDummyType {
+        if let ast::ItemKind::Enum(enum_def, _) = &item.kind {
+            if let [variant] = &*enum_def.variants {
+                if variant.ident.name == sym::Input {
+                    sess.buffer_lint_with_diagnostic(
+                        &PROC_MACRO_BACK_COMPAT,
+                        item.ident.span,
+                        ast::CRATE_NODE_ID,
+                        "using `procedural-masquerade` crate",
+                        BuiltinLintDiagnostics::ProcMacroBackCompat(
+                        "The `procedural-masquerade` crate has been unnecessary since Rust 1.30.0. \
+                        Versions of this crate below 0.1.7 will eventually stop compiling.".to_string())
+                    );
+                    return true;
+                }
+            }
+        }
+    }
+    false
 }

@@ -10,6 +10,9 @@ use rustc_middle::traits::ChalkRustInterner as RustInterner;
 use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::{self, AssocItemContainer, AssocKind, TyCtxt, TypeFoldable};
 
+use rustc_ast::ast;
+use rustc_attr as attr;
+
 use rustc_hir::def_id::DefId;
 
 use rustc_span::symbol::sym;
@@ -18,7 +21,6 @@ use std::fmt;
 use std::sync::Arc;
 
 use crate::chalk::lowering::{self, LowerInto};
-use rustc_ast::ast;
 
 pub struct RustIrDatabase<'tcx> {
     pub(crate) interner: RustInterner<'tcx>,
@@ -205,12 +207,32 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
     fn adt_repr(
         &self,
         adt_id: chalk_ir::AdtId<RustInterner<'tcx>>,
-    ) -> chalk_solve::rust_ir::AdtRepr {
+    ) -> Arc<chalk_solve::rust_ir::AdtRepr<RustInterner<'tcx>>> {
         let adt_def = adt_id.0;
-        chalk_solve::rust_ir::AdtRepr {
-            repr_c: adt_def.repr.c(),
-            repr_packed: adt_def.repr.packed(),
-        }
+        let int = |i| chalk_ir::TyKind::Scalar(chalk_ir::Scalar::Int(i)).intern(&self.interner);
+        let uint = |i| chalk_ir::TyKind::Scalar(chalk_ir::Scalar::Uint(i)).intern(&self.interner);
+        Arc::new(chalk_solve::rust_ir::AdtRepr {
+            c: adt_def.repr.c(),
+            packed: adt_def.repr.packed(),
+            int: adt_def.repr.int.map(|i| match i {
+                attr::IntType::SignedInt(ty) => match ty {
+                    ast::IntTy::Isize => int(chalk_ir::IntTy::Isize),
+                    ast::IntTy::I8 => int(chalk_ir::IntTy::I8),
+                    ast::IntTy::I16 => int(chalk_ir::IntTy::I16),
+                    ast::IntTy::I32 => int(chalk_ir::IntTy::I32),
+                    ast::IntTy::I64 => int(chalk_ir::IntTy::I64),
+                    ast::IntTy::I128 => int(chalk_ir::IntTy::I128),
+                },
+                attr::IntType::UnsignedInt(ty) => match ty {
+                    ast::UintTy::Usize => uint(chalk_ir::UintTy::Usize),
+                    ast::UintTy::U8 => uint(chalk_ir::UintTy::U8),
+                    ast::UintTy::U16 => uint(chalk_ir::UintTy::U16),
+                    ast::UintTy::U32 => uint(chalk_ir::UintTy::U32),
+                    ast::UintTy::U64 => uint(chalk_ir::UintTy::U64),
+                    ast::UintTy::U128 => uint(chalk_ir::UintTy::U128),
+                },
+            }),
+        })
     }
 
     fn fn_def_datum(
@@ -316,7 +338,11 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             let self_ty = self_ty.fold_with(&mut regions_substitutor);
             let lowered_ty = self_ty.lower_into(&self.interner);
 
-            parameters[0].assert_ty_ref(&self.interner).could_match(&self.interner, &lowered_ty)
+            parameters[0].assert_ty_ref(&self.interner).could_match(
+                &self.interner,
+                self.unification_database(),
+                &lowered_ty,
+            )
         });
 
         let impls = matched_impls.map(chalk_ir::ImplId).collect();
@@ -346,26 +372,26 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                 (ty::Char, Scalar(Char)) => true,
                 (ty::Int(ty1), Scalar(Int(ty2))) => matches!(
                     (ty1, ty2),
-                    (ast::IntTy::Isize, chalk_ir::IntTy::Isize)
-                        | (ast::IntTy::I8, chalk_ir::IntTy::I8)
-                        | (ast::IntTy::I16, chalk_ir::IntTy::I16)
-                        | (ast::IntTy::I32, chalk_ir::IntTy::I32)
-                        | (ast::IntTy::I64, chalk_ir::IntTy::I64)
-                        | (ast::IntTy::I128, chalk_ir::IntTy::I128)
+                    (ty::IntTy::Isize, chalk_ir::IntTy::Isize)
+                        | (ty::IntTy::I8, chalk_ir::IntTy::I8)
+                        | (ty::IntTy::I16, chalk_ir::IntTy::I16)
+                        | (ty::IntTy::I32, chalk_ir::IntTy::I32)
+                        | (ty::IntTy::I64, chalk_ir::IntTy::I64)
+                        | (ty::IntTy::I128, chalk_ir::IntTy::I128)
                 ),
                 (ty::Uint(ty1), Scalar(Uint(ty2))) => matches!(
                     (ty1, ty2),
-                    (ast::UintTy::Usize, chalk_ir::UintTy::Usize)
-                        | (ast::UintTy::U8, chalk_ir::UintTy::U8)
-                        | (ast::UintTy::U16, chalk_ir::UintTy::U16)
-                        | (ast::UintTy::U32, chalk_ir::UintTy::U32)
-                        | (ast::UintTy::U64, chalk_ir::UintTy::U64)
-                        | (ast::UintTy::U128, chalk_ir::UintTy::U128)
+                    (ty::UintTy::Usize, chalk_ir::UintTy::Usize)
+                        | (ty::UintTy::U8, chalk_ir::UintTy::U8)
+                        | (ty::UintTy::U16, chalk_ir::UintTy::U16)
+                        | (ty::UintTy::U32, chalk_ir::UintTy::U32)
+                        | (ty::UintTy::U64, chalk_ir::UintTy::U64)
+                        | (ty::UintTy::U128, chalk_ir::UintTy::U128)
                 ),
                 (ty::Float(ty1), Scalar(Float(ty2))) => matches!(
                     (ty1, ty2),
-                    (ast::FloatTy::F32, chalk_ir::FloatTy::F32)
-                        | (ast::FloatTy::F64, chalk_ir::FloatTy::F64)
+                    (ty::FloatTy::F32, chalk_ir::FloatTy::F32)
+                        | (ty::FloatTy::F64, chalk_ir::FloatTy::F64)
                 ),
                 (&ty::Tuple(substs), Tuple(len, _)) => substs.len() == *len,
                 (&ty::Array(..), Array(..)) => true,
@@ -541,6 +567,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             Unsize => lang_items.unsize_trait(),
             Unpin => lang_items.unpin_trait(),
             CoerceUnsized => lang_items.coerce_unsized_trait(),
+            DiscriminantKind => lang_items.discriminant_kind_trait(),
         };
         def_id.map(chalk_ir::TraitId)
     }
@@ -586,7 +613,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         let sig = &substs.as_slice(&self.interner)[substs.len(&self.interner) - 2];
         match sig.assert_ty_ref(&self.interner).kind(&self.interner) {
             chalk_ir::TyKind::Function(f) => {
-                let substitution = f.substitution.as_slice(&self.interner);
+                let substitution = f.substitution.0.as_slice(&self.interner);
                 let return_type =
                     substitution.last().unwrap().assert_ty_ref(&self.interner).clone();
                 // Closure arguments are tupled
@@ -644,11 +671,56 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
     ) -> Arc<chalk_solve::rust_ir::GeneratorWitnessDatum<RustInterner<'tcx>>> {
         unimplemented!()
     }
+
+    fn unification_database(&self) -> &dyn chalk_ir::UnificationDatabase<RustInterner<'tcx>> {
+        self
+    }
+
+    fn discriminant_type(
+        &self,
+        _: chalk_ir::Ty<RustInterner<'tcx>>,
+    ) -> chalk_ir::Ty<RustInterner<'tcx>> {
+        unimplemented!()
+    }
+}
+
+impl<'tcx> chalk_ir::UnificationDatabase<RustInterner<'tcx>> for RustIrDatabase<'tcx> {
+    fn fn_def_variance(
+        &self,
+        def_id: chalk_ir::FnDefId<RustInterner<'tcx>>,
+    ) -> chalk_ir::Variances<RustInterner<'tcx>> {
+        let variances = self.interner.tcx.variances_of(def_id.0);
+        chalk_ir::Variances::from_iter(
+            &self.interner,
+            variances.iter().map(|v| match v {
+                ty::Variance::Invariant => chalk_ir::Variance::Invariant,
+                ty::Variance::Covariant => chalk_ir::Variance::Covariant,
+                ty::Variance::Contravariant => chalk_ir::Variance::Contravariant,
+                ty::Variance::Bivariant => unimplemented!(),
+            }),
+        )
+    }
+
+    fn adt_variance(
+        &self,
+        def_id: chalk_ir::AdtId<RustInterner<'tcx>>,
+    ) -> chalk_ir::Variances<RustInterner<'tcx>> {
+        let variances = self.interner.tcx.variances_of(def_id.0.did);
+        chalk_ir::Variances::from_iter(
+            &self.interner,
+            variances.iter().map(|v| match v {
+                ty::Variance::Invariant => chalk_ir::Variance::Invariant,
+                ty::Variance::Covariant => chalk_ir::Variance::Covariant,
+                ty::Variance::Contravariant => chalk_ir::Variance::Contravariant,
+                ty::Variance::Bivariant => unimplemented!(),
+            }),
+        )
+    }
 }
 
 /// Creates a `InternalSubsts` that maps each generic parameter to a higher-ranked
 /// var bound at index `0`. For types, we use a `BoundVar` index equal to
-/// the type parameter index. For regions, we use the `BoundRegion::BrNamed`
+/// the type parameter index. For regions, we use the `BoundRegionKind::BrNamed`
 /// variant (which has a `DefId`).
 fn bound_vars_for_item(tcx: TyCtxt<'tcx>, def_id: DefId) -> SubstsRef<'tcx> {
     InternalSubsts::for_item(tcx, def_id, |param, substs| match param.kind {
@@ -662,14 +734,15 @@ fn bound_vars_for_item(tcx: TyCtxt<'tcx>, def_id: DefId) -> SubstsRef<'tcx> {
             ))
             .into(),
 
-        ty::GenericParamDefKind::Lifetime => tcx
-            .mk_region(ty::RegionKind::ReLateBound(
-                ty::INNERMOST,
-                ty::BoundRegion::BrAnon(substs.len() as u32),
-            ))
-            .into(),
+        ty::GenericParamDefKind::Lifetime => {
+            let br = ty::BoundRegion {
+                var: ty::BoundVar::from_usize(substs.len()),
+                kind: ty::BrAnon(substs.len() as u32),
+            };
+            tcx.mk_region(ty::RegionKind::ReLateBound(ty::INNERMOST, br)).into()
+        }
 
-        ty::GenericParamDefKind::Const => tcx
+        ty::GenericParamDefKind::Const { .. } => tcx
             .mk_const(ty::Const {
                 val: ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from(param.index)),
                 ty: tcx.type_of(param.def_id),

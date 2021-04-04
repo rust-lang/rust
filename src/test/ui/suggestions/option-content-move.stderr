@@ -13,7 +13,7 @@ error[E0507]: cannot move out of `selection.1` which is behind a shared referenc
 LL |                 if selection.1.unwrap().contains(selection.0) {
    |                    ^^^^^^^^^^^
    |                    |
-   |                    move occurs because `selection.1` has type `std::result::Result<String, String>`, which does not implement the `Copy` trait
+   |                    move occurs because `selection.1` has type `Result<String, String>`, which does not implement the `Copy` trait
    |                    help: consider borrowing the `Result`'s content: `selection.1.as_ref()`
 
 error: aborting due to 2 previous errors

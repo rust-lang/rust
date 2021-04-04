@@ -38,7 +38,7 @@ pub fn initialize_available_targets() {
         ($cfg:meta, $($method:ident),*) => { {
             #[cfg($cfg)]
             fn init() {
-                extern {
+                extern "C" {
                     $(fn $method();)*
                 }
                 unsafe {
@@ -125,10 +125,7 @@ pub fn initialize_available_targets() {
         LLVMInitializeMSP430TargetInfo,
         LLVMInitializeMSP430Target,
         LLVMInitializeMSP430TargetMC,
-        LLVMInitializeMSP430AsmPrinter
-    );
-    init_target!(
-        all(llvm_component = "msp430", llvm_has_msp430_asm_parser),
+        LLVMInitializeMSP430AsmPrinter,
         LLVMInitializeMSP430AsmParser
     );
     init_target!(

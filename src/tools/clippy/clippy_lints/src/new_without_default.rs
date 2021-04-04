@@ -1,6 +1,8 @@
-use crate::utils::paths;
-use crate::utils::sugg::DiagnosticBuilderExt;
-use crate::utils::{get_trait_def_id, return_ty, span_lint_hir_and_then};
+use clippy_utils::diagnostics::span_lint_hir_and_then;
+use clippy_utils::paths;
+use clippy_utils::source::snippet;
+use clippy_utils::sugg::DiagnosticBuilderExt;
+use clippy_utils::{get_trait_def_id, return_ty};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -60,9 +62,12 @@ impl_lint_pass!(NewWithoutDefault => [NEW_WITHOUT_DEFAULT]);
 impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
     #[allow(clippy::too_many_lines)]
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
-        if let hir::ItemKind::Impl {
-            of_trait: None, items, ..
-        } = item.kind
+        if let hir::ItemKind::Impl(hir::Impl {
+            of_trait: None,
+            ref generics,
+            items,
+            ..
+        }) = item.kind
         {
             for assoc_item in items {
                 if let hir::AssocItemKind::Fn { has_self: false } = assoc_item.kind {
@@ -72,7 +77,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                     }
                     if let hir::ImplItemKind::Fn(ref sig, _) = impl_item.kind {
                         let name = impl_item.ident.name;
-                        let id = impl_item.hir_id;
+                        let id = impl_item.hir_id();
                         if sig.header.constness == hir::Constness::Const {
                             // can't be implemented by default
                             return;
@@ -125,6 +130,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                                         }
                                     }
 
+                                    let generics_sugg = snippet(cx, generics.span, "");
                                     span_lint_hir_and_then(
                                         cx,
                                         NEW_WITHOUT_DEFAULT,
@@ -139,7 +145,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                                                 cx,
                                                 item.span,
                                                 "try this",
-                                                &create_new_without_default_suggest_msg(self_ty),
+                                                &create_new_without_default_suggest_msg(self_ty, &generics_sugg),
                                                 Applicability::MaybeIncorrect,
                                             );
                                         },
@@ -154,12 +160,12 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
     }
 }
 
-fn create_new_without_default_suggest_msg(ty: Ty<'_>) -> String {
+fn create_new_without_default_suggest_msg(ty: Ty<'_>, generics_sugg: &str) -> String {
     #[rustfmt::skip]
     format!(
-"impl Default for {} {{
+"impl{} Default for {} {{
     fn default() -> Self {{
         Self::new()
     }}
-}}", ty)
+}}", generics_sugg, ty)
 }

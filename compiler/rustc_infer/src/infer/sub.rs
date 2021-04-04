@@ -100,7 +100,7 @@ impl TypeRelation<'tcx> for Sub<'combine, 'infcx, 'tcx> {
                 self.fields.obligations.push(Obligation::new(
                     self.fields.trace.cause.clone(),
                     self.fields.param_env,
-                    ty::PredicateAtom::Subtype(ty::SubtypePredicate {
+                    ty::PredicateKind::Subtype(ty::SubtypePredicate {
                         a_is_expected: self.a_is_expected,
                         a,
                         b,
@@ -162,9 +162,9 @@ impl TypeRelation<'tcx> for Sub<'combine, 'infcx, 'tcx> {
 
     fn binders<T>(
         &mut self,
-        a: ty::Binder<T>,
-        b: ty::Binder<T>,
-    ) -> RelateResult<'tcx, ty::Binder<T>>
+        a: ty::Binder<'tcx, T>,
+        b: ty::Binder<'tcx, T>,
+    ) -> RelateResult<'tcx, ty::Binder<'tcx, T>>
     where
         T: Relate<'tcx>,
     {

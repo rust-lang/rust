@@ -44,7 +44,7 @@ where
 {
     infcx: &'me InferCtxt<'me, 'tcx>,
 
-    /// Callback to use when we deduce an outlives relationship
+    /// Callback to use when we deduce an outlives relationship.
     delegate: D,
 
     /// How are we relating `a` and `b`?
@@ -72,6 +72,8 @@ where
 }
 
 pub trait TypeRelatingDelegate<'tcx> {
+    fn param_env(&self) -> ty::ParamEnv<'tcx>;
+
     /// Push a constraint `sup: sub` -- this constraint must be
     /// satisfied for the two types to be related. `sub` and `sup` may
     /// be regions from the type or new variables created through the
@@ -155,7 +157,7 @@ where
 
     fn create_scope(
         &mut self,
-        value: ty::Binder<impl Relate<'tcx>>,
+        value: ty::Binder<'tcx, impl Relate<'tcx>>,
         universally_quantified: UniversallyQuantified,
     ) -> BoundRegionScope<'tcx> {
         let mut scope = BoundRegionScope::default();
@@ -176,7 +178,7 @@ where
                         universe
                     });
 
-                    let placeholder = ty::PlaceholderRegion { universe, name: br };
+                    let placeholder = ty::PlaceholderRegion { universe, name: br.kind };
                     delegate.next_placeholder_region(placeholder)
                 } else {
                     delegate.next_existential_region_var(true)
@@ -473,9 +475,8 @@ where
         self.infcx.tcx
     }
 
-    // FIXME(oli-obk): not sure how to get the correct ParamEnv
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        ty::ParamEnv::empty()
+        self.delegate.param_env()
     }
 
     fn tag(&self) -> &'static str {
@@ -607,9 +608,9 @@ where
 
     fn binders<T>(
         &mut self,
-        a: ty::Binder<T>,
-        b: ty::Binder<T>,
-    ) -> RelateResult<'tcx, ty::Binder<T>>
+        a: ty::Binder<'tcx, T>,
+        b: ty::Binder<'tcx, T>,
+    ) -> RelateResult<'tcx, ty::Binder<'tcx, T>>
     where
         T: Relate<'tcx>,
     {
@@ -743,7 +744,7 @@ struct ScopeInstantiator<'me, 'tcx> {
 impl<'me, 'tcx> TypeVisitor<'tcx> for ScopeInstantiator<'me, 'tcx> {
     fn visit_binder<T: TypeFoldable<'tcx>>(
         &mut self,
-        t: &ty::Binder<T>,
+        t: &ty::Binder<'tcx, T>,
     ) -> ControlFlow<Self::BreakTy> {
         self.target_index.shift_in(1);
         t.super_visit_with(self);
@@ -767,7 +768,7 @@ impl<'me, 'tcx> TypeVisitor<'tcx> for ScopeInstantiator<'me, 'tcx> {
     }
 }
 
-/// The "type generalize" is used when handling inference variables.
+/// The "type generalizer" is used when handling inference variables.
 ///
 /// The basic strategy for handling a constraint like `?A <: B` is to
 /// apply a "generalization strategy" to the type `B` -- this replaces
@@ -819,9 +820,8 @@ where
         self.infcx.tcx
     }
 
-    // FIXME(oli-obk): not sure how to get the correct ParamEnv
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        ty::ParamEnv::empty()
+        self.delegate.param_env()
     }
 
     fn tag(&self) -> &'static str {
@@ -997,9 +997,9 @@ where
 
     fn binders<T>(
         &mut self,
-        a: ty::Binder<T>,
-        _: ty::Binder<T>,
-    ) -> RelateResult<'tcx, ty::Binder<T>>
+        a: ty::Binder<'tcx, T>,
+        _: ty::Binder<'tcx, T>,
+    ) -> RelateResult<'tcx, ty::Binder<'tcx, T>>
     where
         T: Relate<'tcx>,
     {
@@ -1008,6 +1008,6 @@ where
         self.first_free_index.shift_in(1);
         let result = self.relate(a.skip_binder(), a.skip_binder())?;
         self.first_free_index.shift_out(1);
-        Ok(ty::Binder::bind(result))
+        Ok(a.rebind(result))
     }
 }

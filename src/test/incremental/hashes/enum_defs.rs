@@ -335,7 +335,7 @@ enum EnumAddMustUse {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 #[must_use]
 enum EnumAddMustUse {
@@ -353,7 +353,7 @@ enum EnumAddReprC {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,type_of")]
+#[rustc_clean(cfg="cfail2", except="type_of")]
 #[rustc_clean(cfg="cfail3")]
 #[repr(C)]
 enum EnumAddReprC {

@@ -9,7 +9,6 @@ pub(crate) use self::check_match::check_match;
 
 use crate::thir::util::UserAnnotatedTyHelpers;
 
-use rustc_ast as ast;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
@@ -41,22 +40,22 @@ crate enum PatternError {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-crate enum BindingMode {
+pub enum BindingMode {
     ByValue,
     ByRef(BorrowKind),
 }
 
 #[derive(Clone, Debug, PartialEq)]
-crate struct FieldPat<'tcx> {
-    crate field: Field,
-    crate pattern: Pat<'tcx>,
+pub struct FieldPat<'tcx> {
+    pub field: Field,
+    pub pattern: Pat<'tcx>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-crate struct Pat<'tcx> {
-    crate ty: Ty<'tcx>,
-    crate span: Span,
-    crate kind: Box<PatKind<'tcx>>,
+pub struct Pat<'tcx> {
+    pub ty: Ty<'tcx>,
+    pub span: Span,
+    pub kind: Box<PatKind<'tcx>>,
 }
 
 impl<'tcx> Pat<'tcx> {
@@ -66,8 +65,8 @@ impl<'tcx> Pat<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-crate struct PatTyProj<'tcx> {
-    crate user_ty: CanonicalUserType<'tcx>,
+pub struct PatTyProj<'tcx> {
+    pub user_ty: CanonicalUserType<'tcx>,
 }
 
 impl<'tcx> PatTyProj<'tcx> {
@@ -93,8 +92,8 @@ impl<'tcx> PatTyProj<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-crate struct Ascription<'tcx> {
-    crate user_ty: PatTyProj<'tcx>,
+pub struct Ascription<'tcx> {
+    pub user_ty: PatTyProj<'tcx>,
     /// Variance to use when relating the type `user_ty` to the **type of the value being
     /// matched**. Typically, this is `Variance::Covariant`, since the value being matched must
     /// have a type that is some subtype of the ascribed type.
@@ -113,12 +112,12 @@ crate struct Ascription<'tcx> {
     /// requires that `&'static str <: T_x`, where `T_x` is the type of `x`. Really, we should
     /// probably be checking for a `PartialEq` impl instead, but this preserves the behavior
     /// of the old type-check for now. See #57280 for details.
-    crate variance: ty::Variance,
-    crate user_ty_span: Span,
+    pub variance: ty::Variance,
+    pub user_ty_span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-crate enum PatKind<'tcx> {
+pub enum PatKind<'tcx> {
     Wild,
 
     AscribeUserType {
@@ -196,10 +195,10 @@ crate enum PatKind<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-crate struct PatRange<'tcx> {
-    crate lo: &'tcx ty::Const<'tcx>,
-    crate hi: &'tcx ty::Const<'tcx>,
-    crate end: RangeEnd,
+pub struct PatRange<'tcx> {
+    pub lo: &'tcx ty::Const<'tcx>,
+    pub hi: &'tcx ty::Const<'tcx>,
+    pub end: RangeEnd,
 }
 
 impl<'tcx> fmt::Display for Pat<'tcx> {
@@ -867,7 +866,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     return *self.const_to_pat(value, expr.hir_id, expr.span, false).kind;
                 }
                 hir::ExprKind::Lit(ref lit) => (lit, false),
-                hir::ExprKind::Unary(hir::UnOp::UnNeg, ref expr) => {
+                hir::ExprKind::Unary(hir::UnOp::Neg, ref expr) => {
                     let lit = match expr.kind {
                         hir::ExprKind::Lit(ref lit) => lit,
                         _ => span_bug!(expr.span, "not a literal: {:?}", expr),
@@ -1069,20 +1068,19 @@ crate fn compare_const_vals<'tcx>(
     if let (Some(a), Some(b)) = (a_bits, b_bits) {
         use rustc_apfloat::Float;
         return match *ty.kind() {
-            ty::Float(ast::FloatTy::F32) => {
+            ty::Float(ty::FloatTy::F32) => {
                 let l = rustc_apfloat::ieee::Single::from_bits(a);
                 let r = rustc_apfloat::ieee::Single::from_bits(b);
                 l.partial_cmp(&r)
             }
-            ty::Float(ast::FloatTy::F64) => {
+            ty::Float(ty::FloatTy::F64) => {
                 let l = rustc_apfloat::ieee::Double::from_bits(a);
                 let r = rustc_apfloat::ieee::Double::from_bits(b);
                 l.partial_cmp(&r)
             }
             ty::Int(ity) => {
-                use rustc_attr::SignedInt;
                 use rustc_middle::ty::layout::IntegerExt;
-                let size = rustc_target::abi::Integer::from_attr(&tcx, SignedInt(ity)).size();
+                let size = rustc_target::abi::Integer::from_int_ty(&tcx, ity).size();
                 let a = size.sign_extend(a);
                 let b = size.sign_extend(b);
                 Some((a as i128).cmp(&(b as i128)))

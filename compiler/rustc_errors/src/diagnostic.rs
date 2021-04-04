@@ -4,7 +4,9 @@ use crate::Level;
 use crate::Substitution;
 use crate::SubstitutionPart;
 use crate::SuggestionStyle;
+use crate::ToolMetadata;
 use rustc_lint_defs::Applicability;
+use rustc_serialize::json::Json;
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use std::fmt;
 
@@ -30,7 +32,8 @@ pub enum DiagnosticId {
     Lint { name: String, has_future_breakage: bool },
 }
 
-/// For example a note attached to an error.
+/// A "sub"-diagnostic attached to a parent diagnostic.
+/// For example, a note attached to an error.
 #[derive(Clone, Debug, PartialEq, Hash, Encodable, Decodable)]
 pub struct SubDiagnostic {
     pub level: Level,
@@ -66,24 +69,12 @@ impl DiagnosticStyledString {
     pub fn highlighted<S: Into<String>>(t: S) -> DiagnosticStyledString {
         DiagnosticStyledString(vec![StringPart::Highlighted(t.into())])
     }
-
-    pub fn content(&self) -> String {
-        self.0.iter().map(|x| x.content()).collect::<String>()
-    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum StringPart {
     Normal(String),
     Highlighted(String),
-}
-
-impl StringPart {
-    pub fn content(&self) -> &str {
-        match self {
-            &StringPart::Normal(ref s) | &StringPart::Highlighted(ref s) => s,
-        }
-    }
 }
 
 impl Diagnostic {
@@ -124,6 +115,7 @@ impl Diagnostic {
         self.level = Level::Cancelled;
     }
 
+    /// Check if this diagnostic [was cancelled][Self::cancel()].
     pub fn cancelled(&self) -> bool {
         self.level == Level::Cancelled
     }
@@ -136,8 +128,6 @@ impl Diagnostic {
     ///
     /// This span is *not* considered a ["primary span"][`MultiSpan`]; only
     /// the `Span` supplied when creating the diagnostic is primary.
-    ///
-    /// [`MultiSpan`]: ../rustc_span/struct.MultiSpan.html
     pub fn span_label<T: Into<String>>(&mut self, span: Span, label: T) -> &mut Self {
         self.span.push_span_label(span, label.into());
         self
@@ -154,7 +144,7 @@ impl Diagnostic {
         self
     }
 
-    pub fn note_expected_found(
+    crate fn note_expected_found(
         &mut self,
         expected_label: &dyn fmt::Display,
         expected: DiagnosticStyledString,
@@ -164,7 +154,7 @@ impl Diagnostic {
         self.note_expected_found_extra(expected_label, expected, found_label, found, &"", &"")
     }
 
-    pub fn note_unsuccessfull_coercion(
+    crate fn note_unsuccessful_coercion(
         &mut self,
         expected: DiagnosticStyledString,
         found: DiagnosticStyledString,
@@ -241,6 +231,7 @@ impl Diagnostic {
         self
     }
 
+    /// Add a note attached to this diagnostic.
     pub fn note(&mut self, msg: &str) -> &mut Self {
         self.sub(Level::Note, msg, MultiSpan::new(), None);
         self
@@ -252,39 +243,47 @@ impl Diagnostic {
     }
 
     /// Prints the span with a note above it.
-    pub fn span_note<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self {
+    /// This is like [`Diagnostic::note()`], but it gets its own span.
+    crate fn span_note<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self {
         self.sub(Level::Note, msg, sp.into(), None);
         self
     }
 
-    pub fn warn(&mut self, msg: &str) -> &mut Self {
+    /// Add a warning attached to this diagnostic.
+    crate fn warn(&mut self, msg: &str) -> &mut Self {
         self.sub(Level::Warning, msg, MultiSpan::new(), None);
         self
     }
 
-    /// Prints the span with a warn above it.
-    pub fn span_warn<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self {
+    /// Prints the span with a warning above it.
+    /// This is like [`Diagnostic::warn()`], but it gets its own span.
+    crate fn span_warn<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self {
         self.sub(Level::Warning, msg, sp.into(), None);
         self
     }
 
-    pub fn help(&mut self, msg: &str) -> &mut Self {
+    /// Add a help message attached to this diagnostic.
+    crate fn help(&mut self, msg: &str) -> &mut Self {
         self.sub(Level::Help, msg, MultiSpan::new(), None);
         self
     }
 
     /// Prints the span with some help above it.
-    pub fn span_help<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self {
+    /// This is like [`Diagnostic::help()`], but it gets its own span.
+    crate fn span_help<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self {
         self.sub(Level::Help, msg, sp.into(), None);
         self
     }
 
+    /// Show a suggestion that has multiple parts to it.
+    /// In other words, multiple changes need to be applied as part of this suggestion.
     pub fn multipart_suggestion(
         &mut self,
         msg: &str,
         suggestion: Vec<(Span, String)>,
         applicability: Applicability,
     ) -> &mut Self {
+        assert!(!suggestion.is_empty());
         self.suggestions.push(CodeSuggestion {
             substitutions: vec![Substitution {
                 parts: suggestion
@@ -295,29 +294,7 @@ impl Diagnostic {
             msg: msg.to_owned(),
             style: SuggestionStyle::ShowCode,
             applicability,
-        });
-        self
-    }
-
-    pub fn multipart_suggestions(
-        &mut self,
-        msg: &str,
-        suggestions: Vec<Vec<(Span, String)>>,
-        applicability: Applicability,
-    ) -> &mut Self {
-        self.suggestions.push(CodeSuggestion {
-            substitutions: suggestions
-                .into_iter()
-                .map(|suggestion| Substitution {
-                    parts: suggestion
-                        .into_iter()
-                        .map(|(span, snippet)| SubstitutionPart { snippet, span })
-                        .collect(),
-                })
-                .collect(),
-            msg: msg.to_owned(),
-            style: SuggestionStyle::ShowCode,
-            applicability,
+            tool_metadata: Default::default(),
         });
         self
     }
@@ -334,6 +311,7 @@ impl Diagnostic {
         suggestion: Vec<(Span, String)>,
         applicability: Applicability,
     ) -> &mut Self {
+        assert!(!suggestion.is_empty());
         self.suggestions.push(CodeSuggestion {
             substitutions: vec![Substitution {
                 parts: suggestion
@@ -344,6 +322,7 @@ impl Diagnostic {
             msg: msg.to_owned(),
             style: SuggestionStyle::CompletelyHidden,
             applicability,
+            tool_metadata: Default::default(),
         });
         self
     }
@@ -382,6 +361,7 @@ impl Diagnostic {
         self
     }
 
+    /// [`Diagnostic::span_suggestion()`] but you can set the [`SuggestionStyle`].
     pub fn span_suggestion_with_style(
         &mut self,
         sp: Span,
@@ -397,10 +377,12 @@ impl Diagnostic {
             msg: msg.to_owned(),
             style,
             applicability,
+            tool_metadata: Default::default(),
         });
         self
     }
 
+    /// Always show the suggested change.
     pub fn span_suggestion_verbose(
         &mut self,
         sp: Span,
@@ -419,6 +401,7 @@ impl Diagnostic {
     }
 
     /// Prints out a message with multiple suggested edits of the code.
+    /// See also [`Diagnostic::span_suggestion()`].
     pub fn span_suggestions(
         &mut self,
         sp: Span,
@@ -433,6 +416,7 @@ impl Diagnostic {
             msg: msg.to_owned(),
             style: SuggestionStyle::ShowCode,
             applicability,
+            tool_metadata: Default::default(),
         });
         self
     }
@@ -458,7 +442,7 @@ impl Diagnostic {
         self
     }
 
-    /// Prints out a message with for a suggestion without showing the suggested code.
+    /// Prints out a message for a suggestion without showing the suggested code.
     ///
     /// This is intended to be used for suggestions that are obvious in what the changes need to
     /// be from the message, showing the span label inline would be visually unpleasant
@@ -481,7 +465,7 @@ impl Diagnostic {
         self
     }
 
-    /// Adds a suggestion to the json output, but otherwise remains silent/undisplayed in the cli.
+    /// Adds a suggestion to the JSON output that will not be shown in the CLI.
     ///
     /// This is intended to be used for suggestions that are *very* obvious in what the changes
     /// need to be from the message, but we still want other tools to be able to apply them.
@@ -500,6 +484,23 @@ impl Diagnostic {
             SuggestionStyle::CompletelyHidden,
         );
         self
+    }
+
+    /// Adds a suggestion intended only for a tool. The intent is that the metadata encodes
+    /// the suggestion in a tool-specific way, as it may not even directly involve Rust code.
+    pub fn tool_only_suggestion_with_metadata(
+        &mut self,
+        msg: &str,
+        applicability: Applicability,
+        tool_metadata: Json,
+    ) {
+        self.suggestions.push(CodeSuggestion {
+            substitutions: vec![],
+            msg: msg.to_owned(),
+            style: SuggestionStyle::CompletelyHidden,
+            applicability,
+            tool_metadata: ToolMetadata::new(tool_metadata),
+        })
     }
 
     pub fn set_span<S: Into<MultiSpan>>(&mut self, sp: S) -> &mut Self {
@@ -524,7 +525,7 @@ impl Diagnostic {
         self.code.clone()
     }
 
-    pub fn set_primary_message<M: Into<String>>(&mut self, msg: M) -> &mut Self {
+    crate fn set_primary_message<M: Into<String>>(&mut self, msg: M) -> &mut Self {
         self.message[0] = (msg.into(), Style::NoStyle);
         self
     }
@@ -539,6 +540,8 @@ impl Diagnostic {
 
     /// Convenience function for internal use, clients should use one of the
     /// public methods above.
+    ///
+    /// Used by `proc_macro_server` for implementing `server::Diagnostic`.
     pub fn sub(
         &mut self,
         level: Level,
