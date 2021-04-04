@@ -411,11 +411,25 @@ impl DefMap {
     }
 
     fn shrink_to_fit(&mut self) {
-        self.extern_prelude.shrink_to_fit();
-        self.exported_proc_macros.shrink_to_fit();
-        self.diagnostics.shrink_to_fit();
-        self.modules.shrink_to_fit();
-        for (_, module) in self.modules.iter_mut() {
+        // Exhaustive match to require handling new fields.
+        let Self {
+            _c: _,
+            exported_proc_macros,
+            extern_prelude,
+            diagnostics,
+            modules,
+            block: _,
+            edition: _,
+            krate: _,
+            prelude: _,
+            root: _,
+        } = self;
+
+        extern_prelude.shrink_to_fit();
+        exported_proc_macros.shrink_to_fit();
+        diagnostics.shrink_to_fit();
+        modules.shrink_to_fit();
+        for (_, module) in modules.iter_mut() {
             module.children.shrink_to_fit();
             module.scope.shrink_to_fit();
         }
