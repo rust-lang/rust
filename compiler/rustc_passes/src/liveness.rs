@@ -332,7 +332,6 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             }
         }
 
-<<<<<<< HEAD
         // Allow todo! macro
         /*
             Skips checking for unused variables when the trailing expression
@@ -376,9 +375,6 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
         }
 
         if let Some(captures) = maps.tcx.typeck(local_def_id).closure_captures.get(&def_id) {
-=======
-        if let Some(captures) = maps.tcx.typeck(local_def_id).closure_min_captures.get(&def_id) {
->>>>>>> master
             for &var_hir_id in captures.keys() {
                 let var_name = maps.tcx.hir().name(var_hir_id);
                 maps.add_variable(Upvar(var_hir_id, var_name));
