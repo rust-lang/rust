@@ -596,7 +596,14 @@ impl OutputFilenames {
             .get(&flavor)
             .and_then(|p| p.to_owned())
             .or_else(|| self.single_output_file.clone())
-            .unwrap_or_else(|| self.temp_path(flavor, None))
+            .unwrap_or_else(|| self.output_path(flavor))
+    }
+
+    /// Gets the output path where a compilation artifact of the given type
+    /// should be placed on disk.
+    pub fn output_path(&self, flavor: OutputType) -> PathBuf {
+        let extension = flavor.extension();
+        self.with_directory_and_extension(&self.out_directory, &extension)
     }
 
     /// Gets the path where a compilation artifact of the given type for the
