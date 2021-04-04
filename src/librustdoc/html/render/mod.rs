@@ -1915,13 +1915,6 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
         }
 
         if v.iter().any(|i| i.inner_impl().trait_.is_some()) {
-            if let Some(impl_) = v
-                .iter()
-                .filter(|i| i.inner_impl().trait_.is_some())
-                .find(|i| i.inner_impl().trait_.def_id_full(cache) == cx.cache.deref_trait_did)
-            {
-                sidebar_deref_methods(cx, out, impl_, v);
-            }
             let format_impls = |impls: Vec<&Impl>| {
                 let mut links = FxHashSet::default();
 
@@ -1988,6 +1981,14 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
                         Blanket Implementations</a>",
                 );
                 write_sidebar_links(out, blanket_format);
+            }
+
+            if let Some(impl_) = v
+                .iter()
+                .filter(|i| i.inner_impl().trait_.is_some())
+                .find(|i| i.inner_impl().trait_.def_id_full(cache) == cx.cache.deref_trait_did)
+            {
+                sidebar_deref_methods(cx, out, impl_, v);
             }
         }
     }
