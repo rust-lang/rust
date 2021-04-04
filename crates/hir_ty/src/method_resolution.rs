@@ -800,7 +800,7 @@ pub fn implements_trait_unique(
     let goal = generic_implements_goal(db, env, trait_, ty.clone());
     let solution = db.trait_solve(krate, goal);
 
-    matches!(solution, Some(crate::traits::Solution::Unique(_)))
+    matches!(solution, Some(crate::Solution::Unique(_)))
 }
 
 /// This creates Substs for a trait with the given Self type and type variables

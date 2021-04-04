@@ -37,8 +37,8 @@ use stdx::impl_from;
 use syntax::SmolStr;
 
 use super::{
-    traits::{DomainGoal, Guidance, Solution},
-    InEnvironment, ProjectionTy, TraitEnvironment, TraitRef, Ty, TypeWalk,
+    DomainGoal, Guidance, InEnvironment, ProjectionTy, Solution, TraitEnvironment, TraitRef, Ty,
+    TypeWalk,
 };
 use crate::{
     db::HirDatabase, infer::diagnostics::InferenceDiagnostic, lower::ImplTraitLoweringMode,

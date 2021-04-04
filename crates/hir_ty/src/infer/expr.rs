@@ -20,10 +20,10 @@ use crate::{
     method_resolution, op,
     primitive::{self, UintTy},
     to_chalk_trait_id,
-    traits::{chalk::from_chalk, FnTrait, InEnvironment},
+    traits::{chalk::from_chalk, FnTrait},
     utils::{generics, variant_data, Generics},
-    AdtId, Binders, CallableDefId, FnPointer, FnSig, Interner, Rawness, Scalar, Substitution,
-    TraitRef, Ty, TyBuilder, TyKind,
+    AdtId, Binders, CallableDefId, FnPointer, FnSig, InEnvironment, Interner, Rawness, Scalar,
+    Substitution, TraitRef, Ty, TyBuilder, TyKind,
 };
 
 use super::{
@@ -452,11 +452,7 @@ impl<'a> InferenceContext<'a> {
                     };
                     match canonicalized.decanonicalize_ty(derefed_ty.value).kind(&Interner) {
                         TyKind::Tuple(_, substs) => name.as_tuple_index().and_then(|idx| {
-                            substs
-                                .interned(&Interner)
-                                .get(idx)
-                                .map(|a| a.assert_ty_ref(&Interner))
-                                .cloned()
+                            substs.interned().get(idx).map(|a| a.assert_ty_ref(&Interner)).cloned()
                         }),
                         TyKind::Adt(AdtId(hir_def::AdtId::StructId(s)), parameters) => {
                             let local_id = self.db.struct_data(*s).variant_data.field(name)?;

@@ -8,8 +8,8 @@ use hir_def::{lang_item::LangItemTarget, TraitId};
 use stdx::panic_context;
 
 use crate::{
-    db::HirDatabase, AliasTy, Canonical, DebruijnIndex, HirDisplay, Substitution, Ty, TyKind,
-    TypeWalk, WhereClause,
+    db::HirDatabase, AliasEq, AliasTy, Canonical, DomainGoal, Guidance, HirDisplay, InEnvironment,
+    Solution, SolutionVariables, Ty, TyKind, WhereClause,
 };
 
 use self::chalk::{from_chalk, Interner, ToChalk};
@@ -66,55 +66,6 @@ impl Default for TraitEnvironment {
         TraitEnvironment {
             traits_from_clauses: Vec::new(),
             env: chalk_ir::Environment::new(&Interner),
-        }
-    }
-}
-
-/// Something (usually a goal), along with an environment.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct InEnvironment<T> {
-    pub environment: chalk_ir::Environment<Interner>,
-    pub goal: T,
-}
-
-impl<T> InEnvironment<T> {
-    pub fn new(environment: chalk_ir::Environment<Interner>, value: T) -> InEnvironment<T> {
-        InEnvironment { environment, goal: value }
-    }
-}
-
-/// Something that needs to be proven (by Chalk) during type checking, e.g. that
-/// a certain type implements a certain trait. Proving the Obligation might
-/// result in additional information about inference variables.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum DomainGoal {
-    Holds(WhereClause),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct AliasEq {
-    pub alias: AliasTy,
-    pub ty: Ty,
-}
-
-impl TypeWalk for AliasEq {
-    fn walk(&self, f: &mut impl FnMut(&Ty)) {
-        self.ty.walk(f);
-        match &self.alias {
-            AliasTy::Projection(projection_ty) => projection_ty.walk(f),
-            AliasTy::Opaque(opaque) => opaque.walk(f),
-        }
-    }
-
-    fn walk_mut_binders(
-        &mut self,
-        f: &mut impl FnMut(&mut Ty, DebruijnIndex),
-        binders: DebruijnIndex,
-    ) {
-        self.ty.walk_mut_binders(f, binders);
-        match &mut self.alias {
-            AliasTy::Projection(projection_ty) => projection_ty.walk_mut_binders(f, binders),
-            AliasTy::Opaque(opaque) => opaque.walk_mut_binders(f, binders),
         }
     }
 }
@@ -244,41 +195,6 @@ fn solution_from_chalk(
             Solution::Ambig(Guidance::Unknown)
         }
     }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SolutionVariables(pub Canonical<Substitution>);
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-/// A (possible) solution for a proposed goal.
-pub enum Solution {
-    /// The goal indeed holds, and there is a unique value for all existential
-    /// variables.
-    Unique(SolutionVariables),
-
-    /// The goal may be provable in multiple ways, but regardless we may have some guidance
-    /// for type inference. In this case, we don't return any lifetime
-    /// constraints, since we have not "committed" to any particular solution
-    /// yet.
-    Ambig(Guidance),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-/// When a goal holds ambiguously (e.g., because there are multiple possible
-/// solutions), we issue a set of *guidance* back to type inference.
-pub enum Guidance {
-    /// The existential variables *must* have the given values if the goal is
-    /// ever to hold, but that alone isn't enough to guarantee the goal will
-    /// actually hold.
-    Definite(SolutionVariables),
-
-    /// There are multiple plausible values for the existentials, but the ones
-    /// here are suggested as the preferred choice heuristically. These should
-    /// be used for inference fallback only.
-    Suggested(SolutionVariables),
-
-    /// There's no useful information to feed back to type inference
-    Unknown,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]

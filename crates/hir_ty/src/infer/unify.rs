@@ -284,7 +284,7 @@ impl InferenceTable {
         substs2: &Substitution,
         depth: usize,
     ) -> bool {
-        substs1.0.iter().zip(substs2.0.iter()).all(|(t1, t2)| {
+        substs1.iter(&Interner).zip(substs2.iter(&Interner)).all(|(t1, t2)| {
             self.unify_inner(t1.assert_ty_ref(&Interner), t2.assert_ty_ref(&Interner), depth)
         })
     }

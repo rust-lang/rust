@@ -12,10 +12,8 @@ use hir_expand::name::name;
 use log::{info, warn};
 
 use crate::{
-    db::HirDatabase,
-    traits::{InEnvironment, Solution},
-    AliasEq, AliasTy, BoundVar, Canonical, CanonicalVarKinds, DebruijnIndex, Interner, Ty,
-    TyBuilder, TyKind,
+    db::HirDatabase, AliasEq, AliasTy, BoundVar, Canonical, CanonicalVarKinds, DebruijnIndex,
+    InEnvironment, Interner, Solution, Ty, TyBuilder, TyKind,
 };
 
 const AUTODEREF_RECURSION_LIMIT: usize = 10;

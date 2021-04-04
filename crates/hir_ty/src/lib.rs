@@ -16,6 +16,8 @@ pub(crate) mod utils;
 mod chalk_cast;
 mod chalk_ext;
 mod builder;
+mod walk;
+mod types;
 
 pub mod display;
 pub mod db;
@@ -26,23 +28,18 @@ mod tests;
 #[cfg(test)]
 mod test_db;
 
-use std::{mem, sync::Arc};
+use std::sync::Arc;
 
-use chalk_ir::cast::{CastTo, Caster};
 use itertools::Itertools;
 use smallvec::SmallVec;
 
 use base_db::salsa;
 use hir_def::{
-    expr::ExprId, type_ref::Rawness, AssocContainerId, FunctionId, GenericDefId, HasModule,
-    LifetimeParamId, Lookup, TraitId, TypeAliasId, TypeParamId,
+    expr::ExprId, type_ref::Rawness, AssocContainerId, FunctionId, GenericDefId, HasModule, Lookup,
+    TraitId, TypeAliasId, TypeParamId,
 };
 
-use crate::{
-    db::HirDatabase,
-    display::HirDisplay,
-    utils::{generics, make_mut_slice},
-};
+use crate::{db::HirDatabase, display::HirDisplay, utils::generics};
 
 pub use autoderef::autoderef;
 pub use builder::TyBuilder;
@@ -52,7 +49,9 @@ pub use lower::{
     associated_type_shorthand_candidates, callable_item_sig, CallableDefId, ImplTraitLoweringMode,
     TyDefId, TyLoweringContext, ValueTyDefId,
 };
-pub use traits::{AliasEq, DomainGoal, InEnvironment, TraitEnvironment};
+pub use traits::TraitEnvironment;
+pub use types::*;
+pub use walk::TypeWalk;
 
 pub use chalk_ir::{
     cast::Cast, AdtId, BoundVar, DebruijnIndex, Mutability, Safety, Scalar, TyVariableKind,
@@ -71,41 +70,6 @@ pub type CanonicalVarKinds = chalk_ir::CanonicalVarKinds<Interner>;
 
 pub type ChalkTraitId = chalk_ir::TraitId<Interner>;
 
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub enum Lifetime {
-    Parameter(LifetimeParamId),
-    Static,
-}
-
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub struct OpaqueTy {
-    pub opaque_ty_id: OpaqueTyId,
-    pub substitution: Substitution,
-}
-
-impl TypeWalk for OpaqueTy {
-    fn walk(&self, f: &mut impl FnMut(&Ty)) {
-        self.substitution.walk(f);
-    }
-
-    fn walk_mut_binders(
-        &mut self,
-        f: &mut impl FnMut(&mut Ty, DebruijnIndex),
-        binders: DebruijnIndex,
-    ) {
-        self.substitution.walk_mut_binders(f, binders);
-    }
-}
-
-/// A "projection" type corresponds to an (unnormalized)
-/// projection like `<P0 as Trait<P1..Pn>>::Foo`. Note that the
-/// trait and all its parameters are fully known.
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub struct ProjectionTy {
-    pub associated_ty_id: AssocTypeId,
-    pub substitution: Substitution,
-}
-
 impl ProjectionTy {
     pub fn trait_ref(&self, db: &dyn HirDatabase) -> TraitRef {
         TraitRef {
@@ -115,7 +79,7 @@ impl ProjectionTy {
     }
 
     pub fn self_type_parameter(&self) -> &Ty {
-        &self.substitution.interned(&Interner)[0].assert_ty_ref(&Interner)
+        &self.substitution.interned()[0].assert_ty_ref(&Interner)
     }
 
     fn trait_(&self, db: &dyn HirDatabase) -> TraitId {
@@ -126,322 +90,11 @@ impl ProjectionTy {
     }
 }
 
-impl TypeWalk for ProjectionTy {
-    fn walk(&self, f: &mut impl FnMut(&Ty)) {
-        self.substitution.walk(f);
-    }
-
-    fn walk_mut_binders(
-        &mut self,
-        f: &mut impl FnMut(&mut Ty, DebruijnIndex),
-        binders: DebruijnIndex,
-    ) {
-        self.substitution.walk_mut_binders(f, binders);
-    }
-}
-
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub struct DynTy {
-    /// The unknown self type.
-    pub bounds: Binders<QuantifiedWhereClauses>,
-}
-
 pub type FnSig = chalk_ir::FnSig<Interner>;
 
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub struct FnPointer {
-    pub num_args: usize,
-    pub sig: FnSig,
-    pub substs: Substitution,
-}
-
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub enum AliasTy {
-    /// A "projection" type corresponds to an (unnormalized)
-    /// projection like `<P0 as Trait<P1..Pn>>::Foo`. Note that the
-    /// trait and all its parameters are fully known.
-    Projection(ProjectionTy),
-    /// An opaque type (`impl Trait`).
-    ///
-    /// This is currently only used for return type impl trait; each instance of
-    /// `impl Trait` in a return type gets its own ID.
-    Opaque(OpaqueTy),
-}
-
-impl TypeWalk for AliasTy {
-    fn walk(&self, f: &mut impl FnMut(&Ty)) {
-        match self {
-            AliasTy::Projection(it) => it.walk(f),
-            AliasTy::Opaque(it) => it.walk(f),
-        }
-    }
-
-    fn walk_mut_binders(
-        &mut self,
-        f: &mut impl FnMut(&mut Ty, DebruijnIndex),
-        binders: DebruijnIndex,
-    ) {
-        match self {
-            AliasTy::Projection(it) => it.walk_mut_binders(f, binders),
-            AliasTy::Opaque(it) => it.walk_mut_binders(f, binders),
-        }
-    }
-}
-/// A type.
-///
-/// See also the `TyKind` enum in rustc (librustc/ty/sty.rs), which represents
-/// the same thing (but in a different way).
-///
-/// This should be cheap to clone.
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub enum TyKind {
-    /// Structures, enumerations and unions.
-    Adt(AdtId<Interner>, Substitution),
-
-    /// Represents an associated item like `Iterator::Item`.  This is used
-    /// when we have tried to normalize a projection like `T::Item` but
-    /// couldn't find a better representation.  In that case, we generate
-    /// an **application type** like `(Iterator::Item)<T>`.
-    AssociatedType(AssocTypeId, Substitution),
-
-    /// a scalar type like `bool` or `u32`
-    Scalar(Scalar),
-
-    /// A tuple type.  For example, `(i32, bool)`.
-    Tuple(usize, Substitution),
-
-    /// An array with the given length. Written as `[T; n]`.
-    Array(Ty),
-
-    /// The pointee of an array slice.  Written as `[T]`.
-    Slice(Ty),
-
-    /// A raw pointer. Written as `*mut T` or `*const T`
-    Raw(Mutability, Ty),
-
-    /// A reference; a pointer with an associated lifetime. Written as
-    /// `&'a mut T` or `&'a T`.
-    Ref(Mutability, Ty),
-
-    /// This represents a placeholder for an opaque type in situations where we
-    /// don't know the hidden type (i.e. currently almost always). This is
-    /// analogous to the `AssociatedType` type constructor.
-    /// It is also used as the type of async block, with one type parameter
-    /// representing the Future::Output type.
-    OpaqueType(OpaqueTyId, Substitution),
-
-    /// The anonymous type of a function declaration/definition. Each
-    /// function has a unique type, which is output (for a function
-    /// named `foo` returning an `i32`) as `fn() -> i32 {foo}`.
-    ///
-    /// This includes tuple struct / enum variant constructors as well.
-    ///
-    /// For example the type of `bar` here:
-    ///
-    /// ```
-    /// fn foo() -> i32 { 1 }
-    /// let bar = foo; // bar: fn() -> i32 {foo}
-    /// ```
-    FnDef(FnDefId, Substitution),
-
-    /// The pointee of a string slice. Written as `str`.
-    Str,
-
-    /// The never type `!`.
-    Never,
-
-    /// The type of a specific closure.
-    ///
-    /// The closure signature is stored in a `FnPtr` type in the first type
-    /// parameter.
-    Closure(ClosureId, Substitution),
-
-    /// Represents a foreign type declared in external blocks.
-    ForeignType(ForeignDefId),
-
-    /// A pointer to a function.  Written as `fn() -> i32`.
-    ///
-    /// For example the type of `bar` here:
-    ///
-    /// ```
-    /// fn foo() -> i32 { 1 }
-    /// let bar: fn() -> i32 = foo;
-    /// ```
-    Function(FnPointer),
-
-    /// An "alias" type represents some form of type alias, such as:
-    /// - An associated type projection like `<T as Iterator>::Item`
-    /// - `impl Trait` types
-    /// - Named type aliases like `type Foo<X> = Vec<X>`
-    Alias(AliasTy),
-
-    /// A placeholder for a type parameter; for example, `T` in `fn f<T>(x: T)
-    /// {}` when we're type-checking the body of that function. In this
-    /// situation, we know this stands for *some* type, but don't know the exact
-    /// type.
-    Placeholder(PlaceholderIndex),
-
-    /// A bound type variable. This is used in various places: when representing
-    /// some polymorphic type like the type of function `fn f<T>`, the type
-    /// parameters get turned into variables; during trait resolution, inference
-    /// variables get turned into bound variables and back; and in `Dyn` the
-    /// `Self` type is represented with a bound variable as well.
-    BoundVar(BoundVar),
-
-    /// A type variable used during type checking.
-    InferenceVar(InferenceVar, TyVariableKind),
-
-    /// A trait object (`dyn Trait` or bare `Trait` in pre-2018 Rust).
-    ///
-    /// The predicates are quantified over the `Self` type, i.e. `Ty::Bound(0)`
-    /// represents the `Self` type inside the bounds. This is currently
-    /// implicit; Chalk has the `Binders` struct to make it explicit, but it
-    /// didn't seem worth the overhead yet.
-    Dyn(DynTy),
-
-    /// A placeholder for a type which could not be computed; this is propagated
-    /// to avoid useless error messages. Doubles as a placeholder where type
-    /// variables are inserted before type checking, since we want to try to
-    /// infer a better type here anyway -- for the IDE use case, we want to try
-    /// to infer as much as possible even in the presence of type errors.
-    Unknown,
-}
-
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub struct Ty(Arc<TyKind>);
-
-impl TyKind {
-    pub fn intern(self, _interner: &Interner) -> Ty {
-        Ty(Arc::new(self))
-    }
-}
-
-impl Ty {
-    pub fn kind(&self, _interner: &Interner) -> &TyKind {
-        &self.0
-    }
-
-    pub fn interned_mut(&mut self) -> &mut TyKind {
-        Arc::make_mut(&mut self.0)
-    }
-
-    pub fn into_inner(self) -> TyKind {
-        Arc::try_unwrap(self.0).unwrap_or_else(|a| (*a).clone())
-    }
-}
-
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub struct GenericArg {
-    interned: GenericArgData,
-}
-
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub enum GenericArgData {
-    Ty(Ty),
-}
-
-impl GenericArg {
-    /// Constructs a generic argument using `GenericArgData`.
-    pub fn new(_interner: &Interner, data: GenericArgData) -> Self {
-        GenericArg { interned: data }
-    }
-
-    /// Gets the interned value.
-    pub fn interned(&self) -> &GenericArgData {
-        &self.interned
-    }
-
-    /// Asserts that this is a type argument.
-    pub fn assert_ty_ref(&self, interner: &Interner) -> &Ty {
-        self.ty(interner).unwrap()
-    }
-
-    /// Checks whether the generic argument is a type.
-    pub fn is_ty(&self, _interner: &Interner) -> bool {
-        match self.interned() {
-            GenericArgData::Ty(_) => true,
-        }
-    }
-
-    /// Returns the type if it is one, `None` otherwise.
-    pub fn ty(&self, _interner: &Interner) -> Option<&Ty> {
-        match self.interned() {
-            GenericArgData::Ty(t) => Some(t),
-        }
-    }
-}
-
-impl TypeWalk for GenericArg {
-    fn walk(&self, f: &mut impl FnMut(&Ty)) {
-        match &self.interned {
-            GenericArgData::Ty(ty) => {
-                ty.walk(f);
-            }
-        }
-    }
-
-    fn walk_mut_binders(
-        &mut self,
-        f: &mut impl FnMut(&mut Ty, DebruijnIndex),
-        binders: DebruijnIndex,
-    ) {
-        match &mut self.interned {
-            GenericArgData::Ty(ty) => {
-                ty.walk_mut_binders(f, binders);
-            }
-        }
-    }
-}
-
-/// A list of substitutions for generic parameters.
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub struct Substitution(SmallVec<[GenericArg; 2]>);
-
-impl TypeWalk for Substitution {
-    fn walk(&self, f: &mut impl FnMut(&Ty)) {
-        for t in self.0.iter() {
-            t.walk(f);
-        }
-    }
-
-    fn walk_mut_binders(
-        &mut self,
-        f: &mut impl FnMut(&mut Ty, DebruijnIndex),
-        binders: DebruijnIndex,
-    ) {
-        for t in &mut self.0 {
-            t.walk_mut_binders(f, binders);
-        }
-    }
-}
-
 impl Substitution {
-    pub fn interned(&self, _: &Interner) -> &[GenericArg] {
-        &self.0
-    }
-
-    pub fn len(&self, _: &Interner) -> usize {
-        self.0.len()
-    }
-
-    pub fn is_empty(&self, _: &Interner) -> bool {
-        self.0.is_empty()
-    }
-
-    pub fn at(&self, _: &Interner, i: usize) -> &GenericArg {
-        &self.0[i]
-    }
-
-    pub fn empty(_: &Interner) -> Substitution {
-        Substitution(SmallVec::new())
-    }
-
-    pub fn iter(&self, _: &Interner) -> std::slice::Iter<'_, GenericArg> {
-        self.0.iter()
-    }
-
     pub fn single(ty: Ty) -> Substitution {
-        Substitution({
+        Substitution::intern({
             let mut v = SmallVec::new();
             v.push(ty.cast(&Interner));
             v
@@ -449,30 +102,19 @@ impl Substitution {
     }
 
     pub fn prefix(&self, n: usize) -> Substitution {
-        Substitution(self.0[..std::cmp::min(self.0.len(), n)].into())
+        Substitution::intern(self.interned()[..std::cmp::min(self.len(&Interner), n)].into())
     }
 
     pub fn suffix(&self, n: usize) -> Substitution {
-        Substitution(self.0[self.0.len() - std::cmp::min(self.0.len(), n)..].into())
-    }
-
-    pub fn from_iter(
-        interner: &Interner,
-        elements: impl IntoIterator<Item = impl CastTo<GenericArg>>,
-    ) -> Self {
-        Substitution(elements.into_iter().casted(interner).collect())
+        Substitution::intern(
+            self.interned()[self.len(&Interner) - std::cmp::min(self.len(&Interner), n)..].into(),
+        )
     }
 }
 
 /// Return an index of a parameter in the generic type parameter list by it's id.
 pub fn param_idx(db: &dyn HirDatabase, id: TypeParamId) -> Option<usize> {
     generics(db.upcast(), id.parent).param_idx(id)
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
-pub struct Binders<T> {
-    pub num_binders: usize,
-    pub value: T,
 }
 
 impl<T> Binders<T> {
@@ -522,27 +164,6 @@ impl<T: TypeWalk> Binders<T> {
     }
 }
 
-impl<T: TypeWalk> TypeWalk for Binders<T> {
-    fn walk(&self, f: &mut impl FnMut(&Ty)) {
-        self.value.walk(f);
-    }
-
-    fn walk_mut_binders(
-        &mut self,
-        f: &mut impl FnMut(&mut Ty, DebruijnIndex),
-        binders: DebruijnIndex,
-    ) {
-        self.value.walk_mut_binders(f, binders.shifted_in())
-    }
-}
-
-/// A trait with type parameters. This includes the `Self`, so this represents a concrete type implementing the trait.
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub struct TraitRef {
-    pub trait_id: ChalkTraitId,
-    pub substitution: Substitution,
-}
-
 impl TraitRef {
     pub fn self_type_parameter(&self) -> &Ty {
         &self.substitution.at(&Interner, 0).assert_ty_ref(&Interner)
@@ -551,30 +172,6 @@ impl TraitRef {
     pub fn hir_trait_id(&self) -> TraitId {
         from_chalk_trait_id(self.trait_id)
     }
-}
-
-impl TypeWalk for TraitRef {
-    fn walk(&self, f: &mut impl FnMut(&Ty)) {
-        self.substitution.walk(f);
-    }
-
-    fn walk_mut_binders(
-        &mut self,
-        f: &mut impl FnMut(&mut Ty, DebruijnIndex),
-        binders: DebruijnIndex,
-    ) {
-        self.substitution.walk_mut_binders(f, binders);
-    }
-}
-
-/// Like `generics::WherePredicate`, but with resolved types: A condition on the
-/// parameters of a generic item.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum WhereClause {
-    /// The given trait needs to be implemented for its type parameters.
-    Implemented(TraitRef),
-    /// An associated type bindings like in `Iterator<Item = T>`.
-    AliasEq(AliasEq),
 }
 
 impl WhereClause {
@@ -591,56 +188,6 @@ impl WhereClause {
             WhereClause::AliasEq(_) => None,
         }
     }
-}
-
-impl TypeWalk for WhereClause {
-    fn walk(&self, f: &mut impl FnMut(&Ty)) {
-        match self {
-            WhereClause::Implemented(trait_ref) => trait_ref.walk(f),
-            WhereClause::AliasEq(alias_eq) => alias_eq.walk(f),
-        }
-    }
-
-    fn walk_mut_binders(
-        &mut self,
-        f: &mut impl FnMut(&mut Ty, DebruijnIndex),
-        binders: DebruijnIndex,
-    ) {
-        match self {
-            WhereClause::Implemented(trait_ref) => trait_ref.walk_mut_binders(f, binders),
-            WhereClause::AliasEq(alias_eq) => alias_eq.walk_mut_binders(f, binders),
-        }
-    }
-}
-
-pub type QuantifiedWhereClause = Binders<WhereClause>;
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct QuantifiedWhereClauses(Arc<[QuantifiedWhereClause]>);
-
-impl QuantifiedWhereClauses {
-    pub fn from_iter(
-        _interner: &Interner,
-        elements: impl IntoIterator<Item = QuantifiedWhereClause>,
-    ) -> Self {
-        QuantifiedWhereClauses(elements.into_iter().collect())
-    }
-
-    pub fn interned(&self) -> &Arc<[QuantifiedWhereClause]> {
-        &self.0
-    }
-}
-
-/// Basically a claim (currently not validated / checked) that the contained
-/// type / trait ref contains no inference variables; any inference variables it
-/// contained have been replaced by bound variables, and `kinds` tells us how
-/// many there are and whether they were normal or float/int variables. This is
-/// used to erase irrelevant differences between types before using them in
-/// queries.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Canonical<T> {
-    pub value: T,
-    pub binders: CanonicalVarKinds,
 }
 
 impl<T> Canonical<T> {
@@ -679,7 +226,7 @@ impl CallableSig {
                 .substs
                 .clone()
                 .shift_bound_vars_out(DebruijnIndex::ONE)
-                .interned(&Interner)
+                .interned()
                 .iter()
                 .map(|arg| arg.assert_ty_ref(&Interner).clone())
                 .collect(),
@@ -693,24 +240,6 @@ impl CallableSig {
 
     pub fn ret(&self) -> &Ty {
         &self.params_and_return[self.params_and_return.len() - 1]
-    }
-}
-
-impl TypeWalk for CallableSig {
-    fn walk(&self, f: &mut impl FnMut(&Ty)) {
-        for t in self.params_and_return.iter() {
-            t.walk(f);
-        }
-    }
-
-    fn walk_mut_binders(
-        &mut self,
-        f: &mut impl FnMut(&mut Ty, DebruijnIndex),
-        binders: DebruijnIndex,
-    ) {
-        for t in make_mut_slice(&mut self.params_and_return) {
-            t.walk_mut_binders(f, binders);
-        }
     }
 }
 
@@ -980,200 +509,6 @@ impl Ty {
                 }
             }
             _ => None,
-        }
-    }
-}
-
-/// This allows walking structures that contain types to do something with those
-/// types, similar to Chalk's `Fold` trait.
-pub trait TypeWalk {
-    fn walk(&self, f: &mut impl FnMut(&Ty));
-    fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
-        self.walk_mut_binders(&mut |ty, _binders| f(ty), DebruijnIndex::INNERMOST);
-    }
-    /// Walk the type, counting entered binders.
-    ///
-    /// `TyKind::Bound` variables use DeBruijn indexing, which means that 0 refers
-    /// to the innermost binder, 1 to the next, etc.. So when we want to
-    /// substitute a certain bound variable, we can't just walk the whole type
-    /// and blindly replace each instance of a certain index; when we 'enter'
-    /// things that introduce new bound variables, we have to keep track of
-    /// that. Currently, the only thing that introduces bound variables on our
-    /// side are `TyKind::Dyn` and `TyKind::Opaque`, which each introduce a bound
-    /// variable for the self type.
-    fn walk_mut_binders(
-        &mut self,
-        f: &mut impl FnMut(&mut Ty, DebruijnIndex),
-        binders: DebruijnIndex,
-    );
-
-    fn fold_binders(
-        mut self,
-        f: &mut impl FnMut(Ty, DebruijnIndex) -> Ty,
-        binders: DebruijnIndex,
-    ) -> Self
-    where
-        Self: Sized,
-    {
-        self.walk_mut_binders(
-            &mut |ty_mut, binders| {
-                let ty = mem::replace(ty_mut, TyKind::Unknown.intern(&Interner));
-                *ty_mut = f(ty, binders);
-            },
-            binders,
-        );
-        self
-    }
-
-    fn fold(mut self, f: &mut impl FnMut(Ty) -> Ty) -> Self
-    where
-        Self: Sized,
-    {
-        self.walk_mut(&mut |ty_mut| {
-            let ty = mem::replace(ty_mut, TyKind::Unknown.intern(&Interner));
-            *ty_mut = f(ty);
-        });
-        self
-    }
-
-    /// Substitutes `TyKind::Bound` vars with the given substitution.
-    fn subst_bound_vars(self, substs: &Substitution) -> Self
-    where
-        Self: Sized,
-    {
-        self.subst_bound_vars_at_depth(substs, DebruijnIndex::INNERMOST)
-    }
-
-    /// Substitutes `TyKind::Bound` vars with the given substitution.
-    fn subst_bound_vars_at_depth(mut self, substs: &Substitution, depth: DebruijnIndex) -> Self
-    where
-        Self: Sized,
-    {
-        self.walk_mut_binders(
-            &mut |ty, binders| {
-                if let &mut TyKind::BoundVar(bound) = ty.interned_mut() {
-                    if bound.debruijn >= binders {
-                        *ty = substs.0[bound.index]
-                            .assert_ty_ref(&Interner)
-                            .clone()
-                            .shift_bound_vars(binders);
-                    }
-                }
-            },
-            depth,
-        );
-        self
-    }
-
-    /// Shifts up debruijn indices of `TyKind::Bound` vars by `n`.
-    fn shift_bound_vars(self, n: DebruijnIndex) -> Self
-    where
-        Self: Sized,
-    {
-        self.fold_binders(
-            &mut |ty, binders| match ty.kind(&Interner) {
-                TyKind::BoundVar(bound) if bound.debruijn >= binders => {
-                    TyKind::BoundVar(bound.shifted_in_from(n)).intern(&Interner)
-                }
-                _ => ty,
-            },
-            DebruijnIndex::INNERMOST,
-        )
-    }
-
-    /// Shifts debruijn indices of `TyKind::Bound` vars out (down) by `n`.
-    fn shift_bound_vars_out(self, n: DebruijnIndex) -> Self
-    where
-        Self: Sized + std::fmt::Debug,
-    {
-        self.fold_binders(
-            &mut |ty, binders| match ty.kind(&Interner) {
-                TyKind::BoundVar(bound) if bound.debruijn >= binders => {
-                    TyKind::BoundVar(bound.shifted_out_to(n).unwrap_or(bound.clone()))
-                        .intern(&Interner)
-                }
-                _ => ty,
-            },
-            DebruijnIndex::INNERMOST,
-        )
-    }
-}
-
-impl TypeWalk for Ty {
-    fn walk(&self, f: &mut impl FnMut(&Ty)) {
-        match self.kind(&Interner) {
-            TyKind::Alias(AliasTy::Projection(p_ty)) => {
-                for t in p_ty.substitution.iter(&Interner) {
-                    t.walk(f);
-                }
-            }
-            TyKind::Alias(AliasTy::Opaque(o_ty)) => {
-                for t in o_ty.substitution.iter(&Interner) {
-                    t.walk(f);
-                }
-            }
-            TyKind::Dyn(dyn_ty) => {
-                for p in dyn_ty.bounds.value.interned().iter() {
-                    p.walk(f);
-                }
-            }
-            TyKind::Slice(ty) | TyKind::Array(ty) | TyKind::Ref(_, ty) | TyKind::Raw(_, ty) => {
-                ty.walk(f);
-            }
-            _ => {
-                if let Some(substs) = self.substs() {
-                    for t in substs.iter(&Interner) {
-                        t.walk(f);
-                    }
-                }
-            }
-        }
-        f(self);
-    }
-
-    fn walk_mut_binders(
-        &mut self,
-        f: &mut impl FnMut(&mut Ty, DebruijnIndex),
-        binders: DebruijnIndex,
-    ) {
-        match self.interned_mut() {
-            TyKind::Alias(AliasTy::Projection(p_ty)) => {
-                p_ty.substitution.walk_mut_binders(f, binders);
-            }
-            TyKind::Dyn(dyn_ty) => {
-                for p in make_mut_slice(&mut dyn_ty.bounds.value.0) {
-                    p.walk_mut_binders(f, binders.shifted_in());
-                }
-            }
-            TyKind::Alias(AliasTy::Opaque(o_ty)) => {
-                o_ty.substitution.walk_mut_binders(f, binders);
-            }
-            TyKind::Slice(ty) | TyKind::Array(ty) | TyKind::Ref(_, ty) | TyKind::Raw(_, ty) => {
-                ty.walk_mut_binders(f, binders);
-            }
-            _ => {
-                if let Some(substs) = self.substs_mut() {
-                    substs.walk_mut_binders(f, binders);
-                }
-            }
-        }
-        f(self, binders);
-    }
-}
-
-impl<T: TypeWalk> TypeWalk for Vec<T> {
-    fn walk(&self, f: &mut impl FnMut(&Ty)) {
-        for t in self {
-            t.walk(f);
-        }
-    }
-    fn walk_mut_binders(
-        &mut self,
-        f: &mut impl FnMut(&mut Ty, DebruijnIndex),
-        binders: DebruijnIndex,
-    ) {
-        for t in self {
-            t.walk_mut_binders(f, binders);
         }
     }
 }

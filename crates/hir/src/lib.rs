@@ -55,10 +55,11 @@ use hir_ty::{
     autoderef, could_unify,
     method_resolution::{self, TyFingerprint},
     primitive::UintTy,
-    traits::{FnTrait, Solution, SolutionVariables},
+    traits::FnTrait,
     AliasEq, AliasTy, BoundVar, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast,
-    DebruijnIndex, InEnvironment, Interner, QuantifiedWhereClause, Scalar, Substitution,
-    TraitEnvironment, Ty, TyBuilder, TyDefId, TyKind, TyVariableKind, WhereClause,
+    DebruijnIndex, InEnvironment, Interner, QuantifiedWhereClause, Scalar, Solution,
+    SolutionVariables, Substitution, TraitEnvironment, Ty, TyBuilder, TyDefId, TyKind,
+    TyVariableKind, WhereClause,
 };
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
@@ -1822,7 +1823,7 @@ impl Type {
         match db.trait_solve(self.krate, goal)? {
             Solution::Unique(SolutionVariables(subst)) => subst
                 .value
-                .interned(&Interner)
+                .interned()
                 .first()
                 .map(|ty| self.derived(ty.assert_ty_ref(&Interner).clone())),
             Solution::Ambig(_) => None,
