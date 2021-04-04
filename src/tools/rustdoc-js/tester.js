@@ -264,7 +264,8 @@ function loadMainJsAndIndex(mainJs, searchIndex, storageJs, crate) {
     // execQuery last parameter is built in buildIndex.
     // buildIndex requires the hashmap from search-index.
     var functionsToLoad = ["buildHrefAndPath", "pathSplitter", "levenshtein", "validateResult",
-                           "handleAliases", "getQuery", "buildIndex", "execQuery", "execSearch"];
+                           "handleAliases", "getQuery", "buildIndex", "execQuery", "execSearch",
+                           "removeEmptyStringsFromArray"];
 
     ALIASES = {};
     finalJS += 'window = { "currentCrate": "' + crate + '", rootPath: "../" };\n';
