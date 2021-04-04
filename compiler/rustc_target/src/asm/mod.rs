@@ -90,7 +90,7 @@ macro_rules! def_regs {
                 match name {
                     $(
                         $($alias)|* | $reg_name => {
-                            $($filter(_arch, &mut _has_feature, _target, false)?;)?
+                            $($filter(_arch, &mut _has_feature, _target)?;)?
                             Ok(Self::$reg)
                         }
                     )*
@@ -114,7 +114,7 @@ macro_rules! def_regs {
             #[allow(unused_imports)]
             use super::{InlineAsmReg, InlineAsmRegClass};
             $(
-                if $($filter(_arch, &mut _has_feature, _target, true).is_ok() &&)? true {
+                if $($filter(_arch, &mut _has_feature, _target).is_ok() &&)? true {
                     if let Some(set) = _map.get_mut(&InlineAsmRegClass::$arch($arch_regclass::$class)) {
                         set.insert(InlineAsmReg::$arch($arch_reg::$reg));
                     }
