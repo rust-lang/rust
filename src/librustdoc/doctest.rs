@@ -1,5 +1,5 @@
 use rustc_ast as ast;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{ColorConfig, ErrorReported};
 use rustc_hir as hir;
@@ -23,6 +23,8 @@ use std::panic;
 use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
 use std::str;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
 
 use crate::clean::Attributes;
 use crate::config::Options;
@@ -104,8 +106,10 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
 
     let mut test_args = options.test_args.clone();
     let display_warnings = options.display_warnings;
+    let externs = options.externs.clone();
+    let json_unused_externs = options.json_unused_externs;
 
-    let tests = interface::run_compiler(config, |compiler| {
+    let res = interface::run_compiler(config, |compiler| {
         compiler.enter(|queries| {
             let _lower_to_hir = queries.lower_to_hir()?;
 
@@ -151,12 +155,15 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
             });
             compiler.session().abort_if_errors();
 
-            let ret: Result<_, ErrorReported> = Ok(collector.tests);
+            let unused_extern_reports = collector.unused_extern_reports.clone();
+            let compiling_test_count = collector.compiling_test_count.load(Ordering::SeqCst);
+            let ret: Result<_, ErrorReported> =
+                Ok((collector.tests, unused_extern_reports, compiling_test_count));
             ret
         })
     });
-    let tests = match tests {
-        Ok(tests) => tests,
+    let (tests, unused_extern_reports, compiling_test_count) = match res {
+        Ok(res) => res,
         Err(ErrorReported) => return Err(ErrorReported),
     };
 
@@ -167,6 +174,44 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
         tests,
         Some(testing::Options::new().display_output(display_warnings)),
     );
+
+    // Collect and warn about unused externs, but only if we've gotten
+    // reports for each doctest
+    if json_unused_externs {
+        let unused_extern_reports: Vec<_> =
+            std::mem::take(&mut unused_extern_reports.lock().unwrap());
+        if unused_extern_reports.len() == compiling_test_count {
+            let extern_names = externs.iter().map(|(name, _)| name).collect::<FxHashSet<&String>>();
+            let mut unused_extern_names = unused_extern_reports
+                .iter()
+                .map(|uexts| uexts.unused_extern_names.iter().collect::<FxHashSet<&String>>())
+                .fold(extern_names, |uextsa, uextsb| {
+                    uextsa.intersection(&uextsb).map(|v| *v).collect::<FxHashSet<&String>>()
+                })
+                .iter()
+                .map(|v| (*v).clone())
+                .collect::<Vec<String>>();
+            unused_extern_names.sort();
+            // Take the most severe lint level
+            let lint_level = unused_extern_reports
+                .iter()
+                .map(|uexts| uexts.lint_level.as_str())
+                .max_by_key(|v| match *v {
+                    "warn" => 1,
+                    "deny" => 2,
+                    "forbid" => 3,
+                    // The allow lint level is not expected,
+                    // as if allow is specified, no message
+                    // is to be emitted.
+                    v => unreachable!("Invalid lint level '{}'", v),
+                })
+                .unwrap_or("warn")
+                .to_string();
+            let uext = UnusedExterns { lint_level, unused_extern_names };
+            let unused_extern_json = serde_json::to_string(&uext).unwrap();
+            eprintln!("{}", unused_extern_json);
+        }
+    }
 
     Ok(())
 }
@@ -235,6 +280,18 @@ impl DirState {
     }
 }
 
+// NOTE: Keep this in sync with the equivalent structs in rustc
+// and cargo.
+// We could unify this struct the one in rustc but they have different
+// ownership semantics, so doing so would create wasteful allocations.
+#[derive(serde::Serialize, serde::Deserialize)]
+struct UnusedExterns {
+    /// Lint level of the unused_crate_dependencies lint
+    lint_level: String,
+    /// List of unused externs by their names.
+    unused_extern_names: Vec<String>,
+}
+
 fn run_test(
     test: &str,
     cratename: &str,
@@ -253,6 +310,7 @@ fn run_test(
     outdir: DirState,
     path: PathBuf,
     test_id: &str,
+    report_unused_externs: impl Fn(UnusedExterns),
 ) -> Result<(), TestFailure> {
     let (test, line_offset, supports_color) =
         make_test(test, Some(cratename), as_test_harness, opts, edition, Some(test_id));
@@ -277,6 +335,12 @@ fn run_test(
     compiler.arg("-o").arg(&output_file);
     if as_test_harness {
         compiler.arg("--test");
+    }
+    if options.json_unused_externs && !compile_fail {
+        compiler.arg("--error-format=json");
+        compiler.arg("--json").arg("unused-externs");
+        compiler.arg("-Z").arg("unstable-options");
+        compiler.arg("-W").arg("unused_crate_dependencies");
     }
     for lib_str in &options.lib_strs {
         compiler.arg("-L").arg(&lib_str);
@@ -337,7 +401,26 @@ fn run_test(
             eprint!("{}", self.0);
         }
     }
-    let out = str::from_utf8(&output.stderr).unwrap();
+    let mut out_lines = str::from_utf8(&output.stderr)
+        .unwrap()
+        .lines()
+        .filter(|l| {
+            if let Ok(uext) = serde_json::from_str::<UnusedExterns>(l) {
+                report_unused_externs(uext);
+                false
+            } else {
+                true
+            }
+        })
+        .collect::<Vec<_>>();
+
+    // Add a \n to the end to properly terminate the last line,
+    // but only if there was output to be printed
+    if out_lines.len() > 0 {
+        out_lines.push("");
+    }
+
+    let out = out_lines.join("\n");
     let _bomb = Bomb(&out);
     match (output.status.success(), compile_fail) {
         (true, true) => {
@@ -721,6 +804,8 @@ crate struct Collector {
     source_map: Option<Lrc<SourceMap>>,
     filename: Option<PathBuf>,
     visited_tests: FxHashMap<(String, usize), usize>,
+    unused_extern_reports: Arc<Mutex<Vec<UnusedExterns>>>,
+    compiling_test_count: AtomicUsize,
 }
 
 impl Collector {
@@ -745,6 +830,8 @@ impl Collector {
             source_map,
             filename,
             visited_tests: FxHashMap::default(),
+            unused_extern_reports: Default::default(),
+            compiling_test_count: AtomicUsize::new(0),
         }
     }
 
@@ -791,6 +878,10 @@ impl Tester for Collector {
         let runtool_args = self.options.runtool_args.clone();
         let target = self.options.target.clone();
         let target_str = target.to_string();
+        let unused_externs = self.unused_extern_reports.clone();
+        if !config.compile_fail {
+            self.compiling_test_count.fetch_add(1, Ordering::SeqCst);
+        }
 
         // FIXME(#44940): if doctests ever support path remapping, then this filename
         // needs to be the result of `SourceMap::span_to_unmapped_path`.
@@ -846,6 +937,9 @@ impl Tester for Collector {
                 test_type: testing::TestType::DocTest,
             },
             testfn: testing::DynTestFn(box move || {
+                let report_unused_externs = |uext| {
+                    unused_externs.lock().unwrap().push(uext);
+                };
                 let res = run_test(
                     &test,
                     &cratename,
@@ -864,6 +958,7 @@ impl Tester for Collector {
                     outdir,
                     path,
                     &test_id,
+                    report_unused_externs,
                 );
 
                 if let Err(err) = res {
