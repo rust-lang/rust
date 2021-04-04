@@ -1482,7 +1482,7 @@ pub enum StatementKind<'tcx> {
     ///
     /// Note that this also is emitted for regular `let` bindings to ensure that locals that are
     /// never accessed still get some sanity checks for, e.g., `let x: ! = ..;`
-    FakeRead(FakeReadCause, Box<Place<'tcx>>),
+    FakeRead(Box<(FakeReadCause, Place<'tcx>)>),
 
     /// Write the discriminant for a variant to the enum Place.
     SetDiscriminant { place: Box<Place<'tcx>>, variant_index: VariantIdx },
@@ -1575,7 +1575,12 @@ pub enum FakeReadCause {
 
     /// `let x: !; match x {}` doesn't generate any read of x so we need to
     /// generate a read of x to check that it is initialized and safe.
-    ForMatchedPlace,
+    ///
+    /// If a closure pattern matches a Place starting with an Upvar, then we introduce a
+    /// FakeRead for that Place outside the closure, in such a case this option would be
+    /// Some(closure_def_id).
+    /// Otherwise, the value of the optional DefId will be None.
+    ForMatchedPlace(Option<DefId>),
 
     /// A fake read of the RefWithinGuard version of a bind-by-value variable
     /// in a match guard to ensure that it's value hasn't change by the time
@@ -1594,7 +1599,12 @@ pub enum FakeReadCause {
     /// but in some cases it can affect the borrow checker, as in #53695.
     /// Therefore, we insert a "fake read" here to ensure that we get
     /// appropriate errors.
-    ForLet,
+    ///
+    /// If a closure pattern matches a Place starting with an Upvar, then we introduce a
+    /// FakeRead for that Place outside the closure, in such a case this option would be
+    /// Some(closure_def_id).
+    /// Otherwise, the value of the optional DefId will be None.
+    ForLet(Option<DefId>),
 
     /// If we have an index expression like
     ///
@@ -1618,7 +1628,9 @@ impl Debug for Statement<'_> {
         use self::StatementKind::*;
         match self.kind {
             Assign(box (ref place, ref rv)) => write!(fmt, "{:?} = {:?}", place, rv),
-            FakeRead(ref cause, ref place) => write!(fmt, "FakeRead({:?}, {:?})", cause, place),
+            FakeRead(box (ref cause, ref place)) => {
+                write!(fmt, "FakeRead({:?}, {:?})", cause, place)
+            }
             Retag(ref kind, ref place) => write!(
                 fmt,
                 "Retag({}{:?})",

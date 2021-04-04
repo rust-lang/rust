@@ -515,7 +515,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let block = &self.body.basic_blocks()[location.block];
 
                 let kind = if let Some(&Statement {
-                    kind: StatementKind::FakeRead(FakeReadCause::ForLet, _),
+                    kind: StatementKind::FakeRead(box (FakeReadCause::ForLet(_), _)),
                     ..
                 }) = block.statements.get(location.statement_index)
                 {

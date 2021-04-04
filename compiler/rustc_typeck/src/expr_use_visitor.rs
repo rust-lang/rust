@@ -280,9 +280,14 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 if needs_to_be_read {
                     self.borrow_expr(&discr, ty::ImmBorrow);
                 } else {
+                    let closure_def_id = match discr_place.place.base {
+                        PlaceBase::Upvar(upvar_id) => Some(upvar_id.closure_expr_id.to_def_id()),
+                        _ => None,
+                    };
+
                     self.delegate.fake_read(
                         discr_place.place.clone(),
-                        FakeReadCause::ForMatchedPlace,
+                        FakeReadCause::ForMatchedPlace(closure_def_id),
                         discr_place.hir_id,
                     );
 
@@ -578,9 +583,14 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     }
 
     fn walk_arm(&mut self, discr_place: &PlaceWithHirId<'tcx>, arm: &hir::Arm<'_>) {
+        let closure_def_id = match discr_place.place.base {
+            PlaceBase::Upvar(upvar_id) => Some(upvar_id.closure_expr_id.to_def_id()),
+            _ => None,
+        };
+
         self.delegate.fake_read(
             discr_place.place.clone(),
-            FakeReadCause::ForMatchedPlace,
+            FakeReadCause::ForMatchedPlace(closure_def_id),
             discr_place.hir_id,
         );
         self.walk_pat(discr_place, &arm.pat);
@@ -595,9 +605,14 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     /// Walks a pat that occurs in isolation (i.e., top-level of fn argument or
     /// let binding, and *not* a match arm or nested pat.)
     fn walk_irrefutable_pat(&mut self, discr_place: &PlaceWithHirId<'tcx>, pat: &hir::Pat<'_>) {
+        let closure_def_id = match discr_place.place.base {
+            PlaceBase::Upvar(upvar_id) => Some(upvar_id.closure_expr_id.to_def_id()),
+            _ => None,
+        };
+
         self.delegate.fake_read(
             discr_place.place.clone(),
-            FakeReadCause::ForLet,
+            FakeReadCause::ForLet(closure_def_id),
             discr_place.hir_id,
         );
         self.walk_pat(discr_place, pat);
