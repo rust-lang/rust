@@ -24,18 +24,21 @@ use std::fmt;
 use std::ops::Index;
 
 newtype_index! {
+    #[derive(HashStable)]
     pub struct ArmId {
         DEBUG_FORMAT = "a{}"
     }
 }
 
 newtype_index! {
+    #[derive(HashStable)]
     pub struct ExprId {
         DEBUG_FORMAT = "e{}"
     }
 }
 
 newtype_index! {
+    #[derive(HashStable)]
     pub struct StmtId {
         DEBUG_FORMAT = "s{}"
     }
@@ -43,6 +46,7 @@ newtype_index! {
 
 macro_rules! thir_with_elements {
     ($($name:ident: $id:ty => $value:ty,)*) => {
+        #[derive(Debug, HashStable)]
         pub struct Thir<'tcx> {
             $(
                 pub $name: IndexVec<$id, $value>,
@@ -76,13 +80,13 @@ thir_with_elements! {
     stmts: StmtId => Stmt<'tcx>,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, HashStable)]
 pub enum LintLevel {
     Inherited,
     Explicit(hir::HirId),
 }
 
-#[derive(Debug)]
+#[derive(Debug, HashStable)]
 pub struct Block {
     pub targeted_by_break: bool,
     pub region_scope: region::Scope,
@@ -93,7 +97,7 @@ pub struct Block {
     pub safety_mode: BlockSafety,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, HashStable)]
 pub enum BlockSafety {
     Safe,
     ExplicitUnsafe(hir::HirId),
@@ -101,13 +105,13 @@ pub enum BlockSafety {
     PopUnsafe,
 }
 
-#[derive(Debug)]
+#[derive(Debug, HashStable)]
 pub struct Stmt<'tcx> {
     pub kind: StmtKind<'tcx>,
     pub opt_destruction_scope: Option<region::Scope>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, HashStable)]
 pub enum StmtKind<'tcx> {
     Expr {
         /// scope for this statement; may be used as lifetime of temporaries
@@ -157,7 +161,7 @@ rustc_data_structures::static_assert_size!(Expr<'_>, 144);
 /// MIR simplifications are already done in the impl of `Thir`. For
 /// example, method calls and overloaded operators are absent: they are
 /// expected to be converted into `Expr::Call` instances.
-#[derive(Debug)]
+#[derive(Debug, HashStable)]
 pub struct Expr<'tcx> {
     /// type of this expression
     pub ty: Ty<'tcx>,
@@ -173,7 +177,7 @@ pub struct Expr<'tcx> {
     pub kind: ExprKind<'tcx>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, HashStable)]
 pub enum ExprKind<'tcx> {
     Scope {
         region_scope: region::Scope,
@@ -363,19 +367,19 @@ pub enum ExprKind<'tcx> {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, HashStable)]
 pub struct FieldExpr {
     pub name: Field,
     pub expr: ExprId,
 }
 
-#[derive(Debug)]
+#[derive(Debug, HashStable)]
 pub struct FruInfo<'tcx> {
     pub base: ExprId,
     pub field_types: Box<[Ty<'tcx>]>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, HashStable)]
 pub struct Arm<'tcx> {
     pub pattern: Pat<'tcx>,
     pub guard: Option<Guard<'tcx>>,
@@ -385,19 +389,19 @@ pub struct Arm<'tcx> {
     pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, HashStable)]
 pub enum Guard<'tcx> {
     If(ExprId),
     IfLet(Pat<'tcx>, ExprId),
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, HashStable)]
 pub enum LogicalOp {
     And,
     Or,
 }
 
-#[derive(Debug)]
+#[derive(Debug, HashStable)]
 pub enum InlineAsmOperand<'tcx> {
     In {
         reg: InlineAsmRegOrRegClass,
@@ -431,19 +435,19 @@ pub enum InlineAsmOperand<'tcx> {
     },
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, HashStable)]
 pub enum BindingMode {
     ByValue,
     ByRef(BorrowKind),
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, HashStable)]
 pub struct FieldPat<'tcx> {
     pub field: Field,
     pub pattern: Pat<'tcx>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, HashStable)]
 pub struct Pat<'tcx> {
     pub ty: Ty<'tcx>,
     pub span: Span,
@@ -456,7 +460,7 @@ impl<'tcx> Pat<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, HashStable)]
 pub struct PatTyProj<'tcx> {
     pub user_ty: CanonicalUserType<'tcx>,
 }
@@ -483,7 +487,7 @@ impl<'tcx> PatTyProj<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, HashStable)]
 pub struct Ascription<'tcx> {
     pub user_ty: PatTyProj<'tcx>,
     /// Variance to use when relating the type `user_ty` to the **type of the value being
@@ -508,7 +512,7 @@ pub struct Ascription<'tcx> {
     pub user_ty_span: Span,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, HashStable)]
 pub enum PatKind<'tcx> {
     Wild,
 
@@ -586,7 +590,7 @@ pub enum PatKind<'tcx> {
     },
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, HashStable)]
 pub struct PatRange<'tcx> {
     pub lo: &'tcx ty::Const<'tcx>,
     pub hi: &'tcx ty::Const<'tcx>,

@@ -292,8 +292,8 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_arena::TypedArena;
 use rustc_hir::def_id::DefId;
 use rustc_hir::HirId;
-use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::thir::{Pat, PatKind};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 
 use smallvec::{smallvec, SmallVec};

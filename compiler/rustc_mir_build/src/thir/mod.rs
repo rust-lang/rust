@@ -7,7 +7,6 @@
 crate mod constant;
 
 crate mod cx;
-pub use cx::build_thir;
 
 crate mod pattern;
 

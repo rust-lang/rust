@@ -1,7 +1,6 @@
 use crate::build;
 use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::scope::DropKind;
-use crate::thir::build_thir;
 use crate::thir::pattern::pat_from_hir;
 use rustc_attr::{self as attr, UnwindAttr};
 use rustc_errors::ErrorReported;
@@ -106,7 +105,8 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
             };
 
             let body = tcx.hir().body(body_id);
-            let (thir, expr) = build_thir(tcx, def, &body.value);
+            let (thir, expr) = tcx.thir_body(def);
+            let thir = thir.steal();
             let ty = tcx.type_of(fn_def_id);
             let mut abi = fn_sig.abi;
             let implicit_argument = match ty.kind() {
@@ -214,8 +214,8 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
 
             let return_ty = typeck_results.node_type(id);
 
-            let ast_expr = &tcx.hir().body(body_id).value;
-            let (thir, expr) = build_thir(tcx, def, ast_expr);
+            let (thir, expr) = tcx.thir_body(def);
+            let thir = thir.steal();
 
             build::construct_const(&thir, &infcx, expr, def, id, return_ty, return_ty_span)
         };

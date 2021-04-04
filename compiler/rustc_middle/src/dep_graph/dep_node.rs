@@ -285,7 +285,7 @@ pub type DepNode = rustc_query_system::dep_graph::DepNode<DepKind>;
 // required that their size stay the same, but we don't want to change
 // it inadvertently. This assert just ensures we're aware of any change.
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-static_assert_size!(DepNode, 17);
+static_assert_size!(DepNode, 18);
 
 #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
 static_assert_size!(DepNode, 24);

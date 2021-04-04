@@ -2,10 +2,11 @@
 //! structures into the THIR. The `builder` is generally ignorant of the tcx,
 //! etc., and instead goes through the `Cx` for most of its work.
 
-use crate::thir::util::UserAnnotatedTyHelpers;
 use crate::thir::pattern::pat_from_hir;
+use crate::thir::util::UserAnnotatedTyHelpers;
 
 use rustc_ast as ast;
+use rustc_data_structures::steal::Steal;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::Node;
@@ -15,14 +16,15 @@ use rustc_middle::thir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 
-pub fn build_thir<'tcx>(
+crate fn thir_body<'tcx>(
     tcx: TyCtxt<'tcx>,
     owner_def: ty::WithOptConstParam<LocalDefId>,
-    expr: &'tcx hir::Expr<'tcx>,
-) -> (Thir<'tcx>, ExprId) {
+) -> (&'tcx Steal<Thir<'tcx>>, ExprId) {
+    let hir = tcx.hir();
+    let body = hir.body(hir.body_owned_by(hir.local_def_id_to_hir_id(owner_def.did)));
     let mut cx = Cx::new(tcx, owner_def);
-    let expr = cx.mirror_expr(expr);
-    (cx.thir, expr)
+    let expr = cx.mirror_expr(&body.value);
+    (tcx.alloc_steal_thir(cx.thir), expr)
 }
 
 struct Cx<'tcx> {
