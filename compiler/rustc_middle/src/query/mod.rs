@@ -1128,7 +1128,6 @@ rustc_queries! {
     }
     query in_scope_traits_map(_: LocalDefId)
         -> Option<&'tcx FxHashMap<ItemLocalId, StableVec<TraitCandidate>>> {
-        eval_always
         desc { "traits in scope at a block" }
     }
 

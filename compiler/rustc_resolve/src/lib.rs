@@ -1138,8 +1138,8 @@ impl ResolverAstLowering for Resolver<'_> {
         self.next_node_id()
     }
 
-    fn trait_map(&self) -> &NodeMap<Vec<TraitCandidate>> {
-        &self.trait_map
+    fn trait_map(&mut self) -> NodeMap<Vec<TraitCandidate>> {
+        std::mem::take(&mut self.trait_map)
     }
 
     fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
