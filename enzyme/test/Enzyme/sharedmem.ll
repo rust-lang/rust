@@ -4,7 +4,7 @@ source_filename = "cudaMM.cu"
 target datalayout = "e-i64:64-i128:128-v16:16-v32:32-n16:32:64"
 target triple = "nvptx64-nvidia-cuda"
 
-@_ZZ19gpu_square_elem_mulPfS_S_mE6tile_a = internal unnamed_addr addrspace(3) global float undef, align 4
+@_ZZ19gpu_square_elem_mulPfS_S_mE6tile_a = internal unnamed_addr addrspace(3) global float undef, align 32
 
 ; Function Attrs: convergent nounwind
 define dso_local void @_Z19gpu_square_elem_mulPfS_S_m(float* nocapture readonly %arg, float* nocapture readonly %arg1, float* nocapture %arg2, i64 %arg3) {
@@ -86,6 +86,8 @@ attributes #4 = { nounwind }
 !14 = !{!"float", !15, i64 0}
 !15 = !{!"omnipotent char", !16, i64 0}
 !16 = !{!"Simple C++ TBAA"}
+
+; CHECK: @_ZZ19gpu_square_elem_mulPfS_S_mE6tile_a_shadow = internal unnamed_addr addrspace(3) global float undef, align 32
 
 ; CHECK: define internal void @diffe_Z19gpu_square_elem_mulPfS_S_m(float* nocapture readonly %arg, float* nocapture %"arg'", float* nocapture readonly %arg1, float* nocapture %"arg1'", float* nocapture %arg2, float* nocapture %"arg2'", i64 %arg3)
 ; CHECK-NEXT: bb:

@@ -2691,7 +2691,16 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
     bool seenshared = false;
     for (auto &g : gutils->newFunc->getParent()->globals()) {
       if (hasMetadata(&g, "enzyme_internalshadowglobal")) {
-        entryBuilder.CreateStore(Constant::getNullValue(g.getValueType()), &g);
+        auto store = entryBuilder.CreateStore(
+            Constant::getNullValue(g.getValueType()), &g);
+#if LLVM_VERSION_MAJOR >= 11
+        if (g.getAlign())
+          store->setAlignment(g.getAlign().getValue());
+#elif LLVM_VERSION_MAJOR >= 10
+        store->setAlignment(Align(g.getAlignment()));
+#else
+        store->setAlignment(g.getAlignment());
+#endif
         if (g.getType()->getAddressSpace() == 3) {
           seenshared = true;
         }

@@ -2017,8 +2017,13 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
                                       {ConstantAsMetadata::get(shadow)}));
         shadow->setMetadata("enzyme_internalshadowglobal",
                             MDTuple::get(shadow->getContext(), {}));
+#if LLVM_VERSION_MAJOR >= 11
+        shadow->setAlignment(arg->getAlign());
+#else
+        shadow->setAlignment(arg->getAlignment());
+#endif
+        shadow->setUnnamedAddr(arg->getUnnamedAddr());
         return invertedPointers[oval] = shadow;
-        //#endif
       }
 
       // Create global variable locally if not externally visible
@@ -2032,6 +2037,12 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
         arg->setMetadata("enzyme_shadow",
                          MDTuple::get(shadow->getContext(),
                                       {ConstantAsMetadata::get(shadow)}));
+#if LLVM_VERSION_MAJOR >= 11
+        shadow->setAlignment(arg->getAlign());
+#else
+        shadow->setAlignment(arg->getAlignment());
+#endif
+        shadow->setUnnamedAddr(arg->getUnnamedAddr());
         return invertedPointers[oval] = shadow;
       }
 
@@ -3115,8 +3126,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
               auto memcpyF = Intrinsic::getDeclaration(newFunc->getParent(),
                                                        Intrinsic::memcpy, tys);
               auto mem = cast<CallInst>(v.CreateCall(memcpyF, nargs));
-              // memset->addParamAttr(0, Attribute::getWithAlignment(Context,
-              // inst->getAlignment()));
+
               mem->addParamAttr(0, Attribute::NonNull);
               mem->addParamAttr(1, Attribute::NonNull);
 
@@ -3148,8 +3158,6 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                     1, Attribute::getWithAlignment(memcpyF->getContext(),
                                                    li->getAlignment()));
 #endif
-
-              // TODO alignment
 
               scopeInstructions[cache].push_back(mem);
             }
