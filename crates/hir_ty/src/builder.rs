@@ -16,7 +16,10 @@ use crate::{
     TyDefId, TyKind, TypeWalk, ValueTyDefId,
 };
 
+/// This is a builder for `Ty` or anything that needs a `Substitution`.
 pub struct TyBuilder<D> {
+    /// The `data` field is used to keep track of what we're building (e.g. an
+    /// ADT, a `TraitRef`, ...).
     data: D,
     vec: SmallVec<[GenericArg; 2]>,
     param_count: usize,
