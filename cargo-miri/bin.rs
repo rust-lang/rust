@@ -83,8 +83,8 @@ fn show_version() {
     println!(
         "miri {} ({} {})",
         env!("CARGO_PKG_VERSION"),
-        env!("VERGEN_SHA_SHORT"),
-        env!("VERGEN_COMMIT_DATE")
+        env!("VERGEN_GIT_SHA_SHORT"),
+        env!("VERGEN_GIT_COMMIT_DATE")
     );
 }
 

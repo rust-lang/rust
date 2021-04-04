@@ -92,7 +92,7 @@ impl<'mir, 'tcx> GlobalState {
                 let slack = {
                     let mut rng = memory.extra.rng.borrow_mut();
                     // This means that `(global_state.next_base_addr + slack) % 16` is uniformly distributed.
-                    rng.gen_range(0, 16)
+                    rng.gen_range(0..16)
                 };
                 // From next_base_addr + slack, round up to adjust for alignment.
                 let base_addr = global_state.next_base_addr.checked_add(slack).unwrap();

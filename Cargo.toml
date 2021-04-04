@@ -19,11 +19,11 @@ doctest = false # and no doc tests
 
 [dependencies]
 getrandom = { version = "0.2", features = ["std"] }
-env_logger = "0.7.1"
+env_logger = "0.8"
 log = "0.4"
 shell-escape = "0.1.4"
 hex = "0.4.0"
-rand = "0.7"
+rand = "0.8"
 smallvec = "1.4.2"
 
 # A noop dependency that changes in the Rust repository, it's a bit of a hack.
@@ -37,8 +37,8 @@ rustc-workspace-hack = "1.0.0"
 libc = "0.2"
 
 [dev-dependencies]
-compiletest_rs = { version = "0.5", features = ["tmp"] }
-rustc_version = "0.2.3"
+compiletest_rs = { version = "0.6", features = ["tmp"] }
+rustc_version = "0.3"
 colored = "2"
 
 [package.metadata.rust-analyzer]
