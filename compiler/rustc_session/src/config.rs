@@ -563,6 +563,7 @@ pub struct OutputFilenames {
     pub out_directory: PathBuf,
     filestem: String,
     pub single_output_file: Option<PathBuf>,
+    pub temps_directory: Option<PathBuf>,
     pub outputs: OutputTypes,
 }
 
@@ -577,12 +578,14 @@ impl OutputFilenames {
         out_directory: PathBuf,
         out_filestem: String,
         single_output_file: Option<PathBuf>,
+        temps_directory: Option<PathBuf>,
         extra: String,
         outputs: OutputTypes,
     ) -> Self {
         OutputFilenames {
             out_directory,
             single_output_file,
+            temps_directory,
             outputs,
             filestem: format!("{}{}", out_filestem, extra),
         }
@@ -628,11 +631,17 @@ impl OutputFilenames {
             extension.push_str(ext);
         }
 
-        self.with_extension(&extension)
+        let temps_directory = self.temps_directory.as_ref().unwrap_or(&self.out_directory);
+
+        self.with_directory_and_extension(&temps_directory, &extension)
     }
 
     pub fn with_extension(&self, extension: &str) -> PathBuf {
-        let mut path = self.out_directory.join(&self.filestem);
+        self.with_directory_and_extension(&self.out_directory, extension)
+    }
+
+    fn with_directory_and_extension(&self, directory: &PathBuf, extension: &str) -> PathBuf {
+        let mut path = directory.join(&self.filestem);
         path.set_extension(extension);
         path
     }
@@ -1071,6 +1080,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
              in <dir>",
             "DIR",
         ),
+        opt::opt_s("", "temps-dir", "Write temporary output files to <dir>", "DIR"),
         opt::opt_s(
             "",
             "explain",
