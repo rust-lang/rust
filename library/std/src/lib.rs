@@ -282,7 +282,6 @@
 #![feature(intra_doc_pointers)]
 #![feature(iter_zip)]
 #![feature(lang_items)]
-#![feature(link_args)]
 #![feature(linkage)]
 #![feature(llvm_asm)]
 #![feature(log_syntax)]

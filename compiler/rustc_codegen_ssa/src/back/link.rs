@@ -1411,15 +1411,10 @@ fn add_link_script(cmd: &mut dyn Linker, sess: &Session, tmpdir: &Path, crate_ty
     }
 }
 
-/// Add arbitrary "user defined" args defined from command line and by `#[link_args]` attributes.
+/// Add arbitrary "user defined" args defined from command line.
 /// FIXME: Determine where exactly these args need to be inserted.
-fn add_user_defined_link_args(
-    cmd: &mut dyn Linker,
-    sess: &Session,
-    codegen_results: &CodegenResults,
-) {
+fn add_user_defined_link_args(cmd: &mut dyn Linker, sess: &Session) {
     cmd.args(&sess.opts.cg.link_args);
-    cmd.args(&*codegen_results.crate_info.link_args);
 }
 
 /// Add arbitrary "late link" args defined by the target spec.
@@ -1761,7 +1756,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     add_rpath_args(cmd, sess, codegen_results, out_filename);
 
     // OBJECT-FILES-MAYBE, CUSTOMIZATION-POINT
-    add_user_defined_link_args(cmd, sess, codegen_results);
+    add_user_defined_link_args(cmd, sess);
 
     // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
     cmd.finalize();
