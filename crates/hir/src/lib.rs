@@ -1822,7 +1822,7 @@ impl Type {
         match db.trait_solve(self.krate, goal)? {
             Solution::Unique(SolutionVariables(subst)) => subst
                 .value
-                .interned(&Interner)
+                .interned()
                 .first()
                 .map(|ty| self.derived(ty.assert_ty_ref(&Interner).clone())),
             Solution::Ambig(_) => None,

@@ -220,8 +220,8 @@ impl ToChalk for GenericArg {
     type Chalk = chalk_ir::GenericArg<Interner>;
 
     fn to_chalk(self, db: &dyn HirDatabase) -> Self::Chalk {
-        match self.interned {
-            crate::GenericArgData::Ty(ty) => ty.to_chalk(db).cast(&Interner),
+        match self.interned() {
+            crate::GenericArgData::Ty(ty) => ty.clone().to_chalk(db).cast(&Interner),
         }
     }
 
@@ -249,7 +249,7 @@ impl ToChalk for Substitution {
         parameters: chalk_ir::Substitution<Interner>,
     ) -> Substitution {
         let tys = parameters.iter(&Interner).map(|p| from_chalk(db, p.clone())).collect();
-        Substitution(tys)
+        Substitution::intern(tys)
     }
 }
 
@@ -546,7 +546,7 @@ pub(super) fn generic_predicate_to_inline_bound(
                 // have the expected self type
                 return None;
             }
-            let args_no_self = trait_ref.substitution.interned(&Interner)[1..]
+            let args_no_self = trait_ref.substitution.interned()[1..]
                 .iter()
                 .map(|ty| ty.clone().to_chalk(db).cast(&Interner))
                 .collect();
@@ -558,7 +558,7 @@ pub(super) fn generic_predicate_to_inline_bound(
                 return None;
             }
             let trait_ = projection_ty.trait_(db);
-            let args_no_self = projection_ty.substitution.interned(&Interner)[1..]
+            let args_no_self = projection_ty.substitution.interned()[1..]
                 .iter()
                 .map(|ty| ty.clone().to_chalk(db).cast(&Interner))
                 .collect();

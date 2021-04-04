@@ -33,7 +33,7 @@ impl<D> TyBuilder<D> {
     fn build_internal(self) -> (D, Substitution) {
         assert_eq!(self.vec.len(), self.param_count);
         // FIXME: would be good to have a way to construct a chalk_ir::Substitution from the interned form
-        let subst = Substitution(self.vec);
+        let subst = Substitution::intern(self.vec);
         (self.data, subst)
     }
 
@@ -138,7 +138,7 @@ impl TyBuilder<hir_def::AdtId> {
                 self.vec.push(fallback().cast(&Interner));
             } else {
                 // each default can depend on the previous parameters
-                let subst_so_far = Substitution(self.vec.clone());
+                let subst_so_far = Substitution::intern(self.vec.clone());
                 self.vec.push(default_ty.clone().subst(&subst_so_far).cast(&Interner));
             }
         }

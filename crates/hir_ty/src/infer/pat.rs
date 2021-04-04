@@ -123,7 +123,7 @@ impl<'a> InferenceContext<'a> {
         let ty = match &body[pat] {
             &Pat::Tuple { ref args, ellipsis } => {
                 let expectations = match expected.as_tuple() {
-                    Some(parameters) => &*parameters.0,
+                    Some(parameters) => &*parameters.interned(),
                     _ => &[],
                 };
 
@@ -239,7 +239,7 @@ impl<'a> InferenceContext<'a> {
                     let (inner_ty, alloc_ty) = match expected.as_adt() {
                         Some((adt, subst)) if adt == box_adt => (
                             subst.at(&Interner, 0).assert_ty_ref(&Interner).clone(),
-                            subst.interned(&Interner).get(1).and_then(|a| a.ty(&Interner).cloned()),
+                            subst.interned().get(1).and_then(|a| a.ty(&Interner).cloned()),
                         ),
                         _ => (self.result.standard_types.unknown.clone(), None),
                     };
