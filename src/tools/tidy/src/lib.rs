@@ -53,6 +53,7 @@ pub mod unstable_book;
 
 fn filter_dirs(path: &Path) -> bool {
     let skip = [
+        "tidy-test-file",
         "compiler/rustc_codegen_cranelift",
         "src/llvm-project",
         "library/backtrace",
