@@ -736,7 +736,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 cycle.map(|stack| stack.obligation.predicate.without_const().to_predicate(tcx));
             if self.coinductive_match(cycle) {
                 debug!("evaluate_stack --> recursive, coinductive");
-                Some(EvaluatedToOk)
+                Some(EvaluatedToOkModuloRegions)
             } else {
                 debug!("evaluate_stack --> recursive, inductive");
                 Some(EvaluatedToRecur)
