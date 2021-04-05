@@ -31,7 +31,6 @@ mod test_db;
 use std::sync::Arc;
 
 use itertools::Itertools;
-use smallvec::SmallVec;
 
 use base_db::salsa;
 use hir_def::{
@@ -77,14 +76,6 @@ pub type ChalkTraitId = chalk_ir::TraitId<Interner>;
 pub type FnSig = chalk_ir::FnSig<Interner>;
 
 impl Substitution {
-    pub fn single(ty: Ty) -> Substitution {
-        Substitution::intern({
-            let mut v = SmallVec::new();
-            v.push(ty.cast(&Interner));
-            v
-        })
-    }
-
     pub fn prefix(&self, n: usize) -> Substitution {
         Substitution::intern(self.interned()[..std::cmp::min(self.len(&Interner), n)].into())
     }

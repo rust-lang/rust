@@ -4,7 +4,7 @@
 use std::sync::Arc;
 
 use chalk_ir::{
-    cast::{CastTo, Caster},
+    cast::{Cast, CastTo, Caster},
     BoundVar, Mutability, Scalar, TyVariableKind,
 };
 use smallvec::SmallVec;
@@ -276,6 +276,14 @@ impl Substitution {
 
     pub fn iter(&self, _: &Interner) -> std::slice::Iter<'_, GenericArg> {
         self.0.iter()
+    }
+
+    pub fn from1(_interner: &Interner, ty: Ty) -> Substitution {
+        Substitution::intern({
+            let mut v = SmallVec::new();
+            v.push(ty.cast(&Interner));
+            v
+        })
     }
 
     pub fn from_iter(
