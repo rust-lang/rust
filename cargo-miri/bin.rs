@@ -38,7 +38,7 @@ enum MiriCommand {
 }
 
 /// The information to run a crate with the given environment.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize)]
 struct CrateRunEnv {
     /// The command-line arguments.
     args: Vec<String>,
@@ -52,13 +52,13 @@ struct CrateRunEnv {
 
 impl CrateRunEnv {
     /// Gather all the information we need.
-    fn collect(args: env::Args) -> Self {
+    fn collect(args: env::Args, capture_stdin: bool) -> Self {
         let args = args.collect();
         let env = env::vars_os().collect();
         let current_dir = env::current_dir().unwrap().into_os_string();
 
         let mut stdin = Vec::new();
-        if env::var_os("MIRI_CALLED_FROM_RUSTDOC").is_some() {
+        if capture_stdin {
             std::io::stdin().lock().read_to_end(&mut stdin).expect("cannot read stdin");
         }
 
@@ -669,17 +669,18 @@ fn phase_cargo_rustc(mut args: env::Args) {
     let runnable_crate = !print && is_runnable_crate();
 
     if runnable_crate && target_crate {
+        let inside_rustdoc = env::var_os("MIRI_CALLED_FROM_RUSTDOC").is_some();
         // This is the binary or test crate that we want to interpret under Miri.
         // But we cannot run it here, as cargo invoked us as a compiler -- our stdin and stdout are not
         // like we want them.
         // Instead of compiling, we write JSON into the output file with all the relevant command-line flags
         // and environment variables; this is used when cargo calls us again in the CARGO_TARGET_RUNNER phase.
-        let env = CrateRunEnv::collect(args);
+        let env = CrateRunEnv::collect(args, inside_rustdoc);
 
         // Rustdoc expects us to exit with an error code if the test is marked as `compile_fail`,
         // just creating the JSON file is not enough: we need to detect syntax errors,
         // so we need to run Miri with `MIRI_BE_RUSTC` for a check-only build.
-        if std::env::var_os("MIRI_CALLED_FROM_RUSTDOC").is_some() {
+        if inside_rustdoc {
             let mut cmd = miri();
 
             // Ensure --emit argument for a check-only build is present.

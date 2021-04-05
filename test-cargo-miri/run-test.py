@@ -143,6 +143,7 @@ def test_cargo_miri_test():
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 os.environ["RUST_TEST_NOCAPTURE"] = "0" # this affects test output, so make sure it is not set
+os.environ["RUST_TEST_THREADS"] = "1" # avoid non-deterministic output due to concurrent test runs
 
 target_str = " for target {}".format(os.environ['MIRI_TEST_TARGET']) if 'MIRI_TEST_TARGET' in os.environ else ""
 print(CGREEN + CBOLD + "## Running `cargo miri` tests{}".format(target_str) + CEND)
