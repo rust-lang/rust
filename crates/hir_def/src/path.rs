@@ -122,7 +122,7 @@ impl ModPath {
 pub struct Path {
     /// Type based path like `<T>::foo`.
     /// Note that paths like `<Type as Trait>::foo` are desugard to `Trait::<Self=Type>::foo`.
-    type_anchor: Option<Box<TypeRef>>,
+    type_anchor: Option<Interned<TypeRef>>,
     mod_path: Interned<ModPath>,
     /// Invariant: the same len as `self.mod_path.segments`
     generic_args: Vec<Option<Arc<GenericArgs>>>,

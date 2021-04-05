@@ -32,11 +32,10 @@ fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> Vec<TraitId> {
         .filter_map(|pred| match pred {
             WherePredicate::ForLifetime { target, bound, .. }
             | WherePredicate::TypeBound { target, bound } => match target {
-                WherePredicateTypeTarget::TypeRef(TypeRef::Path(p))
-                    if p == &Path::from(name![Self]) =>
-                {
-                    bound.as_path()
-                }
+                WherePredicateTypeTarget::TypeRef(type_ref) => match &**type_ref {
+                    TypeRef::Path(p) if p == &Path::from(name![Self]) => bound.as_path(),
+                    _ => None,
+                },
                 WherePredicateTypeTarget::TypeParam(local_id) if Some(*local_id) == trait_self => {
                     bound.as_path()
                 }

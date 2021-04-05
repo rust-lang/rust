@@ -18,6 +18,7 @@ use crate::{
     child_by_source::ChildBySource,
     db::DefDatabase,
     dyn_map::DynMap,
+    intern::Interned,
     keys,
     src::{HasChildSource, HasSource},
     type_ref::{LifetimeRef, TypeBound, TypeRef},
@@ -29,7 +30,7 @@ use crate::{
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct TypeParamData {
     pub name: Option<Name>,
-    pub default: Option<TypeRef>,
+    pub default: Option<Interned<TypeRef>>,
     pub provenance: TypeParamProvenance,
 }
 
@@ -43,7 +44,7 @@ pub struct LifetimeParamData {
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ConstParamData {
     pub name: Name,
-    pub ty: TypeRef,
+    pub ty: Interned<TypeRef>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -75,7 +76,7 @@ pub enum WherePredicate {
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum WherePredicateTypeTarget {
-    TypeRef(TypeRef),
+    TypeRef(Interned<TypeRef>),
     /// For desugared where predicates that can directly refer to a type param.
     TypeParam(LocalTypeParamId),
 }
@@ -256,7 +257,8 @@ impl GenericParams {
         for type_param in params.type_params() {
             let name = type_param.name().map_or_else(Name::missing, |it| it.as_name());
             // FIXME: Use `Path::from_src`
-            let default = type_param.default_type().map(|it| TypeRef::from_ast(lower_ctx, it));
+            let default =
+                type_param.default_type().map(|it| Interned::new(TypeRef::from_ast(lower_ctx, it)));
             let param = TypeParamData {
                 name: Some(name.clone()),
                 default,
@@ -280,7 +282,7 @@ impl GenericParams {
         for const_param in params.const_params() {
             let name = const_param.name().map_or_else(Name::missing, |it| it.as_name());
             let ty = const_param.ty().map_or(TypeRef::Error, |it| TypeRef::from_ast(lower_ctx, it));
-            let param = ConstParamData { name, ty };
+            let param = ConstParamData { name, ty: Interned::new(ty) };
             let param_id = self.consts.alloc(param);
             sm.const_params.insert(param_id, const_param.clone());
         }
@@ -334,11 +336,11 @@ impl GenericParams {
             (Either::Left(type_ref), bound) => match hrtb_lifetimes {
                 Some(hrtb_lifetimes) => WherePredicate::ForLifetime {
                     lifetimes: hrtb_lifetimes.clone(),
-                    target: WherePredicateTypeTarget::TypeRef(type_ref),
+                    target: WherePredicateTypeTarget::TypeRef(Interned::new(type_ref)),
                     bound,
                 },
                 None => WherePredicate::TypeBound {
-                    target: WherePredicateTypeTarget::TypeRef(type_ref),
+                    target: WherePredicateTypeTarget::TypeRef(Interned::new(type_ref)),
                     bound,
                 },
             },
