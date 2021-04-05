@@ -981,7 +981,8 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn le(&self, other: &Rhs) -> bool {
-        matches!(self.partial_cmp(other), Some(Less | Equal))
+        // Pattern `Some(Less | Eq)` optimizes worse than negating `None | Some(Greater)`.
+        !matches!(self.partial_cmp(other), None | Some(Greater))
     }
 
     /// This method tests greater than (for `self` and `other`) and is used by the `>` operator.
