@@ -384,7 +384,9 @@ impl<'a> TyLoweringContext<'a> {
                             1,
                             QuantifiedWhereClauses::from_iter(
                                 &Interner,
-                                Some(Binders::wrap_empty(WhereClause::Implemented(trait_ref))),
+                                Some(crate::wrap_empty_binders(WhereClause::Implemented(
+                                    trait_ref,
+                                ))),
                             ),
                         ),
                     };
@@ -720,7 +722,7 @@ impl<'a> TyLoweringContext<'a> {
         let trait_ref = match bound {
             TypeBound::Path(path) => {
                 bindings = self.lower_trait_ref_from_path(path, Some(self_ty));
-                bindings.clone().map(WhereClause::Implemented).map(|b| Binders::wrap_empty(b))
+                bindings.clone().map(WhereClause::Implemented).map(|b| crate::wrap_empty_binders(b))
             }
             TypeBound::Lifetime(_) => None,
             TypeBound::Error => None,
@@ -767,7 +769,7 @@ impl<'a> TyLoweringContext<'a> {
                     let ty = self.lower_ty(type_ref);
                     let alias_eq =
                         AliasEq { alias: AliasTy::Projection(projection_ty.clone()), ty };
-                    preds.push(Binders::wrap_empty(WhereClause::AliasEq(alias_eq)));
+                    preds.push(crate::wrap_empty_binders(WhereClause::AliasEq(alias_eq)));
                 }
                 for bound in &binding.bounds {
                     preds.extend(self.lower_type_bound(

@@ -246,8 +246,8 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                     let bound = OpaqueTyDatumBound {
                         bounds: make_binders(
                             vec![
-                                wrap_in_empty_binders(impl_bound).to_chalk(self.db),
-                                wrap_in_empty_binders(proj_bound).to_chalk(self.db),
+                                crate::wrap_empty_binders(impl_bound).to_chalk(self.db),
+                                crate::wrap_empty_binders(proj_bound).to_chalk(self.db),
                             ],
                             1,
                         ),
@@ -722,8 +722,4 @@ impl From<crate::db::InternedClosureId> for chalk_ir::ClosureId<Interner> {
     fn from(id: crate::db::InternedClosureId) -> Self {
         chalk_ir::ClosureId(id.as_intern_id())
     }
-}
-
-fn wrap_in_empty_binders<T: crate::TypeWalk>(value: T) -> crate::Binders<T> {
-    crate::Binders::wrap_empty(value)
 }

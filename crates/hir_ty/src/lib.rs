@@ -92,13 +92,11 @@ pub fn param_idx(db: &dyn HirDatabase, id: TypeParamId) -> Option<usize> {
     generics(db.upcast(), id.parent).param_idx(id)
 }
 
-impl<T> Binders<T> {
-    pub fn wrap_empty(value: T) -> Self
-    where
-        T: TypeWalk,
-    {
-        Binders::empty(&Interner, value.shifted_in_from(DebruijnIndex::ONE))
-    }
+pub fn wrap_empty_binders<T>(value: T) -> Binders<T>
+where
+    T: TypeWalk,
+{
+    Binders::empty(&Interner, value.shifted_in_from(DebruijnIndex::ONE))
 }
 
 impl<T: TypeWalk> Binders<T> {
