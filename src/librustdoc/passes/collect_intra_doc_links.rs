@@ -984,7 +984,7 @@ impl LinkCollector<'_, '_> {
                     // See issue #83859.
                     let disambiguator_range = (no_backticks_range.start + relative_range.start)
                         ..(no_backticks_range.start + relative_range.end);
-                    disambiguator_error(self.cx, &item, dox, disambiguator_range, &err_msg);
+                    disambiguator_error(self.cx, diag_info, disambiguator_range, &err_msg);
                 }
                 return None;
             }
@@ -1973,8 +1973,7 @@ fn anchor_failure(
 /// Report an error in the link disambiguator.
 fn disambiguator_error(
     cx: &DocContext<'_>,
-    item: &Item,
-    dox: &str,
+    DiagnosticInfo { item, ori_link: _, dox, link_range: _ }: DiagnosticInfo<'_>,
     disambiguator_range: Range<usize>,
     msg: &str,
 ) {
