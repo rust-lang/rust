@@ -568,10 +568,11 @@ fn thin_lto(
 
 pub(crate) fn run_pass_manager(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
+    diag_handler: &Handler,
     module: &ModuleCodegen<ModuleLlvm>,
     config: &ModuleConfig,
     thin: bool,
-) {
+) -> Result<(), FatalError> {
     let _timer = cgcx.prof.extra_verbose_generic_activity("LLVM_lto_optimize", &module.name[..]);
 
     // Now we have one massive module inside of llmod. Time to run the
@@ -584,9 +585,16 @@ pub(crate) fn run_pass_manager(
         if write::should_use_new_llvm_pass_manager(config) {
             let opt_stage = if thin { llvm::OptStage::ThinLTO } else { llvm::OptStage::FatLTO };
             let opt_level = config.opt_level.unwrap_or(config::OptLevel::No);
-            write::optimize_with_new_llvm_pass_manager(cgcx, module, config, opt_level, opt_stage);
+            write::optimize_with_new_llvm_pass_manager(
+                cgcx,
+                diag_handler,
+                module,
+                config,
+                opt_level,
+                opt_stage,
+            )?;
             debug!("lto done");
-            return;
+            return Ok(());
         }
 
         let pm = llvm::LLVMCreatePassManager();
@@ -628,6 +636,7 @@ pub(crate) fn run_pass_manager(
         llvm::LLVMDisposePassManager(pm);
     }
     debug!("lto done");
+    Ok(())
 }
 
 pub struct ModuleBuffer(&'static mut llvm::ModuleBuffer);
@@ -850,7 +859,7 @@ pub unsafe fn optimize_thin_module(
         {
             info!("running thin lto passes over {}", module.name);
             let config = cgcx.config(module.kind);
-            run_pass_manager(cgcx, &module, config, true);
+            run_pass_manager(cgcx, &diag_handler, &module, config, true)?;
             save_temp_bitcode(cgcx, &module, "thin-lto-after-pm");
         }
     }

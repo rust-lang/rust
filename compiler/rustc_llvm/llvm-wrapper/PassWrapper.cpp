@@ -736,7 +736,7 @@ struct LLVMRustSanitizerOptions {
   bool SanitizeHWAddressRecover;
 };
 
-extern "C" void
+extern "C" LLVMRustResult
 LLVMRustOptimizeWithNewPassManager(
     LLVMModuleRef ModuleRef,
     LLVMTargetMachineRef TMRef,
@@ -750,7 +750,8 @@ LLVMRustOptimizeWithNewPassManager(
     bool InstrumentCoverage, bool InstrumentGCOV,
     void* LlvmSelfProfiler,
     LLVMRustSelfProfileBeforePassCallback BeforePassCallback,
-    LLVMRustSelfProfileAfterPassCallback AfterPassCallback) {
+    LLVMRustSelfProfileAfterPassCallback AfterPassCallback,
+    const char *ExtraPasses, size_t ExtraPassesLen) {
   Module *TheModule = unwrap(ModuleRef);
   TargetMachine *TM = unwrap(TMRef);
   PassBuilder::OptimizationLevel OptLevel = fromRust(OptLevelRust);
@@ -1062,6 +1063,14 @@ LLVMRustOptimizeWithNewPassManager(
     }
   }
 
+  if (ExtraPassesLen) {
+    if (auto Err = PB.parsePassPipeline(MPM, StringRef(ExtraPasses, ExtraPassesLen))) {
+      std::string ErrMsg = toString(std::move(Err));
+      LLVMRustSetLastError(ErrMsg.c_str());
+      return LLVMRustResult::Failure;
+    }
+  }
+
   if (NeedThinLTOBufferPasses) {
     MPM.addPass(CanonicalizeAliasesPass());
     MPM.addPass(NameAnonGlobalPass());
@@ -1072,6 +1081,7 @@ LLVMRustOptimizeWithNewPassManager(
     UpgradeCallsToIntrinsic(&*I++); // must be post-increment, as we remove
 
   MPM.run(*TheModule, MAM);
+  return LLVMRustResult::Success;
 }
 
 // Callback to demangle function name
