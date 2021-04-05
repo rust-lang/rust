@@ -473,6 +473,7 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
         pgo_gen_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
         pgo_use_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
         config.instrument_coverage,
+        config.instrument_gcov,
         llvm_selfprofiler,
         selfprofile_before_pass_callback,
         selfprofile_after_pass_callback,
@@ -546,15 +547,6 @@ pub(crate) unsafe fn optimize(
                     llvm::LLVMRustAddPass(fpm, find_pass("lint").unwrap());
                     continue;
                 }
-                if pass_name == "insert-gcov-profiling" {
-                    // Instrumentation must be inserted before optimization,
-                    // otherwise LLVM may optimize some functions away which
-                    // breaks llvm-cov.
-                    //
-                    // This mirrors what Clang does in lib/CodeGen/BackendUtil.cpp.
-                    llvm::LLVMRustAddPass(mpm, find_pass(pass_name).unwrap());
-                    continue;
-                }
 
                 if let Some(pass) = find_pass(pass_name) {
                     extra_passes.push(pass);
@@ -567,6 +559,14 @@ pub(crate) unsafe fn optimize(
                 }
             }
 
+            // Instrumentation must be inserted before optimization,
+            // otherwise LLVM may optimize some functions away which
+            // breaks llvm-cov.
+            //
+            // This mirrors what Clang does in lib/CodeGen/BackendUtil.cpp.
+            if config.instrument_gcov {
+                llvm::LLVMRustAddPass(mpm, find_pass("insert-gcov-profiling").unwrap());
+            }
             if config.instrument_coverage {
                 llvm::LLVMRustAddPass(mpm, find_pass("instrprof").unwrap());
             }

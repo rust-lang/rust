@@ -32,6 +32,7 @@
 #include "llvm/Transforms/Instrumentation.h"
 #include "llvm/Transforms/Instrumentation/AddressSanitizer.h"
 #include "llvm/Support/TimeProfiler.h"
+#include "llvm/Transforms/Instrumentation/GCOVProfiler.h"
 #include "llvm/Transforms/Instrumentation/InstrProfiling.h"
 #include "llvm/Transforms/Instrumentation/ThreadSanitizer.h"
 #include "llvm/Transforms/Instrumentation/MemorySanitizer.h"
@@ -745,7 +746,8 @@ LLVMRustOptimizeWithNewPassManager(
     bool MergeFunctions, bool UnrollLoops, bool SLPVectorize, bool LoopVectorize,
     bool DisableSimplifyLibCalls, bool EmitLifetimeMarkers,
     LLVMRustSanitizerOptions *SanitizerOptions,
-    const char *PGOGenPath, const char *PGOUsePath, bool InstrumentCoverage,
+    const char *PGOGenPath, const char *PGOUsePath,
+    bool InstrumentCoverage, bool InstrumentGCOV,
     void* LlvmSelfProfiler,
     LLVMRustSelfProfileBeforePassCallback BeforePassCallback,
     LLVMRustSelfProfileAfterPassCallback AfterPassCallback) {
@@ -831,6 +833,14 @@ LLVMRustOptimizeWithNewPassManager(
     PipelineStartEPCallbacks.push_back(
       [VerifyIR](ModulePassManager &MPM, PassBuilder::OptimizationLevel Level) {
         MPM.addPass(VerifierPass());
+      }
+    );
+  }
+
+  if (InstrumentGCOV) {
+    PipelineStartEPCallbacks.push_back(
+      [](ModulePassManager &MPM, PassBuilder::OptimizationLevel Level) {
+        MPM.addPass(GCOVProfilerPass(GCOVOptions::getDefault()));
       }
     );
   }

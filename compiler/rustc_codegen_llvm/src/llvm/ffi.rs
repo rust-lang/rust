@@ -2204,6 +2204,7 @@ extern "C" {
         PGOGenPath: *const c_char,
         PGOUsePath: *const c_char,
         InstrumentCoverage: bool,
+        InstrumentGCOV: bool,
         llvm_selfprofiler: *mut c_void,
         begin_callback: SelfProfileBeforePassCallback,
         end_callback: SelfProfileAfterPassCallback,

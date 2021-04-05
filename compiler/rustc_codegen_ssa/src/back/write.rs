@@ -85,6 +85,7 @@ pub struct ModuleConfig {
     pub pgo_gen: SwitchWithOptPath,
     pub pgo_use: Option<PathBuf>,
     pub instrument_coverage: bool,
+    pub instrument_gcov: bool,
 
     pub sanitizer: SanitizerSet,
     pub sanitizer_recover: SanitizerSet,
@@ -166,19 +167,7 @@ impl ModuleConfig {
         };
 
         ModuleConfig {
-            passes: if_regular!(
-                {
-                    let mut passes = sess.opts.cg.passes.clone();
-                    // compiler_builtins overrides the codegen-units settings,
-                    // which is incompatible with -Zprofile which requires that
-                    // only a single codegen unit is used per crate.
-                    if sess.opts.debugging_opts.profile && !is_compiler_builtins {
-                        passes.push("insert-gcov-profiling".to_owned());
-                    }
-                    passes
-                },
-                vec![]
-            ),
+            passes: if_regular!(sess.opts.cg.passes.clone(), vec![]),
 
             opt_level: opt_level_and_size,
             opt_size: opt_level_and_size,
@@ -189,6 +178,13 @@ impl ModuleConfig {
             ),
             pgo_use: if_regular!(sess.opts.cg.profile_use.clone(), None),
             instrument_coverage: if_regular!(sess.instrument_coverage(), false),
+            instrument_gcov: if_regular!(
+                // compiler_builtins overrides the codegen-units settings,
+                // which is incompatible with -Zprofile which requires that
+                // only a single codegen unit is used per crate.
+                sess.opts.debugging_opts.profile && !is_compiler_builtins,
+                false
+            ),
 
             sanitizer: if_regular!(sess.opts.debugging_opts.sanitizer, SanitizerSet::empty()),
             sanitizer_recover: if_regular!(
