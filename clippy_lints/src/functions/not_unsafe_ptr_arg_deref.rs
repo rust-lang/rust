@@ -1,5 +1,4 @@
-use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::{self as hir, intravisit};
+use rustc_hir::{self as hir, intravisit, HirIdSet};
 use rustc_lint::LateContext;
 use rustc_middle::{hir::map::Map, ty};
 
@@ -44,7 +43,7 @@ fn check_raw_ptr(
         let raw_ptrs = iter_input_pats(decl, body)
             .zip(decl.inputs.iter())
             .filter_map(|(arg, ty)| raw_ptr_arg(arg, ty))
-            .collect::<FxHashSet<_>>();
+            .collect::<HirIdSet>();
 
         if !raw_ptrs.is_empty() {
             let typeck_results = cx.tcx.typeck_body(body.id());
@@ -69,7 +68,7 @@ fn raw_ptr_arg(arg: &hir::Param<'_>, ty: &hir::Ty<'_>) -> Option<hir::HirId> {
 
 struct DerefVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
-    ptrs: FxHashSet<hir::HirId>,
+    ptrs: HirIdSet,
     typeck_results: &'a ty::TypeckResults<'tcx>,
 }
 

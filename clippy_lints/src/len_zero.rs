@@ -3,8 +3,8 @@ use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{get_item_name, get_parent_as_impl, is_allowed};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
-use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
+use rustc_hir::def_id::DefIdSet;
 use rustc_hir::{
     def_id::DefId, AssocItemKind, BinOpKind, Expr, ExprKind, FnRetTy, ImplItem, ImplItemKind, ImplicitSelfKind, Item,
     ItemKind, Mutability, Node, TraitItemRef, TyKind,
@@ -199,7 +199,7 @@ fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, trait_items
     }
 
     // fill the set with current and super traits
-    fn fill_trait_set(traitt: DefId, set: &mut FxHashSet<DefId>, cx: &LateContext<'_>) {
+    fn fill_trait_set(traitt: DefId, set: &mut DefIdSet, cx: &LateContext<'_>) {
         if set.insert(traitt) {
             for supertrait in rustc_trait_selection::traits::supertrait_def_ids(cx.tcx, traitt) {
                 fill_trait_set(supertrait, set, cx);
@@ -208,7 +208,7 @@ fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, trait_items
     }
 
     if cx.access_levels.is_exported(visited_trait.hir_id()) && trait_items.iter().any(|i| is_named_self(cx, i, "len")) {
-        let mut current_and_super_traits = FxHashSet::default();
+        let mut current_and_super_traits = DefIdSet::default();
         fill_trait_set(visited_trait.def_id.to_def_id(), &mut current_and_super_traits, cx);
 
         let is_empty_method_found = current_and_super_traits

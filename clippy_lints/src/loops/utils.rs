@@ -1,9 +1,9 @@
 use clippy_utils::ty::{has_iter_method, implements_trait};
 use clippy_utils::{get_parent_expr, is_integer_const, path_to_local, path_to_local_id, sugg};
 use if_chain::if_chain;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
+use rustc_hir::HirIdMap;
 use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, HirId, Mutability, Pat, PatKind, Stmt, StmtKind};
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
@@ -20,9 +20,9 @@ enum IncrementVisitorVarState {
 
 /// Scan a for loop for variables that are incremented exactly once and not used after that.
 pub(super) struct IncrementVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'tcx>,                          // context reference
-    states: FxHashMap<HirId, IncrementVisitorVarState>, // incremented variables
-    depth: u32,                                         // depth of conditional expressions
+    cx: &'a LateContext<'tcx>,                  // context reference
+    states: HirIdMap<IncrementVisitorVarState>, // incremented variables
+    depth: u32,                                 // depth of conditional expressions
     done: bool,
 }
 
@@ -30,7 +30,7 @@ impl<'a, 'tcx> IncrementVisitor<'a, 'tcx> {
     pub(super) fn new(cx: &'a LateContext<'tcx>) -> Self {
         Self {
             cx,
-            states: FxHashMap::default(),
+            states: HirIdMap::default(),
             depth: 0,
             done: false,
         }

@@ -2,9 +2,9 @@ use crate::consts::{constant_context, constant_simple};
 use crate::differing_macro_contexts;
 use crate::source::snippet_opt;
 use rustc_ast::ast::InlineAsmTemplatePiece;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def::Res;
+use rustc_hir::HirIdMap;
 use rustc_hir::{
     BinOpKind, Block, BlockCheckMode, BodyId, BorrowKind, CaptureBy, Expr, ExprField, ExprKind, FnRetTy, GenericArg,
     GenericArgs, Guard, HirId, InlineAsmOperand, Lifetime, LifetimeName, ParamName, Pat, PatField, PatKind, Path,
@@ -61,7 +61,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
     fn inter_expr(&mut self) -> HirEqInterExpr<'_, 'a, 'tcx> {
         HirEqInterExpr {
             inner: self,
-            locals: FxHashMap::default(),
+            locals: HirIdMap::default(),
         }
     }
 
@@ -88,7 +88,7 @@ struct HirEqInterExpr<'a, 'b, 'tcx> {
     // When binding are declared, the binding ID in the left expression is mapped to the one on the
     // right. For example, when comparing `{ let x = 1; x + 2 }` and `{ let y = 1; y + 2 }`,
     // these blocks are considered equal since `x` is mapped to `y`.
-    locals: FxHashMap<HirId, HirId>,
+    locals: HirIdMap<HirId>,
 }
 
 impl HirEqInterExpr<'_, '_, '_> {

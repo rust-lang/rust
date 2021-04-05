@@ -1,7 +1,7 @@
 use rustc_ast::ast::Attribute;
-use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir::{self as hir, def::Res, def_id::DefId, intravisit, QPath};
+use rustc_hir::def_id::DefIdSet;
+use rustc_hir::{self as hir, def::Res, intravisit, QPath};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::{
     hir::map::Map,
@@ -169,11 +169,11 @@ fn returns_unit(decl: &hir::FnDecl<'_>) -> bool {
 }
 
 fn has_mutable_arg(cx: &LateContext<'_>, body: &hir::Body<'_>) -> bool {
-    let mut tys = FxHashSet::default();
+    let mut tys = DefIdSet::default();
     body.params.iter().any(|param| is_mutable_pat(cx, &param.pat, &mut tys))
 }
 
-fn is_mutable_pat(cx: &LateContext<'_>, pat: &hir::Pat<'_>, tys: &mut FxHashSet<DefId>) -> bool {
+fn is_mutable_pat(cx: &LateContext<'_>, pat: &hir::Pat<'_>, tys: &mut DefIdSet) -> bool {
     if let hir::PatKind::Wild = pat.kind {
         return false; // ignore `_` patterns
     }
@@ -186,7 +186,7 @@ fn is_mutable_pat(cx: &LateContext<'_>, pat: &hir::Pat<'_>, tys: &mut FxHashSet<
 
 static KNOWN_WRAPPER_TYS: &[&[&str]] = &[&["alloc", "rc", "Rc"], &["std", "sync", "Arc"]];
 
-fn is_mutable_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span, tys: &mut FxHashSet<DefId>) -> bool {
+fn is_mutable_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span, tys: &mut DefIdSet) -> bool {
     match *ty.kind() {
         // primitive types are never mutable
         ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => false,
@@ -222,7 +222,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
         }
         match expr.kind {
             Call(_, args) | MethodCall(_, _, args, _) => {
-                let mut tys = FxHashSet::default();
+                let mut tys = DefIdSet::default();
                 for arg in args {
                     if self.cx.tcx.has_typeck_results(arg.hir_id.owner.to_def_id())
                         && is_mutable_ty(
