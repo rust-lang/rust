@@ -7,19 +7,12 @@ use chalk_ir::{
     cast::{CastTo, Caster},
     BoundVar, Mutability, Scalar, TyVariableKind,
 };
-use hir_def::LifetimeParamId;
 use smallvec::SmallVec;
 
 use crate::{
     AssocTypeId, CanonicalVarKinds, ChalkTraitId, ClosureId, FnDefId, FnSig, ForeignDefId,
     InferenceVar, Interner, OpaqueTyId, PlaceholderIndex, TypeWalk, VariableKinds,
 };
-
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub enum Lifetime {
-    Parameter(LifetimeParamId),
-    Static,
-}
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct OpaqueTy {

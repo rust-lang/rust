@@ -5,7 +5,7 @@ use std::sync::Arc;
 use base_db::{impl_intern_key, salsa, CrateId, Upcast};
 use hir_def::{
     db::DefDatabase, expr::ExprId, ConstParamId, DefWithBodyId, FunctionId, GenericDefId, ImplId,
-    LocalFieldId, TypeParamId, VariantId,
+    LifetimeParamId, LocalFieldId, TypeParamId, VariantId,
 };
 use la_arena::ArenaMap;
 
@@ -86,6 +86,8 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::interned]
     fn intern_type_param_id(&self, param_id: TypeParamId) -> InternedTypeParamId;
     #[salsa::interned]
+    fn intern_lifetime_param_id(&self, param_id: LifetimeParamId) -> InternedLifetimeParamId;
+    #[salsa::interned]
     fn intern_impl_trait_id(&self, id: ImplTraitId) -> InternedOpaqueTyId;
     #[salsa::interned]
     fn intern_closure(&self, id: (DefWithBodyId, ExprId)) -> InternedClosureId;
@@ -154,6 +156,10 @@ fn hir_database_is_object_safe() {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct InternedTypeParamId(salsa::InternId);
 impl_intern_key!(InternedTypeParamId);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct InternedLifetimeParamId(salsa::InternId);
+impl_intern_key!(InternedLifetimeParamId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct InternedOpaqueTyId(salsa::InternId);

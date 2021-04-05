@@ -35,8 +35,8 @@ use smallvec::SmallVec;
 
 use base_db::salsa;
 use hir_def::{
-    expr::ExprId, type_ref::Rawness, AssocContainerId, FunctionId, GenericDefId, HasModule, Lookup,
-    TraitId, TypeAliasId, TypeParamId,
+    expr::ExprId, type_ref::Rawness, AssocContainerId, FunctionId, GenericDefId, HasModule,
+    LifetimeParamId, Lookup, TraitId, TypeAliasId, TypeParamId,
 };
 
 use crate::{db::HirDatabase, display::HirDisplay, utils::generics};
@@ -69,6 +69,10 @@ pub type PlaceholderIndex = chalk_ir::PlaceholderIndex;
 pub type VariableKind = chalk_ir::VariableKind<Interner>;
 pub type VariableKinds = chalk_ir::VariableKinds<Interner>;
 pub type CanonicalVarKinds = chalk_ir::CanonicalVarKinds<Interner>;
+
+pub type Lifetime = chalk_ir::Lifetime<Interner>;
+pub type LifetimeData = chalk_ir::LifetimeData<Interner>;
+pub type LifetimeOutlives = chalk_ir::LifetimeOutlives<Interner>;
 
 pub type ChalkTraitId = chalk_ir::TraitId<Interner>;
 
@@ -544,6 +548,12 @@ pub fn to_placeholder_idx(db: &dyn HirDatabase, id: TypeParamId) -> PlaceholderI
         ui: chalk_ir::UniverseIndex::ROOT,
         idx: salsa::InternKey::as_intern_id(&interned_id).as_usize(),
     }
+}
+
+pub fn lt_from_placeholder_idx(db: &dyn HirDatabase, idx: PlaceholderIndex) -> LifetimeParamId {
+    assert_eq!(idx.ui, chalk_ir::UniverseIndex::ROOT);
+    let interned_id = salsa::InternKey::from_intern_id(salsa::InternId::from(idx.idx));
+    db.lookup_intern_lifetime_param_id(interned_id)
 }
 
 pub fn to_chalk_trait_id(id: TraitId) -> ChalkTraitId {
