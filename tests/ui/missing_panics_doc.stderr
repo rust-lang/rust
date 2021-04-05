@@ -78,5 +78,37 @@ LL |     if true { unreachable!() } else { panic!() }
    |                                       ^^^^^^^^
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 5 previous errors
+error: docs for function which may panic missing `# Panics` section
+  --> $DIR/missing_panics_doc.rs:37:1
+   |
+LL | / pub fn assert_eq() {
+LL | |     let x = 0;
+LL | |     assert_eq!(x, 0);
+LL | | }
+   | |_^
+   |
+note: first possible panic found here
+  --> $DIR/missing_panics_doc.rs:39:5
+   |
+LL |     assert_eq!(x, 0);
+   |     ^^^^^^^^^^^^^^^^^
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: docs for function which may panic missing `# Panics` section
+  --> $DIR/missing_panics_doc.rs:43:1
+   |
+LL | / pub fn assert_ne() {
+LL | |     let x = 0;
+LL | |     assert_ne!(x, 0);
+LL | | }
+   | |_^
+   |
+note: first possible panic found here
+  --> $DIR/missing_panics_doc.rs:45:5
+   |
+LL |     assert_ne!(x, 0);
+   |     ^^^^^^^^^^^^^^^^^
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 7 previous errors
 
