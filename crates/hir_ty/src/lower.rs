@@ -34,7 +34,7 @@ use crate::{
         variant_data, Generics,
     },
     AliasEq, AliasTy, Binders, BoundVar, CallableSig, DebruijnIndex, DynTy, FnPointer, FnSig,
-    FnSubst, ImplTraitId, OpaqueTy, PolyFnSig, ProjectionTy, QuantifiedWhereClause,
+    FnSubst, ImplTraitId, LifetimeData, OpaqueTy, PolyFnSig, ProjectionTy, QuantifiedWhereClause,
     QuantifiedWhereClauses, ReturnTypeImplTrait, ReturnTypeImplTraits, Substitution,
     TraitEnvironment, TraitRef, Ty, TyBuilder, TyKind, TypeWalk, WhereClause,
 };
@@ -174,7 +174,9 @@ impl<'a> TyLoweringContext<'a> {
             }
             TypeRef::Reference(inner, _, mutability) => {
                 let inner_ty = self.lower_ty(inner);
-                TyKind::Ref(lower_to_chalk_mutability(*mutability), inner_ty).intern(&Interner)
+                let lifetime = LifetimeData::Static.intern(&Interner);
+                TyKind::Ref(lower_to_chalk_mutability(*mutability), lifetime, inner_ty)
+                    .intern(&Interner)
             }
             TypeRef::Placeholder => TyKind::Error.intern(&Interner),
             TypeRef::Fn(params, is_varargs) => {

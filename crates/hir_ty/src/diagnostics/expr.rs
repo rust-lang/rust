@@ -315,7 +315,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
                 if pat_ty == match_expr_ty
                     || match_expr_ty
                         .as_reference()
-                        .map(|(match_expr_ty, _)| match_expr_ty == pat_ty)
+                        .map(|(match_expr_ty, ..)| match_expr_ty == pat_ty)
                         .unwrap_or(false)
                 {
                     // If we had a NotUsefulMatchArm diagnostic, we could

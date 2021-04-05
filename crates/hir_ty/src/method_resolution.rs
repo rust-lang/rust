@@ -21,8 +21,8 @@ use crate::{
     primitive::{self, FloatTy, IntTy, UintTy},
     utils::all_super_traits,
     AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, FnPointer, FnSig, ForeignDefId,
-    InEnvironment, Interner, Scalar, Substitution, TraitEnvironment, Ty, TyBuilder, TyKind,
-    TypeWalk,
+    InEnvironment, Interner, LifetimeData, Scalar, Substitution, TraitEnvironment, Ty, TyBuilder,
+    TyKind, TypeWalk,
 };
 
 /// This is used as a key for indexing impls.
@@ -453,7 +453,12 @@ fn iterate_method_candidates_with_autoref(
     }
     let refed = Canonical {
         binders: deref_chain[0].binders.clone(),
-        value: TyKind::Ref(Mutability::Not, deref_chain[0].value.clone()).intern(&Interner),
+        value: TyKind::Ref(
+            Mutability::Not,
+            LifetimeData::Static.intern(&Interner),
+            deref_chain[0].value.clone(),
+        )
+        .intern(&Interner),
     };
     if iterate_method_candidates_by_receiver(
         &refed,
@@ -470,7 +475,12 @@ fn iterate_method_candidates_with_autoref(
     }
     let ref_muted = Canonical {
         binders: deref_chain[0].binders.clone(),
-        value: TyKind::Ref(Mutability::Mut, deref_chain[0].value.clone()).intern(&Interner),
+        value: TyKind::Ref(
+            Mutability::Mut,
+            LifetimeData::Static.intern(&Interner),
+            deref_chain[0].value.clone(),
+        )
+        .intern(&Interner),
     };
     if iterate_method_candidates_by_receiver(
         &ref_muted,

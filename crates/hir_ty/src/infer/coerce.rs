@@ -81,7 +81,7 @@ impl<'a> InferenceContext<'a> {
             // `&T` -> `*const T`
             // `&mut T` -> `*mut T`/`*const T`
             (TyKind::Ref(.., substs), &TyKind::Raw(m2 @ Mutability::Not, ..))
-            | (TyKind::Ref(Mutability::Mut, substs), &TyKind::Raw(m2, ..)) => {
+            | (TyKind::Ref(Mutability::Mut, _, substs), &TyKind::Raw(m2, ..)) => {
                 from_ty = TyKind::Raw(m2, substs.clone()).intern(&Interner);
             }
 
@@ -111,7 +111,9 @@ impl<'a> InferenceContext<'a> {
         // Auto Deref if cannot coerce
         match (from_ty.kind(&Interner), to_ty.kind(&Interner)) {
             // FIXME: DerefMut
-            (TyKind::Ref(_, st1), TyKind::Ref(_, st2)) => self.unify_autoderef_behind_ref(st1, st2),
+            (TyKind::Ref(.., st1), TyKind::Ref(.., st2)) => {
+                self.unify_autoderef_behind_ref(st1, st2)
+            }
 
             // Otherwise, normal unify
             _ => self.unify(&from_ty, to_ty),

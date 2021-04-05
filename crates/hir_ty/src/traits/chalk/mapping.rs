@@ -11,7 +11,7 @@ use hir_def::{GenericDefId, TypeAliasId};
 
 use crate::{
     chalk_ext::ProjectionTyExt, db::HirDatabase, primitive::UintTy, AliasTy, CallableDefId,
-    Canonical, DomainGoal, FnPointer, GenericArg, InEnvironment, OpaqueTy, ProjectionTy,
+    Canonical, DomainGoal, FnPointer, GenericArg, InEnvironment, Lifetime, OpaqueTy, ProjectionTy,
     QuantifiedWhereClause, Scalar, Substitution, TraitRef, Ty, TypeWalk, WhereClause,
 };
 
@@ -22,7 +22,7 @@ impl ToChalk for Ty {
     type Chalk = chalk_ir::Ty<Interner>;
     fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::Ty<Interner> {
         match self.into_inner() {
-            TyKind::Ref(m, ty) => ref_to_chalk(db, m, ty),
+            TyKind::Ref(m, lt, ty) => ref_to_chalk(db, m, lt, ty),
             TyKind::Array(ty) => array_to_chalk(db, ty),
             TyKind::Function(FnPointer { sig, substitution: substs, .. }) => {
                 let substitution = chalk_ir::FnSubst(substs.0.to_chalk(db));
@@ -167,8 +167,8 @@ impl ToChalk for Ty {
             }
             chalk_ir::TyKind::Raw(mutability, ty) => TyKind::Raw(mutability, from_chalk(db, ty)),
             chalk_ir::TyKind::Slice(ty) => TyKind::Slice(from_chalk(db, ty)),
-            chalk_ir::TyKind::Ref(mutability, _lifetime, ty) => {
-                TyKind::Ref(mutability, from_chalk(db, ty))
+            chalk_ir::TyKind::Ref(mutability, lifetime, ty) => {
+                TyKind::Ref(mutability, lifetime, from_chalk(db, ty))
             }
             chalk_ir::TyKind::Str => TyKind::Str,
             chalk_ir::TyKind::Never => TyKind::Never,
@@ -192,10 +192,10 @@ impl ToChalk for Ty {
 fn ref_to_chalk(
     db: &dyn HirDatabase,
     mutability: chalk_ir::Mutability,
+    lifetime: Lifetime,
     ty: Ty,
 ) -> chalk_ir::Ty<Interner> {
     let arg = ty.to_chalk(db);
-    let lifetime = LifetimeData::Static.intern(&Interner);
     chalk_ir::TyKind::Ref(mutability, lifetime, arg).intern(&Interner)
 }
 

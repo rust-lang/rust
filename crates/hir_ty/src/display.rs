@@ -314,7 +314,7 @@ impl HirDisplay for Ty {
                 t.hir_fmt(f)?;
                 write!(f, "; _]")?;
             }
-            TyKind::Raw(m, t) | TyKind::Ref(m, t) => {
+            TyKind::Raw(m, t) | TyKind::Ref(m, _, t) => {
                 let ty_display =
                     t.into_displayable(f.db, f.max_size, f.omit_verbose_types, f.display_target);
 
