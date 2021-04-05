@@ -1186,14 +1186,17 @@ pub struct Statements<'tcx> {
 }
 
 impl<'tcx> Statements<'tcx> {
+    #[inline]
     pub fn new() -> Self {
         Self { statements: vec![], source_infos: vec![] }
     }
 
+    #[inline]
     pub fn one(stmt: Statement<'tcx>, source_info: SourceInfo) -> Self {
         Self { statements: vec![stmt], source_infos: vec![source_info] }
     }
 
+    #[inline]
     pub fn two(
         stmt1: Statement<'tcx>,
         source_info1: SourceInfo,
@@ -1203,89 +1206,109 @@ impl<'tcx> Statements<'tcx> {
         Self { statements: vec![stmt1, stmt2], source_infos: vec![source_info1, source_info2] }
     }
 
+    #[inline]
     pub fn from_iter(iter: impl IntoIterator<Item = (Statement<'tcx>, SourceInfo)>) -> Self {
         let (statements, source_infos) = iter.into_iter().unzip();
         Self { statements, source_infos }
     }
 
+    #[inline]
     pub fn len(&self) -> usize {
         self.statements.len()
     }
 
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.statements.len() == 0
     }
 
+    #[inline]
     pub fn make_nop(&mut self, idx: usize) {
         self.statements[idx].make_nop()
     }
 
+    #[inline]
     pub fn source_info(&self, idx: usize) -> &SourceInfo {
         &self.source_infos[idx]
     }
 
+    #[inline]
     pub fn source_info_mut(&mut self, idx: usize) -> &mut SourceInfo {
         &mut self.source_infos[idx]
     }
 
+    #[inline]
     pub fn source_info_opt(&self, idx: usize) -> Option<&SourceInfo> {
         self.source_infos.get(idx)
     }
 
+    #[inline]
     pub fn source_info_iter(&self) -> impl Iterator<Item = &SourceInfo> {
         self.source_infos.iter()
     }
 
+    #[inline]
     pub fn source_info_iter_mut(&mut self) -> impl Iterator<Item = &mut SourceInfo> {
         self.source_infos.iter_mut()
     }
 
+    #[inline]
     pub fn statement(&self, idx: usize) -> &Statement<'tcx> {
         &self.statements[idx]
     }
 
+    #[inline]
     pub fn statement_opt(&self, idx: usize) -> Option<&Statement<'tcx>> {
         self.statements.get(idx)
     }
 
+    #[inline]
     pub fn last_stmt(&self) -> Option<&Statement<'tcx>> {
         self.statements.last()
     }
 
+    #[inline]
     pub fn statement_mut(&mut self, idx: usize) -> &mut Statement<'tcx> {
         &mut self.statements[idx]
     }
 
+    #[inline]
     pub fn statements_iter(&self) -> std::slice::Iter<'_, Statement<'tcx>> {
         self.statements.iter()
     }
 
+    #[inline]
     pub fn statements_iter_mut(&mut self) -> std::slice::IterMut<'_, Statement<'tcx>> {
         self.statements.iter_mut()
     }
 
+    #[inline]
     pub fn statements_and_source_info_iter(
         &self,
     ) -> impl Iterator<Item = (&Statement<'tcx>, &SourceInfo)> {
         self.statements.iter().zip(self.source_infos.iter())
     }
 
+    #[inline]
     pub fn statements_and_source_info_iter_mut(
         &mut self,
     ) -> impl Iterator<Item = (&mut Statement<'tcx>, &mut SourceInfo)> {
         self.statements.iter_mut().zip(self.source_infos.iter_mut())
     }
 
+    #[inline]
     pub fn push(&mut self, stmt: Statement<'tcx>, source_info: SourceInfo) {
         self.statements.push(stmt);
         self.source_infos.push(source_info);
     }
 
+    #[inline]
     pub fn insert(&mut self, at: usize, stmt: Statement<'tcx>, source_info: SourceInfo) {
         self.statements.insert(at, stmt);
         self.source_infos.insert(at, source_info);
     }
 
+    #[inline]
     pub fn extend(
         &mut self,
         stmts: impl Iterator<Item = Statement<'tcx>>,
@@ -1295,6 +1318,7 @@ impl<'tcx> Statements<'tcx> {
         self.source_infos.extend(source_infos);
     }
 
+    #[inline]
     pub fn rotate_right(&mut self, k: usize) {
         self.statements.rotate_right(k);
         self.source_infos.rotate_right(k);
@@ -1327,11 +1351,13 @@ impl<'tcx> Statements<'tcx> {
         }
     }
 
+    #[inline]
     pub fn reserve(&mut self, additional: usize) {
         self.statements.reserve(additional);
         self.source_infos.reserve(additional);
     }
 
+    #[inline]
     pub fn append(&mut self, other: &mut Self) {
         self.statements.append(&mut other.statements);
         self.source_infos.append(&mut other.source_infos);
