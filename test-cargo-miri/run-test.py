@@ -113,9 +113,9 @@ def test_cargo_miri_test():
         default_ref, "test.stderr-empty.ref",
         env={'MIRIFLAGS': "-Zmiri-seed=feed"},
     )
-    test("`cargo miri test` (no isolation)",
-        cargo_miri("test"),
-        default_ref, "test.stderr-empty.ref",
+    test("`cargo miri test` (no isolation, no doctests)",
+        cargo_miri("test") + ["--bins", "--tests"], # no `--lib`, we disabled that in `Cargo.toml`
+        "test.cross-target.stdout.ref", "test.stderr-empty.ref",
         env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
     )
     test("`cargo miri test` (raw-ptr tracking)",

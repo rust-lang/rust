@@ -683,6 +683,7 @@ fn phase_cargo_rustc(mut args: env::Args) {
             let mut cmd = miri();
 
             // Ensure --emit argument for a check-only build is present.
+            // We cannot use the usual helpers since we need to check specifically in `env.args`.
             if let Some(i) = env.args.iter().position(|arg| arg.starts_with("--emit=")) {
                 // For `no_run` tests, rustdoc passes a `--emit` flag; make sure it has the right shape.
                 assert_eq!(env.args[i], "--emit=metadata");
@@ -877,7 +878,7 @@ fn phase_cargo_rustdoc(fst_arg: &str, mut args: env::Args) {
 
     // phase_cargo_miri sets the RUSTDOC env var to ourselves, so we can't use that here;
     // just default to a straight-forward invocation for now:
-    let mut cmd = Command::new(OsString::from("rustdoc"));
+    let mut cmd = Command::new("rustdoc");
 
     // Because of the way the main function is structured, we have to take the first argument spearately
     // from the rest; to simplify the following argument patching loop, we'll just skip that one.
@@ -888,6 +889,7 @@ fn phase_cargo_rustdoc(fst_arg: &str, mut args: env::Args) {
     cmd.arg(fst_arg);
 
     let runtool_flag = "--runtool";
+    // `crossmode` records if *any* argument matches `runtool_flag`; here we check the first one.
     let mut crossmode = fst_arg == runtool_flag;
     while let Some(arg) = args.next() {
         if arg == extern_flag {
@@ -950,9 +952,8 @@ fn main() {
         return;
     }
 
-    // The way rustdoc invokes rustc is indistuingishable from the way cargo invokes rustdoc
-    // by the arguments alone, and we can't take from the args iterator in this case.
-    // phase_cargo_rustdoc sets this environment variable to let us disambiguate here
+    // The way rustdoc invokes rustc is indistuingishable from the way cargo invokes rustdoc by the
+    // arguments alone. `phase_cargo_rustdoc` sets this environment variable to let us disambiguate.
     let invoked_by_rustdoc = env::var_os("MIRI_CALLED_FROM_RUSTDOC").is_some();
     if invoked_by_rustdoc {
         // ...however, we then also see this variable when rustdoc invokes us as the testrunner!
