@@ -33,6 +33,18 @@ pub fn unreachable_and_panic() {
     if true { unreachable!() } else { panic!() }
 }
 
+/// This needs to be documented
+pub fn assert_eq() {
+    let x = 0;
+    assert_eq!(x, 0);
+}
+
+/// This needs to be documented
+pub fn assert_ne() {
+    let x = 0;
+    assert_ne!(x, 0);
+}
+
 /// This is documented
 ///
 /// # Panics
@@ -81,6 +93,26 @@ pub fn todo_documented() {
 /// We still need to do this part
 pub fn unreachable_amd_panic_documented() {
     if true { unreachable!() } else { panic!() }
+}
+
+/// This is documented
+///
+/// # Panics
+///
+/// Panics if `x` is not 0.
+pub fn assert_eq_documented() {
+    let x = 0;
+    assert_eq!(x, 0);
+}
+
+/// This is documented
+///
+/// # Panics
+///
+/// Panics if `x` is 0.
+pub fn assert_ne_documented() {
+    let x = 0;
+    assert_ne!(x, 0);
 }
 
 /// This is okay because it is private
