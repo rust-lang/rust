@@ -734,8 +734,14 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
                 tcx.ensure().generics_of(item.def_id);
                 tcx.ensure().type_of(item.def_id);
                 tcx.ensure().predicates_of(item.def_id);
-                if let hir::ForeignItemKind::Fn(..) = item.kind {
-                    tcx.ensure().fn_sig(item.def_id);
+                match item.kind {
+                    hir::ForeignItemKind::Fn(..) => tcx.ensure().fn_sig(item.def_id),
+                    hir::ForeignItemKind::Static(..) => {
+                        let mut visitor = PlaceholderHirTyCollector::default();
+                        visitor.visit_foreign_item(item);
+                        placeholder_type_error(tcx, None, &[], visitor.0, false, None);
+                    }
+                    _ => (),
                 }
             }
         }
