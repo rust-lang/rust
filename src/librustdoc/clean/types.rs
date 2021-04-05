@@ -914,7 +914,7 @@ impl Attributes {
             .collect()
     }
 
-    crate fn get_doc_aliases(&self) -> FxHashSet<String> {
+    crate fn get_doc_aliases(&self) -> Box<[String]> {
         let mut aliases = FxHashSet::default();
 
         for attr in self.other_attrs.lists(sym::doc).filter(|a| a.has_name(sym::alias)) {
@@ -931,7 +931,7 @@ impl Attributes {
                 aliases.insert(attr.value_str().map(|s| s.to_string()).unwrap());
             }
         }
-        aliases
+        aliases.into_iter().collect::<Vec<String>>().into()
     }
 }
 
