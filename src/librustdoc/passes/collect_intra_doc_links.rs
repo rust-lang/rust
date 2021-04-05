@@ -978,14 +978,18 @@ impl LinkCollector<'_, '_> {
             Ok(Some((d, path))) => (path.trim(), Some(d)),
             Ok(None) => (link.trim(), None),
             Err((err_msg, relative_range)) => {
-                let disambiguator_range = (no_backticks_range.start + relative_range.start)
-                    ..(no_backticks_range.start + relative_range.end);
-                disambiguator_error(self.cx, &item, dox, disambiguator_range, &err_msg);
+                if !should_ignore_link_with_disambiguators(link) {
+                    // Only report error if we would not have ignored this link.
+                    // See issue #83859.
+                    let disambiguator_range = (no_backticks_range.start + relative_range.start)
+                        ..(no_backticks_range.start + relative_range.end);
+                    disambiguator_error(self.cx, &item, dox, disambiguator_range, &err_msg);
+                }
                 return None;
             }
         };
 
-        if path_str.contains(|ch: char| !(ch.is_alphanumeric() || ":_<>, !*&;".contains(ch))) {
+        if should_ignore_link(path_str) {
             return None;
         }
 
@@ -1513,6 +1517,22 @@ fn range_between_backticks(ori_link: &MarkdownLink) -> Range<usize> {
         .unwrap_or(ori_link.link.len());
     (ori_link.range.start + after_first_backtick_group)
         ..(ori_link.range.start + before_second_backtick_group)
+}
+
+/// Returns true if we should ignore `link` due to it being unlikely
+/// that it is an intra-doc link. `link` should still have disambiguators
+/// if there were any.
+///
+/// The difference between this and [`should_ignore_link()`] is that this
+/// check should only be used on links that still have disambiguators.
+fn should_ignore_link_with_disambiguators(link: &str) -> bool {
+    link.contains(|ch: char| !(ch.is_alphanumeric() || ":_<>, !*&;@()".contains(ch)))
+}
+
+/// Returns true if we should ignore `path_str` due to it being unlikely
+/// that it is an intra-doc link.
+fn should_ignore_link(path_str: &str) -> bool {
+    path_str.contains(|ch: char| !(ch.is_alphanumeric() || ":_<>, !*&;".contains(ch)))
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
