@@ -572,7 +572,7 @@ fn phase_cargo_miri(mut args: env::Args) {
     // us in order to skip them.
     cmd.env(&host_runner_env_name, &cargo_miri_path);
 
-    // Set rustdoc to us as well, so we can make it do nothing (see issue #584).
+    // Set rustdoc to us as well, so we can run doctests.
     cmd.env("RUSTDOC", &cargo_miri_path);
 
     // Run cargo.
@@ -781,18 +781,6 @@ fn phase_cargo_rustc(mut args: env::Args) {
         File::create(out_filename("lib", ".dylib")).expect("failed to create fake .dylib file");
         File::create(out_filename("", ".dll")).expect("failed to create fake .dll file");
         File::create(out_filename("", ".lib")).expect("failed to create fake .lib file");
-    }
-}
-
-fn forward_patched_extern_arg(args: &mut impl Iterator<Item = String>, cmd: &mut Command) {
-    cmd.arg("--extern"); // always forward flag, but adjust filename:
-    let path = args.next().expect("`--extern` should be followed by a filename");
-    if let Some(lib) = path.strip_suffix(".rlib") {
-        // If this is an rlib, make it an rmeta.
-        cmd.arg(format!("{}.rmeta", lib));
-    } else {
-        // Some other extern file (e.g. a `.so`). Forward unchanged.
-        cmd.arg(path);
     }
 }
 
