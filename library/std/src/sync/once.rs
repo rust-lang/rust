@@ -481,7 +481,7 @@ fn wait(state_and_queue: &AtomicUsize, mut current_state: usize) {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Once {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("Once { .. }")
+        f.debug_struct("Once").finish_non_exhaustive()
     }
 }
 
