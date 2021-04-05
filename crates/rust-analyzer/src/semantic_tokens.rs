@@ -39,7 +39,9 @@ macro_rules! define_semantic_token_types {
 
 define_semantic_token_types![
     (ANGLE, "angle"),
+    (ARITHMETIC, "arithmetic"),
     (ATTRIBUTE, "attribute"),
+    (BITWISE, "bitwise"),
     (BOOLEAN, "boolean"),
     (BRACE, "brace"),
     (BRACKET, "bracket"),
@@ -47,6 +49,7 @@ define_semantic_token_types![
     (CHAR_LITERAL, "characterLiteral"),
     (COLON, "colon"),
     (COMMA, "comma"),
+    (COMPARISION, "comparision"),
     (CONST_PARAMETER, "constParameter"),
     (DOT, "dot"),
     (ESCAPE_SEQUENCE, "escapeSequence"),
@@ -54,6 +57,8 @@ define_semantic_token_types![
     (GENERIC, "generic"),
     (LABEL, "label"),
     (LIFETIME, "lifetime"),
+    (LOGICAL, "logical"),
+    (OPERATOR, "operator"),
     (PARENTHESIS, "parenthesis"),
     (PUNCTUATION, "punctuation"),
     (SELF_KEYWORD, "selfKeyword"),

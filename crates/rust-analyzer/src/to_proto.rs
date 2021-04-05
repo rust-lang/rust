@@ -7,9 +7,9 @@ use std::{
 use ide::{
     Annotation, AnnotationKind, Assist, AssistKind, CallInfo, CompletionItem, CompletionItemKind,
     CompletionRelevance, Documentation, FileId, FileRange, FileSystemEdit, Fold, FoldKind,
-    Highlight, HlMod, HlPunct, HlRange, HlTag, Indel, InlayHint, InlayKind, InsertTextFormat,
-    Markup, NavigationTarget, ReferenceAccess, RenameError, Runnable, Severity, SourceChange,
-    StructureNodeKind, SymbolKind, TextEdit, TextRange, TextSize,
+    Highlight, HlMod, HlOperator, HlPunct, HlRange, HlTag, Indel, InlayHint, InlayKind,
+    InsertTextFormat, Markup, NavigationTarget, ReferenceAccess, RenameError, Runnable, Severity,
+    SourceChange, StructureNodeKind, SymbolKind, TextEdit, TextRange, TextSize,
 };
 use itertools::Itertools;
 use serde_json::to_value;
@@ -445,7 +445,13 @@ fn semantic_token_type_and_modifiers(
         HlTag::FormatSpecifier => semantic_tokens::FORMAT_SPECIFIER,
         HlTag::Keyword => lsp_types::SemanticTokenType::KEYWORD,
         HlTag::None => semantic_tokens::GENERIC,
-        HlTag::Operator => lsp_types::SemanticTokenType::OPERATOR,
+        HlTag::Operator(op) => match op {
+            HlOperator::Bitwise => semantic_tokens::BITWISE,
+            HlOperator::Arithmetic => semantic_tokens::ARITHMETIC,
+            HlOperator::Logical => semantic_tokens::LOGICAL,
+            HlOperator::Comparision => semantic_tokens::COMPARISION,
+            HlOperator::Other => semantic_tokens::OPERATOR,
+        },
         HlTag::StringLiteral => lsp_types::SemanticTokenType::STRING,
         HlTag::UnresolvedReference => semantic_tokens::UNRESOLVED_REFERENCE,
         HlTag::Punctuation(punct) => match punct {

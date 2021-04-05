@@ -28,7 +28,7 @@ pub enum HlTag {
     FormatSpecifier,
     Keyword,
     NumericLiteral,
-    Operator,
+    Operator(HlOperator),
     Punctuation(HlPunct),
     StringLiteral,
     UnresolvedReference,
@@ -87,6 +87,20 @@ pub enum HlPunct {
     Other,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum HlOperator {
+    /// |, &, !, ^, |=, &=, ^=
+    Bitwise,
+    /// +, -, *, /, +=, -=, *=, /=
+    Arithmetic,
+    /// &&, ||, !
+    Logical,
+    /// >, <, ==, >=, <=, !=
+    Comparision,
+    ///
+    Other,
+}
+
 impl HlTag {
     fn as_str(self) -> &'static str {
         match self {
@@ -133,7 +147,13 @@ impl HlTag {
                 HlPunct::Other => "punctuation",
             },
             HlTag::NumericLiteral => "numeric_literal",
-            HlTag::Operator => "operator",
+            HlTag::Operator(op) => match op {
+                HlOperator::Bitwise => "bitwise",
+                HlOperator::Arithmetic => "arithmetic",
+                HlOperator::Logical => "logical",
+                HlOperator::Comparision => "comparision",
+                HlOperator::Other => "operator",
+            },
             HlTag::StringLiteral => "string_literal",
             HlTag::UnresolvedReference => "unresolved_reference",
             HlTag::None => "none",
