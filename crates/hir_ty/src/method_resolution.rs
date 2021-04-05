@@ -55,7 +55,7 @@ impl TyFingerprint {
             TyKind::Adt(AdtId(adt), _) => TyFingerprint::Adt(adt),
             TyKind::Tuple(cardinality, _) => TyFingerprint::Tuple(cardinality),
             TyKind::Raw(mutability, ..) => TyFingerprint::RawPtr(mutability),
-            TyKind::ForeignType(alias_id, ..) => TyFingerprint::ForeignType(alias_id),
+            TyKind::Foreign(alias_id, ..) => TyFingerprint::ForeignType(alias_id),
             TyKind::Function(FnPointer { num_args, sig, .. }) => {
                 TyFingerprint::FnPtr(num_args, sig)
             }
@@ -246,7 +246,7 @@ impl Ty {
             TyKind::Adt(AdtId(def_id), _) => {
                 return mod_to_crate_ids(def_id.module(db.upcast()));
             }
-            TyKind::ForeignType(id) => {
+            TyKind::Foreign(id) => {
                 return mod_to_crate_ids(
                     from_foreign_def_id(*id).lookup(db.upcast()).module(db.upcast()),
                 );
@@ -742,7 +742,7 @@ fn fallback_bound_vars(s: Substitution, num_vars_to_keep: usize) -> Substitution
         &mut |ty, binders| {
             if let TyKind::BoundVar(bound) = ty.kind(&Interner) {
                 if bound.index >= num_vars_to_keep && bound.debruijn >= binders {
-                    TyKind::Unknown.intern(&Interner)
+                    TyKind::Error.intern(&Interner)
                 } else {
                     ty
                 }

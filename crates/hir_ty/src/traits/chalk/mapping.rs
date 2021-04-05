@@ -43,7 +43,7 @@ impl ToChalk for Ty {
                 chalk_ir::TyKind::OpaqueType(id, substitution).intern(&Interner)
             }
 
-            TyKind::ForeignType(id) => chalk_ir::TyKind::Foreign(id).intern(&Interner),
+            TyKind::Foreign(id) => chalk_ir::TyKind::Foreign(id).intern(&Interner),
 
             TyKind::Scalar(scalar) => chalk_ir::TyKind::Scalar(scalar).intern(&Interner),
 
@@ -103,12 +103,12 @@ impl ToChalk for Ty {
                 };
                 chalk_ir::TyKind::Dyn(bounded_ty).intern(&Interner)
             }
-            TyKind::Unknown => chalk_ir::TyKind::Error.intern(&Interner),
+            TyKind::Error => chalk_ir::TyKind::Error.intern(&Interner),
         }
     }
     fn from_chalk(db: &dyn HirDatabase, chalk: chalk_ir::Ty<Interner>) -> Self {
         match chalk.data(&Interner).kind.clone() {
-            chalk_ir::TyKind::Error => TyKind::Unknown,
+            chalk_ir::TyKind::Error => TyKind::Error,
             chalk_ir::TyKind::Array(ty, _size) => TyKind::Array(from_chalk(db, ty)),
             chalk_ir::TyKind::Placeholder(idx) => TyKind::Placeholder(idx),
             chalk_ir::TyKind::Alias(chalk_ir::AliasTy::Projection(proj)) => {
@@ -138,7 +138,7 @@ impl ToChalk for Ty {
                 TyKind::Function(FnPointer { num_args: (substs.len(&Interner) - 1), sig, substs })
             }
             chalk_ir::TyKind::BoundVar(idx) => TyKind::BoundVar(idx),
-            chalk_ir::TyKind::InferenceVar(_iv, _kind) => TyKind::Unknown,
+            chalk_ir::TyKind::InferenceVar(_iv, _kind) => TyKind::Error,
             chalk_ir::TyKind::Dyn(where_clauses) => {
                 assert_eq!(where_clauses.bounds.binders.len(&Interner), 1);
                 let bounds = where_clauses
@@ -181,7 +181,7 @@ impl ToChalk for Ty {
 
             chalk_ir::TyKind::Closure(id, subst) => TyKind::Closure(id, from_chalk(db, subst)),
 
-            chalk_ir::TyKind::Foreign(foreign_def_id) => TyKind::ForeignType(foreign_def_id),
+            chalk_ir::TyKind::Foreign(foreign_def_id) => TyKind::Foreign(foreign_def_id),
             chalk_ir::TyKind::Generator(_, _) => unimplemented!(), // FIXME
             chalk_ir::TyKind::GeneratorWitness(_, _) => unimplemented!(), // FIXME
         }

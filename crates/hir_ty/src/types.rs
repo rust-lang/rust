@@ -132,7 +132,7 @@ pub enum TyKind {
     Closure(ClosureId, Substitution),
 
     /// Represents a foreign type declared in external blocks.
-    ForeignType(ForeignDefId),
+    Foreign(ForeignDefId),
 
     /// A pointer to a function.  Written as `fn() -> i32`.
     ///
@@ -179,7 +179,7 @@ pub enum TyKind {
     /// variables are inserted before type checking, since we want to try to
     /// infer a better type here anyway -- for the IDE use case, we want to try
     /// to infer as much as possible even in the presence of type errors.
-    Unknown,
+    Error,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]

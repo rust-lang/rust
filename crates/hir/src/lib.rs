@@ -1876,7 +1876,7 @@ impl Type {
 
         fn go(ty: &Ty) -> bool {
             match ty.kind(&Interner) {
-                TyKind::Unknown => true,
+                TyKind::Error => true,
 
                 TyKind::Adt(_, substs)
                 | TyKind::AssociatedType(_, substs)
@@ -1900,7 +1900,7 @@ impl Type {
                 | TyKind::Dyn(_)
                 | TyKind::Function(_)
                 | TyKind::Alias(_)
-                | TyKind::ForeignType(_) => false,
+                | TyKind::Foreign(_) => false,
             }
         }
     }

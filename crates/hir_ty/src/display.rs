@@ -476,7 +476,7 @@ impl HirDisplay for Ty {
                                         parameter.assert_ty_ref(&Interner).kind(&Interner),
                                         default_parameters.get(i),
                                     ) {
-                                        (&TyKind::Unknown, _) | (_, None) => {
+                                        (&TyKind::Error, _) | (_, None) => {
                                             default_from = i + 1;
                                         }
                                         (_, Some(default_parameter)) => {
@@ -529,7 +529,7 @@ impl HirDisplay for Ty {
                     projection_ty.hir_fmt(f)?;
                 }
             }
-            TyKind::ForeignType(type_alias) => {
+            TyKind::Foreign(type_alias) => {
                 let type_alias = f.db.type_alias_data(from_foreign_def_id(*type_alias));
                 write!(f, "{}", type_alias.name)?;
             }
@@ -636,7 +636,7 @@ impl HirDisplay for Ty {
                     }
                 };
             }
-            TyKind::Unknown => {
+            TyKind::Error => {
                 if f.display_target.is_source_code() {
                     return Err(HirDisplayError::DisplaySourceCodeError(
                         DisplaySourceCodeError::UnknownType,

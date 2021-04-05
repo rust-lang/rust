@@ -142,7 +142,7 @@ impl<'a> InferenceContext<'a> {
                     remaining_segments_for_ty,
                     true,
                 );
-                if let TyKind::Unknown = ty.kind(&Interner) {
+                if let TyKind::Error = ty.kind(&Interner) {
                     return None;
                 }
 
@@ -207,7 +207,7 @@ impl<'a> InferenceContext<'a> {
         name: &Name,
         id: ExprOrPatId,
     ) -> Option<(ValueNs, Option<Substitution>)> {
-        if let TyKind::Unknown = ty.kind(&Interner) {
+        if let TyKind::Error = ty.kind(&Interner) {
             return None;
         }
 
