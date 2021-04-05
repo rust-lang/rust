@@ -163,6 +163,13 @@ fn forward_patched_extern_arg(args: &mut impl Iterator<Item = String>, cmd: &mut
     }
 }
 
+fn forward_miri_sysroot(cmd: &mut Command) {
+    let sysroot =
+        env::var_os("MIRI_SYSROOT").expect("the wrapper should have set MIRI_SYSROOT");
+    cmd.arg("--sysroot");
+    cmd.arg(sysroot);
+}
+
 /// Returns the path to the `miri` binary
 fn find_miri() -> PathBuf {
     if let Some(path) = env::var_os("MIRI") {
@@ -679,13 +686,6 @@ fn phase_cargo_rustc(mut args: env::Args) {
                 return;
             };
 
-            // use our own sysroot
-            if !has_arg_flag("--sysroot") {
-                let sysroot = env::var_os("MIRI_SYSROOT")
-                    .expect("the wrapper should have set MIRI_SYSROOT");
-                cmd.arg("--sysroot").arg(sysroot);
-            }
-
             // ensure --emit argument for a check-only build is present
             if let Some(i) = env.args.iter().position(|arg| arg.starts_with("--emit=")) {
                 // We need to make sure we're not producing a binary that overwrites the JSON file.
@@ -750,10 +750,7 @@ fn phase_cargo_rustc(mut args: env::Args) {
         }
 
         // Use our custom sysroot.
-        let sysroot =
-            env::var_os("MIRI_SYSROOT").expect("the wrapper should have set MIRI_SYSROOT");
-        cmd.arg("--sysroot");
-        cmd.arg(sysroot);
+        forward_miri_sysroot(&mut cmd);
     } else {
         // For host crates or when we are printing, just forward everything.
         cmd.args(args);
@@ -842,11 +839,8 @@ fn phase_cargo_runner(binary: &Path, binary_args: env::Args) {
         }
     }
     if env::var_os("MIRI_CALLED_FROM_RUSTDOC").is_none() {
-        // Set sysroot.
-        let sysroot =
-            env::var_os("MIRI_SYSROOT").expect("the wrapper should have set MIRI_SYSROOT");
-        cmd.arg("--sysroot");
-        cmd.arg(sysroot);
+        // Set sysroot (if we are inside rustdoc, we already did that in `phase_cargo_rustdoc`).
+        forward_miri_sysroot(&mut cmd);
     }
     // Respect `MIRIFLAGS`.
     if let Ok(a) = env::var("MIRIFLAGS") {
@@ -930,12 +924,10 @@ fn phase_cargo_rustdoc(fst_arg: &str, mut args: env::Args) {
     // which are disabled by default. We first need to enable them explicitly:
     cmd.arg("-Z").arg("unstable-options");
 
-    // Use our custom sysroot.
-    let sysroot =
-        env::var_os("MIRI_SYSROOT").expect("the wrapper should have set MIRI_SYSROOT");
-    cmd.arg("--sysroot");
-    cmd.arg(sysroot);
+    // rustdoc needs to know the right sysroot.
+    forward_miri_sysroot(&mut cmd);
 
+    // Make rustdoc call us back.
     let cargo_miri_path = std::env::current_exe().expect("current executable path invalid");
     cmd.arg("--test-builder").arg(&cargo_miri_path); // invoked by forwarding most arguments
     cmd.arg("--runtool").arg(&cargo_miri_path); // invoked with just a single path argument
