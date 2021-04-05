@@ -169,16 +169,13 @@ pub(super) fn element(
                 HlTag::Operator(HlOperator::Other).into()
             }
             T![!] if element.parent().and_then(ast::MacroCall::cast).is_some() => {
-                eprintln!("in macro call: {}", element);
                 HlTag::Symbol(SymbolKind::Macro).into()
             }
             T![!] if element.parent().and_then(ast::NeverType::cast).is_some() => {
-                eprintln!("in never type : {}", element);
                 HlTag::BuiltinType.into()
             }
             T![!] if element.parent().and_then(ast::PrefixExpr::cast).is_some() => {
-                eprintln!("pre expr for : {}", element);
-                HlTag::Operator(HlOperator::Bitwise).into()
+                HlTag::Operator(HlOperator::Logical).into()
             }
             T![*] if element.parent().and_then(ast::PtrType::cast).is_some() => {
                 HlTag::Keyword.into()
@@ -197,7 +194,6 @@ pub(super) fn element(
                 }
             }
             T![-] if element.parent().and_then(ast::PrefixExpr::cast).is_some() => {
-                eprintln!("the - operator: {}", element);
                 let prefix_expr = element.parent().and_then(ast::PrefixExpr::cast)?;
 
                 let expr = prefix_expr.expr()?;
@@ -208,7 +204,6 @@ pub(super) fn element(
                 .into()
             }
             _ if element.parent().and_then(ast::PrefixExpr::cast).is_some() => {
-                eprintln!("the prefix expr block: {}", element);
                 HlTag::Operator(HlOperator::Other).into()
             }
             T![+] | T![-] | T![*] | T![/] | T![+=] | T![-=] | T![*=] | T![/=]
@@ -230,11 +225,9 @@ pub(super) fn element(
                 HlTag::Operator(HlOperator::Comparision).into()
             }
             _ if element.parent().and_then(ast::BinExpr::cast).is_some() => {
-                eprintln!("the bin expr : {}", element);
                 HlTag::Operator(HlOperator::Other).into()
             }
             _ if element.parent().and_then(ast::RangeExpr::cast).is_some() => {
-                eprintln!("the range expr block: {}", element);
                 HlTag::Operator(HlOperator::Other).into()
             }
             _ if element.parent().and_then(ast::RangePat::cast).is_some() => {
