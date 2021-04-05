@@ -81,10 +81,13 @@ pub(crate) struct GlobalState {
     pub(crate) status: Status,
     pub(crate) source_root_config: SourceRootConfig,
     pub(crate) proc_macro_client: Option<ProcMacroClient>,
+
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
-    pub(crate) fetch_workspaces_queue: OpQueue<()>,
+    pub(crate) fetch_workspaces_queue: OpQueue<(), ()>,
+
     pub(crate) workspace_build_data: Option<BuildDataResult>,
-    pub(crate) fetch_build_data_queue: OpQueue<BuildDataCollector>,
+    pub(crate) fetch_build_data_queue: OpQueue<BuildDataCollector, ()>,
+
     latest_requests: Arc<RwLock<LatestRequests>>,
 }
 

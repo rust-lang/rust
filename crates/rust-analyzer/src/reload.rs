@@ -140,7 +140,7 @@ impl GlobalState {
         });
     }
     pub(crate) fn fetch_build_data_completed(&mut self) {
-        self.fetch_build_data_queue.op_completed()
+        self.fetch_build_data_queue.op_completed(())
     }
 
     pub(crate) fn fetch_workspaces_request(&mut self) {
@@ -195,7 +195,7 @@ impl GlobalState {
         });
     }
     pub(crate) fn fetch_workspaces_completed(&mut self) {
-        self.fetch_workspaces_queue.op_completed()
+        self.fetch_workspaces_queue.op_completed(())
     }
 
     pub(crate) fn switch_workspaces(
