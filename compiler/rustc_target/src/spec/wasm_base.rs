@@ -60,6 +60,8 @@ pub fn options() -> TargetOptions {
     pre_link_args.insert(LinkerFlavor::Gcc, clang_args);
 
     TargetOptions {
+        is_like_wasm: true,
+
         // we allow dynamic linking, but only cdylibs. Basically we allow a
         // final library artifact that exports some symbols (a wasm module) but
         // we don't allow intermediate `dylib` crate types

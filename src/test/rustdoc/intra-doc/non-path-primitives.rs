@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 #![crate_name = "foo"]
 #![feature(intra_doc_pointers)]
 #![deny(rustdoc::broken_intra_doc_links)]

@@ -1,6 +1,5 @@
 use crate::creader::{CStore, LoadedMacro};
 use crate::foreign_modules;
-use crate::link_args;
 use crate::native_libs;
 use crate::rmeta::{self, encoder};
 
@@ -294,10 +293,6 @@ pub fn provide(providers: &mut Providers) {
             let modules: FxHashMap<DefId, ForeignModule> =
                 foreign_modules::collect(tcx).into_iter().map(|m| (m.def_id, m)).collect();
             Lrc::new(modules)
-        },
-        link_args: |tcx, cnum| {
-            assert_eq!(cnum, LOCAL_CRATE);
-            Lrc::new(link_args::collect(tcx))
         },
 
         // Returns a map from a sufficiently visible external item (i.e., an

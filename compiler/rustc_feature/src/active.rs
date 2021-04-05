@@ -258,9 +258,6 @@ declare_features! (
     // feature-group-start: actual feature gates
     // -------------------------------------------------------------------------
 
-    /// Allows using the `#[link_args]` attribute.
-    (active, link_args, "1.0.0", Some(29596), None),
-
     /// Allows defining identifiers beyond ASCII.
     (active, non_ascii_idents, "1.0.0", Some(55467), None),
 

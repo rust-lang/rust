@@ -24,7 +24,6 @@
 // On Linux, we get an error like the below
 // normalize-stderr-test "couldn't create a temp dir.*" -> "io error modifying /does-not-exist/"
 
-// ignore-tidy-linelength
 // ignore-windows - this is a unix-specific test
 // ignore-emscripten - the file-system issues do not replicate here
 // ignore-wasm - the file-system issues do not replicate here

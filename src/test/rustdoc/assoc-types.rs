@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 #![crate_type="lib"]
 
 // @has assoc_types/trait.Index.html

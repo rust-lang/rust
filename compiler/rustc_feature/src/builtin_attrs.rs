@@ -280,11 +280,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Linking:
     gated!(naked, AssumedUsed, template!(Word), naked_functions, experimental!(naked)),
     gated!(
-        link_args, Normal, template!(NameValueStr: "args"),
-        "the `link_args` attribute is experimental and not portable across platforms, \
-        it is recommended to use `#[link(name = \"foo\")] instead",
-    ),
-    gated!(
         link_ordinal, AssumedUsed, template!(List: "ordinal"), raw_dylib,
         experimental!(link_ordinal)
     ),

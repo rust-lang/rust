@@ -1499,46 +1499,64 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // previous iteration.
                 required_features.clear();
 
-                // Validate register classes against currently enabled target
-                // features. We check that at least one type is available for
-                // the current target.
                 let reg_class = reg.reg_class();
                 if reg_class == asm::InlineAsmRegClass::Err {
                     continue;
                 }
-                for &(_, feature) in reg_class.supported_types(asm_arch.unwrap()) {
-                    if let Some(feature) = feature {
-                        if self.sess.target_features.contains(&Symbol::intern(feature)) {
+
+                // We ignore target feature requirements for clobbers: if the
+                // feature is disabled then the compiler doesn't care what we
+                // do with the registers.
+                //
+                // Note that this is only possible for explicit register
+                // operands, which cannot be used in the asm string.
+                let is_clobber = matches!(
+                    op,
+                    hir::InlineAsmOperand::Out {
+                        reg: asm::InlineAsmRegOrRegClass::Reg(_),
+                        late: _,
+                        expr: None
+                    }
+                );
+
+                if !is_clobber {
+                    // Validate register classes against currently enabled target
+                    // features. We check that at least one type is available for
+                    // the current target.
+                    for &(_, feature) in reg_class.supported_types(asm_arch.unwrap()) {
+                        if let Some(feature) = feature {
+                            if self.sess.target_features.contains(&Symbol::intern(feature)) {
+                                required_features.clear();
+                                break;
+                            } else {
+                                required_features.push(feature);
+                            }
+                        } else {
                             required_features.clear();
                             break;
-                        } else {
-                            required_features.push(feature);
                         }
-                    } else {
-                        required_features.clear();
-                        break;
                     }
-                }
-                // We are sorting primitive strs here and can use unstable sort here
-                required_features.sort_unstable();
-                required_features.dedup();
-                match &required_features[..] {
-                    [] => {}
-                    [feature] => {
-                        let msg = format!(
-                            "register class `{}` requires the `{}` target feature",
-                            reg_class.name(),
-                            feature
-                        );
-                        sess.struct_span_err(op_sp, &msg).emit();
-                    }
-                    features => {
-                        let msg = format!(
-                            "register class `{}` requires at least one target feature: {}",
-                            reg_class.name(),
-                            features.join(", ")
-                        );
-                        sess.struct_span_err(op_sp, &msg).emit();
+                    // We are sorting primitive strs here and can use unstable sort here
+                    required_features.sort_unstable();
+                    required_features.dedup();
+                    match &required_features[..] {
+                        [] => {}
+                        [feature] => {
+                            let msg = format!(
+                                "register class `{}` requires the `{}` target feature",
+                                reg_class.name(),
+                                feature
+                            );
+                            sess.struct_span_err(op_sp, &msg).emit();
+                        }
+                        features => {
+                            let msg = format!(
+                                "register class `{}` requires at least one target feature: {}",
+                                reg_class.name(),
+                                features.join(", ")
+                            );
+                            sess.struct_span_err(op_sp, &msg).emit();
+                        }
                     }
                 }
 

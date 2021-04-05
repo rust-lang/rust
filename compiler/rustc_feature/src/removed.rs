@@ -128,6 +128,10 @@ declare_features! (
     /// Allows comparing raw pointers during const eval.
     (removed, const_compare_raw_pointers, "1.46.0", Some(53020), None,
      Some("cannot be allowed in const eval in any meaningful way")),
+    /// Allows using the `#[link_args]` attribute.
+    (removed, link_args, "1.53.0", Some(29596), None,
+     Some("removed in favor of using `-C link-arg=ARG` on command line, \
+           which is available from cargo build scripts with `cargo:rustc-link-arg` now")),
 
     // -------------------------------------------------------------------------
     // feature-group-end: removed features

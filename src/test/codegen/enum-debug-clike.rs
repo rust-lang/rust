@@ -1,7 +1,7 @@
 // This tests that debug info for "c-like" enums is properly emitted.
 // This is ignored for the fallback mode on MSVC due to problems with PDB.
 
-// ignore-tidy-linelength
+//
 // ignore-msvc
 
 // compile-flags: -g -C no-prepopulate-passes
