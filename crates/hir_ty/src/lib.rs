@@ -165,8 +165,8 @@ impl<T: TypeWalk> Binders<T> {
 }
 
 impl TraitRef {
-    pub fn self_type_parameter(&self) -> &Ty {
-        &self.substitution.at(&Interner, 0).assert_ty_ref(&Interner)
+    pub fn self_type_parameter(&self, interner: &Interner) -> &Ty {
+        &self.substitution.at(interner, 0).assert_ty_ref(interner)
     }
 
     pub fn hir_trait_id(&self) -> TraitId {
@@ -473,7 +473,9 @@ impl Ty {
                             .into_iter()
                             .map(|pred| pred.clone().subst(&substs))
                             .filter(|wc| match &wc.skip_binders() {
-                                WhereClause::Implemented(tr) => tr.self_type_parameter() == self,
+                                WhereClause::Implemented(tr) => {
+                                    tr.self_type_parameter(&Interner) == self
+                                }
                                 WhereClause::AliasEq(AliasEq {
                                     alias: AliasTy::Projection(proj),
                                     ty: _,

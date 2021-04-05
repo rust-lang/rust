@@ -539,7 +539,7 @@ pub(super) fn generic_predicate_to_inline_bound(
     let self_ty_shifted_in = self_ty.clone().shift_bound_vars(DebruijnIndex::ONE);
     match &pred.value {
         WhereClause::Implemented(trait_ref) => {
-            if trait_ref.self_type_parameter() != &self_ty_shifted_in {
+            if trait_ref.self_type_parameter(&Interner) != &self_ty_shifted_in {
                 // we can only convert predicates back to type bounds if they
                 // have the expected self type
                 return None;

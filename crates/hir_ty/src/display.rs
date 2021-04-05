@@ -592,20 +592,21 @@ impl HirDisplay for Ty {
                     }
                     TypeParamProvenance::ArgumentImplTrait => {
                         let substs = generics.type_params_subst(f.db);
-                        let bounds = f
-                            .db
-                            .generic_predicates(id.parent)
-                            .into_iter()
-                            .map(|pred| pred.clone().subst(&substs))
-                            .filter(|wc| match &wc.skip_binders() {
-                                WhereClause::Implemented(tr) => tr.self_type_parameter() == self,
-                                WhereClause::AliasEq(AliasEq {
-                                    alias: AliasTy::Projection(proj),
-                                    ty: _,
-                                }) => proj.self_type_parameter(&Interner) == self,
-                                _ => false,
-                            })
-                            .collect::<Vec<_>>();
+                        let bounds =
+                            f.db.generic_predicates(id.parent)
+                                .into_iter()
+                                .map(|pred| pred.clone().subst(&substs))
+                                .filter(|wc| match &wc.skip_binders() {
+                                    WhereClause::Implemented(tr) => {
+                                        tr.self_type_parameter(&Interner) == self
+                                    }
+                                    WhereClause::AliasEq(AliasEq {
+                                        alias: AliasTy::Projection(proj),
+                                        ty: _,
+                                    }) => proj.self_type_parameter(&Interner) == self,
+                                    _ => false,
+                                })
+                                .collect::<Vec<_>>();
                         write_bounds_like_dyn_trait_with_prefix("impl", &bounds, f)?;
                     }
                 }
@@ -780,7 +781,7 @@ impl TraitRef {
             return write!(f, "{}", TYPE_HINT_TRUNCATION);
         }
 
-        self.self_type_parameter().hir_fmt(f)?;
+        self.self_type_parameter(&Interner).hir_fmt(f)?;
         if use_as {
             write!(f, " as ")?;
         } else {
