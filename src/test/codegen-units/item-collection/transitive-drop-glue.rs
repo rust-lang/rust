@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+//
 // compile-flags:-Zprint-mono-items=eager
 // compile-flags:-Zinline-in-all-cgus
 

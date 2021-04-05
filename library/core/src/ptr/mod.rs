@@ -90,11 +90,8 @@ pub use crate::intrinsics::copy;
 #[doc(inline)]
 pub use crate::intrinsics::write_bytes;
 
-#[cfg(not(bootstrap))]
 mod metadata;
-#[cfg(not(bootstrap))]
 pub(crate) use metadata::PtrRepr;
-#[cfg(not(bootstrap))]
 #[unstable(feature = "ptr_metadata", issue = "81513")]
 pub use metadata::{from_raw_parts, from_raw_parts_mut, metadata, DynMetadata, Pointee, Thin};
 
@@ -236,33 +233,6 @@ pub const fn null_mut<T>() -> *mut T {
     0 as *mut T
 }
 
-#[cfg(bootstrap)]
-#[repr(C)]
-pub(crate) union Repr<T> {
-    pub(crate) rust: *const [T],
-    rust_mut: *mut [T],
-    pub(crate) raw: FatPtr<T>,
-}
-
-#[cfg(bootstrap)]
-#[repr(C)]
-pub(crate) struct FatPtr<T> {
-    data: *const T,
-    pub(crate) len: usize,
-}
-
-#[cfg(bootstrap)]
-// Manual impl needed to avoid `T: Clone` bound.
-impl<T> Clone for FatPtr<T> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-#[cfg(bootstrap)]
-// Manual impl needed to avoid `T: Copy` bound.
-impl<T> Copy for FatPtr<T> {}
-
 /// Forms a raw slice from a pointer and a length.
 ///
 /// The `len` argument is the number of **elements**, not the number of bytes.
@@ -287,14 +257,6 @@ impl<T> Copy for FatPtr<T> {}
 #[stable(feature = "slice_from_raw_parts", since = "1.42.0")]
 #[rustc_const_unstable(feature = "const_slice_from_raw_parts", issue = "67456")]
 pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
-    #[cfg(bootstrap)]
-    {
-        // SAFETY: Accessing the value from the `Repr` union is safe since *const [T]
-        // and FatPtr have the same memory layouts. Only std can make this
-        // guarantee.
-        unsafe { Repr { raw: FatPtr { data, len } }.rust }
-    }
-    #[cfg(not(bootstrap))]
     from_raw_parts(data.cast(), len)
 }
 
@@ -327,13 +289,6 @@ pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
 #[stable(feature = "slice_from_raw_parts", since = "1.42.0")]
 #[rustc_const_unstable(feature = "const_slice_from_raw_parts", issue = "67456")]
 pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
-    #[cfg(bootstrap)]
-    {
-        // SAFETY: Accessing the value from the `Repr` union is safe since *mut [T]
-        // and FatPtr have the same memory layouts
-        unsafe { Repr { raw: FatPtr { data, len } }.rust_mut }
-    }
-    #[cfg(not(bootstrap))]
     from_raw_parts_mut(data.cast(), len)
 }
 
@@ -473,19 +428,32 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
 #[inline]
 #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
 pub(crate) const unsafe fn swap_nonoverlapping_one<T>(x: *mut T, y: *mut T) {
-    // For types smaller than the block optimization below,
-    // just swap directly to avoid pessimizing codegen.
-    if mem::size_of::<T>() < 32 {
-        // SAFETY: the caller must guarantee that `x` and `y` are valid
-        // for writes, properly aligned, and non-overlapping.
-        unsafe {
-            let z = read(x);
-            copy_nonoverlapping(y, x, 1);
-            write(y, z);
+    // NOTE(eddyb) SPIR-V's Logical addressing model doesn't allow for arbitrary
+    // reinterpretation of values as (chunkable) byte arrays, and the loop in the
+    // block optimization in `swap_nonoverlapping_bytes` is hard to rewrite back
+    // into the (unoptimized) direct swapping implementation, so we disable it.
+    // FIXME(eddyb) the block optimization also prevents MIR optimizations from
+    // understanding `mem::replace`, `Option::take`, etc. - a better overall
+    // solution might be to make `swap_nonoverlapping` into an intrinsic, which
+    // a backend can choose to implement using the block optimization, or not.
+    #[cfg(not(target_arch = "spirv"))]
+    {
+        // Only apply the block optimization in `swap_nonoverlapping_bytes` for types
+        // at least as large as the block size, to avoid pessimizing codegen.
+        if mem::size_of::<T>() >= 32 {
+            // SAFETY: the caller must uphold the safety contract for `swap_nonoverlapping`.
+            unsafe { swap_nonoverlapping(x, y, 1) };
+            return;
         }
-    } else {
-        // SAFETY: the caller must uphold the safety contract for `swap_nonoverlapping`.
-        unsafe { swap_nonoverlapping(x, y, 1) };
+    }
+
+    // Direct swapping, for the cases not going through the block optimization.
+    // SAFETY: the caller must guarantee that `x` and `y` are valid
+    // for writes, properly aligned, and non-overlapping.
+    unsafe {
+        let z = read(x);
+        copy_nonoverlapping(y, x, 1);
+        write(y, z);
     }
 }
 
@@ -1524,6 +1492,10 @@ fnptr_impls_args! { A, B, C, D, E, F, G, H, I, J, K, L }
 /// as all other references. This macro can create a raw pointer *without* creating
 /// a reference first.
 ///
+/// Note, however, that the `expr` in `addr_of!(expr)` is still subject to all
+/// the usual rules. In particular, `addr_of!(*ptr::null())` is Undefined
+/// Behavior because it dereferences a NULL pointer.
+///
 /// # Example
 ///
 /// ```
@@ -1540,6 +1512,10 @@ fnptr_impls_args! { A, B, C, D, E, F, G, H, I, J, K, L }
 /// let raw_f2 = ptr::addr_of!(packed.f2);
 /// assert_eq!(unsafe { raw_f2.read_unaligned() }, 2);
 /// ```
+///
+/// See [`addr_of_mut`] for how to create a pointer to unininitialized data.
+/// Doing that with `addr_of` would not make much sense since one could only
+/// read the data, and that would be Undefined Behavior.
 #[stable(feature = "raw_ref_macros", since = "1.51.0")]
 #[rustc_macro_transparency = "semitransparent"]
 #[allow_internal_unstable(raw_ref_op)]
@@ -1556,7 +1532,13 @@ pub macro addr_of($place:expr) {
 /// as all other references. This macro can create a raw pointer *without* creating
 /// a reference first.
 ///
-/// # Example
+/// Note, however, that the `expr` in `addr_of_mut!(expr)` is still subject to all
+/// the usual rules. In particular, `addr_of_mut!(*ptr::null_mut())` is Undefined
+/// Behavior because it dereferences a NULL pointer.
+///
+/// # Examples
+///
+/// **Creating a pointer to unaligned data:**
 ///
 /// ```
 /// use std::ptr;
@@ -1572,6 +1554,23 @@ pub macro addr_of($place:expr) {
 /// let raw_f2 = ptr::addr_of_mut!(packed.f2);
 /// unsafe { raw_f2.write_unaligned(42); }
 /// assert_eq!({packed.f2}, 42); // `{...}` forces copying the field instead of creating a reference.
+/// ```
+///
+/// **Creating a pointer to uninitialized data:**
+///
+/// ```rust
+/// use std::{ptr, mem::MaybeUninit};
+///
+/// struct Demo {
+///     field: bool,
+/// }
+///
+/// let mut uninit = MaybeUninit::<Demo>::uninit();
+/// // `&uninit.as_mut().field` would create a reference to an uninitialized `bool`,
+/// // and thus be Undefined Behavior!
+/// let f1_ptr = unsafe { ptr::addr_of_mut!((*uninit.as_mut_ptr()).field) };
+/// unsafe { f1_ptr.write(true); }
+/// let init = unsafe { uninit.assume_init() };
 /// ```
 #[stable(feature = "raw_ref_macros", since = "1.51.0")]
 #[rustc_macro_transparency = "semitransparent"]

@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 // min-lldb-version: 310
 
 // Require a gdb that can read DW_TAG_variant_part.

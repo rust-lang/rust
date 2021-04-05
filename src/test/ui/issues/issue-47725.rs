@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 #![warn(unused_attributes)] //~ NOTE lint level is defined here
 
 #[link_name = "foo"]

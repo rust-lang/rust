@@ -1083,9 +1083,9 @@ pub fn compile_unit_metadata(
             );
         }
 
-        // Insert `llvm.ident` metadata on the wasm32 targets since that will
+        // Insert `llvm.ident` metadata on the wasm targets since that will
         // get hooked up to the "producer" sections `processed-by` information.
-        if tcx.sess.opts.target_triple.triple().starts_with("wasm32") {
+        if tcx.sess.target.is_like_wasm {
             let name_metadata = llvm::LLVMMDStringInContext(
                 debug_context.llcontext,
                 rustc_producer.as_ptr().cast(),

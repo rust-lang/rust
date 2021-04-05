@@ -1,5 +1,5 @@
 warning: the feature `type_alias_impl_trait` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/issue-55872-1.rs:4:32
+  --> $DIR/issue-55872-1.rs:3:32
    |
 LL | #![cfg_attr(full_tait, feature(type_alias_impl_trait))]
    |                                ^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | #![cfg_attr(full_tait, feature(type_alias_impl_trait))]
    = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
 
 error[E0276]: impl has stricter requirements than trait
-  --> $DIR/issue-55872-1.rs:18:5
+  --> $DIR/issue-55872-1.rs:17:5
    |
 LL |     fn foo<T>() -> Self::E;
    |     ----------------------- definition of `foo` from trait
@@ -17,7 +17,7 @@ LL |     fn foo<T: Default>() -> Self::E {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `T: Default`
 
 error[E0277]: the trait bound `S: Copy` is not satisfied in `(S, T)`
-  --> $DIR/issue-55872-1.rs:14:14
+  --> $DIR/issue-55872-1.rs:13:14
    |
 LL |     type E = impl Copy;
    |              ^^^^^^^^^ within `(S, T)`, the trait `Copy` is not implemented for `S`
@@ -29,7 +29,7 @@ LL | impl<S: Default + std::marker::Copy> Bar for S {
    |                 ^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `T: Copy` is not satisfied in `(S, T)`
-  --> $DIR/issue-55872-1.rs:14:14
+  --> $DIR/issue-55872-1.rs:13:14
    |
 LL |     type E = impl Copy;
    |              ^^^^^^^^^ within `(S, T)`, the trait `Copy` is not implemented for `T`
@@ -41,7 +41,7 @@ LL |     fn foo<T: Default + std::marker::Copy>() -> Self::E {
    |                       ^^^^^^^^^^^^^^^^^^^
 
 error: type parameter `T` is part of concrete type but not used in parameter list for the `impl Trait` type alias
-  --> $DIR/issue-55872-1.rs:18:37
+  --> $DIR/issue-55872-1.rs:17:37
    |
 LL |       fn foo<T: Default>() -> Self::E {
    |  _____________________________________^

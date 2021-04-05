@@ -2,7 +2,6 @@
 
 #![feature(repr_simd, platform_intrinsics)]
 
-// ignore-tidy-linelength
 
 // error-pattern:monomorphising SIMD type `Simd2<X>` with a non-primitive-scalar (integer/float/pointer) element type `X`
 

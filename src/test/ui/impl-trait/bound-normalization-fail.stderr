@@ -1,5 +1,5 @@
 warning: the feature `impl_trait_in_bindings` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/bound-normalization-fail.rs:4:12
+  --> $DIR/bound-normalization-fail.rs:3:12
    |
 LL | #![feature(impl_trait_in_bindings)]
    |            ^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | #![feature(impl_trait_in_bindings)]
    = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
 
 error[E0271]: type mismatch resolving `<Foo<()> as FooLike>::Output == <T as impl_trait::Trait>::Assoc`
-  --> $DIR/bound-normalization-fail.rs:27:32
+  --> $DIR/bound-normalization-fail.rs:26:32
    |
 LL |     fn foo_fail<T: Trait>() -> impl FooLike<Output=T::Assoc> {
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected associated type, found `()`
@@ -21,13 +21,13 @@ LL |     fn foo_fail<T: Trait<Assoc = ()>>() -> impl FooLike<Output=T::Assoc> {
    |                         ^^^^^^^^^^^^
 
 error[E0760]: `impl Trait` return type cannot contain a projection or `Self` that references lifetimes from a parent scope
-  --> $DIR/bound-normalization-fail.rs:43:41
+  --> $DIR/bound-normalization-fail.rs:42:41
    |
 LL |     fn foo2_fail<'a, T: Trait<'a>>() -> impl FooLike<Output=T::Assoc> {
    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0271]: type mismatch resolving `<Foo<()> as FooLike>::Output == <T as lifetimes::Trait<'static>>::Assoc`
-  --> $DIR/bound-normalization-fail.rs:43:41
+  --> $DIR/bound-normalization-fail.rs:42:41
    |
 LL |     fn foo2_fail<'a, T: Trait<'a>>() -> impl FooLike<Output=T::Assoc> {
    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected associated type, found `()`

@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 fn main() {}
 
 extern "C" {

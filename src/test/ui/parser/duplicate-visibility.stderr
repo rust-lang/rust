@@ -1,5 +1,5 @@
 error: expected one of `(`, `async`, `const`, `default`, `extern`, `fn`, `pub`, `unsafe`, or `use`, found keyword `pub`
-  --> $DIR/duplicate-visibility.rs:6:9
+  --> $DIR/duplicate-visibility.rs:4:9
    |
 LL | extern "C" {
    |            - while parsing this item list starting here

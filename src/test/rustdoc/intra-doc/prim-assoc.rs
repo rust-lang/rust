@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 #![deny(broken_intra_doc_links)]
 
 //! [i32::MAX]

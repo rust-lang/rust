@@ -8,7 +8,6 @@
 // which would mess up the treatment of other cases in
 // issue-43106-gating-of-builtin-attrs.rs)
 
-// ignore-tidy-linelength
 
 #![macro_export]
 //~^ ERROR: `macro_export` attribute cannot be used at crate level

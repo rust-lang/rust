@@ -1,5 +1,5 @@
 warning: unknown `doc` attribute `spotlight`
-  --> $DIR/doc-spotlight.rs:7:7
+  --> $DIR/doc-spotlight.rs:6:7
    |
 LL | #[doc(spotlight)]
    |       ^^^^^^^^^ help: use `notable_trait` instead

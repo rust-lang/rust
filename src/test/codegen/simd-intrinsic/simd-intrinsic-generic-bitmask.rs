@@ -1,5 +1,5 @@
 // compile-flags: -C no-prepopulate-passes
-// ignore-tidy-linelength
+//
 
 #![crate_type = "lib"]
 

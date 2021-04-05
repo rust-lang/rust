@@ -1,5 +1,5 @@
 // compile-flags: -g --remap-path-prefix={{cwd}}=/cwd/ --remap-path-prefix={{src-base}}=/base/
-// ignore-tidy-linelength
+//
 //
 // Ensure that we remap the compile unit directory and that we set it to the compilers current
 // working directory and not something else.

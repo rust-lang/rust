@@ -1,6 +1,5 @@
 #![crate_name = "foo"]
 
-// ignore-tidy-linelength
 
 pub trait Foo {
     // @has foo/trait.Foo.html '//h3[@id="tymethod.foo"]//span[@class="docblock attributes"]' '#[must_use]'
