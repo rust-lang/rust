@@ -549,6 +549,8 @@ impl Step for Rustc {
         // Build cargo command.
         let mut cargo = builder.cargo(compiler, Mode::Rustc, SourceType::InTree, target, "doc");
         cargo.rustdocflag("--document-private-items");
+        // Since we always pass --document-private-items, there's no need to warn about linking to private items.
+        cargo.rustdocflag("-Arustdoc::private-intra-doc-links");
         cargo.rustdocflag("--enable-index-page");
         cargo.rustdocflag("-Zunstable-options");
         cargo.rustdocflag("-Znormalize-docs");
