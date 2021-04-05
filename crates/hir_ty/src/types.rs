@@ -11,7 +11,7 @@ use smallvec::SmallVec;
 
 use crate::{
     AssocTypeId, CanonicalVarKinds, ChalkTraitId, ClosureId, FnDefId, FnSig, ForeignDefId,
-    InferenceVar, Interner, OpaqueTyId, PlaceholderIndex, TypeWalk, VariableKinds,
+    InferenceVar, Interner, OpaqueTyId, PlaceholderIndex, TypeWalk, VariableKind, VariableKinds,
 };
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -43,9 +43,36 @@ pub struct DynTy {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct FnPointer {
-    pub num_args: usize,
+    pub num_binders: usize,
     pub sig: FnSig,
-    pub substs: Substitution,
+    pub substitution: FnSubst,
+}
+/// A wrapper for the substs on a Fn.
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub struct FnSubst(pub Substitution);
+
+impl FnPointer {
+    /// Represent the current `Fn` as if it was wrapped in `Binders`
+    pub fn into_binders(self, interner: &Interner) -> Binders<FnSubst> {
+        Binders::new(
+            VariableKinds::from_iter(
+                interner,
+                (0..self.num_binders).map(|_| VariableKind::Lifetime),
+            ),
+            self.substitution,
+        )
+    }
+
+    /// Represent the current `Fn` as if it was wrapped in `Binders`
+    pub fn as_binders(&self, interner: &Interner) -> Binders<&FnSubst> {
+        Binders::new(
+            VariableKinds::from_iter(
+                interner,
+                (0..self.num_binders).map(|_| VariableKind::Lifetime),
+            ),
+            &self.substitution,
+        )
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]

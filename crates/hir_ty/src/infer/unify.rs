@@ -7,7 +7,7 @@ use ena::unify::{InPlaceUnificationTable, NoError, UnifyKey, UnifyValue};
 
 use super::{DomainGoal, InferenceContext};
 use crate::{
-    AliasEq, AliasTy, BoundVar, Canonical, CanonicalVarKinds, DebruijnIndex, FnPointer,
+    AliasEq, AliasTy, BoundVar, Canonical, CanonicalVarKinds, DebruijnIndex, FnPointer, FnSubst,
     InEnvironment, InferenceVar, Interner, Scalar, Substitution, Ty, TyKind, TypeWalk, WhereClause,
 };
 
@@ -308,8 +308,8 @@ impl InferenceTable {
                 (TyKind::Adt(_, substs1), TyKind::Adt(_, substs2))
                 | (TyKind::FnDef(_, substs1), TyKind::FnDef(_, substs2))
                 | (
-                    TyKind::Function(FnPointer { substs: substs1, .. }),
-                    TyKind::Function(FnPointer { substs: substs2, .. }),
+                    TyKind::Function(FnPointer { substitution: FnSubst(substs1), .. }),
+                    TyKind::Function(FnPointer { substitution: FnSubst(substs2), .. }),
                 )
                 | (TyKind::Tuple(_, substs1), TyKind::Tuple(_, substs2))
                 | (TyKind::OpaqueType(_, substs1), TyKind::OpaqueType(_, substs2))

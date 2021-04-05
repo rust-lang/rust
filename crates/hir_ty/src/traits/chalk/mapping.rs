@@ -24,8 +24,8 @@ impl ToChalk for Ty {
         match self.into_inner() {
             TyKind::Ref(m, ty) => ref_to_chalk(db, m, ty),
             TyKind::Array(ty) => array_to_chalk(db, ty),
-            TyKind::Function(FnPointer { sig, substs, .. }) => {
-                let substitution = chalk_ir::FnSubst(substs.to_chalk(db).shifted_in(&Interner));
+            TyKind::Function(FnPointer { sig, substitution: substs, .. }) => {
+                let substitution = chalk_ir::FnSubst(substs.0.to_chalk(db).shifted_in(&Interner));
                 chalk_ir::TyKind::Function(chalk_ir::FnPointer {
                     num_binders: 0,
                     sig,
@@ -132,11 +132,11 @@ impl ToChalk for Ty {
                 ..
             }) => {
                 assert_eq!(num_binders, 0);
-                let substs: Substitution = from_chalk(
+                let substs = crate::FnSubst(from_chalk(
                     db,
                     substitution.0.shifted_out(&Interner).expect("fn ptr should have no binders"),
-                );
-                TyKind::Function(FnPointer { num_args: (substs.len(&Interner) - 1), sig, substs })
+                ));
+                TyKind::Function(FnPointer { num_binders, sig, substitution: substs })
             }
             chalk_ir::TyKind::BoundVar(idx) => TyKind::BoundVar(idx),
             chalk_ir::TyKind::InferenceVar(_iv, _kind) => TyKind::Error,

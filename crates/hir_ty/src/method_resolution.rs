@@ -46,18 +46,18 @@ impl TyFingerprint {
     /// have impls: if we have some `struct S`, we can have an `impl S`, but not
     /// `impl &S`. Hence, this will return `None` for reference types and such.
     pub fn for_impl(ty: &Ty) -> Option<TyFingerprint> {
-        let fp = match *ty.kind(&Interner) {
+        let fp = match ty.kind(&Interner) {
             TyKind::Str => TyFingerprint::Str,
             TyKind::Never => TyFingerprint::Never,
             TyKind::Slice(..) => TyFingerprint::Slice,
             TyKind::Array(..) => TyFingerprint::Array,
-            TyKind::Scalar(scalar) => TyFingerprint::Scalar(scalar),
-            TyKind::Adt(AdtId(adt), _) => TyFingerprint::Adt(adt),
-            TyKind::Tuple(cardinality, _) => TyFingerprint::Tuple(cardinality),
-            TyKind::Raw(mutability, ..) => TyFingerprint::RawPtr(mutability),
-            TyKind::Foreign(alias_id, ..) => TyFingerprint::ForeignType(alias_id),
-            TyKind::Function(FnPointer { num_args, sig, .. }) => {
-                TyFingerprint::FnPtr(num_args, sig)
+            TyKind::Scalar(scalar) => TyFingerprint::Scalar(*scalar),
+            TyKind::Adt(AdtId(adt), _) => TyFingerprint::Adt(*adt),
+            TyKind::Tuple(cardinality, _) => TyFingerprint::Tuple(*cardinality),
+            TyKind::Raw(mutability, ..) => TyFingerprint::RawPtr(*mutability),
+            TyKind::Foreign(alias_id, ..) => TyFingerprint::ForeignType(*alias_id),
+            TyKind::Function(FnPointer { sig, substitution: substs, .. }) => {
+                TyFingerprint::FnPtr(substs.0.len(&Interner) - 1, *sig)
             }
             TyKind::Dyn(_) => ty.dyn_trait().map(|trait_| TyFingerprint::Dyn(trait_))?,
             _ => return None,

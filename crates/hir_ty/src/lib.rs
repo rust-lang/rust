@@ -142,10 +142,11 @@ impl CallableSig {
         CallableSig {
             // FIXME: what to do about lifetime params? -> return PolyFnSig
             params_and_return: fn_ptr
-                .substs
+                .substitution
                 .clone()
                 .shifted_out_to(DebruijnIndex::ONE)
                 .expect("unexpected lifetime vars in fn ptr")
+                .0
                 .interned()
                 .iter()
                 .map(|arg| arg.assert_ty_ref(&Interner).clone())
@@ -239,9 +240,9 @@ impl Ty {
                 mutability == mutability2
             }
             (
-                TyKind::Function(FnPointer { num_args, sig, .. }),
-                TyKind::Function(FnPointer { num_args: num_args2, sig: sig2, .. }),
-            ) => num_args == num_args2 && sig == sig2,
+                TyKind::Function(FnPointer { num_binders, sig, .. }),
+                TyKind::Function(FnPointer { num_binders: num_binders2, sig: sig2, .. }),
+            ) => num_binders == num_binders2 && sig == sig2,
             (TyKind::Tuple(cardinality, _), TyKind::Tuple(cardinality2, _)) => {
                 cardinality == cardinality2
             }
@@ -314,11 +315,11 @@ impl Ty {
         match self.kind(&Interner) {
             TyKind::Adt(_, substs)
             | TyKind::FnDef(_, substs)
-            | TyKind::Function(FnPointer { substs, .. })
             | TyKind::Tuple(_, substs)
             | TyKind::OpaqueType(_, substs)
             | TyKind::AssociatedType(_, substs)
             | TyKind::Closure(.., substs) => Some(substs),
+            TyKind::Function(FnPointer { substitution: substs, .. }) => Some(&substs.0),
             _ => None,
         }
     }
@@ -327,11 +328,11 @@ impl Ty {
         match self.interned_mut() {
             TyKind::Adt(_, substs)
             | TyKind::FnDef(_, substs)
-            | TyKind::Function(FnPointer { substs, .. })
             | TyKind::Tuple(_, substs)
             | TyKind::OpaqueType(_, substs)
             | TyKind::AssociatedType(_, substs)
             | TyKind::Closure(.., substs) => Some(substs),
+            TyKind::Function(FnPointer { substitution: substs, .. }) => Some(&mut substs.0),
             _ => None,
         }
     }
