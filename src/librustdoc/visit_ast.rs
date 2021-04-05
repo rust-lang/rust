@@ -77,6 +77,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             hir::CRATE_HIR_ID,
             &krate.item,
             self.cx.tcx.crate_name,
+            false,
         );
         top_level_module.is_crate = true;
         // Attach the crate's exported macros to the top-level module.
@@ -134,17 +135,19 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         id: hir::HirId,
         m: &'tcx hir::Mod<'tcx>,
         name: Symbol,
+        from_glob: bool,
     ) -> Module<'tcx> {
         let mut om = Module::new(name);
         om.where_outer = span;
         om.where_inner = m.inner;
         om.id = id;
+        om.from_glob = from_glob;
         // Keep track of if there were any private modules in the path.
         let orig_inside_public_path = self.inside_public_path;
         self.inside_public_path &= vis.node.is_pub();
         for &i in m.item_ids {
             let item = self.cx.tcx.hir().item(i);
-            self.visit_item(item, None, &mut om);
+            self.visit_item(item, None, &mut om, from_glob);
         }
         self.inside_public_path = orig_inside_public_path;
         om
@@ -225,14 +228,14 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 let prev = mem::replace(&mut self.inlining, true);
                 for &i in m.item_ids {
                     let i = self.cx.tcx.hir().item(i);
-                    self.visit_item(i, None, om);
+                    self.visit_item(i, None, om, glob);
                 }
                 self.inlining = prev;
                 true
             }
             Node::Item(it) if !glob => {
                 let prev = mem::replace(&mut self.inlining, true);
-                self.visit_item(it, renamed, om);
+                self.visit_item(it, renamed, om, glob);
                 self.inlining = prev;
                 true
             }
@@ -257,6 +260,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         item: &'tcx hir::Item<'_>,
         renamed: Option<Symbol>,
         om: &mut Module<'tcx>,
+        from_glob: bool,
     ) {
         debug!("visiting item {:?}", item);
         let name = renamed.unwrap_or(item.ident.name);
@@ -309,10 +313,17 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     }
                 }
 
-                om.items.push((item, renamed))
+                om.push_item(Item::new(item, renamed, is_glob))
             }
             hir::ItemKind::Mod(ref m) => {
-                om.mods.push(self.visit_mod_contents(item.span, &item.vis, item.hir_id(), m, name));
+                om.push_mod(self.visit_mod_contents(
+                    item.span,
+                    &item.vis,
+                    item.hir_id(),
+                    m,
+                    name,
+                    from_glob,
+                ));
             }
             hir::ItemKind::Fn(..)
             | hir::ItemKind::ExternCrate(..)
@@ -323,19 +334,19 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             | hir::ItemKind::OpaqueTy(..)
             | hir::ItemKind::Static(..)
             | hir::ItemKind::Trait(..)
-            | hir::ItemKind::TraitAlias(..) => om.items.push((item, renamed)),
+            | hir::ItemKind::TraitAlias(..) => om.push_item(Item::new(item, renamed, from_glob)),
             hir::ItemKind::Const(..) => {
                 // Underscore constants do not correspond to a nameable item and
                 // so are never useful in documentation.
                 if name != kw::Underscore {
-                    om.items.push((item, renamed));
+                    om.push_item(Item::new(item, renamed, from_glob));
                 }
             }
             hir::ItemKind::Impl(ref impl_) => {
                 // Don't duplicate impls when inlining or if it's implementing a trait, we'll pick
                 // them up regardless of where they're located.
                 if !self.inlining && impl_.of_trait.is_none() {
-                    om.items.push((item, None));
+                    om.push_item(Item::new(item, None, from_glob));
                 }
             }
         }

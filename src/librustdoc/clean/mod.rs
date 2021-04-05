@@ -1934,11 +1934,11 @@ impl Clean<BareFunctionDecl> for hir::BareFnTy<'_> {
     }
 }
 
-impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
+impl Clean<Vec<Item>> for doctree::Item<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Vec<Item> {
         use hir::ItemKind;
 
-        let (item, renamed) = self;
+        let (item, renamed) = (self.hir_item, self.renamed_name);
         let def_id = item.def_id.to_def_id();
         let mut name = renamed.unwrap_or_else(|| cx.tcx.hir().name(item.hir_id()));
         cx.with_param_env(def_id, |cx| {
