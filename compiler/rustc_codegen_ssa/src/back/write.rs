@@ -84,6 +84,7 @@ pub struct ModuleConfig {
 
     pub pgo_gen: SwitchWithOptPath,
     pub pgo_use: Option<PathBuf>,
+    pub instrument_coverage: bool,
 
     pub sanitizer: SanitizerSet,
     pub sanitizer_recover: SanitizerSet,
@@ -174,12 +175,6 @@ impl ModuleConfig {
                     if sess.opts.debugging_opts.profile && !is_compiler_builtins {
                         passes.push("insert-gcov-profiling".to_owned());
                     }
-
-                    // The rustc option `-Zinstrument_coverage` injects intrinsic calls to
-                    // `llvm.instrprof.increment()`, which requires the LLVM `instrprof` pass.
-                    if sess.instrument_coverage() {
-                        passes.push("instrprof".to_owned());
-                    }
                     passes
                 },
                 vec![]
@@ -193,6 +188,7 @@ impl ModuleConfig {
                 SwitchWithOptPath::Disabled
             ),
             pgo_use: if_regular!(sess.opts.cg.profile_use.clone(), None),
+            instrument_coverage: if_regular!(sess.instrument_coverage(), false),
 
             sanitizer: if_regular!(sess.opts.debugging_opts.sanitizer, SanitizerSet::empty()),
             sanitizer_recover: if_regular!(

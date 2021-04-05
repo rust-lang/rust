@@ -472,6 +472,7 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
         sanitizer_options.as_ref(),
         pgo_gen_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
         pgo_use_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
+        config.instrument_coverage,
         llvm_selfprofiler,
         selfprofile_before_pass_callback,
         selfprofile_after_pass_callback,
@@ -545,7 +546,7 @@ pub(crate) unsafe fn optimize(
                     llvm::LLVMRustAddPass(fpm, find_pass("lint").unwrap());
                     continue;
                 }
-                if pass_name == "insert-gcov-profiling" || pass_name == "instrprof" {
+                if pass_name == "insert-gcov-profiling" {
                     // Instrumentation must be inserted before optimization,
                     // otherwise LLVM may optimize some functions away which
                     // breaks llvm-cov.
@@ -564,6 +565,10 @@ pub(crate) unsafe fn optimize(
                 if pass_name == "name-anon-globals" {
                     have_name_anon_globals_pass = true;
                 }
+            }
+
+            if config.instrument_coverage {
+                llvm::LLVMRustAddPass(mpm, find_pass("instrprof").unwrap());
             }
 
             add_sanitizer_passes(config, &mut extra_passes);

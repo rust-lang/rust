@@ -2203,6 +2203,7 @@ extern "C" {
         SanitizerOptions: Option<&SanitizerOptions>,
         PGOGenPath: *const c_char,
         PGOUsePath: *const c_char,
+        InstrumentCoverage: bool,
         llvm_selfprofiler: *mut c_void,
         begin_callback: SelfProfileBeforePassCallback,
         end_callback: SelfProfileAfterPassCallback,
