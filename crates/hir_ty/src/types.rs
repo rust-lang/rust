@@ -12,7 +12,7 @@ use smallvec::SmallVec;
 
 use crate::{
     AssocTypeId, CanonicalVarKinds, ChalkTraitId, ClosureId, FnDefId, FnSig, ForeignDefId,
-    InferenceVar, Interner, OpaqueTyId, PlaceholderIndex, VariableKinds,
+    InferenceVar, Interner, OpaqueTyId, PlaceholderIndex, TypeWalk, VariableKinds,
 };
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -284,6 +284,10 @@ impl Substitution {
         elements: impl IntoIterator<Item = impl CastTo<GenericArg>>,
     ) -> Self {
         Substitution(elements.into_iter().casted(interner).collect())
+    }
+
+    pub fn apply<T: TypeWalk>(&self, value: T, _interner: &Interner) -> T {
+        value.subst_bound_vars(self)
     }
 
     // Temporary helper functions, to be removed

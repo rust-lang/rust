@@ -477,7 +477,7 @@ impl<'a> TyLoweringContext<'a> {
                                     ),
                                 );
                                 let s = generics.type_params_subst(self.db);
-                                t.substitution.clone().subst_bound_vars(&s)
+                                s.apply(t.substitution.clone(), &Interner)
                             }
                             TypeParamLoweringMode::Variable => t.substitution.clone(),
                         };
