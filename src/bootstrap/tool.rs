@@ -532,6 +532,11 @@ impl Step for Rustdoc {
         // they'll be linked to those libraries). As such, don't explicitly `ensure` any additional
         // libraries here. The intuition here is that If we've built a compiler, we should be able
         // to build rustdoc.
+        //
+        let mut features = Vec::new();
+        if builder.config.jemalloc {
+            features.push("jemalloc".to_string());
+        }
 
         let cargo = prepare_tool_cargo(
             builder,
@@ -541,7 +546,7 @@ impl Step for Rustdoc {
             "build",
             "src/tools/rustdoc",
             SourceType::InTree,
-            &[],
+            features.as_slice(),
         );
 
         builder.info(&format!(
