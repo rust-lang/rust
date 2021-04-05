@@ -22,8 +22,8 @@ use crate::{
     to_chalk_trait_id,
     traits::{chalk::from_chalk, FnTrait},
     utils::{generics, variant_data, Generics},
-    AdtId, Binders, CallableDefId, FnPointer, FnSig, InEnvironment, Interner, ProjectionTyExt,
-    Rawness, Scalar, Substitution, TraitRef, Ty, TyBuilder, TyKind,
+    AdtId, Binders, CallableDefId, FnPointer, FnSig, FnSubst, InEnvironment, Interner,
+    ProjectionTyExt, Rawness, Scalar, Substitution, TraitRef, Ty, TyBuilder, TyKind,
 };
 
 use super::{
@@ -260,9 +260,9 @@ impl<'a> InferenceContext<'a> {
                 };
                 sig_tys.push(ret_ty.clone());
                 let sig_ty = TyKind::Function(FnPointer {
-                    num_args: sig_tys.len() - 1,
+                    num_binders: 0,
                     sig: FnSig { abi: (), safety: chalk_ir::Safety::Safe, variadic: false },
-                    substs: Substitution::from_iter(&Interner, sig_tys.clone()),
+                    substitution: FnSubst(Substitution::from_iter(&Interner, sig_tys.clone())),
                 })
                 .intern(&Interner);
                 let closure_id = self.db.intern_closure((self.owner, tgt_expr)).into();

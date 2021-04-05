@@ -12,8 +12,8 @@ use smallvec::SmallVec;
 
 use crate::{
     db::HirDatabase, primitive, to_assoc_type_id, to_chalk_trait_id, utils::generics, Binders,
-    CallableSig, FnPointer, FnSig, GenericArg, Interner, ProjectionTy, Substitution, TraitRef, Ty,
-    TyDefId, TyKind, TypeWalk, ValueTyDefId,
+    CallableSig, FnPointer, FnSig, FnSubst, GenericArg, Interner, ProjectionTy, Substitution,
+    TraitRef, Ty, TyDefId, TyKind, TypeWalk, ValueTyDefId,
 };
 
 /// This is a builder for `Ty` or anything that needs a `Substitution`.
@@ -78,9 +78,12 @@ impl TyBuilder<()> {
 
     pub fn fn_ptr(sig: CallableSig) -> Ty {
         TyKind::Function(FnPointer {
-            num_args: sig.params().len(),
+            num_binders: 0,
             sig: FnSig { abi: (), safety: Safety::Safe, variadic: sig.is_varargs },
-            substs: Substitution::from_iter(&Interner, sig.params_and_return.iter().cloned()),
+            substitution: FnSubst(Substitution::from_iter(
+                &Interner,
+                sig.params_and_return.iter().cloned(),
+            )),
         })
         .intern(&Interner)
     }

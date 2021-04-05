@@ -34,9 +34,9 @@ use crate::{
         variant_data, Generics,
     },
     AliasEq, AliasTy, Binders, BoundVar, CallableSig, DebruijnIndex, DynTy, FnPointer, FnSig,
-    ImplTraitId, OpaqueTy, PolyFnSig, ProjectionTy, QuantifiedWhereClause, QuantifiedWhereClauses,
-    ReturnTypeImplTrait, ReturnTypeImplTraits, Substitution, TraitEnvironment, TraitRef, Ty,
-    TyBuilder, TyKind, TypeWalk, WhereClause,
+    FnSubst, ImplTraitId, OpaqueTy, PolyFnSig, ProjectionTy, QuantifiedWhereClause,
+    QuantifiedWhereClauses, ReturnTypeImplTrait, ReturnTypeImplTraits, Substitution,
+    TraitEnvironment, TraitRef, Ty, TyBuilder, TyKind, TypeWalk, WhereClause,
 };
 
 #[derive(Debug)]
@@ -181,9 +181,9 @@ impl<'a> TyLoweringContext<'a> {
                 let substs =
                     Substitution::from_iter(&Interner, params.iter().map(|tr| self.lower_ty(tr)));
                 TyKind::Function(FnPointer {
-                    num_args: substs.len(&Interner) - 1,
+                    num_binders: 0, // FIXME lower `for<'a> fn()` correctly
                     sig: FnSig { abi: (), safety: Safety::Safe, variadic: *is_varargs },
-                    substs,
+                    substitution: FnSubst(substs),
                 })
                 .intern(&Interner)
             }

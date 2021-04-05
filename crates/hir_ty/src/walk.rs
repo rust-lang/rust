@@ -6,8 +6,9 @@ use std::mem;
 use chalk_ir::DebruijnIndex;
 
 use crate::{
-    utils::make_mut_slice, AliasEq, AliasTy, Binders, CallableSig, GenericArg, GenericArgData,
-    Interner, OpaqueTy, ProjectionTy, Substitution, TraitRef, Ty, TyKind, WhereClause,
+    utils::make_mut_slice, AliasEq, AliasTy, Binders, CallableSig, FnSubst, GenericArg,
+    GenericArgData, Interner, OpaqueTy, ProjectionTy, Substitution, TraitRef, Ty, TyKind,
+    WhereClause,
 };
 
 /// This allows walking structures that contain types to do something with those
@@ -379,5 +380,19 @@ impl TypeWalk for AliasEq {
             AliasTy::Projection(projection_ty) => projection_ty.walk_mut_binders(f, binders),
             AliasTy::Opaque(opaque) => opaque.walk_mut_binders(f, binders),
         }
+    }
+}
+
+impl TypeWalk for FnSubst {
+    fn walk(&self, f: &mut impl FnMut(&Ty)) {
+        self.0.walk(f)
+    }
+
+    fn walk_mut_binders(
+        &mut self,
+        f: &mut impl FnMut(&mut Ty, DebruijnIndex),
+        binders: DebruijnIndex,
+    ) {
+        self.0.walk_mut_binders(f, binders)
     }
 }
