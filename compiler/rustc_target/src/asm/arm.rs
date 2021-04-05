@@ -68,7 +68,6 @@ fn frame_pointer_r11(
     _arch: InlineAsmArch,
     has_feature: impl FnMut(&str) -> bool,
     target: &Target,
-    _allocating: bool,
 ) -> Result<(), &'static str> {
     if !frame_pointer_is_r7(has_feature, target) {
         Err("the frame pointer (r11) cannot be used as an operand for inline asm")
@@ -81,7 +80,6 @@ fn frame_pointer_r7(
     _arch: InlineAsmArch,
     has_feature: impl FnMut(&str) -> bool,
     target: &Target,
-    _allocating: bool,
 ) -> Result<(), &'static str> {
     if frame_pointer_is_r7(has_feature, target) {
         Err("the frame pointer (r7) cannot be used as an operand for inline asm")

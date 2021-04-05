@@ -133,7 +133,6 @@ fn x86_64_only(
     arch: InlineAsmArch,
     _has_feature: impl FnMut(&str) -> bool,
     _target: &Target,
-    _allocating: bool,
 ) -> Result<(), &'static str> {
     match arch {
         InlineAsmArch::X86 => Err("register is only available on x86_64"),
@@ -146,13 +145,9 @@ fn high_byte(
     arch: InlineAsmArch,
     _has_feature: impl FnMut(&str) -> bool,
     _target: &Target,
-    allocating: bool,
 ) -> Result<(), &'static str> {
     match arch {
-        InlineAsmArch::X86_64 if allocating => {
-            // The error message isn't actually used...
-            Err("high byte registers are not allocated by reg_byte")
-        }
+        InlineAsmArch::X86_64 => Err("high byte registers cannot be used as an operand on x86_64"),
         _ => Ok(()),
     }
 }
