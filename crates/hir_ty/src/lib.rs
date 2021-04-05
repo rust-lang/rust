@@ -75,10 +75,9 @@ pub type ChalkTraitId = chalk_ir::TraitId<Interner>;
 
 pub type FnSig = chalk_ir::FnSig<Interner>;
 
-impl Substitution {
-    pub fn prefix(&self, n: usize) -> Substitution {
-        Substitution::intern(self.interned()[..std::cmp::min(self.len(&Interner), n)].into())
-    }
+// FIXME: get rid of this
+pub fn subst_prefix(s: &Substitution, n: usize) -> Substitution {
+    Substitution::intern(s.interned()[..std::cmp::min(s.len(&Interner), n)].into())
 }
 
 /// Return an index of a parameter in the generic type parameter list by it's id.

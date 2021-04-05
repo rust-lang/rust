@@ -19,7 +19,7 @@ use hir_expand::name::Name;
 
 use crate::{
     db::HirDatabase, from_assoc_type_id, from_foreign_def_id, from_placeholder_idx,
-    lt_from_placeholder_idx, primitive, to_assoc_type_id, traits::chalk::from_chalk,
+    lt_from_placeholder_idx, primitive, subst_prefix, to_assoc_type_id, traits::chalk::from_chalk,
     utils::generics, AdtId, AliasEq, AliasTy, CallableDefId, CallableSig, DomainGoal, GenericArg,
     ImplTraitId, Interner, Lifetime, LifetimeData, LifetimeOutlives, Mutability, OpaqueTy,
     ProjectionTy, ProjectionTyExt, QuantifiedWhereClause, Scalar, TraitRef, Ty, TyExt, TyKind,
@@ -484,9 +484,11 @@ impl HirDisplay for Ty {
                                             default_from = i + 1;
                                         }
                                         (_, Some(default_parameter)) => {
-                                            let actual_default = default_parameter
-                                                .clone()
-                                                .substitute(&Interner, &parameters.prefix(i));
+                                            let actual_default =
+                                                default_parameter.clone().substitute(
+                                                    &Interner,
+                                                    &subst_prefix(parameters, i),
+                                                );
                                             if parameter.assert_ty_ref(&Interner) != &actual_default
                                             {
                                                 default_from = i + 1;

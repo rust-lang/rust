@@ -964,8 +964,10 @@ impl<'a> InferenceContext<'a> {
                     if let AssocContainerId::TraitId(trait_) = f.lookup(self.db.upcast()).container
                     {
                         // construct a TraitRef
-                        let substs =
-                            parameters.prefix(generics(self.db.upcast(), trait_.into()).len());
+                        let substs = crate::subst_prefix(
+                            &*parameters,
+                            generics(self.db.upcast(), trait_.into()).len(),
+                        );
                         self.push_obligation(
                             TraitRef { trait_id: to_chalk_trait_id(trait_), substitution: substs }
                                 .cast(&Interner),
