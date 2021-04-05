@@ -9,9 +9,10 @@ running 7 tests
 test result: ok. 6 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out
 
 
-running 2 tests
+running 3 tests
 test src/lib.rs - make_true (line 5) ... ok
+test src/lib.rs - make_true (line 8) ... ok
 test src/lib.rs - make_true (line 2) ... ok
 
-test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
 

@@ -38,7 +38,7 @@ enum MiriCommand {
 }
 
 /// The information to run a crate with the given environment.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 struct CrateRunEnv {
     /// The command-line arguments.
     args: Vec<String>,
@@ -48,6 +48,22 @@ struct CrateRunEnv {
     current_dir: OsString,
     /// The contents passed via standard input.
     stdin: Vec<u8>,
+}
+
+impl CrateRunEnv {
+    /// Gather all the information we need.
+    fn collect(args: env::Args) -> Self {
+        let args = args.collect();
+        let env = env::vars_os().collect();
+        let current_dir = env::current_dir().unwrap().into_os_string();
+
+        let mut stdin = Vec::new();
+        if env::var_os("MIRI_CALLED_FROM_RUSTDOC").is_some() {
+            std::io::stdin().lock().read_to_end(&mut stdin).expect("cannot read stdin");
+        }
+
+        CrateRunEnv { args, env, current_dir, stdin }
+    }
 }
 
 /// The information Miri needs to run a crate. Stored as JSON when the crate is "compiled".
@@ -60,20 +76,6 @@ enum CrateRunInfo {
 }
 
 impl CrateRunInfo {
-    /// Gather all the information we need.
-    fn collect(args: env::Args) -> Self {
-        let args = args.collect();
-        let env = env::vars_os().collect();
-        let current_dir = env::current_dir().unwrap().into_os_string();
-
-        let mut stdin = Vec::new();
-        if env::var_os("MIRI_CALLED_FROM_RUSTDOC").is_some() {
-            std::io::stdin().lock().read_to_end(&mut stdin).expect("cannot read stdin");
-        }
-
-        Self::RunWith(CrateRunEnv { args, env, current_dir, stdin })
-    }
-
     fn store(&self, filename: &Path) {
         let file = File::create(filename)
             .unwrap_or_else(|_| show_error(format!("cannot create `{}`", filename.display())));
@@ -644,7 +646,7 @@ fn phase_cargo_rustc(mut args: env::Args) {
     let target_crate = is_target_crate();
     let print = get_arg_flag_value("--print").is_some(); // whether this is cargo passing `--print` to get some infos
 
-    let store_json = |info: &CrateRunInfo| {
+    let store_json = |info: CrateRunInfo| {
         // Create a stub .d file to stop Cargo from "rebuilding" the crate:
         // https://github.com/rust-lang/miri/issues/1724#issuecomment-787115693
         // As we store a JSON file instead of building the crate here, an empty file is fine.
@@ -672,30 +674,24 @@ fn phase_cargo_rustc(mut args: env::Args) {
         // like we want them.
         // Instead of compiling, we write JSON into the output file with all the relevant command-line flags
         // and environment variables; this is used when cargo calls us again in the CARGO_TARGET_RUNNER phase.
-        let info = CrateRunInfo::collect(args);
-        store_json(&info);
+        let env = CrateRunEnv::collect(args);
 
         // Rustdoc expects us to exit with an error code if the test is marked as `compile_fail`,
         // just creating the JSON file is not enough: we need to detect syntax errors,
         // so we need to run Miri with `MIRI_BE_RUSTC` for a check-only build.
         if std::env::var_os("MIRI_CALLED_FROM_RUSTDOC").is_some() {
             let mut cmd = miri();
-            let env = if let CrateRunInfo::RunWith(env) = info {
-                env
-            } else {
-                return;
-            };
 
-            // ensure --emit argument for a check-only build is present
+            // Ensure --emit argument for a check-only build is present.
             if let Some(i) = env.args.iter().position(|arg| arg.starts_with("--emit=")) {
-                // We need to make sure we're not producing a binary that overwrites the JSON file.
-                // rustdoc should only ever pass an --emit=metadata argument for tests marked as `no_run`:
+                // For `no_run` tests, rustdoc passes a `--emit` flag; make sure it has the right shape.
                 assert_eq!(env.args[i], "--emit=metadata");
             } else {
-                cmd.arg("--emit=dep-info,metadata");
+                // For all other kinds of tests, we can just add our flag.
+                cmd.arg("--emit=metadata");
             }
 
-            cmd.args(env.args);
+            cmd.args(&env.args);
             cmd.env("MIRI_BE_RUSTC", "1");
 
             if verbose {
@@ -706,6 +702,8 @@ fn phase_cargo_rustc(mut args: env::Args) {
             exec_with_pipe(cmd, &env.stdin);
         }
 
+        store_json(CrateRunInfo::RunWith(env));
+
         return;
     }
 
@@ -713,7 +711,7 @@ fn phase_cargo_rustc(mut args: env::Args) {
         // This is a "runnable" `proc-macro` crate (unit tests). We do not support
         // interpreting that under Miri now, so we write a JSON file to (display a
         // helpful message and) skip it in the runner phase.
-        store_json(&CrateRunInfo::SkipProcMacroTest);
+        store_json(CrateRunInfo::SkipProcMacroTest);
         return;
     }
 
