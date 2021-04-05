@@ -1023,11 +1023,9 @@ impl LinkCollector<'_, '_> {
             debug!("attempting to resolve item without parent module: {}", path_str);
             resolution_failure(
                 self,
-                &item,
+                diag_info,
                 path_str,
                 disambiguator,
-                dox,
-                ori_link.range,
                 smallvec![ResolutionFailure::NoParentItem],
             );
             return None;
@@ -1073,11 +1071,9 @@ impl LinkCollector<'_, '_> {
                     debug!("link has malformed generics: {}", path_str);
                     resolution_failure(
                         self,
-                        &item,
+                        diag_info,
                         path_str,
                         disambiguator,
-                        dox,
-                        ori_link.range,
                         smallvec![err_kind],
                     );
                     return None;
@@ -1337,15 +1333,7 @@ impl LinkCollector<'_, '_> {
                                 }
                             }
                         }
-                        resolution_failure(
-                            self,
-                            diag.item,
-                            path_str,
-                            disambiguator,
-                            diag.dox,
-                            diag.link_range,
-                            smallvec![kind],
-                        );
+                        resolution_failure(self, diag, path_str, disambiguator, smallvec![kind]);
                         // This could just be a normal link or a broken link
                         // we could potentially check if something is
                         // "intra-doc-link-like" and warn in that case.
@@ -1406,11 +1394,9 @@ impl LinkCollector<'_, '_> {
                 if len == 0 {
                     resolution_failure(
                         self,
-                        diag.item,
+                        diag,
                         path_str,
                         disambiguator,
-                        diag.dox,
-                        diag.link_range,
                         candidates.into_iter().filter_map(|res| res.err()).collect(),
                     );
                     // this could just be a normal link
@@ -1452,15 +1438,7 @@ impl LinkCollector<'_, '_> {
                                 break;
                             }
                         }
-                        resolution_failure(
-                            self,
-                            diag.item,
-                            path_str,
-                            disambiguator,
-                            diag.dox,
-                            diag.link_range,
-                            smallvec![kind],
-                        );
+                        resolution_failure(self, diag, path_str, disambiguator, smallvec![kind]);
                         None
                     }
                 }
@@ -1750,11 +1728,9 @@ fn report_diagnostic(
 /// `std::io::Error::x`, this will resolve `std::io::Error`.
 fn resolution_failure(
     collector: &mut LinkCollector<'_, '_>,
-    item: &Item,
+    DiagnosticInfo { item, ori_link: _, dox, link_range }: DiagnosticInfo<'_>,
     path_str: &str,
     disambiguator: Option<Disambiguator>,
-    dox: &str,
-    link_range: Range<usize>,
     kinds: SmallVec<[ResolutionFailure<'_>; 3]>,
 ) {
     let tcx = collector.cx.tcx;
