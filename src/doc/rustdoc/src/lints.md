@@ -296,7 +296,7 @@ warning: 2 warnings emitted
 
 ## bare_urls
 
-This lint is **nightly-only** and **warns by default**. It detects URLs which are not links.
+This lint is **warn-by-default**. It detects URLs which are not links.
 For example:
 
 ```rust

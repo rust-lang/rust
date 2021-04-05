@@ -148,7 +148,7 @@ declare_rustdoc_lint! {
 }
 
 declare_rustdoc_lint! {
-    /// The `non_autolinks` lint detects when a URL is not a hyperlink.
+    /// The `bare_urls` lint detects when a URL is not a hyperlink.
     /// This is a `rustdoc` only lint, see the documentation in the [rustdoc book].
     ///
     /// [rustdoc book]: ../../../rustdoc/lints.html#bare_urls
