@@ -1,3 +1,4 @@
+// ignore-tidy-filelength
 //! MIR datatypes and passes. See the [rustc dev guide] for more info.
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/mir/index.html
@@ -1303,12 +1304,27 @@ impl<'tcx> Statements<'tcx> {
     where
         F: FnMut(&Statement<'tcx>) -> bool,
     {
-        (self.statements, self.source_infos) = self
-            .statements
-            .drain(0..)
-            .zip(self.source_infos.iter())
-            .filter(|(stmt, _)| f(stmt))
-            .unzip();
+        // Implementation ideas taken from Vec::retain
+        let len = self.len();
+        let mut del = 0;
+        {
+            let v_stmt = &mut self.statements;
+            let v_source_infos = &mut self.source_infos;
+
+            for i in 0..len {
+                let retain = f(&v_stmt[i]);
+                if !retain {
+                    del += 1;
+                } else if del > 0 {
+                    v_stmt.swap(i - del, i);
+                    v_source_infos.swap(i - del, i);
+                }
+            }
+        }
+        if del > 0 {
+            self.statements.truncate(len - del);
+            self.source_infos.truncate(len - del);
+        }
     }
 
     pub fn reserve(&mut self, additional: usize) {
