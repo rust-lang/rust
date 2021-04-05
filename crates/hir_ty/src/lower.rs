@@ -941,7 +941,8 @@ pub(crate) fn trait_environment_query(
     for pred in resolver.where_predicates_in_scope() {
         for pred in ctx.lower_where_predicate(pred, false) {
             if let WhereClause::Implemented(tr) = &pred.skip_binders() {
-                traits_in_scope.push((tr.self_type_parameter().clone(), tr.hir_trait_id()));
+                traits_in_scope
+                    .push((tr.self_type_parameter(&Interner).clone(), tr.hir_trait_id()));
             }
             let program_clause: chalk_ir::ProgramClause<Interner> =
                 pred.clone().to_chalk(db).cast(&Interner);
