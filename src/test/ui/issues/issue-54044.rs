@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 #![deny(unused_attributes)] //~ NOTE lint level is defined here
 
 #[cold]

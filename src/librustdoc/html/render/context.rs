@@ -18,7 +18,7 @@ use super::print_item::{full_path, item_path, print_item};
 use super::write_shared::write_shared;
 use super::{
     print_sidebar, settings, AllTypes, NameDoc, SharedContext, StylePath, BASIC_KEYWORDS,
-    CURRENT_DEPTH, INITIAL_IDS,
+    CURRENT_DEPTH,
 };
 
 use crate::clean::{self, AttributesExt};
@@ -423,14 +423,11 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
     }
 
     fn make_child_renderer(&self) -> Self {
-        let mut id_map = IdMap::new();
-        id_map.populate(&INITIAL_IDS);
-
         Self {
             current: self.current.clone(),
             dst: self.dst.clone(),
             render_redirect_pages: self.render_redirect_pages,
-            id_map: RefCell::new(id_map),
+            id_map: RefCell::new(IdMap::new()),
             deref_id_map: RefCell::new(FxHashMap::default()),
             shared: Rc::clone(&self.shared),
             cache: Rc::clone(&self.cache),

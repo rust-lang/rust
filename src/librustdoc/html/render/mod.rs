@@ -283,24 +283,6 @@ crate struct StylePath {
 
 thread_local!(crate static CURRENT_DEPTH: Cell<usize> = Cell::new(0));
 
-crate const INITIAL_IDS: [&'static str; 15] = [
-    "main",
-    "search",
-    "help",
-    "TOC",
-    "render-detail",
-    "associated-types",
-    "associated-const",
-    "required-methods",
-    "provided-methods",
-    "implementors",
-    "synthetic-implementors",
-    "implementors-list",
-    "synthetic-implementors-list",
-    "methods",
-    "implementations",
-];
-
 fn write_srclink(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer) {
     if let Some(l) = cx.src_href(item) {
         write!(buf, "<a class=\"srclink\" href=\"{}\" title=\"goto source code\">[src]</a>", l)
@@ -1933,13 +1915,6 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
         }
 
         if v.iter().any(|i| i.inner_impl().trait_.is_some()) {
-            if let Some(impl_) = v
-                .iter()
-                .filter(|i| i.inner_impl().trait_.is_some())
-                .find(|i| i.inner_impl().trait_.def_id_full(cache) == cx.cache.deref_trait_did)
-            {
-                sidebar_deref_methods(cx, out, impl_, v);
-            }
             let format_impls = |impls: Vec<&Impl>| {
                 let mut links = FxHashSet::default();
 
@@ -2006,6 +1981,14 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
                         Blanket Implementations</a>",
                 );
                 write_sidebar_links(out, blanket_format);
+            }
+
+            if let Some(impl_) = v
+                .iter()
+                .filter(|i| i.inner_impl().trait_.is_some())
+                .find(|i| i.inner_impl().trait_.def_id_full(cache) == cx.cache.deref_trait_did)
+            {
+                sidebar_deref_methods(cx, out, impl_, v);
             }
         }
     }

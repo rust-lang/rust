@@ -26,7 +26,6 @@ pub use rmeta::{provide, provide_extern};
 
 mod dependency_format;
 mod foreign_modules;
-mod link_args;
 mod native_libs;
 mod rmeta;
 

@@ -170,10 +170,7 @@ pub fn target_machine_factory(
     // On the wasm target once the `atomics` feature is enabled that means that
     // we're no longer single-threaded, or otherwise we don't want LLVM to
     // lower atomic operations to single-threaded operations.
-    if singlethread
-        && sess.target.llvm_target.contains("wasm32")
-        && sess.target_features.contains(&sym::atomics)
-    {
+    if singlethread && sess.target.is_like_wasm && sess.target_features.contains(&sym::atomics) {
         singlethread = false;
     }
 
@@ -1050,7 +1047,7 @@ pub unsafe fn with_llvm_pmb(
     // thresholds copied from clang.
     match (opt_level, opt_size, inline_threshold) {
         (.., Some(t)) => {
-            llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, t as u32);
+            llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, t);
         }
         (llvm::CodeGenOptLevel::Aggressive, ..) => {
             llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, 275);

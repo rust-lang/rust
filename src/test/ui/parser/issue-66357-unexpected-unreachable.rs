@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 // The problem in #66357 was that the call trace:
 //
 // - parse_fn_block_decl

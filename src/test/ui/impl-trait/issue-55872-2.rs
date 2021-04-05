@@ -1,5 +1,4 @@
 // edition:2018
-// ignore-tidy-linelength
 // ignore-compare-mode-chalk
 
 // revisions: min_tait full_tait

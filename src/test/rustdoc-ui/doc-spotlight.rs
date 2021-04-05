@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 // check-pass
 // run-rustfix
 

@@ -1,5 +1,5 @@
 error[E0390]: only a single inherent implementation marked with `#[lang = "u8"]` is allowed for the `u8` primitive
-  --> $DIR/kinds-of-primitive-impl.rs:4:1
+  --> $DIR/kinds-of-primitive-impl.rs:1:1
    |
 LL | / impl u8 {
 LL | |
@@ -10,7 +10,7 @@ LL | | }
    = help: consider using a trait to implement this constant
 
 error[E0390]: only a single inherent implementation marked with `#[lang = "str"]` is allowed for the `str` primitive
-  --> $DIR/kinds-of-primitive-impl.rs:9:1
+  --> $DIR/kinds-of-primitive-impl.rs:6:1
    |
 LL | / impl str {
 LL | |
@@ -22,7 +22,7 @@ LL | | }
    = help: consider using a trait to implement these methods
 
 error[E0390]: only a single inherent implementation marked with `#[lang = "char"]` is allowed for the `char` primitive
-  --> $DIR/kinds-of-primitive-impl.rs:15:1
+  --> $DIR/kinds-of-primitive-impl.rs:12:1
    |
 LL | / impl char {
 LL | |

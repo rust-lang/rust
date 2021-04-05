@@ -1,8 +1,8 @@
-use super::wasm32_base;
+use super::wasm_base;
 use super::{LinkArgs, LinkerFlavor, PanicStrategy, Target, TargetOptions};
 
 pub fn target() -> Target {
-    let mut options = wasm32_base::options();
+    let mut options = wasm_base::options();
 
     let clang_args = options.pre_link_args.entry(LinkerFlavor::Gcc).or_default();
 

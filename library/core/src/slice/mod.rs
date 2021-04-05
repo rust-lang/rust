@@ -102,23 +102,14 @@ impl<T> [T] {
     // SAFETY: const sound because we transmute out the length field as a usize (which it must be)
     #[rustc_allow_const_fn_unstable(const_fn_union)]
     pub const fn len(&self) -> usize {
-        #[cfg(bootstrap)]
-        {
-            // SAFETY: this is safe because `&[T]` and `FatPtr<T>` have the same layout.
-            // Only `std` can make this guarantee.
-            unsafe { crate::ptr::Repr { rust: self }.raw.len }
-        }
-        #[cfg(not(bootstrap))]
-        {
-            // FIXME: Replace with `crate::ptr::metadata(self)` when that is const-stable.
-            // As of this writing this causes a "Const-stable functions can only call other
-            // const-stable functions" error.
+        // FIXME: Replace with `crate::ptr::metadata(self)` when that is const-stable.
+        // As of this writing this causes a "Const-stable functions can only call other
+        // const-stable functions" error.
 
-            // SAFETY: Accessing the value from the `PtrRepr` union is safe since *const T
-            // and PtrComponents<T> have the same memory layouts. Only std can make this
-            // guarantee.
-            unsafe { crate::ptr::PtrRepr { const_ptr: self }.components.metadata }
-        }
+        // SAFETY: Accessing the value from the `PtrRepr` union is safe since *const T
+        // and PtrComponents<T> have the same memory layouts. Only std can make this
+        // guarantee.
+        unsafe { crate::ptr::PtrRepr { const_ptr: self }.components.metadata }
     }
 
     /// Returns `true` if the slice has a length of 0.
@@ -2265,8 +2256,7 @@ impl<T> [T] {
     // in crate `alloc`, and as such doesn't exists yet when building `core`.
     // links to downstream crate: #74481. Since primitives are only documented in
     // libstd (#73423), this never leads to broken links in practice.
-    #[cfg_attr(not(bootstrap), allow(rustdoc::broken_intra_doc_links))]
-    #[cfg_attr(bootstrap, allow(broken_intra_doc_links))]
+    #[allow(rustdoc::broken_intra_doc_links)]
     #[stable(feature = "slice_binary_search_by_key", since = "1.10.0")]
     #[inline]
     pub fn binary_search_by_key<'a, B, F>(&'a self, b: &B, mut f: F) -> Result<usize, usize>

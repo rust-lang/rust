@@ -139,7 +139,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // uninhabited value. If we get never patterns, those will check that
         // the place is initialized, and so this read would only be used to
         // check safety.
-        let cause_matched_place = FakeReadCause::ForMatchedPlace;
+        let cause_matched_place = FakeReadCause::ForMatchedPlace(None);
         let source_info = self.source_info(scrutinee_span);
 
         if let Ok(scrutinee_builder) =
@@ -400,7 +400,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
                 let source_info = self.source_info(irrefutable_pat.span);
-                self.cfg.push_fake_read(block, source_info, FakeReadCause::ForLet, place);
+                self.cfg.push_fake_read(block, source_info, FakeReadCause::ForLet(None), place);
 
                 self.schedule_drop_for_binding(var, irrefutable_pat.span, OutsideGuard);
                 block.unit()
@@ -435,7 +435,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
                 let pattern_source_info = self.source_info(irrefutable_pat.span);
-                let cause_let = FakeReadCause::ForLet;
+                let cause_let = FakeReadCause::ForLet(None);
                 self.cfg.push_fake_read(block, pattern_source_info, cause_let, place);
 
                 let ty_source_info = self.source_info(user_ty_span);

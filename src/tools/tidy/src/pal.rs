@@ -40,35 +40,20 @@ const EXCEPTION_PATHS: &[&str] = &[
     "library/panic_abort",
     "library/panic_unwind",
     "library/unwind",
-    // black_box implementation is LLVM-version specific and it uses
-    // target_os to tell targets with different LLVM-versions apart
-    // (e.g. `wasm32-unknown-emscripten` vs `wasm32-unknown-unknown`):
-    "library/core/src/hint.rs",
     "library/std/src/sys/", // Platform-specific code for std lives here.
     // This has the trailing slash so that sys_common is not excepted.
     "library/std/src/os", // Platform-specific public interfaces
     "library/rtstartup",  // Not sure what to do about this. magic stuff for mingw
-    // temporary exceptions
-    "library/std/src/lib.rs",
-    "library/std/src/path.rs",
-    "library/std/src/f32.rs",
-    "library/std/src/f64.rs",
     // Integration test for platform-specific run-time feature detection:
     "library/std/tests/run-time-detect.rs",
     "library/std/src/net/test.rs",
     "library/std/src/net/addr",
     "library/std/src/net/udp",
-    "library/std/src/sys_common/mod.rs",
-    "library/std/src/sys_common/net.rs",
-    "library/std/src/sys_common/backtrace.rs",
     "library/std/src/sys_common/remutex.rs",
     "library/std/src/sync/mutex.rs",
     "library/std/src/sync/rwlock.rs",
-    // panic_unwind shims
-    "library/std/src/panicking.rs",
     "library/term", // Not sure how to make this crate portable, but test crate needs it.
     "library/test", // Probably should defer to unstable `std::sys` APIs.
-    "library/std/src/sync/mpsc", // some tests are only run on non-emscripten
     // std testing crates, okay for now at least
     "library/core/tests",
     "library/alloc/tests/lib.rs",
@@ -79,13 +64,6 @@ const EXCEPTION_PATHS: &[&str] = &[
     // we must use `#[cfg(windows)]` to conditionally compile the
     // correct `VaList` structure for windows.
     "library/core/src/ffi.rs",
-    // non-std crates
-    "src/test",
-    "src/tools",
-    "src/librustc",
-    "src/librustdoc",
-    "src/librustc_ast",
-    "src/bootstrap",
 ];
 
 pub fn check(path: &Path, bad: &mut bool) {

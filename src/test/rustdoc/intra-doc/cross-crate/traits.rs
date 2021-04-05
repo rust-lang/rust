@@ -1,6 +1,5 @@
 // aux-build:traits.rs
 // build-aux-docs
-// ignore-tidy-line-length
 #![deny(broken_intra_doc_links)]
 
 extern crate inner;

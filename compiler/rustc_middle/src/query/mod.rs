@@ -1253,11 +1253,6 @@ rustc_queries! {
         desc { |tcx| "native_library_kind({})", tcx.def_path_str(def_id) }
     }
 
-    query link_args(_: CrateNum) -> Lrc<Vec<String>> {
-        eval_always
-        desc { "looking up link arguments for a crate" }
-    }
-
     /// Does lifetime resolution, but does not descend into trait items. This
     /// should only be used for resolving lifetimes of on trait definitions,
     /// and is used to avoid cycles. Importantly, `resolve_lifetimes` still visits

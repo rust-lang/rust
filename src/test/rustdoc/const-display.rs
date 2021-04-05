@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 #![crate_name = "foo"]
 
 #![unstable(feature = "humans",
