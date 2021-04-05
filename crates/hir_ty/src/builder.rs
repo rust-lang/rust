@@ -139,7 +139,7 @@ impl TyBuilder<hir_def::AdtId> {
             } else {
                 // each default can depend on the previous parameters
                 let subst_so_far = Substitution::intern(self.vec.clone());
-                self.vec.push(default_ty.clone().subst(&subst_so_far).cast(&Interner));
+                self.vec.push(default_ty.clone().substitute(&subst_so_far).cast(&Interner));
             }
         }
         self
@@ -200,7 +200,7 @@ impl<T: TypeWalk + HasInterner<Interner = Interner>> TyBuilder<Binders<T>> {
 
     pub fn build(self) -> T {
         let (b, subst) = self.build_internal();
-        b.subst(&subst)
+        b.substitute(&subst)
     }
 }
 

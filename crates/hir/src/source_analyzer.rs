@@ -339,7 +339,7 @@ impl SourceAnalyzer {
             .into_iter()
             .map(|local_id| {
                 let field = FieldId { parent: variant, local_id };
-                let ty = field_types[local_id].clone().subst(substs);
+                let ty = field_types[local_id].clone().substitute(substs);
                 (field.into(), Type::new_with_resolver_inner(db, krate, &self.resolver, ty))
             })
             .collect()

@@ -72,7 +72,7 @@ fn direct_super_trait_refs(db: &dyn HirDatabase, trait_ref: &TraitRef) -> Vec<Tr
                 _ => None,
             })
         })
-        .map(|pred| pred.subst(&trait_ref.substitution))
+        .map(|pred| pred.substitute(&trait_ref.substitution))
         .collect()
 }
 

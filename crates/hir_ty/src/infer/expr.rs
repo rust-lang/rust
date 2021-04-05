@@ -419,7 +419,7 @@ impl<'a> InferenceContext<'a> {
                         self.result.record_field_resolutions.insert(field.expr, field_def);
                     }
                     let field_ty = field_def.map_or(self.err_ty(), |it| {
-                        field_types[it.local_id].clone().subst(&substs)
+                        field_types[it.local_id].clone().substitute(&substs)
                     });
                     self.infer_expr_coerce(field.expr, &Expectation::has_type(field_ty));
                 }
@@ -462,7 +462,7 @@ impl<'a> InferenceContext<'a> {
                                 Some(
                                     self.db.field_types((*s).into())[field.local_id]
                                         .clone()
-                                        .subst(&parameters),
+                                        .substitute(&parameters),
                                 )
                             } else {
                                 None
@@ -476,7 +476,7 @@ impl<'a> InferenceContext<'a> {
                                 Some(
                                     self.db.field_types((*u).into())[field.local_id]
                                         .clone()
-                                        .subst(&parameters),
+                                        .substitute(&parameters),
                                 )
                             } else {
                                 None
@@ -852,7 +852,7 @@ impl<'a> InferenceContext<'a> {
             None => (receiver_ty, Binders::empty(&Interner, self.err_ty()), None),
         };
         let substs = self.substs_for_method_call(def_generics, generic_args, &derefed_receiver_ty);
-        let method_ty = method_ty.subst(&substs);
+        let method_ty = method_ty.substitute(&substs);
         let method_ty = self.insert_type_vars(method_ty);
         self.register_obligations_for_call(&method_ty);
         let (expected_receiver_ty, param_tys, ret_ty) = match method_ty.callable_sig(self.db) {
@@ -950,7 +950,7 @@ impl<'a> InferenceContext<'a> {
             let generic_predicates = self.db.generic_predicates(def.into());
             for predicate in generic_predicates.iter() {
                 let (predicate, binders) =
-                    predicate.clone().subst(parameters).into_value_and_skipped_binders();
+                    predicate.clone().substitute(parameters).into_value_and_skipped_binders();
                 always!(binders.len(&Interner) == 0); // quantified where clauses not yet handled
                 self.push_obligation(predicate.cast(&Interner));
             }

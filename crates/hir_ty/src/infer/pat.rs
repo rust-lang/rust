@@ -49,7 +49,7 @@ impl<'a> InferenceContext<'a> {
             let expected_ty = var_data
                 .as_ref()
                 .and_then(|d| d.field(&Name::new_tuple_field(i)))
-                .map_or(self.err_ty(), |field| field_tys[field].clone().subst(&substs));
+                .map_or(self.err_ty(), |field| field_tys[field].clone().substitute(&substs));
             let expected_ty = self.normalize_associated_types_in(expected_ty);
             self.infer_pat(subpat, &expected_ty, default_bm);
         }
@@ -84,7 +84,7 @@ impl<'a> InferenceContext<'a> {
             }
 
             let expected_ty = matching_field
-                .map_or(self.err_ty(), |field| field_tys[field].clone().subst(&substs));
+                .map_or(self.err_ty(), |field| field_tys[field].clone().substitute(&substs));
             let expected_ty = self.normalize_associated_types_in(expected_ty);
             self.infer_pat(subpat.pat, &expected_ty, default_bm);
         }

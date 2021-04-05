@@ -352,7 +352,7 @@ impl HirDisplay for Ty {
                             let data = (*datas)
                                 .as_ref()
                                 .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
-                            let bounds = data.subst(parameters);
+                            let bounds = data.substitute(parameters);
                             bounds.into_value_and_skipped_binders().0
                         } else {
                             Vec::new()
@@ -397,7 +397,7 @@ impl HirDisplay for Ty {
             }
             TyKind::FnDef(def, parameters) => {
                 let def = from_chalk(f.db, *def);
-                let sig = f.db.callable_item_signature(def).subst(parameters);
+                let sig = f.db.callable_item_signature(def).substitute(parameters);
                 match def {
                     CallableDefId::FunctionId(ff) => {
                         write!(f, "fn {}", f.db.function_data(ff).name)?
@@ -482,7 +482,7 @@ impl HirDisplay for Ty {
                                         (_, Some(default_parameter)) => {
                                             let actual_default = default_parameter
                                                 .clone()
-                                                .subst(&parameters.prefix(i));
+                                                .substitute(&parameters.prefix(i));
                                             if parameter.assert_ty_ref(&Interner) != &actual_default
                                             {
                                                 default_from = i + 1;
@@ -542,7 +542,7 @@ impl HirDisplay for Ty {
                         let data = (*datas)
                             .as_ref()
                             .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
-                        let bounds = data.subst(&parameters);
+                        let bounds = data.substitute(&parameters);
                         write_bounds_like_dyn_trait_with_prefix("impl", bounds.skip_binders(), f)?;
                         // FIXME: it would maybe be good to distinguish this from the alias type (when debug printing), and to show the substitution
                     }
@@ -595,7 +595,7 @@ impl HirDisplay for Ty {
                         let bounds =
                             f.db.generic_predicates(id.parent)
                                 .into_iter()
-                                .map(|pred| pred.clone().subst(&substs))
+                                .map(|pred| pred.clone().substitute(&substs))
                                 .filter(|wc| match &wc.skip_binders() {
                                     WhereClause::Implemented(tr) => {
                                         tr.self_type_parameter(&Interner) == self
@@ -629,7 +629,7 @@ impl HirDisplay for Ty {
                         let data = (*datas)
                             .as_ref()
                             .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
-                        let bounds = data.subst(&opaque_ty.substitution);
+                        let bounds = data.substitute(&opaque_ty.substitution);
                         write_bounds_like_dyn_trait_with_prefix("impl", bounds.skip_binders(), f)?;
                     }
                     ImplTraitId::AsyncBlockTypeImplTrait(..) => {
