@@ -282,11 +282,29 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
             }
 
             clean::ImportItem(ref import) => {
+                let (stab, stab_tags) = if let Some(def_id) = import.source.did {
+                    // Just need an item with the correct def_id
+                    let import_item = clean::Item { def_id, ..myitem.clone() };
+                    let stab = import_item.stability_class(cx.tcx());
+                    let stab_tags = Some(extra_info_tags(&import_item, item, cx.tcx()));
+                    (stab, stab_tags)
+                } else {
+                    (None, None)
+                };
+
+                let add = if stab.is_some() { " " } else { "" };
+
                 write!(
                     w,
-                    "<tr><td><code>{}{}</code></td></tr>",
-                    myitem.visibility.print_with_space(myitem.def_id, cx),
-                    import.print(cx),
+                    "<tr class=\"{stab}{add}module-item\">\
+                         <td><code>{vis}{imp}</code></td>\
+                         <td class=\"docblock-short\">{stab_tags}</td>\
+                     </tr>",
+                    stab = stab.unwrap_or_default(),
+                    add = add,
+                    vis = myitem.visibility.print_with_space(myitem.def_id, cx),
+                    imp = import.print(cx),
+                    stab_tags = stab_tags.unwrap_or_default(),
                 );
             }
 
@@ -320,7 +338,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                     docs = MarkdownSummaryLine(&doc_value, &myitem.links(cx)).into_string(),
                     class = myitem.type_(),
                     add = add,
-                    stab = stab.unwrap_or_else(String::new),
+                    stab = stab.unwrap_or_default(),
                     unsafety_flag = unsafety_flag,
                     href = item_path(myitem.type_(), &myitem.name.unwrap().as_str()),
                     title = [full_path(cx, myitem), myitem.type_().to_string()]
