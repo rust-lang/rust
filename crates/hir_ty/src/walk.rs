@@ -82,7 +82,7 @@ pub trait TypeWalk {
                         *ty = substs.interned()[bound.index]
                             .assert_ty_ref(&Interner)
                             .clone()
-                            .shift_bound_vars(binders);
+                            .shifted_in_from(binders);
                     }
                 }
             },
@@ -92,7 +92,7 @@ pub trait TypeWalk {
     }
 
     /// Shifts up debruijn indices of `TyKind::Bound` vars by `n`.
-    fn shift_bound_vars(self, n: DebruijnIndex) -> Self
+    fn shifted_in_from(self, n: DebruijnIndex) -> Self
     where
         Self: Sized,
     {
@@ -108,20 +108,22 @@ pub trait TypeWalk {
     }
 
     /// Shifts debruijn indices of `TyKind::Bound` vars out (down) by `n`.
-    fn shift_bound_vars_out(self, n: DebruijnIndex) -> Self
+    fn shifted_out_to(self, n: DebruijnIndex) -> Option<Self>
     where
         Self: Sized + std::fmt::Debug,
     {
-        self.fold_binders(
-            &mut |ty, binders| match ty.kind(&Interner) {
-                TyKind::BoundVar(bound) if bound.debruijn >= binders => {
-                    TyKind::BoundVar(bound.shifted_out_to(n).unwrap_or(bound.clone()))
-                        .intern(&Interner)
+        Some(self.fold_binders(
+            &mut |ty, binders| {
+                match ty.kind(&Interner) {
+                    TyKind::BoundVar(bound) if bound.debruijn >= binders => {
+                        TyKind::BoundVar(bound.shifted_out_to(n).unwrap_or(bound.clone()))
+                            .intern(&Interner)
+                    }
+                    _ => ty,
                 }
-                _ => ty,
             },
             DebruijnIndex::INNERMOST,
-        )
+        ))
     }
 }
 

@@ -483,7 +483,7 @@ impl<'a> TyLoweringContext<'a> {
                         };
                         // We need to shift in the bound vars, since
                         // associated_type_shorthand_candidates does not do that
-                        let substs = substs.shift_bound_vars(self.in_binders);
+                        let substs = substs.shifted_in_from(self.in_binders);
                         // FIXME handle type parameters on the segment
                         return Some(
                             TyKind::Alias(AliasTy::Projection(ProjectionTy {
@@ -831,20 +831,20 @@ pub fn associated_type_shorthand_candidates<R>(
     };
 
     match res {
-        // FIXME: how to correctly handle higher-ranked bounds here?
         TypeNs::SelfType(impl_id) => search(
-            db.impl_trait(impl_id)?
-                .into_value_and_skipped_binders()
-                .0
-                .shift_bound_vars_out(DebruijnIndex::ONE),
+            // we're _in_ the impl -- the binders get added back later. Correct,
+            // but it would be nice to make this more explicit
+            db.impl_trait(impl_id)?.into_value_and_skipped_binders().0,
         ),
         TypeNs::GenericParam(param_id) => {
             let predicates = db.generic_predicates_for_param(param_id);
             let res = predicates.iter().find_map(|pred| match pred.skip_binders().skip_binders() {
                 // FIXME: how to correctly handle higher-ranked bounds here?
-                WhereClause::Implemented(tr) => {
-                    search(tr.clone().shift_bound_vars_out(DebruijnIndex::ONE))
-                }
+                WhereClause::Implemented(tr) => search(
+                    tr.clone()
+                        .shifted_out_to(DebruijnIndex::ONE)
+                        .expect("FIXME unexpected higher-ranked trait bound"),
+                ),
                 _ => None,
             });
             if let res @ Some(_) = res {

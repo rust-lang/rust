@@ -124,7 +124,7 @@ impl<T> Binders<T> {
     where
         T: TypeWalk,
     {
-        Binders::empty(&Interner, value.shift_bound_vars(DebruijnIndex::ONE))
+        Binders::empty(&Interner, value.shifted_in_from(DebruijnIndex::ONE))
     }
 }
 
@@ -209,7 +209,8 @@ impl CallableSig {
             params_and_return: fn_ptr
                 .substs
                 .clone()
-                .shift_bound_vars_out(DebruijnIndex::ONE)
+                .shifted_out_to(DebruijnIndex::ONE)
+                .expect("unexpected lifetime vars in fn ptr")
                 .interned()
                 .iter()
                 .map(|arg| arg.assert_ty_ref(&Interner).clone())
