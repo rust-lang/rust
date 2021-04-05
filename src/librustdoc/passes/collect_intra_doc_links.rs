@@ -1144,15 +1144,7 @@ impl LinkCollector<'_, '_> {
                 diag.note(&note);
                 suggest_disambiguator(resolved, diag, path_str, dox, sp, &ori_link.range);
             };
-            report_diagnostic(
-                self.cx.tcx,
-                BROKEN_INTRA_DOC_LINKS,
-                &msg,
-                &item,
-                dox,
-                &ori_link.range,
-                callback,
-            );
+            report_diagnostic(self.cx.tcx, BROKEN_INTRA_DOC_LINKS, &msg, &diag_info, callback);
         };
 
         let verify = |kind: DefKind, id: DefId| {
@@ -1192,7 +1184,7 @@ impl LinkCollector<'_, '_> {
                 if self.cx.tcx.privacy_access_levels(LOCAL_CRATE).is_exported(hir_src)
                     && !self.cx.tcx.privacy_access_levels(LOCAL_CRATE).is_exported(hir_dst)
                 {
-                    privacy_error(self.cx, diag_info, &path_str);
+                    privacy_error(self.cx, &diag_info, &path_str);
                 }
             }
 
@@ -1665,9 +1657,7 @@ fn report_diagnostic(
     tcx: TyCtxt<'_>,
     lint: &'static Lint,
     msg: &str,
-    item: &Item,
-    dox: &str,
-    link_range: &Range<usize>,
+    DiagnosticInfo { item, ori_link: _, dox, link_range }: &DiagnosticInfo<'_>,
     decorate: impl FnOnce(&mut DiagnosticBuilder<'_>, Option<rustc_span::Span>),
 ) {
     let hir_id = match DocContext::as_local_hir_id(tcx, item.def_id) {
@@ -1721,7 +1711,7 @@ fn report_diagnostic(
 /// `std::io::Error::x`, this will resolve `std::io::Error`.
 fn resolution_failure(
     collector: &mut LinkCollector<'_, '_>,
-    DiagnosticInfo { item, ori_link: _, dox, link_range }: DiagnosticInfo<'_>,
+    diag_info: DiagnosticInfo<'_>,
     path_str: &str,
     disambiguator: Option<Disambiguator>,
     kinds: SmallVec<[ResolutionFailure<'_>; 3]>,
@@ -1731,9 +1721,7 @@ fn resolution_failure(
         tcx,
         BROKEN_INTRA_DOC_LINKS,
         &format!("unresolved link to `{}`", path_str),
-        item,
-        dox,
-        &link_range,
+        &diag_info,
         |diag, sp| {
             let item = |res: Res| format!("the {} `{}`", res.descr(), res.name(tcx),);
             let assoc_item_not_allowed = |res: Res| {
@@ -1893,9 +1881,9 @@ fn resolution_failure(
                                 disambiguator,
                                 diag,
                                 path_str,
-                                dox,
+                                diag_info.dox,
                                 sp,
-                                &link_range,
+                                &diag_info.link_range,
                             )
                         }
 
@@ -1942,21 +1930,19 @@ fn resolution_failure(
 }
 
 /// Report an anchor failure.
-fn anchor_failure(
-    cx: &DocContext<'_>,
-    DiagnosticInfo { item, ori_link, dox, link_range }: DiagnosticInfo<'_>,
-    failure: AnchorFailure,
-) {
+fn anchor_failure(cx: &DocContext<'_>, diag_info: DiagnosticInfo<'_>, failure: AnchorFailure) {
     let msg = match failure {
-        AnchorFailure::MultipleAnchors => format!("`{}` contains multiple anchors", ori_link),
+        AnchorFailure::MultipleAnchors => {
+            format!("`{}` contains multiple anchors", diag_info.ori_link)
+        }
         AnchorFailure::RustdocAnchorConflict(res) => format!(
             "`{}` contains an anchor, but links to {kind}s are already anchored",
-            ori_link,
+            diag_info.ori_link,
             kind = res.descr(),
         ),
     };
 
-    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, &msg, item, dox, &link_range, |diag, sp| {
+    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, &msg, &diag_info, |diag, sp| {
         if let Some(sp) = sp {
             diag.span_label(sp, "contains invalid anchor");
         }
@@ -1966,17 +1952,18 @@ fn anchor_failure(
 /// Report an error in the link disambiguator.
 fn disambiguator_error(
     cx: &DocContext<'_>,
-    DiagnosticInfo { item, ori_link: _, dox, link_range: _ }: DiagnosticInfo<'_>,
+    mut diag_info: DiagnosticInfo<'_>,
     disambiguator_range: Range<usize>,
     msg: &str,
 ) {
-    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, msg, item, dox, &disambiguator_range, |_diag, _sp| {});
+    diag_info.link_range = disambiguator_range;
+    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, msg, &diag_info, |_diag, _sp| {});
 }
 
 /// Report an ambiguity error, where there were multiple possible resolutions.
 fn ambiguity_error(
     cx: &DocContext<'_>,
-    DiagnosticInfo { item, ori_link: _, dox, link_range }: DiagnosticInfo<'_>,
+    diag_info: DiagnosticInfo<'_>,
     path_str: &str,
     candidates: Vec<Res>,
 ) {
@@ -2004,7 +1991,7 @@ fn ambiguity_error(
         }
     }
 
-    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, &msg, item, dox, &link_range, |diag, sp| {
+    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, &msg, &diag_info, |diag, sp| {
         if let Some(sp) = sp {
             diag.span_label(sp, "ambiguous link");
         } else {
@@ -2013,7 +2000,14 @@ fn ambiguity_error(
 
         for res in candidates {
             let disambiguator = Disambiguator::from_res(res);
-            suggest_disambiguator(disambiguator, diag, path_str, dox, sp, &link_range);
+            suggest_disambiguator(
+                disambiguator,
+                diag,
+                path_str,
+                diag_info.dox,
+                sp,
+                &diag_info.link_range,
+            );
         }
     });
 }
@@ -2045,13 +2039,9 @@ fn suggest_disambiguator(
 }
 
 /// Report a link from a public item to a private one.
-fn privacy_error(
-    cx: &DocContext<'_>,
-    DiagnosticInfo { item, ori_link: _, dox, link_range }: DiagnosticInfo<'_>,
-    path_str: &str,
-) {
+fn privacy_error(cx: &DocContext<'_>, diag_info: &DiagnosticInfo<'_>, path_str: &str) {
     let sym;
-    let item_name = match item.name {
+    let item_name = match diag_info.item.name {
         Some(name) => {
             sym = name.as_str();
             &*sym
@@ -2061,7 +2051,7 @@ fn privacy_error(
     let msg =
         format!("public documentation for `{}` links to private item `{}`", item_name, path_str);
 
-    report_diagnostic(cx.tcx, PRIVATE_INTRA_DOC_LINKS, &msg, item, dox, &link_range, |diag, sp| {
+    report_diagnostic(cx.tcx, PRIVATE_INTRA_DOC_LINKS, &msg, diag_info, |diag, sp| {
         if let Some(sp) = sp {
             diag.span_label(sp, "this item is private");
         }
