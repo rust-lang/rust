@@ -251,6 +251,7 @@ struct ResolutionInfo {
     extra_fragment: Option<String>,
 }
 
+#[derive(Clone)]
 struct DiagnosticInfo<'a> {
     item: &'a Item,
     dox: &'a str,
@@ -949,19 +950,19 @@ impl LinkCollector<'_, '_> {
             return None;
         }
 
+        let diag_info = DiagnosticInfo {
+            item,
+            dox,
+            ori_link: &ori_link.link,
+            link_range: ori_link.range.clone(),
+        };
+
         let link = ori_link.link.replace("`", "");
         let no_backticks_range = range_between_backticks(&ori_link);
         let parts = link.split('#').collect::<Vec<_>>();
         let (link, extra_fragment) = if parts.len() > 2 {
             // A valid link can't have multiple #'s
-            anchor_failure(
-                self.cx,
-                &item,
-                &link,
-                dox,
-                ori_link.range,
-                AnchorFailure::MultipleAnchors,
-            );
+            anchor_failure(self.cx, diag_info, AnchorFailure::MultipleAnchors);
             return None;
         } else if parts.len() == 2 {
             if parts[0].trim().is_empty() {
@@ -1092,12 +1093,6 @@ impl LinkCollector<'_, '_> {
             return None;
         }
 
-        let diag_info = DiagnosticInfo {
-            item,
-            dox,
-            ori_link: &ori_link.link,
-            link_range: ori_link.range.clone(),
-        };
         let (mut res, mut fragment) = self.resolve_with_disambiguator_cached(
             ResolutionInfo {
                 module_id,
@@ -1105,7 +1100,7 @@ impl LinkCollector<'_, '_> {
                 path_str: path_str.to_owned(),
                 extra_fragment,
             },
-            diag_info,
+            diag_info.clone(), // this struct should really be Copy, but Range is not :(
             matches!(ori_link.kind, LinkType::Reference | LinkType::Shortcut),
         )?;
 
@@ -1123,10 +1118,7 @@ impl LinkCollector<'_, '_> {
                     if fragment.is_some() {
                         anchor_failure(
                             self.cx,
-                            &item,
-                            path_str,
-                            dox,
-                            ori_link.range,
+                            diag_info,
                             AnchorFailure::RustdocAnchorConflict(prim),
                         );
                         return None;
@@ -1360,14 +1352,7 @@ impl LinkCollector<'_, '_> {
                         None
                     }
                     Err(ErrorKind::AnchorFailure(msg)) => {
-                        anchor_failure(
-                            self.cx,
-                            diag.item,
-                            diag.ori_link,
-                            diag.dox,
-                            diag.link_range,
-                            msg,
-                        );
+                        anchor_failure(self.cx, diag, msg);
                         None
                     }
                 }
@@ -1384,14 +1369,7 @@ impl LinkCollector<'_, '_> {
                             Ok(res)
                         }
                         Err(ErrorKind::AnchorFailure(msg)) => {
-                            anchor_failure(
-                                self.cx,
-                                diag.item,
-                                diag.ori_link,
-                                diag.dox,
-                                diag.link_range,
-                                msg,
-                            );
+                            anchor_failure(self.cx, diag, msg);
                             return None;
                         }
                         Err(ErrorKind::Resolve(box kind)) => Err(kind),
@@ -1399,14 +1377,7 @@ impl LinkCollector<'_, '_> {
                     value_ns: match self.resolve(path_str, ValueNS, base_node, extra_fragment) {
                         Ok(res) => Ok(res),
                         Err(ErrorKind::AnchorFailure(msg)) => {
-                            anchor_failure(
-                                self.cx,
-                                diag.item,
-                                diag.ori_link,
-                                diag.dox,
-                                diag.link_range,
-                                msg,
-                            );
+                            anchor_failure(self.cx, diag, msg);
                             return None;
                         }
                         Err(ErrorKind::Resolve(box kind)) => Err(kind),
@@ -2004,10 +1975,7 @@ fn resolution_failure(
 /// Report an anchor failure.
 fn anchor_failure(
     cx: &DocContext<'_>,
-    item: &Item,
-    ori_link: &str,
-    dox: &str,
-    link_range: Range<usize>,
+    DiagnosticInfo { item, ori_link, dox, link_range }: DiagnosticInfo<'_>,
     failure: AnchorFailure,
 ) {
     let msg = match failure {
