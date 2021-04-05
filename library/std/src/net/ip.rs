@@ -993,6 +993,7 @@ impl Ord for Ipv4Addr {
 }
 
 impl IntoInner<c::in_addr> for Ipv4Addr {
+    #[inline]
     fn into_inner(self) -> c::in_addr {
         self.inner
     }
@@ -1800,11 +1801,13 @@ impl Ord for Ipv6Addr {
 }
 
 impl AsInner<c::in6_addr> for Ipv6Addr {
+    #[inline]
     fn as_inner(&self) -> &c::in6_addr {
         &self.inner
     }
 }
 impl FromInner<c::in6_addr> for Ipv6Addr {
+    #[inline]
     fn from_inner(addr: c::in6_addr) -> Ipv6Addr {
         Ipv6Addr { inner: addr }
     }
