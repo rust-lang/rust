@@ -185,7 +185,10 @@ pub trait Internable: Hash + Eq + 'static {
     fn storage() -> &'static InternStorage<Self>;
 }
 
-macro_rules! impl_internable {
+/// Implements `Internable` for a given list of types, making them usable with `Interned`.
+#[macro_export]
+#[doc(hidden)]
+macro_rules! _impl_internable {
     ( $($t:path),+ $(,)? ) => { $(
         impl Internable for $t {
             fn storage() -> &'static InternStorage<Self> {
@@ -196,10 +199,12 @@ macro_rules! impl_internable {
     )+ };
 }
 
+pub use crate::_impl_internable as impl_internable;
+
 impl_internable!(
     crate::type_ref::TypeRef,
     crate::type_ref::TraitRef,
     crate::path::ModPath,
     GenericParams,
-    str
+    str,
 );
