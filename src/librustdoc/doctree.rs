@@ -64,31 +64,34 @@ impl Module<'hir> {
     }
 
     pub(crate) fn push_item(&mut self, new_item: Item<'hir>) {
-        for item_iter in self.items.iter_mut() {
-            if item_iter.name() == new_item.name() {
-                if item_iter.from_glob {
-                    debug!("push_item: {:?} shadowed by {:?}", *item_iter, new_item);
-                    *item_iter = new_item;
+        if let Some(existed_item) =
+            self.items.iter_mut().find(|item| item.name() == new_item.name())
+        {
+            if existed_item.name() == new_item.name() {
+                if existed_item.from_glob {
+                    debug!("push_item: {:?} shadowed by {:?}", *existed_item, new_item);
+                    *existed_item = new_item;
                     return;
                 } else if new_item.from_glob {
                     return;
                 }
             }
+        } else {
+            self.items.push(new_item);
         }
-        self.items.push(new_item);
     }
 
     pub(crate) fn push_mod(&mut self, new_item: Module<'hir>) {
-        if let Some(shadowed_mod) = self.mods.iter_mut().find(|mod_| mod_.name == new_item.name) {
-                if item_iter.from_glob {
-                    debug!("push_mod: {:?} shadowed by {:?}", item_iter.name, new_item.name);
-                    *item_iter = new_item;
-                    return;
-                } else if new_item.from_glob {
-                    return;
-                }
+        if let Some(existed_mod) = self.mods.iter_mut().find(|mod_| mod_.name == new_item.name) {
+            if existed_mod.from_glob {
+                debug!("push_mod: {:?} shadowed by {:?}", existed_mod.name, new_item.name);
+                *existed_mod = new_item;
+                return;
+            } else if new_item.from_glob {
+                return;
             }
+        } else {
+            self.mods.push(new_item);
         }
-        self.mods.push(new_item);
     }
 }

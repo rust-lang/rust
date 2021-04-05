@@ -3,6 +3,9 @@
 // @has - '//tr[@class="module-item"]' 'mod::prelude'
 // @has - '//tr[@class="module-item"]' 'sub2::describe'
 
+// @has 'glob_shadowing/fn.describe.html'
+// @has - '//div[@class='docblock']' 'sub2::describe'
+
 mod sub1 {
     /// sub1::describe
     pub fn describe() -> &'static str {
@@ -23,12 +26,7 @@ mod sub2 {
 }
 
 /// mod::prelude
-pub mod prelude {
-    /// mod::prelude::describe
-    pub fn describe() -> &'static str {
-        "mod::describe"
-    }
-}
+pub mod prelude {}
 
 #[doc(inline)]
 pub use sub2::describe;
