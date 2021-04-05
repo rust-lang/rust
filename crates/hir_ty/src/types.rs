@@ -29,6 +29,12 @@ pub struct ProjectionTy {
     pub substitution: Substitution,
 }
 
+impl ProjectionTy {
+    pub fn self_type_parameter(&self, interner: &Interner) -> &Ty {
+        &self.substitution.interned()[0].assert_ty_ref(interner)
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct DynTy {
     /// The unknown self type.

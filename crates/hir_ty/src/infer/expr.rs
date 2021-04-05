@@ -22,8 +22,8 @@ use crate::{
     to_chalk_trait_id,
     traits::{chalk::from_chalk, FnTrait},
     utils::{generics, variant_data, Generics},
-    AdtId, Binders, CallableDefId, FnPointer, FnSig, InEnvironment, Interner, Rawness, Scalar,
-    Substitution, TraitRef, Ty, TyBuilder, TyKind,
+    AdtId, Binders, CallableDefId, FnPointer, FnSig, InEnvironment, Interner, ProjectionTyExt,
+    Rawness, Scalar, Substitution, TraitRef, Ty, TyBuilder, TyKind,
 };
 
 use super::{

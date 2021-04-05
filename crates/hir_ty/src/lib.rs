@@ -43,21 +43,19 @@ use crate::{db::HirDatabase, display::HirDisplay, utils::generics};
 
 pub use autoderef::autoderef;
 pub use builder::TyBuilder;
-pub use chalk_ext::TyExt;
+pub use chalk_ext::{ProjectionTyExt, TyExt};
 pub use infer::{could_unify, InferenceResult, InferenceVar};
 pub use lower::{
     associated_type_shorthand_candidates, callable_item_sig, CallableDefId, ImplTraitLoweringMode,
     TyDefId, TyLoweringContext, ValueTyDefId,
 };
-pub use traits::TraitEnvironment;
+pub use traits::{chalk::Interner, TraitEnvironment};
 pub use types::*;
 pub use walk::TypeWalk;
 
 pub use chalk_ir::{
     cast::Cast, AdtId, BoundVar, DebruijnIndex, Mutability, Safety, Scalar, TyVariableKind,
 };
-
-pub use crate::traits::chalk::Interner;
 
 pub type ForeignDefId = chalk_ir::ForeignDefId<Interner>;
 pub type AssocTypeId = chalk_ir::AssocTypeId<Interner>;
@@ -75,26 +73,6 @@ pub type LifetimeData = chalk_ir::LifetimeData<Interner>;
 pub type LifetimeOutlives = chalk_ir::LifetimeOutlives<Interner>;
 
 pub type ChalkTraitId = chalk_ir::TraitId<Interner>;
-
-impl ProjectionTy {
-    pub fn trait_ref(&self, db: &dyn HirDatabase) -> TraitRef {
-        TraitRef {
-            trait_id: to_chalk_trait_id(self.trait_(db)),
-            substitution: self.substitution.clone(),
-        }
-    }
-
-    pub fn self_type_parameter(&self, interner: &Interner) -> &Ty {
-        &self.substitution.interned()[0].assert_ty_ref(interner)
-    }
-
-    fn trait_(&self, db: &dyn HirDatabase) -> TraitId {
-        match from_assoc_type_id(self.associated_ty_id).lookup(db.upcast()).container {
-            AssocContainerId::TraitId(it) => it,
-            _ => panic!("projection ty without parent trait"),
-        }
-    }
-}
 
 pub type FnSig = chalk_ir::FnSig<Interner>;
 

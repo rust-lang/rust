@@ -13,7 +13,7 @@ use log::{info, warn};
 
 use crate::{
     db::HirDatabase, AliasEq, AliasTy, BoundVar, Canonical, CanonicalVarKinds, DebruijnIndex,
-    InEnvironment, Interner, Solution, Ty, TyBuilder, TyKind,
+    InEnvironment, Interner, ProjectionTyExt, Solution, Ty, TyBuilder, TyKind,
 };
 
 const AUTODEREF_RECURSION_LIMIT: usize = 10;
