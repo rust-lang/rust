@@ -563,7 +563,11 @@ class StdHashMapSyntheticProvider:
             # HashSet wraps either std HashMap or hashbrown::HashSet, which both
             # wrap hashbrown::HashMap, so either way we "unwrap" twice.
             hashbrown_hashmap = self.valobj.GetChildAtIndex(0).GetChildAtIndex(0)
-        return hashbrown_hashmap.GetChildMemberWithName("table").GetChildMemberWithName("table")
+        table = hashbrown_hashmap.GetChildMemberWithName("table")
+        # BACKCOMPAT: rust 1.51. Drop this condition (https://github.com/rust-lang/rust/pull/77566)
+        if table.GetChildMemberWithName("table").IsValid():
+            table = table.GetChildMemberWithName("table")
+        return table
 
     def has_children(self):
         # type: () -> bool
