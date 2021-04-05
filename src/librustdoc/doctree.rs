@@ -38,7 +38,6 @@ crate struct Module<'hir> {
     crate mods: Vec<Module<'hir>>,
     crate id: hir::HirId,
     crate items: Vec<Item<'hir>>,
-    // (item, renamed)
     crate foreigns: Vec<(&'hir hir::ForeignItem<'hir>, Option<Symbol>)>,
     crate macros: Vec<(&'hir hir::MacroDef<'hir>, Option<Symbol>)>,
     crate is_crate: bool,
