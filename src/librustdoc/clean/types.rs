@@ -1950,6 +1950,11 @@ impl Span {
         Self(sp.source_callsite())
     }
 
+    /// Unless you know what you're doing, use [`Self::from_rustc_span`] instead!
+    crate fn wrap(sp: rustc_span::Span) -> Span {
+        Self(sp)
+    }
+
     crate fn inner(&self) -> rustc_span::Span {
         self.0
     }

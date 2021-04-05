@@ -494,7 +494,10 @@ crate fn href(did: DefId, cx: &Context<'_>) -> Result<(String, ItemType, Vec<Str
     if !did.is_local() && !cache.access_levels.is_public(did) && !cache.document_private {
         return Err(HrefError::Private);
     }
-
+    // href_with_depth_inner(did, cache, || {
+    //     let depth = CURRENT_DEPTH.with(|l| l.get());
+    //     "../".repeat(depth)
+    // })
     let (fqp, shortty, mut url_parts) = match cache.paths.get(&did) {
         Some(&(ref fqp, shortty)) => (fqp, shortty, {
             let module_fqp = to_module_fqp(shortty, fqp);
