@@ -26,7 +26,7 @@ impl<'hir> Item<'hir> {
         Self { hir_item, renamed_name, from_glob }
     }
 
-    fn name(&'hir self) -> &'hir Symbol {
+    pub(crate) fn name(&'hir self) -> &'hir Symbol {
         self.renamed_name.as_ref().unwrap_or(&self.hir_item.ident.name)
     }
 }
