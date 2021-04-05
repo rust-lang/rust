@@ -842,7 +842,26 @@ Re-using originally single-purpose function often leads to bad coupling.
 
 ## Helper Variables
 
-Introduce helper variables freely, especially for multiline conditions.
+Introduce helper variables freely, especially for multiline conditions:
+
+```rust
+// GOOD
+let rustfmt_not_installed =
+    captured_stderr.contains("not installed") || captured_stderr.contains("not available");
+
+match output.status.code() {
+    Some(1) if !rustfmt_not_installed => Ok(None),
+    _ => Err(format_err!("rustfmt failed:\n{}", captured_stderr)),
+};
+
+// BAD
+match output.status.code() {
+    Some(1)
+        if !captured_stderr.contains("not installed")
+           && !captured_stderr.contains("not available") => Ok(None),
+    _ => Err(format_err!("rustfmt failed:\n{}", captured_stderr)),
+};
+```
 
 **Rationale:** like blocks, single-use variables are a cognitively cheap abstraction, as they have access to all the context.
 Extra variables help during debugging, they make it easy to print/view important intermediate results.

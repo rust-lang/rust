@@ -927,22 +927,22 @@ pub(crate) fn handle_formatting(
     let captured_stderr = String::from_utf8(output.stderr).unwrap_or_default();
 
     if !output.status.success() {
-        match output.status.code() {
-            Some(1)
-                if !captured_stderr.contains("not installed")
-                    && !captured_stderr.contains("not available") =>
-            {
+        let rustfmt_not_installed =
+            captured_stderr.contains("not installed") || captured_stderr.contains("not available");
+
+        return match output.status.code() {
+            Some(1) if !rustfmt_not_installed => {
                 // While `rustfmt` doesn't have a specific exit code for parse errors this is the
                 // likely cause exiting with 1. Most Language Servers swallow parse errors on
                 // formatting because otherwise an error is surfaced to the user on top of the
                 // syntax error diagnostics they're already receiving. This is especially jarring
                 // if they have format on save enabled.
                 log::info!("rustfmt exited with status 1, assuming parse error and ignoring");
-                return Ok(None);
+                Ok(None)
             }
             _ => {
                 // Something else happened - e.g. `rustfmt` is missing or caught a signal
-                return Err(LspError::new(
+                Err(LspError::new(
                     -32900,
                     format!(
                         r#"rustfmt exited with:
@@ -952,9 +952,9 @@ pub(crate) fn handle_formatting(
                         output.status, captured_stdout, captured_stderr,
                     ),
                 )
-                .into());
+                .into())
             }
-        }
+        };
     }
 
     let (new_text, new_line_endings) = LineEndings::normalize(captured_stdout);
