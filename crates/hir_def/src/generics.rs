@@ -218,6 +218,7 @@ impl GenericParams {
             GenericDefId::EnumVariantId(_) | GenericDefId::ConstId(_) => FileId(!0).into(),
         };
 
+        generics.shrink_to_fit();
         (generics, InFile::new(file_id, sm))
     }
 
@@ -369,6 +370,14 @@ impl GenericParams {
                 }
             }
         });
+    }
+
+    pub(crate) fn shrink_to_fit(&mut self) {
+        let Self { consts, lifetimes, types, where_predicates } = self;
+        consts.shrink_to_fit();
+        lifetimes.shrink_to_fit();
+        types.shrink_to_fit();
+        where_predicates.shrink_to_fit();
     }
 
     pub fn find_type_by_name(&self, name: &Name) -> Option<LocalTypeParamId> {

@@ -739,6 +739,7 @@ impl Ctx {
             }
         }
 
+        generics.shrink_to_fit();
         self.data().generics.alloc(generics)
     }
 
