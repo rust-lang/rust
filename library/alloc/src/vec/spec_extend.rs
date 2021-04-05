@@ -14,6 +14,7 @@ impl<T, I, A: Allocator> SpecExtend<T, I> for Vec<T, A>
 where
     I: Iterator<Item = T>,
 {
+    #[track_caller]
     default fn spec_extend(&mut self, iter: I) {
         self.extend_desugared(iter)
     }
@@ -23,6 +24,7 @@ impl<T, I, A: Allocator> SpecExtend<T, I> for Vec<T, A>
 where
     I: TrustedLen<Item = T>,
 {
+    #[track_caller]
     default fn spec_extend(&mut self, iterator: I) {
         // This is the case for a TrustedLen iterator.
         let (low, high) = iterator.size_hint();
