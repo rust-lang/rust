@@ -4,6 +4,7 @@ use crate::ty::subst::{GenericArg, GenericArgKind, Subst};
 use crate::ty::{self, ConstInt, DefIdTree, ParamConst, ScalarInt, Ty, TyCtxt, TypeFoldable};
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sso::SsoHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -1421,7 +1422,8 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
     }
 
     fn print_type(mut self, ty: Ty<'tcx>) -> Result<Self::Type, Self::Error> {
-        if self.tcx.sess.type_length_limit().value_within_limit(self.printed_type_count) {
+        let type_length_limit = self.tcx.sess.type_length_limit();
+        if type_length_limit.value_within_limit(self.printed_type_count) {
             self.printed_type_count += 1;
             self.pretty_print_type(ty)
         } else {
@@ -1863,18 +1865,42 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
     where
         T: TypeFoldable<'tcx>,
     {
-        struct LateBoundRegionNameCollector<'a>(&'a mut FxHashSet<Symbol>);
-        impl<'tcx> ty::fold::TypeVisitor<'tcx> for LateBoundRegionNameCollector<'_> {
+        debug!("prepare_late_bound_region_info(value: {:?})", value);
+
+        struct LateBoundRegionNameCollector<'a, 'tcx> {
+            used_region_names: &'a mut FxHashSet<Symbol>,
+            type_collector: SsoHashSet<Ty<'tcx>>,
+        }
+
+        impl<'tcx> ty::fold::TypeVisitor<'tcx> for LateBoundRegionNameCollector<'_, 'tcx> {
+            type BreakTy = ();
+
             fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+                debug!("LateBoundRegionNameCollector::visit_region(r: {:?}, address: {:p})", r, &r);
                 if let ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name), .. }) = *r {
-                    self.0.insert(name);
+                    self.used_region_names.insert(name);
                 }
                 r.super_visit_with(self)
+            }
+
+            // We collect types in order to prevent really large types from compiling for
+            // a really long time. See issue #83150 for why this is necessary.
+            fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+                debug!("LateBoundRegionNameCollector::visit_ty(ty: {:?}", ty);
+                let not_previously_inserted = self.type_collector.insert(ty);
+                if not_previously_inserted {
+                    ty.super_visit_with(self)
+                } else {
+                    ControlFlow::CONTINUE
+                }
             }
         }
 
         self.used_region_names.clear();
-        let mut collector = LateBoundRegionNameCollector(&mut self.used_region_names);
+        let mut collector = LateBoundRegionNameCollector {
+            used_region_names: &mut self.used_region_names,
+            type_collector: SsoHashSet::new(),
+        };
         value.visit_with(&mut collector);
         self.region_index = 0;
     }
