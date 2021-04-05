@@ -2,7 +2,8 @@ use stdx::format_to;
 use syntax::{
     ast::{self, AstNode},
     SyntaxKind::{
-        BLOCK_EXPR, BREAK_EXPR, CLOSURE_EXPR, COMMENT, LOOP_EXPR, MATCH_ARM, PATH_EXPR, RETURN_EXPR,
+        BLOCK_EXPR, BREAK_EXPR, CLOSURE_EXPR, COMMENT, LOOP_EXPR, MATCH_ARM, MATCH_GUARD,
+        PATH_EXPR, RETURN_EXPR,
     },
     SyntaxNode,
 };
@@ -147,8 +148,17 @@ impl Anchor {
             }
 
             if let Some(parent) = node.parent() {
-                if parent.kind() == MATCH_ARM || parent.kind() == CLOSURE_EXPR {
+                if parent.kind() == CLOSURE_EXPR {
+                    cov_mark::hit!(test_extract_var_in_closure_no_block);
                     return Some(Anchor::WrapInBlock(node));
+                }
+                if parent.kind() == MATCH_ARM {
+                    if node.kind() == MATCH_GUARD {
+                        cov_mark::hit!(test_extract_var_in_match_guard);
+                    } else {
+                        cov_mark::hit!(test_extract_var_in_match_arm_no_block);
+                        return Some(Anchor::WrapInBlock(node));
+                    }
                 }
             }
 
@@ -280,9 +290,10 @@ fn foo() {
 
     #[test]
     fn test_extract_var_in_match_arm_no_block() {
+        cov_mark::check!(test_extract_var_in_match_arm_no_block);
         check_assist(
             extract_variable,
-            "
+            r#"
 fn main() {
     let x = true;
     let tuple = match x {
@@ -290,8 +301,8 @@ fn main() {
         _ => (0, false)
     };
 }
-",
-            "
+"#,
+            r#"
 fn main() {
     let x = true;
     let tuple = match x {
@@ -299,7 +310,7 @@ fn main() {
         _ => (0, false)
     };
 }
-",
+"#,
         );
     }
 
@@ -307,7 +318,7 @@ fn main() {
     fn test_extract_var_in_match_arm_with_block() {
         check_assist(
             extract_variable,
-            "
+            r#"
 fn main() {
     let x = true;
     let tuple = match x {
@@ -318,8 +329,8 @@ fn main() {
         _ => (0, false)
     };
 }
-",
-            "
+"#,
+            r#"
 fn main() {
     let x = true;
     let tuple = match x {
@@ -331,24 +342,50 @@ fn main() {
         _ => (0, false)
     };
 }
-",
+"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_var_in_match_guard() {
+        cov_mark::check!(test_extract_var_in_match_guard);
+        check_assist(
+            extract_variable,
+            r#"
+fn main() {
+    match () {
+        () if $010 > 0$0 => 1
+        _ => 2
+    };
+}
+"#,
+            r#"
+fn main() {
+    let $0var_name = 10 > 0;
+    match () {
+        () if var_name => 1
+        _ => 2
+    };
+}
+"#,
         );
     }
 
     #[test]
     fn test_extract_var_in_closure_no_block() {
+        cov_mark::check!(test_extract_var_in_closure_no_block);
         check_assist(
             extract_variable,
-            "
+            r#"
 fn main() {
     let lambda = |x: u32| $0x * 2$0;
 }
-",
-            "
+"#,
+            r#"
 fn main() {
     let lambda = |x: u32| { let $0var_name = x * 2; var_name };
 }
-",
+"#,
         );
     }
 
@@ -356,16 +393,16 @@ fn main() {
     fn test_extract_var_in_closure_with_block() {
         check_assist(
             extract_variable,
-            "
+            r#"
 fn main() {
     let lambda = |x: u32| { $0x * 2$0 };
 }
-",
-            "
+"#,
+            r#"
 fn main() {
     let lambda = |x: u32| { let $0var_name = x * 2; var_name };
 }
-",
+"#,
         );
     }
 
