@@ -383,7 +383,7 @@ class RustBuild(object):
         self.nix_deps_dir = None
         self.rustc_commit = None
 
-    def download_stage0(self):
+    def download_toolchain(self, stage0=True, rustc_channel=None):
         """Fetch the build system for Rust, written in Rust
 
         This method will build a cache directory, then it will fetch the
@@ -393,43 +393,47 @@ class RustBuild(object):
         Each downloaded tarball is extracted, after that, the script
         will move all the content to the right place.
         """
-        rustc_channel = self.rustc_channel
+        if rustc_channel is None:
+            rustc_channel = self.rustc_channel
         rustfmt_channel = self.rustfmt_channel
+        bin_root = self.bin_root(stage0)
 
-        if self.rustc().startswith(self.bin_root()) and \
-                (not os.path.exists(self.rustc()) or
-                 self.program_out_of_date(self.rustc_stamp(), self.date + str(self.rustc_commit))):
-            if os.path.exists(self.bin_root()):
-                shutil.rmtree(self.bin_root())
-            download_rustc = self.rustc_commit is not None
+        key = self.date
+        if not stage0:
+            key += str(self.rustc_commit)
+        if self.rustc(stage0).startswith(bin_root) and \
+                (not os.path.exists(self.rustc(stage0)) or
+                 self.program_out_of_date(self.rustc_stamp(stage0), key)):
+            if os.path.exists(bin_root):
+                shutil.rmtree(bin_root)
             tarball_suffix = '.tar.xz' if support_xz() else '.tar.gz'
             filename = "rust-std-{}-{}{}".format(
                 rustc_channel, self.build, tarball_suffix)
             pattern = "rust-std-{}".format(self.build)
-            self._download_component_helper(filename, pattern, tarball_suffix, download_rustc)
+            self._download_component_helper(filename, pattern, tarball_suffix, stage0)
             filename = "rustc-{}-{}{}".format(rustc_channel, self.build,
                                               tarball_suffix)
-            self._download_component_helper(filename, "rustc", tarball_suffix, download_rustc)
+            self._download_component_helper(filename, "rustc", tarball_suffix, stage0)
             filename = "cargo-{}-{}{}".format(rustc_channel, self.build,
                                               tarball_suffix)
             self._download_component_helper(filename, "cargo", tarball_suffix)
-            if self.rustc_commit is not None:
+            if not stage0:
                 filename = "rustc-dev-{}-{}{}".format(rustc_channel, self.build, tarball_suffix)
                 self._download_component_helper(
-                    filename, "rustc-dev", tarball_suffix, download_rustc
+                    filename, "rustc-dev", tarball_suffix, stage0
                 )
 
-            self.fix_bin_or_dylib("{}/bin/rustc".format(self.bin_root()))
-            self.fix_bin_or_dylib("{}/bin/rustdoc".format(self.bin_root()))
-            self.fix_bin_or_dylib("{}/bin/cargo".format(self.bin_root()))
-            lib_dir = "{}/lib".format(self.bin_root())
+            self.fix_bin_or_dylib("{}/bin/rustc".format(bin_root))
+            self.fix_bin_or_dylib("{}/bin/rustdoc".format(bin_root))
+            self.fix_bin_or_dylib("{}/bin/cargo".format(bin_root))
+            lib_dir = "{}/lib".format(bin_root)
             for lib in os.listdir(lib_dir):
                 if lib.endswith(".so"):
                     self.fix_bin_or_dylib(os.path.join(lib_dir, lib), rpath_libz=True)
-            with output(self.rustc_stamp()) as rust_stamp:
-                rust_stamp.write(self.date + str(self.rustc_commit))
+            with output(self.rustc_stamp(stage0)) as rust_stamp:
+                rust_stamp.write(key)
 
-        if self.rustfmt() and self.rustfmt().startswith(self.bin_root()) and (
+        if self.rustfmt() and self.rustfmt().startswith(bin_root) and (
             not os.path.exists(self.rustfmt())
             or self.program_out_of_date(self.rustfmt_stamp(), self.rustfmt_channel)
         ):
@@ -440,12 +444,13 @@ class RustBuild(object):
                 self._download_component_helper(
                     filename, "rustfmt-preview", tarball_suffix, key=date
                 )
-                self.fix_bin_or_dylib("{}/bin/rustfmt".format(self.bin_root()))
-                self.fix_bin_or_dylib("{}/bin/cargo-fmt".format(self.bin_root()))
+                self.fix_bin_or_dylib("{}/bin/rustfmt".format(bin_root))
+                self.fix_bin_or_dylib("{}/bin/cargo-fmt".format(bin_root))
                 with output(self.rustfmt_stamp()) as rustfmt_stamp:
                     rustfmt_stamp.write(self.rustfmt_channel)
 
-        if self.downloading_llvm():
+        # Avoid downloading LLVM twice (once for stage0 and once for the master rustc)
+        if self.downloading_llvm() and stage0:
             # We want the most recent LLVM submodule update to avoid downloading
             # LLVM more often than necessary.
             #
@@ -498,27 +503,26 @@ class RustBuild(object):
             or (opt == "if-available" and self.build in supported_platforms)
 
     def _download_component_helper(
-        self, filename, pattern, tarball_suffix, download_rustc=False, key=None
+        self, filename, pattern, tarball_suffix, stage0=True, key=None
     ):
         if key is None:
-            if download_rustc:
-                key = self.rustc_commit
-            else:
+            if stage0:
                 key = self.date
+            else:
+                key = self.rustc_commit
         cache_dst = os.path.join(self.build_dir, "cache")
         rustc_cache = os.path.join(cache_dst, key)
         if not os.path.exists(rustc_cache):
             os.makedirs(rustc_cache)
 
-        if download_rustc:
-            url = "https://ci-artifacts.rust-lang.org/rustc-builds/{}".format(self.rustc_commit)
-        else:
+        if stage0:
             url = "{}/dist/{}".format(self._download_url, key)
+        else:
+            url = "https://ci-artifacts.rust-lang.org/rustc-builds/{}".format(self.rustc_commit)
         tarball = os.path.join(rustc_cache, filename)
         if not os.path.exists(tarball):
-            do_verify = not download_rustc
-            get("{}/{}".format(url, filename), tarball, verbose=self.verbose, do_verify=do_verify)
-        unpack(tarball, tarball_suffix, self.bin_root(), match=pattern, verbose=self.verbose)
+            get("{}/{}".format(url, filename), tarball, verbose=self.verbose, do_verify=stage0)
+        unpack(tarball, tarball_suffix, self.bin_root(stage0), match=pattern, verbose=self.verbose)
 
     def _download_ci_llvm(self, llvm_sha, llvm_assertions):
         cache_prefix = "llvm-{}-{}".format(llvm_sha, llvm_assertions)
@@ -576,10 +580,10 @@ class RustBuild(object):
         nix_os_msg = "info: you seem to be running NixOS. Attempting to patch"
         print(nix_os_msg, fname)
 
-        # Only build `stage0/.nix-deps` once.
+        # Only build `.nix-deps` once.
         nix_deps_dir = self.nix_deps_dir
         if not nix_deps_dir:
-            nix_deps_dir = "{}/.nix-deps".format(self.bin_root())
+            nix_deps_dir = ".nix-deps"
             if not os.path.exists(nix_deps_dir):
                 os.makedirs(nix_deps_dir)
 
@@ -637,8 +641,8 @@ class RustBuild(object):
             print("warning: failed to call patchelf:", reason)
             return
 
-    # Return the stage1 compiler to download, if any.
-    def maybe_download_rustc(self):
+    # If `download-rustc` is set, download the most recent commit with CI artifacts
+    def maybe_download_ci_toolchain(self):
         # If `download-rustc` is not set, default to rebuilding.
         if self.get_toml("download-rustc", section="rust") != "true":
             return None
@@ -658,17 +662,23 @@ class RustBuild(object):
         if status != 0:
             print("warning: `download-rustc` is enabled, but there are changes to compiler/")
 
-        return commit
+        if self.verbose:
+            print("using downloaded stage1 artifacts from CI (commit {})".format(commit))
+        self.rustc_commit = commit
+        # FIXME: support downloading artifacts from the beta channel
+        self.download_toolchain(False, "nightly")
 
-    def rustc_stamp(self):
-        """Return the path for .rustc-stamp
+    def rustc_stamp(self, stage0):
+        """Return the path for .rustc-stamp at the given stage
 
         >>> rb = RustBuild()
         >>> rb.build_dir = "build"
-        >>> rb.rustc_stamp() == os.path.join("build", "stage0", ".rustc-stamp")
+        >>> rb.rustc_stamp(True) == os.path.join("build", "stage0", ".rustc-stamp")
+        True
+        >>> rb.rustc_stamp(False) == os.path.join("build", "ci-rustc", ".rustc-stamp")
         True
         """
-        return os.path.join(self.bin_root(), '.rustc-stamp')
+        return os.path.join(self.bin_root(stage0), '.rustc-stamp')
 
     def rustfmt_stamp(self):
         """Return the path for .rustfmt-stamp
@@ -678,7 +688,7 @@ class RustBuild(object):
         >>> rb.rustfmt_stamp() == os.path.join("build", "stage0", ".rustfmt-stamp")
         True
         """
-        return os.path.join(self.bin_root(), '.rustfmt-stamp')
+        return os.path.join(self.bin_root(True), '.rustfmt-stamp')
 
     def llvm_stamp(self):
         """Return the path for .rustfmt-stamp
@@ -698,21 +708,27 @@ class RustBuild(object):
         with open(stamp_path, 'r') as stamp:
             return key != stamp.read()
 
-    def bin_root(self):
-        """Return the binary root directory
+    def bin_root(self, stage0):
+        """Return the binary root directory for the given stage
 
         >>> rb = RustBuild()
         >>> rb.build_dir = "build"
-        >>> rb.bin_root() == os.path.join("build", "stage0")
+        >>> rb.bin_root(True) == os.path.join("build", "stage0")
+        True
+        >>> rb.bin_root(False) == os.path.join("build", "ci-rustc")
         True
 
         When the 'build' property is given should be a nested directory:
 
         >>> rb.build = "devel"
-        >>> rb.bin_root() == os.path.join("build", "devel", "stage0")
+        >>> rb.bin_root(True) == os.path.join("build", "devel", "stage0")
         True
         """
-        return os.path.join(self.build_dir, self.build, "stage0")
+        if stage0:
+            subdir = "stage0"
+        else:
+            subdir = "ci-rustc"
+        return os.path.join(self.build_dir, self.build, subdir)
 
     def llvm_root(self):
         """Return the CI LLVM root directory
@@ -775,9 +791,9 @@ class RustBuild(object):
         """Return config path for cargo"""
         return self.program_config('cargo')
 
-    def rustc(self):
+    def rustc(self, stage0):
         """Return config path for rustc"""
-        return self.program_config('rustc')
+        return self.program_config('rustc', stage0)
 
     def rustfmt(self):
         """Return config path for rustfmt"""
@@ -785,23 +801,27 @@ class RustBuild(object):
             return None
         return self.program_config('rustfmt')
 
-    def program_config(self, program):
-        """Return config path for the given program
+    def program_config(self, program, stage0=True):
+        """Return config path for the given program at the given stage
 
         >>> rb = RustBuild()
         >>> rb.config_toml = 'rustc = "rustc"\\n'
         >>> rb.program_config('rustc')
         'rustc'
         >>> rb.config_toml = ''
-        >>> cargo_path = rb.program_config('cargo')
-        >>> cargo_path.rstrip(".exe") == os.path.join(rb.bin_root(),
+        >>> cargo_path = rb.program_config('cargo', True)
+        >>> cargo_path.rstrip(".exe") == os.path.join(rb.bin_root(True),
+        ... "bin", "cargo")
+        True
+        >>> cargo_path = rb.program_config('cargo', False)
+        >>> cargo_path.rstrip(".exe") == os.path.join(rb.bin_root(False),
         ... "bin", "cargo")
         True
         """
         config = self.get_toml(program)
         if config:
             return os.path.expanduser(config)
-        return os.path.join(self.bin_root(), "bin", "{}{}".format(
+        return os.path.join(self.bin_root(stage0), "bin", "{}{}".format(
             program, self.exe_suffix()))
 
     @staticmethod
@@ -856,14 +876,14 @@ class RustBuild(object):
         if "CARGO_BUILD_TARGET" in env:
             del env["CARGO_BUILD_TARGET"]
         env["CARGO_TARGET_DIR"] = build_dir
-        env["RUSTC"] = self.rustc()
-        env["LD_LIBRARY_PATH"] = os.path.join(self.bin_root(), "lib") + \
+        env["RUSTC"] = self.rustc(True)
+        env["LD_LIBRARY_PATH"] = os.path.join(self.bin_root(True), "lib") + \
             (os.pathsep + env["LD_LIBRARY_PATH"]) \
             if "LD_LIBRARY_PATH" in env else ""
-        env["DYLD_LIBRARY_PATH"] = os.path.join(self.bin_root(), "lib") + \
+        env["DYLD_LIBRARY_PATH"] = os.path.join(self.bin_root(True), "lib") + \
             (os.pathsep + env["DYLD_LIBRARY_PATH"]) \
             if "DYLD_LIBRARY_PATH" in env else ""
-        env["LIBRARY_PATH"] = os.path.join(self.bin_root(), "lib") + \
+        env["LIBRARY_PATH"] = os.path.join(self.bin_root(True), "lib") + \
             (os.pathsep + env["LIBRARY_PATH"]) \
             if "LIBRARY_PATH" in env else ""
         # preserve existing RUSTFLAGS
@@ -886,7 +906,7 @@ class RustBuild(object):
         if self.get_toml("deny-warnings", "rust") != "false":
             env["RUSTFLAGS"] += " -Dwarnings"
 
-        env["PATH"] = os.path.join(self.bin_root(), "bin") + \
+        env["PATH"] = os.path.join(self.bin_root(True), "bin") + \
             os.pathsep + env["PATH"]
         if not os.path.isfile(self.cargo()):
             raise Exception("no cargo executable found at `{}`".format(
@@ -1137,14 +1157,9 @@ def bootstrap(help_triggered):
     build.update_submodules()
 
     # Fetch/build the bootstrap
-    build.rustc_commit = build.maybe_download_rustc()
-    if build.rustc_commit is not None:
-        if build.verbose:
-            commit = build.rustc_commit
-            print("using downloaded stage1 artifacts from CI (commit {})".format(commit))
-        # FIXME: support downloading artifacts from the beta channel
-        build.rustc_channel = "nightly"
-    build.download_stage0()
+    build.download_toolchain()
+    # Download the master compiler if `download-rustc` is set
+    build.maybe_download_ci_toolchain()
     sys.stdout.flush()
     build.ensure_vendored()
     build.build_bootstrap()

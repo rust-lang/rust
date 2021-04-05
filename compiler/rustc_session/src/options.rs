@@ -251,9 +251,9 @@ macro_rules! options {
         pub const parse_list: &str = "a space-separated list of strings";
         pub const parse_opt_list: &str = parse_list;
         pub const parse_opt_comma_list: &str = "a comma-separated list of strings";
-        pub const parse_uint: &str = "a number";
-        pub const parse_opt_uint: &str = parse_uint;
-        pub const parse_threads: &str = parse_uint;
+        pub const parse_number: &str = "a number";
+        pub const parse_opt_number: &str = parse_number;
+        pub const parse_threads: &str = parse_number;
         pub const parse_passes: &str = "a space-separated list of passes, or `all`";
         pub const parse_panic_strategy: &str = "either `unwind` or `abort`";
         pub const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
@@ -417,16 +417,16 @@ macro_rules! options {
             }
         }
 
-        /// Use this for any uint option that has a static default.
-        fn parse_uint(slot: &mut usize, v: Option<&str>) -> bool {
+        /// Use this for any numeric option that has a static default.
+        fn parse_number<T: Copy + FromStr>(slot: &mut T, v: Option<&str>) -> bool {
             match v.and_then(|s| s.parse().ok()) {
                 Some(i) => { *slot = i; true },
                 None => false
             }
         }
 
-        /// Use this for any uint option that lacks a static default.
-        fn parse_opt_uint(slot: &mut Option<usize>, v: Option<&str>) -> bool {
+        /// Use this for any numeric option that lacks a static default.
+        fn parse_opt_number<T: Copy + FromStr>(slot: &mut Option<T>, v: Option<&str>) -> bool {
             match v {
                 Some(s) => { *slot = s.parse().ok(); slot.is_some() }
                 None => false
@@ -787,13 +787,13 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "this option is deprecated and does nothing"),
     code_model: Option<CodeModel> = (None, parse_code_model, [TRACKED],
         "choose the code model to use (`rustc --print code-models` for details)"),
-    codegen_units: Option<usize> = (None, parse_opt_uint, [UNTRACKED],
+    codegen_units: Option<usize> = (None, parse_opt_number, [UNTRACKED],
         "divide crate into N units to optimize in parallel"),
     control_flow_guard: CFGuard = (CFGuard::Disabled, parse_cfguard, [TRACKED],
         "use Windows Control Flow Guard (default: no)"),
     debug_assertions: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "explicitly enable the `cfg(debug_assertions)` directive"),
-    debuginfo: usize = (0, parse_uint, [TRACKED],
+    debuginfo: usize = (0, parse_number, [TRACKED],
         "debug info emission level (0 = no debug info, 1 = line tables only, \
         2 = full debug info with variable and type information; default: 0)"),
     default_linker_libraries: bool = (false, parse_bool, [UNTRACKED],
@@ -808,7 +808,7 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "force use of unwind tables"),
     incremental: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "enable incremental compilation"),
-    inline_threshold: Option<usize> = (None, parse_opt_uint, [TRACKED],
+    inline_threshold: Option<u32> = (None, parse_opt_number, [TRACKED],
         "set the threshold for inlining a function"),
     link_arg: (/* redirected to link_args */) = ((), parse_string_push, [UNTRACKED],
         "a single extra argument to append to the linker invocation (can be used several times)"),
@@ -996,9 +996,9 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "verify incr. comp. hashes of green query instances (default: no)"),
     inline_mir: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable MIR inlining (default: no)"),
-    inline_mir_threshold: Option<usize> = (None, parse_opt_uint, [TRACKED],
+    inline_mir_threshold: Option<usize> = (None, parse_opt_number, [TRACKED],
         "a default MIR inlining threshold (default: 50)"),
-    inline_mir_hint_threshold: Option<usize> = (None, parse_opt_uint, [TRACKED],
+    inline_mir_hint_threshold: Option<usize> = (None, parse_opt_number, [TRACKED],
         "inlining threshold for functions with inline hint (default: 100)"),
     inline_in_all_cgus: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "control whether `#[inline]` functions are in all CGUs"),
@@ -1034,7 +1034,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     mir_emit_retag: bool = (false, parse_bool, [TRACKED],
         "emit Retagging MIR statements, interpreted e.g., by miri; implies -Zmir-opt-level=0 \
         (default: no)"),
-    mir_opt_level: Option<usize> = (None, parse_opt_uint, [TRACKED],
+    mir_opt_level: Option<usize> = (None, parse_opt_number, [TRACKED],
         "MIR optimization level (0-4; default: 1 in non optimized builds and 2 in optimized builds)"),
     mutable_noalias: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "emit noalias metadata for mutable references (default: yes for LLVM >= 12, otherwise no)"),
@@ -1155,7 +1155,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "which mangling version to use for symbol names ('legacy' (default) or 'v0')"),
     teach: bool = (false, parse_bool, [TRACKED],
         "show extended diagnostic help (default: no)"),
-    terminal_width: Option<usize> = (None, parse_opt_uint, [UNTRACKED],
+    terminal_width: Option<usize> = (None, parse_opt_number, [UNTRACKED],
         "set the current terminal width"),
     tune_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
         "select processor to schedule for (`rustc --print target-cpus` for details)"),

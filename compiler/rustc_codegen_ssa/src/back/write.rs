@@ -107,7 +107,7 @@ pub struct ModuleConfig {
     pub vectorize_loop: bool,
     pub vectorize_slp: bool,
     pub merge_functions: bool,
-    pub inline_threshold: Option<usize>,
+    pub inline_threshold: Option<u32>,
     pub new_llvm_pass_manager: bool,
     pub emit_lifetime_markers: bool,
 }
