@@ -99,7 +99,7 @@ impl ToChalk for Ty {
                     bounds.interned().iter().cloned().map(|p| p.to_chalk(db)),
                 );
                 let bounded_ty = chalk_ir::DynTy {
-                    bounds: make_binders(where_clauses, binders),
+                    bounds: chalk_ir::Binders::new(binders, where_clauses),
                     lifetime: LifetimeData::Static.intern(&Interner),
                 };
                 chalk_ir::TyKind::Dyn(bounded_ty).intern(&Interner)
@@ -149,7 +149,7 @@ impl ToChalk for Ty {
                     .map(|c| from_chalk(db, c.clone()));
                 TyKind::Dyn(crate::DynTy {
                     bounds: crate::Binders::new(
-                        1,
+                        where_clauses.bounds.binders.clone(),
                         crate::QuantifiedWhereClauses::from_iter(&Interner, bounds),
                     ),
                 })
@@ -488,19 +488,12 @@ where
 
     fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::Binders<T::Chalk> {
         let (value, binders) = self.into_value_and_skipped_binders();
-        chalk_ir::Binders::new(
-            chalk_ir::VariableKinds::from_iter(
-                &Interner,
-                std::iter::repeat(chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General))
-                    .take(binders),
-            ),
-            value.to_chalk(db),
-        )
+        chalk_ir::Binders::new(binders, value.to_chalk(db))
     }
 
     fn from_chalk(db: &dyn HirDatabase, binders: chalk_ir::Binders<T::Chalk>) -> crate::Binders<T> {
         let (v, b) = binders.into_value_and_skipped_binders();
-        crate::Binders::new(b.len(&Interner), from_chalk(db, v))
+        crate::Binders::new(b, from_chalk(db, v))
     }
 }
 
@@ -552,7 +545,7 @@ pub(super) fn generic_predicate_to_inline_bound(
                 .map(|ty| ty.clone().to_chalk(db).cast(&Interner))
                 .collect();
             let trait_bound = rust_ir::TraitBound { trait_id: trait_ref.trait_id, args_no_self };
-            Some(make_binders(rust_ir::InlineBound::TraitBound(trait_bound), binders))
+            Some(chalk_ir::Binders::new(binders, rust_ir::InlineBound::TraitBound(trait_bound)))
         }
         WhereClause::AliasEq(AliasEq { alias: AliasTy::Projection(projection_ty), ty }) => {
             if projection_ty.self_type_parameter(&Interner) != &self_ty_shifted_in {
@@ -569,7 +562,10 @@ pub(super) fn generic_predicate_to_inline_bound(
                 associated_ty_id: projection_ty.associated_ty_id,
                 parameters: Vec::new(), // FIXME we don't support generic associated types yet
             };
-            Some(make_binders(rust_ir::InlineBound::AliasEqBound(alias_eq_bound), binders))
+            Some(chalk_ir::Binders::new(
+                binders,
+                rust_ir::InlineBound::AliasEqBound(alias_eq_bound),
+            ))
         }
         _ => None,
     }

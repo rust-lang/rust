@@ -12,7 +12,7 @@ use smallvec::SmallVec;
 
 use crate::{
     AssocTypeId, CanonicalVarKinds, ChalkTraitId, ClosureId, FnDefId, FnSig, ForeignDefId,
-    InferenceVar, Interner, OpaqueTyId, PlaceholderIndex,
+    InferenceVar, Interner, OpaqueTyId, PlaceholderIndex, VariableKinds,
 };
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -286,7 +286,7 @@ impl Substitution {
         Substitution(elements.into_iter().casted(interner).collect())
     }
 
-    // We can hopefully add this to Chalk
+    // Temporary helper functions, to be removed
     pub fn intern(interned: SmallVec<[GenericArg; 2]>) -> Substitution {
         Substitution(interned)
     }
@@ -296,43 +296,64 @@ impl Substitution {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Binders<T> {
-    pub num_binders: usize,
+    /// The binders that quantify over the value.
+    pub binders: VariableKinds,
     value: T,
 }
 
 impl<T> Binders<T> {
-    pub fn new(num_binders: usize, value: T) -> Self {
-        Self { num_binders, value }
+    pub fn new(binders: VariableKinds, value: T) -> Self {
+        Self { binders, value }
     }
 
     pub fn empty(_interner: &Interner, value: T) -> Self {
-        Self { num_binders: 0, value }
+        crate::make_only_type_binders(0, value)
     }
 
     pub fn as_ref(&self) -> Binders<&T> {
-        Binders { num_binders: self.num_binders, value: &self.value }
+        Binders { binders: self.binders.clone(), value: &self.value }
     }
 
     pub fn map<U>(self, f: impl FnOnce(T) -> U) -> Binders<U> {
-        Binders { num_binders: self.num_binders, value: f(self.value) }
+        Binders { binders: self.binders, value: f(self.value) }
     }
 
     pub fn filter_map<U>(self, f: impl FnOnce(T) -> Option<U>) -> Option<Binders<U>> {
-        Some(Binders { num_binders: self.num_binders, value: f(self.value)? })
+        Some(Binders { binders: self.binders, value: f(self.value)? })
     }
 
     pub fn skip_binders(&self) -> &T {
         &self.value
     }
 
-    pub fn into_value_and_skipped_binders(self) -> (T, usize) {
-        (self.value, self.num_binders)
+    pub fn into_value_and_skipped_binders(self) -> (T, VariableKinds) {
+        (self.value, self.binders)
     }
 
+    /// Returns the number of binders.
+    pub fn len(&self, interner: &Interner) -> usize {
+        self.binders.len(interner)
+    }
+
+    // Temporary helper function, to be removed
     pub fn skip_binders_mut(&mut self) -> &mut T {
         &mut self.value
+    }
+}
+
+impl<T: Clone> Binders<&T> {
+    pub fn cloned(&self) -> Binders<T> {
+        Binders::new(self.binders.clone(), self.value.clone())
+    }
+}
+
+impl<T: std::fmt::Debug> std::fmt::Debug for Binders<T> {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        let Binders { ref binders, ref value } = *self;
+        write!(fmt, "for{:?} ", binders.inner_debug(&Interner))?;
+        std::fmt::Debug::fmt(value, fmt)
     }
 }
 

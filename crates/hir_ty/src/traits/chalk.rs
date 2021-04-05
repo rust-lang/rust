@@ -184,7 +184,8 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                     .db
                     .return_type_impl_traits(func)
                     .expect("impl trait id without impl traits");
-                let data = &datas.skip_binders().impl_traits[idx as usize];
+                let (datas, binders) = (*datas).as_ref().into_value_and_skipped_binders();
+                let data = &datas.impl_traits[idx as usize];
                 let bound = OpaqueTyDatumBound {
                     bounds: make_binders(
                         data.bounds
@@ -197,8 +198,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                     ),
                     where_clauses: make_binders(vec![], 0),
                 };
-                let num_vars = datas.num_binders;
-                make_binders(bound, num_vars)
+                chalk_ir::Binders::new(binders, bound)
             }
             crate::ImplTraitId::AsyncBlockTypeImplTrait(..) => {
                 if let Some((future_trait, future_output)) = self
@@ -626,7 +626,7 @@ fn type_alias_associated_ty_value(
     let value = rust_ir::AssociatedTyValue {
         impl_id: impl_id.to_chalk(db),
         associated_ty_id: to_assoc_type_id(assoc_ty),
-        value: make_binders(value_bound, binders),
+        value: chalk_ir::Binders::new(binders, value_bound),
     };
     Arc::new(value)
 }
@@ -656,7 +656,7 @@ pub(crate) fn fn_def_datum_query(
     let datum = FnDefDatum {
         id: fn_def_id,
         sig: chalk_ir::FnSig { abi: (), safety: chalk_ir::Safety::Safe, variadic: sig.is_varargs },
-        binders: make_binders(bound, binders),
+        binders: chalk_ir::Binders::new(binders, bound),
     };
     Arc::new(datum)
 }

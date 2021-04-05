@@ -849,7 +849,7 @@ impl<'a> InferenceContext<'a> {
                 self.write_method_resolution(tgt_expr, func);
                 (ty, self.db.value_ty(func.into()), Some(generics(self.db.upcast(), func.into())))
             }
-            None => (receiver_ty, Binders::new(0, self.err_ty()), None),
+            None => (receiver_ty, Binders::empty(&Interner, self.err_ty()), None),
         };
         let substs = self.substs_for_method_call(def_generics, generic_args, &derefed_receiver_ty);
         let method_ty = method_ty.subst(&substs);
@@ -951,7 +951,7 @@ impl<'a> InferenceContext<'a> {
             for predicate in generic_predicates.iter() {
                 let (predicate, binders) =
                     predicate.clone().subst(parameters).into_value_and_skipped_binders();
-                always!(binders == 0); // quantified where clauses not yet handled
+                always!(binders.len(&Interner) == 0); // quantified where clauses not yet handled
                 self.push_obligation(predicate.cast(&Interner));
             }
             // add obligation for trait implementation, if this is a trait method

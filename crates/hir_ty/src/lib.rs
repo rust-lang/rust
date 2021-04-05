@@ -66,6 +66,8 @@ pub type ClosureId = chalk_ir::ClosureId<Interner>;
 pub type OpaqueTyId = chalk_ir::OpaqueTyId<Interner>;
 pub type PlaceholderIndex = chalk_ir::PlaceholderIndex;
 
+pub type VariableKind = chalk_ir::VariableKind<Interner>;
+pub type VariableKinds = chalk_ir::VariableKinds<Interner>;
 pub type CanonicalVarKinds = chalk_ir::CanonicalVarKinds<Interner>;
 
 pub type ChalkTraitId = chalk_ir::TraitId<Interner>;
@@ -126,20 +128,24 @@ impl<T> Binders<T> {
     }
 }
 
-impl<T: Clone> Binders<&T> {
-    pub fn cloned(&self) -> Binders<T> {
-        let (value, binders) = self.into_value_and_skipped_binders();
-        Binders::new(binders, value.clone())
-    }
-}
-
 impl<T: TypeWalk> Binders<T> {
     /// Substitutes all variables.
     pub fn subst(self, subst: &Substitution) -> T {
         let (value, binders) = self.into_value_and_skipped_binders();
-        assert_eq!(subst.len(&Interner), binders);
+        assert_eq!(subst.len(&Interner), binders.len(&Interner));
         value.subst_bound_vars(subst)
     }
+}
+
+pub fn make_only_type_binders<T>(num_vars: usize, value: T) -> Binders<T> {
+    Binders::new(
+        VariableKinds::from_iter(
+            &Interner,
+            std::iter::repeat(chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General))
+                .take(num_vars),
+        ),
+        value,
+    )
 }
 
 impl TraitRef {
@@ -407,8 +413,8 @@ impl Ty {
                             // This is only used by type walking.
                             // Parameters will be walked outside, and projection predicate is not used.
                             // So just provide the Future trait.
-                            let impl_bound = Binders::new(
-                                0,
+                            let impl_bound = Binders::empty(
+                                &Interner,
                                 WhereClause::Implemented(TraitRef {
                                     trait_id: to_chalk_trait_id(future_trait),
                                     substitution: Substitution::empty(&Interner),

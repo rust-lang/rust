@@ -194,7 +194,7 @@ impl TyBuilder<TypeAliasId> {
 
 impl<T: TypeWalk + HasInterner<Interner = Interner>> TyBuilder<Binders<T>> {
     fn subst_binders(b: Binders<T>) -> Self {
-        let param_count = b.num_binders;
+        let param_count = b.binders.len(&Interner);
         TyBuilder::new(b, param_count)
     }
 
