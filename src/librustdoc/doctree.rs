@@ -79,8 +79,7 @@ impl Module<'hir> {
     }
 
     pub(crate) fn push_mod(&mut self, new_item: Module<'hir>) {
-        for item_iter in self.mods.iter_mut() {
-            if item_iter.name == new_item.name {
+        if let Some(shadowed_mod) = self.mods.iter_mut().find(|mod_| mod_.name == new_item.name) {
                 if item_iter.from_glob {
                     debug!("push_mod: {:?} shadowed by {:?}", item_iter.name, new_item.name);
                     *item_iter = new_item;
