@@ -1,6 +1,6 @@
 use self::collector::NodeCollector;
 
-use crate::hir::{HirOwnerData, IndexedHir};
+use crate::hir::{AttributeMap, HirOwnerData, IndexedHir};
 use crate::middle::cstore::CrateStore;
 use crate::ty::TyCtxt;
 use rustc_ast as ast;
@@ -943,14 +943,19 @@ pub(super) fn index_hir<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> &'tcx Indexe
 }
 
 pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
+    let mut hcx = tcx.create_stable_hashing_context();
+
     let mut hir_body_nodes: Vec<_> = tcx
         .index_hir(crate_num)
         .map
         .iter_enumerated()
         .filter_map(|(def_id, hod)| {
             let def_path_hash = tcx.definitions.def_path_hash(def_id);
-            let hash = hod.with_bodies.as_ref()?.hash;
-            Some((def_path_hash, hash))
+            let mut hasher = StableHasher::new();
+            hod.with_bodies.as_ref()?.hash_stable(&mut hcx, &mut hasher);
+            AttributeMap { map: &tcx.untracked_crate.attrs, prefix: def_id }
+                .hash_stable(&mut hcx, &mut hasher);
+            Some((def_path_hash, hasher.finish()))
         })
         .collect();
     hir_body_nodes.sort_unstable_by_key(|bn| bn.0);
@@ -980,13 +985,13 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
 
     source_file_names.sort_unstable();
 
-    let mut hcx = tcx.create_stable_hashing_context();
     let mut stable_hasher = StableHasher::new();
     node_hashes.hash_stable(&mut hcx, &mut stable_hasher);
     upstream_crates.hash_stable(&mut hcx, &mut stable_hasher);
     source_file_names.hash_stable(&mut hcx, &mut stable_hasher);
     tcx.sess.opts.dep_tracking_hash(true).hash_stable(&mut hcx, &mut stable_hasher);
     tcx.sess.local_crate_disambiguator().to_fingerprint().hash_stable(&mut hcx, &mut stable_hasher);
+    tcx.untracked_crate.non_exported_macro_attrs.hash_stable(&mut hcx, &mut stable_hasher);
 
     let crate_hash: Fingerprint = stable_hasher.finish();
     Svh::new(crate_hash.to_smaller_hash())
