@@ -1975,10 +1975,10 @@ fn disambiguator_error(
     cx: &DocContext<'_>,
     item: &Item,
     dox: &str,
-    link_range: Range<usize>,
+    disambiguator_range: Range<usize>,
     msg: &str,
 ) {
-    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, msg, item, dox, &link_range, |_diag, _sp| {});
+    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, msg, item, dox, &disambiguator_range, |_diag, _sp| {});
 }
 
 /// Report an ambiguity error, where there were multiple possible resolutions.
