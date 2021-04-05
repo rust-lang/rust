@@ -215,7 +215,7 @@ struct MacroDirective {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum MacroDirectiveKind {
-    FnLike { ast_id: AstIdWithPath<ast::MacroCall>, legacy: Option<MacroCallId> },
+    FnLike { ast_id: AstIdWithPath<ast::MacroCall> },
     Derive { ast_id: AstIdWithPath<ast::Item> },
 }
 
@@ -806,13 +806,7 @@ impl DefCollector<'_> {
         let mut res = ReachedFixedPoint::Yes;
         macros.retain(|directive| {
             match &directive.kind {
-                MacroDirectiveKind::FnLike { ast_id, legacy } => {
-                    if let Some(call_id) = legacy {
-                        res = ReachedFixedPoint::No;
-                        resolved.push((directive.module_id, *call_id, directive.depth));
-                        return false;
-                    }
-
+                MacroDirectiveKind::FnLike { ast_id } => {
                     match macro_call_as_call_id(
                         ast_id,
                         self.db,
@@ -1535,7 +1529,7 @@ impl ModCollector<'_, '_> {
         self.def_collector.unexpanded_macros.push(MacroDirective {
             module_id: self.module_id,
             depth: self.macro_depth + 1,
-            kind: MacroDirectiveKind::FnLike { ast_id, legacy: None },
+            kind: MacroDirectiveKind::FnLike { ast_id },
         });
     }
 
