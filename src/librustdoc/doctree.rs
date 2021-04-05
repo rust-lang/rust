@@ -6,15 +6,15 @@ use rustc_hir as hir;
 
 /// A wrapper around a [`hir::Item`].
 #[derive(Debug)]
-pub(crate) struct Item<'hir> {
+crate struct Item<'hir> {
     /// the wrapped item
-    pub(crate) hir_item: &'hir hir::Item<'hir>,
+    crate hir_item: &'hir hir::Item<'hir>,
     /// the explicit renamed name
-    pub(crate) renamed_name: Option<Symbol>,
+    crate renamed_name: Option<Symbol>,
     /// whether the item is from a glob import
     /// if `from_glob` is true and we see another item with same name,
     /// then this item can be replaced with that one
-    pub(crate) from_glob: bool,
+    crate from_glob: bool,
 }
 
 impl<'hir> Item<'hir> {
