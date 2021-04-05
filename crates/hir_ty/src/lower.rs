@@ -414,7 +414,7 @@ impl<'a> TyLoweringContext<'a> {
                     TypeParamLoweringMode::Placeholder => generics.type_params_subst(self.db),
                     TypeParamLoweringMode::Variable => generics.bound_vars_subst(self.in_binders),
                 };
-                self.db.impl_self_ty(impl_id).substitute(&substs)
+                self.db.impl_self_ty(impl_id).substitute(&Interner, &substs)
             }
             TypeNs::AdtSelfType(adt) => {
                 let generics = generics(self.db.upcast(), adt.into());
@@ -422,7 +422,7 @@ impl<'a> TyLoweringContext<'a> {
                     TypeParamLoweringMode::Placeholder => generics.type_params_subst(self.db),
                     TypeParamLoweringMode::Variable => generics.bound_vars_subst(self.in_binders),
                 };
-                self.db.ty(adt.into()).substitute(&substs)
+                self.db.ty(adt.into()).substitute(&Interner, &substs)
             }
 
             TypeNs::AdtId(it) => self.lower_path_inner(resolved_segment, it.into(), infer_args),
@@ -516,7 +516,7 @@ impl<'a> TyLoweringContext<'a> {
             TyDefId::TypeAliasId(it) => Some(it.into()),
         };
         let substs = self.substs_from_path_segment(segment, generic_def, infer_args, None);
-        self.db.ty(typeable).substitute(&substs)
+        self.db.ty(typeable).substitute(&Interner, &substs)
     }
 
     /// Collect generic arguments from a path into a `Substs`. See also
@@ -620,7 +620,7 @@ impl<'a> TyLoweringContext<'a> {
                 for default_ty in defaults.iter().skip(substs.len()) {
                     // each default can depend on the previous parameters
                     let substs_so_far = Substitution::from_iter(&Interner, substs.clone());
-                    substs.push(default_ty.clone().substitute(&substs_so_far));
+                    substs.push(default_ty.clone().substitute(&Interner, &substs_so_far));
                 }
             }
         }

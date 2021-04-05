@@ -9,6 +9,7 @@ use hir_ty::display::{
     write_bounds_like_dyn_trait_with_prefix, write_visibility, HirDisplay, HirDisplayError,
     HirFormatter,
 };
+use hir_ty::Interner;
 use syntax::ast::{self, NameOwner};
 
 use crate::{
@@ -235,7 +236,8 @@ impl HirDisplay for TypeParam {
         write!(f, "{}", self.name(f.db))?;
         let bounds = f.db.generic_predicates_for_param(self.id);
         let substs = TyBuilder::type_params_subst(f.db, self.id.parent);
-        let predicates = bounds.iter().cloned().map(|b| b.substitute(&substs)).collect::<Vec<_>>();
+        let predicates =
+            bounds.iter().cloned().map(|b| b.substitute(&Interner, &substs)).collect::<Vec<_>>();
         if !(predicates.is_empty() || f.omit_verbose_types()) {
             write_bounds_like_dyn_trait_with_prefix(":", &predicates, f)?;
         }

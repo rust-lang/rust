@@ -470,25 +470,25 @@ impl<'a> InferenceContext<'a> {
             TypeNs::AdtId(AdtId::StructId(strukt)) => {
                 let substs = ctx.substs_from_path(path, strukt.into(), true);
                 let ty = self.db.ty(strukt.into());
-                let ty = self.insert_type_vars(ty.substitute(&substs));
+                let ty = self.insert_type_vars(ty.substitute(&Interner, &substs));
                 forbid_unresolved_segments((ty, Some(strukt.into())), unresolved)
             }
             TypeNs::AdtId(AdtId::UnionId(u)) => {
                 let substs = ctx.substs_from_path(path, u.into(), true);
                 let ty = self.db.ty(u.into());
-                let ty = self.insert_type_vars(ty.substitute(&substs));
+                let ty = self.insert_type_vars(ty.substitute(&Interner, &substs));
                 forbid_unresolved_segments((ty, Some(u.into())), unresolved)
             }
             TypeNs::EnumVariantId(var) => {
                 let substs = ctx.substs_from_path(path, var.into(), true);
                 let ty = self.db.ty(var.parent.into());
-                let ty = self.insert_type_vars(ty.substitute(&substs));
+                let ty = self.insert_type_vars(ty.substitute(&Interner, &substs));
                 forbid_unresolved_segments((ty, Some(var.into())), unresolved)
             }
             TypeNs::SelfType(impl_id) => {
                 let generics = crate::utils::generics(self.db.upcast(), impl_id.into());
                 let substs = generics.type_params_subst(self.db);
-                let ty = self.db.impl_self_ty(impl_id).substitute(&substs);
+                let ty = self.db.impl_self_ty(impl_id).substitute(&Interner, &substs);
                 match unresolved {
                     None => {
                         let variant = ty_variant(&ty);

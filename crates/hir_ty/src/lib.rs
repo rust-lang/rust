@@ -130,9 +130,9 @@ impl<T> Binders<T> {
 
 impl<T: TypeWalk> Binders<T> {
     /// Substitutes all variables.
-    pub fn substitute(self, subst: &Substitution) -> T {
+    pub fn substitute(self, interner: &Interner, subst: &Substitution) -> T {
         let (value, binders) = self.into_value_and_skipped_binders();
-        assert_eq!(subst.len(&Interner), binders.len(&Interner));
+        assert_eq!(subst.len(interner), binders.len(interner));
         value.subst_bound_vars(subst)
     }
 }
@@ -362,7 +362,7 @@ impl Ty {
             TyKind::FnDef(def, parameters) => {
                 let callable_def = db.lookup_intern_callable_def((*def).into());
                 let sig = db.callable_item_signature(callable_def);
-                Some(sig.substitute(&parameters))
+                Some(sig.substitute(&Interner, &parameters))
             }
             TyKind::Closure(.., substs) => {
                 let sig_param = substs.at(&Interner, 0).assert_ty_ref(&Interner);
@@ -436,7 +436,7 @@ impl Ty {
                             let data = (*it)
                                 .as_ref()
                                 .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
-                            data.substitute(&opaque_ty.substitution)
+                            data.substitute(&Interner, &opaque_ty.substitution)
                         })
                     }
                     // It always has an parameter for Future::Output type.
@@ -455,7 +455,7 @@ impl Ty {
                         let predicates = db
                             .generic_predicates(id.parent)
                             .into_iter()
-                            .map(|pred| pred.clone().substitute(&substs))
+                            .map(|pred| pred.clone().substitute(&Interner, &substs))
                             .filter(|wc| match &wc.skip_binders() {
                                 WhereClause::Implemented(tr) => {
                                     tr.self_type_parameter(&Interner) == self

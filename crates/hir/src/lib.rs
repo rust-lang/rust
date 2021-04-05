@@ -516,7 +516,7 @@ impl Field {
             VariantDef::Variant(it) => it.parent.id.into(),
         };
         let substs = TyBuilder::type_params_subst(db, generic_def_id);
-        let ty = db.field_types(var_id)[self.id].clone().substitute(&substs);
+        let ty = db.field_types(var_id)[self.id].clone().substitute(&Interner, &substs);
         Type::new(db, self.parent.module(db).id.krate(), var_id, ty)
     }
 
@@ -1503,7 +1503,7 @@ impl TypeParam {
         let krate = self.id.parent.module(db.upcast()).krate();
         let ty = params.get(local_idx)?.clone();
         let subst = TyBuilder::type_params_subst(db, self.id.parent);
-        let ty = ty.substitute(&subst.prefix(local_idx));
+        let ty = ty.substitute(&Interner, &subst.prefix(local_idx));
         Some(Type::new_with_resolver_inner(db, krate, &resolver, ty))
     }
 }
@@ -1916,7 +1916,7 @@ impl Type {
             .iter()
             .map(|(local_id, ty)| {
                 let def = Field { parent: variant_id.into(), id: local_id };
-                let ty = ty.clone().substitute(substs);
+                let ty = ty.clone().substitute(&Interner, substs);
                 (def, self.derived(ty))
             })
             .collect()

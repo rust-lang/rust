@@ -712,7 +712,7 @@ pub(crate) fn inherent_impl_substs(
     let vars = TyBuilder::subst_for_def(db, impl_id)
         .fill_with_bound_vars(DebruijnIndex::INNERMOST, self_ty.binders.len(&Interner))
         .build();
-    let self_ty_with_vars = db.impl_self_ty(impl_id).substitute(&vars);
+    let self_ty_with_vars = db.impl_self_ty(impl_id).substitute(&Interner, &vars);
     let mut kinds = self_ty.binders.interned().to_vec();
     kinds.extend(
         iter::repeat(chalk_ir::WithKind::new(
@@ -774,7 +774,7 @@ fn transform_receiver_ty(
         AssocContainerId::ModuleId(_) => unreachable!(),
     };
     let sig = db.callable_item_signature(function_id.into());
-    Some(sig.map(|s| s.params()[0].clone()).substitute(&substs))
+    Some(sig.map(|s| s.params()[0].clone()).substitute(&Interner, &substs))
 }
 
 pub fn implements_trait(
