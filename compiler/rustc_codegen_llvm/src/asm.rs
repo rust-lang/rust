@@ -1,6 +1,7 @@
 use crate::builder::Builder;
 use crate::context::CodegenCx;
 use crate::llvm;
+use crate::llvm_util;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
@@ -120,6 +121,7 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         operands: &[InlineAsmOperandRef<'tcx, Self>],
         options: InlineAsmOptions,
         line_spans: &[Span],
+        span: Span,
     ) {
         let asm_arch = self.tcx.sess.asm_arch.unwrap();
 
@@ -281,6 +283,18 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             InlineAsmArch::X86 | InlineAsmArch::X86_64
                 if !options.contains(InlineAsmOptions::ATT_SYNTAX) =>
             {
+                if llvm_util::get_version() < (10, 0, 1) {
+                    let mut err = self.sess().struct_span_err(
+                        span,
+                        "Intel syntax inline assembly requires LLVM 10.0.1 or later",
+                    );
+                    err.help("Consider using AT&T syntax instead with the att_syntax option");
+                    err.emit();
+
+                    // We still emit the LLVM IR, but that's fine since we stop
+                    // before reaching LLVM codegen which actually tries to
+                    // parse the asm constraint codes.
+                }
                 LlvmAsmDialect::Intel
             }
             _ => LlvmAsmDialect::Att,

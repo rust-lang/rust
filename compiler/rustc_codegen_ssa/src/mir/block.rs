@@ -879,7 +879,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             })
             .collect();
 
-        bx.codegen_inline_asm(template, &operands, options, line_spans);
+        bx.codegen_inline_asm(
+            template,
+            &operands,
+            options,
+            line_spans,
+            terminator.source_info.span,
+        );
 
         if let Some(target) = destination {
             helper.funclet_br(self, &mut bx, target);
