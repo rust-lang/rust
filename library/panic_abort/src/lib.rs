@@ -116,6 +116,19 @@ pub mod personalities {
     )))]
     pub extern "C" fn rust_eh_personality() {}
 
+    // On *-pc-windows-msvc we need such a symbol to make linker happy.
+    #[allow(non_snake_case)]
+    #[no_mangle]
+    #[cfg(all(target_os = "windows", target_env = "msvc"))]
+    pub extern "C" fn __CxxFrameHandler3(
+        _record: usize,
+        _frame: usize,
+        _context: usize,
+        _dispatcher: usize,
+    ) -> u32 {
+        1
+    }
+
     // On x86_64-pc-windows-gnu we use our own personality function that needs
     // to return `ExceptionContinueSearch` as we're passing on all our frames.
     #[rustc_std_internal_symbol]
