@@ -209,7 +209,7 @@ impl<'a> CharIndices<'a> {
     /// assert_eq!(chars.next(), None);
     /// ```
     #[inline]
-    #[unstable(feature = "char_indices_offset", issue = "none")]
+    #[unstable(feature = "char_indices_offset", issue = "83871")]
     pub fn offset(&self) -> usize {
         self.front_offset
     }
