@@ -709,8 +709,9 @@ pub(crate) fn inherent_impl_substs(
 ) -> Option<Substitution> {
     // we create a var for each type parameter of the impl; we need to keep in
     // mind here that `self_ty` might have vars of its own
+    let self_ty_vars = self_ty.binders.len(&Interner);
     let vars = TyBuilder::subst_for_def(db, impl_id)
-        .fill_with_bound_vars(DebruijnIndex::INNERMOST, self_ty.binders.len(&Interner))
+        .fill_with_bound_vars(DebruijnIndex::INNERMOST, self_ty_vars)
         .build();
     let self_ty_with_vars = db.impl_self_ty(impl_id).substitute(&Interner, &vars);
     let mut kinds = self_ty.binders.interned().to_vec();
@@ -725,14 +726,15 @@ pub(crate) fn inherent_impl_substs(
         binders: CanonicalVarKinds::from_iter(&Interner, kinds),
         value: (self_ty_with_vars, self_ty.value.clone()),
     };
-    let substs = super::infer::unify(&tys);
+    let substs = super::infer::unify(&tys)?;
     // We only want the substs for the vars we added, not the ones from self_ty.
     // Also, if any of the vars we added are still in there, we replace them by
     // Unknown. I think this can only really happen if self_ty contained
     // Unknown, and in that case we want the result to contain Unknown in those
     // places again.
-    substs
-        .map(|s| fallback_bound_vars(s.suffix(vars.len(&Interner)), self_ty.binders.len(&Interner)))
+    let suffix =
+        Substitution::from_iter(&Interner, substs.iter(&Interner).cloned().skip(self_ty_vars));
+    Some(fallback_bound_vars(suffix, self_ty_vars))
 }
 
 /// This replaces any 'free' Bound vars in `s` (i.e. those with indices past

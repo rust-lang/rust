@@ -79,12 +79,6 @@ impl Substitution {
     pub fn prefix(&self, n: usize) -> Substitution {
         Substitution::intern(self.interned()[..std::cmp::min(self.len(&Interner), n)].into())
     }
-
-    pub fn suffix(&self, n: usize) -> Substitution {
-        Substitution::intern(
-            self.interned()[self.len(&Interner) - std::cmp::min(self.len(&Interner), n)..].into(),
-        )
-    }
 }
 
 /// Return an index of a parameter in the generic type parameter list by it's id.
