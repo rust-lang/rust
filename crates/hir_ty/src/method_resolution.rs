@@ -102,11 +102,11 @@ impl TraitImpls {
         for (_module_id, module_data) in crate_def_map.modules() {
             for impl_id in module_data.scope.impls() {
                 let target_trait = match db.impl_trait(impl_id) {
-                    Some(tr) => tr.value.hir_trait_id(),
+                    Some(tr) => tr.skip_binders().hir_trait_id(),
                     None => continue,
                 };
                 let self_ty = db.impl_self_ty(impl_id);
-                let self_ty_fp = TyFingerprint::for_impl(&self_ty.value);
+                let self_ty_fp = TyFingerprint::for_impl(self_ty.skip_binders());
                 impls
                     .map
                     .entry(target_trait)
@@ -201,7 +201,7 @@ impl InherentImpls {
                 }
 
                 let self_ty = db.impl_self_ty(impl_id);
-                if let Some(fp) = TyFingerprint::for_impl(&self_ty.value) {
+                if let Some(fp) = TyFingerprint::for_impl(self_ty.skip_binders()) {
                     map.entry(fp).or_default().push(impl_id);
                 }
             }
@@ -774,7 +774,7 @@ fn transform_receiver_ty(
         AssocContainerId::ModuleId(_) => unreachable!(),
     };
     let sig = db.callable_item_signature(function_id.into());
-    Some(sig.value.params()[0].clone().subst_bound_vars(&substs))
+    Some(sig.map(|s| s.params()[0].clone()).subst(&substs))
 }
 
 pub fn implements_trait(

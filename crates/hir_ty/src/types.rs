@@ -299,7 +299,41 @@ impl Substitution {
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub struct Binders<T> {
     pub num_binders: usize,
-    pub value: T,
+    value: T,
+}
+
+impl<T> Binders<T> {
+    pub fn new(num_binders: usize, value: T) -> Self {
+        Self { num_binders, value }
+    }
+
+    pub fn empty(_interner: &Interner, value: T) -> Self {
+        Self { num_binders: 0, value }
+    }
+
+    pub fn as_ref(&self) -> Binders<&T> {
+        Binders { num_binders: self.num_binders, value: &self.value }
+    }
+
+    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> Binders<U> {
+        Binders { num_binders: self.num_binders, value: f(self.value) }
+    }
+
+    pub fn filter_map<U>(self, f: impl FnOnce(T) -> Option<U>) -> Option<Binders<U>> {
+        Some(Binders { num_binders: self.num_binders, value: f(self.value)? })
+    }
+
+    pub fn skip_binders(&self) -> &T {
+        &self.value
+    }
+
+    pub fn into_value_and_skipped_binders(self) -> (T, usize) {
+        (self.value, self.num_binders)
+    }
+
+    pub fn skip_binders_mut(&mut self) -> &mut T {
+        &mut self.value
+    }
 }
 
 /// A trait with type parameters. This includes the `Self`, so this represents a concrete type implementing the trait.

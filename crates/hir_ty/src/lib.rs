@@ -118,49 +118,27 @@ pub fn param_idx(db: &dyn HirDatabase, id: TypeParamId) -> Option<usize> {
 }
 
 impl<T> Binders<T> {
-    pub fn new(num_binders: usize, value: T) -> Self {
-        Self { num_binders, value }
-    }
-
     pub fn wrap_empty(value: T) -> Self
     where
         T: TypeWalk,
     {
-        Self { num_binders: 0, value: value.shift_bound_vars(DebruijnIndex::ONE) }
-    }
-
-    pub fn as_ref(&self) -> Binders<&T> {
-        Binders { num_binders: self.num_binders, value: &self.value }
-    }
-
-    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> Binders<U> {
-        Binders { num_binders: self.num_binders, value: f(self.value) }
-    }
-
-    pub fn filter_map<U>(self, f: impl FnOnce(T) -> Option<U>) -> Option<Binders<U>> {
-        Some(Binders { num_binders: self.num_binders, value: f(self.value)? })
-    }
-
-    pub fn skip_binders(&self) -> &T {
-        &self.value
-    }
-
-    pub fn into_value_and_skipped_binders(self) -> (T, usize) {
-        (self.value, self.num_binders)
+        Binders::empty(&Interner, value.shift_bound_vars(DebruijnIndex::ONE))
     }
 }
 
 impl<T: Clone> Binders<&T> {
     pub fn cloned(&self) -> Binders<T> {
-        Binders { num_binders: self.num_binders, value: self.value.clone() }
+        let (value, binders) = self.into_value_and_skipped_binders();
+        Binders::new(binders, value.clone())
     }
 }
 
 impl<T: TypeWalk> Binders<T> {
     /// Substitutes all variables.
     pub fn subst(self, subst: &Substitution) -> T {
-        assert_eq!(subst.len(&Interner), self.num_binders);
-        self.value.subst_bound_vars(subst)
+        let (value, binders) = self.into_value_and_skipped_binders();
+        assert_eq!(subst.len(&Interner), binders);
+        value.subst_bound_vars(subst)
     }
 }
 
@@ -334,12 +312,12 @@ impl Ty {
     /// If this is a `dyn Trait` type, this returns the `Trait` part.
     fn dyn_trait_ref(&self) -> Option<&TraitRef> {
         match self.kind(&Interner) {
-            TyKind::Dyn(dyn_ty) => {
-                dyn_ty.bounds.value.interned().get(0).and_then(|b| match b.skip_binders() {
+            TyKind::Dyn(dyn_ty) => dyn_ty.bounds.skip_binders().interned().get(0).and_then(|b| {
+                match b.skip_binders() {
                     WhereClause::Implemented(trait_ref) => Some(trait_ref),
                     _ => None,
-                })
-            }
+                }
+            }),
             _ => None,
         }
     }
@@ -459,7 +437,7 @@ impl Ty {
                     ImplTraitId::AsyncBlockTypeImplTrait(..) => unreachable!(),
                 };
 
-                predicates.map(|it| it.value)
+                predicates.map(|it| it.into_value_and_skipped_binders().0)
             }
             TyKind::Placeholder(idx) => {
                 let id = from_placeholder_idx(db, *idx);

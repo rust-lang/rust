@@ -494,9 +494,9 @@ impl<'db> SemanticsImpl<'db> {
     fn resolve_method_call_as_callable(&self, call: &ast::MethodCallExpr) -> Option<Callable> {
         // FIXME: this erases Substs
         let func = self.resolve_method_call(call)?;
-        let ty = self.db.value_ty(func.into());
+        let (ty, _) = self.db.value_ty(func.into()).into_value_and_skipped_binders();
         let resolver = self.analyze(call.syntax()).resolver;
-        let ty = Type::new_with_resolver(self.db, &resolver, ty.value)?;
+        let ty = Type::new_with_resolver(self.db, &resolver, ty)?;
         let mut res = ty.as_callable(self.db)?;
         res.is_bound_method = true;
         Some(res)

@@ -702,7 +702,7 @@ impl_from!(Struct, Union, Enum for Adt);
 impl Adt {
     pub fn has_non_default_type_params(self, db: &dyn HirDatabase) -> bool {
         let subst = db.generic_defaults(self.into());
-        subst.iter().any(|ty| ty.value.is_unknown())
+        subst.iter().any(|ty| ty.skip_binders().is_unknown())
     }
 
     /// Turns this ADT into a type. Any type parameters of the ADT will be
@@ -1089,7 +1089,7 @@ pub struct TypeAlias {
 impl TypeAlias {
     pub fn has_non_default_type_params(self, db: &dyn HirDatabase) -> bool {
         let subst = db.generic_defaults(self.id.into());
-        subst.iter().any(|ty| ty.value.is_unknown())
+        subst.iter().any(|ty| ty.skip_binders().is_unknown())
     }
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {

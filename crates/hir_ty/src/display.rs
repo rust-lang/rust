@@ -353,7 +353,7 @@ impl HirDisplay for Ty {
                                 .as_ref()
                                 .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
                             let bounds = data.subst(parameters);
-                            bounds.value
+                            bounds.into_value_and_skipped_binders().0
                         } else {
                             Vec::new()
                         }
@@ -543,7 +543,7 @@ impl HirDisplay for Ty {
                             .as_ref()
                             .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
                         let bounds = data.subst(&parameters);
-                        write_bounds_like_dyn_trait_with_prefix("impl", &bounds.value, f)?;
+                        write_bounds_like_dyn_trait_with_prefix("impl", bounds.skip_binders(), f)?;
                         // FIXME: it would maybe be good to distinguish this from the alias type (when debug printing), and to show the substitution
                     }
                     ImplTraitId::AsyncBlockTypeImplTrait(..) => {
@@ -630,7 +630,7 @@ impl HirDisplay for Ty {
                             .as_ref()
                             .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
                         let bounds = data.subst(&opaque_ty.substitution);
-                        write_bounds_like_dyn_trait_with_prefix("impl", &bounds.value, f)?;
+                        write_bounds_like_dyn_trait_with_prefix("impl", bounds.skip_binders(), f)?;
                     }
                     ImplTraitId::AsyncBlockTypeImplTrait(..) => {
                         write!(f, "{{async block}}")?;

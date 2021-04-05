@@ -832,12 +832,15 @@ pub fn associated_type_shorthand_candidates<R>(
 
     match res {
         // FIXME: how to correctly handle higher-ranked bounds here?
-        TypeNs::SelfType(impl_id) => {
-            search(db.impl_trait(impl_id)?.value.shift_bound_vars_out(DebruijnIndex::ONE))
-        }
+        TypeNs::SelfType(impl_id) => search(
+            db.impl_trait(impl_id)?
+                .into_value_and_skipped_binders()
+                .0
+                .shift_bound_vars_out(DebruijnIndex::ONE),
+        ),
         TypeNs::GenericParam(param_id) => {
             let predicates = db.generic_predicates_for_param(param_id);
-            let res = predicates.iter().find_map(|pred| match &pred.value.value {
+            let res = predicates.iter().find_map(|pred| match pred.skip_binders().skip_binders() {
                 // FIXME: how to correctly handle higher-ranked bounds here?
                 WhereClause::Implemented(tr) => {
                     search(tr.clone().shift_bound_vars_out(DebruijnIndex::ONE))
@@ -1088,8 +1091,8 @@ fn fn_sig_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> PolyFnS
     let ctx =
         TyLoweringContext::new(db, &resolver).with_type_param_mode(TypeParamLoweringMode::Variable);
     let params = fields.iter().map(|(_, field)| ctx.lower_ty(&field.type_ref)).collect::<Vec<_>>();
-    let ret = type_for_adt(db, def.into());
-    Binders::new(ret.num_binders, CallableSig::from_params_and_return(params, ret.value, false))
+    let (ret, binders) = type_for_adt(db, def.into()).into_value_and_skipped_binders();
+    Binders::new(binders, CallableSig::from_params_and_return(params, ret, false))
 }
 
 /// Build the type of a tuple struct constructor.
@@ -1114,8 +1117,8 @@ fn fn_sig_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId)
     let ctx =
         TyLoweringContext::new(db, &resolver).with_type_param_mode(TypeParamLoweringMode::Variable);
     let params = fields.iter().map(|(_, field)| ctx.lower_ty(&field.type_ref)).collect::<Vec<_>>();
-    let ret = type_for_adt(db, def.parent.into());
-    Binders::new(ret.num_binders, CallableSig::from_params_and_return(params, ret.value, false))
+    let (ret, binders) = type_for_adt(db, def.parent.into()).into_value_and_skipped_binders();
+    Binders::new(binders, CallableSig::from_params_and_return(params, ret, false))
 }
 
 /// Build the type of a tuple enum variant constructor.
@@ -1267,9 +1270,9 @@ pub(crate) fn impl_trait_query(db: &dyn HirDatabase, impl_id: ImplId) -> Option<
     let resolver = impl_id.resolver(db.upcast());
     let ctx =
         TyLoweringContext::new(db, &resolver).with_type_param_mode(TypeParamLoweringMode::Variable);
-    let self_ty = db.impl_self_ty(impl_id);
+    let (self_ty, binders) = db.impl_self_ty(impl_id).into_value_and_skipped_binders();
     let target_trait = impl_data.target_trait.as_ref()?;
-    Some(Binders::new(self_ty.num_binders, ctx.lower_trait_ref(target_trait, Some(self_ty.value))?))
+    Some(Binders::new(binders, ctx.lower_trait_ref(target_trait, Some(self_ty))?))
 }
 
 pub(crate) fn return_type_impl_traits(

@@ -139,7 +139,7 @@ impl TypeWalk for Ty {
                 }
             }
             TyKind::Dyn(dyn_ty) => {
-                for p in dyn_ty.bounds.value.interned().iter() {
+                for p in dyn_ty.bounds.skip_binders().interned().iter() {
                     p.walk(f);
                 }
             }
@@ -167,7 +167,7 @@ impl TypeWalk for Ty {
                 p_ty.substitution.walk_mut_binders(f, binders);
             }
             TyKind::Dyn(dyn_ty) => {
-                for p in make_mut_slice(dyn_ty.bounds.value.interned_mut()) {
+                for p in make_mut_slice(dyn_ty.bounds.skip_binders_mut().interned_mut()) {
                     p.walk_mut_binders(f, binders.shifted_in());
                 }
             }
@@ -294,7 +294,7 @@ impl TypeWalk for Substitution {
 
 impl<T: TypeWalk> TypeWalk for Binders<T> {
     fn walk(&self, f: &mut impl FnMut(&Ty)) {
-        self.value.walk(f);
+        self.skip_binders().walk(f);
     }
 
     fn walk_mut_binders(
@@ -302,7 +302,7 @@ impl<T: TypeWalk> TypeWalk for Binders<T> {
         f: &mut impl FnMut(&mut Ty, DebruijnIndex),
         binders: DebruijnIndex,
     ) {
-        self.value.walk_mut_binders(f, binders.shifted_in())
+        self.skip_binders_mut().walk_mut_binders(f, binders.shifted_in())
     }
 }
 
