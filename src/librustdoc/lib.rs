@@ -536,7 +536,7 @@ fn opts() -> Vec<RustcOptGroup> {
                 "[unversioned-shared-resources,toolchain-shared-resources,invocation-specific]",
             )
         }),
-        unstable("no-run", |o| o.optflag("", "no-run", "Compile, but don't run doc tests")),
+        unstable("no-run", |o| o.optflag("", "no-run", "Compile doc tests without running it")),
     ]
 }
 
