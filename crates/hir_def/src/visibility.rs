@@ -11,7 +11,7 @@ use crate::{
     nameres::DefMap,
     path::{ModPath, PathKind},
     resolver::HasResolver,
-    FunctionId, HasModule, LocalFieldId, ModuleDefId, ModuleId, VariantId,
+    FunctionId, HasModule, LocalFieldId, ModuleId, VariantId,
 };
 
 /// Visibility of an item, not yet resolved.
@@ -25,7 +25,7 @@ pub enum RawVisibility {
 }
 
 impl RawVisibility {
-    pub(crate) const fn private() -> RawVisibility {
+    pub(crate) fn private() -> RawVisibility {
         RawVisibility::Module(ModPath::from_kind(PathKind::Super(0)))
     }
 
@@ -217,6 +217,6 @@ pub(crate) fn field_visibilities_query(
 
 /// Resolve visibility of a function.
 pub(crate) fn function_visibility_query(db: &dyn DefDatabase, def: FunctionId) -> Visibility {
-    let resolver = ModuleDefId::from(def).module(db).unwrap().resolver(db);
+    let resolver = def.resolver(db);
     db.function_data(def).visibility.resolve(db, &resolver)
 }
