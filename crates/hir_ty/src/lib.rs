@@ -99,15 +99,6 @@ where
     Binders::empty(&Interner, value.shifted_in_from(DebruijnIndex::ONE))
 }
 
-impl<T: TypeWalk> Binders<T> {
-    /// Substitutes all variables.
-    pub fn substitute(self, interner: &Interner, subst: &Substitution) -> T {
-        let (value, binders) = self.into_value_and_skipped_binders();
-        assert_eq!(subst.len(interner), binders.len(interner));
-        value.subst_bound_vars(subst)
-    }
-}
-
 pub fn make_only_type_binders<T>(num_vars: usize, value: T) -> Binders<T> {
     Binders::new(
         VariableKinds::from_iter(
@@ -120,28 +111,8 @@ pub fn make_only_type_binders<T>(num_vars: usize, value: T) -> Binders<T> {
 }
 
 impl TraitRef {
-    pub fn self_type_parameter(&self, interner: &Interner) -> &Ty {
-        &self.substitution.at(interner, 0).assert_ty_ref(interner)
-    }
-
     pub fn hir_trait_id(&self) -> TraitId {
         from_chalk_trait_id(self.trait_id)
-    }
-}
-
-impl WhereClause {
-    pub fn is_implemented(&self) -> bool {
-        matches!(self, WhereClause::Implemented(_))
-    }
-
-    pub fn trait_ref(&self, db: &dyn HirDatabase) -> Option<TraitRef> {
-        match self {
-            WhereClause::Implemented(tr) => Some(tr.clone()),
-            WhereClause::AliasEq(AliasEq { alias: AliasTy::Projection(proj), .. }) => {
-                Some(proj.trait_ref(db))
-            }
-            WhereClause::AliasEq(_) => None,
-        }
     }
 }
 

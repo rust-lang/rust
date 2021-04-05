@@ -360,6 +360,15 @@ impl<T: Clone> Binders<&T> {
     }
 }
 
+impl<T: TypeWalk> Binders<T> {
+    /// Substitutes all variables.
+    pub fn substitute(self, interner: &Interner, subst: &Substitution) -> T {
+        let (value, binders) = self.into_value_and_skipped_binders();
+        assert_eq!(subst.len(interner), binders.len(interner));
+        value.subst_bound_vars(subst)
+    }
+}
+
 impl<T: std::fmt::Debug> std::fmt::Debug for Binders<T> {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         let Binders { ref binders, ref value } = *self;
@@ -373,6 +382,12 @@ impl<T: std::fmt::Debug> std::fmt::Debug for Binders<T> {
 pub struct TraitRef {
     pub trait_id: ChalkTraitId,
     pub substitution: Substitution,
+}
+
+impl TraitRef {
+    pub fn self_type_parameter(&self, interner: &Interner) -> &Ty {
+        &self.substitution.at(interner, 0).assert_ty_ref(interner)
+    }
 }
 
 /// Like `generics::WherePredicate`, but with resolved types: A condition on the
