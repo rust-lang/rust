@@ -53,7 +53,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use core::cmp::{self, Ordering};2
+use core::cmp::{self, Ordering};
 use core::convert::TryFrom;
 use core::fmt;
 use core::hash::{Hash, Hasher};
