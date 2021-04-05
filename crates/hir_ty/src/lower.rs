@@ -1011,17 +1011,19 @@ pub(crate) fn generic_defaults_query(
                 p.default.as_ref().map_or(TyKind::Error.intern(&Interner), |t| ctx.lower_ty(t));
 
             // Each default can only refer to previous parameters.
-            ty.walk_mut_binders(
-                &mut |ty, binders| match ty.interned_mut() {
+            ty = ty.fold_binders(
+                &mut |ty, binders| match ty.kind(&Interner) {
                     TyKind::BoundVar(BoundVar { debruijn, index }) if *debruijn == binders => {
                         if *index >= idx {
                             // type variable default referring to parameter coming
                             // after it. This is forbidden (FIXME: report
                             // diagnostic)
-                            *ty = TyKind::Error.intern(&Interner);
+                            TyKind::Error.intern(&Interner)
+                        } else {
+                            ty
                         }
                     }
-                    _ => {}
+                    _ => ty,
                 },
                 DebruijnIndex::INNERMOST,
             );

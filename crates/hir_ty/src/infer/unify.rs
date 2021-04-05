@@ -108,19 +108,22 @@ impl<'a, 'b> Canonicalizer<'a, 'b> {
 }
 
 impl<T> Canonicalized<T> {
-    pub(super) fn decanonicalize_ty(&self, mut ty: Ty) -> Ty {
-        ty.walk_mut_binders(
+    pub(super) fn decanonicalize_ty(&self, ty: Ty) -> Ty {
+        ty.fold_binders(
             &mut |ty, binders| {
-                if let &mut TyKind::BoundVar(bound) = ty.interned_mut() {
+                if let TyKind::BoundVar(bound) = ty.kind(&Interner) {
                     if bound.debruijn >= binders {
                         let (v, k) = self.free_vars[bound.index];
-                        *ty = TyKind::InferenceVar(v, k).intern(&Interner);
+                        TyKind::InferenceVar(v, k).intern(&Interner)
+                    } else {
+                        ty
                     }
+                } else {
+                    ty
                 }
             },
             DebruijnIndex::INNERMOST,
-        );
-        ty
+        )
     }
 
     pub(super) fn apply_solution(
