@@ -52,7 +52,6 @@ fn not_e(
     _arch: InlineAsmArch,
     mut has_feature: impl FnMut(&str) -> bool,
     _target: &Target,
-    _allocating: bool,
 ) -> Result<(), &'static str> {
     if has_feature("e") {
         Err("register can't be used with the `e` target feature")
