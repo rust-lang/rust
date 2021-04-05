@@ -78,8 +78,8 @@ impl ProjectionTy {
         }
     }
 
-    pub fn self_type_parameter(&self) -> &Ty {
-        &self.substitution.interned()[0].assert_ty_ref(&Interner)
+    pub fn self_type_parameter(&self, interner: &Interner) -> &Ty {
+        &self.substitution.interned()[0].assert_ty_ref(interner)
     }
 
     fn trait_(&self, db: &dyn HirDatabase) -> TraitId {
@@ -477,7 +477,7 @@ impl Ty {
                                 WhereClause::AliasEq(AliasEq {
                                     alias: AliasTy::Projection(proj),
                                     ty: _,
-                                }) => proj.self_type_parameter() == self,
+                                }) => proj.self_type_parameter(&Interner) == self,
                                 _ => false,
                             })
                             .collect_vec();

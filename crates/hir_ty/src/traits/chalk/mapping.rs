@@ -552,7 +552,7 @@ pub(super) fn generic_predicate_to_inline_bound(
             Some(make_binders(rust_ir::InlineBound::TraitBound(trait_bound), pred.num_binders))
         }
         WhereClause::AliasEq(AliasEq { alias: AliasTy::Projection(projection_ty), ty }) => {
-            if projection_ty.self_type_parameter() != &self_ty_shifted_in {
+            if projection_ty.self_type_parameter(&Interner) != &self_ty_shifted_in {
                 return None;
             }
             let trait_ = projection_ty.trait_(db);

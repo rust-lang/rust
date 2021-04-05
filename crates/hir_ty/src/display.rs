@@ -251,7 +251,7 @@ impl HirDisplay for ProjectionTy {
         }
 
         let trait_ = f.db.trait_data(self.trait_(f.db));
-        let first_parameter = self.self_type_parameter().into_displayable(
+        let first_parameter = self.self_type_parameter(&Interner).into_displayable(
             f.db,
             f.max_size,
             f.omit_verbose_types,
@@ -602,7 +602,7 @@ impl HirDisplay for Ty {
                                 WhereClause::AliasEq(AliasEq {
                                     alias: AliasTy::Projection(proj),
                                     ty: _,
-                                }) => proj.self_type_parameter() == self,
+                                }) => proj.self_type_parameter(&Interner) == self,
                                 _ => false,
                             })
                             .collect::<Vec<_>>();
