@@ -193,10 +193,11 @@ impl ToChalk for Ty {
 fn ref_to_chalk(
     db: &dyn HirDatabase,
     mutability: chalk_ir::Mutability,
-    lifetime: Lifetime,
+    _lifetime: Lifetime,
     ty: Ty,
 ) -> chalk_ir::Ty<Interner> {
     let arg = ty.to_chalk(db);
+    let lifetime = LifetimeData::Static.intern(&Interner);
     chalk_ir::TyKind::Ref(mutability, lifetime, arg).intern(&Interner)
 }
 
