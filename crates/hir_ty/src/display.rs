@@ -529,7 +529,7 @@ impl HirDisplay for Ty {
                     projection_ty.hir_fmt(f)?;
                 }
             }
-            TyKind::ForeignType(type_alias) => {
+            TyKind::Foreign(type_alias) => {
                 let type_alias = f.db.type_alias_data(from_foreign_def_id(*type_alias));
                 write!(f, "{}", type_alias.name)?;
             }

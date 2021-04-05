@@ -1145,7 +1145,7 @@ fn type_for_type_alias(db: &dyn HirDatabase, t: TypeAliasId) -> Binders<Ty> {
     let ctx =
         TyLoweringContext::new(db, &resolver).with_type_param_mode(TypeParamLoweringMode::Variable);
     if db.type_alias_data(t).is_extern {
-        Binders::new(0, TyKind::ForeignType(crate::to_foreign_def_id(t)).intern(&Interner))
+        Binders::new(0, TyKind::Foreign(crate::to_foreign_def_id(t)).intern(&Interner))
     } else {
         let type_ref = &db.type_alias_data(t).type_ref;
         let inner = ctx.lower_ty(type_ref.as_deref().unwrap_or(&TypeRef::Error));

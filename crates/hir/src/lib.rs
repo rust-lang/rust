@@ -1900,7 +1900,7 @@ impl Type {
                 | TyKind::Dyn(_)
                 | TyKind::Function(_)
                 | TyKind::Alias(_)
-                | TyKind::ForeignType(_) => false,
+                | TyKind::Foreign(_) => false,
             }
         }
     }

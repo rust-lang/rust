@@ -132,7 +132,7 @@ pub enum TyKind {
     Closure(ClosureId, Substitution),
 
     /// Represents a foreign type declared in external blocks.
-    ForeignType(ForeignDefId),
+    Foreign(ForeignDefId),
 
     /// A pointer to a function.  Written as `fn() -> i32`.
     ///

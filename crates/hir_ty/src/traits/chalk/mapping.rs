@@ -43,7 +43,7 @@ impl ToChalk for Ty {
                 chalk_ir::TyKind::OpaqueType(id, substitution).intern(&Interner)
             }
 
-            TyKind::ForeignType(id) => chalk_ir::TyKind::Foreign(id).intern(&Interner),
+            TyKind::Foreign(id) => chalk_ir::TyKind::Foreign(id).intern(&Interner),
 
             TyKind::Scalar(scalar) => chalk_ir::TyKind::Scalar(scalar).intern(&Interner),
 
@@ -181,7 +181,7 @@ impl ToChalk for Ty {
 
             chalk_ir::TyKind::Closure(id, subst) => TyKind::Closure(id, from_chalk(db, subst)),
 
-            chalk_ir::TyKind::Foreign(foreign_def_id) => TyKind::ForeignType(foreign_def_id),
+            chalk_ir::TyKind::Foreign(foreign_def_id) => TyKind::Foreign(foreign_def_id),
             chalk_ir::TyKind::Generator(_, _) => unimplemented!(), // FIXME
             chalk_ir::TyKind::GeneratorWitness(_, _) => unimplemented!(), // FIXME
         }

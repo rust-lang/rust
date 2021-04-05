@@ -290,7 +290,7 @@ impl Ty {
                 Some(db.lookup_intern_callable_def(callable.into()).into())
             }
             TyKind::AssociatedType(type_alias, ..) => Some(from_assoc_type_id(type_alias).into()),
-            TyKind::ForeignType(type_alias, ..) => Some(from_foreign_def_id(type_alias).into()),
+            TyKind::Foreign(type_alias, ..) => Some(from_foreign_def_id(type_alias).into()),
             _ => None,
         }
     }
@@ -312,7 +312,7 @@ impl Ty {
             (TyKind::AssociatedType(ty_id, ..), TyKind::AssociatedType(ty_id2, ..)) => {
                 ty_id == ty_id2
             }
-            (TyKind::ForeignType(ty_id, ..), TyKind::ForeignType(ty_id2, ..)) => ty_id == ty_id2,
+            (TyKind::Foreign(ty_id, ..), TyKind::Foreign(ty_id2, ..)) => ty_id == ty_id2,
             (TyKind::Closure(id1, _), TyKind::Closure(id2, _)) => id1 == id2,
             (TyKind::Ref(mutability, ..), TyKind::Ref(mutability2, ..))
             | (TyKind::Raw(mutability, ..), TyKind::Raw(mutability2, ..)) => {
