@@ -3,7 +3,7 @@
 //! Chalk (in both directions); plus some helper functions for more specialized
 //! conversions.
 
-use chalk_ir::{cast::Cast, fold::shift::Shift, interner::HasInterner, LifetimeData};
+use chalk_ir::{cast::Cast, interner::HasInterner, LifetimeData};
 use chalk_solve::rust_ir;
 
 use base_db::salsa::InternKey;
@@ -25,7 +25,7 @@ impl ToChalk for Ty {
             TyKind::Ref(m, ty) => ref_to_chalk(db, m, ty),
             TyKind::Array(ty) => array_to_chalk(db, ty),
             TyKind::Function(FnPointer { sig, substitution: substs, .. }) => {
-                let substitution = chalk_ir::FnSubst(substs.0.to_chalk(db).shifted_in(&Interner));
+                let substitution = chalk_ir::FnSubst(substs.0.to_chalk(db));
                 chalk_ir::TyKind::Function(chalk_ir::FnPointer {
                     num_binders: 0,
                     sig,
@@ -132,10 +132,7 @@ impl ToChalk for Ty {
                 ..
             }) => {
                 assert_eq!(num_binders, 0);
-                let substs = crate::FnSubst(from_chalk(
-                    db,
-                    substitution.0.shifted_out(&Interner).expect("fn ptr should have no binders"),
-                ));
+                let substs = crate::FnSubst(from_chalk(db, substitution.0));
                 TyKind::Function(FnPointer { num_binders, sig, substitution: substs })
             }
             chalk_ir::TyKind::BoundVar(idx) => TyKind::BoundVar(idx),
