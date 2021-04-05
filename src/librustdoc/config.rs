@@ -484,7 +484,9 @@ impl Options {
                     return Err(1);
                 }
                 if theme_file.extension() != Some(OsStr::new("css")) {
-                    diag.struct_err(&format!("invalid argument: \"{}\"", theme_s)).emit();
+                    diag.struct_err(&format!("invalid argument: \"{}\"", theme_s))
+                        .help("arguments to --theme must have a .css extension")
+                        .emit();
                     return Err(1);
                 }
                 let (success, ret) = theme::test_theme_against(&theme_file, &paths, &diag);
