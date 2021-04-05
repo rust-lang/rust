@@ -100,9 +100,17 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="brace">}</span>
 
 <span class="comment documentation">/// </span><span class="struct documentation intra_doc_link injected">[`Foo`](Foo)</span><span class="comment documentation"> is a struct</span>
-<span class="comment documentation">/// </span><span class="function documentation intra_doc_link injected">[`all_the_links`](all_the_links)</span><span class="comment documentation"> is this function</span>
+<span class="comment documentation">/// This function is &gt; </span><span class="function documentation intra_doc_link injected">[`all_the_links`](all_the_links)</span><span class="comment documentation"> &lt;</span>
 <span class="comment documentation">/// [`noop`](noop) is a macro below</span>
+<span class="comment documentation">/// </span><span class="struct documentation intra_doc_link injected">[`Item`]</span><span class="comment documentation"> is a struct in the module </span><span class="module documentation intra_doc_link injected">[`module`]</span>
+<span class="comment documentation">///</span>
+<span class="comment documentation">/// [`Item`]: module::Item</span>
+<span class="comment documentation">/// [mix_and_match]: ThisShouldntResolve</span>
 <span class="keyword">pub</span> <span class="keyword">fn</span> <span class="function declaration">all_the_links</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
+
+<span class="keyword">pub</span> <span class="keyword">mod</span> <span class="module declaration">module</span> <span class="brace">{</span>
+    <span class="keyword">pub</span> <span class="keyword">struct</span> <span class="struct declaration">Item</span><span class="semicolon">;</span>
+<span class="brace">}</span>
 
 <span class="comment documentation">/// ```</span>
 <span class="comment documentation">/// </span><span class="macro injected">noop!</span><span class="parenthesis injected">(</span><span class="numeric_literal injected">1</span><span class="parenthesis injected">)</span><span class="semicolon injected">;</span>

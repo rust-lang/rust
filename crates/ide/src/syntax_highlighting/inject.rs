@@ -1,17 +1,17 @@
 //! "Recursive" Syntax highlighting for code in doctests and fixtures.
 
-use std::{mem, ops::Range};
+use std::mem;
 
 use either::Either;
-use hir::{HasAttrs, InFile, Semantics};
-use ide_db::{call_info::ActiveParameter, defs::Definition, SymbolKind};
+use hir::{InFile, Semantics};
+use ide_db::{call_info::ActiveParameter, SymbolKind};
 use syntax::{
     ast::{self, AstNode},
-    match_ast, AstToken, NodeOrToken, SyntaxNode, SyntaxToken, TextRange, TextSize,
+    AstToken, NodeOrToken, SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
 
 use crate::{
-    doc_links::{extract_definitions_from_markdown, resolve_doc_path_for_def},
+    doc_links::{doc_attributes, extract_definitions_from_markdown, resolve_doc_path_for_def},
     Analysis, HlMod, HlRange, HlTag, RootDatabase,
 };
 
@@ -90,33 +90,6 @@ const RUSTDOC_FENCE_TOKENS: &[&'static str] = &[
     "edition2021",
 ];
 
-fn doc_attributes<'node>(
-    sema: &Semantics<RootDatabase>,
-    node: &'node SyntaxNode,
-) -> Option<(hir::AttrsWithOwner, Definition)> {
-    match_ast! {
-        match node {
-            ast::SourceFile(it)  => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Module(def)))),
-            ast::Module(it)      => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Module(def)))),
-            ast::Fn(it)          => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Function(def)))),
-            ast::Struct(it)      => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Struct(def))))),
-            ast::Union(it)       => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Union(def))))),
-            ast::Enum(it)        => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Enum(def))))),
-            ast::Variant(it)     => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Variant(def)))),
-            ast::Trait(it)       => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Trait(def)))),
-            ast::Static(it)      => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Static(def)))),
-            ast::Const(it)       => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Const(def)))),
-            ast::TypeAlias(it)   => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::TypeAlias(def)))),
-            ast::Impl(it)        => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::SelfType(def))),
-            ast::RecordField(it) => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::Field(def))),
-            ast::TupleField(it)  => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::Field(def))),
-            ast::Macro(it)       => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::Macro(def))),
-            // ast::Use(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
-            _ => return None
-        }
-    }
-}
-
 /// Injection of syntax highlighting of doctests.
 pub(super) fn doc_comment(
     hl: &mut Highlights,
@@ -139,8 +112,28 @@ pub(super) fn doc_comment(
     // Replace the original, line-spanning comment ranges by new, only comment-prefix
     // spanning comment ranges.
     let mut new_comments = Vec::new();
-    let mut intra_doc_links = Vec::new();
     let mut string;
+
+    if let Some((docs, doc_mapping)) = attributes.docs_with_rangemap(sema.db) {
+        extract_definitions_from_markdown(docs.as_str())
+            .into_iter()
+            .filter_map(|(range, link, ns)| {
+                let def = resolve_doc_path_for_def(sema.db, def, &link, ns)?;
+                let InFile { file_id, value: range } = doc_mapping.map(range)?;
+                (file_id == node.file_id).then(|| (range, def))
+            })
+            .for_each(|(range, def)| {
+                hl.add(HlRange {
+                    range,
+                    highlight: module_def_to_hl_tag(def)
+                        | HlMod::Documentation
+                        | HlMod::Injected
+                        | HlMod::IntraDocLink,
+                    binding_hash: None,
+                })
+            });
+    }
+
     for attr in attributes.by_key("doc").attrs() {
         let InFile { file_id, value: src } = attrs_source_map.source_of(&attr);
         if file_id != node.file_id {
@@ -186,25 +179,7 @@ pub(super) fn doc_comment(
                     is_doctest = is_codeblock && is_rust;
                     continue;
                 }
-                None if !is_doctest => {
-                    intra_doc_links.extend(
-                        extract_definitions_from_markdown(line)
-                            .into_iter()
-                            .filter_map(|(range, link, ns)| {
-                                Some(range).zip(resolve_doc_path_for_def(sema.db, def, &link, ns))
-                            })
-                            .map(|(Range { start, end }, def)| {
-                                (
-                                    def,
-                                    TextRange::at(
-                                        prev_range_start + TextSize::from(start as u32),
-                                        TextSize::from((end - start) as u32),
-                                    ),
-                                )
-                            }),
-                    );
-                    continue;
-                }
+                None if !is_doctest => continue,
                 None => (),
             }
 
@@ -221,17 +196,6 @@ pub(super) fn doc_comment(
             inj.add(&line[pos.into()..], TextRange::new(pos, line_len) + prev_range_start);
             inj.add_unmapped("\n");
         }
-    }
-
-    for (def, range) in intra_doc_links {
-        hl.add(HlRange {
-            range,
-            highlight: module_def_to_hl_tag(def)
-                | HlMod::Documentation
-                | HlMod::Injected
-                | HlMod::IntraDocLink,
-            binding_hash: None,
-        });
     }
 
     if new_comments.is_empty() {

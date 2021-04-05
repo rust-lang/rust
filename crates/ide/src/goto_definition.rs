@@ -1,5 +1,5 @@
 use either::Either;
-use hir::Semantics;
+use hir::{InFile, Semantics};
 use ide_db::{
     defs::{NameClass, NameRefClass},
     RootDatabase,
@@ -8,7 +8,7 @@ use syntax::{ast, match_ast, AstNode, AstToken, SyntaxKind::*, SyntaxToken, Toke
 
 use crate::{
     display::TryToNav,
-    doc_links::{doc_owner_to_def, extract_positioned_link_from_comment, resolve_doc_path_for_def},
+    doc_links::{doc_attributes, extract_definitions_from_markdown, resolve_doc_path_for_def},
     FilePosition, NavigationTarget, RangeInfo,
 };
 
@@ -32,9 +32,16 @@ pub(crate) fn goto_definition(
     let original_token = pick_best(file.token_at_offset(position.offset))?;
     let token = sema.descend_into_macros(original_token.clone());
     let parent = token.parent()?;
-    if let Some(comment) = ast::Comment::cast(token) {
-        let (_, link, ns) = extract_positioned_link_from_comment(position.offset, &comment)?;
-        let def = doc_owner_to_def(&sema, &parent)?;
+    if let Some(_) = ast::Comment::cast(token) {
+        let (attributes, def) = doc_attributes(&sema, &parent)?;
+
+        let (docs, doc_mapping) = attributes.docs_with_rangemap(db)?;
+        let (_, link, ns) =
+            extract_definitions_from_markdown(docs.as_str()).into_iter().find(|(range, ..)| {
+                doc_mapping.map(range.clone()).map_or(false, |InFile { file_id, value: range }| {
+                    file_id == position.file_id.into() && range.contains(position.offset)
+                })
+            })?;
         let nav = resolve_doc_path_for_def(db, def, &link, ns)?.try_to_nav(db)?;
         return Some(RangeInfo::new(original_token.text_range(), vec![nav]));
     }
@@ -1159,5 +1166,26 @@ fn fn_macro() {}
  //^^^^^^^^
             "#,
         )
+    }
+
+    #[test]
+    fn goto_intra_doc_links() {
+        check(
+            r#"
+
+pub mod theitem {
+    /// This is the item. Cool!
+    pub struct TheItem;
+             //^^^^^^^
+}
+
+/// Gives you a [`TheItem$0`].
+///
+/// [`TheItem`]: theitem::TheItem
+pub fn gimme() -> theitem::TheItem {
+    theitem::TheItem
+}
+"#,
+        );
     }
 }

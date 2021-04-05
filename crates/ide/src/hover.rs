@@ -1,6 +1,6 @@
 use either::Either;
 use hir::{
-    AsAssocItem, AssocItemContainer, GenericParam, HasAttrs, HasSource, HirDisplay, Module,
+    AsAssocItem, AssocItemContainer, GenericParam, HasAttrs, HasSource, HirDisplay, InFile, Module,
     ModuleDef, Semantics,
 };
 use ide_db::{
@@ -16,8 +16,8 @@ use syntax::{ast, match_ast, AstNode, AstToken, SyntaxKind::*, SyntaxToken, Toke
 use crate::{
     display::{macro_label, TryToNav},
     doc_links::{
-        doc_owner_to_def, extract_positioned_link_from_comment, remove_links,
-        resolve_doc_path_for_def, rewrite_links,
+        doc_attributes, extract_definitions_from_markdown, remove_links, resolve_doc_path_for_def,
+        rewrite_links,
     },
     markdown_remove::remove_markdown,
     markup::Markup,
@@ -116,11 +116,19 @@ pub(crate) fn hover(
             ),
 
             _ => ast::Comment::cast(token.clone())
-                .and_then(|comment| {
+                .and_then(|_| {
+                    let (attributes, def) = doc_attributes(&sema, &node)?;
+                    let (docs, doc_mapping) = attributes.docs_with_rangemap(db)?;
                     let (idl_range, link, ns) =
-                        extract_positioned_link_from_comment(position.offset, &comment)?;
+                        extract_definitions_from_markdown(docs.as_str()).into_iter().find_map(|(range, link, ns)| {
+                            let InFile { file_id, value: range } = doc_mapping.map(range.clone())?;
+                            if file_id == position.file_id.into() && range.contains(position.offset) {
+                                Some((range, link, ns))
+                            } else {
+                                None
+                            }
+                        })?;
                     range = Some(idl_range);
-                    let def = doc_owner_to_def(&sema, &node)?;
                     resolve_doc_path_for_def(db, def, &link, ns)
                 })
                 .map(Definition::ModuleDef),
@@ -3814,23 +3822,33 @@ fn main() {
     fn hover_intra_doc_links() {
         check(
             r#"
-/// This is the [`foo`](foo$0) function.
-fn foo() {}
+
+pub mod theitem {
+    /// This is the item. Cool!
+    pub struct TheItem;
+}
+
+/// Gives you a [`TheItem$0`].
+///
+/// [`TheItem`]: theitem::TheItem
+pub fn gimme() -> theitem::TheItem {
+    theitem::TheItem
+}
 "#,
             expect![[r#"
-                *[`foo`](foo)*
+                *[`TheItem`]*
 
                 ```rust
-                test
+                test::theitem
                 ```
 
                 ```rust
-                fn foo()
+                pub struct TheItem
                 ```
 
                 ---
 
-                This is the [`foo`](https://docs.rs/test/*/test/fn.foo.html) function.
+                This is the item. Cool!
             "#]],
         );
     }
