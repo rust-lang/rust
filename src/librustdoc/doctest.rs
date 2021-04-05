@@ -846,13 +846,14 @@ impl Tester for Collector {
                 test_type: testing::TestType::DocTest,
             },
             testfn: testing::DynTestFn(box move || {
+                let option_no_run = options.no_run;
                 let res = run_test(
                     &test,
                     &cratename,
                     line,
                     options,
                     config.should_panic,
-                    config.no_run || options.no_run,
+                    config.no_run || option_no_run,
                     config.test_harness,
                     runtool,
                     runtool_args,
