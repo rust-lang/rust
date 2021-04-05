@@ -27,6 +27,7 @@ pub mod dyn_map;
 pub mod keys;
 
 pub mod item_tree;
+pub mod intern;
 
 pub mod adt;
 pub mod data;
@@ -49,7 +50,6 @@ pub mod import_map;
 
 #[cfg(test)]
 mod test_db;
-mod intern;
 
 use std::{
     hash::{Hash, Hasher},

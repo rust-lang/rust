@@ -9,6 +9,7 @@ use hir_def::{
     generics::{
         GenericParams, TypeParamData, TypeParamProvenance, WherePredicate, WherePredicateTypeTarget,
     },
+    intern::Interned,
     path::Path,
     resolver::{HasResolver, TypeNs},
     type_ref::TypeRef,
@@ -158,7 +159,7 @@ pub(crate) fn generics(db: &dyn DefDatabase, def: GenericDefId) -> Generics {
 #[derive(Debug)]
 pub(crate) struct Generics {
     def: GenericDefId,
-    pub(crate) params: Arc<GenericParams>,
+    pub(crate) params: Interned<GenericParams>,
     parent_generics: Option<Box<Generics>>,
 }
 
