@@ -923,8 +923,7 @@ fn phase_cargo_rustdoc(fst_arg: &str, mut args: env::Args) {
     }
 
     if crossmode {
-        eprintln!("Cross-interpreting doc-tests is not currently supported by Miri.");
-        return;
+        show_error(format!("cross-interpreting doc-tests is not currently supported by Miri."));
     }
 
     // For each doc-test, rustdoc starts two child processes: first the test is compiled,
