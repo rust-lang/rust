@@ -9,6 +9,7 @@ use hir_def::{
     generics::{
         GenericParams, TypeParamData, TypeParamProvenance, WherePredicate, WherePredicateTypeTarget,
     },
+    intern::Interned,
     path::Path,
     resolver::{HasResolver, TypeNs},
     type_ref::TypeRef,
@@ -32,11 +33,10 @@ fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> Vec<TraitId> {
         .filter_map(|pred| match pred {
             WherePredicate::ForLifetime { target, bound, .. }
             | WherePredicate::TypeBound { target, bound } => match target {
-                WherePredicateTypeTarget::TypeRef(TypeRef::Path(p))
-                    if p == &Path::from(name![Self]) =>
-                {
-                    bound.as_path()
-                }
+                WherePredicateTypeTarget::TypeRef(type_ref) => match &**type_ref {
+                    TypeRef::Path(p) if p == &Path::from(name![Self]) => bound.as_path(),
+                    _ => None,
+                },
                 WherePredicateTypeTarget::TypeParam(local_id) if Some(*local_id) == trait_self => {
                     bound.as_path()
                 }
@@ -159,7 +159,7 @@ pub(crate) fn generics(db: &dyn DefDatabase, def: GenericDefId) -> Generics {
 #[derive(Debug)]
 pub(crate) struct Generics {
     def: GenericDefId,
-    pub(crate) params: Arc<GenericParams>,
+    pub(crate) params: Interned<GenericParams>,
     parent_generics: Option<Box<Generics>>,
 }
 

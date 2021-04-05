@@ -14,6 +14,8 @@ use dashmap::{lock::RwLockWriteGuard, DashMap, SharedValue};
 use once_cell::sync::OnceCell;
 use rustc_hash::FxHasher;
 
+use crate::generics::GenericParams;
+
 type InternMap<T> = DashMap<Arc<T>, (), BuildHasherDefault<FxHasher>>;
 type Guard<T> =
     RwLockWriteGuard<'static, HashMap<Arc<T>, SharedValue<()>, BuildHasherDefault<FxHasher>>>;
@@ -194,4 +196,10 @@ macro_rules! impl_internable {
     )+ };
 }
 
-impl_internable!(crate::type_ref::TypeRef, crate::type_ref::TraitRef, crate::path::ModPath, str);
+impl_internable!(
+    crate::type_ref::TypeRef,
+    crate::type_ref::TraitRef,
+    crate::path::ModPath,
+    GenericParams,
+    str
+);

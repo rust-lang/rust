@@ -2,7 +2,6 @@
 //! structs, impls, traits, etc. This module provides a common HIR for these
 //! generic parameters. See also the `Generics` type and the `generics_of` query
 //! in rustc.
-use std::sync::Arc;
 
 use base_db::FileId;
 use either::Either;
@@ -18,6 +17,7 @@ use crate::{
     child_by_source::ChildBySource,
     db::DefDatabase,
     dyn_map::DynMap,
+    intern::Interned,
     keys,
     src::{HasChildSource, HasSource},
     type_ref::{LifetimeRef, TypeBound, TypeRef},
@@ -26,27 +26,27 @@ use crate::{
 };
 
 /// Data about a generic type parameter (to a function, struct, impl, ...).
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct TypeParamData {
     pub name: Option<Name>,
-    pub default: Option<TypeRef>,
+    pub default: Option<Interned<TypeRef>>,
     pub provenance: TypeParamProvenance,
 }
 
 /// Data about a generic lifetime parameter (to a function, struct, impl, ...).
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct LifetimeParamData {
     pub name: Name,
 }
 
 /// Data about a generic const parameter (to a function, struct, impl, ...).
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct ConstParamData {
     pub name: Name,
-    pub ty: TypeRef,
+    pub ty: Interned<TypeRef>,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub enum TypeParamProvenance {
     TypeParamList,
     TraitSelf,
@@ -54,7 +54,7 @@ pub enum TypeParamProvenance {
 }
 
 /// Data about the generic parameters of a function, struct, impl, etc.
-#[derive(Clone, PartialEq, Eq, Debug, Default)]
+#[derive(Clone, PartialEq, Eq, Debug, Default, Hash)]
 pub struct GenericParams {
     pub types: Arena<TypeParamData>,
     pub lifetimes: Arena<LifetimeParamData>,
@@ -66,16 +66,16 @@ pub struct GenericParams {
 /// where clauses like `where T: Foo + Bar` are turned into multiple of these.
 /// It might still result in multiple actual predicates though, because of
 /// associated type bindings like `Iterator<Item = u32>`.
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum WherePredicate {
     TypeBound { target: WherePredicateTypeTarget, bound: TypeBound },
     Lifetime { target: LifetimeRef, bound: LifetimeRef },
     ForLifetime { lifetimes: Box<[Name]>, target: WherePredicateTypeTarget, bound: TypeBound },
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum WherePredicateTypeTarget {
-    TypeRef(TypeRef),
+    TypeRef(Interned<TypeRef>),
     /// For desugared where predicates that can directly refer to a type param.
     TypeParam(LocalTypeParamId),
 }
@@ -91,7 +91,7 @@ impl GenericParams {
     pub(crate) fn generic_params_query(
         db: &dyn DefDatabase,
         def: GenericDefId,
-    ) -> Arc<GenericParams> {
+    ) -> Interned<GenericParams> {
         let _p = profile::span("generic_params_query");
 
         let generics = match def {
@@ -99,47 +99,49 @@ impl GenericParams {
                 let id = id.lookup(db).id;
                 let tree = id.item_tree(db);
                 let item = &tree[id.value];
-                tree[item.generic_params].clone()
+                item.generic_params.clone()
             }
             GenericDefId::AdtId(AdtId::StructId(id)) => {
                 let id = id.lookup(db).id;
                 let tree = id.item_tree(db);
                 let item = &tree[id.value];
-                tree[item.generic_params].clone()
+                item.generic_params.clone()
             }
             GenericDefId::AdtId(AdtId::EnumId(id)) => {
                 let id = id.lookup(db).id;
                 let tree = id.item_tree(db);
                 let item = &tree[id.value];
-                tree[item.generic_params].clone()
+                item.generic_params.clone()
             }
             GenericDefId::AdtId(AdtId::UnionId(id)) => {
                 let id = id.lookup(db).id;
                 let tree = id.item_tree(db);
                 let item = &tree[id.value];
-                tree[item.generic_params].clone()
+                item.generic_params.clone()
             }
             GenericDefId::TraitId(id) => {
                 let id = id.lookup(db).id;
                 let tree = id.item_tree(db);
                 let item = &tree[id.value];
-                tree[item.generic_params].clone()
+                item.generic_params.clone()
             }
             GenericDefId::TypeAliasId(id) => {
                 let id = id.lookup(db).id;
                 let tree = id.item_tree(db);
                 let item = &tree[id.value];
-                tree[item.generic_params].clone()
+                item.generic_params.clone()
             }
             GenericDefId::ImplId(id) => {
                 let id = id.lookup(db).id;
                 let tree = id.item_tree(db);
                 let item = &tree[id.value];
-                tree[item.generic_params].clone()
+                item.generic_params.clone()
             }
-            GenericDefId::EnumVariantId(_) | GenericDefId::ConstId(_) => GenericParams::default(),
+            GenericDefId::EnumVariantId(_) | GenericDefId::ConstId(_) => {
+                Interned::new(GenericParams::default())
+            }
         };
-        Arc::new(generics)
+        generics
     }
 
     fn new(db: &dyn DefDatabase, def: GenericDefId) -> (GenericParams, InFile<SourceMap>) {
@@ -217,6 +219,7 @@ impl GenericParams {
             GenericDefId::EnumVariantId(_) | GenericDefId::ConstId(_) => FileId(!0).into(),
         };
 
+        generics.shrink_to_fit();
         (generics, InFile::new(file_id, sm))
     }
 
@@ -256,7 +259,8 @@ impl GenericParams {
         for type_param in params.type_params() {
             let name = type_param.name().map_or_else(Name::missing, |it| it.as_name());
             // FIXME: Use `Path::from_src`
-            let default = type_param.default_type().map(|it| TypeRef::from_ast(lower_ctx, it));
+            let default =
+                type_param.default_type().map(|it| Interned::new(TypeRef::from_ast(lower_ctx, it)));
             let param = TypeParamData {
                 name: Some(name.clone()),
                 default,
@@ -280,7 +284,7 @@ impl GenericParams {
         for const_param in params.const_params() {
             let name = const_param.name().map_or_else(Name::missing, |it| it.as_name());
             let ty = const_param.ty().map_or(TypeRef::Error, |it| TypeRef::from_ast(lower_ctx, it));
-            let param = ConstParamData { name, ty };
+            let param = ConstParamData { name, ty: Interned::new(ty) };
             let param_id = self.consts.alloc(param);
             sm.const_params.insert(param_id, const_param.clone());
         }
@@ -334,11 +338,11 @@ impl GenericParams {
             (Either::Left(type_ref), bound) => match hrtb_lifetimes {
                 Some(hrtb_lifetimes) => WherePredicate::ForLifetime {
                     lifetimes: hrtb_lifetimes.clone(),
-                    target: WherePredicateTypeTarget::TypeRef(type_ref),
+                    target: WherePredicateTypeTarget::TypeRef(Interned::new(type_ref)),
                     bound,
                 },
                 None => WherePredicate::TypeBound {
-                    target: WherePredicateTypeTarget::TypeRef(type_ref),
+                    target: WherePredicateTypeTarget::TypeRef(Interned::new(type_ref)),
                     bound,
                 },
             },
@@ -367,6 +371,14 @@ impl GenericParams {
                 }
             }
         });
+    }
+
+    pub(crate) fn shrink_to_fit(&mut self) {
+        let Self { consts, lifetimes, types, where_predicates } = self;
+        consts.shrink_to_fit();
+        lifetimes.shrink_to_fit();
+        types.shrink_to_fit();
+        where_predicates.shrink_to_fit();
     }
 
     pub fn find_type_by_name(&self, name: &Name) -> Option<LocalTypeParamId> {

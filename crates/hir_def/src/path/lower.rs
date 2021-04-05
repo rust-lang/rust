@@ -69,7 +69,7 @@ pub(super) fn lower_path(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path>
                 match trait_ref {
                     // <T>::foo
                     None => {
-                        type_anchor = Some(Box::new(self_type));
+                        type_anchor = Some(Interned::new(self_type));
                         kind = PathKind::Plain;
                     }
                     // <T as Trait<A>>::Foo desugars to Trait<Self=T, A>::Foo

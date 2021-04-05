@@ -13,6 +13,7 @@ use crate::{
     data::{ConstData, FunctionData, ImplData, StaticData, TraitData, TypeAliasData},
     generics::GenericParams,
     import_map::ImportMap,
+    intern::Interned,
     item_tree::ItemTree,
     lang_item::{LangItemTarget, LangItems},
     nameres::DefMap,
@@ -113,7 +114,7 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
     fn expr_scopes(&self, def: DefWithBodyId) -> Arc<ExprScopes>;
 
     #[salsa::invoke(GenericParams::generic_params_query)]
-    fn generic_params(&self, def: GenericDefId) -> Arc<GenericParams>;
+    fn generic_params(&self, def: GenericDefId) -> Interned<GenericParams>;
 
     #[salsa::invoke(Attrs::variants_attrs_query)]
     fn variants_attrs(&self, def: EnumId) -> Arc<ArenaMap<LocalEnumVariantId, Attrs>>;

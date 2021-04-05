@@ -58,13 +58,6 @@ impl fmt::Debug for RawVisibilityId {
     }
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct GenericParamsId(u32);
-
-impl GenericParamsId {
-    pub const EMPTY: Self = GenericParamsId(u32::max_value());
-}
-
 /// The item tree of a source file.
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct ItemTree {
@@ -146,7 +139,6 @@ impl ItemTree {
                 macro_rules,
                 macro_defs,
                 vis,
-                generics,
                 inner_items,
             } = &mut **data;
 
@@ -170,7 +162,6 @@ impl ItemTree {
             macro_defs.shrink_to_fit();
 
             vis.arena.shrink_to_fit();
-            generics.arena.shrink_to_fit();
 
             inner_items.shrink_to_fit();
         }
@@ -242,32 +233,6 @@ static VIS_PRIV: RawVisibility = RawVisibility::Module(ModPath::from_kind(PathKi
 static VIS_PUB_CRATE: RawVisibility = RawVisibility::Module(ModPath::from_kind(PathKind::Crate));
 
 #[derive(Default, Debug, Eq, PartialEq)]
-struct GenericParamsStorage {
-    arena: Arena<GenericParams>,
-}
-
-impl GenericParamsStorage {
-    fn alloc(&mut self, params: GenericParams) -> GenericParamsId {
-        if params.types.is_empty()
-            && params.lifetimes.is_empty()
-            && params.consts.is_empty()
-            && params.where_predicates.is_empty()
-        {
-            return GenericParamsId::EMPTY;
-        }
-
-        GenericParamsId(self.arena.alloc(params).into_raw().into())
-    }
-}
-
-static EMPTY_GENERICS: GenericParams = GenericParams {
-    types: Arena::new(),
-    lifetimes: Arena::new(),
-    consts: Arena::new(),
-    where_predicates: Vec::new(),
-};
-
-#[derive(Default, Debug, Eq, PartialEq)]
 struct ItemTreeData {
     imports: Arena<Import>,
     extern_crates: Arena<ExternCrate>,
@@ -289,7 +254,6 @@ struct ItemTreeData {
     macro_defs: Arena<MacroDef>,
 
     vis: ItemVisibilities,
-    generics: GenericParamsStorage,
 
     inner_items: FxHashMap<FileAstId<ast::BlockExpr>, SmallVec<[ModItem; 1]>>,
 }
@@ -508,17 +472,6 @@ impl Index<RawVisibilityId> for ItemTree {
     }
 }
 
-impl Index<GenericParamsId> for ItemTree {
-    type Output = GenericParams;
-
-    fn index(&self, index: GenericParamsId) -> &Self::Output {
-        match index {
-            GenericParamsId::EMPTY => &EMPTY_GENERICS,
-            _ => &self.data().generics.arena[Idx::from_raw(index.0.into())],
-        }
-    }
-}
-
 impl<N: ItemTreeNode> Index<FileItemTreeId<N>> for ItemTree {
     type Output = N;
     fn index(&self, id: FileItemTreeId<N>) -> &N {
@@ -555,7 +508,7 @@ pub struct ExternCrate {
 pub struct Function {
     pub name: Name,
     pub visibility: RawVisibilityId,
-    pub generic_params: GenericParamsId,
+    pub generic_params: Interned<GenericParams>,
     pub abi: Option<Interned<str>>,
     pub params: IdRange<Param>,
     pub ret_type: Interned<TypeRef>,
@@ -590,7 +543,7 @@ impl FnFlags {
 pub struct Struct {
     pub name: Name,
     pub visibility: RawVisibilityId,
-    pub generic_params: GenericParamsId,
+    pub generic_params: Interned<GenericParams>,
     pub fields: Fields,
     pub ast_id: FileAstId<ast::Struct>,
     pub kind: StructDefKind,
@@ -610,7 +563,7 @@ pub enum StructDefKind {
 pub struct Union {
     pub name: Name,
     pub visibility: RawVisibilityId,
-    pub generic_params: GenericParamsId,
+    pub generic_params: Interned<GenericParams>,
     pub fields: Fields,
     pub ast_id: FileAstId<ast::Union>,
 }
@@ -619,7 +572,7 @@ pub struct Union {
 pub struct Enum {
     pub name: Name,
     pub visibility: RawVisibilityId,
-    pub generic_params: GenericParamsId,
+    pub generic_params: Interned<GenericParams>,
     pub variants: IdRange<Variant>,
     pub ast_id: FileAstId<ast::Enum>,
 }
@@ -648,7 +601,7 @@ pub struct Static {
 pub struct Trait {
     pub name: Name,
     pub visibility: RawVisibilityId,
-    pub generic_params: GenericParamsId,
+    pub generic_params: Interned<GenericParams>,
     pub is_auto: bool,
     pub is_unsafe: bool,
     pub bounds: Box<[TypeBound]>,
@@ -658,7 +611,7 @@ pub struct Trait {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Impl {
-    pub generic_params: GenericParamsId,
+    pub generic_params: Interned<GenericParams>,
     pub target_trait: Option<Interned<TraitRef>>,
     pub self_ty: Interned<TypeRef>,
     pub is_negative: bool,
@@ -672,7 +625,7 @@ pub struct TypeAlias {
     pub visibility: RawVisibilityId,
     /// Bounds on the type alias itself. Only valid in trait declarations, eg. `type Assoc: Copy;`.
     pub bounds: Box<[TypeBound]>,
-    pub generic_params: GenericParamsId,
+    pub generic_params: Interned<GenericParams>,
     pub type_ref: Option<Interned<TypeRef>>,
     pub is_extern: bool,
     pub ast_id: FileAstId<ast::TypeAlias>,

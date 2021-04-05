@@ -14,6 +14,7 @@ use crate::{
     db::DefDatabase,
     expr::{ExprId, LabelId, PatId},
     generics::GenericParams,
+    intern::Interned,
     item_scope::{BuiltinShadowMode, BUILTIN_SCOPE},
     nameres::DefMap,
     path::{ModPath, PathKind},
@@ -50,7 +51,7 @@ enum Scope {
     /// All the items and imported names of a module
     ModuleScope(ModuleItemMap),
     /// Brings the generic parameters of an item into scope
-    GenericParams { def: GenericDefId, params: Arc<GenericParams> },
+    GenericParams { def: GenericDefId, params: Interned<GenericParams> },
     /// Brings `Self` in `impl` block into scope
     ImplDefScope(ImplId),
     /// Brings `Self` in enum, struct and union definitions into scope

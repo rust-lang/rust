@@ -434,7 +434,7 @@ impl Ctx {
         let mut res = Function {
             name,
             visibility,
-            generic_params: GenericParamsId::EMPTY,
+            generic_params: Interned::new(GenericParams::default()),
             abi,
             params,
             ret_type: Interned::new(ret_type),
@@ -682,7 +682,7 @@ impl Ctx {
         &mut self,
         owner: GenericsOwner<'_>,
         node: &impl ast::GenericParamsOwner,
-    ) -> GenericParamsId {
+    ) -> Interned<GenericParams> {
         // Generics are part of item headers and may contain inner items we need to collect.
         if let Some(params) = node.generic_param_list() {
             self.collect_inner_items(params.syntax());
@@ -698,7 +698,7 @@ impl Ctx {
         &mut self,
         owner: GenericsOwner<'_>,
         node: &impl ast::GenericParamsOwner,
-    ) -> GenericParamsId {
+    ) -> Interned<GenericParams> {
         let mut sm = &mut Default::default();
         let mut generics = GenericParams::default();
         match owner {
@@ -739,7 +739,8 @@ impl Ctx {
             }
         }
 
-        self.data().generics.alloc(generics)
+        generics.shrink_to_fit();
+        Interned::new(generics)
     }
 
     fn lower_type_bounds(&mut self, node: &impl ast::TypeBoundsOwner) -> Vec<TypeBound> {
