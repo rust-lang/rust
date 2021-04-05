@@ -11,7 +11,7 @@ use rustc_errors::emitter::EmitterWriter;
 use rustc_errors::Handler;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::{Expr, ExprKind, QPath};
+use rustc_hir::{AnonConst, Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
@@ -734,6 +734,9 @@ impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
         // and check sub-expressions
         intravisit::walk_expr(self, expr);
     }
+
+    // Panics in const blocks will cause compilation to fail.
+    fn visit_anon_const(&mut self, _: &'tcx AnonConst) {}
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::OnlyBodies(self.cx.tcx.hir())
