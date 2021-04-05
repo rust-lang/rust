@@ -245,7 +245,8 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
                     Some(callee) => callee,
                     None => return,
                 };
-                let sig = db.callable_item_signature(callee.into()).value;
+                let sig =
+                    db.callable_item_signature(callee.into()).into_value_and_skipped_binders().0;
 
                 (sig, args)
             }

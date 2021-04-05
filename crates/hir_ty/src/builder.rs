@@ -139,7 +139,8 @@ impl TyBuilder<hir_def::AdtId> {
             } else {
                 // each default can depend on the previous parameters
                 let subst_so_far = Substitution::intern(self.vec.clone());
-                self.vec.push(default_ty.clone().subst(&subst_so_far).cast(&Interner));
+                self.vec
+                    .push(default_ty.clone().substitute(&Interner, &subst_so_far).cast(&Interner));
             }
         }
         self
@@ -194,13 +195,13 @@ impl TyBuilder<TypeAliasId> {
 
 impl<T: TypeWalk + HasInterner<Interner = Interner>> TyBuilder<Binders<T>> {
     fn subst_binders(b: Binders<T>) -> Self {
-        let param_count = b.num_binders;
+        let param_count = b.binders.len(&Interner);
         TyBuilder::new(b, param_count)
     }
 
     pub fn build(self) -> T {
         let (b, subst) = self.build_internal();
-        b.subst(&subst)
+        b.substitute(&Interner, &subst)
     }
 }
 

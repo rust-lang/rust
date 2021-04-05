@@ -81,9 +81,9 @@ impl<'a> InferenceContext<'a> {
             ValueNs::ImplSelf(impl_id) => {
                 let generics = crate::utils::generics(self.db.upcast(), impl_id.into());
                 let substs = generics.type_params_subst(self.db);
-                let ty = self.db.impl_self_ty(impl_id).subst(&substs);
+                let ty = self.db.impl_self_ty(impl_id).substitute(&Interner, &substs);
                 if let Some((AdtId::StructId(struct_id), substs)) = ty.as_adt() {
-                    let ty = self.db.value_ty(struct_id.into()).subst(&substs);
+                    let ty = self.db.value_ty(struct_id.into()).substitute(&Interner, &substs);
                     return Some(ty);
                 } else {
                     // FIXME: diagnostic, invalid Self reference
@@ -243,7 +243,8 @@ impl<'a> InferenceContext<'a> {
                         let impl_substs = TyBuilder::subst_for_def(self.db, impl_id)
                             .fill(iter::repeat_with(|| self.table.new_type_var()))
                             .build();
-                        let impl_self_ty = self.db.impl_self_ty(impl_id).subst(&impl_substs);
+                        let impl_self_ty =
+                            self.db.impl_self_ty(impl_id).substitute(&Interner, &impl_substs);
                         self.unify(&impl_self_ty, &ty);
                         Some(impl_substs)
                     }

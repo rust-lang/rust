@@ -184,16 +184,21 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                     .db
                     .return_type_impl_traits(func)
                     .expect("impl trait id without impl traits");
-                let data = &datas.value.impl_traits[idx as usize];
+                let (datas, binders) = (*datas).as_ref().into_value_and_skipped_binders();
+                let data = &datas.impl_traits[idx as usize];
                 let bound = OpaqueTyDatumBound {
                     bounds: make_binders(
-                        data.bounds.value.iter().cloned().map(|b| b.to_chalk(self.db)).collect(),
+                        data.bounds
+                            .skip_binders()
+                            .iter()
+                            .cloned()
+                            .map(|b| b.to_chalk(self.db))
+                            .collect(),
                         1,
                     ),
                     where_clauses: make_binders(vec![], 0),
                 };
-                let num_vars = datas.num_binders;
-                make_binders(bound, num_vars)
+                chalk_ir::Binders::new(binders, bound)
             }
             crate::ImplTraitId::AsyncBlockTypeImplTrait(..) => {
                 if let Some((future_trait, future_output)) = self
@@ -535,7 +540,8 @@ fn impl_def_datum(
         .impl_trait(impl_id)
         // ImplIds for impls where the trait ref can't be resolved should never reach Chalk
         .expect("invalid impl passed to Chalk")
-        .value;
+        .into_value_and_skipped_binders()
+        .0;
     let impl_data = db.impl_data(impl_id);
 
     let generic_params = generics(db.upcast(), impl_id.into());
@@ -605,18 +611,22 @@ fn type_alias_associated_ty_value(
         _ => panic!("assoc ty value should be in impl"),
     };
 
-    let trait_ref = db.impl_trait(impl_id).expect("assoc ty value should not exist").value; // we don't return any assoc ty values if the impl'd trait can't be resolved
+    let trait_ref = db
+        .impl_trait(impl_id)
+        .expect("assoc ty value should not exist")
+        .into_value_and_skipped_binders()
+        .0; // we don't return any assoc ty values if the impl'd trait can't be resolved
 
     let assoc_ty = db
         .trait_data(trait_ref.hir_trait_id())
         .associated_type_by_name(&type_alias_data.name)
         .expect("assoc ty value should not exist"); // validated when building the impl data as well
-    let ty = db.ty(type_alias.into());
-    let value_bound = rust_ir::AssociatedTyValueBound { ty: ty.value.to_chalk(db) };
+    let (ty, binders) = db.ty(type_alias.into()).into_value_and_skipped_binders();
+    let value_bound = rust_ir::AssociatedTyValueBound { ty: ty.to_chalk(db) };
     let value = rust_ir::AssociatedTyValue {
         impl_id: impl_id.to_chalk(db),
         associated_ty_id: to_assoc_type_id(assoc_ty),
-        value: make_binders(value_bound, ty.num_binders),
+        value: chalk_ir::Binders::new(binders, value_bound),
     };
     Arc::new(value)
 }
@@ -628,20 +638,15 @@ pub(crate) fn fn_def_datum_query(
 ) -> Arc<FnDefDatum> {
     let callable_def: CallableDefId = from_chalk(db, fn_def_id);
     let generic_params = generics(db.upcast(), callable_def.into());
-    let sig = db.callable_item_signature(callable_def);
+    let (sig, binders) = db.callable_item_signature(callable_def).into_value_and_skipped_binders();
     let bound_vars = generic_params.bound_vars_subst(DebruijnIndex::INNERMOST);
     let where_clauses = convert_where_clauses(db, callable_def.into(), &bound_vars);
     let bound = rust_ir::FnDefDatumBound {
         // Note: Chalk doesn't actually use this information yet as far as I am aware, but we provide it anyway
         inputs_and_output: make_binders(
             rust_ir::FnDefInputsAndOutputDatum {
-                argument_types: sig
-                    .value
-                    .params()
-                    .iter()
-                    .map(|ty| ty.clone().to_chalk(db))
-                    .collect(),
-                return_type: sig.value.ret().clone().to_chalk(db),
+                argument_types: sig.params().iter().map(|ty| ty.clone().to_chalk(db)).collect(),
+                return_type: sig.ret().clone().to_chalk(db),
             }
             .shifted_in(&Interner),
             0,
@@ -650,12 +655,8 @@ pub(crate) fn fn_def_datum_query(
     };
     let datum = FnDefDatum {
         id: fn_def_id,
-        sig: chalk_ir::FnSig {
-            abi: (),
-            safety: chalk_ir::Safety::Safe,
-            variadic: sig.value.is_varargs,
-        },
-        binders: make_binders(bound, sig.num_binders),
+        sig: chalk_ir::FnSig { abi: (), safety: chalk_ir::Safety::Safe, variadic: sig.is_varargs },
+        binders: chalk_ir::Binders::new(binders, bound),
     };
     Arc::new(datum)
 }

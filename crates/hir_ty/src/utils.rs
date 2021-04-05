@@ -66,13 +66,15 @@ fn direct_super_trait_refs(db: &dyn HirDatabase, trait_ref: &TraitRef) -> Vec<Tr
         .filter_map(|pred| {
             pred.as_ref().filter_map(|pred| match pred.skip_binders() {
                 // FIXME: how to correctly handle higher-ranked bounds here?
-                WhereClause::Implemented(tr) => {
-                    Some(tr.clone().shift_bound_vars_out(DebruijnIndex::ONE))
-                }
+                WhereClause::Implemented(tr) => Some(
+                    tr.clone()
+                        .shifted_out_to(DebruijnIndex::ONE)
+                        .expect("FIXME unexpected higher-ranked trait bound"),
+                ),
                 _ => None,
             })
         })
-        .map(|pred| pred.subst(&trait_ref.substitution))
+        .map(|pred| pred.substitute(&Interner, &trait_ref.substitution))
         .collect()
 }
 
@@ -103,6 +105,8 @@ pub(super) fn all_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> Vec<Tra
 /// we have `Self: Trait<u32, i32>` and `Trait<T, U>: OtherTrait<U>` we'll get
 /// `Self: OtherTrait<i32>`.
 pub(super) fn all_super_trait_refs(db: &dyn HirDatabase, trait_ref: TraitRef) -> Vec<TraitRef> {
+    // FIXME: replace by Chalk's `super_traits`, maybe make this a query
+
     // we need to take care a bit here to avoid infinite loops in case of cycles
     // (i.e. if we have `trait A: B; trait B: A;`)
     let mut result = vec![trait_ref];

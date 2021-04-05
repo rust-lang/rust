@@ -108,19 +108,22 @@ impl<'a, 'b> Canonicalizer<'a, 'b> {
 }
 
 impl<T> Canonicalized<T> {
-    pub(super) fn decanonicalize_ty(&self, mut ty: Ty) -> Ty {
-        ty.walk_mut_binders(
+    pub(super) fn decanonicalize_ty(&self, ty: Ty) -> Ty {
+        ty.fold_binders(
             &mut |ty, binders| {
-                if let &mut TyKind::BoundVar(bound) = ty.interned_mut() {
+                if let TyKind::BoundVar(bound) = ty.kind(&Interner) {
                     if bound.debruijn >= binders {
                         let (v, k) = self.free_vars[bound.index];
-                        *ty = TyKind::InferenceVar(v, k).intern(&Interner);
+                        TyKind::InferenceVar(v, k).intern(&Interner)
+                    } else {
+                        ty
                     }
+                } else {
+                    ty
                 }
             },
             DebruijnIndex::INNERMOST,
-        );
-        ty
+        )
     }
 
     pub(super) fn apply_solution(
@@ -149,7 +152,7 @@ impl<T> Canonicalized<T> {
             // eagerly replace projections in the type; we may be getting types
             // e.g. from where clauses where this hasn't happened yet
             let ty = ctx.normalize_associated_types_in(
-                ty.assert_ty_ref(&Interner).clone().subst_bound_vars(&new_vars),
+                new_vars.apply(ty.assert_ty_ref(&Interner).clone(), &Interner),
             );
             ctx.table.unify(&TyKind::InferenceVar(v, k).intern(&Interner), &ty);
         }
@@ -170,8 +173,8 @@ pub(crate) fn unify(tys: &Canonical<(Ty, Ty)>) -> Option<Substitution> {
             // fallback to Unknown in the end (kind of hacky, as below)
             .map(|_| table.new_type_var()),
     );
-    let ty1_with_vars = tys.value.0.clone().subst_bound_vars(&vars);
-    let ty2_with_vars = tys.value.1.clone().subst_bound_vars(&vars);
+    let ty1_with_vars = vars.apply(tys.value.0.clone(), &Interner);
+    let ty2_with_vars = vars.apply(tys.value.1.clone(), &Interner);
     if !table.unify(&ty1_with_vars, &ty2_with_vars) {
         return None;
     }

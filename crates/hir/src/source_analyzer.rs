@@ -20,7 +20,7 @@ use hir_def::{
 use hir_expand::{hygiene::Hygiene, name::AsName, HirFileId, InFile};
 use hir_ty::{
     diagnostics::{record_literal_missing_fields, record_pattern_missing_fields},
-    InferenceResult, Substitution, TyLoweringContext,
+    InferenceResult, Interner, Substitution, TyLoweringContext,
 };
 use syntax::{
     ast::{self, AstNode},
@@ -339,7 +339,7 @@ impl SourceAnalyzer {
             .into_iter()
             .map(|local_id| {
                 let field = FieldId { parent: variant, local_id };
-                let ty = field_types[local_id].clone().subst(substs);
+                let ty = field_types[local_id].clone().substitute(&Interner, substs);
                 (field.into(), Type::new_with_resolver_inner(db, krate, &self.resolver, ty))
             })
             .collect()

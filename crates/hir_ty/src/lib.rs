@@ -66,6 +66,8 @@ pub type ClosureId = chalk_ir::ClosureId<Interner>;
 pub type OpaqueTyId = chalk_ir::OpaqueTyId<Interner>;
 pub type PlaceholderIndex = chalk_ir::PlaceholderIndex;
 
+pub type VariableKind = chalk_ir::VariableKind<Interner>;
+pub type VariableKinds = chalk_ir::VariableKinds<Interner>;
 pub type CanonicalVarKinds = chalk_ir::CanonicalVarKinds<Interner>;
 
 pub type ChalkTraitId = chalk_ir::TraitId<Interner>;
@@ -118,50 +120,32 @@ pub fn param_idx(db: &dyn HirDatabase, id: TypeParamId) -> Option<usize> {
 }
 
 impl<T> Binders<T> {
-    pub fn new(num_binders: usize, value: T) -> Self {
-        Self { num_binders, value }
-    }
-
     pub fn wrap_empty(value: T) -> Self
     where
         T: TypeWalk,
     {
-        Self { num_binders: 0, value: value.shift_bound_vars(DebruijnIndex::ONE) }
-    }
-
-    pub fn as_ref(&self) -> Binders<&T> {
-        Binders { num_binders: self.num_binders, value: &self.value }
-    }
-
-    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> Binders<U> {
-        Binders { num_binders: self.num_binders, value: f(self.value) }
-    }
-
-    pub fn filter_map<U>(self, f: impl FnOnce(T) -> Option<U>) -> Option<Binders<U>> {
-        Some(Binders { num_binders: self.num_binders, value: f(self.value)? })
-    }
-
-    pub fn skip_binders(&self) -> &T {
-        &self.value
-    }
-
-    pub fn into_value_and_skipped_binders(self) -> (T, usize) {
-        (self.value, self.num_binders)
-    }
-}
-
-impl<T: Clone> Binders<&T> {
-    pub fn cloned(&self) -> Binders<T> {
-        Binders { num_binders: self.num_binders, value: self.value.clone() }
+        Binders::empty(&Interner, value.shifted_in_from(DebruijnIndex::ONE))
     }
 }
 
 impl<T: TypeWalk> Binders<T> {
     /// Substitutes all variables.
-    pub fn subst(self, subst: &Substitution) -> T {
-        assert_eq!(subst.len(&Interner), self.num_binders);
-        self.value.subst_bound_vars(subst)
+    pub fn substitute(self, interner: &Interner, subst: &Substitution) -> T {
+        let (value, binders) = self.into_value_and_skipped_binders();
+        assert_eq!(subst.len(interner), binders.len(interner));
+        value.subst_bound_vars(subst)
     }
+}
+
+pub fn make_only_type_binders<T>(num_vars: usize, value: T) -> Binders<T> {
+    Binders::new(
+        VariableKinds::from_iter(
+            &Interner,
+            std::iter::repeat(chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General))
+                .take(num_vars),
+        ),
+        value,
+    )
 }
 
 impl TraitRef {
@@ -225,7 +209,8 @@ impl CallableSig {
             params_and_return: fn_ptr
                 .substs
                 .clone()
-                .shift_bound_vars_out(DebruijnIndex::ONE)
+                .shifted_out_to(DebruijnIndex::ONE)
+                .expect("unexpected lifetime vars in fn ptr")
                 .interned()
                 .iter()
                 .map(|arg| arg.assert_ty_ref(&Interner).clone())
@@ -334,12 +319,12 @@ impl Ty {
     /// If this is a `dyn Trait` type, this returns the `Trait` part.
     fn dyn_trait_ref(&self) -> Option<&TraitRef> {
         match self.kind(&Interner) {
-            TyKind::Dyn(dyn_ty) => {
-                dyn_ty.bounds.value.interned().get(0).and_then(|b| match b.skip_binders() {
+            TyKind::Dyn(dyn_ty) => dyn_ty.bounds.skip_binders().interned().get(0).and_then(|b| {
+                match b.skip_binders() {
                     WhereClause::Implemented(trait_ref) => Some(trait_ref),
                     _ => None,
-                })
-            }
+                }
+            }),
             _ => None,
         }
     }
@@ -378,7 +363,7 @@ impl Ty {
             TyKind::FnDef(def, parameters) => {
                 let callable_def = db.lookup_intern_callable_def((*def).into());
                 let sig = db.callable_item_signature(callable_def);
-                Some(sig.subst(&parameters))
+                Some(sig.substitute(&Interner, &parameters))
             }
             TyKind::Closure(.., substs) => {
                 let sig_param = substs.at(&Interner, 0).assert_ty_ref(&Interner);
@@ -429,8 +414,8 @@ impl Ty {
                             // This is only used by type walking.
                             // Parameters will be walked outside, and projection predicate is not used.
                             // So just provide the Future trait.
-                            let impl_bound = Binders::new(
-                                0,
+                            let impl_bound = Binders::empty(
+                                &Interner,
                                 WhereClause::Implemented(TraitRef {
                                     trait_id: to_chalk_trait_id(future_trait),
                                     substitution: Substitution::empty(&Interner),
@@ -452,14 +437,14 @@ impl Ty {
                             let data = (*it)
                                 .as_ref()
                                 .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
-                            data.subst(&opaque_ty.substitution)
+                            data.substitute(&Interner, &opaque_ty.substitution)
                         })
                     }
                     // It always has an parameter for Future::Output type.
                     ImplTraitId::AsyncBlockTypeImplTrait(..) => unreachable!(),
                 };
 
-                predicates.map(|it| it.value)
+                predicates.map(|it| it.into_value_and_skipped_binders().0)
             }
             TyKind::Placeholder(idx) => {
                 let id = from_placeholder_idx(db, *idx);
@@ -471,7 +456,7 @@ impl Ty {
                         let predicates = db
                             .generic_predicates(id.parent)
                             .into_iter()
-                            .map(|pred| pred.clone().subst(&substs))
+                            .map(|pred| pred.clone().substitute(&Interner, &substs))
                             .filter(|wc| match &wc.skip_binders() {
                                 WhereClause::Implemented(tr) => {
                                     tr.self_type_parameter(&Interner) == self
