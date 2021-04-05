@@ -22,8 +22,8 @@ use crate::{
     to_chalk_trait_id,
     traits::{chalk::from_chalk, FnTrait},
     utils::{generics, variant_data, Generics},
-    AdtId, Binders, CallableDefId, FnPointer, FnSig, InEnvironment, Interner, Rawness, Scalar,
-    Substitution, TraitRef, Ty, TyBuilder, TyKind,
+    AdtId, Binders, CallableDefId, FnPointer, FnSig, InEnvironment, Interner, ProjectionTyExt,
+    Rawness, Scalar, Substitution, TraitRef, Ty, TyBuilder, TyKind,
 };
 
 use super::{
@@ -180,7 +180,8 @@ impl<'a> InferenceContext<'a> {
                 let inner_ty = self.infer_expr(*body, &Expectation::none());
                 let impl_trait_id = crate::ImplTraitId::AsyncBlockTypeImplTrait(self.owner, *body);
                 let opaque_ty_id = self.db.intern_impl_trait_id(impl_trait_id).into();
-                TyKind::OpaqueType(opaque_ty_id, Substitution::single(inner_ty)).intern(&Interner)
+                TyKind::OpaqueType(opaque_ty_id, Substitution::from1(&Interner, inner_ty))
+                    .intern(&Interner)
             }
             Expr::Loop { body, label } => {
                 self.breakables.push(BreakableContext {
@@ -266,7 +267,8 @@ impl<'a> InferenceContext<'a> {
                 .intern(&Interner);
                 let closure_id = self.db.intern_closure((self.owner, tgt_expr)).into();
                 let closure_ty =
-                    TyKind::Closure(closure_id, Substitution::single(sig_ty)).intern(&Interner);
+                    TyKind::Closure(closure_id, Substitution::from1(&Interner, sig_ty))
+                        .intern(&Interner);
 
                 // Eagerly try to relate the closure type with the expected
                 // type, otherwise we often won't have enough information to
@@ -962,8 +964,10 @@ impl<'a> InferenceContext<'a> {
                     if let AssocContainerId::TraitId(trait_) = f.lookup(self.db.upcast()).container
                     {
                         // construct a TraitRef
-                        let substs =
-                            parameters.prefix(generics(self.db.upcast(), trait_.into()).len());
+                        let substs = crate::subst_prefix(
+                            &*parameters,
+                            generics(self.db.upcast(), trait_.into()).len(),
+                        );
                         self.push_obligation(
                             TraitRef { trait_id: to_chalk_trait_id(trait_), substitution: substs }
                                 .cast(&Interner),

@@ -31,7 +31,6 @@ mod test_db;
 use std::sync::Arc;
 
 use itertools::Itertools;
-use smallvec::SmallVec;
 
 use base_db::salsa;
 use hir_def::{
@@ -43,21 +42,19 @@ use crate::{db::HirDatabase, display::HirDisplay, utils::generics};
 
 pub use autoderef::autoderef;
 pub use builder::TyBuilder;
-pub use chalk_ext::TyExt;
+pub use chalk_ext::{ProjectionTyExt, TyExt};
 pub use infer::{could_unify, InferenceResult, InferenceVar};
 pub use lower::{
     associated_type_shorthand_candidates, callable_item_sig, CallableDefId, ImplTraitLoweringMode,
     TyDefId, TyLoweringContext, ValueTyDefId,
 };
-pub use traits::TraitEnvironment;
+pub use traits::{chalk::Interner, TraitEnvironment};
 pub use types::*;
 pub use walk::TypeWalk;
 
 pub use chalk_ir::{
     cast::Cast, AdtId, BoundVar, DebruijnIndex, Mutability, Safety, Scalar, TyVariableKind,
 };
-
-pub use crate::traits::chalk::Interner;
 
 pub type ForeignDefId = chalk_ir::ForeignDefId<Interner>;
 pub type AssocTypeId = chalk_ir::AssocTypeId<Interner>;
@@ -76,46 +73,11 @@ pub type LifetimeOutlives = chalk_ir::LifetimeOutlives<Interner>;
 
 pub type ChalkTraitId = chalk_ir::TraitId<Interner>;
 
-impl ProjectionTy {
-    pub fn trait_ref(&self, db: &dyn HirDatabase) -> TraitRef {
-        TraitRef {
-            trait_id: to_chalk_trait_id(self.trait_(db)),
-            substitution: self.substitution.clone(),
-        }
-    }
-
-    pub fn self_type_parameter(&self, interner: &Interner) -> &Ty {
-        &self.substitution.interned()[0].assert_ty_ref(interner)
-    }
-
-    fn trait_(&self, db: &dyn HirDatabase) -> TraitId {
-        match from_assoc_type_id(self.associated_ty_id).lookup(db.upcast()).container {
-            AssocContainerId::TraitId(it) => it,
-            _ => panic!("projection ty without parent trait"),
-        }
-    }
-}
-
 pub type FnSig = chalk_ir::FnSig<Interner>;
 
-impl Substitution {
-    pub fn single(ty: Ty) -> Substitution {
-        Substitution::intern({
-            let mut v = SmallVec::new();
-            v.push(ty.cast(&Interner));
-            v
-        })
-    }
-
-    pub fn prefix(&self, n: usize) -> Substitution {
-        Substitution::intern(self.interned()[..std::cmp::min(self.len(&Interner), n)].into())
-    }
-
-    pub fn suffix(&self, n: usize) -> Substitution {
-        Substitution::intern(
-            self.interned()[self.len(&Interner) - std::cmp::min(self.len(&Interner), n)..].into(),
-        )
-    }
+// FIXME: get rid of this
+pub fn subst_prefix(s: &Substitution, n: usize) -> Substitution {
+    Substitution::intern(s.interned()[..std::cmp::min(s.len(&Interner), n)].into())
 }
 
 /// Return an index of a parameter in the generic type parameter list by it's id.
@@ -123,22 +85,11 @@ pub fn param_idx(db: &dyn HirDatabase, id: TypeParamId) -> Option<usize> {
     generics(db.upcast(), id.parent).param_idx(id)
 }
 
-impl<T> Binders<T> {
-    pub fn wrap_empty(value: T) -> Self
-    where
-        T: TypeWalk,
-    {
-        Binders::empty(&Interner, value.shifted_in_from(DebruijnIndex::ONE))
-    }
-}
-
-impl<T: TypeWalk> Binders<T> {
-    /// Substitutes all variables.
-    pub fn substitute(self, interner: &Interner, subst: &Substitution) -> T {
-        let (value, binders) = self.into_value_and_skipped_binders();
-        assert_eq!(subst.len(interner), binders.len(interner));
-        value.subst_bound_vars(subst)
-    }
+pub fn wrap_empty_binders<T>(value: T) -> Binders<T>
+where
+    T: TypeWalk,
+{
+    Binders::empty(&Interner, value.shifted_in_from(DebruijnIndex::ONE))
 }
 
 pub fn make_only_type_binders<T>(num_vars: usize, value: T) -> Binders<T> {
@@ -153,28 +104,8 @@ pub fn make_only_type_binders<T>(num_vars: usize, value: T) -> Binders<T> {
 }
 
 impl TraitRef {
-    pub fn self_type_parameter(&self, interner: &Interner) -> &Ty {
-        &self.substitution.at(interner, 0).assert_ty_ref(interner)
-    }
-
     pub fn hir_trait_id(&self) -> TraitId {
         from_chalk_trait_id(self.trait_id)
-    }
-}
-
-impl WhereClause {
-    pub fn is_implemented(&self) -> bool {
-        matches!(self, WhereClause::Implemented(_))
-    }
-
-    pub fn trait_ref(&self, db: &dyn HirDatabase) -> Option<TraitRef> {
-        match self {
-            WhereClause::Implemented(tr) => Some(tr.clone()),
-            WhereClause::AliasEq(AliasEq { alias: AliasTy::Projection(proj), .. }) => {
-                Some(proj.trait_ref(db))
-            }
-            WhereClause::AliasEq(_) => None,
-        }
     }
 }
 

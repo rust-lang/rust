@@ -220,7 +220,8 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                     let impl_bound = WhereClause::Implemented(TraitRef {
                         trait_id: to_chalk_trait_id(future_trait),
                         // Self type as the first parameter.
-                        substitution: Substitution::single(
+                        substitution: Substitution::from1(
+                            &Interner,
                             TyKind::BoundVar(BoundVar {
                                 debruijn: DebruijnIndex::INNERMOST,
                                 index: 0,
@@ -232,7 +233,8 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                         alias: AliasTy::Projection(ProjectionTy {
                             associated_ty_id: to_assoc_type_id(future_output),
                             // Self type as the first parameter.
-                            substitution: Substitution::single(
+                            substitution: Substitution::from1(
+                                &Interner,
                                 TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0))
                                     .intern(&Interner),
                             ),
@@ -244,8 +246,8 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                     let bound = OpaqueTyDatumBound {
                         bounds: make_binders(
                             vec![
-                                wrap_in_empty_binders(impl_bound).to_chalk(self.db),
-                                wrap_in_empty_binders(proj_bound).to_chalk(self.db),
+                                crate::wrap_empty_binders(impl_bound).to_chalk(self.db),
+                                crate::wrap_empty_binders(proj_bound).to_chalk(self.db),
                             ],
                             1,
                         ),
@@ -720,8 +722,4 @@ impl From<crate::db::InternedClosureId> for chalk_ir::ClosureId<Interner> {
     fn from(id: crate::db::InternedClosureId) -> Self {
         chalk_ir::ClosureId(id.as_intern_id())
     }
-}
-
-fn wrap_in_empty_binders<T: crate::TypeWalk>(value: T) -> crate::Binders<T> {
-    crate::Binders::wrap_empty(value)
 }

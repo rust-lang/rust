@@ -55,6 +55,7 @@ use hir_ty::{
     autoderef, could_unify,
     method_resolution::{self, TyFingerprint},
     primitive::UintTy,
+    subst_prefix,
     traits::FnTrait,
     AliasEq, AliasTy, BoundVar, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast,
     DebruijnIndex, InEnvironment, Interner, QuantifiedWhereClause, Scalar, Solution,
@@ -1503,7 +1504,7 @@ impl TypeParam {
         let krate = self.id.parent.module(db.upcast()).krate();
         let ty = params.get(local_idx)?.clone();
         let subst = TyBuilder::type_params_subst(db, self.id.parent);
-        let ty = ty.substitute(&Interner, &subst.prefix(local_idx));
+        let ty = ty.substitute(&Interner, &subst_prefix(&subst, local_idx));
         Some(Type::new_with_resolver_inner(db, krate, &resolver, ty))
     }
 }
