@@ -5,7 +5,7 @@
 use std::{
     collections::HashMap,
     fmt::{self, Debug},
-    hash::{BuildHasherDefault, Hash},
+    hash::{BuildHasherDefault, Hash, Hasher},
     ops::Deref,
     sync::Arc,
 };
@@ -20,7 +20,6 @@ type InternMap<T> = DashMap<Arc<T>, (), BuildHasherDefault<FxHasher>>;
 type Guard<T> =
     RwLockWriteGuard<'static, HashMap<Arc<T>, SharedValue<()>, BuildHasherDefault<FxHasher>>>;
 
-#[derive(Hash)]
 pub struct Interned<T: Internable + ?Sized> {
     arc: Arc<T>,
 }
@@ -137,6 +136,13 @@ impl PartialEq for Interned<str> {
 
 impl Eq for Interned<str> {}
 
+impl<T: Internable + ?Sized> Hash for Interned<T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // NOTE: Cast disposes vtable pointer / slice/str length.
+        state.write_usize(Arc::as_ptr(&self.arc) as *const () as usize)
+    }
+}
+
 impl<T: Internable + ?Sized> AsRef<T> for Interned<T> {
     #[inline]
     fn as_ref(&self) -> &T {
@@ -185,7 +191,10 @@ pub trait Internable: Hash + Eq + 'static {
     fn storage() -> &'static InternStorage<Self>;
 }
 
-macro_rules! impl_internable {
+/// Implements `Internable` for a given list of types, making them usable with `Interned`.
+#[macro_export]
+#[doc(hidden)]
+macro_rules! _impl_internable {
     ( $($t:path),+ $(,)? ) => { $(
         impl Internable for $t {
             fn storage() -> &'static InternStorage<Self> {
@@ -196,10 +205,12 @@ macro_rules! impl_internable {
     )+ };
 }
 
+pub use crate::_impl_internable as impl_internable;
+
 impl_internable!(
     crate::type_ref::TypeRef,
     crate::type_ref::TraitRef,
     crate::path::ModPath,
     GenericParams,
-    str
+    str,
 );
