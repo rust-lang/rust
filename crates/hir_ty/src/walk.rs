@@ -92,6 +92,13 @@ pub trait TypeWalk {
         self
     }
 
+    fn shifted_in(self, _interner: &Interner) -> Self
+    where
+        Self: Sized,
+    {
+        self.shifted_in_from(DebruijnIndex::ONE)
+    }
+
     /// Shifts up debruijn indices of `TyKind::Bound` vars by `n`.
     fn shifted_in_from(self, n: DebruijnIndex) -> Self
     where
@@ -149,6 +156,9 @@ impl TypeWalk for Ty {
             TyKind::Slice(ty) | TyKind::Array(ty) | TyKind::Ref(_, ty) | TyKind::Raw(_, ty) => {
                 ty.walk(f);
             }
+            TyKind::Function(fn_pointer) => {
+                fn_pointer.substitution.0.walk(f);
+            }
             _ => {
                 if let Some(substs) = self.substs() {
                     for t in substs.iter(&Interner) {
@@ -179,6 +189,9 @@ impl TypeWalk for Ty {
             }
             TyKind::Slice(ty) | TyKind::Array(ty) | TyKind::Ref(_, ty) | TyKind::Raw(_, ty) => {
                 ty.walk_mut_binders(f, binders);
+            }
+            TyKind::Function(fn_pointer) => {
+                fn_pointer.substitution.0.walk_mut_binders(f, binders.shifted_in());
             }
             _ => {
                 if let Some(substs) = self.substs_mut() {
