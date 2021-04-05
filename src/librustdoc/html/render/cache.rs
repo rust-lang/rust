@@ -82,18 +82,31 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
                 parent: Some(did),
                 parent_idx: None,
                 search_type: get_index_search_type(&item, cache, tcx),
+                aliases: item.attrs.get_doc_aliases(),
             });
-            for alias in item.attrs.get_doc_aliases() {
-                cache
-                    .aliases
-                    .entry(alias.to_lowercase())
-                    .or_insert(Vec::new())
-                    .push(cache.search_index.len() - 1);
-            }
         }
     }
 
-    let Cache { ref mut search_index, ref paths, ref mut aliases, .. } = *cache;
+    let Cache { ref mut search_index, ref paths, .. } = *cache;
+
+    // Aliases added through `#[doc(alias = "...")]`. Since a few items can have the same alias,
+    // we need the alias element to have an array of items.
+    let mut aliases: BTreeMap<String, Vec<usize>> = BTreeMap::new();
+
+    // Sort search index items. This improves the compressibility of the search index.
+    search_index.sort_unstable_by(|k1, k2| {
+        // `sort_unstable_by_key` produces lifetime errors
+        let k1 = (&k1.path, &k1.name, &k1.ty, &k1.parent);
+        let k2 = (&k2.path, &k2.name, &k2.ty, &k2.parent);
+        std::cmp::Ord::cmp(&k1, &k2)
+    });
+
+    // Set up alias indexes.
+    for (i, item) in search_index.iter().enumerate() {
+        for alias in &item.aliases[..] {
+            aliases.entry(alias.to_lowercase()).or_insert(Vec::new()).push(i);
+        }
+    }
 
     // Reduce `DefId` in paths into smaller sequential numbers,
     // and prune the paths that do not appear in the index.
@@ -201,7 +214,7 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
             doc: crate_doc,
             items: crate_items,
             paths: crate_paths,
-            aliases,
+            aliases: &aliases,
         })
         .expect("failed serde conversion")
         // All these `replace` calls are because we have to go through JS string for JSON content.
