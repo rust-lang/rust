@@ -12,6 +12,7 @@ use ide::{Canceled, FileId};
 use ide_db::base_db::VfsPath;
 use lsp_server::{Connection, Notification, Request, Response};
 use lsp_types::notification::Notification as _;
+use project_model::BuildDataCollector;
 use vfs::ChangeKind;
 
 use crate::{
@@ -227,8 +228,15 @@ impl GlobalState {
                                     (Progress::Report, Some(msg))
                                 }
                                 ProjectWorkspaceProgress::End(workspaces) => {
-                                    self.fetch_workspaces_completed();
-                                    self.switch_workspaces(workspaces, None);
+                                    self.fetch_workspaces_completed(workspaces);
+                                    self.switch_workspaces();
+                                    if self.config.run_build_scripts() {
+                                        let mut collector = BuildDataCollector::default();
+                                        for ws in self.workspaces.iter() {
+                                            ws.collect_build_data_configs(&mut collector);
+                                        }
+                                        self.fetch_build_data_request(collector)
+                                    }
                                     (Progress::End, None)
                                 }
                             };
@@ -240,11 +248,9 @@ impl GlobalState {
                                 BuildDataProgress::Report(msg) => {
                                     (Some(Progress::Report), Some(msg))
                                 }
-                                BuildDataProgress::End(collector) => {
-                                    self.fetch_build_data_completed();
-                                    let workspaces =
-                                        (*self.workspaces).clone().into_iter().map(Ok).collect();
-                                    self.switch_workspaces(workspaces, Some(collector));
+                                BuildDataProgress::End(build_data_result) => {
+                                    self.fetch_build_data_completed(build_data_result);
+                                    self.switch_workspaces();
                                     (Some(Progress::End), None)
                                 }
                             };

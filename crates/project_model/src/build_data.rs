@@ -52,7 +52,7 @@ pub struct BuildDataCollector {
     configs: FxHashMap<AbsPathBuf, BuildDataConfig>,
 }
 
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Debug, Default, PartialEq, Eq, Clone)]
 pub struct BuildDataResult {
     data: FxHashMap<AbsPathBuf, BuildDataMap>,
 }

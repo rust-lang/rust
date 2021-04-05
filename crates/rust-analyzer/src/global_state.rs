@@ -82,11 +82,16 @@ pub(crate) struct GlobalState {
     pub(crate) source_root_config: SourceRootConfig,
     pub(crate) proc_macro_client: Option<ProcMacroClient>,
 
+    /// For both `workspaces` and `workspace_build_data`, the field stores the
+    /// data we actually use, while the `OpQueue` stores the result of the last
+    /// fetch.
+    ///
+    /// If the fetch (partially) fails, we do not update the values.
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
-    pub(crate) fetch_workspaces_queue: OpQueue<(), ()>,
-
+    pub(crate) fetch_workspaces_queue: OpQueue<(), Vec<anyhow::Result<ProjectWorkspace>>>,
     pub(crate) workspace_build_data: Option<BuildDataResult>,
-    pub(crate) fetch_build_data_queue: OpQueue<BuildDataCollector, ()>,
+    pub(crate) fetch_build_data_queue:
+        OpQueue<BuildDataCollector, Option<anyhow::Result<BuildDataResult>>>,
 
     latest_requests: Arc<RwLock<LatestRequests>>,
 }
@@ -140,10 +145,12 @@ impl GlobalState {
             status: Status::default(),
             source_root_config: SourceRootConfig::default(),
             proc_macro_client: None,
+
             workspaces: Arc::new(Vec::new()),
             fetch_workspaces_queue: OpQueue::default(),
             workspace_build_data: None,
             fetch_build_data_queue: OpQueue::default(),
+
             latest_requests: Default::default(),
         }
     }

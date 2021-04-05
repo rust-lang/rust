@@ -139,8 +139,11 @@ impl GlobalState {
             sender.send(Task::FetchBuildData(BuildDataProgress::End(res))).unwrap();
         });
     }
-    pub(crate) fn fetch_build_data_completed(&mut self) {
-        self.fetch_build_data_queue.op_completed(())
+    pub(crate) fn fetch_build_data_completed(
+        &mut self,
+        build_data: anyhow::Result<BuildDataResult>,
+    ) {
+        self.fetch_build_data_queue.op_completed(Some(build_data))
     }
 
     pub(crate) fn fetch_workspaces_request(&mut self) {
@@ -194,54 +197,55 @@ impl GlobalState {
             }
         });
     }
-    pub(crate) fn fetch_workspaces_completed(&mut self) {
-        self.fetch_workspaces_queue.op_completed(())
-    }
-
-    pub(crate) fn switch_workspaces(
+    pub(crate) fn fetch_workspaces_completed(
         &mut self,
         workspaces: Vec<anyhow::Result<ProjectWorkspace>>,
-        workspace_build_data: Option<anyhow::Result<BuildDataResult>>,
     ) {
+        self.fetch_workspaces_queue.op_completed(workspaces)
+    }
+
+    pub(crate) fn switch_workspaces(&mut self) {
         let _p = profile::span("GlobalState::switch_workspaces");
+        let workspaces = self.fetch_workspaces_queue.last_op_result();
         log::info!("will switch workspaces: {:?}", workspaces);
 
-        let mut has_errors = false;
+        let mut error_message = None;
         let workspaces = workspaces
-            .into_iter()
-            .filter_map(|res| {
-                res.map_err(|err| {
-                    has_errors = true;
+            .iter()
+            .filter_map(|res| match res {
+                Ok(it) => Some(it.clone()),
+                Err(err) => {
                     log::error!("failed to load workspace: {:#}", err);
-                    if self.workspaces.is_empty() {
-                        self.show_message(
-                            lsp_types::MessageType::Error,
-                            format!("rust-analyzer failed to load workspace: {:#}", err),
-                        );
-                    }
-                })
-                .ok()
+                    let message = error_message.get_or_insert_with(String::new);
+                    stdx::format_to!(
+                        message,
+                        "rust-analyzer failed to load workspace: {:#}\n",
+                        err
+                    );
+                    None
+                }
             })
             .collect::<Vec<_>>();
 
-        let workspace_build_data = match workspace_build_data {
-            Some(Ok(it)) => Some(it),
+        let workspace_build_data = match self.fetch_build_data_queue.last_op_result() {
+            Some(Ok(it)) => Some(it.clone()),
+            None => None,
             Some(Err(err)) => {
                 log::error!("failed to fetch build data: {:#}", err);
-                self.show_message(
-                    lsp_types::MessageType::Error,
-                    format!("rust-analyzer failed to fetch build data: {:#}", err),
-                );
-                return;
+                let message = error_message.get_or_insert_with(String::new);
+                stdx::format_to!(message, "rust-analyzer failed to fetch build data: {:#}\n", err);
+                None
             }
-            None => None,
         };
 
-        if *self.workspaces == workspaces && self.workspace_build_data == workspace_build_data {
-            return;
+        if let Some(error_message) = error_message {
+            self.show_message(lsp_types::MessageType::Error, error_message);
+            if !self.workspaces.is_empty() {
+                return;
+            }
         }
 
-        if !self.workspaces.is_empty() && has_errors {
+        if *self.workspaces == workspaces && self.workspace_build_data == workspace_build_data {
             return;
         }
 
@@ -336,14 +340,6 @@ impl GlobalState {
             crate_graph
         };
         change.set_crate_graph(crate_graph);
-
-        if self.config.run_build_scripts() && workspace_build_data.is_none() {
-            let mut collector = BuildDataCollector::default();
-            for ws in &workspaces {
-                ws.collect_build_data_configs(&mut collector);
-            }
-            self.fetch_build_data_request(collector)
-        }
 
         self.source_root_config = project_folders.source_root_config;
         self.workspaces = Arc::new(workspaces);
