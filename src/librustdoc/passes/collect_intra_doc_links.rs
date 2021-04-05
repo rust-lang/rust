@@ -1124,7 +1124,7 @@ impl LinkCollector<'_, '_> {
                 } else {
                     // `[char]` when a `char` module is in scope
                     let candidates = vec![res, prim];
-                    ambiguity_error(self.cx, &item, path_str, dox, ori_link.range, candidates);
+                    ambiguity_error(self.cx, diag_info, path_str, candidates);
                     return None;
                 }
             }
@@ -1413,14 +1413,7 @@ impl LinkCollector<'_, '_> {
                     }
                     // If we're reporting an ambiguity, don't mention the namespaces that failed
                     let candidates = candidates.map(|candidate| candidate.ok().map(|(res, _)| res));
-                    ambiguity_error(
-                        self.cx,
-                        diag.item,
-                        path_str,
-                        diag.dox,
-                        diag.link_range,
-                        candidates.present_items().collect(),
-                    );
+                    ambiguity_error(self.cx, diag, path_str, candidates.present_items().collect());
                     None
                 }
             }
@@ -1983,10 +1976,8 @@ fn disambiguator_error(
 /// Report an ambiguity error, where there were multiple possible resolutions.
 fn ambiguity_error(
     cx: &DocContext<'_>,
-    item: &Item,
+    DiagnosticInfo { item, ori_link: _, dox, link_range }: DiagnosticInfo<'_>,
     path_str: &str,
-    dox: &str,
-    link_range: Range<usize>,
     candidates: Vec<Res>,
 ) {
     let mut msg = format!("`{}` is ", path_str);
