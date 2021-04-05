@@ -1939,7 +1939,7 @@ impl Clean<Vec<Item>> for doctree::Item<'_> {
         use hir::ItemKind;
 
         let item = self.hir_item;
-        let mut name = self.name().clone();
+        let mut name = self.name();
         let def_id = item.def_id.to_def_id();
 
         cx.with_param_env(def_id, |cx| {

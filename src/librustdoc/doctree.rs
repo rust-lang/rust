@@ -26,8 +26,8 @@ impl<'hir> Item<'hir> {
         Self { hir_item, renamed_name, from_glob }
     }
 
-    pub(crate) fn name(&'hir self) -> &'hir Symbol {
-        self.renamed_name.as_ref().unwrap_or(&self.hir_item.ident.name)
+    pub(crate) fn name(&self) -> Symbol {
+        self.renamed_name.unwrap_or(self.hir_item.ident.name)
     }
 }
 
@@ -44,7 +44,7 @@ crate struct Module<'hir> {
     /// whether the module is from a glob import
     /// if `from_glob` is true and we see another module with same name,
     /// then this item can be replaced with that one
-    pub(crate) from_glob: bool,
+    crate from_glob: bool,
 }
 
 impl Module<'hir> {
@@ -64,34 +64,30 @@ impl Module<'hir> {
     }
 
     pub(crate) fn push_item(&mut self, new_item: Item<'hir>) {
-        if let Some(existed_item) =
+        if let Some(existing_item) =
             self.items.iter_mut().find(|item| item.name() == new_item.name())
         {
-            if existed_item.name() == new_item.name() {
-                if existed_item.from_glob {
-                    debug!("push_item: {:?} shadowed by {:?}", *existed_item, new_item);
-                    *existed_item = new_item;
-                    return;
-                } else if new_item.from_glob {
-                    return;
-                }
-            }
-        } else {
-            self.items.push(new_item);
-        }
-    }
-
-    pub(crate) fn push_mod(&mut self, new_item: Module<'hir>) {
-        if let Some(existed_mod) = self.mods.iter_mut().find(|mod_| mod_.name == new_item.name) {
-            if existed_mod.from_glob {
-                debug!("push_mod: {:?} shadowed by {:?}", existed_mod.name, new_item.name);
-                *existed_mod = new_item;
+            if existing_item.from_glob {
+                debug!("push_item: {:?} shadowed by {:?}", *existing_item, new_item);
+                *existing_item = new_item;
                 return;
             } else if new_item.from_glob {
                 return;
             }
-        } else {
-            self.mods.push(new_item);
         }
+        self.items.push(new_item);
+    }
+
+    pub(crate) fn push_mod(&mut self, new_item: Module<'hir>) {
+        if let Some(existing_mod) = self.mods.iter_mut().find(|mod_| mod_.name == new_item.name) {
+            if existing_mod.from_glob {
+                debug!("push_mod: {:?} shadowed by {:?}", existing_mod.name, new_item.name);
+                *existing_mod = new_item;
+                return;
+            } else if new_item.from_glob {
+                return;
+            }
+        }
+        self.mods.push(new_item);
     }
 }
