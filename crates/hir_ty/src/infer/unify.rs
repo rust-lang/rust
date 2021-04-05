@@ -214,7 +214,7 @@ impl TypeVariableTable {
     fn fallback_value(&self, iv: InferenceVar, kind: TyVariableKind) -> Ty {
         match kind {
             _ if self.inner[iv.to_inner().0 as usize].diverging => TyKind::Never,
-            TyVariableKind::General => TyKind::Unknown,
+            TyVariableKind::General => TyKind::Error,
             TyVariableKind::Integer => TyKind::Scalar(Scalar::Int(IntTy::I32)),
             TyVariableKind::Float => TyKind::Scalar(Scalar::Float(FloatTy::F64)),
         }
@@ -327,7 +327,7 @@ impl InferenceTable {
 
     pub(super) fn unify_inner_trivial(&mut self, ty1: &Ty, ty2: &Ty, depth: usize) -> bool {
         match (ty1.kind(&Interner), ty2.kind(&Interner)) {
-            (TyKind::Unknown, _) | (_, TyKind::Unknown) => true,
+            (TyKind::Error, _) | (_, TyKind::Error) => true,
 
             (TyKind::Placeholder(p1), TyKind::Placeholder(p2)) if *p1 == *p2 => true,
 

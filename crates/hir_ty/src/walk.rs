@@ -43,7 +43,7 @@ pub trait TypeWalk {
     {
         self.walk_mut_binders(
             &mut |ty_mut, binders| {
-                let ty = mem::replace(ty_mut, TyKind::Unknown.intern(&Interner));
+                let ty = mem::replace(ty_mut, TyKind::Error.intern(&Interner));
                 *ty_mut = f(ty, binders);
             },
             binders,
@@ -56,7 +56,7 @@ pub trait TypeWalk {
         Self: Sized,
     {
         self.walk_mut(&mut |ty_mut| {
-            let ty = mem::replace(ty_mut, TyKind::Unknown.intern(&Interner));
+            let ty = mem::replace(ty_mut, TyKind::Error.intern(&Interner));
             *ty_mut = f(ty);
         });
         self

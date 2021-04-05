@@ -300,7 +300,7 @@ impl Ty {
     }
 
     pub fn is_unknown(&self) -> bool {
-        matches!(self.kind(&Interner), TyKind::Unknown)
+        matches!(self.kind(&Interner), TyKind::Error)
     }
 
     pub fn equals_ctor(&self, other: &Ty) -> bool {

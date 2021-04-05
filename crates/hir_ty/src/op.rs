@@ -15,7 +15,7 @@ pub(super) fn binary_op_return_ty(op: BinaryOp, lhs_ty: Ty, rhs_ty: Ty) -> Ty {
                 | TyKind::Scalar(Scalar::Float(_)) => lhs_ty,
                 TyKind::InferenceVar(_, TyVariableKind::Integer)
                 | TyKind::InferenceVar(_, TyVariableKind::Float) => lhs_ty,
-                _ => TyKind::Unknown.intern(&Interner),
+                _ => TyKind::Error.intern(&Interner),
             }
         }
         BinaryOp::ArithOp(_) => match rhs_ty.kind(&Interner) {
@@ -24,7 +24,7 @@ pub(super) fn binary_op_return_ty(op: BinaryOp, lhs_ty: Ty, rhs_ty: Ty) -> Ty {
             | TyKind::Scalar(Scalar::Float(_)) => rhs_ty,
             TyKind::InferenceVar(_, TyVariableKind::Integer)
             | TyKind::InferenceVar(_, TyVariableKind::Float) => rhs_ty,
-            _ => TyKind::Unknown.intern(&Interner),
+            _ => TyKind::Error.intern(&Interner),
         },
     }
 }
@@ -37,10 +37,10 @@ pub(super) fn binary_op_rhs_expectation(op: BinaryOp, lhs_ty: Ty) -> Ty {
             TyKind::Scalar(_) | TyKind::Str => lhs_ty,
             TyKind::InferenceVar(_, TyVariableKind::Integer)
             | TyKind::InferenceVar(_, TyVariableKind::Float) => lhs_ty,
-            _ => TyKind::Unknown.intern(&Interner),
+            _ => TyKind::Error.intern(&Interner),
         },
         BinaryOp::ArithOp(ArithOp::Shl) | BinaryOp::ArithOp(ArithOp::Shr) => {
-            TyKind::Unknown.intern(&Interner)
+            TyKind::Error.intern(&Interner)
         }
         BinaryOp::CmpOp(CmpOp::Ord { .. })
         | BinaryOp::Assignment { op: Some(_) }
@@ -50,7 +50,7 @@ pub(super) fn binary_op_rhs_expectation(op: BinaryOp, lhs_ty: Ty) -> Ty {
             | TyKind::Scalar(Scalar::Float(_)) => lhs_ty,
             TyKind::InferenceVar(_, TyVariableKind::Integer)
             | TyKind::InferenceVar(_, TyVariableKind::Float) => lhs_ty,
-            _ => TyKind::Unknown.intern(&Interner),
+            _ => TyKind::Error.intern(&Interner),
         },
     }
 }

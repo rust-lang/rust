@@ -120,7 +120,7 @@ struct InternedStandardTypes {
 
 impl Default for InternedStandardTypes {
     fn default() -> Self {
-        InternedStandardTypes { unknown: TyKind::Unknown.intern(&Interner) }
+        InternedStandardTypes { unknown: TyKind::Error.intern(&Interner) }
     }
 }
 
@@ -247,7 +247,7 @@ impl<'a> InferenceContext<'a> {
             table: unify::InferenceTable::new(),
             obligations: Vec::default(),
             last_obligations_check: None,
-            return_ty: TyKind::Unknown.intern(&Interner), // set in collect_fn_signature
+            return_ty: TyKind::Error.intern(&Interner), // set in collect_fn_signature
             trait_env: owner
                 .as_generic_def_id()
                 .map_or_else(Default::default, |d| db.trait_environment(d)),
@@ -261,7 +261,7 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn err_ty(&self) -> Ty {
-        TyKind::Unknown.intern(&Interner)
+        TyKind::Error.intern(&Interner)
     }
 
     fn resolve_all(mut self) -> InferenceResult {
@@ -326,7 +326,7 @@ impl<'a> InferenceContext<'a> {
     /// Replaces Ty::Unknown by a new type var, so we can maybe still infer it.
     fn insert_type_vars_shallow(&mut self, ty: Ty) -> Ty {
         match ty.kind(&Interner) {
-            TyKind::Unknown => self.table.new_type_var(),
+            TyKind::Error => self.table.new_type_var(),
             _ => ty,
         }
     }
@@ -542,7 +542,7 @@ impl<'a> InferenceContext<'a> {
                 result
             } else {
                 // FIXME diagnostic
-                (TyKind::Unknown.intern(&Interner), None)
+                (TyKind::Error.intern(&Interner), None)
             }
         }
 
@@ -755,7 +755,7 @@ impl Expectation {
     fn none() -> Self {
         Expectation {
             // FIXME
-            ty: TyKind::Unknown.intern(&Interner),
+            ty: TyKind::Error.intern(&Interner),
             rvalue_hint: false,
         }
     }
@@ -763,7 +763,7 @@ impl Expectation {
     fn coercion_target(&self) -> Ty {
         if self.rvalue_hint {
             // FIXME
-            TyKind::Unknown.intern(&Interner)
+            TyKind::Error.intern(&Interner)
         } else {
             self.ty.clone()
         }

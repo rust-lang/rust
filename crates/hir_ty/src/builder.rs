@@ -54,7 +54,7 @@ impl<D> TyBuilder<D> {
     }
 
     pub fn fill_with_unknown(self) -> Self {
-        self.fill(iter::repeat(TyKind::Unknown.intern(&Interner)))
+        self.fill(iter::repeat(TyKind::Error.intern(&Interner)))
     }
 
     pub fn fill(mut self, filler: impl Iterator<Item = impl CastTo<GenericArg>>) -> Self {

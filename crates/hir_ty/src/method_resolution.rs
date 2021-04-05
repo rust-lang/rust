@@ -742,7 +742,7 @@ fn fallback_bound_vars(s: Substitution, num_vars_to_keep: usize) -> Substitution
         &mut |ty, binders| {
             if let TyKind::BoundVar(bound) = ty.kind(&Interner) {
                 if bound.index >= num_vars_to_keep && bound.debruijn >= binders {
-                    TyKind::Unknown.intern(&Interner)
+                    TyKind::Error.intern(&Interner)
                 } else {
                     ty
                 }

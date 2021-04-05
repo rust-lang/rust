@@ -176,7 +176,7 @@ impl<'a> TyLoweringContext<'a> {
                 let inner_ty = self.lower_ty(inner);
                 TyKind::Ref(lower_to_chalk_mutability(*mutability), inner_ty).intern(&Interner)
             }
-            TypeRef::Placeholder => TyKind::Unknown.intern(&Interner),
+            TypeRef::Placeholder => TyKind::Error.intern(&Interner),
             TypeRef::Fn(params, is_varargs) => {
                 let substs =
                     Substitution::from_iter(&Interner, params.iter().map(|tr| self.lower_ty(tr)));
@@ -253,12 +253,12 @@ impl<'a> TyLoweringContext<'a> {
                                     data.provenance == TypeParamProvenance::ArgumentImplTrait
                                 })
                                 .nth(idx as usize)
-                                .map_or(TyKind::Unknown, |(id, _)| {
+                                .map_or(TyKind::Error, |(id, _)| {
                                     TyKind::Placeholder(to_placeholder_idx(self.db, id))
                                 });
                             param.intern(&Interner)
                         } else {
-                            TyKind::Unknown.intern(&Interner)
+                            TyKind::Error.intern(&Interner)
                         }
                     }
                     ImplTraitLoweringMode::Variable => {
@@ -280,11 +280,11 @@ impl<'a> TyLoweringContext<'a> {
                     }
                     ImplTraitLoweringMode::Disallowed => {
                         // FIXME: report error
-                        TyKind::Unknown.intern(&Interner)
+                        TyKind::Error.intern(&Interner)
                     }
                 }
             }
-            TypeRef::Error => TyKind::Unknown.intern(&Interner),
+            TypeRef::Error => TyKind::Error.intern(&Interner),
         };
         (ty, res)
     }
@@ -328,7 +328,7 @@ impl<'a> TyLoweringContext<'a> {
             (self.select_associated_type(res, segment), None)
         } else if remaining_segments.len() > 1 {
             // FIXME report error (ambiguous associated type)
-            (TyKind::Unknown.intern(&Interner), None)
+            (TyKind::Error.intern(&Interner), None)
         } else {
             (ty, res)
         }
@@ -372,12 +372,12 @@ impl<'a> TyLoweringContext<'a> {
                         }
                         None => {
                             // FIXME: report error (associated type not found)
-                            TyKind::Unknown.intern(&Interner)
+                            TyKind::Error.intern(&Interner)
                         }
                     }
                 } else if remaining_segments.len() > 1 {
                     // FIXME report error (ambiguous associated type)
-                    TyKind::Unknown.intern(&Interner)
+                    TyKind::Error.intern(&Interner)
                 } else {
                     let dyn_ty = DynTy {
                         bounds: Binders::new(
@@ -433,7 +433,7 @@ impl<'a> TyLoweringContext<'a> {
                 self.lower_path_inner(resolved_segment, it.into(), infer_args)
             }
             // FIXME: report error
-            TypeNs::EnumVariantId(_) => return (TyKind::Unknown.intern(&Interner), None),
+            TypeNs::EnumVariantId(_) => return (TyKind::Error.intern(&Interner), None),
         };
         self.lower_ty_relative_path(ty, Some(resolution), remaining_segments)
     }
@@ -447,7 +447,7 @@ impl<'a> TyLoweringContext<'a> {
         let (resolution, remaining_index) =
             match self.resolver.resolve_path_in_type_ns(self.db.upcast(), path.mod_path()) {
                 Some(it) => it,
-                None => return (TyKind::Unknown.intern(&Interner), None),
+                None => return (TyKind::Error.intern(&Interner), None),
             };
         let (resolved_segment, remaining_segments) = match remaining_index {
             None => (
@@ -498,9 +498,9 @@ impl<'a> TyLoweringContext<'a> {
                 },
             );
 
-            ty.unwrap_or(TyKind::Unknown.intern(&Interner))
+            ty.unwrap_or(TyKind::Error.intern(&Interner))
         } else {
-            TyKind::Unknown.intern(&Interner)
+            TyKind::Error.intern(&Interner)
         }
     }
 
@@ -569,13 +569,13 @@ impl<'a> TyLoweringContext<'a> {
             def_generics.map_or((0, 0, 0, 0), |g| g.provenance_split());
         let total_len = parent_params + self_params + type_params + impl_trait_params;
 
-        substs.extend(iter::repeat(TyKind::Unknown.intern(&Interner)).take(parent_params));
+        substs.extend(iter::repeat(TyKind::Error.intern(&Interner)).take(parent_params));
 
         let fill_self_params = || {
             substs.extend(
                 explicit_self_ty
                     .into_iter()
-                    .chain(iter::repeat(TyKind::Unknown.intern(&Interner)))
+                    .chain(iter::repeat(TyKind::Error.intern(&Interner)))
                     .take(self_params),
             )
         };
@@ -628,7 +628,7 @@ impl<'a> TyLoweringContext<'a> {
         // add placeholders for args that were not provided
         // FIXME: emit diagnostics in contexts where this is not allowed
         for _ in substs.len()..total_len {
-            substs.push(TyKind::Unknown.intern(&Interner));
+            substs.push(TyKind::Error.intern(&Interner));
         }
         assert_eq!(substs.len(), total_len);
 
@@ -1008,7 +1008,7 @@ pub(crate) fn generic_defaults_query(
         .enumerate()
         .map(|(idx, (_, p))| {
             let mut ty =
-                p.default.as_ref().map_or(TyKind::Unknown.intern(&Interner), |t| ctx.lower_ty(t));
+                p.default.as_ref().map_or(TyKind::Error.intern(&Interner), |t| ctx.lower_ty(t));
 
             // Each default can only refer to previous parameters.
             ty.walk_mut_binders(
@@ -1018,7 +1018,7 @@ pub(crate) fn generic_defaults_query(
                             // type variable default referring to parameter coming
                             // after it. This is forbidden (FIXME: report
                             // diagnostic)
-                            *ty = TyKind::Unknown.intern(&Interner);
+                            *ty = TyKind::Error.intern(&Interner);
                         }
                     }
                     _ => {}
@@ -1220,7 +1220,7 @@ pub(crate) fn ty_recover(db: &dyn HirDatabase, _cycle: &[String], def: &TyDefId)
         TyDefId::AdtId(it) => generics(db.upcast(), it.into()).len(),
         TyDefId::TypeAliasId(it) => generics(db.upcast(), it.into()).len(),
     };
-    Binders::new(num_binders, TyKind::Unknown.intern(&Interner))
+    Binders::new(num_binders, TyKind::Error.intern(&Interner))
 }
 
 pub(crate) fn value_ty_query(db: &dyn HirDatabase, def: ValueTyDefId) -> Binders<Ty> {
@@ -1258,7 +1258,7 @@ pub(crate) fn impl_self_ty_recover(
     impl_id: &ImplId,
 ) -> Binders<Ty> {
     let generics = generics(db.upcast(), (*impl_id).into());
-    Binders::new(generics.len(), TyKind::Unknown.intern(&Interner))
+    Binders::new(generics.len(), TyKind::Error.intern(&Interner))
 }
 
 pub(crate) fn impl_trait_query(db: &dyn HirDatabase, impl_id: ImplId) -> Option<Binders<TraitRef>> {
