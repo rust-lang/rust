@@ -2005,16 +2005,16 @@ fn resolution_failure(
 fn anchor_failure(
     cx: &DocContext<'_>,
     item: &Item,
-    path_str: &str,
+    ori_link: &str,
     dox: &str,
     link_range: Range<usize>,
     failure: AnchorFailure,
 ) {
     let msg = match failure {
-        AnchorFailure::MultipleAnchors => format!("`{}` contains multiple anchors", path_str),
+        AnchorFailure::MultipleAnchors => format!("`{}` contains multiple anchors", ori_link),
         AnchorFailure::RustdocAnchorConflict(res) => format!(
             "`{}` contains an anchor, but links to {kind}s are already anchored",
-            path_str,
+            ori_link,
             kind = res.descr(),
         ),
     };
