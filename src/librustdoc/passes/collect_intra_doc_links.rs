@@ -1192,7 +1192,7 @@ impl LinkCollector<'_, '_> {
                 if self.cx.tcx.privacy_access_levels(LOCAL_CRATE).is_exported(hir_src)
                     && !self.cx.tcx.privacy_access_levels(LOCAL_CRATE).is_exported(hir_dst)
                 {
-                    privacy_error(self.cx, &item, &path_str, dox, &ori_link);
+                    privacy_error(self.cx, diag_info, &path_str);
                 }
             }
 
@@ -2045,7 +2045,11 @@ fn suggest_disambiguator(
 }
 
 /// Report a link from a public item to a private one.
-fn privacy_error(cx: &DocContext<'_>, item: &Item, path_str: &str, dox: &str, link: &MarkdownLink) {
+fn privacy_error(
+    cx: &DocContext<'_>,
+    DiagnosticInfo { item, ori_link: _, dox, link_range }: DiagnosticInfo<'_>,
+    path_str: &str,
+) {
     let sym;
     let item_name = match item.name {
         Some(name) => {
@@ -2057,7 +2061,7 @@ fn privacy_error(cx: &DocContext<'_>, item: &Item, path_str: &str, dox: &str, li
     let msg =
         format!("public documentation for `{}` links to private item `{}`", item_name, path_str);
 
-    report_diagnostic(cx.tcx, PRIVATE_INTRA_DOC_LINKS, &msg, item, dox, &link.range, |diag, sp| {
+    report_diagnostic(cx.tcx, PRIVATE_INTRA_DOC_LINKS, &msg, item, dox, &link_range, |diag, sp| {
         if let Some(sp) = sp {
             diag.span_label(sp, "this item is private");
         }
