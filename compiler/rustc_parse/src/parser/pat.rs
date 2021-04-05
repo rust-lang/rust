@@ -715,7 +715,6 @@ impl<'a> Parser<'a> {
         } else if self.eat(&token::DotDotEq) {
             RangeEnd::Included(RangeSyntax::DotDotEq)
         } else if self.eat(&token::DotDot) {
-            self.sess.gated_spans.gate(sym::exclusive_range_pattern, self.prev_token.span);
             RangeEnd::Excluded
         } else {
             return None;
@@ -735,7 +734,6 @@ impl<'a> Parser<'a> {
             Some(self.parse_pat_range_end()?)
         } else {
             // Parsing e.g. `X..`.
-            self.sess.gated_spans.gate(sym::half_open_range_patterns, begin.span.to(re.span));
             if let RangeEnd::Included(_) = re.node {
                 // FIXME(Centril): Consider semantic errors instead in `ast_validation`.
                 // Possibly also do this for `X..=` in *expression* contexts.

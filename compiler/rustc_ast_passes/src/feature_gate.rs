@@ -548,7 +548,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     "box pattern syntax is experimental"
                 );
             }
-            PatKind::Range(_, _, Spanned { node: RangeEnd::Excluded, .. }) => {
+            PatKind::Range(_, Some(_), Spanned { node: RangeEnd::Excluded, .. }) => {
                 gate_feature_post!(
                     &self,
                     exclusive_range_pattern,
