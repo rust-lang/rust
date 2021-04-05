@@ -200,7 +200,8 @@ impl<'a> TyLoweringContext<'a> {
                     )
                 });
                 let bounds = crate::make_only_type_binders(1, bounds);
-                TyKind::Dyn(DynTy { bounds }).intern(&Interner)
+                TyKind::Dyn(DynTy { bounds, lifetime: LifetimeData::Static.intern(&Interner) })
+                    .intern(&Interner)
             }
             TypeRef::ImplTrait(bounds) => {
                 match self.impl_trait_mode {
@@ -392,6 +393,7 @@ impl<'a> TyLoweringContext<'a> {
                                 ))),
                             ),
                         ),
+                        lifetime: LifetimeData::Static.intern(&Interner),
                     };
                     TyKind::Dyn(dyn_ty).intern(&Interner)
                 };

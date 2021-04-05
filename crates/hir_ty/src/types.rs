@@ -40,6 +40,7 @@ impl ProjectionTy {
 pub struct DynTy {
     /// The unknown self type.
     pub bounds: Binders<QuantifiedWhereClauses>,
+    pub lifetime: Lifetime,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]

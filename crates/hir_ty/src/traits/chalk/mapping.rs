@@ -149,6 +149,7 @@ impl ToChalk for Ty {
                         where_clauses.bounds.binders.clone(),
                         crate::QuantifiedWhereClauses::from_iter(&Interner, bounds),
                     ),
+                    lifetime: LifetimeData::Static.intern(&Interner),
                 })
             }
 
