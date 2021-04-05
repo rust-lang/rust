@@ -4,7 +4,7 @@ use rustc_span::{self, Span, Symbol};
 
 use rustc_hir as hir;
 
-/// A warp around an hir::Item
+/// A wrapper around a [`hir::Item`].
 #[derive(Debug)]
 pub(crate) struct Item<'hir> {
     /// the wrapped item
