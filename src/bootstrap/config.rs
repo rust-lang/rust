@@ -510,7 +510,8 @@ struct Rust {
     new_symbol_mangling: Option<bool>,
     profile_generate: Option<String>,
     profile_use: Option<String>,
-    download_rustc: Option<bool>,
+    // ignored; this is set from an env var set by bootstrap.py
+    download_rustc: Option<StringOrBool>,
 }
 
 /// TOML representation of how each build target is configured.
@@ -852,7 +853,7 @@ impl Config {
             config.rust_codegen_units_std = rust.codegen_units_std.map(threads_from_config);
             config.rust_profile_use = flags.rust_profile_use.or(rust.profile_use);
             config.rust_profile_generate = flags.rust_profile_generate.or(rust.profile_generate);
-            config.download_rustc = rust.download_rustc.unwrap_or(false);
+            config.download_rustc = env::var("BOOTSTRAP_DOWNLOAD_RUSTC").as_deref() == Ok("1");
         } else {
             config.rust_profile_use = flags.rust_profile_use;
             config.rust_profile_generate = flags.rust_profile_generate;
