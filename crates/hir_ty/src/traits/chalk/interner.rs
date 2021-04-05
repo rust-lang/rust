@@ -192,59 +192,58 @@ impl chalk_ir::interner::Interner for Interner {
         tls::with_current_program(|prog| Some(prog?.debug_quantified_where_clauses(clauses, fmt)))
     }
 
-    fn intern_ty(&self, kind: chalk_ir::TyKind<Self>) -> Arc<chalk_ir::TyData<Self>> {
+    fn intern_ty(&self, kind: chalk_ir::TyKind<Self>) -> Self::InternedType {
         let flags = kind.compute_flags(self);
         Arc::new(chalk_ir::TyData { kind, flags })
     }
 
-    fn ty_data<'a>(&self, ty: &'a Arc<chalk_ir::TyData<Self>>) -> &'a chalk_ir::TyData<Self> {
+    fn ty_data<'a>(&self, ty: &'a Self::InternedType) -> &'a chalk_ir::TyData<Self> {
         ty
     }
 
-    fn intern_lifetime(
-        &self,
-        lifetime: chalk_ir::LifetimeData<Self>,
-    ) -> chalk_ir::LifetimeData<Self> {
+    fn intern_lifetime(&self, lifetime: chalk_ir::LifetimeData<Self>) -> Self::InternedLifetime {
         lifetime
     }
 
     fn lifetime_data<'a>(
         &self,
-        lifetime: &'a chalk_ir::LifetimeData<Self>,
+        lifetime: &'a Self::InternedLifetime,
     ) -> &'a chalk_ir::LifetimeData<Self> {
         lifetime
     }
 
-    fn intern_const(&self, constant: chalk_ir::ConstData<Self>) -> Arc<chalk_ir::ConstData<Self>> {
+    fn intern_const(&self, constant: chalk_ir::ConstData<Self>) -> Self::InternedConst {
         Arc::new(constant)
     }
 
-    fn const_data<'a>(
-        &self,
-        constant: &'a Arc<chalk_ir::ConstData<Self>>,
-    ) -> &'a chalk_ir::ConstData<Self> {
+    fn const_data<'a>(&self, constant: &'a Self::InternedConst) -> &'a chalk_ir::ConstData<Self> {
         constant
     }
 
-    fn const_eq(&self, _ty: &Arc<chalk_ir::TyData<Self>>, _c1: &(), _c2: &()) -> bool {
+    fn const_eq(
+        &self,
+        _ty: &Self::InternedType,
+        _c1: &Self::InternedConcreteConst,
+        _c2: &Self::InternedConcreteConst,
+    ) -> bool {
         true
     }
 
     fn intern_generic_arg(
         &self,
         parameter: chalk_ir::GenericArgData<Self>,
-    ) -> chalk_ir::GenericArgData<Self> {
+    ) -> Self::InternedGenericArg {
         parameter
     }
 
     fn generic_arg_data<'a>(
         &self,
-        parameter: &'a chalk_ir::GenericArgData<Self>,
+        parameter: &'a Self::InternedGenericArg,
     ) -> &'a chalk_ir::GenericArgData<Self> {
         parameter
     }
 
-    fn intern_goal(&self, goal: GoalData<Self>) -> Arc<GoalData<Self>> {
+    fn intern_goal(&self, goal: GoalData<Self>) -> Self::InternedGoal {
         Arc::new(goal)
     }
 
@@ -255,11 +254,11 @@ impl chalk_ir::interner::Interner for Interner {
         data.into_iter().collect()
     }
 
-    fn goal_data<'a>(&self, goal: &'a Arc<GoalData<Self>>) -> &'a GoalData<Self> {
+    fn goal_data<'a>(&self, goal: &'a Self::InternedGoal) -> &'a GoalData<Self> {
         goal
     }
 
-    fn goals_data<'a>(&self, goals: &'a Vec<Goal<Interner>>) -> &'a [Goal<Interner>] {
+    fn goals_data<'a>(&self, goals: &'a Self::InternedGoals) -> &'a [Goal<Interner>] {
         goals
     }
 
@@ -280,13 +279,13 @@ impl chalk_ir::interner::Interner for Interner {
     fn intern_program_clause(
         &self,
         data: chalk_ir::ProgramClauseData<Self>,
-    ) -> Arc<chalk_ir::ProgramClauseData<Self>> {
+    ) -> Self::InternedProgramClause {
         Arc::new(data)
     }
 
     fn program_clause_data<'a>(
         &self,
-        clause: &'a Arc<chalk_ir::ProgramClauseData<Self>>,
+        clause: &'a Self::InternedProgramClause,
     ) -> &'a chalk_ir::ProgramClauseData<Self> {
         clause
     }
@@ -294,13 +293,13 @@ impl chalk_ir::interner::Interner for Interner {
     fn intern_program_clauses<E>(
         &self,
         data: impl IntoIterator<Item = Result<chalk_ir::ProgramClause<Self>, E>>,
-    ) -> Result<Arc<[chalk_ir::ProgramClause<Self>]>, E> {
+    ) -> Result<Self::InternedProgramClauses, E> {
         data.into_iter().collect()
     }
 
     fn program_clauses_data<'a>(
         &self,
-        clauses: &'a Arc<[chalk_ir::ProgramClause<Self>]>,
+        clauses: &'a Self::InternedProgramClauses,
     ) -> &'a [chalk_ir::ProgramClause<Self>] {
         &clauses
     }
