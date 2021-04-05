@@ -687,51 +687,6 @@ impl Config {
         set(&mut config.print_step_timings, build.print_step_timings);
         set(&mut config.print_step_rusage, build.print_step_rusage);
 
-        // See https://github.com/rust-lang/compiler-team/issues/326
-        config.stage = match config.cmd {
-            Subcommand::Check { .. } => flags.stage.or(build.check_stage).unwrap_or(0),
-            Subcommand::Doc { .. } => flags.stage.or(build.doc_stage).unwrap_or(0),
-            Subcommand::Build { .. } => flags.stage.or(build.build_stage).unwrap_or(1),
-            Subcommand::Test { .. } => flags.stage.or(build.test_stage).unwrap_or(1),
-            Subcommand::Bench { .. } => flags.stage.or(build.bench_stage).unwrap_or(2),
-            Subcommand::Dist { .. } => flags.stage.or(build.dist_stage).unwrap_or(2),
-            Subcommand::Install { .. } => flags.stage.or(build.install_stage).unwrap_or(2),
-            // These are all bootstrap tools, which don't depend on the compiler.
-            // The stage we pass shouldn't matter, but use 0 just in case.
-            Subcommand::Clean { .. }
-            | Subcommand::Clippy { .. }
-            | Subcommand::Fix { .. }
-            | Subcommand::Run { .. }
-            | Subcommand::Setup { .. }
-            | Subcommand::Format { .. } => flags.stage.unwrap_or(0),
-        };
-
-        // CI should always run stage 2 builds, unless it specifically states otherwise
-        #[cfg(not(test))]
-        if flags.stage.is_none() && crate::CiEnv::current() != crate::CiEnv::None {
-            match config.cmd {
-                Subcommand::Test { .. }
-                | Subcommand::Doc { .. }
-                | Subcommand::Build { .. }
-                | Subcommand::Bench { .. }
-                | Subcommand::Dist { .. }
-                | Subcommand::Install { .. } => {
-                    assert_eq!(
-                        config.stage, 2,
-                        "x.py should be run with `--stage 2` on CI, but was run with `--stage {}`",
-                        config.stage,
-                    );
-                }
-                Subcommand::Clean { .. }
-                | Subcommand::Check { .. }
-                | Subcommand::Clippy { .. }
-                | Subcommand::Fix { .. }
-                | Subcommand::Run { .. }
-                | Subcommand::Setup { .. }
-                | Subcommand::Format { .. } => {}
-            }
-        }
-
         config.verbose = cmp::max(config.verbose, flags.verbose);
 
         if let Some(install) = toml.install {
@@ -1004,6 +959,59 @@ impl Config {
 
         let default = config.channel == "dev";
         config.ignore_git = ignore_git.unwrap_or(default);
+
+        let download_rustc = config.download_rustc;
+        // See https://github.com/rust-lang/compiler-team/issues/326
+        config.stage = match config.cmd {
+            Subcommand::Check { .. } => flags.stage.or(build.check_stage).unwrap_or(0),
+            // `download-rustc` only has a speed-up for stage2 builds. Default to stage2 unless explicitly overridden.
+            Subcommand::Doc { .. } => {
+                flags.stage.or(build.doc_stage).unwrap_or(if download_rustc { 2 } else { 0 })
+            }
+            Subcommand::Build { .. } => {
+                flags.stage.or(build.build_stage).unwrap_or(if download_rustc { 2 } else { 1 })
+            }
+            Subcommand::Test { .. } => {
+                flags.stage.or(build.test_stage).unwrap_or(if download_rustc { 2 } else { 1 })
+            }
+            Subcommand::Bench { .. } => flags.stage.or(build.bench_stage).unwrap_or(2),
+            Subcommand::Dist { .. } => flags.stage.or(build.dist_stage).unwrap_or(2),
+            Subcommand::Install { .. } => flags.stage.or(build.install_stage).unwrap_or(2),
+            // These are all bootstrap tools, which don't depend on the compiler.
+            // The stage we pass shouldn't matter, but use 0 just in case.
+            Subcommand::Clean { .. }
+            | Subcommand::Clippy { .. }
+            | Subcommand::Fix { .. }
+            | Subcommand::Run { .. }
+            | Subcommand::Setup { .. }
+            | Subcommand::Format { .. } => flags.stage.unwrap_or(0),
+        };
+
+        // CI should always run stage 2 builds, unless it specifically states otherwise
+        #[cfg(not(test))]
+        if flags.stage.is_none() && crate::CiEnv::current() != crate::CiEnv::None {
+            match config.cmd {
+                Subcommand::Test { .. }
+                | Subcommand::Doc { .. }
+                | Subcommand::Build { .. }
+                | Subcommand::Bench { .. }
+                | Subcommand::Dist { .. }
+                | Subcommand::Install { .. } => {
+                    assert_eq!(
+                        config.stage, 2,
+                        "x.py should be run with `--stage 2` on CI, but was run with `--stage {}`",
+                        config.stage,
+                    );
+                }
+                Subcommand::Clean { .. }
+                | Subcommand::Check { .. }
+                | Subcommand::Clippy { .. }
+                | Subcommand::Fix { .. }
+                | Subcommand::Run { .. }
+                | Subcommand::Setup { .. }
+                | Subcommand::Format { .. } => {}
+            }
+        }
 
         config
     }
