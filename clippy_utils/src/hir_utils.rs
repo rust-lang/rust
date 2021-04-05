@@ -58,13 +58,14 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
 
     /// Use this method to wrap comparisons that may involve inter-expression context.
     /// See `self.locals`.
-    fn inter_expr(&mut self) -> HirEqInterExpr<'_, 'a, 'tcx> {
+    pub fn inter_expr(&mut self) -> HirEqInterExpr<'_, 'a, 'tcx> {
         HirEqInterExpr {
             inner: self,
             locals: HirIdMap::default(),
         }
     }
 
+    #[allow(dead_code)]
     pub fn eq_block(&mut self, left: &Block<'_>, right: &Block<'_>) -> bool {
         self.inter_expr().eq_block(left, right)
     }
@@ -82,7 +83,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
     }
 }
 
-struct HirEqInterExpr<'a, 'b, 'tcx> {
+pub struct HirEqInterExpr<'a, 'b, 'tcx> {
     inner: &'a mut SpanlessEq<'b, 'tcx>,
 
     // When binding are declared, the binding ID in the left expression is mapped to the one on the
@@ -92,12 +93,14 @@ struct HirEqInterExpr<'a, 'b, 'tcx> {
 }
 
 impl HirEqInterExpr<'_, '_, '_> {
-    fn eq_stmt(&mut self, left: &Stmt<'_>, right: &Stmt<'_>) -> bool {
+    pub fn eq_stmt(&mut self, left: &Stmt<'_>, right: &Stmt<'_>) -> bool {
         match (&left.kind, &right.kind) {
             (&StmtKind::Local(ref l), &StmtKind::Local(ref r)) => {
-                self.eq_pat(&l.pat, &r.pat)
+                // eq_pat adds the HirIds to the locals map. We therefor call it last to make sure that
+                // these only get added if the init and type is equal.
+                both(&l.init, &r.init, |l, r| self.eq_expr(l, r))
                     && both(&l.ty, &r.ty, |l, r| self.eq_ty(l, r))
-                    && both(&l.init, &r.init, |l, r| self.eq_expr(l, r))
+                    && self.eq_pat(&l.pat, &r.pat)
             },
             (&StmtKind::Expr(ref l), &StmtKind::Expr(ref r)) | (&StmtKind::Semi(ref l), &StmtKind::Semi(ref r)) => {
                 self.eq_expr(l, r)
@@ -159,7 +162,7 @@ impl HirEqInterExpr<'_, '_, '_> {
     }
 
     #[allow(clippy::similar_names)]
-    fn eq_expr(&mut self, left: &Expr<'_>, right: &Expr<'_>) -> bool {
+    pub fn eq_expr(&mut self, left: &Expr<'_>, right: &Expr<'_>) -> bool {
         if !self.inner.allow_side_effects && differing_macro_contexts(left.span, right.span) {
             return false;
         }
@@ -481,6 +484,15 @@ pub fn both<X>(l: &Option<X>, r: &Option<X>, mut eq_fn: impl FnMut(&X, &X) -> bo
 /// Checks if two slices are equal as per `eq_fn`.
 pub fn over<X>(left: &[X], right: &[X], mut eq_fn: impl FnMut(&X, &X) -> bool) -> bool {
     left.len() == right.len() && left.iter().zip(right).all(|(x, y)| eq_fn(x, y))
+}
+
+/// Counts how many elements of the slices are equal as per `eq_fn`.
+pub fn count_eq<X: Sized>(
+    left: &mut dyn Iterator<Item = X>,
+    right: &mut dyn Iterator<Item = X>,
+    mut eq_fn: impl FnMut(&X, &X) -> bool,
+) -> usize {
+    left.zip(right).take_while(|(l, r)| eq_fn(l, r)).count()
 }
 
 /// Checks if two expressions evaluate to the same value, and don't contain any side effects.
