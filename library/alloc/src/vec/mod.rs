@@ -53,7 +53,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use core::cmp::{self, Ordering};
+use core::cmp::{self, Ordering};2
 use core::convert::TryFrom;
 use core::fmt;
 use core::hash::{Hash, Hasher};
@@ -2529,7 +2529,6 @@ impl<T, A: Allocator> Vec<T, A> {
 /// append the entire slice at once.
 ///
 /// [`copy_from_slice`]: ../../std/primitive.slice.html#method.copy_from_slice
-/// [`copy_from_slice`]: slice::copy_from_slice
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: Copy + 'a, A: Allocator + 'a> Extend<&'a T> for Vec<T, A> {
     #[track_caller]
