@@ -2,6 +2,7 @@
 //! requests/replies and notifications back to the client.
 use std::{
     env, fmt,
+    sync::Arc,
     time::{Duration, Instant},
 };
 
@@ -229,17 +230,23 @@ impl GlobalState {
                                 }
                                 ProjectWorkspaceProgress::End(workspaces) => {
                                     self.fetch_workspaces_completed(workspaces);
+
+                                    let old = Arc::clone(&self.workspaces);
                                     self.switch_workspaces();
-                                    if self.config.run_build_scripts() {
+                                    let workspaces_updated = !Arc::ptr_eq(&old, &self.workspaces);
+
+                                    if self.config.run_build_scripts() && workspaces_updated {
                                         let mut collector = BuildDataCollector::default();
                                         for ws in self.workspaces.iter() {
                                             ws.collect_build_data_configs(&mut collector);
                                         }
                                         self.fetch_build_data_request(collector)
                                     }
+
                                     (Progress::End, None)
                                 }
                             };
+
                             self.report_progress("fetching", state, msg, None);
                         }
                         Task::FetchBuildData(progress) => {
@@ -250,15 +257,19 @@ impl GlobalState {
                                 }
                                 BuildDataProgress::End(build_data_result) => {
                                     self.fetch_build_data_completed(build_data_result);
+
                                     self.switch_workspaces();
+
                                     (Some(Progress::End), None)
                                 }
                             };
+
                             if let Some(state) = state {
                                 self.report_progress("loading", state, msg, None);
                             }
                         }
                     }
+
                     // Coalesce multiple task events into one loop turn
                     task = match self.task_pool.receiver.try_recv() {
                         Ok(task) => task,
