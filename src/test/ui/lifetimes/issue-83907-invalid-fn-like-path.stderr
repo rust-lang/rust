@@ -1,0 +1,17 @@
+error: free static item without body
+  --> $DIR/issue-83907-invalid-fn-like-path.rs:3:1
+   |
+LL | static STATIC_VAR_FIVE: &One();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
+   |                               |
+   |                               help: provide a definition for the static: `= <expr>;`
+
+error[E0412]: cannot find type `One` in this scope
+  --> $DIR/issue-83907-invalid-fn-like-path.rs:3:26
+   |
+LL | static STATIC_VAR_FIVE: &One();
+   |                          ^^^ not found in this scope
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0412`.

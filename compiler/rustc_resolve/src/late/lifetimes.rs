@@ -2659,6 +2659,13 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 Some(next) => next,
                 None => break None,
             };
+            // See issue #83753. If someone writes an associated type on a non-trait, just treat it as
+            // there being no supertrait HRTBs.
+            match tcx.def_kind(def_id) {
+                DefKind::Trait | DefKind::TraitAlias | DefKind::Impl => {}
+                _ => break None,
+            }
+
             if trait_defines_associated_type_named(def_id) {
                 break Some(bound_vars.into_iter().collect());
             }
@@ -2703,7 +2710,14 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 | Scope::Supertrait { ref s, .. } => {
                     scope = *s;
                 }
-                Scope::Root => bug!("In fn_like_elision without appropriate scope above"),
+                Scope::Root => {
+                    // See issue #83907. Just bail out from looking inside.
+                    self.tcx.sess.delay_span_bug(
+                        rustc_span::DUMMY_SP,
+                        "In fn_like_elision without appropriate scope above",
+                    );
+                    return;
+                }
             }
         };
         // While not strictly necessary, we gather anon lifetimes *before* actually
