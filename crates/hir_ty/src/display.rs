@@ -5,6 +5,7 @@ use std::{
     fmt::{self, Debug},
 };
 
+use chalk_ir::BoundVar;
 use hir_def::{
     db::DefDatabase,
     find_path,
@@ -18,12 +19,12 @@ use hir_def::{
 use hir_expand::name::Name;
 
 use crate::{
-    db::HirDatabase, from_assoc_type_id, from_foreign_def_id, from_placeholder_idx,
-    lt_from_placeholder_idx, primitive, subst_prefix, to_assoc_type_id, traits::chalk::from_chalk,
-    utils::generics, AdtId, AliasEq, AliasTy, CallableDefId, CallableSig, DomainGoal, GenericArg,
-    ImplTraitId, Interner, Lifetime, LifetimeData, LifetimeOutlives, Mutability, OpaqueTy,
-    ProjectionTy, ProjectionTyExt, QuantifiedWhereClause, Scalar, TraitRef, Ty, TyExt, TyKind,
-    WhereClause,
+    const_from_placeholder_idx, db::HirDatabase, from_assoc_type_id, from_foreign_def_id,
+    from_placeholder_idx, lt_from_placeholder_idx, primitive, subst_prefix, to_assoc_type_id,
+    traits::chalk::from_chalk, utils::generics, AdtId, AliasEq, AliasTy, CallableDefId,
+    CallableSig, Const, ConstValue, DomainGoal, GenericArg, ImplTraitId, Interner, Lifetime,
+    LifetimeData, LifetimeOutlives, Mutability, OpaqueTy, ProjectionTy, ProjectionTyExt,
+    QuantifiedWhereClause, Scalar, TraitRef, Ty, TyExt, TyKind, WhereClause,
 };
 
 pub struct HirFormatter<'a> {
@@ -290,6 +291,29 @@ impl HirDisplay for GenericArg {
     }
 }
 
+impl HirDisplay for Const {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+        let data = self.interned();
+        match data.value {
+            ConstValue::BoundVar(idx) => idx.hir_fmt(f),
+            ConstValue::InferenceVar(..) => write!(f, "_"),
+            ConstValue::Placeholder(idx) => {
+                let id = const_from_placeholder_idx(f.db, idx);
+                let generics = generics(f.db.upcast(), id.parent);
+                let param_data = &generics.params.consts[id.local_id];
+                write!(f, "{}", param_data.name)
+            }
+            ConstValue::Concrete(_) => write!(f, "_"),
+        }
+    }
+}
+
+impl HirDisplay for BoundVar {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+        write!(f, "?{}.{}", self.debruijn.depth(), self.index)
+    }
+}
+
 impl HirDisplay for Ty {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         if f.should_truncate() {
@@ -309,10 +333,12 @@ impl HirDisplay for Ty {
                 t.hir_fmt(f)?;
                 write!(f, "]")?;
             }
-            TyKind::Array(t) => {
+            TyKind::Array(t, c) => {
                 write!(f, "[")?;
                 t.hir_fmt(f)?;
-                write!(f, "; _]")?;
+                write!(f, "; ")?;
+                c.hir_fmt(f)?;
+                write!(f, "]")?;
             }
             TyKind::Raw(m, t) | TyKind::Ref(m, _, t) => {
                 let ty_display =
@@ -617,7 +643,7 @@ impl HirDisplay for Ty {
                     }
                 }
             }
-            TyKind::BoundVar(idx) => write!(f, "?{}.{}", idx.debruijn.depth(), idx.index)?,
+            TyKind::BoundVar(idx) => idx.hir_fmt(f)?,
             TyKind::Dyn(dyn_ty) => {
                 write_bounds_like_dyn_trait_with_prefix(
                     "dyn",
@@ -850,7 +876,7 @@ impl HirDisplay for Lifetime {
 impl HirDisplay for LifetimeData {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         match self {
-            LifetimeData::BoundVar(idx) => write!(f, "?{}.{}", idx.debruijn.depth(), idx.index),
+            LifetimeData::BoundVar(idx) => idx.hir_fmt(f),
             LifetimeData::InferenceVar(_) => write!(f, "_"),
             LifetimeData::Placeholder(idx) => {
                 let id = lt_from_placeholder_idx(f.db, *idx);

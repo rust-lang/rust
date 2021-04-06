@@ -27,7 +27,7 @@ use stdx::impl_from;
 
 use crate::{
     db::HirDatabase,
-    static_lifetime, to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
+    dummy_usize_const, static_lifetime, to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
     traits::chalk::{Interner, ToChalk},
     utils::{
         all_super_trait_refs, associated_type_by_name_including_super_traits, generics,
@@ -166,7 +166,7 @@ impl<'a> TyLoweringContext<'a> {
             }
             TypeRef::Array(inner) => {
                 let inner_ty = self.lower_ty(inner);
-                TyKind::Array(inner_ty).intern(&Interner)
+                TyKind::Array(inner_ty, dummy_usize_const()).intern(&Interner)
             }
             TypeRef::Slice(inner) => {
                 let inner_ty = self.lower_ty(inner);

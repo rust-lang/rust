@@ -153,7 +153,10 @@ impl TypeWalk for Ty {
                     p.walk(f);
                 }
             }
-            TyKind::Slice(ty) | TyKind::Array(ty) | TyKind::Ref(_, _, ty) | TyKind::Raw(_, ty) => {
+            TyKind::Slice(ty)
+            | TyKind::Array(ty, _)
+            | TyKind::Ref(_, _, ty)
+            | TyKind::Raw(_, ty) => {
                 ty.walk(f);
             }
             TyKind::Function(fn_pointer) => {
@@ -187,7 +190,10 @@ impl TypeWalk for Ty {
             TyKind::Alias(AliasTy::Opaque(o_ty)) => {
                 o_ty.substitution.walk_mut_binders(f, binders);
             }
-            TyKind::Slice(ty) | TyKind::Array(ty) | TyKind::Ref(_, _, ty) | TyKind::Raw(_, ty) => {
+            TyKind::Slice(ty)
+            | TyKind::Array(ty, _)
+            | TyKind::Ref(_, _, ty)
+            | TyKind::Raw(_, ty) => {
                 ty.walk_mut_binders(f, binders);
             }
             TyKind::Function(fn_pointer) => {

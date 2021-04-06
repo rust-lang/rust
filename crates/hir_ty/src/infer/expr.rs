@@ -15,7 +15,7 @@ use stdx::always;
 use syntax::ast::RangeOp;
 
 use crate::{
-    autoderef,
+    autoderef, dummy_usize_const,
     lower::lower_to_chalk_mutability,
     method_resolution, op,
     primitive::{self, UintTy},
@@ -702,7 +702,7 @@ impl<'a> InferenceContext<'a> {
             }
             Expr::Array(array) => {
                 let elem_ty = match expected.ty.kind(&Interner) {
-                    TyKind::Array(st) | TyKind::Slice(st) => st.clone(),
+                    TyKind::Array(st, _) | TyKind::Slice(st) => st.clone(),
                     _ => self.table.new_type_var(),
                 };
 
@@ -726,7 +726,7 @@ impl<'a> InferenceContext<'a> {
                     }
                 }
 
-                TyKind::Array(elem_ty).intern(&Interner)
+                TyKind::Array(elem_ty, dummy_usize_const()).intern(&Interner)
             }
             Expr::Literal(lit) => match lit {
                 Literal::Bool(..) => TyKind::Scalar(Scalar::Bool).intern(&Interner),
@@ -736,7 +736,8 @@ impl<'a> InferenceContext<'a> {
                 }
                 Literal::ByteString(..) => {
                     let byte_type = TyKind::Scalar(Scalar::Uint(UintTy::U8)).intern(&Interner);
-                    let array_type = TyKind::Array(byte_type).intern(&Interner);
+                    let array_type =
+                        TyKind::Array(byte_type, dummy_usize_const()).intern(&Interner);
                     TyKind::Ref(Mutability::Not, static_lifetime(), array_type).intern(&Interner)
                 }
                 Literal::Char(..) => TyKind::Scalar(Scalar::Char).intern(&Interner),

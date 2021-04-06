@@ -317,9 +317,11 @@ impl InferenceTable {
                 | (TyKind::Closure(.., substs1), TyKind::Closure(.., substs2)) => {
                     self.unify_substs(substs1, substs2, depth + 1)
                 }
+                (TyKind::Array(ty1, c1), TyKind::Array(ty2, c2)) if c1 == c2 => {
+                    self.unify_inner(ty1, ty2, depth + 1)
+                }
                 (TyKind::Ref(_, _, ty1), TyKind::Ref(_, _, ty2))
                 | (TyKind::Raw(_, ty1), TyKind::Raw(_, ty2))
-                | (TyKind::Array(ty1), TyKind::Array(ty2))
                 | (TyKind::Slice(ty1), TyKind::Slice(ty2)) => self.unify_inner(ty1, ty2, depth + 1),
                 _ => true, /* we checked equals_ctor already */
             }

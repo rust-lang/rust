@@ -88,6 +88,8 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::interned]
     fn intern_lifetime_param_id(&self, param_id: LifetimeParamId) -> InternedLifetimeParamId;
     #[salsa::interned]
+    fn intern_const_param_id(&self, param_id: ConstParamId) -> InternedConstParamId;
+    #[salsa::interned]
     fn intern_impl_trait_id(&self, id: ImplTraitId) -> InternedOpaqueTyId;
     #[salsa::interned]
     fn intern_closure(&self, id: (DefWithBodyId, ExprId)) -> InternedClosureId;
@@ -160,6 +162,10 @@ impl_intern_key!(InternedTypeParamId);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct InternedLifetimeParamId(salsa::InternId);
 impl_intern_key!(InternedLifetimeParamId);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct InternedConstParamId(salsa::InternId);
+impl_intern_key!(InternedConstParamId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct InternedOpaqueTyId(salsa::InternId);
