@@ -251,6 +251,7 @@ struct ResolutionInfo {
     extra_fragment: Option<String>,
 }
 
+#[derive(Clone)]
 struct DiagnosticInfo<'a> {
     item: &'a Item,
     dox: &'a str,
@@ -916,19 +917,19 @@ impl LinkCollector<'_, '_> {
             return None;
         }
 
+        let diag_info = DiagnosticInfo {
+            item,
+            dox,
+            ori_link: &ori_link.link,
+            link_range: ori_link.range.clone(),
+        };
+
         let link = ori_link.link.replace("`", "");
         let no_backticks_range = range_between_backticks(&ori_link);
         let parts = link.split('#').collect::<Vec<_>>();
         let (link, extra_fragment) = if parts.len() > 2 {
             // A valid link can't have multiple #'s
-            anchor_failure(
-                self.cx,
-                &item,
-                &link,
-                dox,
-                ori_link.range,
-                AnchorFailure::MultipleAnchors,
-            );
+            anchor_failure(self.cx, diag_info, AnchorFailure::MultipleAnchors);
             return None;
         } else if parts.len() == 2 {
             if parts[0].trim().is_empty() {
@@ -950,7 +951,7 @@ impl LinkCollector<'_, '_> {
                     // See issue #83859.
                     let disambiguator_range = (no_backticks_range.start + relative_range.start)
                         ..(no_backticks_range.start + relative_range.end);
-                    disambiguator_error(self.cx, &item, dox, disambiguator_range, &err_msg);
+                    disambiguator_error(self.cx, diag_info, disambiguator_range, &err_msg);
                 }
                 return None;
             }
@@ -989,11 +990,9 @@ impl LinkCollector<'_, '_> {
             debug!("attempting to resolve item without parent module: {}", path_str);
             resolution_failure(
                 self,
-                &item,
+                diag_info,
                 path_str,
                 disambiguator,
-                dox,
-                ori_link.range,
                 smallvec![ResolutionFailure::NoParentItem],
             );
             return None;
@@ -1039,11 +1038,9 @@ impl LinkCollector<'_, '_> {
                     debug!("link has malformed generics: {}", path_str);
                     resolution_failure(
                         self,
-                        &item,
+                        diag_info,
                         path_str,
                         disambiguator,
-                        dox,
-                        ori_link.range,
                         smallvec![err_kind],
                     );
                     return None;
@@ -1059,12 +1056,6 @@ impl LinkCollector<'_, '_> {
             return None;
         }
 
-        let diag_info = DiagnosticInfo {
-            item,
-            dox,
-            ori_link: &ori_link.link,
-            link_range: ori_link.range.clone(),
-        };
         let (mut res, mut fragment) = self.resolve_with_disambiguator_cached(
             ResolutionInfo {
                 module_id,
@@ -1072,7 +1063,7 @@ impl LinkCollector<'_, '_> {
                 path_str: path_str.to_owned(),
                 extra_fragment,
             },
-            diag_info,
+            diag_info.clone(), // this struct should really be Copy, but Range is not :(
             matches!(ori_link.kind, LinkType::Reference | LinkType::Shortcut),
         )?;
 
@@ -1090,10 +1081,7 @@ impl LinkCollector<'_, '_> {
                     if fragment.is_some() {
                         anchor_failure(
                             self.cx,
-                            &item,
-                            path_str,
-                            dox,
-                            ori_link.range,
+                            diag_info,
                             AnchorFailure::RustdocAnchorConflict(prim),
                         );
                         return None;
@@ -1103,7 +1091,7 @@ impl LinkCollector<'_, '_> {
                 } else {
                     // `[char]` when a `char` module is in scope
                     let candidates = vec![res, prim];
-                    ambiguity_error(self.cx, &item, path_str, dox, ori_link.range, candidates);
+                    ambiguity_error(self.cx, diag_info, path_str, candidates);
                     return None;
                 }
             }
@@ -1123,15 +1111,7 @@ impl LinkCollector<'_, '_> {
                 diag.note(&note);
                 suggest_disambiguator(resolved, diag, path_str, dox, sp, &ori_link.range);
             };
-            report_diagnostic(
-                self.cx.tcx,
-                BROKEN_INTRA_DOC_LINKS,
-                &msg,
-                &item,
-                dox,
-                &ori_link.range,
-                callback,
-            );
+            report_diagnostic(self.cx.tcx, BROKEN_INTRA_DOC_LINKS, &msg, &diag_info, callback);
         };
 
         let verify = |kind: DefKind, id: DefId| {
@@ -1171,7 +1151,7 @@ impl LinkCollector<'_, '_> {
                 if self.cx.tcx.privacy_access_levels(LOCAL_CRATE).is_exported(hir_src)
                     && !self.cx.tcx.privacy_access_levels(LOCAL_CRATE).is_exported(hir_dst)
                 {
-                    privacy_error(self.cx, &item, &path_str, dox, &ori_link);
+                    privacy_error(self.cx, &diag_info, &path_str);
                 }
             }
 
@@ -1312,29 +1292,14 @@ impl LinkCollector<'_, '_> {
                                 }
                             }
                         }
-                        resolution_failure(
-                            self,
-                            diag.item,
-                            path_str,
-                            disambiguator,
-                            diag.dox,
-                            diag.link_range,
-                            smallvec![kind],
-                        );
+                        resolution_failure(self, diag, path_str, disambiguator, smallvec![kind]);
                         // This could just be a normal link or a broken link
                         // we could potentially check if something is
                         // "intra-doc-link-like" and warn in that case.
                         None
                     }
                     Err(ErrorKind::AnchorFailure(msg)) => {
-                        anchor_failure(
-                            self.cx,
-                            diag.item,
-                            diag.ori_link,
-                            diag.dox,
-                            diag.link_range,
-                            msg,
-                        );
+                        anchor_failure(self.cx, diag, msg);
                         None
                     }
                 }
@@ -1351,14 +1316,7 @@ impl LinkCollector<'_, '_> {
                             Ok(res)
                         }
                         Err(ErrorKind::AnchorFailure(msg)) => {
-                            anchor_failure(
-                                self.cx,
-                                diag.item,
-                                diag.ori_link,
-                                diag.dox,
-                                diag.link_range,
-                                msg,
-                            );
+                            anchor_failure(self.cx, diag, msg);
                             return None;
                         }
                         Err(ErrorKind::Resolve(box kind)) => Err(kind),
@@ -1366,14 +1324,7 @@ impl LinkCollector<'_, '_> {
                     value_ns: match self.resolve(path_str, ValueNS, base_node, extra_fragment) {
                         Ok(res) => Ok(res),
                         Err(ErrorKind::AnchorFailure(msg)) => {
-                            anchor_failure(
-                                self.cx,
-                                diag.item,
-                                diag.ori_link,
-                                diag.dox,
-                                diag.link_range,
-                                msg,
-                            );
+                            anchor_failure(self.cx, diag, msg);
                             return None;
                         }
                         Err(ErrorKind::Resolve(box kind)) => Err(kind),
@@ -1402,11 +1353,9 @@ impl LinkCollector<'_, '_> {
                 if len == 0 {
                     resolution_failure(
                         self,
-                        diag.item,
+                        diag,
                         path_str,
                         disambiguator,
-                        diag.dox,
-                        diag.link_range,
                         candidates.into_iter().filter_map(|res| res.err()).collect(),
                     );
                     // this could just be a normal link
@@ -1423,14 +1372,7 @@ impl LinkCollector<'_, '_> {
                     }
                     // If we're reporting an ambiguity, don't mention the namespaces that failed
                     let candidates = candidates.map(|candidate| candidate.ok().map(|(res, _)| res));
-                    ambiguity_error(
-                        self.cx,
-                        diag.item,
-                        path_str,
-                        diag.dox,
-                        diag.link_range,
-                        candidates.present_items().collect(),
-                    );
+                    ambiguity_error(self.cx, diag, path_str, candidates.present_items().collect());
                     None
                 }
             }
@@ -1448,15 +1390,7 @@ impl LinkCollector<'_, '_> {
                                 break;
                             }
                         }
-                        resolution_failure(
-                            self,
-                            diag.item,
-                            path_str,
-                            disambiguator,
-                            diag.dox,
-                            diag.link_range,
-                            smallvec![kind],
-                        );
+                        resolution_failure(self, diag, path_str, disambiguator, smallvec![kind]);
                         None
                     }
                 }
@@ -1690,9 +1624,7 @@ fn report_diagnostic(
     tcx: TyCtxt<'_>,
     lint: &'static Lint,
     msg: &str,
-    item: &Item,
-    dox: &str,
-    link_range: &Range<usize>,
+    DiagnosticInfo { item, ori_link: _, dox, link_range }: &DiagnosticInfo<'_>,
     decorate: impl FnOnce(&mut DiagnosticBuilder<'_>, Option<rustc_span::Span>),
 ) {
     let hir_id = match DocContext::as_local_hir_id(tcx, item.def_id) {
@@ -1746,11 +1678,9 @@ fn report_diagnostic(
 /// `std::io::Error::x`, this will resolve `std::io::Error`.
 fn resolution_failure(
     collector: &mut LinkCollector<'_, '_>,
-    item: &Item,
+    diag_info: DiagnosticInfo<'_>,
     path_str: &str,
     disambiguator: Option<Disambiguator>,
-    dox: &str,
-    link_range: Range<usize>,
     kinds: SmallVec<[ResolutionFailure<'_>; 3]>,
 ) {
     let tcx = collector.cx.tcx;
@@ -1758,9 +1688,7 @@ fn resolution_failure(
         tcx,
         BROKEN_INTRA_DOC_LINKS,
         &format!("unresolved link to `{}`", path_str),
-        item,
-        dox,
-        &link_range,
+        &diag_info,
         |diag, sp| {
             let item = |res: Res| format!("the {} `{}`", res.descr(), res.name(tcx),);
             let assoc_item_not_allowed = |res: Res| {
@@ -1920,9 +1848,9 @@ fn resolution_failure(
                                 disambiguator,
                                 diag,
                                 path_str,
-                                dox,
+                                diag_info.dox,
                                 sp,
-                                &link_range,
+                                &diag_info.link_range,
                             )
                         }
 
@@ -1969,24 +1897,19 @@ fn resolution_failure(
 }
 
 /// Report an anchor failure.
-fn anchor_failure(
-    cx: &DocContext<'_>,
-    item: &Item,
-    path_str: &str,
-    dox: &str,
-    link_range: Range<usize>,
-    failure: AnchorFailure,
-) {
+fn anchor_failure(cx: &DocContext<'_>, diag_info: DiagnosticInfo<'_>, failure: AnchorFailure) {
     let msg = match failure {
-        AnchorFailure::MultipleAnchors => format!("`{}` contains multiple anchors", path_str),
+        AnchorFailure::MultipleAnchors => {
+            format!("`{}` contains multiple anchors", diag_info.ori_link)
+        }
         AnchorFailure::RustdocAnchorConflict(res) => format!(
             "`{}` contains an anchor, but links to {kind}s are already anchored",
-            path_str,
+            diag_info.ori_link,
             kind = res.descr(),
         ),
     };
 
-    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, &msg, item, dox, &link_range, |diag, sp| {
+    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, &msg, &diag_info, |diag, sp| {
         if let Some(sp) = sp {
             diag.span_label(sp, "contains invalid anchor");
         }
@@ -1996,21 +1919,19 @@ fn anchor_failure(
 /// Report an error in the link disambiguator.
 fn disambiguator_error(
     cx: &DocContext<'_>,
-    item: &Item,
-    dox: &str,
-    link_range: Range<usize>,
+    mut diag_info: DiagnosticInfo<'_>,
+    disambiguator_range: Range<usize>,
     msg: &str,
 ) {
-    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, msg, item, dox, &link_range, |_diag, _sp| {});
+    diag_info.link_range = disambiguator_range;
+    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, msg, &diag_info, |_diag, _sp| {});
 }
 
 /// Report an ambiguity error, where there were multiple possible resolutions.
 fn ambiguity_error(
     cx: &DocContext<'_>,
-    item: &Item,
+    diag_info: DiagnosticInfo<'_>,
     path_str: &str,
-    dox: &str,
-    link_range: Range<usize>,
     candidates: Vec<Res>,
 ) {
     let mut msg = format!("`{}` is ", path_str);
@@ -2037,7 +1958,7 @@ fn ambiguity_error(
         }
     }
 
-    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, &msg, item, dox, &link_range, |diag, sp| {
+    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, &msg, &diag_info, |diag, sp| {
         if let Some(sp) = sp {
             diag.span_label(sp, "ambiguous link");
         } else {
@@ -2046,7 +1967,14 @@ fn ambiguity_error(
 
         for res in candidates {
             let disambiguator = Disambiguator::from_res(res);
-            suggest_disambiguator(disambiguator, diag, path_str, dox, sp, &link_range);
+            suggest_disambiguator(
+                disambiguator,
+                diag,
+                path_str,
+                diag_info.dox,
+                sp,
+                &diag_info.link_range,
+            );
         }
     });
 }
@@ -2078,9 +2006,9 @@ fn suggest_disambiguator(
 }
 
 /// Report a link from a public item to a private one.
-fn privacy_error(cx: &DocContext<'_>, item: &Item, path_str: &str, dox: &str, link: &MarkdownLink) {
+fn privacy_error(cx: &DocContext<'_>, diag_info: &DiagnosticInfo<'_>, path_str: &str) {
     let sym;
-    let item_name = match item.name {
+    let item_name = match diag_info.item.name {
         Some(name) => {
             sym = name.as_str();
             &*sym
@@ -2090,7 +2018,7 @@ fn privacy_error(cx: &DocContext<'_>, item: &Item, path_str: &str, dox: &str, li
     let msg =
         format!("public documentation for `{}` links to private item `{}`", item_name, path_str);
 
-    report_diagnostic(cx.tcx, PRIVATE_INTRA_DOC_LINKS, &msg, item, dox, &link.range, |diag, sp| {
+    report_diagnostic(cx.tcx, PRIVATE_INTRA_DOC_LINKS, &msg, diag_info, |diag, sp| {
         if let Some(sp) = sp {
             diag.span_label(sp, "this item is private");
         }
