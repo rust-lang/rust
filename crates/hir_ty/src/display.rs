@@ -51,6 +51,10 @@ pub trait HirDisplay {
     where
         Self: Sized,
     {
+        assert!(
+            !matches!(display_target, DisplayTarget::SourceCode { .. }),
+            "HirDisplayWrapper cannot fail with DisplaySourceCodeError, use HirDisplay::hir_fmt directly instead"
+        );
         HirDisplayWrapper { db, t: self, max_size, omit_verbose_types, display_target }
     }
 
@@ -235,7 +239,7 @@ where
             Err(HirDisplayError::FmtError) => Err(fmt::Error),
             Err(HirDisplayError::DisplaySourceCodeError(_)) => {
                 // This should never happen
-                panic!("HirDisplay failed when calling Display::fmt!")
+                panic!("HirDisplay::hir_fmt failed with DisplaySourceCodeError when calling Display::fmt!")
             }
         }
     }
@@ -256,13 +260,9 @@ impl HirDisplay for ProjectionTy {
         }
 
         let trait_ = f.db.trait_data(self.trait_(f.db));
-        let first_parameter = self.self_type_parameter(&Interner).into_displayable(
-            f.db,
-            f.max_size,
-            f.omit_verbose_types,
-            f.display_target,
-        );
-        write!(f, "<{} as {}", first_parameter, trait_.name)?;
+        write!(f, "<")?;
+        self.self_type_parameter(&Interner).hir_fmt(f)?;
+        write!(f, " as {}", trait_.name)?;
         if self.substitution.len(&Interner) > 1 {
             write!(f, "<")?;
             f.write_joined(&self.substitution.interned()[1..], ", ")?;
@@ -341,9 +341,6 @@ impl HirDisplay for Ty {
                 write!(f, "]")?;
             }
             TyKind::Raw(m, t) | TyKind::Ref(m, _, t) => {
-                let ty_display =
-                    t.into_displayable(f.db, f.max_size, f.omit_verbose_types, f.display_target);
-
                 if matches!(self.kind(&Interner), TyKind::Raw(..)) {
                     write!(
                         f,
@@ -398,16 +395,16 @@ impl HirDisplay for Ty {
                     if fn_traits(f.db.upcast(), trait_).any(|it| it == trait_)
                         && predicates.len() <= 2
                     {
-                        return write!(f, "{}", ty_display);
+                        return t.hir_fmt(f);
                     }
                 }
 
                 if predicates.len() > 1 {
                     write!(f, "(")?;
-                    write!(f, "{}", ty_display)?;
+                    t.hir_fmt(f)?;
                     write!(f, ")")?;
                 } else {
-                    write!(f, "{}", ty_display)?;
+                    t.hir_fmt(f)?;
                 }
             }
             TyKind::Tuple(_, substs) => {
@@ -454,14 +451,8 @@ impl HirDisplay for Ty {
                 write!(f, ")")?;
                 let ret = sig.ret();
                 if !ret.is_unit() {
-                    let ret_display = ret.into_displayable(
-                        f.db,
-                        f.max_size,
-                        f.omit_verbose_types,
-                        f.display_target,
-                    );
-
-                    write!(f, " -> {}", ret_display)?;
+                    write!(f, " -> ")?;
+                    ret.hir_fmt(f)?;
                 }
             }
             TyKind::Adt(AdtId(def_id), parameters) => {
@@ -603,13 +594,8 @@ impl HirDisplay for Ty {
                         write!(f, "|")?;
                     };
 
-                    let ret_display = sig.ret().into_displayable(
-                        f.db,
-                        f.max_size,
-                        f.omit_verbose_types,
-                        f.display_target,
-                    );
-                    write!(f, " -> {}", ret_display)?;
+                    write!(f, " -> ")?;
+                    sig.ret().hir_fmt(f)?;
                 } else {
                     write!(f, "{{closure}}")?;
                 }
@@ -697,9 +683,8 @@ impl HirDisplay for CallableSig {
         write!(f, ")")?;
         let ret = self.ret();
         if !ret.is_unit() {
-            let ret_display =
-                ret.into_displayable(f.db, f.max_size, f.omit_verbose_types, f.display_target);
-            write!(f, " -> {}", ret_display)?;
+            write!(f, " -> ")?;
+            ret.hir_fmt(f)?;
         }
         Ok(())
     }
