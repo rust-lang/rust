@@ -11,8 +11,7 @@ use smallvec::SmallVec;
 
 use crate::{
     AssocTypeId, CanonicalVarKinds, ChalkTraitId, ClosureId, Const, FnDefId, FnSig, ForeignDefId,
-    InferenceVar, Interner, Lifetime, OpaqueTyId, PlaceholderIndex, TypeWalk, VariableKind,
-    VariableKinds,
+    Interner, Lifetime, OpaqueTyId, PlaceholderIndex, TypeWalk, VariableKind, VariableKinds,
 };
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -523,4 +522,26 @@ pub enum Guidance {
 
     /// There's no useful information to feed back to type inference
     Unknown,
+}
+
+/// The kinds of placeholders we need during type inference. There's separate
+/// values for general types, and for integer and float variables. The latter
+/// two are used for inference of literal values (e.g. `100` could be one of
+/// several integer types).
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct InferenceVar {
+    index: u32,
+}
+
+impl From<u32> for InferenceVar {
+    fn from(index: u32) -> InferenceVar {
+        InferenceVar { index }
+    }
+}
+
+impl InferenceVar {
+    /// Gets the underlying index value.
+    pub fn index(self) -> u32 {
+        self.index
+    }
 }
