@@ -33,7 +33,8 @@ use crate::SourceChange;
 
 pub(crate) use on_enter::on_enter;
 
-pub(crate) const TRIGGER_CHARS: &str = ".=>";
+// Don't forget to add new trigger characters to `server_capabilities` in `caps.rs`.
+pub(crate) const TRIGGER_CHARS: &str = ".=>{";
 
 // Feature: On Typing Assists
 //
@@ -70,8 +71,45 @@ fn on_char_typed_inner(file: &SourceFile, offset: TextSize, char_typed: char) ->
         '.' => on_dot_typed(file, offset),
         '=' => on_eq_typed(file, offset),
         '>' => on_arrow_typed(file, offset),
+        '{' => on_opening_brace_typed(file, offset),
         _ => unreachable!(),
     }
+}
+
+/// Inserts a closing `}` when the user types an opening `{`, wrapping an existing expression in a
+/// block.
+fn on_opening_brace_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
+    assert_eq!(file.syntax().text().char_at(offset), Some('{'));
+    let brace_token = file.syntax().token_at_offset(offset).right_biased()?;
+    let block = ast::BlockExpr::cast(brace_token.parent()?)?;
+
+    // We expect a block expression enclosing exactly 1 preexisting expression. It can be parsed as
+    // either the trailing expr or an ExprStmt.
+    let offset = {
+        match block.tail_expr() {
+            Some(expr) => {
+                if block.statements().next().is_some() {
+                    return None;
+                }
+                expr.syntax().text_range().end()
+            }
+            None => {
+                if block.statements().count() != 1 {
+                    return None;
+                }
+
+                match block.statements().next()? {
+                    ast::Stmt::ExprStmt(it) => {
+                        // Use the expression span to place `}` before the `;`
+                        it.expr()?.syntax().text_range().end()
+                    }
+                    _ => return None,
+                }
+            }
+        }
+    };
+
+    Some(TextEdit::insert(offset, "}".to_string()))
 }
 
 /// Returns an edit which should be applied after `=` was typed. Primarily,
@@ -372,5 +410,12 @@ fn main() {
     #[test]
     fn adds_space_after_return_type() {
         type_char('>', "fn foo() -$0{ 92 }", "fn foo() -> { 92 }")
+    }
+
+    #[test]
+    fn adds_closing_brace() {
+        type_char('{', r"fn f() { match () { _ => $0() } }", r"fn f() { match () { _ => {()} } }");
+        type_char('{', r"fn f() { $0(); }", r"fn f() { {()}; }");
+        type_char('{', r"fn f() { let x = $0(); }", r"fn f() { let x = {()}; }");
     }
 }
