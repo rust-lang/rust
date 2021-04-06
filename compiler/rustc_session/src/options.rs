@@ -377,6 +377,7 @@ mod desc {
     pub const parse_cfguard: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `checks`, or `nochecks`";
     pub const parse_cfprotection: &str = "`none`|`no`|`n` (default), `branch`, `return`, or `full`|`yes`|`y` (equivalent to `branch` and `return`)";
+    pub const parse_debuginfo: &str = "either an integer (0, 1, 2), `none`, `line-directives-only`, `line-tables-only`, `limited`, or `full`";
     pub const parse_strip: &str = "either `none`, `debuginfo`, or `symbols`";
     pub const parse_linker_flavor: &str = ::rustc_target::spec::LinkerFlavorCli::one_of();
     pub const parse_optimization_fuel: &str = "crate=integer";
@@ -764,6 +765,18 @@ mod parse {
             Some("full") => CFProtection::Full,
             Some(_) => return false,
         };
+        true
+    }
+
+    pub(crate) fn parse_debuginfo(slot: &mut DebugInfo, v: Option<&str>) -> bool {
+        match v {
+            Some("0") | Some("none") => *slot = DebugInfo::None,
+            Some("line-directives-only") => *slot = DebugInfo::LineDirectivesOnly,
+            Some("line-tables-only") => *slot = DebugInfo::LineTablesOnly,
+            Some("1") | Some("limited") => *slot = DebugInfo::Limited,
+            Some("2") | Some("full") => *slot = DebugInfo::Full,
+            _ => return false,
+        }
         true
     }
 
@@ -1217,9 +1230,9 @@ options! {
         "use Windows Control Flow Guard (default: no)"),
     debug_assertions: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "explicitly enable the `cfg(debug_assertions)` directive"),
-    debuginfo: usize = (0, parse_number, [TRACKED],
-        "debug info emission level (0 = no debug info, 1 = line tables only, \
-        2 = full debug info with variable and type information; default: 0)"),
+    debuginfo: DebugInfo = (DebugInfo::None, parse_debuginfo, [TRACKED],
+        "debug info emission level (0-2, none, line-directives-only, \
+        line-tables-only, limited, or full; default: 0)"),
     default_linker_libraries: bool = (false, parse_bool, [UNTRACKED],
         "allow the linker to link its default libraries (default: no)"),
     embed_bitcode: bool = (true, parse_bool, [TRACKED],

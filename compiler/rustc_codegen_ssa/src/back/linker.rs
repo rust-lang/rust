@@ -1121,9 +1121,12 @@ impl<'a> Linker for EmLinker<'a> {
 
     fn debuginfo(&mut self, _strip: Strip, _: &[PathBuf]) {
         // Preserve names or generate source maps depending on debug info
+        // For more information see https://emscripten.org/docs/tools_reference/emcc.html#emcc-g
         self.cmd.arg(match self.sess.opts.debuginfo {
             DebugInfo::None => "-g0",
-            DebugInfo::Limited => "--profiling-funcs",
+            DebugInfo::Limited | DebugInfo::LineTablesOnly | DebugInfo::LineDirectivesOnly => {
+                "--profiling-funcs"
+            }
             DebugInfo::Full => "-g",
         });
     }

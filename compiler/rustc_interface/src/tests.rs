@@ -5,6 +5,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_errors::{emitter::HumanReadableErrorType, registry, ColorConfig};
 use rustc_session::config::rustc_optgroups;
+use rustc_session::config::DebugInfo;
 use rustc_session::config::Input;
 use rustc_session::config::InstrumentXRay;
 use rustc_session::config::TraitSolver;
@@ -574,7 +575,7 @@ fn test_codegen_options_tracking_hash() {
     tracked!(code_model, Some(CodeModel::Large));
     tracked!(control_flow_guard, CFGuard::Checks);
     tracked!(debug_assertions, Some(true));
-    tracked!(debuginfo, 0xdeadbeef);
+    tracked!(debuginfo, DebugInfo::Limited);
     tracked!(embed_bitcode, false);
     tracked!(force_frame_pointers, Some(false));
     tracked!(force_unwind_tables, Some(true));
