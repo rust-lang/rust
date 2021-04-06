@@ -1,0 +1,20 @@
+error[E0658]: custom inner attributes are unstable
+  --> $DIR/ice-5835.rs:1:4
+   |
+LL | #![rustfmt::skip]
+   |    ^^^^^^^^^^^^^
+   |
+   = note: see issue #54726 <https://github.com/rust-lang/rust/issues/54726> for more information
+   = help: add `#![feature(custom_inner_attributes)]` to the crate attributes to enable
+
+error: using tabs in doc comments is not recommended
+  --> $DIR/ice-5835.rs:4:10
+   |
+LL |     /// 位    
+   |           ^^^^ help: consider using four spaces per tab
+   |
+   = note: `-D clippy::tabs-in-doc-comments` implied by `-D warnings`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

@@ -104,30 +104,29 @@ fn get_chunks_of_tabs(the_str: &str) -> Vec<(u32, u32)> {
     // tracker to decide if the last group of tabs is not closed by a non-tab character
     let mut is_active = false;
 
-    let chars_array: Vec<_> = the_str.chars().collect();
+    let char_indices: Vec<_> = the_str.char_indices().collect();
 
-    if chars_array == vec!['\t'] {
+    if char_indices.len() == 1 && char_indices.first().unwrap().1 == '\t' {
         return vec![(0, 1)];
     }
 
-    for (index, arr) in chars_array.windows(2).enumerate() {
-        let index = u32::try_from(index).expect(line_length_way_to_long);
-        match arr {
-            ['\t', '\t'] => {
+    for entry in char_indices.windows(2) {
+        match entry {
+            [(_, '\t'), (_, '\t')] => {
                 // either string starts with double tab, then we have to set it active,
                 // otherwise is_active is true anyway
                 is_active = true;
             },
-            [_, '\t'] => {
+            [(_, _), (index_b, '\t')] => {
                 // as ['\t', '\t'] is excluded, this has to be a start of a tab group,
                 // set indices accordingly
                 is_active = true;
-                current_start = index + 1;
+                current_start = *index_b as u32;
             },
-            ['\t', _] => {
+            [(_, '\t'), (index_b, _)] => {
                 // this now has to be an end of the group, hence we have to push a new tuple
                 is_active = false;
-                spans.push((current_start, index + 1));
+                spans.push((current_start, *index_b as u32));
             },
             _ => {},
         }
@@ -137,7 +136,7 @@ fn get_chunks_of_tabs(the_str: &str) -> Vec<(u32, u32)> {
     if is_active {
         spans.push((
             current_start,
-            u32::try_from(the_str.chars().count()).expect(line_length_way_to_long),
+            u32::try_from(char_indices.last().unwrap().0 + 1).expect(line_length_way_to_long),
         ));
     }
 
@@ -147,6 +146,13 @@ fn get_chunks_of_tabs(the_str: &str) -> Vec<(u32, u32)> {
 #[cfg(test)]
 mod tests_for_get_chunks_of_tabs {
     use super::get_chunks_of_tabs;
+
+    #[test]
+    fn test_unicode_han_string() {
+        let res = get_chunks_of_tabs(" 位\t");
+
+        assert_eq!(res, vec![(4, 5)]);
+    }
 
     #[test]
     fn test_empty_string() {
