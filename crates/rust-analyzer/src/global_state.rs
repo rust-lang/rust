@@ -23,6 +23,7 @@ use crate::{
     document::DocumentData,
     from_proto,
     line_index::{LineEndings, LineIndex},
+    lsp_ext,
     main_loop::Task,
     op_queue::OpQueue,
     reload::SourceRootConfig,
@@ -31,20 +32,6 @@ use crate::{
     to_proto::url_from_abs_path,
     Result,
 };
-
-#[derive(Eq, PartialEq, Copy, Clone)]
-pub(crate) enum Status {
-    Loading,
-    Ready { partial: bool },
-    Invalid,
-    NeedsReload,
-}
-
-impl Default for Status {
-    fn default() -> Self {
-        Status::Loading
-    }
-}
 
 // Enforces drop order
 pub(crate) struct Handle<H, C> {
@@ -67,26 +54,36 @@ pub(crate) struct GlobalState {
     req_queue: ReqQueue,
     pub(crate) task_pool: Handle<TaskPool<Task>, Receiver<Task>>,
     pub(crate) loader: Handle<Box<dyn vfs::loader::Handle>, Receiver<vfs::loader::Message>>,
-    pub(crate) vfs_config_version: u32,
-    pub(crate) flycheck: Vec<FlycheckHandle>,
-    pub(crate) flycheck_sender: Sender<flycheck::Message>,
-    pub(crate) flycheck_receiver: Receiver<flycheck::Message>,
     pub(crate) config: Arc<Config>,
     pub(crate) analysis_host: AnalysisHost,
     pub(crate) diagnostics: DiagnosticCollection,
     pub(crate) mem_docs: FxHashMap<VfsPath, DocumentData>,
     pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
-    pub(crate) vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
     pub(crate) shutdown_requested: bool,
-    pub(crate) status: Status,
+    pub(crate) last_reported_status: Option<lsp_ext::ServerStatusParams>,
     pub(crate) source_root_config: SourceRootConfig,
     pub(crate) proc_macro_client: Option<ProcMacroClient>,
 
-    pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
-    pub(crate) fetch_workspaces_queue: OpQueue<(), ()>,
+    pub(crate) flycheck: Vec<FlycheckHandle>,
+    pub(crate) flycheck_sender: Sender<flycheck::Message>,
+    pub(crate) flycheck_receiver: Receiver<flycheck::Message>,
 
+    pub(crate) vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
+    pub(crate) vfs_config_version: u32,
+    pub(crate) vfs_progress_config_version: u32,
+    pub(crate) vfs_progress_n_total: usize,
+    pub(crate) vfs_progress_n_done: usize,
+
+    /// For both `workspaces` and `workspace_build_data`, the field stores the
+    /// data we actually use, while the `OpQueue` stores the result of the last
+    /// fetch.
+    ///
+    /// If the fetch (partially) fails, we do not update the values.
+    pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
+    pub(crate) fetch_workspaces_queue: OpQueue<(), Vec<anyhow::Result<ProjectWorkspace>>>,
     pub(crate) workspace_build_data: Option<BuildDataResult>,
-    pub(crate) fetch_build_data_queue: OpQueue<BuildDataCollector, ()>,
+    pub(crate) fetch_build_data_queue:
+        OpQueue<BuildDataCollector, Option<anyhow::Result<BuildDataResult>>>,
 
     latest_requests: Arc<RwLock<LatestRequests>>,
 }
@@ -124,25 +121,32 @@ impl GlobalState {
         GlobalState {
             sender,
             req_queue: ReqQueue::default(),
-            vfs_config_version: 0,
             task_pool,
             loader,
-            flycheck: Vec::new(),
-            flycheck_sender,
-            flycheck_receiver,
             config: Arc::new(config),
             analysis_host,
             diagnostics: Default::default(),
             mem_docs: FxHashMap::default(),
             semantic_tokens_cache: Arc::new(Default::default()),
-            vfs: Arc::new(RwLock::new((vfs::Vfs::default(), FxHashMap::default()))),
             shutdown_requested: false,
-            status: Status::default(),
+            last_reported_status: None,
             source_root_config: SourceRootConfig::default(),
             proc_macro_client: None,
+
+            flycheck: Vec::new(),
+            flycheck_sender,
+            flycheck_receiver,
+
+            vfs: Arc::new(RwLock::new((vfs::Vfs::default(), FxHashMap::default()))),
+            vfs_config_version: 0,
+            vfs_progress_config_version: 0,
+            vfs_progress_n_total: 0,
+            vfs_progress_n_done: 0,
+
             workspaces: Arc::new(Vec::new()),
             fetch_workspaces_queue: OpQueue::default(),
             workspace_build_data: None,
+
             fetch_build_data_queue: OpQueue::default(),
             latest_requests: Default::default(),
         }

@@ -2,6 +2,7 @@
 //! requests/replies and notifications back to the client.
 use std::{
     env, fmt,
+    sync::Arc,
     time::{Duration, Instant},
 };
 
@@ -12,6 +13,7 @@ use ide::{Canceled, FileId};
 use ide_db::base_db::VfsPath;
 use lsp_server::{Connection, Notification, Request, Response};
 use lsp_types::notification::Notification as _;
+use project_model::BuildDataCollector;
 use vfs::ChangeKind;
 
 use crate::{
@@ -19,7 +21,7 @@ use crate::{
     dispatch::{NotificationDispatcher, RequestDispatcher},
     document::DocumentData,
     from_proto,
-    global_state::{file_id_to_url, url_to_file_id, GlobalState, Status},
+    global_state::{file_id_to_url, url_to_file_id, GlobalState},
     handlers, lsp_ext,
     lsp_utils::{apply_document_changes, is_canceled, notification_is, Progress},
     reload::{BuildDataProgress, ProjectWorkspaceProgress},
@@ -187,7 +189,7 @@ impl GlobalState {
             log::info!("task queue len: {}", task_queue_len);
         }
 
-        let mut new_status = self.status;
+        let was_quiescent = self.is_quiescent();
         match event {
             Event::Lsp(msg) => match msg {
                 lsp_server::Message::Request(req) => self.on_request(loop_start, req)?,
@@ -227,11 +229,24 @@ impl GlobalState {
                                     (Progress::Report, Some(msg))
                                 }
                                 ProjectWorkspaceProgress::End(workspaces) => {
-                                    self.fetch_workspaces_completed();
-                                    self.switch_workspaces(workspaces, None);
+                                    self.fetch_workspaces_completed(workspaces);
+
+                                    let old = Arc::clone(&self.workspaces);
+                                    self.switch_workspaces();
+                                    let workspaces_updated = !Arc::ptr_eq(&old, &self.workspaces);
+
+                                    if self.config.run_build_scripts() && workspaces_updated {
+                                        let mut collector = BuildDataCollector::default();
+                                        for ws in self.workspaces.iter() {
+                                            ws.collect_build_data_configs(&mut collector);
+                                        }
+                                        self.fetch_build_data_request(collector)
+                                    }
+
                                     (Progress::End, None)
                                 }
                             };
+
                             self.report_progress("fetching", state, msg, None);
                         }
                         Task::FetchBuildData(progress) => {
@@ -240,19 +255,21 @@ impl GlobalState {
                                 BuildDataProgress::Report(msg) => {
                                     (Some(Progress::Report), Some(msg))
                                 }
-                                BuildDataProgress::End(collector) => {
-                                    self.fetch_build_data_completed();
-                                    let workspaces =
-                                        (*self.workspaces).clone().into_iter().map(Ok).collect();
-                                    self.switch_workspaces(workspaces, Some(collector));
+                                BuildDataProgress::End(build_data_result) => {
+                                    self.fetch_build_data_completed(build_data_result);
+
+                                    self.switch_workspaces();
+
                                     (Some(Progress::End), None)
                                 }
                             };
+
                             if let Some(state) = state {
                                 self.report_progress("loading", state, msg, None);
                             }
                         }
                     }
+
                     // Coalesce multiple task events into one loop turn
                     task = match self.task_pool.receiver.try_recv() {
                         Ok(task) => task,
@@ -298,30 +315,25 @@ impl GlobalState {
                         }
                         vfs::loader::Message::Progress { n_total, n_done, config_version } => {
                             always!(config_version <= self.vfs_config_version);
-                            if n_total == 0 {
-                                new_status = Status::Invalid;
+
+                            self.vfs_progress_config_version = config_version;
+                            self.vfs_progress_n_total = n_total;
+                            self.vfs_progress_n_done = n_done;
+
+                            let state = if n_done == 0 {
+                                Progress::Begin
+                            } else if n_done < n_total {
+                                Progress::Report
                             } else {
-                                let state = if n_done == 0 {
-                                    new_status = Status::Loading;
-                                    Progress::Begin
-                                } else if n_done < n_total {
-                                    Progress::Report
-                                } else {
-                                    assert_eq!(n_done, n_total);
-                                    new_status = Status::Ready {
-                                        partial: self.config.run_build_scripts()
-                                            && self.workspace_build_data.is_none()
-                                            || config_version < self.vfs_config_version,
-                                    };
-                                    Progress::End
-                                };
-                                self.report_progress(
-                                    "roots scanned",
-                                    state,
-                                    Some(format!("{}/{}", n_done, n_total)),
-                                    Some(Progress::fraction(n_done, n_total)),
-                                )
-                            }
+                                assert_eq!(n_done, n_total);
+                                Progress::End
+                            };
+                            self.report_progress(
+                                "roots scanned",
+                                state,
+                                Some(format!("{}/{}", n_done, n_total)),
+                                Some(Progress::fraction(n_done, n_total)),
+                            )
                         }
                     }
                     // Coalesce many VFS event into a single loop turn
@@ -397,18 +409,14 @@ impl GlobalState {
         }
 
         let state_changed = self.process_changes();
-        let prev_status = self.status;
-        if prev_status != new_status {
-            self.transition(new_status);
-        }
-        let is_ready = matches!(self.status, Status::Ready { .. });
-        if prev_status == Status::Loading && is_ready {
+
+        if self.is_quiescent() && !was_quiescent {
             for flycheck in &self.flycheck {
                 flycheck.update();
             }
         }
 
-        if is_ready && (state_changed || prev_status == Status::Loading) {
+        if self.is_quiescent() && (!was_quiescent || state_changed) {
             self.update_file_notifications_on_threadpool();
 
             // Refresh semantic tokens if the client supports it.
@@ -437,8 +445,12 @@ impl GlobalState {
             }
         }
 
-        self.fetch_workspaces_if_needed();
+        if self.config.cargo_autoreload() {
+            self.fetch_workspaces_if_needed();
+        }
         self.fetch_build_data_if_needed();
+
+        self.report_new_status_if_needed();
 
         let loop_duration = loop_start.elapsed();
         if loop_duration > Duration::from_millis(100) {
@@ -466,7 +478,8 @@ impl GlobalState {
             return Ok(());
         }
 
-        if self.status == Status::Loading && req.method != "shutdown" {
+        // Avoid flashing a bunch of unresolved references during initial load.
+        if self.workspaces.is_empty() && !self.is_quiescent() {
             self.respond(lsp_server::Response::new_err(
                 req.id,
                 // FIXME: i32 should impl From<ErrorCode> (from() guarantees lossless conversion)
@@ -477,7 +490,11 @@ impl GlobalState {
         }
 
         RequestDispatcher { req: Some(req), global_state: self }
-            .on_sync::<lsp_ext::ReloadWorkspace>(|s, ()| Ok(s.fetch_workspaces_request()))?
+            .on_sync::<lsp_ext::ReloadWorkspace>(|s, ()| {
+                s.fetch_workspaces_request();
+                s.fetch_workspaces_if_needed();
+                Ok(())
+            })?
             .on_sync::<lsp_ext::JoinLines>(|s, p| handlers::handle_join_lines(s.snapshot(), p))?
             .on_sync::<lsp_ext::OnEnter>(|s, p| handlers::handle_on_enter(s.snapshot(), p))?
             .on_sync::<lsp_types::request::Shutdown>(|s, ()| {
