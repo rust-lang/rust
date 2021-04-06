@@ -845,7 +845,8 @@ the command line flag directly.
     );
 }
 
-fn describe_lints(sess: &Session, lint_store: &LintStore, loaded_plugins: bool) {
+/// Write to stdout lint command options, together with a list of all available lints
+pub fn describe_lints(sess: &Session, lint_store: &LintStore, loaded_plugins: bool) {
     println!(
         "
 Available lint options:
