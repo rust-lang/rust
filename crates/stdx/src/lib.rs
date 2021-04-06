@@ -178,6 +178,7 @@ where
     start..start + len
 }
 
+#[repr(transparent)]
 pub struct JodChild(pub process::Child);
 
 impl ops::Deref for JodChild {
@@ -197,6 +198,13 @@ impl Drop for JodChild {
     fn drop(&mut self) {
         let _ = self.0.kill();
         let _ = self.0.wait();
+    }
+}
+
+impl JodChild {
+    pub fn into_inner(self) -> process::Child {
+        // SAFETY: repr transparent
+        unsafe { std::mem::transmute::<JodChild, process::Child>(self) }
     }
 }
 

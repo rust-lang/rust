@@ -12,7 +12,7 @@ use proc_macro_api::ProcMacroClient;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
-    build_data::{BuildData, BuildDataMap, BuildDataResult},
+    build_data::{BuildDataResult, PackageBuildData, WorkspaceBuildData},
     cargo_workspace,
     cfg_flag::CfgFlag,
     rustc_cfg,
@@ -354,10 +354,10 @@ fn cargo_to_crate_graph(
     proc_macro_loader: &dyn Fn(&Path) -> Vec<ProcMacro>,
     load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
     cargo: &CargoWorkspace,
-    build_data_map: Option<&BuildDataMap>,
+    build_data_map: Option<&WorkspaceBuildData>,
     sysroot: &Sysroot,
     rustc: &Option<CargoWorkspace>,
-    rustc_build_data_map: Option<&BuildDataMap>,
+    rustc_build_data_map: Option<&WorkspaceBuildData>,
 ) -> CrateGraph {
     let _p = profile::span("cargo_to_crate_graph");
     let mut crate_graph = CrateGraph::default();
@@ -464,7 +464,7 @@ fn handle_rustc_crates(
     rustc_workspace: &CargoWorkspace,
     load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
     crate_graph: &mut CrateGraph,
-    rustc_build_data_map: Option<&FxHashMap<String, BuildData>>,
+    rustc_build_data_map: Option<&WorkspaceBuildData>,
     cfg_options: &CfgOptions,
     proc_macro_loader: &dyn Fn(&Path) -> Vec<ProcMacro>,
     pkg_to_lib_crate: &mut FxHashMap<la_arena::Idx<crate::PackageData>, CrateId>,
@@ -555,7 +555,7 @@ fn handle_rustc_crates(
 fn add_target_crate_root(
     crate_graph: &mut CrateGraph,
     pkg: &cargo_workspace::PackageData,
-    build_data: Option<&BuildData>,
+    build_data: Option<&PackageBuildData>,
     cfg_options: &CfgOptions,
     proc_macro_loader: &dyn Fn(&Path) -> Vec<ProcMacro>,
     file_id: FileId,
