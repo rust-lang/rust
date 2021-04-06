@@ -59,7 +59,7 @@ use hir_ty::{
     traits::FnTrait,
     AliasEq, AliasTy, BoundVar, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast,
     DebruijnIndex, InEnvironment, Interner, QuantifiedWhereClause, Scalar, Solution,
-    SolutionVariables, Substitution, TraitEnvironment, Ty, TyBuilder, TyDefId, TyKind,
+    SolutionVariables, Substitution, TraitEnvironment, Ty, TyBuilder, TyDefId, TyExt, TyKind,
     TyVariableKind, WhereClause,
 };
 use itertools::Itertools;

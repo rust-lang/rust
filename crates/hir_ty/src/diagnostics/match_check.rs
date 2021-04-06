@@ -227,7 +227,7 @@ use hir_def::{
 use la_arena::Idx;
 use smallvec::{smallvec, SmallVec};
 
-use crate::{db::HirDatabase, AdtId, InferenceResult, Interner, TyKind};
+use crate::{db::HirDatabase, AdtId, InferenceResult, Interner, TyExt, TyKind};
 
 #[derive(Debug, Clone, Copy)]
 /// Either a pattern from the source code being analyzed, represented as

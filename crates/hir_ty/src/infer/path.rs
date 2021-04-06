@@ -10,7 +10,9 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 
-use crate::{method_resolution, Interner, Substitution, Ty, TyBuilder, TyKind, ValueTyDefId};
+use crate::{
+    method_resolution, Interner, Substitution, Ty, TyBuilder, TyExt, TyKind, ValueTyDefId,
+};
 
 use super::{ExprOrPatId, InferenceContext, TraitRef};
 

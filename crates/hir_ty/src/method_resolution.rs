@@ -22,7 +22,7 @@ use crate::{
     static_lifetime,
     utils::all_super_traits,
     AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, FnPointer, FnSig, ForeignDefId,
-    InEnvironment, Interner, Scalar, Substitution, TraitEnvironment, Ty, TyBuilder, TyKind,
+    InEnvironment, Interner, Scalar, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind,
     TypeWalk,
 };
 

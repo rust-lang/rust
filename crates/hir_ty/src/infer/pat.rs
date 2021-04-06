@@ -14,7 +14,7 @@ use hir_expand::name::Name;
 use super::{BindingMode, Expectation, InferenceContext};
 use crate::{
     lower::lower_to_chalk_mutability, static_lifetime, utils::variant_data, Interner, Substitution,
-    Ty, TyBuilder, TyKind,
+    Ty, TyBuilder, TyExt, TyKind,
 };
 
 impl<'a> InferenceContext<'a> {

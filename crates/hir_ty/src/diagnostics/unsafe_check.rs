@@ -11,7 +11,9 @@ use hir_def::{
 };
 use hir_expand::diagnostics::DiagnosticSink;
 
-use crate::{db::HirDatabase, diagnostics::MissingUnsafe, InferenceResult, Interner, TyKind};
+use crate::{
+    db::HirDatabase, diagnostics::MissingUnsafe, InferenceResult, Interner, TyExt, TyKind,
+};
 
 pub(super) struct UnsafeValidator<'a, 'b: 'a> {
     owner: DefWithBodyId,

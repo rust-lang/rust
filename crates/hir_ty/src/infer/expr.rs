@@ -23,7 +23,8 @@ use crate::{
     traits::{chalk::from_chalk, FnTrait},
     utils::{generics, variant_data, Generics},
     AdtId, Binders, CallableDefId, FnPointer, FnSig, FnSubst, InEnvironment, Interner,
-    ProjectionTyExt, Rawness, Scalar, Substitution, TraitRef, Ty, TyBuilder, TyKind, TypeWalk,
+    ProjectionTyExt, Rawness, Scalar, Substitution, TraitRef, Ty, TyBuilder, TyExt, TyKind,
+    TypeWalk,
 };
 
 use super::{
