@@ -582,7 +582,7 @@ dependencies = [
  "cargo_metadata 0.12.0",
  "clippy-mini-macro-test",
  "clippy_lints",
- "compiletest_rs 0.6.0",
+ "compiletest_rs",
  "derive-new",
  "quote",
  "regex",
@@ -592,7 +592,7 @@ dependencies = [
  "serde",
  "syn",
  "tempfile",
- "tester 0.9.0",
+ "tester",
 ]
 
 [[package]]
@@ -702,28 +702,6 @@ dependencies = [
 
 [[package]]
 name = "compiletest_rs"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f737835bfbbe29ed1ff82d5137520338d7ed5bf1a1d4b9c1c7c58bb45b8fa29"
-dependencies = [
- "diff",
- "filetime",
- "getopts",
- "libc",
- "log",
- "miow 0.3.6",
- "regex",
- "rustfix",
- "serde",
- "serde_derive",
- "serde_json",
- "tempfile",
- "tester 0.7.0",
- "winapi 0.3.9",
-]
-
-[[package]]
-name = "compiletest_rs"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0086d6ad78cf409c3061618cd98e2789d5c9ce598fc9651611cf62eae0a599cb"
@@ -741,7 +719,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "tempfile",
- "tester 0.9.0",
+ "tester",
  "winapi 0.3.9",
 ]
 
@@ -1095,6 +1073,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "enum-iterator"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c79a6321a1197d7730510c7e3f6cb80432dfefecb32426de8cea0aa19b4bb8d7"
+dependencies = [
+ "enum-iterator-derive",
+]
+
+[[package]]
+name = "enum-iterator-derive"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e94aa31f7c0dc764f57896dc615ddd76fc13b0d5dca7eb6cc5e018a5a09ec06"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "env_logger"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1437,6 +1435,18 @@ dependencies = [
  "cfg-if 0.1.10",
  "libc",
  "wasi",
+]
+
+[[package]]
+name = "getset"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "24b328c01a4d71d2d8173daa93562a73ab0fe85616876f02500f53d82948c504"
+dependencies = [
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -2304,13 +2314,13 @@ name = "miri"
 version = "0.1.0"
 dependencies = [
  "colored",
- "compiletest_rs 0.5.0",
- "env_logger 0.7.1",
+ "compiletest_rs",
+ "env_logger 0.8.1",
  "getrandom 0.2.0",
  "hex 0.4.2",
  "libc",
  "log",
- "rand 0.7.3",
+ "rand 0.8.3",
  "rustc-workspace-hack",
  "rustc_version",
  "shell-escape",
@@ -4581,11 +4591,11 @@ dependencies = [
 
 [[package]]
 name = "rustc_version"
-version = "0.2.3"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "138e3e0acb6c9fb258b19b67cb8abd63c00679d2851805ea151465464fe9030a"
+checksum = "f0dfe2087c51c460008730de8b57e6a320782fbfb312e1f4d520e6c6fae155ee"
 dependencies = [
- "semver 0.9.0",
+ "semver 0.11.0",
 ]
 
 [[package]]
@@ -5233,17 +5243,6 @@ dependencies = [
 
 [[package]]
 name = "tester"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee72ec31009a42b53de9a6b7d8f462b493ab3b1e4767bda1fcdbb52127f13b6c"
-dependencies = [
- "getopts",
- "libc",
- "term 0.6.1",
-]
-
-[[package]]
-name = "tester"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0639d10d8f4615f223a57275cf40f9bdb7cfbb806bcb7f7cc56e3beb55a576eb"
@@ -5676,12 +5675,17 @@ checksum = "f1bddf1187be692e79c5ffeab891132dfb0f236ed36a43c7ed39f1165ee20191"
 
 [[package]]
 name = "vergen"
-version = "3.1.0"
+version = "5.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ce50d8996df1f85af15f2cd8d33daae6e479575123ef4314a51a70a230739cb"
+checksum = "dfbc87f9a7a9d61b15d51d1d3547284f67b6b4f1494ce3fc5814c101f35a5183"
 dependencies = [
- "bitflags",
+ "anyhow",
  "chrono",
+ "enum-iterator",
+ "getset",
+ "git2",
+ "rustversion",
+ "thiserror",
 ]
 
 [[package]]
