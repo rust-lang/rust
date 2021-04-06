@@ -680,7 +680,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
           }
         } else {
           Instruction *LoadReval = nullptr;
-          Instruction *StoreReval = nullptr;
+          //Instruction *StoreReval = nullptr;
           auto DownHypothesis = std::shared_ptr<ActivityAnalyzer>(
               new ActivityAnalyzer(*this, DOWN));
           DownHypothesis->ConstantValues.insert(Val);
@@ -689,10 +689,13 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
             InsertConstantValue(TR, Val);
             return true;
           } else {
-            if (LoadReval)
+            if (LoadReval) {
+              if (EnzymePrintActivity)
+                llvm::errs() << " global activity of " << *Val << " dependant on " << *LoadReval << "\n";
               ReEvaluateValueIfInactiveInst[LoadReval].insert(Val);
-            if (StoreReval)
-              ReEvaluateValueIfInactiveInst[StoreReval].insert(Val);
+            }
+            //if (StoreReval)
+            //  ReEvaluateValueIfInactiveInst[StoreReval].insert(Val);
           }
         }
       }
@@ -1706,14 +1709,11 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
                    << "\n";
 
     if (!isa<Instruction>(a)) {
-      if (isa<ConstantExpr>(a)) {
-        if (!isValueInactiveFromUsers(TR, a, UA)) {
-          if (EnzymePrintActivity)
-            llvm::errs() << "   active user of " << *val << " in " << *a
-                         << "\n";
-          return false;
-        } else
-          continue;
+      if (auto CE = dyn_cast<ConstantExpr>(a)) {
+        for (auto u : CE->users()) {
+          todo.push_back(std::make_tuple(u, (Value *)CE, UA));
+        }
+        continue;
       }
       if (isa<ConstantData>(a)) {
         continue;
