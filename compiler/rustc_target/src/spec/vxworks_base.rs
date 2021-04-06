@@ -12,7 +12,6 @@ pub fn opts() -> TargetOptions {
         os_family: Some("unix".to_string()),
         linker_is_gnu: true,
         has_rpath: true,
-        position_independent_executables: false,
         has_elf_tls: true,
         crt_static_default: true,
         crt_static_respected: true,

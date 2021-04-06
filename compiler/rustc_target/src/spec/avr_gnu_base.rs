@@ -15,11 +15,8 @@ pub fn target(target_cpu: String) -> Target {
             exe_suffix: ".elf".to_string(),
 
             linker: Some("avr-gcc".to_owned()),
-            dynamic_linking: false,
             executables: true,
             linker_is_gnu: true,
-            has_rpath: false,
-            position_independent_executables: false,
             eh_frame_header: false,
             pre_link_args: vec![(LinkerFlavor::Gcc, vec![format!("-mmcu={}", target_cpu)])]
                 .into_iter()
