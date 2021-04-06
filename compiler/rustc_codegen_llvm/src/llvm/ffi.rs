@@ -166,6 +166,9 @@ pub enum Attribute {
     InaccessibleMemOnly = 27,
     SanitizeHWAddress = 28,
     WillReturn = 29,
+    StackProtectReq = 30,
+    StackProtectStrong = 31,
+    StackProtect = 32,
 }
 
 /// LLVMIntPredicate

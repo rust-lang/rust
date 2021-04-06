@@ -5,7 +5,9 @@ use crate::lint;
 use crate::search_paths::SearchPath;
 use crate::utils::NativeLib;
 use rustc_target::spec::{CodeModel, LinkerFlavor, MergeFunctions, PanicStrategy, SanitizerSet};
-use rustc_target::spec::{RelocModel, RelroLevel, SplitDebuginfo, TargetTriple, TlsModel};
+use rustc_target::spec::{
+    RelocModel, RelroLevel, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
+};
 
 use rustc_feature::UnstableFeatures;
 use rustc_span::edition::Edition;
@@ -385,6 +387,8 @@ mod desc {
     pub const parse_split_debuginfo: &str =
         "one of supported split-debuginfo modes (`off`, `packed`, or `unpacked`)";
     pub const parse_gcc_ld: &str = "one of: no value, `lld`";
+    pub const parse_stack_protector: &str =
+        "one of (`none` (default), `basic`, `strong`, or `all`)";
 }
 
 mod parse {
@@ -917,6 +921,14 @@ mod parse {
         }
         true
     }
+
+    crate fn parse_stack_protector(slot: &mut StackProtector, v: Option<&str>) -> bool {
+        match v.and_then(|s| StackProtector::from_str(s).ok()) {
+            Some(ssp) => *slot = ssp,
+            _ => return false,
+        }
+        true
+    }
 }
 
 options! {
@@ -1330,6 +1342,8 @@ options! {
         "exclude spans when debug-printing compiler state (default: no)"),
     src_hash_algorithm: Option<SourceFileHashAlgorithm> = (None, parse_src_file_hash, [TRACKED],
         "hash algorithm of source files in debug info (`md5`, `sha1`, or `sha256`)"),
+    stack_protector: StackProtector = (StackProtector::None, parse_stack_protector, [TRACKED],
+        "control stack smash protection strategy (`rustc --print stack-protector-strategies` for details)"),
     strip: Strip = (Strip::None, parse_strip, [UNTRACKED],
         "tell the linker which information to strip (`none` (default), `debuginfo` or `symbols`)"),
     split_dwarf_inlining: bool = (true, parse_bool, [UNTRACKED],

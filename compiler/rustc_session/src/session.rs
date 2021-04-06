@@ -27,7 +27,9 @@ use rustc_span::source_map::{FileLoader, MultiSpan, RealFileLoader, SourceMap, S
 use rustc_span::{sym, SourceFileHashAlgorithm, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{CodeModel, PanicStrategy, RelocModel, RelroLevel};
-use rustc_target::spec::{SanitizerSet, SplitDebuginfo, Target, TargetTriple, TlsModel};
+use rustc_target::spec::{
+    SanitizerSet, SplitDebuginfo, StackProtector, Target, TargetTriple, TlsModel,
+};
 
 use std::cell::{self, RefCell};
 use std::env;
@@ -732,6 +734,14 @@ impl Session {
         self.opts.cg.split_debuginfo.unwrap_or(self.target.split_debuginfo)
     }
 
+    pub fn stack_protector(&self) -> StackProtector {
+        if self.target.options.supports_stack_protector {
+            self.opts.debugging_opts.stack_protector
+        } else {
+            StackProtector::None
+        }
+    }
+
     pub fn target_can_use_split_dwarf(&self) -> bool {
         !self.target.is_like_windows && !self.target.is_like_osx
     }
@@ -1409,6 +1419,15 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
             || sess.opts.cg.lto == config::LtoCli::Thin
         {
             sess.err("`-Zsanitizer=cfi` requires `-Clto`");
+        }
+    }
+
+    if sess.opts.debugging_opts.stack_protector != StackProtector::None {
+        if !sess.target.options.supports_stack_protector {
+            sess.warn(&format!(
+                "`-Z stack-protector={}` is not supported for target {} and will be ignored",
+                sess.opts.debugging_opts.stack_protector, sess.opts.target_triple
+            ))
         }
     }
 }
