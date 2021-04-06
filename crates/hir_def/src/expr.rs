@@ -18,6 +18,7 @@ use syntax::ast::RangeOp;
 
 use crate::{
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinUint},
+    intern::Interned,
     path::{GenericArgs, Path},
     type_ref::{Mutability, Rawness, TypeRef},
     BlockId,
@@ -131,7 +132,7 @@ pub enum Expr {
     },
     Cast {
         expr: ExprId,
-        type_ref: Box<TypeRef>,
+        type_ref: Interned<TypeRef>,
     },
     Ref {
         expr: ExprId,
@@ -161,8 +162,8 @@ pub enum Expr {
     },
     Lambda {
         args: Vec<PatId>,
-        arg_types: Vec<Option<TypeRef>>,
-        ret_type: Option<Box<TypeRef>>,
+        arg_types: Vec<Option<Interned<TypeRef>>>,
+        ret_type: Option<Interned<TypeRef>>,
         body: ExprId,
     },
     Tuple {
@@ -240,7 +241,7 @@ pub struct RecordLitField {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Statement {
-    Let { pat: PatId, type_ref: Option<TypeRef>, initializer: Option<ExprId> },
+    Let { pat: PatId, type_ref: Option<Interned<TypeRef>>, initializer: Option<ExprId> },
     Expr(ExprId),
 }
 
