@@ -131,8 +131,7 @@ pub struct InferenceResult {
     method_resolutions: FxHashMap<ExprId, FunctionId>,
     /// For each field access expr, records the field it resolves to.
     field_resolutions: FxHashMap<ExprId, FieldId>,
-    record_pat_field_resolutions: FxHashMap<PatId, FieldId>,
-    /// For each struct literal, records the variant it resolves to.
+    /// For each struct literal or pattern, records the variant it resolves to.
     variant_resolutions: FxHashMap<ExprOrPatId, VariantId>,
     /// For each associated item record what it resolves to
     assoc_resolutions: FxHashMap<ExprOrPatId, AssocItemId>,
@@ -150,9 +149,6 @@ impl InferenceResult {
     }
     pub fn field_resolution(&self, expr: ExprId) -> Option<FieldId> {
         self.field_resolutions.get(&expr).copied()
-    }
-    pub fn record_pat_field_resolution(&self, pat: PatId) -> Option<FieldId> {
-        self.record_pat_field_resolutions.get(&pat).copied()
     }
     pub fn variant_resolution_for_expr(&self, id: ExprId) -> Option<VariantId> {
         self.variant_resolutions.get(&id.into()).copied()
