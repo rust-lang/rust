@@ -40,9 +40,14 @@ pub unsafe extern "C" fn memcmp(_mem1: *const u8, _mem2: *const u8, _n: usize) -
     0
 }
 
+// Used by compiler_builtins
 #[no_mangle]
 #[used]
 static _fltused: i32 = 0;
+
+// MSVC always assumes that some functions are avaliable
+#[link(name = "ntdll")]
+extern "system" {}
 
 #[no_mangle]
 pub extern "C" fn mainCRTStartup() {
