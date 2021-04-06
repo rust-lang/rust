@@ -1517,6 +1517,41 @@ link-arm = vmaxs._EXT_
 link-aarch64 = fmax._EXT_
 generate float*_t
 
+/// Floating-point Maximun Number (vector)
+name = vmaxnm
+a = 1.0, 2.0, 3.0, -4.0
+b = 8.0, 16.0, -1.0, 6.0
+validate 8.0, 16.0, 3.0, 6.0
+
+aarch64 = fmaxnm
+link-aarch64 = fmaxnm._EXT_
+generate float64x*_t
+
+target = fp-armv8
+arm = vmaxnm
+aarch64 = fmaxnm
+link-arm = vmaxnm._EXT_
+link-aarch64 = fmaxnm._EXT_
+generate float*_t
+
+/// Floating-point Maximum Number Pairwise (vector).
+name = vpmaxnm
+a = 1.0, 2.0
+b = 6.0, -3.0
+validate 2.0, 6.0
+aarch64 = fmaxnmp
+link-aarch64 = fmaxnmp._EXT_
+generate float32x2_t:float32x2_t:float32x2_t, float64x2_t:float64x2_t:float64x2_t
+
+/// Floating-point Maximum Number Pairwise (vector).
+name = vpmaxnm
+a = 1.0, 2.0, 3.0, -4.0
+b = 8.0, 16.0, -1.0, 6.0
+validate 2.0, 3.0, 16.0, 6.0
+aarch64 = fmaxnmp
+link-aarch64 = fmaxnmp._EXT_
+generate float32x4_t:float32x4_t:float32x4_t
+
 /// Minimum (vector)
 name = vmin
 a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
@@ -1550,6 +1585,41 @@ aarch64 = fmin
 link-arm = vmins._EXT_
 link-aarch64 = fmin._EXT_
 generate float*_t
+
+/// Floating-point Minimun Number (vector)
+name = vminnm
+a = 1.0, 2.0, 3.0, -4.0
+b = 8.0, 16.0, -1.0, 6.0
+validate 1.0, 2.0, -1.0, -4.0
+
+aarch64 = fminnm
+link-aarch64 = fminnm._EXT_
+generate float64x*_t
+
+target = fp-armv8
+arm = vminnm
+aarch64 = fminnm
+link-arm = vminnm._EXT_
+link-aarch64 = fminnm._EXT_
+generate float*_t
+
+/// Floating-point Minimum Number Pairwise (vector).
+name = vpminnm
+a = 1.0, 2.0
+b = 6.0, -3.0
+validate 1.0, -3.0
+aarch64 = fminnmp
+link-aarch64 = fminnmp._EXT_
+generate float32x2_t:float32x2_t:float32x2_t, float64x2_t:float64x2_t:float64x2_t
+
+/// Floating-point Minimum Number Pairwise (vector).
+name = vpminnm
+a = 1.0, 2.0, 3.0, -4.0
+b = 8.0, 16.0, -1.0, 6.0
+validate 1.0, -4.0, 8.0, -1.0
+aarch64 = fminnmp
+link-aarch64 = fminnmp._EXT_
+generate float32x4_t:float32x4_t:float32x4_t
 
 /// Calculates the square root of each lane.
 name = vsqrt
