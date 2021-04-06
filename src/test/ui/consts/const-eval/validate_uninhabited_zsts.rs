@@ -1,3 +1,4 @@
+// stderr-per-bitwidth
 #![feature(const_fn)]
 #![feature(const_fn_transmute)]
 

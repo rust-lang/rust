@@ -109,7 +109,8 @@
 #![feature(custom_inner_attributes)]
 #![feature(decl_macro)]
 #![feature(doc_cfg)]
-#![feature(doc_spotlight)]
+#![cfg_attr(bootstrap, feature(doc_spotlight))]
+#![cfg_attr(not(bootstrap), feature(doc_notable_trait))]
 #![feature(duration_consts_2)]
 #![feature(duration_saturating_ops)]
 #![feature(extended_key_value_attributes)]
@@ -128,7 +129,7 @@
 #![feature(auto_traits)]
 #![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(prelude_import)]
-#![cfg_attr(not(bootstrap), feature(ptr_metadata))]
+#![feature(ptr_metadata)]
 #![feature(repr_simd, platform_intrinsics)]
 #![feature(rustc_attrs)]
 #![feature(simd_ffi)]
@@ -166,7 +167,6 @@
 #![feature(slice_ptr_get)]
 #![feature(no_niche)] // rust-lang/rust#68303
 #![feature(int_error_matching)]
-#![cfg_attr(bootstrap, feature(unsafe_block_in_unsafe_fn))]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 #[prelude_import]
@@ -298,8 +298,7 @@ pub mod primitive;
     unused_imports,
     unsafe_op_in_unsafe_fn
 )]
-#[cfg_attr(bootstrap, allow(non_autolinks))]
-#[cfg_attr(not(bootstrap), allow(rustdoc::non_autolinks))]
+#[allow(rustdoc::non_autolinks)]
 // FIXME: This annotation should be moved into rust-lang/stdarch after clashing_extern_declarations is
 // merged. It currently cannot because bootstrap fails as the lint hasn't been defined yet.
 #[allow(clashing_extern_declarations)]

@@ -195,6 +195,9 @@ pub trait Emitter {
 
     fn emit_future_breakage_report(&mut self, _diags: Vec<(FutureBreakage, Diagnostic)>) {}
 
+    /// Emit list of unused externs
+    fn emit_unused_externs(&mut self, _lint_level: &str, _unused_externs: &[&str]) {}
+
     /// Checks if should show explanations about "rustc --explain"
     fn should_show_explain(&self) -> bool {
         true
@@ -1258,7 +1261,7 @@ impl EmitterWriter {
                 buffer.append(0, ": ", header_style);
             }
             for &(ref text, _) in msg.iter() {
-                buffer.append(0, text, header_style);
+                buffer.append(0, &replace_tabs(text), header_style);
             }
         }
 
@@ -2214,9 +2217,7 @@ pub fn is_case_difference(sm: &SourceMap, suggested: &str, sp: Span) -> bool {
     };
     let ascii_confusables = &['c', 'f', 'i', 'k', 'o', 's', 'u', 'v', 'w', 'x', 'y', 'z'];
     // All the chars that differ in capitalization are confusable (above):
-    let confusable = found
-        .chars()
-        .zip(suggested.chars())
+    let confusable = iter::zip(found.chars(), suggested.chars())
         .filter(|(f, s)| f != s)
         .all(|(f, s)| (ascii_confusables.contains(&f) || ascii_confusables.contains(&s)));
     confusable && found.to_lowercase() == suggested.to_lowercase()

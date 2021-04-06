@@ -20,6 +20,10 @@ pub(crate) fn codegen_inline_asm<'tcx>(
     if template.is_empty() {
         // Black box
         return;
+    } else if template[0] == InlineAsmTemplatePiece::String("int $$0x29".to_string()) {
+        let true_ = fx.bcx.ins().iconst(types::I32, 1);
+        fx.bcx.ins().trapnz(true_, TrapCode::User(1));
+        return;
     }
 
     let mut slot_size = Size::from_bytes(0);
@@ -193,8 +197,9 @@ fn call_inline_asm<'tcx>(
         offset: None,
         size: u32::try_from(slot_size.bytes()).unwrap(),
     });
-    #[cfg(debug_assertions)]
-    fx.add_comment(stack_slot, "inline asm scratch slot");
+    if fx.clif_comments.enabled() {
+        fx.add_comment(stack_slot, "inline asm scratch slot");
+    }
 
     let inline_asm_func = fx
         .cx
@@ -210,8 +215,9 @@ fn call_inline_asm<'tcx>(
         )
         .unwrap();
     let inline_asm_func = fx.cx.module.declare_func_in_func(inline_asm_func, &mut fx.bcx.func);
-    #[cfg(debug_assertions)]
-    fx.add_comment(inline_asm_func, asm_name);
+    if fx.clif_comments.enabled() {
+        fx.add_comment(inline_asm_func, asm_name);
+    }
 
     for (_reg, offset, value) in inputs {
         fx.bcx.ins().stack_store(value, stack_slot, i32::try_from(offset.bytes()).unwrap());

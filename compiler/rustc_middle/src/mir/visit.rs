@@ -380,7 +380,7 @@ macro_rules! make_mir_visitor {
                     ) => {
                         self.visit_assign(place, rvalue, location);
                     }
-                    StatementKind::FakeRead(_, place) => {
+                    StatementKind::FakeRead(box (_, place)) => {
                         self.visit_place(
                             place,
                             PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect),
@@ -1245,12 +1245,6 @@ impl PlaceContext {
     #[inline]
     pub fn is_mutating_use(&self) -> bool {
         matches!(self, PlaceContext::MutatingUse(..))
-    }
-
-    /// Returns `true` if this place context represents a use that does not change the value.
-    #[inline]
-    pub fn is_nonmutating_use(&self) -> bool {
-        matches!(self, PlaceContext::NonMutatingUse(..))
     }
 
     /// Returns `true` if this place context represents a use.

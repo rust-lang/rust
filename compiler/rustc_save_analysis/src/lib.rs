@@ -516,19 +516,6 @@ impl<'tcx> SaveContext<'tcx> {
         })
     }
 
-    pub fn get_trait_ref_data(&self, trait_ref: &hir::TraitRef<'_>) -> Option<Ref> {
-        self.lookup_def_id(trait_ref.hir_ref_id).and_then(|def_id| {
-            let span = trait_ref.path.span;
-            if generated_code(span) {
-                return None;
-            }
-            let sub_span = trait_ref.path.segments.last().unwrap().ident.span;
-            filter!(self.span_utils, sub_span);
-            let span = self.span_from_span(sub_span);
-            Some(Ref { kind: RefKind::Type, span, ref_id: id_from_def_id(def_id) })
-        })
-    }
-
     pub fn get_expr_data(&self, expr: &hir::Expr<'_>) -> Option<Data> {
         let ty = self.typeck_results().expr_ty_adjusted_opt(expr)?;
         if matches!(ty.kind(), ty::Error(_)) {
@@ -784,7 +771,10 @@ impl<'tcx> SaveContext<'tcx> {
     /// For a given piece of AST defined by the supplied Span and NodeId,
     /// returns `None` if the node is not macro-generated or the span is malformed,
     /// else uses the expansion callsite and callee to return some MacroRef.
-    pub fn get_macro_use_data(&self, span: Span) -> Option<MacroRef> {
+    ///
+    /// FIXME: [`DumpVisitor::process_macro_use`] should actually dump this data
+    #[allow(dead_code)]
+    fn get_macro_use_data(&self, span: Span) -> Option<MacroRef> {
         if !generated_code(span) {
             return None;
         }

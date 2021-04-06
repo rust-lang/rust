@@ -124,7 +124,8 @@ macro_rules! newtype_index {
 
             #[inline]
             $v const fn from_usize(value: usize) -> Self {
-                assert!(value <= ($max as usize));
+                // FIXME: replace with `assert!(value <= ($max as usize));` once `const_panic` is stable
+                [()][(value > ($max as usize)) as usize];
                 unsafe {
                     Self::from_u32_unchecked(value as u32)
                 }
@@ -132,7 +133,8 @@ macro_rules! newtype_index {
 
             #[inline]
             $v const fn from_u32(value: u32) -> Self {
-                assert!(value <= $max);
+                // FIXME: replace with `assert!(value <= $max);` once `const_panic` is stable
+                [()][(value > $max) as usize];
                 unsafe {
                     Self::from_u32_unchecked(value)
                 }

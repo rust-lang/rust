@@ -684,7 +684,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
 /// Returns the set of inference variables contained in `substs`.
 fn substs_infer_vars<'a, 'tcx>(
     selcx: &mut SelectionContext<'a, 'tcx>,
-    substs: ty::Binder<SubstsRef<'tcx>>,
+    substs: ty::Binder<'tcx, SubstsRef<'tcx>>,
 ) -> impl Iterator<Item = TyOrConstInferVar<'tcx>> {
     selcx
         .infcx()

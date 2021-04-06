@@ -130,6 +130,8 @@ pub trait Linker {
     fn group_end(&mut self);
     fn linker_plugin_lto(&mut self);
     fn add_eh_frame_header(&mut self) {}
+    fn add_no_exec(&mut self) {}
+    fn add_as_needed(&mut self) {}
     fn finalize(&mut self);
 }
 
@@ -184,7 +186,7 @@ impl<'a> GccLinker<'a> {
         // * On OSX they have their own linker, not binutils'
         // * For WebAssembly the only functional linker is LLD, which doesn't
         //   support hint flags
-        !self.sess.target.is_like_osx && self.sess.target.arch != "wasm32"
+        !self.sess.target.is_like_osx && !self.sess.target.is_like_wasm
     }
 
     // Some platforms take hints about whether a library is static or dynamic.
@@ -641,6 +643,20 @@ impl<'a> Linker for GccLinker<'a> {
     fn add_eh_frame_header(&mut self) {
         self.linker_arg("--eh-frame-hdr");
     }
+
+    fn add_no_exec(&mut self) {
+        if self.sess.target.is_like_windows {
+            self.linker_arg("--nxcompat");
+        } else if self.sess.target.linker_is_gnu {
+            self.linker_arg("-znoexecstack");
+        }
+    }
+
+    fn add_as_needed(&mut self) {
+        if self.sess.target.linker_is_gnu {
+            self.linker_arg("--as-needed");
+        }
+    }
 }
 
 pub struct MsvcLinker<'a> {
@@ -877,6 +893,10 @@ impl<'a> Linker for MsvcLinker<'a> {
 
     fn linker_plugin_lto(&mut self) {
         // Do nothing
+    }
+
+    fn add_no_exec(&mut self) {
+        self.cmd.arg("/NXCOMPAT");
     }
 }
 

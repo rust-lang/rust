@@ -63,6 +63,7 @@ pub const CRATE_HIR_ID: HirId = HirId {
     local_id: ItemLocalId::from_u32(0),
 };
 
+/// N.B. This collection is currently unused, but will be used by #72015 and future PRs.
 #[derive(Clone, Default, Debug, Encodable, Decodable)]
 pub struct HirIdVec<T> {
     map: IndexVec<LocalDefId, IndexVec<ItemLocalId, T>>,

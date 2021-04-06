@@ -25,14 +25,6 @@ LL | struct CloneNoCopy;
 ...
 LL |     let w = u.clone();
    |               ^^^^^ method cannot be called on `U5<CloneNoCopy>` due to unsatisfied trait bounds
-   | 
-  ::: $SRC_DIR/core/src/clone.rs:LL:COL
-   |
-LL |     fn clone(&self) -> Self;
-   |        -----
-   |        |
-   |        the method is available for `Arc<U5<CloneNoCopy>>` here
-   |        the method is available for `Rc<U5<CloneNoCopy>>` here
    |
    = note: the following trait bounds were not satisfied:
            `CloneNoCopy: Copy`

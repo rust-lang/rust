@@ -1,3 +1,4 @@
+// run-rustfix
 #![deny(disjoint_capture_drop_reorder)]
 //~^ NOTE: the lint level is defined here
 
@@ -22,8 +23,8 @@ fn test1_all_need_migration() {
     let t2 = (Foo(0), Foo(0));
 
     let c = || {
-    //~^ERROR: drop order affected for closure because of `capture_disjoint_fields`
-    //~| NOTE: drop(&(t, t1, t2));
+    //~^ ERROR: drop order affected for closure because of `capture_disjoint_fields`
+    //~| HELP: add a dummy let to cause `t`, `t1`, `t2` to be fully captured
         let _t = t.0;
         let _t1 = t1.0;
         let _t2 = t2.0;
@@ -40,8 +41,8 @@ fn test2_only_precise_paths_need_migration() {
     let t2 = (Foo(0), Foo(0));
 
     let c = || {
-    //~^ERROR: drop order affected for closure because of `capture_disjoint_fields`
-    //~| NOTE: drop(&(t, t1));
+    //~^ ERROR: drop order affected for closure because of `capture_disjoint_fields`
+    //~| HELP: add a dummy let to cause `t`, `t1` to be fully captured
         let _t = t.0;
         let _t1 = t1.0;
         let _t2 = t2;
@@ -56,8 +57,8 @@ fn test3_only_by_value_need_migration() {
     let t = (Foo(0), Foo(0));
     let t1 = (Foo(0), Foo(0));
     let c = || {
-    //~^ERROR: drop order affected for closure because of `capture_disjoint_fields`
-    //~| NOTE: drop(&(t));
+    //~^ ERROR: drop order affected for closure because of `capture_disjoint_fields`
+    //~| HELP: add a dummy let to cause `t` to be fully captured
         let _t = t.0;
         println!("{:?}", t1.1);
     };
@@ -73,8 +74,8 @@ fn test4_type_contains_drop_need_migration() {
     let t = ConstainsDropField(Foo(0), Foo(0));
 
     let c = || {
-    //~^ERROR: drop order affected for closure because of `capture_disjoint_fields`
-    //~| NOTE: drop(&(t));
+    //~^ ERROR: drop order affected for closure because of `capture_disjoint_fields`
+    //~| HELP: add a dummy let to cause `t` to be fully captured
         let _t = t.0;
     };
 
@@ -88,8 +89,8 @@ fn test5_drop_non_drop_aggregate_need_migration() {
     let t = (Foo(0), Foo(0), 0i32);
 
     let c = || {
-    //~^ERROR: drop order affected for closure because of `capture_disjoint_fields`
-    //~| NOTE: drop(&(t));
+    //~^ ERROR: drop order affected for closure because of `capture_disjoint_fields`
+    //~| HELP: add a dummy let to cause `t` to be fully captured
         let _t = t.0;
     };
 
@@ -98,13 +99,11 @@ fn test5_drop_non_drop_aggregate_need_migration() {
 
 // Test migration analysis in case of Significant and Insignificant Drop aggregates.
 fn test6_significant_insignificant_drop_aggregate_need_migration() {
-    struct S(i32, i32);
-
     let t = (Foo(0), String::new());
 
     let c = || {
-    //~^ERROR: drop order affected for closure because of `capture_disjoint_fields`
-    //~| NOTE: drop(&(t));
+    //~^ ERROR: drop order affected for closure because of `capture_disjoint_fields`
+    //~| HELP: add a dummy let to cause `t` to be fully captured
         let _t = t.1;
     };
 
@@ -118,8 +117,8 @@ fn test7_move_closures_non_copy_types_might_need_migration() {
     let t1 = (Foo(0), Foo(0), Foo(0));
 
     let c = move || {
-    //~^ERROR: drop order affected for closure because of `capture_disjoint_fields`
-    //~| NOTE: drop(&(t1, t));
+    //~^ ERROR: drop order affected for closure because of `capture_disjoint_fields`
+    //~| HELP: add a dummy let to cause `t1`, `t` to be fully captured
         println!("{:?} {:?}", t1.1, t.1);
     };
 

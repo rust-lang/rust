@@ -1,6 +1,5 @@
 //! Handling of everything related to the calling convention. Also fills `fx.local_map`.
 
-#[cfg(debug_assertions)]
 mod comments;
 mod pass_mode;
 mod returning;
@@ -75,8 +74,9 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         let func_id = import_function(self.tcx, self.cx.module, inst);
         let func_ref = self.cx.module.declare_func_in_func(func_id, &mut self.bcx.func);
 
-        #[cfg(debug_assertions)]
-        self.add_comment(func_ref, format!("{:?}", inst));
+        if self.clif_comments.enabled() {
+            self.add_comment(func_ref, format!("{:?}", inst));
+        }
 
         func_ref
     }
@@ -92,8 +92,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         let func_id = self.cx.module.declare_function(&name, Linkage::Import, &sig).unwrap();
         let func_ref = self.cx.module.declare_func_in_func(func_id, &mut self.bcx.func);
         let call_inst = self.bcx.ins().call(func_ref, args);
-        #[cfg(debug_assertions)]
-        {
+        if self.clif_comments.enabled() {
             self.add_comment(call_inst, format!("easy_call {}", name));
         }
         let results = self.bcx.inst_results(call_inst);
@@ -149,7 +148,6 @@ fn make_local_place<'tcx>(
         CPlace::new_stack_slot(fx, layout)
     };
 
-    #[cfg(debug_assertions)]
     self::comments::add_local_place_comments(fx, place, local);
 
     place
@@ -163,7 +161,6 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
 
     let ssa_analyzed = crate::analyze::analyze(fx);
 
-    #[cfg(debug_assertions)]
     self::comments::add_args_header_comment(fx);
 
     let mut block_params_iter = fx.bcx.func.dfg.block_params(start_block).to_vec().into_iter();
@@ -228,7 +225,6 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
     fx.fn_abi = Some(fn_abi);
     assert!(block_params_iter.next().is_none(), "arg_value left behind");
 
-    #[cfg(debug_assertions)]
     self::comments::add_locals_header_comment(fx);
 
     for (local, arg_kind, ty) in func_params {
@@ -256,7 +252,6 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
                         CPlace::for_ptr(addr, val.layout())
                     };
 
-                    #[cfg(debug_assertions)]
                     self::comments::add_local_place_comments(fx, place, local);
 
                     assert_eq!(fx.local_map.push(place), local);
@@ -392,8 +387,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     let (func_ref, first_arg) = match instance {
         // Trait object call
         Some(Instance { def: InstanceDef::Virtual(_, idx), .. }) => {
-            #[cfg(debug_assertions)]
-            {
+            if fx.clif_comments.enabled() {
                 let nop_inst = fx.bcx.ins().nop();
                 fx.add_comment(
                     nop_inst,
@@ -414,8 +408,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
 
         // Indirect call
         None => {
-            #[cfg(debug_assertions)]
-            {
+            if fx.clif_comments.enabled() {
                 let nop_inst = fx.bcx.ins().nop();
                 fx.add_comment(nop_inst, "indirect call");
             }
@@ -477,10 +470,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     // FIXME find a cleaner way to support varargs
     if fn_sig.c_variadic {
         if !matches!(fn_sig.abi, Abi::C { .. }) {
-            fx.tcx.sess.span_fatal(
-                span,
-                &format!("Variadic call for non-C abi {:?}", fn_sig.abi),
-            );
+            fx.tcx.sess.span_fatal(span, &format!("Variadic call for non-C abi {:?}", fn_sig.abi));
         }
         let sig_ref = fx.bcx.func.dfg.call_signature(call_inst).unwrap();
         let abi_params = call_args

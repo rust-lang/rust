@@ -379,24 +379,6 @@ impl<'tcx> Body<'tcx> {
         }
     }
 
-    /// Returns an iterator over all temporaries.
-    #[inline]
-    pub fn temps_iter<'a>(&'a self) -> impl Iterator<Item = Local> + 'a {
-        (self.arg_count + 1..self.local_decls.len()).filter_map(move |index| {
-            let local = Local::new(index);
-            if self.local_decls[local].is_user_variable() { None } else { Some(local) }
-        })
-    }
-
-    /// Returns an iterator over all user-declared locals.
-    #[inline]
-    pub fn vars_iter<'a>(&'a self) -> impl Iterator<Item = Local> + 'a {
-        (self.arg_count + 1..self.local_decls.len()).filter_map(move |index| {
-            let local = Local::new(index);
-            self.local_decls[local].is_user_variable().then_some(local)
-        })
-    }
-
     /// Returns an iterator over all user-declared mutable locals.
     #[inline]
     pub fn mut_vars_iter<'a>(&'a self) -> impl Iterator<Item = Local> + 'a {
@@ -1500,7 +1482,7 @@ pub enum StatementKind<'tcx> {
     ///
     /// Note that this also is emitted for regular `let` bindings to ensure that locals that are
     /// never accessed still get some sanity checks for, e.g., `let x: ! = ..;`
-    FakeRead(FakeReadCause, Box<Place<'tcx>>),
+    FakeRead(Box<(FakeReadCause, Place<'tcx>)>),
 
     /// Write the discriminant for a variant to the enum Place.
     SetDiscriminant { place: Box<Place<'tcx>>, variant_index: VariantIdx },
@@ -1593,7 +1575,12 @@ pub enum FakeReadCause {
 
     /// `let x: !; match x {}` doesn't generate any read of x so we need to
     /// generate a read of x to check that it is initialized and safe.
-    ForMatchedPlace,
+    ///
+    /// If a closure pattern matches a Place starting with an Upvar, then we introduce a
+    /// FakeRead for that Place outside the closure, in such a case this option would be
+    /// Some(closure_def_id).
+    /// Otherwise, the value of the optional DefId will be None.
+    ForMatchedPlace(Option<DefId>),
 
     /// A fake read of the RefWithinGuard version of a bind-by-value variable
     /// in a match guard to ensure that it's value hasn't change by the time
@@ -1612,7 +1599,12 @@ pub enum FakeReadCause {
     /// but in some cases it can affect the borrow checker, as in #53695.
     /// Therefore, we insert a "fake read" here to ensure that we get
     /// appropriate errors.
-    ForLet,
+    ///
+    /// If a closure pattern matches a Place starting with an Upvar, then we introduce a
+    /// FakeRead for that Place outside the closure, in such a case this option would be
+    /// Some(closure_def_id).
+    /// Otherwise, the value of the optional DefId will be None.
+    ForLet(Option<DefId>),
 
     /// If we have an index expression like
     ///
@@ -1636,7 +1628,9 @@ impl Debug for Statement<'_> {
         use self::StatementKind::*;
         match self.kind {
             Assign(box (ref place, ref rv)) => write!(fmt, "{:?} = {:?}", place, rv),
-            FakeRead(ref cause, ref place) => write!(fmt, "FakeRead({:?}, {:?})", cause, place),
+            FakeRead(box (ref cause, ref place)) => {
+                write!(fmt, "FakeRead({:?}, {:?})", cause, place)
+            }
             Retag(ref kind, ref place) => write!(
                 fmt,
                 "Retag({}{:?})",
@@ -2329,7 +2323,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                             CtorKind::Fn => fmt_tuple(fmt, &name),
                             CtorKind::Fictive => {
                                 let mut struct_fmt = fmt.debug_struct(&name);
-                                for (field, place) in variant_def.fields.iter().zip(places) {
+                                for (field, place) in iter::zip(&variant_def.fields, places) {
                                     struct_fmt.field(&field.ident.as_str(), place);
                                 }
                                 struct_fmt.finish()
@@ -2353,7 +2347,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                             let mut struct_fmt = fmt.debug_struct(&name);
 
                             if let Some(upvars) = tcx.upvars_mentioned(def_id) {
-                                for (&var_id, place) in upvars.keys().zip(places) {
+                                for (&var_id, place) in iter::zip(upvars.keys(), places) {
                                     let var_name = tcx.hir().name(var_id);
                                     struct_fmt.field(&var_name.as_str(), place);
                                 }
@@ -2372,7 +2366,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                             let mut struct_fmt = fmt.debug_struct(&name);
 
                             if let Some(upvars) = tcx.upvars_mentioned(def_id) {
-                                for (&var_id, place) in upvars.keys().zip(places) {
+                                for (&var_id, place) in iter::zip(upvars.keys(), places) {
                                     let var_name = tcx.hir().name(var_id);
                                     struct_fmt.field(&var_name.as_str(), place);
                                 }
@@ -2410,7 +2404,8 @@ pub struct Constant<'tcx> {
     pub literal: ConstantKind<'tcx>,
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, TyEncodable, TyDecodable, Hash, HashStable, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, TyEncodable, TyDecodable, Hash, HashStable, Debug)]
+#[derive(Lift)]
 pub enum ConstantKind<'tcx> {
     /// This constant came from the type system
     Ty(&'tcx ty::Const<'tcx>),
@@ -2709,7 +2704,13 @@ impl<'tcx> Display for Constant<'tcx> {
             ty::FnDef(..) => {}
             _ => write!(fmt, "const ")?,
         }
-        match self.literal {
+        Display::fmt(&self.literal, fmt)
+    }
+}
+
+impl<'tcx> Display for ConstantKind<'tcx> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        match *self {
             ConstantKind::Ty(c) => pretty_print_const(c, fmt, true),
             ConstantKind::Val(val, ty) => pretty_print_const_value(val, ty, fmt, true),
         }

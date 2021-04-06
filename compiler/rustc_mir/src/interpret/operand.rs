@@ -77,14 +77,6 @@ impl<'tcx, Tag> Immediate<Tag> {
     pub fn to_scalar(self) -> InterpResult<'tcx, Scalar<Tag>> {
         self.to_scalar_or_uninit().check_init()
     }
-
-    #[inline]
-    pub fn to_scalar_pair(self) -> InterpResult<'tcx, (Scalar<Tag>, Scalar<Tag>)> {
-        match self {
-            Immediate::Scalar(..) => bug!("Got a thin pointer where a scalar pair was expected"),
-            Immediate::ScalarPair(a, b) => Ok((a.check_init()?, b.check_init()?)),
-        }
-    }
 }
 
 // ScalarPair needs a type to interpret, so we often have an immediate and a type together
@@ -578,7 +570,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         match val {
             mir::ConstantKind::Ty(ct) => self.const_to_op(ct, layout),
-            mir::ConstantKind::Val(val, ty) => self.const_val_to_op(*val, ty, None),
+            mir::ConstantKind::Val(val, ty) => self.const_val_to_op(*val, ty, layout),
         }
     }
 

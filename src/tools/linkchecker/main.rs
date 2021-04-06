@@ -14,8 +14,6 @@
 //! A few exceptions are allowed as there's known bugs in rustdoc, but this
 //! should catch the majority of "broken link" cases.
 
-#![cfg_attr(bootstrap, feature(str_split_once))]
-
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::env;

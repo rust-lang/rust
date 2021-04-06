@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -e
 
-rustup component add rust-src rustc-dev llvm-tools-preview
 ./build_sysroot/prepare_sysroot_src.sh
 cargo install hyperfine || echo "Skipping hyperfine install"
 

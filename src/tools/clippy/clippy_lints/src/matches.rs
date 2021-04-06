@@ -29,6 +29,7 @@ use rustc_span::source_map::{Span, Spanned};
 use rustc_span::sym;
 use std::cmp::Ordering;
 use std::collections::hash_map::Entry;
+use std::iter;
 use std::ops::Bound;
 
 declare_clippy_lint! {
@@ -1668,7 +1669,7 @@ where
 
     values.sort();
 
-    for (a, b) in values.iter().zip(values.iter().skip(1)) {
+    for (a, b) in iter::zip(&values, &values[1..]) {
         match (a, b) {
             (&Kind::Start(_, ra), &Kind::End(_, rb)) => {
                 if ra.node != rb.node {

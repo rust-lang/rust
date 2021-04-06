@@ -4,7 +4,7 @@
 use crate::imports::ImportResolver;
 use crate::Namespace::*;
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BuiltinMacroState, Determinacy};
-use crate::{CrateLint, ParentScope, ResolutionError, Resolver, Scope, ScopeSet, Weak};
+use crate::{CrateLint, DeriveData, ParentScope, ResolutionError, Resolver, Scope, ScopeSet, Weak};
 use crate::{ModuleKind, ModuleOrUniformRoot, NameBinding, PathResult, Segment, ToNameBinding};
 use rustc_ast::{self as ast, Inline, ItemKind, ModKind, NodeId};
 use rustc_ast_lowering::ResolverAstLowering;
@@ -14,17 +14,18 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::ptr_key::PtrKey;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::struct_span_err;
-use rustc_expand::base::Annotatable;
-use rustc_expand::base::{Indeterminate, ResolverExpand, SyntaxExtension, SyntaxExtensionKind};
+use rustc_expand::base::{Annotatable, DeriveResolutions, Indeterminate, ResolverExpand};
+use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::compile_declarative_macro;
-use rustc_expand::expand::{AstFragment, Invocation, InvocationKind};
+use rustc_expand::expand::{AstFragment, Invocation, InvocationKind, SupportsMacroExpansion};
 use rustc_feature::is_builtin_attr_name;
 use rustc_hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc_hir::def_id;
 use rustc_hir::PrimTy;
 use rustc_middle::middle::stability;
 use rustc_middle::ty;
-use rustc_session::lint::builtin::{LEGACY_DERIVE_HELPERS, SOFT_UNSTABLE, UNUSED_MACROS};
+use rustc_session::lint::builtin::{LEGACY_DERIVE_HELPERS, PROC_MACRO_DERIVE_RESOLUTION_FALLBACK};
+use rustc_session::lint::builtin::{SOFT_UNSTABLE, UNUSED_MACROS};
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
@@ -278,12 +279,12 @@ impl<'a> ResolverExpand for Resolver<'a> {
 
         // Derives are not included when `invocations` are collected, so we have to add them here.
         let parent_scope = &ParentScope { derives, ..parent_scope };
-        let require_inert = !invoc.fragment_kind.supports_macro_expansion();
+        let supports_macro_expansion = invoc.fragment_kind.supports_macro_expansion();
         let node_id = self.lint_node_id(eager_expansion_root);
         let (ext, res) = self.smart_resolve_macro_path(
             path,
             kind,
-            require_inert,
+            supports_macro_expansion,
             inner_attr,
             parent_scope,
             node_id,
@@ -358,8 +359,8 @@ impl<'a> ResolverExpand for Resolver<'a> {
     fn resolve_derives(
         &mut self,
         expn_id: ExpnId,
-        derives: Vec<ast::Path>,
         force: bool,
+        derive_paths: &dyn Fn() -> DeriveResolutions,
     ) -> Result<(), Indeterminate> {
         // Block expansion of the container until we resolve all derives in it.
         // This is required for two reasons:
@@ -367,49 +368,63 @@ impl<'a> ResolverExpand for Resolver<'a> {
         //   is applied, so they have to be produced by the container's expansion rather
         //   than by individual derives.
         // - Derives in the container need to know whether one of them is a built-in `Copy`.
-        // FIXME: Try to cache intermediate results to avoid resolving same derives multiple times.
+        // Temporarily take the data to avoid borrow checker conflicts.
+        let mut derive_data = mem::take(&mut self.derive_data);
+        let entry = derive_data.entry(expn_id).or_insert_with(|| DeriveData {
+            resolutions: derive_paths(),
+            helper_attrs: Vec::new(),
+            has_derive_copy: false,
+        });
         let parent_scope = self.invocation_parent_scopes[&expn_id];
-        let mut exts = Vec::new();
-        let mut helper_attrs = Vec::new();
-        let mut has_derive_copy = false;
-        for path in derives {
-            exts.push((
-                match self.resolve_macro_path(
-                    &path,
-                    Some(MacroKind::Derive),
-                    &parent_scope,
-                    true,
-                    force,
-                ) {
-                    Ok((Some(ext), _)) => {
-                        let span =
-                            path.segments.last().unwrap().ident.span.normalize_to_macros_2_0();
-                        helper_attrs
-                            .extend(ext.helper_attrs.iter().map(|name| Ident::new(*name, span)));
-                        has_derive_copy |= ext.builtin_name == Some(sym::Copy);
-                        ext
-                    }
-                    Ok(_) | Err(Determinacy::Determined) => self.dummy_ext(MacroKind::Derive),
-                    Err(Determinacy::Undetermined) => return Err(Indeterminate),
-                },
-                path,
-            ))
+        for (i, (path, opt_ext)) in entry.resolutions.iter_mut().enumerate() {
+            if opt_ext.is_none() {
+                *opt_ext = Some(
+                    match self.resolve_macro_path(
+                        &path,
+                        Some(MacroKind::Derive),
+                        &parent_scope,
+                        true,
+                        force,
+                    ) {
+                        Ok((Some(ext), _)) => {
+                            if !ext.helper_attrs.is_empty() {
+                                let last_seg = path.segments.last().unwrap();
+                                let span = last_seg.ident.span.normalize_to_macros_2_0();
+                                entry.helper_attrs.extend(
+                                    ext.helper_attrs
+                                        .iter()
+                                        .map(|name| (i, Ident::new(*name, span))),
+                                );
+                            }
+                            entry.has_derive_copy |= ext.builtin_name == Some(sym::Copy);
+                            ext
+                        }
+                        Ok(_) | Err(Determinacy::Determined) => self.dummy_ext(MacroKind::Derive),
+                        Err(Determinacy::Undetermined) => {
+                            assert!(self.derive_data.is_empty());
+                            self.derive_data = derive_data;
+                            return Err(Indeterminate);
+                        }
+                    },
+                );
+            }
         }
-        self.derive_resolutions.insert(expn_id, exts);
-        self.helper_attrs.insert(expn_id, helper_attrs);
+        // Sort helpers in a stable way independent from the derive resolution order.
+        entry.helper_attrs.sort_by_key(|(i, _)| *i);
+        self.helper_attrs
+            .insert(expn_id, entry.helper_attrs.iter().map(|(_, ident)| *ident).collect());
         // Mark this derive as having `Copy` either if it has `Copy` itself or if its parent derive
         // has `Copy`, to support cases like `#[derive(Clone, Copy)] #[derive(Debug)]`.
-        if has_derive_copy || self.has_derive_copy(parent_scope.expansion) {
+        if entry.has_derive_copy || self.has_derive_copy(parent_scope.expansion) {
             self.containers_deriving_copy.insert(expn_id);
         }
+        assert!(self.derive_data.is_empty());
+        self.derive_data = derive_data;
         Ok(())
     }
 
-    fn take_derive_resolutions(
-        &mut self,
-        expn_id: ExpnId,
-    ) -> Option<Vec<(Lrc<SyntaxExtension>, ast::Path)>> {
-        self.derive_resolutions.remove(&expn_id)
+    fn take_derive_resolutions(&mut self, expn_id: ExpnId) -> Option<DeriveResolutions> {
+        self.derive_data.remove(&expn_id).map(|data| data.resolutions)
     }
 
     // The function that implements the resolution logic of `#[cfg_accessible(path)]`.
@@ -457,7 +472,7 @@ impl<'a> Resolver<'a> {
         &mut self,
         path: &ast::Path,
         kind: MacroKind,
-        require_inert: bool,
+        supports_macro_expansion: SupportsMacroExpansion,
         inner_attr: bool,
         parent_scope: &ParentScope<'a>,
         node_id: NodeId,
@@ -505,8 +520,17 @@ impl<'a> Resolver<'a> {
 
         let unexpected_res = if ext.macro_kind() != kind {
             Some((kind.article(), kind.descr_expected()))
-        } else if require_inert && matches!(res, Res::Def(..)) {
-            Some(("a", "non-macro attribute"))
+        } else if matches!(res, Res::Def(..)) {
+            match supports_macro_expansion {
+                SupportsMacroExpansion::No => Some(("a", "non-macro attribute")),
+                SupportsMacroExpansion::Yes { supports_inner_attrs } => {
+                    if inner_attr && !supports_inner_attrs {
+                        Some(("a", "non-macro inner attribute"))
+                    } else {
+                        None
+                    }
+                }
+            }
         } else {
             None
         };
@@ -633,7 +657,7 @@ impl<'a> Resolver<'a> {
     crate fn early_resolve_ident_in_lexical_scope(
         &mut self,
         orig_ident: Ident,
-        scope_set: ScopeSet,
+        scope_set: ScopeSet<'a>,
         parent_scope: &ParentScope<'a>,
         record_used: bool,
         force: bool,
@@ -660,6 +684,7 @@ impl<'a> Resolver<'a> {
             ScopeSet::All(ns, is_import) => (ns, None, is_import),
             ScopeSet::AbsolutePath(ns) => (ns, None, false),
             ScopeSet::Macro(macro_kind) => (MacroNS, Some(macro_kind), false),
+            ScopeSet::Late(ns, ..) => (ns, None, false),
         };
 
         // This is *the* result, resolution from the scope closest to the resolved identifier.
@@ -768,19 +793,34 @@ impl<'a> Resolver<'a> {
                             Err((Determinacy::Determined, _)) => Err(Determinacy::Determined),
                         }
                     }
-                    Scope::Module(module) => {
+                    Scope::Module(module, derive_fallback_lint_id) => {
                         let adjusted_parent_scope = &ParentScope { module, ..*parent_scope };
                         let binding = this.resolve_ident_in_module_unadjusted_ext(
                             ModuleOrUniformRoot::Module(module),
                             ident,
                             ns,
                             adjusted_parent_scope,
-                            true,
+                            !matches!(scope_set, ScopeSet::Late(..)),
                             record_used,
                             path_span,
                         );
                         match binding {
                             Ok(binding) => {
+                                if let Some(lint_id) = derive_fallback_lint_id {
+                                    this.lint_buffer.buffer_lint_with_diagnostic(
+                                        PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
+                                        lint_id,
+                                        orig_ident.span,
+                                        &format!(
+                                            "cannot find {} `{}` in this scope",
+                                            ns.descr(),
+                                            ident
+                                        ),
+                                        BuiltinLintDiagnostics::ProcMacroDeriveResolutionFallback(
+                                            orig_ident.span,
+                                        ),
+                                    );
+                                }
                                 let misc_flags = if ptr::eq(module, this.graph_root) {
                                     Flags::MISC_SUGGEST_CRATE
                                 } else if module.is_normal() {
@@ -864,7 +904,7 @@ impl<'a> Resolver<'a> {
                     Ok((binding, flags))
                         if sub_namespace_match(binding.macro_kind(), macro_kind) =>
                     {
-                        if !record_used {
+                        if !record_used || matches!(scope_set, ScopeSet::Late(..)) {
                             return Some(Ok(binding));
                         }
 

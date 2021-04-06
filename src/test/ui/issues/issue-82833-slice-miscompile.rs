@@ -1,6 +1,5 @@
 // run-pass
 // compile-flags: -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Copt-level=0 -Cdebuginfo=2
-// ignore-tidy-linelength
 
 // Make sure LLVM does not miscompile this.
 

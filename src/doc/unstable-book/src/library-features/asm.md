@@ -306,13 +306,19 @@ fn call_foo(arg: i32) {
             sym foo,
             // 1st argument in rdi, which is caller-saved
             inout("rdi") arg => _,
-            // All caller-saved registers must be marked as clobberred
+            // All caller-saved registers must be marked as clobbered
             out("rax") _, out("rcx") _, out("rdx") _, out("rsi") _,
             out("r8") _, out("r9") _, out("r10") _, out("r11") _,
             out("xmm0") _, out("xmm1") _, out("xmm2") _, out("xmm3") _,
             out("xmm4") _, out("xmm5") _, out("xmm6") _, out("xmm7") _,
             out("xmm8") _, out("xmm9") _, out("xmm10") _, out("xmm11") _,
             out("xmm12") _, out("xmm13") _, out("xmm14") _, out("xmm15") _,
+            // Also mark AVX-512 registers as clobbered. This is accepted by the
+            // compiler even if AVX-512 is not enabled on the current target.
+            out("xmm16") _, out("xmm17") _, out("xmm18") _, out("xmm19") _,
+            out("xmm20") _, out("xmm21") _, out("xmm22") _, out("xmm13") _,
+            out("xmm24") _, out("xmm25") _, out("xmm26") _, out("xmm27") _,
+            out("xmm28") _, out("xmm29") _, out("xmm30") _, out("xmm31") _,
         )
     }
 }
@@ -495,7 +501,7 @@ Here is the list of currently supported register classes:
 | x86 | `reg` | `ax`, `bx`, `cx`, `dx`, `si`, `di`, `r[8-15]` (x86-64 only) | `r` |
 | x86 | `reg_abcd` | `ax`, `bx`, `cx`, `dx` | `Q` |
 | x86-32 | `reg_byte` | `al`, `bl`, `cl`, `dl`, `ah`, `bh`, `ch`, `dh` | `q` |
-| x86-64 | `reg_byte` | `al`, `bl`, `cl`, `dl`, `sil`, `dil`, `r[8-15]b`, `ah`\*, `bh`\*, `ch`\*, `dh`\* | `q` |
+| x86-64 | `reg_byte`\* | `al`, `bl`, `cl`, `dl`, `sil`, `dil`, `r[8-15]b` | `q` |
 | x86 | `xmm_reg` | `xmm[0-7]` (x86) `xmm[0-15]` (x86-64) | `x` |
 | x86 | `ymm_reg` | `ymm[0-7]` (x86) `ymm[0-15]` (x86-64) | `x` |
 | x86 | `zmm_reg` | `zmm[0-7]` (x86) `zmm[0-31]` (x86-64) | `v` |
@@ -526,7 +532,7 @@ Here is the list of currently supported register classes:
 
 > **Note**: On x86 we treat `reg_byte` differently from `reg` because the compiler can allocate `al` and `ah` separately whereas `reg` reserves the whole register.
 >
-> Note #2: On x86-64 the high byte registers (e.g. `ah`) are only available when used as an explicit register. Specifying the `reg_byte` register class for an operand will always allocate a low byte register.
+> Note #2: On x86-64 the high byte registers (e.g. `ah`) are not available in the `reg_byte` register class.
 >
 > Note #3: NVPTX doesn't have a fixed register set, so named registers are not supported.
 >

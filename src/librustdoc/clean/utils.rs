@@ -97,7 +97,7 @@ fn external_generic_args(
         .iter()
         .filter_map(|kind| match kind.unpack() {
             GenericArgKind::Lifetime(lt) => match lt {
-                ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrAnon(_) }) => {
+                ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrAnon(_), .. }) => {
                     Some(GenericArg::Lifetime(Lifetime::elided()))
                 }
                 _ => lt.clean(cx).map(GenericArg::Lifetime),
@@ -251,19 +251,9 @@ crate fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
     debug!("trying to get a name from pattern: {:?}", p);
 
     Symbol::intern(&match p.kind {
-        PatKind::Wild => return kw::Underscore,
+        PatKind::Wild | PatKind::Struct(..) => return kw::Underscore,
         PatKind::Binding(_, _, ident, _) => return ident.name,
         PatKind::TupleStruct(ref p, ..) | PatKind::Path(ref p) => qpath_to_string(p),
-        PatKind::Struct(ref name, ref fields, etc) => format!(
-            "{} {{ {}{} }}",
-            qpath_to_string(name),
-            fields
-                .iter()
-                .map(|fp| format!("{}: {}", fp.ident, name_from_pat(&fp.pat)))
-                .collect::<Vec<String>>()
-                .join(", "),
-            if etc { ", .." } else { "" }
-        ),
         PatKind::Or(ref pats) => pats
             .iter()
             .map(|p| name_from_pat(&**p).to_string())

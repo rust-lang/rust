@@ -10,7 +10,7 @@ async fn c(x: u8) -> u8 {
     }
 }
 
-async fn d() -> u8 { 1 } // should have a coverage count `0` (see below)
+async fn d() -> u8 { 1 }
 
 async fn e() -> u8 { 1 } // unused function; executor does not block on `g()`
 
@@ -63,7 +63,7 @@ fn j(x: u8) {
             0
         }
     }
-    fn d() -> u8 { 1 }
+    fn d() -> u8 { 1 } // inner function is defined in-line, but the function is not executed
     fn f() -> u8 { 1 }
     match x {
         y if c(x) == y + 1 => { d(); }
@@ -109,11 +109,11 @@ mod executor {
 
     pub fn block_on<F: Future>(mut future: F) -> F::Output {
         let mut future = unsafe { Pin::new_unchecked(&mut future) };
-
+        use std::hint::unreachable_unchecked;
         static VTABLE: RawWakerVTable = RawWakerVTable::new(
-            |_| unimplemented!("clone"),
-            |_| unimplemented!("wake"),
-            |_| unimplemented!("wake_by_ref"),
+            |_| unsafe { unreachable_unchecked() }, // clone
+            |_| unsafe { unreachable_unchecked() }, // wake
+            |_| unsafe { unreachable_unchecked() }, // wake_by_ref
             |_| (),
         );
         let waker = unsafe { Waker::from_raw(RawWaker::new(core::ptr::null(), &VTABLE)) };
@@ -126,14 +126,3 @@ mod executor {
         }
     }
 }
-
-// `llvm-cov show` shows no coverage results for the `d()`, even though the
-// crate's LLVM IR shows the function exists and has an InstrProf PGO counter,
-// and appears to be registered like all other counted functions.
-//
-// `llvm-cov show --debug` output shows there is at least one `Counter` for this
-// line, but counters do not appear in the `Combined regions` section (unlike
-// `f()`, which is similar, but does appear in `Combined regions`, and does show
-// coverage). The only difference is, `f()` is awaited, but the call to await
-// `d()` is not reached. (Note: `d()` will appear in coverage if the test is
-// modified to cause it to be awaited.)

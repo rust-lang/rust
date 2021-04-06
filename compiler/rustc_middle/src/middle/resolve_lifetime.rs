@@ -39,8 +39,13 @@ impl LifetimeDefOrigin {
 pub enum Region {
     Static,
     EarlyBound(/* index */ u32, /* lifetime decl */ DefId, LifetimeDefOrigin),
-    LateBound(ty::DebruijnIndex, /* lifetime decl */ DefId, LifetimeDefOrigin),
-    LateBoundAnon(ty::DebruijnIndex, /* anon index */ u32),
+    LateBound(
+        ty::DebruijnIndex,
+        /* late-bound index */ u32,
+        /* lifetime decl */ DefId,
+        LifetimeDefOrigin,
+    ),
+    LateBoundAnon(ty::DebruijnIndex, /* late-bound index */ u32, /* anon index */ u32),
     Free(DefId, /* lifetime decl */ DefId),
 }
 
@@ -78,4 +83,6 @@ pub struct ResolveLifetimes {
     /// be late-bound if (a) it does NOT appear in a where-clause and
     /// (b) it DOES appear in the arguments.
     pub late_bound: FxHashMap<LocalDefId, FxHashSet<ItemLocalId>>,
+
+    pub late_bound_vars: FxHashMap<LocalDefId, FxHashMap<ItemLocalId, Vec<ty::BoundVariableKind>>>,
 }

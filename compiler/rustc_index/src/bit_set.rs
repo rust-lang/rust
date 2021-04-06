@@ -356,7 +356,7 @@ where
 {
     assert_eq!(out_vec.len(), in_vec.len());
     let mut changed = false;
-    for (out_elem, in_elem) in out_vec.iter_mut().zip(in_vec.iter()) {
+    for (out_elem, in_elem) in iter::zip(out_vec, in_vec) {
         let old_val = *out_elem;
         let new_val = op(old_val, *in_elem);
         *out_elem = new_val;
@@ -842,7 +842,7 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
         let (write_start, write_end) = self.range(write);
         let words = &mut self.words[..];
         let mut changed = false;
-        for (read_index, write_index) in (read_start..read_end).zip(write_start..write_end) {
+        for (read_index, write_index) in iter::zip(read_start..read_end, write_start..write_end) {
             let word = words[write_index];
             let new_word = word | words[read_index];
             words[write_index] = new_word;
@@ -858,7 +858,7 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
         assert_eq!(with.domain_size(), self.num_columns);
         let (write_start, write_end) = self.range(write);
         let mut changed = false;
-        for (read_index, write_index) in (0..with.words().len()).zip(write_start..write_end) {
+        for (read_index, write_index) in iter::zip(0..with.words().len(), write_start..write_end) {
             let word = self.words[write_index];
             let new_word = word | with.words()[read_index];
             self.words[write_index] = new_word;

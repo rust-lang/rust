@@ -1,6 +1,5 @@
 #![crate_name = "foo"]
 
-// ignore-tidy-linelength
 
 // @has foo/index.html '//a/@href' '../foo/struct.Foo.html#method.new'
 // @has foo/struct.Foo.html '//a/@href' '../foo/struct.Foo.html#method.new'

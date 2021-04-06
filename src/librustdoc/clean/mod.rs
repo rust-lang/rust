@@ -129,7 +129,6 @@ impl Clean<ExternalCrate> for CrateNum {
             tcx.hir()
                 .krate()
                 .item
-                .module
                 .item_ids
                 .iter()
                 .filter_map(|&id| {
@@ -174,7 +173,6 @@ impl Clean<ExternalCrate> for CrateNum {
             tcx.hir()
                 .krate()
                 .item
-                .module
                 .item_ids
                 .iter()
                 .filter_map(|&id| {
@@ -354,7 +352,7 @@ impl Clean<Lifetime> for hir::Lifetime {
         match def {
             Some(
                 rl::Region::EarlyBound(_, node_id, _)
-                | rl::Region::LateBound(_, node_id, _)
+                | rl::Region::LateBound(_, _, node_id, _)
                 | rl::Region::Free(_, node_id),
             ) => {
                 if let Some(lt) = cx.lt_substs.get(&node_id).cloned() {
@@ -413,7 +411,7 @@ impl Clean<Option<Lifetime>> for ty::RegionKind {
     fn clean(&self, _cx: &mut DocContext<'_>) -> Option<Lifetime> {
         match *self {
             ty::ReStatic => Some(Lifetime::statik()),
-            ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name) }) => {
+            ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name), .. }) => {
                 Some(Lifetime(name))
             }
             ty::ReEarlyBound(ref data) => Some(Lifetime(data.name)),

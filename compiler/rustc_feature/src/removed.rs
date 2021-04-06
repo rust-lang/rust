@@ -80,6 +80,11 @@ declare_features! (
      Some("subsumed by `#![feature(allocator_internals)]`")),
     /// Allows identifying crates that contain sanitizer runtimes.
     (removed, sanitizer_runtime, "1.17.0", None, None, None),
+    /// Allows `#[doc(spotlight)]`.
+    /// The attribute was renamed to `#[doc(notable_trait)]`
+    /// and the feature to `doc_notable_trait`.
+    (removed, doc_spotlight, "1.22.0", Some(45040), None,
+     Some("renamed to `doc_notable_trait`")),
     (removed, proc_macro_mod, "1.27.0", Some(54727), None,
      Some("subsumed by `#![feature(proc_macro_hygiene)]`")),
     (removed, proc_macro_expr, "1.27.0", Some(54727), None,
@@ -123,6 +128,10 @@ declare_features! (
     /// Allows comparing raw pointers during const eval.
     (removed, const_compare_raw_pointers, "1.46.0", Some(53020), None,
      Some("cannot be allowed in const eval in any meaningful way")),
+    /// Allows using the `#[link_args]` attribute.
+    (removed, link_args, "1.53.0", Some(29596), None,
+     Some("removed in favor of using `-C link-arg=ARG` on command line, \
+           which is available from cargo build scripts with `cargo:rustc-link-arg` now")),
 
     // -------------------------------------------------------------------------
     // feature-group-end: removed features

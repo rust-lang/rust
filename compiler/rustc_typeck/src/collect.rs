@@ -15,6 +15,8 @@
 //! At present, however, we do run collection across all items in the
 //! crate as a kind of pass. This should eventually be factored away.
 
+// ignore-tidy-filelength
+
 use crate::astconv::{AstConv, SizedByDefault};
 use crate::bounds::Bounds;
 use crate::check::intrinsic::intrinsic_operation_unsafety;
@@ -43,13 +45,13 @@ use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, AdtKind, Const, DefIdTree, ToPolyTraitRef, Ty, TyCtxt};
 use rustc_middle::ty::{ReprOptions, ToPredicate, WithConstness};
-use rustc_session::config::SanitizerSet;
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
-use rustc_target::spec::abi;
+use rustc_target::spec::{abi, SanitizerSet};
 use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamName;
+use std::iter;
 
 mod item_bounds;
 mod type_of;
@@ -734,8 +736,14 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
                 tcx.ensure().generics_of(item.def_id);
                 tcx.ensure().type_of(item.def_id);
                 tcx.ensure().predicates_of(item.def_id);
-                if let hir::ForeignItemKind::Fn(..) = item.kind {
-                    tcx.ensure().fn_sig(item.def_id);
+                match item.kind {
+                    hir::ForeignItemKind::Fn(..) => tcx.ensure().fn_sig(item.def_id),
+                    hir::ForeignItemKind::Static(..) => {
+                        let mut visitor = PlaceholderHirTyCollector::default();
+                        visitor.visit_foreign_item(item);
+                        placeholder_type_error(tcx, None, &[], visitor.0, false, None);
+                    }
+                    _ => (),
                 }
             }
         }
@@ -1243,7 +1251,8 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
             match self.tcx.named_region(lt.hir_id) {
                 Some(rl::Region::Static | rl::Region::EarlyBound(..)) => {}
                 Some(
-                    rl::Region::LateBound(debruijn, _, _) | rl::Region::LateBoundAnon(debruijn, _),
+                    rl::Region::LateBound(debruijn, _, _, _)
+                    | rl::Region::LateBoundAnon(debruijn, _, _),
                 ) if debruijn < self.outer_index => {}
                 Some(
                     rl::Region::LateBound(..)
@@ -1706,10 +1715,11 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
                     }
                     diag.emit();
 
-                    ty::Binder::bind(fn_sig)
+                    ty::Binder::bind(fn_sig, tcx)
                 }
                 None => <dyn AstConv<'_>>::ty_of_fn(
                     &icx,
+                    hir_id,
                     sig.header.unsafety,
                     sig.header.abi,
                     &sig.decl,
@@ -1727,6 +1737,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
             ..
         }) => <dyn AstConv<'_>>::ty_of_fn(
             &icx,
+            hir_id,
             header.unsafety,
             header.abi,
             decl,
@@ -1748,13 +1759,10 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
             let ty = tcx.type_of(tcx.hir().get_parent_did(hir_id).to_def_id());
             let inputs =
                 data.fields().iter().map(|f| tcx.type_of(tcx.hir().local_def_id(f.hir_id)));
-            ty::Binder::bind(tcx.mk_fn_sig(
-                inputs,
-                ty,
-                false,
-                hir::Unsafety::Normal,
-                abi::Abi::Rust,
-            ))
+            ty::Binder::bind(
+                tcx.mk_fn_sig(inputs, ty, false, hir::Unsafety::Normal, abi::Abi::Rust),
+                tcx,
+            )
         }
 
         Expr(&hir::Expr { kind: hir::ExprKind::Closure(..), .. }) => {
@@ -2038,7 +2046,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                 param.bounds.iter().for_each(|bound| match bound {
                     hir::GenericBound::Outlives(lt) => {
                         let bound = <dyn AstConv<'_>>::ast_region_to_region(&icx, &lt, None);
-                        let outlives = ty::Binder::bind(ty::OutlivesPredicate(region, bound));
+                        let outlives = ty::Binder::bind(ty::OutlivesPredicate(region, bound), tcx);
                         predicates.insert((outlives.to_predicate(tcx), lt.span));
                     }
                     _ => bug!(),
@@ -2083,6 +2091,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
         match predicate {
             hir::WherePredicate::BoundPredicate(bound_pred) => {
                 let ty = icx.to_ty(&bound_pred.bounded_ty);
+                let bound_vars = icx.tcx.late_bound_vars(bound_pred.bounded_ty.hir_id);
 
                 // Keep the type around in a dummy predicate, in case of no bounds.
                 // That way, `where Ty:` is not a complete noop (see #53696) and `Ty`
@@ -2098,9 +2107,13 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                     } else {
                         let span = bound_pred.bounded_ty.span;
                         let re_root_empty = tcx.lifetimes.re_root_empty;
-                        let predicate = ty::Binder::bind(ty::PredicateKind::TypeOutlives(
-                            ty::OutlivesPredicate(ty, re_root_empty),
-                        ));
+                        let predicate = ty::Binder::bind_with_vars(
+                            ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(
+                                ty,
+                                re_root_empty,
+                            )),
+                            bound_vars,
+                        );
                         predicates.insert((predicate.to_predicate(tcx), span));
                     }
                 }
@@ -2117,10 +2130,12 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                             let mut bounds = Bounds::default();
                             let _ = <dyn AstConv<'_>>::instantiate_poly_trait_ref(
                                 &icx,
-                                &poly_trait_ref,
+                                &poly_trait_ref.trait_ref,
+                                poly_trait_ref.span,
                                 constness,
                                 ty,
                                 &mut bounds,
+                                false,
                             );
                             predicates.extend(bounds.predicates(tcx, ty));
                         }
@@ -2143,9 +2158,12 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                             let region =
                                 <dyn AstConv<'_>>::ast_region_to_region(&icx, lifetime, None);
                             predicates.insert((
-                                ty::Binder::bind(ty::PredicateKind::TypeOutlives(
-                                    ty::OutlivesPredicate(ty, region),
-                                ))
+                                ty::Binder::bind_with_vars(
+                                    ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(
+                                        ty, region,
+                                    )),
+                                    bound_vars,
+                                )
                                 .to_predicate(tcx),
                                 lifetime.span,
                             ));
@@ -2367,7 +2385,14 @@ fn predicates_from_bound<'tcx>(
             };
 
             let mut bounds = Bounds::default();
-            let _ = astconv.instantiate_poly_trait_ref(tr, constness, param_ty, &mut bounds);
+            let _ = astconv.instantiate_poly_trait_ref(
+                &tr.trait_ref,
+                tr.span,
+                constness,
+                param_ty,
+                &mut bounds,
+                false,
+            );
             bounds.predicates(astconv.tcx(), param_ty)
         }
         hir::GenericBound::LangItemTrait(lang_item, span, hir_id, args) => {
@@ -2403,8 +2428,10 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
     } else {
         hir::Unsafety::Unsafe
     };
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
     let fty = <dyn AstConv<'_>>::ty_of_fn(
         &ItemCtxt::new(tcx, def_id),
+        hir_id,
         unsafety,
         abi,
         decl,
@@ -2439,7 +2466,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
                     .emit();
             }
         };
-        for (input, ty) in decl.inputs.iter().zip(fty.inputs().skip_binder()) {
+        for (input, ty) in iter::zip(decl.inputs, fty.inputs().skip_binder()) {
             check(&input, ty)
         }
         if let hir::FnRetTy::Return(ref ty) = decl.output {
@@ -2864,6 +2891,36 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                     None
                 }
             };
+        } else if tcx.sess.check_name(attr, sym::repr) {
+            codegen_fn_attrs.alignment = match attr.meta_item_list() {
+                Some(items) => match items.as_slice() {
+                    [item] => match item.name_value_literal() {
+                        Some((sym::align, literal)) => {
+                            let alignment = rustc_attr::parse_alignment(&literal.kind);
+
+                            match alignment {
+                                Ok(align) => Some(align),
+                                Err(msg) => {
+                                    struct_span_err!(
+                                        tcx.sess.diagnostic(),
+                                        attr.span,
+                                        E0589,
+                                        "invalid `repr(align)` attribute: {}",
+                                        msg
+                                    )
+                                    .emit();
+
+                                    None
+                                }
+                            }
+                        }
+                        _ => None,
+                    },
+                    [] => None,
+                    _ => None,
+                },
+                None => None,
+            };
         }
     }
 
@@ -2889,17 +2946,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                     .emit();
                     InlineAttr::None
                 } else if list_contains_name(&items[..], sym::always) {
-                    if tcx.sess.instrument_coverage() {
-                        // Fixes Issue #82875. Forced inlining allows LLVM to discard functions
-                        // marked with `#[inline(always)]`, which can break coverage reporting if
-                        // that function was referenced from a coverage map.
-                        //
-                        // FIXME(#83429): Is there a better place, e.g., in codegen, to check and
-                        // convert `Always` to `Hint`?
-                        InlineAttr::Hint
-                    } else {
-                        InlineAttr::Always
-                    }
+                    InlineAttr::Always
                 } else if list_contains_name(&items[..], sym::never) {
                     InlineAttr::Never
                 } else {

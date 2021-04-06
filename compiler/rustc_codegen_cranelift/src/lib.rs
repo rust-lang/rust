@@ -1,13 +1,4 @@
-#![feature(
-    rustc_private,
-    decl_macro,
-    type_alias_impl_trait,
-    associated_type_bounds,
-    never_type,
-    try_blocks,
-    box_patterns,
-    hash_drain_filter
-)]
+#![feature(rustc_private, decl_macro, never_type, hash_drain_filter)]
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
 #![warn(unreachable_pub)]
@@ -57,6 +48,7 @@ mod base;
 mod cast;
 mod codegen_i128;
 mod common;
+mod compiler_builtins;
 mod constant;
 mod debuginfo;
 mod discriminant;
@@ -224,8 +216,10 @@ pub struct CraneliftCodegenBackend {
 
 impl CodegenBackend for CraneliftCodegenBackend {
     fn init(&self, sess: &Session) {
-        if sess.lto() != rustc_session::config::Lto::No && sess.opts.cg.embed_bitcode {
-            sess.warn("LTO is not supported. You may get a linker error.");
+        use rustc_session::config::Lto;
+        match sess.lto() {
+            Lto::No | Lto::ThinLocal => {}
+            Lto::Thin | Lto::Fat => sess.warn("LTO is not supported. You may get a linker error."),
         }
     }
 
@@ -240,9 +234,9 @@ impl CodegenBackend for CraneliftCodegenBackend {
         vec![]
     }
 
-    fn codegen_crate<'tcx>(
+    fn codegen_crate(
         &self,
-        tcx: TyCtxt<'tcx>,
+        tcx: TyCtxt<'_>,
         metadata: EncodedMetadata,
         need_metadata_module: bool,
     ) -> Box<dyn Any> {
@@ -252,9 +246,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
             BackendConfig::from_opts(&tcx.sess.opts.cg.llvm_args)
                 .unwrap_or_else(|err| tcx.sess.fatal(&err))
         };
-        let res = driver::codegen_crate(tcx, metadata, need_metadata_module, config);
-
-        res
+        driver::codegen_crate(tcx, metadata, need_metadata_module, config)
     }
 
     fn join_codegen(
@@ -300,9 +292,9 @@ fn build_isa(sess: &Session) -> Box<dyn isa::TargetIsa + 'static> {
     let mut flags_builder = settings::builder();
     flags_builder.enable("is_pic").unwrap();
     flags_builder.set("enable_probestack", "false").unwrap(); // __cranelift_probestack is not provided
-    flags_builder
-        .set("enable_verifier", if cfg!(debug_assertions) { "true" } else { "false" })
-        .unwrap();
+    let enable_verifier =
+        cfg!(debug_assertions) || std::env::var("CG_CLIF_ENABLE_VERIFIER").is_ok();
+    flags_builder.set("enable_verifier", if enable_verifier { "true" } else { "false" }).unwrap();
 
     let tls_model = match target_triple.binary_format {
         BinaryFormat::Elf => "elf_gd",
@@ -314,17 +306,16 @@ fn build_isa(sess: &Session) -> Box<dyn isa::TargetIsa + 'static> {
 
     flags_builder.set("enable_simd", "true").unwrap();
 
+    flags_builder.set("enable_llvm_abi_extensions", "true").unwrap();
+
     use rustc_session::config::OptLevel;
     match sess.opts.optimize {
         OptLevel::No => {
             flags_builder.set("opt_level", "none").unwrap();
         }
         OptLevel::Less | OptLevel::Default => {}
-        OptLevel::Aggressive => {
+        OptLevel::Size | OptLevel::SizeMin | OptLevel::Aggressive => {
             flags_builder.set("opt_level", "speed_and_size").unwrap();
-        }
-        OptLevel::Size | OptLevel::SizeMin => {
-            sess.warn("Optimizing for size is not supported. Just ignoring the request");
         }
     }
 

@@ -216,6 +216,10 @@ declare_features! (
     /// Renamed from `optin_builtin_traits`.
     (active, auto_traits, "1.50.0", Some(13231), None),
 
+    /// Allows `#[doc(notable_trait)]`.
+    /// Renamed from `doc_spotlight`.
+    (active, doc_notable_trait, "1.52.0", Some(45040), None),
+
     // no-tracking-issue-end
 
     // -------------------------------------------------------------------------
@@ -253,9 +257,6 @@ declare_features! (
     // -------------------------------------------------------------------------
     // feature-group-start: actual feature gates
     // -------------------------------------------------------------------------
-
-    /// Allows using the `#[link_args]` attribute.
-    (active, link_args, "1.0.0", Some(29596), None),
 
     /// Allows defining identifiers beyond ASCII.
     (active, non_ascii_idents, "1.0.0", Some(55467), None),
@@ -373,9 +374,6 @@ declare_features! (
 
     /// Allows `#[doc(masked)]`.
     (active, doc_masked, "1.21.0", Some(44027), None),
-
-    /// Allows `#[doc(spotlight)]`.
-    (active, doc_spotlight, "1.22.0", Some(45040), None),
 
     /// Allows `#[doc(include = "some-file")]`.
     (active, external_doc, "1.22.0", Some(44732), None),
@@ -643,6 +641,9 @@ declare_features! (
 
     /// Allows `extern "C-unwind" fn` to enable unwinding across ABI boundaries.
     (active, c_unwind, "1.52.0", Some(74990), None),
+
+    /// Allows using `#[repr(align(...))]` on function items
+    (active, fn_align, "1.53.0", Some(82232), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates

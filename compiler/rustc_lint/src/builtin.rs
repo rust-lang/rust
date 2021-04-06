@@ -481,7 +481,7 @@ fn has_doc(sess: &Session, attr: &ast::Attribute) -> bool {
         return false;
     }
 
-    if attr.is_value_str() {
+    if attr.value_str().is_some() {
         return true;
     }
 
@@ -565,7 +565,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     }
 
     fn check_crate(&mut self, cx: &LateContext<'_>, krate: &hir::Crate<'_>) {
-        self.check_missing_docs_attrs(cx, hir::CRATE_HIR_ID, krate.item.span, "the", "crate");
+        self.check_missing_docs_attrs(cx, hir::CRATE_HIR_ID, krate.item.inner, "the", "crate");
 
         for macro_def in krate.exported_macros {
             let attrs = cx.tcx.hir().attrs(macro_def.hir_id());

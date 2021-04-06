@@ -108,6 +108,19 @@ impl Step for Linkcheck {
     /// documentation to ensure we don't have a bunch of dead ones.
     fn run(self, builder: &Builder<'_>) {
         let host = self.host;
+        let hosts = &builder.hosts;
+        let targets = &builder.targets;
+
+        // if we have different hosts and targets, some things may be built for
+        // the host (e.g. rustc) and others for the target (e.g. std). The
+        // documentation built for each will contain broken links to
+        // docs built for the other platform (e.g. rustc linking to cargo)
+        if (hosts != targets) && !hosts.is_empty() && !targets.is_empty() {
+            panic!(
+                "Linkcheck currently does not support builds with different hosts and targets.
+You can skip linkcheck with --exclude src/tools/linkchecker"
+            );
+        }
 
         builder.info(&format!("Linkcheck ({})", host));
 
@@ -122,7 +135,8 @@ impl Step for Linkcheck {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.path("src/tools/linkchecker").default_condition(builder.config.docs)
+        let run = run.path("src/tools/linkchecker");
+        run.default_condition(builder.config.docs)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -338,6 +352,57 @@ impl Step for Rustfmt {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct RustDemangler {
+    stage: u32,
+    host: TargetSelection,
+}
+
+impl Step for RustDemangler {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/rust-demangler")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(RustDemangler { stage: run.builder.top_stage, host: run.target });
+    }
+
+    /// Runs `cargo test` for rust-demangler.
+    fn run(self, builder: &Builder<'_>) {
+        let stage = self.stage;
+        let host = self.host;
+        let compiler = builder.compiler(stage, host);
+
+        let rust_demangler = builder
+            .ensure(tool::RustDemangler { compiler, target: self.host, extra_features: Vec::new() })
+            .expect("in-tree tool");
+        let mut cargo = tool::prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolRustc,
+            host,
+            "test",
+            "src/tools/rust-demangler",
+            SourceType::InTree,
+            &[],
+        );
+
+        let dir = testdir(builder, compiler.host);
+        t!(fs::create_dir_all(&dir));
+
+        cargo.env("RUST_DEMANGLER_DRIVER_PATH", rust_demangler);
+
+        cargo.arg("--").args(builder.config.cmd.test_args());
+
+        cargo.add_rustc_lib_path(builder, compiler);
+
+        builder.run(&mut cargo.into());
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Miri {
     stage: u32,
     host: TargetSelection,
@@ -452,7 +517,14 @@ impl Step for Miri {
 
             cargo.add_rustc_lib_path(builder, compiler);
 
-            if !try_run(builder, &mut cargo.into()) {
+            let mut cargo = Command::from(cargo);
+            if !try_run(builder, &mut cargo) {
+                return;
+            }
+
+            // # Run `cargo test` with `-Zmir-opt-level=4`.
+            cargo.env("MIRIFLAGS", "-O -Zmir-opt-level=4");
+            if !try_run(builder, &mut cargo) {
                 return;
             }
 
@@ -782,6 +854,7 @@ impl Step for Tidy {
         cmd.arg(&builder.src);
         cmd.arg(&builder.initial_cargo);
         cmd.arg(&builder.out);
+        cmd.arg(builder.jobs().to_string());
         if builder.is_verbose() {
             cmd.arg("--verbose");
         }
@@ -1105,7 +1178,10 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         }
 
         if mode == "run-make" && suite.ends_with("fulldeps") {
-            cmd.arg("--rust-demangler-path").arg(builder.tool_exe(Tool::RustDemangler));
+            let rust_demangler = builder
+                .ensure(tool::RustDemangler { compiler, target, extra_features: Vec::new() })
+                .expect("in-tree tool");
+            cmd.arg("--rust-demangler-path").arg(rust_demangler);
         }
 
         cmd.arg("--src-base").arg(builder.src.join("src/test").join(suite));

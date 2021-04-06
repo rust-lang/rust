@@ -25,6 +25,7 @@ use either::Either;
 use smallvec::SmallVec;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::iter;
 use std::mem;
 use std::rc::Rc;
 
@@ -573,7 +574,7 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
 
                 self.mutate_place(location, (*lhs, span), Shallow(None), JustWrite, flow_state);
             }
-            StatementKind::FakeRead(_, box ref place) => {
+            StatementKind::FakeRead(box (_, ref place)) => {
                 // Read for match doesn't access any memory and is used to
                 // assert that a place is safe and live. So we don't have to
                 // do any checks here.
@@ -595,7 +596,7 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
                 self.mutate_place(location, (**place, span), Shallow(None), JustWrite, flow_state);
             }
             StatementKind::LlvmInlineAsm(ref asm) => {
-                for (o, output) in asm.asm.outputs.iter().zip(asm.outputs.iter()) {
+                for (o, output) in iter::zip(&asm.asm.outputs, &*asm.outputs) {
                     if o.is_indirect {
                         // FIXME(eddyb) indirect inline asm outputs should
                         // be encoded through MIR place derefs instead.

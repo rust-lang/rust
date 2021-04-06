@@ -30,29 +30,12 @@
                    ^0
    29|      1|    use_this_lib_crate();
    30|      1|}
-  ------------------
-  | used_inline_crate::used_inline_function:
-  |   20|      1|pub fn used_inline_function() {
-  |   21|       |    // Initialize test constants in a way that cannot be determined at compile time, to ensure
-  |   22|       |    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
-  |   23|       |    // dependent conditions.
-  |   24|      1|    let is_true = std::env::args().len() == 1;
-  |   25|      1|    let mut countdown = 0;
-  |   26|      1|    if is_true {
-  |   27|      1|        countdown = 10;
-  |   28|      1|    }
-  |                   ^0
-  |   29|      1|    use_this_lib_crate();
-  |   30|      1|}
-  ------------------
-  | Unexecuted instantiation: used_inline_crate::used_inline_function
-  ------------------
-   31|       |// Expect for above function:
-   32|       |//
-   33|       |// | Unexecuted instantiation: used_crate::used_only_from_bin_crate_generic_function::<_>
-   34|       |//
-   35|       |// With `#[inline(always)]` this function is instantiated twice, in both the library crate (which
-   36|       |// does not use it) and the `uses_inline_crate` binary (which does use/call it).
+   31|       |
+   32|       |
+   33|       |
+   34|       |
+   35|       |
+   36|       |
    37|       |
    38|       |#[inline(always)]
    39|      2|pub fn used_only_from_bin_crate_generic_function<T: Debug>(arg: T) {

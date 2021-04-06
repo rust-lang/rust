@@ -1,5 +1,6 @@
 //! Codegen of a single function
 
+use cranelift_codegen::binemit::{NullStackMapSink, NullTrapSink};
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::layout::FnAbiExt;
@@ -7,11 +8,7 @@ use rustc_target::abi::call::FnAbi;
 
 use crate::prelude::*;
 
-pub(crate) fn codegen_fn<'tcx>(
-    cx: &mut crate::CodegenCx<'_, 'tcx>,
-    instance: Instance<'tcx>,
-    linkage: Linkage,
-) {
+pub(crate) fn codegen_fn<'tcx>(cx: &mut crate::CodegenCx<'_, 'tcx>, instance: Instance<'tcx>) {
     let tcx = cx.tcx;
 
     let _inst_guard =
@@ -23,7 +20,7 @@ pub(crate) fn codegen_fn<'tcx>(
     // Declare function
     let name = tcx.symbol_name(instance).name.to_string();
     let sig = get_function_sig(tcx, cx.module.isa().triple(), instance);
-    let func_id = cx.module.declare_function(&name, linkage, &sig).unwrap();
+    let func_id = cx.module.declare_function(&name, Linkage::Local, &sig).unwrap();
 
     cx.cached_context.clear();
 
@@ -131,7 +128,7 @@ pub(crate) fn codegen_fn<'tcx>(
     let module = &mut cx.module;
     tcx.sess.time("define function", || {
         module
-            .define_function(func_id, context, &mut cranelift_codegen::binemit::NullTrapSink {})
+            .define_function(func_id, context, &mut NullTrapSink {}, &mut NullStackMapSink {})
             .unwrap()
     });
 
@@ -219,8 +216,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
             codegen_stmt(fx, block, stmt);
         }
 
-        #[cfg(debug_assertions)]
-        {
+        if fx.clif_comments.enabled() {
             let mut terminator_head = "\n".to_string();
             bb_data.terminator().kind.fmt_head(&mut terminator_head).unwrap();
             let inst = fx.bcx.func.layout.last_inst(block).unwrap();
@@ -433,12 +429,14 @@ fn codegen_stmt<'tcx>(
 
     fx.set_debug_loc(stmt.source_info);
 
-    #[cfg(false_debug_assertions)]
+    #[cfg(disabled)]
     match &stmt.kind {
         StatementKind::StorageLive(..) | StatementKind::StorageDead(..) => {} // Those are not very useful
         _ => {
-            let inst = fx.bcx.func.layout.last_inst(cur_block).unwrap();
-            fx.add_comment(inst, format!("{:?}", stmt));
+            if fx.clif_comments.enabled() {
+                let inst = fx.bcx.func.layout.last_inst(cur_block).unwrap();
+                fx.add_comment(inst, format!("{:?}", stmt));
+            }
         }
     }
 
@@ -464,16 +462,16 @@ fn codegen_stmt<'tcx>(
                     let val = crate::constant::codegen_tls_ref(fx, def_id, lval.layout());
                     lval.write_cvalue(fx, val);
                 }
-                Rvalue::BinaryOp(bin_op, box (ref lhs, ref rhs)) => {
-                    let lhs = codegen_operand(fx, lhs);
-                    let rhs = codegen_operand(fx, rhs);
+                Rvalue::BinaryOp(bin_op, ref lhs_rhs) => {
+                    let lhs = codegen_operand(fx, &lhs_rhs.0);
+                    let rhs = codegen_operand(fx, &lhs_rhs.1);
 
                     let res = crate::num::codegen_binop(fx, bin_op, lhs, rhs);
                     lval.write_cvalue(fx, res);
                 }
-                Rvalue::CheckedBinaryOp(bin_op, box (ref lhs, ref rhs)) => {
-                    let lhs = codegen_operand(fx, lhs);
-                    let rhs = codegen_operand(fx, rhs);
+                Rvalue::CheckedBinaryOp(bin_op, ref lhs_rhs) => {
+                    let lhs = codegen_operand(fx, &lhs_rhs.0);
+                    let rhs = codegen_operand(fx, &lhs_rhs.1);
 
                     let res = if !fx.tcx.sess.overflow_checks() {
                         let val =
@@ -659,7 +657,9 @@ fn codegen_stmt<'tcx>(
                         .val
                         .try_to_bits(fx.tcx.data_layout.pointer_size)
                         .unwrap();
-                    if fx.clif_type(operand.layout().ty) == Some(types::I8) {
+                    if operand.layout().size.bytes() == 0 {
+                        // Do nothing for ZST's
+                    } else if fx.clif_type(operand.layout().ty) == Some(types::I8) {
                         let times = fx.bcx.ins().iconst(fx.pointer_type, times as i64);
                         // FIXME use emit_small_memset where possible
                         let addr = lval.to_ptr().get_addr(fx);
@@ -832,25 +832,18 @@ fn codegen_stmt<'tcx>(
             }
         }
         StatementKind::Coverage { .. } => fx.tcx.sess.fatal("-Zcoverage is unimplemented"),
-        StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping {
-          src,
-          dst,
-          count,
-        }) => {
-            let dst = codegen_operand(fx, dst);
+        StatementKind::CopyNonOverlapping(inner) => {
+            let dst = codegen_operand(fx, &inner.dst);
             let pointee = dst
-              .layout()
-              .pointee_info_at(fx, rustc_target::abi::Size::ZERO)
-              .expect("Expected pointer");
+                .layout()
+                .pointee_info_at(fx, rustc_target::abi::Size::ZERO)
+                .expect("Expected pointer");
             let dst = dst.load_scalar(fx);
-            let src = codegen_operand(fx, src).load_scalar(fx);
-            let count = codegen_operand(fx, count).load_scalar(fx);
+            let src = codegen_operand(fx, &inner.src).load_scalar(fx);
+            let count = codegen_operand(fx, &inner.count).load_scalar(fx);
             let elem_size: u64 = pointee.size.bytes();
-            let bytes = if elem_size != 1 {
-               fx.bcx.ins().imul_imm(count, elem_size as i64)
-            } else {
-               count
-            };
+            let bytes =
+                if elem_size != 1 { fx.bcx.ins().imul_imm(count, elem_size as i64) } else { count };
             fx.bcx.call_memcpy(fx.cx.module.target_config(), dst, src, bytes);
         }
     }

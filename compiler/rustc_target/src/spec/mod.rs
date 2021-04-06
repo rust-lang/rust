@@ -37,6 +37,7 @@
 use crate::abi::Endian;
 use crate::spec::abi::{lookup as lookup_abi, Abi};
 use crate::spec::crt_objects::{CrtObjects, CrtObjectsFallback};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_serialize::json::{Json, ToJson};
 use rustc_span::symbol::{sym, Symbol};
 use std::collections::BTreeMap;
@@ -78,7 +79,7 @@ mod solaris_base;
 mod thumb_base;
 mod uefi_msvc_base;
 mod vxworks_base;
-mod wasm32_base;
+mod wasm_base;
 mod windows_gnu_base;
 mod windows_msvc_base;
 mod windows_uwp_gnu_base;
@@ -511,38 +512,6 @@ impl fmt::Display for SplitDebuginfo {
     }
 }
 
-macro_rules! supported_targets {
-    ( $(($( $triple:literal, )+ $module:ident ),)+ ) => {
-        $(mod $module;)+
-
-        /// List of supported targets
-        pub const TARGETS: &[&str] = &[$($($triple),+),+];
-
-        fn load_builtin(target: &str) -> Option<Target> {
-            let mut t = match target {
-                $( $($triple)|+ => $module::target(), )+
-                _ => return None,
-            };
-            t.is_builtin = true;
-            debug!("got builtin target: {:?}", t);
-            Some(t)
-        }
-
-        #[cfg(test)]
-        mod tests {
-            mod tests_impl;
-
-            // Cannot put this into a separate file without duplication, make an exception.
-            $(
-                #[test] // `#[test]`
-                fn $module() {
-                    tests_impl::test_target(super::$module::target());
-                }
-            )+
-        }
-    };
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum StackProbeType {
     /// Don't emit any stack probes.
@@ -618,6 +587,117 @@ impl ToJson for StackProbeType {
             .collect(),
         })
     }
+}
+
+bitflags::bitflags! {
+    #[derive(Default, Encodable, Decodable)]
+    pub struct SanitizerSet: u8 {
+        const ADDRESS = 1 << 0;
+        const LEAK    = 1 << 1;
+        const MEMORY  = 1 << 2;
+        const THREAD  = 1 << 3;
+        const HWADDRESS = 1 << 4;
+    }
+}
+
+impl SanitizerSet {
+    /// Return sanitizer's name
+    ///
+    /// Returns none if the flags is a set of sanitizers numbering not exactly one.
+    fn as_str(self) -> Option<&'static str> {
+        Some(match self {
+            SanitizerSet::ADDRESS => "address",
+            SanitizerSet::LEAK => "leak",
+            SanitizerSet::MEMORY => "memory",
+            SanitizerSet::THREAD => "thread",
+            SanitizerSet::HWADDRESS => "hwaddress",
+            _ => return None,
+        })
+    }
+}
+
+/// Formats a sanitizer set as a comma separated list of sanitizers' names.
+impl fmt::Display for SanitizerSet {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut first = true;
+        for s in *self {
+            let name = s.as_str().unwrap_or_else(|| panic!("unrecognized sanitizer {:?}", s));
+            if !first {
+                f.write_str(", ")?;
+            }
+            f.write_str(name)?;
+            first = false;
+        }
+        Ok(())
+    }
+}
+
+impl IntoIterator for SanitizerSet {
+    type Item = SanitizerSet;
+    type IntoIter = std::vec::IntoIter<SanitizerSet>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        [
+            SanitizerSet::ADDRESS,
+            SanitizerSet::LEAK,
+            SanitizerSet::MEMORY,
+            SanitizerSet::THREAD,
+            SanitizerSet::HWADDRESS,
+        ]
+        .iter()
+        .copied()
+        .filter(|&s| self.contains(s))
+        .collect::<Vec<_>>()
+        .into_iter()
+    }
+}
+
+impl<CTX> HashStable<CTX> for SanitizerSet {
+    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        self.bits().hash_stable(ctx, hasher);
+    }
+}
+
+impl ToJson for SanitizerSet {
+    fn to_json(&self) -> Json {
+        self.into_iter()
+            .map(|v| Some(v.as_str()?.to_json()))
+            .collect::<Option<Vec<_>>>()
+            .unwrap_or(Vec::new())
+            .to_json()
+    }
+}
+
+macro_rules! supported_targets {
+    ( $(($( $triple:literal, )+ $module:ident ),)+ ) => {
+        $(mod $module;)+
+
+        /// List of supported targets
+        pub const TARGETS: &[&str] = &[$($($triple),+),+];
+
+        fn load_builtin(target: &str) -> Option<Target> {
+            let mut t = match target {
+                $( $($triple)|+ => $module::target(), )+
+                _ => return None,
+            };
+            t.is_builtin = true;
+            debug!("got builtin target: {:?}", t);
+            Some(t)
+        }
+
+        #[cfg(test)]
+        mod tests {
+            mod tests_impl;
+
+            // Cannot put this into a separate file without duplication, make an exception.
+            $(
+                #[test] // `#[test]`
+                fn $module() {
+                    tests_impl::test_target(super::$module::target());
+                }
+            )+
+        }
+    };
 }
 
 supported_targets! {
@@ -762,6 +842,7 @@ supported_targets! {
     ("wasm32-unknown-emscripten", wasm32_unknown_emscripten),
     ("wasm32-unknown-unknown", wasm32_unknown_unknown),
     ("wasm32-wasi", wasm32_wasi),
+    ("wasm64-unknown-unknown", wasm64_unknown_unknown),
 
     ("thumbv6m-none-eabi", thumbv6m_none_eabi),
     ("thumbv7m-none-eabi", thumbv7m_none_eabi),
@@ -996,6 +1077,8 @@ pub struct TargetOptions {
     pub is_like_emscripten: bool,
     /// Whether the target toolchain is like Fuchsia's.
     pub is_like_fuchsia: bool,
+    /// Whether a target toolchain is like WASM.
+    pub is_like_wasm: bool,
     /// Version of DWARF to use if not using the default.
     /// Useful because some platforms (osx, bsd) only want up to DWARF2.
     pub dwarf_version: Option<u32>,
@@ -1164,6 +1247,13 @@ pub struct TargetOptions {
     /// How to handle split debug information, if at all. Specifying `None` has
     /// target-specific meaning.
     pub split_debuginfo: SplitDebuginfo,
+
+    /// The sanitizers supported by this target
+    ///
+    /// Note that the support here is at a codegen level. If the machine code with sanitizer
+    /// enabled can generated on this target, but the necessary supporting libraries are not
+    /// distributed with the target, the sanitizer should still appear in this list for the target.
+    pub supported_sanitizers: SanitizerSet,
 }
 
 impl Default for TargetOptions {
@@ -1208,6 +1298,7 @@ impl Default for TargetOptions {
             is_like_emscripten: false,
             is_like_msvc: false,
             is_like_fuchsia: false,
+            is_like_wasm: false,
             dwarf_version: None,
             linker_is_gnu: false,
             allows_weak_linkage: true,
@@ -1265,6 +1356,7 @@ impl Default for TargetOptions {
             eh_frame_header: true,
             has_thumb_interworking: false,
             split_debuginfo: SplitDebuginfo::Off,
+            supported_sanitizers: SanitizerSet::empty(),
         }
     }
 }
@@ -1551,6 +1643,24 @@ impl Target {
                     )),
                 }).unwrap_or(Ok(()))
             } );
+            ($key_name:ident, SanitizerSet) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                obj.find(&name[..]).and_then(|o| o.as_array()).and_then(|a| {
+                    for s in a {
+                        base.$key_name |= match s.as_string() {
+                            Some("address") => SanitizerSet::ADDRESS,
+                            Some("leak") => SanitizerSet::LEAK,
+                            Some("memory") => SanitizerSet::MEMORY,
+                            Some("thread") => SanitizerSet::THREAD,
+                            Some("hwaddress") => SanitizerSet::HWADDRESS,
+                            Some(s) => return Some(Err(format!("unknown sanitizer {}", s))),
+                            _ => return Some(Err(format!("not a string: {:?}", s))),
+                        };
+                    }
+                    Some(Ok(()))
+                }).unwrap_or(Ok(()))
+            } );
+
             ($key_name:ident, crt_objects_fallback) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
@@ -1683,6 +1793,7 @@ impl Target {
         key!(is_like_msvc, bool);
         key!(is_like_emscripten, bool);
         key!(is_like_fuchsia, bool);
+        key!(is_like_wasm, bool);
         key!(dwarf_version, Option<u32>);
         key!(linker_is_gnu, bool);
         key!(allows_weak_linkage, bool);
@@ -1729,6 +1840,7 @@ impl Target {
         key!(eh_frame_header, bool);
         key!(has_thumb_interworking, bool);
         key!(split_debuginfo, SplitDebuginfo)?;
+        key!(supported_sanitizers, SanitizerSet)?;
 
         // NB: The old name is deprecated, but support for it is retained for
         // compatibility.
@@ -1920,6 +2032,7 @@ impl ToJson for Target {
         target_option_val!(is_like_msvc);
         target_option_val!(is_like_emscripten);
         target_option_val!(is_like_fuchsia);
+        target_option_val!(is_like_wasm);
         target_option_val!(dwarf_version);
         target_option_val!(linker_is_gnu);
         target_option_val!(allows_weak_linkage);
@@ -1966,6 +2079,7 @@ impl ToJson for Target {
         target_option_val!(eh_frame_header);
         target_option_val!(has_thumb_interworking);
         target_option_val!(split_debuginfo);
+        target_option_val!(supported_sanitizers);
 
         if default.unsupported_abis != self.unsupported_abis {
             d.insert(

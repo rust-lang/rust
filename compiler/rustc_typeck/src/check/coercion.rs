@@ -1487,7 +1487,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         if let (Some((expr, _)), Some((fn_decl, _, _))) =
             (expression, fcx.get_node_fn_decl(parent_item))
         {
-            fcx.suggest_missing_return_expr(&mut err, expr, fn_decl, expected, found);
+            fcx.suggest_missing_return_expr(&mut err, expr, fn_decl, expected, found, parent_id);
         }
 
         if let (Some(sp), Some(fn_output)) = (fcx.ret_coercion_span.get(), fn_output) {

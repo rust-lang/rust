@@ -368,55 +368,28 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     }
 
     /// Given a primitive type, try to resolve an associated item.
-    ///
-    /// HACK(jynelson): `item_str` is passed in instead of derived from `item_name` so the
-    /// lifetimes on `&'path` will work.
     fn resolve_primitive_associated_item(
         &self,
         prim_ty: PrimitiveType,
         ns: Namespace,
-        module_id: DefId,
         item_name: Symbol,
-        item_str: &'path str,
-    ) -> Result<(Res, Option<String>), ErrorKind<'path>> {
+    ) -> Option<(Res, String, Option<(DefKind, DefId)>)> {
         let tcx = self.cx.tcx;
 
-        prim_ty
-            .impls(tcx)
-            .into_iter()
-            .find_map(|&impl_| {
-                tcx.associated_items(impl_)
-                    .find_by_name_and_namespace(tcx, Ident::with_dummy_span(item_name), ns, impl_)
-                    .map(|item| {
-                        let kind = item.kind;
-                        self.kind_side_channel.set(Some((kind.as_def_kind(), item.def_id)));
-                        match kind {
-                            ty::AssocKind::Fn => "method",
-                            ty::AssocKind::Const => "associatedconstant",
-                            ty::AssocKind::Type => "associatedtype",
-                        }
-                    })
-                    .map(|out| {
-                        (
-                            Res::Primitive(prim_ty),
-                            Some(format!("{}#{}.{}", prim_ty.as_str(), out, item_str)),
-                        )
-                    })
-            })
-            .ok_or_else(|| {
-                debug!(
-                    "returning primitive error for {}::{} in {} namespace",
-                    prim_ty.as_str(),
-                    item_name,
-                    ns.descr()
-                );
-                ResolutionFailure::NotResolved {
-                    module_id,
-                    partial_res: Some(Res::Primitive(prim_ty)),
-                    unresolved: item_str.into(),
-                }
-                .into()
-            })
+        prim_ty.impls(tcx).into_iter().find_map(|&impl_| {
+            tcx.associated_items(impl_)
+                .find_by_name_and_namespace(tcx, Ident::with_dummy_span(item_name), ns, impl_)
+                .map(|item| {
+                    let kind = item.kind;
+                    let out = match kind {
+                        ty::AssocKind::Fn => "method",
+                        ty::AssocKind::Const => "associatedconstant",
+                        ty::AssocKind::Type => "associatedtype",
+                    };
+                    let fragment = format!("{}#{}.{}", prim_ty.as_str(), out, item_name);
+                    (Res::Primitive(prim_ty), fragment, Some((kind.as_def_kind(), item.def_id)))
+                })
+        })
     }
 
     /// Resolves a string as a macro.
@@ -490,8 +463,6 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         module_id: DefId,
         extra_fragment: &Option<String>,
     ) -> Result<(Res, Option<String>), ErrorKind<'path>> {
-        let tcx = self.cx.tcx;
-
         if let Some(res) = self.resolve_path(path_str, ns, module_id) {
             match res {
                 // FIXME(#76467): make this fallthrough to lookup the associated
@@ -534,29 +505,58 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 }
             })?;
 
-        // FIXME: are these both necessary?
-        let ty_res = if let Some(ty_res) = resolve_primitive(&path_root, TypeNS)
+        // FIXME(#83862): this arbitrarily gives precedence to primitives over modules to support
+        // links to primitives when `#[doc(primitive)]` is present. It should give an ambiguity
+        // error instead and special case *only* modules with `#[doc(primitive)]`, not all
+        // primitives.
+        resolve_primitive(&path_root, TypeNS)
             .or_else(|| self.resolve_path(&path_root, TypeNS, module_id))
-        {
-            ty_res
-        } else {
-            // FIXME: this is duplicated on the end of this function.
-            return if ns == Namespace::ValueNS {
-                self.variant_field(path_str, module_id)
-            } else {
-                Err(ResolutionFailure::NotResolved {
-                    module_id,
-                    partial_res: None,
-                    unresolved: path_root.into(),
+            .and_then(|ty_res| {
+                let (res, fragment, side_channel) =
+                    self.resolve_associated_item(ty_res, item_name, ns, module_id)?;
+                let result = if extra_fragment.is_some() {
+                    let diag_res = side_channel.map_or(res, |(k, r)| Res::Def(k, r));
+                    Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(diag_res)))
+                } else {
+                    // HACK(jynelson): `clean` expects the type, not the associated item
+                    // but the disambiguator logic expects the associated item.
+                    // Store the kind in a side channel so that only the disambiguator logic looks at it.
+                    if let Some((kind, id)) = side_channel {
+                        self.kind_side_channel.set(Some((kind, id)));
+                    }
+                    Ok((res, Some(fragment)))
+                };
+                Some(result)
+            })
+            .unwrap_or_else(|| {
+                if ns == Namespace::ValueNS {
+                    self.variant_field(path_str, module_id)
+                } else {
+                    Err(ResolutionFailure::NotResolved {
+                        module_id,
+                        partial_res: None,
+                        unresolved: path_root.into(),
+                    }
+                    .into())
                 }
-                .into())
-            };
-        };
+            })
+    }
 
-        let res = match ty_res {
-            Res::Primitive(prim) => Some(
-                self.resolve_primitive_associated_item(prim, ns, module_id, item_name, item_str),
-            ),
+    /// Returns:
+    /// - None if no associated item was found
+    /// - Some((_, _, Some(_))) if an item was found and should go through a side channel
+    /// - Some((_, _, None)) otherwise
+    fn resolve_associated_item(
+        &mut self,
+        root_res: Res,
+        item_name: Symbol,
+        ns: Namespace,
+        module_id: DefId,
+    ) -> Option<(Res, String, Option<(DefKind, DefId)>)> {
+        let tcx = self.cx.tcx;
+
+        match root_res {
+            Res::Primitive(prim) => self.resolve_primitive_associated_item(prim, ns, item_name),
             Res::Def(
                 DefKind::Struct
                 | DefKind::Union
@@ -599,59 +599,42 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         ty::AssocKind::Const => "associatedconstant",
                         ty::AssocKind::Type => "associatedtype",
                     };
-                    Some(if extra_fragment.is_some() {
-                        Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(ty_res)))
-                    } else {
-                        // HACK(jynelson): `clean` expects the type, not the associated item
-                        // but the disambiguator logic expects the associated item.
-                        // Store the kind in a side channel so that only the disambiguator logic looks at it.
-                        self.kind_side_channel.set(Some((kind.as_def_kind(), id)));
-                        Ok((ty_res, Some(format!("{}.{}", out, item_str))))
-                    })
-                } else if ns == Namespace::ValueNS {
-                    debug!("looking for variants or fields named {} for {:?}", item_name, did);
-                    // FIXME(jynelson): why is this different from
-                    // `variant_field`?
-                    match tcx.type_of(did).kind() {
-                        ty::Adt(def, _) => {
-                            let field = if def.is_enum() {
-                                def.all_fields().find(|item| item.ident.name == item_name)
-                            } else {
-                                def.non_enum_variant()
-                                    .fields
-                                    .iter()
-                                    .find(|item| item.ident.name == item_name)
-                            };
-                            field.map(|item| {
-                                if extra_fragment.is_some() {
-                                    let res = Res::Def(
-                                        if def.is_enum() {
-                                            DefKind::Variant
-                                        } else {
-                                            DefKind::Field
-                                        },
-                                        item.did,
-                                    );
-                                    Err(ErrorKind::AnchorFailure(
-                                        AnchorFailure::RustdocAnchorConflict(res),
-                                    ))
-                                } else {
-                                    Ok((
-                                        ty_res,
-                                        Some(format!(
-                                            "{}.{}",
-                                            if def.is_enum() { "variant" } else { "structfield" },
-                                            item.ident
-                                        )),
-                                    ))
-                                }
-                            })
-                        }
-                        _ => None,
-                    }
-                } else {
-                    None
+                    // HACK(jynelson): `clean` expects the type, not the associated item
+                    // but the disambiguator logic expects the associated item.
+                    // Store the kind in a side channel so that only the disambiguator logic looks at it.
+                    return Some((
+                        root_res,
+                        format!("{}.{}", out, item_name),
+                        Some((kind.as_def_kind(), id)),
+                    ));
                 }
+
+                if ns != Namespace::ValueNS {
+                    return None;
+                }
+                debug!("looking for variants or fields named {} for {:?}", item_name, did);
+                // FIXME: this doesn't really belong in `associated_item` (maybe `variant_field` is better?)
+                // NOTE: it's different from variant_field because it resolves fields and variants,
+                // not variant fields (2 path segments, not 3).
+                let def = match tcx.type_of(did).kind() {
+                    ty::Adt(def, _) => def,
+                    _ => return None,
+                };
+                let field = if def.is_enum() {
+                    def.all_fields().find(|item| item.ident.name == item_name)
+                } else {
+                    def.non_enum_variant().fields.iter().find(|item| item.ident.name == item_name)
+                }?;
+                let kind = if def.is_enum() { DefKind::Variant } else { DefKind::Field };
+                Some((
+                    root_res,
+                    format!(
+                        "{}.{}",
+                        if def.is_enum() { "variant" } else { "structfield" },
+                        field.ident
+                    ),
+                    Some((kind, field.did)),
+                ))
             }
             Res::Def(DefKind::Trait, did) => tcx
                 .associated_items(did)
@@ -669,27 +652,11 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         }
                     };
 
-                    if extra_fragment.is_some() {
-                        Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(ty_res)))
-                    } else {
-                        let res = Res::Def(item.kind.as_def_kind(), item.def_id);
-                        Ok((res, Some(format!("{}.{}", kind, item_str))))
-                    }
+                    let res = Res::Def(item.kind.as_def_kind(), item.def_id);
+                    (res, format!("{}.{}", kind, item_name), None)
                 }),
             _ => None,
-        };
-        res.unwrap_or_else(|| {
-            if ns == Namespace::ValueNS {
-                self.variant_field(path_str, module_id)
-            } else {
-                Err(ResolutionFailure::NotResolved {
-                    module_id,
-                    partial_res: Some(ty_res),
-                    unresolved: item_str.into(),
-                }
-                .into())
-            }
-        })
+        }
     }
 
     /// Used for reporting better errors.
@@ -950,6 +917,7 @@ impl LinkCollector<'_, '_> {
         }
 
         let link = ori_link.link.replace("`", "");
+        let no_backticks_range = range_between_backticks(&ori_link);
         let parts = link.split('#').collect::<Vec<_>>();
         let (link, extra_fragment) = if parts.len() > 2 {
             // A valid link can't have multiple #'s
@@ -973,13 +941,22 @@ impl LinkCollector<'_, '_> {
         };
 
         // Parse and strip the disambiguator from the link, if present.
-        let (mut path_str, disambiguator) = if let Ok((d, path)) = Disambiguator::from_str(&link) {
-            (path.trim(), Some(d))
-        } else {
-            (link.trim(), None)
+        let (mut path_str, disambiguator) = match Disambiguator::from_str(&link) {
+            Ok(Some((d, path))) => (path.trim(), Some(d)),
+            Ok(None) => (link.trim(), None),
+            Err((err_msg, relative_range)) => {
+                if !should_ignore_link_with_disambiguators(link) {
+                    // Only report error if we would not have ignored this link.
+                    // See issue #83859.
+                    let disambiguator_range = (no_backticks_range.start + relative_range.start)
+                        ..(no_backticks_range.start + relative_range.end);
+                    disambiguator_error(self.cx, &item, dox, disambiguator_range, &err_msg);
+                }
+                return None;
+            }
         };
 
-        if path_str.contains(|ch: char| !(ch.is_alphanumeric() || ":_<>, !*&;".contains(ch))) {
+        if should_ignore_link(path_str) {
             return None;
         }
 
@@ -1488,9 +1465,46 @@ impl LinkCollector<'_, '_> {
     }
 }
 
+/// Get the section of a link between the backticks,
+/// or the whole link if there aren't any backticks.
+///
+/// For example:
+///
+/// ```text
+/// [`Foo`]
+///   ^^^
+/// ```
+fn range_between_backticks(ori_link: &MarkdownLink) -> Range<usize> {
+    let after_first_backtick_group = ori_link.link.bytes().position(|b| b != b'`').unwrap_or(0);
+    let before_second_backtick_group = ori_link
+        .link
+        .bytes()
+        .skip(after_first_backtick_group)
+        .position(|b| b == b'`')
+        .unwrap_or(ori_link.link.len());
+    (ori_link.range.start + after_first_backtick_group)
+        ..(ori_link.range.start + before_second_backtick_group)
+}
+
+/// Returns true if we should ignore `link` due to it being unlikely
+/// that it is an intra-doc link. `link` should still have disambiguators
+/// if there were any.
+///
+/// The difference between this and [`should_ignore_link()`] is that this
+/// check should only be used on links that still have disambiguators.
+fn should_ignore_link_with_disambiguators(link: &str) -> bool {
+    link.contains(|ch: char| !(ch.is_alphanumeric() || ":_<>, !*&;@()".contains(ch)))
+}
+
+/// Returns true if we should ignore `path_str` due to it being unlikely
+/// that it is an intra-doc link.
+fn should_ignore_link(path_str: &str) -> bool {
+    path_str.contains(|ch: char| !(ch.is_alphanumeric() || ":_<>, !*&;".contains(ch)))
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 /// Disambiguators for a link.
-enum Disambiguator {
+crate enum Disambiguator {
     /// `prim@`
     ///
     /// This is buggy, see <https://github.com/rust-lang/rust/pull/77875#discussion_r503583103>
@@ -1514,26 +1528,13 @@ impl Disambiguator {
         }
     }
 
-    /// Given a link, parse and return `(disambiguator, path_str)`
-    fn from_str(link: &str) -> Result<(Self, &str), ()> {
+    /// Given a link, parse and return `(disambiguator, path_str)`.
+    ///
+    /// This returns `Ok(Some(...))` if a disambiguator was found,
+    /// `Ok(None)` if no disambiguator was found, or `Err(...)`
+    /// if there was a problem with the disambiguator.
+    crate fn from_str(link: &str) -> Result<Option<(Self, &str)>, (String, Range<usize>)> {
         use Disambiguator::{Kind, Namespace as NS, Primitive};
-
-        let find_suffix = || {
-            let suffixes = [
-                ("!()", DefKind::Macro(MacroKind::Bang)),
-                ("()", DefKind::Fn),
-                ("!", DefKind::Macro(MacroKind::Bang)),
-            ];
-            for &(suffix, kind) in &suffixes {
-                if let Some(link) = link.strip_suffix(suffix) {
-                    // Avoid turning `!` or `()` into an empty string
-                    if !link.is_empty() {
-                        return Ok((Kind(kind), link));
-                    }
-                }
-            }
-            Err(())
-        };
 
         if let Some(idx) = link.find('@') {
             let (prefix, rest) = link.split_at(idx);
@@ -1551,11 +1552,24 @@ impl Disambiguator {
                 "value" => NS(Namespace::ValueNS),
                 "macro" => NS(Namespace::MacroNS),
                 "prim" | "primitive" => Primitive,
-                _ => return find_suffix(),
+                _ => return Err((format!("unknown disambiguator `{}`", prefix), 0..idx)),
             };
-            Ok((d, &rest[1..]))
+            Ok(Some((d, &rest[1..])))
         } else {
-            find_suffix()
+            let suffixes = [
+                ("!()", DefKind::Macro(MacroKind::Bang)),
+                ("()", DefKind::Fn),
+                ("!", DefKind::Macro(MacroKind::Bang)),
+            ];
+            for &(suffix, kind) in &suffixes {
+                if let Some(link) = link.strip_suffix(suffix) {
+                    // Avoid turning `!` or `()` into an empty string
+                    if !link.is_empty() {
+                        return Ok(Some((Kind(kind), link)));
+                    }
+                }
+            }
+            Ok(None)
         }
     }
 
@@ -1977,6 +1991,17 @@ fn anchor_failure(
             diag.span_label(sp, "contains invalid anchor");
         }
     });
+}
+
+/// Report an error in the link disambiguator.
+fn disambiguator_error(
+    cx: &DocContext<'_>,
+    item: &Item,
+    dox: &str,
+    link_range: Range<usize>,
+    msg: &str,
+) {
+    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, msg, item, dox, &link_range, |_diag, _sp| {});
 }
 
 /// Report an ambiguity error, where there were multiple possible resolutions.

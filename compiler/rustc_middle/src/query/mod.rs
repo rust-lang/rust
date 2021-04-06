@@ -1253,11 +1253,6 @@ rustc_queries! {
         desc { |tcx| "native_library_kind({})", tcx.def_path_str(def_id) }
     }
 
-    query link_args(_: CrateNum) -> Lrc<Vec<String>> {
-        eval_always
-        desc { "looking up link arguments for a crate" }
-    }
-
     /// Does lifetime resolution, but does not descend into trait items. This
     /// should only be used for resolving lifetimes of on trait definitions,
     /// and is used to avoid cycles. Importantly, `resolve_lifetimes` still visits
@@ -1289,6 +1284,10 @@ rustc_queries! {
     query object_lifetime_defaults_map(_: LocalDefId)
         -> Option<Vec<ObjectLifetimeDefault>> {
         desc { "looking up lifetime defaults for a region on an item" }
+    }
+    query late_bound_vars_map(_: LocalDefId)
+        -> Option<&'tcx FxHashMap<ItemLocalId, Vec<ty::BoundVariableKind>>> {
+        desc { "looking up late bound vars" }
     }
 
     query visibility(def_id: DefId) -> ty::Visibility {
@@ -1479,6 +1478,13 @@ rustc_queries! {
     query normalize_generic_arg_after_erasing_regions(
         goal: ParamEnvAnd<'tcx, GenericArg<'tcx>>
     ) -> GenericArg<'tcx> {
+        desc { "normalizing `{}`", goal.value }
+    }
+
+    /// Do not call this query directly: invoke `normalize_erasing_regions` instead.
+    query normalize_mir_const_after_erasing_regions(
+        goal: ParamEnvAnd<'tcx, mir::ConstantKind<'tcx>>
+    ) -> mir::ConstantKind<'tcx> {
         desc { "normalizing `{}`", goal.value }
     }
 

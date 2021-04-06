@@ -449,9 +449,11 @@ where
 
         let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
             tcx.start_query(job.id, diagnostics, || {
-                tcx.dep_context()
-                    .dep_graph()
-                    .with_anon_task(query.dep_kind, || query.compute(tcx, key))
+                tcx.dep_context().dep_graph().with_anon_task(
+                    *tcx.dep_context(),
+                    query.dep_kind,
+                    || query.compute(tcx, key),
+                )
             })
         });
 
@@ -537,7 +539,7 @@ where
         // If `-Zincremental-verify-ich` is specified, re-hash results from
         // the cache and make sure that they have the expected fingerprint.
         if unlikely!(tcx.dep_context().sess().opts.debugging_opts.incremental_verify_ich) {
-            incremental_verify_ich(*tcx.dep_context(), &result, dep_node, dep_node_index, query);
+            incremental_verify_ich(*tcx.dep_context(), &result, dep_node, query);
         }
 
         result
@@ -560,7 +562,7 @@ where
         //
         // See issue #82920 for an example of a miscompilation that would get turned into
         // an ICE by this check
-        incremental_verify_ich(*tcx.dep_context(), &result, dep_node, dep_node_index, query);
+        incremental_verify_ich(*tcx.dep_context(), &result, dep_node, query);
 
         result
     }
@@ -570,14 +572,12 @@ fn incremental_verify_ich<CTX, K, V: Debug>(
     tcx: CTX::DepContext,
     result: &V,
     dep_node: &DepNode<CTX::DepKind>,
-    dep_node_index: DepNodeIndex,
     query: &QueryVtable<CTX, K, V>,
 ) where
     CTX: QueryContext,
 {
     assert!(
-        Some(tcx.dep_graph().fingerprint_of(dep_node_index))
-            == tcx.dep_graph().prev_fingerprint_of(dep_node),
+        tcx.dep_graph().is_green(dep_node),
         "fingerprint for green query instance not loaded from cache: {:?}",
         dep_node,
     );
@@ -588,9 +588,15 @@ fn incremental_verify_ich<CTX, K, V: Debug>(
     let new_hash = query.hash_result(&mut hcx, result).unwrap_or(Fingerprint::ZERO);
     debug!("END verify_ich({:?})", dep_node);
 
-    let old_hash = tcx.dep_graph().fingerprint_of(dep_node_index);
+    let old_hash = tcx.dep_graph().prev_fingerprint_of(dep_node);
 
-    assert!(new_hash == old_hash, "found unstable fingerprints for {:?}: {:?}", dep_node, result);
+    assert_eq!(
+        Some(new_hash),
+        old_hash,
+        "found unstable fingerprints for {:?}: {:?}",
+        dep_node,
+        result
+    );
 }
 
 fn force_query_with_job<C, CTX>(

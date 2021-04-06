@@ -269,6 +269,7 @@ impl Error {
     /// This function should maybe change to
     /// `new_const<const MSG: &'static str>(kind: ErrorKind)`
     /// in the future, when const generics allow that.
+    #[inline]
     pub(crate) const fn new_const(kind: ErrorKind, message: &'static &'static str) -> Error {
         Self { repr: Repr::SimpleMessage(kind, message) }
     }
@@ -287,6 +288,7 @@ impl Error {
     /// println!("last OS error: {:?}", Error::last_os_error());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn last_os_error() -> Error {
         Error::from_raw_os_error(sys::os::errno() as i32)
     }
@@ -317,6 +319,7 @@ impl Error {
     /// # }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn from_raw_os_error(code: i32) -> Error {
         Error { repr: Repr::Os(code) }
     }
@@ -351,6 +354,7 @@ impl Error {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn raw_os_error(&self) -> Option<i32> {
         match self.repr {
             Repr::Os(i) => Some(i),
@@ -388,6 +392,7 @@ impl Error {
     /// }
     /// ```
     #[stable(feature = "io_error_inner", since = "1.3.0")]
+    #[inline]
     pub fn get_ref(&self) -> Option<&(dyn error::Error + Send + Sync + 'static)> {
         match self.repr {
             Repr::Os(..) => None,
@@ -460,6 +465,7 @@ impl Error {
     /// }
     /// ```
     #[stable(feature = "io_error_inner", since = "1.3.0")]
+    #[inline]
     pub fn get_mut(&mut self) -> Option<&mut (dyn error::Error + Send + Sync + 'static)> {
         match self.repr {
             Repr::Os(..) => None,
@@ -497,6 +503,7 @@ impl Error {
     /// }
     /// ```
     #[stable(feature = "io_error_inner", since = "1.3.0")]
+    #[inline]
     pub fn into_inner(self) -> Option<Box<dyn error::Error + Send + Sync>> {
         match self.repr {
             Repr::Os(..) => None,
@@ -525,6 +532,7 @@ impl Error {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn kind(&self) -> ErrorKind {
         match self.repr {
             Repr::Os(code) => sys::decode_error_kind(code),

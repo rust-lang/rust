@@ -4,6 +4,7 @@ use crate::ty::subst::{GenericArg, GenericArgKind, Subst};
 use crate::ty::{self, ConstInt, DefIdTree, ParamConst, ScalarInt, Ty, TyCtxt, TypeFoldable};
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sso::SsoHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -19,6 +20,7 @@ use std::char;
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::fmt::{self, Write as _};
+use std::iter;
 use std::ops::{ControlFlow, Deref, DerefMut};
 
 // `pretty` is a separate module only for organization.
@@ -201,7 +203,7 @@ pub trait PrettyPrinter<'tcx>:
         self.print_def_path(def_id, substs)
     }
 
-    fn in_binder<T>(self, value: &ty::Binder<T>) -> Result<Self, Self::Error>
+    fn in_binder<T>(self, value: &ty::Binder<'tcx, T>) -> Result<Self, Self::Error>
     where
         T: Print<'tcx, Self, Output = Self, Error = Self::Error> + TypeFoldable<'tcx>,
     {
@@ -210,7 +212,7 @@ pub trait PrettyPrinter<'tcx>:
 
     fn wrap_binder<T, F: Fn(&T, Self) -> Result<Self, fmt::Error>>(
         self,
-        value: &ty::Binder<T>,
+        value: &ty::Binder<'tcx, T>,
         f: F,
     ) -> Result<Self, Self::Error>
     where
@@ -764,7 +766,7 @@ pub trait PrettyPrinter<'tcx>:
 
     fn pretty_print_dyn_existential(
         mut self,
-        predicates: &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>,
+        predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
     ) -> Result<Self::DynExistential, Self::Error> {
         // Generate the main trait ref, including associated types.
         let mut first = true;
@@ -1223,7 +1225,7 @@ pub trait PrettyPrinter<'tcx>:
                             CtorKind::Fictive => {
                                 p!(" {{ ");
                                 let mut first = true;
-                                for (field_def, field) in variant_def.fields.iter().zip(fields) {
+                                for (field_def, field) in iter::zip(&variant_def.fields, fields) {
                                     if !first {
                                         p!(", ");
                                     }
@@ -1420,7 +1422,8 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
     }
 
     fn print_type(mut self, ty: Ty<'tcx>) -> Result<Self::Type, Self::Error> {
-        if self.tcx.sess.type_length_limit().value_within_limit(self.printed_type_count) {
+        let type_length_limit = self.tcx.sess.type_length_limit();
+        if type_length_limit.value_within_limit(self.printed_type_count) {
             self.printed_type_count += 1;
             self.pretty_print_type(ty)
         } else {
@@ -1431,7 +1434,7 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
 
     fn print_dyn_existential(
         self,
-        predicates: &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>,
+        predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
     ) -> Result<Self::DynExistential, Self::Error> {
         self.pretty_print_dyn_existential(predicates)
     }
@@ -1570,7 +1573,7 @@ impl<F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
         Ok(self)
     }
 
-    fn in_binder<T>(self, value: &ty::Binder<T>) -> Result<Self, Self::Error>
+    fn in_binder<T>(self, value: &ty::Binder<'tcx, T>) -> Result<Self, Self::Error>
     where
         T: Print<'tcx, Self, Output = Self, Error = Self::Error> + TypeFoldable<'tcx>,
     {
@@ -1579,7 +1582,7 @@ impl<F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
 
     fn wrap_binder<T, C: Fn(&T, Self) -> Result<Self, Self::Error>>(
         self,
-        value: &ty::Binder<T>,
+        value: &ty::Binder<'tcx, T>,
         f: C,
     ) -> Result<Self, Self::Error>
     where
@@ -1635,7 +1638,7 @@ impl<F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
                 data.name != kw::Empty && data.name != kw::UnderscoreLifetime
             }
 
-            ty::ReLateBound(_, ty::BoundRegion { kind: br })
+            ty::ReLateBound(_, ty::BoundRegion { kind: br, .. })
             | ty::ReFree(ty::FreeRegion { bound_region: br, .. })
             | ty::RePlaceholder(ty::Placeholder { name: br, .. }) => {
                 if let ty::BrNamed(_, name) = br {
@@ -1714,7 +1717,7 @@ impl<F: fmt::Write> FmtPrinter<'_, '_, F> {
                     return Ok(self);
                 }
             }
-            ty::ReLateBound(_, ty::BoundRegion { kind: br })
+            ty::ReLateBound(_, ty::BoundRegion { kind: br, .. })
             | ty::ReFree(ty::FreeRegion { bound_region: br, .. })
             | ty::RePlaceholder(ty::Placeholder { name: br, .. }) => {
                 if let ty::BrNamed(_, name) = br {
@@ -1762,7 +1765,7 @@ impl<F: fmt::Write> FmtPrinter<'_, '_, F> {
 impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
     pub fn name_all_regions<T>(
         mut self,
-        value: &ty::Binder<T>,
+        value: &ty::Binder<'tcx, T>,
     ) -> Result<(Self, (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)), fmt::Error>
     where
         T: Print<'tcx, Self, Output = Self, Error = fmt::Error> + TypeFoldable<'tcx>,
@@ -1820,7 +1823,8 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
                     ty::BrNamed(DefId::local(CRATE_DEF_INDEX), name)
                 }
             };
-            self.tcx.mk_region(ty::ReLateBound(ty::INNERMOST, ty::BoundRegion { kind }))
+            self.tcx
+                .mk_region(ty::ReLateBound(ty::INNERMOST, ty::BoundRegion { var: br.var, kind }))
         });
         start_or_continue(&mut self, "", "> ")?;
 
@@ -1829,7 +1833,7 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
         Ok((self, new_value))
     }
 
-    pub fn pretty_in_binder<T>(self, value: &ty::Binder<T>) -> Result<Self, fmt::Error>
+    pub fn pretty_in_binder<T>(self, value: &ty::Binder<'tcx, T>) -> Result<Self, fmt::Error>
     where
         T: Print<'tcx, Self, Output = Self, Error = fmt::Error> + TypeFoldable<'tcx>,
     {
@@ -1843,7 +1847,7 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
 
     pub fn pretty_wrap_binder<T, C: Fn(&T, Self) -> Result<Self, fmt::Error>>(
         self,
-        value: &ty::Binder<T>,
+        value: &ty::Binder<'tcx, T>,
         f: C,
     ) -> Result<Self, fmt::Error>
     where
@@ -1857,28 +1861,52 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
         Ok(inner)
     }
 
-    fn prepare_late_bound_region_info<T>(&mut self, value: &ty::Binder<T>)
+    fn prepare_late_bound_region_info<T>(&mut self, value: &ty::Binder<'tcx, T>)
     where
         T: TypeFoldable<'tcx>,
     {
-        struct LateBoundRegionNameCollector<'a>(&'a mut FxHashSet<Symbol>);
-        impl<'tcx> ty::fold::TypeVisitor<'tcx> for LateBoundRegionNameCollector<'_> {
+        debug!("prepare_late_bound_region_info(value: {:?})", value);
+
+        struct LateBoundRegionNameCollector<'a, 'tcx> {
+            used_region_names: &'a mut FxHashSet<Symbol>,
+            type_collector: SsoHashSet<Ty<'tcx>>,
+        }
+
+        impl<'tcx> ty::fold::TypeVisitor<'tcx> for LateBoundRegionNameCollector<'_, 'tcx> {
+            type BreakTy = ();
+
             fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-                if let ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name) }) = *r {
-                    self.0.insert(name);
+                debug!("LateBoundRegionNameCollector::visit_region(r: {:?}, address: {:p})", r, &r);
+                if let ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name), .. }) = *r {
+                    self.used_region_names.insert(name);
                 }
                 r.super_visit_with(self)
+            }
+
+            // We collect types in order to prevent really large types from compiling for
+            // a really long time. See issue #83150 for why this is necessary.
+            fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+                debug!("LateBoundRegionNameCollector::visit_ty(ty: {:?}", ty);
+                let not_previously_inserted = self.type_collector.insert(ty);
+                if not_previously_inserted {
+                    ty.super_visit_with(self)
+                } else {
+                    ControlFlow::CONTINUE
+                }
             }
         }
 
         self.used_region_names.clear();
-        let mut collector = LateBoundRegionNameCollector(&mut self.used_region_names);
+        let mut collector = LateBoundRegionNameCollector {
+            used_region_names: &mut self.used_region_names,
+            type_collector: SsoHashSet::new(),
+        };
         value.visit_with(&mut collector);
         self.region_index = 0;
     }
 }
 
-impl<'tcx, T, P: PrettyPrinter<'tcx>> Print<'tcx, P> for ty::Binder<T>
+impl<'tcx, T, P: PrettyPrinter<'tcx>> Print<'tcx, P> for ty::Binder<'tcx, T>
 where
     T: Print<'tcx, P, Output = P, Error = P::Error> + TypeFoldable<'tcx>,
 {
@@ -1965,28 +1993,28 @@ impl ty::TraitRef<'tcx> {
     }
 }
 
-impl ty::Binder<ty::TraitRef<'tcx>> {
-    pub fn print_only_trait_path(self) -> ty::Binder<TraitRefPrintOnlyTraitPath<'tcx>> {
+impl ty::Binder<'tcx, ty::TraitRef<'tcx>> {
+    pub fn print_only_trait_path(self) -> ty::Binder<'tcx, TraitRefPrintOnlyTraitPath<'tcx>> {
         self.map_bound(|tr| tr.print_only_trait_path())
     }
 }
 
 forward_display_to_print! {
     Ty<'tcx>,
-    &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>,
+    &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
     &'tcx ty::Const<'tcx>,
 
     // HACK(eddyb) these are exhaustive instead of generic,
     // because `for<'tcx>` isn't possible yet.
-    ty::Binder<ty::ExistentialPredicate<'tcx>>,
-    ty::Binder<ty::TraitRef<'tcx>>,
-    ty::Binder<TraitRefPrintOnlyTraitPath<'tcx>>,
-    ty::Binder<ty::FnSig<'tcx>>,
-    ty::Binder<ty::TraitPredicate<'tcx>>,
-    ty::Binder<ty::SubtypePredicate<'tcx>>,
-    ty::Binder<ty::ProjectionPredicate<'tcx>>,
-    ty::Binder<ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>>,
-    ty::Binder<ty::OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>>,
+    ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>,
+    ty::Binder<'tcx, ty::TraitRef<'tcx>>,
+    ty::Binder<'tcx, TraitRefPrintOnlyTraitPath<'tcx>>,
+    ty::Binder<'tcx, ty::FnSig<'tcx>>,
+    ty::Binder<'tcx, ty::TraitPredicate<'tcx>>,
+    ty::Binder<'tcx, ty::SubtypePredicate<'tcx>>,
+    ty::Binder<'tcx, ty::ProjectionPredicate<'tcx>>,
+    ty::Binder<'tcx, ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>>,
+    ty::Binder<'tcx, ty::OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>>,
 
     ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>,
     ty::OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>

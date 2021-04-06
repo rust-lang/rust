@@ -10,6 +10,7 @@ use crate::traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::traits::Normalized;
+use rustc_middle::mir;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -213,5 +214,9 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
     fn fold_const(&mut self, constant: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
         let constant = constant.super_fold_with(self);
         constant.eval(self.infcx.tcx, self.param_env)
+    }
+
+    fn fold_mir_const(&mut self, constant: mir::ConstantKind<'tcx>) -> mir::ConstantKind<'tcx> {
+        constant.super_fold_with(self)
     }
 }

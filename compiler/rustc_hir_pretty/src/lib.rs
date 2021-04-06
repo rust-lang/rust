@@ -170,7 +170,7 @@ pub fn print_crate<'a>(
     // When printing the AST, we sometimes need to inject `#[no_std]` here.
     // Since you can't compile the HIR, it's not necessary.
 
-    s.print_mod(&krate.item.module, s.attrs(hir::CRATE_HIR_ID));
+    s.print_mod(&krate.item, s.attrs(hir::CRATE_HIR_ID));
     s.print_remaining_comments();
     s.s.eof()
 }
@@ -219,10 +219,6 @@ pub fn generic_params_to_string(generic_params: &[GenericParam<'_>]) -> String {
 
 pub fn bounds_to_string<'b>(bounds: impl IntoIterator<Item = &'b hir::GenericBound<'b>>) -> String {
     to_string(NO_ANN, |s| s.print_bounds("", bounds))
-}
-
-pub fn param_to_string(arg: &hir::Param<'_>) -> String {
-    to_string(NO_ANN, |s| s.print_param(arg))
 }
 
 pub fn ty_to_string(ty: &hir::Ty<'_>) -> String {
@@ -1701,19 +1697,8 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_usize(&mut self, i: usize) {
-        self.s.word(i.to_string())
-    }
-
     pub fn print_name(&mut self, name: Symbol) {
         self.print_ident(Ident::with_dummy_span(name))
-    }
-
-    pub fn print_for_decl(&mut self, loc: &hir::Local<'_>, coll: &hir::Expr<'_>) {
-        self.print_local_decl(loc);
-        self.s.space();
-        self.word_space("in");
-        self.print_expr(coll)
     }
 
     pub fn print_path(&mut self, path: &hir::Path<'_>, colons_before_params: bool) {
@@ -2427,24 +2412,6 @@ impl<'a> State<'a> {
         }
         while let Some(ref cmnt) = self.next_comment() {
             self.print_comment(cmnt)
-        }
-    }
-
-    pub fn print_opt_abi_and_extern_if_nondefault(&mut self, opt_abi: Option<Abi>) {
-        match opt_abi {
-            Some(Abi::Rust) => {}
-            Some(abi) => {
-                self.word_nbsp("extern");
-                self.word_nbsp(abi.to_string())
-            }
-            None => {}
-        }
-    }
-
-    pub fn print_extern_opt_abi(&mut self, opt_abi: Option<Abi>) {
-        if let Some(abi) = opt_abi {
-            self.word_nbsp("extern");
-            self.word_nbsp(abi.to_string())
         }
     }
 

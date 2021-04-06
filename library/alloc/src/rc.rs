@@ -1848,8 +1848,11 @@ impl<T, I: iter::TrustedLen<Item = T>> ToRcSlice<T> for I {
                 Rc::from_iter_exact(self, low)
             }
         } else {
-            // Fall back to normal implementation.
-            self.collect::<Vec<T>>().into()
+            // TrustedLen contract guarantees that `upper_bound == `None` implies an iterator
+            // length exceeding `usize::MAX`.
+            // The default implementation would collect into a vec which would panic.
+            // Thus we panic here immediately without invoking `Vec` code.
+            panic!("capacity overflow");
         }
     }
 }

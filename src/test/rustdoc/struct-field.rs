@@ -1,6 +1,5 @@
 #![crate_name = "foo"]
 
-// ignore-tidy-linelength
 
 // @has foo/index.html '//*[@class="docblock"]/p/a[@href="../foo/struct.Foo.html#structfield.bar"]' 'Foo::bar'
 // @has foo/index.html '//*[@class="docblock"]/p/a[@href="../foo/union.Bar.html#structfield.foo"]' 'Bar::foo'

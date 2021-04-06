@@ -23,11 +23,11 @@ use rustc_fs_util::{link_or_copy, path_to_c_string};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{self, Lto, OutputType, Passes, SanitizerSet, SwitchWithOptPath};
+use rustc_session::config::{self, Lto, OutputType, Passes, SwitchWithOptPath};
 use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::InnerSpan;
-use rustc_target::spec::{CodeModel, RelocModel, SplitDebuginfo};
+use rustc_target::spec::{CodeModel, RelocModel, SanitizerSet, SplitDebuginfo};
 use tracing::debug;
 
 use libc::{c_char, c_int, c_uint, c_void, size_t};
@@ -170,10 +170,7 @@ pub fn target_machine_factory(
     // On the wasm target once the `atomics` feature is enabled that means that
     // we're no longer single-threaded, or otherwise we don't want LLVM to
     // lower atomic operations to single-threaded operations.
-    if singlethread
-        && sess.target.llvm_target.contains("wasm32")
-        && sess.target_features.contains(&sym::atomics)
-    {
+    if singlethread && sess.target.is_like_wasm && sess.target_features.contains(&sym::atomics) {
         singlethread = false;
     }
 
@@ -546,6 +543,15 @@ pub(crate) unsafe fn optimize(
                 if pass_name == "lint" {
                     // Linting should also be performed early, directly on the generated IR.
                     llvm::LLVMRustAddPass(fpm, find_pass("lint").unwrap());
+                    continue;
+                }
+                if pass_name == "insert-gcov-profiling" || pass_name == "instrprof" {
+                    // Instrumentation must be inserted before optimization,
+                    // otherwise LLVM may optimize some functions away which
+                    // breaks llvm-cov.
+                    //
+                    // This mirrors what Clang does in lib/CodeGen/BackendUtil.cpp.
+                    llvm::LLVMRustAddPass(mpm, find_pass(pass_name).unwrap());
                     continue;
                 }
 
@@ -1041,7 +1047,7 @@ pub unsafe fn with_llvm_pmb(
     // thresholds copied from clang.
     match (opt_level, opt_size, inline_threshold) {
         (.., Some(t)) => {
-            llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, t as u32);
+            llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, t);
         }
         (llvm::CodeGenOptLevel::Aggressive, ..) => {
             llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, 275);

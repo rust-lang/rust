@@ -1636,6 +1636,10 @@ extern "C" void LLVMRustSetVisibility(LLVMValueRef V,
   LLVMSetVisibility(V, fromRust(RustVisibility));
 }
 
+extern "C" void LLVMRustSetDSOLocal(LLVMValueRef Global, bool is_dso_local) {
+  unwrap<GlobalValue>(Global)->setDSOLocal(is_dso_local);
+}
+
 struct LLVMRustModuleBuffer {
   std::string data;
 };

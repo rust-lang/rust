@@ -14,6 +14,7 @@
 #![feature(const_fn_transmute)]
 #![feature(const_panic)]
 #![feature(crate_visibility_modifier)]
+#![feature(iter_zip)]
 #![feature(label_break_value)]
 #![feature(nll)]
 #![cfg_attr(bootstrap, feature(or_patterns))]

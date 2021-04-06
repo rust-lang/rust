@@ -140,6 +140,7 @@ pub struct ParseSess {
 }
 
 impl ParseSess {
+    /// Used for testing.
     pub fn new(file_path_mapping: FilePathMapping) -> Self {
         let sm = Lrc::new(SourceMap::new(file_path_mapping));
         let handler = Handler::with_tty_emitter(ColorConfig::Auto, true, None, Some(sm.clone()));

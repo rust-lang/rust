@@ -7,8 +7,8 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItemGroup;
 use rustc_hir::GeneratorKind;
 use rustc_middle::mir::{
-    AggregateKind, Constant, Field, Local, LocalInfo, LocalKind, Location, Operand, Place,
-    PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
+    AggregateKind, Constant, FakeReadCause, Field, Local, LocalInfo, LocalKind, Location, Operand,
+    Place, PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
 };
 use rustc_middle::ty::print::Print;
 use rustc_middle::ty::{self, DefIdTree, Instance, Ty, TyCtxt};
@@ -18,6 +18,7 @@ use rustc_span::{
     Span,
 };
 use rustc_target::abi::VariantIdx;
+use std::iter;
 
 use super::borrow_set::BorrowData;
 use super::MirBorrowckCtxt;
@@ -501,7 +502,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // lifetimes without names with the value `'0`.
         match ty.kind() {
             ty::Ref(
-                ty::RegionKind::ReLateBound(_, ty::BoundRegion { kind: br })
+                ty::RegionKind::ReLateBound(_, ty::BoundRegion { kind: br, .. })
                 | ty::RegionKind::RePlaceholder(ty::PlaceholderRegion { name: br, .. }),
                 _,
                 _,
@@ -522,7 +523,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let region = match ty.kind() {
             ty::Ref(region, _, _) => {
                 match region {
-                    ty::RegionKind::ReLateBound(_, ty::BoundRegion { kind: br })
+                    ty::RegionKind::ReLateBound(_, ty::BoundRegion { kind: br, .. })
                     | ty::RegionKind::RePlaceholder(ty::PlaceholderRegion { name: br, .. }) => {
                         printer.region_highlight_mode.highlighting_bound_region(*br, counter)
                     }
@@ -794,6 +795,24 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
         }
 
+        // StatementKind::FakeRead only contains a def_id if they are introduced as a result
+        // of pattern matching within a closure.
+        if let StatementKind::FakeRead(box (cause, ref place)) = stmt.kind {
+            match cause {
+                FakeReadCause::ForMatchedPlace(Some(closure_def_id))
+                | FakeReadCause::ForLet(Some(closure_def_id)) => {
+                    debug!("move_spans: def_id={:?} place={:?}", closure_def_id, place);
+                    let places = &[Operand::Move(*place)];
+                    if let Some((args_span, generator_kind, var_span)) =
+                        self.closure_span(closure_def_id, moved_place, places)
+                    {
+                        return ClosureUse { generator_kind, args_span, var_span };
+                    }
+                }
+                _ => {}
+            }
+        }
+
         let normal_ret =
             if moved_place.projection.iter().any(|p| matches!(p, ProjectionElem::Downcast(..))) {
                 PatUse(stmt.source_info.span)
@@ -970,13 +989,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let expr = &self.infcx.tcx.hir().expect_expr(hir_id).kind;
         debug!("closure_span: hir_id={:?} expr={:?}", hir_id, expr);
         if let hir::ExprKind::Closure(.., body_id, args_span, _) = expr {
-            for (captured_place, place) in self
-                .infcx
-                .tcx
-                .typeck(def_id.expect_local())
-                .closure_min_captures_flattened(def_id)
-                .zip(places)
-            {
+            for (captured_place, place) in iter::zip(
+                self.infcx.tcx.typeck(def_id.expect_local()).closure_min_captures_flattened(def_id),
+                places,
+            ) {
                 let upvar_hir_id = captured_place.get_root_variable();
                 //FIXME(project-rfc-2229#8): Use better span from captured_place
                 let span = self.infcx.tcx.upvars_mentioned(local_did)?[&upvar_hir_id].span;

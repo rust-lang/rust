@@ -276,7 +276,7 @@ declare_features! (
     /// The smallest useful subset of `const_generics`.
     (accepted, min_const_generics, "1.51.0", Some(74878), None),
     /// The `unsafe_op_in_unsafe_fn` lint (allowed by default): no longer treat an unsafe function as an unsafe block.
-    (accepted, unsafe_block_in_unsafe_fn, "1.51.0", Some(71668), None),
+    (accepted, unsafe_block_in_unsafe_fn, "1.52.0", Some(71668), None),
     /// Allows the use of or-patterns (e.g., `0 | 1`).
     (accepted, or_patterns, "1.53.0", Some(54883), None),
 

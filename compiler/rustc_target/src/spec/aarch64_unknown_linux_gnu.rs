@@ -1,8 +1,13 @@
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{SanitizerSet, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = super::linux_gnu_base::opts();
     base.max_atomic_width = Some(128);
+    base.supported_sanitizers = SanitizerSet::ADDRESS
+        | SanitizerSet::LEAK
+        | SanitizerSet::MEMORY
+        | SanitizerSet::THREAD
+        | SanitizerSet::HWADDRESS;
 
     Target {
         llvm_target: "aarch64-unknown-linux-gnu".to_string(),

@@ -67,7 +67,7 @@
 #![feature(unwrap_infallible)]
 #![feature(option_result_unwrap_unchecked)]
 #![feature(result_into_ok_or_err)]
-#![cfg_attr(not(bootstrap), feature(ptr_metadata))]
+#![feature(ptr_metadata)]
 #![feature(once_cell)]
 #![feature(unsized_tuple_coercion)]
 #![feature(nonzero_leading_trailing_zeros)]
@@ -75,8 +75,7 @@
 #![feature(integer_atomics)]
 #![feature(slice_group_by)]
 #![feature(trusted_random_access)]
-#![cfg_attr(bootstrap, feature(unsafe_block_in_unsafe_fn))]
-#![cfg_attr(not(bootstrap), feature(unsize))]
+#![feature(unsize)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 extern crate test;

@@ -11,8 +11,8 @@ LL |     async { (ty, ty1) }
    |                  ^^^ has type `U` which is not `Send`
 help: consider restricting type parameter `U`
    |
-LL | fn foo<T: Send, U: Send>(ty: T, ty1: U) -> impl Future<Output = (T, U)> + Send {
-   |                  ^^^^^^
+LL | fn foo<T: Send, U: std::marker::Send>(ty: T, ty1: U) -> impl Future<Output = (T, U)> + Send {
+   |                  ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

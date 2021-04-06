@@ -151,7 +151,7 @@ impl<'tcx> DumpVisitor<'tcx> {
             },
             crate_root: crate_root.unwrap_or_else(|| "<no source>".to_owned()),
             external_crates: self.save_ctxt.get_external_crates(),
-            span: self.span_from_span(krate.item.span),
+            span: self.span_from_span(krate.item.inner),
         };
 
         self.dumper.crate_prelude(data);
@@ -1097,16 +1097,11 @@ impl<'tcx> DumpVisitor<'tcx> {
             format!("::{}", self.tcx.def_path_str(self.tcx.hir().local_def_id(id).to_def_id()));
 
         let sm = self.tcx.sess.source_map();
-        let filename = sm.span_to_filename(krate.item.span);
+        let filename = sm.span_to_filename(krate.item.inner);
         let data_id = id_from_hir_id(id, &self.save_ctxt);
-        let children = krate
-            .item
-            .module
-            .item_ids
-            .iter()
-            .map(|i| id_from_def_id(i.def_id.to_def_id()))
-            .collect();
-        let span = self.span_from_span(krate.item.span);
+        let children =
+            krate.item.item_ids.iter().map(|i| id_from_def_id(i.def_id.to_def_id())).collect();
+        let span = self.span_from_span(krate.item.inner);
         let attrs = self.tcx.hir().attrs(id);
 
         self.dumper.dump_def(

@@ -1004,9 +1004,9 @@ fn test_from_iter_specialization_with_iterator_adapters() {
         .map_while(Option::Some)
         .peekable()
         .skip(1)
-        .map(|e| std::num::NonZeroUsize::new(e));
+        .map(|e| if e != usize::MAX { Ok(std::num::NonZeroUsize::new(e)) } else { Err(()) });
     assert_in_place_trait(&iter);
-    let sink = iter.collect::<Vec<_>>();
+    let sink = iter.collect::<Result<Vec<_>, _>>().unwrap();
     let sinkptr = sink.as_ptr();
     assert_eq!(srcptr, sinkptr as *const usize);
 }
@@ -1027,7 +1027,7 @@ fn test_from_iter_specialization_head_tail_drop() {
 }
 
 #[test]
-fn test_from_iter_specialization_panic_drop() {
+fn test_from_iter_specialization_panic_during_iteration_drops() {
     let drop_count: Vec<_> = (0..=2).map(|_| Rc::new(())).collect();
     let src: Vec<_> = drop_count.iter().cloned().collect();
     let iter = src.into_iter();
@@ -1048,6 +1048,51 @@ fn test_from_iter_specialization_panic_drop() {
         drop_count.iter().map(Rc::strong_count).all(|count| count == 1),
         "all items were dropped once"
     );
+}
+
+#[test]
+fn test_from_iter_specialization_panic_during_drop_leaks() {
+    static mut DROP_COUNTER: usize = 0;
+
+    #[derive(Debug)]
+    enum Droppable {
+        DroppedTwice(Box<i32>),
+        PanicOnDrop,
+    }
+
+    impl Drop for Droppable {
+        fn drop(&mut self) {
+            match self {
+                Droppable::DroppedTwice(_) => {
+                    unsafe {
+                        DROP_COUNTER += 1;
+                    }
+                    println!("Dropping!")
+                }
+                Droppable::PanicOnDrop => {
+                    if !std::thread::panicking() {
+                        panic!();
+                    }
+                }
+            }
+        }
+    }
+
+    let mut to_free: *mut Droppable = core::ptr::null_mut();
+    let mut cap = 0;
+
+    let _ = std::panic::catch_unwind(AssertUnwindSafe(|| {
+        let mut v = vec![Droppable::DroppedTwice(Box::new(123)), Droppable::PanicOnDrop];
+        to_free = v.as_mut_ptr();
+        cap = v.capacity();
+        let _ = v.into_iter().take(0).collect::<Vec<_>>();
+    }));
+
+    assert_eq!(unsafe { DROP_COUNTER }, 1);
+    // clean up the leak to keep miri happy
+    unsafe {
+        drop(Vec::from_raw_parts(to_free, 0, cap));
+    }
 }
 
 #[test]

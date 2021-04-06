@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 fn foo<T>() {
     struct Foo {
         x: T, //~ ERROR can't use generic parameters from outer function

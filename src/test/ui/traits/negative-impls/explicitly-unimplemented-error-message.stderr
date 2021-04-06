@@ -6,14 +6,6 @@ LL | struct Qux;
 ...
 LL |     Qux.clone();
    |         ^^^^^ method not found in `Qux`
-   | 
-  ::: $SRC_DIR/core/src/clone.rs:LL:COL
-   |
-LL |     fn clone(&self) -> Self;
-   |        -----
-   |        |
-   |        the method is available for `Arc<Qux>` here
-   |        the method is available for `Rc<Qux>` here
    |
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the trait `Clone` defines an item `clone`, but is explicitely unimplemented

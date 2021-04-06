@@ -206,30 +206,36 @@ ast_fragments! {
     }
 }
 
+pub enum SupportsMacroExpansion {
+    No,
+    Yes { supports_inner_attrs: bool },
+}
+
 impl AstFragmentKind {
     crate fn dummy(self, span: Span) -> AstFragment {
         self.make_from(DummyResult::any(span)).expect("couldn't create a dummy AST fragment")
     }
 
-    /// Fragment supports macro expansion and not just inert attributes, `cfg` and `cfg_attr`.
-    pub fn supports_macro_expansion(self) -> bool {
+    pub fn supports_macro_expansion(self) -> SupportsMacroExpansion {
         match self {
             AstFragmentKind::OptExpr
             | AstFragmentKind::Expr
-            | AstFragmentKind::Pat
-            | AstFragmentKind::Ty
             | AstFragmentKind::Stmts
-            | AstFragmentKind::Items
+            | AstFragmentKind::Ty
+            | AstFragmentKind::Pat => SupportsMacroExpansion::Yes { supports_inner_attrs: false },
+            AstFragmentKind::Items
             | AstFragmentKind::TraitItems
             | AstFragmentKind::ImplItems
-            | AstFragmentKind::ForeignItems => true,
+            | AstFragmentKind::ForeignItems => {
+                SupportsMacroExpansion::Yes { supports_inner_attrs: true }
+            }
             AstFragmentKind::Arms
             | AstFragmentKind::Fields
             | AstFragmentKind::FieldPats
             | AstFragmentKind::GenericParams
             | AstFragmentKind::Params
             | AstFragmentKind::StructFields
-            | AstFragmentKind::Variants => false,
+            | AstFragmentKind::Variants => SupportsMacroExpansion::No,
         }
     }
 
@@ -509,7 +515,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             invocations.reserve(derives.len());
                             derives
                                 .into_iter()
-                                .map(|(_exts, path)| {
+                                .map(|(path, _exts)| {
                                     // FIXME: Consider using the derive resolutions (`_exts`)
                                     // instead of enqueuing the derives to be resolved again later.
                                     let expn_id = ExpnId::fresh(None);
@@ -729,7 +735,14 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                     });
                                 }
                             };
-                            fragment_kind.expect_from_annotatables(items)
+                            if fragment_kind == AstFragmentKind::Expr && items.is_empty() {
+                                let msg =
+                                    "removing an expression is not supported in this position";
+                                self.cx.span_err(span, msg);
+                                fragment_kind.dummy(span)
+                            } else {
+                                fragment_kind.expect_from_annotatables(items)
+                            }
                         }
                         Err(mut err) => {
                             err.emit();

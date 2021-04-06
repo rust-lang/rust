@@ -18,6 +18,7 @@ pub use fs::prepare_session_directory;
 pub use load::load_query_result_cache;
 pub use load::LoadResult;
 pub use load::{load_dep_graph, DepGraphFuture};
+pub use save::build_dep_graph;
 pub use save::save_dep_graph;
 pub use save::save_work_product_index;
 pub use work_product::copy_cgu_workproduct_to_incr_comp_cache_dir;

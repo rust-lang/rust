@@ -776,7 +776,6 @@ fn test_range_backwards_4() {
 }
 
 #[test]
-#[should_panic]
 fn test_range_finding_ill_order_in_map() {
     let mut map = BTreeMap::new();
     map.insert(Cyclic3::B, ());
@@ -789,7 +788,6 @@ fn test_range_finding_ill_order_in_map() {
 }
 
 #[test]
-#[should_panic]
 fn test_range_finding_ill_order_in_range_ord() {
     // Has proper order the first time asked, then flips around.
     struct EvilTwin(i32);

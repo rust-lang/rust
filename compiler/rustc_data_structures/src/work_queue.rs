@@ -41,10 +41,4 @@ impl<T: Idx> WorkQueue<T> {
             None
         }
     }
-
-    /// Returns `true` if nothing is enqueued.
-    #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.deque.is_empty()
-    }
 }

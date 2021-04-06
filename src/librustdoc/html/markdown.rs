@@ -1162,6 +1162,7 @@ crate fn plain_text_summary(md: &str) -> String {
     s
 }
 
+#[derive(Debug)]
 crate struct MarkdownLink {
     pub kind: LinkType,
     pub link: String,
@@ -1354,6 +1355,10 @@ fn init_id_map() -> FxHashMap<String, usize> {
     map.insert("default-settings".to_owned(), 1);
     map.insert("rustdoc-vars".to_owned(), 1);
     map.insert("sidebar-vars".to_owned(), 1);
+    map.insert("copy-path".to_owned(), 1);
+    map.insert("help".to_owned(), 1);
+    map.insert("TOC".to_owned(), 1);
+    map.insert("render-detail".to_owned(), 1);
     // This is the list of IDs used by rustdoc sections.
     map.insert("fields".to_owned(), 1);
     map.insert("variants".to_owned(), 1);
@@ -1363,18 +1368,18 @@ fn init_id_map() -> FxHashMap<String, usize> {
     map.insert("trait-implementations".to_owned(), 1);
     map.insert("synthetic-implementations".to_owned(), 1);
     map.insert("blanket-implementations".to_owned(), 1);
+    map.insert("associated-types".to_owned(), 1);
+    map.insert("associated-const".to_owned(), 1);
+    map.insert("required-methods".to_owned(), 1);
+    map.insert("provided-methods".to_owned(), 1);
+    map.insert("implementors".to_owned(), 1);
+    map.insert("synthetic-implementors".to_owned(), 1);
     map
 }
 
 impl IdMap {
     pub fn new() -> Self {
         IdMap { map: init_id_map() }
-    }
-
-    crate fn populate<I: IntoIterator<Item = S>, S: AsRef<str> + ToString>(&mut self, ids: I) {
-        for id in ids {
-            let _ = self.derive(id);
-        }
     }
 
     crate fn derive<S: AsRef<str> + ToString>(&mut self, candidate: S) -> String {

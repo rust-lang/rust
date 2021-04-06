@@ -1,3 +1,4 @@
+// ignore-tidy-filelength
 use crate::ich::StableHashingContext;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir::{GeneratorLayout, GeneratorSavedLocal};
@@ -1251,13 +1252,13 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 } else {
                     // Try to use a ScalarPair for all tagged enums.
                     let mut common_prim = None;
-                    for (field_layouts, layout_variant) in variants.iter().zip(&layout_variants) {
+                    for (field_layouts, layout_variant) in iter::zip(&variants, &layout_variants) {
                         let offsets = match layout_variant.fields {
                             FieldsShape::Arbitrary { ref offsets, .. } => offsets,
                             _ => bug!(),
                         };
                         let mut fields =
-                            field_layouts.iter().zip(offsets).filter(|p| !p.0.is_zst());
+                            iter::zip(field_layouts, offsets).filter(|p| !p.0.is_zst());
                         let (field, offset) = match (fields.next(), fields.next()) {
                             (None, None) => continue,
                             (Some(pair), None) => pair,
@@ -1626,7 +1627,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 const INVALID_FIELD_IDX: u32 = !0;
                 let mut combined_inverse_memory_index =
                     vec![INVALID_FIELD_IDX; promoted_memory_index.len() + memory_index.len()];
-                let mut offsets_and_memory_index = offsets.into_iter().zip(memory_index);
+                let mut offsets_and_memory_index = iter::zip(offsets, memory_index);
                 let combined_offsets = variant_fields
                     .iter()
                     .enumerate()
@@ -2481,21 +2482,42 @@ impl<'tcx> ty::Instance<'tcx> {
             ty::Closure(def_id, substs) => {
                 let sig = substs.as_closure().sig();
 
-                let env_ty = tcx.closure_env_ty(def_id, substs).unwrap();
-                sig.map_bound(|sig| {
+                let bound_vars = tcx.mk_bound_variable_kinds(
+                    sig.bound_vars()
+                        .iter()
+                        .chain(iter::once(ty::BoundVariableKind::Region(ty::BrEnv))),
+                );
+                let br = ty::BoundRegion {
+                    var: ty::BoundVar::from_usize(bound_vars.len() - 1),
+                    kind: ty::BoundRegionKind::BrEnv,
+                };
+                let env_region = ty::ReLateBound(ty::INNERMOST, br);
+                let env_ty = tcx.closure_env_ty(def_id, substs, env_region).unwrap();
+
+                let sig = sig.skip_binder();
+                ty::Binder::bind_with_vars(
                     tcx.mk_fn_sig(
-                        iter::once(env_ty.skip_binder()).chain(sig.inputs().iter().cloned()),
+                        iter::once(env_ty).chain(sig.inputs().iter().cloned()),
                         sig.output(),
                         sig.c_variadic,
                         sig.unsafety,
                         sig.abi,
-                    )
-                })
+                    ),
+                    bound_vars,
+                )
             }
             ty::Generator(_, substs, _) => {
                 let sig = substs.as_generator().poly_sig();
 
-                let br = ty::BoundRegion { kind: ty::BrEnv };
+                let bound_vars = tcx.mk_bound_variable_kinds(
+                    sig.bound_vars()
+                        .iter()
+                        .chain(iter::once(ty::BoundVariableKind::Region(ty::BrEnv))),
+                );
+                let br = ty::BoundRegion {
+                    var: ty::BoundVar::from_usize(bound_vars.len() - 1),
+                    kind: ty::BoundRegionKind::BrEnv,
+                };
                 let env_region = ty::ReLateBound(ty::INNERMOST, br);
                 let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);
 
@@ -2504,21 +2526,21 @@ impl<'tcx> ty::Instance<'tcx> {
                 let pin_substs = tcx.intern_substs(&[env_ty.into()]);
                 let env_ty = tcx.mk_adt(pin_adt_ref, pin_substs);
 
-                sig.map_bound(|sig| {
-                    let state_did = tcx.require_lang_item(LangItem::GeneratorState, None);
-                    let state_adt_ref = tcx.adt_def(state_did);
-                    let state_substs =
-                        tcx.intern_substs(&[sig.yield_ty.into(), sig.return_ty.into()]);
-                    let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
-
+                let sig = sig.skip_binder();
+                let state_did = tcx.require_lang_item(LangItem::GeneratorState, None);
+                let state_adt_ref = tcx.adt_def(state_did);
+                let state_substs = tcx.intern_substs(&[sig.yield_ty.into(), sig.return_ty.into()]);
+                let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
+                ty::Binder::bind_with_vars(
                     tcx.mk_fn_sig(
                         [env_ty, sig.resume_ty].iter(),
                         &ret_ty,
                         false,
                         hir::Unsafety::Normal,
                         rustc_target::spec::abi::Abi::Rust,
-                    )
-                })
+                    ),
+                    bound_vars,
+                )
             }
             _ => bug!("unexpected type {:?} in Instance::fn_sig", ty),
         }

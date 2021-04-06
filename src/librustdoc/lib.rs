@@ -30,7 +30,9 @@ extern crate tracing;
 // So if `rustc` was specified in Cargo.toml, this would spuriously rebuild crates.
 //
 // Dependencies listed in Cargo.toml do not need `extern crate`.
+
 extern crate rustc_ast;
+extern crate rustc_ast_lowering;
 extern crate rustc_ast_pretty;
 extern crate rustc_attr;
 extern crate rustc_data_structures;
@@ -58,6 +60,15 @@ extern crate rustc_target;
 extern crate rustc_trait_selection;
 extern crate rustc_typeck;
 extern crate test as testing;
+
+#[cfg(feature = "jemalloc")]
+extern crate tikv_jemalloc_sys;
+#[cfg(feature = "jemalloc")]
+use tikv_jemalloc_sys as jemalloc_sys;
+#[cfg(feature = "jemalloc")]
+extern crate tikv_jemallocator;
+#[cfg(feature = "jemalloc")]
+use tikv_jemallocator as jemallocator;
 
 use std::default::Default;
 use std::env;
@@ -112,7 +123,48 @@ mod theme;
 mod visit_ast;
 mod visit_lib;
 
+// See docs in https://github.com/rust-lang/rust/blob/master/compiler/rustc/src/main.rs
+// about jemallocator
+#[cfg(feature = "jemalloc")]
+#[global_allocator]
+static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
+
 pub fn main() {
+    // See docs in https://github.com/rust-lang/rust/blob/master/compiler/rustc/src/main.rs
+    // about jemalloc-sys
+    #[cfg(feature = "jemalloc")]
+    {
+        use std::os::raw::{c_int, c_void};
+
+        #[used]
+        static _F1: unsafe extern "C" fn(usize, usize) -> *mut c_void = jemalloc_sys::calloc;
+        #[used]
+        static _F2: unsafe extern "C" fn(*mut *mut c_void, usize, usize) -> c_int =
+            jemalloc_sys::posix_memalign;
+        #[used]
+        static _F3: unsafe extern "C" fn(usize, usize) -> *mut c_void = jemalloc_sys::aligned_alloc;
+        #[used]
+        static _F4: unsafe extern "C" fn(usize) -> *mut c_void = jemalloc_sys::malloc;
+        #[used]
+        static _F5: unsafe extern "C" fn(*mut c_void, usize) -> *mut c_void = jemalloc_sys::realloc;
+        #[used]
+        static _F6: unsafe extern "C" fn(*mut c_void) = jemalloc_sys::free;
+
+        // On OSX, jemalloc doesn't directly override malloc/free, but instead
+        // registers itself with the allocator's zone APIs in a ctor. However,
+        // the linker doesn't seem to consider ctors as "used" when statically
+        // linking, so we need to explicitly depend on the function.
+        #[cfg(target_os = "macos")]
+        {
+            extern "C" {
+                fn _rjem_je_zone_register();
+            }
+
+            #[used]
+            static _F7: unsafe extern "C" fn() = _rjem_je_zone_register;
+        }
+    }
+
     rustc_driver::set_sigpipe_handler();
     rustc_driver::install_ice_hook();
 
@@ -527,6 +579,14 @@ fn opts() -> Vec<RustcOptGroup> {
         unstable("print", |o| {
             o.optmulti("", "print", "Rustdoc information to print on stdout", "[unversioned-files]")
         }),
+        unstable("emit", |o| {
+            o.optmulti(
+                "",
+                "emit",
+                "Comma separated list of types of output for rustdoc to emit",
+                "[unversioned-shared-resources,toolchain-shared-resources,invocation-specific]",
+            )
+        }),
     ]
 }
 
@@ -637,7 +697,6 @@ fn main_options(options: config::Options) -> MainResult {
     let default_passes = options.default_passes;
     let output_format = options.output_format;
     // FIXME: fix this clone (especially render_options)
-    let externs = options.externs.clone();
     let manual_passes = options.manual_passes.clone();
     let render_options = options.render_options.clone();
     let config = core::create_config(options);
@@ -649,7 +708,7 @@ fn main_options(options: config::Options) -> MainResult {
             // We need to hold on to the complete resolver, so we cause everything to be
             // cloned for the analysis passes to use. Suboptimal, but necessary in the
             // current architecture.
-            let resolver = core::create_resolver(externs, queries, &sess);
+            let resolver = core::create_resolver(queries, &sess);
 
             if sess.has_errors() {
                 sess.fatal("Compilation failed, aborting rustdoc");

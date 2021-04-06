@@ -32,8 +32,9 @@ use rustc_middle::middle::cstore::EncodedMetadata;
 use rustc_middle::middle::exported_symbols;
 use rustc_middle::mir::mono::{Linkage, Visibility};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{DebugInfo, SanitizerSet};
+use rustc_session::config::DebugInfo;
 use rustc_span::symbol::Symbol;
+use rustc_target::spec::SanitizerSet;
 
 use std::ffi::CString;
 use std::time::Instant;

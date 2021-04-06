@@ -26,6 +26,7 @@ const ARM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("vfp2", Some(sym::arm_target_feature)),
     ("vfp3", Some(sym::arm_target_feature)),
     ("vfp4", Some(sym::arm_target_feature)),
+    ("fp-armv8", Some(sym::arm_target_feature)),
     // This is needed for inline assembly, but shouldn't be stabilized as-is
     // since it should be enabled per-function using #[instruction_set], not
     // #[target_feature].
@@ -160,7 +161,7 @@ pub fn supported_target_features(sess: &Session) -> &'static [(&'static str, Opt
         "mips" | "mips64" => MIPS_ALLOWED_FEATURES,
         "powerpc" | "powerpc64" => POWERPC_ALLOWED_FEATURES,
         "riscv32" | "riscv64" => RISCV_ALLOWED_FEATURES,
-        "wasm32" => WASM_ALLOWED_FEATURES,
+        "wasm32" | "wasm64" => WASM_ALLOWED_FEATURES,
         _ => &[],
     }
 }

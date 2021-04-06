@@ -497,6 +497,7 @@ fn typeck_with_fallback<'tcx>(
                 let fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
                 <dyn AstConv<'_>>::ty_of_fn(
                     &fcx,
+                    id,
                     header.unsafety,
                     header.abi,
                     decl,

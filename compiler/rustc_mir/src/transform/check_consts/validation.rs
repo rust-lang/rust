@@ -850,9 +850,12 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                     let obligation = Obligation::new(
                         ObligationCause::dummy(),
                         param_env,
-                        Binder::bind(TraitPredicate {
-                            trait_ref: TraitRef::from_method(tcx, trait_id, substs),
-                        }),
+                        Binder::bind(
+                            TraitPredicate {
+                                trait_ref: TraitRef::from_method(tcx, trait_id, substs),
+                            },
+                            tcx,
+                        ),
                     );
 
                     let implsrc = tcx.infer_ctxt().enter(|infcx| {

@@ -181,11 +181,12 @@ macro_rules! define_bignum {
             /// Adds `other` to itself and returns its own mutable reference.
             pub fn add<'a>(&'a mut self, other: &$name) -> &'a mut $name {
                 use crate::cmp;
+                use crate::iter;
                 use crate::num::bignum::FullOps;
 
                 let mut sz = cmp::max(self.size, other.size);
                 let mut carry = false;
-                for (a, b) in self.base[..sz].iter_mut().zip(&other.base[..sz]) {
+                for (a, b) in iter::zip(&mut self.base[..sz], &other.base[..sz]) {
                     let (c, v) = (*a).full_add(*b, carry);
                     *a = v;
                     carry = c;
@@ -219,11 +220,12 @@ macro_rules! define_bignum {
             /// Subtracts `other` from itself and returns its own mutable reference.
             pub fn sub<'a>(&'a mut self, other: &$name) -> &'a mut $name {
                 use crate::cmp;
+                use crate::iter;
                 use crate::num::bignum::FullOps;
 
                 let sz = cmp::max(self.size, other.size);
                 let mut noborrow = true;
-                for (a, b) in self.base[..sz].iter_mut().zip(&other.base[..sz]) {
+                for (a, b) in iter::zip(&mut self.base[..sz], &other.base[..sz]) {
                     let (c, v) = (*a).full_add(!*b, noborrow);
                     *a = v;
                     noborrow = c;

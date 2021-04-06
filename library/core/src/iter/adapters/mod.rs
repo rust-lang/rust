@@ -51,6 +51,9 @@ pub use self::map_while::MapWhile;
 #[unstable(feature = "trusted_random_access", issue = "none")]
 pub use self::zip::TrustedRandomAccess;
 
+#[unstable(feature = "iter_zip", issue = "83574")]
+pub use self::zip::zip;
+
 /// This trait provides transitive access to source-stage in an interator-adapter pipeline
 /// under the conditions that
 /// * the iterator source `S` itself implements `SourceIter<Source = S>`
@@ -190,4 +193,27 @@ where
 
         self.try_fold(init, ok(fold)).unwrap()
     }
+}
+
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<S: Iterator, I, E> SourceIter for ResultShunt<'_, I, E>
+where
+    I: SourceIter<Source = S>,
+{
+    type Source = S;
+
+    #[inline]
+    unsafe fn as_inner(&mut self) -> &mut S {
+        // SAFETY: unsafe function forwarding to unsafe function with the same requirements
+        unsafe { SourceIter::as_inner(&mut self.iter) }
+    }
+}
+
+// SAFETY: ResultShunt::next calls I::find, which has to advance `iter` in order to
+// return `Some(_)`. Since `iter` has type `I: InPlaceIterable` it's guaranteed that
+// at least one item will be moved out from the underlying source.
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<I, T, E> InPlaceIterable for ResultShunt<'_, I, E> where
+    I: Iterator<Item = Result<T, E>> + InPlaceIterable
+{
 }

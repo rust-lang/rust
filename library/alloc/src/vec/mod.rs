@@ -58,7 +58,7 @@ use core::convert::TryFrom;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::intrinsics::{arith_offset, assume};
-use core::iter::FromIterator;
+use core::iter::{self, FromIterator};
 use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop, MaybeUninit};
 use core::ops::{self, Index, IndexMut, Range, RangeBounds};
@@ -267,12 +267,12 @@ mod spec_extend;
 /// unspecified, and you should use the appropriate methods to modify these.
 /// The pointer will never be null, so this type is null-pointer-optimized.
 ///
-/// However, the pointer may not actually point to allocated memory. In particular,
+/// However, the pointer might not actually point to allocated memory. In particular,
 /// if you construct a `Vec` with capacity 0 via [`Vec::new`], [`vec![]`][`vec!`],
 /// [`Vec::with_capacity(0)`][`Vec::with_capacity`], or by calling [`shrink_to_fit`]
 /// on an empty Vec, it will not allocate memory. Similarly, if you store zero-sized
 /// types inside a `Vec`, it will not allocate space for them. *Note that in this case
-/// the `Vec` may not report a [`capacity`] of 0*. `Vec` will allocate if and only
+/// the `Vec` might not report a [`capacity`] of 0*. `Vec` will allocate if and only
 /// if [`mem::size_of::<T>`]`() * capacity() > 0`. In general, `Vec`'s allocation
 /// details are very subtle &mdash; if you intend to allocate memory using a `Vec`
 /// and use it for something else (either to pass to unsafe code, or to build your
@@ -347,7 +347,7 @@ mod spec_extend;
 /// whatever is most efficient or otherwise easy to implement. Do not rely on
 /// removed data to be erased for security purposes. Even if you drop a `Vec`, its
 /// buffer may simply be reused by another `Vec`. Even if you zero a `Vec`'s memory
-/// first, that may not actually happen because the optimizer does not consider
+/// first, that might not actually happen because the optimizer does not consider
 /// this a side-effect that must be preserved. There is one case which we will
 /// not break, however: using `unsafe` code to write to the excess capacity,
 /// and then increasing the length to match, is always valid.
@@ -409,6 +409,10 @@ impl<T> Vec<T> {
     /// *[Capacity and reallocation]*.
     ///
     /// [Capacity and reallocation]: #capacity-and-reallocation
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity exceeds `isize::MAX` bytes.
     ///
     /// # Examples
     ///
@@ -540,6 +544,10 @@ impl<T, A: Allocator> Vec<T, A> {
     /// *[Capacity and reallocation]*.
     ///
     /// [Capacity and reallocation]: #capacity-and-reallocation
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity exceeds `isize::MAX` bytes.
     ///
     /// # Examples
     ///
@@ -2268,11 +2276,8 @@ impl<T: Clone, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
         // - caller guaratees that src is a valid index
         let to_clone = unsafe { this.get_unchecked(src) };
 
-        to_clone
-            .iter()
-            .cloned()
-            .zip(spare.iter_mut())
-            .map(|(src, dst)| dst.write(src))
+        iter::zip(to_clone, spare)
+            .map(|(src, dst)| dst.write(src.clone()))
             // Note:
             // - Element was just initialized with `MaybeUninit::write`, so it's ok to increace len
             // - len is increased after each element to prevent leaks (see issue #82533)

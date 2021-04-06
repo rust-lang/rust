@@ -239,13 +239,15 @@ fn dec2flt<T: RawFloat>(s: &str) -> Result<T, ParseFloatError> {
         ParseResult::Valid(decimal) => convert(decimal)?,
         ParseResult::ShortcutToInf => T::INFINITY,
         ParseResult::ShortcutToZero => T::ZERO,
-        ParseResult::Invalid => match s {
-            "inf" => T::INFINITY,
-            "NaN" => T::NAN,
-            _ => {
+        ParseResult::Invalid => {
+            if s.eq_ignore_ascii_case("nan") {
+                T::NAN
+            } else if s.eq_ignore_ascii_case("inf") || s.eq_ignore_ascii_case("infinity") {
+                T::INFINITY
+            } else {
                 return Err(pfe_invalid());
             }
-        },
+        }
     };
 
     match sign {

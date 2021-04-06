@@ -259,10 +259,11 @@ changelog-seen = 2
 # be built if `extended = true`.
 #extended = false
 
-# Installs chosen set of extended tools if `extended = true`. By default builds all.
-# If chosen tool failed to build the installation fails. If `extended = false`, this
-# option is ignored.
-#tools = ["cargo", "rls", "clippy", "rustfmt", "analysis", "src"]
+# Installs chosen set of extended tools if `extended = true`. By default builds
+# all extended tools except `rust-demangler`, unless the target is also being
+# built with `profiler = true`. If chosen tool failed to build the installation
+# fails. If `extended = false`, this option is ignored.
+#tools = ["cargo", "rls", "clippy", "rustfmt", "analysis", "src"] # + "rust-demangler" if `profiler`
 
 # Verbosity level: 0 == not verbose, 1 == verbose, 2 == very verbose
 #verbose = 0
@@ -372,7 +373,9 @@ changelog-seen = 2
 # Whether to download the stage 1 and 2 compilers from CI.
 # This is mostly useful for tools; if you have changes to `compiler/` they will be ignored.
 #
-# FIXME: currently, this also uses the downloaded compiler for stage0, but that causes unnecessary rebuilds.
+# You can set this to "if-unchanged" to only download if `compiler/` has not been modified.
+#
+# FIXME(#82739): currently, this also uses the downloaded compiler for stage0, but that causes unnecessary rebuilds.
 #download-rustc = false
 
 # Number of codegen units to use for each compiler invocation. A value of 0

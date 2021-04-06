@@ -190,6 +190,8 @@ use crate::ptr;
 ///     let ptr = uninit.as_mut_ptr();
 ///
 ///     // Initializing the `name` field
+///     // Using `write` instead of assignment via `=` to not call `drop` on the
+///     // old, uninitialized value.
 ///     unsafe { addr_of_mut!((*ptr).name).write("Bob".to_string()); }
 ///
 ///     // Initializing the `list` field
@@ -319,9 +321,9 @@ impl<T> MaybeUninit<T> {
     /// Create a new array of `MaybeUninit<T>` items, in an uninitialized state.
     ///
     /// Note: in a future Rust version this method may become unnecessary
-    /// when array literal syntax allows
-    /// [repeating const expressions](https://github.com/rust-lang/rust/issues/49147).
-    /// The example below could then use `let mut buf = [MaybeUninit::<u8>::uninit(); 32];`.
+    /// when Rust allows
+    /// [inline const expressions](https://github.com/rust-lang/rust/issues/76001).
+    /// The example below could then use `let mut buf = [const { MaybeUninit::<u8>::uninit() }; 32];`.
     ///
     /// # Examples
     ///

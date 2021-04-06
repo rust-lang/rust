@@ -7,7 +7,7 @@ LL | trait T2<Z> {
 LL | impl<X: ?Sized> T2<X> for S4<X> {
    |      -          ^^^^^ doesn't have a size known at compile-time
    |      |
-   |      this type parameter needs to be `Sized`
+   |      this type parameter needs to be `std::marker::Sized`
    |
 help: consider relaxing the implicit `Sized` restriction
    |

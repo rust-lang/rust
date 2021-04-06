@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 #![crate_type="lib"]
 
 pub mod internal {

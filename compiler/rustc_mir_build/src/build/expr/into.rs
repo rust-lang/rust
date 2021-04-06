@@ -10,6 +10,7 @@ use rustc_hir as hir;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation};
+use std::iter;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, storing the result into `destination`, which
@@ -110,18 +111,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::LogicalOp { op, lhs, rhs } => {
                 // And:
                 //
-                // [block: If(lhs)] -true-> [else_block: If(rhs)] -true-> [true_block]
-                //        |                          | (false)
-                //        +----------false-----------+------------------> [false_block]
+                // [block: If(lhs)] -true-> [else_block: dest = (rhs)]
+                //        | (false)
+                //  [shortcurcuit_block: dest = false]
                 //
                 // Or:
                 //
-                // [block: If(lhs)] -false-> [else_block: If(rhs)] -true-> [true_block]
-                //        | (true)                   | (false)
-                //  [true_block]               [false_block]
+                // [block: If(lhs)] -false-> [else_block: dest = (rhs)]
+                //        | (true)
+                //  [shortcurcuit_block: dest = true]
 
-                let (true_block, false_block, mut else_block, join_block) = (
-                    this.cfg.start_new_block(),
+                let (shortcircuit_block, mut else_block, join_block) = (
                     this.cfg.start_new_block(),
                     this.cfg.start_new_block(),
                     this.cfg.start_new_block(),
@@ -129,41 +129,31 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let lhs = unpack!(block = this.as_local_operand(block, lhs));
                 let blocks = match op {
-                    LogicalOp::And => (else_block, false_block),
-                    LogicalOp::Or => (true_block, else_block),
+                    LogicalOp::And => (else_block, shortcircuit_block),
+                    LogicalOp::Or => (shortcircuit_block, else_block),
                 };
                 let term = TerminatorKind::if_(this.tcx, lhs, blocks.0, blocks.1);
                 this.cfg.terminate(block, source_info, term);
 
+                this.cfg.push_assign_constant(
+                    shortcircuit_block,
+                    source_info,
+                    destination,
+                    Constant {
+                        span: expr_span,
+                        user_ty: None,
+                        literal: match op {
+                            LogicalOp::And => ty::Const::from_bool(this.tcx, false).into(),
+                            LogicalOp::Or => ty::Const::from_bool(this.tcx, true).into(),
+                        },
+                    },
+                );
+                this.cfg.goto(shortcircuit_block, source_info, join_block);
+
                 let rhs = unpack!(else_block = this.as_local_operand(else_block, rhs));
-                let term = TerminatorKind::if_(this.tcx, rhs, true_block, false_block);
-                this.cfg.terminate(else_block, source_info, term);
+                this.cfg.push_assign(else_block, source_info, destination, Rvalue::Use(rhs));
+                this.cfg.goto(else_block, source_info, join_block);
 
-                this.cfg.push_assign_constant(
-                    true_block,
-                    source_info,
-                    destination,
-                    Constant {
-                        span: expr_span,
-                        user_ty: None,
-                        literal: ty::Const::from_bool(this.tcx, true).into(),
-                    },
-                );
-
-                this.cfg.push_assign_constant(
-                    false_block,
-                    source_info,
-                    destination,
-                    Constant {
-                        span: expr_span,
-                        user_ty: None,
-                        literal: ty::Const::from_bool(this.tcx, false).into(),
-                    },
-                );
-
-                // Link up both branches:
-                this.cfg.goto(true_block, source_info, join_block);
-                this.cfg.goto(false_block, source_info, join_block);
                 join_block.unit()
             }
             ExprKind::Loop { body } => {
@@ -286,9 +276,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // MIR does not natively support FRU, so for each
                     // base-supplied field, generate an operand that
                     // reads it from the base.
-                    field_names
-                        .into_iter()
-                        .zip(field_types.into_iter())
+                    iter::zip(field_names, *field_types)
                         .map(|(n, ty)| match fields_map.get(&n) {
                             Some(v) => v.clone(),
                             None => {

@@ -146,6 +146,7 @@ impl<'a, 'b> RunCompiler<'a, 'b> {
     pub fn new(at_args: &'a [String], callbacks: &'b mut (dyn Callbacks + Send)) -> Self {
         Self { at_args, callbacks, file_loader: None, emitter: None, make_codegen_backend: None }
     }
+    /// Used by cg_clif.
     pub fn set_make_codegen_backend(
         &mut self,
         make_codegen_backend: Option<
@@ -155,10 +156,12 @@ impl<'a, 'b> RunCompiler<'a, 'b> {
         self.make_codegen_backend = make_codegen_backend;
         self
     }
+    /// Used by RLS.
     pub fn set_emitter(&mut self, emitter: Option<Box<dyn Write + Send>>) -> &mut Self {
         self.emitter = emitter;
         self
     }
+    /// Used by RLS.
     pub fn set_file_loader(
         &mut self,
         file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
@@ -792,7 +795,7 @@ pub fn version(binary: &str, matches: &getopts::Matches) {
         println!("host: {}", config::host_triple());
         println!("release: {}", unw(util::release_str()));
         if cfg!(feature = "llvm") {
-            get_builtin_codegen_backend("llvm")().print_version();
+            get_builtin_codegen_backend(&None, "llvm")().print_version();
         }
     }
 }
@@ -1086,7 +1089,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
 
     if cg_flags.iter().any(|x| *x == "passes=list") {
         if cfg!(feature = "llvm") {
-            get_builtin_codegen_backend("llvm")().print_passes();
+            get_builtin_codegen_backend(&None, "llvm")().print_passes();
         }
         return None;
     }

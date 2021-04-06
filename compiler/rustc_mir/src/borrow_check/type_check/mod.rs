@@ -1770,7 +1770,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if args.len() < sig.inputs().len() || (args.len() > sig.inputs().len() && !sig.c_variadic) {
             span_mirbug!(self, term, "call to {:?} with wrong # of args", sig);
         }
-        for (n, (fn_arg, op_arg)) in sig.inputs().iter().zip(args).enumerate() {
+        for (n, (fn_arg, op_arg)) in iter::zip(sig.inputs(), args).enumerate() {
             let op_arg_ty = op_arg.ty(body, self.tcx());
             let op_arg_ty = self.normalize(op_arg_ty, term_location);
             let category = if from_hir_call {
@@ -2028,7 +2028,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                             traits::ObligationCauseCode::RepeatVec(is_const_fn),
                                         ),
                                         self.param_env,
-                                        ty::Binder::bind(ty::TraitRef::new(
+                                        ty::Binder::dummy(ty::TraitRef::new(
                                             self.tcx().require_lang_item(
                                                 LangItem::Copy,
                                                 Some(self.last_span),

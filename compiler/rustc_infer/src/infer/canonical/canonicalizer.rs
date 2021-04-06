@@ -293,7 +293,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
         self.tcx
     }
 
-    fn fold_binder<T>(&mut self, t: ty::Binder<T>) -> ty::Binder<T>
+    fn fold_binder<T>(&mut self, t: ty::Binder<'tcx, T>) -> ty::Binder<'tcx, T>
     where
         T: TypeFoldable<'tcx>,
     {
@@ -621,7 +621,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         r: ty::Region<'tcx>,
     ) -> ty::Region<'tcx> {
         let var = self.canonical_var(info, r.into());
-        let br = ty::BoundRegion { kind: ty::BrAnon(var.as_u32()) };
+        let br = ty::BoundRegion { var, kind: ty::BrAnon(var.as_u32()) };
         let region = ty::ReLateBound(self.binder_index, br);
         self.tcx().mk_region(region)
     }

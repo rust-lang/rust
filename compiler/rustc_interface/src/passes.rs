@@ -15,8 +15,8 @@ use rustc_expand::base::ExtCtxt;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_hir::Crate;
-use rustc_index::vec::IndexVec;
 use rustc_lint::LintStore;
+use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::middle;
@@ -788,13 +788,7 @@ pub fn create_global_ctxt<'tcx>(
         callback(sess, &mut local_providers, &mut extern_providers);
     }
 
-    let queries = {
-        let crates = resolver_outputs.cstore.crates_untracked();
-        let max_cnum = crates.iter().map(|c| c.as_usize()).max().unwrap_or(0);
-        let mut providers = IndexVec::from_elem_n(extern_providers, max_cnum + 1);
-        providers[LOCAL_CRATE] = local_providers;
-        queries.get_or_init(|| TcxQueries::new(providers, extern_providers))
-    };
+    let queries = queries.get_or_init(|| TcxQueries::new(local_providers, extern_providers));
 
     let gcx = sess.time("setup_global_ctxt", || {
         global_ctxt.get_or_init(|| {
@@ -838,6 +832,12 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
                 });
 
                 sess.time("looking_for_derive_registrar", || proc_macro_decls::find(tcx));
+
+                let cstore = tcx
+                    .cstore_as_any()
+                    .downcast_ref::<CStore>()
+                    .expect("`tcx.cstore` is not a `CStore`");
+                cstore.report_unused_deps(tcx);
             },
             {
                 par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
@@ -1027,9 +1027,6 @@ pub fn start_codegen<'tcx>(
         rustc_incremental::assert_module_sources::assert_module_sources(tcx);
         rustc_symbol_mangling::test::report_symbol_names(tcx);
     }
-
-    tcx.sess.time("assert_dep_graph", || rustc_incremental::assert_dep_graph(tcx));
-    tcx.sess.time("serialize_dep_graph", || rustc_incremental::save_dep_graph(tcx));
 
     info!("Post-codegen\n{:?}", tcx.debug_stats());
 

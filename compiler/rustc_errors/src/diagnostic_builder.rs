@@ -157,19 +157,6 @@ impl<'a> DiagnosticBuilder<'a> {
         buffered_diagnostics.extend(self.into_diagnostic().map(|(diag, _)| diag));
     }
 
-    /// Convenience function for internal use, clients should use one of the
-    /// span_* methods instead.
-    pub fn sub<S: Into<MultiSpan>>(
-        &mut self,
-        level: Level,
-        message: &str,
-        span: Option<S>,
-    ) -> &mut Self {
-        let span = span.map(|s| s.into()).unwrap_or_else(MultiSpan::new);
-        self.0.diagnostic.sub(level, message, span, None);
-        self
-    }
-
     /// Delay emission of this diagnostic as a bug.
     ///
     /// This can be useful in contexts where an error indicates a bug but
@@ -267,20 +254,6 @@ impl<'a> DiagnosticBuilder<'a> {
             return self;
         }
         self.0.diagnostic.multipart_suggestion(msg, suggestion, applicability);
-        self
-    }
-
-    /// See [`Diagnostic::multipart_suggestions()`].
-    pub fn multipart_suggestions(
-        &mut self,
-        msg: &str,
-        suggestions: Vec<Vec<(Span, String)>>,
-        applicability: Applicability,
-    ) -> &mut Self {
-        if !self.0.allow_suggestions {
-            return self;
-        }
-        self.0.diagnostic.multipart_suggestions(msg, suggestions, applicability);
         self
     }
 

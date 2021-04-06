@@ -29,11 +29,18 @@ impl<BorrowType, K, V> LeafRange<BorrowType, K, V> {
 
 impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
     /// Finds the distinct leaf edges delimiting a specified range in a tree.
-    /// Returns either a pair of different handles into the same tree or a pair
-    /// of empty options.
+    ///
+    /// If such distinct edges exist, returns them in ascending order, meaning
+    /// that a non-zero number of calls to `next_unchecked` on the `front` of
+    /// the result and/or calls to `next_back_unchecked` on the `back` of the
+    /// result will eventually reach the same edge.
+    ///
+    /// If there are no such edges, i.e., if the tree contains no key within
+    /// the range, returns a pair of empty options.
+    ///
     /// # Safety
-    /// Unless `BorrowType` is `Immut`, do not use the duplicate handles to
-    /// visit the same KV twice.
+    /// Unless `BorrowType` is `Immut`, do not use the handles to visit the same
+    /// KV twice.
     unsafe fn find_leaf_edges_spanning_range<Q: ?Sized, R>(
         self,
         range: R,

@@ -21,7 +21,7 @@ use rustc_macros::HashStable;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{Integer, Size, TargetDataLayout};
 use smallvec::SmallVec;
-use std::{cmp, fmt};
+use std::{cmp, fmt, iter};
 
 #[derive(Copy, Clone, Debug)]
 pub struct Discr<'tcx> {
@@ -414,9 +414,7 @@ impl<'tcx> TyCtxt<'tcx> {
             _ => bug!(),
         };
 
-        let result = item_substs
-            .iter()
-            .zip(impl_substs.iter())
+        let result = iter::zip(item_substs, impl_substs)
             .filter(|&(_, k)| {
                 match k.unpack() {
                     GenericArgKind::Lifetime(&ty::RegionKind::ReEarlyBound(ref ebr)) => {
@@ -501,10 +499,9 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         closure_def_id: DefId,
         closure_substs: SubstsRef<'tcx>,
-    ) -> Option<ty::Binder<Ty<'tcx>>> {
+        env_region: ty::RegionKind,
+    ) -> Option<Ty<'tcx>> {
         let closure_ty = self.mk_closure(closure_def_id, closure_substs);
-        let br = ty::BoundRegion { kind: ty::BrEnv };
-        let env_region = ty::ReLateBound(ty::INNERMOST, br);
         let closure_kind_ty = closure_substs.as_closure().kind_ty();
         let closure_kind = closure_kind_ty.to_opt_closure_kind()?;
         let env_ty = match closure_kind {
@@ -512,7 +509,7 @@ impl<'tcx> TyCtxt<'tcx> {
             ty::ClosureKind::FnMut => self.mk_mut_ref(self.mk_region(env_region), closure_ty),
             ty::ClosureKind::FnOnce => closure_ty,
         };
-        Some(ty::Binder::bind(env_ty))
+        Some(env_ty)
     }
 
     /// Returns `true` if the node pointed to by `def_id` is a `static` item.
@@ -701,7 +698,6 @@ impl<'tcx> ty::TyS<'tcx> {
     /// optimization as well as the rules around static values. Note
     /// that the `Freeze` trait is not exposed to end users and is
     /// effectively an implementation detail.
-    // FIXME: use `TyCtxtAt` instead of separate `Span`.
     pub fn is_freeze(&'tcx self, tcx_at: TyCtxtAt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
         self.is_trivially_freeze() || tcx_at.is_freeze_raw(param_env.and(self))
     }

@@ -27,7 +27,7 @@ fn full_tested_match() -> () {
         StorageLive(_1);                 // scope 0 at $DIR/match_false_edges.rs:15:13: 19:6
         StorageLive(_2);                 // scope 0 at $DIR/match_false_edges.rs:15:19: 15:27
         _2 = Option::<i32>::Some(const 42_i32); // scope 0 at $DIR/match_false_edges.rs:15:19: 15:27
-        FakeRead(ForMatchedPlace, _2);   // scope 0 at $DIR/match_false_edges.rs:15:19: 15:27
+        FakeRead(ForMatchedPlace(None), _2); // scope 0 at $DIR/match_false_edges.rs:15:19: 15:27
         _3 = discriminant(_2);           // scope 0 at $DIR/match_false_edges.rs:16:9: 16:16
         switchInt(move _3) -> [0_isize: bb1, 1_isize: bb2, otherwise: bb4]; // scope 0 at $DIR/match_false_edges.rs:16:9: 16:16
     }
@@ -54,7 +54,7 @@ fn full_tested_match() -> () {
         _11 = const full_tested_match::promoted[0]; // scope 0 at $DIR/match_false_edges.rs:16:14: 16:15
                                          // ty::Const
                                          // + ty: &std::option::Option<i32>
-                                         // + val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:5 ~ match_false_edges[317d]::full_tested_match), const_param_did: None }, substs: [], promoted: Some(promoted[0]) })
+                                         // + val: Unevaluated(full_tested_match, [], Some(promoted[0]))
                                          // mir::Constant
                                          // + span: $DIR/match_false_edges.rs:16:14: 16:15
                                          // + literal: Const { ty: &std::option::Option<i32>, val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:5 ~ match_false_edges[317d]::full_tested_match), const_param_did: None }, substs: [], promoted: Some(promoted[0]) }) }
