@@ -185,12 +185,16 @@ impl SourceAnalyzer {
 
     pub(crate) fn resolve_record_pat_field(
         &self,
-        _db: &dyn HirDatabase,
+        db: &dyn HirDatabase,
         field: &ast::RecordPatField,
     ) -> Option<Field> {
-        let pat_id = self.pat_id(&field.pat()?)?;
-        let struct_field = self.infer.as_ref()?.record_pat_field_resolution(pat_id)?;
-        Some(struct_field.into())
+        let field_name = field.field_name()?.as_name();
+        let record_pat = ast::RecordPat::cast(field.syntax().parent().and_then(|p| p.parent())?)?;
+        let pat_id = self.pat_id(&record_pat.into())?;
+        let variant = self.infer.as_ref()?.variant_resolution_for_pat(pat_id)?;
+        let variant_data = variant.variant_data(db.upcast());
+        let field = FieldId { parent: variant, local_id: variant_data.field(&field_name)? };
+        Some(field.into())
     }
 
     pub(crate) fn resolve_macro_call(
