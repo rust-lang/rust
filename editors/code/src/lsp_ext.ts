@@ -11,9 +11,9 @@ export const analyzerStatus = new lc.RequestType<AnalyzerStatusParams, string, v
 export const memoryUsage = new lc.RequestType0<string, void>("rust-analyzer/memoryUsage");
 
 export interface ServerStatusParams {
-    health: "ok" | "warning" | "error"
-    quiescent: boolean
-    message?: string
+    health: "ok" | "warning" | "error";
+    quiescent: boolean;
+    message?: string;
 }
 export const serverStatus = new lc.NotificationType<ServerStatusParams>("experimental/serverStatus");
 
