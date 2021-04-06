@@ -11,8 +11,8 @@ use hir_def::{GenericDefId, TypeAliasId};
 
 use crate::{
     chalk_ext::ProjectionTyExt, db::HirDatabase, static_lifetime, AliasTy, CallableDefId,
-    Canonical, DomainGoal, FnPointer, GenericArg, InEnvironment, OpaqueTy, ProjectionTy,
-    QuantifiedWhereClause, Substitution, TraitRef, Ty, TypeWalk, WhereClause,
+    Canonical, ConstrainedSubst, DomainGoal, FnPointer, GenericArg, InEnvironment, OpaqueTy,
+    ProjectionTy, QuantifiedWhereClause, Substitution, TraitRef, Ty, TypeWalk, WhereClause,
 };
 
 use super::interner::*;
@@ -456,6 +456,18 @@ where
     fn from_chalk(db: &dyn HirDatabase, binders: chalk_ir::Binders<T::Chalk>) -> crate::Binders<T> {
         let (v, b) = binders.into_value_and_skipped_binders();
         crate::Binders::new(b, from_chalk(db, v))
+    }
+}
+
+impl ToChalk for crate::ConstrainedSubst {
+    type Chalk = chalk_ir::ConstrainedSubst<Interner>;
+
+    fn to_chalk(self, _db: &dyn HirDatabase) -> Self::Chalk {
+        unimplemented!()
+    }
+
+    fn from_chalk(db: &dyn HirDatabase, chalk: Self::Chalk) -> Self {
+        ConstrainedSubst { subst: from_chalk(db, chalk.subst) }
     }
 }
 

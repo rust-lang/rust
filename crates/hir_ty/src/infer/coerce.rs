@@ -7,7 +7,7 @@
 use chalk_ir::{cast::Cast, Mutability, TyVariableKind};
 use hir_def::lang_item::LangItemTarget;
 
-use crate::{autoderef, Interner, Solution, Ty, TyBuilder, TyExt, TyKind};
+use crate::{autoderef, Canonical, Interner, Solution, Ty, TyBuilder, TyExt, TyKind};
 
 use super::{InEnvironment, InferenceContext};
 
@@ -148,7 +148,14 @@ impl<'a> InferenceContext<'a> {
 
         match solution {
             Solution::Unique(v) => {
-                canonicalized.apply_solution(self, v.0);
+                canonicalized.apply_solution(
+                    self,
+                    Canonical {
+                        binders: v.binders,
+                        // FIXME handle constraints
+                        value: v.value.subst,
+                    },
+                );
             }
             _ => return None,
         };
