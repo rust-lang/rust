@@ -1,5 +1,5 @@
 // @has 'glob_shadowing/index.html'
-// @count - '//tr[@class="module-item"]' 2
+// @count - '//tr[@class="module-item"]' 4
 // @has - '//tr[@class="module-item"]' 'mod::prelude'
 // @!has - '//tr[@class="module-item"]' 'sub1::describe'
 // @has - '//tr[@class="module-item"]' 'sub2::describe'
@@ -17,6 +17,9 @@ mod sub1 {
     pub mod prelude {
         pub use super::describe;
     }
+
+    /// sub1::Foo (struct)
+    pub struct Foo;
 }
 
 mod sub2 {
@@ -28,6 +31,9 @@ mod sub2 {
 
 /// mod::prelude
 pub mod prelude {}
+
+/// mod::Foo (function)
+pub fn Foo() {}
 
 #[doc(inline)]
 pub use sub2::describe;

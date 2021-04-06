@@ -64,30 +64,51 @@ impl Module<'hir> {
     }
 
     pub(crate) fn push_item(&mut self, new_item: Item<'hir>) {
-        if let Some(existing_item) =
-            self.items.iter_mut().find(|item| item.name() == new_item.name())
-        {
-            if existing_item.from_glob {
-                debug!("push_item: {:?} shadowed by {:?}", *existing_item, new_item);
-                *existing_item = new_item;
-                return;
-            } else if new_item.from_glob {
-                return;
+        if !new_item.name().is_empty() {
+            // todo: also check namespace
+            if let Some(existing_item) =
+                self.items.iter_mut().find(|item| item.name() == new_item.name())
+            {
+                match (existing_item.from_glob, new_item.from_glob) {
+                    (true, _) => {
+                        // `existing_item` is from glob, no matter whether `new_item` is from glob
+                        // `new_item` should always shadow `existing_item`
+                        debug!("push_item: {:?} shadowed by {:?}", existing_item, new_item);
+                        *existing_item = new_item;
+                        return;
+                    }
+                    (false, true) => {
+                        // `existing_item` is not from glob but `new_item` is
+                        // just keep `existing_item` and return at once
+                        return;
+                    }
+                    (false, false) => unreachable!() // todo: how to handle this?
+                }
             }
         }
+        // no item with same name and namespace exists, just collect `new_item`
         self.items.push(new_item);
     }
 
-    pub(crate) fn push_mod(&mut self, new_item: Module<'hir>) {
-        if let Some(existing_mod) = self.mods.iter_mut().find(|mod_| mod_.name == new_item.name) {
-            if existing_mod.from_glob {
-                debug!("push_mod: {:?} shadowed by {:?}", existing_mod.name, new_item.name);
-                *existing_mod = new_item;
-                return;
-            } else if new_item.from_glob {
-                return;
+    pub(crate) fn push_mod(&mut self, new_mod: Module<'hir>) {
+        if let Some(existing_mod) = self.mods.iter_mut().find(|mod_| mod_.name == new_mod.name) {
+            match (existing_mod.from_glob, new_mod.from_glob) {
+                (true, _) => {
+                    // `existing_mod` is from glob, no matter whether `new_mod` is from glob
+                    // `new_mod` should always shadow `existing_mod`
+                    debug!("push_mod: {:?} shadowed by {:?}", existing_mod.name, new_mod.name);
+                    *existing_mod = new_mod;
+                    return;
+                },
+                (false, true) => {
+                    // `existing_mod` is not from glob but `new_mod` is
+                    // just keep `existing_mod` and return at once
+                    return;
+                },
+                (false, false) => unreachable!(),
             }
         }
-        self.mods.push(new_item);
+        // no mod with same name exists, just collect `new_mod`
+        self.mods.push(new_mod);
     }
 }

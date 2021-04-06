@@ -313,7 +313,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     }
                 }
 
-                om.push_item(Item::new(item, renamed, is_glob))
+                om.push_item(Item::new(item, renamed, from_glob))
             }
             hir::ItemKind::Mod(ref m) => {
                 om.push_mod(self.visit_mod_contents(
