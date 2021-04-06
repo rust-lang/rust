@@ -152,6 +152,10 @@ impl RootDatabase {
             hir::db::FileItemTreeQuery
             hir::db::BlockDefMapQuery
             hir::db::CrateDefMapQueryQuery
+            hir::db::FieldsAttrsQuery
+            hir::db::VariantsAttrsQuery
+            hir::db::FieldsAttrsSourceMapQuery
+            hir::db::VariantsAttrsSourceMapQuery
             hir::db::StructDataQuery
             hir::db::UnionDataQuery
             hir::db::EnumDataQuery

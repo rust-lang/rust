@@ -453,6 +453,14 @@ impl VariantId {
             }
         }
     }
+
+    pub fn file_id(self, db: &dyn db::DefDatabase) -> HirFileId {
+        match self {
+            VariantId::EnumVariantId(it) => it.parent.lookup(db).id.file_id(),
+            VariantId::StructId(it) => it.lookup(db).id.file_id(),
+            VariantId::UnionId(it) => it.lookup(db).id.file_id(),
+        }
+    }
 }
 
 trait Intern {
