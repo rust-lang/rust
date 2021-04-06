@@ -257,9 +257,9 @@ public:
     // even if this is an active value if it has no active users
     // (e.g. potential but unused active pointer), it does not
     // need an adjoint here
-    if (!constantval) {
-      constantval |= gutils->ATA->isValueInactiveFromUsers(TR, &I, ActivityAnalyzer::UseActivity::None);
-    }
+    //if (!constantval) {
+    //  constantval |= gutils->ATA->isValueInactiveFromUsers(TR, &I, ActivityAnalyzer::UseActivity::None);
+    //}
 
     BasicBlock *parent = I.getParent();
     Type *type = I.getType();

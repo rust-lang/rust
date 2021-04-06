@@ -486,6 +486,7 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
   if (EnzymePrintActivity)
     llvm::errs() << "couldnt decide fallback as nonconstant instruction("
                  << (int)directions << "):" << *I << "\n";
+  if (noActiveWrite && directions == 3) ReEvaluateInstIfInactiveValue[I].insert(I);
   return false;
 }
 
@@ -615,6 +616,11 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
       return true;
     }
 
+    if (GI->getName().contains("enzyme_const")) {
+      InsertConstantValue(TR, Val);
+      return true;
+    }
+
     // If this global is unchanging and the internal constant data
     // is inactive, the global is inactive
     if (GI->isConstant() && isConstantValue(TR, GI->getInitializer())) {
@@ -666,9 +672,9 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
         // and can instead use this object!
         // This pointer is inactive if it is either not actively stored to or
         // not actively loaded from
+        // See alloca logic to explain why OnlyStores is insufficient here
         if (directions == DOWN) {          
-          if (isValueInactiveFromUsers(TR, Val, UseActivity::OnlyLoads) ||
-              isValueInactiveFromUsers(TR, Val, UseActivity::OnlyStores)) {
+          if (isValueInactiveFromUsers(TR, Val, UseActivity::OnlyLoads)) {
             InsertConstantValue(TR, Val);
             return true;
           }
@@ -678,8 +684,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
           auto DownHypothesis = std::shared_ptr<ActivityAnalyzer>(
               new ActivityAnalyzer(*this, DOWN));
           DownHypothesis->ConstantValues.insert(Val);
-          if (DownHypothesis->isValueInactiveFromUsers(TR, Val, UseActivity::OnlyLoads, &LoadReval) ||
-              DownHypothesis->isValueInactiveFromUsers(TR, Val, UseActivity::OnlyStores, &StoreReval)) {
+          if (DownHypothesis->isValueInactiveFromUsers(TR, Val, UseActivity::OnlyLoads, &LoadReval)) {
             insertConstantsFrom(TR, *DownHypothesis);
             InsertConstantValue(TR, Val);
             return true;
@@ -887,29 +892,25 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
       } else if (isa<AllocaInst>(Val)) {
         // This pointer is inactive if it is either not actively stored to or
         // not actively loaded from and is nonescaping by definition of being alloca
+        // OnlyStores is insufficient here since the loaded pointer can have active
+        // memory stored into it [e.g. not just top level pointer that matters]
         if (directions == DOWN) {
-          if (isValueInactiveFromUsers(TR, TmpOrig, UseActivity::OnlyLoads) ||
-              isValueInactiveFromUsers(TR, TmpOrig, UseActivity::OnlyStores)) {
+          if (isValueInactiveFromUsers(TR, TmpOrig, UseActivity::OnlyLoads)) {
             InsertConstantValue(TR, Val);
             return true;
           }
         } else if (directions & DOWN) {
           Instruction *LoadReval = nullptr;
-          Instruction *StoreReval = nullptr;
           auto DownHypothesis = std::shared_ptr<ActivityAnalyzer>(
               new ActivityAnalyzer(*this, DOWN));
           DownHypothesis->ConstantValues.insert(TmpOrig);
-          if (DownHypothesis->isValueInactiveFromUsers(TR, TmpOrig, UseActivity::OnlyLoads, &LoadReval) ||
-              DownHypothesis->isValueInactiveFromUsers(TR, TmpOrig, UseActivity::OnlyStores, &StoreReval)) {
+          if (DownHypothesis->isValueInactiveFromUsers(TR, TmpOrig, UseActivity::OnlyLoads, &LoadReval)) {
             insertConstantsFrom(TR, *DownHypothesis);
             InsertConstantValue(TR, Val);
             return true;
           } else {
             if (LoadReval) {
               ReEvaluateValueIfInactiveInst[LoadReval].insert(TmpOrig);
-            }
-            if (StoreReval) {
-              ReEvaluateValueIfInactiveInst[StoreReval].insert(TmpOrig);
             }
           }
         }
@@ -1155,7 +1156,11 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
             // active
             // TODO: note that this can be optimized (especially for function
             // calls)
-            potentiallyActiveLoad = !Hypothesis->isConstantInstruction(TR, &I);
+            // Notably need both to check the result and instruction since
+            // A load that has as result an active pointer is not an active
+            // instruction, but does have an active value
+            potentiallyActiveLoad = !Hypothesis->isConstantInstruction(TR, &I)
+                                    || !Hypothesis->isConstantValue(TR, &I);
           }
         }
         if (!potentialStore && isModSet(AARes)) {
