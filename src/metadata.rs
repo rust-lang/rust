@@ -1,11 +1,11 @@
 //! Reading and writing of the rustc metadata for rlibs and dylibs
 
 use std::fs::File;
-use std::ops::Deref;
 use std::path::Path;
 
 use rustc_codegen_ssa::METADATA_FILENAME;
-use rustc_data_structures::owning_ref::{OwningRef, StableAddress};
+use rustc_data_structures::memmap::Mmap;
+use rustc_data_structures::owning_ref::OwningRef;
 use rustc_data_structures::rustc_erase_owner;
 use rustc_data_structures::sync::MetadataRef;
 use rustc_middle::middle::cstore::{EncodedMetadata, MetadataLoader};
@@ -17,26 +17,13 @@ use crate::backend::WriteMetadata;
 
 pub(crate) struct CraneliftMetadataLoader;
 
-struct StableMmap(memmap2::Mmap);
-
-impl Deref for StableMmap {
-    type Target = [u8];
-
-    fn deref(&self) -> &[u8] {
-        &*self.0
-    }
-}
-
-unsafe impl StableAddress for StableMmap {}
-
 fn load_metadata_with(
     path: &Path,
     f: impl for<'a> FnOnce(&'a [u8]) -> Result<&'a [u8], String>,
 ) -> Result<MetadataRef, String> {
     let file = File::open(path).map_err(|e| format!("{:?}", e))?;
-    let data = unsafe { memmap2::MmapOptions::new().map_copy_read_only(&file) }
-        .map_err(|e| format!("{:?}", e))?;
-    let metadata = OwningRef::new(StableMmap(data)).try_map(f)?;
+    let data = unsafe { Mmap::map(file) }.map_err(|e| format!("{:?}", e))?;
+    let metadata = OwningRef::new(data).try_map(f)?;
     return Ok(rustc_erase_owner!(metadata.map_owner_box()));
 }
 
