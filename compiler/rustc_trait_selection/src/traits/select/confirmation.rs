@@ -538,7 +538,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         {
             // Do not allow `foo::<fn() -> A>();` for `A: !Sized` (#82633)
             let fn_sig = obligation.predicate.self_ty().skip_binder().fn_sig(self.tcx());
-            let ty = fn_sig.output().skip_binder();
+            let ty = self.infcx.replace_bound_vars_with_placeholders(fn_sig.output());
             let trait_ref = ty::TraitRef {
                 def_id: lang_items.sized_trait().unwrap(),
                 substs: self.tcx().mk_substs_trait(ty, &[]),
