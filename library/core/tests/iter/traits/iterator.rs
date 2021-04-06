@@ -468,3 +468,37 @@ fn test_collect() {
     let b: Vec<isize> = a.iter().cloned().collect();
     assert!(a == b);
 }
+
+#[test]
+fn test_strip_prefix() {
+    #[track_caller]
+    fn check(look_for: &[i32]) {
+        dbg!(look_for);
+        let search_in = &[1, 2, 3, 4, 5];
+        let expected = search_in.strip_prefix(look_for);
+        assert_eq!(search_in.iter().strip_prefix(look_for).map(|v| v.as_slice()), expected);
+    }
+    check(&[1, 2, 3]);
+    check(&[1, 2, 5]);
+    check(&[1, 2, 3, 4, 5, 6]);
+    check(&[1, 2, 3, 4, 5]);
+    check(&[]);
+    check(&[2]);
+}
+
+#[test]
+fn test_strip_suffix() {
+    #[track_caller]
+    fn check(look_for: &[i32]) {
+        dbg!(look_for);
+        let search_in = &[1, 2, 3, 4, 5];
+        let expected = search_in.strip_suffix(look_for);
+        assert_eq!(search_in.iter().strip_suffix(look_for).map(|v| v.as_slice()), expected);
+    }
+    check(&[3, 4, 5]);
+    check(&[1, 4, 5]);
+    check(&[0, 1, 2, 3, 4, 5]);
+    check(&[1, 2, 3, 4, 5]);
+    check(&[]);
+    check(&[4]);
+}

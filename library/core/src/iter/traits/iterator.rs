@@ -3402,6 +3402,41 @@ pub trait Iterator {
     {
         unreachable!("Always specialized");
     }
+
+    /// [`str::strip_prefix`] for iterators!
+    // FIXME(programmerjake): come up with actual docs
+    #[must_use]
+    #[unstable(feature = "iterator_strip_affix", reason = "new API", issue = "none")]
+    fn strip_prefix<I: IntoIterator>(mut self, match_against: I) -> Option<Self>
+    where
+        Self: Sized,
+        Self::Item: PartialEq<I::Item>,
+    {
+        for i in match_against {
+            if self.next()? != i {
+                return None;
+            }
+        }
+        Some(self)
+    }
+
+    /// [`str::strip_suffix`] for iterators!
+    // FIXME(programmerjake): come up with actual docs
+    #[must_use]
+    #[unstable(feature = "iterator_strip_affix", reason = "new API", issue = "none")]
+    fn strip_suffix<I: IntoIterator>(mut self, match_against: I) -> Option<Self>
+    where
+        Self: Sized + DoubleEndedIterator,
+        Self::Item: PartialEq<I::Item>,
+        I::IntoIter: DoubleEndedIterator,
+    {
+        for i in match_against.into_iter().rev() {
+            if self.next_back()? != i {
+                return None;
+            }
+        }
+        Some(self)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
