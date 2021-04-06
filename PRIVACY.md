@@ -14,4 +14,4 @@ Any other editor plugins that integrate with `rust-analyzer` are not under the c
 
 ## Others
 
-If `cargo check` is enabled (the default), any build scripts or procedural macros used by the project or its dependencies will be executed. This is also the case when `cargo check` is disabled, but build script or procedural macro support is enabled in `rust-analyzer` (off by default).
+If `cargo check` is enabled (the default), any build scripts or procedural macros used by the project or its dependencies will be executed. This is also the case when `cargo check` is disabled, but build script or procedural macro support is enabled in `rust-analyzer` (on by default).
