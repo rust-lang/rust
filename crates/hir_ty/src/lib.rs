@@ -30,13 +30,11 @@ mod test_db;
 
 use std::sync::Arc;
 
-use chalk_ir::UintTy;
-use itertools::Itertools;
-
 use base_db::salsa;
+use chalk_ir::UintTy;
 use hir_def::{
-    expr::ExprId, type_ref::Rawness, AssocContainerId, ConstParamId, FunctionId, GenericDefId,
-    HasModule, LifetimeParamId, Lookup, TraitId, TypeAliasId, TypeParamId,
+    expr::ExprId, type_ref::Rawness, ConstParamId, LifetimeParamId, TraitId, TypeAliasId,
+    TypeParamId,
 };
 
 use crate::{db::HirDatabase, display::HirDisplay, utils::generics};
@@ -171,65 +169,6 @@ impl CallableSig {
 }
 
 impl Ty {
-    pub fn as_reference(&self) -> Option<(&Ty, Lifetime, Mutability)> {
-        match self.kind(&Interner) {
-            TyKind::Ref(mutability, lifetime, ty) => Some((ty, *lifetime, *mutability)),
-            _ => None,
-        }
-    }
-
-    pub fn as_reference_or_ptr(&self) -> Option<(&Ty, Rawness, Mutability)> {
-        match self.kind(&Interner) {
-            TyKind::Ref(mutability, _, ty) => Some((ty, Rawness::Ref, *mutability)),
-            TyKind::Raw(mutability, ty) => Some((ty, Rawness::RawPtr, *mutability)),
-            _ => None,
-        }
-    }
-
-    pub fn strip_references(&self) -> &Ty {
-        let mut t: &Ty = self;
-
-        while let TyKind::Ref(_mutability, _lifetime, ty) = t.kind(&Interner) {
-            t = ty;
-        }
-
-        t
-    }
-
-    pub fn as_adt(&self) -> Option<(hir_def::AdtId, &Substitution)> {
-        match self.kind(&Interner) {
-            TyKind::Adt(AdtId(adt), parameters) => Some((*adt, parameters)),
-            _ => None,
-        }
-    }
-
-    pub fn as_tuple(&self) -> Option<&Substitution> {
-        match self.kind(&Interner) {
-            TyKind::Tuple(_, substs) => Some(substs),
-            _ => None,
-        }
-    }
-
-    pub fn as_generic_def(&self, db: &dyn HirDatabase) -> Option<GenericDefId> {
-        match *self.kind(&Interner) {
-            TyKind::Adt(AdtId(adt), ..) => Some(adt.into()),
-            TyKind::FnDef(callable, ..) => {
-                Some(db.lookup_intern_callable_def(callable.into()).into())
-            }
-            TyKind::AssociatedType(type_alias, ..) => Some(from_assoc_type_id(type_alias).into()),
-            TyKind::Foreign(type_alias, ..) => Some(from_foreign_def_id(type_alias).into()),
-            _ => None,
-        }
-    }
-
-    pub fn is_never(&self) -> bool {
-        matches!(self.kind(&Interner), TyKind::Never)
-    }
-
-    pub fn is_unknown(&self) -> bool {
-        matches!(self.kind(&Interner), TyKind::Error)
-    }
-
     pub fn equals_ctor(&self, other: &Ty) -> bool {
         match (self.kind(&Interner), other.kind(&Interner)) {
             (TyKind::Adt(adt, ..), TyKind::Adt(adt2, ..)) => adt == adt2,
@@ -260,59 +199,10 @@ impl Ty {
         }
     }
 
-    /// If this is a `dyn Trait` type, this returns the `Trait` part.
-    fn dyn_trait_ref(&self) -> Option<&TraitRef> {
-        match self.kind(&Interner) {
-            TyKind::Dyn(dyn_ty) => dyn_ty.bounds.skip_binders().interned().get(0).and_then(|b| {
-                match b.skip_binders() {
-                    WhereClause::Implemented(trait_ref) => Some(trait_ref),
-                    _ => None,
-                }
-            }),
-            _ => None,
-        }
-    }
-
-    /// If this is a `dyn Trait`, returns that trait.
-    pub fn dyn_trait(&self) -> Option<TraitId> {
-        self.dyn_trait_ref().map(|it| it.trait_id).map(from_chalk_trait_id)
-    }
-
     fn builtin_deref(&self) -> Option<Ty> {
         match self.kind(&Interner) {
             TyKind::Ref(.., ty) => Some(ty.clone()),
             TyKind::Raw(.., ty) => Some(ty.clone()),
-            _ => None,
-        }
-    }
-
-    pub fn callable_def(&self, db: &dyn HirDatabase) -> Option<CallableDefId> {
-        match self.kind(&Interner) {
-            &TyKind::FnDef(def, ..) => Some(db.lookup_intern_callable_def(def.into())),
-            _ => None,
-        }
-    }
-
-    pub fn as_fn_def(&self, db: &dyn HirDatabase) -> Option<FunctionId> {
-        if let Some(CallableDefId::FunctionId(func)) = self.callable_def(db) {
-            Some(func)
-        } else {
-            None
-        }
-    }
-
-    pub fn callable_sig(&self, db: &dyn HirDatabase) -> Option<CallableSig> {
-        match self.kind(&Interner) {
-            TyKind::Function(fn_ptr) => Some(CallableSig::from_fn_ptr(fn_ptr)),
-            TyKind::FnDef(def, parameters) => {
-                let callable_def = db.lookup_intern_callable_def((*def).into());
-                let sig = db.callable_item_signature(callable_def);
-                Some(sig.substitute(&Interner, &parameters))
-            }
-            TyKind::Closure(.., substs) => {
-                let sig_param = substs.at(&Interner, 0).assert_ty_ref(&Interner);
-                sig_param.callable_sig(db)
-            }
             _ => None,
         }
     }
@@ -341,104 +231,6 @@ impl Ty {
             | TyKind::AssociatedType(_, substs)
             | TyKind::Closure(.., substs) => Some(substs),
             TyKind::Function(FnPointer { substitution: substs, .. }) => Some(&mut substs.0),
-            _ => None,
-        }
-    }
-
-    pub fn impl_trait_bounds(&self, db: &dyn HirDatabase) -> Option<Vec<QuantifiedWhereClause>> {
-        match self.kind(&Interner) {
-            TyKind::OpaqueType(opaque_ty_id, ..) => {
-                match db.lookup_intern_impl_trait_id((*opaque_ty_id).into()) {
-                    ImplTraitId::AsyncBlockTypeImplTrait(def, _expr) => {
-                        let krate = def.module(db.upcast()).krate();
-                        if let Some(future_trait) = db
-                            .lang_item(krate, "future_trait".into())
-                            .and_then(|item| item.as_trait())
-                        {
-                            // This is only used by type walking.
-                            // Parameters will be walked outside, and projection predicate is not used.
-                            // So just provide the Future trait.
-                            let impl_bound = Binders::empty(
-                                &Interner,
-                                WhereClause::Implemented(TraitRef {
-                                    trait_id: to_chalk_trait_id(future_trait),
-                                    substitution: Substitution::empty(&Interner),
-                                }),
-                            );
-                            Some(vec![impl_bound])
-                        } else {
-                            None
-                        }
-                    }
-                    ImplTraitId::ReturnTypeImplTrait(..) => None,
-                }
-            }
-            TyKind::Alias(AliasTy::Opaque(opaque_ty)) => {
-                let predicates = match db.lookup_intern_impl_trait_id(opaque_ty.opaque_ty_id.into())
-                {
-                    ImplTraitId::ReturnTypeImplTrait(func, idx) => {
-                        db.return_type_impl_traits(func).map(|it| {
-                            let data = (*it)
-                                .as_ref()
-                                .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
-                            data.substitute(&Interner, &opaque_ty.substitution)
-                        })
-                    }
-                    // It always has an parameter for Future::Output type.
-                    ImplTraitId::AsyncBlockTypeImplTrait(..) => unreachable!(),
-                };
-
-                predicates.map(|it| it.into_value_and_skipped_binders().0)
-            }
-            TyKind::Placeholder(idx) => {
-                let id = from_placeholder_idx(db, *idx);
-                let generic_params = db.generic_params(id.parent);
-                let param_data = &generic_params.types[id.local_id];
-                match param_data.provenance {
-                    hir_def::generics::TypeParamProvenance::ArgumentImplTrait => {
-                        let substs = TyBuilder::type_params_subst(db, id.parent);
-                        let predicates = db
-                            .generic_predicates(id.parent)
-                            .into_iter()
-                            .map(|pred| pred.clone().substitute(&Interner, &substs))
-                            .filter(|wc| match &wc.skip_binders() {
-                                WhereClause::Implemented(tr) => {
-                                    tr.self_type_parameter(&Interner) == self
-                                }
-                                WhereClause::AliasEq(AliasEq {
-                                    alias: AliasTy::Projection(proj),
-                                    ty: _,
-                                }) => proj.self_type_parameter(&Interner) == self,
-                                _ => false,
-                            })
-                            .collect_vec();
-
-                        Some(predicates)
-                    }
-                    _ => None,
-                }
-            }
-            _ => None,
-        }
-    }
-
-    pub fn associated_type_parent_trait(&self, db: &dyn HirDatabase) -> Option<TraitId> {
-        match self.kind(&Interner) {
-            TyKind::AssociatedType(id, ..) => {
-                match from_assoc_type_id(*id).lookup(db.upcast()).container {
-                    AssocContainerId::TraitId(trait_id) => Some(trait_id),
-                    _ => None,
-                }
-            }
-            TyKind::Alias(AliasTy::Projection(projection_ty)) => {
-                match from_assoc_type_id(projection_ty.associated_ty_id)
-                    .lookup(db.upcast())
-                    .container
-                {
-                    AssocContainerId::TraitId(trait_id) => Some(trait_id),
-                    _ => None,
-                }
-            }
             _ => None,
         }
     }

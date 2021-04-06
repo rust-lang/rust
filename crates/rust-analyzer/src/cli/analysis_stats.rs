@@ -12,7 +12,7 @@ use hir::{
     AssocItem, Crate, Function, HasSource, HirDisplay, ModuleDef,
 };
 use hir_def::FunctionId;
-use hir_ty::TypeWalk;
+use hir_ty::{TyExt, TypeWalk};
 use ide::{AnalysisHost, RootDatabase};
 use ide_db::base_db::{
     salsa::{self, ParallelDatabase},

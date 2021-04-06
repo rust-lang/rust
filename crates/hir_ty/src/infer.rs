@@ -42,7 +42,7 @@ use super::{
 };
 use crate::{
     db::HirDatabase, infer::diagnostics::InferenceDiagnostic, lower::ImplTraitLoweringMode,
-    to_assoc_type_id, AliasEq, AliasTy, Interner, TyBuilder, TyKind,
+    to_assoc_type_id, AliasEq, AliasTy, Interner, TyBuilder, TyExt, TyKind,
 };
 
 // This lint has a false positive here. See the link below for details.

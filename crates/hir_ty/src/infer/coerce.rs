@@ -7,7 +7,7 @@
 use chalk_ir::{cast::Cast, Mutability, TyVariableKind};
 use hir_def::lang_item::LangItemTarget;
 
-use crate::{autoderef, Interner, Solution, Ty, TyBuilder, TyKind};
+use crate::{autoderef, Interner, Solution, Ty, TyBuilder, TyExt, TyKind};
 
 use super::{InEnvironment, InferenceContext};
 
