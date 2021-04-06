@@ -71,8 +71,6 @@ pub fn opts() -> TargetOptions {
         dll_prefix: String::new(),
         dll_suffix: ".dll".to_string(),
         exe_suffix: ".exe".to_string(),
-        staticlib_prefix: "lib".to_string(),
-        staticlib_suffix: ".a".to_string(),
         os_family: Some("windows".to_string()),
         is_like_windows: true,
         allows_weak_linkage: false,

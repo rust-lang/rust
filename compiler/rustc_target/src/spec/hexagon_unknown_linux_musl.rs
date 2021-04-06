@@ -1,4 +1,4 @@
-use crate::spec::{LinkArgs, Target};
+use crate::spec::Target;
 
 pub fn target() -> Target {
     let mut base = super::linux_musl_base::opts();
@@ -8,14 +8,10 @@ pub fn target() -> Target {
     base.features = "-small-data,+hvx-length128b".to_string();
 
     base.crt_static_default = false;
-    base.atomic_cas = true;
     base.has_rpath = true;
     base.linker_is_gnu = false;
     base.dynamic_linking = true;
     base.executables = true;
-
-    base.pre_link_args = LinkArgs::new();
-    base.post_link_args = LinkArgs::new();
 
     Target {
         llvm_target: "hexagon-unknown-linux-musl".to_string(),
