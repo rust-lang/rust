@@ -51,7 +51,7 @@ pub use place_ext::PlaceExt;
 
 mod borrow_set;
 mod constraint_generation;
-mod constraints;
+pub mod constraints;
 mod def_use;
 mod diagnostics;
 mod facts;

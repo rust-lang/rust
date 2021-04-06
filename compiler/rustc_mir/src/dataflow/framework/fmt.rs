@@ -24,6 +24,7 @@ pub trait DebugWithContext<C>: Eq + fmt::Debug {
         }
 
         write!(f, "\u{001f}+")?;
+
         self.fmt_with(ctxt, f)?;
 
         if f.alternate() {

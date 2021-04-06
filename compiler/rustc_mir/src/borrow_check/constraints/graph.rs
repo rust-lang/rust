@@ -13,19 +13,19 @@ use crate::borrow_check::{
 /// The construct graph organizes the constraints by their end-points.
 /// It can be used to view a `R1: R2` constraint as either an edge `R1
 /// -> R2` or `R2 -> R1` depending on the direction type `D`.
-crate struct ConstraintGraph<D: ConstraintGraphDirecton> {
+pub struct ConstraintGraph<D: ConstraintGraphDirecton> {
     _direction: D,
     first_constraints: IndexVec<RegionVid, Option<OutlivesConstraintIndex>>,
     next_constraints: IndexVec<OutlivesConstraintIndex, Option<OutlivesConstraintIndex>>,
 }
 
-crate type NormalConstraintGraph = ConstraintGraph<Normal>;
+pub type NormalConstraintGraph = ConstraintGraph<Normal>;
 
 crate type ReverseConstraintGraph = ConstraintGraph<Reverse>;
 
 /// Marker trait that controls whether a `R1: R2` constraint
 /// represents an edge `R1 -> R2` or `R2 -> R1`.
-crate trait ConstraintGraphDirecton: Copy + 'static {
+pub trait ConstraintGraphDirecton: Copy + 'static {
     fn start_region(c: &OutlivesConstraint) -> RegionVid;
     fn end_region(c: &OutlivesConstraint) -> RegionVid;
     fn is_normal() -> bool;
@@ -36,7 +36,7 @@ crate trait ConstraintGraphDirecton: Copy + 'static {
 /// inference. This is because we compute the value of R1 by union'ing
 /// all the things that it relies on.
 #[derive(Copy, Clone, Debug)]
-crate struct Normal;
+pub struct Normal;
 
 impl ConstraintGraphDirecton for Normal {
     fn start_region(c: &OutlivesConstraint) -> RegionVid {
