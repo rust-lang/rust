@@ -60,11 +60,7 @@ impl GlobalState {
                 ", "
             )
         );
-        if self.config.cargo_autoreload() {
-            self.fetch_workspaces_request();
-        } else {
-            self.transition(Status::NeedsReload);
-        }
+        self.fetch_workspaces_request();
 
         fn is_interesting(path: &AbsPath, change_kind: ChangeKind) -> bool {
             const IMPLICIT_TARGET_FILES: &[&str] = &["build.rs", "src/main.rs", "src/lib.rs"];

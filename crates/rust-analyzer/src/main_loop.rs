@@ -454,7 +454,9 @@ impl GlobalState {
             }
         }
 
-        self.fetch_workspaces_if_needed();
+        if self.config.cargo_autoreload() {
+            self.fetch_workspaces_if_needed();
+        }
         self.fetch_build_data_if_needed();
 
         let loop_duration = loop_start.elapsed();
@@ -494,7 +496,10 @@ impl GlobalState {
         }
 
         RequestDispatcher { req: Some(req), global_state: self }
-            .on_sync::<lsp_ext::ReloadWorkspace>(|s, ()| Ok(s.fetch_workspaces_request()))?
+            .on_sync::<lsp_ext::ReloadWorkspace>(|s, ()| {
+                self.fetch_workspaces_request();
+                self.fetch_workspaces_if_needed();
+            })?
             .on_sync::<lsp_ext::JoinLines>(|s, p| handlers::handle_join_lines(s.snapshot(), p))?
             .on_sync::<lsp_ext::OnEnter>(|s, p| handlers::handle_on_enter(s.snapshot(), p))?
             .on_sync::<lsp_types::request::Shutdown>(|s, ()| {
