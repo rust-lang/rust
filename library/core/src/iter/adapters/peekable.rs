@@ -250,7 +250,7 @@ impl<I: Iterator> Peekable<I> {
     /// assert_eq!(iter.collect::<Vec<_>>(), vec![&5, &3]);
     /// ```
     #[inline]
-    #[stable(feature = "peekable_peek_mut", since = "1.52.0")]
+    #[stable(feature = "peekable_peek_mut", since = "1.53.0")]
     pub fn peek_mut(&mut self) -> Option<&mut I::Item> {
         let iter = &mut self.iter;
         self.peeked.get_or_insert_with(|| iter.next()).as_mut()
