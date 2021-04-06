@@ -178,7 +178,7 @@ impl<CTX> HashStable<CTX> for LazyTokenStream {
 /// The goal is for procedural macros to work with `TokenStream`s and `TokenTree`s
 /// instead of a representation of the abstract syntax tree.
 /// Today's `TokenTree`s can still contain AST via `token::Interpolated` for
-/// backwards compatability.
+/// backwards compatibility.
 #[derive(Clone, Debug, Default, Encodable, Decodable)]
 pub struct TokenStream(pub(crate) Lrc<Vec<TreeAndSpacing>>);
 
