@@ -1925,16 +1925,10 @@ fn disambiguator_error(
 ) {
     diag_info.link_range = disambiguator_range;
     report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, msg, &diag_info, |diag, _sp| {
-        let channel = match env!("CFG_RELEASE_CHANNEL") {
-            "stable" => env!("CFG_RELEASE_NUM"),
-            "beta" => "beta",
-            "nightly" | "dev" => "nightly",
-            // custom build of rustdoc maybe? link to the stable docs just in case
-            _ => "",
-        };
         let msg = format!(
-            "see https://doc.rust-lang.org/{}/rustdoc/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators",
-            channel,
+            "see https://doc.rust-lang.org/{}/rustdoc/linking-to-items-by-name.html#namespaces-and-disambiguators \
+             for more info about disambiguators",
+            crate::doc_rust_lang_org_channel(),
         );
         diag.note(&msg);
     });
