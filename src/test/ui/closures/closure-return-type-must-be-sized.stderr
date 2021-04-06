@@ -1,0 +1,99 @@
+error[E0277]: the size for values of type `(dyn A + 'static)` cannot be known at compilation time
+  --> $DIR/closure-return-type-must-be-sized.rs:54:5
+   |
+LL |     a::foo::<fn() -> dyn A>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn A + 'static)`
+
+error[E0277]: the size for values of type `(dyn A + 'static)` cannot be known at compilation time
+  --> $DIR/closure-return-type-must-be-sized.rs:55:5
+   |
+LL |     pub fn bar<F: FnOnce() -> R, R: ?Sized>() {}
+   |                   ------------- required by this bound in `a::bar`
+...
+LL |     a::bar::<fn() -> dyn A, _>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn A + 'static)`
+
+error[E0277]: the size for values of type `(dyn A + 'static)` cannot be known at compilation time
+  --> $DIR/closure-return-type-must-be-sized.rs:56:5
+   |
+LL |     pub fn baz<F: FnOnce<()>>() where F::Output: A, F::Output: Sized {
+   |                                                                ----- required by this bound in `a::baz`
+...
+LL |     a::baz::<fn() -> dyn A>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn A + 'static)`
+
+error[E0277]: the size for values of type `(dyn A + 'static)` cannot be known at compilation time
+  --> $DIR/closure-return-type-must-be-sized.rs:60:5
+   |
+LL |     pub fn foo<F: Fn<()>>() where F::Output: A {
+   |                   ------ required by this bound in `b::foo`
+...
+LL |     b::foo::<fn() -> dyn A>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn A + 'static)`
+
+error[E0277]: the size for values of type `(dyn A + 'static)` cannot be known at compilation time
+  --> $DIR/closure-return-type-must-be-sized.rs:61:5
+   |
+LL |     pub fn bar<F: Fn() -> R, R: ?Sized>() {}
+   |                   --------- required by this bound in `b::bar`
+...
+LL |     b::bar::<fn() -> dyn A, _>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn A + 'static)`
+
+error[E0277]: the size for values of type `(dyn A + 'static)` cannot be known at compilation time
+  --> $DIR/closure-return-type-must-be-sized.rs:62:5
+   |
+LL |     pub fn baz<F: Fn<()>>() where F::Output: A, F::Output: Sized {
+   |                                                            ----- required by this bound in `b::baz`
+...
+LL |     b::baz::<fn() -> dyn A>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn A + 'static)`
+
+error[E0277]: the size for values of type `(dyn A + 'static)` cannot be known at compilation time
+  --> $DIR/closure-return-type-must-be-sized.rs:66:5
+   |
+LL |     pub fn foo<F: FnMut<()>>() where F::Output: A {
+   |                   --------- required by this bound in `c::foo`
+...
+LL |     c::foo::<fn() -> dyn A>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn A + 'static)`
+
+error[E0277]: the size for values of type `(dyn A + 'static)` cannot be known at compilation time
+  --> $DIR/closure-return-type-must-be-sized.rs:67:5
+   |
+LL |     pub fn bar<F: FnMut() -> R, R: ?Sized>() {}
+   |                   ------------ required by this bound in `c::bar`
+...
+LL |     c::bar::<fn() -> dyn A, _>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn A + 'static)`
+
+error[E0277]: the size for values of type `(dyn A + 'static)` cannot be known at compilation time
+  --> $DIR/closure-return-type-must-be-sized.rs:68:5
+   |
+LL |     pub fn baz<F: FnMut<()>>() where F::Output: A, F::Output: Sized {
+   |                                                               ----- required by this bound in `c::baz`
+...
+LL |     c::baz::<fn() -> dyn A>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn A + 'static)`
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

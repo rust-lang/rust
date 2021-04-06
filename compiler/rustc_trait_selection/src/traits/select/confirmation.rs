@@ -529,6 +529,30 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             obligation.predicate.to_poly_trait_ref(),
             trait_ref,
         )?);
+
+        let lang_items = self.tcx().lang_items();
+        if [lang_items.fn_once_trait(), lang_items.fn_trait(), lang_items.fn_mut_trait()]
+            .contains(&Some(obligation.predicate.def_id()))
+        {
+            // Do not allow `foo::<fn() -> A>();` for `A: !Sized` (#82633)
+            let fn_sig = obligation.predicate.self_ty().skip_binder().fn_sig(self.tcx());
+            let ty = fn_sig.output().skip_binder();
+            let trait_ref = ty::TraitRef {
+                def_id: lang_items.sized_trait().unwrap(),
+                substs: self.tcx().mk_substs_trait(ty, &[]),
+            };
+            if !matches!(ty.kind(), ty::Projection(_) | ty::Opaque(..)) {
+                let pred = crate::traits::util::predicate_for_trait_ref(
+                    self.tcx(),
+                    obligation.cause.clone(),
+                    obligation.param_env,
+                    trait_ref,
+                    obligation.recursion_depth,
+                );
+                obligations.push(pred);
+            }
+        }
+
         Ok(ImplSourceFnPointerData { fn_ty: self_ty, nested: obligations })
     }
 
