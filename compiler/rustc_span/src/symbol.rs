@@ -561,6 +561,7 @@ symbols! {
         fmt,
         fmt_internals,
         fmul_fast,
+        fn_align,
         fn_must_use,
         fn_mut,
         fn_once,

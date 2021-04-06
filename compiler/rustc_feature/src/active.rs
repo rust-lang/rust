@@ -642,6 +642,9 @@ declare_features! (
     /// Allows `extern "C-unwind" fn` to enable unwinding across ABI boundaries.
     (active, c_unwind, "1.52.0", Some(74990), None),
 
+    /// Allows using `#[repr(align(...))]` on function items
+    (active, fn_align, "1.53.0", Some(82232), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

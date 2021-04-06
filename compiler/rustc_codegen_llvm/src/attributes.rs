@@ -280,6 +280,9 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::CMSE_NONSECURE_ENTRY) {
         llvm::AddFunctionAttrString(llfn, Function, cstr!("cmse_nonsecure_entry"));
     }
+    if let Some(align) = codegen_fn_attrs.alignment {
+        llvm::set_alignment(llfn, align as usize);
+    }
     sanitize(cx, codegen_fn_attrs.no_sanitize, llfn);
 
     // Always annotate functions with the target-cpu they are compiled for.
