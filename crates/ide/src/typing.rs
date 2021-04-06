@@ -85,15 +85,13 @@ fn on_opening_brace_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdi
 
     // We expect a block expression enclosing exactly 1 preexisting expression. It can be parsed as
     // either the trailing expr or an ExprStmt.
-    let offset = {
-        match block.statements().next() {
-            Some(ast::Stmt::ExprStmt(it)) => {
-                // Use the expression span to place `}` before the `;`
-                it.expr()?.syntax().text_range().end()
-            }
-            None => block.tail_expr()?.syntax().text_range().end(),
-            _ => return None,
+    let offset = match block.statements().next() {
+        Some(ast::Stmt::ExprStmt(it)) => {
+            // Use the expression span to place `}` before the `;`
+            it.expr()?.syntax().text_range().end()
         }
+        None => block.tail_expr()?.syntax().text_range().end(),
+        _ => return None,
     };
 
     Some(TextEdit::insert(offset, "}".to_string()))
