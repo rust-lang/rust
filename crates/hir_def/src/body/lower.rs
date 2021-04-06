@@ -30,6 +30,7 @@ use crate::{
         LabelId, Literal, LogicOp, MatchArm, Ordering, Pat, PatId, RecordFieldPat, RecordLitField,
         Statement,
     },
+    intern::Interned,
     item_scope::BuiltinShadowMode,
     path::{GenericArgs, Path},
     type_ref::{Mutability, Rawness, TypeRef},
@@ -432,7 +433,7 @@ impl ExprCollector<'_> {
             }
             ast::Expr::CastExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
-                let type_ref = Box::new(TypeRef::from_ast_opt(&self.ctx(), e.ty()));
+                let type_ref = Interned::new(TypeRef::from_ast_opt(&self.ctx(), e.ty()));
                 self.alloc_expr(Expr::Cast { expr, type_ref }, syntax_ptr)
             }
             ast::Expr::RefExpr(e) => {
@@ -466,7 +467,8 @@ impl ExprCollector<'_> {
                 if let Some(pl) = e.param_list() {
                     for param in pl.params() {
                         let pat = self.collect_pat_opt(param.pat());
-                        let type_ref = param.ty().map(|it| TypeRef::from_ast(&self.ctx(), it));
+                        let type_ref =
+                            param.ty().map(|it| Interned::new(TypeRef::from_ast(&self.ctx(), it)));
                         args.push(pat);
                         arg_types.push(type_ref);
                     }
@@ -474,7 +476,7 @@ impl ExprCollector<'_> {
                 let ret_type = e
                     .ret_type()
                     .and_then(|r| r.ty())
-                    .map(|it| Box::new(TypeRef::from_ast(&self.ctx(), it)));
+                    .map(|it| Interned::new(TypeRef::from_ast(&self.ctx(), it)));
                 let body = self.collect_expr_opt(e.body());
                 self.alloc_expr(Expr::Lambda { args, arg_types, ret_type, body }, syntax_ptr)
             }
@@ -629,7 +631,8 @@ impl ExprCollector<'_> {
                     return;
                 }
                 let pat = self.collect_pat_opt(stmt.pat());
-                let type_ref = stmt.ty().map(|it| TypeRef::from_ast(&self.ctx(), it));
+                let type_ref =
+                    stmt.ty().map(|it| Interned::new(TypeRef::from_ast(&self.ctx(), it)));
                 let initializer = stmt.initializer().map(|e| self.collect_expr(e));
                 self.statements_in_scope.push(Statement::Let { pat, type_ref, initializer });
             }
