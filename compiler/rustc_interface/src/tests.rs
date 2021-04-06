@@ -8,7 +8,7 @@ use rustc_session::config::{build_configuration, build_session_options, to_crate
 use rustc_session::config::{rustc_optgroups, ErrorOutputType, ExternLocation, Options, Passes};
 use rustc_session::config::{CFGuard, ExternEntry, LinkerPluginLto, LtoCli, SwitchWithOptPath};
 use rustc_session::config::{
-    Externs, OutputType, OutputTypes, SymbolManglingVersion, WasiExecModel,
+    DebugInfo, Externs, OutputType, OutputTypes, SymbolManglingVersion, WasiExecModel,
 };
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
@@ -564,7 +564,7 @@ fn test_codegen_options_tracking_hash() {
     tracked!(code_model, Some(CodeModel::Large));
     tracked!(control_flow_guard, CFGuard::Checks);
     tracked!(debug_assertions, Some(true));
-    tracked!(debuginfo, 0xdeadbeef);
+    tracked!(debuginfo, DebugInfo::Limited);
     tracked!(embed_bitcode, false);
     tracked!(force_frame_pointers, Some(false));
     tracked!(force_unwind_tables, Some(true));

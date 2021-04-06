@@ -201,6 +201,8 @@ impl_stable_hash_via_hash!(SymbolManglingVersion);
 #[derive(Clone, Copy, Debug, PartialEq, Hash)]
 pub enum DebugInfo {
     None,
+    LineDirectivesOnly,
+    LineTablesOnly,
     Limited,
     Full,
 }
@@ -1561,11 +1563,7 @@ fn parse_opt_level(
     }
 }
 
-fn select_debuginfo(
-    matches: &getopts::Matches,
-    cg: &CodegenOptions,
-    error_format: ErrorOutputType,
-) -> DebugInfo {
+fn select_debuginfo(matches: &getopts::Matches, cg: &CodegenOptions) -> DebugInfo {
     let max_g = matches.opt_positions("g").into_iter().max();
     let max_c = matches
         .opt_strs_pos("C")
@@ -1575,25 +1573,7 @@ fn select_debuginfo(
             if let Some("debuginfo") = s.splitn(2, '=').next() { Some(i) } else { None }
         })
         .max();
-    if max_g > max_c {
-        DebugInfo::Full
-    } else {
-        match cg.debuginfo {
-            0 => DebugInfo::None,
-            1 => DebugInfo::Limited,
-            2 => DebugInfo::Full,
-            arg => {
-                early_error(
-                    error_format,
-                    &format!(
-                        "debug info level needs to be between \
-                         0-2 (instead was `{}`)",
-                        arg
-                    ),
-                );
-            }
-        }
-    }
+    if max_g > max_c { DebugInfo::Full } else { cg.debuginfo }
 }
 
 fn parse_native_lib_kind(
@@ -2055,7 +2035,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     // to use them interchangeably. See the note above (regarding `-O` and `-C opt-level`)
     // for more details.
     let debug_assertions = cg.debug_assertions.unwrap_or(opt_level == OptLevel::No);
-    let debuginfo = select_debuginfo(matches, &cg, error_format);
+    let debuginfo = select_debuginfo(matches, &cg);
 
     let mut search_paths = vec![];
     for s in &matches.opt_strs("L") {
