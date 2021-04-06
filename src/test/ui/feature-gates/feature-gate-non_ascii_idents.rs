@@ -28,6 +28,7 @@ enum Bär { //~ ERROR non-ascii idents
 
 extern "C" {
     fn qüx();  //~ ERROR non-ascii idents
+    //~^ ERROR items in `extern` blocks
 }
 
 fn main() {}

@@ -532,6 +532,25 @@ impl<'a> AstValidator<'a> {
         }
     }
 
+    /// An item in `extern { ... }` cannot use non-ascii identifier.
+    fn check_foreign_item_ascii_only(&self, ident: Ident) {
+        let symbol_str = ident.as_str();
+        if !symbol_str.is_ascii() {
+            let n = 83942;
+            self.err_handler()
+                .struct_span_err(
+                    ident.span,
+                    "items in `extern` blocks cannot use non-ascii identifiers",
+                )
+                .span_label(self.current_extern_span(), "in this `extern` block")
+                .note(&format!(
+                    "This limitation may be lifted in the future; see issue #{} <https://github.com/rust-lang/rust/issues/{}> for more information",
+                    n, n,
+                ))
+                .emit();
+        }
+    }
+
     /// Reject C-varadic type unless the function is foreign,
     /// or free and `unsafe extern "C"` semantically.
     fn check_c_varadic_type(&self, fk: FnKind<'a>) {
@@ -592,7 +611,7 @@ impl<'a> AstValidator<'a> {
             self.session,
             ident.span,
             E0754,
-            "trying to load file for module `{}` with non ascii identifer name",
+            "trying to load file for module `{}` with non-ascii identifier name",
             ident.name
         )
         .help("consider using `#[path]` attribute to specify filesystem path")
@@ -1103,15 +1122,18 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.check_defaultness(fi.span, *def);
                 self.check_foreign_fn_bodyless(fi.ident, body.as_deref());
                 self.check_foreign_fn_headerless(fi.ident, fi.span, sig.header);
+                self.check_foreign_item_ascii_only(fi.ident);
             }
             ForeignItemKind::TyAlias(box TyAliasKind(def, generics, bounds, body)) => {
                 self.check_defaultness(fi.span, *def);
                 self.check_foreign_kind_bodyless(fi.ident, "type", body.as_ref().map(|b| b.span));
                 self.check_type_no_bounds(bounds, "`extern` blocks");
                 self.check_foreign_ty_genericless(generics);
+                self.check_foreign_item_ascii_only(fi.ident);
             }
             ForeignItemKind::Static(_, _, body) => {
                 self.check_foreign_kind_bodyless(fi.ident, "static", body.as_ref().map(|b| b.span));
+                self.check_foreign_item_ascii_only(fi.ident);
             }
             ForeignItemKind::MacCall(..) => {}
         }
