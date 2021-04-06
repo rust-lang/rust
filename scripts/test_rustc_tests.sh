@@ -61,6 +61,8 @@ rm src/test/incremental/issue-49482.rs # same
 rm src/test/incremental/issue-54059.rs # same
 rm src/test/incremental/lto.rs # requires lto
 
+rm src/test/run-make/emit-shared-files # requires the rustdoc executable in build/bin/
+
 rm src/test/pretty/asm.rs # inline asm
 rm src/test/pretty/raw-str-nonexpr.rs # same
 
