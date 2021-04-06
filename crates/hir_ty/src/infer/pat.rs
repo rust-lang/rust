@@ -13,8 +13,8 @@ use hir_expand::name::Name;
 
 use super::{BindingMode, Expectation, InferenceContext};
 use crate::{
-    lower::lower_to_chalk_mutability, utils::variant_data, Interner, Substitution, Ty, TyBuilder,
-    TyKind,
+    lower::lower_to_chalk_mutability, static_lifetime, utils::variant_data, Interner, Substitution,
+    Ty, TyBuilder, TyKind,
 };
 
 impl<'a> InferenceContext<'a> {
@@ -104,7 +104,7 @@ impl<'a> InferenceContext<'a> {
         let body = Arc::clone(&self.body); // avoid borrow checker problem
 
         if is_non_ref_pat(&body, pat) {
-            while let Some((inner, mutability)) = expected.as_reference() {
+            while let Some((inner, _lifetime, mutability)) = expected.as_reference() {
                 expected = inner;
                 default_bm = match default_bm {
                     BindingMode::Move => BindingMode::Ref(mutability),
@@ -162,7 +162,7 @@ impl<'a> InferenceContext<'a> {
             Pat::Ref { pat, mutability } => {
                 let mutability = lower_to_chalk_mutability(*mutability);
                 let expectation = match expected.as_reference() {
-                    Some((inner_ty, exp_mut)) => {
+                    Some((inner_ty, _lifetime, exp_mut)) => {
                         if mutability != exp_mut {
                             // FIXME: emit type error?
                         }
@@ -171,7 +171,7 @@ impl<'a> InferenceContext<'a> {
                     _ => self.result.standard_types.unknown.clone(),
                 };
                 let subty = self.infer_pat(*pat, &expectation, default_bm);
-                TyKind::Ref(mutability, subty).intern(&Interner)
+                TyKind::Ref(mutability, static_lifetime(), subty).intern(&Interner)
             }
             Pat::TupleStruct { path: p, args: subpats, ellipsis } => self.infer_tuple_struct_pat(
                 p.as_ref(),
@@ -204,7 +204,8 @@ impl<'a> InferenceContext<'a> {
 
                 let bound_ty = match mode {
                     BindingMode::Ref(mutability) => {
-                        TyKind::Ref(mutability, inner_ty.clone()).intern(&Interner)
+                        TyKind::Ref(mutability, static_lifetime(), inner_ty.clone())
+                            .intern(&Interner)
                     }
                     BindingMode::Move => inner_ty.clone(),
                 };

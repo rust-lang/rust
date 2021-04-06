@@ -165,16 +165,16 @@ impl CallableSig {
 }
 
 impl Ty {
-    pub fn as_reference(&self) -> Option<(&Ty, Mutability)> {
+    pub fn as_reference(&self) -> Option<(&Ty, Lifetime, Mutability)> {
         match self.kind(&Interner) {
-            TyKind::Ref(mutability, ty) => Some((ty, *mutability)),
+            TyKind::Ref(mutability, lifetime, ty) => Some((ty, *lifetime, *mutability)),
             _ => None,
         }
     }
 
     pub fn as_reference_or_ptr(&self) -> Option<(&Ty, Rawness, Mutability)> {
         match self.kind(&Interner) {
-            TyKind::Ref(mutability, ty) => Some((ty, Rawness::Ref, *mutability)),
+            TyKind::Ref(mutability, _, ty) => Some((ty, Rawness::Ref, *mutability)),
             TyKind::Raw(mutability, ty) => Some((ty, Rawness::RawPtr, *mutability)),
             _ => None,
         }
@@ -183,7 +183,7 @@ impl Ty {
     pub fn strip_references(&self) -> &Ty {
         let mut t: &Ty = self;
 
-        while let TyKind::Ref(_mutability, ty) = t.kind(&Interner) {
+        while let TyKind::Ref(_mutability, _lifetime, ty) = t.kind(&Interner) {
             t = ty;
         }
 
@@ -494,4 +494,8 @@ pub fn to_chalk_trait_id(id: TraitId) -> ChalkTraitId {
 
 pub fn from_chalk_trait_id(id: ChalkTraitId) -> TraitId {
     salsa::InternKey::from_intern_id(id.0)
+}
+
+pub fn static_lifetime() -> Lifetime {
+    LifetimeData::Static.intern(&Interner)
 }

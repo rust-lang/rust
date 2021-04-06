@@ -3,16 +3,16 @@
 //! Chalk (in both directions); plus some helper functions for more specialized
 //! conversions.
 
-use chalk_ir::{cast::Cast, interner::HasInterner, LifetimeData};
+use chalk_ir::{cast::Cast, interner::HasInterner};
 use chalk_solve::rust_ir;
 
 use base_db::salsa::InternKey;
 use hir_def::{GenericDefId, TypeAliasId};
 
 use crate::{
-    chalk_ext::ProjectionTyExt, db::HirDatabase, primitive::UintTy, AliasTy, CallableDefId,
-    Canonical, DomainGoal, FnPointer, GenericArg, InEnvironment, OpaqueTy, ProjectionTy,
-    QuantifiedWhereClause, Scalar, Substitution, TraitRef, Ty, TypeWalk, WhereClause,
+    chalk_ext::ProjectionTyExt, db::HirDatabase, primitive::UintTy, static_lifetime, AliasTy,
+    CallableDefId, Canonical, DomainGoal, FnPointer, GenericArg, InEnvironment, Lifetime, OpaqueTy,
+    ProjectionTy, QuantifiedWhereClause, Scalar, Substitution, TraitRef, Ty, TypeWalk, WhereClause,
 };
 
 use super::interner::*;
@@ -22,7 +22,7 @@ impl ToChalk for Ty {
     type Chalk = chalk_ir::Ty<Interner>;
     fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::Ty<Interner> {
         match self.into_inner() {
-            TyKind::Ref(m, ty) => ref_to_chalk(db, m, ty),
+            TyKind::Ref(m, lt, ty) => ref_to_chalk(db, m, lt, ty),
             TyKind::Array(ty) => array_to_chalk(db, ty),
             TyKind::Function(FnPointer { sig, substitution: substs, .. }) => {
                 let substitution = chalk_ir::FnSubst(substs.0.to_chalk(db));
@@ -100,7 +100,7 @@ impl ToChalk for Ty {
                 );
                 let bounded_ty = chalk_ir::DynTy {
                     bounds: chalk_ir::Binders::new(binders, where_clauses),
-                    lifetime: LifetimeData::Static.intern(&Interner),
+                    lifetime: static_lifetime(),
                 };
                 chalk_ir::TyKind::Dyn(bounded_ty).intern(&Interner)
             }
@@ -149,6 +149,7 @@ impl ToChalk for Ty {
                         where_clauses.bounds.binders.clone(),
                         crate::QuantifiedWhereClauses::from_iter(&Interner, bounds),
                     ),
+                    lifetime: static_lifetime(),
                 })
             }
 
@@ -167,8 +168,8 @@ impl ToChalk for Ty {
             }
             chalk_ir::TyKind::Raw(mutability, ty) => TyKind::Raw(mutability, from_chalk(db, ty)),
             chalk_ir::TyKind::Slice(ty) => TyKind::Slice(from_chalk(db, ty)),
-            chalk_ir::TyKind::Ref(mutability, _lifetime, ty) => {
-                TyKind::Ref(mutability, from_chalk(db, ty))
+            chalk_ir::TyKind::Ref(mutability, lifetime, ty) => {
+                TyKind::Ref(mutability, lifetime, from_chalk(db, ty))
             }
             chalk_ir::TyKind::Str => TyKind::Str,
             chalk_ir::TyKind::Never => TyKind::Never,
@@ -192,10 +193,11 @@ impl ToChalk for Ty {
 fn ref_to_chalk(
     db: &dyn HirDatabase,
     mutability: chalk_ir::Mutability,
+    _lifetime: Lifetime,
     ty: Ty,
 ) -> chalk_ir::Ty<Interner> {
     let arg = ty.to_chalk(db);
-    let lifetime = LifetimeData::Static.intern(&Interner);
+    let lifetime = static_lifetime();
     chalk_ir::TyKind::Ref(mutability, lifetime, arg).intern(&Interner)
 }
 

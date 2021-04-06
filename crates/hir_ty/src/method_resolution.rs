@@ -19,6 +19,7 @@ use crate::{
     db::HirDatabase,
     from_foreign_def_id,
     primitive::{self, FloatTy, IntTy, UintTy},
+    static_lifetime,
     utils::all_super_traits,
     AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, FnPointer, FnSig, ForeignDefId,
     InEnvironment, Interner, Scalar, Substitution, TraitEnvironment, Ty, TyBuilder, TyKind,
@@ -453,7 +454,8 @@ fn iterate_method_candidates_with_autoref(
     }
     let refed = Canonical {
         binders: deref_chain[0].binders.clone(),
-        value: TyKind::Ref(Mutability::Not, deref_chain[0].value.clone()).intern(&Interner),
+        value: TyKind::Ref(Mutability::Not, static_lifetime(), deref_chain[0].value.clone())
+            .intern(&Interner),
     };
     if iterate_method_candidates_by_receiver(
         &refed,
@@ -470,7 +472,8 @@ fn iterate_method_candidates_with_autoref(
     }
     let ref_muted = Canonical {
         binders: deref_chain[0].binders.clone(),
-        value: TyKind::Ref(Mutability::Mut, deref_chain[0].value.clone()).intern(&Interner),
+        value: TyKind::Ref(Mutability::Mut, static_lifetime(), deref_chain[0].value.clone())
+            .intern(&Interner),
     };
     if iterate_method_candidates_by_receiver(
         &ref_muted,

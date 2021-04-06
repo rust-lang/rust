@@ -11,7 +11,8 @@ use smallvec::SmallVec;
 
 use crate::{
     AssocTypeId, CanonicalVarKinds, ChalkTraitId, ClosureId, FnDefId, FnSig, ForeignDefId,
-    InferenceVar, Interner, OpaqueTyId, PlaceholderIndex, TypeWalk, VariableKind, VariableKinds,
+    InferenceVar, Interner, Lifetime, OpaqueTyId, PlaceholderIndex, TypeWalk, VariableKind,
+    VariableKinds,
 };
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -39,6 +40,7 @@ impl ProjectionTy {
 pub struct DynTy {
     /// The unknown self type.
     pub bounds: Binders<QuantifiedWhereClauses>,
+    pub lifetime: Lifetime,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -122,7 +124,7 @@ pub enum TyKind {
 
     /// A reference; a pointer with an associated lifetime. Written as
     /// `&'a mut T` or `&'a T`.
-    Ref(Mutability, Ty),
+    Ref(Mutability, Lifetime, Ty),
 
     /// This represents a placeholder for an opaque type in situations where we
     /// don't know the hidden type (i.e. currently almost always). This is
