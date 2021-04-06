@@ -7,6 +7,7 @@
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_span)]
+#![feature(proc_macro_line_column)]
 #![feature(try_blocks)]
 
 #[macro_use]

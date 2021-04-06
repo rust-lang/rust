@@ -10,7 +10,7 @@
 // lossy string reparse hack (https://github.com/rust-lang/rust/issues/43081).
 
 #![crate_type = "proc-macro"]
-#![feature(proc_macro_span)]
+#![feature(proc_macro_span, proc_macro_line_column)]
 
 extern crate proc_macro;
 use proc_macro::{token_stream, Delimiter, TokenStream, TokenTree};

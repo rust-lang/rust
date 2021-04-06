@@ -1,4 +1,4 @@
-#![feature(proc_macro_span)]
+#![feature(proc_macro_line_column)]
 
 use proc_macro::{LineColumn, Punct};
 
