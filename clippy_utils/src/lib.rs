@@ -349,6 +349,10 @@ pub fn single_segment_path<'tcx>(path: &QPath<'tcx>) -> Option<&'tcx PathSegment
     }
 }
 
+/// THIS METHOD IS DEPRECATED and will eventually be removed since it does not match against the
+/// entire path or resolved `DefId`. Prefer using `match_def_path`. Consider getting a `DefId` from
+/// `QPath::Resolved.1.res.opt_def_id()`.
+///
 /// Matches a `QPath` against a slice of segment string literals.
 ///
 /// There is also `match_path` if you are dealing with a `rustc_hir::Path` instead of a
@@ -376,6 +380,10 @@ pub fn match_qpath(path: &QPath<'_>, segments: &[&str]) -> bool {
     }
 }
 
+/// THIS METHOD IS DEPRECATED and will eventually be removed since it does not match against the
+/// entire path or resolved `DefId`. Prefer using `match_def_path`. Consider getting a `DefId` from
+/// `QPath::Resolved.1.res.opt_def_id()`.
+///
 /// Matches a `Path` against a slice of segment string literals.
 ///
 /// There is also `match_qpath` if you are dealing with a `rustc_hir::QPath` instead of a
