@@ -88,11 +88,13 @@ public:
   /// values and whether returns are active. The all arguments of the functions
   /// being analyzed must be in the set of constant and active values, lest an
   /// error occur during analysis
-  ActivityAnalyzer(PreProcessCache &PPC, llvm::AAResults &AA_, llvm::TargetLibraryInfo &TLI_,
+  ActivityAnalyzer(PreProcessCache &PPC, llvm::AAResults &AA_,
+                   llvm::TargetLibraryInfo &TLI_,
                    const llvm::SmallPtrSetImpl<llvm::Value *> &ConstantValues,
                    const llvm::SmallPtrSetImpl<llvm::Value *> &ActiveValues,
                    bool ActiveReturns)
-      : PPC(PPC), AA(AA_), TLI(TLI_), ActiveReturns(ActiveReturns), directions(UP | DOWN),
+      : PPC(PPC), AA(AA_), TLI(TLI_), ActiveReturns(ActiveReturns),
+        directions(UP | DOWN),
         ConstantValues(ConstantValues.begin(), ConstantValues.end()),
         ActiveValues(ActiveValues.begin(), ActiveValues.end()) {}
 
@@ -106,10 +108,13 @@ public:
   bool isConstantValue(TypeResults &TR, llvm::Value *val);
 
 private:
-  std::map<llvm::Instruction*, std::set<llvm::Value*>> ReEvaluateValueIfInactiveInst;
-  std::map<llvm::Value*, std::set<llvm::Value*>> ReEvaluateValueIfInactiveValue;
+  std::map<llvm::Instruction *, std::set<llvm::Value *>>
+      ReEvaluateValueIfInactiveInst;
+  std::map<llvm::Value *, std::set<llvm::Value *>>
+      ReEvaluateValueIfInactiveValue;
 
-  std::map<llvm::Value*, std::set<llvm::Instruction*>> ReEvaluateInstIfInactiveValue;
+  std::map<llvm::Value *, std::set<llvm::Instruction *>>
+      ReEvaluateInstIfInactiveValue;
 
   void InsertConstantInstruction(TypeResults &TR, llvm::Instruction *I);
   void InsertConstantValue(TypeResults &TR, llvm::Value *V);
@@ -117,8 +122,8 @@ private:
   /// Create a new analyzer starting from an existing Analyzer
   /// This is used to perform inductive assumptions
   ActivityAnalyzer(ActivityAnalyzer &Other, uint8_t directions)
-      : PPC(Other.PPC), AA(Other.AA), TLI(Other.TLI), ActiveReturns(Other.ActiveReturns),
-        directions(directions),
+      : PPC(Other.PPC), AA(Other.AA), TLI(Other.TLI),
+        ActiveReturns(Other.ActiveReturns), directions(directions),
         ConstantInstructions(Other.ConstantInstructions),
         ActiveInstructions(Other.ActiveInstructions),
         ConstantValues(Other.ConstantValues), ActiveValues(Other.ActiveValues) {
@@ -138,7 +143,8 @@ private:
   }
 
   /// Import known data from an existing analyzer
-  void insertAllFrom(TypeResults &TR, ActivityAnalyzer &Hypothesis, llvm::Value *Orig) {
+  void insertAllFrom(TypeResults &TR, ActivityAnalyzer &Hypothesis,
+                     llvm::Value *Orig) {
     insertConstantsFrom(TR, Hypothesis);
     for (auto I : Hypothesis.ActiveInstructions) {
       bool inserted = ActiveInstructions.insert(I).second;
@@ -172,7 +178,9 @@ public:
     OnlyStores = 2
   };
   /// Is the value free of any active uses
-  bool isValueInactiveFromUsers(TypeResults &TR, llvm::Value *val, UseActivity UA, llvm::Instruction **FoundInst = nullptr);
+  bool isValueInactiveFromUsers(TypeResults &TR, llvm::Value *val,
+                                UseActivity UA,
+                                llvm::Instruction **FoundInst = nullptr);
 
   /// Is the value potentially actively returned or stored
   bool isValueActivelyStoredOrReturned(TypeResults &TR, llvm::Value *val,

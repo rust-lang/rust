@@ -732,9 +732,9 @@ public:
         OrigPDT(Logic.PPC.FAM.getResult<llvm::PostDominatorTreeAnalysis>(
             *oldFunc_)),
         OrigLI(Logic.PPC.FAM.getResult<llvm::LoopAnalysis>(*oldFunc_)),
-        ATA(new ActivityAnalyzer(Logic.PPC, Logic.PPC.getAAResultsFromFunction(oldFunc_),
-                                 TLI_, constantvalues_, activevals_,
-                                 ActiveReturn)),
+        ATA(new ActivityAnalyzer(
+            Logic.PPC, Logic.PPC.getAAResultsFromFunction(oldFunc_), TLI_,
+            constantvalues_, activevals_, ActiveReturn)),
         OrigAA(Logic.PPC.getAAResultsFromFunction(oldFunc_)), TA(TA_) {
     if (oldFunc_->getSubprogram()) {
       assert(originalToNewFn_.hasMD());
@@ -903,7 +903,7 @@ public:
 
   bool isConstantInstruction(const Instruction *inst) const {
     assert(inst->getParent()->getParent() == oldFunc);
-    return ATA->isConstantInstruction(*my_TR, const_cast<Instruction*>(inst));
+    return ATA->isConstantInstruction(*my_TR, const_cast<Instruction *>(inst));
   }
 
   bool getContext(llvm::BasicBlock *BB, LoopContext &lc) {
