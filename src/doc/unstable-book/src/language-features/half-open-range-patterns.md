@@ -18,8 +18,10 @@ stabilized.
 ```rust
 #![feature(half_open_range_patterns)]
 #![feature(exclusive_range_pattern)]
+    let x = 5;
     match x {
-        ..10 => println!("got it"),
-        0 => println!("zilch")
+        ..0 => println!("negative!"), // "RangeTo" pattern. Unstable.
+        0 => println!("zero!"),
+        1.. => println!("positive!"), // "RangeFrom" pattern. Stable.
     }
 ```
