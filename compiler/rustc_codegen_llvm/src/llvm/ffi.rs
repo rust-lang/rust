@@ -1013,6 +1013,7 @@ extern "C" {
     pub fn LLVMSetSection(Global: &Value, Section: *const c_char);
     pub fn LLVMRustGetVisibility(Global: &Value) -> Visibility;
     pub fn LLVMRustSetVisibility(Global: &Value, Viz: Visibility);
+    pub fn LLVMRustSetDSOLocal(Global: &Value, is_dso_local: bool);
     pub fn LLVMGetAlignment(Global: &Value) -> c_uint;
     pub fn LLVMSetAlignment(Global: &Value, Bytes: c_uint);
     pub fn LLVMSetDLLStorageClass(V: &Value, C: DLLStorageClass);
