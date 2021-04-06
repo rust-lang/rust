@@ -527,20 +527,22 @@ class StdHashMapSyntheticProvider:
     def update(self):
         # type: () -> None
         table = self.table()
-        capacity = table.GetChildMemberWithName("bucket_mask").GetValueAsUnsigned() + 1
-        ctrl = table.GetChildMemberWithName("ctrl").GetChildAtIndex(0)
+        inner_table = table.GetChildMemberWithName("table")
 
-        self.size = table.GetChildMemberWithName("items").GetValueAsUnsigned()
+        capacity = inner_table.GetChildMemberWithName("bucket_mask").GetValueAsUnsigned() + 1
+        ctrl = inner_table.GetChildMemberWithName("ctrl").GetChildAtIndex(0)
+
+        self.size = inner_table.GetChildMemberWithName("items").GetValueAsUnsigned()
         self.pair_type = table.type.template_args[0]
         if self.pair_type.IsTypedefType():
             self.pair_type = self.pair_type.GetTypedefedType()
         self.pair_type_size = self.pair_type.GetByteSize()
 
-        self.new_layout = not table.GetChildMemberWithName("data").IsValid()
+        self.new_layout = not inner_table.GetChildMemberWithName("data").IsValid()
         if self.new_layout:
             self.data_ptr = ctrl.Cast(self.pair_type.GetPointerType())
         else:
-            self.data_ptr = table.GetChildMemberWithName("data").GetChildAtIndex(0)
+            self.data_ptr = inner_table.GetChildMemberWithName("data").GetChildAtIndex(0)
 
         u8_type = self.valobj.GetTarget().GetBasicType(eBasicTypeUnsignedChar)
         u8_type_size = self.valobj.GetTarget().GetBasicType(eBasicTypeUnsignedChar).GetByteSize()
@@ -563,7 +565,7 @@ class StdHashMapSyntheticProvider:
             # HashSet wraps either std HashMap or hashbrown::HashSet, which both
             # wrap hashbrown::HashMap, so either way we "unwrap" twice.
             hashbrown_hashmap = self.valobj.GetChildAtIndex(0).GetChildAtIndex(0)
-        return hashbrown_hashmap.GetChildMemberWithName("table").GetChildMemberWithName("table")
+        return hashbrown_hashmap.GetChildMemberWithName("table")
 
     def has_children(self):
         # type: () -> bool
