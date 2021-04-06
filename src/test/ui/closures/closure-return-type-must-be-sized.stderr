@@ -1,6 +1,9 @@
 error[E0277]: the size for values of type `(dyn A + 'static)` cannot be known at compilation time
   --> $DIR/closure-return-type-must-be-sized.rs:54:5
    |
+LL |     pub fn foo<F: FnOnce<()>>() where F::Output: A {
+   |                   ---------- required by this bound in `a::foo`
+...
 LL |     a::foo::<fn() -> dyn A>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |

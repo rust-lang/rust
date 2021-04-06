@@ -34,7 +34,7 @@ use crate::traits::{
     ImplSourceUserDefinedData,
 };
 use crate::traits::{ObjectCastObligation, PredicateObligation, TraitObligation};
-use crate::traits::{Obligation, ObligationCause};
+use crate::traits::{Obligation, ObligationCause, ObligationCauseCode};
 use crate::traits::{SelectionError, Unimplemented};
 
 use super::BuiltinImplConditions;
@@ -533,6 +533,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let lang_items = self.tcx().lang_items();
         if [lang_items.fn_once_trait(), lang_items.fn_trait(), lang_items.fn_mut_trait()]
             .contains(&Some(obligation.predicate.def_id()))
+            // Skip `MiscObligation`s for better output.
+            && matches!(obligation.cause.code, ObligationCauseCode::BindingObligation(_, _))
         {
             // Do not allow `foo::<fn() -> A>();` for `A: !Sized` (#82633)
             let fn_sig = obligation.predicate.self_ty().skip_binder().fn_sig(self.tcx());
