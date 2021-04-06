@@ -32,6 +32,8 @@ https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Fwg-rls-2.2E0
   are good issues to get into the project.
 * [E-has-instructions](https://github.com/rust-analyzer/rust-analyzer/issues?q=is%3Aopen+is%3Aissue+label%3AE-has-instructions)
   issues have links to the code in question and tests.
+* [Broken Window](https://github.com/rust-analyzer/rust-analyzer/issues?q=is:issue+is:open+label:%22Broken+Window%22)
+  are issues which are not critical by themselves, but which should be fixed ASAP regardless, to avoid accumulation of technical debt.
 * [E-easy](https://github.com/rust-analyzer/rust-analyzer/issues?q=is%3Aopen+is%3Aissue+label%3AE-easy),
   [E-medium](https://github.com/rust-analyzer/rust-analyzer/issues?q=is%3Aopen+is%3Aissue+label%3AE-medium),
   [E-hard](https://github.com/rust-analyzer/rust-analyzer/issues?q=is%3Aopen+is%3Aissue+label%3AE-hard),
