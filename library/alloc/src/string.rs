@@ -2272,11 +2272,7 @@ impl<T: fmt::Display + ?Sized> ToString for T {
     // to try to remove it.
     #[inline]
     default fn to_string(&self) -> String {
-        use fmt::Write;
-        let mut buf = String::new();
-        buf.write_fmt(format_args!("{}", self))
-            .expect("a Display implementation returned an error unexpectedly");
-        buf
+        format!("{}", self)
     }
 }
 
