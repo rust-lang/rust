@@ -56,6 +56,7 @@ use std::{
     sync::Arc,
 };
 
+use adt::VariantData;
 use base_db::{impl_intern_key, salsa, CrateId};
 use hir_expand::{
     ast_id_map::FileAstId,
@@ -441,6 +442,18 @@ pub enum VariantId {
     UnionId(UnionId),
 }
 impl_from!(EnumVariantId, StructId, UnionId for VariantId);
+
+impl VariantId {
+    pub fn variant_data(self, db: &dyn db::DefDatabase) -> Arc<VariantData> {
+        match self {
+            VariantId::StructId(it) => db.struct_data(it).variant_data.clone(),
+            VariantId::UnionId(it) => db.union_data(it).variant_data.clone(),
+            VariantId::EnumVariantId(it) => {
+                db.enum_data(it.parent).variants[it.local_id].variant_data.clone()
+            }
+        }
+    }
+}
 
 trait Intern {
     type ID;

@@ -14,7 +14,6 @@ use crate::{
         MismatchedArgCount, MissingFields, MissingMatchArms, MissingOkOrSomeInTailExpr,
         MissingPatFields, RemoveThisSemicolon,
     },
-    utils::variant_data,
     AdtId, InferenceResult, Interner, TyExt, TyKind,
 };
 
@@ -104,7 +103,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             let root = source_ptr.file_syntax(db.upcast());
             if let ast::Expr::RecordExpr(record_expr) = &source_ptr.value.to_node(&root) {
                 if let Some(_) = record_expr.record_expr_field_list() {
-                    let variant_data = variant_data(db.upcast(), variant_def);
+                    let variant_data = variant_def.variant_data(db.upcast());
                     let missed_fields = missed_fields
                         .into_iter()
                         .map(|idx| variant_data.fields()[idx].name.clone())
@@ -135,7 +134,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
                 let root = source_ptr.file_syntax(db.upcast());
                 if let ast::Pat::RecordPat(record_pat) = expr.to_node(&root) {
                     if let Some(_) = record_pat.record_pat_field_list() {
-                        let variant_data = variant_data(db.upcast(), variant_def);
+                        let variant_data = variant_def.variant_data(db.upcast());
                         let missed_fields = missed_fields
                             .into_iter()
                             .map(|idx| variant_data.fields()[idx].name.clone())
@@ -453,7 +452,7 @@ pub fn record_literal_missing_fields(
         return None;
     }
 
-    let variant_data = variant_data(db.upcast(), variant_def);
+    let variant_data = variant_def.variant_data(db.upcast());
 
     let specified_fields: FxHashSet<_> = fields.iter().map(|f| &f.name).collect();
     let missed_fields: Vec<LocalFieldId> = variant_data
@@ -483,7 +482,7 @@ pub fn record_pattern_missing_fields(
         return None;
     }
 
-    let variant_data = variant_data(db.upcast(), variant_def);
+    let variant_data = variant_def.variant_data(db.upcast());
 
     let specified_fields: FxHashSet<_> = fields.iter().map(|f| &f.name).collect();
     let missed_fields: Vec<LocalFieldId> = variant_data
