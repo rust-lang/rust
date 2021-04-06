@@ -24,7 +24,7 @@ Rust Analyzer is a part of [RLS-2.0 working
 group](https://github.com/rust-lang/compiler-team/tree/6a769c13656c0a6959ebc09e7b1f7c09b86fb9c0/working-groups/rls-2.0).
 Discussion happens in this Zulip stream:
 
-https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Fwg-rls-2.2E0
+https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Frust-analyzer
 
 # Issue Labels
 
