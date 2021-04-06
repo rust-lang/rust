@@ -683,25 +683,6 @@ impl<'a> InferenceContext<'a> {
     }
 }
 
-/// The kinds of placeholders we need during type inference. There's separate
-/// values for general types, and for integer and float variables. The latter
-/// two are used for inference of literal values (e.g. `100` could be one of
-/// several integer types).
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct InferenceVar {
-    index: u32,
-}
-
-impl InferenceVar {
-    fn to_inner(self) -> unify::TypeVarId {
-        unify::TypeVarId(self.index)
-    }
-
-    fn from_inner(unify::TypeVarId(index): unify::TypeVarId) -> Self {
-        InferenceVar { index }
-    }
-}
-
 /// When inferring an expression, we propagate downward whatever type hint we
 /// are able in the form of an `Expectation`.
 #[derive(Clone, PartialEq, Eq, Debug)]

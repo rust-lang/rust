@@ -42,7 +42,7 @@ use crate::{db::HirDatabase, display::HirDisplay, utils::generics};
 pub use autoderef::autoderef;
 pub use builder::TyBuilder;
 pub use chalk_ext::{ProjectionTyExt, TyExt};
-pub use infer::{could_unify, InferenceResult, InferenceVar};
+pub use infer::{could_unify, InferenceResult};
 pub use lower::{
     associated_type_shorthand_candidates, callable_item_sig, CallableDefId, ImplTraitLoweringMode,
     TyDefId, TyLoweringContext, ValueTyDefId,
