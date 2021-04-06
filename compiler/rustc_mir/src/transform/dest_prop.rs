@@ -720,9 +720,6 @@ impl Conflicts<'a> {
                                 }
                             }
                         }
-                        InlineAsmOperand::Const { value } => {
-                            assert!(value.place().is_none());
-                        }
                         InlineAsmOperand::InOut {
                             reg: _,
                             late: _,
@@ -731,6 +728,7 @@ impl Conflicts<'a> {
                         }
                         | InlineAsmOperand::In { reg: _, value: _ }
                         | InlineAsmOperand::Out { reg: _, late: _, place: None }
+                        | InlineAsmOperand::Const { value: _ }
                         | InlineAsmOperand::SymFn { value: _ }
                         | InlineAsmOperand::SymStatic { def_id: _ } => {}
                     }

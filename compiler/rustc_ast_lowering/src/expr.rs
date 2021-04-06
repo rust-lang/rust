@@ -1411,9 +1411,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             out_expr: out_expr.as_ref().map(|expr| self.lower_expr_mut(expr)),
                         }
                     }
-                    InlineAsmOperand::Const { ref expr } => {
-                        hir::InlineAsmOperand::Const { expr: self.lower_expr_mut(expr) }
-                    }
+                    InlineAsmOperand::Const { ref anon_const } => hir::InlineAsmOperand::Const {
+                        anon_const: self.lower_anon_const(anon_const),
+                    },
                     InlineAsmOperand::Sym { ref expr } => {
                         hir::InlineAsmOperand::Sym { expr: self.lower_expr_mut(expr) }
                     }

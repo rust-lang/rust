@@ -835,7 +835,6 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
                 match op {
                     InlineAsmOperand::In { expr, .. }
                     | InlineAsmOperand::InOut { expr, .. }
-                    | InlineAsmOperand::Const { expr, .. }
                     | InlineAsmOperand::Sym { expr, .. } => visitor.visit_expr(expr),
                     InlineAsmOperand::Out { expr, .. } => {
                         if let Some(expr) = expr {
@@ -847,6 +846,9 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
                         if let Some(out_expr) = out_expr {
                             visitor.visit_expr(out_expr);
                         }
+                    }
+                    InlineAsmOperand::Const { anon_const, .. } => {
+                        visitor.visit_anon_const(anon_const)
                     }
                 }
             }

@@ -108,9 +108,6 @@ pub enum Candidate {
     /// the attribute currently provides the semantic requirement that arguments
     /// must be constant.
     Argument { bb: BasicBlock, index: usize },
-
-    /// `const` operand in asm!.
-    InlineAsm { bb: BasicBlock, index: usize },
 }
 
 impl Candidate {
@@ -118,16 +115,14 @@ impl Candidate {
     fn forces_explicit_promotion(&self) -> bool {
         match self {
             Candidate::Ref(_) => false,
-            Candidate::Argument { .. } | Candidate::InlineAsm { .. } => true,
+            Candidate::Argument { .. } => true,
         }
     }
 
     fn source_info(&self, body: &Body<'_>) -> SourceInfo {
         match self {
             Candidate::Ref(location) => *body.source_info(*location),
-            Candidate::Argument { bb, .. } | Candidate::InlineAsm { bb, .. } => {
-                *body.source_info(body.terminator_loc(*bb))
-            }
+            Candidate::Argument { bb, .. } => *body.source_info(body.terminator_loc(*bb)),
         }
     }
 }
@@ -217,36 +212,25 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         self.super_terminator(terminator, location);
 
-        match terminator.kind {
-            TerminatorKind::Call { ref func, .. } => {
-                if let ty::FnDef(def_id, _) = *func.ty(self.ccx.body, self.ccx.tcx).kind() {
-                    let fn_sig = self.ccx.tcx.fn_sig(def_id);
-                    if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = fn_sig.abi() {
-                        let name = self.ccx.tcx.item_name(def_id);
-                        // FIXME(eddyb) use `#[rustc_args_required_const(2)]` for shuffles.
-                        if name.as_str().starts_with("simd_shuffle") {
-                            self.candidates
-                                .push(Candidate::Argument { bb: location.block, index: 2 });
+        if let TerminatorKind::Call { ref func, .. } = terminator.kind {
+            if let ty::FnDef(def_id, _) = *func.ty(self.ccx.body, self.ccx.tcx).kind() {
+                let fn_sig = self.ccx.tcx.fn_sig(def_id);
+                if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = fn_sig.abi() {
+                    let name = self.ccx.tcx.item_name(def_id);
+                    // FIXME(eddyb) use `#[rustc_args_required_const(2)]` for shuffles.
+                    if name.as_str().starts_with("simd_shuffle") {
+                        self.candidates.push(Candidate::Argument { bb: location.block, index: 2 });
 
-                            return; // Don't double count `simd_shuffle` candidates
-                        }
+                        return; // Don't double count `simd_shuffle` candidates
                     }
+                }
 
-                    if let Some(constant_args) = args_required_const(self.ccx.tcx, def_id) {
-                        for index in constant_args {
-                            self.candidates.push(Candidate::Argument { bb: location.block, index });
-                        }
+                if let Some(constant_args) = args_required_const(self.ccx.tcx, def_id) {
+                    for index in constant_args {
+                        self.candidates.push(Candidate::Argument { bb: location.block, index });
                     }
                 }
             }
-            TerminatorKind::InlineAsm { ref operands, .. } => {
-                for (index, op) in operands.iter().enumerate() {
-                    if let InlineAsmOperand::Const { .. } = op {
-                        self.candidates.push(Candidate::InlineAsm { bb: location.block, index })
-                    }
-                }
-            }
-            _ => {}
         }
     }
 }
@@ -332,18 +316,6 @@ impl<'tcx> Validator<'_, 'tcx> {
                 let terminator = self.body[bb].terminator();
                 match &terminator.kind {
                     TerminatorKind::Call { args, .. } => self.validate_operand(&args[index]),
-                    _ => bug!(),
-                }
-            }
-            Candidate::InlineAsm { bb, index } => {
-                assert!(self.explicit);
-
-                let terminator = self.body[bb].terminator();
-                match &terminator.kind {
-                    TerminatorKind::InlineAsm { operands, .. } => match &operands[index] {
-                        InlineAsmOperand::Const { value } => self.validate_operand(value),
-                        _ => bug!(),
-                    },
                     _ => bug!(),
                 }
             }
@@ -818,9 +790,7 @@ pub fn validate_candidates(
             }
 
             match candidate {
-                Candidate::Argument { bb, index } | Candidate::InlineAsm { bb, index }
-                    if !is_promotable =>
-                {
+                Candidate::Argument { bb, index } if !is_promotable => {
                     let span = ccx.body[bb].terminator().source_info.span;
                     let msg = format!("argument {} is required to be a constant", index + 1);
                     ccx.tcx.sess.span_err(span, &msg);
@@ -1089,24 +1059,6 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         _ => bug!(),
                     }
                 }
-                Candidate::InlineAsm { bb, index } => {
-                    let terminator = blocks[bb].terminator_mut();
-                    match terminator.kind {
-                        TerminatorKind::InlineAsm { ref mut operands, .. } => {
-                            match &mut operands[index] {
-                                InlineAsmOperand::Const { ref mut value } => {
-                                    let ty = value.ty(local_decls, self.tcx);
-                                    let span = terminator.source_info.span;
-
-                                    Rvalue::Use(mem::replace(value, promoted_operand(ty, span)))
-                                }
-                                _ => bug!(),
-                            }
-                        }
-
-                        _ => bug!(),
-                    }
-                }
             }
         };
 
@@ -1161,7 +1113,7 @@ pub fn promote_candidates<'tcx>(
                     }
                 }
             }
-            Candidate::Argument { .. } | Candidate::InlineAsm { .. } => {}
+            Candidate::Argument { .. } => {}
         }
 
         // Declare return place local so that `mir::Body::new` doesn't complain.

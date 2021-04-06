@@ -540,6 +540,19 @@ fn typeck_with_fallback<'tcx>(
                             kind: TypeVariableOriginKind::TypeInference,
                             span,
                         }),
+                        Node::Expr(&hir::Expr { kind: hir::ExprKind::InlineAsm(ia), .. })
+                            if ia.operands.iter().any(|(op, _op_sp)| match op {
+                                hir::InlineAsmOperand::Const { anon_const } => {
+                                    anon_const.hir_id == id
+                                }
+                                _ => false,
+                            }) =>
+                        {
+                            fcx.next_ty_var(TypeVariableOrigin {
+                                kind: TypeVariableOriginKind::MiscVariable,
+                                span,
+                            })
+                        }
                         _ => fallback(),
                     },
                     _ => fallback(),
