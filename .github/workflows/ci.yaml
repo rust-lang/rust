@@ -76,7 +76,7 @@ jobs:
       run: cargo test --no-run --locked
 
     - name: Test
-      run: cargo test
+      run: cargo test -- --nocapture
 
     - name: Prepare cache
       run: cargo xtask pre-cache

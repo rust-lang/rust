@@ -8,7 +8,10 @@ use crate::project_root;
 
 pub fn big_struct() -> String {
     let n = 1_000;
+    big_struct_n(n)
+}
 
+pub fn big_struct_n(n: u32) -> String {
     let mut buf = "pub struct RegisterBlock {".to_string();
     for i in 0..n {
         format_to!(buf, "  /// Doc comment for {}.\n", i);
