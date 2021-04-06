@@ -117,35 +117,6 @@ impl GlobalState {
         }
     }
 
-    pub(crate) fn fetch_build_data_request(&mut self, build_data_collector: BuildDataCollector) {
-        self.fetch_build_data_queue.request_op(build_data_collector);
-    }
-
-    pub(crate) fn fetch_build_data_if_needed(&mut self) {
-        let mut build_data_collector = match self.fetch_build_data_queue.should_start_op() {
-            Some(it) => it,
-            None => return,
-        };
-        self.task_pool.handle.spawn_with_sender(move |sender| {
-            sender.send(Task::FetchBuildData(BuildDataProgress::Begin)).unwrap();
-
-            let progress = {
-                let sender = sender.clone();
-                move |msg| {
-                    sender.send(Task::FetchBuildData(BuildDataProgress::Report(msg))).unwrap()
-                }
-            };
-            let res = build_data_collector.collect(&progress);
-            sender.send(Task::FetchBuildData(BuildDataProgress::End(res))).unwrap();
-        });
-    }
-    pub(crate) fn fetch_build_data_completed(
-        &mut self,
-        build_data: anyhow::Result<BuildDataResult>,
-    ) {
-        self.fetch_build_data_queue.op_completed(Some(build_data))
-    }
-
     pub(crate) fn fetch_workspaces_request(&mut self) {
         self.fetch_workspaces_queue.request_op(())
     }
@@ -202,6 +173,34 @@ impl GlobalState {
         workspaces: Vec<anyhow::Result<ProjectWorkspace>>,
     ) {
         self.fetch_workspaces_queue.op_completed(workspaces)
+    }
+
+    pub(crate) fn fetch_build_data_request(&mut self, build_data_collector: BuildDataCollector) {
+        self.fetch_build_data_queue.request_op(build_data_collector);
+    }
+    pub(crate) fn fetch_build_data_if_needed(&mut self) {
+        let mut build_data_collector = match self.fetch_build_data_queue.should_start_op() {
+            Some(it) => it,
+            None => return,
+        };
+        self.task_pool.handle.spawn_with_sender(move |sender| {
+            sender.send(Task::FetchBuildData(BuildDataProgress::Begin)).unwrap();
+
+            let progress = {
+                let sender = sender.clone();
+                move |msg| {
+                    sender.send(Task::FetchBuildData(BuildDataProgress::Report(msg))).unwrap()
+                }
+            };
+            let res = build_data_collector.collect(&progress);
+            sender.send(Task::FetchBuildData(BuildDataProgress::End(res))).unwrap();
+        });
+    }
+    pub(crate) fn fetch_build_data_completed(
+        &mut self,
+        build_data: anyhow::Result<BuildDataResult>,
+    ) {
+        self.fetch_build_data_queue.op_completed(Some(build_data))
     }
 
     pub(crate) fn switch_workspaces(&mut self) {
