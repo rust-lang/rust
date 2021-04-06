@@ -10,7 +10,7 @@ use chalk_ir::{
 use smallvec::SmallVec;
 
 use crate::{
-    AssocTypeId, CanonicalVarKinds, ChalkTraitId, ClosureId, FnDefId, FnSig, ForeignDefId,
+    AssocTypeId, CanonicalVarKinds, ChalkTraitId, ClosureId, Const, FnDefId, FnSig, ForeignDefId,
     InferenceVar, Interner, Lifetime, OpaqueTyId, PlaceholderIndex, TypeWalk, VariableKind,
     VariableKinds,
 };
@@ -114,7 +114,7 @@ pub enum TyKind {
     Tuple(usize, Substitution),
 
     /// An array with the given length. Written as `[T; n]`.
-    Array(Ty),
+    Array(Ty, Const),
 
     /// The pointee of an array slice.  Written as `[T]`.
     Slice(Ty),

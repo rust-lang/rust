@@ -10,9 +10,10 @@ use base_db::salsa::InternKey;
 use hir_def::{GenericDefId, TypeAliasId};
 
 use crate::{
-    chalk_ext::ProjectionTyExt, db::HirDatabase, primitive::UintTy, static_lifetime, AliasTy,
-    CallableDefId, Canonical, DomainGoal, FnPointer, GenericArg, InEnvironment, Lifetime, OpaqueTy,
-    ProjectionTy, QuantifiedWhereClause, Scalar, Substitution, TraitRef, Ty, TypeWalk, WhereClause,
+    chalk_ext::ProjectionTyExt, db::HirDatabase, dummy_usize_const, static_lifetime, AliasTy,
+    CallableDefId, Canonical, Const, DomainGoal, FnPointer, GenericArg, InEnvironment, Lifetime,
+    OpaqueTy, ProjectionTy, QuantifiedWhereClause, Substitution, TraitRef, Ty, TypeWalk,
+    WhereClause,
 };
 
 use super::interner::*;
@@ -23,7 +24,7 @@ impl ToChalk for Ty {
     fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::Ty<Interner> {
         match self.into_inner() {
             TyKind::Ref(m, lt, ty) => ref_to_chalk(db, m, lt, ty),
-            TyKind::Array(ty) => array_to_chalk(db, ty),
+            TyKind::Array(ty, size) => array_to_chalk(db, ty, size),
             TyKind::Function(FnPointer { sig, substitution: substs, .. }) => {
                 let substitution = chalk_ir::FnSubst(substs.0.to_chalk(db));
                 chalk_ir::TyKind::Function(chalk_ir::FnPointer {
@@ -110,7 +111,7 @@ impl ToChalk for Ty {
     fn from_chalk(db: &dyn HirDatabase, chalk: chalk_ir::Ty<Interner>) -> Self {
         match chalk.data(&Interner).kind.clone() {
             chalk_ir::TyKind::Error => TyKind::Error,
-            chalk_ir::TyKind::Array(ty, _size) => TyKind::Array(from_chalk(db, ty)),
+            chalk_ir::TyKind::Array(ty, size) => TyKind::Array(from_chalk(db, ty), size),
             chalk_ir::TyKind::Placeholder(idx) => TyKind::Placeholder(idx),
             chalk_ir::TyKind::Alias(chalk_ir::AliasTy::Projection(proj)) => {
                 let associated_ty = proj.associated_ty_id;
@@ -203,15 +204,9 @@ fn ref_to_chalk(
 
 /// We currently don't model constants, but Chalk does. So, we have to insert a
 /// fake constant here, because Chalks built-in logic may expect it to be there.
-fn array_to_chalk(db: &dyn HirDatabase, ty: Ty) -> chalk_ir::Ty<Interner> {
+fn array_to_chalk(db: &dyn HirDatabase, ty: Ty, _: Const) -> chalk_ir::Ty<Interner> {
     let arg = ty.to_chalk(db);
-    let usize_ty = chalk_ir::TyKind::Scalar(Scalar::Uint(UintTy::Usize)).intern(&Interner);
-    let const_ = chalk_ir::ConstData {
-        ty: usize_ty,
-        value: chalk_ir::ConstValue::Concrete(chalk_ir::ConcreteConst { interned: () }),
-    }
-    .intern(&Interner);
-    chalk_ir::TyKind::Array(arg, const_).intern(&Interner)
+    chalk_ir::TyKind::Array(arg, dummy_usize_const()).intern(&Interner)
 }
 
 impl ToChalk for GenericArg {

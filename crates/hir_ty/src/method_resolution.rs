@@ -842,7 +842,9 @@ fn autoderef_method_receiver(
 ) -> Vec<Canonical<Ty>> {
     let mut deref_chain: Vec<_> = autoderef::autoderef(db, Some(krate), ty).collect();
     // As a last step, we can do array unsizing (that's the only unsizing that rustc does for method receivers!)
-    if let Some(TyKind::Array(parameters)) = deref_chain.last().map(|ty| ty.value.kind(&Interner)) {
+    if let Some(TyKind::Array(parameters, _)) =
+        deref_chain.last().map(|ty| ty.value.kind(&Interner))
+    {
         let kinds = deref_chain.last().unwrap().binders.clone();
         let unsized_ty = TyKind::Slice(parameters.clone()).intern(&Interner);
         deref_chain.push(Canonical { value: unsized_ty, binders: kinds })

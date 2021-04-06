@@ -1888,7 +1888,7 @@ impl Type {
                     substs.iter(&Interner).filter_map(|a| a.ty(&Interner)).any(go)
                 }
 
-                TyKind::Array(ty)
+                TyKind::Array(ty, _)
                 | TyKind::Slice(ty)
                 | TyKind::Raw(_, ty)
                 | TyKind::Ref(_, _, ty) => go(ty),
@@ -2151,7 +2151,7 @@ impl Type {
 
                 TyKind::Ref(_, _, ty)
                 | TyKind::Raw(_, ty)
-                | TyKind::Array(ty)
+                | TyKind::Array(ty, _)
                 | TyKind::Slice(ty) => {
                     walk_type(db, &type_.derived(ty.clone()), cb);
                 }

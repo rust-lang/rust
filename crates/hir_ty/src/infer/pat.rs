@@ -214,17 +214,20 @@ impl<'a> InferenceContext<'a> {
                 return inner_ty;
             }
             Pat::Slice { prefix, slice, suffix } => {
-                let (container_ty, elem_ty): (fn(_) -> _, _) = match expected.kind(&Interner) {
-                    TyKind::Array(st) => (TyKind::Array, st.clone()),
-                    TyKind::Slice(st) => (TyKind::Slice, st.clone()),
-                    _ => (TyKind::Slice, self.err_ty()),
+                let elem_ty = match expected.kind(&Interner) {
+                    TyKind::Array(st, _) | TyKind::Slice(st) => st.clone(),
+                    _ => self.err_ty(),
                 };
 
                 for pat_id in prefix.iter().chain(suffix) {
                     self.infer_pat(*pat_id, &elem_ty, default_bm);
                 }
 
-                let pat_ty = container_ty(elem_ty).intern(&Interner);
+                let pat_ty = match expected.kind(&Interner) {
+                    TyKind::Array(_, const_) => TyKind::Array(elem_ty, const_.clone()),
+                    _ => TyKind::Slice(elem_ty),
+                }
+                .intern(&Interner);
                 if let Some(slice_pat_id) = slice {
                     self.infer_pat(*slice_pat_id, &pat_ty, default_bm);
                 }

@@ -30,12 +30,13 @@ mod test_db;
 
 use std::sync::Arc;
 
+use chalk_ir::UintTy;
 use itertools::Itertools;
 
 use base_db::salsa;
 use hir_def::{
-    expr::ExprId, type_ref::Rawness, AssocContainerId, FunctionId, GenericDefId, HasModule,
-    LifetimeParamId, Lookup, TraitId, TypeAliasId, TypeParamId,
+    expr::ExprId, type_ref::Rawness, AssocContainerId, ConstParamId, FunctionId, GenericDefId,
+    HasModule, LifetimeParamId, Lookup, TraitId, TypeAliasId, TypeParamId,
 };
 
 use crate::{db::HirDatabase, display::HirDisplay, utils::generics};
@@ -70,6 +71,11 @@ pub type CanonicalVarKinds = chalk_ir::CanonicalVarKinds<Interner>;
 pub type Lifetime = chalk_ir::Lifetime<Interner>;
 pub type LifetimeData = chalk_ir::LifetimeData<Interner>;
 pub type LifetimeOutlives = chalk_ir::LifetimeOutlives<Interner>;
+
+pub type Const = chalk_ir::Const<Interner>;
+pub type ConstData = chalk_ir::ConstData<Interner>;
+pub type ConstValue = chalk_ir::ConstValue<Interner>;
+pub type ConcreteConst = chalk_ir::ConcreteConst<Interner>;
 
 pub type ChalkTraitId = chalk_ir::TraitId<Interner>;
 
@@ -227,7 +233,9 @@ impl Ty {
     pub fn equals_ctor(&self, other: &Ty) -> bool {
         match (self.kind(&Interner), other.kind(&Interner)) {
             (TyKind::Adt(adt, ..), TyKind::Adt(adt2, ..)) => adt == adt2,
-            (TyKind::Slice(_), TyKind::Slice(_)) | (TyKind::Array(_), TyKind::Array(_)) => true,
+            (TyKind::Slice(_), TyKind::Slice(_)) | (TyKind::Array(_, _), TyKind::Array(_, _)) => {
+                true
+            }
             (TyKind::FnDef(def_id, ..), TyKind::FnDef(def_id2, ..)) => def_id == def_id2,
             (TyKind::OpaqueType(ty_id, ..), TyKind::OpaqueType(ty_id2, ..)) => ty_id == ty_id2,
             (TyKind::AssociatedType(ty_id, ..), TyKind::AssociatedType(ty_id2, ..)) => {
@@ -488,6 +496,12 @@ pub fn lt_from_placeholder_idx(db: &dyn HirDatabase, idx: PlaceholderIndex) -> L
     db.lookup_intern_lifetime_param_id(interned_id)
 }
 
+pub fn const_from_placeholder_idx(db: &dyn HirDatabase, idx: PlaceholderIndex) -> ConstParamId {
+    assert_eq!(idx.ui, chalk_ir::UniverseIndex::ROOT);
+    let interned_id = salsa::InternKey::from_intern_id(salsa::InternId::from(idx.idx));
+    db.lookup_intern_const_param_id(interned_id)
+}
+
 pub fn to_chalk_trait_id(id: TraitId) -> ChalkTraitId {
     chalk_ir::TraitId(salsa::InternKey::as_intern_id(&id))
 }
@@ -498,4 +512,13 @@ pub fn from_chalk_trait_id(id: ChalkTraitId) -> TraitId {
 
 pub fn static_lifetime() -> Lifetime {
     LifetimeData::Static.intern(&Interner)
+}
+
+pub fn dummy_usize_const() -> Const {
+    let usize_ty = chalk_ir::TyKind::Scalar(Scalar::Uint(UintTy::Usize)).intern(&Interner);
+    chalk_ir::ConstData {
+        ty: usize_ty,
+        value: chalk_ir::ConstValue::Concrete(chalk_ir::ConcreteConst { interned: () }),
+    }
+    .intern(&Interner)
 }
