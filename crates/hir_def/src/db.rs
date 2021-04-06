@@ -2,9 +2,10 @@
 use std::sync::Arc;
 
 use base_db::{salsa, CrateId, SourceDatabase, Upcast};
+use either::Either;
 use hir_expand::{db::AstDatabase, HirFileId};
 use la_arena::ArenaMap;
-use syntax::SmolStr;
+use syntax::{ast, AstPtr, SmolStr};
 
 use crate::{
     adt::{EnumData, StructData},
@@ -121,6 +122,18 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
 
     #[salsa::invoke(Attrs::fields_attrs_query)]
     fn fields_attrs(&self, def: VariantId) -> Arc<ArenaMap<LocalFieldId, Attrs>>;
+
+    #[salsa::invoke(crate::attr::variants_attrs_source_map)]
+    fn variants_attrs_source_map(
+        &self,
+        def: EnumId,
+    ) -> Arc<ArenaMap<LocalEnumVariantId, AstPtr<ast::Variant>>>;
+
+    #[salsa::invoke(crate::attr::fields_attrs_source_map)]
+    fn fields_attrs_source_map(
+        &self,
+        def: VariantId,
+    ) -> Arc<ArenaMap<LocalFieldId, Either<AstPtr<ast::TupleField>, AstPtr<ast::RecordField>>>>;
 
     #[salsa::invoke(AttrsWithOwner::attrs_query)]
     fn attrs(&self, def: AttrDefId) -> AttrsWithOwner;
