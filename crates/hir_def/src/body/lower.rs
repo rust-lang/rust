@@ -322,8 +322,10 @@ impl ExprCollector<'_> {
                     Vec::new()
                 };
                 let method_name = e.name_ref().map(|nr| nr.as_name()).unwrap_or_else(Name::missing);
-                let generic_args =
-                    e.generic_arg_list().and_then(|it| GenericArgs::from_ast(&self.ctx(), it));
+                let generic_args = e
+                    .generic_arg_list()
+                    .and_then(|it| GenericArgs::from_ast(&self.ctx(), it))
+                    .map(Box::new);
                 self.alloc_expr(
                     Expr::MethodCall { receiver, method_name, args, generic_args },
                     syntax_ptr,
@@ -385,7 +387,7 @@ impl ExprCollector<'_> {
                 self.alloc_expr(Expr::Yield { expr }, syntax_ptr)
             }
             ast::Expr::RecordExpr(e) => {
-                let path = e.path().and_then(|path| self.expander.parse_path(path));
+                let path = e.path().and_then(|path| self.expander.parse_path(path)).map(Box::new);
                 let record_lit = if let Some(nfl) = e.record_expr_field_list() {
                     let fields = nfl
                         .fields()
@@ -430,7 +432,7 @@ impl ExprCollector<'_> {
             }
             ast::Expr::CastExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
-                let type_ref = TypeRef::from_ast_opt(&self.ctx(), e.ty());
+                let type_ref = Box::new(TypeRef::from_ast_opt(&self.ctx(), e.ty()));
                 self.alloc_expr(Expr::Cast { expr, type_ref }, syntax_ptr)
             }
             ast::Expr::RefExpr(e) => {
@@ -469,8 +471,10 @@ impl ExprCollector<'_> {
                         arg_types.push(type_ref);
                     }
                 }
-                let ret_type =
-                    e.ret_type().and_then(|r| r.ty()).map(|it| TypeRef::from_ast(&self.ctx(), it));
+                let ret_type = e
+                    .ret_type()
+                    .and_then(|r| r.ty())
+                    .map(|it| Box::new(TypeRef::from_ast(&self.ctx(), it)));
                 let body = self.collect_expr_opt(e.body());
                 self.alloc_expr(Expr::Lambda { args, arg_types, ret_type, body }, syntax_ptr)
             }
@@ -755,7 +759,7 @@ impl ExprCollector<'_> {
                 }
             }
             ast::Pat::TupleStructPat(p) => {
-                let path = p.path().and_then(|path| self.expander.parse_path(path));
+                let path = p.path().and_then(|path| self.expander.parse_path(path)).map(Box::new);
                 let (args, ellipsis) = self.collect_tuple_pat(p.fields());
                 Pat::TupleStruct { path, args, ellipsis }
             }
@@ -765,7 +769,7 @@ impl ExprCollector<'_> {
                 Pat::Ref { pat, mutability }
             }
             ast::Pat::PathPat(p) => {
-                let path = p.path().and_then(|path| self.expander.parse_path(path));
+                let path = p.path().and_then(|path| self.expander.parse_path(path)).map(Box::new);
                 path.map(Pat::Path).unwrap_or(Pat::Missing)
             }
             ast::Pat::OrPat(p) => {
@@ -779,7 +783,7 @@ impl ExprCollector<'_> {
             }
             ast::Pat::WildcardPat(_) => Pat::Wild,
             ast::Pat::RecordPat(p) => {
-                let path = p.path().and_then(|path| self.expander.parse_path(path));
+                let path = p.path().and_then(|path| self.expander.parse_path(path)).map(Box::new);
                 let args: Vec<_> = p
                     .record_pat_field_list()
                     .expect("every struct should have a field list")

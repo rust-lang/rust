@@ -1867,6 +1867,7 @@ name = "vfs"
 version = "0.0.0"
 dependencies = [
  "fst",
+ "indexmap",
  "paths",
  "rustc-hash",
 ]

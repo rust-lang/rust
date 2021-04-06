@@ -86,7 +86,7 @@ pub enum Expr {
         receiver: ExprId,
         method_name: Name,
         args: Vec<ExprId>,
-        generic_args: Option<GenericArgs>,
+        generic_args: Option<Box<GenericArgs>>,
     },
     Match {
         expr: ExprId,
@@ -106,7 +106,7 @@ pub enum Expr {
         expr: Option<ExprId>,
     },
     RecordLit {
-        path: Option<Path>,
+        path: Option<Box<Path>>,
         fields: Vec<RecordLitField>,
         spread: Option<ExprId>,
     },
@@ -131,7 +131,7 @@ pub enum Expr {
     },
     Cast {
         expr: ExprId,
-        type_ref: TypeRef,
+        type_ref: Box<TypeRef>,
     },
     Ref {
         expr: ExprId,
@@ -162,7 +162,7 @@ pub enum Expr {
     Lambda {
         args: Vec<PatId>,
         arg_types: Vec<Option<TypeRef>>,
-        ret_type: Option<TypeRef>,
+        ret_type: Option<Box<TypeRef>>,
         body: ExprId,
     },
     Tuple {
@@ -412,13 +412,13 @@ pub enum Pat {
     Wild,
     Tuple { args: Vec<PatId>, ellipsis: Option<usize> },
     Or(Vec<PatId>),
-    Record { path: Option<Path>, args: Vec<RecordFieldPat>, ellipsis: bool },
+    Record { path: Option<Box<Path>>, args: Vec<RecordFieldPat>, ellipsis: bool },
     Range { start: ExprId, end: ExprId },
     Slice { prefix: Vec<PatId>, slice: Option<PatId>, suffix: Vec<PatId> },
-    Path(Path),
+    Path(Box<Path>),
     Lit(ExprId),
     Bind { mode: BindingAnnotation, name: Name, subpat: Option<PatId> },
-    TupleStruct { path: Option<Path>, args: Vec<PatId>, ellipsis: Option<usize> },
+    TupleStruct { path: Option<Box<Path>>, args: Vec<PatId>, ellipsis: Option<usize> },
     Ref { pat: PatId, mutability: Mutability },
     Box { inner: PatId },
     ConstBlock(ExprId),

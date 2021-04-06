@@ -289,6 +289,12 @@ impl From<Name> for Path {
     }
 }
 
+impl From<Name> for Box<Path> {
+    fn from(name: Name) -> Box<Path> {
+        Box::new(Path::from(name))
+    }
+}
+
 impl From<Name> for ModPath {
     fn from(name: Name) -> ModPath {
         ModPath::from_segments(PathKind::Plain, iter::once(name))

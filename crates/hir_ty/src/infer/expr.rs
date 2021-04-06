@@ -318,7 +318,13 @@ impl<'a> InferenceContext<'a> {
                 self.normalize_associated_types_in(ret_ty)
             }
             Expr::MethodCall { receiver, args, method_name, generic_args } => self
-                .infer_method_call(tgt_expr, *receiver, &args, &method_name, generic_args.as_ref()),
+                .infer_method_call(
+                    tgt_expr,
+                    *receiver,
+                    &args,
+                    &method_name,
+                    generic_args.as_deref(),
+                ),
             Expr::Match { expr, arms } => {
                 let input_ty = self.infer_expr(*expr, &Expectation::none());
 
@@ -399,7 +405,7 @@ impl<'a> InferenceContext<'a> {
                 TyKind::Never.intern(&Interner)
             }
             Expr::RecordLit { path, fields, spread } => {
-                let (ty, def_id) = self.resolve_variant(path.as_ref());
+                let (ty, def_id) = self.resolve_variant(path.as_deref());
                 if let Some(variant) = def_id {
                     self.write_variant_resolution(tgt_expr.into(), variant);
                 }
