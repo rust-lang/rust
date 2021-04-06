@@ -33,9 +33,9 @@ For usage and troubleshooting requests, please use "IDEs and Editors" category o
 
 https://users.rust-lang.org/c/ide/14
 
-For questions about development and implementation, join rls-2.0 working group on Zulip:
+For questions about development and implementation, join rust-analyzer working group on Zulip:
 
-https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Frls-2.2E0
+https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Frust-analyzer
 
 ## Quick Links
 

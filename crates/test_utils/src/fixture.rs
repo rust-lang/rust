@@ -1,5 +1,65 @@
 //! Defines `Fixture` -- a convenient way to describe the initial state of
 //! rust-analyzer database from a single string.
+//!
+//! Fixtures are strings containing rust source code with optional metadata.
+//! A fixture without metadata is parsed into a single source file.
+//! Use this to test functionality local to one file.
+//!
+//! Simple Example:
+//! ```
+//! r#"
+//! fn main() {
+//!     println!("Hello World")
+//! }
+//! "#
+//! ```
+//!
+//! Metadata can be added to a fixture after a `//-` comment.
+//! The basic form is specifying filenames,
+//! which is also how to define multiple files in a single test fixture
+//!
+//! Example using two files in the same crate:
+//! ```
+//! "
+//! //- /main.rs
+//! mod foo;
+//! fn main() {
+//!     foo::bar();
+//! }
+//!
+//! //- /foo.rs
+//! pub fn bar() {}
+//! "
+//! ```
+//!
+//! Example using two crates with one file each, with one crate depending on the other:
+//! ```
+//! r#"
+//! //- /main.rs crate:a deps:b
+//! fn main() {
+//!     b::foo();
+//! }
+//! //- /lib.rs crate:b
+//! pub fn b() {
+//!     println!("Hello World")
+//! }
+//! "#
+//! ```
+//!
+//! Metadata allows specifying all settings and variables
+//! that are available in a real rust project:
+//! - crate names via `crate:cratename`
+//! - dependencies via `deps:dep1,dep2`
+//! - configuration settings via `cfg:dbg=false,opt_level=2`
+//! - environment variables via `env:PATH=/bin,RUST_LOG=debug`
+//!
+//! Example using all available metadata:
+//! ```
+//! "
+//! //- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b env:OUTDIR=path/to,OTHER=foo
+//! fn insert_source_code_here() {}
+//! "
+//! ```
 
 use rustc_hash::FxHashMap;
 use stdx::{lines_with_ends, split_once, trim_indent};
@@ -24,7 +84,7 @@ impl Fixture {
     ///  //- some meta
     ///  line 1
     ///  line 2
-    ///  // - other meta
+    ///  //- other meta
     ///  ```
     pub fn parse(ra_fixture: &str) -> Vec<Fixture> {
         let fixture = trim_indent(ra_fixture);

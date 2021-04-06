@@ -53,9 +53,9 @@ https://www.tedinski.com/2018/02/06/system-boundaries.html
 ## Crates.io Dependencies
 
 We try to be very conservative with usage of crates.io dependencies.
-Don't use small "helper" crates (exception: `itertools` is allowed).
+Don't use small "helper" crates (exception: `itertools` and `either` are allowed).
 If there's some general reusable bit of code you need, consider adding it to the `stdx` crate.
-A useful exercise is to read Cargo.lock and see if some of the *transitive* dependencies do not make sense for rust-analyzer.
+A useful exercise is to read Cargo.lock and see if some *transitive* dependencies do not make sense for rust-analyzer.
 
 **Rationale:** keep compile times low, create ecosystem pressure for faster compiles, reduce the number of things which might break.
 
@@ -330,7 +330,7 @@ When implementing `do_thing`, it might be very useful to create a context object
 
 ```rust
 pub fn do_thing(arg1: Arg1, arg2: Arg2) -> Res {
-    let mut ctx = Ctx { arg1, arg2 }
+    let mut ctx = Ctx { arg1, arg2 };
     ctx.run()
 }
 
@@ -586,7 +586,7 @@ use super::{}
 
 **Rationale:** consistency.
 Reading order is important for new contributors.
-Grouping by crate allows to spot unwanted dependencies easier.
+Grouping by crate allows spotting unwanted dependencies easier.
 
 ## Import Style
 
@@ -779,7 +779,7 @@ assert!(x < y);
 assert!(x > 0);
 
 // BAD
-assert!(x >= lo && x <= hi>);
+assert!(x >= lo && x <= hi);
 assert!(r1 < l2 || l1 > r2);
 assert!(y > x);
 assert!(0 > x);

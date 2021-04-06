@@ -51,8 +51,8 @@ interface SnippetTextEdit extends TextEdit {
 
 ```typescript
 export interface TextDocumentEdit {
-	textDocument: OptionalVersionedTextDocumentIdentifier;
-	edits: (TextEdit | SnippetTextEdit)[];
+    textDocument: OptionalVersionedTextDocumentIdentifier;
+    edits: (TextEdit | SnippetTextEdit)[];
 }
 ```
 
@@ -145,9 +145,9 @@ mod foo;
 ### Unresolved Question
 
 * An alternative would be to use a more general "gotoSuper" request, which would work for super methods, super classes and super modules.
-  This is the approach IntelliJ Rust is takeing.
+  This is the approach IntelliJ Rust is taking.
   However, experience shows that super module (which generally has a feeling of navigation between files) should be separate.
-  If you want super module, but the cursor happens to be inside an overriden function, the behavior with single "gotoSuper" request is surprising.
+  If you want super module, but the cursor happens to be inside an overridden function, the behavior with single "gotoSuper" request is surprising.
 
 ## Join Lines
 
@@ -193,7 +193,7 @@ fn main() {
 ### Unresolved Question
 
 * What is the position of the cursor after `joinLines`?
-  Currently this is left to editor's discretion, but it might be useful to specify on the server via snippets.
+  Currently, this is left to editor's discretion, but it might be useful to specify on the server via snippets.
   However, it then becomes unclear how it works with multi cursor.
 
 ## On Enter
@@ -330,7 +330,7 @@ Moreover, it would be cool if editors didn't need to implement even basic langua
 
 ### Unresolved Question
 
-* Should we return a a nested brace structure, to allow paredit-like actions of jump *out* of the current brace pair?
+* Should we return a nested brace structure, to allow paredit-like actions of jump *out* of the current brace pair?
   This is how `SelectionRange` request works.
 * Alternatively, should we perhaps flag certain `SelectionRange`s as being brace pairs?
 
@@ -511,7 +511,7 @@ Expands macro call at a given position.
 This request is sent from client to server to render "inlay hints" -- virtual text inserted into editor to show things like inferred types.
 Generally, the client should re-query inlay hints after every modification.
 Note that we plan to move this request to `experimental/inlayHints`, as it is not really Rust-specific, but the current API is not necessary the right one.
-Upstream issue: https://github.com/microsoft/language-server-protocol/issues/956
+Upstream issues: https://github.com/microsoft/language-server-protocol/issues/956 , https://github.com/rust-analyzer/rust-analyzer/issues/2797
 
 **Request:**
 

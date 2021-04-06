@@ -42,7 +42,7 @@ The underlying engine makes sure that model is computed lazily (on-demand) and c
 ## Entry Points
 
 `crates/rust-analyzer/src/bin/main.rs` contains the main function which spawns LSP.
-This is *the* entry point, but it front-loads a lot of complexity, so its fine to just skim through it.
+This is *the* entry point, but it front-loads a lot of complexity, so it's fine to just skim through it.
 
 `crates/rust-analyzer/src/handlers.rs` implements all LSP requests and is a great place to start if you are already familiar with LSP.
 
@@ -67,7 +67,7 @@ They are handled by Rust code in the xtask directory.
 
 VS Code plugin.
 
-### `libs/`
+### `lib/`
 
 rust-analyzer independent libraries which we publish to crates.io.
 It's not heavily utilized at the moment.
@@ -139,7 +139,8 @@ If an AST method returns an `Option`, it *can* be `None` at runtime, even if thi
 ### `crates/base_db`
 
 We use the [salsa](https://github.com/salsa-rs/salsa) crate for incremental and on-demand computation.
-Roughly, you can think of salsa as a key-value store, but it can also compute derived values using specified functions. The `base_db` crate provides basic infrastructure for interacting with salsa.
+Roughly, you can think of salsa as a key-value store, but it can also compute derived values using specified functions. 
+The `base_db` crate provides basic infrastructure for interacting with salsa.
 Crucially, it defines most of the "input" queries: facts supplied by the client of the analyzer.
 Reading the docs of the `base_db::input` module should be useful: everything else is strictly derived from those inputs.
 
@@ -221,7 +222,7 @@ Internally, `ide` is split across several crates. `ide_assists`, `ide_completion
 The `ide` contains a public API/façade, as well as implementation for a plethora of smaller features.
 
 **Architecture Invariant:** `ide` crate strives to provide a _perfect_ API.
-Although at the moment it has only one consumer, the LSP server, LSP *does not* influence it's API design.
+Although at the moment it has only one consumer, the LSP server, LSP *does not* influence its API design.
 Instead, we keep in mind a hypothetical _ideal_ client -- an IDE tailored specifically for rust, every nook and cranny of which is packed with Rust-specific goodies.
 
 ### `crates/rust-analyzer`
@@ -307,7 +308,7 @@ This sections talks about the things which are everywhere and nowhere in particu
 
 ### Code generation
 
-Some of the components of this repository are generated through automatic processes.
+Some ]components in this repository are generated through automatic processes.
 Generated code is updated automatically on `cargo test`.
 Generated code is generally committed to the git repository.
 
@@ -389,7 +390,7 @@ fn spam() {
 ```
 
 To specify input data, we use a single string literal in a special format, which can describe a set of rust files.
-See the `Fixture` type.
+See the `Fixture` its module for fixture examples and documentation.
 
 **Architecture Invariant:** all code invariants are tested by `#[test]` tests.
 There's no additional checks in CI, formatting and tidy tests are run with `cargo test`.

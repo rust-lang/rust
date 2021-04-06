@@ -145,7 +145,7 @@ Another alternative (used by swift and roslyn) is to explicitly divide the set o
 
 ```rust
 struct Token {
-    kind: NonTriviaTokenKind
+    kind: NonTriviaTokenKind,
     text: String,
     leading_trivia: Vec<TriviaToken>,
     trailing_trivia: Vec<TriviaToken>,
@@ -240,7 +240,7 @@ impl SyntaxNode {
             let child_offset = offset;
             offset += green_child.text_len;
             Arc::new(SyntaxData {
-                offset: child_offset;
+                offset: child_offset,
                 parent: Some(Arc::clone(self)),
                 green: Arc::clone(green_child),
             })
@@ -249,7 +249,7 @@ impl SyntaxNode {
 }
 
 impl PartialEq for SyntaxNode {
-    fn eq(&self, other: &SyntaxNode) {
+    fn eq(&self, other: &SyntaxNode) -> bool {
         self.offset == other.offset
             && Arc::ptr_eq(&self.green, &other.green)
     }
@@ -273,7 +273,7 @@ This is OK because trees traversals mostly (always, in case of rust-analyzer) ru
 The other thread can restore the `SyntaxNode` by traversing from the root green node and looking for a node with specified range.
 You can also use the similar trick to store a `SyntaxNode`.
 That is, a data structure that holds a `(GreenNode, Range<usize>)` will be `Sync`.
-However rust-analyzer goes even further.
+However, rust-analyzer goes even further.
 It treats trees as semi-transient and instead of storing a `GreenNode`, it generally stores just the id of the file from which the tree originated: `(FileId, Range<usize>)`.
 The `SyntaxNode` is the restored by reparsing the file and traversing it from root.
 With this trick, rust-analyzer holds only a small amount of trees in memory at the same time, which reduces memory usage.
