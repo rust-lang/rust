@@ -445,8 +445,8 @@ impl Config {
     pub fn hover_actions(&self) -> bool {
         self.experimental("hoverActions")
     }
-    pub fn status_notification(&self) -> bool {
-        self.experimental("statusNotification")
+    pub fn server_status_notification(&self) -> bool {
+        self.experimental("serverStatusNotification")
     }
 
     pub fn publish_diagnostics(&self) -> bool {

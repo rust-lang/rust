@@ -103,7 +103,7 @@ impl<'a> Project<'a> {
                     ..Default::default()
                 }),
                 experimental: Some(json!({
-                    "statusNotification": true,
+                    "serverStatusNotification": true,
                 })),
                 ..Default::default()
             },
@@ -213,13 +213,12 @@ impl Server {
     }
     pub(crate) fn wait_until_workspace_is_loaded(self) -> Server {
         self.wait_for_message_cond(1, &|msg: &Message| match msg {
-            Message::Notification(n) if n.method == "rust-analyzer/status" => {
+            Message::Notification(n) if n.method == "experimental/serverStatus" => {
                 let status = n
                     .clone()
-                    .extract::<lsp_ext::StatusParams>("rust-analyzer/status")
-                    .unwrap()
-                    .status;
-                matches!(status, lsp_ext::Status::Ready)
+                    .extract::<lsp_ext::ServerStatusParams>("experimental/serverStatus")
+                    .unwrap();
+                status.quiescent
             }
             _ => false,
         })

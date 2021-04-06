@@ -1,5 +1,5 @@
 <!---
-lsp_ext.rs hash: e8a7502bd2b2c2f5
+lsp_ext.rs hash: faae991334a151d0
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this  issue:
@@ -419,23 +419,37 @@ Returns internal status message, mostly for debugging purposes.
 
 Reloads project information (that is, re-executes `cargo metadata`).
 
-## Status Notification
+## Server Status
 
-**Experimental Client Capability:** `{ "statusNotification": boolean }`
+**Experimental Client Capability:** `{ "serverStatus": boolean }`
 
-**Method:** `rust-analyzer/status`
+**Method:** `experimental/serverStatus`
 
 **Notification:**
 
 ```typescript
-interface StatusParams {
-    status: "loading" | "readyPartial" | "ready" | "invalid" | "needsReload",
+interface ServerStatusParams {
+    /// `ok` means that the server is completely functional.
+    ///
+    /// `warning` means that the server is partially functional.
+    /// It can server requests, but some results might be wrong due to,
+    /// for example, some missing dependencies.
+    ///
+    /// `error` means that the server is not functional. For example,
+    /// there's a fatal build configuration problem.
+    health: "ok" | "warning" | "error",
+    /// Is there any pending background work which might change the status?
+    /// For example, are dependencies being downloaded?
+    quiescent: bool,
+    /// Explanatory message to show on hover.
+    message?: string,
 }
 ```
 
 This notification is sent from server to client.
-The client can use it to display persistent status to the user (in modline).
-For `needsReload` state, the client can provide a context-menu action to run `rust-analyzer/reloadWorkspace` request.
+The client can use it to display *persistent* status to the user (in modline).
+It is similar to the `showMessage`, but is intended for stares rather than point-in-time events.
+
 
 ## Syntax Tree
 

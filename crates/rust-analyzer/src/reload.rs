@@ -9,11 +9,10 @@ use vfs::{file_set::FileSetConfig, AbsPath, AbsPathBuf, ChangeKind};
 
 use crate::{
     config::{Config, FilesWatcher, LinkedProject},
-    global_state::{GlobalState, Status},
+    global_state::GlobalState,
     lsp_ext,
     main_loop::Task,
 };
-use lsp_ext::StatusParams;
 
 #[derive(Debug)]
 pub(crate) enum ProjectWorkspaceProgress {
@@ -30,6 +29,13 @@ pub(crate) enum BuildDataProgress {
 }
 
 impl GlobalState {
+    pub(crate) fn is_quiescent(&self) -> bool {
+        !(self.fetch_workspaces_queue.op_in_progress()
+            || self.fetch_build_data_queue.op_in_progress()
+            || self.vfs_progress_config_version < self.vfs_config_version
+            || self.vfs_progress_n_done < self.vfs_progress_n_total)
+    }
+
     pub(crate) fn update_configuration(&mut self, config: Config) {
         let _p = profile::span("GlobalState::update_configuration");
         let old_config = mem::replace(&mut self.config, Arc::new(config));
@@ -46,17 +52,13 @@ impl GlobalState {
         if !changes.iter().any(|(path, kind)| is_interesting(path, *kind)) {
             return;
         }
-        match self.status {
-            Status::Loading | Status::NeedsReload => return,
-            Status::Ready { .. } | Status::Invalid => (),
-        }
         log::info!(
-            "Reloading workspace because of the following changes: {}",
+            "Requesting workspace reload because of the following changes: {}",
             itertools::join(
                 changes
                     .iter()
                     .filter(|(path, kind)| is_interesting(path, *kind))
-                    .map(|(path, kind)| format!("{}/{:?}", path.display(), kind)),
+                    .map(|(path, kind)| format!("{}: {:?}", path.display(), kind)),
                 ", "
             )
         );
@@ -97,19 +99,31 @@ impl GlobalState {
             false
         }
     }
-    pub(crate) fn transition(&mut self, new_status: Status) {
-        self.status = new_status;
-        if self.config.status_notification() {
-            let lsp_status = match new_status {
-                Status::Loading => lsp_ext::Status::Loading,
-                Status::Ready { partial: true } => lsp_ext::Status::ReadyPartial,
-                Status::Ready { partial: false } => lsp_ext::Status::Ready,
-                Status::Invalid => lsp_ext::Status::Invalid,
-                Status::NeedsReload => lsp_ext::Status::NeedsReload,
-            };
-            self.send_notification::<lsp_ext::StatusNotification>(StatusParams {
-                status: lsp_status,
-            });
+    pub(crate) fn report_new_status_if_needed(&mut self) {
+        if !self.config.server_status_notification() {
+            return;
+        }
+
+        let mut status = lsp_ext::ServerStatusParams {
+            health: lsp_ext::Health::Ok,
+            quiescent: self.is_quiescent(),
+            message: None,
+        };
+        if !self.config.cargo_autoreload()
+            && self.is_quiescent()
+            && self.fetch_workspaces_queue.op_requested()
+        {
+            status.health = lsp_ext::Health::Warning;
+            status.message = Some("Workspace reload required".to_string())
+        }
+        if let Some(error) = self.loading_error() {
+            status.health = lsp_ext::Health::Error;
+            status.message = Some(format!("Workspace reload failed: {}", error))
+        }
+
+        if self.last_reported_status.as_ref() != Some(&status) {
+            self.last_reported_status = Some(status.clone());
+            self.send_notification::<lsp_ext::ServerStatusNotification>(status);
         }
     }
 
@@ -201,44 +215,27 @@ impl GlobalState {
 
     pub(crate) fn switch_workspaces(&mut self) {
         let _p = profile::span("GlobalState::switch_workspaces");
-        let workspaces = self.fetch_workspaces_queue.last_op_result();
-        log::info!("will switch workspaces: {:?}", workspaces);
+        log::info!("will switch workspaces");
 
-        let mut error_message = None;
-        let workspaces = workspaces
-            .iter()
-            .filter_map(|res| match res {
-                Ok(it) => Some(it.clone()),
-                Err(err) => {
-                    log::error!("failed to load workspace: {:#}", err);
-                    let message = error_message.get_or_insert_with(String::new);
-                    stdx::format_to!(
-                        message,
-                        "rust-analyzer failed to load workspace: {:#}\n",
-                        err
-                    );
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
-
-        let workspace_build_data = match self.fetch_build_data_queue.last_op_result() {
-            Some(Ok(it)) => Some(it.clone()),
-            None => None,
-            Some(Err(err)) => {
-                log::error!("failed to fetch build data: {:#}", err);
-                let message = error_message.get_or_insert_with(String::new);
-                stdx::format_to!(message, "rust-analyzer failed to fetch build data: {:#}\n", err);
-                None
-            }
-        };
-
-        if let Some(error_message) = error_message {
+        if let Some(error_message) = self.loading_error() {
+            log::error!("failed to switch workspaces: {}", error_message);
             self.show_message(lsp_types::MessageType::Error, error_message);
             if !self.workspaces.is_empty() {
                 return;
             }
         }
+
+        let workspaces = self
+            .fetch_workspaces_queue
+            .last_op_result()
+            .iter()
+            .filter_map(|res| res.as_ref().ok().cloned())
+            .collect::<Vec<_>>();
+
+        let workspace_build_data = match self.fetch_build_data_queue.last_op_result() {
+            Some(Ok(it)) => Some(it.clone()),
+            None | Some(Err(_)) => None,
+        };
 
         if *self.workspaces == workspaces && self.workspace_build_data == workspace_build_data {
             return;
@@ -344,6 +341,24 @@ impl GlobalState {
         self.process_changes();
         self.reload_flycheck();
         log::info!("did switch workspaces");
+    }
+
+    fn loading_error(&self) -> Option<String> {
+        let mut message = None;
+
+        for ws in self.fetch_workspaces_queue.last_op_result() {
+            if let Err(err) = ws {
+                let message = message.get_or_insert_with(String::new);
+                stdx::format_to!(message, "rust-analyzer failed to load workspace: {:#}\n", err);
+            }
+        }
+
+        if let Some(Err(err)) = self.fetch_build_data_queue.last_op_result() {
+            let message = message.get_or_insert_with(String::new);
+            stdx::format_to!(message, "rust-analyzer failed to fetch build data: {:#}\n", err);
+        }
+
+        message
     }
 
     fn reload_flycheck(&mut self) {

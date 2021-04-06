@@ -5,7 +5,7 @@ import * as ra from './lsp_ext';
 import { Config } from './config';
 import { createClient } from './client';
 import { isRustEditor, RustEditor } from './util';
-import { Status } from './lsp_ext';
+import { ServerStatusParams } from './lsp_ext';
 
 export class Ctx {
     private constructor(
@@ -36,7 +36,7 @@ export class Ctx {
 
         res.pushCleanup(client.start());
         await client.onReady();
-        client.onNotification(ra.status, (params) => res.setStatus(params.status));
+        client.onNotification(ra.serverStatus, (params) => res.setServerStatus(params));
         return res;
     }
 
@@ -66,39 +66,28 @@ export class Ctx {
         return this.extCtx.subscriptions;
     }
 
-    setStatus(status: Status) {
-        switch (status) {
-            case "loading":
-                this.statusBar.text = "$(sync~spin) rust-analyzer";
-                this.statusBar.tooltip = "Loading the project";
-                this.statusBar.command = undefined;
+    setServerStatus(status: ServerStatusParams) {
+        this.statusBar.tooltip = status.message ?? "Ready";
+        let icon = "";
+        switch (status.health) {
+            case "ok":
                 this.statusBar.color = undefined;
                 break;
-            case "readyPartial":
-                this.statusBar.text = "rust-analyzer";
-                this.statusBar.tooltip = "Ready (Partial)";
-                this.statusBar.command = undefined;
-                this.statusBar.color = undefined;
-                break;
-            case "ready":
-                this.statusBar.text = "rust-analyzer";
-                this.statusBar.tooltip = "Ready";
-                this.statusBar.command = undefined;
-                this.statusBar.color = undefined;
-                break;
-            case "invalid":
-                this.statusBar.text = "$(error) rust-analyzer";
-                this.statusBar.tooltip = "Failed to load the project";
-                this.statusBar.command = undefined;
-                this.statusBar.color = new vscode.ThemeColor("notificationsErrorIcon.foreground");
-                break;
-            case "needsReload":
-                this.statusBar.text = "$(warning) rust-analyzer";
-                this.statusBar.tooltip = "Click to reload";
+            case "warning":
+                this.statusBar.tooltip += "\nClick to reload."
                 this.statusBar.command = "rust-analyzer.reloadWorkspace";
                 this.statusBar.color = new vscode.ThemeColor("notificationsWarningIcon.foreground");
+                icon = "$(warning) ";
+                break;
+            case "error":
+                this.statusBar.tooltip += "\nClick to reload."
+                this.statusBar.command = "rust-analyzer.reloadWorkspace";
+                this.statusBar.color = new vscode.ThemeColor("notificationsErrorIcon.foreground");
+                icon = "$(error) ";
                 break;
         }
+        if (!status.quiescent) icon = "$(sync~spin) ";
+        this.statusBar.text = `${icon} rust-analyzer`;
     }
 
     pushCleanup(d: Disposable) {

@@ -159,7 +159,7 @@ class ExperimentalFeatures implements lc.StaticFeature {
         caps.snippetTextEdit = true;
         caps.codeActionGroup = true;
         caps.hoverActions = true;
-        caps.statusNotification = true;
+        caps.serverStatusNotification = true;
         capabilities.experimental = caps;
     }
     initialize(_capabilities: lc.ServerCapabilities<any>, _documentSelector: lc.DocumentSelector | undefined): void {

@@ -21,7 +21,7 @@ use crate::{
     dispatch::{NotificationDispatcher, RequestDispatcher},
     document::DocumentData,
     from_proto,
-    global_state::{file_id_to_url, url_to_file_id, GlobalState, Status},
+    global_state::{file_id_to_url, url_to_file_id, GlobalState},
     handlers, lsp_ext,
     lsp_utils::{apply_document_changes, is_canceled, notification_is, Progress},
     reload::{BuildDataProgress, ProjectWorkspaceProgress},
@@ -189,7 +189,7 @@ impl GlobalState {
             log::info!("task queue len: {}", task_queue_len);
         }
 
-        let mut new_status = self.status;
+        let was_quiescent = self.is_quiescent();
         match event {
             Event::Lsp(msg) => match msg {
                 lsp_server::Message::Request(req) => self.on_request(loop_start, req)?,
@@ -314,9 +314,12 @@ impl GlobalState {
                             }
                         }
                         vfs::loader::Message::Progress { n_total, n_done, config_version } => {
+                            always!(config_version <= self.vfs_config_version);
+
+                            self.vfs_progress_config_version = config_version;
                             self.vfs_progress_n_total = n_total;
                             self.vfs_progress_n_done = n_done;
-                            always!(config_version <= self.vfs_config_version);
+
                             let state = if n_done == 0 {
                                 Progress::Begin
                             } else if n_done < n_total {
@@ -406,18 +409,14 @@ impl GlobalState {
         }
 
         let state_changed = self.process_changes();
-        let prev_status = self.status;
-        if prev_status != new_status {
-            self.transition(new_status);
-        }
-        let is_ready = matches!(self.status, Status::Ready { .. });
-        if prev_status == Status::Loading && is_ready {
+
+        if self.is_quiescent() && !was_quiescent {
             for flycheck in &self.flycheck {
                 flycheck.update();
             }
         }
 
-        if is_ready && (state_changed || prev_status == Status::Loading) {
+        if self.is_quiescent() && (!was_quiescent || state_changed) {
             self.update_file_notifications_on_threadpool();
 
             // Refresh semantic tokens if the client supports it.
@@ -451,6 +450,8 @@ impl GlobalState {
         }
         self.fetch_build_data_if_needed();
 
+        self.report_new_status_if_needed();
+
         let loop_duration = loop_start.elapsed();
         if loop_duration > Duration::from_millis(100) {
             log::warn!("overly long loop turn: {:?}", loop_duration);
@@ -477,7 +478,8 @@ impl GlobalState {
             return Ok(());
         }
 
-        if self.status == Status::Loading && req.method != "shutdown" {
+        // Avoid flashing a bunch of unresolved references during initial load.
+        if self.workspaces.is_empty() && !self.is_quiescent() {
             self.respond(lsp_server::Response::new_err(
                 req.id,
                 // FIXME: i32 should impl From<ErrorCode> (from() guarantees lossless conversion)
