@@ -1780,6 +1780,13 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
     // if its return is used in an active way, therefore add this to
     // the list of users to analyze
     if (auto I = dyn_cast<Instruction>(a)) {
+      if (ConstantInstructions.count(I) && (I->getType()->isVoidTy() || ConstantValues.count(I))) {
+        if (EnzymePrintActivity) {
+          llvm::errs() << "Value found constant inst use:" << *val
+                       << " user " << *I << "\n";
+        }
+        continue;
+      }
       if (!I->mayWriteToMemory()) {
         if (TR.intType(1, I, /*errIfNotFound*/ false).isIntegral()) {
           continue;
@@ -1792,12 +1799,6 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
 
         for (auto u : I->users()) {
           todo.push_back(std::make_tuple(u, (Value *)I, NU));
-        }
-        continue;
-      } else if (isConstantInstruction(TR, I)) {
-        if (EnzymePrintActivity) {
-          llvm::errs() << "Value found constant inst use:" << *val
-                       << " user " << *I << "\n";
         }
         continue;
       }
