@@ -86,26 +86,13 @@ fn on_opening_brace_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdi
     // We expect a block expression enclosing exactly 1 preexisting expression. It can be parsed as
     // either the trailing expr or an ExprStmt.
     let offset = {
-        match block.tail_expr() {
-            Some(expr) => {
-                if block.statements().next().is_some() {
-                    return None;
-                }
-                expr.syntax().text_range().end()
-            }
-            None => {
-                if block.statements().count() != 1 {
-                    return None;
-                }
-
-                match block.statements().next()? {
-                    ast::Stmt::ExprStmt(it) => {
-                        // Use the expression span to place `}` before the `;`
-                        it.expr()?.syntax().text_range().end()
-                    }
-                    _ => return None,
-                }
-            }
+        match block.statements().next() {
+            Some(ast::Stmt::ExprStmt(it)) => {
+                // Use the expression span to place `}` before the `;`
+                it.expr()?.syntax().text_range().end()
+            },
+            None => block.tail_expr()?.syntax().text_range().end(),
+            _ => return None,
         }
     };
 
@@ -417,5 +404,33 @@ fn main() {
         type_char('{', r"fn f() { match () { _ => $0() } }", r"fn f() { match () { _ => {()} } }");
         type_char('{', r"fn f() { $0(); }", r"fn f() { {()}; }");
         type_char('{', r"fn f() { let x = $0(); }", r"fn f() { let x = {()}; }");
+        type_char(
+            '{',
+            r"
+            const S: () = $0();
+            fn f() {}
+            ",
+            r"
+            const S: () = {()};
+            fn f() {}
+            ",
+        );
+        type_char(
+            '{',
+            r"
+            fn f() {
+                match x {
+                    0 => $0(),
+                    1 => (),
+                }
+            }",
+            r"
+            fn f() {
+                match x {
+                    0 => {()},
+                    1 => (),
+                }
+            }",
+        );
     }
 }
