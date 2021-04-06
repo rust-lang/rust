@@ -187,15 +187,15 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<LintTrigger> {
         if method_path.ident.name == sym::cmp;
         then {
             let (closure_body, closure_arg, reverse) = if mirrored_exprs(
-                &cx,
-                &left_expr,
-                &left_ident,
-                &right_expr,
-                &right_ident
+                cx,
+                left_expr,
+                left_ident,
+                right_expr,
+                right_ident
             ) {
-                (Sugg::hir(cx, &left_expr, "..").to_string(), left_ident.name.to_string(), false)
-            } else if mirrored_exprs(&cx, &left_expr, &right_ident, &right_expr, &left_ident) {
-                (Sugg::hir(cx, &left_expr, "..").to_string(), right_ident.name.to_string(), true)
+                (Sugg::hir(cx, left_expr, "..").to_string(), left_ident.name.to_string(), false)
+            } else if mirrored_exprs(cx, left_expr, right_ident, right_expr, left_ident) {
+                (Sugg::hir(cx, left_expr, "..").to_string(), right_ident.name.to_string(), true)
             } else {
                 return None;
             };

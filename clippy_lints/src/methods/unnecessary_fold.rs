@@ -34,13 +34,13 @@ pub(super) fn check(
             let closure_expr = remove_blocks(&closure_body.value);
 
             // Check if the closure body is of the form `acc <op> some_expr(x)`
-            if let hir::ExprKind::Binary(ref bin_op, ref left_expr, ref right_expr) = closure_expr.kind;
+            if let hir::ExprKind::Binary(ref bin_op, left_expr, right_expr) = closure_expr.kind;
             if bin_op.node == op;
 
             // Extract the names of the two arguments to the closure
             if let [param_a, param_b] = closure_body.params;
-            if let PatKind::Binding(_, first_arg_id, ..) = strip_pat_refs(&param_a.pat).kind;
-            if let PatKind::Binding(_, second_arg_id, second_arg_ident, _) = strip_pat_refs(&param_b.pat).kind;
+            if let PatKind::Binding(_, first_arg_id, ..) = strip_pat_refs(param_a.pat).kind;
+            if let PatKind::Binding(_, second_arg_id, second_arg_ident, _) = strip_pat_refs(param_b.pat).kind;
 
             if path_to_local_id(left_expr, first_arg_id);
             if replacement_has_args || path_to_local_id(right_expr, second_arg_id);

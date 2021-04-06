@@ -44,7 +44,7 @@ impl LateLintPass<'_> for NonOctalUnixPermissions {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         match &expr.kind {
             ExprKind::MethodCall(path, _, [func, param], _) => {
-                let obj_ty = cx.typeck_results().expr_ty(&func).peel_refs();
+                let obj_ty = cx.typeck_results().expr_ty(func).peel_refs();
 
                 if_chain! {
                     if (path.ident.name == sym!(mode)
@@ -65,7 +65,7 @@ impl LateLintPass<'_> for NonOctalUnixPermissions {
                     }
                 }
             },
-            ExprKind::Call(ref func, [param]) => {
+            ExprKind::Call(func, [param]) => {
                 if_chain! {
                     if let ExprKind::Path(ref path) = func.kind;
                     if let Some(def_id) = cx.qpath_res(path, func.hir_id).opt_def_id();

@@ -152,7 +152,7 @@ impl<'tcx> Visitor<'tcx> for CcHelper {
             ExprKind::If(_, _, _) => {
                 self.cc += 1;
             },
-            ExprKind::Match(_, ref arms, _) => {
+            ExprKind::Match(_, arms, _) => {
                 if arms.len() > 1 {
                     self.cc += 1;
                 }

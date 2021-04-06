@@ -131,7 +131,7 @@ fn prepare_receiver_sugg<'a>(cx: &LateContext<'_>, mut expr: &'a Expr<'a>) -> Su
     let mut suggestion = Sugg::hir(cx, expr, "..");
 
     if let ExprKind::Unary(UnOp::Neg, inner_expr) = &expr.kind {
-        expr = &inner_expr;
+        expr = inner_expr;
     }
 
     if_chain! {
@@ -313,8 +313,8 @@ fn check_powi(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
                     Spanned {
                         node: BinOpKind::Add, ..
                     },
-                    ref lhs,
-                    ref rhs,
+                    lhs,
+                    rhs,
                 ) = parent.kind
                 {
                     let other_addend = if lhs.hir_id == expr.hir_id { rhs } else { lhs };
@@ -329,7 +329,7 @@ fn check_powi(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
                             "{}.mul_add({}, {})",
                             Sugg::hir(cx, &args[0], ".."),
                             Sugg::hir(cx, &args[0], ".."),
-                            Sugg::hir(cx, &other_addend, ".."),
+                            Sugg::hir(cx, other_addend, ".."),
                         ),
                         Applicability::MachineApplicable,
                     );
@@ -356,18 +356,18 @@ fn detect_hypot(cx: &LateContext<'_>, args: &[Expr<'_>]) -> Option<String> {
         Spanned {
             node: BinOpKind::Add, ..
         },
-        ref add_lhs,
-        ref add_rhs,
+        add_lhs,
+        add_rhs,
     ) = args[0].kind
     {
         // check if expression of the form x * x + y * y
         if_chain! {
-            if let ExprKind::Binary(Spanned { node: BinOpKind::Mul, .. }, ref lmul_lhs, ref lmul_rhs) = add_lhs.kind;
-            if let ExprKind::Binary(Spanned { node: BinOpKind::Mul, .. }, ref rmul_lhs, ref rmul_rhs) = add_rhs.kind;
+            if let ExprKind::Binary(Spanned { node: BinOpKind::Mul, .. }, lmul_lhs, lmul_rhs) = add_lhs.kind;
+            if let ExprKind::Binary(Spanned { node: BinOpKind::Mul, .. }, rmul_lhs, rmul_rhs) = add_rhs.kind;
             if eq_expr_value(cx, lmul_lhs, lmul_rhs);
             if eq_expr_value(cx, rmul_lhs, rmul_rhs);
             then {
-                return Some(format!("{}.hypot({})", Sugg::hir(cx, &lmul_lhs, ".."), Sugg::hir(cx, &rmul_lhs, "..")));
+                return Some(format!("{}.hypot({})", Sugg::hir(cx, lmul_lhs, ".."), Sugg::hir(cx, rmul_lhs, "..")));
             }
         }
 
@@ -376,13 +376,13 @@ fn detect_hypot(cx: &LateContext<'_>, args: &[Expr<'_>]) -> Option<String> {
             if let ExprKind::MethodCall(
                 PathSegment { ident: lmethod_name, .. },
                 ref _lspan,
-                ref largs,
+                largs,
                 _
             ) = add_lhs.kind;
             if let ExprKind::MethodCall(
                 PathSegment { ident: rmethod_name, .. },
                 ref _rspan,
-                ref rargs,
+                rargs,
                 _
             ) = add_rhs.kind;
             if lmethod_name.as_str() == "powi" && rmethod_name.as_str() == "powi";
@@ -416,11 +416,11 @@ fn check_hypot(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
 // and suggest usage of `x.exp_m1() - (y - 1)` instead
 fn check_expm1(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if_chain! {
-        if let ExprKind::Binary(Spanned { node: BinOpKind::Sub, .. }, ref lhs, ref rhs) = expr.kind;
+        if let ExprKind::Binary(Spanned { node: BinOpKind::Sub, .. }, lhs, rhs) = expr.kind;
         if cx.typeck_results().expr_ty(lhs).is_floating_point();
         if let Some((value, _)) = constant(cx, cx.typeck_results(), rhs);
         if F32(1.0) == value || F64(1.0) == value;
-        if let ExprKind::MethodCall(ref path, _, ref method_args, _) = lhs.kind;
+        if let ExprKind::MethodCall(path, _, method_args, _) = lhs.kind;
         if cx.typeck_results().expr_ty(&method_args[0]).is_floating_point();
         if path.ident.name.as_str() == "exp";
         then {
@@ -442,7 +442,7 @@ fn check_expm1(cx: &LateContext<'_>, expr: &Expr<'_>) {
 
 fn is_float_mul_expr<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<(&'a Expr<'a>, &'a Expr<'a>)> {
     if_chain! {
-        if let ExprKind::Binary(Spanned { node: BinOpKind::Mul, .. }, ref lhs, ref rhs) = &expr.kind;
+        if let ExprKind::Binary(Spanned { node: BinOpKind::Mul, .. }, lhs, rhs) = &expr.kind;
         if cx.typeck_results().expr_ty(lhs).is_floating_point();
         if cx.typeck_results().expr_ty(rhs).is_floating_point();
         then {
@@ -604,8 +604,8 @@ fn check_custom_abs(cx: &LateContext<'_>, expr: &Expr<'_>) {
 
 fn are_same_base_logs(cx: &LateContext<'_>, expr_a: &Expr<'_>, expr_b: &Expr<'_>) -> bool {
     if_chain! {
-        if let ExprKind::MethodCall(PathSegment { ident: method_name_a, .. }, _, ref args_a, _) = expr_a.kind;
-        if let ExprKind::MethodCall(PathSegment { ident: method_name_b, .. }, _, ref args_b, _) = expr_b.kind;
+        if let ExprKind::MethodCall(PathSegment { ident: method_name_a, .. }, _, args_a, _) = expr_a.kind;
+        if let ExprKind::MethodCall(PathSegment { ident: method_name_b, .. }, _, args_b, _) = expr_b.kind;
         then {
             return method_name_a.as_str() == method_name_b.as_str() &&
                 args_a.len() == args_b.len() &&
@@ -630,8 +630,8 @@ fn check_log_division(cx: &LateContext<'_>, expr: &Expr<'_>) {
             rhs,
         ) = &expr.kind;
         if are_same_base_logs(cx, lhs, rhs);
-        if let ExprKind::MethodCall(_, _, ref largs, _) = lhs.kind;
-        if let ExprKind::MethodCall(_, _, ref rargs, _) = rhs.kind;
+        if let ExprKind::MethodCall(_, _, largs, _) = lhs.kind;
+        if let ExprKind::MethodCall(_, _, rargs, _) = rhs.kind;
         then {
             span_lint_and_sugg(
                 cx,
@@ -675,7 +675,7 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
                     expr.span,
                     "conversion to degrees can be done more accurately",
                     "consider using",
-                    format!("{}.to_degrees()", Sugg::hir(cx, &mul_lhs, "..")),
+                    format!("{}.to_degrees()", Sugg::hir(cx, mul_lhs, "..")),
                     Applicability::MachineApplicable,
                 );
             } else if
@@ -688,7 +688,7 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
                     expr.span,
                     "conversion to radians can be done more accurately",
                     "consider using",
-                    format!("{}.to_radians()", Sugg::hir(cx, &mul_lhs, "..")),
+                    format!("{}.to_radians()", Sugg::hir(cx, mul_lhs, "..")),
                     Applicability::MachineApplicable,
                 );
             }
@@ -698,7 +698,7 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
 
 impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let ExprKind::MethodCall(ref path, _, args, _) = &expr.kind {
+        if let ExprKind::MethodCall(path, _, args, _) = &expr.kind {
             let recv_ty = cx.typeck_results().expr_ty(&args[0]);
 
             if recv_ty.is_floating_point() {

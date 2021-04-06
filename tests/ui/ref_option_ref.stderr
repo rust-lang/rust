@@ -9,7 +9,7 @@ LL | static REF_THRESHOLD: &Option<&i32> = &Some(&THRESHOLD);
 error: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to `Option<&T>`
   --> $DIR/ref_option_ref.rs:12:18
    |
-LL | const REF_CONST: &Option<&i32> = &Some(&CONST_THRESHOLD);
+LL | const REF_CONST: &Option<&i32> = &Some(CONST_THRESHOLD);
    |                  ^^^^^^^^^^^^^ help: try: `Option<&i32>`
 
 error: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to `Option<&T>`

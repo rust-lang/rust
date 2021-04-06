@@ -278,9 +278,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         match item.kind {
-            ItemKind::Static(ref ty, _, _) | ItemKind::Const(ref ty, _) => {
-                self.check_ty(cx, ty, CheckTyContext::default())
-            },
+            ItemKind::Static(ty, _, _) | ItemKind::Const(ty, _) => self.check_ty(cx, ty, CheckTyContext::default()),
             // functions, enums, structs, impls and traits are covered
             _ => (),
         }
@@ -288,7 +286,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
         match item.kind {
-            ImplItemKind::Const(ref ty, _) | ImplItemKind::TyAlias(ref ty) => self.check_ty(
+            ImplItemKind::Const(ty, _) | ImplItemKind::TyAlias(ty) => self.check_ty(
                 cx,
                 ty,
                 CheckTyContext {
@@ -302,21 +300,21 @@ impl<'tcx> LateLintPass<'tcx> for Types {
     }
 
     fn check_field_def(&mut self, cx: &LateContext<'_>, field: &hir::FieldDef<'_>) {
-        self.check_ty(cx, &field.ty, CheckTyContext::default());
+        self.check_ty(cx, field.ty, CheckTyContext::default());
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'_>, item: &TraitItem<'_>) {
         match item.kind {
-            TraitItemKind::Const(ref ty, _) | TraitItemKind::Type(_, Some(ref ty)) => {
+            TraitItemKind::Const(ty, _) | TraitItemKind::Type(_, Some(ty)) => {
                 self.check_ty(cx, ty, CheckTyContext::default())
             },
-            TraitItemKind::Fn(ref sig, _) => self.check_fn_decl(cx, &sig.decl, CheckTyContext::default()),
+            TraitItemKind::Fn(ref sig, _) => self.check_fn_decl(cx, sig.decl, CheckTyContext::default()),
             TraitItemKind::Type(..) => (),
         }
     }
 
     fn check_local(&mut self, cx: &LateContext<'_>, local: &Local<'_>) {
-        if let Some(ref ty) = local.ty {
+        if let Some(ty) = local.ty {
             self.check_ty(
                 cx,
                 ty,
@@ -342,7 +340,7 @@ impl Types {
             self.check_ty(cx, input, context);
         }
 
-        if let FnRetTy::Return(ref ty) = decl.output {
+        if let FnRetTy::Return(ty) = decl.output {
             self.check_ty(cx, ty, context);
         }
     }
@@ -383,7 +381,7 @@ impl Types {
                     }
                 }
                 match *qpath {
-                    QPath::Resolved(Some(ref ty), ref p) => {
+                    QPath::Resolved(Some(ty), p) => {
                         context.is_nested_call = true;
                         self.check_ty(cx, ty, context);
                         for ty in p.segments.iter().flat_map(|seg| {
@@ -398,7 +396,7 @@ impl Types {
                             self.check_ty(cx, ty, context);
                         }
                     },
-                    QPath::Resolved(None, ref p) => {
+                    QPath::Resolved(None, p) => {
                         context.is_nested_call = true;
                         for ty in p.segments.iter().flat_map(|seg| {
                             seg.args
@@ -412,10 +410,10 @@ impl Types {
                             self.check_ty(cx, ty, context);
                         }
                     },
-                    QPath::TypeRelative(ref ty, ref seg) => {
+                    QPath::TypeRelative(ty, seg) => {
                         context.is_nested_call = true;
                         self.check_ty(cx, ty, context);
-                        if let Some(ref params) = seg.args {
+                        if let Some(params) = seg.args {
                             for ty in params.args.iter().filter_map(|arg| match arg {
                                 GenericArg::Type(ty) => Some(ty),
                                 _ => None,
@@ -430,10 +428,10 @@ impl Types {
             TyKind::Rptr(ref lt, ref mut_ty) => {
                 context.is_nested_call = true;
                 if !borrowed_box::check(cx, hir_ty, lt, mut_ty) {
-                    self.check_ty(cx, &mut_ty.ty, context);
+                    self.check_ty(cx, mut_ty.ty, context);
                 }
             },
-            TyKind::Slice(ref ty) | TyKind::Array(ref ty, _) | TyKind::Ptr(MutTy { ref ty, .. }) => {
+            TyKind::Slice(ty) | TyKind::Array(ty, _) | TyKind::Ptr(MutTy { ty, .. }) => {
                 context.is_nested_call = true;
                 self.check_ty(cx, ty, context)
             },

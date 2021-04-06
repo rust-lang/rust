@@ -208,7 +208,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                             if is_type_diagnostic_item(cx, ty, sym::vec_type);
                             if let Some(clone_spans) =
                                 get_spans(cx, Some(body.id()), idx, &[("clone", ".to_owned()")]);
-                            if let TyKind::Path(QPath::Resolved(_, ref path)) = input.kind;
+                            if let TyKind::Path(QPath::Resolved(_, path)) = input.kind;
                             if let Some(elem_ty) = path.segments.iter()
                                 .find(|seg| seg.ident.name == sym::Vec)
                                 .and_then(|ps| ps.args.as_ref())

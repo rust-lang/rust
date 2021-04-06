@@ -207,7 +207,7 @@ enum ImplicitHasherType<'tcx> {
 impl<'tcx> ImplicitHasherType<'tcx> {
     /// Checks that `ty` is a target type without a `BuildHasher`.
     fn new(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'_>) -> Option<Self> {
-        if let TyKind::Path(QPath::Resolved(None, ref path)) = hir_ty.kind {
+        if let TyKind::Path(QPath::Resolved(None, path)) = hir_ty.kind {
             let params: Vec<_> = path
                 .segments
                 .last()
@@ -330,8 +330,8 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 't
 
     fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
         if_chain! {
-            if let ExprKind::Call(ref fun, ref args) = e.kind;
-            if let ExprKind::Path(QPath::TypeRelative(ref ty, ref method)) = fun.kind;
+            if let ExprKind::Call(fun, args) = e.kind;
+            if let ExprKind::Path(QPath::TypeRelative(ty, method)) = fun.kind;
             if let TyKind::Path(QPath::Resolved(None, ty_path)) = ty.kind;
             then {
                 if !TyS::same_type(self.target.ty(), self.maybe_typeck_results.unwrap().expr_ty(e)) {

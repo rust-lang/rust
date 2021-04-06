@@ -353,12 +353,12 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
             return;
         }
 
-        if let hir::ItemKind::Static(ref ty, Mutability::Not, body_id) = item.kind {
+        if let hir::ItemKind::Static(ty, Mutability::Not, body_id) = item.kind {
             if is_lint_ref_type(cx, ty) {
                 let expr = &cx.tcx.hir().body(body_id).value;
                 if_chain! {
-                    if let ExprKind::AddrOf(_, _, ref inner_exp) = expr.kind;
-                    if let ExprKind::Struct(_, ref fields, _) = inner_exp.kind;
+                    if let ExprKind::AddrOf(_, _, inner_exp) = expr.kind;
+                    if let ExprKind::Struct(_, fields, _) = inner_exp.kind;
                     let field = fields
                         .iter()
                         .find(|f| f.ident.as_str() == "desc")
@@ -385,7 +385,7 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
         {
             if let hir::ItemKind::Impl(hir::Impl {
                 of_trait: None,
-                items: ref impl_item_refs,
+                items: impl_item_refs,
                 ..
             }) = item.kind
             {
@@ -437,7 +437,7 @@ fn is_lint_ref_type<'tcx>(cx: &LateContext<'tcx>, ty: &Ty<'_>) -> bool {
     if let TyKind::Rptr(
         _,
         MutTy {
-            ty: ref inner,
+            ty: inner,
             mutbl: Mutability::Not,
         },
     ) = ty.kind
@@ -498,7 +498,7 @@ impl<'tcx> LateLintPass<'tcx> for CompilerLintFunctions {
         }
 
         if_chain! {
-            if let ExprKind::MethodCall(ref path, _, ref args, _) = expr.kind;
+            if let ExprKind::MethodCall(path, _, args, _) = expr.kind;
             let fn_name = path.ident;
             if let Some(sugg) = self.map.get(&*fn_name.as_str());
             let ty = cx.typeck_results().expr_ty(&args[0]).peel_refs();
@@ -577,7 +577,7 @@ impl<'tcx> LateLintPass<'tcx> for CollapsibleCalls {
         }
 
         if_chain! {
-            if let ExprKind::Call(ref func, ref and_then_args) = expr.kind;
+            if let ExprKind::Call(func, and_then_args) = expr.kind;
             if let ExprKind::Path(ref path) = func.kind;
             if match_qpath(path, &["span_lint_and_then"]);
             if and_then_args.len() == 5;
@@ -587,7 +587,7 @@ impl<'tcx> LateLintPass<'tcx> for CollapsibleCalls {
             let stmts = &block.stmts;
             if stmts.len() == 1 && block.expr.is_none();
             if let StmtKind::Semi(only_expr) = &stmts[0].kind;
-            if let ExprKind::MethodCall(ref ps, _, ref span_call_args, _) = &only_expr.kind;
+            if let ExprKind::MethodCall(ps, _, span_call_args, _) = &only_expr.kind;
             then {
                 let and_then_snippets = get_and_then_snippets(cx, and_then_args);
                 let mut sle = SpanlessEq::new(cx).deny_side_effects();
@@ -762,7 +762,7 @@ impl<'tcx> LateLintPass<'tcx> for MatchTypeOnDiagItem {
             // Check if this is a call to utils::match_type()
             if let ExprKind::Call(fn_path, [context, ty, ty_path]) = expr.kind;
             if let ExprKind::Path(fn_qpath) = &fn_path.kind;
-            if match_qpath(&fn_qpath, &["utils", "match_type"]);
+            if match_qpath(fn_qpath, &["utils", "match_type"]);
             // Extract the path to the matched type
             if let Some(segments) = path_to_matched_type(cx, ty_path);
             let segments: Vec<&str> = segments.iter().map(|sym| &**sym).collect();

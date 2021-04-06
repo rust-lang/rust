@@ -46,11 +46,11 @@ impl LateLintPass<'_> for PtrEq {
             return;
         }
 
-        if let ExprKind::Binary(ref op, ref left, ref right) = expr.kind {
+        if let ExprKind::Binary(ref op, left, right) = expr.kind {
             if BinOpKind::Eq == op.node {
                 let (left, right) = match (expr_as_cast_to_usize(cx, left), expr_as_cast_to_usize(cx, right)) {
                     (Some(lhs), Some(rhs)) => (lhs, rhs),
-                    _ => (&**left, &**right),
+                    _ => (left, right),
                 };
 
                 if_chain! {
@@ -79,7 +79,7 @@ impl LateLintPass<'_> for PtrEq {
 // E.g., `foo as *const _ as usize` returns `foo as *const _`.
 fn expr_as_cast_to_usize<'tcx>(cx: &LateContext<'tcx>, cast_expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
     if cx.typeck_results().expr_ty(cast_expr) == cx.tcx.types.usize {
-        if let ExprKind::Cast(ref expr, _) = cast_expr.kind {
+        if let ExprKind::Cast(expr, _) = cast_expr.kind {
             return Some(expr);
         }
     }
@@ -90,7 +90,7 @@ fn expr_as_cast_to_usize<'tcx>(cx: &LateContext<'tcx>, cast_expr: &'tcx Expr<'_>
 // E.g., `foo as *const _` returns `foo`.
 fn expr_as_cast_to_raw_pointer<'tcx>(cx: &LateContext<'tcx>, cast_expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
     if cx.typeck_results().expr_ty(cast_expr).is_unsafe_ptr() {
-        if let ExprKind::Cast(ref expr, _) = cast_expr.kind {
+        if let ExprKind::Cast(expr, _) = cast_expr.kind {
             return Some(expr);
         }
     }

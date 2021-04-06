@@ -15,12 +15,12 @@ pub(super) fn check<'tcx>(
     expr: &'tcx Expr<'_>,
 ) {
     if_chain! {
-        if let ExprKind::AddrOf(BorrowKind::Ref, _, ref arg_expr) = arg.kind;
+        if let ExprKind::AddrOf(BorrowKind::Ref, _, arg_expr) = arg.kind;
         if let PatKind::Binding(.., target, _) = pat.kind;
         if let ExprKind::Array([arg_expression]) = arg_expr.kind;
         if let ExprKind::Path(ref list_item) = arg_expression.kind;
         if let Some(list_item_name) = single_segment_path(list_item).map(|ps| ps.ident.name);
-        if let ExprKind::Block(ref block, _) = body.kind;
+        if let ExprKind::Block(block, _) = body.kind;
         if !block.stmts.is_empty();
 
         then {

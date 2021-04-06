@@ -25,12 +25,12 @@ pub(super) fn check_item(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         let is_public = cx.access_levels.is_exported(item.hir_id());
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
         if let Some(attr) = attr {
-            check_needless_must_use(cx, &sig.decl, item.hir_id(), item.span, fn_header_span, attr);
+            check_needless_must_use(cx, sig.decl, item.hir_id(), item.span, fn_header_span, attr);
             return;
         } else if is_public && !is_proc_macro(cx.sess(), attrs) && attr_by_name(attrs, "no_mangle").is_none() {
             check_must_use_candidate(
                 cx,
-                &sig.decl,
+                sig.decl,
                 cx.tcx.hir().body(*body_id),
                 item.span,
                 item.hir_id(),
@@ -48,11 +48,11 @@ pub(super) fn check_impl_item(cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<
         let attrs = cx.tcx.hir().attrs(item.hir_id());
         let attr = must_use_attr(attrs);
         if let Some(attr) = attr {
-            check_needless_must_use(cx, &sig.decl, item.hir_id(), item.span, fn_header_span, attr);
+            check_needless_must_use(cx, sig.decl, item.hir_id(), item.span, fn_header_span, attr);
         } else if is_public && !is_proc_macro(cx.sess(), attrs) && trait_ref_of_method(cx, item.hir_id()).is_none() {
             check_must_use_candidate(
                 cx,
-                &sig.decl,
+                sig.decl,
                 cx.tcx.hir().body(*body_id),
                 item.span,
                 item.hir_id(),
@@ -71,13 +71,13 @@ pub(super) fn check_trait_item(cx: &LateContext<'tcx>, item: &'tcx hir::TraitIte
         let attrs = cx.tcx.hir().attrs(item.hir_id());
         let attr = must_use_attr(attrs);
         if let Some(attr) = attr {
-            check_needless_must_use(cx, &sig.decl, item.hir_id(), item.span, fn_header_span, attr);
+            check_needless_must_use(cx, sig.decl, item.hir_id(), item.span, fn_header_span, attr);
         } else if let hir::TraitFn::Provided(eid) = *eid {
             let body = cx.tcx.hir().body(eid);
             if attr.is_none() && is_public && !is_proc_macro(cx.sess(), attrs) {
                 check_must_use_candidate(
                     cx,
-                    &sig.decl,
+                    sig.decl,
                     body,
                     item.span,
                     item.hir_id(),
@@ -160,8 +160,8 @@ fn check_must_use_candidate<'tcx>(
 fn returns_unit(decl: &hir::FnDecl<'_>) -> bool {
     match decl.output {
         hir::FnRetTy::DefaultReturn(_) => true,
-        hir::FnRetTy::Return(ref ty) => match ty.kind {
-            hir::TyKind::Tup(ref tys) => tys.is_empty(),
+        hir::FnRetTy::Return(ty) => match ty.kind {
+            hir::TyKind::Tup(tys) => tys.is_empty(),
             hir::TyKind::Never => true,
             _ => false,
         },
@@ -170,7 +170,7 @@ fn returns_unit(decl: &hir::FnDecl<'_>) -> bool {
 
 fn has_mutable_arg(cx: &LateContext<'_>, body: &hir::Body<'_>) -> bool {
     let mut tys = DefIdSet::default();
-    body.params.iter().any(|param| is_mutable_pat(cx, &param.pat, &mut tys))
+    body.params.iter().any(|param| is_mutable_pat(cx, param.pat, &mut tys))
 }
 
 fn is_mutable_pat(cx: &LateContext<'_>, pat: &hir::Pat<'_>, tys: &mut DefIdSet) -> bool {
@@ -178,7 +178,7 @@ fn is_mutable_pat(cx: &LateContext<'_>, pat: &hir::Pat<'_>, tys: &mut DefIdSet) 
         return false; // ignore `_` patterns
     }
     if cx.tcx.has_typeck_results(pat.hir_id.owner.to_def_id()) {
-        is_mutable_ty(cx, &cx.tcx.typeck(pat.hir_id.owner).pat_ty(pat), pat.span, tys)
+        is_mutable_ty(cx, cx.tcx.typeck(pat.hir_id.owner).pat_ty(pat), pat.span, tys)
     } else {
         false
     }
@@ -190,12 +190,12 @@ fn is_mutable_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span, tys: &m
     match *ty.kind() {
         // primitive types are never mutable
         ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => false,
-        ty::Adt(ref adt, ref substs) => {
+        ty::Adt(adt, substs) => {
             tys.insert(adt.did) && !ty.is_freeze(cx.tcx.at(span), cx.param_env)
                 || KNOWN_WRAPPER_TYS.iter().any(|path| match_def_path(cx, adt.did, path))
                     && substs.types().any(|ty| is_mutable_ty(cx, ty, span, tys))
         },
-        ty::Tuple(ref substs) => substs.types().any(|ty| is_mutable_ty(cx, ty, span, tys)),
+        ty::Tuple(substs) => substs.types().any(|ty| is_mutable_ty(cx, ty, span, tys)),
         ty::Array(ty, _) | ty::Slice(ty) => is_mutable_ty(cx, ty, span, tys),
         ty::RawPtr(ty::TypeAndMut { ty, mutbl }) | ty::Ref(_, ty, mutbl) => {
             mutbl == hir::Mutability::Mut || is_mutable_ty(cx, ty, span, tys)
@@ -239,7 +239,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
                     tys.clear();
                 }
             },
-            Assign(ref target, ..) | AssignOp(_, ref target, _) | AddrOf(_, hir::Mutability::Mut, ref target) => {
+            Assign(target, ..) | AssignOp(_, target, _) | AddrOf(_, hir::Mutability::Mut, target) => {
                 self.mutates_static |= is_mutated_static(target)
             },
             _ => {},
@@ -257,7 +257,7 @@ fn is_mutated_static(e: &hir::Expr<'_>) -> bool {
     match e.kind {
         Path(QPath::Resolved(_, path)) => !matches!(path.res, Res::Local(_)),
         Path(_) => true,
-        Field(ref inner, _) | Index(ref inner, _) => is_mutated_static(inner),
+        Field(inner, _) | Index(inner, _) => is_mutated_static(inner),
         _ => false,
     }
 }

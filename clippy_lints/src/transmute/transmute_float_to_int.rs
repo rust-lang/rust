@@ -30,7 +30,7 @@ pub(super) fn check<'tcx>(
                     let mut arg = sugg::Sugg::hir(cx, expr, "..");
 
                     if let ExprKind::Unary(UnOp::Neg, inner_expr) = &expr.kind {
-                        expr = &inner_expr;
+                        expr = inner_expr;
                     }
 
                     if_chain! {

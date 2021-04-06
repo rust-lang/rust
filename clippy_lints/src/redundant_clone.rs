@@ -94,7 +94,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
             .into_results_cursor(mir);
         let mut possible_borrower = {
             let mut vis = PossibleBorrowerVisitor::new(cx, mir);
-            vis.visit_body(&mir);
+            vis.visit_body(mir);
             vis.into_map(cx, maybe_storage_live_result)
         };
 
@@ -126,7 +126,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                 continue;
             }
 
-            if let ty::Adt(ref def, _) = arg_ty.kind() {
+            if let ty::Adt(def, _) = arg_ty.kind() {
                 if match_def_path(cx, def.did, &paths::MEM_MANUALLY_DROP) {
                     continue;
                 }
@@ -206,7 +206,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                     clone_consumed_or_mutated: true,
                 }
             } else {
-                let clone_usage = visit_clone_usage(local, ret_local, &mir, bb);
+                let clone_usage = visit_clone_usage(local, ret_local, mir, bb);
                 if clone_usage.cloned_used && clone_usage.clone_consumed_or_mutated {
                     // cloned value is used, and the clone is modified or moved
                     continue;
@@ -426,7 +426,7 @@ fn visit_clone_usage(cloned: mir::Local, clone: mir::Local, mir: &mir::Body<'_>,
         // TODO: Actually check for mutation of non-temporaries.
         clone_consumed_or_mutated: mir.local_kind(clone) != mir::LocalKind::Temp,
     };
-    traversal::ReversePostorder::new(&mir, bb)
+    traversal::ReversePostorder::new(mir, bb)
         .skip(1)
         .fold(init, |usage, (tbb, tdata)| {
             // Short-circuit
@@ -588,7 +588,7 @@ impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'tcx> {
             // If the call returns something with lifetimes,
             // let's conservatively assume the returned value contains lifetime of all the arguments.
             // For example, given `let y: Foo<'a> = foo(x)`, `y` is considered to be a possible borrower of `x`.
-            if ContainsRegion.visit_ty(&self.body.local_decls[*dest].ty).is_continue() {
+            if ContainsRegion.visit_ty(self.body.local_decls[*dest].ty).is_continue() {
                 return;
             }
 

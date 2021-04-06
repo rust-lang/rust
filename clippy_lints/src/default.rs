@@ -77,7 +77,7 @@ impl LateLintPass<'_> for Default {
         if_chain! {
             // Avoid cases already linted by `field_reassign_with_default`
             if !self.reassigned_linted.contains(&expr.span);
-            if let ExprKind::Call(ref path, ..) = expr.kind;
+            if let ExprKind::Call(path, ..) = expr.kind;
             if !any_parent_is_automatically_derived(cx.tcx, expr.hir_id);
             if let ExprKind::Path(ref qpath) = path.kind;
             if let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id();
@@ -246,7 +246,7 @@ impl LateLintPass<'_> for Default {
 /// Checks if the given expression is the `default` method belonging to the `Default` trait.
 fn is_expr_default<'tcx>(expr: &'tcx Expr<'tcx>, cx: &LateContext<'tcx>) -> bool {
     if_chain! {
-        if let ExprKind::Call(ref fn_expr, _) = &expr.kind;
+        if let ExprKind::Call(fn_expr, _) = &expr.kind;
         if let ExprKind::Path(qpath) = &fn_expr.kind;
         if let Res::Def(_, def_id) = cx.qpath_res(qpath, fn_expr.hir_id);
         then {
@@ -262,11 +262,11 @@ fn is_expr_default<'tcx>(expr: &'tcx Expr<'tcx>, cx: &LateContext<'tcx>) -> bool
 fn field_reassigned_by_stmt<'tcx>(this: &Stmt<'tcx>, binding_name: Symbol) -> Option<(Ident, &'tcx Expr<'tcx>)> {
     if_chain! {
         // only take assignments
-        if let StmtKind::Semi(ref later_expr) = this.kind;
-        if let ExprKind::Assign(ref assign_lhs, ref assign_rhs, _) = later_expr.kind;
+        if let StmtKind::Semi(later_expr) = this.kind;
+        if let ExprKind::Assign(assign_lhs, assign_rhs, _) = later_expr.kind;
         // only take assignments to fields where the left-hand side field is a field of
         // the same binding as the previous statement
-        if let ExprKind::Field(ref binding, field_ident) = assign_lhs.kind;
+        if let ExprKind::Field(binding, field_ident) = assign_lhs.kind;
         if let ExprKind::Path(QPath::Resolved(_, path)) = binding.kind;
         if let Some(second_binding_name) = path.segments.last();
         if second_binding_name.ident.name == binding_name;

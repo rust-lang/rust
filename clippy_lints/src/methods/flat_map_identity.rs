@@ -35,7 +35,7 @@ pub(super) fn check<'tcx>(
             let body = cx.tcx.hir().body(*body_id);
 
             if let hir::PatKind::Binding(_, _, binding_ident, _) = body.params[0].pat.kind;
-            if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = body.value.kind;
+            if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = body.value.kind;
 
             if path.segments.len() == 1;
             if path.segments[0].ident.name == binding_ident.name;

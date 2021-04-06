@@ -66,9 +66,9 @@ declare_lint_pass!(OptionIfLetElse => [OPTION_IF_LET_ELSE]);
 
 /// Returns true iff the given expression is the result of calling `Result::ok`
 fn is_result_ok(cx: &LateContext<'_>, expr: &'_ Expr<'_>) -> bool {
-    if let ExprKind::MethodCall(ref path, _, &[ref receiver], _) = &expr.kind {
+    if let ExprKind::MethodCall(path, _, &[ref receiver], _) = &expr.kind {
         path.ident.name.as_str() == "ok"
-            && is_type_diagnostic_item(cx, &cx.typeck_results().expr_ty(&receiver), sym::result_type)
+            && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(receiver), sym::result_type)
     } else {
         false
     }
@@ -97,9 +97,9 @@ fn extract_body_from_arm<'a>(arm: &'a Arm<'a>) -> Option<&'a Expr<'a>> {
     ) = &arm.body.kind
     {
         if let [] = statements {
-            Some(&expr)
+            Some(expr)
         } else {
-            Some(&arm.body)
+            Some(arm.body)
         }
     } else {
         None

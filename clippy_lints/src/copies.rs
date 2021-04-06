@@ -160,7 +160,7 @@ impl<'tcx> LateLintPass<'tcx> for CopyAndPaste {
             if let ExprKind::If(_, _, _) = expr.kind {
                 // skip ifs directly in else, it will be checked in the parent if
                 if let Some(&Expr {
-                    kind: ExprKind::If(_, _, Some(ref else_expr)),
+                    kind: ExprKind::If(_, _, Some(else_expr)),
                     ..
                 }) = get_parent_expr(cx, expr)
                 {
@@ -247,7 +247,7 @@ fn lint_same_then_else<'tcx>(
 
             for value in &end_walker.uses {
                 // Well we can't move this and all prev statements. So reset
-                if block_defs.contains(&value) {
+                if block_defs.contains(value) {
                     moved_start = Some(index + 1);
                     end_walker.defs.drain().for_each(|x| {
                         block_defs.insert(x);
@@ -555,7 +555,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UsedValueFinderVisitor<'a, 'tcx> {
     }
 
     fn visit_qpath(&mut self, qpath: &'tcx rustc_hir::QPath<'tcx>, id: HirId, _span: rustc_span::Span) {
-        if let rustc_hir::QPath::Resolved(_, ref path) = *qpath {
+        if let rustc_hir::QPath::Resolved(_, path) = *qpath {
             if path.segments.len() == 1 {
                 if let rustc_hir::def::Res::Local(var) = self.cx.qpath_res(qpath, id) {
                     self.uses.insert(var);

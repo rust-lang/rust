@@ -161,7 +161,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SameItemPushVisitor<'a, 'tcx> {
         if vec_push_option.is_none() {
             // Current statement is not a push so visit inside
             match &s.kind {
-                StmtKind::Expr(expr) | StmtKind::Semi(expr) => self.visit_expr(&expr),
+                StmtKind::Expr(expr) | StmtKind::Semi(expr) => self.visit_expr(expr),
                 _ => {},
             }
         } else {

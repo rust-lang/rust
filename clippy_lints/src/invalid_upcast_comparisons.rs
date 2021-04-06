@@ -86,7 +86,7 @@ impl Ord for FullInt {
 }
 
 fn numeric_cast_precast_bounds<'a>(cx: &LateContext<'_>, expr: &'a Expr<'_>) -> Option<(FullInt, FullInt)> {
-    if let ExprKind::Cast(ref cast_exp, _) = expr.kind {
+    if let ExprKind::Cast(cast_exp, _) = expr.kind {
         let pre_cast_ty = cx.typeck_results().expr_ty(cast_exp);
         let cast_ty = cx.typeck_results().expr_ty(expr);
         // if it's a cast from i32 to u32 wrapping will invalidate all these checks
@@ -131,7 +131,7 @@ fn node_as_const_fullint<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> 
 }
 
 fn err_upcast_comparison(cx: &LateContext<'_>, span: Span, expr: &Expr<'_>, always: bool) {
-    if let ExprKind::Cast(ref cast_val, _) = expr.kind {
+    if let ExprKind::Cast(cast_val, _) = expr.kind {
         span_lint(
             cx,
             INVALID_UPCAST_COMPARISONS,
@@ -203,7 +203,7 @@ fn upcast_comparison_bounds_err<'tcx>(
 
 impl<'tcx> LateLintPass<'tcx> for InvalidUpcastComparisons {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let ExprKind::Binary(ref cmp, ref lhs, ref rhs) = expr.kind {
+        if let ExprKind::Binary(ref cmp, lhs, rhs) = expr.kind {
             let normalized = comparisons::normalize_comparison(cmp.node, lhs, rhs);
             let (rel, normalized_lhs, normalized_rhs) = if let Some(val) = normalized {
                 val
