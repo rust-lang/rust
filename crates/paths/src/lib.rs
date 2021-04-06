@@ -1,6 +1,7 @@
 //! Thin wrappers around `std::path`, distinguishing between absolute and
 //! relative paths.
 use std::{
+    borrow::Borrow,
     convert::{TryFrom, TryInto},
     ops,
     path::{Component, Path, PathBuf},
@@ -31,6 +32,12 @@ impl AsRef<Path> for AbsPathBuf {
 
 impl AsRef<AbsPath> for AbsPathBuf {
     fn as_ref(&self) -> &AbsPath {
+        self.as_path()
+    }
+}
+
+impl Borrow<AbsPath> for AbsPathBuf {
+    fn borrow(&self) -> &AbsPath {
         self.as_path()
     }
 }
