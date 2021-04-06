@@ -194,8 +194,9 @@ impl f64 {
     /// assert!(f64::NAN.copysign(1.0).is_nan());
     /// ```
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[stable(feature = "copysign", since = "1.35.0")]
     #[inline]
+    #[stable(feature = "copysign", since = "1.35.0")]
+    #[doc(alias = "copy_sign")]
     pub fn copysign(self, sign: f64) -> f64 {
         unsafe { intrinsics::copysignf64(self, sign) }
     }

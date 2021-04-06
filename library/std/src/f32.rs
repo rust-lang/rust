@@ -196,6 +196,7 @@ impl f32 {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[inline]
     #[stable(feature = "copysign", since = "1.35.0")]
+    #[doc(alias = "copy_sign")]
     pub fn copysign(self, sign: f32) -> f32 {
         unsafe { intrinsics::copysignf32(self, sign) }
     }
