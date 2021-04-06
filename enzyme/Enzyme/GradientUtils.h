@@ -834,13 +834,11 @@ public:
     fictiousPHIs.clear();
   }
 
-  std::map<llvm::Value *, bool> internal_isConstantValue;
-  std::map<const llvm::Instruction *, bool> internal_isConstantInstruction;
   TypeResults *my_TR;
   void forceActiveDetection(TypeResults &TR) {
     my_TR = &TR;
     for (auto &Arg : oldFunc->args()) {
-      internal_isConstantValue[&Arg] = ATA->isConstantValue(TR, &Arg);
+      ATA->isConstantValue(TR, &Arg);
     }
 
     for (BasicBlock &BB : *oldFunc) {
@@ -848,10 +846,18 @@ public:
         bool const_inst = ATA->isConstantInstruction(TR, &I);
         bool const_value = ATA->isConstantValue(TR, &I);
 
-        internal_isConstantValue[&I] = const_value;
-        internal_isConstantInstruction[&I] = const_inst;
-
         if (EnzymePrintActivity)
+          llvm::errs() << I << " cv=" << const_value << " ci=" << const_inst
+                       << "\n";
+      }
+    }
+
+    for (BasicBlock &BB : *oldFunc) {
+      for (Instruction &I : BB) {
+        bool const_inst = ATA->isConstantInstruction(TR, &I);
+        bool const_value = ATA->isConstantValue(TR, &I);
+
+        //if (EnzymePrintActivity)
           llvm::errs() << I << " cv=" << const_value << " ci=" << const_inst
                        << "\n";
       }
@@ -861,16 +867,12 @@ public:
   bool isConstantValue(Value *val) const {
     if (auto inst = dyn_cast<Instruction>(val)) {
       assert(inst->getParent()->getParent() == oldFunc);
-      assert(internal_isConstantValue.find(inst) !=
-             internal_isConstantValue.end());
-      return internal_isConstantValue.find(inst)->second;
+      return ATA->isConstantValue(*my_TR, val);
     }
 
     if (auto arg = dyn_cast<Argument>(val)) {
       assert(arg->getParent() == oldFunc);
-      assert(internal_isConstantValue.find(arg) !=
-             internal_isConstantValue.end());
-      return internal_isConstantValue.find(arg)->second;
+      return ATA->isConstantValue(*my_TR, val);
     }
 
     //! Functions must be false so we can replace function with augmentation,
@@ -912,18 +914,7 @@ public:
 
   bool isConstantInstruction(const Instruction *inst) const {
     assert(inst->getParent()->getParent() == oldFunc);
-    if (internal_isConstantInstruction.find(inst) ==
-        internal_isConstantInstruction.end()) {
-      llvm::errs() << *oldFunc << "\n";
-      for (auto &pair : internal_isConstantInstruction) {
-        llvm::errs() << " constantinst[" << *pair.first << "] = " << pair.second
-                     << "\n";
-      }
-      llvm::errs() << "inst: " << *inst << "\n";
-    }
-    assert(internal_isConstantInstruction.find(inst) !=
-           internal_isConstantInstruction.end());
-    return internal_isConstantInstruction.find(inst)->second;
+    return ATA->isConstantInstruction(*my_TR, const_cast<Instruction*>(inst));
   }
 
   bool getContext(llvm::BasicBlock *BB, LoopContext &lc) {

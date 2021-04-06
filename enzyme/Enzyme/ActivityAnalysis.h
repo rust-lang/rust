@@ -106,6 +106,14 @@ public:
   bool isConstantValue(TypeResults &TR, llvm::Value *val);
 
 private:
+  std::map<llvm::Instruction*, std::set<llvm::Value*>> ReEvaluateValueIfInactiveInst;
+  std::map<llvm::Value*, std::set<llvm::Value*>> ReEvaluateValueIfInactiveValue;
+
+  std::map<llvm::Value*, std::set<llvm::Instruction*>> ReEvaluateInstIfInactiveValue;
+
+  void InsertConstantInstruction(TypeResults &TR, llvm::Instruction *I);
+  void InsertConstantValue(TypeResults &TR, llvm::Value *V);
+
   /// Create a new analyzer starting from an existing Analyzer
   /// This is used to perform inductive assumptions
   ActivityAnalyzer(ActivityAnalyzer &Other, uint8_t directions)
@@ -120,23 +128,30 @@ private:
   }
 
   /// Import known constants from an existing analyzer
-  void insertConstantsFrom(ActivityAnalyzer &Hypothesis) {
-    ConstantInstructions.insert(Hypothesis.ConstantInstructions.begin(),
-                                Hypothesis.ConstantInstructions.end());
-    ConstantValues.insert(Hypothesis.ConstantValues.begin(),
-                          Hypothesis.ConstantValues.end());
+  void insertConstantsFrom(TypeResults &TR, ActivityAnalyzer &Hypothesis) {
+    for (auto I : Hypothesis.ConstantInstructions) {
+      InsertConstantInstruction(TR, I);
+    }
+    for (auto V : Hypothesis.ConstantValues) {
+      InsertConstantValue(TR, V);
+    }
   }
 
   /// Import known data from an existing analyzer
-  void insertAllFrom(ActivityAnalyzer &Hypothesis) {
-    ConstantInstructions.insert(Hypothesis.ConstantInstructions.begin(),
-                                Hypothesis.ConstantInstructions.end());
-    ConstantValues.insert(Hypothesis.ConstantValues.begin(),
-                          Hypothesis.ConstantValues.end());
-    ActiveInstructions.insert(Hypothesis.ActiveInstructions.begin(),
-                              Hypothesis.ActiveInstructions.end());
-    ActiveValues.insert(Hypothesis.ActiveValues.begin(),
-                        Hypothesis.ActiveValues.end());
+  void insertAllFrom(TypeResults &TR, ActivityAnalyzer &Hypothesis, llvm::Value *Orig) {
+    insertConstantsFrom(TR, Hypothesis);
+    for (auto I : Hypothesis.ActiveInstructions) {
+      bool inserted = ActiveInstructions.insert(I).second;
+      if (inserted && directions == 3) {
+        ReEvaluateInstIfInactiveValue[Orig].insert(I);
+      }
+    }
+    for (auto V : Hypothesis.ActiveValues) {
+      bool inserted = ActiveValues.insert(V).second;
+      if (inserted && directions == 3) {
+        ReEvaluateValueIfInactiveValue[Orig].insert(V);
+      }
+    }
   }
 
   /// Is the use of value val as an argument of call CI known to be inactive
@@ -157,7 +172,7 @@ public:
     OnlyStores = 2
   };
   /// Is the value free of any active uses
-  bool isValueInactiveFromUsers(TypeResults &TR, llvm::Value *val, UseActivity UA);
+  bool isValueInactiveFromUsers(TypeResults &TR, llvm::Value *val, UseActivity UA, llvm::Instruction **FoundInst = nullptr);
 
   /// Is the value potentially actively returned or stored
   bool isValueActivelyStoredOrReturned(TypeResults &TR, llvm::Value *val,

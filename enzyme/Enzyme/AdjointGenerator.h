@@ -1328,20 +1328,20 @@ public:
       llvm::errs() << *gutils->oldFunc << "\n";
       for (auto &arg : gutils->oldFunc->args()) {
         llvm::errs() << " constantarg[" << arg
-                     << "] = " << gutils->internal_isConstantValue[&arg]
+                     << "] = " << gutils->isConstantValue(&arg)
                      << " type: " << TR.query(&arg).str() << " - vals: {";
         for (auto v : TR.knownIntegralValues(&arg))
           llvm::errs() << v << ",";
         llvm::errs() << "}\n";
       }
-      for (auto &pair : gutils->internal_isConstantInstruction) {
+      for (auto &BB : *gutils->oldFunc)
+      for (auto &I: BB) {
         llvm::errs()
-            << " constantinst[" << *pair.first << "] = " << pair.second
+            << " constantinst[" << I << "] = " << gutils->isConstantInstruction(&I)
             << " val:"
-            << gutils->internal_isConstantValue[const_cast<Instruction *>(
-                   pair.first)]
+            << gutils->isConstantValue(&I)
             << " type: "
-            << TR.query(const_cast<Instruction *>(pair.first)).str() << "\n";
+            << TR.query(&I).str() << "\n";
       }
       llvm::errs() << "cannot handle unknown binary operator: " << BO << "\n";
       report_fatal_error("unknown binary operator");
