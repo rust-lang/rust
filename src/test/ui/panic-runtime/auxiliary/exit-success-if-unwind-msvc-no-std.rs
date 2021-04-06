@@ -9,7 +9,7 @@ struct Bomb;
 impl Drop for Bomb {
     fn drop(&mut self) {
         #[link(name = "kernel32")]
-        extern "C" {
+        extern "system" {
             fn ExitProcess(code: u32) -> !;
         }
         unsafe {
