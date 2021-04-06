@@ -10,10 +10,9 @@ use base_db::salsa::InternKey;
 use hir_def::{GenericDefId, TypeAliasId};
 
 use crate::{
-    chalk_ext::ProjectionTyExt, db::HirDatabase, dummy_usize_const, static_lifetime, AliasTy,
-    CallableDefId, Canonical, Const, DomainGoal, FnPointer, GenericArg, InEnvironment, Lifetime,
-    OpaqueTy, ProjectionTy, QuantifiedWhereClause, Substitution, TraitRef, Ty, TypeWalk,
-    WhereClause,
+    chalk_ext::ProjectionTyExt, db::HirDatabase, static_lifetime, AliasTy, CallableDefId,
+    Canonical, DomainGoal, FnPointer, GenericArg, InEnvironment, OpaqueTy, ProjectionTy,
+    QuantifiedWhereClause, Substitution, TraitRef, Ty, TypeWalk, WhereClause,
 };
 
 use super::interner::*;
@@ -23,16 +22,16 @@ impl ToChalk for Ty {
     type Chalk = chalk_ir::Ty<Interner>;
     fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::Ty<Interner> {
         match self.into_inner() {
-            TyKind::Ref(m, lt, ty) => ref_to_chalk(db, m, lt, ty),
-            TyKind::Array(ty, size) => array_to_chalk(db, ty, size),
-            TyKind::Function(FnPointer { sig, substitution: substs, .. }) => {
+            TyKind::Ref(m, lt, ty) => {
+                chalk_ir::TyKind::Ref(m, lt, ty.to_chalk(db)).intern(&Interner)
+            }
+            TyKind::Array(ty, size) => {
+                chalk_ir::TyKind::Array(ty.to_chalk(db), size).intern(&Interner)
+            }
+            TyKind::Function(FnPointer { sig, substitution: substs, num_binders }) => {
                 let substitution = chalk_ir::FnSubst(substs.0.to_chalk(db));
-                chalk_ir::TyKind::Function(chalk_ir::FnPointer {
-                    num_binders: 0,
-                    sig,
-                    substitution,
-                })
-                .intern(&Interner)
+                chalk_ir::TyKind::Function(chalk_ir::FnPointer { num_binders, sig, substitution })
+                    .intern(&Interner)
             }
             TyKind::AssociatedType(assoc_type_id, substs) => {
                 let substitution = substs.to_chalk(db);
@@ -74,21 +73,12 @@ impl ToChalk for Ty {
                 chalk_ir::TyKind::Adt(adt_id, substitution).intern(&Interner)
             }
             TyKind::Alias(AliasTy::Projection(proj_ty)) => {
-                let associated_ty_id = proj_ty.associated_ty_id;
-                let substitution = proj_ty.substitution.to_chalk(db);
-                chalk_ir::AliasTy::Projection(chalk_ir::ProjectionTy {
-                    associated_ty_id,
-                    substitution,
-                })
-                .cast(&Interner)
-                .intern(&Interner)
-            }
-            TyKind::Alias(AliasTy::Opaque(opaque_ty)) => {
-                let opaque_ty_id = opaque_ty.opaque_ty_id;
-                let substitution = opaque_ty.substitution.to_chalk(db);
-                chalk_ir::AliasTy::Opaque(chalk_ir::OpaqueTy { opaque_ty_id, substitution })
+                chalk_ir::AliasTy::Projection(proj_ty.to_chalk(db))
                     .cast(&Interner)
                     .intern(&Interner)
+            }
+            TyKind::Alias(AliasTy::Opaque(opaque_ty)) => {
+                chalk_ir::AliasTy::Opaque(opaque_ty.to_chalk(db)).cast(&Interner).intern(&Interner)
             }
             TyKind::Placeholder(idx) => idx.to_ty::<Interner>(&Interner),
             TyKind::BoundVar(idx) => chalk_ir::TyKind::BoundVar(idx).intern(&Interner),
@@ -101,7 +91,7 @@ impl ToChalk for Ty {
                 );
                 let bounded_ty = chalk_ir::DynTy {
                     bounds: chalk_ir::Binders::new(binders, where_clauses),
-                    lifetime: static_lifetime(),
+                    lifetime: dyn_ty.lifetime,
                 };
                 chalk_ir::TyKind::Dyn(bounded_ty).intern(&Interner)
             }
@@ -114,17 +104,10 @@ impl ToChalk for Ty {
             chalk_ir::TyKind::Array(ty, size) => TyKind::Array(from_chalk(db, ty), size),
             chalk_ir::TyKind::Placeholder(idx) => TyKind::Placeholder(idx),
             chalk_ir::TyKind::Alias(chalk_ir::AliasTy::Projection(proj)) => {
-                let associated_ty = proj.associated_ty_id;
-                let parameters = from_chalk(db, proj.substitution);
-                TyKind::Alias(AliasTy::Projection(ProjectionTy {
-                    associated_ty_id: associated_ty,
-                    substitution: parameters,
-                }))
+                TyKind::Alias(AliasTy::Projection(from_chalk(db, proj)))
             }
             chalk_ir::TyKind::Alias(chalk_ir::AliasTy::Opaque(opaque_ty)) => {
-                let opaque_ty_id = opaque_ty.opaque_ty_id;
-                let parameters = from_chalk(db, opaque_ty.substitution);
-                TyKind::Alias(AliasTy::Opaque(OpaqueTy { opaque_ty_id, substitution: parameters }))
+                TyKind::Alias(AliasTy::Opaque(from_chalk(db, opaque_ty)))
             }
             chalk_ir::TyKind::Function(chalk_ir::FnPointer {
                 num_binders,
@@ -138,18 +121,19 @@ impl ToChalk for Ty {
             }
             chalk_ir::TyKind::BoundVar(idx) => TyKind::BoundVar(idx),
             chalk_ir::TyKind::InferenceVar(_iv, _kind) => TyKind::Error,
-            chalk_ir::TyKind::Dyn(where_clauses) => {
-                assert_eq!(where_clauses.bounds.binders.len(&Interner), 1);
-                let bounds = where_clauses
-                    .bounds
-                    .skip_binders()
-                    .iter(&Interner)
-                    .map(|c| from_chalk(db, c.clone()));
+            chalk_ir::TyKind::Dyn(dyn_ty) => {
+                assert_eq!(dyn_ty.bounds.binders.len(&Interner), 1);
+                let (bounds, binders) = dyn_ty.bounds.into_value_and_skipped_binders();
+                let where_clauses = crate::QuantifiedWhereClauses::from_iter(
+                    &Interner,
+                    bounds.interned().iter().cloned().map(|p| from_chalk(db, p)),
+                );
                 TyKind::Dyn(crate::DynTy {
-                    bounds: crate::Binders::new(
-                        where_clauses.bounds.binders.clone(),
-                        crate::QuantifiedWhereClauses::from_iter(&Interner, bounds),
-                    ),
+                    bounds: crate::Binders::new(binders, where_clauses),
+                    // HACK: we sometimes get lifetime variables back in solutions
+                    // from Chalk, and don't have the infrastructure to substitute
+                    // them yet. So for now we just turn them into 'static right
+                    // when we get them
                     lifetime: static_lifetime(),
                 })
             }
@@ -169,8 +153,12 @@ impl ToChalk for Ty {
             }
             chalk_ir::TyKind::Raw(mutability, ty) => TyKind::Raw(mutability, from_chalk(db, ty)),
             chalk_ir::TyKind::Slice(ty) => TyKind::Slice(from_chalk(db, ty)),
-            chalk_ir::TyKind::Ref(mutability, lifetime, ty) => {
-                TyKind::Ref(mutability, lifetime, from_chalk(db, ty))
+            chalk_ir::TyKind::Ref(mutability, _lifetime, ty) => {
+                // HACK: we sometimes get lifetime variables back in solutions
+                // from Chalk, and don't have the infrastructure to substitute
+                // them yet. So for now we just turn them into 'static right
+                // when we get them
+                TyKind::Ref(mutability, static_lifetime(), from_chalk(db, ty))
             }
             chalk_ir::TyKind::Str => TyKind::Str,
             chalk_ir::TyKind::Never => TyKind::Never,
@@ -187,26 +175,6 @@ impl ToChalk for Ty {
         }
         .intern(&Interner)
     }
-}
-
-/// We currently don't model lifetimes, but Chalk does. So, we have to insert a
-/// fake lifetime here, because Chalks built-in logic may expect it to be there.
-fn ref_to_chalk(
-    db: &dyn HirDatabase,
-    mutability: chalk_ir::Mutability,
-    _lifetime: Lifetime,
-    ty: Ty,
-) -> chalk_ir::Ty<Interner> {
-    let arg = ty.to_chalk(db);
-    let lifetime = static_lifetime();
-    chalk_ir::TyKind::Ref(mutability, lifetime, arg).intern(&Interner)
-}
-
-/// We currently don't model constants, but Chalk does. So, we have to insert a
-/// fake constant here, because Chalks built-in logic may expect it to be there.
-fn array_to_chalk(db: &dyn HirDatabase, ty: Ty, _: Const) -> chalk_ir::Ty<Interner> {
-    let arg = ty.to_chalk(db);
-    chalk_ir::TyKind::Array(arg, dummy_usize_const()).intern(&Interner)
 }
 
 impl ToChalk for GenericArg {
