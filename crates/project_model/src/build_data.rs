@@ -13,7 +13,7 @@ use cargo_metadata::{BuildScript, Message};
 use itertools::Itertools;
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashMap;
-use stdx::JodChild;
+use stdx::{format_to, JodChild};
 
 use crate::{cfg_flag::CfgFlag, CargoConfig};
 
@@ -35,6 +35,7 @@ pub(crate) struct PackageBuildData {
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
 pub(crate) struct WorkspaceBuildData {
     per_package: FxHashMap<String, PackageBuildData>,
+    error: Option<String>,
 }
 
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
@@ -94,6 +95,19 @@ impl BuildDataResult {
     pub(crate) fn get(&self, workspace_root: &AbsPath) -> Option<&WorkspaceBuildData> {
         self.per_workspace.get(workspace_root)
     }
+    pub fn error(&self) -> Option<String> {
+        let mut buf = String::new();
+        for (_workspace_root, build_data) in &self.per_workspace {
+            if let Some(err) = &build_data.error {
+                format_to!(buf, "cargo check failed:\n{}", err);
+            }
+        }
+        if buf.is_empty() {
+            return None;
+        }
+
+        Some(buf)
+    }
 }
 
 impl BuildDataConfig {
@@ -139,7 +153,7 @@ fn collect_from_workspace(
         }
     }
 
-    cmd.stdout(Stdio::piped()).stderr(Stdio::null()).stdin(Stdio::null());
+    cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).stdin(Stdio::null());
 
     let mut child = cmd.spawn().map(JodChild)?;
     let child_stdout = child.stdout.take().unwrap();
@@ -207,6 +221,15 @@ fn collect_from_workspace(
                 package_build_data.envs.push(("OUT_DIR".to_string(), out_dir));
             }
         }
+    }
+
+    let output = child.into_inner().wait_with_output()?;
+    if !output.status.success() {
+        let mut stderr = String::from_utf8(output.stderr).unwrap_or_default();
+        if stderr.is_empty() {
+            stderr = "cargo check failed".to_string();
+        }
+        res.error = Some(stderr)
     }
 
     Ok(res)

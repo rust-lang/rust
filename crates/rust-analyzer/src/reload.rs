@@ -109,6 +109,11 @@ impl GlobalState {
             quiescent: self.is_quiescent(),
             message: None,
         };
+
+        if let Some(error) = self.build_data_error() {
+            status.health = lsp_ext::Health::Warning;
+            status.message = Some(error)
+        }
         if !self.config.cargo_autoreload()
             && self.is_quiescent()
             && self.fetch_workspaces_queue.op_requested()
@@ -116,9 +121,10 @@ impl GlobalState {
             status.health = lsp_ext::Health::Warning;
             status.message = Some("Workspace reload required".to_string())
         }
-        if let Some(error) = self.loading_error() {
+
+        if let Some(error) = self.fetch_workspace_error() {
             status.health = lsp_ext::Health::Error;
-            status.message = Some(format!("Workspace reload failed: {}", error))
+            status.message = Some(error)
         }
 
         if self.last_reported_status.as_ref() != Some(&status) {
@@ -217,12 +223,17 @@ impl GlobalState {
         let _p = profile::span("GlobalState::switch_workspaces");
         log::info!("will switch workspaces");
 
-        if let Some(error_message) = self.loading_error() {
+        if let Some(error_message) = self.fetch_workspace_error() {
             log::error!("failed to switch workspaces: {}", error_message);
             self.show_message(lsp_types::MessageType::Error, error_message);
             if !self.workspaces.is_empty() {
                 return;
             }
+        }
+
+        if let Some(error_message) = self.build_data_error() {
+            log::error!("failed to switch build data: {}", error_message);
+            self.show_message(lsp_types::MessageType::Error, error_message);
         }
 
         let workspaces = self
@@ -343,22 +354,30 @@ impl GlobalState {
         log::info!("did switch workspaces");
     }
 
-    fn loading_error(&self) -> Option<String> {
-        let mut message = None;
+    fn fetch_workspace_error(&self) -> Option<String> {
+        let mut buf = String::new();
 
         for ws in self.fetch_workspaces_queue.last_op_result() {
             if let Err(err) = ws {
-                let message = message.get_or_insert_with(String::new);
-                stdx::format_to!(message, "rust-analyzer failed to load workspace: {:#}\n", err);
+                stdx::format_to!(buf, "rust-analyzer failed to load workspace: {:#}\n", err);
             }
         }
 
-        if let Some(Err(err)) = self.fetch_build_data_queue.last_op_result() {
-            let message = message.get_or_insert_with(String::new);
-            stdx::format_to!(message, "rust-analyzer failed to fetch build data: {:#}\n", err);
+        if buf.is_empty() {
+            return None;
         }
 
-        message
+        Some(buf)
+    }
+
+    fn build_data_error(&self) -> Option<String> {
+        match self.fetch_build_data_queue.last_op_result() {
+            Some(Err(err)) => {
+                Some(format!("rust-analyzer failed to fetch build data: {:#}\n", err))
+            }
+            Some(Ok(data)) => data.error(),
+            None => None,
+        }
     }
 
     fn reload_flycheck(&mut self) {
