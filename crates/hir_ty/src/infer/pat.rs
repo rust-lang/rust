@@ -13,7 +13,7 @@ use hir_expand::name::Name;
 
 use super::{BindingMode, Expectation, InferenceContext};
 use crate::{
-    lower::lower_to_chalk_mutability, utils::variant_data, Interner, LifetimeData, Substitution,
+    lower::lower_to_chalk_mutability, static_lifetime, utils::variant_data, Interner, Substitution,
     Ty, TyBuilder, TyKind,
 };
 
@@ -171,8 +171,7 @@ impl<'a> InferenceContext<'a> {
                     _ => self.result.standard_types.unknown.clone(),
                 };
                 let subty = self.infer_pat(*pat, &expectation, default_bm);
-                TyKind::Ref(mutability, LifetimeData::Static.intern(&Interner), subty)
-                    .intern(&Interner)
+                TyKind::Ref(mutability, static_lifetime(), subty).intern(&Interner)
             }
             Pat::TupleStruct { path: p, args: subpats, ellipsis } => self.infer_tuple_struct_pat(
                 p.as_ref(),
@@ -204,12 +203,10 @@ impl<'a> InferenceContext<'a> {
                 let inner_ty = self.insert_type_vars_shallow(inner_ty);
 
                 let bound_ty = match mode {
-                    BindingMode::Ref(mutability) => TyKind::Ref(
-                        mutability,
-                        LifetimeData::Static.intern(&Interner),
-                        inner_ty.clone(),
-                    )
-                    .intern(&Interner),
+                    BindingMode::Ref(mutability) => {
+                        TyKind::Ref(mutability, static_lifetime(), inner_ty.clone())
+                            .intern(&Interner)
+                    }
                     BindingMode::Move => inner_ty.clone(),
                 };
                 let bound_ty = self.resolve_ty_as_possible(bound_ty);

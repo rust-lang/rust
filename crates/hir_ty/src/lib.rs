@@ -495,3 +495,7 @@ pub fn to_chalk_trait_id(id: TraitId) -> ChalkTraitId {
 pub fn from_chalk_trait_id(id: ChalkTraitId) -> TraitId {
     salsa::InternKey::from_intern_id(id.0)
 }
+
+pub fn static_lifetime() -> Lifetime {
+    LifetimeData::Static.intern(&Interner)
+}

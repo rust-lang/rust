@@ -19,11 +19,11 @@ use crate::{
     lower::lower_to_chalk_mutability,
     method_resolution, op,
     primitive::{self, UintTy},
-    to_chalk_trait_id,
+    static_lifetime, to_chalk_trait_id,
     traits::{chalk::from_chalk, FnTrait},
     utils::{generics, variant_data, Generics},
     AdtId, Binders, CallableDefId, FnPointer, FnSig, FnSubst, InEnvironment, Interner,
-    LifetimeData, ProjectionTyExt, Rawness, Scalar, Substitution, TraitRef, Ty, TyBuilder, TyKind,
+    ProjectionTyExt, Rawness, Scalar, Substitution, TraitRef, Ty, TyBuilder, TyKind, TypeWalk,
 };
 
 use super::{
@@ -527,9 +527,7 @@ impl<'a> InferenceContext<'a> {
                 let inner_ty = self.infer_expr_inner(*expr, &expectation);
                 match rawness {
                     Rawness::RawPtr => TyKind::Raw(mutability, inner_ty),
-                    Rawness::Ref => {
-                        TyKind::Ref(mutability, LifetimeData::Static.intern(&Interner), inner_ty)
-                    }
+                    Rawness::Ref => TyKind::Ref(mutability, static_lifetime(), inner_ty),
                 }
                 .intern(&Interner)
             }
@@ -732,17 +730,14 @@ impl<'a> InferenceContext<'a> {
             }
             Expr::Literal(lit) => match lit {
                 Literal::Bool(..) => TyKind::Scalar(Scalar::Bool).intern(&Interner),
-                Literal::String(..) => TyKind::Ref(
-                    Mutability::Not,
-                    LifetimeData::Static.intern(&Interner),
-                    TyKind::Str.intern(&Interner),
-                )
-                .intern(&Interner),
+                Literal::String(..) => {
+                    TyKind::Ref(Mutability::Not, static_lifetime(), TyKind::Str.intern(&Interner))
+                        .intern(&Interner)
+                }
                 Literal::ByteString(..) => {
                     let byte_type = TyKind::Scalar(Scalar::Uint(UintTy::U8)).intern(&Interner);
                     let array_type = TyKind::Array(byte_type).intern(&Interner);
-                    TyKind::Ref(Mutability::Not, LifetimeData::Static.intern(&Interner), array_type)
-                        .intern(&Interner)
+                    TyKind::Ref(Mutability::Not, static_lifetime(), array_type).intern(&Interner)
                 }
                 Literal::Char(..) => TyKind::Scalar(Scalar::Char).intern(&Interner),
                 Literal::Int(_v, ty) => match ty {

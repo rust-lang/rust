@@ -27,14 +27,14 @@ use stdx::impl_from;
 
 use crate::{
     db::HirDatabase,
-    to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
+    static_lifetime, to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
     traits::chalk::{Interner, ToChalk},
     utils::{
         all_super_trait_refs, associated_type_by_name_including_super_traits, generics,
         variant_data, Generics,
     },
     AliasEq, AliasTy, Binders, BoundVar, CallableSig, DebruijnIndex, DynTy, FnPointer, FnSig,
-    FnSubst, ImplTraitId, LifetimeData, OpaqueTy, PolyFnSig, ProjectionTy, QuantifiedWhereClause,
+    FnSubst, ImplTraitId, OpaqueTy, PolyFnSig, ProjectionTy, QuantifiedWhereClause,
     QuantifiedWhereClauses, ReturnTypeImplTrait, ReturnTypeImplTraits, Substitution,
     TraitEnvironment, TraitRef, Ty, TyBuilder, TyKind, TypeWalk, WhereClause,
 };
@@ -174,7 +174,7 @@ impl<'a> TyLoweringContext<'a> {
             }
             TypeRef::Reference(inner, _, mutability) => {
                 let inner_ty = self.lower_ty(inner);
-                let lifetime = LifetimeData::Static.intern(&Interner);
+                let lifetime = static_lifetime();
                 TyKind::Ref(lower_to_chalk_mutability(*mutability), lifetime, inner_ty)
                     .intern(&Interner)
             }
@@ -200,8 +200,7 @@ impl<'a> TyLoweringContext<'a> {
                     )
                 });
                 let bounds = crate::make_only_type_binders(1, bounds);
-                TyKind::Dyn(DynTy { bounds, lifetime: LifetimeData::Static.intern(&Interner) })
-                    .intern(&Interner)
+                TyKind::Dyn(DynTy { bounds, lifetime: static_lifetime() }).intern(&Interner)
             }
             TypeRef::ImplTrait(bounds) => {
                 match self.impl_trait_mode {
@@ -393,7 +392,7 @@ impl<'a> TyLoweringContext<'a> {
                                 ))),
                             ),
                         ),
-                        lifetime: LifetimeData::Static.intern(&Interner),
+                        lifetime: static_lifetime(),
                     };
                     TyKind::Dyn(dyn_ty).intern(&Interner)
                 };

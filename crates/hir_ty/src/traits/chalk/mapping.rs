@@ -3,16 +3,16 @@
 //! Chalk (in both directions); plus some helper functions for more specialized
 //! conversions.
 
-use chalk_ir::{cast::Cast, interner::HasInterner, LifetimeData};
+use chalk_ir::{cast::Cast, interner::HasInterner};
 use chalk_solve::rust_ir;
 
 use base_db::salsa::InternKey;
 use hir_def::{GenericDefId, TypeAliasId};
 
 use crate::{
-    chalk_ext::ProjectionTyExt, db::HirDatabase, primitive::UintTy, AliasTy, CallableDefId,
-    Canonical, DomainGoal, FnPointer, GenericArg, InEnvironment, Lifetime, OpaqueTy, ProjectionTy,
-    QuantifiedWhereClause, Scalar, Substitution, TraitRef, Ty, TypeWalk, WhereClause,
+    chalk_ext::ProjectionTyExt, db::HirDatabase, primitive::UintTy, static_lifetime, AliasTy,
+    CallableDefId, Canonical, DomainGoal, FnPointer, GenericArg, InEnvironment, Lifetime, OpaqueTy,
+    ProjectionTy, QuantifiedWhereClause, Scalar, Substitution, TraitRef, Ty, TypeWalk, WhereClause,
 };
 
 use super::interner::*;
@@ -100,7 +100,7 @@ impl ToChalk for Ty {
                 );
                 let bounded_ty = chalk_ir::DynTy {
                     bounds: chalk_ir::Binders::new(binders, where_clauses),
-                    lifetime: LifetimeData::Static.intern(&Interner),
+                    lifetime: static_lifetime(),
                 };
                 chalk_ir::TyKind::Dyn(bounded_ty).intern(&Interner)
             }
@@ -149,7 +149,7 @@ impl ToChalk for Ty {
                         where_clauses.bounds.binders.clone(),
                         crate::QuantifiedWhereClauses::from_iter(&Interner, bounds),
                     ),
-                    lifetime: LifetimeData::Static.intern(&Interner),
+                    lifetime: static_lifetime(),
                 })
             }
 
@@ -197,7 +197,7 @@ fn ref_to_chalk(
     ty: Ty,
 ) -> chalk_ir::Ty<Interner> {
     let arg = ty.to_chalk(db);
-    let lifetime = LifetimeData::Static.intern(&Interner);
+    let lifetime = static_lifetime();
     chalk_ir::TyKind::Ref(mutability, lifetime, arg).intern(&Interner)
 }
 
