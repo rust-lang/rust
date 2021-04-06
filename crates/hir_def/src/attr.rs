@@ -215,12 +215,11 @@ impl Attrs {
         let mut res = ArenaMap::default();
 
         for (id, fld) in src.value.iter() {
-            let attrs = match fld {
-                Either::Left(_tuple) => Attrs::default(),
-                Either::Right(record) => {
-                    RawAttrs::from_attrs_owner(db, src.with_value(record)).filter(db, krate)
-                }
+            let owner: &dyn AttrsOwner = match fld {
+                Either::Left(tuple) => tuple,
+                Either::Right(record) => record,
             };
+            let attrs = RawAttrs::from_attrs_owner(db, src.with_value(owner)).filter(db, krate);
 
             res.insert(id, attrs);
         }
