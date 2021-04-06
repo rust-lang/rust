@@ -74,7 +74,7 @@ use std::default::Default;
 use std::env;
 use std::process;
 
-use rustc_driver::abort_on_err;
+use rustc_driver::{abort_on_err, describe_lints};
 use rustc_errors::ErrorReported;
 use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
@@ -704,6 +704,12 @@ fn main_options(options: config::Options) -> MainResult {
     interface::create_compiler_and_run(config, |compiler| {
         compiler.enter(|queries| {
             let sess = compiler.session();
+
+            if sess.opts.describe_lints {
+                let (_, lint_store) = &*queries.register_plugins()?.peek();
+                describe_lints(sess, lint_store, true);
+                return Ok(());
+            }
 
             // We need to hold on to the complete resolver, so we cause everything to be
             // cloned for the analysis passes to use. Suboptimal, but necessary in the

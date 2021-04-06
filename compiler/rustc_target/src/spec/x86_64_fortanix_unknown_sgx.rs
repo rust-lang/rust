@@ -1,6 +1,6 @@
 use std::iter;
 
-use super::{LinkerFlavor, LldFlavor, PanicStrategy, Target, TargetOptions};
+use super::{LinkerFlavor, LldFlavor, Target, TargetOptions};
 
 pub fn target() -> Target {
     const PRE_LINK_ARGS: &[&str] = &[
@@ -56,12 +56,10 @@ pub fn target() -> Target {
         env: "sgx".into(),
         vendor: "fortanix".into(),
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
-        dynamic_linking: false,
         executables: true,
         linker_is_gnu: true,
         linker: Some("rust-lld".to_owned()),
         max_atomic_width: Some(64),
-        panic_strategy: PanicStrategy::Unwind,
         cpu: "x86-64".into(),
         features: "+rdrnd,+rdseed,+lvi-cfi,+lvi-load-hardening".into(),
         llvm_args: vec!["--x86-experimental-lvi-inline-asm-hardening".into()],
