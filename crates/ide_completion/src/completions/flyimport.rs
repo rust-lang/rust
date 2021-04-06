@@ -113,6 +113,7 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
     if ctx.use_item_syntax.is_some()
         || ctx.attribute_under_caret.is_some()
         || ctx.mod_declaration_under_caret.is_some()
+        || ctx.record_lit_syntax.is_some()
     {
         return None;
     }
@@ -1032,6 +1033,48 @@ fn main() {
     Te$0
 }"#,
             expect![[]],
+        );
+    }
+
+    #[test]
+    fn no_fuzzy_during_fields_of_record_lit_syntax() {
+        check(
+            r#"
+mod m {
+    pub fn some_fn() -> i32() {
+        42
+    }
+}
+struct Foo {
+    some_field: i32,
+}
+fn main() {
+    let _ = Foo { so$0 };
+}
+"#,
+            expect![[]],
+        );
+    }
+
+    #[test]
+    fn fuzzy_after_fields_of_record_lit_syntax() {
+        check(
+            r#"
+mod m {
+    pub fn some_fn() -> i32() {
+        42
+    }
+}
+struct Foo {
+    some_field: i32,
+}
+fn main() {
+    let _ = Foo { some_field: so$0 };
+}
+"#,
+            expect![[r#"
+                fn some_fn() (m::some_fn) fn() -> i32
+            "#]],
         );
     }
 }
