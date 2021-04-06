@@ -79,7 +79,7 @@ fn on_char_typed_inner(file: &SourceFile, offset: TextSize, char_typed: char) ->
 /// Inserts a closing `}` when the user types an opening `{`, wrapping an existing expression in a
 /// block.
 fn on_opening_brace_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
-    assert_eq!(file.syntax().text().char_at(offset), Some('{'));
+    stdx::always!(file.syntax().text().char_at(offset) == Some('{'));
     let brace_token = file.syntax().token_at_offset(offset).right_biased()?;
     let block = ast::BlockExpr::cast(brace_token.parent()?)?;
 
@@ -90,7 +90,7 @@ fn on_opening_brace_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdi
             Some(ast::Stmt::ExprStmt(it)) => {
                 // Use the expression span to place `}` before the `;`
                 it.expr()?.syntax().text_range().end()
-            },
+            }
             None => block.tail_expr()?.syntax().text_range().end(),
             _ => return None,
         }
@@ -103,7 +103,7 @@ fn on_opening_brace_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdi
 /// this works when adding `let =`.
 // FIXME: use a snippet completion instead of this hack here.
 fn on_eq_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
-    assert_eq!(file.syntax().text().char_at(offset), Some('='));
+    stdx::always!(file.syntax().text().char_at(offset) == Some('='));
     let let_stmt: ast::LetStmt = find_node_at_offset(file.syntax(), offset)?;
     if let_stmt.semicolon_token().is_some() {
         return None;
@@ -125,7 +125,7 @@ fn on_eq_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
 
 /// Returns an edit which should be applied when a dot ('.') is typed on a blank line, indenting the line appropriately.
 fn on_dot_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
-    assert_eq!(file.syntax().text().char_at(offset), Some('.'));
+    stdx::always!(file.syntax().text().char_at(offset) == Some('.'));
     let whitespace =
         file.syntax().token_at_offset(offset).left_biased().and_then(ast::Whitespace::cast)?;
 
@@ -154,7 +154,7 @@ fn on_dot_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
 /// Adds a space after an arrow when `fn foo() { ... }` is turned into `fn foo() -> { ... }`
 fn on_arrow_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
     let file_text = file.syntax().text();
-    assert_eq!(file_text.char_at(offset), Some('>'));
+    stdx::always!(file_text.char_at(offset) == Some('>'));
     let after_arrow = offset + TextSize::of('>');
     if file_text.char_at(after_arrow) != Some('{') {
         return None;
