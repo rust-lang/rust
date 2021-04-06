@@ -29,9 +29,6 @@ pub trait TyExt {
 
     fn strip_references(&self) -> &Ty;
 
-    /// If this is a `dyn Trait` type, this returns the `Trait` part.
-    fn dyn_trait_ref(&self) -> Option<&TraitRef>;
-
     /// If this is a `dyn Trait`, returns that trait.
     fn dyn_trait(&self) -> Option<TraitId>;
 
@@ -123,8 +120,8 @@ impl TyExt for Ty {
         }
     }
 
-    fn dyn_trait_ref(&self) -> Option<&TraitRef> {
-        match self.kind(&Interner) {
+    fn dyn_trait(&self) -> Option<TraitId> {
+        let trait_ref = match self.kind(&Interner) {
             TyKind::Dyn(dyn_ty) => dyn_ty.bounds.skip_binders().interned().get(0).and_then(|b| {
                 match b.skip_binders() {
                     WhereClause::Implemented(trait_ref) => Some(trait_ref),
@@ -132,11 +129,8 @@ impl TyExt for Ty {
                 }
             }),
             _ => None,
-        }
-    }
-
-    fn dyn_trait(&self) -> Option<TraitId> {
-        self.dyn_trait_ref().map(|it| it.trait_id).map(from_chalk_trait_id)
+        }?;
+        Some(from_chalk_trait_id(trait_ref.trait_id))
     }
 
     fn strip_references(&self) -> &Ty {
