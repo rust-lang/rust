@@ -290,6 +290,10 @@ different Miri binaries, and as such worth documenting:
   that the compiled `rlib`s are compatible with Miri.
   When set while running `cargo-miri`, it indicates that we are part of a sysroot
   build (for which some crates need special treatment).
+* `MIRI_CALLED_FROM_RUSTDOC` when set to any value tells `cargo-miri` that it is
+  running as a child process of `rustdoc`, which invokes it twice for each doc-test
+  and requires special treatment, most notably a check-only build before interpretation.
+  This is set by `cargo-miri` itself when running as a `rustdoc`-wrapper.
 * `MIRI_CWD` when set to any value tells the Miri driver to change to the given
   directory after loading all the source files, but before commencing
   interpretation. This is useful if the interpreted program wants a different
