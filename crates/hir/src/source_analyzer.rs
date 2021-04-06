@@ -161,14 +161,15 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         field: &ast::RecordExprField,
     ) -> Option<(Field, Option<Local>)> {
-        let expr_id =
-            self.body_source_map.as_ref()?.node_field(InFile::new(self.file_id, field))?;
+        let record_expr = ast::RecordExpr::cast(field.syntax().parent().and_then(|p| p.parent())?)?;
+        let expr = ast::Expr::from(record_expr);
+        let expr_id = self.body_source_map.as_ref()?.node_expr(InFile::new(self.file_id, &expr))?;
 
+        let local_name = field.field_name()?.as_name();
         let local = if field.name_ref().is_some() {
             None
         } else {
-            let local_name = field.field_name()?.as_name();
-            let path = ModPath::from_segments(PathKind::Plain, once(local_name));
+            let path = ModPath::from_segments(PathKind::Plain, once(local_name.clone()));
             match self.resolver.resolve_path_in_value_ns_fully(db.upcast(), &path) {
                 Some(ValueNs::LocalBinding(pat_id)) => {
                     Some(Local { pat_id, parent: self.resolver.body_owner()? })
@@ -176,8 +177,10 @@ impl SourceAnalyzer {
                 _ => None,
             }
         };
-        let struct_field = self.infer.as_ref()?.record_field_resolution(expr_id)?;
-        Some((struct_field.into(), local))
+        let variant = self.infer.as_ref()?.variant_resolution_for_expr(expr_id)?;
+        let variant_data = variant.variant_data(db.upcast());
+        let field = FieldId { parent: variant, local_id: variant_data.field(&local_name)? };
+        Some((field.into(), local))
     }
 
     pub(crate) fn resolve_record_pat_field(

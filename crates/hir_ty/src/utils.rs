@@ -4,7 +4,6 @@ use std::sync::Arc;
 
 use chalk_ir::{BoundVar, DebruijnIndex};
 use hir_def::{
-    adt::VariantData,
     db::DefDatabase,
     generics::{
         GenericParams, TypeParamData, TypeParamProvenance, WherePredicate, WherePredicateTypeTarget,
@@ -13,7 +12,7 @@ use hir_def::{
     path::Path,
     resolver::{HasResolver, TypeNs},
     type_ref::TypeRef,
-    AssocContainerId, GenericDefId, Lookup, TraitId, TypeAliasId, TypeParamId, VariantId,
+    AssocContainerId, GenericDefId, Lookup, TraitId, TypeAliasId, TypeParamId,
 };
 use hir_expand::name::{name, Name};
 
@@ -134,16 +133,6 @@ pub(super) fn associated_type_by_name_including_super_traits(
         let assoc_type = db.trait_data(t.hir_trait_id()).associated_type_by_name(name)?;
         Some((t, assoc_type))
     })
-}
-
-pub(super) fn variant_data(db: &dyn DefDatabase, var: VariantId) -> Arc<VariantData> {
-    match var {
-        VariantId::StructId(it) => db.struct_data(it).variant_data.clone(),
-        VariantId::UnionId(it) => db.union_data(it).variant_data.clone(),
-        VariantId::EnumVariantId(it) => {
-            db.enum_data(it.parent).variants[it.local_id].variant_data.clone()
-        }
-    }
 }
 
 /// Helper for mutating `Arc<[T]>` (i.e. `Arc::make_mut` for Arc slices).

@@ -21,7 +21,7 @@ use crate::{
     primitive::{self, UintTy},
     static_lifetime, to_chalk_trait_id,
     traits::{chalk::from_chalk, FnTrait},
-    utils::{generics, variant_data, Generics},
+    utils::{generics, Generics},
     AdtId, Binders, CallableDefId, FnPointer, FnSig, FnSubst, InEnvironment, Interner,
     ProjectionTyExt, Rawness, Scalar, Substitution, TraitRef, Ty, TyBuilder, TyExt, TyKind,
     TypeWalk,
@@ -414,7 +414,7 @@ impl<'a> InferenceContext<'a> {
 
                 let substs = ty.substs().cloned().unwrap_or_else(|| Substitution::empty(&Interner));
                 let field_types = def_id.map(|it| self.db.field_types(it)).unwrap_or_default();
-                let variant_data = def_id.map(|it| variant_data(self.db.upcast(), it));
+                let variant_data = def_id.map(|it| it.variant_data(self.db.upcast()));
                 for field in fields.iter() {
                     let field_def =
                         variant_data.as_ref().and_then(|it| match it.field(&field.name) {
@@ -426,9 +426,6 @@ impl<'a> InferenceContext<'a> {
                                 None
                             }
                         });
-                    if let Some(field_def) = field_def {
-                        self.result.record_field_resolutions.insert(field.expr, field_def);
-                    }
                     let field_ty = field_def.map_or(self.err_ty(), |it| {
                         field_types[it.local_id].clone().substitute(&Interner, &substs)
                     });

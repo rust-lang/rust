@@ -30,8 +30,7 @@ use crate::{
     dummy_usize_const, static_lifetime, to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
     traits::chalk::{Interner, ToChalk},
     utils::{
-        all_super_trait_refs, associated_type_by_name_including_super_traits, generics,
-        variant_data, Generics,
+        all_super_trait_refs, associated_type_by_name_including_super_traits, generics, Generics,
     },
     AliasEq, AliasTy, Binders, BoundVar, CallableSig, DebruijnIndex, DynTy, FnPointer, FnSig,
     FnSubst, ImplTraitId, OpaqueTy, PolyFnSig, ProjectionTy, QuantifiedWhereClause,
@@ -879,7 +878,7 @@ pub(crate) fn field_types_query(
     db: &dyn HirDatabase,
     variant_id: VariantId,
 ) -> Arc<ArenaMap<LocalFieldId, Binders<Ty>>> {
-    let var_data = variant_data(db.upcast(), variant_id);
+    let var_data = variant_id.variant_data(db.upcast());
     let (resolver, def): (_, GenericDefId) = match variant_id {
         VariantId::StructId(it) => (it.resolver(db.upcast()), it.into()),
         VariantId::UnionId(it) => (it.resolver(db.upcast()), it.into()),

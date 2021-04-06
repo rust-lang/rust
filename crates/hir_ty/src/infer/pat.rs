@@ -13,8 +13,8 @@ use hir_expand::name::Name;
 
 use super::{BindingMode, Expectation, InferenceContext};
 use crate::{
-    lower::lower_to_chalk_mutability, static_lifetime, utils::variant_data, Interner, Substitution,
-    Ty, TyBuilder, TyExt, TyKind,
+    lower::lower_to_chalk_mutability, static_lifetime, Interner, Substitution, Ty, TyBuilder,
+    TyExt, TyKind,
 };
 
 impl<'a> InferenceContext<'a> {
@@ -28,7 +28,7 @@ impl<'a> InferenceContext<'a> {
         ellipsis: Option<usize>,
     ) -> Ty {
         let (ty, def) = self.resolve_variant(path);
-        let var_data = def.map(|it| variant_data(self.db.upcast(), it));
+        let var_data = def.map(|it| it.variant_data(self.db.upcast()));
         if let Some(variant) = def {
             self.write_variant_resolution(id.into(), variant);
         }
@@ -68,7 +68,7 @@ impl<'a> InferenceContext<'a> {
         id: PatId,
     ) -> Ty {
         let (ty, def) = self.resolve_variant(path);
-        let var_data = def.map(|it| variant_data(self.db.upcast(), it));
+        let var_data = def.map(|it| it.variant_data(self.db.upcast()));
         if let Some(variant) = def {
             self.write_variant_resolution(id.into(), variant);
         }
