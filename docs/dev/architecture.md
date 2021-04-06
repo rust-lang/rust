@@ -390,7 +390,7 @@ fn spam() {
 ```
 
 To specify input data, we use a single string literal in a special format, which can describe a set of rust files.
-See the `Fixture` type.
+See the `Fixture` its module for fixture examples and documentation.
 
 **Architecture Invariant:** all code invariants are tested by `#[test]` tests.
 There's no additional checks in CI, formatting and tidy tests are run with `cargo test`.
