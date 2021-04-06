@@ -314,31 +314,23 @@ impl GlobalState {
                             }
                         }
                         vfs::loader::Message::Progress { n_total, n_done, config_version } => {
+                            self.vfs_progress_n_total = n_total;
+                            self.vfs_progress_n_done = n_done;
                             always!(config_version <= self.vfs_config_version);
-                            if n_total == 0 {
-                                new_status = Status::Invalid;
+                            let state = if n_done == 0 {
+                                Progress::Begin
+                            } else if n_done < n_total {
+                                Progress::Report
                             } else {
-                                let state = if n_done == 0 {
-                                    new_status = Status::Loading;
-                                    Progress::Begin
-                                } else if n_done < n_total {
-                                    Progress::Report
-                                } else {
-                                    assert_eq!(n_done, n_total);
-                                    new_status = Status::Ready {
-                                        partial: self.config.run_build_scripts()
-                                            && self.workspace_build_data.is_none()
-                                            || config_version < self.vfs_config_version,
-                                    };
-                                    Progress::End
-                                };
-                                self.report_progress(
-                                    "roots scanned",
-                                    state,
-                                    Some(format!("{}/{}", n_done, n_total)),
-                                    Some(Progress::fraction(n_done, n_total)),
-                                )
-                            }
+                                assert_eq!(n_done, n_total);
+                                Progress::End
+                            };
+                            self.report_progress(
+                                "roots scanned",
+                                state,
+                                Some(format!("{}/{}", n_done, n_total)),
+                                Some(Progress::fraction(n_done, n_total)),
+                            )
                         }
                     }
                     // Coalesce many VFS event into a single loop turn
@@ -497,8 +489,9 @@ impl GlobalState {
 
         RequestDispatcher { req: Some(req), global_state: self }
             .on_sync::<lsp_ext::ReloadWorkspace>(|s, ()| {
-                self.fetch_workspaces_request();
-                self.fetch_workspaces_if_needed();
+                s.fetch_workspaces_request();
+                s.fetch_workspaces_if_needed();
+                Ok(())
             })?
             .on_sync::<lsp_ext::JoinLines>(|s, p| handlers::handle_join_lines(s.snapshot(), p))?
             .on_sync::<lsp_ext::OnEnter>(|s, p| handlers::handle_on_enter(s.snapshot(), p))?
