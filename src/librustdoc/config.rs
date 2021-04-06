@@ -97,8 +97,7 @@ crate struct Options {
     crate maybe_sysroot: Option<PathBuf>,
     /// Lint information passed over the command-line.
     crate lint_opts: Vec<(String, Level)>,
-    /// Whether to ask rustc to describe the lints it knows. Practically speaking, this will not be
-    /// used, since we abort if we have no input file, but it's included for completeness.
+    /// Whether to ask rustc to describe the lints it knows.
     crate describe_lints: bool,
     /// What level to cap lints at.
     crate lint_cap: Option<Level>,
