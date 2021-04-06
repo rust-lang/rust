@@ -51,6 +51,10 @@ pub trait HirDisplay {
     where
         Self: Sized,
     {
+        assert!(
+            !matches!(display_target, DisplayTarget::SourceCode { .. }),
+            "HirDisplayWrapper cannot fail with DisplaySourceCodeError, use HirDisplay::hir_fmt directly instead"
+        );
         HirDisplayWrapper { db, t: self, max_size, omit_verbose_types, display_target }
     }
 
@@ -235,7 +239,7 @@ where
             Err(HirDisplayError::FmtError) => Err(fmt::Error),
             Err(HirDisplayError::DisplaySourceCodeError(_)) => {
                 // This should never happen
-                panic!("HirDisplay failed when calling Display::fmt!")
+                panic!("HirDisplay::hir_fmt failed with DisplaySourceCodeError when calling Display::fmt!")
             }
         }
     }
