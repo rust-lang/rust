@@ -1041,7 +1041,7 @@ fn main() {
         check(
             r#"
 mod m {
-    pub fn some_fn() -> i32() {
+    pub fn some_fn() -> i32 {
         42
     }
 }
@@ -1061,7 +1061,7 @@ fn main() {
         check(
             r#"
 mod m {
-    pub fn some_fn() -> i32() {
+    pub fn some_fn() -> i32 {
         42
     }
 }
