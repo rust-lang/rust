@@ -120,8 +120,8 @@ fn deref_by_trait(
             // assumptions will be broken. We would need to properly introduce
             // new variables in that case
 
-            for i in 1..vars.0.binders.len(&Interner) {
-                if vars.0.value.at(&Interner, i - 1).assert_ty_ref(&Interner).kind(&Interner)
+            for i in 1..vars.binders.len(&Interner) {
+                if vars.value.subst.at(&Interner, i - 1).assert_ty_ref(&Interner).kind(&Interner)
                     != &TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, i - 1))
                 {
                     warn!("complex solution for derefing {:?}: {:?}, ignoring", ty.goal, solution);
@@ -130,12 +130,12 @@ fn deref_by_trait(
             }
             Some(Canonical {
                 value: vars
-                    .0
                     .value
-                    .at(&Interner, vars.0.value.len(&Interner) - 1)
+                    .subst
+                    .at(&Interner, vars.value.subst.len(&Interner) - 1)
                     .assert_ty_ref(&Interner)
                     .clone(),
-                binders: vars.0.binders.clone(),
+                binders: vars.binders.clone(),
             })
         }
         Solution::Ambig(_) => {

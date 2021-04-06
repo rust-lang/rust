@@ -58,9 +58,8 @@ use hir_ty::{
     subst_prefix,
     traits::FnTrait,
     AliasEq, AliasTy, BoundVar, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast,
-    DebruijnIndex, InEnvironment, Interner, QuantifiedWhereClause, Scalar, Solution,
-    SolutionVariables, Substitution, TraitEnvironment, Ty, TyBuilder, TyDefId, TyExt, TyKind,
-    TyVariableKind, WhereClause,
+    DebruijnIndex, InEnvironment, Interner, QuantifiedWhereClause, Scalar, Solution, Substitution,
+    TraitEnvironment, Ty, TyBuilder, TyDefId, TyExt, TyKind, TyVariableKind, WhereClause,
 };
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
@@ -1822,8 +1821,9 @@ impl Type {
         );
 
         match db.trait_solve(self.krate, goal)? {
-            Solution::Unique(SolutionVariables(subst)) => subst
+            Solution::Unique(s) => s
                 .value
+                .subst
                 .interned()
                 .first()
                 .map(|ty| self.derived(ty.assert_ty_ref(&Interner).clone())),

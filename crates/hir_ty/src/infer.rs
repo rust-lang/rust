@@ -42,7 +42,7 @@ use super::{
 };
 use crate::{
     db::HirDatabase, infer::diagnostics::InferenceDiagnostic, lower::ImplTraitLoweringMode,
-    to_assoc_type_id, AliasEq, AliasTy, Interner, TyBuilder, TyExt, TyKind,
+    to_assoc_type_id, AliasEq, AliasTy, Canonical, Interner, TyBuilder, TyExt, TyKind,
 };
 
 // This lint has a false positive here. See the link below for details.
@@ -342,11 +342,18 @@ impl<'a> InferenceContext<'a> {
                 self.db.trait_solve(self.resolver.krate().unwrap(), canonicalized.value.clone());
 
             match solution {
-                Some(Solution::Unique(substs)) => {
-                    canonicalized.apply_solution(self, substs.0);
+                Some(Solution::Unique(canonical_subst)) => {
+                    canonicalized.apply_solution(
+                        self,
+                        Canonical {
+                            binders: canonical_subst.binders,
+                            // FIXME: handle constraints
+                            value: canonical_subst.value.subst,
+                        },
+                    );
                 }
                 Some(Solution::Ambig(Guidance::Definite(substs))) => {
-                    canonicalized.apply_solution(self, substs.0);
+                    canonicalized.apply_solution(self, substs);
                     self.obligations.push(obligation);
                 }
                 Some(_) => {

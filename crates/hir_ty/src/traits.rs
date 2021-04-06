@@ -9,7 +9,7 @@ use stdx::panic_context;
 
 use crate::{
     db::HirDatabase, AliasEq, AliasTy, Canonical, DomainGoal, Guidance, HirDisplay, InEnvironment,
-    Solution, SolutionVariables, Ty, TyKind, WhereClause,
+    Solution, Ty, TyKind, WhereClause,
 };
 
 use self::chalk::{from_chalk, Interner, ToChalk};
@@ -173,23 +173,15 @@ fn solution_from_chalk(
     db: &dyn HirDatabase,
     solution: chalk_solve::Solution<Interner>,
 ) -> Solution {
-    let convert_subst = |subst: chalk_ir::Canonical<chalk_ir::Substitution<Interner>>| {
-        let result = from_chalk(db, subst);
-        SolutionVariables(result)
-    };
     match solution {
         chalk_solve::Solution::Unique(constr_subst) => {
-            let subst = chalk_ir::Canonical {
-                value: constr_subst.value.subst,
-                binders: constr_subst.binders,
-            };
-            Solution::Unique(convert_subst(subst))
+            Solution::Unique(from_chalk(db, constr_subst))
         }
         chalk_solve::Solution::Ambig(chalk_solve::Guidance::Definite(subst)) => {
-            Solution::Ambig(Guidance::Definite(convert_subst(subst)))
+            Solution::Ambig(Guidance::Definite(from_chalk(db, subst)))
         }
         chalk_solve::Solution::Ambig(chalk_solve::Guidance::Suggested(subst)) => {
-            Solution::Ambig(Guidance::Suggested(convert_subst(subst)))
+            Solution::Ambig(Guidance::Suggested(from_chalk(db, subst)))
         }
         chalk_solve::Solution::Ambig(chalk_solve::Guidance::Unknown) => {
             Solution::Ambig(Guidance::Unknown)

@@ -490,14 +490,16 @@ pub struct AliasEq {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SolutionVariables(pub Canonical<Substitution>);
+pub struct ConstrainedSubst {
+    pub subst: Substitution,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 /// A (possible) solution for a proposed goal.
 pub enum Solution {
     /// The goal indeed holds, and there is a unique value for all existential
     /// variables.
-    Unique(SolutionVariables),
+    Unique(Canonical<ConstrainedSubst>),
 
     /// The goal may be provable in multiple ways, but regardless we may have some guidance
     /// for type inference. In this case, we don't return any lifetime
@@ -513,12 +515,12 @@ pub enum Guidance {
     /// The existential variables *must* have the given values if the goal is
     /// ever to hold, but that alone isn't enough to guarantee the goal will
     /// actually hold.
-    Definite(SolutionVariables),
+    Definite(Canonical<Substitution>),
 
     /// There are multiple plausible values for the existentials, but the ones
     /// here are suggested as the preferred choice heuristically. These should
     /// be used for inference fallback only.
-    Suggested(SolutionVariables),
+    Suggested(Canonical<Substitution>),
 
     /// There's no useful information to feed back to type inference
     Unknown,
