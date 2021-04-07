@@ -107,7 +107,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn parse_anon_const_expr(&mut self) -> PResult<'a, AnonConst> {
+    pub fn parse_anon_const_expr(&mut self) -> PResult<'a, AnonConst> {
         self.parse_expr().map(|value| AnonConst { id: DUMMY_NODE_ID, value })
     }
 

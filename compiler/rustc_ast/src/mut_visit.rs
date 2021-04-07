@@ -1252,7 +1252,6 @@ pub fn noop_visit_expr<T: MutVisitor>(
                 match op {
                     InlineAsmOperand::In { expr, .. }
                     | InlineAsmOperand::InOut { expr, .. }
-                    | InlineAsmOperand::Const { expr, .. }
                     | InlineAsmOperand::Sym { expr, .. } => vis.visit_expr(expr),
                     InlineAsmOperand::Out { expr, .. } => {
                         if let Some(expr) = expr {
@@ -1265,6 +1264,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
                             vis.visit_expr(out_expr);
                         }
                     }
+                    InlineAsmOperand::Const { anon_const, .. } => vis.visit_anon_const(anon_const),
                 }
             }
         }

@@ -503,8 +503,12 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
                             in_expr: self.mirror_expr(in_expr),
                             out_expr: out_expr.as_ref().map(|expr| self.mirror_expr(expr)),
                         },
-                        hir::InlineAsmOperand::Const { ref expr } => {
-                            InlineAsmOperand::Const { expr: self.mirror_expr(expr) }
+                        hir::InlineAsmOperand::Const { ref anon_const } => {
+                            let anon_const_def_id = self.tcx.hir().local_def_id(anon_const.hir_id);
+                            let value = ty::Const::from_anon_const(self.tcx, anon_const_def_id);
+                            let span = self.tcx.hir().span(anon_const.hir_id);
+
+                            InlineAsmOperand::Const { value, span }
                         }
                         hir::InlineAsmOperand::Sym { ref expr } => {
                             let qpath = match expr.kind {

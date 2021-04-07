@@ -136,8 +136,8 @@ fn parse_args<'a>(
                 ast::InlineAsmOperand::InOut { reg, expr, late: true }
             }
         } else if p.eat_keyword(kw::Const) {
-            let expr = p.parse_expr()?;
-            ast::InlineAsmOperand::Const { expr }
+            let anon_const = p.parse_anon_const_expr()?;
+            ast::InlineAsmOperand::Const { anon_const }
         } else if p.eat_keyword(sym::sym) {
             let expr = p.parse_expr()?;
             match expr.kind {

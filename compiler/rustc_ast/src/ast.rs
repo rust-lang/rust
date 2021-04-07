@@ -1998,7 +1998,7 @@ pub enum InlineAsmOperand {
         out_expr: Option<P<Expr>>,
     },
     Const {
-        expr: P<Expr>,
+        anon_const: AnonConst,
     },
     Sym {
         expr: P<Expr>,

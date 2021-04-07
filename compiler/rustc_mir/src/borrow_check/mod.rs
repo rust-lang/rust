@@ -734,8 +734,7 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
             } => {
                 for op in operands {
                     match *op {
-                        InlineAsmOperand::In { reg: _, ref value }
-                        | InlineAsmOperand::Const { ref value } => {
+                        InlineAsmOperand::In { reg: _, ref value } => {
                             self.consume_operand(loc, (value, span), flow_state);
                         }
                         InlineAsmOperand::Out { reg: _, late: _, place, .. } => {
@@ -761,7 +760,8 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
                                 );
                             }
                         }
-                        InlineAsmOperand::SymFn { value: _ }
+                        InlineAsmOperand::Const { value: _ }
+                        | InlineAsmOperand::SymFn { value: _ }
                         | InlineAsmOperand::SymStatic { def_id: _ } => {}
                     }
                 }

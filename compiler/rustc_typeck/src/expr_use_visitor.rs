@@ -318,7 +318,6 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 for (op, _op_sp) in asm.operands {
                     match op {
                         hir::InlineAsmOperand::In { expr, .. }
-                        | hir::InlineAsmOperand::Const { expr, .. }
                         | hir::InlineAsmOperand::Sym { expr, .. } => self.consume_expr(expr),
                         hir::InlineAsmOperand::Out { expr, .. } => {
                             if let Some(expr) = expr {
@@ -334,6 +333,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                                 self.mutate_expr(out_expr);
                             }
                         }
+                        hir::InlineAsmOperand::Const { .. } => {}
                     }
                 }
             }

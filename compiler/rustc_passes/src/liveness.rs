@@ -1067,7 +1067,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 for (op, _op_sp) in asm.operands.iter().rev() {
                     match op {
                         hir::InlineAsmOperand::In { expr, .. }
-                        | hir::InlineAsmOperand::Const { expr, .. }
                         | hir::InlineAsmOperand::Sym { expr, .. } => {
                             succ = self.propagate_through_expr(expr, succ)
                         }
@@ -1085,6 +1084,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                             }
                             succ = self.propagate_through_expr(in_expr, succ);
                         }
+                        hir::InlineAsmOperand::Const { .. } => {}
                     }
                 }
                 succ

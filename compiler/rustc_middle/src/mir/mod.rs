@@ -1213,7 +1213,7 @@ pub enum InlineAsmOperand<'tcx> {
         out_place: Option<Place<'tcx>>,
     },
     Const {
-        value: Operand<'tcx>,
+        value: Box<Constant<'tcx>>,
     },
     SymFn {
         value: Box<Constant<'tcx>>,
