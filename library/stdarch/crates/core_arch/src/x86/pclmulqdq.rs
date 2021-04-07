@@ -8,7 +8,7 @@
 use crate::core_arch::x86::__m128i;
 
 #[cfg(test)]
-use crate::stdarch_test::assert_instr;
+use stdarch_test::assert_instr;
 
 #[allow(improper_ctypes)]
 extern "C" {

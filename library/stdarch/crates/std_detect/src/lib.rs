@@ -13,6 +13,7 @@
 
 #![unstable(feature = "stdsimd", issue = "27731")]
 #![feature(const_fn, staged_api, stdsimd, doc_cfg, allow_internal_unstable)]
+#![deny(rust_2018_idioms)]
 #![allow(clippy::shadow_reuse)]
 #![deny(clippy::missing_inline_in_public_items)]
 #![cfg_attr(all(target_os = "freebsd", target_arch = "aarch64"), feature(asm))]
@@ -20,7 +21,8 @@
 #![cfg_attr(feature = "std_detect_file_io", feature(vec_spare_capacity))]
 #![no_std]
 
-#[cfg_attr(feature = "rustc-dep-of-std", allow(unused_extern_crates))]
+// rust-lang/rust#83888: removing `extern crate` gives an error that `vec_spare_capacity` is unknown
+#[cfg_attr(feature = "std_detect_file_io", allow(unused_extern_crates))]
 #[cfg(feature = "std_detect_file_io")]
 extern crate alloc;
 

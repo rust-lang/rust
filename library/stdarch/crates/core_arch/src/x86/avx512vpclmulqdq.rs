@@ -9,7 +9,7 @@ use crate::core_arch::x86::__m256i;
 use crate::core_arch::x86::__m512i;
 
 #[cfg(test)]
-use crate::stdarch_test::assert_instr;
+use stdarch_test::assert_instr;
 
 #[allow(improper_ctypes)]
 extern "C" {

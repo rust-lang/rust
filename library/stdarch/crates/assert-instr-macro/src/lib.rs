@@ -7,6 +7,7 @@
 //! The procedural macro here is relatively simple, it simply appends a
 //! `#[test]` function to the original token stream which asserts that the
 //! function itself contains the relevant instruction.
+#![deny(rust_2018_idioms)]
 
 extern crate proc_macro;
 extern crate proc_macro2;
@@ -177,7 +178,7 @@ struct Invoc {
 }
 
 impl syn::parse::Parse for Invoc {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+    fn parse(input: syn::parse::ParseStream<'_>) -> syn::Result<Self> {
         use syn::{ext::IdentExt, Token};
 
         let mut instr = String::new();

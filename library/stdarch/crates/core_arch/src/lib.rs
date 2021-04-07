@@ -2,6 +2,7 @@
 #![allow(improper_ctypes_definitions)]
 #![allow(dead_code)]
 #![allow(unused_features)]
+#![deny(rust_2018_idioms)]
 #![feature(
     asm,
     const_fn,
@@ -68,9 +69,6 @@ extern crate std;
 #[cfg(test)]
 #[macro_use]
 extern crate std_detect;
-#[cfg(test)]
-extern crate stdarch_test;
-
 #[path = "mod.rs"]
 mod core_arch;
 

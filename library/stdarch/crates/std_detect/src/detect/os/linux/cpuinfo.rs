@@ -17,7 +17,7 @@ impl CpuInfo {
         })
     }
     /// Returns the value of the cpuinfo `field`.
-    pub(crate) fn field(&self, field: &str) -> CpuInfoField {
+    pub(crate) fn field(&self, field: &str) -> CpuInfoField<'_> {
         for l in self.raw.lines() {
             if l.trim().starts_with(field) {
                 return CpuInfoField::new(l.split(": ").nth(1));

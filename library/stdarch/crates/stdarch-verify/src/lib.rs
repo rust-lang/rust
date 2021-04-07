@@ -1,5 +1,4 @@
-extern crate proc_macro;
-extern crate proc_macro2;
+#![deny(rust_2018_idioms)]
 #[macro_use]
 extern crate quote;
 #[macro_use]
@@ -357,7 +356,7 @@ fn find_instrs(attrs: &[syn::Attribute]) -> Vec<String> {
     // TODO: should probably just reuse `Invoc` from the `assert-instr-macro`
     // crate.
     impl syn::parse::Parse for AssertInstr {
-        fn parse(content: syn::parse::ParseStream) -> syn::Result<Self> {
+        fn parse(content: syn::parse::ParseStream<'_>) -> syn::Result<Self> {
             let input;
             parenthesized!(input in content);
             let _ = input.parse::<syn::Meta>()?;
@@ -443,7 +442,7 @@ struct RustcArgsRequiredConst {
 }
 
 impl syn::parse::Parse for RustcArgsRequiredConst {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+    fn parse(input: syn::parse::ParseStream<'_>) -> syn::Result<Self> {
         let content;
         parenthesized!(content in input);
         let list =

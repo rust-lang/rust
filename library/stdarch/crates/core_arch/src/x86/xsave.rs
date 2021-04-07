@@ -196,7 +196,7 @@ mod tests {
     }
 
     impl fmt::Debug for XsaveArea {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             write!(f, "[")?;
             for i in 0..self.data.len() {
                 write!(f, "{}", self.data[i])?;

@@ -4,13 +4,12 @@
 //! output once globally and then provides the `assert` function which makes
 //! assertions about the disassembly of a function.
 #![feature(test)] // For black_box
+#![deny(rust_2018_idioms)]
 #![allow(clippy::missing_docs_in_private_items, clippy::print_stdout)]
 
 extern crate assert_instr_macro;
-extern crate cc;
 #[macro_use]
 extern crate lazy_static;
-extern crate rustc_demangle;
 extern crate simd_test_macro;
 #[macro_use]
 extern crate cfg_if;
