@@ -378,6 +378,17 @@ impl Options {
             }
         }
 
+        // check for `--output-format=json`
+        if !matches!(matches.opt_str("output-format").as_deref(), None | Some("html"))
+            && !matches.opt_present("show-coverage")
+            && !nightly_options::is_unstable_enabled(matches)
+        {
+            rustc_session::early_error(
+                error_format,
+                "the -Z unstable-options flag must be passed to enable --output-format for documentation generation (see https://github.com/rust-lang/rust/issues/76578)",
+            );
+        }
+
         let to_check = matches.opt_strs("check-theme");
         if !to_check.is_empty() {
             let paths = theme::load_css_paths(static_files::themes::LIGHT.as_bytes());
@@ -574,13 +585,7 @@ impl Options {
         let output_format = match matches.opt_str("output-format") {
             Some(s) => match OutputFormat::try_from(s.as_str()) {
                 Ok(out_fmt) => {
-                    if out_fmt.is_json()
-                        && !(show_coverage || nightly_options::match_is_nightly_build(matches))
-                    {
-                        diag.struct_err("json output format isn't supported for doc generation")
-                            .emit();
-                        return Err(1);
-                    } else if !out_fmt.is_json() && show_coverage {
+                    if !out_fmt.is_json() && show_coverage {
                         diag.struct_err(
                             "html output format isn't supported for the --show-coverage option",
                         )
@@ -702,16 +707,10 @@ impl Options {
 
 /// Prints deprecation warnings for deprecated options
 fn check_deprecated_options(matches: &getopts::Matches, diag: &rustc_errors::Handler) {
-    let deprecated_flags = ["input-format", "output-format", "no-defaults", "passes"];
+    let deprecated_flags = ["input-format", "no-defaults", "passes"];
 
     for flag in deprecated_flags.iter() {
         if matches.opt_present(flag) {
-            if *flag == "output-format"
-                && (matches.opt_present("show-coverage")
-                    || nightly_options::match_is_nightly_build(matches))
-            {
-                continue;
-            }
             let mut err = diag.struct_warn(&format!("the `{}` flag is deprecated", flag));
             err.note(
                 "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
