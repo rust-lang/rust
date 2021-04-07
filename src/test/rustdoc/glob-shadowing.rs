@@ -1,8 +1,10 @@
 // @has 'glob_shadowing/index.html'
 // @count - '//tr[@class="module-item"]' 4
-// @has - '//tr[@class="module-item"]' 'mod::prelude'
 // @!has - '//tr[@class="module-item"]' 'sub1::describe'
+// @has - '//tr[@class="module-item"]' 'mod::prelude'
 // @has - '//tr[@class="module-item"]' 'sub2::describe'
+// @has - '//tr[@class="module-item"]' 'sub1::Foo (struct)'
+// @has - '//tr[@class="module-item"]' 'mod::Foo (function)'
 
 // @has 'glob_shadowing/fn.describe.html'
 // @has - '//div[@class="docblock"]' 'sub2::describe'
@@ -40,5 +42,3 @@ pub use sub2::describe;
 
 #[doc(inline)]
 pub use sub1::*;
-
-pub fn describe() {}
