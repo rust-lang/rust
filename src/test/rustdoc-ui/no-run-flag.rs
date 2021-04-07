@@ -11,7 +11,7 @@
 /// ```should_panic
 /// panic!()
 /// ```
-/// ```ignore
+/// ```ignore (incomplete-code)
 /// fn foo() {
 /// ```
 /// ```no_run
