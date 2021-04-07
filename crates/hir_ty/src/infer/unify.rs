@@ -118,21 +118,10 @@ impl<'a, 'b> Canonicalizer<'a, 'b> {
 
 impl<T: HasInterner<Interner = Interner>> Canonicalized<T> {
     pub(super) fn decanonicalize_ty(&self, ty: Ty) -> Ty {
-        ty.fold_binders(
-            &mut |ty, binders| {
-                if let TyKind::BoundVar(bound) = ty.kind(&Interner) {
-                    if bound.debruijn >= binders {
-                        let (v, k) = self.free_vars[bound.index];
-                        TyKind::InferenceVar(v, k).intern(&Interner)
-                    } else {
-                        ty
-                    }
-                } else {
-                    ty
-                }
-            },
-            DebruijnIndex::INNERMOST,
-        )
+        crate::fold_free_vars(ty, |bound, _binders| {
+            let (v, k) = self.free_vars[bound.index];
+            TyKind::InferenceVar(v, k).intern(&Interner)
+        })
     }
 
     pub(super) fn apply_solution(

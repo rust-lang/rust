@@ -1016,22 +1016,16 @@ pub(crate) fn generic_defaults_query(
                 p.default.as_ref().map_or(TyKind::Error.intern(&Interner), |t| ctx.lower_ty(t));
 
             // Each default can only refer to previous parameters.
-            ty = ty.fold_binders(
-                &mut |ty, binders| match ty.kind(&Interner) {
-                    TyKind::BoundVar(BoundVar { debruijn, index }) if *debruijn == binders => {
-                        if *index >= idx {
-                            // type variable default referring to parameter coming
-                            // after it. This is forbidden (FIXME: report
-                            // diagnostic)
-                            TyKind::Error.intern(&Interner)
-                        } else {
-                            ty
-                        }
-                    }
-                    _ => ty,
-                },
-                DebruijnIndex::INNERMOST,
-            );
+            ty = crate::fold_free_vars(ty, |bound, binders| {
+                if bound.index >= idx && bound.debruijn == DebruijnIndex::INNERMOST {
+                    // type variable default referring to parameter coming
+                    // after it. This is forbidden (FIXME: report
+                    // diagnostic)
+                    TyKind::Error.intern(&Interner)
+                } else {
+                    bound.shifted_in_from(binders).to_ty(&Interner)
+                }
+            });
 
             crate::make_only_type_binders(idx, ty)
         })

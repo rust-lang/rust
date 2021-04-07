@@ -302,3 +302,29 @@ pub fn dummy_usize_const() -> Const {
     }
     .intern(&Interner)
 }
+
+pub(crate) fn fold_free_vars<T: HasInterner<Interner = Interner> + Fold<Interner>>(
+    t: T,
+    f: impl FnMut(BoundVar, DebruijnIndex) -> Ty,
+) -> T::Result {
+    use chalk_ir::{fold::Folder, Fallible};
+    struct FreeVarFolder<F>(F);
+    impl<'i, F: FnMut(BoundVar, DebruijnIndex) -> Ty + 'i> Folder<'i, Interner> for FreeVarFolder<F> {
+        fn as_dyn(&mut self) -> &mut dyn Folder<'i, Interner> {
+            self
+        }
+
+        fn interner(&self) -> &'i Interner {
+            &Interner
+        }
+
+        fn fold_free_var_ty(
+            &mut self,
+            bound_var: BoundVar,
+            outer_binder: DebruijnIndex,
+        ) -> Fallible<Ty> {
+            Ok(self.0(bound_var, outer_binder))
+        }
+    }
+    t.fold_with(&mut FreeVarFolder(f), DebruijnIndex::INNERMOST).expect("fold failed unexpectedly")
+}
