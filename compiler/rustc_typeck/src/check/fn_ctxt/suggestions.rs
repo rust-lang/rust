@@ -205,6 +205,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         found: Ty<'tcx>,
         expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
     ) {
+        let expr = expr.peel_blocks();
         if let Some((sp, msg, suggestion, applicability)) = self.check_ref(expr, found, expected) {
             err.span_suggestion(sp, msg, suggestion, applicability);
         } else if let (ty::FnDef(def_id, ..), true) =
