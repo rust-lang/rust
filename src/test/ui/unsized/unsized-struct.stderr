@@ -28,7 +28,11 @@ LL | fn bar2<T: ?Sized>() { is_sized::<Bar<T>>() }
    |         |
    |         this type parameter needs to be `std::marker::Sized`
    |
-   = note: required because it appears within the type `Bar<T>`
+note: required because it appears within the type `Bar<T>`
+  --> $DIR/unsized-struct.rs:11:8
+   |
+LL | struct Bar<T: ?Sized> { data: T }
+   |        ^^^
 
 error: aborting due to 2 previous errors
 
