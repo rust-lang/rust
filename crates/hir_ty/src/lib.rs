@@ -198,34 +198,6 @@ impl Ty {
             _ => false,
         }
     }
-
-    /// Returns the type parameters of this type if it has some (i.e. is an ADT
-    /// or function); so if `self` is `Option<u32>`, this returns the `u32`.
-    pub fn substs(&self) -> Option<&Substitution> {
-        match self.kind(&Interner) {
-            TyKind::Adt(_, substs)
-            | TyKind::FnDef(_, substs)
-            | TyKind::Tuple(_, substs)
-            | TyKind::OpaqueType(_, substs)
-            | TyKind::AssociatedType(_, substs)
-            | TyKind::Closure(.., substs) => Some(substs),
-            TyKind::Function(FnPointer { substitution: substs, .. }) => Some(&substs.0),
-            _ => None,
-        }
-    }
-
-    fn substs_mut(&mut self) -> Option<&mut Substitution> {
-        match self.interned_mut() {
-            TyKind::Adt(_, substs)
-            | TyKind::FnDef(_, substs)
-            | TyKind::Tuple(_, substs)
-            | TyKind::OpaqueType(_, substs)
-            | TyKind::AssociatedType(_, substs)
-            | TyKind::Closure(.., substs) => Some(substs),
-            TyKind::Function(FnPointer { substitution: substs, .. }) => Some(&mut substs.0),
-            _ => None,
-        }
-    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]

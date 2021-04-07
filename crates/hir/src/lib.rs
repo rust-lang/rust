@@ -1972,9 +1972,9 @@ impl Type {
     pub fn type_parameters(&self) -> impl Iterator<Item = Type> + '_ {
         self.ty
             .strip_references()
-            .substs()
+            .as_adt()
             .into_iter()
-            .flat_map(|substs| substs.iter(&Interner))
+            .flat_map(|(_, substs)| substs.iter(&Interner))
             .filter_map(|arg| arg.ty(&Interner).cloned())
             .map(move |ty| self.derived(ty))
     }
@@ -2115,18 +2115,22 @@ impl Type {
         fn walk_type(db: &dyn HirDatabase, type_: &Type, cb: &mut impl FnMut(Type)) {
             let ty = type_.ty.strip_references();
             match ty.kind(&Interner) {
-                TyKind::Adt(..) => {
+                TyKind::Adt(_, substs) => {
                     cb(type_.derived(ty.clone()));
+                    walk_substs(db, type_, &substs, cb);
                 }
-                TyKind::AssociatedType(..) => {
+                TyKind::AssociatedType(_, substs) => {
                     if let Some(_) = ty.associated_type_parent_trait(db) {
                         cb(type_.derived(ty.clone()));
                     }
+                    walk_substs(db, type_, &substs, cb);
                 }
-                TyKind::OpaqueType(..) => {
+                TyKind::OpaqueType(_, subst) => {
                     if let Some(bounds) = ty.impl_trait_bounds(db) {
                         walk_bounds(db, &type_.derived(ty.clone()), &bounds, cb);
                     }
+
+                    walk_substs(db, type_, subst, cb);
                 }
                 TyKind::Alias(AliasTy::Opaque(opaque_ty)) => {
                     if let Some(bounds) = ty.impl_trait_bounds(db) {
@@ -2156,10 +2160,16 @@ impl Type {
                     walk_type(db, &type_.derived(ty.clone()), cb);
                 }
 
+                TyKind::FnDef(_, substs)
+                | TyKind::Tuple(_, substs)
+                | TyKind::Closure(.., substs) => {
+                    walk_substs(db, type_, &substs, cb);
+                }
+                TyKind::Function(hir_ty::FnPointer { substitution, .. }) => {
+                    walk_substs(db, type_, &substitution.0, cb);
+                }
+
                 _ => {}
-            }
-            if let Some(substs) = ty.substs() {
-                walk_substs(db, type_, &substs, cb);
             }
         }
 

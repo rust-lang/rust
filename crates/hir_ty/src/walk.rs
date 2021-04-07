@@ -162,13 +162,15 @@ impl TypeWalk for Ty {
             TyKind::Function(fn_pointer) => {
                 fn_pointer.substitution.0.walk(f);
             }
-            _ => {
-                if let Some(substs) = self.substs() {
-                    for t in substs.iter(&Interner) {
-                        t.walk(f);
-                    }
-                }
+            TyKind::Adt(_, substs)
+            | TyKind::FnDef(_, substs)
+            | TyKind::Tuple(_, substs)
+            | TyKind::OpaqueType(_, substs)
+            | TyKind::AssociatedType(_, substs)
+            | TyKind::Closure(.., substs) => {
+                substs.walk(f);
             }
+            _ => {}
         }
         f(self);
     }
@@ -199,11 +201,15 @@ impl TypeWalk for Ty {
             TyKind::Function(fn_pointer) => {
                 fn_pointer.substitution.0.walk_mut_binders(f, binders.shifted_in());
             }
-            _ => {
-                if let Some(substs) = self.substs_mut() {
-                    substs.walk_mut_binders(f, binders);
-                }
+            TyKind::Adt(_, substs)
+            | TyKind::FnDef(_, substs)
+            | TyKind::Tuple(_, substs)
+            | TyKind::OpaqueType(_, substs)
+            | TyKind::AssociatedType(_, substs)
+            | TyKind::Closure(.., substs) => {
+                substs.walk_mut_binders(f, binders);
             }
+            _ => {}
         }
         f(self, binders);
     }
