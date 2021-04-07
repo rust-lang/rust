@@ -5,12 +5,12 @@ use std::convert::{TryFrom, TryInto};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_session::Session;
 
+use cranelift_codegen::isa::TargetIsa;
 use cranelift_module::FuncId;
+use cranelift_object::{ObjectBuilder, ObjectModule, ObjectProduct};
 
 use object::write::*;
 use object::{RelocationEncoding, SectionKind, SymbolFlags};
-
-use cranelift_object::{ObjectBuilder, ObjectModule, ObjectProduct};
 
 use gimli::SectionId;
 
@@ -113,7 +113,7 @@ impl WriteDebugInfo for ObjectProduct {
 }
 
 pub(crate) fn with_object(sess: &Session, name: &str, f: impl FnOnce(&mut Object)) -> Vec<u8> {
-    let triple = crate::build_isa(sess).triple().clone();
+    let triple = crate::target_triple(sess);
 
     let binary_format = match triple.binary_format {
         target_lexicon::BinaryFormat::Elf => object::BinaryFormat::Elf,
@@ -141,9 +141,9 @@ pub(crate) fn with_object(sess: &Session, name: &str, f: impl FnOnce(&mut Object
     metadata_object.write().unwrap()
 }
 
-pub(crate) fn make_module(sess: &Session, name: String) -> ObjectModule {
+pub(crate) fn make_module(sess: &Session, isa: Box<dyn TargetIsa>, name: String) -> ObjectModule {
     let mut builder = ObjectBuilder::new(
-        crate::build_isa(sess),
+        isa,
         name + ".o",
         cranelift_module::default_libcall_names(),
     )

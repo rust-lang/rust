@@ -44,9 +44,10 @@ This will build your project with rustc_codegen_cranelift instead of the usual L
 
 For additional ways to use rustc_codegen_cranelift like the JIT mode see [usage.md](docs/usage.md).
 
-## Env vars
+## Configuration
 
-See [env_vars.md](docs/env_vars.md) for all env vars used by rustc_codegen_cranelift.
+See the documentation on the `BackendConfig` struct in [config.rs](src/config.rs) for all
+configuration options.
 
 ## Not yet supported
 

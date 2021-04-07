@@ -193,7 +193,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         metadata: EncodedMetadata,
         need_metadata_module: bool,
     ) -> Box<dyn Any> {
-        let config = if let Some(config) = self.config {
+        let config = if let Some(config) = self.config.clone() {
             config
         } else {
             BackendConfig::from_opts(&tcx.sess.opts.cg.llvm_args)
@@ -237,7 +237,7 @@ fn target_triple(sess: &Session) -> target_lexicon::Triple {
     sess.target.llvm_target.parse().unwrap()
 }
 
-fn build_isa(sess: &Session) -> Box<dyn isa::TargetIsa + 'static> {
+fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Box<dyn isa::TargetIsa + 'static> {
     use target_lexicon::BinaryFormat;
 
     let target_triple = crate::target_triple(sess);
@@ -245,9 +245,8 @@ fn build_isa(sess: &Session) -> Box<dyn isa::TargetIsa + 'static> {
     let mut flags_builder = settings::builder();
     flags_builder.enable("is_pic").unwrap();
     flags_builder.set("enable_probestack", "false").unwrap(); // __cranelift_probestack is not provided
-    let enable_verifier =
-        cfg!(debug_assertions) || std::env::var("CG_CLIF_ENABLE_VERIFIER").is_ok();
-    flags_builder.set("enable_verifier", if enable_verifier { "true" } else { "false" }).unwrap();
+    let enable_verifier = if backend_config.enable_verifier { "true" } else { "false" };
+    flags_builder.set("enable_verifier", enable_verifier).unwrap();
 
     let tls_model = match target_triple.binary_format {
         BinaryFormat::Elf => "elf_gd",

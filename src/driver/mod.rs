@@ -65,8 +65,8 @@ fn predefine_mono_items<'tcx>(
     });
 }
 
-fn time<R>(tcx: TyCtxt<'_>, name: &'static str, f: impl FnOnce() -> R) -> R {
-    if std::env::var("CG_CLIF_DISPLAY_CG_TIME").as_ref().map(|val| &**val) == Ok("1") {
+fn time<R>(tcx: TyCtxt<'_>, display: bool, name: &'static str, f: impl FnOnce() -> R) -> R {
+    if display {
         println!("[{:<30}: {}] start", tcx.crate_name(LOCAL_CRATE), name);
         let before = std::time::Instant::now();
         let res = tcx.sess.time(name, f);

@@ -16,12 +16,6 @@ use cranelift_object::ObjectModule;
 
 use crate::{prelude::*, BackendConfig};
 
-fn new_module(tcx: TyCtxt<'_>, name: String) -> ObjectModule {
-    let module = crate::backend::make_module(tcx.sess, name);
-    assert_eq!(pointer_ty(tcx), module.target_config().pointer_type());
-    module
-}
-
 struct ModuleCodegenResult(CompiledModule, Option<(WorkProductId, WorkProduct)>);
 
 impl<HCX> HashStable<HCX> for ModuleCodegenResult {
@@ -32,6 +26,7 @@ impl<HCX> HashStable<HCX> for ModuleCodegenResult {
 
 fn emit_module(
     tcx: TyCtxt<'_>,
+    backend_config: &BackendConfig,
     name: String,
     kind: ModuleKind,
     module: ObjectModule,
@@ -52,7 +47,7 @@ fn emit_module(
         tcx.sess.fatal(&format!("error writing object file: {}", err));
     }
 
-    let work_product = if std::env::var("CG_CLIF_INCR_CACHE_DISABLED").is_ok() {
+    let work_product = if backend_config.disable_incr_cache {
         None
     } else {
         rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
@@ -110,11 +105,13 @@ fn module_codegen(
     let cgu = tcx.codegen_unit(cgu_name);
     let mono_items = cgu.items_in_deterministic_order(tcx);
 
-    let mut module = new_module(tcx, cgu_name.as_str().to_string());
+    let isa = crate::build_isa(tcx.sess, &backend_config);
+    let mut module = crate::backend::make_module(tcx.sess, isa, cgu_name.as_str().to_string());
+    assert_eq!(pointer_ty(tcx), module.target_config().pointer_type());
 
     let mut cx = crate::CodegenCx::new(
         tcx,
-        backend_config,
+        backend_config.clone(),
         &mut module,
         tcx.sess.opts.debuginfo != DebugInfo::None,
     );
@@ -144,6 +141,7 @@ fn module_codegen(
 
     let codegen_result = emit_module(
         tcx,
+        &backend_config,
         cgu.name().as_str().to_string(),
         ModuleKind::Regular,
         module,
@@ -193,14 +191,14 @@ pub(super) fn run_aot(
         }
     }
 
-    let modules = super::time(tcx, "codegen mono items", || {
+    let modules = super::time(tcx, backend_config.display_cg_time, "codegen mono items", || {
         cgus.iter()
             .map(|cgu| {
                 let cgu_reuse = determine_cgu_reuse(tcx, cgu);
                 tcx.sess.cgu_reuse_tracker.set_actual_reuse(&cgu.name().as_str(), cgu_reuse);
 
                 match cgu_reuse {
-                    _ if std::env::var("CG_CLIF_INCR_CACHE_DISABLED").is_ok() => {}
+                    _ if backend_config.disable_incr_cache => {}
                     CguReuse::No => {}
                     CguReuse::PreLto => {
                         return reuse_workproduct_for_cgu(tcx, &*cgu, &mut work_products);
@@ -212,7 +210,7 @@ pub(super) fn run_aot(
                 let (ModuleCodegenResult(module, work_product), _) = tcx.dep_graph.with_task(
                     dep_node,
                     tcx,
-                    (backend_config, cgu.name()),
+                    (backend_config.clone(), cgu.name()),
                     module_codegen,
                     rustc_middle::dep_graph::hash_result,
                 );
@@ -228,7 +226,9 @@ pub(super) fn run_aot(
 
     tcx.sess.abort_if_errors();
 
-    let mut allocator_module = new_module(tcx, "allocator_shim".to_string());
+    let isa = crate::build_isa(tcx.sess, &backend_config);
+    let mut allocator_module = crate::backend::make_module(tcx.sess, isa, "allocator_shim".to_string());
+    assert_eq!(pointer_ty(tcx), allocator_module.target_config().pointer_type());
     let mut allocator_unwind_context = UnwindContext::new(tcx, allocator_module.isa(), true);
     let created_alloc_shim =
         crate::allocator::codegen(tcx, &mut allocator_module, &mut allocator_unwind_context);
@@ -236,6 +236,7 @@ pub(super) fn run_aot(
     let allocator_module = if created_alloc_shim {
         let ModuleCodegenResult(module, work_product) = emit_module(
             tcx,
+            &backend_config,
             "allocator_shim".to_string(),
             ModuleKind::Allocator,
             allocator_module,

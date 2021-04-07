@@ -248,7 +248,7 @@ pub(crate) fn write_clif_file<'tcx>(
             &mut clif,
             &context.func,
             &DisplayFunctionAnnotations {
-                isa: Some(&*crate::build_isa(tcx.sess)),
+                isa,
                 value_ranges: value_ranges.as_ref(),
             },
         )

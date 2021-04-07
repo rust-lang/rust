@@ -27,8 +27,8 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
 
     let imported_symbols = load_imported_symbols_for_jit(tcx);
 
-    let mut jit_builder =
-        JITBuilder::with_isa(crate::build_isa(tcx.sess), cranelift_module::default_libcall_names());
+    let isa = crate::build_isa(tcx.sess, &backend_config);
+    let mut jit_builder = JITBuilder::with_isa(isa, cranelift_module::default_libcall_names());
     jit_builder.hotswap(matches!(backend_config.codegen_mode, CodegenMode::JitLazy));
     crate::compiler_builtins::register_functions_for_jit(&mut jit_builder);
     jit_builder.symbols(imported_symbols);
@@ -44,9 +44,9 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
         .into_iter()
         .collect::<Vec<(_, (_, _))>>();
 
-    let mut cx = crate::CodegenCx::new(tcx, backend_config, &mut jit_module, false);
+    let mut cx = crate::CodegenCx::new(tcx, backend_config.clone(), &mut jit_module, false);
 
-    super::time(tcx, "codegen mono items", || {
+    super::time(tcx, backend_config.display_cg_time, "codegen mono items", || {
         super::predefine_mono_items(&mut cx, &mono_items);
         for (mono_item, _) in mono_items {
             match mono_item {
@@ -87,9 +87,8 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
         "Rustc codegen cranelift will JIT run the executable, because -Cllvm-args=mode=jit was passed"
     );
 
-    let args = ::std::env::var("CG_CLIF_JIT_ARGS").unwrap_or_else(|_| String::new());
     let args = std::iter::once(&*tcx.crate_name(LOCAL_CRATE).as_str().to_string())
-        .chain(args.split(' '))
+        .chain(backend_config.jit_args.iter().map(|arg| &**arg))
         .map(|arg| CString::new(arg).unwrap())
         .collect::<Vec<_>>();
     let mut argv = args.iter().map(|arg| arg.as_ptr()).collect::<Vec<_>>();
