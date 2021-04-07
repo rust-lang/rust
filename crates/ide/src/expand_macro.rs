@@ -103,6 +103,9 @@ fn insert_whitespaces(syn: SyntaxNode) -> String {
                 format!("\n{}}}", "  ".repeat(indent))
             }
             R_CURLY => format!("}}\n{}", "  ".repeat(indent)),
+            LIFETIME_IDENT if is_next(|it| it == IDENT, true) => {
+                format!("{} ", token.text().to_string())
+            }
             T![;] => format!(";\n{}", "  ".repeat(indent)),
             T![->] => " -> ".to_string(),
             T![=] => " = ".to_string(),
