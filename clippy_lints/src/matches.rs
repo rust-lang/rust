@@ -1701,7 +1701,7 @@ mod redundant_pattern_match {
     use super::REDUNDANT_PATTERN_MATCHING;
     use clippy_utils::diagnostics::span_lint_and_then;
     use clippy_utils::source::snippet;
-    use clippy_utils::{is_lang_ctor, is_trait_method, match_qpath, paths};
+    use clippy_utils::{is_lang_ctor, is_qpath_def_path, is_trait_method, paths};
     use if_chain::if_chain;
     use rustc_ast::ast::LitKind;
     use rustc_errors::Applicability;
@@ -1735,8 +1735,8 @@ mod redundant_pattern_match {
             kind = &inner.kind;
         }
         let good_method = match kind {
-            PatKind::TupleStruct(ref path, patterns, _) if patterns.len() == 1 => {
-                if let PatKind::Wild = patterns[0].kind {
+            PatKind::TupleStruct(ref path, [sub_pat], _) => {
+                if let PatKind::Wild = sub_pat.kind {
                     if is_lang_ctor(cx, path, ResultOk) {
                         "is_ok()"
                     } else if is_lang_ctor(cx, path, ResultErr) {
@@ -1745,9 +1745,9 @@ mod redundant_pattern_match {
                         "is_some()"
                     } else if is_lang_ctor(cx, path, PollReady) {
                         "is_ready()"
-                    } else if match_qpath(path, &paths::IPADDR_V4) {
+                    } else if is_qpath_def_path(cx, path, sub_pat.hir_id, &paths::IPADDR_V4) {
                         "is_ipv4()"
-                    } else if match_qpath(path, &paths::IPADDR_V6) {
+                    } else if is_qpath_def_path(cx, path, sub_pat.hir_id, &paths::IPADDR_V6) {
                         "is_ipv6()"
                     } else {
                         return;
@@ -1821,6 +1821,7 @@ mod redundant_pattern_match {
                 ) if patterns_left.len() == 1 && patterns_right.len() == 1 => {
                     if let (PatKind::Wild, PatKind::Wild) = (&patterns_left[0].kind, &patterns_right[0].kind) {
                         find_good_method_for_match(
+                            cx,
                             arms,
                             path_left,
                             path_right,
@@ -1831,6 +1832,7 @@ mod redundant_pattern_match {
                         )
                         .or_else(|| {
                             find_good_method_for_match(
+                                cx,
                                 arms,
                                 path_left,
                                 path_right,
@@ -1850,6 +1852,7 @@ mod redundant_pattern_match {
                 {
                     if let PatKind::Wild = patterns[0].kind {
                         find_good_method_for_match(
+                            cx,
                             arms,
                             path_left,
                             path_right,
@@ -1860,6 +1863,7 @@ mod redundant_pattern_match {
                         )
                         .or_else(|| {
                             find_good_method_for_match(
+                                cx,
                                 arms,
                                 path_left,
                                 path_right,
@@ -1900,7 +1904,9 @@ mod redundant_pattern_match {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn find_good_method_for_match<'a>(
+        cx: &LateContext<'_>,
         arms: &[Arm<'_>],
         path_left: &QPath<'_>,
         path_right: &QPath<'_>,
@@ -1909,9 +1915,13 @@ mod redundant_pattern_match {
         should_be_left: &'a str,
         should_be_right: &'a str,
     ) -> Option<&'a str> {
-        let body_node_pair = if match_qpath(path_left, expected_left) && match_qpath(path_right, expected_right) {
+        let body_node_pair = if is_qpath_def_path(cx, path_left, arms[0].pat.hir_id, expected_left)
+            && is_qpath_def_path(cx, path_right, arms[1].pat.hir_id, expected_right)
+        {
             (&(*arms[0].body).kind, &(*arms[1].body).kind)
-        } else if match_qpath(path_right, expected_left) && match_qpath(path_left, expected_right) {
+        } else if is_qpath_def_path(cx, path_right, arms[1].pat.hir_id, expected_left)
+            && is_qpath_def_path(cx, path_left, arms[0].pat.hir_id, expected_right)
+        {
             (&(*arms[1].body).kind, &(*arms[0].body).kind)
         } else {
             return None;

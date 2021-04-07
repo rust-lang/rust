@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{is_adjusted, is_trait_method, match_path, match_var, paths, remove_blocks};
+use clippy_utils::{is_adjusted, is_qpath_def_path, is_trait_method, match_var, paths, remove_blocks};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Body, Expr, ExprKind, Pat, PatKind, QPath, StmtKind};
@@ -80,7 +80,7 @@ fn get_map_argument<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<&'a 
 fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     match expr.kind {
         ExprKind::Closure(_, _, body_id, _, _) => is_body_identity_function(cx, cx.tcx.hir().body(body_id)),
-        ExprKind::Path(QPath::Resolved(_, path)) => match_path(path, &paths::STD_CONVERT_IDENTITY),
+        ExprKind::Path(ref path) => is_qpath_def_path(cx, path, expr.hir_id, &paths::CONVERT_IDENTITY),
         _ => false,
     }
 }

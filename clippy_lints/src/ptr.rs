@@ -4,7 +4,7 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_the
 use clippy_utils::ptr::get_spans;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{is_type_diagnostic_item, match_type, walk_ptrs_hir_ty};
-use clippy_utils::{is_allowed, match_def_path, paths};
+use clippy_utils::{expr_path_res, is_allowed, match_any_def_paths, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{
@@ -417,14 +417,11 @@ fn get_rptr_lm<'tcx>(ty: &'tcx Ty<'tcx>) -> Option<(&'tcx Lifetime, Mutability, 
 }
 
 fn is_null_path(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    if_chain! {
-        if let ExprKind::Call(path, []) = expr.kind;
-        if let ExprKind::Path(ref qpath) = path.kind;
-        if let Some(fn_def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id();
-        then {
-            match_def_path(cx, fn_def_id, &paths::PTR_NULL) || match_def_path(cx, fn_def_id, &paths::PTR_NULL_MUT)
-        } else {
-            false
-        }
+    if let ExprKind::Call(pathexp, []) = expr.kind {
+        expr_path_res(cx, pathexp).opt_def_id().map_or(false, |id| {
+            match_any_def_paths(cx, id, &[&paths::PTR_NULL, &paths::PTR_NULL_MUT]).is_some()
+        })
+    } else {
+        false
     }
 }

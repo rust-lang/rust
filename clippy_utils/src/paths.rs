@@ -4,7 +4,7 @@
 //! Whenever possible, please consider diagnostic items over hardcoded paths.
 //! See <https://github.com/rust-lang/rust-clippy/issues/5393> for more information.
 
-pub const ANY_TRAIT: [&str; 3] = ["std", "any", "Any"];
+pub const ANY_TRAIT: [&str; 3] = ["core", "any", "Any"];
 pub const ARC_PTR_EQ: [&str; 4] = ["alloc", "sync", "Arc", "ptr_eq"];
 pub const ASMUT_TRAIT: [&str; 3] = ["core", "convert", "AsMut"];
 pub const ASREF_TRAIT: [&str; 3] = ["core", "convert", "AsRef"];
@@ -42,6 +42,8 @@ pub const FMT_ARGUMENTS_NEW_V1_FORMATTED: [&str; 4] = ["core", "fmt", "Arguments
 pub const FMT_ARGUMENTV1_NEW: [&str; 4] = ["core", "fmt", "ArgumentV1", "new"];
 pub const FROM_FROM: [&str; 4] = ["core", "convert", "From", "from"];
 pub const FROM_ITERATOR: [&str; 5] = ["core", "iter", "traits", "collect", "FromIterator"];
+pub const FROM_ITERATOR_METHOD: [&str; 6] = ["core", "iter", "traits", "collect", "FromIterator", "from_iter"];
+pub const FROM_STR_METHOD: [&str; 5] = ["core", "str", "traits", "FromStr", "from_str"];
 pub const FUTURE_FROM_GENERATOR: [&str; 3] = ["core", "future", "from_generator"];
 pub const HASH: [&str; 3] = ["core", "hash", "Hash"];
 pub const HASHMAP: [&str; 5] = ["std", "collections", "hash", "map", "HashMap"];
@@ -58,8 +60,9 @@ pub const INTO: [&str; 3] = ["core", "convert", "Into"];
 pub const INTO_ITERATOR: [&str; 5] = ["core", "iter", "traits", "collect", "IntoIterator"];
 pub const IO_READ: [&str; 3] = ["std", "io", "Read"];
 pub const IO_WRITE: [&str; 3] = ["std", "io", "Write"];
-pub const IPADDR_V4: [&str; 4] = ["std", "net", "IpAddr", "V4"];
-pub const IPADDR_V6: [&str; 4] = ["std", "net", "IpAddr", "V6"];
+pub const IPADDR_V4: [&str; 5] = ["std", "net", "ip", "IpAddr", "V4"];
+pub const IPADDR_V6: [&str; 5] = ["std", "net", "ip", "IpAddr", "V6"];
+pub const ITER_REPEAT: [&str; 5] = ["core", "iter", "sources", "repeat", "repeat"];
 #[cfg(feature = "internal-lints")]
 pub const KW_MODULE: [&str; 3] = ["rustc_span", "symbol", "kw"];
 #[cfg(feature = "internal-lints")]
@@ -126,7 +129,6 @@ pub const REGEX_BYTES_NEW: [&str; 4] = ["regex", "re_bytes", "Regex", "new"];
 pub const REGEX_BYTES_SET_NEW: [&str; 5] = ["regex", "re_set", "bytes", "RegexSet", "new"];
 pub const REGEX_NEW: [&str; 4] = ["regex", "re_unicode", "Regex", "new"];
 pub const REGEX_SET_NEW: [&str; 5] = ["regex", "re_set", "unicode", "RegexSet", "new"];
-pub const REPEAT: [&str; 3] = ["core", "iter", "repeat"];
 pub const RESULT: [&str; 3] = ["core", "result", "Result"];
 pub const RESULT_ERR: [&str; 4] = ["core", "result", "Result", "Err"];
 pub const RESULT_OK: [&str; 4] = ["core", "result", "Result", "Ok"];
@@ -140,7 +142,7 @@ pub const SLICE_INTO_VEC: [&str; 4] = ["alloc", "slice", "<impl [T]>", "into_vec
 pub const SLICE_ITER: [&str; 4] = ["core", "slice", "iter", "Iter"];
 pub const STDERR: [&str; 4] = ["std", "io", "stdio", "stderr"];
 pub const STDOUT: [&str; 4] = ["std", "io", "stdio", "stdout"];
-pub const STD_CONVERT_IDENTITY: [&str; 3] = ["std", "convert", "identity"];
+pub const CONVERT_IDENTITY: [&str; 3] = ["core", "convert", "identity"];
 pub const STD_FS_CREATE_DIR: [&str; 3] = ["std", "fs", "create_dir"];
 pub const STRING_AS_MUT_STR: [&str; 4] = ["alloc", "string", "String", "as_mut_str"];
 pub const STRING_AS_STR: [&str; 4] = ["alloc", "string", "String", "as_str"];

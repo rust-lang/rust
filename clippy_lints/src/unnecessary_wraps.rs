@@ -104,14 +104,12 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
             if_chain! {
                 if !in_macro(ret_expr.span);
                 // Check if a function call.
-                if let ExprKind::Call(func, args) = ret_expr.kind;
-                // Get the Path of the function call.
-                if let ExprKind::Path(ref qpath) = func.kind;
+                if let ExprKind::Call(func, [arg]) = ret_expr.kind;
                 // Check if OPTION_SOME or RESULT_OK, depending on return type.
+                if let ExprKind::Path(qpath) = &func.kind;
                 if is_lang_ctor(cx, qpath, lang_item);
-                if args.len() == 1;
                 // Make sure the function argument does not contain a return expression.
-                if !contains_return(&args[0]);
+                if !contains_return(arg);
                 then {
                     suggs.push(
                         (
@@ -119,7 +117,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
                             if inner_type.is_unit() {
                                 "".to_string()
                             } else {
-                                snippet(cx, args[0].span.source_callsite(), "..").to_string()
+                                snippet(cx, arg.span.source_callsite(), "..").to_string()
                             }
                         )
                     );
