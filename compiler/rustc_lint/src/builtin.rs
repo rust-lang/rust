@@ -1704,7 +1704,7 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
                     Some(start) => format!("&({}..={})", expr_to_string(&start), end),
                     None => format!("&(..={})", end),
                 };
-                if cx.sess().edition() >= Edition::Edition2021 {
+                if join.edition() >= Edition::Edition2021 {
                     let mut err =
                         rustc_errors::struct_span_err!(cx.sess, pat.span, E0783, "{}", msg,);
                     err.span_suggestion(
@@ -1728,7 +1728,7 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
                 }
             } else {
                 let replace = "..=".to_owned();
-                if cx.sess().edition() >= Edition::Edition2021 {
+                if join.edition() >= Edition::Edition2021 {
                     let mut err =
                         rustc_errors::struct_span_err!(cx.sess, pat.span, E0783, "{}", msg,);
                     err.span_suggestion_short(

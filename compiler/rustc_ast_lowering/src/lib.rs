@@ -2775,7 +2775,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .map(|snippet| snippet.starts_with("#["))
             .unwrap_or(true);
         if !is_macro_callsite {
-            if self.sess.edition() < Edition::Edition2021 {
+            if span.edition() < Edition::Edition2021 {
                 self.resolver.lint_buffer().buffer_lint_with_diagnostic(
                     BARE_TRAIT_OBJECTS,
                     id,
