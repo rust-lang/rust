@@ -35,7 +35,7 @@ use std::sync::Arc;
 use base_db::salsa;
 use chalk_ir::{
     cast::{CastTo, Caster},
-    fold::Fold,
+    fold::{Fold, Shift},
     interner::HasInterner,
     UintTy,
 };
@@ -123,9 +123,9 @@ pub fn param_idx(db: &dyn HirDatabase, id: TypeParamId) -> Option<usize> {
 
 pub fn wrap_empty_binders<T>(value: T) -> Binders<T>
 where
-    T: TypeWalk + HasInterner<Interner = Interner>,
+    T: Fold<Interner, Result = T> + HasInterner<Interner = Interner>,
 {
-    Binders::empty(&Interner, value.shifted_in_from(DebruijnIndex::ONE))
+    Binders::empty(&Interner, value.shifted_in_from(&Interner, DebruijnIndex::ONE))
 }
 
 pub fn make_only_type_binders<T: HasInterner<Interner = Interner>>(
@@ -187,7 +187,7 @@ impl CallableSig {
             params_and_return: fn_ptr
                 .substitution
                 .clone()
-                .shifted_out_to(DebruijnIndex::ONE)
+                .shifted_out_to(&Interner, DebruijnIndex::ONE)
                 .expect("unexpected lifetime vars in fn ptr")
                 .0
                 .interned()

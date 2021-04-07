@@ -2,7 +2,7 @@
 //! query, but can't be computed directly from `*Data` (ie, which need a `db`).
 use std::sync::Arc;
 
-use chalk_ir::{BoundVar, DebruijnIndex};
+use chalk_ir::{fold::Shift, BoundVar, DebruijnIndex};
 use hir_def::{
     db::DefDatabase,
     generics::{
@@ -69,7 +69,7 @@ fn direct_super_trait_refs(db: &dyn HirDatabase, trait_ref: &TraitRef) -> Vec<Tr
                 // FIXME: how to correctly handle higher-ranked bounds here?
                 WhereClause::Implemented(tr) => Some(
                     tr.clone()
-                        .shifted_out_to(DebruijnIndex::ONE)
+                        .shifted_out_to(&Interner, DebruijnIndex::ONE)
                         .expect("FIXME unexpected higher-ranked trait bound"),
                 ),
                 _ => None,

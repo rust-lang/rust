@@ -8,7 +8,7 @@
 use std::{iter, sync::Arc};
 
 use base_db::CrateId;
-use chalk_ir::{cast::Cast, interner::HasInterner, Mutability, Safety};
+use chalk_ir::{cast::Cast, fold::Shift, interner::HasInterner, Mutability, Safety};
 use hir_def::{
     adt::StructKind,
     builtin_type::BuiltinType,
@@ -488,7 +488,7 @@ impl<'a> TyLoweringContext<'a> {
                         };
                         // We need to shift in the bound vars, since
                         // associated_type_shorthand_candidates does not do that
-                        let substs = substs.shifted_in_from(self.in_binders);
+                        let substs = substs.shifted_in_from(&Interner, self.in_binders);
                         // FIXME handle type parameters on the segment
                         return Some(
                             TyKind::Alias(AliasTy::Projection(ProjectionTy {
@@ -847,7 +847,7 @@ pub fn associated_type_shorthand_candidates<R>(
                 // FIXME: how to correctly handle higher-ranked bounds here?
                 WhereClause::Implemented(tr) => search(
                     tr.clone()
-                        .shifted_out_to(DebruijnIndex::ONE)
+                        .shifted_out_to(&Interner, DebruijnIndex::ONE)
                         .expect("FIXME unexpected higher-ranked trait bound"),
                 ),
                 _ => None,

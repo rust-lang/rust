@@ -288,7 +288,7 @@ pub(super) fn generic_predicate_to_inline_bound(
 ) -> Option<chalk_ir::Binders<rust_ir::InlineBound<Interner>>> {
     // An InlineBound is like a GenericPredicate, except the self type is left out.
     // We don't have a special type for this, but Chalk does.
-    let self_ty_shifted_in = self_ty.clone().shifted_in_from(DebruijnIndex::ONE);
+    let self_ty_shifted_in = self_ty.clone().shifted_in_from(&Interner, DebruijnIndex::ONE);
     let (pred, binders) = pred.as_ref().into_value_and_skipped_binders();
     match pred {
         WhereClause::Implemented(trait_ref) => {
