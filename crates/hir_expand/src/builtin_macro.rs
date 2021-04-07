@@ -490,7 +490,7 @@ fn env_expand(
         // unnecessary diagnostics for eg. `CARGO_PKG_NAME`.
         if key == "OUT_DIR" {
             err = Some(mbe::ExpandError::Other(
-                r#"`OUT_DIR` not set, enable "load out dirs from check" to fix"#.into(),
+                r#"`OUT_DIR` not set, enable "run build scripts" to fix"#.into(),
             ));
         }
 

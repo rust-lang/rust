@@ -233,7 +233,7 @@ fn good_out_dir_diagnostic() {
         macro_rules! concat { () => {} }
 
         include!(concat!(env!("OUT_DIR"), "/out.rs"));
-      //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `OUT_DIR` not set, enable "load out dirs from check" to fix
+      //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `OUT_DIR` not set, enable "run build scripts" to fix
         "#,
     );
 }

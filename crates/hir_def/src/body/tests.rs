@@ -143,7 +143,7 @@ fn f() {
   //^^^^^^^^^^^^^ could not convert tokens
 
     env!("OUT_DIR");
-  //^^^^^^^^^^^^^^^ `OUT_DIR` not set, enable "load out dirs from check" to fix
+  //^^^^^^^^^^^^^^^ `OUT_DIR` not set, enable "run build scripts" to fix
 
     compile_error!("compile_error works");
   //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ compile_error works
