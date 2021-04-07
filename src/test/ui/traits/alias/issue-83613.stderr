@@ -1,0 +1,23 @@
+error[E0119]: conflicting implementations of trait `AnotherTrait` for type `impl OpaqueTrait`
+  --> $DIR/issue-83613.rs:10:1
+   |
+LL | impl<T: Send> AnotherTrait for T {}
+   | -------------------------------- first implementation here
+LL | impl AnotherTrait for OpaqueType {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `impl OpaqueTrait`
+
+error: cannot implement trait on type alias impl trait
+  --> $DIR/issue-83613.rs:10:1
+   |
+LL | impl AnotherTrait for OpaqueType {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: type alias impl trait defined here
+  --> $DIR/issue-83613.rs:4:19
+   |
+LL | type OpaqueType = impl OpaqueTrait;
+   |                   ^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0119`.

@@ -1,4 +1,4 @@
-error[E0119]: conflicting implementations of trait `Trait` for type `for<'a, 'b> fn(&'a u32, &'b u32)`:
+error[E0119]: conflicting implementations of trait `Trait` for type `for<'a, 'b> fn(&'a u32, &'b u32)`
   --> $DIR/coherence-fn-inputs.rs:15:1
    |
 LL | impl Trait for for<'a, 'b> fn(&'a u32, &'b u32) {}

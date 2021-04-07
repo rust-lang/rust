@@ -1,4 +1,4 @@
-error[E0119]: conflicting implementations of trait `MyTrait` for type `(MyType,)`:
+error[E0119]: conflicting implementations of trait `MyTrait` for type `(MyType,)`
   --> $DIR/coherence_copy_like_err_tuple.rs:18:1
    |
 LL | impl<T: lib::MyCopy> MyTrait for T { }

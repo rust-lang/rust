@@ -7,7 +7,7 @@ LL |
 LL | impl<T: MyTrait> !Send for TestType<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ negative implementation here
 
-error[E0119]: conflicting implementations of trait `std::marker::Send` for type `TestType<_>`:
+error[E0119]: conflicting implementations of trait `std::marker::Send` for type `TestType<_>`
   --> $DIR/coherence-conflicting-negative-trait-impl.rs:13:1
    |
 LL | unsafe impl<T: MyTrait + 'static> Send for TestType<T> {}

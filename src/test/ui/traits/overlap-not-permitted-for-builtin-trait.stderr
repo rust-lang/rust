@@ -1,4 +1,4 @@
-error[E0119]: conflicting implementations of trait `std::marker::Send` for type `MyStruct`:
+error[E0119]: conflicting implementations of trait `std::marker::Send` for type `MyStruct`
   --> $DIR/overlap-not-permitted-for-builtin-trait.rs:7:1
    |
 LL | impl !Send for MyStruct {}

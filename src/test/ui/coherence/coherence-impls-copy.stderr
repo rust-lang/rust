@@ -1,4 +1,4 @@
-error[E0119]: conflicting implementations of trait `std::marker::Copy` for type `i32`:
+error[E0119]: conflicting implementations of trait `std::marker::Copy` for type `i32`
   --> $DIR/coherence-impls-copy.rs:5:1
    |
 LL | impl Copy for i32 {}
@@ -7,7 +7,7 @@ LL | impl Copy for i32 {}
    = note: conflicting implementation in crate `core`:
            - impl Copy for i32;
 
-error[E0119]: conflicting implementations of trait `std::marker::Copy` for type `&NotSync`:
+error[E0119]: conflicting implementations of trait `std::marker::Copy` for type `&NotSync`
   --> $DIR/coherence-impls-copy.rs:29:1
    |
 LL | impl Copy for &'static NotSync {}
@@ -17,7 +17,7 @@ LL | impl Copy for &'static NotSync {}
            - impl<T> Copy for &T
              where T: ?Sized;
 
-error[E0119]: conflicting implementations of trait `std::marker::Copy` for type `&[NotSync]`:
+error[E0119]: conflicting implementations of trait `std::marker::Copy` for type `&[NotSync]`
   --> $DIR/coherence-impls-copy.rs:34:1
    |
 LL | impl Copy for &'static [NotSync] {}
