@@ -484,7 +484,7 @@ impl GlobalState {
                 req.id,
                 // FIXME: i32 should impl From<ErrorCode> (from() guarantees lossless conversion)
                 lsp_server::ErrorCode::ContentModified as i32,
-                "Rust Analyzer is still loading...".to_owned(),
+                "waiting for cargo metadata or cargo check".to_owned(),
             ));
             return Ok(());
         }
