@@ -484,36 +484,13 @@ impl<'a> InferenceContext<'a> {
                 let generics = crate::utils::generics(self.db.upcast(), impl_id.into());
                 let substs = generics.type_params_subst(self.db);
                 let ty = self.db.impl_self_ty(impl_id).substitute(&Interner, &substs);
-                match unresolved {
-                    None => {
-                        let variant = ty_variant(&ty);
-                        (ty, variant)
-                    }
-                    Some(1) => {
-                        let segment = path.mod_path().segments().last().unwrap();
-                        // this could be an enum variant or associated type
-                        if let Some((AdtId::EnumId(enum_id), _)) = ty.as_adt() {
-                            let enum_data = self.db.enum_data(enum_id);
-                            if let Some(local_id) = enum_data.variant(segment) {
-                                let variant = EnumVariantId { parent: enum_id, local_id };
-                                return (ty, Some(variant.into()));
-                            }
-                        }
-                        // FIXME potentially resolve assoc type
-                        (self.err_ty(), None)
-                    }
-                    Some(_) => {
-                        // FIXME diagnostic
-                        (self.err_ty(), None)
-                    }
-                }
+                self.resolve_variant_on_alias(ty, unresolved, path)
             }
             TypeNs::TypeAliasId(it) => {
                 let ty = TyBuilder::def_ty(self.db, it.into())
                     .fill(std::iter::repeat_with(|| self.table.new_type_var()))
                     .build();
-                let variant = ty_variant(&ty);
-                forbid_unresolved_segments((ty, variant), unresolved)
+                self.resolve_variant_on_alias(ty, unresolved, path)
             }
             TypeNs::AdtSelfType(_) => {
                 // FIXME this could happen in array size expressions, once we're checking them
@@ -540,16 +517,43 @@ impl<'a> InferenceContext<'a> {
                 (TyKind::Error.intern(&Interner), None)
             }
         }
+    }
 
-        fn ty_variant(ty: &Ty) -> Option<VariantId> {
-            ty.as_adt().and_then(|(adt_id, _)| match adt_id {
-                AdtId::StructId(s) => Some(VariantId::StructId(s)),
-                AdtId::UnionId(u) => Some(VariantId::UnionId(u)),
-                AdtId::EnumId(_) => {
-                    // FIXME Error E0071, expected struct, variant or union type, found enum `Foo`
-                    None
+    fn resolve_variant_on_alias(
+        &mut self,
+        ty: Ty,
+        unresolved: Option<usize>,
+        path: &Path,
+    ) -> (Ty, Option<VariantId>) {
+        match unresolved {
+            None => {
+                let variant = ty.as_adt().and_then(|(adt_id, _)| match adt_id {
+                    AdtId::StructId(s) => Some(VariantId::StructId(s)),
+                    AdtId::UnionId(u) => Some(VariantId::UnionId(u)),
+                    AdtId::EnumId(_) => {
+                        // FIXME Error E0071, expected struct, variant or union type, found enum `Foo`
+                        None
+                    }
+                });
+                (ty, variant)
+            }
+            Some(1) => {
+                let segment = path.mod_path().segments().last().unwrap();
+                // this could be an enum variant or associated type
+                if let Some((AdtId::EnumId(enum_id), _)) = ty.as_adt() {
+                    let enum_data = self.db.enum_data(enum_id);
+                    if let Some(local_id) = enum_data.variant(segment) {
+                        let variant = EnumVariantId { parent: enum_id, local_id };
+                        return (ty, Some(variant.into()));
+                    }
                 }
-            })
+                // FIXME potentially resolve assoc type
+                (self.err_ty(), None)
+            }
+            Some(_) => {
+                // FIXME diagnostic
+                (self.err_ty(), None)
+            }
         }
     }
 

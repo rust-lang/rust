@@ -2564,3 +2564,36 @@ fn f() {
     "#,
     )
 }
+
+#[test]
+fn infer_type_alias_variant() {
+    check_infer(
+        r#"
+type Qux = Foo;
+enum Foo {
+    Bar(i32),
+    Baz { baz: f32 }
+}
+
+fn f() {
+    match Foo::Bar(3) {
+        Qux::Bar(bar) => (),
+        Qux::Baz { baz } => (),
+    }
+}
+    "#,
+        expect![[r#"
+            72..166 '{     ...   } }': ()
+            78..164 'match ...     }': ()
+            84..92 'Foo::Bar': Bar(i32) -> Foo
+            84..95 'Foo::Bar(3)': Foo
+            93..94 '3': i32
+            106..119 'Qux::Bar(bar)': Foo
+            115..118 'bar': i32
+            123..125 '()': ()
+            135..151 'Qux::B... baz }': Foo
+            146..149 'baz': f32
+            155..157 '()': ()
+        "#]],
+    )
+}
