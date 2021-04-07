@@ -19,6 +19,7 @@ pub enum FoldKind {
     Region,
     Consts,
     Statics,
+    Array,
 }
 
 #[derive(Debug)]
@@ -119,6 +120,7 @@ fn fold_kind(kind: SyntaxKind) -> Option<FoldKind> {
     match kind {
         COMMENT => Some(FoldKind::Comment),
         ARG_LIST | PARAM_LIST => Some(FoldKind::ArgList),
+        ARRAY_EXPR => Some(FoldKind::Array),
         ASSOC_ITEM_LIST
         | RECORD_FIELD_LIST
         | RECORD_PAT_FIELD_LIST
@@ -269,6 +271,7 @@ mod tests {
                 FoldKind::Region => "region",
                 FoldKind::Consts => "consts",
                 FoldKind::Statics => "statics",
+                FoldKind::Array => "array",
             };
             assert_eq!(kind, &attr.unwrap());
         }
@@ -460,6 +463,20 @@ fn foo<fold arglist>(
     x: i32,
     y: String,
 )</fold> {}
+"#,
+        )
+    }
+
+    #[test]
+    fn fold_multiline_array() {
+        check(
+            r#"
+const FOO: [usize; 4] = <fold array>[
+    1,
+    2,
+    3,
+    4,
+]</fold>;
 "#,
         )
     }
