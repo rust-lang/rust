@@ -199,14 +199,6 @@ impl Ty {
         }
     }
 
-    fn builtin_deref(&self) -> Option<Ty> {
-        match self.kind(&Interner) {
-            TyKind::Ref(.., ty) => Some(ty.clone()),
-            TyKind::Raw(.., ty) => Some(ty.clone()),
-            _ => None,
-        }
-    }
-
     /// Returns the type parameters of this type if it has some (i.e. is an ADT
     /// or function); so if `self` is `Option<u32>`, this returns the `u32`.
     pub fn substs(&self) -> Option<&Substitution> {

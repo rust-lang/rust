@@ -239,15 +239,14 @@ impl InherentImpls {
     }
 }
 
-impl Ty {
-    pub fn def_crates(
-        &self,
-        db: &dyn HirDatabase,
-        cur_crate: CrateId,
-    ) -> Option<ArrayVec<CrateId, 2>> {
-        // Types like slice can have inherent impls in several crates, (core and alloc).
-        // The corresponding impls are marked with lang items, so we can use them to find the required crates.
-        macro_rules! lang_item_crate {
+pub fn def_crates(
+    db: &dyn HirDatabase,
+    ty: &Ty,
+    cur_crate: CrateId,
+) -> Option<ArrayVec<CrateId, 2>> {
+    // Types like slice can have inherent impls in several crates, (core and alloc).
+    // The corresponding impls are marked with lang items, so we can use them to find the required crates.
+    macro_rules! lang_item_crate {
             ($($name:expr),+ $(,)?) => {{
                 let mut v = ArrayVec::<LangItemTarget, 2>::new();
                 $(
@@ -257,51 +256,50 @@ impl Ty {
             }};
         }
 
-        let mod_to_crate_ids = |module: ModuleId| Some(std::iter::once(module.krate()).collect());
+    let mod_to_crate_ids = |module: ModuleId| Some(std::iter::once(module.krate()).collect());
 
-        let lang_item_targets = match self.kind(&Interner) {
-            TyKind::Adt(AdtId(def_id), _) => {
-                return mod_to_crate_ids(def_id.module(db.upcast()));
-            }
-            TyKind::Foreign(id) => {
-                return mod_to_crate_ids(
-                    from_foreign_def_id(*id).lookup(db.upcast()).module(db.upcast()),
-                );
-            }
-            TyKind::Scalar(Scalar::Bool) => lang_item_crate!("bool"),
-            TyKind::Scalar(Scalar::Char) => lang_item_crate!("char"),
-            TyKind::Scalar(Scalar::Float(f)) => match f {
-                // There are two lang items: one in libcore (fXX) and one in libstd (fXX_runtime)
-                FloatTy::F32 => lang_item_crate!("f32", "f32_runtime"),
-                FloatTy::F64 => lang_item_crate!("f64", "f64_runtime"),
-            },
-            &TyKind::Scalar(Scalar::Int(t)) => {
-                lang_item_crate!(primitive::int_ty_to_string(t))
-            }
-            &TyKind::Scalar(Scalar::Uint(t)) => {
-                lang_item_crate!(primitive::uint_ty_to_string(t))
-            }
-            TyKind::Str => lang_item_crate!("str_alloc", "str"),
-            TyKind::Slice(_) => lang_item_crate!("slice_alloc", "slice"),
-            TyKind::Raw(Mutability::Not, _) => lang_item_crate!("const_ptr"),
-            TyKind::Raw(Mutability::Mut, _) => lang_item_crate!("mut_ptr"),
-            TyKind::Dyn(_) => {
-                return self.dyn_trait().and_then(|trait_| {
-                    mod_to_crate_ids(GenericDefId::TraitId(trait_).module(db.upcast()))
-                });
-            }
-            _ => return None,
-        };
-        let res = lang_item_targets
-            .into_iter()
-            .filter_map(|it| match it {
-                LangItemTarget::ImplDefId(it) => Some(it),
-                _ => None,
-            })
-            .map(|it| it.lookup(db.upcast()).container.krate())
-            .collect();
-        Some(res)
-    }
+    let lang_item_targets = match ty.kind(&Interner) {
+        TyKind::Adt(AdtId(def_id), _) => {
+            return mod_to_crate_ids(def_id.module(db.upcast()));
+        }
+        TyKind::Foreign(id) => {
+            return mod_to_crate_ids(
+                from_foreign_def_id(*id).lookup(db.upcast()).module(db.upcast()),
+            );
+        }
+        TyKind::Scalar(Scalar::Bool) => lang_item_crate!("bool"),
+        TyKind::Scalar(Scalar::Char) => lang_item_crate!("char"),
+        TyKind::Scalar(Scalar::Float(f)) => match f {
+            // There are two lang items: one in libcore (fXX) and one in libstd (fXX_runtime)
+            FloatTy::F32 => lang_item_crate!("f32", "f32_runtime"),
+            FloatTy::F64 => lang_item_crate!("f64", "f64_runtime"),
+        },
+        &TyKind::Scalar(Scalar::Int(t)) => {
+            lang_item_crate!(primitive::int_ty_to_string(t))
+        }
+        &TyKind::Scalar(Scalar::Uint(t)) => {
+            lang_item_crate!(primitive::uint_ty_to_string(t))
+        }
+        TyKind::Str => lang_item_crate!("str_alloc", "str"),
+        TyKind::Slice(_) => lang_item_crate!("slice_alloc", "slice"),
+        TyKind::Raw(Mutability::Not, _) => lang_item_crate!("const_ptr"),
+        TyKind::Raw(Mutability::Mut, _) => lang_item_crate!("mut_ptr"),
+        TyKind::Dyn(_) => {
+            return ty.dyn_trait().and_then(|trait_| {
+                mod_to_crate_ids(GenericDefId::TraitId(trait_).module(db.upcast()))
+            });
+        }
+        _ => return None,
+    };
+    let res = lang_item_targets
+        .into_iter()
+        .filter_map(|it| match it {
+            LangItemTarget::ImplDefId(it) => Some(it),
+            _ => None,
+        })
+        .map(|it| it.lookup(db.upcast()).container.krate())
+        .collect();
+    Some(res)
 }
 
 /// Look up the method with the given name, returning the actual autoderefed
@@ -628,7 +626,7 @@ fn iterate_inherent_methods(
     visible_from_module: Option<ModuleId>,
     callback: &mut dyn FnMut(&Ty, AssocItemId) -> bool,
 ) -> bool {
-    let def_crates = match self_ty.value.def_crates(db, krate) {
+    let def_crates = match def_crates(db, &self_ty.value, krate) {
         Some(k) => k,
         None => return false,
     };
