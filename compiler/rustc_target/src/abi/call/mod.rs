@@ -18,9 +18,7 @@ mod riscv;
 mod s390x;
 mod sparc;
 mod sparc64;
-mod wasm32;
-mod wasm32_bindgen_compat;
-mod wasm64;
+mod wasm;
 mod x86;
 mod x86_64;
 mod x86_win64;
@@ -648,12 +646,14 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "nvptx64" => nvptx64::compute_abi_info(self),
             "hexagon" => hexagon::compute_abi_info(self),
             "riscv32" | "riscv64" => riscv::compute_abi_info(cx, self),
-            "wasm32" => match cx.target_spec().os.as_str() {
-                "emscripten" | "wasi" => wasm32::compute_abi_info(cx, self),
-                _ => wasm32_bindgen_compat::compute_abi_info(self),
-            },
-            "asmjs" => wasm32::compute_abi_info(cx, self),
-            "wasm64" => wasm64::compute_abi_info(cx, self),
+            "wasm32" | "wasm64" => {
+                if cx.target_spec().adjust_abi(abi) == spec::abi::Abi::Wasm {
+                    wasm::compute_wasm_abi_info(self)
+                } else {
+                    wasm::compute_c_abi_info(cx, self)
+                }
+            }
+            "asmjs" => wasm::compute_c_abi_info(cx, self),
             a => return Err(format!("unrecognized arch \"{}\" in target specification", a)),
         }
 
