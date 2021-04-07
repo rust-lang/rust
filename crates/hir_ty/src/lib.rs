@@ -35,6 +35,7 @@ use std::sync::Arc;
 use base_db::salsa;
 use chalk_ir::{
     cast::{CastTo, Caster},
+    fold::Fold,
     interner::HasInterner,
     UintTy,
 };
@@ -200,6 +201,23 @@ impl CallableSig {
 
     pub fn ret(&self) -> &Ty {
         &self.params_and_return[self.params_and_return.len() - 1]
+    }
+}
+
+impl Fold<Interner> for CallableSig {
+    type Result = CallableSig;
+
+    fn fold_with<'i>(
+        self,
+        folder: &mut dyn chalk_ir::fold::Folder<'i, Interner>,
+        outer_binder: DebruijnIndex,
+    ) -> chalk_ir::Fallible<Self::Result>
+    where
+        Interner: 'i,
+    {
+        let vec = self.params_and_return.to_vec();
+        let folded = vec.fold_with(folder, outer_binder)?;
+        Ok(CallableSig { params_and_return: folded.into(), is_varargs: self.is_varargs })
     }
 }
 
