@@ -313,7 +313,12 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     }
                 }
 
-                om.push_item(Item::new(item, renamed, from_glob))
+                om.push_item(Item::new(
+                    item,
+                    renamed,
+                    self.cx.tcx.def_kind(item.def_id).ns(),
+                    from_glob,
+                ))
             }
             hir::ItemKind::Mod(ref m) => {
                 om.push_mod(self.visit_mod_contents(
@@ -334,19 +339,34 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             | hir::ItemKind::OpaqueTy(..)
             | hir::ItemKind::Static(..)
             | hir::ItemKind::Trait(..)
-            | hir::ItemKind::TraitAlias(..) => om.push_item(Item::new(item, renamed, from_glob)),
+            | hir::ItemKind::TraitAlias(..) => om.push_item(Item::new(
+                item,
+                renamed,
+                self.cx.tcx.def_kind(item.def_id).ns(),
+                from_glob,
+            )),
             hir::ItemKind::Const(..) => {
                 // Underscore constants do not correspond to a nameable item and
                 // so are never useful in documentation.
                 if name != kw::Underscore {
-                    om.push_item(Item::new(item, renamed, from_glob));
+                    om.push_item(Item::new(
+                        item,
+                        renamed,
+                        self.cx.tcx.def_kind(item.def_id).ns(),
+                        from_glob,
+                    ));
                 }
             }
             hir::ItemKind::Impl(ref impl_) => {
                 // Don't duplicate impls when inlining or if it's implementing a trait, we'll pick
                 // them up regardless of where they're located.
                 if !self.inlining && impl_.of_trait.is_none() {
-                    om.push_item(Item::new(item, None, from_glob));
+                    om.push_item(Item::new(
+                        item,
+                        None,
+                        self.cx.tcx.def_kind(item.def_id).ns(),
+                        from_glob,
+                    ));
                 }
             }
         }

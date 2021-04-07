@@ -40,3 +40,5 @@ pub use sub2::describe;
 
 #[doc(inline)]
 pub use sub1::*;
+
+pub fn describe() {}
