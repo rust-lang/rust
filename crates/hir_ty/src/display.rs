@@ -792,31 +792,29 @@ fn write_bounds_like_dyn_trait(
     Ok(())
 }
 
-impl TraitRef {
-    fn hir_fmt_ext(&self, f: &mut HirFormatter, use_as: bool) -> Result<(), HirDisplayError> {
-        if f.should_truncate() {
-            return write!(f, "{}", TYPE_HINT_TRUNCATION);
-        }
-
-        self.self_type_parameter(&Interner).hir_fmt(f)?;
-        if use_as {
-            write!(f, " as ")?;
-        } else {
-            write!(f, ": ")?;
-        }
-        write!(f, "{}", f.db.trait_data(self.hir_trait_id()).name)?;
-        if self.substitution.len(&Interner) > 1 {
-            write!(f, "<")?;
-            f.write_joined(&self.substitution.interned()[1..], ", ")?;
-            write!(f, ">")?;
-        }
-        Ok(())
+fn fmt_trait_ref(tr: &TraitRef, f: &mut HirFormatter, use_as: bool) -> Result<(), HirDisplayError> {
+    if f.should_truncate() {
+        return write!(f, "{}", TYPE_HINT_TRUNCATION);
     }
+
+    tr.self_type_parameter(&Interner).hir_fmt(f)?;
+    if use_as {
+        write!(f, " as ")?;
+    } else {
+        write!(f, ": ")?;
+    }
+    write!(f, "{}", f.db.trait_data(tr.hir_trait_id()).name)?;
+    if tr.substitution.len(&Interner) > 1 {
+        write!(f, "<")?;
+        f.write_joined(&tr.substitution.interned()[1..], ", ")?;
+        write!(f, ">")?;
+    }
+    Ok(())
 }
 
 impl HirDisplay for TraitRef {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
-        self.hir_fmt_ext(f, false)
+        fmt_trait_ref(self, f, false)
     }
 }
 
@@ -830,7 +828,7 @@ impl HirDisplay for WhereClause {
             WhereClause::Implemented(trait_ref) => trait_ref.hir_fmt(f)?,
             WhereClause::AliasEq(AliasEq { alias: AliasTy::Projection(projection_ty), ty }) => {
                 write!(f, "<")?;
-                projection_ty.trait_ref(f.db).hir_fmt_ext(f, true)?;
+                fmt_trait_ref(&projection_ty.trait_ref(f.db), f, true)?;
                 write!(
                     f,
                     ">::{} = ",
