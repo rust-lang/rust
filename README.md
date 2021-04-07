@@ -83,21 +83,24 @@ determine a nightly version that comes with Miri and install that using
 
 Now you can run your project in Miri:
 
-1. Run `cargo clean` to eliminate any cached dependencies.  Miri needs your
+1. Run `cargo clean` to eliminate any cached dependencies. Miri needs your
    dependencies to be compiled the right way, that would not happen if they have
    previously already been compiled.
 2. To run all tests in your project through Miri, use `cargo miri test`.
 3. If you have a binary project, you can run it through Miri using `cargo miri run`.
 
 The first time you run Miri, it will perform some extra setup and install some
-dependencies.  It will ask you for confirmation before installing anything.
+dependencies. It will ask you for confirmation before installing anything.
 
-`cargo miri run/test` supports the exact same flags as `cargo run/test`.  You
-can pass arguments to Miri via `MIRIFLAGS`. For example,
+`cargo miri run/test` supports the exact same flags as `cargo run/test`. For
+example, `cargo miri test filter` only runs the tests containing `filter` in
+their name.
+
+You can pass arguments to Miri via `MIRIFLAGS`. For example,
 `MIRIFLAGS="-Zmiri-disable-stacked-borrows" cargo miri run` runs the program
 without checking the aliasing of references.
 
-When compiling code via `cargo miri`, the `cfg(miri)` config flag is set.  You
+When compiling code via `cargo miri`, the `cfg(miri)` config flag is set. You
 can use this to ignore test cases that fail under Miri because they do things
 Miri does not support:
 
@@ -105,9 +108,7 @@ Miri does not support:
 #[test]
 #[cfg_attr(miri, ignore)]
 fn does_not_work_on_miri() {
-    std::thread::spawn(|| println!("Hello Thread!"))
-        .join()
-        .unwrap();
+    tokio::run(futures::future::ok::<_, ()>(()));
 }
 ```
 
@@ -126,11 +127,11 @@ error: unsupported operation: can't call foreign function: bind
 Miri can not only run a binary or test suite for your host target, it can also
 perform cross-interpretation for arbitrary foreign targets: `cargo miri run
 --target x86_64-unknown-linux-gnu` will run your program as if it was a Linux
-program, no matter your host OS.  This is particularly useful if you are using
+program, no matter your host OS. This is particularly useful if you are using
 Windows, as the Linux target is much better supported than Windows targets.
 
 You can also use this to test platforms with different properties than your host
-platform.  For example `cargo miri test --target mips64-unknown-linux-gnuabi64`
+platform. For example `cargo miri test --target mips64-unknown-linux-gnuabi64`
 will run your test suite on a big-endian target, which is useful for testing
 endian-sensitive code.
 
