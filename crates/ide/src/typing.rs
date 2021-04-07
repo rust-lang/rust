@@ -42,6 +42,7 @@ pub(crate) const TRIGGER_CHARS: &str = ".=>{";
 //
 // - typing `let =` tries to smartly add `;` if `=` is followed by an existing expression
 // - typing `.` in a chain method call auto-indents
+// - typing `{` in front of an expression inserts a closing `}` after the expression
 //
 // VS Code::
 //
