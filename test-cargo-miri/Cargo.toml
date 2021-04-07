@@ -13,6 +13,7 @@ cdylib = { path = "cdylib" }
 issue_1567 = { path = "issue-1567" }
 issue_1691 = { path = "issue-1691" }
 issue_1705 = { path = "issue-1705" }
+issue_1760 = { path = "issue-1760" }
 
 [dev-dependencies]
 rand = { version = "0.8", features = ["small_rng"] }
