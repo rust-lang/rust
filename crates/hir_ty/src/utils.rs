@@ -16,7 +16,9 @@ use hir_def::{
 };
 use hir_expand::name::{name, Name};
 
-use crate::{db::HirDatabase, Interner, Substitution, TraitRef, TyKind, TypeWalk, WhereClause};
+use crate::{
+    db::HirDatabase, Interner, Substitution, TraitRef, TraitRefExt, TyKind, TypeWalk, WhereClause,
+};
 
 fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> Vec<TraitId> {
     let resolver = trait_.resolver(db);

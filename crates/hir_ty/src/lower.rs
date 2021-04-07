@@ -35,7 +35,7 @@ use crate::{
     AliasEq, AliasTy, Binders, BoundVar, CallableSig, DebruijnIndex, DynTy, FnPointer, FnSig,
     FnSubst, ImplTraitId, OpaqueTy, PolyFnSig, ProjectionTy, QuantifiedWhereClause,
     QuantifiedWhereClauses, ReturnTypeImplTrait, ReturnTypeImplTraits, Substitution,
-    TraitEnvironment, TraitRef, Ty, TyBuilder, TyKind, TypeWalk, WhereClause,
+    TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyKind, TypeWalk, WhereClause,
 };
 
 #[derive(Debug)]

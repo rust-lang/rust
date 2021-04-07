@@ -22,8 +22,8 @@ use crate::{
     static_lifetime,
     utils::all_super_traits,
     AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, FnPointer, FnSig, ForeignDefId,
-    InEnvironment, Interner, Scalar, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind,
-    TypeWalk,
+    InEnvironment, Interner, Scalar, Substitution, TraitEnvironment, TraitRefExt, Ty, TyBuilder,
+    TyExt, TyKind, TypeWalk,
 };
 
 /// This is used as a key for indexing impls.

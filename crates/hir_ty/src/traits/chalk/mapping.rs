@@ -10,9 +10,9 @@ use base_db::salsa::InternKey;
 use hir_def::{GenericDefId, TypeAliasId};
 
 use crate::{
-    chalk_ext::ProjectionTyExt, db::HirDatabase, static_lifetime, AliasTy, CallableDefId,
-    Canonical, ConstrainedSubst, DomainGoal, FnPointer, GenericArg, InEnvironment, OpaqueTy,
-    ProjectionTy, QuantifiedWhereClause, Substitution, TraitRef, Ty, TypeWalk, WhereClause,
+    db::HirDatabase, static_lifetime, AliasTy, CallableDefId, Canonical, ConstrainedSubst,
+    DomainGoal, FnPointer, GenericArg, InEnvironment, OpaqueTy, ProjectionTy, ProjectionTyExt,
+    QuantifiedWhereClause, Substitution, TraitRef, Ty, TypeWalk, WhereClause,
 };
 
 use super::interner::*;

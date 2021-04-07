@@ -59,7 +59,8 @@ use hir_ty::{
     traits::FnTrait,
     AliasEq, AliasTy, BoundVar, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast,
     DebruijnIndex, InEnvironment, Interner, QuantifiedWhereClause, Scalar, Solution, Substitution,
-    TraitEnvironment, Ty, TyBuilder, TyDefId, TyExt, TyKind, TyVariableKind, WhereClause,
+    TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyDefId, TyExt, TyKind, TyVariableKind,
+    WhereClause,
 };
 use itertools::Itertools;
 use rustc_hash::FxHashSet;

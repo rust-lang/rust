@@ -24,7 +24,7 @@ use crate::{
     traits::chalk::from_chalk, utils::generics, AdtId, AliasEq, AliasTy, CallableDefId,
     CallableSig, Const, ConstValue, DomainGoal, GenericArg, ImplTraitId, Interner, Lifetime,
     LifetimeData, LifetimeOutlives, Mutability, OpaqueTy, ProjectionTy, ProjectionTyExt,
-    QuantifiedWhereClause, Scalar, TraitRef, Ty, TyExt, TyKind, WhereClause,
+    QuantifiedWhereClause, Scalar, TraitRef, TraitRefExt, Ty, TyExt, TyKind, WhereClause,
 };
 
 pub struct HirFormatter<'a> {

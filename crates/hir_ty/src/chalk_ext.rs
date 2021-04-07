@@ -260,3 +260,13 @@ impl ProjectionTyExt for ProjectionTy {
         }
     }
 }
+
+pub trait TraitRefExt {
+    fn hir_trait_id(&self) -> TraitId;
+}
+
+impl TraitRefExt for TraitRef {
+    fn hir_trait_id(&self) -> TraitId {
+        from_chalk_trait_id(self.trait_id)
+    }
+}

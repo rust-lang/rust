@@ -41,7 +41,7 @@ use crate::{db::HirDatabase, display::HirDisplay, utils::generics};
 
 pub use autoderef::autoderef;
 pub use builder::TyBuilder;
-pub use chalk_ext::{ProjectionTyExt, TyExt};
+pub use chalk_ext::*;
 pub use infer::{could_unify, InferenceResult};
 pub use lower::{
     associated_type_shorthand_candidates, callable_item_sig, CallableDefId, ImplTraitLoweringMode,
@@ -105,12 +105,6 @@ pub fn make_only_type_binders<T>(num_vars: usize, value: T) -> Binders<T> {
         ),
         value,
     )
-}
-
-impl TraitRef {
-    pub fn hir_trait_id(&self) -> TraitId {
-        from_chalk_trait_id(self.trait_id)
-    }
 }
 
 impl<T> Canonical<T> {
