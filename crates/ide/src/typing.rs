@@ -22,12 +22,12 @@ use ide_db::{
 use syntax::{
     algo::find_node_at_offset,
     ast::{self, edit::IndentLevel, AstToken},
-    AstNode, SourceFile,
+    AstNode, Parse, SourceFile,
     SyntaxKind::{FIELD_EXPR, METHOD_CALL_EXPR},
     TextRange, TextSize,
 };
 
-use text_edit::TextEdit;
+use text_edit::{Indel, TextEdit};
 
 use crate::SourceChange;
 
@@ -59,18 +59,22 @@ pub(crate) fn on_char_typed(
     char_typed: char,
 ) -> Option<SourceChange> {
     assert!(TRIGGER_CHARS.contains(char_typed));
-    let file = &db.parse(position.file_id).tree();
-    assert_eq!(file.syntax().text().char_at(position.offset), Some(char_typed));
+    let file = &db.parse(position.file_id);
+    assert_eq!(file.tree().syntax().text().char_at(position.offset), Some(char_typed));
     let edit = on_char_typed_inner(file, position.offset, char_typed)?;
     Some(SourceChange::from_text_edit(position.file_id, edit))
 }
 
-fn on_char_typed_inner(file: &SourceFile, offset: TextSize, char_typed: char) -> Option<TextEdit> {
+fn on_char_typed_inner(
+    file: &Parse<SourceFile>,
+    offset: TextSize,
+    char_typed: char,
+) -> Option<TextEdit> {
     assert!(TRIGGER_CHARS.contains(char_typed));
     match char_typed {
-        '.' => on_dot_typed(file, offset),
-        '=' => on_eq_typed(file, offset),
-        '>' => on_arrow_typed(file, offset),
+        '.' => on_dot_typed(&file.tree(), offset),
+        '=' => on_eq_typed(&file.tree(), offset),
+        '>' => on_arrow_typed(&file.tree(), offset),
         '{' => on_opening_brace_typed(file, offset),
         _ => unreachable!(),
     }
@@ -78,23 +82,38 @@ fn on_char_typed_inner(file: &SourceFile, offset: TextSize, char_typed: char) ->
 
 /// Inserts a closing `}` when the user types an opening `{`, wrapping an existing expression in a
 /// block.
-fn on_opening_brace_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
-    stdx::always!(file.syntax().text().char_at(offset) == Some('{'));
-    let brace_token = file.syntax().token_at_offset(offset).right_biased()?;
-    let block = ast::BlockExpr::cast(brace_token.parent()?)?;
+fn on_opening_brace_typed(file: &Parse<SourceFile>, offset: TextSize) -> Option<TextEdit> {
+    stdx::always!(file.tree().syntax().text().char_at(offset) == Some('{'));
 
-    // We expect a block expression enclosing exactly 1 preexisting expression. It can be parsed as
-    // either the trailing expr or an ExprStmt.
-    let offset = match block.statements().next() {
-        Some(ast::Stmt::ExprStmt(it)) => {
-            // Use the expression span to place `}` before the `;`
-            it.expr()?.syntax().text_range().end()
+    let brace_token = file.tree().syntax().token_at_offset(offset).right_biased()?;
+
+    // Remove the `{` to get a better parse tree, and reparse
+    let file = file.reparse(&Indel::delete(brace_token.text_range()));
+
+    let mut expr: ast::Expr = find_node_at_offset(file.tree().syntax(), offset)?;
+    if expr.syntax().text_range().start() != offset {
+        return None;
+    }
+
+    // Enclose the outermost expression starting at `offset`
+    while let Some(parent) = expr.syntax().parent() {
+        if parent.text_range().start() != expr.syntax().text_range().start() {
+            break;
         }
-        None => block.tail_expr()?.syntax().text_range().end(),
-        _ => return None,
-    };
 
-    Some(TextEdit::insert(offset, "}".to_string()))
+        match ast::Expr::cast(parent) {
+            Some(parent) => expr = parent,
+            None => break,
+        }
+    }
+
+    // If it's a statement in a block, we don't know how many statements should be included
+    if ast::ExprStmt::can_cast(expr.syntax().parent()?.kind()) {
+        return None;
+    }
+
+    // Insert `}` right after the expression.
+    Some(TextEdit::insert(expr.syntax().text_range().end() + TextSize::of("{"), "}".to_string()))
 }
 
 /// Returns an edit which should be applied after `=` was typed. Primarily,
@@ -175,7 +194,7 @@ mod tests {
         let edit = TextEdit::insert(offset, char_typed.to_string());
         edit.apply(&mut before);
         let parse = SourceFile::parse(&before);
-        on_char_typed_inner(&parse.tree(), offset, char_typed).map(|it| {
+        on_char_typed_inner(&parse, offset, char_typed).map(|it| {
             it.apply(&mut before);
             before.to_string()
         })
@@ -399,36 +418,82 @@ fn main() {
 
     #[test]
     fn adds_closing_brace() {
-        type_char('{', r"fn f() { match () { _ => $0() } }", r"fn f() { match () { _ => {()} } }");
-        type_char('{', r"fn f() { $0(); }", r"fn f() { {()}; }");
-        type_char('{', r"fn f() { let x = $0(); }", r"fn f() { let x = {()}; }");
         type_char(
             '{',
-            r"
-            const S: () = $0();
-            fn f() {}
-            ",
-            r"
-            const S: () = {()};
-            fn f() {}
-            ",
+            r#"
+fn f() { match () { _ => $0() } }
+            "#,
+            r#"
+fn f() { match () { _ => {()} } }
+            "#,
         );
         type_char(
             '{',
-            r"
-            fn f() {
-                match x {
-                    0 => $0(),
-                    1 => (),
-                }
-            }",
-            r"
-            fn f() {
-                match x {
-                    0 => {()},
-                    1 => (),
-                }
-            }",
+            r#"
+fn f() { $0() }
+            "#,
+            r#"
+fn f() { {()} }
+            "#,
+        );
+        type_char(
+            '{',
+            r#"
+fn f() { let x = $0(); }
+            "#,
+            r#"
+fn f() { let x = {()}; }
+            "#,
+        );
+        type_char(
+            '{',
+            r#"
+fn f() { let x = $0a.b(); }
+            "#,
+            r#"
+fn f() { let x = {a.b()}; }
+            "#,
+        );
+        type_char(
+            '{',
+            r#"
+const S: () = $0();
+fn f() {}
+            "#,
+            r#"
+const S: () = {()};
+fn f() {}
+            "#,
+        );
+        type_char(
+            '{',
+            r#"
+const S: () = $0a.b();
+fn f() {}
+            "#,
+            r#"
+const S: () = {a.b()};
+fn f() {}
+            "#,
+        );
+        type_char(
+            '{',
+            r#"
+fn f() {
+    match x {
+        0 => $0(),
+        1 => (),
+    }
+}
+            "#,
+            r#"
+fn f() {
+    match x {
+        0 => {()},
+        1 => (),
+    }
+}
+            "#,
         );
     }
 }
