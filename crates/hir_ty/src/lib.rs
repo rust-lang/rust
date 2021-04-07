@@ -168,37 +168,7 @@ impl CallableSig {
     }
 }
 
-impl Ty {
-    pub fn equals_ctor(&self, other: &Ty) -> bool {
-        match (self.kind(&Interner), other.kind(&Interner)) {
-            (TyKind::Adt(adt, ..), TyKind::Adt(adt2, ..)) => adt == adt2,
-            (TyKind::Slice(_), TyKind::Slice(_)) | (TyKind::Array(_, _), TyKind::Array(_, _)) => {
-                true
-            }
-            (TyKind::FnDef(def_id, ..), TyKind::FnDef(def_id2, ..)) => def_id == def_id2,
-            (TyKind::OpaqueType(ty_id, ..), TyKind::OpaqueType(ty_id2, ..)) => ty_id == ty_id2,
-            (TyKind::AssociatedType(ty_id, ..), TyKind::AssociatedType(ty_id2, ..)) => {
-                ty_id == ty_id2
-            }
-            (TyKind::Foreign(ty_id, ..), TyKind::Foreign(ty_id2, ..)) => ty_id == ty_id2,
-            (TyKind::Closure(id1, _), TyKind::Closure(id2, _)) => id1 == id2,
-            (TyKind::Ref(mutability, ..), TyKind::Ref(mutability2, ..))
-            | (TyKind::Raw(mutability, ..), TyKind::Raw(mutability2, ..)) => {
-                mutability == mutability2
-            }
-            (
-                TyKind::Function(FnPointer { num_binders, sig, .. }),
-                TyKind::Function(FnPointer { num_binders: num_binders2, sig: sig2, .. }),
-            ) => num_binders == num_binders2 && sig == sig2,
-            (TyKind::Tuple(cardinality, _), TyKind::Tuple(cardinality2, _)) => {
-                cardinality == cardinality2
-            }
-            (TyKind::Str, TyKind::Str) | (TyKind::Never, TyKind::Never) => true,
-            (TyKind::Scalar(scalar), TyKind::Scalar(scalar2)) => scalar == scalar2,
-            _ => false,
-        }
-    }
-}
+impl Ty {}
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub enum ImplTraitId {

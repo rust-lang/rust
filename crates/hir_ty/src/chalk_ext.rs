@@ -8,7 +8,7 @@ use hir_def::{
 use crate::{
     db::HirDatabase, from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id,
     from_placeholder_idx, to_chalk_trait_id, AdtId, AliasEq, AliasTy, Binders, CallableDefId,
-    CallableSig, ImplTraitId, Interner, Lifetime, ProjectionTy, QuantifiedWhereClause,
+    CallableSig, FnPointer, ImplTraitId, Interner, Lifetime, ProjectionTy, QuantifiedWhereClause,
     Substitution, TraitRef, Ty, TyBuilder, TyKind, WhereClause,
 };
 
@@ -34,6 +34,9 @@ pub trait TyExt {
 
     fn impl_trait_bounds(&self, db: &dyn HirDatabase) -> Option<Vec<QuantifiedWhereClause>>;
     fn associated_type_parent_trait(&self, db: &dyn HirDatabase) -> Option<TraitId>;
+
+    /// FIXME: Get rid of this, it's not a good abstraction
+    fn equals_ctor(&self, other: &Ty) -> bool;
 }
 
 impl TyExt for Ty {
@@ -236,6 +239,36 @@ impl TyExt for Ty {
                 }
             }
             _ => None,
+        }
+    }
+
+    fn equals_ctor(&self, other: &Ty) -> bool {
+        match (self.kind(&Interner), other.kind(&Interner)) {
+            (TyKind::Adt(adt, ..), TyKind::Adt(adt2, ..)) => adt == adt2,
+            (TyKind::Slice(_), TyKind::Slice(_)) | (TyKind::Array(_, _), TyKind::Array(_, _)) => {
+                true
+            }
+            (TyKind::FnDef(def_id, ..), TyKind::FnDef(def_id2, ..)) => def_id == def_id2,
+            (TyKind::OpaqueType(ty_id, ..), TyKind::OpaqueType(ty_id2, ..)) => ty_id == ty_id2,
+            (TyKind::AssociatedType(ty_id, ..), TyKind::AssociatedType(ty_id2, ..)) => {
+                ty_id == ty_id2
+            }
+            (TyKind::Foreign(ty_id, ..), TyKind::Foreign(ty_id2, ..)) => ty_id == ty_id2,
+            (TyKind::Closure(id1, _), TyKind::Closure(id2, _)) => id1 == id2,
+            (TyKind::Ref(mutability, ..), TyKind::Ref(mutability2, ..))
+            | (TyKind::Raw(mutability, ..), TyKind::Raw(mutability2, ..)) => {
+                mutability == mutability2
+            }
+            (
+                TyKind::Function(FnPointer { num_binders, sig, .. }),
+                TyKind::Function(FnPointer { num_binders: num_binders2, sig: sig2, .. }),
+            ) => num_binders == num_binders2 && sig == sig2,
+            (TyKind::Tuple(cardinality, _), TyKind::Tuple(cardinality2, _)) => {
+                cardinality == cardinality2
+            }
+            (TyKind::Str, TyKind::Str) | (TyKind::Never, TyKind::Never) => true,
+            (TyKind::Scalar(scalar), TyKind::Scalar(scalar2)) => scalar == scalar2,
+            _ => false,
         }
     }
 }

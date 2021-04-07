@@ -8,7 +8,8 @@ use ena::unify::{InPlaceUnificationTable, NoError, UnifyKey, UnifyValue};
 use super::{DomainGoal, InferenceContext};
 use crate::{
     AliasEq, AliasTy, BoundVar, Canonical, CanonicalVarKinds, DebruijnIndex, FnPointer, FnSubst,
-    InEnvironment, InferenceVar, Interner, Scalar, Substitution, Ty, TyKind, TypeWalk, WhereClause,
+    InEnvironment, InferenceVar, Interner, Scalar, Substitution, Ty, TyExt, TyKind, TypeWalk,
+    WhereClause,
 };
 
 impl<'a> InferenceContext<'a> {
