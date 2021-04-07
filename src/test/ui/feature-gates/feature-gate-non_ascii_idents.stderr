@@ -1,3 +1,13 @@
+error: items in `extern` blocks cannot use non-ascii identifiers
+  --> $DIR/feature-gate-non_ascii_idents.rs:30:8
+   |
+LL | extern "C" {
+   | ---------- in this `extern` block
+LL |     fn qüx();
+   |        ^^^
+   |
+   = note: This limitation may be lifted in the future; see issue #83942 <https://github.com/rust-lang/rust/issues/83942> for more information
+
 error[E0658]: non-ascii idents are not fully supported
   --> $DIR/feature-gate-non_ascii_idents.rs:1:22
    |
@@ -115,6 +125,6 @@ LL |     fn qüx();
    = note: see issue #55467 <https://github.com/rust-lang/rust/issues/55467> for more information
    = help: add `#![feature(non_ascii_idents)]` to the crate attributes to enable
 
-error: aborting due to 13 previous errors
+error: aborting due to 14 previous errors
 
 For more information about this error, try `rustc --explain E0658`.
