@@ -157,7 +157,7 @@ fn compute_block_scopes(
                 scope = scopes.new_scope(scope);
                 scopes.add_bindings(body, scope, *pat);
             }
-            Statement::Expr(expr) => {
+            Statement::Expr { expr, .. } => {
                 scopes.set_scope(*expr, scope);
                 compute_expr_scopes(*expr, body, scopes, scope);
             }

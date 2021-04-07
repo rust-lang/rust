@@ -83,7 +83,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         if let Expr::Block { statements, tail, .. } = body_expr {
             if let Some(t) = tail {
                 self.validate_results_in_tail_expr(body.body_expr, *t, db);
-            } else if let Some(Statement::Expr(id)) = statements.last() {
+            } else if let Some(Statement::Expr { expr: id, .. }) = statements.last() {
                 self.validate_missing_tail_expr(body.body_expr, *id, db);
             }
         }

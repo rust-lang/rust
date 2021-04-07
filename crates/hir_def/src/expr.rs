@@ -242,7 +242,7 @@ pub struct RecordLitField {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Statement {
     Let { pat: PatId, type_ref: Option<Interned<TypeRef>>, initializer: Option<ExprId> },
-    Expr(ExprId),
+    Expr { expr: ExprId, has_semi: bool },
 }
 
 impl Expr {
@@ -265,7 +265,7 @@ impl Expr {
                                 f(*expr);
                             }
                         }
-                        Statement::Expr(e) => f(*e),
+                        Statement::Expr { expr: expression, .. } => f(*expression),
                     }
                 }
                 if let Some(expr) = tail {

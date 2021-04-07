@@ -809,7 +809,7 @@ impl<'a> InferenceContext<'a> {
                     let ty = self.resolve_ty_as_possible(ty);
                     self.infer_pat(*pat, &ty, BindingMode::default());
                 }
-                Statement::Expr(expr) => {
+                Statement::Expr { expr, .. } => {
                     self.infer_expr(*expr, &Expectation::none());
                 }
             }
