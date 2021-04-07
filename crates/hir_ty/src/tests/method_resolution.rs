@@ -1292,3 +1292,25 @@ mod b {
         "#]],
     )
 }
+
+#[test]
+fn impl_in_unnamed_const() {
+    check_types(
+        r#"
+struct S;
+
+trait Tr {
+    fn method(&self) -> u16;
+}
+
+const _: () = {
+    impl Tr for S {}
+};
+
+fn f() {
+    S.method();
+  //^^^^^^^^^^ u16
+}
+    "#,
+    );
+}

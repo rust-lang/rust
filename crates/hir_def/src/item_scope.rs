@@ -11,7 +11,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::format_to;
 
 use crate::{
-    db::DefDatabase, per_ns::PerNs, visibility::Visibility, AdtId, BuiltinType, ImplId,
+    db::DefDatabase, per_ns::PerNs, visibility::Visibility, AdtId, BuiltinType, ConstId, ImplId,
     LocalModuleId, MacroDefId, ModuleDefId, ModuleId, TraitId,
 };
 
@@ -37,6 +37,7 @@ pub struct ItemScope {
 
     defs: Vec<ModuleDefId>,
     impls: Vec<ImplId>,
+    unnamed_consts: Vec<ConstId>,
     /// Traits imported via `use Trait as _;`.
     unnamed_trait_imports: FxHashMap<TraitId, Visibility>,
     /// Macros visible in current module in legacy textual scope
@@ -106,6 +107,10 @@ impl ItemScope {
             .map(|(_, v)| v)
     }
 
+    pub fn unnamed_consts(&self) -> impl Iterator<Item = ConstId> + '_ {
+        self.unnamed_consts.iter().copied()
+    }
+
     /// Iterate over all module scoped macros
     pub(crate) fn macros<'a>(&'a self) -> impl Iterator<Item = (&'a Name, MacroDefId)> + 'a {
         self.entries().filter_map(|(name, def)| def.take_macros().map(|macro_| (name, macro_)))
@@ -154,6 +159,10 @@ impl ItemScope {
 
     pub(crate) fn define_impl(&mut self, imp: ImplId) {
         self.impls.push(imp)
+    }
+
+    pub(crate) fn define_unnamed_const(&mut self, konst: ConstId) {
+        self.unnamed_consts.push(konst);
     }
 
     pub(crate) fn define_legacy_macro(&mut self, name: Name, mac: MacroDefId) {
@@ -295,6 +304,7 @@ impl ItemScope {
             unresolved,
             defs,
             impls,
+            unnamed_consts,
             unnamed_trait_imports,
             legacy_macros,
         } = self;
@@ -304,6 +314,7 @@ impl ItemScope {
         unresolved.shrink_to_fit();
         defs.shrink_to_fit();
         impls.shrink_to_fit();
+        unnamed_consts.shrink_to_fit();
         unnamed_trait_imports.shrink_to_fit();
         legacy_macros.shrink_to_fit();
     }
