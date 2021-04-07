@@ -29,7 +29,6 @@
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(cmp_min_max_by)]
 #![feature(const_fn)]
 #![feature(const_panic)]
 #![feature(core_intrinsics)]

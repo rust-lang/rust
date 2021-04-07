@@ -1059,8 +1059,6 @@ pub fn min<T: Ord>(v1: T, v2: T) -> T {
 /// # Examples
 ///
 /// ```
-/// #![feature(cmp_min_max_by)]
-///
 /// use std::cmp;
 ///
 /// assert_eq!(cmp::min_by(-2, 1, |x: &i32, y: &i32| x.abs().cmp(&y.abs())), 1);
@@ -1068,7 +1066,7 @@ pub fn min<T: Ord>(v1: T, v2: T) -> T {
 /// ```
 #[inline]
 #[must_use]
-#[unstable(feature = "cmp_min_max_by", issue = "64460")]
+#[stable(feature = "cmp_min_max_by", since = "1.53.0")]
 pub fn min_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
     match compare(&v1, &v2) {
         Ordering::Less | Ordering::Equal => v1,
@@ -1083,8 +1081,6 @@ pub fn min_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
 /// # Examples
 ///
 /// ```
-/// #![feature(cmp_min_max_by)]
-///
 /// use std::cmp;
 ///
 /// assert_eq!(cmp::min_by_key(-2, 1, |x: &i32| x.abs()), 1);
@@ -1092,7 +1088,7 @@ pub fn min_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
 /// ```
 #[inline]
 #[must_use]
-#[unstable(feature = "cmp_min_max_by", issue = "64460")]
+#[stable(feature = "cmp_min_max_by", since = "1.53.0")]
 pub fn min_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T {
     min_by(v1, v2, |v1, v2| f(v1).cmp(&f(v2)))
 }
@@ -1125,8 +1121,6 @@ pub fn max<T: Ord>(v1: T, v2: T) -> T {
 /// # Examples
 ///
 /// ```
-/// #![feature(cmp_min_max_by)]
-///
 /// use std::cmp;
 ///
 /// assert_eq!(cmp::max_by(-2, 1, |x: &i32, y: &i32| x.abs().cmp(&y.abs())), -2);
@@ -1134,7 +1128,7 @@ pub fn max<T: Ord>(v1: T, v2: T) -> T {
 /// ```
 #[inline]
 #[must_use]
-#[unstable(feature = "cmp_min_max_by", issue = "64460")]
+#[stable(feature = "cmp_min_max_by", since = "1.53.0")]
 pub fn max_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
     match compare(&v1, &v2) {
         Ordering::Less | Ordering::Equal => v2,
@@ -1149,8 +1143,6 @@ pub fn max_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
 /// # Examples
 ///
 /// ```
-/// #![feature(cmp_min_max_by)]
-///
 /// use std::cmp;
 ///
 /// assert_eq!(cmp::max_by_key(-2, 1, |x: &i32| x.abs()), -2);
@@ -1158,7 +1150,7 @@ pub fn max_by<T, F: FnOnce(&T, &T) -> Ordering>(v1: T, v2: T, compare: F) -> T {
 /// ```
 #[inline]
 #[must_use]
-#[unstable(feature = "cmp_min_max_by", issue = "64460")]
+#[stable(feature = "cmp_min_max_by", since = "1.53.0")]
 pub fn max_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T {
     max_by(v1, v2, |v1, v2| f(v1).cmp(&f(v2)))
 }
