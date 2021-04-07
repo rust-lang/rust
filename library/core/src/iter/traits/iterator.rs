@@ -944,7 +944,7 @@ pub trait Iterator {
     /// Note that the underlying iterator is still advanced when [`peek`] or
     /// [`peek_mut`] are called for the first time: In order to retrieve the
     /// next element, [`next`] is called on the underlying iterator, hence any
-    /// side effects (i.e.  anything other than fetching the next value) of
+    /// side effects (i.e. anything other than fetching the next value) of
     /// the [`next`] method will occur.
     ///
     ///
