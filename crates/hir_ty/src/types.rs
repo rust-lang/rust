@@ -30,8 +30,8 @@ pub struct ProjectionTy {
 }
 
 impl ProjectionTy {
-    pub fn self_type_parameter(&self, interner: &Interner) -> &Ty {
-        &self.substitution.interned()[0].assert_ty_ref(interner)
+    pub fn self_type_parameter(&self, interner: &Interner) -> Ty {
+        self.substitution.interned()[0].assert_ty_ref(interner).clone()
     }
 }
 
@@ -282,7 +282,7 @@ impl GenericArg {
 pub struct Substitution(SmallVec<[GenericArg; 2]>);
 
 impl Substitution {
-    pub fn interned(&self) -> &[GenericArg] {
+    pub fn interned(&self) -> &SmallVec<[GenericArg; 2]> {
         &self.0
     }
 
@@ -413,8 +413,8 @@ pub struct TraitRef {
 }
 
 impl TraitRef {
-    pub fn self_type_parameter(&self, interner: &Interner) -> &Ty {
-        &self.substitution.at(interner, 0).assert_ty_ref(interner)
+    pub fn self_type_parameter(&self, interner: &Interner) -> Ty {
+        self.substitution.at(interner, 0).assert_ty_ref(interner).clone()
     }
 }
 
@@ -470,8 +470,8 @@ pub struct InEnvironment<T> {
 }
 
 impl<T> InEnvironment<T> {
-    pub fn new(environment: chalk_ir::Environment<Interner>, value: T) -> InEnvironment<T> {
-        InEnvironment { environment, goal: value }
+    pub fn new(environment: &chalk_ir::Environment<Interner>, value: T) -> InEnvironment<T> {
+        InEnvironment { environment: environment.clone(), goal: value }
     }
 }
 

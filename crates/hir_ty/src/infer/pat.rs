@@ -122,7 +122,7 @@ impl<'a> InferenceContext<'a> {
         let ty = match &body[pat] {
             &Pat::Tuple { ref args, ellipsis } => {
                 let expectations = match expected.as_tuple() {
-                    Some(parameters) => &*parameters.interned(),
+                    Some(parameters) => &*parameters.interned().as_slice(),
                     _ => &[],
                 };
 

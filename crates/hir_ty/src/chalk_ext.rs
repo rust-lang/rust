@@ -202,12 +202,12 @@ impl TyExt for Ty {
                             .map(|pred| pred.clone().substitute(&Interner, &substs))
                             .filter(|wc| match &wc.skip_binders() {
                                 WhereClause::Implemented(tr) => {
-                                    tr.self_type_parameter(&Interner) == self
+                                    &tr.self_type_parameter(&Interner) == self
                                 }
                                 WhereClause::AliasEq(AliasEq {
                                     alias: AliasTy::Projection(proj),
                                     ty: _,
-                                }) => proj.self_type_parameter(&Interner) == self,
+                                }) => &proj.self_type_parameter(&Interner) == self,
                                 _ => false,
                             })
                             .collect::<Vec<_>>();
@@ -291,5 +291,15 @@ impl ProjectionTyExt for ProjectionTy {
             AssocContainerId::TraitId(it) => it,
             _ => panic!("projection ty without parent trait"),
         }
+    }
+}
+
+pub trait TraitRefExt {
+    fn hir_trait_id(&self) -> TraitId;
+}
+
+impl TraitRefExt for TraitRef {
+    fn hir_trait_id(&self) -> TraitId {
+        from_chalk_trait_id(self.trait_id)
     }
 }

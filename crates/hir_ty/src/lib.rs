@@ -41,7 +41,7 @@ use crate::{db::HirDatabase, display::HirDisplay, utils::generics};
 
 pub use autoderef::autoderef;
 pub use builder::TyBuilder;
-pub use chalk_ext::{ProjectionTyExt, TyExt};
+pub use chalk_ext::*;
 pub use infer::{could_unify, InferenceResult};
 pub use lower::{
     associated_type_shorthand_candidates, callable_item_sig, CallableDefId, ImplTraitLoweringMode,
@@ -107,22 +107,18 @@ pub fn make_only_type_binders<T>(num_vars: usize, value: T) -> Binders<T> {
     )
 }
 
-impl TraitRef {
-    pub fn hir_trait_id(&self) -> TraitId {
-        from_chalk_trait_id(self.trait_id)
-    }
-}
-
-impl<T> Canonical<T> {
-    pub fn new(value: T, kinds: impl IntoIterator<Item = TyVariableKind>) -> Self {
-        let kinds = kinds.into_iter().map(|tk| {
-            chalk_ir::CanonicalVarKind::new(
-                chalk_ir::VariableKind::Ty(tk),
-                chalk_ir::UniverseIndex::ROOT,
-            )
-        });
-        Self { value, binders: chalk_ir::CanonicalVarKinds::from_iter(&Interner, kinds) }
-    }
+// FIXME: get rid of this
+pub fn make_canonical<T>(
+    value: T,
+    kinds: impl IntoIterator<Item = TyVariableKind>,
+) -> Canonical<T> {
+    let kinds = kinds.into_iter().map(|tk| {
+        chalk_ir::CanonicalVarKind::new(
+            chalk_ir::VariableKind::Ty(tk),
+            chalk_ir::UniverseIndex::ROOT,
+        )
+    });
+    Canonical { value, binders: chalk_ir::CanonicalVarKinds::from_iter(&Interner, kinds) }
 }
 
 /// A function signature as seen by type inference: Several parameter types and

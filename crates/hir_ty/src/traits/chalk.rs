@@ -22,7 +22,7 @@ use crate::{
     to_assoc_type_id, to_chalk_trait_id,
     utils::generics,
     AliasEq, AliasTy, BoundVar, CallableDefId, DebruijnIndex, FnDefId, ProjectionTy, Substitution,
-    TraitRef, Ty, TyBuilder, TyExt, TyKind, WhereClause,
+    TraitRef, TraitRefExt, Ty, TyBuilder, TyExt, TyKind, WhereClause,
 };
 use mapping::{
     convert_where_clauses, generic_predicate_to_inline_bound, make_binders, TypeAliasAsValue,

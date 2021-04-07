@@ -9,7 +9,7 @@ use stdx::panic_context;
 
 use crate::{
     db::HirDatabase, AliasEq, AliasTy, Canonical, DomainGoal, Guidance, HirDisplay, InEnvironment,
-    Solution, Ty, TyKind, WhereClause,
+    Solution, TraitRefExt, Ty, TyKind, WhereClause,
 };
 
 use self::chalk::{from_chalk, Interner, ToChalk};

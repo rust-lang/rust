@@ -22,8 +22,8 @@ use crate::{
     static_lifetime,
     utils::all_super_traits,
     AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, FnPointer, FnSig, ForeignDefId,
-    InEnvironment, Interner, Scalar, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind,
-    TypeWalk,
+    InEnvironment, Interner, Scalar, Substitution, TraitEnvironment, TraitRefExt, Ty, TyBuilder,
+    TyExt, TyKind, TypeWalk,
 };
 
 /// This is used as a key for indexing impls.
@@ -845,7 +845,7 @@ fn generic_implements_goal(
     let obligation = trait_ref.cast(&Interner);
     Canonical {
         binders: CanonicalVarKinds::from_iter(&Interner, kinds),
-        value: InEnvironment::new(env.env.clone(), obligation),
+        value: InEnvironment::new(&env.env, obligation),
     }
 }
 

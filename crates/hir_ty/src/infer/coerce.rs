@@ -139,7 +139,7 @@ impl<'a> InferenceContext<'a> {
             b.push(from_ty.clone()).push(to_ty.clone()).build()
         };
 
-        let goal = InEnvironment::new(self.trait_env.env.clone(), trait_ref.cast(&Interner));
+        let goal = InEnvironment::new(&self.trait_env.env, trait_ref.cast(&Interner));
 
         let canonicalizer = self.canonicalizer();
         let canonicalized = canonicalizer.canonicalize_obligation(goal);

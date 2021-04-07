@@ -59,7 +59,8 @@ use hir_ty::{
     traits::FnTrait,
     AliasEq, AliasTy, BoundVar, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast,
     DebruijnIndex, InEnvironment, Interner, QuantifiedWhereClause, Scalar, Solution, Substitution,
-    TraitEnvironment, Ty, TyBuilder, TyDefId, TyExt, TyKind, TyVariableKind, WhereClause,
+    TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyDefId, TyExt, TyKind, TyVariableKind,
+    WhereClause,
 };
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
@@ -1790,7 +1791,7 @@ impl Type {
             .build();
 
         let goal = Canonical {
-            value: hir_ty::InEnvironment::new(self.env.env.clone(), trait_ref.cast(&Interner)),
+            value: hir_ty::InEnvironment::new(&self.env.env, trait_ref.cast(&Interner)),
             binders: CanonicalVarKinds::empty(&Interner),
         };
 
@@ -1807,9 +1808,9 @@ impl Type {
             .push(self.ty.clone())
             .fill(args.iter().map(|t| t.ty.clone()))
             .build();
-        let goal = Canonical::new(
+        let goal = hir_ty::make_canonical(
             InEnvironment::new(
-                self.env.env.clone(),
+                &self.env.env,
                 AliasEq {
                     alias: AliasTy::Projection(projection),
                     ty: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0))

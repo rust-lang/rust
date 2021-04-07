@@ -10,9 +10,9 @@ use base_db::salsa::InternKey;
 use hir_def::{GenericDefId, TypeAliasId};
 
 use crate::{
-    chalk_ext::ProjectionTyExt, db::HirDatabase, static_lifetime, AliasTy, CallableDefId,
-    Canonical, ConstrainedSubst, DomainGoal, FnPointer, GenericArg, InEnvironment, OpaqueTy,
-    ProjectionTy, QuantifiedWhereClause, Substitution, TraitRef, Ty, TypeWalk, WhereClause,
+    db::HirDatabase, static_lifetime, AliasTy, CallableDefId, Canonical, ConstrainedSubst,
+    DomainGoal, FnPointer, GenericArg, InEnvironment, OpaqueTy, ProjectionTy, ProjectionTyExt,
+    QuantifiedWhereClause, Substitution, TraitRef, Ty, TypeWalk, WhereClause,
 };
 
 use super::interner::*;
@@ -509,7 +509,7 @@ pub(super) fn generic_predicate_to_inline_bound(
     let (pred, binders) = pred.as_ref().into_value_and_skipped_binders();
     match pred {
         WhereClause::Implemented(trait_ref) => {
-            if trait_ref.self_type_parameter(&Interner) != &self_ty_shifted_in {
+            if trait_ref.self_type_parameter(&Interner) != self_ty_shifted_in {
                 // we can only convert predicates back to type bounds if they
                 // have the expected self type
                 return None;
@@ -522,7 +522,7 @@ pub(super) fn generic_predicate_to_inline_bound(
             Some(chalk_ir::Binders::new(binders, rust_ir::InlineBound::TraitBound(trait_bound)))
         }
         WhereClause::AliasEq(AliasEq { alias: AliasTy::Projection(projection_ty), ty }) => {
-            if projection_ty.self_type_parameter(&Interner) != &self_ty_shifted_in {
+            if projection_ty.self_type_parameter(&Interner) != self_ty_shifted_in {
                 return None;
             }
             let trait_ = projection_ty.trait_(db);
