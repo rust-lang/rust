@@ -23,7 +23,6 @@ extern crate rustc_target;
 extern crate rustc_driver;
 
 use std::any::Any;
-use std::str::FromStr;
 
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::CodegenResults;
@@ -36,6 +35,7 @@ use rustc_session::Session;
 
 use cranelift_codegen::settings::{self, Configurable};
 
+pub use crate::config::*;
 use crate::constant::ConstantCx;
 use crate::prelude::*;
 
@@ -49,6 +49,7 @@ mod cast;
 mod codegen_i128;
 mod common;
 mod compiler_builtins;
+mod config;
 mod constant;
 mod debuginfo;
 mod discriminant;
@@ -161,53 +162,6 @@ impl<'m, 'tcx> CodegenCx<'m, 'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
-pub enum CodegenMode {
-    Aot,
-    Jit,
-    JitLazy,
-}
-
-impl Default for CodegenMode {
-    fn default() -> Self {
-        CodegenMode::Aot
-    }
-}
-
-impl FromStr for CodegenMode {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "aot" => Ok(CodegenMode::Aot),
-            "jit" => Ok(CodegenMode::Jit),
-            "jit-lazy" => Ok(CodegenMode::JitLazy),
-            _ => Err(format!("Unknown codegen mode `{}`", s)),
-        }
-    }
-}
-
-#[derive(Copy, Clone, Debug, Default)]
-pub struct BackendConfig {
-    pub codegen_mode: CodegenMode,
-}
-
-impl BackendConfig {
-    fn from_opts(opts: &[String]) -> Result<Self, String> {
-        let mut config = BackendConfig::default();
-        for opt in opts {
-            if let Some((name, value)) = opt.split_once('=') {
-                match name {
-                    "mode" => config.codegen_mode = value.parse()?,
-                    _ => return Err(format!("Unknown option `{}`", name)),
-                }
-            } else {
-                return Err(format!("Invalid option `{}`", opt));
-            }
-        }
-        Ok(config)
-    }
-}
 
 pub struct CraneliftCodegenBackend {
     pub config: Option<BackendConfig>,
