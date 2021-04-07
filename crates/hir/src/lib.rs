@@ -1580,11 +1580,24 @@ impl Impl {
             ty.equals_ctor(rref.as_ref().map_or(&self_ty.ty, |it| &it.ty))
         };
 
+        let fp = TyFingerprint::for_inherent_impl(&ty);
+        let fp = if let Some(fp) = fp {
+            fp
+        } else {
+            return Vec::new();
+        };
+
         let mut all = Vec::new();
         def_crates.iter().for_each(|&id| {
-            all.extend(db.inherent_impls_in_crate(id).all_impls().map(Self::from).filter(filter))
+            all.extend(
+                db.inherent_impls_in_crate(id)
+                    .for_self_ty(&ty)
+                    .into_iter()
+                    .cloned()
+                    .map(Self::from)
+                    .filter(filter),
+            )
         });
-        let fp = TyFingerprint::for_impl(&ty);
         for id in def_crates
             .iter()
             .flat_map(|&id| Crate { id }.transitive_reverse_dependencies(db))
@@ -1592,13 +1605,12 @@ impl Impl {
             .chain(def_crates.iter().copied())
             .unique()
         {
-            match fp {
-                Some(fp) => all.extend(
-                    db.trait_impls_in_crate(id).for_self_ty(fp).map(Self::from).filter(filter),
-                ),
-                None => all
-                    .extend(db.trait_impls_in_crate(id).all_impls().map(Self::from).filter(filter)),
-            }
+            all.extend(
+                db.trait_impls_in_crate(id)
+                    .for_self_ty_without_blanket_impls(fp)
+                    .map(Self::from)
+                    .filter(filter),
+            );
         }
         all
     }
