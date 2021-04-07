@@ -1,8 +1,8 @@
 //! This module is used to store stuff from Rust's AST in a more convenient
 //! manner (and with prettier names) before cleaning.
-use rustc_span::{self, Span, Symbol};
-
+use crate::core::DocContext;
 use rustc_hir as hir;
+use rustc_span::{self, Span, Symbol};
 
 /// A wrapper around a [`hir::Item`].
 #[derive(Debug)]
@@ -11,8 +11,6 @@ crate struct Item<'hir> {
     crate hir_item: &'hir hir::Item<'hir>,
     /// the explicit renamed name
     crate renamed_name: Option<Symbol>,
-    /// the [`Namespace`] this Item belongs to
-    crate namespace: Option<hir::def::Namespace>,
     /// whether the item is from a glob import
     /// if `from_glob` is true and we see another item with same name and namespace,
     /// then this item can be replaced with that one
@@ -23,10 +21,9 @@ impl<'hir> Item<'hir> {
     pub(crate) fn new(
         hir_item: &'hir hir::Item<'hir>,
         renamed_name: Option<Symbol>,
-        namespace: Option<hir::def::Namespace>,
         from_glob: bool,
     ) -> Self {
-        Self { hir_item, renamed_name, namespace, from_glob }
+        Self { hir_item, renamed_name, from_glob }
     }
 
     pub(crate) fn name(&self) -> Symbol {
@@ -66,13 +63,13 @@ impl Module<'hir> {
         }
     }
 
-    pub(crate) fn push_item(&mut self, new_item: Item<'hir>) {
-        if !new_item.name().is_empty() && new_item.namespace.is_some() {
-            if let Some(existing_item) = self
-                .items
-                .iter_mut()
-                .find(|item| item.name() == new_item.name() && item.namespace == new_item.namespace)
-            {
+    pub(crate) fn push_item(&mut self, ctx: &DocContext<'_>, new_item: Item<'hir>) {
+        let new_item_ns = ctx.tcx.def_kind(new_item.hir_item.def_id).ns();
+        if !new_item.name().is_empty() && new_item_ns.is_some() {
+            if let Some(existing_item) = self.items.iter_mut().find(|item| {
+                item.name() == new_item.name()
+                    && ctx.tcx.def_kind(item.hir_item.def_id).ns() == new_item_ns
+            }) {
                 match (existing_item.from_glob, new_item.from_glob) {
                     (true, _) => {
                         // `existing_item` is from glob, no matter whether `new_item` is from glob,
