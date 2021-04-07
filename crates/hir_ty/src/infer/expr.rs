@@ -412,7 +412,10 @@ impl<'a> InferenceContext<'a> {
 
                 self.unify(&ty, &expected.ty);
 
-                let substs = ty.substs().cloned().unwrap_or_else(|| Substitution::empty(&Interner));
+                let substs = ty
+                    .as_adt()
+                    .map(|(_, s)| s.clone())
+                    .unwrap_or_else(|| Substitution::empty(&Interner));
                 let field_types = def_id.map(|it| self.db.field_types(it)).unwrap_or_default();
                 let variant_data = def_id.map(|it| it.variant_data(self.db.upcast()));
                 for field in fields.iter() {

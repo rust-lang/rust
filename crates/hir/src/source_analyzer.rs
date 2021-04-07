@@ -20,7 +20,7 @@ use hir_def::{
 use hir_expand::{hygiene::Hygiene, name::AsName, HirFileId, InFile};
 use hir_ty::{
     diagnostics::{record_literal_missing_fields, record_pattern_missing_fields},
-    InferenceResult, Interner, Substitution, TyLoweringContext,
+    InferenceResult, Interner, Substitution, TyExt, TyLoweringContext,
 };
 use syntax::{
     ast::{self, AstNode},
@@ -306,7 +306,7 @@ impl SourceAnalyzer {
         let infer = self.infer.as_ref()?;
 
         let expr_id = self.expr_id(db, &literal.clone().into())?;
-        let substs = infer.type_of_expr[expr_id].substs()?;
+        let substs = infer.type_of_expr[expr_id].as_adt()?.1;
 
         let (variant, missing_fields, _exhaustive) =
             record_literal_missing_fields(db, infer, expr_id, &body[expr_id])?;
@@ -324,7 +324,7 @@ impl SourceAnalyzer {
         let infer = self.infer.as_ref()?;
 
         let pat_id = self.pat_id(&pattern.clone().into())?;
-        let substs = infer.type_of_pat[pat_id].substs()?;
+        let substs = infer.type_of_pat[pat_id].as_adt()?.1;
 
         let (variant, missing_fields, _exhaustive) =
             record_pattern_missing_fields(db, infer, pat_id, &body[pat_id])?;

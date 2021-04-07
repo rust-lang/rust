@@ -33,7 +33,8 @@ impl<'a> InferenceContext<'a> {
         }
         self.unify(&ty, expected);
 
-        let substs = ty.substs().cloned().unwrap_or_else(|| Substitution::empty(&Interner));
+        let substs =
+            ty.as_adt().map(|(_, s)| s.clone()).unwrap_or_else(|| Substitution::empty(&Interner));
 
         let field_tys = def.map(|it| self.db.field_types(it)).unwrap_or_default();
         let (pre, post) = match ellipsis {
@@ -74,7 +75,8 @@ impl<'a> InferenceContext<'a> {
 
         self.unify(&ty, expected);
 
-        let substs = ty.substs().cloned().unwrap_or_else(|| Substitution::empty(&Interner));
+        let substs =
+            ty.as_adt().map(|(_, s)| s.clone()).unwrap_or_else(|| Substitution::empty(&Interner));
 
         let field_tys = def.map(|it| self.db.field_types(it)).unwrap_or_default();
         for subpat in subpats {
