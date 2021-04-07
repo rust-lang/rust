@@ -53,7 +53,7 @@ use hir_def::{
 use hir_expand::{diagnostics::DiagnosticSink, name::name, MacroDefKind};
 use hir_ty::{
     autoderef, could_unify,
-    method_resolution::{self, TyFingerprint},
+    method_resolution::{self, def_crates, TyFingerprint},
     primitive::UintTy,
     subst_prefix,
     traits::FnTrait,
@@ -1568,7 +1568,7 @@ impl Impl {
     }
 
     pub fn all_for_type(db: &dyn HirDatabase, Type { krate, ty, .. }: Type) -> Vec<Impl> {
-        let def_crates = match ty.def_crates(db, krate) {
+        let def_crates = match def_crates(db, &ty, krate) {
             Some(def_crates) => def_crates,
             None => return Vec::new(),
         };
@@ -1955,7 +1955,7 @@ impl Type {
         krate: Crate,
         mut callback: impl FnMut(AssocItem) -> Option<T>,
     ) -> Option<T> {
-        for krate in self.ty.def_crates(db, krate.id)? {
+        for krate in def_crates(db, &self.ty, krate.id)? {
             let impls = db.inherent_impls_in_crate(krate);
 
             for impl_def in impls.for_self_ty(&self.ty) {
