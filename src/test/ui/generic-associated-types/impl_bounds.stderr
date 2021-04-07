@@ -58,8 +58,8 @@ LL |     type C where Self: Clone;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ this trait associated type doesn't have the requirement `Fooy<T>: Copy`
 help: consider restricting type parameter `T`
    |
-LL | impl<T: Copy> Foo for Fooy<T> {
-   |       ^^^^^^
+LL | impl<T: std::marker::Copy> Foo for Fooy<T> {
+   |       ^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `T: Copy` is not satisfied
   --> $DIR/impl_bounds.rs:23:5
