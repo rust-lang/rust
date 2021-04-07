@@ -1427,13 +1427,17 @@ fn range_between_backticks(ori_link: &MarkdownLink) -> Range<usize> {
 /// The difference between this and [`should_ignore_link()`] is that this
 /// check should only be used on links that still have disambiguators.
 fn should_ignore_link_with_disambiguators(link: &str) -> bool {
-    link.contains(|ch: char| !(ch.is_alphanumeric() || ":_<>, !*&;@()".contains(ch)))
+    link.contains(|ch: char| {
+        !(ch.is_alphanumeric() || (ch.is_ascii() && ":_<>, !*&;@()".contains(ch)))
+    })
 }
 
 /// Returns true if we should ignore `path_str` due to it being unlikely
 /// that it is an intra-doc link.
 fn should_ignore_link(path_str: &str) -> bool {
-    path_str.contains(|ch: char| !(ch.is_alphanumeric() || ":_<>, !*&;".contains(ch)))
+    path_str.contains(|ch: char| {
+        !(ch.is_alphanumeric() || (ch.is_ascii() && ":_<>, !*&;".contains(ch)))
+    })
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]

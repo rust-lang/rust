@@ -55,7 +55,7 @@ pub fn beautify_doc_string(data: Symbol) -> Symbol {
 
         for line in lines {
             for (j, c) in line.chars().enumerate() {
-                if j > i || !"* \t".contains(c) {
+                if j > i || !(c.is_ascii() && "* \t".contains(c)) {
                     return None;
                 }
                 if c == '*' {
