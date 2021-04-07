@@ -8,13 +8,13 @@ use rustc_middle::{
     lint::in_external_macro,
     ty::{self, Ty},
 };
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 
 use clippy_utils::attrs::is_proc_macro;
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_then};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::is_must_use_ty;
-use clippy_utils::{attr_by_name, match_def_path, must_use_attr, return_ty, trait_ref_of_method};
+use clippy_utils::{match_def_path, must_use_attr, return_ty, trait_ref_of_method};
 
 use super::{DOUBLE_MUST_USE, MUST_USE_CANDIDATE, MUST_USE_UNIT};
 
@@ -27,7 +27,7 @@ pub(super) fn check_item(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         if let Some(attr) = attr {
             check_needless_must_use(cx, sig.decl, item.hir_id(), item.span, fn_header_span, attr);
             return;
-        } else if is_public && !is_proc_macro(cx.sess(), attrs) && attr_by_name(attrs, "no_mangle").is_none() {
+        } else if is_public && !is_proc_macro(cx.sess(), attrs) && !attrs.iter().any(|a| a.has_name(sym::no_mangle)) {
             check_must_use_candidate(
                 cx,
                 sig.decl,
