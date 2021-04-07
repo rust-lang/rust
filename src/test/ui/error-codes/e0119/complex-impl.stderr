@@ -1,4 +1,4 @@
-error[E0119]: conflicting implementations of trait `complex_impl_support::External` for type `(Q, complex_impl_support::M<'_, '_, '_, std::boxed::Box<_>, _, _>)`:
+error[E0119]: conflicting implementations of trait `complex_impl_support::External` for type `(Q, complex_impl_support::M<'_, '_, '_, std::boxed::Box<_>, _, _>)`
   --> $DIR/complex-impl.rs:9:1
    |
 LL | impl<R> External for (Q, R) {}

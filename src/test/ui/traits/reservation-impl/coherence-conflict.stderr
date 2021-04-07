@@ -1,4 +1,4 @@
-error[E0119]: conflicting implementations of trait `OtherTrait` for type `()`:
+error[E0119]: conflicting implementations of trait `OtherTrait` for type `()`
   --> $DIR/coherence-conflict.rs:11:1
    |
 LL | impl OtherTrait for () {}

@@ -1,4 +1,4 @@
-error[E0119]: conflicting implementations of trait `AnotherTrait` for type `D<impl OpaqueTrait>`:
+error[E0119]: conflicting implementations of trait `AnotherTrait` for type `D<impl OpaqueTrait>`
   --> $DIR/negative-reasoning.rs:22:1
    |
 LL | impl<T: std::fmt::Debug> AnotherTrait for T {}
