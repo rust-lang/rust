@@ -301,7 +301,11 @@ LL |     VI(Path1),
    |        ^^^^^ doesn't have a size known at compile-time
    |
    = help: within `Path1`, the trait `Sized` is not implemented for `(dyn PathHelper1 + 'static)`
-   = note: required because it appears within the type `Path1`
+note: required because it appears within the type `Path1`
+  --> $DIR/unsized-enum2.rs:16:8
+   |
+LL | struct Path1(dyn PathHelper1);
+   |        ^^^^^
    = note: no field of an enum variant may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
@@ -320,7 +324,11 @@ LL |     VJ{x: Path2},
    |           ^^^^^ doesn't have a size known at compile-time
    |
    = help: within `Path2`, the trait `Sized` is not implemented for `(dyn PathHelper2 + 'static)`
-   = note: required because it appears within the type `Path2`
+note: required because it appears within the type `Path2`
+  --> $DIR/unsized-enum2.rs:17:8
+   |
+LL | struct Path2(dyn PathHelper2);
+   |        ^^^^^
    = note: no field of an enum variant may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
@@ -339,7 +347,11 @@ LL |     VK(isize, Path3),
    |               ^^^^^ doesn't have a size known at compile-time
    |
    = help: within `Path3`, the trait `Sized` is not implemented for `(dyn PathHelper3 + 'static)`
-   = note: required because it appears within the type `Path3`
+note: required because it appears within the type `Path3`
+  --> $DIR/unsized-enum2.rs:18:8
+   |
+LL | struct Path3(dyn PathHelper3);
+   |        ^^^^^
    = note: no field of an enum variant may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
@@ -358,7 +370,11 @@ LL |     VL{u: isize, x: Path4},
    |                     ^^^^^ doesn't have a size known at compile-time
    |
    = help: within `Path4`, the trait `Sized` is not implemented for `(dyn PathHelper4 + 'static)`
-   = note: required because it appears within the type `Path4`
+note: required because it appears within the type `Path4`
+  --> $DIR/unsized-enum2.rs:19:8
+   |
+LL | struct Path4(dyn PathHelper4);
+   |        ^^^^^
    = note: no field of an enum variant may have a dynamically sized type
    = help: change the field's type to have a statically known size
 help: borrowed types always have a statically known size
