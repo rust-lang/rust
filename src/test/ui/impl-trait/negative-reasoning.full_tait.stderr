@@ -7,7 +7,7 @@ LL | #![cfg_attr(full_tait, feature(type_alias_impl_trait))]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
 
-error[E0119]: conflicting implementations of trait `AnotherTrait` for type `D<impl OpaqueTrait>`:
+error[E0119]: conflicting implementations of trait `AnotherTrait` for type `D<impl OpaqueTrait>`
   --> $DIR/negative-reasoning.rs:22:1
    |
 LL | impl<T: std::fmt::Debug> AnotherTrait for T {}

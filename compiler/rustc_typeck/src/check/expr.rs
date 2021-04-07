@@ -2087,7 +2087,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_expr_asm(&self, asm: &'tcx hir::InlineAsm<'tcx>) -> Ty<'tcx> {
         for (op, _op_sp) in asm.operands {
             match op {
-                hir::InlineAsmOperand::In { expr, .. } | hir::InlineAsmOperand::Const { expr } => {
+                hir::InlineAsmOperand::In { expr, .. } => {
                     self.check_expr_asm_operand(expr, true);
                 }
                 hir::InlineAsmOperand::Out { expr, .. } => {
@@ -2103,6 +2103,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if let Some(out_expr) = out_expr {
                         self.check_expr_asm_operand(out_expr, false);
                     }
+                }
+                hir::InlineAsmOperand::Const { anon_const } => {
+                    self.to_const(anon_const);
                 }
                 hir::InlineAsmOperand::Sym { expr } => {
                     self.check_expr(expr);

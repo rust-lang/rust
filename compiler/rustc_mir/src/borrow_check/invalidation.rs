@@ -204,8 +204,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
             } => {
                 for op in operands {
                     match *op {
-                        InlineAsmOperand::In { reg: _, ref value }
-                        | InlineAsmOperand::Const { ref value } => {
+                        InlineAsmOperand::In { reg: _, ref value } => {
                             self.consume_operand(location, value);
                         }
                         InlineAsmOperand::Out { reg: _, late: _, place, .. } => {
@@ -219,7 +218,8 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                                 self.mutate_place(location, out_place, Shallow(None), JustWrite);
                             }
                         }
-                        InlineAsmOperand::SymFn { value: _ }
+                        InlineAsmOperand::Const { value: _ }
+                        | InlineAsmOperand::SymFn { value: _ }
                         | InlineAsmOperand::SymStatic { def_id: _ } => {}
                     }
                 }

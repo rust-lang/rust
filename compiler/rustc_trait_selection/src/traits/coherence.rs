@@ -586,6 +586,11 @@ fn ty_is_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> bool {
             false
         }
 
+        ty::Closure(..) => {
+            // Similar to the `Opaque` case (#83613).
+            false
+        }
+
         ty::Dynamic(ref tt, ..) => {
             if let Some(principal) = tt.principal() {
                 def_id_is_local(principal.def_id(), in_crate)
@@ -596,7 +601,7 @@ fn ty_is_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> bool {
 
         ty::Error(_) => true,
 
-        ty::Closure(..) | ty::Generator(..) | ty::GeneratorWitness(..) => {
+        ty::Generator(..) | ty::GeneratorWitness(..) => {
             bug!("ty_is_local invoked on unexpected type: {:?}", ty)
         }
     }

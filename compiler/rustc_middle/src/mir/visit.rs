@@ -584,8 +584,7 @@ macro_rules! make_mir_visitor {
                     } => {
                         for op in operands {
                             match op {
-                                InlineAsmOperand::In { value, .. }
-                                | InlineAsmOperand::Const { value } => {
+                                InlineAsmOperand::In { value, .. } => {
                                     self.visit_operand(value, location);
                                 }
                                 InlineAsmOperand::Out { place, .. } => {
@@ -607,7 +606,8 @@ macro_rules! make_mir_visitor {
                                         );
                                     }
                                 }
-                                InlineAsmOperand::SymFn { value } => {
+                                InlineAsmOperand::Const { value }
+                                | InlineAsmOperand::SymFn { value } => {
                                     self.visit_constant(value, location);
                                 }
                                 InlineAsmOperand::SymStatic { def_id: _ } => {}

@@ -2259,13 +2259,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 let kind = hir::GenericParamKind::Type {
                     default: default.as_ref().map(|x| {
-                        self.lower_ty(
-                            x,
-                            ImplTraitContext::OtherOpaqueTy {
-                                capturable_lifetimes: &mut FxHashSet::default(),
-                                origin: hir::OpaqueTyOrigin::Misc,
-                            },
-                        )
+                        self.lower_ty(x, ImplTraitContext::Disallowed(ImplTraitPosition::Other))
                     }),
                     synthetic: param
                         .attrs

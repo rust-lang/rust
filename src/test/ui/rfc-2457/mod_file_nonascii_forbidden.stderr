@@ -6,7 +6,7 @@ LL | mod řųśť;
    |
    = help: to create the module `řųśť`, create file "$DIR/řųśť.rs"
 
-error[E0754]: trying to load file for module `řųśť` with non ascii identifer name
+error[E0754]: trying to load file for module `řųśť` with non-ascii identifier name
   --> $DIR/mod_file_nonascii_forbidden.rs:3:5
    |
 LL | mod řųśť;
