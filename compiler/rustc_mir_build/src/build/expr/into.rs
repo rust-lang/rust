@@ -355,9 +355,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 }),
                             }
                         }
-                        thir::InlineAsmOperand::Const { expr } => mir::InlineAsmOperand::Const {
-                            value: unpack!(block = this.as_local_operand(block, expr)),
-                        },
+                        thir::InlineAsmOperand::Const { value, span } => {
+                            mir::InlineAsmOperand::Const {
+                                value: box Constant { span, user_ty: None, literal: value.into() },
+                            }
+                        }
                         thir::InlineAsmOperand::SymFn { expr } => {
                             mir::InlineAsmOperand::SymFn { value: box this.as_constant(expr) }
                         }

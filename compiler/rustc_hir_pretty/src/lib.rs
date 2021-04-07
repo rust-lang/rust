@@ -1570,10 +1570,10 @@ impl<'a> State<'a> {
                                 None => s.word("_"),
                             }
                         }
-                        hir::InlineAsmOperand::Const { expr } => {
+                        hir::InlineAsmOperand::Const { anon_const } => {
                             s.word("const");
                             s.space();
-                            s.print_expr(expr);
+                            s.print_anon_const(anon_const);
                         }
                         hir::InlineAsmOperand::Sym { expr } => {
                             s.word("sym");

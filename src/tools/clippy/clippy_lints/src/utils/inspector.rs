@@ -306,7 +306,6 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
                 match op {
                     hir::InlineAsmOperand::In { expr, .. }
                     | hir::InlineAsmOperand::InOut { expr, .. }
-                    | hir::InlineAsmOperand::Const { expr }
                     | hir::InlineAsmOperand::Sym { expr } => print_expr(cx, expr, indent + 1),
                     hir::InlineAsmOperand::Out { expr, .. } => {
                         if let Some(expr) = expr {
@@ -319,6 +318,10 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
                             print_expr(cx, out_expr, indent + 1);
                         }
                     },
+                    hir::InlineAsmOperand::Const { anon_const } => {
+                        println!("{}anon_const:", ind);
+                        print_expr(cx, &cx.tcx.hir().body(anon_const.body).value, indent + 1);
+                    }
                 }
             }
         },

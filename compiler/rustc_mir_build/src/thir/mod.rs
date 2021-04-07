@@ -374,7 +374,8 @@ pub enum InlineAsmOperand<'thir, 'tcx> {
         out_expr: Option<&'thir Expr<'thir, 'tcx>>,
     },
     Const {
-        expr: &'thir Expr<'thir, 'tcx>,
+        value: &'tcx Const<'tcx>,
+        span: Span,
     },
     SymFn {
         expr: &'thir Expr<'thir, 'tcx>,

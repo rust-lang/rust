@@ -2149,10 +2149,10 @@ impl<'a> State<'a> {
                                     None => s.word("_"),
                                 }
                             }
-                            InlineAsmOperand::Const { expr } => {
+                            InlineAsmOperand::Const { anon_const } => {
                                 s.word("const");
                                 s.space();
-                                s.print_expr(expr);
+                                s.print_expr(&anon_const.value);
                             }
                             InlineAsmOperand::Sym { expr } => {
                                 s.word("sym");
