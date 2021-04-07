@@ -8,9 +8,8 @@ use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::owning_ref::OwningRef;
 use rustc_data_structures::rustc_erase_owner;
 use rustc_data_structures::sync::MetadataRef;
-use rustc_middle::middle::cstore::{EncodedMetadata, MetadataLoader};
+use rustc_middle::middle::cstore::MetadataLoader;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config;
 use rustc_target::spec::Target;
 
 use crate::backend::WriteMetadata;
@@ -58,54 +57,17 @@ impl MetadataLoader for CraneliftMetadataLoader {
 }
 
 // Adapted from https://github.com/rust-lang/rust/blob/da573206f87b5510de4b0ee1a9c044127e409bd3/src/librustc_codegen_llvm/base.rs#L47-L112
-pub(crate) fn write_metadata<P: WriteMetadata>(
-    tcx: TyCtxt<'_>,
-    product: &mut P,
-) -> EncodedMetadata {
+pub(crate) fn write_metadata<O: WriteMetadata>(tcx: TyCtxt<'_>, object: &mut O) {
     use snap::write::FrameEncoder;
     use std::io::Write;
 
-    #[derive(PartialEq, Eq, PartialOrd, Ord)]
-    enum MetadataKind {
-        None,
-        Uncompressed,
-        Compressed,
-    }
-
-    let kind = tcx
-        .sess
-        .crate_types()
-        .iter()
-        .map(|ty| match *ty {
-            config::CrateType::Executable
-            | config::CrateType::Staticlib
-            | config::CrateType::Cdylib => MetadataKind::None,
-
-            config::CrateType::Rlib => MetadataKind::Uncompressed,
-
-            config::CrateType::Dylib | config::CrateType::ProcMacro => MetadataKind::Compressed,
-        })
-        .max()
-        .unwrap_or(MetadataKind::None);
-
-    if kind == MetadataKind::None {
-        return EncodedMetadata::new();
-    }
-
     let metadata = tcx.encode_metadata();
-    if kind == MetadataKind::Uncompressed {
-        return metadata;
-    }
-
-    assert!(kind == MetadataKind::Compressed);
     let mut compressed = tcx.metadata_encoding_version();
     FrameEncoder::new(&mut compressed).write_all(&metadata.raw_data).unwrap();
 
-    product.add_rustc_section(
+    object.add_rustc_section(
         rustc_middle::middle::exported_symbols::metadata_symbol_name(tcx),
         compressed,
         tcx.sess.target.is_like_osx,
     );
-
-    metadata
 }
