@@ -2292,7 +2292,7 @@ impl ToString for char {
 impl ToString for str {
     #[inline]
     fn to_string(&self) -> String {
-        String::from(self)
+        self.to_owned()
     }
 }
 
