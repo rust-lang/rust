@@ -107,16 +107,18 @@ pub fn make_only_type_binders<T>(num_vars: usize, value: T) -> Binders<T> {
     )
 }
 
-impl<T> Canonical<T> {
-    pub fn new(value: T, kinds: impl IntoIterator<Item = TyVariableKind>) -> Self {
-        let kinds = kinds.into_iter().map(|tk| {
-            chalk_ir::CanonicalVarKind::new(
-                chalk_ir::VariableKind::Ty(tk),
-                chalk_ir::UniverseIndex::ROOT,
-            )
-        });
-        Self { value, binders: chalk_ir::CanonicalVarKinds::from_iter(&Interner, kinds) }
-    }
+// FIXME: get rid of this
+pub fn make_canonical<T>(
+    value: T,
+    kinds: impl IntoIterator<Item = TyVariableKind>,
+) -> Canonical<T> {
+    let kinds = kinds.into_iter().map(|tk| {
+        chalk_ir::CanonicalVarKind::new(
+            chalk_ir::VariableKind::Ty(tk),
+            chalk_ir::UniverseIndex::ROOT,
+        )
+    });
+    Canonical { value, binders: chalk_ir::CanonicalVarKinds::from_iter(&Interner, kinds) }
 }
 
 /// A function signature as seen by type inference: Several parameter types and

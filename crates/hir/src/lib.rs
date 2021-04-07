@@ -1808,7 +1808,7 @@ impl Type {
             .push(self.ty.clone())
             .fill(args.iter().map(|t| t.ty.clone()))
             .build();
-        let goal = Canonical::new(
+        let goal = hir_ty::make_canonical(
             InEnvironment::new(
                 self.env.env.clone(),
                 AliasEq {
