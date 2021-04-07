@@ -1163,19 +1163,27 @@ impl ModCollector<'_, '_> {
                 }
                 ModItem::Const(id) => {
                     let it = &self.item_tree[id];
+                    let const_id = ConstLoc {
+                        container: module.into(),
+                        id: ItemTreeId::new(self.file_id, id),
+                    }
+                    .intern(self.def_collector.db);
 
-                    if let Some(name) = &it.name {
-                        def = Some(DefData {
-                            id: ConstLoc {
-                                container: module.into(),
-                                id: ItemTreeId::new(self.file_id, id),
-                            }
-                            .intern(self.def_collector.db)
-                            .into(),
-                            name,
-                            visibility: &self.item_tree[it.visibility],
-                            has_constructor: false,
-                        });
+                    match &it.name {
+                        Some(name) => {
+                            def = Some(DefData {
+                                id: const_id.into(),
+                                name,
+                                visibility: &self.item_tree[it.visibility],
+                                has_constructor: false,
+                            });
+                        }
+                        None => {
+                            // const _: T = ...;
+                            self.def_collector.def_map.modules[self.module_id]
+                                .scope
+                                .define_unnamed_const(const_id);
+                        }
                     }
                 }
                 ModItem::Static(id) => {
