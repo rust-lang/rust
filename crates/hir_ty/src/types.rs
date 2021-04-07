@@ -470,8 +470,8 @@ pub struct InEnvironment<T> {
 }
 
 impl<T> InEnvironment<T> {
-    pub fn new(environment: chalk_ir::Environment<Interner>, value: T) -> InEnvironment<T> {
-        InEnvironment { environment, goal: value }
+    pub fn new(environment: &chalk_ir::Environment<Interner>, value: T) -> InEnvironment<T> {
+        InEnvironment { environment: environment.clone(), goal: value }
     }
 }
 

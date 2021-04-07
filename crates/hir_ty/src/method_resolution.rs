@@ -845,7 +845,7 @@ fn generic_implements_goal(
     let obligation = trait_ref.cast(&Interner);
     Canonical {
         binders: CanonicalVarKinds::from_iter(&Interner, kinds),
-        value: InEnvironment::new(env.env.clone(), obligation),
+        value: InEnvironment::new(&env.env, obligation),
     }
 }
 

@@ -1791,7 +1791,7 @@ impl Type {
             .build();
 
         let goal = Canonical {
-            value: hir_ty::InEnvironment::new(self.env.env.clone(), trait_ref.cast(&Interner)),
+            value: hir_ty::InEnvironment::new(&self.env.env, trait_ref.cast(&Interner)),
             binders: CanonicalVarKinds::empty(&Interner),
         };
 
@@ -1810,7 +1810,7 @@ impl Type {
             .build();
         let goal = hir_ty::make_canonical(
             InEnvironment::new(
-                self.env.env.clone(),
+                &self.env.env,
                 AliasEq {
                     alias: AliasTy::Projection(projection),
                     ty: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0))
