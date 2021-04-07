@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 //! Lints in the Rust compiler.
 //!
 //! This contains lints which can feasibly be implemented as their own
