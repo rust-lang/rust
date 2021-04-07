@@ -456,12 +456,14 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             }
         }
 
+        let is_macro = base_span.from_expansion() && base_span.desugaring_kind().is_none();
         if !self.type_ascription_suggestion(&mut err, base_span) {
             let mut fallback = false;
             if let (
                 PathSource::Trait(AliasPossibility::Maybe),
                 Some(Res::Def(DefKind::Struct | DefKind::Enum | DefKind::Union, _)),
-            ) = (source, res)
+                false,
+            ) = (source, res, is_macro)
             {
                 if let Some(bounds @ [_, .., _]) = self.diagnostic_metadata.current_trait_object {
                     fallback = true;
