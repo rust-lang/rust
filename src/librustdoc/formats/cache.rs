@@ -120,6 +120,11 @@ crate struct Cache {
     // when gathering trait documentation on a type, hold impls here while
     // folding and add them to the cache later on if we find the trait.
     orphan_trait_impls: Vec<(DefId, FxHashSet<DefId>, Impl)>,
+
+    /// All intra-doc links resolved so far.
+    ///
+    /// Links are indexed by the DefId of the item they document.
+    crate intra_doc_links: BTreeMap<DefId, Vec<clean::ItemLink>>,
 }
 
 /// This struct is used to wrap the `cache` and `tcx` in order to run `DocFolder`.
