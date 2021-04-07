@@ -884,9 +884,9 @@ pub struct Resolver<'a> {
     /// "self-confirming" import resolutions during import validation.
     unusable_binding: Option<&'a NameBinding<'a>>,
 
-    // Spans for local variables found during resolution
-    // Used for suggestions during error reporting
-    local_span_map: NodeMap<Span>,
+    // Spans for local variables found during pattern resolution.
+    // Used for suggestions during error reporting.
+    pat_span_map: NodeMap<Span>,
 
     /// Resolutions for nodes that have a single resolution.
     partial_res_map: NodeMap<PartialRes>,
@@ -1266,7 +1266,7 @@ impl<'a> Resolver<'a> {
             last_import_segment: false,
             unusable_binding: None,
 
-            local_span_map: Default::default(),
+            pat_span_map: Default::default(),
             partial_res_map: Default::default(),
             import_res_map: Default::default(),
             label_res_map: Default::default(),
@@ -1884,6 +1884,7 @@ impl<'a> Resolver<'a> {
                     ribs,
                 )));
             }
+
             module = match ribs[i].kind {
                 ModuleRibKind(module) => module,
                 MacroDefinition(def) if def == self.macro_def(ident.span.ctxt()) => {
@@ -1894,6 +1895,7 @@ impl<'a> Resolver<'a> {
                 }
                 _ => continue,
             };
+
             match module.kind {
                 ModuleKind::Block(..) => {} // We can see through blocks
                 _ => break,
@@ -1912,19 +1914,16 @@ impl<'a> Resolver<'a> {
                 return Some(LexicalScopeBinding::Item(binding));
             }
         }
-        let returned_item = self
-            .early_resolve_ident_in_lexical_scope(
-                orig_ident,
-                ScopeSet::Late(ns, module, record_used_id),
-                parent_scope,
-                record_used,
-                record_used,
-                path_span,
-            )
-            .ok()
-            .map(LexicalScopeBinding::Item);
-
-        returned_item
+        self.early_resolve_ident_in_lexical_scope(
+            orig_ident,
+            ScopeSet::Late(ns, module, record_used_id),
+            parent_scope,
+            record_used,
+            record_used,
+            path_span,
+        )
+        .ok()
+        .map(LexicalScopeBinding::Item)
     }
 
     fn hygienic_lexical_parent(
@@ -2391,11 +2390,9 @@ impl<'a> Resolver<'a> {
                             .next()
                             .map_or(false, |c| c.is_ascii_uppercase())
                         {
-                            // Add check case for similarly named item in alternative namespace
-                            let mut suggestion = None;
-
-                            if ribs.is_some() {
-                                if let Some(res) = self.resolve_ident_in_lexical_scope(
+                            // Check whether the name refers to an item in the value namespace.
+                            let suggestion = if ribs.is_some() {
+                                let match_span = match self.resolve_ident_in_lexical_scope(
                                     ident,
                                     ValueNS,
                                     parent_scope,
@@ -2403,26 +2400,47 @@ impl<'a> Resolver<'a> {
                                     path_span,
                                     &ribs.unwrap()[ValueNS],
                                 ) {
-                                    let mut match_span: Option<Span> = None;
-                                    match res {
-                                        LexicalScopeBinding::Res(Res::Local(id)) => {
-                                            match_span =
-                                                Some(*self.local_span_map.get(&id).unwrap());
-                                        }
-                                        LexicalScopeBinding::Item(name_binding) => {
-                                            match_span = Some(name_binding.span);
-                                        }
-                                        _ => (),
-                                    };
-                                    if let Some(span) = match_span {
-                                        suggestion = Some((
-                                            vec![(span, String::from(""))],
-                                            format!("{} is defined here, but is not a type", ident),
-                                            Applicability::MaybeIncorrect,
-                                        ));
+                                    // Name matches a local variable. For example:
+                                    // ```
+                                    // fn f() {
+                                    //     let Foo: &str = "";
+                                    //     println!("{}", Foo::Bar); // Name refers to local
+                                    //                               // variable `Foo`.
+                                    // }
+                                    // ```
+                                    Some(LexicalScopeBinding::Res(Res::Local(id))) => {
+                                        Some(*self.pat_span_map.get(&id).unwrap())
                                     }
+
+                                    // Name matches item from a local name binding
+                                    // created by `use` declaration. For example:
+                                    // ```
+                                    // pub Foo: &str = "";
+                                    //
+                                    // mod submod {
+                                    //     use super::Foo;
+                                    //     println!("{}", Foo::Bar); // Name refers to local
+                                    //                               // binding `Foo`.
+                                    // }
+                                    // ```
+                                    Some(LexicalScopeBinding::Item(name_binding)) => {
+                                        Some(name_binding.span)
+                                    }
+                                    _ => None,
+                                };
+
+                                if let Some(span) = match_span {
+                                    Some((
+                                        vec![(span, String::from(""))],
+                                        format!("`{}` is defined here, but is not a type", ident),
+                                        Applicability::MaybeIncorrect,
+                                    ))
+                                } else {
+                                    None
                                 }
-                            }
+                            } else {
+                                None
+                            };
 
                             (format!("use of undeclared type `{}`", ident), suggestion)
                         } else {
@@ -2835,9 +2853,9 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn record_local_span(&mut self, node: NodeId, span: Span) {
-        debug!("(recording local) recording {:?} for {:?}", node, span);
-        self.local_span_map.insert(node, span);
+    fn record_pat_span(&mut self, node: NodeId, span: Span) {
+        debug!("(recording pat) recording {:?} for {:?}", node, span);
+        self.pat_span_map.insert(node, span);
     }
 
     fn is_accessible_from(&self, vis: ty::Visibility, module: Module<'a>) -> bool {
