@@ -1067,13 +1067,23 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     // since they will not be detected after macro expansion.
     fn check_attributes(&mut self, attrs: &[ast::Attribute]) {
         let features = self.cx.ecfg.features.unwrap();
-        for attr in attrs.iter() {
+        let mut attrs = attrs.iter().peekable();
+        let mut span: Option<Span> = None;
+        while let Some(attr) = attrs.next() {
             rustc_ast_passes::feature_gate::check_attribute(attr, self.cx.sess, features);
             validate_attr::check_meta(&self.cx.sess.parse_sess, attr);
+
+            let current_span = if let Some(sp) = span { sp.to(attr.span) } else { attr.span };
+            span = Some(current_span);
+
+            if attrs.peek().map_or(false, |next_attr| next_attr.doc_str().is_some()) {
+                continue;
+            }
+
             if attr.doc_str().is_some() {
                 self.cx.sess.parse_sess.buffer_lint_with_diagnostic(
                     &UNUSED_DOC_COMMENTS,
-                    attr.span,
+                    current_span,
                     ast::CRATE_NODE_ID,
                     "unused doc comment",
                     BuiltinLintDiagnostics::UnusedDocComment(attr.span),
