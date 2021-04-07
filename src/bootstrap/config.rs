@@ -67,7 +67,7 @@ pub struct Config {
     pub rustc_error_format: Option<String>,
     pub json_output: bool,
     pub test_compare_mode: bool,
-    pub llvm_libunwind: Option<LlvmLibunwind>,
+    pub llvm_libunwind: LlvmLibunwind,
     pub color: Color,
 
     pub on_fail: Option<String>,
@@ -101,8 +101,8 @@ pub struct Config {
     pub llvm_link_jobs: Option<u32>,
     pub llvm_version_suffix: Option<String>,
     pub llvm_use_linker: Option<String>,
-    pub llvm_allow_old_toolchain: Option<bool>,
-    pub llvm_polly: Option<bool>,
+    pub llvm_allow_old_toolchain: bool,
+    pub llvm_polly: bool,
     pub llvm_from_ci: bool,
 
     pub use_lld: bool,
@@ -149,7 +149,6 @@ pub struct Config {
     // dist misc
     pub dist_sign_folder: Option<PathBuf>,
     pub dist_upload_addr: Option<String>,
-    pub dist_gpg_password_file: Option<PathBuf>,
     pub dist_compression_formats: Option<Vec<String>>,
 
     // libstd features
@@ -404,10 +403,6 @@ struct Install {
     libdir: Option<String>,
     mandir: Option<String>,
     datadir: Option<String>,
-
-    // standard paths, currently unused
-    infodir: Option<String>,
-    localstatedir: Option<String>,
 }
 
 /// TOML representation of how the LLVM build is configured.
@@ -564,11 +559,10 @@ impl Config {
         config.rust_rpath = true;
         config.channel = "dev".to_string();
         config.codegen_tests = true;
-        config.ignore_git = false;
         config.rust_dist_src = true;
         config.rust_codegen_backends = vec![INTERNER.intern_str("llvm")];
         config.deny_warnings = true;
-        config.missing_tools = false;
+        config.bindir = "bin".into();
 
         // set by build.rs
         config.build = TargetSelection::from_user(&env!("BUILD_TRIPLE"));
@@ -598,7 +592,6 @@ impl Config {
         config.dry_run = flags.dry_run;
         config.keep_stage = flags.keep_stage;
         config.keep_stage_std = flags.keep_stage_std;
-        config.bindir = "bin".into(); // default
         config.color = flags.color;
         if let Some(value) = flags.deny_warnings {
             config.deny_warnings = value;
@@ -748,12 +741,25 @@ impl Config {
             config.llvm_ldflags = llvm.ldflags.clone();
             set(&mut config.llvm_use_libcxx, llvm.use_libcxx);
             config.llvm_use_linker = llvm.use_linker.clone();
-            config.llvm_allow_old_toolchain = llvm.allow_old_toolchain;
-            config.llvm_polly = llvm.polly;
+            config.llvm_allow_old_toolchain = llvm.allow_old_toolchain.unwrap_or(false);
+            config.llvm_polly = llvm.polly.unwrap_or(false);
             config.llvm_from_ci = match llvm.download_ci_llvm {
                 Some(StringOrBool::String(s)) => {
                     assert!(s == "if-available", "unknown option `{}` for download-ci-llvm", s);
-                    config.build.triple == "x86_64-unknown-linux-gnu"
+                    // This is currently all tier 1 targets (since others may not have CI artifacts)
+                    // https://doc.rust-lang.org/rustc/platform-support.html#tier-1
+                    // FIXME: this is duplicated in bootstrap.py
+                    let supported_platforms = [
+                        "aarch64-unknown-linux-gnu",
+                        "i686-pc-windows-gnu",
+                        "i686-pc-windows-msvc",
+                        "i686-unknown-linux-gnu",
+                        "x86_64-unknown-linux-gnu",
+                        "x86_64-apple-darwin",
+                        "x86_64-pc-windows-gnu",
+                        "x86_64-pc-windows-msvc",
+                    ];
+                    supported_platforms.contains(&&*config.build.triple)
                 }
                 Some(StringOrBool::Bool(b)) => b,
                 None => false,
@@ -774,7 +780,6 @@ impl Config {
                 check_ci_llvm!(llvm.targets);
                 check_ci_llvm!(llvm.experimental_targets);
                 check_ci_llvm!(llvm.link_jobs);
-                check_ci_llvm!(llvm.link_shared);
                 check_ci_llvm!(llvm.clang_cl);
                 check_ci_llvm!(llvm.version_suffix);
                 check_ci_llvm!(llvm.cflags);
@@ -795,6 +800,11 @@ impl Config {
                 // If we're building with ThinLTO on, we want to link to LLVM
                 // shared, to avoid re-doing ThinLTO (which happens in the link
                 // step) with each stage.
+                assert_ne!(
+                    llvm.link_shared,
+                    Some(false),
+                    "setting link-shared=false is incompatible with thin-lto=true"
+                );
                 config.llvm_link_shared = true;
             }
         }
@@ -820,7 +830,8 @@ impl Config {
             set(&mut config.test_compare_mode, rust.test_compare_mode);
             config.llvm_libunwind = rust
                 .llvm_libunwind
-                .map(|v| v.parse().expect("failed to parse rust.llvm-libunwind"));
+                .map(|v| v.parse().expect("failed to parse rust.llvm-libunwind"))
+                .unwrap_or_default();
             set(&mut config.backtrace, rust.backtrace);
             set(&mut config.channel, rust.channel);
             config.description = rust.description;
@@ -908,7 +919,6 @@ impl Config {
 
         if let Some(t) = toml.dist {
             config.dist_sign_folder = t.sign_folder.map(PathBuf::from);
-            config.dist_gpg_password_file = t.gpg_password_file.map(PathBuf::from);
             config.dist_upload_addr = t.upload_addr;
             config.dist_compression_formats = t.compression_formats;
             set(&mut config.rust_dist_src, t.src_tarball);
@@ -932,12 +942,8 @@ impl Config {
         // default values for all options that we haven't otherwise stored yet.
 
         config.llvm_skip_rebuild = llvm_skip_rebuild.unwrap_or(false);
-
-        let default = false;
-        config.llvm_assertions = llvm_assertions.unwrap_or(default);
-
-        let default = true;
-        config.rust_optimize = optimize.unwrap_or(default);
+        config.llvm_assertions = llvm_assertions.unwrap_or(false);
+        config.rust_optimize = optimize.unwrap_or(true);
 
         let default = debug == Some(true);
         config.rust_debug_assertions = debug_assertions.unwrap_or(default);

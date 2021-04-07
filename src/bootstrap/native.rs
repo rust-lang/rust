@@ -256,7 +256,7 @@ impl Step for Llvm {
             enabled_llvm_projects.push("compiler-rt");
         }
 
-        if let Some(true) = builder.config.llvm_polly {
+        if builder.config.llvm_polly {
             enabled_llvm_projects.push("polly");
         }
 
@@ -311,7 +311,7 @@ impl Step for Llvm {
             cfg.define("LLVM_USE_LINKER", linker);
         }
 
-        if let Some(true) = builder.config.llvm_allow_old_toolchain {
+        if builder.config.llvm_allow_old_toolchain {
             cfg.define("LLVM_TEMPORARILY_ALLOW_OLD_TOOLCHAIN", "YES");
         }
 

@@ -439,7 +439,12 @@ def configure_section(lines, config):
             lines[i] = "{} = {}".format(key, to_toml(value))
             break
         if not found:
-            raise RuntimeError("failed to find config line for {}".format(key))
+            # These are used by rpm, but aren't accepted by x.py.
+            # Give a warning that they're ignored, but not a hard error.
+            if key in ["infodir", "localstatedir"]:
+                print("warning: {} will be ignored".format(key))
+            else:
+                raise RuntimeError("failed to find config line for {}".format(key))
 
 
 for section_key in config:
