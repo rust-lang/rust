@@ -110,7 +110,10 @@ pub type WhereClause = chalk_ir::WhereClause<Interner>;
 
 // FIXME: get rid of this
 pub fn subst_prefix(s: &Substitution, n: usize) -> Substitution {
-    Substitution::intern(s.interned()[..std::cmp::min(s.len(&Interner), n)].into())
+    Substitution::from_iter(
+        &Interner,
+        s.interned()[..std::cmp::min(s.len(&Interner), n)].iter().cloned(),
+    )
 }
 
 /// Return an index of a parameter in the generic type parameter list by it's id.
