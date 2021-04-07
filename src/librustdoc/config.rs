@@ -121,7 +121,7 @@ crate struct Options {
     /// For example, using ignore-foo to ignore running the doctest on any target that
     /// contains "foo" as a substring
     crate enable_per_target_ignores: bool,
-    /// Compile test but do not run them.
+    /// Do not run doctests, compile them if should_test is active.
     crate no_run: bool,
 
     /// The path to a rustc-like binary to build tests with. If not set, we
