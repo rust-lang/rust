@@ -35,10 +35,18 @@ pub(crate) fn deref(
     krate: CrateId,
     ty: InEnvironment<&Canonical<Ty>>,
 ) -> Option<Canonical<Ty>> {
-    if let Some(derefed) = ty.goal.value.builtin_deref() {
+    if let Some(derefed) = builtin_deref(&ty.goal.value) {
         Some(Canonical { value: derefed, binders: ty.goal.binders.clone() })
     } else {
         deref_by_trait(db, krate, ty)
+    }
+}
+
+fn builtin_deref(ty: &Ty) -> Option<Ty> {
+    match ty.kind(&Interner) {
+        TyKind::Ref(.., ty) => Some(ty.clone()),
+        TyKind::Raw(.., ty) => Some(ty.clone()),
+        _ => None,
     }
 }
 
