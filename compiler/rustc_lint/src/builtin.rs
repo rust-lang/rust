@@ -2969,16 +2969,25 @@ declare_lint! {
     /// which causes [undefined behavior].
     ///
     /// ### Example
-    ///
     /// ```rust,no_run
-    /// let x: i32 = unsafe {
-    ///     *ptr::null()
+    /// unsafe {
+    ///     &*core::ptr::null::<i32>()
     /// };
     /// ```
     /// ```rust,no_run
     /// unsafe {
-    ///     *(0 as *const i32);
-    /// }
+    ///     core::ptr::addr_of!(*std::ptr::null::<i32>())
+    /// };
+    /// ```
+    /// ```rust,no_run
+    /// unsafe {
+    ///     *core::ptr::null::<i32>()
+    /// };
+    /// ```
+    /// ```rust,no_run
+    /// unsafe {
+    ///     *(0 as *const i32)
+    /// };
     /// ```
     ///
     /// {{produces}}
