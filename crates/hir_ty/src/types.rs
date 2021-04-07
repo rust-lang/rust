@@ -282,7 +282,7 @@ impl GenericArg {
 pub struct Substitution(SmallVec<[GenericArg; 2]>);
 
 impl Substitution {
-    pub fn interned(&self) -> &[GenericArg] {
+    pub fn interned(&self) -> &SmallVec<[GenericArg; 2]> {
         &self.0
     }
 

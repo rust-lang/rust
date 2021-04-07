@@ -745,7 +745,7 @@ fn write_bounds_like_dyn_trait(
                 // existential) here, which is the only thing that's
                 // possible in actual Rust, and hence don't print it
                 write!(f, "{}", f.db.trait_data(trait_).name)?;
-                if let [_, params @ ..] = &*trait_ref.substitution.interned() {
+                if let [_, params @ ..] = &*trait_ref.substitution.interned().as_slice() {
                     if is_fn_trait {
                         if let Some(args) =
                             params.first().and_then(|it| it.assert_ty_ref(&Interner).as_tuple())
