@@ -125,7 +125,6 @@ struct CodegenCx<'m, 'tcx: 'm> {
     global_asm: String,
     constants_cx: ConstantCx,
     cached_context: Context,
-    vtables: FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), DataId>,
     debug_context: Option<DebugContext<'tcx>>,
     unwind_context: UnwindContext<'tcx>,
 }
@@ -150,7 +149,6 @@ impl<'m, 'tcx> CodegenCx<'m, 'tcx> {
             global_asm: String::new(),
             constants_cx: ConstantCx::default(),
             cached_context: Context::new(),
-            vtables: FxHashMap::default(),
             debug_context,
             unwind_context,
         }

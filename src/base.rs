@@ -18,9 +18,9 @@ pub(crate) fn codegen_fn<'tcx>(cx: &mut crate::CodegenCx<'_, 'tcx>, instance: In
     let mir = tcx.instance_mir(instance.def);
 
     // Declare function
-    let name = tcx.symbol_name(instance).name.to_string();
+    let symbol_name = tcx.symbol_name(instance);
     let sig = get_function_sig(tcx, cx.module.isa().triple(), instance);
-    let func_id = cx.module.declare_function(&name, Linkage::Local, &sig).unwrap();
+    let func_id = cx.module.declare_function(symbol_name.name, Linkage::Local, &sig).unwrap();
 
     cx.cached_context.clear();
 
@@ -46,8 +46,10 @@ pub(crate) fn codegen_fn<'tcx>(cx: &mut crate::CodegenCx<'_, 'tcx>, instance: In
         cx,
         tcx,
         pointer_type,
+        vtables: FxHashMap::default(),
 
         instance,
+        symbol_name,
         mir,
         fn_abi: Some(FnAbi::of_instance(&RevealAllLayoutCx(tcx), instance, &[])),
 
@@ -151,7 +153,7 @@ pub(crate) fn codegen_fn<'tcx>(cx: &mut crate::CodegenCx<'_, 'tcx>, instance: In
             debug_context.define_function(
                 instance,
                 func_id,
-                &name,
+                symbol_name.name,
                 isa,
                 context,
                 &source_info_set,

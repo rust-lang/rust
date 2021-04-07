@@ -1,4 +1,5 @@
 use rustc_index::vec::IndexVec;
+use rustc_middle::ty::SymbolName;
 use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{Integer, Primitive};
 use rustc_target::spec::{HasTargetSpec, Target};
@@ -230,8 +231,10 @@ pub(crate) struct FunctionCx<'m, 'clif, 'tcx> {
     pub(crate) cx: &'clif mut crate::CodegenCx<'m, 'tcx>,
     pub(crate) tcx: TyCtxt<'tcx>,
     pub(crate) pointer_type: Type, // Cached from module
+    pub(crate) vtables: FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), DataId>,
 
     pub(crate) instance: Instance<'tcx>,
+    pub(crate) symbol_name: SymbolName<'tcx>,
     pub(crate) mir: &'tcx Body<'tcx>,
     pub(crate) fn_abi: Option<FnAbi<'tcx, Ty<'tcx>>>,
 

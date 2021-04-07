@@ -21,8 +21,7 @@ fn codegen_print(fx: &mut FunctionCx<'_, '_, '_>, msg: &str) {
         fx.add_comment(puts, "puts");
     }
 
-    let symbol_name = fx.tcx.symbol_name(fx.instance);
-    let real_msg = format!("trap at {:?} ({}): {}\0", fx.instance, symbol_name, msg);
+    let real_msg = format!("trap at {:?} ({}): {}\0", fx.instance, fx.symbol_name, msg);
     let msg_ptr = fx.anonymous_str("trap", &real_msg);
     fx.bcx.ins().call(puts, &[msg_ptr]);
 }
