@@ -470,7 +470,7 @@ impl Step for Std {
         // output directory will be deleted by us (as cargo will purge the stamp
         // file during the first slot's run), and core is relatively fast to
         // build so works OK to fill this 'dummy' slot.
-        let krates = ["core", "core", "alloc", "std", "proc_macro", "test"];
+        let krates = ["core", "alloc", "std", "proc_macro", "test"];
         for krate in &krates {
             run_cargo_rustdoc_for(krate);
         }
