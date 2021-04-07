@@ -10,16 +10,19 @@
 // @has - '//div[@class="docblock"]' 'sub2::describe'
 
 mod sub1 {
+    // this should be shadowed by sub2::describe
     /// sub1::describe
     pub fn describe() -> &'static str {
         "sub1::describe"
     }
 
+    // this should be shadowed by mod::prelude
     /// sub1::prelude
     pub mod prelude {
         pub use super::describe;
     }
 
+    // this should not be shadowed, because sub1::Foo and mod::Foo are in different namespace
     /// sub1::Foo (struct)
     pub struct Foo;
 }
