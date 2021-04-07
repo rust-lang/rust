@@ -8,8 +8,8 @@ use arrayvec::ArrayVec;
 use base_db::CrateId;
 use chalk_ir::{cast::Cast, Mutability, UniverseIndex};
 use hir_def::{
-    lang_item::LangItemTarget, AssocContainerId, AssocItemId, FunctionId, GenericDefId, HasModule,
-    ImplId, Lookup, ModuleId, TraitId,
+    lang_item::LangItemTarget, nameres::DefMap, AssocContainerId, AssocItemId, FunctionId,
+    GenericDefId, HasModule, ImplId, Lookup, ModuleId, TraitId,
 };
 use hir_expand::name::Name;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -100,25 +100,38 @@ impl TraitImpls {
         let mut impls = Self { map: FxHashMap::default() };
 
         let crate_def_map = db.crate_def_map(krate);
-        for (_module_id, module_data) in crate_def_map.modules() {
-            for impl_id in module_data.scope.impls() {
-                let target_trait = match db.impl_trait(impl_id) {
-                    Some(tr) => tr.skip_binders().hir_trait_id(),
-                    None => continue,
-                };
-                let self_ty = db.impl_self_ty(impl_id);
-                let self_ty_fp = TyFingerprint::for_impl(self_ty.skip_binders());
-                impls
-                    .map
-                    .entry(target_trait)
-                    .or_default()
-                    .entry(self_ty_fp)
-                    .or_default()
-                    .push(impl_id);
+        collect_def_map(db, &crate_def_map, &mut impls);
+
+        return Arc::new(impls);
+
+        fn collect_def_map(db: &dyn HirDatabase, def_map: &DefMap, impls: &mut TraitImpls) {
+            for (_module_id, module_data) in def_map.modules() {
+                for impl_id in module_data.scope.impls() {
+                    let target_trait = match db.impl_trait(impl_id) {
+                        Some(tr) => tr.skip_binders().hir_trait_id(),
+                        None => continue,
+                    };
+                    let self_ty = db.impl_self_ty(impl_id);
+                    let self_ty_fp = TyFingerprint::for_impl(self_ty.skip_binders());
+                    impls
+                        .map
+                        .entry(target_trait)
+                        .or_default()
+                        .entry(self_ty_fp)
+                        .or_default()
+                        .push(impl_id);
+                }
+
+                // To better support custom derives, collect impls in all unnamed const items.
+                // const _: () = { ... };
+                for konst in module_data.scope.unnamed_consts() {
+                    let body = db.body(konst.into());
+                    for (_, block_def_map) in body.blocks(db.upcast()) {
+                        collect_def_map(db, &block_def_map, impls);
+                    }
+                }
             }
         }
-
-        Arc::new(impls)
     }
 
     pub(crate) fn trait_impls_in_deps_query(db: &dyn HirDatabase, krate: CrateId) -> Arc<Self> {
@@ -207,6 +220,9 @@ impl InherentImpls {
                 }
             }
         }
+
+        // NOTE: We're not collecting inherent impls from unnamed consts here, we intentionally only
+        // support trait impls there.
 
         Arc::new(Self { map })
     }

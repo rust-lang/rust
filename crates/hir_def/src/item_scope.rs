@@ -107,6 +107,10 @@ impl ItemScope {
             .map(|(_, v)| v)
     }
 
+    pub fn unnamed_consts(&self) -> impl Iterator<Item = ConstId> + '_ {
+        self.unnamed_consts.iter().copied()
+    }
+
     /// Iterate over all module scoped macros
     pub(crate) fn macros<'a>(&'a self) -> impl Iterator<Item = (&'a Name, MacroDefId)> + 'a {
         self.entries().filter_map(|(name, def)| def.take_macros().map(|macro_| (name, macro_)))
