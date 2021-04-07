@@ -46,7 +46,7 @@ static_assert_size!(InterpErrorInfo<'_>, 8);
 /// Packages the kind of error we got from the const code interpreter
 /// up with a Rust-level backtrace of where the error occurred.
 /// Thsese should always be constructed by calling `.into()` on
-/// a `InterpError`. In `librustc_mir::interpret`, we have `throw_err_*`
+/// a `InterpError`. In `rustc_mir::interpret`, we have `throw_err_*`
 /// macros for this.
 #[derive(Debug)]
 pub struct InterpErrorInfo<'tcx>(Box<InterpErrorInfoInner<'tcx>>);
