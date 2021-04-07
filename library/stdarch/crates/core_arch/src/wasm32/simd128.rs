@@ -271,6 +271,10 @@ extern "C" {
     #[link_name = "llvm.wasm.pmax.v2f64"]
     fn llvm_f64x2_pmax(x: simd::f64x2, y: simd::f64x2) -> simd::f64x2;
 
+    #[link_name = "llvm.wasm.trunc.saturate.signed.v4i32.v4f32"]
+    fn llvm_i32x4_trunc_sat_f32x4_s(x: simd::f32x4) -> simd::i32x4;
+    #[link_name = "llvm.wasm.trunc.saturate.unsigned.v4i32.v4f32"]
+    fn llvm_i32x4_trunc_sat_f32x4_u(x: simd::f32x4) -> simd::i32x4;
     #[link_name = "llvm.wasm.convert.low.signed"]
     fn llvm_f64x2_convert_low_i32x4_s(x: simd::i32x4) -> simd::f64x2;
     #[link_name = "llvm.wasm.convert.low.unsigned"]
@@ -1564,7 +1568,7 @@ pub unsafe fn u32x4_ge(a: v128, b: v128) -> v128 {
 /// Returns a new vector where each lane is all ones if the pairwise elements
 /// were equal, or all zeros if the elements were not equal.
 #[inline]
-// #[cfg_attr(test, assert_instr(i64x2.eq))] // FIXME llvm
+#[cfg_attr(test, assert_instr(i64x2.eq))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn i64x2_eq(a: v128, b: v128) -> v128 {
     transmute(simd_eq::<_, simd::i64x2>(a.as_i64x2(), b.as_i64x2()))
@@ -1576,7 +1580,7 @@ pub unsafe fn i64x2_eq(a: v128, b: v128) -> v128 {
 /// Returns a new vector where each lane is all ones if the pairwise elements
 /// were not equal, or all zeros if the elements were equal.
 #[inline]
-// #[cfg_attr(test, assert_instr(i64x2.ne))] // FIXME llvm
+#[cfg_attr(test, assert_instr(i64x2.ne))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn i64x2_ne(a: v128, b: v128) -> v128 {
     transmute(simd_ne::<_, simd::i64x2>(a.as_i64x2(), b.as_i64x2()))
@@ -1588,7 +1592,7 @@ pub unsafe fn i64x2_ne(a: v128, b: v128) -> v128 {
 /// Returns a new vector where each lane is all ones if the pairwise left
 /// element is less than the pairwise right element, or all zeros otherwise.
 #[inline]
-// #[cfg_attr(test, assert_instr(i64x2.lt_s))] // FIXME llvm
+#[cfg_attr(test, assert_instr(i64x2.lt_s))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn i64x2_lt(a: v128, b: v128) -> v128 {
     transmute(simd_lt::<_, simd::i64x2>(a.as_i64x2(), b.as_i64x2()))
@@ -1600,7 +1604,7 @@ pub unsafe fn i64x2_lt(a: v128, b: v128) -> v128 {
 /// Returns a new vector where each lane is all ones if the pairwise left
 /// element is greater than the pairwise right element, or all zeros otherwise.
 #[inline]
-// #[cfg_attr(test, assert_instr(i64x2.gt_s))] // FIXME llvm
+#[cfg_attr(test, assert_instr(i64x2.gt_s))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn i64x2_gt(a: v128, b: v128) -> v128 {
     transmute(simd_gt::<_, simd::i64x2>(a.as_i64x2(), b.as_i64x2()))
@@ -1612,7 +1616,7 @@ pub unsafe fn i64x2_gt(a: v128, b: v128) -> v128 {
 /// Returns a new vector where each lane is all ones if the pairwise left
 /// element is less than the pairwise right element, or all zeros otherwise.
 #[inline]
-// #[cfg_attr(test, assert_instr(i64x2.le_s))] // FIXME llvm
+#[cfg_attr(test, assert_instr(i64x2.le_s))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn i64x2_le(a: v128, b: v128) -> v128 {
     transmute(simd_le::<_, simd::i64x2>(a.as_i64x2(), b.as_i64x2()))
@@ -1624,7 +1628,7 @@ pub unsafe fn i64x2_le(a: v128, b: v128) -> v128 {
 /// Returns a new vector where each lane is all ones if the pairwise left
 /// element is greater than the pairwise right element, or all zeros otherwise.
 #[inline]
-// #[cfg_attr(test, assert_instr(i64x2.ge_s))] // FIXME llvm
+#[cfg_attr(test, assert_instr(i64x2.ge_s))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn i64x2_ge(a: v128, b: v128) -> v128 {
     transmute(simd_ge::<_, simd::i64x2>(a.as_i64x2(), b.as_i64x2()))
@@ -1862,7 +1866,7 @@ pub unsafe fn i8x16_neg(a: v128) -> v128 {
 
 /// Count the number of bits set to one within each lane.
 #[inline]
-// #[cfg_attr(test, assert_instr(i8x16.popcnt))] // FIXME llvm & wasmtime
+// #[cfg_attr(test, assert_instr(i8x16.popcnt))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn i8x16_popcnt(v: v128) -> v128 {
     transmute(llvm_popcnt(v.as_i8x16()))
@@ -3088,7 +3092,7 @@ pub unsafe fn f64x2_pmax(a: v128, b: v128) -> v128 {
 #[cfg_attr(test, assert_instr(i32x4.trunc_sat_f32x4_s))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn i32x4_trunc_sat_f32x4(a: v128) -> v128 {
-    transmute(simd_cast::<_, simd::i32x4>(a.as_f32x4()))
+    transmute(llvm_i32x4_trunc_sat_f32x4_s(a.as_f32x4()))
 }
 
 /// Converts a 128-bit vector interpreted as four 32-bit floating point numbers
@@ -3100,7 +3104,7 @@ pub unsafe fn i32x4_trunc_sat_f32x4(a: v128) -> v128 {
 #[cfg_attr(test, assert_instr(i32x4.trunc_sat_f32x4_u))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn u32x4_trunc_sat_f32x4(a: v128) -> v128 {
-    transmute(simd_cast::<_, simd::u32x4>(a.as_f32x4()))
+    transmute(llvm_i32x4_trunc_sat_f32x4_u(a.as_f32x4()))
 }
 
 /// Converts a 128-bit vector interpreted as four 32-bit signed integers into a
@@ -3153,7 +3157,7 @@ pub unsafe fn u32x4_trunc_sat_f64x2_zero(a: v128) -> v128 {
 
 /// Lane-wise conversion from integer to floating point.
 #[inline]
-// #[cfg_attr(test, assert_instr(f64x2.convert_low_i32x4_s))] // FIXME wasmtime
+#[cfg_attr(test, assert_instr(f64x2.convert_low_i32x4_s))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn f64x2_convert_low_i32x4(a: v128) -> v128 {
     transmute(llvm_f64x2_convert_low_i32x4_s(a.as_i32x4()))
@@ -3193,6 +3197,7 @@ pub mod tests {
     use super::*;
     use core::ops::{Add, Div, Mul, Neg, Sub};
     use std;
+    use std::fmt::Debug;
     use std::mem;
     use std::num::Wrapping;
     use std::prelude::v1::*;
@@ -4721,6 +4726,11 @@ pub mod tests {
             compare_bytes(
                 u32x4_trunc_sat_f32x4(f32x4(1., f32::NEG_INFINITY, f32::INFINITY, f32::NAN)),
                 u32x4(1, 0, u32::MAX, 0),
+            );
+            compare_bytes(f64x2_convert_low_i32x4(i32x4(1, 2, 3, 4)), f64x2(1., 2.));
+            compare_bytes(
+                f64x2_convert_low_i32x4(i32x4(i32::MIN, i32::MAX, 3, 4)),
+                f64x2(f64::from(i32::MIN), f64::from(i32::MAX)),
             );
         }
     }
