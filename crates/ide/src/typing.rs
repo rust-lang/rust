@@ -22,18 +22,19 @@ use ide_db::{
 use syntax::{
     algo::find_node_at_offset,
     ast::{self, edit::IndentLevel, AstToken},
-    AstNode, SourceFile,
+    AstNode, Parse, SourceFile,
     SyntaxKind::{FIELD_EXPR, METHOD_CALL_EXPR},
     TextRange, TextSize,
 };
 
-use text_edit::TextEdit;
+use text_edit::{Indel, TextEdit};
 
 use crate::SourceChange;
 
 pub(crate) use on_enter::on_enter;
 
-pub(crate) const TRIGGER_CHARS: &str = ".=>";
+// Don't forget to add new trigger characters to `server_capabilities` in `caps.rs`.
+pub(crate) const TRIGGER_CHARS: &str = ".=>{";
 
 // Feature: On Typing Assists
 //
@@ -41,6 +42,7 @@ pub(crate) const TRIGGER_CHARS: &str = ".=>";
 //
 // - typing `let =` tries to smartly add `;` if `=` is followed by an existing expression
 // - typing `.` in a chain method call auto-indents
+// - typing `{` in front of an expression inserts a closing `}` after the expression
 //
 // VS Code::
 //
@@ -57,28 +59,79 @@ pub(crate) fn on_char_typed(
     position: FilePosition,
     char_typed: char,
 ) -> Option<SourceChange> {
-    assert!(TRIGGER_CHARS.contains(char_typed));
-    let file = &db.parse(position.file_id).tree();
-    assert_eq!(file.syntax().text().char_at(position.offset), Some(char_typed));
+    if !stdx::always!(TRIGGER_CHARS.contains(char_typed)) {
+        return None;
+    }
+    let file = &db.parse(position.file_id);
+    if !stdx::always!(file.tree().syntax().text().char_at(position.offset) == Some(char_typed)) {
+        return None;
+    }
     let edit = on_char_typed_inner(file, position.offset, char_typed)?;
     Some(SourceChange::from_text_edit(position.file_id, edit))
 }
 
-fn on_char_typed_inner(file: &SourceFile, offset: TextSize, char_typed: char) -> Option<TextEdit> {
-    assert!(TRIGGER_CHARS.contains(char_typed));
+fn on_char_typed_inner(
+    file: &Parse<SourceFile>,
+    offset: TextSize,
+    char_typed: char,
+) -> Option<TextEdit> {
+    if !stdx::always!(TRIGGER_CHARS.contains(char_typed)) {
+        return None;
+    }
     match char_typed {
-        '.' => on_dot_typed(file, offset),
-        '=' => on_eq_typed(file, offset),
-        '>' => on_arrow_typed(file, offset),
+        '.' => on_dot_typed(&file.tree(), offset),
+        '=' => on_eq_typed(&file.tree(), offset),
+        '>' => on_arrow_typed(&file.tree(), offset),
+        '{' => on_opening_brace_typed(file, offset),
         _ => unreachable!(),
     }
+}
+
+/// Inserts a closing `}` when the user types an opening `{`, wrapping an existing expression in a
+/// block.
+fn on_opening_brace_typed(file: &Parse<SourceFile>, offset: TextSize) -> Option<TextEdit> {
+    if !stdx::always!(file.tree().syntax().text().char_at(offset) == Some('{')) {
+        return None;
+    }
+
+    let brace_token = file.tree().syntax().token_at_offset(offset).right_biased()?;
+
+    // Remove the `{` to get a better parse tree, and reparse
+    let file = file.reparse(&Indel::delete(brace_token.text_range()));
+
+    let mut expr: ast::Expr = find_node_at_offset(file.tree().syntax(), offset)?;
+    if expr.syntax().text_range().start() != offset {
+        return None;
+    }
+
+    // Enclose the outermost expression starting at `offset`
+    while let Some(parent) = expr.syntax().parent() {
+        if parent.text_range().start() != expr.syntax().text_range().start() {
+            break;
+        }
+
+        match ast::Expr::cast(parent) {
+            Some(parent) => expr = parent,
+            None => break,
+        }
+    }
+
+    // If it's a statement in a block, we don't know how many statements should be included
+    if ast::ExprStmt::can_cast(expr.syntax().parent()?.kind()) {
+        return None;
+    }
+
+    // Insert `}` right after the expression.
+    Some(TextEdit::insert(expr.syntax().text_range().end() + TextSize::of("{"), "}".to_string()))
 }
 
 /// Returns an edit which should be applied after `=` was typed. Primarily,
 /// this works when adding `let =`.
 // FIXME: use a snippet completion instead of this hack here.
 fn on_eq_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
-    assert_eq!(file.syntax().text().char_at(offset), Some('='));
+    if !stdx::always!(file.syntax().text().char_at(offset) == Some('=')) {
+        return None;
+    }
     let let_stmt: ast::LetStmt = find_node_at_offset(file.syntax(), offset)?;
     if let_stmt.semicolon_token().is_some() {
         return None;
@@ -100,7 +153,9 @@ fn on_eq_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
 
 /// Returns an edit which should be applied when a dot ('.') is typed on a blank line, indenting the line appropriately.
 fn on_dot_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
-    assert_eq!(file.syntax().text().char_at(offset), Some('.'));
+    if !stdx::always!(file.syntax().text().char_at(offset) == Some('.')) {
+        return None;
+    }
     let whitespace =
         file.syntax().token_at_offset(offset).left_biased().and_then(ast::Whitespace::cast)?;
 
@@ -129,7 +184,9 @@ fn on_dot_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
 /// Adds a space after an arrow when `fn foo() { ... }` is turned into `fn foo() -> { ... }`
 fn on_arrow_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
     let file_text = file.syntax().text();
-    assert_eq!(file_text.char_at(offset), Some('>'));
+    if !stdx::always!(file_text.char_at(offset) == Some('>')) {
+        return None;
+    }
     let after_arrow = offset + TextSize::of('>');
     if file_text.char_at(after_arrow) != Some('{') {
         return None;
@@ -152,7 +209,7 @@ mod tests {
         let edit = TextEdit::insert(offset, char_typed.to_string());
         edit.apply(&mut before);
         let parse = SourceFile::parse(&before);
-        on_char_typed_inner(&parse.tree(), offset, char_typed).map(|it| {
+        on_char_typed_inner(&parse, offset, char_typed).map(|it| {
             it.apply(&mut before);
             before.to_string()
         })
@@ -372,5 +429,86 @@ fn main() {
     #[test]
     fn adds_space_after_return_type() {
         type_char('>', "fn foo() -$0{ 92 }", "fn foo() -> { 92 }")
+    }
+
+    #[test]
+    fn adds_closing_brace() {
+        type_char(
+            '{',
+            r#"
+fn f() { match () { _ => $0() } }
+            "#,
+            r#"
+fn f() { match () { _ => {()} } }
+            "#,
+        );
+        type_char(
+            '{',
+            r#"
+fn f() { $0() }
+            "#,
+            r#"
+fn f() { {()} }
+            "#,
+        );
+        type_char(
+            '{',
+            r#"
+fn f() { let x = $0(); }
+            "#,
+            r#"
+fn f() { let x = {()}; }
+            "#,
+        );
+        type_char(
+            '{',
+            r#"
+fn f() { let x = $0a.b(); }
+            "#,
+            r#"
+fn f() { let x = {a.b()}; }
+            "#,
+        );
+        type_char(
+            '{',
+            r#"
+const S: () = $0();
+fn f() {}
+            "#,
+            r#"
+const S: () = {()};
+fn f() {}
+            "#,
+        );
+        type_char(
+            '{',
+            r#"
+const S: () = $0a.b();
+fn f() {}
+            "#,
+            r#"
+const S: () = {a.b()};
+fn f() {}
+            "#,
+        );
+        type_char(
+            '{',
+            r#"
+fn f() {
+    match x {
+        0 => $0(),
+        1 => (),
+    }
+}
+            "#,
+            r#"
+fn f() {
+    match x {
+        0 => {()},
+        1 => (),
+    }
+}
+            "#,
+        );
     }
 }

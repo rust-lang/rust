@@ -231,7 +231,6 @@ pub(crate) fn handle_on_enter(
     Ok(Some(edit))
 }
 
-// Don't forget to add new trigger characters to `ServerCapabilities` in `caps.rs`.
 pub(crate) fn handle_on_type_formatting(
     snap: GlobalStateSnapshot,
     params: lsp_types::DocumentOnTypeFormattingParams,

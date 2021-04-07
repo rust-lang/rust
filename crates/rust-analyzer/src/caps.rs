@@ -57,7 +57,7 @@ pub fn server_capabilities(client_caps: &ClientCapabilities) -> ServerCapabiliti
         document_range_formatting_provider: None,
         document_on_type_formatting_provider: Some(DocumentOnTypeFormattingOptions {
             first_trigger_character: "=".to_string(),
-            more_trigger_character: Some(vec![".".to_string(), ">".to_string()]),
+            more_trigger_character: Some(vec![".".to_string(), ">".to_string(), "{".to_string()]),
         }),
         selection_range_provider: Some(SelectionRangeProviderCapability::Simple(true)),
         folding_range_provider: Some(FoldingRangeProviderCapability::Simple(true)),
