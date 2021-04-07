@@ -254,6 +254,7 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
         attributes::emit_uwtable(llfn, true);
     }
 
+    // FIXME: none of these three functions interact with source level attributes.
     set_frame_pointer_elimination(cx, llfn);
     set_instrument_function(cx, llfn);
     set_probestack(cx, llfn);
@@ -278,6 +279,9 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
     }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::CMSE_NONSECURE_ENTRY) {
         llvm::AddFunctionAttrString(llfn, Function, cstr!("cmse_nonsecure_entry"));
+    }
+    if let Some(align) = codegen_fn_attrs.alignment {
+        llvm::set_alignment(llfn, align as usize);
     }
     sanitize(cx, codegen_fn_attrs.no_sanitize, llfn);
 

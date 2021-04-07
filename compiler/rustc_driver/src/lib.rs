@@ -795,7 +795,7 @@ pub fn version(binary: &str, matches: &getopts::Matches) {
         println!("host: {}", config::host_triple());
         println!("release: {}", unw(util::release_str()));
         if cfg!(feature = "llvm") {
-            get_builtin_codegen_backend("llvm")().print_version();
+            get_builtin_codegen_backend(&None, "llvm")().print_version();
         }
     }
 }
@@ -845,7 +845,8 @@ the command line flag directly.
     );
 }
 
-fn describe_lints(sess: &Session, lint_store: &LintStore, loaded_plugins: bool) {
+/// Write to stdout lint command options, together with a list of all available lints
+pub fn describe_lints(sess: &Session, lint_store: &LintStore, loaded_plugins: bool) {
     println!(
         "
 Available lint options:
@@ -1089,7 +1090,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
 
     if cg_flags.iter().any(|x| *x == "passes=list") {
         if cfg!(feature = "llvm") {
-            get_builtin_codegen_backend("llvm")().print_passes();
+            get_builtin_codegen_backend(&None, "llvm")().print_passes();
         }
         return None;
     }

@@ -6,7 +6,7 @@ pub enum Type {
     Type2 = 1
 }
 
-// CHECK: define signext i8 @test()
+// CHECK: define{{( dso_local)?}} signext i8 @test()
 #[no_mangle]
 pub extern "C" fn test() -> Type {
     Type::Type1

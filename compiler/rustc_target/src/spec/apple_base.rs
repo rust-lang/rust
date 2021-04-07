@@ -1,6 +1,6 @@
 use std::env;
 
-use crate::spec::{LinkArgs, SplitDebuginfo, TargetOptions};
+use crate::spec::{SplitDebuginfo, TargetOptions};
 
 pub fn opts(os: &str) -> TargetOptions {
     // ELF TLS is only available in macOS 10.7+. If you try to compile for 10.6
@@ -27,10 +27,8 @@ pub fn opts(os: &str) -> TargetOptions {
         is_like_osx: true,
         dwarf_version: Some(2),
         has_rpath: true,
-        dll_prefix: "lib".to_string(),
         dll_suffix: ".dylib".to_string(),
         archive_format: "darwin".to_string(),
-        pre_link_args: LinkArgs::new(),
         has_elf_tls: version >= (10, 7),
         abi_return_struct_as_int: true,
         emit_debug_gdb_scripts: false,

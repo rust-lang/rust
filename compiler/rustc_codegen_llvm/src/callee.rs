@@ -14,6 +14,7 @@ use tracing::debug;
 
 use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt};
 use rustc_middle::ty::{self, Instance, TypeFoldable};
+use rustc_target::spec::RelocModel;
 
 /// Codegens a reference to a fn/method item, monomorphizing and
 /// inlining as it goes.
@@ -170,16 +171,18 @@ pub fn get_fn(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) -> &'ll Value
                     }
                 }
             }
-        }
 
-        // MinGW: For backward compatibility we rely on the linker to decide whether it
-        // should use dllimport for functions.
-        if cx.use_dll_storage_attrs
-            && tcx.is_dllimport_foreign_item(instance_def_id)
-            && tcx.sess.target.env != "gnu"
-        {
-            unsafe {
+            // MinGW: For backward compatibility we rely on the linker to decide whether it
+            // should use dllimport for functions.
+            if cx.use_dll_storage_attrs
+                && tcx.is_dllimport_foreign_item(instance_def_id)
+                && tcx.sess.target.env != "gnu"
+            {
                 llvm::LLVMSetDLLStorageClass(llfn, llvm::DLLStorageClass::DllImport);
+            }
+
+            if cx.tcx.sess.relocation_model() == RelocModel::Static {
+                llvm::LLVMRustSetDSOLocal(llfn, true);
             }
         }
 

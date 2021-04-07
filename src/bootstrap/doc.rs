@@ -470,7 +470,7 @@ impl Step for Std {
         // output directory will be deleted by us (as cargo will purge the stamp
         // file during the first slot's run), and core is relatively fast to
         // build so works OK to fill this 'dummy' slot.
-        let krates = ["core", "core", "alloc", "std", "proc_macro", "test"];
+        let krates = ["core", "alloc", "std", "proc_macro", "test"];
         for krate in &krates {
             run_cargo_rustdoc_for(krate);
         }
@@ -549,6 +549,8 @@ impl Step for Rustc {
         // Build cargo command.
         let mut cargo = builder.cargo(compiler, Mode::Rustc, SourceType::InTree, target, "doc");
         cargo.rustdocflag("--document-private-items");
+        // Since we always pass --document-private-items, there's no need to warn about linking to private items.
+        cargo.rustdocflag("-Arustdoc::private-intra-doc-links");
         cargo.rustdocflag("--enable-index-page");
         cargo.rustdocflag("-Zunstable-options");
         cargo.rustdocflag("-Znormalize-docs");

@@ -1,3 +1,16 @@
+// Configure jemalloc as the `global_allocator` when configured. This is
+// so that we use the sized deallocation apis jemalloc provides
+// (namely `sdallocx`).
+//
+// The symbol overrides documented below are also performed so that we can
+// ensure that we use a consistent allocator across the rustc <-> llvm boundary
+#[cfg(feature = "jemalloc")]
+#[global_allocator]
+static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+
+#[cfg(feature = "tikv-jemalloc-sys")]
+use tikv_jemalloc_sys as jemalloc_sys;
+
 fn main() {
     // Pull in jemalloc when enabled.
     //
@@ -7,7 +20,7 @@ fn main() {
     // dynamic libraries. That means to pull in jemalloc we actually need to
     // reference allocation symbols one way or another (as this file is the only
     // object code in the rustc executable).
-    #[cfg(feature = "jemalloc-sys")]
+    #[cfg(feature = "tikv-jemalloc-sys")]
     {
         use std::os::raw::{c_int, c_void};
 

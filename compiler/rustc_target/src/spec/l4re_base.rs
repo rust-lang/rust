@@ -1,4 +1,4 @@
-use crate::spec::{LinkArgs, LinkerFlavor, PanicStrategy, TargetOptions};
+use crate::spec::{LinkerFlavor, PanicStrategy, TargetOptions};
 //use std::process::Command;
 
 // Use GCC to locate code for crt* libraries from the host, not from L4Re. Note
@@ -13,18 +13,13 @@ use crate::spec::{LinkArgs, LinkerFlavor, PanicStrategy, TargetOptions};
 //}
 
 pub fn opts() -> TargetOptions {
-    let mut args = LinkArgs::new();
-    args.insert(LinkerFlavor::Gcc, vec![]);
-
     TargetOptions {
         os: "l4re".to_string(),
         env: "uclibc".to_string(),
         linker_flavor: LinkerFlavor::Ld,
         executables: true,
-        has_elf_tls: false,
         panic_strategy: PanicStrategy::Abort,
         linker: Some("ld".to_string()),
-        pre_link_args: args,
         os_family: Some("unix".to_string()),
         ..Default::default()
     }

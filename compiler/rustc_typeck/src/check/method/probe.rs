@@ -83,6 +83,8 @@ struct ProbeContext<'a, 'tcx> {
     unsatisfied_predicates: Vec<(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>)>,
 
     is_suggestion: IsSuggestion,
+
+    scope_expr_id: hir::HirId,
 }
 
 impl<'a, 'tcx> Deref for ProbeContext<'a, 'tcx> {
@@ -448,6 +450,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 orig_values,
                 steps.steps,
                 is_suggestion,
+                scope_expr_id,
             );
 
             probe_cx.assemble_inherent_candidates();
@@ -547,6 +550,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         orig_steps_var_values: OriginalQueryValues<'tcx>,
         steps: Lrc<Vec<CandidateStep<'tcx>>>,
         is_suggestion: IsSuggestion,
+        scope_expr_id: hir::HirId,
     ) -> ProbeContext<'a, 'tcx> {
         ProbeContext {
             fcx,
@@ -564,6 +568,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             private_candidate: None,
             unsatisfied_predicates: Vec::new(),
             is_suggestion,
+            scope_expr_id,
         }
     }
 
@@ -1312,7 +1317,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     ) {
         self.tcx.struct_span_lint_hir(
             lint::builtin::UNSTABLE_NAME_COLLISIONS,
-            self.fcx.body_id,
+            self.scope_expr_id,
             self.span,
             |lint| {
                 let def_kind = stable_pick.item.kind.as_def_kind();
@@ -1594,6 +1599,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 self.orig_steps_var_values.clone(),
                 steps,
                 IsSuggestion(true),
+                self.scope_expr_id,
             );
             pcx.allow_similar_names = true;
             pcx.assemble_inherent_candidates();

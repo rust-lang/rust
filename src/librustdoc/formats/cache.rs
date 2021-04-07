@@ -120,10 +120,6 @@ crate struct Cache {
     // when gathering trait documentation on a type, hold impls here while
     // folding and add them to the cache later on if we find the trait.
     orphan_trait_impls: Vec<(DefId, FxHashSet<DefId>, Impl)>,
-
-    /// Aliases added through `#[doc(alias = "...")]`. Since a few items can have the same alias,
-    /// we need the alias element to have an array of items.
-    crate aliases: BTreeMap<String, Vec<usize>>,
 }
 
 /// This struct is used to wrap the `cache` and `tcx` in order to run `DocFolder`.
@@ -309,15 +305,8 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                             parent,
                             parent_idx: None,
                             search_type: get_index_search_type(&item, &self.empty_cache, self.tcx),
+                            aliases: item.attrs.get_doc_aliases(),
                         });
-
-                        for alias in item.attrs.get_doc_aliases() {
-                            self.cache
-                                .aliases
-                                .entry(alias.to_lowercase())
-                                .or_insert(Vec::new())
-                                .push(self.cache.search_index.len() - 1);
-                        }
                     }
                 }
                 (Some(parent), None) if is_inherent_impl_item => {

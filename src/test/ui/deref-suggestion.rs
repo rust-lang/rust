@@ -45,4 +45,30 @@ fn main() {
     //~^ ERROR mismatched types
     let r = R { i: i };
     //~^ ERROR mismatched types
+
+
+    let a = &1;
+    let b = &2;
+    let val: i32 = if true {
+        a + 1
+    } else {
+        b
+        //~^ ERROR mismatched types
+    };
+    let val: i32 = if true {
+        let _ = 2;
+        a + 1
+    } else {
+        let _ = 2;
+        b
+        //~^ ERROR mismatched types
+    };
+    let val = if true {
+        *a
+    } else if true {
+    //~^ ERROR incompatible types
+        b
+    } else {
+        &0
+    };
 }

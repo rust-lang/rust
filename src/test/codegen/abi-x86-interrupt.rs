@@ -2,17 +2,20 @@
 // llvm. Also checks that the abi_x86_interrupt feature gate allows usage
 // of the x86-interrupt abi.
 
-// ignore-arm
-// ignore-aarch64
-// ignore-riscv64 x86-interrupt is not supported
-
-// compile-flags: -C no-prepopulate-passes
+// needs-llvm-components: x86
+// compile-flags: -C no-prepopulate-passes --target=x86_64-unknown-linux-gnu
 
 #![crate_type = "lib"]
-#![feature(abi_x86_interrupt)]
+#![no_core]
+#![feature(abi_x86_interrupt, no_core, lang_items)]
+
+#[lang = "sized"]
+trait Sized {}
+#[lang = "copy"]
+trait Copy {}
 
 // CHECK: define x86_intrcc i64 @has_x86_interrupt_abi
 #[no_mangle]
 pub extern "x86-interrupt" fn has_x86_interrupt_abi(a: i64) -> i64 {
-    a * 2
+    a
 }
