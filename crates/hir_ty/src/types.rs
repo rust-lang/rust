@@ -30,8 +30,8 @@ pub struct ProjectionTy {
 }
 
 impl ProjectionTy {
-    pub fn self_type_parameter(&self, interner: &Interner) -> &Ty {
-        &self.substitution.interned()[0].assert_ty_ref(interner)
+    pub fn self_type_parameter(&self, interner: &Interner) -> Ty {
+        self.substitution.interned()[0].assert_ty_ref(interner).clone()
     }
 }
 
@@ -413,8 +413,8 @@ pub struct TraitRef {
 }
 
 impl TraitRef {
-    pub fn self_type_parameter(&self, interner: &Interner) -> &Ty {
-        &self.substitution.at(interner, 0).assert_ty_ref(interner)
+    pub fn self_type_parameter(&self, interner: &Interner) -> Ty {
+        self.substitution.at(interner, 0).assert_ty_ref(interner).clone()
     }
 }
 

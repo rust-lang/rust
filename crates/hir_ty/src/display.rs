@@ -616,12 +616,12 @@ impl HirDisplay for Ty {
                                 .map(|pred| pred.clone().substitute(&Interner, &substs))
                                 .filter(|wc| match &wc.skip_binders() {
                                     WhereClause::Implemented(tr) => {
-                                        tr.self_type_parameter(&Interner) == self
+                                        &tr.self_type_parameter(&Interner) == self
                                     }
                                     WhereClause::AliasEq(AliasEq {
                                         alias: AliasTy::Projection(proj),
                                         ty: _,
-                                    }) => proj.self_type_parameter(&Interner) == self,
+                                    }) => &proj.self_type_parameter(&Interner) == self,
                                     _ => false,
                                 })
                                 .collect::<Vec<_>>();
