@@ -58,9 +58,13 @@ pub(crate) fn on_char_typed(
     position: FilePosition,
     char_typed: char,
 ) -> Option<SourceChange> {
-    assert!(TRIGGER_CHARS.contains(char_typed));
+    if !stdx::always!(TRIGGER_CHARS.contains(char_typed)) {
+        return None;
+    }
     let file = &db.parse(position.file_id);
-    assert_eq!(file.tree().syntax().text().char_at(position.offset), Some(char_typed));
+    if !stdx::always!(file.tree().syntax().text().char_at(position.offset) == Some(char_typed)) {
+        return None;
+    }
     let edit = on_char_typed_inner(file, position.offset, char_typed)?;
     Some(SourceChange::from_text_edit(position.file_id, edit))
 }
@@ -70,7 +74,9 @@ fn on_char_typed_inner(
     offset: TextSize,
     char_typed: char,
 ) -> Option<TextEdit> {
-    assert!(TRIGGER_CHARS.contains(char_typed));
+    if !stdx::always!(TRIGGER_CHARS.contains(char_typed)) {
+        return None;
+    }
     match char_typed {
         '.' => on_dot_typed(&file.tree(), offset),
         '=' => on_eq_typed(&file.tree(), offset),
@@ -83,7 +89,9 @@ fn on_char_typed_inner(
 /// Inserts a closing `}` when the user types an opening `{`, wrapping an existing expression in a
 /// block.
 fn on_opening_brace_typed(file: &Parse<SourceFile>, offset: TextSize) -> Option<TextEdit> {
-    stdx::always!(file.tree().syntax().text().char_at(offset) == Some('{'));
+    if !stdx::always!(file.tree().syntax().text().char_at(offset) == Some('{')) {
+        return None;
+    }
 
     let brace_token = file.tree().syntax().token_at_offset(offset).right_biased()?;
 
@@ -120,7 +128,9 @@ fn on_opening_brace_typed(file: &Parse<SourceFile>, offset: TextSize) -> Option<
 /// this works when adding `let =`.
 // FIXME: use a snippet completion instead of this hack here.
 fn on_eq_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
-    stdx::always!(file.syntax().text().char_at(offset) == Some('='));
+    if !stdx::always!(file.syntax().text().char_at(offset) == Some('=')) {
+        return None;
+    }
     let let_stmt: ast::LetStmt = find_node_at_offset(file.syntax(), offset)?;
     if let_stmt.semicolon_token().is_some() {
         return None;
@@ -142,7 +152,9 @@ fn on_eq_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
 
 /// Returns an edit which should be applied when a dot ('.') is typed on a blank line, indenting the line appropriately.
 fn on_dot_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
-    stdx::always!(file.syntax().text().char_at(offset) == Some('.'));
+    if !stdx::always!(file.syntax().text().char_at(offset) == Some('.')) {
+        return None;
+    }
     let whitespace =
         file.syntax().token_at_offset(offset).left_biased().and_then(ast::Whitespace::cast)?;
 
@@ -171,7 +183,9 @@ fn on_dot_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
 /// Adds a space after an arrow when `fn foo() { ... }` is turned into `fn foo() -> { ... }`
 fn on_arrow_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
     let file_text = file.syntax().text();
-    stdx::always!(file_text.char_at(offset) == Some('>'));
+    if !stdx::always!(file_text.char_at(offset) == Some('>')) {
+        return None;
+    }
     let after_arrow = offset + TextSize::of('>');
     if file_text.char_at(after_arrow) != Some('{') {
         return None;
