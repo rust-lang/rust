@@ -294,6 +294,14 @@ impl Crate {
             });
         let stdout = String::from_utf8_lossy(&all_output.stdout);
         let stderr = String::from_utf8_lossy(&all_output.stderr);
+        let status = &all_output.status;
+
+        if !status.success() {
+            eprintln!(
+                "\nWARNING: bad exit status after checking {} {} \n",
+                self.name, self.version
+            );
+        }
 
         if fix {
             if let Some(stderr) = stderr

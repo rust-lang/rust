@@ -16,12 +16,10 @@ use rustc_middle::hir::map::Map;
 use rustc_span::symbol::sym;
 
 pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-    if let ExprKind::Match(ref match_expr, ref arms, MatchSource::WhileLetDesugar) = expr.kind {
+    if let ExprKind::Match(match_expr, arms, MatchSource::WhileLetDesugar) = expr.kind {
         let pat = &arms[0].pat.kind;
-        if let (
-            &PatKind::TupleStruct(ref qpath, ref pat_args, _),
-            &ExprKind::MethodCall(ref method_path, _, ref method_args, _),
-        ) = (pat, &match_expr.kind)
+        if let (&PatKind::TupleStruct(ref qpath, pat_args, _), &ExprKind::MethodCall(method_path, _, method_args, _)) =
+            (pat, &match_expr.kind)
         {
             let iter_expr = &method_args[0];
 
@@ -40,8 +38,8 @@ pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
                 && is_trait_method(cx, match_expr, sym::Iterator)
                 && lhs_constructor.ident.name == sym::Some
                 && (pat_args.is_empty()
-                    || !is_refutable(cx, &pat_args[0])
-                        && !is_used_inside(cx, iter_expr, &arms[0].body)
+                    || !is_refutable(cx, pat_args[0])
+                        && !is_used_inside(cx, iter_expr, arms[0].body)
                         && !is_iterator_used_after_while_let(cx, iter_expr)
                         && !is_nested(cx, expr, &method_args[0]))
             {

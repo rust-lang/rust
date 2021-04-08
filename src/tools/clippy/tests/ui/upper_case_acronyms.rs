@@ -24,4 +24,18 @@ struct GCCLLVMSomething;
 pub struct NOWARNINGHERE;
 pub struct ALSONoWarningHERE;
 
+// enum variants should not be linted if the num is pub
+pub enum ParseError<T> {
+    YDB(u8),
+    Utf8(std::string::FromUtf8Error),
+    Parse(T, String),
+}
+
+// private, do lint here
+enum ParseErrorPrivate<T> {
+    WASD(u8),
+    Utf8(std::string::FromUtf8Error),
+    Parse(T, String),
+}
+
 fn main() {}

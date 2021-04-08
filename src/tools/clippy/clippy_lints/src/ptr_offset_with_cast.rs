@@ -78,8 +78,8 @@ impl<'tcx> LateLintPass<'tcx> for PtrOffsetWithCast {
 
 // If the given expression is a cast from a usize, return the lhs of the cast
 fn expr_as_cast_from_usize<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
-    if let ExprKind::Cast(ref cast_lhs_expr, _) = expr.kind {
-        if is_expr_ty_usize(cx, &cast_lhs_expr) {
+    if let ExprKind::Cast(cast_lhs_expr, _) = expr.kind {
+        if is_expr_ty_usize(cx, cast_lhs_expr) {
             return Some(cast_lhs_expr);
         }
     }
@@ -92,7 +92,7 @@ fn expr_as_ptr_offset_call<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'_>,
 ) -> Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>, Method)> {
-    if let ExprKind::MethodCall(ref path_segment, _, ref args, _) = expr.kind {
+    if let ExprKind::MethodCall(path_segment, _, args, _) = expr.kind {
         if is_expr_ty_raw_ptr(cx, &args[0]) {
             if path_segment.ident.name == sym::offset {
                 return Some((&args[0], &args[1], Method::Offset));

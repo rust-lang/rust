@@ -51,7 +51,7 @@ impl LateLintPass<'_> for SemicolonIfNothingReturned {
                     return;
                 }
 
-                let sugg = sugg::Sugg::hir_with_macro_callsite(cx, &expr, "..");
+                let sugg = sugg::Sugg::hir_with_macro_callsite(cx, expr, "..");
                 let suggestion = format!("{0};", sugg);
                 span_lint_and_sugg(
                     cx,

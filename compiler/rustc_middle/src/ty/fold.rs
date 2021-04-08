@@ -44,7 +44,7 @@ use std::ops::ControlFlow;
 /// This trait is implemented for every type that can be folded.
 /// Basically, every type that has a corresponding method in `TypeFolder`.
 ///
-/// To implement this conveniently, use the derive macro located in librustc_macros.
+/// To implement this conveniently, use the derive macro located in `rustc_macros`.
 pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self;
     fn fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {

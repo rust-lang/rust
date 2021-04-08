@@ -10,8 +10,8 @@ use rustc_hir::intravisit::{walk_block, walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::{Block, Expr, ExprKind, GenericArg, HirId, Local, Pat, PatKind, QPath, StmtKind};
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
-use rustc_span::source_map::Span;
 use rustc_span::symbol::{sym, Ident};
+use rustc_span::{MultiSpan, Span};
 
 const NEEDLESS_COLLECT_MSG: &str = "avoid using `collect()` when not needed";
 
@@ -21,88 +21,60 @@ pub(super) fn check<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) {
 }
 fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) {
     if_chain! {
-        if let ExprKind::MethodCall(ref method, _, ref args, _) = expr.kind;
-        if let ExprKind::MethodCall(ref chain_method, _, _, _) = args[0].kind;
+        if let ExprKind::MethodCall(method, _, args, _) = expr.kind;
+        if let ExprKind::MethodCall(chain_method, method0_span, _, _) = args[0].kind;
         if chain_method.ident.name == sym!(collect) && is_trait_method(cx, &args[0], sym::Iterator);
-        if let Some(ref generic_args) = chain_method.args;
+        if let Some(generic_args) = chain_method.args;
         if let Some(GenericArg::Type(ref ty)) = generic_args.args.get(0);
-        then {
-            let ty = cx.typeck_results().node_type(ty.hir_id);
-            if is_type_diagnostic_item(cx, ty, sym::vec_type) ||
-                is_type_diagnostic_item(cx, ty, sym::vecdeque_type) ||
-                match_type(cx, ty, &paths::BTREEMAP) ||
-                is_type_diagnostic_item(cx, ty, sym::hashmap_type) {
-                if method.ident.name == sym!(len) {
-                    let span = shorten_needless_collect_span(expr);
-                    span_lint_and_sugg(
-                        cx,
-                        NEEDLESS_COLLECT,
-                        span,
-                        NEEDLESS_COLLECT_MSG,
-                        "replace with",
-                        "count()".to_string(),
-                        Applicability::MachineApplicable,
-                    );
-                }
-                if method.ident.name == sym!(is_empty) {
-                    let span = shorten_needless_collect_span(expr);
-                    span_lint_and_sugg(
-                        cx,
-                        NEEDLESS_COLLECT,
-                        span,
-                        NEEDLESS_COLLECT_MSG,
-                        "replace with",
-                        "next().is_none()".to_string(),
-                        Applicability::MachineApplicable,
-                    );
-                }
-                if method.ident.name == sym!(contains) {
-                    let contains_arg = snippet(cx, args[1].span, "??");
-                    let span = shorten_needless_collect_span(expr);
-                    span_lint_and_then(
-                        cx,
-                        NEEDLESS_COLLECT,
-                        span,
-                        NEEDLESS_COLLECT_MSG,
-                        |diag| {
-                            let (arg, pred) = contains_arg
-                                    .strip_prefix('&')
-                                    .map_or(("&x", &*contains_arg), |s| ("x", s));
-                            diag.span_suggestion(
-                                span,
-                                "replace with",
-                                format!(
-                                    "any(|{}| x == {})",
-                                    arg, pred
-                                ),
-                                Applicability::MachineApplicable,
-                            );
-                        }
-                    );
-                }
+        let ty = cx.typeck_results().node_type(ty.hir_id);
+        if is_type_diagnostic_item(cx, ty, sym::vec_type)
+            || is_type_diagnostic_item(cx, ty, sym::vecdeque_type)
+            || match_type(cx, ty, &paths::BTREEMAP)
+            || is_type_diagnostic_item(cx, ty, sym::hashmap_type);
+        if let Some(sugg) = match &*method.ident.name.as_str() {
+            "len" => Some("count()".to_string()),
+            "is_empty" => Some("next().is_none()".to_string()),
+            "contains" => {
+                let contains_arg = snippet(cx, args[1].span, "??");
+                let (arg, pred) = contains_arg
+                    .strip_prefix('&')
+                    .map_or(("&x", &*contains_arg), |s| ("x", s));
+                Some(format!("any(|{}| x == {})", arg, pred))
             }
+            _ => None,
+        };
+        then {
+            span_lint_and_sugg(
+                cx,
+                NEEDLESS_COLLECT,
+                method0_span.with_hi(expr.span.hi()),
+                NEEDLESS_COLLECT_MSG,
+                "replace with",
+                sugg,
+                Applicability::MachineApplicable,
+            );
         }
     }
 }
 
 fn check_needless_collect_indirect_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) {
-    if let ExprKind::Block(ref block, _) = expr.kind {
-        for ref stmt in block.stmts {
+    if let ExprKind::Block(block, _) = expr.kind {
+        for stmt in block.stmts {
             if_chain! {
                 if let StmtKind::Local(
                     Local { pat: Pat { hir_id: pat_id, kind: PatKind::Binding(_, _, ident, .. ), .. },
-                    init: Some(ref init_expr), .. }
+                    init: Some(init_expr), .. }
                 ) = stmt.kind;
-                if let ExprKind::MethodCall(ref method_name, _, &[ref iter_source], ..) = init_expr.kind;
-                if method_name.ident.name == sym!(collect) && is_trait_method(cx, &init_expr, sym::Iterator);
-                if let Some(ref generic_args) = method_name.args;
+                if let ExprKind::MethodCall(method_name, collect_span, &[ref iter_source], ..) = init_expr.kind;
+                if method_name.ident.name == sym!(collect) && is_trait_method(cx, init_expr, sym::Iterator);
+                if let Some(generic_args) = method_name.args;
                 if let Some(GenericArg::Type(ref ty)) = generic_args.args.get(0);
                 if let ty = cx.typeck_results().node_type(ty.hir_id);
                 if is_type_diagnostic_item(cx, ty, sym::vec_type) ||
                     is_type_diagnostic_item(cx, ty, sym::vecdeque_type) ||
                     match_type(cx, ty, &paths::LINKED_LIST);
                 if let Some(iter_calls) = detect_iter_and_into_iters(block, *ident);
-                if iter_calls.len() == 1;
+                if let [iter_call] = &*iter_calls;
                 then {
                     let mut used_count_visitor = UsedCountVisitor {
                         cx,
@@ -115,11 +87,12 @@ fn check_needless_collect_indirect_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCo
                     }
 
                     // Suggest replacing iter_call with iter_replacement, and removing stmt
-                    let iter_call = &iter_calls[0];
+                    let mut span = MultiSpan::from_span(collect_span);
+                    span.push_span_label(iter_call.span, "the iterator could be used here instead".into());
                     span_lint_and_then(
                         cx,
                         super::NEEDLESS_COLLECT,
-                        stmt.span.until(iter_call.span),
+                        span,
                         NEEDLESS_COLLECT_MSG,
                         |diag| {
                             let iter_replacement = format!("{}{}", Sugg::hir(cx, iter_source, ".."), iter_call.get_iter_method(cx));
@@ -130,7 +103,7 @@ fn check_needless_collect_indirect_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCo
                                     (iter_call.span, iter_replacement)
                                 ],
                                 Applicability::MachineApplicable,// MaybeIncorrect,
-                            ).emit();
+                            );
                         },
                     );
                 }
@@ -192,8 +165,8 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor {
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         // Check function calls on our collection
         if_chain! {
-            if let ExprKind::MethodCall(method_name, _, ref args, _) = &expr.kind;
-            if let Some(Expr { kind: ExprKind::Path(QPath::Resolved(_, ref path)), .. }) = args.get(0);
+            if let ExprKind::MethodCall(method_name, _, args, _) = &expr.kind;
+            if let Some(Expr { kind: ExprKind::Path(QPath::Resolved(_, path)), .. }) = args.get(0);
             if let &[name] = &path.segments;
             if name.ident == self.target;
             then {
@@ -220,7 +193,7 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor {
         }
         // Check if the collection is used for anything else
         if_chain! {
-            if let Expr { kind: ExprKind::Path(QPath::Resolved(_, ref path)), .. } = expr;
+            if let Expr { kind: ExprKind::Path(QPath::Resolved(_, path)), .. } = expr;
             if let &[name] = &path.segments;
             if name.ident == self.target;
             then {
@@ -269,15 +242,4 @@ fn detect_iter_and_into_iters<'tcx>(block: &'tcx Block<'tcx>, identifier: Ident)
     };
     visitor.visit_block(block);
     if visitor.seen_other { None } else { Some(visitor.uses) }
-}
-
-fn shorten_needless_collect_span(expr: &Expr<'_>) -> Span {
-    if_chain! {
-        if let ExprKind::MethodCall(.., args, _) = &expr.kind;
-        if let ExprKind::MethodCall(_, span, ..) = &args[0].kind;
-        then {
-            return expr.span.with_lo(span.lo());
-        }
-    }
-    unreachable!();
 }

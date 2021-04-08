@@ -133,9 +133,11 @@ pub fn span_lint_and_note<'a, T: LintContext>(
 ///
 /// If you need to customize your lint output a lot, use this function.
 /// If you change the signature, remember to update the internal lint `CollapsibleCalls`
-pub fn span_lint_and_then<'a, T: LintContext, F>(cx: &'a T, lint: &'static Lint, sp: Span, msg: &str, f: F)
+pub fn span_lint_and_then<C, S, F>(cx: &C, lint: &'static Lint, sp: S, msg: &str, f: F)
 where
-    F: for<'b> FnOnce(&mut DiagnosticBuilder<'b>),
+    C: LintContext,
+    S: Into<MultiSpan>,
+    F: FnOnce(&mut DiagnosticBuilder<'_>),
 {
     cx.struct_span_lint(lint, sp, |diag| {
         let mut diag = diag.build(msg);
@@ -216,6 +218,11 @@ where
     multispan_sugg_with_applicability(diag, help_msg, Applicability::Unspecified, sugg)
 }
 
+/// Create a suggestion made from several `span → replacement`.
+///
+/// rustfix currently doesn't support the automatic application of suggestions with
+/// multiple spans. This is tracked in issue [rustfix#141](https://github.com/rust-lang/rustfix/issues/141).
+/// Suggestions with multiple spans will be silently ignored.
 pub fn multispan_sugg_with_applicability<I>(
     diag: &mut DiagnosticBuilder<'_>,
     help_msg: &str,

@@ -47,7 +47,7 @@ impl<'tcx> LateLintPass<'tcx> for DeepCodeInspector {
         match item.vis.node {
             hir::VisibilityKind::Public => println!("public"),
             hir::VisibilityKind::Crate(_) => println!("visible crate wide"),
-            hir::VisibilityKind::Restricted { ref path, .. } => println!(
+            hir::VisibilityKind::Restricted { path, .. } => println!(
                 "visible in module `{}`",
                 rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_path(path, false))
             ),
@@ -99,13 +99,13 @@ impl<'tcx> LateLintPass<'tcx> for DeepCodeInspector {
         if !has_attr(cx.sess(), cx.tcx.hir().attrs(arm.hir_id)) {
             return;
         }
-        print_pat(cx, &arm.pat, 1);
+        print_pat(cx, arm.pat, 1);
         if let Some(ref guard) = arm.guard {
             println!("guard:");
             print_guard(cx, guard, 1);
         }
         println!("body:");
-        print_expr(cx, &arm.body, 1);
+        print_expr(cx, arm.body, 1);
     }
 
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx hir::Stmt<'_>) {
@@ -113,17 +113,17 @@ impl<'tcx> LateLintPass<'tcx> for DeepCodeInspector {
             return;
         }
         match stmt.kind {
-            hir::StmtKind::Local(ref local) => {
+            hir::StmtKind::Local(local) => {
                 println!("local variable of type {}", cx.typeck_results().node_type(local.hir_id));
                 println!("pattern:");
-                print_pat(cx, &local.pat, 0);
-                if let Some(ref e) = local.init {
+                print_pat(cx, local.pat, 0);
+                if let Some(e) = local.init {
                     println!("init expression:");
                     print_expr(cx, e, 0);
                 }
             },
             hir::StmtKind::Item(_) => println!("item decl"),
-            hir::StmtKind::Expr(ref e) | hir::StmtKind::Semi(ref e) => print_expr(cx, e, 0),
+            hir::StmtKind::Expr(e) | hir::StmtKind::Semi(e) => print_expr(cx, e, 0),
         }
     }
     // fn check_foreign_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx
@@ -151,7 +151,7 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
         cx.typeck_results().adjustments().get(expr.hir_id)
     );
     match expr.kind {
-        hir::ExprKind::Box(ref e) => {
+        hir::ExprKind::Box(e) => {
             println!("{}Box", ind);
             print_expr(cx, e, indent + 1);
         },
@@ -161,7 +161,7 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
                 print_expr(cx, e, indent + 1);
             }
         },
-        hir::ExprKind::Call(ref func, args) => {
+        hir::ExprKind::Call(func, args) => {
             println!("{}Call", ind);
             println!("{}function:", ind);
             print_expr(cx, func, indent + 1);
@@ -170,7 +170,7 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
                 print_expr(cx, arg, indent + 1);
             }
         },
-        hir::ExprKind::MethodCall(ref path, _, args, _) => {
+        hir::ExprKind::MethodCall(path, _, args, _) => {
             println!("{}MethodCall", ind);
             println!("{}method name: {}", ind, path.ident.name);
             for arg in args {
@@ -183,7 +183,7 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
                 print_expr(cx, e, indent + 1);
             }
         },
-        hir::ExprKind::Binary(op, ref lhs, ref rhs) => {
+        hir::ExprKind::Binary(op, lhs, rhs) => {
             println!("{}Binary", ind);
             println!("{}op: {:?}", ind, op.node);
             println!("{}lhs:", ind);
@@ -191,7 +191,7 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
             println!("{}rhs:", ind);
             print_expr(cx, rhs, indent + 1);
         },
-        hir::ExprKind::Unary(op, ref inner) => {
+        hir::ExprKind::Unary(op, inner) => {
             println!("{}Unary", ind);
             println!("{}op: {:?}", ind, op);
             print_expr(cx, inner, indent + 1);
@@ -200,12 +200,12 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
             println!("{}Lit", ind);
             println!("{}{:?}", ind, lit);
         },
-        hir::ExprKind::Cast(ref e, ref target) => {
+        hir::ExprKind::Cast(e, target) => {
             println!("{}Cast", ind);
             print_expr(cx, e, indent + 1);
             println!("{}target type: {:?}", ind, target);
         },
-        hir::ExprKind::Type(ref e, ref target) => {
+        hir::ExprKind::Type(e, target) => {
             println!("{}Type", ind);
             print_expr(cx, e, indent + 1);
             println!("{}target type: {:?}", ind, target);
@@ -213,16 +213,16 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
         hir::ExprKind::Loop(..) => {
             println!("{}Loop", ind);
         },
-        hir::ExprKind::If(ref cond, _, ref else_opt) => {
+        hir::ExprKind::If(cond, _, ref else_opt) => {
             println!("{}If", ind);
             println!("{}condition:", ind);
             print_expr(cx, cond, indent + 1);
-            if let Some(ref els) = *else_opt {
+            if let Some(els) = *else_opt {
                 println!("{}else:", ind);
                 print_expr(cx, els, indent + 1);
             }
         },
-        hir::ExprKind::Match(ref cond, _, ref source) => {
+        hir::ExprKind::Match(cond, _, ref source) => {
             println!("{}Match", ind);
             println!("{}condition:", ind);
             print_expr(cx, cond, indent + 1);
@@ -232,21 +232,21 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
             println!("{}Closure", ind);
             println!("{}clause: {:?}", ind, clause);
         },
-        hir::ExprKind::Yield(ref sub, _) => {
+        hir::ExprKind::Yield(sub, _) => {
             println!("{}Yield", ind);
             print_expr(cx, sub, indent + 1);
         },
         hir::ExprKind::Block(_, _) => {
             println!("{}Block", ind);
         },
-        hir::ExprKind::Assign(ref lhs, ref rhs, _) => {
+        hir::ExprKind::Assign(lhs, rhs, _) => {
             println!("{}Assign", ind);
             println!("{}lhs:", ind);
             print_expr(cx, lhs, indent + 1);
             println!("{}rhs:", ind);
             print_expr(cx, rhs, indent + 1);
         },
-        hir::ExprKind::AssignOp(ref binop, ref lhs, ref rhs) => {
+        hir::ExprKind::AssignOp(ref binop, lhs, rhs) => {
             println!("{}AssignOp", ind);
             println!("{}op: {:?}", ind, binop.node);
             println!("{}lhs:", ind);
@@ -254,31 +254,31 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
             println!("{}rhs:", ind);
             print_expr(cx, rhs, indent + 1);
         },
-        hir::ExprKind::Field(ref e, ident) => {
+        hir::ExprKind::Field(e, ident) => {
             println!("{}Field", ind);
             println!("{}field name: {}", ind, ident.name);
             println!("{}struct expr:", ind);
             print_expr(cx, e, indent + 1);
         },
-        hir::ExprKind::Index(ref arr, ref idx) => {
+        hir::ExprKind::Index(arr, idx) => {
             println!("{}Index", ind);
             println!("{}array expr:", ind);
             print_expr(cx, arr, indent + 1);
             println!("{}index expr:", ind);
             print_expr(cx, idx, indent + 1);
         },
-        hir::ExprKind::Path(hir::QPath::Resolved(ref ty, ref path)) => {
+        hir::ExprKind::Path(hir::QPath::Resolved(ref ty, path)) => {
             println!("{}Resolved Path, {:?}", ind, ty);
             println!("{}path: {:?}", ind, path);
         },
-        hir::ExprKind::Path(hir::QPath::TypeRelative(ref ty, ref seg)) => {
+        hir::ExprKind::Path(hir::QPath::TypeRelative(ty, seg)) => {
             println!("{}Relative Path, {:?}", ind, ty);
             println!("{}seg: {:?}", ind, seg);
         },
         hir::ExprKind::Path(hir::QPath::LangItem(lang_item, ..)) => {
             println!("{}Lang Item Path, {:?}", ind, lang_item.name());
         },
-        hir::ExprKind::AddrOf(kind, ref muta, ref e) => {
+        hir::ExprKind::AddrOf(kind, ref muta, e) => {
             println!("{}AddrOf", ind);
             println!("kind: {:?}", kind);
             println!("mutability: {:?}", muta);
@@ -286,18 +286,18 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
         },
         hir::ExprKind::Break(_, ref e) => {
             println!("{}Break", ind);
-            if let Some(ref e) = *e {
+            if let Some(e) = *e {
                 print_expr(cx, e, indent + 1);
             }
         },
         hir::ExprKind::Continue(_) => println!("{}Again", ind),
         hir::ExprKind::Ret(ref e) => {
             println!("{}Ret", ind);
-            if let Some(ref e) = *e {
+            if let Some(e) = *e {
                 print_expr(cx, e, indent + 1);
             }
         },
-        hir::ExprKind::InlineAsm(ref asm) => {
+        hir::ExprKind::InlineAsm(asm) => {
             println!("{}InlineAsm", ind);
             println!("{}template: {}", ind, InlineAsmTemplatePiece::to_string(asm.template));
             println!("{}options: {:?}", ind, asm.options);
@@ -321,11 +321,11 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
                     hir::InlineAsmOperand::Const { anon_const } => {
                         println!("{}anon_const:", ind);
                         print_expr(cx, &cx.tcx.hir().body(anon_const.body).value, indent + 1);
-                    }
+                    },
                 }
             }
         },
-        hir::ExprKind::LlvmInlineAsm(ref asm) => {
+        hir::ExprKind::LlvmInlineAsm(asm) => {
             let inputs = &asm.inputs_exprs;
             let outputs = &asm.outputs_exprs;
             println!("{}LlvmInlineAsm", ind);
@@ -338,14 +338,14 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
                 print_expr(cx, e, indent + 1);
             }
         },
-        hir::ExprKind::Struct(ref path, fields, ref base) => {
+        hir::ExprKind::Struct(path, fields, ref base) => {
             println!("{}Struct", ind);
             println!("{}path: {:?}", ind, path);
             for field in fields {
                 println!("{}field \"{}\":", ind, field.ident.name);
-                print_expr(cx, &field.expr, indent + 1);
+                print_expr(cx, field.expr, indent + 1);
             }
-            if let Some(ref base) = *base {
+            if let Some(base) = *base {
                 println!("{}base:", ind);
                 print_expr(cx, base, indent + 1);
             }
@@ -355,7 +355,7 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
             println!("{}anon_const:", ind);
             print_expr(cx, &cx.tcx.hir().body(anon_const.body).value, indent + 1);
         },
-        hir::ExprKind::Repeat(ref val, ref anon_const) => {
+        hir::ExprKind::Repeat(val, ref anon_const) => {
             println!("{}Repeat", ind);
             println!("{}value:", ind);
             print_expr(cx, val, indent + 1);
@@ -365,7 +365,7 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
         hir::ExprKind::Err => {
             println!("{}Err", ind);
         },
-        hir::ExprKind::DropTemps(ref e) => {
+        hir::ExprKind::DropTemps(e) => {
             println!("{}DropTemps", ind);
             print_expr(cx, e, indent + 1);
         },
@@ -378,7 +378,7 @@ fn print_item(cx: &LateContext<'_>, item: &hir::Item<'_>) {
     match item.vis.node {
         hir::VisibilityKind::Public => println!("public"),
         hir::VisibilityKind::Crate(_) => println!("visible crate wide"),
-        hir::VisibilityKind::Restricted { ref path, .. } => println!(
+        hir::VisibilityKind::Restricted { path, .. } => println!(
             "visible in module `{}`",
             rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_path(path, false))
         ),
@@ -398,7 +398,7 @@ fn print_item(cx: &LateContext<'_>, item: &hir::Item<'_>) {
                 println!("weird extern crate without a crate id");
             }
         },
-        hir::ItemKind::Use(ref path, ref kind) => println!("{:?}, {:?}", path, kind),
+        hir::ItemKind::Use(path, ref kind) => println!("{:?}, {:?}", path, kind),
         hir::ItemKind::Static(..) => println!("static item of type {:#?}", cx.tcx.type_of(did)),
         hir::ItemKind::Const(..) => println!("const item of type {:#?}", cx.tcx.type_of(did)),
         hir::ItemKind::Fn(..) => {
@@ -407,7 +407,7 @@ fn print_item(cx: &LateContext<'_>, item: &hir::Item<'_>) {
         },
         hir::ItemKind::Mod(..) => println!("module"),
         hir::ItemKind::ForeignMod { abi, .. } => println!("foreign module with abi: {}", abi),
-        hir::ItemKind::GlobalAsm(ref asm) => println!("global asm: {:?}", asm),
+        hir::ItemKind::GlobalAsm(asm) => println!("global asm: {:?}", asm),
         hir::ItemKind::TyAlias(..) => {
             println!("type alias for {:?}", cx.tcx.type_of(did));
         },
@@ -457,7 +457,7 @@ fn print_pat(cx: &LateContext<'_>, pat: &hir::Pat<'_>, indent: usize) {
             println!("{}Binding", ind);
             println!("{}mode: {:?}", ind, mode);
             println!("{}name: {}", ind, ident.name);
-            if let Some(ref inner) = *inner {
+            if let Some(inner) = *inner {
                 println!("{}inner:", ind);
                 print_pat(cx, inner, indent + 1);
             }
@@ -482,7 +482,7 @@ fn print_pat(cx: &LateContext<'_>, pat: &hir::Pat<'_>, indent: usize) {
                 if field.is_shorthand {
                     println!("{}  in shorthand notation", ind);
                 }
-                print_pat(cx, &field.pat, indent + 1);
+                print_pat(cx, field.pat, indent + 1);
             }
         },
         hir::PatKind::TupleStruct(ref path, fields, opt_dots_position) => {
@@ -499,11 +499,11 @@ fn print_pat(cx: &LateContext<'_>, pat: &hir::Pat<'_>, indent: usize) {
                 print_pat(cx, field, indent + 1);
             }
         },
-        hir::PatKind::Path(hir::QPath::Resolved(ref ty, ref path)) => {
+        hir::PatKind::Path(hir::QPath::Resolved(ref ty, path)) => {
             println!("{}Resolved Path, {:?}", ind, ty);
             println!("{}path: {:?}", ind, path);
         },
-        hir::PatKind::Path(hir::QPath::TypeRelative(ref ty, ref seg)) => {
+        hir::PatKind::Path(hir::QPath::TypeRelative(ty, seg)) => {
             println!("{}Relative Path, {:?}", ind, ty);
             println!("{}seg: {:?}", ind, seg);
         },
@@ -519,16 +519,16 @@ fn print_pat(cx: &LateContext<'_>, pat: &hir::Pat<'_>, indent: usize) {
                 print_pat(cx, field, indent + 1);
             }
         },
-        hir::PatKind::Box(ref inner) => {
+        hir::PatKind::Box(inner) => {
             println!("{}Box", ind);
             print_pat(cx, inner, indent + 1);
         },
-        hir::PatKind::Ref(ref inner, ref muta) => {
+        hir::PatKind::Ref(inner, ref muta) => {
             println!("{}Ref", ind);
             println!("{}mutability: {:?}", ind, muta);
             print_pat(cx, inner, indent + 1);
         },
-        hir::PatKind::Lit(ref e) => {
+        hir::PatKind::Lit(e) => {
             println!("{}Lit", ind);
             print_expr(cx, e, indent + 1);
         },
@@ -552,7 +552,7 @@ fn print_pat(cx: &LateContext<'_>, pat: &hir::Pat<'_>, indent: usize) {
                 print_pat(cx, pat, indent + 1);
             }
             println!("i:");
-            if let Some(ref pat) = *range {
+            if let Some(pat) = *range {
                 print_pat(cx, pat, indent + 1);
             }
             println!("[y, z]:");

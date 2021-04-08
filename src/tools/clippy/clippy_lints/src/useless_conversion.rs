@@ -53,17 +53,17 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
         }
 
         match e.kind {
-            ExprKind::Match(_, ref arms, MatchSource::TryDesugar) => {
+            ExprKind::Match(_, arms, MatchSource::TryDesugar) => {
                 let e = match arms[0].body.kind {
-                    ExprKind::Ret(Some(ref e)) | ExprKind::Break(_, Some(ref e)) => e,
+                    ExprKind::Ret(Some(e)) | ExprKind::Break(_, Some(e)) => e,
                     _ => return,
                 };
-                if let ExprKind::Call(_, ref args) = e.kind {
+                if let ExprKind::Call(_, args) = e.kind {
                     self.try_desugar_arm.push(args[0].hir_id);
                 }
             },
 
-            ExprKind::MethodCall(ref name, .., ref args, _) => {
+            ExprKind::MethodCall(name, .., args, _) => {
                 if match_trait_method(cx, e, &paths::INTO) && &*name.ident.as_str() == "into" {
                     let a = cx.typeck_results().expr_ty(e);
                     let b = cx.typeck_results().expr_ty(&args[0]);
@@ -82,7 +82,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                 }
                 if match_trait_method(cx, e, &paths::INTO_ITERATOR) && name.ident.name == sym::into_iter {
                     if let Some(parent_expr) = get_parent_expr(cx, e) {
-                        if let ExprKind::MethodCall(ref parent_name, ..) = parent_expr.kind {
+                        if let ExprKind::MethodCall(parent_name, ..) = parent_expr.kind {
                             if parent_name.ident.name != sym::into_iter {
                                 return;
                             }
@@ -103,38 +103,35 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                         );
                     }
                 }
-                if match_trait_method(cx, e, &paths::TRY_INTO_TRAIT) && &*name.ident.as_str() == "try_into" {
-                    if_chain! {
-                        let a = cx.typeck_results().expr_ty(e);
-                        let b = cx.typeck_results().expr_ty(&args[0]);
-                        if is_type_diagnostic_item(cx, a, sym::result_type);
-                        if let ty::Adt(_, substs) = a.kind();
-                        if let Some(a_type) = substs.types().next();
-                        if TyS::same_type(a_type, b);
-
-                        then {
-                            span_lint_and_help(
-                                cx,
-                                USELESS_CONVERSION,
-                                e.span,
-                                &format!("useless conversion to the same type: `{}`", b),
-                                None,
-                                "consider removing `.try_into()`",
-                            );
-                        }
+                if_chain! {
+                    if match_trait_method(cx, e, &paths::TRY_INTO_TRAIT) && &*name.ident.as_str() == "try_into";
+                    let a = cx.typeck_results().expr_ty(e);
+                    let b = cx.typeck_results().expr_ty(&args[0]);
+                    if is_type_diagnostic_item(cx, a, sym::result_type);
+                    if let ty::Adt(_, substs) = a.kind();
+                    if let Some(a_type) = substs.types().next();
+                    if TyS::same_type(a_type, b);
+                    then {
+                        span_lint_and_help(
+                            cx,
+                            USELESS_CONVERSION,
+                            e.span,
+                            &format!("useless conversion to the same type: `{}`", b),
+                            None,
+                            "consider removing `.try_into()`",
+                        );
                     }
                 }
             },
 
-            ExprKind::Call(ref path, ref args) => {
+            ExprKind::Call(path, args) => {
                 if_chain! {
                     if args.len() == 1;
                     if let ExprKind::Path(ref qpath) = path.kind;
                     if let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id();
-                    let a = cx.typeck_results().expr_ty(e);
-                    let b = cx.typeck_results().expr_ty(&args[0]);
-
                     then {
+                        let a = cx.typeck_results().expr_ty(e);
+                        let b = cx.typeck_results().expr_ty(&args[0]);
                         if_chain! {
                             if match_def_path(cx, def_id, &paths::TRY_FROM);
                             if is_type_diagnostic_item(cx, a, sym::result_type);

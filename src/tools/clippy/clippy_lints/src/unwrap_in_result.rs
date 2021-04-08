@@ -110,31 +110,27 @@ impl<'a, 'tcx> Visitor<'tcx> for FindExpectUnwrap<'a, 'tcx> {
 }
 
 fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_item: &'tcx hir::ImplItem<'_>) {
-    if_chain! {
+    if let ImplItemKind::Fn(_, body_id) = impl_item.kind {
+        let body = cx.tcx.hir().body(body_id);
+        let mut fpu = FindExpectUnwrap {
+            lcx: cx,
+            typeck_results: cx.tcx.typeck(impl_item.def_id),
+            result: Vec::new(),
+        };
+        fpu.visit_expr(&body.value);
 
-        if let ImplItemKind::Fn(_, body_id) = impl_item.kind;
-        then {
-            let body = cx.tcx.hir().body(body_id);
-            let mut fpu = FindExpectUnwrap {
-                lcx: cx,
-                typeck_results: cx.tcx.typeck(impl_item.def_id),
-                result: Vec::new(),
-            };
-            fpu.visit_expr(&body.value);
-
-            // if we've found one, lint
-            if  !fpu.result.is_empty()  {
-                span_lint_and_then(
-                    cx,
-                    UNWRAP_IN_RESULT,
-                    impl_span,
-                    "used unwrap or expect in a function that returns result or option",
-                    move |diag| {
-                        diag.help(
-                            "unwrap and expect should not be used in a function that returns result or option" );
-                        diag.span_note(fpu.result, "potential non-recoverable error(s)");
-                    });
-            }
+        // if we've found one, lint
+        if !fpu.result.is_empty() {
+            span_lint_and_then(
+                cx,
+                UNWRAP_IN_RESULT,
+                impl_span,
+                "used unwrap or expect in a function that returns result or option",
+                move |diag| {
+                    diag.help("unwrap and expect should not be used in a function that returns result or option");
+                    diag.span_note(fpu.result, "potential non-recoverable error(s)");
+                },
+            );
         }
     }
 }

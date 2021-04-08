@@ -57,14 +57,14 @@ declare_lint_pass!(HashMapPass => [MAP_ENTRY]);
 
 impl<'tcx> LateLintPass<'tcx> for HashMapPass {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let ExprKind::If(ref check, ref then_block, ref else_block) = expr.kind {
-            if let ExprKind::Unary(UnOp::Not, ref check) = check.kind {
+        if let ExprKind::If(check, then_block, ref else_block) = expr.kind {
+            if let ExprKind::Unary(UnOp::Not, check) = check.kind {
                 if let Some((ty, map, key)) = check_cond(cx, check) {
                     // in case of `if !m.contains_key(&k) { m.insert(k, v); }`
                     // we can give a better error message
                     let sole_expr = {
                         else_block.is_none()
-                            && if let ExprKind::Block(ref then_block, _) = then_block.kind {
+                            && if let ExprKind::Block(then_block, _) = then_block.kind {
                                 (then_block.expr.is_some() as usize) + then_block.stmts.len() == 1
                             } else {
                                 true
@@ -81,9 +81,9 @@ impl<'tcx> LateLintPass<'tcx> for HashMapPass {
                         sole_expr,
                     };
 
-                    walk_expr(&mut visitor, &**then_block);
+                    walk_expr(&mut visitor, then_block);
                 }
-            } else if let Some(ref else_block) = *else_block {
+            } else if let Some(else_block) = *else_block {
                 if let Some((ty, map, key)) = check_cond(cx, check) {
                     let mut visitor = InsertVisitor {
                         cx,
@@ -103,10 +103,10 @@ impl<'tcx> LateLintPass<'tcx> for HashMapPass {
 
 fn check_cond<'a>(cx: &LateContext<'_>, check: &'a Expr<'a>) -> Option<(&'static str, &'a Expr<'a>, &'a Expr<'a>)> {
     if_chain! {
-        if let ExprKind::MethodCall(ref path, _, ref params, _) = check.kind;
+        if let ExprKind::MethodCall(path, _, params, _) = check.kind;
         if params.len() >= 2;
         if path.ident.name == sym!(contains_key);
-        if let ExprKind::AddrOf(BorrowKind::Ref, _, ref key) = params[1].kind;
+        if let ExprKind::AddrOf(BorrowKind::Ref, _, key) = params[1].kind;
         then {
             let map = &params[0];
             let obj_ty = cx.typeck_results().expr_ty(map).peel_refs();
@@ -140,7 +140,7 @@ impl<'a, 'tcx, 'b> Visitor<'tcx> for InsertVisitor<'a, 'tcx, 'b> {
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if_chain! {
-            if let ExprKind::MethodCall(ref path, _, ref params, _) = expr.kind;
+            if let ExprKind::MethodCall(path, _, params, _) = expr.kind;
             if params.len() == 3;
             if path.ident.name == sym!(insert);
             if get_item_name(self.cx, self.map) == get_item_name(self.cx, &params[0]);

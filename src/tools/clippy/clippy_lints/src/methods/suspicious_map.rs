@@ -8,15 +8,8 @@ use rustc_span::sym;
 
 use super::SUSPICIOUS_MAP;
 
-pub fn check<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &hir::Expr<'_>,
-    map_args: &[hir::Expr<'_>],
-    count_args: &[hir::Expr<'_>],
-) {
+pub fn check<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, count_recv: &hir::Expr<'_>, map_arg: &hir::Expr<'_>) {
     if_chain! {
-        if let [count_recv] = count_args;
-        if let [_, map_arg] = map_args;
         if is_trait_method(cx, count_recv, sym::Iterator);
         let closure = expr_or_init(cx, map_arg);
         if let Some(body_id) = cx.tcx.hir().maybe_body_owned_by(closure.hir_id);

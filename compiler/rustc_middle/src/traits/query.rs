@@ -3,7 +3,7 @@
 //! which makes a canonical query by replacing unbound inference
 //! variables and regions, so that results can be reused more broadly.
 //! The providers for the queries defined here can be found in
-//! `librustc_traits`.
+//! `rustc_traits`.
 
 use crate::ich::StableHashingContext;
 use crate::infer::canonical::{Canonical, QueryResponse};

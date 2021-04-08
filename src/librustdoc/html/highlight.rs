@@ -136,6 +136,16 @@ impl Iterator for TokenIter<'a> {
     }
 }
 
+fn get_real_ident_class(text: &str, edition: Edition) -> Class {
+    match text {
+        "ref" | "mut" => Class::RefKeyWord,
+        "self" | "Self" => Class::Self_,
+        "false" | "true" => Class::Bool,
+        _ if Symbol::intern(text).is_reserved(|| edition) => Class::KeyWord,
+        _ => Class::Ident,
+    }
+}
+
 /// Processes program tokens, classifying strings of text by highlighting
 /// category (`Class`).
 struct Classifier<'a> {
@@ -144,6 +154,8 @@ struct Classifier<'a> {
     in_macro: bool,
     in_macro_nonterminal: bool,
     edition: Edition,
+    byte_pos: u32,
+    src: &'a str,
 }
 
 impl<'a> Classifier<'a> {
@@ -155,6 +167,68 @@ impl<'a> Classifier<'a> {
             in_macro: false,
             in_macro_nonterminal: false,
             edition,
+            byte_pos: 0,
+            src,
+        }
+    }
+
+    /// Concatenate colons and idents as one when possible.
+    fn get_full_ident_path(&mut self) -> Vec<(TokenKind, usize, usize)> {
+        let start = self.byte_pos as usize;
+        let mut pos = start;
+        let mut has_ident = false;
+        let edition = self.edition;
+
+        loop {
+            let mut nb = 0;
+            while let Some((TokenKind::Colon, _)) = self.tokens.peek() {
+                self.tokens.next();
+                nb += 1;
+            }
+            // Ident path can start with "::" but if we already have content in the ident path,
+            // the "::" is mandatory.
+            if has_ident && nb == 0 {
+                return vec![(TokenKind::Ident, start, pos)];
+            } else if nb != 0 && nb != 2 {
+                if has_ident {
+                    return vec![(TokenKind::Ident, start, pos), (TokenKind::Colon, pos, pos + nb)];
+                } else {
+                    return vec![(TokenKind::Colon, pos, pos + nb)];
+                }
+            }
+
+            if let Some((Class::Ident, text)) = self.tokens.peek().map(|(token, text)| {
+                if *token == TokenKind::Ident {
+                    let class = get_real_ident_class(text, edition);
+                    (class, text)
+                } else {
+                    // Doesn't matter which Class we put in here...
+                    (Class::Comment, text)
+                }
+            }) {
+                // We only "add" the colon if there is an ident behind.
+                pos += text.len() + nb;
+                has_ident = true;
+                self.tokens.next();
+            } else if nb > 0 && has_ident {
+                return vec![(TokenKind::Ident, start, pos), (TokenKind::Colon, pos, pos + nb)];
+            } else if nb > 0 {
+                return vec![(TokenKind::Colon, pos, pos + nb)];
+            } else if has_ident {
+                return vec![(TokenKind::Ident, start, pos)];
+            } else {
+                return Vec::new();
+            }
+        }
+    }
+
+    /// Wraps the tokens iteration to ensure that the byte_pos is always correct.
+    fn next(&mut self) -> Option<(TokenKind, &'a str)> {
+        if let Some((kind, text)) = self.tokens.next() {
+            self.byte_pos += text.len() as u32;
+            Some((kind, text))
+        } else {
+            None
         }
     }
 
@@ -165,8 +239,25 @@ impl<'a> Classifier<'a> {
     /// token is used.
     fn highlight(mut self, sink: &mut dyn FnMut(Highlight<'a>)) {
         with_default_session_globals(|| {
-            while let Some((token, text)) = self.tokens.next() {
-                self.advance(token, text, sink);
+            loop {
+                if self
+                    .tokens
+                    .peek()
+                    .map(|t| matches!(t.0, TokenKind::Colon | TokenKind::Ident))
+                    .unwrap_or(false)
+                {
+                    let tokens = self.get_full_ident_path();
+                    for (token, start, end) in tokens {
+                        let text = &self.src[start..end];
+                        self.advance(token, text, sink);
+                        self.byte_pos += text.len() as u32;
+                    }
+                }
+                if let Some((token, text)) = self.next() {
+                    self.advance(token, text, sink);
+                } else {
+                    break;
+                }
             }
         })
     }
@@ -203,12 +294,12 @@ impl<'a> Classifier<'a> {
             },
             TokenKind::And => match lookahead {
                 Some(TokenKind::And) => {
-                    let _and = self.tokens.next();
+                    self.next();
                     sink(Highlight::Token { text: "&&", class: Some(Class::Op) });
                     return;
                 }
                 Some(TokenKind::Eq) => {
-                    let _eq = self.tokens.next();
+                    self.next();
                     sink(Highlight::Token { text: "&=", class: Some(Class::Op) });
                     return;
                 }
@@ -260,7 +351,7 @@ impl<'a> Classifier<'a> {
                 match lookahead {
                     // Case 1: #![inner_attribute]
                     Some(TokenKind::Bang) => {
-                        let _not = self.tokens.next().unwrap();
+                        self.next();
                         if let Some(TokenKind::OpenBracket) = self.peek() {
                             self.in_attribute = true;
                             sink(Highlight::EnterSpan { class: Class::Attribute });
@@ -304,19 +395,17 @@ impl<'a> Classifier<'a> {
                 sink(Highlight::Token { text, class: None });
                 return;
             }
-            TokenKind::Ident => match text {
-                "ref" | "mut" => Class::RefKeyWord,
-                "self" | "Self" => Class::Self_,
-                "false" | "true" => Class::Bool,
-                "Option" | "Result" => Class::PreludeTy,
-                "Some" | "None" | "Ok" | "Err" => Class::PreludeVal,
-                // Keywords are also included in the identifier set.
-                _ if Symbol::intern(text).is_reserved(|| self.edition) => Class::KeyWord,
-                _ if self.in_macro_nonterminal => {
-                    self.in_macro_nonterminal = false;
-                    Class::MacroNonTerminal
-                }
-                _ => Class::Ident,
+            TokenKind::Ident => match get_real_ident_class(text, self.edition) {
+                Class::Ident => match text {
+                    "Option" | "Result" => Class::PreludeTy,
+                    "Some" | "None" | "Ok" | "Err" => Class::PreludeVal,
+                    _ if self.in_macro_nonterminal => {
+                        self.in_macro_nonterminal = false;
+                        Class::MacroNonTerminal
+                    }
+                    _ => Class::Ident,
+                },
+                c => c,
             },
             TokenKind::RawIdent => Class::Ident,
             TokenKind::Lifetime { .. } => Class::Lifetime,

@@ -10,6 +10,8 @@
 </style>
 <pre><code><span class="attribute">#![<span class="ident">crate_type</span> <span class="op">=</span> <span class="string">&quot;lib&quot;</span>]</span>
 
+<span class="kw">use</span> <span class="ident">std::path</span>::{<span class="ident">Path</span>, <span class="ident">PathBuf</span>};
+
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_os</span> <span class="op">=</span> <span class="string">&quot;linux&quot;</span>)]</span>
 <span class="kw">fn</span> <span class="ident">main</span>() {
     <span class="kw">let</span> <span class="ident">foo</span> <span class="op">=</span> <span class="bool-val">true</span> <span class="op">&amp;&amp;</span> <span class="bool-val">false</span> <span class="op">|</span><span class="op">|</span> <span class="bool-val">true</span>;
@@ -19,6 +21,14 @@
     <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">foo</span>;
     <span class="macro">mac!</span>(<span class="ident">foo</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">bar</span>);
     <span class="macro">assert!</span>(<span class="self">self</span>.<span class="ident">length</span> <span class="op">&lt;</span> <span class="ident">N</span> <span class="op">&amp;&amp;</span> <span class="ident">index</span> <span class="op">&lt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">length</span>);
+    <span class="ident">::std::env::var</span>(<span class="string">&quot;gateau&quot;</span>).<span class="ident">is_ok</span>();
+    <span class="attribute">#[<span class="ident">rustfmt::skip</span>]</span>
+    <span class="kw">let</span> <span class="ident">s</span>:<span class="ident">std</span><span class="ident">::path::PathBuf</span> <span class="op">=</span> <span class="ident">std::path::PathBuf::new</span>();
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">s</span> <span class="op">=</span> <span class="ident">String::new</span>();
+
+    <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">s</span> {
+        <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">x</span> <span class="op">=</span><span class="op">&gt;</span> {}
+    }
 }
 
 <span class="macro">macro_rules!</span> <span class="ident">bar</span> {

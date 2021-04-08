@@ -1,11 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::is_type_lang_item;
+use clippy_utils::{get_parent_expr, in_macro};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, LangItem};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::{lint::in_external_macro, ty::TyS};
+use rustc_hir::{BorrowKind, Expr, ExprKind, LangItem, Mutability};
+use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::TyS;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
@@ -40,26 +41,44 @@ declare_lint_pass!(RedundantSlicing => [REDUNDANT_SLICING]);
 
 impl LateLintPass<'_> for RedundantSlicing {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if in_external_macro(cx.sess(), expr.span) {
+        if in_macro(expr.span) {
             return;
         }
 
+        let ctxt = expr.span.ctxt();
         if_chain! {
-            if let ExprKind::AddrOf(_, _, addressee) = expr.kind;
+            if let ExprKind::AddrOf(BorrowKind::Ref, mutability, addressee) = expr.kind;
+            if addressee.span.ctxt() == ctxt;
             if let ExprKind::Index(indexed, range) = addressee.kind;
             if is_type_lang_item(cx, cx.typeck_results().expr_ty_adjusted(range), LangItem::RangeFull);
             if TyS::same_type(cx.typeck_results().expr_ty(expr), cx.typeck_results().expr_ty(indexed));
             then {
                 let mut app = Applicability::MachineApplicable;
-                let hint = snippet_with_applicability(cx, indexed.span, "..", &mut app).into_owned();
+                let snip = snippet_with_context(cx, indexed.span, ctxt, "..", &mut app).0;
+
+                let (reborrow_str, help_str) = if mutability == Mutability::Mut {
+                    // The slice was used to reborrow the mutable reference.
+                    ("&mut *", "reborrow the original value instead")
+                } else if matches!(
+                    get_parent_expr(cx, expr),
+                    Some(Expr {
+                        kind: ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, _),
+                        ..
+                    })
+                ) {
+                    // The slice was used to make a temporary reference.
+                    ("&*", "reborrow the original value instead")
+                } else {
+                    ("", "use the original value instead")
+                };
 
                 span_lint_and_sugg(
                     cx,
                     REDUNDANT_SLICING,
                     expr.span,
                     "redundant slicing of the whole range",
-                    "use the original slice instead",
-                    hint,
+                    help_str,
+                    format!("{}{}", reborrow_str, snip),
                     app,
                 );
             }

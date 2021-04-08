@@ -1,13 +1,13 @@
 //! Low-level Rust lexer.
 //!
-//! The idea with `librustc_lexer` is to make a reusable library,
+//! The idea with `rustc_lexer` is to make a reusable library,
 //! by separating out pure lexing and rustc-specific concerns, like spans,
 //! error reporting, and interning.  So, rustc_lexer operates directly on `&str`,
 //! produces simple tokens which are a pair of type-tag and a bit of original text,
 //! and does not report errors, instead storing them as flags on the token.
 //!
 //! Tokens produced by this lexer are not yet ready for parsing the Rust syntax.
-//! For that see [`librustc_parse::lexer`], which converts this basic token stream
+//! For that see [`rustc_parse::lexer`], which converts this basic token stream
 //! into wide tokens used by actual parser.
 //!
 //! The purpose of this crate is to convert raw sources into a labeled sequence
@@ -17,7 +17,7 @@
 //! The main entity of this crate is the [`TokenKind`] enum which represents common
 //! lexeme types.
 //!
-//! [`librustc_parse::lexer`]: ../rustc_parse/lexer/index.html
+//! [`rustc_parse::lexer`]: ../rustc_parse/lexer/index.html
 // We want to be able to build this crate with a stable compiler, so no
 // `#![feature]` attributes should be added.
 

@@ -80,7 +80,7 @@ impl BoundRegionKind {
 /// Defines the kinds of types.
 ///
 /// N.B., if you change this, you'll probably want to change the corresponding
-/// AST structure in `librustc_ast/ast.rs` as well.
+/// AST structure in `rustc_ast/src/ast.rs` as well.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable, Debug)]
 #[derive(HashStable)]
 #[rustc_diagnostic_item = "TyKind"]
@@ -2116,7 +2116,7 @@ impl<'tcx> TyS<'tcx> {
     ///
     /// Note that during type checking, we use an inference variable
     /// to represent the closure kind, because it has not yet been
-    /// inferred. Once upvar inference (in `src/librustc_typeck/check/upvar.rs`)
+    /// inferred. Once upvar inference (in `rustc_typeck/src/check/upvar.rs`)
     /// is complete, that type variable will be unified.
     pub fn to_opt_closure_kind(&self) -> Option<ty::ClosureKind> {
         match self.kind() {

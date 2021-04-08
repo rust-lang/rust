@@ -1,11 +1,13 @@
 use super::SAME_ITEM_PUSH;
 use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::path_to_local;
 use clippy_utils::source::snippet_with_macro_callsite;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use if_chain::if_chain;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, Node, Pat, PatKind, Stmt, StmtKind};
+use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, HirId, Node, Pat, PatKind, Stmt, StmtKind};
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
 use rustc_span::symbol::sym;
@@ -41,59 +43,55 @@ pub(super) fn check<'tcx>(
     }
 
     // Determine whether it is safe to lint the body
-    let mut same_item_push_visitor = SameItemPushVisitor {
-        should_lint: true,
-        vec_push: None,
-        cx,
-    };
+    let mut same_item_push_visitor = SameItemPushVisitor::new(cx);
     walk_expr(&mut same_item_push_visitor, body);
-    if same_item_push_visitor.should_lint {
-        if let Some((vec, pushed_item)) = same_item_push_visitor.vec_push {
-            let vec_ty = cx.typeck_results().expr_ty(vec);
-            let ty = vec_ty.walk().nth(1).unwrap().expect_ty();
-            if cx
-                .tcx
-                .lang_items()
-                .clone_trait()
-                .map_or(false, |id| implements_trait(cx, ty, id, &[]))
-            {
-                // Make sure that the push does not involve possibly mutating values
-                match pushed_item.kind {
-                    ExprKind::Path(ref qpath) => {
-                        match cx.qpath_res(qpath, pushed_item.hir_id) {
-                            // immutable bindings that are initialized with literal or constant
-                            Res::Local(hir_id) => {
-                                if_chain! {
-                                    let node = cx.tcx.hir().get(hir_id);
-                                    if let Node::Binding(pat) = node;
-                                    if let PatKind::Binding(bind_ann, ..) = pat.kind;
-                                    if !matches!(bind_ann, BindingAnnotation::RefMut | BindingAnnotation::Mutable);
-                                    let parent_node = cx.tcx.hir().get_parent_node(hir_id);
-                                    if let Some(Node::Local(parent_let_expr)) = cx.tcx.hir().find(parent_node);
-                                    if let Some(init) = parent_let_expr.init;
-                                    then {
-                                        match init.kind {
-                                            // immutable bindings that are initialized with literal
-                                            ExprKind::Lit(..) => emit_lint(cx, vec, pushed_item),
-                                            // immutable bindings that are initialized with constant
-                                            ExprKind::Path(ref path) => {
-                                                if let Res::Def(DefKind::Const, ..) = cx.qpath_res(path, init.hir_id) {
-                                                    emit_lint(cx, vec, pushed_item);
-                                                }
+    if_chain! {
+        if same_item_push_visitor.should_lint();
+        if let Some((vec, pushed_item)) = same_item_push_visitor.vec_push;
+        let vec_ty = cx.typeck_results().expr_ty(vec);
+        let ty = vec_ty.walk().nth(1).unwrap().expect_ty();
+        if cx
+            .tcx
+            .lang_items()
+            .clone_trait()
+            .map_or(false, |id| implements_trait(cx, ty, id, &[]));
+        then {
+            // Make sure that the push does not involve possibly mutating values
+            match pushed_item.kind {
+                ExprKind::Path(ref qpath) => {
+                    match cx.qpath_res(qpath, pushed_item.hir_id) {
+                        // immutable bindings that are initialized with literal or constant
+                        Res::Local(hir_id) => {
+                            let node = cx.tcx.hir().get(hir_id);
+                            if_chain! {
+                                if let Node::Binding(pat) = node;
+                                if let PatKind::Binding(bind_ann, ..) = pat.kind;
+                                if !matches!(bind_ann, BindingAnnotation::RefMut | BindingAnnotation::Mutable);
+                                let parent_node = cx.tcx.hir().get_parent_node(hir_id);
+                                if let Some(Node::Local(parent_let_expr)) = cx.tcx.hir().find(parent_node);
+                                if let Some(init) = parent_let_expr.init;
+                                then {
+                                    match init.kind {
+                                        // immutable bindings that are initialized with literal
+                                        ExprKind::Lit(..) => emit_lint(cx, vec, pushed_item),
+                                        // immutable bindings that are initialized with constant
+                                        ExprKind::Path(ref path) => {
+                                            if let Res::Def(DefKind::Const, ..) = cx.qpath_res(path, init.hir_id) {
+                                                emit_lint(cx, vec, pushed_item);
                                             }
-                                            _ => {},
                                         }
+                                        _ => {},
                                     }
                                 }
-                            },
-                            // constant
-                            Res::Def(DefKind::Const, ..) => emit_lint(cx, vec, pushed_item),
-                            _ => {},
-                        }
-                    },
-                    ExprKind::Lit(..) => emit_lint(cx, vec, pushed_item),
-                    _ => {},
-                }
+                            }
+                        },
+                        // constant
+                        Res::Def(DefKind::Const, ..) => emit_lint(cx, vec, pushed_item),
+                        _ => {},
+                    }
+                },
+                ExprKind::Lit(..) => emit_lint(cx, vec, pushed_item),
+                _ => {},
             }
         }
     }
@@ -101,10 +99,38 @@ pub(super) fn check<'tcx>(
 
 // Scans the body of the for loop and determines whether lint should be given
 struct SameItemPushVisitor<'a, 'tcx> {
-    should_lint: bool,
+    non_deterministic_expr: bool,
+    multiple_pushes: bool,
     // this field holds the last vec push operation visited, which should be the only push seen
     vec_push: Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>)>,
     cx: &'a LateContext<'tcx>,
+    used_locals: FxHashSet<HirId>,
+}
+
+impl<'a, 'tcx> SameItemPushVisitor<'a, 'tcx> {
+    fn new(cx: &'a LateContext<'tcx>) -> Self {
+        Self {
+            non_deterministic_expr: false,
+            multiple_pushes: false,
+            vec_push: None,
+            cx,
+            used_locals: FxHashSet::default(),
+        }
+    }
+
+    fn should_lint(&self) -> bool {
+        if_chain! {
+            if !self.non_deterministic_expr;
+            if !self.multiple_pushes;
+            if let Some((vec, _)) = self.vec_push;
+            if let Some(hir_id) = path_to_local(vec);
+            then {
+                !self.used_locals.contains(&hir_id)
+            } else {
+                false
+            }
+        }
+    }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for SameItemPushVisitor<'a, 'tcx> {
@@ -113,9 +139,14 @@ impl<'a, 'tcx> Visitor<'tcx> for SameItemPushVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         match &expr.kind {
             // Non-determinism may occur ... don't give a lint
-            ExprKind::Loop(..) | ExprKind::Match(..) => self.should_lint = false,
+            ExprKind::Loop(..) | ExprKind::Match(..) | ExprKind::If(..) => self.non_deterministic_expr = true,
             ExprKind::Block(block, _) => self.visit_block(block),
-            _ => {},
+            _ => {
+                if let Some(hir_id) = path_to_local(expr) {
+                    self.used_locals.insert(hir_id);
+                }
+                walk_expr(self, expr);
+            },
         }
     }
 
@@ -130,7 +161,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SameItemPushVisitor<'a, 'tcx> {
         if vec_push_option.is_none() {
             // Current statement is not a push so visit inside
             match &s.kind {
-                StmtKind::Expr(expr) | StmtKind::Semi(expr) => self.visit_expr(&expr),
+                StmtKind::Expr(expr) | StmtKind::Semi(expr) => self.visit_expr(expr),
                 _ => {},
             }
         } else {
@@ -140,7 +171,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SameItemPushVisitor<'a, 'tcx> {
                 self.vec_push = vec_push_option;
             } else {
                 // There are multiple pushes ... don't lint
-                self.should_lint = false;
+                self.multiple_pushes = true;
             }
         }
     }

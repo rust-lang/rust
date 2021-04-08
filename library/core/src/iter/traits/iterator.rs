@@ -937,20 +937,16 @@ pub trait Iterator {
         Enumerate::new(self)
     }
 
-    /// Creates an iterator which can use [`peek`] to look at the next element of
-    /// the iterator without consuming it.
+    /// Creates an iterator which can use the [`peek`] and [`peek_mut`] methods
+    /// to look at the next element of the iterator without consuming it. See
+    /// their documentation for more information.
     ///
-    /// Adds a [`peek`] method to an iterator. See its documentation for
-    /// more information.
+    /// Note that the underlying iterator is still advanced when [`peek`] or
+    /// [`peek_mut`] are called for the first time: In order to retrieve the
+    /// next element, [`next`] is called on the underlying iterator, hence any
+    /// side effects (i.e. anything other than fetching the next value) of
+    /// the [`next`] method will occur.
     ///
-    /// Note that the underlying iterator is still advanced when [`peek`] is
-    /// called for the first time: In order to retrieve the next element,
-    /// [`next`] is called on the underlying iterator, hence any side effects (i.e.
-    /// anything other than fetching the next value) of the [`next`] method
-    /// will occur.
-    ///
-    /// [`peek`]: Peekable::peek
-    /// [`next`]: Iterator::next
     ///
     /// # Examples
     ///
@@ -977,6 +973,32 @@ pub trait Iterator {
     /// assert_eq!(iter.peek(), None);
     /// assert_eq!(iter.next(), None);
     /// ```
+    ///
+    /// Using [`peek_mut`] to mutate the next item without advancing the
+    /// iterator:
+    ///
+    /// ```
+    /// let xs = [1, 2, 3];
+    ///
+    /// let mut iter = xs.iter().peekable();
+    ///
+    /// // `peek_mut()` lets us see into the future
+    /// assert_eq!(iter.peek_mut(), Some(&mut &1));
+    /// assert_eq!(iter.peek_mut(), Some(&mut &1));
+    /// assert_eq!(iter.next(), Some(&1));
+    ///
+    /// if let Some(mut p) = iter.peek_mut() {
+    ///     assert_eq!(*p, &2);
+    ///     // put a value into the iterator
+    ///     *p = &1000;
+    /// }
+    ///
+    /// // The value reappears as the iterator continues
+    /// assert_eq!(iter.collect::<Vec<_>>(), vec![&1000, &3]);
+    /// ```
+    /// [`peek`]: Peekable::peek
+    /// [`peek_mut`]: Peekable::peek_mut
+    /// [`next`]: Iterator::next
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn peekable(self) -> Peekable<Self>

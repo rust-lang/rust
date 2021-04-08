@@ -1,5 +1,5 @@
 //! This module contains `HashStable` implementations for various data types
-//! from librustc_ast in no particular order.
+//! from `rustc_ast` in no particular order.
 
 use crate::ich::StableHashingContext;
 

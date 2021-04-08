@@ -94,7 +94,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
             .into_results_cursor(mir);
         let mut possible_borrower = {
             let mut vis = PossibleBorrowerVisitor::new(cx, mir);
-            vis.visit_body(&mir);
+            vis.visit_body(mir);
             vis.into_map(cx, maybe_storage_live_result)
         };
 
@@ -126,7 +126,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                 continue;
             }
 
-            if let ty::Adt(ref def, _) = arg_ty.kind() {
+            if let ty::Adt(def, _) = arg_ty.kind() {
                 if match_def_path(cx, def.did, &paths::MEM_MANUALLY_DROP) {
                     continue;
                 }
@@ -199,79 +199,72 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                 (local, deref_clone_ret)
             };
 
-            let is_temp = mir.local_kind(ret_local) == mir::LocalKind::Temp;
-
-            // 1. `local` can be moved out if it is not used later.
-            // 2. If `ret_local` is a temporary and is neither consumed nor mutated, we can remove this `clone`
-            // call anyway.
-            let (used, consumed_or_mutated) = traversal::ReversePostorder::new(&mir, bb).skip(1).fold(
-                (false, !is_temp),
-                |(used, consumed), (tbb, tdata)| {
-                    // Short-circuit
-                    if (used && consumed) ||
-                        // Give up on loops
-                        tdata.terminator().successors().any(|s| *s == bb)
-                    {
-                        return (true, true);
+            let clone_usage = if local == ret_local {
+                CloneUsage {
+                    cloned_used: false,
+                    cloned_consume_or_mutate_loc: None,
+                    clone_consumed_or_mutated: true,
+                }
+            } else {
+                let clone_usage = visit_clone_usage(local, ret_local, mir, bb);
+                if clone_usage.cloned_used && clone_usage.clone_consumed_or_mutated {
+                    // cloned value is used, and the clone is modified or moved
+                    continue;
+                } else if let Some(loc) = clone_usage.cloned_consume_or_mutate_loc {
+                    // cloned value is mutated, and the clone is alive.
+                    if possible_borrower.is_alive_at(ret_local, loc) {
+                        continue;
                     }
+                }
+                clone_usage
+            };
 
-                    let mut vis = LocalUseVisitor {
-                        used: (local, false),
-                        consumed_or_mutated: (ret_local, false),
-                    };
-                    vis.visit_basic_block_data(tbb, tdata);
-                    (used || vis.used.1, consumed || vis.consumed_or_mutated.1)
-                },
-            );
+            let span = terminator.source_info.span;
+            let scope = terminator.source_info.scope;
+            let node = mir.source_scopes[scope]
+                .local_data
+                .as_ref()
+                .assert_crate_local()
+                .lint_root;
 
-            if !used || !consumed_or_mutated {
-                let span = terminator.source_info.span;
-                let scope = terminator.source_info.scope;
-                let node = mir.source_scopes[scope]
-                    .local_data
-                    .as_ref()
-                    .assert_crate_local()
-                    .lint_root;
+            if_chain! {
+                if let Some(snip) = snippet_opt(cx, span);
+                if let Some(dot) = snip.rfind('.');
+                then {
+                    let sugg_span = span.with_lo(
+                        span.lo() + BytePos(u32::try_from(dot).unwrap())
+                    );
+                    let mut app = Applicability::MaybeIncorrect;
 
-                if_chain! {
-                    if let Some(snip) = snippet_opt(cx, span);
-                    if let Some(dot) = snip.rfind('.');
-                    then {
-                        let sugg_span = span.with_lo(
-                            span.lo() + BytePos(u32::try_from(dot).unwrap())
-                        );
-                        let mut app = Applicability::MaybeIncorrect;
-
-                        let call_snip = &snip[dot + 1..];
-                        // Machine applicable when `call_snip` looks like `foobar()`
-                        if let Some(call_snip) = call_snip.strip_suffix("()").map(str::trim) {
-                            if call_snip.as_bytes().iter().all(|b| b.is_ascii_alphabetic() || *b == b'_') {
-                                app = Applicability::MachineApplicable;
-                            }
+                    let call_snip = &snip[dot + 1..];
+                    // Machine applicable when `call_snip` looks like `foobar()`
+                    if let Some(call_snip) = call_snip.strip_suffix("()").map(str::trim) {
+                        if call_snip.as_bytes().iter().all(|b| b.is_ascii_alphabetic() || *b == b'_') {
+                            app = Applicability::MachineApplicable;
                         }
-
-                        span_lint_hir_and_then(cx, REDUNDANT_CLONE, node, sugg_span, "redundant clone", |diag| {
-                            diag.span_suggestion(
-                                sugg_span,
-                                "remove this",
-                                String::new(),
-                                app,
-                            );
-                            if used {
-                                diag.span_note(
-                                    span,
-                                    "cloned value is neither consumed nor mutated",
-                                );
-                            } else {
-                                diag.span_note(
-                                    span.with_hi(span.lo() + BytePos(u32::try_from(dot).unwrap())),
-                                    "this value is dropped without further use",
-                                );
-                            }
-                        });
-                    } else {
-                        span_lint_hir(cx, REDUNDANT_CLONE, node, span, "redundant clone");
                     }
+
+                    span_lint_hir_and_then(cx, REDUNDANT_CLONE, node, sugg_span, "redundant clone", |diag| {
+                        diag.span_suggestion(
+                            sugg_span,
+                            "remove this",
+                            String::new(),
+                            app,
+                        );
+                        if clone_usage.cloned_used {
+                            diag.span_note(
+                                span,
+                                "cloned value is neither consumed nor mutated",
+                            );
+                        } else {
+                            diag.span_note(
+                                span.with_hi(span.lo() + BytePos(u32::try_from(dot).unwrap())),
+                                "this value is dropped without further use",
+                            );
+                        }
+                    });
+                } else {
+                    span_lint_hir(cx, REDUNDANT_CLONE, node, span, "redundant clone");
                 }
             }
         }
@@ -365,49 +358,97 @@ fn base_local_and_movability<'tcx>(
     (local, deref || field || slice)
 }
 
-struct LocalUseVisitor {
-    used: (mir::Local, bool),
-    consumed_or_mutated: (mir::Local, bool),
+#[derive(Default)]
+struct CloneUsage {
+    /// Whether the cloned value is used after the clone.
+    cloned_used: bool,
+    /// The first location where the cloned value is consumed or mutated, if any.
+    cloned_consume_or_mutate_loc: Option<mir::Location>,
+    /// Whether the clone value is mutated.
+    clone_consumed_or_mutated: bool,
 }
-
-impl<'tcx> mir::visit::Visitor<'tcx> for LocalUseVisitor {
-    fn visit_basic_block_data(&mut self, block: mir::BasicBlock, data: &mir::BasicBlockData<'tcx>) {
-        let statements = &data.statements;
-        for (statement_index, statement) in statements.iter().enumerate() {
-            self.visit_statement(statement, mir::Location { block, statement_index });
-        }
-
-        self.visit_terminator(
-            data.terminator(),
-            mir::Location {
-                block,
-                statement_index: statements.len(),
-            },
-        );
+fn visit_clone_usage(cloned: mir::Local, clone: mir::Local, mir: &mir::Body<'_>, bb: mir::BasicBlock) -> CloneUsage {
+    struct V {
+        cloned: mir::Local,
+        clone: mir::Local,
+        result: CloneUsage,
     }
+    impl<'tcx> mir::visit::Visitor<'tcx> for V {
+        fn visit_basic_block_data(&mut self, block: mir::BasicBlock, data: &mir::BasicBlockData<'tcx>) {
+            let statements = &data.statements;
+            for (statement_index, statement) in statements.iter().enumerate() {
+                self.visit_statement(statement, mir::Location { block, statement_index });
+            }
 
-    fn visit_place(&mut self, place: &mir::Place<'tcx>, ctx: PlaceContext, _: mir::Location) {
-        let local = place.local;
-
-        if local == self.used.0
-            && !matches!(
-                ctx,
-                PlaceContext::MutatingUse(MutatingUseContext::Drop) | PlaceContext::NonUse(_)
-            )
-        {
-            self.used.1 = true;
+            self.visit_terminator(
+                data.terminator(),
+                mir::Location {
+                    block,
+                    statement_index: statements.len(),
+                },
+            );
         }
 
-        if local == self.consumed_or_mutated.0 {
-            match ctx {
-                PlaceContext::NonMutatingUse(NonMutatingUseContext::Move)
-                | PlaceContext::MutatingUse(MutatingUseContext::Borrow) => {
-                    self.consumed_or_mutated.1 = true;
-                },
-                _ => {},
+        fn visit_place(&mut self, place: &mir::Place<'tcx>, ctx: PlaceContext, loc: mir::Location) {
+            let local = place.local;
+
+            if local == self.cloned
+                && !matches!(
+                    ctx,
+                    PlaceContext::MutatingUse(MutatingUseContext::Drop) | PlaceContext::NonUse(_)
+                )
+            {
+                self.result.cloned_used = true;
+                self.result.cloned_consume_or_mutate_loc = self.result.cloned_consume_or_mutate_loc.or_else(|| {
+                    matches!(
+                        ctx,
+                        PlaceContext::NonMutatingUse(NonMutatingUseContext::Move)
+                            | PlaceContext::MutatingUse(MutatingUseContext::Borrow)
+                    )
+                    .then(|| loc)
+                });
+            } else if local == self.clone {
+                match ctx {
+                    PlaceContext::NonMutatingUse(NonMutatingUseContext::Move)
+                    | PlaceContext::MutatingUse(MutatingUseContext::Borrow) => {
+                        self.result.clone_consumed_or_mutated = true;
+                    },
+                    _ => {},
+                }
             }
         }
     }
+
+    let init = CloneUsage {
+        cloned_used: false,
+        cloned_consume_or_mutate_loc: None,
+        // Consider non-temporary clones consumed.
+        // TODO: Actually check for mutation of non-temporaries.
+        clone_consumed_or_mutated: mir.local_kind(clone) != mir::LocalKind::Temp,
+    };
+    traversal::ReversePostorder::new(mir, bb)
+        .skip(1)
+        .fold(init, |usage, (tbb, tdata)| {
+            // Short-circuit
+            if (usage.cloned_used && usage.clone_consumed_or_mutated) ||
+                // Give up on loops
+                tdata.terminator().successors().any(|s| *s == bb)
+            {
+                return CloneUsage {
+                    cloned_used: true,
+                    clone_consumed_or_mutated: true,
+                    ..usage
+                };
+            }
+
+            let mut v = V {
+                cloned,
+                clone,
+                result: usage,
+            };
+            v.visit_basic_block_data(tbb, tdata);
+            v.result
+        })
 }
 
 /// Determines liveness of each local purely based on `StorageLive`/`Dead`.
@@ -547,7 +588,7 @@ impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'tcx> {
             // If the call returns something with lifetimes,
             // let's conservatively assume the returned value contains lifetime of all the arguments.
             // For example, given `let y: Foo<'a> = foo(x)`, `y` is considered to be a possible borrower of `x`.
-            if ContainsRegion.visit_ty(&self.body.local_decls[*dest].ty).is_continue() {
+            if ContainsRegion.visit_ty(self.body.local_decls[*dest].ty).is_continue() {
                 return;
             }
 
@@ -622,5 +663,10 @@ impl PossibleBorrowerMap<'_, '_> {
         }
 
         self.bitset.0 == self.bitset.1
+    }
+
+    fn is_alive_at(&mut self, local: mir::Local, at: mir::Location) -> bool {
+        self.maybe_live.seek_after_primary_effect(at);
+        self.maybe_live.contains(local)
     }
 }

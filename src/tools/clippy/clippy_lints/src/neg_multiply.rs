@@ -28,12 +28,12 @@ declare_lint_pass!(NegMultiply => [NEG_MULTIPLY]);
 #[allow(clippy::match_same_arms)]
 impl<'tcx> LateLintPass<'tcx> for NegMultiply {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
-        if let ExprKind::Binary(ref op, ref left, ref right) = e.kind {
+        if let ExprKind::Binary(ref op, left, right) = e.kind {
             if BinOpKind::Mul == op.node {
                 match (&left.kind, &right.kind) {
                     (&ExprKind::Unary(..), &ExprKind::Unary(..)) => {},
-                    (&ExprKind::Unary(UnOp::Neg, ref lit), _) => check_mul(cx, e.span, lit, right),
-                    (_, &ExprKind::Unary(UnOp::Neg, ref lit)) => check_mul(cx, e.span, lit, left),
+                    (&ExprKind::Unary(UnOp::Neg, lit), _) => check_mul(cx, e.span, lit, right),
+                    (_, &ExprKind::Unary(UnOp::Neg, lit)) => check_mul(cx, e.span, lit, left),
                     _ => {},
                 }
             }

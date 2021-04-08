@@ -1,7 +1,12 @@
 // run-rustfix
 
-#![allow(unused, clippy::needless_bool)]
-#![allow(clippy::if_same_then_else, clippy::single_match)]
+#![allow(unused)]
+#![allow(
+    clippy::if_same_then_else,
+    clippy::single_match,
+    clippy::branches_sharing_code,
+    clippy::needless_bool
+)]
 #![warn(clippy::needless_return)]
 
 macro_rules! the_answer {

@@ -35,7 +35,6 @@ impl<'a> Clone for Lt<'a> {
     }
 }
 
-// Ok, `Clone` cannot be derived because of the big array
 #[derive(Copy)]
 struct BigArray {
     a: [u8; 65],
@@ -47,7 +46,6 @@ impl Clone for BigArray {
     }
 }
 
-// Ok, function pointers are not always Clone
 #[derive(Copy)]
 struct FnPtr {
     a: fn() -> !,
@@ -59,7 +57,7 @@ impl Clone for FnPtr {
     }
 }
 
-// Ok, generics
+// Ok, Clone trait impl doesn't have constrained generics.
 #[derive(Copy)]
 struct Generic<T> {
     a: T,
@@ -68,6 +66,23 @@ struct Generic<T> {
 impl<T> Clone for Generic<T> {
     fn clone(&self) -> Self {
         unimplemented!()
+    }
+}
+
+#[derive(Copy)]
+struct Generic2<T>(T);
+impl<T: Clone> Clone for Generic2<T> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
+// Ok, Clone trait impl doesn't have constrained generics.
+#[derive(Copy)]
+struct GenericRef<'a, T, U>(T, &'a U);
+impl<T: Clone, U> Clone for GenericRef<'_, T, U> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone(), self.1)
     }
 }
 
