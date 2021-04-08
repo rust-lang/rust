@@ -93,9 +93,9 @@ impl MissingDoc {
             return;
         }
 
-        let has_doc = attrs
-            .iter()
-            .any(|a| a.is_doc_comment() || a.doc_str().is_some() || a.is_value_str() || Self::has_include(a.meta()));
+        let has_doc = attrs.iter().any(|a| {
+            a.is_doc_comment() || a.doc_str().is_some() || a.value_str().is_some() || Self::has_include(a.meta())
+        });
         if !has_doc {
             span_lint(
                 cx,
@@ -121,7 +121,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
 
     fn check_crate(&mut self, cx: &LateContext<'tcx>, krate: &'tcx hir::Crate<'_>) {
         let attrs = cx.tcx.hir().attrs(hir::CRATE_HIR_ID);
-        self.check_missing_docs_attrs(cx, attrs, krate.item.span, "the", "crate");
+        self.check_missing_docs_attrs(cx, attrs, krate.item.inner, "the", "crate");
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, it: &'tcx hir::Item<'_>) {

@@ -4,6 +4,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use std::iter;
 
 declare_clippy_lint! {
     /// **What it does:** Detects passing a mutable reference to a function that only
@@ -64,7 +65,7 @@ fn check_arguments<'tcx>(
     match type_definition.kind() {
         ty::FnDef(..) | ty::FnPtr(_) => {
             let parameters = type_definition.fn_sig(cx.tcx).skip_binder().inputs();
-            for (argument, parameter) in arguments.iter().zip(parameters.iter()) {
+            for (argument, parameter) in iter::zip(arguments, parameters) {
                 match parameter.kind() {
                     ty::Ref(_, _, Mutability::Not)
                     | ty::RawPtr(ty::TypeAndMut {

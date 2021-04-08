@@ -44,7 +44,7 @@ fn get_trait_predicates_for_trait_id<'tcx>(
     for (pred, _) in generics.predicates {
         if_chain! {
             if let PredicateKind::Trait(poly_trait_pred, _) = pred.kind().skip_binder();
-            let trait_pred = cx.tcx.erase_late_bound_regions(ty::Binder::bind(poly_trait_pred));
+            let trait_pred = cx.tcx.erase_late_bound_regions(pred.kind().rebind(poly_trait_pred));
             if let Some(trait_def_id) = trait_id;
             if trait_def_id == trait_pred.trait_ref.def_id;
             then {
@@ -58,12 +58,12 @@ fn get_trait_predicates_for_trait_id<'tcx>(
 fn get_projection_pred<'tcx>(
     cx: &LateContext<'tcx>,
     generics: GenericPredicates<'tcx>,
-    pred: TraitPredicate<'tcx>,
+    trait_pred: TraitPredicate<'tcx>,
 ) -> Option<ProjectionPredicate<'tcx>> {
     generics.predicates.iter().find_map(|(proj_pred, _)| {
-        if let ty::PredicateKind::Projection(proj_pred) = proj_pred.kind().skip_binder() {
-            let projection_pred = cx.tcx.erase_late_bound_regions(ty::Binder::bind(proj_pred));
-            if projection_pred.projection_ty.substs == pred.trait_ref.substs {
+        if let ty::PredicateKind::Projection(pred) = proj_pred.kind().skip_binder() {
+            let projection_pred = cx.tcx.erase_late_bound_regions(proj_pred.kind().rebind(pred));
+            if projection_pred.projection_ty.substs == trait_pred.trait_ref.substs {
                 return Some(projection_pred);
             }
         }

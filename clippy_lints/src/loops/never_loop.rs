@@ -142,12 +142,12 @@ fn never_loop_expr(expr: &Expr<'_>, main_loop_id: HirId) -> NeverLoopResult {
             .map(|(o, _)| match o {
                 InlineAsmOperand::In { expr, .. }
                 | InlineAsmOperand::InOut { expr, .. }
-                | InlineAsmOperand::Const { expr }
                 | InlineAsmOperand::Sym { expr } => never_loop_expr(expr, main_loop_id),
                 InlineAsmOperand::Out { expr, .. } => never_loop_expr_all(&mut expr.iter(), main_loop_id),
                 InlineAsmOperand::SplitInOut { in_expr, out_expr, .. } => {
                     never_loop_expr_all(&mut once(in_expr).chain(out_expr.iter()), main_loop_id)
                 },
+                InlineAsmOperand::Const { .. } => NeverLoopResult::Otherwise,
             })
             .fold(NeverLoopResult::Otherwise, combine_both),
         ExprKind::Struct(_, _, None)

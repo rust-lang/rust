@@ -13,6 +13,7 @@ use rustc_middle::{
     ty::{self, FloatTy, IntTy, PolyFnSig, Ty},
 };
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use std::iter;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of unconstrained numeric literals which may cause default numeric fallback in type
@@ -107,7 +108,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
         match &expr.kind {
             ExprKind::Call(func, args) => {
                 if let Some(fn_sig) = fn_sig_opt(self.cx, func.hir_id) {
-                    for (expr, bound) in args.iter().zip(fn_sig.skip_binder().inputs().iter()) {
+                    for (expr, bound) in iter::zip(*args, fn_sig.skip_binder().inputs()) {
                         // Push found arg type, then visit arg.
                         self.ty_bounds.push(TyBound::Ty(bound));
                         self.visit_expr(expr);
@@ -120,7 +121,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
             ExprKind::MethodCall(_, _, args, _) => {
                 if let Some(def_id) = self.cx.typeck_results().type_dependent_def_id(expr.hir_id) {
                     let fn_sig = self.cx.tcx.fn_sig(def_id).skip_binder();
-                    for (expr, bound) in args.iter().zip(fn_sig.inputs().iter()) {
+                    for (expr, bound) in iter::zip(*args, fn_sig.inputs()) {
                         self.ty_bounds.push(TyBound::Ty(bound));
                         self.visit_expr(expr);
                         self.ty_bounds.pop();

@@ -6,6 +6,7 @@ use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{Adt, Array, RawPtr, Ref, Slice, Tuple, Ty, TypeAndMut};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
+use std::iter;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for sets/maps with mutable key types.
@@ -87,7 +88,7 @@ impl<'tcx> LateLintPass<'tcx> for MutableKeyType {
 fn check_sig<'tcx>(cx: &LateContext<'tcx>, item_hir_id: hir::HirId, decl: &hir::FnDecl<'_>) {
     let fn_def_id = cx.tcx.hir().local_def_id(item_hir_id);
     let fn_sig = cx.tcx.fn_sig(fn_def_id);
-    for (hir_ty, ty) in decl.inputs.iter().zip(fn_sig.inputs().skip_binder().iter()) {
+    for (hir_ty, ty) in iter::zip(decl.inputs, fn_sig.inputs().skip_binder()) {
         check_ty(cx, hir_ty.span, ty);
     }
     check_ty(cx, decl.output.span(), cx.tcx.erase_late_bound_regions(fn_sig.output()));
