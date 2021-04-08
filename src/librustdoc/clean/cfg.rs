@@ -487,7 +487,6 @@ impl<'a> fmt::Display for Display<'a> {
                         "windows" => "Windows",
                         _ => "",
                     },
-                    (sym::wasm, None) => "WebAssembly",
                     (sym::target_arch, Some(arch)) => match &*arch.as_str() {
                         "aarch64" => "AArch64",
                         "arm" => "ARM",
