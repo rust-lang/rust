@@ -1,32 +1,56 @@
 error: expected non-macro inner attribute, found attribute macro `print_target_and_args`
-  --> $DIR/inner-attrs.rs:27:9
+  --> $DIR/inner-attrs.rs:49:9
    |
 LL |     (#![print_target_and_args(fifth)] 1, 2);
    |         ^^^^^^^^^^^^^^^^^^^^^ not a non-macro inner attribute
 
 error: expected non-macro inner attribute, found attribute macro `print_target_and_args`
-  --> $DIR/inner-attrs.rs:43:9
+  --> $DIR/inner-attrs.rs:78:9
    |
 LL |     [#![print_target_and_args(sixth)] 1 , 2];
    |         ^^^^^^^^^^^^^^^^^^^^^ not a non-macro inner attribute
 
 error: expected non-macro inner attribute, found attribute macro `print_target_and_args`
-  --> $DIR/inner-attrs.rs:45:9
+  --> $DIR/inner-attrs.rs:80:9
    |
 LL |     [#![print_target_and_args(seventh)] true ; 5];
    |         ^^^^^^^^^^^^^^^^^^^^^ not a non-macro inner attribute
 
 error: expected non-macro inner attribute, found attribute macro `print_target_and_args`
-  --> $DIR/inner-attrs.rs:49:12
+  --> $DIR/inner-attrs.rs:84:12
    |
 LL |         #![print_target_and_args(eighth)]
    |            ^^^^^^^^^^^^^^^^^^^^^ not a non-macro inner attribute
 
 error: expected non-macro inner attribute, found attribute macro `print_target_and_args`
-  --> $DIR/inner-attrs.rs:54:19
+  --> $DIR/inner-attrs.rs:89:19
    |
 LL |     MyStruct { #![print_target_and_args(ninth)] field: true };
    |                   ^^^^^^^^^^^^^^^^^^^^^ not a non-macro inner attribute
 
-error: aborting due to 5 previous errors
+error: expected non-macro inner attribute, found attribute macro `print_attr`
+  --> $DIR/inner-attrs.rs:93:12
+   |
+LL |         #![print_attr]
+   |            ^^^^^^^^^^ not a non-macro inner attribute
+
+error: expected non-macro inner attribute, found attribute macro `print_attr`
+  --> $DIR/inner-attrs.rs:97:12
+   |
+LL |         #![print_attr]
+   |            ^^^^^^^^^^ not a non-macro inner attribute
+
+error: expected non-macro inner attribute, found attribute macro `print_attr`
+  --> $DIR/inner-attrs.rs:101:12
+   |
+LL |         #![print_attr]
+   |            ^^^^^^^^^^ not a non-macro inner attribute
+
+error: expected non-macro inner attribute, found attribute macro `print_attr`
+  --> $DIR/inner-attrs.rs:105:12
+   |
+LL |         #![print_attr]
+   |            ^^^^^^^^^^ not a non-macro inner attribute
+
+error: aborting due to 9 previous errors
 

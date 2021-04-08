@@ -83,53 +83,68 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
         span: $DIR/cfg-eval.rs:17:1: 24:2 (#0),
     },
 ]
-PRINT-ATTR INPUT (DISPLAY): (#[cfg(all())] 1,)
+PRINT-ATTR INPUT (DISPLAY): #[rustc_dummy] (#[cfg(all())] 1,)
 PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Punct {
+        ch: '#',
+        spacing: Alone,
+        span: $DIR/cfg-eval.rs:36:5: 36:48 (#0),
+    },
+    Group {
+        delimiter: Bracket,
+        stream: TokenStream [
+            Ident {
+                ident: "rustc_dummy",
+                span: $DIR/cfg-eval.rs:36:5: 36:48 (#0),
+            },
+        ],
+        span: $DIR/cfg-eval.rs:36:5: 36:48 (#0),
+    },
     Group {
         delimiter: Parenthesis,
         stream: TokenStream [
             Punct {
                 ch: '#',
                 spacing: Alone,
-                span: $DIR/cfg-eval.rs:31:38: 31:80 (#0),
+                span: $DIR/cfg-eval.rs:36:5: 36:48 (#0),
             },
             Group {
                 delimiter: Bracket,
                 stream: TokenStream [
                     Ident {
                         ident: "cfg",
-                        span: $DIR/cfg-eval.rs:31:38: 31:80 (#0),
+                        span: $DIR/cfg-eval.rs:36:5: 36:48 (#0),
                     },
                     Group {
                         delimiter: Parenthesis,
                         stream: TokenStream [
                             Ident {
                                 ident: "all",
-                                span: $DIR/cfg-eval.rs:31:38: 31:80 (#0),
+                                span: $DIR/cfg-eval.rs:36:5: 36:48 (#0),
                             },
                             Group {
                                 delimiter: Parenthesis,
                                 stream: TokenStream [],
-                                span: $DIR/cfg-eval.rs:31:38: 31:80 (#0),
+                                span: $DIR/cfg-eval.rs:36:5: 36:48 (#0),
                             },
                         ],
-                        span: $DIR/cfg-eval.rs:31:38: 31:80 (#0),
+                        span: $DIR/cfg-eval.rs:36:5: 36:48 (#0),
                     },
                 ],
-                span: $DIR/cfg-eval.rs:31:38: 31:80 (#0),
+                span: $DIR/cfg-eval.rs:36:5: 36:48 (#0),
             },
             Literal {
                 kind: Integer,
                 symbol: "1",
                 suffix: None,
-                span: $DIR/cfg-eval.rs:31:38: 31:80 (#0),
+                span: $DIR/cfg-eval.rs:36:5: 36:48 (#0),
             },
             Punct {
                 ch: ',',
                 spacing: Alone,
-                span: $DIR/cfg-eval.rs:31:38: 31:80 (#0),
+                span: $DIR/cfg-eval.rs:36:5: 36:48 (#0),
             },
         ],
-        span: $DIR/cfg-eval.rs:31:38: 31:80 (#0),
+        span: $DIR/cfg-eval.rs:36:5: 36:48 (#0),
     },
 ]

@@ -1,5 +1,9 @@
 // check-pass
+// compile-flags: -Z span-debug
 // aux-build:nonterminal-recollect-attr.rs
+
+#![no_std] // Don't load unnecessary hygiene information from std
+extern crate std;
 
 extern crate nonterminal_recollect_attr;
 use nonterminal_recollect_attr::*;
