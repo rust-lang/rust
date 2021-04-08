@@ -1,8 +1,8 @@
 error: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if you need to distinguish all 3 cases
-  --> $DIR/option_option.rs:4:13
+  --> $DIR/option_option.rs:4:10
    |
-LL | fn input(_: Option<Option<u8>>) {}
-   |             ^^^^^^^^^^^^^^^^^^
+LL | const C: Option<Option<i32>> = None;
+   |          ^^^^^^^^^^^^^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/option_option.rs:1:9
@@ -11,58 +11,70 @@ LL | #![deny(clippy::option_option)]
    |         ^^^^^^^^^^^^^^^^^^^^^
 
 error: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if you need to distinguish all 3 cases
-  --> $DIR/option_option.rs:6:16
+  --> $DIR/option_option.rs:5:11
+   |
+LL | static S: Option<Option<i32>> = None;
+   |           ^^^^^^^^^^^^^^^^^^^
+
+error: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if you need to distinguish all 3 cases
+  --> $DIR/option_option.rs:7:13
+   |
+LL | fn input(_: Option<Option<u8>>) {}
+   |             ^^^^^^^^^^^^^^^^^^
+
+error: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if you need to distinguish all 3 cases
+  --> $DIR/option_option.rs:9:16
    |
 LL | fn output() -> Option<Option<u8>> {
    |                ^^^^^^^^^^^^^^^^^^
 
 error: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if you need to distinguish all 3 cases
-  --> $DIR/option_option.rs:10:27
+  --> $DIR/option_option.rs:13:27
    |
 LL | fn output_nested() -> Vec<Option<Option<u8>>> {
    |                           ^^^^^^^^^^^^^^^^^^
 
 error: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if you need to distinguish all 3 cases
-  --> $DIR/option_option.rs:15:30
+  --> $DIR/option_option.rs:18:30
    |
 LL | fn output_nested_nested() -> Option<Option<Option<u8>>> {
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if you need to distinguish all 3 cases
-  --> $DIR/option_option.rs:20:8
+  --> $DIR/option_option.rs:23:8
    |
 LL |     x: Option<Option<u8>>,
    |        ^^^^^^^^^^^^^^^^^^
 
 error: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if you need to distinguish all 3 cases
-  --> $DIR/option_option.rs:24:23
+  --> $DIR/option_option.rs:27:23
    |
 LL |     fn struct_fn() -> Option<Option<u8>> {
    |                       ^^^^^^^^^^^^^^^^^^
 
 error: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if you need to distinguish all 3 cases
-  --> $DIR/option_option.rs:30:22
+  --> $DIR/option_option.rs:33:22
    |
 LL |     fn trait_fn() -> Option<Option<u8>>;
    |                      ^^^^^^^^^^^^^^^^^^
 
 error: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if you need to distinguish all 3 cases
-  --> $DIR/option_option.rs:34:11
+  --> $DIR/option_option.rs:37:11
    |
 LL |     Tuple(Option<Option<u8>>),
    |           ^^^^^^^^^^^^^^^^^^
 
 error: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if you need to distinguish all 3 cases
-  --> $DIR/option_option.rs:35:17
+  --> $DIR/option_option.rs:38:17
    |
 LL |     Struct { x: Option<Option<u8>> },
    |                 ^^^^^^^^^^^^^^^^^^
 
 error: consider using `Option<T>` instead of `Option<Option<T>>` or a custom enum if you need to distinguish all 3 cases
-  --> $DIR/option_option.rs:76:14
+  --> $DIR/option_option.rs:79:14
    |
 LL |         foo: Option<Option<Cow<'a, str>>>,
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 10 previous errors
+error: aborting due to 12 previous errors
 

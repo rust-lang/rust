@@ -59,21 +59,21 @@ declare_lint_pass!(MutableKeyType => [ MUTABLE_KEY_TYPE ]);
 impl<'tcx> LateLintPass<'tcx> for MutableKeyType {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         if let hir::ItemKind::Fn(ref sig, ..) = item.kind {
-            check_sig(cx, item.hir_id(), &sig.decl);
+            check_sig(cx, item.hir_id(), sig.decl);
         }
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'tcx>) {
         if let hir::ImplItemKind::Fn(ref sig, ..) = item.kind {
             if trait_ref_of_method(cx, item.hir_id()).is_none() {
-                check_sig(cx, item.hir_id(), &sig.decl);
+                check_sig(cx, item.hir_id(), sig.decl);
             }
         }
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'tcx>) {
         if let hir::TraitItemKind::Fn(ref sig, ..) = item.kind {
-            check_sig(cx, item.hir_id(), &sig.decl);
+            check_sig(cx, item.hir_id(), sig.decl);
         }
     }
 

@@ -71,7 +71,7 @@ impl<'tcx> LateLintPass<'tcx> for AssertionsOnConstants {
                 return;
             }
             if_chain! {
-                if let ExprKind::Unary(_, ref lit) = e.kind;
+                if let ExprKind::Unary(_, lit) = e.kind;
                 if let Some((Constant::Bool(is_true), _)) = constant(cx, cx.typeck_results(), lit);
                 if is_true;
                 then {
@@ -82,7 +82,7 @@ impl<'tcx> LateLintPass<'tcx> for AssertionsOnConstants {
             if assert_span.from_expansion() {
                 return;
             }
-            if let Some(assert_match) = match_assert_with_message(&cx, e) {
+            if let Some(assert_match) = match_assert_with_message(cx, e) {
                 match assert_match {
                     // matched assert but not message
                     AssertKind::WithoutMessage(false) => lint_false_without_message(),
@@ -113,17 +113,17 @@ enum AssertKind {
 /// where `message` is any expression and `c` is a constant bool.
 fn match_assert_with_message<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<AssertKind> {
     if_chain! {
-        if let ExprKind::If(ref cond, ref then, _) = expr.kind;
-        if let ExprKind::Unary(UnOp::Not, ref expr) = cond.kind;
+        if let ExprKind::If(cond, then, _) = expr.kind;
+        if let ExprKind::Unary(UnOp::Not, expr) = cond.kind;
         // bind the first argument of the `assert!` macro
         if let Some((Constant::Bool(is_true), _)) = constant(cx, cx.typeck_results(), expr);
         // block
-        if let ExprKind::Block(ref block, _) = then.kind;
+        if let ExprKind::Block(block, _) = then.kind;
         if block.stmts.is_empty();
         if let Some(block_expr) = &block.expr;
         // inner block is optional. unwrap it if it exists, or use the expression as is otherwise.
         if let Some(begin_panic_call) = match block_expr.kind {
-            ExprKind::Block(ref inner_block, _) => &inner_block.expr,
+            ExprKind::Block(inner_block, _) => &inner_block.expr,
             _ => &block.expr,
         };
         // function call

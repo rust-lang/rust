@@ -19,9 +19,9 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if is_questionmark_desugar_marked_call(expr) {
         return;
     }
+    let map = &cx.tcx.hir();
+    let opt_parent_node = map.find(map.get_parent_node(expr.hir_id));
     if_chain! {
-        let map = &cx.tcx.hir();
-        let opt_parent_node = map.find(map.get_parent_node(expr.hir_id));
         if let Some(hir::Node::Expr(parent_expr)) = opt_parent_node;
         if is_questionmark_desugar_marked_call(parent_expr);
         then {
@@ -54,7 +54,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
 
 fn is_questionmark_desugar_marked_call(expr: &Expr<'_>) -> bool {
     use rustc_span::hygiene::DesugaringKind;
-    if let ExprKind::Call(ref callee, _) = expr.kind {
+    if let ExprKind::Call(callee, _) = expr.kind {
         callee.span.is_desugaring(DesugaringKind::QuestionMark)
     } else {
         false

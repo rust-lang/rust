@@ -72,15 +72,15 @@ impl LateLintPass<'_> for IfThenSomeElseNone {
         }
 
         if_chain! {
-            if let ExprKind::If(ref cond, ref then, Some(ref els)) = expr.kind;
-            if let ExprKind::Block(ref then_block, _) = then.kind;
-            if let Some(ref then_expr) = then_block.expr;
-            if let ExprKind::Call(ref then_call, [then_arg]) = then_expr.kind;
+            if let ExprKind::If(cond, then, Some(els)) = expr.kind;
+            if let ExprKind::Block(then_block, _) = then.kind;
+            if let Some(then_expr) = then_block.expr;
+            if let ExprKind::Call(then_call, [then_arg]) = then_expr.kind;
             if let ExprKind::Path(ref then_call_qpath) = then_call.kind;
             if match_qpath(then_call_qpath, &clippy_utils::paths::OPTION_SOME);
-            if let ExprKind::Block(ref els_block, _) = els.kind;
+            if let ExprKind::Block(els_block, _) = els.kind;
             if els_block.stmts.is_empty();
-            if let Some(ref els_expr) = els_block.expr;
+            if let Some(els_expr) = els_block.expr;
             if let ExprKind::Path(ref els_call_qpath) = els_expr.kind;
             if match_qpath(els_call_qpath, &clippy_utils::paths::OPTION_NONE);
             then {

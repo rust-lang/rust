@@ -77,29 +77,28 @@ impl LateLintPass<'_> for Default {
         if_chain! {
             // Avoid cases already linted by `field_reassign_with_default`
             if !self.reassigned_linted.contains(&expr.span);
-            if let ExprKind::Call(ref path, ..) = expr.kind;
+            if let ExprKind::Call(path, ..) = expr.kind;
             if !any_parent_is_automatically_derived(cx.tcx, expr.hir_id);
             if let ExprKind::Path(ref qpath) = path.kind;
             if let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id();
             if match_def_path(cx, def_id, &paths::DEFAULT_TRAIT_METHOD);
             // Detect and ignore <Foo as Default>::default() because these calls do explicitly name the type.
             if let QPath::Resolved(None, _path) = qpath;
+            let expr_ty = cx.typeck_results().expr_ty(expr);
+            if let ty::Adt(def, ..) = expr_ty.kind();
             then {
-                let expr_ty = cx.typeck_results().expr_ty(expr);
-                if let ty::Adt(def, ..) = expr_ty.kind() {
-                    // TODO: Work out a way to put "whatever the imported way of referencing
-                    // this type in this file" rather than a fully-qualified type.
-                    let replacement = format!("{}::default()", cx.tcx.def_path_str(def.did));
-                    span_lint_and_sugg(
-                        cx,
-                        DEFAULT_TRAIT_ACCESS,
-                        expr.span,
-                        &format!("calling `{}` is more clear than this expression", replacement),
-                        "try",
-                        replacement,
-                        Applicability::Unspecified, // First resolve the TODO above
-                    );
-                }
+                // TODO: Work out a way to put "whatever the imported way of referencing
+                // this type in this file" rather than a fully-qualified type.
+                let replacement = format!("{}::default()", cx.tcx.def_path_str(def.did));
+                span_lint_and_sugg(
+                    cx,
+                    DEFAULT_TRAIT_ACCESS,
+                    expr.span,
+                    &format!("calling `{}` is more clear than this expression", replacement),
+                    "try",
+                    replacement,
+                    Applicability::Unspecified, // First resolve the TODO above
+                );
             }
         }
     }
@@ -202,14 +201,14 @@ impl LateLintPass<'_> for Default {
                 let binding_type = if_chain! {
                     if let ty::Adt(adt_def, substs) = binding_type.kind();
                     if !substs.is_empty();
-                    let adt_def_ty_name = cx.tcx.item_name(adt_def.did);
-                    let generic_args = substs.iter().collect::<Vec<_>>();
-                    let tys_str = generic_args
-                        .iter()
-                        .map(ToString::to_string)
-                        .collect::<Vec<_>>()
-                        .join(", ");
                     then {
+                        let adt_def_ty_name = cx.tcx.item_name(adt_def.did);
+                        let generic_args = substs.iter().collect::<Vec<_>>();
+                        let tys_str = generic_args
+                            .iter()
+                            .map(ToString::to_string)
+                            .collect::<Vec<_>>()
+                            .join(", ");
                         format!("{}::<{}>", adt_def_ty_name, &tys_str)
                     } else {
                         binding_type.to_string()
@@ -247,7 +246,7 @@ impl LateLintPass<'_> for Default {
 /// Checks if the given expression is the `default` method belonging to the `Default` trait.
 fn is_expr_default<'tcx>(expr: &'tcx Expr<'tcx>, cx: &LateContext<'tcx>) -> bool {
     if_chain! {
-        if let ExprKind::Call(ref fn_expr, _) = &expr.kind;
+        if let ExprKind::Call(fn_expr, _) = &expr.kind;
         if let ExprKind::Path(qpath) = &fn_expr.kind;
         if let Res::Def(_, def_id) = cx.qpath_res(qpath, fn_expr.hir_id);
         then {
@@ -263,11 +262,11 @@ fn is_expr_default<'tcx>(expr: &'tcx Expr<'tcx>, cx: &LateContext<'tcx>) -> bool
 fn field_reassigned_by_stmt<'tcx>(this: &Stmt<'tcx>, binding_name: Symbol) -> Option<(Ident, &'tcx Expr<'tcx>)> {
     if_chain! {
         // only take assignments
-        if let StmtKind::Semi(ref later_expr) = this.kind;
-        if let ExprKind::Assign(ref assign_lhs, ref assign_rhs, _) = later_expr.kind;
+        if let StmtKind::Semi(later_expr) = this.kind;
+        if let ExprKind::Assign(assign_lhs, assign_rhs, _) = later_expr.kind;
         // only take assignments to fields where the left-hand side field is a field of
         // the same binding as the previous statement
-        if let ExprKind::Field(ref binding, field_ident) = assign_lhs.kind;
+        if let ExprKind::Field(binding, field_ident) = assign_lhs.kind;
         if let ExprKind::Path(QPath::Resolved(_, path)) = binding.kind;
         if let Some(second_binding_name) = path.segments.last();
         if second_binding_name.ident.name == binding_name;

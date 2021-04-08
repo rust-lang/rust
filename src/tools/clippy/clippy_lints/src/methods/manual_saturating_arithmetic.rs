@@ -8,11 +8,14 @@ use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_target::abi::LayoutOf;
 
-pub fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[&[hir::Expr<'_>]], arith: &str) {
-    let unwrap_arg = &args[0][1];
-    let arith_lhs = &args[1][0];
-    let arith_rhs = &args[1][1];
-
+pub fn check(
+    cx: &LateContext<'_>,
+    expr: &hir::Expr<'_>,
+    arith_lhs: &hir::Expr<'_>,
+    arith_rhs: &hir::Expr<'_>,
+    unwrap_arg: &hir::Expr<'_>,
+    arith: &str,
+) {
     let ty = cx.typeck_results().expr_ty(arith_lhs);
     if !ty.is_integral() {
         return;
@@ -41,44 +44,28 @@ pub fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[&[hir::Expr<'_>
             // "mul" is omitted because lhs can be negative.
             _ => return,
         }
-
-        let mut applicability = Applicability::MachineApplicable;
-        span_lint_and_sugg(
-            cx,
-            super::MANUAL_SATURATING_ARITHMETIC,
-            expr.span,
-            "manual saturating arithmetic",
-            &format!("try using `saturating_{}`", arith),
-            format!(
-                "{}.saturating_{}({})",
-                snippet_with_applicability(cx, arith_lhs.span, "..", &mut applicability),
-                arith,
-                snippet_with_applicability(cx, arith_rhs.span, "..", &mut applicability),
-            ),
-            applicability,
-        );
     } else {
         match (mm, arith) {
             (MinMax::Max, "add" | "mul") | (MinMax::Min, "sub") => (),
             _ => return,
         }
-
-        let mut applicability = Applicability::MachineApplicable;
-        span_lint_and_sugg(
-            cx,
-            super::MANUAL_SATURATING_ARITHMETIC,
-            expr.span,
-            "manual saturating arithmetic",
-            &format!("try using `saturating_{}`", arith),
-            format!(
-                "{}.saturating_{}({})",
-                snippet_with_applicability(cx, arith_lhs.span, "..", &mut applicability),
-                arith,
-                snippet_with_applicability(cx, arith_rhs.span, "..", &mut applicability),
-            ),
-            applicability,
-        );
     }
+
+    let mut applicability = Applicability::MachineApplicable;
+    span_lint_and_sugg(
+        cx,
+        super::MANUAL_SATURATING_ARITHMETIC,
+        expr.span,
+        "manual saturating arithmetic",
+        &format!("try using `saturating_{}`", arith),
+        format!(
+            "{}.saturating_{}({})",
+            snippet_with_applicability(cx, arith_lhs.span, "..", &mut applicability),
+            arith,
+            snippet_with_applicability(cx, arith_rhs.span, "..", &mut applicability),
+        ),
+        applicability,
+    );
 }
 
 #[derive(PartialEq, Eq)]

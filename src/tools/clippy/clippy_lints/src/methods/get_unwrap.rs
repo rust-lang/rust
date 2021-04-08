@@ -11,18 +11,20 @@ use rustc_span::sym;
 
 use super::GET_UNWRAP;
 
-pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, get_args: &'tcx [hir::Expr<'_>], is_mut: bool) {
+pub(super) fn check<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &hir::Expr<'_>,
+    recv: &'tcx hir::Expr<'tcx>,
+    get_arg: &'tcx hir::Expr<'_>,
+    is_mut: bool,
+) {
     // Note: we don't want to lint `get_mut().unwrap` for `HashMap` or `BTreeMap`,
     // because they do not implement `IndexMut`
     let mut applicability = Applicability::MachineApplicable;
-    let expr_ty = cx.typeck_results().expr_ty(&get_args[0]);
-    let get_args_str = if get_args.len() > 1 {
-        snippet_with_applicability(cx, get_args[1].span, "..", &mut applicability)
-    } else {
-        return; // not linting on a .get().unwrap() chain or variant
-    };
+    let expr_ty = cx.typeck_results().expr_ty(recv);
+    let get_args_str = snippet_with_applicability(cx, get_arg.span, "..", &mut applicability);
     let mut needs_ref;
-    let caller_type = if derefs_to_slice(cx, &get_args[0], expr_ty).is_some() {
+    let caller_type = if derefs_to_slice(cx, recv, expr_ty).is_some() {
         needs_ref = get_args_str.parse::<usize>().is_ok();
         "slice"
     } else if is_type_diagnostic_item(cx, expr_ty, sym::vec_type) {
@@ -77,7 +79,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, get_args
         format!(
             "{}{}[{}]",
             borrow_str,
-            snippet_with_applicability(cx, get_args[0].span, "..", &mut applicability),
+            snippet_with_applicability(cx, recv.span, "..", &mut applicability),
             get_args_str
         ),
         applicability,

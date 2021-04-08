@@ -166,8 +166,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
         } else {
             // find `unwrap[_err]()` calls:
             if_chain! {
-                if let ExprKind::MethodCall(ref method_name, _, ref args, _) = expr.kind;
-                if let ExprKind::Path(QPath::Resolved(None, ref path)) = args[0].kind;
+                if let ExprKind::MethodCall(method_name, _, args, _) = expr.kind;
+                if let ExprKind::Path(QPath::Resolved(None, path)) = args[0].kind;
                 if [sym::unwrap, sym!(unwrap_err)].contains(&method_name.ident.name);
                 let call_to_unwrap = method_name.ident.name == sym::unwrap;
                 if let Some(unwrappable) = self.unwrappables.iter()

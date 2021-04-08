@@ -100,10 +100,10 @@ fn expr_match(cx: &LateContext<'_>, expr: &Expr<'_>) {
 
             if check_all_arms {
                 for arm in arms {
-                    expr_match(cx, &arm.body);
+                    expr_match(cx, arm.body);
                 }
             } else {
-                expr_match(cx, &arms.first().expect("`if let` doesn't have a single arm").body);
+                expr_match(cx, arms.first().expect("`if let` doesn't have a single arm").body);
             }
         },
         // skip if it already has a return statement

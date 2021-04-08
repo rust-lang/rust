@@ -2,7 +2,7 @@ use crate::{map_unit_fn::OPTION_MAP_UNIT_FN, matches::MATCH_AS_REF};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::ty::{can_partially_move_ty, is_type_diagnostic_item, peel_mid_ty_refs_is_mutable};
-use clippy_utils::{is_allowed, is_else_clause_of_if_let_else, match_def_path, match_var, paths, peel_hir_expr_refs};
+use clippy_utils::{in_constant, is_allowed, is_else_clause, match_def_path, match_var, paths, peel_hir_expr_refs};
 use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::Applicability;
 use rustc_hir::{
@@ -47,16 +47,16 @@ declare_lint_pass!(ManualMap => [MANUAL_MAP]);
 impl LateLintPass<'_> for ManualMap {
     #[allow(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if in_external_macro(cx.sess(), expr.span) {
-            return;
-        }
-
         if let ExprKind::Match(
             scrutinee,
             [arm1 @ Arm { guard: None, .. }, arm2 @ Arm { guard: None, .. }],
             match_kind,
         ) = expr.kind
         {
+            if in_external_macro(cx.sess(), expr.span) || in_constant(cx, expr.hir_id) {
+                return;
+            }
+
             let (scrutinee_ty, ty_ref_count, ty_mutability) =
                 peel_mid_ty_refs_is_mutable(cx.typeck_results().expr_ty(scrutinee));
             if !(is_type_diagnostic_item(cx, scrutinee_ty, sym::option_type)
@@ -181,8 +181,7 @@ impl LateLintPass<'_> for ManualMap {
                 expr.span,
                 "manual implementation of `Option::map`",
                 "try this",
-                if matches!(match_kind, MatchSource::IfLetDesugar { .. }) && is_else_clause_of_if_let_else(cx.tcx, expr)
-                {
+                if matches!(match_kind, MatchSource::IfLetDesugar { .. }) && is_else_clause(cx.tcx, expr) {
                     format!("{{ {}{}.map({}) }}", scrutinee_str, as_ref_str, body_str)
                 } else {
                     format!("{}{}.map({})", scrutinee_str, as_ref_str, body_str)

@@ -60,7 +60,7 @@ impl_lint_pass!(Regex => [INVALID_REGEX, TRIVIAL_REGEX]);
 impl<'tcx> LateLintPass<'tcx> for Regex {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
-            if let ExprKind::Call(ref fun, ref args) = expr.kind;
+            if let ExprKind::Call(fun, args) = expr.kind;
             if let ExprKind::Path(ref qpath) = fun.kind;
             if args.len() == 1;
             if let Some(def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id();
@@ -134,7 +134,7 @@ fn is_trivial_regex(s: &regex_syntax::hir::Hir) -> Option<&'static str> {
 
 fn check_set<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, utf8: bool) {
     if_chain! {
-        if let ExprKind::AddrOf(BorrowKind::Ref, _, ref expr) = expr.kind;
+        if let ExprKind::AddrOf(BorrowKind::Ref, _, expr) = expr.kind;
         if let ExprKind::Array(exprs) = expr.kind;
         then {
             for expr in exprs {

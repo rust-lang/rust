@@ -16,7 +16,7 @@ use rustc_typeck::check::{cast::CastCheck, FnCtxt, Inherited};
 pub(super) fn get_type_snippet(cx: &LateContext<'_>, path: &QPath<'_>, to_ref_ty: Ty<'_>) -> String {
     let seg = last_path_segment(path);
     if_chain! {
-        if let Some(ref params) = seg.args;
+        if let Some(params) = seg.args;
         if !params.parenthesized;
         if let Some(to_ty) = params.args.iter().filter_map(|arg| match arg {
             GenericArg::Type(ty) => Some(ty),

@@ -92,7 +92,7 @@ impl LateLintPass<'_> for ToStringInDisplay {
         if_chain! {
             if self.in_display_impl;
             if let Some(self_hir_id) = self.self_hir_id;
-            if let ExprKind::MethodCall(ref path, _, args, _) = expr.kind;
+            if let ExprKind::MethodCall(path, _, args, _) = expr.kind;
             if path.ident.name == sym!(to_string);
             if let Some(expr_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
             if is_diagnostic_assoc_item(cx, expr_def_id, sym::ToString);
