@@ -61,13 +61,13 @@ impl<'tcx> LateLintPass<'tcx> for LetIfSeq {
         while let Some(stmt) = it.next() {
             if_chain! {
                 if let Some(expr) = it.peek();
-                if let hir::StmtKind::Local(ref local) = stmt.kind;
+                if let hir::StmtKind::Local(local) = stmt.kind;
                 if let hir::PatKind::Binding(mode, canonical_id, ident, None) = local.pat.kind;
-                if let hir::StmtKind::Expr(ref if_) = expr.kind;
-                if let hir::ExprKind::If(ref cond, ref then, ref else_) = if_.kind;
+                if let hir::StmtKind::Expr(if_) = expr.kind;
+                if let hir::ExprKind::If(cond, then, ref else_) = if_.kind;
                 let mut used_visitor = LocalUsedVisitor::new(cx, canonical_id);
                 if !used_visitor.check_expr(cond);
-                if let hir::ExprKind::Block(ref then, _) = then.kind;
+                if let hir::ExprKind::Block(then, _) = then.kind;
                 if let Some(value) = check_assign(cx, canonical_id, &*then);
                 if !used_visitor.check_expr(value);
                 then {
@@ -79,20 +79,20 @@ impl<'tcx> LateLintPass<'tcx> for LetIfSeq {
                     );
                     if has_interior_mutability { return; }
 
-                    let (default_multi_stmts, default) = if let Some(ref else_) = *else_ {
-                        if let hir::ExprKind::Block(ref else_, _) = else_.kind {
+                    let (default_multi_stmts, default) = if let Some(else_) = *else_ {
+                        if let hir::ExprKind::Block(else_, _) = else_.kind {
                             if let Some(default) = check_assign(cx, canonical_id, else_) {
                                 (else_.stmts.len() > 1, default)
-                            } else if let Some(ref default) = local.init {
-                                (true, &**default)
+                            } else if let Some(default) = local.init {
+                                (true, default)
                             } else {
                                 continue;
                             }
                         } else {
                             continue;
                         }
-                    } else if let Some(ref default) = local.init {
-                        (false, &**default)
+                    } else if let Some(default) = local.init {
+                        (false, default)
                     } else {
                         continue;
                     };
@@ -144,8 +144,8 @@ fn check_assign<'tcx>(
     if_chain! {
         if block.expr.is_none();
         if let Some(expr) = block.stmts.iter().last();
-        if let hir::StmtKind::Semi(ref expr) = expr.kind;
-        if let hir::ExprKind::Assign(ref var, ref value, _) = expr.kind;
+        if let hir::StmtKind::Semi(expr) = expr.kind;
+        if let hir::ExprKind::Assign(var, value, _) = expr.kind;
         if path_to_local_id(var, decl);
         then {
             let mut v = LocalUsedVisitor::new(cx, decl);

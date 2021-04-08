@@ -30,16 +30,16 @@ pub(super) fn check<'tcx>(
                     let mut arg = sugg::Sugg::hir(cx, expr, "..");
 
                     if let ExprKind::Unary(UnOp::Neg, inner_expr) = &expr.kind {
-                        expr = &inner_expr;
+                        expr = inner_expr;
                     }
 
                     if_chain! {
                         // if the expression is a float literal and it is unsuffixed then
                         // add a suffix so the suggestion is valid and unambiguous
-                        let op = format!("{}{}", arg, float_ty.name_str()).into();
                         if let ExprKind::Lit(lit) = &expr.kind;
                         if let ast::LitKind::Float(_, ast::LitFloatType::Unsuffixed) = lit.node;
                         then {
+                            let op = format!("{}{}", arg, float_ty.name_str()).into();
                             match arg {
                                 sugg::Sugg::MaybeParen(_) => arg = sugg::Sugg::MaybeParen(op),
                                 _ => arg = sugg::Sugg::NonParen(op)

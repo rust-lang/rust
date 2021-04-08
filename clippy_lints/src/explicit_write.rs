@@ -34,11 +34,11 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             // match call to unwrap
-            if let ExprKind::MethodCall(ref unwrap_fun, _, ref unwrap_args, _) = expr.kind;
+            if let ExprKind::MethodCall(unwrap_fun, _, unwrap_args, _) = expr.kind;
             if unwrap_fun.ident.name == sym::unwrap;
             // match call to write_fmt
             if !unwrap_args.is_empty();
-            if let ExprKind::MethodCall(ref write_fun, _, write_args, _) =
+            if let ExprKind::MethodCall(write_fun, _, write_args, _) =
                 unwrap_args[0].kind;
             if write_fun.ident.name == sym!(write_fmt);
             // match calls to std::io::stdout() / std::io::stderr ()
@@ -135,10 +135,10 @@ fn write_output_string(write_args: &[Expr<'_>]) -> Option<String> {
     if_chain! {
         // Obtain the string that should be printed
         if write_args.len() > 1;
-        if let ExprKind::Call(_, ref output_args) = write_args[1].kind;
+        if let ExprKind::Call(_, output_args) = write_args[1].kind;
         if !output_args.is_empty();
-        if let ExprKind::AddrOf(BorrowKind::Ref, _, ref output_string_expr) = output_args[0].kind;
-        if let ExprKind::Array(ref string_exprs) = output_string_expr.kind;
+        if let ExprKind::AddrOf(BorrowKind::Ref, _, output_string_expr) = output_args[0].kind;
+        if let ExprKind::Array(string_exprs) = output_string_expr.kind;
         // we only want to provide an automatic suggestion for simple (non-format) strings
         if string_exprs.len() == 1;
         if let ExprKind::Lit(ref lit) = string_exprs[0].kind;

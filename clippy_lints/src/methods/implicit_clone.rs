@@ -13,7 +13,7 @@ use clippy_utils::is_diagnostic_assoc_item;
 pub fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, trait_diagnostic: Symbol) {
     if_chain! {
         if let ExprKind::MethodCall(method_path, _, [arg], _) = &expr.kind;
-        let return_type = cx.typeck_results().expr_ty(&expr);
+        let return_type = cx.typeck_results().expr_ty(expr);
         let input_type = cx.typeck_results().expr_ty(arg).peel_refs();
         if let Some(expr_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
         if let Some(ty_name) = input_type.ty_adt_def().map(|adt_def| cx.tcx.item_name(adt_def.did));

@@ -225,7 +225,7 @@ fn attempt_to_emit_no_difference_lint(
                     emit_suggestion(
                         cx,
                         binop.span,
-                        replace_left_sugg(cx, &binop, &sugg, &mut applicability),
+                        replace_left_sugg(cx, binop, &sugg, &mut applicability),
                         applicability,
                     );
                     return;
@@ -247,7 +247,7 @@ fn attempt_to_emit_no_difference_lint(
                     emit_suggestion(
                         cx,
                         binop.span,
-                        replace_right_sugg(cx, &binop, &sugg, &mut applicability),
+                        replace_right_sugg(cx, binop, &sugg, &mut applicability),
                         applicability,
                     );
                     return;
@@ -276,8 +276,8 @@ fn ident_swap_sugg(
     location: IdentLocation,
     applicability: &mut Applicability,
 ) -> Option<String> {
-    let left_ident = get_ident(&binop.left, location)?;
-    let right_ident = get_ident(&binop.right, location)?;
+    let left_ident = get_ident(binop.left, location)?;
+    let right_ident = get_ident(binop.right, location)?;
 
     let sugg = match (
         paired_identifiers.contains(&left_ident),
@@ -293,8 +293,7 @@ fn ident_swap_sugg(
             // ends up duplicating a clause, the `logic_bug` lint
             // should catch it.
 
-            let right_suggestion =
-                suggestion_with_swapped_ident(cx, &binop.right, location, left_ident, applicability)?;
+            let right_suggestion = suggestion_with_swapped_ident(cx, binop.right, location, left_ident, applicability)?;
 
             replace_right_sugg(cx, binop, &right_suggestion, applicability)
         },
@@ -302,15 +301,14 @@ fn ident_swap_sugg(
             // We haven't seen a pair involving the left one, so
             // it's probably what is wanted.
 
-            let right_suggestion =
-                suggestion_with_swapped_ident(cx, &binop.right, location, left_ident, applicability)?;
+            let right_suggestion = suggestion_with_swapped_ident(cx, binop.right, location, left_ident, applicability)?;
 
             replace_right_sugg(cx, binop, &right_suggestion, applicability)
         },
         (true, false) => {
             // We haven't seen a pair involving the right one, so
             // it's probably what is wanted.
-            let left_suggestion = suggestion_with_swapped_ident(cx, &binop.left, location, right_ident, applicability)?;
+            let left_suggestion = suggestion_with_swapped_ident(cx, binop.left, location, right_ident, applicability)?;
 
             replace_left_sugg(cx, binop, &left_suggestion, applicability)
         },

@@ -62,8 +62,8 @@ impl<'tcx> LateLintPass<'tcx> for CollapsibleMatch {
 }
 
 fn check_arm<'tcx>(arm: &Arm<'tcx>, wild_outer_arm: &Arm<'tcx>, cx: &LateContext<'tcx>) {
+    let expr = strip_singleton_blocks(arm.body);
     if_chain! {
-        let expr = strip_singleton_blocks(arm.body);
         if let ExprKind::Match(expr_in, arms_inner, _) = expr.kind;
         // the outer arm pattern and the inner match
         if expr_in.span.ctxt() == arm.pat.span.ctxt();

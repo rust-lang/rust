@@ -5,6 +5,9 @@
 extern crate alloc;
 use alloc::collections::linked_list::LinkedList;
 
+const C: LinkedList<i32> = LinkedList::new();
+static S: LinkedList<i32> = LinkedList::new();
+
 trait Foo {
     type Baz = LinkedList<u8>;
     fn foo(_: LinkedList<u8>);

@@ -40,8 +40,8 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Exp
 }
 
 fn extract_turbofish(cx: &LateContext<'_>, expr: &hir::Expr<'_>, ty: Ty<'tcx>) -> String {
+    let call_site = expr.span.source_callsite();
     if_chain! {
-        let call_site = expr.span.source_callsite();
         if let Ok(snippet) = cx.sess().source_map().span_to_snippet(call_site);
         let snippet_split = snippet.split("::").collect::<Vec<_>>();
         if let Some((_, elements)) = snippet_split.split_last();

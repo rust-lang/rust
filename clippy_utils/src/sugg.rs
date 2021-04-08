@@ -267,14 +267,41 @@ impl<'a> Sugg<'a> {
             Sugg::NonParen(..) => self,
             // `(x)` and `(x).y()` both don't need additional parens.
             Sugg::MaybeParen(sugg) => {
-                if sugg.starts_with('(') && sugg.ends_with(')') {
+                if has_enclosing_paren(&sugg) {
                     Sugg::MaybeParen(sugg)
                 } else {
                     Sugg::NonParen(format!("({})", sugg).into())
                 }
             },
-            Sugg::BinOp(_, sugg) => Sugg::NonParen(format!("({})", sugg).into()),
+            Sugg::BinOp(_, sugg) => {
+                if has_enclosing_paren(&sugg) {
+                    Sugg::NonParen(sugg)
+                } else {
+                    Sugg::NonParen(format!("({})", sugg).into())
+                }
+            },
         }
+    }
+}
+
+/// Return `true` if `sugg` is enclosed in parenthesis.
+fn has_enclosing_paren(sugg: impl AsRef<str>) -> bool {
+    let mut chars = sugg.as_ref().chars();
+    if let Some('(') = chars.next() {
+        let mut depth = 1;
+        while let Some(c) = chars.next() {
+            if c == '(' {
+                depth += 1;
+            } else if c == ')' {
+                depth -= 1;
+            }
+            if depth == 0 {
+                break;
+            }
+        }
+        chars.next().is_none()
+    } else {
+        false
     }
 }
 
@@ -668,6 +695,8 @@ impl<T: LintContext> DiagnosticBuilderExt<T> for rustc_errors::DiagnosticBuilder
 #[cfg(test)]
 mod test {
     use super::Sugg;
+
+    use rustc_ast::util::parser::AssocOp;
     use std::borrow::Cow;
 
     const SUGGESTION: Sugg<'static> = Sugg::NonParen(Cow::Borrowed("function_call()"));
@@ -680,5 +709,14 @@ mod test {
     #[test]
     fn blockify_transforms_sugg_into_a_block() {
         assert_eq!("{ function_call() }", SUGGESTION.blockify().to_string());
+    }
+
+    #[test]
+    fn binop_maybe_par() {
+        let sugg = Sugg::BinOp(AssocOp::Add, "(1 + 1)".into());
+        assert_eq!("(1 + 1)", sugg.maybe_par().to_string());
+
+        let sugg = Sugg::BinOp(AssocOp::Add, "(1 + 1) + (1 + 1)".into());
+        assert_eq!("((1 + 1) + (1 + 1))", sugg.maybe_par().to_string());
     }
 }

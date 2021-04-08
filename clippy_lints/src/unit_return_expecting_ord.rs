@@ -116,8 +116,8 @@ fn check_arg<'tcx>(cx: &LateContext<'tcx>, arg: &'tcx Expr<'tcx>) -> Option<(Spa
         let ty = cx.tcx.erase_late_bound_regions(ret_ty);
         if ty.is_unit();
         then {
+            let body = cx.tcx.hir().body(body_id);
             if_chain! {
-                let body = cx.tcx.hir().body(body_id);
                 if let ExprKind::Block(block, _) = body.value.kind;
                 if block.expr.is_none();
                 if let Some(stmt) = block.stmts.last();
@@ -138,7 +138,7 @@ fn check_arg<'tcx>(cx: &LateContext<'tcx>, arg: &'tcx Expr<'tcx>) -> Option<(Spa
 
 impl<'tcx> LateLintPass<'tcx> for UnitReturnExpectingOrd {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if let ExprKind::MethodCall(_, _, ref args, _) = expr.kind {
+        if let ExprKind::MethodCall(_, _, args, _) = expr.kind {
             let arg_indices = get_args_to_check(cx, expr);
             for (i, trait_name) in arg_indices {
                 if i < args.len() {

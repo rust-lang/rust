@@ -66,7 +66,7 @@ fn main() {
     let _ = vec.to_vec();
 
     let vec_ref = &vec;
-    let _ = return_owned_from_slice(&vec_ref);
+    let _ = return_owned_from_slice(vec_ref);
     let _ = vec_ref.to_owned();
     let _ = vec_ref.to_vec();
 

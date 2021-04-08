@@ -71,7 +71,7 @@ impl<'tcx> LateLintPass<'tcx> for EvalOrderDependence {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // Find a write to a local variable.
         match expr.kind {
-            ExprKind::Assign(ref lhs, ..) | ExprKind::AssignOp(_, ref lhs, _) => {
+            ExprKind::Assign(lhs, ..) | ExprKind::AssignOp(_, lhs, _) => {
                 if let Some(var) = path_to_local(lhs) {
                     let mut visitor = ReadVisitor {
                         cx,
@@ -87,12 +87,12 @@ impl<'tcx> LateLintPass<'tcx> for EvalOrderDependence {
     }
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         match stmt.kind {
-            StmtKind::Local(ref local) => {
-                if let Local { init: Some(ref e), .. } = **local {
+            StmtKind::Local(local) => {
+                if let Local { init: Some(e), .. } = local {
                     DivergenceVisitor { cx }.visit_expr(e);
                 }
             },
-            StmtKind::Expr(ref e) | StmtKind::Semi(ref e) => DivergenceVisitor { cx }.maybe_walk_expr(e),
+            StmtKind::Expr(e) | StmtKind::Semi(e) => DivergenceVisitor { cx }.maybe_walk_expr(e),
             StmtKind::Item(..) => {},
         }
     }
@@ -106,7 +106,7 @@ impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
     fn maybe_walk_expr(&mut self, e: &'tcx Expr<'_>) {
         match e.kind {
             ExprKind::Closure(..) => {},
-            ExprKind::Match(ref e, arms, _) => {
+            ExprKind::Match(e, arms, _) => {
                 self.visit_expr(e);
                 for arm in arms {
                     if let Some(Guard::If(if_expr)) = arm.guard {
@@ -130,7 +130,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
         match e.kind {
             ExprKind::Continue(_) | ExprKind::Break(_, _) | ExprKind::Ret(_) => self.report_diverging_sub_expr(e),
-            ExprKind::Call(ref func, _) => {
+            ExprKind::Call(func, _) => {
                 let typ = self.cx.typeck_results().expr_ty(func);
                 match typ.kind() {
                     ty::FnDef(..) | ty::FnPtr(_) => {
@@ -266,10 +266,10 @@ fn check_expr<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, expr: &'tcx Expr<'_>) -
 
 fn check_stmt<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, stmt: &'tcx Stmt<'_>) -> StopEarly {
     match stmt.kind {
-        StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => check_expr(vis, expr),
+        StmtKind::Expr(expr) | StmtKind::Semi(expr) => check_expr(vis, expr),
         // If the declaration is of a local variable, check its initializer
         // expression if it has one. Otherwise, keep going.
-        StmtKind::Local(ref local) => local
+        StmtKind::Local(local) => local
             .init
             .as_ref()
             .map_or(StopEarly::KeepGoing, |expr| check_expr(vis, expr)),
@@ -343,7 +343,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
 /// Returns `true` if `expr` is the LHS of an assignment, like `expr = ...`.
 fn is_in_assignment_position(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     if let Some(parent) = get_parent_expr(cx, expr) {
-        if let ExprKind::Assign(ref lhs, ..) = parent.kind {
+        if let ExprKind::Assign(lhs, ..) = parent.kind {
             return lhs.hir_id == expr.hir_id;
         }
     }

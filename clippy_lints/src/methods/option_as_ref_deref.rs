@@ -18,8 +18,8 @@ const OPTION_AS_REF_DEREF_MSRV: RustcVersion = RustcVersion::new(1, 40, 0);
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &hir::Expr<'_>,
-    as_ref_args: &[hir::Expr<'_>],
-    map_args: &[hir::Expr<'_>],
+    as_ref_recv: &hir::Expr<'_>,
+    map_arg: &hir::Expr<'_>,
     is_mut: bool,
     msrv: Option<&RustcVersion>,
 ) {
@@ -29,7 +29,7 @@ pub(super) fn check<'tcx>(
 
     let same_mutability = |m| (is_mut && m == &hir::Mutability::Mut) || (!is_mut && m == &hir::Mutability::Not);
 
-    let option_ty = cx.typeck_results().expr_ty(&as_ref_args[0]);
+    let option_ty = cx.typeck_results().expr_ty(as_ref_recv);
     if !is_type_diagnostic_item(cx, option_ty, sym::option_type) {
         return;
     }
@@ -46,9 +46,9 @@ pub(super) fn check<'tcx>(
         &paths::VEC_AS_MUT_SLICE,
     ];
 
-    let is_deref = match map_args[1].kind {
+    let is_deref = match map_arg.kind {
         hir::ExprKind::Path(ref expr_qpath) => cx
-            .qpath_res(expr_qpath, map_args[1].hir_id)
+            .qpath_res(expr_qpath, map_arg.hir_id)
             .opt_def_id()
             .map_or(false, |fun_def_id| {
                 deref_aliases.iter().any(|path| match_def_path(cx, fun_def_id, path))
@@ -77,10 +77,10 @@ pub(super) fn check<'tcx>(
                         }
                     }
                 },
-                hir::ExprKind::AddrOf(hir::BorrowKind::Ref, m, ref inner) if same_mutability(m) => {
+                hir::ExprKind::AddrOf(hir::BorrowKind::Ref, m, inner) if same_mutability(m) => {
                     if_chain! {
-                        if let hir::ExprKind::Unary(hir::UnOp::Deref, ref inner1) = inner.kind;
-                        if let hir::ExprKind::Unary(hir::UnOp::Deref, ref inner2) = inner1.kind;
+                        if let hir::ExprKind::Unary(hir::UnOp::Deref, inner1) = inner.kind;
+                        if let hir::ExprKind::Unary(hir::UnOp::Deref, inner2) = inner1.kind;
                         then {
                             path_to_local_id(inner2, closure_body.params[0].pat.hir_id)
                         } else {
@@ -96,12 +96,12 @@ pub(super) fn check<'tcx>(
 
     if is_deref {
         let current_method = if is_mut {
-            format!(".as_mut().map({})", snippet(cx, map_args[1].span, ".."))
+            format!(".as_mut().map({})", snippet(cx, map_arg.span, ".."))
         } else {
-            format!(".as_ref().map({})", snippet(cx, map_args[1].span, ".."))
+            format!(".as_ref().map({})", snippet(cx, map_arg.span, ".."))
         };
         let method_hint = if is_mut { "as_deref_mut" } else { "as_deref" };
-        let hint = format!("{}.{}()", snippet(cx, as_ref_args[0].span, ".."), method_hint);
+        let hint = format!("{}.{}()", snippet(cx, as_ref_recv.span, ".."), method_hint);
         let suggestion = format!("try using {} instead", method_hint);
 
         let msg = format!(

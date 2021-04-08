@@ -10,9 +10,9 @@ use rustc_span::sym;
 
 use super::ITER_COUNT;
 
-pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, iter_args: &'tcx [Expr<'tcx>], iter_method: &str) {
-    let ty = cx.typeck_results().expr_ty(&iter_args[0]);
-    let caller_type = if derefs_to_slice(cx, &iter_args[0], ty).is_some() {
+pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, recv: &'tcx Expr<'tcx>, iter_method: &str) {
+    let ty = cx.typeck_results().expr_ty(recv);
+    let caller_type = if derefs_to_slice(cx, recv, ty).is_some() {
         "slice"
     } else if is_type_diagnostic_item(cx, ty, sym::vec_type) {
         "Vec"
@@ -42,7 +42,7 @@ pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, iter_args: &'
         "try",
         format!(
             "{}.len()",
-            snippet_with_applicability(cx, iter_args[0].span, "..", &mut applicability),
+            snippet_with_applicability(cx, recv.span, "..", &mut applicability),
         ),
         applicability,
     );

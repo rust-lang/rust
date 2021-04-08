@@ -5,10 +5,11 @@ use clippy_utils::ty::{implements_trait, is_copy, is_type_diagnostic_item};
 use clippy_utils::{get_trait_def_id, is_self, paths};
 use if_chain::if_chain;
 use rustc_ast::ast::Attribute;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{BindingAnnotation, Body, FnDecl, GenericArg, HirId, Impl, ItemKind, Node, PatKind, QPath, TyKind};
+use rustc_hir::{HirIdMap, HirIdSet};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::FakeReadCause;
@@ -207,7 +208,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                             if is_type_diagnostic_item(cx, ty, sym::vec_type);
                             if let Some(clone_spans) =
                                 get_spans(cx, Some(body.id()), idx, &[("clone", ".to_owned()")]);
-                            if let TyKind::Path(QPath::Resolved(_, ref path)) = input.kind;
+                            if let TyKind::Path(QPath::Resolved(_, path)) = input.kind;
                             if let Some(elem_ty) = path.segments.iter()
                                 .find(|seg| seg.ident.name == sym::Vec)
                                 .and_then(|ps| ps.args.as_ref())
@@ -310,10 +311,10 @@ fn requires_exact_signature(attrs: &[Attribute]) -> bool {
 
 #[derive(Default)]
 struct MovedVariablesCtxt {
-    moved_vars: FxHashSet<HirId>,
+    moved_vars: HirIdSet,
     /// Spans which need to be prefixed with `*` for dereferencing the
     /// suggested additional reference.
-    spans_need_deref: FxHashMap<HirId, FxHashSet<Span>>,
+    spans_need_deref: HirIdMap<FxHashSet<Span>>,
 }
 
 impl MovedVariablesCtxt {

@@ -52,17 +52,17 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
         }
 
         if_chain! {
-            if let hir::ExprKind::MethodCall(ref method, _, ref args, _) = e.kind;
+            if let hir::ExprKind::MethodCall(method, _, args, _) = e.kind;
             if args.len() == 2;
             if method.ident.name == sym::map;
             let ty = cx.typeck_results().expr_ty(&args[0]);
             if is_type_diagnostic_item(cx, ty, sym::option_type) || is_trait_method(cx, e, sym::Iterator);
             if let hir::ExprKind::Closure(_, _, body_id, _, _) = args[1].kind;
-            let closure_body = cx.tcx.hir().body(body_id);
-            let closure_expr = remove_blocks(&closure_body.value);
             then {
+                let closure_body = cx.tcx.hir().body(body_id);
+                let closure_expr = remove_blocks(&closure_body.value);
                 match closure_body.params[0].pat.kind {
-                    hir::PatKind::Ref(ref inner, hir::Mutability::Not) => if let hir::PatKind::Binding(
+                    hir::PatKind::Ref(inner, hir::Mutability::Not) => if let hir::PatKind::Binding(
                         hir::BindingAnnotation::Unannotated, .., name, None
                     ) = inner.kind {
                         if ident_eq(name, closure_expr) {
@@ -71,14 +71,14 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
                     },
                     hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, .., name, None) => {
                         match closure_expr.kind {
-                            hir::ExprKind::Unary(hir::UnOp::Deref, ref inner) => {
+                            hir::ExprKind::Unary(hir::UnOp::Deref, inner) => {
                                 if ident_eq(name, inner) {
                                     if let ty::Ref(.., Mutability::Not) = cx.typeck_results().expr_ty(inner).kind() {
                                         lint(cx, e.span, args[0].span, true);
                                     }
                                 }
                             },
-                            hir::ExprKind::MethodCall(ref method, _, [obj], _) => if_chain! {
+                            hir::ExprKind::MethodCall(method, _, [obj], _) => if_chain! {
                                 if ident_eq(name, obj) && method.ident.name == sym::clone;
                                 if let Some(fn_id) = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id);
                                 if let Some(trait_id) = cx.tcx.trait_of_item(fn_id);
@@ -109,7 +109,7 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
 }
 
 fn ident_eq(name: Ident, path: &hir::Expr<'_>) -> bool {
-    if let hir::ExprKind::Path(hir::QPath::Resolved(None, ref path)) = path.kind {
+    if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = path.kind {
         path.segments.len() == 1 && path.segments[0].ident == name
     } else {
         false

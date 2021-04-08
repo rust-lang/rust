@@ -307,19 +307,17 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
                             // we should use here as a frozen variant is a potential to be frozen
                             // similar to unknown layouts.
                             // e.g. `layout_of(...).is_err() || has_frozen_variant(...);`
+                        let ty = hir_ty_to_ty(cx.tcx, hir_ty);
+                        let normalized = cx.tcx.normalize_erasing_regions(cx.param_env, ty);
+                        if is_unfrozen(cx, normalized);
+                        if is_value_unfrozen_poly(cx, *body_id, normalized);
                         then {
-                            let ty = hir_ty_to_ty(cx.tcx, hir_ty);
-                            let normalized = cx.tcx.normalize_erasing_regions(cx.param_env, ty);
-                            if is_unfrozen(cx, normalized)
-                                && is_value_unfrozen_poly(cx, *body_id, normalized)
-                            {
-                                lint(
-                                   cx,
-                                   Source::Assoc {
-                                       item: impl_item.span,
-                                    },
-                                );
-                            }
+                            lint(
+                               cx,
+                               Source::Assoc {
+                                   item: impl_item.span,
+                                },
+                            );
                         }
                     }
                 },

@@ -1,19 +1,5 @@
 error: this `if` has identical blocks
-  --> $DIR/if_same_then_else2.rs:21:12
-   |
-LL |       } else {
-   |  ____________^
-LL | |         //~ ERROR same body as `if` block
-LL | |         for _ in &[42] {
-LL | |             let bar: &Option<_> = &Some::<u8>(42);
-...  |
-LL | |         }
-LL | |     }
-   | |_____^
-   |
-   = note: `-D clippy::if-same-then-else` implied by `-D warnings`
-note: same as this
-  --> $DIR/if_same_then_else2.rs:12:13
+  --> $DIR/if_same_then_else2.rs:13:13
    |
 LL |       if true {
    |  _____________^
@@ -24,9 +10,32 @@ LL | |             if foo.is_some() {
 LL | |         }
 LL | |     } else {
    | |_____^
+   |
+   = note: `-D clippy::if-same-then-else` implied by `-D warnings`
+note: same as this
+  --> $DIR/if_same_then_else2.rs:22:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         //~ ERROR same body as `if` block
+LL | |         for _ in &[42] {
+LL | |             let bar: &Option<_> = &Some::<u8>(42);
+...  |
+LL | |         }
+LL | |     }
+   | |_____^
 
 error: this `if` has identical blocks
-  --> $DIR/if_same_then_else2.rs:35:12
+  --> $DIR/if_same_then_else2.rs:34:13
+   |
+LL |       if true {
+   |  _____________^
+LL | |         if let Some(a) = Some(42) {}
+LL | |     } else {
+   | |_____^
+   |
+note: same as this
+  --> $DIR/if_same_then_else2.rs:36:12
    |
 LL |       } else {
    |  ____________^
@@ -34,18 +43,18 @@ LL | |         //~ ERROR same body as `if` block
 LL | |         if let Some(a) = Some(42) {}
 LL | |     }
    | |_____^
-   |
-note: same as this
-  --> $DIR/if_same_then_else2.rs:33:13
+
+error: this `if` has identical blocks
+  --> $DIR/if_same_then_else2.rs:41:13
    |
 LL |       if true {
    |  _____________^
-LL | |         if let Some(a) = Some(42) {}
+LL | |         if let (1, .., 3) = (1, 2, 3) {}
 LL | |     } else {
    | |_____^
-
-error: this `if` has identical blocks
-  --> $DIR/if_same_then_else2.rs:42:12
+   |
+note: same as this
+  --> $DIR/if_same_then_else2.rs:43:12
    |
 LL |       } else {
    |  ____________^
@@ -53,18 +62,18 @@ LL | |         //~ ERROR same body as `if` block
 LL | |         if let (1, .., 3) = (1, 2, 3) {}
 LL | |     }
    | |_____^
-   |
-note: same as this
-  --> $DIR/if_same_then_else2.rs:40:13
-   |
-LL |       if true {
-   |  _____________^
-LL | |         if let (1, .., 3) = (1, 2, 3) {}
-LL | |     } else {
-   | |_____^
 
 error: this `if` has identical blocks
-  --> $DIR/if_same_then_else2.rs:92:12
+  --> $DIR/if_same_then_else2.rs:91:21
+   |
+LL |       let _ = if true {
+   |  _____________________^
+LL | |         f32::NAN
+LL | |     } else {
+   | |_____^
+   |
+note: same as this
+  --> $DIR/if_same_then_else2.rs:93:12
    |
 LL |       } else {
    |  ____________^
@@ -72,18 +81,18 @@ LL | |         //~ ERROR same body as `if` block
 LL | |         f32::NAN
 LL | |     };
    | |_____^
-   |
-note: same as this
-  --> $DIR/if_same_then_else2.rs:90:21
-   |
-LL |       let _ = if true {
-   |  _____________________^
-LL | |         f32::NAN
-LL | |     } else {
-   | |_____^
 
 error: this `if` has identical blocks
-  --> $DIR/if_same_then_else2.rs:99:12
+  --> $DIR/if_same_then_else2.rs:98:13
+   |
+LL |       if true {
+   |  _____________^
+LL | |         Ok("foo")?;
+LL | |     } else {
+   | |_____^
+   |
+note: same as this
+  --> $DIR/if_same_then_else2.rs:100:12
    |
 LL |       } else {
    |  ____________^
@@ -91,34 +100,25 @@ LL | |         //~ ERROR same body as `if` block
 LL | |         Ok("foo")?;
 LL | |     }
    | |_____^
-   |
-note: same as this
-  --> $DIR/if_same_then_else2.rs:97:13
-   |
-LL |       if true {
-   |  _____________^
-LL | |         Ok("foo")?;
-LL | |     } else {
-   | |_____^
 
 error: this `if` has identical blocks
-  --> $DIR/if_same_then_else2.rs:124:12
-   |
-LL |       } else {
-   |  ____________^
-LL | |         let foo = "";
-LL | |         return Ok(&foo[0..]);
-LL | |     }
-   | |_____^
-   |
-note: same as this
-  --> $DIR/if_same_then_else2.rs:121:20
+  --> $DIR/if_same_then_else2.rs:122:20
    |
 LL |       } else if true {
    |  ____________________^
 LL | |         let foo = "";
 LL | |         return Ok(&foo[0..]);
 LL | |     } else {
+   | |_____^
+   |
+note: same as this
+  --> $DIR/if_same_then_else2.rs:125:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         let foo = "";
+LL | |         return Ok(&foo[0..]);
+LL | |     }
    | |_____^
 
 error: aborting due to 6 previous errors
