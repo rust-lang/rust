@@ -271,9 +271,12 @@ fn codegen_shim<'tcx>(cx: &mut CodegenCx<'_, 'tcx>, inst: Instance<'tcx>) {
         )
         .unwrap();
 
-    let mut trampoline = Function::with_name_signature(ExternalName::default(), sig.clone());
+    cx.cached_context.clear();
+    let trampoline = &mut cx.cached_context.func;
+    trampoline.signature = sig.clone();
+
     let mut builder_ctx = FunctionBuilderContext::new();
-    let mut trampoline_builder = FunctionBuilder::new(&mut trampoline, &mut builder_ctx);
+    let mut trampoline_builder = FunctionBuilder::new(trampoline, &mut builder_ctx);
 
     let jit_fn = cx.module.declare_func_in_func(jit_fn, trampoline_builder.func);
     let sig_ref = trampoline_builder.func.import_signature(sig);
@@ -293,7 +296,7 @@ fn codegen_shim<'tcx>(cx: &mut CodegenCx<'_, 'tcx>, inst: Instance<'tcx>) {
     cx.module
         .define_function(
             func_id,
-            &mut Context::for_function(trampoline),
+            &mut cx.cached_context,
             &mut NullTrapSink {},
             &mut NullStackMapSink {},
         )
