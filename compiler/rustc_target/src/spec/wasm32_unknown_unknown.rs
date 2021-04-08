@@ -12,11 +12,23 @@
 
 use super::wasm_base;
 use super::{LinkerFlavor, LldFlavor, Target};
+use crate::spec::abi::Abi;
 
 pub fn target() -> Target {
     let mut options = wasm_base::options();
     options.os = "unknown".to_string();
     options.linker_flavor = LinkerFlavor::Lld(LldFlavor::Wasm);
+
+    // This is a default for backwards-compatibility with the original
+    // definition of this target oh-so-long-ago. Once the "wasm" ABI is
+    // stable and the wasm-bindgen project has switched to using it then there's
+    // no need for this and it can be removed.
+    //
+    // Currently this is the reason that this target's ABI is mismatched with
+    // clang's ABI. This means that, in the limit, you can't merge C and Rust
+    // code on this target due to this ABI mismatch.
+    options.default_adjusted_cabi = Some(Abi::Wasm);
+
     let clang_args = options.pre_link_args.entry(LinkerFlavor::Gcc).or_default();
 
     // Make sure clang uses LLD as its linker and is configured appropriately
