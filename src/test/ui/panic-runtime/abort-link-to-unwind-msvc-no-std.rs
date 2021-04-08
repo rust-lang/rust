@@ -1,4 +1,4 @@
-// build-pass
+// run-fail
 // compile-flags:-C panic=abort
 // aux-build:exit-success-if-unwind-msvc-no-std.rs
 // no-prefer-dynamic
@@ -12,13 +12,6 @@
 
 extern crate exit_success_if_unwind_msvc_no_std;
 extern crate panic_abort;
-
-use core::panic::PanicInfo;
-
-#[panic_handler]
-fn handle_panic(_: &PanicInfo) -> ! {
-    loop {}
-}
 
 #[no_mangle]
 pub unsafe extern "C" fn memcpy(dest: *mut u8, _src: *const u8, _n: usize) -> *mut u8 {

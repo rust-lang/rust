@@ -1,4 +1,4 @@
-// build-pass
+// run-fail
 // compile-flags: -C panic=abort
 // aux-build:exit-success-if-unwind-msvc-no-std.rs
 // only-msvc
@@ -10,13 +10,6 @@
 #![no_main]
 
 extern crate exit_success_if_unwind_msvc_no_std;
-
-use core::panic::PanicInfo;
-
-#[panic_handler]
-fn handle_panic(_: &PanicInfo) -> ! {
-    loop {}
-}
 
 #[link(name = "msvcrt")]
 extern "C" {}

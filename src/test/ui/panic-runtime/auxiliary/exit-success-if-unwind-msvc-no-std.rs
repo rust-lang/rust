@@ -3,6 +3,7 @@
 
 #![no_std]
 #![crate_type = "rlib"]
+#![feature(core_intrinsics)]
 
 struct Bomb;
 
@@ -21,4 +22,11 @@ impl Drop for Bomb {
 pub fn bar(f: fn()) {
     let _bomb = Bomb;
     f();
+}
+
+use core::panic::PanicInfo;
+
+#[panic_handler]
+fn handle_panic(_: &PanicInfo) -> ! {
+    core::intrinsics::abort();
 }
