@@ -1551,7 +1551,9 @@ fn document_ty_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
             }
             writeln!(w, "</div>");
         }
-        // FIXME: should we crash instead? or report an error?
-        Err(_layout_err) => {}
+        // Layout errors can occur with valid code, e.g. if you try to get the layout
+        // of a generic type such as `Vec<T>`. In case of a layout error, we just
+        // don't show any layout information.
+        Err(_) => {}
     }
 }
