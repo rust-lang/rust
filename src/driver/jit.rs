@@ -20,9 +20,13 @@ thread_local! {
     pub static CURRENT_MODULE: RefCell<Option<JITModule>> = RefCell::new(None);
 }
 
-pub(super) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
+pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
     if !tcx.sess.opts.output_types.should_codegen() {
-        tcx.sess.fatal("JIT mode doesn't work with `cargo check`.");
+        tcx.sess.fatal("JIT mode doesn't work with `cargo check`");
+    }
+
+    if !tcx.sess.crate_types().contains(&rustc_session::config::CrateType::Executable) {
+        tcx.sess.fatal("can't jit non-executable crate");
     }
 
     let imported_symbols = load_imported_symbols_for_jit(tcx);

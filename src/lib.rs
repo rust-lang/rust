@@ -177,13 +177,23 @@ impl CodegenBackend for CraneliftCodegenBackend {
         metadata: EncodedMetadata,
         need_metadata_module: bool,
     ) -> Box<dyn Any> {
+        tcx.sess.abort_if_errors();
         let config = if let Some(config) = self.config.clone() {
             config
         } else {
             BackendConfig::from_opts(&tcx.sess.opts.cg.llvm_args)
                 .unwrap_or_else(|err| tcx.sess.fatal(&err))
         };
-        driver::codegen_crate(tcx, metadata, need_metadata_module, config)
+        match config.codegen_mode {
+            CodegenMode::Aot => driver::aot::run_aot(tcx, config, metadata, need_metadata_module),
+            CodegenMode::Jit | CodegenMode::JitLazy => {
+                #[cfg(feature = "jit")]
+                let _: ! = driver::jit::run_jit(tcx, config);
+
+                #[cfg(not(feature = "jit"))]
+                tcx.sess.fatal("jit support was disabled when compiling rustc_codegen_cranelift");
+            }
+        }
     }
 
     fn join_codegen(

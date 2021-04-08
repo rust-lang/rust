@@ -152,7 +152,7 @@ fn module_codegen(
     codegen_result
 }
 
-pub(super) fn run_aot(
+pub(crate) fn run_aot(
     tcx: TyCtxt<'_>,
     backend_config: BackendConfig,
     metadata: EncodedMetadata,

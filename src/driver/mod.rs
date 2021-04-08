@@ -1,43 +1,13 @@
 //! Drivers are responsible for calling [`codegen_mono_item`] and performing any further actions
 //! like JIT executing or writing object files.
 
-use std::any::Any;
-
-use rustc_middle::middle::cstore::EncodedMetadata;
 use rustc_middle::mir::mono::{Linkage as RLinkage, MonoItem, Visibility};
 
 use crate::prelude::*;
-use crate::CodegenMode;
 
-mod aot;
+pub(crate) mod aot;
 #[cfg(feature = "jit")]
-mod jit;
-
-pub(crate) fn codegen_crate(
-    tcx: TyCtxt<'_>,
-    metadata: EncodedMetadata,
-    need_metadata_module: bool,
-    backend_config: crate::BackendConfig,
-) -> Box<dyn Any> {
-    tcx.sess.abort_if_errors();
-
-    match backend_config.codegen_mode {
-        CodegenMode::Aot => aot::run_aot(tcx, backend_config, metadata, need_metadata_module),
-        CodegenMode::Jit | CodegenMode::JitLazy => {
-            let is_executable =
-                tcx.sess.crate_types().contains(&rustc_session::config::CrateType::Executable);
-            if !is_executable {
-                tcx.sess.fatal("can't jit non-executable crate");
-            }
-
-            #[cfg(feature = "jit")]
-            let _: ! = jit::run_jit(tcx, backend_config);
-
-            #[cfg(not(feature = "jit"))]
-            tcx.sess.fatal("jit support was disabled when compiling rustc_codegen_cranelift");
-        }
-    }
-}
+pub(crate) mod jit;
 
 fn predefine_mono_items<'tcx>(
     tcx: TyCtxt<'tcx>,
