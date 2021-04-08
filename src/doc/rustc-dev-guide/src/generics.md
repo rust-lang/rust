@@ -7,7 +7,7 @@ that one type is equal to another type and want to swap one out for the other an
 for another type and so on until we eventually get some concrete types (or an error).
 
 In rustc this is done using the `SubstsRef` that we mentioned above (“substs” = “substitutions”).
-Conceptually, you can think of `SubstsRef` of a list of types that are to be substituted for the
+Conceptually, you can think of `SubstsRef` as a list of types that are to be substituted for the
 generic type parameters of the ADT.
 
 `SubstsRef` is a type alias of `List<GenericArg<'tcx>>` (see [`List` rustdocs][list]).
