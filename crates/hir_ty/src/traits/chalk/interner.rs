@@ -3,11 +3,12 @@
 
 use super::tls;
 use base_db::salsa::InternId;
-use chalk_ir::{GenericArg, Goal, GoalData};
+use chalk_ir::{Goal, GoalData};
 use hir_def::{
     intern::{impl_internable, InternStorage, Internable, Interned},
     TypeAliasId,
 };
+use crate::GenericArg;
 use smallvec::SmallVec;
 use std::{fmt, sync::Arc};
 
@@ -32,7 +33,13 @@ pub(crate) type Variances = chalk_ir::Variances<Interner>;
 #[derive(PartialEq, Eq, Hash, Debug)]
 pub struct InternedVariableKindsInner(Vec<chalk_ir::VariableKind<Interner>>);
 
-impl_internable!(InternedVariableKindsInner,);
+#[derive(PartialEq, Eq, Hash, Debug)]
+pub struct InternedSubstitutionInner(SmallVec<[GenericArg; 2]>);
+
+impl_internable!(
+    InternedVariableKindsInner,
+    InternedSubstitutionInner,
+);
 
 impl chalk_ir::interner::Interner for Interner {
     type InternedType = Arc<chalk_ir::TyData<Self>>;
@@ -42,7 +49,7 @@ impl chalk_ir::interner::Interner for Interner {
     type InternedGenericArg = chalk_ir::GenericArgData<Self>;
     type InternedGoal = Arc<GoalData<Self>>;
     type InternedGoals = Vec<Goal<Self>>;
-    type InternedSubstitution = SmallVec<[GenericArg<Self>; 2]>;
+    type InternedSubstitution = Interned<InternedSubstitutionInner>;
     type InternedProgramClause = Arc<chalk_ir::ProgramClauseData<Self>>;
     type InternedProgramClauses = Arc<[chalk_ir::ProgramClause<Self>]>;
     type InternedQuantifiedWhereClauses = Vec<chalk_ir::QuantifiedWhereClause<Self>>;
@@ -107,7 +114,7 @@ impl chalk_ir::interner::Interner for Interner {
     }
 
     fn debug_generic_arg(
-        parameter: &GenericArg<Interner>,
+        parameter: &GenericArg,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
         tls::with_current_program(|prog| Some(prog?.debug_generic_arg(parameter, fmt)))
@@ -272,16 +279,16 @@ impl chalk_ir::interner::Interner for Interner {
 
     fn intern_substitution<E>(
         &self,
-        data: impl IntoIterator<Item = Result<GenericArg<Self>, E>>,
+        data: impl IntoIterator<Item = Result<GenericArg, E>>,
     ) -> Result<Self::InternedSubstitution, E> {
-        data.into_iter().collect()
+        Ok(Interned::new(InternedSubstitutionInner(data.into_iter().collect::<Result<SmallVec<_>, _>>()?)))
     }
 
     fn substitution_data<'a>(
         &self,
         substitution: &'a Self::InternedSubstitution,
-    ) -> &'a [GenericArg<Self>] {
-        substitution
+    ) -> &'a [GenericArg] {
+        &substitution.as_ref().0
     }
 
     fn intern_program_clause(

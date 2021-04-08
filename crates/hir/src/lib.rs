@@ -1825,7 +1825,7 @@ impl Type {
             Solution::Unique(s) => s
                 .value
                 .subst
-                .interned()
+                .as_slice(&Interner)
                 .first()
                 .map(|ty| self.derived(ty.assert_ty_ref(&Interner).clone())),
             Solution::Ambig(_) => None,

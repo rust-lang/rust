@@ -265,7 +265,7 @@ impl HirDisplay for ProjectionTy {
         write!(f, " as {}", trait_.name)?;
         if self.substitution.len(&Interner) > 1 {
             write!(f, "<")?;
-            f.write_joined(&self.substitution.interned()[1..], ", ")?;
+            f.write_joined(&self.substitution.as_slice(&Interner)[1..], ", ")?;
             write!(f, ">")?;
         }
         write!(f, ">::{}", f.db.type_alias_data(from_assoc_type_id(self.associated_ty_id)).name)?;
@@ -416,7 +416,7 @@ impl HirDisplay for Ty {
                     write!(f, ",)")?;
                 } else {
                     write!(f, "(")?;
-                    f.write_joined(&*substs.interned(), ", ")?;
+                    f.write_joined(&*substs.as_slice(&Interner), ", ")?;
                     write!(f, ")")?;
                 }
             }
@@ -444,7 +444,7 @@ impl HirDisplay for Ty {
                     // We print all params except implicit impl Trait params. Still a bit weird; should we leave out parent and self?
                     if total_len > 0 {
                         write!(f, "<")?;
-                        f.write_joined(&parameters.interned()[..total_len], ", ")?;
+                        f.write_joined(&parameters.as_slice(&Interner)[..total_len], ", ")?;
                         write!(f, ">")?;
                     }
                 }
@@ -491,7 +491,7 @@ impl HirDisplay for Ty {
                             .map(|generic_def_id| f.db.generic_defaults(generic_def_id))
                             .filter(|defaults| !defaults.is_empty())
                         {
-                            None => parameters.interned().as_ref(),
+                            None => parameters.as_slice(&Interner),
                             Some(default_parameters) => {
                                 let mut default_from = 0;
                                 for (i, parameter) in parameters.iter(&Interner).enumerate() {
@@ -515,11 +515,11 @@ impl HirDisplay for Ty {
                                         }
                                     }
                                 }
-                                &parameters.interned()[0..default_from]
+                                &parameters.as_slice(&Interner)[0..default_from]
                             }
                         }
                     } else {
-                        parameters.interned().as_ref()
+                        parameters.as_slice(&Interner)
                     };
                     if !parameters_to_write.is_empty() {
                         write!(f, "<")?;
@@ -542,7 +542,7 @@ impl HirDisplay for Ty {
                     write!(f, "{}::{}", trait_.name, type_alias_data.name)?;
                     if parameters.len(&Interner) > 0 {
                         write!(f, "<")?;
-                        f.write_joined(&*parameters.interned(), ", ")?;
+                        f.write_joined(&*parameters.as_slice(&Interner), ", ")?;
                         write!(f, ">")?;
                     }
                 } else {
@@ -749,13 +749,13 @@ fn write_bounds_like_dyn_trait(
                 // existential) here, which is the only thing that's
                 // possible in actual Rust, and hence don't print it
                 write!(f, "{}", f.db.trait_data(trait_).name)?;
-                if let [_, params @ ..] = &*trait_ref.substitution.interned().as_slice() {
+                if let [_, params @ ..] = &*trait_ref.substitution.as_slice(&Interner) {
                     if is_fn_trait {
                         if let Some(args) =
                             params.first().and_then(|it| it.assert_ty_ref(&Interner).as_tuple())
                         {
                             write!(f, "(")?;
-                            f.write_joined(&*args.interned(), ", ")?;
+                            f.write_joined(args.as_slice(&Interner), ", ")?;
                             write!(f, ")")?;
                         }
                     } else if !params.is_empty() {
@@ -814,7 +814,7 @@ fn fmt_trait_ref(tr: &TraitRef, f: &mut HirFormatter, use_as: bool) -> Result<()
     write!(f, "{}", f.db.trait_data(tr.hir_trait_id()).name)?;
     if tr.substitution.len(&Interner) > 1 {
         write!(f, "<")?;
-        f.write_joined(&tr.substitution.interned()[1..], ", ")?;
+        f.write_joined(&tr.substitution.as_slice(&Interner)[1..], ", ")?;
         write!(f, ">")?;
     }
     Ok(())
