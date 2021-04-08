@@ -18,8 +18,8 @@ pub static WEAK_ITEMS_REFS: SyncLazy<StableMap<Symbol, LangItem>> = SyncLazy::ne
     map
 });
 
-/// The `check_name` argument avoids the need for `librustc_hir` to depend on
-/// `librustc_session`.
+/// The `check_name` argument avoids the need for `rustc_hir` to depend on
+/// `rustc_session`.
 pub fn link_name<'a, F>(check_name: F, attrs: &'a [ast::Attribute]) -> Option<Symbol>
 where
     F: Fn(&'a ast::Attribute, Symbol) -> bool
