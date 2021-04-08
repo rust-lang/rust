@@ -338,20 +338,18 @@ fn compare_predicate_entailment<'tcx>(
                             ImplItemKind::Fn(ref sig, _)
                                 if sig.header.asyncness == hir::IsAsync::NotAsync =>
                             {
-                                let (span, sugg) = match sig.decl.output {
+                                let msg = "change the output type to match the trait";
+                                let ap = Applicability::MachineApplicable;
+                                match sig.decl.output {
                                     hir::FnRetTy::DefaultReturn(sp) => {
-                                        (sp, format!(" -> {} ", trait_sig.output()))
+                                        let sugg = format!("-> {} ", trait_sig.output());
+                                        diag.span_suggestion_verbose(sp, msg, sugg, ap);
                                     }
                                     hir::FnRetTy::Return(hir_ty) => {
-                                        (hir_ty.span, trait_sig.output().to_string())
+                                        let sugg = trait_sig.output().to_string();
+                                        diag.span_suggestion(hir_ty.span, msg, sugg, ap);
                                     }
                                 };
-                                diag.span_suggestion(
-                                    span,
-                                    "change the output type to match the trait",
-                                    sugg,
-                                    Applicability::MachineApplicable,
-                                );
                             }
                             _ => {}
                         };

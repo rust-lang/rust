@@ -32,13 +32,14 @@ LL |     fn bar(self) -> Option<()>;
    |                     ---------- type in trait
 ...
 LL |     fn bar(self) {}
-   |                  ^
-   |                  |
-   |                  expected enum `Option`, found `()`
-   |                  help: change the output type to match the trait: `-> Option<()>`
+   |                  ^ expected enum `Option`, found `()`
    |
    = note: expected fn pointer `fn(MyFuture) -> Option<()>`
               found fn pointer `fn(MyFuture)`
+help: change the output type to match the trait
+   |
+LL |     fn bar(self) -> Option<()> {}
+   |                  ^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 
