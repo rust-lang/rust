@@ -1537,10 +1537,19 @@ fn document_ty_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
     let ty = cx.tcx().type_of(ty_def_id);
     match cx.tcx().layout_of(param_env.and(ty)) {
         Ok(ty_layout) => {
-            writeln!(w, r#"<h2 class="small-section-header">Layout</h2>"#);
-            writeln!(w, "<div>");
+            writeln!(w, "<h2 class=\"small-section-header\">Layout</h2>");
+            writeln!(w, "<div class=\"docblock\">");
+            writeln!(
+                w,
+                "<div class=\"warning\"><p><strong>Note:</strong> Most layout information is \
+                 completely unstable and may be different between compiler versions. \
+                 The only exception is types with certain <code>repr(...)</code> attributes. \
+                 Please see the Rust Reference’s \
+                 <a href=\"https://doc.rust-lang.org/reference/type-layout.html\">“Type Layout”</a> \
+                 chapter for details on type layout guarantees.</p></div>"
+            );
             if ty_layout.layout.abi.is_unsized() {
-                writeln!(w, "<strong>Sized:</strong> (unsized)");
+                writeln!(w, "<p><strong>Size:</strong> (unsized)</p>");
             } else {
                 writeln!(
                     w,
