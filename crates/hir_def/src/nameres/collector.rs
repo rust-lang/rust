@@ -836,7 +836,7 @@ impl DefCollector<'_> {
                         self.resolve_derive_macro(directive.module_id, &path)
                     }) {
                         Ok(call_id) => {
-                            resolved.push((directive.module_id, call_id, 0));
+                            resolved.push((directive.module_id, call_id, directive.depth));
                             res = ReachedFixedPoint::No;
                             return false;
                         }
