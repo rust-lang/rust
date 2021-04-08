@@ -16,7 +16,6 @@ use rustc_ast::{self as ast, AttrStyle};
 use rustc_attr::{ConstStability, Deprecation, Stability, StabilityLevel};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::thin_vec::ThinVec;
-use rustc_feature::UnstableFeatures;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex};
@@ -228,14 +227,9 @@ impl Item {
                                     "../".repeat(depth)
                                 }
                                 Some(&(_, _, ExternalLocation::Remote(ref s))) => s.to_string(),
-                                Some(&(_, _, ExternalLocation::Unknown)) | None => String::from(
-                                    // NOTE: intentionally doesn't pass crate name to avoid having
-                                    // different primitive links between crates
-                                    if UnstableFeatures::from_environment(None).is_nightly_build() {
-                                        "https://doc.rust-lang.org/nightly"
-                                    } else {
-                                        "https://doc.rust-lang.org"
-                                    },
+                                Some(&(_, _, ExternalLocation::Unknown)) | None => format!(
+                                    "https://doc.rust-lang.org/{}",
+                                    crate::doc_rust_lang_org_channel(),
                                 ),
                             };
                             // This is a primitive so the url is done "by hand".
