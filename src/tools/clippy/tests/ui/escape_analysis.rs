@@ -101,7 +101,7 @@ fn warn_match() {
     let x = box A;
     match &x {
         // not moved
-        ref y => (),
+        y => (),
     }
 }
 
@@ -111,7 +111,7 @@ fn nowarn_large_array() {
     let x = box [1; 10000];
     match &x {
         // not moved
-        ref y => (),
+        y => (),
     }
 }
 

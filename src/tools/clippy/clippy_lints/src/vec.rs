@@ -6,7 +6,7 @@ use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_copy;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{BorrowKind, Expr, ExprKind};
+use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -49,10 +49,10 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
         if_chain! {
             if let ty::Ref(_, ty, _) = cx.typeck_results().expr_ty_adjusted(expr).kind();
             if let ty::Slice(..) = ty.kind();
-            if let ExprKind::AddrOf(BorrowKind::Ref, _, ref addressee) = expr.kind;
+            if let ExprKind::AddrOf(BorrowKind::Ref, mutability, addressee) = expr.kind;
             if let Some(vec_args) = higher::vec_macro(cx, addressee);
             then {
-                self.check_vec_macro(cx, &vec_args, expr.span);
+                self.check_vec_macro(cx, &vec_args, mutability, expr.span);
             }
         }
 
@@ -70,14 +70,20 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
                     .ctxt()
                     .outer_expn_data()
                     .call_site;
-                self.check_vec_macro(cx, &vec_args, span);
+                self.check_vec_macro(cx, &vec_args, Mutability::Not, span);
             }
         }
     }
 }
 
 impl UselessVec {
-    fn check_vec_macro<'tcx>(self, cx: &LateContext<'tcx>, vec_args: &higher::VecArgs<'tcx>, span: Span) {
+    fn check_vec_macro<'tcx>(
+        self,
+        cx: &LateContext<'tcx>,
+        vec_args: &higher::VecArgs<'tcx>,
+        mutability: Mutability,
+        span: Span,
+    ) {
         let mut applicability = Applicability::MachineApplicable;
         let snippet = match *vec_args {
             higher::VecArgs::Repeat(elem, len) => {
@@ -87,11 +93,22 @@ impl UselessVec {
                         return;
                     }
 
-                    format!(
-                        "&[{}; {}]",
-                        snippet_with_applicability(cx, elem.span, "elem", &mut applicability),
-                        snippet_with_applicability(cx, len.span, "len", &mut applicability)
-                    )
+                    match mutability {
+                        Mutability::Mut => {
+                            format!(
+                                "&mut [{}; {}]",
+                                snippet_with_applicability(cx, elem.span, "elem", &mut applicability),
+                                snippet_with_applicability(cx, len.span, "len", &mut applicability)
+                            )
+                        },
+                        Mutability::Not => {
+                            format!(
+                                "&[{}; {}]",
+                                snippet_with_applicability(cx, elem.span, "elem", &mut applicability),
+                                snippet_with_applicability(cx, len.span, "len", &mut applicability)
+                            )
+                        },
+                    }
                 } else {
                     return;
                 }
@@ -104,9 +121,22 @@ impl UselessVec {
                     }
                     let span = args[0].span.to(last.span);
 
-                    format!("&[{}]", snippet_with_applicability(cx, span, "..", &mut applicability))
+                    match mutability {
+                        Mutability::Mut => {
+                            format!(
+                                "&mut [{}]",
+                                snippet_with_applicability(cx, span, "..", &mut applicability)
+                            )
+                        },
+                        Mutability::Not => {
+                            format!("&[{}]", snippet_with_applicability(cx, span, "..", &mut applicability))
+                        },
+                    }
                 } else {
-                    "&[]".into()
+                    match mutability {
+                        Mutability::Mut => "&mut []".into(),
+                        Mutability::Not => "&[]".into(),
+                    }
                 }
             },
         };

@@ -64,7 +64,7 @@ impl<'tcx> LateLintPass<'tcx> for CheckedConversions {
 
         let result = if_chain! {
             if !in_external_macro(cx.sess(), item.span);
-            if let ExprKind::Binary(op, ref left, ref right) = &item.kind;
+            if let ExprKind::Binary(op, left, right) = &item.kind;
 
             then {
                 match op.node {
@@ -200,7 +200,7 @@ impl ConversionType {
 /// Check for `expr <= (to_type::MAX as from_type)`
 fn check_upper_bound<'tcx>(expr: &'tcx Expr<'tcx>) -> Option<Conversion<'tcx>> {
     if_chain! {
-         if let ExprKind::Binary(ref op, ref left, ref right) = &expr.kind;
+         if let ExprKind::Binary(ref op, left, right) = &expr.kind;
          if let Some((candidate, check)) = normalize_le_ge(op, left, right);
          if let Some((from, to)) = get_types_from_cast(check, INTS, "max_value", "MAX");
 
@@ -219,7 +219,7 @@ fn check_lower_bound<'tcx>(expr: &'tcx Expr<'tcx>) -> Option<Conversion<'tcx>> {
     }
 
     // First of we need a binary containing the expression & the cast
-    if let ExprKind::Binary(ref op, ref left, ref right) = &expr.kind {
+    if let ExprKind::Binary(ref op, left, right) = &expr.kind {
         normalize_le_ge(op, right, left).and_then(|(l, r)| check_function(l, r))
     } else {
         None
@@ -260,7 +260,7 @@ fn get_types_from_cast<'a>(
     // or `to_type::MAX as from_type`
     let call_from_cast: Option<(&Expr<'_>, &str)> = if_chain! {
         // to_type::max_value(), from_type
-        if let ExprKind::Cast(ref limit, ref from_type) = &expr.kind;
+        if let ExprKind::Cast(limit, from_type) = &expr.kind;
         if let TyKind::Path(ref from_type_path) = &from_type.kind;
         if let Some(from_sym) = int_ty_to_sym(from_type_path);
 
@@ -275,7 +275,7 @@ fn get_types_from_cast<'a>(
     let limit_from: Option<(&Expr<'_>, &str)> = call_from_cast.or_else(|| {
         if_chain! {
             // `from_type::from, to_type::max_value()`
-            if let ExprKind::Call(ref from_func, ref args) = &expr.kind;
+            if let ExprKind::Call(from_func, args) = &expr.kind;
             // `to_type::max_value()`
             if args.len() == 1;
             if let limit = &args[0];
@@ -317,13 +317,12 @@ fn get_types_from_cast<'a>(
 /// Gets the type which implements the called function
 fn get_implementing_type<'a>(path: &QPath<'_>, candidates: &'a [&str], function: &str) -> Option<&'a str> {
     if_chain! {
-        if let QPath::TypeRelative(ref ty, ref path) = &path;
+        if let QPath::TypeRelative(ty, path) = &path;
         if path.ident.name.as_str() == function;
-        if let TyKind::Path(QPath::Resolved(None, ref tp)) = &ty.kind;
+        if let TyKind::Path(QPath::Resolved(None, tp)) = &ty.kind;
         if let [int] = &*tp.segments;
-        let name = &int.ident.name.as_str();
-
         then {
+            let name = &int.ident.name.as_str();
             candidates.iter().find(|c| name == *c).cloned()
         } else {
             None
@@ -334,11 +333,10 @@ fn get_implementing_type<'a>(path: &QPath<'_>, candidates: &'a [&str], function:
 /// Gets the type as a string, if it is a supported integer
 fn int_ty_to_sym<'tcx>(path: &QPath<'_>) -> Option<&'tcx str> {
     if_chain! {
-        if let QPath::Resolved(_, ref path) = *path;
+        if let QPath::Resolved(_, path) = *path;
         if let [ty] = &*path.segments;
-        let name = &ty.ident.name.as_str();
-
         then {
+            let name = &ty.ident.name.as_str();
             INTS.iter().find(|c| name == *c).cloned()
         } else {
             None

@@ -18,7 +18,7 @@ pub(super) fn check<'tcx>(
     body: &'tcx Expr<'_>,
     span: Span,
 ) {
-    if let ExprKind::Block(ref block, _) = body.kind {
+    if let ExprKind::Block(block, _) = body.kind {
         // Ensure the `if let` statement is the only expression or statement in the for-loop
         let inner_expr = if block.stmts.len() == 1 && block.expr.is_none() {
             let match_stmt = &block.stmts[0];
@@ -36,7 +36,7 @@ pub(super) fn check<'tcx>(
         if_chain! {
             if let Some(inner_expr) = inner_expr;
             if let ExprKind::Match(
-                ref match_expr, ref match_arms, MatchSource::IfLetDesugar{ contains_else_clause: false }
+                match_expr, match_arms, MatchSource::IfLetDesugar{ contains_else_clause: false }
             ) = inner_expr.kind;
             // Ensure match_expr in `if let` statement is the same as the pat from the for-loop
             if let PatKind::Binding(_, pat_hir_id, _, _) = pat.kind;
@@ -46,9 +46,8 @@ pub(super) fn check<'tcx>(
             let some_ctor = is_some_ctor(cx, path.res);
             let ok_ctor = is_ok_ctor(cx, path.res);
             if some_ctor || ok_ctor;
-            let if_let_type = if some_ctor { "Some" } else { "Ok" };
-
             then {
+                let if_let_type = if some_ctor { "Some" } else { "Ok" };
                 // Prepare the error message
                 let msg = format!("unnecessary `if let` since only the `{}` variant of the iterator element is used", if_let_type);
 

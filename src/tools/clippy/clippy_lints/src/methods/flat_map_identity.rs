@@ -12,11 +12,11 @@ use super::FLAT_MAP_IDENTITY;
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx hir::Expr<'_>,
-    flat_map_args: &'tcx [hir::Expr<'_>],
+    flat_map_arg: &'tcx hir::Expr<'_>,
     flat_map_span: Span,
 ) {
     if is_trait_method(cx, expr, sym::Iterator) {
-        let arg_node = &flat_map_args[1].kind;
+        let arg_node = &flat_map_arg.kind;
 
         let apply_lint = |message: &str| {
             span_lint_and_sugg(
@@ -35,7 +35,7 @@ pub(super) fn check<'tcx>(
             let body = cx.tcx.hir().body(*body_id);
 
             if let hir::PatKind::Binding(_, _, binding_ident, _) = body.params[0].pat.kind;
-            if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = body.value.kind;
+            if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = body.value.kind;
 
             if path.segments.len() == 1;
             if path.segments[0].ident.name == binding_ident.name;

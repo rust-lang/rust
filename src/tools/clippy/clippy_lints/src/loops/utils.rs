@@ -1,9 +1,9 @@
 use clippy_utils::ty::{has_iter_method, implements_trait};
 use clippy_utils::{get_parent_expr, is_integer_const, path_to_local, path_to_local_id, sugg};
 use if_chain::if_chain;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
+use rustc_hir::HirIdMap;
 use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, HirId, Mutability, Pat, PatKind, Stmt, StmtKind};
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
@@ -20,9 +20,9 @@ enum IncrementVisitorVarState {
 
 /// Scan a for loop for variables that are incremented exactly once and not used after that.
 pub(super) struct IncrementVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'tcx>,                          // context reference
-    states: FxHashMap<HirId, IncrementVisitorVarState>, // incremented variables
-    depth: u32,                                         // depth of conditional expressions
+    cx: &'a LateContext<'tcx>,                  // context reference
+    states: HirIdMap<IncrementVisitorVarState>, // incremented variables
+    depth: u32,                                 // depth of conditional expressions
     done: bool,
 }
 
@@ -30,7 +30,7 @@ impl<'a, 'tcx> IncrementVisitor<'a, 'tcx> {
     pub(super) fn new(cx: &'a LateContext<'tcx>) -> Self {
         Self {
             cx,
-            states: FxHashMap::default(),
+            states: HirIdMap::default(),
             depth: 0,
             done: false,
         }
@@ -65,7 +65,7 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
                 }
 
                 match parent.kind {
-                    ExprKind::AssignOp(op, ref lhs, ref rhs) => {
+                    ExprKind::AssignOp(op, lhs, rhs) => {
                         if lhs.hir_id == expr.hir_id {
                             *state = if op.node == BinOpKind::Add
                                 && is_integer_const(self.cx, rhs, 1)
@@ -79,7 +79,7 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
                             };
                         }
                     },
-                    ExprKind::Assign(ref lhs, _, _) if lhs.hir_id == expr.hir_id => {
+                    ExprKind::Assign(lhs, _, _) if lhs.hir_id == expr.hir_id => {
                         *state = IncrementVisitorVarState::DontWarn
                     },
                     ExprKind::AddrOf(BorrowKind::Ref, mutability, _) if mutability == Mutability::Mut => {
@@ -153,7 +153,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
     fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) {
         // Look for declarations of the variable
         if_chain! {
-            if let StmtKind::Local(ref local) = stmt.kind;
+            if let StmtKind::Local(local) = stmt.kind;
             if local.pat.hir_id == self.var_id;
             if let PatKind::Binding(.., ident, _) = local.pat.kind;
             then {
@@ -191,10 +191,10 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
 
             if let Some(parent) = get_parent_expr(self.cx, expr) {
                 match parent.kind {
-                    ExprKind::AssignOp(_, ref lhs, _) if lhs.hir_id == expr.hir_id => {
+                    ExprKind::AssignOp(_, lhs, _) if lhs.hir_id == expr.hir_id => {
                         self.state = InitializeVisitorState::DontWarn;
                     },
-                    ExprKind::Assign(ref lhs, ref rhs, _) if lhs.hir_id == expr.hir_id => {
+                    ExprKind::Assign(lhs, rhs, _) if lhs.hir_id == expr.hir_id => {
                         self.state = if_chain! {
                             if self.depth == 0;
                             if let InitializeVisitorState::Declared(name)
@@ -273,7 +273,7 @@ impl<'tcx> Visitor<'tcx> for LoopNestVisitor {
             return;
         }
         match expr.kind {
-            ExprKind::Assign(ref path, _, _) | ExprKind::AssignOp(_, ref path, _) => {
+            ExprKind::Assign(path, _, _) | ExprKind::AssignOp(_, path, _) => {
                 if path_to_local_id(path, self.iterator) {
                     self.nesting = RuledOut;
                 }
@@ -327,7 +327,7 @@ pub(super) fn make_iterator_snippet(cx: &LateContext<'_>, arg: &Expr<'_>, applic
         // (&mut x).into_iter() ==> x.iter_mut()
         match &arg.kind {
             ExprKind::AddrOf(BorrowKind::Ref, mutability, arg_inner)
-                if has_iter_method(cx, cx.typeck_results().expr_ty(&arg_inner)).is_some() =>
+                if has_iter_method(cx, cx.typeck_results().expr_ty(arg_inner)).is_some() =>
             {
                 let meth_name = match mutability {
                     Mutability::Mut => "iter_mut",
@@ -335,7 +335,7 @@ pub(super) fn make_iterator_snippet(cx: &LateContext<'_>, arg: &Expr<'_>, applic
                 };
                 format!(
                     "{}.{}()",
-                    sugg::Sugg::hir_with_applicability(cx, &arg_inner, "_", applic_ref).maybe_par(),
+                    sugg::Sugg::hir_with_applicability(cx, arg_inner, "_", applic_ref).maybe_par(),
                     meth_name,
                 )
             }

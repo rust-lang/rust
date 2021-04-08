@@ -7,6 +7,7 @@
     clippy::map_identity,
     clippy::unit_arg,
     clippy::match_ref_pats,
+    clippy::redundant_pattern_matching,
     dead_code
 )]
 
@@ -130,7 +131,19 @@ fn main() {
     }
 
     // #6847
-    if Some(0).is_some() {
+    if let Some(_) = Some(0) {
         Some(0)
     } else { Some(0).map(|x| x + 1) };
+
+    if true {
+        Some(0)
+    } else { Some(0).map(|x| x + 1) };
+
+    // #6967
+    const fn f4() {
+        match Some(0) {
+            Some(x) => Some(x + 1),
+            None => None,
+        };
+    }
 }

@@ -33,6 +33,18 @@ pub fn unreachable_and_panic() {
     if true { unreachable!() } else { panic!() }
 }
 
+/// This needs to be documented
+pub fn assert_eq() {
+    let x = 0;
+    assert_eq!(x, 0);
+}
+
+/// This needs to be documented
+pub fn assert_ne() {
+    let x = 0;
+    assert_ne!(x, 0);
+}
+
 /// This is documented
 ///
 /// # Panics
@@ -83,6 +95,26 @@ pub fn unreachable_amd_panic_documented() {
     if true { unreachable!() } else { panic!() }
 }
 
+/// This is documented
+///
+/// # Panics
+///
+/// Panics if `x` is not 0.
+pub fn assert_eq_documented() {
+    let x = 0;
+    assert_eq!(x, 0);
+}
+
+/// This is documented
+///
+/// # Panics
+///
+/// Panics if `x` is 0.
+pub fn assert_ne_documented() {
+    let x = 0;
+    assert_ne!(x, 0);
+}
+
 /// This is okay because it is private
 fn unwrap_private() {
     let result = Err("Hi");
@@ -111,4 +143,12 @@ fn inner_body_private(opt: Option<u32>) {
 /// This is okay because unreachable
 pub fn unreachable() {
     unreachable!("This function panics")
+}
+
+/// #6970.
+/// This is okay because it is expansion of `debug_assert` family.
+pub fn debug_assertions() {
+    debug_assert!(false);
+    debug_assert_eq!(1, 2);
+    debug_assert_ne!(1, 2);
 }

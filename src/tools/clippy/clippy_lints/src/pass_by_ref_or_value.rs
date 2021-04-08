@@ -142,11 +142,11 @@ impl<'tcx> PassByRefOrValue {
                     };
 
                     if_chain! {
-                        if !output_lts.contains(&input_lt);
+                        if !output_lts.contains(input_lt);
                         if is_copy(cx, ty);
                         if let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes());
                         if size <= self.ref_min_size;
-                        if let hir::TyKind::Rptr(_, MutTy { ty: ref decl_ty, .. }) = input.kind;
+                        if let hir::TyKind::Rptr(_, MutTy { ty: decl_ty, .. }) = input.kind;
                         then {
                             let value_type = if is_self_ty(decl_ty) {
                                 "self".into()

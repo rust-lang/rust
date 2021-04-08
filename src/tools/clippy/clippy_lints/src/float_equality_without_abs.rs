@@ -48,7 +48,7 @@ impl<'tcx> LateLintPass<'tcx> for FloatEqualityWithoutAbs {
         let rhs;
 
         // check if expr is a binary expression with a lt or gt operator
-        if let ExprKind::Binary(op, ref left, ref right) = expr.kind {
+        if let ExprKind::Binary(op, left, right) = expr.kind {
             match op.node {
                 BinOpKind::Lt => {
                     lhs = left;
@@ -88,8 +88,8 @@ impl<'tcx> LateLintPass<'tcx> for FloatEqualityWithoutAbs {
             if let ty::Float(_) = t_val_r.kind();
 
             then {
-                let sug_l = sugg::Sugg::hir(cx, &val_l, "..");
-                let sug_r = sugg::Sugg::hir(cx, &val_r, "..");
+                let sug_l = sugg::Sugg::hir(cx, val_l, "..");
+                let sug_r = sugg::Sugg::hir(cx, val_r, "..");
                 // format the suggestion
                 let suggestion = format!("{}.abs()", sugg::make_assoc(AssocOp::Subtract, &sug_l, &sug_r).maybe_par());
                 // spans the lint

@@ -34,7 +34,7 @@ declare_lint_pass!(MemDiscriminant => [MEM_DISCRIMINANT_NON_ENUM]);
 impl<'tcx> LateLintPass<'tcx> for MemDiscriminant {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
-            if let ExprKind::Call(ref func, ref func_args) = expr.kind;
+            if let ExprKind::Call(func, func_args) = expr.kind;
             // is `mem::discriminant`
             if let ExprKind::Path(ref func_qpath) = func.kind;
             if let Some(def_id) = cx.qpath_res(func_qpath, func.hir_id).opt_def_id();
@@ -59,7 +59,7 @@ impl<'tcx> LateLintPass<'tcx> for MemDiscriminant {
                             let mut derefs_needed = ptr_depth;
                             let mut cur_expr = param;
                             while derefs_needed > 0  {
-                                if let ExprKind::AddrOf(BorrowKind::Ref, _, ref inner_expr) = cur_expr.kind {
+                                if let ExprKind::AddrOf(BorrowKind::Ref, _, inner_expr) = cur_expr.kind {
                                     derefs_needed -= 1;
                                     cur_expr = inner_expr;
                                 } else {

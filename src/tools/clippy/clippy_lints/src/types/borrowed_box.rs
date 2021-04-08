@@ -19,9 +19,9 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, lt: &Lifetime, m
             if_chain! {
                 if let Some(def_id) = def.opt_def_id();
                 if Some(def_id) == cx.tcx.lang_items().owned_box();
-                if let QPath::Resolved(None, ref path) = *qpath;
+                if let QPath::Resolved(None, path) = *qpath;
                 if let [ref bx] = *path.segments;
-                if let Some(ref params) = bx.args;
+                if let Some(params) = bx.args;
                 if !params.parenthesized;
                 if let Some(inner) = params.args.iter().find_map(|arg| match arg {
                     GenericArg::Type(ty) => Some(ty),
@@ -86,11 +86,11 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, lt: &Lifetime, m
 // Returns true if given type is `Any` trait.
 fn is_any_trait(t: &hir::Ty<'_>) -> bool {
     if_chain! {
-        if let TyKind::TraitObject(ref traits, ..) = t.kind;
+        if let TyKind::TraitObject(traits, ..) = t.kind;
         if !traits.is_empty();
         // Only Send/Sync can be used as additional traits, so it is enough to
         // check only the first trait.
-        if match_path(&traits[0].trait_ref.path, &paths::ANY_TRAIT);
+        if match_path(traits[0].trait_ref.path, &paths::ANY_TRAIT);
         then {
             return true;
         }

@@ -11,7 +11,7 @@ use rustc_errors::emitter::EmitterWriter;
 use rustc_errors::Handler;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::{Expr, ExprKind, QPath};
+use rustc_hir::{AnonConst, Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
@@ -710,14 +710,20 @@ impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
 
         // check for `begin_panic`
         if_chain! {
-            if let ExprKind::Call(ref func_expr, _) = expr.kind;
-            if let ExprKind::Path(QPath::Resolved(_, ref path)) = func_expr.kind;
+            if let ExprKind::Call(func_expr, _) = expr.kind;
+            if let ExprKind::Path(QPath::Resolved(_, path)) = func_expr.kind;
             if let Some(path_def_id) = path.res.opt_def_id();
             if match_panic_def_id(self.cx, path_def_id);
             if is_expn_of(expr.span, "unreachable").is_none();
+            if !is_expn_of_debug_assertions(expr.span);
             then {
                 self.panic_span = Some(expr.span);
             }
+        }
+
+        // check for `assert_eq` or `assert_ne`
+        if is_expn_of(expr.span, "assert_eq").is_some() || is_expn_of(expr.span, "assert_ne").is_some() {
+            self.panic_span = Some(expr.span);
         }
 
         // check for `unwrap`
@@ -734,7 +740,15 @@ impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
         intravisit::walk_expr(self, expr);
     }
 
+    // Panics in const blocks will cause compilation to fail.
+    fn visit_anon_const(&mut self, _: &'tcx AnonConst) {}
+
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::OnlyBodies(self.cx.tcx.hir())
     }
+}
+
+fn is_expn_of_debug_assertions(span: Span) -> bool {
+    const MACRO_NAMES: &[&str] = &["debug_assert", "debug_assert_eq", "debug_assert_ne"];
+    MACRO_NAMES.iter().any(|name| is_expn_of(span, name).is_some())
 }

@@ -5,10 +5,10 @@
 // [`missing_doc`]: https://github.com/rust-lang/rust/blob/cf9cf7c923eb01146971429044f216a3ca905e06/compiler/rustc_lint/src/builtin.rs#L415
 //
 
+use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::span_lint;
 use if_chain::if_chain;
 use rustc_ast::ast::{self, MetaItem, MetaItemKind};
-use rustc_ast::attr;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty;
@@ -93,9 +93,9 @@ impl MissingDoc {
             return;
         }
 
-        let has_doc = attrs
-            .iter()
-            .any(|a| a.is_doc_comment() || a.doc_str().is_some() || a.value_str().is_some() || Self::has_include(a.meta()));
+        let has_doc = attrs.iter().any(|a| {
+            a.is_doc_comment() || a.doc_str().is_some() || a.value_str().is_some() || Self::has_include(a.meta())
+        });
         if !has_doc {
             span_lint(
                 cx,
@@ -111,14 +111,7 @@ impl_lint_pass!(MissingDoc => [MISSING_DOCS_IN_PRIVATE_ITEMS]);
 
 impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     fn enter_lint_attrs(&mut self, _: &LateContext<'tcx>, attrs: &'tcx [ast::Attribute]) {
-        let doc_hidden = self.doc_hidden()
-            || attrs.iter().any(|attr| {
-                attr.has_name(sym::doc)
-                    && match attr.meta_item_list() {
-                        None => false,
-                        Some(l) => attr::list_contains_name(&l[..], sym::hidden),
-                    }
-            });
+        let doc_hidden = self.doc_hidden() || is_doc_hidden(attrs);
         self.doc_hidden_stack.push(doc_hidden);
     }
 

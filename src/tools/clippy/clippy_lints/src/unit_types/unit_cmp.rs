@@ -9,7 +9,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if expr.span.from_expansion() {
         if let Some(callee) = expr.span.source_callee() {
             if let ExpnKind::Macro(MacroKind::Bang, symbol) = callee.kind {
-                if let ExprKind::Binary(ref cmp, ref left, _) = expr.kind {
+                if let ExprKind::Binary(ref cmp, left, _) = expr.kind {
                     let op = cmp.node;
                     if op.is_comparison() && cx.typeck_results().expr_ty(left).is_unit() {
                         let result = match &*symbol.as_str() {
@@ -34,7 +34,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
         return;
     }
 
-    if let ExprKind::Binary(ref cmp, ref left, _) = expr.kind {
+    if let ExprKind::Binary(ref cmp, left, _) = expr.kind {
         let op = cmp.node;
         if op.is_comparison() && cx.typeck_results().expr_ty(left).is_unit() {
             let result = match op {

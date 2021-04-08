@@ -183,10 +183,10 @@ impl_lint_pass!(Ranges => [
 impl<'tcx> LateLintPass<'tcx> for Ranges {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         match expr.kind {
-            ExprKind::MethodCall(ref path, _, ref args, _) => {
+            ExprKind::MethodCall(path, _, args, _) => {
                 check_range_zip_with_len(cx, path, args, expr.span);
             },
-            ExprKind::Binary(ref op, ref l, ref r) => {
+            ExprKind::Binary(ref op, l, r) => {
                 if meets_msrv(self.msrv.as_ref(), &MANUAL_RANGE_CONTAINS_MSRV) {
                     check_possible_range_contains(cx, op.node, l, r, expr);
                 }
@@ -287,7 +287,7 @@ fn check_possible_range_contains(cx: &LateContext<'_>, op: BinOpKind, l: &Expr<'
 }
 
 fn check_range_bounds(cx: &LateContext<'_>, ex: &Expr<'_>) -> Option<(Constant, Ident, Span, Span, Ordering, bool)> {
-    if let ExprKind::Binary(ref op, ref l, ref r) = ex.kind {
+    if let ExprKind::Binary(ref op, l, r) = ex.kind {
         let (inclusive, ordering) = match op.node {
             BinOpKind::Gt => (false, Ordering::Greater),
             BinOpKind::Ge => (true, Ordering::Greater),
@@ -320,32 +320,29 @@ fn match_ident(e: &Expr<'_>) -> Option<Ident> {
 }
 
 fn check_range_zip_with_len(cx: &LateContext<'_>, path: &PathSegment<'_>, args: &[Expr<'_>], span: Span) {
-    let name = path.ident.as_str();
-    if name == "zip" && args.len() == 2 {
-        let iter = &args[0].kind;
-        let zip_arg = &args[1];
-        if_chain! {
-            // `.iter()` call
-            if let ExprKind::MethodCall(ref iter_path, _, ref iter_args, _) = *iter;
-            if iter_path.ident.name == sym::iter;
-            // range expression in `.zip()` call: `0..x.len()`
-            if let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::range(zip_arg);
-            if is_integer_const(cx, start, 0);
-            // `.len()` call
-            if let ExprKind::MethodCall(ref len_path, _, ref len_args, _) = end.kind;
-            if len_path.ident.name == sym!(len) && len_args.len() == 1;
-            // `.iter()` and `.len()` called on same `Path`
-            if let ExprKind::Path(QPath::Resolved(_, ref iter_path)) = iter_args[0].kind;
-            if let ExprKind::Path(QPath::Resolved(_, ref len_path)) = len_args[0].kind;
-            if SpanlessEq::new(cx).eq_path_segments(&iter_path.segments, &len_path.segments);
-            then {
-                span_lint(cx,
-                    RANGE_ZIP_WITH_LEN,
-                    span,
-                    &format!("it is more idiomatic to use `{}.iter().enumerate()`",
-                        snippet(cx, iter_args[0].span, "_"))
-                );
-            }
+    if_chain! {
+        if path.ident.as_str() == "zip";
+        if let [iter, zip_arg] = args;
+        // `.iter()` call
+        if let ExprKind::MethodCall(iter_path, _, iter_args, _) = iter.kind;
+        if iter_path.ident.name == sym::iter;
+        // range expression in `.zip()` call: `0..x.len()`
+        if let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::range(zip_arg);
+        if is_integer_const(cx, start, 0);
+        // `.len()` call
+        if let ExprKind::MethodCall(len_path, _, len_args, _) = end.kind;
+        if len_path.ident.name == sym!(len) && len_args.len() == 1;
+        // `.iter()` and `.len()` called on same `Path`
+        if let ExprKind::Path(QPath::Resolved(_, iter_path)) = iter_args[0].kind;
+        if let ExprKind::Path(QPath::Resolved(_, len_path)) = len_args[0].kind;
+        if SpanlessEq::new(cx).eq_path_segments(iter_path.segments, len_path.segments);
+        then {
+            span_lint(cx,
+                RANGE_ZIP_WITH_LEN,
+                span,
+                &format!("it is more idiomatic to use `{}.iter().enumerate()`",
+                    snippet(cx, iter_args[0].span, "_"))
+            );
         }
     }
 }
@@ -511,8 +508,8 @@ fn y_plus_one<'t>(cx: &LateContext<'_>, expr: &'t Expr<'_>) -> Option<&'t Expr<'
             Spanned {
                 node: BinOpKind::Add, ..
             },
-            ref lhs,
-            ref rhs,
+            lhs,
+            rhs,
         ) => {
             if is_integer_const(cx, lhs, 1) {
                 Some(rhs)
@@ -532,8 +529,8 @@ fn y_minus_one<'t>(cx: &LateContext<'_>, expr: &'t Expr<'_>) -> Option<&'t Expr<
             Spanned {
                 node: BinOpKind::Sub, ..
             },
-            ref lhs,
-            ref rhs,
+            lhs,
+            rhs,
         ) if is_integer_const(cx, rhs, 1) => Some(lhs),
         _ => None,
     }

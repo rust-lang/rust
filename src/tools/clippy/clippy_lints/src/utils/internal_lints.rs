@@ -1,8 +1,10 @@
 use crate::consts::{constant_simple, Constant};
-use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet;
 use clippy_utils::ty::match_type;
-use clippy_utils::{is_expn_of, match_def_path, match_qpath, method_calls, path_to_res, paths, run_lints, SpanlessEq};
+use clippy_utils::{
+    is_else_clause, is_expn_of, match_def_path, match_qpath, method_calls, path_to_res, paths, run_lints, SpanlessEq,
+};
 use if_chain::if_chain;
 use rustc_ast::ast::{Crate as AstCrate, ItemKind, LitKind, ModKind, NodeId};
 use rustc_ast::visit::FnKind;
@@ -14,15 +16,17 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::hir_id::CRATE_HIR_ID;
 use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc_hir::{
-    BinOpKind, Crate, Expr, ExprKind, HirId, Item, MutTy, Mutability, Node, Path, StmtKind, Ty, TyKind, UnOp,
+    BinOpKind, Block, Crate, Expr, ExprKind, HirId, Item, Local, MatchSource, MutTy, Mutability, Node, Path, Stmt,
+    StmtKind, Ty, TyKind, UnOp,
 };
-use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
+use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
-use rustc_span::source_map::{Span, Spanned};
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{Symbol, SymbolStr};
+use rustc_span::{BytePos, Span};
 use rustc_typeck::hir_ty_to_ty;
 
 use std::borrow::{Borrow, Cow};
@@ -297,6 +301,13 @@ declare_clippy_lint! {
     "unnecessary conversion between Symbol and string"
 }
 
+declare_clippy_lint! {
+    /// Finds unidiomatic usage of `if_chain!`
+    pub IF_CHAIN_STYLE,
+    internal,
+    "non-idiomatic `if_chain!` usage"
+}
+
 declare_lint_pass!(ClippyLintsInternal => [CLIPPY_LINTS_INTERNAL]);
 
 impl EarlyLintPass for ClippyLintsInternal {
@@ -342,12 +353,12 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
             return;
         }
 
-        if let hir::ItemKind::Static(ref ty, Mutability::Not, body_id) = item.kind {
+        if let hir::ItemKind::Static(ty, Mutability::Not, body_id) = item.kind {
             if is_lint_ref_type(cx, ty) {
                 let expr = &cx.tcx.hir().body(body_id).value;
                 if_chain! {
-                    if let ExprKind::AddrOf(_, _, ref inner_exp) = expr.kind;
-                    if let ExprKind::Struct(_, ref fields, _) = inner_exp.kind;
+                    if let ExprKind::AddrOf(_, _, inner_exp) = expr.kind;
+                    if let ExprKind::Struct(_, fields, _) = inner_exp.kind;
                     let field = fields
                         .iter()
                         .find(|f| f.ident.as_str() == "desc")
@@ -374,7 +385,7 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
         {
             if let hir::ItemKind::Impl(hir::Impl {
                 of_trait: None,
-                items: ref impl_item_refs,
+                items: impl_item_refs,
                 ..
             }) = item.kind
             {
@@ -426,7 +437,7 @@ fn is_lint_ref_type<'tcx>(cx: &LateContext<'tcx>, ty: &Ty<'_>) -> bool {
     if let TyKind::Rptr(
         _,
         MutTy {
-            ty: ref inner,
+            ty: inner,
             mutbl: Mutability::Not,
         },
     ) = ty.kind
@@ -487,7 +498,7 @@ impl<'tcx> LateLintPass<'tcx> for CompilerLintFunctions {
         }
 
         if_chain! {
-            if let ExprKind::MethodCall(ref path, _, ref args, _) = expr.kind;
+            if let ExprKind::MethodCall(path, _, args, _) = expr.kind;
             let fn_name = path.ident;
             if let Some(sugg) = self.map.get(&*fn_name.as_str());
             let ty = cx.typeck_results().expr_ty(&args[0]).peel_refs();
@@ -566,7 +577,7 @@ impl<'tcx> LateLintPass<'tcx> for CollapsibleCalls {
         }
 
         if_chain! {
-            if let ExprKind::Call(ref func, ref and_then_args) = expr.kind;
+            if let ExprKind::Call(func, and_then_args) = expr.kind;
             if let ExprKind::Path(ref path) = func.kind;
             if match_qpath(path, &["span_lint_and_then"]);
             if and_then_args.len() == 5;
@@ -576,10 +587,10 @@ impl<'tcx> LateLintPass<'tcx> for CollapsibleCalls {
             let stmts = &block.stmts;
             if stmts.len() == 1 && block.expr.is_none();
             if let StmtKind::Semi(only_expr) = &stmts[0].kind;
-            if let ExprKind::MethodCall(ref ps, _, ref span_call_args, _) = &only_expr.kind;
-            let and_then_snippets = get_and_then_snippets(cx, and_then_args);
-            let mut sle = SpanlessEq::new(cx).deny_side_effects();
+            if let ExprKind::MethodCall(ps, _, span_call_args, _) = &only_expr.kind;
             then {
+                let and_then_snippets = get_and_then_snippets(cx, and_then_args);
+                let mut sle = SpanlessEq::new(cx).deny_side_effects();
                 match &*ps.ident.as_str() {
                     "span_suggestion" if sle.eq_expr(&and_then_args[2], &span_call_args[1]) => {
                         suggest_suggestion(cx, expr, &and_then_snippets, &span_suggestion_snippets(cx, span_call_args));
@@ -751,7 +762,7 @@ impl<'tcx> LateLintPass<'tcx> for MatchTypeOnDiagItem {
             // Check if this is a call to utils::match_type()
             if let ExprKind::Call(fn_path, [context, ty, ty_path]) = expr.kind;
             if let ExprKind::Path(fn_qpath) = &fn_path.kind;
-            if match_qpath(&fn_qpath, &["utils", "match_type"]);
+            if match_qpath(fn_qpath, &["utils", "match_type"]);
             // Extract the path to the matched type
             if let Some(segments) = path_to_matched_type(cx, ty_path);
             let segments: Vec<&str> = segments.iter().map(|sym| &**sym).collect();
@@ -1062,4 +1073,160 @@ impl<'tcx> SymbolStrExpr<'tcx> {
             },
         }
     }
+}
+
+declare_lint_pass!(IfChainStyle => [IF_CHAIN_STYLE]);
+
+impl<'tcx> LateLintPass<'tcx> for IfChainStyle {
+    fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx hir::Block<'_>) {
+        let (local, after, if_chain_span) = if_chain! {
+            if let [Stmt { kind: StmtKind::Local(local), .. }, after @ ..] = block.stmts;
+            if let Some(if_chain_span) = is_expn_of(block.span, "if_chain");
+            then { (local, after, if_chain_span) } else { return }
+        };
+        if is_first_if_chain_expr(cx, block.hir_id, if_chain_span) {
+            span_lint(
+                cx,
+                IF_CHAIN_STYLE,
+                if_chain_local_span(cx, local, if_chain_span),
+                "`let` expression should be above the `if_chain!`",
+            );
+        } else if local.span.ctxt() == block.span.ctxt() && is_if_chain_then(after, block.expr, if_chain_span) {
+            span_lint(
+                cx,
+                IF_CHAIN_STYLE,
+                if_chain_local_span(cx, local, if_chain_span),
+                "`let` expression should be inside `then { .. }`",
+            )
+        }
+    }
+
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
+        let (cond, then, els) = match expr.kind {
+            ExprKind::If(cond, then, els) => (Some(cond), then, els.is_some()),
+            ExprKind::Match(
+                _,
+                [arm, ..],
+                MatchSource::IfLetDesugar {
+                    contains_else_clause: els,
+                },
+            ) => (None, arm.body, els),
+            _ => return,
+        };
+        let then_block = match then.kind {
+            ExprKind::Block(block, _) => block,
+            _ => return,
+        };
+        let if_chain_span = is_expn_of(expr.span, "if_chain");
+        if !els {
+            check_nested_if_chains(cx, expr, then_block, if_chain_span);
+        }
+        let if_chain_span = match if_chain_span {
+            None => return,
+            Some(span) => span,
+        };
+        // check for `if a && b;`
+        if_chain! {
+            if let Some(cond) = cond;
+            if let ExprKind::Binary(op, _, _) = cond.kind;
+            if op.node == BinOpKind::And;
+            if cx.sess().source_map().is_multiline(cond.span);
+            then {
+                span_lint(cx, IF_CHAIN_STYLE, cond.span, "`if a && b;` should be `if a; if b;`");
+            }
+        }
+        if is_first_if_chain_expr(cx, expr.hir_id, if_chain_span)
+            && is_if_chain_then(then_block.stmts, then_block.expr, if_chain_span)
+        {
+            span_lint(cx, IF_CHAIN_STYLE, expr.span, "`if_chain!` only has one `if`")
+        }
+    }
+}
+
+fn check_nested_if_chains(
+    cx: &LateContext<'_>,
+    if_expr: &Expr<'_>,
+    then_block: &Block<'_>,
+    if_chain_span: Option<Span>,
+) {
+    #[rustfmt::skip]
+    let (head, tail) = match *then_block {
+        Block { stmts, expr: Some(tail), .. } => (stmts, tail),
+        Block {
+            stmts: &[
+                ref head @ ..,
+                Stmt { kind: StmtKind::Expr(tail) | StmtKind::Semi(tail), .. }
+            ],
+            ..
+        } => (head, tail),
+        _ => return,
+    };
+    if_chain! {
+        if matches!(tail.kind,
+            ExprKind::If(_, _, None)
+            | ExprKind::Match(.., MatchSource::IfLetDesugar { contains_else_clause: false }));
+        let sm = cx.sess().source_map();
+        if head
+            .iter()
+            .all(|stmt| matches!(stmt.kind, StmtKind::Local(..)) && !sm.is_multiline(stmt.span));
+        if if_chain_span.is_some() || !is_else_clause(cx.tcx, if_expr);
+        then {} else { return }
+    }
+    let (span, msg) = match (if_chain_span, is_expn_of(tail.span, "if_chain")) {
+        (None, Some(_)) => (if_expr.span, "this `if` can be part of the inner `if_chain!`"),
+        (Some(_), None) => (tail.span, "this `if` can be part of the outer `if_chain!`"),
+        (Some(a), Some(b)) if a != b => (b, "this `if_chain!` can be merged with the outer `if_chain!`"),
+        _ => return,
+    };
+    span_lint_and_then(cx, IF_CHAIN_STYLE, span, msg, |diag| {
+        let (span, msg) = match head {
+            [] => return,
+            [stmt] => (stmt.span, "this `let` statement can also be in the `if_chain!`"),
+            [a, .., b] => (
+                a.span.to(b.span),
+                "these `let` statements can also be in the `if_chain!`",
+            ),
+        };
+        diag.span_help(span, msg);
+    });
+}
+
+fn is_first_if_chain_expr(cx: &LateContext<'_>, hir_id: HirId, if_chain_span: Span) -> bool {
+    cx.tcx
+        .hir()
+        .parent_iter(hir_id)
+        .find(|(_, node)| {
+            #[rustfmt::skip]
+            !matches!(node, Node::Expr(Expr { kind: ExprKind::Block(..), .. }) | Node::Stmt(_))
+        })
+        .map_or(false, |(id, _)| {
+            is_expn_of(cx.tcx.hir().span(id), "if_chain") != Some(if_chain_span)
+        })
+}
+
+/// Checks a trailing slice of statements and expression of a `Block` to see if they are part
+/// of the `then {..}` portion of an `if_chain!`
+fn is_if_chain_then(stmts: &[Stmt<'_>], expr: Option<&Expr<'_>>, if_chain_span: Span) -> bool {
+    let span = if let [stmt, ..] = stmts {
+        stmt.span
+    } else if let Some(expr) = expr {
+        expr.span
+    } else {
+        // empty `then {}`
+        return true;
+    };
+    is_expn_of(span, "if_chain").map_or(true, |span| span != if_chain_span)
+}
+
+/// Creates a `Span` for `let x = ..;` in an `if_chain!` call.
+fn if_chain_local_span(cx: &LateContext<'_>, local: &Local<'_>, if_chain_span: Span) -> Span {
+    let mut span = local.pat.span;
+    if let Some(init) = local.init {
+        span = span.to(init.span);
+    }
+    span.adjust(if_chain_span.ctxt().outer_expn());
+    let sm = cx.sess().source_map();
+    let span = sm.span_extend_to_prev_str(span, "let", false);
+    let span = sm.span_extend_to_next_char(span, ';', false);
+    Span::new(span.lo() - BytePos(3), span.hi() + BytePos(1), span.ctxt())
 }

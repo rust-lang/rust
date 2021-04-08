@@ -9,10 +9,10 @@ use rustc_span::sym;
 
 use super::ITER_CLONED_COLLECT;
 
-pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, iter_args: &'tcx [hir::Expr<'_>]) {
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, recv: &'tcx hir::Expr<'_>) {
     if_chain! {
         if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(expr), sym::vec_type);
-        if let Some(slice) = derefs_to_slice(cx, &iter_args[0], cx.typeck_results().expr_ty(&iter_args[0]));
+        if let Some(slice) = derefs_to_slice(cx, recv, cx.typeck_results().expr_ty(recv));
         if let Some(to_replace) = expr.span.trim_start(slice.span.source_callsite());
 
         then {

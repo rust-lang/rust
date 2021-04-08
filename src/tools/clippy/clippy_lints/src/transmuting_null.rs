@@ -37,7 +37,7 @@ impl<'tcx> LateLintPass<'tcx> for TransmutingNull {
         }
 
         if_chain! {
-            if let ExprKind::Call(ref func, ref args) = expr.kind;
+            if let ExprKind::Call(func, args) = expr.kind;
             if let ExprKind::Path(ref path) = func.kind;
             if match_qpath(path, &paths::STD_MEM_TRANSMUTE);
             if args.len() == 1;
@@ -58,7 +58,7 @@ impl<'tcx> LateLintPass<'tcx> for TransmutingNull {
                 // Catching:
                 // `std::mem::transmute(0 as *const i32)`
                 if_chain! {
-                    if let ExprKind::Cast(ref inner_expr, ref _cast_ty) = args[0].kind;
+                    if let ExprKind::Cast(inner_expr, _cast_ty) = args[0].kind;
                     if let ExprKind::Lit(ref lit) = inner_expr.kind;
                     if let LitKind::Int(0, _) = lit.node;
                     then {
@@ -69,7 +69,7 @@ impl<'tcx> LateLintPass<'tcx> for TransmutingNull {
                 // Catching:
                 // `std::mem::transmute(std::ptr::null::<i32>())`
                 if_chain! {
-                    if let ExprKind::Call(ref func1, ref args1) = args[0].kind;
+                    if let ExprKind::Call(func1, args1) = args[0].kind;
                     if let ExprKind::Path(ref path1) = func1.kind;
                     if match_qpath(path1, &paths::STD_PTR_NULL);
                     if args1.is_empty();

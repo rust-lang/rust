@@ -46,21 +46,21 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
             if let ExprKind::If(cond, then, None) = &expr.kind;
 
             // Check if the conditional expression is a binary operation
-            if let ExprKind::Binary(ref cond_op, ref cond_left, ref cond_right) = cond.kind;
+            if let ExprKind::Binary(ref cond_op, cond_left, cond_right) = cond.kind;
 
             // Ensure that the binary operator is >, != and <
             if BinOpKind::Ne == cond_op.node || BinOpKind::Gt == cond_op.node || BinOpKind::Lt == cond_op.node;
 
             // Check if the true condition block has only one statement
-            if let ExprKind::Block(ref block, _) = then.kind;
+            if let ExprKind::Block(block, _) = then.kind;
             if block.stmts.len() == 1 && block.expr.is_none();
 
             // Check if assign operation is done
-            if let StmtKind::Semi(ref e) = block.stmts[0].kind;
+            if let StmtKind::Semi(e) = block.stmts[0].kind;
             if let Some(target) = subtracts_one(cx, e);
 
             // Extracting out the variable name
-            if let ExprKind::Path(QPath::Resolved(_, ref ares_path)) = target.kind;
+            if let ExprKind::Path(QPath::Resolved(_, ares_path)) = target.kind;
 
             then {
                 // Handle symmetric conditions in the if statement
@@ -104,7 +104,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
                             print_lint_and_sugg(cx, &var_name, expr);
                         };
                     },
-                    ExprKind::Call(ref func, _) => {
+                    ExprKind::Call(func, _) => {
                         if let ExprKind::Path(ref cond_num_path) = func.kind {
                             if INT_TYPES.iter().any(|int_type| match_qpath(cond_num_path, &[int_type, "min_value"])) {
                                 print_lint_and_sugg(cx, &var_name, expr);
@@ -120,7 +120,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
 
 fn subtracts_one<'a>(cx: &LateContext<'_>, expr: &Expr<'a>) -> Option<&'a Expr<'a>> {
     match expr.kind {
-        ExprKind::AssignOp(ref op1, ref target, ref value) => {
+        ExprKind::AssignOp(ref op1, target, value) => {
             if_chain! {
                 if BinOpKind::Sub == op1.node;
                 // Check if literal being subtracted is one
@@ -133,9 +133,9 @@ fn subtracts_one<'a>(cx: &LateContext<'_>, expr: &Expr<'a>) -> Option<&'a Expr<'
                 }
             }
         },
-        ExprKind::Assign(ref target, ref value, _) => {
+        ExprKind::Assign(target, value, _) => {
             if_chain! {
-                if let ExprKind::Binary(ref op1, ref left1, ref right1) = value.kind;
+                if let ExprKind::Binary(ref op1, left1, right1) = value.kind;
                 if BinOpKind::Sub == op1.node;
 
                 if SpanlessEq::new(cx).eq_expr(left1, target);
