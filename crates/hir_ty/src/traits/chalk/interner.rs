@@ -70,7 +70,7 @@ impl chalk_ir::interner::Interner for Interner {
     type InternedGoal = Arc<GoalData<Self>>;
     type InternedGoals = Vec<Goal<Self>>;
     type InternedSubstitution = Interned<InternedSubstitutionInner>;
-    type InternedProgramClause = Arc<chalk_ir::ProgramClauseData<Self>>;
+    type InternedProgramClause = chalk_ir::ProgramClauseData<Self>;
     type InternedProgramClauses = Interned<InternedWrapper<Vec<chalk_ir::ProgramClause<Self>>>>;
     type InternedQuantifiedWhereClauses = Interned<InternedWrapper<Vec<chalk_ir::QuantifiedWhereClause<Self>>>>;
     type InternedVariableKinds = Interned<InternedVariableKindsInner>;
@@ -315,7 +315,7 @@ impl chalk_ir::interner::Interner for Interner {
         &self,
         data: chalk_ir::ProgramClauseData<Self>,
     ) -> Self::InternedProgramClause {
-        Arc::new(data)
+        data
     }
 
     fn program_clause_data<'a>(
