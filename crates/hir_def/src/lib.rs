@@ -690,7 +690,9 @@ fn macro_call_as_call_id(
         )
         .map(MacroCallId::from)
     } else {
-        Ok(def.as_lazy_macro(db.upcast(), krate, MacroCallKind::FnLike(call.ast_id)).into())
+        Ok(def
+            .as_lazy_macro(db.upcast(), krate, MacroCallKind::FnLike { ast_id: call.ast_id })
+            .into())
     };
     Ok(res)
 }
@@ -707,7 +709,10 @@ fn derive_macro_as_call_id(
         .as_lazy_macro(
             db.upcast(),
             krate,
-            MacroCallKind::Derive(item_attr.ast_id, last_segment.to_string()),
+            MacroCallKind::Derive {
+                ast_id: item_attr.ast_id,
+                derive_name: last_segment.to_string(),
+            },
         )
         .into();
     Ok(res)
