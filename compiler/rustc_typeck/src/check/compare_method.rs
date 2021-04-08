@@ -329,7 +329,33 @@ fn compare_predicate_entailment<'tcx>(
                     );
                 }
                 TypeError::ArgumentMutability(i) | TypeError::ArgumentSorts(_, i) => {
-                    if let Some(trait_ty) = trait_sig.inputs().get(*i) {
+                    if trait_sig.inputs().len() == *i {
+                        // Suggestion to change output type. We do not suggest in `async` functions
+                        // to avoid complex logic or incorrect output.
+                        let impl_m_hir_id =
+                            tcx.hir().local_def_id_to_hir_id(impl_m.def_id.expect_local());
+                        match tcx.hir().expect_impl_item(impl_m_hir_id).kind {
+                            ImplItemKind::Fn(ref sig, _)
+                                if sig.header.asyncness == hir::IsAsync::NotAsync =>
+                            {
+                                let (span, sugg) = match sig.decl.output {
+                                    hir::FnRetTy::DefaultReturn(sp) => {
+                                        (sp, format!(" -> {} ", trait_sig.output()))
+                                    }
+                                    hir::FnRetTy::Return(hir_ty) => {
+                                        (hir_ty.span, trait_sig.output().to_string())
+                                    }
+                                };
+                                diag.span_suggestion(
+                                    span,
+                                    "change the output type to match the trait",
+                                    sugg,
+                                    Applicability::MachineApplicable,
+                                );
+                            }
+                            _ => {}
+                        };
+                    } else if let Some(trait_ty) = trait_sig.inputs().get(*i) {
                         diag.span_suggestion(
                             impl_err_span,
                             "change the parameter type to match the trait",

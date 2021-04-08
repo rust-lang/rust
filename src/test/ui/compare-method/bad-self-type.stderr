@@ -11,7 +11,7 @@ LL |     fn poll(self, _: &mut Context<'_>) -> Poll<()> {
               found fn pointer `fn(MyFuture, &mut Context<'_>) -> Poll<_>`
 
 error[E0053]: method `foo` has an incompatible type for trait
-  --> $DIR/bad-self-type.rs:21:18
+  --> $DIR/bad-self-type.rs:22:18
    |
 LL |     fn foo(self);
    |            ---- type in trait
@@ -25,6 +25,21 @@ LL |     fn foo(self: Box<Self>) {}
    = note: expected fn pointer `fn(MyFuture)`
               found fn pointer `fn(Box<MyFuture>)`
 
-error: aborting due to 2 previous errors
+error[E0053]: method `bar` has an incompatible type for trait
+  --> $DIR/bad-self-type.rs:24:18
+   |
+LL |     fn bar(self) -> Option<()>;
+   |                     ---------- type in trait
+...
+LL |     fn bar(self) {}
+   |                  ^
+   |                  |
+   |                  expected enum `Option`, found `()`
+   |                  help: change the output type to match the trait: `-> Option<()>`
+   |
+   = note: expected fn pointer `fn(MyFuture) -> Option<()>`
+              found fn pointer `fn(MyFuture)`
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0053`.

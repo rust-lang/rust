@@ -26,7 +26,10 @@ error[E0053]: method `mul` has an incompatible type for trait
   --> $DIR/wrong-mul-method-signature.rs:52:29
    |
 LL |     fn mul(self, s: f64) -> f64 {
-   |                             ^^^ expected `i32`, found `f64`
+   |                             ^^^
+   |                             |
+   |                             expected `i32`, found `f64`
+   |                             help: change the output type to match the trait: `i32`
    |
    = note: expected fn pointer `fn(Vec3, _) -> i32`
               found fn pointer `fn(Vec3, _) -> f64`

@@ -50,7 +50,10 @@ LL |     fn qux() -> u8;
    |                 -- type in trait
 ...
 LL |     fn qux() -> u16 { 5u16 }
-   |                 ^^^ expected `u8`, found `u16`
+   |                 ^^^
+   |                 |
+   |                 expected `u8`, found `u16`
+   |                 help: change the output type to match the trait: `u8`
    |
    = note: expected fn pointer `fn() -> u8`
               found fn pointer `fn() -> u16`

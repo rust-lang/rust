@@ -15,9 +15,12 @@ impl Future for MyFuture {
 
 trait T {
     fn foo(self);
+    fn bar(self) -> Option<()>;
 }
 
 impl T for MyFuture {
     fn foo(self: Box<Self>) {}
     //~^ ERROR method `foo` has an incompatible type for trait
+    fn bar(self) {}
+    //~^ ERROR method `bar` has an incompatible type for trait
 }
