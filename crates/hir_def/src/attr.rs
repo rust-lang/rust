@@ -9,7 +9,7 @@ use std::{
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
-use hir_expand::{hygiene::Hygiene, name::AsName, AstId, InFile};
+use hir_expand::{hygiene::Hygiene, name::AsName, AstId, AttrId, InFile};
 use itertools::Itertools;
 use la_arena::ArenaMap;
 use mbe::ast_to_token_tree;
@@ -98,13 +98,16 @@ impl RawAttrs {
     pub(crate) fn new(owner: &dyn ast::AttrsOwner, hygiene: &Hygiene) -> Self {
         let entries = collect_attrs(owner)
             .enumerate()
-            .flat_map(|(i, attr)| match attr {
-                Either::Left(attr) => Attr::from_src(attr, hygiene, i as u32),
-                Either::Right(comment) => comment.doc_comment().map(|doc| Attr {
-                    index: i as u32,
-                    input: Some(AttrInput::Literal(SmolStr::new(doc))),
-                    path: Interned::new(ModPath::from(hir_expand::name!(doc))),
-                }),
+            .flat_map(|(i, attr)| {
+                let index = AttrId(i as u32);
+                match attr {
+                    Either::Left(attr) => Attr::from_src(attr, hygiene, index),
+                    Either::Right(comment) => comment.doc_comment().map(|doc| Attr {
+                        index,
+                        input: Some(AttrInput::Literal(SmolStr::new(doc))),
+                        path: Interned::new(ModPath::from(hir_expand::name!(doc))),
+                    }),
+                }
             })
             .collect::<Arc<_>>();
 
@@ -560,8 +563,8 @@ impl AttrSourceMap {
     /// the attribute represented by `Attr`.
     pub fn source_of(&self, attr: &Attr) -> InFile<&Either<ast::Attr, ast::Comment>> {
         self.attrs
-            .get(attr.index as usize)
-            .unwrap_or_else(|| panic!("cannot find `Attr` at index {}", attr.index))
+            .get(attr.index.0 as usize)
+            .unwrap_or_else(|| panic!("cannot find `Attr` at index {:?}", attr.index))
             .as_ref()
     }
 }
@@ -572,7 +575,7 @@ pub struct DocsRangeMap {
     // (docstring-line-range, attr_index, attr-string-range)
     // a mapping from the text range of a line of the [`Documentation`] to the attribute index and
     // the original (untrimmed) syntax doc line
-    mapping: Vec<(TextRange, u32, TextRange)>,
+    mapping: Vec<(TextRange, AttrId, TextRange)>,
 }
 
 impl DocsRangeMap {
@@ -585,7 +588,7 @@ impl DocsRangeMap {
 
         let relative_range = range - line_docs_range.start();
 
-        let &InFile { file_id, value: ref source } = &self.source[idx as usize];
+        let &InFile { file_id, value: ref source } = &self.source[idx.0 as usize];
         match source {
             Either::Left(_) => None, // FIXME, figure out a nice way to handle doc attributes here
             // as well as for whats done in syntax highlight doc injection
@@ -606,7 +609,7 @@ impl DocsRangeMap {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Attr {
-    index: u32,
+    pub(crate) index: AttrId,
     pub(crate) path: Interned<ModPath>,
     pub(crate) input: Option<AttrInput>,
 }
@@ -620,7 +623,7 @@ pub enum AttrInput {
 }
 
 impl Attr {
-    fn from_src(ast: ast::Attr, hygiene: &Hygiene, index: u32) -> Option<Attr> {
+    fn from_src(ast: ast::Attr, hygiene: &Hygiene, index: AttrId) -> Option<Attr> {
         let path = Interned::new(ModPath::from_src(ast.path()?, hygiene)?);
         let input = if let Some(ast::Expr::Literal(lit)) = ast.expr() {
             let value = match lit.kind() {
