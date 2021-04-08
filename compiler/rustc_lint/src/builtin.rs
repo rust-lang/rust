@@ -2969,31 +2969,20 @@ declare_lint! {
     /// which causes [undefined behavior].
     ///
     /// ### Example
+    ///
     /// ```rust,no_run
+    /// # #![allow(unused)]
     /// unsafe {
-    ///     &*core::ptr::null::<i32>()
-    /// };
-    /// ```
-    /// ```rust,no_run
-    /// unsafe {
-    ///     core::ptr::addr_of!(*std::ptr::null::<i32>())
-    /// };
-    /// ```
-    /// ```rust,no_run
-    /// unsafe {
-    ///     *core::ptr::null::<i32>()
-    /// };
-    /// ```
-    /// ```rust,no_run
-    /// unsafe {
-    ///     *(0 as *const i32)
-    /// };
+    ///     let x = &*core::ptr::null::<i32>();
+    ///     let x = core::ptr::addr_of!(*std::ptr::null::<i32>());
+    ///     let x = *core::ptr::null::<i32>();
+    ///     let x = *(0 as *const i32);
+    /// }
     /// ```
     ///
     /// {{produces}}
     ///
     /// ### Explanation
-    ///
     ///
     /// Dereferencing a null pointer causes [undefined behavior] even as a place expression,
     /// like `&*(0 as *const i32)` or `addr_of!(*(0 as *const i32))`.
