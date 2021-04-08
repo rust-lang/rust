@@ -18,6 +18,7 @@ use text_edit::TextEdit;
 //
 // - kbd:[Enter] inside triple-slash comments automatically inserts `///`
 // - kbd:[Enter] in the middle or after a trailing space in `//` inserts `//`
+// - kbd:[Enter] inside `//!` doc comments automatically inserts `//!`
 //
 // This action needs to be assigned to shortcut explicitly.
 //
@@ -184,6 +185,25 @@ fn foo() {
     #[test]
     fn does_not_continue_before_doc_comment() {
         do_check_noop(r"$0//! docz");
+    }
+
+    #[test]
+    fn continues_another_doc_comment() {
+        do_check(
+            r#"
+fn main() {
+    //! Documentation for$0 on enter
+    let x = 1 + 1;
+}
+"#,
+            r#"
+fn main() {
+    //! Documentation for
+    //! $0 on enter
+    let x = 1 + 1;
+}
+"#,
+        );
     }
 
     #[test]
