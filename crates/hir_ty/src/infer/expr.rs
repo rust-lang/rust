@@ -24,7 +24,6 @@ use crate::{
     utils::{generics, Generics},
     AdtId, Binders, CallableDefId, FnPointer, FnSig, FnSubst, InEnvironment, Interner,
     ProjectionTyExt, Rawness, Scalar, Substitution, TraitRef, Ty, TyBuilder, TyExt, TyKind,
-    TypeWalk,
 };
 
 use super::{

@@ -38,7 +38,6 @@ use syntax::SmolStr;
 
 use super::{
     DomainGoal, Guidance, InEnvironment, ProjectionTy, Solution, TraitEnvironment, TraitRef, Ty,
-    TypeWalk,
 };
 use crate::{
     db::HirDatabase, fold_tys, infer::diagnostics::InferenceDiagnostic,

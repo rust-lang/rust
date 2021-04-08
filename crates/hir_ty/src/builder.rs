@@ -14,7 +14,7 @@ use smallvec::SmallVec;
 use crate::{
     db::HirDatabase, primitive, to_assoc_type_id, to_chalk_trait_id, utils::generics, Binders,
     CallableSig, FnPointer, FnSig, FnSubst, GenericArg, Interner, ProjectionTy, Substitution,
-    TraitRef, Ty, TyDefId, TyExt, TyKind, TypeWalk, ValueTyDefId,
+    TraitRef, Ty, TyDefId, TyExt, TyKind, ValueTyDefId,
 };
 
 /// This is a builder for `Ty` or anything that needs a `Substitution`.

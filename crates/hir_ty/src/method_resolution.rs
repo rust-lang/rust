@@ -6,11 +6,7 @@ use std::{iter, sync::Arc};
 
 use arrayvec::ArrayVec;
 use base_db::CrateId;
-use chalk_ir::{
-    cast::Cast,
-    fold::{Fold, Folder},
-    Fallible, Mutability, UniverseIndex,
-};
+use chalk_ir::{cast::Cast, Mutability, UniverseIndex};
 use hir_def::{
     lang_item::LangItemTarget, nameres::DefMap, AssocContainerId, AssocItemId, FunctionId,
     GenericDefId, HasModule, ImplId, Lookup, ModuleId, TraitId,
@@ -25,9 +21,9 @@ use crate::{
     primitive::{self, FloatTy, IntTy, UintTy},
     static_lifetime,
     utils::all_super_traits,
-    AdtId, BoundVar, Canonical, CanonicalVarKinds, DebruijnIndex, FnPointer, FnSig, ForeignDefId,
+    AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, FnPointer, FnSig, ForeignDefId,
     InEnvironment, Interner, Scalar, Substitution, TraitEnvironment, TraitRefExt, Ty, TyBuilder,
-    TyExt, TyKind, TypeWalk,
+    TyExt, TyKind,
 };
 
 /// This is used as a key for indexing impls.

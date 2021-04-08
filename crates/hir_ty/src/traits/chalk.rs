@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use log::debug;
 
-use chalk_ir::{fold::shift::Shift, interner::HasInterner, CanonicalVarKinds};
+use chalk_ir::{fold::shift::Shift, CanonicalVarKinds};
 use chalk_solve::rust_ir::{self, OpaqueTyDatumBound, WellKnownTrait};
 
 use base_db::{salsa::InternKey, CrateId};

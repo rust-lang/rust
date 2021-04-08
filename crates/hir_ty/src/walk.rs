@@ -1,14 +1,11 @@
 //! The `TypeWalk` trait (probably to be replaced by Chalk's `Fold` and
 //! `Visit`).
 
-use std::mem;
-
-use chalk_ir::{interner::HasInterner, DebruijnIndex};
+use chalk_ir::interner::HasInterner;
 
 use crate::{
-    utils::make_mut_slice, AliasEq, AliasTy, Binders, CallableSig, FnSubst, GenericArg,
-    GenericArgData, Interner, OpaqueTy, ProjectionTy, Substitution, TraitRef, Ty, TyKind,
-    WhereClause,
+    AliasEq, AliasTy, Binders, CallableSig, FnSubst, GenericArg, GenericArgData, Interner,
+    OpaqueTy, ProjectionTy, Substitution, TraitRef, Ty, TyKind, WhereClause,
 };
 
 /// This allows walking structures that contain types to do something with those

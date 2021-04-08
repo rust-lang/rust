@@ -12,7 +12,7 @@ use super::{DomainGoal, InferenceContext};
 use crate::{
     fold_tys, static_lifetime, AliasEq, AliasTy, BoundVar, Canonical, CanonicalVarKinds,
     DebruijnIndex, FnPointer, FnSubst, InEnvironment, InferenceVar, Interner, Scalar, Substitution,
-    Ty, TyExt, TyKind, TypeWalk, WhereClause,
+    Ty, TyExt, TyKind, WhereClause,
 };
 
 impl<'a> InferenceContext<'a> {

@@ -3,16 +3,15 @@
 //! Chalk (in both directions); plus some helper functions for more specialized
 //! conversions.
 
-use chalk_ir::{cast::Cast, interner::HasInterner};
+use chalk_ir::cast::Cast;
 use chalk_solve::rust_ir;
 
 use base_db::salsa::InternKey;
 use hir_def::{GenericDefId, TypeAliasId};
 
 use crate::{
-    db::HirDatabase, static_lifetime, AliasTy, CallableDefId, Canonical, ConstrainedSubst,
-    DomainGoal, FnPointer, GenericArg, InEnvironment, OpaqueTy, ProjectionTy, ProjectionTyExt,
-    QuantifiedWhereClause, Substitution, TraitRef, Ty, TypeWalk, WhereClause,
+    db::HirDatabase, AliasTy, CallableDefId, ProjectionTyExt, QuantifiedWhereClause, Substitution,
+    Ty, WhereClause,
 };
 
 use super::interner::*;
