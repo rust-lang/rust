@@ -1,6 +1,6 @@
 //! Codegen vtables and vtable accesses.
 //!
-//! See librustc_codegen_llvm/meth.rs for reference
+//! See `rustc_codegen_ssa/src/meth.rs` for reference.
 // FIXME dedup this logic between miri, cg_llvm and cg_clif
 
 use crate::prelude::*;
