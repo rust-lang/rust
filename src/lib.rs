@@ -36,7 +36,6 @@ use rustc_session::Session;
 use cranelift_codegen::settings::{self, Configurable};
 
 pub use crate::config::*;
-use crate::constant::ConstantCx;
 use crate::prelude::*;
 
 mod abi;
@@ -123,7 +122,6 @@ struct CodegenCx<'m, 'tcx: 'm> {
     tcx: TyCtxt<'tcx>,
     module: &'m mut dyn Module,
     global_asm: String,
-    constants_cx: ConstantCx,
     cached_context: Context,
     debug_context: Option<DebugContext<'tcx>>,
     unwind_context: UnwindContext<'tcx>,
@@ -147,7 +145,6 @@ impl<'m, 'tcx> CodegenCx<'m, 'tcx> {
             tcx,
             module,
             global_asm: String::new(),
-            constants_cx: ConstantCx::default(),
             cached_context: Context::new(),
             debug_context,
             unwind_context,
@@ -155,7 +152,6 @@ impl<'m, 'tcx> CodegenCx<'m, 'tcx> {
     }
 
     fn finalize(self) -> (String, Option<DebugContext<'tcx>>, UnwindContext<'tcx>) {
-        self.constants_cx.finalize(self.tcx, self.module);
         (self.global_asm, self.debug_context, self.unwind_context)
     }
 }

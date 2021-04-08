@@ -47,6 +47,7 @@ rm src/test/ui/issues/issue-51947.rs # same
 rm src/test/ui/numbers-arithmetic/saturating-float-casts.rs # intrinsic gives different but valid result
 rm src/test/ui/mir/mir_misc_casts.rs # depends on deduplication of constants
 rm src/test/ui/mir/mir_raw_fat_ptr.rs # same
+rm src/test/ui/consts/issue-33537.rs # same
 rm src/test/ui/async-await/async-fn-size-moved-locals.rs # -Cpanic=abort shrinks some generator by one byte
 rm src/test/ui/async-await/async-fn-size-uninit-locals.rs # same
 rm src/test/ui/generator/size-moved-locals.rs # same

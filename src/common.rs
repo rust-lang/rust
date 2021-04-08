@@ -4,6 +4,7 @@ use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{Integer, Primitive};
 use rustc_target::spec::{HasTargetSpec, Target};
 
+use crate::constant::ConstantCx;
 use crate::prelude::*;
 
 pub(crate) fn pointer_ty(tcx: TyCtxt<'_>) -> types::Type {
@@ -232,6 +233,7 @@ pub(crate) struct FunctionCx<'m, 'clif, 'tcx> {
     pub(crate) tcx: TyCtxt<'tcx>,
     pub(crate) pointer_type: Type, // Cached from module
     pub(crate) vtables: FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), DataId>,
+    pub(crate) constants_cx: ConstantCx,
 
     pub(crate) instance: Instance<'tcx>,
     pub(crate) symbol_name: SymbolName<'tcx>,

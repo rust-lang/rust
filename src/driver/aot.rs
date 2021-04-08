@@ -121,9 +121,7 @@ fn module_codegen(
             MonoItem::Fn(inst) => {
                 cx.tcx.sess.time("codegen fn", || crate::base::codegen_fn(&mut cx, inst));
             }
-            MonoItem::Static(def_id) => {
-                crate::constant::codegen_static(&mut cx.constants_cx, def_id)
-            }
+            MonoItem::Static(def_id) => crate::constant::codegen_static(&mut cx, def_id),
             MonoItem::GlobalAsm(item_id) => {
                 let item = cx.tcx.hir().item(item_id);
                 if let rustc_hir::ItemKind::GlobalAsm(rustc_hir::GlobalAsm { asm }) = item.kind {
