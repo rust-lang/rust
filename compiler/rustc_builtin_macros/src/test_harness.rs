@@ -1,13 +1,13 @@
 // Code that generates a test runner to run all the tests in a crate
 
 use rustc_ast as ast;
-use rustc_ast::entry::EntryPointType;
 use rustc_ast::mut_visit::{ExpectOne, *};
 use rustc_ast::ptr::P;
 use rustc_ast::{attr, ModKind};
 use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_feature::Features;
+use rustc_session::config::CrateType;
 use rustc_session::Session;
 use rustc_span::hygiene::{AstPass, SyntaxContext, Transparency};
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -88,8 +88,9 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
     fn visit_crate(&mut self, c: &mut ast::Crate) {
         noop_visit_crate(c, self);
 
-        // Create a main function to run our tests
-        c.items.push(mk_main(&mut self.cx));
+        ensure_exist_rustc_main_attr(&mut self.cx, &mut c.attrs);
+        // Create an entry function to run our tests
+        mk_entry_fn(&mut self.cx, c);
     }
 
     fn flat_map_item(&mut self, i: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
@@ -124,7 +125,7 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
                     Some(parent),
                 );
                 for test in &mut tests {
-                    // See the comment on `mk_main` for why we're using
+                    // See the comment on `mk_entry_fn` for why we're using
                     // `apply_mark` directly.
                     test.ident.span = test.ident.span.apply_mark(expn_id, Transparency::Opaque);
                 }
@@ -135,28 +136,32 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
     }
 }
 
-// Beware, this is duplicated in librustc_passes/entry.rs (with
-// `rustc_hir::Item`), so make sure to keep them in sync.
-fn entry_point_type(sess: &Session, item: &ast::Item, depth: usize) -> EntryPointType {
-    match item.kind {
-        ast::ItemKind::Fn(..) => {
-            if sess.contains_name(&item.attrs, sym::start) {
-                EntryPointType::Start
-            } else if sess.contains_name(&item.attrs, sym::main) {
-                EntryPointType::MainAttr
-            } else if item.ident.name == sym::main {
-                if depth == 1 {
-                    // This is a top-level function so can be 'main'
-                    EntryPointType::MainNamed
-                } else {
-                    EntryPointType::OtherMain
-                }
-            } else {
-                EntryPointType::None
-            }
-        }
-        _ => EntryPointType::None,
+/// Remove any #[start] from the AST so it doesn't
+/// clash with the one we're going to add, but mark it as
+/// #[allow(dead_code)] to avoid printing warnings.
+fn strip_start_attr(sess: &Session, def_site: Span, item: P<ast::Item>) -> P<ast::Item> {
+    if !matches!(item.kind, ast::ItemKind::Fn(..)) {
+        return item;
     }
+    if !sess.contains_name(&item.attrs, sym::start) {
+        return item;
+    }
+
+    item.map(|item| {
+        let ast::Item { id, ident, attrs, kind, vis, span, tokens } = item;
+
+        let allow_ident = Ident::new(sym::allow, def_site);
+        let dc_nested = attr::mk_nested_word_item(Ident::new(sym::dead_code, def_site));
+        let allow_dead_code_item = attr::mk_list_item(allow_ident, vec![dc_nested]);
+        let allow_dead_code = attr::mk_attr_outer(allow_dead_code_item);
+        let attrs = attrs
+            .into_iter()
+            .filter(|attr| !sess.check_name(attr, sym::start))
+            .chain(iter::once(allow_dead_code))
+            .collect();
+
+        ast::Item { id, ident, attrs, kind, vis, span, tokens }
+    })
 }
 /// A folder used to remove any entry points (like fn main) because the harness
 /// generator will provide its own
@@ -172,33 +177,7 @@ impl<'a> MutVisitor for EntryPointCleaner<'a> {
         self.depth += 1;
         let item = noop_flat_map_item(i, self).expect_one("noop did something");
         self.depth -= 1;
-
-        // Remove any #[main] or #[start] from the AST so it doesn't
-        // clash with the one we're going to add, but mark it as
-        // #[allow(dead_code)] to avoid printing warnings.
-        let item = match entry_point_type(self.sess, &item, self.depth) {
-            EntryPointType::MainNamed | EntryPointType::MainAttr | EntryPointType::Start => item
-                .map(|ast::Item { id, ident, attrs, kind, vis, span, tokens }| {
-                    let allow_ident = Ident::new(sym::allow, self.def_site);
-                    let dc_nested =
-                        attr::mk_nested_word_item(Ident::new(sym::dead_code, self.def_site));
-                    let allow_dead_code_item = attr::mk_list_item(allow_ident, vec![dc_nested]);
-                    let allow_dead_code = attr::mk_attr_outer(allow_dead_code_item);
-                    let attrs = attrs
-                        .into_iter()
-                        .filter(|attr| {
-                            !self.sess.check_name(attr, sym::main)
-                                && !self.sess.check_name(attr, sym::start)
-                        })
-                        .chain(iter::once(allow_dead_code))
-                        .collect();
-
-                    ast::Item { id, ident, attrs, kind, vis, span, tokens }
-                }),
-            EntryPointType::None | EntryPointType::OtherMain => item,
-        };
-
-        smallvec![item]
+        smallvec![strip_start_attr(self.sess, self.def_site, item)]
     }
 }
 
@@ -220,7 +199,7 @@ fn generate_test_harness(
     let expn_id = ext_cx.resolver.expansion_for_ast_pass(
         DUMMY_SP,
         AstPass::TestHarness,
-        &[sym::main, sym::test, sym::rustc_attrs],
+        &[sym::rustc_main, sym::test, sym::rustc_attrs],
         None,
     );
     let def_site = DUMMY_SP.with_def_site_ctxt(expn_id);
@@ -246,8 +225,8 @@ fn generate_test_harness(
 ///
 /// By default this expands to
 ///
-/// ```
-/// #[main]
+/// ```rust,ignore (not real code)
+/// #![rustc_main(crate::...::main)]
 /// pub fn main() {
 ///     extern crate test;
 ///     test::test_main_static(&[
@@ -271,9 +250,9 @@ fn generate_test_harness(
 /// [`TestCtxt::reexport_test_harness_main`] provides a different name for the `main`
 /// function and [`TestCtxt::test_runner`] provides a path that replaces
 /// `test::test_main_static`.
-fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
+fn mk_entry_fn(cx: &mut TestCtxt<'_>, c: &mut ast::Crate) {
     let sp = cx.def_site;
-    let ecx = &cx.ext_cx;
+    let ecx = &mut cx.ext_cx;
     let test_id = Ident::new(sym::test, sp);
 
     let runner_name = match cx.panic_strategy {
@@ -290,16 +269,13 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     test_runner.span = sp;
 
     let test_main_path_expr = ecx.expr_path(test_runner);
-    let call_test_main = ecx.expr_call(sp, test_main_path_expr, vec![mk_tests_slice(cx, sp)]);
+    let call_test_main =
+        ecx.expr_call(sp, test_main_path_expr, vec![mk_tests_slice(ecx, &cx.test_cases, sp)]);
     let call_test_main = ecx.stmt_expr(call_test_main);
 
     // extern crate test
     let test_extern_stmt =
         ecx.stmt_item(sp, ecx.item(sp, test_id, vec![], ast::ItemKind::ExternCrate(None)));
-
-    // #[main]
-    let main_meta = ecx.meta_word(sp, sym::main);
-    let main_attr = ecx.attribute(main_meta);
 
     // pub fn main() { ... }
     let main_ret_ty = ecx.ty(sp, ast::TyKind::Tup(vec![]));
@@ -325,7 +301,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
 
     let main = P(ast::Item {
         ident: main_id,
-        attrs: vec![main_attr],
+        attrs: vec![],
         id: ast::DUMMY_NODE_ID,
         kind: main,
         vis: ast::Visibility { span: sp, kind: ast::VisibilityKind::Public, tokens: None },
@@ -335,18 +311,48 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
 
     // Integrate the new item into existing module structures.
     let main = AstFragment::Items(smallvec![main]);
-    cx.ext_cx.monotonic_expander().fully_expand_fragment(main).make_items().pop().unwrap()
+    let main = ecx.monotonic_expander().fully_expand_fragment(main).make_items().pop().unwrap();
+
+    // #[rustc_main] attr
+    let main_id_nested_meta = ast::attr::mk_nested_word_item(main_id);
+    let rustc_main_meta = ecx.meta_list(sp, sym::rustc_main, vec![main_id_nested_meta]);
+    let rustc_main_attr = ecx.attribute(rustc_main_meta);
+    c.attrs.push(rustc_main_attr);
+    c.items.push(main);
+}
+
+fn ensure_exist_rustc_main_attr(cx: &mut TestCtxt<'_>, attrs: &mut Vec<ast::Attribute>) {
+    let sp = cx.def_site;
+    let ecx = &cx.ext_cx;
+
+    if ecx.sess.contains_name(attrs, sym::rustc_main) {
+        return;
+    }
+
+    let any_exe = ecx.sess.crate_types().iter().any(|ty| *ty == CrateType::Executable);
+    if !any_exe {
+        return;
+    }
+
+    if ecx.sess.contains_name(attrs, sym::no_main) {
+        return;
+    }
+
+    let crate_main_nested_meta = ast::attr::mk_nested_word_item(Ident::new(sym::main, DUMMY_SP));
+    let ignore_nested_meta = ast::attr::mk_nested_word_item(Ident::new(sym::ignore, DUMMY_SP));
+    let rustc_main_meta =
+        ecx.meta_list(sp, sym::rustc_main, vec![crate_main_nested_meta, ignore_nested_meta]);
+    let rustc_main_attr = ecx.attribute(rustc_main_meta);
+    attrs.push(rustc_main_attr);
 }
 
 /// Creates a slice containing every test like so:
 /// &[&test1, &test2]
-fn mk_tests_slice(cx: &TestCtxt<'_>, sp: Span) -> P<ast::Expr> {
-    debug!("building test vector from {} tests", cx.test_cases.len());
-    let ecx = &cx.ext_cx;
-
+fn mk_tests_slice(ecx: &ExtCtxt<'_>, test_cases: &Vec<Test>, sp: Span) -> P<ast::Expr> {
+    debug!("building test vector from {} tests", test_cases.len());
     ecx.expr_vec_slice(
         sp,
-        cx.test_cases
+        test_cases
             .iter()
             .map(|test| {
                 ecx.expr_addr_of(test.span, ecx.expr_path(ecx.path(test.span, vec![test.ident])))

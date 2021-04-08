@@ -1,0 +1,17 @@
+error: #[rustc_main] resolution failure
+  --> $DIR/rustc_main_with_invalid_path.rs:3:1
+   |
+LL | #![rustc_main(alt_main)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0601]: `main` function not found in crate `rustc_main_with_invalid_path`
+  --> $DIR/rustc_main_with_invalid_path.rs:1:1
+   |
+LL | / #![feature(rustc_main)]
+LL | |
+LL | | #![rustc_main(alt_main)]
+   | |________________________^ consider adding a `main` function to `$DIR/rustc_main_with_invalid_path.rs`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0601`.

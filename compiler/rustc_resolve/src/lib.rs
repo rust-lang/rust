@@ -1181,6 +1181,12 @@ impl ResolverAstLowering for Resolver<'_> {
 
         def_id
     }
+
+    fn resolve_ast_path_in_value_ns(&mut self, path: &Path, module_id: DefId) -> Option<Res> {
+        let module = self.get_module(module_id);
+        let parent_scope = &ParentScope::module(module, self);
+        self.resolve_ast_path(&path, Namespace::ValueNS, parent_scope, true).ok()
+    }
 }
 
 impl<'a> Resolver<'a> {
@@ -3218,7 +3224,7 @@ impl<'a> Resolver<'a> {
         };
         let module = self.get_module(module_id);
         let parent_scope = &ParentScope::module(module, self);
-        let res = self.resolve_ast_path(&path, ns, parent_scope).map_err(|_| ())?;
+        let res = self.resolve_ast_path(&path, ns, parent_scope, false).map_err(|_| ())?;
         Ok((path, res))
     }
 
@@ -3228,12 +3234,13 @@ impl<'a> Resolver<'a> {
         path: &ast::Path,
         ns: Namespace,
         parent_scope: &ParentScope<'a>,
+        record_used: bool,
     ) -> Result<Res, (Span, ResolutionError<'a>)> {
         match self.resolve_path(
             &Segment::from_path(path),
             Some(ns),
             parent_scope,
-            false,
+            record_used,
             path.span,
             CrateLint::No,
         ) {

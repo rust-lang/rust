@@ -48,7 +48,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Namespace, PartialRes, PerNS, Res};
+use rustc_hir::def::{DefKind, EntryFn, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, CRATE_DEF_ID};
 use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
 use rustc_hir::intravisit;
@@ -171,6 +171,8 @@ struct LoweringContext<'a, 'hir: 'a> {
 
     allow_try_trait: Option<Lrc<[Symbol]>>,
     allow_gen_future: Option<Lrc<[Symbol]>>,
+
+    entry_fn_attr: Option<EntryFn>,
 }
 
 pub trait ResolverAstLowering {
@@ -211,6 +213,12 @@ pub trait ResolverAstLowering {
         expn_id: ExpnId,
         span: Span,
     ) -> LocalDefId;
+
+    fn resolve_ast_path_in_value_ns(
+        &mut self,
+        path: &Path,
+        module_id: DefId,
+    ) -> Option<Res<NodeId>>;
 }
 
 type NtToTokenstream = fn(&Nonterminal, &ParseSess, CanSynthesizeMissingTokens) -> TokenStream;
@@ -334,6 +342,7 @@ pub fn lower_crate<'a, 'hir>(
         in_scope_lifetimes: Vec::new(),
         allow_try_trait: Some([sym::try_trait][..].into()),
         allow_gen_future: Some([sym::gen_future][..].into()),
+        entry_fn_attr: None,
     }
     .lower_crate(krate)
 }
@@ -547,6 +556,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             })
             .collect();
 
+        self.lower_entry_fn(&c.attrs);
+
         let mut def_id_to_hir_id = IndexVec::default();
 
         for (node_id, hir_id) in self.node_id_to_hir_id.into_iter_enumerated() {
@@ -583,6 +594,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             proc_macros,
             trait_map,
             attrs: self.attrs,
+            entry_fn_attr: self.entry_fn_attr,
         }
     }
 
@@ -2465,6 +2477,69 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             TraitBoundModifier::MaybeConstMaybe | TraitBoundModifier::Maybe => {
                 hir::TraitBoundModifier::Maybe
             }
+        }
+    }
+
+    fn lower_entry_fn(&mut self, attrs: &[Attribute]) {
+        let sess = self.sess;
+        let resolver = &mut *self.resolver;
+        let entry_fn = &mut self.entry_fn_attr;
+
+        fn copy_path_to_use_node_id(path: &Path, node_id: NodeId) -> Path {
+            let mut path = path.clone();
+            path.segments.iter_mut().for_each(|seg| {
+                seg.id = node_id;
+            });
+            path
+        }
+
+        let mut ignored_entry_fns = vec![];
+        for rustc_main_attr in attrs.iter().filter(|attr| attr.has_name(sym::rustc_main)) {
+            let attr_meta_item = rustc_main_attr.meta_item_list();
+            let sp = rustc_main_attr.span;
+            let mut is_ignored = false;
+            let (path, is_naked) = match attr_meta_item.as_ref().map(Vec::as_slice) {
+                Some([NestedMetaItem::MetaItem(MetaItem { path, .. })]) => (path, false),
+                Some([NestedMetaItem::MetaItem(MetaItem { path, .. }), naked])
+                    if naked.has_name(sym::naked) =>
+                {
+                    (path, true)
+                }
+                Some([NestedMetaItem::MetaItem(MetaItem { path, .. }), ignore])
+                    if ignore.has_name(sym::ignore) =>
+                {
+                    is_ignored = true;
+                    (path, false)
+                }
+                _ => {
+                    sess.struct_span_err(sp, "incorrect #[rustc_main] attribute format").emit();
+                    continue;
+                }
+            };
+            let entry_fn_node_id = resolver.next_node_id();
+            let entry_fn_node_path = copy_path_to_use_node_id(path, entry_fn_node_id);
+
+            let local_def_id = match resolver
+                .resolve_ast_path_in_value_ns(&entry_fn_node_path, CRATE_DEF_ID.to_def_id())
+            {
+                Some(Res::Def(DefKind::Fn, def_id)) => def_id.as_local(),
+                _ => None,
+            };
+
+            if is_ignored {
+                ignored_entry_fns.extend(local_def_id);
+                continue;
+            }
+
+            if let Some(local_def_id) = local_def_id {
+                *entry_fn = Some(EntryFn { local_def_id, is_naked, ignored_local_def_ids: vec![] })
+            } else {
+                sess.struct_span_err(sp, "#[rustc_main] resolution failure").emit();
+                continue;
+            }
+        }
+        if let Some(entry_fn) = entry_fn {
+            entry_fn.ignored_local_def_ids.extend(ignored_entry_fns.into_iter());
         }
     }
 

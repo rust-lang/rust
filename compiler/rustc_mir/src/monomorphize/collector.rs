@@ -187,6 +187,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::lang_items::LangItem;
+use rustc_hir::EntryFn;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_middle::mir::interpret::{AllocId, ConstValue};
 use rustc_middle::mir::interpret::{ErrorHandled, GlobalAlloc, Scalar};
@@ -197,7 +198,6 @@ use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCast};
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::{self, GenericParamDefKind, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc_middle::{middle::codegen_fn_attrs::CodegenFnAttrFlags, mir::visit::TyContext};
-use rustc_session::config::EntryFnType;
 use rustc_span::source_map::{dummy_spanned, respan, Span, Spanned, DUMMY_SP};
 use smallvec::SmallVec;
 use std::iter;
@@ -1024,7 +1024,7 @@ struct RootCollector<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     mode: MonoItemCollectionMode,
     output: &'a mut Vec<Spanned<MonoItem<'tcx>>>,
-    entry_fn: Option<(LocalDefId, EntryFnType)>,
+    entry_fn: Option<EntryFn>,
 }
 
 impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
@@ -1112,7 +1112,7 @@ impl RootCollector<'_, 'v> {
             && match self.mode {
                 MonoItemCollectionMode::Eager => true,
                 MonoItemCollectionMode::Lazy => {
-                    self.entry_fn.map(|(id, _)| id) == Some(def_id)
+                    self.entry_fn.as_ref().map(|ef| ef.local_def_id) == Some(def_id)
                         || self.tcx.is_reachable_non_generic(def_id)
                         || self
                             .tcx
@@ -1141,7 +1141,7 @@ impl RootCollector<'_, 'v> {
     /// the user writes their own `start` manually.
     fn push_extra_entry_roots(&mut self) {
         let main_def_id = match self.entry_fn {
-            Some((def_id, EntryFnType::Main)) => def_id,
+            Some(EntryFn { local_def_id: def_id, is_naked: false, .. }) => def_id,
             _ => return,
         };
 

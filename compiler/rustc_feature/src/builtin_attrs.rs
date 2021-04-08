@@ -421,6 +421,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "the `#[profiler_runtime]` attribute is used to identify the `profiler_builtins` crate \
         which contains the profiler runtime and will never be stable",
     ),
+    gated!(rustc_main, AssumedUsed, template!(List: "path"), experimental!(rustc_main)),
 
     // ==========================================================================
     // Internal attributes, Linkage:

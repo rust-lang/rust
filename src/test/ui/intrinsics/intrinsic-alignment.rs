@@ -1,7 +1,8 @@
 // run-pass
 // ignore-wasm32-bare seems not important to test here
 
-#![feature(intrinsics, main)]
+#![feature(intrinsics, rustc_main)]
+#![rustc_main(m::main)]
 
 mod rusti {
     extern "rust-intrinsic" {
@@ -21,7 +22,6 @@ mod rusti {
           target_os = "solaris",
           target_os = "vxworks"))]
 mod m {
-    #[main]
     #[cfg(target_arch = "x86")]
     pub fn main() {
         unsafe {
@@ -30,7 +30,6 @@ mod m {
         }
     }
 
-    #[main]
     #[cfg(not(target_arch = "x86"))]
     pub fn main() {
         unsafe {
@@ -42,7 +41,6 @@ mod m {
 
 #[cfg(target_env = "sgx")]
 mod m {
-    #[main]
     #[cfg(target_arch = "x86_64")]
     pub fn main() {
         unsafe {
@@ -54,7 +52,6 @@ mod m {
 
 #[cfg(target_os = "windows")]
 mod m {
-    #[main]
     pub fn main() {
         unsafe {
             assert_eq!(::rusti::pref_align_of::<u64>(), 8);

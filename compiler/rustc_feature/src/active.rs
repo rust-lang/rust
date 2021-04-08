@@ -134,9 +134,6 @@ declare_features! (
     /// Allows using the `box $expr` syntax.
     (active, box_syntax, "1.0.0", Some(49733), None),
 
-    /// Allows using `#[main]` to replace the entrypoint `#[lang = "start"]` calls.
-    (active, main, "1.0.0", Some(29634), None),
-
     /// Allows using `#[start]` on a function indicating that it is the program entrypoint.
     (active, start, "1.0.0", Some(29633), None),
 
@@ -647,6 +644,10 @@ declare_features! (
 
     /// Allows `extern "wasm" fn`
     (active, wasm_abi, "1.53.0", Some(83788), None),
+
+    /// Allows using `#![rustc_main(...)]` (an implementation detail of `rustc`,
+    /// it is not on path for eventual stabilization).
+    (active, rustc_main, "1.53.0", Some(84060), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates

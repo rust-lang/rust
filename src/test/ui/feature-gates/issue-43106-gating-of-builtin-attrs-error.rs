@@ -106,24 +106,6 @@ mod export_name {
     //~| NOTE not a function or static
 }
 
-#[main]
-//~^ ERROR: `main` attribute can only be used on functions
-mod main {
-    mod inner { #![main] }
-    //~^ ERROR: `main` attribute can only be used on functions
-
-    // for `fn f()` case, see feature-gate-main.rs
-
-    #[main] struct S;
-    //~^ ERROR: `main` attribute can only be used on functions
-
-    #[main] type T = S;
-    //~^ ERROR: `main` attribute can only be used on functions
-
-    #[main] impl S { }
-    //~^ ERROR: `main` attribute can only be used on functions
-}
-
 #[start]
 //~^ ERROR: `start` attribute can only be used on functions
 mod start {

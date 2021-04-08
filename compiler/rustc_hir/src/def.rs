@@ -4,8 +4,8 @@ use crate::hir;
 use rustc_ast as ast;
 use rustc_ast::NodeId;
 use rustc_macros::HashStable_Generic;
-use rustc_span::hygiene::MacroKind;
 use rustc_span::Symbol;
+use rustc_span::{def_id::LocalDefId, hygiene::MacroKind};
 
 use std::array::IntoIter;
 use std::fmt::Debug;
@@ -627,3 +627,11 @@ impl<Id> Res<Id> {
         matches!(self, Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) | Res::SelfCtor(..))
     }
 }
+#[derive(Clone, PartialEq, Hash, Debug)]
+pub struct EntryFn {
+    pub local_def_id: LocalDefId,
+    pub is_naked: bool,
+    pub ignored_local_def_ids: Vec<LocalDefId>,
+}
+
+impl_stable_hash_via_hash!(EntryFn);

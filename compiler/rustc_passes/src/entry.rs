@@ -1,29 +1,41 @@
-use rustc_ast::entry::EntryPointType;
 use rustc_errors::struct_span_err;
-use rustc_hir::def_id::{CrateNum, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_hir::EntryFn;
 use rustc_hir::{ForeignItem, HirId, ImplItem, Item, ItemKind, TraitItem, CRATE_HIR_ID};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{CrateType, EntryFnType};
+use rustc_session::config::CrateType;
 use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
+
+enum EntryFnSource {
+    RustcMainAttr,
+    NamedMainFn,
+    StartAttr,
+}
+pub enum EntryPointType {
+    None,
+    MainNamed,
+    Start,
+    OtherMain, // Not an entry point, but some other function named main
+}
 
 struct EntryContext<'a, 'tcx> {
     session: &'a Session,
 
     map: Map<'tcx>,
 
-    /// The top-level function called `main`.
-    main_fn: Option<(HirId, Span)>,
+    /// The entry function, either `main` or with attribute `start`.
+    entry_fn: Option<(HirId, Span, EntryFnSource)>,
 
-    /// The function that has attribute named `main`.
-    attr_main_fn: Option<(HirId, Span)>,
+    /// Whether the entry function is marked naked.
+    is_naked: bool,
 
-    /// The function that has the attribute 'start' on it.
-    start_fn: Option<(HirId, Span)>,
+    /// Ignored entry functions (usually by test harness generator).
+    ignored_main_fns: Vec<HirId>,
 
     /// The functions that one might think are `main` but aren't, e.g.
     /// main functions not defined at the top level. For diagnostics.
@@ -50,7 +62,22 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for EntryContext<'a, 'tcx> {
     }
 }
 
-fn entry_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<(LocalDefId, EntryFnType)> {
+fn visit_rustc_main_attr(tcx: TyCtxt<'_>, ctxt: &mut EntryContext<'_, '_>) {
+    if let Some(entry_fn) = &tcx.hir().krate().entry_fn_attr {
+        let hir_id = tcx.hir().local_def_id_to_hir_id(entry_fn.local_def_id);
+
+        ctxt.entry_fn = Some((hir_id, DUMMY_SP, EntryFnSource::RustcMainAttr));
+        ctxt.is_naked = entry_fn.is_naked;
+        ctxt.ignored_main_fns.extend(
+            entry_fn
+                .ignored_local_def_ids
+                .iter()
+                .map(|&local_def_id| tcx.hir().local_def_id_to_hir_id(local_def_id)),
+        );
+    }
+}
+
+fn entry_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<EntryFn> {
     assert_eq!(cnum, LOCAL_CRATE);
 
     let any_exe = tcx.sess.crate_types().iter().any(|ty| *ty == CrateType::Executable);
@@ -67,15 +94,30 @@ fn entry_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<(LocalDefId, EntryFnType)
     let mut ctxt = EntryContext {
         session: tcx.sess,
         map: tcx.hir(),
-        main_fn: None,
-        attr_main_fn: None,
-        start_fn: None,
+        entry_fn: None,
+        is_naked: false,
+        ignored_main_fns: Vec::new(),
         non_main_fns: Vec::new(),
     };
 
+    visit_rustc_main_attr(tcx, &mut ctxt);
+
     tcx.hir().krate().visit_all_item_likes(&mut ctxt);
 
-    configure_main(tcx, &ctxt)
+    if let Some((hir_id, _, _)) = ctxt.entry_fn {
+        Some(EntryFn {
+            local_def_id: tcx.hir().local_def_id(hir_id),
+            is_naked: ctxt.is_naked,
+            ignored_local_def_ids: ctxt
+                .ignored_main_fns
+                .iter()
+                .map(|&hir_id| tcx.hir().local_def_id(hir_id))
+                .collect(),
+        })
+    } else {
+        no_main_err(tcx, &ctxt);
+        None
+    }
 }
 
 // Beware, this is duplicated in `librustc_builtin_macros/test_harness.rs`
@@ -84,8 +126,6 @@ fn entry_point_type(ctxt: &EntryContext<'_, '_>, item: &Item<'_>, at_root: bool)
     let attrs = ctxt.map.attrs(item.hir_id());
     if ctxt.session.contains_name(attrs, sym::start) {
         EntryPointType::Start
-    } else if ctxt.session.contains_name(attrs, sym::main) {
-        EntryPointType::MainAttr
     } else if item.ident.name == sym::main {
         if at_root {
             // This is a top-level function so can be `main`.
@@ -111,62 +151,49 @@ fn find_item(item: &Item<'_>, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
             if let Some(attr) = ctxt.session.find_by_name(attrs, sym::start) {
                 throw_attr_err(&ctxt.session, attr.span, "start");
             }
-            if let Some(attr) = ctxt.session.find_by_name(attrs, sym::main) {
-                throw_attr_err(&ctxt.session, attr.span, "main");
-            }
-        }
-        EntryPointType::MainNamed => {
-            if ctxt.main_fn.is_none() {
-                ctxt.main_fn = Some((item.hir_id(), item.span));
-            } else {
-                struct_span_err!(ctxt.session, item.span, E0136, "multiple `main` functions")
-                    .emit();
-            }
         }
         EntryPointType::OtherMain => {
             ctxt.non_main_fns.push((item.hir_id(), item.span));
         }
-        EntryPointType::MainAttr => {
-            if ctxt.attr_main_fn.is_none() {
-                ctxt.attr_main_fn = Some((item.hir_id(), item.span));
-            } else {
+        EntryPointType::MainNamed => {
+            match ctxt.entry_fn {
+                None => {
+                    ctxt.entry_fn = Some((item.hir_id(), item.span, EntryFnSource::NamedMainFn));
+                    ctxt.is_naked = false;
+                }
+                Some((_, _, EntryFnSource::RustcMainAttr))
+                | Some((_, _, EntryFnSource::StartAttr)) => {
+                    // ignore current named main fn.
+                }
+                Some((_, _, EntryFnSource::NamedMainFn)) => {
+                    struct_span_err!(ctxt.session, item.span, E0136, "multiple `main` functions")
+                        .emit();
+                }
+            }
+        }
+        EntryPointType::Start => match ctxt.entry_fn {
+            None | Some((_, _, EntryFnSource::NamedMainFn)) => {
+                ctxt.entry_fn = Some((item.hir_id(), item.span, EntryFnSource::StartAttr));
+                ctxt.is_naked = true;
+            }
+            Some((_, previous_span, EntryFnSource::RustcMainAttr)) => {
                 struct_span_err!(
                     ctxt.session,
                     item.span,
-                    E0137,
-                    "multiple functions with a `#[main]` attribute"
+                    E0138,
+                    "multiple crate entry definitions"
                 )
-                .span_label(item.span, "additional `#[main]` function")
-                .span_label(ctxt.attr_main_fn.unwrap().1, "first `#[main]` function")
+                .span_label(previous_span, "previous `#[rustc_main]` attribute here")
+                .span_label(item.span, "current `start` function")
                 .emit();
             }
-        }
-        EntryPointType::Start => {
-            if ctxt.start_fn.is_none() {
-                ctxt.start_fn = Some((item.hir_id(), item.span));
-            } else {
-                struct_span_err!(ctxt.session, item.span, E0138, "multiple `start` functions")
-                    .span_label(ctxt.start_fn.unwrap().1, "previous `#[start]` function here")
+            Some((_, previous_span, EntryFnSource::StartAttr)) => {
+                struct_span_err!(ctxt.session, item.span, E0138, "multiple crate entry functions")
+                    .span_label(previous_span, "previous `#[start]` function here")
                     .span_label(item.span, "multiple `start` functions")
                     .emit();
             }
-        }
-    }
-}
-
-fn configure_main(
-    tcx: TyCtxt<'_>,
-    visitor: &EntryContext<'_, '_>,
-) -> Option<(LocalDefId, EntryFnType)> {
-    if let Some((hir_id, _)) = visitor.start_fn {
-        Some((tcx.hir().local_def_id(hir_id), EntryFnType::Start))
-    } else if let Some((hir_id, _)) = visitor.attr_main_fn {
-        Some((tcx.hir().local_def_id(hir_id), EntryFnType::Main))
-    } else if let Some((hir_id, _)) = visitor.main_fn {
-        Some((tcx.hir().local_def_id(hir_id), EntryFnType::Main))
-    } else {
-        no_main_err(tcx, visitor);
-        None
+        },
     }
 }
 
@@ -225,7 +252,7 @@ fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) {
     err.emit();
 }
 
-pub fn find_entry_point(tcx: TyCtxt<'_>) -> Option<(LocalDefId, EntryFnType)> {
+pub fn find_entry_point(tcx: TyCtxt<'_>) -> Option<EntryFn> {
     tcx.entry_fn(LOCAL_CRATE)
 }
 

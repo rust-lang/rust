@@ -1,15 +1,11 @@
 // run-pass
 // compile-flags: --test
 
-#![feature(main)]
+#![feature(rustc_main)]
+#![rustc_main(a::c)]
 
 #![allow(dead_code)]
 
 mod a {
-    fn b() {
-        (|| {
-            #[main]
-            fn c() { panic!(); }
-        })();
-    }
+    fn c() { panic!(); }
 }

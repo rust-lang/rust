@@ -303,7 +303,7 @@ impl<'tcx> Queries<'tcx> {
     /// an error.
     fn check_for_rustc_errors_attr(tcx: TyCtxt<'_>) {
         let def_id = match tcx.entry_fn(LOCAL_CRATE) {
-            Some((def_id, _)) => def_id,
+            Some(entry_fn) => entry_fn.local_def_id,
             _ => return,
         };
 

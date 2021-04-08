@@ -9,6 +9,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
+use rustc_hir::EntryFn;
 use rustc_hir::{def::Res, ItemKind, Node, PathSegment};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
@@ -17,7 +18,6 @@ use rustc_middle::ty::layout::MAX_SIMD_LANES;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::util::{Discr, IntTypeExt, Representability};
 use rustc_middle::ty::{self, ParamEnv, RegionKind, ToPredicate, Ty, TyCtxt};
-use rustc_session::config::EntryFnType;
 use rustc_session::lint::builtin::UNINHABITED_STATIC;
 use rustc_span::symbol::sym;
 use rustc_span::{self, MultiSpan, Span};
@@ -327,8 +327,8 @@ pub(super) fn check_fn<'a, 'tcx>(
 
     // Check that the main return type implements the termination trait.
     if let Some(term_id) = tcx.lang_items().termination() {
-        if let Some((def_id, EntryFnType::Main)) = tcx.entry_fn(LOCAL_CRATE) {
-            let main_id = hir.local_def_id_to_hir_id(def_id);
+        if let Some(EntryFn { local_def_id, is_naked: false, .. }) = tcx.entry_fn(LOCAL_CRATE) {
+            let main_id = hir.local_def_id_to_hir_id(local_def_id);
             if main_id == fn_id {
                 let substs = tcx.mk_substs_trait(declared_ret_ty, &[]);
                 let trait_ref = ty::TraitRef::new(term_id, substs);

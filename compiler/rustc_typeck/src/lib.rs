@@ -105,7 +105,6 @@ use rustc_middle::middle;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::util;
-use rustc_session::config::EntryFnType;
 use rustc_span::{symbol::sym, Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
@@ -352,10 +351,12 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: LocalDefId) {
 }
 
 fn check_for_entry_fn(tcx: TyCtxt<'_>) {
-    match tcx.entry_fn(LOCAL_CRATE) {
-        Some((def_id, EntryFnType::Main)) => check_main_fn_ty(tcx, def_id),
-        Some((def_id, EntryFnType::Start)) => check_start_fn_ty(tcx, def_id),
-        _ => {}
+    if let Some(entry_fn) = tcx.entry_fn(LOCAL_CRATE) {
+        if !entry_fn.is_naked {
+            check_main_fn_ty(tcx, entry_fn.local_def_id);
+        } else {
+            check_start_fn_ty(tcx, entry_fn.local_def_id);
+        }
     }
 }
 

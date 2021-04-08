@@ -1,5 +1,4 @@
 // Test that `#[rustc_*]` attributes are gated by `rustc_attrs` feature gate.
-
 #![feature(decl_macro)]
 
 mod rustc { pub macro unknown() {} }

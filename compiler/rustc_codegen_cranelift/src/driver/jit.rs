@@ -7,8 +7,8 @@ use std::os::raw::{c_char, c_int};
 
 use cranelift_codegen::binemit::{NullStackMapSink, NullTrapSink};
 use rustc_codegen_ssa::CrateInfo;
+use rustc_hir::EntryFn;
 use rustc_middle::mir::mono::MonoItem;
-use rustc_session::config::EntryFnType;
 
 use cranelift_jit::{JITBuilder, JITModule};
 
@@ -102,56 +102,52 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
         assert!(tls_backend_config.borrow_mut().replace(backend_config).is_none())
     });
 
-    let (main_def_id, entry_ty) = tcx.entry_fn(LOCAL_CRATE).unwrap();
+    let EntryFn { local_def_id: main_def_id, is_naked: main_is_naked, .. } =
+        tcx.entry_fn(LOCAL_CRATE).unwrap();
     let instance = Instance::mono(tcx, main_def_id.to_def_id()).polymorphize(tcx);
 
-    match entry_ty {
-        EntryFnType::Main => {
-            // FIXME set program arguments somehow
+    if !main_is_naked {
+        // FIXME set program arguments somehow
 
-            let main_sig = Signature {
-                params: vec![],
-                returns: vec![],
-                call_conv: CallConv::triple_default(&crate::target_triple(tcx.sess)),
-            };
-            let main_func_id = jit_module
-                .declare_function(tcx.symbol_name(instance).name, Linkage::Import, &main_sig)
-                .unwrap();
-            let finalized_main: *const u8 = jit_module.get_finalized_function(main_func_id);
+        let main_sig = Signature {
+            params: vec![],
+            returns: vec![],
+            call_conv: CallConv::triple_default(&crate::target_triple(tcx.sess)),
+        };
+        let main_func_id = jit_module
+            .declare_function(tcx.symbol_name(instance).name, Linkage::Import, &main_sig)
+            .unwrap();
+        let finalized_main: *const u8 = jit_module.get_finalized_function(main_func_id);
 
-            CURRENT_MODULE.with(|current_module| {
-                assert!(current_module.borrow_mut().replace(jit_module).is_none())
-            });
+        CURRENT_MODULE.with(|current_module| {
+            assert!(current_module.borrow_mut().replace(jit_module).is_none())
+        });
 
-            let f: extern "C" fn() = unsafe { ::std::mem::transmute(finalized_main) };
-            f();
-            std::process::exit(0);
-        }
-        EntryFnType::Start => {
-            let start_sig = Signature {
-                params: vec![
-                    AbiParam::new(jit_module.target_config().pointer_type()),
-                    AbiParam::new(jit_module.target_config().pointer_type()),
-                ],
-                returns: vec![AbiParam::new(
-                    jit_module.target_config().pointer_type(), /*isize*/
-                )],
-                call_conv: CallConv::triple_default(&crate::target_triple(tcx.sess)),
-            };
-            let start_func_id = jit_module
-                .declare_function(tcx.symbol_name(instance).name, Linkage::Import, &start_sig)
-                .unwrap();
-            let finalized_start: *const u8 = jit_module.get_finalized_function(start_func_id);
+        let f: extern "C" fn() = unsafe { ::std::mem::transmute(finalized_main) };
+        f();
+        std::process::exit(0);
+    } else {
+        let start_sig = Signature {
+            params: vec![
+                AbiParam::new(jit_module.target_config().pointer_type()),
+                AbiParam::new(jit_module.target_config().pointer_type()),
+            ],
+            returns: vec![AbiParam::new(jit_module.target_config().pointer_type() /*isize*/)],
+            call_conv: CallConv::triple_default(&crate::target_triple(tcx.sess)),
+        };
+        let start_func_id = jit_module
+            .declare_function(tcx.symbol_name(instance).name, Linkage::Import, &start_sig)
+            .unwrap();
+        let finalized_start: *const u8 = jit_module.get_finalized_function(start_func_id);
 
-            CURRENT_MODULE.with(|current_module| {
-                assert!(current_module.borrow_mut().replace(jit_module).is_none())
-            });
+        CURRENT_MODULE.with(|current_module| {
+            assert!(current_module.borrow_mut().replace(jit_module).is_none())
+        });
 
-            let f: extern "C" fn(c_int, *const *const c_char) -> c_int =
-                unsafe { ::std::mem::transmute(finalized_start) };
-            let ret = f(args.len() as c_int, argv.as_ptr());
-            std::process::exit(ret);
-        }
+        let f: extern "C" fn(c_int, *const *const c_char) -> c_int =
+            unsafe { ::std::mem::transmute(finalized_start) };
+        let ret = f(args.len() as c_int, argv.as_ptr());
+        std::process::exit(ret);
     }
 }
 

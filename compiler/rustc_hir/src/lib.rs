@@ -34,6 +34,7 @@ pub mod weak_lang_items;
 #[cfg(test)]
 mod tests;
 
+pub use def::EntryFn;
 pub use hir::*;
 pub use hir_id::*;
 pub use lang_items::{LangItem, LanguageItems};

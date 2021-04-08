@@ -1,5 +1,5 @@
 // ignore-tidy-filelength
-use crate::def::{CtorKind, DefKind, Res};
+use crate::def::{CtorKind, DefKind, EntryFn, Res};
 use crate::def_id::DefId;
 crate use crate::hir_id::HirId;
 use crate::{itemlikevisit, LangItem};
@@ -669,6 +669,8 @@ pub struct Crate<'hir> {
 
     /// Collected attributes from HIR nodes.
     pub attrs: BTreeMap<HirId, &'hir [Attribute]>,
+
+    pub entry_fn_attr: Option<EntryFn>,
 }
 
 impl Crate<'hir> {

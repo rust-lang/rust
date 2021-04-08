@@ -43,7 +43,6 @@ pub mod util {
 pub mod ast;
 pub mod ast_like;
 pub mod attr;
-pub mod entry;
 pub mod expand;
 pub mod mut_visit;
 pub mod node_id;

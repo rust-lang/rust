@@ -1489,6 +1489,7 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
         sym::path,
         sym::automatically_derived,
         sym::start,
+        // reserved for stablization of `rustc_main` attribute
         sym::main,
     ];
 

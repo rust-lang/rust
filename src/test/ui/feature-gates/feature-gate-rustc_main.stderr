@@ -1,0 +1,12 @@
+error[E0658]: the `#[rustc_main]` attribute is an experimental feature
+  --> $DIR/feature-gate-rustc_main.rs:1:1
+   |
+LL | #![rustc_main(foo)]
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #84060 <https://github.com/rust-lang/rust/issues/84060> for more information
+   = help: add `#![feature(rustc_main)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

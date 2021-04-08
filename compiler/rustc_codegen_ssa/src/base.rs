@@ -17,6 +17,7 @@ use rustc_data_structures::sync::{par_iter, ParallelIterator};
 use rustc_hir as hir;
 use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
+use rustc_hir::EntryFn;
 use rustc_index::vec::Idx;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::cstore::EncodedMetadata;
@@ -28,7 +29,7 @@ use rustc_middle::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::cgu_reuse_tracker::CguReuse;
-use rustc_session::config::{self, EntryFnType};
+use rustc_session::config;
 use rustc_session::Session;
 use rustc_target::abi::{Align, LayoutOf, VariantIdx};
 
@@ -347,7 +348,7 @@ pub fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
 ) -> Option<Bx::Function> {
-    let main_def_id = cx.tcx().entry_fn(LOCAL_CRATE).map(|(def_id, _)| def_id)?;
+    let main_def_id = cx.tcx().entry_fn(LOCAL_CRATE).map(|entry_fn| entry_fn.local_def_id)?;
     let instance = Instance::mono(cx.tcx(), main_def_id.to_def_id());
 
     if !cx.codegen_unit().contains_item(&MonoItem::Fn(instance)) {
@@ -358,8 +359,8 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     let main_llfn = cx.get_fn_addr(instance);
 
-    return cx.tcx().entry_fn(LOCAL_CRATE).map(|(_, et)| {
-        let use_start_lang_item = EntryFnType::Start != et;
+    return cx.tcx().entry_fn(LOCAL_CRATE).map(|EntryFn { is_naked, .. }| {
+        let use_start_lang_item = !is_naked;
         create_entry_fn::<Bx>(cx, main_llfn, main_def_id, use_start_lang_item)
     });
 

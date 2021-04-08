@@ -462,6 +462,7 @@ fn create_and_seed_worklist<'tcx>(
     access_levels: &privacy::AccessLevels,
     krate: &hir::Crate<'_>,
 ) -> (Vec<hir::HirId>, FxHashMap<hir::HirId, hir::HirId>) {
+    let entry_fn = tcx.entry_fn(LOCAL_CRATE);
     let worklist = access_levels
         .map
         .iter()
@@ -472,8 +473,17 @@ fn create_and_seed_worklist<'tcx>(
         )
         .chain(
             // Seed entry point
-            tcx.entry_fn(LOCAL_CRATE).map(|(def_id, _)| tcx.hir().local_def_id_to_hir_id(def_id)),
+            entry_fn
+                .as_ref()
+                .iter()
+                .map(|entry_fn| tcx.hir().local_def_id_to_hir_id(entry_fn.local_def_id)),
         )
+        .chain(entry_fn.as_ref().iter().flat_map(|entry_fn| {
+            entry_fn
+                .ignored_local_def_ids
+                .iter()
+                .map(|&local_def_id| tcx.hir().local_def_id_to_hir_id(local_def_id))
+        }))
         .collect::<Vec<_>>();
 
     // Seed implemented trait items

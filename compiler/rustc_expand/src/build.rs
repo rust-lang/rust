@@ -561,4 +561,8 @@ impl<'a> ExtCtxt<'a> {
     pub fn meta_word(&self, sp: Span, w: Symbol) -> ast::MetaItem {
         attr::mk_word_item(Ident::new(w, sp))
     }
+
+    pub fn meta_list(&self, sp: Span, w: Symbol, items: Vec<ast::NestedMetaItem>) -> ast::MetaItem {
+        attr::mk_list_item(Ident::new(w, sp), items)
+    }
 }
