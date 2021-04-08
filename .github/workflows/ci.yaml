@@ -42,14 +42,6 @@ jobs:
       if: matrix.os == 'windows-latest'
       run: Rename-Item C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc.old
 
-    # Work around https://github.com/actions/cache/issues/403 by using GNU tar
-    # instead of BSD tar.
-    - name: Install GNU tar
-      if: matrix.os == 'macos-latest'
-      run: |
-        brew install gnu-tar
-        echo PATH="/usr/local/opt/gnu-tar/libexec/gnubin:$PATH" >> $GITHUB_ENV
-
     - name: Install Rust toolchain
       uses: actions-rs/toolchain@v1
       with:
@@ -58,28 +50,14 @@ jobs:
         override: true
         components: rustfmt, rust-src
 
-    - name: Cache cargo directories
-      uses: actions/cache@v2
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
-    - name: Cache cargo target dir
-      uses: actions/cache@v2
-      with:
-        path: target
-        key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache Dependencies
+      uses: Swatinem/rust-cache@v1
 
     - name: Compile
       run: cargo test --no-run --locked
 
     - name: Test
       run: cargo test
-
-    - name: Prepare cache
-      run: cargo xtask pre-cache
 
   # Weird targets to catch non-portable code
   rust-cross:
@@ -103,13 +81,8 @@ jobs:
     - name: Install Rust targets
       run: rustup target add ${{ env.targets }}
 
-    - name: Cache cargo directories
-      uses: actions/cache@v2
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache Dependencies
+      uses: Swatinem/rust-cache@v1
 
     - name: Check
       run: |

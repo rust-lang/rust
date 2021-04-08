@@ -28,7 +28,6 @@ xflags::xflags! {
         }
 
         cmd fuzz-tests {}
-        cmd pre-cache {}
 
         cmd release {
             optional --dry-run
@@ -63,7 +62,6 @@ pub enum XtaskCmd {
     Help(Help),
     Install(Install),
     FuzzTests(FuzzTests),
-    PreCache(PreCache),
     Release(Release),
     Promote(Promote),
     Dist(Dist),
@@ -90,9 +88,6 @@ pub struct Lint;
 
 #[derive(Debug)]
 pub struct FuzzTests;
-
-#[derive(Debug)]
-pub struct PreCache;
 
 #[derive(Debug)]
 pub struct Release {

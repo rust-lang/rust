@@ -18,7 +18,6 @@ mod install;
 mod release;
 mod dist;
 mod metrics;
-mod pre_cache;
 
 use anyhow::{bail, Result};
 use std::{
@@ -41,7 +40,6 @@ fn main() -> Result<()> {
         }
         flags::XtaskCmd::Install(cmd) => cmd.run(),
         flags::XtaskCmd::FuzzTests(_) => run_fuzzer(),
-        flags::XtaskCmd::PreCache(cmd) => cmd.run(),
         flags::XtaskCmd::Release(cmd) => cmd.run(),
         flags::XtaskCmd::Promote(cmd) => cmd.run(),
         flags::XtaskCmd::Dist(flags) => {
