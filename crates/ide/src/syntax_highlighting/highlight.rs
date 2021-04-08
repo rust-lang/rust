@@ -323,8 +323,18 @@ fn highlight_def(db: &RootDatabase, def: Definition) -> Highlight {
             hir::ModuleDef::Trait(_) => HlTag::Symbol(SymbolKind::Trait),
             hir::ModuleDef::TypeAlias(type_) => {
                 let mut h = Highlight::new(HlTag::Symbol(SymbolKind::TypeAlias));
-                if type_.as_assoc_item(db).is_some() {
-                    h |= HlMod::Associated
+                if let Some(item) = type_.as_assoc_item(db) {
+                    h |= HlMod::Associated;
+                    match item.container(db) {
+                        AssocItemContainer::Impl(i) => {
+                            if i.trait_(db).is_some() {
+                                h |= HlMod::Trait;
+                            }
+                        }
+                        AssocItemContainer::Trait(_t) => {
+                            h |= HlMod::Trait;
+                        }
+                    }
                 }
                 return h;
             }
