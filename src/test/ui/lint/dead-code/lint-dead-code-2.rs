@@ -1,6 +1,6 @@
 #![allow(unused_variables)]
 #![deny(dead_code)]
-#![feature(main, start)]
+#![feature(rustc_attrs, start)]
 
 struct Foo;
 
@@ -21,7 +21,7 @@ fn live_fn() {}
 
 fn dead_fn() {} //~ ERROR: function is never used
 
-#[main]
+#[rustc_main]
 fn dead_fn2() {} //~ ERROR: function is never used
 
 fn used_fn() {}

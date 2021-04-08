@@ -142,7 +142,7 @@ fn entry_point_type(sess: &Session, item: &ast::Item, depth: usize) -> EntryPoin
         ast::ItemKind::Fn(..) => {
             if sess.contains_name(&item.attrs, sym::start) {
                 EntryPointType::Start
-            } else if sess.contains_name(&item.attrs, sym::main) {
+            } else if sess.contains_name(&item.attrs, sym::rustc_main) {
                 EntryPointType::MainAttr
             } else if item.ident.name == sym::main {
                 if depth == 1 {
@@ -187,7 +187,7 @@ impl<'a> MutVisitor for EntryPointCleaner<'a> {
                     let attrs = attrs
                         .into_iter()
                         .filter(|attr| {
-                            !self.sess.check_name(attr, sym::main)
+                            !self.sess.check_name(attr, sym::rustc_main)
                                 && !self.sess.check_name(attr, sym::start)
                         })
                         .chain(iter::once(allow_dead_code))
@@ -220,7 +220,7 @@ fn generate_test_harness(
     let expn_id = ext_cx.resolver.expansion_for_ast_pass(
         DUMMY_SP,
         AstPass::TestHarness,
-        &[sym::main, sym::test, sym::rustc_attrs],
+        &[sym::test, sym::rustc_attrs],
         None,
     );
     let def_site = DUMMY_SP.with_def_site_ctxt(expn_id);
@@ -247,7 +247,7 @@ fn generate_test_harness(
 /// By default this expands to
 ///
 /// ```
-/// #[main]
+/// #[rustc_main]
 /// pub fn main() {
 ///     extern crate test;
 ///     test::test_main_static(&[
@@ -297,8 +297,8 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     let test_extern_stmt =
         ecx.stmt_item(sp, ecx.item(sp, test_id, vec![], ast::ItemKind::ExternCrate(None)));
 
-    // #[main]
-    let main_meta = ecx.meta_word(sp, sym::main);
+    // #[rustc_main]
+    let main_meta = ecx.meta_word(sp, sym::rustc_main);
     let main_attr = ecx.attribute(main_meta);
 
     // pub fn main() { ... }

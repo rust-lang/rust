@@ -11,8 +11,8 @@
 
 #![macro_export]
 //~^ ERROR: `macro_export` attribute cannot be used at crate level
-#![main]
-//~^ ERROR: `main` attribute cannot be used at crate level
+#![rustc_main] //~ ERROR: the `#[rustc_main]` attribute is used internally to specify
+//~^ ERROR: `rustc_main` attribute cannot be used at crate level
 #![start]
 //~^ ERROR: `start` attribute cannot be used at crate level
 #![repr()]
@@ -104,24 +104,6 @@ mod export_name {
     #[export_name = "2200"] impl S { }
     //~^ ERROR attribute should be applied to a function or static
     //~| NOTE not a function or static
-}
-
-#[main]
-//~^ ERROR: `main` attribute can only be used on functions
-mod main {
-    mod inner { #![main] }
-    //~^ ERROR: `main` attribute can only be used on functions
-
-    // for `fn f()` case, see feature-gate-main.rs
-
-    #[main] struct S;
-    //~^ ERROR: `main` attribute can only be used on functions
-
-    #[main] type T = S;
-    //~^ ERROR: `main` attribute can only be used on functions
-
-    #[main] impl S { }
-    //~^ ERROR: `main` attribute can only be used on functions
 }
 
 #[start]

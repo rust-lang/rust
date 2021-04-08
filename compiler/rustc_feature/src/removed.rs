@@ -132,6 +132,8 @@ declare_features! (
     (removed, link_args, "1.53.0", Some(29596), None,
      Some("removed in favor of using `-C link-arg=ARG` on command line, \
            which is available from cargo build scripts with `cargo:rustc-link-arg` now")),
+    /// Allows using `#[main]` to replace the entrypoint `#[lang = "start"]` calls.
+    (removed, main, "1.53.0", Some(29634), None, None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: removed features
