@@ -14,9 +14,13 @@ use cranelift_jit::{JITBuilder, JITModule};
 use crate::{prelude::*, BackendConfig};
 use crate::{CodegenCx, CodegenMode};
 
+struct JitState {
+    backend_config: BackendConfig,
+    jit_module: JITModule,
+}
+
 thread_local! {
-    pub static BACKEND_CONFIG: RefCell<Option<BackendConfig>> = RefCell::new(None);
-    pub static CURRENT_MODULE: RefCell<Option<JITModule>> = RefCell::new(None);
+    static LAZY_JIT_STATE: RefCell<Option<JitState>> = RefCell::new(None);
 }
 
 pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
@@ -106,10 +110,6 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
     // useful as some dynamic linkers use it as a marker to jump over.
     argv.push(std::ptr::null());
 
-    BACKEND_CONFIG.with(|tls_backend_config| {
-        assert!(tls_backend_config.borrow_mut().replace(backend_config).is_none())
-    });
-
     let start_sig = Signature {
         params: vec![
             AbiParam::new(jit_module.target_config().pointer_type()),
@@ -121,8 +121,11 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
     let start_func_id = jit_module.declare_function("main", Linkage::Import, &start_sig).unwrap();
     let finalized_start: *const u8 = jit_module.get_finalized_function(start_func_id);
 
-    CURRENT_MODULE
-        .with(|current_module| assert!(current_module.borrow_mut().replace(jit_module).is_none()));
+    LAZY_JIT_STATE.with(|lazy_jit_state| {
+        let mut lazy_jit_state = lazy_jit_state.borrow_mut();
+        assert!(lazy_jit_state.is_none());
+        *lazy_jit_state = Some(JitState { backend_config, jit_module });
+    });
 
     let f: extern "C" fn(c_int, *const *const c_char) -> c_int =
         unsafe { ::std::mem::transmute(finalized_start) };
@@ -136,11 +139,11 @@ extern "C" fn __clif_jit_fn(instance_ptr: *const Instance<'static>) -> *const u8
         // lift is used to ensure the correct lifetime for instance.
         let instance = tcx.lift(unsafe { *instance_ptr }).unwrap();
 
-        CURRENT_MODULE.with(|jit_module| {
-            let mut jit_module = jit_module.borrow_mut();
-            let jit_module = jit_module.as_mut().unwrap();
-            let backend_config =
-                BACKEND_CONFIG.with(|backend_config| backend_config.borrow().clone().unwrap());
+        LAZY_JIT_STATE.with(|lazy_jit_state| {
+            let mut lazy_jit_state = lazy_jit_state.borrow_mut();
+            let lazy_jit_state = lazy_jit_state.as_mut().unwrap();
+            let jit_module = &mut lazy_jit_state.jit_module;
+            let backend_config = lazy_jit_state.backend_config.clone();
 
             let name = tcx.symbol_name(instance).name.to_string();
             let sig = crate::abi::get_function_sig(tcx, jit_module.isa().triple(), instance);
