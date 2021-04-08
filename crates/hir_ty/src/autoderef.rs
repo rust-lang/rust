@@ -6,14 +6,15 @@
 use std::iter::successors;
 
 use base_db::CrateId;
-use chalk_ir::cast::Cast;
+use chalk_ir::{cast::Cast, fold::Fold, interner::HasInterner, VariableKind};
 use hir_def::lang_item::LangItemTarget;
 use hir_expand::name::name;
 use log::{info, warn};
 
 use crate::{
-    db::HirDatabase, AliasEq, AliasTy, BoundVar, Canonical, CanonicalVarKinds, DebruijnIndex,
-    InEnvironment, Interner, ProjectionTyExt, Solution, Ty, TyBuilder, TyKind,
+    db::HirDatabase, static_lifetime, AliasEq, AliasTy, BoundVar, Canonical, CanonicalVarKinds,
+    DebruijnIndex, InEnvironment, Interner, ProjectionTyExt, Solution, Substitution, Ty, TyBuilder,
+    TyKind,
 };
 
 const AUTODEREF_RECURSION_LIMIT: usize = 10;
@@ -103,7 +104,7 @@ fn deref_by_trait(
         binders: CanonicalVarKinds::from_iter(
             &Interner,
             ty.goal.binders.iter(&Interner).cloned().chain(Some(chalk_ir::WithKind::new(
-                chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General),
+                VariableKind::Ty(chalk_ir::TyVariableKind::General),
                 chalk_ir::UniverseIndex::ROOT,
             ))),
         ),
@@ -136,7 +137,9 @@ fn deref_by_trait(
                     return None;
                 }
             }
-            Some(Canonical {
+            // FIXME: we remove lifetime variables here since they can confuse
+            // the method resolution code later
+            Some(fixup_lifetime_variables(Canonical {
                 value: vars
                     .value
                     .subst
@@ -144,11 +147,40 @@ fn deref_by_trait(
                     .assert_ty_ref(&Interner)
                     .clone(),
                 binders: vars.binders.clone(),
-            })
+            }))
         }
         Solution::Ambig(_) => {
             info!("Ambiguous solution for derefing {:?}: {:?}", ty.goal, solution);
             None
         }
     }
+}
+
+fn fixup_lifetime_variables<T: Fold<Interner, Result = T> + HasInterner<Interner = Interner>>(
+    c: Canonical<T>,
+) -> Canonical<T> {
+    // Removes lifetime variables from the Canonical, replacing them by static lifetimes.
+    let mut i = 0;
+    let subst = Substitution::from_iter(
+        &Interner,
+        c.binders.iter(&Interner).map(|vk| match vk.kind {
+            VariableKind::Ty(_) => {
+                let index = i;
+                i += 1;
+                BoundVar::new(DebruijnIndex::INNERMOST, index).to_ty(&Interner).cast(&Interner)
+            }
+            VariableKind::Lifetime => static_lifetime().cast(&Interner),
+            VariableKind::Const(_) => unimplemented!(),
+        }),
+    );
+    let binders = CanonicalVarKinds::from_iter(
+        &Interner,
+        c.binders.iter(&Interner).filter(|vk| match vk.kind {
+            VariableKind::Ty(_) => true,
+            VariableKind::Lifetime => false,
+            VariableKind::Const(_) => true,
+        }),
+    );
+    let value = subst.apply(c.value, &Interner);
+    Canonical { binders, value }
 }

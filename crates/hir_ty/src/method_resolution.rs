@@ -609,6 +609,7 @@ fn iterate_trait_method_candidates(
                 }
             }
             known_implemented = true;
+            // FIXME: we shouldn't be ignoring the binders here
             if callback(&self_ty.value, *item) {
                 return true;
             }
