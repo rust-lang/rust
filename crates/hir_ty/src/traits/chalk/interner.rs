@@ -36,13 +36,17 @@ pub struct InternedVariableKindsInner(Vec<chalk_ir::VariableKind<Interner>>);
 #[derive(PartialEq, Eq, Hash, Debug)]
 pub struct InternedSubstitutionInner(SmallVec<[GenericArg; 2]>);
 
+#[derive(PartialEq, Eq, Hash, Debug)]
+pub struct InternedTypeInner(chalk_ir::TyData<Interner>);
+
 impl_internable!(
     InternedVariableKindsInner,
     InternedSubstitutionInner,
+    InternedTypeInner,
 );
 
 impl chalk_ir::interner::Interner for Interner {
-    type InternedType = Arc<chalk_ir::TyData<Self>>;
+    type InternedType = Interned<InternedTypeInner>;
     type InternedLifetime = chalk_ir::LifetimeData<Self>;
     type InternedConst = Arc<chalk_ir::ConstData<Self>>;
     type InternedConcreteConst = ();
@@ -209,11 +213,11 @@ impl chalk_ir::interner::Interner for Interner {
 
     fn intern_ty(&self, kind: chalk_ir::TyKind<Self>) -> Self::InternedType {
         let flags = kind.compute_flags(self);
-        Arc::new(chalk_ir::TyData { kind, flags })
+        Interned::new(InternedTypeInner(chalk_ir::TyData { kind, flags }))
     }
 
     fn ty_data<'a>(&self, ty: &'a Self::InternedType) -> &'a chalk_ir::TyData<Self> {
-        ty
+        &ty.0
     }
 
     fn intern_lifetime(&self, lifetime: chalk_ir::LifetimeData<Self>) -> Self::InternedLifetime {
