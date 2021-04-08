@@ -4,7 +4,10 @@
 use super::tls;
 use base_db::salsa::InternId;
 use chalk_ir::{GenericArg, Goal, GoalData};
-use hir_def::TypeAliasId;
+use hir_def::{
+    intern::{impl_internable, InternStorage, Internable, Interned},
+    TypeAliasId,
+};
 use smallvec::SmallVec;
 use std::{fmt, sync::Arc};
 
@@ -26,6 +29,11 @@ pub(crate) type OpaqueTyId = chalk_ir::OpaqueTyId<Interner>;
 pub(crate) type OpaqueTyDatum = chalk_solve::rust_ir::OpaqueTyDatum<Interner>;
 pub(crate) type Variances = chalk_ir::Variances<Interner>;
 
+#[derive(PartialEq, Eq, Hash, Debug)]
+pub struct InternedVariableKindsInner(Vec<chalk_ir::VariableKind<Interner>>);
+
+impl_internable!(InternedVariableKindsInner,);
+
 impl chalk_ir::interner::Interner for Interner {
     type InternedType = Arc<chalk_ir::TyData<Self>>;
     type InternedLifetime = chalk_ir::LifetimeData<Self>;
@@ -38,7 +46,7 @@ impl chalk_ir::interner::Interner for Interner {
     type InternedProgramClause = Arc<chalk_ir::ProgramClauseData<Self>>;
     type InternedProgramClauses = Arc<[chalk_ir::ProgramClause<Self>]>;
     type InternedQuantifiedWhereClauses = Vec<chalk_ir::QuantifiedWhereClause<Self>>;
-    type InternedVariableKinds = Vec<chalk_ir::VariableKind<Self>>;
+    type InternedVariableKinds = Interned<InternedVariableKindsInner>;
     type InternedCanonicalVarKinds = Vec<chalk_ir::CanonicalVarKind<Self>>;
     type InternedConstraints = Vec<chalk_ir::InEnvironment<chalk_ir::Constraint<Self>>>;
     type InternedVariances = Arc<[chalk_ir::Variance]>;
@@ -322,14 +330,16 @@ impl chalk_ir::interner::Interner for Interner {
         &self,
         data: impl IntoIterator<Item = Result<chalk_ir::VariableKind<Self>, E>>,
     ) -> Result<Self::InternedVariableKinds, E> {
-        data.into_iter().collect()
+        Ok(Interned::new(InternedVariableKindsInner(
+            data.into_iter().collect::<Result<Vec<_>, E>>()?,
+        )))
     }
 
     fn variable_kinds_data<'a>(
         &self,
         parameter_kinds: &'a Self::InternedVariableKinds,
     ) -> &'a [chalk_ir::VariableKind<Self>] {
-        &parameter_kinds
+        &parameter_kinds.as_ref().0
     }
 
     fn intern_canonical_var_kinds<E>(
