@@ -308,7 +308,7 @@ $0
 
         let expander = BuiltinDeriveExpander::find_by_name(&name).unwrap();
 
-        let attr_id = AstId::new(file_id.into(), ast_id_map.ast_id(&items[0]));
+        let ast_id = AstId::new(file_id.into(), ast_id_map.ast_id(&items[0]));
 
         let loc = MacroCallLoc {
             def: MacroDefId {
@@ -317,7 +317,7 @@ $0
                 local_inner: false,
             },
             krate: CrateId(0),
-            kind: MacroCallKind::Derive(attr_id, name.to_string()),
+            kind: MacroCallKind::Derive { ast_id, derive_name: name.to_string() },
         };
 
         let id: MacroCallId = db.intern_macro(loc).into();

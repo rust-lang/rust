@@ -1520,7 +1520,7 @@ impl ModCollector<'_, '_> {
                 // Built-in macro failed eager expansion.
                 self.def_collector.def_map.diagnostics.push(DefDiagnostic::macro_error(
                     self.module_id,
-                    MacroCallKind::FnLike(ast_id.ast_id),
+                    MacroCallKind::FnLike { ast_id: ast_id.ast_id },
                     error.unwrap().to_string(),
                 ));
                 return;

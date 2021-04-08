@@ -613,12 +613,12 @@ mod diagnostics {
                 DiagnosticKind::UnresolvedProcMacro { ast } => {
                     let mut precise_location = None;
                     let (file, ast, name) = match ast {
-                        MacroCallKind::FnLike(ast) => {
-                            let node = ast.to_node(db.upcast());
-                            (ast.file_id, SyntaxNodePtr::from(AstPtr::new(&node)), None)
+                        MacroCallKind::FnLike { ast_id } => {
+                            let node = ast_id.to_node(db.upcast());
+                            (ast_id.file_id, SyntaxNodePtr::from(AstPtr::new(&node)), None)
                         }
-                        MacroCallKind::Derive(ast, name) => {
-                            let node = ast.to_node(db.upcast());
+                        MacroCallKind::Derive { ast_id, derive_name } => {
+                            let node = ast_id.to_node(db.upcast());
 
                             // Compute the precise location of the macro name's token in the derive
                             // list.
@@ -639,7 +639,7 @@ mod diagnostics {
                                     });
                                 for token in tokens {
                                     if token.kind() == SyntaxKind::IDENT
-                                        && token.text() == name.as_str()
+                                        && token.text() == derive_name.as_str()
                                     {
                                         precise_location = Some(token.text_range());
                                         break 'outer;
@@ -648,9 +648,9 @@ mod diagnostics {
                             }
 
                             (
-                                ast.file_id,
+                                ast_id.file_id,
                                 SyntaxNodePtr::from(AstPtr::new(&node)),
-                                Some(name.clone()),
+                                Some(derive_name.clone()),
                             )
                         }
                     };
@@ -669,13 +669,13 @@ mod diagnostics {
 
                 DiagnosticKind::MacroError { ast, message } => {
                     let (file, ast) = match ast {
-                        MacroCallKind::FnLike(ast) => {
-                            let node = ast.to_node(db.upcast());
-                            (ast.file_id, SyntaxNodePtr::from(AstPtr::new(&node)))
+                        MacroCallKind::FnLike { ast_id, .. } => {
+                            let node = ast_id.to_node(db.upcast());
+                            (ast_id.file_id, SyntaxNodePtr::from(AstPtr::new(&node)))
                         }
-                        MacroCallKind::Derive(ast, _) => {
-                            let node = ast.to_node(db.upcast());
-                            (ast.file_id, SyntaxNodePtr::from(AstPtr::new(&node)))
+                        MacroCallKind::Derive { ast_id, .. } => {
+                            let node = ast_id.to_node(db.upcast());
+                            (ast_id.file_id, SyntaxNodePtr::from(AstPtr::new(&node)))
                         }
                     };
                     sink.push(MacroError { file, node: ast, message: message.clone() });

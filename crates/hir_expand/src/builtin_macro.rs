@@ -566,10 +566,9 @@ mod tests {
                 let loc = MacroCallLoc {
                     def,
                     krate,
-                    kind: MacroCallKind::FnLike(AstId::new(
-                        file_id.into(),
-                        ast_id_map.ast_id(&macro_call),
-                    )),
+                    kind: MacroCallKind::FnLike {
+                        ast_id: AstId::new(file_id.into(), ast_id_map.ast_id(&macro_call)),
+                    },
                 };
 
                 let id: MacroCallId = db.intern_macro(loc).into();
