@@ -1,0 +1,18 @@
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/issue-83943.rs:7:9
+   |
+LL | /     if true {
+LL | |         "A".to_string()
+   | |         --------------- expected because of this
+LL | |     } else {
+LL | |         "B"
+   | |         ^^^
+   | |         |
+   | |         expected struct `String`, found `&str`
+   | |         help: try using a conversion method: `"B".to_string()`
+LL | |     };
+   | |_____- `if` and `else` have incompatible types
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

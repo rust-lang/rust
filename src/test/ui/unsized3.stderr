@@ -41,7 +41,11 @@ LL | fn f8<X: ?Sized>(x1: &S<X>, x2: &S<X>) {
 LL |     f5(x1);
    |        ^^ doesn't have a size known at compile-time
    |
-   = note: required because it appears within the type `S<X>`
+note: required because it appears within the type `S<X>`
+  --> $DIR/unsized3.rs:28:8
+   |
+LL | struct S<X: ?Sized> {
+   |        ^
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | fn f5<Y: ?Sized>(x: &Y) {}
@@ -55,7 +59,11 @@ LL | fn f9<X: ?Sized>(x1: Box<S<X>>) {
 LL |     f5(&(*x1, 34));
    |        ^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = note: required because it appears within the type `S<X>`
+note: required because it appears within the type `S<X>`
+  --> $DIR/unsized3.rs:28:8
+   |
+LL | struct S<X: ?Sized> {
+   |        ^
    = note: only the last element of a tuple may have a dynamically sized type
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
@@ -66,7 +74,11 @@ LL | fn f10<X: ?Sized>(x1: Box<S<X>>) {
 LL |     f5(&(32, *x1));
    |         ^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = note: required because it appears within the type `S<X>`
+note: required because it appears within the type `S<X>`
+  --> $DIR/unsized3.rs:28:8
+   |
+LL | struct S<X: ?Sized> {
+   |        ^
    = note: required because it appears within the type `({integer}, S<X>)`
    = note: tuples must have a statically known size to be initialized
 
@@ -81,7 +93,11 @@ LL | fn f10<X: ?Sized>(x1: Box<S<X>>) {
 LL |     f5(&(32, *x1));
    |        ^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = note: required because it appears within the type `S<X>`
+note: required because it appears within the type `S<X>`
+  --> $DIR/unsized3.rs:28:8
+   |
+LL | struct S<X: ?Sized> {
+   |        ^
    = note: required because it appears within the type `({integer}, S<X>)`
 help: consider relaxing the implicit `Sized` restriction
    |

@@ -98,7 +98,7 @@ where
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum FnKind<'a> {
     /// `#[xxx] pub async/const/extern "Abi" fn foo()`
     ItemFn(Ident, &'a Generics<'a>, FnHeader, &'a Visibility<'a>),
