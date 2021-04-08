@@ -2,14 +2,17 @@
 
 use std::borrow::Cow;
 
-use chalk_ir::{FloatTy, IntTy, TyVariableKind, UniverseIndex, VariableKind};
+use chalk_ir::{
+    cast::Cast, fold::Fold, interner::HasInterner, FloatTy, IntTy, TyVariableKind, UniverseIndex,
+    VariableKind,
+};
 use ena::unify::{InPlaceUnificationTable, NoError, UnifyKey, UnifyValue};
 
 use super::{DomainGoal, InferenceContext};
 use crate::{
-    AliasEq, AliasTy, BoundVar, Canonical, CanonicalVarKinds, DebruijnIndex, FnPointer, FnSubst,
-    InEnvironment, InferenceVar, Interner, Scalar, Substitution, Ty, TyExt, TyKind, TypeWalk,
-    WhereClause,
+    fold_tys, static_lifetime, AliasEq, AliasTy, BoundVar, Canonical, CanonicalVarKinds,
+    DebruijnIndex, FnPointer, FnSubst, InEnvironment, InferenceVar, Interner, Scalar, Substitution,
+    Ty, TyExt, TyKind, WhereClause,
 };
 
 impl<'a> InferenceContext<'a> {
@@ -34,7 +37,10 @@ where
 }
 
 #[derive(Debug)]
-pub(super) struct Canonicalized<T> {
+pub(super) struct Canonicalized<T>
+where
+    T: HasInterner<Interner = Interner>,
+{
     pub(super) value: Canonical<T>,
     free_vars: Vec<(InferenceVar, TyVariableKind)>,
 }
@@ -48,9 +54,14 @@ impl<'a, 'b> Canonicalizer<'a, 'b> {
         })
     }
 
-    fn do_canonicalize<T: TypeWalk>(&mut self, t: T, binders: DebruijnIndex) -> T {
-        t.fold_binders(
-            &mut |ty, binders| match ty.kind(&Interner) {
+    fn do_canonicalize<T: Fold<Interner, Result = T> + HasInterner<Interner = Interner>>(
+        &mut self,
+        t: T,
+        binders: DebruijnIndex,
+    ) -> T {
+        fold_tys(
+            t,
+            |ty, binders| match ty.kind(&Interner) {
                 &TyKind::InferenceVar(var, kind) => {
                     let inner = from_inference_var(var);
                     if self.var_stack.contains(&inner) {
@@ -76,7 +87,10 @@ impl<'a, 'b> Canonicalizer<'a, 'b> {
         )
     }
 
-    fn into_canonicalized<T>(self, result: T) -> Canonicalized<T> {
+    fn into_canonicalized<T: HasInterner<Interner = Interner>>(
+        self,
+        result: T,
+    ) -> Canonicalized<T> {
         let kinds = self
             .free_vars
             .iter()
@@ -103,28 +117,18 @@ impl<'a, 'b> Canonicalizer<'a, 'b> {
             DomainGoal::Holds(wc) => {
                 DomainGoal::Holds(self.do_canonicalize(wc, DebruijnIndex::INNERMOST))
             }
+            _ => unimplemented!(),
         };
         self.into_canonicalized(InEnvironment { goal: result, environment: obligation.environment })
     }
 }
 
-impl<T> Canonicalized<T> {
+impl<T: HasInterner<Interner = Interner>> Canonicalized<T> {
     pub(super) fn decanonicalize_ty(&self, ty: Ty) -> Ty {
-        ty.fold_binders(
-            &mut |ty, binders| {
-                if let TyKind::BoundVar(bound) = ty.kind(&Interner) {
-                    if bound.debruijn >= binders {
-                        let (v, k) = self.free_vars[bound.index];
-                        TyKind::InferenceVar(v, k).intern(&Interner)
-                    } else {
-                        ty
-                    }
-                } else {
-                    ty
-                }
-            },
-            DebruijnIndex::INNERMOST,
-        )
+        crate::fold_free_vars(ty, |bound, _binders| {
+            let (v, k) = self.free_vars[bound.index];
+            TyKind::InferenceVar(v, k).intern(&Interner)
+        })
     }
 
     pub(super) fn apply_solution(
@@ -136,15 +140,17 @@ impl<T> Canonicalized<T> {
         let new_vars = Substitution::from_iter(
             &Interner,
             solution.binders.iter(&Interner).map(|k| match k.kind {
-                VariableKind::Ty(TyVariableKind::General) => ctx.table.new_type_var(),
-                VariableKind::Ty(TyVariableKind::Integer) => ctx.table.new_integer_var(),
-                VariableKind::Ty(TyVariableKind::Float) => ctx.table.new_float_var(),
-                // HACK: Chalk can sometimes return new lifetime variables. We
-                // want to just skip them, but to not mess up the indices of
-                // other variables, we'll just create a new type variable in
-                // their place instead. This should not matter (we never see the
-                // actual *uses* of the lifetime variable).
-                VariableKind::Lifetime => ctx.table.new_type_var(),
+                VariableKind::Ty(TyVariableKind::General) => {
+                    ctx.table.new_type_var().cast(&Interner)
+                }
+                VariableKind::Ty(TyVariableKind::Integer) => {
+                    ctx.table.new_integer_var().cast(&Interner)
+                }
+                VariableKind::Ty(TyVariableKind::Float) => {
+                    ctx.table.new_float_var().cast(&Interner)
+                }
+                // Chalk can sometimes return new lifetime variables. We just use the static lifetime everywhere
+                VariableKind::Lifetime => static_lifetime().cast(&Interner),
                 _ => panic!("const variable in solution"),
             }),
         );
@@ -488,55 +494,63 @@ impl InferenceTable {
     /// be resolved as far as possible, i.e. contain no type variables with
     /// known type.
     fn resolve_ty_as_possible_inner(&mut self, tv_stack: &mut Vec<TypeVarId>, ty: Ty) -> Ty {
-        ty.fold(&mut |ty| match ty.kind(&Interner) {
-            &TyKind::InferenceVar(tv, kind) => {
-                let inner = from_inference_var(tv);
-                if tv_stack.contains(&inner) {
-                    cov_mark::hit!(type_var_cycles_resolve_as_possible);
-                    // recursive type
-                    return self.type_variable_table.fallback_value(tv, kind);
+        fold_tys(
+            ty,
+            |ty, _| match ty.kind(&Interner) {
+                &TyKind::InferenceVar(tv, kind) => {
+                    let inner = from_inference_var(tv);
+                    if tv_stack.contains(&inner) {
+                        cov_mark::hit!(type_var_cycles_resolve_as_possible);
+                        // recursive type
+                        return self.type_variable_table.fallback_value(tv, kind);
+                    }
+                    if let Some(known_ty) =
+                        self.var_unification_table.inlined_probe_value(inner).known()
+                    {
+                        // known_ty may contain other variables that are known by now
+                        tv_stack.push(inner);
+                        let result = self.resolve_ty_as_possible_inner(tv_stack, known_ty.clone());
+                        tv_stack.pop();
+                        result
+                    } else {
+                        ty
+                    }
                 }
-                if let Some(known_ty) =
-                    self.var_unification_table.inlined_probe_value(inner).known()
-                {
-                    // known_ty may contain other variables that are known by now
-                    tv_stack.push(inner);
-                    let result = self.resolve_ty_as_possible_inner(tv_stack, known_ty.clone());
-                    tv_stack.pop();
-                    result
-                } else {
-                    ty
-                }
-            }
-            _ => ty,
-        })
+                _ => ty,
+            },
+            DebruijnIndex::INNERMOST,
+        )
     }
 
     /// Resolves the type completely; type variables without known type are
     /// replaced by TyKind::Unknown.
     fn resolve_ty_completely_inner(&mut self, tv_stack: &mut Vec<TypeVarId>, ty: Ty) -> Ty {
-        ty.fold(&mut |ty| match ty.kind(&Interner) {
-            &TyKind::InferenceVar(tv, kind) => {
-                let inner = from_inference_var(tv);
-                if tv_stack.contains(&inner) {
-                    cov_mark::hit!(type_var_cycles_resolve_completely);
-                    // recursive type
-                    return self.type_variable_table.fallback_value(tv, kind);
+        fold_tys(
+            ty,
+            |ty, _| match ty.kind(&Interner) {
+                &TyKind::InferenceVar(tv, kind) => {
+                    let inner = from_inference_var(tv);
+                    if tv_stack.contains(&inner) {
+                        cov_mark::hit!(type_var_cycles_resolve_completely);
+                        // recursive type
+                        return self.type_variable_table.fallback_value(tv, kind);
+                    }
+                    if let Some(known_ty) =
+                        self.var_unification_table.inlined_probe_value(inner).known()
+                    {
+                        // known_ty may contain other variables that are known by now
+                        tv_stack.push(inner);
+                        let result = self.resolve_ty_completely_inner(tv_stack, known_ty.clone());
+                        tv_stack.pop();
+                        result
+                    } else {
+                        self.type_variable_table.fallback_value(tv, kind)
+                    }
                 }
-                if let Some(known_ty) =
-                    self.var_unification_table.inlined_probe_value(inner).known()
-                {
-                    // known_ty may contain other variables that are known by now
-                    tv_stack.push(inner);
-                    let result = self.resolve_ty_completely_inner(tv_stack, known_ty.clone());
-                    tv_stack.pop();
-                    result
-                } else {
-                    self.type_variable_table.fallback_value(tv, kind)
-                }
-            }
-            _ => ty,
-        })
+                _ => ty,
+            },
+            DebruijnIndex::INNERMOST,
+        )
     }
 }
 

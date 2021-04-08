@@ -18,7 +18,7 @@ use std::mem;
 use std::ops::Index;
 use std::sync::Arc;
 
-use chalk_ir::{cast::Cast, Mutability};
+use chalk_ir::{cast::Cast, DebruijnIndex, Mutability};
 use hir_def::{
     body::Body,
     data::{ConstData, FunctionData, StaticData},
@@ -38,11 +38,11 @@ use syntax::SmolStr;
 
 use super::{
     DomainGoal, Guidance, InEnvironment, ProjectionTy, Solution, TraitEnvironment, TraitRef, Ty,
-    TypeWalk,
 };
 use crate::{
-    db::HirDatabase, infer::diagnostics::InferenceDiagnostic, lower::ImplTraitLoweringMode,
-    to_assoc_type_id, AliasEq, AliasTy, Canonical, Interner, TyBuilder, TyExt, TyKind,
+    db::HirDatabase, fold_tys, infer::diagnostics::InferenceDiagnostic,
+    lower::ImplTraitLoweringMode, to_assoc_type_id, AliasEq, AliasTy, Canonical, Interner,
+    TyBuilder, TyExt, TyKind,
 };
 
 // This lint has a false positive here. See the link below for details.
@@ -323,7 +323,7 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn insert_type_vars(&mut self, ty: Ty) -> Ty {
-        ty.fold(&mut |ty| self.insert_type_vars_shallow(ty))
+        fold_tys(ty, |ty, _| self.insert_type_vars_shallow(ty), DebruijnIndex::INNERMOST)
     }
 
     fn resolve_obligations_as_possible(&mut self) {
@@ -434,12 +434,16 @@ impl<'a> InferenceContext<'a> {
     /// to do it as well.
     fn normalize_associated_types_in(&mut self, ty: Ty) -> Ty {
         let ty = self.resolve_ty_as_possible(ty);
-        ty.fold(&mut |ty| match ty.kind(&Interner) {
-            TyKind::Alias(AliasTy::Projection(proj_ty)) => {
-                self.normalize_projection_ty(proj_ty.clone())
-            }
-            _ => ty,
-        })
+        fold_tys(
+            ty,
+            |ty, _| match ty.kind(&Interner) {
+                TyKind::Alias(AliasTy::Projection(proj_ty)) => {
+                    self.normalize_projection_ty(proj_ty.clone())
+                }
+                _ => ty,
+            },
+            DebruijnIndex::INNERMOST,
+        )
     }
 
     fn normalize_projection_ty(&mut self, proj_ty: ProjectionTy) -> Ty {

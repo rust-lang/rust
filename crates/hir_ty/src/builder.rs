@@ -4,6 +4,7 @@ use std::iter;
 
 use chalk_ir::{
     cast::{Cast, CastTo, Caster},
+    fold::Fold,
     interner::HasInterner,
     AdtId, BoundVar, DebruijnIndex, Safety, Scalar,
 };
@@ -13,7 +14,7 @@ use smallvec::SmallVec;
 use crate::{
     db::HirDatabase, primitive, to_assoc_type_id, to_chalk_trait_id, utils::generics, Binders,
     CallableSig, FnPointer, FnSig, FnSubst, GenericArg, Interner, ProjectionTy, Substitution,
-    TraitRef, Ty, TyDefId, TyExt, TyKind, TypeWalk, ValueTyDefId,
+    TraitRef, Ty, TyDefId, TyExt, TyKind, ValueTyDefId,
 };
 
 /// This is a builder for `Ty` or anything that needs a `Substitution`.
@@ -32,8 +33,7 @@ impl<D> TyBuilder<D> {
 
     fn build_internal(self) -> (D, Substitution) {
         assert_eq!(self.vec.len(), self.param_count);
-        // FIXME: would be good to have a way to construct a chalk_ir::Substitution from the interned form
-        let subst = Substitution::intern(self.vec);
+        let subst = Substitution::from_iter(&Interner, self.vec);
         (self.data, subst)
     }
 
@@ -141,7 +141,7 @@ impl TyBuilder<hir_def::AdtId> {
                 self.vec.push(fallback().cast(&Interner));
             } else {
                 // each default can depend on the previous parameters
-                let subst_so_far = Substitution::intern(self.vec.clone());
+                let subst_so_far = Substitution::from_iter(&Interner, self.vec.clone());
                 self.vec
                     .push(default_ty.clone().substitute(&Interner, &subst_so_far).cast(&Interner));
             }
@@ -196,13 +196,13 @@ impl TyBuilder<TypeAliasId> {
     }
 }
 
-impl<T: TypeWalk + HasInterner<Interner = Interner>> TyBuilder<Binders<T>> {
+impl<T: HasInterner<Interner = Interner> + Fold<Interner>> TyBuilder<Binders<T>> {
     fn subst_binders(b: Binders<T>) -> Self {
         let param_count = b.binders.len(&Interner);
         TyBuilder::new(b, param_count)
     }
 
-    pub fn build(self) -> T {
+    pub fn build(self) -> <T as Fold<Interner>>::Result {
         let (b, subst) = self.build_internal();
         b.substitute(&Interner, &subst)
     }

@@ -8,7 +8,7 @@
 use std::{iter, sync::Arc};
 
 use base_db::CrateId;
-use chalk_ir::{cast::Cast, Mutability, Safety};
+use chalk_ir::{cast::Cast, fold::Shift, interner::HasInterner, Mutability, Safety};
 use hir_def::{
     adt::StructKind,
     builtin_type::BuiltinType,
@@ -35,7 +35,7 @@ use crate::{
     AliasEq, AliasTy, Binders, BoundVar, CallableSig, DebruijnIndex, DynTy, FnPointer, FnSig,
     FnSubst, ImplTraitId, OpaqueTy, PolyFnSig, ProjectionTy, QuantifiedWhereClause,
     QuantifiedWhereClauses, ReturnTypeImplTrait, ReturnTypeImplTraits, Substitution,
-    TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyKind, TypeWalk, WhereClause,
+    TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyKind, WhereClause,
 };
 
 #[derive(Debug)]
@@ -488,7 +488,7 @@ impl<'a> TyLoweringContext<'a> {
                         };
                         // We need to shift in the bound vars, since
                         // associated_type_shorthand_candidates does not do that
-                        let substs = substs.shifted_in_from(self.in_binders);
+                        let substs = substs.shifted_in_from(&Interner, self.in_binders);
                         // FIXME handle type parameters on the segment
                         return Some(
                             TyKind::Alias(AliasTy::Projection(ProjectionTy {
@@ -847,7 +847,7 @@ pub fn associated_type_shorthand_candidates<R>(
                 // FIXME: how to correctly handle higher-ranked bounds here?
                 WhereClause::Implemented(tr) => search(
                     tr.clone()
-                        .shifted_out_to(DebruijnIndex::ONE)
+                        .shifted_out_to(&Interner, DebruijnIndex::ONE)
                         .expect("FIXME unexpected higher-ranked trait bound"),
                 ),
                 _ => None,
@@ -950,8 +950,7 @@ pub(crate) fn trait_environment_query(
                 traits_in_scope
                     .push((tr.self_type_parameter(&Interner).clone(), tr.hir_trait_id()));
             }
-            let program_clause: chalk_ir::ProgramClause<Interner> =
-                pred.clone().to_chalk(db).cast(&Interner);
+            let program_clause: chalk_ir::ProgramClause<Interner> = pred.clone().cast(&Interner);
             clauses.push(program_clause.into_from_env_clause(&Interner));
         }
     }
@@ -974,7 +973,7 @@ pub(crate) fn trait_environment_query(
         let substs = TyBuilder::type_params_subst(db, trait_id);
         let trait_ref = TraitRef { trait_id: to_chalk_trait_id(trait_id), substitution: substs };
         let pred = WhereClause::Implemented(trait_ref);
-        let program_clause: chalk_ir::ProgramClause<Interner> = pred.to_chalk(db).cast(&Interner);
+        let program_clause: chalk_ir::ProgramClause<Interner> = pred.cast(&Interner);
         clauses.push(program_clause.into_from_env_clause(&Interner));
     }
 
@@ -1016,22 +1015,16 @@ pub(crate) fn generic_defaults_query(
                 p.default.as_ref().map_or(TyKind::Error.intern(&Interner), |t| ctx.lower_ty(t));
 
             // Each default can only refer to previous parameters.
-            ty = ty.fold_binders(
-                &mut |ty, binders| match ty.kind(&Interner) {
-                    TyKind::BoundVar(BoundVar { debruijn, index }) if *debruijn == binders => {
-                        if *index >= idx {
-                            // type variable default referring to parameter coming
-                            // after it. This is forbidden (FIXME: report
-                            // diagnostic)
-                            TyKind::Error.intern(&Interner)
-                        } else {
-                            ty
-                        }
-                    }
-                    _ => ty,
-                },
-                DebruijnIndex::INNERMOST,
-            );
+            ty = crate::fold_free_vars(ty, |bound, binders| {
+                if bound.index >= idx && bound.debruijn == DebruijnIndex::INNERMOST {
+                    // type variable default referring to parameter coming
+                    // after it. This is forbidden (FIXME: report
+                    // diagnostic)
+                    TyKind::Error.intern(&Interner)
+                } else {
+                    bound.shifted_in_from(binders).to_ty(&Interner)
+                }
+            });
 
             crate::make_only_type_binders(idx, ty)
         })
@@ -1307,6 +1300,6 @@ pub(crate) fn lower_to_chalk_mutability(m: hir_def::type_ref::Mutability) -> Mut
     }
 }
 
-fn make_binders<T>(generics: &Generics, value: T) -> Binders<T> {
+fn make_binders<T: HasInterner<Interner = Interner>>(generics: &Generics, value: T) -> Binders<T> {
     crate::make_only_type_binders(generics.len(), value)
 }

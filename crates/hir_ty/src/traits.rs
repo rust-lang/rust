@@ -12,7 +12,7 @@ use crate::{
     Solution, TraitRefExt, Ty, TyKind, WhereClause,
 };
 
-use self::chalk::{from_chalk, Interner, ToChalk};
+use self::chalk::Interner;
 
 pub(crate) mod chalk;
 
@@ -81,6 +81,7 @@ pub(crate) fn trait_solve_query(
             db.trait_data(it.hir_trait_id()).name.to_string()
         }
         DomainGoal::Holds(WhereClause::AliasEq(_)) => "alias_eq".to_string(),
+        _ => "??".to_string(),
     });
     log::info!("trait_solve_query({})", goal.value.goal.display(db));
 
@@ -95,13 +96,12 @@ pub(crate) fn trait_solve_query(
         }
     }
 
-    let canonical = goal.to_chalk(db).cast(&Interner);
+    let canonical = goal.cast(&Interner);
 
     // We currently don't deal with universes (I think / hope they're not yet
     // relevant for our use cases?)
     let u_canonical = chalk_ir::UCanonical { canonical, universes: 1 };
-    let solution = solve(db, krate, &u_canonical);
-    solution.map(|solution| solution_from_chalk(db, solution))
+    solve(db, krate, &u_canonical)
 }
 
 fn solve(
@@ -167,26 +167,6 @@ fn is_chalk_debug() -> bool {
 
 fn is_chalk_print() -> bool {
     std::env::var("CHALK_PRINT").is_ok()
-}
-
-fn solution_from_chalk(
-    db: &dyn HirDatabase,
-    solution: chalk_solve::Solution<Interner>,
-) -> Solution {
-    match solution {
-        chalk_solve::Solution::Unique(constr_subst) => {
-            Solution::Unique(from_chalk(db, constr_subst))
-        }
-        chalk_solve::Solution::Ambig(chalk_solve::Guidance::Definite(subst)) => {
-            Solution::Ambig(Guidance::Definite(from_chalk(db, subst)))
-        }
-        chalk_solve::Solution::Ambig(chalk_solve::Guidance::Suggested(subst)) => {
-            Solution::Ambig(Guidance::Suggested(from_chalk(db, subst)))
-        }
-        chalk_solve::Solution::Ambig(chalk_solve::Guidance::Unknown) => {
-            Solution::Ambig(Guidance::Unknown)
-        }
-    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]

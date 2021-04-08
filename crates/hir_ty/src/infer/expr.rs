@@ -3,7 +3,7 @@
 use std::iter::{repeat, repeat_with};
 use std::{mem, sync::Arc};
 
-use chalk_ir::{cast::Cast, Mutability, TyVariableKind};
+use chalk_ir::{cast::Cast, fold::Shift, Mutability, TyVariableKind};
 use hir_def::{
     expr::{Array, BinaryOp, Expr, ExprId, Literal, Statement, UnaryOp},
     path::{GenericArg, GenericArgs},
@@ -24,7 +24,6 @@ use crate::{
     utils::{generics, Generics},
     AdtId, Binders, CallableDefId, FnPointer, FnSig, FnSubst, InEnvironment, Interner,
     ProjectionTyExt, Rawness, Scalar, Substitution, TraitRef, Ty, TyBuilder, TyExt, TyKind,
-    TypeWalk,
 };
 
 use super::{

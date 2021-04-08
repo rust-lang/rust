@@ -23,7 +23,7 @@ use crate::{
     utils::all_super_traits,
     AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, FnPointer, FnSig, ForeignDefId,
     InEnvironment, Interner, Scalar, Substitution, TraitEnvironment, TraitRefExt, Ty, TyBuilder,
-    TyExt, TyKind, TypeWalk,
+    TyExt, TyKind,
 };
 
 /// This is used as a key for indexing impls.
@@ -757,20 +757,13 @@ pub(crate) fn inherent_impl_substs(
 /// This replaces any 'free' Bound vars in `s` (i.e. those with indices past
 /// num_vars_to_keep) by `TyKind::Unknown`.
 fn fallback_bound_vars(s: Substitution, num_vars_to_keep: usize) -> Substitution {
-    s.fold_binders(
-        &mut |ty, binders| {
-            if let TyKind::BoundVar(bound) = ty.kind(&Interner) {
-                if bound.index >= num_vars_to_keep && bound.debruijn >= binders {
-                    TyKind::Error.intern(&Interner)
-                } else {
-                    ty
-                }
-            } else {
-                ty
-            }
-        },
-        DebruijnIndex::INNERMOST,
-    )
+    crate::fold_free_vars(s, |bound, binders| {
+        if bound.index >= num_vars_to_keep && bound.debruijn == DebruijnIndex::INNERMOST {
+            TyKind::Error.intern(&Interner)
+        } else {
+            bound.shifted_in_from(binders).to_ty(&Interner)
+        }
+    })
 }
 
 fn transform_receiver_ty(

@@ -1,5 +1,6 @@
 //! The type system. We currently use this to infer types for completion, hover
 //! information and various assists.
+
 #[allow(unused)]
 macro_rules! eprintln {
     ($($tt:tt)*) => { stdx::eprintln!($($tt)*) };
@@ -17,7 +18,6 @@ mod chalk_cast;
 mod chalk_ext;
 mod builder;
 mod walk;
-mod types;
 
 pub mod display;
 pub mod db;
@@ -31,7 +31,11 @@ mod test_db;
 use std::sync::Arc;
 
 use base_db::salsa;
-use chalk_ir::UintTy;
+use chalk_ir::{
+    fold::{Fold, Shift},
+    interner::HasInterner,
+    UintTy,
+};
 use hir_def::{
     expr::ExprId, type_ref::Rawness, ConstParamId, LifetimeParamId, TraitId, TypeAliasId,
     TypeParamId,
@@ -48,7 +52,6 @@ pub use lower::{
     TyDefId, TyLoweringContext, ValueTyDefId,
 };
 pub use traits::{chalk::Interner, TraitEnvironment};
-pub use types::*;
 pub use walk::TypeWalk;
 
 pub use chalk_ir::{
@@ -65,6 +68,21 @@ pub type PlaceholderIndex = chalk_ir::PlaceholderIndex;
 pub type VariableKind = chalk_ir::VariableKind<Interner>;
 pub type VariableKinds = chalk_ir::VariableKinds<Interner>;
 pub type CanonicalVarKinds = chalk_ir::CanonicalVarKinds<Interner>;
+pub type Binders<T> = chalk_ir::Binders<T>;
+pub type Substitution = chalk_ir::Substitution<Interner>;
+pub type GenericArg = chalk_ir::GenericArg<Interner>;
+pub type GenericArgData = chalk_ir::GenericArgData<Interner>;
+
+pub type Ty = chalk_ir::Ty<Interner>;
+pub type TyKind = chalk_ir::TyKind<Interner>;
+pub type DynTy = chalk_ir::DynTy<Interner>;
+pub type FnPointer = chalk_ir::FnPointer<Interner>;
+// pub type FnSubst = chalk_ir::FnSubst<Interner>;
+pub use chalk_ir::FnSubst;
+pub type ProjectionTy = chalk_ir::ProjectionTy<Interner>;
+pub type AliasTy = chalk_ir::AliasTy<Interner>;
+pub type OpaqueTy = chalk_ir::OpaqueTy<Interner>;
+pub type InferenceVar = chalk_ir::InferenceVar;
 
 pub type Lifetime = chalk_ir::Lifetime<Interner>;
 pub type LifetimeData = chalk_ir::LifetimeData<Interner>;
@@ -79,9 +97,20 @@ pub type ChalkTraitId = chalk_ir::TraitId<Interner>;
 
 pub type FnSig = chalk_ir::FnSig<Interner>;
 
+pub type InEnvironment<T> = chalk_ir::InEnvironment<T>;
+pub type DomainGoal = chalk_ir::DomainGoal<Interner>;
+pub type AliasEq = chalk_ir::AliasEq<Interner>;
+pub type Solution = chalk_solve::Solution<Interner>;
+pub type ConstrainedSubst = chalk_ir::ConstrainedSubst<Interner>;
+pub type Guidance = chalk_solve::Guidance<Interner>;
+pub type WhereClause = chalk_ir::WhereClause<Interner>;
+
 // FIXME: get rid of this
 pub fn subst_prefix(s: &Substitution, n: usize) -> Substitution {
-    Substitution::intern(s.interned()[..std::cmp::min(s.len(&Interner), n)].into())
+    Substitution::from_iter(
+        &Interner,
+        s.interned()[..std::cmp::min(s.len(&Interner), n)].iter().cloned(),
+    )
 }
 
 /// Return an index of a parameter in the generic type parameter list by it's id.
@@ -91,12 +120,15 @@ pub fn param_idx(db: &dyn HirDatabase, id: TypeParamId) -> Option<usize> {
 
 pub fn wrap_empty_binders<T>(value: T) -> Binders<T>
 where
-    T: TypeWalk,
+    T: Fold<Interner, Result = T> + HasInterner<Interner = Interner>,
 {
-    Binders::empty(&Interner, value.shifted_in_from(DebruijnIndex::ONE))
+    Binders::empty(&Interner, value.shifted_in_from(&Interner, DebruijnIndex::ONE))
 }
 
-pub fn make_only_type_binders<T>(num_vars: usize, value: T) -> Binders<T> {
+pub fn make_only_type_binders<T: HasInterner<Interner = Interner>>(
+    num_vars: usize,
+    value: T,
+) -> Binders<T> {
     Binders::new(
         VariableKinds::from_iter(
             &Interner,
@@ -108,7 +140,7 @@ pub fn make_only_type_binders<T>(num_vars: usize, value: T) -> Binders<T> {
 }
 
 // FIXME: get rid of this
-pub fn make_canonical<T>(
+pub fn make_canonical<T: HasInterner<Interner = Interner>>(
     value: T,
     kinds: impl IntoIterator<Item = TyVariableKind>,
 ) -> Canonical<T> {
@@ -120,6 +152,14 @@ pub fn make_canonical<T>(
     });
     Canonical { value, binders: chalk_ir::CanonicalVarKinds::from_iter(&Interner, kinds) }
 }
+
+pub type TraitRef = chalk_ir::TraitRef<Interner>;
+
+pub type QuantifiedWhereClause = Binders<WhereClause>;
+
+pub type QuantifiedWhereClauses = chalk_ir::QuantifiedWhereClauses<Interner>;
+
+pub type Canonical<T> = chalk_ir::Canonical<T>;
 
 /// A function signature as seen by type inference: Several parameter types and
 /// one return type.
@@ -144,7 +184,7 @@ impl CallableSig {
             params_and_return: fn_ptr
                 .substitution
                 .clone()
-                .shifted_out_to(DebruijnIndex::ONE)
+                .shifted_out_to(&Interner, DebruijnIndex::ONE)
                 .expect("unexpected lifetime vars in fn ptr")
                 .0
                 .interned()
@@ -164,7 +204,22 @@ impl CallableSig {
     }
 }
 
-impl Ty {}
+impl Fold<Interner> for CallableSig {
+    type Result = CallableSig;
+
+    fn fold_with<'i>(
+        self,
+        folder: &mut dyn chalk_ir::fold::Folder<'i, Interner>,
+        outer_binder: DebruijnIndex,
+    ) -> chalk_ir::Fallible<Self::Result>
+    where
+        Interner: 'i,
+    {
+        let vec = self.params_and_return.to_vec();
+        let folded = vec.fold_with(folder, outer_binder)?;
+        Ok(CallableSig { params_and_return: folded.into(), is_varargs: self.is_varargs })
+    }
+}
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub enum ImplTraitId {
@@ -243,4 +298,57 @@ pub fn dummy_usize_const() -> Const {
         value: chalk_ir::ConstValue::Concrete(chalk_ir::ConcreteConst { interned: () }),
     }
     .intern(&Interner)
+}
+
+pub(crate) fn fold_free_vars<T: HasInterner<Interner = Interner> + Fold<Interner>>(
+    t: T,
+    f: impl FnMut(BoundVar, DebruijnIndex) -> Ty,
+) -> T::Result {
+    use chalk_ir::{fold::Folder, Fallible};
+    struct FreeVarFolder<F>(F);
+    impl<'i, F: FnMut(BoundVar, DebruijnIndex) -> Ty + 'i> Folder<'i, Interner> for FreeVarFolder<F> {
+        fn as_dyn(&mut self) -> &mut dyn Folder<'i, Interner> {
+            self
+        }
+
+        fn interner(&self) -> &'i Interner {
+            &Interner
+        }
+
+        fn fold_free_var_ty(
+            &mut self,
+            bound_var: BoundVar,
+            outer_binder: DebruijnIndex,
+        ) -> Fallible<Ty> {
+            Ok(self.0(bound_var, outer_binder))
+        }
+    }
+    t.fold_with(&mut FreeVarFolder(f), DebruijnIndex::INNERMOST).expect("fold failed unexpectedly")
+}
+
+pub(crate) fn fold_tys<T: HasInterner<Interner = Interner> + Fold<Interner>>(
+    t: T,
+    f: impl FnMut(Ty, DebruijnIndex) -> Ty,
+    binders: DebruijnIndex,
+) -> T::Result {
+    use chalk_ir::{
+        fold::{Folder, SuperFold},
+        Fallible,
+    };
+    struct TyFolder<F>(F);
+    impl<'i, F: FnMut(Ty, DebruijnIndex) -> Ty + 'i> Folder<'i, Interner> for TyFolder<F> {
+        fn as_dyn(&mut self) -> &mut dyn Folder<'i, Interner> {
+            self
+        }
+
+        fn interner(&self) -> &'i Interner {
+            &Interner
+        }
+
+        fn fold_ty(&mut self, ty: Ty, outer_binder: DebruijnIndex) -> Fallible<Ty> {
+            let ty = ty.super_fold_with(self.as_dyn(), outer_binder)?;
+            Ok(self.0(ty, outer_binder))
+        }
+    }
+    t.fold_with(&mut TyFolder(f), binders).expect("fold failed unexpectedly")
 }

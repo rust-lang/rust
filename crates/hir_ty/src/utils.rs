@@ -1,8 +1,7 @@
 //! Helper functions for working with def, which don't need to be a separate
 //! query, but can't be computed directly from `*Data` (ie, which need a `db`).
-use std::sync::Arc;
 
-use chalk_ir::{BoundVar, DebruijnIndex};
+use chalk_ir::{fold::Shift, BoundVar, DebruijnIndex};
 use hir_def::{
     db::DefDatabase,
     generics::{
@@ -16,9 +15,7 @@ use hir_def::{
 };
 use hir_expand::name::{name, Name};
 
-use crate::{
-    db::HirDatabase, Interner, Substitution, TraitRef, TraitRefExt, TyKind, TypeWalk, WhereClause,
-};
+use crate::{db::HirDatabase, Interner, Substitution, TraitRef, TraitRefExt, TyKind, WhereClause};
 
 fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> Vec<TraitId> {
     let resolver = trait_.resolver(db);
@@ -69,7 +66,7 @@ fn direct_super_trait_refs(db: &dyn HirDatabase, trait_ref: &TraitRef) -> Vec<Tr
                 // FIXME: how to correctly handle higher-ranked bounds here?
                 WhereClause::Implemented(tr) => Some(
                     tr.clone()
-                        .shifted_out_to(DebruijnIndex::ONE)
+                        .shifted_out_to(&Interner, DebruijnIndex::ONE)
                         .expect("FIXME unexpected higher-ranked trait bound"),
                 ),
                 _ => None,
@@ -135,15 +132,6 @@ pub(super) fn associated_type_by_name_including_super_traits(
         let assoc_type = db.trait_data(t.hir_trait_id()).associated_type_by_name(name)?;
         Some((t, assoc_type))
     })
-}
-
-/// Helper for mutating `Arc<[T]>` (i.e. `Arc::make_mut` for Arc slices).
-/// The underlying values are cloned if there are other strong references.
-pub(crate) fn make_mut_slice<T: Clone>(a: &mut Arc<[T]>) -> &mut [T] {
-    if Arc::get_mut(a).is_none() {
-        *a = a.iter().cloned().collect();
-    }
-    Arc::get_mut(a).unwrap()
 }
 
 pub(crate) fn generics(db: &dyn DefDatabase, def: GenericDefId) -> Generics {
