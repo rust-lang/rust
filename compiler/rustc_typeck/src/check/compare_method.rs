@@ -278,9 +278,8 @@ fn compare_predicate_entailment<'tcx>(
         if let Err(terr) = sub_result {
             debug!("sub_types failed: impl ty {:?}, trait ty {:?}", impl_fty, trait_fty);
 
-            let (impl_err_span, trait_err_span) = extract_spans_for_error_reporting(
-                &infcx, param_env, &terr, &cause, impl_m, impl_sig, trait_m, trait_sig,
-            );
+            let (impl_err_span, trait_err_span) =
+                extract_spans_for_error_reporting(&infcx, &terr, &cause, impl_m, trait_m);
 
             cause.make_mut().span = impl_err_span;
 
@@ -291,7 +290,7 @@ fn compare_predicate_entailment<'tcx>(
                 "method `{}` has an incompatible type for trait",
                 trait_m.ident
             );
-            if let TypeError::Mutability = terr {
+            if let TypeError::ArgumentMutability(_) = terr {
                 if let Some(trait_err_span) = trait_err_span {
                     if let Ok(trait_err_str) = tcx.sess.source_map().span_to_snippet(trait_err_span)
                     {
@@ -385,86 +384,35 @@ fn check_region_bounds_on_impl_item<'tcx>(
 
 fn extract_spans_for_error_reporting<'a, 'tcx>(
     infcx: &infer::InferCtxt<'a, 'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
     terr: &TypeError<'_>,
     cause: &ObligationCause<'tcx>,
     impl_m: &ty::AssocItem,
-    impl_sig: ty::FnSig<'tcx>,
     trait_m: &ty::AssocItem,
-    trait_sig: ty::FnSig<'tcx>,
 ) -> (Span, Option<Span>) {
     let tcx = infcx.tcx;
     let impl_m_hir_id = tcx.hir().local_def_id_to_hir_id(impl_m.def_id.expect_local());
-    let (impl_m_output, impl_m_iter) = match tcx.hir().expect_impl_item(impl_m_hir_id).kind {
-        ImplItemKind::Fn(ref impl_m_sig, _) => {
-            (&impl_m_sig.decl.output, impl_m_sig.decl.inputs.iter())
+    let mut impl_args = match tcx.hir().expect_impl_item(impl_m_hir_id).kind {
+        ImplItemKind::Fn(ref sig, _) => {
+            sig.decl.inputs.iter().map(|t| t.span).chain(iter::once(sig.decl.output.span()))
         }
         _ => bug!("{:?} is not a method", impl_m),
     };
+    let trait_args = trait_m.def_id.as_local().map(|def_id| {
+        let trait_m_hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+        match tcx.hir().expect_trait_item(trait_m_hir_id).kind {
+            TraitItemKind::Fn(ref sig, _) => {
+                sig.decl.inputs.iter().map(|t| t.span).chain(iter::once(sig.decl.output.span()))
+            }
+            _ => bug!("{:?} is not a TraitItemKind::Fn", trait_m),
+        }
+    });
 
     match *terr {
-        TypeError::Mutability => {
-            if let Some(def_id) = trait_m.def_id.as_local() {
-                let trait_m_hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-                let trait_m_iter = match tcx.hir().expect_trait_item(trait_m_hir_id).kind {
-                    TraitItemKind::Fn(ref trait_m_sig, _) => trait_m_sig.decl.inputs.iter(),
-                    _ => bug!("{:?} is not a TraitItemKind::Fn", trait_m),
-                };
-
-                iter::zip(impl_m_iter, trait_m_iter)
-                    .find(|&(ref impl_arg, ref trait_arg)| {
-                        match (&impl_arg.kind, &trait_arg.kind) {
-                            (
-                                &hir::TyKind::Rptr(_, ref impl_mt),
-                                &hir::TyKind::Rptr(_, ref trait_mt),
-                            )
-                            | (&hir::TyKind::Ptr(ref impl_mt), &hir::TyKind::Ptr(ref trait_mt)) => {
-                                impl_mt.mutbl != trait_mt.mutbl
-                            }
-                            _ => false,
-                        }
-                    })
-                    .map(|(ref impl_arg, ref trait_arg)| (impl_arg.span, Some(trait_arg.span)))
-                    .unwrap_or_else(|| (cause.span(tcx), tcx.hir().span_if_local(trait_m.def_id)))
-            } else {
-                (cause.span(tcx), tcx.hir().span_if_local(trait_m.def_id))
-            }
+        TypeError::ArgumentMutability(i) => {
+            (impl_args.nth(i).unwrap(), trait_args.and_then(|mut args| args.nth(i)))
         }
-        TypeError::Sorts(ExpectedFound { .. }) => {
-            if let Some(def_id) = trait_m.def_id.as_local() {
-                let trait_m_hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-                let (trait_m_output, trait_m_iter) =
-                    match tcx.hir().expect_trait_item(trait_m_hir_id).kind {
-                        TraitItemKind::Fn(ref trait_m_sig, _) => {
-                            (&trait_m_sig.decl.output, trait_m_sig.decl.inputs.iter())
-                        }
-                        _ => bug!("{:?} is not a TraitItemKind::Fn", trait_m),
-                    };
-
-                let impl_iter = impl_sig.inputs().iter();
-                let trait_iter = trait_sig.inputs().iter();
-                iter::zip(iter::zip(impl_iter, trait_iter), iter::zip(impl_m_iter, trait_m_iter))
-                    .find_map(|((&impl_arg_ty, &trait_arg_ty), (impl_arg, trait_arg))| match infcx
-                        .at(&cause, param_env)
-                        .sub(trait_arg_ty, impl_arg_ty)
-                    {
-                        Ok(_) => None,
-                        Err(_) => Some((impl_arg.span, Some(trait_arg.span))),
-                    })
-                    .unwrap_or_else(|| {
-                        if infcx
-                            .at(&cause, param_env)
-                            .sup(trait_sig.output(), impl_sig.output())
-                            .is_err()
-                        {
-                            (impl_m_output.span(), Some(trait_m_output.span()))
-                        } else {
-                            (cause.span(tcx), tcx.hir().span_if_local(trait_m.def_id))
-                        }
-                    })
-            } else {
-                (cause.span(tcx), tcx.hir().span_if_local(trait_m.def_id))
-            }
+        TypeError::ArgumentSorts(ExpectedFound { .. }, i) => {
+            (impl_args.nth(i).unwrap(), trait_args.and_then(|mut args| args.nth(i)))
         }
         _ => (cause.span(tcx), tcx.hir().span_if_local(trait_m.def_id)),
     }
@@ -514,8 +462,7 @@ fn compare_self_type<'tcx>(
                 tcx.sess,
                 impl_m_span,
                 E0185,
-                "method `{}` has a `{}` declaration in the impl, but \
-                                            not in the trait",
+                "method `{}` has a `{}` declaration in the impl, but not in the trait",
                 trait_m.ident,
                 self_descr
             );
@@ -993,8 +940,7 @@ crate fn compare_const_impl<'tcx>(
                 tcx.sess,
                 cause.span,
                 E0326,
-                "implemented const `{}` has an incompatible type for \
-                                             trait",
+                "implemented const `{}` has an incompatible type for trait",
                 trait_c.ident
             );
 
