@@ -4,3 +4,8 @@
 // stable channel.
 //! [x]
 //~^ ERROR unresolved link
+
+#![deny(rustdoc::non_autolinks)]
+//~^ WARNING renamed to `rustdoc::bare_urls`
+//! http://example.com
+//~^ ERROR not a hyperlink

@@ -294,17 +294,14 @@ warning: unclosed HTML tag `h1`
 warning: 2 warnings emitted
 ```
 
-## non_autolinks
+## bare_urls
 
-This lint is **nightly-only** and **warns by default**. It detects links which
-could use the "automatic" link syntax. For example:
+This lint is **warn-by-default**. It detects URLs which are not links.
+For example:
 
 ```rust
 /// http://example.org
-/// [http://example.com](http://example.com)
 /// [http://example.net]
-///
-/// [http://example.com]: http://example.com
 pub fn foo() {}
 ```
 
@@ -312,22 +309,18 @@ Which will give:
 
 ```text
 warning: this URL is not a hyperlink
- --> foo.rs:1:5
+ --> links.rs:1:5
   |
 1 | /// http://example.org
   |     ^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<http://example.org>`
   |
-  = note: `#[warn(rustdoc::non_autolinks)]` on by default
-
-warning: unneeded long form for URL
- --> foo.rs:2:5
-  |
-2 | /// [http://example.com](http://example.com)
-  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<http://example.com>`
+  = note: `#[warn(rustdoc::bare_urls)]` on by default
 
 warning: this URL is not a hyperlink
- --> foo.rs:3:6
+ --> links.rs:3:6
   |
 3 | /// [http://example.net]
   |      ^^^^^^^^^^^^^^^^^^ help: use an automatic link instead: `<http://example.net>`
+
+warning: 2 warnings emitted
 ```
