@@ -2630,6 +2630,7 @@ fn fn_can_unwind(
                 | AvrInterrupt
                 | AvrNonBlockingInterrupt
                 | CCmseNonSecureCall
+                | Wasm
                 | RustIntrinsic
                 | PlatformIntrinsic
                 | Unadjusted => false,
@@ -2712,6 +2713,7 @@ where
             AmdGpuKernel => Conv::AmdGpuKernel,
             AvrInterrupt => Conv::AvrInterrupt,
             AvrNonBlockingInterrupt => Conv::AvrNonBlockingInterrupt,
+            Wasm => Conv::C,
 
             // These API constants ought to be more specific...
             Cdecl => Conv::C,

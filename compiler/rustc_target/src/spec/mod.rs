@@ -1254,6 +1254,9 @@ pub struct TargetOptions {
     /// enabled can generated on this target, but the necessary supporting libraries are not
     /// distributed with the target, the sanitizer should still appear in this list for the target.
     pub supported_sanitizers: SanitizerSet,
+
+    /// If present it's a default value to use for adjusting the C ABI.
+    pub default_adjusted_cabi: Option<Abi>,
 }
 
 impl Default for TargetOptions {
@@ -1357,6 +1360,7 @@ impl Default for TargetOptions {
             has_thumb_interworking: false,
             split_debuginfo: SplitDebuginfo::Off,
             supported_sanitizers: SanitizerSet::empty(),
+            default_adjusted_cabi: None,
         }
     }
 }
@@ -1408,6 +1412,9 @@ impl Target {
                     Abi::C { unwind: false }
                 }
             }
+
+            Abi::C { unwind } => self.default_adjusted_cabi.unwrap_or(Abi::C { unwind }),
+
             abi => abi,
         }
     }
@@ -1742,6 +1749,16 @@ impl Target {
                     }
                 }
             } );
+            ($key_name:ident, Option<Abi>) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
+                    match lookup_abi(s) {
+                        Some(abi) => base.$key_name = Some(abi),
+                        _ => return Some(Err(format!("'{}' is not a valid value for abi", s))),
+                    }
+                    Some(Ok(()))
+                })).unwrap_or(Ok(()))
+            } );
         }
 
         if let Some(s) = obj.find("target-endian").and_then(Json::as_string) {
@@ -1841,6 +1858,7 @@ impl Target {
         key!(has_thumb_interworking, bool);
         key!(split_debuginfo, SplitDebuginfo)?;
         key!(supported_sanitizers, SanitizerSet)?;
+        key!(default_adjusted_cabi, Option<Abi>)?;
 
         // NB: The old name is deprecated, but support for it is retained for
         // compatibility.
@@ -2080,6 +2098,10 @@ impl ToJson for Target {
         target_option_val!(has_thumb_interworking);
         target_option_val!(split_debuginfo);
         target_option_val!(supported_sanitizers);
+
+        if let Some(abi) = self.default_adjusted_cabi {
+            d.insert("default-adjusted-cabi".to_string(), Abi::name(abi).to_json());
+        }
 
         if default.unsupported_abis != self.unsupported_abis {
             d.insert(
