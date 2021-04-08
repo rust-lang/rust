@@ -699,6 +699,7 @@ allUnsyncdPredecessorsOf(llvm::Instruction *inst,
 }
 
 #include "llvm/Analysis/LoopInfo.h"
+
 static inline void
 /// Call the function f for all instructions that happen between inst1 and inst2
 /// If the function returns true, the iteration will early exit

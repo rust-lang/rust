@@ -154,6 +154,11 @@ void EnzymeSetCLInteger(void *ptr, int64_t val) {
   cl->setValue((int)val);
 }
 
+int64_t EnzymeGetCLInteger(void *ptr) {
+  auto cl = (llvm::cl::opt<int> *)ptr;
+  return (int64_t)cl->getValue();
+}
+
 EnzymeLogicRef CreateEnzymeLogic() {
   return (EnzymeLogicRef)(new EnzymeLogic());
 }
