@@ -3,15 +3,16 @@
 use std::borrow::Cow;
 
 use chalk_ir::{
-    fold::Fold, interner::HasInterner, FloatTy, IntTy, TyVariableKind, UniverseIndex, VariableKind,
+    cast::Cast, fold::Fold, interner::HasInterner, FloatTy, IntTy, TyVariableKind, UniverseIndex,
+    VariableKind,
 };
 use ena::unify::{InPlaceUnificationTable, NoError, UnifyKey, UnifyValue};
 
 use super::{DomainGoal, InferenceContext};
 use crate::{
-    fold_tys, AliasEq, AliasTy, BoundVar, Canonical, CanonicalVarKinds, DebruijnIndex, FnPointer,
-    FnSubst, InEnvironment, InferenceVar, Interner, Scalar, Substitution, Ty, TyExt, TyKind,
-    TypeWalk, WhereClause,
+    fold_tys, static_lifetime, AliasEq, AliasTy, BoundVar, Canonical, CanonicalVarKinds,
+    DebruijnIndex, FnPointer, FnSubst, InEnvironment, InferenceVar, Interner, Scalar, Substitution,
+    Ty, TyExt, TyKind, TypeWalk, WhereClause,
 };
 
 impl<'a> InferenceContext<'a> {
@@ -139,15 +140,17 @@ impl<T: HasInterner<Interner = Interner>> Canonicalized<T> {
         let new_vars = Substitution::from_iter(
             &Interner,
             solution.binders.iter(&Interner).map(|k| match k.kind {
-                VariableKind::Ty(TyVariableKind::General) => ctx.table.new_type_var(),
-                VariableKind::Ty(TyVariableKind::Integer) => ctx.table.new_integer_var(),
-                VariableKind::Ty(TyVariableKind::Float) => ctx.table.new_float_var(),
-                // HACK: Chalk can sometimes return new lifetime variables. We
-                // want to just skip them, but to not mess up the indices of
-                // other variables, we'll just create a new type variable in
-                // their place instead. This should not matter (we never see the
-                // actual *uses* of the lifetime variable).
-                VariableKind::Lifetime => ctx.table.new_type_var(),
+                VariableKind::Ty(TyVariableKind::General) => {
+                    ctx.table.new_type_var().cast(&Interner)
+                }
+                VariableKind::Ty(TyVariableKind::Integer) => {
+                    ctx.table.new_integer_var().cast(&Interner)
+                }
+                VariableKind::Ty(TyVariableKind::Float) => {
+                    ctx.table.new_float_var().cast(&Interner)
+                }
+                // Chalk can sometimes return new lifetime variables. We just use the static lifetime everywhere
+                VariableKind::Lifetime => static_lifetime().cast(&Interner),
                 _ => panic!("const variable in solution"),
             }),
         );
