@@ -787,7 +787,7 @@ impl HasTokenAtOffset for SyntaxNode {
     }
 }
 
-/// find relevant `ast::PathExpr` for reference
+/// find relevant `ast::Expr` for reference
 ///
 /// # Preconditions
 ///
@@ -804,7 +804,6 @@ fn path_element_of_reference(
         stdx::never!(false, "cannot find path parent of variable usage: {:?}", token);
         None
     })?;
-    stdx::always!(matches!(path, ast::Expr::PathExpr(_)));
     Some(path)
 }
 
