@@ -10,7 +10,7 @@ pub(crate) fn maybe_create_entry_wrapper(
     tcx: TyCtxt<'_>,
     module: &mut impl Module,
     unwind_context: &mut UnwindContext,
-    ignore_lang_start_wrapper: bool,
+    is_jit: bool,
 ) {
     let (main_def_id, is_main_fn) = match tcx.entry_fn(LOCAL_CRATE) {
         Some((def_id, entry_ty)) => (
@@ -24,18 +24,11 @@ pub(crate) fn maybe_create_entry_wrapper(
     };
 
     let instance = Instance::mono(tcx, main_def_id).polymorphize(tcx);
-    if module.get_name(&*tcx.symbol_name(instance).name).is_none() {
+    if !is_jit && module.get_name(&*tcx.symbol_name(instance).name).is_none() {
         return;
     }
 
-    create_entry_fn(
-        tcx,
-        module,
-        unwind_context,
-        main_def_id,
-        ignore_lang_start_wrapper,
-        is_main_fn,
-    );
+    create_entry_fn(tcx, module, unwind_context, main_def_id, is_jit, is_main_fn);
 
     fn create_entry_fn(
         tcx: TyCtxt<'_>,

@@ -134,6 +134,8 @@ impl<'tcx> CodegenCx<'tcx> {
         isa: &dyn TargetIsa,
         debug_info: bool,
     ) -> Self {
+        assert_eq!(pointer_ty(tcx), isa.pointer_type());
+
         let unwind_context =
             UnwindContext::new(tcx, isa, matches!(backend_config.codegen_mode, CodegenMode::Aot));
         let debug_context = if debug_info { Some(DebugContext::new(tcx, isa)) } else { None };

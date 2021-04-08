@@ -107,7 +107,6 @@ fn module_codegen(
 
     let isa = crate::build_isa(tcx.sess, &backend_config);
     let mut module = crate::backend::make_module(tcx.sess, isa, cgu_name.as_str().to_string());
-    assert_eq!(pointer_ty(tcx), module.target_config().pointer_type());
 
     let mut cx = crate::CodegenCx::new(
         tcx,

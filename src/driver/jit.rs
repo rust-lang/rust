@@ -23,6 +23,33 @@ thread_local! {
     static LAZY_JIT_STATE: RefCell<Option<JitState>> = RefCell::new(None);
 }
 
+fn create_jit_module<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    backend_config: &BackendConfig,
+    hotswap: bool,
+) -> (JITModule, CodegenCx<'tcx>) {
+    let imported_symbols = load_imported_symbols_for_jit(tcx);
+
+    let isa = crate::build_isa(tcx.sess, backend_config);
+    let mut jit_builder = JITBuilder::with_isa(isa, cranelift_module::default_libcall_names());
+    jit_builder.hotswap(hotswap);
+    crate::compiler_builtins::register_functions_for_jit(&mut jit_builder);
+    jit_builder.symbols(imported_symbols);
+    let mut jit_module = JITModule::new(jit_builder);
+
+    let mut cx = crate::CodegenCx::new(tcx, backend_config.clone(), jit_module.isa(), false);
+
+    crate::allocator::codegen(tcx, &mut jit_module, &mut cx.unwind_context);
+    crate::main_shim::maybe_create_entry_wrapper(
+        tcx,
+        &mut jit_module,
+        &mut cx.unwind_context,
+        true,
+    );
+
+    (jit_module, cx)
+}
+
 pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
     if !tcx.sess.opts.output_types.should_codegen() {
         tcx.sess.fatal("JIT mode doesn't work with `cargo check`");
@@ -32,15 +59,11 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
         tcx.sess.fatal("can't jit non-executable crate");
     }
 
-    let imported_symbols = load_imported_symbols_for_jit(tcx);
-
-    let isa = crate::build_isa(tcx.sess, &backend_config);
-    let mut jit_builder = JITBuilder::with_isa(isa, cranelift_module::default_libcall_names());
-    jit_builder.hotswap(matches!(backend_config.codegen_mode, CodegenMode::JitLazy));
-    crate::compiler_builtins::register_functions_for_jit(&mut jit_builder);
-    jit_builder.symbols(imported_symbols);
-    let mut jit_module = JITModule::new(jit_builder);
-    assert_eq!(pointer_ty(tcx), jit_module.target_config().pointer_type());
+    let (mut jit_module, mut cx) = create_jit_module(
+        tcx,
+        &backend_config,
+        matches!(backend_config.codegen_mode, CodegenMode::JitLazy),
+    );
 
     let (_, cgus) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
     let mono_items = cgus
@@ -50,8 +73,6 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
         .collect::<FxHashMap<_, (_, _)>>()
         .into_iter()
         .collect::<Vec<(_, (_, _))>>();
-
-    let mut cx = crate::CodegenCx::new(tcx, backend_config.clone(), jit_module.isa(), false);
 
     super::time(tcx, backend_config.display_cg_time, "codegen mono items", || {
         super::predefine_mono_items(tcx, &mut jit_module, &mono_items);
@@ -77,19 +98,9 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
         }
     });
 
-    jit_module.finalize_definitions();
-
     if !cx.global_asm.is_empty() {
         tcx.sess.fatal("Inline asm is not supported in JIT mode");
     }
-
-    crate::allocator::codegen(tcx, &mut jit_module, &mut cx.unwind_context);
-    crate::main_shim::maybe_create_entry_wrapper(
-        tcx,
-        &mut jit_module,
-        &mut cx.unwind_context,
-        true,
-    );
 
     tcx.sess.abort_if_errors();
 
