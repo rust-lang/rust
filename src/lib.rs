@@ -124,7 +124,7 @@ struct CodegenCx<'m, 'tcx: 'm> {
     global_asm: String,
     cached_context: Context,
     debug_context: Option<DebugContext<'tcx>>,
-    unwind_context: UnwindContext<'tcx>,
+    unwind_context: UnwindContext,
 }
 
 impl<'m, 'tcx> CodegenCx<'m, 'tcx> {
@@ -151,7 +151,7 @@ impl<'m, 'tcx> CodegenCx<'m, 'tcx> {
         }
     }
 
-    fn finalize(self) -> (String, Option<DebugContext<'tcx>>, UnwindContext<'tcx>) {
+    fn finalize(self) -> (String, Option<DebugContext<'tcx>>, UnwindContext) {
         (self.global_asm, self.debug_context, self.unwind_context)
     }
 }

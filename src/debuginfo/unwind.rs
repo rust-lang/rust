@@ -5,17 +5,19 @@ use crate::prelude::*;
 use cranelift_codegen::isa::{unwind::UnwindInfo, TargetIsa};
 
 use gimli::write::{Address, CieId, EhFrame, FrameTable, Section};
+use gimli::RunTimeEndian;
 
 use crate::backend::WriteDebugInfo;
 
-pub(crate) struct UnwindContext<'tcx> {
-    tcx: TyCtxt<'tcx>,
+pub(crate) struct UnwindContext {
+    endian: RunTimeEndian,
     frame_table: FrameTable,
     cie_id: Option<CieId>,
 }
 
-impl<'tcx> UnwindContext<'tcx> {
-    pub(crate) fn new(tcx: TyCtxt<'tcx>, isa: &dyn TargetIsa, pic_eh_frame: bool) -> Self {
+impl UnwindContext {
+    pub(crate) fn new(tcx: TyCtxt<'_>, isa: &dyn TargetIsa, pic_eh_frame: bool) -> Self {
+        let endian = super::target_endian(tcx);
         let mut frame_table = FrameTable::default();
 
         let cie_id = if let Some(mut cie) = isa.create_systemv_cie() {
@@ -28,7 +30,7 @@ impl<'tcx> UnwindContext<'tcx> {
             None
         };
 
-        UnwindContext { tcx, frame_table, cie_id }
+        UnwindContext { endian, frame_table, cie_id }
     }
 
     pub(crate) fn add_function(&mut self, func_id: FuncId, context: &Context, isa: &dyn TargetIsa) {
@@ -54,8 +56,7 @@ impl<'tcx> UnwindContext<'tcx> {
     }
 
     pub(crate) fn emit<P: WriteDebugInfo>(self, product: &mut P) {
-        let mut eh_frame =
-            EhFrame::from(super::emit::WriterRelocate::new(super::target_endian(self.tcx)));
+        let mut eh_frame = EhFrame::from(super::emit::WriterRelocate::new(self.endian));
         self.frame_table.write_eh_frame(&mut eh_frame).unwrap();
 
         if !eh_frame.0.writer.slice().is_empty() {
@@ -75,8 +76,7 @@ impl<'tcx> UnwindContext<'tcx> {
         self,
         jit_module: &cranelift_jit::JITModule,
     ) -> Option<UnwindRegistry> {
-        let mut eh_frame =
-            EhFrame::from(super::emit::WriterRelocate::new(super::target_endian(self.tcx)));
+        let mut eh_frame = EhFrame::from(super::emit::WriterRelocate::new(self.endian));
         self.frame_table.write_eh_frame(&mut eh_frame).unwrap();
 
         if eh_frame.0.writer.slice().is_empty() {

@@ -31,7 +31,7 @@ fn emit_module(
     kind: ModuleKind,
     module: ObjectModule,
     debug: Option<DebugContext<'_>>,
-    unwind_context: UnwindContext<'_>,
+    unwind_context: UnwindContext,
 ) -> ModuleCodegenResult {
     let mut product = module.finish();
 

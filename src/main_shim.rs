@@ -9,7 +9,7 @@ use crate::prelude::*;
 pub(crate) fn maybe_create_entry_wrapper(
     tcx: TyCtxt<'_>,
     module: &mut impl Module,
-    unwind_context: &mut UnwindContext<'_>,
+    unwind_context: &mut UnwindContext,
 ) {
     let (main_def_id, use_start_lang_item) = match tcx.entry_fn(LOCAL_CRATE) {
         Some((def_id, entry_ty)) => (
@@ -32,7 +32,7 @@ pub(crate) fn maybe_create_entry_wrapper(
     fn create_entry_fn(
         tcx: TyCtxt<'_>,
         m: &mut impl Module,
-        unwind_context: &mut UnwindContext<'_>,
+        unwind_context: &mut UnwindContext,
         rust_main_def_id: DefId,
         use_start_lang_item: bool,
     ) {
