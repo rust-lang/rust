@@ -328,3 +328,30 @@ pub(crate) fn fold_free_vars<T: HasInterner<Interner = Interner> + Fold<Interner
     }
     t.fold_with(&mut FreeVarFolder(f), DebruijnIndex::INNERMOST).expect("fold failed unexpectedly")
 }
+
+pub(crate) fn fold_tys<T: HasInterner<Interner = Interner> + Fold<Interner>>(
+    t: T,
+    f: impl FnMut(Ty, DebruijnIndex) -> Ty,
+    binders: DebruijnIndex,
+) -> T::Result {
+    use chalk_ir::{
+        fold::{Folder, SuperFold},
+        Fallible,
+    };
+    struct TyFolder<F>(F);
+    impl<'i, F: FnMut(Ty, DebruijnIndex) -> Ty + 'i> Folder<'i, Interner> for TyFolder<F> {
+        fn as_dyn(&mut self) -> &mut dyn Folder<'i, Interner> {
+            self
+        }
+
+        fn interner(&self) -> &'i Interner {
+            &Interner
+        }
+
+        fn fold_ty(&mut self, ty: Ty, outer_binder: DebruijnIndex) -> Fallible<Ty> {
+            let ty = ty.super_fold_with(self.as_dyn(), outer_binder)?;
+            Ok(self.0(ty, outer_binder))
+        }
+    }
+    t.fold_with(&mut TyFolder(f), binders).expect("fold failed unexpectedly")
+}
