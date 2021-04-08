@@ -378,7 +378,7 @@ The compiler is allowed to instantiate multiple copies an `asm!` block, for exam
 
 Moreover due to [a llvm bug], you cannot use `0` or `1` as labels. Therefore only labels in the `2`-`99` range are allowed.
 
-```rust
+```rust,allow_fail
 #![feature(asm)]
 
 let mut a = 0;
