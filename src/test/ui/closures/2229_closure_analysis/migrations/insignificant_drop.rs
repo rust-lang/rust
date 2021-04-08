@@ -1,6 +1,6 @@
 // run-rustfix
 
-#![deny(disjoint_capture_drop_reorder)]
+#![deny(disjoint_capture_migration)]
 //~^ NOTE: the lint level is defined here
 
 // Test cases for types that implement a insignificant drop (stlib defined)

@@ -14,8 +14,8 @@ LL | |     };
 note: the lint level is defined here
   --> $DIR/significant_drop.rs:2:9
    |
-LL | #![deny(disjoint_capture_drop_reorder)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #![deny(disjoint_capture_migration)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: add a dummy let to cause `t`, `t1`, `t2` to be fully captured
    |
 LL |     let c = || { let _ = (&t, &t1, &t2); 

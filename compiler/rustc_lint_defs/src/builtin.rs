@@ -2995,7 +2995,7 @@ declare_lint_pass! {
         UNSUPPORTED_NAKED_FUNCTIONS,
         MISSING_ABI,
         SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
-        DISJOINT_CAPTURE_DROP_REORDER,
+        DISJOINT_CAPTURE_MIGRATION,
         LEGACY_DERIVE_HELPERS,
         PROC_MACRO_BACK_COMPAT,
         OR_PATTERNS_BACK_COMPAT,
@@ -3027,14 +3027,17 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `disjoint_capture_drop_reorder` lint detects variables that aren't completely
+    /// The `disjoint_capture_migration` lint detects variables that aren't completely
     /// captured when the feature `capture_disjoint_fields` is enabled and it affects the Drop
     /// order of at least one path starting at this variable.
+    /// It can also detect when a variable implements a trait, but one of its field does not and
+    /// the field is captured by a closure and used with the assumption that said field implements
+    /// the same trait as the root variable.
     ///
-    /// ### Example
+    /// ### Example of drop reorder
     ///
     /// ```rust,compile_fail
-    /// # #![deny(disjoint_capture_drop_reorder)]
+    /// # #![deny(disjoint_capture_migration)]
     /// # #![allow(unused)]
     /// struct FancyInteger(i32);
     ///
@@ -3065,10 +3068,35 @@ declare_lint! {
     ///
     /// In the above example `p.y` will be dropped at the end of `f` instead of with `c` if
     /// the feature `capture_disjoint_fields` is enabled.
-    pub DISJOINT_CAPTURE_DROP_REORDER,
+    ///
+    /// ### Example of auto-trait
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(disjoint_capture_migration)]
+    /// use std::thread;
+    ///
+    /// struct Pointer (*mut i32);
+    /// unsafe impl Send for Pointer {}
+    ///
+    /// fn main() {
+    ///     let mut f = 10;
+    ///     let fptr = Pointer(&mut f as *mut i32);
+    ///     thread::spawn(move || unsafe {
+    ///         *fptr.0 = 20;
+    ///     });
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// In the above example `fptr.0` is captured when feature `capture_disjoint_fields` is enabled.
+    /// The field is of type *mut i32 which doesn't implement Send, making the code invalid as the
+    /// field cannot be sent between thread safely.
+    pub DISJOINT_CAPTURE_MIGRATION,
     Allow,
-    "Drop reorder because of `capture_disjoint_fields`"
-
+    "Drop reorder and auto traits error because of `capture_disjoint_fields`"
 }
 
 declare_lint_pass!(UnusedDocComment => [UNUSED_DOC_COMMENTS]);
