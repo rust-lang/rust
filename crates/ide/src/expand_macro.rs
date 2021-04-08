@@ -1,3 +1,5 @@
+use std::iter;
+
 use hir::Semantics;
 use ide_db::RootDatabase;
 use syntax::{
@@ -91,27 +93,42 @@ fn insert_whitespaces(syn: SyntaxNode) -> String {
         let is_last =
             |f: fn(SyntaxKind) -> bool, default| -> bool { last.map(f).unwrap_or(default) };
 
-        res += &match token.kind() {
-            k if is_text(k) && is_next(|it| !it.is_punct(), true) => token.text().to_string() + " ",
+        match token.kind() {
+            k if is_text(k) && is_next(|it| !it.is_punct(), true) => {
+                res.push_str(token.text());
+                res.push(' ');
+            }
             L_CURLY if is_next(|it| it != R_CURLY, true) => {
                 indent += 1;
-                let leading_space = if is_last(is_text, false) { " " } else { "" };
-                format!("{}{{\n{}", leading_space, "  ".repeat(indent))
+                if is_last(is_text, false) {
+                    res.push(' ');
+                }
+                res.push_str("{\n");
+                res.extend(iter::repeat(" ").take(2 * indent));
             }
             R_CURLY if is_last(|it| it != L_CURLY, true) => {
                 indent = indent.saturating_sub(1);
-                format!("\n{}}}", "  ".repeat(indent))
+                res.push('\n');
+                res.extend(iter::repeat(" ").take(2 * indent));
+                res.push_str("}");
             }
-            R_CURLY => format!("}}\n{}", "  ".repeat(indent)),
+            R_CURLY => {
+                res.push_str("}\n");
+                res.extend(iter::repeat(" ").take(2 * indent));
+            }
             LIFETIME_IDENT if is_next(|it| it == IDENT, true) => {
-                format!("{} ", token.text().to_string())
+                res.push_str(token.text());
+                res.push(' ');
             }
-            T![;] => format!(";\n{}", "  ".repeat(indent)),
-            T![->] => " -> ".to_string(),
-            T![=] => " = ".to_string(),
-            T![=>] => " => ".to_string(),
-            _ => token.text().to_string(),
-        };
+            T![;] => {
+                res.push_str(";\n");
+                res.extend(iter::repeat(" ").take(2 * indent));
+            }
+            T![->] => res.push_str(" -> "),
+            T![=] => res.push_str(" = "),
+            T![=>] => res.push_str(" => "),
+            _ => res.push_str(token.text()),
+        }
 
         last = Some(token.kind());
     }
