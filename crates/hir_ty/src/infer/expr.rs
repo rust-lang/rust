@@ -462,7 +462,11 @@ impl<'a> InferenceContext<'a> {
                     };
                     match canonicalized.decanonicalize_ty(derefed_ty.value).kind(&Interner) {
                         TyKind::Tuple(_, substs) => name.as_tuple_index().and_then(|idx| {
-                            substs.interned().get(idx).map(|a| a.assert_ty_ref(&Interner)).cloned()
+                            substs
+                                .as_slice(&Interner)
+                                .get(idx)
+                                .map(|a| a.assert_ty_ref(&Interner))
+                                .cloned()
                         }),
                         TyKind::Adt(AdtId(hir_def::AdtId::StructId(s)), parameters) => {
                             let local_id = self.db.struct_data(*s).variant_data.field(name)?;

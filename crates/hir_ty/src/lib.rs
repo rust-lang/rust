@@ -109,7 +109,7 @@ pub type WhereClause = chalk_ir::WhereClause<Interner>;
 pub fn subst_prefix(s: &Substitution, n: usize) -> Substitution {
     Substitution::from_iter(
         &Interner,
-        s.interned()[..std::cmp::min(s.len(&Interner), n)].iter().cloned(),
+        s.as_slice(&Interner)[..std::cmp::min(s.len(&Interner), n)].iter().cloned(),
     )
 }
 
@@ -187,7 +187,7 @@ impl CallableSig {
                 .shifted_out_to(&Interner, DebruijnIndex::ONE)
                 .expect("unexpected lifetime vars in fn ptr")
                 .0
-                .interned()
+                .as_slice(&Interner)
                 .iter()
                 .map(|arg| arg.assert_ty_ref(&Interner).clone())
                 .collect(),

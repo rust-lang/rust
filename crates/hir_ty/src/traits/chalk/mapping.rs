@@ -99,7 +99,7 @@ pub(super) fn generic_predicate_to_inline_bound(
                 // have the expected self type
                 return None;
             }
-            let args_no_self = trait_ref.substitution.interned()[1..]
+            let args_no_self = trait_ref.substitution.as_slice(&Interner)[1..]
                 .iter()
                 .map(|ty| ty.clone().cast(&Interner))
                 .collect();
@@ -111,7 +111,7 @@ pub(super) fn generic_predicate_to_inline_bound(
                 return None;
             }
             let trait_ = projection_ty.trait_(db);
-            let args_no_self = projection_ty.substitution.interned()[1..]
+            let args_no_self = projection_ty.substitution.as_slice(&Interner)[1..]
                 .iter()
                 .map(|ty| ty.clone().cast(&Interner))
                 .collect();

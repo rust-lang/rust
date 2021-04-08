@@ -2,9 +2,13 @@
 //! representation of the various objects Chalk deals with (types, goals etc.).
 
 use super::tls;
+use crate::GenericArg;
 use base_db::salsa::InternId;
-use chalk_ir::{GenericArg, Goal, GoalData};
-use hir_def::TypeAliasId;
+use chalk_ir::{Goal, GoalData};
+use hir_def::{
+    intern::{impl_internable, InternStorage, Internable, Interned},
+    TypeAliasId,
+};
 use smallvec::SmallVec;
 use std::{fmt, sync::Arc};
 
@@ -26,22 +30,47 @@ pub(crate) type OpaqueTyId = chalk_ir::OpaqueTyId<Interner>;
 pub(crate) type OpaqueTyDatum = chalk_solve::rust_ir::OpaqueTyDatum<Interner>;
 pub(crate) type Variances = chalk_ir::Variances<Interner>;
 
+#[derive(PartialEq, Eq, Hash, Debug)]
+pub struct InternedWrapper<T>(T);
+
+impl<T> std::ops::Deref for InternedWrapper<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl_internable!(
+    InternedWrapper<Vec<chalk_ir::VariableKind<Interner>>>,
+    InternedWrapper<SmallVec<[GenericArg; 2]>>,
+    InternedWrapper<chalk_ir::TyData<Interner>>,
+    InternedWrapper<chalk_ir::LifetimeData<Interner>>,
+    InternedWrapper<chalk_ir::ConstData<Interner>>,
+    InternedWrapper<Vec<chalk_ir::CanonicalVarKind<Interner>>>,
+    InternedWrapper<Vec<chalk_ir::ProgramClause<Interner>>>,
+    InternedWrapper<Vec<chalk_ir::QuantifiedWhereClause<Interner>>>,
+    InternedWrapper<Vec<chalk_ir::Variance>>,
+);
+
 impl chalk_ir::interner::Interner for Interner {
-    type InternedType = Arc<chalk_ir::TyData<Self>>;
-    type InternedLifetime = chalk_ir::LifetimeData<Self>;
-    type InternedConst = Arc<chalk_ir::ConstData<Self>>;
+    type InternedType = Interned<InternedWrapper<chalk_ir::TyData<Interner>>>;
+    type InternedLifetime = Interned<InternedWrapper<chalk_ir::LifetimeData<Self>>>;
+    type InternedConst = Interned<InternedWrapper<chalk_ir::ConstData<Self>>>;
     type InternedConcreteConst = ();
     type InternedGenericArg = chalk_ir::GenericArgData<Self>;
     type InternedGoal = Arc<GoalData<Self>>;
     type InternedGoals = Vec<Goal<Self>>;
-    type InternedSubstitution = SmallVec<[GenericArg<Self>; 2]>;
-    type InternedProgramClause = Arc<chalk_ir::ProgramClauseData<Self>>;
-    type InternedProgramClauses = Arc<[chalk_ir::ProgramClause<Self>]>;
-    type InternedQuantifiedWhereClauses = Vec<chalk_ir::QuantifiedWhereClause<Self>>;
-    type InternedVariableKinds = Vec<chalk_ir::VariableKind<Self>>;
-    type InternedCanonicalVarKinds = Vec<chalk_ir::CanonicalVarKind<Self>>;
+    type InternedSubstitution = Interned<InternedWrapper<SmallVec<[GenericArg; 2]>>>;
+    type InternedProgramClause = chalk_ir::ProgramClauseData<Self>;
+    type InternedProgramClauses = Interned<InternedWrapper<Vec<chalk_ir::ProgramClause<Self>>>>;
+    type InternedQuantifiedWhereClauses =
+        Interned<InternedWrapper<Vec<chalk_ir::QuantifiedWhereClause<Self>>>>;
+    type InternedVariableKinds = Interned<InternedWrapper<Vec<chalk_ir::VariableKind<Interner>>>>;
+    type InternedCanonicalVarKinds =
+        Interned<InternedWrapper<Vec<chalk_ir::CanonicalVarKind<Self>>>>;
     type InternedConstraints = Vec<chalk_ir::InEnvironment<chalk_ir::Constraint<Self>>>;
-    type InternedVariances = Arc<[chalk_ir::Variance]>;
+    type InternedVariances = Interned<InternedWrapper<Vec<chalk_ir::Variance>>>;
     type DefId = InternId;
     type InternedAdtId = hir_def::AdtId;
     type Identifier = TypeAliasId;
@@ -99,7 +128,7 @@ impl chalk_ir::interner::Interner for Interner {
     }
 
     fn debug_generic_arg(
-        parameter: &GenericArg<Interner>,
+        parameter: &GenericArg,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
         tls::with_current_program(|prog| Some(prog?.debug_generic_arg(parameter, fmt)))
@@ -194,30 +223,30 @@ impl chalk_ir::interner::Interner for Interner {
 
     fn intern_ty(&self, kind: chalk_ir::TyKind<Self>) -> Self::InternedType {
         let flags = kind.compute_flags(self);
-        Arc::new(chalk_ir::TyData { kind, flags })
+        Interned::new(InternedWrapper(chalk_ir::TyData { kind, flags }))
     }
 
     fn ty_data<'a>(&self, ty: &'a Self::InternedType) -> &'a chalk_ir::TyData<Self> {
-        ty
+        &ty.0
     }
 
     fn intern_lifetime(&self, lifetime: chalk_ir::LifetimeData<Self>) -> Self::InternedLifetime {
-        lifetime
+        Interned::new(InternedWrapper(lifetime))
     }
 
     fn lifetime_data<'a>(
         &self,
         lifetime: &'a Self::InternedLifetime,
     ) -> &'a chalk_ir::LifetimeData<Self> {
-        lifetime
+        &lifetime.0
     }
 
     fn intern_const(&self, constant: chalk_ir::ConstData<Self>) -> Self::InternedConst {
-        Arc::new(constant)
+        Interned::new(InternedWrapper(constant))
     }
 
     fn const_data<'a>(&self, constant: &'a Self::InternedConst) -> &'a chalk_ir::ConstData<Self> {
-        constant
+        &constant.0
     }
 
     fn const_eq(
@@ -264,23 +293,23 @@ impl chalk_ir::interner::Interner for Interner {
 
     fn intern_substitution<E>(
         &self,
-        data: impl IntoIterator<Item = Result<GenericArg<Self>, E>>,
+        data: impl IntoIterator<Item = Result<GenericArg, E>>,
     ) -> Result<Self::InternedSubstitution, E> {
-        data.into_iter().collect()
+        Ok(Interned::new(InternedWrapper(data.into_iter().collect::<Result<_, _>>()?)))
     }
 
     fn substitution_data<'a>(
         &self,
         substitution: &'a Self::InternedSubstitution,
-    ) -> &'a [GenericArg<Self>] {
-        substitution
+    ) -> &'a [GenericArg] {
+        &substitution.as_ref().0
     }
 
     fn intern_program_clause(
         &self,
         data: chalk_ir::ProgramClauseData<Self>,
     ) -> Self::InternedProgramClause {
-        Arc::new(data)
+        data
     }
 
     fn program_clause_data<'a>(
@@ -294,7 +323,7 @@ impl chalk_ir::interner::Interner for Interner {
         &self,
         data: impl IntoIterator<Item = Result<chalk_ir::ProgramClause<Self>, E>>,
     ) -> Result<Self::InternedProgramClauses, E> {
-        data.into_iter().collect()
+        Ok(Interned::new(InternedWrapper(data.into_iter().collect::<Result<_, _>>()?)))
     }
 
     fn program_clauses_data<'a>(
@@ -308,7 +337,7 @@ impl chalk_ir::interner::Interner for Interner {
         &self,
         data: impl IntoIterator<Item = Result<chalk_ir::QuantifiedWhereClause<Self>, E>>,
     ) -> Result<Self::InternedQuantifiedWhereClauses, E> {
-        data.into_iter().collect()
+        Ok(Interned::new(InternedWrapper(data.into_iter().collect::<Result<_, _>>()?)))
     }
 
     fn quantified_where_clauses_data<'a>(
@@ -322,21 +351,21 @@ impl chalk_ir::interner::Interner for Interner {
         &self,
         data: impl IntoIterator<Item = Result<chalk_ir::VariableKind<Self>, E>>,
     ) -> Result<Self::InternedVariableKinds, E> {
-        data.into_iter().collect()
+        Ok(Interned::new(InternedWrapper(data.into_iter().collect::<Result<_, _>>()?)))
     }
 
     fn variable_kinds_data<'a>(
         &self,
         parameter_kinds: &'a Self::InternedVariableKinds,
     ) -> &'a [chalk_ir::VariableKind<Self>] {
-        &parameter_kinds
+        &parameter_kinds.as_ref().0
     }
 
     fn intern_canonical_var_kinds<E>(
         &self,
         data: impl IntoIterator<Item = Result<chalk_ir::CanonicalVarKind<Self>, E>>,
     ) -> Result<Self::InternedCanonicalVarKinds, E> {
-        data.into_iter().collect()
+        Ok(Interned::new(InternedWrapper(data.into_iter().collect::<Result<_, _>>()?)))
     }
 
     fn canonical_var_kinds_data<'a>(
@@ -376,7 +405,7 @@ impl chalk_ir::interner::Interner for Interner {
         &self,
         data: impl IntoIterator<Item = Result<chalk_ir::Variance, E>>,
     ) -> Result<Self::InternedVariances, E> {
-        data.into_iter().collect()
+        Ok(Interned::new(InternedWrapper(data.into_iter().collect::<Result<_, _>>()?)))
     }
 
     fn variances_data<'a>(

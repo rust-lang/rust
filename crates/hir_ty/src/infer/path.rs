@@ -101,7 +101,7 @@ impl<'a> InferenceContext<'a> {
         let substs = ctx.substs_from_path(path, typable, true);
         let ty = TyBuilder::value_ty(self.db, typable)
             .use_parent_substs(&parent_substs)
-            .fill(substs.interned()[parent_substs.len(&Interner)..].iter().cloned())
+            .fill(substs.as_slice(&Interner)[parent_substs.len(&Interner)..].iter().cloned())
             .build();
         Some(ty)
     }
