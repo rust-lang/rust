@@ -852,8 +852,10 @@ impl Collector {
             let filename = source_map.span_to_filename(self.position);
             if let FileName::Real(ref filename) = filename {
                 if let Ok(cur_dir) = env::current_dir() {
-                    if let Ok(path) = filename.local_path().strip_prefix(&cur_dir) {
-                        return path.to_owned().into();
+                    if let Some(local_path) = filename.local_path() {
+                        if let Ok(path) = local_path.strip_prefix(&cur_dir) {
+                            return path.to_owned().into();
+                        }
                     }
                 }
             }
@@ -884,7 +886,14 @@ impl Tester for Collector {
         }
 
         let path = match &filename {
-            FileName::Real(path) => path.local_path().to_path_buf(),
+            FileName::Real(path) => {
+                if let Some(local_path) = path.local_path() {
+                    local_path.to_path_buf()
+                } else {
+                    // Somehow we got the filename from the metadata of another crate, should never happen
+                    PathBuf::from(r"doctest.rs")
+                }
+            }
             _ => PathBuf::from(r"doctest.rs"),
         };
 

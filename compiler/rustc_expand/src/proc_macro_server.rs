@@ -623,6 +623,7 @@ impl server::SourceFile for Rustc<'_> {
         match file.name {
             FileName::Real(ref name) => name
                 .local_path()
+                .expect("attempting to get a file path in an imported file in `proc_macro::SourceFile::path`")
                 .to_str()
                 .expect("non-UTF8 file path in `proc_macro::SourceFile::path`")
                 .to_string(),

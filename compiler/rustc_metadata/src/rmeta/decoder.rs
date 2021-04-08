@@ -1676,7 +1676,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                                     new_path.display(),
                                 );
                                 let new_name = rustc_span::RealFileName::Remapped {
-                                    local_path: new_path,
+                                    local_path: Some(new_path),
                                     virtual_name,
                                 };
                                 *old_name = new_name;

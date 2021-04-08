@@ -133,9 +133,6 @@ impl StableSourceFileId {
     fn new_from_name(name: &FileName) -> StableSourceFileId {
         let mut hasher = StableHasher::new();
 
-        // If name was remapped, we need to take both the local path
-        // and stablised path into account, in case two different paths were
-        // mapped to the same
         name.hash(&mut hasher);
 
         StableSourceFileId(hasher.finish())
@@ -954,7 +951,13 @@ impl SourceMap {
     }
     pub fn ensure_source_file_source_present(&self, source_file: Lrc<SourceFile>) -> bool {
         source_file.add_external_src(|| match source_file.name {
-            FileName::Real(ref name) => self.file_loader.read_file(name.local_path()).ok(),
+            FileName::Real(ref name) => {
+                if let Some(local_path) = name.local_path() {
+                    self.file_loader.read_file(local_path).ok()
+                } else {
+                    None
+                }
+            }
             _ => None,
         })
     }
@@ -999,23 +1002,17 @@ impl FilePathMapping {
     fn map_filename_prefix(&self, file: &FileName) -> (FileName, bool) {
         match file {
             FileName::Real(realfile) => {
-                // If the file is the Name variant with only local_path, then clearly we want to map that
-                // to a virtual_name
-                // If the file is already remapped, then we want to map virtual_name further
-                // but we leave local_path alone
-                let path = realfile.stable_name();
-                let (mapped_path, mapped) = self.map_prefix(path.to_path_buf());
-                if mapped {
-                    let mapped_realfile = match realfile {
-                        RealFileName::LocalPath(local_path)
-                        | RealFileName::Remapped { local_path, virtual_name: _ } => {
-                            RealFileName::Remapped {
-                                local_path: local_path.clone(),
-                                virtual_name: mapped_path,
-                            }
+                if let RealFileName::LocalPath(local_path) = realfile {
+                    let (mapped_path, mapped) = self.map_prefix(local_path.to_path_buf());
+                    let realfile = if mapped {
+                        RealFileName::Remapped {
+                            local_path: Some(local_path.clone()),
+                            virtual_name: mapped_path,
                         }
+                    } else {
+                        realfile.clone()
                     };
-                    (FileName::Real(mapped_realfile), mapped)
+                    (FileName::Real(realfile), mapped)
                 } else {
                     unreachable!("attempted to remap an already remapped filename");
                 }

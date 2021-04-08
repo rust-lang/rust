@@ -1073,7 +1073,9 @@ impl<'a> ExtCtxt<'a> {
         if !path.is_absolute() {
             let callsite = span.source_callsite();
             let mut result = match self.source_map().span_to_filename(callsite) {
-                FileName::Real(name) => name.into_local_path(),
+                FileName::Real(name) => name
+                    .into_local_path()
+                    .expect("attempting to resolve a file path in an external file"),
                 FileName::DocTest(path, _) => path,
                 other => {
                     return Err(self.struct_span_err(

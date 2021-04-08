@@ -497,9 +497,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                             RealFileName::LocalPath(local_path) => {
                                 Path::new(&working_dir).join(local_path).into()
                             }
-                            RealFileName::Remapped { local_path, virtual_name } => {
+                            RealFileName::Remapped { local_path: _, virtual_name } => {
                                 FileName::Real(RealFileName::Remapped {
-                                    local_path: Path::new(&working_dir).join(local_path),
+                                    // We do not want any local path to be exported into metadata
+                                    local_path: None,
                                     virtual_name: virtual_name.clone(),
                                 })
                             }

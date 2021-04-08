@@ -362,7 +362,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     // make crate a first class expansion target instead.
     pub fn expand_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
         let file_path = match self.cx.source_map().span_to_filename(krate.span) {
-            FileName::Real(name) => name.into_local_path(),
+            FileName::Real(name) => name
+                .into_local_path()
+                .expect("attempting to resolve a file path in an external file"),
             other => PathBuf::from(other.to_string()),
         };
         let dir_path = file_path.parent().unwrap_or(&file_path).to_owned();

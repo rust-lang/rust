@@ -115,38 +115,80 @@ scoped_tls::scoped_thread_local!(pub static SESSION_GLOBALS: SessionGlobals);
 
 // FIXME: We should use this enum or something like it to get rid of the
 // use of magic `/rust/1.x/...` paths across the board.
-#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Hash)]
-#[derive(HashStable_Generic, Decodable, Encodable)]
+#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd)]
+#[derive(HashStable_Generic, Decodable)]
 pub enum RealFileName {
     LocalPath(PathBuf),
     /// For remapped paths (namely paths into libstd that have been mapped
     /// to the appropriate spot on the local host's file system, and local file
     /// system paths that have been remapped with `FilePathMapping`),
     Remapped {
-        /// `local_path` is the (host-dependent) local path to the file.
-        local_path: PathBuf,
+        /// `local_path` is the (host-dependent) local path to the file. This is
+        /// None if the file was imported from another crate
+        local_path: Option<PathBuf>,
         /// `virtual_name` is the stable path rustc will store internally within
         /// build artifacts.
         virtual_name: PathBuf,
     },
 }
 
+impl Hash for RealFileName {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        // To prevent #70924 from happening again we should only hash the
+        // remapped (virtualized) path if that exists. This is because
+        // virtualized paths to sysroot crates (/rust/$hash or /rust/$version)
+        // remain stable even if the corresponding local_path changes
+        self.remapped_path_if_available().hash(state)
+    }
+}
+
+// This is functionally identical to #[derive(Encodable)], with the exception of
+// an added assert statement
+impl<S: Encoder> Encodable<S> for RealFileName {
+    fn encode(&self, encoder: &mut S) -> Result<(), S::Error> {
+        encoder.emit_enum("RealFileName", |encoder| match *self {
+            RealFileName::LocalPath(ref local_path) => {
+                encoder.emit_enum_variant("LocalPath", 0, 1, |encoder| {
+                    Ok({
+                        encoder.emit_enum_variant_arg(0, |encoder| local_path.encode(encoder))?;
+                    })
+                })
+            }
+
+            RealFileName::Remapped { ref local_path, ref virtual_name } => encoder
+                .emit_enum_variant("Remapped", 1, 2, |encoder| {
+                    // For privacy and build reproducibility, we must not embed host-dependant path in artifacts
+                    // if they have been remapped by --remap-path-prefix
+                    assert!(local_path.is_none());
+                    Ok({
+                        encoder.emit_enum_variant_arg(0, |encoder| local_path.encode(encoder))?;
+                        encoder.emit_enum_variant_arg(1, |encoder| virtual_name.encode(encoder))?;
+                    })
+                }),
+        })
+    }
+}
+
 impl RealFileName {
-    /// Returns the path suitable for reading from the file system on the local host.
+    /// Returns the path suitable for reading from the file system on the local host,
+    /// if this information exists.
     /// Avoid embedding this in build artifacts; see `stable_name()` for that.
-    pub fn local_path(&self) -> &Path {
+    pub fn local_path(&self) -> Option<&Path> {
         match self {
-            RealFileName::LocalPath(p)
-            | RealFileName::Remapped { local_path: p, virtual_name: _ } => &p,
+            RealFileName::LocalPath(p) => Some(p),
+            RealFileName::Remapped { local_path: p, virtual_name: _ } => {
+                p.as_ref().map(PathBuf::as_path)
+            }
         }
     }
 
-    /// Returns the path suitable for reading from the file system on the local host.
+    /// Returns the path suitable for reading from the file system on the local host,
+    /// if this information exists.
     /// Avoid embedding this in build artifacts; see `stable_name()` for that.
-    pub fn into_local_path(self) -> PathBuf {
+    pub fn into_local_path(self) -> Option<PathBuf> {
         match self {
-            RealFileName::LocalPath(p)
-            | RealFileName::Remapped { local_path: p, virtual_name: _ } => p,
+            RealFileName::LocalPath(p) => Some(p),
+            RealFileName::Remapped { local_path: p, virtual_name: _ } => p,
         }
     }
 

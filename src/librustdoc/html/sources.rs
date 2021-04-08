@@ -76,7 +76,13 @@ impl SourceCollector<'_, 'tcx> {
     /// Renders the given filename into its corresponding HTML source file.
     fn emit_source(&mut self, filename: &FileName) -> Result<(), Error> {
         let p = match *filename {
-            FileName::Real(ref file) => file.local_path().to_path_buf(),
+            FileName::Real(ref file) => {
+                if let Some(local_path) = file.local_path() {
+                    local_path.to_path_buf()
+                } else {
+                    return Ok(());
+                }
+            }
             _ => return Ok(()),
         };
         if self.scx.local_sources.contains_key(&*p) {
