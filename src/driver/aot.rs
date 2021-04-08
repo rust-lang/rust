@@ -112,16 +112,18 @@ fn module_codegen(
     let mut cx = crate::CodegenCx::new(
         tcx,
         backend_config.clone(),
-        &mut module,
+        module.isa(),
         tcx.sess.opts.debuginfo != DebugInfo::None,
     );
-    super::predefine_mono_items(&mut cx, &mono_items);
+    super::predefine_mono_items(tcx, &mut module, &mono_items);
     for (mono_item, _) in mono_items {
         match mono_item {
             MonoItem::Fn(inst) => {
-                cx.tcx.sess.time("codegen fn", || crate::base::codegen_fn(&mut cx, inst));
+                cx.tcx
+                    .sess
+                    .time("codegen fn", || crate::base::codegen_fn(&mut cx, &mut module, inst));
             }
-            MonoItem::Static(def_id) => crate::constant::codegen_static(&mut cx, def_id),
+            MonoItem::Static(def_id) => crate::constant::codegen_static(tcx, &mut module, def_id),
             MonoItem::GlobalAsm(item_id) => {
                 let item = cx.tcx.hir().item(item_id);
                 if let rustc_hir::ItemKind::GlobalAsm(rustc_hir::GlobalAsm { asm }) = item.kind {
@@ -133,9 +135,7 @@ fn module_codegen(
             }
         }
     }
-    let (global_asm, debug, mut unwind_context) =
-        tcx.sess.time("finalize CodegenCx", || cx.finalize());
-    crate::main_shim::maybe_create_entry_wrapper(tcx, &mut module, &mut unwind_context);
+    crate::main_shim::maybe_create_entry_wrapper(tcx, &mut module, &mut cx.unwind_context);
 
     let codegen_result = emit_module(
         tcx,
@@ -143,11 +143,11 @@ fn module_codegen(
         cgu.name().as_str().to_string(),
         ModuleKind::Regular,
         module,
-        debug,
-        unwind_context,
+        cx.debug_context,
+        cx.unwind_context,
     );
 
-    codegen_global_asm(tcx, &cgu.name().as_str(), &global_asm);
+    codegen_global_asm(tcx, &cgu.name().as_str(), &cx.global_asm);
 
     codegen_result
 }

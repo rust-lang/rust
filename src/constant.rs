@@ -13,7 +13,7 @@ use rustc_middle::ty::ConstKind;
 use cranelift_codegen::ir::GlobalValueData;
 use cranelift_module::*;
 
-use crate::{prelude::*, CodegenCx};
+use crate::prelude::*;
 
 pub(crate) struct ConstantCx {
     todo: Vec<TodoItem>,
@@ -78,10 +78,10 @@ pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, '_>) -> bool {
     all_constants_ok
 }
 
-pub(crate) fn codegen_static(cx: &mut CodegenCx<'_, '_>, def_id: DefId) {
+pub(crate) fn codegen_static(tcx: TyCtxt<'_>, module: &mut dyn Module, def_id: DefId) {
     let mut constants_cx = ConstantCx::new();
     constants_cx.todo.push(TodoItem::Static(def_id));
-    constants_cx.finalize(cx.tcx, &mut *cx.module);
+    constants_cx.finalize(tcx, module);
 }
 
 pub(crate) fn codegen_tls_ref<'tcx>(
@@ -89,8 +89,8 @@ pub(crate) fn codegen_tls_ref<'tcx>(
     def_id: DefId,
     layout: TyAndLayout<'tcx>,
 ) -> CValue<'tcx> {
-    let data_id = data_id_for_static(fx.tcx, fx.cx.module, def_id, false);
-    let local_data_id = fx.cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+    let data_id = data_id_for_static(fx.tcx, fx.module, def_id, false);
+    let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
     if fx.clif_comments.enabled() {
         fx.add_comment(local_data_id, format!("tls {:?}", def_id));
     }
@@ -103,8 +103,8 @@ fn codegen_static_ref<'tcx>(
     def_id: DefId,
     layout: TyAndLayout<'tcx>,
 ) -> CPlace<'tcx> {
-    let data_id = data_id_for_static(fx.tcx, fx.cx.module, def_id, false);
-    let local_data_id = fx.cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+    let data_id = data_id_for_static(fx.tcx, fx.module, def_id, false);
+    let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
     if fx.clif_comments.enabled() {
         fx.add_comment(local_data_id, format!("{:?}", def_id));
     }
@@ -191,29 +191,28 @@ pub(crate) fn codegen_const_value<'tcx>(
                             fx.constants_cx.todo.push(TodoItem::Alloc(ptr.alloc_id));
                             let data_id = data_id_for_alloc_id(
                                 &mut fx.constants_cx,
-                                fx.cx.module,
+                                fx.module,
                                 ptr.alloc_id,
                                 alloc.mutability,
                             );
                             let local_data_id =
-                                fx.cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+                                fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
                             if fx.clif_comments.enabled() {
                                 fx.add_comment(local_data_id, format!("{:?}", ptr.alloc_id));
                             }
                             fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
                         }
                         Some(GlobalAlloc::Function(instance)) => {
-                            let func_id =
-                                crate::abi::import_function(fx.tcx, fx.cx.module, instance);
+                            let func_id = crate::abi::import_function(fx.tcx, fx.module, instance);
                             let local_func_id =
-                                fx.cx.module.declare_func_in_func(func_id, &mut fx.bcx.func);
+                                fx.module.declare_func_in_func(func_id, &mut fx.bcx.func);
                             fx.bcx.ins().func_addr(fx.pointer_type, local_func_id)
                         }
                         Some(GlobalAlloc::Static(def_id)) => {
                             assert!(fx.tcx.is_static(def_id));
-                            let data_id = data_id_for_static(fx.tcx, fx.cx.module, def_id, false);
+                            let data_id = data_id_for_static(fx.tcx, fx.module, def_id, false);
                             let local_data_id =
-                                fx.cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+                                fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
                             if fx.clif_comments.enabled() {
                                 fx.add_comment(local_data_id, format!("{:?}", def_id));
                             }
@@ -255,9 +254,9 @@ fn pointer_for_allocation<'tcx>(
     let alloc_id = fx.tcx.create_memory_alloc(alloc);
     fx.constants_cx.todo.push(TodoItem::Alloc(alloc_id));
     let data_id =
-        data_id_for_alloc_id(&mut fx.constants_cx, &mut *fx.cx.module, alloc_id, alloc.mutability);
+        data_id_for_alloc_id(&mut fx.constants_cx, &mut *fx.module, alloc_id, alloc.mutability);
 
-    let local_data_id = fx.cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+    let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
     if fx.clif_comments.enabled() {
         fx.add_comment(local_data_id, format!("{:?}", alloc_id));
     }

@@ -4,7 +4,6 @@ use crate::prelude::*;
 
 fn codegen_print(fx: &mut FunctionCx<'_, '_, '_>, msg: &str) {
     let puts = fx
-        .cx
         .module
         .declare_function(
             "puts",
@@ -16,7 +15,7 @@ fn codegen_print(fx: &mut FunctionCx<'_, '_, '_>, msg: &str) {
             },
         )
         .unwrap();
-    let puts = fx.cx.module.declare_func_in_func(puts, &mut fx.bcx.func);
+    let puts = fx.module.declare_func_in_func(puts, &mut fx.bcx.func);
     if fx.clif_comments.enabled() {
         fx.add_comment(puts, "puts");
     }

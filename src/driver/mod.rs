@@ -40,24 +40,25 @@ pub(crate) fn codegen_crate(
 }
 
 fn predefine_mono_items<'tcx>(
-    cx: &mut crate::CodegenCx<'_, 'tcx>,
+    tcx: TyCtxt<'tcx>,
+    module: &mut dyn Module,
     mono_items: &[(MonoItem<'tcx>, (RLinkage, Visibility))],
 ) {
-    cx.tcx.sess.time("predefine functions", || {
-        let is_compiler_builtins = cx.tcx.is_compiler_builtins(LOCAL_CRATE);
+    tcx.sess.time("predefine functions", || {
+        let is_compiler_builtins = tcx.is_compiler_builtins(LOCAL_CRATE);
         for &(mono_item, (linkage, visibility)) in mono_items {
             match mono_item {
                 MonoItem::Fn(instance) => {
-                    let name = cx.tcx.symbol_name(instance).name.to_string();
+                    let name = tcx.symbol_name(instance).name.to_string();
                     let _inst_guard = crate::PrintOnPanic(|| format!("{:?} {}", instance, name));
-                    let sig = get_function_sig(cx.tcx, cx.module.isa().triple(), instance);
+                    let sig = get_function_sig(tcx, module.isa().triple(), instance);
                     let linkage = crate::linkage::get_clif_linkage(
                         mono_item,
                         linkage,
                         visibility,
                         is_compiler_builtins,
                     );
-                    cx.module.declare_function(&name, linkage, &sig).unwrap();
+                    module.declare_function(&name, linkage, &sig).unwrap();
                 }
                 MonoItem::Static(_) | MonoItem::GlobalAsm(_) => {}
             }

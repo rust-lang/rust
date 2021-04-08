@@ -33,6 +33,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_session::config::OutputFilenames;
 use rustc_session::Session;
 
+use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::settings::{self, Configurable};
 
 pub use crate::config::*;
@@ -118,41 +119,31 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
     }
 }
 
-struct CodegenCx<'m, 'tcx: 'm> {
+struct CodegenCx<'tcx> {
     tcx: TyCtxt<'tcx>,
-    module: &'m mut dyn Module,
     global_asm: String,
     cached_context: Context,
     debug_context: Option<DebugContext<'tcx>>,
     unwind_context: UnwindContext,
 }
 
-impl<'m, 'tcx> CodegenCx<'m, 'tcx> {
+impl<'tcx> CodegenCx<'tcx> {
     fn new(
         tcx: TyCtxt<'tcx>,
         backend_config: BackendConfig,
-        module: &'m mut dyn Module,
+        isa: &dyn TargetIsa,
         debug_info: bool,
     ) -> Self {
-        let unwind_context = UnwindContext::new(
-            tcx,
-            module.isa(),
-            matches!(backend_config.codegen_mode, CodegenMode::Aot),
-        );
-        let debug_context =
-            if debug_info { Some(DebugContext::new(tcx, module.isa())) } else { None };
+        let unwind_context =
+            UnwindContext::new(tcx, isa, matches!(backend_config.codegen_mode, CodegenMode::Aot));
+        let debug_context = if debug_info { Some(DebugContext::new(tcx, isa)) } else { None };
         CodegenCx {
             tcx,
-            module,
             global_asm: String::new(),
             cached_context: Context::new(),
             debug_context,
             unwind_context,
         }
-    }
-
-    fn finalize(self) -> (String, Option<DebugContext<'tcx>>, UnwindContext) {
-        (self.global_asm, self.debug_context, self.unwind_context)
     }
 }
 
