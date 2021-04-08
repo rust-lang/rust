@@ -96,7 +96,7 @@ pub(crate) fn trait_solve_query(
         }
     }
 
-    let canonical = goal.to_chalk(db).cast(&Interner);
+    let canonical = goal.cast(&Interner);
 
     // We currently don't deal with universes (I think / hope they're not yet
     // relevant for our use cases?)

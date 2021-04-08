@@ -950,8 +950,7 @@ pub(crate) fn trait_environment_query(
                 traits_in_scope
                     .push((tr.self_type_parameter(&Interner).clone(), tr.hir_trait_id()));
             }
-            let program_clause: chalk_ir::ProgramClause<Interner> =
-                pred.clone().to_chalk(db).cast(&Interner);
+            let program_clause: chalk_ir::ProgramClause<Interner> = pred.clone().cast(&Interner);
             clauses.push(program_clause.into_from_env_clause(&Interner));
         }
     }
@@ -974,7 +973,7 @@ pub(crate) fn trait_environment_query(
         let substs = TyBuilder::type_params_subst(db, trait_id);
         let trait_ref = TraitRef { trait_id: to_chalk_trait_id(trait_id), substitution: substs };
         let pred = WhereClause::Implemented(trait_ref);
-        let program_clause: chalk_ir::ProgramClause<Interner> = pred.to_chalk(db).cast(&Interner);
+        let program_clause: chalk_ir::ProgramClause<Interner> = pred.cast(&Interner);
         clauses.push(program_clause.into_from_env_clause(&Interner));
     }
 

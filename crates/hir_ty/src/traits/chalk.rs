@@ -86,7 +86,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         debug!("impls_for_trait {:?}", trait_id);
         let trait_: hir_def::TraitId = from_chalk(self.db, trait_id);
 
-        let ty: Ty = from_chalk(self.db, parameters[0].assert_ty_ref(&Interner).clone());
+        let ty: Ty = parameters[0].assert_ty_ref(&Interner).clone();
 
         fn binder_kind(
             ty: &Ty,
@@ -187,15 +187,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                 let (datas, binders) = (*datas).as_ref().into_value_and_skipped_binders();
                 let data = &datas.impl_traits[idx as usize];
                 let bound = OpaqueTyDatumBound {
-                    bounds: make_binders(
-                        data.bounds
-                            .skip_binders()
-                            .iter()
-                            .cloned()
-                            .map(|b| b.to_chalk(self.db))
-                            .collect(),
-                        1,
-                    ),
+                    bounds: make_binders(data.bounds.skip_binders().iter().cloned().collect(), 1),
                     where_clauses: make_binders(vec![], 0),
                 };
                 chalk_ir::Binders::new(binders, bound)
@@ -246,8 +238,8 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                     let bound = OpaqueTyDatumBound {
                         bounds: make_binders(
                             vec![
-                                crate::wrap_empty_binders(impl_bound).to_chalk(self.db),
-                                crate::wrap_empty_binders(proj_bound).to_chalk(self.db),
+                                crate::wrap_empty_binders(impl_bound),
+                                crate::wrap_empty_binders(proj_bound),
                             ],
                             1,
                         ),
@@ -272,7 +264,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
 
     fn hidden_opaque_type(&self, _id: chalk_ir::OpaqueTyId<Interner>) -> chalk_ir::Ty<Interner> {
         // FIXME: actually provide the hidden type; it is relevant for auto traits
-        TyKind::Error.intern(&Interner).to_chalk(self.db)
+        TyKind::Error.intern(&Interner)
     }
 
     fn is_object_safe(&self, _trait_id: chalk_ir::TraitId<Interner>) -> bool {
@@ -293,12 +285,11 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         _closure_id: chalk_ir::ClosureId<Interner>,
         substs: &chalk_ir::Substitution<Interner>,
     ) -> chalk_ir::Binders<rust_ir::FnDefInputsAndOutputDatum<Interner>> {
-        let sig_ty: Ty =
-            from_chalk(self.db, substs.at(&Interner, 0).assert_ty_ref(&Interner).clone());
+        let sig_ty = substs.at(&Interner, 0).assert_ty_ref(&Interner).clone();
         let sig = &sig_ty.callable_sig(self.db).expect("first closure param should be fn ptr");
         let io = rust_ir::FnDefInputsAndOutputDatum {
-            argument_types: sig.params().iter().map(|ty| ty.clone().to_chalk(self.db)).collect(),
-            return_type: sig.ret().clone().to_chalk(self.db),
+            argument_types: sig.params().iter().cloned().collect(),
+            return_type: sig.ret().clone(),
         };
         make_binders(io.shifted_in(&Interner), 0)
     }
@@ -307,7 +298,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         _closure_id: chalk_ir::ClosureId<Interner>,
         _substs: &chalk_ir::Substitution<Interner>,
     ) -> chalk_ir::Binders<chalk_ir::Ty<Interner>> {
-        let ty = TyBuilder::unit().to_chalk(self.db);
+        let ty = TyBuilder::unit();
         make_binders(ty, 0)
     }
     fn closure_fn_substitution(
@@ -315,7 +306,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         _closure_id: chalk_ir::ClosureId<Interner>,
         _substs: &chalk_ir::Substitution<Interner>,
     ) -> chalk_ir::Substitution<Interner> {
-        Substitution::empty(&Interner).to_chalk(self.db)
+        Substitution::empty(&Interner)
     }
 
     fn trait_name(&self, trait_id: chalk_ir::TraitId<Interner>) -> String {
@@ -410,7 +401,7 @@ pub(crate) fn associated_ty_data_query(
     let where_clauses = convert_where_clauses(db, type_alias.into(), &bound_vars);
     let bound_data = rust_ir::AssociatedTyDatumBound { bounds, where_clauses };
     let datum = AssociatedTyDatum {
-        trait_id: trait_.to_chalk(db),
+        trait_id: to_chalk_trait_id(trait_),
         id,
         name: type_alias,
         binders: make_binders(bound_data, generic_params.len()),
@@ -563,7 +554,6 @@ fn impl_def_datum(
         trait_ref.display(db),
         where_clauses
     );
-    let trait_ref = trait_ref.to_chalk(db);
 
     let polarity = if negative { rust_ir::Polarity::Negative } else { rust_ir::Polarity::Positive };
 
@@ -624,7 +614,7 @@ fn type_alias_associated_ty_value(
         .associated_type_by_name(&type_alias_data.name)
         .expect("assoc ty value should not exist"); // validated when building the impl data as well
     let (ty, binders) = db.ty(type_alias.into()).into_value_and_skipped_binders();
-    let value_bound = rust_ir::AssociatedTyValueBound { ty: ty.to_chalk(db) };
+    let value_bound = rust_ir::AssociatedTyValueBound { ty };
     let value = rust_ir::AssociatedTyValue {
         impl_id: impl_id.to_chalk(db),
         associated_ty_id: to_assoc_type_id(assoc_ty),
@@ -647,8 +637,8 @@ pub(crate) fn fn_def_datum_query(
         // Note: Chalk doesn't actually use this information yet as far as I am aware, but we provide it anyway
         inputs_and_output: make_binders(
             rust_ir::FnDefInputsAndOutputDatum {
-                argument_types: sig.params().iter().map(|ty| ty.clone().to_chalk(db)).collect(),
-                return_type: sig.ret().clone().to_chalk(db),
+                argument_types: sig.params().iter().cloned().collect(),
+                return_type: sig.ret().clone(),
             }
             .shifted_in(&Interner),
             0,
