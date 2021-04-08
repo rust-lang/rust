@@ -10,8 +10,9 @@ pub(crate) fn maybe_create_entry_wrapper(
     tcx: TyCtxt<'_>,
     module: &mut impl Module,
     unwind_context: &mut UnwindContext,
+    ignore_lang_start_wrapper: bool,
 ) {
-    let (main_def_id, use_start_lang_item) = match tcx.entry_fn(LOCAL_CRATE) {
+    let (main_def_id, is_main_fn) = match tcx.entry_fn(LOCAL_CRATE) {
         Some((def_id, entry_ty)) => (
             def_id.to_def_id(),
             match entry_ty {
@@ -27,14 +28,22 @@ pub(crate) fn maybe_create_entry_wrapper(
         return;
     }
 
-    create_entry_fn(tcx, module, unwind_context, main_def_id, use_start_lang_item);
+    create_entry_fn(
+        tcx,
+        module,
+        unwind_context,
+        main_def_id,
+        ignore_lang_start_wrapper,
+        is_main_fn,
+    );
 
     fn create_entry_fn(
         tcx: TyCtxt<'_>,
         m: &mut impl Module,
         unwind_context: &mut UnwindContext,
         rust_main_def_id: DefId,
-        use_start_lang_item: bool,
+        ignore_lang_start_wrapper: bool,
+        is_main_fn: bool,
     ) {
         let main_ret_ty = tcx.fn_sig(rust_main_def_id).output();
         // Given that `main()` has no arguments,
@@ -74,7 +83,12 @@ pub(crate) fn maybe_create_entry_wrapper(
 
             let main_func_ref = m.declare_func_in_func(main_func_id, &mut bcx.func);
 
-            let call_inst = if use_start_lang_item {
+            let result = if is_main_fn && ignore_lang_start_wrapper {
+                // regular main fn, but ignoring #[lang = "start"] as we are running in the jit
+                // FIXME set program arguments somehow
+                bcx.ins().call(main_func_ref, &[]);
+                bcx.ins().iconst(m.target_config().pointer_type(), 0)
+            } else if is_main_fn {
                 let start_def_id = tcx.require_lang_item(LangItem::Start, None);
                 let start_instance = Instance::resolve(
                     tcx,
@@ -90,13 +104,14 @@ pub(crate) fn maybe_create_entry_wrapper(
                 let main_val = bcx.ins().func_addr(m.target_config().pointer_type(), main_func_ref);
 
                 let func_ref = m.declare_func_in_func(start_func_id, &mut bcx.func);
-                bcx.ins().call(func_ref, &[main_val, arg_argc, arg_argv])
+                let call_inst = bcx.ins().call(func_ref, &[main_val, arg_argc, arg_argv]);
+                bcx.inst_results(call_inst)[0]
             } else {
                 // using user-defined start fn
-                bcx.ins().call(main_func_ref, &[arg_argc, arg_argv])
+                let call_inst = bcx.ins().call(main_func_ref, &[arg_argc, arg_argv]);
+                bcx.inst_results(call_inst)[0]
             };
 
-            let result = bcx.inst_results(call_inst)[0];
             bcx.ins().return_(&[result]);
             bcx.seal_all_blocks();
             bcx.finalize();

@@ -135,7 +135,7 @@ fn module_codegen(
             }
         }
     }
-    crate::main_shim::maybe_create_entry_wrapper(tcx, &mut module, &mut cx.unwind_context);
+    crate::main_shim::maybe_create_entry_wrapper(tcx, &mut module, &mut cx.unwind_context, false);
 
     let codegen_result = emit_module(
         tcx,
