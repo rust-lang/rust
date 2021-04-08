@@ -420,7 +420,7 @@ path = "lib.rs"
     } else {
         command.env("RUSTC", &cargo_miri_path);
     }
-    command.env("MIRI_BE_RUSTC", "1");
+    command.env("MIRI_BE_RUSTC", "target");
     // Make sure there are no other wrappers or flags getting in our way
     // (Cc https://github.com/rust-lang/miri/issues/1421).
     // This is consistent with normal `cargo build` that does not apply `RUSTFLAGS`
@@ -694,7 +694,7 @@ fn phase_cargo_rustc(mut args: env::Args) {
             }
 
             cmd.args(&env.args);
-            cmd.env("MIRI_BE_RUSTC", "1");
+            cmd.env("MIRI_BE_RUSTC", "target");
 
             if verbose {
                 eprintln!("[cargo-miri rustc] captured input:\n{}", std::str::from_utf8(&env.stdin).unwrap());
@@ -758,7 +758,9 @@ fn phase_cargo_rustc(mut args: env::Args) {
 
     // We want to compile, not interpret. We still use Miri to make sure the compiler version etc
     // are the exact same as what is used for interpretation.
-    cmd.env("MIRI_BE_RUSTC", "1");
+    // MIRI_DEFAULT_ARGS should not be used to build host crates, hence setting "target" or "host"
+    // as the value here to help Miri differentiate them.
+    cmd.env("MIRI_BE_RUSTC", if target_crate { "target" } else { "host" });
 
     // Run it.
     if verbose {

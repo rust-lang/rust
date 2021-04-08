@@ -100,9 +100,9 @@ You can pass arguments to Miri via `MIRIFLAGS`. For example,
 `MIRIFLAGS="-Zmiri-disable-stacked-borrows" cargo miri run` runs the program
 without checking the aliasing of references.
 
-When compiling code via `cargo miri`, the `cfg(miri)` config flag is set. You
-can use this to ignore test cases that fail under Miri because they do things
-Miri does not support:
+When compiling code via `cargo miri`, the `cfg(miri)` config flag is set for code
+that will be interpret under Miri. You can use this to ignore test cases that fail
+under Miri because they do things Miri does not support:
 
 ```rust
 #[test]
@@ -286,9 +286,11 @@ Moreover, Miri recognizes some environment variables:
 The following environment variables are internal, but used to communicate between
 different Miri binaries, and as such worth documenting:
 
-* `MIRI_BE_RUSTC` when set to any value tells the Miri driver to actually not
-  interpret the code but compile it like rustc would. This is useful to be sure
-  that the compiled `rlib`s are compatible with Miri.
+* `MIRI_BE_RUSTC` can be set to `host` or `target`. It tells the Miri driver to
+  actually not interpret the code but compile it like rustc would. With `target`, Miri sets
+  some compiler flags to prepare the code for interpretation; with `host`, this is not done.
+  This environment variable is useful to be sure that the compiled `rlib`s are compatible
+  with Miri.
   When set while running `cargo-miri`, it indicates that we are part of a sysroot
   build (for which some crates need special treatment).
 * `MIRI_CALLED_FROM_RUSTDOC` when set to any value tells `cargo-miri` that it is

@@ -19,6 +19,7 @@ dependencies = [
  "issue_1567",
  "issue_1691",
  "issue_1705",
+ "issue_1760",
  "rand",
  "serde_derive",
 ]
@@ -84,6 +85,10 @@ version = "0.1.0"
 dependencies = [
  "byteorder",
 ]
+
+[[package]]
+name = "issue_1760"
+version = "0.1.0"
 
 [[package]]
 name = "libc"

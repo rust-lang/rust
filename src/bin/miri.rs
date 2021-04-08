@@ -135,7 +135,11 @@ fn compile_time_sysroot() -> Option<String> {
 }
 
 /// Execute a compiler with the given CLI arguments and callbacks.
-fn run_compiler(mut args: Vec<String>, callbacks: &mut (dyn rustc_driver::Callbacks + Send)) -> ! {
+fn run_compiler(
+    mut args: Vec<String>,
+    callbacks: &mut (dyn rustc_driver::Callbacks + Send),
+    insert_default_args: bool,
+) -> ! {
     // Make sure we use the right default sysroot. The default sysroot is wrong,
     // because `get_or_default_sysroot` in `librustc_session` bases that on `current_exe`.
     //
@@ -151,9 +155,11 @@ fn run_compiler(mut args: Vec<String>, callbacks: &mut (dyn rustc_driver::Callba
         }
     }
 
-    // Some options have different defaults in Miri than in plain rustc; apply those by making
-    // them the first arguments after the binary name (but later arguments can overwrite them).
-    args.splice(1..1, miri::MIRI_DEFAULT_ARGS.iter().map(ToString::to_string));
+    if insert_default_args {
+        // Some options have different defaults in Miri than in plain rustc; apply those by making
+        // them the first arguments after the binary name (but later arguments can overwrite them).
+        args.splice(1..1, miri::MIRI_DEFAULT_ARGS.iter().map(ToString::to_string));
+    }
 
     // Invoke compiler, and handle return code.
     let exit_code = rustc_driver::catch_with_exit_code(move || {
@@ -166,11 +172,24 @@ fn main() {
     rustc_driver::install_ice_hook();
 
     // If the environment asks us to actually be rustc, then do that.
-    if env::var_os("MIRI_BE_RUSTC").is_some() {
+    if let Some(crate_kind) = env::var_os("MIRI_BE_RUSTC") {
         rustc_driver::init_rustc_env_logger();
+
+        // Don't insert `MIRI_DEFAULT_ARGS`, in particular, `--cfg=miri`, if we are building a
+        // "host" crate. That may cause procedural macros (and probably build scripts) to depend
+        // on Miri-only symbols, such as `miri_resolve_frame`:
+        // https://github.com/rust-lang/miri/issues/1760
+        let insert_default_args = if crate_kind == "target" {
+            true
+        } else if crate_kind == "host" {
+            false
+        } else {
+            panic!("invalid `MIRI_BE_RUSTC` value: {:?}", crate_kind)
+        };
+
         // We cannot use `rustc_driver::main` as we need to adjust the CLI arguments.
         let mut callbacks = rustc_driver::TimePassesCallbacks::default();
-        run_compiler(env::args().collect(), &mut callbacks)
+        run_compiler(env::args().collect(), &mut callbacks, insert_default_args)
     }
 
     // Init loggers the Miri way.
@@ -300,5 +319,5 @@ fn main() {
 
     debug!("rustc arguments: {:?}", rustc_args);
     debug!("crate arguments: {:?}", miri_config.args);
-    run_compiler(rustc_args, &mut MiriCompilerCalls { miri_config })
+    run_compiler(rustc_args, &mut MiriCompilerCalls { miri_config }, /* insert_default_args: */ true)
 }
