@@ -103,7 +103,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
             if_chain! {
                 if !in_macro(ret_expr.span);
                 // Check if a function call.
-                if let ExprKind::Call(ref func, ref args) = ret_expr.kind;
+                if let ExprKind::Call(func, args) = ret_expr.kind;
                 // Get the Path of the function call.
                 if let ExprKind::Path(ref qpath) = func.kind;
                 // Check if OPTION_SOME or RESULT_OK, depending on return type.

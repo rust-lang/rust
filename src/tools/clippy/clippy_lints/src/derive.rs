@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_note, span_lint_and_then};
 use clippy_utils::paths;
-use clippy_utils::ty::is_copy;
+use clippy_utils::ty::{implements_trait, is_copy};
 use clippy_utils::{get_trait_def_id, is_allowed, is_automatically_derived, match_def_path};
 use if_chain::if_chain;
 use rustc_hir::def_id::DefId;
@@ -12,7 +12,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::source_map::Span;
+use rustc_span::{def_id::LOCAL_CRATE, source_map::Span};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for deriving `Hash` but implementing `PartialEq`
@@ -199,7 +199,7 @@ fn check_hash_peq<'tcx>(
         then {
             // Look for the PartialEq implementations for `ty`
             cx.tcx.for_each_relevant_impl(peq_trait_def_id, ty, |impl_id| {
-                let peq_is_automatically_derived = is_automatically_derived(&cx.tcx.get_attrs(impl_id));
+                let peq_is_automatically_derived = is_automatically_derived(cx.tcx.get_attrs(impl_id));
 
                 if peq_is_automatically_derived == hash_is_automatically_derived {
                     return;
@@ -253,7 +253,7 @@ fn check_ord_partial_ord<'tcx>(
         then {
             // Look for the PartialOrd implementations for `ty`
             cx.tcx.for_each_relevant_impl(partial_ord_trait_def_id, ty, |impl_id| {
-                let partial_ord_is_automatically_derived = is_automatically_derived(&cx.tcx.get_attrs(impl_id));
+                let partial_ord_is_automatically_derived = is_automatically_derived(cx.tcx.get_attrs(impl_id));
 
                 if partial_ord_is_automatically_derived == ord_is_automatically_derived {
                     return;
@@ -293,48 +293,53 @@ fn check_ord_partial_ord<'tcx>(
 
 /// Implementation of the `EXPL_IMPL_CLONE_ON_COPY` lint.
 fn check_copy_clone<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &TraitRef<'_>, ty: Ty<'tcx>) {
-    if cx
-        .tcx
-        .lang_items()
-        .clone_trait()
-        .map_or(false, |id| Some(id) == trait_ref.trait_def_id())
-    {
-        if !is_copy(cx, ty) {
+    let clone_id = match cx.tcx.lang_items().clone_trait() {
+        Some(id) if trait_ref.trait_def_id() == Some(id) => id,
+        _ => return,
+    };
+    let copy_id = match cx.tcx.lang_items().copy_trait() {
+        Some(id) => id,
+        None => return,
+    };
+    let (ty_adt, ty_subs) = match *ty.kind() {
+        // Unions can't derive clone.
+        ty::Adt(adt, subs) if !adt.is_union() => (adt, subs),
+        _ => return,
+    };
+    // If the current self type doesn't implement Copy (due to generic constraints), search to see if
+    // there's a Copy impl for any instance of the adt.
+    if !is_copy(cx, ty) {
+        if ty_subs.non_erasable_generics().next().is_some() {
+            let has_copy_impl = cx
+                .tcx
+                .all_local_trait_impls(LOCAL_CRATE)
+                .get(&copy_id)
+                .map_or(false, |impls| {
+                    impls
+                        .iter()
+                        .any(|&id| matches!(cx.tcx.type_of(id).kind(), ty::Adt(adt, _) if ty_adt.did == adt.did))
+                });
+            if !has_copy_impl {
+                return;
+            }
+        } else {
             return;
         }
-
-        match *ty.kind() {
-            ty::Adt(def, _) if def.is_union() => return,
-
-            // Some types are not Clone by default but could be cloned “by hand” if necessary
-            ty::Adt(def, substs) => {
-                for variant in &def.variants {
-                    for field in &variant.fields {
-                        if let ty::FnDef(..) = field.ty(cx.tcx, substs).kind() {
-                            return;
-                        }
-                    }
-                    for subst in substs {
-                        if let ty::subst::GenericArgKind::Type(subst) = subst.unpack() {
-                            if let ty::Param(_) = subst.kind() {
-                                return;
-                            }
-                        }
-                    }
-                }
-            },
-            _ => (),
-        }
-
-        span_lint_and_note(
-            cx,
-            EXPL_IMPL_CLONE_ON_COPY,
-            item.span,
-            "you are implementing `Clone` explicitly on a `Copy` type",
-            Some(item.span),
-            "consider deriving `Clone` or removing `Copy`",
-        );
     }
+    // Derive constrains all generic types to requiring Clone. Check if any type is not constrained for
+    // this impl.
+    if ty_subs.types().any(|ty| !implements_trait(cx, ty, clone_id, &[])) {
+        return;
+    }
+
+    span_lint_and_note(
+        cx,
+        EXPL_IMPL_CLONE_ON_COPY,
+        item.span,
+        "you are implementing `Clone` explicitly on a `Copy` type",
+        Some(item.span),
+        "consider deriving `Clone` or removing `Copy`",
+    );
 }
 
 /// Implementation of the `UNSAFE_DERIVE_DESERIALIZE` lint.

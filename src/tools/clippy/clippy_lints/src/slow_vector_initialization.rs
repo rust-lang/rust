@@ -70,14 +70,14 @@ impl<'tcx> LateLintPass<'tcx> for SlowVectorInit {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // Matches initialization on reassignements. For example: `vec = Vec::with_capacity(100)`
         if_chain! {
-            if let ExprKind::Assign(ref left, ref right, _) = expr.kind;
+            if let ExprKind::Assign(left, right, _) = expr.kind;
 
             // Extract variable name
-            if let ExprKind::Path(QPath::Resolved(_, ref path)) = left.kind;
+            if let ExprKind::Path(QPath::Resolved(_, path)) = left.kind;
             if let Some(variable_name) = path.segments.get(0);
 
             // Extract len argument
-            if let Some(ref len_arg) = Self::is_vec_with_capacity(right);
+            if let Some(len_arg) = Self::is_vec_with_capacity(right);
 
             then {
                 let vi = VecAllocation {
@@ -94,10 +94,10 @@ impl<'tcx> LateLintPass<'tcx> for SlowVectorInit {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         // Matches statements which initializes vectors. For example: `let mut vec = Vec::with_capacity(10)`
         if_chain! {
-            if let StmtKind::Local(ref local) = stmt.kind;
+            if let StmtKind::Local(local) = stmt.kind;
             if let PatKind::Binding(BindingAnnotation::Mutable, .., variable_name, None) = local.pat.kind;
-            if let Some(ref init) = local.init;
-            if let Some(ref len_arg) = Self::is_vec_with_capacity(init);
+            if let Some(init) = local.init;
+            if let Some(len_arg) = Self::is_vec_with_capacity(init);
 
             then {
                 let vi = VecAllocation {
@@ -117,7 +117,7 @@ impl SlowVectorInit {
     /// of the first argument of `with_capacity` call if it matches or `None` if it does not.
     fn is_vec_with_capacity<'tcx>(expr: &Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
         if_chain! {
-            if let ExprKind::Call(ref func, ref args) = expr.kind;
+            if let ExprKind::Call(func, args) = expr.kind;
             if let ExprKind::Path(ref path) = func.kind;
             if match_qpath(path, &["Vec", "with_capacity"]);
             if args.len() == 1;
@@ -208,11 +208,11 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
     fn search_slow_extend_filling(&mut self, expr: &'tcx Expr<'_>) {
         if_chain! {
             if self.initialization_found;
-            if let ExprKind::MethodCall(ref path, _, ref args, _) = expr.kind;
+            if let ExprKind::MethodCall(path, _, args, _) = expr.kind;
             if let ExprKind::Path(ref qpath_subj) = args[0].kind;
-            if match_qpath(&qpath_subj, &[&*self.vec_alloc.variable_name.as_str()]);
+            if match_qpath(qpath_subj, &[&*self.vec_alloc.variable_name.as_str()]);
             if path.ident.name == sym!(extend);
-            if let Some(ref extend_arg) = args.get(1);
+            if let Some(extend_arg) = args.get(1);
             if self.is_repeat_take(extend_arg);
 
             then {
@@ -225,11 +225,11 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
     fn search_slow_resize_filling(&mut self, expr: &'tcx Expr<'_>) {
         if_chain! {
             if self.initialization_found;
-            if let ExprKind::MethodCall(ref path, _, ref args, _) = expr.kind;
+            if let ExprKind::MethodCall(path, _, args, _) = expr.kind;
             if let ExprKind::Path(ref qpath_subj) = args[0].kind;
-            if match_qpath(&qpath_subj, &[&*self.vec_alloc.variable_name.as_str()]);
+            if match_qpath(qpath_subj, &[&*self.vec_alloc.variable_name.as_str()]);
             if path.ident.name == sym!(resize);
-            if let (Some(ref len_arg), Some(fill_arg)) = (args.get(1), args.get(2));
+            if let (Some(len_arg), Some(fill_arg)) = (args.get(1), args.get(2));
 
             // Check that is filled with 0
             if let ExprKind::Lit(ref lit) = fill_arg.kind;
@@ -247,15 +247,15 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
     /// Returns `true` if give expression is `repeat(0).take(...)`
     fn is_repeat_take(&self, expr: &Expr<'_>) -> bool {
         if_chain! {
-            if let ExprKind::MethodCall(ref take_path, _, ref take_args, _) = expr.kind;
+            if let ExprKind::MethodCall(take_path, _, take_args, _) = expr.kind;
             if take_path.ident.name == sym!(take);
 
             // Check that take is applied to `repeat(0)`
-            if let Some(ref repeat_expr) = take_args.get(0);
+            if let Some(repeat_expr) = take_args.get(0);
             if Self::is_repeat_zero(repeat_expr);
 
             // Check that len expression is equals to `with_capacity` expression
-            if let Some(ref len_arg) = take_args.get(1);
+            if let Some(len_arg) = take_args.get(1);
             if SpanlessEq::new(self.cx).eq_expr(len_arg, self.vec_alloc.len_expr);
 
             then {
@@ -269,10 +269,10 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
     /// Returns `true` if given expression is `repeat(0)`
     fn is_repeat_zero(expr: &Expr<'_>) -> bool {
         if_chain! {
-            if let ExprKind::Call(ref fn_expr, ref repeat_args) = expr.kind;
+            if let ExprKind::Call(fn_expr, repeat_args) = expr.kind;
             if let ExprKind::Path(ref qpath_repeat) = fn_expr.kind;
-            if match_qpath(&qpath_repeat, &["repeat"]);
-            if let Some(ref repeat_arg) = repeat_args.get(0);
+            if match_qpath(qpath_repeat, &["repeat"]);
+            if let Some(repeat_arg) = repeat_args.get(0);
             if let ExprKind::Lit(ref lit) = repeat_arg.kind;
             if let LitKind::Int(0, _) = lit.node;
 
@@ -291,7 +291,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VectorInitializationVisitor<'a, 'tcx> {
     fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) {
         if self.initialization_found {
             match stmt.kind {
-                StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => {
+                StmtKind::Expr(expr) | StmtKind::Semi(expr) => {
                     self.search_slow_extend_filling(expr);
                     self.search_slow_resize_filling(expr);
                 },
@@ -306,7 +306,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VectorInitializationVisitor<'a, 'tcx> {
 
     fn visit_block(&mut self, block: &'tcx Block<'_>) {
         if self.initialization_found {
-            if let Some(ref s) = block.stmts.get(0) {
+            if let Some(s) = block.stmts.get(0) {
                 self.visit_stmt(s)
             }
 

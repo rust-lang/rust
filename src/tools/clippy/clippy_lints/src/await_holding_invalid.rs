@@ -101,7 +101,7 @@ impl LateLintPass<'_> for AwaitHolding {
             let typeck_results = cx.tcx.typeck_body(body_id);
             check_interior_types(
                 cx,
-                &typeck_results.generator_interior_types.as_ref().skip_binder(),
+                typeck_results.generator_interior_types.as_ref().skip_binder(),
                 body.value.span,
             );
         }

@@ -3,13 +3,13 @@ use crate::consts::constant;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::usage::mutated_variables;
 use if_chain::if_chain;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::DefIdMap;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use rustc_hir::{def_id, Expr, ExprKind, HirId, QPath};
+use rustc_hir::HirIdSet;
+use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
-use std::iter::Iterator;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, cond: &'tcx Expr<'_>, expr: &'tcx Expr<'_>) {
     if constant(cx, cx.typeck_results(), cond).is_some() {
@@ -19,8 +19,8 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, cond: &'tcx Expr<'_>, expr: &'
 
     let mut var_visitor = VarCollectorVisitor {
         cx,
-        ids: FxHashSet::default(),
-        def_ids: FxHashMap::default(),
+        ids: HirIdSet::default(),
+        def_ids: DefIdMap::default(),
         skip: false,
     };
     var_visitor.visit_expr(cond);
@@ -93,8 +93,8 @@ impl<'tcx> Visitor<'tcx> for HasBreakOrReturnVisitor {
 /// All variables definition IDs are collected
 struct VarCollectorVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
-    ids: FxHashSet<HirId>,
-    def_ids: FxHashMap<def_id::DefId, bool>,
+    ids: HirIdSet,
+    def_ids: DefIdMap<bool>,
     skip: bool,
 }
 
@@ -103,9 +103,8 @@ impl<'a, 'tcx> VarCollectorVisitor<'a, 'tcx> {
         if_chain! {
             if let ExprKind::Path(ref qpath) = ex.kind;
             if let QPath::Resolved(None, _) = *qpath;
-            let res = self.cx.qpath_res(qpath, ex.hir_id);
             then {
-                match res {
+                match self.cx.qpath_res(qpath, ex.hir_id) {
                     Res::Local(hir_id) => {
                         self.ids.insert(hir_id);
                     },

@@ -1,9 +1,10 @@
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:5:5
+  --> $DIR/needless_collect_indirect.rs:5:39
    |
-LL | /     let indirect_iter = sample.iter().collect::<Vec<_>>();
-LL | |     indirect_iter.into_iter().map(|x| (x, x + 1)).collect::<HashMap<_, _>>();
-   | |____^
+LL |     let indirect_iter = sample.iter().collect::<Vec<_>>();
+   |                                       ^^^^^^^
+LL |     indirect_iter.into_iter().map(|x| (x, x + 1)).collect::<HashMap<_, _>>();
+   |     ------------------------- the iterator could be used here instead
    |
    = note: `-D clippy::needless-collect` implied by `-D warnings`
 help: use the original Iterator instead of collecting it and then producing a new one
@@ -13,11 +14,12 @@ LL |     sample.iter().map(|x| (x, x + 1)).collect::<HashMap<_, _>>();
    |
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:7:5
+  --> $DIR/needless_collect_indirect.rs:7:38
    |
-LL | /     let indirect_len = sample.iter().collect::<VecDeque<_>>();
-LL | |     indirect_len.len();
-   | |____^
+LL |     let indirect_len = sample.iter().collect::<VecDeque<_>>();
+   |                                      ^^^^^^^
+LL |     indirect_len.len();
+   |     ------------------ the iterator could be used here instead
    |
 help: take the original Iterator's count instead of collecting it and finding the length
    |
@@ -26,11 +28,12 @@ LL |     sample.iter().count();
    |
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:9:5
+  --> $DIR/needless_collect_indirect.rs:9:40
    |
-LL | /     let indirect_empty = sample.iter().collect::<VecDeque<_>>();
-LL | |     indirect_empty.is_empty();
-   | |____^
+LL |     let indirect_empty = sample.iter().collect::<VecDeque<_>>();
+   |                                        ^^^^^^^
+LL |     indirect_empty.is_empty();
+   |     ------------------------- the iterator could be used here instead
    |
 help: check if the original Iterator has anything instead of collecting it and seeing if it's empty
    |
@@ -39,11 +42,12 @@ LL |     sample.iter().next().is_none();
    |
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:11:5
+  --> $DIR/needless_collect_indirect.rs:11:43
    |
-LL | /     let indirect_contains = sample.iter().collect::<VecDeque<_>>();
-LL | |     indirect_contains.contains(&&5);
-   | |____^
+LL |     let indirect_contains = sample.iter().collect::<VecDeque<_>>();
+   |                                           ^^^^^^^
+LL |     indirect_contains.contains(&&5);
+   |     ------------------------------- the iterator could be used here instead
    |
 help: check if the original Iterator contains an element instead of collecting then checking
    |
@@ -52,11 +56,12 @@ LL |     sample.iter().any(|x| x == &5);
    |
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:23:5
+  --> $DIR/needless_collect_indirect.rs:23:48
    |
-LL | /     let non_copy_contains = sample.into_iter().collect::<Vec<_>>();
-LL | |     non_copy_contains.contains(&a);
-   | |____^
+LL |     let non_copy_contains = sample.into_iter().collect::<Vec<_>>();
+   |                                                ^^^^^^^
+LL |     non_copy_contains.contains(&a);
+   |     ------------------------------ the iterator could be used here instead
    |
 help: check if the original Iterator contains an element instead of collecting then checking
    |

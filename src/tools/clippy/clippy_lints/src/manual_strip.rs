@@ -91,7 +91,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
                 } else {
                     return;
                 };
-                let target_res = cx.qpath_res(&target_path, target_arg.hir_id);
+                let target_res = cx.qpath_res(target_path, target_arg.hir_id);
                 if target_res == Res::Err {
                     return;
                 };
@@ -174,7 +174,7 @@ fn eq_pattern_length<'tcx>(cx: &LateContext<'tcx>, pattern: &Expr<'_>, expr: &'t
 
 // Tests if `expr` is a `&str`.
 fn is_ref_str(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    match cx.typeck_results().expr_ty_adjusted(&expr).kind() {
+    match cx.typeck_results().expr_ty_adjusted(expr).kind() {
         ty::Ref(_, ty, _) => ty.is_str(),
         _ => false,
     }

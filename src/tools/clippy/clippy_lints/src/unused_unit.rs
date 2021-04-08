@@ -45,7 +45,7 @@ impl EarlyLintPass for UnusedUnit {
 
     fn check_block(&mut self, cx: &EarlyContext<'_>, block: &ast::Block) {
         if_chain! {
-            if let Some(ref stmt) = block.stmts.last();
+            if let Some(stmt) = block.stmts.last();
             if let ast::StmtKind::Expr(ref expr) = stmt.kind;
             if is_unit_expr(expr) && !stmt.span.from_expansion();
             then {

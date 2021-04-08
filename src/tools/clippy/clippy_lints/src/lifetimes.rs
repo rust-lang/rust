@@ -81,7 +81,7 @@ declare_lint_pass!(Lifetimes => [NEEDLESS_LIFETIMES, EXTRA_UNUSED_LIFETIMES]);
 impl<'tcx> LateLintPass<'tcx> for Lifetimes {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if let ItemKind::Fn(ref sig, ref generics, id) = item.kind {
-            check_fn_inner(cx, &sig.decl, Some(id), generics, item.span, true);
+            check_fn_inner(cx, sig.decl, Some(id), generics, item.span, true);
         }
     }
 
@@ -90,7 +90,7 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
             let report_extra_lifetimes = trait_ref_of_method(cx, item.hir_id()).is_none();
             check_fn_inner(
                 cx,
-                &sig.decl,
+                sig.decl,
                 Some(id),
                 &item.generics,
                 item.span,
@@ -105,7 +105,7 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
                 TraitFn::Required(_) => None,
                 TraitFn::Provided(id) => Some(id),
             };
-            check_fn_inner(cx, &sig.decl, body, &item.generics, item.span, true);
+            check_fn_inner(cx, sig.decl, body, &item.generics, item.span, true);
         }
     }
 }
@@ -149,7 +149,7 @@ fn check_fn_inner<'tcx>(
                     .last()
                     .expect("a path must have at least one segment")
                     .args;
-                if let Some(ref params) = *params {
+                if let Some(params) = *params {
                     let lifetimes = params.args.iter().filter_map(|arg| match arg {
                         GenericArg::Lifetime(lt) => Some(lt),
                         _ => None,
@@ -163,7 +163,7 @@ fn check_fn_inner<'tcx>(
             }
         }
     }
-    if could_use_elision(cx, decl, body, &generics.params) {
+    if could_use_elision(cx, decl, body, generics.params) {
         span_lint(
             cx,
             NEEDLESS_LIFETIMES,
@@ -201,7 +201,7 @@ fn could_use_elision<'tcx>(
         input_visitor.visit_ty(arg);
     }
     // extract lifetimes in output type
-    if let Return(ref ty) = func.output {
+    if let Return(ty) = func.output {
         output_visitor.visit_ty(ty);
     }
     for lt in named_generics {
@@ -416,12 +416,12 @@ fn has_where_lifetimes<'tcx>(cx: &LateContext<'tcx>, where_clause: &'tcx WhereCl
                 // a predicate like F: Trait or F: for<'a> Trait<'a>
                 let mut visitor = RefVisitor::new(cx);
                 // walk the type F, it may not contain LT refs
-                walk_ty(&mut visitor, &pred.bounded_ty);
+                walk_ty(&mut visitor, pred.bounded_ty);
                 if !visitor.all_lts().is_empty() {
                     return true;
                 }
                 // if the bounds define new lifetimes, they are fine to occur
-                let allowed_lts = allowed_lts_from(&pred.bound_generic_params);
+                let allowed_lts = allowed_lts_from(pred.bound_generic_params);
                 // now walk the bounds
                 for bound in pred.bounds.iter() {
                     walk_param_bound(&mut visitor, bound);
@@ -433,8 +433,8 @@ fn has_where_lifetimes<'tcx>(cx: &LateContext<'tcx>, where_clause: &'tcx WhereCl
             },
             WherePredicate::EqPredicate(ref pred) => {
                 let mut visitor = RefVisitor::new(cx);
-                walk_ty(&mut visitor, &pred.lhs_ty);
-                walk_ty(&mut visitor, &pred.rhs_ty);
+                walk_ty(&mut visitor, pred.lhs_ty);
+                walk_ty(&mut visitor, pred.rhs_ty);
                 if !visitor.lts.is_empty() {
                     return true;
                 }

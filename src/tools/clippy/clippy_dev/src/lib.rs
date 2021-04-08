@@ -101,7 +101,7 @@ impl Lint {
 #[must_use]
 pub fn gen_lint_group_list<'a>(lints: impl Iterator<Item = &'a Lint>) -> Vec<String> {
     lints
-        .map(|l| format!("        LintId::of(&{}::{}),", l.module, l.name.to_uppercase()))
+        .map(|l| format!("        LintId::of({}::{}),", l.module, l.name.to_uppercase()))
         .sorted()
         .collect::<Vec<String>>()
 }
@@ -154,17 +154,17 @@ pub fn gen_register_lint_list<'a>(
     let header = "    store.register_lints(&[".to_string();
     let footer = "    ]);".to_string();
     let internal_lints = internal_lints
-        .sorted_by_key(|l| format!("        &{}::{},", l.module, l.name.to_uppercase()))
+        .sorted_by_key(|l| format!("        {}::{},", l.module, l.name.to_uppercase()))
         .map(|l| {
             format!(
-                "        #[cfg(feature = \"internal-lints\")]\n        &{}::{},",
+                "        #[cfg(feature = \"internal-lints\")]\n        {}::{},",
                 l.module,
                 l.name.to_uppercase()
             )
         });
     let other_lints = usable_lints
-        .sorted_by_key(|l| format!("        &{}::{},", l.module, l.name.to_uppercase()))
-        .map(|l| format!("        &{}::{},", l.module, l.name.to_uppercase()))
+        .sorted_by_key(|l| format!("        {}::{},", l.module, l.name.to_uppercase()))
+        .map(|l| format!("        {}::{},", l.module, l.name.to_uppercase()))
         .sorted();
     let mut lint_list = vec![header];
     lint_list.extend(internal_lints);
@@ -550,9 +550,9 @@ fn test_gen_lint_group_list() {
         Lint::new("internal", "internal_style", "abc", None, "module_name"),
     ];
     let expected = vec![
-        "        LintId::of(&module_name::ABC),".to_string(),
-        "        LintId::of(&module_name::INTERNAL),".to_string(),
-        "        LintId::of(&module_name::SHOULD_ASSERT_EQ),".to_string(),
+        "        LintId::of(module_name::ABC),".to_string(),
+        "        LintId::of(module_name::INTERNAL),".to_string(),
+        "        LintId::of(module_name::SHOULD_ASSERT_EQ),".to_string(),
     ];
     assert_eq!(expected, gen_lint_group_list(lints.iter()));
 }

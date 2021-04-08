@@ -9,8 +9,8 @@ use rustc_middle::lint::in_external_macro;
 use super::LET_UNIT_VALUE;
 
 pub(super) fn check(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
-    if let StmtKind::Local(ref local) = stmt.kind {
-        if cx.typeck_results().pat_ty(&local.pat).is_unit() {
+    if let StmtKind::Local(local) = stmt.kind {
+        if cx.typeck_results().pat_ty(local.pat).is_unit() {
             if in_external_macro(cx.sess(), stmt.span) || local.pat.span.from_expansion() {
                 return;
             }

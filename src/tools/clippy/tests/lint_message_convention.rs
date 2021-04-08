@@ -89,14 +89,14 @@ fn lint_message_convention() {
         .filter(|message| !message.bad_lines.is_empty())
         .collect();
 
-    bad_tests.iter().for_each(|message| {
+    for message in &bad_tests {
         eprintln!(
             "error: the test '{}' contained the following nonconforming lines :",
             message.path.display()
         );
         message.bad_lines.iter().for_each(|line| eprintln!("{}", line));
         eprintln!("\n\n");
-    });
+    }
 
     eprintln!(
         "\n\n\nLint message should not start with a capital letter and should not have punctuation at the end of the message unless multiple sentences are needed."

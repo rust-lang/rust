@@ -67,7 +67,7 @@ enum MinMax {
 
 fn min_max<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<(MinMax, Constant, &'a Expr<'a>)> {
     match expr.kind {
-        ExprKind::Call(ref path, ref args) => {
+        ExprKind::Call(path, args) => {
             if let ExprKind::Path(ref qpath) = path.kind {
                 cx.typeck_results()
                     .qpath_res(qpath, path.hir_id)
@@ -85,7 +85,7 @@ fn min_max<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<(MinMax, Cons
                 None
             }
         },
-        ExprKind::MethodCall(ref path, _, ref args, _) => {
+        ExprKind::MethodCall(path, _, args, _) => {
             if_chain! {
                 if let [obj, _] = args;
                 if cx.typeck_results().expr_ty(obj).is_floating_point() || match_trait_method(cx, expr, &paths::ORD);

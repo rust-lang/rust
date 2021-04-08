@@ -87,7 +87,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
 }
 
 fn check_closure(cx: &LateContext<'_>, expr: &Expr<'_>) {
-    if let ExprKind::Closure(_, ref decl, eid, _, _) = expr.kind {
+    if let ExprKind::Closure(_, decl, eid, _, _) = expr.kind {
         let body = cx.tcx.hir().body(eid);
         let ex = &body.value;
 
@@ -109,7 +109,7 @@ fn check_closure(cx: &LateContext<'_>, expr: &Expr<'_>) {
         }
 
         if_chain!(
-            if let ExprKind::Call(ref caller, ref args) = ex.kind;
+            if let ExprKind::Call(caller, args) = ex.kind;
 
             if let ExprKind::Path(_) = caller.kind;
 
@@ -142,7 +142,7 @@ fn check_closure(cx: &LateContext<'_>, expr: &Expr<'_>) {
         );
 
         if_chain!(
-            if let ExprKind::MethodCall(ref path, _, ref args, _) = ex.kind;
+            if let ExprKind::MethodCall(path, _, args, _) = ex.kind;
 
             // Not the same number of arguments, there is no way the closure is the same as the function return;
             if args.len() == decl.inputs.len();
@@ -178,7 +178,7 @@ fn get_ufcs_type_name(cx: &LateContext<'_>, method_def_id: def_id::DefId, self_a
     let actual_type_of_self = &cx.typeck_results().node_type(self_arg.hir_id);
 
     if let Some(trait_id) = cx.tcx.trait_of_item(method_def_id) {
-        if match_borrow_depth(expected_type_of_self, &actual_type_of_self)
+        if match_borrow_depth(expected_type_of_self, actual_type_of_self)
             && implements_trait(cx, actual_type_of_self, trait_id, &[])
         {
             return Some(cx.tcx.def_path_str(trait_id));
@@ -187,8 +187,8 @@ fn get_ufcs_type_name(cx: &LateContext<'_>, method_def_id: def_id::DefId, self_a
 
     cx.tcx.impl_of_method(method_def_id).and_then(|_| {
         //a type may implicitly implement other type's methods (e.g. Deref)
-        if match_types(expected_type_of_self, &actual_type_of_self) {
-            return Some(get_type_name(cx, &actual_type_of_self));
+        if match_types(expected_type_of_self, actual_type_of_self) {
+            return Some(get_type_name(cx, actual_type_of_self));
         }
         None
     })
@@ -196,7 +196,7 @@ fn get_ufcs_type_name(cx: &LateContext<'_>, method_def_id: def_id::DefId, self_a
 
 fn match_borrow_depth(lhs: Ty<'_>, rhs: Ty<'_>) -> bool {
     match (&lhs.kind(), &rhs.kind()) {
-        (ty::Ref(_, t1, mut1), ty::Ref(_, t2, mut2)) => mut1 == mut2 && match_borrow_depth(&t1, &t2),
+        (ty::Ref(_, t1, mut1), ty::Ref(_, t2, mut2)) => mut1 == mut2 && match_borrow_depth(t1, t2),
         (l, r) => !matches!((l, r), (ty::Ref(_, _, _), _) | (_, ty::Ref(_, _, _))),
     }
 }
@@ -218,7 +218,7 @@ fn match_types(lhs: Ty<'_>, rhs: Ty<'_>) -> bool {
 fn get_type_name(cx: &LateContext<'_>, ty: Ty<'_>) -> String {
     match ty.kind() {
         ty::Adt(t, _) => cx.tcx.def_path_str(t.did),
-        ty::Ref(_, r, _) => get_type_name(cx, &r),
+        ty::Ref(_, r, _) => get_type_name(cx, r),
         _ => ty.to_string(),
     }
 }
@@ -230,7 +230,7 @@ fn compare_inputs(
     for (closure_input, function_arg) in closure_inputs.zip(call_args) {
         if let PatKind::Binding(_, _, ident, _) = closure_input.pat.kind {
             // XXXManishearth Should I be checking the binding mode here?
-            if let ExprKind::Path(QPath::Resolved(None, ref p)) = function_arg.kind {
+            if let ExprKind::Path(QPath::Resolved(None, p)) = function_arg.kind {
                 if p.segments.len() != 1 {
                     // If it's a proper path, it can't be a local variable
                     return false;

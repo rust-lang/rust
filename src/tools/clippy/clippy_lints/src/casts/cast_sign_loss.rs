@@ -30,7 +30,7 @@ fn should_lint(cx: &LateContext<'_>, cast_op: &Expr<'_>, cast_from: Ty<'_>, cast
             }
 
             // Don't lint for positive constants.
-            let const_val = constant(cx, &cx.typeck_results(), cast_op);
+            let const_val = constant(cx, cx.typeck_results(), cast_op);
             if_chain! {
                 if let Some((Constant::Int(n), _)) = const_val;
                 if let ty::Int(ity) = *cast_from.kind();
@@ -41,14 +41,14 @@ fn should_lint(cx: &LateContext<'_>, cast_op: &Expr<'_>, cast_from: Ty<'_>, cast
             }
 
             // Don't lint for the result of methods that always return non-negative values.
-            if let ExprKind::MethodCall(ref path, _, _, _) = cast_op.kind {
+            if let ExprKind::MethodCall(path, _, _, _) = cast_op.kind {
                 let mut method_name = path.ident.name.as_str();
                 let allowed_methods = ["abs", "checked_abs", "rem_euclid", "checked_rem_euclid"];
 
                 if_chain! {
                     if method_name == "unwrap";
                     if let Some(arglist) = method_chain_args(cast_op, &["unwrap"]);
-                    if let ExprKind::MethodCall(ref inner_path, _, _, _) = &arglist[0][0].kind;
+                    if let ExprKind::MethodCall(inner_path, _, _, _) = &arglist[0][0].kind;
                     then {
                         method_name = inner_path.ident.name.as_str();
                     }

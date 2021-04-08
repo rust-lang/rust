@@ -111,10 +111,10 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
 
                 fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
                     if_chain! {
-                        if let hir::ExprKind::Call(ref closure, _) = expr.kind;
-                        if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = closure.kind;
-                        if self.path.segments[0].ident == path.segments[0].ident
-                            && self.path.res == path.res;
+                        if let hir::ExprKind::Call(closure, _) = expr.kind;
+                        if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = closure.kind;
+                        if self.path.segments[0].ident == path.segments[0].ident;
+                        if self.path.res == path.res;
                         then {
                             self.count += 1;
                         }
@@ -133,14 +133,14 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
 
         for w in block.stmts.windows(2) {
             if_chain! {
-                if let hir::StmtKind::Local(ref local) = w[0].kind;
-                if let Option::Some(ref t) = local.init;
+                if let hir::StmtKind::Local(local) = w[0].kind;
+                if let Option::Some(t) = local.init;
                 if let hir::ExprKind::Closure(..) = t.kind;
                 if let hir::PatKind::Binding(_, _, ident, _) = local.pat.kind;
-                if let hir::StmtKind::Semi(ref second) = w[1].kind;
-                if let hir::ExprKind::Assign(_, ref call, _) = second.kind;
-                if let hir::ExprKind::Call(ref closure, _) = call.kind;
-                if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = closure.kind;
+                if let hir::StmtKind::Semi(second) = w[1].kind;
+                if let hir::ExprKind::Assign(_, call, _) = second.kind;
+                if let hir::ExprKind::Call(closure, _) = call.kind;
+                if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = closure.kind;
                 if ident == path.segments[0].ident;
                 if count_closure_usage(cx, block, path) == 1;
                 then {
