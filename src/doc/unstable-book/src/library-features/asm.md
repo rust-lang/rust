@@ -372,6 +372,43 @@ unsafe {
 # }
 ```
 
+## Labels
+
+The compiler is allowed to instantiate multiple copies an `asm!` block, for example when the function containing it is inlined in multiple places. As a consequence, you should only use GNU assembler [local labels] inside inline assembly code. Defining symbols in assembly code may lead to assembler and/or linker errors due to duplicate symbol definitions.
+
+Moreover due to [a llvm bug], you cannot use `0` or `1` as labels. Therefore only labels in the `2`-`99` range are allowed.
+
+```rust
+#![feature(asm)]
+
+let mut a = 0;
+unsafe {
+    asm!(
+        "mov {0}, 10",
+        "2:",
+        "sub {0}, 1",
+        "cmp {0}, 3",
+        "jle 2f",
+        "jmp 2b",
+        "2:",
+        "add {0}, 2",
+        out(reg) a
+    );
+}
+assert_eq!(a, 5);
+```
+
+This will decrement the `{0}` register value from 10 to 3, then add 2 and store it in `a`.
+
+This example show a few thing:
+
+First that the same number can be used as a label multiple times in the same inline block.
+
+Second, that when a numeric label is used as a reference (as an instruction operand, for example), the suffixes b (“backward”) or f (“forward”) should be added to the numeric label. It will then refer to the nearest label defined by this number in this direction.
+
+[local labels]: https://sourceware.org/binutils/docs/as/Symbol-Names.html#Local-Labels
+[a llvm bug]: https://bugs.llvm.org/show_bug.cgi?id=36144
+
 ## Options
 
 By default, an inline assembly block is treated the same way as an external FFI function call with a custom calling convention: it may read/write memory, have observable side effects, etc. However in many cases, it is desirable to give the compiler more information about what the assembly code is actually doing so that it can optimize better.
@@ -787,8 +824,5 @@ The compiler performs some additional checks on options:
     - You are responsible for switching any target-specific state (e.g. thread-local storage, stack bounds).
     - The set of memory locations that you may access is the intersection of those allowed by the `asm!` blocks you entered and exited.
 - You cannot assume that an `asm!` block will appear exactly once in the output binary. The compiler is allowed to instantiate multiple copies of the `asm!` block, for example when the function containing it is inlined in multiple places.
-  - As a consequence, you should only use [local labels] inside inline assembly code. Defining symbols in assembly code may lead to assembler and/or linker errors due to duplicate symbol definitions.
 
 > **Note**: As a general rule, the flags covered by `preserves_flags` are those which are *not* preserved when performing a function call.
-
-[local labels]: https://sourceware.org/binutils/docs/as/Symbol-Names.html#Local-Labels
