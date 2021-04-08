@@ -56,6 +56,7 @@ impl_internable!(
     InternedTypeInner,
     InternedWrapper<chalk_ir::LifetimeData<Interner>>,
     InternedWrapper<chalk_ir::ConstData<Interner>>,
+    InternedWrapper<Vec<chalk_ir::CanonicalVarKind<Interner>>>,
 );
 
 impl chalk_ir::interner::Interner for Interner {
@@ -71,7 +72,7 @@ impl chalk_ir::interner::Interner for Interner {
     type InternedProgramClauses = Arc<[chalk_ir::ProgramClause<Self>]>;
     type InternedQuantifiedWhereClauses = Vec<chalk_ir::QuantifiedWhereClause<Self>>;
     type InternedVariableKinds = Interned<InternedVariableKindsInner>;
-    type InternedCanonicalVarKinds = Vec<chalk_ir::CanonicalVarKind<Self>>;
+    type InternedCanonicalVarKinds = Interned<InternedWrapper<Vec<chalk_ir::CanonicalVarKind<Self>>>>;
     type InternedConstraints = Vec<chalk_ir::InEnvironment<chalk_ir::Constraint<Self>>>;
     type InternedVariances = Arc<[chalk_ir::Variance]>;
     type DefId = InternId;
@@ -370,7 +371,7 @@ impl chalk_ir::interner::Interner for Interner {
         &self,
         data: impl IntoIterator<Item = Result<chalk_ir::CanonicalVarKind<Self>, E>>,
     ) -> Result<Self::InternedCanonicalVarKinds, E> {
-        data.into_iter().collect()
+        Ok(Interned::new(InternedWrapper(data.into_iter().collect::<Result<_, _>>()?)))
     }
 
     fn canonical_var_kinds_data<'a>(
