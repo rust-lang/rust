@@ -75,7 +75,7 @@ impl TyExt for Ty {
     }
     fn as_reference(&self) -> Option<(&Ty, Lifetime, Mutability)> {
         match self.kind(&Interner) {
-            TyKind::Ref(mutability, lifetime, ty) => Some((ty, *lifetime, *mutability)),
+            TyKind::Ref(mutability, lifetime, ty) => Some((ty, lifetime.clone(), *mutability)),
             _ => None,
         }
     }

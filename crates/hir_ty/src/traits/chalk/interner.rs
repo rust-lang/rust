@@ -39,16 +39,29 @@ pub struct InternedSubstitutionInner(SmallVec<[GenericArg; 2]>);
 #[derive(PartialEq, Eq, Hash, Debug)]
 pub struct InternedTypeInner(chalk_ir::TyData<Interner>);
 
+#[derive(PartialEq, Eq, Hash, Debug)]
+pub struct InternedWrapper<T>(T);
+
+impl<T> std::ops::Deref for InternedWrapper<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 impl_internable!(
     InternedVariableKindsInner,
     InternedSubstitutionInner,
     InternedTypeInner,
+    InternedWrapper<chalk_ir::LifetimeData<Interner>>,
+    InternedWrapper<chalk_ir::ConstData<Interner>>,
 );
 
 impl chalk_ir::interner::Interner for Interner {
     type InternedType = Interned<InternedTypeInner>;
-    type InternedLifetime = chalk_ir::LifetimeData<Self>;
-    type InternedConst = Arc<chalk_ir::ConstData<Self>>;
+    type InternedLifetime = Interned<InternedWrapper<chalk_ir::LifetimeData<Self>>>;
+    type InternedConst = Interned<InternedWrapper<chalk_ir::ConstData<Self>>>;
     type InternedConcreteConst = ();
     type InternedGenericArg = chalk_ir::GenericArgData<Self>;
     type InternedGoal = Arc<GoalData<Self>>;
@@ -221,22 +234,22 @@ impl chalk_ir::interner::Interner for Interner {
     }
 
     fn intern_lifetime(&self, lifetime: chalk_ir::LifetimeData<Self>) -> Self::InternedLifetime {
-        lifetime
+        Interned::new(InternedWrapper(lifetime))
     }
 
     fn lifetime_data<'a>(
         &self,
         lifetime: &'a Self::InternedLifetime,
     ) -> &'a chalk_ir::LifetimeData<Self> {
-        lifetime
+        &lifetime.0
     }
 
     fn intern_const(&self, constant: chalk_ir::ConstData<Self>) -> Self::InternedConst {
-        Arc::new(constant)
+        Interned::new(InternedWrapper(constant))
     }
 
     fn const_data<'a>(&self, constant: &'a Self::InternedConst) -> &'a chalk_ir::ConstData<Self> {
-        constant
+        &constant.0
     }
 
     fn const_eq(
