@@ -51,7 +51,7 @@ impl<'tcx> LateLintPass<'tcx> for GetLastWithLen {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             // Is a method call
-            if let ExprKind::MethodCall(ref path, _, ref args, _) = expr.kind;
+            if let ExprKind::MethodCall(path, _, args, _) = expr.kind;
 
             // Method name is "get"
             if path.ident.name == sym!(get);

@@ -99,17 +99,17 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
         config.parse_sess_created = Some(Box::new(move |parse_sess| {
             track_clippy_args(parse_sess, &clippy_args_var);
         }));
-        config.register_lints = Some(Box::new(move |sess, mut lint_store| {
+        config.register_lints = Some(Box::new(move |sess, lint_store| {
             // technically we're ~guaranteed that this is none but might as well call anything that
             // is there already. Certainly it can't hurt.
             if let Some(previous) = &previous {
                 (previous)(sess, lint_store);
             }
 
-            let conf = clippy_lints::read_conf(&[], &sess);
-            clippy_lints::register_plugins(&mut lint_store, &sess, &conf);
-            clippy_lints::register_pre_expansion_lints(&mut lint_store);
-            clippy_lints::register_renamed(&mut lint_store);
+            let conf = clippy_lints::read_conf(&[], sess);
+            clippy_lints::register_plugins(lint_store, sess, &conf);
+            clippy_lints::register_pre_expansion_lints(lint_store);
+            clippy_lints::register_renamed(lint_store);
         }));
 
         // FIXME: #4825; This is required, because Clippy lints that are based on MIR have to be
@@ -191,7 +191,7 @@ fn report_clippy_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     ];
 
     for note in &xs {
-        handler.note_without_error(&note);
+        handler.note_without_error(note);
     }
 
     // If backtraces are enabled, also print the query stack

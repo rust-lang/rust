@@ -48,7 +48,7 @@ pub mod usage;
 pub mod visitors;
 
 pub use self::attrs::*;
-pub use self::hir_utils::{both, eq_expr_value, over, SpanlessEq, SpanlessHash};
+pub use self::hir_utils::{both, count_eq, eq_expr_value, over, SpanlessEq, SpanlessHash};
 
 use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault;
@@ -61,10 +61,9 @@ use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{
-    def, Arm, BindingAnnotation, Block, Body, Constness, Expr, ExprKind, FieldDef, FnDecl, ForeignItem, GenericArgs,
-    GenericParam, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, LangItem, Lifetime, Local, MacroDef,
-    MatchSource, Mod, Node, Param, Pat, PatKind, Path, PathSegment, QPath, Stmt, TraitItem, TraitItemKind, TraitRef,
-    TyKind, Variant, Visibility,
+    def, Arm, BindingAnnotation, Block, Body, Constness, Expr, ExprKind, FnDecl, GenericArgs, HirId, Impl, ImplItem,
+    ImplItemKind, Item, ItemKind, LangItem, MatchSource, Node, Param, Pat, PatKind, Path, PathSegment, QPath,
+    TraitItem, TraitItemKind, TraitRef, TyKind,
 };
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::exports::Export;
@@ -76,7 +75,7 @@ use rustc_session::Session;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::original_sp;
 use rustc_span::sym;
-use rustc_span::symbol::{kw, Ident, Symbol};
+use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::Integer;
 
@@ -350,6 +349,10 @@ pub fn single_segment_path<'tcx>(path: &QPath<'tcx>) -> Option<&'tcx PathSegment
     }
 }
 
+/// THIS METHOD IS DEPRECATED and will eventually be removed since it does not match against the
+/// entire path or resolved `DefId`. Prefer using `match_def_path`. Consider getting a `DefId` from
+/// `QPath::Resolved.1.res.opt_def_id()`.
+///
 /// Matches a `QPath` against a slice of segment string literals.
 ///
 /// There is also `match_path` if you are dealing with a `rustc_hir::Path` instead of a
@@ -377,6 +380,10 @@ pub fn match_qpath(path: &QPath<'_>, segments: &[&str]) -> bool {
     }
 }
 
+/// THIS METHOD IS DEPRECATED and will eventually be removed since it does not match against the
+/// entire path or resolved `DefId`. Prefer using `match_def_path`. Consider getting a `DefId` from
+/// `QPath::Resolved.1.res.opt_def_id()`.
+///
 /// Matches a `Path` against a slice of segment string literals.
 ///
 /// There is also `match_qpath` if you are dealing with a `rustc_hir::QPath` instead of a
@@ -610,9 +617,9 @@ pub fn get_pat_name(pat: &Pat<'_>) -> Option<Symbol> {
     }
 }
 
-struct ContainsName {
-    name: Symbol,
-    result: bool,
+pub struct ContainsName {
+    pub name: Symbol,
+    pub result: bool,
 }
 
 impl<'tcx> Visitor<'tcx> for ContainsName {
@@ -713,41 +720,6 @@ fn line_span<T: LintContext>(cx: &T, span: Span) -> Span {
     Span::new(line_start, span.hi(), span.ctxt())
 }
 
-/// Gets the span of the node, if there is one.
-pub fn get_node_span(node: Node<'_>) -> Option<Span> {
-    match node {
-        Node::Param(Param { span, .. })
-        | Node::Item(Item { span, .. })
-        | Node::ForeignItem(ForeignItem { span, .. })
-        | Node::TraitItem(TraitItem { span, .. })
-        | Node::ImplItem(ImplItem { span, .. })
-        | Node::Variant(Variant { span, .. })
-        | Node::Field(FieldDef { span, .. })
-        | Node::Expr(Expr { span, .. })
-        | Node::Stmt(Stmt { span, .. })
-        | Node::PathSegment(PathSegment {
-            ident: Ident { span, .. },
-            ..
-        })
-        | Node::Ty(hir::Ty { span, .. })
-        | Node::TraitRef(TraitRef {
-            path: Path { span, .. },
-            ..
-        })
-        | Node::Binding(Pat { span, .. })
-        | Node::Pat(Pat { span, .. })
-        | Node::Arm(Arm { span, .. })
-        | Node::Block(Block { span, .. })
-        | Node::Local(Local { span, .. })
-        | Node::MacroDef(MacroDef { span, .. })
-        | Node::Lifetime(Lifetime { span, .. })
-        | Node::GenericParam(GenericParam { span, .. })
-        | Node::Visibility(Visibility { span, .. })
-        | Node::Crate(Mod { inner: span, .. }) => Some(*span),
-        Node::Ctor(_) | Node::AnonConst(_) => None,
-    }
-}
-
 /// Gets the parent node, if any.
 pub fn get_parent_node(tcx: TyCtxt<'_>, id: HirId) -> Option<Node<'_>> {
     tcx.hir().parent_iter(id).next().map(|(_, node)| node)
@@ -798,22 +770,29 @@ pub fn get_parent_as_impl(tcx: TyCtxt<'_>, id: HirId) -> Option<&Impl<'_>> {
     }
 }
 
-/// Checks if the given expression is the else clause in the expression `if let .. {} else {}`
-pub fn is_else_clause_of_if_let_else(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
+/// Checks if the given expression is the else clause of either an `if` or `if let` expression.
+pub fn is_else_clause(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
     let map = tcx.hir();
     let mut iter = map.parent_iter(expr.hir_id);
-    let arm_id = match iter.next() {
-        Some((id, Node::Arm(..))) => id,
-        _ => return false,
-    };
     match iter.next() {
+        Some((arm_id, Node::Arm(..))) => matches!(
+            iter.next(),
+            Some((
+                _,
+                Node::Expr(Expr {
+                    kind: ExprKind::Match(_, [_, else_arm], MatchSource::IfLetDesugar { .. }),
+                    ..
+                })
+            ))
+            if else_arm.hir_id == arm_id
+        ),
         Some((
             _,
             Node::Expr(Expr {
-                kind: ExprKind::Match(_, [_, else_arm], kind),
+                kind: ExprKind::If(_, _, Some(else_expr)),
                 ..
             }),
-        )) => else_arm.hir_id == arm_id && matches!(kind, MatchSource::IfLetDesugar { .. }),
+        )) => else_expr.hir_id == expr.hir_id,
         _ => false,
     }
 }
@@ -1210,6 +1189,8 @@ pub fn if_sequence<'tcx>(mut expr: &'tcx Expr<'tcx>) -> (Vec<&'tcx Expr<'tcx>>, 
     (conds, blocks)
 }
 
+/// This function returns true if the given expression is the `else` or `if else` part of an if
+/// statement
 pub fn parent_node_is_if_expr(expr: &Expr<'_>, cx: &LateContext<'_>) -> bool {
     let map = cx.tcx.hir();
     let parent_id = map.get_parent_node(expr.hir_id);
@@ -1223,16 +1204,9 @@ pub fn parent_node_is_if_expr(expr: &Expr<'_>, cx: &LateContext<'_>) -> bool {
     )
 }
 
-// Finds the attribute with the given name, if any
-pub fn attr_by_name<'a>(attrs: &'a [Attribute], name: &'_ str) -> Option<&'a Attribute> {
-    attrs
-        .iter()
-        .find(|attr| attr.ident().map_or(false, |ident| ident.as_str() == name))
-}
-
 // Finds the `#[must_use]` attribute, if any
 pub fn must_use_attr(attrs: &[Attribute]) -> Option<&Attribute> {
-    attr_by_name(attrs, "must_use")
+    attrs.iter().find(|a| a.has_name(sym::must_use))
 }
 
 // check if expr is calling method or function with #[must_use] attribute
@@ -1320,6 +1294,16 @@ pub fn fn_def_id(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<DefId> {
     }
 }
 
+/// This function checks if any of the lints in the slice is enabled for the provided `HirId`.
+/// A lint counts as enabled with any of the levels: `Level::Forbid` | `Level::Deny` | `Level::Warn`
+///
+/// ```ignore
+/// #[deny(clippy::YOUR_AWESOME_LINT)]
+/// println!("Hello, World!"); // <- Clippy code: run_lints(cx, &[YOUR_AWESOME_LINT], id) == true
+///
+/// #[allow(clippy::YOUR_AWESOME_LINT)]
+/// println!("See you soon!"); // <- Clippy code: run_lints(cx, &[YOUR_AWESOME_LINT], id) == false
+/// ```
 pub fn run_lints(cx: &LateContext<'_>, lints: &[&'static Lint], id: HirId) -> bool {
     lints.iter().any(|lint| {
         matches!(

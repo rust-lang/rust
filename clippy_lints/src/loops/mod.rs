@@ -562,7 +562,7 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
         // check for `loop { if let {} else break }` that could be `while let`
         // (also matches an explicit "match" instead of "if let")
         // (even if the "match" or "if let" is used for declaration)
-        if let ExprKind::Loop(ref block, _, LoopSource::Loop, _) = expr.kind {
+        if let ExprKind::Loop(block, _, LoopSource::Loop, _) = expr.kind {
             // also check for empty `loop {}` statements, skipping those in #[panic_handler]
             empty_loop::check(cx, expr, block);
             while_let_loop::check(cx, expr, block);
@@ -570,7 +570,7 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
 
         while_let_on_iterator::check(cx, expr);
 
-        if let Some((cond, body)) = higher::while_loop(&expr) {
+        if let Some((cond, body)) = higher::while_loop(expr) {
             while_immutable_condition::check(cx, cond, body);
         }
 
@@ -602,7 +602,7 @@ fn check_for_loop<'tcx>(
 fn check_for_loop_arg(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>, expr: &Expr<'_>) {
     let mut next_loop_linted = false; // whether or not ITER_NEXT_LOOP lint was used
 
-    if let ExprKind::MethodCall(ref method, _, ref args, _) = arg.kind {
+    if let ExprKind::MethodCall(method, _, args, _) = arg.kind {
         // just the receiver, no arguments
         if args.len() == 1 {
             let method_name = &*method.ident.as_str();

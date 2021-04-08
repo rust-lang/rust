@@ -148,14 +148,14 @@ impl QuestionMark {
 
     fn expression_returns_none(cx: &LateContext<'_>, expression: &Expr<'_>) -> bool {
         match expression.kind {
-            ExprKind::Block(ref block, _) => {
+            ExprKind::Block(block, _) => {
                 if let Some(return_expression) = Self::return_expression(block) {
-                    return Self::expression_returns_none(cx, &return_expression);
+                    return Self::expression_returns_none(cx, return_expression);
                 }
 
                 false
             },
-            ExprKind::Ret(Some(ref expr)) => Self::expression_returns_none(cx, expr),
+            ExprKind::Ret(Some(expr)) => Self::expression_returns_none(cx, expr),
             ExprKind::Path(ref qp) => {
                 if let Res::Def(DefKind::Ctor(def::CtorOf::Variant, def::CtorKind::Const), def_id) =
                     cx.qpath_res(qp, expression.hir_id)
@@ -174,7 +174,7 @@ impl QuestionMark {
         if_chain! {
             if block.stmts.len() == 1;
             if let Some(expr) = block.stmts.iter().last();
-            if let StmtKind::Semi(ref expr) = expr.kind;
+            if let StmtKind::Semi(expr) = expr.kind;
             if let ExprKind::Ret(Some(ret_expr)) = expr.kind;
 
             then {

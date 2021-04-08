@@ -26,7 +26,7 @@ pub(super) fn check<'tcx>(
 
     // For each candidate, check the parent block to see if
     // it's initialized to zero at the start of the loop.
-    if let Some(block) = get_enclosing_block(&cx, expr.hir_id) {
+    if let Some(block) = get_enclosing_block(cx, expr.hir_id) {
         for id in increment_visitor.into_results() {
             let mut initialize_visitor = InitializeVisitor::new(cx, expr, id);
             walk_block(&mut initialize_visitor, block);

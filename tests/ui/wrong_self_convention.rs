@@ -165,15 +165,10 @@ mod issue6307 {
 }
 
 mod issue6727 {
-    trait ToU64 {
-        fn to_u64(self) -> u64;
-        fn to_u64_v2(&self) -> u64;
-    }
-
     #[derive(Clone, Copy)]
     struct FooCopy;
 
-    impl ToU64 for FooCopy {
+    impl FooCopy {
         fn to_u64(self) -> u64 {
             1
         }
@@ -185,7 +180,7 @@ mod issue6727 {
 
     struct FooNoCopy;
 
-    impl ToU64 for FooNoCopy {
+    impl FooNoCopy {
         // trigger lint
         fn to_u64(self) -> u64 {
             2

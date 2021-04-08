@@ -78,8 +78,8 @@ fn span_useless_format<T: LintContext>(cx: &T, span: Span, help: &str, mut sugg:
 
 fn on_argumentv1_new<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arms: &'tcx [Arm<'_>]) -> Option<String> {
     if_chain! {
-        if let ExprKind::AddrOf(BorrowKind::Ref, _, ref format_args) = expr.kind;
-        if let ExprKind::Array(ref elems) = arms[0].body.kind;
+        if let ExprKind::AddrOf(BorrowKind::Ref, _, format_args) = expr.kind;
+        if let ExprKind::Array(elems) = arms[0].body.kind;
         if elems.len() == 1;
         if let Some(args) = match_function_call(cx, &elems[0], &paths::FMT_ARGUMENTV1_NEW);
         // matches `core::fmt::Display::fmt`
@@ -88,10 +88,10 @@ fn on_argumentv1_new<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arms: &
         if let Some(did) = cx.qpath_res(qpath, args[1].hir_id).opt_def_id();
         if match_def_path(cx, did, &paths::DISPLAY_FMT_METHOD);
         // check `(arg0,)` in match block
-        if let PatKind::Tuple(ref pats, None) = arms[0].pat.kind;
+        if let PatKind::Tuple(pats, None) = arms[0].pat.kind;
         if pats.len() == 1;
         then {
-            let ty = cx.typeck_results().pat_ty(&pats[0]).peel_refs();
+            let ty = cx.typeck_results().pat_ty(pats[0]).peel_refs();
             if *ty.kind() != rustc_middle::ty::Str && !is_type_diagnostic_item(cx, ty, sym::string_type) {
                 return None;
             }
@@ -101,7 +101,7 @@ fn on_argumentv1_new<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arms: &
                 }
             } else {
                 let snip = snippet(cx, format_args.span, "<arg>");
-                if let ExprKind::MethodCall(ref path, _, _, _) = format_args.kind {
+                if let ExprKind::MethodCall(path, _, _, _) = format_args.kind {
                     if path.ident.name == sym!(to_string) {
                         return Some(format!("{}", snip));
                     }
@@ -120,16 +120,16 @@ fn on_new_v1<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<Strin
         if let Some(args) = match_function_call(cx, expr, &paths::FMT_ARGUMENTS_NEW_V1);
         if args.len() == 2;
         // Argument 1 in `new_v1()`
-        if let ExprKind::AddrOf(BorrowKind::Ref, _, ref arr) = args[0].kind;
-        if let ExprKind::Array(ref pieces) = arr.kind;
+        if let ExprKind::AddrOf(BorrowKind::Ref, _, arr) = args[0].kind;
+        if let ExprKind::Array(pieces) = arr.kind;
         if pieces.len() == 1;
         if let ExprKind::Lit(ref lit) = pieces[0].kind;
         if let LitKind::Str(ref s, _) = lit.node;
         // Argument 2 in `new_v1()`
-        if let ExprKind::AddrOf(BorrowKind::Ref, _, ref arg1) = args[1].kind;
-        if let ExprKind::Match(ref matchee, ref arms, MatchSource::Normal) = arg1.kind;
+        if let ExprKind::AddrOf(BorrowKind::Ref, _, arg1) = args[1].kind;
+        if let ExprKind::Match(matchee, arms, MatchSource::Normal) = arg1.kind;
         if arms.len() == 1;
-        if let ExprKind::Tup(ref tup) = matchee.kind;
+        if let ExprKind::Tup(tup) = matchee.kind;
         then {
             // `format!("foo")` expansion contains `match () { () => [], }`
             if tup.is_empty() {
@@ -152,16 +152,16 @@ fn on_new_v1_fmt<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<S
         if args.len() == 3;
         if check_unformatted(&args[2]);
         // Argument 1 in `new_v1_formatted()`
-        if let ExprKind::AddrOf(BorrowKind::Ref, _, ref arr) = args[0].kind;
-        if let ExprKind::Array(ref pieces) = arr.kind;
+        if let ExprKind::AddrOf(BorrowKind::Ref, _, arr) = args[0].kind;
+        if let ExprKind::Array(pieces) = arr.kind;
         if pieces.len() == 1;
         if let ExprKind::Lit(ref lit) = pieces[0].kind;
         if let LitKind::Str(..) = lit.node;
         // Argument 2 in `new_v1_formatted()`
-        if let ExprKind::AddrOf(BorrowKind::Ref, _, ref arg1) = args[1].kind;
-        if let ExprKind::Match(ref matchee, ref arms, MatchSource::Normal) = arg1.kind;
+        if let ExprKind::AddrOf(BorrowKind::Ref, _, arg1) = args[1].kind;
+        if let ExprKind::Match(matchee, arms, MatchSource::Normal) = arg1.kind;
         if arms.len() == 1;
-        if let ExprKind::Tup(ref tup) = matchee.kind;
+        if let ExprKind::Tup(tup) = matchee.kind;
         then {
             return on_argumentv1_new(cx, &tup[0], arms);
         }
@@ -182,14 +182,14 @@ fn on_new_v1_fmt<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<S
 /// ```
 fn check_unformatted(expr: &Expr<'_>) -> bool {
     if_chain! {
-        if let ExprKind::AddrOf(BorrowKind::Ref, _, ref expr) = expr.kind;
-        if let ExprKind::Array(ref exprs) = expr.kind;
+        if let ExprKind::AddrOf(BorrowKind::Ref, _, expr) = expr.kind;
+        if let ExprKind::Array(exprs) = expr.kind;
         if exprs.len() == 1;
         // struct `core::fmt::rt::v1::Argument`
-        if let ExprKind::Struct(_, ref fields, _) = exprs[0].kind;
+        if let ExprKind::Struct(_, fields, _) = exprs[0].kind;
         if let Some(format_field) = fields.iter().find(|f| f.ident.name == sym::format);
         // struct `core::fmt::rt::v1::FormatSpec`
-        if let ExprKind::Struct(_, ref fields, _) = format_field.expr.kind;
+        if let ExprKind::Struct(_, fields, _) = format_field.expr.kind;
         if let Some(precision_field) = fields.iter().find(|f| f.ident.name == sym::precision);
         if let ExprKind::Path(ref precision_path) = precision_field.expr.kind;
         if last_path_segment(precision_path).ident.name == sym::Implied;

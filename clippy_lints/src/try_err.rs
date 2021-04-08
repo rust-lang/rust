@@ -60,13 +60,13 @@ impl<'tcx> LateLintPass<'tcx> for TryErr {
         // };
         if_chain! {
             if !in_external_macro(cx.tcx.sess, expr.span);
-            if let ExprKind::Match(ref match_arg, _, MatchSource::TryDesugar) = expr.kind;
-            if let ExprKind::Call(ref match_fun, ref try_args) = match_arg.kind;
+            if let ExprKind::Match(match_arg, _, MatchSource::TryDesugar) = expr.kind;
+            if let ExprKind::Call(match_fun, try_args) = match_arg.kind;
             if let ExprKind::Path(ref match_fun_path) = match_fun.kind;
             if matches!(match_fun_path, QPath::LangItem(LangItem::TryIntoResult, _));
-            if let Some(ref try_arg) = try_args.get(0);
-            if let ExprKind::Call(ref err_fun, ref err_args) = try_arg.kind;
-            if let Some(ref err_arg) = err_args.get(0);
+            if let Some(try_arg) = try_args.get(0);
+            if let ExprKind::Call(err_fun, err_args) = try_arg.kind;
+            if let Some(err_arg) = err_args.get(0);
             if let ExprKind::Path(ref err_fun_path) = err_fun.kind;
             if match_qpath(err_fun_path, &paths::RESULT_ERR);
             if let Some(return_ty) = find_return_type(cx, &expr.kind);
@@ -123,9 +123,9 @@ impl<'tcx> LateLintPass<'tcx> for TryErr {
 
 /// Finds function return type by examining return expressions in match arms.
 fn find_return_type<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx ExprKind<'_>) -> Option<Ty<'tcx>> {
-    if let ExprKind::Match(_, ref arms, MatchSource::TryDesugar) = expr {
+    if let ExprKind::Match(_, arms, MatchSource::TryDesugar) = expr {
         for arm in arms.iter() {
-            if let ExprKind::Ret(Some(ref ret)) = arm.body.kind {
+            if let ExprKind::Ret(Some(ret)) = arm.body.kind {
                 return Some(cx.typeck_results().expr_ty(ret));
             }
         }
@@ -138,9 +138,8 @@ fn result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'t
     if_chain! {
         if let ty::Adt(_, subst) = ty.kind();
         if is_type_diagnostic_item(cx, ty, sym::result_type);
-        let err_ty = subst.type_at(1);
         then {
-            Some(err_ty)
+            Some(subst.type_at(1))
         } else {
             None
         }
@@ -156,10 +155,8 @@ fn poll_result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<
 
         if let ty::Adt(ready_def, ready_subst) = ready_ty.kind();
         if cx.tcx.is_diagnostic_item(sym::result_type, ready_def.did);
-        let err_ty = ready_subst.type_at(1);
-
         then {
-            Some(err_ty)
+            Some(ready_subst.type_at(1))
         } else {
             None
         }
@@ -179,10 +176,8 @@ fn poll_option_result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> 
 
         if let ty::Adt(some_def, some_subst) = some_ty.kind();
         if cx.tcx.is_diagnostic_item(sym::result_type, some_def.did);
-        let err_ty = some_subst.type_at(1);
-
         then {
-            Some(err_ty)
+            Some(some_subst.type_at(1))
         } else {
             None
         }

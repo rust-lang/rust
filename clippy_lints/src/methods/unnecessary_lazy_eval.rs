@@ -14,14 +14,15 @@ use super::UNNECESSARY_LAZY_EVALUATIONS;
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx hir::Expr<'_>,
-    args: &'tcx [hir::Expr<'_>],
+    recv: &'tcx hir::Expr<'_>,
+    arg: &'tcx hir::Expr<'_>,
     simplify_using: &str,
 ) {
-    let is_option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&args[0]), sym::option_type);
-    let is_result = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&args[0]), sym::result_type);
+    let is_option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::option_type);
+    let is_result = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::result_type);
 
     if is_option || is_result {
-        if let hir::ExprKind::Closure(_, _, eid, _, _) = args[1].kind {
+        if let hir::ExprKind::Closure(_, _, eid, _, _) = arg.kind {
             let body = cx.tcx.hir().body(eid);
             let body_expr = &body.value;
 
@@ -55,7 +56,7 @@ pub(super) fn check<'tcx>(
                     &format!("use `{}` instead", simplify_using),
                     format!(
                         "{0}.{1}({2})",
-                        snippet(cx, args[0].span, ".."),
+                        snippet(cx, recv.span, ".."),
                         simplify_using,
                         snippet(cx, body_expr.span, ".."),
                     ),

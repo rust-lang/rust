@@ -102,7 +102,7 @@ impl<'tcx> LateLintPass<'tcx> for Return {
                         err.span_label(local.span, "unnecessary `let` binding");
 
                         if let Some(mut snippet) = snippet_opt(cx, initexpr.span) {
-                            if !cx.typeck_results().expr_adjustments(&retexpr).is_empty() {
+                            if !cx.typeck_results().expr_adjustments(retexpr).is_empty() {
                                 snippet.push_str(" as _");
                             }
                             err.multipart_suggestion(
@@ -143,7 +143,7 @@ impl<'tcx> LateLintPass<'tcx> for Return {
                 check_final_expr(cx, &body.value, Some(body.value.span), replacement)
             },
             FnKind::ItemFn(..) | FnKind::Method(..) => {
-                if let ExprKind::Block(ref block, _) = body.value.kind {
+                if let ExprKind::Block(block, _) = body.value.kind {
                     check_block_return(cx, block);
                 }
             },
@@ -160,7 +160,7 @@ fn check_block_return<'tcx>(cx: &LateContext<'tcx>, block: &Block<'tcx>) {
         check_final_expr(cx, expr, Some(expr.span), RetReplacement::Empty);
     } else if let Some(stmt) = block.stmts.iter().last() {
         match stmt.kind {
-            StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => {
+            StmtKind::Expr(expr) | StmtKind::Semi(expr) => {
                 check_final_expr(cx, expr, Some(stmt.span), RetReplacement::Empty);
             },
             _ => (),
@@ -192,11 +192,11 @@ fn check_final_expr<'tcx>(
             }
         },
         // a whole block? check it!
-        ExprKind::Block(ref block, _) => {
+        ExprKind::Block(block, _) => {
             check_block_return(cx, block);
         },
         ExprKind::If(_, then, else_clause_opt) => {
-            if let ExprKind::Block(ref ifblock, _) = then.kind {
+            if let ExprKind::Block(ifblock, _) = then.kind {
                 check_block_return(cx, ifblock);
             }
             if let Some(else_clause) = else_clause_opt {
@@ -207,16 +207,16 @@ fn check_final_expr<'tcx>(
         // an if/if let expr, check both exprs
         // note, if without else is going to be a type checking error anyways
         // (except for unit type functions) so we don't match it
-        ExprKind::Match(_, ref arms, source) => match source {
+        ExprKind::Match(_, arms, source) => match source {
             MatchSource::Normal => {
                 for arm in arms.iter() {
-                    check_final_expr(cx, &arm.body, Some(arm.body.span), RetReplacement::Block);
+                    check_final_expr(cx, arm.body, Some(arm.body.span), RetReplacement::Block);
                 }
             },
             MatchSource::IfLetDesugar {
                 contains_else_clause: true,
             } => {
-                if let ExprKind::Block(ref ifblock, _) = arms[0].body.kind {
+                if let ExprKind::Block(ifblock, _) = arms[0].body.kind {
                     check_block_return(cx, ifblock);
                 }
                 check_final_expr(cx, arms[1].body, None, RetReplacement::Empty);

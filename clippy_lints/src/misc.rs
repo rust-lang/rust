@@ -304,55 +304,54 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         if_chain! {
             if !in_external_macro(cx.tcx.sess, stmt.span);
-            if let StmtKind::Local(ref local) = stmt.kind;
+            if let StmtKind::Local(local) = stmt.kind;
             if let PatKind::Binding(an, .., name, None) = local.pat.kind;
-            if let Some(ref init) = local.init;
+            if let Some(init) = local.init;
             if !higher::is_from_for_desugar(local);
+            if an == BindingAnnotation::Ref || an == BindingAnnotation::RefMut;
             then {
-                if an == BindingAnnotation::Ref || an == BindingAnnotation::RefMut {
-                    // use the macro callsite when the init span (but not the whole local span)
-                    // comes from an expansion like `vec![1, 2, 3]` in `let ref _ = vec![1, 2, 3];`
-                    let sugg_init = if init.span.from_expansion() && !local.span.from_expansion() {
-                        Sugg::hir_with_macro_callsite(cx, init, "..")
-                    } else {
-                        Sugg::hir(cx, init, "..")
-                    };
-                    let (mutopt, initref) = if an == BindingAnnotation::RefMut {
-                        ("mut ", sugg_init.mut_addr())
-                    } else {
-                        ("", sugg_init.addr())
-                    };
-                    let tyopt = if let Some(ref ty) = local.ty {
-                        format!(": &{mutopt}{ty}", mutopt=mutopt, ty=snippet(cx, ty.span, ".."))
-                    } else {
-                        String::new()
-                    };
-                    span_lint_hir_and_then(
-                        cx,
-                        TOPLEVEL_REF_ARG,
-                        init.hir_id,
-                        local.pat.span,
-                        "`ref` on an entire `let` pattern is discouraged, take a reference with `&` instead",
-                        |diag| {
-                            diag.span_suggestion(
-                                stmt.span,
-                                "try",
-                                format!(
-                                    "let {name}{tyopt} = {initref};",
-                                    name=snippet(cx, name.span, ".."),
-                                    tyopt=tyopt,
-                                    initref=initref,
-                                ),
-                                Applicability::MachineApplicable,
-                            );
-                        }
-                    );
-                }
+                // use the macro callsite when the init span (but not the whole local span)
+                // comes from an expansion like `vec![1, 2, 3]` in `let ref _ = vec![1, 2, 3];`
+                let sugg_init = if init.span.from_expansion() && !local.span.from_expansion() {
+                    Sugg::hir_with_macro_callsite(cx, init, "..")
+                } else {
+                    Sugg::hir(cx, init, "..")
+                };
+                let (mutopt, initref) = if an == BindingAnnotation::RefMut {
+                    ("mut ", sugg_init.mut_addr())
+                } else {
+                    ("", sugg_init.addr())
+                };
+                let tyopt = if let Some(ty) = local.ty {
+                    format!(": &{mutopt}{ty}", mutopt=mutopt, ty=snippet(cx, ty.span, ".."))
+                } else {
+                    String::new()
+                };
+                span_lint_hir_and_then(
+                    cx,
+                    TOPLEVEL_REF_ARG,
+                    init.hir_id,
+                    local.pat.span,
+                    "`ref` on an entire `let` pattern is discouraged, take a reference with `&` instead",
+                    |diag| {
+                        diag.span_suggestion(
+                            stmt.span,
+                            "try",
+                            format!(
+                                "let {name}{tyopt} = {initref};",
+                                name=snippet(cx, name.span, ".."),
+                                tyopt=tyopt,
+                                initref=initref,
+                            ),
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                );
             }
         };
         if_chain! {
-            if let StmtKind::Semi(ref expr) = stmt.kind;
-            if let ExprKind::Binary(ref binop, ref a, ref b) = expr.kind;
+            if let StmtKind::Semi(expr) = stmt.kind;
+            if let ExprKind::Binary(ref binop, a, b) = expr.kind;
             if binop.node == BinOpKind::And || binop.node == BinOpKind::Or;
             if let Some(sugg) = Sugg::hir_opt(cx, a);
             then {
@@ -379,11 +378,11 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         match expr.kind {
-            ExprKind::Cast(ref e, ref ty) => {
+            ExprKind::Cast(e, ty) => {
                 check_cast(cx, expr.span, e, ty);
                 return;
             },
-            ExprKind::Binary(ref cmp, ref left, ref right) => {
+            ExprKind::Binary(ref cmp, left, right) => {
                 check_binary(cx, expr, cmp, left, right);
                 return;
             },
@@ -462,21 +461,18 @@ fn check_nan(cx: &LateContext<'_>, expr: &Expr<'_>, cmp_expr: &Expr<'_>) {
     if_chain! {
         if !in_constant(cx, cmp_expr.hir_id);
         if let Some((value, _)) = constant(cx, cx.typeck_results(), expr);
+        if match value {
+            Constant::F32(num) => num.is_nan(),
+            Constant::F64(num) => num.is_nan(),
+            _ => false,
+        };
         then {
-            let needs_lint = match value {
-                Constant::F32(num) => num.is_nan(),
-                Constant::F64(num) => num.is_nan(),
-                _ => false,
-            };
-
-            if needs_lint {
-                span_lint(
-                    cx,
-                    CMP_NAN,
-                    cmp_expr.span,
-                    "doomed comparison with `NAN`, use `{f32,f64}::is_nan()` instead",
-                );
-            }
+            span_lint(
+                cx,
+                CMP_NAN,
+                cmp_expr.span,
+                "doomed comparison with `NAN`, use `{f32,f64}::is_nan()` instead",
+            );
         }
     }
 }
@@ -505,12 +501,12 @@ fn is_allowed<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
 // Return true if `expr` is the result of `signum()` invoked on a float value.
 fn is_signum(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     // The negation of a signum is still a signum
-    if let ExprKind::Unary(UnOp::Neg, ref child_expr) = expr.kind {
-        return is_signum(cx, &child_expr);
+    if let ExprKind::Unary(UnOp::Neg, child_expr) = expr.kind {
+        return is_signum(cx, child_expr);
     }
 
     if_chain! {
-        if let ExprKind::MethodCall(ref method_name, _, ref expressions, _) = expr.kind;
+        if let ExprKind::MethodCall(method_name, _, expressions, _) = expr.kind;
         if sym!(signum) == method_name.ident.name;
         // Check that the receiver of the signum() is a float (expressions[0] is the receiver of
         // the method call)
@@ -556,7 +552,7 @@ fn check_to_owned(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left:
     }
 
     let (arg_ty, snip) = match expr.kind {
-        ExprKind::MethodCall(.., ref args, _) if args.len() == 1 => {
+        ExprKind::MethodCall(.., args, _) if args.len() == 1 => {
             if_chain!(
                 if let Some(expr_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
                 if is_diagnostic_assoc_item(cx, expr_def_id, sym::ToString)
@@ -568,7 +564,7 @@ fn check_to_owned(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left:
                 }
             )
         },
-        ExprKind::Call(ref path, ref v) if v.len() == 1 => {
+        ExprKind::Call(path, v) if v.len() == 1 => {
             if let ExprKind::Path(ref path) = path.kind {
                 if match_qpath(path, &["String", "from_str"]) || match_qpath(path, &["String", "from"]) {
                     (cx.typeck_results().expr_ty(&v[0]), snippet(cx, v[0].span, ".."))
@@ -653,7 +649,7 @@ fn check_to_owned(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left:
 /// of what it means for an expression to be "used".
 fn is_used(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     get_parent_expr(cx, expr).map_or(true, |parent| match parent.kind {
-        ExprKind::Assign(_, ref rhs, _) | ExprKind::AssignOp(_, _, ref rhs) => SpanlessEq::new(cx).eq_expr(rhs, expr),
+        ExprKind::Assign(_, rhs, _) | ExprKind::AssignOp(_, _, rhs) => SpanlessEq::new(cx).eq_expr(rhs, expr),
         _ => is_used(cx, parent),
     })
 }
