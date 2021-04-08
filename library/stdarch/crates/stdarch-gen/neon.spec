@@ -1483,6 +1483,228 @@ link-arm = vhsubs._EXT_
 link-aarch64 = shsub._EXT_
 generate int*_t
 
+/// Signed Subtract Wide
+name = vsubw
+no-q
+multi_fn = simd_sub, a, {simd_cast, b}
+a = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15, 16
+b = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15, 16
+validate 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+
+arm = vsubw
+aarch64 = ssubw
+generate int16x8_t:int8x8_t:int16x8_t, int32x4_t:int16x4_t:int32x4_t, int64x2_t:int32x2_t:int64x2_t
+
+/// Unsigned Subtract Wide
+name = vsubw
+no-q
+multi_fn = simd_sub, a, {simd_cast, b}
+a = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15, 16
+b = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15, 16
+validate 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+
+arm = vsubw
+aarch64 = usubw
+generate uint16x8_t:uint8x8_t:uint16x8_t, uint32x4_t:uint16x4_t:uint32x4_t, uint64x2_t:uint32x2_t:uint64x2_t
+
+/// Signed Subtract Wide
+name = vsubw_high
+no-q
+multi_fn = simd_shuffle8, c:int8x8_t, b, b, [8, 9, 10, 11, 12, 13, 14, 15]
+multi_fn = simd_sub, a, {simd_cast, c}
+a = 8, 9, 10, 12, 13, 14, 15, 16
+b = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15, 16
+validate 0, 0, 0, 0, 0, 0, 0, 0
+
+aarch64 = ssubw
+generate int16x8_t:int8x16_t:int16x8_t
+
+/// Signed Subtract Wide
+name = vsubw_high
+no-q
+multi_fn = simd_shuffle4, c:int16x4_t, b, b, [4, 5, 6, 7]
+multi_fn = simd_sub, a, {simd_cast, c}
+a = 8, 9, 10, 11
+b = 0, 1, 2, 3, 8, 9, 10, 11
+validate 0, 0, 0, 0
+
+aarch64 = ssubw
+generate int32x4_t:int16x8_t:int32x4_t
+
+/// Signed Subtract Wide
+name = vsubw_high
+no-q
+multi_fn = simd_shuffle2, c:int32x2_t, b, b, [2, 3]
+multi_fn = simd_sub, a, {simd_cast, c}
+a = 8, 9
+b = 6, 7, 8, 9
+validate 0, 0
+
+aarch64 = ssubw
+generate int64x2_t:int32x4_t:int64x2_t
+
+/// Unsigned Subtract Wide
+name = vsubw_high
+no-q
+multi_fn = simd_shuffle8, c:uint8x8_t, b, b, [8, 9, 10, 11, 12, 13, 14, 15]
+multi_fn = simd_sub, a, {simd_cast, c}
+a = 8, 9, 10, 11, 12, 13, 14, 15
+b = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+validate 0, 0, 0, 0, 0, 0, 0, 0
+
+aarch64 = usubw
+generate uint16x8_t:uint8x16_t:uint16x8_t
+
+/// Unsigned Subtract Wide
+name = vsubw_high
+no-q
+multi_fn = simd_shuffle4, c:uint16x4_t, b, b, [4, 5, 6, 7]
+multi_fn = simd_sub, a, {simd_cast, c}
+a = 8, 9, 10, 11
+b = 0, 1, 2, 3, 8, 9, 10, 11
+validate 0, 0, 0, 0
+
+aarch64 = usubw
+generate uint32x4_t:uint16x8_t:uint32x4_t
+
+/// Unsigned Subtract Wide
+name = vsubw_high
+no-q
+multi_fn = simd_shuffle2, c:uint32x2_t, b, b, [2, 3]
+multi_fn = simd_sub, a, {simd_cast, c}
+a = 8, 9
+b = 6, 7, 8, 9
+validate 0, 0
+
+aarch64 = usubw
+generate uint64x2_t:uint32x4_t:uint64x2_t
+
+/// Signed Subtract Long
+name = vsubl
+no-q
+multi_fn = simd_cast, c:out_t, a
+multi_fn = simd_cast, d:out_t, b
+multi_fn = simd_sub, c, d
+
+a = MAX, MIN, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+b = MAX, MIN, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+validate 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+
+arm = vsubl
+aarch64 = ssubl
+generate int8x8_t:int8x8_t:int16x8_t, int16x4_t:int16x4_t:int32x4_t, int32x2_t:int32x2_t:int64x2_t
+
+/// Unsigned Subtract Long
+name = vsubl
+no-q
+multi_fn = simd_cast, c:out_t, a
+multi_fn = simd_cast, d:out_t, b
+multi_fn = simd_sub, c, d
+
+a = MAX, MIN, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+b = MAX, MIN, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+validate 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+
+arm = vsubl
+aarch64 = usubl
+generate uint8x8_t:uint8x8_t:uint16x8_t, uint16x4_t:uint16x4_t:uint32x4_t, uint32x2_t:uint32x2_t:uint64x2_t
+
+/// Signed Subtract Long
+name = vsubl_high
+no-q
+multi_fn = simd_shuffle8, c:int8x8_t, a, a, [8, 9, 10, 11, 12, 13, 14, 15]
+multi_fn = simd_cast, d:out_t, c
+multi_fn = simd_shuffle8, e:int8x8_t, b, b, [8, 9, 10, 11, 12, 13, 14, 15]
+multi_fn = simd_cast, f:out_t, e
+multi_fn = simd_sub, d, f
+
+a = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+b = 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2
+validate 6, 7, 8, 9, 10, 11, 12, 13
+
+aarch64 = ssubl
+generate int8x16_t:int8x16_t:int16x8_t
+
+/// Signed Subtract Long
+name = vsubl_high
+no-q
+multi_fn = simd_shuffle4, c:int16x4_t, a, a, [4, 5, 6, 7]
+multi_fn = simd_cast, d:out_t, c
+multi_fn = simd_shuffle4, e:int16x4_t, b, b, [4, 5, 6, 7]
+multi_fn = simd_cast, f:out_t, e
+multi_fn = simd_sub, d, f
+
+a = 8, 9, 10, 11, 12, 13, 14, 15
+b = 6, 6, 6, 6, 8, 8, 8, 8
+validate 4, 5, 6, 7
+
+aarch64 = ssubl
+generate int16x8_t:int16x8_t:int32x4_t
+
+/// Signed Subtract Long
+name = vsubl_high
+no-q
+multi_fn = simd_shuffle2, c:int32x2_t, a, a, [2, 3]
+multi_fn = simd_cast, d:out_t, c
+multi_fn = simd_shuffle2, e:int32x2_t, b, b, [2, 3]
+multi_fn = simd_cast, f:out_t, e
+multi_fn = simd_sub, d, f
+
+a = 12, 13, 14, 15
+b = 6, 6, 8, 8
+validate 6, 7
+
+aarch64 = ssubl
+generate int32x4_t:int32x4_t:int64x2_t
+
+/// Unsigned Subtract Long
+name = vsubl_high
+no-q
+multi_fn = simd_shuffle8, c:uint8x8_t, a, a, [8, 9, 10, 11, 12, 13, 14, 15]
+multi_fn = simd_cast, d:out_t, c
+multi_fn = simd_shuffle8, e:uint8x8_t, b, b, [8, 9, 10, 11, 12, 13, 14, 15]
+multi_fn = simd_cast, f:out_t, e
+multi_fn = simd_sub, d, f
+
+a = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+b = 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2
+validate 6, 7, 8, 9, 10, 11, 12, 13
+
+aarch64 = usubl
+generate uint8x16_t:uint8x16_t:uint16x8_t
+
+/// Unsigned Subtract Long
+name = vsubl_high
+no-q
+multi_fn = simd_shuffle4, c:uint16x4_t, a, a, [4, 5, 6, 7]
+multi_fn = simd_cast, d:out_t, c
+multi_fn = simd_shuffle4, e:uint16x4_t, b, b, [4, 5, 6, 7]
+multi_fn = simd_cast, f:out_t, e
+multi_fn = simd_sub, d, f
+
+a = 8, 9, 10, 11, 12, 13, 14, 15
+b = 6, 6, 6, 6, 8, 8, 8, 8
+validate 4, 5, 6, 7
+
+aarch64 = usubl
+generate uint16x8_t:uint16x8_t:uint32x4_t
+
+/// Unsigned Subtract Long
+name = vsubl_high
+no-q
+multi_fn = simd_shuffle2, c:uint32x2_t, a, a, [2, 3]
+multi_fn = simd_cast, d:out_t, c
+multi_fn = simd_shuffle2, e:uint32x2_t, b, b, [2, 3]
+multi_fn = simd_cast, f:out_t, e
+multi_fn = simd_sub, d, f
+
+a = 12, 13, 14, 15
+b = 6, 6, 8, 8
+validate 6, 7
+
+aarch64 = usubl
+generate uint32x4_t:uint32x4_t:uint64x2_t
+
 /// Maximum (vector)
 name = vmax
 a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
