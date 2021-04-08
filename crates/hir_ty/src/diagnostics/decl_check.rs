@@ -35,6 +35,8 @@ use crate::{
 };
 
 mod allow {
+    pub(super) const BAD_STYLE: &str = "bad_style";
+    pub(super) const NONSTANDARD_STYLE: &str = "nonstandard_style";
     pub(super) const NON_SNAKE_CASE: &str = "non_snake_case";
     pub(super) const NON_UPPER_CASE_GLOBAL: &str = "non_upper_case_globals";
     pub(super) const NON_CAMEL_CASE_TYPES: &str = "non_camel_case_types";
@@ -83,10 +85,39 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
     }
 
     /// Checks whether not following the convention is allowed for this item.
-    ///
-    /// Currently this method doesn't check parent attributes.
-    fn allowed(&self, id: AttrDefId, allow_name: &str) -> bool {
-        self.db.attrs(id).by_key("allow").tt_values().any(|tt| tt.to_string().contains(allow_name))
+    fn allowed(&self, id: AttrDefId, allow_name: &str, recursing: bool) -> bool {
+        let is_allowed = |def_id| {
+            let attrs = self.db.attrs(def_id);
+            // don't bug the user about directly no_mangle annotated stuff, they can't do anything about it
+            (!recursing && attrs.by_key("no_mangle").exists())
+                || attrs.by_key("allow").tt_values().any(|tt| {
+                    let allows = tt.to_string();
+                    allows.contains(allow_name)
+                        || allows.contains(allow::BAD_STYLE)
+                        || allows.contains(allow::NONSTANDARD_STYLE)
+                })
+        };
+
+        is_allowed(id)
+            // go upwards one step or give up
+            || match id {
+                AttrDefId::ModuleId(m) => m.containing_module(self.db.upcast()).map(|v| v.into()),
+                AttrDefId::FunctionId(f) => Some(f.lookup(self.db.upcast()).container.into()),
+                AttrDefId::StaticId(sid) => Some(sid.lookup(self.db.upcast()).container.into()),
+                AttrDefId::ConstId(cid) => Some(cid.lookup(self.db.upcast()).container.into()),
+                AttrDefId::TraitId(tid) => Some(tid.lookup(self.db.upcast()).container.into()),
+                AttrDefId::ImplId(iid) => Some(iid.lookup(self.db.upcast()).container.into()),
+                // These warnings should not explore macro definitions at all
+                AttrDefId::MacroDefId(_) => None,
+                // Will never occur under an enum/struct/union/type alias
+                AttrDefId::AdtId(_) => None,
+                AttrDefId::FieldId(_) => None,
+                AttrDefId::EnumVariantId(_) => None,
+                AttrDefId::TypeAliasId(_) => None,
+                AttrDefId::GenericParamId(_) => None,
+            }
+            .map(|mid| self.allowed(mid, allow_name, true))
+            .unwrap_or(false)
     }
 
     fn validate_func(&mut self, func: FunctionId) {
@@ -109,7 +140,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
         }
 
         // Check whether non-snake case identifiers are allowed for this function.
-        if self.allowed(func.into(), allow::NON_SNAKE_CASE) {
+        if self.allowed(func.into(), allow::NON_SNAKE_CASE, false) {
             return;
         }
 
@@ -328,8 +359,9 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
     fn validate_struct(&mut self, struct_id: StructId) {
         let data = self.db.struct_data(struct_id);
 
-        let non_camel_case_allowed = self.allowed(struct_id.into(), allow::NON_CAMEL_CASE_TYPES);
-        let non_snake_case_allowed = self.allowed(struct_id.into(), allow::NON_SNAKE_CASE);
+        let non_camel_case_allowed =
+            self.allowed(struct_id.into(), allow::NON_CAMEL_CASE_TYPES, false);
+        let non_snake_case_allowed = self.allowed(struct_id.into(), allow::NON_SNAKE_CASE, false);
 
         // Check the structure name.
         let struct_name = data.name.to_string();
@@ -461,7 +493,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
         let data = self.db.enum_data(enum_id);
 
         // Check whether non-camel case names are allowed for this enum.
-        if self.allowed(enum_id.into(), allow::NON_CAMEL_CASE_TYPES) {
+        if self.allowed(enum_id.into(), allow::NON_CAMEL_CASE_TYPES, false) {
             return;
         }
 
@@ -584,7 +616,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
     fn validate_const(&mut self, const_id: ConstId) {
         let data = self.db.const_data(const_id);
 
-        if self.allowed(const_id.into(), allow::NON_UPPER_CASE_GLOBAL) {
+        if self.allowed(const_id.into(), allow::NON_UPPER_CASE_GLOBAL, false) {
             return;
         }
 
@@ -632,7 +664,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
             return;
         }
 
-        if self.allowed(static_id.into(), allow::NON_UPPER_CASE_GLOBAL) {
+        if self.allowed(static_id.into(), allow::NON_UPPER_CASE_GLOBAL, false) {
             return;
         }
 
@@ -869,8 +901,34 @@ fn main() {
             r#"
             #[allow(non_snake_case)]
     fn NonSnakeCaseName(SOME_VAR: u8) -> u8{
+        // cov_flags generated output from elsewhere in this file
+        extern "C" {
+            #[no_mangle]
+            static lower_case: u8;
+        }
+
         let OtherVar = SOME_VAR + 1;
         OtherVar
+    }
+
+    #[allow(nonstandard_style)]
+    mod CheckNonstandardStyle {
+        fn HiImABadFnName() {}
+    }
+
+    #[allow(bad_style)]
+    mod CheckBadStyle {
+        fn HiImABadFnName() {}
+    }
+
+    mod F {
+        #![allow(non_snake_case)]
+        fn CheckItWorksWithModAttr(BAD_NAME_HI: u8) {}
+    }
+
+    trait BAD_TRAIT {
+        fn BAD_FUNCTION();
+        fn BadFunction();
     }
 
     #[allow(non_snake_case, non_camel_case_types)]
@@ -885,6 +943,60 @@ fn main() {
     #[allow(non_upper_case_globals)]
     pub static SomeStatic: u8 = 10;
     "#,
+        );
+    }
+
+    #[test]
+    fn allow_attributes_crate_attr() {
+        check_diagnostics(
+            r#"
+    #![allow(non_snake_case)]
+
+    mod F {
+        fn CheckItWorksWithCrateAttr(BAD_NAME_HI: u8) {}
+    }
+
+    "#,
+        );
+    }
+
+    #[test]
+    #[ignore]
+    fn bug_trait_inside_fn() {
+        // FIXME:
+        // This is broken, and in fact, should not even be looked at by this
+        // lint in the first place. There's weird stuff going on in the
+        // collection phase.
+        // It's currently being brought in by:
+        // * validate_func on `a` recursing into modules
+        // * then it finds the trait and then the function while iterating
+        //   through modules
+        // * then validate_func is called on Dirty
+        // * ... which then proceeds to look at some unknown module taking no
+        //   attrs from either the impl or the fn a, and then finally to the root
+        //   module
+        //
+        // It should find the attribute on the trait, but it *doesn't even see
+        // the trait* as far as I can tell.
+
+        check_diagnostics(
+            r#"
+trait T { fn a(); }
+struct U {}
+impl T for U {
+    fn a() {
+        // this comes out of bitflags, mostly
+        #[allow(non_snake_case)]
+        trait __BitFlags {
+            const HiImAlsoBad: u8 = 2;
+            #[inline]
+            fn Dirty(&self) -> bool {
+                false
+            }
+        }
+
+    }
+}"#,
         );
     }
 
