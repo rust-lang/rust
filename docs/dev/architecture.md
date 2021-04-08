@@ -139,7 +139,7 @@ If an AST method returns an `Option`, it *can* be `None` at runtime, even if thi
 ### `crates/base_db`
 
 We use the [salsa](https://github.com/salsa-rs/salsa) crate for incremental and on-demand computation.
-Roughly, you can think of salsa as a key-value store, but it can also compute derived values using specified functions. 
+Roughly, you can think of salsa as a key-value store, but it can also compute derived values using specified functions.
 The `base_db` crate provides basic infrastructure for interacting with salsa.
 Crucially, it defines most of the "input" queries: facts supplied by the client of the analyzer.
 Reading the docs of the `base_db::input` module should be useful: everything else is strictly derived from those inputs.
@@ -308,7 +308,7 @@ This sections talks about the things which are everywhere and nowhere in particu
 
 ### Code generation
 
-Some ]components in this repository are generated through automatic processes.
+Some components in this repository are generated through automatic processes.
 Generated code is updated automatically on `cargo test`.
 Generated code is generally committed to the git repository.
 
