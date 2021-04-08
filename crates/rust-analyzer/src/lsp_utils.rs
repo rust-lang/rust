@@ -150,8 +150,16 @@ pub(crate) fn all_edits_are_disjoint(
             edit_ranges.push(edit.range);
         }
         Some(lsp_types::CompletionTextEdit::InsertAndReplace(edit)) => {
-            edit_ranges.push(edit.insert);
-            edit_ranges.push(edit.replace);
+            let replace = edit.replace;
+            let insert = edit.insert;
+            if replace.start != insert.start
+                || insert.start > insert.end
+                || insert.end > replace.end
+            {
+                // insert has to be a prefix of replace but it is not
+                return false;
+            }
+            edit_ranges.push(replace);
         }
         None => {}
     }
@@ -305,18 +313,6 @@ mod tests {
         completion_with_joint_edits.text_edit =
             Some(CompletionTextEdit::Edit(disjoint_edit.clone()));
         completion_with_joint_edits.additional_text_edits = Some(vec![joint_edit.clone()]);
-        assert!(
-            !all_edits_are_disjoint(&completion_with_joint_edits, &[]),
-            "Completion with disjoint edits fails the validation even with empty extra edits"
-        );
-
-        completion_with_joint_edits.text_edit =
-            Some(CompletionTextEdit::InsertAndReplace(InsertReplaceEdit {
-                new_text: "new_text".to_string(),
-                insert: disjoint_edit.range,
-                replace: joint_edit.range,
-            }));
-        completion_with_joint_edits.additional_text_edits = None;
         assert!(
             !all_edits_are_disjoint(&completion_with_joint_edits, &[]),
             "Completion with disjoint edits fails the validation even with empty extra edits"
