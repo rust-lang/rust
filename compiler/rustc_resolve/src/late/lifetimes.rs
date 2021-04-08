@@ -2343,7 +2343,18 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
                 Scope::TraitRefBoundary { s, .. } => {
                     // We've exited nested poly trait refs; mark that we are no longer in nested trait refs.
-                    // We don't increase the late depth because this isn't a `Binder` scope
+                    // We don't increase the late depth because this isn't a `Binder` scope.
+                    //
+                    // This came up in #83737, which boiled down to a case like this:
+                    //
+                    // ```
+                    // F: for<> Fn(&()) -> Box<dyn for<> Future<Output = ()> + Unpin>,
+                    //                         //  ^^^^^
+
+                    // ```
+                    //
+                    // Here, as we traverse upwards from the `dyn for<>` binder, we want to reset `in_poly_trait_ref`
+                    // to false, so that we avoid excess contaenation when we encounter the outer `for<>`  binder.
                     in_poly_trait_ref = false;
                     scope = s;
                 }
@@ -2369,6 +2380,17 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         // We've already seen a binder that is a poly trait ref and this one is too,
                         // that means that they are nested and we are concatenating the bound vars;
                         // don't increase the late depth.
+                        //
+                        // This happens specifically with associated trait bounds like the following:
+                        //
+                        // ```
+                        // for<'a> T: Iterator<Item: for<'b> Foo<'a, 'b>>
+                        // ```
+                        //
+                        // In this case, as we traverse `for<'b>`, we would increment `late_depth` but
+                        // set `in_poly_trait_ref` to true. Then when we traverse `for<'a>`, we would
+                        // not increment `late_depth` again. (NB: Niko thinks this logic is actually
+                        // wrong.)
                         (true, true) => {}
                         // We've exited nested poly trait refs; add one to the late depth and mark
                         // that we are no longer in nested trait refs
