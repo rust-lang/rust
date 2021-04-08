@@ -729,6 +729,14 @@ fn reference_is_exclusive(
 
 /// checks if this expr requires `&mut` access, recurses on field access
 fn expr_require_exclusive_access(ctx: &AssistContext, expr: &ast::Expr) -> Option<bool> {
+    match expr {
+        ast::Expr::MacroCall(_) => {
+            // FIXME: expand macro and check output for mutable usages of the variable?
+            return None;
+        }
+        _ => (),
+    }
+
     let parent = expr.syntax().parent()?;
 
     if let Some(bin_expr) = ast::BinExpr::cast(parent.clone()) {
@@ -804,6 +812,11 @@ fn path_element_of_reference(
         stdx::never!(false, "cannot find path parent of variable usage: {:?}", token);
         None
     })?;
+    stdx::always!(
+        matches!(path, ast::Expr::PathExpr(_) | ast::Expr::MacroCall(_)),
+        "unexpected expression type for variable usage: {:?}",
+        path
+    );
     Some(path)
 }
 
