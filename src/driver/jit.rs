@@ -80,12 +80,17 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
     }
 
     crate::allocator::codegen(tcx, &mut jit_module, &mut cx.unwind_context);
-    crate::main_shim::maybe_create_entry_wrapper(tcx, &mut jit_module, &mut cx.unwind_context, true);
+    crate::main_shim::maybe_create_entry_wrapper(
+        tcx,
+        &mut jit_module,
+        &mut cx.unwind_context,
+        true,
+    );
 
     tcx.sess.abort_if_errors();
 
     jit_module.finalize_definitions();
-    let _unwind_register_guard = unsafe { cx.unwind_context.register_jit(&jit_module) };
+    unsafe { cx.unwind_context.register_jit(&jit_module) };
 
     println!(
         "Rustc codegen cranelift will JIT run the executable, because -Cllvm-args=mode=jit was passed"
@@ -147,7 +152,7 @@ extern "C" fn __clif_jit_fn(instance_ptr: *const Instance<'static>) -> *const u8
 
             assert!(cx.global_asm.is_empty());
             jit_module.finalize_definitions();
-            std::mem::forget(unsafe { cx.unwind_context.register_jit(&jit_module) });
+            unsafe { cx.unwind_context.register_jit(&jit_module) };
             jit_module.get_finalized_function(func_id)
         })
     })
