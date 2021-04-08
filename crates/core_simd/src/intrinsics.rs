@@ -40,6 +40,9 @@ extern "platform-intrinsic" {
     /// fptoui/fptosi/uitofp/sitofp
     pub(crate) fn simd_cast<T, U>(x: T) -> U;
 
+    /// neg/fneg
+    pub(crate) fn simd_neg<T>(x: T) -> T;
+
     // floor
     #[cfg(feature = "std")]
     pub(crate) fn simd_floor<T>(x: T) -> T;
