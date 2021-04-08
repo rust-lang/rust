@@ -404,26 +404,21 @@ extern "C" void LLVMRustPrintTargetCPUs(LLVMTargetMachineRef TM) {
   printf("\n");
 }
 
-extern "C" void LLVMRustPrintTargetFeatures(LLVMTargetMachineRef TM) {
+extern "C" size_t LLVMRustGetTargetFeaturesCount(LLVMTargetMachineRef TM) {
   const TargetMachine *Target = unwrap(TM);
   const MCSubtargetInfo *MCInfo = Target->getMCSubtargetInfo();
   const ArrayRef<SubtargetFeatureKV> FeatTable = MCInfo->getFeatureTable();
-  unsigned MaxFeatLen = getLongestEntryLength(FeatTable);
+  return FeatTable.size();
+}
 
-  printf("Available features for this target:\n");
-  for (auto &Feature : FeatTable)
-    printf("    %-*s - %s.\n", MaxFeatLen, Feature.Key, Feature.Desc);
-  printf("\nRust-specific features:\n");
-  printf("    %-*s - %s.\n",
-    MaxFeatLen,
-    "crt-static",
-    "Enables libraries with C Run-time Libraries(CRT) to be statically linked"
-  );
-  printf("\n");
-
-  printf("Use +feature to enable a feature, or -feature to disable it.\n"
-         "For example, rustc -C -target-cpu=mycpu -C "
-         "target-feature=+feature1,-feature2\n\n");
+extern "C" void LLVMRustGetTargetFeature(LLVMTargetMachineRef TM, size_t Index,
+                                         const char** Feature, const char** Desc) {
+  const TargetMachine *Target = unwrap(TM);
+  const MCSubtargetInfo *MCInfo = Target->getMCSubtargetInfo();
+  const ArrayRef<SubtargetFeatureKV> FeatTable = MCInfo->getFeatureTable();
+  const SubtargetFeatureKV Feat = FeatTable[Index];
+  *Feature = Feat.Key;
+  *Desc = Feat.Desc;
 }
 
 #else
@@ -432,9 +427,11 @@ extern "C" void LLVMRustPrintTargetCPUs(LLVMTargetMachineRef) {
   printf("Target CPU help is not supported by this LLVM version.\n\n");
 }
 
-extern "C" void LLVMRustPrintTargetFeatures(LLVMTargetMachineRef) {
-  printf("Target features help is not supported by this LLVM version.\n\n");
+extern "C" size_t LLVMRustGetTargetFeaturesCount(LLVMTargetMachineRef) {
+  return 0;
 }
+
+extern "C" void LLVMRustGetTargetFeature(LLVMTargetMachineRef, const char**, const char**) {}
 #endif
 
 extern "C" const char* LLVMRustGetHostCPUName(size_t *len) {
