@@ -71,20 +71,6 @@ impl ToChalk for TypeAliasAsValue {
     }
 }
 
-pub(super) fn make_binders<T>(value: T, num_vars: usize) -> chalk_ir::Binders<T>
-where
-    T: HasInterner<Interner = Interner>,
-{
-    chalk_ir::Binders::new(
-        chalk_ir::VariableKinds::from_iter(
-            &Interner,
-            std::iter::repeat(chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General))
-                .take(num_vars),
-        ),
-        value,
-    )
-}
-
 pub(super) fn convert_where_clauses(
     db: &dyn HirDatabase,
     def: GenericDefId,
