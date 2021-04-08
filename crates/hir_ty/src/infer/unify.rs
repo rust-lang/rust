@@ -116,6 +116,7 @@ impl<'a, 'b> Canonicalizer<'a, 'b> {
             DomainGoal::Holds(wc) => {
                 DomainGoal::Holds(self.do_canonicalize(wc, DebruijnIndex::INNERMOST))
             }
+            _ => unimplemented!(),
         };
         self.into_canonicalized(InEnvironment { goal: result, environment: obligation.environment })
     }

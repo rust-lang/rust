@@ -93,6 +93,7 @@ impl TypeWalk for GenericArg {
             GenericArgData::Ty(ty) => {
                 ty.walk(f);
             }
+            _ => {}
         }
     }
 }
@@ -122,6 +123,7 @@ impl TypeWalk for WhereClause {
         match self {
             WhereClause::Implemented(trait_ref) => trait_ref.walk(f),
             WhereClause::AliasEq(alias_eq) => alias_eq.walk(f),
+            _ => {}
         }
     }
 }

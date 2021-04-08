@@ -1903,7 +1903,9 @@ impl Type {
                 | TyKind::Dyn(_)
                 | TyKind::Function(_)
                 | TyKind::Alias(_)
-                | TyKind::Foreign(_) => false,
+                | TyKind::Foreign(_)
+                | TyKind::Generator(..)
+                | TyKind::GeneratorWitness(..) => false,
             }
         }
     }

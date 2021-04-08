@@ -81,6 +81,7 @@ pub(crate) fn trait_solve_query(
             db.trait_data(it.hir_trait_id()).name.to_string()
         }
         DomainGoal::Holds(WhereClause::AliasEq(_)) => "alias_eq".to_string(),
+        _ => "??".to_string(),
     });
     log::info!("trait_solve_query({})", goal.value.goal.display(db));
 

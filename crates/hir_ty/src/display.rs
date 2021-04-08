@@ -287,6 +287,8 @@ impl HirDisplay for GenericArg {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         match self.interned() {
             crate::GenericArgData::Ty(ty) => ty.hir_fmt(f),
+            crate::GenericArgData::Lifetime(lt) => lt.hir_fmt(f),
+            crate::GenericArgData::Const(c) => c.hir_fmt(f),
         }
     }
 }
@@ -664,6 +666,8 @@ impl HirDisplay for Ty {
                 write!(f, "{{unknown}}")?;
             }
             TyKind::InferenceVar(..) => write!(f, "_")?,
+            TyKind::Generator(..) => write!(f, "{{generator}}")?,
+            TyKind::GeneratorWitness(..) => write!(f, "{{generator witness}}")?,
         }
         Ok(())
     }
@@ -741,7 +745,7 @@ fn write_bounds_like_dyn_trait(
                 if !first {
                     write!(f, " + ")?;
                 }
-                // We assume that the self type is $0 (i.e. the
+                // We assume that the self type is ^0.0 (i.e. the
                 // existential) here, which is the only thing that's
                 // possible in actual Rust, and hence don't print it
                 write!(f, "{}", f.db.trait_data(trait_).name)?;
@@ -783,6 +787,10 @@ fn write_bounds_like_dyn_trait(
                 }
                 ty.hir_fmt(f)?;
             }
+
+            // FIXME implement these
+            WhereClause::LifetimeOutlives(_) => {}
+            WhereClause::TypeOutlives(_) => {}
         }
         first = false;
     }
@@ -837,6 +845,10 @@ impl HirDisplay for WhereClause {
                 ty.hir_fmt(f)?;
             }
             WhereClause::AliasEq(_) => write!(f, "{{error}}")?,
+
+            // FIXME implement these
+            WhereClause::TypeOutlives(..) => {}
+            WhereClause::LifetimeOutlives(..) => {}
         }
         Ok(())
     }
@@ -881,9 +893,11 @@ impl HirDisplay for DomainGoal {
             DomainGoal::Holds(wc) => {
                 write!(f, "Holds(")?;
                 wc.hir_fmt(f)?;
-                write!(f, ")")
+                write!(f, ")")?;
             }
+            _ => write!(f, "?")?,
         }
+        Ok(())
     }
 }
 
