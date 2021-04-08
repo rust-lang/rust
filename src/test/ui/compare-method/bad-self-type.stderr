@@ -1,0 +1,30 @@
+error[E0053]: method `poll` has an incompatible type for trait
+  --> $DIR/bad-self-type.rs:10:13
+   |
+LL |     fn poll(self, _: &mut Context<'_>) -> Poll<()> {
+   |             ^^^^
+   |             |
+   |             expected struct `Pin`, found struct `MyFuture`
+   |             help: change the self-receiver type to match the trait: `self: Pin<&mut MyFuture>`
+   |
+   = note: expected fn pointer `fn(Pin<&mut MyFuture>, &mut Context<'_>) -> Poll<_>`
+              found fn pointer `fn(MyFuture, &mut Context<'_>) -> Poll<_>`
+
+error[E0053]: method `foo` has an incompatible type for trait
+  --> $DIR/bad-self-type.rs:21:18
+   |
+LL |     fn foo(self);
+   |            ---- type in trait
+...
+LL |     fn foo(self: Box<Self>) {}
+   |            ------^^^^^^^^^
+   |            |     |
+   |            |     expected struct `MyFuture`, found struct `Box`
+   |            help: change the self-receiver type to match the trait: `self`
+   |
+   = note: expected fn pointer `fn(MyFuture)`
+              found fn pointer `fn(Box<MyFuture>)`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0053`.

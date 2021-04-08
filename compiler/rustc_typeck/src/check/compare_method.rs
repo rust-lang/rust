@@ -290,18 +290,55 @@ fn compare_predicate_entailment<'tcx>(
                 "method `{}` has an incompatible type for trait",
                 trait_m.ident
             );
-            if let TypeError::ArgumentMutability(_) = terr {
-                if let Some(trait_err_span) = trait_err_span {
-                    if let Ok(trait_err_str) = tcx.sess.source_map().span_to_snippet(trait_err_span)
+            match &terr {
+                TypeError::ArgumentMutability(0) | TypeError::ArgumentSorts(_, 0)
+                    if trait_m.fn_has_self_parameter =>
+                {
+                    let ty = trait_sig.inputs()[0];
+                    let sugg = match ExplicitSelf::determine(ty, |_| ty == impl_trait_ref.self_ty())
                     {
+                        ExplicitSelf::ByValue => "self".to_owned(),
+                        ExplicitSelf::ByReference(_, hir::Mutability::Not) => "&self".to_owned(),
+                        ExplicitSelf::ByReference(_, hir::Mutability::Mut) => {
+                            "&mut self".to_owned()
+                        }
+                        _ => format!("self: {}", ty),
+                    };
+
+                    // When the `impl` receiver is an arbitrary self type, like `self: Box<Self>`, the
+                    // span points only at the type `Box<Self`>, but we want to cover the whole
+                    // argument pattern and type.
+                    let impl_m_hir_id =
+                        tcx.hir().local_def_id_to_hir_id(impl_m.def_id.expect_local());
+                    let span = match tcx.hir().expect_impl_item(impl_m_hir_id).kind {
+                        ImplItemKind::Fn(ref sig, body) => tcx
+                            .hir()
+                            .body_param_names(body)
+                            .zip(sig.decl.inputs.iter())
+                            .map(|(param, ty)| param.span.to(ty.span))
+                            .next()
+                            .unwrap_or(impl_err_span),
+                        _ => bug!("{:?} is not a method", impl_m),
+                    };
+
+                    diag.span_suggestion(
+                        span,
+                        "change the self-receiver type to match the trait",
+                        sugg,
+                        Applicability::MachineApplicable,
+                    );
+                }
+                TypeError::ArgumentMutability(i) | TypeError::ArgumentSorts(_, i) => {
+                    if let Some(trait_ty) = trait_sig.inputs().get(*i) {
                         diag.span_suggestion(
                             impl_err_span,
-                            "consider changing the mutability to match the trait",
-                            trait_err_str,
+                            "change the parameter type to match the trait",
+                            trait_ty.to_string(),
                             Applicability::MachineApplicable,
                         );
                     }
                 }
+                _ => {}
             }
 
             infcx.note_type_err(
@@ -482,8 +519,7 @@ fn compare_self_type<'tcx>(
                 tcx.sess,
                 impl_m_span,
                 E0186,
-                "method `{}` has a `{}` declaration in the trait, but \
-                                            not in the impl",
+                "method `{}` has a `{}` declaration in the trait, but not in the impl",
                 trait_m.ident,
                 self_descr
             );

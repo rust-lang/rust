@@ -2,7 +2,10 @@ error[E0053]: method `mul` has an incompatible type for trait
   --> $DIR/wrong-mul-method-signature.rs:16:21
    |
 LL |     fn mul(self, s: &f64) -> Vec1 {
-   |                     ^^^^ expected `f64`, found `&f64`
+   |                     ^^^^
+   |                     |
+   |                     expected `f64`, found `&f64`
+   |                     help: change the parameter type to match the trait: `f64`
    |
    = note: expected fn pointer `fn(Vec1, f64) -> Vec1`
               found fn pointer `fn(Vec1, &f64) -> Vec1`
@@ -11,7 +14,10 @@ error[E0053]: method `mul` has an incompatible type for trait
   --> $DIR/wrong-mul-method-signature.rs:33:21
    |
 LL |     fn mul(self, s: f64) -> Vec2 {
-   |                     ^^^ expected struct `Vec2`, found `f64`
+   |                     ^^^
+   |                     |
+   |                     expected struct `Vec2`, found `f64`
+   |                     help: change the parameter type to match the trait: `Vec2`
    |
    = note: expected fn pointer `fn(Vec2, Vec2) -> f64`
               found fn pointer `fn(Vec2, f64) -> Vec2`
