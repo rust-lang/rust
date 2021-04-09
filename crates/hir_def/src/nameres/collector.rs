@@ -478,7 +478,7 @@ impl DefCollector<'_> {
             self.def_map.edition,
         );
 
-        let res = self.def_map.resolve_name_in_extern_prelude(&extern_crate.name);
+        let res = self.def_map.resolve_name_in_extern_prelude(self.db, &extern_crate.name);
 
         if let Some(ModuleDefId::ModuleId(m)) = res.take_types() {
             cov_mark::hit!(macro_rules_from_other_crates_are_visible_with_macro_use);
@@ -534,6 +534,7 @@ impl DefCollector<'_> {
         log::debug!("resolving import: {:?} ({:?})", import, self.def_map.edition);
         if import.is_extern_crate {
             let res = self.def_map.resolve_name_in_extern_prelude(
+                self.db,
                 &import
                     .path
                     .as_ident()

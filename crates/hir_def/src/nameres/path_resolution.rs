@@ -60,12 +60,26 @@ impl ResolvePathResult {
 }
 
 impl DefMap {
-    pub(super) fn resolve_name_in_extern_prelude(&self, name: &Name) -> PerNs {
+    pub(super) fn resolve_name_in_extern_prelude(
+        &self,
+        db: &dyn DefDatabase,
+        name: &Name,
+    ) -> PerNs {
         if name == &name!(self) {
             cov_mark::hit!(extern_crate_self_as);
             return PerNs::types(self.module_id(self.root).into(), Visibility::Public);
         }
-        self.extern_prelude
+
+        let arc;
+        let root = match self.block {
+            Some(_) => {
+                arc = self.crate_root(db).def_map(db);
+                &*arc
+            }
+            None => self,
+        };
+
+        root.extern_prelude
             .get(name)
             .map_or(PerNs::none(), |&it| PerNs::types(it, Visibility::Public))
     }
@@ -191,7 +205,7 @@ impl DefMap {
                     None => return ResolvePathResult::empty(ReachedFixedPoint::Yes),
                 };
                 log::debug!("resolving {:?} in crate root (+ extern prelude)", segment);
-                self.resolve_name_in_crate_root_or_extern_prelude(&segment)
+                self.resolve_name_in_crate_root_or_extern_prelude(db, &segment)
             }
             PathKind::Plain => {
                 let (_, segment) = match segments.next() {
@@ -394,9 +408,21 @@ impl DefMap {
         from_legacy_macro.or(from_scope_or_builtin).or(from_extern_prelude).or(from_prelude)
     }
 
-    fn resolve_name_in_crate_root_or_extern_prelude(&self, name: &Name) -> PerNs {
-        let from_crate_root = self[self.root].scope.get(name);
-        let from_extern_prelude = self.resolve_name_in_extern_prelude(name);
+    fn resolve_name_in_crate_root_or_extern_prelude(
+        &self,
+        db: &dyn DefDatabase,
+        name: &Name,
+    ) -> PerNs {
+        let arc;
+        let crate_def_map = match self.block {
+            Some(_) => {
+                arc = self.crate_root(db).def_map(db);
+                &arc
+            }
+            None => self,
+        };
+        let from_crate_root = crate_def_map[crate_def_map.root].scope.get(name);
+        let from_extern_prelude = self.resolve_name_in_extern_prelude(db, name);
 
         from_crate_root.or(from_extern_prelude)
     }
