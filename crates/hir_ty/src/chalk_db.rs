@@ -4,13 +4,13 @@ use std::sync::Arc;
 
 use log::debug;
 
-use chalk_ir::{fold::shift::Shift, CanonicalVarKinds};
+use chalk_ir::{cast::Cast, fold::shift::Shift, CanonicalVarKinds};
 use chalk_solve::rust_ir::{self, OpaqueTyDatumBound, WellKnownTrait};
 
-use base_db::{salsa::InternKey, CrateId};
+use base_db::CrateId;
 use hir_def::{
     lang_item::{lang_attr, LangItemTarget},
-    AssocContainerId, AssocItemId, HasModule, Lookup, TypeAliasId,
+    AssocContainerId, AssocItemId, GenericDefId, HasModule, Lookup, TypeAliasId,
 };
 use hir_expand::name::name;
 
@@ -18,16 +18,14 @@ use crate::{
     db::HirDatabase,
     display::HirDisplay,
     from_assoc_type_id, make_only_type_binders,
-    mapping::{
-        convert_where_clauses, from_chalk, generic_predicate_to_inline_bound, ToChalk,
-        TypeAliasAsValue,
-    },
+    mapping::{from_chalk, ToChalk, TypeAliasAsValue},
     method_resolution::{TyFingerprint, ALL_FLOAT_FPS, ALL_INT_FPS},
     to_assoc_type_id, to_chalk_trait_id,
     traits::ChalkContext,
     utils::generics,
     AliasEq, AliasTy, BoundVar, CallableDefId, DebruijnIndex, FnDefId, Interner, ProjectionTy,
-    Substitution, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt, TyKind, WhereClause,
+    ProjectionTyExt, QuantifiedWhereClause, Substitution, TraitRef, TraitRefExt, Ty, TyBuilder,
+    TyExt, TyKind, WhereClause,
 };
 
 pub(crate) type AssociatedTyDatum = chalk_solve::rust_ir::AssociatedTyDatum<Interner>;
@@ -39,7 +37,6 @@ pub(crate) type OpaqueTyDatum = chalk_solve::rust_ir::OpaqueTyDatum<Interner>;
 pub(crate) type AssocTypeId = chalk_ir::AssocTypeId<Interner>;
 pub(crate) type TraitId = chalk_ir::TraitId<Interner>;
 pub(crate) type AdtId = chalk_ir::AdtId<Interner>;
-pub(crate) type OpaqueTyId = chalk_ir::OpaqueTyId<Interner>;
 pub(crate) type ImplId = chalk_ir::ImplId<Interner>;
 pub(crate) type AssociatedTyValueId = chalk_solve::rust_ir::AssociatedTyValueId<Interner>;
 pub(crate) type AssociatedTyValue = chalk_solve::rust_ir::AssociatedTyValue<Interner>;
@@ -679,38 +676,62 @@ pub(crate) fn adt_variance_query(
     )
 }
 
-impl From<FnDefId> for crate::db::InternedCallableDefId {
-    fn from(fn_def_id: FnDefId) -> Self {
-        InternKey::from_intern_id(fn_def_id.0)
+pub(super) fn convert_where_clauses(
+    db: &dyn HirDatabase,
+    def: GenericDefId,
+    substs: &Substitution,
+) -> Vec<chalk_ir::QuantifiedWhereClause<Interner>> {
+    let generic_predicates = db.generic_predicates(def);
+    let mut result = Vec::with_capacity(generic_predicates.len());
+    for pred in generic_predicates.iter() {
+        result.push(pred.clone().substitute(&Interner, substs));
     }
+    result
 }
 
-impl From<crate::db::InternedCallableDefId> for FnDefId {
-    fn from(callable_def_id: crate::db::InternedCallableDefId) -> Self {
-        chalk_ir::FnDefId(callable_def_id.as_intern_id())
-    }
-}
-
-impl From<OpaqueTyId> for crate::db::InternedOpaqueTyId {
-    fn from(id: OpaqueTyId) -> Self {
-        InternKey::from_intern_id(id.0)
-    }
-}
-
-impl From<crate::db::InternedOpaqueTyId> for OpaqueTyId {
-    fn from(id: crate::db::InternedOpaqueTyId) -> Self {
-        chalk_ir::OpaqueTyId(id.as_intern_id())
-    }
-}
-
-impl From<chalk_ir::ClosureId<Interner>> for crate::db::InternedClosureId {
-    fn from(id: chalk_ir::ClosureId<Interner>) -> Self {
-        Self::from_intern_id(id.0)
-    }
-}
-
-impl From<crate::db::InternedClosureId> for chalk_ir::ClosureId<Interner> {
-    fn from(id: crate::db::InternedClosureId) -> Self {
-        chalk_ir::ClosureId(id.as_intern_id())
+pub(super) fn generic_predicate_to_inline_bound(
+    db: &dyn HirDatabase,
+    pred: &QuantifiedWhereClause,
+    self_ty: &Ty,
+) -> Option<chalk_ir::Binders<rust_ir::InlineBound<Interner>>> {
+    // An InlineBound is like a GenericPredicate, except the self type is left out.
+    // We don't have a special type for this, but Chalk does.
+    let self_ty_shifted_in = self_ty.clone().shifted_in_from(&Interner, DebruijnIndex::ONE);
+    let (pred, binders) = pred.as_ref().into_value_and_skipped_binders();
+    match pred {
+        WhereClause::Implemented(trait_ref) => {
+            if trait_ref.self_type_parameter(&Interner) != self_ty_shifted_in {
+                // we can only convert predicates back to type bounds if they
+                // have the expected self type
+                return None;
+            }
+            let args_no_self = trait_ref.substitution.as_slice(&Interner)[1..]
+                .iter()
+                .map(|ty| ty.clone().cast(&Interner))
+                .collect();
+            let trait_bound = rust_ir::TraitBound { trait_id: trait_ref.trait_id, args_no_self };
+            Some(chalk_ir::Binders::new(binders, rust_ir::InlineBound::TraitBound(trait_bound)))
+        }
+        WhereClause::AliasEq(AliasEq { alias: AliasTy::Projection(projection_ty), ty }) => {
+            if projection_ty.self_type_parameter(&Interner) != self_ty_shifted_in {
+                return None;
+            }
+            let trait_ = projection_ty.trait_(db);
+            let args_no_self = projection_ty.substitution.as_slice(&Interner)[1..]
+                .iter()
+                .map(|ty| ty.clone().cast(&Interner))
+                .collect();
+            let alias_eq_bound = rust_ir::AliasEqBound {
+                value: ty.clone(),
+                trait_bound: rust_ir::TraitBound { trait_id: trait_.to_chalk(db), args_no_self },
+                associated_ty_id: projection_ty.associated_ty_id,
+                parameters: Vec::new(), // FIXME we don't support generic associated types yet
+            };
+            Some(chalk_ir::Binders::new(
+                binders,
+                rust_ir::InlineBound::AliasEqBound(alias_eq_bound),
+            ))
+        }
+        _ => None,
     }
 }
