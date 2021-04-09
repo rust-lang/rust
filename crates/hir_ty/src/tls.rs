@@ -4,8 +4,7 @@ use std::fmt;
 use chalk_ir::{AliasTy, GenericArg, Goal, Goals, Lifetime, ProgramClauseImplication};
 use itertools::Itertools;
 
-use super::{from_chalk, Interner};
-use crate::{db::HirDatabase, from_assoc_type_id, CallableDefId};
+use crate::{db::HirDatabase, from_assoc_type_id, CallableDefId, chalk_db::{from_chalk, self}, Interner};
 use hir_def::{AdtId, AssocContainerId, Lookup, TypeAliasId};
 
 pub(crate) use unsafe_tls::{set_current_program, with_current_program};
@@ -15,7 +14,7 @@ pub(crate) struct DebugContext<'a>(&'a dyn HirDatabase);
 impl DebugContext<'_> {
     pub(crate) fn debug_struct_id(
         &self,
-        id: super::AdtId,
+        id: chalk_db::AdtId,
         f: &mut fmt::Formatter<'_>,
     ) -> Result<(), fmt::Error> {
         let name = match id.0 {
@@ -28,7 +27,7 @@ impl DebugContext<'_> {
 
     pub(crate) fn debug_trait_id(
         &self,
-        id: super::TraitId,
+        id: chalk_db::TraitId,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Result<(), fmt::Error> {
         let trait_: hir_def::TraitId = from_chalk(self.0, id);
@@ -38,7 +37,7 @@ impl DebugContext<'_> {
 
     pub(crate) fn debug_assoc_type_id(
         &self,
-        id: super::AssocTypeId,
+        id: chalk_db::AssocTypeId,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Result<(), fmt::Error> {
         let type_alias: TypeAliasId = from_assoc_type_id(id);

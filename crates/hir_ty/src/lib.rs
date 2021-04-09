@@ -18,6 +18,10 @@ mod chalk_cast;
 mod chalk_ext;
 mod builder;
 mod walk;
+mod tls;
+mod interner;
+mod mapping;
+mod chalk_db;
 
 pub mod display;
 pub mod db;
@@ -51,8 +55,9 @@ pub use lower::{
     associated_type_shorthand_candidates, callable_item_sig, CallableDefId, ImplTraitLoweringMode,
     TyDefId, TyLoweringContext, ValueTyDefId,
 };
-pub use traits::{chalk::Interner, TraitEnvironment};
+pub use traits::TraitEnvironment;
 pub use walk::TypeWalk;
+pub use interner::Interner;
 
 pub use chalk_ir::{
     cast::Cast, AdtId, BoundVar, DebruijnIndex, Mutability, Safety, Scalar, TyVariableKind,

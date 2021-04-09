@@ -9,20 +9,16 @@ use stdx::panic_context;
 
 use crate::{
     db::HirDatabase, AliasEq, AliasTy, Canonical, DomainGoal, Guidance, HirDisplay, InEnvironment,
-    Solution, TraitRefExt, Ty, TyKind, WhereClause,
+    Solution, TraitRefExt, Ty, TyKind, WhereClause, Interner,
 };
-
-use self::chalk::Interner;
-
-pub(crate) mod chalk;
 
 /// This controls how much 'time' we give the Chalk solver before giving up.
 const CHALK_SOLVER_FUEL: i32 = 100;
 
 #[derive(Debug, Copy, Clone)]
-struct ChalkContext<'a> {
-    db: &'a dyn HirDatabase,
-    krate: CrateId,
+pub(crate) struct ChalkContext<'a> {
+    pub(crate) db: &'a dyn HirDatabase,
+    pub(crate) krate: CrateId,
 }
 
 fn create_chalk_solver() -> chalk_recursive::RecursiveSolver<Interner> {
@@ -148,7 +144,7 @@ fn solve(
     // don't set the TLS for Chalk unless Chalk debugging is active, to make
     // extra sure we only use it for debugging
     let solution =
-        if is_chalk_debug() { chalk::tls::set_current_program(db, solve) } else { solve() };
+        if is_chalk_debug() { crate::tls::set_current_program(db, solve) } else { solve() };
 
     solution
 }

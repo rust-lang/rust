@@ -21,7 +21,7 @@ use hir_expand::name::Name;
 use crate::{
     const_from_placeholder_idx, db::HirDatabase, from_assoc_type_id, from_foreign_def_id,
     from_placeholder_idx, lt_from_placeholder_idx, primitive, subst_prefix, to_assoc_type_id,
-    traits::chalk::from_chalk, utils::generics, AdtId, AliasEq, AliasTy, CallableDefId,
+    chalk_db::from_chalk, utils::generics, AdtId, AliasEq, AliasTy, CallableDefId,
     CallableSig, Const, ConstValue, DomainGoal, GenericArg, ImplTraitId, Interner, Lifetime,
     LifetimeData, LifetimeOutlives, Mutability, OpaqueTy, ProjectionTy, ProjectionTyExt,
     QuantifiedWhereClause, Scalar, TraitRef, TraitRefExt, Ty, TyExt, TyKind, WhereClause,

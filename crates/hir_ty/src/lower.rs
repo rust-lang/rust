@@ -28,7 +28,8 @@ use stdx::impl_from;
 use crate::{
     db::HirDatabase,
     dummy_usize_const, static_lifetime, to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
-    traits::chalk::{Interner, ToChalk},
+    chalk_db::ToChalk,
+    Interner,
     utils::{
         all_super_trait_refs, associated_type_by_name_including_super_traits, generics, Generics,
     },

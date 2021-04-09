@@ -3,40 +3,34 @@
 //! Chalk (in both directions); plus some helper functions for more specialized
 //! conversions.
 
-use chalk_ir::cast::Cast;
+use chalk_ir::{DebruijnIndex, cast::Cast, fold::Shift};
 use chalk_solve::rust_ir;
 
 use base_db::salsa::InternKey;
 use hir_def::{GenericDefId, TypeAliasId};
 
-use crate::{
-    db::HirDatabase, AliasTy, CallableDefId, ProjectionTyExt, QuantifiedWhereClause, Substitution,
-    Ty, WhereClause,
-};
-
-use super::interner::*;
-use super::*;
+use crate::{AliasEq, AliasTy, CallableDefId, FnDefId, Interner, ProjectionTyExt, QuantifiedWhereClause, Substitution, Ty, WhereClause, chalk_db::{self, ToChalk}, db::HirDatabase};
 
 impl ToChalk for hir_def::TraitId {
-    type Chalk = TraitId;
+    type Chalk = chalk_db::TraitId;
 
-    fn to_chalk(self, _db: &dyn HirDatabase) -> TraitId {
+    fn to_chalk(self, _db: &dyn HirDatabase) -> chalk_db::TraitId {
         chalk_ir::TraitId(self.as_intern_id())
     }
 
-    fn from_chalk(_db: &dyn HirDatabase, trait_id: TraitId) -> hir_def::TraitId {
+    fn from_chalk(_db: &dyn HirDatabase, trait_id: chalk_db::TraitId) -> hir_def::TraitId {
         InternKey::from_intern_id(trait_id.0)
     }
 }
 
 impl ToChalk for hir_def::ImplId {
-    type Chalk = ImplId;
+    type Chalk = chalk_db::ImplId;
 
-    fn to_chalk(self, _db: &dyn HirDatabase) -> ImplId {
+    fn to_chalk(self, _db: &dyn HirDatabase) -> chalk_db::ImplId {
         chalk_ir::ImplId(self.as_intern_id())
     }
 
-    fn from_chalk(_db: &dyn HirDatabase, impl_id: ImplId) -> hir_def::ImplId {
+    fn from_chalk(_db: &dyn HirDatabase, impl_id: chalk_db::ImplId) -> hir_def::ImplId {
         InternKey::from_intern_id(impl_id.0)
     }
 }
@@ -56,15 +50,15 @@ impl ToChalk for CallableDefId {
 pub(crate) struct TypeAliasAsValue(pub(crate) TypeAliasId);
 
 impl ToChalk for TypeAliasAsValue {
-    type Chalk = AssociatedTyValueId;
+    type Chalk = chalk_db::AssociatedTyValueId;
 
-    fn to_chalk(self, _db: &dyn HirDatabase) -> AssociatedTyValueId {
+    fn to_chalk(self, _db: &dyn HirDatabase) -> chalk_db::AssociatedTyValueId {
         rust_ir::AssociatedTyValueId(self.0.as_intern_id())
     }
 
     fn from_chalk(
         _db: &dyn HirDatabase,
-        assoc_ty_value_id: AssociatedTyValueId,
+        assoc_ty_value_id: chalk_db::AssociatedTyValueId,
     ) -> TypeAliasAsValue {
         TypeAliasAsValue(TypeAliasId::from_intern_id(assoc_ty_value_id.0))
     }

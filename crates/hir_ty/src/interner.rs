@@ -1,8 +1,7 @@
 //! Implementation of the Chalk `Interner` trait, which allows customizing the
 //! representation of the various objects Chalk deals with (types, goals etc.).
 
-use super::tls;
-use crate::GenericArg;
+use crate::{GenericArg, tls, chalk_db};
 use base_db::salsa::InternId;
 use chalk_ir::{Goal, GoalData};
 use hir_def::{
@@ -14,21 +13,6 @@ use std::{fmt, sync::Arc};
 
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Interner;
-
-pub(crate) type AssocTypeId = chalk_ir::AssocTypeId<Interner>;
-pub(crate) type AssociatedTyDatum = chalk_solve::rust_ir::AssociatedTyDatum<Interner>;
-pub(crate) type TraitId = chalk_ir::TraitId<Interner>;
-pub(crate) type TraitDatum = chalk_solve::rust_ir::TraitDatum<Interner>;
-pub(crate) type AdtId = chalk_ir::AdtId<Interner>;
-pub(crate) type StructDatum = chalk_solve::rust_ir::AdtDatum<Interner>;
-pub(crate) type ImplId = chalk_ir::ImplId<Interner>;
-pub(crate) type ImplDatum = chalk_solve::rust_ir::ImplDatum<Interner>;
-pub(crate) type AssociatedTyValueId = chalk_solve::rust_ir::AssociatedTyValueId<Interner>;
-pub(crate) type AssociatedTyValue = chalk_solve::rust_ir::AssociatedTyValue<Interner>;
-pub(crate) type FnDefDatum = chalk_solve::rust_ir::FnDefDatum<Interner>;
-pub(crate) type OpaqueTyId = chalk_ir::OpaqueTyId<Interner>;
-pub(crate) type OpaqueTyDatum = chalk_solve::rust_ir::OpaqueTyDatum<Interner>;
-pub(crate) type Variances = chalk_ir::Variances<Interner>;
 
 #[derive(PartialEq, Eq, Hash, Debug)]
 pub struct InternedWrapper<T>(T);
@@ -76,15 +60,15 @@ impl chalk_ir::interner::Interner for Interner {
     type Identifier = TypeAliasId;
     type FnAbi = ();
 
-    fn debug_adt_id(type_kind_id: AdtId, fmt: &mut fmt::Formatter<'_>) -> Option<fmt::Result> {
+    fn debug_adt_id(type_kind_id: chalk_db::AdtId, fmt: &mut fmt::Formatter<'_>) -> Option<fmt::Result> {
         tls::with_current_program(|prog| Some(prog?.debug_struct_id(type_kind_id, fmt)))
     }
 
-    fn debug_trait_id(type_kind_id: TraitId, fmt: &mut fmt::Formatter<'_>) -> Option<fmt::Result> {
+    fn debug_trait_id(type_kind_id: chalk_db::TraitId, fmt: &mut fmt::Formatter<'_>) -> Option<fmt::Result> {
         tls::with_current_program(|prog| Some(prog?.debug_trait_id(type_kind_id, fmt)))
     }
 
-    fn debug_assoc_type_id(id: AssocTypeId, fmt: &mut fmt::Formatter<'_>) -> Option<fmt::Result> {
+    fn debug_assoc_type_id(id: chalk_db::AssocTypeId, fmt: &mut fmt::Formatter<'_>) -> Option<fmt::Result> {
         tls::with_current_program(|prog| Some(prog?.debug_assoc_type_id(id, fmt)))
     }
 

@@ -13,25 +13,23 @@ use hir_def::{
 };
 use hir_expand::name::name;
 
-use super::ChalkContext;
-use crate::{
-    db::HirDatabase,
-    display::HirDisplay,
-    from_assoc_type_id, make_only_type_binders,
-    method_resolution::{TyFingerprint, ALL_FLOAT_FPS, ALL_INT_FPS},
-    to_assoc_type_id, to_chalk_trait_id,
-    utils::generics,
-    AliasEq, AliasTy, BoundVar, CallableDefId, DebruijnIndex, FnDefId, ProjectionTy, Substitution,
-    TraitRef, TraitRefExt, Ty, TyBuilder, TyExt, TyKind, WhereClause,
-};
-use mapping::{convert_where_clauses, generic_predicate_to_inline_bound, TypeAliasAsValue};
+use crate::{AliasEq, AliasTy, BoundVar, CallableDefId, DebruijnIndex, FnDefId, Interner, ProjectionTy, Substitution, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt, TyKind, WhereClause, traits::ChalkContext, db::HirDatabase, display::HirDisplay, from_assoc_type_id, make_only_type_binders, mapping::{convert_where_clauses, generic_predicate_to_inline_bound, TypeAliasAsValue}, method_resolution::{TyFingerprint, ALL_FLOAT_FPS, ALL_INT_FPS}, to_assoc_type_id, to_chalk_trait_id, utils::generics};
 
-pub use self::interner::Interner;
-pub(crate) use self::interner::*;
+pub(crate) type AssociatedTyDatum = chalk_solve::rust_ir::AssociatedTyDatum<Interner>;
+pub(crate) type TraitDatum = chalk_solve::rust_ir::TraitDatum<Interner>;
+pub(crate) type StructDatum = chalk_solve::rust_ir::AdtDatum<Interner>;
+pub(crate) type ImplDatum = chalk_solve::rust_ir::ImplDatum<Interner>;
+pub(crate) type OpaqueTyDatum = chalk_solve::rust_ir::OpaqueTyDatum<Interner>;
 
-pub(super) mod tls;
-mod interner;
-mod mapping;
+pub(crate) type AssocTypeId = chalk_ir::AssocTypeId<Interner>;
+pub(crate) type TraitId = chalk_ir::TraitId<Interner>;
+pub(crate) type AdtId = chalk_ir::AdtId<Interner>;
+pub(crate) type OpaqueTyId = chalk_ir::OpaqueTyId<Interner>;
+pub(crate) type ImplId = chalk_ir::ImplId<Interner>;
+pub(crate) type AssociatedTyValueId = chalk_solve::rust_ir::AssociatedTyValueId<Interner>;
+pub(crate) type AssociatedTyValue = chalk_solve::rust_ir::AssociatedTyValue<Interner>;
+pub(crate) type FnDefDatum = chalk_solve::rust_ir::FnDefDatum<Interner>;
+pub(crate) type Variances = chalk_ir::Variances<Interner>;
 
 pub(crate) trait ToChalk {
     type Chalk;
