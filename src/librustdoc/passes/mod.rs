@@ -110,7 +110,6 @@ crate const DEFAULT_PASSES: &[ConditionalPass] = &[
 
 /// The list of default passes run when `--doc-coverage` is passed to rustdoc.
 crate const COVERAGE_PASSES: &[ConditionalPass] = &[
-    ConditionalPass::always(COLLECT_TRAIT_IMPLS),
     ConditionalPass::new(STRIP_HIDDEN, WhenNotDocumentHidden),
     ConditionalPass::new(STRIP_PRIVATE, WhenNotDocumentPrivate),
     ConditionalPass::always(CALCULATE_DOC_COVERAGE),
