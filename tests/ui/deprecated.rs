@@ -11,5 +11,6 @@
 #[warn(clippy::panic_params)]
 #[warn(clippy::unknown_clippy_lints)]
 #[warn(clippy::find_map)]
+#[warn(clippy::filter_map)]
 
 fn main() {}

@@ -188,3 +188,12 @@ declare_deprecated_lint! {
     pub FIND_MAP,
     "this lint has been replaced by `manual_find_map`, a more specific lint"
 }
+
+declare_deprecated_lint! {
+    /// **What it does:** Nothing. This lint has been deprecated.
+    ///
+    /// **Deprecation reason:** This lint has been replaced by `manual_filter_map`, a
+    /// more specific lint.
+    pub FILTER_MAP,
+    "this lint has been replaced by `manual_filter_map`, a more specific lint"
+}
