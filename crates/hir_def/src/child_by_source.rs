@@ -80,6 +80,10 @@ impl ChildBySource for ModuleId {
 impl ChildBySource for ItemScope {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap) {
         self.declarations().for_each(|item| add_module_def(db, res, item));
+        self.unnamed_consts().for_each(|konst| {
+            let src = konst.lookup(db).source(db);
+            res[keys::CONST].insert(src, konst);
+        });
         self.impls().for_each(|imp| add_impl(db, res, imp));
 
         fn add_module_def(db: &dyn DefDatabase, map: &mut DynMap, item: ModuleDefId) {

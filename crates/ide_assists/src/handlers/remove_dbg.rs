@@ -30,7 +30,7 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         if new_contents.is_empty() {
             match_ast! {
                 match it {
-                    ast::BlockExpr(it) => {
+                    ast::BlockExpr(_it) => {
                         macro_call.syntax()
                             .prev_sibling_or_token()
                             .and_then(whitespace_start)
