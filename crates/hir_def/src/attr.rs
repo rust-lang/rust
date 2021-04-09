@@ -751,9 +751,7 @@ fn collect_attrs(
         .chain(inner_docs.into_iter().flatten())
         .map(|docs_text| (docs_text.syntax().text_range().start(), Either::Right(docs_text)));
     // sort here by syntax node offset because the source can have doc attributes and doc strings be interleaved
-    let attrs: Vec<_> = docs.chain(attrs).sorted_by_key(|&(offset, _)| offset).collect();
-
-    attrs.into_iter().map(|(_, attr)| attr)
+    docs.chain(attrs).sorted_by_key(|&(offset, _)| offset).map(|(_, attr)| attr)
 }
 
 pub(crate) fn variants_attrs_source_map(
