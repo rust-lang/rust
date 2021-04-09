@@ -1,7 +1,7 @@
 //! Implementation of the Chalk `Interner` trait, which allows customizing the
 //! representation of the various objects Chalk deals with (types, goals etc.).
 
-use crate::{GenericArg, tls, chalk_db};
+use crate::{chalk_db, tls, GenericArg};
 use base_db::salsa::InternId;
 use chalk_ir::{Goal, GoalData};
 use hir_def::{
@@ -60,15 +60,24 @@ impl chalk_ir::interner::Interner for Interner {
     type Identifier = TypeAliasId;
     type FnAbi = ();
 
-    fn debug_adt_id(type_kind_id: chalk_db::AdtId, fmt: &mut fmt::Formatter<'_>) -> Option<fmt::Result> {
+    fn debug_adt_id(
+        type_kind_id: chalk_db::AdtId,
+        fmt: &mut fmt::Formatter<'_>,
+    ) -> Option<fmt::Result> {
         tls::with_current_program(|prog| Some(prog?.debug_struct_id(type_kind_id, fmt)))
     }
 
-    fn debug_trait_id(type_kind_id: chalk_db::TraitId, fmt: &mut fmt::Formatter<'_>) -> Option<fmt::Result> {
+    fn debug_trait_id(
+        type_kind_id: chalk_db::TraitId,
+        fmt: &mut fmt::Formatter<'_>,
+    ) -> Option<fmt::Result> {
         tls::with_current_program(|prog| Some(prog?.debug_trait_id(type_kind_id, fmt)))
     }
 
-    fn debug_assoc_type_id(id: chalk_db::AssocTypeId, fmt: &mut fmt::Formatter<'_>) -> Option<fmt::Result> {
+    fn debug_assoc_type_id(
+        id: chalk_db::AssocTypeId,
+        fmt: &mut fmt::Formatter<'_>,
+    ) -> Option<fmt::Result> {
         tls::with_current_program(|prog| Some(prog?.debug_assoc_type_id(id, fmt)))
     }
 

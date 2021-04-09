@@ -3,13 +3,29 @@
 //! Chalk (in both directions); plus some helper functions for more specialized
 //! conversions.
 
-use chalk_ir::{DebruijnIndex, cast::Cast, fold::Shift};
+use chalk_ir::{cast::Cast, fold::Shift, DebruijnIndex};
 use chalk_solve::rust_ir;
 
 use base_db::salsa::InternKey;
 use hir_def::{GenericDefId, TypeAliasId};
 
-use crate::{AliasEq, AliasTy, CallableDefId, FnDefId, Interner, ProjectionTyExt, QuantifiedWhereClause, Substitution, Ty, WhereClause, chalk_db::{self, ToChalk}, db::HirDatabase};
+use crate::{
+    chalk_db, db::HirDatabase, AliasEq, AliasTy, CallableDefId, FnDefId, Interner, ProjectionTyExt,
+    QuantifiedWhereClause, Substitution, Ty, WhereClause,
+};
+
+pub(crate) trait ToChalk {
+    type Chalk;
+    fn to_chalk(self, db: &dyn HirDatabase) -> Self::Chalk;
+    fn from_chalk(db: &dyn HirDatabase, chalk: Self::Chalk) -> Self;
+}
+
+pub(crate) fn from_chalk<T, ChalkT>(db: &dyn HirDatabase, chalk: ChalkT) -> T
+where
+    T: ToChalk<Chalk = ChalkT>,
+{
+    T::from_chalk(db, chalk)
+}
 
 impl ToChalk for hir_def::TraitId {
     type Chalk = chalk_db::TraitId;

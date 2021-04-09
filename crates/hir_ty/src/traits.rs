@@ -9,7 +9,7 @@ use stdx::panic_context;
 
 use crate::{
     db::HirDatabase, AliasEq, AliasTy, Canonical, DomainGoal, Guidance, HirDisplay, InEnvironment,
-    Solution, TraitRefExt, Ty, TyKind, WhereClause, Interner,
+    Interner, Solution, TraitRefExt, Ty, TyKind, WhereClause,
 };
 
 /// This controls how much 'time' we give the Chalk solver before giving up.

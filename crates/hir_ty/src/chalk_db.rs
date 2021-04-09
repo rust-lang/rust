@@ -1,4 +1,5 @@
-//! Conversion code from/to Chalk.
+//! The implementation of `RustIrDatabase` for Chalk, which provides information
+//! about the code that Chalk needs.
 use std::sync::Arc;
 
 use log::debug;
@@ -13,7 +14,21 @@ use hir_def::{
 };
 use hir_expand::name::name;
 
-use crate::{AliasEq, AliasTy, BoundVar, CallableDefId, DebruijnIndex, FnDefId, Interner, ProjectionTy, Substitution, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt, TyKind, WhereClause, traits::ChalkContext, db::HirDatabase, display::HirDisplay, from_assoc_type_id, make_only_type_binders, mapping::{convert_where_clauses, generic_predicate_to_inline_bound, TypeAliasAsValue}, method_resolution::{TyFingerprint, ALL_FLOAT_FPS, ALL_INT_FPS}, to_assoc_type_id, to_chalk_trait_id, utils::generics};
+use crate::{
+    db::HirDatabase,
+    display::HirDisplay,
+    from_assoc_type_id, make_only_type_binders,
+    mapping::{
+        convert_where_clauses, from_chalk, generic_predicate_to_inline_bound, ToChalk,
+        TypeAliasAsValue,
+    },
+    method_resolution::{TyFingerprint, ALL_FLOAT_FPS, ALL_INT_FPS},
+    to_assoc_type_id, to_chalk_trait_id,
+    traits::ChalkContext,
+    utils::generics,
+    AliasEq, AliasTy, BoundVar, CallableDefId, DebruijnIndex, FnDefId, Interner, ProjectionTy,
+    Substitution, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt, TyKind, WhereClause,
+};
 
 pub(crate) type AssociatedTyDatum = chalk_solve::rust_ir::AssociatedTyDatum<Interner>;
 pub(crate) type TraitDatum = chalk_solve::rust_ir::TraitDatum<Interner>;
@@ -30,19 +45,6 @@ pub(crate) type AssociatedTyValueId = chalk_solve::rust_ir::AssociatedTyValueId<
 pub(crate) type AssociatedTyValue = chalk_solve::rust_ir::AssociatedTyValue<Interner>;
 pub(crate) type FnDefDatum = chalk_solve::rust_ir::FnDefDatum<Interner>;
 pub(crate) type Variances = chalk_ir::Variances<Interner>;
-
-pub(crate) trait ToChalk {
-    type Chalk;
-    fn to_chalk(self, db: &dyn HirDatabase) -> Self::Chalk;
-    fn from_chalk(db: &dyn HirDatabase, chalk: Self::Chalk) -> Self;
-}
-
-pub(crate) fn from_chalk<T, ChalkT>(db: &dyn HirDatabase, chalk: ChalkT) -> T
-where
-    T: ToChalk<Chalk = ChalkT>,
-{
-    T::from_chalk(db, chalk)
-}
 
 impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
     fn associated_ty_data(&self, id: AssocTypeId) -> Arc<AssociatedTyDatum> {

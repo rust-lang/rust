@@ -4,7 +4,9 @@ use std::fmt;
 use chalk_ir::{AliasTy, GenericArg, Goal, Goals, Lifetime, ProgramClauseImplication};
 use itertools::Itertools;
 
-use crate::{db::HirDatabase, from_assoc_type_id, CallableDefId, chalk_db::{from_chalk, self}, Interner};
+use crate::{
+    chalk_db, db::HirDatabase, from_assoc_type_id, mapping::from_chalk, CallableDefId, Interner,
+};
 use hir_def::{AdtId, AssocContainerId, Lookup, TypeAliasId};
 
 pub(crate) use unsafe_tls::{set_current_program, with_current_program};

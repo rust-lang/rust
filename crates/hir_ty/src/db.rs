@@ -9,7 +9,12 @@ use hir_def::{
 };
 use la_arena::ArenaMap;
 
-use crate::{Binders, CallableDefId, FnDefId, ImplTraitId, InferenceResult, Interner, PolyFnSig, QuantifiedWhereClause, ReturnTypeImplTraits, TraitRef, Ty, TyDefId, ValueTyDefId, chalk_db, method_resolution::{InherentImpls, TraitImpls}};
+use crate::{
+    chalk_db,
+    method_resolution::{InherentImpls, TraitImpls},
+    Binders, CallableDefId, FnDefId, ImplTraitId, InferenceResult, Interner, PolyFnSig,
+    QuantifiedWhereClause, ReturnTypeImplTraits, TraitRef, Ty, TyDefId, ValueTyDefId,
+};
 use hir_expand::name::Name;
 
 #[salsa::query_group(HirDatabaseStorage)]
@@ -93,10 +98,15 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn associated_ty_data(&self, id: chalk_db::AssocTypeId) -> Arc<chalk_db::AssociatedTyDatum>;
 
     #[salsa::invoke(chalk_db::trait_datum_query)]
-    fn trait_datum(&self, krate: CrateId, trait_id: chalk_db::TraitId) -> Arc<chalk_db::TraitDatum>;
+    fn trait_datum(&self, krate: CrateId, trait_id: chalk_db::TraitId)
+        -> Arc<chalk_db::TraitDatum>;
 
     #[salsa::invoke(chalk_db::struct_datum_query)]
-    fn struct_datum(&self, krate: CrateId, struct_id: chalk_db::AdtId) -> Arc<chalk_db::StructDatum>;
+    fn struct_datum(
+        &self,
+        krate: CrateId,
+        struct_id: chalk_db::AdtId,
+    ) -> Arc<chalk_db::StructDatum>;
 
     #[salsa::invoke(chalk_db::impl_datum_query)]
     fn impl_datum(&self, krate: CrateId, impl_id: chalk_db::ImplId) -> Arc<chalk_db::ImplDatum>;
