@@ -1,15 +1,15 @@
-use crate::LanesAtMost64;
+use crate::LanesAtMost32;
 
 /// A mask where each lane is represented by a single bit.
 #[derive(Copy, Clone, Debug)]
 #[repr(transparent)]
 pub struct BitMask<const LANES: usize>(u64)
 where
-    BitMask<LANES>: LanesAtMost64;
+    BitMask<LANES>: LanesAtMost32;
 
 impl<const LANES: usize> BitMask<LANES>
 where
-    Self: LanesAtMost64,
+    Self: LanesAtMost32,
 {
     /// Construct a mask by setting all lanes to the given value.
     pub fn splat(value: bool) -> Self {
@@ -43,7 +43,7 @@ where
 
 impl<const LANES: usize> core::ops::BitAnd for BitMask<LANES>
 where
-    Self: LanesAtMost64,
+    Self: LanesAtMost32,
 {
     type Output = Self;
     #[inline]
@@ -54,7 +54,7 @@ where
 
 impl<const LANES: usize> core::ops::BitAnd<bool> for BitMask<LANES>
 where
-    Self: LanesAtMost64,
+    Self: LanesAtMost32,
 {
     type Output = Self;
     #[inline]
@@ -65,7 +65,7 @@ where
 
 impl<const LANES: usize> core::ops::BitAnd<BitMask<LANES>> for bool
 where
-    BitMask<LANES>: LanesAtMost64,
+    BitMask<LANES>: LanesAtMost32,
 {
     type Output = BitMask<LANES>;
     #[inline]
@@ -76,7 +76,7 @@ where
 
 impl<const LANES: usize> core::ops::BitOr for BitMask<LANES>
 where
-    Self: LanesAtMost64,
+    Self: LanesAtMost32,
 {
     type Output = Self;
     #[inline]
@@ -87,7 +87,7 @@ where
 
 impl<const LANES: usize> core::ops::BitOr<bool> for BitMask<LANES>
 where
-    Self: LanesAtMost64,
+    Self: LanesAtMost32,
 {
     type Output = Self;
     #[inline]
@@ -98,7 +98,7 @@ where
 
 impl<const LANES: usize> core::ops::BitOr<BitMask<LANES>> for bool
 where
-    BitMask<LANES>: LanesAtMost64,
+    BitMask<LANES>: LanesAtMost32,
 {
     type Output = BitMask<LANES>;
     #[inline]
@@ -109,7 +109,7 @@ where
 
 impl<const LANES: usize> core::ops::BitXor for BitMask<LANES>
 where
-    Self: LanesAtMost64,
+    Self: LanesAtMost32,
 {
     type Output = Self;
     #[inline]
@@ -120,7 +120,7 @@ where
 
 impl<const LANES: usize> core::ops::BitXor<bool> for BitMask<LANES>
 where
-    Self: LanesAtMost64,
+    Self: LanesAtMost32,
 {
     type Output = Self;
     #[inline]
@@ -131,7 +131,7 @@ where
 
 impl<const LANES: usize> core::ops::BitXor<BitMask<LANES>> for bool
 where
-    BitMask<LANES>: LanesAtMost64,
+    BitMask<LANES>: LanesAtMost32,
 {
     type Output = BitMask<LANES>;
     #[inline]
@@ -142,7 +142,7 @@ where
 
 impl<const LANES: usize> core::ops::Not for BitMask<LANES>
 where
-    Self: LanesAtMost64,
+    Self: LanesAtMost32,
 {
     type Output = BitMask<LANES>;
     #[inline]
@@ -153,7 +153,7 @@ where
 
 impl<const LANES: usize> core::ops::BitAndAssign for BitMask<LANES>
 where
-    Self: LanesAtMost64,
+    Self: LanesAtMost32,
 {
     #[inline]
     fn bitand_assign(&mut self, rhs: Self) {
@@ -163,7 +163,7 @@ where
 
 impl<const LANES: usize> core::ops::BitAndAssign<bool> for BitMask<LANES>
 where
-    Self: LanesAtMost64,
+    Self: LanesAtMost32,
 {
     #[inline]
     fn bitand_assign(&mut self, rhs: bool) {
@@ -173,7 +173,7 @@ where
 
 impl<const LANES: usize> core::ops::BitOrAssign for BitMask<LANES>
 where
-    Self: LanesAtMost64,
+    Self: LanesAtMost32,
 {
     #[inline]
     fn bitor_assign(&mut self, rhs: Self) {
@@ -183,7 +183,7 @@ where
 
 impl<const LANES: usize> core::ops::BitOrAssign<bool> for BitMask<LANES>
 where
-    Self: LanesAtMost64,
+    Self: LanesAtMost32,
 {
     #[inline]
     fn bitor_assign(&mut self, rhs: bool) {
@@ -193,7 +193,7 @@ where
 
 impl<const LANES: usize> core::ops::BitXorAssign for BitMask<LANES>
 where
-    Self: LanesAtMost64,
+    Self: LanesAtMost32,
 {
     #[inline]
     fn bitxor_assign(&mut self, rhs: Self) {
@@ -203,7 +203,7 @@ where
 
 impl<const LANES: usize> core::ops::BitXorAssign<bool> for BitMask<LANES>
 where
-    Self: LanesAtMost64,
+    Self: LanesAtMost32,
 {
     #[inline]
     fn bitxor_assign(&mut self, rhs: bool) {

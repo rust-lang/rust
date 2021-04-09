@@ -2,12 +2,12 @@
 
 /// Implements additional integer traits (Eq, Ord, Hash) on the specified vector `$name`, holding multiple `$lanes` of `$type`.
 macro_rules! impl_integer_vector {
-    { $name:ident, $type:ty } => {
+    { $name:ident, $type:ty, $mask_ty:ident, $mask_impl_ty:ident } => {
         impl_vector! { $name, $type }
 
-        impl<const LANES: usize> Eq for $name<LANES> where Self: crate::LanesAtMost64 {}
+        impl<const LANES: usize> Eq for $name<LANES> where Self: crate::LanesAtMost32 {}
 
-        impl<const LANES: usize> Ord for $name<LANES> where Self: crate::LanesAtMost64 {
+        impl<const LANES: usize> Ord for $name<LANES> where Self: crate::LanesAtMost32 {
             #[inline]
             fn cmp(&self, other: &Self) -> core::cmp::Ordering {
                 // TODO use SIMD cmp
@@ -15,13 +15,29 @@ macro_rules! impl_integer_vector {
             }
         }
 
-        impl<const LANES: usize> core::hash::Hash for $name<LANES> where Self: crate::LanesAtMost64 {
+        impl<const LANES: usize> core::hash::Hash for $name<LANES> where Self: crate::LanesAtMost32 {
             #[inline]
             fn hash<H>(&self, state: &mut H)
             where
                 H: core::hash::Hasher
             {
                 self.as_slice().hash(state)
+            }
+        }
+
+        impl<const LANES: usize> $name<LANES>
+        where
+            Self: crate::LanesAtMost32,
+            crate::$mask_impl_ty<LANES>: crate::LanesAtMost32,
+        {
+            /// Returns true for each positive lane and false if it is zero or negative.
+            pub fn is_positive(self) -> crate::$mask_ty<LANES> {
+                self.lanes_gt(Self::splat(0))
+            }
+
+            /// Returns true for each negative lane and false if it is zero or positive.
+            pub fn is_negative(self) -> crate::$mask_ty<LANES> {
+                self.lanes_lt(Self::splat(0))
             }
         }
     }
@@ -31,9 +47,9 @@ macro_rules! impl_integer_vector {
 #[repr(simd)]
 pub struct SimdIsize<const LANES: usize>([isize; LANES])
 where
-    Self: crate::LanesAtMost64;
+    Self: crate::LanesAtMost32;
 
-impl_integer_vector! { SimdIsize, isize }
+impl_integer_vector! { SimdIsize, isize, MaskSize, SimdIsize }
 
 #[cfg(target_pointer_width = "32")]
 from_transmute_x86! { unsafe isizex4 => __m128i }
@@ -51,9 +67,9 @@ from_transmute_x86! { unsafe isizex4 => __m256i }
 #[repr(simd)]
 pub struct SimdI128<const LANES: usize>([i128; LANES])
 where
-    Self: crate::LanesAtMost64;
+    Self: crate::LanesAtMost32;
 
-impl_integer_vector! { SimdI128, i128 }
+impl_integer_vector! { SimdI128, i128, Mask128, SimdI128 }
 
 from_transmute_x86! { unsafe i128x2 => __m256i }
 //from_transmute_x86! { unsafe i128x4 => __m512i }
@@ -62,9 +78,9 @@ from_transmute_x86! { unsafe i128x2 => __m256i }
 #[repr(simd)]
 pub struct SimdI16<const LANES: usize>([i16; LANES])
 where
-    Self: crate::LanesAtMost64;
+    Self: crate::LanesAtMost32;
 
-impl_integer_vector! { SimdI16, i16 }
+impl_integer_vector! { SimdI16, i16, Mask16, SimdI16 }
 
 from_transmute_x86! { unsafe i16x8 => __m128i }
 from_transmute_x86! { unsafe i16x16 => __m256i }
@@ -74,9 +90,9 @@ from_transmute_x86! { unsafe i16x16 => __m256i }
 #[repr(simd)]
 pub struct SimdI32<const LANES: usize>([i32; LANES])
 where
-    Self: crate::LanesAtMost64;
+    Self: crate::LanesAtMost32;
 
-impl_integer_vector! { SimdI32, i32 }
+impl_integer_vector! { SimdI32, i32, Mask32, SimdI32 }
 
 from_transmute_x86! { unsafe i32x4 => __m128i }
 from_transmute_x86! { unsafe i32x8 => __m256i }
@@ -86,9 +102,9 @@ from_transmute_x86! { unsafe i32x8 => __m256i }
 #[repr(simd)]
 pub struct SimdI64<const LANES: usize>([i64; LANES])
 where
-    Self: crate::LanesAtMost64;
+    Self: crate::LanesAtMost32;
 
-impl_integer_vector! { SimdI64, i64 }
+impl_integer_vector! { SimdI64, i64, Mask64, SimdI64 }
 
 from_transmute_x86! { unsafe i64x2 => __m128i }
 from_transmute_x86! { unsafe i64x4 => __m256i }
@@ -98,9 +114,9 @@ from_transmute_x86! { unsafe i64x4 => __m256i }
 #[repr(simd)]
 pub struct SimdI8<const LANES: usize>([i8; LANES])
 where
-    Self: crate::LanesAtMost64;
+    Self: crate::LanesAtMost32;
 
-impl_integer_vector! { SimdI8, i8 }
+impl_integer_vector! { SimdI8, i8, Mask8, SimdI8 }
 
 from_transmute_x86! { unsafe i8x16 => __m128i }
 from_transmute_x86! { unsafe i8x32 => __m256i }

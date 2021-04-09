@@ -5,6 +5,16 @@ pub trait BitEq {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result;
 }
 
+impl BitEq for bool {
+    fn biteq(&self, other: &Self) -> bool {
+        self == other
+    }
+
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 macro_rules! impl_integer_biteq {
     { $($type:ty),* } => {
         $(

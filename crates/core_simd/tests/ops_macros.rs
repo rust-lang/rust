@@ -147,9 +147,25 @@ macro_rules! impl_signed_tests {
             test_helpers::test_lanes! {
                 fn neg<const LANES: usize>() {
                     test_helpers::test_unary_elementwise(
-                        &<Vector<LANES> as core::ops::Neg>::neg,
+                        &<Vector::<LANES> as core::ops::Neg>::neg,
                         &<Scalar as core::ops::Neg>::neg,
                         &|x| !x.contains(&Scalar::MIN),
+                    );
+                }
+
+                fn is_positive<const LANES: usize>() {
+                    test_helpers::test_unary_mask_elementwise(
+                        &Vector::<LANES>::is_positive,
+                        &Scalar::is_positive,
+                        &|_| true,
+                    );
+                }
+
+                fn is_negative<const LANES: usize>() {
+                    test_helpers::test_unary_mask_elementwise(
+                        &Vector::<LANES>::is_negative,
+                        &Scalar::is_negative,
+                        &|_| true,
                     );
                 }
             }
@@ -285,6 +301,62 @@ macro_rules! impl_float_tests {
             }
 
             test_helpers::test_lanes! {
+                fn is_sign_positive<const LANES: usize>() {
+                    test_helpers::test_unary_mask_elementwise(
+                        &Vector::<LANES>::is_sign_positive,
+                        &Scalar::is_sign_positive,
+                        &|_| true,
+                    );
+                }
+
+                fn is_sign_negative<const LANES: usize>() {
+                    test_helpers::test_unary_mask_elementwise(
+                        &Vector::<LANES>::is_sign_negative,
+                        &Scalar::is_sign_negative,
+                        &|_| true,
+                    );
+                }
+
+                fn is_finite<const LANES: usize>() {
+                    test_helpers::test_unary_mask_elementwise(
+                        &Vector::<LANES>::is_finite,
+                        &Scalar::is_finite,
+                        &|_| true,
+                    );
+                }
+
+                fn is_infinite<const LANES: usize>() {
+                    test_helpers::test_unary_mask_elementwise(
+                        &Vector::<LANES>::is_infinite,
+                        &Scalar::is_infinite,
+                        &|_| true,
+                    );
+                }
+
+                fn is_nan<const LANES: usize>() {
+                    test_helpers::test_unary_mask_elementwise(
+                        &Vector::<LANES>::is_nan,
+                        &Scalar::is_nan,
+                        &|_| true,
+                    );
+                }
+
+                fn is_normal<const LANES: usize>() {
+                    test_helpers::test_unary_mask_elementwise(
+                        &Vector::<LANES>::is_normal,
+                        &Scalar::is_normal,
+                        &|_| true,
+                    );
+                }
+
+                fn is_subnormal<const LANES: usize>() {
+                    test_helpers::test_unary_mask_elementwise(
+                        &Vector::<LANES>::is_subnormal,
+                        &Scalar::is_subnormal,
+                        &|_| true,
+                    );
+                }
+
                 fn abs<const LANES: usize>() {
                     test_helpers::test_unary_elementwise(
                         &Vector::<LANES>::abs,
