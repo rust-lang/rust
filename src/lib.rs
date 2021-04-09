@@ -119,6 +119,8 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
     }
 }
 
+/// The codegen context holds any information shared between the codegen of individual functions
+/// inside a single codegen unit with the exception of the Cranelift [`Module`](cranelift_module::Module).
 struct CodegenCx<'tcx> {
     tcx: TyCtxt<'tcx>,
     global_asm: String,
