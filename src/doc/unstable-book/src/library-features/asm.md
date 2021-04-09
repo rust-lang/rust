@@ -376,7 +376,7 @@ unsafe {
 
 The compiler is allowed to instantiate multiple copies an `asm!` block, for example when the function containing it is inlined in multiple places. As a consequence, you should only use GNU assembler [local labels] inside inline assembly code. Defining symbols in assembly code may lead to assembler and/or linker errors due to duplicate symbol definitions.
 
-Moreover, due to [an llvm bug], you shouldn't use labels exclusively make of `0` and `1` digits, e.g. `0`, `11` or `101010`, as they may end up being interpreted as binary values.
+Moreover, due to [an llvm bug], you shouldn't use labels exclusively made of `0` and `1` digits, e.g. `0`, `11` or `101010`, as they may end up being interpreted as binary values.
 
 ```rust
 #![feature(asm)]
