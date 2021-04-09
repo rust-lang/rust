@@ -974,3 +974,41 @@ fn param_overrides_fn() {
         "#,
     )
 }
+
+#[test]
+fn lifetime_from_chalk_during_deref() {
+    check_types(
+        r#"
+        #[lang = "deref"]
+        pub trait Deref {
+            type Target;
+        }
+
+        struct Box<T: ?Sized> {}
+        impl<T> Deref for Box<T> {
+            type Target = T;
+
+            fn deref(&self) -> &Self::Target {
+                loop {}
+            }
+        }
+
+        trait Iterator {
+            type Item;
+        }
+
+        pub struct Iter<'a, T: 'a> {
+            inner: Box<dyn IterTrait<'a, T, Item = &'a T> + 'a>,
+        }
+
+        trait IterTrait<'a, T: 'a>: Iterator<Item = &'a T> {
+            fn clone_box(&self);
+        }
+
+        fn clone_iter<T>(s: Iter<T>) {
+            s.inner.clone_box();
+          //^^^^^^^^^^^^^^^^^^^ ()
+        }
+        "#,
+    )
+}
