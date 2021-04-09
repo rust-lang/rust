@@ -6,18 +6,11 @@ file provides an overview of the process. More detailed notes are in
 the code itself, naturally.
 
 One way to think of method lookup is that we convert an expression of
-the form:
+the form `receiver.method(...)` into a more explicit [fully-qualified syntax][]
+(formerly called [UFCS][]):
 
-```rust,ignore
-receiver.method(...)
-```
-
-into a more explicit [UFCS] form:
-
-```rust,ignore
-Trait::method(ADJ(receiver), ...) // for a trait call
-ReceiverType::method(ADJ(receiver), ...) // for an inherent method call
-```
+- `Trait::method(ADJ(receiver), ...)` for a trait call
+- `ReceiverType::method(ADJ(receiver), ...)` for an inherent method call
 
 Here `ADJ` is some kind of adjustment, which is typically a series of
 autoderefs and then possibly an autoref (e.g., `&**receiver`). However
@@ -37,6 +30,7 @@ probe phase produces a "pick" (`probe::Pick`), which is designed to be
 cacheable across method-call sites. Therefore, it does not include
 inference variables or other information.
 
+[fully-qualified syntax]: https://doc.rust-lang.org/nightly/book/ch19-03-advanced-traits.html#fully-qualified-syntax-for-disambiguation-calling-methods-with-the-same-name
 [UFCS]: https://github.com/rust-lang/rfcs/blob/master/text/0132-ufcs.md
 [probe]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_typeck/check/method/probe/
 [confirm]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_typeck/check/method/confirm/
@@ -51,12 +45,10 @@ until it cannot be deref'd anymore, as well as applying an optional
 "unsize" step. So if the receiver has type `Rc<Box<[T; 3]>>`, this
 might yield:
 
-```rust,ignore
-Rc<Box<[T; 3]>>
-Box<[T; 3]>
-[T; 3]
-[T]
-```
+1. `Rc<Box<[T; 3]>>`
+2. `Box<[T; 3]>`
+3. `[T; 3]`
+4. `[T]`
 
 ### Candidate assembly
 
@@ -99,10 +91,9 @@ So, let's continue our example. Imagine that we were calling a method
 that defines it with `&self` for the type `Rc<U>` as well as a method
 on the type `Box` that defines `Foo` but with `&mut self`. Then we
 might have two candidates:
-```text
-&Rc<Box<[T; 3]>> from the impl of `Foo` for `Rc<U>` where `U=Box<[T; 3]>
-&mut Box<[T; 3]>> from the inherent impl on `Box<U>` where `U=[T; 3]`
-```
+
+- `&Rc<Box<[T; 3]>>` from the impl of `Foo` for `Rc<U>` where `U=Box<[T; 3]>`
+- `&mut Box<[T; 3]>>` from the inherent impl on `Box<U>` where `U=[T; 3]`
 
 ### Candidate search
 
