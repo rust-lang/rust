@@ -6,7 +6,7 @@
 [actions-url]: https://github.com/rust-lang/miri/actions
 
 An experimental interpreter for [Rust][rust]'s
-[mid-level intermediate representation][mir] (MIR).  It can run binaries and
+[mid-level intermediate representation][mir] (MIR). It can run binaries and
 test suites of cargo projects and detect certain classes of
 [undefined behavior](https://doc.rust-lang.org/reference/behavior-considered-undefined.html),
 for example:
@@ -32,7 +32,7 @@ big-endian systems. See
 [cross-interpretation](#cross-interpretation-running-for-different-targets)
 below.
 
-Miri has already discovered some [real-world bugs](#bugs-found-by-miri).  If you
+Miri has already discovered some [real-world bugs](#bugs-found-by-miri). If you
 found a bug with Miri, we'd appreciate if you tell us and we'll add it to the
 list!
 
@@ -41,7 +41,7 @@ in your program, and cannot run all programs:
 
 * There are still plenty of open questions around the basic invariants for some
   types and when these invariants even have to hold. Miri tries to avoid false
-  positives here, so if you program runs fine in Miri right now that is by no
+  positives here, so if your program runs fine in Miri right now that is by no
   means a guarantee that it is UB-free when these questions get answered.
 
     In particular, Miri does currently not check that integers/floats are
