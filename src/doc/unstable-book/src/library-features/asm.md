@@ -378,7 +378,7 @@ The compiler is allowed to instantiate multiple copies an `asm!` block, for exam
 
 Moreover, due to [an llvm bug], you shouldn't use labels exclusively make of `0` and `1` digits, e.g. `0`, `11` or `101010`, as they may end up being interpreted as binary values.
 
-```rust
+```rust,allow_fail
 #![feature(asm)]
 
 let mut a = 0;
