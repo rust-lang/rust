@@ -20,7 +20,7 @@ use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use syntax::{
     ast::{self, AstNode},
-    SyntaxNode, SyntaxNodePtr, TextRange,
+    SyntaxNode, SyntaxNodePtr, TextRange, TextSize,
 };
 use text_edit::TextEdit;
 use unlinked_file::UnlinkedFile;
@@ -159,14 +159,16 @@ pub(crate) fn diagnostics(
             );
         })
         .on::<UnlinkedFile, _>(|d| {
+            // Limit diagnostic to the first few characters in the file. This matches how VS Code
+            // renders it with the full span, but on other editors, and is less invasive.
+            let range = sema.diagnostics_display_range(d.display_source()).range;
+            let range = range.intersect(TextRange::up_to(TextSize::of("..."))).unwrap_or(range);
+
             // Override severity and mark as unused.
             res.borrow_mut().push(
-                Diagnostic::hint(
-                    sema.diagnostics_display_range(d.display_source()).range,
-                    d.message(),
-                )
-                .with_fix(d.fix(&sema))
-                .with_code(Some(d.code())),
+                Diagnostic::hint(range, d.message())
+                    .with_fix(d.fix(&sema))
+                    .with_code(Some(d.code())),
             );
         })
         .on::<hir::diagnostics::UnresolvedProcMacro, _>(|d| {
