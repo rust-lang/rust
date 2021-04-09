@@ -1906,6 +1906,11 @@ Cargo
 - [You can now pass the `--features` option multiple times to enable
   multiple features.][cargo/7084]
 
+Rustdoc
+-------
+
+- [Documentation on `pub use` statements is prepended to the documentation of the re-exported item][63048]
+
 Misc
 ----
 - [`rustc` will now warn about some incorrect uses of
@@ -1940,6 +1945,7 @@ Compatibility Notes
 [63421]: https://github.com/rust-lang/rust/pull/63421/
 [cargo/7084]: https://github.com/rust-lang/cargo/pull/7084/
 [cargo/7143]: https://github.com/rust-lang/cargo/pull/7143/
+[63048]: https://github.com/rust-lang/rust/pull/63048
 [`<*const T>::cast`]: https://doc.rust-lang.org/std/primitive.pointer.html#method.cast
 [`<*mut T>::cast`]: https://doc.rust-lang.org/std/primitive.pointer.html#method.cast
 [`Duration::as_secs_f32`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.as_secs_f32
