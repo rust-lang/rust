@@ -73,7 +73,7 @@ nominal type `Foo` (e.g., a struct), any methods defined within an
 impl like `impl Foo` are inherent methods.  Nothing needs to be
 imported to use an inherent method, they are associated with the type
 itself (note that inherent impls can only be defined in the same
-module as the type itself).
+crate as the type itself).
 
 FIXME: Inherent candidates are not always derived from impls.  If you
 have a trait object, such as a value of type `Box<ToString>`, then the
@@ -90,7 +90,7 @@ TODO: Is this FIXME still accurate?
 the trait `ToString` imported, and I call `to_string()` on a value of
 type `T`, then we will go off to find out whether there is an impl of
 `ToString` for `T`.  These kinds of method calls are called "extension
-methods".  They can be defined in any module, not only the one that
+methods".  They can be defined in any crate, not only the one that
 defined `T`.  Furthermore, you must import the trait to call such a
 method.
 
