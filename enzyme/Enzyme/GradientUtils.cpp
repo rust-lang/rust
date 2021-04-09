@@ -1621,16 +1621,27 @@ bool GradientUtils::shouldRecompute(const Value *val,
   // If this is a load from cache already, just reload this
   if (isa<LoadInst>(val) &&
       cast<LoadInst>(val)->getMetadata("enzyme_fromcache"))
-    return true;
-
-  if (isa<CastInst>(val) || isa<GetElementPtrInst>(val))
-    return true;
+    return true; 
 
   if (!isa<Instruction>(val))
     return true;
 
   // llvm::errs() << " considering recompute of " << *val << "\n";
   const Instruction *inst = cast<Instruction>(val);
+
+  if (knownRecomputeHeuristic.find(inst) != knownRecomputeHeuristic.end()) {
+    llvm::errs() << " found recompute for " << *inst << " of " << knownRecomputeHeuristic[inst] << "\n";
+    return knownRecomputeHeuristic[inst];
+  }
+  if (auto OrigInst = isOriginal(inst)) {
+    if (knownRecomputeHeuristic.find(OrigInst) != knownRecomputeHeuristic.end()) {
+    llvm::errs() << " found recompute for " << *inst << " of " << knownRecomputeHeuristic[OrigInst] << "\n";
+      return knownRecomputeHeuristic[OrigInst];
+    }
+  }
+
+  if (isa<CastInst>(val) || isa<GetElementPtrInst>(val))
+    return true;
 
   if (EnzymeNewCache) {
     // if this has operands that need to be loaded and haven't already been

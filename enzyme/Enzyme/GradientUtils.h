@@ -439,6 +439,7 @@ private:
 public:
   bool legalRecompute(const Value *val, const ValueToValueMapTy &available,
                       IRBuilder<> *BuilderM, bool reverse = false) const;
+  std::map<const Value*, bool> knownRecomputeHeuristic;
   bool shouldRecompute(const Value *val, const ValueToValueMapTy &available,
                        IRBuilder<> *BuilderM);
 
