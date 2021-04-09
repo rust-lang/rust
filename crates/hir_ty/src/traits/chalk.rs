@@ -101,7 +101,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
             None
         }
 
-        let self_ty_fp = TyFingerprint::for_impl(&ty);
+        let self_ty_fp = TyFingerprint::for_trait_impl(&ty);
         let fps: &[TyFingerprint] = match binder_kind(&ty, binders) {
             Some(chalk_ir::TyVariableKind::Integer) => &ALL_INT_FPS,
             Some(chalk_ir::TyVariableKind::Float) => &ALL_FLOAT_FPS,

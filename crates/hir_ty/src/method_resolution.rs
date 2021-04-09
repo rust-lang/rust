@@ -13,6 +13,7 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 use rustc_hash::{FxHashMap, FxHashSet};
+use stdx::always;
 
 use crate::{
     autoderef,
@@ -21,32 +22,36 @@ use crate::{
     primitive::{self, FloatTy, IntTy, UintTy},
     static_lifetime,
     utils::all_super_traits,
-    AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, FnPointer, FnSig, ForeignDefId,
-    InEnvironment, Interner, Scalar, Substitution, TraitEnvironment, TraitRefExt, Ty, TyBuilder,
-    TyExt, TyKind,
+    AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, ForeignDefId, InEnvironment, Interner,
+    Scalar, Substitution, TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyExt, TyKind,
 };
 
 /// This is used as a key for indexing impls.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TyFingerprint {
+    // These are lang item impls:
     Str,
     Slice,
     Array,
     Never,
     RawPtr(Mutability),
     Scalar(Scalar),
+    // These can have user-defined impls:
     Adt(hir_def::AdtId),
     Dyn(TraitId),
-    Tuple(usize),
     ForeignType(ForeignDefId),
-    FnPtr(usize, FnSig),
+    // These only exist for trait impls
+    Unit,
+    Unnameable,
+    Function(u32),
 }
 
 impl TyFingerprint {
-    /// Creates a TyFingerprint for looking up an impl. Only certain types can
-    /// have impls: if we have some `struct S`, we can have an `impl S`, but not
-    /// `impl &S`. Hence, this will return `None` for reference types and such.
-    pub fn for_impl(ty: &Ty) -> Option<TyFingerprint> {
+    /// Creates a TyFingerprint for looking up an inherent impl. Only certain
+    /// types can have inherent impls: if we have some `struct S`, we can have
+    /// an `impl S`, but not `impl &S`. Hence, this will return `None` for
+    /// reference types and such.
+    pub fn for_inherent_impl(ty: &Ty) -> Option<TyFingerprint> {
         let fp = match ty.kind(&Interner) {
             TyKind::Str => TyFingerprint::Str,
             TyKind::Never => TyFingerprint::Never,
@@ -54,14 +59,49 @@ impl TyFingerprint {
             TyKind::Array(..) => TyFingerprint::Array,
             TyKind::Scalar(scalar) => TyFingerprint::Scalar(*scalar),
             TyKind::Adt(AdtId(adt), _) => TyFingerprint::Adt(*adt),
-            TyKind::Tuple(cardinality, _) => TyFingerprint::Tuple(*cardinality),
             TyKind::Raw(mutability, ..) => TyFingerprint::RawPtr(*mutability),
             TyKind::Foreign(alias_id, ..) => TyFingerprint::ForeignType(*alias_id),
-            TyKind::Function(FnPointer { sig, substitution: substs, .. }) => {
-                TyFingerprint::FnPtr(substs.0.len(&Interner) - 1, *sig)
-            }
             TyKind::Dyn(_) => ty.dyn_trait().map(|trait_| TyFingerprint::Dyn(trait_))?,
             _ => return None,
+        };
+        Some(fp)
+    }
+
+    /// Creates a TyFingerprint for looking up a trait impl.
+    pub fn for_trait_impl(ty: &Ty) -> Option<TyFingerprint> {
+        let fp = match ty.kind(&Interner) {
+            TyKind::Str => TyFingerprint::Str,
+            TyKind::Never => TyFingerprint::Never,
+            TyKind::Slice(..) => TyFingerprint::Slice,
+            TyKind::Array(..) => TyFingerprint::Array,
+            TyKind::Scalar(scalar) => TyFingerprint::Scalar(*scalar),
+            TyKind::Adt(AdtId(adt), _) => TyFingerprint::Adt(*adt),
+            TyKind::Raw(mutability, ..) => TyFingerprint::RawPtr(*mutability),
+            TyKind::Foreign(alias_id, ..) => TyFingerprint::ForeignType(*alias_id),
+            TyKind::Dyn(_) => ty.dyn_trait().map(|trait_| TyFingerprint::Dyn(trait_))?,
+            TyKind::Ref(_, _, ty) => return TyFingerprint::for_trait_impl(ty),
+            TyKind::Tuple(_, subst) => {
+                let first_ty = subst.interned().get(0).map(|arg| arg.assert_ty_ref(&Interner));
+                if let Some(ty) = first_ty {
+                    return TyFingerprint::for_trait_impl(ty);
+                } else {
+                    TyFingerprint::Unit
+                }
+            }
+            TyKind::AssociatedType(_, _)
+            | TyKind::OpaqueType(_, _)
+            | TyKind::FnDef(_, _)
+            | TyKind::Closure(_, _)
+            | TyKind::Generator(..)
+            | TyKind::GeneratorWitness(..) => TyFingerprint::Unnameable,
+            TyKind::Function(fn_ptr) => {
+                TyFingerprint::Function(fn_ptr.substitution.0.len(&Interner) as u32)
+            }
+            TyKind::Alias(_)
+            | TyKind::Placeholder(_)
+            | TyKind::BoundVar(_)
+            | TyKind::InferenceVar(_, _)
+            | TyKind::Error => return None,
         };
         Some(fp)
     }
@@ -112,7 +152,7 @@ impl TraitImpls {
                         None => continue,
                     };
                     let self_ty = db.impl_self_ty(impl_id);
-                    let self_ty_fp = TyFingerprint::for_impl(self_ty.skip_binders());
+                    let self_ty_fp = TyFingerprint::for_trait_impl(self_ty.skip_binders());
                     impls
                         .map
                         .entry(target_trait)
@@ -157,10 +197,13 @@ impl TraitImpls {
     }
 
     /// Queries all trait impls for the given type.
-    pub fn for_self_ty(&self, fp: TyFingerprint) -> impl Iterator<Item = ImplId> + '_ {
+    pub fn for_self_ty_without_blanket_impls(
+        &self,
+        fp: TyFingerprint,
+    ) -> impl Iterator<Item = ImplId> + '_ {
         self.map
             .values()
-            .flat_map(move |impls| impls.get(&None).into_iter().chain(impls.get(&Some(fp))))
+            .flat_map(move |impls| impls.get(&Some(fp)).into_iter())
             .flat_map(|it| it.iter().copied())
     }
 
@@ -215,7 +258,9 @@ impl InherentImpls {
                 }
 
                 let self_ty = db.impl_self_ty(impl_id);
-                if let Some(fp) = TyFingerprint::for_impl(self_ty.skip_binders()) {
+                let fp = TyFingerprint::for_inherent_impl(self_ty.skip_binders());
+                always!(fp.is_some());
+                if let Some(fp) = fp {
                     map.entry(fp).or_default().push(impl_id);
                 }
             }
@@ -228,7 +273,7 @@ impl InherentImpls {
     }
 
     pub fn for_self_ty(&self, self_ty: &Ty) -> &[ImplId] {
-        match TyFingerprint::for_impl(self_ty) {
+        match TyFingerprint::for_inherent_impl(self_ty) {
             Some(fp) => self.map.get(&fp).map(|vec| vec.as_ref()).unwrap_or(&[]),
             None => &[],
         }
