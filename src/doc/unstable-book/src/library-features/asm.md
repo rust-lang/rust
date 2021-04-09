@@ -316,7 +316,7 @@ fn call_foo(arg: i32) {
             // Also mark AVX-512 registers as clobbered. This is accepted by the
             // compiler even if AVX-512 is not enabled on the current target.
             out("xmm16") _, out("xmm17") _, out("xmm18") _, out("xmm19") _,
-            out("xmm20") _, out("xmm21") _, out("xmm22") _, out("xmm13") _,
+            out("xmm20") _, out("xmm21") _, out("xmm22") _, out("xmm23") _,
             out("xmm24") _, out("xmm25") _, out("xmm26") _, out("xmm27") _,
             out("xmm28") _, out("xmm29") _, out("xmm30") _, out("xmm31") _,
         )
