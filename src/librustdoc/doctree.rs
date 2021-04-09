@@ -65,15 +65,18 @@ impl Module<'hir> {
 
     pub(crate) fn push_item(&mut self, ctx: &DocContext<'_>, new_item: Item<'hir>) {
         let new_item_ns = ctx.tcx.def_kind(new_item.hir_item.def_id).ns();
+        let mut to_remove = None;
         if !new_item.name().is_empty() && new_item_ns.is_some() {
-            if let Some(existing_item) = self.items.iter_mut().find(|item| {
-                item.name() == new_item.name()
-                    && ctx.tcx.def_kind(item.hir_item.def_id).ns() == new_item_ns
-            }) {
+            if let Some((index, existing_item)) =
+                self.items.iter_mut().enumerate().find(|(_, item)| {
+                    item.name() == new_item.name()
+                        && ctx.tcx.def_kind(item.hir_item.def_id).ns() == new_item_ns
+                })
+            {
                 match (existing_item.from_glob, new_item.from_glob) {
-                    (true, _) => {
-                        // `existing_item` is from glob, no matter whether `new_item` is from glob,
-                        // `new_item` should always shadow `existing_item`
+                    (true, false) => {
+                        // `existing_item` is from glob, `new_item` is not,
+                        // `new_item` should shadow `existing_item`
                         debug!("push_item: {:?} shadowed by {:?}", existing_item, new_item);
                         *existing_item = new_item;
                         return;
@@ -83,6 +86,17 @@ impl Module<'hir> {
                         // just keep `existing_item` and return at once
                         return;
                     }
+                    (true, true) => {
+                        // both `existing_item` and `new_item` are from glob
+                        if existing_item.hir_item.def_id == new_item.hir_item.def_id {
+                            // they actually point to same object, it is ok to just keep one of them
+                            return;
+                        } else {
+                            // a "glob import vs glob import in the same module" will raise when actually use these item
+                            // we should accept neither of these two items
+                            to_remove = Some(index);
+                        }
+                    }
                     (false, false) => {
                         // should report "defined multiple time" error before reach this
                         unreachable!()
@@ -90,19 +104,37 @@ impl Module<'hir> {
                 }
             }
         }
+        if let Some(index) = to_remove {
+            self.items.swap_remove(index);
+            return;
+        }
         // no item with same name and namespace exists, just collect `new_item`
         self.items.push(new_item);
     }
 
     pub(crate) fn push_mod(&mut self, new_mod: Module<'hir>) {
-        if let Some(existing_mod) = self.mods.iter_mut().find(|mod_| mod_.name == new_mod.name) {
+        let mut to_remove = None;
+        if let Some((index, existing_mod)) =
+            self.mods.iter_mut().enumerate().find(|(_, mod_)| mod_.name == new_mod.name)
+        {
             match (existing_mod.from_glob, new_mod.from_glob) {
-                (true, _) => {
+                (true, false) => {
                     // `existing_mod` is from glob, no matter whether `new_mod` is from glob,
                     // `new_mod` should always shadow `existing_mod`
                     debug!("push_mod: {:?} shadowed by {:?}", existing_mod.name, new_mod.name);
                     *existing_mod = new_mod;
                     return;
+                }
+                (true, true) => {
+                    // both `existing_item` and `new_item` are from glob
+                    if existing_mod.id == new_mod.id {
+                        // they actually point to same object, it is ok to just keep one of them
+                        return;
+                    } else {
+                        // a "glob import vs glob import in the same module" will raise when actually use these item
+                        // we should accept neither of these two items
+                        to_remove = Some(index);
+                    }
                 }
                 (false, true) => {
                     // `existing_mod` is not from glob but `new_mod` is,
@@ -114,6 +146,10 @@ impl Module<'hir> {
                     unreachable!()
                 }
             }
+        }
+        if let Some(index) = to_remove {
+            self.mods.swap_remove(index);
+            return;
         }
         // no mod with same name exists, just collect `new_mod`
         self.mods.push(new_mod);
