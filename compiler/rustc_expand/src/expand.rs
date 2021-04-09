@@ -491,6 +491,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             let fragment_kind = invoc.fragment_kind;
             let (expanded_fragment, new_invocations) = match self.expand_invoc(invoc, &ext.kind) {
                 ExpandResult::Ready(fragment) => {
+                    let mut derive_invocations = Vec::new();
                     let derive_placeholders = self
                         .cx
                         .resolver
@@ -512,14 +513,14 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                 _ => unreachable!(),
                             };
 
-                            invocations.reserve(derives.len());
+                            derive_invocations.reserve(derives.len());
                             derives
                                 .into_iter()
                                 .map(|(path, _exts)| {
                                     // FIXME: Consider using the derive resolutions (`_exts`)
                                     // instead of enqueuing the derives to be resolved again later.
                                     let expn_id = ExpnId::fresh(None);
-                                    invocations.push((
+                                    derive_invocations.push((
                                         Invocation {
                                             kind: InvocationKind::Derive {
                                                 path,
@@ -546,7 +547,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         })
                         .unwrap_or_default();
 
-                    self.collect_invocations(fragment, &derive_placeholders)
+                    let (fragment, collected_invocations) =
+                        self.collect_invocations(fragment, &derive_placeholders);
+                    // We choose to expand any derive invocations associated with this macro invocation
+                    // *before* any macro invocations collected from the output fragment
+                    derive_invocations.extend(collected_invocations);
+                    (fragment, derive_invocations)
                 }
                 ExpandResult::Retry(invoc) => {
                     if force {

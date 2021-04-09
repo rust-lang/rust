@@ -1,11 +1,3 @@
-error: proc-macro derive panicked
-  --> $DIR/issue-36935.rs:6:20
-   |
-LL | #[derive(Identity, Panic)]
-   |                    ^^^^^
-   |
-   = help: message: panic-derive
-
 error[E0428]: the name `Baz` is defined multiple times
   --> $DIR/issue-36935.rs:7:1
    |
@@ -16,6 +8,14 @@ LL | struct Baz {
    | previous definition of the type `Baz` here
    |
    = note: `Baz` must be defined only once in the type namespace of this module
+
+error: proc-macro derive panicked
+  --> $DIR/issue-36935.rs:6:20
+   |
+LL | #[derive(Identity, Panic)]
+   |                    ^^^^^
+   |
+   = help: message: panic-derive
 
 error: aborting due to 2 previous errors
 
