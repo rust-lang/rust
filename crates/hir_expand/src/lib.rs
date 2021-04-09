@@ -291,7 +291,7 @@ pub struct MacroCallLoc {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MacroCallKind {
     FnLike { ast_id: AstId<ast::MacroCall> },
-    Derive { ast_id: AstId<ast::Item>, derive_name: String },
+    Derive { ast_id: AstId<ast::Item>, derive_name: String, derive_attr: AttrId },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

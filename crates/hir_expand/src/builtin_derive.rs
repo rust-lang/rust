@@ -269,7 +269,7 @@ mod tests {
     use expect_test::{expect, Expect};
     use name::AsName;
 
-    use crate::{test_db::TestDB, AstId, MacroCallId, MacroCallKind, MacroCallLoc};
+    use crate::{test_db::TestDB, AstId, AttrId, MacroCallId, MacroCallKind, MacroCallLoc};
 
     use super::*;
 
@@ -317,7 +317,11 @@ $0
                 local_inner: false,
             },
             krate: CrateId(0),
-            kind: MacroCallKind::Derive { ast_id, derive_name: name.to_string() },
+            kind: MacroCallKind::Derive {
+                ast_id,
+                derive_name: name.to_string(),
+                derive_attr: AttrId(0),
+            },
         };
 
         let id: MacroCallId = db.intern_macro(loc).into();
