@@ -14,6 +14,7 @@ pub mod builtin_macro;
 pub mod proc_macro;
 pub mod quote;
 pub mod eager;
+mod input;
 
 use either::Either;
 pub use mbe::{ExpandError, ExpandResult};
@@ -291,8 +292,11 @@ pub struct MacroCallLoc {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MacroCallKind {
     FnLike { ast_id: AstId<ast::MacroCall> },
-    Derive { ast_id: AstId<ast::Item>, derive_name: String },
+    Derive { ast_id: AstId<ast::Item>, derive_name: String, derive_attr: AttrId },
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct AttrId(pub u32);
 
 impl MacroCallKind {
     fn file_id(&self) -> HirFileId {

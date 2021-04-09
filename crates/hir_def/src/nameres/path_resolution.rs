@@ -384,15 +384,10 @@ impl DefMap {
                 }
             }
         };
-        // Give precedence to names in outer `DefMap`s over the extern prelude; only check prelude
-        // from the crate DefMap.
-        let from_extern_prelude = match self.block {
-            Some(_) => PerNs::none(),
-            None => self
-                .extern_prelude
-                .get(name)
-                .map_or(PerNs::none(), |&it| PerNs::types(it, Visibility::Public)),
-        };
+        let from_extern_prelude = self
+            .extern_prelude
+            .get(name)
+            .map_or(PerNs::none(), |&it| PerNs::types(it, Visibility::Public));
 
         let from_prelude = self.resolve_in_prelude(db, name);
 

@@ -13,7 +13,7 @@ use hir_expand::{
     builtin_macro::find_builtin_macro,
     name::{AsName, Name},
     proc_macro::ProcMacroExpander,
-    HirFileId, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
+    AttrId, HirFileId, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
 };
 use hir_expand::{InFile, MacroCallLoc};
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -216,7 +216,7 @@ struct MacroDirective {
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum MacroDirectiveKind {
     FnLike { ast_id: AstIdWithPath<ast::MacroCall> },
-    Derive { ast_id: AstIdWithPath<ast::Item> },
+    Derive { ast_id: AstIdWithPath<ast::Item>, derive_attr: AttrId },
 }
 
 struct DefData<'a> {
@@ -831,10 +831,14 @@ impl DefCollector<'_> {
                         Err(UnresolvedMacro) | Ok(Err(_)) => {}
                     }
                 }
-                MacroDirectiveKind::Derive { ast_id } => {
-                    match derive_macro_as_call_id(ast_id, self.db, self.def_map.krate, |path| {
-                        self.resolve_derive_macro(directive.module_id, &path)
-                    }) {
+                MacroDirectiveKind::Derive { ast_id, derive_attr } => {
+                    match derive_macro_as_call_id(
+                        ast_id,
+                        *derive_attr,
+                        self.db,
+                        self.def_map.krate,
+                        |path| self.resolve_derive_macro(directive.module_id, &path),
+                    ) {
                         Ok(call_id) => {
                             resolved.push((directive.module_id, call_id, directive.depth));
                             res = ReachedFixedPoint::No;
@@ -1368,7 +1372,7 @@ impl ModCollector<'_, '_> {
                         self.def_collector.unexpanded_macros.push(MacroDirective {
                             module_id: self.module_id,
                             depth: self.macro_depth + 1,
-                            kind: MacroDirectiveKind::Derive { ast_id },
+                            kind: MacroDirectiveKind::Derive { ast_id, derive_attr: derive.id },
                         });
                     }
                 }

@@ -62,7 +62,7 @@ use hir_expand::{
     ast_id_map::FileAstId,
     eager::{expand_eager_macro, ErrorEmitted, ErrorSink},
     hygiene::Hygiene,
-    AstId, HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
+    AstId, AttrId, HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
 };
 use la_arena::Idx;
 use nameres::DefMap;
@@ -699,6 +699,7 @@ fn macro_call_as_call_id(
 
 fn derive_macro_as_call_id(
     item_attr: &AstIdWithPath<ast::Item>,
+    derive_attr: AttrId,
     db: &dyn db::DefDatabase,
     krate: CrateId,
     resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
@@ -712,6 +713,7 @@ fn derive_macro_as_call_id(
             MacroCallKind::Derive {
                 ast_id: item_attr.ast_id,
                 derive_name: last_segment.to_string(),
+                derive_attr,
             },
         )
         .into();
