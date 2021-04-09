@@ -376,7 +376,7 @@ unsafe {
 
 The compiler is allowed to instantiate multiple copies an `asm!` block, for example when the function containing it is inlined in multiple places. As a consequence, you should only use GNU assembler [local labels] inside inline assembly code. Defining symbols in assembly code may lead to assembler and/or linker errors due to duplicate symbol definitions.
 
-Moreover due to [a llvm bug], you cannot use `0` or `1` as labels. Therefore only labels in the `2`-`99` range are allowed.
+Moreover, due to [an llvm bug], you shouldn't use labels exclusively make of `0` and `1` digits, e.g. `0`, `11` or `101010`, as they may end up being interpreted as binary values.
 
 ```rust
 #![feature(asm)]
@@ -407,7 +407,7 @@ First that the same number can be used as a label multiple times in the same inl
 Second, that when a numeric label is used as a reference (as an instruction operand, for example), the suffixes b (“backward”) or f (“forward”) should be added to the numeric label. It will then refer to the nearest label defined by this number in this direction.
 
 [local labels]: https://sourceware.org/binutils/docs/as/Symbol-Names.html#Local-Labels
-[a llvm bug]: https://bugs.llvm.org/show_bug.cgi?id=36144
+[an llvm bug]: https://bugs.llvm.org/show_bug.cgi?id=36144
 
 ## Options
 
