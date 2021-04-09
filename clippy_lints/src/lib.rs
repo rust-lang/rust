@@ -494,20 +494,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         "the replacement suggested by this lint had substantially different behavior",
     );
     store.register_removed(
-        "clippy::invalid_ref",
-        "superseded by rustc lint `invalid_value`",
-    );
-    store.register_removed(
         "clippy::unused_collect",
         "`collect` has been marked as #[must_use] in rustc and that covers all cases of this lint",
-    );
-    store.register_removed(
-        "clippy::into_iter_on_array",
-        "this lint has been uplifted to rustc and is now called `array_into_iter`",
-    );
-    store.register_removed(
-        "clippy::unused_label",
-        "this lint has been uplifted to rustc and is now called `unused_labels`",
     );
     store.register_removed(
         "clippy::replace_consts",
@@ -516,22 +504,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_removed(
         "clippy::regex_macro",
         "the regex! macro has been removed from the regex crate in 2018",
-    );
-    store.register_removed(
-        "clippy::drop_bounds",
-        "this lint has been uplifted to rustc and is now called `drop_bounds`",
-    );
-    store.register_removed(
-        "clippy::temporary_cstring_as_ptr",
-        "this lint has been uplifted to rustc and is now called `temporary_cstring_as_ptr`",
-    );
-    store.register_removed(
-        "clippy::panic_params",
-        "this lint has been uplifted to rustc and is now called `panic_fmt`",
-    );
-    store.register_removed(
-        "clippy::unknown_clippy_lints",
-        "this lint has been integrated into the `unknown_lints` rustc lint",
     );
     store.register_removed(
         "clippy::find_map",
@@ -2155,6 +2127,15 @@ pub fn register_renamed(ls: &mut rustc_lint::LintStore) {
     ls.register_renamed("clippy::identity_conversion", "clippy::useless_conversion");
     ls.register_renamed("clippy::zero_width_space", "clippy::invisible_characters");
     ls.register_renamed("clippy::single_char_push_str", "clippy::single_char_add_str");
+
+    // uplifted lints
+    ls.register_renamed("clippy::invalid_ref", "invalid_value");
+    ls.register_renamed("clippy::into_iter_on_array", "array_into_iter");
+    ls.register_renamed("clippy::unused_label", "unused_labels");
+    ls.register_renamed("clippy::drop_bounds", "drop_bounds");
+    ls.register_renamed("clippy::temporary_cstring_as_ptr", "temporary_cstring_as_ptr");
+    ls.register_renamed("clippy::panic_params", "non_fmt_panic");
+    ls.register_renamed("clippy::unknown_clippy_lints", "unknown_lints");
 }
 
 // only exists to let the dogfood integration test works.
