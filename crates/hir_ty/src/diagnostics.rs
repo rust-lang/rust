@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! Type inference-based diagnostics.
 mod expr;
 mod match_check;
 mod unsafe_check;

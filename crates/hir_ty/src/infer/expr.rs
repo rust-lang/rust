@@ -17,10 +17,11 @@ use syntax::ast::RangeOp;
 use crate::{
     autoderef, dummy_usize_const,
     lower::lower_to_chalk_mutability,
+    mapping::from_chalk,
     method_resolution, op,
     primitive::{self, UintTy},
     static_lifetime, to_chalk_trait_id,
-    traits::{chalk::from_chalk, FnTrait},
+    traits::FnTrait,
     utils::{generics, Generics},
     AdtId, Binders, CallableDefId, FnPointer, FnSig, FnSubst, InEnvironment, Interner,
     ProjectionTyExt, Rawness, Scalar, Substitution, TraitRef, Ty, TyBuilder, TyExt, TyKind,

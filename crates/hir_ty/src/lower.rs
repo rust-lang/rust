@@ -27,13 +27,14 @@ use stdx::impl_from;
 
 use crate::{
     db::HirDatabase,
-    dummy_usize_const, static_lifetime, to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
-    traits::chalk::{Interner, ToChalk},
+    dummy_usize_const,
+    mapping::ToChalk,
+    static_lifetime, to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
     utils::{
         all_super_trait_refs, associated_type_by_name_including_super_traits, generics, Generics,
     },
     AliasEq, AliasTy, Binders, BoundVar, CallableSig, DebruijnIndex, DynTy, FnPointer, FnSig,
-    FnSubst, ImplTraitId, OpaqueTy, PolyFnSig, ProjectionTy, QuantifiedWhereClause,
+    FnSubst, ImplTraitId, Interner, OpaqueTy, PolyFnSig, ProjectionTy, QuantifiedWhereClause,
     QuantifiedWhereClauses, ReturnTypeImplTrait, ReturnTypeImplTraits, Substitution,
     TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyKind, WhereClause,
 };

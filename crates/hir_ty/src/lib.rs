@@ -7,21 +7,23 @@ macro_rules! eprintln {
 }
 
 mod autoderef;
-pub mod primitive;
-pub mod traits;
-pub mod method_resolution;
-mod op;
-mod lower;
-pub(crate) mod infer;
-pub(crate) mod utils;
-mod chalk_cast;
-mod chalk_ext;
 mod builder;
+mod chalk_db;
+mod chalk_ext;
+mod infer;
+mod interner;
+mod lower;
+mod mapping;
+mod op;
+mod tls;
+mod utils;
 mod walk;
-
-pub mod display;
 pub mod db;
 pub mod diagnostics;
+pub mod display;
+pub mod method_resolution;
+pub mod primitive;
+pub mod traits;
 
 #[cfg(test)]
 mod tests;
@@ -30,16 +32,12 @@ mod test_db;
 
 use std::sync::Arc;
 
-use base_db::salsa;
 use chalk_ir::{
     fold::{Fold, Shift},
     interner::HasInterner,
     UintTy,
 };
-use hir_def::{
-    expr::ExprId, type_ref::Rawness, ConstParamId, LifetimeParamId, TraitId, TypeAliasId,
-    TypeParamId,
-};
+use hir_def::{expr::ExprId, type_ref::Rawness, TypeParamId};
 
 use crate::{db::HirDatabase, display::HirDisplay, utils::generics};
 
@@ -47,11 +45,17 @@ pub use autoderef::autoderef;
 pub use builder::TyBuilder;
 pub use chalk_ext::*;
 pub use infer::{could_unify, InferenceResult};
+pub use interner::Interner;
 pub use lower::{
     associated_type_shorthand_candidates, callable_item_sig, CallableDefId, ImplTraitLoweringMode,
     TyDefId, TyLoweringContext, ValueTyDefId,
 };
-pub use traits::{chalk::Interner, TraitEnvironment};
+pub use mapping::{
+    const_from_placeholder_idx, from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id,
+    from_placeholder_idx, lt_from_placeholder_idx, to_assoc_type_id, to_chalk_trait_id,
+    to_foreign_def_id, to_placeholder_idx,
+};
+pub use traits::TraitEnvironment;
 pub use walk::TypeWalk;
 
 pub use chalk_ir::{
@@ -94,6 +98,10 @@ pub type ConstValue = chalk_ir::ConstValue<Interner>;
 pub type ConcreteConst = chalk_ir::ConcreteConst<Interner>;
 
 pub type ChalkTraitId = chalk_ir::TraitId<Interner>;
+pub type TraitRef = chalk_ir::TraitRef<Interner>;
+pub type QuantifiedWhereClause = Binders<WhereClause>;
+pub type QuantifiedWhereClauses = chalk_ir::QuantifiedWhereClauses<Interner>;
+pub type Canonical<T> = chalk_ir::Canonical<T>;
 
 pub type FnSig = chalk_ir::FnSig<Interner>;
 
@@ -118,14 +126,14 @@ pub fn param_idx(db: &dyn HirDatabase, id: TypeParamId) -> Option<usize> {
     generics(db.upcast(), id.parent).param_idx(id)
 }
 
-pub fn wrap_empty_binders<T>(value: T) -> Binders<T>
+pub(crate) fn wrap_empty_binders<T>(value: T) -> Binders<T>
 where
     T: Fold<Interner, Result = T> + HasInterner<Interner = Interner>,
 {
     Binders::empty(&Interner, value.shifted_in_from(&Interner, DebruijnIndex::ONE))
 }
 
-pub fn make_only_type_binders<T: HasInterner<Interner = Interner>>(
+pub(crate) fn make_only_type_binders<T: HasInterner<Interner = Interner>>(
     num_vars: usize,
     value: T,
 ) -> Binders<T> {
@@ -153,14 +161,6 @@ pub fn make_canonical<T: HasInterner<Interner = Interner>>(
     Canonical { value, binders: chalk_ir::CanonicalVarKinds::from_iter(&Interner, kinds) }
 }
 
-pub type TraitRef = chalk_ir::TraitRef<Interner>;
-
-pub type QuantifiedWhereClause = Binders<WhereClause>;
-
-pub type QuantifiedWhereClauses = chalk_ir::QuantifiedWhereClauses<Interner>;
-
-pub type Canonical<T> = chalk_ir::Canonical<T>;
-
 /// A function signature as seen by type inference: Several parameter types and
 /// one return type.
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -168,6 +168,8 @@ pub struct CallableSig {
     params_and_return: Arc<[Ty]>,
     is_varargs: bool,
 }
+
+has_interner!(CallableSig);
 
 /// A polymorphic function signature.
 pub type PolyFnSig = Binders<CallableSig>;
@@ -232,59 +234,11 @@ pub struct ReturnTypeImplTraits {
     pub(crate) impl_traits: Vec<ReturnTypeImplTrait>,
 }
 
+has_interner!(ReturnTypeImplTraits);
+
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) struct ReturnTypeImplTrait {
     pub(crate) bounds: Binders<Vec<QuantifiedWhereClause>>,
-}
-
-pub fn to_foreign_def_id(id: TypeAliasId) -> ForeignDefId {
-    chalk_ir::ForeignDefId(salsa::InternKey::as_intern_id(&id))
-}
-
-pub fn from_foreign_def_id(id: ForeignDefId) -> TypeAliasId {
-    salsa::InternKey::from_intern_id(id.0)
-}
-
-pub fn to_assoc_type_id(id: TypeAliasId) -> AssocTypeId {
-    chalk_ir::AssocTypeId(salsa::InternKey::as_intern_id(&id))
-}
-
-pub fn from_assoc_type_id(id: AssocTypeId) -> TypeAliasId {
-    salsa::InternKey::from_intern_id(id.0)
-}
-
-pub fn from_placeholder_idx(db: &dyn HirDatabase, idx: PlaceholderIndex) -> TypeParamId {
-    assert_eq!(idx.ui, chalk_ir::UniverseIndex::ROOT);
-    let interned_id = salsa::InternKey::from_intern_id(salsa::InternId::from(idx.idx));
-    db.lookup_intern_type_param_id(interned_id)
-}
-
-pub fn to_placeholder_idx(db: &dyn HirDatabase, id: TypeParamId) -> PlaceholderIndex {
-    let interned_id = db.intern_type_param_id(id);
-    PlaceholderIndex {
-        ui: chalk_ir::UniverseIndex::ROOT,
-        idx: salsa::InternKey::as_intern_id(&interned_id).as_usize(),
-    }
-}
-
-pub fn lt_from_placeholder_idx(db: &dyn HirDatabase, idx: PlaceholderIndex) -> LifetimeParamId {
-    assert_eq!(idx.ui, chalk_ir::UniverseIndex::ROOT);
-    let interned_id = salsa::InternKey::from_intern_id(salsa::InternId::from(idx.idx));
-    db.lookup_intern_lifetime_param_id(interned_id)
-}
-
-pub fn const_from_placeholder_idx(db: &dyn HirDatabase, idx: PlaceholderIndex) -> ConstParamId {
-    assert_eq!(idx.ui, chalk_ir::UniverseIndex::ROOT);
-    let interned_id = salsa::InternKey::from_intern_id(salsa::InternId::from(idx.idx));
-    db.lookup_intern_const_param_id(interned_id)
-}
-
-pub fn to_chalk_trait_id(id: TraitId) -> ChalkTraitId {
-    chalk_ir::TraitId(salsa::InternKey::as_intern_id(&id))
-}
-
-pub fn from_chalk_trait_id(id: ChalkTraitId) -> TraitId {
-    salsa::InternKey::from_intern_id(id.0)
 }
 
 pub fn static_lifetime() -> Lifetime {

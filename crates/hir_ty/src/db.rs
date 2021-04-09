@@ -1,4 +1,5 @@
-//! FIXME: write short doc here
+//! The home of `HirDatabase`, which is the Salsa database containing all the
+//! type inference-related queries.
 
 use std::sync::Arc;
 
@@ -10,9 +11,9 @@ use hir_def::{
 use la_arena::ArenaMap;
 
 use crate::{
+    chalk_db,
     method_resolution::{InherentImpls, TraitImpls},
-    traits::chalk,
-    Binders, CallableDefId, FnDefId, ImplTraitId, InferenceResult, PolyFnSig,
+    Binders, CallableDefId, FnDefId, ImplTraitId, InferenceResult, Interner, PolyFnSig,
     QuantifiedWhereClause, ReturnTypeImplTraits, TraitRef, Ty, TyDefId, ValueTyDefId,
 };
 use hir_expand::name::Name;
@@ -94,33 +95,38 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::interned]
     fn intern_closure(&self, id: (DefWithBodyId, ExprId)) -> InternedClosureId;
 
-    #[salsa::invoke(chalk::associated_ty_data_query)]
-    fn associated_ty_data(&self, id: chalk::AssocTypeId) -> Arc<chalk::AssociatedTyDatum>;
+    #[salsa::invoke(chalk_db::associated_ty_data_query)]
+    fn associated_ty_data(&self, id: chalk_db::AssocTypeId) -> Arc<chalk_db::AssociatedTyDatum>;
 
-    #[salsa::invoke(chalk::trait_datum_query)]
-    fn trait_datum(&self, krate: CrateId, trait_id: chalk::TraitId) -> Arc<chalk::TraitDatum>;
+    #[salsa::invoke(chalk_db::trait_datum_query)]
+    fn trait_datum(&self, krate: CrateId, trait_id: chalk_db::TraitId)
+        -> Arc<chalk_db::TraitDatum>;
 
-    #[salsa::invoke(chalk::struct_datum_query)]
-    fn struct_datum(&self, krate: CrateId, struct_id: chalk::AdtId) -> Arc<chalk::StructDatum>;
+    #[salsa::invoke(chalk_db::struct_datum_query)]
+    fn struct_datum(
+        &self,
+        krate: CrateId,
+        struct_id: chalk_db::AdtId,
+    ) -> Arc<chalk_db::StructDatum>;
 
-    #[salsa::invoke(crate::traits::chalk::impl_datum_query)]
-    fn impl_datum(&self, krate: CrateId, impl_id: chalk::ImplId) -> Arc<chalk::ImplDatum>;
+    #[salsa::invoke(chalk_db::impl_datum_query)]
+    fn impl_datum(&self, krate: CrateId, impl_id: chalk_db::ImplId) -> Arc<chalk_db::ImplDatum>;
 
-    #[salsa::invoke(crate::traits::chalk::fn_def_datum_query)]
-    fn fn_def_datum(&self, krate: CrateId, fn_def_id: FnDefId) -> Arc<chalk::FnDefDatum>;
+    #[salsa::invoke(chalk_db::fn_def_datum_query)]
+    fn fn_def_datum(&self, krate: CrateId, fn_def_id: FnDefId) -> Arc<chalk_db::FnDefDatum>;
 
-    #[salsa::invoke(crate::traits::chalk::fn_def_variance_query)]
-    fn fn_def_variance(&self, krate: CrateId, fn_def_id: FnDefId) -> chalk::Variances;
+    #[salsa::invoke(chalk_db::fn_def_variance_query)]
+    fn fn_def_variance(&self, krate: CrateId, fn_def_id: FnDefId) -> chalk_db::Variances;
 
-    #[salsa::invoke(crate::traits::chalk::adt_variance_query)]
-    fn adt_variance(&self, krate: CrateId, adt_id: chalk::AdtId) -> chalk::Variances;
+    #[salsa::invoke(chalk_db::adt_variance_query)]
+    fn adt_variance(&self, krate: CrateId, adt_id: chalk_db::AdtId) -> chalk_db::Variances;
 
-    #[salsa::invoke(crate::traits::chalk::associated_ty_value_query)]
+    #[salsa::invoke(chalk_db::associated_ty_value_query)]
     fn associated_ty_value(
         &self,
         krate: CrateId,
-        id: chalk::AssociatedTyValueId,
-    ) -> Arc<chalk::AssociatedTyValue>;
+        id: chalk_db::AssociatedTyValueId,
+    ) -> Arc<chalk_db::AssociatedTyValue>;
 
     #[salsa::invoke(crate::traits::trait_solve_query)]
     fn trait_solve(
@@ -129,12 +135,12 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
         goal: crate::Canonical<crate::InEnvironment<crate::DomainGoal>>,
     ) -> Option<crate::Solution>;
 
-    #[salsa::invoke(crate::traits::chalk::program_clauses_for_chalk_env_query)]
+    #[salsa::invoke(chalk_db::program_clauses_for_chalk_env_query)]
     fn program_clauses_for_chalk_env(
         &self,
         krate: CrateId,
-        env: chalk_ir::Environment<chalk::Interner>,
-    ) -> chalk_ir::ProgramClauses<chalk::Interner>;
+        env: chalk_ir::Environment<Interner>,
+    ) -> chalk_ir::ProgramClauses<Interner>;
 }
 
 fn infer_wait(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> {

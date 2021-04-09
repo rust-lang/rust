@@ -1,4 +1,6 @@
-//! FIXME: write short doc here
+//! The `HirDisplay` trait, which serves two purposes: Turning various bits from
+//! HIR back into source code, and just displaying them for debugging/testing
+//! purposes.
 
 use std::{
     array,
@@ -20,11 +22,11 @@ use hir_expand::name::Name;
 
 use crate::{
     const_from_placeholder_idx, db::HirDatabase, from_assoc_type_id, from_foreign_def_id,
-    from_placeholder_idx, lt_from_placeholder_idx, primitive, subst_prefix, to_assoc_type_id,
-    traits::chalk::from_chalk, utils::generics, AdtId, AliasEq, AliasTy, CallableDefId,
-    CallableSig, Const, ConstValue, DomainGoal, GenericArg, ImplTraitId, Interner, Lifetime,
-    LifetimeData, LifetimeOutlives, Mutability, OpaqueTy, ProjectionTy, ProjectionTyExt,
-    QuantifiedWhereClause, Scalar, TraitRef, TraitRefExt, Ty, TyExt, TyKind, WhereClause,
+    from_placeholder_idx, lt_from_placeholder_idx, mapping::from_chalk, primitive, subst_prefix,
+    to_assoc_type_id, utils::generics, AdtId, AliasEq, AliasTy, CallableDefId, CallableSig, Const,
+    ConstValue, DomainGoal, GenericArg, ImplTraitId, Interner, Lifetime, LifetimeData,
+    LifetimeOutlives, Mutability, OpaqueTy, ProjectionTy, ProjectionTyExt, QuantifiedWhereClause,
+    Scalar, TraitRef, TraitRefExt, Ty, TyExt, TyKind, WhereClause,
 };
 
 pub struct HirFormatter<'a> {
