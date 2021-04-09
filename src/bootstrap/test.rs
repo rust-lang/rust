@@ -1232,6 +1232,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         hostflags.push(format!("-Lnative={}", builder.test_helpers_out(compiler.host).display()));
         if builder.is_fuse_ld_lld(compiler.host) {
             hostflags.push("-Clink-args=-fuse-ld=lld".to_string());
+            hostflags.push("-Clink-arg=-Wl,--threads=1".to_string());
         }
         cmd.arg("--host-rustcflags").arg(hostflags.join(" "));
 
@@ -1239,6 +1240,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         targetflags.push(format!("-Lnative={}", builder.test_helpers_out(target).display()));
         if builder.is_fuse_ld_lld(target) {
             targetflags.push("-Clink-args=-fuse-ld=lld".to_string());
+            targetflags.push("-Clink-arg=-Wl,--threads=1".to_string());
         }
         cmd.arg("--target-rustcflags").arg(targetflags.join(" "));
 
