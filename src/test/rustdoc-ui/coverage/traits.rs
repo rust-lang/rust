@@ -16,6 +16,7 @@ pub trait ThisTrait {
 }
 
 /// so what happens if we take some struct...
+#[derive(Clone)]
 pub struct SomeStruct;
 
 /// ...and slap this trait on it?
