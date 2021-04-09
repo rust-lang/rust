@@ -1804,29 +1804,94 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
         define_scoped_cx!(self);
 
         let mut region_index = self.region_index;
-        let new_value = self.tcx.replace_late_bound_regions(value.clone(), |br| {
-            let _ = start_or_continue(&mut self, "for<", ", ");
-            let kind = match br.kind {
-                ty::BrNamed(_, name) => {
-                    let _ = write!(self, "{}", name);
-                    br.kind
+        // If we want to print verbosly, then print *all* binders, even if they
+        // aren't named. Eventually, we might just want this as the default, but
+        // this is not *quite* right and changes the ordering of some output
+        // anyways.
+        let new_value = if self.tcx().sess.verbose() {
+            // anon index + 1 (BrEnv takes 0) -> name
+            let mut region_map: BTreeMap<u32, Symbol> = BTreeMap::default();
+            let bound_vars = value.bound_vars();
+            for var in bound_vars {
+                match var {
+                    ty::BoundVariableKind::Region(ty::BrNamed(_, name)) => {
+                        let _ = start_or_continue(&mut self, "for<", ", ");
+                        let _ = write!(self, "{}", name);
+                    }
+                    ty::BoundVariableKind::Region(ty::BrAnon(i)) => {
+                        let _ = start_or_continue(&mut self, "for<", ", ");
+                        let name = loop {
+                            let name = name_by_region_index(region_index);
+                            region_index += 1;
+                            if !self.used_region_names.contains(&name) {
+                                break name;
+                            }
+                        };
+                        let _ = write!(self, "{}", name);
+                        region_map.insert(i + 1, name);
+                    }
+                    ty::BoundVariableKind::Region(ty::BrEnv) => {
+                        let _ = start_or_continue(&mut self, "for<", ", ");
+                        let name = loop {
+                            let name = name_by_region_index(region_index);
+                            region_index += 1;
+                            if !self.used_region_names.contains(&name) {
+                                break name;
+                            }
+                        };
+                        let _ = write!(self, "{}", name);
+                        region_map.insert(0, name);
+                    }
+                    _ => continue,
                 }
-                ty::BrAnon(_) | ty::BrEnv => {
-                    let name = loop {
-                        let name = name_by_region_index(region_index);
-                        region_index += 1;
-                        if !self.used_region_names.contains(&name) {
-                            break name;
-                        }
-                    };
-                    let _ = write!(self, "{}", name);
-                    ty::BrNamed(DefId::local(CRATE_DEF_INDEX), name)
-                }
-            };
-            self.tcx
-                .mk_region(ty::ReLateBound(ty::INNERMOST, ty::BoundRegion { var: br.var, kind }))
-        });
-        start_or_continue(&mut self, "", "> ")?;
+            }
+            start_or_continue(&mut self, "", "> ")?;
+
+            self.tcx.replace_late_bound_regions(value.clone(), |br| {
+                let kind = match br.kind {
+                    ty::BrNamed(_, _) => br.kind,
+                    ty::BrAnon(i) => {
+                        let name = region_map[&(i + 1)];
+                        ty::BrNamed(DefId::local(CRATE_DEF_INDEX), name)
+                    }
+                    ty::BrEnv => {
+                        let name = region_map[&0];
+                        ty::BrNamed(DefId::local(CRATE_DEF_INDEX), name)
+                    }
+                };
+                self.tcx.mk_region(ty::ReLateBound(
+                    ty::INNERMOST,
+                    ty::BoundRegion { var: br.var, kind },
+                ))
+            })
+        } else {
+            let new_value = self.tcx.replace_late_bound_regions(value.clone(), |br| {
+                let _ = start_or_continue(&mut self, "for<", ", ");
+                let kind = match br.kind {
+                    ty::BrNamed(_, name) => {
+                        let _ = write!(self, "{}", name);
+                        br.kind
+                    }
+                    ty::BrAnon(_) | ty::BrEnv => {
+                        let name = loop {
+                            let name = name_by_region_index(region_index);
+                            region_index += 1;
+                            if !self.used_region_names.contains(&name) {
+                                break name;
+                            }
+                        };
+                        let _ = write!(self, "{}", name);
+                        ty::BrNamed(DefId::local(CRATE_DEF_INDEX), name)
+                    }
+                };
+                self.tcx.mk_region(ty::ReLateBound(
+                    ty::INNERMOST,
+                    ty::BoundRegion { var: br.var, kind },
+                ))
+            });
+            start_or_continue(&mut self, "", "> ")?;
+            new_value
+        };
 
         self.binder_depth += 1;
         self.region_index = region_index;

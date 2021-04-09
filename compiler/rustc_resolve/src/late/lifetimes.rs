@@ -72,8 +72,8 @@ impl RegionExt for Region {
         let def_id = hir_map.local_def_id(param.hir_id);
         let origin = LifetimeDefOrigin::from_param(param);
         debug!(
-            "Region::late: param={:?} depth={:?} def_id={:?} origin={:?}",
-            param, depth, def_id, origin,
+            "Region::late: idx={:?}, param={:?} depth={:?} def_id={:?} origin={:?}",
+            idx, param, depth, def_id, origin,
         );
         (
             param.name.normalize_to_macros_2_0(),
@@ -326,6 +326,10 @@ enum Scope<'a> {
         s: ScopeRef<'a>,
     },
 
+    TraitRefBoundary {
+        s: ScopeRef<'a>,
+    },
+
     Root,
 }
 
@@ -374,6 +378,7 @@ impl<'a> fmt::Debug for TruncatedScopeDebug<'a> {
                 .field("lifetimes", lifetimes)
                 .field("s", &"..")
                 .finish(),
+            Scope::TraitRefBoundary { s: _ } => f.debug_struct("TraitRefBoundary").finish(),
             Scope::Root => f.debug_struct("Root").finish(),
         }
     }
@@ -877,9 +882,12 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             }
             hir::TyKind::TraitObject(bounds, ref lifetime, _) => {
                 debug!(?bounds, ?lifetime, "TraitObject");
-                for bound in bounds {
-                    self.visit_poly_trait_ref(bound, hir::TraitBoundModifier::None);
-                }
+                let scope = Scope::TraitRefBoundary { s: self.scope };
+                self.with(scope, |_, this| {
+                    for bound in bounds {
+                        this.visit_poly_trait_ref(bound, hir::TraitBoundModifier::None);
+                    }
+                });
                 match lifetime.name {
                     LifetimeName::Implicit => {
                         // For types like `dyn Foo`, we should
@@ -1058,9 +1066,12 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         };
                         this.with(scope, |_old_scope, this| {
                             this.visit_generics(generics);
-                            for bound in bounds {
-                                this.visit_param_bound(bound);
-                            }
+                            let scope = Scope::TraitRefBoundary { s: this.scope };
+                            this.with(scope, |_, this| {
+                                for bound in bounds {
+                                    this.visit_param_bound(bound);
+                                }
+                            })
                         });
                     });
                 } else {
@@ -1074,10 +1085,13 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         from_poly_trait_ref: false,
                     };
                     self.with(scope, |_old_scope, this| {
-                        this.visit_generics(generics);
-                        for bound in bounds {
-                            this.visit_param_bound(bound);
-                        }
+                        let scope = Scope::TraitRefBoundary { s: this.scope };
+                        this.with(scope, |_, this| {
+                            this.visit_generics(generics);
+                            for bound in bounds {
+                                this.visit_param_bound(bound);
+                            }
+                        })
                     });
                 }
             }
@@ -1131,13 +1145,16 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 };
                 self.with(scope, |old_scope, this| {
                     this.check_lifetime_params(old_scope, &generics.params);
-                    this.visit_generics(generics);
-                    for bound in bounds {
-                        this.visit_param_bound(bound);
-                    }
-                    if let Some(ty) = ty {
-                        this.visit_ty(ty);
-                    }
+                    let scope = Scope::TraitRefBoundary { s: this.scope };
+                    this.with(scope, |_, this| {
+                        this.visit_generics(generics);
+                        for bound in bounds {
+                            this.visit_param_bound(bound);
+                        }
+                        if let Some(ty) = ty {
+                            this.visit_ty(ty);
+                        }
+                    })
                 });
                 self.missing_named_lifetime_spots.pop();
             }
@@ -1197,8 +1214,11 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 };
                 self.with(scope, |old_scope, this| {
                     this.check_lifetime_params(old_scope, &generics.params);
-                    this.visit_generics(generics);
-                    this.visit_ty(ty);
+                    let scope = Scope::TraitRefBoundary { s: this.scope };
+                    this.with(scope, |_, this| {
+                        this.visit_generics(generics);
+                        this.visit_ty(ty);
+                    })
                 });
                 self.missing_named_lifetime_spots.pop();
             }
@@ -1292,29 +1312,31 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                             })
                             .unzip();
                     self.map.late_bound_vars.insert(bounded_ty.hir_id, binders.clone());
-                    if !lifetimes.is_empty() {
-                        let next_early_index = self.next_early_index();
-                        let scope = Scope::Binder {
-                            hir_id: bounded_ty.hir_id,
-                            lifetimes,
-                            s: self.scope,
-                            next_early_index,
-                            track_lifetime_uses: true,
-                            opaque_type_parent: false,
-                            from_poly_trait_ref: true,
-                        };
-                        let result = self.with(scope, |old_scope, this| {
-                            this.check_lifetime_params(old_scope, &bound_generic_params);
+                    let scope = Scope::TraitRefBoundary { s: self.scope };
+                    self.with(scope, |_, this| {
+                        if !lifetimes.is_empty() {
+                            let next_early_index = this.next_early_index();
+                            let scope = Scope::Binder {
+                                hir_id: bounded_ty.hir_id,
+                                lifetimes,
+                                s: this.scope,
+                                next_early_index,
+                                track_lifetime_uses: true,
+                                opaque_type_parent: false,
+                                from_poly_trait_ref: true,
+                            };
+                            this.with(scope, |old_scope, this| {
+                                this.check_lifetime_params(old_scope, &bound_generic_params);
+                                this.visit_ty(&bounded_ty);
+                                this.trait_ref_hack = Some(bounded_ty.hir_id);
+                                walk_list!(this, visit_param_bound, bounds);
+                                this.trait_ref_hack = None;
+                            })
+                        } else {
                             this.visit_ty(&bounded_ty);
-                            this.trait_ref_hack = Some(bounded_ty.hir_id);
                             walk_list!(this, visit_param_bound, bounds);
-                            this.trait_ref_hack = None;
-                        });
-                        result
-                    } else {
-                        self.visit_ty(&bounded_ty);
-                        walk_list!(self, visit_param_bound, bounds);
-                    }
+                        }
+                    })
                 }
                 &hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate {
                     ref lifetime,
@@ -1436,6 +1458,12 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     Scope::Supertrait { s, lifetimes } => {
                         supertrait_lifetimes = lifetimes.clone();
                         scope = s;
+                    }
+
+                    Scope::TraitRefBoundary { .. } => {
+                        // We should only see super trait lifetimes if there is a `Binder` above
+                        assert!(supertrait_lifetimes.is_empty());
+                        break vec![];
                     }
 
                     Scope::Binder { hir_id, from_poly_trait_ref, .. } => {
@@ -1653,7 +1681,8 @@ fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body<'_>) {
                 | Scope::Elision { s, .. }
                 | Scope::ObjectLifetimeDefault { s, .. }
                 | Scope::TraitRefHackInner { s, .. }
-                | Scope::Supertrait { s, .. } => {
+                | Scope::Supertrait { s, .. }
+                | Scope::TraitRefBoundary { s, .. } => {
                     scope = s;
                 }
 
@@ -2261,7 +2290,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 | Scope::Elision { s, .. }
                 | Scope::ObjectLifetimeDefault { s, .. }
                 | Scope::TraitRefHackInner { s, .. }
-                | Scope::Supertrait { s, .. } => scope = s,
+                | Scope::Supertrait { s, .. }
+                | Scope::TraitRefBoundary { s, .. } => scope = s,
             }
         }
     }
@@ -2311,6 +2341,24 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     break None;
                 }
 
+                Scope::TraitRefBoundary { s, .. } => {
+                    // We've exited nested poly trait refs; mark that we are no longer in nested trait refs.
+                    // We don't increase the late depth because this isn't a `Binder` scope.
+                    //
+                    // This came up in #83737, which boiled down to a case like this:
+                    //
+                    // ```
+                    // F: for<> Fn(&()) -> Box<dyn for<> Future<Output = ()> + Unpin>,
+                    //                         //  ^^^^^
+
+                    // ```
+                    //
+                    // Here, as we traverse upwards from the `dyn for<>` binder, we want to reset `in_poly_trait_ref`
+                    // to false, so that we avoid excess contaenation when we encounter the outer `for<>`  binder.
+                    in_poly_trait_ref = false;
+                    scope = s;
+                }
+
                 Scope::Binder { ref lifetimes, from_poly_trait_ref, s, .. } => {
                     match lifetime_ref.name {
                         LifetimeName::Param(param_name) => {
@@ -2332,6 +2380,17 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         // We've already seen a binder that is a poly trait ref and this one is too,
                         // that means that they are nested and we are concatenating the bound vars;
                         // don't increase the late depth.
+                        //
+                        // This happens specifically with associated trait bounds like the following:
+                        //
+                        // ```
+                        // for<'a> T: Iterator<Item: for<'b> Foo<'a, 'b>>
+                        // ```
+                        //
+                        // In this case, as we traverse `for<'b>`, we would increment `late_depth` but
+                        // set `in_poly_trait_ref` to true. Then when we traverse `for<'a>`, we would
+                        // not increment `late_depth` again. (NB: Niko thinks this logic is actually
+                        // wrong.)
                         (true, true) => {}
                         // We've exited nested poly trait refs; add one to the late depth and mark
                         // that we are no longer in nested trait refs
@@ -2504,7 +2563,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         | Scope::Elision { s, .. }
                         | Scope::ObjectLifetimeDefault { s, .. }
                         | Scope::TraitRefHackInner { s, .. }
-                        | Scope::Supertrait { s, .. } => {
+                        | Scope::Supertrait { s, .. }
+                        | Scope::TraitRefBoundary { s, .. } => {
                             scope = s;
                         }
                     }
@@ -2700,7 +2760,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 Scope::Body { id, .. } => break id.hir_id,
                 Scope::ObjectLifetimeDefault { ref s, .. }
                 | Scope::Elision { ref s, .. }
-                | Scope::Supertrait { ref s, .. } => {
+                | Scope::Supertrait { ref s, .. }
+                | Scope::TraitRefBoundary { ref s, .. } => {
                     scope = *s;
                 }
                 Scope::Root => bug!("In fn_like_elision without appropriate scope above"),
@@ -2982,6 +3043,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             self.have_bound_regions = true;
                         }
                         _ => {
+                            // FIXME(jackh726): nested trait refs?
                             self.lifetimes.insert(lifetime.shifted_out_to_binder(self.outer_index));
                         }
                     }
@@ -3047,6 +3109,13 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
                 Scope::Root => break None,
 
+                Scope::TraitRefBoundary { s, .. } => {
+                    // We've exited nested poly trait refs; mark that we are no longer in nested trait refs.
+                    // We don't increase the late depth because this isn't a `Binder` scope
+                    in_poly_trait_ref = false;
+                    scope = s;
+                }
+
                 Scope::Binder { s, ref lifetimes, from_poly_trait_ref, .. } => {
                     // collect named lifetimes for suggestions
                     for name in lifetimes.keys() {
@@ -3100,7 +3169,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                                         scope = s;
                                     }
                                     Scope::ObjectLifetimeDefault { ref s, .. }
-                                    | Scope::Elision { ref s, .. } => {
+                                    | Scope::Elision { ref s, .. }
+                                    | Scope::TraitRefBoundary { ref s, .. } => {
                                         scope = s;
                                     }
                                     _ => break,
@@ -3228,6 +3298,13 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         let mut scope = self.scope;
         let lifetime = loop {
             match *scope {
+                Scope::TraitRefBoundary { s, .. } => {
+                    // We've exited nested poly trait refs; mark that we are no longer in nested trait refs.
+                    // We don't increase the late depth because this isn't a `Binder` scope
+                    in_poly_trait_ref = false;
+                    scope = s;
+                }
+
                 Scope::Binder { s, from_poly_trait_ref, .. } => {
                     match (from_poly_trait_ref, in_poly_trait_ref) {
                         (true, false) => {
@@ -3380,7 +3457,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 | Scope::Elision { s, .. }
                 | Scope::ObjectLifetimeDefault { s, .. }
                 | Scope::TraitRefHackInner { s, .. }
-                | Scope::Supertrait { s, .. } => {
+                | Scope::Supertrait { s, .. }
+                | Scope::TraitRefBoundary { s, .. } => {
                     old_scope = s;
                 }
 
@@ -3438,7 +3516,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
                 Scope::ObjectLifetimeDefault { s, .. }
                 | Scope::TraitRefHackInner { s, .. }
-                | Scope::Supertrait { s, .. } => scope = s,
+                | Scope::Supertrait { s, .. }
+                | Scope::TraitRefBoundary { s, .. } => scope = s,
             }
         }
     }
@@ -3492,13 +3571,12 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 /// "Constrained" basically means that it appears in any type but
 /// not amongst the inputs to a projection. In other words, `<&'a
 /// T as Trait<''b>>::Foo` does not constrain `'a` or `'b`.
+#[tracing::instrument(level = "debug", skip(map))]
 fn insert_late_bound_lifetimes(
     map: &mut NamedRegionMap,
     decl: &hir::FnDecl<'_>,
     generics: &hir::Generics<'_>,
 ) {
-    debug!("insert_late_bound_lifetimes(decl={:?}, generics={:?})", decl, generics);
-
     let mut constrained_by_input = ConstrainedCollector::default();
     for arg_ty in decl.inputs {
         constrained_by_input.visit_ty(arg_ty);
@@ -3507,7 +3585,7 @@ fn insert_late_bound_lifetimes(
     let mut appears_in_output = AllCollector::default();
     intravisit::walk_fn_ret_ty(&mut appears_in_output, &decl.output);
 
-    debug!("insert_late_bound_lifetimes: constrained_by_input={:?}", constrained_by_input.regions);
+    debug!(?constrained_by_input.regions);
 
     // Walk the lifetimes that appear in where clauses.
     //
@@ -3527,10 +3605,7 @@ fn insert_late_bound_lifetimes(
         }
     }
 
-    debug!(
-        "insert_late_bound_lifetimes: appears_in_where_clause={:?}",
-        appears_in_where_clause.regions
-    );
+    debug!(?appears_in_where_clause.regions);
 
     // Late bound regions are those that:
     // - appear in the inputs
@@ -3557,11 +3632,7 @@ fn insert_late_bound_lifetimes(
             continue;
         }
 
-        debug!(
-            "insert_late_bound_lifetimes: lifetime {:?} with id {:?} is late-bound",
-            param.name.ident(),
-            param.hir_id
-        );
+        debug!("lifetime {:?} with id {:?} is late-bound", param.name.ident(), param.hir_id);
 
         let inserted = map.late_bound.insert(param.hir_id);
         assert!(inserted, "visited lifetime {:?} twice", param.hir_id);
