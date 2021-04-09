@@ -411,6 +411,10 @@ impl server::FreeFunctions for Rustc<'_> {
     fn track_env_var(&mut self, var: &str, value: Option<&str>) {
         self.sess.env_depinfo.borrow_mut().insert((Symbol::intern(var), value.map(Symbol::intern)));
     }
+
+    fn track_path(&mut self, path: &str) {
+        self.sess.file_depinfo.borrow_mut().insert(Symbol::intern(path));
+    }
 }
 
 impl server::TokenStream for Rustc<'_> {
