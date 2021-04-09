@@ -124,6 +124,9 @@ static cl::opt<int>
     EnzymeInlineCount("enzyme-inline-count", cl::init(10000), cl::Hidden,
                       cl::desc("Limit of number of functions to inline"));
 
+cl::opt<bool> EnzymeCoalese("enzyme-coalese", cl::init(false), cl::Hidden,
+                            cl::desc("Whether to coalese memory allocations"));
+
 #if LLVM_VERSION_MAJOR >= 8
 static cl::opt<bool> EnzymePHIRestructure(
     "enzyme-phi-restructure", cl::init(false), cl::Hidden,
@@ -1574,6 +1577,8 @@ void PreProcessCache::optimizeIntermediate(Function *F) {
     PreservedAnalyses PA;
     FAM.invalidate(*F, PA);
   }
+  if (EnzymeCoalese)
+    CoaleseTrivialMallocs(*F, FAM.getResult<DominatorTreeAnalysis>(*F));
   // DCEPass().run(*F, AM);
 }
 
