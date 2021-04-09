@@ -84,6 +84,16 @@ fn type_len(t: &str) -> usize {
     }
 }
 
+fn type_bits(t: &str) -> usize {
+    match t {
+        "int8x8_t" | "int8x16_t" | "uint8x8_t" | "uint8x16_t" | "poly8x8_t" | "poly8x16_t" => 8,
+        "int16x4_t" | "int16x8_t" | "uint16x4_t" | "uint16x8_t" | "poly16x4_t" | "poly16x8_t" => 16,
+        "int32x2_t" | "int32x4_t" | "uint32x2_t" | "uint32x4_t" => 32,
+        "int64x1_t" | "int64x2_t" | "uint64x1_t" | "uint64x2_t" | "poly64x1_t" | "poly64x2_t" => 64,
+        _ => panic!("unknown type: {}", t),
+    }
+}
+
 fn type_exp_len(t: &str) -> usize {
     match t {
         "int8x8_t" => 3,
@@ -118,6 +128,16 @@ fn type_exp_len(t: &str) -> usize {
     }
 }
 
+fn type_bits_exp_len(t: &str) -> usize {
+    match t {
+        "int8x8_t" | "int8x16_t" | "uint8x8_t" | "uint8x16_t" | "poly8x8_t" | "poly8x16_t" => 3,
+        "int16x4_t" | "int16x8_t" | "uint16x4_t" | "uint16x8_t" | "poly16x4_t" | "poly16x8_t" => 4,
+        "int32x2_t" | "int32x4_t" | "uint32x2_t" | "uint32x4_t" => 5,
+        "int64x1_t" | "int64x2_t" | "uint64x1_t" | "uint64x2_t" | "poly64x1_t" | "poly64x2_t" => 6,
+        _ => panic!("unknown type: {}", t),
+    }
+}
+
 fn type_to_suffix(t: &str) -> &str {
     match t {
         "int8x8_t" => "_s8",
@@ -148,6 +168,40 @@ fn type_to_suffix(t: &str) -> &str {
         "poly16x8_t" => "q_p16",
         "poly64x1_t" => "_p64",
         "poly64x2_t" => "q_p64",
+        _ => panic!("unknown type: {}", t),
+    }
+}
+
+fn type_to_n_suffix(t: &str) -> &str {
+    match t {
+        "int8x8_t" => "_n_s8",
+        "int8x16_t" => "q_n_s8",
+        "int16x4_t" => "_n_s16",
+        "int16x8_t" => "q_n_s16",
+        "int32x2_t" => "_n_s32",
+        "int32x4_t" => "q_n_s32",
+        "int64x1_t" => "_n_s64",
+        "int64x2_t" => "q_n_s64",
+        "uint8x8_t" => "_n_u8",
+        "uint8x16_t" => "q_n_u8",
+        "uint16x4_t" => "_n_u16",
+        "uint16x8_t" => "q_n_u16",
+        "uint32x2_t" => "_n_u32",
+        "uint32x4_t" => "q_n_u32",
+        "uint64x1_t" => "_n_u64",
+        "uint64x2_t" => "q_n_u64",
+        "float16x4_t" => "_n_f16",
+        "float16x8_t" => "q_n_f16",
+        "float32x2_t" => "_n_f32",
+        "float32x4_t" => "q_n_f32",
+        "float64x1_t" => "_n_f64",
+        "float64x2_t" => "q_n_f64",
+        "poly8x8_t" => "_n_p8",
+        "poly8x16_t" => "q_n_p8",
+        "poly16x4_t" => "_n_p16",
+        "poly16x8_t" => "q_n_p16",
+        "poly64x1_t" => "_n_p64",
+        "poly64x2_t" => "q_n_p64",
         _ => panic!("unknown type: {}", t),
     }
 }
@@ -243,6 +297,8 @@ enum Suffix {
     Double,
     NoQ,
     NoQDouble,
+    NSuffix,
+    OutSuffix,
 }
 
 #[derive(Clone, Copy)]
@@ -673,6 +729,8 @@ fn gen_aarch64(
             current_name,
             type_to_noq_double_suffixes(out_t, in_t[1])
         ),
+        NSuffix => format!("{}{}", current_name, type_to_n_suffix(in_t[1])),
+        OutSuffix => format!("{}{}", current_name, type_to_suffix(out_t)),
     };
     let current_fn = if let Some(current_fn) = current_fn.clone() {
         if link_aarch64.is_some() {
@@ -988,6 +1046,8 @@ fn gen_arm(
             current_name,
             type_to_noq_double_suffixes(out_t, in_t[1])
         ),
+        NSuffix => format!("{}{}", current_name, type_to_n_suffix(in_t[1])),
+        OutSuffix => format!("{}{}", current_name, type_to_suffix(out_t)),
     };
     let current_aarch64 = current_aarch64
         .clone()
@@ -1298,11 +1358,13 @@ fn get_call(
         let start = match &*fn_format[1] {
             "0" => 0,
             "n" => n.unwrap(),
+            "halflen" => type_half_len_str(in_t[1]).parse::<i32>().unwrap(),
             s => s.parse::<i32>().unwrap(),
         };
         let len = match &*fn_format[2] {
             "out_len" => type_len(out_t),
             "in_len" => type_len(in_t[1]),
+            "halflen" => type_half_len_str(in_t[1]).parse::<usize>().unwrap(),
             _ => 0,
         };
         return asc(start, len);
@@ -1311,11 +1373,33 @@ fn get_call(
         let fn_format: Vec<_> = fn_name.split('-').map(|v| v.to_string()).collect();
         let len = match &*fn_format[1] {
             "out_exp_len" => type_exp_len(out_t),
+            "out_bits_exp_len" => type_bits_exp_len(out_t),
             "in_exp_len" => type_exp_len(in_t[1]),
+            "in_bits_exp_len" => type_bits_exp_len(in_t[1]),
             _ => 0,
         };
-        let sa = format!(r#"static_assert_imm{}!({});"#, len, fn_format[2]);
-        return sa;
+        return format!(r#"static_assert_imm{}!({});"#, len, fn_format[2]);
+    }
+    if fn_name.starts_with("static_assert") {
+        let fn_format: Vec<_> = fn_name.split('-').map(|v| v.to_string()).collect();
+        let lim1 = if fn_format[2] == "bits" {
+            type_bits(in_t[1]).to_string()
+        } else if fn_format[2] == "halfbits" {
+            (type_bits(in_t[1]) / 2).to_string()
+        } else {
+            fn_format[2].clone()
+        };
+        let lim2 = if fn_format[3] == "bits" {
+            type_bits(in_t[1]).to_string()
+        } else if fn_format[3] == "halfbits" {
+            (type_bits(in_t[1]) / 2).to_string()
+        } else {
+            fn_format[3].clone()
+        };
+        return format!(
+            r#"static_assert!({} : i32 where {} >= {} && {} <= {});"#,
+            fn_format[1], fn_format[1], lim1, fn_format[1], lim2
+        );
     }
     if fn_name.starts_with("matchn") {
         let fn_format: Vec<_> = fn_name.split('-').map(|v| v.to_string()).collect();
@@ -1430,6 +1514,8 @@ fn get_call(
         };
         if fn_format[1] == "self" {
             fn_name.push_str(type_to_suffix(in_t[1]));
+        } else if fn_format[1] == "nself" {
+            fn_name.push_str(type_to_n_suffix(in_t[1]));
         } else if fn_format[1] == "signed" {
             fn_name.push_str(type_to_signed_suffix(in_t[1]));
         } else if fn_format[1] == "unsigned" {
@@ -1445,11 +1531,16 @@ fn get_call(
             fn_name.push_str(&type_len(in_t[1]).to_string());
         } else if fn_format[1] == "out_len" {
             fn_name.push_str(&type_len(out_t).to_string());
+        } else if fn_format[1] == "nout" {
+            fn_name.push_str(type_to_n_suffix(out_t));
         } else {
             fn_name.push_str(&fn_format[1]);
         };
         if fn_format[2] == "ext" {
             fn_name.push_str("_");
+        } else if fn_format[2] == "noext" {
+        } else {
+            fn_name.push_str(&fn_format[2]);
         }
     }
     if param_str.is_empty() {
@@ -1595,6 +1686,10 @@ mod test {
             suffix = NoQ;
         } else if line.starts_with("noq-double-suffixes") {
             suffix = NoQDouble;
+        } else if line.starts_with("n-suffix") {
+            suffix = NSuffix;
+        } else if line.starts_with("out-suffix") {
+            suffix = OutSuffix;
         } else if line.starts_with("a = ") {
             a = line[4..].split(',').map(|v| v.trim().to_string()).collect();
         } else if line.starts_with("b = ") {

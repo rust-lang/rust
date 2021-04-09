@@ -10,6 +10,7 @@ use crate::mem::align_of;
 use crate::{
     core_arch::simd::*, core_arch::simd_llvm::*, hint::unreachable_unchecked, mem::transmute,
 };
+use core::convert::TryInto;
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
@@ -4411,70 +4412,6 @@ pub unsafe fn vmovq_n_f32(value: f32) -> float32x4_t {
     vdupq_n_f32(value)
 }
 
-/// Unsigned shift right
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vshr.u8", IMM3 = 1))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr("ushr", IMM3 = 1))]
-#[rustc_legacy_const_generics(1)]
-pub unsafe fn vshrq_n_u8<const IMM3: i32>(a: uint8x16_t) -> uint8x16_t {
-    if IMM3 < 0 || IMM3 > 7 {
-        unreachable_unchecked();
-    } else {
-        uint8x16_t(
-            a.0 >> IMM3,
-            a.1 >> IMM3,
-            a.2 >> IMM3,
-            a.3 >> IMM3,
-            a.4 >> IMM3,
-            a.5 >> IMM3,
-            a.6 >> IMM3,
-            a.7 >> IMM3,
-            a.8 >> IMM3,
-            a.9 >> IMM3,
-            a.10 >> IMM3,
-            a.11 >> IMM3,
-            a.12 >> IMM3,
-            a.13 >> IMM3,
-            a.14 >> IMM3,
-            a.15 >> IMM3,
-        )
-    }
-}
-
-/// Shift right
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vshl.s8", IMM3 = 1))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shl, IMM3 = 1))]
-#[rustc_legacy_const_generics(1)]
-pub unsafe fn vshlq_n_u8<const IMM3: i32>(a: uint8x16_t) -> uint8x16_t {
-    if IMM3 < 0 || IMM3 > 7 {
-        unreachable_unchecked();
-    } else {
-        uint8x16_t(
-            a.0 << IMM3,
-            a.1 << IMM3,
-            a.2 << IMM3,
-            a.3 << IMM3,
-            a.4 << IMM3,
-            a.5 << IMM3,
-            a.6 << IMM3,
-            a.7 << IMM3,
-            a.8 << IMM3,
-            a.9 << IMM3,
-            a.10 << IMM3,
-            a.11 << IMM3,
-            a.12 << IMM3,
-            a.13 << IMM3,
-            a.14 << IMM3,
-            a.15 << IMM3,
-        )
-    }
-}
-
 /// Extract vector from pair of vectors
 #[inline]
 #[target_feature(enable = "neon")]
@@ -5906,22 +5843,6 @@ mod tests {
         let v = i16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
         let r = vgetq_lane_u16::<1>(transmute(v));
         assert_eq!(r, 2);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vshrq_n_u8() {
-        let a = u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
-        let e = u8x16::new(0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4);
-        let r: u8x16 = transmute(vshrq_n_u8::<2>(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vshlq_n_u8() {
-        let a = u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
-        let e = u8x16::new(4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64);
-        let r: u8x16 = transmute(vshlq_n_u8::<2>(transmute(a)));
-        assert_eq!(r, e);
     }
 
     #[simd_test(enable = "neon")]

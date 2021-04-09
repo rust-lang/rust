@@ -2058,6 +2058,124 @@ aarch64 = str
 generate float32x2_t:float64x1_t, float64x1_t:float32x2_t
 generate float32x4_t:float64x2_t, float64x2_t:float32x4_t
 
+/// Signed Shift left
+name = vshl
+a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+validate 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64
+
+arm = vshl
+link-arm = vshifts._EXT_
+aarch64 = sshl
+link-aarch64 = sshl._EXT_
+generate int*_t, int64x*_t
+
+/// Unsigned Shift left
+name = vshl
+out-suffix
+a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+validate 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64
+
+arm = vshl
+link-arm = vshiftu._EXT_
+aarch64 = ushl
+link-aarch64 = ushl._EXT_
+generate uint8x8_t:int8x8_t:uint8x8_t, uint8x16_t:int8x16_t:uint8x16_t, uint16x4_t:int16x4_t:uint16x4_t, uint16x8_t:int16x8_t:uint16x8_t
+generate uint32x2_t:int32x2_t:uint32x2_t, uint32x4_t:int32x4_t:uint32x4_t, uint64x1_t:int64x1_t:uint64x1_t, uint64x2_t:int64x2_t:uint64x2_t
+
+/// Shift left
+name = vshl
+n-suffix
+constn = N
+multi_fn = static_assert_imm-out_bits_exp_len-N
+multi_fn = simd_shl, a, {vdup-nself-noext, N.try_into().unwrap()}
+a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+n = 2
+validate 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64
+
+arm = vshl
+aarch64 = shl
+generate int*_t, uint*_t, int64x*_t, uint64x*_t
+
+/// Signed shift left long
+name = vshll
+n-suffix
+constn = N
+multi_fn = static_assert-N-0-bits
+multi_fn = simd_shl, {simd_cast, a}, {vdup-nout-noext, N.try_into().unwrap()}
+a = 1, 2, 3, 4, 5, 6, 7, 8
+n = 2
+validate 4, 8, 12, 16, 20, 24, 28, 32
+
+arm = vshll.s
+aarch64 = sshll
+generate int8x8_t:int16x8_t, int16x4_t:int32x4_t, int32x2_t:int64x2_t
+aarch64 = ushll
+generate uint8x8_t:uint16x8_t, uint16x4_t:uint32x4_t, uint32x2_t:uint64x2_t
+
+/// Signed shift left long
+name = vshll_high_n
+no-q
+constn = N
+multi_fn = static_assert-N-0-bits
+multi_fn = simd_shuffle-out_len-noext, b:half, a, a, {asc-halflen-halflen}
+multi_fn = vshll_n-noqself-::<N>, b
+a = 0, 0, 1, 2, 1, 2, 3, 4, 1, 2, 3, 4, 5, 6, 7, 8
+n = 2
+validate 4, 8, 12, 16, 20, 24, 28, 32
+
+aarch64 = sshll2
+generate int8x16_t:int16x8_t, int16x8_t:int32x4_t, int32x4_t:int64x2_t
+aarch64 = ushll2
+generate uint8x16_t:uint16x8_t, uint16x8_t:uint32x4_t, uint32x4_t:uint64x2_t
+
+/// Shift right
+name = vshr
+n-suffix
+constn = N
+multi_fn = static_assert-N-1-bits
+multi_fn = simd_shr, a, {vdup-nself-noext, N.try_into().unwrap()}
+a = 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64
+n = 2
+validate 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+
+arm = vshr.s
+aarch64 = sshr
+generate int*_t, int64x*_t
+aarch64 = ushr
+generate uint*_t, uint64x*_t
+
+/// Shift right narrow
+name = vshrn_n
+no-q
+constn = N
+multi_fn = static_assert-N-1-halfbits
+multi_fn = simd_cast, {simd_shr, a, {vdup-nself-noext, N.try_into().unwrap()}}
+a = 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64
+n = 2
+validate 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+
+arm = vshrn.
+aarch64 = shrn
+generate int16x8_t:int8x8_t, int32x4_t:int16x4_t, int64x2_t:int32x2_t
+generate uint16x8_t:uint8x8_t, uint32x4_t:uint16x4_t, uint64x2_t:uint32x2_t
+
+/// Shift right narrow
+name = vshrn_high_n
+no-q
+constn = N
+multi_fn = static_assert-N-1-halfbits
+multi_fn = simd_shuffle-out_len-noext, a, {vshrn_n-noqself-::<N>, b}, {asc-0-out_len}
+a = 1, 2, 5, 6, 5, 6, 7, 8
+b = 20, 24, 28, 32, 52, 56, 60, 64
+n = 2
+validate 1, 2, 5, 6, 5, 6, 7, 8, 5, 6, 7, 8, 13, 14, 15, 16
+
+aarch64 = shrn2
+generate int8x8_t:int16x8_t:int8x16_t, int16x4_t:int32x4_t:int16x8_t, int32x2_t:int64x2_t:int32x4_t
+generate uint8x8_t:uint16x8_t:uint8x16_t, uint16x4_t:uint32x4_t:uint16x8_t, uint32x2_t:uint64x2_t:uint32x4_t
+
 /// Transpose vectors
 name = vtrn1
 multi_fn = simd_shuffle-in_len-noext, a, b, {transpose-1-in_len}
