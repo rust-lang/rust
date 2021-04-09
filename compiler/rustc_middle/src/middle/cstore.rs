@@ -6,6 +6,8 @@ use crate::ty::TyCtxt;
 
 use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{self, MetadataRef};
 use rustc_hir::def::DefKind;
@@ -272,12 +274,16 @@ pub struct HashAndState<T> {
     /// This field is private, and never needs to be accessed by callers of `crate_hash`
     /// or `host_crate_hash`. Its sole purpose is to be hashed as part of the
     /// `HashStable` impl, so that its value influences the hash used by incremental compilation.
-    real_rust_source_base_dir: Option<PathBuf>,
+    real_rust_source_base_dir: Fingerprint,
 }
 
 impl<T> HashAndState<T> {
     pub fn new(tcx: TyCtxt<'tcx>, svh: T) -> HashAndState<T> {
-        HashAndState { svh, real_rust_source_base_dir: tcx.sess.real_rust_source_base_dir.clone() }
+        let mut hasher = StableHasher::new();
+        let mut hcx = tcx.create_stable_hashing_context();
+        tcx.sess.real_rust_source_base_dir.hash_stable(&mut hcx, &mut hasher);
+        let real_rust_source_base_dir = hasher.finish();
+        HashAndState { svh, real_rust_source_base_dir }
     }
 }
 
