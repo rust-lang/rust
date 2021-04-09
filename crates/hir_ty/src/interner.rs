@@ -412,3 +412,12 @@ impl chalk_ir::interner::Interner for Interner {
 impl chalk_ir::interner::HasInterner for Interner {
     type Interner = Self;
 }
+
+#[macro_export]
+macro_rules! has_interner {
+    ($t:ty) => {
+        impl HasInterner for $t {
+            type Interner = crate::Interner;
+        }
+    };
+}

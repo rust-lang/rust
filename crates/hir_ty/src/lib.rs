@@ -7,25 +7,23 @@ macro_rules! eprintln {
 }
 
 mod autoderef;
-pub mod primitive;
-pub mod traits;
-pub mod method_resolution;
-mod op;
-mod lower;
-pub(crate) mod infer;
-pub(crate) mod utils;
-mod chalk_cast;
-mod chalk_ext;
 mod builder;
-mod walk;
-mod tls;
-mod interner;
-mod mapping;
 mod chalk_db;
-
-pub mod display;
+mod chalk_ext;
+mod infer;
+mod interner;
+mod lower;
+mod mapping;
+mod op;
+mod tls;
+mod utils;
+mod walk;
 pub mod db;
 pub mod diagnostics;
+pub mod display;
+pub mod method_resolution;
+pub mod primitive;
+pub mod traits;
 
 #[cfg(test)]
 mod tests;
@@ -100,6 +98,10 @@ pub type ConstValue = chalk_ir::ConstValue<Interner>;
 pub type ConcreteConst = chalk_ir::ConcreteConst<Interner>;
 
 pub type ChalkTraitId = chalk_ir::TraitId<Interner>;
+pub type TraitRef = chalk_ir::TraitRef<Interner>;
+pub type QuantifiedWhereClause = Binders<WhereClause>;
+pub type QuantifiedWhereClauses = chalk_ir::QuantifiedWhereClauses<Interner>;
+pub type Canonical<T> = chalk_ir::Canonical<T>;
 
 pub type FnSig = chalk_ir::FnSig<Interner>;
 
@@ -159,14 +161,6 @@ pub fn make_canonical<T: HasInterner<Interner = Interner>>(
     Canonical { value, binders: chalk_ir::CanonicalVarKinds::from_iter(&Interner, kinds) }
 }
 
-pub type TraitRef = chalk_ir::TraitRef<Interner>;
-
-pub type QuantifiedWhereClause = Binders<WhereClause>;
-
-pub type QuantifiedWhereClauses = chalk_ir::QuantifiedWhereClauses<Interner>;
-
-pub type Canonical<T> = chalk_ir::Canonical<T>;
-
 /// A function signature as seen by type inference: Several parameter types and
 /// one return type.
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -174,6 +168,8 @@ pub struct CallableSig {
     params_and_return: Arc<[Ty]>,
     is_varargs: bool,
 }
+
+has_interner!(CallableSig);
 
 /// A polymorphic function signature.
 pub type PolyFnSig = Binders<CallableSig>;
@@ -237,6 +233,8 @@ pub enum ImplTraitId {
 pub struct ReturnTypeImplTraits {
     pub(crate) impl_traits: Vec<ReturnTypeImplTrait>,
 }
+
+has_interner!(ReturnTypeImplTraits);
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) struct ReturnTypeImplTrait {
