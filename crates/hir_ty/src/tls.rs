@@ -5,7 +5,8 @@ use chalk_ir::{AliasTy, GenericArg, Goal, Goals, Lifetime, ProgramClauseImplicat
 use itertools::Itertools;
 
 use crate::{
-    chalk_db, db::HirDatabase, from_assoc_type_id, mapping::from_chalk, CallableDefId, Interner,
+    chalk_db, db::HirDatabase, from_assoc_type_id, from_chalk_trait_id, mapping::from_chalk,
+    CallableDefId, Interner,
 };
 use hir_def::{AdtId, AssocContainerId, Lookup, TypeAliasId};
 
@@ -32,7 +33,7 @@ impl DebugContext<'_> {
         id: chalk_db::TraitId,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Result<(), fmt::Error> {
-        let trait_: hir_def::TraitId = from_chalk(self.0, id);
+        let trait_: hir_def::TraitId = from_chalk_trait_id(id);
         let trait_data = self.0.trait_data(trait_);
         write!(fmt, "{}", trait_data.name)
     }

@@ -17,7 +17,7 @@ use hir_expand::name::name;
 use crate::{
     db::HirDatabase,
     display::HirDisplay,
-    from_assoc_type_id, make_only_type_binders,
+    from_assoc_type_id, from_chalk_trait_id, make_only_type_binders,
     mapping::{from_chalk, ToChalk, TypeAliasAsValue},
     method_resolution::{TyFingerprint, ALL_FLOAT_FPS, ALL_INT_FPS},
     to_assoc_type_id, to_chalk_trait_id,
@@ -79,7 +79,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         binders: &CanonicalVarKinds<Interner>,
     ) -> Vec<ImplId> {
         debug!("impls_for_trait {:?}", trait_id);
-        let trait_: hir_def::TraitId = from_chalk(self.db, trait_id);
+        let trait_: hir_def::TraitId = from_chalk_trait_id(trait_id);
 
         let ty: Ty = parameters[0].assert_ty_ref(&Interner).clone();
 
@@ -161,7 +161,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
             Some(LangItemTarget::TraitId(trait_)) => trait_,
             _ => return None,
         };
-        Some(trait_.to_chalk(self.db))
+        Some(to_chalk_trait_id(trait_))
     }
 
     fn program_clauses_for_env(
@@ -308,7 +308,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
     }
 
     fn trait_name(&self, trait_id: chalk_ir::TraitId<Interner>) -> String {
-        let id = from_chalk(self.db, trait_id);
+        let id = from_chalk_trait_id(trait_id);
         self.db.trait_data(id).name.to_string()
     }
     fn adt_name(&self, chalk_ir::AdtId(adt_id): AdtId) -> String {
@@ -413,7 +413,7 @@ pub(crate) fn trait_datum_query(
     trait_id: TraitId,
 ) -> Arc<TraitDatum> {
     debug!("trait_datum {:?}", trait_id);
-    let trait_: hir_def::TraitId = from_chalk(db, trait_id);
+    let trait_ = from_chalk_trait_id(trait_id);
     let trait_data = db.trait_data(trait_);
     debug!("trait {:?} = {:?}", trait_id, trait_data.name);
     let generic_params = generics(db.upcast(), trait_.into());
@@ -723,7 +723,10 @@ pub(super) fn generic_predicate_to_inline_bound(
                 .collect();
             let alias_eq_bound = rust_ir::AliasEqBound {
                 value: ty.clone(),
-                trait_bound: rust_ir::TraitBound { trait_id: trait_.to_chalk(db), args_no_self },
+                trait_bound: rust_ir::TraitBound {
+                    trait_id: to_chalk_trait_id(trait_),
+                    args_no_self,
+                },
                 associated_ty_id: projection_ty.associated_ty_id,
                 parameters: Vec::new(), // FIXME we don't support generic associated types yet
             };

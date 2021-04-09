@@ -5,10 +5,13 @@
 
 use chalk_solve::rust_ir;
 
-use base_db::salsa::InternKey;
-use hir_def::TypeAliasId;
+use base_db::salsa::{self, InternKey};
+use hir_def::{ConstParamId, LifetimeParamId, TraitId, TypeAliasId, TypeParamId};
 
-use crate::{chalk_db, db::HirDatabase, CallableDefId, FnDefId, Interner, OpaqueTyId};
+use crate::{
+    chalk_db, db::HirDatabase, AssocTypeId, CallableDefId, ChalkTraitId, FnDefId, ForeignDefId,
+    Interner, OpaqueTyId, PlaceholderIndex,
+};
 
 pub(crate) trait ToChalk {
     type Chalk;
@@ -21,18 +24,6 @@ where
     T: ToChalk<Chalk = ChalkT>,
 {
     T::from_chalk(db, chalk)
-}
-
-impl ToChalk for hir_def::TraitId {
-    type Chalk = chalk_db::TraitId;
-
-    fn to_chalk(self, _db: &dyn HirDatabase) -> chalk_db::TraitId {
-        chalk_ir::TraitId(self.as_intern_id())
-    }
-
-    fn from_chalk(_db: &dyn HirDatabase, trait_id: chalk_db::TraitId) -> hir_def::TraitId {
-        InternKey::from_intern_id(trait_id.0)
-    }
 }
 
 impl ToChalk for hir_def::ImplId {
@@ -110,4 +101,54 @@ impl From<crate::db::InternedClosureId> for chalk_ir::ClosureId<Interner> {
     fn from(id: crate::db::InternedClosureId) -> Self {
         chalk_ir::ClosureId(id.as_intern_id())
     }
+}
+
+pub fn to_foreign_def_id(id: TypeAliasId) -> ForeignDefId {
+    chalk_ir::ForeignDefId(salsa::InternKey::as_intern_id(&id))
+}
+
+pub fn from_foreign_def_id(id: ForeignDefId) -> TypeAliasId {
+    salsa::InternKey::from_intern_id(id.0)
+}
+
+pub fn to_assoc_type_id(id: TypeAliasId) -> AssocTypeId {
+    chalk_ir::AssocTypeId(salsa::InternKey::as_intern_id(&id))
+}
+
+pub fn from_assoc_type_id(id: AssocTypeId) -> TypeAliasId {
+    salsa::InternKey::from_intern_id(id.0)
+}
+
+pub fn from_placeholder_idx(db: &dyn HirDatabase, idx: PlaceholderIndex) -> TypeParamId {
+    assert_eq!(idx.ui, chalk_ir::UniverseIndex::ROOT);
+    let interned_id = salsa::InternKey::from_intern_id(salsa::InternId::from(idx.idx));
+    db.lookup_intern_type_param_id(interned_id)
+}
+
+pub fn to_placeholder_idx(db: &dyn HirDatabase, id: TypeParamId) -> PlaceholderIndex {
+    let interned_id = db.intern_type_param_id(id);
+    PlaceholderIndex {
+        ui: chalk_ir::UniverseIndex::ROOT,
+        idx: salsa::InternKey::as_intern_id(&interned_id).as_usize(),
+    }
+}
+
+pub fn lt_from_placeholder_idx(db: &dyn HirDatabase, idx: PlaceholderIndex) -> LifetimeParamId {
+    assert_eq!(idx.ui, chalk_ir::UniverseIndex::ROOT);
+    let interned_id = salsa::InternKey::from_intern_id(salsa::InternId::from(idx.idx));
+    db.lookup_intern_lifetime_param_id(interned_id)
+}
+
+pub fn const_from_placeholder_idx(db: &dyn HirDatabase, idx: PlaceholderIndex) -> ConstParamId {
+    assert_eq!(idx.ui, chalk_ir::UniverseIndex::ROOT);
+    let interned_id = salsa::InternKey::from_intern_id(salsa::InternId::from(idx.idx));
+    db.lookup_intern_const_param_id(interned_id)
+}
+
+pub fn to_chalk_trait_id(id: TraitId) -> ChalkTraitId {
+    chalk_ir::TraitId(salsa::InternKey::as_intern_id(&id))
+}
+
+pub fn from_chalk_trait_id(id: ChalkTraitId) -> TraitId {
+    salsa::InternKey::from_intern_id(id.0)
 }

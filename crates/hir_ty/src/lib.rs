@@ -34,16 +34,12 @@ mod test_db;
 
 use std::sync::Arc;
 
-use base_db::salsa;
 use chalk_ir::{
     fold::{Fold, Shift},
     interner::HasInterner,
     UintTy,
 };
-use hir_def::{
-    expr::ExprId, type_ref::Rawness, ConstParamId, LifetimeParamId, TraitId, TypeAliasId,
-    TypeParamId,
-};
+use hir_def::{expr::ExprId, type_ref::Rawness, TypeParamId};
 
 use crate::{db::HirDatabase, display::HirDisplay, utils::generics};
 
@@ -55,6 +51,11 @@ pub use interner::Interner;
 pub use lower::{
     associated_type_shorthand_candidates, callable_item_sig, CallableDefId, ImplTraitLoweringMode,
     TyDefId, TyLoweringContext, ValueTyDefId,
+};
+pub use mapping::{
+    const_from_placeholder_idx, from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id,
+    from_placeholder_idx, lt_from_placeholder_idx, to_assoc_type_id, to_chalk_trait_id,
+    to_foreign_def_id, to_placeholder_idx,
 };
 pub use traits::TraitEnvironment;
 pub use walk::TypeWalk;
@@ -240,56 +241,6 @@ pub struct ReturnTypeImplTraits {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) struct ReturnTypeImplTrait {
     pub(crate) bounds: Binders<Vec<QuantifiedWhereClause>>,
-}
-
-pub fn to_foreign_def_id(id: TypeAliasId) -> ForeignDefId {
-    chalk_ir::ForeignDefId(salsa::InternKey::as_intern_id(&id))
-}
-
-pub fn from_foreign_def_id(id: ForeignDefId) -> TypeAliasId {
-    salsa::InternKey::from_intern_id(id.0)
-}
-
-pub fn to_assoc_type_id(id: TypeAliasId) -> AssocTypeId {
-    chalk_ir::AssocTypeId(salsa::InternKey::as_intern_id(&id))
-}
-
-pub fn from_assoc_type_id(id: AssocTypeId) -> TypeAliasId {
-    salsa::InternKey::from_intern_id(id.0)
-}
-
-pub fn from_placeholder_idx(db: &dyn HirDatabase, idx: PlaceholderIndex) -> TypeParamId {
-    assert_eq!(idx.ui, chalk_ir::UniverseIndex::ROOT);
-    let interned_id = salsa::InternKey::from_intern_id(salsa::InternId::from(idx.idx));
-    db.lookup_intern_type_param_id(interned_id)
-}
-
-pub fn to_placeholder_idx(db: &dyn HirDatabase, id: TypeParamId) -> PlaceholderIndex {
-    let interned_id = db.intern_type_param_id(id);
-    PlaceholderIndex {
-        ui: chalk_ir::UniverseIndex::ROOT,
-        idx: salsa::InternKey::as_intern_id(&interned_id).as_usize(),
-    }
-}
-
-pub fn lt_from_placeholder_idx(db: &dyn HirDatabase, idx: PlaceholderIndex) -> LifetimeParamId {
-    assert_eq!(idx.ui, chalk_ir::UniverseIndex::ROOT);
-    let interned_id = salsa::InternKey::from_intern_id(salsa::InternId::from(idx.idx));
-    db.lookup_intern_lifetime_param_id(interned_id)
-}
-
-pub fn const_from_placeholder_idx(db: &dyn HirDatabase, idx: PlaceholderIndex) -> ConstParamId {
-    assert_eq!(idx.ui, chalk_ir::UniverseIndex::ROOT);
-    let interned_id = salsa::InternKey::from_intern_id(salsa::InternId::from(idx.idx));
-    db.lookup_intern_const_param_id(interned_id)
-}
-
-pub fn to_chalk_trait_id(id: TraitId) -> ChalkTraitId {
-    chalk_ir::TraitId(salsa::InternKey::as_intern_id(&id))
-}
-
-pub fn from_chalk_trait_id(id: ChalkTraitId) -> TraitId {
-    salsa::InternKey::from_intern_id(id.0)
 }
 
 pub fn static_lifetime() -> Lifetime {
