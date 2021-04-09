@@ -9,9 +9,8 @@ use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
-use rustc_middle::mir::{
-    visit::{MutVisitor, MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor},
-    BasicBlockData,
+use rustc_middle::mir::visit::{
+    MutVisitor, MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor,
 };
 use rustc_middle::mir::{
     AssertKind, BasicBlock, BinOp, Body, ClearCrossCrate, Constant, ConstantKind, Local, LocalDecl,
@@ -149,10 +148,7 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
         // That would require an uniform one-def no-mutation analysis
         // and RPO (or recursing when needing the value of a local).
 
-        // FIXME(simonvandel): Ugly hack so that we can use lookup
-        // Statements.source_info in a mut context
-        let basic_blocks = body.basic_blocks().clone();
-        let mut optimization_finder = ConstPropagator::new(body, dummy_body, tcx, basic_blocks);
+        let mut optimization_finder = ConstPropagator::new(body, dummy_body, tcx);
         optimization_finder.visit_body(body);
 
         trace!("ConstProp done for {:?}", def_id);
@@ -335,7 +331,6 @@ struct ConstPropagator<'mir, 'tcx> {
     // Because we have `MutVisitor` we can't obtain the `SourceInfo` from a `Location`. So we store
     // the last known `SourceInfo` here and just keep revisiting it.
     source_info: Option<SourceInfo>,
-    basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
 }
 
 impl<'mir, 'tcx> LayoutOf for ConstPropagator<'mir, 'tcx> {
@@ -366,7 +361,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         body: &Body<'tcx>,
         dummy_body: &'mir Body<'tcx>,
         tcx: TyCtxt<'tcx>,
-        basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
     ) -> ConstPropagator<'mir, 'tcx> {
         let def_id = body.source.def_id();
         let substs = &InternalSubsts::identity_for_item(tcx, def_id);
@@ -419,7 +413,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             //FIXME(wesleywiser) we can't steal this because `Visitor::super_visit_body()` needs it
             local_decls: body.local_decls.clone(),
             source_info: None,
-            basic_blocks,
         }
     }
 
@@ -1107,11 +1100,14 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
         self.eval_constant(constant, self.source_info.unwrap());
     }
 
+    fn visit_source_info(&mut self, source_info: &mut SourceInfo) {
+        self.source_info = Some(*source_info);
+        self.super_source_info(source_info);
+    }
+
     fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {
         trace!("visit_statement: {:?}", statement);
-        let source_info =
-            *self.basic_blocks[location.block].statements.source_info(location.statement_index);
-        self.source_info = Some(source_info);
+        let source_info = self.source_info.unwrap();
         if let StatementKind::Assign(box (place, ref mut rval)) = statement.kind {
             let can_const_prop = self.ecx.machine.can_const_prop[place.local];
             if let Some(()) = self.const_prop(rval, source_info, place) {
