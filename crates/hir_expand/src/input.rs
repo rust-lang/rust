@@ -7,7 +7,11 @@ use syntax::{
 
 use crate::{db::AstDatabase, name::AsName, AttrId, LazyMacroId, MacroCallKind, MacroCallLoc};
 
-pub fn process_macro_input(db: &dyn AstDatabase, node: SyntaxNode, id: LazyMacroId) -> SyntaxNode {
+pub(crate) fn process_macro_input(
+    db: &dyn AstDatabase,
+    node: SyntaxNode,
+    id: LazyMacroId,
+) -> SyntaxNode {
     let loc: MacroCallLoc = db.lookup_intern_macro(id);
 
     match loc.kind {
