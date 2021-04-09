@@ -1,7 +1,4 @@
-//! Defines primitive types, which have a couple of peculiarities:
-//!
-//! * during type inference, they can be uncertain (ie, `let x = 92;`)
-//! * they don't belong to any particular crate.
+//! A few helper functions for dealing with primitives.
 
 pub use chalk_ir::{FloatTy, IntTy, UintTy};
 pub use hir_def::builtin_type::{BuiltinFloat, BuiltinInt, BuiltinUint};

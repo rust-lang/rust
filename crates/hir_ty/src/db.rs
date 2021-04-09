@@ -1,4 +1,5 @@
-//! FIXME: write short doc here
+//! The home of `HirDatabase`, which is the Salsa database containing all the
+//! type inference-related queries.
 
 use std::sync::Arc;
 

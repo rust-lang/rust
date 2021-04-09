@@ -1,4 +1,6 @@
-//! FIXME: write short doc here
+//! The `HirDisplay` trait, which serves two purposes: Turning various bits from
+//! HIR back into source code, and just displaying them for debugging/testing
+//! purposes.
 
 use std::{
     array,

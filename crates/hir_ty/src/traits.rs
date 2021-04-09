@@ -1,9 +1,11 @@
 //! Trait solving using Chalk.
+
 use std::env::var;
 
-use base_db::CrateId;
 use chalk_ir::cast::Cast;
 use chalk_solve::{logging_db::LoggingRustIrDatabase, Solver};
+
+use base_db::CrateId;
 use hir_def::{lang_item::LangItemTarget, TraitId};
 use stdx::panic_context;
 
