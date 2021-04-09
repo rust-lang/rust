@@ -1440,9 +1440,8 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         // as prior return coercions would not be relevant (#57664).
         let parent_id = fcx.tcx.hir().get_parent_node(id);
         let fn_decl = if let Some((expr, blk_id)) = expression {
-            pointing_at_return_type = fcx.suggest_mismatched_types_on_tail(
-                &mut err, expr, expected, found, cause.span, blk_id,
-            );
+            pointing_at_return_type =
+                fcx.suggest_mismatched_types_on_tail(&mut err, expr, expected, found, blk_id);
             let parent = fcx.tcx.hir().get(parent_id);
             if let (Some(cond_expr), true, false) = (
                 fcx.tcx.hir().get_if_cause(expr.hir_id),

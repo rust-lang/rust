@@ -41,15 +41,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
-        cause_span: Span,
         blk_id: hir::HirId,
     ) -> bool {
         let expr = expr.peel_drop_temps();
         // If the expression is from an external macro, then do not suggest
         // adding a semicolon, because there's nowhere to put it.
         // See issue #81943.
-        if expr.can_have_side_effects() && !in_external_macro(self.tcx.sess, cause_span) {
-            self.suggest_missing_semicolon(err, expr, expected, cause_span);
+        if expr.can_have_side_effects() && !in_external_macro(self.tcx.sess, expr.span) {
+            self.suggest_missing_semicolon(err, expr, expected);
         }
         let mut pointing_at_return_type = false;
         if let Some((fn_decl, can_suggest)) = self.get_fn_decl(blk_id) {
@@ -389,7 +388,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err: &mut DiagnosticBuilder<'_>,
         expression: &'tcx hir::Expr<'tcx>,
         expected: Ty<'tcx>,
-        cause_span: Span,
     ) {
         if expected.is_unit() {
             // `BlockTailExpression` only relevant if the tail expr would be
@@ -404,7 +402,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if expression.can_have_side_effects() =>
                 {
                     err.span_suggestion(
-                        cause_span.shrink_to_hi(),
+                        expression.span.shrink_to_hi(),
                         "consider using a semicolon here",
                         ";".to_string(),
                         Applicability::MachineApplicable,
