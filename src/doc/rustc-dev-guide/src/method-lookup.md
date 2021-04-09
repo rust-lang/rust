@@ -100,7 +100,7 @@ that defines it with `&self` for the type `Rc<U>` as well as a method
 on the type `Box` that defines `Foo` but with `&mut self`. Then we
 might have two candidates:
 ```text
-&Rc<Box<[T; 3]>> from the impl of `Foo` for `Rc<U>` where `U=Box<T; 3]>
+&Rc<Box<[T; 3]>> from the impl of `Foo` for `Rc<U>` where `U=Box<[T; 3]>
 &mut Box<[T; 3]>> from the inherent impl on `Box<U>` where `U=[T; 3]`
 ```
 
