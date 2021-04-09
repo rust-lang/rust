@@ -1,4 +1,4 @@
-//! The JIT driver uses [`cranelift_simplejit`] to JIT execute programs without writing any object
+//! The JIT driver uses [`cranelift_jit`] to JIT execute programs without writing any object
 //! files.
 
 use std::cell::RefCell;

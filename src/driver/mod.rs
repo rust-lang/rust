@@ -1,5 +1,8 @@
-//! Drivers are responsible for calling [`codegen_mono_item`] and performing any further actions
-//! like JIT executing or writing object files.
+//! Drivers are responsible for calling [`codegen_fn`] or [`codegen_static`] for each mono item and
+//! performing any further actions like JIT executing or writing object files.
+//!
+//! [`codegen_fn`]: crate::base::codegen_fn
+//! [`codegen_static`]: crate::constant::codegen_static
 
 use rustc_middle::mir::mono::{Linkage as RLinkage, MonoItem, Visibility};
 
