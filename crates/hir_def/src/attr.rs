@@ -103,7 +103,7 @@ impl RawAttrs {
                 match attr {
                     Either::Left(attr) => Attr::from_src(attr, hygiene, index),
                     Either::Right(comment) => comment.doc_comment().map(|doc| Attr {
-                        index,
+                        id: index,
                         input: Some(AttrInput::Literal(SmolStr::new(doc))),
                         path: Interned::new(ModPath::from(hir_expand::name!(doc))),
                     }),
@@ -164,7 +164,7 @@ impl RawAttrs {
                 let cfg = parts.next().unwrap();
                 let cfg = Subtree { delimiter: subtree.delimiter, token_trees: cfg.to_vec() };
                 let cfg = CfgExpr::parse(&cfg);
-                let index = attr.index;
+                let index = attr.id;
                 let attrs = parts.filter(|a| !a.is_empty()).filter_map(|attr| {
                     let tree = Subtree { delimiter: None, token_trees: attr.to_vec() };
                     let attr = ast::Attr::parse(&format!("#[{}]", tree)).ok()?;
@@ -471,7 +471,7 @@ impl AttrsWithOwner {
     ) -> Option<(Documentation, DocsRangeMap)> {
         // FIXME: code duplication in `docs` above
         let docs = self.by_key("doc").attrs().flat_map(|attr| match attr.input.as_ref()? {
-            AttrInput::Literal(s) => Some((s, attr.index)),
+            AttrInput::Literal(s) => Some((s, attr.id)),
             AttrInput::TokenTree(_) => None,
         });
         let indent = docs
@@ -563,8 +563,8 @@ impl AttrSourceMap {
     /// the attribute represented by `Attr`.
     pub fn source_of(&self, attr: &Attr) -> InFile<&Either<ast::Attr, ast::Comment>> {
         self.attrs
-            .get(attr.index.0 as usize)
-            .unwrap_or_else(|| panic!("cannot find `Attr` at index {:?}", attr.index))
+            .get(attr.id.0 as usize)
+            .unwrap_or_else(|| panic!("cannot find `Attr` at index {:?}", attr.id))
             .as_ref()
     }
 }
@@ -609,7 +609,7 @@ impl DocsRangeMap {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Attr {
-    pub(crate) index: AttrId,
+    pub(crate) id: AttrId,
     pub(crate) path: Interned<ModPath>,
     pub(crate) input: Option<AttrInput>,
 }
@@ -623,7 +623,7 @@ pub enum AttrInput {
 }
 
 impl Attr {
-    fn from_src(ast: ast::Attr, hygiene: &Hygiene, index: AttrId) -> Option<Attr> {
+    fn from_src(ast: ast::Attr, hygiene: &Hygiene, id: AttrId) -> Option<Attr> {
         let path = Interned::new(ModPath::from_src(ast.path()?, hygiene)?);
         let input = if let Some(ast::Expr::Literal(lit)) = ast.expr() {
             let value = match lit.kind() {
@@ -636,7 +636,7 @@ impl Attr {
         } else {
             None
         };
-        Some(Attr { index, path, input })
+        Some(Attr { id, path, input })
     }
 
     /// Parses this attribute as a `#[derive]`, returns an iterator that yields all contained paths
