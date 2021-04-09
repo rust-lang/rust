@@ -2972,10 +2972,10 @@ declare_lint! {
     ///
     /// ```rust,no_run
     /// # #![allow(unused)]
+    /// use std::ptr;
     /// unsafe {
-    ///     let x = &*core::ptr::null::<i32>();
-    ///     let x = core::ptr::addr_of!(*std::ptr::null::<i32>());
-    ///     let x = *core::ptr::null::<i32>();
+    ///     let x = &*ptr::null::<i32>();
+    ///     let x = ptr::addr_of!(*ptr::null::<i32>());
     ///     let x = *(0 as *const i32);
     /// }
     /// ```
@@ -3036,9 +3036,7 @@ impl<'tcx> LateLintPass<'tcx> for DerefNullPtr {
             if let rustc_hir::UnOp::Deref = un_op {
                 if is_null_ptr(cx, expr_deref) {
                     cx.struct_span_lint(DEREF_NULLPTR, expr.span, |lint| {
-                        let mut err =
-                            lint.build("Dereferencing a null pointer causes undefined behavior");
-                        err.span_label(expr.span, "a null pointer is dereferenced");
+                        let mut err = lint.build("dereferencing a null pointer");
                         err.span_label(
                             expr.span,
                             "this code causes undefined behavior when executed",
