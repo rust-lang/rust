@@ -2128,7 +2128,13 @@ extern "C" {
     pub fn LLVMRustHasFeature(T: &TargetMachine, s: *const c_char) -> bool;
 
     pub fn LLVMRustPrintTargetCPUs(T: &TargetMachine);
-    pub fn LLVMRustPrintTargetFeatures(T: &TargetMachine);
+    pub fn LLVMRustGetTargetFeaturesCount(T: &TargetMachine) -> size_t;
+    pub fn LLVMRustGetTargetFeature(
+        T: &TargetMachine,
+        Index: size_t,
+        Feature: &mut *const c_char,
+        Desc: &mut *const c_char,
+    );
 
     pub fn LLVMRustGetHostCPUName(len: *mut usize) -> *const c_char;
     pub fn LLVMRustCreateTargetMachine(
