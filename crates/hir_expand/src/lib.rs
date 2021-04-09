@@ -14,6 +14,7 @@ pub mod builtin_macro;
 pub mod proc_macro;
 pub mod quote;
 pub mod eager;
+mod input;
 
 use either::Either;
 pub use mbe::{ExpandError, ExpandResult};
