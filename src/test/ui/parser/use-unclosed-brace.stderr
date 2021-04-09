@@ -1,0 +1,139 @@
+error: this file contains an unclosed delimiter
+  --> $DIR/use-unclosed-brace.rs:26:51
+   |
+LL | use foo::{bar, baz;
+   |          - unclosed delimiter
+...
+LL |
+   |                                                   ^
+
+error: expected identifier, found keyword `use`
+  --> $DIR/use-unclosed-brace.rs:4:1
+   |
+LL | use std::fmt::Display;
+   | ^^^ expected identifier, found keyword
+
+error: expected one of `,`, `::`, `as`, or `}`, found `;`
+  --> $DIR/use-unclosed-brace.rs:1:19
+   |
+LL | use foo::{bar, baz;
+   |          -        ^ expected one of `,`, `::`, `as`, or `}`
+   |          |
+   |          unclosed delimiter
+   |
+help: `}` may belong here
+   |
+LL | use foo::{bar, baz};
+   |                   ^
+help: missing `,`
+   |
+LL | use foo::{bar, baz,;
+   |                   ^
+
+error: expected one of `,`, `::`, `as`, or `}`, found `std`
+  --> $DIR/use-unclosed-brace.rs:4:5
+   |
+LL | use std::fmt::Display;
+   |    -^^^ expected one of `,`, `::`, `as`, or `}`
+   |    |
+   |    help: missing `,`
+
+error: expected identifier, found keyword `mod`
+  --> $DIR/use-unclosed-brace.rs:9:1
+   |
+LL | mod bar { }
+   | ^^^ expected identifier, found keyword
+
+error: expected one of `,`, `::`, `as`, or `}`, found `;`
+  --> $DIR/use-unclosed-brace.rs:4:22
+   |
+LL | use std::fmt::Display;
+   |                      ^
+   |                      |
+   |                      expected one of `,`, `::`, `as`, or `}`
+   |                      help: missing `,`
+
+error: expected one of `,`, `::`, `as`, or `}`, found `bar`
+  --> $DIR/use-unclosed-brace.rs:9:5
+   |
+LL | mod bar { }
+   |    -^^^ expected one of `,`, `::`, `as`, or `}`
+   |    |
+   |    help: missing `,`
+
+error: expected one of `,`, `::`, `as`, or `}`, found `{`
+  --> $DIR/use-unclosed-brace.rs:9:9
+   |
+LL | mod bar { }
+   |        -^ expected one of `,`, `::`, `as`, or `}`
+   |        |
+   |        help: missing `,`
+
+error: expected identifier, found keyword `mod`
+  --> $DIR/use-unclosed-brace.rs:14:1
+   |
+LL | mod baz { }
+   | ^^^ expected identifier, found keyword
+
+error: expected one of `,` or `}`, found keyword `mod`
+  --> $DIR/use-unclosed-brace.rs:14:1
+   |
+LL | mod bar { }
+   |            -
+   |            |
+   |            expected one of `,` or `}`
+   |            help: missing `,`
+...
+LL | mod baz { }
+   | ^^^ unexpected token
+
+error: expected one of `,`, `::`, `as`, or `}`, found `baz`
+  --> $DIR/use-unclosed-brace.rs:14:5
+   |
+LL | mod baz { }
+   |    -^^^ expected one of `,`, `::`, `as`, or `}`
+   |    |
+   |    help: missing `,`
+
+error: expected one of `,`, `::`, `as`, or `}`, found `{`
+  --> $DIR/use-unclosed-brace.rs:14:9
+   |
+LL | mod baz { }
+   |        -^ expected one of `,`, `::`, `as`, or `}`
+   |        |
+   |        help: missing `,`
+
+error: expected identifier, found keyword `fn`
+  --> $DIR/use-unclosed-brace.rs:20:1
+   |
+LL | fn main() {}
+   | ^^ expected identifier, found keyword
+
+error: expected one of `,` or `}`, found keyword `fn`
+  --> $DIR/use-unclosed-brace.rs:20:1
+   |
+LL | mod baz { }
+   |            -
+   |            |
+   |            expected one of `,` or `}`
+   |            help: missing `,`
+...
+LL | fn main() {}
+   | ^^ unexpected token
+
+error: expected one of `,`, `::`, `as`, or `}`, found `main`
+  --> $DIR/use-unclosed-brace.rs:20:4
+   |
+LL | fn main() {}
+   |   -^^^^ expected one of `,`, `::`, `as`, or `}`
+   |   |
+   |   help: missing `,`
+
+error: expected one of `,`, `::`, `as`, or `}`, found `(`
+  --> $DIR/use-unclosed-brace.rs:20:8
+   |
+LL | fn main() {}
+   |        ^ expected one of `,`, `::`, `as`, or `}`
+
+error: aborting due to 16 previous errors
+
