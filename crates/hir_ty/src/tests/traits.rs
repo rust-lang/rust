@@ -3413,3 +3413,33 @@ fn foo() {
         "#]],
     );
 }
+
+#[test]
+fn renamed_extern_crate_in_block() {
+    check_types(
+        r#"
+//- /lib.rs crate:lib deps:serde
+use serde::Deserialize;
+
+struct Foo {}
+
+const _ : () = {
+    extern crate serde as _serde;
+    impl _serde::Deserialize for Foo {
+        fn deserialize() -> u8 { 0 }
+    }
+};
+
+fn foo() {
+    Foo::deserialize();
+  //^^^^^^^^^^^^^^^^^^ u8
+}
+
+//- /serde.rs crate:serde
+
+pub trait Deserialize {
+    fn deserialize() -> u8;
+}
+    "#,
+    );
+}
