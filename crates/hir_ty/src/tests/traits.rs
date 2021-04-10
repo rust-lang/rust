@@ -3469,3 +3469,50 @@ pub trait Deserialize {
     "#,
     );
 }
+
+#[test]
+fn bin_op_adt_with_rhs_primitive() {
+    check_infer_with_mismatches(
+        r#"
+#[lang = "add"]
+pub trait Add<Rhs = Self> {
+    type Output;
+    fn add(self, rhs: Rhs) -> Self::Output;
+}
+
+struct Wrapper(u32);
+impl Add<u32> for Wrapper {
+    type Output = Self;
+    fn add(self, rhs: u32) -> Wrapper {
+        Wrapper(rhs)
+    }
+}
+fn main(){
+    let wrapped = Wrapper(10);
+    let num: u32 = 2;
+    let res = wrapped + num;
+
+}"#,
+        expect![[r#"
+            72..76 'self': Self
+            78..81 'rhs': Rhs
+            192..196 'self': Wrapper
+            198..201 'rhs': u32
+            219..247 '{     ...     }': Wrapper
+            229..236 'Wrapper': Wrapper(u32) -> Wrapper
+            229..241 'Wrapper(rhs)': Wrapper
+            237..240 'rhs': u32
+            259..345 '{     ...um;  }': ()
+            269..276 'wrapped': Wrapper
+            279..286 'Wrapper': Wrapper(u32) -> Wrapper
+            279..290 'Wrapper(10)': Wrapper
+            287..289 '10': u32
+            300..303 'num': u32
+            311..312 '2': u32
+            322..325 'res': Wrapper
+            328..335 'wrapped': Wrapper
+            328..341 'wrapped + num': Wrapper
+            338..341 'num': u32
+        "#]],
+    )
+}
