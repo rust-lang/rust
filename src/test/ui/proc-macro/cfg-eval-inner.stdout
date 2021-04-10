@@ -1,0 +1,252 @@
+PRINT-ATTR INPUT (DISPLAY): impl Foo <
+[u8 ;
+ {
+     # ! [rustc_dummy(cursed_inner)] # ! [allow(unused)] struct Inner
+     { field : [u8 ; { # ! [rustc_dummy(another_cursed_inner)] 1 }], } 0
+ }] > { # ! [rustc_dummy(evaluated_attr)] fn bar() { } }
+PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "impl",
+        span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+    },
+    Ident {
+        ident: "Foo",
+        span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+    },
+    Punct {
+        ch: '<',
+        spacing: Alone,
+        span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+    },
+    Group {
+        delimiter: Bracket,
+        stream: TokenStream [
+            Ident {
+                ident: "u8",
+                span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+            },
+            Punct {
+                ch: ';',
+                spacing: Alone,
+                span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+            },
+            Group {
+                delimiter: Brace,
+                stream: TokenStream [
+                    Punct {
+                        ch: '#',
+                        spacing: Joint,
+                        span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                    },
+                    Punct {
+                        ch: '!',
+                        spacing: Alone,
+                        span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                    },
+                    Group {
+                        delimiter: Bracket,
+                        stream: TokenStream [
+                            Ident {
+                                ident: "rustc_dummy",
+                                span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                            },
+                            Group {
+                                delimiter: Parenthesis,
+                                stream: TokenStream [
+                                    Ident {
+                                        ident: "cursed_inner",
+                                        span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                                    },
+                                ],
+                                span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                            },
+                        ],
+                        span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                    },
+                    Punct {
+                        ch: '#',
+                        spacing: Joint,
+                        span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                    },
+                    Punct {
+                        ch: '!',
+                        spacing: Alone,
+                        span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                    },
+                    Group {
+                        delimiter: Bracket,
+                        stream: TokenStream [
+                            Ident {
+                                ident: "allow",
+                                span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                            },
+                            Group {
+                                delimiter: Parenthesis,
+                                stream: TokenStream [
+                                    Ident {
+                                        ident: "unused",
+                                        span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                                    },
+                                ],
+                                span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                            },
+                        ],
+                        span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                    },
+                    Ident {
+                        ident: "struct",
+                        span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                    },
+                    Ident {
+                        ident: "Inner",
+                        span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                    },
+                    Group {
+                        delimiter: Brace,
+                        stream: TokenStream [
+                            Ident {
+                                ident: "field",
+                                span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                            },
+                            Punct {
+                                ch: ':',
+                                spacing: Alone,
+                                span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                            },
+                            Group {
+                                delimiter: Bracket,
+                                stream: TokenStream [
+                                    Ident {
+                                        ident: "u8",
+                                        span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                                    },
+                                    Punct {
+                                        ch: ';',
+                                        spacing: Alone,
+                                        span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                                    },
+                                    Group {
+                                        delimiter: Brace,
+                                        stream: TokenStream [
+                                            Punct {
+                                                ch: '#',
+                                                spacing: Joint,
+                                                span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                                            },
+                                            Punct {
+                                                ch: '!',
+                                                spacing: Alone,
+                                                span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                                            },
+                                            Group {
+                                                delimiter: Bracket,
+                                                stream: TokenStream [
+                                                    Ident {
+                                                        ident: "rustc_dummy",
+                                                        span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                                                    },
+                                                    Group {
+                                                        delimiter: Parenthesis,
+                                                        stream: TokenStream [
+                                                            Ident {
+                                                                ident: "another_cursed_inner",
+                                                                span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                                                            },
+                                                        ],
+                                                        span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                                                    },
+                                                ],
+                                                span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                                            },
+                                            Literal {
+                                                kind: Integer,
+                                                symbol: "1",
+                                                suffix: None,
+                                                span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                                            },
+                                        ],
+                                        span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                                    },
+                                ],
+                                span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                            },
+                            Punct {
+                                ch: ',',
+                                spacing: Alone,
+                                span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                            },
+                        ],
+                        span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                    },
+                    Literal {
+                        kind: Integer,
+                        symbol: "0",
+                        suffix: None,
+                        span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                    },
+                ],
+                span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+            },
+        ],
+        span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+    },
+    Punct {
+        ch: '>',
+        spacing: Alone,
+        span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Punct {
+                ch: '#',
+                spacing: Joint,
+                span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+            },
+            Punct {
+                ch: '!',
+                spacing: Alone,
+                span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+            },
+            Group {
+                delimiter: Bracket,
+                stream: TokenStream [
+                    Ident {
+                        ident: "rustc_dummy",
+                        span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                    },
+                    Group {
+                        delimiter: Parenthesis,
+                        stream: TokenStream [
+                            Ident {
+                                ident: "evaluated_attr",
+                                span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                            },
+                        ],
+                        span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+                    },
+                ],
+                span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+            },
+            Ident {
+                ident: "fn",
+                span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+            },
+            Ident {
+                ident: "bar",
+                span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+            },
+            Group {
+                delimiter: Parenthesis,
+                stream: TokenStream [],
+                span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+            },
+            Group {
+                delimiter: Brace,
+                stream: TokenStream [],
+                span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+            },
+        ],
+        span: $DIR/cfg-eval-inner.rs:18:1: 37:2 (#0),
+    },
+]

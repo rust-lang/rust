@@ -5,7 +5,7 @@
 #![feature(cfg_eval)]
 #![feature(proc_macro_hygiene)]
 #![feature(stmt_expr_attributes)]
-
+#![feature(rustc_attrs)]
 #![no_std] // Don't load unnecessary hygiene information from std
 extern crate std;
 
@@ -28,5 +28,10 @@ struct S1 {
 struct S2 {}
 
 fn main() {
-    let _ = #[cfg_eval] #[print_attr](#[cfg(FALSE)] 0, #[cfg(all(/*true*/))] 1);
+    // Subtle - we need a trailing comma after the '1' - otherwise, `#[cfg_eval]` will
+    // turn this into `(#[cfg(all())] 1)`, which is a parenthesized expression, not a tuple
+    // expression. `#[cfg]` is not supported inside parenthesized expressions, so this will
+    // produce an error when attribute collection runs.
+    let _ = #[cfg_eval] #[print_attr] #[cfg_attr(not(FALSE), rustc_dummy)]
+    (#[cfg(FALSE)] 0, #[cfg(all(/*true*/))] 1,);
 }
