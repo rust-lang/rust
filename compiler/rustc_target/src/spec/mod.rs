@@ -1046,7 +1046,7 @@ pub struct TargetOptions {
     ///
     /// Common options are: "unix", "windows". Defaults to no families.
     ///
-    /// See https://doc.rust-lang.org/reference/conditional-compilation.html#target_family
+    /// See <https://doc.rust-lang.org/reference/conditional-compilation.html#target_family>.
     pub families: Vec<String>,
     /// Whether the target toolchain's ABI supports returning small structs as an integer.
     pub abi_return_struct_as_int: bool,
