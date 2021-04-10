@@ -2,8 +2,8 @@
 
 use core::intrinsics;
 
-// NOTE This function and the ones below are implemented using assembly because they using a custom
-// calling convention which can't be implemented using a normal Rust function.
+// NOTE This function and the ones below are implemented using assembly because they are using a
+// custom calling convention which can't be implemented using a normal Rust function.
 // NOTE The only difference between the iOS and non-iOS versions of those functions is that the iOS
 // versions use 3 leading underscores in the names of called functions instead of 2.
 #[cfg(not(any(target_os = "ios", target_env = "msvc")))]
