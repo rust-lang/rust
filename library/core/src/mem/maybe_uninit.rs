@@ -736,22 +736,22 @@ impl<T> MaybeUninit<T> {
     /// #![feature(maybe_uninit_ref)]
     /// use std::mem::MaybeUninit;
     ///
-    /// # unsafe extern "C" fn initialize_buffer(buf: *mut [u8; 2048]) { *buf = [0; 2048] }
+    /// # unsafe extern "C" fn initialize_buffer(buf: *mut [u8; 1024]) { *buf = [0; 1024] }
     /// # #[cfg(FALSE)]
     /// extern "C" {
     ///     /// Initializes *all* the bytes of the input buffer.
-    ///     fn initialize_buffer(buf: *mut [u8; 2048]);
+    ///     fn initialize_buffer(buf: *mut [u8; 1024]);
     /// }
     ///
-    /// let mut buf = MaybeUninit::<[u8; 2048]>::uninit();
+    /// let mut buf = MaybeUninit::<[u8; 1024]>::uninit();
     ///
     /// // Initialize `buf`:
     /// unsafe { initialize_buffer(buf.as_mut_ptr()); }
     /// // Now we know that `buf` has been initialized, so we could `.assume_init()` it.
-    /// // However, using `.assume_init()` may trigger a `memcpy` of the 2048 bytes.
+    /// // However, using `.assume_init()` may trigger a `memcpy` of the 1024 bytes.
     /// // To assert our buffer has been initialized without copying it, we upgrade
-    /// // the `&mut MaybeUninit<[u8; 2048]>` to a `&mut [u8; 2048]`:
-    /// let buf: &mut [u8; 2048] = unsafe {
+    /// // the `&mut MaybeUninit<[u8; 1024]>` to a `&mut [u8; 1024]`:
+    /// let buf: &mut [u8; 1024] = unsafe {
     ///     // SAFETY: `buf` has been initialized.
     ///     buf.assume_init_mut()
     /// };

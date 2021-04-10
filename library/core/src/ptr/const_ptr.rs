@@ -724,7 +724,7 @@ impl<T: ?Sized> *const T {
     /// #![feature(set_ptr_value)]
     /// # use core::fmt::Debug;
     /// let arr: [i32; 3] = [1, 2, 3];
-    /// let mut ptr = &arr[0] as *const dyn Debug;
+    /// let mut ptr = arr.as_ptr() as *const dyn Debug;
     /// let thin = ptr as *const u8;
     /// unsafe {
     ///     ptr = ptr.set_ptr_value(thin.add(8));
