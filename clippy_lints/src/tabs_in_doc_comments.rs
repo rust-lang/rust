@@ -106,7 +106,7 @@ fn get_chunks_of_tabs(the_str: &str) -> Vec<(u32, u32)> {
 
     let char_indices: Vec<_> = the_str.char_indices().collect();
 
-    if let &[(_, '\t')] = &char_indices.as_slice() {
+    if let [(_, '\t')] = char_indices.as_slice() {
         return vec![(0, 1)];
     }
 
@@ -121,12 +121,12 @@ fn get_chunks_of_tabs(the_str: &str) -> Vec<(u32, u32)> {
                 // as ['\t', '\t'] is excluded, this has to be a start of a tab group,
                 // set indices accordingly
                 is_active = true;
-                current_start = *index_b as u32;
+                current_start = u32::try_from(*index_b).unwrap();
             },
             [(_, '\t'), (index_b, _)] => {
                 // this now has to be an end of the group, hence we have to push a new tuple
                 is_active = false;
-                spans.push((current_start, *index_b as u32));
+                spans.push((current_start, u32::try_from(*index_b).unwrap()));
             },
             _ => {},
         }
@@ -149,7 +149,7 @@ mod tests_for_get_chunks_of_tabs {
 
     #[test]
     fn test_unicode_han_string() {
-        let res = get_chunks_of_tabs(" 位\t");
+        let res = get_chunks_of_tabs(" \u{4f4d}\t");
 
         assert_eq!(res, vec![(4, 5)]);
     }
