@@ -136,15 +136,19 @@ fn module_codegen(
     }
     crate::main_shim::maybe_create_entry_wrapper(tcx, &mut module, &mut cx.unwind_context, false);
 
-    let codegen_result = emit_module(
-        tcx,
-        &backend_config,
-        cgu.name().as_str().to_string(),
-        ModuleKind::Regular,
-        module,
-        cx.debug_context,
-        cx.unwind_context,
-    );
+    let debug_context = cx.debug_context;
+    let unwind_context = cx.unwind_context;
+    let codegen_result = tcx.sess.time("write object file", || {
+        emit_module(
+            tcx,
+            &backend_config,
+            cgu.name().as_str().to_string(),
+            ModuleKind::Regular,
+            module,
+            debug_context,
+            unwind_context,
+        )
+    });
 
     codegen_global_asm(tcx, &cgu.name().as_str(), &cx.global_asm);
 
