@@ -106,7 +106,7 @@ fn get_chunks_of_tabs(the_str: &str) -> Vec<(u32, u32)> {
 
     let char_indices: Vec<_> = the_str.char_indices().collect();
 
-    if char_indices.len() == 1 && char_indices.first().unwrap().1 == '\t' {
+    if let &[(_, '\t')] = &char_indices.as_slice() {
         return vec![(0, 1)];
     }
 
