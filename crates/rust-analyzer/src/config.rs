@@ -656,6 +656,19 @@ impl Config {
     pub fn code_lens_refresh(&self) -> bool {
         try_or!(self.caps.workspace.as_ref()?.code_lens.as_ref()?.refresh_support?, false)
     }
+    pub fn insert_replace_support(&self) -> bool {
+        try_or!(
+            self.caps
+                .text_document
+                .as_ref()?
+                .completion
+                .as_ref()?
+                .completion_item
+                .as_ref()?
+                .insert_replace_support?,
+            false
+        )
+    }
 }
 
 #[derive(Deserialize, Debug, Clone)]

@@ -29,7 +29,7 @@ pub struct CompletionItem {
     /// Range of identifier that is being completed.
     ///
     /// It should be used primarily for UI, but we also use this to convert
-    /// genetic TextEdit into LSP's completion edit (see conv.rs).
+    /// generic TextEdit into LSP's completion edit (see conv.rs).
     ///
     /// `source_range` must contain the completion offset. `insert_text` should
     /// start with what `source_range` points to, or VSCode will filter out the

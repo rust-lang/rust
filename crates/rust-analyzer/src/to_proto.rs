@@ -145,6 +145,23 @@ pub(crate) fn text_edit(line_index: &LineIndex, indel: Indel) -> lsp_types::Text
     lsp_types::TextEdit { range, new_text }
 }
 
+pub(crate) fn completion_text_edit(
+    line_index: &LineIndex,
+    insert_replace_support: Option<lsp_types::Position>,
+    indel: Indel,
+) -> lsp_types::CompletionTextEdit {
+    let text_edit = text_edit(line_index, indel);
+    match insert_replace_support {
+        Some(cursor_pos) => lsp_types::InsertReplaceEdit {
+            new_text: text_edit.new_text,
+            insert: lsp_types::Range { start: text_edit.range.start, end: cursor_pos },
+            replace: text_edit.range,
+        }
+        .into(),
+        None => text_edit.into(),
+    }
+}
+
 pub(crate) fn snippet_text_edit(
     line_index: &LineIndex,
     is_snippet: bool,
@@ -179,6 +196,7 @@ pub(crate) fn snippet_text_edit_vec(
 }
 
 pub(crate) fn completion_item(
+    insert_replace_support: Option<lsp_types::Position>,
     line_index: &LineIndex,
     item: CompletionItem,
 ) -> Vec<lsp_types::CompletionItem> {
@@ -190,7 +208,7 @@ pub(crate) fn completion_item(
     for indel in item.text_edit().iter() {
         if indel.delete.contains_range(source_range) {
             text_edit = Some(if indel.delete == source_range {
-                self::text_edit(line_index, indel.clone())
+                self::completion_text_edit(line_index, insert_replace_support, indel.clone())
             } else {
                 assert!(source_range.end() == indel.delete.end());
                 let range1 = TextRange::new(indel.delete.start(), source_range.start());
@@ -198,7 +216,7 @@ pub(crate) fn completion_item(
                 let indel1 = Indel::replace(range1, String::new());
                 let indel2 = Indel::replace(range2, indel.insert.clone());
                 additional_text_edits.push(self::text_edit(line_index, indel1));
-                self::text_edit(line_index, indel2)
+                self::completion_text_edit(line_index, insert_replace_support, indel2)
             })
         } else {
             assert!(source_range.intersect(indel.delete).is_none());
@@ -213,7 +231,7 @@ pub(crate) fn completion_item(
         detail: item.detail().map(|it| it.to_string()),
         filter_text: Some(item.lookup().to_string()),
         kind: item.kind().map(completion_item_kind),
-        text_edit: Some(text_edit.into()),
+        text_edit: Some(text_edit),
         additional_text_edits: Some(additional_text_edits),
         documentation: item.documentation().map(documentation),
         deprecated: Some(item.deprecated()),
@@ -1136,7 +1154,7 @@ mod tests {
             .unwrap()
             .into_iter()
             .filter(|c| c.label().ends_with("arg"))
-            .map(|c| completion_item(&line_index, c))
+            .map(|c| completion_item(None, &line_index, c))
             .flat_map(|comps| comps.into_iter().map(|c| (c.label, c.sort_text)))
             .collect();
         expect_test::expect![[r#"

@@ -664,10 +664,13 @@ pub(crate) fn handle_completion(
     };
     let line_index = snap.file_line_index(position.file_id)?;
 
+    let insert_replace_support =
+        snap.config.insert_replace_support().then(|| text_document_position.position);
     let items: Vec<CompletionItem> = items
         .into_iter()
         .flat_map(|item| {
-            let mut new_completion_items = to_proto::completion_item(&line_index, item.clone());
+            let mut new_completion_items =
+                to_proto::completion_item(insert_replace_support, &line_index, item.clone());
 
             if completion_config.enable_imports_on_the_fly {
                 for new_item in &mut new_completion_items {
