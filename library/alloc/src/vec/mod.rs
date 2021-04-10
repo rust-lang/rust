@@ -59,7 +59,7 @@ use core::cmp::Ordering;
 use core::convert::TryFrom;
 use core::fmt;
 use core::hash::{Hash, Hasher};
-use core::intrinsics::{arith_offset, assume};
+use core::intrinsics::assume;
 use core::iter;
 #[cfg(not(no_global_oom_handling))]
 use core::iter::FromIterator;
@@ -123,12 +123,6 @@ use self::set_len_on_drop::SetLenOnDrop;
 
 #[cfg(not(no_global_oom_handling))]
 mod set_len_on_drop;
-
-#[cfg(not(no_global_oom_handling))]
-use self::in_place_drop::InPlaceDrop;
-
-#[cfg(not(no_global_oom_handling))]
-mod in_place_drop;
 
 #[cfg(not(no_global_oom_handling))]
 use self::spec_from_iter_nested::SpecFromIterNested;
@@ -2473,19 +2467,13 @@ impl<T, A: Allocator> IntoIterator for Vec<T, A> {
             let mut me = ManuallyDrop::new(self);
             let alloc = ptr::read(me.allocator());
             let begin = me.as_mut_ptr();
-            let end = if mem::size_of::<T>() == 0 {
-                arith_offset(begin as *const i8, me.len() as isize) as *const T
-            } else {
-                begin.add(me.len()) as *const T
-            };
             let cap = me.buf.capacity();
             IntoIter {
                 buf: NonNull::new_unchecked(begin),
                 phantom: PhantomData,
                 cap,
                 alloc,
-                ptr: begin,
-                end,
+                alive: 0..me.len(),
             }
         }
     }

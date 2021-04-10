@@ -1,10 +1,11 @@
+use super::Vec;
 use crate::alloc::{Allocator, Global};
 use crate::raw_vec::RawVec;
 use core::fmt;
-use core::intrinsics::arith_offset;
 use core::iter::{FusedIterator, InPlaceIterable, SourceIter, TrustedLen, TrustedRandomAccess};
 use core::marker::PhantomData;
-use core::mem::{self};
+use core::mem::{self, ManuallyDrop};
+use core::ops::{Range, Try};
 use core::ptr::{self, NonNull};
 use core::slice::{self};
 
@@ -28,8 +29,7 @@ pub struct IntoIter<
     pub(super) phantom: PhantomData<T>,
     pub(super) cap: usize,
     pub(super) alloc: A,
-    pub(super) ptr: *const T,
-    pub(super) end: *const T,
+    pub(super) alive: Range<usize>,
 }
 
 #[stable(feature = "vec_intoiter_debug", since = "1.13.0")]
@@ -53,7 +53,9 @@ impl<T, A: Allocator> IntoIter<T, A> {
     /// ```
     #[stable(feature = "vec_into_iter_as_slice", since = "1.15.0")]
     pub fn as_slice(&self) -> &[T] {
-        unsafe { slice::from_raw_parts(self.ptr, self.len()) }
+        unsafe {
+            slice::from_raw_parts(self.buf.as_ptr().offset(self.alive.start as isize), self.len())
+        }
     }
 
     /// Returns the remaining items of this iterator as a mutable slice.
@@ -81,8 +83,13 @@ impl<T, A: Allocator> IntoIter<T, A> {
         &self.alloc
     }
 
+    /// Returns a pointer offset by `self.alive.start`
+    fn as_mut(&self) -> *mut T {
+        unsafe { self.buf.as_ptr().offset(self.alive.start as isize) }
+    }
+
     fn as_raw_mut_slice(&mut self) -> *mut [T] {
-        ptr::slice_from_raw_parts_mut(self.ptr as *mut T, self.len())
+        ptr::slice_from_raw_parts_mut(self.as_mut(), self.len())
     }
 
     /// Drops remaining elements and relinquishes the backing allocation.
@@ -103,11 +110,21 @@ impl<T, A: Allocator> IntoIter<T, A> {
         // this creates less assembly
         self.cap = 0;
         self.buf = unsafe { NonNull::new_unchecked(RawVec::NEW.ptr()) };
-        self.ptr = self.buf.as_ptr();
-        self.end = self.buf.as_ptr();
+        self.alive.start = self.alive.end;
 
         unsafe {
             ptr::drop_in_place(remaining);
+        }
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    pub(super) fn to_vec(self) -> Vec<T, A> {
+        unsafe {
+            let this = ManuallyDrop::new(self);
+            if this.alive.start > 0 {
+                ptr::copy(this.as_mut(), this.buf.as_ptr(), this.len());
+            }
+            Vec::from_raw_parts_in(this.buf.as_ptr(), this.len(), this.cap, ptr::read(&this.alloc))
         }
     }
 }
@@ -130,32 +147,33 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
 
     #[inline]
     fn next(&mut self) -> Option<T> {
-        if self.ptr as *const _ == self.end {
-            None
-        } else if mem::size_of::<T>() == 0 {
-            // purposefully don't use 'ptr.offset' because for
-            // vectors with 0-size elements this would return the
-            // same pointer.
-            self.ptr = unsafe { arith_offset(self.ptr as *const i8, 1) as *mut T };
-
-            // Make up a value of this ZST.
-            Some(unsafe { mem::zeroed() })
-        } else {
-            let old = self.ptr;
-            self.ptr = unsafe { self.ptr.offset(1) };
-
-            Some(unsafe { ptr::read(old) })
-        }
+        self.alive.next().map(|idx| unsafe {
+            if mem::size_of::<T>() == 0 {
+                mem::zeroed()
+            } else {
+                ptr::read(self.buf.as_ptr().offset(idx as isize))
+            }
+        })
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let exact = if mem::size_of::<T>() == 0 {
-            (self.end as usize).wrapping_sub(self.ptr as usize)
-        } else {
-            unsafe { self.end.offset_from(self.ptr) as usize }
-        };
+        let exact = self.alive.len();
         (exact, Some(exact))
+    }
+
+    #[inline]
+    fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Ok = B>,
+    {
+        let buf = self.buf;
+        self.alive.try_fold(init, |acc, idx| {
+            let val = unsafe { ptr::read(buf.as_ptr().offset(idx as isize)) };
+            f(acc, val)
+        })
     }
 
     #[inline]
@@ -176,7 +194,11 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
         // that `T: Copy` so reading elements from the buffer doesn't invalidate
         // them for `Drop`.
         unsafe {
-            if mem::size_of::<T>() == 0 { mem::zeroed() } else { ptr::read(self.ptr.add(i)) }
+            if mem::size_of::<T>() == 0 {
+                mem::zeroed()
+            } else {
+                ptr::read(self.buf.as_ptr().offset(self.alive.start as isize).add(i))
+            }
         }
     }
 }
@@ -185,26 +207,20 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
 impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
-        if self.end == self.ptr {
-            None
-        } else if mem::size_of::<T>() == 0 {
-            // See above for why 'ptr.offset' isn't used
-            self.end = unsafe { arith_offset(self.end as *const i8, -1) as *mut T };
-
-            // Make up a value of this ZST.
-            Some(unsafe { mem::zeroed() })
-        } else {
-            self.end = unsafe { self.end.offset(-1) };
-
-            Some(unsafe { ptr::read(self.end) })
-        }
+        self.alive.next_back().map(|idx| unsafe {
+            if mem::size_of::<T>() == 0 {
+                mem::zeroed()
+            } else {
+                ptr::read(self.buf.as_ptr().offset(idx as isize))
+            }
+        })
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> ExactSizeIterator for IntoIter<T, A> {
     fn is_empty(&self) -> bool {
-        self.ptr == self.end
+        self.alive.is_empty()
     }
 }
 

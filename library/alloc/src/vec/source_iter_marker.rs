@@ -2,7 +2,8 @@ use core::iter::{InPlaceIterable, SourceIter, TrustedRandomAccess};
 use core::mem::{self, ManuallyDrop};
 use core::ptr::{self};
 
-use super::{AsIntoIter, InPlaceDrop, SpecFromIter, SpecFromIterNested, Vec};
+use super::{AsIntoIter, SpecFromIter, SpecFromIterNested, Vec};
+use core::slice;
 
 /// Specialization marker for collecting an iterator pipeline into a Vec while reusing the
 /// source allocation, i.e. executing the pipeline in place.
@@ -41,29 +42,29 @@ where
             return SpecFromIterNested::from_iter(iterator);
         }
 
-        let (src_buf, src_ptr, dst_buf, dst_end, cap) = unsafe {
+        let (src_buf, initial_start_idx, dst_buf, max_len, cap) = unsafe {
             let inner = iterator.as_inner().as_into_iter();
             (
                 inner.buf.as_ptr(),
-                inner.ptr,
+                inner.alive.start,
                 inner.buf.as_ptr() as *mut T,
-                inner.end as *const T,
+                inner.len(),
                 inner.cap,
             )
         };
 
-        let len = SpecInPlaceCollect::collect_in_place(&mut iterator, dst_buf, dst_end);
+        let len = SpecInPlaceCollect::collect_in_place(&mut iterator, dst_buf, max_len);
 
         let src = unsafe { iterator.as_inner().as_into_iter() };
         // check if SourceIter contract was upheld
         // caveat: if they weren't we may not even make it to this point
         debug_assert_eq!(src_buf, src.buf.as_ptr());
-        // check InPlaceIterable contract. This is only possible if the iterator advanced the
-        // source pointer at all. If it uses unchecked access via TrustedRandomAccess
-        // then the source pointer will stay in its initial position and we can't use it as reference
-        if src.ptr != src_ptr {
+        // check InPlaceIterable contract. This is only possible if the iterator modified the
+        // `IntoIter::alive` range. If it uses unchecked access via TrustedRandomAccess
+        // then the range will keep its initial value and we can't use it for verification
+        if src.alive.start != initial_start_idx {
             debug_assert!(
-                unsafe { dst_buf.add(len) as *const _ } <= src.ptr,
+                len <= src.alive.start,
                 "InPlaceIterable contract violation, write pointer advanced beyond read pointer"
             );
         }
@@ -80,18 +81,19 @@ where
 }
 
 fn write_in_place_with_drop<T>(
-    src_end: *const T,
-) -> impl FnMut(InPlaceDrop<T>, T) -> Result<InPlaceDrop<T>, !> {
-    move |mut sink, item| {
+    max_len: usize,
+) -> impl FnMut(InPlaceDropByLen<T>, T) -> Result<InPlaceDropByLen<T>, !> {
+    move |mut drop_guard, item| {
         unsafe {
             // the InPlaceIterable contract cannot be verified precisely here since
             // try_fold has an exclusive reference to the source pointer
             // all we can do is check if it's still in range
-            debug_assert!(sink.dst as *const _ <= src_end, "InPlaceIterable contract violation");
-            ptr::write(sink.dst, item);
-            sink.dst = sink.dst.add(1);
+            debug_assert!(drop_guard.len <= max_len, "InPlaceIterable contract violation");
+            let dst = drop_guard.ptr.offset(drop_guard.len as isize);
+            ptr::write(dst, item);
+            drop_guard.len = drop_guard.len.unchecked_add(1);
         }
-        Ok(sink)
+        Ok(drop_guard)
     }
 }
 
@@ -99,7 +101,7 @@ fn write_in_place_with_drop<T>(
 trait SpecInPlaceCollect<T, I>: Iterator<Item = T> {
     /// Collects an iterator (`self`) into the destination buffer (`dst`) and returns the number of items
     /// collected. `end` is the last writable element of the allocation and used for bounds checks.
-    fn collect_in_place(&mut self, dst: *mut T, end: *const T) -> usize;
+    fn collect_in_place(&mut self, dst: *mut T, max_len: usize) -> usize;
 }
 
 impl<T, I> SpecInPlaceCollect<T, I> for I
@@ -107,16 +109,17 @@ where
     I: Iterator<Item = T>,
 {
     #[inline]
-    default fn collect_in_place(&mut self, dst_buf: *mut T, end: *const T) -> usize {
+    default fn collect_in_place(&mut self, dst_buf: *mut T, max_len: usize) -> usize {
         // use try-fold since
         // - it vectorizes better for some iterator adapters
         // - unlike most internal iteration methods, it only takes a &mut self
         // - it lets us thread the write pointer through its innards and get it back in the end
-        let sink = InPlaceDrop { inner: dst_buf, dst: dst_buf };
-        let sink =
-            self.try_fold::<_, _, Result<_, !>>(sink, write_in_place_with_drop(end)).unwrap();
+        let drop_guard = InPlaceDropByLen { ptr: dst_buf, len: 0 };
+        let drop_guard = self
+            .try_fold::<_, _, Result<_, !>>(drop_guard, write_in_place_with_drop(max_len))
+            .unwrap();
         // iteration succeeded, don't drop head
-        unsafe { ManuallyDrop::new(sink).dst.offset_from(dst_buf) as usize }
+        ManuallyDrop::new(drop_guard).len
     }
 }
 
@@ -125,21 +128,35 @@ where
     I: Iterator<Item = T> + TrustedRandomAccess,
 {
     #[inline]
-    fn collect_in_place(&mut self, dst_buf: *mut T, end: *const T) -> usize {
+    fn collect_in_place(&mut self, dst_buf: *mut T, max_len: usize) -> usize {
         let len = self.size();
-        let mut drop_guard = InPlaceDrop { inner: dst_buf, dst: dst_buf };
+        debug_assert!(len <= max_len, "InPlaceIterable contract violation");
+        let mut drop_guard = InPlaceDropByLen { ptr: dst_buf, len: 0 };
         for i in 0..len {
             // Safety: InplaceIterable contract guarantees that for every element we read
             // one slot in the underlying storage will have been freed up and we can immediately
             // write back the result.
             unsafe {
                 let dst = dst_buf.offset(i as isize);
-                debug_assert!(dst as *const _ <= end, "InPlaceIterable contract violation");
                 ptr::write(dst, self.__iterator_get_unchecked(i));
-                drop_guard.dst = dst.add(1);
+                drop_guard.len = i + 1;
             }
         }
         mem::forget(drop_guard);
         len
+    }
+}
+
+pub struct InPlaceDropByLen<T> {
+    ptr: *mut T,
+    len: usize,
+}
+
+impl<T> Drop for InPlaceDropByLen<T> {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe {
+            ptr::drop_in_place(slice::from_raw_parts_mut(self.ptr, self.len));
+        }
     }
 }
