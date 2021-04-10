@@ -1188,4 +1188,30 @@ pub fn gimme() -> theitem::TheItem {
 "#,
         );
     }
+
+    #[test]
+    fn goto_ident_from_pat_macro() {
+        check(
+            r#"
+macro_rules! pat {
+    ($name:ident) => { Enum::Variant1($name) }
+}
+
+enum Enum {
+    Variant1(u8),
+    Variant2,
+}
+
+fn f(e: Enum) {
+    match e {
+        pat!(bind) => {
+           //^^^^
+            bind$0
+        }
+        Enum::Variant2 => {}
+    }
+}
+"#,
+        );
+    }
 }

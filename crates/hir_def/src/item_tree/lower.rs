@@ -189,7 +189,7 @@ impl Ctx {
                                 block_stack.push(self.source_ast_id_map.ast_id(&block));
                             },
                             ast::Item(item) => {
-                                // FIXME: This triggers for macro calls in expression position
+                                // FIXME: This triggers for macro calls in expression/pattern/type position
                                 let mod_items = self.lower_mod_item(&item, true);
                                 let current_block = block_stack.last();
                                 if let (Some(mod_items), Some(block)) = (mod_items, current_block) {
