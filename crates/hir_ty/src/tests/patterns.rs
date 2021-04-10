@@ -1,6 +1,6 @@
 use expect_test::expect;
 
-use super::{check_infer, check_infer_with_mismatches};
+use super::{check_infer, check_infer_with_mismatches, check_types};
 
 #[test]
 fn infer_pattern() {
@@ -824,4 +824,30 @@ fn foo(foo: Foo) {
             105..107 '{}': ()
         "#]],
     );
+}
+
+#[test]
+fn macro_pat() {
+    check_types(
+        r#"
+macro_rules! pat {
+    ($name:ident) => { Enum::Variant1($name) }
+}
+
+enum Enum {
+    Variant1(u8),
+    Variant2,
+}
+
+fn f(e: Enum) {
+    match e {
+        pat!(bind) => {
+            bind;
+          //^^^^ u8
+        }
+        Enum::Variant2 => {}
+    }
+}
+    "#,
+    )
 }

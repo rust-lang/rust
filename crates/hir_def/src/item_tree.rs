@@ -99,6 +99,11 @@ impl ItemTree {
                     // items.
                     ctx.lower_macro_stmts(stmts)
                 },
+                ast::Pat(_pat) => {
+                    // FIXME: This occurs because macros in pattern position are treated as inner
+                    // items and expanded during block DefMap computation
+                    return Default::default();
+                },
                 ast::Expr(e) => {
                     // Macros can expand to expressions. We return an empty item tree in this case, but
                     // still need to collect inner items.
