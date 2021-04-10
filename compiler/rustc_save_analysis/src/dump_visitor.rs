@@ -190,7 +190,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         };
 
         let data = CompilationOptions {
-            directory: self.tcx.sess.working_dir.0.clone(),
+            directory: self.tcx.sess.working_dir.stable_name().into(),
             program,
             arguments,
             output: self.save_ctxt.compilation_output(crate_name),

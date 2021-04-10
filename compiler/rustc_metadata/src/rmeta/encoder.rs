@@ -469,7 +469,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let source_map = self.tcx.sess.source_map();
         let all_source_files = source_map.files();
 
-        let (working_dir, _cwd_remapped) = self.tcx.sess.working_dir.clone();
+        let working_dir = self.tcx.sess.working_dir.stable_name();
         // By replacing the `Option` with `None`, we ensure that we can't
         // accidentally serialize any more `Span`s after the source map encoding
         // is done.
