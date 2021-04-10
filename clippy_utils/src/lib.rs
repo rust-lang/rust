@@ -1212,13 +1212,29 @@ pub fn parent_node_is_if_expr(expr: &Expr<'_>, cx: &LateContext<'_>) -> bool {
     let map = cx.tcx.hir();
     let parent_id = map.get_parent_node(expr.hir_id);
     let parent_node = map.get(parent_id);
-    matches!(
-        parent_node,
-        Node::Expr(Expr {
-            kind: ExprKind::If(_, _, _),
-            ..
-        })
-    )
+    
+    // Check for `if`
+    if_chain! {
+        if let Node::Expr(expr) = parent_node;
+        if let ExprKind::If(_, _, _) = expr.kind;
+        then {
+            return true;
+        }
+    }
+
+    // Check for `if let`
+    if_chain! {
+        if let Node::Arm(arm) = parent_node;
+        let arm_parent_id = map.get_parent_node(arm.hir_id);
+        let arm_parent_node = map.get(arm_parent_id);
+        if let Node::Expr(expr) = arm_parent_node;
+        if let ExprKind::Match(_, _, MatchSource::IfLetDesugar { .. }) = expr.kind;
+        then {
+            return true;
+        }
+    }
+
+    false
 }
 
 // Finds the `#[must_use]` attribute, if any

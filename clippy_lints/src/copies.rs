@@ -290,6 +290,13 @@ fn lint_same_then_else<'tcx>(
     }
 }
 
+/// The return tuple is structured as follows:
+/// 1. The amount of equal statements from the start
+/// 2. The amount of equal statements from the end
+/// 3. An indication if the block expressions are the same. This will also be true if both are `None`
+///
+/// This function can also trigger the `IF_SAME_THEN_ELSE` in which case it'll return `(0, 0, false)`
+/// to aboard any further processing and avoid duplicate lint triggers.
 fn scan_block_for_eq(cx: &LateContext<'tcx>, blocks: &[&Block<'tcx>]) -> (usize, usize, bool) {
     let mut start_eq = usize::MAX;
     let mut end_eq = usize::MAX;
