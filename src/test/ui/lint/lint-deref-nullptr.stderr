@@ -41,34 +41,28 @@ LL |         let ub = &*ptr::null::<i32>();
    |                   ^^^^^^^^^^^^^^^^^^^ this code causes undefined behavior when executed
 
 error: dereferencing a null pointer
-  --> $DIR/lint-deref-nullptr.rs:27:23
+  --> $DIR/lint-deref-nullptr.rs:27:19
+   |
+LL |         let ub = &*ptr::null_mut::<i32>();
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^ this code causes undefined behavior when executed
+
+error: dereferencing a null pointer
+  --> $DIR/lint-deref-nullptr.rs:29:23
    |
 LL |         ptr::addr_of!(*ptr::null::<i32>());
    |                       ^^^^^^^^^^^^^^^^^^^ this code causes undefined behavior when executed
 
 error: dereferencing a null pointer
-  --> $DIR/lint-deref-nullptr.rs:29:27
+  --> $DIR/lint-deref-nullptr.rs:31:27
    |
 LL |         ptr::addr_of_mut!(*ptr::null_mut::<i32>());
    |                           ^^^^^^^^^^^^^^^^^^^^^^^ this code causes undefined behavior when executed
 
 error: dereferencing a null pointer
-  --> $DIR/lint-deref-nullptr.rs:31:18
-   |
-LL |         let ub = *ptr::null::<i32>();
-   |                  ^^^^^^^^^^^^^^^^^^^ this code causes undefined behavior when executed
-
-error: dereferencing a null pointer
-  --> $DIR/lint-deref-nullptr.rs:33:18
-   |
-LL |         let ub = *ptr::null_mut::<i32>();
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^ this code causes undefined behavior when executed
-
-error: dereferencing a null pointer
-  --> $DIR/lint-deref-nullptr.rs:35:36
+  --> $DIR/lint-deref-nullptr.rs:33:36
    |
 LL |         let offset = ptr::addr_of!((*ptr::null::<Struct>()).field);
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^ this code causes undefined behavior when executed
 
-error: aborting due to 11 previous errors
+error: aborting due to 10 previous errors
 

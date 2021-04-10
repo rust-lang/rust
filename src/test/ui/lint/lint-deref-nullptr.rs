@@ -24,13 +24,11 @@ fn f() {
         //~^ ERROR dereferencing a null pointer
         let ub = &*ptr::null::<i32>();
         //~^ ERROR dereferencing a null pointer
+        let ub = &*ptr::null_mut::<i32>();
+        //~^ ERROR dereferencing a null pointer
         ptr::addr_of!(*ptr::null::<i32>());
         //~^ ERROR dereferencing a null pointer
         ptr::addr_of_mut!(*ptr::null_mut::<i32>());
-        //~^ ERROR dereferencing a null pointer
-        let ub = *ptr::null::<i32>();
-        //~^ ERROR dereferencing a null pointer
-        let ub = *ptr::null_mut::<i32>();
         //~^ ERROR dereferencing a null pointer
         let offset = ptr::addr_of!((*ptr::null::<Struct>()).field);
         //~^ ERROR dereferencing a null pointer
