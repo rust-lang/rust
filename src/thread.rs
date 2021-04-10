@@ -711,7 +711,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn run_timeout_callback(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let (thread, callback) =
-            this.machine.threads.get_ready_callback().expect("no callback found");
+            if let Some((thread, callback)) = this.machine.threads.get_ready_callback() {
+                (thread, callback)
+            } else {
+                // get_ready_callback can return None if the computer's clock was
+                // shifted after calling the scheduler and before the call
+                // to get_ready_callback. In this case, just do nothing, which
+                // effectively just returns to the scheduler.
+                return Ok(());
+            };
         // This back-and-forth with `set_active_thread` is here because of two
         // design decisions:
         // 1. Make the caller and not the callback responsible for changing
