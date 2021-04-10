@@ -5,11 +5,7 @@ use syntax::{
     AstNode, SyntaxNode,
 };
 
-use crate::{
-    db::AstDatabase,
-    name::{name, AsName},
-    AttrId, LazyMacroId, MacroCallKind, MacroCallLoc,
-};
+use crate::{db::AstDatabase, name::AsName, AttrId, LazyMacroId, MacroCallKind, MacroCallLoc};
 
 pub(crate) fn process_macro_input(
     db: &dyn AstDatabase,
@@ -39,7 +35,7 @@ fn remove_derives_up_to(item: ast::Item, attr: AttrId) -> ast::Item {
         if let Some(name) =
             attr.path().and_then(|path| path.as_single_segment()).and_then(|seg| seg.name_ref())
         {
-            if name.as_name() == name![derive] {
+            if name.as_name().to_string() == "derive" {
                 attr.syntax().detach();
             }
         }
