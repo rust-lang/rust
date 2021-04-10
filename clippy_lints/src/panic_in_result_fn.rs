@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{find_macro_calls, return_ty};
+use clippy_utils::{find_macro_calls, is_expn_of, return_ty};
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
 use rustc_lint::{LateContext, LateLintPass};
@@ -52,7 +52,7 @@ impl<'tcx> LateLintPass<'tcx> for PanicInResultFn {
 }
 
 fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, body: &'tcx hir::Body<'tcx>) {
-    let panics = find_macro_calls(
+    let mut panics = find_macro_calls(
         &[
             "unimplemented",
             "unreachable",
@@ -61,12 +61,10 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, body: &'tcx hir
             "assert",
             "assert_eq",
             "assert_ne",
-            "debug_assert",
-            "debug_assert_eq",
-            "debug_assert_ne",
         ],
         body,
     );
+    panics.retain(|span| is_expn_of(*span, "debug_assert").is_none());
     if !panics.is_empty() {
         span_lint_and_then(
             cx,
