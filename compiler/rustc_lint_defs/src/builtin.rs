@@ -1682,7 +1682,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```rust,compile_fail
     /// let x = 42.0;
     ///
     /// match x {
@@ -1717,7 +1717,7 @@ declare_lint! {
     /// [match guard]: https://doc.rust-lang.org/reference/expressions/match-expr.html#match-guards
     /// [future-incompatible]: ../index.md#future-incompatible-lints
     pub ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
-    Warn,
+    Deny,
     "floating-point literals cannot be used in patterns",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #41620 <https://github.com/rust-lang/rust/issues/41620>",
