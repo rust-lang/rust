@@ -35,7 +35,7 @@ Inline assembly is currently supported on the following architectures:
 Let us start with the simplest possible example:
 
 ```rust,allow_fail
-# #![feature(asm)]
+#![feature(asm)]
 unsafe {
     asm!("nop");
 }
@@ -52,7 +52,7 @@ Now inserting an instruction that does nothing is rather boring. Let us do somet
 actually acts on data:
 
 ```rust,allow_fail
-# #![feature(asm)]
+#![feature(asm)]
 let x: u64;
 unsafe {
     asm!("mov {}, 5", out(reg) x);
@@ -74,7 +74,7 @@ the template and will read the variable from there after the inline assembly fin
 Let us see another example that also uses an input:
 
 ```rust,allow_fail
-# #![feature(asm)]
+#![feature(asm)]
 let i: u64 = 3;
 let o: u64;
 unsafe {
@@ -114,7 +114,7 @@ readability, and allows reordering instructions without changing the argument or
 We can further refine the above example to avoid the `mov` instruction:
 
 ```rust,allow_fail
-# #![feature(asm)]
+#![feature(asm)]
 let mut x: u64 = 3;
 unsafe {
     asm!("add {0}, {number}", inout(reg) x, number = const 5);
@@ -128,7 +128,7 @@ This is different from specifying an input and output separately in that it is g
 It is also possible to specify different variables for the input and output parts of an `inout` operand:
 
 ```rust,allow_fail
-# #![feature(asm)]
+#![feature(asm)]
 let x: u64 = 3;
 let y: u64;
 unsafe {
@@ -150,7 +150,7 @@ There is also a `inlateout` variant of this specifier.
 Here is an example where `inlateout` *cannot* be used:
 
 ```rust,allow_fail
-# #![feature(asm)]
+#![feature(asm)]
 let mut a: u64 = 4;
 let b: u64 = 4;
 let c: u64 = 4;
@@ -171,7 +171,7 @@ Here the compiler is free to allocate the same register for inputs `b` and `c` s
 However the following example can use `inlateout` since the output is only modified after all input registers have been read:
 
 ```rust,allow_fail
-# #![feature(asm)]
+#![feature(asm)]
 let mut a: u64 = 4;
 let b: u64 = 4;
 unsafe {
@@ -190,7 +190,7 @@ While `reg` is generally available on any architecture, these are highly archite
 among others can be addressed by their name.
 
 ```rust,allow_fail,no_run
-# #![feature(asm)]
+#![feature(asm)]
 let cmd = 0xd1;
 unsafe {
     asm!("out 0x64, eax", in("eax") cmd);
@@ -206,7 +206,7 @@ Note that unlike other operand types, explicit register operands cannot be used 
 Consider this example which uses the x86 `mul` instruction:
 
 ```rust,allow_fail
-# #![feature(asm)]
+#![feature(asm)]
 fn mul(a: u64, b: u64) -> u128 {
     let lo: u64;
     let hi: u64;
@@ -242,7 +242,7 @@ We need to tell the compiler about this since it may need to save and restore th
 around the inline assembly block.
 
 ```rust,allow_fail
-# #![feature(asm)]
+#![feature(asm)]
 let ebx: u32;
 let ecx: u32;
 
@@ -272,7 +272,7 @@ However we still need to tell the compiler that `eax` and `edx` have been modifi
 This can also be used with a general register class (e.g. `reg`) to obtain a scratch register for use inside the asm code:
 
 ```rust,allow_fail
-# #![feature(asm)]
+#![feature(asm)]
 // Multiply x by 6 using shifts and adds
 let mut x: u64 = 4;
 unsafe {
@@ -294,7 +294,7 @@ A special operand type, `sym`, allows you to use the symbol name of a `fn` or `s
 This allows you to call a function or access a global variable without needing to keep its address in a register.
 
 ```rust,allow_fail
-# #![feature(asm)]
+#![feature(asm)]
 extern "C" fn foo(arg: i32) {
     println!("arg = {}", arg);
 }
@@ -316,7 +316,7 @@ fn call_foo(arg: i32) {
             // Also mark AVX-512 registers as clobbered. This is accepted by the
             // compiler even if AVX-512 is not enabled on the current target.
             out("xmm16") _, out("xmm17") _, out("xmm18") _, out("xmm19") _,
-            out("xmm20") _, out("xmm21") _, out("xmm22") _, out("xmm13") _,
+            out("xmm20") _, out("xmm21") _, out("xmm22") _, out("xmm23") _,
             out("xmm24") _, out("xmm25") _, out("xmm26") _, out("xmm27") _,
             out("xmm28") _, out("xmm29") _, out("xmm30") _, out("xmm31") _,
         )
@@ -336,7 +336,7 @@ By default the compiler will always choose the name that refers to the full regi
 This default can be overriden by using modifiers on the template string operands, just like you would with format strings:
 
 ```rust,allow_fail
-# #![feature(asm)]
+#![feature(asm)]
 let mut x: u16 = 0xab;
 
 unsafe {
@@ -361,7 +361,7 @@ For example, in x86/x86_64 and intel assembly syntax, you should wrap inputs/out
 to indicate they are memory operands:
 
 ```rust,allow_fail
-# #![feature(asm, llvm_asm)]
+#![feature(asm, llvm_asm)]
 # fn load_fpu_control_word(control: u16) {
 unsafe {
     asm!("fldcw [{}]", in(reg) &control, options(nostack));
@@ -372,6 +372,43 @@ unsafe {
 # }
 ```
 
+## Labels
+
+The compiler is allowed to instantiate multiple copies an `asm!` block, for example when the function containing it is inlined in multiple places. As a consequence, you should only use GNU assembler [local labels] inside inline assembly code. Defining symbols in assembly code may lead to assembler and/or linker errors due to duplicate symbol definitions.
+
+Moreover, due to [an llvm bug], you shouldn't use labels exclusively made of `0` and `1` digits, e.g. `0`, `11` or `101010`, as they may end up being interpreted as binary values.
+
+```rust,allow_fail
+#![feature(asm)]
+
+let mut a = 0;
+unsafe {
+    asm!(
+        "mov {0}, 10",
+        "2:",
+        "sub {0}, 1",
+        "cmp {0}, 3",
+        "jle 2f",
+        "jmp 2b",
+        "2:",
+        "add {0}, 2",
+        out(reg) a
+    );
+}
+assert_eq!(a, 5);
+```
+
+This will decrement the `{0}` register value from 10 to 3, then add 2 and store it in `a`.
+
+This example show a few thing:
+
+First that the same number can be used as a label multiple times in the same inline block.
+
+Second, that when a numeric label is used as a reference (as an instruction operand, for example), the suffixes b (“backward”) or f (“forward”) should be added to the numeric label. It will then refer to the nearest label defined by this number in this direction.
+
+[local labels]: https://sourceware.org/binutils/docs/as/Symbol-Names.html#Local-Labels
+[an llvm bug]: https://bugs.llvm.org/show_bug.cgi?id=36144
+
 ## Options
 
 By default, an inline assembly block is treated the same way as an external FFI function call with a custom calling convention: it may read/write memory, have observable side effects, etc. However in many cases, it is desirable to give the compiler more information about what the assembly code is actually doing so that it can optimize better.
@@ -379,7 +416,7 @@ By default, an inline assembly block is treated the same way as an external FFI 
 Let's take our previous example of an `add` instruction:
 
 ```rust,allow_fail
-# #![feature(asm)]
+#![feature(asm)]
 let mut a: u64 = 4;
 let b: u64 = 4;
 unsafe {
@@ -787,8 +824,5 @@ The compiler performs some additional checks on options:
     - You are responsible for switching any target-specific state (e.g. thread-local storage, stack bounds).
     - The set of memory locations that you may access is the intersection of those allowed by the `asm!` blocks you entered and exited.
 - You cannot assume that an `asm!` block will appear exactly once in the output binary. The compiler is allowed to instantiate multiple copies of the `asm!` block, for example when the function containing it is inlined in multiple places.
-  - As a consequence, you should only use [local labels] inside inline assembly code. Defining symbols in assembly code may lead to assembler and/or linker errors due to duplicate symbol definitions.
 
 > **Note**: As a general rule, the flags covered by `preserves_flags` are those which are *not* preserved when performing a function call.
-
-[local labels]: https://sourceware.org/binutils/docs/as/Symbol-Names.html#Local-Labels
