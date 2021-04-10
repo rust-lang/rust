@@ -703,6 +703,8 @@ impl<'a> Parser<'a> {
         let mut recovered = false;
         let mut trailing = false;
         let mut v = vec![];
+        let unclosed_delims = !self.unclosed_delims.is_empty();
+
         while !self.expect_any_with_type(kets, expect) {
             if let token::CloseDelim(..) | token::Eof = self.token.kind {
                 break;
@@ -723,7 +725,7 @@ impl<'a> Parser<'a> {
 
                             // Attempt to keep parsing if it was a similar separator.
                             if let Some(ref tokens) = t.similar_tokens() {
-                                if tokens.contains(&self.token.kind) {
+                                if tokens.contains(&self.token.kind) && !unclosed_delims {
                                     self.bump();
                                 }
                             }
