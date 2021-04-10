@@ -263,15 +263,14 @@ mod ops {
 fn infer_from_bound_1() {
     check_infer(
         r#"
-        trait Trait<T> {}
-        struct S<T>(T);
-        impl<U> Trait<U> for S<U> {}
-        fn foo<T: Trait<u32>>(t: T) {}
-        fn test() {
-            let s = S(unknown);
-            foo(s);
-        }
-        "#,
+trait Trait<T> {}
+struct S<T>(T);
+impl<U> Trait<U> for S<U> {}
+fn foo<T: Trait<u32>>(t: T) {}
+fn test() {
+    let s = S(unknown);
+    foo(s);
+}"#,
         expect![[r#"
             85..86 't': T
             91..93 '{}': ()
@@ -291,15 +290,14 @@ fn infer_from_bound_1() {
 fn infer_from_bound_2() {
     check_infer(
         r#"
-        trait Trait<T> {}
-        struct S<T>(T);
-        impl<U> Trait<U> for S<U> {}
-        fn foo<U, T: Trait<U>>(t: T) -> U {}
-        fn test() {
-            let s = S(unknown);
-            let x: u32 = foo(s);
-        }
-        "#,
+trait Trait<T> {}
+struct S<T>(T);
+impl<U> Trait<U> for S<U> {}
+fn foo<U, T: Trait<U>>(t: T) -> U {}
+fn test() {
+    let s = S(unknown);
+    let x: u32 = foo(s);
+}"#,
         expect![[r#"
             86..87 't': T
             97..99 '{}': ()
@@ -321,13 +319,12 @@ fn trait_default_method_self_bound_implements_trait() {
     cov_mark::check!(trait_self_implements_self);
     check_infer(
         r#"
-        trait Trait {
-            fn foo(&self) -> i64;
-            fn bar(&self) -> {
-                let x = self.foo();
-            }
-        }
-        "#,
+trait Trait {
+    fn foo(&self) -> i64;
+    fn bar(&self) -> {
+        let x = self.foo();
+    }
+}"#,
         expect![[r#"
             26..30 'self': &Self
             52..56 'self': &Self
@@ -343,15 +340,14 @@ fn trait_default_method_self_bound_implements_trait() {
 fn trait_default_method_self_bound_implements_super_trait() {
     check_infer(
         r#"
-        trait SuperTrait {
-            fn foo(&self) -> i64;
-        }
-        trait Trait: SuperTrait {
-            fn bar(&self) -> {
-                let x = self.foo();
-            }
-        }
-        "#,
+trait SuperTrait {
+    fn foo(&self) -> i64;
+}
+trait Trait: SuperTrait {
+    fn bar(&self) -> {
+        let x = self.foo();
+    }
+}"#,
         expect![[r#"
             31..35 'self': &Self
             85..89 'self': &Self
@@ -367,18 +363,17 @@ fn trait_default_method_self_bound_implements_super_trait() {
 fn infer_project_associated_type() {
     check_infer(
         r#"
-        trait Iterable {
-            type Item;
-        }
-        struct S;
-        impl Iterable for S { type Item = u32; }
-        fn test<T: Iterable>() {
-            let x: <S as Iterable>::Item = 1;
-            let y: <T as Iterable>::Item = no_matter;
-            let z: T::Item = no_matter;
-            let a: <T>::Item = no_matter;
-        }
-        "#,
+trait Iterable {
+    type Item;
+}
+struct S;
+impl Iterable for S { type Item = u32; }
+fn test<T: Iterable>() {
+    let x: <S as Iterable>::Item = 1;
+    let y: <T as Iterable>::Item = no_matter;
+    let z: T::Item = no_matter;
+    let a: <T>::Item = no_matter;
+}"#,
         expect![[r#"
             108..261 '{     ...ter; }': ()
             118..119 'x': u32
@@ -397,20 +392,19 @@ fn infer_project_associated_type() {
 fn infer_return_associated_type() {
     check_infer(
         r#"
-        trait Iterable {
-            type Item;
-        }
-        struct S;
-        impl Iterable for S { type Item = u32; }
-        fn foo1<T: Iterable>(t: T) -> T::Item {}
-        fn foo2<T: Iterable>(t: T) -> <T as Iterable>::Item {}
-        fn foo3<T: Iterable>(t: T) -> <T>::Item {}
-        fn test() {
-            let x = foo1(S);
-            let y = foo2(S);
-            let z = foo3(S);
-        }
-        "#,
+trait Iterable {
+    type Item;
+}
+struct S;
+impl Iterable for S { type Item = u32; }
+fn foo1<T: Iterable>(t: T) -> T::Item {}
+fn foo2<T: Iterable>(t: T) -> <T as Iterable>::Item {}
+fn foo3<T: Iterable>(t: T) -> <T>::Item {}
+fn test() {
+    let x = foo1(S);
+    let y = foo2(S);
+    let z = foo3(S);
+}"#,
         expect![[r#"
             106..107 't': T
             123..125 '{}': ()
@@ -439,13 +433,12 @@ fn infer_return_associated_type() {
 fn infer_associated_type_bound() {
     check_infer(
         r#"
-        trait Iterable {
-            type Item;
-        }
-        fn test<T: Iterable<Item=u32>>() {
-            let y: T::Item = unknown;
-        }
-        "#,
+trait Iterable {
+    type Item;
+}
+fn test<T: Iterable<Item=u32>>() {
+    let y: T::Item = unknown;
+}"#,
         expect![[r#"
             67..100 '{     ...own; }': ()
             77..78 'y': u32
@@ -458,9 +451,8 @@ fn infer_associated_type_bound() {
 fn infer_const_body() {
     check_infer(
         r#"
-        const A: u32 = 1 + 1;
-        static B: u64 = { let x = 1; x };
-        "#,
+const A: u32 = 1 + 1;
+static B: u64 = { let x = 1; x };"#,
         expect![[r#"
             15..16 '1': u32
             15..20 '1 + 1': u32
@@ -477,13 +469,12 @@ fn infer_const_body() {
 fn tuple_struct_fields() {
     check_infer(
         r#"
-        struct S(i32, u64);
-        fn test() -> u64 {
-            let a = S(4, 6);
-            let b = a.0;
-            a.1
-        }
-        "#,
+struct S(i32, u64);
+fn test() -> u64 {
+    let a = S(4, 6);
+    let b = a.0;
+    a.1
+}"#,
         expect![[r#"
             37..86 '{     ... a.1 }': u64
             47..48 'a': S
@@ -504,13 +495,12 @@ fn tuple_struct_fields() {
 fn tuple_struct_with_fn() {
     check_infer(
         r#"
-        struct S(fn(u32) -> u64);
-        fn test() -> u64 {
-            let a = S(|i| 2*i);
-            let b = a.0(4);
-            a.0(2)
-        }
-        "#,
+struct S(fn(u32) -> u64);
+fn test() -> u64 {
+    let a = S(|i| 2*i);
+    let b = a.0(4);
+    a.0(2)
+}"#,
         expect![[r#"
             43..101 '{     ...0(2) }': u64
             53..54 'a': S
@@ -949,27 +939,26 @@ fn test<T: ApplyL>(t: T) {
 fn argument_impl_trait() {
     check_infer_with_mismatches(
         r#"
-        trait Trait<T> {
-            fn foo(&self) -> T;
-            fn foo2(&self) -> i64;
-        }
-        fn bar(x: impl Trait<u16>) {}
-        struct S<T>(T);
-        impl<T> Trait<T> for S<T> {}
+trait Trait<T> {
+    fn foo(&self) -> T;
+    fn foo2(&self) -> i64;
+}
+fn bar(x: impl Trait<u16>) {}
+struct S<T>(T);
+impl<T> Trait<T> for S<T> {}
 
-        fn test(x: impl Trait<u64>, y: &impl Trait<u32>) {
-            x;
-            y;
-            let z = S(1);
-            bar(z);
-            x.foo();
-            y.foo();
-            z.foo();
-            x.foo2();
-            y.foo2();
-            z.foo2();
-        }
-        "#,
+fn test(x: impl Trait<u64>, y: &impl Trait<u32>) {
+    x;
+    y;
+    let z = S(1);
+    bar(z);
+    x.foo();
+    y.foo();
+    z.foo();
+    x.foo2();
+    y.foo2();
+    z.foo2();
+}"#,
         expect![[r#"
             29..33 'self': &Self
             54..58 'self': &Self
@@ -1007,30 +996,29 @@ fn argument_impl_trait() {
 fn argument_impl_trait_type_args_1() {
     check_infer_with_mismatches(
         r#"
-        trait Trait {}
-        trait Foo {
-            // this function has an implicit Self param, an explicit type param,
-            // and an implicit impl Trait param!
-            fn bar<T>(x: impl Trait) -> T { loop {} }
-        }
-        fn foo<T>(x: impl Trait) -> T { loop {} }
-        struct S;
-        impl Trait for S {}
-        struct F;
-        impl Foo for F {}
+trait Trait {}
+trait Foo {
+    // this function has an implicit Self param, an explicit type param,
+    // and an implicit impl Trait param!
+    fn bar<T>(x: impl Trait) -> T { loop {} }
+}
+fn foo<T>(x: impl Trait) -> T { loop {} }
+struct S;
+impl Trait for S {}
+struct F;
+impl Foo for F {}
 
-        fn test() {
-            Foo::bar(S);
-            <F as Foo>::bar(S);
-            F::bar(S);
-            Foo::bar::<u32>(S);
-            <F as Foo>::bar::<u32>(S);
+fn test() {
+    Foo::bar(S);
+    <F as Foo>::bar(S);
+    F::bar(S);
+    Foo::bar::<u32>(S);
+    <F as Foo>::bar::<u32>(S);
 
-            foo(S);
-            foo::<u32>(S);
-            foo::<u32, i32>(S); // we should ignore the extraneous i32
-        }
-        "#,
+    foo(S);
+    foo::<u32>(S);
+    foo::<u32, i32>(S); // we should ignore the extraneous i32
+}"#,
         expect![[r#"
             155..156 'x': impl Trait
             175..186 '{ loop {} }': T
@@ -1073,21 +1061,20 @@ fn argument_impl_trait_type_args_1() {
 fn argument_impl_trait_type_args_2() {
     check_infer_with_mismatches(
         r#"
-        trait Trait {}
-        struct S;
-        impl Trait for S {}
-        struct F<T>;
-        impl<T> F<T> {
-            fn foo<U>(self, x: impl Trait) -> (T, U) { loop {} }
-        }
+trait Trait {}
+struct S;
+impl Trait for S {}
+struct F<T>;
+impl<T> F<T> {
+    fn foo<U>(self, x: impl Trait) -> (T, U) { loop {} }
+}
 
-        fn test() {
-            F.foo(S);
-            F::<u32>.foo(S);
-            F::<u32>.foo::<i32>(S);
-            F::<u32>.foo::<i32, u32>(S); // extraneous argument should be ignored
-        }
-        "#,
+fn test() {
+    F.foo(S);
+    F::<u32>.foo(S);
+    F::<u32>.foo::<i32>(S);
+    F::<u32>.foo::<i32, u32>(S); // extraneous argument should be ignored
+}"#,
         expect![[r#"
             87..91 'self': F<T>
             93..94 'x': impl Trait
@@ -1115,15 +1102,14 @@ fn argument_impl_trait_type_args_2() {
 fn argument_impl_trait_to_fn_pointer() {
     check_infer_with_mismatches(
         r#"
-        trait Trait {}
-        fn foo(x: impl Trait) { loop {} }
-        struct S;
-        impl Trait for S {}
+trait Trait {}
+fn foo(x: impl Trait) { loop {} }
+struct S;
+impl Trait for S {}
 
-        fn test() {
-            let f: fn(S) -> () = foo;
-        }
-        "#,
+fn test() {
+    let f: fn(S) -> () = foo;
+}"#,
         expect![[r#"
             22..23 'x': impl Trait
             37..48 '{ loop {} }': ()
@@ -1140,24 +1126,23 @@ fn argument_impl_trait_to_fn_pointer() {
 fn impl_trait() {
     check_infer(
         r#"
-        trait Trait<T> {
-            fn foo(&self) -> T;
-            fn foo2(&self) -> i64;
-        }
-        fn bar() -> impl Trait<u64> {}
+trait Trait<T> {
+    fn foo(&self) -> T;
+    fn foo2(&self) -> i64;
+}
+fn bar() -> impl Trait<u64> {}
 
-        fn test(x: impl Trait<u64>, y: &impl Trait<u64>) {
-            x;
-            y;
-            let z = bar();
-            x.foo();
-            y.foo();
-            z.foo();
-            x.foo2();
-            y.foo2();
-            z.foo2();
-        }
-        "#,
+fn test(x: impl Trait<u64>, y: &impl Trait<u64>) {
+    x;
+    y;
+    let z = bar();
+    x.foo();
+    y.foo();
+    z.foo();
+    x.foo2();
+    y.foo2();
+    z.foo2();
+}"#,
         expect![[r#"
             29..33 'self': &Self
             54..58 'self': &Self
@@ -1191,16 +1176,15 @@ fn simple_return_pos_impl_trait() {
     cov_mark::check!(lower_rpit);
     check_infer(
         r#"
-        trait Trait<T> {
-            fn foo(&self) -> T;
-        }
-        fn bar() -> impl Trait<u64> { loop {} }
+trait Trait<T> {
+    fn foo(&self) -> T;
+}
+fn bar() -> impl Trait<u64> { loop {} }
 
-        fn test() {
-            let a = bar();
-            a.foo();
-        }
-        "#,
+fn test() {
+    let a = bar();
+    a.foo();
+}"#,
         expect![[r#"
             29..33 'self': &Self
             71..82 '{ loop {} }': !
@@ -1220,25 +1204,24 @@ fn simple_return_pos_impl_trait() {
 fn more_return_pos_impl_trait() {
     check_infer(
         r#"
-        trait Iterator {
-            type Item;
-            fn next(&mut self) -> Self::Item;
-        }
-        trait Trait<T> {
-            fn foo(&self) -> T;
-        }
-        fn bar() -> (impl Iterator<Item = impl Trait<u32>>, impl Trait<u64>) { loop {} }
-        fn baz<T>(t: T) -> (impl Iterator<Item = impl Trait<T>>, impl Trait<T>) { loop {} }
+trait Iterator {
+    type Item;
+    fn next(&mut self) -> Self::Item;
+}
+trait Trait<T> {
+    fn foo(&self) -> T;
+}
+fn bar() -> (impl Iterator<Item = impl Trait<u32>>, impl Trait<u64>) { loop {} }
+fn baz<T>(t: T) -> (impl Iterator<Item = impl Trait<T>>, impl Trait<T>) { loop {} }
 
-        fn test() {
-            let (a, b) = bar();
-            a.next().foo();
-            b.foo();
-            let (c, d) = baz(1u128);
-            c.next().foo();
-            d.foo();
-        }
-        "#,
+fn test() {
+    let (a, b) = bar();
+    a.next().foo();
+    b.foo();
+    let (c, d) = baz(1u128);
+    c.next().foo();
+    d.foo();
+}"#,
         expect![[r#"
             49..53 'self': &mut Self
             101..105 'self': &Self
@@ -1279,24 +1262,23 @@ fn more_return_pos_impl_trait() {
 fn dyn_trait() {
     check_infer(
         r#"
-        trait Trait<T> {
-            fn foo(&self) -> T;
-            fn foo2(&self) -> i64;
-        }
-        fn bar() -> dyn Trait<u64> {}
+trait Trait<T> {
+    fn foo(&self) -> T;
+    fn foo2(&self) -> i64;
+}
+fn bar() -> dyn Trait<u64> {}
 
-        fn test(x: dyn Trait<u64>, y: &dyn Trait<u64>) {
-            x;
-            y;
-            let z = bar();
-            x.foo();
-            y.foo();
-            z.foo();
-            x.foo2();
-            y.foo2();
-            z.foo2();
-        }
-        "#,
+fn test(x: dyn Trait<u64>, y: &dyn Trait<u64>) {
+    x;
+    y;
+    let z = bar();
+    x.foo();
+    y.foo();
+    z.foo();
+    x.foo2();
+    y.foo2();
+    z.foo2();
+}"#,
         expect![[r#"
             29..33 'self': &Self
             54..58 'self': &Self
@@ -1329,22 +1311,21 @@ fn dyn_trait() {
 fn dyn_trait_in_impl() {
     check_infer(
         r#"
-        trait Trait<T, U> {
-            fn foo(&self) -> (T, U);
-        }
-        struct S<T, U> {}
-        impl<T, U> S<T, U> {
-            fn bar(&self) -> &dyn Trait<T, U> { loop {} }
-        }
-        trait Trait2<T, U> {
-            fn baz(&self) -> (T, U);
-        }
-        impl<T, U> Trait2<T, U> for dyn Trait<T, U> { }
+trait Trait<T, U> {
+    fn foo(&self) -> (T, U);
+}
+struct S<T, U> {}
+impl<T, U> S<T, U> {
+    fn bar(&self) -> &dyn Trait<T, U> { loop {} }
+}
+trait Trait2<T, U> {
+    fn baz(&self) -> (T, U);
+}
+impl<T, U> Trait2<T, U> for dyn Trait<T, U> { }
 
-        fn test(s: S<u32, i32>) {
-            s.bar().baz();
-        }
-        "#,
+fn test(s: S<u32, i32>) {
+    s.bar().baz();
+}"#,
         expect![[r#"
             32..36 'self': &Self
             102..106 'self': &S<T, U>
@@ -1365,20 +1346,19 @@ fn dyn_trait_in_impl() {
 fn dyn_trait_bare() {
     check_infer(
         r#"
-        trait Trait {
-            fn foo(&self) -> u64;
-        }
-        fn bar() -> Trait {}
+trait Trait {
+    fn foo(&self) -> u64;
+}
+fn bar() -> Trait {}
 
-        fn test(x: Trait, y: &Trait) -> u64 {
-            x;
-            y;
-            let z = bar();
-            x.foo();
-            y.foo();
-            z.foo();
-        }
-        "#,
+fn test(x: Trait, y: &Trait) -> u64 {
+    x;
+    y;
+    let z = bar();
+    x.foo();
+    y.foo();
+    z.foo();
+}"#,
         expect![[r#"
             26..30 'self': &Self
             60..62 '{}': ()
@@ -1404,17 +1384,24 @@ fn dyn_trait_bare() {
 fn weird_bounds() {
     check_infer(
         r#"
-        trait Trait {}
-        fn test(a: impl Trait + 'lifetime, b: impl 'lifetime, c: impl (Trait), d: impl ('lifetime), e: impl ?Sized, f: impl Trait + ?Sized) {}
-        "#,
+trait Trait {}
+fn test(
+    a: impl Trait + 'lifetime,
+    b: impl 'lifetime,
+    c: impl (Trait),
+    d: impl ('lifetime),
+    e: impl ?Sized,
+    f: impl Trait + ?Sized
+) {}
+"#,
         expect![[r#"
-            23..24 'a': impl Trait
-            50..51 'b': impl
-            69..70 'c': impl Trait
-            86..87 'd': impl
-            107..108 'e': impl
-            123..124 'f': impl Trait
-            147..149 '{}': ()
+            28..29 'a': impl Trait
+            59..60 'b': impl
+            82..83 'c': impl Trait
+            103..104 'd': impl
+            128..129 'e': impl
+            148..149 'f': impl Trait
+            173..175 '{}': ()
         "#]],
     );
 }
@@ -1439,27 +1426,26 @@ fn test(x: (impl Trait + UnknownTrait)) {
 fn assoc_type_bindings() {
     check_infer(
         r#"
-        trait Trait {
-            type Type;
-        }
+trait Trait {
+    type Type;
+}
 
-        fn get<T: Trait>(t: T) -> <T as Trait>::Type {}
-        fn get2<U, T: Trait<Type = U>>(t: T) -> U {}
-        fn set<T: Trait<Type = u64>>(t: T) -> T {t}
+fn get<T: Trait>(t: T) -> <T as Trait>::Type {}
+fn get2<U, T: Trait<Type = U>>(t: T) -> U {}
+fn set<T: Trait<Type = u64>>(t: T) -> T {t}
 
-        struct S<T>;
-        impl<T> Trait for S<T> { type Type = T; }
+struct S<T>;
+impl<T> Trait for S<T> { type Type = T; }
 
-        fn test<T: Trait<Type = u32>>(x: T, y: impl Trait<Type = i64>) {
-            get(x);
-            get2(x);
-            get(y);
-            get2(y);
-            get(set(S));
-            get2(set(S));
-            get2(S::<str>);
-        }
-        "#,
+fn test<T: Trait<Type = u32>>(x: T, y: impl Trait<Type = i64>) {
+    get(x);
+    get2(x);
+    get(y);
+    get2(y);
+    get(set(S));
+    get2(set(S));
+    get2(S::<str>);
+}"#,
         expect![[r#"
             49..50 't': T
             77..79 '{}': ()
@@ -1546,18 +1532,17 @@ mod iter {
 fn projection_eq_within_chalk() {
     check_infer(
         r#"
-        trait Trait1 {
-            type Type;
-        }
-        trait Trait2<T> {
-            fn foo(self) -> T;
-        }
-        impl<T, U> Trait2<T> for U where U: Trait1<Type = T> {}
+trait Trait1 {
+    type Type;
+}
+trait Trait2<T> {
+    fn foo(self) -> T;
+}
+impl<T, U> Trait2<T> for U where U: Trait1<Type = T> {}
 
-        fn test<T: Trait1<Type = u32>>(x: T) {
-            x.foo();
-        }
-        "#,
+fn test<T: Trait1<Type = u32>>(x: T) {
+    x.foo();
+}"#,
         expect![[r#"
             61..65 'self': Self
             163..164 'x': T
@@ -1589,19 +1574,18 @@ fn test<T: foo::Trait>(x: T) {
 fn super_trait_method_resolution() {
     check_infer(
         r#"
-        mod foo {
-            trait SuperTrait {
-                fn foo(&self) -> u32 {}
-            }
-        }
-        trait Trait1: foo::SuperTrait {}
-        trait Trait2 where Self: foo::SuperTrait {}
+mod foo {
+    trait SuperTrait {
+        fn foo(&self) -> u32 {}
+    }
+}
+trait Trait1: foo::SuperTrait {}
+trait Trait2 where Self: foo::SuperTrait {}
 
-        fn test<T: Trait1, U: Trait2>(x: T, y: U) {
-            x.foo();
-            y.foo();
-        }
-        "#,
+fn test<T: Trait1, U: Trait2>(x: T, y: U) {
+    x.foo();
+    y.foo();
+}"#,
         expect![[r#"
             49..53 'self': &Self
             62..64 '{}': ()
@@ -1620,17 +1604,16 @@ fn super_trait_method_resolution() {
 fn super_trait_impl_trait_method_resolution() {
     check_infer(
         r#"
-        mod foo {
-            trait SuperTrait {
-                fn foo(&self) -> u32 {}
-            }
-        }
-        trait Trait1: foo::SuperTrait {}
+mod foo {
+    trait SuperTrait {
+        fn foo(&self) -> u32 {}
+    }
+}
+trait Trait1: foo::SuperTrait {}
 
-        fn test(x: &impl Trait1) {
-            x.foo();
-        }
-        "#,
+fn test(x: &impl Trait1) {
+    x.foo();
+}"#,
         expect![[r#"
             49..53 'self': &Self
             62..64 '{}': ()
@@ -1667,20 +1650,19 @@ fn super_trait_cycle() {
 fn super_trait_assoc_type_bounds() {
     check_infer(
         r#"
-        trait SuperTrait { type Type; }
-        trait Trait where Self: SuperTrait {}
+trait SuperTrait { type Type; }
+trait Trait where Self: SuperTrait {}
 
-        fn get2<U, T: Trait<Type = U>>(t: T) -> U {}
-        fn set<T: Trait<Type = u64>>(t: T) -> T {t}
+fn get2<U, T: Trait<Type = U>>(t: T) -> U {}
+fn set<T: Trait<Type = u64>>(t: T) -> T {t}
 
-        struct S<T>;
-        impl<T> SuperTrait for S<T> { type Type = T; }
-        impl<T> Trait for S<T> {}
+struct S<T>;
+impl<T> SuperTrait for S<T> { type Type = T; }
+impl<T> Trait for S<T> {}
 
-        fn test() {
-            get2(set(S));
-        }
-        "#,
+fn test() {
+    get2(set(S));
+}"#,
         expect![[r#"
             102..103 't': T
             113..115 '{}': ()
@@ -1701,16 +1683,15 @@ fn super_trait_assoc_type_bounds() {
 fn fn_trait() {
     check_infer_with_mismatches(
         r#"
-        trait FnOnce<Args> {
-            type Output;
+trait FnOnce<Args> {
+    type Output;
 
-            fn call_once(self, args: Args) -> <Self as FnOnce<Args>>::Output;
-        }
+    fn call_once(self, args: Args) -> <Self as FnOnce<Args>>::Output;
+}
 
-        fn test<F: FnOnce(u32, u64) -> u128>(f: F) {
-            f.call_once((1, 2));
-        }
-        "#,
+fn test<F: FnOnce(u32, u64) -> u128>(f: F) {
+    f.call_once((1, 2));
+}"#,
         expect![[r#"
             56..60 'self': Self
             62..66 'args': Args
@@ -1729,37 +1710,36 @@ fn fn_trait() {
 fn fn_ptr_and_item() {
     check_infer_with_mismatches(
         r#"
-        #[lang="fn_once"]
-        trait FnOnce<Args> {
-            type Output;
+#[lang="fn_once"]
+trait FnOnce<Args> {
+    type Output;
 
-            fn call_once(self, args: Args) -> Self::Output;
-        }
+    fn call_once(self, args: Args) -> Self::Output;
+}
 
-        trait Foo<T> {
-            fn foo(&self) -> T;
-        }
+trait Foo<T> {
+    fn foo(&self) -> T;
+}
 
-        struct Bar<T>(T);
+struct Bar<T>(T);
 
-        impl<A1, R, F: FnOnce(A1) -> R> Foo<(A1, R)> for Bar<F> {
-            fn foo(&self) -> (A1, R) { loop {} }
-        }
+impl<A1, R, F: FnOnce(A1) -> R> Foo<(A1, R)> for Bar<F> {
+    fn foo(&self) -> (A1, R) { loop {} }
+}
 
-        enum Opt<T> { None, Some(T) }
-        impl<T> Opt<T> {
-            fn map<U, F: FnOnce(T) -> U>(self, f: F) -> Opt<U> { loop {} }
-        }
+enum Opt<T> { None, Some(T) }
+impl<T> Opt<T> {
+    fn map<U, F: FnOnce(T) -> U>(self, f: F) -> Opt<U> { loop {} }
+}
 
-        fn test() {
-            let bar: Bar<fn(u8) -> u32>;
-            bar.foo();
+fn test() {
+    let bar: Bar<fn(u8) -> u32>;
+    bar.foo();
 
-            let opt: Opt<u8>;
-            let f: fn(u8) -> u32;
-            opt.map(f);
-        }
-        "#,
+    let opt: Opt<u8>;
+    let f: fn(u8) -> u32;
+    opt.map(f);
+}"#,
         expect![[r#"
             74..78 'self': Self
             80..84 'args': Args
@@ -1790,46 +1770,45 @@ fn fn_ptr_and_item() {
 fn fn_trait_deref_with_ty_default() {
     check_infer(
         r#"
-        #[lang = "deref"]
-        trait Deref {
-            type Target;
+#[lang = "deref"]
+trait Deref {
+    type Target;
 
-            fn deref(&self) -> &Self::Target;
-        }
+    fn deref(&self) -> &Self::Target;
+}
 
-        #[lang="fn_once"]
-        trait FnOnce<Args> {
-            type Output;
+#[lang="fn_once"]
+trait FnOnce<Args> {
+    type Output;
 
-            fn call_once(self, args: Args) -> Self::Output;
-        }
+    fn call_once(self, args: Args) -> Self::Output;
+}
 
-        struct Foo;
+struct Foo;
 
-        impl Foo {
-            fn foo(&self) -> usize {}
-        }
+impl Foo {
+    fn foo(&self) -> usize {}
+}
 
-        struct Lazy<T, F = fn() -> T>(F);
+struct Lazy<T, F = fn() -> T>(F);
 
-        impl<T, F> Lazy<T, F> {
-            pub fn new(f: F) -> Lazy<T, F> {}
-        }
+impl<T, F> Lazy<T, F> {
+    pub fn new(f: F) -> Lazy<T, F> {}
+}
 
-        impl<T, F: FnOnce() -> T> Deref for Lazy<T, F> {
-            type Target = T;
-        }
+impl<T, F: FnOnce() -> T> Deref for Lazy<T, F> {
+    type Target = T;
+}
 
-        fn test() {
-            let lazy1: Lazy<Foo, _> = Lazy::new(|| Foo);
-            let r1 = lazy1.foo();
+fn test() {
+    let lazy1: Lazy<Foo, _> = Lazy::new(|| Foo);
+    let r1 = lazy1.foo();
 
-            fn make_foo_fn() -> Foo {}
-            let make_foo_fn_ptr: fn() -> Foo = make_foo_fn;
-            let lazy2: Lazy<Foo, _> = Lazy::new(make_foo_fn_ptr);
-            let r2 = lazy2.foo();
-        }
-        "#,
+    fn make_foo_fn() -> Foo {}
+    let make_foo_fn_ptr: fn() -> Foo = make_foo_fn;
+    let lazy2: Lazy<Foo, _> = Lazy::new(make_foo_fn_ptr);
+    let r2 = lazy2.foo();
+}"#,
         expect![[r#"
             64..68 'self': &Self
             165..169 'self': Self
@@ -1865,23 +1844,22 @@ fn fn_trait_deref_with_ty_default() {
 fn closure_1() {
     check_infer_with_mismatches(
         r#"
-        #[lang = "fn_once"]
-        trait FnOnce<Args> {
-            type Output;
-        }
+#[lang = "fn_once"]
+trait FnOnce<Args> {
+    type Output;
+}
 
-        enum Option<T> { Some(T), None }
-        impl<T> Option<T> {
-            fn map<U, F: FnOnce(T) -> U>(self, f: F) -> Option<U> { loop {} }
-        }
+enum Option<T> { Some(T), None }
+impl<T> Option<T> {
+    fn map<U, F: FnOnce(T) -> U>(self, f: F) -> Option<U> { loop {} }
+}
 
-        fn test() {
-            let x = Option::Some(1u32);
-            x.map(|v| v + 1);
-            x.map(|_v| 1u64);
-            let y: Option<i64> = x.map(|_v| 1);
-        }
-        "#,
+fn test() {
+    let x = Option::Some(1u32);
+    x.map(|v| v + 1);
+    x.map(|_v| 1u64);
+    let y: Option<i64> = x.map(|_v| 1);
+}"#,
         expect![[r#"
             147..151 'self': Option<T>
             153..154 'f': F
@@ -1919,33 +1897,32 @@ fn closure_1() {
 fn closure_2() {
     check_infer_with_mismatches(
         r#"
-        #[lang = "add"]
-        pub trait Add<Rhs = Self> {
-            type Output;
-            fn add(self, rhs: Rhs) -> Self::Output;
-        }
+#[lang = "add"]
+pub trait Add<Rhs = Self> {
+    type Output;
+    fn add(self, rhs: Rhs) -> Self::Output;
+}
 
-        trait FnOnce<Args> {
-            type Output;
-        }
+trait FnOnce<Args> {
+    type Output;
+}
 
-        impl Add for u64 {
-            type Output = Self;
-            fn add(self, rhs: u64) -> Self::Output {0}
-        }
+impl Add for u64 {
+    type Output = Self;
+    fn add(self, rhs: u64) -> Self::Output {0}
+}
 
-        impl Add for u128 {
-            type Output = Self;
-            fn add(self, rhs: u128) -> Self::Output {0}
-        }
+impl Add for u128 {
+    type Output = Self;
+    fn add(self, rhs: u128) -> Self::Output {0}
+}
 
-        fn test<F: FnOnce(u32) -> u64>(f: F) {
-            f(1);
-            let g = |v| v + 1;
-            g(1u64);
-            let h = |v| 1u128 + v;
-        }
-        "#,
+fn test<F: FnOnce(u32) -> u64>(f: F) {
+    f(1);
+    let g = |v| v + 1;
+    g(1u64);
+    let h = |v| 1u128 + v;
+}"#,
         expect![[r#"
             72..76 'self': Self
             78..81 'rhs': Rhs
@@ -1985,29 +1962,28 @@ fn closure_2() {
 fn closure_as_argument_inference_order() {
     check_infer_with_mismatches(
         r#"
-        #[lang = "fn_once"]
-        trait FnOnce<Args> {
-            type Output;
-        }
+#[lang = "fn_once"]
+trait FnOnce<Args> {
+    type Output;
+}
 
-        fn foo1<T, U, F: FnOnce(T) -> U>(x: T, f: F) -> U { loop {} }
-        fn foo2<T, U, F: FnOnce(T) -> U>(f: F, x: T) -> U { loop {} }
+fn foo1<T, U, F: FnOnce(T) -> U>(x: T, f: F) -> U { loop {} }
+fn foo2<T, U, F: FnOnce(T) -> U>(f: F, x: T) -> U { loop {} }
 
-        struct S;
-        impl S {
-            fn method(self) -> u64;
+struct S;
+impl S {
+    fn method(self) -> u64;
 
-            fn foo1<T, U, F: FnOnce(T) -> U>(self, x: T, f: F) -> U { loop {} }
-            fn foo2<T, U, F: FnOnce(T) -> U>(self, f: F, x: T) -> U { loop {} }
-        }
+    fn foo1<T, U, F: FnOnce(T) -> U>(self, x: T, f: F) -> U { loop {} }
+    fn foo2<T, U, F: FnOnce(T) -> U>(self, f: F, x: T) -> U { loop {} }
+}
 
-        fn test() {
-            let x1 = foo1(S, |s| s.method());
-            let x2 = foo2(|s| s.method(), S);
-            let x3 = S.foo1(S, |s| s.method());
-            let x4 = S.foo2(|s| s.method(), S);
-        }
-        "#,
+fn test() {
+    let x1 = foo1(S, |s| s.method());
+    let x2 = foo2(|s| s.method(), S);
+    let x3 = S.foo1(S, |s| s.method());
+    let x4 = S.foo2(|s| s.method(), S);
+}"#,
         expect![[r#"
             94..95 'x': T
             100..101 'f': F
@@ -2136,27 +2112,26 @@ fn test<T, U>() where T::Item: Trait2, T: Trait<U::Item>, U: Trait<()> {
 fn unselected_projection_on_impl_self() {
     check_infer(
         r#"
-        //- /main.rs
-        trait Trait {
-            type Item;
+//- /main.rs
+trait Trait {
+    type Item;
 
-            fn f(&self, x: Self::Item);
-        }
+    fn f(&self, x: Self::Item);
+}
 
-        struct S;
+struct S;
 
-        impl Trait for S {
-            type Item = u32;
-            fn f(&self, x: Self::Item) { let y = x; }
-        }
+impl Trait for S {
+    type Item = u32;
+    fn f(&self, x: Self::Item) { let y = x; }
+}
 
-        struct S2;
+struct S2;
 
-        impl Trait for S2 {
-            type Item = i32;
-            fn f(&self, x: <Self>::Item) { let y = x; }
-        }
-        "#,
+impl Trait for S2 {
+    type Item = i32;
+    fn f(&self, x: <Self>::Item) { let y = x; }
+}"#,
         expect![[r#"
             40..44 'self': &Self
             46..47 'x': Trait::Item<Self>
@@ -2392,58 +2367,57 @@ fn test<I: Iterator<Item: Iterator<Item = u32>>>() {
 fn proc_macro_server_types() {
     check_infer(
         r#"
-        macro_rules! with_api {
-            ($S:ident, $self:ident, $m:ident) => {
-                $m! {
-                    TokenStream {
-                        fn new() -> $S::TokenStream;
-                    },
-                    Group {
-                    },
-                }
-            };
+macro_rules! with_api {
+    ($S:ident, $self:ident, $m:ident) => {
+        $m! {
+            TokenStream {
+                fn new() -> $S::TokenStream;
+            },
+            Group {
+            },
         }
-        macro_rules! associated_item {
-            (type TokenStream) =>
-                (type TokenStream: 'static;);
-            (type Group) =>
-                (type Group: 'static;);
-            ($($item:tt)*) => ($($item)*;)
-        }
-        macro_rules! declare_server_traits {
-            ($($name:ident {
-                $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
-            }),* $(,)?) => {
-                pub trait Types {
-                    $(associated_item!(type $name);)*
-                }
-
-                $(pub trait $name: Types {
-                    $(associated_item!(fn $method($($arg: $arg_ty),*) $(-> $ret_ty)?);)*
-                })*
-
-                pub trait Server: Types $(+ $name)* {}
-                impl<S: Types $(+ $name)*> Server for S {}
-            }
+    };
+}
+macro_rules! associated_item {
+    (type TokenStream) =>
+        (type TokenStream: 'static;);
+    (type Group) =>
+        (type Group: 'static;);
+    ($($item:tt)*) => ($($item)*;)
+}
+macro_rules! declare_server_traits {
+    ($($name:ident {
+        $(fn $method:ident($($arg:ident: $arg_ty:ty),* $(,)?) $(-> $ret_ty:ty)?;)*
+    }),* $(,)?) => {
+        pub trait Types {
+            $(associated_item!(type $name);)*
         }
 
-        with_api!(Self, self_, declare_server_traits);
-        struct G {}
-        struct T {}
-        struct Rustc;
-        impl Types for Rustc {
-            type TokenStream = T;
-            type Group = G;
-        }
+        $(pub trait $name: Types {
+            $(associated_item!(fn $method($($arg: $arg_ty),*) $(-> $ret_ty)?);)*
+        })*
 
-        fn make<T>() -> T { loop {} }
-        impl TokenStream for Rustc {
-            fn new() -> Self::TokenStream {
-                let group: Self::Group = make();
-                make()
-            }
-        }
-        "#,
+        pub trait Server: Types $(+ $name)* {}
+        impl<S: Types $(+ $name)*> Server for S {}
+    }
+}
+
+with_api!(Self, self_, declare_server_traits);
+struct G {}
+struct T {}
+struct Rustc;
+impl Types for Rustc {
+    type TokenStream = T;
+    type Group = G;
+}
+
+fn make<T>() -> T { loop {} }
+impl TokenStream for Rustc {
+    fn new() -> Self::TokenStream {
+        let group: Self::Group = make();
+        make()
+    }
+}"#,
         expect![[r#"
             1061..1072 '{ loop {} }': T
             1063..1070 'loop {}': !
@@ -2462,23 +2436,22 @@ fn proc_macro_server_types() {
 fn unify_impl_trait() {
     check_infer_with_mismatches(
         r#"
-        trait Trait<T> {}
+trait Trait<T> {}
 
-        fn foo(x: impl Trait<u32>) { loop {} }
-        fn bar<T>(x: impl Trait<T>) -> T { loop {} }
+fn foo(x: impl Trait<u32>) { loop {} }
+fn bar<T>(x: impl Trait<T>) -> T { loop {} }
 
-        struct S<T>(T);
-        impl<T> Trait<T> for S<T> {}
+struct S<T>(T);
+impl<T> Trait<T> for S<T> {}
 
-        fn default<T>() -> T { loop {} }
+fn default<T>() -> T { loop {} }
 
-        fn test() -> impl Trait<i32> {
-            let s1 = S(default());
-            foo(s1);
-            let x: i32 = bar(S(default()));
-            S(default())
-        }
-        "#,
+fn test() -> impl Trait<i32> {
+    let s1 = S(default());
+    foo(s1);
+    let x: i32 = bar(S(default()));
+    S(default())
+}"#,
         expect![[r#"
             26..27 'x': impl Trait<u32>
             46..57 '{ loop {} }': ()
@@ -2519,30 +2492,29 @@ fn unify_impl_trait() {
 fn assoc_types_from_bounds() {
     check_infer(
         r#"
-        //- /main.rs
-        #[lang = "fn_once"]
-        trait FnOnce<Args> {
-            type Output;
-        }
+//- /main.rs
+#[lang = "fn_once"]
+trait FnOnce<Args> {
+    type Output;
+}
 
-        trait T {
-            type O;
-        }
+trait T {
+    type O;
+}
 
-        impl T for () {
-            type O = ();
-        }
+impl T for () {
+    type O = ();
+}
 
-        fn f<X, F>(_v: F)
-        where
-            X: T,
-            F: FnOnce(&X::O),
-        { }
+fn f<X, F>(_v: F)
+where
+    X: T,
+    F: FnOnce(&X::O),
+{ }
 
-        fn main() {
-            f::<(), _>(|z| { z; });
-        }
-        "#,
+fn main() {
+    f::<(), _>(|z| { z; });
+}"#,
         expect![[r#"
             133..135 '_v': F
             178..181 '{ }': ()
@@ -2628,76 +2600,75 @@ fn test() {
 fn iterator_chain() {
     check_infer_with_mismatches(
         r#"
-        //- /main.rs
-        #[lang = "fn_once"]
-        trait FnOnce<Args> {
-            type Output;
-        }
-        #[lang = "fn_mut"]
-        trait FnMut<Args>: FnOnce<Args> { }
+//- /main.rs
+#[lang = "fn_once"]
+trait FnOnce<Args> {
+    type Output;
+}
+#[lang = "fn_mut"]
+trait FnMut<Args>: FnOnce<Args> { }
 
-        enum Option<T> { Some(T), None }
-        use Option::*;
+enum Option<T> { Some(T), None }
+use Option::*;
 
-        pub trait Iterator {
-            type Item;
+pub trait Iterator {
+    type Item;
 
-            fn filter_map<B, F>(self, f: F) -> FilterMap<Self, F>
-            where
-                F: FnMut(Self::Item) -> Option<B>,
-            { loop {} }
+    fn filter_map<B, F>(self, f: F) -> FilterMap<Self, F>
+    where
+        F: FnMut(Self::Item) -> Option<B>,
+    { loop {} }
 
-            fn for_each<F>(self, f: F)
-            where
-                F: FnMut(Self::Item),
-            { loop {} }
-        }
+    fn for_each<F>(self, f: F)
+    where
+        F: FnMut(Self::Item),
+    { loop {} }
+}
 
-        pub trait IntoIterator {
-            type Item;
-            type IntoIter: Iterator<Item = Self::Item>;
-            fn into_iter(self) -> Self::IntoIter;
-        }
+pub trait IntoIterator {
+    type Item;
+    type IntoIter: Iterator<Item = Self::Item>;
+    fn into_iter(self) -> Self::IntoIter;
+}
 
-        pub struct FilterMap<I, F> { }
-        impl<B, I: Iterator, F> Iterator for FilterMap<I, F>
-        where
-            F: FnMut(I::Item) -> Option<B>,
-        {
-            type Item = B;
-        }
+pub struct FilterMap<I, F> { }
+impl<B, I: Iterator, F> Iterator for FilterMap<I, F>
+where
+    F: FnMut(I::Item) -> Option<B>,
+{
+    type Item = B;
+}
 
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<I: Iterator> IntoIterator for I {
-            type Item = I::Item;
-            type IntoIter = I;
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<I: Iterator> IntoIterator for I {
+    type Item = I::Item;
+    type IntoIter = I;
 
-            fn into_iter(self) -> I {
-                self
-            }
-        }
+    fn into_iter(self) -> I {
+        self
+    }
+}
 
-        struct Vec<T> {}
-        impl<T> Vec<T> {
-            fn new() -> Self { loop {} }
-        }
+struct Vec<T> {}
+impl<T> Vec<T> {
+    fn new() -> Self { loop {} }
+}
 
-        impl<T> IntoIterator for Vec<T> {
-            type Item = T;
-            type IntoIter = IntoIter<T>;
-        }
+impl<T> IntoIterator for Vec<T> {
+    type Item = T;
+    type IntoIter = IntoIter<T>;
+}
 
-        pub struct IntoIter<T> { }
-        impl<T> Iterator for IntoIter<T> {
-            type Item = T;
-        }
+pub struct IntoIter<T> { }
+impl<T> Iterator for IntoIter<T> {
+    type Item = T;
+}
 
-        fn main() {
-            Vec::<i32>::new().into_iter()
-            .filter_map(|x| if x > 0 { Some(x as u32) } else { None })
-            .for_each(|y| { y; });
-        }
-        "#,
+fn main() {
+    Vec::<i32>::new().into_iter()
+    .filter_map(|x| if x > 0 { Some(x as u32) } else { None })
+    .for_each(|y| { y; });
+}"#,
         expect![[r#"
             226..230 'self': Self
             232..233 'f': F
@@ -2779,14 +2750,13 @@ fn main() {
 fn trait_object_no_coercion() {
     check_infer_with_mismatches(
         r#"
-        trait Foo {}
+trait Foo {}
 
-        fn foo(x: &dyn Foo) {}
+fn foo(x: &dyn Foo) {}
 
-        fn test(x: &dyn Foo) {
-            foo(x);
-        }
-        "#,
+fn test(x: &dyn Foo) {
+    foo(x);
+}"#,
         expect![[r#"
             21..22 'x': &dyn Foo
             34..36 '{}': ()
@@ -2803,23 +2773,22 @@ fn trait_object_no_coercion() {
 fn builtin_copy() {
     check_infer_with_mismatches(
         r#"
-        #[lang = "copy"]
-        trait Copy {}
+#[lang = "copy"]
+trait Copy {}
 
-        struct IsCopy;
-        impl Copy for IsCopy {}
-        struct NotCopy;
+struct IsCopy;
+impl Copy for IsCopy {}
+struct NotCopy;
 
-        trait Test { fn test(&self) -> bool; }
-        impl<T: Copy> Test for T {}
+trait Test { fn test(&self) -> bool; }
+impl<T: Copy> Test for T {}
 
-        fn test() {
-            IsCopy.test();
-            NotCopy.test();
-            (IsCopy, IsCopy).test();
-            (IsCopy, NotCopy).test();
-        }
-        "#,
+fn test() {
+    IsCopy.test();
+    NotCopy.test();
+    (IsCopy, IsCopy).test();
+    (IsCopy, NotCopy).test();
+}"#,
         expect![[r#"
             110..114 'self': &Self
             166..267 '{     ...t(); }': ()
@@ -2843,24 +2812,23 @@ fn builtin_copy() {
 fn builtin_fn_def_copy() {
     check_infer_with_mismatches(
         r#"
-        #[lang = "copy"]
-        trait Copy {}
+#[lang = "copy"]
+trait Copy {}
 
-        fn foo() {}
-        fn bar<T: Copy>(T) -> T {}
-        struct Struct(usize);
-        enum Enum { Variant(usize) }
+fn foo() {}
+fn bar<T: Copy>(T) -> T {}
+struct Struct(usize);
+enum Enum { Variant(usize) }
 
-        trait Test { fn test(&self) -> bool; }
-        impl<T: Copy> Test for T {}
+trait Test { fn test(&self) -> bool; }
+impl<T: Copy> Test for T {}
 
-        fn test() {
-            foo.test();
-            bar.test();
-            Struct.test();
-            Enum::Variant.test();
-        }
-        "#,
+fn test() {
+    foo.test();
+    bar.test();
+    Struct.test();
+    Enum::Variant.test();
+}"#,
         expect![[r#"
             41..43 '{}': ()
             60..61 'T': {unknown}
@@ -2884,18 +2852,17 @@ fn builtin_fn_def_copy() {
 fn builtin_fn_ptr_copy() {
     check_infer_with_mismatches(
         r#"
-        #[lang = "copy"]
-        trait Copy {}
+#[lang = "copy"]
+trait Copy {}
 
-        trait Test { fn test(&self) -> bool; }
-        impl<T: Copy> Test for T {}
+trait Test { fn test(&self) -> bool; }
+impl<T: Copy> Test for T {}
 
-        fn test(f1: fn(), f2: fn(usize) -> u8, f3: fn(u8, u8) -> &u8) {
-            f1.test();
-            f2.test();
-            f3.test();
-        }
-        "#,
+fn test(f1: fn(), f2: fn(usize) -> u8, f3: fn(u8, u8) -> &u8) {
+    f1.test();
+    f2.test();
+    f3.test();
+}"#,
         expect![[r#"
             54..58 'self': &Self
             108..110 'f1': fn()
@@ -2916,19 +2883,18 @@ fn builtin_fn_ptr_copy() {
 fn builtin_sized() {
     check_infer_with_mismatches(
         r#"
-        #[lang = "sized"]
-        trait Sized {}
+#[lang = "sized"]
+trait Sized {}
 
-        trait Test { fn test(&self) -> bool; }
-        impl<T: Sized> Test for T {}
+trait Test { fn test(&self) -> bool; }
+impl<T: Sized> Test for T {}
 
-        fn test() {
-            1u8.test();
-            (*"foo").test(); // not Sized
-            (1u8, 1u8).test();
-            (1u8, *"foo").test(); // not Sized
-        }
-        "#,
+fn test() {
+    1u8.test();
+    (*"foo").test(); // not Sized
+    (1u8, 1u8).test();
+    (1u8, *"foo").test(); // not Sized
+}"#,
         expect![[r#"
             56..60 'self': &Self
             113..228 '{     ...ized }': ()
@@ -2998,19 +2964,18 @@ impl<A: Step> iter::Iterator for ops::Range<A> {
 fn infer_closure_arg() {
     check_infer(
         r#"
-        //- /lib.rs
+//- /lib.rs
 
-        enum Option<T> {
-            None,
-            Some(T)
-        }
+enum Option<T> {
+    None,
+    Some(T)
+}
 
-        fn foo() {
-            let s = Option::None;
-            let f = |x: Option<i32>| {};
-            (&f)(s)
-        }
-        "#,
+fn foo() {
+    let s = Option::None;
+    let f = |x: Option<i32>| {};
+    (&f)(s)
+}"#,
         expect![[r#"
             52..126 '{     ...)(s) }': ()
             62..63 's': Option<i32>
@@ -3079,46 +3044,45 @@ fn infer_box_fn_arg() {
     // The type mismatch is a bug
     check_infer_with_mismatches(
         r#"
-        //- /lib.rs deps:std
+//- /lib.rs deps:std
 
-        #[lang = "fn_once"]
-        pub trait FnOnce<Args> {
-            type Output;
+#[lang = "fn_once"]
+pub trait FnOnce<Args> {
+    type Output;
 
-            extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
-        }
+    extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
+}
 
-        #[lang = "deref"]
-        pub trait Deref {
-            type Target: ?Sized;
+#[lang = "deref"]
+pub trait Deref {
+    type Target: ?Sized;
 
-            fn deref(&self) -> &Self::Target;
-        }
+    fn deref(&self) -> &Self::Target;
+}
 
-        #[lang = "owned_box"]
-        pub struct Box<T: ?Sized> {
-            inner: *mut T,
-        }
+#[lang = "owned_box"]
+pub struct Box<T: ?Sized> {
+    inner: *mut T,
+}
 
-        impl<T: ?Sized> Deref for Box<T> {
-            type Target = T;
+impl<T: ?Sized> Deref for Box<T> {
+    type Target = T;
 
-            fn deref(&self) -> &T {
-                &self.inner
-            }
-        }
+    fn deref(&self) -> &T {
+        &self.inner
+    }
+}
 
-        enum Option<T> {
-            None,
-            Some(T)
-        }
+enum Option<T> {
+    None,
+    Some(T)
+}
 
-        fn foo() {
-            let s = Option::None;
-            let f: Box<dyn FnOnce(&Option<i32>)> = box (|ps| {});
-            f(&s);
-        }
-        "#,
+fn foo() {
+    let s = Option::None;
+    let f: Box<dyn FnOnce(&Option<i32>)> = box (|ps| {});
+    f(&s);
+}"#,
         expect![[r#"
             100..104 'self': Self
             106..110 'args': Args
@@ -3284,8 +3248,7 @@ fn f() {
         ().method();
       //^^^^^^^^^^^ u8
     }
-}
-        "#,
+}"#,
         expect![[r#"
             46..50 'self': &Self
             58..63 '{ 0 }': u8
@@ -3339,8 +3302,7 @@ fn f() {
     fn inner() -> S {
         let s = inner();
     }
-}
-        "#,
+}"#,
         expect![[r#"
             17..73 '{     ...   } }': ()
             39..71 '{     ...     }': ()
@@ -3375,8 +3337,7 @@ fn test() {
     let x = A;
     let y = A;
     let r = x.do_op(y);
-}
-        "#,
+}"#,
         expect![[r#"
             63..67 'self': Self
             69..72 'rhs': RHS
@@ -3425,9 +3386,7 @@ impl foo::Bar for F {
 fn foo() {
     use foo::Bar;
     let x = <F as Bar>::boo();
-}
-
-        "#,
+}"#,
         expect![[r#"
             132..163 '{     ...     }': Bar::Output<Self>
             146..153 'loop {}': !
@@ -3465,8 +3424,7 @@ fn foo() {
 
 pub trait Deserialize {
     fn deserialize() -> u8;
-}
-    "#,
+}"#,
     );
 }
 
