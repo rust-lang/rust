@@ -365,21 +365,20 @@ crate fn create_resolver<'a>(
     }
     impl ast::visit::Visitor<'_> for IntraLinkCrateLoader {
         fn visit_attribute(&mut self, attr: &ast::Attribute) {
-            use crate::html::markdown::{markdown_links, MarkdownLink};
-            use crate::passes::collect_intra_doc_links::Disambiguator;
+            use crate::html::markdown::markdown_links;
+            use crate::passes::collect_intra_doc_links::preprocess_link;
 
             if let Some(doc) = attr.doc_str() {
-                for MarkdownLink { link, .. } in markdown_links(&doc.as_str()) {
-                    // FIXME: this misses a *lot* of the preprocessing done in collect_intra_doc_links
-                    // I think most of it shouldn't be necessary since we only need the crate prefix?
-                    let path_str = match Disambiguator::from_str(&link) {
-                        Ok(x) => x.map_or(link.as_str(), |(_, p)| p),
-                        Err(_) => continue,
+                for link in markdown_links(&doc.as_str()) {
+                    let path_str = if let Some(Ok(x)) = preprocess_link(&link) {
+                        x.path_str
+                    } else {
+                        continue;
                     };
                     self.resolver.borrow_mut().access(|resolver| {
                         let _ = resolver.resolve_str_path_error(
                             attr.span,
-                            path_str,
+                            &path_str,
                             TypeNS,
                             self.current_mod,
                         );
