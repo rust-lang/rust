@@ -20,7 +20,7 @@ pub fn opts() -> TargetOptions {
         dynamic_linking: true,
         executables: true,
         has_rpath: true,
-        os_family: Some("unix".to_string()),
+        families: vec!["unix".to_string()],
         is_like_solaris: true,
         limit_rdylib_exports: false, // Linker doesn't support this
         eliminate_frame_pointer: false,

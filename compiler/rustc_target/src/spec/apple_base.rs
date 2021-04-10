@@ -23,7 +23,7 @@ pub fn opts(os: &str) -> TargetOptions {
         function_sections: false,
         dynamic_linking: true,
         executables: true,
-        os_family: Some("unix".to_string()),
+        families: vec!["unix".to_string()],
         is_like_osx: true,
         dwarf_version: Some(2),
         has_rpath: true,

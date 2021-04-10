@@ -71,7 +71,7 @@ pub fn opts() -> TargetOptions {
         dll_prefix: String::new(),
         dll_suffix: ".dll".to_string(),
         exe_suffix: ".exe".to_string(),
-        os_family: Some("windows".to_string()),
+        families: vec!["windows".to_string()],
         is_like_windows: true,
         allows_weak_linkage: false,
         pre_link_args,

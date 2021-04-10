@@ -13,7 +13,7 @@ pub fn opts() -> TargetOptions {
         exe_suffix: ".exe".to_string(),
         staticlib_prefix: String::new(),
         staticlib_suffix: ".lib".to_string(),
-        os_family: Some("windows".to_string()),
+        families: vec!["windows".to_string()],
         crt_static_allows_dylibs: true,
         crt_static_respected: true,
         requires_uwtable: true,

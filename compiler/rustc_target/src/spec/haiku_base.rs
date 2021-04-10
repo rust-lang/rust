@@ -5,7 +5,7 @@ pub fn opts() -> TargetOptions {
         os: "haiku".to_string(),
         dynamic_linking: true,
         executables: true,
-        os_family: Some("unix".to_string()),
+        families: vec!["unix".to_string()],
         relro_level: RelroLevel::Full,
         linker_is_gnu: true,
         ..Default::default()
