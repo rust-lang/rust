@@ -1186,8 +1186,6 @@ impl clean::Visibility {
         item_did: DefId,
         cache: &'a Cache,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
-        use rustc_span::symbol::kw;
-
         let to_print = match self {
             clean::Public => "pub ".to_owned(),
             clean::Inherited => String::new(),
@@ -1212,23 +1210,53 @@ impl clean::Visibility {
                 } else {
                     let path = tcx.def_path(vis_did);
                     debug!("path={:?}", path);
-                    let first_name =
-                        path.data[0].data.get_opt_name().expect("modules are always named");
                     // modified from `resolved_path()` to work with `DefPathData`
                     let last_name = path.data.last().unwrap().data.get_opt_name().unwrap();
                     let anchor = anchor(vis_did, &last_name.as_str(), cache).to_string();
 
-                    let mut s = "pub(".to_owned();
-                    if path.data.len() != 1
-                        || (first_name != kw::SelfLower && first_name != kw::Super)
-                    {
-                        s.push_str("in ");
-                    }
+                    let mut s = "pub(in ".to_owned();
                     for seg in &path.data[..path.data.len() - 1] {
                         s.push_str(&format!("{}::", seg.data.get_opt_name().unwrap()));
                     }
                     s.push_str(&format!("{}) ", anchor));
                     s
+                }
+            }
+        };
+        display_fn(move |f| f.write_str(&to_print))
+    }
+
+    /// This function is the same as print_with_space, except that it renders no links.
+    /// It's used for macros' rendered source view, which is syntax highlighted and cannot have
+    /// any HTML in it.
+    crate fn to_src_with_space<'a, 'tcx: 'a>(
+        self,
+        tcx: TyCtxt<'tcx>,
+        item_did: DefId,
+    ) -> impl fmt::Display + 'a + Captures<'tcx> {
+        let to_print = match self {
+            clean::Public => "pub ".to_owned(),
+            clean::Inherited => String::new(),
+            clean::Visibility::Restricted(vis_did) => {
+                // FIXME(camelid): This may not work correctly if `item_did` is a module.
+                //                 However, rustdoc currently never displays a module's
+                //                 visibility, so it shouldn't matter.
+                let parent_module = find_nearest_parent_module(tcx, item_did);
+
+                if vis_did.index == CRATE_DEF_INDEX {
+                    "pub(crate) ".to_owned()
+                } else if parent_module == Some(vis_did) {
+                    // `pub(in foo)` where `foo` is the parent module
+                    // is the same as no visibility modifier
+                    String::new()
+                } else if parent_module
+                    .map(|parent| find_nearest_parent_module(tcx, parent))
+                    .flatten()
+                    == Some(vis_did)
+                {
+                    "pub(super) ".to_owned()
+                } else {
+                    format!("pub(in {}) ", tcx.def_path_str(vis_did))
                 }
             }
         };
