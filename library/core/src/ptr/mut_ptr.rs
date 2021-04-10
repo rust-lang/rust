@@ -830,7 +830,7 @@ impl<T: ?Sized> *mut T {
     /// #![feature(set_ptr_value)]
     /// # use core::fmt::Debug;
     /// let mut arr: [i32; 3] = [1, 2, 3];
-    /// let mut ptr = &mut arr[0] as *mut dyn Debug;
+    /// let mut ptr = arr.as_mut_ptr() as *mut dyn Debug;
     /// let thin = ptr as *mut u8;
     /// unsafe {
     ///     ptr = ptr.set_ptr_value(thin.add(8));
