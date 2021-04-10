@@ -61,9 +61,6 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, body: &'tcx hir
             "assert",
             "assert_eq",
             "assert_ne",
-            "debug_assert",
-            "debug_assert_eq",
-            "debug_assert_ne",
         ],
         body,
     );
