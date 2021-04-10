@@ -1074,3 +1074,172 @@ fn macro_in_arm() {
         "#]],
     );
 }
+
+#[test]
+fn macro_in_type_alias_position() {
+    check_infer(
+        r#"
+        macro_rules! U32 {
+            () => { u32 };
+        }
+
+        trait Foo {
+            type Ty;
+        }
+
+        impl<T> Foo for T {
+            type Ty = U32!();
+        }
+
+        type TayTo = U32!();
+
+        fn testy() {
+            let a: <() as Foo>::Ty;
+            let b: TayTo;
+        }
+        "#,
+        expect![[r#"
+            147..196 '{     ...yTo; }': ()
+            157..158 'a': u32
+            185..186 'b': u32
+        "#]],
+    );
+}
+
+#[test]
+fn nested_macro_in_type_alias_position() {
+    check_infer(
+        r#"
+        macro_rules! U32Inner2 {
+            () => { u32 };
+        }
+
+        macro_rules! U32Inner1 {
+            () => { U32Inner2!() };
+        }
+
+        macro_rules! U32 {
+            () => { U32Inner1!() };
+        }
+
+        trait Foo {
+            type Ty;
+        }
+
+        impl<T> Foo for T {
+            type Ty = U32!();
+        }
+
+        type TayTo = U32!();
+
+        fn testy() {
+            let a: <() as Foo>::Ty;
+            let b: TayTo;
+        }
+        "#,
+        expect![[r#"
+            259..308 '{     ...yTo; }': ()
+            269..270 'a': u32
+            297..298 'b': u32
+        "#]],
+    );
+}
+
+#[test]
+fn macros_in_type_alias_position_generics() {
+    check_infer(
+        r#"
+        struct Foo<A, B>(A, B);
+
+        macro_rules! U32 {
+            () => { u32 };
+        }
+
+        macro_rules! Bar {
+            () => { Foo<U32!(), U32!()> };
+        }
+
+        trait Moo {
+            type Ty;
+        }
+
+        impl<T> Moo for T {
+            type Ty = Bar!();
+        }
+
+        type TayTo = Bar!();
+
+        fn main() {
+            let a: <() as Moo>::Ty;
+            let b: TayTo;
+        }
+        "#,
+        expect![[r#"
+            228..277 '{     ...yTo; }': ()
+            238..239 'a': Foo<u32, u32>
+            266..267 'b': Foo<u32, u32>
+        "#]],
+    );
+}
+
+#[test]
+fn macros_in_type_position() {
+    check_infer(
+        r#"
+        struct Foo<A, B>(A, B);
+
+        macro_rules! U32 {
+            () => { u32 };
+        }
+
+        macro_rules! Bar {
+            () => { Foo<U32!(), U32!()> };
+        }
+
+        fn main() {
+            let a: Bar!();
+        }
+        "#,
+        expect![[r#"
+            133..155 '{     ...!(); }': ()
+            143..144 'a': Foo<u32, u32>
+        "#]],
+    );
+}
+
+#[test]
+fn macros_in_type_generics() {
+    check_infer(
+        r#"
+        struct Foo<A, B>(A, B);
+
+        macro_rules! U32 {
+            () => { u32 };
+        }
+
+        macro_rules! Bar {
+            () => { Foo<U32!(), U32!()> };
+        }
+
+        trait Moo {
+            type Ty;
+        }
+
+        impl<T> Moo for T {
+            type Ty = Foo<Bar!(), Bar!()>;
+        }
+
+        type TayTo = Foo<Bar!(), U32!()>;
+
+        fn main() {
+            let a: <() as Moo>::Ty;
+            let b: TayTo;
+        }
+        "#,
+        expect![[r#"
+            254..303 '{     ...yTo; }': ()
+            264..265 'a': Foo<Foo<u32, u32>, Foo<u32, u32>>
+            292..293 'b': Foo<Foo<u32, u32>, u32>
+        "#]],
+    );
+}

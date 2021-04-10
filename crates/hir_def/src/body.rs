@@ -19,9 +19,9 @@ use hir_expand::{
 use la_arena::{Arena, ArenaMap};
 use profile::Count;
 use rustc_hash::FxHashMap;
-use syntax::{ast, AstNode, AstPtr};
+use syntax::{ast, AstNode, AstPtr, SyntaxNode};
 
-pub(crate) use lower::LowerCtx;
+pub use lower::LowerCtx;
 
 use crate::{
     attr::{Attrs, RawAttrs},
@@ -98,11 +98,14 @@ impl Expander {
         }
     }
 
-    pub(crate) fn enter_expand<T: ast::AstNode>(
+    fn enter_expand_intern(
         &mut self,
         db: &dyn DefDatabase,
         macro_call: ast::MacroCall,
-    ) -> Result<ExpandResult<Option<(Mark, T)>>, UnresolvedMacro> {
+    ) -> Result<
+        ExpandResult<Option<(SyntaxNode, impl FnMut(&dyn DefDatabase) -> Mark + '_)>>,
+        UnresolvedMacro,
+    > {
         if self.recursion_limit + 1 > EXPANSION_RECURSION_LIMIT {
             cov_mark::hit!(your_stack_belongs_to_me);
             return Ok(ExpandResult::str_err(
@@ -147,6 +150,55 @@ impl Expander {
             }
         };
 
+        let this = self;
+
+        let advance_state = move |db: &dyn DefDatabase| {
+            this.recursion_limit += 1;
+            let mark = Mark {
+                file_id: this.current_file_id,
+                ast_id_map: mem::take(&mut this.ast_id_map),
+                bomb: DropBomb::new("expansion mark dropped"),
+            };
+            this.cfg_expander.hygiene = Hygiene::new(db.upcast(), file_id);
+            this.current_file_id = file_id;
+            this.ast_id_map = db.ast_id_map(file_id);
+            mark
+        };
+
+        Ok(ExpandResult { value: Some((raw_node, advance_state)), err })
+    }
+
+    pub(crate) fn enter_expand_raw(
+        &mut self,
+        db: &dyn DefDatabase,
+        macro_call: ast::MacroCall,
+    ) -> Result<ExpandResult<Option<(Mark, SyntaxNode)>>, UnresolvedMacro> {
+        let (raw_node, mut advance_state, err) = match self.enter_expand_intern(db, macro_call)? {
+            ExpandResult { value: Some((raw_node, advance_state)), err } => {
+                (raw_node, advance_state, err)
+            }
+            ExpandResult { value: None, err } => return Ok(ExpandResult { value: None, err }),
+        };
+
+        log::debug!("macro expansion {:#?}", raw_node);
+
+        let mark = advance_state(db);
+
+        Ok(ExpandResult { value: Some((mark, raw_node)), err })
+    }
+
+    pub(crate) fn enter_expand<T: ast::AstNode>(
+        &mut self,
+        db: &dyn DefDatabase,
+        macro_call: ast::MacroCall,
+    ) -> Result<ExpandResult<Option<(Mark, T)>>, UnresolvedMacro> {
+        let (raw_node, mut advance_state, err) = match self.enter_expand_intern(db, macro_call)? {
+            ExpandResult { value: Some((raw_node, advance_state)), err } => {
+                (raw_node, advance_state, err)
+            }
+            ExpandResult { value: None, err } => return Ok(ExpandResult { value: None, err }),
+        };
+
         let node = match T::cast(raw_node) {
             Some(it) => it,
             None => {
@@ -157,15 +209,7 @@ impl Expander {
 
         log::debug!("macro expansion {:#?}", node.syntax());
 
-        self.recursion_limit += 1;
-        let mark = Mark {
-            file_id: self.current_file_id,
-            ast_id_map: mem::take(&mut self.ast_id_map),
-            bomb: DropBomb::new("expansion mark dropped"),
-        };
-        self.cfg_expander.hygiene = Hygiene::new(db.upcast(), file_id);
-        self.current_file_id = file_id;
-        self.ast_id_map = db.ast_id_map(file_id);
+        let mark = advance_state(db);
 
         Ok(ExpandResult { value: Some((mark, node)), err })
     }
@@ -191,7 +235,8 @@ impl Expander {
     }
 
     fn parse_path(&mut self, path: ast::Path) -> Option<Path> {
-        Path::from_src(path, &self.cfg_expander.hygiene)
+        let ctx = LowerCtx::with_hygiene(&self.cfg_expander.hygiene);
+        Path::from_src(path, &ctx)
     }
 
     fn resolve_path_as_macro(&self, db: &dyn DefDatabase, path: &ModPath) -> Option<MacroDefId> {
@@ -204,6 +249,7 @@ impl Expander {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct Mark {
     file_id: HirFileId,
     ast_id_map: Arc<AstIdMap>,

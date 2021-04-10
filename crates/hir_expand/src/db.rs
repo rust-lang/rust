@@ -440,6 +440,7 @@ fn to_fragment_kind(db: &dyn AstDatabase, id: MacroCallId) -> FragmentKind {
         MACRO_ITEMS | SOURCE_FILE => FragmentKind::Items,
         MACRO_STMTS => FragmentKind::Statements,
         MACRO_PAT => FragmentKind::Pattern,
+        MACRO_TYPE => FragmentKind::Type,
         ITEM_LIST => FragmentKind::Items,
         LET_STMT => {
             // FIXME: Handle LHS Pattern

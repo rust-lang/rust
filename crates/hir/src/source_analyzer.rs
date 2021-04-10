@@ -9,6 +9,7 @@ use std::{iter::once, sync::Arc};
 
 use hir_def::{
     body::{
+        self,
         scope::{ExprScopes, ScopeId},
         Body, BodySourceMap,
     },
@@ -202,8 +203,8 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         macro_call: InFile<&ast::MacroCall>,
     ) -> Option<MacroDef> {
-        let hygiene = Hygiene::new(db.upcast(), macro_call.file_id);
-        let path = macro_call.value.path().and_then(|ast| Path::from_src(ast, &hygiene))?;
+        let ctx = body::LowerCtx::new(db.upcast(), macro_call.file_id);
+        let path = macro_call.value.path().and_then(|ast| Path::from_src(ast, &ctx))?;
         self.resolver.resolve_path_as_macro(db.upcast(), path.mod_path()).map(|it| it.into())
     }
 
@@ -281,7 +282,9 @@ impl SourceAnalyzer {
         }
 
         // This must be a normal source file rather than macro file.
-        let hir_path = Path::from_src(path.clone(), &Hygiene::new(db.upcast(), self.file_id))?;
+        let hygiene = Hygiene::new(db.upcast(), self.file_id);
+        let ctx = body::LowerCtx::with_hygiene(&hygiene);
+        let hir_path = Path::from_src(path.clone(), &ctx)?;
 
         // Case where path is a qualifier of another path, e.g. foo::bar::Baz where we
         // trying to resolve foo::bar.

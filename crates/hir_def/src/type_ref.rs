@@ -1,9 +1,16 @@
 //! HIR for references to types. Paths in these are not yet resolved. They can
 //! be directly created from an ast::TypeRef, without further queries.
-use hir_expand::name::Name;
-use syntax::ast;
+use std::borrow::Cow;
 
-use crate::{body::LowerCtx, path::Path};
+use hir_expand::{ast_id_map::FileAstId, name::Name, ExpandResult, InFile};
+use syntax::{algo::SyntaxRewriter, ast, AstNode, SyntaxKind, SyntaxNode};
+
+use crate::{
+    body::{Expander, LowerCtx},
+    db::DefDatabase,
+    path::Path,
+    ModuleId,
+};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Mutability {
@@ -68,6 +75,7 @@ impl TraitRef {
         }
     }
 }
+
 /// Compare ty::Ty
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum TypeRef {
@@ -84,6 +92,7 @@ pub enum TypeRef {
     // For
     ImplTrait(Vec<TypeBound>),
     DynTrait(Vec<TypeBound>),
+    Macro(InFile<FileAstId<ast::MacroCall>>),
     Error,
 }
 
@@ -176,8 +185,13 @@ impl TypeRef {
             ast::Type::DynTraitType(inner) => {
                 TypeRef::DynTrait(type_bounds_from_ast(ctx, inner.type_bound_list()))
             }
-            // FIXME: Macros in type position are not yet supported.
-            ast::Type::MacroType(_) => TypeRef::Error,
+            ast::Type::MacroType(mt) => match mt.macro_call() {
+                Some(mc) => ctx
+                    .ast_id(&mc)
+                    .map(|mc| TypeRef::Macro(InFile::new(ctx.file_id(), mc)))
+                    .unwrap_or(TypeRef::Error),
+                None => TypeRef::Error,
+            },
         }
     }
 
@@ -191,6 +205,16 @@ impl TypeRef {
 
     pub(crate) fn unit() -> TypeRef {
         TypeRef::Tuple(Vec::new())
+    }
+
+    pub fn has_macro_calls(&self) -> bool {
+        let mut has_macro_call = false;
+        self.walk(&mut |ty_ref| {
+            if let TypeRef::Macro(_) = ty_ref {
+                has_macro_call |= true
+            }
+        });
+        has_macro_call
     }
 
     pub fn walk(&self, f: &mut impl FnMut(&TypeRef)) {
@@ -215,7 +239,7 @@ impl TypeRef {
                     }
                 }
                 TypeRef::Path(path) => go_path(path, f),
-                TypeRef::Never | TypeRef::Placeholder | TypeRef::Error => {}
+                TypeRef::Never | TypeRef::Placeholder | TypeRef::Macro(_) | TypeRef::Error => {}
             };
         }
 
@@ -288,5 +312,71 @@ impl TypeBound {
             TypeBound::Path(p) => Some(p),
             _ => None,
         }
+    }
+}
+
+pub fn expand_type_ref<'a>(
+    db: &dyn DefDatabase,
+    module_id: ModuleId,
+    type_ref: &'a TypeRef,
+) -> Option<Cow<'a, TypeRef>> {
+    let macro_call = match type_ref {
+        TypeRef::Macro(macro_call) => macro_call,
+        _ => return Some(Cow::Borrowed(type_ref)),
+    };
+
+    let file_id = macro_call.file_id;
+    let macro_call = macro_call.to_node(db.upcast());
+
+    let mut expander = Expander::new(db, file_id, module_id);
+    let expanded = expand(db, &mut expander, &macro_call, true)?;
+
+    let node = ast::Type::cast(expanded)?;
+
+    let ctx = LowerCtx::new(db, file_id);
+    return Some(Cow::Owned(TypeRef::from_ast(&ctx, node)));
+
+    fn expand(
+        db: &dyn DefDatabase,
+        expander: &mut Expander,
+        macro_call: &ast::MacroCall,
+        expect_type: bool,
+    ) -> Option<SyntaxNode> {
+        let (mark, mut expanded) = match expander.enter_expand_raw(db, macro_call.clone()) {
+            Ok(ExpandResult { value: Some((mark, expanded)), .. }) => (mark, expanded),
+            _ => return None,
+        };
+
+        if expect_type && !ast::Type::can_cast(expanded.kind()) {
+            expander.exit(db, mark);
+            return None;
+        }
+
+        if ast::MacroType::can_cast(expanded.kind()) {
+            expanded = expanded.first_child()?; // MACRO_CALL
+        }
+
+        let mut rewriter = SyntaxRewriter::default();
+
+        let children = expanded.descendants().filter_map(ast::MacroCall::cast);
+        for child in children {
+            if let Some(new_node) = expand(db, expander, &child, false) {
+                if expanded == *child.syntax() {
+                    expanded = new_node;
+                } else {
+                    let parent = child.syntax().parent();
+                    let old_node = match &parent {
+                        Some(node) if node.kind() == SyntaxKind::MACRO_TYPE => node,
+                        _ => child.syntax(),
+                    };
+                    rewriter.replace(old_node, &new_node)
+                }
+            }
+        }
+
+        expander.exit(db, mark);
+
+        let res = rewriter.rewrite(&expanded);
+        Some(res)
     }
 }

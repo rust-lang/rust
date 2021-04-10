@@ -997,7 +997,7 @@ impl HirDisplay for TypeRef {
                 write!(f, "dyn ")?;
                 f.write_joined(bounds, " + ")?;
             }
-            TypeRef::Error => write!(f, "{{error}}")?,
+            TypeRef::Error | TypeRef::Macro(_) => write!(f, "{{error}}")?,
         }
         Ok(())
     }

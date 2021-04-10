@@ -7,15 +7,16 @@ SOURCE_FILE@0..41
     WHITESPACE@6..7 " "
     EQ@7..8 "="
     WHITESPACE@8..9 " "
-    MACRO_CALL@9..15
-      PATH@9..12
-        PATH_SEGMENT@9..12
-          NAME_REF@9..12
-            IDENT@9..12 "foo"
-      BANG@12..13 "!"
-      TOKEN_TREE@13..15
-        L_PAREN@13..14 "("
-        R_PAREN@14..15 ")"
+    MACRO_TYPE@9..15
+      MACRO_CALL@9..15
+        PATH@9..12
+          PATH_SEGMENT@9..12
+            NAME_REF@9..12
+              IDENT@9..12 "foo"
+        BANG@12..13 "!"
+        TOKEN_TREE@13..15
+          L_PAREN@13..14 "("
+          R_PAREN@14..15 ")"
     SEMICOLON@15..16 ";"
   WHITESPACE@16..17 "\n"
   TYPE_ALIAS@17..40
@@ -26,19 +27,20 @@ SOURCE_FILE@0..41
     WHITESPACE@23..24 " "
     EQ@24..25 "="
     WHITESPACE@25..26 " "
-    MACRO_CALL@26..39
-      PATH@26..36
-        PATH@26..31
-          PATH_SEGMENT@26..31
-            NAME_REF@26..31
-              CRATE_KW@26..31 "crate"
-        COLON2@31..33 "::"
-        PATH_SEGMENT@33..36
-          NAME_REF@33..36
-            IDENT@33..36 "foo"
-      BANG@36..37 "!"
-      TOKEN_TREE@37..39
-        L_PAREN@37..38 "("
-        R_PAREN@38..39 ")"
+    MACRO_TYPE@26..39
+      MACRO_CALL@26..39
+        PATH@26..36
+          PATH@26..31
+            PATH_SEGMENT@26..31
+              NAME_REF@26..31
+                CRATE_KW@26..31 "crate"
+          COLON2@31..33 "::"
+          PATH_SEGMENT@33..36
+            NAME_REF@33..36
+              IDENT@33..36 "foo"
+        BANG@36..37 "!"
+        TOKEN_TREE@37..39
+          L_PAREN@37..38 "("
+          R_PAREN@38..39 ")"
     SEMICOLON@39..40 ";"
   WHITESPACE@40..41 "\n"

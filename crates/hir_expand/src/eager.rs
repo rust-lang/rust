@@ -31,6 +31,7 @@ use parser::FragmentKind;
 use std::sync::Arc;
 use syntax::{algo::SyntaxRewriter, SyntaxNode};
 
+#[derive(Debug)]
 pub struct ErrorEmitted {
     _private: (),
 }

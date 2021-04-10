@@ -6,6 +6,7 @@ use std::{cell::RefCell, fmt, iter::successors};
 
 use base_db::{FileId, FileRange};
 use hir_def::{
+    body,
     resolver::{self, HasResolver, Resolver, TypeNs},
     AsMacroCall, FunctionId, TraitId, VariantId,
 };
@@ -854,7 +855,8 @@ impl<'a> SemanticsScope<'a> {
     /// necessary a heuristic, as it doesn't take hygiene into account.
     pub fn speculative_resolve(&self, path: &ast::Path) -> Option<PathResolution> {
         let hygiene = Hygiene::new(self.db.upcast(), self.file_id);
-        let path = Path::from_src(path.clone(), &hygiene)?;
+        let ctx = body::LowerCtx::with_hygiene(&hygiene);
+        let path = Path::from_src(path.clone(), &ctx)?;
         resolve_hir_path(self.db, &self.resolver, &path)
     }
 }

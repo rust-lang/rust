@@ -676,6 +676,7 @@ impl<T: ast::AstNode> AstIdWithPath<T> {
     }
 }
 
+#[derive(Debug)]
 pub struct UnresolvedMacro {
     pub path: ModPath,
 }

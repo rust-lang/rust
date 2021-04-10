@@ -123,10 +123,11 @@ impl TypeAliasData {
         let loc = typ.lookup(db);
         let item_tree = loc.id.item_tree(db);
         let typ = &item_tree[loc.id.value];
+        let type_ref = typ.type_ref.clone();
 
         Arc::new(TypeAliasData {
             name: typ.name.clone(),
-            type_ref: typ.type_ref.clone(),
+            type_ref: type_ref,
             visibility: item_tree[typ.visibility].clone(),
             is_extern: typ.is_extern,
             bounds: typ.bounds.to_vec(),
@@ -202,12 +203,13 @@ impl ImplData {
         let item_tree = impl_loc.id.item_tree(db);
         let impl_def = &item_tree[impl_loc.id.value];
         let target_trait = impl_def.target_trait.clone();
-        let self_ty = impl_def.self_ty.clone();
         let is_negative = impl_def.is_negative;
         let module_id = impl_loc.container;
         let container = AssocContainerId::ImplId(id);
-        let mut expander = Expander::new(db, impl_loc.id.file_id(), module_id);
+        let file_id = impl_loc.id.file_id();
+        let self_ty = impl_def.self_ty.clone();
 
+        let mut expander = Expander::new(db, file_id, module_id);
         let items = collect_items(
             db,
             module_id,
