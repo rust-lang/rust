@@ -79,7 +79,7 @@ macro_rules! uint_impl {
         #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
         #[doc(alias = "popcount")]
         #[doc(alias = "popcnt")]
-        #[inline]
+        #[inline(always)]
         pub const fn count_ones(self) -> u32 {
             intrinsics::ctpop(self as $ActualT) as u32
         }
@@ -95,7 +95,7 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
-        #[inline]
+        #[inline(always)]
         pub const fn count_zeros(self) -> u32 {
             (!self).count_ones()
         }
@@ -113,7 +113,7 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
-        #[inline]
+        #[inline(always)]
         pub const fn leading_zeros(self) -> u32 {
             intrinsics::ctlz(self as $ActualT) as u32
         }
@@ -132,7 +132,7 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
-        #[inline]
+        #[inline(always)]
         pub const fn trailing_zeros(self) -> u32 {
             intrinsics::cttz(self) as u32
         }
@@ -150,7 +150,7 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "leading_trailing_ones", since = "1.46.0")]
         #[rustc_const_stable(feature = "leading_trailing_ones", since = "1.46.0")]
-        #[inline]
+        #[inline(always)]
         pub const fn leading_ones(self) -> u32 {
             (!self).leading_zeros()
         }
@@ -169,7 +169,7 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "leading_trailing_ones", since = "1.46.0")]
         #[rustc_const_stable(feature = "leading_trailing_ones", since = "1.46.0")]
-        #[inline]
+        #[inline(always)]
         pub const fn trailing_ones(self) -> u32 {
             (!self).trailing_zeros()
         }
@@ -193,7 +193,7 @@ macro_rules! uint_impl {
         #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub const fn rotate_left(self, n: u32) -> Self {
             intrinsics::rotate_left(self, n as $SelfT)
         }
@@ -218,7 +218,7 @@ macro_rules! uint_impl {
         #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub const fn rotate_right(self, n: u32) -> Self {
             intrinsics::rotate_right(self, n as $SelfT)
         }
@@ -237,7 +237,7 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
-        #[inline]
+        #[inline(always)]
         pub const fn swap_bytes(self) -> Self {
             intrinsics::bswap(self as $ActualT) as Self
         }
@@ -258,7 +258,7 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "reverse_bits", since = "1.37.0")]
         #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
-        #[inline]
+        #[inline(always)]
         #[must_use]
         pub const fn reverse_bits(self) -> Self {
             intrinsics::bitreverse(self as $ActualT) as Self
@@ -284,7 +284,7 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
-        #[inline]
+        #[inline(always)]
         pub const fn from_be(x: Self) -> Self {
             #[cfg(target_endian = "big")]
             {
@@ -316,7 +316,7 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
-        #[inline]
+        #[inline(always)]
         pub const fn from_le(x: Self) -> Self {
             #[cfg(target_endian = "little")]
             {
@@ -348,7 +348,7 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
-        #[inline]
+        #[inline(always)]
         pub const fn to_be(self) -> Self { // or not to be?
             #[cfg(target_endian = "big")]
             {
@@ -380,7 +380,7 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_math", since = "1.32.0")]
-        #[inline]
+        #[inline(always)]
         pub const fn to_le(self) -> Self {
             #[cfg(target_endian = "little")]
             {
@@ -426,7 +426,7 @@ macro_rules! uint_impl {
         )]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub unsafe fn unchecked_add(self, rhs: Self) -> Self {
             // SAFETY: the caller must uphold the safety contract for
             // `unchecked_add`.
@@ -464,7 +464,7 @@ macro_rules! uint_impl {
         )]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub unsafe fn unchecked_sub(self, rhs: Self) -> Self {
             // SAFETY: the caller must uphold the safety contract for
             // `unchecked_sub`.
@@ -502,7 +502,7 @@ macro_rules! uint_impl {
         )]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub unsafe fn unchecked_mul(self, rhs: Self) -> Self {
             // SAFETY: the caller must uphold the safety contract for
             // `unchecked_mul`.
@@ -727,7 +727,7 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.47.0")]
-        #[inline]
+        #[inline(always)]
         pub const fn saturating_add(self, rhs: Self) -> Self {
             intrinsics::saturating_add(self, rhs)
         }
@@ -747,7 +747,7 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.47.0")]
-        #[inline]
+        #[inline(always)]
         pub const fn saturating_sub(self, rhs: Self) -> Self {
             intrinsics::saturating_sub(self, rhs)
         }
@@ -813,7 +813,7 @@ macro_rules! uint_impl {
         #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub const fn wrapping_add(self, rhs: Self) -> Self {
             intrinsics::wrapping_add(self, rhs)
         }
@@ -833,7 +833,7 @@ macro_rules! uint_impl {
         #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub const fn wrapping_sub(self, rhs: Self) -> Self {
             intrinsics::wrapping_sub(self, rhs)
         }
@@ -856,7 +856,7 @@ macro_rules! uint_impl {
         #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub const fn wrapping_mul(self, rhs: Self) -> Self {
             intrinsics::wrapping_mul(self, rhs)
         }
@@ -878,7 +878,7 @@ macro_rules! uint_impl {
         #[rustc_const_stable(feature = "const_wrapping_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub const fn wrapping_div(self, rhs: Self) -> Self {
             self / rhs
         }
@@ -903,7 +903,7 @@ macro_rules! uint_impl {
         #[rustc_const_stable(feature = "const_euclidean_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub const fn wrapping_div_euclid(self, rhs: Self) -> Self {
             self / rhs
         }
@@ -926,7 +926,7 @@ macro_rules! uint_impl {
         #[rustc_const_stable(feature = "const_wrapping_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub const fn wrapping_rem(self, rhs: Self) -> Self {
             self % rhs
         }
@@ -952,7 +952,7 @@ macro_rules! uint_impl {
         #[rustc_const_stable(feature = "const_euclidean_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub const fn wrapping_rem_euclid(self, rhs: Self) -> Self {
             self % rhs
         }
@@ -1008,7 +1008,7 @@ macro_rules! uint_impl {
         #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub const fn wrapping_shl(self, rhs: u32) -> Self {
             // SAFETY: the masking by the bitsize of the type ensures that we do not shift
             // out of bounds
@@ -1040,7 +1040,7 @@ macro_rules! uint_impl {
         #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub const fn wrapping_shr(self, rhs: u32) -> Self {
             // SAFETY: the masking by the bitsize of the type ensures that we do not shift
             // out of bounds
@@ -1106,7 +1106,7 @@ macro_rules! uint_impl {
         #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub const fn overflowing_add(self, rhs: Self) -> (Self, bool) {
             let (a, b) = intrinsics::add_with_overflow(self as $ActualT, rhs as $ActualT);
             (a as Self, b)
@@ -1131,7 +1131,7 @@ macro_rules! uint_impl {
         #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub const fn overflowing_sub(self, rhs: Self) -> (Self, bool) {
             let (a, b) = intrinsics::sub_with_overflow(self as $ActualT, rhs as $ActualT);
             (a as Self, b)
@@ -1158,7 +1158,7 @@ macro_rules! uint_impl {
         #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub const fn overflowing_mul(self, rhs: Self) -> (Self, bool) {
             let (a, b) = intrinsics::mul_with_overflow(self as $ActualT, rhs as $ActualT);
             (a as Self, b)
@@ -1182,7 +1182,7 @@ macro_rules! uint_impl {
         /// ```
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".overflowing_div(2), (2, false));")]
         /// ```
-        #[inline]
+        #[inline(always)]
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[rustc_const_stable(feature = "const_overflowing_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
@@ -1212,7 +1212,7 @@ macro_rules! uint_impl {
         /// ```
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".overflowing_div_euclid(2), (2, false));")]
         /// ```
-        #[inline]
+        #[inline(always)]
         #[stable(feature = "euclidean_division", since = "1.38.0")]
         #[rustc_const_stable(feature = "const_euclidean_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
@@ -1239,7 +1239,7 @@ macro_rules! uint_impl {
         /// ```
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".overflowing_rem(2), (1, false));")]
         /// ```
-        #[inline]
+        #[inline(always)]
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[rustc_const_stable(feature = "const_overflowing_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
@@ -1269,7 +1269,7 @@ macro_rules! uint_impl {
         /// ```
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".overflowing_rem_euclid(2), (1, false));")]
         /// ```
-        #[inline]
+        #[inline(always)]
         #[stable(feature = "euclidean_division", since = "1.38.0")]
         #[rustc_const_stable(feature = "const_euclidean_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
@@ -1293,7 +1293,7 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".overflowing_neg(), (0, false));")]
         #[doc = concat!("assert_eq!(2", stringify!($SelfT), ".overflowing_neg(), (-2i32 as ", stringify!($SelfT), ", true));")]
         /// ```
-        #[inline]
+        #[inline(always)]
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
         pub const fn overflowing_neg(self) -> (Self, bool) {
@@ -1320,7 +1320,7 @@ macro_rules! uint_impl {
         #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub const fn overflowing_shl(self, rhs: u32) -> (Self, bool) {
             (self.wrapping_shl(rhs), (rhs > ($BITS - 1)))
         }
@@ -1345,7 +1345,7 @@ macro_rules! uint_impl {
         #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub const fn overflowing_shr(self, rhs: u32) -> (Self, bool) {
             (self.wrapping_shr(rhs), (rhs > ($BITS - 1)))
         }
@@ -1458,7 +1458,7 @@ macro_rules! uint_impl {
         #[rustc_const_stable(feature = "const_euclidean_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         #[rustc_inherit_overflow_checks]
         pub const fn div_euclid(self, rhs: Self) -> Self {
             self / rhs
@@ -1486,7 +1486,7 @@ macro_rules! uint_impl {
         #[rustc_const_stable(feature = "const_euclidean_int_methods", since = "1.52.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         #[rustc_inherit_overflow_checks]
         pub const fn rem_euclid(self, rhs: Self) -> Self {
             self % rhs
@@ -1504,7 +1504,7 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_is_power_of_two", since = "1.32.0")]
-        #[inline]
+        #[inline(always)]
         pub const fn is_power_of_two(self) -> bool {
             self.count_ones() == 1
         }
