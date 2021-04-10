@@ -18,7 +18,7 @@ use rustc_serialize::json;
 
 use crate::parse::CrateConfig;
 use rustc_feature::UnstableFeatures;
-use rustc_span::edition::{Edition, DEFAULT_EDITION, EDITION_NAME_LIST};
+use rustc_span::edition::{Edition, DEFAULT_EDITION, EDITION_NAME_LIST, LATEST_STABLE_EDITION};
 use rustc_span::source_map::{FileName, FilePathMapping};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::SourceFileHashAlgorithm;
@@ -1320,13 +1320,16 @@ pub fn parse_crate_edition(matches: &getopts::Matches) -> Edition {
     };
 
     if !edition.is_stable() && !nightly_options::is_unstable_enabled(matches) {
-        early_error(
-            ErrorOutputType::default(),
-            &format!(
-                "edition {} is unstable and only available with -Z unstable-options.",
-                edition,
-            ),
-        )
+        let is_nightly = nightly_options::match_is_nightly_build(matches);
+        let msg = if !is_nightly {
+            format!(
+                "the crate requires edition {}, but the latest edition supported by this Rust version is {}",
+                edition, LATEST_STABLE_EDITION
+            )
+        } else {
+            format!("edition {} is unstable and only available with -Z unstable-options", edition)
+        };
+        early_error(ErrorOutputType::default(), &msg)
     }
 
     edition
