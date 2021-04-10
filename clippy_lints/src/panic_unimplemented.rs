@@ -74,7 +74,7 @@ declare_lint_pass!(PanicUnimplemented => [UNIMPLEMENTED, UNREACHABLE, TODO, PANI
 
 impl<'tcx> LateLintPass<'tcx> for PanicUnimplemented {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if match_panic_call(cx, expr).is_some() {
+        if match_panic_call(cx, expr).is_some() && is_expn_of(expr.span, "debug_assert").is_none() {
             let span = get_outer_span(expr);
             if is_expn_of(expr.span, "unimplemented").is_some() {
                 span_lint(
