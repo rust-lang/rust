@@ -3,7 +3,7 @@
 /// assert!(cargo_miri_test::make_true());
 /// ```
 /// ```rust,no_run
-/// assert!(cargo_miri_test::make_true());
+/// assert!(!cargo_miri_test::make_true());
 /// ```
 /// ```rust,compile_fail
 /// assert!(cargo_miri_test::make_true() == 5);
