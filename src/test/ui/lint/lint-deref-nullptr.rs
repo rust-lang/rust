@@ -2,29 +2,37 @@
 
 #![deny(deref_nullptr)]
 
+use std::ptr;
+
+struct Struct {
+    field: u8,
+}
+
 fn f() {
     unsafe {
         let a = 1;
         let ub = *(a as *const i32);
         let ub = *(0 as *const i32);
         //~^ ERROR dereferencing a null pointer
-        let ub = *core::ptr::null::<i32>();
+        let ub = *ptr::null::<i32>();
         //~^ ERROR dereferencing a null pointer
-        let ub = *core::ptr::null_mut::<i32>();
+        let ub = *ptr::null_mut::<i32>();
         //~^ ERROR dereferencing a null pointer
-        let ub = *(core::ptr::null::<i16>() as *const i32);
+        let ub = *(ptr::null::<i16>() as *const i32);
         //~^ ERROR dereferencing a null pointer
-        let ub = *(core::ptr::null::<i16>() as *mut i32 as *mut usize as *const u8);
+        let ub = *(ptr::null::<i16>() as *mut i32 as *mut usize as *const u8);
         //~^ ERROR dereferencing a null pointer
-        let ub = &*core::ptr::null::<i32>();
+        let ub = &*ptr::null::<i32>();
         //~^ ERROR dereferencing a null pointer
-        core::ptr::addr_of!(*core::ptr::null::<i32>());
+        ptr::addr_of!(*ptr::null::<i32>());
         //~^ ERROR dereferencing a null pointer
-        std::ptr::addr_of_mut!(*core::ptr::null_mut::<i32>());
+        ptr::addr_of_mut!(*ptr::null_mut::<i32>());
         //~^ ERROR dereferencing a null pointer
-        let ub = *std::ptr::null::<i32>();
+        let ub = *ptr::null::<i32>();
         //~^ ERROR dereferencing a null pointer
-        let ub = *std::ptr::null_mut::<i32>();
+        let ub = *ptr::null_mut::<i32>();
+        //~^ ERROR dereferencing a null pointer
+        let offset = ptr::addr_of!((*ptr::null::<Struct>()).field);
         //~^ ERROR dereferencing a null pointer
     }
 }
