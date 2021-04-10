@@ -14,9 +14,9 @@ use syntax::{
 };
 
 use crate::{
-    ast_id_map::AstIdMap, hygiene::HygieneFrame, input::process_macro_input, BuiltinDeriveExpander,
-    BuiltinFnLikeExpander, EagerCallLoc, EagerMacroId, HirFileId, HirFileIdRepr, LazyMacroId,
-    MacroCallId, MacroCallLoc, MacroDefId, MacroDefKind, MacroFile, ProcMacroExpander,
+    ast_id_map::AstIdMap, hygiene::HygieneFrame, BuiltinDeriveExpander, BuiltinFnLikeExpander,
+    EagerCallLoc, EagerMacroId, HirFileId, HirFileIdRepr, LazyMacroId, MacroCallId, MacroCallLoc,
+    MacroDefId, MacroDefKind, MacroFile, ProcMacroExpander,
 };
 
 /// Total limit on the number of tokens produced by any macro invocation.
@@ -191,7 +191,6 @@ fn macro_arg_text(db: &dyn AstDatabase, id: MacroCallId) -> Option<GreenNode> {
     };
     let loc = db.lookup_intern_macro(id);
     let arg = loc.kind.arg(db)?;
-    let arg = process_macro_input(db, arg, id);
     Some(arg.green())
 }
 
