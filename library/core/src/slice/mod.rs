@@ -1965,6 +1965,69 @@ impl<T> [T] {
         cmp::SliceContains::slice_contains(x, self)
     }
 
+    /// If the slice contains at least one element with the given
+    /// value, returns the first index of that value. Otherwise,
+    /// returns `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_position)]
+    /// let v = [10, 40, 30, 20, 30];
+    /// assert_eq!(v.position(&30), Some(2));
+    /// assert!(v.position(&50).is_none());
+    /// ```
+    ///
+    /// If you do not have an `&T`, but just an `&U` such that `T: Borrow<U>`
+    /// (e.g. `String: Borrow<str>`), you can use `iter().position`:
+    ///
+    /// ```
+    /// // slice of `String`
+    /// let v = [String::from("hello"), String::from("world")];
+    /// // search with `&str`
+    /// assert_eq!(v.iter().position(|e| e == "hello"), Some(0));
+    /// assert_eq!(v.iter().position(|e| e == "hi"), None);
+    /// ```
+    #[unstable(feature = "slice_position", issue = "none", reason = "recently added")]
+    #[inline]
+    pub fn position(&self, x: &T) -> Option<usize>
+    where
+        T: PartialEq,
+    {
+        cmp::SlicePosition::slice_position(x, self)
+    }
+
+    /// If the slice contains at element with the given value, returns
+    /// the last index of that value. Otherwise, returns `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_position)]
+    /// let v = [10, 40, 30, 20, 30];
+    /// assert_eq!(v.rposition(&30), Some(4));
+    /// assert!(v.rposition(&50).is_none());
+    /// ```
+    ///
+    /// If you do not have an `&T`, but just an `&U` such that `T: Borrow<U>`
+    /// (e.g. `String: Borrow<str>`), you can use `iter().rposition`:
+    ///
+    /// ```
+    /// // slice of `String`
+    /// let v = [String::from("hello"), String::from("world")];
+    /// // search with `&str`
+    /// assert_eq!(v.iter().rposition(|e| e == "hello"), Some(0));
+    /// assert_eq!(v.iter().rposition(|e| e == "hi"), None);
+    /// ```
+    #[unstable(feature = "slice_position", issue = "none", reason = "recently added")]
+    #[inline]
+    pub fn rposition(&self, x: &T) -> Option<usize>
+    where
+        T: PartialEq,
+    {
+        cmp::SlicePosition::slice_rposition(x, self)
+    }
+
     /// Returns `true` if `needle` is a prefix of the slice.
     ///
     /// # Examples

@@ -2026,6 +2026,37 @@ fn test_is_sorted() {
 }
 
 #[test]
+fn test_iter_position() {
+    // unspecialized
+    assert_eq!([1u32, 2, 2, 9].position(&2), Some(1));
+    assert_eq!([1u32, 2, 2, 9].rposition(&2), Some(2));
+    assert_eq!([1u32, 2, 2, 9].position(&1), Some(0));
+    assert_eq!([1u32, 2, 2, 9].rposition(&1), Some(0));
+    assert_eq!([1u32, 2, 2, 9].position(&9), Some(3));
+    assert_eq!([1u32, 2, 2, 9].rposition(&9), Some(3));
+    assert_eq!([1u32, 2, 2, 9].rposition(&6), None);
+    assert_eq!([1u32, 2, 2, 9].position(&6), None);
+    // specialized
+    assert_eq!([1u8, 2, 2, 9].position(&2), Some(1));
+    assert_eq!([1u8, 2, 2, 9].rposition(&2), Some(2));
+    assert_eq!([1u8, 2, 2, 9].position(&1), Some(0));
+    assert_eq!([1u8, 2, 2, 9].rposition(&1), Some(0));
+    assert_eq!([1u8, 2, 2, 9].position(&9), Some(3));
+    assert_eq!([1u8, 2, 2, 9].rposition(&9), Some(3));
+    assert_eq!([1u8, 2, 2, 9].rposition(&6), None);
+    assert_eq!([1u8, 2, 2, 9].position(&6), None);
+    // also specilaized
+    assert_eq!([1i8, 2, 2, 9].position(&2), Some(1));
+    assert_eq!([1i8, 2, 2, 9].rposition(&2), Some(2));
+    assert_eq!([1i8, 2, 2, 9].position(&1), Some(0));
+    assert_eq!([1i8, 2, 2, 9].rposition(&1), Some(0));
+    assert_eq!([1i8, 2, 2, 9].position(&9), Some(3));
+    assert_eq!([1i8, 2, 2, 9].rposition(&9), Some(3));
+    assert_eq!([1i8, 2, 2, 9].rposition(&6), None);
+    assert_eq!([1i8, 2, 2, 9].position(&6), None);
+}
+
+#[test]
 fn test_slice_run_destructors() {
     // Make sure that destructors get run on slice literals
     struct Foo<'a> {

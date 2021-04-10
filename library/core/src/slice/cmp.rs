@@ -250,12 +250,54 @@ impl SliceContains for u8 {
 impl SliceContains for i8 {
     #[inline]
     fn slice_contains(&self, x: &[Self]) -> bool {
-        let byte = *self as u8;
-        // SAFETY: `i8` and `u8` have the same memory layout, thus casting `x.as_ptr()`
-        // as `*const u8` is safe. The `x.as_ptr()` comes from a reference and is thus guaranteed
-        // to be valid for reads for the length of the slice `x.len()`, which cannot be larger
-        // than `isize::MAX`. The returned slice is never mutated.
-        let bytes: &[u8] = unsafe { from_raw_parts(x.as_ptr() as *const u8, x.len()) };
-        memchr::memchr(byte, bytes).is_some()
+        memchr::memchr(*self as u8, i8s_to_u8s(x)).is_some()
     }
+}
+
+pub(super) trait SlicePosition: Sized {
+    fn slice_position(&self, x: &[Self]) -> Option<usize>;
+    fn slice_rposition(&self, x: &[Self]) -> Option<usize>;
+}
+
+impl<T> SlicePosition for T
+where
+    T: PartialEq,
+{
+    default fn slice_position(&self, x: &[Self]) -> Option<usize> {
+        x.iter().position(|y| *y == *self)
+    }
+    default fn slice_rposition(&self, x: &[Self]) -> Option<usize> {
+        x.iter().rposition(|y| *y == *self)
+    }
+}
+
+impl SlicePosition for u8 {
+    #[inline]
+    fn slice_position(&self, x: &[Self]) -> Option<usize> {
+        memchr::memchr(*self, x)
+    }
+    #[inline]
+    fn slice_rposition(&self, x: &[Self]) -> Option<usize> {
+        memchr::memrchr(*self, x)
+    }
+}
+
+impl SlicePosition for i8 {
+    #[inline]
+    fn slice_position(&self, x: &[Self]) -> Option<usize> {
+        memchr::memchr(*self as u8, i8s_to_u8s(x))
+    }
+    #[inline]
+    fn slice_rposition(&self, x: &[Self]) -> Option<usize> {
+        memchr::memrchr(*self as u8, i8s_to_u8s(x))
+    }
+}
+
+#[inline]
+fn i8s_to_u8s(s: &[i8]) -> &[u8] {
+    // SAFETY: `i8` and `u8` have the same memory layout, thus casting `x.as_ptr()`
+    // as `*const u8` is safe. The `x.as_ptr()` comes from a reference and is thus guaranteed
+    // to be valid for reads for the length of the slice `x.len()`, which cannot be larger
+    // than `isize::MAX`. The returned slice is never mutated.
+    unsafe { from_raw_parts(s.as_ptr() as *const u8, s.len()) }
 }

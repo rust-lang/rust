@@ -73,6 +73,7 @@
 #![feature(const_option)]
 #![feature(integer_atomics)]
 #![feature(slice_group_by)]
+#![feature(slice_position)]
 #![feature(trusted_random_access)]
 #![feature(unsize)]
 #![deny(unsafe_op_in_unsafe_fn)]
