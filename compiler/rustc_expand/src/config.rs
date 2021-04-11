@@ -246,6 +246,7 @@ impl<'a> StripUnconfigured<'a> {
     pub fn configure<T: AstLike>(&mut self, mut node: T) -> Option<T> {
         self.process_cfg_attrs(&mut node);
         if self.in_cfg(node.attrs()) {
+            node.visit_attrs(|attrs| remove_cfg(attrs));
             self.try_configure_tokens(&mut node);
             Some(node)
         } else {
@@ -267,7 +268,12 @@ impl<'a> StripUnconfigured<'a> {
         mut attrs: Vec<ast::Attribute>,
     ) -> Option<Vec<ast::Attribute>> {
         attrs.flat_map_in_place(|attr| self.process_cfg_attr(attr));
-        if self.in_cfg(&attrs) { Some(attrs) } else { None }
+        if self.in_cfg(&attrs) {
+            remove_cfg(&mut attrs);
+            Some(attrs)
+        } else {
+            None
+        }
     }
 
     /// Performs cfg-expansion on `stream`, producing a new `AttrAnnotatedTokenStream`.
@@ -294,9 +300,10 @@ impl<'a> StripUnconfigured<'a> {
                 AttrAnnotatedTokenTree::Attributes(mut data) => {
                     let mut attrs: Vec<_> = std::mem::take(&mut data.attrs).into();
                     attrs.flat_map_in_place(|attr| self.process_cfg_attr(attr));
-                    data.attrs = attrs.into();
 
-                    if self.in_cfg(&data.attrs) {
+                    if self.in_cfg(&attrs) {
+                        remove_cfg(&mut attrs);
+                        data.attrs = attrs.into();
                         data.tokens = LazyTokenStream::new(
                             self.configure_tokens(&data.tokens.create_token_stream()),
                         );
@@ -534,4 +541,8 @@ impl<'a> StripUnconfigured<'a> {
 
 fn is_cfg(sess: &Session, attr: &Attribute) -> bool {
     sess.check_name(attr, sym::cfg)
+}
+
+fn remove_cfg(attrs: &mut Vec<Attribute>) {
+    attrs.retain(|a| !a.has_name(sym::cfg));
 }

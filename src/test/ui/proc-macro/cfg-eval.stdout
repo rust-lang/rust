@@ -1,4 +1,4 @@
-PRINT-ATTR INPUT (DISPLAY): struct S1 { #[cfg(all())] #[allow()] field_true : u8, }
+PRINT-ATTR INPUT (DISPLAY): struct S1 { #[allow()] field_true : u8, }
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
@@ -11,36 +11,6 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
     Group {
         delimiter: Brace,
         stream: TokenStream [
-            Punct {
-                ch: '#',
-                spacing: Alone,
-                span: $DIR/cfg-eval.rs:20:5: 20:6 (#0),
-            },
-            Group {
-                delimiter: Bracket,
-                stream: TokenStream [
-                    Ident {
-                        ident: "cfg",
-                        span: $DIR/cfg-eval.rs:20:7: 20:10 (#0),
-                    },
-                    Group {
-                        delimiter: Parenthesis,
-                        stream: TokenStream [
-                            Ident {
-                                ident: "all",
-                                span: $DIR/cfg-eval.rs:20:11: 20:14 (#0),
-                            },
-                            Group {
-                                delimiter: Parenthesis,
-                                stream: TokenStream [],
-                                span: $DIR/cfg-eval.rs:20:14: 20:24 (#0),
-                            },
-                        ],
-                        span: $DIR/cfg-eval.rs:20:10: 20:25 (#0),
-                    },
-                ],
-                span: $DIR/cfg-eval.rs:20:6: 20:26 (#0),
-            },
             Punct {
                 ch: '#',
                 spacing: Alone,
@@ -83,7 +53,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
         span: $DIR/cfg-eval.rs:17:11: 24:2 (#0),
     },
 ]
-PRINT-ATTR INPUT (DISPLAY): #[rustc_dummy] (#[cfg(all())] 1,)
+PRINT-ATTR INPUT (DISPLAY): #[rustc_dummy] (1,)
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Punct {
         ch: '#',
@@ -103,36 +73,6 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
     Group {
         delimiter: Parenthesis,
         stream: TokenStream [
-            Punct {
-                ch: '#',
-                spacing: Alone,
-                span: $DIR/cfg-eval.rs:36:23: 36:24 (#0),
-            },
-            Group {
-                delimiter: Bracket,
-                stream: TokenStream [
-                    Ident {
-                        ident: "cfg",
-                        span: $DIR/cfg-eval.rs:36:25: 36:28 (#0),
-                    },
-                    Group {
-                        delimiter: Parenthesis,
-                        stream: TokenStream [
-                            Ident {
-                                ident: "all",
-                                span: $DIR/cfg-eval.rs:36:29: 36:32 (#0),
-                            },
-                            Group {
-                                delimiter: Parenthesis,
-                                stream: TokenStream [],
-                                span: $DIR/cfg-eval.rs:36:32: 36:42 (#0),
-                            },
-                        ],
-                        span: $DIR/cfg-eval.rs:36:28: 36:43 (#0),
-                    },
-                ],
-                span: $DIR/cfg-eval.rs:36:24: 36:44 (#0),
-            },
             Literal {
                 kind: Integer,
                 symbol: "1",
