@@ -49,8 +49,13 @@ cfg_if::cfg_if! {
     }
 }
 
-#[cfg(not(test))]
-pub fn init() {}
+// SAFETY: must be called only once during runtime initialization.
+pub unsafe fn init() {}
+
+// SAFETY: must be called only once during runtime cleanup.
+pub unsafe fn cleanup() {
+    net::cleanup();
+}
 
 pub fn decode_error_kind(errno: i32) -> ErrorKind {
     match errno as c::DWORD {

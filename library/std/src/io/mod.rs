@@ -293,6 +293,10 @@ mod util;
 
 const DEFAULT_BUF_SIZE: usize = crate::sys_common::io::DEFAULT_BUF_SIZE;
 
+pub(crate) fn cleanup() {
+    stdio::cleanup()
+}
+
 struct Guard<'a> {
     buf: &'a mut Vec<u8>,
     len: usize,

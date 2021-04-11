@@ -13,7 +13,6 @@ use crate::pin::Pin;
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sync::{Arc, Mutex, MutexGuard};
 use crate::sys::stdio;
-use crate::sys_common;
 use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
 
 type LocalStream = Arc<Mutex<Vec<u8>>>;
@@ -508,6 +507,8 @@ pub struct StdoutLock<'a> {
     inner: ReentrantMutexGuard<'a, RefCell<LineWriter<StdoutRaw>>>,
 }
 
+static STDOUT: SyncOnceCell<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>> = SyncOnceCell::new();
+
 /// Constructs a new handle to the standard output of the current process.
 ///
 /// Each handle returned is a reference to a shared global buffer whose access
@@ -549,31 +550,25 @@ pub struct StdoutLock<'a> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stdout() -> Stdout {
-    static INSTANCE: SyncOnceCell<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>> =
-        SyncOnceCell::new();
-
-    fn cleanup() {
-        if let Some(instance) = INSTANCE.get() {
-            // Flush the data and disable buffering during shutdown
-            // by replacing the line writer by one with zero
-            // buffering capacity.
-            // We use try_lock() instead of lock(), because someone
-            // might have leaked a StdoutLock, which would
-            // otherwise cause a deadlock here.
-            if let Some(lock) = Pin::static_ref(instance).try_lock() {
-                *lock.borrow_mut() = LineWriter::with_capacity(0, stdout_raw());
-            }
-        }
-    }
-
     Stdout {
-        inner: Pin::static_ref(&INSTANCE).get_or_init_pin(
-            || unsafe {
-                let _ = sys_common::at_exit(cleanup);
-                ReentrantMutex::new(RefCell::new(LineWriter::new(stdout_raw())))
-            },
+        inner: Pin::static_ref(&STDOUT).get_or_init_pin(
+            || unsafe { ReentrantMutex::new(RefCell::new(LineWriter::new(stdout_raw()))) },
             |mutex| unsafe { mutex.init() },
         ),
+    }
+}
+
+pub fn cleanup() {
+    if let Some(instance) = STDOUT.get() {
+        // Flush the data and disable buffering during shutdown
+        // by replacing the line writer by one with zero
+        // buffering capacity.
+        // We use try_lock() instead of lock(), because someone
+        // might have leaked a StdoutLock, which would
+        // otherwise cause a deadlock here.
+        if let Some(lock) = Pin::static_ref(instance).try_lock() {
+            *lock.borrow_mut() = LineWriter::with_capacity(0, stdout_raw());
+        }
     }
 }
 

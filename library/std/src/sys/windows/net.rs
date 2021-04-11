@@ -9,7 +9,7 @@ use crate::sync::Once;
 use crate::sys;
 use crate::sys::c;
 use crate::sys_common::net;
-use crate::sys_common::{self, AsInner, FromInner, IntoInner};
+use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::time::Duration;
 
 use libc::{c_int, c_long, c_ulong, c_void};
@@ -38,11 +38,13 @@ pub fn init() {
             &mut data,
         );
         assert_eq!(ret, 0);
-
-        let _ = sys_common::at_exit(|| {
-            c::WSACleanup();
-        });
     });
+}
+
+pub fn cleanup() {
+    unsafe {
+        c::WSACleanup();
+    }
 }
 
 /// Returns the last error from the Windows socket interface.

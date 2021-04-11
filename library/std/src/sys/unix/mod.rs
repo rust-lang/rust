@@ -44,14 +44,12 @@ pub mod time;
 
 pub use crate::sys_common::os_str_bytes as os_str;
 
-#[cfg(not(test))]
-pub fn init() {
+// SAFETY: must be called only once during runtime initialization.
+pub unsafe fn init() {
     // The standard streams might be closed on application startup. To prevent
     // std::io::{stdin, stdout,stderr} objects from using other unrelated file
     // resources opened later, we reopen standards streams when they are closed.
-    unsafe {
-        sanitize_standard_fds();
-    }
+    sanitize_standard_fds();
 
     // By default, some platforms will send a *signal* when an EPIPE error
     // would otherwise be delivered. This runtime doesn't install a SIGPIPE
@@ -60,9 +58,7 @@ pub fn init() {
     //
     // Hence, we set SIGPIPE to ignore when the program starts up in order
     // to prevent this problem.
-    unsafe {
-        reset_sigpipe();
-    }
+    reset_sigpipe();
 
     cfg_if::cfg_if! {
         if #[cfg(miri)] {
@@ -128,6 +124,9 @@ pub fn init() {
     #[cfg(any(target_os = "emscripten", target_os = "fuchsia"))]
     unsafe fn reset_sigpipe() {}
 }
+
+// SAFETY: must be called only once during runtime cleanup.
+pub unsafe fn cleanup() {}
 
 #[cfg(target_os = "android")]
 pub use crate::sys::android::signal;

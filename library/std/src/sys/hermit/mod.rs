@@ -96,10 +96,13 @@ pub extern "C" fn __rust_abort() {
     abort_internal();
 }
 
-#[cfg(not(test))]
-pub fn init() {
+// SAFETY: must be called only once during runtime initialization.
+pub unsafe fn init() {
     let _ = net::init();
 }
+
+// SAFETY: must be called only once during runtime cleanup.
+pub unsafe fn cleanup() {}
 
 #[cfg(not(test))]
 #[no_mangle]

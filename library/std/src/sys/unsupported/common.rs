@@ -10,8 +10,11 @@ pub use crate::sys_common::os_str_bytes as os_str;
 // spec definition?
 use crate::os::raw::c_char;
 
-#[cfg(not(test))]
-pub fn init() {}
+// SAFETY: must be called only once during runtime initialization.
+pub unsafe fn init() {}
+
+// SAFETY: must be called only once during runtime cleanup.
+pub unsafe fn cleanup() {}
 
 pub fn unsupported<T>() -> std_io::Result<T> {
     Err(unsupported_err())

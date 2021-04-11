@@ -40,8 +40,11 @@ pub mod time;
 
 pub use crate::sys_common::os_str_bytes as os_str;
 
-#[cfg(not(test))]
-pub fn init() {}
+// SAFETY: must be called only once during runtime initialization.
+pub unsafe fn init() {}
+
+// SAFETY: must be called only once during runtime cleanup.
+pub unsafe fn cleanup() {}
 
 /// This function is used to implement functionality that simply doesn't exist.
 /// Programs relying on this functionality will need to deal with the error.
