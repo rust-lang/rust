@@ -11,7 +11,7 @@ pub use crate::sys_common::os_str_bytes as os_str;
 use crate::os::raw::c_char;
 
 // SAFETY: must be called only once during runtime initialization.
-pub unsafe fn init() {}
+pub unsafe fn init(_argc: isize, _argv: *const *const u8) {}
 
 // SAFETY: must be called only once during runtime cleanup.
 pub unsafe fn cleanup() {}

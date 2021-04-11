@@ -1,7 +1,5 @@
 use crate::ffi::OsString;
 
-pub unsafe fn init(_argc: isize, _argv: *const *const u8) {}
-
 pub struct Args {}
 
 pub fn args() -> Args {

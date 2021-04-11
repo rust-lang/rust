@@ -50,7 +50,9 @@ cfg_if::cfg_if! {
 }
 
 // SAFETY: must be called only once during runtime initialization.
-pub unsafe fn init() {}
+pub unsafe fn init(_argc: isize, _argv: *const *const u8) {
+    stack_overflow::init();
+}
 
 // SAFETY: must be called only once during runtime cleanup.
 pub unsafe fn cleanup() {

@@ -5,8 +5,6 @@ use crate::marker::PhantomData;
 use crate::os::wasi::ffi::OsStrExt;
 use crate::vec;
 
-pub unsafe fn init(_argc: isize, _argv: *const *const u8) {}
-
 pub struct Args {
     iter: vec::IntoIter<OsString>,
     _dont_send_or_sync_me: PhantomData<*mut ()>,

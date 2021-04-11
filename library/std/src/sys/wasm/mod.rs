@@ -35,8 +35,6 @@ pub mod path;
 pub mod pipe;
 #[path = "../unsupported/process.rs"]
 pub mod process;
-#[path = "../unsupported/stack_overflow.rs"]
-pub mod stack_overflow;
 #[path = "../unsupported/stdio.rs"]
 pub mod stdio;
 pub mod thread;

@@ -10,20 +10,15 @@ pub fn init(argc: isize, argv: *const *const u8) {
     static INIT: Once = Once::new();
     INIT.call_once(|| unsafe {
         // SAFETY: Only called once during runtime initialization.
-        sys::init();
+        sys::init(argc, argv);
 
         let main_guard = sys::thread::guard::init();
-        sys::stack_overflow::init();
-
         // Next, set up the current Thread with the guard information we just
         // created. Note that this isn't necessary in general for new threads,
         // but we just do this to name the main thread and to give it correct
         // info about the stack bounds.
         let thread = Thread::new(Some("main".to_owned()));
         thread_info::set(main_guard, thread);
-
-        // Store our args if necessary in a squirreled away location
-        sys::args::init(argc, argv);
     });
 }
 
