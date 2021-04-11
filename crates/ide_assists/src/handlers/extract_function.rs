@@ -3384,4 +3384,36 @@ fn foo() -> Result<(), i64> {
 }"##,
         );
     }
+
+    #[test]
+    fn param_usage_in_macro() {
+        check_assist(
+            extract_function,
+            r"
+macro_rules! m {
+    ($val:expr) => { $val };
+}
+
+fn foo() {
+    let n = 1;
+    $0let k = n * m!(n);$0
+    let m = k + 1;
+}",
+            r"
+macro_rules! m {
+    ($val:expr) => { $val };
+}
+
+fn foo() {
+    let n = 1;
+    let k = fun_name(n);
+    let m = k + 1;
+}
+
+fn $0fun_name(n: i32) -> i32 {
+    let k = n * m!(n);
+    k
+}",
+        );
+    }
 }
