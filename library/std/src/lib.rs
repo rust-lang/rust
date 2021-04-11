@@ -214,7 +214,6 @@
     feature(slice_index_methods, coerce_unsized, sgx_platform)
 )]
 #![deny(rustc::existing_doc_keyword)]
-#![cfg_attr(all(test, target_vendor = "fortanix", target_env = "sgx"), feature(fixed_size_array))]
 // std is implemented with unstable features, many of which are internal
 // compiler details that will never be stable
 // NB: the following list is sorted to minimize merge conflicts.
