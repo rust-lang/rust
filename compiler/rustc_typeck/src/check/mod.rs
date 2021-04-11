@@ -545,8 +545,9 @@ fn typeck_with_fallback<'tcx>(
                             kind: TypeVariableOriginKind::TypeInference,
                             span,
                         }),
-                        Node::Expr(&hir::Expr { kind: hir::ExprKind::InlineAsm(ia), .. })
-                            if ia.operands.iter().any(|(op, _op_sp)| match op {
+                        Node::Expr(&hir::Expr { kind: hir::ExprKind::InlineAsm(asm), .. })
+                        | Node::Item(&hir::Item { kind: hir::ItemKind::GlobalAsm(asm), .. })
+                            if asm.operands.iter().any(|(op, _op_sp)| match op {
                                 hir::InlineAsmOperand::Const { anon_const } => {
                                     anon_const.hir_id == id
                                 }

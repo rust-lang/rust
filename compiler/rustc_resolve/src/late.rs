@@ -1066,8 +1066,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 self.future_proof_import(use_tree);
             }
 
-            ItemKind::ExternCrate(..) | ItemKind::MacroDef(..) | ItemKind::GlobalAsm(..) => {
+            ItemKind::ExternCrate(..) | ItemKind::MacroDef(..) => {
                 // do nothing, these are just around to be encoded
+            }
+
+            ItemKind::GlobalAsm(_) => {
+                visit::walk_item(self, item);
             }
 
             ItemKind::MacCall(_) => panic!("unexpanded macro in resolve!"),

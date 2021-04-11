@@ -329,7 +329,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         .alloc_from_iter(fm.items.iter().map(|x| self.lower_foreign_item_ref(x))),
                 }
             }
-            ItemKind::GlobalAsm(ref ga) => hir::ItemKind::GlobalAsm(self.lower_global_asm(ga)),
+            ItemKind::GlobalAsm(ref asm) => {
+                hir::ItemKind::GlobalAsm(self.lower_inline_asm(span, asm))
+            }
             ItemKind::TyAlias(box TyAliasKind(_, ref gen, _, Some(ref ty))) => {
                 // We lower
                 //
@@ -744,10 +746,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             span: i.span,
             vis: self.lower_visibility(&i.vis, Some(i.id)),
         }
-    }
-
-    fn lower_global_asm(&mut self, ga: &GlobalAsm) -> &'hir hir::GlobalAsm {
-        self.arena.alloc(hir::GlobalAsm { asm: ga.asm })
     }
 
     fn lower_variant(&mut self, v: &Variant) -> hir::Variant<'hir> {

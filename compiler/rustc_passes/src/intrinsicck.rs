@@ -405,6 +405,33 @@ impl Visitor<'tcx> for ItemVisitor<'tcx> {
         ExprVisitor { tcx: self.tcx, param_env, typeck_results }.visit_body(body);
         self.visit_body(body);
     }
+
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
+        if let hir::ItemKind::GlobalAsm(asm) = item.kind {
+            for (op, op_sp) in asm.operands {
+                match *op {
+                    hir::InlineAsmOperand::Const { ref anon_const } => {
+                        let anon_const_def_id = self.tcx.hir().local_def_id(anon_const.hir_id);
+                        let value = ty::Const::from_anon_const(self.tcx, anon_const_def_id);
+                        match value.ty.kind() {
+                            ty::Int(_) | ty::Uint(_) | ty::Float(_) => {}
+                            _ => {
+                                let msg = "asm `const` arguments must be integer or floating-point values";
+                                self.tcx.sess.span_err(*op_sp, msg);
+                            }
+                        }
+                    }
+                    hir::InlineAsmOperand::In { .. }
+                    | hir::InlineAsmOperand::Out { .. }
+                    | hir::InlineAsmOperand::InOut { .. }
+                    | hir::InlineAsmOperand::SplitInOut { .. }
+                    | hir::InlineAsmOperand::Sym { .. } => unreachable!(),
+                }
+            }
+        }
+
+        intravisit::walk_item(self, item);
+    }
 }
 
 impl Visitor<'tcx> for ExprVisitor<'tcx> {

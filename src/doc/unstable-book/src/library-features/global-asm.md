@@ -38,11 +38,11 @@ And a more complicated usage looks like this:
 # mod x86 {
 
 pub mod sally {
-    global_asm!(r#"
-        .global foo
-      foo:
-        jmp baz
-    "#);
+    global_asm!(
+        ".global foo",
+        "foo:",
+        "jmp baz",
+    );
 
     #[no_mangle]
     pub unsafe extern "C" fn baz() {}
@@ -56,11 +56,11 @@ extern "C" {
 }
 
 pub mod harry {
-    global_asm!(r#"
-        .global bar
-      bar:
-        jmp quux
-    "#);
+    global_asm!(
+        ".global bar",
+        "bar:",
+        "jmp quux",
+    );
 
     #[no_mangle]
     pub unsafe extern "C" fn quux() {}

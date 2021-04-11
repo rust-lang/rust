@@ -12,7 +12,6 @@ use crate::MemFlags;
 use rustc_ast as ast;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::vec::Idx;
-use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::mir::AssertKind;
 use rustc_middle::mir::{self, SwitchTargets};
 use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt};
@@ -825,33 +824,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     let const_value = self
                         .eval_mir_constant(value)
                         .unwrap_or_else(|_| span_bug!(span, "asm const cannot be resolved"));
-                    let ty = value.ty();
-                    let size = bx.layout_of(ty).size;
-                    let scalar = match const_value {
-                        ConstValue::Scalar(s) => s,
-                        _ => span_bug!(
-                            span,
-                            "expected Scalar for promoted asm const, but got {:#?}",
-                            const_value
-                        ),
-                    };
-                    let value = scalar.assert_bits(size);
-                    let string = match ty.kind() {
-                        ty::Uint(_) => value.to_string(),
-                        ty::Int(int_ty) => {
-                            match int_ty.normalize(bx.tcx().sess.target.pointer_width) {
-                                ty::IntTy::I8 => (value as i8).to_string(),
-                                ty::IntTy::I16 => (value as i16).to_string(),
-                                ty::IntTy::I32 => (value as i32).to_string(),
-                                ty::IntTy::I64 => (value as i64).to_string(),
-                                ty::IntTy::I128 => (value as i128).to_string(),
-                                ty::IntTy::Isize => unreachable!(),
-                            }
-                        }
-                        ty::Float(ty::FloatTy::F32) => f32::from_bits(value as u32).to_string(),
-                        ty::Float(ty::FloatTy::F64) => f64::from_bits(value as u64).to_string(),
-                        _ => span_bug!(span, "asm const has bad type {}", ty),
-                    };
+                    let string = common::asm_const_to_str(
+                        bx.tcx(),
+                        span,
+                        const_value,
+                        bx.layout_of(value.ty()),
+                    );
                     InlineAsmOperandRef::Const { string }
                 }
                 mir::InlineAsmOperand::SymFn { ref value } => {

@@ -77,6 +77,7 @@ macro_rules! arena_vec {
     });
 }
 
+mod asm;
 mod expr;
 mod item;
 mod pat;

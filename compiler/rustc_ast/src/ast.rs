@@ -2279,14 +2279,6 @@ pub struct ForeignMod {
     pub items: Vec<P<ForeignItem>>,
 }
 
-/// Global inline assembly.
-///
-/// Also known as "module-level assembly" or "file-scoped assembly".
-#[derive(Clone, Encodable, Decodable, Debug, Copy)]
-pub struct GlobalAsm {
-    pub asm: Symbol,
-}
-
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct EnumDef {
     pub variants: Vec<Variant>,
@@ -2669,7 +2661,7 @@ pub enum ItemKind {
     /// E.g., `extern {}` or `extern "C" {}`.
     ForeignMod(ForeignMod),
     /// Module-level inline assembly (from `global_asm!()`).
-    GlobalAsm(GlobalAsm),
+    GlobalAsm(InlineAsm),
     /// A type alias (`type`).
     ///
     /// E.g., `type Foo = Bar<u8>;`.
