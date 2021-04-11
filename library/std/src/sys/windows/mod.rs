@@ -275,13 +275,13 @@ pub fn abort_internal() -> ! {
 cfg_if::cfg_if! {
     if #[cfg(target_vendor = "uwp")] {
         #[link(name = "ws2_32")]
-        // For BCryptGenRandom
-        #[link(name = "bcrypt")]
+        #[link(name = "bcrypt")] // For BCryptGenRandom
         extern "C" {}
     } else {
         #[link(name = "advapi32")]
         #[link(name = "ws2_32")]
         #[link(name = "userenv")]
+        #[link(name = "bcrypt")] // For BCryptGenRandom
         extern "C" {}
     }
 }

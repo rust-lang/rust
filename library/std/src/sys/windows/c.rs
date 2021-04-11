@@ -287,6 +287,8 @@ pub const STACK_SIZE_PARAM_IS_A_RESERVATION: DWORD = 0x00010000;
 
 pub const STATUS_SUCCESS: NTSTATUS = 0x00000000;
 
+pub const BCRYPT_USE_SYSTEM_PREFERRED_RNG: DWORD = 0x00000002;
+
 #[repr(C)]
 #[cfg(not(target_pointer_width = "64"))]
 pub struct WSADATA {
@@ -687,9 +689,6 @@ if #[cfg(not(target_vendor = "uwp"))] {
     pub const TOKEN_READ: DWORD = 0x20008;
 
     extern "system" {
-        #[link_name = "SystemFunction036"]
-        pub fn RtlGenRandom(RandomBuffer: *mut u8, RandomBufferLength: ULONG) -> BOOLEAN;
-
         pub fn ReadConsoleW(hConsoleInput: HANDLE,
                             lpBuffer: LPVOID,
                             nNumberOfCharsToRead: DWORD,
@@ -731,8 +730,6 @@ if #[cfg(not(target_vendor = "uwp"))] {
 // UWP specific functions & types
 cfg_if::cfg_if! {
 if #[cfg(target_vendor = "uwp")] {
-    pub const BCRYPT_USE_SYSTEM_PREFERRED_RNG: DWORD = 0x00000002;
-
     #[repr(C)]
     pub struct FILE_STANDARD_INFO {
         pub AllocationSize: LARGE_INTEGER,
@@ -747,8 +744,6 @@ if #[cfg(target_vendor = "uwp")] {
                                             fileInfoClass: FILE_INFO_BY_HANDLE_CLASS,
                                             lpFileInformation: LPVOID,
                                             dwBufferSize: DWORD) -> BOOL;
-        pub fn BCryptGenRandom(hAlgorithm: LPVOID, pBuffer: *mut u8,
-                               cbBuffer: ULONG, dwFlags: ULONG) -> LONG;
     }
 }
 }
@@ -1068,6 +1063,15 @@ extern "system" {
     pub fn ReleaseSRWLockShared(SRWLock: PSRWLOCK);
     pub fn TryAcquireSRWLockExclusive(SRWLock: PSRWLOCK) -> BOOLEAN;
     pub fn TryAcquireSRWLockShared(SRWLock: PSRWLOCK) -> BOOLEAN;
+
+    // >= Vista / Server 2008
+    // https://docs.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptgenrandom
+    pub fn BCryptGenRandom(
+        hAlgorithm: LPVOID,
+        pBuffer: *mut u8,
+        cbBuffer: ULONG,
+        dwFlags: ULONG,
+    ) -> NTSTATUS;
 }
 
 // Functions that aren't available on every version of Windows that we support,
