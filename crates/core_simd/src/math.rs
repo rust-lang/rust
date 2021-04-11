@@ -1,5 +1,5 @@
 macro_rules! impl_uint_arith {
-    ($(($name:ident, $n:ty)),+) => {
+    ($(($name:ident, $n:ident)),+) => {
         $( impl<const LANES: usize> $name<LANES> where Self: crate::LanesAtMost32 {
 
             /// Lanewise saturating add.
@@ -41,7 +41,7 @@ macro_rules! impl_uint_arith {
 }
 
 macro_rules! impl_int_arith {
-    ($(($name:ident, $n:ty)),+) => {
+    ($(($name:ident, $n:ident)),+) => {
         $( impl<const LANES: usize> $name<LANES> where Self: crate::LanesAtMost32 {
 
             /// Lanewise saturating add.
@@ -83,13 +83,12 @@ macro_rules! impl_int_arith {
             /// As abs(), except the MIN value becomes MAX instead of itself.
             ///
             /// # Examples
+            /// ```
             /// # use core_simd::*;
             #[doc = concat!("# use core::", stringify!($n), "::{MIN, MAX};")]
-            #[doc = concat!("let x = ", stringify!($name), "::splat([MIN, -2, 0, 3]);")]
-            /// let unsat = x.abs();
-            /// let sat = x.saturating_abs();
-            #[doc = concat!("assert_eq!(unsat, ", stringify!($name), "::from_array([MIN, 2, 0, 3]);")]
-            #[doc = concat!("assert_eq!(sat, ", stringify!($name), "::from_array([MAX, 2, 0, 3]));")]
+            #[doc = concat!("let x = ", stringify!($name), "::from_array([MIN, -2, 0, 3]);")]
+            /// let abs = x.saturating_abs();
+            #[doc = concat!("assert_eq!(abs, ", stringify!($name), "::from_array([MAX, 2, 0, 3]));")]
             /// ```
             #[inline]
             pub fn saturating_abs(self) -> Self {
@@ -103,12 +102,13 @@ macro_rules! impl_int_arith {
             /// As neg(), except the MIN value becomes MAX instead of itself.
             ///
             /// # Examples
+            /// ```
             /// # use core_simd::*;
             #[doc = concat!("# use core::", stringify!($n), "::{MIN, MAX};")]
-            #[doc = concat!("let x = ", stringify!($name), "::splat([MIN, -2, 3, MAX]);")]
+            #[doc = concat!("let x = ", stringify!($name), "::from_array([MIN, -2, 3, MAX]);")]
             /// let unsat = -x;
             /// let sat = x.saturating_neg();
-            #[doc = concat!("assert_eq!(unsat, ", stringify!($name), "::from_array([MIN, 2, -3, MIN + 1]);")]
+            #[doc = concat!("assert_eq!(unsat, ", stringify!($name), "::from_array([MIN, 2, -3, MIN + 1]));")]
             #[doc = concat!("assert_eq!(sat, ", stringify!($name), "::from_array([MAX, 2, -3, MIN + 1]));")]
             /// ```
             #[inline]
@@ -121,5 +121,5 @@ macro_rules! impl_int_arith {
 
 use crate::vector::*;
 
-impl_uint_arith! { (SimdU8, u8), (SimdU16, u16), (SimdU32, u32), (SimdU64, u64), (SimdUsize, usize) }
-impl_int_arith! { (SimdI8, i8), (SimdI16, i16), (SimdI32, i32), (SimdI64, i64), (SimdIsize, isize) }
+impl_uint_arith! { (SimdU8, u8), (SimdU16, u16), (SimdU32, u32), (SimdU64, u64), (SimdU128, u128), (SimdUsize, usize) }
+impl_int_arith! { (SimdI8, i8), (SimdI16, i16), (SimdI32, i32), (SimdI64, i64), (SimdI128, i128), (SimdIsize, isize) }
