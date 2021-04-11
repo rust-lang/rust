@@ -36,6 +36,7 @@ pub enum TypeError<'tcx> {
     UnsafetyMismatch(ExpectedFound<hir::Unsafety>),
     AbiMismatch(ExpectedFound<abi::Abi>),
     Mutability,
+    ArgumentMutability(usize),
     TupleSize(ExpectedFound<usize>),
     FixedArraySize(ExpectedFound<u64>),
     ArgCount,
@@ -46,6 +47,7 @@ pub enum TypeError<'tcx> {
     RegionsPlaceholderMismatch,
 
     Sorts(ExpectedFound<Ty<'tcx>>),
+    ArgumentSorts(ExpectedFound<Ty<'tcx>>, usize),
     IntMismatch(ExpectedFound<ty::IntVarValue>),
     FloatMismatch(ExpectedFound<ty::FloatTy>),
     Traits(ExpectedFound<DefId>),
@@ -110,7 +112,7 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             AbiMismatch(values) => {
                 write!(f, "expected {} fn, found {} fn", values.expected, values.found)
             }
-            Mutability => write!(f, "types differ in mutability"),
+            ArgumentMutability(_) | Mutability => write!(f, "types differ in mutability"),
             TupleSize(values) => write!(
                 f,
                 "expected a tuple with {} element{}, \
@@ -142,7 +144,7 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                 br_string(br)
             ),
             RegionsPlaceholderMismatch => write!(f, "one type is more general than the other"),
-            Sorts(values) => ty::tls::with(|tcx| {
+            ArgumentSorts(values, _) | Sorts(values) => ty::tls::with(|tcx| {
                 report_maybe_different(
                     f,
                     &values.expected.sort_string(tcx),
@@ -199,10 +201,11 @@ impl<'tcx> TypeError<'tcx> {
         use self::TypeError::*;
         match self {
             CyclicTy(_) | CyclicConst(_) | UnsafetyMismatch(_) | Mismatch | AbiMismatch(_)
-            | FixedArraySize(_) | Sorts(_) | IntMismatch(_) | FloatMismatch(_)
-            | VariadicMismatch(_) | TargetFeatureCast(_) => false,
+            | FixedArraySize(_) | ArgumentSorts(..) | Sorts(_) | IntMismatch(_)
+            | FloatMismatch(_) | VariadicMismatch(_) | TargetFeatureCast(_) => false,
 
             Mutability
+            | ArgumentMutability(_)
             | TupleSize(_)
             | ArgCount
             | RegionsDoesNotOutlive(..)
@@ -339,7 +342,7 @@ impl<'tcx> TyCtxt<'tcx> {
         use self::TypeError::*;
         debug!("note_and_explain_type_err err={:?} cause={:?}", err, cause);
         match err {
-            Sorts(values) => {
+            ArgumentSorts(values, _) | Sorts(values) => {
                 match (values.expected.kind(), values.found.kind()) {
                     (ty::Closure(..), ty::Closure(..)) => {
                         db.note("no two closures, even if identical, have the same type");

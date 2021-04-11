@@ -1,8 +1,11 @@
 error[E0053]: method `fmt` has an incompatible type for trait
-  --> $DIR/trait_type.rs:7:4
+  --> $DIR/trait_type.rs:7:21
    |
 LL |    fn fmt(&self, x: &str) -> () { }
-   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ in mutability
+   |                     ^^^^
+   |                     |
+   |                     types differ in mutability
+   |                     help: change the parameter type to match the trait: `&mut Formatter<'_>`
    |
    = note: expected fn pointer `fn(&MyType, &mut Formatter<'_>) -> Result<(), std::fmt::Error>`
               found fn pointer `fn(&MyType, &str)`
