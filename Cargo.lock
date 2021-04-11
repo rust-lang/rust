@@ -2492,6 +2492,7 @@ dependencies = [
 name = "panic_abort"
 version = "0.0.0"
 dependencies = [
+ "alloc",
  "cfg-if 0.1.10",
  "compiler_builtins",
  "core",
