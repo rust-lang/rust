@@ -479,14 +479,13 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// #![feature(duration_saturating_ops)]
     /// #![feature(duration_constants)]
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::new(0, 0).saturating_add(Duration::new(0, 1)), Duration::new(0, 1));
     /// assert_eq!(Duration::new(1, 0).saturating_add(Duration::new(u64::MAX, 0)), Duration::MAX);
     /// ```
-    #[unstable(feature = "duration_saturating_ops", issue = "76416")]
+    #[stable(feature = "duration_saturating_ops", since = "1.53.0")]
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
     pub const fn saturating_add(self, rhs: Duration) -> Duration {
@@ -537,14 +536,13 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// #![feature(duration_saturating_ops)]
     /// #![feature(duration_zero)]
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::new(0, 1).saturating_sub(Duration::new(0, 0)), Duration::new(0, 1));
     /// assert_eq!(Duration::new(0, 0).saturating_sub(Duration::new(0, 1)), Duration::ZERO);
     /// ```
-    #[unstable(feature = "duration_saturating_ops", issue = "76416")]
+    #[stable(feature = "duration_saturating_ops", since = "1.53.0")]
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
     pub const fn saturating_sub(self, rhs: Duration) -> Duration {
@@ -590,14 +588,13 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// #![feature(duration_saturating_ops)]
     /// #![feature(duration_constants)]
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::new(0, 500_000_001).saturating_mul(2), Duration::new(1, 2));
     /// assert_eq!(Duration::new(u64::MAX - 1, 0).saturating_mul(2), Duration::MAX);
     /// ```
-    #[unstable(feature = "duration_saturating_ops", issue = "76416")]
+    #[stable(feature = "duration_saturating_ops", since = "1.53.0")]
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
     pub const fn saturating_mul(self, rhs: u32) -> Duration {
