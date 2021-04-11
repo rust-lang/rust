@@ -462,11 +462,13 @@ impl Step for StartupObjects {
             let dst_file = &dst_dir.join(file.to_string() + ".o");
             if !up_to_date(src_file, dst_file) {
                 let mut cmd = Command::new(&builder.initial_rustc);
+                cmd.env("RUSTC_BOOTSTRAP", "1");
+                if !builder.local_rebuild {
+                    // a local_rebuild compiler already has stage1 features
+                    cmd.arg("--cfg").arg("bootstrap");
+                }
                 builder.run(
-                    cmd.env("RUSTC_BOOTSTRAP", "1")
-                        .arg("--cfg")
-                        .arg("bootstrap")
-                        .arg("--target")
+                    cmd.arg("--target")
                         .arg(target.rustc_target_arg())
                         .arg("--emit=obj")
                         .arg("-o")
