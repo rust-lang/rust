@@ -509,6 +509,10 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         "clippy::find_map",
         "this lint has been replaced by `manual_find_map`, a more specific lint",
     );
+    store.register_removed(
+        "clippy::filter_map",
+        "this lint has been replaced by `manual_filter_map`, a more specific lint",
+    );
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
     // begin register lints, do not remove this comment, it’s used in `update_lints`
@@ -760,7 +764,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         methods::EXPECT_FUN_CALL,
         methods::EXPECT_USED,
         methods::FILETYPE_IS_FILE,
-        methods::FILTER_MAP,
         methods::FILTER_MAP_IDENTITY,
         methods::FILTER_MAP_NEXT,
         methods::FILTER_NEXT,
@@ -1376,7 +1379,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(matches::MATCH_WILDCARD_FOR_SINGLE_VARIANTS),
         LintId::of(matches::MATCH_WILD_ERR_ARM),
         LintId::of(matches::SINGLE_MATCH_ELSE),
-        LintId::of(methods::FILTER_MAP),
         LintId::of(methods::FILTER_MAP_NEXT),
         LintId::of(methods::IMPLICIT_CLONE),
         LintId::of(methods::INEFFICIENT_TO_STRING),

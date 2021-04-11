@@ -151,7 +151,6 @@ pub fn is_proc_macro(sess: &Session, attrs: &[ast::Attribute]) -> bool {
 
 /// Return true if the attributes contain `#[doc(hidden)]`
 pub fn is_doc_hidden(attrs: &[ast::Attribute]) -> bool {
-    #[allow(clippy::filter_map)]
     attrs
         .iter()
         .filter(|attr| attr.has_name(sym::doc))

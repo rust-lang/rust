@@ -5,7 +5,7 @@
 // When a new lint is introduced, we can search the results for new warnings and check for false
 // positives.
 
-#![allow(clippy::filter_map, clippy::collapsible_else_if)]
+#![allow(clippy::collapsible_else_if)]
 
 use std::ffi::OsStr;
 use std::process::Command;

@@ -78,11 +78,17 @@ error: lint `clippy::find_map` has been removed: this lint has been replaced by 
 LL | #[warn(clippy::find_map)]
    |        ^^^^^^^^^^^^^^^^
 
+error: lint `clippy::filter_map` has been removed: this lint has been replaced by `manual_filter_map`, a more specific lint
+  --> $DIR/deprecated.rs:14:8
+   |
+LL | #[warn(clippy::filter_map)]
+   |        ^^^^^^^^^^^^^^^^^^
+
 error: lint `clippy::unstable_as_slice` has been removed: `Vec::as_slice` has been stabilized in 1.7
   --> $DIR/deprecated.rs:1:8
    |
 LL | #[warn(clippy::unstable_as_slice)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 14 previous errors
+error: aborting due to 15 previous errors
 

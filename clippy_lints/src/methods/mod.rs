@@ -11,11 +11,8 @@ mod clone_on_ref_ptr;
 mod expect_fun_call;
 mod expect_used;
 mod filetype_is_file;
-mod filter_flat_map;
 mod filter_map;
-mod filter_map_flat_map;
 mod filter_map_identity;
-mod filter_map_map;
 mod filter_map_next;
 mod filter_next;
 mod flat_map_identity;
@@ -470,35 +467,6 @@ declare_clippy_lint! {
     pub MAP_FLATTEN,
     pedantic,
     "using combinations of `flatten` and `map` which can usually be written as a single method call"
-}
-
-declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `_.filter(_).map(_)`,
-    /// `_.filter(_).flat_map(_)`, `_.filter_map(_).flat_map(_)` and similar.
-    ///
-    /// **Why is this bad?** Readability, this can be written more concisely as
-    /// `_.filter_map(_)`.
-    ///
-    /// **Known problems:** Often requires a condition + Option/Iterator creation
-    /// inside the closure.
-    ///
-    /// **Example:**
-    /// ```rust
-    /// let vec = vec![1];
-    ///
-    /// // Bad
-    /// vec.iter().filter(|x| **x == 0).map(|x| *x * 2);
-    ///
-    /// // Good
-    /// vec.iter().filter_map(|x| if *x == 0 {
-    ///     Some(*x * 2)
-    /// } else {
-    ///     None
-    /// });
-    /// ```
-    pub FILTER_MAP,
-    pedantic,
-    "using combinations of `filter`, `map`, `filter_map` and `flat_map` which can usually be written as a single method call"
 }
 
 declare_clippy_lint! {
@@ -1677,7 +1645,6 @@ impl_lint_pass!(Methods => [
     SEARCH_IS_SOME,
     FILTER_NEXT,
     SKIP_WHILE_NEXT,
-    FILTER_MAP,
     FILTER_MAP_IDENTITY,
     MANUAL_FILTER_MAP,
     MANUAL_FIND_MAP,
@@ -1965,11 +1932,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                 unnecessary_filter_map::check(cx, expr, arg);
                 filter_map_identity::check(cx, expr, arg, span);
             },
-            ("flat_map", [flm_arg]) => match method_call!(recv) {
-                Some(("filter", [_, _], _)) => filter_flat_map::check(cx, expr),
-                Some(("filter_map", [_, _], _)) => filter_map_flat_map::check(cx, expr),
-                _ => flat_map_identity::check(cx, expr, flm_arg, span),
-            },
+            ("flat_map", [flm_arg]) => flat_map_identity::check(cx, expr, flm_arg, span),
             ("flatten", []) => {
                 if let Some(("map", [recv, map_arg], _)) = method_call!(recv) {
                     map_flatten::check(cx, expr, recv, map_arg);
@@ -1993,7 +1956,6 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                         ("filter", [f_arg]) => {
                             filter_map::check(cx, expr, recv2, f_arg, span2, recv, m_arg, span, false)
                         },
-                        ("filter_map", [_]) => filter_map_map::check(cx, expr),
                         ("find", [f_arg]) => filter_map::check(cx, expr, recv2, f_arg, span2, recv, m_arg, span, true),
                         _ => {},
                     }
