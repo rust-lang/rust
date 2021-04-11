@@ -1,38 +1,40 @@
+// run-rustfix
+
 #![deny(rustdoc::bare_urls)]
 
-/// https://somewhere.com
+/// <https://somewhere.com>
 //~^ ERROR this URL is not a hyperlink
-/// https://somewhere.com/a
+/// <https://somewhere.com/a>
 //~^ ERROR this URL is not a hyperlink
-/// https://www.somewhere.com
+/// <https://www.somewhere.com>
 //~^ ERROR this URL is not a hyperlink
-/// https://www.somewhere.com/a
+/// <https://www.somewhere.com/a>
 //~^ ERROR this URL is not a hyperlink
-/// https://subdomain.example.com
+/// <https://subdomain.example.com>
 //~^ ERROR not a hyperlink
-/// https://somewhere.com?
+/// <https://somewhere.com?>
 //~^ ERROR this URL is not a hyperlink
-/// https://somewhere.com/a?
+/// <https://somewhere.com/a?>
 //~^ ERROR this URL is not a hyperlink
-/// https://somewhere.com?hello=12
+/// <https://somewhere.com?hello=12>
 //~^ ERROR this URL is not a hyperlink
-/// https://somewhere.com/a?hello=12
+/// <https://somewhere.com/a?hello=12>
 //~^ ERROR this URL is not a hyperlink
-/// https://example.com?hello=12#xyz
+/// <https://example.com?hello=12#xyz>
 //~^ ERROR this URL is not a hyperlink
-/// https://example.com/a?hello=12#xyz
+/// <https://example.com/a?hello=12#xyz>
 //~^ ERROR this URL is not a hyperlink
-/// https://example.com#xyz
+/// <https://example.com#xyz>
 //~^ ERROR this URL is not a hyperlink
-/// https://example.com/a#xyz
+/// <https://example.com/a#xyz>
 //~^ ERROR this URL is not a hyperlink
-/// https://somewhere.com?hello=12&bye=11
+/// <https://somewhere.com?hello=12&bye=11>
 //~^ ERROR this URL is not a hyperlink
-/// https://somewhere.com/a?hello=12&bye=11
+/// <https://somewhere.com/a?hello=12&bye=11>
 //~^ ERROR this URL is not a hyperlink
-/// https://somewhere.com?hello=12&bye=11#xyz
+/// <https://somewhere.com?hello=12&bye=11#xyz>
 //~^ ERROR this URL is not a hyperlink
-/// hey! https://somewhere.com/a?hello=12&bye=11#xyz
+/// hey! <https://somewhere.com/a?hello=12&bye=11#xyz>
 //~^ ERROR this URL is not a hyperlink
 pub fn c() {}
 
