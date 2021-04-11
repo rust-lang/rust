@@ -48,6 +48,8 @@
 #![cfg(not(feature = "no-asm"))]
 // We only define stack probing for these architectures today.
 #![cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+// We need to add .att_syntax for bootstraping the new global_asm!
+#![allow(unknown_lints, bad_asm_style)]
 
 extern "C" {
     pub fn __rust_probestack();
@@ -63,6 +65,7 @@ macro_rules! define_rust_probestack {
     ($body: expr) => {
         concat!(
             "
+            .att_syntax
             .pushsection .text.__rust_probestack
             .globl __rust_probestack
             .type  __rust_probestack, @function
