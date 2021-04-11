@@ -1,7 +1,7 @@
 [package]
 authors = ["Jorge Aparicio <japaricious@gmail.com>"]
 name = "compiler_builtins"
-version = "0.1.39"
+version = "0.1.40"
 license = "MIT/Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/rust-lang/compiler-builtins"
