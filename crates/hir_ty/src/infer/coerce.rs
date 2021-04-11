@@ -7,7 +7,7 @@
 use chalk_ir::{cast::Cast, Mutability, TyVariableKind};
 use hir_def::lang_item::LangItemTarget;
 
-use crate::{autoderef, Canonical, Interner, Solution, Ty, TyBuilder, TyExt, TyKind};
+use crate::{autoderef, Canonical, DomainGoal, Interner, Solution, Ty, TyBuilder, TyExt, TyKind};
 
 use super::{InEnvironment, InferenceContext};
 
@@ -141,10 +141,10 @@ impl<'a> InferenceContext<'a> {
             b.push(from_ty.clone()).push(to_ty.clone()).build()
         };
 
-        let goal = InEnvironment::new(&self.trait_env.env, trait_ref.cast(&Interner));
+        let goal: InEnvironment<DomainGoal> =
+            InEnvironment::new(&self.trait_env.env, trait_ref.cast(&Interner));
 
-        let canonicalizer = self.canonicalizer();
-        let canonicalized = canonicalizer.canonicalize_obligation(goal);
+        let canonicalized = self.canonicalize(goal);
 
         let solution = self.db.trait_solve(krate, canonicalized.value.clone())?;
 
@@ -169,7 +169,7 @@ impl<'a> InferenceContext<'a> {
     ///
     /// Note that the parameters are already stripped the outer reference.
     fn unify_autoderef_behind_ref(&mut self, from_ty: &Ty, to_ty: &Ty) -> bool {
-        let canonicalized = self.canonicalizer().canonicalize_ty(from_ty.clone());
+        let canonicalized = self.canonicalize(from_ty.clone());
         let to_ty = self.resolve_ty_shallow(&to_ty);
         // FIXME: Auto DerefMut
         for derefed_ty in autoderef::autoderef(

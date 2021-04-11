@@ -798,7 +798,8 @@ pub(crate) fn inherent_impl_substs(
         binders: CanonicalVarKinds::from_iter(&Interner, kinds),
         value: (self_ty_with_vars, self_ty.value.clone()),
     };
-    let substs = super::infer::unify(&tys)?;
+    let trait_env = Arc::new(TraitEnvironment::default()); // FIXME
+    let substs = super::infer::unify(db, trait_env, &tys)?;
     // We only want the substs for the vars we added, not the ones from self_ty.
     // Also, if any of the vars we added are still in there, we replace them by
     // Unknown. I think this can only really happen if self_ty contained

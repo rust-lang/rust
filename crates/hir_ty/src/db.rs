@@ -117,10 +117,10 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn fn_def_datum(&self, krate: CrateId, fn_def_id: FnDefId) -> Arc<chalk_db::FnDefDatum>;
 
     #[salsa::invoke(chalk_db::fn_def_variance_query)]
-    fn fn_def_variance(&self, krate: CrateId, fn_def_id: FnDefId) -> chalk_db::Variances;
+    fn fn_def_variance(&self, fn_def_id: FnDefId) -> chalk_db::Variances;
 
     #[salsa::invoke(chalk_db::adt_variance_query)]
-    fn adt_variance(&self, krate: CrateId, adt_id: chalk_db::AdtId) -> chalk_db::Variances;
+    fn adt_variance(&self, adt_id: chalk_db::AdtId) -> chalk_db::Variances;
 
     #[salsa::invoke(chalk_db::associated_ty_value_query)]
     fn associated_ty_value(

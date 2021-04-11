@@ -217,7 +217,7 @@ struct InferenceContext<'a> {
     owner: DefWithBodyId,
     body: Arc<Body>,
     resolver: Resolver,
-    table: unify::InferenceTable,
+    table: unify::InferenceTable<'a>,
     trait_env: Arc<TraitEnvironment>,
     obligations: Vec<DomainGoal>,
     last_obligations_check: Option<u32>,
@@ -252,15 +252,15 @@ fn find_breakable<'c>(
 
 impl<'a> InferenceContext<'a> {
     fn new(db: &'a dyn HirDatabase, owner: DefWithBodyId, resolver: Resolver) -> Self {
+        let trait_env =
+            owner.as_generic_def_id().map_or_else(Default::default, |d| db.trait_environment(d));
         InferenceContext {
             result: InferenceResult::default(),
-            table: unify::InferenceTable::new(),
+            table: unify::InferenceTable::new(db, trait_env.clone()),
             obligations: Vec::default(),
             last_obligations_check: None,
             return_ty: TyKind::Error.intern(&Interner), // set in collect_fn_signature
-            trait_env: owner
-                .as_generic_def_id()
-                .map_or_else(Default::default, |d| db.trait_environment(d)),
+            trait_env,
             db,
             owner,
             body: db.body(owner),
@@ -346,17 +346,12 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn resolve_obligations_as_possible(&mut self) {
-        if self.last_obligations_check == Some(self.table.revision) {
-            // no change
-            return;
-        }
         let _span = profile::span("resolve_obligations_as_possible");
 
-        self.last_obligations_check = Some(self.table.revision);
         let obligations = mem::replace(&mut self.obligations, Vec::new());
         for obligation in obligations {
             let in_env = InEnvironment::new(&self.trait_env.env, obligation.clone());
-            let canonicalized = self.canonicalizer().canonicalize_obligation(in_env);
+            let canonicalized = self.canonicalize(in_env);
             let solution =
                 self.db.trait_solve(self.resolver.krate().unwrap(), canonicalized.value.clone());
 
@@ -395,6 +390,7 @@ impl<'a> InferenceContext<'a> {
         self.table.unify(ty1, ty2)
     }
 
+    // FIXME get rid of this, instead resolve shallowly where necessary
     /// Resolves the type as far as currently possible, replacing type variables
     /// by their known types. All types returned by the infer_* functions should
     /// be resolved as far as possible, i.e. contain no type variables with

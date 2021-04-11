@@ -98,7 +98,7 @@ impl<'a> InferenceContext<'a> {
             goal: projection.trait_ref(self.db).cast(&Interner),
             environment: trait_env,
         };
-        let canonical = self.canonicalizer().canonicalize_obligation(obligation.clone());
+        let canonical = self.canonicalize(obligation.clone());
         if self.db.trait_solve(krate, canonical.value).is_some() {
             self.push_obligation(obligation.goal);
             let return_ty = self.normalize_projection_ty(projection);
@@ -297,7 +297,7 @@ impl<'a> InferenceContext<'a> {
             }
             Expr::Call { callee, args } => {
                 let callee_ty = self.infer_expr(*callee, &Expectation::none());
-                let canonicalized = self.canonicalizer().canonicalize_ty(callee_ty.clone());
+                let canonicalized = self.canonicalize(callee_ty.clone());
                 let mut derefs = autoderef(
                     self.db,
                     self.resolver.krate(),
@@ -442,7 +442,7 @@ impl<'a> InferenceContext<'a> {
             }
             Expr::Field { expr, name } => {
                 let receiver_ty = self.infer_expr_inner(*expr, &Expectation::none());
-                let canonicalized = self.canonicalizer().canonicalize_ty(receiver_ty);
+                let canonicalized = self.canonicalize(receiver_ty);
                 let ty = autoderef::autoderef(
                     self.db,
                     self.resolver.krate(),
@@ -559,7 +559,7 @@ impl<'a> InferenceContext<'a> {
                 match op {
                     UnaryOp::Deref => match self.resolver.krate() {
                         Some(krate) => {
-                            let canonicalized = self.canonicalizer().canonicalize_ty(inner_ty);
+                            let canonicalized = self.canonicalize(inner_ty);
                             match autoderef::deref(
                                 self.db,
                                 krate,
@@ -676,7 +676,7 @@ impl<'a> InferenceContext<'a> {
                 if let (Some(index_trait), Some(krate)) =
                     (self.resolve_ops_index(), self.resolver.krate())
                 {
-                    let canonicalized = self.canonicalizer().canonicalize_ty(base_ty);
+                    let canonicalized = self.canonicalize(base_ty);
                     let self_ty = method_resolution::resolve_indexing_op(
                         self.db,
                         &canonicalized.value,
@@ -852,7 +852,7 @@ impl<'a> InferenceContext<'a> {
         generic_args: Option<&GenericArgs>,
     ) -> Ty {
         let receiver_ty = self.infer_expr(receiver, &Expectation::none());
-        let canonicalized_receiver = self.canonicalizer().canonicalize_ty(receiver_ty.clone());
+        let canonicalized_receiver = self.canonicalize(receiver_ty.clone());
 
         let traits_in_scope = self.resolver.traits_in_scope(self.db.upcast());
 

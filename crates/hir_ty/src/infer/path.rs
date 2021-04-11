@@ -218,7 +218,7 @@ impl<'a> InferenceContext<'a> {
             return Some(result);
         }
 
-        let canonical_ty = self.canonicalizer().canonicalize_ty(ty.clone());
+        let canonical_ty = self.canonicalize(ty.clone());
         let krate = self.resolver.krate()?;
         let traits_in_scope = self.resolver.traits_in_scope(self.db.upcast());
 
