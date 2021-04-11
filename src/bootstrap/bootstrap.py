@@ -429,7 +429,7 @@ class RustBuild(object):
             lib_dir = "{}/lib".format(bin_root)
             for lib in os.listdir(lib_dir):
                 if lib.endswith(".so"):
-                    self.fix_bin_or_dylib(os.path.join(lib_dir, lib), rpath_libz=True)
+                    self.fix_bin_or_dylib(os.path.join(lib_dir, lib))
             with output(self.rustc_stamp(stage0)) as rust_stamp:
                 rust_stamp.write(key)
 
@@ -477,10 +477,10 @@ class RustBuild(object):
             if self.program_out_of_date(self.llvm_stamp(), llvm_sha + str(llvm_assertions)):
                 self._download_ci_llvm(llvm_sha, llvm_assertions)
                 for binary in ["llvm-config", "FileCheck"]:
-                    self.fix_bin_or_dylib(os.path.join(llvm_root, "bin", binary), rpath_libz=True)
+                    self.fix_bin_or_dylib(os.path.join(llvm_root, "bin", binary))
                 for lib in os.listdir(llvm_lib):
                     if lib.endswith(".so"):
-                        self.fix_bin_or_dylib(os.path.join(llvm_lib, lib), rpath_libz=True)
+                        self.fix_bin_or_dylib(os.path.join(llvm_lib, lib))
                 with output(self.llvm_stamp()) as llvm_stamp:
                     llvm_stamp.write(llvm_sha + str(llvm_assertions))
 
@@ -548,7 +548,7 @@ class RustBuild(object):
                 match="rust-dev",
                 verbose=self.verbose)
 
-    def fix_bin_or_dylib(self, fname, rpath_libz=False):
+    def fix_bin_or_dylib(self, fname):
         """Modifies the interpreter section of 'fname' to fix the dynamic linker,
         or the RPATH section, to fix the dynamic library search path
 
@@ -583,56 +583,49 @@ class RustBuild(object):
         # Only build `.nix-deps` once.
         nix_deps_dir = self.nix_deps_dir
         if not nix_deps_dir:
-            nix_deps_dir = ".nix-deps"
-            if not os.path.exists(nix_deps_dir):
-                os.makedirs(nix_deps_dir)
-
-            nix_deps = [
-                # Needed for the path of `ld-linux.so` (via `nix-support/dynamic-linker`).
-                "stdenv.cc.bintools",
-
-                # Needed as a system dependency of `libLLVM-*.so`.
-                "zlib",
-
-                # Needed for patching ELF binaries (see doc comment above).
-                "patchelf",
-            ]
-
             # Run `nix-build` to "build" each dependency (which will likely reuse
             # the existing `/nix/store` copy, or at most download a pre-built copy).
-            # Importantly, we don't rely on `nix-build` printing the `/nix/store`
-            # path on stdout, but use `-o` to symlink it into `stage0/.nix-deps/$dep`,
-            # ensuring garbage collection will never remove the `/nix/store` path
-            # (which would break our patched binaries that hardcode those paths).
-            for dep in nix_deps:
-                try:
-                    subprocess.check_output([
-                        "nix-build", "<nixpkgs>",
-                        "-A", dep,
-                        "-o", "{}/{}".format(nix_deps_dir, dep),
-                    ])
-                except subprocess.CalledProcessError as reason:
-                    print("warning: failed to call nix-build:", reason)
-                    return
-
+            #
+            # Importantly, we create a gc-root called `.nix-deps` in the `build/`
+            # directory, but still reference the actual `/nix/store` path in the rpath
+            # as it makes it significantly more robust against changes to the location of
+            # the `.nix-deps` location.
+            #
+            # bintools: Needed for the path of `ld-linux.so` (via `nix-support/dynamic-linker`).
+            # zlib: Needed as a system dependency of `libLLVM-*.so`.
+            # patchelf: Needed for patching ELF binaries (see doc comment above).
+            nix_deps_dir = "{}/{}".format(self.build_dir, ".nix-deps")
+            nix_expr = '''
+            with (import <nixpkgs> {});
+            symlinkJoin {
+              name = "rust-stage0-dependencies";
+              paths = [
+                zlib
+                patchelf
+                stdenv.cc.bintools
+              ];
+            }
+            '''
+            try:
+                subprocess.check_output([
+                    "nix-build", "-E", nix_expr, "-o", nix_deps_dir,
+                ])
+            except subprocess.CalledProcessError as reason:
+                print("warning: failed to call nix-build:", reason)
+                return
             self.nix_deps_dir = nix_deps_dir
 
-        patchelf = "{}/patchelf/bin/patchelf".format(nix_deps_dir)
-        patchelf_args = []
-
-        if rpath_libz:
-            # Patch RPATH to add `zlib` dependency that stems from LLVM
-            dylib_deps = ["zlib"]
-            rpath_entries = [
-                # Relative default, all binary and dynamic libraries we ship
-                # appear to have this (even when `../lib` is redundant).
-                "$ORIGIN/../lib",
-            ] + ["{}/{}/lib".format(nix_deps_dir, dep) for dep in dylib_deps]
-            patchelf_args += ["--set-rpath", ":".join(rpath_entries)]
+        patchelf = "{}/bin/patchelf".format(nix_deps_dir)
+        rpath_entries = [
+            # Relative default, all binary and dynamic libraries we ship
+            # appear to have this (even when `../lib` is redundant).
+            "$ORIGIN/../lib",
+            os.path.join(os.path.realpath(nix_deps_dir), "lib")
+        ]
+        patchelf_args = ["--set-rpath", ":".join(rpath_entries)]
         if not fname.endswith(".so"):
             # Finally, set the corret .interp for binaries
-            bintools_dir = "{}/stdenv.cc.bintools".format(nix_deps_dir)
-            with open("{}/nix-support/dynamic-linker".format(bintools_dir)) as dynamic_linker:
+            with open("{}/nix-support/dynamic-linker".format(nix_deps_dir)) as dynamic_linker:
                 patchelf_args += ["--set-interpreter", dynamic_linker.read().rstrip()]
 
         try:
