@@ -24,7 +24,6 @@
 #![feature(div_duration)]
 #![feature(duration_consts_2)]
 #![feature(duration_constants)]
-#![feature(duration_zero)]
 #![feature(exact_size_is_empty)]
 #![feature(extern_types)]
 #![feature(flt2dec)]
