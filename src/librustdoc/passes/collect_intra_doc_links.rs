@@ -39,13 +39,16 @@ use crate::passes::Pass;
 
 use super::span_of_attrs;
 
+mod early;
+crate use early::IntraLinkCrateLoader;
+
 crate const COLLECT_INTRA_DOC_LINKS: Pass = Pass {
     name: "collect-intra-doc-links",
     run: collect_intra_doc_links,
     description: "resolves intra-doc links",
 };
 
-crate fn collect_intra_doc_links(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
+fn collect_intra_doc_links(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
     LinkCollector {
         cx,
         mod_ids: Vec::new(),
@@ -892,6 +895,117 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
     }
 }
 
+enum PreprocessingError<'a> {
+    Anchor(AnchorFailure),
+    Disambiguator(Range<usize>, String),
+    Resolution(ResolutionFailure<'a>, String, Option<Disambiguator>),
+}
+
+impl From<AnchorFailure> for PreprocessingError<'_> {
+    fn from(err: AnchorFailure) -> Self {
+        Self::Anchor(err)
+    }
+}
+
+struct PreprocessingInfo {
+    path_str: String,
+    disambiguator: Option<Disambiguator>,
+    extra_fragment: Option<String>,
+    link_text: String,
+}
+
+/// Returns:
+/// - `None` if the link should be ignored.
+/// - `Some(Err)` if the link should emit an error
+/// - `Some(Ok)` if the link is valid
+///
+/// `link_buffer` is needed for lifetime reasons; it will always be overwritten and the contents ignored.
+fn preprocess_link<'a>(
+    ori_link: &'a MarkdownLink,
+) -> Option<Result<PreprocessingInfo, PreprocessingError<'a>>> {
+    // [] is mostly likely not supposed to be a link
+    if ori_link.link.is_empty() {
+        return None;
+    }
+
+    // Bail early for real links.
+    if ori_link.link.contains('/') {
+        return None;
+    }
+
+    let stripped = ori_link.link.replace("`", "");
+    let mut parts = stripped.split('#');
+
+    let link = parts.next().unwrap();
+    if link.trim().is_empty() {
+        // This is an anchor to an element of the current page, nothing to do in here!
+        return None;
+    }
+    let extra_fragment = parts.next();
+    if parts.next().is_some() {
+        // A valid link can't have multiple #'s
+        return Some(Err(AnchorFailure::MultipleAnchors.into()));
+    }
+
+    // Parse and strip the disambiguator from the link, if present.
+    let (path_str, disambiguator) = match Disambiguator::from_str(&link) {
+        Ok(Some((d, path))) => (path.trim(), Some(d)),
+        Ok(None) => (link.trim(), None),
+        Err((err_msg, relative_range)) => {
+            // Only report error if we would not have ignored this link. See issue #83859.
+            if !should_ignore_link_with_disambiguators(link) {
+                let no_backticks_range = range_between_backticks(&ori_link);
+                let disambiguator_range = (no_backticks_range.start + relative_range.start)
+                    ..(no_backticks_range.start + relative_range.end);
+                return Some(Err(PreprocessingError::Disambiguator(disambiguator_range, err_msg)));
+            } else {
+                return None;
+            }
+        }
+    };
+
+    if should_ignore_link(path_str) {
+        return None;
+    }
+
+    // We stripped `()` and `!` when parsing the disambiguator.
+    // Add them back to be displayed, but not prefix disambiguators.
+    let link_text =
+        disambiguator.map(|d| d.display_for(path_str)).unwrap_or_else(|| path_str.to_owned());
+
+    // Strip generics from the path.
+    let path_str = if path_str.contains(['<', '>'].as_slice()) {
+        match strip_generics_from_path(&path_str) {
+            Ok(path) => path,
+            Err(err_kind) => {
+                debug!("link has malformed generics: {}", path_str);
+                return Some(Err(PreprocessingError::Resolution(
+                    err_kind,
+                    path_str.to_owned(),
+                    disambiguator,
+                )));
+            }
+        }
+    } else {
+        path_str.to_owned()
+    };
+
+    // Sanity check to make sure we don't have any angle brackets after stripping generics.
+    assert!(!path_str.contains(['<', '>'].as_slice()));
+
+    // The link is not an intra-doc link if it still contains spaces after stripping generics.
+    if path_str.contains(' ') {
+        return None;
+    }
+
+    Some(Ok(PreprocessingInfo {
+        path_str,
+        disambiguator,
+        extra_fragment: extra_fragment.map(String::from),
+        link_text,
+    }))
+}
+
 impl LinkCollector<'_, '_> {
     /// This is the entry point for resolving an intra-doc link.
     ///
@@ -907,16 +1021,6 @@ impl LinkCollector<'_, '_> {
     ) -> Option<ItemLink> {
         trace!("considering link '{}'", ori_link.link);
 
-        // Bail early for real links.
-        if ori_link.link.contains('/') {
-            return None;
-        }
-
-        // [] is mostly likely not supposed to be a link
-        if ori_link.link.is_empty() {
-            return None;
-        }
-
         let diag_info = DiagnosticInfo {
             item,
             dox,
@@ -924,47 +1028,29 @@ impl LinkCollector<'_, '_> {
             link_range: ori_link.range.clone(),
         };
 
-        let link = ori_link.link.replace("`", "");
-        let no_backticks_range = range_between_backticks(&ori_link);
-        let parts = link.split('#').collect::<Vec<_>>();
-        let (link, extra_fragment) = if parts.len() > 2 {
-            // A valid link can't have multiple #'s
-            anchor_failure(self.cx, diag_info, AnchorFailure::MultipleAnchors);
-            return None;
-        } else if parts.len() == 2 {
-            if parts[0].trim().is_empty() {
-                // This is an anchor to an element of the current page, nothing to do in here!
-                return None;
-            }
-            (parts[0], Some(parts[1].to_owned()))
-        } else {
-            (parts[0], None)
-        };
-
-        // Parse and strip the disambiguator from the link, if present.
-        let (mut path_str, disambiguator) = match Disambiguator::from_str(&link) {
-            Ok(Some((d, path))) => (path.trim(), Some(d)),
-            Ok(None) => (link.trim(), None),
-            Err((err_msg, relative_range)) => {
-                if !should_ignore_link_with_disambiguators(link) {
-                    // Only report error if we would not have ignored this link.
-                    // See issue #83859.
-                    let disambiguator_range = (no_backticks_range.start + relative_range.start)
-                        ..(no_backticks_range.start + relative_range.end);
-                    disambiguator_error(self.cx, diag_info, disambiguator_range, &err_msg);
+        let PreprocessingInfo { path_str, disambiguator, extra_fragment, link_text } =
+            match preprocess_link(&ori_link)? {
+                Ok(x) => x,
+                Err(err) => {
+                    match err {
+                        PreprocessingError::Anchor(err) => anchor_failure(self.cx, diag_info, err),
+                        PreprocessingError::Disambiguator(range, msg) => {
+                            disambiguator_error(self.cx, diag_info, range, &msg)
+                        }
+                        PreprocessingError::Resolution(err, path_str, disambiguator) => {
+                            resolution_failure(
+                                self,
+                                diag_info,
+                                &path_str,
+                                disambiguator,
+                                smallvec![err],
+                            );
+                        }
+                    }
+                    return None;
                 }
-                return None;
-            }
-        };
-
-        if should_ignore_link(path_str) {
-            return None;
-        }
-
-        // We stripped `()` and `!` when parsing the disambiguator.
-        // Add them back to be displayed, but not prefix disambiguators.
-        let link_text =
-            disambiguator.map(|d| d.display_for(path_str)).unwrap_or_else(|| path_str.to_owned());
+            };
+        let mut path_str = &*path_str;
 
         // In order to correctly resolve intra-doc links we need to
         // pick a base AST node to work from.  If the documentation for
@@ -1029,39 +1115,12 @@ impl LinkCollector<'_, '_> {
             module_id = DefId { krate, index: CRATE_DEF_INDEX };
         }
 
-        // Strip generics from the path.
-        let stripped_path_string;
-        if path_str.contains(['<', '>'].as_slice()) {
-            stripped_path_string = match strip_generics_from_path(path_str) {
-                Ok(path) => path,
-                Err(err_kind) => {
-                    debug!("link has malformed generics: {}", path_str);
-                    resolution_failure(
-                        self,
-                        diag_info,
-                        path_str,
-                        disambiguator,
-                        smallvec![err_kind],
-                    );
-                    return None;
-                }
-            };
-            path_str = &stripped_path_string;
-        }
-        // Sanity check to make sure we don't have any angle brackets after stripping generics.
-        assert!(!path_str.contains(['<', '>'].as_slice()));
-
-        // The link is not an intra-doc link if it still contains spaces after stripping generics.
-        if path_str.contains(' ') {
-            return None;
-        }
-
         let (mut res, mut fragment) = self.resolve_with_disambiguator_cached(
             ResolutionInfo {
                 module_id,
                 dis: disambiguator,
                 path_str: path_str.to_owned(),
-                extra_fragment,
+                extra_fragment: extra_fragment.map(String::from),
             },
             diag_info.clone(), // this struct should really be Copy, but Range is not :(
             matches!(ori_link.kind, LinkType::Reference | LinkType::Shortcut),
@@ -1438,7 +1497,7 @@ fn should_ignore_link(path_str: &str) -> bool {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 /// Disambiguators for a link.
-crate enum Disambiguator {
+enum Disambiguator {
     /// `prim@`
     ///
     /// This is buggy, see <https://github.com/rust-lang/rust/pull/77875#discussion_r503583103>
@@ -1467,7 +1526,7 @@ impl Disambiguator {
     /// This returns `Ok(Some(...))` if a disambiguator was found,
     /// `Ok(None)` if no disambiguator was found, or `Err(...)`
     /// if there was a problem with the disambiguator.
-    crate fn from_str(link: &str) -> Result<Option<(Self, &str)>, (String, Range<usize>)> {
+    fn from_str(link: &str) -> Result<Option<(Self, &str)>, (String, Range<usize>)> {
         use Disambiguator::{Kind, Namespace as NS, Primitive};
 
         if let Some(idx) = link.find('@') {
