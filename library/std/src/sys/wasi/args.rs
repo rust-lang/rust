@@ -7,8 +7,6 @@ use crate::vec;
 
 pub unsafe fn init(_argc: isize, _argv: *const *const u8) {}
 
-pub unsafe fn cleanup() {}
-
 pub struct Args {
     iter: vec::IntoIter<OsString>,
     _dont_send_or_sync_me: PhantomData<*mut ()>,

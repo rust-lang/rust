@@ -36,8 +36,6 @@ pub fn cleanup() {
     CLEANUP.call_once(|| unsafe {
         // SAFETY: Only called once during runtime cleanup.
         sys::cleanup();
-        sys::args::cleanup();
-        sys::stack_overflow::cleanup();
         // Flush stdout and disable buffering.
         crate::io::cleanup();
     });

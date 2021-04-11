@@ -126,7 +126,10 @@ pub unsafe fn init() {
 }
 
 // SAFETY: must be called only once during runtime cleanup.
-pub unsafe fn cleanup() {}
+pub unsafe fn cleanup() {
+    args::cleanup();
+    stack_overflow::cleanup();
+}
 
 #[cfg(target_os = "android")]
 pub use crate::sys::android::signal;

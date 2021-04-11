@@ -1,7 +1,6 @@
 use crate::ffi::OsString;
 
 pub unsafe fn init(_argc: isize, _argv: *const *const u8) {}
-pub unsafe fn cleanup() {}
 
 pub struct Args {}
 

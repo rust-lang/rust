@@ -102,7 +102,9 @@ pub unsafe fn init() {
 }
 
 // SAFETY: must be called only once during runtime cleanup.
-pub unsafe fn cleanup() {}
+pub unsafe fn cleanup() {
+    args::cleanup();
+}
 
 #[cfg(not(test))]
 #[no_mangle]

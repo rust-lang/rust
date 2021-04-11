@@ -37,5 +37,3 @@ pub unsafe fn init() {
     // Set the thread stack guarantee for the main thread.
     let _h = Handler::new();
 }
-
-pub unsafe fn cleanup() {}

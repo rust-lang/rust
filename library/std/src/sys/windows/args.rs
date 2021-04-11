@@ -16,8 +16,6 @@ use core::iter;
 
 pub unsafe fn init(_argc: isize, _argv: *const *const u8) {}
 
-pub unsafe fn cleanup() {}
-
 pub fn args() -> Args {
     unsafe {
         let lp_cmd_line = c::GetCommandLineW();
