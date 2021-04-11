@@ -477,6 +477,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         if self.threads[self.active_thread].check_terminated() {
             return Ok(SchedulingAction::ExecuteDtors);
         }
+        // If we get here again and the thread is *still* terminated, there are no more dtors to run.
         if self.threads[MAIN_THREAD].state == ThreadState::Terminated {
             // The main thread terminated; stop the program.
             if self.threads.iter().any(|thread| thread.state != ThreadState::Terminated) {
@@ -490,26 +491,25 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
             }
             return Ok(SchedulingAction::Stop);
         }
-        // At least for `pthread_cond_timedwait` we need to report timeout when
-        // the function is called already after the specified time even if a
-        // signal is received before the thread gets scheduled. Therefore, we
-        // need to schedule all timeout callbacks before we continue regular
-        // execution.
-        //
-        // Documentation:
-        // https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_cond_timedwait.html#
-        let potential_sleep_time =
-            self.timeout_callbacks.values().map(|info| info.call_time.get_wait_time()).min();
-        if potential_sleep_time == Some(Duration::new(0, 0)) {
-            return Ok(SchedulingAction::ExecuteTimeoutCallback);
-        }
-        // No callbacks scheduled, pick a regular thread to execute.
+        // This thread and the program can keep going.
         if self.threads[self.active_thread].state == ThreadState::Enabled
             && !self.yield_active_thread
         {
             // The currently active thread is still enabled, just continue with it.
             return Ok(SchedulingAction::ExecuteStep);
         }
+        // The active thread yielded. Let's see if there are any timeouts to take care of. We do
+        // this *before* running any other thread, to ensure that timeouts "in the past" fire before
+        // any other thread can take an action. This ensures that for `pthread_cond_timedwait`, "an
+        // error is returned if [...] the absolute time specified by abstime has already been passed
+        // at the time of the call".
+        // <https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_cond_timedwait.html>
+        let potential_sleep_time =
+            self.timeout_callbacks.values().map(|info| info.call_time.get_wait_time()).min();
+        if potential_sleep_time == Some(Duration::new(0, 0)) {
+            return Ok(SchedulingAction::ExecuteTimeoutCallback);
+        }
+        // No callbacks scheduled, pick a regular thread to execute.
         // We need to pick a new thread for execution.
         for (id, thread) in self.threads.iter_enumerated() {
             if thread.state == ThreadState::Enabled {

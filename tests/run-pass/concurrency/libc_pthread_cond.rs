@@ -38,6 +38,12 @@ fn test_timed_wait_timeout(clock_id: i32) {
         let elapsed_time = current_time.elapsed().as_millis();
         assert!(900 <= elapsed_time && elapsed_time <= 1300);
 
+        // Test calling `pthread_cond_timedwait` again with an already elapsed timeout.
+        assert_eq!(
+            libc::pthread_cond_timedwait(&mut cond as *mut _, &mut mutex as *mut _, &timeout),
+            libc::ETIMEDOUT
+        );
+
         // Test that invalid nanosecond values (above 10^9 or negative) are rejected with the
         // correct error code.
         let invalid_timeout_1 = libc::timespec { tv_sec: now.tv_sec + 1, tv_nsec: 1_000_000_000 };
