@@ -758,17 +758,14 @@ impl<'a> Resolver<'a> {
     {
         let mut candidates = Vec::new();
         let mut seen_modules = FxHashSet::default();
-        let not_local_module = crate_name.name != kw::Crate;
-        let mut worklist =
-            vec![(start_module, Vec::<ast::PathSegment>::new(), true, not_local_module)];
+        let mut worklist = vec![(start_module, Vec::<ast::PathSegment>::new(), true)];
         let mut worklist_via_import = vec![];
 
-        while let Some((in_module, path_segments, accessible, in_module_is_extern)) =
-            match worklist.pop() {
-                None => worklist_via_import.pop(),
-                Some(x) => Some(x),
-            }
-        {
+        while let Some((in_module, path_segments, accessible)) = match worklist.pop() {
+            None => worklist_via_import.pop(),
+            Some(x) => Some(x),
+        } {
+            let in_module_is_extern = !in_module.def_id().unwrap().is_local();
             // We have to visit module children in deterministic order to avoid
             // instabilities in reported imports (#43552).
             in_module.for_each_child(self, |this, ident, ns, name_binding| {
@@ -850,11 +847,10 @@ impl<'a> Resolver<'a> {
                         name_binding.is_extern_crate() && lookup_ident.span.rust_2018();
 
                     if !is_extern_crate_that_also_appears_in_prelude {
-                        let is_extern = in_module_is_extern || name_binding.is_extern_crate();
                         // add the module to the lookup
                         if seen_modules.insert(module.def_id().unwrap()) {
                             if via_import { &mut worklist_via_import } else { &mut worklist }
-                                .push((module, path_segments, child_accessible, is_extern));
+                                .push((module, path_segments, child_accessible));
                         }
                     }
                 }
