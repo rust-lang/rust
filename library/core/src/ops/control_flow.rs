@@ -1,4 +1,5 @@
-use crate::ops::Try;
+use crate::convert;
+use crate::ops::{self, Try};
 
 /// Used to tell an operation whether it should exit early or go on as usual.
 ///
@@ -78,6 +79,35 @@ impl<B, C> Try for ControlFlow<B, C> {
     #[inline]
     fn from_ok(v: Self::Ok) -> Self {
         ControlFlow::Continue(v)
+    }
+}
+
+#[unstable(feature = "try_trait_v2", issue = "84277")]
+impl<B, C> ops::TryV2 for ControlFlow<B, C> {
+    type Output = C;
+    type Residual = ControlFlow<B, convert::Infallible>;
+
+    #[inline]
+    fn from_output(output: Self::Output) -> Self {
+        ControlFlow::Continue(output)
+    }
+
+    #[inline]
+    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
+        match self {
+            ControlFlow::Continue(c) => ControlFlow::Continue(c),
+            ControlFlow::Break(b) => ControlFlow::Break(ControlFlow::Break(b)),
+        }
+    }
+}
+
+#[unstable(feature = "try_trait_v2", issue = "84277")]
+impl<B, C> ops::FromResidual for ControlFlow<B, C> {
+    #[inline]
+    fn from_residual(residual: ControlFlow<B, convert::Infallible>) -> Self {
+        match residual {
+            ControlFlow::Break(b) => ControlFlow::Break(b),
+        }
     }
 }
 
