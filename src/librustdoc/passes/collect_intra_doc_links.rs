@@ -39,13 +39,16 @@ use crate::passes::Pass;
 
 use super::span_of_attrs;
 
+mod early;
+crate use early::IntraLinkCrateLoader;
+
 crate const COLLECT_INTRA_DOC_LINKS: Pass = Pass {
     name: "collect-intra-doc-links",
     run: collect_intra_doc_links,
     description: "resolves intra-doc links",
 };
 
-crate fn collect_intra_doc_links(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
+fn collect_intra_doc_links(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
     LinkCollector {
         cx,
         mod_ids: Vec::new(),
@@ -68,7 +71,7 @@ impl<'a> From<ResolutionFailure<'a>> for ErrorKind<'a> {
 }
 
 #[derive(Copy, Clone, Debug, Hash)]
-crate enum Res {
+enum Res {
     Def(DefKind, DefId),
     Primitive(PrimitiveType),
 }
@@ -134,7 +137,7 @@ impl TryFrom<ResolveRes> for Res {
 
 /// A link failed to resolve.
 #[derive(Debug)]
-crate enum ResolutionFailure<'a> {
+enum ResolutionFailure<'a> {
     /// This resolved, but with the wrong namespace.
     WrongNamespace {
         /// What the link resolved to.
@@ -172,7 +175,7 @@ crate enum ResolutionFailure<'a> {
 }
 
 #[derive(Debug)]
-crate enum MalformedGenerics {
+enum MalformedGenerics {
     /// This link has unbalanced angle brackets.
     ///
     /// For example, `Vec<T` should trigger this, as should `Vec<T>>`.
@@ -224,7 +227,7 @@ impl ResolutionFailure<'a> {
     }
 }
 
-crate enum AnchorFailure {
+enum AnchorFailure {
     /// User error: `[std#x#y]` is not valid
     MultipleAnchors,
     /// The anchor provided by the user conflicts with Rustdoc's generated anchor.
@@ -892,7 +895,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
     }
 }
 
-crate enum PreprocessingError<'a> {
+enum PreprocessingError<'a> {
     Anchor(AnchorFailure),
     Disambiguator(Range<usize>, String),
     Resolution(ResolutionFailure<'a>, String, Option<Disambiguator>),
@@ -904,8 +907,8 @@ impl From<AnchorFailure> for PreprocessingError<'_> {
     }
 }
 
-crate struct PreprocessingInfo {
-    crate path_str: String,
+struct PreprocessingInfo {
+    path_str: String,
     disambiguator: Option<Disambiguator>,
     extra_fragment: Option<String>,
     link_text: String,
@@ -917,7 +920,7 @@ crate struct PreprocessingInfo {
 /// - `Some(Ok)` if the link is valid
 ///
 /// `link_buffer` is needed for lifetime reasons; it will always be overwritten and the contents ignored.
-crate fn preprocess_link<'a>(
+fn preprocess_link<'a>(
     ori_link: &'a MarkdownLink,
 ) -> Option<Result<PreprocessingInfo, PreprocessingError<'a>>> {
     // [] is mostly likely not supposed to be a link
@@ -1494,7 +1497,7 @@ fn should_ignore_link(path_str: &str) -> bool {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 /// Disambiguators for a link.
-crate enum Disambiguator {
+enum Disambiguator {
     /// `prim@`
     ///
     /// This is buggy, see <https://github.com/rust-lang/rust/pull/77875#discussion_r503583103>
@@ -1523,7 +1526,7 @@ impl Disambiguator {
     /// This returns `Ok(Some(...))` if a disambiguator was found,
     /// `Ok(None)` if no disambiguator was found, or `Err(...)`
     /// if there was a problem with the disambiguator.
-    crate fn from_str(link: &str) -> Result<Option<(Self, &str)>, (String, Range<usize>)> {
+    fn from_str(link: &str) -> Result<Option<(Self, &str)>, (String, Range<usize>)> {
         use Disambiguator::{Kind, Namespace as NS, Primitive};
 
         if let Some(idx) = link.find('@') {
