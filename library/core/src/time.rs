@@ -280,6 +280,7 @@ impl Duration {
     /// assert!(!Duration::from_secs(1).is_zero());
     /// ```
     #[stable(feature = "duration_zero", since = "1.53.0")]
+    #[rustc_const_stable(feature = "duration_zero", since = "1.53.0")]
     #[inline]
     pub const fn is_zero(&self) -> bool {
         self.secs == 0 && self.nanos == 0
