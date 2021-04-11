@@ -714,10 +714,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             if let Some((thread, callback)) = this.machine.threads.get_ready_callback() {
                 (thread, callback)
             } else {
-                // get_ready_callback can return None if the computer's clock was
-                // shifted after calling the scheduler and before the call
-                // to get_ready_callback. In this case, just do nothing, which
-                // effectively just returns to the scheduler.
+                // get_ready_callback can return None if the computer's clock
+                // was shifted after calling the scheduler and before the call
+                // to get_ready_callback (see issue
+                // https://github.com/rust-lang/miri/issues/1763). In this case,
+                // just do nothing, which effectively just returns to the
+                // scheduler.
                 return Ok(());
             };
         // This back-and-forth with `set_active_thread` is here because of two
