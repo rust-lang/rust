@@ -13,7 +13,6 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 use rustc_hash::{FxHashMap, FxHashSet};
-use stdx::always;
 
 use crate::{
     autoderef,
@@ -22,8 +21,8 @@ use crate::{
     primitive::{self, FloatTy, IntTy, UintTy},
     static_lifetime,
     utils::all_super_traits,
-    AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, ForeignDefId, HirDisplay, InEnvironment,
-    Interner, Scalar, Substitution, TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyExt, TyKind,
+    AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, ForeignDefId, InEnvironment, Interner,
+    Scalar, Substitution, TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyExt, TyKind,
 };
 
 /// This is used as a key for indexing impls.
@@ -259,10 +258,10 @@ impl InherentImpls {
 
                 let self_ty = db.impl_self_ty(impl_id);
                 let fp = TyFingerprint::for_inherent_impl(self_ty.skip_binders());
-                always!(fp.is_some(), "no fingerprint for {}", self_ty.skip_binders().display(db));
                 if let Some(fp) = fp {
                     map.entry(fp).or_default().push(impl_id);
                 }
+                // `fp` should only be `None` in error cases (either erroneous code or incomplete name resolution)
             }
         }
 
