@@ -160,50 +160,50 @@ macro_rules! impl_common_integer_tests {
                 });
             }
 
-            fn and_lanes<const LANES: usize>() {
+            fn horizontal_and<const LANES: usize>() {
                 test_helpers::test_1(&|x| {
                     test_helpers::prop_assert_biteq! (
-                        $vector::<LANES>::from_array(x).and_lanes(),
+                        $vector::<LANES>::from_array(x).horizontal_and(),
                         x.iter().copied().fold(-1i8 as $scalar, <$scalar as core::ops::BitAnd>::bitand),
                     );
                     Ok(())
                 });
             }
 
-            fn or_lanes<const LANES: usize>() {
+            fn horizontal_or<const LANES: usize>() {
                 test_helpers::test_1(&|x| {
                     test_helpers::prop_assert_biteq! (
-                        $vector::<LANES>::from_array(x).or_lanes(),
+                        $vector::<LANES>::from_array(x).horizontal_or(),
                         x.iter().copied().fold(0 as $scalar, <$scalar as core::ops::BitOr>::bitor),
                     );
                     Ok(())
                 });
             }
 
-            fn xor_lanes<const LANES: usize>() {
+            fn horizontal_xor<const LANES: usize>() {
                 test_helpers::test_1(&|x| {
                     test_helpers::prop_assert_biteq! (
-                        $vector::<LANES>::from_array(x).xor_lanes(),
+                        $vector::<LANES>::from_array(x).horizontal_xor(),
                         x.iter().copied().fold(0 as $scalar, <$scalar as core::ops::BitXor>::bitxor),
                     );
                     Ok(())
                 });
             }
 
-            fn max_lane<const LANES: usize>() {
+            fn horizontal_max<const LANES: usize>() {
                 test_helpers::test_1(&|x| {
                     test_helpers::prop_assert_biteq! (
-                        $vector::<LANES>::from_array(x).max_lane(),
+                        $vector::<LANES>::from_array(x).horizontal_max(),
                         x.iter().copied().max().unwrap(),
                     );
                     Ok(())
                 });
             }
 
-            fn min_lane<const LANES: usize>() {
+            fn horizontal_min<const LANES: usize>() {
                 test_helpers::test_1(&|x| {
                     test_helpers::prop_assert_biteq! (
-                        $vector::<LANES>::from_array(x).min_lane(),
+                        $vector::<LANES>::from_array(x).horizontal_min(),
                         x.iter().copied().min().unwrap(),
                     );
                     Ok(())
@@ -499,9 +499,9 @@ macro_rules! impl_float_tests {
                     });
                 }
 
-                fn max_lane<const LANES: usize>() {
+                fn horizontal_max<const LANES: usize>() {
                     test_helpers::test_1(&|x| {
-                        let vmax = Vector::<LANES>::from_array(x).max_lane();
+                        let vmax = Vector::<LANES>::from_array(x).horizontal_max();
                         let smax = x.iter().copied().fold(Scalar::NAN, Scalar::max);
                         // 0 and -0 are treated the same
                         if !(x.contains(&0.) && x.contains(&-0.) && vmax.abs() == 0. && smax.abs() == 0.) {
@@ -511,9 +511,9 @@ macro_rules! impl_float_tests {
                     });
                 }
 
-                fn min_lane<const LANES: usize>() {
+                fn horizontal_min<const LANES: usize>() {
                     test_helpers::test_1(&|x| {
-                        let vmax = Vector::<LANES>::from_array(x).min_lane();
+                        let vmax = Vector::<LANES>::from_array(x).horizontal_min();
                         let smax = x.iter().copied().fold(Scalar::NAN, Scalar::min);
                         // 0 and -0 are treated the same
                         if !(x.contains(&0.) && x.contains(&-0.) && vmax.abs() == 0. && smax.abs() == 0.) {

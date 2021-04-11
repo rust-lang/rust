@@ -4,45 +4,48 @@ macro_rules! impl_integer_reductions {
         where
             Self: crate::LanesAtMost32
         {
-            /// Produces the sum of the lanes of the vector, with wrapping addition.
+            /// Horizontal wrapping add.  Computes the sum of the lanes of the vector, with wrapping addition.
             #[inline]
             pub fn wrapping_sum(self) -> $scalar {
                 unsafe { crate::intrinsics::simd_reduce_add_ordered(self, 0) }
             }
 
-            /// Produces the sum of the lanes of the vector, with wrapping multiplication.
+            /// Horizontal wrapping multiply.  Computes the product of the lanes of the vector, with wrapping multiplication.
             #[inline]
             pub fn wrapping_product(self) -> $scalar {
                 unsafe { crate::intrinsics::simd_reduce_mul_ordered(self, 1) }
             }
 
-            /// Sequentially performs bitwise "and" between the lanes of the vector.
+            /// Horizontal bitwise "and".  Computes the cumulative bitwise "and" across the lanes of
+            /// the vector.
             #[inline]
-            pub fn and_lanes(self) -> $scalar {
+            pub fn horizontal_and(self) -> $scalar {
                 unsafe { crate::intrinsics::simd_reduce_and(self) }
             }
 
-            /// Sequentially performs bitwise "or" between the lanes of the vector.
+            /// Horizontal bitwise "or".  Computes the cumulative bitwise "or" across the lanes of
+            /// the vector.
             #[inline]
-            pub fn or_lanes(self) -> $scalar {
+            pub fn horizontal_or(self) -> $scalar {
                 unsafe { crate::intrinsics::simd_reduce_or(self) }
             }
 
-            /// Sequentially performs bitwise "xor" between the lanes of the vector.
+            /// Horizontal bitwise "xor".  Computes the cumulative bitwise "xor" across the lanes of
+            /// the vector.
             #[inline]
-            pub fn xor_lanes(self) -> $scalar {
+            pub fn horizontal_xor(self) -> $scalar {
                 unsafe { crate::intrinsics::simd_reduce_xor(self) }
             }
 
-            /// Returns the maximum lane in the vector.
+            /// Horizontal maximum.  Computes the maximum lane in the vector.
             #[inline]
-            pub fn max_lane(self) -> $scalar {
+            pub fn horizontal_max(self) -> $scalar {
                 unsafe { crate::intrinsics::simd_reduce_max(self) }
             }
 
-            /// Returns the minimum lane in the vector.
+            /// Horizontal minimum.  Computes the minimum lane in the vector.
             #[inline]
-            pub fn min_lane(self) -> $scalar {
+            pub fn horizontal_min(self) -> $scalar {
                 unsafe { crate::intrinsics::simd_reduce_min(self) }
             }
         }
@@ -56,7 +59,7 @@ macro_rules! impl_float_reductions {
             Self: crate::LanesAtMost32
         {
 
-            /// Produces the sum of the lanes of the vector.
+            /// Horizontal add.  Computes the sum of the lanes of the vector.
             #[inline]
             pub fn sum(self) -> $scalar {
                 // LLVM sum is inaccurate on i586
@@ -67,7 +70,7 @@ macro_rules! impl_float_reductions {
                 }
             }
 
-            /// Produces the sum of the lanes of the vector.
+            /// Horizontal multiply.  Computes the sum of the lanes of the vector.
             #[inline]
             pub fn product(self) -> $scalar {
                 // LLVM product is inaccurate on i586
@@ -78,21 +81,21 @@ macro_rules! impl_float_reductions {
                 }
             }
 
-            /// Returns the maximum lane in the vector.
+            /// Horizontal maximum.  Computes the maximum lane in the vector.
             ///
             /// Returns values based on equality, so a vector containing both `0.` and `-0.` may
             /// return either.  This function will not return `NaN` unless all lanes are `NaN`.
             #[inline]
-            pub fn max_lane(self) -> $scalar {
+            pub fn horizontal_max(self) -> $scalar {
                 unsafe { crate::intrinsics::simd_reduce_max(self) }
             }
 
-            /// Returns the minimum lane in the vector.
+            /// Horizontal minimum.  Computes the minimum lane in the vector.
             ///
             /// Returns values based on equality, so a vector containing both `0.` and `-0.` may
             /// return either.  This function will not return `NaN` unless all lanes are `NaN`.
             #[inline]
-            pub fn min_lane(self) -> $scalar {
+            pub fn horizontal_min(self) -> $scalar {
                 unsafe { crate::intrinsics::simd_reduce_min(self) }
             }
         }
