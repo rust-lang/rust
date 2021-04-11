@@ -631,6 +631,33 @@ pub fn noop_flat_map_param<T: MutVisitor>(mut param: Param, vis: &mut T) -> Smal
 }
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
+pub fn visit_attr_annotated_tt<T: MutVisitor>(tt: &mut AttrAnnotatedTokenTree, vis: &mut T) {
+    match tt {
+        AttrAnnotatedTokenTree::Token(token) => {
+            visit_token(token, vis);
+        }
+        AttrAnnotatedTokenTree::Delimited(DelimSpan { open, close }, _delim, tts) => {
+            vis.visit_span(open);
+            vis.visit_span(close);
+            visit_attr_annotated_tts(tts, vis);
+        }
+        AttrAnnotatedTokenTree::Attributes(data) => {
+            for attr in &mut *data.attrs {
+                match &mut attr.kind {
+                    AttrKind::Normal(_, attr_tokens) => {
+                        visit_lazy_tts(attr_tokens, vis);
+                    }
+                    AttrKind::DocComment(..) => {
+                        vis.visit_span(&mut attr.span);
+                    }
+                }
+            }
+            visit_lazy_tts_opt_mut(Some(&mut data.tokens), vis);
+        }
+    }
+}
+
+// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 pub fn visit_tt<T: MutVisitor>(tt: &mut TokenTree, vis: &mut T) {
     match tt {
         TokenTree::Token(token) => {
@@ -652,14 +679,28 @@ pub fn visit_tts<T: MutVisitor>(TokenStream(tts): &mut TokenStream, vis: &mut T)
     }
 }
 
-pub fn visit_lazy_tts<T: MutVisitor>(lazy_tts: &mut Option<LazyTokenStream>, vis: &mut T) {
-    if vis.token_visiting_enabled() {
-        visit_opt(lazy_tts, |lazy_tts| {
-            let mut tts = lazy_tts.create_token_stream();
-            visit_tts(&mut tts, vis);
-            *lazy_tts = LazyTokenStream::new(tts);
-        })
+pub fn visit_attr_annotated_tts<T: MutVisitor>(
+    AttrAnnotatedTokenStream(tts): &mut AttrAnnotatedTokenStream,
+    vis: &mut T,
+) {
+    if vis.token_visiting_enabled() && !tts.is_empty() {
+        let tts = Lrc::make_mut(tts);
+        visit_vec(tts, |(tree, _is_joint)| visit_attr_annotated_tt(tree, vis));
     }
+}
+
+pub fn visit_lazy_tts_opt_mut<T: MutVisitor>(lazy_tts: Option<&mut LazyTokenStream>, vis: &mut T) {
+    if vis.token_visiting_enabled() {
+        if let Some(lazy_tts) = lazy_tts {
+            let mut tts = lazy_tts.create_token_stream();
+            visit_attr_annotated_tts(&mut tts, vis);
+            *lazy_tts = LazyTokenStream::new(tts);
+        }
+    }
+}
+
+pub fn visit_lazy_tts<T: MutVisitor>(lazy_tts: &mut Option<LazyTokenStream>, vis: &mut T) {
+    visit_lazy_tts_opt_mut(lazy_tts.as_mut(), vis);
 }
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.

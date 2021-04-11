@@ -37,8 +37,8 @@
 #![recursion_limit = "256"]
 
 use rustc_ast::node_id::NodeMap;
-use rustc_ast::token::{self, DelimToken, Nonterminal, Token};
-use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, DelimSpan, TokenStream, TokenTree};
+use rustc_ast::token::{self, Token};
+use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, TokenStream, TokenTree};
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_ast::walk_list;
 use rustc_ast::{self as ast, *};
@@ -56,7 +56,7 @@ use rustc_hir::{ConstArg, GenericArg, ParamName};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_session::lint::builtin::{BARE_TRAIT_OBJECTS, MISSING_ABI};
 use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
-use rustc_session::parse::ParseSess;
+use rustc_session::utils::{FlattenNonterminals, NtToTokenstream};
 use rustc_session::Session;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{respan, DesugaringKind};
@@ -212,8 +212,6 @@ pub trait ResolverAstLowering {
         span: Span,
     ) -> LocalDefId;
 }
-
-type NtToTokenstream = fn(&Nonterminal, &ParseSess, CanSynthesizeMissingTokens) -> TokenStream;
 
 /// Context of `impl Trait` in code, which determines whether it is allowed in an HIR subtree,
 /// and if so, what meaning it has.
@@ -401,42 +399,6 @@ enum AnonymousLifetimeMode {
 
     /// Pass responsibility to `resolve_lifetime` code for all cases.
     PassThrough,
-}
-
-struct TokenStreamLowering<'a> {
-    parse_sess: &'a ParseSess,
-    synthesize_tokens: CanSynthesizeMissingTokens,
-    nt_to_tokenstream: NtToTokenstream,
-}
-
-impl<'a> TokenStreamLowering<'a> {
-    fn lower_token_stream(&mut self, tokens: TokenStream) -> TokenStream {
-        tokens.into_trees().flat_map(|tree| self.lower_token_tree(tree).into_trees()).collect()
-    }
-
-    fn lower_token_tree(&mut self, tree: TokenTree) -> TokenStream {
-        match tree {
-            TokenTree::Token(token) => self.lower_token(token),
-            TokenTree::Delimited(span, delim, tts) => {
-                TokenTree::Delimited(span, delim, self.lower_token_stream(tts)).into()
-            }
-        }
-    }
-
-    fn lower_token(&mut self, token: Token) -> TokenStream {
-        match token.kind {
-            token::Interpolated(nt) => {
-                let tts = (self.nt_to_tokenstream)(&nt, self.parse_sess, self.synthesize_tokens);
-                TokenTree::Delimited(
-                    DelimSpan::from_single(token.span),
-                    DelimToken::NoDelim,
-                    self.lower_token_stream(tts),
-                )
-                .into()
-            }
-            _ => TokenTree::Token(token).into(),
-        }
-    }
 }
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
@@ -1037,12 +999,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }
                 }
 
-                let tokens = TokenStreamLowering {
+                let tokens = FlattenNonterminals {
                     parse_sess: &self.sess.parse_sess,
                     synthesize_tokens: CanSynthesizeMissingTokens::Yes,
                     nt_to_tokenstream: self.nt_to_tokenstream,
                 }
-                .lower_token(token.clone());
+                .process_token(token.clone());
                 MacArgs::Eq(eq_span, unwrap_single_token(self.sess, tokens, token.span))
             }
         }
@@ -1053,12 +1015,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         tokens: TokenStream,
         synthesize_tokens: CanSynthesizeMissingTokens,
     ) -> TokenStream {
-        TokenStreamLowering {
+        FlattenNonterminals {
             parse_sess: &self.sess.parse_sess,
             synthesize_tokens,
             nt_to_tokenstream: self.nt_to_tokenstream,
         }
-        .lower_token_stream(tokens)
+        .process_token_stream(tokens)
     }
 
     /// Given an associated type constraint like one of these:

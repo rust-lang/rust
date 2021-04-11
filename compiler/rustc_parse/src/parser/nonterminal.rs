@@ -153,9 +153,7 @@ impl<'a> Parser<'a> {
             NonterminalKind::Path => token::NtPath(
                 self.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))?,
             ),
-            NonterminalKind::Meta => {
-                token::NtMeta(P(self.collect_tokens_no_attrs(|this| this.parse_attr_item(false))?))
-            }
+            NonterminalKind::Meta => token::NtMeta(P(self.parse_attr_item(true)?)),
             NonterminalKind::TT => token::NtTT(self.parse_token_tree()),
             NonterminalKind::Vis => token::NtVis(
                 self.collect_tokens_no_attrs(|this| this.parse_visibility(FollowedByType::Yes))?,

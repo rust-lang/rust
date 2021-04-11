@@ -6,7 +6,9 @@ use crate::ast::{Lit, LitKind};
 use crate::ast::{MacArgs, MacDelimiter, MetaItem, MetaItemKind, NestedMetaItem};
 use crate::ast::{Path, PathSegment};
 use crate::token::{self, CommentKind, Token};
-use crate::tokenstream::{DelimSpan, LazyTokenStream, TokenStream, TokenTree, TreeAndSpacing};
+use crate::tokenstream::{AttrAnnotatedTokenStream, AttrAnnotatedTokenTree};
+use crate::tokenstream::{DelimSpan, Spacing, TokenTree, TreeAndSpacing};
+use crate::tokenstream::{LazyTokenStream, TokenStream};
 
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_span::source_map::BytePos;
@@ -268,14 +270,18 @@ impl Attribute {
         }
     }
 
-    pub fn tokens(&self) -> TokenStream {
+    pub fn tokens(&self) -> AttrAnnotatedTokenStream {
         match self.kind {
             AttrKind::Normal(_, ref tokens) => tokens
                 .as_ref()
                 .unwrap_or_else(|| panic!("attribute is missing tokens: {:?}", self))
                 .create_token_stream(),
-            AttrKind::DocComment(comment_kind, data) => TokenStream::from(TokenTree::Token(
-                Token::new(token::DocComment(comment_kind, self.style, data), self.span),
+            AttrKind::DocComment(comment_kind, data) => AttrAnnotatedTokenStream::from((
+                AttrAnnotatedTokenTree::Token(Token::new(
+                    token::DocComment(comment_kind, self.style, data),
+                    self.span,
+                )),
+                Spacing::Alone,
             )),
         }
     }
