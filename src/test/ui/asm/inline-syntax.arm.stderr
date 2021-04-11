@@ -1,5 +1,5 @@
 error: unknown directive
-  --> $DIR/inline-syntax.rs:22:15
+  --> $DIR/inline-syntax.rs:25:15
    |
 LL |         asm!(".intel_syntax noprefix", "nop");
    |               ^
@@ -11,7 +11,7 @@ LL |     .intel_syntax noprefix
    |     ^
 
 error: unknown directive
-  --> $DIR/inline-syntax.rs:25:15
+  --> $DIR/inline-syntax.rs:28:15
    |
 LL |         asm!(".intel_syntax aaa noprefix", "nop");
    |               ^
@@ -23,7 +23,7 @@ LL |     .intel_syntax aaa noprefix
    |     ^
 
 error: unknown directive
-  --> $DIR/inline-syntax.rs:28:15
+  --> $DIR/inline-syntax.rs:31:15
    |
 LL |         asm!(".att_syntax noprefix", "nop");
    |               ^
@@ -35,7 +35,7 @@ LL |     .att_syntax noprefix
    |     ^
 
 error: unknown directive
-  --> $DIR/inline-syntax.rs:31:15
+  --> $DIR/inline-syntax.rs:34:15
    |
 LL |         asm!(".att_syntax bbb noprefix", "nop");
    |               ^
@@ -47,7 +47,7 @@ LL |     .att_syntax bbb noprefix
    |     ^
 
 error: unknown directive
-  --> $DIR/inline-syntax.rs:34:15
+  --> $DIR/inline-syntax.rs:37:15
    |
 LL |         asm!(".intel_syntax noprefix; nop");
    |               ^
@@ -59,7 +59,7 @@ LL |     .intel_syntax noprefix; nop
    |     ^
 
 error: unknown directive
-  --> $DIR/inline-syntax.rs:40:13
+  --> $DIR/inline-syntax.rs:43:13
    |
 LL |             .intel_syntax noprefix
    |             ^
