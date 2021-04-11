@@ -132,6 +132,7 @@ mod handlers {
     mod generate_default_from_enum_variant;
     mod generate_default_from_new;
     mod generate_is_empty_from_len;
+    mod generate_deref;
     mod generate_derive;
     mod generate_enum_is_method;
     mod generate_enum_projection_method;
@@ -199,6 +200,7 @@ mod handlers {
             generate_default_from_enum_variant::generate_default_from_enum_variant,
             generate_default_from_new::generate_default_from_new,
             generate_is_empty_from_len::generate_is_empty_from_len,
+            generate_deref::generate_deref,
             generate_derive::generate_derive,
             generate_enum_is_method::generate_enum_is_method,
             generate_enum_projection_method::generate_enum_as_method,

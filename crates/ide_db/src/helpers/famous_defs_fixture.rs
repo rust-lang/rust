@@ -112,6 +112,12 @@ pub mod ops {
         type Output;
         extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
     }
+
+    #[lang = "deref"]
+    pub trait Deref {
+        type Target: ?Sized;
+        fn deref(&self) -> &Self::Target;
+    }
 }
 
 pub mod option {
@@ -141,3 +147,5 @@ mod return_keyword {}
 
 /// Docs for prim_str
 mod prim_str {}
+
+pub use core::ops;

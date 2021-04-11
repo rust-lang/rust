@@ -113,6 +113,10 @@ impl FamousDefs<'_, '_> {
         self.find_module("core:iter")
     }
 
+    pub fn core_ops_Deref(&self) -> Option<Trait> {
+        self.find_trait("core:ops:Deref")
+    }
+
     fn find_trait(&self, path: &str) -> Option<Trait> {
         match self.find_def(path)? {
             hir::ScopeDef::ModuleDef(hir::ModuleDef::Trait(it)) => Some(it),

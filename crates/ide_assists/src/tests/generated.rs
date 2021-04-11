@@ -552,6 +552,33 @@ impl Default for Example {
 }
 
 #[test]
+fn doctest_generate_deref() {
+    check_doc_test(
+        "generate_deref",
+        r#####"
+struct A;
+struct B {
+   $0a: A
+}
+"#####,
+        r#####"
+struct A;
+struct B {
+   a: A
+}
+
+impl std::ops::Deref for B {
+    type Target = A;
+
+    fn deref(&self) -> &Self::Target {
+        &self.a
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_generate_derive() {
     check_doc_test(
         "generate_derive",
