@@ -2,6 +2,7 @@
 name = "simd-test-macro"
 version = "0.1.0"
 authors = ["Alex Crichton <alex@alexcrichton.com>"]
+edition = "2018"
 
 [lib]
 proc-macro = true

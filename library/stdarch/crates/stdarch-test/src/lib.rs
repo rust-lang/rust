@@ -7,10 +7,8 @@
 #![deny(rust_2018_idioms)]
 #![allow(clippy::missing_docs_in_private_items, clippy::print_stdout)]
 
-extern crate assert_instr_macro;
 #[macro_use]
 extern crate lazy_static;
-extern crate simd_test_macro;
 #[macro_use]
 extern crate cfg_if;
 
@@ -24,7 +22,7 @@ cfg_if! {
         use wasm::disassemble_myself;
     } else {
         mod disassembly;
-        use disassembly::disassemble_myself;
+        use crate::disassembly::disassemble_myself;
     }
 }
 

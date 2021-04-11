@@ -4,8 +4,6 @@
 //! for the appropriate cfg before calling the inner test function.
 #![deny(rust_2018_idioms)]
 
-extern crate proc_macro;
-extern crate proc_macro2;
 #[macro_use]
 extern crate quote;
 

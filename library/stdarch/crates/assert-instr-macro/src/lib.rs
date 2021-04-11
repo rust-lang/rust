@@ -9,11 +9,8 @@
 //! function itself contains the relevant instruction.
 #![deny(rust_2018_idioms)]
 
-extern crate proc_macro;
-extern crate proc_macro2;
 #[macro_use]
 extern crate quote;
-extern crate syn;
 
 use proc_macro2::TokenStream;
 use quote::ToTokens;
