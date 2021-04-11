@@ -379,11 +379,9 @@ pub fn check(path: &Path, bad: &mut bool) {
         if let Directive::Ignore(false) = skip_tab {
             tidy_error!(bad, "{}: ignoring tab characters unnecessarily", file.display());
         }
-        // FIXME: Temporarily disabled to simplify landing the ignore-rules for the line
-        // length check (https://github.com/rust-lang/rust/issues/77548):
-        //if let Directive::Ignore(false) = skip_line_length {
-        //    tidy_error!(bad, "{}: ignoring line length unnecessarily", file.display());
-        //}
+        if let Directive::Ignore(false) = skip_line_length {
+            tidy_error!(bad, "{}: ignoring line length unnecessarily", file.display());
+        }
         if let Directive::Ignore(false) = skip_file_length {
             tidy_error!(bad, "{}: ignoring file length unnecessarily", file.display());
         }
