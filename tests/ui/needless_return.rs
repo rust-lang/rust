@@ -203,35 +203,8 @@ async fn async_borrows_but_not_last(value: bool) -> String {
 }
 
 async fn async_test_return_in_macro() {
-    // This will return and the macro below won't be executed. Removing the `return` from the macro
-    // will change semantics.
     needed_return!(10);
     needed_return!(0);
 }
 
-mod async_issue6501 {
-    async fn foo(bar: Result<(), ()>) {
-        bar.unwrap_or_else(|_| return)
-    }
-
-    async fn async_test_closure() {
-        let _ = || {
-            return;
-        };
-        let _ = || return;
-    }
-
-    struct Foo;
-    #[allow(clippy::unnecessary_lazy_evaluations)]
-    async fn bar(res: Result<Foo, u8>) -> Foo {
-        res.unwrap_or_else(|_| return Foo)
-    }
-}
-
-fn main() {
-    let _ = test_end_of_fn();
-    let _ = test_no_semicolon();
-    let _ = test_if_block();
-    let _ = test_match(true);
-    test_closure();
-}
+fn main() {}

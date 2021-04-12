@@ -192,29 +192,5 @@ error: unneeded `return` statement
 LL |         return String::new();
    |         ^^^^^^^^^^^^^^^^^^^^^ help: remove `return`: `String::new()`
 
-error: unneeded `return` statement
-  --> $DIR/needless_return.rs:214:32
-   |
-LL |         bar.unwrap_or_else(|_| return)
-   |                                ^^^^^^ help: replace `return` with an empty block: `{}`
-
-error: unneeded `return` statement
-  --> $DIR/needless_return.rs:219:13
-   |
-LL |             return;
-   |             ^^^^^^^ help: remove `return`
-
-error: unneeded `return` statement
-  --> $DIR/needless_return.rs:221:20
-   |
-LL |         let _ = || return;
-   |                    ^^^^^^ help: replace `return` with an empty block: `{}`
-
-error: unneeded `return` statement
-  --> $DIR/needless_return.rs:227:32
-   |
-LL |         res.unwrap_or_else(|_| return Foo)
-   |                                ^^^^^^^^^^ help: remove `return`: `Foo`
-
-error: aborting due to 36 previous errors
+error: aborting due to 32 previous errors
 
