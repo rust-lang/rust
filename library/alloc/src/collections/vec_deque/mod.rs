@@ -2481,8 +2481,11 @@ impl<T> VecDeque<T> {
         F: FnMut(&'a T) -> Ordering,
     {
         let (front, back) = self.as_slices();
+        let cmp_back = back.first().map(|elem| f(elem));
 
-        if let Some(Ordering::Less | Ordering::Equal) = back.first().map(|elem| f(elem)) {
+        if let Some(Ordering::Equal) = cmp_back {
+            Ok(front.len())
+        } else if let Some(Ordering::Less) = cmp_back {
             back.binary_search_by(f).map(|idx| idx + front.len()).map_err(|idx| idx + front.len())
         } else {
             front.binary_search_by(f)
