@@ -25,7 +25,7 @@ use syntax::{
 use text_edit::TextEdit;
 use unlinked_file::UnlinkedFile;
 
-use crate::{FileId, Label, SourceChange};
+use crate::{Assist, AssistId, AssistKind, FileId, Label, SourceChange};
 
 use self::fixes::DiagnosticWithFix;
 
@@ -35,7 +35,7 @@ pub struct Diagnostic {
     pub message: String,
     pub range: TextRange,
     pub severity: Severity,
-    pub fix: Option<Fix>,
+    pub fix: Option<Assist>,
     pub unused: bool,
     pub code: Option<DiagnosticCode>,
 }
@@ -56,7 +56,7 @@ impl Diagnostic {
         }
     }
 
-    fn with_fix(self, fix: Option<Fix>) -> Self {
+    fn with_fix(self, fix: Option<Assist>) -> Self {
         Self { fix, ..self }
     }
 
@@ -66,21 +66,6 @@ impl Diagnostic {
 
     fn with_code(self, code: Option<DiagnosticCode>) -> Self {
         Self { code, ..self }
-    }
-}
-
-#[derive(Debug)]
-pub struct Fix {
-    pub label: Label,
-    pub source_change: SourceChange,
-    /// Allows to trigger the fix only when the caret is in the range given
-    pub fix_trigger_range: TextRange,
-}
-
-impl Fix {
-    fn new(label: &str, source_change: SourceChange, fix_trigger_range: TextRange) -> Self {
-        let label = Label::new(label);
-        Self { label, source_change, fix_trigger_range }
     }
 }
 
@@ -261,7 +246,8 @@ fn check_unnecessary_braces_in_use_statement(
 
         acc.push(
             Diagnostic::hint(use_range, "Unnecessary braces in use statement".to_string())
-                .with_fix(Some(Fix::new(
+                .with_fix(Some(fix(
+                    "remove_braces",
                     "Remove unnecessary braces",
                     SourceChange::from_text_edit(file_id, edit),
                     use_range,
@@ -282,6 +268,17 @@ fn text_edit_for_remove_unnecessary_braces_with_self_in_use_statement(
         return Some(TextEdit::delete(TextRange::new(start, end)));
     }
     None
+}
+
+fn fix(id: &'static str, label: &str, source_change: SourceChange, target: TextRange) -> Assist {
+    assert!(!id.contains(' '));
+    Assist {
+        id: AssistId(id, AssistKind::QuickFix),
+        label: Label::new(label),
+        group: None,
+        target,
+        source_change: Some(source_change),
+    }
 }
 
 #[cfg(test)]
@@ -308,10 +305,11 @@ mod tests {
             .unwrap();
         let fix = diagnostic.fix.unwrap();
         let actual = {
-            let file_id = *fix.source_change.source_file_edits.keys().next().unwrap();
+            let source_change = fix.source_change.unwrap();
+            let file_id = *source_change.source_file_edits.keys().next().unwrap();
             let mut actual = analysis.file_text(file_id).unwrap().to_string();
 
-            for edit in fix.source_change.source_file_edits.values() {
+            for edit in source_change.source_file_edits.values() {
                 edit.apply(&mut actual);
             }
             actual
@@ -319,9 +317,9 @@ mod tests {
 
         assert_eq_text!(&after, &actual);
         assert!(
-            fix.fix_trigger_range.contains_inclusive(file_position.offset),
+            fix.target.contains_inclusive(file_position.offset),
             "diagnostic fix range {:?} does not touch cursor position {:?}",
-            fix.fix_trigger_range,
+            fix.target,
             file_position.offset
         );
     }
@@ -665,24 +663,31 @@ fn test_fn() {
                         range: 0..8,
                         severity: Error,
                         fix: Some(
-                            Fix {
+                            Assist {
+                                id: AssistId(
+                                    "create_module",
+                                    QuickFix,
+                                ),
                                 label: "Create module",
-                                source_change: SourceChange {
-                                    source_file_edits: {},
-                                    file_system_edits: [
-                                        CreateFile {
-                                            dst: AnchoredPathBuf {
-                                                anchor: FileId(
-                                                    0,
-                                                ),
-                                                path: "foo.rs",
+                                group: None,
+                                target: 0..8,
+                                source_change: Some(
+                                    SourceChange {
+                                        source_file_edits: {},
+                                        file_system_edits: [
+                                            CreateFile {
+                                                dst: AnchoredPathBuf {
+                                                    anchor: FileId(
+                                                        0,
+                                                    ),
+                                                    path: "foo.rs",
+                                                },
+                                                initial_contents: "",
                                             },
-                                            initial_contents: "",
-                                        },
-                                    ],
-                                    is_snippet: false,
-                                },
-                                fix_trigger_range: 0..8,
+                                        ],
+                                        is_snippet: false,
+                                    },
+                                ),
                             },
                         ),
                         unused: false,

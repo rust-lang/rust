@@ -20,20 +20,21 @@ use syntax::{
 };
 use text_edit::TextEdit;
 
-use crate::{diagnostics::Fix, references::rename::rename_with_semantics, FilePosition};
+use crate::{diagnostics::fix, references::rename::rename_with_semantics, Assist, FilePosition};
 
 /// A [Diagnostic] that potentially has a fix available.
 ///
 /// [Diagnostic]: hir::diagnostics::Diagnostic
 pub(crate) trait DiagnosticWithFix: Diagnostic {
-    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Fix>;
+    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Assist>;
 }
 
 impl DiagnosticWithFix for UnresolvedModule {
-    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Fix> {
+    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Assist> {
         let root = sema.db.parse_or_expand(self.file)?;
         let unresolved_module = self.decl.to_node(&root);
-        Some(Fix::new(
+        Some(fix(
+            "create_module",
             "Create module",
             FileSystemEdit::CreateFile {
                 dst: AnchoredPathBuf {
@@ -49,7 +50,7 @@ impl DiagnosticWithFix for UnresolvedModule {
 }
 
 impl DiagnosticWithFix for NoSuchField {
-    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Fix> {
+    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Assist> {
         let root = sema.db.parse_or_expand(self.file)?;
         missing_record_expr_field_fix(
             &sema,
@@ -60,7 +61,7 @@ impl DiagnosticWithFix for NoSuchField {
 }
 
 impl DiagnosticWithFix for MissingFields {
-    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Fix> {
+    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Assist> {
         // Note that although we could add a diagnostics to
         // fill the missing tuple field, e.g :
         // `struct A(usize);`
@@ -86,7 +87,8 @@ impl DiagnosticWithFix for MissingFields {
                 .into_text_edit(&mut builder);
             builder.finish()
         };
-        Some(Fix::new(
+        Some(fix(
+            "fill_missing_fields",
             "Fill struct fields",
             SourceChange::from_text_edit(self.file.original_file(sema.db), edit),
             sema.original_range(&field_list_parent.syntax()).range,
@@ -95,7 +97,7 @@ impl DiagnosticWithFix for MissingFields {
 }
 
 impl DiagnosticWithFix for MissingOkOrSomeInTailExpr {
-    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Fix> {
+    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Assist> {
         let root = sema.db.parse_or_expand(self.file)?;
         let tail_expr = self.expr.to_node(&root);
         let tail_expr_range = tail_expr.syntax().text_range();
@@ -103,12 +105,12 @@ impl DiagnosticWithFix for MissingOkOrSomeInTailExpr {
         let edit = TextEdit::replace(tail_expr_range, replacement);
         let source_change = SourceChange::from_text_edit(self.file.original_file(sema.db), edit);
         let name = if self.required == "Ok" { "Wrap with Ok" } else { "Wrap with Some" };
-        Some(Fix::new(name, source_change, tail_expr_range))
+        Some(fix("wrap_tail_expr", name, source_change, tail_expr_range))
     }
 }
 
 impl DiagnosticWithFix for RemoveThisSemicolon {
-    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Fix> {
+    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Assist> {
         let root = sema.db.parse_or_expand(self.file)?;
 
         let semicolon = self
@@ -123,12 +125,12 @@ impl DiagnosticWithFix for RemoveThisSemicolon {
         let edit = TextEdit::delete(semicolon);
         let source_change = SourceChange::from_text_edit(self.file.original_file(sema.db), edit);
 
-        Some(Fix::new("Remove this semicolon", source_change, semicolon))
+        Some(fix("remove_semicolon", "Remove this semicolon", source_change, semicolon))
     }
 }
 
 impl DiagnosticWithFix for IncorrectCase {
-    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Fix> {
+    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Assist> {
         let root = sema.db.parse_or_expand(self.file)?;
         let name_node = self.ident.to_node(&root);
 
@@ -140,12 +142,12 @@ impl DiagnosticWithFix for IncorrectCase {
             rename_with_semantics(sema, file_position, &self.suggested_text).ok()?;
 
         let label = format!("Rename to {}", self.suggested_text);
-        Some(Fix::new(&label, rename_changes, frange.range))
+        Some(fix("change_case", &label, rename_changes, frange.range))
     }
 }
 
 impl DiagnosticWithFix for ReplaceFilterMapNextWithFindMap {
-    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Fix> {
+    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Assist> {
         let root = sema.db.parse_or_expand(self.file)?;
         let next_expr = self.next_expr.to_node(&root);
         let next_call = ast::MethodCallExpr::cast(next_expr.syntax().clone())?;
@@ -163,7 +165,8 @@ impl DiagnosticWithFix for ReplaceFilterMapNextWithFindMap {
 
         let source_change = SourceChange::from_text_edit(self.file.original_file(sema.db), edit);
 
-        Some(Fix::new(
+        Some(fix(
+            "replace_with_find_map",
             "Replace filter_map(..).next() with find_map()",
             source_change,
             trigger_range,
@@ -175,7 +178,7 @@ fn missing_record_expr_field_fix(
     sema: &Semantics<RootDatabase>,
     usage_file_id: FileId,
     record_expr_field: &ast::RecordExprField,
-) -> Option<Fix> {
+) -> Option<Assist> {
     let record_lit = ast::RecordExpr::cast(record_expr_field.syntax().parent()?.parent()?)?;
     let def_id = sema.resolve_variant(record_lit)?;
     let module;
@@ -233,7 +236,12 @@ fn missing_record_expr_field_fix(
         def_file_id,
         TextEdit::insert(last_field_syntax.text_range().end(), new_field),
     );
-    return Some(Fix::new("Create field", source_change, record_expr_field.syntax().text_range()));
+    return Some(fix(
+        "create_field",
+        "Create field",
+        source_change,
+        record_expr_field.syntax().text_range(),
+    ));
 
     fn record_field_list(field_def_list: ast::FieldList) -> Option<ast::RecordFieldList> {
         match field_def_list {
