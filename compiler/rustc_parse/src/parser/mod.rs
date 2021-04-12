@@ -929,6 +929,25 @@ impl<'a> Parser<'a> {
             return looker(&self.token);
         }
 
+        let frame = &self.token_cursor.frame;
+        if frame.delim != DelimToken::NoDelim {
+            let all_normal = (0..dist).all(|i| {
+                let token = frame.tree_cursor.look_ahead(i);
+                !matches!(token, Some(TokenTree::Delimited(_, DelimToken::NoDelim, _)))
+            });
+            if all_normal {
+                return match frame.tree_cursor.look_ahead(dist - 1) {
+                    Some(tree) => match tree {
+                        TokenTree::Token(token) => looker(token),
+                        TokenTree::Delimited(dspan, delim, _) => {
+                            looker(&Token::new(token::OpenDelim(*delim), dspan.open))
+                        }
+                    },
+                    None => looker(&Token::new(token::CloseDelim(frame.delim), frame.span.close)),
+                };
+            }
+        }
+
         let mut cursor = self.token_cursor.clone();
         let mut i = 0;
         let mut token = Token::dummy();
