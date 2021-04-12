@@ -589,6 +589,24 @@ For example, mutable bindings are underlined by default and you can override thi
 }
 ----
 
+Most themes don't have support for styling unsafe operations differently. You can fix this by specifying custom styles in your `settings.json`:
+
+[source,jsonc]
+----
+"editor.semanticTokenColorCustomizations": {
+        "[Theme Name]": {
+            "rules": {
+                "operator.unsafe": "#ff6600",
+                "function.unsafe": "#ff6600"
+                "method.unsafe": "#ff6600"
+            }
+        }
+    },
+}
+----
+
+Make sure you include the brackets around the theme name. For example, use "[Ayu Dark]" to customize the theme Ayu Dark.
+
 ==== Special `when` clause context for keybindings.
 You may use `inRustProject` context to configure keybindings for rust projects only.
 For example:
