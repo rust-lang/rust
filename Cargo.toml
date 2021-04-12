@@ -88,6 +88,7 @@ object.debug = 0
 # vendored copy.
 [patch."https://github.com/rust-lang/cargo"]
 cargo = { path = "src/tools/cargo" }
+cargo-util = { path = "src/tools/cargo/crates/cargo-util" }
 
 [patch."https://github.com/rust-lang/rustfmt"]
 # Similar to Cargo above we want the RLS to use a vendored version of `rustfmt`
