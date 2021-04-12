@@ -408,9 +408,8 @@ pub(super) fn write_shared(
     // with rustdoc running in parallel.
     all_indexes.sort();
     write_crate("search-index.js", &|| {
-        let mut v = String::from("var searchIndex = JSON.parse('{\\\n");
-        v.push_str(&all_indexes.join(",\\\n"));
-        v.push_str("\\\n}');\ninitSearch(searchIndex);");
+        let v = static_files::SEARCH_JS
+            .replace(r#""SEARCH_INDEX_PLACEHOLDER": {}"#, &all_indexes.join(",\\\n"));
         Ok(v.into_bytes())
     })?;
 

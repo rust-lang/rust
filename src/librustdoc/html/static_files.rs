@@ -24,6 +24,10 @@ crate static NORMALIZE_CSS: &str = include_str!("static/normalize.css");
 /// including search behavior and docblock folding, among others.
 crate static MAIN_JS: &str = include_str!("static/main.js");
 
+/// The file contents of `search-index.js`, which contains the search behavior,
+/// and into which is interpolated the search index.
+crate static SEARCH_JS: &str = include_str!("static/search.js");
+
 /// The file contents of `settings.js`, which contains the JavaScript used to handle the settings
 /// page.
 crate static SETTINGS_JS: &str = include_str!("static/settings.js");
