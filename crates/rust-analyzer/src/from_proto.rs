@@ -42,27 +42,27 @@ pub(crate) fn text_range(line_index: &LineIndex, range: lsp_types::Range) -> Tex
     TextRange::new(start, end)
 }
 
-pub(crate) fn file_id(world: &GlobalStateSnapshot, url: &lsp_types::Url) -> Result<FileId> {
-    world.url_to_file_id(url)
+pub(crate) fn file_id(snap: &GlobalStateSnapshot, url: &lsp_types::Url) -> Result<FileId> {
+    snap.url_to_file_id(url)
 }
 
 pub(crate) fn file_position(
-    world: &GlobalStateSnapshot,
+    snap: &GlobalStateSnapshot,
     tdpp: lsp_types::TextDocumentPositionParams,
 ) -> Result<FilePosition> {
-    let file_id = file_id(world, &tdpp.text_document.uri)?;
-    let line_index = world.file_line_index(file_id)?;
+    let file_id = file_id(snap, &tdpp.text_document.uri)?;
+    let line_index = snap.file_line_index(file_id)?;
     let offset = offset(&line_index, tdpp.position);
     Ok(FilePosition { file_id, offset })
 }
 
 pub(crate) fn file_range(
-    world: &GlobalStateSnapshot,
+    snap: &GlobalStateSnapshot,
     text_document_identifier: lsp_types::TextDocumentIdentifier,
     range: lsp_types::Range,
 ) -> Result<FileRange> {
-    let file_id = file_id(world, &text_document_identifier.uri)?;
-    let line_index = world.file_line_index(file_id)?;
+    let file_id = file_id(snap, &text_document_identifier.uri)?;
+    let line_index = snap.file_line_index(file_id)?;
     let range = text_range(&line_index, range);
     Ok(FileRange { file_id, range })
 }
@@ -82,7 +82,7 @@ pub(crate) fn assist_kind(kind: lsp_types::CodeActionKind) -> Option<AssistKind>
 }
 
 pub(crate) fn annotation(
-    world: &GlobalStateSnapshot,
+    snap: &GlobalStateSnapshot,
     code_lens: lsp_types::CodeLens,
 ) -> Result<Annotation> {
     let data = code_lens.data.unwrap();
@@ -91,25 +91,25 @@ pub(crate) fn annotation(
     match resolve {
         lsp_ext::CodeLensResolveData::Impls(params) => {
             let file_id =
-                world.url_to_file_id(&params.text_document_position_params.text_document.uri)?;
-            let line_index = world.file_line_index(file_id)?;
+                snap.url_to_file_id(&params.text_document_position_params.text_document.uri)?;
+            let line_index = snap.file_line_index(file_id)?;
 
             Ok(Annotation {
                 range: text_range(&line_index, code_lens.range),
                 kind: AnnotationKind::HasImpls {
-                    position: file_position(world, params.text_document_position_params)?,
+                    position: file_position(snap, params.text_document_position_params)?,
                     data: None,
                 },
             })
         }
         lsp_ext::CodeLensResolveData::References(params) => {
-            let file_id = world.url_to_file_id(&params.text_document.uri)?;
-            let line_index = world.file_line_index(file_id)?;
+            let file_id = snap.url_to_file_id(&params.text_document.uri)?;
+            let line_index = snap.file_line_index(file_id)?;
 
             Ok(Annotation {
                 range: text_range(&line_index, code_lens.range),
                 kind: AnnotationKind::HasReferences {
-                    position: file_position(world, params)?,
+                    position: file_position(snap, params)?,
                     data: None,
                 },
             })
