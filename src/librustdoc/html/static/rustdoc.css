@@ -1766,14 +1766,12 @@ details.rustdoc-toggle > summary::-webkit-details-marker {
 
 details.rustdoc-toggle > summary.hideme > span {
 	margin-left: 9px;
-	color: #999;
 }
 
 details.rustdoc-toggle > summary::before {
 	content: "[+]";
 	font-weight: 300;
 	font-size: 0.8em;
-	color: #999;
 	letter-spacing: 1px;
 }
 
