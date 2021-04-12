@@ -1311,6 +1311,9 @@ where
                 char_kind = FullCodeCharKind::InStringCommented;
                 if chr == '"' {
                     CharClassesStatus::BlockComment(deepness)
+                } else if chr == '*' && self.base.peek().map(RichChar::get_char) == Some('/') {
+                    char_kind = FullCodeCharKind::InComment;
+                    CharClassesStatus::BlockCommentClosing(deepness - 1)
                 } else {
                     CharClassesStatus::StringInBlockComment(deepness)
                 }
