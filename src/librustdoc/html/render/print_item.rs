@@ -133,8 +133,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer)
 
 /// For large structs, enums, unions, etc, determine whether to hide their fields
 fn should_hide_fields(n_fields: usize) -> bool {
-    // todo: figure out what this should be
-    n_fields > 5
+    n_fields > 12
 }
 
 fn toggle_open(w: &mut Buffer, text: &str) {
