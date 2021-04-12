@@ -179,6 +179,12 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
                 } else {
                     relation.relate_with_variance(ty::Contravariant, a, b)
                 }
+            })
+            .enumerate()
+            .map(|(i, r)| match r {
+                Err(TypeError::Sorts(exp_found)) => Err(TypeError::ArgumentSorts(exp_found, i)),
+                Err(TypeError::Mutability) => Err(TypeError::ArgumentMutability(i)),
+                r => r,
             });
         Ok(ty::FnSig {
             inputs_and_output: tcx.mk_type_list(inputs_and_output)?,

@@ -28,7 +28,6 @@
 #![feature(duration_zero)]
 #![feature(exact_size_is_empty)]
 #![feature(extern_types)]
-#![feature(fixed_size_array)]
 #![feature(flt2dec)]
 #![feature(fmt_internals)]
 #![feature(hashmap_internals)]

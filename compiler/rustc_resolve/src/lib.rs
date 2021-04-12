@@ -891,6 +891,10 @@ pub struct Resolver<'a> {
     /// "self-confirming" import resolutions during import validation.
     unusable_binding: Option<&'a NameBinding<'a>>,
 
+    // Spans for local variables found during pattern resolution.
+    // Used for suggestions during error reporting.
+    pat_span_map: NodeMap<Span>,
+
     /// Resolutions for nodes that have a single resolution.
     partial_res_map: NodeMap<PartialRes>,
     /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
@@ -1270,6 +1274,7 @@ impl<'a> Resolver<'a> {
             last_import_segment: false,
             unusable_binding: None,
 
+            pat_span_map: Default::default(),
             partial_res_map: Default::default(),
             import_res_map: Default::default(),
             label_res_map: Default::default(),
@@ -1917,7 +1922,6 @@ impl<'a> Resolver<'a> {
                 return Some(LexicalScopeBinding::Item(binding));
             }
         }
-
         self.early_resolve_ident_in_lexical_scope(
             orig_ident,
             ScopeSet::Late(ns, module, record_used_id),
@@ -2394,7 +2398,59 @@ impl<'a> Resolver<'a> {
                             .next()
                             .map_or(false, |c| c.is_ascii_uppercase())
                         {
-                            (format!("use of undeclared type `{}`", ident), None)
+                            // Check whether the name refers to an item in the value namespace.
+                            let suggestion = if ribs.is_some() {
+                                let match_span = match self.resolve_ident_in_lexical_scope(
+                                    ident,
+                                    ValueNS,
+                                    parent_scope,
+                                    None,
+                                    path_span,
+                                    &ribs.unwrap()[ValueNS],
+                                ) {
+                                    // Name matches a local variable. For example:
+                                    // ```
+                                    // fn f() {
+                                    //     let Foo: &str = "";
+                                    //     println!("{}", Foo::Bar); // Name refers to local
+                                    //                               // variable `Foo`.
+                                    // }
+                                    // ```
+                                    Some(LexicalScopeBinding::Res(Res::Local(id))) => {
+                                        Some(*self.pat_span_map.get(&id).unwrap())
+                                    }
+
+                                    // Name matches item from a local name binding
+                                    // created by `use` declaration. For example:
+                                    // ```
+                                    // pub Foo: &str = "";
+                                    //
+                                    // mod submod {
+                                    //     use super::Foo;
+                                    //     println!("{}", Foo::Bar); // Name refers to local
+                                    //                               // binding `Foo`.
+                                    // }
+                                    // ```
+                                    Some(LexicalScopeBinding::Item(name_binding)) => {
+                                        Some(name_binding.span)
+                                    }
+                                    _ => None,
+                                };
+
+                                if let Some(span) = match_span {
+                                    Some((
+                                        vec![(span, String::from(""))],
+                                        format!("`{}` is defined here, but is not a type", ident),
+                                        Applicability::MaybeIncorrect,
+                                    ))
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            };
+
+                            (format!("use of undeclared type `{}`", ident), suggestion)
                         } else {
                             (format!("use of undeclared crate or module `{}`", ident), None)
                         }
@@ -2803,6 +2859,11 @@ impl<'a> Resolver<'a> {
         if let Some(prev_res) = self.partial_res_map.insert(node_id, resolution) {
             panic!("path resolved multiple times ({:?} before, {:?} now)", prev_res, resolution);
         }
+    }
+
+    fn record_pat_span(&mut self, node: NodeId, span: Span) {
+        debug!("(recording pat) recording {:?} for {:?}", node, span);
+        self.pat_span_map.insert(node, span);
     }
 
     fn is_accessible_from(&self, vis: ty::Visibility, module: Module<'a>) -> bool {
