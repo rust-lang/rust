@@ -139,7 +139,10 @@ fn should_hide_fields(n_fields: usize) -> bool {
 fn toggle_open(w: &mut Buffer, text: &str) {
     write!(
         w,
-        "<details class=\"rustdoc-toggle type-contents-toggle\"><summary class=\"hideme\"><span>Show {}</span></summary>",
+        "<details class=\"rustdoc-toggle type-contents-toggle\">\
+            <summary class=\"hideme\">\
+                <span>Show {}</span>\
+            </summary>",
         text
     );
 }
