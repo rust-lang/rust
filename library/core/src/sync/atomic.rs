@@ -839,7 +839,6 @@ impl AtomicBool {
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(atomic_fetch_update)]
     /// use std::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let x = AtomicBool::new(false);
@@ -849,7 +848,7 @@ impl AtomicBool {
     /// assert_eq!(x.load(Ordering::SeqCst), false);
     /// ```
     #[inline]
-    #[unstable(feature = "atomic_fetch_update", reason = "recently added", issue = "78639")]
+    #[stable(feature = "atomic_fetch_update", since = "1.53.0")]
     #[cfg(target_has_atomic = "8")]
     pub fn fetch_update<F>(
         &self,
@@ -1227,7 +1226,6 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(atomic_fetch_update)]
     /// use std::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let ptr: *mut _ = &mut 5;
@@ -1246,7 +1244,7 @@ impl<T> AtomicPtr<T> {
     /// assert_eq!(some_ptr.load(Ordering::SeqCst), new);
     /// ```
     #[inline]
-    #[unstable(feature = "atomic_fetch_update", reason = "recently added", issue = "78639")]
+    #[stable(feature = "atomic_fetch_update", since = "1.53.0")]
     #[cfg(target_has_atomic = "ptr")]
     pub fn fetch_update<F>(
         &self,
