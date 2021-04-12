@@ -638,6 +638,9 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 }
 
                 Scope::Binder { binder_depth, from_poly_trait_ref, .. } => {
+                    if concanetate && !passed_boundary && !from_poly_trait_ref {
+                        bug!("{:?}", self.scope);
+                    }
                     break if concanetate {
                         if passed_boundary || !from_poly_trait_ref {
                             binder_depth + 1
@@ -850,7 +853,10 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 };
                 self.with(scope, |old_scope, this| {
                     this.check_lifetime_params(old_scope, &generics.params);
-                    intravisit::walk_item(this, item);
+                    let scope = Scope::TraitRefBoundary { s: this.scope };
+                    this.with(scope, |_, this| {
+                        intravisit::walk_item(this, item);
+                    });
                 });
                 self.missing_named_lifetime_spots.pop();
             }
@@ -985,9 +991,12 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
                         // Elided lifetimes are not allowed in non-return
                         // position impl Trait
-                        let scope = Scope::Elision { elide: Elide::Forbid, s: self.scope };
+                        let scope = Scope::TraitRefBoundary { s: self.scope };
                         self.with(scope, |_, this| {
-                            intravisit::walk_item(this, opaque_ty);
+                            let scope = Scope::Elision { elide: Elide::Forbid, s: this.scope };
+                            this.with(scope, |_, this| {
+                                intravisit::walk_item(this, opaque_ty);
+                            })
                         });
 
                         return;
@@ -1320,93 +1329,93 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         if !self.trait_definition_only {
             check_mixed_explicit_and_in_band_defs(self.tcx, &generics.params);
         }
-        for param in generics.params {
-            match param.kind {
-                GenericParamKind::Lifetime { .. } => {}
-                GenericParamKind::Type { ref default, .. } => {
-                    walk_list!(self, visit_param_bound, param.bounds);
-                    if let Some(ref ty) = default {
-                        self.visit_ty(&ty);
+        let scope = Scope::TraitRefBoundary { s: self.scope };
+        self.with(scope, |_, this| {
+            for param in generics.params {
+                match param.kind {
+                    GenericParamKind::Lifetime { .. } => {}
+                    GenericParamKind::Type { ref default, .. } => {
+                        walk_list!(this, visit_param_bound, param.bounds);
+                        if let Some(ref ty) = default {
+                            this.visit_ty(&ty);
+                        }
+                    }
+                    GenericParamKind::Const { ref ty, .. } => {
+                        let was_in_const_generic = this.is_in_const_generic;
+                        this.is_in_const_generic = true;
+                        walk_list!(this, visit_param_bound, param.bounds);
+                        this.visit_ty(&ty);
+                        this.is_in_const_generic = was_in_const_generic;
                     }
                 }
-                GenericParamKind::Const { ref ty, .. } => {
-                    let was_in_const_generic = self.is_in_const_generic;
-                    self.is_in_const_generic = true;
-                    walk_list!(self, visit_param_bound, param.bounds);
-                    self.visit_ty(&ty);
-                    self.is_in_const_generic = was_in_const_generic;
-                }
             }
-        }
-        for predicate in generics.where_clause.predicates {
-            match predicate {
-                &hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
-                    ref bounded_ty,
-                    bounds,
-                    ref bound_generic_params,
-                    ..
-                }) => {
-                    let (lifetimes, binders): (FxHashMap<hir::ParamName, Region>, Vec<_>) =
-                        bound_generic_params
-                            .iter()
-                            .filter_map(|param| match param.kind {
-                                GenericParamKind::Lifetime { .. } => Some(param),
-                                _ => None,
-                            })
-                            .enumerate()
-                            .map(|(late_bound_idx, param)| {
-                                let pair =
-                                    Region::late(late_bound_idx as u32, &self.tcx.hir(), param);
-                                let r = late_region_as_bound_region(self.tcx, &pair.1);
-                                (pair, r)
-                            })
-                            .unzip();
-                    self.map.late_bound_vars.insert(bounded_ty.hir_id, binders.clone());
-                    let scope = Scope::TraitRefBoundary { s: self.scope };
-                    self.with(scope, |_, this| {
-                        if !lifetimes.is_empty() {
-                            let next_early_index = this.next_early_index();
-                            let scope = Scope::Binder {
-                                hir_id: bounded_ty.hir_id,
-                                lifetimes,
-                                s: this.scope,
-                                next_early_index,
-                                track_lifetime_uses: true,
-                                opaque_type_parent: false,
-                                from_poly_trait_ref: true,
-                                binder_depth: this.depth(false),
-                            };
-                            this.with(scope, |old_scope, this| {
-                                this.check_lifetime_params(old_scope, &bound_generic_params);
+            for predicate in generics.where_clause.predicates {
+                match predicate {
+                    &hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
+                        ref bounded_ty,
+                        bounds,
+                        ref bound_generic_params,
+                        ..
+                    }) => {
+                        let (lifetimes, binders): (FxHashMap<hir::ParamName, Region>, Vec<_>) =
+                            bound_generic_params
+                                .iter()
+                                .filter_map(|param| match param.kind {
+                                    GenericParamKind::Lifetime { .. } => Some(param),
+                                    _ => None,
+                                })
+                                .enumerate()
+                                .map(|(late_bound_idx, param)| {
+                                    let pair =
+                                        Region::late(late_bound_idx as u32, &this.tcx.hir(), param);
+                                    let r = late_region_as_bound_region(this.tcx, &pair.1);
+                                    (pair, r)
+                                })
+                                .unzip();
+                        this.map.late_bound_vars.insert(bounded_ty.hir_id, binders.clone());
+                            if !lifetimes.is_empty() {
+                                let next_early_index = this.next_early_index();
+                                let scope = Scope::Binder {
+                                    hir_id: bounded_ty.hir_id,
+                                    lifetimes,
+                                    s: this.scope,
+                                    next_early_index,
+                                    track_lifetime_uses: true,
+                                    opaque_type_parent: false,
+                                    from_poly_trait_ref: true,
+                                    binder_depth: this.depth(false),
+                                };
+                                this.with(scope, |old_scope, this| {
+                                    this.check_lifetime_params(old_scope, &bound_generic_params);
+                                    this.visit_ty(&bounded_ty);
+                                    this.trait_ref_hack = Some(bounded_ty.hir_id);
+                                    walk_list!(this, visit_param_bound, bounds);
+                                    this.trait_ref_hack = None;
+                                })
+                            } else {
                                 this.visit_ty(&bounded_ty);
-                                this.trait_ref_hack = Some(bounded_ty.hir_id);
                                 walk_list!(this, visit_param_bound, bounds);
-                                this.trait_ref_hack = None;
-                            })
-                        } else {
-                            this.visit_ty(&bounded_ty);
-                            walk_list!(this, visit_param_bound, bounds);
-                        }
-                    })
-                }
-                &hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate {
-                    ref lifetime,
-                    bounds,
-                    ..
-                }) => {
-                    self.visit_lifetime(lifetime);
-                    walk_list!(self, visit_param_bound, bounds);
-                }
-                &hir::WherePredicate::EqPredicate(hir::WhereEqPredicate {
-                    ref lhs_ty,
-                    ref rhs_ty,
-                    ..
-                }) => {
-                    self.visit_ty(lhs_ty);
-                    self.visit_ty(rhs_ty);
+                            }
+                    }
+                    &hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate {
+                        ref lifetime,
+                        bounds,
+                        ..
+                    }) => {
+                        this.visit_lifetime(lifetime);
+                        walk_list!(this, visit_param_bound, bounds);
+                    }
+                    &hir::WherePredicate::EqPredicate(hir::WhereEqPredicate {
+                        ref lhs_ty,
+                        ref rhs_ty,
+                        ..
+                    }) => {
+                        this.visit_ty(lhs_ty);
+                        this.visit_ty(rhs_ty);
+                    }
                 }
             }
-        }
+        })
     }
 
     fn visit_param_bound(&mut self, bound: &'tcx hir::GenericBound<'tcx>) {
