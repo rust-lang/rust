@@ -1422,6 +1422,7 @@ impl EncodeContext<'a, 'tcx> {
                     paren_sugar: trait_def.paren_sugar,
                     has_auto_impl: self.tcx.trait_is_auto(def_id),
                     is_marker: trait_def.is_marker,
+                    skip_array_during_method_dispatch: trait_def.skip_array_during_method_dispatch,
                     specialization_kind: trait_def.specialization_kind,
                 };
 

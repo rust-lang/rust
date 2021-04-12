@@ -757,6 +757,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     data.paren_sugar,
                     data.has_auto_impl,
                     data.is_marker,
+                    data.skip_array_during_method_dispatch,
                     data.specialization_kind,
                     self.def_path_hash(item_id),
                 )
@@ -764,6 +765,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             EntryKind::TraitAlias => ty::TraitDef::new(
                 self.local_def_id(item_id),
                 hir::Unsafety::Normal,
+                false,
                 false,
                 false,
                 false,
