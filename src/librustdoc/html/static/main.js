@@ -1,3 +1,4 @@
+// ignore-tidy-filelength
 // Local js definitions:
 /* global addClass, getSettingValue, hasClass */
 /* global onEach, onEachLazy, hasOwnProperty, removeClass, updateLocalStorage */
@@ -2574,7 +2575,7 @@ function hideThemeButtonState() {
         var toggle = createSimpleToggle(false);
         var hideMethodDocs = getSettingValue("auto-hide-method-docs") === "true";
         var hideImplementors = getSettingValue("auto-collapse-implementors") !== "false";
-        let hideLargeItemContents = getSettingValue("auto-hide-large-items") !== "false";
+        var hideLargeItemContents = getSettingValue("auto-hide-large-items") !== "false";
 
         var func = function(e) {
             var next = e.nextElementSibling;
