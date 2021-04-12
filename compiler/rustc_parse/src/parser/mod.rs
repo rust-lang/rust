@@ -929,16 +929,20 @@ impl<'a> Parser<'a> {
             return looker(&self.token);
         }
 
-        let frame = &self.token_cursor.frame;
-        match frame.tree_cursor.look_ahead(dist - 1) {
-            Some(tree) => match tree {
-                TokenTree::Token(token) => looker(token),
-                TokenTree::Delimited(dspan, delim, _) => {
-                    looker(&Token::new(token::OpenDelim(*delim), dspan.open))
-                }
-            },
-            None => looker(&Token::new(token::CloseDelim(frame.delim), frame.span.close)),
+        let mut cursor = self.token_cursor.clone();
+        let mut i = 0;
+        let mut token = Token::dummy();
+        while i < dist {
+            token = cursor.next().0;
+            if matches!(
+                token.kind,
+                token::OpenDelim(token::NoDelim) | token::CloseDelim(token::NoDelim)
+            ) {
+                continue;
+            }
+            i += 1;
         }
+        return looker(&token);
     }
 
     /// Returns whether any of the given keywords are `dist` tokens ahead of the current one.
