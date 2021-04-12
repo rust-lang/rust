@@ -6,7 +6,7 @@ use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::util::{needs_drop_components, AlwaysRequiresDrop};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::Limit;
-use rustc_span::DUMMY_SP;
+use rustc_span::{sym, DUMMY_SP};
 
 type NeedsDropResult<T> = Result<T, AlwaysRequiresDrop>;
 
@@ -18,6 +18,18 @@ fn needs_drop_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>
     // needs drop.
     let res = NeedsDropTypes::new(tcx, query.param_env, query.value, adt_fields).next().is_some();
     debug!("needs_drop_raw({:?}) = {:?}", query, res);
+    res
+}
+
+fn has_significant_drop_raw<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
+) -> bool {
+    let adt_fields = move |adt_def: &ty::AdtDef| {
+        tcx.adt_insignificant_drop_tys(adt_def.did).map(|tys| tys.iter())
+    };
+    let res = NeedsDropTypes::new(tcx, query.param_env, query.value, adt_fields).next().is_some();
+    debug!("adt_insignificant_drop_tys({:?}) = {:?}", query, res);
     res
 }
 
@@ -179,6 +191,41 @@ fn adt_drop_tys(tcx: TyCtxt<'_>, def_id: DefId) -> Result<&ty::List<Ty<'_>>, Alw
     res.map(|components| tcx.intern_type_list(&components))
 }
 
+fn adt_insignificant_drop_tys(
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+) -> Result<&ty::List<Ty<'_>>, AlwaysRequiresDrop> {
+    let adt_components = move |adt_def: &ty::AdtDef| {
+        if adt_def.is_manually_drop() {
+            debug!("adt_insignificant_drop_tys: `{:?}` is manually drop", adt_def);
+            return Ok(Vec::new().into_iter());
+        } else if adt_def.destructor(tcx).is_some()
+            && !tcx.has_attr(def_id, sym::rustc_insignificant_dtor)
+        {
+            debug!("adt_insignificant_drop_tys: `{:?}` implements `Drop`", adt_def);
+            return Err(AlwaysRequiresDrop);
+        } else if adt_def.is_union() {
+            debug!("adt_insignificant_drop_tys: `{:?}` is a union", adt_def);
+            return Ok(Vec::new().into_iter());
+        }
+        Ok(adt_def.all_fields().map(|field| tcx.type_of(field.did)).collect::<Vec<_>>().into_iter())
+    };
+
+    let adt_ty = tcx.type_of(def_id);
+    let param_env = tcx.param_env(def_id);
+    let res: Result<Vec<_>, _> =
+        NeedsDropTypes::new(tcx, param_env, adt_ty, adt_components).collect();
+
+    debug!("adt_insignificant_drop_tys(`{}`) = `{:?}`", tcx.def_path_str(def_id), res);
+    res.map(|components| tcx.intern_type_list(&components))
+}
+
 pub(crate) fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers { needs_drop_raw, adt_drop_tys, ..*providers };
+    *providers = ty::query::Providers {
+        needs_drop_raw,
+        has_significant_drop_raw,
+        adt_drop_tys,
+        adt_insignificant_drop_tys,
+        ..*providers
+    };
 }

@@ -602,7 +602,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for (&var_hir_id, _) in upvars.iter() {
             let ty = resolve_ty(self, closure_span, body, self.node_ty(var_hir_id));
 
-            if !ty.needs_drop(self.tcx, self.tcx.param_env(closure_def_id.expect_local())) {
+            if !ty.has_significant_drop(self.tcx, self.tcx.param_env(closure_def_id.expect_local()))
+            {
+                // Optional
                 continue;
             }
 
@@ -765,7 +767,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         captured_projs: Vec<&[Projection<'tcx>]>,
     ) -> bool {
         let needs_drop = |ty: Ty<'tcx>| {
-            ty.needs_drop(self.tcx, self.tcx.param_env(closure_def_id.expect_local()))
+            ty.has_significant_drop(self.tcx, self.tcx.param_env(closure_def_id.expect_local()))
         };
 
         let is_drop_defined_for_ty = |ty: Ty<'tcx>| {
