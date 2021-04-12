@@ -25,10 +25,7 @@
 mod common;
 
 cfg_if::cfg_if! {
-    if #[cfg(target_os = "vxworks")] {
-        mod vxworks;
-        pub use self::vxworks::*;
-    } else if #[cfg(unix)] {
+    if #[cfg(unix)] {
         mod unix;
         pub use self::unix::*;
     } else if #[cfg(windows)] {

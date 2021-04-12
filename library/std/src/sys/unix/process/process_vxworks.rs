@@ -68,7 +68,7 @@ impl Command {
             let stack_size = thread::min_stack();
 
             // ensure that access to the environment is synchronized
-            let _lock = sys::os::env_lock();
+            let _lock = sys::os::env_read_lock();
 
             let ret = libc::rtpSpawn(
                 self.get_program_cstr().as_ptr(),
