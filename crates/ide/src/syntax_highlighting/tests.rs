@@ -289,7 +289,7 @@ fn syntax_highlighting_not_quadratic() {
     assert_linear(&measures)
 }
 
-/// Checks that a set of measurements looks like a liner function rather than
+/// Checks that a set of measurements looks like a linear function rather than
 /// like a quadratic function. Algorithm:
 ///
 /// 1. Linearly scale input to be in [0; 1)
