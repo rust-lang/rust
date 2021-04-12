@@ -1,14 +1,8 @@
 //! Handles the `Enter` key press. At the momently, this only continues
 //! comments, but should handle indent some time in the future as well.
 
-use std::sync::Arc;
-
+use ide_db::base_db::{FilePosition, SourceDatabase};
 use ide_db::RootDatabase;
-use ide_db::{
-    base_db::{FilePosition, SourceDatabase},
-    line_index::LineIndex,
-    LineIndexDatabase,
-};
 use syntax::{
     algo::find_node_at_offset,
     ast::{self, edit::IndentLevel, AstToken},
@@ -55,7 +49,7 @@ pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<Text
     if token.kind() == L_CURLY {
         // Typing enter after the `{` of a block expression, where the `}` is on the same line
         if let Some(edit) = find_node_at_offset(file.syntax(), position.offset - TextSize::of('{'))
-            .and_then(|block| on_enter_in_block(db, block, position))
+            .and_then(|block| on_enter_in_block(block, position))
         {
             return Some(edit);
         }
@@ -103,18 +97,10 @@ fn on_enter_in_comment(
     Some(edit)
 }
 
-fn on_enter_in_block(
-    db: &RootDatabase,
-    block: ast::BlockExpr,
-    position: FilePosition,
-) -> Option<TextEdit> {
+fn on_enter_in_block(block: ast::BlockExpr, position: FilePosition) -> Option<TextEdit> {
     let contents = block_contents(&block)?;
 
-    let line_index: Arc<LineIndex> = db.line_index(position.file_id);
-    let (open, close) = (block.l_curly_token()?, block.r_curly_token()?);
-    let start = line_index.line_col(open.text_range().start()).line;
-    let end = line_index.line_col(close.text_range().end()).line;
-    if start != end {
+    if block.syntax().text().contains_char('\n') {
         return None;
     }
 
