@@ -1,6 +1,6 @@
 fn test() {
     let v: isize;
-    //~^ HELP make this binding mutable
+    //~^ HELP consider making this binding mutable
     //~| SUGGESTION mut v
     v = 1; //~ NOTE first assignment
     println!("v={}", v);

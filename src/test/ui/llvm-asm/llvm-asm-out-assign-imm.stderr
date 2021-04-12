@@ -2,7 +2,7 @@ error[E0384]: cannot assign twice to immutable variable `x`
   --> $DIR/llvm-asm-out-assign-imm.rs:25:39
    |
 LL |     let x: isize;
-   |         - help: make this binding mutable: `mut x`
+   |         - help: consider making this binding mutable: `mut x`
 LL |     x = 1;
    |     ----- first assignment to `x`
 ...

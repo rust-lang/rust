@@ -1681,7 +1681,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 if decl.can_be_made_mutable() {
                     err.span_suggestion(
                         decl.source_info.span,
-                        "make this binding mutable",
+                        "consider making this binding mutable",
                         format!("mut {}", name),
                         Applicability::MachineApplicable,
                     );

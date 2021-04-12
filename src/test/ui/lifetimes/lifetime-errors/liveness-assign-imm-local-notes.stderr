@@ -2,7 +2,7 @@ error[E0384]: cannot assign twice to immutable variable `x`
   --> $DIR/liveness-assign-imm-local-notes.rs:10:9
    |
 LL |     let x;
-   |         - help: make this binding mutable: `mut x`
+   |         - help: consider making this binding mutable: `mut x`
 ...
 LL |         x = 2;
    |         ----- first assignment to `x`
@@ -13,7 +13,7 @@ error[E0384]: cannot assign twice to immutable variable `x`
   --> $DIR/liveness-assign-imm-local-notes.rs:21:13
    |
 LL |         let x;
-   |             - help: make this binding mutable: `mut x`
+   |             - help: consider making this binding mutable: `mut x`
 ...
 LL |             x = 2;
    |             ----- first assignment to `x`
@@ -24,7 +24,7 @@ error[E0384]: cannot assign twice to immutable variable `x`
   --> $DIR/liveness-assign-imm-local-notes.rs:30:13
    |
 LL |     let x;
-   |         - help: make this binding mutable: `mut x`
+   |         - help: consider making this binding mutable: `mut x`
 ...
 LL |             x = 1;
    |             ^^^^^ cannot assign twice to immutable variable
@@ -33,7 +33,7 @@ error[E0384]: cannot assign twice to immutable variable `x`
   --> $DIR/liveness-assign-imm-local-notes.rs:32:13
    |
 LL |     let x;
-   |         - help: make this binding mutable: `mut x`
+   |         - help: consider making this binding mutable: `mut x`
 ...
 LL |             x = 1;
    |             ----- first assignment to `x`

@@ -1,6 +1,6 @@
 fn test() {
     let v: isize = 1; //~ NOTE first assignment
-                      //~| HELP make this binding mutable
+                      //~| HELP consider making this binding mutable
                       //~| SUGGESTION mut v
     v.clone();
     v = 2; //~ ERROR cannot assign twice to immutable variable `v`
