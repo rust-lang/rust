@@ -162,7 +162,6 @@ impl<'m, 'tcx> CodegenCx<'m, 'tcx> {
     }
 }
 
-
 pub struct CraneliftCodegenBackend {
     pub config: Option<BackendConfig>,
 }

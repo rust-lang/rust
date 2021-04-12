@@ -101,12 +101,7 @@ pub(crate) fn codegen_fn<'tcx>(cx: &mut crate::CodegenCx<'_, 'tcx>, instance: In
 
     // Perform rust specific optimizations
     tcx.sess.time("optimize clif ir", || {
-        crate::optimize::optimize_function(
-            tcx,
-            instance,
-            context,
-            &mut clif_comments,
-        );
+        crate::optimize::optimize_function(tcx, instance, context, &mut clif_comments);
     });
 
     // If the return block is not reachable, then the SSA builder may have inserted an `iconst.i128`
@@ -351,13 +346,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
                 from_hir_call: _,
             } => {
                 fx.tcx.sess.time("codegen call", || {
-                    crate::abi::codegen_terminator_call(
-                        fx,
-                        *fn_span,
-                        func,
-                        args,
-                        *destination,
-                    )
+                    crate::abi::codegen_terminator_call(fx, *fn_span, func, args, *destination)
                 });
             }
             TerminatorKind::InlineAsm {

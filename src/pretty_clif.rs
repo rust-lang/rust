@@ -247,10 +247,7 @@ pub(crate) fn write_clif_file<'tcx>(
             &mut clif_comments,
             &mut clif,
             &context.func,
-            &DisplayFunctionAnnotations {
-                isa,
-                value_ranges: value_ranges.as_ref(),
-            },
+            &DisplayFunctionAnnotations { isa, value_ranges: value_ranges.as_ref() },
         )
         .unwrap();
 
