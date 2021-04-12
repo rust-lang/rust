@@ -100,10 +100,6 @@ impl GlobalState {
         }
     }
     pub(crate) fn report_new_status_if_needed(&mut self) {
-        if !self.config.server_status_notification() {
-            return;
-        }
-
         let mut status = lsp_ext::ServerStatusParams {
             health: lsp_ext::Health::Ok,
             quiescent: self.is_quiescent(),
@@ -129,7 +125,14 @@ impl GlobalState {
 
         if self.last_reported_status.as_ref() != Some(&status) {
             self.last_reported_status = Some(status.clone());
-            self.send_notification::<lsp_ext::ServerStatusNotification>(status);
+
+            if let (lsp_ext::Health::Error, Some(message)) = (status.health, &status.message) {
+                self.show_message(lsp_types::MessageType::Error, message.clone());
+            }
+
+            if self.config.server_status_notification() {
+                self.send_notification::<lsp_ext::ServerStatusNotification>(status);
+            }
         }
     }
 
@@ -225,7 +228,6 @@ impl GlobalState {
 
         if let Some(error_message) = self.fetch_workspace_error() {
             log::error!("failed to switch workspaces: {}", error_message);
-            self.show_message(lsp_types::MessageType::Error, error_message);
             if !self.workspaces.is_empty() {
                 return;
             }
@@ -233,7 +235,6 @@ impl GlobalState {
 
         if let Some(error_message) = self.build_data_error() {
             log::error!("failed to switch build data: {}", error_message);
-            self.show_message(lsp_types::MessageType::Error, error_message);
         }
 
         let workspaces = self
