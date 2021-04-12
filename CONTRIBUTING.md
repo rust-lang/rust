@@ -74,7 +74,7 @@ You can get a trace of which MIR statements are being executed by setting the
 `MIRI_LOG` environment variable.  For example:
 
 ```sh
-MIRI_LOG=info ./miri run tests/run-pass/vecs.rs
+MIRI_LOG=info ./miri run tests/run-pass/vec.rs
 ```
 
 Setting `MIRI_LOG` like this will configure logging for Miri itself as well as
@@ -83,7 +83,7 @@ can also do more targeted configuration, e.g. the following helps debug the
 stacked borrows implementation:
 
 ```sh
-MIRI_LOG=rustc_mir::interpret=info,miri::stacked_borrows ./miri run tests/run-pass/vecs.rs
+MIRI_LOG=rustc_mir::interpret=info,miri::stacked_borrows ./miri run tests/run-pass/vec.rs
 ```
 
 In addition, you can set `MIRI_BACKTRACE=1` to get a backtrace of where an
