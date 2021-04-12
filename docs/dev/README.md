@@ -235,12 +235,14 @@ We don't do "patch" releases, unless something truly egregious comes up.
 
 There are three sets of people with extra permissions:
 
-* rust-analyzer GitHub organization **admins** (which include current t-compiler leads).
+* rust-analyzer GitHub organization (**admins**)[https://github.com/orgs/rust-analyzer/people?query=role:owner] (which include current t-compiler leads).
   Admins have full access to the org.
-* **review** team in the organization.
+* (**review**)[https://github.com/orgs/rust-analyzer/teams/review] team in the organization.
   Reviewers have `r+` access to all of organization's repositories and publish rights on crates.io.
   They also have direct commit access, but all changes should via bors queue.
   It's ok to self-approve if you think you know what you are doing!
   bors should automatically sync the permissions.
-* **triage** team in the organization.
+* (**triage**)[https://github.com/orgs/rust-analyzer/teams/triage] team in the organization.
   This team can label and close issues.
+
+Note that at the time being you need to be a member of the org yourself to view the links.
