@@ -443,7 +443,7 @@ impl<T> Bucket<T> {
         //                          |         (to the end of T5)
         //                          |           |                    `base: NonNull<T>` must point here
         //                          v           |                    (to the end of T0 or to the start of C0)
-        //                        /‾‾‾\         v                      v
+        //                        /???\         v                      v
         // [Padding], Tlast, ..., |T10|, ..., T5|, T4, T3, T2, T1, T0, |C0, C1, C2, C3, C4, C5, ..., C10, ..., Clast
         //                                      \__________  __________/
         //                                                 \/
@@ -1083,7 +1083,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     /// without reallocation.
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn reserve(&mut self, additional: usize, hasher: impl Fn(&T) -> u64) {
-        if additional > self.table.growth_left {
+        if unlikely(additional > self.table.growth_left) {
             // Avoid `Result::unwrap_or_else` because it bloats LLVM IR.
             if self
                 .reserve_rehash(additional, hasher, Fallibility::Infallible)
@@ -1250,6 +1250,22 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
         } else {
             false
         }
+    }
+
+    /// Searches for an element in the table,
+    /// or a potential slot where that element could be inserted.
+    #[inline]
+    pub fn find_potential(&self, hash: u64, mut eq: impl FnMut(&T) -> bool) -> (usize, bool) {
+        self.table.find_potential_inner(hash, &mut |index| unsafe {
+            eq(self.bucket(index).as_ref())
+        })
+    }
+
+    /// Marks an element in the table as inserted.
+    #[inline]
+    pub unsafe fn mark_inserted(&mut self, index: usize, hash: u64) {
+        let old_ctrl = *self.table.ctrl(index);
+        self.table.record_item_insert_at(index, old_ctrl, hash);
     }
 
     /// Searches for an element in the table.
@@ -1585,6 +1601,106 @@ impl<A: Allocator + Clone> RawTableInner<A> {
         }
     }
 
+    /// Fixes up an insertion slot due to false positives for groups smaller than the group width.
+    /// This must only be used on insertion slots found by `find_insert_slot_in_group`.
+    #[inline]
+    unsafe fn fix_insert_slot(&self, index: usize) -> usize {
+        // In tables smaller than the group width
+        // (self.buckets() < Group::WIDTH), trailing control
+        // bytes outside the range of the table are filled with
+        // EMPTY entries. These will unfortunately trigger a
+        // match, but once masked may point to a full bucket that
+        // is already occupied. We detect this situation here and
+        // perform a second scan starting at the beginning of the
+        // table. This second scan is guaranteed to find an empty
+        // slot (due to the load factor) before hitting the trailing
+        // control bytes (containing EMPTY).
+        if unlikely(self.is_bucket_full(index)) {
+            debug_assert!(self.bucket_mask < Group::WIDTH);
+            // SAFETY:
+            //
+            // * We are in range and `ptr = self.ctrl(0)` are valid for reads
+            //   and properly aligned, because the table is already allocated
+            //   (see `TableLayout::calculate_layout_for` and `ptr::read`);
+            //
+            // * For tables larger than the group width (self.buckets() >= Group::WIDTH),
+            //   we will never end up in the given branch, since
+            //   `(probe_seq.pos + bit) & self.bucket_mask` in `find_insert_slot_in_group` cannot
+            //   return a full bucket index. For tables smaller than the group width, calling the
+            //   `lowest_set_bit_nonzero` function (when `nightly` feature enabled) is also
+            //   safe, as the trailing control bytes outside the range of the table are filled
+            //   with EMPTY bytes, so this second scan either finds an empty slot (due to the
+            //   load factor) or hits the trailing control bytes (containing EMPTY). See
+            //   `intrinsics::cttz_nonzero` for more information.
+            Group::load_aligned(self.ctrl(0))
+                .match_empty_or_deleted()
+                .lowest_set_bit_nonzero()
+        } else {
+            index
+        }
+    }
+
+    /// Finds the position to insert something in a group.
+    /// This may have false positives and must be fixed up with `fix_insert_slot` before it's used.
+    #[inline]
+    fn find_insert_slot_in_group(&self, group: &Group, probe_seq: &ProbeSeq) -> Option<usize> {
+        let bit = group.match_empty_or_deleted().lowest_set_bit();
+
+        if likely(bit.is_some()) {
+            Some((probe_seq.pos + bit.unwrap()) & self.bucket_mask)
+        } else {
+            None
+        }
+    }
+
+    /// Searches for an element in the table, or a potential slot where that element could be
+    /// inserted.
+    ///
+    /// This uses dynamic dispatch to reduce the amount of code generated, but that is
+    /// eliminated by LLVM optimizations.
+    #[inline]
+    pub fn find_potential_inner(
+        &self,
+        hash: u64,
+        eq: &mut dyn FnMut(usize) -> bool,
+    ) -> (usize, bool) {
+        let mut insert_slot = None;
+
+        let h2_hash = h2(hash);
+        let mut probe_seq = self.probe_seq(hash);
+
+        loop {
+            let group = unsafe { Group::load(self.ctrl(probe_seq.pos)) };
+
+            for bit in group.match_byte(h2_hash) {
+                let index = (probe_seq.pos + bit) & self.bucket_mask;
+
+                if likely(eq(index)) {
+                    return (index, true);
+                }
+            }
+
+            // We didn't find the element we were looking for in the group, try to get an
+            // insertion slot from the group if we don't have one yet.
+            if likely(insert_slot.is_none()) {
+                insert_slot = self.find_insert_slot_in_group(&group, &probe_seq);
+            }
+
+            // Only stop the search if the group contains at least one empty element.
+            // Otherwise, the element that we are looking for might be in a following group.
+            if likely(group.match_empty().any_bit_set()) {
+                // We must have found a insert slot by now, since the current group contains at
+                // least one. For tables smaller than the group width, there will still be an
+                // empty element in the current (and only) group due to the load factor.
+                unsafe {
+                    return (self.fix_insert_slot(insert_slot.unwrap_unchecked()), false);
+                }
+            }
+
+            probe_seq.move_next(self.bucket_mask);
+        }
+    }
+
     /// Searches for an empty or deleted bucket which is suitable for inserting
     /// a new element and sets the hash for that slot.
     ///
@@ -1637,48 +1753,10 @@ impl<A: Allocator + Clone> RawTableInner<A> {
             //   bytes, which is safe (see RawTableInner::new_in).
             unsafe {
                 let group = Group::load(self.ctrl(probe_seq.pos));
-                if let Some(bit) = group.match_empty_or_deleted().lowest_set_bit() {
-                    // This is the same as `(probe_seq.pos + bit) % self.buckets()` because the number
-                    // of buckets is a power of two, and `self.bucket_mask = self.buckets() - 1`.
-                    let result = (probe_seq.pos + bit) & self.bucket_mask;
+                let index = self.find_insert_slot_in_group(&group, &probe_seq);
 
-                    // In tables smaller than the group width
-                    // (self.buckets() < Group::WIDTH), trailing control
-                    // bytes outside the range of the table are filled with
-                    // EMPTY entries. These will unfortunately trigger a
-                    // match, but once masked may point to a full bucket that
-                    // is already occupied. We detect this situation here and
-                    // perform a second scan starting at the beginning of the
-                    // table. This second scan is guaranteed to find an empty
-                    // slot (due to the load factor) before hitting the trailing
-                    // control bytes (containing EMPTY).
-                    //
-                    // SAFETY: The `result` is guaranteed to be in range `0..self.bucket_mask`
-                    // due to masking with `self.bucket_mask`
-                    if unlikely(self.is_bucket_full(result)) {
-                        debug_assert!(self.bucket_mask < Group::WIDTH);
-                        debug_assert_ne!(probe_seq.pos, 0);
-                        // SAFETY:
-                        //
-                        // * We are in range and `ptr = self.ctrl(0)` are valid for reads
-                        //   and properly aligned, because the table is already allocated
-                        //   (see `TableLayout::calculate_layout_for` and `ptr::read`);
-                        //
-                        // * For tables larger than the group width (self.buckets() >= Group::WIDTH),
-                        //   we will never end up in the given branch, since
-                        //   `(probe_seq.pos + bit) & self.bucket_mask` cannot return a
-                        //   full bucket index. For tables smaller than the group width, calling the
-                        //   `lowest_set_bit_nonzero` function (when `nightly` feature enabled) is also
-                        //   safe, as the trailing control bytes outside the range of the table are filled
-                        //   with EMPTY bytes, so this second scan either finds an empty slot (due to the
-                        //   load factor) or hits the trailing control bytes (containing EMPTY). See
-                        //   `intrinsics::cttz_nonzero` for more information.
-                        return Group::load_aligned(self.ctrl(0))
-                            .match_empty_or_deleted()
-                            .lowest_set_bit_nonzero();
-                    }
-
-                    return result;
+                if likely(index.is_some()) {
+                    return self.fix_insert_slot(index.unwrap_unchecked());
                 }
             }
             probe_seq.move_next(self.bucket_mask);

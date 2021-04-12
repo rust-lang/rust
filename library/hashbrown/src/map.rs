@@ -1787,12 +1787,21 @@ where
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {
         let hash = make_insert_hash::<K, S>(&self.hash_builder, &k);
-        if let Some((_, item)) = self.table.get_mut(hash, equivalent_key(&k)) {
-            Some(mem::replace(item, v))
-        } else {
-            self.table
-                .insert(hash, (k, v), make_hasher::<_, V, S>(&self.hash_builder));
-            None
+        self.table
+            .reserve(1, make_hasher::<_, V, S>(&self.hash_builder));
+
+        unsafe {
+            let (index, found) = self.table.find_potential(hash, equivalent_key(&k));
+
+            let bucket = self.table.bucket(index);
+
+            if found {
+                Some(mem::replace(&mut bucket.as_mut().1, v))
+            } else {
+                self.table.mark_inserted(index, hash);
+                bucket.write((k, v));
+                None
+            }
         }
     }
 
