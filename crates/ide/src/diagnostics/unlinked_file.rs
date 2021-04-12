@@ -16,9 +16,10 @@ use syntax::{
 };
 use text_edit::TextEdit;
 
-use crate::Fix;
-
-use super::fixes::DiagnosticWithFix;
+use crate::{
+    diagnostics::{fix, fixes::DiagnosticWithFix},
+    Assist,
+};
 
 // Diagnostic: unlinked-file
 //
@@ -49,7 +50,7 @@ impl Diagnostic for UnlinkedFile {
 }
 
 impl DiagnosticWithFix for UnlinkedFile {
-    fn fix(&self, sema: &hir::Semantics<RootDatabase>) -> Option<Fix> {
+    fn fix(&self, sema: &hir::Semantics<RootDatabase>) -> Option<Assist> {
         // If there's an existing module that could add a `mod` item to include the unlinked file,
         // suggest that as a fix.
 
@@ -100,7 +101,7 @@ fn make_fix(
     parent_file_id: FileId,
     new_mod_name: &str,
     added_file_id: FileId,
-) -> Option<Fix> {
+) -> Option<Assist> {
     fn is_outline_mod(item: &ast::Item) -> bool {
         matches!(item, ast::Item::Module(m) if m.item_list().is_none())
     }
@@ -152,7 +153,8 @@ fn make_fix(
 
     let edit = builder.finish();
     let trigger_range = db.parse(added_file_id).tree().syntax().text_range();
-    Some(Fix::new(
+    Some(fix(
+        "add_mod_declaration",
         &format!("Insert `{}`", mod_decl),
         SourceChange::from_text_edit(parent_file_id, edit),
         trigger_range,

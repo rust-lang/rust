@@ -1039,18 +1039,20 @@ fn add_quick_fixes(
     for fix in diagnostics
         .into_iter()
         .filter_map(|d| d.fix)
-        .filter(|fix| fix.fix_trigger_range.intersect(frange.range).is_some())
+        .filter(|fix| fix.target.intersect(frange.range).is_some())
     {
-        let edit = to_proto::snippet_workspace_edit(&snap, fix.source_change)?;
-        let action = lsp_ext::CodeAction {
-            title: fix.label.to_string(),
-            group: None,
-            kind: Some(CodeActionKind::QUICKFIX),
-            edit: Some(edit),
-            is_preferred: Some(false),
-            data: None,
-        };
-        acc.push(action);
+        if let Some(source_change) = fix.source_change {
+            let edit = to_proto::snippet_workspace_edit(&snap, source_change)?;
+            let action = lsp_ext::CodeAction {
+                title: fix.label.to_string(),
+                group: None,
+                kind: Some(CodeActionKind::QUICKFIX),
+                edit: Some(edit),
+                is_preferred: Some(false),
+                data: None,
+            };
+            acc.push(action);
+        }
     }
 
     for fix in snap.check_fixes.get(&frange.file_id).into_iter().flatten() {

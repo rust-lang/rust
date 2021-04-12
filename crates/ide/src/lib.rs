@@ -69,7 +69,7 @@ use crate::display::ToNav;
 pub use crate::{
     annotations::{Annotation, AnnotationConfig, AnnotationKind},
     call_hierarchy::CallItem,
-    diagnostics::{Diagnostic, DiagnosticsConfig, Fix, Severity},
+    diagnostics::{Diagnostic, DiagnosticsConfig, Severity},
     display::navigation_target::NavigationTarget,
     expand_macro::ExpandedMacro,
     file_structure::{StructureNode, StructureNodeKind},
