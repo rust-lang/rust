@@ -32,8 +32,8 @@
 //! `DepNode` definition happens in the `define_dep_nodes!()` macro. This macro
 //! defines the `DepKind` enum. Each `DepKind` has its own parameters that are
 //! needed at runtime in order to construct a valid `DepNode` fingerprint.
-//! However, only `CompileCodegenUnit` is constructed explicitly (with
-//! `make_compile_codegen_unit`).
+//! However, only `CompileCodegenUnit` and `CompileMonoItem` are constructed
+//! explicitly (with `make_compile_codegen_unit` cq `make_compile_mono_item`).
 //!
 //! Because the macro sees what parameters a given `DepKind` requires, it can
 //! "infer" some properties for each kind of `DepNode`:
@@ -46,15 +46,17 @@
 //!   `DefId` it was computed from. In other cases, too much information gets
 //!   lost during fingerprint computation.
 //!
-//! `make_compile_codegen_unit`, together with `DepNode::new()`, ensures that only
-//! valid `DepNode` instances can be constructed. For example, the API does not
-//! allow for constructing parameterless `DepNode`s with anything other
-//! than a zeroed out fingerprint. More generally speaking, it relieves the
-//! user of the `DepNode` API of having to know how to compute the expected
-//! fingerprint for a given set of node parameters.
+//! `make_compile_codegen_unit` and `make_compile_mono_items`, together with
+//! `DepNode::new()`, ensures that only valid `DepNode` instances can be
+//! constructed. For example, the API does not allow for constructing
+//! parameterless `DepNode`s with anything other than a zeroed out fingerprint.
+//! More generally speaking, it relieves the user of the `DepNode` API of
+//! having to know how to compute the expected fingerprint for a given set of
+//! node parameters.
 //!
 //! [dependency graph]: https://rustc-dev-guide.rust-lang.org/query.html
 
+use crate::mir::mono::MonoItem;
 use crate::ty::TyCtxt;
 
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -175,6 +177,14 @@ pub mod dep_kind {
         can_reconstruct_query_key: || false,
     };
 
+    pub const CompileMonoItem: DepKindStruct = DepKindStruct {
+        has_params: true,
+        is_anon: false,
+        is_eval_always: false,
+
+        can_reconstruct_query_key: || false,
+    };
+
     macro_rules! define_query_dep_kinds {
         ($(
             [$($attrs:tt)*]
@@ -251,12 +261,22 @@ rustc_dep_node_append!([define_dep_nodes!][ <'tcx>
 
     // WARNING: if `Symbol` is changed, make sure you update `make_compile_codegen_unit` below.
     [] CompileCodegenUnit(Symbol),
+
+    // WARNING: if `MonoItem` is changed, make sure you update `make_compile_mono_item` below.
+    // Only used by rustc_codegen_cranelift
+    [] CompileMonoItem(MonoItem),
 ]);
 
 // WARNING: `construct` is generic and does not know that `CompileCodegenUnit` takes `Symbol`s as keys.
 // Be very careful changing this type signature!
 crate fn make_compile_codegen_unit(tcx: TyCtxt<'_>, name: Symbol) -> DepNode {
     DepNode::construct(tcx, DepKind::CompileCodegenUnit, &name)
+}
+
+// WARNING: `construct` is generic and does not know that `CompileMonoItem` takes `MonoItem`s as keys.
+// Be very careful changing this type signature!
+crate fn make_compile_mono_item(tcx: TyCtxt<'tcx>, mono_item: &MonoItem<'tcx>) -> DepNode {
+    DepNode::construct(tcx, DepKind::CompileMonoItem, mono_item)
 }
 
 pub type DepNode = rustc_query_system::dep_graph::DepNode<DepKind>;
