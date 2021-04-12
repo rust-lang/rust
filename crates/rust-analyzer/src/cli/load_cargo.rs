@@ -15,6 +15,7 @@ use crate::reload::{ProjectFolders, SourceRootConfig};
 
 pub struct LoadCargoConfig {
     pub load_out_dirs_from_check: bool,
+    pub wrap_rustc: bool,
     pub with_proc_macro: bool,
 }
 
@@ -52,7 +53,7 @@ pub fn load_workspace(
     };
 
     let build_data = if config.load_out_dirs_from_check {
-        let mut collector = BuildDataCollector::default();
+        let mut collector = BuildDataCollector::new(config.wrap_rustc);
         ws.collect_build_data_configs(&mut collector);
         Some(collector.collect(progress)?)
     } else {
@@ -136,8 +137,11 @@ mod tests {
     fn test_loading_rust_analyzer() -> Result<()> {
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().parent().unwrap();
         let cargo_config = Default::default();
-        let load_cargo_config =
-            LoadCargoConfig { load_out_dirs_from_check: false, with_proc_macro: false };
+        let load_cargo_config = LoadCargoConfig {
+            load_out_dirs_from_check: false,
+            wrap_rustc: false,
+            with_proc_macro: false,
+        };
         let (host, _vfs, _proc_macro) =
             load_workspace_at(path, &cargo_config, &load_cargo_config, &|_| {})?;
 

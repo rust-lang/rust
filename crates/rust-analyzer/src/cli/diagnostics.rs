@@ -34,7 +34,8 @@ pub fn diagnostics(
     with_proc_macro: bool,
 ) -> Result<()> {
     let cargo_config = Default::default();
-    let load_cargo_config = LoadCargoConfig { load_out_dirs_from_check, with_proc_macro };
+    let load_cargo_config =
+        LoadCargoConfig { load_out_dirs_from_check, with_proc_macro, wrap_rustc: false };
     let (host, _vfs, _proc_macro) =
         load_workspace_at(path, &cargo_config, &load_cargo_config, &|_| {})?;
     let db = host.raw_database();

@@ -236,7 +236,8 @@ impl GlobalState {
                                     let workspaces_updated = !Arc::ptr_eq(&old, &self.workspaces);
 
                                     if self.config.run_build_scripts() && workspaces_updated {
-                                        let mut collector = BuildDataCollector::default();
+                                        let mut collector =
+                                            BuildDataCollector::new(self.config.wrap_rustc());
                                         for ws in self.workspaces.iter() {
                                             ws.collect_build_data_configs(&mut collector);
                                         }

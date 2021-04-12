@@ -9,8 +9,11 @@ use ide_ssr::{MatchFinder, SsrPattern, SsrRule};
 pub fn apply_ssr_rules(rules: Vec<SsrRule>) -> Result<()> {
     use ide_db::base_db::SourceDatabaseExt;
     let cargo_config = Default::default();
-    let load_cargo_config =
-        LoadCargoConfig { load_out_dirs_from_check: true, with_proc_macro: true };
+    let load_cargo_config = LoadCargoConfig {
+        load_out_dirs_from_check: true,
+        wrap_rustc: false,
+        with_proc_macro: true,
+    };
     let (host, vfs, _proc_macro) =
         load_workspace_at(&std::env::current_dir()?, &cargo_config, &load_cargo_config, &|_| {})?;
     let db = host.raw_database();
@@ -37,7 +40,7 @@ pub fn search_for_patterns(patterns: Vec<SsrPattern>, debug_snippet: Option<Stri
     use ide_db::symbol_index::SymbolsDatabase;
     let cargo_config = Default::default();
     let load_cargo_config =
-        LoadCargoConfig { load_out_dirs_from_check: true, with_proc_macro: true };
+        LoadCargoConfig { load_out_dirs_from_check: true, wrap_rustc: true, with_proc_macro: true };
     let (host, _vfs, _proc_macro) =
         load_workspace_at(&std::env::current_dir()?, &cargo_config, &load_cargo_config, &|_| {})?;
     let db = host.raw_database();

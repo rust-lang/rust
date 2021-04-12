@@ -32,8 +32,12 @@ impl<'a> Project<'a> {
             tmp_dir: None,
             roots: vec![],
             config: serde_json::json!({
-                // Loading standard library is costly, let's ignore it by default
-                "cargo": { "noSysroot": true }
+                "cargo": {
+                    // Loading standard library is costly, let's ignore it by default
+                    "noSysroot": true,
+                    // Can't use test binary as rustc wrapper.
+                    "useRustcWrapperForBuildScripts": false,
+                }
             }),
         }
     }
@@ -49,7 +53,17 @@ impl<'a> Project<'a> {
     }
 
     pub(crate) fn with_config(mut self, config: serde_json::Value) -> Project<'a> {
-        self.config = config;
+        fn merge(dst: &mut serde_json::Value, src: serde_json::Value) {
+            match (dst, src) {
+                (Value::Object(dst), Value::Object(src)) => {
+                    for (k, v) in src {
+                        merge(dst.entry(k).or_insert(v.clone()), v)
+                    }
+                }
+                (dst, src) => *dst = src,
+            }
+        }
+        merge(&mut self.config, config);
         self
     }
 

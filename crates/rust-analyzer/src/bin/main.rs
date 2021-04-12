@@ -3,6 +3,7 @@
 //! Based on cli flags, either spawns an LSP server, or runs a batch analysis
 mod flags;
 mod logger;
+mod rustc_wrapper;
 
 use std::{convert::TryFrom, env, fs, path::Path, process};
 
@@ -26,6 +27,20 @@ static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 fn main() {
+    if std::env::var("RA_RUSTC_WRAPPER").is_ok() {
+        let mut args = std::env::args_os();
+        let _me = args.next().unwrap();
+        let rustc = args.next().unwrap();
+        let code = match rustc_wrapper::run_rustc_skipping_cargo_checking(rustc, args.collect()) {
+            Ok(rustc_wrapper::ExitCode(code)) => code.unwrap_or(102),
+            Err(err) => {
+                eprintln!("{}", err);
+                101
+            }
+        };
+        process::exit(code);
+    }
+
     if let Err(err) = try_main() {
         log::error!("Unexpected error: {}", err);
         eprintln!("{}", err);

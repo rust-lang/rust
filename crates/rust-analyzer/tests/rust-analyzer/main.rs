@@ -527,7 +527,7 @@ version = \"0.0.0\"
 #[test]
 fn out_dirs_check() {
     if skip_slow_tests() {
-        return;
+        // return;
     }
 
     let server = Project::with_fixture(
