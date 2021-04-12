@@ -146,7 +146,7 @@ impl Duration {
     ///
     /// assert_eq!(Duration::MAX, Duration::new(u64::MAX, 1_000_000_000 - 1));
     /// ```
-    #[unstable(feature = "duration_constants", issue = "57391")]
+    #[stable(feature = "duration_saturating_ops", since = "1.53.0")]
     pub const MAX: Duration = Duration::new(u64::MAX, NANOS_PER_SEC - 1);
 
     /// Creates a new `Duration` from the specified number of whole seconds and
