@@ -538,22 +538,16 @@ pub mod rt;
 #[allow(dead_code, unused_attributes)]
 mod backtrace_rs;
 
-// Pull in the `std_detect` crate directly into libstd. The contents of
-// `std_detect` are in a different repository: rust-lang/stdarch.
-//
-// `std_detect` depends on libstd, but the contents of this module are
-// set up in such a way that directly pulling it here works such that the
-// crate uses the this crate as its libstd.
-#[path = "../../stdarch/crates/std_detect/src/mod.rs"]
-#[allow(missing_debug_implementations, missing_docs, dead_code)]
-#[unstable(feature = "stdsimd", issue = "48556")]
-#[cfg(not(test))]
-mod std_detect;
-
+#[stable(feature = "simd_x86", since = "1.27.0")]
+pub use std_detect::is_x86_feature_detected;
 #[doc(hidden)]
 #[unstable(feature = "stdsimd", issue = "48556")]
-#[cfg(not(test))]
-pub use std_detect::detect;
+pub use std_detect::*;
+#[unstable(feature = "stdsimd", issue = "48556")]
+pub use std_detect::{
+    is_aarch64_feature_detected, is_arm_feature_detected, is_mips64_feature_detected,
+    is_mips_feature_detected, is_powerpc64_feature_detected, is_powerpc_feature_detected,
+};
 
 // Re-export macros defined in libcore.
 #[stable(feature = "rust1", since = "1.0.0")]

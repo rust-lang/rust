@@ -21,6 +21,7 @@ compiler_builtins = { version = "0.1.39" }
 profiler_builtins = { path = "../profiler_builtins", optional = true }
 unwind = { path = "../unwind" }
 hashbrown = { version = "0.11", default-features = false, features = ['rustc-dep-of-std'] }
+std_detect = { path = "../stdarch/crates/std_detect", default-features = false, features = ['rustc-dep-of-std'] }
 
 # Dependencies of the `backtrace` crate
 addr2line = { version = "0.14.0", optional = true, default-features = false }
@@ -70,8 +71,8 @@ panic_immediate_abort = ["core/panic_immediate_abort"]
 
 # Enable std_detect default features for stdarch/crates/std_detect:
 # https://github.com/rust-lang/stdarch/blob/master/crates/std_detect/Cargo.toml
-std_detect_file_io = []
-std_detect_dlsym_getauxval = []
+std_detect_file_io = ["std_detect/std_detect_file_io"]
+std_detect_dlsym_getauxval = ["std_detect/std_detect_dlsym_getauxval"]
 
 [package.metadata.fortanix-sgx]
 # Maximum possible number of threads when testing
