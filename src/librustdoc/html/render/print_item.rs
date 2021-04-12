@@ -464,7 +464,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
             // We also do this if the types + consts is large because otherwise we could
             // render a bunch of types and _then_ a bunch of consts just because both were
             // _just_ under the limit
-            if !toggle & should_hide_fields(types.len() + consts.len()) {
+            if !toggle && should_hide_fields(types.len() + consts.len()) {
                 toggle = true;
                 toggle_open(w, "associated constants and methods");
             }
@@ -475,7 +475,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                 render_assoc_item(w, t, AssocItemLink::Anchor(None), ItemType::Trait, cx);
                 w.write_str(";\n");
             }
-            if !toggle & should_hide_fields(required.len() + provided.len()) {
+            if !toggle && should_hide_fields(required.len() + provided.len()) {
                 toggle = true;
                 toggle_open(w, "methods");
             }
