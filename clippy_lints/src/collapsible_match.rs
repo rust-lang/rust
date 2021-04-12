@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::visitors::LocalUsedVisitor;
-use clippy_utils::{path_to_local, SpanlessEq};
+use clippy_utils::{is_lang_ctor, path_to_local, SpanlessEq};
 use if_chain::if_chain;
-use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
-use rustc_hir::{Arm, Expr, ExprKind, Guard, HirId, Pat, PatKind, QPath, StmtKind, UnOp};
+use rustc_hir::LangItem::OptionNone;
+use rustc_hir::{Arm, Expr, ExprKind, Guard, HirId, Pat, PatKind, StmtKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{DefIdTree, TyCtxt, TypeckResults};
+use rustc_middle::ty::TypeckResults;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{MultiSpan, Span};
 
@@ -52,7 +52,7 @@ declare_lint_pass!(CollapsibleMatch => [COLLAPSIBLE_MATCH]);
 impl<'tcx> LateLintPass<'tcx> for CollapsibleMatch {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
         if let ExprKind::Match(_expr, arms, _source) = expr.kind {
-            if let Some(wild_arm) = arms.iter().rfind(|arm| arm_is_wild_like(arm, cx.tcx)) {
+            if let Some(wild_arm) = arms.iter().rfind(|arm| arm_is_wild_like(cx, arm)) {
                 for arm in arms {
                     check_arm(arm, wild_arm, cx);
                 }
@@ -75,7 +75,7 @@ fn check_arm<'tcx>(arm: &Arm<'tcx>, wild_outer_arm: &Arm<'tcx>, cx: &LateContext
         // match <local> { .. }
         if let Some(binding_id) = path_to_local(strip_ref_operators(expr_in, cx.typeck_results()));
         // one of the branches must be "wild-like"
-        if let Some(wild_inner_arm_idx) = arms_inner.iter().rposition(|arm_inner| arm_is_wild_like(arm_inner, cx.tcx));
+        if let Some(wild_inner_arm_idx) = arms_inner.iter().rposition(|arm_inner| arm_is_wild_like(cx, arm_inner));
         let (wild_inner_arm, non_wild_inner_arm) =
             (&arms_inner[wild_inner_arm_idx], &arms_inner[1 - wild_inner_arm_idx]);
         if !pat_contains_or(non_wild_inner_arm.pat);
@@ -126,13 +126,13 @@ fn strip_singleton_blocks<'hir>(mut expr: &'hir Expr<'hir>) -> &'hir Expr<'hir> 
 /// A "wild-like" pattern is wild ("_") or `None`.
 /// For this lint to apply, both the outer and inner match expressions
 /// must have "wild-like" branches that can be combined.
-fn arm_is_wild_like(arm: &Arm<'_>, tcx: TyCtxt<'_>) -> bool {
+fn arm_is_wild_like(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
     if arm.guard.is_some() {
         return false;
     }
     match arm.pat.kind {
         PatKind::Binding(..) | PatKind::Wild => true,
-        PatKind::Path(QPath::Resolved(None, path)) if is_none_ctor(path.res, tcx) => true,
+        PatKind::Path(ref qpath) => is_lang_ctor(cx, qpath, OptionNone),
         _ => false,
     }
 }
@@ -162,17 +162,6 @@ fn pat_contains_or(pat: &Pat<'_>) -> bool {
         !is_or
     });
     result
-}
-
-fn is_none_ctor(res: Res, tcx: TyCtxt<'_>) -> bool {
-    if let Some(none_id) = tcx.lang_items().option_none_variant() {
-        if let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Const), id) = res {
-            if let Some(variant_id) = tcx.parent(id) {
-                return variant_id == none_id;
-            }
-        }
-    }
-    false
 }
 
 /// Removes `AddrOf` operators (`&`) or deref operators (`*`), but only if a reference type is

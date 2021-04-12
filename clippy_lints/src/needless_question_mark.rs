@@ -1,9 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_lang_ctor;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{differing_macro_contexts, is_ok_ctor, is_some_ctor, meets_msrv};
+use clippy_utils::{differing_macro_contexts, meets_msrv};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
+use rustc_hir::LangItem::{OptionSome, ResultOk};
 use rustc_hir::{Body, Expr, ExprKind, LangItem, MatchSource, QPath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_semver::RustcVersion;
@@ -159,8 +161,8 @@ fn is_some_or_ok_call<'a>(
     if_chain! {
         // Check outer expression matches CALL_IDENT(ARGUMENT) format
         if let ExprKind::Call(path, args) = &expr.kind;
-        if let ExprKind::Path(QPath::Resolved(None, path)) = &path.kind;
-        if is_some_ctor(cx, path.res) || is_ok_ctor(cx, path.res);
+        if let ExprKind::Path(ref qpath) = &path.kind;
+        if is_lang_ctor(cx, qpath, OptionSome) || is_lang_ctor(cx, qpath, ResultOk);
 
         // Extract inner expression from ARGUMENT
         if let ExprKind::Match(inner_expr_with_q, _, MatchSource::TryDesugar) = &args[0].kind;

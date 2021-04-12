@@ -1,10 +1,11 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::is_diagnostic_assoc_item;
 use clippy_utils::source::{snippet, snippet_with_applicability};
-use clippy_utils::{in_macro, match_def_path, match_qpath, meets_msrv, paths};
+use clippy_utils::{in_macro, match_def_path, meets_msrv, paths};
+use clippy_utils::{is_diagnostic_assoc_item, is_lang_ctor};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
+use rustc_hir::LangItem::OptionNone;
 use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, QPath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -102,7 +103,7 @@ impl_lint_pass!(MemReplace =>
 fn check_replace_option_with_none(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'_>, expr_span: Span) {
     if let ExprKind::Path(ref replacement_qpath) = src.kind {
         // Check that second argument is `Option::None`
-        if match_qpath(replacement_qpath, &paths::OPTION_NONE) {
+        if is_lang_ctor(cx, replacement_qpath, OptionNone) {
             // Since this is a late pass (already type-checked),
             // and we already know that the second argument is an
             // `Option`, we do not need to check the first
