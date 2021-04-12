@@ -51,6 +51,7 @@ pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<Text
         if let Some(edit) = find_node_at_offset(file.syntax(), position.offset - TextSize::of('{'))
             .and_then(|block| on_enter_in_block(block, position))
         {
+            cov_mark::hit!(indent_block_contents);
             return Some(edit);
         }
     }
@@ -346,6 +347,7 @@ fn main() {
 
     #[test]
     fn indents_fn_body_block() {
+        cov_mark::check!(indent_block_contents);
         do_check(
             r#"
 fn f() {$0()}
