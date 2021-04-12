@@ -434,6 +434,11 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.cargo.useRustcWrapperForBuildScripts": {
+                    "markdownDescription": "Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to\navoid compiling unnecessary things.",
+                    "default": true,
+                    "type": "boolean"
+                },
                 "rust-analyzer.cargo.noDefaultFeatures": {
                     "markdownDescription": "Do not activate the `default` feature.",
                     "default": false,

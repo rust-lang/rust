@@ -48,6 +48,9 @@ config_data! {
         /// Run build scripts (`build.rs`) for more precise code analysis.
         cargo_runBuildScripts |
         cargo_loadOutDirsFromCheck: bool = "true",
+        /// Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to
+        /// avoid compiling unnecessary things.
+        cargo_useRustcWrapperForBuildScripts: bool = "true",
         /// Do not activate the `default` feature.
         cargo_noDefaultFeatures: bool    = "false",
         /// Compilation target (target triple).
@@ -492,6 +495,9 @@ impl Config {
     }
     pub fn run_build_scripts(&self) -> bool {
         self.data.cargo_runBuildScripts || self.data.procMacro_enable
+    }
+    pub fn wrap_rustc(&self) -> bool {
+        self.data.cargo_useRustcWrapperForBuildScripts
     }
     pub fn cargo(&self) -> CargoConfig {
         let rustc_source = self.data.rustcSource.as_ref().map(|rustc_src| {

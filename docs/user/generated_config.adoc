@@ -39,6 +39,12 @@ List of features to activate.
 --
 Run build scripts (`build.rs`) for more precise code analysis.
 --
+[[rust-analyzer.cargo.useRustcWrapperForBuildScripts]]rust-analyzer.cargo.useRustcWrapperForBuildScripts (default: `true`)::
++
+--
+Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to
+avoid compiling unnecessary things.
+--
 [[rust-analyzer.cargo.noDefaultFeatures]]rust-analyzer.cargo.noDefaultFeatures (default: `false`)::
 +
 --

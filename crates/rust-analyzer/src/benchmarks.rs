@@ -30,8 +30,11 @@ fn benchmark_integrated_highlighting() {
     let file = "./crates/ide_db/src/apply_change.rs";
 
     let cargo_config = Default::default();
-    let load_cargo_config =
-        LoadCargoConfig { load_out_dirs_from_check: true, with_proc_macro: false };
+    let load_cargo_config = LoadCargoConfig {
+        load_out_dirs_from_check: true,
+        wrap_rustc: false,
+        with_proc_macro: false,
+    };
 
     let (mut host, vfs, _proc_macro) = {
         let _it = stdx::timeit("workspace loading");
