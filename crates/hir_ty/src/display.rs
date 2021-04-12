@@ -9,6 +9,7 @@ use std::{
 
 use chalk_ir::BoundVar;
 use hir_def::{
+    body,
     db::DefDatabase,
     find_path,
     generics::TypeParamProvenance,
@@ -18,7 +19,7 @@ use hir_def::{
     visibility::Visibility,
     AssocContainerId, Lookup, ModuleId, TraitId,
 };
-use hir_expand::name::Name;
+use hir_expand::{hygiene::Hygiene, name::Name};
 
 use crate::{
     const_from_placeholder_idx, db::HirDatabase, from_assoc_type_id, from_foreign_def_id,
@@ -997,7 +998,19 @@ impl HirDisplay for TypeRef {
                 write!(f, "dyn ")?;
                 f.write_joined(bounds, " + ")?;
             }
-            TypeRef::Error | TypeRef::Macro(_) => write!(f, "{{error}}")?,
+            TypeRef::Macro(macro_call) => {
+                let macro_call = macro_call.to_node(f.db.upcast());
+                let ctx = body::LowerCtx::with_hygiene(&Hygiene::new_unhygienic());
+                match macro_call.path() {
+                    Some(path) => match Path::from_src(path, &ctx) {
+                        Some(path) => path.hir_fmt(f)?,
+                        None => write!(f, "{{macro}}")?,
+                    },
+                    None => write!(f, "{{macro}}")?,
+                }
+                write!(f, "!(..)")?;
+            }
+            TypeRef::Error => write!(f, "{{error}}")?,
         }
         Ok(())
     }
