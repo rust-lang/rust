@@ -76,8 +76,12 @@ pub fn assert(shim_addr: usize, fnname: &str, expected: &str) {
         instrs = &instrs[..instrs.len() - 1];
     }
 
-    // If the expected intrinsic is a nop it is compiled away so we
-    // can't check for it - aka the intrinsic is not generating any code
+    // There are two cases when the expected instruction is nop:
+    // 1. The expected intrinsic is compiled away so we can't
+    // check for it - aka the intrinsic is not generating any code.
+    // 2. It is a mark, indicating that the instruction will be
+    // compiled into other instructions - mainly because of llvm
+    // optimization.
     if expected == "nop" {
         return;
     }

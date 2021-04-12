@@ -1664,6 +1664,326 @@ pub unsafe fn vcvtpq_u64_f64(a: float64x2_t) -> uint64x2_t {
     vcvtpq_u64_f64_(a)
 }
 
+/// Set all vector lanes to the same value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(dup, N = 1))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vdupq_laneq_p64<const N: i32>(a: poly64x2_t) -> poly64x2_t {
+    static_assert_imm1!(N);
+    simd_shuffle2(a, a, [N as u32, N as u32])
+}
+
+/// Set all vector lanes to the same value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(dup, N = 0))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vdupq_lane_p64<const N: i32>(a: poly64x1_t) -> poly64x2_t {
+    static_assert!(N : i32 where N == 0);
+    simd_shuffle2(a, a, [N as u32, N as u32])
+}
+
+/// Set all vector lanes to the same value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(dup, N = 1))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vdupq_laneq_f64<const N: i32>(a: float64x2_t) -> float64x2_t {
+    static_assert_imm1!(N);
+    simd_shuffle2(a, a, [N as u32, N as u32])
+}
+
+/// Set all vector lanes to the same value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(dup, N = 0))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vdupq_lane_f64<const N: i32>(a: float64x1_t) -> float64x2_t {
+    static_assert!(N : i32 where N == 0);
+    simd_shuffle2(a, a, [N as u32, N as u32])
+}
+
+/// Set all vector lanes to the same value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 0))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vdup_lane_p64<const N: i32>(a: poly64x1_t) -> poly64x1_t {
+    static_assert!(N : i32 where N == 0);
+    a
+}
+
+/// Set all vector lanes to the same value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 0))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vdup_lane_f64<const N: i32>(a: float64x1_t) -> float64x1_t {
+    static_assert!(N : i32 where N == 0);
+    a
+}
+
+/// Set all vector lanes to the same value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 1))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vdup_laneq_p64<const N: i32>(a: poly64x2_t) -> poly64x1_t {
+    static_assert_imm1!(N);
+    transmute::<u64, _>(simd_extract(a, N as u32))
+}
+
+/// Set all vector lanes to the same value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 1))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vdup_laneq_f64<const N: i32>(a: float64x2_t) -> float64x1_t {
+    static_assert_imm1!(N);
+    transmute::<f64, _>(simd_extract(a, N as u32))
+}
+
+/// Set all vector lanes to the same value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 4))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vdupb_lane_s8<const N: i32>(a: int8x8_t) -> i8 {
+    static_assert_imm3!(N);
+    simd_extract(a, N as u32)
+}
+
+/// Set all vector lanes to the same value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 8))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vdupb_laneq_s8<const N: i32>(a: int8x16_t) -> i8 {
+    static_assert_imm4!(N);
+    simd_extract(a, N as u32)
+}
+
+/// Set all vector lanes to the same value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vduph_lane_s16<const N: i32>(a: int16x4_t) -> i16 {
+    static_assert_imm2!(N);
+    simd_extract(a, N as u32)
+}
+
+/// Set all vector lanes to the same value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 4))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vduph_laneq_s16<const N: i32>(a: int16x8_t) -> i16 {
+    static_assert_imm3!(N);
+    simd_extract(a, N as u32)
+}
+
+/// Set all vector lanes to the same value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 1))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vdups_lane_s32<const N: i32>(a: int32x2_t) -> i32 {
+    static_assert_imm1!(N);
+    simd_extract(a, N as u32)
+}
+
+/// Set all vector lanes to the same value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vdups_laneq_s32<const N: i32>(a: int32x4_t) -> i32 {
+    static_assert_imm2!(N);
+    simd_extract(a, N as u32)
+}
+
+/// Set all vector lanes to the same value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 0))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vdupd_lane_s64<const N: i32>(a: int64x1_t) -> i64 {
+    static_assert!(N : i32 where N == 0);
+    simd_extract(a, N as u32)
+}
+
+/// Set all vector lanes to the same value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 1))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vdupd_laneq_s64<const N: i32>(a: int64x2_t) -> i64 {
+    static_assert_imm1!(N);
+    simd_extract(a, N as u32)
+}
+
+/// Set all vector lanes to the same value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 4))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vdupb_lane_u8<const N: i32>(a: uint8x8_t) -> u8 {
+    static_assert_imm3!(N);
+    simd_extract(a, N as u32)
+}
+
+/// Set all vector lanes to the same value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 8))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vdupb_laneq_u8<const N: i32>(a: uint8x16_t) -> u8 {
+    static_assert_imm4!(N);
+    simd_extract(a, N as u32)
+}
+
+/// Set all vector lanes to the same value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vduph_lane_u16<const N: i32>(a: uint16x4_t) -> u16 {
+    static_assert_imm2!(N);
+    simd_extract(a, N as u32)
+}
+
+/// Set all vector lanes to the same value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 4))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vduph_laneq_u16<const N: i32>(a: uint16x8_t) -> u16 {
+    static_assert_imm3!(N);
+    simd_extract(a, N as u32)
+}
+
+/// Set all vector lanes to the same value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 1))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vdups_lane_u32<const N: i32>(a: uint32x2_t) -> u32 {
+    static_assert_imm1!(N);
+    simd_extract(a, N as u32)
+}
+
+/// Set all vector lanes to the same value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vdups_laneq_u32<const N: i32>(a: uint32x4_t) -> u32 {
+    static_assert_imm2!(N);
+    simd_extract(a, N as u32)
+}
+
+/// Set all vector lanes to the same value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 0))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vdupd_lane_u64<const N: i32>(a: uint64x1_t) -> u64 {
+    static_assert!(N : i32 where N == 0);
+    simd_extract(a, N as u32)
+}
+
+/// Set all vector lanes to the same value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 1))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vdupd_laneq_u64<const N: i32>(a: uint64x2_t) -> u64 {
+    static_assert_imm1!(N);
+    simd_extract(a, N as u32)
+}
+
+/// Set all vector lanes to the same value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 4))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vdupb_lane_p8<const N: i32>(a: poly8x8_t) -> p8 {
+    static_assert_imm3!(N);
+    simd_extract(a, N as u32)
+}
+
+/// Set all vector lanes to the same value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 8))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vdupb_laneq_p8<const N: i32>(a: poly8x16_t) -> p8 {
+    static_assert_imm4!(N);
+    simd_extract(a, N as u32)
+}
+
+/// Set all vector lanes to the same value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vduph_lane_p16<const N: i32>(a: poly16x4_t) -> p16 {
+    static_assert_imm2!(N);
+    simd_extract(a, N as u32)
+}
+
+/// Set all vector lanes to the same value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 4))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vduph_laneq_p16<const N: i32>(a: poly16x8_t) -> p16 {
+    static_assert_imm3!(N);
+    simd_extract(a, N as u32)
+}
+
+/// Set all vector lanes to the same value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 1))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vdups_lane_f32<const N: i32>(a: float32x2_t) -> f32 {
+    static_assert_imm1!(N);
+    simd_extract(a, N as u32)
+}
+
+/// Set all vector lanes to the same value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vdups_laneq_f32<const N: i32>(a: float32x4_t) -> f32 {
+    static_assert_imm2!(N);
+    simd_extract(a, N as u32)
+}
+
+/// Set all vector lanes to the same value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 0))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vdupd_lane_f64<const N: i32>(a: float64x1_t) -> f64 {
+    static_assert!(N : i32 where N == 0);
+    simd_extract(a, N as u32)
+}
+
+/// Set all vector lanes to the same value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 1))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vdupd_laneq_f64<const N: i32>(a: float64x2_t) -> f64 {
+    static_assert_imm1!(N);
+    simd_extract(a, N as u32)
+}
+
 /// Extract vector from pair of vectors
 #[inline]
 #[target_feature(enable = "neon")]
@@ -6021,6 +6341,262 @@ mod test {
         let a: f64x2 = f64x2::new(1.1, 2.1);
         let e: u64x2 = u64x2::new(2, 3);
         let r: u64x2 = transmute(vcvtpq_u64_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdupq_laneq_p64() {
+        let a: i64x2 = i64x2::new(1, 1);
+        let e: i64x2 = i64x2::new(1, 1);
+        let r: i64x2 = transmute(vdupq_laneq_p64::<1>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdupq_lane_p64() {
+        let a: i64x1 = i64x1::new(1);
+        let e: i64x2 = i64x2::new(1, 1);
+        let r: i64x2 = transmute(vdupq_lane_p64::<0>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdupq_laneq_f64() {
+        let a: f64x2 = f64x2::new(1., 1.);
+        let e: f64x2 = f64x2::new(1., 1.);
+        let r: f64x2 = transmute(vdupq_laneq_f64::<1>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdupq_lane_f64() {
+        let a: f64 = 1.;
+        let e: f64x2 = f64x2::new(1., 1.);
+        let r: f64x2 = transmute(vdupq_lane_f64::<0>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdup_lane_p64() {
+        let a: i64x1 = i64x1::new(0);
+        let e: i64x1 = i64x1::new(0);
+        let r: i64x1 = transmute(vdup_lane_p64::<0>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdup_lane_f64() {
+        let a: f64 = 0.;
+        let e: f64 = 0.;
+        let r: f64 = transmute(vdup_lane_f64::<0>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdup_laneq_p64() {
+        let a: i64x2 = i64x2::new(0, 1);
+        let e: i64x1 = i64x1::new(1);
+        let r: i64x1 = transmute(vdup_laneq_p64::<1>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdup_laneq_f64() {
+        let a: f64x2 = f64x2::new(0., 1.);
+        let e: f64 = 1.;
+        let r: f64 = transmute(vdup_laneq_f64::<1>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdupb_lane_s8() {
+        let a: i8x8 = i8x8::new(1, 1, 1, 4, 1, 6, 7, 8);
+        let e: i8 = 1;
+        let r: i8 = transmute(vdupb_lane_s8::<4>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdupb_laneq_s8() {
+        let a: i8x16 = i8x16::new(1, 1, 1, 4, 1, 6, 7, 8, 1, 10, 11, 12, 13, 14, 15, 16);
+        let e: i8 = 1;
+        let r: i8 = transmute(vdupb_laneq_s8::<8>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vduph_lane_s16() {
+        let a: i16x4 = i16x4::new(1, 1, 1, 4);
+        let e: i16 = 1;
+        let r: i16 = transmute(vduph_lane_s16::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vduph_laneq_s16() {
+        let a: i16x8 = i16x8::new(1, 1, 1, 4, 1, 6, 7, 8);
+        let e: i16 = 1;
+        let r: i16 = transmute(vduph_laneq_s16::<4>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdups_lane_s32() {
+        let a: i32x2 = i32x2::new(1, 1);
+        let e: i32 = 1;
+        let r: i32 = transmute(vdups_lane_s32::<1>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdups_laneq_s32() {
+        let a: i32x4 = i32x4::new(1, 1, 1, 4);
+        let e: i32 = 1;
+        let r: i32 = transmute(vdups_laneq_s32::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdupd_lane_s64() {
+        let a: i64x1 = i64x1::new(1);
+        let e: i64 = 1;
+        let r: i64 = transmute(vdupd_lane_s64::<0>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdupd_laneq_s64() {
+        let a: i64x2 = i64x2::new(1, 1);
+        let e: i64 = 1;
+        let r: i64 = transmute(vdupd_laneq_s64::<1>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdupb_lane_u8() {
+        let a: u8x8 = u8x8::new(1, 1, 1, 4, 1, 6, 7, 8);
+        let e: u8 = 1;
+        let r: u8 = transmute(vdupb_lane_u8::<4>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdupb_laneq_u8() {
+        let a: u8x16 = u8x16::new(1, 1, 1, 4, 1, 6, 7, 8, 1, 10, 11, 12, 13, 14, 15, 16);
+        let e: u8 = 1;
+        let r: u8 = transmute(vdupb_laneq_u8::<8>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vduph_lane_u16() {
+        let a: u16x4 = u16x4::new(1, 1, 1, 4);
+        let e: u16 = 1;
+        let r: u16 = transmute(vduph_lane_u16::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vduph_laneq_u16() {
+        let a: u16x8 = u16x8::new(1, 1, 1, 4, 1, 6, 7, 8);
+        let e: u16 = 1;
+        let r: u16 = transmute(vduph_laneq_u16::<4>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdups_lane_u32() {
+        let a: u32x2 = u32x2::new(1, 1);
+        let e: u32 = 1;
+        let r: u32 = transmute(vdups_lane_u32::<1>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdups_laneq_u32() {
+        let a: u32x4 = u32x4::new(1, 1, 1, 4);
+        let e: u32 = 1;
+        let r: u32 = transmute(vdups_laneq_u32::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdupd_lane_u64() {
+        let a: u64x1 = u64x1::new(1);
+        let e: u64 = 1;
+        let r: u64 = transmute(vdupd_lane_u64::<0>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdupd_laneq_u64() {
+        let a: u64x2 = u64x2::new(1, 1);
+        let e: u64 = 1;
+        let r: u64 = transmute(vdupd_laneq_u64::<1>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdupb_lane_p8() {
+        let a: i8x8 = i8x8::new(1, 1, 1, 4, 1, 6, 7, 8);
+        let e: p8 = 1;
+        let r: p8 = transmute(vdupb_lane_p8::<4>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdupb_laneq_p8() {
+        let a: i8x16 = i8x16::new(1, 1, 1, 4, 1, 6, 7, 8, 1, 10, 11, 12, 13, 14, 15, 16);
+        let e: p8 = 1;
+        let r: p8 = transmute(vdupb_laneq_p8::<8>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vduph_lane_p16() {
+        let a: i16x4 = i16x4::new(1, 1, 1, 4);
+        let e: p16 = 1;
+        let r: p16 = transmute(vduph_lane_p16::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vduph_laneq_p16() {
+        let a: i16x8 = i16x8::new(1, 1, 1, 4, 1, 6, 7, 8);
+        let e: p16 = 1;
+        let r: p16 = transmute(vduph_laneq_p16::<4>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdups_lane_f32() {
+        let a: f32x2 = f32x2::new(1., 1.);
+        let e: f32 = 1.;
+        let r: f32 = transmute(vdups_lane_f32::<1>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdups_laneq_f32() {
+        let a: f32x4 = f32x4::new(1., 1., 1., 4.);
+        let e: f32 = 1.;
+        let r: f32 = transmute(vdups_laneq_f32::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdupd_lane_f64() {
+        let a: f64 = 1.;
+        let e: f64 = 1.;
+        let r: f64 = transmute(vdupd_lane_f64::<0>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdupd_laneq_f64() {
+        let a: f64x2 = f64x2::new(1., 1.);
+        let e: f64 = 1.;
+        let r: f64 = transmute(vdupd_laneq_f64::<1>(transmute(a)));
         assert_eq!(r, e);
     }
 

@@ -80,6 +80,8 @@ fn type_len(t: &str) -> usize {
         "poly16x8_t" => 8,
         "poly64x1_t" => 1,
         "poly64x2_t" => 2,
+        "i8" | "i16" | "i32" | "i64" | "u8" | "u16" | "u32" | "u64" | "f32" | "f64" | "p8"
+        | "p16" => 1,
         _ => panic!("unknown type: {}", t),
     }
 }
@@ -168,6 +170,18 @@ fn type_to_suffix(t: &str) -> &str {
         "poly16x8_t" => "q_p16",
         "poly64x1_t" => "_p64",
         "poly64x2_t" => "q_p64",
+        "i8" => "b_s8",
+        "i16" => "h_s16",
+        "i32" => "s_s32",
+        "i64" => "d_s64",
+        "u8" => "b_u8",
+        "u16" => "h_u16",
+        "u32" => "s_u32",
+        "u64" => "d_u64",
+        "f32" => "s_f32",
+        "f64" => "d_f64",
+        "p8" => "b_p8",
+        "p16" => "h_p16",
         _ => panic!("unknown type: {}", t),
     }
 }
@@ -204,6 +218,17 @@ fn type_to_n_suffix(t: &str) -> &str {
         "poly64x2_t" => "q_n_p64",
         _ => panic!("unknown type: {}", t),
     }
+}
+
+fn type_to_lane_suffixes<'a>(out_t: &'a str, in_t: &'a str) -> String {
+    let mut str = String::new();
+    let suf = type_to_suffix(out_t);
+    if !suf.starts_with("_") {
+        str.push_str(&suf[0..1]);
+    }
+    str.push_str("_lane");
+    str.push_str(type_to_suffix(in_t));
+    str
 }
 
 fn type_to_signed_suffix(t: &str) -> &str {
@@ -299,6 +324,7 @@ enum Suffix {
     NoQDouble,
     NSuffix,
     OutSuffix,
+    Lane,
 }
 
 #[derive(Clone, Copy)]
@@ -337,39 +363,51 @@ fn type_to_global_type(t: &str) -> &str {
         "poly16x8_t" => "i16x8",
         "poly64x1_t" => "i64x1",
         "poly64x2_t" => "i64x2",
+        "i8" => "i8",
+        "i16" => "i16",
+        "i32" => "i32",
+        "i64" => "i64",
+        "u8" => "u8",
+        "u16" => "u16",
+        "u32" => "u32",
+        "u64" => "u64",
+        "f32" => "f32",
+        "f64" => "f64",
+        "p8" => "p8",
+        "p16" => "p16",
         _ => panic!("unknown type: {}", t),
     }
 }
 
-// fn type_to_native_type(t: &str) -> &str {
-//     match t {
-//         "int8x8_t" => "i8",
-//         "int8x16_t" => "i8",
-//         "int16x4_t" => "i16",
-//         "int16x8_t" => "i16",
-//         "int32x2_t" => "i32",
-//         "int32x4_t" => "i32",
-//         "int64x1_t" => "i64",
-//         "int64x2_t" => "i64",
-//         "uint8x8_t" => "u8",
-//         "uint8x16_t" => "u8",
-//         "uint16x4_t" => "u16",
-//         "uint16x8_t" => "u16",
-//         "uint32x2_t" => "u32",
-//         "uint32x4_t" => "u32",
-//         "uint64x1_t" => "u64",
-//         "uint64x2_t" => "u64",
-//         "float16x4_t" => "f16",
-//         "float16x8_t" => "f16",
-//         "float32x2_t" => "f32",
-//         "float32x4_t" => "f32",
-//         "float64x1_t" => "f64",
-//         "float64x2_t" => "f64",
-//         "poly64x1_t" => "i64",
-//         "poly64x2_t" => "i64",
-//         _ => panic!("unknown type: {}", t),
-//     }
-// }
+fn type_to_native_type(t: &str) -> &str {
+    match t {
+        "int8x8_t" => "i8",
+        "int8x16_t" => "i8",
+        "int16x4_t" => "i16",
+        "int16x8_t" => "i16",
+        "int32x2_t" => "i32",
+        "int32x4_t" => "i32",
+        "int64x1_t" => "i64",
+        "int64x2_t" => "i64",
+        "uint8x8_t" => "u8",
+        "uint8x16_t" => "u8",
+        "uint16x4_t" => "u16",
+        "uint16x8_t" => "u16",
+        "uint32x2_t" => "u32",
+        "uint32x4_t" => "u32",
+        "uint64x1_t" => "u64",
+        "uint64x2_t" => "u64",
+        "float16x4_t" => "f16",
+        "float16x8_t" => "f16",
+        "float32x2_t" => "f32",
+        "float32x4_t" => "f32",
+        "float64x1_t" => "f64",
+        "float64x2_t" => "f64",
+        "poly64x1_t" => "u64",
+        "poly64x2_t" => "u64",
+        _ => panic!("unknown type: {}", t),
+    }
+}
 
 fn type_to_ext(t: &str) -> &str {
     match t {
@@ -731,6 +769,7 @@ fn gen_aarch64(
         ),
         NSuffix => format!("{}{}", current_name, type_to_n_suffix(in_t[1])),
         OutSuffix => format!("{}{}", current_name, type_to_suffix(out_t)),
+        Lane => format!("{}{}", current_name, type_to_lane_suffixes(out_t, in_t[1])),
     };
     let current_fn = if let Some(current_fn) = current_fn.clone() {
         if link_aarch64.is_some() {
@@ -1048,6 +1087,7 @@ fn gen_arm(
         ),
         NSuffix => format!("{}{}", current_name, type_to_n_suffix(in_t[1])),
         OutSuffix => format!("{}{}", current_name, type_to_suffix(out_t)),
+        Lane => format!("{}{}", current_name, type_to_lane_suffixes(out_t, in_t[1])),
     };
     let current_aarch64 = current_aarch64
         .clone()
@@ -1325,6 +1365,39 @@ fn expand_intrinsic(intr: &str, t: &str) -> String {
             _ => panic!("unknown type for extension: {}", t),
         };
         format!(r#""{}{}""#, &intr[..intr.len() - 1], ext)
+    } else if intr.ends_with(".l") {
+        let ext = match t {
+            "int8x8_t" => "8",
+            "int8x16_t" => "8",
+            "int16x4_t" => "16",
+            "int16x8_t" => "16",
+            "int32x2_t" => "32",
+            "int32x4_t" => "32",
+            "int64x1_t" => "64",
+            "int64x2_t" => "64",
+            "uint8x8_t" => "8",
+            "uint8x16_t" => "8",
+            "uint16x4_t" => "16",
+            "uint16x8_t" => "16",
+            "uint32x2_t" => "32",
+            "uint32x4_t" => "32",
+            "uint64x1_t" => "64",
+            "uint64x2_t" => "64",
+            "poly8x8_t" => "8",
+            "poly8x16_t" => "8",
+            "poly16x4_t" => "16",
+            "poly16x8_t" => "16",
+            "float16x4_t" => "16",
+            "float16x8_t" => "16",
+            "float32x2_t" => "32",
+            "float32x4_t" => "32",
+            "float64x1_t" => "64",
+            "float64x2_t" => "64",
+            "poly64x1_t" => "64",
+            "poly64x2_t" => "64",
+            _ => panic!("unknown type for extension: {}", t),
+        };
+        format!(r#""{}{}""#, &intr[..intr.len() - 1], ext)
     } else {
         intr.to_string()
     }
@@ -1341,6 +1414,9 @@ fn get_call(
     let params: Vec<_> = in_str.split(',').map(|v| v.trim().to_string()).collect();
     assert!(params.len() > 0);
     let mut fn_name = params[0].clone();
+    if fn_name == "a" {
+        return String::from("a");
+    }
     if fn_name == "transpose-1-in_len" {
         return transpose1(type_len(in_t[1])).to_string();
     }
@@ -1353,18 +1429,36 @@ fn get_call(
     if fn_name == "zip-2-in_len" {
         return zip2(type_len(in_t[1])).to_string();
     }
+    if fn_name.starts_with("dup") {
+        let fn_format: Vec<_> = fn_name.split('-').map(|v| v.to_string()).collect();
+        let len = match &*fn_format[1] {
+            "out_len" => type_len(out_t),
+            "in_len" => type_len(in_t[1]),
+            "halflen" => type_len(in_t[1]) / 2,
+            _ => 0,
+        };
+        let mut s = String::from("[");
+        for i in 0..len {
+            if i != 0 {
+                s.push_str(", ");
+            }
+            s.push_str(&fn_format[2]);
+        }
+        s.push_str("]");
+        return s;
+    }
     if fn_name.starts_with("asc") {
         let fn_format: Vec<_> = fn_name.split('-').map(|v| v.to_string()).collect();
         let start = match &*fn_format[1] {
             "0" => 0,
             "n" => n.unwrap(),
-            "halflen" => type_half_len_str(in_t[1]).parse::<i32>().unwrap(),
+            "halflen" => (type_len(in_t[1]) / 2) as i32,
             s => s.parse::<i32>().unwrap(),
         };
         let len = match &*fn_format[2] {
             "out_len" => type_len(out_t),
             "in_len" => type_len(in_t[1]),
-            "halflen" => type_half_len_str(in_t[1]).parse::<usize>().unwrap(),
+            "halflen" => type_len(in_t[1]) / 2,
             _ => 0,
         };
         return asc(start, len);
@@ -1378,7 +1472,14 @@ fn get_call(
             "in_bits_exp_len" => type_bits_exp_len(in_t[1]),
             _ => 0,
         };
-        return format!(r#"static_assert_imm{}!({});"#, len, fn_format[2]);
+        if len == 0 {
+            return format!(
+                r#"static_assert!({} : i32 where {} == 0);"#,
+                fn_format[2], fn_format[2]
+            );
+        } else {
+            return format!(r#"static_assert_imm{}!({});"#, len, fn_format[2]);
+        }
     }
     if fn_name.starts_with("static_assert") {
         let fn_format: Vec<_> = fn_name.split('-').map(|v| v.to_string()).collect();
@@ -1396,10 +1497,17 @@ fn get_call(
         } else {
             fn_format[3].clone()
         };
-        return format!(
-            r#"static_assert!({} : i32 where {} >= {} && {} <= {});"#,
-            fn_format[1], fn_format[1], lim1, fn_format[1], lim2
-        );
+        if lim1 == lim2 {
+            return format!(
+                r#"static_assert!({} : i32 where {} == {});"#,
+                fn_format[1], fn_format[1], lim1
+            );
+        } else {
+            return format!(
+                r#"static_assert!({} : i32 where {} >= {} && {} <= {});"#,
+                fn_format[1], fn_format[1], lim1, fn_format[1], lim2
+            );
+        }
     }
     if fn_name.starts_with("matchn") {
         let fn_format: Vec<_> = fn_name.split('-').map(|v| v.to_string()).collect();
@@ -1531,6 +1639,8 @@ fn get_call(
             fn_name.push_str(&type_len(in_t[1]).to_string());
         } else if fn_format[1] == "out_len" {
             fn_name.push_str(&type_len(out_t).to_string());
+        } else if fn_format[1] == "halflen" {
+            fn_name.push_str(&(type_len(in_t[1]) / 2).to_string());
         } else if fn_format[1] == "nout" {
             fn_name.push_str(type_to_n_suffix(out_t));
         } else {
@@ -1539,6 +1649,24 @@ fn get_call(
         if fn_format[2] == "ext" {
             fn_name.push_str("_");
         } else if fn_format[2] == "noext" {
+        } else if fn_format[2].starts_with("<") {
+            assert!(fn_format[2].ends_with(">"));
+            let types: Vec<_> = fn_format[2][1..fn_format[2].len() - 1]
+                .split(' ')
+                .map(|v| v.to_string())
+                .collect();
+            assert_eq!(types.len(), 2);
+            let type1 = if types[0] == "element_t" {
+                type_to_native_type(in_t[1])
+            } else {
+                &types[0]
+            };
+            let type2 = if types[1] == "element_t" {
+                type_to_native_type(in_t[1])
+            } else {
+                &types[1]
+            };
+            fn_name.push_str(&format!("::<{}, {}>", type1, type2));
         } else {
             fn_name.push_str(&fn_format[2]);
         }
@@ -1690,6 +1818,8 @@ mod test {
             suffix = NSuffix;
         } else if line.starts_with("out-suffix") {
             suffix = OutSuffix;
+        } else if line.starts_with("lane-suffixes") {
+            suffix = Lane;
         } else if line.starts_with("a = ") {
             a = line[4..].split(',').map(|v| v.trim().to_string()).collect();
         } else if line.starts_with("b = ") {
