@@ -223,6 +223,7 @@ fn check_final_expr<'tcx>(
             },
             _ => (),
         },
+        ExprKind::DropTemps(expr) => check_final_expr(cx, expr, None, RetReplacement::Empty),
         _ => (),
     }
 }

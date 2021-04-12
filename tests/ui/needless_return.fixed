@@ -1,4 +1,5 @@
 // run-rustfix
+// edition:2018
 
 #![allow(unused)]
 #![allow(
@@ -125,10 +126,85 @@ mod issue6501 {
     }
 }
 
-fn main() {
-    let _ = test_end_of_fn();
-    let _ = test_no_semicolon();
-    let _ = test_if_block();
-    let _ = test_match(true);
-    test_closure();
+async fn async_test_end_of_fn() -> bool {
+    if true {
+        // no error!
+        return true;
+    }
+    true
 }
+
+async fn async_test_no_semicolon() -> bool {
+    true
+}
+
+async fn async_test_if_block() -> bool {
+    if true {
+        true
+    } else {
+        false
+    }
+}
+
+async fn async_test_match(x: bool) -> bool {
+    match x {
+        true => false,
+        false => {
+            true
+        },
+    }
+}
+
+async fn async_test_closure() {
+    let _ = || {
+        true
+    };
+    let _ = || true;
+}
+
+async fn async_test_macro_call() -> i32 {
+    return the_answer!();
+}
+
+async fn async_test_void_fun() {
+    
+}
+
+async fn async_test_void_if_fun(b: bool) {
+    if b {
+        
+    } else {
+        
+    }
+}
+
+async fn async_test_void_match(x: u32) {
+    match x {
+        0 => (),
+        _ => {},
+    }
+}
+
+async fn async_read_line() -> String {
+    use std::io::BufRead;
+    let stdin = ::std::io::stdin();
+    return stdin.lock().lines().next().unwrap().unwrap();
+}
+
+async fn async_borrows_but_not_last(value: bool) -> String {
+    if value {
+        use std::io::BufRead;
+        let stdin = ::std::io::stdin();
+        let _a = stdin.lock().lines().next().unwrap().unwrap();
+        String::from("test")
+    } else {
+        String::new()
+    }
+}
+
+async fn async_test_return_in_macro() {
+    needed_return!(10);
+    needed_return!(0);
+}
+
+fn main() {}
