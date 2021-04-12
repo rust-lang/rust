@@ -1987,10 +1987,9 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                 }
             },
             ("step_by", [arg]) => iterator_step_by_zero::check(cx, expr, arg),
-            ("to_os_string", []) => implicit_clone::check(cx, expr, sym::OsStr),
-            ("to_owned", []) => implicit_clone::check(cx, expr, sym::ToOwned),
-            ("to_path_buf", []) => implicit_clone::check(cx, expr, sym::Path),
-            ("to_vec", []) => implicit_clone::check(cx, expr, sym::slice),
+            ("to_os_string" | "to_owned" | "to_path_buf" | "to_vec", []) => {
+                implicit_clone::check(cx, name, expr, recv, span);
+            },
             ("unwrap", []) => match method_call!(recv) {
                 Some(("get", [recv, get_arg], _)) => get_unwrap::check(cx, expr, recv, get_arg, false),
                 Some(("get_mut", [recv, get_arg], _)) => get_unwrap::check(cx, expr, recv, get_arg, true),
