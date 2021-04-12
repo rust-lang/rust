@@ -975,7 +975,7 @@ fn extract_lldb_version(full_version_line: &str) -> Option<(u32, bool)> {
         }
     } else if let Some(lldb_ver) = full_version_line.strip_prefix("lldb version ") {
         if let Some(idx) = lldb_ver.find(not_a_digit) {
-            let version: u32 = lldb_ver[..idx].parse().unwrap();
+            let version: u32 = lldb_ver[..idx].parse().ok()?;
             return Some((version * 100, full_version_line.contains("rust-enabled")));
         }
     }
