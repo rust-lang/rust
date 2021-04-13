@@ -8,6 +8,7 @@
 
 pub mod bench_fixture;
 mod fixture;
+mod assert_linear;
 
 use std::{
     convert::{TryFrom, TryInto},
@@ -22,7 +23,7 @@ use text_size::{TextRange, TextSize};
 pub use dissimilar::diff as __diff;
 pub use rustc_hash::FxHashMap;
 
-pub use crate::fixture::Fixture;
+pub use crate::{assert_linear::AssertLinear, fixture::Fixture};
 
 pub const CURSOR_MARKER: &str = "$0";
 pub const ESCAPED_CURSOR_MARKER: &str = "\\$0";
