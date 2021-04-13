@@ -73,6 +73,7 @@ impl<'a, 'tcx> DocFolder for BareUrlsLinter<'a, 'tcx> {
                     .unwrap_or(item.span.inner());
                 cx.tcx.struct_span_lint_hir(crate::lint::BARE_URLS, hir_id, sp, |lint| {
                     lint.build(msg)
+                        .note("bare URLs are not automatically turned into clickable links")
                         .span_suggestion(
                             sp,
                             "use an automatic link instead",
