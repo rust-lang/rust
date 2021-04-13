@@ -39,7 +39,7 @@ var TY_KEYWORD = itemTypes.indexOf("keyword");
 // In the search display, allows to switch between tabs.
 function printTab(nb) {
     if (nb === 0 || nb === 1 || nb === 2) {
-        currentTab = nb;
+        searchState.currentTab = nb;
     }
     var nb_copy = nb;
     onEachLazy(document.getElementById("titles").childNodes, function(elem) {
@@ -114,14 +114,14 @@ function initSearch(rawSearchIndex) {
     var NO_TYPE_FILTER = -1;
     var currentResults, index, searchIndex;
     var ALIASES = {};
-    var params = getQueryStringParams();
+    var params = searchState.getQueryStringParams();
 
     // Populate search bar with query string search term when provided,
     // but only if the input bar is empty. This avoid the obnoxious issue
     // where you start trying to do a search, and the index loads, and
     // suddenly your search is gone!
-    if (search_input.value === "") {
-        search_input.value = params.search || "";
+    if (searchState.input.value === "") {
+        searchState.input.value = params.search || "";
     }
 
     /**
@@ -898,12 +898,12 @@ function initSearch(rawSearchIndex) {
             }
             dst = dst[0];
             if (window.location.pathname === dst.pathname) {
-                hideSearchResults();
+                searchState.hideResults();
                 document.location.href = dst.href;
             }
         };
         var mouseover_func = function(e) {
-            if (mouseMovedAfterSearch) {
+            if (searchState.mouseMovedAfterSearch) {
                 var el = e.target;
                 // to retrieve the real "owner" of the event.
                 while (el.tagName !== "TR") {
@@ -927,7 +927,7 @@ function initSearch(rawSearchIndex) {
             });
         });
 
-        search_input.onkeydown = function(e) {
+        searchState.input.onkeydown = function(e) {
             // "actives" references the currently highlighted item in each search tab.
             // Each array in "actives" represents a tab.
             var actives = [[], [], []];
@@ -940,6 +940,7 @@ function initSearch(rawSearchIndex) {
                 current += 1;
             });
 
+            var currentTab = searchState.currentTab;
             if (e.which === 38) { // up
                 if (e.ctrlKey) { // Going through result tabs.
                     printTab(currentTab > 0 ? currentTab - 1 : 2);
@@ -1104,7 +1105,7 @@ function initSearch(rawSearchIndex) {
     }
 
     function makeTabHeader(tabNb, text, nbElems) {
-        if (currentTab === tabNb) {
+        if (searchState.currentTab === tabNb) {
             return "<button class=\"selected\">" + text +
                    " <div class=\"count\">(" + nbElems + ")</div></button>";
         }
@@ -1112,13 +1113,13 @@ function initSearch(rawSearchIndex) {
     }
 
     function showResults(results) {
-        var search = getSearchElement();
+        var search = searchState.outputElement();
         if (results.others.length === 1
             && getSettingValue("go-to-only-result") === "true"
             // By default, the search DOM element is "empty" (meaning it has no children not
             // text content). Once a search has been run, it won't be empty, even if you press
             // ESC or empty the search input (which also "cancels" the search).
-            && (!search.firstChild || search.firstChild.innerText !== getSearchLoadingText()))
+            && (!search.firstChild || search.firstChild.innerText !== searchState.loadingText))
         {
             var elem = document.createElement("a");
             elem.href = results.others[0].href;
@@ -1128,7 +1129,7 @@ function initSearch(rawSearchIndex) {
             elem.click();
             return;
         }
-        var query = getQuery(search_input.value);
+        var query = getQuery(searchState.input.value);
 
         currentResults = query.id;
 
@@ -1139,6 +1140,7 @@ function initSearch(rawSearchIndex) {
         // Navigate to the relevant tab if the current tab is empty, like in case users search
         // for "-> String". If they had selected another tab previously, they have to click on
         // it again.
+        var currentTab = searchState.currentTab;
         if ((currentTab === 0 && ret_others[1] === 0) ||
                 (currentTab === 1 && ret_in_args[1] === 0) ||
                 (currentTab === 2 && ret_returned[1] === 0)) {
@@ -1161,7 +1163,7 @@ function initSearch(rawSearchIndex) {
             ret_others[0] + ret_in_args[0] + ret_returned[0] + "</div>";
 
         search.innerHTML = output;
-        showSearchResults(search);
+        searchState.showResults(search);
         initSearchNav();
         var elems = document.getElementById("titles").childNodes;
         elems[0].onclick = function() { printTab(0); };
@@ -1252,8 +1254,8 @@ function initSearch(rawSearchIndex) {
     }
 
     function search(e, forced) {
-        var params = getQueryStringParams();
-        var query = getQuery(search_input.value.trim());
+        var params = searchState.getQueryStringParams();
+        var query = getQuery(searchState.input.value.trim());
 
         if (e) {
             e.preventDefault();
@@ -1264,17 +1266,17 @@ function initSearch(rawSearchIndex) {
         }
         if (forced !== true && query.id === currentResults) {
             if (query.query.length > 0) {
-                putBackSearch(search_input);
+                searchState.putBackSearch(searchState.input);
             }
             return;
         }
 
         // Update document title to maintain a meaningful browser history
-        searchTitle = "Results for " + query.query + " - Rust";
+        searchState.title = "Results for " + query.query + " - Rust";
 
         // Because searching is incremental by character, only the most
         // recent search query is added to the browser history.
-        if (browserSupportsHistoryApi()) {
+        if (searchState.browserSupportsHistoryApi()) {
             var newURL = getNakedUrl() + "?search=" + encodeURIComponent(query.raw) +
                 window.location.hash;
             if (!history.state && !params.search) {
@@ -1408,37 +1410,37 @@ function initSearch(rawSearchIndex) {
 
     function registerSearchEvents() {
         var searchAfter500ms = function() {
-            clearInputTimeout();
-            if (search_input.value.length === 0) {
-                if (browserSupportsHistoryApi()) {
+            searchState.clearInputTimeout();
+            if (searchState.input.value.length === 0) {
+                if (searchState.browserSupportsHistoryApi()) {
                     history.replaceState("", window.currentCrate + " - Rust",
                         getNakedUrl() + window.location.hash);
                 }
-                hideSearchResults();
+                searchState.hideResults();
             } else {
-                searchTimeout = setTimeout(search, 500);
+                searchState.timeout = setTimeout(search, 500);
             }
         };
-        search_input.onkeyup = searchAfter500ms;
-        search_input.oninput = searchAfter500ms;
+        searchState.input.onkeyup = searchAfter500ms;
+        searchState.input.oninput = searchAfter500ms;
         document.getElementsByClassName("search-form")[0].onsubmit = function(e) {
             e.preventDefault();
-            clearInputTimeout();
+            searchState.clearInputTimeout();
             search();
         };
-        search_input.onchange = function(e) {
+        searchState.input.onchange = function(e) {
             if (e.target !== document.activeElement) {
                 // To prevent doing anything when it's from a blur event.
                 return;
             }
             // Do NOT e.preventDefault() here. It will prevent pasting.
-            clearInputTimeout();
+            searchState.clearInputTimeout();
             // zero-timeout necessary here because at the time of event handler execution the
             // pasted content is not in the input field yet. Shouldn’t make any difference for
             // change, though.
             setTimeout(search, 0);
         };
-        search_input.onpaste = search_input.onchange;
+        searchState.input.onpaste = searchState.input.onchange;
 
         var selectCrate = document.getElementById("crate-search");
         if (selectCrate) {
@@ -1450,12 +1452,12 @@ function initSearch(rawSearchIndex) {
 
         // Push and pop states are used to add search results to the browser
         // history.
-        if (browserSupportsHistoryApi()) {
+        if (searchState.browserSupportsHistoryApi()) {
             // Store the previous <title> so we can revert back to it later.
             var previousTitle = document.title;
 
             window.addEventListener("popstate", function(e) {
-                var params = getQueryStringParams();
+                var params = searchState.getQueryStringParams();
                 // Revert to the previous title manually since the History
                 // API ignores the title parameter.
                 document.title = previousTitle;
@@ -1468,7 +1470,7 @@ function initSearch(rawSearchIndex) {
                 // nothing there, which lets you really go back to a
                 // previous state with nothing in the bar.
                 if (params.search && params.search.length > 0) {
-                    search_input.value = params.search;
+                    searchState.input.value = params.search;
                     // Some browsers fire "onpopstate" for every page load
                     // (Chrome), while others fire the event only when actually
                     // popping a state (Firefox), which is why search() is
@@ -1476,10 +1478,10 @@ function initSearch(rawSearchIndex) {
                     // function.
                     search(e);
                 } else {
-                    search_input.value = "";
+                    searchState.input.value = "";
                     // When browsing back from search results the main page
                     // visibility must be reset.
-                    hideSearchResults();
+                    searchState.hideResults();
                 }
             });
         }
@@ -1491,9 +1493,9 @@ function initSearch(rawSearchIndex) {
         // that try to sync state between the URL and the search input. To work around it,
         // do a small amount of re-init on page show.
         window.onpageshow = function(){
-            var qSearch = getQueryStringParams().search;
-            if (search_input.value === "" && qSearch) {
-                search_input.value = qSearch;
+            var qSearch = searchState.getQueryStringParams().search;
+            if (searchState.input.value === "" && qSearch) {
+                searchState.input.value = qSearch;
             }
             search();
         };
@@ -1502,7 +1504,7 @@ function initSearch(rawSearchIndex) {
     index = buildIndex(rawSearchIndex);
     registerSearchEvents();
     // If there's a search term in the URL, execute the search now.
-    if (getQueryStringParams().search) {
+    if (searchState.getQueryStringParams().search) {
         search();
     }
 };
