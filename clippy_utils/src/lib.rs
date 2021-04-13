@@ -293,27 +293,29 @@ pub fn match_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, path: &[&str]) 
     trt_id.map_or(false, |trt_id| match_def_path(cx, trt_id, path))
 }
 
-/// Checks if the method call given in `def_id` belongs to a trait or other container with a given
-/// diagnostic item
-pub fn is_diagnostic_assoc_item(cx: &LateContext<'_>, def_id: DefId, diag_item: Symbol) -> bool {
-    cx.tcx
-        .opt_associated_item(def_id)
-        .and_then(|associated_item| match associated_item.container {
-            rustc_ty::TraitContainer(assoc_def_id) => Some(assoc_def_id),
-            rustc_ty::ImplContainer(assoc_def_id) => match cx.tcx.type_of(assoc_def_id).kind() {
-                rustc_ty::Adt(adt, _) => Some(adt.did),
-                rustc_ty::Slice(_) => cx.tcx.get_diagnostic_item(sym::slice), // this isn't perfect but it works
-                _ => None,
-            },
-        })
-        .map_or(false, |assoc_def_id| cx.tcx.is_diagnostic_item(diag_item, assoc_def_id))
+/// Checks if a method is defined in an impl of a diagnostic item
+pub fn is_diag_item_method(cx: &LateContext<'_>, def_id: DefId, diag_item: Symbol) -> bool {
+    if let Some(impl_did) = cx.tcx.impl_of_method(def_id) {
+        if let Some(adt) = cx.tcx.type_of(impl_did).ty_adt_def() {
+            return cx.tcx.is_diagnostic_item(diag_item, adt.did);
+        }
+    }
+    false
+}
+
+/// Checks if a method is in a diagnostic item trait
+pub fn is_diag_trait_item(cx: &LateContext<'_>, def_id: DefId, diag_item: Symbol) -> bool {
+    if let Some(trait_did) = cx.tcx.trait_of_item(def_id) {
+        return cx.tcx.is_diagnostic_item(diag_item, trait_did);
+    }
+    false
 }
 
 /// Checks if the method call given in `expr` belongs to the given trait.
 pub fn is_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, diag_item: Symbol) -> bool {
     cx.typeck_results()
         .type_dependent_def_id(expr.hir_id)
-        .map_or(false, |did| is_diagnostic_assoc_item(cx, did, diag_item))
+        .map_or(false, |did| is_diag_trait_item(cx, did, diag_item))
 }
 
 /// Checks if an expression references a variable of the given name.

@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet, snippet_with_applicability};
-use clippy_utils::{in_macro, match_def_path, meets_msrv, paths};
-use clippy_utils::{is_diagnostic_assoc_item, is_lang_ctor};
+use clippy_utils::{in_macro, is_diag_trait_item, is_lang_ctor, match_def_path, meets_msrv, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
@@ -211,17 +210,17 @@ fn is_default_equivalent_ctor(cx: &LateContext<'_>, def_id: DefId, path: &QPath<
         sym::BinaryHeap,
     ];
 
-    if std_types_symbols
-        .iter()
-        .any(|symbol| is_diagnostic_assoc_item(cx, def_id, *symbol))
-    {
-        if let QPath::TypeRelative(_, method) = path {
-            if method.ident.name == sym::new {
-                return true;
+    if let QPath::TypeRelative(_, method) = path {
+        if method.ident.name == sym::new {
+            if let Some(impl_did) = cx.tcx.impl_of_method(def_id) {
+                if let Some(adt) = cx.tcx.type_of(impl_did).ty_adt_def() {
+                    return std_types_symbols
+                        .iter()
+                        .any(|&symbol| cx.tcx.is_diagnostic_item(symbol, adt.did));
+                }
             }
         }
     }
-
     false
 }
 
@@ -231,7 +230,7 @@ fn check_replace_with_default(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<
         if !in_external_macro(cx.tcx.sess, expr_span);
         if let ExprKind::Path(ref repl_func_qpath) = repl_func.kind;
         if let Some(repl_def_id) = cx.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id();
-        if is_diagnostic_assoc_item(cx, repl_def_id, sym::Default)
+        if is_diag_trait_item(cx, repl_def_id, sym::Default)
             || is_default_equivalent_ctor(cx, repl_def_id, repl_func_qpath);
 
         then {
