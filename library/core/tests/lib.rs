@@ -67,7 +67,6 @@
 #![feature(ptr_metadata)]
 #![feature(once_cell)]
 #![feature(unsized_tuple_coercion)]
-#![feature(nonzero_leading_trailing_zeros)]
 #![feature(const_option)]
 #![feature(integer_atomics)]
 #![feature(slice_group_by)]
