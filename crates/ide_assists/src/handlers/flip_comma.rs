@@ -66,26 +66,12 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
     fn flip_comma_before_punct() {
         // See https://github.com/rust-analyzer/rust-analyzer/issues/1619
         // "Flip comma" assist shouldn't be applicable to the last comma in enum or struct
         // declaration body.
-        check_assist_target(
-            flip_comma,
-            "pub enum Test { \
-             A,$0 \
-             }",
-            ",",
-        );
-
-        check_assist_target(
-            flip_comma,
-            "pub struct Test { \
-             foo: usize,$0 \
-             }",
-            ",",
-        );
+        check_assist_not_applicable(flip_comma, "pub enum Test { A,$0 }");
+        check_assist_not_applicable(flip_comma, "pub struct Test { foo: usize,$0 }");
     }
 
     #[test]
