@@ -276,6 +276,8 @@ crate struct RenderOptions {
     crate show_type_layout: bool,
     crate unstable_features: rustc_feature::UnstableFeatures,
     crate emit: Vec<EmitType>,
+    /// If `true`, HTML source pages will generate links for items to their definition.
+    crate generate_link_to_definition: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -655,6 +657,7 @@ impl Options {
         let generate_redirect_map = matches.opt_present("generate-redirect-map");
         let show_type_layout = matches.opt_present("show-type-layout");
         let nocapture = matches.opt_present("nocapture");
+        let generate_link_to_definition = matches.opt_present("generate-link-to-definition");
 
         let (lint_opts, describe_lints, lint_cap) =
             get_cmd_lint_options(matches, error_format, &debugging_opts);
@@ -721,6 +724,7 @@ impl Options {
                     crate_name.as_deref(),
                 ),
                 emit,
+                generate_link_to_definition,
             },
             crate_name,
             output_format,

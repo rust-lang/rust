@@ -396,6 +396,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             unstable_features,
             generate_redirect_map,
             show_type_layout,
+            generate_link_to_definition,
             ..
         } = options;
 
@@ -456,8 +457,13 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             }
         }
 
-        let (mut krate, local_sources, matches) =
-            collect_spans_and_sources(tcx, krate, &src_root, include_sources);
+        let (mut krate, local_sources, matches) = collect_spans_and_sources(
+            tcx,
+            krate,
+            &src_root,
+            include_sources,
+            generate_link_to_definition,
+        );
 
         let (sender, receiver) = channel();
         let mut scx = SharedContext {
