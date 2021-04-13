@@ -168,6 +168,7 @@ impl Server {
         self.send_notification(r)
     }
 
+    #[track_caller]
     pub(crate) fn request<R>(&self, params: R::Params, expected_resp: Value)
     where
         R: lsp_types::request::Request,
