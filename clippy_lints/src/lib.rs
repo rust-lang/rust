@@ -356,6 +356,7 @@ mod unicode;
 mod unit_return_expecting_ord;
 mod unit_types;
 mod unnamed_address;
+mod unnecessary_self_imports;
 mod unnecessary_sort_by;
 mod unnecessary_wraps;
 mod unnested_or_patterns;
@@ -963,6 +964,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         unit_types::UNIT_CMP,
         unnamed_address::FN_ADDRESS_COMPARISONS,
         unnamed_address::VTABLE_ADDRESS_COMPARISONS,
+        unnecessary_self_imports::UNNECESSARY_SELF_IMPORTS,
         unnecessary_sort_by::UNNECESSARY_SORT_BY,
         unnecessary_wraps::UNNECESSARY_WRAPS,
         unnested_or_patterns::UNNESTED_OR_PATTERNS,
@@ -1048,6 +1050,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box default_numeric_fallback::DefaultNumericFallback);
     store.register_late_pass(|| box inconsistent_struct_constructor::InconsistentStructConstructor);
     store.register_late_pass(|| box non_octal_unix_permissions::NonOctalUnixPermissions);
+    store.register_early_pass(|| box unnecessary_self_imports::UnnecessarySelfImports);
 
     let msrv = conf.msrv.as_ref().and_then(|s| {
         parse_msrv(s, None, None).or_else(|| {
@@ -1320,6 +1323,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(strings::STRING_TO_STRING),
         LintId::of(strings::STR_TO_STRING),
         LintId::of(types::RC_BUFFER),
+        LintId::of(unnecessary_self_imports::UNNECESSARY_SELF_IMPORTS),
         LintId::of(unwrap_in_result::UNWRAP_IN_RESULT),
         LintId::of(verbose_file_reads::VERBOSE_FILE_READS),
         LintId::of(write::PRINT_STDERR),
