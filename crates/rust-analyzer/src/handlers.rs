@@ -8,8 +8,8 @@ use std::{
 };
 
 use ide::{
-    AnnotationConfig, AssistKind, FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData,
-    Query, RangeInfo, Runnable, RunnableKind, SearchScope, SourceChange, TextEdit,
+    AnnotationConfig, FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData, Query,
+    RangeInfo, Runnable, RunnableKind, SearchScope, SourceChange, TextEdit,
 };
 use ide_db::SymbolKind;
 use itertools::Itertools;
@@ -1003,27 +1003,13 @@ pub(crate) fn handle_code_action(
 
     let mut res: Vec<lsp_ext::CodeAction> = Vec::new();
 
-    let include_quick_fixes = match &assists_config.allowed {
-        Some(v) => v.iter().any(|it| it == &AssistKind::None || it == &AssistKind::QuickFix),
-        None => true,
-    };
     let code_action_resolve_cap = snap.config.code_action_resolve();
-
-    let mut assists = Vec::new();
-
-    // Fixes from native diagnostics.
-    if include_quick_fixes {
-        let diagnostics = snap.analysis.diagnostics(&snap.config.diagnostics(), frange.file_id)?;
-        assists.extend(
-            diagnostics
-                .into_iter()
-                .filter_map(|d| d.fix)
-                .filter(|fix| fix.target.intersect(frange.range).is_some()),
-        )
-    }
-
-    // Assists proper.
-    assists.extend(snap.analysis.assists(&assists_config, !code_action_resolve_cap, frange)?);
+    let assists = snap.analysis.assists_with_fixes(
+        &assists_config,
+        &snap.config.diagnostics(),
+        !code_action_resolve_cap,
+        frange,
+    )?;
     for (index, assist) in assists.into_iter().enumerate() {
         let resolve_data =
             if code_action_resolve_cap { Some((index, params.clone())) } else { None };
@@ -1066,7 +1052,13 @@ pub(crate) fn handle_code_action_resolve(
         .only
         .map(|it| it.into_iter().filter_map(from_proto::assist_kind).collect());
 
-    let assists = snap.analysis.assists(&assists_config, true, frange)?;
+    let assists = snap.analysis.assists_with_fixes(
+        &assists_config,
+        &snap.config.diagnostics(),
+        true,
+        frange,
+    )?;
+
     let (id, index) = split_once(&params.id, ':').unwrap();
     let index = index.parse::<usize>().unwrap();
     let assist = &assists[index];

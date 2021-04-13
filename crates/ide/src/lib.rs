@@ -531,6 +531,34 @@ impl Analysis {
         self.with_db(|db| diagnostics::diagnostics(db, config, file_id))
     }
 
+    /// Convenience function to return assists + quick fixes for diagnostics
+    pub fn assists_with_fixes(
+        &self,
+        assist_config: &AssistConfig,
+        diagnostics_config: &DiagnosticsConfig,
+        resolve: bool,
+        frange: FileRange,
+    ) -> Cancelable<Vec<Assist>> {
+        let include_fixes = match &assist_config.allowed {
+            Some(it) => it.iter().any(|&it| it == AssistKind::None || it == AssistKind::QuickFix),
+            None => true,
+        };
+
+        self.with_db(|db| {
+            let mut res = Assist::get(db, assist_config, resolve, frange);
+            ssr::add_ssr_assist(db, &mut res, resolve, frange);
+
+            if include_fixes {
+                res.extend(
+                    diagnostics::diagnostics(db, diagnostics_config, frange.file_id)
+                        .into_iter()
+                        .filter_map(|it| it.fix),
+                );
+            }
+            res
+        })
+    }
+
     /// Returns the edit required to rename reference at the position to the new
     /// name.
     pub fn rename(
