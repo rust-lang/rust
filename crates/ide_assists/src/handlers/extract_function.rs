@@ -736,6 +736,14 @@ fn reference_is_exclusive(
 
 /// checks if this expr requires `&mut` access, recurses on field access
 fn expr_require_exclusive_access(ctx: &AssistContext, expr: &ast::Expr) -> Option<bool> {
+    match expr {
+        ast::Expr::MacroCall(_) => {
+            // FIXME: expand macro and check output for mutable usages of the variable?
+            return None;
+        }
+        _ => (),
+    }
+
     let parent = expr.syntax().parent()?;
 
     if let Some(bin_expr) = ast::BinExpr::cast(parent.clone()) {
@@ -794,7 +802,7 @@ impl HasTokenAtOffset for SyntaxNode {
     }
 }
 
-/// find relevant `ast::PathExpr` for reference
+/// find relevant `ast::Expr` for reference
 ///
 /// # Preconditions
 ///
@@ -811,7 +819,11 @@ fn path_element_of_reference(
         stdx::never!(false, "cannot find path parent of variable usage: {:?}", token);
         None
     })?;
-    stdx::always!(matches!(path, ast::Expr::PathExpr(_)));
+    stdx::always!(
+        matches!(path, ast::Expr::PathExpr(_) | ast::Expr::MacroCall(_)),
+        "unexpected expression type for variable usage: {:?}",
+        path
+    );
     Some(path)
 }
 
@@ -3460,6 +3472,38 @@ fn foo() -> Result<(), i64> {
     let h = 1 + m;
     Ok(())
 }"##,
+        );
+    }
+
+    #[test]
+    fn param_usage_in_macro() {
+        check_assist(
+            extract_function,
+            r"
+macro_rules! m {
+    ($val:expr) => { $val };
+}
+
+fn foo() {
+    let n = 1;
+    $0let k = n * m!(n);$0
+    let m = k + 1;
+}",
+            r"
+macro_rules! m {
+    ($val:expr) => { $val };
+}
+
+fn foo() {
+    let n = 1;
+    let k = fun_name(n);
+    let m = k + 1;
+}
+
+fn $0fun_name(n: i32) -> i32 {
+    let k = n * m!(n);
+    k
+}",
         );
     }
 }
