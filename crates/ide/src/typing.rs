@@ -222,8 +222,8 @@ mod tests {
         assert_eq_text!(ra_fixture_after, &actual);
     }
 
-    fn type_char_noop(char_typed: char, before: &str) {
-        let file_change = do_type_char(char_typed, before);
+    fn type_char_noop(char_typed: char, ra_fixture_before: &str) {
+        let file_change = do_type_char(char_typed, ra_fixture_before);
         assert!(file_change.is_none())
     }
 
@@ -240,16 +240,16 @@ mod tests {
         // ");
         type_char(
             '=',
-            r"
+            r#"
 fn foo() {
     let foo $0 1 + 1
 }
-",
-            r"
+"#,
+            r#"
 fn foo() {
     let foo = 1 + 1;
 }
-",
+"#,
         );
         //     do_check(r"
         // fn foo() {
@@ -268,27 +268,27 @@ fn foo() {
     fn indents_new_chain_call() {
         type_char(
             '.',
-            r"
-            fn main() {
-                xs.foo()
-                $0
-            }
-            ",
-            r"
-            fn main() {
-                xs.foo()
-                    .
-            }
-            ",
+            r#"
+fn main() {
+    xs.foo()
+    $0
+}
+            "#,
+            r#"
+fn main() {
+    xs.foo()
+        .
+}
+            "#,
         );
         type_char_noop(
             '.',
-            r"
-            fn main() {
-                xs.foo()
-                    $0
-            }
-            ",
+            r#"
+fn main() {
+    xs.foo()
+        $0
+}
+            "#,
         )
     }
 
@@ -297,26 +297,26 @@ fn foo() {
         type_char(
             '.',
             r"
-            fn main() {
-                xs.foo()
-                $0;
-            }
+fn main() {
+    xs.foo()
+    $0;
+}
             ",
-            r"
-            fn main() {
-                xs.foo()
-                    .;
-            }
-            ",
+            r#"
+fn main() {
+    xs.foo()
+        .;
+}
+            "#,
         );
         type_char_noop(
             '.',
-            r"
-            fn main() {
-                xs.foo()
-                    $0;
-            }
-            ",
+            r#"
+fn main() {
+    xs.foo()
+        $0;
+}
+            "#,
         )
     }
 
@@ -345,30 +345,30 @@ fn main() {
     fn indents_continued_chain_call() {
         type_char(
             '.',
-            r"
-            fn main() {
-                xs.foo()
-                    .first()
-                $0
-            }
-            ",
-            r"
-            fn main() {
-                xs.foo()
-                    .first()
-                    .
-            }
-            ",
+            r#"
+fn main() {
+    xs.foo()
+        .first()
+    $0
+}
+            "#,
+            r#"
+fn main() {
+    xs.foo()
+        .first()
+        .
+}
+            "#,
         );
         type_char_noop(
             '.',
-            r"
-            fn main() {
-                xs.foo()
-                    .first()
-                    $0
-            }
-            ",
+            r#"
+fn main() {
+    xs.foo()
+        .first()
+        $0
+}
+            "#,
         );
     }
 
@@ -376,33 +376,33 @@ fn main() {
     fn indents_middle_of_chain_call() {
         type_char(
             '.',
-            r"
-            fn source_impl() {
-                let var = enum_defvariant_list().unwrap()
-                $0
-                    .nth(92)
-                    .unwrap();
-            }
-            ",
-            r"
-            fn source_impl() {
-                let var = enum_defvariant_list().unwrap()
-                    .
-                    .nth(92)
-                    .unwrap();
-            }
-            ",
+            r#"
+fn source_impl() {
+    let var = enum_defvariant_list().unwrap()
+    $0
+        .nth(92)
+        .unwrap();
+}
+            "#,
+            r#"
+fn source_impl() {
+    let var = enum_defvariant_list().unwrap()
+        .
+        .nth(92)
+        .unwrap();
+}
+            "#,
         );
         type_char_noop(
             '.',
-            r"
-            fn source_impl() {
-                let var = enum_defvariant_list().unwrap()
-                    $0
-                    .nth(92)
-                    .unwrap();
-            }
-            ",
+            r#"
+fn source_impl() {
+    let var = enum_defvariant_list().unwrap()
+        $0
+        .nth(92)
+        .unwrap();
+}
+            "#,
         );
     }
 
@@ -410,25 +410,33 @@ fn main() {
     fn dont_indent_freestanding_dot() {
         type_char_noop(
             '.',
-            r"
-            fn main() {
-                $0
-            }
-            ",
+            r#"
+fn main() {
+    $0
+}
+            "#,
         );
         type_char_noop(
             '.',
-            r"
-            fn main() {
-            $0
-            }
-            ",
+            r#"
+fn main() {
+$0
+}
+            "#,
         );
     }
 
     #[test]
     fn adds_space_after_return_type() {
-        type_char('>', "fn foo() -$0{ 92 }", "fn foo() -> { 92 }")
+        type_char(
+            '>',
+            r#"
+fn foo() -$0{ 92 }
+"#,
+            r#"
+fn foo() -> { 92 }
+"#,
+        );
     }
 
     #[test]
