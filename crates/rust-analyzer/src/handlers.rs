@@ -1410,7 +1410,7 @@ pub(crate) fn handle_open_cargo_toml(
 pub(crate) fn handle_move_item(
     snap: GlobalStateSnapshot,
     params: lsp_ext::MoveItemParams,
-) -> Result<Option<lsp_types::TextDocumentEdit>> {
+) -> Result<Vec<lsp_ext::SnippetTextEdit>> {
     let _p = profile::span("handle_move_item");
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let range = from_proto::file_range(&snap, params.text_document, params.range)?;
@@ -1421,8 +1421,11 @@ pub(crate) fn handle_move_item(
     };
 
     match snap.analysis.move_item(range, direction)? {
-        Some(text_edit) => Ok(Some(to_proto::text_document_edit(&snap, file_id, text_edit)?)),
-        None => Ok(None),
+        Some(text_edit) => {
+            let line_index = snap.file_line_index(file_id)?;
+            Ok(to_proto::snippet_text_edit_vec(&line_index, true, text_edit))
+        }
+        None => Ok(vec![]),
     }
 }
 

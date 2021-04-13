@@ -407,7 +407,7 @@ pub enum MoveItem {}
 
 impl Request for MoveItem {
     type Params = MoveItemParams;
-    type Result = Option<lsp_types::TextDocumentEdit>;
+    type Result = Vec<SnippetTextEdit>;
     const METHOD: &'static str = "experimental/moveItem";
 }
 

@@ -1,8 +1,8 @@
 <!---
-lsp_ext.rs hash: faae991334a151d0
+lsp_ext.rs hash: b19ddc3ab8767af9
 
 If you need to change the above hash to make the test pass, please check if you
-need to adjust this doc as well and ping this  issue:
+need to adjust this doc as well and ping this issue:
 
   https://github.com/rust-analyzer/rust-analyzer/issues/4604
 
@@ -620,7 +620,7 @@ This request is sent from client to server to move item under cursor or selectio
 
 **Request:** `MoveItemParams`
 
-**Response:** `TextDocumentEdit | null`
+**Response:** `SnippetTextEdit[]`
 
 ```typescript
 export interface MoveItemParams {
