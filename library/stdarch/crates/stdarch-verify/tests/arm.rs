@@ -396,7 +396,13 @@ fn verify_all_signatures() {
         }
         // Skip some intrinsics that are present in GCC and Clang but
         // are missing from the official documentation.
-        let skip_intrinsic_verify = ["vmov_n_p64", "vmovq_n_p64", "vreinterpret_p64_s64", "vreinterpret_f32_p64", "vreinterpretq_f32_p64"];
+        let skip_intrinsic_verify = [
+            "vmov_n_p64",
+            "vmovq_n_p64",
+            "vreinterpret_p64_s64",
+            "vreinterpret_f32_p64",
+            "vreinterpretq_f32_p64",
+        ];
         let arm = match map.get(rust.name) {
             Some(i) => i,
             None => {

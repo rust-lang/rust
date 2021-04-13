@@ -11,11 +11,11 @@ pub use self::generated::*;
 
 use crate::{
     core_arch::{arm::*, simd::*, simd_llvm::*},
+    hint::unreachable_unchecked,
     mem::{transmute, zeroed},
 };
 #[cfg(test)]
 use stdarch_test::assert_instr;
-use core::hint::unreachable_unchecked;
 
 types! {
     /// ARM-specific 64-bit wide vector of one packed `f64`.

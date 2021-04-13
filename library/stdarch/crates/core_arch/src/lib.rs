@@ -75,4 +75,4 @@ mod core_arch;
 pub use self::core_arch::arch;
 
 #[allow(unused_imports)]
-use core::{ffi, hint, intrinsics, marker, mem, ops, ptr, sync};
+use core::{convert, ffi, hint, intrinsics, marker, mem, ops, ptr, sync};

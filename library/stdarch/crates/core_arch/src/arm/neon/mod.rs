@@ -8,9 +8,9 @@ pub use self::generated::*;
 #[cfg(target_arch = "arm")]
 use crate::mem::align_of;
 use crate::{
-    core_arch::simd::*, core_arch::simd_llvm::*, hint::unreachable_unchecked, mem::transmute,
+    convert::TryInto, core_arch::simd::*, core_arch::simd_llvm::*, hint::unreachable_unchecked,
+    mem::transmute,
 };
-use core::convert::TryInto;
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
