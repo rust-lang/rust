@@ -44,6 +44,7 @@ impl EarlyProps {
         let mut props = EarlyProps::default();
         let rustc_has_profiler_support = env::var_os("RUSTC_PROFILER_SUPPORT").is_some();
         let rustc_has_sanitizer_support = env::var_os("RUSTC_SANITIZER_SUPPORT").is_some();
+        let has_asm_support = util::has_asm_support(&config.target);
         let has_asan = util::ASAN_SUPPORTED_TARGETS.contains(&&*config.target);
         let has_lsan = util::LSAN_SUPPORTED_TARGETS.contains(&&*config.target);
         let has_msan = util::MSAN_SUPPORTED_TARGETS.contains(&&*config.target);
@@ -73,6 +74,10 @@ impl EarlyProps {
                 if config.run_clang_based_tests_with.is_none()
                     && config.parse_needs_matching_clang(ln)
                 {
+                    props.ignore = true;
+                }
+
+                if !has_asm_support && config.parse_name_directive(ln, "needs-asm-support") {
                     props.ignore = true;
                 }
 
