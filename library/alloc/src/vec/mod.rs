@@ -2567,7 +2567,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # let some_predicate = |x: &mut i32| { *x == 2 || *x == 3 || *x == 6 };
     /// # let mut vec = vec![1, 2, 3, 4, 5, 6];
     /// let mut i = 0;
-    /// while i != vec.len() {
+    /// while i < vec.len() {
     ///     if some_predicate(&mut vec[i]) {
     ///         let val = vec.remove(i);
     ///         // your code here
