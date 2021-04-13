@@ -76,10 +76,6 @@ function getVirtualKey(ev) {
     return String.fromCharCode(c);
 }
 
-function getSearchInput() {
-    return document.getElementsByClassName("search-input")[0];
-}
-
 var THEME_PICKER_ELEMENT_ID = "theme-picker";
 var THEMES_ELEMENT_ID = "theme-choices";
 
@@ -94,16 +90,6 @@ function getThemePickerElement() {
 // Returns the current URL without any query parameter or hash.
 function getNakedUrl() {
     return window.location.href.split("?")[0].split("#")[0];
-}
-
-// Sets the focus on the search bar at the top of the page
-function focusSearchBar() {
-    getSearchInput().focus();
-}
-
-// Removes the focus from the search bar.
-function defocusSearchBar() {
-    getSearchInput().blur();
 }
 
 function showThemeButtonState() {
@@ -170,7 +156,7 @@ function hideThemeButtonState() {
 
     window.searchState = {
       loadingText: "Loading search results...",
-      input: getSearchInput(),
+      input: document.getElementsByClassName("search-input")[0],
       outputElement: function() {
         return document.getElementById("search");
       },
@@ -189,6 +175,14 @@ function hideThemeButtonState() {
             clearTimeout(searchState.timeout);
             searchState.timeout = null;
         }
+      },
+      // Sets the focus on the search bar at the top of the page
+      focus: function() {
+          searchState.input.focus();
+      },
+      // Removes the focus from the search bar.
+      defocus: function() {
+          searchState.input.blur();
       },
       showResults: function(search) {
         if (search === null || typeof search === 'undefined') {
@@ -237,7 +231,11 @@ function hideThemeButtonState() {
       browserSupportsHistoryApi: function() {
           return window.history && typeof window.history.pushState === "function";
       },
-      setupLoader: function() {
+      setup: function() {
+        var search_input = searchState.input;
+        if (!searchState.input) {
+            return;
+        }
         function loadScript(url) {
             var script = document.createElement('script');
             script.src = url;
@@ -252,38 +250,57 @@ function hideThemeButtonState() {
             }
         }
 
-        // `crates{version}.js` should always be loaded before this script, so we can use it safely.
-        addSearchOptions(window.ALL_CRATES);
-        addSidebarCrates(window.ALL_CRATES);
-
-        searchState.input.addEventListener("focus", function() {
-            searchState.input.origPlaceholder = searchState.input.placeholder;
-            searchState.input.placeholder = "Type your search here.";
+        search_input.addEventListener("focus", function() {
+            searchState.putBackSearch(this);
+            search_input.origPlaceholder = searchState.input.placeholder;
+            search_input.placeholder = "Type your search here.";
             loadSearch();
         });
-        searchState.input.addEventListener("blur", function() {
-            searchState.input.placeholder = searchState.input.origPlaceholder;
+        search_input.addEventListener("blur", function() {
+            search_input.placeholder = searchState.input.origPlaceholder;
         });
-        searchState.input.removeAttribute('disabled');
 
-        var crateSearchDropDown = document.getElementById("crate-search");
-        // `crateSearchDropDown` can be null in case there is only crate because in that case, the
-        // crate filter dropdown is removed.
-        if (crateSearchDropDown) {
-            crateSearchDropDown.addEventListener("focus", loadSearch);
-        }
+        document.addEventListener("mousemove", function() {
+          searchState.mouseMovedAfterSearch = true;
+        });
+
+        search_input.removeAttribute('disabled');
+
+        // `crates{version}.js` should always be loaded before this script, so we can use it safely.
+        searchState.addCrateDropdown(window.ALL_CRATES);
         var params = searchState.getQueryStringParams();
         if (params.search !== undefined) {
+            var search = searchState.outputElement();
+            search.innerHTML = "<h3 style=\"text-align: center;\">" +
+               searchState.loadingText + "</h3>";
+            searchState.showResults(search);
             loadSearch();
         }
       },
-    };
+      addCrateDropdown: function(crates) {
+        var elem = document.getElementById("crate-search");
 
-    if (searchState.input) {
-        searchState.input.onfocus = function() {
-            searchState.putBackSearch(this);
-        };
-    }
+        if (!elem) {
+            return;
+        }
+        var savedCrate = getSettingValue("saved-filter-crate");
+        for (var i = 0, len = crates.length; i < len; ++i) {
+            var option = document.createElement("option");
+            option.value = crates[i];
+            option.innerText = crates[i];
+            elem.appendChild(option);
+            // Set the crate filter from saved storage, if the current page has the saved crate
+            // filter.
+            //
+            // If not, ignore the crate filter -- we want to support filtering for crates on sites
+            // like doc.rust-lang.org where the crates may differ from page to page while on the
+            // same domain.
+            if (crates[i] === savedCrate) {
+                elem.value = savedCrate;
+            }
+        }
+      },
+    };
 
     function getPageId() {
         if (window.location.hash) {
@@ -491,7 +508,7 @@ function hideThemeButtonState() {
             ev.preventDefault();
             searchState.hideResults(search);
         }
-        defocusSearchBar();
+        searchState.defocus();
         hideThemeButtonState();
     }
 
@@ -518,7 +535,7 @@ function hideThemeButtonState() {
             case "S":
                 displayHelp(false, ev);
                 ev.preventDefault();
-                focusSearchBar();
+                searchState.focus();
                 break;
 
             case "+":
@@ -604,10 +621,6 @@ function hideThemeButtonState() {
 
     document.addEventListener("keypress", handleShortcut);
     document.addEventListener("keydown", handleShortcut);
-
-    document.addEventListener("mousemove", function() {
-      searchState.mouseMovedAfterSearch = true;
-    });
 
     var handleSourceHighlight = (function() {
         var prev_line_id = 0;
@@ -789,6 +802,9 @@ function hideThemeButtonState() {
         block("foreigntype", "Foreign Types");
         block("keyword", "Keywords");
         block("traitalias", "Trait Aliases");
+
+        // `crates{version}.js` should always be loaded before this script, so we can use it safely.
+        addSidebarCrates(window.ALL_CRATES);
     };
 
     window.register_implementors = function(imp) {
@@ -1420,13 +1436,6 @@ function hideThemeButtonState() {
         };
     });
 
-    var params = searchState.getQueryStringParams();
-    if (params && params.search) {
-        var search = searchState.outputElement();
-        search.innerHTML = "<h3 style=\"text-align: center;\">" + searchState.loadingText + "</h3>";
-        searchState.showResults(search);
-    }
-
     var sidebar_menu = document.getElementsByClassName("sidebar-menu")[0];
     if (sidebar_menu) {
         sidebar_menu.onclick = function() {
@@ -1458,30 +1467,6 @@ function hideThemeButtonState() {
             }
         });
     }
-
-    function addSearchOptions(crates) {
-        var elem = document.getElementById("crate-search");
-
-        if (!elem) {
-            return;
-        }
-        var savedCrate = getSettingValue("saved-filter-crate");
-        for (var i = 0, len = crates.length; i < len; ++i) {
-            var option = document.createElement("option");
-            option.value = crates[i];
-            option.innerText = crates[i];
-            elem.appendChild(option);
-            // Set the crate filter from saved storage, if the current page has the saved crate
-            // filter.
-            //
-            // If not, ignore the crate filter -- we want to support filtering for crates on sites
-            // like doc.rust-lang.org where the crates may differ from page to page while on the
-            // same domain.
-            if (crates[i] === savedCrate) {
-                elem.value = savedCrate;
-            }
-        }
-    };
 
     function buildHelperPopup() {
         var popup = document.createElement("aside");
@@ -1547,7 +1532,7 @@ function hideThemeButtonState() {
 
     onHashChange(null);
     window.onhashchange = onHashChange;
-    searchState.setupLoader();
+    searchState.setup();
 }());
 
 function copy_path(but) {
