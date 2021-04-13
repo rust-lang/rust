@@ -791,6 +791,39 @@ impl<'tcx> ty::TyS<'tcx> {
         }
     }
 
+    /// Checks if `ty` has has a significant drop.
+    ///
+    /// Note that this method can return false even if `ty` has a destructor
+    /// attached; even if that is the case then the adt has been marked with
+    /// the attribute `rustc_insignificant_dtor`.
+    ///
+    /// Note that this method is used to check for change in drop order for
+    /// 2229 drop reorder migration analysis.
+    #[inline]
+    pub fn has_significant_drop(
+        &'tcx self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> bool {
+        // Avoid querying in simple cases.
+        match needs_drop_components(self, &tcx.data_layout) {
+            Err(AlwaysRequiresDrop) => true,
+            Ok(components) => {
+                let query_ty = match *components {
+                    [] => return false,
+                    // If we've got a single component, call the query with that
+                    // to increase the chance that we hit the query cache.
+                    [component_ty] => component_ty,
+                    _ => self,
+                };
+                // This doesn't depend on regions, so try to minimize distinct
+                // query keys used.
+                let erased = tcx.normalize_erasing_regions(param_env, query_ty);
+                tcx.has_significant_drop_raw(param_env.and(erased))
+            }
+        }
+    }
+
     /// Returns `true` if equality for this type is both reflexive and structural.
     ///
     /// Reflexive equality for a type is indicated by an `Eq` impl for that type.

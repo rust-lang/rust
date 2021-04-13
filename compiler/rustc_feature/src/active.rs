@@ -700,6 +700,7 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::native_link_modifiers_verbatim,
     sym::native_link_modifiers_whole_archive,
     sym::native_link_modifiers_as_needed,
+    sym::rustc_insignificant_dtor,
 ];
 
 /// Some features are not allowed to be used together at the same time, if

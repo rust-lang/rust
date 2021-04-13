@@ -1035,6 +1035,10 @@ rustc_queries! {
     query needs_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` needs drop", env.value }
     }
+    /// Query backing `TyS::has_significant_drop_raw`.
+    query has_significant_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+        desc { "computing whether `{}` has a significant drop", env.value }
+    }
 
     /// Query backing `TyS::is_structural_eq_shallow`.
     ///
@@ -1053,6 +1057,17 @@ rustc_queries! {
     query adt_drop_tys(def_id: DefId) -> Result<&'tcx ty::List<Ty<'tcx>>, AlwaysRequiresDrop> {
         desc { |tcx| "computing when `{}` needs drop", tcx.def_path_str(def_id) }
         cache_on_disk_if { true }
+    }
+
+    /// A list of types where the ADT requires drop if and only if any of those types
+    /// has significant drop. A type marked with the attribute `rustc_insignificant_dtor`
+    /// is considered to not be significant. A drop is significant if it is implemented
+    /// by the user or does anything that will have any observable behavior (other than
+    /// freeing up memory). If the ADT is known to have a significant destructor then
+    /// `Err(AlwaysRequiresDrop)` is returned.
+    query adt_significant_drop_tys(def_id: DefId) -> Result<&'tcx ty::List<Ty<'tcx>>, AlwaysRequiresDrop> {
+        desc { |tcx| "computing when `{}` has a significant destructor", tcx.def_path_str(def_id) }
+        cache_on_disk_if { false }
     }
 
     query layout_raw(
