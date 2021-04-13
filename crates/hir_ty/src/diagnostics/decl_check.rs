@@ -926,11 +926,6 @@ fn main() {
         fn CheckItWorksWithModAttr(BAD_NAME_HI: u8) {}
     }
 
-    trait BAD_TRAIT {
-        fn BAD_FUNCTION();
-        fn BadFunction();
-    }
-
     #[allow(non_snake_case, non_camel_case_types)]
     pub struct some_type {
         SOME_FIELD: u8,
@@ -981,22 +976,41 @@ fn main() {
 
         check_diagnostics(
             r#"
-trait T { fn a(); }
-struct U {}
-impl T for U {
-    fn a() {
-        // this comes out of bitflags, mostly
-        #[allow(non_snake_case)]
-        trait __BitFlags {
-            const HiImAlsoBad: u8 = 2;
-            #[inline]
-            fn Dirty(&self) -> bool {
-                false
+    trait T { fn a(); }
+    struct U {}
+    impl T for U {
+        fn a() {
+            // this comes out of bitflags, mostly
+            #[allow(non_snake_case)]
+            trait __BitFlags {
+                const HiImAlsoBad: u8 = 2;
+                #[inline]
+                fn Dirty(&self) -> bool {
+                    false
+                }
             }
-        }
 
+        }
     }
-}"#,
+    "#,
+        );
+    }
+
+    #[test]
+    #[ignore]
+    fn bug_traits_arent_checked() {
+        // FIXME: Traits and functions in traits aren't currently checked by
+        // r-a, even though rustc will complain about them.
+        check_diagnostics(
+            r#"
+    trait BAD_TRAIT {
+       // ^^^^^^^^^ Trait `BAD_TRAIT` should have CamelCase name, e.g. `BadTrait`
+        fn BAD_FUNCTION();
+        // ^^^^^^^^^^^^ Function `BAD_FUNCTION` should have snake_case name, e.g. `bad_function`
+        fn BadFunction();
+        // ^^^^^^^^^^^^ Function `BadFunction` should have snake_case name, e.g. `bad_function`
+    }
+    "#,
         );
     }
 
@@ -1006,10 +1020,10 @@ impl T for U {
         cov_mark::check!(extern_static_incorrect_case_ignored);
         check_diagnostics(
             r#"
-extern {
-    fn NonSnakeCaseName(SOME_VAR: u8) -> u8;
-    pub static SomeStatic: u8 = 10;
-}
+    extern {
+        fn NonSnakeCaseName(SOME_VAR: u8) -> u8;
+        pub static SomeStatic: u8 = 10;
+    }
             "#,
         );
     }
