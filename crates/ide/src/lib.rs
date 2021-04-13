@@ -82,7 +82,7 @@ pub use crate::{
     references::{rename::RenameError, ReferenceSearchResult},
     runnables::{Runnable, RunnableKind, TestId},
     syntax_highlighting::{
-        tags::{Highlight, HlMod, HlMods, HlPunct, HlTag},
+        tags::{Highlight, HlMod, HlMods, HlOperator, HlPunct, HlTag},
         HlRange,
     },
 };

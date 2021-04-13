@@ -12,7 +12,10 @@ use syntax::{
     SyntaxNode, SyntaxToken, T,
 };
 
-use crate::{syntax_highlighting::tags::HlPunct, Highlight, HlMod, HlTag};
+use crate::{
+    syntax_highlighting::tags::{HlOperator, HlPunct},
+    Highlight, HlMod, HlTag,
+};
 
 pub(super) fn element(
     sema: &Semantics<RootDatabase>,
@@ -132,7 +135,7 @@ pub(super) fn element(
         INT_NUMBER | FLOAT_NUMBER => HlTag::NumericLiteral.into(),
         BYTE => HlTag::ByteLiteral.into(),
         CHAR => HlTag::CharLiteral.into(),
-        QUESTION => Highlight::new(HlTag::Operator) | HlMod::ControlFlow,
+        QUESTION => Highlight::new(HlTag::Operator(HlOperator::Other)) | HlMod::ControlFlow,
         LIFETIME => {
             let lifetime = element.into_node().and_then(ast::Lifetime::cast).unwrap();
 
@@ -146,8 +149,11 @@ pub(super) fn element(
             }
         }
         p if p.is_punct() => match p {
+            T![&] if element.parent().and_then(ast::BinExpr::cast).is_some() => {
+                HlTag::Operator(HlOperator::Bitwise).into()
+            }
             T![&] => {
-                let h = HlTag::Operator.into();
+                let h = HlTag::Operator(HlOperator::Other).into();
                 let is_unsafe = element
                     .parent()
                     .and_then(ast::RefExpr::cast)
@@ -159,12 +165,17 @@ pub(super) fn element(
                     h
                 }
             }
-            T![::] | T![->] | T![=>] | T![..] | T![=] | T![@] | T![.] => HlTag::Operator.into(),
+            T![::] | T![->] | T![=>] | T![..] | T![=] | T![@] | T![.] => {
+                HlTag::Operator(HlOperator::Other).into()
+            }
             T![!] if element.parent().and_then(ast::MacroCall::cast).is_some() => {
                 HlTag::Symbol(SymbolKind::Macro).into()
             }
             T![!] if element.parent().and_then(ast::NeverType::cast).is_some() => {
                 HlTag::BuiltinType.into()
+            }
+            T![!] if element.parent().and_then(ast::PrefixExpr::cast).is_some() => {
+                HlTag::Operator(HlOperator::Logical).into()
             }
             T![*] if element.parent().and_then(ast::PtrType::cast).is_some() => {
                 HlTag::Keyword.into()
@@ -175,9 +186,9 @@ pub(super) fn element(
                 let expr = prefix_expr.expr()?;
                 let ty = sema.type_of_expr(&expr)?;
                 if ty.is_raw_ptr() {
-                    HlTag::Operator | HlMod::Unsafe
+                    HlTag::Operator(HlOperator::Other) | HlMod::Unsafe
                 } else if let Some(ast::PrefixOp::Deref) = prefix_expr.op_kind() {
-                    HlTag::Operator.into()
+                    HlTag::Operator(HlOperator::Other).into()
                 } else {
                     HlTag::Punctuation(HlPunct::Other).into()
                 }
@@ -188,19 +199,43 @@ pub(super) fn element(
                 let expr = prefix_expr.expr()?;
                 match expr {
                     ast::Expr::Literal(_) => HlTag::NumericLiteral,
-                    _ => HlTag::Operator,
+                    _ => HlTag::Operator(HlOperator::Other),
                 }
                 .into()
             }
             _ if element.parent().and_then(ast::PrefixExpr::cast).is_some() => {
-                HlTag::Operator.into()
+                HlTag::Operator(HlOperator::Other).into()
             }
-            _ if element.parent().and_then(ast::BinExpr::cast).is_some() => HlTag::Operator.into(),
+            T![+] | T![-] | T![*] | T![/] | T![+=] | T![-=] | T![*=] | T![/=]
+                if element.parent().and_then(ast::BinExpr::cast).is_some() =>
+            {
+                HlTag::Operator(HlOperator::Arithmetic).into()
+            }
+            T![|] | T![&] | T![!] | T![^] | T![|=] | T![&=] | T![^=]
+                if element.parent().and_then(ast::BinExpr::cast).is_some() =>
+            {
+                HlTag::Operator(HlOperator::Bitwise).into()
+            }
+            T![&&] | T![||] if element.parent().and_then(ast::BinExpr::cast).is_some() => {
+                HlTag::Operator(HlOperator::Logical).into()
+            }
+            T![>] | T![<] | T![==] | T![>=] | T![<=] | T![!=]
+                if element.parent().and_then(ast::BinExpr::cast).is_some() =>
+            {
+                HlTag::Operator(HlOperator::Comparision).into()
+            }
+            _ if element.parent().and_then(ast::BinExpr::cast).is_some() => {
+                HlTag::Operator(HlOperator::Other).into()
+            }
             _ if element.parent().and_then(ast::RangeExpr::cast).is_some() => {
-                HlTag::Operator.into()
+                HlTag::Operator(HlOperator::Other).into()
             }
-            _ if element.parent().and_then(ast::RangePat::cast).is_some() => HlTag::Operator.into(),
-            _ if element.parent().and_then(ast::RestPat::cast).is_some() => HlTag::Operator.into(),
+            _ if element.parent().and_then(ast::RangePat::cast).is_some() => {
+                HlTag::Operator(HlOperator::Other).into()
+            }
+            _ if element.parent().and_then(ast::RestPat::cast).is_some() => {
+                HlTag::Operator(HlOperator::Other).into()
+            }
             _ if element.parent().and_then(ast::Attr::cast).is_some() => HlTag::Attribute.into(),
             kind => HlTag::Punctuation(match kind {
                 T!['['] | T![']'] => HlPunct::Bracket,
