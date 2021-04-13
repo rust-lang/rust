@@ -899,44 +899,44 @@ fn main() {
     fn allow_attributes() {
         check_diagnostics(
             r#"
-            #[allow(non_snake_case)]
-    fn NonSnakeCaseName(SOME_VAR: u8) -> u8{
-        // cov_flags generated output from elsewhere in this file
-        extern "C" {
-            #[no_mangle]
-            static lower_case: u8;
-        }
-
-        let OtherVar = SOME_VAR + 1;
-        OtherVar
+#[allow(non_snake_case)]
+fn NonSnakeCaseName(SOME_VAR: u8) -> u8{
+    // cov_flags generated output from elsewhere in this file
+    extern "C" {
+        #[no_mangle]
+        static lower_case: u8;
     }
 
-    #[allow(nonstandard_style)]
-    mod CheckNonstandardStyle {
-        fn HiImABadFnName() {}
-    }
+    let OtherVar = SOME_VAR + 1;
+    OtherVar
+}
 
-    #[allow(bad_style)]
-    mod CheckBadStyle {
-        fn HiImABadFnName() {}
-    }
+#[allow(nonstandard_style)]
+mod CheckNonstandardStyle {
+    fn HiImABadFnName() {}
+}
 
-    mod F {
-        #![allow(non_snake_case)]
-        fn CheckItWorksWithModAttr(BAD_NAME_HI: u8) {}
-    }
+#[allow(bad_style)]
+mod CheckBadStyle {
+    fn HiImABadFnName() {}
+}
 
-    #[allow(non_snake_case, non_camel_case_types)]
-    pub struct some_type {
-        SOME_FIELD: u8,
-        SomeField: u16,
-    }
+mod F {
+    #![allow(non_snake_case)]
+    fn CheckItWorksWithModAttr(BAD_NAME_HI: u8) {}
+}
 
-    #[allow(non_upper_case_globals)]
-    pub const some_const: u8 = 10;
+#[allow(non_snake_case, non_camel_case_types)]
+pub struct some_type {
+    SOME_FIELD: u8,
+    SomeField: u16,
+}
 
-    #[allow(non_upper_case_globals)]
-    pub static SomeStatic: u8 = 10;
+#[allow(non_upper_case_globals)]
+pub const some_const: u8 = 10;
+
+#[allow(non_upper_case_globals)]
+pub static SomeStatic: u8 = 10;
     "#,
         );
     }
@@ -945,12 +945,11 @@ fn main() {
     fn allow_attributes_crate_attr() {
         check_diagnostics(
             r#"
-    #![allow(non_snake_case)]
+#![allow(non_snake_case)]
 
-    mod F {
-        fn CheckItWorksWithCrateAttr(BAD_NAME_HI: u8) {}
-    }
-
+mod F {
+    fn CheckItWorksWithCrateAttr(BAD_NAME_HI: u8) {}
+}
     "#,
         );
     }
@@ -976,22 +975,22 @@ fn main() {
 
         check_diagnostics(
             r#"
-    trait T { fn a(); }
-    struct U {}
-    impl T for U {
-        fn a() {
-            // this comes out of bitflags, mostly
-            #[allow(non_snake_case)]
-            trait __BitFlags {
-                const HiImAlsoBad: u8 = 2;
-                #[inline]
-                fn Dirty(&self) -> bool {
-                    false
-                }
+trait T { fn a(); }
+struct U {}
+impl T for U {
+    fn a() {
+        // this comes out of bitflags, mostly
+        #[allow(non_snake_case)]
+        trait __BitFlags {
+            const HiImAlsoBad: u8 = 2;
+            #[inline]
+            fn Dirty(&self) -> bool {
+                false
             }
-
         }
+
     }
+}
     "#,
         );
     }
@@ -1003,13 +1002,13 @@ fn main() {
         // r-a, even though rustc will complain about them.
         check_diagnostics(
             r#"
-    trait BAD_TRAIT {
-       // ^^^^^^^^^ Trait `BAD_TRAIT` should have CamelCase name, e.g. `BadTrait`
-        fn BAD_FUNCTION();
-        // ^^^^^^^^^^^^ Function `BAD_FUNCTION` should have snake_case name, e.g. `bad_function`
-        fn BadFunction();
-        // ^^^^^^^^^^^^ Function `BadFunction` should have snake_case name, e.g. `bad_function`
-    }
+trait BAD_TRAIT {
+    // ^^^^^^^^^ Trait `BAD_TRAIT` should have CamelCase name, e.g. `BadTrait`
+    fn BAD_FUNCTION();
+    // ^^^^^^^^^^^^ Function `BAD_FUNCTION` should have snake_case name, e.g. `bad_function`
+    fn BadFunction();
+    // ^^^^^^^^^^^^ Function `BadFunction` should have snake_case name, e.g. `bad_function`
+}
     "#,
         );
     }
@@ -1020,10 +1019,10 @@ fn main() {
         cov_mark::check!(extern_static_incorrect_case_ignored);
         check_diagnostics(
             r#"
-    extern {
-        fn NonSnakeCaseName(SOME_VAR: u8) -> u8;
-        pub static SomeStatic: u8 = 10;
-    }
+extern {
+    fn NonSnakeCaseName(SOME_VAR: u8) -> u8;
+    pub static SomeStatic: u8 = 10;
+}
             "#,
         );
     }
