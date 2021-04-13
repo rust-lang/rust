@@ -155,11 +155,7 @@ impl<W: Write> BufWriter<W> {
         impl Drop for BufGuard<'_> {
             fn drop(&mut self) {
                 if self.written > 0 {
-                    if self.done() {
-                        self.buffer.clear();
-                    } else {
-                        self.buffer.drain(..self.written);
-                    }
+                    self.buffer.drain(..self.written);
                 }
             }
         }
