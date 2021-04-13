@@ -223,7 +223,7 @@ where
 
 impl fmt::Display for JoinPathsError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "path segment contains separator `{}`", PATH_SEPARATOR)
+        write!(f, "path segment contains separator `{}`", char::from(PATH_SEPARATOR))
     }
 }
 
