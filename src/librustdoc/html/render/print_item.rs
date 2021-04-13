@@ -830,11 +830,14 @@ fn item_typedef(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::T
 
     document(w, cx, it, None);
 
+    let def_id = it.def_id.expect_real();
     // Render any items associated directly to this alias, as otherwise they
     // won't be visible anywhere in the docs. It would be nice to also show
     // associated items from the aliased type (see discussion in #32077), but
     // we need #14072 to make sense of the generics.
-    render_assoc_items(w, cx, it, it.def_id.expect_real(), AssocItemRender::All)
+    render_assoc_items(w, cx, it, def_id, AssocItemRender::All);
+
+    document_ty_layout(w, cx, def_id);
 }
 
 fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Union) {

@@ -36,7 +36,8 @@ pub struct Generic<T>(T);
 // @has - '(unsized)'
 pub struct Unsized([u8]);
 
-// @!has type_layout/type.TypeAlias.html 'Size: '
+// @has type_layout/type.TypeAlias.html 'Size: '
+// @has - ' bytes'
 pub type TypeAlias = X;
 
 // @!has type_layout/trait.MyTrait.html 'Size: '
