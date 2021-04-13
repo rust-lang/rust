@@ -57,7 +57,8 @@ pub fn diagnostics(
             let crate_name =
                 module.krate().display_name(db).as_deref().unwrap_or("unknown").to_string();
             println!("processing crate: {}, module: {}", crate_name, _vfs.file_path(file_id));
-            for diagnostic in analysis.diagnostics(&DiagnosticsConfig::default(), file_id).unwrap()
+            for diagnostic in
+                analysis.diagnostics(&DiagnosticsConfig::default(), false, file_id).unwrap()
             {
                 if matches!(diagnostic.severity, Severity::Error) {
                     found_error = true;

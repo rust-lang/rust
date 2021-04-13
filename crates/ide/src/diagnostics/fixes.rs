@@ -20,17 +20,26 @@ use syntax::{
 };
 use text_edit::TextEdit;
 
-use crate::{diagnostics::fix, references::rename::rename_with_semantics, Assist, FilePosition};
+use crate::{
+    diagnostics::{fix, unresolved_fix},
+    references::rename::rename_with_semantics,
+    Assist, FilePosition,
+};
 
 /// A [Diagnostic] that potentially has a fix available.
 ///
 /// [Diagnostic]: hir::diagnostics::Diagnostic
 pub(crate) trait DiagnosticWithFix: Diagnostic {
-    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Assist>;
+    /// `resolve` determines if the diagnostic should fill in the `edit` field
+    /// of the assist.
+    ///
+    /// If `resolve` is false, the edit will be computed later, on demand, and
+    /// can be omitted.
+    fn fix(&self, sema: &Semantics<RootDatabase>, _resolve: bool) -> Option<Assist>;
 }
 
 impl DiagnosticWithFix for UnresolvedModule {
-    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Assist> {
+    fn fix(&self, sema: &Semantics<RootDatabase>, _resolve: bool) -> Option<Assist> {
         let root = sema.db.parse_or_expand(self.file)?;
         let unresolved_module = self.decl.to_node(&root);
         Some(fix(
@@ -50,7 +59,7 @@ impl DiagnosticWithFix for UnresolvedModule {
 }
 
 impl DiagnosticWithFix for NoSuchField {
-    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Assist> {
+    fn fix(&self, sema: &Semantics<RootDatabase>, _resolve: bool) -> Option<Assist> {
         let root = sema.db.parse_or_expand(self.file)?;
         missing_record_expr_field_fix(
             &sema,
@@ -61,7 +70,7 @@ impl DiagnosticWithFix for NoSuchField {
 }
 
 impl DiagnosticWithFix for MissingFields {
-    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Assist> {
+    fn fix(&self, sema: &Semantics<RootDatabase>, _resolve: bool) -> Option<Assist> {
         // Note that although we could add a diagnostics to
         // fill the missing tuple field, e.g :
         // `struct A(usize);`
@@ -97,7 +106,7 @@ impl DiagnosticWithFix for MissingFields {
 }
 
 impl DiagnosticWithFix for MissingOkOrSomeInTailExpr {
-    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Assist> {
+    fn fix(&self, sema: &Semantics<RootDatabase>, _resolve: bool) -> Option<Assist> {
         let root = sema.db.parse_or_expand(self.file)?;
         let tail_expr = self.expr.to_node(&root);
         let tail_expr_range = tail_expr.syntax().text_range();
@@ -110,7 +119,7 @@ impl DiagnosticWithFix for MissingOkOrSomeInTailExpr {
 }
 
 impl DiagnosticWithFix for RemoveThisSemicolon {
-    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Assist> {
+    fn fix(&self, sema: &Semantics<RootDatabase>, _resolve: bool) -> Option<Assist> {
         let root = sema.db.parse_or_expand(self.file)?;
 
         let semicolon = self
@@ -130,7 +139,7 @@ impl DiagnosticWithFix for RemoveThisSemicolon {
 }
 
 impl DiagnosticWithFix for IncorrectCase {
-    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Assist> {
+    fn fix(&self, sema: &Semantics<RootDatabase>, resolve: bool) -> Option<Assist> {
         let root = sema.db.parse_or_expand(self.file)?;
         let name_node = self.ident.to_node(&root);
 
@@ -138,16 +147,19 @@ impl DiagnosticWithFix for IncorrectCase {
         let frange = name_node.original_file_range(sema.db);
         let file_position = FilePosition { file_id: frange.file_id, offset: frange.range.start() };
 
-        let rename_changes =
-            rename_with_semantics(sema, file_position, &self.suggested_text).ok()?;
-
         let label = format!("Rename to {}", self.suggested_text);
-        Some(fix("change_case", &label, rename_changes, frange.range))
+        let mut res = unresolved_fix("change_case", &label, frange.range);
+        if resolve {
+            let source_change = rename_with_semantics(sema, file_position, &self.suggested_text);
+            res.source_change = Some(source_change.ok().unwrap_or_default());
+        }
+
+        Some(res)
     }
 }
 
 impl DiagnosticWithFix for ReplaceFilterMapNextWithFindMap {
-    fn fix(&self, sema: &Semantics<RootDatabase>) -> Option<Assist> {
+    fn fix(&self, sema: &Semantics<RootDatabase>, _resolve: bool) -> Option<Assist> {
         let root = sema.db.parse_or_expand(self.file)?;
         let next_expr = self.next_expr.to_node(&root);
         let next_call = ast::MethodCallExpr::cast(next_expr.syntax().clone())?;

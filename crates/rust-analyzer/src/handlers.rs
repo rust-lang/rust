@@ -1182,7 +1182,7 @@ pub(crate) fn publish_diagnostics(
 
     let diagnostics: Vec<Diagnostic> = snap
         .analysis
-        .diagnostics(&snap.config.diagnostics(), file_id)?
+        .diagnostics(&snap.config.diagnostics(), false, file_id)?
         .into_iter()
         .map(|d| Diagnostic {
             range: to_proto::range(&line_index, d.range),
