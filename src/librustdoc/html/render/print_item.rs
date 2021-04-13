@@ -837,7 +837,7 @@ fn item_typedef(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::T
     // we need #14072 to make sense of the generics.
     render_assoc_items(w, cx, it, def_id, AssocItemRender::All);
 
-    document_ty_layout(w, cx, def_id);
+    document_type_layout(w, cx, def_id);
 }
 
 fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Union) {
@@ -886,7 +886,7 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
     }
     let def_id = it.def_id.expect_real();
     render_assoc_items(w, cx, it, def_id, AssocItemRender::All);
-    document_ty_layout(w, cx, def_id);
+    document_type_layout(w, cx, def_id);
 }
 
 fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum) {
@@ -1023,7 +1023,7 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
     }
     let def_id = it.def_id.expect_real();
     render_assoc_items(w, cx, it, def_id, AssocItemRender::All);
-    document_ty_layout(w, cx, def_id);
+    document_type_layout(w, cx, def_id);
 }
 
 fn item_macro(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Macro) {
@@ -1164,7 +1164,7 @@ fn item_struct(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::St
     }
     let def_id = it.def_id.expect_real();
     render_assoc_items(w, cx, it, def_id, AssocItemRender::All);
-    document_ty_layout(w, cx, def_id);
+    document_type_layout(w, cx, def_id);
 }
 
 fn item_static(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Static) {
@@ -1535,7 +1535,7 @@ fn document_non_exhaustive(w: &mut Buffer, item: &clean::Item) {
     }
 }
 
-fn document_ty_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
+fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
     if !cx.shared.show_type_layout {
         return;
     }
@@ -1560,7 +1560,7 @@ fn document_ty_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
             } else {
                 writeln!(
                     w,
-                    "<strong>Size:</strong> {size} byte{pl}",
+                    "<p><strong>Size:</strong> {size} byte{pl}</p>",
                     size = ty_layout.layout.size.bytes(),
                     pl = if ty_layout.layout.size.bytes() == 1 { "" } else { "s" },
                 );
