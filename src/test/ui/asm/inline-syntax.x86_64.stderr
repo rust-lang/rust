@@ -1,40 +1,46 @@
 warning: avoid using `.intel_syntax`, Intel syntax is the default
-  --> $DIR/inline-syntax.rs:25:15
+  --> $DIR/inline-syntax.rs:55:14
    |
-LL |         asm!(".intel_syntax noprefix", "nop");
-   |               ^^^^^^^^^^^^^^^^^^^^^^
+LL | global_asm!(".intel_syntax noprefix", "nop");
+   |              ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `#[warn(bad_asm_style)]` on by default
 
 warning: avoid using `.intel_syntax`, Intel syntax is the default
-  --> $DIR/inline-syntax.rs:28:15
+  --> $DIR/inline-syntax.rs:29:15
+   |
+LL |         asm!(".intel_syntax noprefix", "nop");
+   |               ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: avoid using `.intel_syntax`, Intel syntax is the default
+  --> $DIR/inline-syntax.rs:32:15
    |
 LL |         asm!(".intel_syntax aaa noprefix", "nop");
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: avoid using `.att_syntax`, prefer using `options(att_syntax)` instead
-  --> $DIR/inline-syntax.rs:31:15
+  --> $DIR/inline-syntax.rs:35:15
    |
 LL |         asm!(".att_syntax noprefix", "nop");
    |               ^^^^^^^^^^^^^^^^^^^^
 
 warning: avoid using `.att_syntax`, prefer using `options(att_syntax)` instead
-  --> $DIR/inline-syntax.rs:34:15
+  --> $DIR/inline-syntax.rs:38:15
    |
 LL |         asm!(".att_syntax bbb noprefix", "nop");
    |               ^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: avoid using `.intel_syntax`, Intel syntax is the default
-  --> $DIR/inline-syntax.rs:37:15
+  --> $DIR/inline-syntax.rs:41:15
    |
 LL |         asm!(".intel_syntax noprefix; nop");
    |               ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: avoid using `.intel_syntax`, Intel syntax is the default
-  --> $DIR/inline-syntax.rs:43:13
+  --> $DIR/inline-syntax.rs:47:13
    |
 LL |             .intel_syntax noprefix
    |             ^^^^^^^^^^^^^^^^^^^^^^
 
-warning: 6 warnings emitted
+warning: 7 warnings emitted
 

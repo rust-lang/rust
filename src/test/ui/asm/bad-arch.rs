@@ -8,6 +8,10 @@
 macro_rules! asm {
     () => {};
 }
+#[rustc_builtin_macro]
+macro_rules! global_asm {
+    () => {};
+}
 #[lang = "sized"]
 trait Sized {}
 
@@ -17,3 +21,6 @@ fn main() {
         //~^ ERROR asm! is unsupported on this target
     }
 }
+
+global_asm!("");
+//~^ ERROR asm! is unsupported on this target

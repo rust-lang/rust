@@ -1,6 +1,6 @@
 // only-x86_64
 
-#![feature(asm, repr_simd, never_type)]
+#![feature(asm, global_asm, repr_simd, never_type)]
 
 #[repr(simd)]
 struct SimdNonCopy(f32, f32, f32, f32);
@@ -90,3 +90,11 @@ fn main() {
         asm!("{}", in(reg) u);
     }
 }
+
+// Const operands must be integer or floats, and must be constants.
+
+global_asm!("{}", const 0);
+global_asm!("{}", const 0i32);
+global_asm!("{}", const 0f32);
+global_asm!("{}", const 0 as *mut u8);
+//~^ ERROR asm `const` arguments must be integer or floating-point values

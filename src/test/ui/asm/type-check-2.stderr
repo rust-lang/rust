@@ -61,6 +61,12 @@ LL |         asm!("{}", inout(reg) r);
    |
    = note: only integers, floats, SIMD vectors, pointers and function pointers can be used as arguments for inline assembly
 
+error: asm `const` arguments must be integer or floating-point values
+  --> $DIR/type-check-2.rs:99:19
+   |
+LL | global_asm!("{}", const 0 as *mut u8);
+   |                   ^^^^^^^^^^^^^^^^^^
+
 error: asm `sym` operand must point to a fn or static
   --> $DIR/type-check-2.rs:47:24
    |
@@ -103,7 +109,7 @@ LL |         let v: Vec<u64> = vec![0, 1, 2];
 LL |         asm!("{}", inout(reg) v[0]);
    |                               ^ cannot borrow as mutable
 
-error: aborting due to 14 previous errors
+error: aborting due to 15 previous errors
 
 Some errors have detailed explanations: E0381, E0596.
 For more information about an error, try `rustc --explain E0381`.

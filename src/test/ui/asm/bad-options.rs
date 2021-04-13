@@ -1,6 +1,6 @@
 // only-x86_64
 
-#![feature(asm)]
+#![feature(asm, global_asm)]
 
 fn main() {
     let mut foo = 0;
@@ -16,3 +16,16 @@ fn main() {
         //~^ ERROR asm outputs are not allowed with the `noreturn` option
     }
 }
+
+global_asm!("", options(nomem));
+//~^ ERROR expected one of
+global_asm!("", options(readonly));
+//~^ ERROR expected one of
+global_asm!("", options(noreturn));
+//~^ ERROR expected one of
+global_asm!("", options(pure));
+//~^ ERROR expected one of
+global_asm!("", options(nostack));
+//~^ ERROR expected one of
+global_asm!("", options(preserves_flags));
+//~^ ERROR expected one of
