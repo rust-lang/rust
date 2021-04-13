@@ -2,6 +2,7 @@ use super::WHILE_LET_ON_ITERATOR;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{get_enclosing_loop, is_refutable, is_trait_method, match_def_path, paths, visitors::is_res_used};
+use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, ErasedMap, NestedVisitorMap, Visitor};
 use rustc_hir::{def::Res, Expr, ExprKind, HirId, Local, MatchSource, Node, PatKind, QPath, UnOp};
@@ -9,66 +10,57 @@ use rustc_lint::LateContext;
 use rustc_span::{symbol::sym, Span, Symbol};
 
 pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-    if let ExprKind::Match(scrutinee_expr, [arm, _], MatchSource::WhileLetDesugar) = expr.kind {
-        let some_pat = match arm.pat.kind {
-            PatKind::TupleStruct(QPath::Resolved(None, path), sub_pats, _) => match path.res {
-                Res::Def(_, id) if match_def_path(cx, id, &paths::OPTION_SOME) => sub_pats.first(),
-                _ => return,
-            },
-            _ => return,
-        };
-
-        let iter_expr = match scrutinee_expr.kind {
-            ExprKind::MethodCall(name, _, [iter_expr], _)
-                if name.ident.name == sym::next && is_trait_method(cx, scrutinee_expr, sym::Iterator) =>
-            {
-                if let Some(iter_expr) = try_parse_iter_expr(cx, iter_expr) {
-                    iter_expr
-                } else {
-                    return;
-                }
-            }
-            _ => return,
-        };
-
-        // Needed to find an outer loop, if there are any.
-        let loop_expr = if let Some((_, Node::Expr(e))) = cx.tcx.hir().parent_iter(expr.hir_id).nth(1) {
-            e
+    let (scrutinee_expr, iter_expr, some_pat, loop_expr) = if_chain! {
+        if let ExprKind::Match(scrutinee_expr, [arm, _], MatchSource::WhileLetDesugar) = expr.kind;
+        // check for `Some(..)` pattern
+        if let PatKind::TupleStruct(QPath::Resolved(None, pat_path), some_pat, _) = arm.pat.kind;
+        if let Res::Def(_, pat_did) = pat_path.res;
+        if match_def_path(cx, pat_did, &paths::OPTION_SOME);
+        // check for call to `Iterator::next`
+        if let ExprKind::MethodCall(method_name, _, [iter_expr], _) = scrutinee_expr.kind;
+        if method_name.ident.name == sym::next;
+        if is_trait_method(cx, scrutinee_expr, sym::Iterator);
+        if let Some(iter_expr) = try_parse_iter_expr(cx, iter_expr);
+        // get the loop containing the match expression
+        if let Some((_, Node::Expr(loop_expr))) = cx.tcx.hir().parent_iter(expr.hir_id).nth(1);
+        if !uses_iter(cx, &iter_expr, arm.body);
+        then {
+            (scrutinee_expr, iter_expr, some_pat, loop_expr)
         } else {
-            return;
-        };
-
-        // Refutable patterns don't work with for loops.
-        // The iterator also can't be accessed withing the loop.
-        if some_pat.map_or(true, |p| is_refutable(cx, p)) || uses_iter(cx, &iter_expr, arm.body) {
             return;
         }
+    };
 
-        // If the iterator is a field or the iterator is accessed after the loop is complete it needs to be
-        // borrowed mutably.
-        // TODO: If the struct can be partially moved from and the struct isn't used afterwards a mutable
-        // borrow of a field isn't necessary.
-        let ref_mut = if !iter_expr.fields.is_empty() || needs_mutable_borrow(cx, &iter_expr, loop_expr) {
-            "&mut "
-        } else {
-            ""
-        };
-        let mut applicability = Applicability::MachineApplicable;
-        let iterator = snippet_with_applicability(cx, iter_expr.span, "_", &mut applicability);
-        let loop_var = some_pat.map_or_else(
-            || "_".into(),
-            |pat| snippet_with_applicability(cx, pat.span, "_", &mut applicability).into_owned(),
-        );
-        span_lint_and_sugg(
-            cx,
-            WHILE_LET_ON_ITERATOR,
-            expr.span.with_hi(scrutinee_expr.span.hi()),
-            "this loop could be written as a `for` loop",
-            "try",
-            format!("for {} in {}{}", loop_var, ref_mut, iterator),
-            applicability,
-        );
-    }
+    let mut applicability = Applicability::MachineApplicable;
+    let loop_var = if let Some(some_pat) = some_pat.first() {
+        if is_refutable(cx, some_pat) {
+            // Refutable patterns don't work with for loops.
+            return;
+        }
+        snippet_with_applicability(cx, some_pat.span, "..", &mut applicability)
+    } else {
+        "_".into()
+    };
+
+    // If the iterator is a field or the iterator is accessed after the loop is complete it needs to be
+    // borrowed mutably. TODO: If the struct can be partially moved from and the struct isn't used
+    // afterwards a mutable borrow of a field isn't necessary.
+    let ref_mut = if !iter_expr.fields.is_empty() || needs_mutable_borrow(cx, &iter_expr, loop_expr) {
+        "&mut "
+    } else {
+        ""
+    };
+
+    let iterator = snippet_with_applicability(cx, iter_expr.span, "_", &mut applicability);
+    span_lint_and_sugg(
+        cx,
+        WHILE_LET_ON_ITERATOR,
+        expr.span.with_hi(scrutinee_expr.span.hi()),
+        "this loop could be written as a `for` loop",
+        "try",
+        format!("for {} in {}{}", loop_var, ref_mut, iterator),
+        applicability,
+    );
 }
 
 #[derive(Debug)]
@@ -135,8 +127,10 @@ fn is_expr_same_field(cx: &LateContext<'_>, mut e: &Expr<'_>, mut fields: &[Symb
     }
 }
 
-/// Checks if the given expression is the same field as, is a child of, of the parent of the given
-/// field. Used to check if the expression can be used while the given field is borrowed.
+/// Checks if the given expression is the same field as, is a child of, or is the parent of the
+/// given field. Used to check if the expression can be used while the given field is borrowed
+/// mutably. e.g. if checking for `x.y`, then `x.y`, `x.y.z`, and `x` will all return true, but
+/// `x.z`, and `y` will return false.
 fn is_expr_same_child_or_parent_field(cx: &LateContext<'_>, expr: &Expr<'_>, fields: &[Symbol], path_res: Res) -> bool {
     match expr.kind {
         ExprKind::Field(base, name) => {
@@ -166,7 +160,7 @@ fn is_expr_same_child_or_parent_field(cx: &LateContext<'_>, expr: &Expr<'_>, fie
                 }
             }
         },
-        // If the path matches, this is either an exact match, of the expression is a parent of the field.
+        // If the path matches, this is either an exact match, or the expression is a parent of the field.
         ExprKind::Path(ref path) => cx.qpath_res(path, expr.hir_id) == path_res,
         ExprKind::DropTemps(base) | ExprKind::Type(base, _) | ExprKind::AddrOf(_, _, base) => {
             is_expr_same_child_or_parent_field(cx, base, fields, path_res)
@@ -175,8 +169,8 @@ fn is_expr_same_child_or_parent_field(cx: &LateContext<'_>, expr: &Expr<'_>, fie
     }
 }
 
-/// Strips off all field and path expressions. Used to skip them after failing to check for
-/// equality.
+/// Strips off all field and path expressions. This will return true if a field or path has been
+/// skipped. Used to skip them after failing to check for equality.
 fn skip_fields_and_path(expr: &'tcx Expr<'_>) -> (Option<&'tcx Expr<'tcx>>, bool) {
     let mut e = expr;
     let e = loop {
@@ -257,7 +251,7 @@ fn needs_mutable_borrow(cx: &LateContext<'tcx>, iter_expr: &IterExpr, loop_expr:
                         self.visit_expr(e);
                     }
                 } else if let ExprKind::Closure(_, _, id, _, _) = e.kind {
-                    self.used_iter |= is_res_used(self.cx, self.iter_expr.path, id);
+                    self.used_iter = is_res_used(self.cx, self.iter_expr.path, id);
                 } else {
                     walk_expr(self, e);
                 }
@@ -309,7 +303,7 @@ fn needs_mutable_borrow(cx: &LateContext<'tcx>, iter_expr: &IterExpr, loop_expr:
                         self.visit_expr(e);
                     }
                 } else if let ExprKind::Closure(_, _, id, _, _) = e.kind {
-                    self.used_after |= is_res_used(self.cx, self.iter_expr.path, id);
+                    self.used_after = is_res_used(self.cx, self.iter_expr.path, id);
                 } else {
                     walk_expr(self, e);
                 }

@@ -288,6 +288,8 @@ fn issue1924() {
             while let Some(i) = self.0.0.0.next() {
                 if i == 1 {
                     return self.0.1.take();
+                } else {
+                    self.0.1 = Some(i);
                 }
             }
             None
@@ -320,4 +322,9 @@ fn issue1924() {
     println!("iterator field {}", it.1);
 }
 
-fn main() {}
+fn main() {
+    let mut it = 0..20;
+    while let Some(..) = it.next() {
+        println!("test");
+    }
+}

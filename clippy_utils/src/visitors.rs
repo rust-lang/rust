@@ -241,7 +241,7 @@ pub fn visit_break_exprs<'tcx>(
     node.visit(&mut V(f));
 }
 
-/// Checks if the given resolved path is used the body.
+/// Checks if the given resolved path is used in the given body.
 pub fn is_res_used(cx: &LateContext<'_>, res: Res, body: BodyId) -> bool {
     struct V<'a, 'tcx> {
         cx: &'a LateContext<'tcx>,
