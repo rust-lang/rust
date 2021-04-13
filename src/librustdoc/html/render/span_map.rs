@@ -20,11 +20,14 @@ crate fn collect_spans_and_sources(
     krate: clean::Crate,
     src_root: &std::path::Path,
     include_sources: bool,
+    generate_link_to_definition: bool,
 ) -> (clean::Crate, FxHashMap<std::path::PathBuf, String>, FxHashMap<(u32, u32), LinkFromSrc>) {
     let mut visitor = SpanMapVisitor { tcx, matches: FxHashMap::default() };
 
     if include_sources {
-        intravisit::walk_crate(&mut visitor, tcx.hir().krate());
+        if generate_link_to_definition {
+            intravisit::walk_crate(&mut visitor, tcx.hir().krate());
+        }
         let (krate, sources) = sources::collect_local_sources(tcx, src_root, krate);
         (krate, sources, visitor.matches)
     } else {
