@@ -39,7 +39,8 @@ fn set_rerun() {
 }
 
 fn rev() -> Option<String> {
-    let output = Command::new("git").args(&["describe", "--tags"]).output().ok()?;
+    let output =
+        Command::new("git").args(&["describe", "--tags", "--exclude", "nightly"]).output().ok()?;
     let stdout = String::from_utf8(output.stdout).ok()?;
     Some(stdout)
 }
