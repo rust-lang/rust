@@ -5,7 +5,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::{/*ExprKind, */ GenericParam, GenericParamKind, HirId};
+use rustc_hir::{ExprKind, GenericParam, GenericParamKind, HirId};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
@@ -20,14 +20,14 @@ crate fn collect_spans_and_sources(
     krate: clean::Crate,
     src_root: &std::path::Path,
     include_sources: bool,
-    generate_link_to_definition: bool,
+    _generate_link_to_definition: bool,
 ) -> (clean::Crate, FxHashMap<std::path::PathBuf, String>, FxHashMap<(u32, u32), LinkFromSrc>) {
     let mut visitor = SpanMapVisitor { tcx, matches: FxHashMap::default() };
 
     if include_sources {
-        if generate_link_to_definition {
-            intravisit::walk_crate(&mut visitor, tcx.hir().krate());
-        }
+        // if generate_link_to_definition {
+        intravisit::walk_crate(&mut visitor, tcx.hir().krate());
+        // }
         let (krate, sources) = sources::collect_local_sources(tcx, src_root, krate);
         (krate, sources, visitor.matches)
     } else {
@@ -94,17 +94,37 @@ impl Visitor<'tcx> for SpanMapVisitor<'tcx> {
         intravisit::walk_path(self, path);
     }
 
-    // fn visit_expr(&mut self, expr: &'tcx rustc_hir::Expr<'tcx>) {
-    //     match expr.kind {
-    //         ExprKind::MethodCall(segment, method_span, _, _) => {
-    //             if let Some(hir_id) = segment.hir_id {
-    //                 // call https://doc.rust-lang.org/beta/nightly-rustc/rustc_middle/ty/context/struct.TypeckResults.html#method.type_dependent_def_id
-    //             }
-    //         }
-    //         _ => {}
-    //     }
-    //     intravisit::walk_expr(self, expr);
-    // }
+    fn visit_expr(&mut self, expr: &'tcx rustc_hir::Expr<'tcx>) {
+        match expr.kind {
+            ExprKind::MethodCall(segment, method_span, _, _) => {
+                if let Some(hir_id) = segment.hir_id {
+                    let hir = self.tcx.hir();
+                    let body_id = hir.enclosing_body_owner(hir_id);
+                    // FIXME: this is showing error messages for parts of the code that are not
+                    // compiled (because of cfg)!
+                    let typeck_results = self.tcx.typeck_body(
+                        hir.maybe_body_owned_by(body_id).expect("a body which isn't a body"),
+                    );
+                    if let Some(def_id) = typeck_results.type_dependent_def_id(expr.hir_id) {
+                        match hir.span_if_local(def_id) {
+                            Some(span) => {
+                                self.matches
+                                    .insert(span_to_tuple(method_span), LinkFromSrc::Local(span));
+                            }
+                            None => {
+                                self.matches.insert(
+                                    span_to_tuple(method_span),
+                                    LinkFromSrc::External(def_id),
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+        intravisit::walk_expr(self, expr);
+    }
 
     fn visit_use(&mut self, path: &'tcx rustc_hir::Path<'tcx>, id: HirId) {
         self.handle_path(path, None);
