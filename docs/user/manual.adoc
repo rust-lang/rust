@@ -541,7 +541,7 @@ include::./generated_assists.adoc[]
 == Diagnostics
 
 While most errors and warnings provided by rust-analyzer come from the `cargo check` integration, there's a growing number of diagnostics implemented using rust-analyzer's own analysis.
-These diagnostics don't respect `#[allow]` or `#[deny]` attributes yet, but can be turned off using the `rust-analyzer.diagnostics.enable`, `rust-analyzer.diagnostics.enableExperimental` or `rust-analyzer.diagnostics.disabled` settings.
+Some of these diagnostics don't respect `\#[allow]` or `\#[deny]` attributes yet, but can be turned off using the `rust-analyzer.diagnostics.enable`, `rust-analyzer.diagnostics.enableExperimental` or `rust-analyzer.diagnostics.disabled` settings.
 
 include::./generated_diagnostic.adoc[]
 

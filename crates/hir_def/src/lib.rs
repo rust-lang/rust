@@ -435,6 +435,16 @@ impl_from!(
     for AttrDefId
 );
 
+impl From<AssocContainerId> for AttrDefId {
+    fn from(acid: AssocContainerId) -> Self {
+        match acid {
+            AssocContainerId::ModuleId(mid) => AttrDefId::ModuleId(mid),
+            AssocContainerId::ImplId(iid) => AttrDefId::ImplId(iid),
+            AssocContainerId::TraitId(tid) => AttrDefId::TraitId(tid),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum VariantId {
     EnumVariantId(EnumVariantId),
