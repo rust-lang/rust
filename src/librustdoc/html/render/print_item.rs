@@ -1536,6 +1536,10 @@ fn document_non_exhaustive(w: &mut Buffer, item: &clean::Item) {
 }
 
 fn document_ty_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
+    if !cx.shared.show_type_layout {
+        return;
+    }
+
     let param_env = cx.tcx().param_env(ty_def_id);
     let ty = cx.tcx().type_of(ty_def_id);
     match cx.tcx().layout_of(param_env.and(ty)) {

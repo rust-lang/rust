@@ -1,3 +1,5 @@
+// compile-flags: --show-type-layout -Z unstable-options
+
 // @has type_layout/struct.Foo.html 'Size: '
 // @has - ' bytes'
 pub struct Foo {
