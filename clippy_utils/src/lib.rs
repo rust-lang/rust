@@ -1212,7 +1212,7 @@ pub fn parent_node_is_if_expr(expr: &Expr<'_>, cx: &LateContext<'_>) -> bool {
     let map = cx.tcx.hir();
     let parent_id = map.get_parent_node(expr.hir_id);
     let parent_node = map.get(parent_id);
-    
+
     // Check for `if`
     if_chain! {
         if let Node::Expr(expr) = parent_node;

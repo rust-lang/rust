@@ -1,6 +1,7 @@
 use crate::consts::{constant_context, constant_simple};
 use crate::differing_macro_contexts;
 use crate::source::snippet_opt;
+use if_chain::if_chain;
 use rustc_ast::ast::InlineAsmTemplatePiece;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def::Res;
@@ -29,6 +30,30 @@ pub struct SpanlessEq<'a, 'tcx> {
     maybe_typeck_results: Option<&'tcx TypeckResults<'tcx>>,
     allow_side_effects: bool,
     expr_fallback: Option<Box<dyn FnMut(&Expr<'_>, &Expr<'_>) -> bool + 'a>>,
+    /// This adds an additional type comparison to locals that insures that even the
+    /// inferred of the value is the same.
+    ///
+    /// **Example**
+    /// * Context 1
+    /// ```ignore
+    /// let vec = Vec::new();
+    /// vec.push("A string");
+    /// ```
+    ///
+    /// * Context 2
+    /// ```ignore
+    /// let vec = Vec::new();
+    /// vec.push(0); // An integer
+    /// ```
+    ///
+    /// Only comparing the first local definition would usually return that they are
+    /// equal, since they are identical. However, they are different due to the context
+    /// as they have different inferred types.
+    ///
+    /// This option enables or disables the specific check of the inferred type.
+    ///
+    /// Note: This check will only be done if `self.maybe_typeck_results` is `Some()`.
+    check_inferred_local_types: bool,
 }
 
 impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
@@ -38,6 +63,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
             maybe_typeck_results: cx.maybe_typeck_results(),
             allow_side_effects: true,
             expr_fallback: None,
+            check_inferred_local_types: false,
         }
     }
 
@@ -52,6 +78,13 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
     pub fn expr_fallback(self, expr_fallback: impl FnMut(&Expr<'_>, &Expr<'_>) -> bool + 'a) -> Self {
         Self {
             expr_fallback: Some(Box::new(expr_fallback)),
+            ..self
+        }
+    }
+
+    pub fn enable_check_inferred_local_types(self) -> Self {
+        Self {
+            check_inferred_local_types: true,
             ..self
         }
     }
@@ -96,6 +129,21 @@ impl HirEqInterExpr<'_, '_, '_> {
     pub fn eq_stmt(&mut self, left: &Stmt<'_>, right: &Stmt<'_>) -> bool {
         match (&left.kind, &right.kind) {
             (&StmtKind::Local(ref l), &StmtKind::Local(ref r)) => {
+                // See `SpanlessEq::check_inferred_local_types` for an explication of this check
+                if_chain! {
+                    if l.ty.is_none() && r.ty.is_none();
+                    if self.inner.check_inferred_local_types;
+                    if let Some(tcx) = self.inner.maybe_typeck_results;
+
+                    // Check the inferred types
+                    let l_ty = tcx.pat_ty(&l.pat);
+                    let r_ty = tcx.pat_ty(&r.pat);
+                    if l_ty != r_ty;
+                    then {
+                        return false;
+                    }
+                }
+
                 // eq_pat adds the HirIds to the locals map. We therefor call it last to make sure that
                 // these only get added if the init and type is equal.
                 both(&l.init, &r.init, |l, r| self.eq_expr(l, r))

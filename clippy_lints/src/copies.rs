@@ -293,10 +293,11 @@ fn lint_same_then_else<'tcx>(
 /// The return tuple is structured as follows:
 /// 1. The amount of equal statements from the start
 /// 2. The amount of equal statements from the end
-/// 3. An indication if the block expressions are the same. This will also be true if both are `None`
+/// 3. An indication if the block expressions are the same. This will also be true if both are
+/// `None`
 ///
-/// This function can also trigger the `IF_SAME_THEN_ELSE` in which case it'll return `(0, 0, false)`
-/// to aboard any further processing and avoid duplicate lint triggers.
+/// This function can also trigger the `IF_SAME_THEN_ELSE` in which case it'll return `(0, 0,
+/// false)` to aboard any further processing and avoid duplicate lint triggers.
 fn scan_block_for_eq(cx: &LateContext<'tcx>, blocks: &[&Block<'tcx>]) -> (usize, usize, bool) {
     let mut start_eq = usize::MAX;
     let mut end_eq = usize::MAX;
@@ -307,7 +308,7 @@ fn scan_block_for_eq(cx: &LateContext<'tcx>, blocks: &[&Block<'tcx>]) -> (usize,
 
         // `SpanlessEq` now keeps track of the locals and is therefore context sensitive clippy#6752.
         // The comparison therefore needs to be done in a way that builds the correct context.
-        let mut evaluator = SpanlessEq::new(cx);
+        let mut evaluator = SpanlessEq::new(cx).enable_check_inferred_local_types();
         let mut evaluator = evaluator.inter_expr();
 
         let current_start_eq = count_eq(&mut l_stmts.iter(), &mut r_stmts.iter(), |l, r| evaluator.eq_stmt(l, r));
