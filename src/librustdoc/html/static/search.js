@@ -1,8 +1,4 @@
 (function() {
-var searchIndex = JSON.parse('{\
-"SEARCH_INDEX_PLACEHOLDER": {}\
-}');
-
 // This mapping table should match the discriminants of
 // `rustdoc::html::item_type::ItemType` type in Rust.
 var itemTypes = ["mod",
@@ -104,7 +100,7 @@ function levenshtein(s1, s2) {
     return s1_len + s2_len;
 }
 
-function initSearch(rawSearchIndex) {
+window.initSearch = function(rawSearchIndex) {
     var MAX_LEV_DISTANCE = 3;
     var MAX_RESULTS = 200;
     var GENERICS_DATA = 1;
@@ -1509,6 +1505,8 @@ function initSearch(rawSearchIndex) {
     }
 };
 
+if (window.searchIndex !== undefined) {
+  initSearch(window.searchIndex);
+}
 
-initSearch(searchIndex);
 })();

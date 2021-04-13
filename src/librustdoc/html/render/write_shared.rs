@@ -223,6 +223,7 @@ pub(super) fn write_shared(
             &format!(" = {}", serde_json::to_string(&themes).unwrap()),
         ),
     )?;
+    write_minify("search.js", static_files::SEARCH_JS)?;
     write_minify("settings.js", static_files::SETTINGS_JS)?;
     if cx.shared.include_sources {
         write_minify("source-script.js", static_files::sidebar::SOURCE_SCRIPT)?;
@@ -408,8 +409,9 @@ pub(super) fn write_shared(
     // with rustdoc running in parallel.
     all_indexes.sort();
     write_crate("search-index.js", &|| {
-        let v = static_files::SEARCH_JS
-            .replace(r#""SEARCH_INDEX_PLACEHOLDER": {}"#, &all_indexes.join(",\\\n"));
+        let mut v = String::from("var searchIndex = JSON.parse('{\\\n");
+        v.push_str(&all_indexes.join(",\\\n"));
+        v.push_str("\\\n}');\nif (window.initSearch) {window.initSearch(searchIndex)};");
         Ok(v.into_bytes())
     })?;
 

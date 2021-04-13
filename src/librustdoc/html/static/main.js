@@ -43,6 +43,7 @@ if (!DOMTokenList.prototype.remove) {
         window.rootPath = rustdocVars.attributes["data-root-path"].value;
         window.currentCrate = rustdocVars.attributes["data-current-crate"].value;
         window.searchJS = rustdocVars.attributes["data-search-js"].value;
+        window.searchIndexJS = rustdocVars.attributes["data-search-index-js"].value;
     }
     var sidebarVars = document.getElementById("sidebar-vars");
     if (sidebarVars) {
@@ -247,6 +248,7 @@ function hideThemeButtonState() {
             if (!searchLoaded) {
                 searchLoaded = true;
                 loadScript(window.searchJS);
+                loadScript(window.searchIndexJS);
             }
         }
 
