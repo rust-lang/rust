@@ -296,7 +296,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
 
                 write!(
                     w,
-                    "<tr class=\"{stab}{add}module-item\">\
+                    "<tr class=\"{stab}{add}import-item\">\
                          <td><code>{vis}{imp}</code></td>\
                          <td class=\"docblock-short\">{stab_tags}</td>\
                      </tr>",
