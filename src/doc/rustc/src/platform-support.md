@@ -202,6 +202,7 @@ target | std | host | notes
 `powerpc-wrs-vxworks` | ? |  |
 `powerpc-wrs-vxworks-spe` | ? |  |
 `powerpc64-unknown-freebsd` | ✓ | ✓ | PPC64 FreeBSD (ELFv1 and ELFv2)
+`powerpc64le-unknown-freebsd` |   |   | PPC64LE FreeBSD
 `powerpc64-unknown-linux-musl` | ? |  |
 `powerpc64-wrs-vxworks` | ? |  |
 `powerpc64le-unknown-linux-musl` | ? |  |
