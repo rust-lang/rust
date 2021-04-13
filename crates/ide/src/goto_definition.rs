@@ -110,6 +110,13 @@ mod tests {
         assert_eq!(expected, FileRange { file_id: nav.file_id, range: nav.focus_or_full_range() });
     }
 
+    fn check_unresolved(ra_fixture: &str) {
+        let (analysis, position) = fixture::position(ra_fixture);
+        let navs = analysis.goto_definition(position).unwrap().expect("no definition found").info;
+
+        assert!(navs.is_empty(), "didn't expect this to resolve anywhere: {:?}", navs)
+    }
+
     #[test]
     fn goto_def_for_extern_crate() {
         check(
@@ -927,17 +934,12 @@ fn f() -> impl Iterator<Item$0 = u8> {}
     }
 
     #[test]
-    #[should_panic = "unresolved reference"]
     fn unknown_assoc_ty() {
-        check(
+        check_unresolved(
             r#"
-trait Iterator {
-    type Item;
-       //^^^^
-}
-
+trait Iterator { type Item; }
 fn f() -> impl Iterator<Invalid$0 = u8> {}
-            "#,
+"#,
         )
     }
 
