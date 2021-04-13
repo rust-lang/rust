@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 pub trait MyTrait {
     type Assoc;
     const VALUE: u32;
