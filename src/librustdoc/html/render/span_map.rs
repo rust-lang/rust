@@ -5,7 +5,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::{ExprKind, GenericParam, GenericParamKind, HirId};
+use rustc_hir::{ExprKind, GenericParam, GenericParamKind, HirId, Mod, Node};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
@@ -20,14 +20,14 @@ crate fn collect_spans_and_sources(
     krate: clean::Crate,
     src_root: &std::path::Path,
     include_sources: bool,
-    _generate_link_to_definition: bool,
+    generate_link_to_definition: bool,
 ) -> (clean::Crate, FxHashMap<std::path::PathBuf, String>, FxHashMap<(u32, u32), LinkFromSrc>) {
     let mut visitor = SpanMapVisitor { tcx, matches: FxHashMap::default() };
 
     if include_sources {
-        // if generate_link_to_definition {
-        intravisit::walk_crate(&mut visitor, tcx.hir().krate());
-        // }
+        if generate_link_to_definition {
+            intravisit::walk_crate(&mut visitor, tcx.hir().krate());
+        }
         let (krate, sources) = sources::collect_local_sources(tcx, src_root, krate);
         (krate, sources, visitor.matches)
     } else {
@@ -92,6 +92,25 @@ impl Visitor<'tcx> for SpanMapVisitor<'tcx> {
     fn visit_path(&mut self, path: &'tcx rustc_hir::Path<'tcx>, _id: HirId) {
         self.handle_path(path, None);
         intravisit::walk_path(self, path);
+    }
+
+    fn visit_mod(&mut self, m: &'tcx Mod<'tcx>, span: Span, id: HirId) {
+        // To make the difference between "mod foo {}" and "mod foo;". In case we "import" another
+        // file, we want to link to it. Otherwise no need to create a link.
+        if !span.overlaps(m.inner) {
+            // Now that we confirmed it's a file import, we want to get the span for the module
+            // name only and not all the "mod foo;".
+            if let Some(node) = self.tcx.hir().find(id) {
+                match node {
+                    Node::Item(item) => {
+                        self.matches
+                            .insert(span_to_tuple(item.ident.span), LinkFromSrc::Local(m.inner));
+                    }
+                    _ => {}
+                }
+            }
+        }
+        intravisit::walk_mod(self, m, id);
     }
 
     fn visit_expr(&mut self, expr: &'tcx rustc_hir::Expr<'tcx>) {
