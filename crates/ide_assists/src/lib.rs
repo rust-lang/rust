@@ -28,7 +28,9 @@ pub use assist_config::AssistConfig;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AssistKind {
+    // FIXME: does the None variant make sense? Probably not.
     None,
+
     QuickFix,
     Generate,
     Refactor,
