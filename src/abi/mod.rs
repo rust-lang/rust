@@ -71,8 +71,8 @@ pub(crate) fn import_function<'tcx>(
 impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     /// Instance must be monomorphized
     pub(crate) fn get_function_ref(&mut self, inst: Instance<'tcx>) -> FuncRef {
-        let func_id = import_function(self.tcx, self.cx.module, inst);
-        let func_ref = self.cx.module.declare_func_in_func(func_id, &mut self.bcx.func);
+        let func_id = import_function(self.tcx, self.module, inst);
+        let func_ref = self.module.declare_func_in_func(func_id, &mut self.bcx.func);
 
         if self.clif_comments.enabled() {
             self.add_comment(func_ref, format!("{:?}", inst));
@@ -89,8 +89,8 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         args: &[Value],
     ) -> &[Value] {
         let sig = Signature { params, returns, call_conv: CallConv::triple_default(self.triple()) };
-        let func_id = self.cx.module.declare_function(&name, Linkage::Import, &sig).unwrap();
-        let func_ref = self.cx.module.declare_func_in_func(func_id, &mut self.bcx.func);
+        let func_id = self.module.declare_function(&name, Linkage::Import, &sig).unwrap();
+        let func_ref = self.module.declare_func_in_func(func_id, &mut self.bcx.func);
         let call_inst = self.bcx.ins().call(func_ref, args);
         if self.clif_comments.enabled() {
             self.add_comment(call_inst, format!("easy_call {}", name));

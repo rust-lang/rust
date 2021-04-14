@@ -9,7 +9,11 @@ use rustc_target::abi::call::FnAbi;
 use crate::constant::ConstantCx;
 use crate::prelude::*;
 
-pub(crate) fn codegen_fn<'tcx>(cx: &mut crate::CodegenCx<'_, 'tcx>, instance: Instance<'tcx>) {
+pub(crate) fn codegen_fn<'tcx>(
+    cx: &mut crate::CodegenCx<'tcx>,
+    module: &mut dyn Module,
+    instance: Instance<'tcx>,
+) {
     let tcx = cx.tcx;
 
     let _inst_guard =
@@ -20,8 +24,8 @@ pub(crate) fn codegen_fn<'tcx>(cx: &mut crate::CodegenCx<'_, 'tcx>, instance: In
 
     // Declare function
     let symbol_name = tcx.symbol_name(instance);
-    let sig = get_function_sig(tcx, cx.module.isa().triple(), instance);
-    let func_id = cx.module.declare_function(symbol_name.name, Linkage::Local, &sig).unwrap();
+    let sig = get_function_sig(tcx, module.isa().triple(), instance);
+    let func_id = module.declare_function(symbol_name.name, Linkage::Local, &sig).unwrap();
 
     cx.cached_context.clear();
 
@@ -40,11 +44,12 @@ pub(crate) fn codegen_fn<'tcx>(cx: &mut crate::CodegenCx<'_, 'tcx>, instance: In
         (0..mir.basic_blocks().len()).map(|_| bcx.create_block()).collect();
 
     // Make FunctionCx
-    let pointer_type = cx.module.target_config().pointer_type();
+    let pointer_type = module.target_config().pointer_type();
     let clif_comments = crate::pretty_clif::CommentWriter::new(tcx, instance);
 
     let mut fx = FunctionCx {
         cx,
+        module,
         tcx,
         pointer_type,
         vtables: FxHashMap::default(),
@@ -94,7 +99,7 @@ pub(crate) fn codegen_fn<'tcx>(cx: &mut crate::CodegenCx<'_, 'tcx>, instance: In
     let source_info_set = fx.source_info_set;
     let local_map = fx.local_map;
 
-    fx.constants_cx.finalize(fx.tcx, &mut *fx.cx.module);
+    fx.constants_cx.finalize(fx.tcx, &mut *fx.module);
 
     // Store function in context
     let context = &mut cx.cached_context;
@@ -114,8 +119,8 @@ pub(crate) fn codegen_fn<'tcx>(cx: &mut crate::CodegenCx<'_, 'tcx>, instance: In
     // instruction, which doesn't have an encoding.
     context.compute_cfg();
     context.compute_domtree();
-    context.eliminate_unreachable_code(cx.module.isa()).unwrap();
-    context.dce(cx.module.isa()).unwrap();
+    context.eliminate_unreachable_code(module.isa()).unwrap();
+    context.dce(module.isa()).unwrap();
     // Some Cranelift optimizations expect the domtree to not yet be computed and as such don't
     // invalidate it when it would change.
     context.domtree.clear();
@@ -123,7 +128,6 @@ pub(crate) fn codegen_fn<'tcx>(cx: &mut crate::CodegenCx<'_, 'tcx>, instance: In
     context.want_disasm = crate::pretty_clif::should_write_ir(tcx);
 
     // Define function
-    let module = &mut cx.module;
     tcx.sess.time("define function", || {
         module
             .define_function(func_id, context, &mut NullTrapSink {}, &mut NullStackMapSink {})
@@ -134,7 +138,7 @@ pub(crate) fn codegen_fn<'tcx>(cx: &mut crate::CodegenCx<'_, 'tcx>, instance: In
     crate::pretty_clif::write_clif_file(
         tcx,
         "opt",
-        Some(cx.module.isa()),
+        Some(module.isa()),
         instance,
         &context,
         &clif_comments,
@@ -149,7 +153,7 @@ pub(crate) fn codegen_fn<'tcx>(cx: &mut crate::CodegenCx<'_, 'tcx>, instance: In
     }
 
     // Define debuginfo for function
-    let isa = cx.module.isa();
+    let isa = module.isa();
     let debug_context = &mut cx.debug_context;
     let unwind_context = &mut cx.unwind_context;
     tcx.sess.time("generate debug info", || {
@@ -654,7 +658,7 @@ fn codegen_stmt<'tcx>(
                         // FIXME use emit_small_memset where possible
                         let addr = lval.to_ptr().get_addr(fx);
                         let val = operand.load_scalar(fx);
-                        fx.bcx.call_memset(fx.cx.module.target_config(), addr, val, times);
+                        fx.bcx.call_memset(fx.module.target_config(), addr, val, times);
                     } else {
                         let loop_block = fx.bcx.create_block();
                         let loop_block2 = fx.bcx.create_block();
@@ -834,7 +838,7 @@ fn codegen_stmt<'tcx>(
             let elem_size: u64 = pointee.size.bytes();
             let bytes =
                 if elem_size != 1 { fx.bcx.ins().imul_imm(count, elem_size as i64) } else { count };
-            fx.bcx.call_memcpy(fx.cx.module.target_config(), dst, src, bytes);
+            fx.bcx.call_memcpy(fx.module.target_config(), dst, src, bytes);
         }
     }
 }

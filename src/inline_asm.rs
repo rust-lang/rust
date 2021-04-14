@@ -201,7 +201,6 @@ fn call_inline_asm<'tcx>(
     }
 
     let inline_asm_func = fx
-        .cx
         .module
         .declare_function(
             asm_name,
@@ -213,7 +212,7 @@ fn call_inline_asm<'tcx>(
             },
         )
         .unwrap();
-    let inline_asm_func = fx.cx.module.declare_func_in_func(inline_asm_func, &mut fx.bcx.func);
+    let inline_asm_func = fx.module.declare_func_in_func(inline_asm_func, &mut fx.bcx.func);
     if fx.clif_comments.enabled() {
         fx.add_comment(inline_asm_func, asm_name);
     }

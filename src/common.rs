@@ -228,8 +228,9 @@ pub(crate) fn type_sign(ty: Ty<'_>) -> bool {
     }
 }
 
-pub(crate) struct FunctionCx<'m, 'clif, 'tcx> {
-    pub(crate) cx: &'clif mut crate::CodegenCx<'m, 'tcx>,
+pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {
+    pub(crate) cx: &'clif mut crate::CodegenCx<'tcx>,
+    pub(crate) module: &'m mut dyn Module,
     pub(crate) tcx: TyCtxt<'tcx>,
     pub(crate) pointer_type: Type, // Cached from module
     pub(crate) vtables: FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), DataId>,
@@ -341,7 +342,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     }
 
     pub(crate) fn triple(&self) -> &target_lexicon::Triple {
-        self.cx.module.isa().triple()
+        self.module.isa().triple()
     }
 
     pub(crate) fn anonymous_str(&mut self, prefix: &str, msg: &str) -> Value {
@@ -354,15 +355,14 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         let mut data_ctx = DataContext::new();
         data_ctx.define(msg.as_bytes().to_vec().into_boxed_slice());
         let msg_id = self
-            .cx
             .module
             .declare_data(&format!("__{}_{:08x}", prefix, msg_hash), Linkage::Local, false, false)
             .unwrap();
 
         // Ignore DuplicateDefinition error, as the data will be the same
-        let _ = self.cx.module.define_data(msg_id, &data_ctx);
+        let _ = self.module.define_data(msg_id, &data_ctx);
 
-        let local_msg_id = self.cx.module.declare_data_in_func(msg_id, self.bcx.func);
+        let local_msg_id = self.module.declare_data_in_func(msg_id, self.bcx.func);
         if self.clif_comments.enabled() {
             self.add_comment(local_msg_id, msg);
         }

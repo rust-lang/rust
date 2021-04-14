@@ -1,4 +1,4 @@
-#![feature(rustc_private, decl_macro, never_type, hash_drain_filter)]
+#![feature(rustc_private, decl_macro, never_type, hash_drain_filter, vec_into_raw_parts)]
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
 #![warn(unreachable_pub)]
@@ -33,6 +33,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_session::config::OutputFilenames;
 use rustc_session::Session;
 
+use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::settings::{self, Configurable};
 
 pub use crate::config::*;
@@ -118,41 +119,35 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
     }
 }
 
-struct CodegenCx<'m, 'tcx: 'm> {
+/// The codegen context holds any information shared between the codegen of individual functions
+/// inside a single codegen unit with the exception of the Cranelift [`Module`](cranelift_module::Module).
+struct CodegenCx<'tcx> {
     tcx: TyCtxt<'tcx>,
-    module: &'m mut dyn Module,
     global_asm: String,
     cached_context: Context,
     debug_context: Option<DebugContext<'tcx>>,
-    unwind_context: UnwindContext<'tcx>,
+    unwind_context: UnwindContext,
 }
 
-impl<'m, 'tcx> CodegenCx<'m, 'tcx> {
+impl<'tcx> CodegenCx<'tcx> {
     fn new(
         tcx: TyCtxt<'tcx>,
         backend_config: BackendConfig,
-        module: &'m mut dyn Module,
+        isa: &dyn TargetIsa,
         debug_info: bool,
     ) -> Self {
-        let unwind_context = UnwindContext::new(
-            tcx,
-            module.isa(),
-            matches!(backend_config.codegen_mode, CodegenMode::Aot),
-        );
-        let debug_context =
-            if debug_info { Some(DebugContext::new(tcx, module.isa())) } else { None };
+        assert_eq!(pointer_ty(tcx), isa.pointer_type());
+
+        let unwind_context =
+            UnwindContext::new(tcx, isa, matches!(backend_config.codegen_mode, CodegenMode::Aot));
+        let debug_context = if debug_info { Some(DebugContext::new(tcx, isa)) } else { None };
         CodegenCx {
             tcx,
-            module,
             global_asm: String::new(),
             cached_context: Context::new(),
             debug_context,
             unwind_context,
         }
-    }
-
-    fn finalize(self) -> (String, Option<DebugContext<'tcx>>, UnwindContext<'tcx>) {
-        (self.global_asm, self.debug_context, self.unwind_context)
     }
 }
 
@@ -186,13 +181,23 @@ impl CodegenBackend for CraneliftCodegenBackend {
         metadata: EncodedMetadata,
         need_metadata_module: bool,
     ) -> Box<dyn Any> {
+        tcx.sess.abort_if_errors();
         let config = if let Some(config) = self.config.clone() {
             config
         } else {
             BackendConfig::from_opts(&tcx.sess.opts.cg.llvm_args)
                 .unwrap_or_else(|err| tcx.sess.fatal(&err))
         };
-        driver::codegen_crate(tcx, metadata, need_metadata_module, config)
+        match config.codegen_mode {
+            CodegenMode::Aot => driver::aot::run_aot(tcx, config, metadata, need_metadata_module),
+            CodegenMode::Jit | CodegenMode::JitLazy => {
+                #[cfg(feature = "jit")]
+                let _: ! = driver::jit::run_jit(tcx, config);
+
+                #[cfg(not(feature = "jit"))]
+                tcx.sess.fatal("jit support was disabled when compiling rustc_codegen_cranelift");
+            }
+        }
     }
 
     fn join_codegen(

@@ -5,10 +5,14 @@ fn bool_env_var(key: &str) -> bool {
     env::var(key).as_ref().map(|val| &**val) == Ok("1")
 }
 
+/// The mode to use for compilation.
 #[derive(Copy, Clone, Debug)]
 pub enum CodegenMode {
+    /// AOT compile the crate. This is the default.
     Aot,
+    /// JIT compile and execute the crate.
     Jit,
+    /// JIT compile and execute the crate, but only compile functions the first time they are used.
     JitLazy,
 }
 
@@ -25,6 +29,7 @@ impl FromStr for CodegenMode {
     }
 }
 
+/// Configuration of cg_clif as passed in through `-Cllvm-args` and various env vars.
 #[derive(Clone, Debug)]
 pub struct BackendConfig {
     /// Should the crate be AOT compiled or JIT executed.
@@ -76,6 +81,7 @@ impl Default for BackendConfig {
 }
 
 impl BackendConfig {
+    /// Parse the configuration passed in using `-Cllvm-args`.
     pub fn from_opts(opts: &[String]) -> Result<Self, String> {
         fn parse_bool(name: &str, value: &str) -> Result<bool, String> {
             value.parse().map_err(|_| format!("failed to parse value `{}` for {}", value, name))

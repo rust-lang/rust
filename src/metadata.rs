@@ -14,6 +14,18 @@ use rustc_target::spec::Target;
 
 use crate::backend::WriteMetadata;
 
+/// The metadata loader used by cg_clif.
+///
+/// The metadata is stored in the same format as cg_llvm.
+///
+/// # Metadata location
+///
+/// <dl>
+/// <dt>rlib</dt>
+/// <dd>The metadata can be found in the `lib.rmeta` file inside of the ar archive.</dd>
+/// <dt>dylib</dt>
+/// <dd>The metadata can be found in the `.rustc` section of the shared library.</dd>
+/// </dl>
 pub(crate) struct CraneliftMetadataLoader;
 
 fn load_metadata_with(
