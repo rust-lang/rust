@@ -302,6 +302,28 @@ pub fn snippet_with_context(
 /// inside a macro expansion, or the original span if it is not. Note this will return `None` in the
 /// case of the span being in a macro expansion, but the target context is from expanding a macro
 /// argument.
+///
+/// Given the following
+///
+/// ```rust,ignore
+/// macro_rules! m { ($e:expr) => { f($e) }; }
+/// g(m!(0))
+/// ```
+///
+/// If called with a span of the call to `f` and a context of the call to `g` this will return a
+/// span containing `m!(0)`. However, if called with a span of the literal `0` this will give a span
+/// containing `0` as the context is the same as the outer context.
+///
+/// This will traverse through multiple macro calls. Given the following:
+///
+/// ```rust,ignore
+/// macro_rules! m { ($e:expr) => { n!($e, 0) }; }
+/// macro_rules! n { ($e:expr, $f:expr) => { f($e, $f) }; }
+/// g(m!(0))
+/// ```
+///
+/// If called with a span of the call to `f` and a context of the call to `g` this will return a
+/// span containing `m!(0)`.
 pub fn walk_span_to_context(span: Span, outer: SyntaxContext) -> Option<Span> {
     let outer_span = hygiene::walk_chain(span, outer);
     (outer_span.ctxt() == outer).then(|| outer_span)
