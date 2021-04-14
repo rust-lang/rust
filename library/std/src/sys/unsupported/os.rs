@@ -1,4 +1,4 @@
-use super::{unsupported, Void};
+use super::unsupported;
 use crate::error::Error as StdError;
 use crate::ffi::{OsStr, OsString};
 use crate::fmt;
@@ -21,7 +21,7 @@ pub fn chdir(_: &path::Path) -> io::Result<()> {
     unsupported()
 }
 
-pub struct SplitPaths<'a>(&'a Void);
+pub struct SplitPaths<'a>(&'a !);
 
 pub fn split_paths(_unparsed: &OsStr) -> SplitPaths<'_> {
     panic!("unsupported")
@@ -62,7 +62,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     unsupported()
 }
 
-pub struct Env(Void);
+pub struct Env(!);
 
 impl Iterator for Env {
     type Item = (OsString, OsString);

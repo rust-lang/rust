@@ -5,7 +5,7 @@ use crate::io::{self, IoSlice, IoSliceMut};
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, ToSocketAddrs};
 use crate::sync::Arc;
 use crate::sys::fd::FileDesc;
-use crate::sys::{sgx_ineffective, unsupported, AsInner, FromInner, IntoInner, TryIntoInner, Void};
+use crate::sys::{sgx_ineffective, unsupported, AsInner, FromInner, IntoInner, TryIntoInner};
 use crate::time::Duration;
 
 use super::abi::usercalls;
@@ -310,7 +310,7 @@ impl FromInner<Socket> for TcpListener {
     }
 }
 
-pub struct UdpSocket(Void);
+pub struct UdpSocket(!);
 
 impl UdpSocket {
     pub fn bind(_: io::Result<&SocketAddr>) -> io::Result<UdpSocket> {
@@ -462,7 +462,7 @@ impl fmt::Display for NonIpSockAddr {
     }
 }
 
-pub struct LookupHost(Void);
+pub struct LookupHost(!);
 
 impl LookupHost {
     fn new(host: String) -> io::Result<LookupHost> {

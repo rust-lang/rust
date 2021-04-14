@@ -9,7 +9,7 @@ use crate::sys::hermit::abi;
 use crate::sys::hermit::abi::{O_APPEND, O_CREAT, O_EXCL, O_RDONLY, O_RDWR, O_TRUNC, O_WRONLY};
 use crate::sys::hermit::fd::FileDesc;
 use crate::sys::time::SystemTime;
-use crate::sys::{unsupported, Void};
+use crate::sys::unsupported;
 use crate::sys_common::os_str_bytes::OsStrExt;
 
 pub use crate::sys_common::fs::copy;
@@ -22,11 +22,11 @@ fn cstr(path: &Path) -> io::Result<CString> {
 #[derive(Debug)]
 pub struct File(FileDesc);
 
-pub struct FileAttr(Void);
+pub struct FileAttr(!);
 
-pub struct ReadDir(Void);
+pub struct ReadDir(!);
 
-pub struct DirEntry(Void);
+pub struct DirEntry(!);
 
 #[derive(Clone, Debug)]
 pub struct OpenOptions {
@@ -41,9 +41,9 @@ pub struct OpenOptions {
     mode: i32,
 }
 
-pub struct FilePermissions(Void);
+pub struct FilePermissions(!);
 
-pub struct FileType(Void);
+pub struct FileType(!);
 
 #[derive(Debug)]
 pub struct DirBuilder {}

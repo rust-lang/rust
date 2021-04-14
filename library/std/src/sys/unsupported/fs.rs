@@ -4,22 +4,22 @@ use crate::hash::{Hash, Hasher};
 use crate::io::{self, IoSlice, IoSliceMut, SeekFrom};
 use crate::path::{Path, PathBuf};
 use crate::sys::time::SystemTime;
-use crate::sys::{unsupported, Void};
+use crate::sys::unsupported;
 
-pub struct File(Void);
+pub struct File(!);
 
-pub struct FileAttr(Void);
+pub struct FileAttr(!);
 
-pub struct ReadDir(Void);
+pub struct ReadDir(!);
 
-pub struct DirEntry(Void);
+pub struct DirEntry(!);
 
 #[derive(Clone, Debug)]
 pub struct OpenOptions {}
 
-pub struct FilePermissions(Void);
+pub struct FilePermissions(!);
 
-pub struct FileType(Void);
+pub struct FileType(!);
 
 #[derive(Debug)]
 pub struct DirBuilder {}

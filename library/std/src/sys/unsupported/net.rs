@@ -2,10 +2,10 @@ use crate::convert::TryFrom;
 use crate::fmt;
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
-use crate::sys::{unsupported, Void};
+use crate::sys::unsupported;
 use crate::time::Duration;
 
-pub struct TcpStream(Void);
+pub struct TcpStream(!);
 
 impl TcpStream {
     pub fn connect(_: io::Result<&SocketAddr>) -> io::Result<TcpStream> {
@@ -107,7 +107,7 @@ impl fmt::Debug for TcpStream {
     }
 }
 
-pub struct TcpListener(Void);
+pub struct TcpListener(!);
 
 impl TcpListener {
     pub fn bind(_: io::Result<&SocketAddr>) -> io::Result<TcpListener> {
@@ -157,7 +157,7 @@ impl fmt::Debug for TcpListener {
     }
 }
 
-pub struct UdpSocket(Void);
+pub struct UdpSocket(!);
 
 impl UdpSocket {
     pub fn bind(_: io::Result<&SocketAddr>) -> io::Result<UdpSocket> {
@@ -291,7 +291,7 @@ impl fmt::Debug for UdpSocket {
     }
 }
 
-pub struct LookupHost(Void);
+pub struct LookupHost(!);
 
 impl LookupHost {
     pub fn port(&self) -> u16 {

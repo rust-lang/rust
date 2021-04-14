@@ -5,7 +5,7 @@ use crate::marker::PhantomData;
 use crate::path::Path;
 use crate::sys::fs::File;
 use crate::sys::pipe::AnonPipe;
-use crate::sys::{unsupported, Void};
+use crate::sys::unsupported;
 use crate::sys_common::process::{CommandEnv, CommandEnvs};
 
 pub use crate::ffi::OsString as EnvKey;
@@ -94,7 +94,7 @@ impl fmt::Debug for Command {
     }
 }
 
-pub struct ExitStatus(Void);
+pub struct ExitStatus(!);
 
 impl ExitStatus {
     pub fn success(&self) -> bool {
@@ -146,7 +146,7 @@ impl ExitCode {
     }
 }
 
-pub struct Process(Void);
+pub struct Process(!);
 
 impl Process {
     pub fn id(&self) -> u32 {

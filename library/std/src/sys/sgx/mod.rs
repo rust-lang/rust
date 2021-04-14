@@ -115,11 +115,6 @@ pub fn decode_error_kind(code: i32) -> ErrorKind {
     }
 }
 
-// This enum is used as the storage for a bunch of types which can't actually
-// exist.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-pub enum Void {}
-
 pub unsafe fn strlen(mut s: *const c_char) -> usize {
     let mut n = 0;
     while unsafe { *s } != 0 {

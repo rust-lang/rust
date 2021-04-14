@@ -1,7 +1,6 @@
 use crate::io::{self, IoSlice, IoSliceMut};
-use crate::sys::Void;
 
-pub struct AnonPipe(Void);
+pub struct AnonPipe(!);
 
 impl AnonPipe {
     pub fn read(&self, _buf: &mut [u8]) -> io::Result<usize> {

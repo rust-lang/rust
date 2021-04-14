@@ -9,7 +9,7 @@ use crate::path::{self, PathBuf};
 use crate::str;
 use crate::sync::Mutex;
 use crate::sys::hermit::abi;
-use crate::sys::{unsupported, Void};
+use crate::sys::unsupported;
 use crate::sys_common::os_str_bytes::*;
 use crate::vec;
 
@@ -29,7 +29,7 @@ pub fn chdir(_: &path::Path) -> io::Result<()> {
     unsupported()
 }
 
-pub struct SplitPaths<'a>(&'a Void);
+pub struct SplitPaths<'a>(&'a !);
 
 pub fn split_paths(_unparsed: &OsStr) -> SplitPaths<'_> {
     panic!("unsupported")
