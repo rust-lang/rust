@@ -148,8 +148,8 @@ pub unsafe fn _mm_rcp_ps(a: __m128) -> __m128 {
     rcpps(a)
 }
 
-/// Returns the approximate reciprocal square root of the fist single-precision
-/// (32-bit) floating-point elements in `a`, the other elements are unchanged.
+/// Returns the approximate reciprocal square root of the first single-precision
+/// (32-bit) floating-point element in `a`, the other elements are unchanged.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_rsqrt_ss)
 #[inline]
