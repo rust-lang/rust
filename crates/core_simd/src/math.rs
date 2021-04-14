@@ -91,11 +91,9 @@ macro_rules! impl_int_arith {
             /// ```
             #[inline]
             pub fn abs(self) -> Self {
-                let mut xs = self.to_array();
-                for (i, x) in xs.clone().iter().enumerate() {
-                    xs[i] = x.wrapping_abs()
-                }
-                $name::from_array(xs)
+                const SHR: $n = <$n>::BITS as $n - 1;
+                let m = self >> SHR;
+                (self^m) - m
             }
 
             /// Lanewise saturating absolute value, implemented in Rust.
