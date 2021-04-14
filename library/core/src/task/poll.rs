@@ -1,7 +1,7 @@
 #![stable(feature = "futures_api", since = "1.36.0")]
 
 use crate::convert;
-use crate::ops::{self, ControlFlow, Try};
+use crate::ops::{self, ControlFlow};
 use crate::result::Result;
 
 /// Indicates whether a value is available or if the current task has been
@@ -129,7 +129,7 @@ impl<T> From<T> for Poll<T> {
 }
 
 #[stable(feature = "futures_api", since = "1.36.0")]
-impl<T, E> Try for Poll<Result<T, E>> {
+impl<T, E> ops::TryV1 for Poll<Result<T, E>> {
     type Ok = Poll<T>;
     type Error = E;
 
@@ -184,7 +184,7 @@ impl<T, E, F: From<E>> ops::FromResidual<Result<convert::Infallible, E>> for Pol
 }
 
 #[stable(feature = "futures_api", since = "1.36.0")]
-impl<T, E> Try for Poll<Option<Result<T, E>>> {
+impl<T, E> ops::TryV1 for Poll<Option<Result<T, E>>> {
     type Ok = Poll<Option<T>>;
     type Error = E;
 

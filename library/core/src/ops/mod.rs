@@ -185,6 +185,9 @@ pub use self::range::{Bound, RangeBounds, RangeInclusive, RangeToInclusive};
 #[unstable(feature = "try_trait", issue = "42327")]
 pub use self::r#try::Try;
 
+#[unstable(feature = "try_trait_transition", reason = "for bootstrap", issue = "none")]
+pub use self::r#try::Try as TryV1;
+
 #[unstable(feature = "try_trait_v2", issue = "84277")]
 pub use self::try_trait::FromResidual;
 
@@ -202,3 +205,19 @@ pub use self::unsize::DispatchFromDyn;
 
 #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
 pub use self::control_flow::ControlFlow;
+
+/// [`TryV1`] and [`TryV2`] have different associated type names,
+/// so rather than need `bootstrap` checks all over the library,
+/// centralize the difference to this one trait alias.
+///
+/// As with all `try_trait_transition` stuff, this will be deleted
+/// after the bootstrap compiler uses V2 for `?`.
+///
+/// ```
+/// #![feature(try_trait_transition)]
+/// use std::ops::TryWhereOutputEquals;
+/// fn foo<T, C>() where T: TryWhereOutputEquals<C> {}
+/// foo::<Option<i32>, i32>();
+/// ```
+#[unstable(feature = "try_trait_transition", reason = "for bootstrap", issue = "none")]
+pub trait TryWhereOutputEquals<T> = TryV1<Ok = T>;

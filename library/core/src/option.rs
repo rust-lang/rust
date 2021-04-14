@@ -1644,7 +1644,7 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
 pub struct NoneError;
 
 #[unstable(feature = "try_trait", issue = "42327")]
-impl<T> ops::Try for Option<T> {
+impl<T> ops::TryV1 for Option<T> {
     type Ok = T;
     type Error = NoneError;
 

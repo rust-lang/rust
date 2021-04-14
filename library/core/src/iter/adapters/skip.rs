@@ -1,6 +1,6 @@
 use crate::intrinsics::unlikely;
 use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable};
-use crate::ops::{ControlFlow, Try};
+use crate::ops::{ControlFlow, TryWhereOutputEquals};
 
 /// An iterator that skips over `n` elements of `iter`.
 ///
@@ -88,7 +88,7 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: Try<Ok = Acc>,
+        R: TryWhereOutputEquals<Acc>,
     {
         let n = self.n;
         self.n = 0;
@@ -146,9 +146,9 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: Try<Ok = Acc>,
+        R: TryWhereOutputEquals<Acc>,
     {
-        fn check<T, Acc, R: Try<Ok = Acc>>(
+        fn check<T, Acc, R: TryWhereOutputEquals<Acc>>(
             mut n: usize,
             mut fold: impl FnMut(Acc, T) -> R,
         ) -> impl FnMut(Acc, T) -> ControlFlow<R, Acc> {

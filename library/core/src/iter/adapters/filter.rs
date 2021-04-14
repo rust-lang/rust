@@ -1,6 +1,6 @@
 use crate::fmt;
 use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable};
-use crate::ops::Try;
+use crate::ops::TryWhereOutputEquals;
 
 /// An iterator that filters the elements of `iter` with `predicate`.
 ///
@@ -37,7 +37,7 @@ fn filter_fold<T, Acc>(
     move |acc, item| if predicate(&item) { fold(acc, item) } else { acc }
 }
 
-fn filter_try_fold<'a, T, Acc, R: Try<Ok = Acc>>(
+fn filter_try_fold<'a, T, Acc, R: TryWhereOutputEquals<Acc>>(
     predicate: &'a mut impl FnMut(&T) -> bool,
     mut fold: impl FnMut(Acc, T) -> R + 'a,
 ) -> impl FnMut(Acc, T) -> R + 'a {
@@ -88,7 +88,7 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: Try<Ok = Acc>,
+        R: TryWhereOutputEquals<Acc>,
     {
         self.iter.try_fold(init, filter_try_fold(&mut self.predicate, fold))
     }
@@ -117,7 +117,7 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: Try<Ok = Acc>,
+        R: TryWhereOutputEquals<Acc>,
     {
         self.iter.try_rfold(init, filter_try_fold(&mut self.predicate, fold))
     }

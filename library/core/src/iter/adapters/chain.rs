@@ -1,5 +1,5 @@
 use crate::iter::{DoubleEndedIterator, FusedIterator, Iterator, TrustedLen};
-use crate::ops::Try;
+use crate::ops::TryWhereOutputEquals;
 
 /// An iterator that links two iterators together, in a chain.
 ///
@@ -98,7 +98,7 @@ where
     where
         Self: Sized,
         F: FnMut(Acc, Self::Item) -> R,
-        R: Try<Ok = Acc>,
+        R: TryWhereOutputEquals<Acc>,
     {
         if let Some(ref mut a) = self.a {
             acc = a.try_fold(acc, &mut f)?;
@@ -281,7 +281,7 @@ where
     where
         Self: Sized,
         F: FnMut(Acc, Self::Item) -> R,
-        R: Try<Ok = Acc>,
+        R: TryWhereOutputEquals<Acc>,
     {
         if let Some(ref mut b) = self.b {
             acc = b.try_rfold(acc, &mut f)?;

@@ -1,5 +1,5 @@
 use crate::iter::{InPlaceIterable, Iterator};
-use crate::ops::{ControlFlow, Try};
+use crate::ops::{ControlFlow, TryWhereOutputEquals};
 
 mod chain;
 mod cloned;
@@ -167,7 +167,7 @@ where
     fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
     where
         F: FnMut(B, Self::Item) -> R,
-        R: Try<Ok = B>,
+        R: TryWhereOutputEquals<B>,
     {
         let error = &mut *self.error;
         self.iter

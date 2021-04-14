@@ -1,6 +1,6 @@
 use core::fmt;
 use core::iter::{FusedIterator, TrustedLen, TrustedRandomAccess};
-use core::ops::Try;
+use core::ops::TryWhereOutputEquals;
 
 use super::{count, wrap_index, RingSlices};
 
@@ -66,7 +66,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
-        R: Try<Ok = B>,
+        R: TryWhereOutputEquals<B>,
     {
         let (mut iter, final_res);
         if self.tail <= self.head {
@@ -140,7 +140,7 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
-        R: Try<Ok = B>,
+        R: TryWhereOutputEquals<B>,
     {
         let (mut iter, final_res);
         if self.tail <= self.head {

@@ -1,6 +1,6 @@
 use crate::fmt;
 use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable};
-use crate::ops::Try;
+use crate::ops::TryWhereOutputEquals;
 
 /// An iterator that rejects elements while `predicate` returns `true`.
 ///
@@ -70,7 +70,7 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: Try<Ok = Acc>,
+        R: TryWhereOutputEquals<Acc>,
     {
         if !self.flag {
             match self.next() {

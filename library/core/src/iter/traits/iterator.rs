@@ -3,7 +3,7 @@
 // can't split that into multiple files.
 
 use crate::cmp::{self, Ordering};
-use crate::ops::{ControlFlow, Try};
+use crate::ops::{ControlFlow, TryWhereOutputEquals};
 
 use super::super::TrustedRandomAccess;
 use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
@@ -1999,7 +1999,7 @@ pub trait Iterator {
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
-        R: Try<Ok = B>,
+        R: TryWhereOutputEquals<B>,
     {
         let mut accum = init;
         while let Some(x) = self.next() {
@@ -2041,7 +2041,7 @@ pub trait Iterator {
     where
         Self: Sized,
         F: FnMut(Self::Item) -> R,
-        R: Try<Ok = ()>,
+        R: TryWhereOutputEquals<()>,
     {
         #[inline]
         fn call<T, R>(mut f: impl FnMut(T) -> R) -> impl FnMut((), T) -> R {
@@ -2416,13 +2416,13 @@ pub trait Iterator {
     where
         Self: Sized,
         F: FnMut(&Self::Item) -> R,
-        R: Try<Ok = bool>,
+        R: TryWhereOutputEquals<bool>,
     {
         #[inline]
         fn check<F, T, R>(mut f: F) -> impl FnMut((), T) -> ControlFlow<Result<T, R::Error>>
         where
             F: FnMut(&T) -> R,
-            R: Try<Ok = bool>,
+            R: TryWhereOutputEquals<bool>,
         {
             move |(), x| match f(&x).into_result() {
                 Ok(false) => ControlFlow::CONTINUE,

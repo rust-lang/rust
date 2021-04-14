@@ -1,5 +1,4 @@
-use crate::convert;
-use crate::ops::{self, Try};
+use crate::{convert, ops};
 
 /// Used to tell an operation whether it should exit early or go on as usual.
 ///
@@ -62,7 +61,7 @@ pub enum ControlFlow<B, C = ()> {
 }
 
 #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
-impl<B, C> Try for ControlFlow<B, C> {
+impl<B, C> ops::TryV1 for ControlFlow<B, C> {
     type Ok = C;
     type Error = B;
     #[inline]
@@ -182,14 +181,14 @@ impl<B, C> ControlFlow<B, C> {
     }
 }
 
-impl<R: Try> ControlFlow<R, R::Ok> {
+impl<R: ops::TryV1> ControlFlow<R, R::Ok> {
     /// Create a `ControlFlow` from any type implementing `Try`.
     #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
     #[inline]
     pub fn from_try(r: R) -> Self {
-        match Try::into_result(r) {
+        match R::into_result(r) {
             Ok(v) => ControlFlow::Continue(v),
-            Err(v) => ControlFlow::Break(Try::from_error(v)),
+            Err(v) => ControlFlow::Break(R::from_error(v)),
         }
     }
 
@@ -198,7 +197,7 @@ impl<R: Try> ControlFlow<R, R::Ok> {
     #[inline]
     pub fn into_try(self) -> R {
         match self {
-            ControlFlow::Continue(v) => Try::from_ok(v),
+            ControlFlow::Continue(v) => R::from_ok(v),
             ControlFlow::Break(v) => v,
         }
     }

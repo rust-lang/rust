@@ -141,6 +141,7 @@
 #![feature(alloc_layout_extra)]
 #![feature(trusted_random_access)]
 #![feature(try_trait)]
+#![feature(try_trait_transition)]
 #![feature(min_type_alias_impl_trait)]
 #![feature(associated_type_bounds)]
 #![feature(slice_group_by)]

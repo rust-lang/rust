@@ -1,7 +1,7 @@
 use crate::fmt;
 use crate::iter::adapters::{zip::try_get_unchecked, SourceIter, TrustedRandomAccess};
 use crate::iter::{FusedIterator, InPlaceIterable, TrustedLen};
-use crate::ops::Try;
+use crate::ops::TryWhereOutputEquals;
 
 /// An iterator that maps the values of `iter` with `f`.
 ///
@@ -110,7 +110,7 @@ where
     where
         Self: Sized,
         G: FnMut(Acc, Self::Item) -> R,
-        R: Try<Ok = Acc>,
+        R: TryWhereOutputEquals<Acc>,
     {
         self.iter.try_fold(init, map_try_fold(&mut self.f, g))
     }
@@ -146,7 +146,7 @@ where
     where
         Self: Sized,
         G: FnMut(Acc, Self::Item) -> R,
-        R: Try<Ok = Acc>,
+        R: TryWhereOutputEquals<Acc>,
     {
         self.iter.try_rfold(init, map_try_fold(&mut self.f, g))
     }

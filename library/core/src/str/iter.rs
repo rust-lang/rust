@@ -5,7 +5,7 @@ use crate::fmt::{self, Write};
 use crate::iter::TrustedRandomAccess;
 use crate::iter::{Chain, FlatMap, Flatten};
 use crate::iter::{Copied, Filter, FusedIterator, Map, TrustedLen};
-use crate::ops::Try;
+use crate::ops::TryWhereOutputEquals;
 use crate::option;
 use crate::slice::{self, Split as SliceSplit};
 
@@ -1467,7 +1467,7 @@ macro_rules! escape_types_impls {
 
             #[inline]
             fn try_fold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R where
-                Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
+                Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: TryWhereOutputEquals<Acc>
             {
                 self.inner.try_fold(init, fold)
             }

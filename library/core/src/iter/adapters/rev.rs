@@ -1,5 +1,5 @@
 use crate::iter::{FusedIterator, TrustedLen};
-use crate::ops::Try;
+use crate::ops::TryWhereOutputEquals;
 
 /// A double-ended iterator with the direction inverted.
 ///
@@ -51,7 +51,7 @@ where
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
-        R: Try<Ok = B>,
+        R: TryWhereOutputEquals<B>,
     {
         self.iter.try_rfold(init, f)
     }
@@ -96,7 +96,7 @@ where
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
-        R: Try<Ok = B>,
+        R: TryWhereOutputEquals<B>,
     {
         self.iter.try_fold(init, f)
     }
