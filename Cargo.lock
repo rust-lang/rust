@@ -1509,9 +1509,8 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "362385356d610bd1e5a408ddf8d022041774b683f345a1d2cfcb4f60f8ae2db5"
+version = "0.11.2"
+source = "git+https://github.com/Zoxc/hashbrown.git?branch=opt-insert#ed0f9a8a288c709c11dbcefa8edad7cb85fb3bd8"
 dependencies = [
  "compiler_builtins",
  "rustc-std-workspace-alloc",
@@ -1658,8 +1657,7 @@ dependencies = [
 [[package]]
 name = "indexmap"
 version = "1.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc633605454125dec4b66843673f01c7df2b89479b32e0ed634e43a91cff62a5"
+source = "git+https://github.com/Zoxc/indexmap.git#3a88255836a4e608bbc059d006799921ed09ac68"
 dependencies = [
  "autocfg",
  "hashbrown",
