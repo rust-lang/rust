@@ -26,7 +26,12 @@ impl<'a> SpanUtils<'a> {
                         .display()
                         .to_string()
                 } else {
-                    self.sess.working_dir.stable_name().join(&path).display().to_string()
+                    self.sess
+                        .working_dir
+                        .remapped_path_if_available()
+                        .join(&path)
+                        .display()
+                        .to_string()
                 }
             }
             // If the file name was remapped, we assume the user

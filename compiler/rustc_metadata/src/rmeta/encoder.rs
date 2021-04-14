@@ -490,22 +490,27 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     FileName::Real(ref realname) => {
                         let mut adapted = (**source_file).clone();
                         adapted.name = FileName::Real(match realname {
-                            RealFileName::LocalPath(local_path) => {
-                                // Prepend path of working directory onto local path.
-                                // because relative paths are potentially relative to a
-                                // wrong directory.
+                            RealFileName::LocalPath(path_to_file) => {
+                                // Prepend path of working directory onto potentially
+                                // relative paths, because they could become relative
+                                // to a wrong directory.
                                 let working_dir = &self.tcx.sess.working_dir;
-                                if let RealFileName::LocalPath(absolute) = working_dir {
-                                    // If working_dir has not been remapped, then we emit a
-                                    // LocalPath variant as it's likely to be a valid path
-                                    RealFileName::LocalPath(Path::new(absolute).join(local_path))
-                                } else {
-                                    // If working_dir has been remapped, then we emit
-                                    // Remapped variant as the expanded path won't be valid
-                                    RealFileName::Remapped {
-                                        local_path: None,
-                                        virtual_name: Path::new(working_dir.stable_name())
-                                            .join(local_path),
+                                match working_dir {
+                                    RealFileName::LocalPath(absolute) => {
+                                        // If working_dir has not been remapped, then we emit a
+                                        // LocalPath variant as it's likely to be a valid path
+                                        RealFileName::LocalPath(
+                                            Path::new(absolute).join(path_to_file),
+                                        )
+                                    }
+                                    RealFileName::Remapped { local_path: _, virtual_name } => {
+                                        // If working_dir has been remapped, then we emit
+                                        // Remapped variant as the expanded path won't be valid
+                                        RealFileName::Remapped {
+                                            local_path: None,
+                                            virtual_name: Path::new(virtual_name)
+                                                .join(path_to_file),
+                                        }
                                     }
                                 }
                             }

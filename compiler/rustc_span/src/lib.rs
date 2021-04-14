@@ -172,7 +172,7 @@ impl<S: Encoder> Encodable<S> for RealFileName {
 impl RealFileName {
     /// Returns the path suitable for reading from the file system on the local host,
     /// if this information exists.
-    /// Avoid embedding this in build artifacts; see `stable_name()` for that.
+    /// Avoid embedding this in build artifacts; see `remapped_path_if_available()` for that.
     pub fn local_path(&self) -> Option<&Path> {
         match self {
             RealFileName::LocalPath(p) => Some(p),
@@ -184,7 +184,7 @@ impl RealFileName {
 
     /// Returns the path suitable for reading from the file system on the local host,
     /// if this information exists.
-    /// Avoid embedding this in build artifacts; see `stable_name()` for that.
+    /// Avoid embedding this in build artifacts; see `remapped_path_if_available()` for that.
     pub fn into_local_path(self) -> Option<PathBuf> {
         match self {
             RealFileName::LocalPath(p) => Some(p),
@@ -192,31 +192,33 @@ impl RealFileName {
         }
     }
 
-    /// Returns the path suitable for embedding into build artifacts. Note that
-    /// a remapped path will not correspond to a valid file system path; see
-    /// `local_path()` for something that is more likely to return paths into the
-    /// local host file system.
-    pub fn stable_name(&self) -> &Path {
+    /// Returns the path suitable for embedding into build artifacts. This would still
+    /// be a local path if it has not been remapped. A remapped path will not correspond
+    /// to a valid file system path: see `local_path_if_available()` for something that
+    /// is more likely to return paths into the local host file system.
+    pub fn remapped_path_if_available(&self) -> &Path {
         match self {
             RealFileName::LocalPath(p)
             | RealFileName::Remapped { local_path: _, virtual_name: p } => &p,
         }
     }
 
-    fn to_string_lossy(&self, prefer_local: bool) -> Cow<'_, str> {
-        use RealFileName::*;
+    /// Returns the path suitable for reading from the file system on the local host,
+    /// if this information exists. Otherwise returns the remapped name.
+    /// Avoid embedding this in build artifacts; see `remapped_path_if_available()` for that.
+    pub fn local_path_if_available(&self) -> &Path {
+        match self {
+            RealFileName::LocalPath(path)
+            | RealFileName::Remapped { local_path: None, virtual_name: path }
+            | RealFileName::Remapped { local_path: Some(path), virtual_name: _ } => path,
+        }
+    }
+
+    pub fn to_string_lossy(&self, prefer_local: bool) -> Cow<'_, str> {
         if prefer_local {
-            match self {
-                LocalPath(path)
-                | Remapped { local_path: None, virtual_name: path }
-                | Remapped { local_path: Some(path), virtual_name: _ } => path.to_string_lossy(),
-            }
+            self.local_path_if_available().to_string_lossy()
         } else {
-            match self {
-                LocalPath(path) | Remapped { local_path: _, virtual_name: path } => {
-                    path.to_string_lossy()
-                }
-            }
+            self.remapped_path_if_available().to_string_lossy()
         }
     }
 }
@@ -1358,7 +1360,7 @@ impl<D: Decoder> Decodable<D> for SourceFile {
 
 impl fmt::Debug for SourceFile {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(fmt, "SourceFile({})", self.name)
+        write!(fmt, "SourceFile({:?})", self.name)
     }
 }
 
