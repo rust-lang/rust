@@ -1544,6 +1544,28 @@ validate 9, 30, 11, 20, 13, 18, 15, 48
 aarch64 = pmull
 generate poly8x16_t:poly8x16_t:poly16x8_t
 
+/// Floating-point fused Multiply-Add to accumulator(vector)
+name = vfma
+a = 2.0, 3.0, 4.0, 5.0
+b = 6.0, 4.0, 7.0, 8.0
+c = 8.0, 18.0, 12.0, 10.0
+validate 20.0, 30.0, 40.0, 50.0
+
+aarch64 = fmadd
+link-aarch64 = llvm.fma._EXT_
+generate float64x1_t
+
+aarch64 = fmla
+link-aarch64 = llvm.fma._EXT_
+generate float64x2_t
+
+target = fp-armv8
+arm = vfma
+aarch64 = fmla
+link-arm = llvm.fma._EXT_
+link-aarch64 = llvm.fma._EXT_
+generate float*_t
+
 /// Divide
 name = vdiv
 fn = simd_div

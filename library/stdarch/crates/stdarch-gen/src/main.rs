@@ -1238,7 +1238,7 @@ fn gen_arm(
         ),
         (0, 3, _) => format!(
             r#"pub unsafe fn {}{}(a: {}, b: {}, c: {}) -> {} {{
-    {}{}(a, b)
+    {}{}(a, b, c)
 }}"#,
             name, const_declare, in_t[0], in_t[1], in_t[2], out_t, ext_c, current_fn,
         ),
