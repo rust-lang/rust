@@ -24,10 +24,8 @@ pub fn autoderef<'a>(
     krate: Option<CrateId>,
     ty: InEnvironment<Canonical<Ty>>,
 ) -> impl Iterator<Item = Canonical<Ty>> + 'a {
-    let _p = profile::span("autoderef");
     let InEnvironment { goal: ty, environment } = ty;
     successors(Some(ty), move |ty| {
-        let _p = profile::span("autoderef.step");
         deref(db, krate?, InEnvironment { goal: ty, environment: environment.clone() })
     })
     .take(AUTODEREF_RECURSION_LIMIT)
@@ -38,6 +36,7 @@ pub(crate) fn deref(
     krate: CrateId,
     ty: InEnvironment<&Canonical<Ty>>,
 ) -> Option<Canonical<Ty>> {
+    let _p = profile::span("deref");
     if let Some(derefed) = builtin_deref(&ty.goal.value) {
         Some(Canonical { value: derefed, binders: ty.goal.binders.clone() })
     } else {
