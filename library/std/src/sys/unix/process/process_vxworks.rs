@@ -18,7 +18,7 @@ impl Command {
         needs_stdin: bool,
     ) -> io::Result<(Process, StdioPipes)> {
         use crate::sys::cvt_r;
-        const CLOEXEC_MSG_FOOTER: &'static [u8] = b"NOEX";
+        // const CLOEXEC_MSG_FOOTER: &'static [u8] = b"NOEX";
         let envp = self.capture_env();
 
         if self.saw_nul() {
@@ -195,6 +195,24 @@ impl ExitStatus {
 
     pub fn signal(&self) -> Option<i32> {
         if !self.exited() { Some(libc::WTERMSIG(self.0)) } else { None }
+    }
+
+    pub fn core_dumped(&self) -> bool {
+        // This method is not yet properly implemented on VxWorks
+        false
+    }
+
+    pub fn stopped_signal(&self) -> Option<i32> {
+        if libc::WIFSTOPPED(self.0) { Some(libc::WSTOPSIG(self.0)) } else { None }
+    }
+
+    pub fn continued(&self) -> bool {
+        // This method is not yet properly implemented on VxWorks
+        false
+    }
+
+    pub fn into_raw(&self) -> c_int {
+        self.0
     }
 }
 
