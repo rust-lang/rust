@@ -3,6 +3,9 @@
 
 // pretty-expanded FIXME #23616
 
+#![allow(deref_nullptr)]
+
+
 use std::env;
 
 pub fn main() {

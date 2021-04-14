@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 //! Lints in the Rust compiler.
 //!
 //! This contains lints which can feasibly be implemented as their own
@@ -2959,6 +2961,91 @@ impl<'tcx> LateLintPass<'tcx> for ClashingExternDeclarations {
                             .emit()
                         },
                     );
+                }
+            }
+        }
+    }
+}
+
+declare_lint! {
+    /// The `deref_nullptr` lint detects when an null pointer is dereferenced,
+    /// which causes [undefined behavior].
+    ///
+    /// ### Example
+    ///
+    /// ```rust,no_run
+    /// # #![allow(unused)]
+    /// use std::ptr;
+    /// unsafe {
+    ///     let x = &*ptr::null::<i32>();
+    ///     let x = ptr::addr_of!(*ptr::null::<i32>());
+    ///     let x = *(0 as *const i32);
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Dereferencing a null pointer causes [undefined behavior] even as a place expression,
+    /// like `&*(0 as *const i32)` or `addr_of!(*(0 as *const i32))`.
+    ///
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    pub DEREF_NULLPTR,
+    Warn,
+    "detects when an null pointer is dereferenced"
+}
+
+declare_lint_pass!(DerefNullPtr => [DEREF_NULLPTR]);
+
+impl<'tcx> LateLintPass<'tcx> for DerefNullPtr {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr<'_>) {
+        /// test if expression is a null ptr
+        fn is_null_ptr(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
+            match &expr.kind {
+                rustc_hir::ExprKind::Cast(ref expr, ref ty) => {
+                    if let rustc_hir::TyKind::Ptr(_) = ty.kind {
+                        return is_zero(expr) || is_null_ptr(cx, expr);
+                    }
+                }
+                // check for call to `core::ptr::null` or `core::ptr::null_mut`
+                rustc_hir::ExprKind::Call(ref path, _) => {
+                    if let rustc_hir::ExprKind::Path(ref qpath) = path.kind {
+                        if let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id() {
+                            return cx.tcx.is_diagnostic_item(sym::ptr_null, def_id)
+                                || cx.tcx.is_diagnostic_item(sym::ptr_null_mut, def_id);
+                        }
+                    }
+                }
+                _ => {}
+            }
+            false
+        }
+
+        /// test if experssion is the literal `0`
+        fn is_zero(expr: &hir::Expr<'_>) -> bool {
+            match &expr.kind {
+                rustc_hir::ExprKind::Lit(ref lit) => {
+                    if let LitKind::Int(a, _) = lit.node {
+                        return a == 0;
+                    }
+                }
+                _ => {}
+            }
+            false
+        }
+
+        if let rustc_hir::ExprKind::Unary(ref un_op, ref expr_deref) = expr.kind {
+            if let rustc_hir::UnOp::Deref = un_op {
+                if is_null_ptr(cx, expr_deref) {
+                    cx.struct_span_lint(DEREF_NULLPTR, expr.span, |lint| {
+                        let mut err = lint.build("dereferencing a null pointer");
+                        err.span_label(
+                            expr.span,
+                            "this code causes undefined behavior when executed",
+                        );
+                        err.emit();
+                    });
                 }
             }
         }
