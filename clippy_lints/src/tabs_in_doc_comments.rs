@@ -104,6 +104,9 @@ fn get_chunks_of_tabs(the_str: &str) -> Vec<(u32, u32)> {
     // tracker to decide if the last group of tabs is not closed by a non-tab character
     let mut is_active = false;
 
+    // Note that we specifically need the char _byte_ indices here, not the positional indexes
+    // within the char array to deal with multi-byte characters properly. `char_indices` does
+    // exactly that. It provides an iterator over tuples of the form `(byte position, char)`.
     let char_indices: Vec<_> = the_str.char_indices().collect();
 
     if let [(_, '\t')] = char_indices.as_slice() {
