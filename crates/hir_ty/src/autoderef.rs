@@ -85,10 +85,7 @@ fn deref_by_trait(
             environment: ty.environment.clone(),
         },
     };
-    if {
-        let _p = profile::span("db.trait_solve");
-        db.trait_solve(krate, implements_goal).is_none()
-    } {
+    if db.trait_solve(krate, implements_goal).is_none() {
         return None;
     }
 

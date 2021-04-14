@@ -201,7 +201,7 @@ impl RootDatabase {
             hir::db::InternImplTraitIdQuery
             hir::db::InternClosureQuery
             hir::db::AssociatedTyValueQuery
-            hir::db::TraitSolveQuery
+            hir::db::TraitSolveQueryQuery
 
             // SymbolsDatabase
             crate::symbol_index::FileSymbolsQuery
