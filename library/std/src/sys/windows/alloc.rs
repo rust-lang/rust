@@ -5,7 +5,7 @@ use crate::ffi::c_void;
 use crate::ptr;
 use crate::sync::atomic::{AtomicPtr, Ordering};
 use crate::sys::c;
-use crate::sys_common::alloc::{realloc_fallback, MIN_ALIGN};
+use crate::sys::common::alloc::{realloc_fallback, MIN_ALIGN};
 
 #[cfg(test)]
 mod tests;
