@@ -8,7 +8,11 @@ pub mod tag {
     #[doc(cfg(feature = "sync"))]
     pub trait Portability {}
 
-    pub trait Unstable {}
+    #[deprecated(since = "0.1.8", note = "Use bar() instead")]
+    #[doc(cfg(feature = "sync"))]
+    pub trait Both {}
+
+    pub trait None {}
 }
 
 // @has foo/mod1/index.html
@@ -29,8 +33,16 @@ pub mod mod2 {
 
 // @has foo/mod3/index.html
 pub mod mod3 {
-    // @has - '//code' 'pub use tag::Unstable;'
+    // @has - '//code' 'pub use tag::Both;'
+    // @has - '//span' 'Deprecated'
+    // @has - '//span' 'sync'
+    pub use tag::Both;
+}
+
+// @has foo/mod4/index.html
+pub mod mod4 {
+    // @has - '//code' 'pub use tag::None;'
     // @!has - '//span' 'Deprecated'
     // @!has - '//span' 'sync'
-    pub use tag::Unstable;
+    pub use tag::None;
 }
