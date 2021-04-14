@@ -900,6 +900,8 @@ symbols! {
         profiler_runtime,
         ptr_guaranteed_eq,
         ptr_guaranteed_ne,
+        ptr_null,
+        ptr_null_mut,
         ptr_offset_from,
         pub_macro_rules,
         pub_restricted,
