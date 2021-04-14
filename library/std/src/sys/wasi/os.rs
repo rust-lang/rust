@@ -130,8 +130,8 @@ pub struct Env {
     iter: vec::IntoIter<(OsString, OsString)>,
 }
 
-impl !Send for Args {}
-impl !Sync for Args {}
+impl !Send for Env {}
+impl !Sync for Env {}
 
 impl Iterator for Env {
     type Item = (OsString, OsString);
