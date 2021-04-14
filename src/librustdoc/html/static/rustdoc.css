@@ -133,7 +133,8 @@ h3.impl, h3.method, h4.method, h3.type, h4.type, h4.associatedconstant {
 	margin-bottom: 10px;
 	position: relative;
 }
-h3.impl, h3.method, h3.type {
+h3.impl, h3.method, h4.method.trait-impl, h3.type,
+h4.type.trait-impl, h4.associatedconstant.trait-impl {
 	padding-left: 15px;
 }
 
@@ -655,7 +656,8 @@ a {
 	display: initial;
 }
 
-.in-band:hover > .anchor, .impl:hover > .anchor {
+.in-band:hover > .anchor, .impl:hover > .anchor, .method.trait-impl:hover > .anchor,
+.type.trait-impl:hover > .anchor, .associatedconstant.trait-impl:hover > .anchor {
 	display: inline-block;
 	position: absolute;
 }
