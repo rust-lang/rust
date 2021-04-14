@@ -92,8 +92,7 @@ pub(crate) fn codegen_inline_asm<'tcx>(
 
     let inline_asm_index = fx.inline_asm_index;
     fx.inline_asm_index += 1;
-    let asm_name =
-        format!("{}__inline_asm_{}", fx.tcx.symbol_name(fx.instance).name, inline_asm_index);
+    let asm_name = format!("{}__inline_asm_{}", fx.symbol_name, inline_asm_index);
 
     let generated_asm = generate_asm_wrapper(
         &asm_name,

@@ -72,11 +72,11 @@ pub(crate) fn get_vtable<'tcx>(
     layout: TyAndLayout<'tcx>,
     trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
 ) -> Value {
-    let data_id = if let Some(data_id) = fx.cx.vtables.get(&(layout.ty, trait_ref)) {
+    let data_id = if let Some(data_id) = fx.vtables.get(&(layout.ty, trait_ref)) {
         *data_id
     } else {
         let data_id = build_vtable(fx, layout, trait_ref);
-        fx.cx.vtables.insert((layout.ty, trait_ref), data_id);
+        fx.vtables.insert((layout.ty, trait_ref), data_id);
         data_id
     };
 
@@ -139,27 +139,9 @@ fn build_vtable<'tcx>(
 
     data_ctx.set_align(fx.tcx.data_layout.pointer_align.pref.bytes());
 
-    let data_id = fx
-        .cx
-        .module
-        .declare_data(
-            &format!(
-                "__vtable.{}.for.{:?}.{}",
-                trait_ref
-                    .as_ref()
-                    .map(|trait_ref| format!("{:?}", trait_ref.skip_binder()).into())
-                    .unwrap_or(std::borrow::Cow::Borrowed("???")),
-                layout.ty,
-                fx.cx.vtables.len(),
-            ),
-            Linkage::Local,
-            false,
-            false,
-        )
-        .unwrap();
+    let data_id = fx.cx.module.declare_anonymous_data(false, false).unwrap();
 
-    // FIXME don't duplicate definitions in lazy jit mode
-    let _ = fx.cx.module.define_data(data_id, &data_ctx);
+    fx.cx.module.define_data(data_id, &data_ctx).unwrap();
 
     data_id
 }

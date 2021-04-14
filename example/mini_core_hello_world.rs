@@ -296,6 +296,11 @@ fn main() {
     unsafe {
         global_asm_test();
     }
+
+    // Both statics have a reference that points to the same anonymous allocation.
+    static REF1: &u8 = &42;
+    static REF2: &u8 = REF1;
+    assert_eq!(*REF1, *REF2);
 }
 
 #[cfg(all(not(jit), target_os = "linux"))]

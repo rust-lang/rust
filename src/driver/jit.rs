@@ -58,7 +58,7 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
                     CodegenMode::JitLazy => codegen_shim(&mut cx, inst),
                 },
                 MonoItem::Static(def_id) => {
-                    crate::constant::codegen_static(&mut cx.constants_cx, def_id);
+                    crate::constant::codegen_static(&mut cx, def_id);
                 }
                 MonoItem::GlobalAsm(item_id) => {
                     let item = cx.tcx.hir().item(item_id);

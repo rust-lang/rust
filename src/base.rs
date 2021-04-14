@@ -6,6 +6,7 @@ use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::layout::FnAbiExt;
 use rustc_target::abi::call::FnAbi;
 
+use crate::constant::ConstantCx;
 use crate::prelude::*;
 
 pub(crate) fn codegen_fn<'tcx>(cx: &mut crate::CodegenCx<'_, 'tcx>, instance: Instance<'tcx>) {
@@ -18,9 +19,9 @@ pub(crate) fn codegen_fn<'tcx>(cx: &mut crate::CodegenCx<'_, 'tcx>, instance: In
     let mir = tcx.instance_mir(instance.def);
 
     // Declare function
-    let name = tcx.symbol_name(instance).name.to_string();
+    let symbol_name = tcx.symbol_name(instance);
     let sig = get_function_sig(tcx, cx.module.isa().triple(), instance);
-    let func_id = cx.module.declare_function(&name, Linkage::Local, &sig).unwrap();
+    let func_id = cx.module.declare_function(symbol_name.name, Linkage::Local, &sig).unwrap();
 
     cx.cached_context.clear();
 
@@ -46,8 +47,11 @@ pub(crate) fn codegen_fn<'tcx>(cx: &mut crate::CodegenCx<'_, 'tcx>, instance: In
         cx,
         tcx,
         pointer_type,
+        vtables: FxHashMap::default(),
+        constants_cx: ConstantCx::new(),
 
         instance,
+        symbol_name,
         mir,
         fn_abi: Some(FnAbi::of_instance(&RevealAllLayoutCx(tcx), instance, &[])),
 
@@ -89,6 +93,8 @@ pub(crate) fn codegen_fn<'tcx>(cx: &mut crate::CodegenCx<'_, 'tcx>, instance: In
     let mut clif_comments = fx.clif_comments;
     let source_info_set = fx.source_info_set;
     let local_map = fx.local_map;
+
+    fx.constants_cx.finalize(fx.tcx, &mut *fx.cx.module);
 
     // Store function in context
     let context = &mut cx.cached_context;
@@ -151,7 +157,7 @@ pub(crate) fn codegen_fn<'tcx>(cx: &mut crate::CodegenCx<'_, 'tcx>, instance: In
             debug_context.define_function(
                 instance,
                 func_id,
-                &name,
+                symbol_name.name,
                 isa,
                 context,
                 &source_info_set,
