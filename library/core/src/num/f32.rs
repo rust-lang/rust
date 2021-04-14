@@ -500,7 +500,6 @@ impl f32 {
     /// Returns `true` if the number is [subnormal].
     ///
     /// ```
-    /// #![feature(is_subnormal)]
     /// let min = f32::MIN_POSITIVE; // 1.17549435e-38f32
     /// let max = f32::MAX;
     /// let lower_than_min = 1.0e-40_f32;
@@ -516,7 +515,7 @@ impl f32 {
     /// assert!(lower_than_min.is_subnormal());
     /// ```
     /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
-    #[unstable(feature = "is_subnormal", issue = "79288")]
+    #[stable(feature = "is_subnormal", since = "1.53.0")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     #[inline]
     pub const fn is_subnormal(self) -> bool {

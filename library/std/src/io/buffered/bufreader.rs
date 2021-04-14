@@ -234,7 +234,7 @@ impl<R: Seek> BufReader<R> {
     /// the buffer will not be flushed, allowing for more efficient seeks.
     /// This method does not return the location of the underlying reader, so the caller
     /// must track this information themselves if it is required.
-    #[unstable(feature = "bufreader_seek_relative", issue = "31100")]
+    #[stable(feature = "bufreader_seek_relative", since = "1.53.0")]
     pub fn seek_relative(&mut self, offset: i64) -> io::Result<()> {
         let pos = self.pos as u64;
         if offset < 0 {

@@ -31,6 +31,7 @@ note: the lint level is defined here
    |
 LL | #![deny(rustdoc::non_autolinks)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
+   = note: bare URLs are not automatically turned into clickable links
 
 error: aborting due to 2 previous errors; 1 warning emitted
 

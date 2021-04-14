@@ -50,6 +50,8 @@ Libraries
 - [`io::Empty` now implements `io::Seek`.][78044]
 - [`rc::Weak<T>` and `sync::Weak<T>`'s methods such as `as_ptr` are now implemented for
   `T: ?Sized` types.][80764]
+- [`Div` and `Rem` by their `NonZero` variant is now implemented for all unsigned integers.][79134]
+
 
 Stabilized APIs
 ---------------
@@ -72,6 +74,8 @@ Stabilized APIs
 - [`str::split_inclusive`]
 - [`sync::OnceState`]
 - [`task::Wake`]
+- [`VecDeque::range`]
+- [`VecDeque::range_mut`]
 
 Cargo
 -----
@@ -115,6 +119,7 @@ Compatibility Notes
     - `thumbv7neon-unknown-linux-gnueabihf`
     - `armv7-unknown-linux-gnueabi`
     - `x86_64-unknown-linux-gnux32`
+- [`atomic::spin_loop_hint` has been deprecated.][80966] It's recommended to use `hint::spin_loop` instead.
 
 Internal Only
 -------------
@@ -145,6 +150,8 @@ Internal Only
 [80764]: https://github.com/rust-lang/rust/pull/80764
 [80749]: https://github.com/rust-lang/rust/pull/80749
 [80662]: https://github.com/rust-lang/rust/pull/80662
+[79134]: https://github.com/rust-lang/rust/pull/79134
+[80966]: https://github.com/rust-lang/rust/pull/80966
 [cargo/8997]: https://github.com/rust-lang/cargo/pull/8997
 [cargo/9112]: https://github.com/rust-lang/cargo/pull/9112
 [feature-resolver@2.0]: https://doc.rust-lang.org/nightly/cargo/reference/features.html#feature-resolver-version-2
@@ -166,6 +173,8 @@ Internal Only
 [`Seek::stream_position`]: https://doc.rust-lang.org/nightly/std/io/trait.Seek.html#method.stream_position
 [`Peekable::next_if`]: https://doc.rust-lang.org/nightly/std/iter/struct.Peekable.html#method.next_if
 [`Peekable::next_if_eq`]: https://doc.rust-lang.org/nightly/std/iter/struct.Peekable.html#method.next_if_eq
+[`VecDeque::range`]: https://doc.rust-lang.org/nightly/std/collections/struct.VecDeque.html#method.range
+[`VecDeque::range_mut`]: https://doc.rust-lang.org/nightly/std/collections/struct.VecDeque.html#method.range_mut
 
 Version 1.50.0 (2021-02-11)
 ============================

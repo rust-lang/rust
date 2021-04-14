@@ -17,7 +17,7 @@ pub unsafe trait Array {
 
 pub trait Index : PartialEq + Copy {
     fn to_usize(self) -> usize;
-    fn from(usize) -> Self;
+    fn from(i: usize) -> Self;
 }
 
 impl Index for usize {

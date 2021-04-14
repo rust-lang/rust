@@ -82,7 +82,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         if param_type.is_suggestable() {
                             err.span_suggestion(
                                 tcx.def_span(src_def_id),
-                                "consider changing this type paramater to a `const`-generic",
+                                "consider changing this type parameter to be a `const` generic",
                                 format!("const {}: {}", param_name, param_type),
                                 Applicability::MaybeIncorrect,
                             );

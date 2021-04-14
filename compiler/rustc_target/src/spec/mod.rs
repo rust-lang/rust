@@ -1446,8 +1446,8 @@ impl Target {
 
         let get_req_field = |name: &str| {
             obj.find(name)
-                .map(|s| s.as_string())
-                .and_then(|os| os.map(|s| s.to_string()))
+                .and_then(Json::as_string)
+                .map(str::to_string)
                 .ok_or_else(|| format!("Field {} in target specification is required", name))
         };
 

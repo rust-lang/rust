@@ -224,6 +224,17 @@ fn sanitizers() {
 }
 
 #[test]
+fn asm_support() {
+    let mut config = config();
+
+    config.target = "avr-unknown-gnu-atmega328".to_owned();
+    assert!(parse_rs(&config, "// needs-asm-support").ignore);
+
+    config.target = "i686-unknown-netbsd".to_owned();
+    assert!(!parse_rs(&config, "// needs-asm-support").ignore);
+}
+
+#[test]
 fn test_extract_version_range() {
     use super::{extract_llvm_version, extract_version_range};
 

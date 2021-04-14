@@ -1,6 +1,7 @@
 // aux-build:ident-mac.rs
 
 #![feature(c_variadic)]
+#![allow(anonymous_parameters)]
 
 extern crate ident_mac;
 use ident_mac::id;

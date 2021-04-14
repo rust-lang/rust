@@ -1768,6 +1768,7 @@ mod super_keyword {}
 /// In the 2015 edition the parameters pattern was not needed for traits:
 ///
 /// ```rust,edition2015
+/// # #![allow(anonymous_parameters)]
 /// trait Tr {
 ///     fn f(i32);
 /// }

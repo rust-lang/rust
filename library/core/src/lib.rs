@@ -79,7 +79,6 @@
 #![feature(const_int_unchecked_arith)]
 #![feature(const_mut_refs)]
 #![feature(const_refs_to_cell)]
-#![feature(const_cttz)]
 #![feature(const_panic)]
 #![feature(const_pin)]
 #![feature(const_fn)]
