@@ -2,7 +2,9 @@ error: `prim@usize#x` contains an anchor, but links to builtin types are already
   --> $DIR/anchors.rs:47:6
    |
 LL | /// [prim@usize#x]
-   |      ^^^^^^^^^^^^ contains invalid anchor
+   |      ^^^^^^^^^^--
+   |                |
+   |                invalid anchor
    |
 note: the lint level is defined here
   --> $DIR/anchors.rs:1:9
@@ -16,25 +18,33 @@ error: `Foo::f#hola` contains an anchor, but links to fields are already anchore
   --> $DIR/anchors.rs:25:15
    |
 LL | /// Or maybe [Foo::f#hola].
-   |               ^^^^^^^^^^^ contains invalid anchor
+   |               ^^^^^^-----
+   |                     |
+   |                     invalid anchor
 
 error: `hello#people#!` contains multiple anchors
   --> $DIR/anchors.rs:31:28
    |
 LL | /// Another anchor error: [hello#people#!].
-   |                            ^^^^^^^^^^^^^^ contains invalid anchor
+   |                            ^^^^^^^^^^^^--
+   |                                        |
+   |                                        invalid anchor
 
 error: `Enum::A#whatever` contains an anchor, but links to variants are already anchored
   --> $DIR/anchors.rs:37:28
    |
 LL | /// Damn enum's variants: [Enum::A#whatever].
-   |                            ^^^^^^^^^^^^^^^^ contains invalid anchor
+   |                            ^^^^^^^---------
+   |                                   |
+   |                                   invalid anchor
 
 error: `u32#hello` contains an anchor, but links to builtin types are already anchored
   --> $DIR/anchors.rs:43:6
    |
 LL | /// [u32#hello]
-   |      ^^^^^^^^^ contains invalid anchor
+   |      ^^^------
+   |         |
+   |         invalid anchor
    |
    = note: this restriction may be lifted in a future release
    = note: see https://github.com/rust-lang/rust/issues/83083 for more information
