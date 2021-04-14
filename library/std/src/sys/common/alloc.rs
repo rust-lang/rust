@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use crate::alloc::{GlobalAlloc, Layout, System};
 use crate::cmp;
 use crate::ptr;

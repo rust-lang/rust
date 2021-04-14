@@ -1972,6 +1972,10 @@ fn anchor_failure(cx: &DocContext<'_>, diag_info: DiagnosticInfo<'_>, failure: A
         if let Some(sp) = sp {
             diag.span_label(sp, "contains invalid anchor");
         }
+        if let AnchorFailure::RustdocAnchorConflict(Res::Primitive(_)) = failure {
+            diag.note("this restriction may be lifted in a future release");
+            diag.note("see https://github.com/rust-lang/rust/issues/83083 for more information");
+        }
     });
 }
 
