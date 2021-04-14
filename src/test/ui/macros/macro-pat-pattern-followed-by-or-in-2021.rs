@@ -2,7 +2,7 @@
 #![allow(unused_macros)]
 macro_rules! foo { ($x:pat | $y:pat) => {} } //~ ERROR `$x:pat` is followed by `|`, which is not allowed for `pat` fragments
 macro_rules! bar { ($($x:pat)+ | $($y:pat)+) => {} } //~ ERROR `$x:pat` is followed by `|`, which is not allowed for `pat` fragments
-macro_rules! qux { ($x:pat) => {} } // should be ok
+macro_rules! qux { ($x:pat, $y:pat) => {} } // should be ok
 macro_rules! match_any {
     ( $expr:expr , $( $( $pat:pat )|+ => $expr_arm:expr ),+ ) => { //~ ERROR `$pat:pat` may be followed by `|`, which is not allowed for `pat` fragments
         match $expr {
