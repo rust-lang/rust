@@ -469,7 +469,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let source_map = self.tcx.sess.source_map();
         let all_source_files = source_map.files();
 
-        let working_dir = self.tcx.sess.working_dir.stable_name();
         // By replacing the `Option` with `None`, we ensure that we can't
         // accidentally serialize any more `Span`s after the source map encoding
         // is done.
@@ -488,23 +487,36 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             })
             .map(|(_, source_file)| {
                 let mut adapted = match source_file.name {
-                    FileName::Real(ref name) => {
-                        // Expand all local paths to absolute paths because
-                        // any relative paths are potentially relative to a
-                        // wrong directory.
+                    FileName::Real(ref realname) => {
                         let mut adapted = (**source_file).clone();
-                        adapted.name = match name {
+                        adapted.name = FileName::Real(match realname {
                             RealFileName::LocalPath(local_path) => {
-                                Path::new(&working_dir).join(local_path).into()
+                                // Prepend path of working directory onto local path.
+                                // because relative paths are potentially relative to a
+                                // wrong directory.
+                                let working_dir = &self.tcx.sess.working_dir;
+                                if let RealFileName::LocalPath(absolute) = working_dir {
+                                    // If working_dir has not been remapped, then we emit a
+                                    // LocalPath variant as it's likely to be a valid path
+                                    RealFileName::LocalPath(Path::new(absolute).join(local_path))
+                                } else {
+                                    // If working_dir has been remapped, then we emit
+                                    // Remapped variant as the expanded path won't be valid
+                                    RealFileName::Remapped {
+                                        local_path: None,
+                                        virtual_name: Path::new(working_dir.stable_name())
+                                            .join(local_path),
+                                    }
+                                }
                             }
                             RealFileName::Remapped { local_path: _, virtual_name } => {
-                                FileName::Real(RealFileName::Remapped {
+                                RealFileName::Remapped {
                                     // We do not want any local path to be exported into metadata
                                     local_path: None,
                                     virtual_name: virtual_name.clone(),
-                                })
+                                }
                             }
-                        };
+                        });
                         adapted.name_hash = {
                             let mut hasher: StableHasher = StableHasher::new();
                             adapted.name.hash(&mut hasher);
