@@ -51,6 +51,9 @@ extern "platform-intrinsic" {
     #[cfg(feature = "std")]
     pub(crate) fn simd_ceil<T>(x: T) -> T;
 
+    /// fabs
+    pub(crate) fn simd_fabs<T>(x: T) -> T;
+
     pub(crate) fn simd_eq<T, U>(x: T, y: T) -> U;
     pub(crate) fn simd_ne<T, U>(x: T, y: T) -> U;
     pub(crate) fn simd_lt<T, U>(x: T, y: T) -> U;
