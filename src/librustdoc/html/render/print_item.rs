@@ -1540,9 +1540,10 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
         return;
     }
 
-    let param_env = cx.tcx().param_env(ty_def_id);
-    let ty = cx.tcx().type_of(ty_def_id);
-    match cx.tcx().layout_of(param_env.and(ty)) {
+    let tcx = cx.tcx();
+    let param_env = tcx.param_env(ty_def_id);
+    let ty = tcx.type_of(ty_def_id);
+    match tcx.layout_of(param_env.and(ty)) {
         Ok(ty_layout) => {
             writeln!(w, "<h2 class=\"small-section-header\">Layout</h2>");
             writeln!(w, "<div class=\"docblock\">");
