@@ -366,9 +366,11 @@ impl<W: Write> BufWriter<W> {
             // exactly. Doing otherwise would mean flushing the buffer, then writing this
             // input to the inner writer, which in many cases would be a worse strategy.
 
-            // SAFETY: We just called `self.flush_buf()`, so `self.buf.len()` is 0, and
-            // we entered this else block because `buf.len() < self.buf.capacity()`.
-            // Therefore, `buf.len() <= self.buf.capacity() - self.buf.len()`.
+            // SAFETY: There was either enough spare capacity already, or there wasn't and we
+            // flushed the buffer to ensure that there is. In the latter case, we know that there
+            // is because flushing ensured that our entire buffer is spare capacity, and we entered
+            // this block because the input buffer length is less than that capacity. In either
+            // case, it's safe to write the input buffer to our buffer.
             unsafe {
                 self.write_to_buffer_unchecked(buf);
             }
@@ -406,9 +408,11 @@ impl<W: Write> BufWriter<W> {
             // exactly. Doing otherwise would mean flushing the buffer, then writing this
             // input to the inner writer, which in many cases would be a worse strategy.
 
-            // SAFETY: We just called `self.flush_buf()`, so `self.buf.len()` is 0, and
-            // we entered this else block because `buf.len() < self.buf.capacity()`.
-            // Therefore, `buf.len() <= self.buf.capacity() - self.buf.len()`.
+            // SAFETY: There was either enough spare capacity already, or there wasn't and we
+            // flushed the buffer to ensure that there is. In the latter case, we know that there
+            // is because flushing ensured that our entire buffer is spare capacity, and we entered
+            // this block because the input buffer length is less than that capacity. In either
+            // case, it's safe to write the input buffer to our buffer.
             unsafe {
                 self.write_to_buffer_unchecked(buf);
             }
