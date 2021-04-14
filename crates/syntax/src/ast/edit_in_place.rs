@@ -14,10 +14,21 @@ use crate::{
 use super::NameOwner;
 
 pub trait GenericParamsOwnerEdit: ast::GenericParamsOwner + AstNodeEdit {
+    fn get_or_create_generic_param_list(&self) -> ast::GenericParamList;
     fn get_or_create_where_clause(&self) -> ast::WhereClause;
 }
 
 impl GenericParamsOwnerEdit for ast::Fn {
+    fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
+        match self.generic_param_list() {
+            Some(it) => it,
+            None => {
+                let position = Position::after(self.name().unwrap().syntax);
+                create_generic_param_list(position)
+            }
+        }
+    }
+
     fn get_or_create_where_clause(&self) -> WhereClause {
         if self.where_clause().is_none() {
             let position = if let Some(ty) = self.ret_type() {
@@ -34,6 +45,16 @@ impl GenericParamsOwnerEdit for ast::Fn {
 }
 
 impl GenericParamsOwnerEdit for ast::Impl {
+    fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
+        match self.generic_param_list() {
+            Some(it) => it,
+            None => {
+                let position = Position::after(self.impl_token().unwrap());
+                create_generic_param_list(position)
+            }
+        }
+    }
+
     fn get_or_create_where_clause(&self) -> WhereClause {
         if self.where_clause().is_none() {
             let position = if let Some(items) = self.assoc_item_list() {
@@ -48,6 +69,10 @@ impl GenericParamsOwnerEdit for ast::Impl {
 }
 
 impl GenericParamsOwnerEdit for ast::Trait {
+    fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
+        todo!()
+    }
+
     fn get_or_create_where_clause(&self) -> WhereClause {
         if self.where_clause().is_none() {
             let position = if let Some(items) = self.assoc_item_list() {
@@ -62,6 +87,10 @@ impl GenericParamsOwnerEdit for ast::Trait {
 }
 
 impl GenericParamsOwnerEdit for ast::Struct {
+    fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
+        todo!()
+    }
+
     fn get_or_create_where_clause(&self) -> WhereClause {
         if self.where_clause().is_none() {
             let tfl = self.field_list().and_then(|fl| match fl {
@@ -84,6 +113,10 @@ impl GenericParamsOwnerEdit for ast::Struct {
 }
 
 impl GenericParamsOwnerEdit for ast::Enum {
+    fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
+        todo!()
+    }
+
     fn get_or_create_where_clause(&self) -> WhereClause {
         if self.where_clause().is_none() {
             let position = if let Some(gpl) = self.generic_param_list() {
@@ -102,6 +135,37 @@ impl GenericParamsOwnerEdit for ast::Enum {
 fn create_where_clause(position: Position) {
     let where_clause = make::where_clause(empty()).clone_for_update();
     ted::insert(position, where_clause.syntax());
+}
+
+fn create_generic_param_list(position: Position) -> ast::GenericParamList {
+    let gpl = make::generic_param_list(empty()).clone_for_update();
+    ted::insert_raw(position, gpl.syntax());
+    gpl
+}
+
+impl ast::GenericParamList {
+    pub fn add_generic_param(&self, generic_param: ast::GenericParam) {
+        match self.generic_params().last() {
+            Some(last_param) => {
+                let mut elems = Vec::new();
+                if !last_param
+                    .syntax()
+                    .siblings_with_tokens(Direction::Next)
+                    .any(|it| it.kind() == T![,])
+                {
+                    elems.push(make::token(T![,]).into());
+                    elems.push(make::tokens::single_space().into());
+                };
+                elems.push(generic_param.syntax().clone().into());
+                let after_last_param = Position::after(last_param.syntax());
+                ted::insert_all(after_last_param, elems);
+            }
+            None => {
+                let after_l_angle = Position::after(self.l_angle_token().unwrap());
+                ted::insert(after_l_angle, generic_param.syntax())
+            }
+        }
+    }
 }
 
 impl ast::WhereClause {
