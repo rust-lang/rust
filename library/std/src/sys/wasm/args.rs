@@ -1,5 +1,4 @@
 use crate::ffi::OsString;
-use crate::marker::PhantomData;
 use crate::vec;
 
 pub unsafe fn init(_argc: isize, _argv: *const *const u8) {
@@ -9,13 +8,15 @@ pub unsafe fn init(_argc: isize, _argv: *const *const u8) {
 pub unsafe fn cleanup() {}
 
 pub fn args() -> Args {
-    Args { iter: Vec::new().into_iter(), _dont_send_or_sync_me: PhantomData }
+    Args { iter: Vec::new().into_iter() }
 }
 
 pub struct Args {
     iter: vec::IntoIter<OsString>,
-    _dont_send_or_sync_me: PhantomData<*mut ()>,
 }
+
+impl !Send for Args {}
+impl !Sync for Args {}
 
 impl Args {
     pub fn inner_debug(&self) -> &[OsString] {
