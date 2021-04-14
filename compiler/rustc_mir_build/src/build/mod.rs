@@ -584,7 +584,7 @@ fn should_abort_on_panic(tcx: TyCtxt<'_>, fn_def_id: LocalDefId, abi: Abi) -> bo
         Some(UnwindAttr::Aborts) => true,
         // If no attribute was found and the panic strategy is `unwind`, then we should examine
         // the function's ABI string to determine whether it should abort upon panic.
-        None => {
+        None if tcx.features().c_unwind => {
             use Abi::*;
             match abi {
                 // In the case of ABI's that have an `-unwind` equivalent, check whether the ABI
@@ -615,6 +615,10 @@ fn should_abort_on_panic(tcx: TyCtxt<'_>, fn_def_id: LocalDefId, abi: Abi) -> bo
                 | Unadjusted => true,
             }
         }
+        // If the `c_unwind` feature gate is not active, follow the behavior that was in place
+        // prior to #76570. This is a special case: some functions have a C ABI but are meant to
+        // unwind anyway. Don't stop them.
+        None => false, // FIXME(#58794); should be `!(abi == Abi::Rust || abi == Abi::RustCall)`
     }
 }
 
