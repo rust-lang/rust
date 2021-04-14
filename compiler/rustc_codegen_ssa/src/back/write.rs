@@ -1094,7 +1094,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
     //   only place where we have access to the compiler `Session`.
     // - LLVM work can be done on any thread.
     // - Codegen can only happen on the main thread.
-    // - Each thread doing substantial work most be in possession of a `Token`
+    // - Each thread doing substantial work must be in possession of a `Token`
     //   from the `Jobserver`.
     // - The compiler process always holds one `Token`. Any additional `Tokens`
     //   have to be requested from the `Jobserver`.
@@ -1146,7 +1146,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
     // if possible. These two goals are at odds with each other: If memory
     // consumption were not an issue, we could just let the main thread produce
     // LLVM WorkItems at full speed, assuring maximal utilization of
-    // Tokens/LLVM worker threads. However, since codegen usual is faster
+    // Tokens/LLVM worker threads. However, since codegen is usually faster
     // than LLVM processing, the queue of LLVM WorkItems would fill up and each
     // WorkItem potentially holds on to a substantial amount of memory.
     //
