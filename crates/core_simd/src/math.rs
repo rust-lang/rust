@@ -79,6 +79,25 @@ macro_rules! impl_int_arith {
                 unsafe { crate::intrinsics::simd_saturating_sub(self, second) }
             }
 
+            /// Lanewise absolute value, implemented in Rust.
+            /// Every lane becomes its absolute value.
+            ///
+            /// # Examples
+            /// ```
+            /// # use core_simd::*;
+            #[doc = concat!("# use core::", stringify!($n), "::{MIN, MAX};")]
+            #[doc = concat!("let xs = ", stringify!($name), "::from_array([MIN, MIN +1, -5, 0]);")]
+            #[doc = concat!("assert_eq!(xs.abs(), ", stringify!($name), "::from_array([MIN, MAX, 5, 0]));")]
+            /// ```
+            #[inline]
+            pub fn abs(self) -> Self {
+                let mut xs = self.to_array();
+                for (i, x) in xs.clone().iter().enumerate() {
+                    xs[i] = x.wrapping_abs()
+                }
+                $name::from_array(xs)
+            }
+
             /// Lanewise saturating absolute value, implemented in Rust.
             /// As abs(), except the MIN value becomes MAX instead of itself.
             ///
@@ -86,9 +105,11 @@ macro_rules! impl_int_arith {
             /// ```
             /// # use core_simd::*;
             #[doc = concat!("# use core::", stringify!($n), "::{MIN, MAX};")]
-            #[doc = concat!("let x = ", stringify!($name), "::from_array([MIN, -2, 0, 3]);")]
-            /// let abs = x.saturating_abs();
-            #[doc = concat!("assert_eq!(abs, ", stringify!($name), "::from_array([MAX, 2, 0, 3]));")]
+            #[doc = concat!("let xs = ", stringify!($name), "::from_array([MIN, -2, 0, 3]);")]
+            /// let unsat = xs.abs();
+            /// let sat = xs.saturating_abs();
+            #[doc = concat!("assert_eq!(unsat, ", stringify!($name), "::from_array([MIN, 2, 0, 3]));")]
+            #[doc = concat!("assert_eq!(sat, ", stringify!($name), "::from_array([MAX, 2, 0, 3]));")]
             /// ```
             #[inline]
             pub fn saturating_abs(self) -> Self {
