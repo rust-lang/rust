@@ -549,6 +549,56 @@ mod prim_pointer {}
 /// move_away(roa);
 /// ```
 ///
+/// # Editions
+///
+/// Prior to Rust 1.53, arrays did not implement `IntoIterator` by value, so the method call
+/// `array.into_iter()` auto-referenced into a slice iterator. That behavior is preserved in the
+/// 2015 and 2018 editions of Rust for compatability, ignoring `IntoIterator` by value.
+///
+/// ```rust,edition2018
+/// # #![allow(array_into_iter)] // override our `deny(warnings)`
+/// let array: [i32; 3] = [0; 3];
+///
+/// // This creates a slice iterator, producing references to each value.
+/// for item in array.into_iter().enumerate() {
+///     let (i, x): (usize, &i32) = item;
+///     println!("array[{}] = {}", i, x);
+/// }
+///
+/// // The `array_into_iter` lint suggests this change for future compatibility:
+/// for item in array.iter().enumerate() {
+///     let (i, x): (usize, &i32) = item;
+///     println!("array[{}] = {}", i, x);
+/// }
+///
+/// // You can explicitly iterate an array by value using
+/// // `IntoIterator::into_iter` or `std::array::IntoIter::new`:
+/// for item in IntoIterator::into_iter(array).enumerate() {
+///     let (i, x): (usize, i32) = item;
+///     println!("array[{}] = {}", i, x);
+/// }
+/// ```
+///
+/// Starting in the 2021 edition, `array.into_iter()` will use `IntoIterator` normally to iterate
+/// by value, and `iter()` should be used to iterate by reference like previous editions.
+///
+/// ```rust,edition2021,ignore
+/// # // FIXME: ignored because 2021 testing is still unstable
+/// let array: [i32; 3] = [0; 3];
+///
+/// // This iterates by reference:
+/// for item in array.iter().enumerate() {
+///     let (i, x): (usize, &i32) = item;
+///     println!("array[{}] = {}", i, x);
+/// }
+///
+/// // This iterates by value:
+/// for item in array.into_iter().enumerate() {
+///     let (i, x): (usize, i32) = item;
+///     println!("array[{}] = {}", i, x);
+/// }
+/// ```
+///
 /// [slice]: prim@slice
 /// [`Debug`]: fmt::Debug
 /// [`Hash`]: hash::Hash

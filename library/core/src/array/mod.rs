@@ -164,6 +164,14 @@ impl<T, const N: usize> IntoIterator for [T; N] {
     type Item = T;
     type IntoIter = IntoIter<T, N>;
 
+    /// Creates a consuming iterator, that is, one that moves each value out of
+    /// the array (from start to end). The array cannot be used after calling
+    /// this unless `T` implements `Copy`, so the whole array is copied.
+    ///
+    /// Arrays have special behavior when calling `.into_iter()` prior to the
+    /// 2021 edition -- see the [array] Editions section for more information.
+    ///
+    /// [array]: prim@array
     fn into_iter(self) -> Self::IntoIter {
         IntoIter::new(self)
     }
