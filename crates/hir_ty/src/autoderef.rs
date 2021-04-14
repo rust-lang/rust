@@ -36,6 +36,7 @@ pub(crate) fn deref(
     krate: CrateId,
     ty: InEnvironment<&Canonical<Ty>>,
 ) -> Option<Canonical<Ty>> {
+    let _p = profile::span("deref");
     if let Some(derefed) = builtin_deref(&ty.goal.value) {
         Some(Canonical { value: derefed, binders: ty.goal.binders.clone() })
     } else {
@@ -56,6 +57,7 @@ fn deref_by_trait(
     krate: CrateId,
     ty: InEnvironment<&Canonical<Ty>>,
 ) -> Option<Canonical<Ty>> {
+    let _p = profile::span("deref_by_trait");
     let deref_trait = match db.lang_item(krate, "deref".into())? {
         LangItemTarget::TraitId(it) => it,
         _ => return None,
@@ -83,7 +85,10 @@ fn deref_by_trait(
             environment: ty.environment.clone(),
         },
     };
-    if db.trait_solve(krate, implements_goal).is_none() {
+    if {
+        let _p = profile::span("db.trait_solve");
+        db.trait_solve(krate, implements_goal).is_none()
+    } {
         return None;
     }
 
