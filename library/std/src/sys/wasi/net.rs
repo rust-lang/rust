@@ -347,14 +347,14 @@ pub struct LookupHost(!);
 
 impl LookupHost {
     pub fn port(&self) -> u16 {
-        match self.0 {}
+        self.0
     }
 }
 
 impl Iterator for LookupHost {
     type Item = SocketAddr;
     fn next(&mut self) -> Option<SocketAddr> {
-        match self.0 {}
+        self.0
     }
 }
 

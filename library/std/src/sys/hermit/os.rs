@@ -29,7 +29,7 @@ pub fn chdir(_: &path::Path) -> io::Result<()> {
     unsupported()
 }
 
-pub struct SplitPaths<'a>(&'a !);
+pub struct SplitPaths<'a>(!, PhantomData<&'a ()>);
 
 pub fn split_paths(_unparsed: &OsStr) -> SplitPaths<'_> {
     panic!("unsupported")
@@ -38,7 +38,7 @@ pub fn split_paths(_unparsed: &OsStr) -> SplitPaths<'_> {
 impl<'a> Iterator for SplitPaths<'a> {
     type Item = PathBuf;
     fn next(&mut self) -> Option<PathBuf> {
-        match *self.0 {}
+        self.0
     }
 }
 

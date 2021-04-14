@@ -3,6 +3,7 @@ use crate::error::Error as StdError;
 use crate::ffi::{OsStr, OsString};
 use crate::fmt;
 use crate::io;
+use crate::marker::PhantomData;
 use crate::path::{self, PathBuf};
 
 pub fn errno() -> i32 {
@@ -21,7 +22,7 @@ pub fn chdir(_: &path::Path) -> io::Result<()> {
     unsupported()
 }
 
-pub struct SplitPaths<'a>(&'a !);
+pub struct SplitPaths<'a>(!, PhantomData<&'a ()>);
 
 pub fn split_paths(_unparsed: &OsStr) -> SplitPaths<'_> {
     panic!("unsupported")
@@ -30,7 +31,7 @@ pub fn split_paths(_unparsed: &OsStr) -> SplitPaths<'_> {
 impl<'a> Iterator for SplitPaths<'a> {
     type Item = PathBuf;
     fn next(&mut self) -> Option<PathBuf> {
-        match *self.0 {}
+        self.0
     }
 }
 
@@ -67,7 +68,7 @@ pub struct Env(!);
 impl Iterator for Env {
     type Item = (OsString, OsString);
     fn next(&mut self) -> Option<(OsString, OsString)> {
-        match self.0 {}
+        self.0
     }
 }
 

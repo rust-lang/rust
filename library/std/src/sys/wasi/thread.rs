@@ -59,7 +59,7 @@ impl Thread {
     }
 
     pub fn join(self) {
-        match self.0 {}
+        self.0
     }
 }
 
