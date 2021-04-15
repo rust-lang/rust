@@ -641,6 +641,64 @@ nonzero_signed_operations! {
     NonZeroIsize(isize) -> NonZeroUsize(usize);
 }
 
+// A bunch of methods for both signed and unsigned nonzero types.
+macro_rules! nonzero_unsigned_signed_operations {
+    ( $( $Ty: ident($Int: ty); )+ ) => {
+        $(
+            impl $Ty {
+                /// Multiply two non-zero integers together.
+                /// Return [`None`] on overflow.
+                ///
+                /// # Examples
+                ///
+                /// ```
+                /// #![feature(nonzero_ops)]
+                /// # #![feature(try_trait)]
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                ///
+                /// # fn main() -> Result<(), std::option::NoneError> {
+                #[doc = concat!("let two = ", stringify!($Ty), "::new(2)?;")]
+                #[doc = concat!("let four = ", stringify!($Ty), "::new(4)?;")]
+                #[doc = concat!("let max = ", stringify!($Ty), "::new(",
+                                stringify!($Int), "::MAX)?;")]
+                ///
+                /// assert_eq!(Some(four), two.checked_mul(two));
+                /// assert_eq!(None, max.checked_mul(two));
+                /// # Ok(())
+                /// # }
+                /// ```
+                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[inline]
+                pub const fn checked_mul(self, other: $Ty) -> Option<$Ty> {
+                    if let Some(result) = self.get().checked_mul(other.get()) {
+                        // SAFETY: checked_mul returns None on overflow
+                        // and `other` is also non-null
+                        // so the result cannot be zero.
+                        Some(unsafe { $Ty::new_unchecked(result) })
+                    } else {
+                        None
+                    }
+                }
+            }
+        )+
+    }
+}
+
+nonzero_unsigned_signed_operations! {
+    NonZeroU8(u8);
+    NonZeroU16(u16);
+    NonZeroU32(u32);
+    NonZeroU64(u64);
+    NonZeroU128(u128);
+    NonZeroUsize(usize);
+    NonZeroI8(i8);
+    NonZeroI16(i16);
+    NonZeroI32(i32);
+    NonZeroI64(i64);
+    NonZeroI128(i128);
+    NonZeroIsize(isize);
+}
+
 macro_rules! nonzero_unsigned_is_power_of_two {
     ( $( $Ty: ident )+ ) => {
         $(
