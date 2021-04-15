@@ -1,4 +1,6 @@
 #![feature(allow_internal_unstable)]
+#![feature(bench_black_box)]
+#![feature(const_fn)]
 #![feature(const_panic)]
 #![feature(extend_one)]
 #![feature(iter_zip)]
