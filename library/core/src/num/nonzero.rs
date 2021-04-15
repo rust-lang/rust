@@ -737,6 +737,39 @@ macro_rules! nonzero_unsigned_signed_operations {
                     // SAFETY: The caller ensures there is no overflow.
                     unsafe { $Ty::new_unchecked(self.get().unchecked_mul(other.get())) }
                 }
+
+                /// Raise non-zero value to an integer power.
+                /// Return [`None`] on overflow.
+                ///
+                /// # Examples
+                ///
+                /// ```
+                /// #![feature(nonzero_ops)]
+                /// # #![feature(try_trait)]
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                ///
+                /// # fn main() -> Result<(), std::option::NoneError> {
+                #[doc = concat!("let three = ", stringify!($Ty), "::new(3)?;")]
+                #[doc = concat!("let twenty_seven = ", stringify!($Ty), "::new(27)?;")]
+                #[doc = concat!("let half_max = ", stringify!($Ty), "::new(",
+                                stringify!($Int), "::MAX / 2)?;")]
+                ///
+                /// assert_eq!(Some(twenty_seven), three.checked_pow(3));
+                /// assert_eq!(None, half_max.checked_pow(3));
+                /// # Ok(())
+                /// # }
+                /// ```
+                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[inline]
+                pub const fn checked_pow(self, other: u32) -> Option<$Ty> {
+                    if let Some(result) = self.get().checked_pow(other) {
+                        // SAFETY: checked_pow returns None on overflow
+                        // so the result cannot be zero.
+                        Some(unsafe { $Ty::new_unchecked(result) })
+                    } else {
+                        None
+                    }
+                }
             }
         )+
     }
