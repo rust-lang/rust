@@ -601,8 +601,6 @@ impl<T> Option<T> {
     /// # Example
     ///
     /// ```
-    /// #![feature(option_insert)]
-    ///
     /// let mut opt = None;
     /// let val = opt.insert(1);
     /// assert_eq!(*val, 1);
@@ -613,7 +611,7 @@ impl<T> Option<T> {
     /// assert_eq!(opt.unwrap(), 3);
     /// ```
     #[inline]
-    #[unstable(feature = "option_insert", reason = "newly added", issue = "78271")]
+    #[stable(feature = "option_insert", since = "1.53.0")]
     pub fn insert(&mut self, value: T) -> &mut T {
         *self = Some(value);
 
