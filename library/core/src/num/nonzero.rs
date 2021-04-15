@@ -429,6 +429,51 @@ nonzero_unsigned_operations! {
     NonZeroUsize(usize);
 }
 
+// A bunch of methods for signed nonzero types only.
+macro_rules! nonzero_signed_operations {
+    ( $( $Ty: ident($Int: ty) -> $Uty: ident($Uint: ty); )+ ) => {
+        $(
+            impl $Ty {
+                /// Computes the absolute value of self.
+                #[doc = concat!("See [`", stringify!($Int), "::abs`]")]
+                /// for documentation on overflow behaviour.
+                ///
+                /// # Example
+                ///
+                /// ```
+                /// #![feature(nonzero_ops)]
+                /// # #![feature(try_trait)]
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                ///
+                /// # fn main() -> Result<(), std::option::NoneError> {
+                #[doc = concat!("let pos = ", stringify!($Ty), "::new(1)?;")]
+                #[doc = concat!("let neg = ", stringify!($Ty), "::new(-1)?;")]
+                ///
+                /// assert_eq!(pos, pos.abs());
+                /// assert_eq!(pos, neg.abs());
+                /// # Ok(())
+                /// # }
+                /// ```
+                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[inline]
+                pub const fn abs(self) -> $Ty {
+                    // SAFETY: This cannot overflow to zero.
+                    unsafe { $Ty::new_unchecked(self.get().abs()) }
+                }
+            }
+        )+
+    }
+}
+
+nonzero_signed_operations! {
+    NonZeroI8(i8) -> NonZeroU8(u8);
+    NonZeroI16(i16) -> NonZeroU16(u16);
+    NonZeroI32(i32) -> NonZeroU32(u32);
+    NonZeroI64(i64) -> NonZeroU64(u64);
+    NonZeroI128(i128) -> NonZeroU128(u128);
+    NonZeroIsize(isize) -> NonZeroUsize(usize);
+}
+
 macro_rules! nonzero_unsigned_is_power_of_two {
     ( $( $Ty: ident )+ ) => {
         $(
