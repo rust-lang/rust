@@ -114,6 +114,8 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
         || ctx.attribute_under_caret.is_some()
         || ctx.mod_declaration_under_caret.is_some()
         || ctx.record_lit_syntax.is_some()
+        || ctx.has_trait_parent
+        || ctx.has_impl_parent
     {
         return None;
     }
@@ -1075,6 +1077,54 @@ fn main() {
             expect![[r#"
                 fn some_fn() (m::some_fn) fn() -> i32
             "#]],
+        );
+    }
+
+    #[test]
+    fn no_flyimports_in_traits_and_impl_declarations() {
+        check(
+            r#"
+mod m {
+    pub fn some_fn() -> i32 {
+        42
+    }
+}
+trait Foo {
+    som$0
+}
+"#,
+            expect![[r#""#]],
+        );
+
+        check(
+            r#"
+mod m {
+    pub fn some_fn() -> i32 {
+        42
+    }
+}
+struct Foo;
+impl Foo {
+    som$0
+}
+"#,
+            expect![[r#""#]],
+        );
+
+        check(
+            r#"
+mod m {
+    pub fn some_fn() -> i32 {
+        42
+    }
+}
+struct Foo;
+trait Bar {}
+impl Bar for Foo {
+    som$0
+}
+"#,
+            expect![[r#""#]],
         );
     }
 }
