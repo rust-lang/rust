@@ -436,6 +436,8 @@ fn trait_applicable_items(
     })
     .collect();
 
+    let related_dyn_traits =
+        trait_candidate.receiver_ty.applicable_inherent_traits(db).collect::<FxHashSet<_>>();
     let mut located_imports = FxHashSet::default();
 
     if trait_assoc_item {
@@ -451,12 +453,16 @@ fn trait_applicable_items(
                             return None;
                         }
                     }
+                    let located_trait = assoc.containing_trait(db)?;
+                    if related_dyn_traits.contains(&located_trait) {
+                        return None;
+                    }
 
-                    let item = ItemInNs::from(ModuleDef::from(assoc.containing_trait(db)?));
+                    let trait_item = ItemInNs::from(ModuleDef::from(located_trait));
                     let original_item = assoc_to_item(assoc);
                     located_imports.insert(LocatedImport::new(
-                        mod_path(item)?,
-                        item,
+                        mod_path(trait_item)?,
+                        trait_item,
                         original_item,
                         mod_path(original_item),
                     ));
@@ -473,11 +479,15 @@ fn trait_applicable_items(
             |_, function| {
                 let assoc = function.as_assoc_item(db)?;
                 if required_assoc_items.contains(&assoc) {
-                    let item = ItemInNs::from(ModuleDef::from(assoc.containing_trait(db)?));
+                    let located_trait = assoc.containing_trait(db)?;
+                    if related_dyn_traits.contains(&located_trait) {
+                        return None;
+                    }
+                    let trait_item = ItemInNs::from(ModuleDef::from(located_trait));
                     let original_item = assoc_to_item(assoc);
                     located_imports.insert(LocatedImport::new(
-                        mod_path(item)?,
-                        item,
+                        mod_path(trait_item)?,
+                        trait_item,
                         original_item,
                         mod_path(original_item),
                     ));

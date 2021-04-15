@@ -2066,6 +2066,18 @@ impl Type {
         self.ty.dyn_trait().map(Into::into)
     }
 
+    /// If a type can be represented as `dyn Trait`, returns all traits accessible via this type,
+    /// or an empty iterator otherwise.
+    pub fn applicable_inherent_traits<'a>(
+        &'a self,
+        db: &'a dyn HirDatabase,
+    ) -> impl Iterator<Item = Trait> + 'a {
+        self.autoderef(db)
+            .filter_map(|derefed_type| derefed_type.ty.dyn_trait())
+            .flat_map(move |dyn_trait_id| hir_ty::all_super_traits(db.upcast(), dyn_trait_id))
+            .map(Trait::from)
+    }
+
     pub fn as_impl_traits(&self, db: &dyn HirDatabase) -> Option<Vec<Trait>> {
         self.ty.impl_trait_bounds(db).map(|it| {
             it.into_iter()
