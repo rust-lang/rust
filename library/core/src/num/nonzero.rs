@@ -561,6 +561,39 @@ macro_rules! nonzero_signed_operations {
                     // SAFETY: absolute value of nonzero cannot yield zero values.
                     unsafe { $Ty::new_unchecked(self.get().saturating_abs()) }
                 }
+
+                /// Wrapping absolute value, see
+                #[doc = concat!("[`", stringify!($Int), "::wrapping_abs`].")]
+                ///
+                /// # Example
+                ///
+                /// ```
+                /// #![feature(nonzero_ops)]
+                /// # #![feature(try_trait)]
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                ///
+                /// # fn main() -> Result<(), std::option::NoneError> {
+                #[doc = concat!("let pos = ", stringify!($Ty), "::new(1)?;")]
+                #[doc = concat!("let neg = ", stringify!($Ty), "::new(-1)?;")]
+                #[doc = concat!("let min = ", stringify!($Ty), "::new(",
+                                stringify!($Int), "::MIN)?;")]
+                #[doc = concat!("let max = ", stringify!($Ty), "::new(",
+                                stringify!($Int), "::MAX)?;")]
+                ///
+                /// assert_eq!(pos, pos.wrapping_abs());
+                /// assert_eq!(pos, neg.wrapping_abs());
+                /// assert_eq!(min, min.wrapping_abs());
+                /// # // FIXME: add once Neg is implemented?
+                /// # // assert_eq!(max, (-max).wrapping_abs());
+                /// # Ok(())
+                /// # }
+                /// ```
+                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[inline]
+                pub const fn wrapping_abs(self) -> $Ty {
+                    // SAFETY: absolute value of nonzero cannot yield zero values.
+                    unsafe { $Ty::new_unchecked(self.get().wrapping_abs()) }
+                }
             }
         )+
     }
