@@ -41,8 +41,7 @@ use crate::ops::ControlFlow;
 /// output type that we want:
 /// ```
 /// # #![feature(try_trait_v2)]
-/// # #![feature(try_trait_transition)]
-/// # use std::ops::TryV2 as Try;
+/// # use std::ops::Try;
 /// fn simple_try_fold_1<A, T, R: Try<Output = A>>(
 ///     iter: impl Iterator<Item = T>,
 ///     mut accum: A,
@@ -56,9 +55,8 @@ use crate::ops::ControlFlow;
 /// into the return type using [`Try::from_output`]:
 /// ```
 /// # #![feature(try_trait_v2)]
-/// # #![feature(try_trait_transition)]
 /// # #![feature(control_flow_enum)]
-/// # use std::ops::{ControlFlow, TryV2 as Try};
+/// # use std::ops::{ControlFlow, Try};
 /// fn simple_try_fold_2<A, T, R: Try<Output = A>>(
 ///     iter: impl Iterator<Item = T>,
 ///     mut accum: A,
@@ -81,9 +79,8 @@ use crate::ops::ControlFlow;
 /// recreated from their corresponding residual, so we'll just call it:
 /// ```
 /// # #![feature(try_trait_v2)]
-/// # #![feature(try_trait_transition)]
 /// # #![feature(control_flow_enum)]
-/// # use std::ops::{ControlFlow, TryV2 as Try};
+/// # use std::ops::{ControlFlow, Try};
 /// pub fn simple_try_fold_3<A, T, R: Try<Output = A>>(
 ///     iter: impl Iterator<Item = T>,
 ///     mut accum: A,
@@ -103,10 +100,9 @@ use crate::ops::ControlFlow;
 /// But this "call `branch`, then `match` on it, and `return` if it was a
 /// `Break`" is exactly what happens inside the `?` operator.  So rather than
 /// do all this manually, we can just use `?` instead:
-/// ```compile_fail (enable again once ? converts to the new trait)
+/// ```
 /// # #![feature(try_trait_v2)]
-/// # #![feature(try_trait_transition)]
-/// # use std::ops::TryV2 as Try;
+/// # use std::ops::Try;
 /// fn simple_try_fold<A, T, R: Try<Output = A>>(
 ///     iter: impl Iterator<Item = T>,
 ///     mut accum: A,
@@ -160,8 +156,7 @@ pub trait Try: FromResidual {
     /// ```
     /// #![feature(try_trait_v2)]
     /// #![feature(control_flow_enum)]
-    /// #![feature(try_trait_transition)]
-    /// use std::ops::TryV2 as Try;
+    /// use std::ops::Try;
     ///
     /// assert_eq!(<Result<_, String> as Try>::from_output(3), Ok(3));
     /// assert_eq!(<Option<_> as Try>::from_output(4), Some(4));
@@ -193,8 +188,7 @@ pub trait Try: FromResidual {
     /// ```
     /// #![feature(try_trait_v2)]
     /// #![feature(control_flow_enum)]
-    /// #![feature(try_trait_transition)]
-    /// use std::ops::{ControlFlow, TryV2 as Try};
+    /// use std::ops::{ControlFlow, Try};
     ///
     /// assert_eq!(Ok::<_, String>(3).branch(), ControlFlow::Continue(3));
     /// assert_eq!(Err::<String, _>(3).branch(), ControlFlow::Break(Err(3)));

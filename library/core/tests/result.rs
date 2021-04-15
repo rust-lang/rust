@@ -249,26 +249,14 @@ pub fn test_into_err() {
 
 #[test]
 fn test_try() {
-    fn try_result_some() -> Option<u8> {
-        let val = Ok(1)?;
-        Some(val)
-    }
-    assert_eq!(try_result_some(), Some(1));
-
-    fn try_result_none() -> Option<u8> {
-        let val = Err(NoneError)?;
-        Some(val)
-    }
-    assert_eq!(try_result_none(), None);
-
-    fn try_result_ok() -> Result<u8, u8> {
+    fn try_result_ok() -> Result<u8, u32> {
         let result: Result<u8, u8> = Ok(1);
         let val = result?;
         Ok(val)
     }
     assert_eq!(try_result_ok(), Ok(1));
 
-    fn try_result_err() -> Result<u8, u8> {
+    fn try_result_err() -> Result<u8, u32> {
         let result: Result<u8, u8> = Err(1);
         let val = result?;
         Ok(val)
@@ -400,4 +388,18 @@ fn result_opt_conversions() {
         .collect();
 
     assert_eq!(res, Err(BadNumErr))
+}
+
+#[test]
+#[cfg(not(bootstrap))] // Needs the V2 trait
+fn result_try_trait_v2_branch() {
+    use core::num::NonZeroU32;
+    use core::ops::{ControlFlow::*, Try};
+    assert_eq!(Ok::<i32, i32>(4).branch(), Continue(4));
+    assert_eq!(Err::<i32, i32>(4).branch(), Break(Err(4)));
+    let one = NonZeroU32::new(1).unwrap();
+    assert_eq!(Ok::<(), NonZeroU32>(()).branch(), Continue(()));
+    assert_eq!(Err::<(), NonZeroU32>(one).branch(), Break(Err(one)));
+    assert_eq!(Ok::<NonZeroU32, ()>(one).branch(), Continue(one));
+    assert_eq!(Err::<NonZeroU32, ()>(()).branch(), Break(Err(())));
 }
