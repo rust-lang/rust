@@ -971,9 +971,9 @@ dependencies = [
 
 [[package]]
 name = "notify"
-version = "5.0.0-pre.6"
+version = "5.0.0-pre.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5fd82b93434edb9c00ae65ee741e0e081cdc8c63346ab9f687935a629aaf4c3"
+checksum = "1ebe7699a0f8c5759450716ee03d231685c22b4fe8f406c42c22e0ad94d40ce7"
 dependencies = [
  "anymap",
  "bitflags",
