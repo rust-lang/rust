@@ -323,6 +323,48 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
     llvm::errs() << "checking if is constant[" << (int)directions << "] " << *I
                  << "\n";
 
+  if (auto II = dyn_cast<IntrinsicInst>(I)) {
+    switch (II->getIntrinsicID()) {
+    case Intrinsic::nvvm_barrier0:
+    case Intrinsic::nvvm_barrier0_popc:
+    case Intrinsic::nvvm_barrier0_and:
+    case Intrinsic::nvvm_barrier0_or:
+    case Intrinsic::nvvm_membar_cta:
+    case Intrinsic::nvvm_membar_gl:
+    case Intrinsic::nvvm_membar_sys:
+    case Intrinsic::assume:
+    case Intrinsic::stacksave:
+    case Intrinsic::stackrestore:
+    case Intrinsic::lifetime_start:
+    case Intrinsic::lifetime_end:
+    case Intrinsic::dbg_addr:
+    case Intrinsic::dbg_declare:
+    case Intrinsic::dbg_value:
+    case Intrinsic::invariant_start:
+    case Intrinsic::invariant_end:
+    case Intrinsic::var_annotation:
+    case Intrinsic::ptr_annotation:
+    case Intrinsic::annotation:
+    case Intrinsic::codeview_annotation:
+    case Intrinsic::expect:
+    case Intrinsic::type_test:
+    case Intrinsic::donothing:
+    case Intrinsic::prefetch:
+    case Intrinsic::trap:
+#if LLVM_VERSION_MAJOR >= 8
+    case Intrinsic::is_constant:
+#endif
+      if (EnzymePrintActivity)
+        llvm::errs() << "known inactive intrinsic " << *I
+                    << "\n";
+      ConstantInstructions.insert(I);
+      return true;      
+
+    default:
+      break;
+    }
+  }
+
   // Analyzer for inductive assumption where we attempt to prove this is
   // inactive from a lack of active users
   std::shared_ptr<ActivityAnalyzer> DownHypothesis;
@@ -382,7 +424,7 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
       // already equal to the current direction, we don't need to induct,
       // reducing runtime.
       if (directions == DOWN && !isa<PHINode>(I)) {
-        if (isValueInactiveFromUsers(TR, I)) {
+        if (isValueInactiveFromUsers(TR, I, UseActivity::None)) {
           if (EnzymePrintActivity)
             llvm::errs() << " constant instruction[" << directions
                          << "] from users instruction " << *I << "\n";
@@ -393,7 +435,7 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
         DownHypothesis = std::shared_ptr<ActivityAnalyzer>(
             new ActivityAnalyzer(*this, DOWN));
         DownHypothesis->ConstantInstructions.insert(I);
-        if (DownHypothesis->isValueInactiveFromUsers(TR, I)) {
+        if (DownHypothesis->isValueInactiveFromUsers(TR, I, UseActivity::None)) {
           if (EnzymePrintActivity)
             llvm::errs() << " constant instruction[" << directions
                          << "] from users instruction " << *I << "\n";
@@ -592,7 +634,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
         GI->hasInternalLinkage() || GI->hasPrivateLinkage();
 
     if (EnzymePrintActivity)
-      llvm::errs() << "pre attempting just used in module for: " << *GI
+      llvm::errs() << "pre attempting(" << (int)directions << ") just used in module for: " << *GI
                    << " dir" << (char)directions
                    << " justusedin:" << usedJustInThisModule << "\n";
 
@@ -612,8 +654,11 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
         // and we won't use ourselves (done by PHI's), we
         // dont need to inductively assume we're true
         // and can instead use this object!
+        // This pointer is inactive if it is either not actively stored to or
+        // not actively loaded from
         if (directions == DOWN) {
-          if (isValueInactiveFromUsers(TR, Val)) {
+          if (isValueInactiveFromUsers(TR, Val, UseActivity::OnlyLoads) ||
+              isValueInactiveFromUsers(TR, Val, UseActivity::OnlyStores)) {
             ConstantValues.insert(Val);
             return true;
           }
@@ -621,7 +666,8 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
           auto DownHypothesis = std::shared_ptr<ActivityAnalyzer>(
               new ActivityAnalyzer(*this, DOWN));
           DownHypothesis->ConstantValues.insert(Val);
-          if (DownHypothesis->isValueInactiveFromUsers(TR, Val)) {
+          if (DownHypothesis->isValueInactiveFromUsers(TR, Val, UseActivity::OnlyLoads) ||
+              DownHypothesis->isValueInactiveFromUsers(TR, Val, UseActivity::OnlyStores)) {
             insertConstantsFrom(*DownHypothesis);
             ConstantValues.insert(Val);
             return true;
@@ -818,6 +864,26 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
             return true;
           }
         }
+      } else if (isa<AllocaInst>(Val)) {
+        // This pointer is inactive if it is either not actively stored to or
+        // not actively loaded from and is nonescaping by definition of being alloca
+        if (directions == DOWN) {
+          if (isValueInactiveFromUsers(TR, TmpOrig, UseActivity::OnlyLoads) ||
+              isValueInactiveFromUsers(TR, TmpOrig, UseActivity::OnlyStores)) {
+            ConstantValues.insert(TmpOrig);
+            return true;
+          }
+        } else if (directions & DOWN) {
+          auto DownHypothesis = std::shared_ptr<ActivityAnalyzer>(
+              new ActivityAnalyzer(*this, DOWN));
+          DownHypothesis->ConstantValues.insert(TmpOrig);
+          if (DownHypothesis->isValueInactiveFromUsers(TR, TmpOrig, UseActivity::OnlyLoads) ||
+              DownHypothesis->isValueInactiveFromUsers(TR, TmpOrig, UseActivity::OnlyStores)) {
+            insertConstantsFrom(*DownHypothesis);
+            ConstantValues.insert(TmpOrig);
+            return true;
+          }
+        }
       }
 
       // otherwise if the origin is a previously derived known inactive value
@@ -826,17 +892,9 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
       // global as we again assume that active memory is passed explicitly as an
       // argument
       if (TmpOrig != Val) {
-        if (directions == UP && !isa<PHINode>(TmpOrig)) {
-          if (isConstantValue(TR, TmpOrig)) {
-            ConstantValues.insert(Val);
-            return true;
-          }
-        } else {
-          if (UpHypothesis->isConstantValue(TR, TmpOrig)) {
-            ConstantValues.insert(Val);
-            insertConstantsFrom(*UpHypothesis);
-            return true;
-          }
+        if (isConstantValue(TR, TmpOrig)) {
+          ConstantValues.insert(Val);
+          return true;
         }
       }
       if (auto inst = dyn_cast<Instruction>(Val)) {
@@ -1247,7 +1305,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
     // dont need to inductively assume we're true
     // and can instead use this object!
     if (directions == DOWN && !isa<PHINode>(Val)) {
-      if (isValueInactiveFromUsers(TR, Val)) {
+      if (isValueInactiveFromUsers(TR, Val, UseActivity::None)) {
         if (UpHypothesis)
           insertConstantsFrom(*UpHypothesis);
         ConstantValues.insert(Val);
@@ -1257,7 +1315,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
       auto DownHypothesis =
           std::shared_ptr<ActivityAnalyzer>(new ActivityAnalyzer(*this, DOWN));
       DownHypothesis->ConstantValues.insert(Val);
-      if (DownHypothesis->isValueInactiveFromUsers(TR, Val)) {
+      if (DownHypothesis->isValueInactiveFromUsers(TR, Val, UseActivity::None)) {
         insertConstantsFrom(*DownHypothesis);
         if (UpHypothesis)
           insertConstantsFrom(*UpHypothesis);
@@ -1530,7 +1588,8 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
 
 /// Is the value free of any active uses
 bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
-                                                llvm::Value *val) {
+                                                llvm::Value *val,
+                                                UseActivity PUA) {
   assert(directions & DOWN);
   // Must be an analyzer only searching down, unless used outside
   // assert(directions == DOWN);
@@ -1539,15 +1598,15 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
 
   if (EnzymePrintActivity)
     llvm::errs() << " <Value USESEARCH" << (int)directions << ">" << *val
-                 << "\n";
+                 << " UA=" << (int)PUA << "\n";
 
   bool seenuse = false;
   // user, predecessor
-  std::deque<std::pair<User *, Value *>> todo;
+  std::deque<std::tuple<User *, Value *, UseActivity>> todo;
   for (const auto a : val->users()) {
-    todo.push_back(std::make_pair(a, val));
+    todo.push_back(std::make_tuple(a, val, PUA));
   }
-  std::set<std::pair<User *, Value *>> done = {};
+  std::set<std::tuple<User *, Value *, UseActivity>> done = {};
 
   while (todo.size()) {
     auto pair = todo.front();
@@ -1555,7 +1614,21 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
     if (done.count(pair))
       continue;
     done.insert(pair);
-    User *a = pair.first;
+    User *a = std::get<0>(pair);
+    Value *parent = std::get<1>(pair);
+    UseActivity UA = std::get<2>(pair);
+
+    if (UA == UseActivity::OnlyStores && isa<LoadInst>(a))
+      continue;
+
+    // Only ignore stores to the operand, not storing the operand
+    // somewhere
+    if (UA == UseActivity::OnlyLoads)
+      if (auto SI = dyn_cast<StoreInst>(a)) {
+        llvm::errs() << *SI << " p: " << *parent << "\n";
+        if (SI->getValueOperand() != parent)
+          continue;
+    }
 
     if (EnzymePrintActivity)
       llvm::errs() << "      considering use of " << *val << " - " << *a
@@ -1563,7 +1636,7 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
 
     if (!isa<Instruction>(a)) {
       if (isa<ConstantExpr>(a)) {
-        if (!isValueInactiveFromUsers(TR, a)) {
+        if (!isValueInactiveFromUsers(TR, a, UA)) {
           if (EnzymePrintActivity)
             llvm::errs() << "   active user of " << *val << " in " << *a
                          << "\n";
@@ -1598,12 +1671,22 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
 
     // if this instruction is in a different function, conservatively assume
     // it is active
-    if (cast<Instruction>(a)->getParent()->getParent() != TR.info.Function) {
+    Function *InstF = cast<Instruction>(a)->getParent()->getParent();
+    while (PPC.CloneOrigin.find(InstF) != PPC.CloneOrigin.end())
+      InstF = PPC.CloneOrigin[InstF];
+
+    Function *F = TR.info.Function;
+    while (PPC.CloneOrigin.find(F) != PPC.CloneOrigin.end())
+      F = PPC.CloneOrigin[F];
+
+    if (InstF != F) {
       if (EnzymePrintActivity)
         llvm::errs() << "found use in different function(" << (int)directions
-                     << ")  val:" << *val << " user " << *a << "\n";
+                     << ")  val:" << *val << " user " << *a << " in " << InstF->getName() << "@" << InstF << " self: " << F->getName() << "@" << F << "\n";
       return false;
     }
+    if (cast<Instruction>(a)->getParent()->getParent() != TR.info.Function)
+      continue;
 
     // This use is only active if specified
     if (isa<ReturnInst>(a)) {
@@ -1611,7 +1694,7 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
     }
 
     if (auto call = dyn_cast<CallInst>(a)) {
-      bool ConstantArg = isFunctionArgumentConstant(call, pair.second);
+      bool ConstantArg = isFunctionArgumentConstant(call, parent);
       if (ConstantArg) {
         if (EnzymePrintActivity) {
           llvm::errs() << "Value found constant callinst use:" << *val
@@ -1621,6 +1704,7 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
       }
     }
 
+
     // If this doesn't write to memory this can only be an active use
     // if its return is used in an active way, therefore add this to
     // the list of users to analyze
@@ -1629,8 +1713,20 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
         if (TR.intType(1, I, /*errIfNotFound*/ false).isIntegral()) {
           continue;
         }
+        UseActivity NU = UA;
+        if (UA == UseActivity::OnlyLoads || UA == UseActivity::OnlyStores) {
+          if (!isa<PHINode>(I) && !isa<CastInst>(I) && !isa<GetElementPtrInst>(I) && !isa<BinaryOperator>(I))
+            NU = UseActivity::None;
+        }
+
         for (auto u : I->users()) {
-          todo.push_back(std::make_pair(u, (Value *)I));
+          todo.push_back(std::make_tuple(u, (Value *)I, NU));
+        }
+        continue;
+      } else if (isConstantInstruction(TR, I)) {
+        if (EnzymePrintActivity) {
+          llvm::errs() << "Value found constant inst use:" << *val
+                       << " user " << *I << "\n";
         }
         continue;
       }

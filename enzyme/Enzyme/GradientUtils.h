@@ -732,7 +732,7 @@ public:
         OrigPDT(Logic.PPC.FAM.getResult<llvm::PostDominatorTreeAnalysis>(
             *oldFunc_)),
         OrigLI(Logic.PPC.FAM.getResult<llvm::LoopAnalysis>(*oldFunc_)),
-        ATA(new ActivityAnalyzer(Logic.PPC.getAAResultsFromFunction(oldFunc_),
+        ATA(new ActivityAnalyzer(Logic.PPC, Logic.PPC.getAAResultsFromFunction(oldFunc_),
                                  TLI_, constantvalues_, activevals_,
                                  ActiveReturn)),
         OrigAA(Logic.PPC.getAAResultsFromFunction(oldFunc_)), TA(TA_) {

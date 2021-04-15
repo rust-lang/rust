@@ -746,6 +746,7 @@ Function *PreProcessCache::preprocessForClone(Function *F, bool topLevel) {
                     /*ModuleLevelChanges*/ F->getSubprogram() != nullptr,
                     Returns, "", nullptr);
 #endif
+  CloneOrigin[NewF] = F;
   NewF->setAttributes(F->getAttributes());
   if (EnzymeNoAlias)
     for (auto j = NewF->arg_begin(); j != NewF->arg_end(); j++) {
@@ -1458,6 +1459,7 @@ Function *PreProcessCache::CloneFunctionWithReturns(
   CloneFunctionInto(NewF, F, VMap, F->getSubprogram() != nullptr, Returns, "",
                     nullptr);
 #endif
+  CloneOrigin[NewF] = F;
   if (VMapO) {
     VMapO->insert(VMap.begin(), VMap.end());
     VMapO->getMDMap() = VMap.getMDMap();

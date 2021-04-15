@@ -48,8 +48,12 @@ extern llvm::cl::opt<bool> EnzymePrintActivity;
 extern llvm::cl::opt<bool> EnzymeNonmarkedGlobalsInactive;
 }
 
+class PreProcessCache;
+
 /// Helper class to analyze the differential activity
 class ActivityAnalyzer {
+  PreProcessCache &PPC;
+
   /// Aliasing Information
   llvm::AAResults &AA;
   /// Library Information
@@ -84,11 +88,11 @@ public:
   /// values and whether returns are active. The all arguments of the functions
   /// being analyzed must be in the set of constant and active values, lest an
   /// error occur during analysis
-  ActivityAnalyzer(llvm::AAResults &AA_, llvm::TargetLibraryInfo &TLI_,
+  ActivityAnalyzer(PreProcessCache &PPC, llvm::AAResults &AA_, llvm::TargetLibraryInfo &TLI_,
                    const llvm::SmallPtrSetImpl<llvm::Value *> &ConstantValues,
                    const llvm::SmallPtrSetImpl<llvm::Value *> &ActiveValues,
                    bool ActiveReturns)
-      : AA(AA_), TLI(TLI_), ActiveReturns(ActiveReturns), directions(UP | DOWN),
+      : PPC(PPC), AA(AA_), TLI(TLI_), ActiveReturns(ActiveReturns), directions(UP | DOWN),
         ConstantValues(ConstantValues.begin(), ConstantValues.end()),
         ActiveValues(ActiveValues.begin(), ActiveValues.end()) {}
 
@@ -105,7 +109,7 @@ private:
   /// Create a new analyzer starting from an existing Analyzer
   /// This is used to perform inductive assumptions
   ActivityAnalyzer(ActivityAnalyzer &Other, uint8_t directions)
-      : AA(Other.AA), TLI(Other.TLI), ActiveReturns(Other.ActiveReturns),
+      : PPC(Other.PPC), AA(Other.AA), TLI(Other.TLI), ActiveReturns(Other.ActiveReturns),
         directions(directions),
         ConstantInstructions(Other.ConstantInstructions),
         ActiveInstructions(Other.ActiveInstructions),
@@ -142,8 +146,18 @@ private:
   bool isInstructionInactiveFromOrigin(TypeResults &TR, llvm::Value *val);
 
 public:
+  enum class UseActivity {
+    // No Additional use activity info
+    None = 0,
+
+    // Only consider loads of memory
+    OnlyLoads = 1,
+
+    // Ignore potentially active stores
+    OnlyStores = 2
+  };
   /// Is the value free of any active uses
-  bool isValueInactiveFromUsers(TypeResults &TR, llvm::Value *val);
+  bool isValueInactiveFromUsers(TypeResults &TR, llvm::Value *val, UseActivity UA);
 
   /// Is the value potentially actively returned or stored
   bool isValueActivelyStoredOrReturned(TypeResults &TR, llvm::Value *val,

@@ -258,7 +258,7 @@ public:
     // (e.g. potential but unused active pointer), it does not
     // need an adjoint here
     if (!constantval) {
-      constantval |= gutils->ATA->isValueInactiveFromUsers(TR, &I);
+      constantval |= gutils->ATA->isValueInactiveFromUsers(TR, &I, ActivityAnalyzer::UseActivity::None);
     }
 
     BasicBlock *parent = I.getParent();

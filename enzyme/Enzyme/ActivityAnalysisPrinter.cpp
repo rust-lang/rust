@@ -130,6 +130,8 @@ public:
     llvm::SmallPtrSet<llvm::Value *, 4> ConstantValues;
     llvm::SmallPtrSet<llvm::Value *, 4> ActiveValues;
     for (auto &a : type_args.Function->args()) {
+        ConstantValues.insert(&a);
+        continue;
       if (a.getType()->isIntOrIntVectorTy()) {
         ConstantValues.insert(&a);
       } else {
@@ -139,7 +141,7 @@ public:
 
     PreProcessCache PPC;
     bool ActiveReturns = F.getReturnType()->isFPOrFPVectorTy();
-    ActivityAnalyzer ATA(PPC.FAM.getResult<AAManager>(F), TLI, ConstantValues,
+    ActivityAnalyzer ATA(PPC, PPC.FAM.getResult<AAManager>(F), TLI, ConstantValues,
                          ActiveValues, ActiveReturns);
 
     for (auto &a : F.args()) {
