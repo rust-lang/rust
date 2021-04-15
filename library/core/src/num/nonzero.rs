@@ -679,6 +679,36 @@ macro_rules! nonzero_unsigned_signed_operations {
                         None
                     }
                 }
+
+                /// Multiply two non-zero integers together.
+                #[doc = concat!("Return [`", stringify!($Int), "::MAX`] on overflow.")]
+                ///
+                /// # Examples
+                ///
+                /// ```
+                /// #![feature(nonzero_ops)]
+                /// # #![feature(try_trait)]
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                ///
+                /// # fn main() -> Result<(), std::option::NoneError> {
+                #[doc = concat!("let two = ", stringify!($Ty), "::new(2)?;")]
+                #[doc = concat!("let four = ", stringify!($Ty), "::new(4)?;")]
+                #[doc = concat!("let max = ", stringify!($Ty), "::new(",
+                                stringify!($Int), "::MAX)?;")]
+                ///
+                /// assert_eq!(four, two.saturating_mul(two));
+                /// assert_eq!(max, four.saturating_mul(max));
+                /// # Ok(())
+                /// # }
+                /// ```
+                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[inline]
+                pub const fn saturating_mul(self, other: $Ty) -> $Ty {
+                    // SAFETY: saturating_mul returns u*::MAX on overflow
+                    // and `other` is also non-null
+                    // so the result cannot be zero.
+                    unsafe { $Ty::new_unchecked(self.get().saturating_mul(other.get())) }
+                }
             }
         )+
     }
