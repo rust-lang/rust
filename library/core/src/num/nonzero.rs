@@ -493,6 +493,40 @@ macro_rules! nonzero_signed_operations {
                         None
                     }
                 }
+
+                /// Computes the absolute value of self,
+                /// with overflow information, see
+                #[doc = concat!("[`", stringify!($Int), "::overflowing_abs`].")]
+                ///
+                /// # Example
+                ///
+                /// ```
+                /// #![feature(nonzero_ops)]
+                /// # #![feature(try_trait)]
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                ///
+                /// # fn main() -> Result<(), std::option::NoneError> {
+                #[doc = concat!("let pos = ", stringify!($Ty), "::new(1)?;")]
+                #[doc = concat!("let neg = ", stringify!($Ty), "::new(-1)?;")]
+                #[doc = concat!("let min = ", stringify!($Ty), "::new(",
+                                stringify!($Int), "::MIN)?;")]
+                ///
+                /// assert_eq!((pos, false), pos.overflowing_abs());
+                /// assert_eq!((pos, false), neg.overflowing_abs());
+                /// assert_eq!((min, true), min.overflowing_abs());
+                /// # Ok(())
+                /// # }
+                /// ```
+                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[inline]
+                pub const fn overflowing_abs(self) -> ($Ty, bool) {
+                    let (nz, flag) = self.get().overflowing_abs();
+                    (
+                        // SAFETY: absolute value of nonzero cannot yield zero values.
+                        unsafe { $Ty::new_unchecked(nz) },
+                        flag,
+                    )
+                }
             }
         )+
     }
