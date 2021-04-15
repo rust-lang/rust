@@ -390,6 +390,7 @@ pub use crate::utils::conf::Conf;
 ///
 /// Used in `./src/driver.rs`.
 pub fn register_pre_expansion_lints(store: &mut rustc_lint::LintStore) {
+    // NOTE: Do not add any more pre-expansion passes. These should be removed eventually.
     store.register_pre_expansion_pass(|| box write::Write::default());
     store.register_pre_expansion_pass(|| box attrs::EarlyAttributes);
     store.register_pre_expansion_pass(|| box dbg_macro::DbgMacro);
