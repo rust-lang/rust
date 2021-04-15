@@ -527,6 +527,40 @@ macro_rules! nonzero_signed_operations {
                         flag,
                     )
                 }
+
+                /// Saturating absolute value, see
+                #[doc = concat!("[`", stringify!($Int), "::saturating_abs`].")]
+                ///
+                /// # Example
+                ///
+                /// ```
+                /// #![feature(nonzero_ops)]
+                /// # #![feature(try_trait)]
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                ///
+                /// # fn main() -> Result<(), std::option::NoneError> {
+                #[doc = concat!("let pos = ", stringify!($Ty), "::new(1)?;")]
+                #[doc = concat!("let neg = ", stringify!($Ty), "::new(-1)?;")]
+                #[doc = concat!("let min = ", stringify!($Ty), "::new(",
+                                stringify!($Int), "::MIN)?;")]
+                #[doc = concat!("let min_plus = ", stringify!($Ty), "::new(",
+                                stringify!($Int), "::MIN + 1)?;")]
+                #[doc = concat!("let max = ", stringify!($Ty), "::new(",
+                                stringify!($Int), "::MAX)?;")]
+                ///
+                /// assert_eq!(pos, pos.saturating_abs());
+                /// assert_eq!(pos, neg.saturating_abs());
+                /// assert_eq!(max, min.saturating_abs());
+                /// assert_eq!(max, min_plus.saturating_abs());
+                /// # Ok(())
+                /// # }
+                /// ```
+                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[inline]
+                pub const fn saturating_abs(self) -> $Ty {
+                    // SAFETY: absolute value of nonzero cannot yield zero values.
+                    unsafe { $Ty::new_unchecked(self.get().saturating_abs()) }
+                }
             }
         )+
     }
