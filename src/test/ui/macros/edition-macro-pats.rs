@@ -3,7 +3,7 @@
 #![feature(edition_macro_pats)]
 
 macro_rules! foo {
-    (a $x:pat2015) => {};
+    (a $x:pat_param) => {};
     (b $x:pat2021) => {};
 }
 
