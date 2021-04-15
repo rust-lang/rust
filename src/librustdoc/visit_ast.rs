@@ -316,14 +316,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 om.push_item(self.cx, Item::new(item, renamed, from_glob))
             }
             hir::ItemKind::Mod(ref m) => {
-                om.push_mod(self.visit_mod_contents(
-                    item.span,
-                    &item.vis,
-                    item.hir_id(),
-                    m,
-                    name,
-                    from_glob,
-                ));
+                let mut mod_ =
+                    self.visit_mod_contents(item.span, &item.vis, item.hir_id(), m, name, false);
+                mod_.from_glob = from_glob;
+                om.push_mod(mod_);
             }
             hir::ItemKind::Fn(..)
             | hir::ItemKind::ExternCrate(..)

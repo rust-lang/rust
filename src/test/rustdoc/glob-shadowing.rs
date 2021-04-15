@@ -1,11 +1,18 @@
 // @has 'glob_shadowing/index.html'
-// @count - '//tr[@class="module-item"]' 4
+// @count - '//tr[@class="module-item"]' 5
 // @!has - '//tr[@class="module-item"]' 'sub1::describe'
-// @!has - '//tr[@class="module-item"]' 'sub1::describe2'
-// @has - '//tr[@class="module-item"]' 'mod::prelude'
 // @has - '//tr[@class="module-item"]' 'sub2::describe'
+
+// @!has - '//tr[@class="module-item"]' 'sub1::describe2'
+
+// @!has - '//tr[@class="module-item"]' 'sub1::prelude'
+// @has - '//tr[@class="module-item"]' 'mod::prelude'
+
 // @has - '//tr[@class="module-item"]' 'sub1::Foo (struct)'
 // @has - '//tr[@class="module-item"]' 'mod::Foo (function)'
+
+// @has - '//tr[@class="module-item"]' 'sub4::inner::X'
+
 // @has 'glob_shadowing/fn.describe.html'
 // @has - '//div[@class="docblock"]' 'sub2::describe'
 
@@ -19,10 +26,9 @@ mod sub1 {
     // this should be shadowed by mod::prelude
     /// sub1::prelude
     pub mod prelude {
-        pub use super::describe;
     }
 
-    // this should *not* be shadowed, because sub1::Foo and mod::Foo are in different namespace
+    // this should *not* be shadowed, because sub1::Foo and mod::Foo are in different namespaces
     /// sub1::Foo (struct)
     pub struct Foo;
 
@@ -50,8 +56,16 @@ mod sub3 {
     }
 }
 
-/// mod::prelude
-pub mod prelude {}
+mod sub4 {
+    // this should be shadowed by sub4::inner::X
+    /// sub4::X
+    pub const X: usize = 0;
+    pub mod inner {
+        pub use super::*;
+        /// sub4::inner::X
+        pub const X: usize = 1;
+    }
+}
 
 /// mod::Foo (function)
 pub fn Foo() {}
@@ -64,3 +78,9 @@ pub use sub1::*;
 
 #[doc(inline)]
 pub use sub3::*;
+
+#[doc(inline)]
+pub use sub4::inner::*;
+
+/// mod::prelude
+pub mod prelude {}

@@ -98,6 +98,7 @@ impl Module<'hir> {
                         }
                     }
                     (false, false) => {
+                        error!("push_item: {:?} conflict with {:?}", existing_item, new_item);
                         // should report "defined multiple time" error before reach this
                         unreachable!()
                     }
@@ -142,6 +143,7 @@ impl Module<'hir> {
                     return;
                 }
                 (false, false) => {
+                    error!("push_mod: {:?} conflict with {:?}", existing_mod.name, new_mod.name);
                     // should report "defined multiple time" error before reach this
                     unreachable!()
                 }
