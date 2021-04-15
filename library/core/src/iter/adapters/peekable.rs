@@ -1,5 +1,5 @@
 use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable, TrustedLen};
-use crate::ops::TryWhereOutputEquals;
+use crate::ops::{ControlFlow, TryWhereOutputEquals};
 
 /// An iterator with a `peek()` that returns an optional reference to the next
 /// element.
@@ -130,12 +130,35 @@ where
     }
 
     #[inline]
+    #[cfg(not(bootstrap))]
     fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
         R: TryWhereOutputEquals<B>,
     {
+        match self.peeked.take() {
+            Some(None) => try { init },
+            Some(Some(v)) => match self.iter.try_rfold(init, &mut f).branch() {
+                ControlFlow::Continue(acc) => f(acc, v),
+                ControlFlow::Break(r) => {
+                    self.peeked = Some(Some(v));
+                    R::from_residual(r)
+                }
+            },
+            None => self.iter.try_rfold(init, f),
+        }
+    }
+
+    #[inline]
+    #[cfg(bootstrap)]
+    fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> R,
+        R: TryWhereOutputEquals<B>,
+    {
+        let _use_the_import: ControlFlow<()>;
         match self.peeked.take() {
             Some(None) => try { init },
             Some(Some(v)) => match self.iter.try_rfold(init, &mut f).into_result() {

@@ -183,6 +183,7 @@ pub use self::range::{Range, RangeFrom, RangeFull, RangeTo};
 pub use self::range::{Bound, RangeBounds, RangeInclusive, RangeToInclusive};
 
 #[unstable(feature = "try_trait", issue = "42327")]
+#[cfg(bootstrap)]
 pub use self::r#try::Try;
 
 #[unstable(feature = "try_trait_transition", reason = "for bootstrap", issue = "none")]
@@ -190,6 +191,10 @@ pub use self::r#try::Try as TryV1;
 
 #[unstable(feature = "try_trait_v2", issue = "84277")]
 pub use self::try_trait::FromResidual;
+
+#[unstable(feature = "try_trait_v2", issue = "84277")]
+#[cfg(not(bootstrap))]
+pub use self::try_trait::Try;
 
 #[unstable(feature = "try_trait_transition", reason = "for bootstrap", issue = "none")]
 pub use self::try_trait::Try as TryV2;
@@ -220,4 +225,9 @@ pub use self::control_flow::ControlFlow;
 /// foo::<Option<i32>, i32>();
 /// ```
 #[unstable(feature = "try_trait_transition", reason = "for bootstrap", issue = "none")]
+#[cfg(not(bootstrap))]
+pub trait TryWhereOutputEquals<T> = TryV2<Output = T>;
+
+#[unstable(feature = "try_trait_transition", reason = "for bootstrap", issue = "none")]
+#[cfg(bootstrap)]
 pub trait TryWhereOutputEquals<T> = TryV1<Ok = T>;

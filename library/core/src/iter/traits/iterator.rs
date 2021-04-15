@@ -2412,6 +2412,36 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[unstable(feature = "try_find", reason = "new API", issue = "63178")]
+    #[cfg(not(bootstrap))]
+    fn try_find<F, R, E>(&mut self, f: F) -> Result<Option<Self::Item>, E>
+    where
+        Self: Sized,
+        F: FnMut(&Self::Item) -> R,
+        R: TryWhereOutputEquals<bool>,
+        // FIXME: This is a weird bound; the API should change
+        R: crate::ops::TryV2<Residual = Result<crate::convert::Infallible, E>>,
+    {
+        #[inline]
+        fn check<F, T, R, E>(mut f: F) -> impl FnMut((), T) -> ControlFlow<Result<T, E>>
+        where
+            F: FnMut(&T) -> R,
+            R: TryWhereOutputEquals<bool>,
+            R: crate::ops::TryV2<Residual = Result<crate::convert::Infallible, E>>,
+        {
+            move |(), x| match f(&x).branch() {
+                ControlFlow::Continue(false) => ControlFlow::CONTINUE,
+                ControlFlow::Continue(true) => ControlFlow::Break(Ok(x)),
+                ControlFlow::Break(Err(x)) => ControlFlow::Break(Err(x)),
+            }
+        }
+
+        self.try_fold((), check(f)).break_value().transpose()
+    }
+
+    /// We're bootstrapping.
+    #[inline]
+    #[unstable(feature = "try_find", reason = "new API", issue = "63178")]
+    #[cfg(bootstrap)]
     fn try_find<F, R>(&mut self, f: F) -> Result<Option<Self::Item>, R::Error>
     where
         Self: Sized,
