@@ -2522,9 +2522,10 @@ declare_lint! {
     ///
     /// The fix to this is to wrap the unsafe code in an `unsafe` block.
     ///
-    /// This lint is "allow" by default because it has not yet been
-    /// stabilized, and is not yet complete. See [RFC #2585] and [issue
-    /// #71668] for more details
+    /// This lint is "allow" by default since this will affect a large amount
+    /// of existing code, and the exact plan for increasing the severity is
+    /// still being considered. See [RFC #2585] and [issue #71668] for more
+    /// details.
     ///
     /// [`unsafe fn`]: https://doc.rust-lang.org/reference/unsafe-functions.html
     /// [`unsafe` block]: https://doc.rust-lang.org/reference/expressions/block-expr.html#unsafe-blocks
