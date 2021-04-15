@@ -407,8 +407,8 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
         | sym::simd_fpow
         | sym::simd_saturating_add
         | sym::simd_saturating_sub => (1, vec![param(0), param(0)], param(0)),
-        sym::simd_neg => (1, vec![param(0)], param(0)),
-        sym::simd_fsqrt
+        sym::simd_neg
+        | sym::simd_fsqrt
         | sym::simd_fsin
         | sym::simd_fcos
         | sym::simd_fexp
@@ -417,8 +417,10 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
         | sym::simd_flog10
         | sym::simd_flog
         | sym::simd_fabs
+        | sym::simd_ceil
         | sym::simd_floor
-        | sym::simd_ceil => (1, vec![param(0)], param(0)),
+        | sym::simd_round
+        | sym::simd_trunc => (1, vec![param(0)], param(0)),
         sym::simd_fpowi => (1, vec![param(0), tcx.types.i32], param(0)),
         sym::simd_fma => (1, vec![param(0), param(0), param(0)], param(0)),
         sym::simd_gather => (3, vec![param(0), param(1), param(2)], param(0)),

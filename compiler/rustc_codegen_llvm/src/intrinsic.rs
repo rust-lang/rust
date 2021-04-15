@@ -1057,8 +1057,10 @@ fn generic_simd_intrinsic(
             sym::simd_fsin => ("sin", bx.type_func(&[vec_ty], vec_ty)),
             sym::simd_fcos => ("cos", bx.type_func(&[vec_ty], vec_ty)),
             sym::simd_fabs => ("fabs", bx.type_func(&[vec_ty], vec_ty)),
-            sym::simd_floor => ("floor", bx.type_func(&[vec_ty], vec_ty)),
             sym::simd_ceil => ("ceil", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_floor => ("floor", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_round => ("round", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_trunc => ("trunc", bx.type_func(&[vec_ty], vec_ty)),
             sym::simd_fexp => ("exp", bx.type_func(&[vec_ty], vec_ty)),
             sym::simd_fexp2 => ("exp2", bx.type_func(&[vec_ty], vec_ty)),
             sym::simd_flog10 => ("log10", bx.type_func(&[vec_ty], vec_ty)),
@@ -1083,8 +1085,10 @@ fn generic_simd_intrinsic(
             | sym::simd_fsin
             | sym::simd_fcos
             | sym::simd_fabs
-            | sym::simd_floor
             | sym::simd_ceil
+            | sym::simd_floor
+            | sym::simd_round
+            | sym::simd_trunc
             | sym::simd_fexp
             | sym::simd_fexp2
             | sym::simd_flog10
