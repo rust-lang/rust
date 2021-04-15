@@ -2403,6 +2403,12 @@ impl<T> VecDeque<T> {
     /// [`Result::Err`] is returned, containing the index where a matching
     /// element could be inserted while maintaining sorted order.
     ///
+    /// See also [`binary_search_by`], [`binary_search_by_key`], and [`partition_point`].
+    ///
+    /// [`binary_search_by`]: VecDeque::binary_search_by
+    /// [`binary_search_by_key`]: VecDeque::binary_search_by_key
+    /// [`partition_point`]: VecDeque::partition_point
+    ///
     /// # Examples
     ///
     /// Looks up a series of four elements. The first is found, with a
@@ -2457,6 +2463,12 @@ impl<T> VecDeque<T> {
     /// [`Result::Err`] is returned, containing the index where a matching
     /// element could be inserted while maintaining sorted order.
     ///
+    /// See also [`binary_search`], [`binary_search_by_key`], and [`partition_point`].
+    ///
+    /// [`binary_search`]: VecDeque::binary_search
+    /// [`binary_search_by_key`]: VecDeque::binary_search_by_key
+    /// [`partition_point`]: VecDeque::partition_point
+    ///
     /// # Examples
     ///
     /// Looks up a series of four elements. The first is found, with a
@@ -2495,14 +2507,20 @@ impl<T> VecDeque<T> {
     /// Binary searches this sorted `VecDeque` with a key extraction function.
     ///
     /// Assumes that the `VecDeque` is sorted by the key, for instance with
-    /// [`make_contiguous().sort_by_key()`](#method.make_contiguous) using the same
-    /// key extraction function.
+    /// [`make_contiguous().sort_by_key()`] using the same key extraction function.
     ///
     /// If the value is found then [`Result::Ok`] is returned, containing the
     /// index of the matching element. If there are multiple matches, then any
     /// one of the matches could be returned. If the value is not found then
     /// [`Result::Err`] is returned, containing the index where a matching
     /// element could be inserted while maintaining sorted order.
+    ///
+    /// See also [`binary_search`], [`binary_search_by`], and [`partition_point`].
+    ///
+    /// [`make_contiguous().sort_by_key()`]: VecDeque::make_contiguous
+    /// [`binary_search`]: VecDeque::binary_search
+    /// [`binary_search_by`]: VecDeque::binary_search_by
+    /// [`partition_point`]: VecDeque::partition_point
     ///
     /// # Examples
     ///
@@ -2549,9 +2567,9 @@ impl<T> VecDeque<T> {
     ///
     /// See also [`binary_search`], [`binary_search_by`], and [`binary_search_by_key`].
     ///
-    /// [`binary_search`]: slice::binary_search
-    /// [`binary_search_by`]: slice::binary_search_by
-    /// [`binary_search_by_key`]: slice::binary_search_by_key
+    /// [`binary_search`]: VecDeque::binary_search
+    /// [`binary_search_by`]: VecDeque::binary_search_by
+    /// [`binary_search_by_key`]: VecDeque::binary_search_by_key
     ///
     /// # Examples
     ///
