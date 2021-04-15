@@ -709,6 +709,34 @@ macro_rules! nonzero_unsigned_signed_operations {
                     // so the result cannot be zero.
                     unsafe { $Ty::new_unchecked(self.get().saturating_mul(other.get())) }
                 }
+
+                /// Multiply two non-zero integers together,
+                /// assuming overflow cannot occur.
+                /// This results in undefined behavior when
+                #[doc = concat!("`self * rhs > ", stringify!($Int), "::MAX`, ")]
+                #[doc = concat!("or `self * rhs < ", stringify!($Int), "::MIN`.")]
+                ///
+                /// # Examples
+                ///
+                /// ```
+                /// #![feature(nonzero_ops)]
+                /// # #![feature(try_trait)]
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                ///
+                /// # fn main() -> Result<(), std::option::NoneError> {
+                #[doc = concat!("let two = ", stringify!($Ty), "::new(2)?;")]
+                #[doc = concat!("let four = ", stringify!($Ty), "::new(4)?;")]
+                ///
+                /// assert_eq!(four, unsafe { two.unchecked_mul(two) });
+                /// # Ok(())
+                /// # }
+                /// ```
+                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[inline]
+                pub unsafe fn unchecked_mul(self, other: $Ty) -> $Ty {
+                    // SAFETY: The caller ensures there is no overflow.
+                    unsafe { $Ty::new_unchecked(self.get().unchecked_mul(other.get())) }
+                }
             }
         )+
     }
