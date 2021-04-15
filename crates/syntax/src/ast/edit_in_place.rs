@@ -23,7 +23,15 @@ impl GenericParamsOwnerEdit for ast::Fn {
         match self.generic_param_list() {
             Some(it) => it,
             None => {
-                let position = Position::after(self.name().unwrap().syntax);
+                let position = if let Some(name) = self.name() {
+                    Position::after(name.syntax)
+                } else if let Some(fn_token) = self.fn_token() {
+                    Position::after(fn_token)
+                } else if let Some(param_list) = self.param_list() {
+                    Position::before(param_list.syntax)
+                } else {
+                    Position::last_child_of(self.syntax())
+                };
                 create_generic_param_list(position)
             }
         }
@@ -49,7 +57,11 @@ impl GenericParamsOwnerEdit for ast::Impl {
         match self.generic_param_list() {
             Some(it) => it,
             None => {
-                let position = Position::after(self.impl_token().unwrap());
+                let position = if let Some(imp_token) = self.impl_token() {
+                    Position::after(imp_token)
+                } else {
+                    Position::last_child_of(self.syntax())
+                };
                 create_generic_param_list(position)
             }
         }
@@ -70,7 +82,19 @@ impl GenericParamsOwnerEdit for ast::Impl {
 
 impl GenericParamsOwnerEdit for ast::Trait {
     fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
-        todo!()
+        match self.generic_param_list() {
+            Some(it) => it,
+            None => {
+                let position = if let Some(name) = self.name() {
+                    Position::after(name.syntax)
+                } else if let Some(trait_token) = self.trait_token() {
+                    Position::after(trait_token)
+                } else {
+                    Position::last_child_of(self.syntax())
+                };
+                create_generic_param_list(position)
+            }
+        }
     }
 
     fn get_or_create_where_clause(&self) -> WhereClause {
@@ -88,7 +112,19 @@ impl GenericParamsOwnerEdit for ast::Trait {
 
 impl GenericParamsOwnerEdit for ast::Struct {
     fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
-        todo!()
+        match self.generic_param_list() {
+            Some(it) => it,
+            None => {
+                let position = if let Some(name) = self.name() {
+                    Position::after(name.syntax)
+                } else if let Some(struct_token) = self.struct_token() {
+                    Position::after(struct_token)
+                } else {
+                    Position::last_child_of(self.syntax())
+                };
+                create_generic_param_list(position)
+            }
+        }
     }
 
     fn get_or_create_where_clause(&self) -> WhereClause {
@@ -114,7 +150,19 @@ impl GenericParamsOwnerEdit for ast::Struct {
 
 impl GenericParamsOwnerEdit for ast::Enum {
     fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
-        todo!()
+        match self.generic_param_list() {
+            Some(it) => it,
+            None => {
+                let position = if let Some(name) = self.name() {
+                    Position::after(name.syntax)
+                } else if let Some(enum_token) = self.enum_token() {
+                    Position::after(enum_token)
+                } else {
+                    Position::last_child_of(self.syntax())
+                };
+                create_generic_param_list(position)
+            }
+        }
     }
 
     fn get_or_create_where_clause(&self) -> WhereClause {
@@ -226,5 +274,46 @@ impl ast::Use {
             }
         }
         ted::remove(self.syntax())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fmt;
+
+    use crate::SourceFile;
+
+    use super::*;
+
+    fn ast_mut_from_text<N: AstNode>(text: &str) -> N {
+        let parse = SourceFile::parse(text);
+        parse.tree().syntax().descendants().find_map(N::cast).unwrap().clone_for_update()
+    }
+
+    #[test]
+    fn test_create_generic_param_list() {
+        fn check_create_gpl<N: GenericParamsOwnerEdit + fmt::Display>(before: &str, after: &str) {
+            let gpl_owner = ast_mut_from_text::<N>(before);
+            gpl_owner.get_or_create_generic_param_list();
+            assert_eq!(gpl_owner.to_string(), after);
+        }
+
+        check_create_gpl::<ast::Fn>("fn foo", "fn foo<>");
+        check_create_gpl::<ast::Fn>("fn foo() {}", "fn foo<>() {}");
+
+        check_create_gpl::<ast::Impl>("impl", "impl<>");
+        check_create_gpl::<ast::Impl>("impl Struct {}", "impl<> Struct {}");
+        check_create_gpl::<ast::Impl>("impl Trait for Struct {}", "impl<> Trait for Struct {}");
+
+        check_create_gpl::<ast::Trait>("trait Trait<>", "trait Trait<>");
+        check_create_gpl::<ast::Trait>("trait Trait<> {}", "trait Trait<> {}");
+
+        check_create_gpl::<ast::Struct>("struct A", "struct A<>");
+        check_create_gpl::<ast::Struct>("struct A;", "struct A<>;");
+        check_create_gpl::<ast::Struct>("struct A();", "struct A<>();");
+        check_create_gpl::<ast::Struct>("struct A {}", "struct A<> {}");
+
+        check_create_gpl::<ast::Enum>("enum E", "enum E<>");
+        check_create_gpl::<ast::Enum>("enum E {", "enum E<> {");
     }
 }
