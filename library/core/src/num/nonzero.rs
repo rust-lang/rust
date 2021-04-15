@@ -379,6 +379,42 @@ macro_rules! nonzero_unsigned_operations {
                     // SAFETY: The caller ensures there is no overflow.
                     unsafe { $Ty::new_unchecked(self.get().unchecked_add(other)) }
                 }
+
+                /// Returns the smallest power of two greater than or equal to n.
+                /// If the next power of two is greater than the type’s maximum value,
+                /// [`None`] is returned, otherwise the power of two is wrapped in [`Some`].
+                ///
+                /// # Examples
+                ///
+                /// ```
+                /// #![feature(nonzero_ops)]
+                /// # #![feature(try_trait)]
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                ///
+                /// # fn main() -> Result<(), std::option::NoneError> {
+                #[doc = concat!("let two = ", stringify!($Ty), "::new(2)?;")]
+                #[doc = concat!("let three = ", stringify!($Ty), "::new(3)?;")]
+                #[doc = concat!("let four = ", stringify!($Ty), "::new(4)?;")]
+                #[doc = concat!("let max = ", stringify!($Ty), "::new(",
+                                stringify!($Int), "::MAX)?;")]
+                ///
+                /// assert_eq!(Some(two), two.checked_next_power_of_two() );
+                /// assert_eq!(Some(four), three.checked_next_power_of_two() );
+                /// assert_eq!(None, max.checked_next_power_of_two() );
+                /// # Ok(())
+                /// # }
+                /// ```
+                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[inline]
+                pub const fn checked_next_power_of_two(self) -> Option<$Ty> {
+                    if let Some(nz) = self.get().checked_next_power_of_two() {
+                        // SAFETY: The next power of two is positive
+                        // and overflow is checked.
+                        Some(unsafe { $Ty::new_unchecked(nz) })
+                    } else {
+                        None
+                    }
+                }
             }
         )+
     }
