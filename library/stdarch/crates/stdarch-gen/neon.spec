@@ -2007,6 +2007,197 @@ aarch64 = fminnmp
 link-aarch64 = fminnmp._EXT_
 generate float32x4_t:float32x4_t:float32x4_t
 
+/// Signed saturating rounding shift left
+name = vqrshl
+a = MIN, MAX, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+validate MIN, MAX, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60
+
+aarch64 = sqrshl
+link-aarch64 = sqrshl._EXT_
+
+arm = vqrshl
+link-arm = vqrshifts._EXT_
+generate int*_t, int64x*_t
+
+/// Signed saturating rounding shift left
+name = vqrshl
+multi_fn = vdup_n-in_ntt-noext, a:in_ntt, a
+multi_fn = vdup_n-in_ntt-noext, b:in_ntt, b
+multi_fn = simd_extract, {vqrshl-in_ntt-noext, a, b}, 0
+a = 1
+b = 2
+validate 4
+
+aarch64 = sqrshl
+generate i8, i16, i32, i64
+
+/// Unsigned signed saturating rounding shift left
+name = vqrshl
+out-suffix
+a = MIN, MAX, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+validate 0, MAX, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60
+
+aarch64 = uqrshl
+link-aarch64 = uqrshl._EXT_
+
+arm = vqrshl
+link-arm = vqrshiftu._EXT_
+generate uint8x8_t:int8x8_t:uint8x8_t, uint8x16_t:int8x16_t:uint8x16_t, uint16x4_t:int16x4_t:uint16x4_t, uint16x8_t:int16x8_t:uint16x8_t
+generate uint32x2_t:int32x2_t:uint32x2_t, uint32x4_t:int32x4_t:uint32x4_t, uint64x1_t:int64x1_t:uint64x1_t, uint64x2_t:int64x2_t:uint64x2_t
+
+/// Unsigned signed saturating rounding shift left
+name = vqrshl
+out-suffix
+multi_fn = vdup_n-out_ntt-noext, a:out_ntt, a
+multi_fn = vdup_n-in_ntt-noext, b:in_ntt, b
+multi_fn = simd_extract, {vqrshl-out_ntt-noext, a, b}, 0
+a = 1
+b = 2
+validate 4
+
+aarch64 = uqrshl
+generate u8:i8:u8, u16:i16:u16, u32:i32:u32, u64:i64:u64
+
+/// Signed saturating rounded shift right narrow
+name = vqrshrn
+noq-n-suffix
+constn = N
+multi_fn = static_assert-N-1-halfbits
+a = MIN, 4, 8, 12, 16, 20, 24, 28
+n = 2
+validate MIN, 1, 2, 3, 4, 5, 6, 7
+
+aarch64 = sqrshrn
+link-aarch64 = sqrshrn._EXT2_
+const-aarch64 = N
+
+arm = vqrshrn
+link-arm = vqrshiftns._EXT2_
+const-arm = -N as ttn
+generate int16x8_t:int8x8_t, int32x4_t:int16x4_t, int64x2_t:int32x2_t
+
+/// Signed saturating rounded shift right narrow
+name = vqrshrn
+noq-n-suffix
+constn = N
+multi_fn = static_assert-N-1-halfbits
+multi_fn = vdupq_n-in_ntt-noext, a:in_long_ntt, a
+multi_fn = simd_extract, {vqrshrn_n-in_ntt-::<N>, a}, 0
+a = 4
+n = 2
+validate 1
+
+aarch64 = sqrshrn
+generate i16:i8, i32:i16, i64:i32
+
+/// Signed saturating rounded shift right narrow
+name = vqrshrn_high
+noq-n-suffix
+constn = N
+multi_fn = static_assert-N-1-halfbits
+multi_fn = simd_shuffle-out_len-noext, a, {vqrshrn_n-noqself-::<N>, b}, {asc-0-out_len}
+a = 0, 1, 2, 3, 2, 3, 6, 7
+b = 8, 12, 24, 28, 48, 52, 56, 60
+n = 2
+validate 0, 1, 2, 3, 2, 3, 6, 7, 2, 3, 6, 7, 12, 13, 14, 15
+
+aarch64 = sqrshrn2
+generate int8x8_t:int16x8_t:int8x16_t, int16x4_t:int32x4_t:int16x8_t, int32x2_t:int64x2_t:int32x4_t
+
+/// Unsigned signed saturating rounded shift right narrow
+name = vqrshrn
+noq-n-suffix
+constn = N
+multi_fn = static_assert-N-1-halfbits
+a = MIN, 4, 8, 12, 16, 20, 24, 28
+n = 2
+validate 0, 1, 2, 3, 4, 5, 6, 7
+
+aarch64 = uqrshrn
+link-aarch64 = uqrshrn._EXT2_
+const-aarch64 = N
+
+arm = vqrshrn
+link-arm = vqrshiftnu._EXT2_
+const-arm = -N as ttn
+generate uint16x8_t:uint8x8_t, uint32x4_t:uint16x4_t, uint64x2_t:uint32x2_t
+
+/// Unsigned saturating rounded shift right narrow
+name = vqrshrn
+noq-n-suffix
+constn = N
+multi_fn = static_assert-N-1-halfbits
+multi_fn = vdupq_n-in_ntt-noext, a:in_long_ntt, a
+multi_fn = simd_extract, {vqrshrn_n-in_ntt-::<N>, a}, 0
+a = 4
+n = 2
+validate 1
+
+aarch64 = uqrshrn
+generate u16:u8, u32:u16, u64:u32
+
+/// Unsigned saturating rounded shift right narrow
+name = vqrshrn_high
+noq-n-suffix
+constn = N
+multi_fn = static_assert-N-1-halfbits
+multi_fn = simd_shuffle-out_len-noext, a, {vqrshrn_n-noqself-::<N>, b}, {asc-0-out_len}
+a = 0, 1, 2, 3, 2, 3, 6, 7
+b = 8, 12, 24, 28, 48, 52, 56, 60
+n = 2
+validate 0, 1, 2, 3, 2, 3, 6, 7, 2, 3, 6, 7, 12, 13, 14, 15
+
+aarch64 = uqrshrn2
+generate uint8x8_t:uint16x8_t:uint8x16_t, uint16x4_t:uint32x4_t:uint16x8_t, uint32x2_t:uint64x2_t:uint32x4_t
+
+/// Signed saturating rounded shift right unsigned narrow
+name = vqrshrun
+noq-n-suffix
+constn = N
+multi_fn = static_assert-N-1-halfbits
+a = 0, 4, 8, 12, 16, 20, 24, 28
+n = 2
+validate 0, 1, 2, 3, 4, 5, 6, 7
+
+aarch64 = sqrshrun
+link-aarch64 = sqrshrun._EXT2_
+const-aarch64 = N
+
+arm = vqrshrun
+link-arm = vqrshiftnsu._EXT2_
+const-arm = -N as ttn
+generate int16x8_t:uint8x8_t, int32x4_t:uint16x4_t, int64x2_t:uint32x2_t
+
+/// Signed saturating rounded shift right unsigned narrow
+name = vqrshrun
+noq-n-suffix
+constn = N
+multi_fn = static_assert-N-1-halfbits
+multi_fn = vdupq_n-in_ntt-noext, a:in_long_ntt, a
+multi_fn = simd_extract, {vqrshrun_n-in_ntt-::<N>, a}, 0
+a = 4
+n = 2
+validate 1
+
+aarch64 = sqrshrun
+generate i16:u8, i32:u16, i64:u32
+
+/// Signed saturating rounded shift right unsigned narrow
+name = vqrshrun_high
+noq-n-suffix
+constn = N
+multi_fn = static_assert-N-1-halfbits
+multi_fn = simd_shuffle-out_len-noext, a, {vqrshrun_n-noqself-::<N>, b}, {asc-0-out_len}
+a = 0, 1, 2, 3, 2, 3, 6, 7
+b = 8, 12, 24, 28, 48, 52, 56, 60
+n = 2
+validate 0, 1, 2, 3, 2, 3, 6, 7, 2, 3, 6, 7, 12, 13, 14, 15
+
+aarch64 = sqrshrun2
+generate uint8x8_t:int16x8_t:uint8x16_t, uint16x4_t:int32x4_t:uint16x8_t, uint32x2_t:int64x2_t:uint32x4_t
+
 /// Calculates the square root of each lane.
 name = vsqrt
 fn = simd_fsqrt
