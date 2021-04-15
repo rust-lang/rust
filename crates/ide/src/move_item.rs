@@ -1,4 +1,4 @@
-use std::iter::once;
+use std::{iter::once, mem};
 
 use hir::Semantics;
 use ide_db::{base_db::FileRange, RootDatabase};
@@ -102,7 +102,7 @@ fn move_in_direction(
             ast::GenericArgList(it) => swap_sibling_in_list(node, it.generic_args(), range, direction),
             ast::VariantList(it) => swap_sibling_in_list(node, it.variants(), range, direction),
             ast::TypeBoundList(it) => swap_sibling_in_list(node, it.bounds(), range, direction),
-            _ => Some(replace_nodes(node, &match direction {
+            _ => Some(replace_nodes(range, node, &match direction {
                 Direction::Up => node.prev_sibling(),
                 Direction::Down => node.next_sibling(),
             }?))
@@ -125,7 +125,7 @@ fn swap_sibling_in_list<A: AstNode + Clone, I: Iterator<Item = A>>(
         .next();
 
     if let Some((l, r)) = list_lookup {
-        Some(replace_nodes(l.syntax(), r.syntax()))
+        Some(replace_nodes(range, l.syntax(), r.syntax()))
     } else {
         // Cursor is beyond any movable list item (for example, on curly brace in enum).
         // It's not necessary, that parent of list is movable (arg list's parent is not, for example),
@@ -134,11 +134,38 @@ fn swap_sibling_in_list<A: AstNode + Clone, I: Iterator<Item = A>>(
     }
 }
 
-fn replace_nodes(first: &SyntaxNode, second: &SyntaxNode) -> TextEdit {
+fn replace_nodes<'a>(
+    range: TextRange,
+    mut first: &'a SyntaxNode,
+    mut second: &'a SyntaxNode,
+) -> TextEdit {
+    let cursor_offset = if range.is_empty() {
+        // FIXME: `applySnippetTextEdits` does not support non-empty selection ranges
+        if first.text_range().contains_range(range) {
+            Some(range.start() - first.text_range().start())
+        } else if second.text_range().contains_range(range) {
+            mem::swap(&mut first, &mut second);
+            Some(range.start() - first.text_range().start())
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    let first_with_cursor = match cursor_offset {
+        Some(offset) => {
+            let mut item_text = first.text().to_string();
+            item_text.insert_str(offset.into(), "$0");
+            item_text
+        }
+        None => first.text().to_string(),
+    };
+
     let mut edit = TextEditBuilder::default();
 
     algo::diff(first, second).into_text_edit(&mut edit);
-    algo::diff(second, first).into_text_edit(&mut edit);
+    edit.replace(second.text_range(), first_with_cursor);
 
     edit.finish()
 }
@@ -188,7 +215,7 @@ fn main() {
             expect![[r#"
 fn main() {
     match true {
-        false => {
+        false =>$0 {
             println!("Test");
         },
         true => {
@@ -222,7 +249,7 @@ fn main() {
         false => {
             println!("Test");
         },
-        true => {
+        true =>$0 {
             println!("Hello, world");
         }
     };
@@ -274,7 +301,7 @@ fn main() {
             "#,
             expect![[r#"
 fn main() {
-    let test2 = 456;
+    let test2$0 = 456;
     let test = 123;
 }
             "#]],
@@ -293,7 +320,7 @@ fn main() {
             "#,
             expect![[r#"
 fn main() {
-    println!("All I want to say is...");
+    println!("All I want to say is...");$0
     println!("Hello, world");
 }
             "#]],
@@ -313,7 +340,7 @@ fn main() {
 fn main() {
     if true {
         println!("Test");
-    }
+    }$0
 
     println!("Hello, world");
 }
@@ -334,7 +361,7 @@ fn main() {
 fn main() {
     for i in 0..10 {
         println!("Test");
-    }
+    }$0
 
     println!("Hello, world");
 }
@@ -355,7 +382,7 @@ fn main() {
 fn main() {
     loop {
         println!("Test");
-    }
+    }$0
 
     println!("Hello, world");
 }
@@ -376,7 +403,7 @@ fn main() {
 fn main() {
     while true {
         println!("Test");
-    }
+    }$0
 
     println!("Hello, world");
 }
@@ -393,7 +420,7 @@ fn main() {
             "#,
             expect![[r#"
 fn main() {
-    return 123;
+    return 123;$0
 
     println!("Hello, world");
 }
@@ -430,7 +457,7 @@ fn main() {}
 fn foo() {}$0$0
             "#,
             expect![[r#"
-fn foo() {}
+fn foo() {}$0
 
 fn main() {}
             "#]],
@@ -451,7 +478,7 @@ impl Wow for Yay $0$0{}
             expect![[r#"
 struct Yay;
 
-impl Wow for Yay {}
+impl Wow for Yay $0{}
 
 trait Wow {}
             "#]],
@@ -467,7 +494,7 @@ use std::vec::Vec;
 use std::collections::HashMap$0$0;
             "#,
             expect![[r#"
-use std::collections::HashMap;
+use std::collections::HashMap$0;
 use std::vec::Vec;
             "#]],
             Direction::Up,
@@ -502,7 +529,7 @@ fn main() {
     }
 
     #[test]
-    fn test_moves_param_up() {
+    fn test_moves_param() {
         check(
             r#"
 fn test(one: i32, two$0$0: u32) {}
@@ -512,13 +539,22 @@ fn main() {
 }
             "#,
             expect![[r#"
-fn test(two: u32, one: i32) {}
+fn test(two$0: u32, one: i32) {}
 
 fn main() {
     test(123, 456);
 }
             "#]],
             Direction::Up,
+        );
+        check(
+            r#"
+fn f($0$0arg: u8, arg2: u16) {}
+            "#,
+            expect![[r#"
+fn f(arg2: u16, $0arg: u8) {}
+            "#]],
+            Direction::Down,
         );
     }
 
@@ -536,7 +572,7 @@ fn main() {
 fn test(one: i32, two: u32) {}
 
 fn main() {
-    test(456, 123);
+    test(456$0, 123);
 }
             "#]],
             Direction::Up,
@@ -557,7 +593,7 @@ fn main() {
 fn test(one: i32, two: u32) {}
 
 fn main() {
-    test(456, 123);
+    test(456, 123$0);
 }
             "#]],
             Direction::Down,
@@ -594,7 +630,7 @@ struct Test<A, B$0$0>(A, B);
 fn main() {}
             "#,
             expect![[r#"
-struct Test<B, A>(A, B);
+struct Test<B$0, A>(A, B);
 
 fn main() {}
             "#]],
@@ -616,7 +652,7 @@ fn main() {
 struct Test<A, B>(A, B);
 
 fn main() {
-    let t = Test::<&str, i32>(123, "yay");
+    let t = Test::<&str$0, i32>(123, "yay");
 }
             "#]],
             Direction::Up,
@@ -636,7 +672,7 @@ fn main() {}
             "#,
             expect![[r#"
 enum Hello {
-    Two,
+    Two$0,
     One
 }
 
@@ -663,7 +699,7 @@ trait One {}
 
 trait Two {}
 
-fn test<T: Two + One>(t: T) {}
+fn test<T: Two$0 + One>(t: T) {}
 
 fn main() {}
             "#]],
@@ -709,7 +745,7 @@ trait Yay {
 impl Yay for Test {
     type One = i32;
 
-    fn inner() {
+    fn inner() {$0
         println!("Mmmm");
     }
 
@@ -736,7 +772,7 @@ fn test() {
             "#,
             expect![[r#"
 fn test() {
-    mod hi {
+    mod hi {$0
         fn inner() {}
     }
 
@@ -764,7 +800,7 @@ fn main() {}
             expect![[r#"
 fn main() {}
 
-#[derive(Debug)]
+$0#[derive(Debug)]
 enum FooBar {
     Foo,
     Bar,
@@ -784,7 +820,7 @@ fn main() {}
             expect![[r#"
 fn main() {}
 
-enum FooBar {
+$0enum FooBar {
     Foo,
     Bar,
 }
@@ -804,7 +840,7 @@ fn main() {}
             expect![[r#"
 struct Test;
 
-impl SomeTrait for Test {}
+$0impl SomeTrait for Test {}
 
 trait SomeTrait {}
 
@@ -831,7 +867,7 @@ fn main() {}
 enum FooBar {
     Foo,
     Bar,
-}
+}$0
             "#]],
             Direction::Down,
         );
@@ -848,7 +884,7 @@ fn main() {}
             expect![[r#"
 struct Test;
 
-impl SomeTrait for Test {}
+impl SomeTrait for Test {}$0
 
 trait SomeTrait {}
 

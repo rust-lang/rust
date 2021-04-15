@@ -129,7 +129,7 @@ export interface OpenCargoTomlParams {
     textDocument: lc.TextDocumentIdentifier;
 }
 
-export const moveItem = new lc.RequestType<MoveItemParams, lc.TextDocumentEdit | void, void>("experimental/moveItem");
+export const moveItem = new lc.RequestType<MoveItemParams, lc.TextEdit[], void>("experimental/moveItem");
 
 export interface MoveItemParams {
     textDocument: lc.TextDocumentIdentifier;

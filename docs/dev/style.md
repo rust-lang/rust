@@ -159,7 +159,7 @@ More than one mark per test / code branch doesn't add significantly to understan
 Do not use `#[should_panic]` tests.
 Instead, explicitly check for `None`, `Err`, etc.
 
-**Rationale:**a `#[should_panic]` is a tool for library authors, to makes sure that API does not fail silently, when misused.
+**Rationale:** `#[should_panic]` is a tool for library authors, to makes sure that API does not fail silently, when misused.
 `rust-analyzer` is not a library, we don't need to test for API misuse, and we have to handle any user input without panics.
 Panic messages in the logs from the `#[should_panic]` tests are confusing.
 
