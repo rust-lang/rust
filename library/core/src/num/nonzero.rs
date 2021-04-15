@@ -322,6 +322,35 @@ macro_rules! nonzero_unsigned_operations {
                         None
                     }
                 }
+
+                /// Add an unsigned integer to a non-zero value.
+                #[doc = concat!("Return [`", stringify!($Int), "::MAX`] on overflow.")]
+                ///
+                /// # Examples
+                ///
+                /// ```
+                /// #![feature(nonzero_ops)]
+                /// # #![feature(try_trait)]
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                ///
+                /// # fn main() -> Result<(), std::option::NoneError> {
+                #[doc = concat!("let one = ", stringify!($Ty), "::new(1)?;")]
+                #[doc = concat!("let two = ", stringify!($Ty), "::new(2)?;")]
+                #[doc = concat!("let max = ", stringify!($Ty), "::new(",
+                                stringify!($Int), "::MAX)?;")]
+                ///
+                /// assert_eq!(two, one.saturating_add(1));
+                /// assert_eq!(max, max.saturating_add(1));
+                /// # Ok(())
+                /// # }
+                /// ```
+                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[inline]
+                pub const fn saturating_add(self, other: $Int) -> $Ty {
+                    // SAFETY: $Int::saturating_add returns $Int::MAX on overflow
+                    // so the result cannot be zero.
+                    unsafe { $Ty::new_unchecked(self.get().saturating_add(other)) }
+                }
             }
         )+
     }
