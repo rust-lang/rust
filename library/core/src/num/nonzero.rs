@@ -285,6 +285,57 @@ nonzero_integers_div! {
     NonZeroUsize(usize);
 }
 
+// A bunch of methods for unsigned nonzero types only.
+macro_rules! nonzero_unsigned_operations {
+    ( $( $Ty: ident($Int: ty); )+ ) => {
+        $(
+            impl $Ty {
+                /// Add an unsigned integer to a non-zero value.
+                /// Return [`None`] on overflow.
+                ///
+                /// # Examples
+                ///
+                /// ```
+                /// #![feature(nonzero_ops)]
+                /// # #![feature(try_trait)]
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                ///
+                /// # fn main() -> Result<(), std::option::NoneError> {
+                #[doc = concat!("let one = ", stringify!($Ty), "::new(1)?;")]
+                #[doc = concat!("let two = ", stringify!($Ty), "::new(2)?;")]
+                #[doc = concat!("let max = ", stringify!($Ty), "::new(",
+                                stringify!($Int), "::MAX)?;")]
+                ///
+                /// assert_eq!(Some(two), one.checked_add(1));
+                /// assert_eq!(None, max.checked_add(1));
+                /// # Ok(())
+                /// # }
+                /// ```
+                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[inline]
+                pub const fn checked_add(self, other: $Int) -> Option<$Ty> {
+                    if let Some(result) = self.get().checked_add(other) {
+                        // SAFETY: $Int::checked_add returns None on overflow
+                        // so the result cannot be zero.
+                        Some(unsafe { $Ty::new_unchecked(result) })
+                    } else {
+                        None
+                    }
+                }
+            }
+        )+
+    }
+}
+
+nonzero_unsigned_operations! {
+    NonZeroU8(u8);
+    NonZeroU16(u16);
+    NonZeroU32(u32);
+    NonZeroU64(u64);
+    NonZeroU128(u128);
+    NonZeroUsize(usize);
+}
+
 macro_rules! nonzero_unsigned_is_power_of_two {
     ( $( $Ty: ident )+ ) => {
         $(
