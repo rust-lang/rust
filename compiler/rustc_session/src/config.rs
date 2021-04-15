@@ -2374,6 +2374,7 @@ crate mod dep_tracking {
 
     impl_dep_tracking_hash_for_sortable_vec_of!(String);
     impl_dep_tracking_hash_for_sortable_vec_of!(PathBuf);
+    impl_dep_tracking_hash_for_sortable_vec_of!((PathBuf, PathBuf));
     impl_dep_tracking_hash_for_sortable_vec_of!(CrateType);
     impl_dep_tracking_hash_for_sortable_vec_of!((String, lint::Level));
     impl_dep_tracking_hash_for_sortable_vec_of!((String, Option<String>, NativeLibKind));

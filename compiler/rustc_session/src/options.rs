@@ -20,21 +20,41 @@ use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::str;
 
-macro_rules! hash_option {
-    ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr, [UNTRACKED]) => {{}};
-    ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr, [TRACKED]) => {{
+macro_rules! insert {
+    ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr) => {
         if $sub_hashes
             .insert(stringify!($opt_name), $opt_expr as &dyn dep_tracking::DepTrackingHash)
             .is_some()
         {
             panic!("duplicate key in CLI DepTrackingHash: {}", stringify!($opt_name))
         }
+    };
+}
+
+macro_rules! hash_opt {
+    ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr, $_for_crate_hash: ident, [UNTRACKED]) => {{}};
+    ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr, $_for_crate_hash: ident, [TRACKED]) => {{ insert!($opt_name, $opt_expr, $sub_hashes) }};
+    ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr, $for_crate_hash: ident, [TRACKED_NO_CRATE_HASH]) => {{
+        if !$for_crate_hash {
+            insert!($opt_name, $opt_expr, $sub_hashes)
+        }
     }};
+    ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr, $_for_crate_hash: ident, [SUBSTRUCT]) => {{}};
+}
+
+macro_rules! hash_substruct {
+    ($opt_name:ident, $opt_expr:expr, $error_format:expr, $for_crate_hash:expr, $hasher:expr, [UNTRACKED]) => {{}};
+    ($opt_name:ident, $opt_expr:expr, $error_format:expr, $for_crate_hash:expr, $hasher:expr, [TRACKED]) => {{}};
+    ($opt_name:ident, $opt_expr:expr, $error_format:expr, $for_crate_hash:expr, $hasher:expr, [TRACKED_NO_CRATE_HASH]) => {{}};
+    ($opt_name:ident, $opt_expr:expr, $error_format:expr, $for_crate_hash:expr, $hasher:expr, [SUBSTRUCT]) => {
+        use crate::config::dep_tracking::DepTrackingHash;
+        $opt_expr.dep_tracking_hash($for_crate_hash, $error_format).hash($hasher, $error_format);
+    };
 }
 
 macro_rules! top_level_options {
     (pub struct Options { $(
-        $opt:ident : $t:ty [$dep_tracking_marker:ident $($warn_val:expr, $warn_text:expr)*],
+        $opt:ident : $t:ty [$dep_tracking_marker:ident],
     )* } ) => (
         #[derive(Clone)]
         pub struct Options {
@@ -42,20 +62,27 @@ macro_rules! top_level_options {
         }
 
         impl Options {
-            pub fn dep_tracking_hash(&self) -> u64 {
+            pub fn dep_tracking_hash(&self, for_crate_hash: bool) -> u64 {
                 let mut sub_hashes = BTreeMap::new();
                 $({
-                    hash_option!($opt,
-                                 &self.$opt,
-                                 &mut sub_hashes,
-                                 [$dep_tracking_marker $($warn_val,
-                                                         $warn_text,
-                                                         self.error_format)*]);
+                    hash_opt!($opt,
+                                &self.$opt,
+                                &mut sub_hashes,
+                                for_crate_hash,
+                                [$dep_tracking_marker]);
                 })*
                 let mut hasher = DefaultHasher::new();
                 dep_tracking::stable_hash(sub_hashes,
                                           &mut hasher,
                                           self.error_format);
+                $({
+                    hash_substruct!($opt,
+                        &self.$opt,
+                        self.error_format,
+                        for_crate_hash,
+                        &mut hasher,
+                        [$dep_tracking_marker]);
+                })*
                 hasher.finish()
             }
         }
@@ -72,8 +99,15 @@ macro_rules! top_level_options {
 // A change in the given field will cause the compiler to completely clear the
 // incremental compilation cache before proceeding.
 //
+// [TRACKED_NO_CRATE_HASH]
+// Same as [TRACKED], but will not affect the crate hash. This is useful for options that only
+// affect the incremental cache.
+//
 // [UNTRACKED]
 // Incremental compilation is not influenced by this option.
+//
+// [SUBSTRUCT]
+// Second-level sub-structs containing more options.
 //
 // If you add a new option to this struct or one of the sub-structs like
 // `CodegenOptions`, think about how it influences incremental compilation. If in
@@ -106,12 +140,12 @@ top_level_options!(
         // directory to store intermediate results.
         incremental: Option<PathBuf> [UNTRACKED],
 
-        debugging_opts: DebuggingOptions [TRACKED],
+        debugging_opts: DebuggingOptions [SUBSTRUCT],
         prints: Vec<PrintRequest> [UNTRACKED],
         // Determines which borrow checker(s) to run. This is the parsed, sanitized
         // version of `debugging_opts.borrowck`, which is just a plain string.
         borrowck_mode: BorrowckMode [UNTRACKED],
-        cg: CodegenOptions [TRACKED],
+        cg: CodegenOptions [SUBSTRUCT],
         externs: Externs [UNTRACKED],
         extern_dep_specs: ExternDepSpecs [UNTRACKED],
         crate_name: Option<String> [TRACKED],
@@ -139,7 +173,7 @@ top_level_options!(
         cli_forced_thinlto_off: bool [UNTRACKED],
 
         // Remap source path prefixes in all output (messages, object files, debug, etc.).
-        remap_path_prefix: Vec<(PathBuf, PathBuf)> [UNTRACKED],
+        remap_path_prefix: Vec<(PathBuf, PathBuf)> [TRACKED_NO_CRATE_HASH],
 
         edition: Edition [TRACKED],
 
@@ -169,7 +203,7 @@ macro_rules! options {
      $($opt:ident : $t:ty = (
         $init:expr,
         $parse:ident,
-        [$dep_tracking_marker:ident $(($dep_warn_val:expr, $dep_warn_text:expr))*],
+        [$dep_tracking_marker:ident],
         $desc:expr)
      ),* ,) =>
 (
@@ -219,18 +253,21 @@ macro_rules! options {
         return op;
     }
 
-    impl dep_tracking::DepTrackingHash for $struct_name {
-        fn hash(&self, hasher: &mut DefaultHasher, error_format: ErrorOutputType) {
+    impl $struct_name {
+        fn dep_tracking_hash(&self, for_crate_hash: bool, error_format: ErrorOutputType) -> u64 {
             let mut sub_hashes = BTreeMap::new();
             $({
-                hash_option!($opt,
-                             &self.$opt,
-                             &mut sub_hashes,
-                             [$dep_tracking_marker $($dep_warn_val,
-                                                     $dep_warn_text,
-                                                     error_format)*]);
+                hash_opt!($opt,
+                            &self.$opt,
+                            &mut sub_hashes,
+                            for_crate_hash,
+                            [$dep_tracking_marker]);
             })*
-            dep_tracking::stable_hash(sub_hashes, hasher, error_format);
+            let mut hasher = DefaultHasher::new();
+            dep_tracking::stable_hash(sub_hashes,
+                                        &mut hasher,
+                                        error_format);
+            hasher.finish()
         }
     }
 
