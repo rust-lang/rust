@@ -17,7 +17,7 @@ use rustc_middle::{
     ty::{
         self,
         layout::{LayoutCx, LayoutError, TyAndLayout},
-        TyCtxt,
+        Instance, TyCtxt,
     },
 };
 use rustc_span::def_id::DefId;
@@ -294,6 +294,9 @@ pub struct Evaluator<'mir, 'tcx> {
     /// Used with `profiler` to cache the `StringId`s for event names
     /// uesd with `measureme`.
     string_cache: FxHashMap<String, measureme::StringId>,
+
+    /// Cache of `Instance` exported under the given `Symbol` name.
+    pub(crate) exported_symbols_cache: FxHashMap<Symbol, Instance<'tcx>>,
 }
 
 impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
@@ -322,6 +325,7 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             static_roots: Vec::new(),
             profiler,
             string_cache: Default::default(),
+            exported_symbols_cache: FxHashMap::default(),
         }
     }
 }

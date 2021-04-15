@@ -6,18 +6,36 @@ use std::{
 use log::trace;
 
 use rustc_apfloat::Float;
-use rustc_hir::def_id::DefId;
+use rustc_hir::{
+    def::DefKind,
+    def_id::{CrateNum, DefId, LOCAL_CRATE},
+};
+use rustc_middle::middle::{
+    codegen_fn_attrs::CodegenFnAttrFlags, dependency_format::Linkage,
+    exported_symbols::ExportedSymbol,
+};
 use rustc_middle::mir;
 use rustc_middle::ty;
-use rustc_span::symbol::sym;
+use rustc_session::config::CrateType;
+use rustc_span::{symbol::sym, Symbol};
 use rustc_target::{
     abi::{Align, Size},
-    spec::{abi::Abi, PanicStrategy},
+    spec::abi::Abi,
 };
 
 use super::backtrace::EvalContextExt as _;
 use crate::*;
 use helpers::{check_abi, check_arg_count};
+
+/// Returned by `emulate_foreign_item_by_name`.
+pub enum EmulateByNameResult {
+    /// The caller is expected to jump to the return block.
+    NeedsJumping,
+    /// Jumping has already been taken care of.
+    AlreadyJumped,
+    /// The item is not supported.
+    NotSupported,
+}
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
@@ -108,6 +126,76 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
     }
 
+    /// Lookup the body of a function that has `link_name` as the symbol name.
+    fn lookup_exported_symbol(
+        &mut self,
+        link_name: Symbol,
+    ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
+        let this = self.eval_context_mut();
+        let tcx = this.tcx.tcx;
+
+        // If the result was cached, just return it.
+        if let Some(instance) = this.machine.exported_symbols_cache.get(&link_name) {
+            return Ok(Some(this.load_mir(instance.def, None)?));
+        }
+
+        // Find it if it was not cached.
+        let mut instance_and_crate: Option<(ty::Instance<'_>, CrateNum)> = None;
+        // `dependency_formats` includes all the transitive informations needed to link a crate,
+        // which is what we need here since we need to dig out `exported_symbols` from all transitive
+        // dependencies.
+        let dependency_formats = tcx.dependency_formats(());
+        let dependency_format = dependency_formats
+            .iter()
+            .find(|(crate_type, _)| *crate_type == CrateType::Executable)
+            .expect("interpreting a non-executable crate");
+        for cnum in
+            iter::once(LOCAL_CRATE).chain(dependency_format.1.iter().enumerate().filter_map(
+                |(num, &linkage)| (linkage != Linkage::NotLinked).then_some(CrateNum::new(num + 1)),
+            ))
+        {
+            // FIXME: Do we need to check `SymbolExportLevel` (the `_` below)?
+            for &(symbol, _) in tcx.exported_symbols(cnum) {
+                if let ExportedSymbol::NonGeneric(def_id) = symbol {
+                    let attrs = tcx.codegen_fn_attrs(def_id);
+                    let symbol_name = if let Some(export_name) = attrs.export_name {
+                        export_name
+                    } else if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE) {
+                        tcx.item_name(def_id)
+                    } else {
+                        // Skip over items without an explicitly defined symbol name.
+                        continue;
+                    };
+                    if symbol_name == link_name {
+                        if let Some((instance, original_cnum)) = instance_and_crate {
+                            throw_machine_stop!(TerminationInfo::MultipleSymbolDefinitions {
+                                link_name,
+                                first: tcx.def_span(instance.def_id()).data(),
+                                first_crate: tcx.crate_name(original_cnum),
+                                second: tcx.def_span(def_id).data(),
+                                second_crate: tcx.crate_name(cnum),
+                            });
+                        }
+                        if tcx.def_kind(def_id) != DefKind::Fn {
+                            throw_ub_format!(
+                                "attempt to call an exported symbol that is not defined as a function"
+                            );
+                        }
+                        instance_and_crate = Some((ty::Instance::mono(tcx, def_id), cnum));
+                    }
+                }
+            }
+        }
+
+        // Cache it and load its MIR, if found.
+        instance_and_crate
+            .map(|(instance, _)| {
+                this.machine.exported_symbols_cache.insert(link_name, instance);
+                this.load_mir(instance.def, None)
+            })
+            .transpose()
+    }
+
     /// Emulates calling a foreign item, failing if the item is not supported.
     /// This function will handle `goto_block` if needed.
     /// Returns Ok(None) if the foreign item was completely handled
@@ -124,10 +212,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
         let this = self.eval_context_mut();
         let attrs = this.tcx.get_attrs(def_id);
-        let link_name = match this.tcx.sess.first_attr_value_str_by_name(&attrs, sym::link_name) {
-            Some(name) => name.as_str(),
-            None => this.tcx.item_name(def_id).as_str(),
+        let link_name_sym = match this.tcx.sess.first_attr_value_str_by_name(&attrs, sym::link_name)
+        {
+            Some(name) => name,
+            None => this.tcx.item_name(def_id),
         };
+        let link_name = link_name_sym.as_str();
         // Strip linker suffixes (seen on 32-bit macOS).
         let link_name = link_name.trim_end_matches("$UNIX2003");
         let tcx = this.tcx.tcx;
@@ -164,48 +254,35 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         "the program aborted execution".to_owned()
                     ))
                 }
-                _ => throw_unsup_format!("can't call (diverging) foreign function: {}", link_name),
+                _ => {
+                    if let Some(body) = this.lookup_exported_symbol(link_name_sym)? {
+                        return Ok(Some(body));
+                    }
+                    throw_unsup_format!("can't call (diverging) foreign function: {}", link_name);
+                }
             },
             Some(p) => p,
         };
 
-        // Second: some functions that we forward to MIR implementations.
-        match link_name {
-            // This matches calls to the foreign item `__rust_start_panic`, that is,
-            // calls to `extern "Rust" { fn __rust_start_panic(...) }`
-            // (and `__rust_panic_cleanup`, respectively).
-            // We forward this to the underlying *implementation* in the panic runtime crate.
-            // Normally, this will be either `libpanic_unwind` or `libpanic_abort`, but it could
-            // also be a custom user-provided implementation via `#![feature(panic_runtime)]`
-            #[rustfmt::skip]
-            "__rust_start_panic" |
-            "__rust_panic_cleanup" => {
-                check_abi(this, abi, Abi::C { unwind: false })?;
-                // This replicates some of the logic in `inject_panic_runtime`.
-                // FIXME: is there a way to reuse that logic?
-                let panic_runtime = match this.tcx.sess.panic_strategy() {
-                    PanicStrategy::Unwind => sym::panic_unwind,
-                    PanicStrategy::Abort => sym::panic_abort,
-                };
-                let start_panic_instance =
-                    this.resolve_path(&[&*panic_runtime.as_str(), link_name]);
-                return Ok(Some(&*this.load_mir(start_panic_instance.def, None)?));
+        // Second: functions that return.
+        match this.emulate_foreign_item_by_name(link_name, abi, args, dest, ret)? {
+            EmulateByNameResult::NeedsJumping => {
+                trace!("{:?}", this.dump_place(**dest));
+                this.go_to_block(ret);
             }
-            _ => {}
-        }
-
-        // Third: functions that return.
-        if this.emulate_foreign_item_by_name(link_name, abi, args, dest, ret)? {
-            trace!("{:?}", this.dump_place(**dest));
-            this.go_to_block(ret);
+            EmulateByNameResult::AlreadyJumped => (),
+            EmulateByNameResult::NotSupported => {
+                if let Some(body) = this.lookup_exported_symbol(link_name_sym)? {
+                    return Ok(Some(body));
+                }
+                throw_unsup_format!("can't call foreign function: {}", link_name);
+            }
         }
 
         Ok(None)
     }
 
-    /// Emulates calling a foreign item using its name, failing if the item is not supported.
-    /// Returns `true` if the caller is expected to jump to the return block, and `false` if
-    /// jumping has already been taken care of.
+    /// Emulates calling a foreign item using its name.
     fn emulate_foreign_item_by_name(
         &mut self,
         link_name: &str,
@@ -213,7 +290,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         args: &[OpTy<'tcx, Tag>],
         dest: &PlaceTy<'tcx, Tag>,
         ret: mir::BasicBlock,
-    ) -> InterpResult<'tcx, bool> {
+    ) -> InterpResult<'tcx, EmulateByNameResult> {
         let this = self.eval_context_mut();
 
         // Here we dispatch all the shims for foreign functions. If you have a platform specific
@@ -549,7 +626,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
         };
 
-        Ok(true)
+        // We only fall through to here if we did *not* hit the `_` arm above,
+        // i.e., if we actually emulated the function.
+        Ok(EmulateByNameResult::NeedsJumping)
     }
 
     /// Check some basic requirements for this allocation request:

@@ -14,6 +14,7 @@ version = "0.1.0"
 dependencies = [
  "byteorder",
  "cdylib",
+ "exported_symbol",
  "getrandom 0.1.16",
  "getrandom 0.2.2",
  "issue_1567",
@@ -36,6 +37,17 @@ name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
+
+[[package]]
+name = "exported_symbol"
+version = "0.1.0"
+dependencies = [
+ "exported_symbol_dep",
+]
+
+[[package]]
+name = "exported_symbol_dep"
+version = "0.1.0"
 
 [[package]]
 name = "getrandom"

@@ -5,7 +5,7 @@ use std::num::NonZeroU64;
 use log::trace;
 
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::{source_map::DUMMY_SP, Span};
+use rustc_span::{source_map::DUMMY_SP, Span, SpanData, Symbol};
 
 use crate::*;
 
@@ -14,8 +14,18 @@ pub enum TerminationInfo {
     Exit(i64),
     Abort(String),
     UnsupportedInIsolation(String),
-    ExperimentalUb { msg: String, url: String },
+    ExperimentalUb {
+        msg: String,
+        url: String,
+    },
     Deadlock,
+    MultipleSymbolDefinitions {
+        link_name: Symbol,
+        first: SpanData,
+        first_crate: Symbol,
+        second: SpanData,
+        second_crate: Symbol,
+    },
 }
 
 impl fmt::Display for TerminationInfo {
@@ -27,6 +37,8 @@ impl fmt::Display for TerminationInfo {
             UnsupportedInIsolation(msg) => write!(f, "{}", msg),
             ExperimentalUb { msg, .. } => write!(f, "{}", msg),
             Deadlock => write!(f, "the evaluated program deadlocked"),
+            MultipleSymbolDefinitions { link_name, .. } =>
+                write!(f, "multiple definitions of symbol `{}`", link_name),
         }
     }
 }
@@ -55,19 +67,25 @@ pub fn report_error<'tcx, 'mir>(
             use TerminationInfo::*;
             let title = match info {
                 Exit(code) => return Some(*code),
-                Abort(_) => "abnormal termination",
-                UnsupportedInIsolation(_) => "unsupported operation",
-                ExperimentalUb { .. } => "Undefined Behavior",
-                Deadlock => "deadlock",
+                Abort(_) => Some("abnormal termination"),
+                UnsupportedInIsolation(_) => Some("unsupported operation"),
+                ExperimentalUb { .. } => Some("Undefined Behavior"),
+                Deadlock => Some("deadlock"),
+                MultipleSymbolDefinitions { .. } => None,
             };
             #[rustfmt::skip]
             let helps = match info {
                 UnsupportedInIsolation(_) =>
-                    vec![format!("pass the flag `-Zmiri-disable-isolation` to disable isolation")],
+                    vec![(None, format!("pass the flag `-Zmiri-disable-isolation` to disable isolation"))],
                 ExperimentalUb { url, .. } =>
                     vec![
-                        format!("this indicates a potential bug in the program: it performed an invalid operation, but the rules it violated are still experimental"),
-                        format!("see {} for further information", url),
+                        (None, format!("this indicates a potential bug in the program: it performed an invalid operation, but the rules it violated are still experimental")),
+                        (None, format!("see {} for further information", url)),
+                    ],
+                MultipleSymbolDefinitions { first, first_crate, second, second_crate, .. } =>
+                    vec![
+                        (Some(*first), format!("it's first defined here, in crate `{}`", first_crate)),
+                        (Some(*second), format!("then it's defined here again, in crate `{}`", second_crate)),
                     ],
                 _ => vec![],
             };
@@ -90,26 +108,26 @@ pub fn report_error<'tcx, 'mir>(
             #[rustfmt::skip]
             let helps = match e.kind() {
                 Unsupported(UnsupportedOpInfo::NoMirFor(..)) =>
-                    vec![format!("make sure to use a Miri sysroot, which you can prepare with `cargo miri setup`")],
+                    vec![(None, format!("make sure to use a Miri sysroot, which you can prepare with `cargo miri setup`"))],
                 Unsupported(UnsupportedOpInfo::ReadBytesAsPointer | UnsupportedOpInfo::ThreadLocalStatic(_) | UnsupportedOpInfo::ReadExternStatic(_)) =>
                     panic!("Error should never be raised by Miri: {:?}", e.kind()),
                 Unsupported(_) =>
-                    vec![format!("this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support")],
+                    vec![(None, format!("this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support"))],
                 UndefinedBehavior(UndefinedBehaviorInfo::AlignmentCheckFailed { .. })
                     if ecx.memory.extra.check_alignment == AlignmentCheck::Symbolic
                 =>
                     vec![
-                        format!("this usually indicates that your program performed an invalid operation and caused Undefined Behavior"),
-                        format!("but due to `-Zmiri-symbolic-alignment-check`, alignment errors can also be false positives"),
+                        (None, format!("this usually indicates that your program performed an invalid operation and caused Undefined Behavior")),
+                        (None, format!("but due to `-Zmiri-symbolic-alignment-check`, alignment errors can also be false positives")),
                     ],
                 UndefinedBehavior(_) =>
                     vec![
-                        format!("this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior"),
-                        format!("see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information"),
+                        (None, format!("this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior")),
+                        (None, format!("see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information")),
                     ],
                 _ => vec![],
             };
-            (title, helps)
+            (Some(title), helps)
         }
     };
 
@@ -118,7 +136,7 @@ pub fn report_error<'tcx, 'mir>(
     report_msg(
         *ecx.tcx,
         /*error*/ true,
-        &format!("{}: {}", title, msg),
+        &if let Some(title) = title { format!("{}: {}", title, msg) } else { msg.clone() },
         msg,
         helps,
         &ecx.generate_stacktrace(),
@@ -157,7 +175,7 @@ fn report_msg<'tcx>(
     error: bool,
     title: &str,
     span_msg: String,
-    mut helps: Vec<String>,
+    mut helps: Vec<(Option<SpanData>, String)>,
     stacktrace: &[FrameInfo<'tcx>],
 ) {
     let span = stacktrace.first().map_or(DUMMY_SP, |fi| fi.span);
@@ -177,9 +195,13 @@ fn report_msg<'tcx>(
     // Show help messages.
     if !helps.is_empty() {
         // Add visual separator before backtrace.
-        helps.last_mut().unwrap().push_str("\n");
-        for help in helps {
-            err.help(&help);
+        helps.last_mut().unwrap().1.push_str("\n");
+        for (span_data, help) in helps {
+            if let Some(span_data) = span_data {
+                err.span_help(span_data.span(), &help);
+            } else {
+                err.help(&help);
+            }
         }
     }
     // Add backtrace

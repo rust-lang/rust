@@ -6,6 +6,7 @@ use rustc_target::spec::abi::Abi;
 
 use crate::*;
 use helpers::{check_abi, check_arg_count};
+use shims::foreign_items::EmulateByNameResult;
 use shims::posix::fs::EvalContextExt as _;
 use shims::posix::sync::EvalContextExt as _;
 use shims::posix::thread::EvalContextExt as _;
@@ -19,7 +20,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         args: &[OpTy<'tcx, Tag>],
         dest: &PlaceTy<'tcx, Tag>,
         ret: mir::BasicBlock,
-    ) -> InterpResult<'tcx, bool> {
+    ) -> InterpResult<'tcx, EmulateByNameResult> {
         let this = self.eval_context_mut();
 
         match link_name {
@@ -524,6 +525,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
         };
 
-        Ok(true)
+        Ok(EmulateByNameResult::NeedsJumping)
     }
 }

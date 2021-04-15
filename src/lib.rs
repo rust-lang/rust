@@ -3,6 +3,7 @@
 #![feature(map_try_insert)]
 #![feature(never_type)]
 #![feature(try_blocks)]
+#![feature(bool_to_option)]
 #![warn(rust_2018_idioms)]
 #![allow(clippy::cast_lossless)]
 
@@ -14,6 +15,7 @@ extern crate rustc_data_structures;
 extern crate rustc_hir;
 extern crate rustc_index;
 extern crate rustc_mir;
+extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
 

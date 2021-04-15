@@ -6,6 +6,7 @@ use rustc_target::spec::abi::Abi;
 
 use crate::*;
 use helpers::{check_abi, check_arg_count};
+use shims::foreign_items::EmulateByNameResult;
 use shims::windows::sync::EvalContextExt as _;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
@@ -17,7 +18,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         args: &[OpTy<'tcx, Tag>],
         dest: &PlaceTy<'tcx, Tag>,
         _ret: mir::BasicBlock,
-    ) -> InterpResult<'tcx, bool> {
+    ) -> InterpResult<'tcx, EmulateByNameResult> {
         let this = self.eval_context_mut();
 
         // Windows API stubs.
@@ -415,9 +416,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_i32(1), dest)?;
             }
 
-            _ => throw_unsup_format!("can't call foreign function: {}", link_name),
+            _ => return Ok(EmulateByNameResult::NotSupported),
         }
 
-        Ok(true)
+        Ok(EmulateByNameResult::NeedsJumping)
     }
 }
