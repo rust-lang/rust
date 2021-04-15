@@ -425,106 +425,145 @@ mod tests {
 
     #[test]
     fn same_module() {
-        let code = r#"
-            //- /main.rs
-            struct S;
-            $0
-        "#;
-        check_found_path(code, "S", "S", "crate::S", "self::S");
+        check_found_path(
+            r#"
+//- /main.rs
+struct S;
+$0
+        "#,
+            "S",
+            "S",
+            "crate::S",
+            "self::S",
+        );
     }
 
     #[test]
     fn enum_variant() {
-        let code = r#"
-            //- /main.rs
-            enum E { A }
-            $0
-        "#;
-        check_found_path(code, "E::A", "E::A", "E::A", "E::A");
+        check_found_path(
+            r#"
+//- /main.rs
+enum E { A }
+$0
+        "#,
+            "E::A",
+            "E::A",
+            "E::A",
+            "E::A",
+        );
     }
 
     #[test]
     fn sub_module() {
-        let code = r#"
-            //- /main.rs
-            mod foo {
-                pub struct S;
-            }
-            $0
-        "#;
-        check_found_path(code, "foo::S", "foo::S", "crate::foo::S", "self::foo::S");
+        check_found_path(
+            r#"
+//- /main.rs
+mod foo {
+    pub struct S;
+}
+$0
+        "#,
+            "foo::S",
+            "foo::S",
+            "crate::foo::S",
+            "self::foo::S",
+        );
     }
 
     #[test]
     fn super_module() {
-        let code = r#"
-            //- /main.rs
-            mod foo;
-            //- /foo.rs
-            mod bar;
-            struct S;
-            //- /foo/bar.rs
-            $0
-        "#;
-        check_found_path(code, "super::S", "super::S", "crate::foo::S", "super::S");
+        check_found_path(
+            r#"
+//- /main.rs
+mod foo;
+//- /foo.rs
+mod bar;
+struct S;
+//- /foo/bar.rs
+$0
+        "#,
+            "super::S",
+            "super::S",
+            "crate::foo::S",
+            "super::S",
+        );
     }
 
     #[test]
     fn self_module() {
-        let code = r#"
-            //- /main.rs
-            mod foo;
-            //- /foo.rs
-            $0
-        "#;
-        check_found_path(code, "self", "self", "crate::foo", "self");
+        check_found_path(
+            r#"
+//- /main.rs
+mod foo;
+//- /foo.rs
+$0
+        "#,
+            "self",
+            "self",
+            "crate::foo",
+            "self",
+        );
     }
 
     #[test]
     fn crate_root() {
-        let code = r#"
-            //- /main.rs
-            mod foo;
-            //- /foo.rs
-            $0
-        "#;
-        check_found_path(code, "crate", "crate", "crate", "crate");
+        check_found_path(
+            r#"
+//- /main.rs
+mod foo;
+//- /foo.rs
+$0
+        "#,
+            "crate",
+            "crate",
+            "crate",
+            "crate",
+        );
     }
 
     #[test]
     fn same_crate() {
-        let code = r#"
-            //- /main.rs
-            mod foo;
-            struct S;
-            //- /foo.rs
-            $0
-        "#;
-        check_found_path(code, "crate::S", "crate::S", "crate::S", "crate::S");
+        check_found_path(
+            r#"
+//- /main.rs
+mod foo;
+struct S;
+//- /foo.rs
+$0
+        "#,
+            "crate::S",
+            "crate::S",
+            "crate::S",
+            "crate::S",
+        );
     }
 
     #[test]
     fn different_crate() {
-        let code = r#"
-            //- /main.rs crate:main deps:std
-            $0
-            //- /std.rs crate:std
-            pub struct S;
-        "#;
-        check_found_path(code, "std::S", "std::S", "std::S", "std::S");
+        check_found_path(
+            r#"
+//- /main.rs crate:main deps:std
+$0
+//- /std.rs crate:std
+pub struct S;
+        "#,
+            "std::S",
+            "std::S",
+            "std::S",
+            "std::S",
+        );
     }
 
     #[test]
     fn different_crate_renamed() {
-        let code = r#"
-            //- /main.rs crate:main deps:std
-            extern crate std as std_renamed;
-            $0
-            //- /std.rs crate:std
-            pub struct S;
-        "#;
         check_found_path(
-            code,
+            r#"
+//- /main.rs crate:main deps:std
+extern crate std as std_renamed;
+$0
+//- /std.rs crate:std
+pub struct S;
+        "#,
             "std_renamed::S",
             "std_renamed::S",
             "std_renamed::S",
@@ -537,41 +576,38 @@ mod tests {
         cov_mark::check!(partially_imported);
         // Tests that short paths are used even for external items, when parts of the path are
         // already in scope.
-        let code = r#"
-            //- /main.rs crate:main deps:syntax
-
-            use syntax::ast;
-            $0
-
-            //- /lib.rs crate:syntax
-            pub mod ast {
-                pub enum ModuleItem {
-                    A, B, C,
-                }
-            }
-        "#;
         check_found_path(
-            code,
+            r#"
+//- /main.rs crate:main deps:syntax
+
+use syntax::ast;
+$0
+
+//- /lib.rs crate:syntax
+pub mod ast {
+    pub enum ModuleItem {
+        A, B, C,
+    }
+}
+        "#,
             "ast::ModuleItem",
             "syntax::ast::ModuleItem",
             "syntax::ast::ModuleItem",
             "syntax::ast::ModuleItem",
         );
 
-        let code = r#"
-            //- /main.rs crate:main deps:syntax
-
-            $0
-
-            //- /lib.rs crate:syntax
-            pub mod ast {
-                pub enum ModuleItem {
-                    A, B, C,
-                }
-            }
-        "#;
         check_found_path(
-            code,
+            r#"
+//- /main.rs crate:main deps:syntax
+$0
+
+//- /lib.rs crate:syntax
+pub mod ast {
+    pub enum ModuleItem {
+        A, B, C,
+    }
+}
+        "#,
             "syntax::ast::ModuleItem",
             "syntax::ast::ModuleItem",
             "syntax::ast::ModuleItem",
@@ -581,68 +617,88 @@ mod tests {
 
     #[test]
     fn same_crate_reexport() {
-        let code = r#"
-            //- /main.rs
-            mod bar {
-                mod foo { pub(super) struct S; }
-                pub(crate) use foo::*;
-            }
-            $0
-        "#;
-        check_found_path(code, "bar::S", "bar::S", "crate::bar::S", "self::bar::S");
+        check_found_path(
+            r#"
+//- /main.rs
+mod bar {
+    mod foo { pub(super) struct S; }
+    pub(crate) use foo::*;
+}
+$0
+        "#,
+            "bar::S",
+            "bar::S",
+            "crate::bar::S",
+            "self::bar::S",
+        );
     }
 
     #[test]
     fn same_crate_reexport_rename() {
-        let code = r#"
-            //- /main.rs
-            mod bar {
-                mod foo { pub(super) struct S; }
-                pub(crate) use foo::S as U;
-            }
-            $0
-        "#;
-        check_found_path(code, "bar::U", "bar::U", "crate::bar::U", "self::bar::U");
+        check_found_path(
+            r#"
+//- /main.rs
+mod bar {
+    mod foo { pub(super) struct S; }
+    pub(crate) use foo::S as U;
+}
+$0
+        "#,
+            "bar::U",
+            "bar::U",
+            "crate::bar::U",
+            "self::bar::U",
+        );
     }
 
     #[test]
     fn different_crate_reexport() {
-        let code = r#"
-            //- /main.rs crate:main deps:std
-            $0
-            //- /std.rs crate:std deps:core
-            pub use core::S;
-            //- /core.rs crate:core
-            pub struct S;
-        "#;
-        check_found_path(code, "std::S", "std::S", "std::S", "std::S");
+        check_found_path(
+            r#"
+//- /main.rs crate:main deps:std
+$0
+//- /std.rs crate:std deps:core
+pub use core::S;
+//- /core.rs crate:core
+pub struct S;
+        "#,
+            "std::S",
+            "std::S",
+            "std::S",
+            "std::S",
+        );
     }
 
     #[test]
     fn prelude() {
-        let code = r#"
-            //- /main.rs crate:main deps:std
-            $0
-            //- /std.rs crate:std
-            pub mod prelude { pub struct S; }
-            #[prelude_import]
-            pub use prelude::*;
-        "#;
-        check_found_path(code, "S", "S", "S", "S");
+        check_found_path(
+            r#"
+//- /main.rs crate:main deps:std
+$0
+//- /std.rs crate:std
+pub mod prelude { pub struct S; }
+#[prelude_import]
+pub use prelude::*;
+        "#,
+            "S",
+            "S",
+            "S",
+            "S",
+        );
     }
 
     #[test]
     fn enum_variant_from_prelude() {
         let code = r#"
-            //- /main.rs crate:main deps:std
-            $0
-            //- /std.rs crate:std
-            pub mod prelude {
-                pub enum Option<T> { Some(T), None }
-                pub use Option::*;
-            }
-            #[prelude_import]
-            pub use prelude::*;
+//- /main.rs crate:main deps:std
+$0
+//- /std.rs crate:std
+pub mod prelude {
+    pub enum Option<T> { Some(T), None }
+    pub use Option::*;
+}
+#[prelude_import]
+pub use prelude::*;
         "#;
         check_found_path(code, "None", "None", "None", "None");
         check_found_path(code, "Some", "Some", "Some", "Some");
@@ -650,71 +706,85 @@ mod tests {
 
     #[test]
     fn shortest_path() {
-        let code = r#"
-            //- /main.rs
-            pub mod foo;
-            pub mod baz;
-            struct S;
-            $0
-            //- /foo.rs
-            pub mod bar { pub struct S; }
-            //- /baz.rs
-            pub use crate::foo::bar::S;
-        "#;
-        check_found_path(code, "baz::S", "baz::S", "crate::baz::S", "self::baz::S");
+        check_found_path(
+            r#"
+//- /main.rs
+pub mod foo;
+pub mod baz;
+struct S;
+$0
+//- /foo.rs
+pub mod bar { pub struct S; }
+//- /baz.rs
+pub use crate::foo::bar::S;
+        "#,
+            "baz::S",
+            "baz::S",
+            "crate::baz::S",
+            "self::baz::S",
+        );
     }
 
     #[test]
     fn discount_private_imports() {
-        let code = r#"
-            //- /main.rs
-            mod foo;
-            pub mod bar { pub struct S; }
-            use bar::S;
-            //- /foo.rs
-            $0
-        "#;
-        // crate::S would be shorter, but using private imports seems wrong
-        check_found_path(code, "crate::bar::S", "crate::bar::S", "crate::bar::S", "crate::bar::S");
+        check_found_path(
+            r#"
+//- /main.rs
+mod foo;
+pub mod bar { pub struct S; }
+use bar::S;
+//- /foo.rs
+$0
+        "#,
+            // crate::S would be shorter, but using private imports seems wrong
+            "crate::bar::S",
+            "crate::bar::S",
+            "crate::bar::S",
+            "crate::bar::S",
+        );
     }
 
     #[test]
     fn import_cycle() {
-        let code = r#"
-            //- /main.rs
-            pub mod foo;
-            pub mod bar;
-            pub mod baz;
-            //- /bar.rs
-            $0
-            //- /foo.rs
-            pub use super::baz;
-            pub struct S;
-            //- /baz.rs
-            pub use super::foo;
-        "#;
-        check_found_path(code, "crate::foo::S", "crate::foo::S", "crate::foo::S", "crate::foo::S");
+        check_found_path(
+            r#"
+//- /main.rs
+pub mod foo;
+pub mod bar;
+pub mod baz;
+//- /bar.rs
+$0
+//- /foo.rs
+pub use super::baz;
+pub struct S;
+//- /baz.rs
+pub use super::foo;
+        "#,
+            "crate::foo::S",
+            "crate::foo::S",
+            "crate::foo::S",
+            "crate::foo::S",
+        );
     }
 
     #[test]
     fn prefer_std_paths_over_alloc() {
         cov_mark::check!(prefer_std_paths);
-        let code = r#"
-        //- /main.rs crate:main deps:alloc,std
-        $0
-
-        //- /std.rs crate:std deps:alloc
-        pub mod sync {
-            pub use alloc::sync::Arc;
-        }
-
-        //- /zzz.rs crate:alloc
-        pub mod sync {
-            pub struct Arc;
-        }
-        "#;
         check_found_path(
-            code,
+            r#"
+//- /main.rs crate:main deps:alloc,std
+$0
+
+//- /std.rs crate:std deps:alloc
+pub mod sync {
+    pub use alloc::sync::Arc;
+}
+
+//- /zzz.rs crate:alloc
+pub mod sync {
+    pub struct Arc;
+}
+        "#,
             "std::sync::Arc",
             "std::sync::Arc",
             "std::sync::Arc",
@@ -725,26 +795,25 @@ mod tests {
     #[test]
     fn prefer_core_paths_over_std() {
         cov_mark::check!(prefer_no_std_paths);
-        let code = r#"
-        //- /main.rs crate:main deps:core,std
-        #![no_std]
-
-        $0
-
-        //- /std.rs crate:std deps:core
-
-        pub mod fmt {
-            pub use core::fmt::Error;
-        }
-
-        //- /zzz.rs crate:core
-
-        pub mod fmt {
-            pub struct Error;
-        }
-        "#;
         check_found_path(
-            code,
+            r#"
+//- /main.rs crate:main deps:core,std
+#![no_std]
+
+$0
+
+//- /std.rs crate:std deps:core
+
+pub mod fmt {
+    pub use core::fmt::Error;
+}
+
+//- /zzz.rs crate:core
+
+pub mod fmt {
+    pub struct Error;
+}
+        "#,
             "core::fmt::Error",
             "core::fmt::Error",
             "core::fmt::Error",
@@ -754,26 +823,25 @@ mod tests {
 
     #[test]
     fn prefer_alloc_paths_over_std() {
-        let code = r#"
-        //- /main.rs crate:main deps:alloc,std
-        #![no_std]
-
-        $0
-
-        //- /std.rs crate:std deps:alloc
-
-        pub mod sync {
-            pub use alloc::sync::Arc;
-        }
-
-        //- /zzz.rs crate:alloc
-
-        pub mod sync {
-            pub struct Arc;
-        }
-        "#;
         check_found_path(
-            code,
+            r#"
+//- /main.rs crate:main deps:alloc,std
+#![no_std]
+
+$0
+
+//- /std.rs crate:std deps:alloc
+
+pub mod sync {
+    pub use alloc::sync::Arc;
+}
+
+//- /zzz.rs crate:alloc
+
+pub mod sync {
+    pub struct Arc;
+}
+            "#,
             "alloc::sync::Arc",
             "alloc::sync::Arc",
             "alloc::sync::Arc",
@@ -783,20 +851,19 @@ mod tests {
 
     #[test]
     fn prefer_shorter_paths_if_not_alloc() {
-        let code = r#"
-        //- /main.rs crate:main deps:megaalloc,std
-        $0
-
-        //- /std.rs crate:std deps:megaalloc
-        pub mod sync {
-            pub use megaalloc::sync::Arc;
-        }
-
-        //- /zzz.rs crate:megaalloc
-        pub struct Arc;
-        "#;
         check_found_path(
-            code,
+            r#"
+//- /main.rs crate:main deps:megaalloc,std
+$0
+
+//- /std.rs crate:std deps:megaalloc
+pub mod sync {
+    pub use megaalloc::sync::Arc;
+}
+
+//- /zzz.rs crate:megaalloc
+pub struct Arc;
+            "#,
             "megaalloc::Arc",
             "megaalloc::Arc",
             "megaalloc::Arc",
@@ -807,12 +874,12 @@ mod tests {
     #[test]
     fn builtins_are_in_scope() {
         let code = r#"
-        //- /main.rs
-        $0
+//- /main.rs
+$0
 
-        pub mod primitive {
-            pub use u8;
-        }
+pub mod primitive {
+    pub use u8;
+}
         "#;
         check_found_path(code, "u8", "u8", "u8", "u8");
         check_found_path(code, "u16", "u16", "u16", "u16");
@@ -822,10 +889,10 @@ mod tests {
     fn inner_items() {
         check_found_path(
             r#"
-            fn main() {
-                struct Inner {}
-                $0
-            }
+fn main() {
+    struct Inner {}
+    $0
+}
         "#,
             "Inner",
             "Inner",
@@ -838,12 +905,12 @@ mod tests {
     fn inner_items_from_outer_scope() {
         check_found_path(
             r#"
-            fn main() {
-                struct Struct {}
-                {
-                    $0
-                }
-            }
+fn main() {
+    struct Struct {}
+    {
+        $0
+    }
+}
         "#,
             "Struct",
             "Struct",
@@ -857,14 +924,14 @@ mod tests {
         cov_mark::check!(prefixed_in_block_expression);
         check_found_path(
             r#"
-            fn main() {
-                mod module {
-                    struct Struct {}
-                }
-                {
-                    $0
-                }
-            }
+fn main() {
+    mod module {
+        struct Struct {}
+    }
+    {
+        $0
+    }
+}
         "#,
             "module::Struct",
             "module::Struct",
@@ -877,14 +944,14 @@ mod tests {
     fn outer_items_with_inner_items_present() {
         check_found_path(
             r#"
-            mod module {
-                pub struct CompleteMe;
-            }
+mod module {
+    pub struct CompleteMe;
+}
 
-            fn main() {
-                fn inner() {}
-                $0
-            }
+fn main() {
+    fn inner() {}
+    $0
+}
             "#,
             "module::CompleteMe",
             "module::CompleteMe",
