@@ -427,7 +427,6 @@ mod tests {
     fn same_module() {
         check_found_path(
             r#"
-//- /main.rs
 struct S;
 $0
         "#,
@@ -442,7 +441,6 @@ $0
     fn enum_variant() {
         check_found_path(
             r#"
-//- /main.rs
 enum E { A }
 $0
         "#,
@@ -457,7 +455,6 @@ $0
     fn sub_module() {
         check_found_path(
             r#"
-//- /main.rs
 mod foo {
     pub struct S;
 }
@@ -619,7 +616,6 @@ pub mod ast {
     fn same_crate_reexport() {
         check_found_path(
             r#"
-//- /main.rs
 mod bar {
     mod foo { pub(super) struct S; }
     pub(crate) use foo::*;
@@ -637,7 +633,6 @@ $0
     fn same_crate_reexport_rename() {
         check_found_path(
             r#"
-//- /main.rs
 mod bar {
     mod foo { pub(super) struct S; }
     pub(crate) use foo::S as U;
@@ -874,7 +869,6 @@ pub struct Arc;
     #[test]
     fn builtins_are_in_scope() {
         let code = r#"
-//- /main.rs
 $0
 
 pub mod primitive {
