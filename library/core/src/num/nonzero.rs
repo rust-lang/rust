@@ -770,6 +770,35 @@ macro_rules! nonzero_unsigned_signed_operations {
                         None
                     }
                 }
+
+                /// Raise non-zero value to an integer power.
+                #[doc = concat!("Return [`", stringify!($Int), "::MAX`] on overflow.")]
+                ///
+                /// # Examples
+                ///
+                /// ```
+                /// #![feature(nonzero_ops)]
+                /// # #![feature(try_trait)]
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                ///
+                /// # fn main() -> Result<(), std::option::NoneError> {
+                #[doc = concat!("let three = ", stringify!($Ty), "::new(3)?;")]
+                #[doc = concat!("let twenty_seven = ", stringify!($Ty), "::new(27)?;")]
+                #[doc = concat!("let max = ", stringify!($Ty), "::new(",
+                                stringify!($Int), "::MAX)?;")]
+                ///
+                /// assert_eq!(twenty_seven, three.saturating_pow(3));
+                /// assert_eq!(max, max.saturating_pow(3));
+                /// # Ok(())
+                /// # }
+                /// ```
+                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[inline]
+                pub const fn saturating_pow(self, other: u32) -> $Ty {
+                    // SAFETY: saturating_pow returns u*::MAX on overflow
+                    // so the result cannot be zero.
+                    unsafe { $Ty::new_unchecked(self.get().saturating_pow(other)) }
+                }
             }
         )+
     }
