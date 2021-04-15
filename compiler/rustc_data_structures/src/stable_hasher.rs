@@ -1,4 +1,4 @@
-use crate::sip128::SipHasher128;
+use highway::{HighwayHash, HighwayHasher, Key};
 use rustc_index::bit_set;
 use rustc_index::vec;
 use smallvec::SmallVec;
@@ -16,7 +16,7 @@ mod tests;
 /// hashing and the architecture dependent `isize` and `usize` types are
 /// extended to 64 bits if needed.
 pub struct StableHasher {
-    state: SipHasher128,
+    state: HighwayHasher,
 }
 
 impl ::std::fmt::Debug for StableHasher {
@@ -32,7 +32,7 @@ pub trait StableHasherResult: Sized {
 impl StableHasher {
     #[inline]
     pub fn new() -> Self {
-        StableHasher { state: SipHasher128::new_with_keys(0, 0) }
+        StableHasher { state: HighwayHasher::new(Key([0, 0, 0, 0])) }
     }
 
     #[inline]
@@ -50,14 +50,15 @@ impl StableHasherResult for u128 {
 
 impl StableHasherResult for u64 {
     fn finish(hasher: StableHasher) -> Self {
-        hasher.finalize().0
+        hasher.state.finalize64()
     }
 }
 
 impl StableHasher {
     #[inline]
     pub fn finalize(self) -> (u64, u64) {
-        self.state.finish128()
+        let [first, second] = self.state.finalize128();
+        (first, second)
     }
 }
 
@@ -68,7 +69,7 @@ impl Hasher for StableHasher {
 
     #[inline]
     fn write(&mut self, bytes: &[u8]) {
-        self.state.write(bytes);
+        self.state.append(bytes);
     }
 
     #[inline]

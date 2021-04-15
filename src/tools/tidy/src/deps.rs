@@ -105,6 +105,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "gsgdt",
     "hashbrown",
     "hermit-abi",
+    "highway",
     "humantime",
     "indexmap",
     "instant",
