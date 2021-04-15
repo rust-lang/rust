@@ -5,6 +5,7 @@
 #![allow(clippy::similar_names, clippy::wildcard_imports, clippy::enum_glob_use)]
 
 use crate::{both, over};
+use if_chain::if_chain;
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, *};
 use rustc_span::symbol::Ident;
@@ -570,4 +571,35 @@ pub fn eq_mac_args(l: &MacArgs, r: &MacArgs) -> bool {
         (Eq(_, lt), Eq(_, rt)) => lt.kind == rt.kind,
         _ => false,
     }
+}
+
+/// Extract args from an assert-like macro.
+///
+/// Currently working with:
+/// - `assert_eq!` and `assert_ne!`
+/// - `debug_assert_eq!` and `debug_assert_ne!`
+///
+/// For example:
+///
+/// `debug_assert_eq!(a, b)` will return Some([a, b])
+pub fn extract_assert_macro_args(mut expr: &Expr) -> Option<[&Expr; 2]> {
+    if_chain! {
+        if let ExprKind::If(_, ref block, _) = expr.kind;
+        if let StmtKind::Semi(ref e) = block.stmts.get(0)?.kind;
+        then {
+            expr = e;
+        }
+    }
+    if_chain! {
+        if let ExprKind::Block(ref block, _) = expr.kind;
+        if let StmtKind::Expr(ref expr) = block.stmts.get(0)?.kind;
+        if let ExprKind::Match(ref match_expr, _) = expr.kind;
+        if let ExprKind::Tup(ref tup) = match_expr.kind;
+        if let [a, b, ..] = tup.as_slice();
+        if let (&ExprKind::AddrOf(_, _, ref a), &ExprKind::AddrOf(_, _, ref b)) = (&a.kind, &b.kind);
+        then {
+            return Some([&*a, &*b]);
+        }
+    }
+    None
 }

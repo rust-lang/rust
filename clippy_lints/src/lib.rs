@@ -178,6 +178,7 @@ mod await_holding_invalid;
 mod bit_mask;
 mod blacklisted_name;
 mod blocks_in_if_conditions;
+mod bool_assert_comparison;
 mod booleans;
 mod bytecount;
 mod cargo_common_metadata;
@@ -567,6 +568,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         bit_mask::VERBOSE_BIT_MASK,
         blacklisted_name::BLACKLISTED_NAME,
         blocks_in_if_conditions::BLOCKS_IN_IF_CONDITIONS,
+        bool_assert_comparison::BOOL_ASSERT_COMPARISON,
         booleans::LOGIC_BUG,
         booleans::NONMINIMAL_BOOL,
         bytecount::NAIVE_BYTECOUNT,
@@ -1270,6 +1272,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box from_str_radix_10::FromStrRadix10);
     store.register_late_pass(|| box manual_map::ManualMap);
     store.register_late_pass(move || box if_then_some_else_none::IfThenSomeElseNone::new(msrv));
+    store.register_early_pass(|| box bool_assert_comparison::BoolAssertComparison);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(arithmetic::FLOAT_ARITHMETIC),
@@ -1448,6 +1451,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(bit_mask::INEFFECTIVE_BIT_MASK),
         LintId::of(blacklisted_name::BLACKLISTED_NAME),
         LintId::of(blocks_in_if_conditions::BLOCKS_IN_IF_CONDITIONS),
+        LintId::of(bool_assert_comparison::BOOL_ASSERT_COMPARISON),
         LintId::of(booleans::LOGIC_BUG),
         LintId::of(booleans::NONMINIMAL_BOOL),
         LintId::of(casts::CAST_REF_TO_MUT),
@@ -1734,6 +1738,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(attrs::BLANKET_CLIPPY_RESTRICTION_LINTS),
         LintId::of(blacklisted_name::BLACKLISTED_NAME),
         LintId::of(blocks_in_if_conditions::BLOCKS_IN_IF_CONDITIONS),
+        LintId::of(bool_assert_comparison::BOOL_ASSERT_COMPARISON),
         LintId::of(casts::FN_TO_NUMERIC_CAST),
         LintId::of(casts::FN_TO_NUMERIC_CAST_WITH_TRUNCATION),
         LintId::of(collapsible_if::COLLAPSIBLE_ELSE_IF),
