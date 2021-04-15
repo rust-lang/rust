@@ -9,7 +9,7 @@ LL | macro_rules! foo { ($x:pat2021 | $y:pat2021) => {} }
 error: `$x:pat2021` is followed by `|`, which is not allowed for `pat2021` fragments
   --> $DIR/macro-pat2021-pattern-followed-by-or.rs:6:32
    |
-LL | macro_rules! ogg { ($x:pat2021 | $y:pat2015) => {} }
+LL | macro_rules! ogg { ($x:pat2021 | $y:pat_param) => {} }
    |                                ^ not allowed after `pat2021` fragments
    |
    = note: allowed there are: `=>`, `,`, `=`, `if` or `in`
