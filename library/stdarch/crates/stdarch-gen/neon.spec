@@ -2432,6 +2432,58 @@ validate 8., 9., 10., 11., 12., 13., 14., 15.
 aarch64 = zip2
 generate float32x2_t, float32x4_t, float64x2_t
 
+/// Unzip vectors
+name = vuzp1
+multi_fn = simd_shuffle-in_len-noext, a, b, {unzip-1-in_len}
+a = 1, 0, 2, 0, 2, 0, 3, 0, 2, 0, 3, 0, 7, 0, 8, 0
+b = 2, 0, 3, 0, 7, 0, 8, 0, 13, 0, 14, 0, 15, 0, 16, 0
+validate 1, 2, 2, 3, 2, 3, 7, 8, 2, 3, 7, 8, 13, 14, 15, 16
+
+aarch64 = uzp1
+generate int8x8_t, int8x16_t, int16x4_t, int16x8_t, int32x4_t, uint8x8_t, uint8x16_t, uint16x4_t, uint16x8_t, uint32x4_t, poly8x8_t, poly8x16_t, poly16x4_t, poly16x8_t
+
+aarch64 = zip1
+generate int32x2_t, int64x2_t, uint32x2_t, uint64x2_t, poly64x2_t
+
+/// Unzip vectors
+name = vuzp1
+multi_fn = simd_shuffle-in_len-noext, a, b, {unzip-1-in_len}
+a = 0., 8., 1., 9., 4., 12., 5., 13.
+b = 1., 10., 3., 11., 6., 14., 7., 15.
+validate 0., 1., 1., 3., 4., 5., 6., 7.
+
+aarch64 = uzp1
+generate float32x4_t
+
+aarch64 = zip1
+generate float32x2_t, float64x2_t
+
+/// Unzip vectors
+name = vuzp2
+multi_fn = simd_shuffle-in_len-noext, a, b, {unzip-2-in_len}
+a = 0, 17, 0, 18, 0, 18, 0, 19, 0, 18, 0, 19, 0, 23, 0, 24
+b = 0, 18, 0, 19, 0, 23, 0, 24, 0, 29, 0, 30, 0, 31, 0, 32
+validate 17, 18, 18, 19, 18, 19, 23, 24, 18, 19, 23, 24, 29, 30, 31, 32
+
+aarch64 = uzp2
+generate int8x8_t, int8x16_t, int16x4_t, int16x8_t, int32x4_t, uint8x8_t, uint8x16_t, uint16x4_t, uint16x8_t, uint32x4_t, poly8x8_t, poly8x16_t, poly16x4_t, poly16x8_t
+
+aarch64 = zip2
+generate int32x2_t, int64x2_t, uint32x2_t, uint64x2_t, poly64x2_t
+
+/// Unzip vectors
+name = vuzp2
+multi_fn = simd_shuffle-in_len-noext, a, b, {unzip-2-in_len}
+a = 0., 8., 1., 9., 4., 12., 5., 13.
+b = 2., 9., 3., 11., 6., 14., 7., 15.
+validate 8., 9., 9., 11., 12., 13., 14., 15.
+
+aarch64 = uzp2
+generate float32x4_t
+
+aarch64 = zip2
+generate float32x2_t, float64x2_t
+
 ////////////////////
 // Unsigned Absolute difference and Accumulate Long
 ////////////////////

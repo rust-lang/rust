@@ -516,6 +516,26 @@ fn zip2(x: usize) -> &'static str {
     }
 }
 
+fn unzip1(x: usize) -> &'static str {
+    match x {
+        2 => "[0, 2]",
+        4 => "[0, 2, 4, 6]",
+        8 => "[0, 2, 4, 6, 8, 10, 12, 14]",
+        16 => "[0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30]",
+        _ => panic!("unknown unzip order of len {}", x),
+    }
+}
+
+fn unzip2(x: usize) -> &'static str {
+    match x {
+        2 => "[1, 3]",
+        4 => "[1, 3, 5, 7]",
+        8 => "[1, 3, 5, 7, 9, 11, 13, 15]",
+        16 => "[1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31]",
+        _ => panic!("unknown unzip order of len {}", x),
+    }
+}
+
 fn values(t: &str, vs: &[String]) -> String {
     if vs.len() == 1 && !t.contains('x') {
         format!(": {} = {}", t, vs[0])
@@ -1428,6 +1448,12 @@ fn get_call(
     }
     if fn_name == "zip-2-in_len" {
         return zip2(type_len(in_t[1])).to_string();
+    }
+    if fn_name == "unzip-1-in_len" {
+        return unzip1(type_len(in_t[1])).to_string();
+    }
+    if fn_name == "unzip-2-in_len" {
+        return unzip2(type_len(in_t[1])).to_string();
     }
     if fn_name.starts_with("dup") {
         let fn_format: Vec<_> = fn_name.split('-').map(|v| v.to_string()).collect();

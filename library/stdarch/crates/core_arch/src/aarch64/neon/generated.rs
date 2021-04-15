@@ -4816,6 +4816,358 @@ pub unsafe fn vzip2q_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     simd_shuffle2(a, b, [1, 3])
 }
 
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uzp1))]
+pub unsafe fn vuzp1_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
+    simd_shuffle8(a, b, [0, 2, 4, 6, 8, 10, 12, 14])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uzp1))]
+pub unsafe fn vuzp1q_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
+    simd_shuffle16(a, b, [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uzp1))]
+pub unsafe fn vuzp1_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
+    simd_shuffle4(a, b, [0, 2, 4, 6])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uzp1))]
+pub unsafe fn vuzp1q_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
+    simd_shuffle8(a, b, [0, 2, 4, 6, 8, 10, 12, 14])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uzp1))]
+pub unsafe fn vuzp1q_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
+    simd_shuffle4(a, b, [0, 2, 4, 6])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uzp1))]
+pub unsafe fn vuzp1_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
+    simd_shuffle8(a, b, [0, 2, 4, 6, 8, 10, 12, 14])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uzp1))]
+pub unsafe fn vuzp1q_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
+    simd_shuffle16(a, b, [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uzp1))]
+pub unsafe fn vuzp1_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
+    simd_shuffle4(a, b, [0, 2, 4, 6])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uzp1))]
+pub unsafe fn vuzp1q_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
+    simd_shuffle8(a, b, [0, 2, 4, 6, 8, 10, 12, 14])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uzp1))]
+pub unsafe fn vuzp1q_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
+    simd_shuffle4(a, b, [0, 2, 4, 6])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uzp1))]
+pub unsafe fn vuzp1_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
+    simd_shuffle8(a, b, [0, 2, 4, 6, 8, 10, 12, 14])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uzp1))]
+pub unsafe fn vuzp1q_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
+    simd_shuffle16(a, b, [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uzp1))]
+pub unsafe fn vuzp1_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
+    simd_shuffle4(a, b, [0, 2, 4, 6])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uzp1))]
+pub unsafe fn vuzp1q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
+    simd_shuffle8(a, b, [0, 2, 4, 6, 8, 10, 12, 14])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(zip1))]
+pub unsafe fn vuzp1_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
+    simd_shuffle2(a, b, [0, 2])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(zip1))]
+pub unsafe fn vuzp1q_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
+    simd_shuffle2(a, b, [0, 2])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(zip1))]
+pub unsafe fn vuzp1_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
+    simd_shuffle2(a, b, [0, 2])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(zip1))]
+pub unsafe fn vuzp1q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
+    simd_shuffle2(a, b, [0, 2])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(zip1))]
+pub unsafe fn vuzp1q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
+    simd_shuffle2(a, b, [0, 2])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uzp1))]
+pub unsafe fn vuzp1q_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
+    simd_shuffle4(a, b, [0, 2, 4, 6])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(zip1))]
+pub unsafe fn vuzp1_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
+    simd_shuffle2(a, b, [0, 2])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(zip1))]
+pub unsafe fn vuzp1q_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
+    simd_shuffle2(a, b, [0, 2])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uzp2))]
+pub unsafe fn vuzp2_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
+    simd_shuffle8(a, b, [1, 3, 5, 7, 9, 11, 13, 15])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uzp2))]
+pub unsafe fn vuzp2q_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
+    simd_shuffle16(a, b, [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uzp2))]
+pub unsafe fn vuzp2_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
+    simd_shuffle4(a, b, [1, 3, 5, 7])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uzp2))]
+pub unsafe fn vuzp2q_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
+    simd_shuffle8(a, b, [1, 3, 5, 7, 9, 11, 13, 15])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uzp2))]
+pub unsafe fn vuzp2q_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
+    simd_shuffle4(a, b, [1, 3, 5, 7])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uzp2))]
+pub unsafe fn vuzp2_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
+    simd_shuffle8(a, b, [1, 3, 5, 7, 9, 11, 13, 15])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uzp2))]
+pub unsafe fn vuzp2q_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
+    simd_shuffle16(a, b, [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uzp2))]
+pub unsafe fn vuzp2_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
+    simd_shuffle4(a, b, [1, 3, 5, 7])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uzp2))]
+pub unsafe fn vuzp2q_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
+    simd_shuffle8(a, b, [1, 3, 5, 7, 9, 11, 13, 15])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uzp2))]
+pub unsafe fn vuzp2q_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
+    simd_shuffle4(a, b, [1, 3, 5, 7])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uzp2))]
+pub unsafe fn vuzp2_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
+    simd_shuffle8(a, b, [1, 3, 5, 7, 9, 11, 13, 15])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uzp2))]
+pub unsafe fn vuzp2q_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
+    simd_shuffle16(a, b, [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uzp2))]
+pub unsafe fn vuzp2_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
+    simd_shuffle4(a, b, [1, 3, 5, 7])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uzp2))]
+pub unsafe fn vuzp2q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
+    simd_shuffle8(a, b, [1, 3, 5, 7, 9, 11, 13, 15])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(zip2))]
+pub unsafe fn vuzp2_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
+    simd_shuffle2(a, b, [1, 3])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(zip2))]
+pub unsafe fn vuzp2q_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
+    simd_shuffle2(a, b, [1, 3])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(zip2))]
+pub unsafe fn vuzp2_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
+    simd_shuffle2(a, b, [1, 3])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(zip2))]
+pub unsafe fn vuzp2q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
+    simd_shuffle2(a, b, [1, 3])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(zip2))]
+pub unsafe fn vuzp2q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
+    simd_shuffle2(a, b, [1, 3])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uzp2))]
+pub unsafe fn vuzp2q_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
+    simd_shuffle4(a, b, [1, 3, 5, 7])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(zip2))]
+pub unsafe fn vuzp2_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
+    simd_shuffle2(a, b, [1, 3])
+}
+
+/// Unzip vectors
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(zip2))]
+pub unsafe fn vuzp2q_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
+    simd_shuffle2(a, b, [1, 3])
+}
+
 /// Unsigned Absolute difference and Accumulate Long
 #[inline]
 #[target_feature(enable = "neon")]
@@ -9258,6 +9610,402 @@ mod test {
         let b: f64x2 = f64x2::new(1., 9.);
         let e: f64x2 = f64x2::new(8., 9.);
         let r: f64x2 = transmute(vzip2q_f64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp1_s8() {
+        let a: i8x8 = i8x8::new(1, 0, 2, 0, 2, 0, 3, 0);
+        let b: i8x8 = i8x8::new(2, 0, 3, 0, 7, 0, 8, 0);
+        let e: i8x8 = i8x8::new(1, 2, 2, 3, 2, 3, 7, 8);
+        let r: i8x8 = transmute(vuzp1_s8(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp1q_s8() {
+        let a: i8x16 = i8x16::new(1, 0, 2, 0, 2, 0, 3, 0, 2, 0, 3, 0, 7, 0, 8, 0);
+        let b: i8x16 = i8x16::new(2, 0, 3, 0, 7, 0, 8, 0, 13, 0, 14, 0, 15, 0, 16, 0);
+        let e: i8x16 = i8x16::new(1, 2, 2, 3, 2, 3, 7, 8, 2, 3, 7, 8, 13, 14, 15, 16);
+        let r: i8x16 = transmute(vuzp1q_s8(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp1_s16() {
+        let a: i16x4 = i16x4::new(1, 0, 2, 0);
+        let b: i16x4 = i16x4::new(2, 0, 3, 0);
+        let e: i16x4 = i16x4::new(1, 2, 2, 3);
+        let r: i16x4 = transmute(vuzp1_s16(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp1q_s16() {
+        let a: i16x8 = i16x8::new(1, 0, 2, 0, 2, 0, 3, 0);
+        let b: i16x8 = i16x8::new(2, 0, 3, 0, 7, 0, 8, 0);
+        let e: i16x8 = i16x8::new(1, 2, 2, 3, 2, 3, 7, 8);
+        let r: i16x8 = transmute(vuzp1q_s16(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp1q_s32() {
+        let a: i32x4 = i32x4::new(1, 0, 2, 0);
+        let b: i32x4 = i32x4::new(2, 0, 3, 0);
+        let e: i32x4 = i32x4::new(1, 2, 2, 3);
+        let r: i32x4 = transmute(vuzp1q_s32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp1_u8() {
+        let a: u8x8 = u8x8::new(1, 0, 2, 0, 2, 0, 3, 0);
+        let b: u8x8 = u8x8::new(2, 0, 3, 0, 7, 0, 8, 0);
+        let e: u8x8 = u8x8::new(1, 2, 2, 3, 2, 3, 7, 8);
+        let r: u8x8 = transmute(vuzp1_u8(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp1q_u8() {
+        let a: u8x16 = u8x16::new(1, 0, 2, 0, 2, 0, 3, 0, 2, 0, 3, 0, 7, 0, 8, 0);
+        let b: u8x16 = u8x16::new(2, 0, 3, 0, 7, 0, 8, 0, 13, 0, 14, 0, 15, 0, 16, 0);
+        let e: u8x16 = u8x16::new(1, 2, 2, 3, 2, 3, 7, 8, 2, 3, 7, 8, 13, 14, 15, 16);
+        let r: u8x16 = transmute(vuzp1q_u8(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp1_u16() {
+        let a: u16x4 = u16x4::new(1, 0, 2, 0);
+        let b: u16x4 = u16x4::new(2, 0, 3, 0);
+        let e: u16x4 = u16x4::new(1, 2, 2, 3);
+        let r: u16x4 = transmute(vuzp1_u16(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp1q_u16() {
+        let a: u16x8 = u16x8::new(1, 0, 2, 0, 2, 0, 3, 0);
+        let b: u16x8 = u16x8::new(2, 0, 3, 0, 7, 0, 8, 0);
+        let e: u16x8 = u16x8::new(1, 2, 2, 3, 2, 3, 7, 8);
+        let r: u16x8 = transmute(vuzp1q_u16(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp1q_u32() {
+        let a: u32x4 = u32x4::new(1, 0, 2, 0);
+        let b: u32x4 = u32x4::new(2, 0, 3, 0);
+        let e: u32x4 = u32x4::new(1, 2, 2, 3);
+        let r: u32x4 = transmute(vuzp1q_u32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp1_p8() {
+        let a: i8x8 = i8x8::new(1, 0, 2, 0, 2, 0, 3, 0);
+        let b: i8x8 = i8x8::new(2, 0, 3, 0, 7, 0, 8, 0);
+        let e: i8x8 = i8x8::new(1, 2, 2, 3, 2, 3, 7, 8);
+        let r: i8x8 = transmute(vuzp1_p8(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp1q_p8() {
+        let a: i8x16 = i8x16::new(1, 0, 2, 0, 2, 0, 3, 0, 2, 0, 3, 0, 7, 0, 8, 0);
+        let b: i8x16 = i8x16::new(2, 0, 3, 0, 7, 0, 8, 0, 13, 0, 14, 0, 15, 0, 16, 0);
+        let e: i8x16 = i8x16::new(1, 2, 2, 3, 2, 3, 7, 8, 2, 3, 7, 8, 13, 14, 15, 16);
+        let r: i8x16 = transmute(vuzp1q_p8(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp1_p16() {
+        let a: i16x4 = i16x4::new(1, 0, 2, 0);
+        let b: i16x4 = i16x4::new(2, 0, 3, 0);
+        let e: i16x4 = i16x4::new(1, 2, 2, 3);
+        let r: i16x4 = transmute(vuzp1_p16(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp1q_p16() {
+        let a: i16x8 = i16x8::new(1, 0, 2, 0, 2, 0, 3, 0);
+        let b: i16x8 = i16x8::new(2, 0, 3, 0, 7, 0, 8, 0);
+        let e: i16x8 = i16x8::new(1, 2, 2, 3, 2, 3, 7, 8);
+        let r: i16x8 = transmute(vuzp1q_p16(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp1_s32() {
+        let a: i32x2 = i32x2::new(1, 0);
+        let b: i32x2 = i32x2::new(2, 0);
+        let e: i32x2 = i32x2::new(1, 2);
+        let r: i32x2 = transmute(vuzp1_s32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp1q_s64() {
+        let a: i64x2 = i64x2::new(1, 0);
+        let b: i64x2 = i64x2::new(2, 0);
+        let e: i64x2 = i64x2::new(1, 2);
+        let r: i64x2 = transmute(vuzp1q_s64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp1_u32() {
+        let a: u32x2 = u32x2::new(1, 0);
+        let b: u32x2 = u32x2::new(2, 0);
+        let e: u32x2 = u32x2::new(1, 2);
+        let r: u32x2 = transmute(vuzp1_u32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp1q_u64() {
+        let a: u64x2 = u64x2::new(1, 0);
+        let b: u64x2 = u64x2::new(2, 0);
+        let e: u64x2 = u64x2::new(1, 2);
+        let r: u64x2 = transmute(vuzp1q_u64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp1q_p64() {
+        let a: i64x2 = i64x2::new(1, 0);
+        let b: i64x2 = i64x2::new(2, 0);
+        let e: i64x2 = i64x2::new(1, 2);
+        let r: i64x2 = transmute(vuzp1q_p64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp1q_f32() {
+        let a: f32x4 = f32x4::new(0., 8., 1., 9.);
+        let b: f32x4 = f32x4::new(1., 10., 3., 11.);
+        let e: f32x4 = f32x4::new(0., 1., 1., 3.);
+        let r: f32x4 = transmute(vuzp1q_f32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp1_f32() {
+        let a: f32x2 = f32x2::new(0., 8.);
+        let b: f32x2 = f32x2::new(1., 10.);
+        let e: f32x2 = f32x2::new(0., 1.);
+        let r: f32x2 = transmute(vuzp1_f32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp1q_f64() {
+        let a: f64x2 = f64x2::new(0., 8.);
+        let b: f64x2 = f64x2::new(1., 10.);
+        let e: f64x2 = f64x2::new(0., 1.);
+        let r: f64x2 = transmute(vuzp1q_f64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp2_s8() {
+        let a: i8x8 = i8x8::new(0, 17, 0, 18, 0, 18, 0, 19);
+        let b: i8x8 = i8x8::new(0, 18, 0, 19, 0, 23, 0, 24);
+        let e: i8x8 = i8x8::new(17, 18, 18, 19, 18, 19, 23, 24);
+        let r: i8x8 = transmute(vuzp2_s8(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp2q_s8() {
+        let a: i8x16 = i8x16::new(0, 17, 0, 18, 0, 18, 0, 19, 0, 18, 0, 19, 0, 23, 0, 24);
+        let b: i8x16 = i8x16::new(0, 18, 0, 19, 0, 23, 0, 24, 0, 29, 0, 30, 0, 31, 0, 32);
+        let e: i8x16 = i8x16::new(17, 18, 18, 19, 18, 19, 23, 24, 18, 19, 23, 24, 29, 30, 31, 32);
+        let r: i8x16 = transmute(vuzp2q_s8(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp2_s16() {
+        let a: i16x4 = i16x4::new(0, 17, 0, 18);
+        let b: i16x4 = i16x4::new(0, 18, 0, 19);
+        let e: i16x4 = i16x4::new(17, 18, 18, 19);
+        let r: i16x4 = transmute(vuzp2_s16(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp2q_s16() {
+        let a: i16x8 = i16x8::new(0, 17, 0, 18, 0, 18, 0, 19);
+        let b: i16x8 = i16x8::new(0, 18, 0, 19, 0, 23, 0, 24);
+        let e: i16x8 = i16x8::new(17, 18, 18, 19, 18, 19, 23, 24);
+        let r: i16x8 = transmute(vuzp2q_s16(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp2q_s32() {
+        let a: i32x4 = i32x4::new(0, 17, 0, 18);
+        let b: i32x4 = i32x4::new(0, 18, 0, 19);
+        let e: i32x4 = i32x4::new(17, 18, 18, 19);
+        let r: i32x4 = transmute(vuzp2q_s32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp2_u8() {
+        let a: u8x8 = u8x8::new(0, 17, 0, 18, 0, 18, 0, 19);
+        let b: u8x8 = u8x8::new(0, 18, 0, 19, 0, 23, 0, 24);
+        let e: u8x8 = u8x8::new(17, 18, 18, 19, 18, 19, 23, 24);
+        let r: u8x8 = transmute(vuzp2_u8(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp2q_u8() {
+        let a: u8x16 = u8x16::new(0, 17, 0, 18, 0, 18, 0, 19, 0, 18, 0, 19, 0, 23, 0, 24);
+        let b: u8x16 = u8x16::new(0, 18, 0, 19, 0, 23, 0, 24, 0, 29, 0, 30, 0, 31, 0, 32);
+        let e: u8x16 = u8x16::new(17, 18, 18, 19, 18, 19, 23, 24, 18, 19, 23, 24, 29, 30, 31, 32);
+        let r: u8x16 = transmute(vuzp2q_u8(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp2_u16() {
+        let a: u16x4 = u16x4::new(0, 17, 0, 18);
+        let b: u16x4 = u16x4::new(0, 18, 0, 19);
+        let e: u16x4 = u16x4::new(17, 18, 18, 19);
+        let r: u16x4 = transmute(vuzp2_u16(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp2q_u16() {
+        let a: u16x8 = u16x8::new(0, 17, 0, 18, 0, 18, 0, 19);
+        let b: u16x8 = u16x8::new(0, 18, 0, 19, 0, 23, 0, 24);
+        let e: u16x8 = u16x8::new(17, 18, 18, 19, 18, 19, 23, 24);
+        let r: u16x8 = transmute(vuzp2q_u16(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp2q_u32() {
+        let a: u32x4 = u32x4::new(0, 17, 0, 18);
+        let b: u32x4 = u32x4::new(0, 18, 0, 19);
+        let e: u32x4 = u32x4::new(17, 18, 18, 19);
+        let r: u32x4 = transmute(vuzp2q_u32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp2_p8() {
+        let a: i8x8 = i8x8::new(0, 17, 0, 18, 0, 18, 0, 19);
+        let b: i8x8 = i8x8::new(0, 18, 0, 19, 0, 23, 0, 24);
+        let e: i8x8 = i8x8::new(17, 18, 18, 19, 18, 19, 23, 24);
+        let r: i8x8 = transmute(vuzp2_p8(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp2q_p8() {
+        let a: i8x16 = i8x16::new(0, 17, 0, 18, 0, 18, 0, 19, 0, 18, 0, 19, 0, 23, 0, 24);
+        let b: i8x16 = i8x16::new(0, 18, 0, 19, 0, 23, 0, 24, 0, 29, 0, 30, 0, 31, 0, 32);
+        let e: i8x16 = i8x16::new(17, 18, 18, 19, 18, 19, 23, 24, 18, 19, 23, 24, 29, 30, 31, 32);
+        let r: i8x16 = transmute(vuzp2q_p8(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp2_p16() {
+        let a: i16x4 = i16x4::new(0, 17, 0, 18);
+        let b: i16x4 = i16x4::new(0, 18, 0, 19);
+        let e: i16x4 = i16x4::new(17, 18, 18, 19);
+        let r: i16x4 = transmute(vuzp2_p16(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp2q_p16() {
+        let a: i16x8 = i16x8::new(0, 17, 0, 18, 0, 18, 0, 19);
+        let b: i16x8 = i16x8::new(0, 18, 0, 19, 0, 23, 0, 24);
+        let e: i16x8 = i16x8::new(17, 18, 18, 19, 18, 19, 23, 24);
+        let r: i16x8 = transmute(vuzp2q_p16(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp2_s32() {
+        let a: i32x2 = i32x2::new(0, 17);
+        let b: i32x2 = i32x2::new(0, 18);
+        let e: i32x2 = i32x2::new(17, 18);
+        let r: i32x2 = transmute(vuzp2_s32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp2q_s64() {
+        let a: i64x2 = i64x2::new(0, 17);
+        let b: i64x2 = i64x2::new(0, 18);
+        let e: i64x2 = i64x2::new(17, 18);
+        let r: i64x2 = transmute(vuzp2q_s64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp2_u32() {
+        let a: u32x2 = u32x2::new(0, 17);
+        let b: u32x2 = u32x2::new(0, 18);
+        let e: u32x2 = u32x2::new(17, 18);
+        let r: u32x2 = transmute(vuzp2_u32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp2q_u64() {
+        let a: u64x2 = u64x2::new(0, 17);
+        let b: u64x2 = u64x2::new(0, 18);
+        let e: u64x2 = u64x2::new(17, 18);
+        let r: u64x2 = transmute(vuzp2q_u64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp2q_p64() {
+        let a: i64x2 = i64x2::new(0, 17);
+        let b: i64x2 = i64x2::new(0, 18);
+        let e: i64x2 = i64x2::new(17, 18);
+        let r: i64x2 = transmute(vuzp2q_p64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp2q_f32() {
+        let a: f32x4 = f32x4::new(0., 8., 1., 9.);
+        let b: f32x4 = f32x4::new(2., 9., 3., 11.);
+        let e: f32x4 = f32x4::new(8., 9., 9., 11.);
+        let r: f32x4 = transmute(vuzp2q_f32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp2_f32() {
+        let a: f32x2 = f32x2::new(0., 8.);
+        let b: f32x2 = f32x2::new(2., 9.);
+        let e: f32x2 = f32x2::new(8., 9.);
+        let r: f32x2 = transmute(vuzp2_f32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vuzp2q_f64() {
+        let a: f64x2 = f64x2::new(0., 8.);
+        let b: f64x2 = f64x2::new(2., 9.);
+        let e: f64x2 = f64x2::new(8., 9.);
+        let r: f64x2 = transmute(vuzp2q_f64(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
