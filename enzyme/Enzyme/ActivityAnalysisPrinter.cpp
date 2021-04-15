@@ -65,6 +65,9 @@ static llvm::cl::opt<std::string>
     FunctionToAnalyze("activity-analysis-func", cl::init(""), cl::Hidden,
                       cl::desc("Which function to analyze/print"));
 
+static llvm::cl::opt<bool>
+    InactiveArgs("activity-analysis-inactive-args", cl::init(false), cl::Hidden,
+                 cl::desc("Whether all args are inactive"));
 namespace {
 
 class ActivityAnalysisPrinter : public FunctionPass {
@@ -130,9 +133,9 @@ public:
     llvm::SmallPtrSet<llvm::Value *, 4> ConstantValues;
     llvm::SmallPtrSet<llvm::Value *, 4> ActiveValues;
     for (auto &a : type_args.Function->args()) {
-      ConstantValues.insert(&a);
-      continue;
-      if (a.getType()->isIntOrIntVectorTy()) {
+      if (InactiveArgs) {
+        ConstantValues.insert(&a);
+      } else if (a.getType()->isIntOrIntVectorTy()) {
         ConstantValues.insert(&a);
       } else {
         ActiveValues.insert(&a);
@@ -143,6 +146,18 @@ public:
     bool ActiveReturns = F.getReturnType()->isFPOrFPVectorTy();
     ActivityAnalyzer ATA(PPC, PPC.FAM.getResult<AAManager>(F), TLI,
                          ConstantValues, ActiveValues, ActiveReturns);
+
+    for (auto &a : F.args()) {
+      bool icv = ATA.isConstantValue(TR, &a);
+      llvm::errs().flush();
+    }
+    for (auto &BB : F) {
+      for (auto &I : BB) {
+        bool ici = ATA.isConstantInstruction(TR, &I);
+        bool icv = ATA.isConstantValue(TR, &I);
+        llvm::errs().flush();
+      }
+    }
 
     for (auto &a : F.args()) {
       bool icv = ATA.isConstantValue(TR, &a);

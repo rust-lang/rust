@@ -254,12 +254,6 @@ public:
     auto &DL = gutils->newFunc->getParent()->getDataLayout();
 
     constantval |= gutils->isConstantValue(&I);
-    // even if this is an active value if it has no active users
-    // (e.g. potential but unused active pointer), it does not
-    // need an adjoint here
-    //if (!constantval) {
-    //  constantval |= gutils->ATA->isValueInactiveFromUsers(TR, &I, ActivityAnalyzer::UseActivity::None);
-    //}
 
     BasicBlock *parent = I.getParent();
     Type *type = I.getType();
@@ -1335,14 +1329,12 @@ public:
         llvm::errs() << "}\n";
       }
       for (auto &BB : *gutils->oldFunc)
-      for (auto &I: BB) {
-        llvm::errs()
-            << " constantinst[" << I << "] = " << gutils->isConstantInstruction(&I)
-            << " val:"
-            << gutils->isConstantValue(&I)
-            << " type: "
-            << TR.query(&I).str() << "\n";
-      }
+        for (auto &I : BB) {
+          llvm::errs() << " constantinst[" << I
+                       << "] = " << gutils->isConstantInstruction(&I)
+                       << " val:" << gutils->isConstantValue(&I)
+                       << " type: " << TR.query(&I).str() << "\n";
+        }
       llvm::errs() << "cannot handle unknown binary operator: " << BO << "\n";
       report_fatal_error("unknown binary operator");
     }
