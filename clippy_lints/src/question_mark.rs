@@ -3,10 +3,10 @@ use clippy_utils::is_lang_ctor;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{eq_expr_value, match_qpath};
+use clippy_utils::{eq_expr_value, path_to_local_id};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::LangItem::OptionNone;
+use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, MatchSource, PatKind, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -101,15 +101,14 @@ impl QuestionMark {
             if Self::is_option(cx, subject);
 
             if let PatKind::TupleStruct(path1, fields, None) = &arms[0].pat.kind;
-            if match_qpath(path1, &["Some"]);
-            if let PatKind::Binding(annot, _, bind, _) = &fields[0].kind;
+            if is_lang_ctor(cx, path1, OptionSome);
+            if let PatKind::Binding(annot, bind_id, _, _) = fields[0].kind;
             let by_ref = matches!(annot, BindingAnnotation::Ref | BindingAnnotation::RefMut);
 
             if let ExprKind::Block(block, None) = &arms[0].body.kind;
             if block.stmts.is_empty();
             if let Some(trailing_expr) = &block.expr;
-            if let ExprKind::Path(path) = &trailing_expr.kind;
-            if match_qpath(path, &[&bind.as_str()]);
+            if path_to_local_id(trailing_expr, bind_id);
 
             if let PatKind::Wild = arms[1].pat.kind;
             if Self::expression_returns_none(cx, arms[1].body);

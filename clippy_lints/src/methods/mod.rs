@@ -1708,7 +1708,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
 
         match expr.kind {
             hir::ExprKind::Call(func, args) => {
-                from_iter_instead_of_collect::check(cx, expr, args, &func.kind);
+                from_iter_instead_of_collect::check(cx, expr, args, func);
             },
             hir::ExprKind::MethodCall(method_call, ref method_span, args, _) => {
                 or_fun_call::check(cx, expr, *method_span, &method_call.ident.as_str(), args);

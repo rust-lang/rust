@@ -1,6 +1,6 @@
 use crate::consts::{constant_context, Constant};
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::{match_def_path, paths};
+use clippy_utils::{is_expr_path_def_path, paths};
 use if_chain::if_chain;
 use rustc_ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
@@ -37,18 +37,15 @@ impl<'tcx> LateLintPass<'tcx> for TransmutingNull {
         }
 
         if_chain! {
-            if let ExprKind::Call(func, args) = expr.kind;
-            if args.len() == 1;
-            if let ExprKind::Path(ref path) = func.kind;
-            if let Some(func_def_id) = cx.qpath_res(path, func.hir_id).opt_def_id();
-            if match_def_path(cx, func_def_id, &paths::TRANSMUTE);
-            then {
+            if let ExprKind::Call(func, [arg]) = expr.kind;
+            if is_expr_path_def_path(cx, func, &paths::TRANSMUTE);
 
+            then {
                 // Catching transmute over constants that resolve to `null`.
                 let mut const_eval_context = constant_context(cx, cx.typeck_results());
                 if_chain! {
-                    if let ExprKind::Path(ref _qpath) = args[0].kind;
-                    let x = const_eval_context.expr(&args[0]);
+                    if let ExprKind::Path(ref _qpath) = arg.kind;
+                    let x = const_eval_context.expr(arg);
                     if let Some(Constant::RawPtr(0)) = x;
                     then {
                         span_lint(cx, TRANSMUTING_NULL, expr.span, LINT_MSG)
@@ -58,7 +55,7 @@ impl<'tcx> LateLintPass<'tcx> for TransmutingNull {
                 // Catching:
                 // `std::mem::transmute(0 as *const i32)`
                 if_chain! {
-                    if let ExprKind::Cast(inner_expr, _cast_ty) = args[0].kind;
+                    if let ExprKind::Cast(inner_expr, _cast_ty) = arg.kind;
                     if let ExprKind::Lit(ref lit) = inner_expr.kind;
                     if let LitKind::Int(0, _) = lit.node;
                     then {
@@ -69,10 +66,8 @@ impl<'tcx> LateLintPass<'tcx> for TransmutingNull {
                 // Catching:
                 // `std::mem::transmute(std::ptr::null::<i32>())`
                 if_chain! {
-                    if let ExprKind::Call(func1, []) = args[0].kind;
-                    if let ExprKind::Path(ref path1) = func1.kind;
-                    if let Some(func1_def_id) = cx.qpath_res(path1, func1.hir_id).opt_def_id();
-                    if match_def_path(cx, func1_def_id, &paths::PTR_NULL);
+                    if let ExprKind::Call(func1, []) = arg.kind;
+                    if is_expr_path_def_path(cx, func1, &paths::PTR_NULL);
                     then {
                         span_lint(cx, TRANSMUTING_NULL, expr.span, LINT_MSG)
                     }

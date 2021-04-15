@@ -625,7 +625,7 @@ in the following steps:
 Here are some pointers to things you are likely going to need for every lint:
 
 * [Clippy utils][utils] - Various helper functions. Maybe the function you need
-  is already in here (`implements_trait`, `match_path`, `snippet`, etc)
+  is already in here (`implements_trait`, `match_def_path`, `snippet`, etc)
 * [Clippy diagnostics][diagnostics]
 * [The `if_chain` macro][if_chain]
 * [`from_expansion`][from_expansion] and [`in_external_macro`][in_external_macro]

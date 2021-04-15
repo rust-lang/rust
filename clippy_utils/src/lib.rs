@@ -397,6 +397,29 @@ pub fn match_qpath(path: &QPath<'_>, segments: &[&str]) -> bool {
     }
 }
 
+/// If the expression is a path, resolve it. Otherwise, return `Res::Err`.
+pub fn expr_path_res(cx: &LateContext<'_>, expr: &Expr<'_>) -> Res {
+    if let ExprKind::Path(p) = &expr.kind {
+        cx.qpath_res(p, expr.hir_id)
+    } else {
+        Res::Err
+    }
+}
+
+/// Resolves the path to a `DefId` and checks if it matches the given path.
+pub fn is_qpath_def_path(cx: &LateContext<'_>, path: &QPath<'_>, hir_id: HirId, segments: &[&str]) -> bool {
+    cx.qpath_res(path, hir_id)
+        .opt_def_id()
+        .map_or(false, |id| match_def_path(cx, id, segments))
+}
+
+/// If the expression is a path, resolves it to a `DefId` and checks if it matches the given path.
+pub fn is_expr_path_def_path(cx: &LateContext<'_>, expr: &Expr<'_>, segments: &[&str]) -> bool {
+    expr_path_res(cx, expr)
+        .opt_def_id()
+        .map_or(false, |id| match_def_path(cx, id, segments))
+}
+
 /// THIS METHOD IS DEPRECATED and will eventually be removed since it does not match against the
 /// entire path or resolved `DefId`. Prefer using `match_def_path`. Consider getting a `DefId` from
 /// `QPath::Resolved.1.res.opt_def_id()`.
@@ -418,20 +441,6 @@ pub fn match_qpath(path: &QPath<'_>, segments: &[&str]) -> bool {
 /// }
 /// ```
 pub fn match_path(path: &Path<'_>, segments: &[&str]) -> bool {
-    path.segments
-        .iter()
-        .rev()
-        .zip(segments.iter().rev())
-        .all(|(a, b)| a.ident.name.as_str() == *b)
-}
-
-/// Matches a `Path` against a slice of segment string literals, e.g.
-///
-/// # Examples
-/// ```rust,ignore
-/// match_path_ast(path, &["std", "rt", "begin_unwind"])
-/// ```
-pub fn match_path_ast(path: &ast::Path, segments: &[&str]) -> bool {
     path.segments
         .iter()
         .rev()
@@ -1148,29 +1157,47 @@ pub fn match_function_call<'tcx>(
     None
 }
 
-pub fn match_def_path<'tcx>(cx: &LateContext<'tcx>, did: DefId, syms: &[&str]) -> bool {
-    // We have to convert `syms` to `&[Symbol]` here because rustc's `match_def_path`
-    // accepts only that. We should probably move to Symbols in Clippy as well.
-    let syms = syms.iter().map(|p| Symbol::intern(p)).collect::<Vec<Symbol>>();
-    cx.match_def_path(did, &syms)
+/// Checks if the given `DefId` matches any of the paths. Returns the index of matching path, if
+/// any.
+pub fn match_any_def_paths(cx: &LateContext<'_>, did: DefId, paths: &[&[&str]]) -> Option<usize> {
+    let search_path = cx.get_def_path(did);
+    paths
+        .iter()
+        .position(|p| p.iter().map(|x| Symbol::intern(x)).eq(search_path.iter().cloned()))
 }
 
-pub fn match_panic_call<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<&'tcx [Expr<'tcx>]> {
-    match_function_call(cx, expr, &paths::BEGIN_PANIC)
-        .or_else(|| match_function_call(cx, expr, &paths::BEGIN_PANIC_FMT))
-        .or_else(|| match_function_call(cx, expr, &paths::PANIC_ANY))
-        .or_else(|| match_function_call(cx, expr, &paths::PANICKING_PANIC))
-        .or_else(|| match_function_call(cx, expr, &paths::PANICKING_PANIC_FMT))
-        .or_else(|| match_function_call(cx, expr, &paths::PANICKING_PANIC_STR))
+/// Checks if the given `DefId` matches the path.
+pub fn match_def_path<'tcx>(cx: &LateContext<'tcx>, did: DefId, syms: &[&str]) -> bool {
+    // We should probably move to Symbols in Clippy as well rather than interning every time.
+    let path = cx.get_def_path(did);
+    syms.iter().map(|x| Symbol::intern(x)).eq(path.iter().cloned())
+}
+
+pub fn match_panic_call(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
+    if let ExprKind::Call(func, [arg]) = expr.kind {
+        expr_path_res(cx, func)
+            .opt_def_id()
+            .map_or(false, |id| match_panic_def_id(cx, id))
+            .then(|| arg)
+    } else {
+        None
+    }
 }
 
 pub fn match_panic_def_id(cx: &LateContext<'_>, did: DefId) -> bool {
-    match_def_path(cx, did, &paths::BEGIN_PANIC)
-        || match_def_path(cx, did, &paths::BEGIN_PANIC_FMT)
-        || match_def_path(cx, did, &paths::PANIC_ANY)
-        || match_def_path(cx, did, &paths::PANICKING_PANIC)
-        || match_def_path(cx, did, &paths::PANICKING_PANIC_FMT)
-        || match_def_path(cx, did, &paths::PANICKING_PANIC_STR)
+    match_any_def_paths(
+        cx,
+        did,
+        &[
+            &paths::BEGIN_PANIC,
+            &paths::BEGIN_PANIC_FMT,
+            &paths::PANIC_ANY,
+            &paths::PANICKING_PANIC,
+            &paths::PANICKING_PANIC_FMT,
+            &paths::PANICKING_PANIC_STR,
+        ],
+    )
+    .is_some()
 }
 
 /// Returns the list of condition expressions and the list of blocks in a
