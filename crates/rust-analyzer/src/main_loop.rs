@@ -248,7 +248,7 @@ impl GlobalState {
                                 }
                             };
 
-                            self.report_progress("fetching", state, msg, None);
+                            self.report_progress("Fetching", state, msg, None);
                         }
                         Task::FetchBuildData(progress) => {
                             let (state, msg) = match progress {
@@ -266,7 +266,7 @@ impl GlobalState {
                             };
 
                             if let Some(state) = state {
-                                self.report_progress("loading", state, msg, None);
+                                self.report_progress("Loading", state, msg, None);
                             }
                         }
                     }
@@ -298,7 +298,7 @@ impl GlobalState {
                         }
                     };
 
-                    self.report_progress("indexing", state, message, Some(fraction));
+                    self.report_progress("Indexing", state, message, Some(fraction));
                 }
             }
             Event::Vfs(mut task) => {
@@ -330,7 +330,7 @@ impl GlobalState {
                                 Progress::End
                             };
                             self.report_progress(
-                                "roots scanned",
+                                "Roots Scanned",
                                 state,
                                 Some(format!("{}/{}", n_done, n_total)),
                                 Some(Progress::fraction(n_done, n_total)),
