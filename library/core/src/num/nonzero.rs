@@ -460,6 +460,39 @@ macro_rules! nonzero_signed_operations {
                     // SAFETY: This cannot overflow to zero.
                     unsafe { $Ty::new_unchecked(self.get().abs()) }
                 }
+
+                /// Checked absolute value.
+                /// Returns [`None`] if
+                #[doc = concat!("`self == ", stringify!($Int), "::MIN`.")]
+                ///
+                /// # Example
+                ///
+                /// ```
+                /// #![feature(nonzero_ops)]
+                /// # #![feature(try_trait)]
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                ///
+                /// # fn main() -> Result<(), std::option::NoneError> {
+                #[doc = concat!("let pos = ", stringify!($Ty), "::new(1)?;")]
+                #[doc = concat!("let neg = ", stringify!($Ty), "::new(-1)?;")]
+                #[doc = concat!("let min = ", stringify!($Ty), "::new(",
+                                stringify!($Int), "::MIN)?;")]
+                ///
+                /// assert_eq!(Some(pos), neg.checked_abs());
+                /// assert_eq!(None, min.checked_abs());
+                /// # Ok(())
+                /// # }
+                /// ```
+                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[inline]
+                pub const fn checked_abs(self) -> Option<$Ty> {
+                    if let Some(nz) = self.get().checked_abs() {
+                        // SAFETY: absolute value of nonzero cannot yield zero values.
+                        Some(unsafe { $Ty::new_unchecked(nz) })
+                    } else {
+                        None
+                    }
+                }
             }
         )+
     }
