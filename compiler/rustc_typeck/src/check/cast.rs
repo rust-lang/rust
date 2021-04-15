@@ -359,6 +359,21 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     {
                         sugg = Some(format!("&{}", mutbl.prefix_str()));
                     }
+                } else if let ty::RawPtr(TypeAndMut { mutbl, .. }) = *self.cast_ty.kind() {
+                    if fcx
+                        .try_coerce(
+                            self.expr,
+                            fcx.tcx.mk_ref(
+                                &ty::RegionKind::ReErased,
+                                TypeAndMut { ty: self.expr_ty, mutbl },
+                            ),
+                            self.cast_ty,
+                            AllowTwoPhase::No,
+                        )
+                        .is_ok()
+                    {
+                        sugg = Some(format!("&{}", mutbl.prefix_str()));
+                    }
                 }
                 if let Some(sugg) = sugg {
                     err.span_label(self.span, "invalid cast");
