@@ -351,6 +351,34 @@ macro_rules! nonzero_unsigned_operations {
                     // so the result cannot be zero.
                     unsafe { $Ty::new_unchecked(self.get().saturating_add(other)) }
                 }
+
+                /// Add an unsigned integer to a non-zero value,
+                /// assuming overflow cannot occur.
+                /// This results in undefined behaviour when
+                #[doc = concat!("`self + rhs > ", stringify!($Int), "::MAX`")]
+                #[doc = concat!(" or `self + rhs < ", stringify!($Int), "::MIN`.")]
+                ///
+                /// # Examples
+                ///
+                /// ```
+                /// #![feature(nonzero_ops)]
+                /// # #![feature(try_trait)]
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                ///
+                /// # fn main() -> Result<(), std::option::NoneError> {
+                #[doc = concat!("let one = ", stringify!($Ty), "::new(1)?;")]
+                #[doc = concat!("let two = ", stringify!($Ty), "::new(2)?;")]
+                ///
+                /// assert_eq!(two, unsafe { one.unchecked_add(1) });
+                /// # Ok(())
+                /// # }
+                /// ```
+                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[inline]
+                pub unsafe fn unchecked_add(self, other: $Int) -> $Ty {
+                    // SAFETY: The caller ensures there is no overflow.
+                    unsafe { $Ty::new_unchecked(self.get().unchecked_add(other)) }
+                }
             }
         )+
     }
