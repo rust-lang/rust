@@ -13,6 +13,7 @@ use rustc_hir::{ExprKind, Node, QPath};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::ty::fast_reject::simplify_type;
 use rustc_middle::ty::print::with_crate_prefix;
+use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{
     self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
 };
@@ -383,6 +384,52 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         return None;
                     } else {
                         span = item_name.span;
+
+                        // issue #81576, elision of generic argument when no methode can be found in any implementation
+                        let mut ty_str_reported = ty_str.clone();
+                        if let ty::Adt(_, ref generics) = actual.kind() {
+                            if generics.len() > 0 {
+                                let candidate_numbers: usize = self
+                                    .autoderef(span, actual)
+                                    .map(|(ty, _)| {
+                                        if let ty::Adt(ref adt_deref, _) = ty.kind() {
+                                            self.tcx
+                                                .inherent_impls(adt_deref.did)
+                                                .iter()
+                                                .filter_map(|def_id| {
+                                                    self.associated_item(
+                                                        *def_id,
+                                                        item_name,
+                                                        Namespace::ValueNS,
+                                                    )
+                                                })
+                                                .count()
+                                        } else {
+                                            0
+                                        }
+                                    })
+                                    .sum();
+                                if candidate_numbers == 0 && unsatisfied_predicates.is_empty() {
+                                    if let Some((path_string, _)) = ty_str.split_once('<') {
+                                        ty_str_reported = format!("{}<", path_string);
+                                        for (index, arg) in generics.iter().enumerate() {
+                                            let arg_replace = match arg.unpack() {
+                                                GenericArgKind::Lifetime(_) => "'_",
+                                                GenericArgKind::Type(_)
+                                                | GenericArgKind::Const(_) => "_",
+                                            };
+                                            ty_str_reported =
+                                                format!("{}{}", ty_str_reported, arg_replace);
+                                            if index < generics.len() - 1 {
+                                                ty_str_reported = format!("{}, ", ty_str_reported);
+                                            }
+                                        }
+                                        ty_str_reported = format!("{}>", ty_str_reported);
+                                    }
+                                }
+                            }
+                        }
+
                         let mut err = struct_span_err!(
                             tcx.sess,
                             span,
@@ -391,7 +438,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             item_kind,
                             item_name,
                             actual.prefix_string(self.tcx),
-                            ty_str,
+                            ty_str_reported,
                         );
                         if let Mode::MethodCall = mode {
                             if let SelfSource::MethodCall(call) = source {
@@ -449,6 +496,77 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let mut label_span_not_found = || {
                     if unsatisfied_predicates.is_empty() {
                         err.span_label(span, format!("{item_kind} not found in `{ty_str}`"));
+                        if let ty::Adt(ref adt, _) = rcvr_ty.kind() {
+                            let mut inherent_impls_candidate = self
+                                .tcx
+                                .inherent_impls(adt.did)
+                                .iter()
+                                .copied()
+                                .filter(|def_id| {
+                                    if let Some(assoc) =
+                                        self.associated_item(*def_id, item_name, Namespace::ValueNS)
+                                    {
+                                        // Check for both mode is the same so we avoid suggesting
+                                        // incorect associated item.
+                                        match (mode, assoc.fn_has_self_parameter) {
+                                            (Mode::MethodCall, true) => {
+                                                if let SelfSource::MethodCall(_) = source {
+                                                    // We check that the suggest type is actually
+                                                    // different from the received one
+                                                    // So we avoid suggestion method with Box<Self>
+                                                    // for instance
+                                                    self.tcx.at(span).type_of(*def_id) != actual
+                                                        && self.tcx.at(span).type_of(*def_id)
+                                                            != rcvr_ty
+                                                } else {
+                                                    false
+                                                }
+                                            }
+                                            (Mode::Path, false) => true,
+                                            _ => false,
+                                        }
+                                    } else {
+                                        false
+                                    }
+                                })
+                                .collect::<Vec<_>>();
+                            if inherent_impls_candidate.len() > 0 {
+                                inherent_impls_candidate.sort();
+                                inherent_impls_candidate.dedup();
+                                // number of type to shows at most.
+                                const LIMIT: usize = 3;
+                                let mut note = format!("The {item_kind} was found for");
+                                if inherent_impls_candidate.len() > 1 {
+                                    for impl_item in inherent_impls_candidate.iter().take(LIMIT - 2)
+                                    {
+                                        let impl_ty = self.tcx.at(span).type_of(*impl_item);
+                                        note = format!("{} {},", note, impl_ty);
+                                    }
+                                    let impl_ty = self.tcx.at(span).type_of(
+                                        inherent_impls_candidate
+                                            [inherent_impls_candidate.len() - 1],
+                                    );
+                                    if inherent_impls_candidate.len() > LIMIT {
+                                        note = format!("{} {},", note, impl_ty);
+                                    } else {
+                                        note = format!("{} {} and", note, impl_ty);
+                                    }
+                                }
+                                let impl_ty = self
+                                    .tcx
+                                    .at(span)
+                                    .type_of(*inherent_impls_candidate.last().unwrap());
+                                note = format!("{} {}", note, impl_ty);
+                                if inherent_impls_candidate.len() > LIMIT {
+                                    note = format!(
+                                        "{} and {} more",
+                                        note,
+                                        inherent_impls_candidate.len() - LIMIT
+                                    );
+                                }
+                                err.note(&format!("{}.", note));
+                            }
+                        }
                     } else {
                         err.span_label(span, format!("{item_kind} cannot be called on `{ty_str}` due to unsatisfied trait bounds"));
                     }
