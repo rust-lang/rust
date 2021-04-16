@@ -73,7 +73,7 @@ impl LateLintPass<'_> for FromOverInto {
                     cx.tcx.sess.source_map().guess_head_span(item.span),
                     "an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true",
                     None,
-                    "consider to implement `From` instead",
+                    &format!("consider to implement `From<{}>` instead", impl_trait_ref.self_ty()),
                 );
             }
         }
