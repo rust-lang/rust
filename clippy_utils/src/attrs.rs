@@ -154,6 +154,6 @@ pub fn is_doc_hidden(attrs: &[ast::Attribute]) -> bool {
     attrs
         .iter()
         .filter(|attr| attr.has_name(sym::doc))
-        .flat_map(ast::Attribute::meta_item_list)
+        .filter_map(ast::Attribute::meta_item_list)
         .any(|l| attr::list_contains_name(&l, sym::hidden))
 }

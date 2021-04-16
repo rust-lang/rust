@@ -17,6 +17,7 @@ mod filter_map_identity;
 mod filter_map_next;
 mod filter_next;
 mod flat_map_identity;
+mod flat_map_option;
 mod from_iter_instead_of_collect;
 mod get_unwrap;
 mod implicit_clone;
@@ -95,6 +96,29 @@ declare_clippy_lint! {
     pub CLONED_INSTEAD_OF_COPIED,
     pedantic,
     "used `cloned` where `copied` could be used instead"
+}
+
+declare_clippy_lint! {
+    /// **What it does:** Checks for usages of `Iterator::flat_map()` where `filter_map()` could be
+    /// used instead.
+    ///
+    /// **Why is this bad?** When applicable, `filter_map()` is more clear since it shows that
+    /// `Option` is used to produce 0 or 1 items.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// let nums: Vec<i32> = ["1", "2", "whee!"].iter().flat_map(|x| x.parse().ok()).collect();
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let nums: Vec<i32> = ["1", "2", "whee!"].iter().filter_map(|x| x.parse().ok()).collect();
+    /// ```
+    pub FLAT_MAP_OPTION,
+    pedantic,
+    "used `flat_map` where `filter_map` could be used instead"
 }
 
 declare_clippy_lint! {
@@ -1663,6 +1687,7 @@ impl_lint_pass!(Methods => [
     CLONE_ON_REF_PTR,
     CLONE_DOUBLE_REF,
     CLONED_INSTEAD_OF_COPIED,
+    FLAT_MAP_OPTION,
     INEFFICIENT_TO_STRING,
     NEW_RET_NO_SELF,
     SINGLE_CHAR_PATTERN,
@@ -1958,7 +1983,10 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                 unnecessary_filter_map::check(cx, expr, arg);
                 filter_map_identity::check(cx, expr, arg, span);
             },
-            ("flat_map", [flm_arg]) => flat_map_identity::check(cx, expr, flm_arg, span),
+            ("flat_map", [arg]) => {
+                flat_map_identity::check(cx, expr, arg, span);
+                flat_map_option::check(cx, expr, arg, span);
+            },
             ("flatten", []) => {
                 if let Some(("map", [recv, map_arg], _)) = method_call!(recv) {
                     map_flatten::check(cx, expr, recv, map_arg);
