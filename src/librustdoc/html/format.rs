@@ -124,10 +124,10 @@ fn comma_sep<T: fmt::Display>(items: impl Iterator<Item = T>) -> impl fmt::Displ
     })
 }
 
-crate fn print_generic_bounds<'a, 'cx: 'a>(
-    cx: &'a Context<'cx>,
+crate fn print_generic_bounds<'a, 'tcx: 'a>(
+    cx: &'a Context<'tcx>,
     bounds: &'a [clean::GenericBound],
-) -> impl fmt::Display + 'a + Captures<'cx> {
+) -> impl fmt::Display + 'a + Captures<'tcx> {
     display_fn(move |f| {
         let mut bounds_dup = FxHashSet::default();
 
@@ -144,10 +144,10 @@ crate fn print_generic_bounds<'a, 'cx: 'a>(
 }
 
 impl clean::GenericParamDef {
-    crate fn print<'a, 'cx: 'a>(
+    crate fn print<'a, 'tcx: 'a>(
         &'a self,
-        cx: &'a Context<'cx>,
-    ) -> impl fmt::Display + 'a + Captures<'cx> {
+        cx: &'a Context<'tcx>,
+    ) -> impl fmt::Display + 'a + Captures<'tcx> {
         display_fn(move |f| match self.kind {
             clean::GenericParamDefKind::Lifetime => write!(f, "{}", self.name),
             clean::GenericParamDefKind::Type { ref bounds, ref default, .. } => {
@@ -183,10 +183,10 @@ impl clean::GenericParamDef {
 }
 
 impl clean::Generics {
-    crate fn print<'a, 'cx: 'a>(
+    crate fn print<'a, 'tcx: 'a>(
         &'a self,
-        cx: &'a Context<'cx>,
-    ) -> impl fmt::Display + 'a + Captures<'cx> {
+        cx: &'a Context<'tcx>,
+    ) -> impl fmt::Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
             let real_params =
                 self.params.iter().filter(|p| !p.is_synthetic_type_param()).collect::<Vec<_>>();
@@ -205,12 +205,12 @@ impl clean::Generics {
 /// * The Generics from which to emit a where-clause.
 /// * The number of spaces to indent each line with.
 /// * Whether the where-clause needs to add a comma and newline after the last bound.
-crate fn print_where_clause<'a, 'cx: 'a>(
+crate fn print_where_clause<'a, 'tcx: 'a>(
     gens: &'a clean::Generics,
-    cx: &'a Context<'cx>,
+    cx: &'a Context<'tcx>,
     indent: usize,
     end_newline: bool,
-) -> impl fmt::Display + 'a + Captures<'cx> {
+) -> impl fmt::Display + 'a + Captures<'tcx> {
     display_fn(move |f| {
         if gens.where_predicates.is_empty() {
             return Ok(());
@@ -314,10 +314,10 @@ impl clean::Constant {
 }
 
 impl clean::PolyTrait {
-    fn print<'a, 'cx: 'a>(
+    fn print<'a, 'tcx: 'a>(
         &'a self,
-        cx: &'a Context<'cx>,
-    ) -> impl fmt::Display + 'a + Captures<'cx> {
+        cx: &'a Context<'tcx>,
+    ) -> impl fmt::Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
             if !self.generic_params.is_empty() {
                 if f.alternate() {
@@ -344,10 +344,10 @@ impl clean::PolyTrait {
 }
 
 impl clean::GenericBound {
-    crate fn print<'a, 'cx: 'a>(
+    crate fn print<'a, 'tcx: 'a>(
         &'a self,
-        cx: &'a Context<'cx>,
-    ) -> impl fmt::Display + 'a + Captures<'cx> {
+        cx: &'a Context<'tcx>,
+    ) -> impl fmt::Display + 'a + Captures<'tcx> {
         display_fn(move |f| match self {
             clean::GenericBound::Outlives(lt) => write!(f, "{}", lt.print()),
             clean::GenericBound::TraitBound(ty, modifier) => {
@@ -367,10 +367,10 @@ impl clean::GenericBound {
 }
 
 impl clean::GenericArgs {
-    fn print<'a, 'cx: 'a>(
+    fn print<'a, 'tcx: 'a>(
         &'a self,
-        cx: &'a Context<'cx>,
-    ) -> impl fmt::Display + 'a + Captures<'cx> {
+        cx: &'a Context<'tcx>,
+    ) -> impl fmt::Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
             match self {
                 clean::GenericArgs::AngleBracketed { args, bindings } => {
@@ -602,10 +602,10 @@ fn primitive_link(
 }
 
 /// Helper to render type parameters
-fn tybounds<'a, 'cx: 'a>(
+fn tybounds<'a, 'tcx: 'a>(
     param_names: &'a Option<Vec<clean::GenericBound>>,
-    cx: &'a Context<'cx>,
-) -> impl fmt::Display + 'a + Captures<'cx> {
+    cx: &'a Context<'tcx>,
+) -> impl fmt::Display + 'a + Captures<'tcx> {
     display_fn(move |f| match *param_names {
         Some(ref params) => {
             for param in params {
@@ -882,20 +882,20 @@ fn fmt_type<'cx>(
 }
 
 impl clean::Type {
-    crate fn print<'b, 'a: 'b, 'cx: 'a>(
+    crate fn print<'b, 'a: 'b, 'tcx: 'a>(
         &'a self,
-        cx: &'a Context<'cx>,
-    ) -> impl fmt::Display + 'b + Captures<'cx> {
+        cx: &'a Context<'tcx>,
+    ) -> impl fmt::Display + 'b + Captures<'tcx> {
         display_fn(move |f| fmt_type(self, f, false, cx))
     }
 }
 
 impl clean::Impl {
-    crate fn print<'a, 'cx: 'a>(
+    crate fn print<'a, 'tcx: 'a>(
         &'a self,
         use_absolute: bool,
-        cx: &'a Context<'cx>,
-    ) -> impl fmt::Display + 'a + Captures<'cx> {
+        cx: &'a Context<'tcx>,
+    ) -> impl fmt::Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
             if f.alternate() {
                 write!(f, "impl{:#} ", self.generics.print(cx))?;
@@ -924,10 +924,10 @@ impl clean::Impl {
 }
 
 impl clean::Arguments {
-    crate fn print<'a, 'cx: 'a>(
+    crate fn print<'a, 'tcx: 'a>(
         &'a self,
-        cx: &'a Context<'cx>,
-    ) -> impl fmt::Display + 'a + Captures<'cx> {
+        cx: &'a Context<'tcx>,
+    ) -> impl fmt::Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
             for (i, input) in self.values.iter().enumerate() {
                 if !input.name.is_empty() {
@@ -948,10 +948,10 @@ impl clean::Arguments {
 }
 
 impl clean::FnRetTy {
-    crate fn print<'a, 'cx: 'a>(
+    crate fn print<'a, 'tcx: 'a>(
         &'a self,
-        cx: &'a Context<'cx>,
-    ) -> impl fmt::Display + 'a + Captures<'cx> {
+        cx: &'a Context<'tcx>,
+    ) -> impl fmt::Display + 'a + Captures<'tcx> {
         display_fn(move |f| match self {
             clean::Return(clean::Tuple(tys)) if tys.is_empty() => Ok(()),
             clean::Return(ty) if f.alternate() => {
@@ -964,10 +964,10 @@ impl clean::FnRetTy {
 }
 
 impl clean::BareFunctionDecl {
-    fn print_hrtb_with_space<'a, 'cx: 'a>(
+    fn print_hrtb_with_space<'a, 'tcx: 'a>(
         &'a self,
-        cx: &'a Context<'cx>,
-    ) -> impl fmt::Display + 'a + Captures<'cx> {
+        cx: &'a Context<'tcx>,
+    ) -> impl fmt::Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
             if !self.generic_params.is_empty() {
                 write!(f, "for<{}> ", comma_sep(self.generic_params.iter().map(|g| g.print(cx))))
@@ -979,10 +979,10 @@ impl clean::BareFunctionDecl {
 }
 
 impl clean::FnDecl {
-    crate fn print<'b, 'a: 'b, 'cx: 'a>(
+    crate fn print<'b, 'a: 'b, 'tcx: 'a>(
         &'a self,
-        cx: &'a Context<'cx>,
-    ) -> impl fmt::Display + 'b + Captures<'cx> {
+        cx: &'a Context<'tcx>,
+    ) -> impl fmt::Display + 'b + Captures<'tcx> {
         display_fn(move |f| {
             let ellipsis = if self.c_variadic { ", ..." } else { "" };
             if f.alternate() {
@@ -1011,13 +1011,13 @@ impl clean::FnDecl {
     /// * `indent`: The number of spaces to indent each successive line with, if line-wrapping is
     ///   necessary.
     /// * `asyncness`: Whether the function is async or not.
-    crate fn full_print<'a, 'cx: 'a>(
+    crate fn full_print<'a, 'tcx: 'a>(
         &'a self,
-        cx: &'a Context<'cx>,
+        cx: &'a Context<'tcx>,
         header_len: usize,
         indent: usize,
         asyncness: hir::IsAsync,
-    ) -> impl fmt::Display + 'a + Captures<'cx> {
+    ) -> impl fmt::Display + 'a + Captures<'tcx> {
         display_fn(move |f| self.inner_full_print(cx, header_len, indent, asyncness, f))
     }
 
@@ -1132,11 +1132,11 @@ impl clean::FnDecl {
 }
 
 impl clean::Visibility {
-    crate fn print_with_space<'a, 'cx: 'a>(
+    crate fn print_with_space<'a, 'tcx: 'a>(
         self,
-        cx: &'a Context<'cx>,
+        cx: &'a Context<'tcx>,
         item_did: DefId,
-    ) -> impl fmt::Display + 'a + Captures<'cx> {
+    ) -> impl fmt::Display + 'a + Captures<'tcx> {
         let to_print = match self {
             clean::Public => "pub ".to_owned(),
             clean::Inherited => String::new(),
@@ -1256,10 +1256,10 @@ impl PrintWithSpace for hir::Mutability {
 }
 
 impl clean::Import {
-    crate fn print<'a, 'cx: 'a>(
+    crate fn print<'a, 'tcx: 'a>(
         &'a self,
-        cx: &'a Context<'cx>,
-    ) -> impl fmt::Display + 'a + Captures<'cx> {
+        cx: &'a Context<'tcx>,
+    ) -> impl fmt::Display + 'a + Captures<'tcx> {
         display_fn(move |f| match self.kind {
             clean::ImportKind::Simple(name) => {
                 if name == self.source.path.last() {
@@ -1280,10 +1280,10 @@ impl clean::Import {
 }
 
 impl clean::ImportSource {
-    crate fn print<'a, 'cx: 'a>(
+    crate fn print<'a, 'tcx: 'a>(
         &'a self,
-        cx: &'a Context<'cx>,
-    ) -> impl fmt::Display + 'a + Captures<'cx> {
+        cx: &'a Context<'tcx>,
+    ) -> impl fmt::Display + 'a + Captures<'tcx> {
         display_fn(move |f| match self.did {
             Some(did) => resolved_path(f, did, &self.path, true, false, cx),
             _ => {
@@ -1303,10 +1303,10 @@ impl clean::ImportSource {
 }
 
 impl clean::TypeBinding {
-    crate fn print<'a, 'cx: 'a>(
+    crate fn print<'a, 'tcx: 'a>(
         &'a self,
-        cx: &'a Context<'cx>,
-    ) -> impl fmt::Display + 'a + Captures<'cx> {
+        cx: &'a Context<'tcx>,
+    ) -> impl fmt::Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
             f.write_str(&*self.name.as_str())?;
             match self.kind {
@@ -1347,10 +1347,10 @@ crate fn print_default_space<'a>(v: bool) -> &'a str {
 }
 
 impl clean::GenericArg {
-    crate fn print<'a, 'cx: 'a>(
+    crate fn print<'a, 'tcx: 'a>(
         &'a self,
-        cx: &'a Context<'cx>,
-    ) -> impl fmt::Display + 'a + Captures<'cx> {
+        cx: &'a Context<'tcx>,
+    ) -> impl fmt::Display + 'a + Captures<'tcx> {
         display_fn(move |f| match self {
             clean::GenericArg::Lifetime(lt) => fmt::Display::fmt(&lt.print(), f),
             clean::GenericArg::Type(ty) => fmt::Display::fmt(&ty.print(cx), f),
