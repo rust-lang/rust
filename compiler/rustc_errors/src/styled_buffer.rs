@@ -4,7 +4,7 @@ use crate::snippet::{Style, StyledString};
 
 #[derive(Debug)]
 pub struct StyledBuffer {
-    text: Vec<Vec<StyledChar>>,
+    lines: Vec<Vec<StyledChar>>,
 }
 
 #[derive(Debug)]
@@ -27,22 +27,22 @@ impl Default for StyledChar {
 
 impl StyledBuffer {
     pub fn new() -> StyledBuffer {
-        StyledBuffer { text: vec![] }
+        StyledBuffer { lines: vec![] }
     }
 
     /// Returns content of `StyledBuffer` splitted by lines and line styles
     pub fn render(&self) -> Vec<Vec<StyledString>> {
         // Tabs are assumed to have been replaced by spaces in calling code.
-        debug_assert!(self.text.iter().all(|r| !r.iter().any(|sc| sc.chr == '\t')));
+        debug_assert!(self.lines.iter().all(|r| !r.iter().any(|sc| sc.chr == '\t')));
 
         let mut output: Vec<Vec<StyledString>> = vec![];
         let mut styled_vec: Vec<StyledString> = vec![];
 
-        for styled_row in &self.text {
+        for styled_line in &self.lines {
             let mut current_style = Style::NoStyle;
             let mut current_text = String::new();
 
-            for sc in styled_row {
+            for sc in styled_line {
                 if sc.style != current_style {
                     if !current_text.is_empty() {
                         styled_vec.push(StyledString { text: current_text, style: current_style });
@@ -66,8 +66,8 @@ impl StyledBuffer {
     }
 
     fn ensure_lines(&mut self, line: usize) {
-        while line >= self.text.len() {
-            self.text.push(vec![]);
+        while line >= self.lines.len() {
+            self.lines.push(vec![]);
         }
     }
 
@@ -76,15 +76,15 @@ impl StyledBuffer {
     /// and fills last line with spaces and `Style::NoStyle` style
     pub fn putc(&mut self, line: usize, col: usize, chr: char, style: Style) {
         self.ensure_lines(line);
-        if col < self.text[line].len() {
-            self.text[line][col] = StyledChar::new(chr, style);
+        if col < self.lines[line].len() {
+            self.lines[line][col] = StyledChar::new(chr, style);
         } else {
-            let mut i = self.text[line].len();
+            let mut i = self.lines[line].len();
             while i < col {
-                self.text[line].push(StyledChar::default());
+                self.lines[line].push(StyledChar::default());
                 i += 1;
             }
-            self.text[line].push(StyledChar::new(chr, style));
+            self.lines[line].push(StyledChar::new(chr, style));
         }
     }
 
@@ -105,10 +105,10 @@ impl StyledBuffer {
         self.ensure_lines(line);
         let string_len = string.chars().count();
 
-        if !self.text[line].is_empty() {
+        if !self.lines[line].is_empty() {
             // Push the old content over to make room for new content
             for _ in 0..string_len {
-                self.text[line].insert(0, StyledChar::default());
+                self.lines[line].insert(0, StyledChar::default());
             }
         }
 
@@ -118,16 +118,16 @@ impl StyledBuffer {
     /// For given `line` inserts `string` with `style` after old content of that line,
     /// adding lines if needed
     pub fn append(&mut self, line: usize, string: &str, style: Style) {
-        if line >= self.text.len() {
+        if line >= self.lines.len() {
             self.puts(line, 0, string, style);
         } else {
-            let col = self.text[line].len();
+            let col = self.lines[line].len();
             self.puts(line, col, string, style);
         }
     }
 
     pub fn num_lines(&self) -> usize {
-        self.text.len()
+        self.lines.len()
     }
 
     /// Set `style` for `line`, `col_start..col_end` range if:
@@ -150,7 +150,7 @@ impl StyledBuffer {
     /// 1. That line and column exist in `StyledBuffer`
     /// 2. `overwrite` is `true` or existing style is `Style::NoStyle` or `Style::Quotation`
     pub fn set_style(&mut self, line: usize, col: usize, style: Style, overwrite: bool) {
-        if let Some(ref mut line) = self.text.get_mut(line) {
+        if let Some(ref mut line) = self.lines.get_mut(line) {
             if let Some(StyledChar { style: s, .. }) = line.get_mut(col) {
                 if overwrite || *s == Style::NoStyle || *s == Style::Quotation {
                     *s = style;
