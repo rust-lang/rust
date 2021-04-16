@@ -1,39 +1,49 @@
 // Code for creating styled buffers
 
 use crate::snippet::{Style, StyledString};
-use std::iter;
 
 #[derive(Debug)]
 pub struct StyledBuffer {
-    text: Vec<Vec<char>>,
-    styles: Vec<Vec<Style>>,
+    text: Vec<Vec<StyledChar>>,
+}
+
+#[derive(Debug)]
+struct StyledChar {
+    chr: char,
+    style: Style,
+}
+
+impl StyledChar {
+    fn new(chr: char, style: Style) -> Self {
+        StyledChar { chr, style }
+    }
 }
 
 impl StyledBuffer {
     pub fn new() -> StyledBuffer {
-        StyledBuffer { text: vec![], styles: vec![] }
+        StyledBuffer { text: vec![] }
     }
 
     pub fn render(&self) -> Vec<Vec<StyledString>> {
         // Tabs are assumed to have been replaced by spaces in calling code.
-        debug_assert!(self.text.iter().all(|r| !r.contains(&'\t')));
+        debug_assert!(self.text.iter().all(|r| !r.iter().any(|sc| sc.chr == '\t')));
 
         let mut output: Vec<Vec<StyledString>> = vec![];
         let mut styled_vec: Vec<StyledString> = vec![];
 
-        for (row, row_style) in iter::zip(&self.text, &self.styles) {
+        for styled_row in &self.text {
             let mut current_style = Style::NoStyle;
             let mut current_text = String::new();
 
-            for (&c, &s) in iter::zip(row, row_style) {
-                if s != current_style {
+            for sc in styled_row {
+                if sc.style != current_style {
                     if !current_text.is_empty() {
                         styled_vec.push(StyledString { text: current_text, style: current_style });
                     }
-                    current_style = s;
+                    current_style = sc.style;
                     current_text = String::new();
                 }
-                current_text.push(c);
+                current_text.push(sc.chr);
             }
             if !current_text.is_empty() {
                 styled_vec.push(StyledString { text: current_text, style: current_style });
@@ -51,24 +61,20 @@ impl StyledBuffer {
     fn ensure_lines(&mut self, line: usize) {
         while line >= self.text.len() {
             self.text.push(vec![]);
-            self.styles.push(vec![]);
         }
     }
 
     pub fn putc(&mut self, line: usize, col: usize, chr: char, style: Style) {
         self.ensure_lines(line);
         if col < self.text[line].len() {
-            self.text[line][col] = chr;
-            self.styles[line][col] = style;
+            self.text[line][col] = StyledChar::new(chr, style);
         } else {
             let mut i = self.text[line].len();
             while i < col {
-                self.text[line].push(' ');
-                self.styles[line].push(Style::NoStyle);
+                self.text[line].push(StyledChar::new(' ', Style::NoStyle));
                 i += 1;
             }
-            self.text[line].push(chr);
-            self.styles[line].push(style);
+            self.text[line].push(StyledChar::new(chr, style));
         }
     }
 
@@ -86,8 +92,7 @@ impl StyledBuffer {
 
         // Push the old content over to make room for new content
         for _ in 0..string_len {
-            self.styles[line].insert(0, Style::NoStyle);
-            self.text[line].insert(0, ' ');
+            self.text[line].insert(0, StyledChar::new(' ', Style::NoStyle));
         }
 
         self.puts(line, 0, string, style);
@@ -120,8 +125,8 @@ impl StyledBuffer {
     }
 
     pub fn set_style(&mut self, line: usize, col: usize, style: Style, overwrite: bool) {
-        if let Some(ref mut line) = self.styles.get_mut(line) {
-            if let Some(s) = line.get_mut(col) {
+        if let Some(ref mut line) = self.text.get_mut(line) {
+            if let Some(StyledChar { style: s, .. }) = line.get_mut(col) {
                 if *s == Style::NoStyle || *s == Style::Quotation || overwrite {
                     *s = style;
                 }
