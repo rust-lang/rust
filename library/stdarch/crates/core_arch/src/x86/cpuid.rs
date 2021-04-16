@@ -56,12 +56,16 @@ pub unsafe fn __cpuid_count(leaf: u32, sub_leaf: u32) -> CpuidResult {
     let ecx;
     let edx;
 
+    // LLVM sometimes reserves `ebx` for its internal use, we so we need to use
+    // a scratch register for it instead.
     #[cfg(target_arch = "x86")]
     {
         asm!(
+            "mov {0}, ebx",
             "cpuid",
+            "xchg {0}, ebx",
+            lateout(reg) ebx,
             inlateout("eax") leaf => eax,
-            lateout("ebx") ebx,
             inlateout("ecx") sub_leaf => ecx,
             lateout("edx") edx,
             options(nostack, preserves_flags),
@@ -69,15 +73,12 @@ pub unsafe fn __cpuid_count(leaf: u32, sub_leaf: u32) -> CpuidResult {
     }
     #[cfg(target_arch = "x86_64")]
     {
-        // x86-64 uses `rbx` as the base register, so preserve it.
-        // This works around a bug in LLVM with ASAN enabled:
-        // https://bugs.llvm.org/show_bug.cgi?id=17907
         asm!(
-            "mov rsi, rbx",
+            "mov {0:r}, rbx",
             "cpuid",
-            "xchg rsi, rbx",
+            "xchg {0:r}, rbx",
+            lateout(reg) ebx,
             inlateout("eax") leaf => eax,
-            lateout("esi") ebx,
             inlateout("ecx") sub_leaf => ecx,
             lateout("edx") edx,
             options(nostack, preserves_flags),
