@@ -1060,6 +1060,15 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 FfiSafe
             }
 
+            ty::RawPtr(ty::TypeAndMut { ty, .. })
+                if match ty.kind() {
+                    ty::Tuple(tuple) => tuple.is_empty(),
+                    _ => false,
+                } =>
+            {
+                FfiSafe
+            }
+
             ty::RawPtr(ty::TypeAndMut { ty, .. }) | ty::Ref(_, ty, _) => {
                 self.check_type_for_ffi(cache, ty)
             }
