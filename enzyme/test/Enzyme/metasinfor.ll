@@ -83,7 +83,7 @@ attributes #8 = { noreturn nounwind }
 ; CHECK-NEXT:   br label %for.cond
 
 ; TODO THIS LOOP SHOULD BE KILLED
-; CHECK: for.cond:                                         ; preds = %for.cond, %entry
+; CHECK: for.cond: 
 ; CHECK-NEXT:   %iv = phi i64 [ 0, %entry ], [ %iv.next, %for.cond ]
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %[[trunc:.+]] = trunc i64 %iv to i32

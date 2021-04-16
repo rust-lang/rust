@@ -439,7 +439,7 @@ private:
 public:
   bool legalRecompute(const Value *val, const ValueToValueMapTy &available,
                       IRBuilder<> *BuilderM, bool reverse = false) const;
-  std::map<const Value*, bool> knownRecomputeHeuristic;
+  std::map<const Value *, bool> knownRecomputeHeuristic;
   bool shouldRecompute(const Value *val, const ValueToValueMapTy &available,
                        IRBuilder<> *BuilderM);
 
@@ -811,6 +811,10 @@ public:
                                      BasicBlock *branchingBlock);
 
   void forceContexts();
+
+  void
+  computeMinCache(TypeResults &TR,
+                  const SmallPtrSetImpl<BasicBlock *> &guaranteedUnreachable);
 
   bool isOriginalBlock(const BasicBlock &BB) const {
     for (auto A : originalBlocks) {

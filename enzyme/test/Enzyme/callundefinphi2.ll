@@ -272,7 +272,7 @@ attributes #22 = { readnone speculatable }
 
 ; CHECK:  for.cond10.preheader.i.preheader:                 ; preds = %for.body.i
 ; CHECK-NEXT:    %malloccall = tail call noalias nonnull dereferenceable(128) dereferenceable_or_null(128) i8* @malloc(i64 128)
-; CHECK-NEXT:    %res.i.sroa.0.2_malloccache = bitcast i8* %malloccall to i64*
+; CHECK-NEXT:    %[[malloccache:.+]] = bitcast i8* %malloccall to double*
 ; CHECK-NEXT:    br label %for.cond10.preheader.i
 
 ; CHECK:  for.cond10.preheader.i:                           ; preds = %for.cond.cleanup13.i, %for.cond10.preheader.i.preheader
@@ -289,14 +289,14 @@ attributes #22 = { readnone speculatable }
 ; CHECK: for.body14.i:                                     ; preds = %for.body14.i, %for.cond10.preheader.i
 ; CHECK-NEXT:   %iv5 = phi i64 [ %iv.next6, %for.body14.i ], [ 0, %for.cond10.preheader.i ]
 ; CHECK-NEXT:   %res.i.sroa.0.2 = phi i64 [ %res.i.sroa.0.1, %for.cond10.preheader.i ], [ %[[res]], %for.body14.i ]
-; CHECK-NEXT:   %[[iadd:.+]] = add nsw i64 %iv5, %mul.i.i
-; CHECK-NEXT:   %[[igep:.+]] = getelementptr inbounds i64, i64* %res.i.sroa.0.2_malloccache, i64 %[[iadd]]
-; CHECK-NEXT:   store i64 %res.i.sroa.0.2, i64* %[[igep]], align 8
 ; CHECK-NEXT:   %iv.next6 = add nuw nsw i64 %iv5, 1
+; CHECK-NEXT:   %[[iadd:.+]] = add nsw i64 %mul.i.i, %iv5
 ; CHECK-NEXT:   %arrayidx.i.i = getelementptr inbounds double, double* %3, i64 %[[iadd]]
 ; CHECK-NEXT:   %[[aidx:.+]] = bitcast double* %arrayidx.i.i to i64*
 ; CHECK-NEXT:   %[[prev:.+]] = load i64, i64* %[[aidx]], align 8, !tbaa !2
 ; CHECK-NEXT:   %[[bc:.+]] = bitcast i64 %res.i.sroa.0.2 to double
+; CHECK-NEXT:   %[[igep:.+]] = getelementptr inbounds double, double* %[[malloccache]], i64 %[[iadd]]
+; CHECK-NEXT:   store double %[[bc]], double* %[[igep]], align 8
 ; CHECK-NEXT:   %[[prevbc:.+]] = bitcast i64 %[[prev]] to double
 ; CHECK-NEXT:   %sq = fmul double %[[bc]], %[[bc]]
 ; CHECK-NEXT:   %add.i.i = fadd double %sq, %[[prevbc]]
@@ -371,9 +371,8 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   %[[fad:.+]] = fadd fast double %"add.i.i'de.1", %[[dedd]]
 ; CHECK-NEXT:   %[[iv54:.+]] = mul nsw i64 %"iv3'ac.0", 4
 ; CHECK-NEXT:   %[[iv35a:.+]] = add nsw i64 %"iv5'ac.0", %[[iv54]]
-; CHECK-NEXT:   %[[bcq:.+]] = getelementptr inbounds i64, i64* %res.i.sroa.0.2_malloccache, i64 %[[iv35a]]
-; CHECK-NEXT:   %[[ilx:.+]] = load i64, i64* %[[bcq]], align 8, !invariant.group !6
-; CHECK-NEXT:   %[[unwrap13:.+]] = bitcast i64 %[[ilx]] to double
+; CHECK-NEXT:   %[[bcq:.+]] = getelementptr inbounds double, double* %[[malloccache]], i64 %[[iv35a]]
+; CHECK-NEXT:   %[[unwrap13:.+]] = load double, double* %[[bcq]], align 8, !invariant.group !6
 ; CHECK-NEXT:   %m0diffe = fmul fast double %[[fad]], %[[unwrap13]]
 ; CHECK-NEXT:   %[[m2a:.+]] = fadd fast double %m0diffe, %m0diffe
 ; CHECK-NEXT:   %[[dessa:.+]] = bitcast double %[[m2a]] to i64

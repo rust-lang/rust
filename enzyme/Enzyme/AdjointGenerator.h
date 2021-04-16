@@ -273,10 +273,9 @@ public:
         IRBuilder<> BuilderZ(newi);
         Value *newip = nullptr;
 
-        bool needShadow = is_value_needed_in_reverse<Shadow>(
+        bool needShadow = is_value_needed_in_reverse<ValueType::ShadowPtr>(
             TR, gutils, &I, /*toplevel*/ Mode == DerivativeMode::Both,
             oldUnreachable);
-
         switch (Mode) {
 
         case DerivativeMode::Forward:
@@ -327,7 +326,7 @@ public:
     //! Store loads that need to be cached for use in reverse pass
     if (cache_reads_always ||
         (!cache_reads_never && can_modref &&
-         is_value_needed_in_reverse<Primal>(
+         is_value_needed_in_reverse<ValueType::Primal>(
              TR, gutils, &I, /*toplevel*/ Mode == DerivativeMode::Both,
              oldUnreachable))) {
       IRBuilder<> BuilderZ(gutils->getNewFromOriginal(&I)->getNextNode());
@@ -3468,11 +3467,11 @@ public:
       // NOTE THAT TOPLEVEL IS THERE SIMPLY BECAUSE THAT WAS PREVIOUS ATTITUTE
       // TO FREE'ing
       if (Mode != DerivativeMode::Both) {
-        if (is_value_needed_in_reverse<Primal>(
+        if (is_value_needed_in_reverse<ValueType::Primal>(
                 TR, gutils, orig, /*topLevel*/ Mode == DerivativeMode::Both,
                 oldUnreachable) ||
             hasMetadata(orig, "enzyme_fromstack")) {
-
+          llvm::errs() << " caching for reverse: " << *op << "\n";
           Value *nop = gutils->cacheForReverse(BuilderZ, op,
                                                getIndex(orig, CacheType::Self));
           if (Mode == DerivativeMode::Reverse &&
@@ -3998,7 +3997,7 @@ public:
           }
 
           if (Mode == DerivativeMode::Forward &&
-              is_value_needed_in_reverse<Primal>(
+              is_value_needed_in_reverse<ValueType::Primal>(
                   TR, gutils, orig,
                   /*topLevel*/ Mode == DerivativeMode::Both, oldUnreachable)) {
             gutils->cacheForReverse(BuilderZ, dcall,
@@ -4031,9 +4030,9 @@ public:
         }
 
         if (subretused) {
-          if (is_value_needed_in_reverse<Primal>(TR, gutils, orig,
-                                                 Mode == DerivativeMode::Both,
-                                                 oldUnreachable)) {
+          if (is_value_needed_in_reverse<ValueType::Primal>(
+                  TR, gutils, orig, Mode == DerivativeMode::Both,
+                  oldUnreachable)) {
             cachereplace = BuilderZ.CreatePHI(orig->getType(), 1,
                                               orig->getName() + "_tmpcacheB");
             cachereplace = gutils->cacheForReverse(
@@ -4122,9 +4121,9 @@ public:
       }
       if (/*!topLevel*/ Mode != DerivativeMode::Both && subretused &&
           !orig->doesNotAccessMemory()) {
-        if (is_value_needed_in_reverse<Primal>(TR, gutils, orig,
-                                               Mode == DerivativeMode::Both,
-                                               oldUnreachable)) {
+        if (is_value_needed_in_reverse<ValueType::Primal>(
+                TR, gutils, orig, Mode == DerivativeMode::Both,
+                oldUnreachable)) {
           assert(!replaceFunction);
           cachereplace = BuilderZ.CreatePHI(orig->getType(), 1,
                                             orig->getName() + "_cachereplace2");

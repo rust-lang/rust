@@ -25,14 +25,14 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "GradientUtils.h"
+#include <algorithm>
 
 #include <llvm/Config/llvm-config.h>
 
+#include "DifferentialUseAnalysis.h"
 #include "EnzymeLogic.h"
-
 #include "FunctionUtils.h"
-
+#include "GradientUtils.h"
 #include "LibraryFuncs.h"
 
 #include "llvm/IR/GlobalValue.h"
@@ -42,8 +42,6 @@
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/IR/InstrTypes.h"
 #include "llvm/Transforms/Utils/SimplifyIndVar.h"
-
-#include <algorithm>
 
 std::map<std::string, std::function<llvm::Value *(IRBuilder<> &, CallInst *,
                                                   ArrayRef<Value *>)>>
@@ -56,6 +54,10 @@ extern "C" {
 llvm::cl::opt<bool>
     EnzymeNewCache("enzyme-new-cache", cl::init(true), cl::Hidden,
                    cl::desc("Use new cache decision algorithm"));
+
+llvm::cl::opt<bool> EnzymeMinCutCache("enzyme-mincut-cache", cl::init(true),
+                                      cl::Hidden,
+                                      cl::desc("Use Enzyme Mincut algorithm"));
 
 llvm::cl::opt<bool> EnzymeLoopInvariantCache(
     "enzyme-loop-invariant-cache", cl::init(true), cl::Hidden,
@@ -1409,6 +1411,8 @@ bool GradientUtils::legalRecompute(const Value *val,
         return false;
     }
 
+    if (phi->getNumIncomingValues() == 0)
+      llvm::errs() << *phi << "\n";
     assert(phi->getNumIncomingValues() != 0);
     auto parent = phi->getParent();
     if (parent->getParent() == newFunc) {
@@ -1621,7 +1625,7 @@ bool GradientUtils::shouldRecompute(const Value *val,
   // If this is a load from cache already, just reload this
   if (isa<LoadInst>(val) &&
       cast<LoadInst>(val)->getMetadata("enzyme_fromcache"))
-    return true; 
+    return true;
 
   if (!isa<Instruction>(val))
     return true;
@@ -1630,12 +1634,15 @@ bool GradientUtils::shouldRecompute(const Value *val,
   const Instruction *inst = cast<Instruction>(val);
 
   if (knownRecomputeHeuristic.find(inst) != knownRecomputeHeuristic.end()) {
-    llvm::errs() << " found recompute for " << *inst << " of " << knownRecomputeHeuristic[inst] << "\n";
+    // llvm::errs() << " found recompute for " << *inst << " of " <<
+    // knownRecomputeHeuristic[inst] << "\n";
     return knownRecomputeHeuristic[inst];
   }
   if (auto OrigInst = isOriginal(inst)) {
-    if (knownRecomputeHeuristic.find(OrigInst) != knownRecomputeHeuristic.end()) {
-    llvm::errs() << " found recompute for " << *inst << " of " << knownRecomputeHeuristic[OrigInst] << "\n";
+    if (knownRecomputeHeuristic.find(OrigInst) !=
+        knownRecomputeHeuristic.end()) {
+      // llvm::errs() << " found recompute for " << *inst << " of " <<
+      // knownRecomputeHeuristic[OrigInst] << "\n";
       return knownRecomputeHeuristic[OrigInst];
     }
   }
@@ -3662,4 +3669,156 @@ nofast:;
     }
   }
   return;
+}
+
+void GradientUtils::computeMinCache(
+    TypeResults &TR,
+    const SmallPtrSetImpl<BasicBlock *> &guaranteedUnreachable) {
+  if (EnzymeMinCutCache) {
+    SmallPtrSet<Value *, 4> Recomputes;
+
+    std::map<UsageKey, bool> FullSeen;
+    std::map<UsageKey, bool> OneLevelSeen;
+
+    ValueToValueMapTy Available;
+    for (BasicBlock &BB : *oldFunc) {
+
+      auto L = OrigLI.getLoopFor(&BB);
+
+      auto invariant = [&](Value *V) {
+        if (isa<Constant>(V))
+          return true;
+        if (isa<Argument>(V))
+          return true;
+        if (auto I = dyn_cast<Instruction>(V)) {
+          if (!L->contains(OrigLI.getLoopFor(I->getParent())))
+            return true;
+        }
+        return false;
+      };
+
+      for (Instruction &I : BB) {
+        if (auto PN = dyn_cast<PHINode>(&I)) {
+          if (!OrigLI.isLoopHeader(&BB))
+            continue;
+          if (PN->getType()->isIntegerTy()) {
+            bool legal = true;
+            SmallPtrSet<Value *, 4> Increment;
+            for (auto B : PN->blocks()) {
+              if (OrigLI.getLoopFor(B) == L) {
+                if (auto BO = dyn_cast<BinaryOperator>(
+                        PN->getIncomingValueForBlock(B))) {
+                  if (BO->getOpcode() == BinaryOperator::Add) {
+                    if (BO->getOperand(0) == PN &&
+                            invariant(BO->getOperand(1)) ||
+                        BO->getOperand(1) == PN &&
+                            invariant(BO->getOperand(0))) {
+                      Increment.insert(BO);
+                    } else {
+                      legal = false;
+                    }
+                  } else if (BO->getOpcode() == BinaryOperator::Sub) {
+                    if (BO->getOperand(0) == PN &&
+                        invariant(BO->getOperand(1))) {
+                      Increment.insert(BO);
+                    } else {
+                      legal = false;
+                    }
+                  } else {
+                    legal = false;
+                  }
+                } else {
+                  legal = false;
+                }
+              }
+            }
+            if (legal) {
+              Available[PN] = PN;
+              for (auto I : Increment)
+                Available[I] = I;
+            }
+          }
+        } else if (auto CI = dyn_cast<CallInst>(&I)) {
+          Function *F = CI->getCalledFunction();
+
+#if LLVM_VERSION_MAJOR >= 11
+          if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledOperand()))
+#else
+          if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledValue()))
+#endif
+          {
+            if (castinst->isCast())
+              if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+                F = fn;
+              }
+          }
+
+          if (F && isAllocationFunction(*F, TLI))
+            Available[CI] = CI;
+        }
+      }
+    }
+
+    for (BasicBlock &BB : *oldFunc) {
+      for (Instruction &I : BB) {
+        if (!legalRecompute(&I, Available, nullptr)) {
+          if (is_value_needed_in_reverse<ValueType::Primal>(
+                  TR, this, &I, /*topLevel*/ mode == DerivativeMode::Both,
+                  FullSeen, guaranteedUnreachable)) {
+            // llvm::errs() << " not legal recompute: " << I << "\n";
+            bool oneneed = is_value_needed_in_reverse<ValueType::Primal,
+                                                      /*OneLevel*/ true>(
+                TR, this, &I, /*topLevel*/ mode == DerivativeMode::Both,
+                OneLevelSeen, guaranteedUnreachable);
+            if (oneneed)
+              knownRecomputeHeuristic[&I] = true;
+            else
+              Recomputes.insert(&I);
+          }
+        }
+      }
+    }
+
+    SmallPtrSet<Value *, 4> Intermediates;
+    SmallPtrSet<Value *, 4> Required;
+
+    Intermediates.clear();
+    Required.clear();
+    std::deque<Value *> todo(Recomputes.begin(), Recomputes.end());
+
+    while (todo.size()) {
+      Value *V = todo.front();
+      todo.pop_front();
+      if (Intermediates.count(V))
+        continue;
+      if (!is_value_needed_in_reverse<ValueType::Primal>(
+              TR, this, V, /*topLevel*/ mode == DerivativeMode::Both, FullSeen,
+              guaranteedUnreachable)) {
+        continue;
+      }
+      if (!Recomputes.count(V) && !legalRecompute(V, Available, nullptr)) {
+        // if not legal to recompute, we would've already explicitly marked this
+        // for caching if it was needed in reverse pass
+        continue;
+      }
+      Intermediates.insert(V);
+      if (is_value_needed_in_reverse<ValueType::Primal, /*OneLevel*/ true>(
+              TR, this, V, /*topLevel*/ mode == DerivativeMode::Both,
+              OneLevelSeen, guaranteedUnreachable)) {
+        Required.insert(V);
+      } else {
+        for (auto V2 : V->users()) {
+          todo.push_back(V2);
+        }
+      }
+    }
+
+    SmallPtrSet<Value *, 5> MinReq;
+    minCut(Recomputes, Intermediates, Required, MinReq);
+    for (auto V : Intermediates) {
+      // llvm::errs() << " int: " << *V << " minreq: " << (int)MinReq.count(V)
+      // << "\n";
+      knownRecomputeHeuristic[V] = !MinReq.count(V);
+    }
+  }
 }

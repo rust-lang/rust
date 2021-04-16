@@ -80,10 +80,6 @@ cl::opt<bool> cache_reads_never("enzyme-cache-never", cl::init(false),
 cl::opt<bool> nonmarkedglobals_inactiveloads(
     "enzyme_nonmarkedglobals_inactiveloads", cl::init(true), cl::Hidden,
     cl::desc("Consider loads of nonmarked globals to be inactive"));
-
-llvm::cl::opt<bool>
-    EnzymeMinCutCache("enzyme-mincut-cache", cl::init(false), cl::Hidden,
-                   cl::desc("Use Enzyme Mincut algorithm"));
 }
 
 bool is_load_uncacheable(
@@ -470,11 +466,11 @@ void calculateUnusedValuesInFunction(
     GradientUtils *gutils, TargetLibraryInfo &TLI,
     const std::vector<DIFFE_TYPE> &constant_args,
     const llvm::SmallPtrSetImpl<BasicBlock *> &oldUnreachable) {
-  std::map<std::pair<const Value *, bool>, bool> PrimalSeen;
+  std::map<UsageKey, bool> PrimalSeen;
   calculateUnusedValues(
       func, unnecessaryValues, unnecessaryInstructions, returnValue,
       [&](const Value *val) {
-        auto needed = is_value_needed_in_reverse<Primal>(
+        auto needed = is_value_needed_in_reverse<ValueType::Primal>(
             TR, gutils, val, /*topLevel*/ mode == DerivativeMode::Both,
             PrimalSeen, oldUnreachable);
         return needed;
@@ -631,10 +627,10 @@ void calculateUnusedValuesInFunction(
         return ((mode == DerivativeMode::Forward ||
                  mode == DerivativeMode::Both) &&
                 inst->mayWriteToMemory()) ||
-               is_value_needed_in_reverse<Primal>(TR, gutils, inst,
-                                                  /*topLevel*/ mode ==
-                                                      DerivativeMode::Both,
-                                                  PrimalSeen, oldUnreachable);
+               is_value_needed_in_reverse<ValueType::Primal>(
+                   TR, gutils, inst,
+                   /*topLevel*/ mode == DerivativeMode::Both, PrimalSeen,
+                   oldUnreachable);
       });
 #if 0
       llvm::errs() << "unnecessaryValues of " << func.getName() << ":\n";
@@ -973,8 +969,8 @@ bool legalCombinedForwardReverse(
       }
       return;
     }
-    if (is_value_needed_in_reverse<Primal>(TR, gutils, I, /*topLevel*/ true,
-                                           oldUnreachable)) {
+    if (is_value_needed_in_reverse<ValueType::Primal>(
+            TR, gutils, I, /*topLevel*/ true, oldUnreachable)) {
       legal = false;
       if (EnzymePrintPerf) {
         if (called)
@@ -1399,6 +1395,8 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
       gutils->erase(ri);
     }
   }
+
+  gutils->computeMinCache(TR, guaranteedUnreachable);
 
   AdjointGenerator<AugmentedReturn *> maker(
       DerivativeMode::Forward, gutils, constant_args, retType, TR, getIndex,
@@ -2589,74 +2587,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
     }
   }
 
-  if (topLevel && EnzymeMinCutCache) {
-    SmallPtrSet<Value*, 4> Recomputes;
-
-    std::map<std::pair<const Value *, bool>, bool> FullSeen;
-    std::map<std::pair<const Value *, bool>, bool> OneLevelSeen;
-    //llvm::errs() << " starting\n"; 
-    for (auto pair : can_modref_map) {
-      bool fullneed = is_value_needed_in_reverse<Primal>(TR, gutils, pair.first, /*topLevel*/true, FullSeen, guaranteedUnreachable);
-      bool oneneed = is_value_needed_in_reverse<Primal, /*OneLevel*/true>(TR, gutils, pair.first, /*topLevel*/true, OneLevelSeen, guaranteedUnreachable);
-      //llvm::errs() << "psec: " << *pair.first << " modref: " << (int)pair.second << " fullneeD: " << (int)fullneed << " oneneeD: " << (int)oneneed << "\n";
-      if (pair.second && fullneed) {
-        if (oneneed) {
-          gutils->knownRecomputeHeuristic[pair.first] = true;
-        } else
-          Recomputes.insert(pair.first);
-      }
-    }
-
-    SmallPtrSet<Value*, 4> Intermediates;
-    SmallPtrSet<Value*, 4> Required;
-
-    auto Reset = [&]() {
-      Intermediates.clear();
-      Required.clear();
-      std::deque<Value*> todo(Recomputes.begin(), Recomputes.end());
-
-      while (todo.size()) {
-        Value *V = todo.front();
-        todo.pop_front();
-        if (Intermediates.count(V)) continue;
-        if (!is_value_needed_in_reverse<Primal>(TR, gutils, V, /*topLevel*/true, FullSeen, guaranteedUnreachable)) {
-          continue;
-        }
-        //llvm::errs() << " iv: " << *V <<"\n";
-        Intermediates.insert(V);
-        if (is_value_needed_in_reverse<Primal, /*OneLevel*/true>(TR, gutils, V, /*topLevel*/true, OneLevelSeen, guaranteedUnreachable) 
-            //|| !gutils->legalRecompute(V, ValueToVak)
-            ) {
-          Required.insert(V);
-        } else {
-          for (auto V2 : V->users()) {
-            todo.push_back(V2);
-          }
-        }
-      }
-    };
-
-    Reset();
-    
-    #if 0
-    auto DefiniteCache = [&](Value* V) {
-      gutils->knownRecomputeHeuristic[V] = true;
-      Required.erase(V);
-
-      // Assert not needed for reverse
-      FullSeen.clear();
-      FullSeen[UsageKey(V, /*topLevel*/true)] = false;
-      OneLevelSeen[UsageKey(V, /*topLevel*/true)] = false;
-
-
-    };
-    #endif
-    SmallPtrSet<Value*, 5> MinReq;
-    minCut(Recomputes, Intermediates, Required, MinReq);
-    for (auto V : Intermediates) {
-      gutils->knownRecomputeHeuristic[V] = !MinReq.count(V);
-    }
-  }
+  gutils->computeMinCache(TR, guaranteedUnreachable);
 
   AdjointGenerator<const AugmentedReturn *> maker(
       topLevel ? DerivativeMode::Both : DerivativeMode::Reverse, gutils,
