@@ -66,6 +66,7 @@ use hir_expand::{
 };
 use la_arena::Idx;
 use nameres::DefMap;
+use path::ModPath;
 use syntax::ast;
 
 use crate::builtin_type::BuiltinType;
@@ -675,7 +676,9 @@ impl<T: ast::AstNode> AstIdWithPath<T> {
     }
 }
 
-pub struct UnresolvedMacro;
+pub struct UnresolvedMacro {
+    pub path: ModPath,
+}
 
 fn macro_call_as_call_id(
     call: &AstIdWithPath<ast::MacroCall>,
@@ -684,7 +687,8 @@ fn macro_call_as_call_id(
     resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
     error_sink: &mut dyn FnMut(mbe::ExpandError),
 ) -> Result<Result<MacroCallId, ErrorEmitted>, UnresolvedMacro> {
-    let def: MacroDefId = resolver(call.path.clone()).ok_or(UnresolvedMacro)?;
+    let def: MacroDefId =
+        resolver(call.path.clone()).ok_or_else(|| UnresolvedMacro { path: call.path.clone() })?;
 
     let res = if let MacroDefKind::BuiltInEager(..) = def.kind {
         let macro_call = InFile::new(call.ast_id.file_id, call.ast_id.to_node(db.upcast()));
@@ -714,8 +718,13 @@ fn derive_macro_as_call_id(
     krate: CrateId,
     resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
 ) -> Result<MacroCallId, UnresolvedMacro> {
-    let def: MacroDefId = resolver(item_attr.path.clone()).ok_or(UnresolvedMacro)?;
-    let last_segment = item_attr.path.segments().last().ok_or(UnresolvedMacro)?;
+    let def: MacroDefId = resolver(item_attr.path.clone())
+        .ok_or_else(|| UnresolvedMacro { path: item_attr.path.clone() })?;
+    let last_segment = item_attr
+        .path
+        .segments()
+        .last()
+        .ok_or_else(|| UnresolvedMacro { path: item_attr.path.clone() })?;
     let res = def
         .as_lazy_macro(
             db.upcast(),

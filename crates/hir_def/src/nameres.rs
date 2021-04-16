@@ -481,7 +481,7 @@ mod diagnostics {
 
         UnresolvedProcMacro { ast: MacroCallKind },
 
-        UnresolvedMacroCall { ast: AstId<ast::MacroCall> },
+        UnresolvedMacroCall { ast: AstId<ast::MacroCall>, path: ModPath },
 
         MacroError { ast: MacroCallKind, message: String },
     }
@@ -546,8 +546,9 @@ mod diagnostics {
         pub(super) fn unresolved_macro_call(
             container: LocalModuleId,
             ast: AstId<ast::MacroCall>,
+            path: ModPath,
         ) -> Self {
-            Self { in_module: container, kind: DiagnosticKind::UnresolvedMacroCall { ast } }
+            Self { in_module: container, kind: DiagnosticKind::UnresolvedMacroCall { ast, path } }
         }
 
         pub(super) fn add_to(
@@ -662,9 +663,13 @@ mod diagnostics {
                     });
                 }
 
-                DiagnosticKind::UnresolvedMacroCall { ast } => {
+                DiagnosticKind::UnresolvedMacroCall { ast, path } => {
                     let node = ast.to_node(db.upcast());
-                    sink.push(UnresolvedMacroCall { file: ast.file_id, node: AstPtr::new(&node) });
+                    sink.push(UnresolvedMacroCall {
+                        file: ast.file_id,
+                        node: AstPtr::new(&node),
+                        path: path.clone(),
+                    });
                 }
 
                 DiagnosticKind::MacroError { ast, message } => {

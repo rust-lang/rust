@@ -170,7 +170,7 @@ fn unresolved_legacy_scope_macro() {
 
           m!();
           m2!();
-        //^^^^^^ unresolved macro call
+        //^^^^^^ unresolved macro `self::m2!`
         "#,
     );
 }
@@ -187,7 +187,7 @@ fn unresolved_module_scope_macro() {
 
           self::m!();
           self::m2!();
-        //^^^^^^^^^^^^ unresolved macro call
+        //^^^^^^^^^^^^ unresolved macro `self::m2!`
         "#,
     );
 }
