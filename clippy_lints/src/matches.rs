@@ -738,8 +738,11 @@ fn report_single_match_single_pattern(
     let (msg, sugg) = if_chain! {
         if let PatKind::Path(_) | PatKind::Lit(_) = pat.kind;
         let (ty, ty_ref_count) = peel_mid_ty_refs(cx.typeck_results().expr_ty(ex));
-        if let Some(trait_id) = cx.tcx.lang_items().structural_peq_trait();
-        if ty.is_integral() || ty.is_char() || ty.is_str() || implements_trait(cx, ty, trait_id, &[]);
+        if let Some(spe_trait_id) = cx.tcx.lang_items().structural_peq_trait();
+        if let Some(pe_trait_id) = cx.tcx.lang_items().eq_trait();
+        if ty.is_integral() || ty.is_char() || ty.is_str()
+            || (implements_trait(cx, ty, spe_trait_id, &[])
+                && implements_trait(cx, ty, pe_trait_id, &[ty.into()]));
         then {
             // scrutinee derives PartialEq and the pattern is a constant.
             let pat_ref_count = match pat.kind {
