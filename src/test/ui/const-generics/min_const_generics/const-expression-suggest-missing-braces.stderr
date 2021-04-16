@@ -10,7 +10,7 @@ LL |     foo::<{ BAR + 3 }>();
    |           ^         ^
 
 error: expressions must be enclosed in braces to be used as const generic arguments
-  --> $DIR/const-expression-suggest-missing-braces.rs:18:11
+  --> $DIR/const-expression-suggest-missing-braces.rs:19:11
    |
 LL |     foo::<3 + 3>();
    |           ^^^^^
@@ -21,7 +21,7 @@ LL |     foo::<{ 3 + 3 }>();
    |           ^       ^
 
 error: expected one of `,` or `>`, found `-`
-  --> $DIR/const-expression-suggest-missing-braces.rs:21:15
+  --> $DIR/const-expression-suggest-missing-braces.rs:22:15
    |
 LL |     foo::<BAR - 3>();
    |               ^ expected one of `,` or `>`
@@ -32,7 +32,7 @@ LL |     foo::<{ BAR - 3 }>();
    |           ^         ^
 
 error: expected one of `,` or `>`, found `-`
-  --> $DIR/const-expression-suggest-missing-braces.rs:24:15
+  --> $DIR/const-expression-suggest-missing-braces.rs:25:15
    |
 LL |     foo::<BAR - BAR>();
    |               ^ expected one of `,` or `>`
@@ -43,7 +43,7 @@ LL |     foo::<{ BAR - BAR }>();
    |           ^           ^
 
 error: expressions must be enclosed in braces to be used as const generic arguments
-  --> $DIR/const-expression-suggest-missing-braces.rs:27:11
+  --> $DIR/const-expression-suggest-missing-braces.rs:28:11
    |
 LL |     foo::<100 - BAR>();
    |           ^^^^^^^^^
@@ -54,7 +54,7 @@ LL |     foo::<{ 100 - BAR }>();
    |           ^           ^
 
 error: expected one of `,` or `>`, found `(`
-  --> $DIR/const-expression-suggest-missing-braces.rs:30:19
+  --> $DIR/const-expression-suggest-missing-braces.rs:31:19
    |
 LL |     foo::<bar<i32>()>();
    |                   ^ expected one of `,` or `>`
@@ -65,7 +65,7 @@ LL |     foo::<{ bar<i32>() }>();
    |           ^            ^
 
 error: expected one of `,` or `>`, found `(`
-  --> $DIR/const-expression-suggest-missing-braces.rs:33:21
+  --> $DIR/const-expression-suggest-missing-braces.rs:34:21
    |
 LL |     foo::<bar::<i32>()>();
    |                     ^ expected one of `,` or `>`
@@ -76,7 +76,7 @@ LL |     foo::<{ bar::<i32>() }>();
    |           ^              ^
 
 error: expected one of `,` or `>`, found `(`
-  --> $DIR/const-expression-suggest-missing-braces.rs:36:21
+  --> $DIR/const-expression-suggest-missing-braces.rs:37:21
    |
 LL |     foo::<bar::<i32>() + BAR>();
    |                     ^ expected one of `,` or `>`
@@ -87,7 +87,7 @@ LL |     foo::<{ bar::<i32>() + BAR }>();
    |           ^                    ^
 
 error: expected one of `,` or `>`, found `(`
-  --> $DIR/const-expression-suggest-missing-braces.rs:39:21
+  --> $DIR/const-expression-suggest-missing-braces.rs:40:21
    |
 LL |     foo::<bar::<i32>() - BAR>();
    |                     ^ expected one of `,` or `>`
@@ -98,7 +98,7 @@ LL |     foo::<{ bar::<i32>() - BAR }>();
    |           ^                    ^
 
 error: expected one of `,` or `>`, found `-`
-  --> $DIR/const-expression-suggest-missing-braces.rs:42:15
+  --> $DIR/const-expression-suggest-missing-braces.rs:43:15
    |
 LL |     foo::<BAR - bar::<i32>()>();
    |               ^ expected one of `,` or `>`
@@ -109,7 +109,7 @@ LL |     foo::<{ BAR - bar::<i32>() }>();
    |           ^                    ^
 
 error: expected one of `,` or `>`, found `-`
-  --> $DIR/const-expression-suggest-missing-braces.rs:45:15
+  --> $DIR/const-expression-suggest-missing-braces.rs:46:15
    |
 LL |     foo::<BAR - bar::<i32>()>();
    |               ^ expected one of `,` or `>`
@@ -138,6 +138,8 @@ LL |     foo::<BAR + BAR>();
    |           ^^^^^^^^^ help: use `dyn`: `dyn BAR + BAR`
    |
    = note: `#[warn(bare_trait_objects)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2021 edition!
+   = note: for more information, see issue #80165 <https://github.com/rust-lang/rust/issues/80165>
 
 error[E0747]: type provided when a constant was expected
   --> $DIR/const-expression-suggest-missing-braces.rs:11:11

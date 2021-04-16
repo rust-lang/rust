@@ -11,15 +11,17 @@ extern crate issue_61963_1;
 // generate code which would trigger the lint.
 
 pub struct Baz;
-pub trait Bar { }
+pub trait Bar {}
 pub struct Qux<T>(T);
 
 #[dom_struct]
 pub struct Foo {
     //~^ ERROR trait objects without an explicit `dyn` are deprecated [bare_trait_objects]
+    //~| WARN this was previously accepted by the compiler
     qux: Qux<Qux<Baz>>,
     bar: Box<Bar>,
     //~^ ERROR trait objects without an explicit `dyn` are deprecated [bare_trait_objects]
+    //~| WARN this was previously accepted by the compiler
 }
 
 fn main() {}

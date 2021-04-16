@@ -14,12 +14,8 @@ pub struct Foo;
 mod test {
     use crate::foo::foo;
 
-    #[foo] //~ WARN: absolute paths must start with
-    //~| WARN: previously accepted
-    //~| WARN: absolute paths
-    //~| WARN: previously accepted
-    fn main() {
-    }
+    #[foo]
+    fn main() {}
 }
 
 fn main() {
