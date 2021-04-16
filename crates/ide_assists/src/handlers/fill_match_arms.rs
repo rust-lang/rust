@@ -71,12 +71,6 @@ pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<
             return None;
         }
 
-        // We do not currently support filling match arms for a tuple
-        // containing a single enum.
-        if enum_defs.len() < 2 {
-            return None;
-        }
-
         // When calculating the match arms for a tuple of enums, we want
         // to create a match arm for each possible combination of enum
         // values. The `multi_cartesian_product` method transforms
@@ -514,10 +508,7 @@ fn main() {
 
     #[test]
     fn fill_match_arms_single_element_tuple_of_enum() {
-        // For now we don't hande the case of a single element tuple, but
-        // we could handle this in the future if `make::tuple_pat` allowed
-        // creating a tuple with a single pattern.
-        check_assist_not_applicable(
+        check_assist(
             fill_match_arms,
             r#"
             enum A { One, Two }
@@ -525,6 +516,17 @@ fn main() {
             fn main() {
                 let a = A::One;
                 match (a$0, ) {
+                }
+            }
+            "#,
+            r#"
+            enum A { One, Two }
+
+            fn main() {
+                let a = A::One;
+                match (a, ) {
+                    $0(A::One,) => {}
+                    (A::Two,) => {}
                 }
             }
             "#,

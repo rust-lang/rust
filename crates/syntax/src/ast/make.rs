@@ -29,9 +29,13 @@ pub fn ty(text: &str) -> ast::Type {
 pub fn ty_unit() -> ast::Type {
     ty("()")
 }
-// FIXME: handle types of length == 1
 pub fn ty_tuple(types: impl IntoIterator<Item = ast::Type>) -> ast::Type {
-    let contents = types.into_iter().join(", ");
+    let mut count: usize = 0;
+    let mut contents = types.into_iter().inspect(|_| count += 1).join(", ");
+    if count == 1 {
+        contents.push(',');
+    }
+
     ty(&format!("({})", contents))
 }
 // FIXME: handle path to type
@@ -292,11 +296,13 @@ pub fn wildcard_pat() -> ast::WildcardPat {
 
 /// Creates a tuple of patterns from an iterator of patterns.
 ///
-/// Invariant: `pats` must be length > 1
-///
-/// FIXME handle `pats` length == 1
+/// Invariant: `pats` must be length > 0
 pub fn tuple_pat(pats: impl IntoIterator<Item = ast::Pat>) -> ast::TuplePat {
-    let pats_str = pats.into_iter().map(|p| p.to_string()).join(", ");
+    let mut count: usize = 0;
+    let mut pats_str = pats.into_iter().inspect(|_| count += 1).join(", ");
+    if count == 1 {
+        pats_str.push(',');
+    }
     return from_text(&format!("({})", pats_str));
 
     fn from_text(text: &str) -> ast::TuplePat {
