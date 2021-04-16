@@ -1129,7 +1129,7 @@ fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) 
             Applicability::MaybeIncorrect,
         ),
         variants => {
-            let mut suggestions: Vec<_> = variants.iter().cloned().map(format_suggestion).collect();
+            let mut suggestions: Vec<_> = variants.iter().copied().map(format_suggestion).collect();
             let message = if adt_def.is_variant_list_non_exhaustive() {
                 suggestions.push("_".into());
                 "wildcard matches known variants and will also match future added variants"

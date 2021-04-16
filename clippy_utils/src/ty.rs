@@ -13,7 +13,7 @@ use rustc_lint::LateContext;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
 use rustc_middle::ty::{self, AdtDef, IntTy, Ty, TypeFoldable, UintTy};
 use rustc_span::sym;
-use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits::query::normalize::AtExt;
 
@@ -50,6 +50,25 @@ pub fn contains_adt_constructor(ty: Ty<'_>, adt: &AdtDef) -> bool {
         GenericArgKind::Type(inner_ty) => inner_ty.ty_adt_def() == Some(adt),
         GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
     })
+}
+
+/// Resolves `<T as Iterator>::Item` for `T`
+/// Do not invoke without first verifying that the type implements `Iterator`
+pub fn get_iterator_item_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+    cx.tcx
+        .get_diagnostic_item(sym::Iterator)
+        .and_then(|iter_did| {
+            cx.tcx.associated_items(iter_did).find_by_name_and_kind(
+                cx.tcx,
+                Ident::from_str("Item"),
+                ty::AssocKind::Type,
+                iter_did,
+            )
+        })
+        .map(|assoc| {
+            let proj = cx.tcx.mk_projection(assoc.def_id, cx.tcx.mk_substs_trait(ty, &[]));
+            cx.tcx.normalize_erasing_regions(cx.param_env, proj)
+        })
 }
 
 /// Returns true if ty has `iter` or `iter_mut` methods

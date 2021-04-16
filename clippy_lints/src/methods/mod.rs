@@ -8,6 +8,7 @@ mod chars_next_cmp;
 mod chars_next_cmp_with_unwrap;
 mod clone_on_copy;
 mod clone_on_ref_ptr;
+mod cloned_instead_of_copied;
 mod expect_fun_call;
 mod expect_used;
 mod filetype_is_file;
@@ -72,6 +73,29 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::SymbolStr;
 use rustc_span::{sym, Span};
 use rustc_typeck::hir_ty_to_ty;
+
+declare_clippy_lint! {
+    /// **What it does:** Checks for usages of `cloned()` on an `Iterator` or `Option` where
+    /// `copied()` could be used instead.
+    ///
+    /// **Why is this bad?** `copied()` is better because it guarantees that the type being cloned
+    /// implements `Copy`.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// [1, 2, 3].iter().cloned();
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// [1, 2, 3].iter().copied();
+    /// ```
+    pub CLONED_INSTEAD_OF_COPIED,
+    pedantic,
+    "used `cloned` where `copied` could be used instead"
+}
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `.unwrap()` calls on `Option`s and on `Result`s.
@@ -1638,6 +1662,7 @@ impl_lint_pass!(Methods => [
     CLONE_ON_COPY,
     CLONE_ON_REF_PTR,
     CLONE_DOUBLE_REF,
+    CLONED_INSTEAD_OF_COPIED,
     INEFFICIENT_TO_STRING,
     NEW_RET_NO_SELF,
     SINGLE_CHAR_PATTERN,
@@ -1909,6 +1934,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
             ("as_mut", []) => useless_asref::check(cx, expr, "as_mut", recv),
             ("as_ref", []) => useless_asref::check(cx, expr, "as_ref", recv),
             ("assume_init", []) => uninit_assumed_init::check(cx, expr, recv),
+            ("cloned", []) => cloned_instead_of_copied::check(cx, expr, recv, span),
             ("collect", []) => match method_call!(recv) {
                 Some(("cloned", [recv2], _)) => iter_cloned_collect::check(cx, expr, recv2),
                 Some(("map", [m_recv, m_arg], _)) => {

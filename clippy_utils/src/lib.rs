@@ -1053,7 +1053,7 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
 /// the function once on the given pattern.
 pub fn recurse_or_patterns<'tcx, F: FnMut(&'tcx Pat<'tcx>)>(pat: &'tcx Pat<'tcx>, mut f: F) {
     if let PatKind::Or(pats) = pat.kind {
-        pats.iter().cloned().for_each(f)
+        pats.iter().copied().for_each(f)
     } else {
         f(pat)
     }
@@ -1230,14 +1230,14 @@ pub fn match_any_def_paths(cx: &LateContext<'_>, did: DefId, paths: &[&[&str]]) 
     let search_path = cx.get_def_path(did);
     paths
         .iter()
-        .position(|p| p.iter().map(|x| Symbol::intern(x)).eq(search_path.iter().cloned()))
+        .position(|p| p.iter().map(|x| Symbol::intern(x)).eq(search_path.iter().copied()))
 }
 
 /// Checks if the given `DefId` matches the path.
 pub fn match_def_path<'tcx>(cx: &LateContext<'tcx>, did: DefId, syms: &[&str]) -> bool {
     // We should probably move to Symbols in Clippy as well rather than interning every time.
     let path = cx.get_def_path(did);
-    syms.iter().map(|x| Symbol::intern(x)).eq(path.iter().cloned())
+    syms.iter().map(|x| Symbol::intern(x)).eq(path.iter().copied())
 }
 
 pub fn match_panic_call(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
