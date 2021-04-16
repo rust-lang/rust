@@ -24,6 +24,64 @@ pub(crate) fn codegen_inline_asm<'tcx>(
         let true_ = fx.bcx.ins().iconst(types::I32, 1);
         fx.bcx.ins().trapnz(true_, TrapCode::User(1));
         return;
+    } else if template[0] == InlineAsmTemplatePiece::String("mov rsi, rbx".to_string())
+        && template[1] == InlineAsmTemplatePiece::String("\n".to_string())
+        && template[2] == InlineAsmTemplatePiece::String("cpuid".to_string())
+        && template[3] == InlineAsmTemplatePiece::String("\n".to_string())
+        && template[4] == InlineAsmTemplatePiece::String("xchg rsi, rbx".to_string())
+    {
+        assert_eq!(operands.len(), 4);
+        let (leaf, eax_place) = match operands[0] {
+            InlineAsmOperand::InOut { reg, late: true, ref in_value, out_place } => {
+                let reg = expect_reg(reg);
+                assert_eq!(reg, InlineAsmReg::X86(X86InlineAsmReg::ax));
+                (
+                    crate::base::codegen_operand(fx, in_value).load_scalar(fx),
+                    crate::base::codegen_place(fx, out_place.unwrap()),
+                )
+            }
+            _ => unreachable!(),
+        };
+        let ebx_place = match operands[1] {
+            InlineAsmOperand::Out { reg, late: true, place } => {
+                let reg = expect_reg(reg);
+                assert_eq!(reg, InlineAsmReg::X86(X86InlineAsmReg::si));
+                crate::base::codegen_place(fx, place.unwrap())
+            }
+            _ => unreachable!(),
+        };
+        let (sub_leaf, ecx_place) = match operands[2] {
+            InlineAsmOperand::InOut { reg, late: true, ref in_value, out_place } => {
+                let reg = expect_reg(reg);
+                assert_eq!(reg, InlineAsmReg::X86(X86InlineAsmReg::cx));
+                (
+                    crate::base::codegen_operand(fx, in_value).load_scalar(fx),
+                    crate::base::codegen_place(fx, out_place.unwrap()),
+                )
+            }
+            _ => unreachable!(),
+        };
+        let edx_place = match operands[3] {
+            InlineAsmOperand::Out { reg, late: true, place } => {
+                let reg = expect_reg(reg);
+                assert_eq!(reg, InlineAsmReg::X86(X86InlineAsmReg::dx));
+                crate::base::codegen_place(fx, place.unwrap())
+            }
+            _ => unreachable!(),
+        };
+
+        let (eax, ebx, ecx, edx) = crate::intrinsics::codegen_cpuid_call(fx, leaf, sub_leaf);
+
+        eax_place.write_cvalue(fx, CValue::by_val(eax, fx.layout_of(fx.tcx.types.u32)));
+        ebx_place.write_cvalue(fx, CValue::by_val(ebx, fx.layout_of(fx.tcx.types.u32)));
+        ecx_place.write_cvalue(fx, CValue::by_val(ecx, fx.layout_of(fx.tcx.types.u32)));
+        edx_place.write_cvalue(fx, CValue::by_val(edx, fx.layout_of(fx.tcx.types.u32)));
+        return;
+    } else if fx.tcx.symbol_name(fx.instance).name.starts_with("___chkstk") {
+        // ___chkstk, ___chkstk_ms and __alloca are only used on Windows
+        crate::trap::trap_unimplemented(fx, "Stack probes are not supported");
+    } else if fx.tcx.symbol_name(fx.instance).name == "__alloca" {
+        crate::trap::trap_unimplemented(fx, "Alloca is not supported");
     }
 
     let mut slot_size = Size::from_bytes(0);

@@ -744,85 +744,15 @@ fn codegen_stmt<'tcx>(
         | StatementKind::AscribeUserType(..) => {}
 
         StatementKind::LlvmInlineAsm(asm) => {
-            use rustc_span::symbol::Symbol;
-            let LlvmInlineAsm { asm, outputs, inputs } = &**asm;
-            let rustc_hir::LlvmInlineAsmInner {
-                asm: asm_code,         // Name
-                outputs: output_names, // Vec<LlvmInlineAsmOutput>
-                inputs: input_names,   // Vec<Name>
-                clobbers,              // Vec<Name>
-                volatile,              // bool
-                alignstack,            // bool
-                dialect: _,
-                asm_str_style: _,
-            } = asm;
-            match asm_code.as_str().trim() {
+            match asm.asm.asm.as_str().trim() {
                 "" => {
                     // Black box
                 }
-                "mov %rbx, %rsi\n                  cpuid\n                  xchg %rbx, %rsi" => {
-                    assert_eq!(input_names, &[Symbol::intern("{eax}"), Symbol::intern("{ecx}")]);
-                    assert_eq!(output_names.len(), 4);
-                    for (i, c) in (&["={eax}", "={esi}", "={ecx}", "={edx}"]).iter().enumerate() {
-                        assert_eq!(&output_names[i].constraint.as_str(), c);
-                        assert!(!output_names[i].is_rw);
-                        assert!(!output_names[i].is_indirect);
-                    }
-
-                    assert_eq!(clobbers, &[]);
-
-                    assert!(!volatile);
-                    assert!(!alignstack);
-
-                    assert_eq!(inputs.len(), 2);
-                    let leaf = codegen_operand(fx, &inputs[0].1).load_scalar(fx); // %eax
-                    let subleaf = codegen_operand(fx, &inputs[1].1).load_scalar(fx); // %ecx
-
-                    let (eax, ebx, ecx, edx) =
-                        crate::intrinsics::codegen_cpuid_call(fx, leaf, subleaf);
-
-                    assert_eq!(outputs.len(), 4);
-                    codegen_place(fx, outputs[0])
-                        .write_cvalue(fx, CValue::by_val(eax, fx.layout_of(fx.tcx.types.u32)));
-                    codegen_place(fx, outputs[1])
-                        .write_cvalue(fx, CValue::by_val(ebx, fx.layout_of(fx.tcx.types.u32)));
-                    codegen_place(fx, outputs[2])
-                        .write_cvalue(fx, CValue::by_val(ecx, fx.layout_of(fx.tcx.types.u32)));
-                    codegen_place(fx, outputs[3])
-                        .write_cvalue(fx, CValue::by_val(edx, fx.layout_of(fx.tcx.types.u32)));
-                }
-                "xgetbv" => {
-                    assert_eq!(input_names, &[Symbol::intern("{ecx}")]);
-
-                    assert_eq!(output_names.len(), 2);
-                    for (i, c) in (&["={eax}", "={edx}"]).iter().enumerate() {
-                        assert_eq!(&output_names[i].constraint.as_str(), c);
-                        assert!(!output_names[i].is_rw);
-                        assert!(!output_names[i].is_indirect);
-                    }
-
-                    assert_eq!(clobbers, &[]);
-
-                    assert!(!volatile);
-                    assert!(!alignstack);
-
-                    crate::trap::trap_unimplemented(fx, "_xgetbv arch intrinsic is not supported");
-                }
-                // ___chkstk, ___chkstk_ms and __alloca are only used on Windows
-                _ if fx.tcx.symbol_name(fx.instance).name.starts_with("___chkstk") => {
-                    crate::trap::trap_unimplemented(fx, "Stack probes are not supported");
-                }
-                _ if fx.tcx.symbol_name(fx.instance).name == "__alloca" => {
-                    crate::trap::trap_unimplemented(fx, "Alloca is not supported");
-                }
-                // Used in sys::windows::abort_internal
-                "int $$0x29" => {
-                    crate::trap::trap_unimplemented(fx, "Windows abort");
-                }
-                _ => fx
-                    .tcx
-                    .sess
-                    .span_fatal(stmt.source_info.span, "Inline assembly is not supported"),
+                _ => fx.tcx.sess.span_fatal(
+                    stmt.source_info.span,
+                    "Legacy `llvm_asm!` inline assembly is not supported. \
+                    Try using the new `asm!` instead.",
+                ),
             }
         }
         StatementKind::Coverage { .. } => fx.tcx.sess.fatal("-Zcoverage is unimplemented"),

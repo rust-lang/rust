@@ -13,6 +13,7 @@ pub(crate) fn get_clif_linkage(
         (RLinkage::External, Visibility::Default) => Linkage::Export,
         (RLinkage::Internal, Visibility::Default) => Linkage::Local,
         (RLinkage::External, Visibility::Hidden) => Linkage::Hidden,
+        (RLinkage::WeakAny, Visibility::Default) => Linkage::Preemptible,
         _ => panic!("{:?} = {:?} {:?}", mono_item, linkage, visibility),
     }
 }
