@@ -48,6 +48,8 @@ fn main() {
     assert_eq!(2.3f32.copysign(-1.0), -2.3f32);
     println!("{}", 2.3f32.powf(2.0));
 
+    assert_eq!(i64::MAX.checked_mul(2), None);
+
     assert_eq!(-128i8, (-128i8).saturating_sub(1));
     assert_eq!(127i8, 127i8.saturating_sub(-128));
     assert_eq!(-128i8, (-128i8).saturating_add(-128));
