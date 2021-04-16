@@ -105,9 +105,11 @@ impl StyledBuffer {
         self.ensure_lines(line);
         let string_len = string.chars().count();
 
-        // Push the old content over to make room for new content
-        for _ in 0..string_len {
-            self.text[line].insert(0, StyledChar::default());
+        if !self.text[line].is_empty() {
+            // Push the old content over to make room for new content
+            for _ in 0..string_len {
+                self.text[line].insert(0, StyledChar::default());
+            }
         }
 
         self.puts(line, 0, string, style);
