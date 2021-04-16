@@ -2330,8 +2330,8 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Weak<T> {
 
 #[stable(feature = "downgraded_weak", since = "1.10.0")]
 impl<T> Default for Weak<T> {
-    /// Constructs a new `Weak<T>`, allocating memory for `T` without initializing
-    /// it. Calling [`upgrade`] on the return value always gives [`None`].
+    /// Constructs a new `Weak<T>`, without allocating any memory.
+    /// Calling [`upgrade`] on the return value always gives [`None`].
     ///
     /// [`None`]: Option
     /// [`upgrade`]: Weak::upgrade
