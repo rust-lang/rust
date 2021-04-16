@@ -34,4 +34,22 @@ fn main() {
         },
         None => println!("nothing"),
     }
+
+    fn side_effects() {}
+
+    // Lint (scrutinee has side effects)
+    // issue #7094
+    match side_effects() {
+        _ => println!("Side effects"),
+    }
+
+    // Lint (scrutinee has side effects)
+    // issue #7094
+    let x = 1;
+    match match x {
+        0 => 1,
+        _ => 2,
+    } {
+        _ => println!("Single branch"),
+    }
 }

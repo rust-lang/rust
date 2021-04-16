@@ -30,5 +30,39 @@ LL |             let (a, b) = get_tup();
 LL |             println!("a {:?} and b {:?}", a, b);
    |
 
-error: aborting due to 2 previous errors
+error: this match could be replaced by its scrutinee and body
+  --> $DIR/match_single_binding2.rs:42:5
+   |
+LL | /     match side_effects() {
+LL | |         _ => println!("Side effects"),
+LL | |     }
+   | |_____^
+   |
+help: consider using the scrutinee and body instead
+   |
+LL |     side_effects();
+LL |     println!("Side effects");
+   |
+
+error: this match could be replaced by its scrutinee and body
+  --> $DIR/match_single_binding2.rs:49:5
+   |
+LL | /     match match x {
+LL | |         0 => 1,
+LL | |         _ => 2,
+LL | |     } {
+LL | |         _ => println!("Single branch"),
+LL | |     }
+   | |_____^
+   |
+help: consider using the scrutinee and body instead
+   |
+LL |     match x {
+LL |         0 => 1,
+LL |         _ => 2,
+LL |     };
+LL |     println!("Single branch");
+   |
+
+error: aborting due to 4 previous errors
 
