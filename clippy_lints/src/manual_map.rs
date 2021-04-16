@@ -104,9 +104,15 @@ impl LateLintPass<'_> for ManualMap {
                 None => return,
             };
 
+            // These two lints will go back and forth with each other.
             if cx.typeck_results().expr_ty(some_expr) == cx.tcx.types.unit
                 && !is_allowed(cx, OPTION_MAP_UNIT_FN, expr.hir_id)
             {
+                return;
+            }
+
+            // `map` won't perform any adjustments.
+            if !cx.typeck_results().expr_adjustments(some_expr).is_empty() {
                 return;
             }
 
