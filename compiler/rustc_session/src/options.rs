@@ -1220,7 +1220,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     // - compiler/rustc_interface/src/tests.rs
 }
 
-#[derive(Clone, Hash)]
+#[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub enum WasiExecModel {
     Command,
     Reactor,

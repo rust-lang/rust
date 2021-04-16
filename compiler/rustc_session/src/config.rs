@@ -156,7 +156,7 @@ pub enum InstrumentCoverage {
     Off,
 }
 
-#[derive(Clone, PartialEq, Hash)]
+#[derive(Clone, PartialEq, Hash, Debug)]
 pub enum LinkerPluginLto {
     LinkerPlugin(PathBuf),
     LinkerPluginAuto,
@@ -172,7 +172,7 @@ impl LinkerPluginLto {
     }
 }
 
-#[derive(Clone, PartialEq, Hash)]
+#[derive(Clone, PartialEq, Hash, Debug)]
 pub enum SwitchWithOptPath {
     Enabled(Option<PathBuf>),
     Disabled,
@@ -778,7 +778,7 @@ pub enum CrateType {
 
 impl_stable_hash_via_hash!(CrateType);
 
-#[derive(Clone, Hash)]
+#[derive(Clone, Hash, Debug, PartialEq, Eq)]
 pub enum Passes {
     Some(Vec<String>),
     All,

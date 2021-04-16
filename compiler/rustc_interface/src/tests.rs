@@ -391,6 +391,7 @@ fn test_codegen_options_tracking_hash() {
 
     macro_rules! untracked {
         ($name: ident, $non_default_value: expr) => {
+            assert_ne!(opts.cg.$name, $non_default_value);
             opts.cg.$name = $non_default_value;
             assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         };
@@ -416,6 +417,7 @@ fn test_codegen_options_tracking_hash() {
     macro_rules! tracked {
         ($name: ident, $non_default_value: expr) => {
             opts = reference.clone();
+            assert_ne!(opts.cg.$name, $non_default_value);
             opts.cg.$name = $non_default_value;
             assert_ne!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         };
@@ -461,6 +463,7 @@ fn test_debugging_options_tracking_hash() {
 
     macro_rules! untracked {
         ($name: ident, $non_default_value: expr) => {
+            assert_ne!(opts.debugging_opts.$name, $non_default_value);
             opts.debugging_opts.$name = $non_default_value;
             assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         };
@@ -471,7 +474,7 @@ fn test_debugging_options_tracking_hash() {
     untracked!(ast_json, true);
     untracked!(ast_json_noexpand, true);
     untracked!(borrowck, String::from("other"));
-    untracked!(deduplicate_diagnostics, true);
+    untracked!(deduplicate_diagnostics, false);
     untracked!(dep_tasks, true);
     untracked!(dont_buffer_diagnostics, true);
     untracked!(dump_dep_graph, true);
@@ -515,7 +518,7 @@ fn test_debugging_options_tracking_hash() {
     untracked!(self_profile_events, Some(vec![String::new()]));
     untracked!(span_debug, true);
     untracked!(span_free_formats, true);
-    untracked!(strip, Strip::None);
+    untracked!(strip, Strip::Debuginfo);
     untracked!(terminal_width, Some(80));
     untracked!(threads, 99);
     untracked!(time, true);
@@ -532,6 +535,7 @@ fn test_debugging_options_tracking_hash() {
     macro_rules! tracked {
         ($name: ident, $non_default_value: expr) => {
             opts = reference.clone();
+            assert_ne!(opts.debugging_opts.$name, $non_default_value);
             opts.debugging_opts.$name = $non_default_value;
             assert_ne!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
         };
