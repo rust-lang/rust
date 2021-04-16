@@ -5,7 +5,7 @@ LL |     let b = Box::new(1);
    |         -
    |         |
    |         first assignment to `b`
-   |         help: make this binding mutable: `mut b`
+   |         help: consider making this binding mutable: `mut b`
 ...
 LL |     b = Box::new(2);
    |     ^ cannot assign twice to immutable variable

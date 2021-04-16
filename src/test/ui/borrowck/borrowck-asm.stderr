@@ -29,7 +29,7 @@ LL |         let x = 3;
    |             -
    |             |
    |             first assignment to `x`
-   |             help: make this binding mutable: `mut x`
+   |             help: consider making this binding mutable: `mut x`
 LL |         unsafe {
 LL |             llvm_asm!("nop" : "=r"(x));
    |                                    ^ cannot assign twice to immutable variable
@@ -41,7 +41,7 @@ LL |         let x = 3;
    |             -
    |             |
    |             first assignment to `x`
-   |             help: make this binding mutable: `mut x`
+   |             help: consider making this binding mutable: `mut x`
 LL |         unsafe {
 LL |             llvm_asm!("nop" : "+r"(x));
    |                                    ^ cannot assign twice to immutable variable

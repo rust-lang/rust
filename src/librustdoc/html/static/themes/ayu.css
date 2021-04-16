@@ -224,7 +224,9 @@ a {
 	color: #39AFD7;
 }
 
-.collapse-toggle {
+.collapse-toggle,
+details.rustdoc-toggle > summary.hideme > span,
+details.rustdoc-toggle > summary::before {
 	color: #999;
 }
 
