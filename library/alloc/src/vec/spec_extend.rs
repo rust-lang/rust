@@ -1,9 +1,8 @@
 use crate::alloc::Allocator;
 use core::iter::TrustedLen;
-use core::ptr::{self};
 use core::slice::{self};
 
-use super::{IntoIter, SetLenOnDrop, Vec};
+use super::{IntoIter, Vec};
 
 // Specialization trait used for Vec::extend
 pub(super) trait SpecExtend<T, I> {
@@ -34,17 +33,10 @@ where
                 (low, high)
             );
             self.reserve(additional);
+            // Safety: We rely on the TrustedLen contract to know how much capacity needs to be
+            // reserved. And we reserved at least that amount above.
             unsafe {
-                let mut ptr = self.as_mut_ptr().add(self.len());
-                let mut local_len = SetLenOnDrop::new(&mut self.len);
-                iterator.for_each(move |element| {
-                    ptr::write(ptr, element);
-                    ptr = ptr.offset(1);
-                    // Since the loop executes user code which can panic we have to bump the pointer
-                    // after each step.
-                    // NB can't overflow since we would have had to alloc the address space
-                    local_len.increment_len(1);
-                });
+                self.extend_prealloc_trustedlen(iterator);
             }
         } else {
             // Per TrustedLen contract a `None` upper bound means that the iterator length
