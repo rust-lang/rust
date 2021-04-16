@@ -387,7 +387,13 @@ impl DefMap {
             .get_legacy_macro(name)
             .map_or_else(PerNs::none, |m| PerNs::macros(m, Visibility::Public));
         let from_scope = self[module].scope.get(name);
-        let from_builtin = BUILTIN_SCOPE.get(name).copied().unwrap_or_else(PerNs::none);
+        let from_builtin = match self.block {
+            Some(_) => {
+                // Only resolve to builtins in the root `DefMap`.
+                PerNs::none()
+            }
+            None => BUILTIN_SCOPE.get(name).copied().unwrap_or_else(PerNs::none),
+        };
         let from_scope_or_builtin = match shadow {
             BuiltinShadowMode::Module => from_scope.or(from_builtin),
             BuiltinShadowMode::Other => {

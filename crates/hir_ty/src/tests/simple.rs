@@ -1765,6 +1765,24 @@ fn main() {
 }
 
 #[test]
+fn shadowing_primitive_with_inner_items() {
+    check_types(
+        r#"
+struct i32;
+struct Foo;
+
+impl i32 { fn foo(&self) -> Foo { Foo } }
+
+fn main() {
+    fn inner() {}
+    let x: i32 = i32;
+    x.foo();
+        //^ Foo
+}"#,
+    );
+}
+
+#[test]
 fn not_shadowing_primitive_by_module() {
     check_types(
         r#"
