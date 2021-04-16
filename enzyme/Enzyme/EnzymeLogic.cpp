@@ -470,9 +470,15 @@ void calculateUnusedValuesInFunction(
   calculateUnusedValues(
       func, unnecessaryValues, unnecessaryInstructions, returnValue,
       [&](const Value *val) {
-        auto needed = is_value_needed_in_reverse<ValueType::Primal>(
+        bool needed = is_value_needed_in_reverse<ValueType::Primal>(
             TR, gutils, val, /*topLevel*/ mode == DerivativeMode::Both,
             PrimalSeen, oldUnreachable);
+        if (TR.query(const_cast<Value*>(val)).Inner0().isPossiblePointer()) {
+          if (is_value_needed_in_reverse<ValueType::ShadowPtr>(
+                  TR, gutils, val, /*topLevel*/ mode == DerivativeMode::Both, PrimalSeen, oldUnreachable)) {
+            needed = true;
+          }
+        }
         return needed;
       },
       [&](const Instruction *inst) {
@@ -632,7 +638,7 @@ void calculateUnusedValuesInFunction(
                    /*topLevel*/ mode == DerivativeMode::Both, PrimalSeen,
                    oldUnreachable);
       });
-#if 0
+#if 1
       llvm::errs() << "unnecessaryValues of " << func.getName() << ":\n";
       for(auto a : unnecessaryValues) {
         llvm::errs() << *a << "\n";

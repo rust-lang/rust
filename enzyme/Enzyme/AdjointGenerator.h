@@ -3471,7 +3471,6 @@ public:
                 TR, gutils, orig, /*topLevel*/ Mode == DerivativeMode::Both,
                 oldUnreachable) ||
             hasMetadata(orig, "enzyme_fromstack")) {
-          llvm::errs() << " caching for reverse: " << *op << "\n";
           Value *nop = gutils->cacheForReverse(BuilderZ, op,
                                                getIndex(orig, CacheType::Self));
           if (Mode == DerivativeMode::Reverse &&
