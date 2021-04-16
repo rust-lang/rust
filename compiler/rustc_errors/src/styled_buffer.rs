@@ -30,6 +30,7 @@ impl StyledBuffer {
         StyledBuffer { text: vec![] }
     }
 
+    /// Returns content of `StyledBuffer` splitted by lines and line styles
     pub fn render(&self) -> Vec<Vec<StyledString>> {
         // Tabs are assumed to have been replaced by spaces in calling code.
         debug_assert!(self.text.iter().all(|r| !r.iter().any(|sc| sc.chr == '\t')));
@@ -70,6 +71,9 @@ impl StyledBuffer {
         }
     }
 
+    /// Sets `chr` with `style` for given `line`, `col`.
+    /// If line not exist in `StyledBuffer`, adds lines up to given
+    /// and fills last line with spaces and `Style::NoStyle` style
     pub fn putc(&mut self, line: usize, col: usize, chr: char, style: Style) {
         self.ensure_lines(line);
         if col < self.text[line].len() {
@@ -84,6 +88,9 @@ impl StyledBuffer {
         }
     }
 
+    /// Sets `string` with `style` for given `line`, starting from `col`.
+    /// If line not exist in `StyledBuffer`, adds lines up to given
+    /// and fills last line with spaces and `Style::NoStyle` style
     pub fn puts(&mut self, line: usize, col: usize, string: &str, style: Style) {
         let mut n = col;
         for c in string.chars() {
@@ -92,6 +99,8 @@ impl StyledBuffer {
         }
     }
 
+    /// For given `line` inserts `string` with `style` before old content of that line,
+    /// adding lines if needed
     pub fn prepend(&mut self, line: usize, string: &str, style: Style) {
         self.ensure_lines(line);
         let string_len = string.chars().count();
@@ -104,6 +113,8 @@ impl StyledBuffer {
         self.puts(line, 0, string, style);
     }
 
+    /// For given `line` inserts `string` with `style` after old content of that line,
+    /// adding lines if needed
     pub fn append(&mut self, line: usize, string: &str, style: Style) {
         if line >= self.text.len() {
             self.puts(line, 0, string, style);
@@ -117,6 +128,9 @@ impl StyledBuffer {
         self.text.len()
     }
 
+    /// Set `style` for `line`, `col_start..col_end` range if:
+    /// 1. That line and column range exist in `StyledBuffer`
+    /// 2. `overwrite` is `true` or existing style is `Style::NoStyle` or `Style::Quotation`
     pub fn set_style_range(
         &mut self,
         line: usize,
@@ -130,6 +144,9 @@ impl StyledBuffer {
         }
     }
 
+    /// Set `style` for `line`, `col` if:
+    /// 1. That line and column exist in `StyledBuffer`
+    /// 2. Existing style is `Style::NoStyle` or `Style::Quotation` or `overwrite` is `true`
     pub fn set_style(&mut self, line: usize, col: usize, style: Style, overwrite: bool) {
         if let Some(ref mut line) = self.text.get_mut(line) {
             if let Some(StyledChar { style: s, .. }) = line.get_mut(col) {
