@@ -55,7 +55,7 @@ where
         // Safety: The TrustedLen contract together with the `with_capacity`
         // above guarantee that no further allocations should be needed to collect the iterator
         unsafe {
-            vector.extend_prealloc_trustedlen(iterator);
+            vector.extend_prealloc_trusted_len(iterator);
         }
         vector
     }

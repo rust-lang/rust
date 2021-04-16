@@ -36,7 +36,7 @@ where
             // Safety: We rely on the TrustedLen contract to know how much capacity needs to be
             // reserved. And we reserved at least that amount above.
             unsafe {
-                self.extend_prealloc_trustedlen(iterator);
+                self.extend_prealloc_trusted_len(iterator);
             }
         } else {
             // Per TrustedLen contract a `None` upper bound means that the iterator length

@@ -2637,7 +2637,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// The bound `I: TrustedLen` ensures that the caller can safely know
     /// how much needs to be allocated.
     #[cfg(not(no_global_oom_handling))]
-    unsafe fn extend_prealloc_trustedlen<I: TrustedLen<Item = T>>(&mut self, iterator: I) {
+    unsafe fn extend_prealloc_trusted_len<I: TrustedLen<Item = T>>(&mut self, iterator: I) {
         unsafe {
             let mut ptr = self.as_mut_ptr().add(self.len());
             let mut local_len = SetLenOnDrop::new(&mut self.len);
