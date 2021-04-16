@@ -8,3 +8,4 @@ LL | impl Into<StringWrapper> for String {
    = help: consider to implement `From<std::string::String>` instead
 
 error: aborting due to previous error
+
