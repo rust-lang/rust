@@ -1008,6 +1008,7 @@ symbols! {
         rustc_layout_scalar_valid_range_start,
         rustc_legacy_const_generics,
         rustc_macro_transparency,
+        rustc_main,
         rustc_mir,
         rustc_nonnull_optimization_guaranteed,
         rustc_object_lifetime_default,

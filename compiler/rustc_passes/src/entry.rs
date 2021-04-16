@@ -84,7 +84,7 @@ fn entry_point_type(ctxt: &EntryContext<'_, '_>, item: &Item<'_>, at_root: bool)
     let attrs = ctxt.map.attrs(item.hir_id());
     if ctxt.session.contains_name(attrs, sym::start) {
         EntryPointType::Start
-    } else if ctxt.session.contains_name(attrs, sym::main) {
+    } else if ctxt.session.contains_name(attrs, sym::rustc_main) {
         EntryPointType::MainAttr
     } else if item.ident.name == sym::main {
         if at_root {
@@ -111,8 +111,8 @@ fn find_item(item: &Item<'_>, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
             if let Some(attr) = ctxt.session.find_by_name(attrs, sym::start) {
                 throw_attr_err(&ctxt.session, attr.span, "start");
             }
-            if let Some(attr) = ctxt.session.find_by_name(attrs, sym::main) {
-                throw_attr_err(&ctxt.session, attr.span, "main");
+            if let Some(attr) = ctxt.session.find_by_name(attrs, sym::rustc_main) {
+                throw_attr_err(&ctxt.session, attr.span, "rustc_main");
             }
         }
         EntryPointType::MainNamed => {
@@ -193,10 +193,7 @@ fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) {
             err.span_note(span, "here is a function named `main`");
         }
         err.note("you have one or more functions named `main` not defined at the crate level");
-        err.help(
-            "either move the `main` function definitions or attach the `#[main]` attribute \
-                  to one of them",
-        );
+        err.help("consider moving the `main` function definitions");
         // There were some functions named `main` though. Try to give the user a hint.
         format!(
             "the main function must be defined at the crate level{}",

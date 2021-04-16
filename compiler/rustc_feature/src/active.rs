@@ -134,9 +134,6 @@ declare_features! (
     /// Allows using the `box $expr` syntax.
     (active, box_syntax, "1.0.0", Some(49733), None),
 
-    /// Allows using `#[main]` to replace the entrypoint `#[lang = "start"]` calls.
-    (active, main, "1.0.0", Some(29634), None),
-
     /// Allows using `#[start]` on a function indicating that it is the program entrypoint.
     (active, start, "1.0.0", Some(29633), None),
 

@@ -1,3 +1,11 @@
+error[E0658]: the `#[rustc_main]` attribute is used internally to specify test entry point function
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:14:1
+   |
+LL | #![rustc_main]
+   | ^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
+
 error: attribute must be of the form `#[inline]` or `#[inline(always|never)]`
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:40:5
    |
@@ -8,62 +16,32 @@ LL |     #[inline = "2100"] fn f() { }
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
 
-error: `main` attribute can only be used on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:109:1
-   |
-LL | #[main]
-   | ^^^^^^^
-
-error: `main` attribute can only be used on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:112:17
-   |
-LL |     mod inner { #![main] }
-   |                 ^^^^^^^^
-
-error: `main` attribute can only be used on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:117:5
-   |
-LL |     #[main] struct S;
-   |     ^^^^^^^
-
-error: `main` attribute can only be used on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:120:5
-   |
-LL |     #[main] type T = S;
-   |     ^^^^^^^
-
-error: `main` attribute can only be used on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:123:5
-   |
-LL |     #[main] impl S { }
-   |     ^^^^^^^
-
 error: `start` attribute can only be used on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:127:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:109:1
    |
 LL | #[start]
    | ^^^^^^^^
 
 error: `start` attribute can only be used on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:130:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:112:17
    |
 LL |     mod inner { #![start] }
    |                 ^^^^^^^^^
 
 error: `start` attribute can only be used on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:135:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:117:5
    |
 LL |     #[start] struct S;
    |     ^^^^^^^^
 
 error: `start` attribute can only be used on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:138:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:120:5
    |
 LL |     #[start] type T = S;
    |     ^^^^^^^^
 
 error: `start` attribute can only be used on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:141:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:123:5
    |
 LL |     #[start] impl S { }
    |     ^^^^^^^^
@@ -137,11 +115,11 @@ error: `macro_export` attribute cannot be used at crate level
 LL | #![macro_export]
    | ^^^^^^^^^^^^^^^^
 
-error: `main` attribute cannot be used at crate level
+error: `rustc_main` attribute cannot be used at crate level
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:14:1
    |
-LL | #![main]
-   | ^^^^^^^^
+LL | #![rustc_main]
+   | ^^^^^^^^^^^^^^
 
 error: `start` attribute cannot be used at crate level
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:16:1
@@ -245,6 +223,7 @@ error: attribute should be applied to a function or static
 LL |     #[export_name = "2200"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^ ---------- not a function or static
 
-error: aborting due to 36 previous errors
+error: aborting due to 32 previous errors
 
-For more information about this error, try `rustc --explain E0518`.
+Some errors have detailed explanations: E0518, E0658.
+For more information about an error, try `rustc --explain E0518`.

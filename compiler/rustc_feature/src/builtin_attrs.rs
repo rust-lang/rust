@@ -536,6 +536,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_specialization_trait, Normal, template!(Word),
         "the `#[rustc_specialization_trait]` attribute is used to check specializations"
     ),
+    rustc_attr!(
+        rustc_main, Normal, template!(Word),
+        "the `#[rustc_main]` attribute is used internally to specify test entry point function",
+    ),
 
     // ==========================================================================
     // Internal attributes, Testing:
