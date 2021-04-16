@@ -400,6 +400,17 @@ impl Config {
     pub fn will_rename(&self) -> bool {
         try_or!(self.caps.workspace.as_ref()?.file_operations.as_ref()?.will_rename?, false)
     }
+    pub fn change_annotation_support(&self) -> bool {
+        try_!(self
+            .caps
+            .workspace
+            .as_ref()?
+            .workspace_edit
+            .as_ref()?
+            .change_annotation_support
+            .as_ref()?)
+        .is_some()
+    }
     pub fn code_action_resolve(&self) -> bool {
         try_or!(
             self.caps

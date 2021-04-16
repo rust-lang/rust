@@ -244,6 +244,12 @@ impl Analysis {
         self.with_db(|db| db.parse(file_id).tree())
     }
 
+    /// Returns true if this file belongs to an immutable library.
+    pub fn is_library_file(&self, file_id: FileId) -> Cancelable<bool> {
+        use ide_db::base_db::SourceDatabaseExt;
+        self.with_db(|db| db.source_root(db.file_source_root(file_id)).is_library)
+    }
+
     /// Gets the file's `LineIndex`: data structure to convert between absolute
     /// offsets and line/column representation.
     pub fn file_line_index(&self, file_id: FileId) -> Cancelable<Arc<LineIndex>> {

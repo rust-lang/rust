@@ -1,5 +1,6 @@
 //! Conversion of rust-analyzer specific types to lsp_types equivalents.
 use std::{
+    collections::HashMap,
     path::{self, Path},
     sync::atomic::{AtomicU32, Ordering},
 };
@@ -174,6 +175,7 @@ pub(crate) fn snippet_text_edit(
         range: text_edit.range,
         new_text: text_edit.new_text,
         insert_text_format,
+        annotation_id: None,
     }
 }
 
@@ -688,6 +690,10 @@ pub(crate) fn goto_definition_response(
     }
 }
 
+fn outside_workspace_annotation(snap: &GlobalStateSnapshot) -> Option<String> {
+    snap.config.change_annotation_support().then(|| String::from("OutsideWorkspace"))
+}
+
 pub(crate) fn snippet_text_document_edit(
     snap: &GlobalStateSnapshot,
     is_snippet: bool,
@@ -696,7 +702,19 @@ pub(crate) fn snippet_text_document_edit(
 ) -> Result<lsp_ext::SnippetTextDocumentEdit> {
     let text_document = optional_versioned_text_document_identifier(snap, file_id);
     let line_index = snap.file_line_index(file_id)?;
-    let edits = edit.into_iter().map(|it| snippet_text_edit(&line_index, is_snippet, it)).collect();
+    let outside_workspace_annotation = snap
+        .analysis
+        .is_library_file(file_id)?
+        .then(|| outside_workspace_annotation(snap))
+        .flatten();
+    let edits = edit
+        .into_iter()
+        .map(|it| {
+            let mut edit = snippet_text_edit(&line_index, is_snippet, it);
+            edit.annotation_id = outside_workspace_annotation.clone();
+            edit
+        })
+        .collect();
     Ok(lsp_ext::SnippetTextDocumentEdit { text_document, edits })
 }
 
@@ -721,6 +739,7 @@ pub(crate) fn snippet_text_document_ops(
                     range: lsp_types::Range::default(),
                     new_text: initial_contents,
                     insert_text_format: Some(lsp_types::InsertTextFormat::PlainText),
+                    annotation_id: None,
                 };
                 let edit_file =
                     lsp_ext::SnippetTextDocumentEdit { text_document, edits: vec![text_edit] };
@@ -734,7 +753,12 @@ pub(crate) fn snippet_text_document_ops(
                 old_uri,
                 new_uri,
                 options: None,
-                annotation_id: None,
+                annotation_id: snap
+                    .analysis
+                    .is_library_file(src)
+                    .unwrap()
+                    .then(|| outside_workspace_annotation(snap))
+                    .flatten(),
             });
             ops.push(lsp_ext::SnippetDocumentChangeOperation::Op(rename_file))
         }
@@ -747,6 +771,7 @@ pub(crate) fn snippet_workspace_edit(
     source_change: SourceChange,
 ) -> Result<lsp_ext::SnippetWorkspaceEdit> {
     let mut document_changes: Vec<lsp_ext::SnippetDocumentChangeOperation> = Vec::new();
+
     for op in source_change.file_system_edits {
         let ops = snippet_text_document_ops(snap, op);
         document_changes.extend_from_slice(&ops);
@@ -755,8 +780,24 @@ pub(crate) fn snippet_workspace_edit(
         let edit = snippet_text_document_edit(&snap, source_change.is_snippet, file_id, edit)?;
         document_changes.push(lsp_ext::SnippetDocumentChangeOperation::Edit(edit));
     }
-    let workspace_edit =
-        lsp_ext::SnippetWorkspaceEdit { changes: None, document_changes: Some(document_changes) };
+    let change_annotations = outside_workspace_annotation(snap).map(|annotation| {
+        use std::iter::FromIterator;
+        HashMap::from_iter(Some((
+            annotation,
+            lsp_types::ChangeAnnotation {
+                label: String::from("Edit outside of the workspace"),
+                needs_confirmation: Some(true),
+                description: Some(String::from(
+                    "This edit lies outside of the workspace and may affect dependencies",
+                )),
+            },
+        )))
+    });
+    let workspace_edit = lsp_ext::SnippetWorkspaceEdit {
+        changes: None,
+        document_changes: Some(document_changes),
+        change_annotations,
+    };
     Ok(workspace_edit)
 }
 
@@ -784,16 +825,7 @@ impl From<lsp_ext::SnippetWorkspaceEdit> for lsp_types::WorkspaceEdit {
                                 lsp_types::DocumentChangeOperation::Edit(
                                     lsp_types::TextDocumentEdit {
                                         text_document: edit.text_document,
-                                        edits: edit
-                                            .edits
-                                            .into_iter()
-                                            .map(|edit| {
-                                                lsp_types::OneOf::Left(lsp_types::TextEdit {
-                                                    range: edit.range,
-                                                    new_text: edit.new_text,
-                                                })
-                                            })
-                                            .collect(),
+                                        edits: edit.edits.into_iter().map(From::from).collect(),
                                     },
                                 )
                             }
@@ -801,7 +833,23 @@ impl From<lsp_ext::SnippetWorkspaceEdit> for lsp_types::WorkspaceEdit {
                         .collect(),
                 )
             }),
-            change_annotations: None,
+            change_annotations: snippet_workspace_edit.change_annotations,
+        }
+    }
+}
+
+impl From<lsp_ext::SnippetTextEdit>
+    for lsp_types::OneOf<lsp_types::TextEdit, lsp_types::AnnotatedTextEdit>
+{
+    fn from(
+        lsp_ext::SnippetTextEdit { annotation_id, insert_text_format:_, new_text, range }: lsp_ext::SnippetTextEdit,
+    ) -> Self {
+        match annotation_id {
+            Some(annotation_id) => lsp_types::OneOf::Right(lsp_types::AnnotatedTextEdit {
+                text_edit: lsp_types::TextEdit { range, new_text },
+                annotation_id,
+            }),
+            None => lsp_types::OneOf::Left(lsp_types::TextEdit { range, new_text }),
         }
     }
 }
