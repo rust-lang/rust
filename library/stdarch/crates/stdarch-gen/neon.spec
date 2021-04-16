@@ -2198,6 +2198,246 @@ validate 0, 1, 2, 3, 2, 3, 6, 7, 2, 3, 6, 7, 12, 13, 14, 15
 aarch64 = sqrshrun2
 generate uint8x8_t:int16x8_t:uint8x16_t, uint16x4_t:int32x4_t:uint16x8_t, uint32x2_t:int64x2_t:uint32x4_t
 
+/// Signed saturating shift left
+name = vqshl
+a = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+validate 0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60
+
+aarch64 = sqshl
+link-aarch64 = sqshl._EXT_
+
+arm = vqshl
+link-arm = vqshifts._EXT_
+generate int*_t, int64x*_t
+
+/// Signed saturating shift left
+name = vqshl
+multi_fn = vqshl-in_ntt-noext, c:in_ntt, {vdup_n-in_ntt-noext, a}, {vdup_n-in_ntt-noext, b}
+multi_fn = simd_extract, c, 0
+a = 1
+b = 2
+validate 4
+
+aarch64 = sqshl
+generate i8, i16, i32, i64
+
+/// Unsigned saturating shift left
+name = vqshl
+out-suffix
+a = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+validate 0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60
+
+aarch64 = uqshl
+link-aarch64 = uqshl._EXT_
+
+arm = vqshl
+link-arm = vqshiftu._EXT_
+generate uint8x8_t:int8x8_t:uint8x8_t, uint8x16_t:int8x16_t:uint8x16_t, uint16x4_t:int16x4_t:uint16x4_t, uint16x8_t:int16x8_t:uint16x8_t
+generate uint32x2_t:int32x2_t:uint32x2_t, uint32x4_t:int32x4_t:uint32x4_t, uint64x1_t:int64x1_t:uint64x1_t, uint64x2_t:int64x2_t:uint64x2_t
+
+/// Unsigned saturating shift left
+name = vqshl
+out-suffix
+multi_fn = vqshl-out_ntt-noext, c:out_ntt, {vdup_n-out_ntt-noext, a}, {vdup_n-in_ntt-noext, b}
+multi_fn = simd_extract, c, 0
+a = 1
+b = 2
+validate 4
+
+aarch64 = uqshl
+generate u8:i8:u8, u16:i16:u16, u32:i32:u32, u64:i64:u64
+
+/// Signed saturating shift left
+name = vqshl
+n-suffix
+constn = N
+multi_fn = static_assert_imm-out_bits_exp_len-N
+multi_fn = vqshl-self-noext, a, {vdup-nself-noext, N.try_into().unwrap()}
+a = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+n = 2
+validate 0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60
+
+aarch64 = sqshl
+arm = vqshl
+generate int*_t, int64x*_t
+
+/// Signed saturating shift left
+name = vqshl
+n-suffix
+constn = N
+multi_fn = static_assert_imm-out_bits_exp_len-N
+multi_fn = simd_extract, {vqshl_n-in_ntt-::<N>, {vdup_n-in_ntt-noext, a}}, 0
+a = 1
+n = 2
+validate 4
+
+aarch64 = sqshl
+generate i8, i16, i32, i64
+
+/// Unsigned saturating shift left
+name = vqshl
+n-suffix
+constn = N
+multi_fn = static_assert_imm-out_bits_exp_len-N
+multi_fn = vqshl-self-noext, a, {vdup-nsigned-noext, N.try_into().unwrap()}
+a = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+n = 2
+validate 0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60
+
+aarch64 = uqshl
+arm = vqshl
+generate uint*_t, uint64x*_t
+
+/// Unsigned saturating shift left
+name = vqshl
+n-suffix
+constn = N
+multi_fn = static_assert_imm-out_bits_exp_len-N
+multi_fn = simd_extract, {vqshl_n-in_ntt-::<N>, {vdup_n-in_ntt-noext, a}}, 0
+a = 1
+n = 2
+validate 4
+
+aarch64 = uqshl
+generate u8, u16, u32, u64
+
+/// Signed saturating shift right narrow
+name = vqshrn
+noq-n-suffix
+constn = N
+multi_fn = static_assert-N-1-halfbits
+a = 0, 4, 8, 12, 16, 20, 24, 28
+n = 2
+validate 0, 1, 2, 3, 4, 5, 6, 7
+
+aarch64 = sqshrn
+link-aarch64 = sqshrn._EXT2_
+const-aarch64 = N
+
+arm = vqshrn
+link-arm = vqshiftns._EXT2_
+const-arm = -N as ttn
+generate int16x8_t:int8x8_t, int32x4_t:int16x4_t, int64x2_t:int32x2_t
+
+/// Signed saturating shift right narrow
+name = vqshrn
+noq-n-suffix
+constn = N
+multi_fn = static_assert-N-1-halfbits
+multi_fn = simd_extract, {vqshrn_n-in_ntt-::<N>, {vdupq_n-in_ntt-noext, a}}, 0
+a = 4
+n = 2
+validate 1
+
+aarch64 = sqshrn
+generate i16:i8, i32:i16, i64:i32
+
+/// Signed saturating shift right narrow
+name = vqshrn_high
+noq-n-suffix
+constn = N
+multi_fn = static_assert-N-1-halfbits
+multi_fn = simd_shuffle-out_len-noext, a, {vqshrn_n-noqself-::<N>, b}, {asc-0-out_len}
+a = 0, 1, 8, 9, 8, 9, 10, 11
+b = 32, 36, 40, 44, 48, 52, 56, 60
+n = 2
+validate 0, 1, 8, 9, 8, 9, 10, 11, 8, 9, 10, 11, 12, 13, 14, 15
+
+aarch64 = sqshrn2
+generate int8x8_t:int16x8_t:int8x16_t, int16x4_t:int32x4_t:int16x8_t, int32x2_t:int64x2_t:int32x4_t
+
+/// Unsigned saturating shift right narrow
+name = vqshrn
+noq-n-suffix
+constn = N
+multi_fn = static_assert-N-1-halfbits
+a = 0, 4, 8, 12, 16, 20, 24, 28
+n = 2
+validate 0, 1, 2, 3, 4, 5, 6, 7
+
+aarch64 = uqshrn
+link-aarch64 = uqshrn._EXT2_
+const-aarch64 = N
+
+arm = vqshrn
+link-arm = vqshiftnu._EXT2_
+const-arm = -N as ttn
+generate uint16x8_t:uint8x8_t, uint32x4_t:uint16x4_t, uint64x2_t:uint32x2_t
+
+/// Unsigned saturating shift right narrow
+name = vqshrn
+noq-n-suffix
+constn = N
+multi_fn = static_assert-N-1-halfbits
+multi_fn = simd_extract, {vqshrn_n-in_ntt-::<N>, {vdupq_n-in_ntt-noext, a}}, 0
+a = 4
+n = 2
+validate 1
+
+aarch64 = uqshrn
+generate u16:u8, u32:u16, u64:u32
+
+/// Unsigned saturating shift right narrow
+name = vqshrn_high
+noq-n-suffix
+constn = N
+multi_fn = static_assert-N-1-halfbits
+multi_fn = simd_shuffle-out_len-noext, a, {vqshrn_n-noqself-::<N>, b}, {asc-0-out_len}
+a = 0, 1, 8, 9, 8, 9, 10, 11
+b = 32, 36, 40, 44, 48, 52, 56, 60
+n = 2
+validate 0, 1, 8, 9, 8, 9, 10, 11, 8, 9, 10, 11, 12, 13, 14, 15
+
+aarch64 = uqshrn2
+generate uint8x8_t:uint16x8_t:uint8x16_t, uint16x4_t:uint32x4_t:uint16x8_t, uint32x2_t:uint64x2_t:uint32x4_t
+
+/// Signed saturating shift right unsigned narrow
+name = vqshrun
+noq-n-suffix
+constn = N
+multi_fn = static_assert-N-1-halfbits
+a = 0, 4, 8, 12, 16, 20, 24, 28
+n = 2
+validate 0, 1, 2, 3, 4, 5, 6, 7
+
+aarch64 = sqshrun
+link-aarch64 = sqshrun._EXT2_
+const-aarch64 = N
+
+arm = vqshrun
+link-arm = vqshiftnsu._EXT2_
+const-arm = -N as ttn
+generate int16x8_t:uint8x8_t, int32x4_t:uint16x4_t, int64x2_t:uint32x2_t
+
+/// Signed saturating shift right unsigned narrow
+name = vqshrun
+noq-n-suffix
+constn = N
+multi_fn = static_assert-N-1-halfbits
+multi_fn = simd_extract, {vqshrun_n-in_ntt-::<N>, {vdupq_n-in_ntt-noext, a}}, 0
+a = 4
+n = 2
+validate 1
+
+aarch64 = sqshrun
+generate i16:u8, i32:u16, i64:u32
+
+/// Signed saturating shift right unsigned narrow
+name = vqshrun_high
+noq-n-suffix
+constn = N
+multi_fn = static_assert-N-1-halfbits
+multi_fn = simd_shuffle-out_len-noext, a, {vqshrun_n-noqself-::<N>, b}, {asc-0-out_len}
+a = 0, 1, 8, 9, 8, 9, 10, 11
+b = 32, 36, 40, 44, 48, 52, 56, 60
+n = 2
+validate 0, 1, 8, 9, 8, 9, 10, 11, 8, 9, 10, 11, 12, 13, 14, 15
+
+aarch64 = sqshrun2
+generate uint8x8_t:int16x8_t:uint8x16_t, uint16x4_t:int32x4_t:uint16x8_t, uint32x2_t:int64x2_t:uint32x4_t
+
 /// Calculates the square root of each lane.
 name = vsqrt
 fn = simd_fsqrt

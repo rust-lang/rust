@@ -135,10 +135,13 @@ fn type_exp_len(t: &str) -> usize {
 
 fn type_bits_exp_len(t: &str) -> usize {
     match t {
-        "int8x8_t" | "int8x16_t" | "uint8x8_t" | "uint8x16_t" | "poly8x8_t" | "poly8x16_t" => 3,
-        "int16x4_t" | "int16x8_t" | "uint16x4_t" | "uint16x8_t" | "poly16x4_t" | "poly16x8_t" => 4,
-        "int32x2_t" | "int32x4_t" | "uint32x2_t" | "uint32x4_t" => 5,
-        "int64x1_t" | "int64x2_t" | "uint64x1_t" | "uint64x2_t" | "poly64x1_t" | "poly64x2_t" => 6,
+        "int8x8_t" | "int8x16_t" | "uint8x8_t" | "uint8x16_t" | "poly8x8_t" | "poly8x16_t"
+        | "i8" | "u8" => 3,
+        "int16x4_t" | "int16x8_t" | "uint16x4_t" | "uint16x8_t" | "poly16x4_t" | "poly16x8_t"
+        | "i16" | "u16" => 4,
+        "int32x2_t" | "int32x4_t" | "uint32x2_t" | "uint32x4_t" | "i32" | "u32" => 5,
+        "int64x1_t" | "int64x2_t" | "uint64x1_t" | "uint64x2_t" | "poly64x1_t" | "poly64x2_t"
+        | "i64" | "u64" => 6,
         _ => panic!("unknown type: {}", t),
     }
 }
@@ -219,6 +222,14 @@ fn type_to_n_suffix(t: &str) -> &str {
         "poly16x8_t" => "q_n_p16",
         "poly64x1_t" => "_n_p64",
         "poly64x2_t" => "q_n_p64",
+        "i8" => "b_n_s8",
+        "i16" => "h_n_s16",
+        "i32" => "s_n_s32",
+        "i64" => "d_n_s64",
+        "u8" => "b_n_u8",
+        "u16" => "h_n_u16",
+        "u32" => "s_n_u32",
+        "u64" => "d_n_u64",
         _ => panic!("unknown type: {}", t),
     }
 }
@@ -262,50 +273,30 @@ fn type_to_lane_suffixes<'a>(out_t: &'a str, in_t: &'a str) -> String {
     str
 }
 
-fn type_to_signed_suffix(t: &str) -> &str {
+fn type_to_signed(t: &str) -> &str {
     match t {
-        "int8x8_t" | "uint8x8_t" | "poly8x8_t" => "_s8",
-        "int8x16_t" | "uint8x16_t" | "poly8x16_t" => "q_s8",
-        "int16x4_t" | "uint16x4_t" | "poly16x4_t" => "_s16",
-        "int16x8_t" | "uint16x8_t" | "poly16x8_t" => "q_s16",
-        "int32x2_t" | "uint32x2_t" => "_s32",
-        "int32x4_t" | "uint32x4_t" => "q_s32",
-        "int64x1_t" | "uint64x1_t" | "poly64x1_t" => "_s64",
-        "int64x2_t" | "uint64x2_t" | "poly64x2_t" => "q_s64",
-        /*
-        "float16x4_t" => "_f16",
-        "float16x8_t" => "q_f16",
-        "float32x2_t" => "_f32",
-        "float32x4_t" => "q_f32",
-        "float64x1_t" => "_f64",
-        "float64x2_t" => "q_f64",
-        "poly64x1_t" => "_p64",
-        "poly64x2_t" => "q_p64",
-         */
+        "int8x8_t" | "uint8x8_t" | "poly8x8_t" => "int8x8_t",
+        "int8x16_t" | "uint8x16_t" | "poly8x16_t" => "int8x16_t",
+        "int16x4_t" | "uint16x4_t" | "poly16x4_t" => "int16x4_t",
+        "int16x8_t" | "uint16x8_t" | "poly16x8_t" => "int16x8_t",
+        "int32x2_t" | "uint32x2_t" => "int32x2_t",
+        "int32x4_t" | "uint32x4_t" => "int32x4_t",
+        "int64x1_t" | "uint64x1_t" | "poly64x1_t" => "int64x1_t",
+        "int64x2_t" | "uint64x2_t" | "poly64x2_t" => "int64x2_t",
         _ => panic!("unknown type: {}", t),
     }
 }
 
-fn type_to_unsigned_suffix(t: &str) -> &str {
+fn type_to_unsigned(t: &str) -> &str {
     match t {
-        "int8x8_t" | "uint8x8_t" => "_u8",
-        "int8x16_t" | "uint8x16_t" => "q_u8",
-        "int16x4_t" | "uint16x4_t" => "_u16",
-        "int16x8_t" | "uint16x8_t" => "q_u16",
-        "int32x2_t" | "uint32x2_t" => "_u32",
-        "int32x4_t" | "uint32x4_t" => "q_u32",
-        "int64x1_t" | "uint64x1_t" => "_u64",
-        "int64x2_t" | "uint64x2_t" => "q_u64",
-        /*
-        "float16x4_t" => "_f16",
-        "float16x8_t" => "q_f16",
-        "float32x2_t" => "_f32",
-        "float32x4_t" => "q_f32",
-        "float64x1_t" => "_f64",
-        "float64x2_t" => "q_f64",
-        "poly64x1_t" => "_p64",
-        "poly64x2_t" => "q_p64",
-         */
+        "int8x8_t" | "uint8x8_t" | "poly8x8_t" => "uint8x8_t",
+        "int8x16_t" | "uint8x16_t" | "poly8x16_t" => "uint8x16_t",
+        "int16x4_t" | "uint16x4_t" | "poly16x4_t" => "uint16x4_t",
+        "int16x8_t" | "uint16x8_t" | "poly16x8_t" => "uint16x8_t",
+        "int32x2_t" | "uint32x2_t" => "uint32x2_t",
+        "int32x4_t" | "uint32x4_t" => "uint32x4_t",
+        "int64x1_t" | "uint64x1_t" | "poly64x1_t" => "uint64x1_t",
+        "int64x2_t" | "uint64x2_t" | "poly64x2_t" => "uint64x2_t",
         _ => panic!("unknown type: {}", t),
     }
 }
@@ -1834,14 +1825,23 @@ fn get_call(
                     sub_fn.push_str(", ");
                 }
                 sub_fn.push_str(&params[i]);
-                if params[i].starts_with('{') {
-                    paranthes += 1;
-                }
-                if params[i].ends_with('}') {
-                    paranthes -= 1;
-                    if paranthes == 0 {
+                let l = params[i].len();
+                for j in 0..l {
+                    if &params[i][j..j + 1] == "{" {
+                        paranthes += 1;
+                    } else {
                         break;
                     }
+                }
+                for j in 0..l {
+                    if &params[i][l - j - 1..l - j] == "}" {
+                        paranthes -= 1;
+                    } else {
+                        break;
+                    }
+                }
+                if paranthes == 0 {
+                    break;
                 }
                 i += 1;
             }
@@ -1923,9 +1923,9 @@ fn get_call(
         } else if fn_format[1] == "nself" {
             fn_name.push_str(type_to_n_suffix(in_t[1]));
         } else if fn_format[1] == "signed" {
-            fn_name.push_str(type_to_signed_suffix(in_t[1]));
+            fn_name.push_str(type_to_suffix(type_to_signed(in_t[1])));
         } else if fn_format[1] == "unsigned" {
-            fn_name.push_str(type_to_unsigned_suffix(in_t[1]));
+            fn_name.push_str(type_to_suffix(type_to_unsigned(in_t[1])));
         } else if fn_format[1] == "doubleself" {
             fn_name.push_str(&type_to_double_suffixes(out_t, in_t[1]));
         } else if fn_format[1] == "noq_doubleself" {
@@ -1941,6 +1941,8 @@ fn get_call(
             fn_name.push_str(&(type_len(in_t[1]) / 2).to_string());
         } else if fn_format[1] == "nout" {
             fn_name.push_str(type_to_n_suffix(out_t));
+        } else if fn_format[1] == "nsigned" {
+            fn_name.push_str(type_to_n_suffix(type_to_signed(in_t[1])));
         } else if fn_format[1] == "in_ntt" {
             fn_name.push_str(type_to_suffix(native_type_to_type(in_t[1])));
         } else if fn_format[1] == "out_ntt" {
