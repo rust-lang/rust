@@ -453,48 +453,6 @@ impl clean::GenericArgs {
     }
 }
 
-impl clean::PathSegment {
-    crate fn print<'a, 'tcx: 'a>(
-        &'a self,
-        cache: &'a Cache,
-        tcx: TyCtxt<'tcx>,
-    ) -> impl fmt::Display + 'a + Captures<'tcx> {
-        display_fn(move |f| {
-            if f.alternate() {
-                write!(f, "{}{:#}", self.name, self.args.print(cache, tcx))
-            } else {
-                write!(f, "{}{}", self.name, self.args.print(cache, tcx))
-            }
-        })
-    }
-}
-
-impl clean::Path {
-    crate fn print<'a, 'tcx: 'a>(
-        &'a self,
-        cache: &'a Cache,
-        tcx: TyCtxt<'tcx>,
-    ) -> impl fmt::Display + 'a + Captures<'tcx> {
-        display_fn(move |f| {
-            if self.global {
-                f.write_str("::")?
-            }
-
-            for (i, seg) in self.segments.iter().enumerate() {
-                if i > 0 {
-                    f.write_str("::")?
-                }
-                if f.alternate() {
-                    write!(f, "{:#}", seg.print(cache, tcx))?;
-                } else {
-                    write!(f, "{}", seg.print(cache, tcx))?;
-                }
-            }
-            Ok(())
-        })
-    }
-}
-
 crate fn href(did: DefId, cache: &Cache) -> Option<(String, ItemType, Vec<String>)> {
     if !did.is_local() && !cache.access_levels.is_public(did) && !cache.document_private {
         return None;
