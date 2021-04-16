@@ -632,11 +632,21 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         };
         rotate_left, <T>(v x, v y) {
             let layout = fx.layout_of(T);
+            let y = if fx.bcx.func.dfg.value_type(y) == types::I128 {
+                fx.bcx.ins().ireduce(types::I64, y)
+            } else {
+                y
+            };
             let res = fx.bcx.ins().rotl(x, y);
             ret.write_cvalue(fx, CValue::by_val(res, layout));
         };
         rotate_right, <T>(v x, v y) {
             let layout = fx.layout_of(T);
+            let y = if fx.bcx.func.dfg.value_type(y) == types::I128 {
+                fx.bcx.ins().ireduce(types::I64, y)
+            } else {
+                y
+            };
             let res = fx.bcx.ins().rotr(x, y);
             ret.write_cvalue(fx, CValue::by_val(res, layout));
         };
