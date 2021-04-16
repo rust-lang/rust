@@ -19,6 +19,12 @@ impl StyledChar {
     }
 }
 
+impl Default for StyledChar {
+    fn default() -> Self {
+        StyledChar::new(' ', Style::NoStyle)
+    }
+}
+
 impl StyledBuffer {
     pub fn new() -> StyledBuffer {
         StyledBuffer { text: vec![] }
@@ -71,7 +77,7 @@ impl StyledBuffer {
         } else {
             let mut i = self.text[line].len();
             while i < col {
-                self.text[line].push(StyledChar::new(' ', Style::NoStyle));
+                self.text[line].push(StyledChar::default());
                 i += 1;
             }
             self.text[line].push(StyledChar::new(chr, style));
@@ -92,7 +98,7 @@ impl StyledBuffer {
 
         // Push the old content over to make room for new content
         for _ in 0..string_len {
-            self.text[line].insert(0, StyledChar::new(' ', Style::NoStyle));
+            self.text[line].insert(0, StyledChar::default());
         }
 
         self.puts(line, 0, string, style);
