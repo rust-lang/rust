@@ -2284,13 +2284,6 @@ impl Clean<Item> for (&hir::MacroDef<'_>, Option<Symbol>) {
             let vis = item.vis.clean(cx);
             let def_id = item.def_id.to_def_id();
 
-            // Since this occurs in `clean()`, there are no cache entries for vis.print_with_space,
-            // so no links can be made.
-            //
-            // It's important that we maintain this invariant, because this is supposed to generate
-            // source code, not HTML.
-            assert!(cx.cache.paths.is_empty());
-
             if matchers.len() <= 1 {
                 format!(
                     "{}macro {}{} {{\n    ...\n}}",
