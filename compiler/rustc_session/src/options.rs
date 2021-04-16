@@ -814,7 +814,7 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "a single extra argument to append to the linker invocation (can be used several times)"),
     link_args: Vec<String> = (Vec::new(), parse_list, [UNTRACKED],
         "extra arguments to append to the linker invocation (space separated)"),
-    link_dead_code: Option<bool> = (None, parse_opt_bool, [UNTRACKED],
+    link_dead_code: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "keep dead code at link time (useful for code coverage) (default: no)"),
     link_self_contained: Option<bool> = (None, parse_opt_bool, [UNTRACKED],
         "control whether to link Rust provided C objects/libraries or rely
