@@ -522,3 +522,30 @@ fn main(f: fn(i32, f64) -> char) {
             "#]],
     )
 }
+
+#[test]
+fn call_info_for_unclosed_call() {
+    check(
+        r#"
+fn foo(foo: u32, bar: u32) {}
+fn main() {
+    foo($0
+}"#,
+        expect![[r#"
+            fn foo(foo: u32, bar: u32)
+            (<foo: u32>, bar: u32)
+        "#]],
+    );
+    // check with surrounding space
+    check(
+        r#"
+fn foo(foo: u32, bar: u32) {}
+fn main() {
+    foo( $0
+}"#,
+        expect![[r#"
+            fn foo(foo: u32, bar: u32)
+            (<foo: u32>, bar: u32)
+        "#]],
+    )
+}

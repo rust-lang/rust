@@ -4,8 +4,9 @@ use either::Either;
 use hir::{HasAttrs, HirDisplay, Semantics, Type};
 use stdx::format_to;
 use syntax::{
+    algo,
     ast::{self, ArgListOwner, NameOwner},
-    match_ast, AstNode, SyntaxNode, SyntaxToken, TextRange, TextSize,
+    match_ast, AstNode, Direction, SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
 
 use crate::RootDatabase;
@@ -43,7 +44,12 @@ pub fn call_info(db: &RootDatabase, position: FilePosition) -> Option<CallInfo> 
     let sema = Semantics::new(db);
     let file = sema.parse(position.file_id);
     let file = file.syntax();
-    let token = file.token_at_offset(position.offset).next()?;
+    let token = file
+        .token_at_offset(position.offset)
+        .left_biased()
+        // if the cursor is sandwiched between two space tokens and the call is unclosed
+        // this prevents us from leaving the CallExpression
+        .and_then(|tok| algo::skip_trivia_token(tok, Direction::Prev))?;
     let token = sema.descend_into_macros(token);
 
     let (callable, active_parameter) = call_info_impl(&sema, token)?;
