@@ -725,7 +725,7 @@ fn test_fn() {
             expect![[r#"
                 [
                     Diagnostic {
-                        message: "unresolved macro call",
+                        message: "unresolved macro `foo::bar!`",
                         range: 5..8,
                         severity: Error,
                         fix: None,

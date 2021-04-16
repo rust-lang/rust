@@ -568,9 +568,13 @@ impl ExprCollector<'_> {
 
         let res = match res {
             Ok(res) => res,
-            Err(UnresolvedMacro) => {
+            Err(UnresolvedMacro { path }) => {
                 self.source_map.diagnostics.push(BodyDiagnostic::UnresolvedMacroCall(
-                    UnresolvedMacroCall { file: outer_file, node: syntax_ptr.cast().unwrap() },
+                    UnresolvedMacroCall {
+                        file: outer_file,
+                        node: syntax_ptr.cast().unwrap(),
+                        path,
+                    },
                 ));
                 collector(self, None);
                 return;

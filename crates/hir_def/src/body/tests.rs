@@ -180,7 +180,7 @@ fn unresolved_macro_diag() {
         r#"
 fn f() {
     m!();
-  //^^^^ unresolved macro call
+  //^^^^ unresolved macro `m!`
 }
       "#,
     );

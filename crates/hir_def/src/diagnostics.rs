@@ -8,7 +8,7 @@ use hir_expand::diagnostics::{Diagnostic, DiagnosticCode, DiagnosticSink};
 use hir_expand::{HirFileId, InFile};
 use syntax::{ast, AstPtr, SyntaxNodePtr, TextRange};
 
-use crate::{db::DefDatabase, DefWithBodyId};
+use crate::{db::DefDatabase, path::ModPath, DefWithBodyId};
 
 pub fn validate_body(db: &dyn DefDatabase, owner: DefWithBodyId, sink: &mut DiagnosticSink<'_>) {
     let source_map = db.body_with_source_map(owner).1;
@@ -103,6 +103,7 @@ impl Diagnostic for UnresolvedImport {
 pub struct UnresolvedMacroCall {
     pub file: HirFileId,
     pub node: AstPtr<ast::MacroCall>,
+    pub path: ModPath,
 }
 
 impl Diagnostic for UnresolvedMacroCall {
@@ -110,7 +111,7 @@ impl Diagnostic for UnresolvedMacroCall {
         DiagnosticCode("unresolved-macro-call")
     }
     fn message(&self) -> String {
-        "unresolved macro call".to_string()
+        format!("unresolved macro `{}!`", self.path)
     }
     fn display_source(&self) -> InFile<SyntaxNodePtr> {
         InFile::new(self.file, self.node.clone().into())

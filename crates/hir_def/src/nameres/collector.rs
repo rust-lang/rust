@@ -829,7 +829,7 @@ impl DefCollector<'_> {
                             res = ReachedFixedPoint::No;
                             return false;
                         }
-                        Err(UnresolvedMacro) | Ok(Err(_)) => {}
+                        Err(UnresolvedMacro { .. }) | Ok(Err(_)) => {}
                     }
                 }
                 MacroDirectiveKind::Derive { ast_id, derive_attr } => {
@@ -845,7 +845,7 @@ impl DefCollector<'_> {
                             res = ReachedFixedPoint::No;
                             return false;
                         }
-                        Err(UnresolvedMacro) => (),
+                        Err(UnresolvedMacro { .. }) => (),
                     }
                 }
             }
@@ -943,10 +943,11 @@ impl DefCollector<'_> {
                     &mut |_| (),
                 ) {
                     Ok(_) => (),
-                    Err(UnresolvedMacro) => {
+                    Err(UnresolvedMacro { path }) => {
                         self.def_map.diagnostics.push(DefDiagnostic::unresolved_macro_call(
                             directive.module_id,
                             ast_id.ast_id,
+                            path,
                         ));
                     }
                 },
@@ -1530,7 +1531,7 @@ impl ModCollector<'_, '_> {
                 ));
                 return;
             }
-            Err(UnresolvedMacro) => (),
+            Err(UnresolvedMacro { .. }) => (),
         }
 
         // Case 2: resolve in module scope, expand during name resolution.
