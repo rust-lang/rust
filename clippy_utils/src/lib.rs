@@ -1300,21 +1300,6 @@ pub fn if_sequence<'tcx>(mut expr: &'tcx Expr<'tcx>) -> (Vec<&'tcx Expr<'tcx>>, 
     (conds, blocks)
 }
 
-/// This function returns true if the given expression is the `else` or `if else` part of an if
-/// statement
-pub fn parent_node_is_if_expr(expr: &Expr<'_>, cx: &LateContext<'_>) -> bool {
-    let map = cx.tcx.hir();
-    let parent_id = map.get_parent_node(expr.hir_id);
-    let parent_node = map.get(parent_id);
-    matches!(
-        parent_node,
-        Node::Expr(Expr {
-            kind: ExprKind::If(_, _, _),
-            ..
-        })
-    )
-}
-
 // Finds the `#[must_use]` attribute, if any
 pub fn must_use_attr(attrs: &[Attribute]) -> Option<&Attribute> {
     attrs.iter().find(|a| a.has_name(sym::must_use))

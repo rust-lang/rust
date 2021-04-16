@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::source::snippet_with_macro_callsite;
-use clippy_utils::{is_lang_ctor, meets_msrv, parent_node_is_if_expr};
+use clippy_utils::{is_else_clause, is_lang_ctor, meets_msrv};
 use if_chain::if_chain;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::{Expr, ExprKind};
@@ -68,7 +68,7 @@ impl LateLintPass<'_> for IfThenSomeElseNone {
         }
 
         // We only care about the top-most `if` in the chain
-        if parent_node_is_if_expr(expr, cx) {
+        if is_else_clause(cx.tcx, expr) {
             return;
         }
 
