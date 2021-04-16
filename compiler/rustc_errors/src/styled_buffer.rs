@@ -148,11 +148,11 @@ impl StyledBuffer {
 
     /// Set `style` for `line`, `col` if:
     /// 1. That line and column exist in `StyledBuffer`
-    /// 2. Existing style is `Style::NoStyle` or `Style::Quotation` or `overwrite` is `true`
+    /// 2. `overwrite` is `true` or existing style is `Style::NoStyle` or `Style::Quotation`
     pub fn set_style(&mut self, line: usize, col: usize, style: Style, overwrite: bool) {
         if let Some(ref mut line) = self.text.get_mut(line) {
             if let Some(StyledChar { style: s, .. }) = line.get_mut(col) {
-                if *s == Style::NoStyle || *s == Style::Quotation || overwrite {
+                if overwrite || *s == Style::NoStyle || *s == Style::Quotation {
                     *s = style;
                 }
             }
