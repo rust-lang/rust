@@ -334,6 +334,8 @@ impl Ipv4Addr {
 
     /// An IPv4 address representing an unspecified address: 0.0.0.0
     ///
+    /// This corresponds to the constant `INADDR_ANY` in other languages.
+    ///
     /// # Examples
     ///
     /// ```
@@ -342,6 +344,7 @@ impl Ipv4Addr {
     /// let addr = Ipv4Addr::UNSPECIFIED;
     /// assert_eq!(addr, Ipv4Addr::new(0, 0, 0, 0));
     /// ```
+    #[doc(alias = "INADDR_ANY")]
     #[stable(feature = "ip_constructors", since = "1.30.0")]
     pub const UNSPECIFIED: Self = Ipv4Addr::new(0, 0, 0, 0);
 
