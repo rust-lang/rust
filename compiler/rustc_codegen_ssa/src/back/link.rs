@@ -1809,9 +1809,9 @@ fn add_local_native_libraries(
             None => continue,
         };
         match lib.kind {
-            NativeLibKind::Dylib | NativeLibKind::Unspecified => cmd.link_dylib(name),
+            NativeLibKind::Dylib | NativeLibKind::Unspecified => cmd.link_local_dylib(name),
             NativeLibKind::Framework => cmd.link_framework(name),
-            NativeLibKind::StaticNoBundle => cmd.link_staticlib(name),
+            NativeLibKind::StaticNoBundle => cmd.link_local_staticlib(name),
             NativeLibKind::StaticBundle => cmd.link_whole_staticlib(name, &search_path),
             NativeLibKind::RawDylib => {
                 // FIXME(#58713): Proper handling for raw dylibs.

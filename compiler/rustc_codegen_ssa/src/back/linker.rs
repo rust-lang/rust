@@ -109,6 +109,12 @@ pub trait Linker {
     fn link_staticlib(&mut self, lib: Symbol);
     fn link_rlib(&mut self, lib: &Path);
     fn link_whole_rlib(&mut self, lib: &Path);
+    fn link_local_dylib(&mut self, lib: Symbol) {
+        self.link_dylib(lib)
+    }
+    fn link_local_staticlib(&mut self, lib: Symbol) {
+        self.link_staticlib(lib)
+    }
     fn link_whole_staticlib(&mut self, lib: Symbol, search_path: &[PathBuf]);
     fn include_path(&mut self, path: &Path);
     fn framework_path(&mut self, path: &Path);
@@ -709,7 +715,7 @@ impl<'a> Linker for MsvcLinker<'a> {
     }
 
     fn link_dylib(&mut self, lib: Symbol) {
-        self.cmd.arg(&format!("{}.lib", lib));
+        self.link_staticlib(lib);
     }
 
     fn link_rust_dylib(&mut self, lib: Symbol, path: &Path) {
@@ -723,8 +729,15 @@ impl<'a> Linker for MsvcLinker<'a> {
         }
     }
 
-    fn link_staticlib(&mut self, lib: Symbol) {
+    fn link_local_dylib(&mut self, lib: Symbol) {
+        self.link_local_staticlib(lib);
+    }
+    fn link_local_staticlib(&mut self, lib: Symbol) {
         self.cmd.arg(&format!("{}.lib", lib));
+    }
+
+    fn link_staticlib(&mut self, lib: Symbol) {
+        self.cmd.arg(&format!("/DEFAULTLIB:{}.lib", lib));
     }
 
     fn full_relro(&mut self) {
@@ -767,7 +780,7 @@ impl<'a> Linker for MsvcLinker<'a> {
     }
 
     fn link_whole_staticlib(&mut self, lib: Symbol, _search_path: &[PathBuf]) {
-        self.link_staticlib(lib);
+        self.cmd.arg(format!("{}.lib", lib));
         self.cmd.arg(format!("/WHOLEARCHIVE:{}.lib", lib));
     }
     fn link_whole_rlib(&mut self, path: &Path) {
