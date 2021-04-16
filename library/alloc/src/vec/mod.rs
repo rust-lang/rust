@@ -2810,8 +2810,7 @@ impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A> {
     /// assert_eq!(Vec::from(b), vec![1, 2, 3]);
     /// ```
     fn from(s: Box<[T], A>) -> Self {
-        let len = s.len();
-        Self { buf: RawVec::from_box(s), len }
+        s.into_vec()
     }
 }
 
