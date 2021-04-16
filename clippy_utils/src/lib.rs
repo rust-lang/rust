@@ -60,12 +60,12 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{self, walk_expr, ErasedMap, NestedVisitorMap, Visitor};
 use rustc_hir::LangItem::{ResultErr, ResultOk};
 use rustc_hir::{
-    def, Arm, BindingAnnotation, Block, Body, Constness, Expr, ExprKind, FnDecl, GenericArgs, HirId, Impl, ImplItem,
-    ImplItemKind, Item, ItemKind, LangItem, MatchSource, Node, Param, Pat, PatKind, Path, PathSegment, QPath,
-    TraitItem, TraitItemKind, TraitRef, TyKind,
+    def, Arm, BindingAnnotation, Block, Body, Constness, Destination, Expr, ExprKind, FnDecl, GenericArgs, HirId, Impl,
+    ImplItem, ImplItemKind, Item, ItemKind, LangItem, Local, MatchSource, Node, Param, Pat, PatKind, Path, PathSegment,
+    QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitRef, TyKind,
 };
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::exports::Export;
@@ -82,7 +82,7 @@ use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::Integer;
 
 use crate::consts::{constant, Constant};
-use crate::ty::is_recursively_primitive_type;
+use crate::ty::{can_partially_move_ty, is_recursively_primitive_type};
 
 pub fn parse_msrv(msrv: &str, sess: Option<&Session>, span: Option<Span>) -> Option<RustcVersion> {
     if let Ok(version) = RustcVersion::parse(msrv) {
@@ -546,6 +546,73 @@ pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Optio
         then { return impl_.of_trait.as_ref(); }
     }
     None
+}
+
+/// Checks if the top level expression can be moved into a closure as is.
+pub fn can_move_expr_to_closure_no_visit(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, jump_targets: &[HirId]) -> bool {
+    match expr.kind {
+        ExprKind::Break(Destination { target_id: Ok(id), .. }, _)
+        | ExprKind::Continue(Destination { target_id: Ok(id), .. })
+            if jump_targets.contains(&id) =>
+        {
+            true
+        },
+        ExprKind::Break(..)
+        | ExprKind::Continue(_)
+        | ExprKind::Ret(_)
+        | ExprKind::Yield(..)
+        | ExprKind::InlineAsm(_)
+        | ExprKind::LlvmInlineAsm(_) => false,
+        // Accessing a field of a local value can only be done if the type isn't
+        // partially moved.
+        ExprKind::Field(base_expr, _)
+            if matches!(
+                base_expr.kind,
+                ExprKind::Path(QPath::Resolved(_, Path { res: Res::Local(_), .. }))
+            ) && can_partially_move_ty(cx, cx.typeck_results().expr_ty(base_expr)) =>
+        {
+            // TODO: check if the local has been partially moved. Assume it has for now.
+            false
+        }
+        _ => true,
+    }
+}
+
+/// Checks if the expression can be moved into a closure as is.
+pub fn can_move_expr_to_closure(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
+    struct V<'cx, 'tcx> {
+        cx: &'cx LateContext<'tcx>,
+        loops: Vec<HirId>,
+        allow_closure: bool,
+    }
+    impl Visitor<'tcx> for V<'_, 'tcx> {
+        type Map = ErasedMap<'tcx>;
+        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+            NestedVisitorMap::None
+        }
+
+        fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
+            if !self.allow_closure {
+                return;
+            }
+            if let ExprKind::Loop(b, ..) = e.kind {
+                self.loops.push(e.hir_id);
+                self.visit_block(b);
+                self.loops.pop();
+            } else {
+                self.allow_closure &= can_move_expr_to_closure_no_visit(self.cx, e, &self.loops);
+                walk_expr(self, e);
+            }
+        }
+    }
+
+    let mut v = V {
+        cx,
+        allow_closure: true,
+        loops: Vec::new(),
+    };
+    v.visit_expr(expr);
+    v.allow_closure
 }
 
 /// Returns the method names and argument list of nested method call expressions that make up
@@ -1272,6 +1339,51 @@ pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     did.map_or(false, |did| must_use_attr(&cx.tcx.get_attrs(did)).is_some())
 }
 
+/// Gets the node where an expression is either used, or it's type is unified with another branch.
+pub fn get_expr_use_or_unification_node(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> Option<Node<'tcx>> {
+    let map = tcx.hir();
+    let mut child_id = expr.hir_id;
+    let mut iter = map.parent_iter(child_id);
+    loop {
+        match iter.next() {
+            None => break None,
+            Some((id, Node::Block(_))) => child_id = id,
+            Some((id, Node::Arm(arm))) if arm.body.hir_id == child_id => child_id = id,
+            Some((_, Node::Expr(expr))) => match expr.kind {
+                ExprKind::Match(_, [arm], _) if arm.hir_id == child_id => child_id = expr.hir_id,
+                ExprKind::Block(..) | ExprKind::DropTemps(_) => child_id = expr.hir_id,
+                ExprKind::If(_, then_expr, None) if then_expr.hir_id == child_id => break None,
+                _ => break Some(Node::Expr(expr)),
+            },
+            Some((_, node)) => break Some(node),
+        }
+    }
+}
+
+/// Checks if the result of an expression is used, or it's type is unified with another branch.
+pub fn is_expr_used_or_unified(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
+    !matches!(
+        get_expr_use_or_unification_node(tcx, expr),
+        None | Some(Node::Stmt(Stmt {
+            kind: StmtKind::Expr(_)
+                | StmtKind::Semi(_)
+                | StmtKind::Local(Local {
+                    pat: Pat {
+                        kind: PatKind::Wild,
+                        ..
+                    },
+                    ..
+                }),
+            ..
+        }))
+    )
+}
+
+/// Checks if the expression is the final expression returned from a block.
+pub fn is_expr_final_block_expr(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
+    matches!(get_parent_node(tcx, expr.hir_id), Some(Node::Block(..)))
+}
+
 pub fn is_no_std_crate(cx: &LateContext<'_>) -> bool {
     cx.tcx.hir().attrs(hir::CRATE_HIR_ID).iter().any(|attr| {
         if let ast::AttrKind::Normal(ref attr, _) = attr.kind {
@@ -1441,28 +1553,43 @@ pub fn peel_hir_pat_refs(pat: &'a Pat<'a>) -> (&'a Pat<'a>, usize) {
     peel(pat, 0)
 }
 
+/// Peels of expressions while the given closure returns `Some`.
+pub fn peel_hir_expr_while<'tcx>(
+    mut expr: &'tcx Expr<'tcx>,
+    mut f: impl FnMut(&'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>>,
+) -> &'tcx Expr<'tcx> {
+    while let Some(e) = f(expr) {
+        expr = e;
+    }
+    expr
+}
+
 /// Peels off up to the given number of references on the expression. Returns the underlying
 /// expression and the number of references removed.
 pub fn peel_n_hir_expr_refs(expr: &'a Expr<'a>, count: usize) -> (&'a Expr<'a>, usize) {
-    fn f(expr: &'a Expr<'a>, count: usize, target: usize) -> (&'a Expr<'a>, usize) {
-        match expr.kind {
-            ExprKind::AddrOf(_, _, expr) if count != target => f(expr, count + 1, target),
-            _ => (expr, count),
-        }
-    }
-    f(expr, 0, count)
+    let mut remaining = count;
+    let e = peel_hir_expr_while(expr, |e| match e.kind {
+        ExprKind::AddrOf(BorrowKind::Ref, _, e) if remaining != 0 => {
+            remaining -= 1;
+            Some(e)
+        },
+        _ => None,
+    });
+    (e, count - remaining)
 }
 
 /// Peels off all references on the expression. Returns the underlying expression and the number of
 /// references removed.
 pub fn peel_hir_expr_refs(expr: &'a Expr<'a>) -> (&'a Expr<'a>, usize) {
-    fn f(expr: &'a Expr<'a>, count: usize) -> (&'a Expr<'a>, usize) {
-        match expr.kind {
-            ExprKind::AddrOf(BorrowKind::Ref, _, expr) => f(expr, count + 1),
-            _ => (expr, count),
-        }
-    }
-    f(expr, 0)
+    let mut count = 0;
+    let e = peel_hir_expr_while(expr, |e| match e.kind {
+        ExprKind::AddrOf(BorrowKind::Ref, _, e) => {
+            count += 1;
+            Some(e)
+        },
+        _ => None,
+    });
+    (e, count)
 }
 
 #[macro_export]
