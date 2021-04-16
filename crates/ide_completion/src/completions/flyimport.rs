@@ -1127,4 +1127,27 @@ impl Bar for Foo {
             expect![[r#""#]],
         );
     }
+
+    #[test]
+    fn no_inherent_candidates_proposed() {
+        check(
+            r#"
+mod baz {
+    pub trait DefDatabase {
+        fn method1(&self);
+    }
+    pub trait HirDatabase: DefDatabase {
+        fn method2(&self);
+    }
+}
+
+mod bar {
+    fn test(db: &dyn crate::baz::HirDatabase) {
+        db.metho$0
+    }
+}
+            "#,
+            expect![[r#""#]],
+        );
+    }
 }

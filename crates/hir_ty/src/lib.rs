@@ -56,6 +56,7 @@ pub use mapping::{
     to_foreign_def_id, to_placeholder_idx,
 };
 pub use traits::TraitEnvironment;
+pub use utils::all_super_traits;
 pub use walk::TypeWalk;
 
 pub use chalk_ir::{
