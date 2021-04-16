@@ -1700,6 +1700,24 @@ fn test_binary_search_by_key() {
 }
 
 #[test]
+fn test_partition_point() {
+    // Contiguous (front only) search:
+    let deque: VecDeque<_> = vec![1, 2, 3, 5, 6].into();
+    assert!(deque.as_slices().1.is_empty());
+    assert_eq!(deque.partition_point(|&v| v <= 3), 3);
+
+    // Split search (both front & back non-empty):
+    let mut deque: VecDeque<_> = vec![5, 6].into();
+    deque.push_front(3);
+    deque.push_front(2);
+    deque.push_front(1);
+    deque.push_back(10);
+    assert!(!deque.as_slices().0.is_empty());
+    assert!(!deque.as_slices().1.is_empty());
+    assert_eq!(deque.partition_point(|&v| v <= 5), 4);
+}
+
+#[test]
 fn test_zero_sized_push() {
     const N: usize = 8;
 
