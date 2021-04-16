@@ -815,7 +815,7 @@ fn assoc_const(
         w,
         "{}{}const <a href=\"{}\" class=\"constant\"><b>{}</b></a>: {}",
         extra,
-        it.visibility.print_with_space(cx, it.def_id),
+        it.visibility.print_with_space(it.def_id, cx),
         naive_assoc_href(it, link, cx),
         it.name.as_ref().unwrap(),
         ty.print(cx)
@@ -839,7 +839,7 @@ fn assoc_type(
         it.name.as_ref().unwrap()
     );
     if !bounds.is_empty() {
-        write!(w, ": {}", print_generic_bounds(cx, bounds))
+        write!(w, ": {}", print_generic_bounds(bounds, cx))
     }
     if let Some(default) = default {
         write!(w, " = {}", default.print(cx))
@@ -910,7 +910,7 @@ fn render_assoc_item(
                     .unwrap_or_else(|| format!("#{}.{}", ty, name))
             }
         };
-        let vis = meth.visibility.print_with_space(cx, meth.def_id).to_string();
+        let vis = meth.visibility.print_with_space(meth.def_id, cx).to_string();
         let constness = header.constness.print_with_space();
         let asyncness = header.asyncness.print_with_space();
         let unsafety = header.unsafety.print_with_space();
@@ -952,7 +952,7 @@ fn render_assoc_item(
             href = href,
             name = name,
             generics = g.print(cx),
-            decl = d.full_print(cx, header_len, indent, header.asyncness),
+            decl = d.full_print(header_len, indent, header.asyncness, cx),
             notable_traits = notable_traits_decl(&d, cx),
             where_clause = print_where_clause(g, cx, indent, end_newline),
         )

@@ -125,8 +125,8 @@ fn comma_sep<T: fmt::Display>(items: impl Iterator<Item = T>) -> impl fmt::Displ
 }
 
 crate fn print_generic_bounds<'a, 'tcx: 'a>(
-    cx: &'a Context<'tcx>,
     bounds: &'a [clean::GenericBound],
+    cx: &'a Context<'tcx>,
 ) -> impl fmt::Display + 'a + Captures<'tcx> {
     display_fn(move |f| {
         let mut bounds_dup = FxHashSet::default();
@@ -155,9 +155,9 @@ impl clean::GenericParamDef {
 
                 if !bounds.is_empty() {
                     if f.alternate() {
-                        write!(f, ": {:#}", print_generic_bounds(cx, bounds))?;
+                        write!(f, ": {:#}", print_generic_bounds(bounds, cx))?;
                     } else {
-                        write!(f, ":&nbsp;{}", print_generic_bounds(cx, bounds))?;
+                        write!(f, ":&nbsp;{}", print_generic_bounds(bounds, cx))?;
                     }
                 }
 
@@ -239,13 +239,13 @@ crate fn print_where_clause<'a, 'tcx: 'a>(
                         clause.push_str(&format!(
                             "{:#}: {:#}",
                             ty.print(cx),
-                            print_generic_bounds(cx, bounds)
+                            print_generic_bounds(bounds, cx)
                         ));
                     } else {
                         clause.push_str(&format!(
                             "{}: {}",
                             ty.print(cx),
-                            print_generic_bounds(cx, bounds)
+                            print_generic_bounds(bounds, cx)
                         ));
                     }
                 }
@@ -819,9 +819,9 @@ fn fmt_type<'cx>(
         }
         clean::ImplTrait(ref bounds) => {
             if f.alternate() {
-                write!(f, "impl {:#}", print_generic_bounds(cx, bounds))
+                write!(f, "impl {:#}", print_generic_bounds(bounds, cx))
             } else {
-                write!(f, "impl {}", print_generic_bounds(cx, bounds))
+                write!(f, "impl {}", print_generic_bounds(bounds, cx))
             }
         }
         clean::QPath { ref name, ref self_type, ref trait_ } => {
@@ -1013,21 +1013,21 @@ impl clean::FnDecl {
     /// * `asyncness`: Whether the function is async or not.
     crate fn full_print<'a, 'tcx: 'a>(
         &'a self,
-        cx: &'a Context<'tcx>,
         header_len: usize,
         indent: usize,
         asyncness: hir::IsAsync,
+        cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
-        display_fn(move |f| self.inner_full_print(cx, header_len, indent, asyncness, f))
+        display_fn(move |f| self.inner_full_print(header_len, indent, asyncness, f, cx))
     }
 
     fn inner_full_print(
         &self,
-        cx: &Context<'_>,
         header_len: usize,
         indent: usize,
         asyncness: hir::IsAsync,
         f: &mut fmt::Formatter<'_>,
+        cx: &Context<'_>,
     ) -> fmt::Result {
         let amp = if f.alternate() { "&" } else { "&amp;" };
         let mut args = String::new();
@@ -1134,8 +1134,8 @@ impl clean::FnDecl {
 impl clean::Visibility {
     crate fn print_with_space<'a, 'tcx: 'a>(
         self,
-        cx: &'a Context<'tcx>,
         item_did: DefId,
+        cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
         let to_print = match self {
             clean::Public => "pub ".to_owned(),
@@ -1320,9 +1320,9 @@ impl clean::TypeBinding {
                 clean::TypeBindingKind::Constraint { ref bounds } => {
                     if !bounds.is_empty() {
                         if f.alternate() {
-                            write!(f, ": {:#}", print_generic_bounds(cx, bounds))?;
+                            write!(f, ": {:#}", print_generic_bounds(bounds, cx))?;
                         } else {
-                            write!(f, ":&nbsp;{}", print_generic_bounds(cx, bounds))?;
+                            write!(f, ":&nbsp;{}", print_generic_bounds(bounds, cx))?;
                         }
                     }
                 }
