@@ -5,7 +5,7 @@ pub mod r#impl {
     impl S {
         /// See [Self::b].
         // @has raw_ident_self/impl/struct.S.html
-        // @has - '//a[@href="../../raw_ident_self/impl/struct.S.html#method.b"]' 'Self::b'
+        // @has - '//a[@href="struct.S.html#method.b"]' 'Self::b'
         pub fn a() {}
 
         pub fn b() {}

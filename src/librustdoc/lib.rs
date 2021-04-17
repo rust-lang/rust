@@ -289,7 +289,13 @@ fn opts() -> Vec<RustcOptGroup> {
         stable("cfg", |o| o.optmulti("", "cfg", "pass a --cfg to rustc", "")),
         stable("extern", |o| o.optmulti("", "extern", "pass an --extern to rustc", "NAME[=PATH]")),
         unstable("extern-html-root-url", |o| {
-            o.optmulti("", "extern-html-root-url", "base URL to use for dependencies", "NAME=URL")
+            o.optmulti(
+                "",
+                "extern-html-root-url",
+                "base URL to use for dependencies; for example, \
+                 \"std=/doc\" links std::vec::Vec to /doc/std/vec/struct.Vec.html",
+                "NAME=URL",
+            )
         }),
         stable("plugin-path", |o| o.optmulti("", "plugin-path", "removed", "DIR")),
         stable("C", |o| {

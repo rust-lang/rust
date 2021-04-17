@@ -1,8 +1,8 @@
 #![crate_name = "foo"]
 
 
-// @has foo/index.html '//a/@href' '../foo/struct.Foo.html#method.new'
-// @has foo/struct.Foo.html '//a/@href' '../foo/struct.Foo.html#method.new'
+// @has foo/index.html '//a/@href' 'struct.Foo.html#method.new'
+// @has foo/struct.Foo.html '//a/@href' 'struct.Foo.html#method.new'
 
 /// Use [`new`] to create a new instance.
 ///
@@ -15,8 +15,8 @@ impl Foo {
     }
 }
 
-// @has foo/index.html '//a/@href' '../foo/struct.Bar.html#method.new2'
-// @has foo/struct.Bar.html '//a/@href' '../foo/struct.Bar.html#method.new2'
+// @has foo/index.html '//a/@href' 'struct.Bar.html#method.new2'
+// @has foo/struct.Bar.html '//a/@href' 'struct.Bar.html#method.new2'
 
 /// Use [`new2`] to create a new instance.
 ///
@@ -30,7 +30,7 @@ impl Bar {
 }
 
 pub struct MyStruct {
-    // @has foo/struct.MyStruct.html '//a/@href' '../foo/struct.MyStruct.html#structfield.struct_field'
+    // @has foo/struct.MyStruct.html '//a/@href' 'struct.MyStruct.html#structfield.struct_field'
 
     /// [`struct_field`]
     ///
@@ -39,7 +39,7 @@ pub struct MyStruct {
 }
 
 pub enum MyEnum {
-    // @has foo/enum.MyEnum.html '//a/@href' '../foo/enum.MyEnum.html#variant.EnumVariant'
+    // @has foo/enum.MyEnum.html '//a/@href' 'enum.MyEnum.html#variant.EnumVariant'
 
     /// [`EnumVariant`]
     ///
@@ -48,7 +48,7 @@ pub enum MyEnum {
 }
 
 pub union MyUnion {
-    // @has foo/union.MyUnion.html '//a/@href' '../foo/union.MyUnion.html#structfield.union_field'
+    // @has foo/union.MyUnion.html '//a/@href' 'union.MyUnion.html#structfield.union_field'
 
     /// [`union_field`]
     ///
@@ -57,21 +57,21 @@ pub union MyUnion {
 }
 
 pub trait MyTrait {
-    // @has foo/trait.MyTrait.html '//a/@href' '../foo/trait.MyTrait.html#associatedtype.AssoType'
+    // @has foo/trait.MyTrait.html '//a/@href' 'trait.MyTrait.html#associatedtype.AssoType'
 
     /// [`AssoType`]
     ///
     /// [`AssoType`]: Self::AssoType
     type AssoType;
 
-    // @has foo/trait.MyTrait.html '//a/@href' '../foo/trait.MyTrait.html#associatedconstant.ASSO_CONST'
+    // @has foo/trait.MyTrait.html '//a/@href' 'trait.MyTrait.html#associatedconstant.ASSO_CONST'
 
     /// [`ASSO_CONST`]
     ///
     /// [`ASSO_CONST`]: Self::ASSO_CONST
     const ASSO_CONST: i32 = 1;
 
-    // @has foo/trait.MyTrait.html '//a/@href' '../foo/trait.MyTrait.html#method.asso_fn'
+    // @has foo/trait.MyTrait.html '//a/@href' 'trait.MyTrait.html#method.asso_fn'
 
     /// [`asso_fn`]
     ///
@@ -80,7 +80,7 @@ pub trait MyTrait {
 }
 
 impl MyStruct {
-    // @has foo/struct.MyStruct.html '//a/@href' '../foo/struct.MyStruct.html#method.for_impl'
+    // @has foo/struct.MyStruct.html '//a/@href' 'struct.MyStruct.html#method.for_impl'
 
     /// [`for_impl`]
     ///
@@ -91,21 +91,21 @@ impl MyStruct {
 }
 
 impl MyTrait for MyStruct {
-    // @has foo/struct.MyStruct.html '//a/@href' '../foo/struct.MyStruct.html#associatedtype.AssoType'
+    // @has foo/struct.MyStruct.html '//a/@href' 'struct.MyStruct.html#associatedtype.AssoType'
 
     /// [`AssoType`]
     ///
     /// [`AssoType`]: Self::AssoType
     type AssoType = u32;
 
-    // @has foo/struct.MyStruct.html '//a/@href' '../foo/struct.MyStruct.html#associatedconstant.ASSO_CONST'
+    // @has foo/struct.MyStruct.html '//a/@href' 'struct.MyStruct.html#associatedconstant.ASSO_CONST'
 
     /// [`ASSO_CONST`]
     ///
     /// [`ASSO_CONST`]: Self::ASSO_CONST
     const ASSO_CONST: i32 = 10;
 
-    // @has foo/struct.MyStruct.html '//a/@href' '../foo/struct.MyStruct.html#method.asso_fn'
+    // @has foo/struct.MyStruct.html '//a/@href' 'struct.MyStruct.html#method.asso_fn'
 
     /// [`asso_fn`]
     ///
