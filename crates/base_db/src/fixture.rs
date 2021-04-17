@@ -54,7 +54,9 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
         let fixture = ChangeFixture::parse(ra_fixture);
         let mut db = Self::default();
         fixture.change.apply(&mut db);
-        let (file_id, range_or_offset) = fixture.file_position.unwrap();
+        let (file_id, range_or_offset) = fixture
+            .file_position
+            .expect("Could not find file position in fixture. Did you forget to add an `$0`?");
         (db, file_id, range_or_offset)
     }
 
