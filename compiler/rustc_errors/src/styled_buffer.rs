@@ -7,21 +7,17 @@ pub struct StyledBuffer {
     lines: Vec<Vec<StyledChar>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct StyledChar {
     chr: char,
     style: Style,
 }
 
 impl StyledChar {
-    fn new(chr: char, style: Style) -> Self {
-        StyledChar { chr, style }
-    }
-}
+    const SPACE: Self = StyledChar::new(' ', Style::NoStyle);
 
-impl Default for StyledChar {
-    fn default() -> Self {
-        StyledChar::new(' ', Style::NoStyle)
+    const fn new(chr: char, style: Style) -> Self {
+        StyledChar { chr, style }
     }
 }
 
@@ -66,31 +62,25 @@ impl StyledBuffer {
     }
 
     fn ensure_lines(&mut self, line: usize) {
-        while line >= self.lines.len() {
-            self.lines.push(vec![]);
+        if line >= self.lines.len() {
+            self.lines.resize(line + 1, Vec::new());
         }
     }
 
     /// Sets `chr` with `style` for given `line`, `col`.
-    /// If line not exist in `StyledBuffer`, adds lines up to given
-    /// and fills last line with spaces and `Style::NoStyle` style
+    /// If `line` does not exist in our buffer, adds empty lines up to the given
+    /// and fills the last line with unstyled whitespace.
     pub fn putc(&mut self, line: usize, col: usize, chr: char, style: Style) {
         self.ensure_lines(line);
-        if col < self.lines[line].len() {
-            self.lines[line][col] = StyledChar::new(chr, style);
-        } else {
-            let mut i = self.lines[line].len();
-            while i < col {
-                self.lines[line].push(StyledChar::default());
-                i += 1;
-            }
-            self.lines[line].push(StyledChar::new(chr, style));
+        if col >= self.lines[line].len() {
+            self.lines[line].resize(col + 1, StyledChar::SPACE);
         }
+        self.lines[line][col] = StyledChar::new(chr, style);
     }
 
     /// Sets `string` with `style` for given `line`, starting from `col`.
-    /// If line not exist in `StyledBuffer`, adds lines up to given
-    /// and fills last line with spaces and `Style::NoStyle` style
+    /// If `line` does not exist in our buffer, adds empty lines up to the given
+    /// and fills the last line with unstyled whitespace.
     pub fn puts(&mut self, line: usize, col: usize, string: &str, style: Style) {
         let mut n = col;
         for c in string.chars() {
@@ -108,7 +98,7 @@ impl StyledBuffer {
         if !self.lines[line].is_empty() {
             // Push the old content over to make room for new content
             for _ in 0..string_len {
-                self.lines[line].insert(0, StyledChar::default());
+                self.lines[line].insert(0, StyledChar::SPACE);
             }
         }
 
