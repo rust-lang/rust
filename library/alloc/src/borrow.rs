@@ -332,8 +332,13 @@ impl<'a, B: ?Sized + ToOwned> Cow<'a, B> {
     /// If `func` returns `true`, the owned value is replaced with `sub` and
     /// returned. Otherwise, `None` is returned.
     ///
+    /// This can be used to replace an owned value with a longer-lived borrowed
+    /// value to reduce memory use.
+    ///
     /// # Example
+    ///
     /// Replace an owned string if its lowercase form is equal to `"moo"`.
+    ///
     /// ```
     /// # #![feature(cow_dedup)]
     /// # use std::borrow::Cow;
@@ -347,7 +352,7 @@ impl<'a, B: ?Sized + ToOwned> Cow<'a, B> {
     pub fn dedup_by<'b: 'a>(
         this: &mut Cow<'a, B>,
         sub: &'b B,
-        func: impl FnOnce(&<B as ToOwned>::Owned) -> bool,
+        func: impl FnOnce(&B) -> bool,
     ) -> Option<<B as ToOwned>::Owned> {
         match this {
             Owned(o) if func(o) => Some(core::mem::replace(this, Borrowed(sub)).into_owned()),
@@ -365,8 +370,13 @@ where
     /// Replaces an owned value with the given borrowed value if they are
     /// equal. Returns the owned value if any.
     ///
+    /// This can be used to replace an owned value with a longer-lived borrowed
+    /// value to reduce memory use.
+    ///
     /// # Example
+    ///
     /// Replace an owned string if it's equal to `"moo"`.
+    /// 
     /// ```
     /// # #![feature(cow_dedup)]
     /// # use std::borrow::Cow;
