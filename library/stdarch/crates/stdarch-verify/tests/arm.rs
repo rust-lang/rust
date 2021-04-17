@@ -149,6 +149,7 @@ static U8X16X2: Type = Type::U(8, 16, 2);
 static U8X16X3: Type = Type::U(8, 16, 3);
 static U8X16X4: Type = Type::U(8, 16, 4);
 static U8X8: Type = Type::U(8, 8, 1);
+static U8X4: Type = Type::U(8, 4, 1);
 static U8X8X2: Type = Type::U(8, 8, 2);
 static U8X8X3: Type = Type::U(8, 8, 3);
 static U8X8X4: Type = Type::U(8, 8, 4);
@@ -371,6 +372,90 @@ fn verify_all_signatures() {
                 "vsriq_n_p8",
                 "vsri_n_p16",
                 "vsriq_n_p16",
+                "__smulbb",
+                "__smultb",
+                "__smulbt",
+                "__smultt",
+                "__smulwb",
+                "__smulwt",
+                "__qadd",
+                "__qsub",
+                "__qdbl",
+                "__smlabb",
+                "__smlabt",
+                "__smlatb",
+                "__smlatt",
+                "__smlawb",
+                "__smlawt",
+                "__qadd8",
+                "__qsub8",
+                "__qsub16",
+                "__qadd16",
+                "__qasx",
+                "__qsax",
+                "__sadd16",
+                "__sadd8",
+                "__smlad",
+                "__smlsd",
+                "__sasx",
+                "__sel",
+                "__shadd8",
+                "__shadd16",
+                "__shsub8",
+                "__usub8",
+                "__ssub8",
+                "__shsub16",
+                "__smuad",
+                "__smuadx",
+                "__smusd",
+                "__smusdx",
+                "__usad8",
+                "__usada8",
+                "vld1_s8",
+                "vld1q_s8",
+                "vld1q_s8",
+                "vld1_s16",
+                "vld1q_s16",
+                "vld1_s32",
+                "vld1q_s32",
+                "vld1_s64",
+                "vld1q_s64",
+                "vld1_u8",
+                "vld1q_u8",
+                "vld1_u16",
+                "vld1q_u16",
+                "vld1_u32",
+                "vld1q_u32",
+                "vld1_u64",
+                "vld1q_u64",
+                "vld1_p8",
+                "vld1q_p8",
+                "vld1_p16",
+                "vld1q_p16",
+                "vld1_f32",
+                "vld1q_f32",
+                "vld1_f64",
+                "vld1q_f64",
+                "vpadal_s8",
+                "vpadal_s16",
+                "vpadal_s32",
+                "vpadalq_s8",
+                "vpadalq_s16",
+                "vpadalq_s32",
+                "vpadal_u8",
+                "vpadal_u16",
+                "vpadal_u32",
+                "vpadalq_u8",
+                "vpadalq_u16",
+                "vpadalq_u32",
+                "__ldrex",
+                "__strex",
+                "__ldrexb",
+                "__strexb",
+                "__ldrexh",
+                "__strexh",
+                "__clrex",
+                "__dbg",
             ];
             if !skip.contains(&rust.name) {
                 println!(
@@ -402,6 +487,7 @@ fn verify_all_signatures() {
             "vreinterpret_p64_s64",
             "vreinterpret_f32_p64",
             "vreinterpretq_f32_p64",
+            "__dbg",
         ];
         let arm = match map.get(rust.name) {
             Some(i) => i,
@@ -412,11 +498,13 @@ fn verify_all_signatures() {
                 // TODO: we still need to verify these intrinsics or find a
                 // reference for them, need to figure out where though!
                 if !rust.file.ends_with("dsp.rs\"")
+                    && !rust.file.ends_with("simd32.rs\"")
                     && !rust.file.ends_with("cmsis.rs\"")
                     && !rust.file.ends_with("v6.rs\"")
                     && !rust.file.ends_with("v7.rs\"")
                     && !rust.file.ends_with("v8.rs\"")
                     && !rust.file.ends_with("tme.rs\"")
+                    && !rust.file.ends_with("ex.rs\"")
                     && !skip_intrinsic_verify.contains(&rust.name)
                 {
                     println!(

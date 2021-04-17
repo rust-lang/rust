@@ -10,7 +10,7 @@ pub use self::generated::*;
 // FIXME: replace neon with asimd
 
 use crate::{
-    core_arch::{arm::*, simd::*, simd_llvm::*},
+    core_arch::{arm_shared::*, simd::*, simd_llvm::*},
     hint::unreachable_unchecked,
     mem::{transmute, zeroed},
 };
@@ -2812,7 +2812,7 @@ pub unsafe fn vsriq_n_p16<const N: i32>(a: poly16x8_t, b: poly16x8_t) -> poly16x
 #[cfg(test)]
 mod tests {
     use crate::core_arch::aarch64::test_support::*;
-    use crate::core_arch::arm::test_support::*;
+    use crate::core_arch::arm_shared::test_support::*;
     use crate::core_arch::{aarch64::neon::*, aarch64::*, simd::*};
     use std::mem::transmute;
     use stdarch_test::simd_test;
@@ -4261,13 +4261,13 @@ mod tests {
 
 #[cfg(test)]
 #[cfg(target_endian = "little")]
-#[path = "../../arm/neon/table_lookup_tests.rs"]
+#[path = "../../arm_shared/neon/table_lookup_tests.rs"]
 mod table_lookup_tests;
 
 #[cfg(test)]
-#[path = "../../arm/neon/shift_and_insert_tests.rs"]
+#[path = "../../arm_shared/neon/shift_and_insert_tests.rs"]
 mod shift_and_insert_tests;
 
 #[cfg(test)]
-#[path = "../../arm/neon/load_tests.rs"]
+#[path = "../../arm_shared/neon/load_tests.rs"]
 mod load_tests;

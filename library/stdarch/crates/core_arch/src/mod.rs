@@ -5,7 +5,7 @@
 mod macros;
 
 #[cfg(any(target_arch = "arm", target_arch = "aarch64", doc))]
-mod acle;
+mod arm_shared;
 
 mod simd;
 
@@ -53,7 +53,7 @@ pub mod arch {
     #[doc(cfg(target_arch = "aarch64"))]
     #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod aarch64 {
-        pub use crate::core_arch::{aarch64::*, arm::*};
+        pub use crate::core_arch::aarch64::*;
     }
 
     /// Platform-specific intrinsics for the `wasm32` platform.
@@ -234,8 +234,8 @@ mod x86_64;
 #[cfg(any(target_arch = "aarch64", doc))]
 #[doc(cfg(target_arch = "aarch64"))]
 mod aarch64;
-#[cfg(any(target_arch = "arm", target_arch = "aarch64", doc))]
-#[doc(cfg(any(target_arch = "arm", target_arch = "aarch64")))]
+#[cfg(any(target_arch = "arm", doc))]
+#[doc(cfg(any(target_arch = "arm")))]
 mod arm;
 
 #[cfg(any(target_arch = "wasm32", doc))]

@@ -121,7 +121,7 @@ pub fn assert(shim_addr: usize, fnname: &str, expected: &str) {
                 // in some cases exceed the limit.
                 "cvtpi2ps" => 25,
 
-                // core_arch/src/acle/simd32
+                // core_arch/src/arm_shared/simd32
                 "usad8" => 27,
                 "qadd8" | "qsub8" | "sadd8" | "sel" | "shadd8" | "shsub8" | "usub8" | "ssub8" => 29,
 

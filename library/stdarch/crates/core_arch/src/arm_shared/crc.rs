@@ -79,7 +79,7 @@ pub unsafe fn __crc32cw(crc: u32, data: u32) -> u32 {
 
 #[cfg(test)]
 mod tests {
-    use crate::core_arch::{arm::*, simd::*};
+    use crate::core_arch::{arm_shared::*, simd::*};
     use std::mem;
     use stdarch_test::simd_test;
 

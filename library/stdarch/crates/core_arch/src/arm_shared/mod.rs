@@ -47,6 +47,9 @@
 //!
 //! - [ACLE Q2 2018](https://developer.arm.com/docs/101028/latest)
 
+// Only for 'neon' submodule
+#![allow(non_camel_case_types)]
+
 // 8, 7 and 6-M are supported via dedicated instructions like DMB. All other arches are supported
 // via CP15 instructions. See Section 10.1 of ACLE
 mod barrier;
@@ -54,70 +57,29 @@ mod barrier;
 pub use self::barrier::*;
 
 mod hints;
-
 pub use self::hints::*;
 
 mod registers;
-
 pub use self::registers::*;
 
-mod ex;
+#[cfg(any(target_arch = "aarch64", target_feature = "v7", doc))]
+mod crc;
+#[cfg(any(target_arch = "aarch64", target_feature = "v7", doc))]
+pub use crc::*;
 
-pub use self::ex::*;
+#[cfg(any(target_arch = "aarch64", target_feature = "v7", doc))]
+mod crypto;
+#[cfg(any(target_arch = "aarch64", target_feature = "v7", doc))]
+pub use self::crypto::*;
 
-// Supported arches: 5TE, 7E-M. See Section 10.1 of ACLE (e.g. QADD)
-// We also include the A profile even though DSP is deprecated on that profile as of ACLE 2.0 (see
-// section 5.4.7)
-// Here we workaround the difference between LLVM's +dsp and ACLE's __ARM_FEATURE_DSP by gating on
-// '+v5te' rather than on '+dsp'
-#[cfg(all(
-    not(target_arch = "aarch64"),
-    any(
-        // >= v5TE but excludes v7-M
-        all(target_feature = "v5te", not(target_feature = "mclass")),
-        // v7E-M
-        all(target_feature = "mclass", target_feature = "dsp"),
-    )
-))]
-mod dsp;
+#[cfg(any(target_arch = "aarch64", target_feature = "v7", doc))]
+pub(crate) mod neon;
+#[cfg(any(target_arch = "aarch64", target_feature = "v7", doc))]
+pub use self::neon::*;
 
-#[cfg(all(
-    not(target_arch = "aarch64"),
-    any(
-        all(target_feature = "v5te", not(target_feature = "mclass")),
-        all(target_feature = "mclass", target_feature = "dsp"),
-    )
-))]
-pub use self::dsp::*;
-
-// Supported arches: 6, 7-M. See Section 10.1 of ACLE (e.g. SSAT)
-#[cfg(all(not(target_arch = "aarch64"), target_feature = "v6",))]
-mod sat;
-
-#[cfg(all(not(target_arch = "aarch64"), target_feature = "v6",))]
-pub use self::sat::*;
-
-// Deprecated in ACLE 2.0 for the A profile but fully supported on the M and R profiles, says
-// Section 5.4.9 of ACLE. We'll expose these for the A profile even if deprecated
-#[cfg(all(
-    not(target_arch = "aarch64"),
-    any(
-        // v7-A, v7-R
-        all(target_feature = "v6", not(target_feature = "mclass")),
-        // v7E-M
-        all(target_feature = "mclass", target_feature = "dsp")
-    )
-))]
-mod simd32;
-
-#[cfg(all(
-    not(target_arch = "aarch64"),
-    any(
-        all(target_feature = "v6", not(target_feature = "mclass")),
-        all(target_feature = "mclass", target_feature = "dsp")
-    )
-))]
-pub use self::simd32::*;
+#[cfg(test)]
+#[cfg(any(target_arch = "aarch64", target_feature = "v7", doc))]
+pub(crate) mod test_support;
 
 mod sealed {
     pub trait Dmb {

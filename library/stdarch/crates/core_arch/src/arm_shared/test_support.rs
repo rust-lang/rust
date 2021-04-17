@@ -1,4 +1,10 @@
-use crate::core_arch::{arm::*, simd::*};
+#[cfg(target_arch = "arm")]
+use crate::core_arch::arm::*;
+
+#[cfg(target_arch = "aarch64")]
+use crate::core_arch::aarch64::*;
+
+use crate::core_arch::simd::*;
 use std::{i16, i32, i8, mem::transmute, u16, u32, u8, vec::Vec};
 
 macro_rules! V_u8 {

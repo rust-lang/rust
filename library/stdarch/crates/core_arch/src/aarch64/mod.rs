@@ -21,7 +21,11 @@ pub use self::crc::*;
 mod prefetch;
 pub use self::prefetch::*;
 
-pub use super::acle::*;
+pub use super::arm_shared::*;
+
+mod armclang;
+
+pub use self::armclang::*;
 
 #[cfg(test)]
 use stdarch_test::assert_instr;

@@ -224,6 +224,7 @@ fn to_type(t: &syn::Type) -> proc_macro2::TokenStream {
             "int64x1_t" => quote! { &I64X1 },
             "int64x2_t" => quote! { &I64X2 },
             "uint8x8_t" => quote! { &U8X8 },
+            "uint8x4_t" => quote! { &U8X4 },
             "uint8x8x2_t" => quote! { &U8X8X2 },
             "uint8x16x2_t" => quote! { &U8X16X2 },
             "uint8x16x3_t" => quote! { &U8X16X3 },

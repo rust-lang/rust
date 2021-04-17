@@ -65,7 +65,7 @@
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
-use crate::{core_arch::acle::dsp::int16x2_t, mem::transmute};
+use crate::{core_arch::arm::dsp::int16x2_t, mem::transmute};
 
 types! {
     /// ARM-specific 32-bit wide vector of four packed `i8`.

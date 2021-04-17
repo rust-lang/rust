@@ -1,4 +1,4 @@
-use crate::core_arch::{aarch64::neon::*, arm::*, simd::*};
+use crate::core_arch::{aarch64::neon::*, arm_shared::*, simd::*};
 use std::{i16, i32, i8, mem::transmute, u16, u32, u8, vec::Vec};
 
 macro_rules! V_u64 {
