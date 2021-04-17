@@ -941,6 +941,24 @@ fn test_meta_doc_comments() {
 }
 
 #[test]
+fn test_meta_extended_key_value_attributes() {
+    parse_macro(
+        r#"
+macro_rules! foo {
+    (#[$i:meta]) => (
+        #[$ i]
+        fn bar() {}
+    )
+}
+"#,
+    )
+    .assert_expand_items(
+        r#"foo! { #[doc = concat!("The `", "bla", "` lang item.")] }"#,
+        r#"# [doc = concat ! ("The `" , "bla" , "` lang item.")] fn bar () {}"#,
+    );
+}
+
+#[test]
 fn test_meta_doc_comments_non_latin() {
     parse_macro(
         r#"
