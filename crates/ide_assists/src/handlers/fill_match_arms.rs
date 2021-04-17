@@ -504,6 +504,40 @@ fn main() {
         );
     }
 
+    // Fixme: This fails with extra useless match arms added.
+    // To fix, it needs full fledged match exhaustiveness checking from
+    // hir_ty::diagnostics::match_check
+    // see https://github.com/rust-analyzer/rust-analyzer/issues/8493
+    #[ignore]
+    #[test]
+    fn fill_match_arms_tuple_of_enum_partial_with_wildcards() {
+        let ra_fixture = r#"
+fn main() {
+    let a = Some(1);
+    let b = Some(());
+    match (a$0, b) {
+        (Some(_), _) => {}
+        (None, Some(_)) => {}
+    }
+}
+"#;
+        check_assist(
+            fill_match_arms,
+            &format!("//- /main.rs crate:main deps:core{}{}", ra_fixture, FamousDefs::FIXTURE),
+            r#"
+fn main() {
+    let a = Some(1);
+    let b = Some(());
+    match (a, b) {
+        (Some(_), _) => {}
+        (None, Some(_)) => {}
+        $0(None, None) => {}
+    }
+}
+"#,
+        );
+    }
+
     #[test]
     fn fill_match_arms_tuple_of_enum_not_applicable() {
         check_assist_not_applicable(
