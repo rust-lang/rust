@@ -955,6 +955,29 @@ fn main() {
     }
 
     #[test]
+    fn from_inside_module() {
+        // This worked correctly, but the test suite logic was broken.
+        cov_mark::check!(submodule_in_testdb);
+        check_found_path(
+            r#"
+mod baz {
+    pub struct Foo {}
+}
+
+mod bar {
+    fn bar() {
+        $0
+    }
+}
+            "#,
+            "crate::baz::Foo",
+            "crate::baz::Foo",
+            "crate::baz::Foo",
+            "crate::baz::Foo",
+        )
+    }
+
+    #[test]
     fn recursive_pub_mod_reexport() {
         cov_mark::check!(recursive_imports);
         check_found_path(
