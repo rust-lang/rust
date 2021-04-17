@@ -53,12 +53,16 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use core::cmp::{self, Ordering};
+#[cfg(not(no_global_oom_handling))]
+use core::cmp;
+use core::cmp::Ordering;
 use core::convert::TryFrom;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::intrinsics::{arith_offset, assume};
-use core::iter::{self, FromIterator};
+use core::iter;
+#[cfg(not(no_global_oom_handling))]
+use core::iter::FromIterator;
 use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop, MaybeUninit};
 use core::ops::{self, Index, IndexMut, Range, RangeBounds};
@@ -76,9 +80,11 @@ pub use self::drain_filter::DrainFilter;
 
 mod drain_filter;
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "vec_splice", since = "1.21.0")]
 pub use self::splice::Splice;
 
+#[cfg(not(no_global_oom_handling))]
 mod splice;
 
 #[stable(feature = "drain", since = "1.6.0")]
@@ -86,44 +92,60 @@ pub use self::drain::Drain;
 
 mod drain;
 
+#[cfg(not(no_global_oom_handling))]
 mod cow;
 
+#[cfg(not(no_global_oom_handling))]
 pub(crate) use self::into_iter::AsIntoIter;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::into_iter::IntoIter;
 
 mod into_iter;
 
+#[cfg(not(no_global_oom_handling))]
 use self::is_zero::IsZero;
 
 mod is_zero;
 
+#[cfg(not(no_global_oom_handling))]
 mod source_iter_marker;
 
 mod partial_eq;
 
+#[cfg(not(no_global_oom_handling))]
 use self::spec_from_elem::SpecFromElem;
 
+#[cfg(not(no_global_oom_handling))]
 mod spec_from_elem;
 
+#[cfg(not(no_global_oom_handling))]
 use self::set_len_on_drop::SetLenOnDrop;
 
+#[cfg(not(no_global_oom_handling))]
 mod set_len_on_drop;
 
+#[cfg(not(no_global_oom_handling))]
 use self::in_place_drop::InPlaceDrop;
 
+#[cfg(not(no_global_oom_handling))]
 mod in_place_drop;
 
+#[cfg(not(no_global_oom_handling))]
 use self::spec_from_iter_nested::SpecFromIterNested;
 
+#[cfg(not(no_global_oom_handling))]
 mod spec_from_iter_nested;
 
+#[cfg(not(no_global_oom_handling))]
 use self::spec_from_iter::SpecFromIter;
 
+#[cfg(not(no_global_oom_handling))]
 mod spec_from_iter;
 
+#[cfg(not(no_global_oom_handling))]
 use self::spec_extend::SpecExtend;
 
+#[cfg(not(no_global_oom_handling))]
 mod spec_extend;
 
 /// A contiguous growable array type, written as `Vec<T>` and pronounced 'vector'.
@@ -435,6 +457,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec.len(), 11);
     /// assert!(vec.capacity() >= 11);
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[doc(alias = "malloc")]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -574,6 +597,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(vec.len(), 11);
     /// assert!(vec.capacity() >= 11);
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
@@ -774,6 +798,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// vec.reserve(10);
     /// assert!(vec.capacity() >= 11);
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[doc(alias = "realloc")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve(&mut self, additional: usize) {
@@ -800,6 +825,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// vec.reserve_exact(10);
     /// assert!(vec.capacity() >= 11);
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[doc(alias = "realloc")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve_exact(&mut self, additional: usize) {
@@ -900,6 +926,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// vec.shrink_to_fit();
     /// assert!(vec.capacity() >= 3);
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[doc(alias = "realloc")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn shrink_to_fit(&mut self) {
@@ -930,6 +957,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// vec.shrink_to(0);
     /// assert!(vec.capacity() >= 3);
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[doc(alias = "realloc")]
     #[unstable(feature = "shrink_to", reason = "new API", issue = "56431")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
@@ -962,6 +990,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// let slice = vec.into_boxed_slice();
     /// assert_eq!(slice.into_vec().capacity(), 3);
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_boxed_slice(mut self) -> Box<[T], A> {
         unsafe {
@@ -1299,6 +1328,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// vec.insert(4, 5);
     /// assert_eq!(vec, [1, 4, 2, 3, 5]);
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, index: usize, element: T) {
         #[cold]
@@ -1627,6 +1657,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// vec.push(3);
     /// assert_eq!(vec, [1, 2, 3]);
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push(&mut self, value: T) {
@@ -1680,6 +1711,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(vec, [1, 2, 3, 4, 5, 6]);
     /// assert_eq!(vec2, []);
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "append", since = "1.4.0")]
     pub fn append(&mut self, other: &mut Self) {
@@ -1690,6 +1722,7 @@ impl<T, A: Allocator> Vec<T, A> {
     }
 
     /// Appends elements to `Self` from other buffer.
+    #[cfg(not(no_global_oom_handling))]
     #[inline]
     unsafe fn append_elements(&mut self, other: *const [T]) {
         let count = unsafe { (*other).len() };
@@ -1827,6 +1860,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(vec, [1]);
     /// assert_eq!(vec2, [2, 3]);
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[must_use = "use `.truncate()` if you don't need the other half"]
     #[stable(feature = "split_off", since = "1.4.0")]
@@ -1891,6 +1925,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// vec.resize_with(4, || { p *= 2; p });
     /// assert_eq!(vec, [2, 4, 8, 16]);
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "vec_resize_with", since = "1.33.0")]
     pub fn resize_with<F>(&mut self, new_len: usize, f: F)
     where
@@ -1926,6 +1961,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// static_ref[0] += 1;
     /// assert_eq!(static_ref, &[2, 2, 3]);
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "vec_leak", since = "1.47.0")]
     #[inline]
     pub fn leak<'a>(self) -> &'a mut [T]
@@ -2084,6 +2120,7 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// vec.resize(2, 0);
     /// assert_eq!(vec, [1, 2]);
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "vec_resize", since = "1.5.0")]
     pub fn resize(&mut self, new_len: usize, value: T) {
         let len = self.len();
@@ -2114,6 +2151,7 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// ```
     ///
     /// [`extend`]: Vec::extend
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "vec_extend_from_slice", since = "1.6.0")]
     pub fn extend_from_slice(&mut self, other: &[T]) {
         self.spec_extend(other.iter())
@@ -2135,6 +2173,7 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// vec.extend_from_within(4..8);
     /// assert_eq!(vec, [0, 1, 2, 3, 4, 2, 3, 4, 0, 1, 4, 2, 3, 4]);
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "vec_extend_from_within", since = "1.53.0")]
     pub fn extend_from_within<R>(&mut self, src: R)
     where
@@ -2188,6 +2227,7 @@ impl<T, F: FnMut() -> T> ExtendWith<T> for ExtendFunc<F> {
 }
 
 impl<T, A: Allocator> Vec<T, A> {
+    #[cfg(not(no_global_oom_handling))]
     /// Extend the vector by `n` values, using the given generator.
     fn extend_with<E: ExtendWith<T>>(&mut self, n: usize, mut value: E) {
         self.reserve(n);
@@ -2245,12 +2285,14 @@ impl<T: PartialEq, A: Allocator> Vec<T, A> {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[doc(hidden)]
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
     <T as SpecFromElem>::from_elem(elem, n, Global)
 }
 
 #[doc(hidden)]
+#[cfg(not(no_global_oom_handling))]
 #[unstable(feature = "allocator_api", issue = "32838")]
 pub fn from_elem_in<T: Clone, A: Allocator>(elem: T, n: usize, alloc: A) -> Vec<T, A> {
     <T as SpecFromElem>::from_elem(elem, n, alloc)
@@ -2331,6 +2373,7 @@ impl<T, A: Allocator> ops::DerefMut for Vec<T, A> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone, A: Allocator + Clone> Clone for Vec<T, A> {
     #[cfg(not(test))]
@@ -2397,6 +2440,7 @@ impl<T, I: SliceIndex<[T]>, A: Allocator> IndexMut<I> for Vec<T, A> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> FromIterator<T> for Vec<T> {
     #[inline]
@@ -2467,6 +2511,7 @@ impl<'a, T, A: Allocator> IntoIterator for &'a mut Vec<T, A> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> Extend<T> for Vec<T, A> {
     #[inline]
@@ -2488,6 +2533,7 @@ impl<T, A: Allocator> Extend<T> for Vec<T, A> {
 impl<T, A: Allocator> Vec<T, A> {
     // leaf method to which various SpecFrom/SpecExtend implementations delegate when
     // they have no further optimizations to apply
+    #[cfg(not(no_global_oom_handling))]
     fn extend_desugared<I: Iterator<Item = T>>(&mut self, mut iterator: I) {
         // This is the case for a general iterator.
         //
@@ -2543,6 +2589,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(v, &[7, 8, 3]);
     /// assert_eq!(u, &[1, 2]);
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "vec_splice", since = "1.21.0")]
     pub fn splice<R, I>(&mut self, range: R, replace_with: I) -> Splice<'_, I::IntoIter, A>
@@ -2619,6 +2666,7 @@ impl<T, A: Allocator> Vec<T, A> {
 /// append the entire slice at once.
 ///
 /// [`copy_from_slice`]: slice::copy_from_slice
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: Copy + 'a, A: Allocator + 'a> Extend<&'a T> for Vec<T, A> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
@@ -2713,6 +2761,7 @@ impl<T, A: Allocator> AsMut<[T]> for Vec<T, A> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone> From<&[T]> for Vec<T> {
     /// Allocate a `Vec<T>` and fill it by cloning `s`'s items.
@@ -2732,6 +2781,7 @@ impl<T: Clone> From<&[T]> for Vec<T> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "vec_from_mut", since = "1.19.0")]
 impl<T: Clone> From<&mut [T]> for Vec<T> {
     /// Allocate a `Vec<T>` and fill it by cloning `s`'s items.
@@ -2813,6 +2863,7 @@ impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A> {
 }
 
 // note: test pulls in libstd, which causes errors here
+#[cfg(not(no_global_oom_handling))]
 #[cfg(not(test))]
 #[stable(feature = "box_from_vec", since = "1.20.0")]
 impl<T, A: Allocator> From<Vec<T, A>> for Box<[T], A> {
@@ -2831,6 +2882,7 @@ impl<T, A: Allocator> From<Vec<T, A>> for Box<[T], A> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<&str> for Vec<u8> {
     /// Allocate a `Vec<u8>` and fill it with a UTF-8 string.
