@@ -136,9 +136,7 @@ impl EarlyProps {
                 props.aux_crate.push(ac);
             }
 
-            if let Some(r) = config.parse_revisions(ln) {
-                props.revisions.extend(r);
-            }
+            config.parse_and_update_revisions(ln, &mut props.revisions);
 
             props.should_fail = props.should_fail || config.parse_name_directive(ln, "should-fail");
         });
@@ -432,9 +430,7 @@ impl TestProps {
                     self.compile_flags.push(format!("--edition={}", edition));
                 }
 
-                if let Some(r) = config.parse_revisions(ln) {
-                    self.revisions.extend(r);
-                }
+                config.parse_and_update_revisions(ln, &mut self.revisions);
 
                 if self.run_flags.is_none() {
                     self.run_flags = config.parse_run_flags(ln);
@@ -723,9 +719,16 @@ impl Config {
         self.parse_name_value_directive(line, "compile-flags")
     }
 
-    fn parse_revisions(&self, line: &str) -> Option<Vec<String>> {
-        self.parse_name_value_directive(line, "revisions")
-            .map(|r| r.split_whitespace().map(|t| t.to_string()).collect())
+    fn parse_and_update_revisions(&self, line: &str, existing: &mut Vec<String>) {
+        if let Some(raw) = self.parse_name_value_directive(line, "revisions") {
+            let mut duplicates: HashSet<_> = existing.iter().cloned().collect();
+            for revision in raw.split_whitespace().map(|r| r.to_string()) {
+                if !duplicates.insert(revision.clone()) {
+                    panic!("Duplicate revision: `{}` in line `{}`", revision, raw);
+                }
+                existing.push(revision);
+            }
+        }
     }
 
     fn parse_run_flags(&self, line: &str) -> Option<String> {
