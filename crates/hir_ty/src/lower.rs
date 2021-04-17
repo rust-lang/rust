@@ -15,7 +15,7 @@ use hir_def::{
     generics::{TypeParamProvenance, WherePredicate, WherePredicateTypeTarget},
     path::{GenericArg, Path, PathSegment, PathSegments},
     resolver::{HasResolver, Resolver, TypeNs},
-    type_ref::{expand_type_ref, TraitRef as HirTraitRef, TypeBound, TypeRef},
+    type_ref::{expand_macro_type, TraitRef as HirTraitRef, TypeBound, TypeRef},
     AdtId, AssocContainerId, AssocItemId, ConstId, ConstParamId, EnumId, EnumVariantId, FunctionId,
     GenericDefId, HasModule, ImplId, LocalFieldId, Lookup, StaticId, StructId, TraitId,
     TypeAliasId, TypeParamId, UnionId, VariantId,
@@ -289,8 +289,8 @@ impl<'a> TyLoweringContext<'a> {
             }
             mt @ TypeRef::Macro(_) => {
                 if let Some(module_id) = self.resolver.module() {
-                    match expand_type_ref(self.db.upcast(), module_id, mt) {
-                        Some(type_ref) => self.lower_ty(type_ref.as_ref()),
+                    match expand_macro_type(self.db.upcast(), module_id, mt) {
+                        Some(type_ref) => self.lower_ty(&type_ref),
                         None => TyKind::Error.intern(&Interner),
                     }
                 } else {

@@ -1,9 +1,8 @@
 //! HIR for references to types. Paths in these are not yet resolved. They can
 //! be directly created from an ast::TypeRef, without further queries.
-use std::borrow::Cow;
 
 use hir_expand::{ast_id_map::FileAstId, name::Name, ExpandResult, InFile};
-use syntax::{algo::SyntaxRewriter, ast, AstNode, SyntaxKind, SyntaxNode};
+use syntax::ast;
 
 use crate::{
     body::{Expander, LowerCtx},
@@ -207,16 +206,6 @@ impl TypeRef {
         TypeRef::Tuple(Vec::new())
     }
 
-    pub fn has_macro_calls(&self) -> bool {
-        let mut has_macro_call = false;
-        self.walk(&mut |ty_ref| {
-            if let TypeRef::Macro(_) = ty_ref {
-                has_macro_call |= true
-            }
-        });
-        has_macro_call
-    }
-
     pub fn walk(&self, f: &mut impl FnMut(&TypeRef)) {
         go(self, f);
 
@@ -315,68 +304,29 @@ impl TypeBound {
     }
 }
 
-pub fn expand_type_ref<'a>(
+pub fn expand_macro_type(
     db: &dyn DefDatabase,
     module_id: ModuleId,
-    type_ref: &'a TypeRef,
-) -> Option<Cow<'a, TypeRef>> {
-    let macro_call = match type_ref {
+    macro_type: &TypeRef,
+) -> Option<TypeRef> {
+    let macro_call = match macro_type {
         TypeRef::Macro(macro_call) => macro_call,
-        _ => return Some(Cow::Borrowed(type_ref)),
+        _ => panic!("expected TypeRef::Macro"),
     };
 
     let file_id = macro_call.file_id;
     let macro_call = macro_call.to_node(db.upcast());
 
     let mut expander = Expander::new(db, file_id, module_id);
-    let expanded = expand(db, &mut expander, &macro_call, true)?;
-
-    let node = ast::Type::cast(expanded)?;
+    let (file_id, expanded) = match expander.enter_expand::<ast::Type>(db, macro_call.clone()) {
+        Ok(ExpandResult { value: Some((mark, expanded)), .. }) => {
+            let file_id = expander.current_file_id();
+            expander.exit(db, mark);
+            (file_id, expanded)
+        }
+        _ => return None,
+    };
 
     let ctx = LowerCtx::new(db, file_id);
-    return Some(Cow::Owned(TypeRef::from_ast(&ctx, node)));
-
-    fn expand(
-        db: &dyn DefDatabase,
-        expander: &mut Expander,
-        macro_call: &ast::MacroCall,
-        expect_type: bool,
-    ) -> Option<SyntaxNode> {
-        let (mark, mut expanded) = match expander.enter_expand_raw(db, macro_call.clone()) {
-            Ok(ExpandResult { value: Some((mark, expanded)), .. }) => (mark, expanded),
-            _ => return None,
-        };
-
-        if expect_type && !ast::Type::can_cast(expanded.kind()) {
-            expander.exit(db, mark);
-            return None;
-        }
-
-        if ast::MacroType::can_cast(expanded.kind()) {
-            expanded = expanded.first_child()?; // MACRO_CALL
-        }
-
-        let mut rewriter = SyntaxRewriter::default();
-
-        let children = expanded.descendants().filter_map(ast::MacroCall::cast);
-        for child in children {
-            if let Some(new_node) = expand(db, expander, &child, false) {
-                if expanded == *child.syntax() {
-                    expanded = new_node;
-                } else {
-                    let parent = child.syntax().parent();
-                    let old_node = match &parent {
-                        Some(node) if node.kind() == SyntaxKind::MACRO_TYPE => node,
-                        _ => child.syntax(),
-                    };
-                    rewriter.replace(old_node, &new_node)
-                }
-            }
-        }
-
-        expander.exit(db, mark);
-
-        let res = rewriter.rewrite(&expanded);
-        Some(res)
-    }
+    return Some(TypeRef::from_ast(&ctx, expanded));
 }
