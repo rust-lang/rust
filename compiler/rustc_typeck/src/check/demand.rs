@@ -37,6 +37,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.suggest_missing_parentheses(err, expr);
         self.note_need_for_fn_pointer(err, expected, expr_ty);
         self.note_internal_mutation_in_method(err, expr, expected, expr_ty);
+        self.report_closure_infered_return_type(err, expected)
     }
 
     // Requires that the two types unify, and prints an error message if
@@ -1059,6 +1060,34 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 true
             }
             _ => false,
+        }
+    }
+
+    // Report the type inferred by the return statement.
+    fn report_closure_infered_return_type(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        expected: Ty<'tcx>,
+    ) {
+        if let Some(sp) = self.ret_coercion_span.get() {
+            // If the closure has an explicit return type annotation,
+            // then a type error may occur at the first return expression we
+            // see in the closure (if it conflicts with the declared
+            // return type). Skip adding a note in this case, since it
+            // would be incorrect.
+            if !err.span.primary_spans().iter().any(|&span| span == sp) {
+                let hir = self.tcx.hir();
+                let body_owner = hir.body_owned_by(hir.enclosing_body_owner(self.body_id));
+                if self.tcx.is_closure(hir.body_owner_def_id(body_owner).to_def_id()) {
+                    err.span_note(
+                        sp,
+                        &format!(
+                            "return type inferred to be `{}` here",
+                            self.resolve_vars_if_possible(expected)
+                        ),
+                    );
+                }
+            }
         }
     }
 }
