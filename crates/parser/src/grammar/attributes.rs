@@ -14,6 +14,21 @@ pub(super) fn outer_attrs(p: &mut Parser) {
     }
 }
 
+pub(super) fn meta(p: &mut Parser) {
+    paths::use_path(p);
+
+    match p.current() {
+        T![=] => {
+            p.bump(T![=]);
+            if expressions::expr(p).0.is_none() {
+                p.error("expected expression");
+            }
+        }
+        T!['('] | T!['['] | T!['{'] => items::token_tree(p),
+        _ => {}
+    }
+}
+
 fn attr(p: &mut Parser, inner: bool) {
     let attr = p.start();
     assert!(p.at(T![#]));
@@ -25,18 +40,7 @@ fn attr(p: &mut Parser, inner: bool) {
     }
 
     if p.eat(T!['[']) {
-        paths::use_path(p);
-
-        match p.current() {
-            T![=] => {
-                p.bump(T![=]);
-                if expressions::expr(p).0.is_none() {
-                    p.error("expected expression");
-                }
-            }
-            T!['('] | T!['['] | T!['{'] => items::token_tree(p),
-            _ => {}
-        }
+        meta(p);
 
         if !p.eat(T![']']) {
             p.error("expected `]`");

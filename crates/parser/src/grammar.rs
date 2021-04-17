@@ -76,42 +76,7 @@ pub(crate) mod fragments {
 
     // Parse a meta item , which excluded [], e.g : #[ MetaItem ]
     pub(crate) fn meta_item(p: &mut Parser) {
-        fn is_delimiter(p: &mut Parser) -> bool {
-            matches!(p.current(), T!['{'] | T!['('] | T!['['])
-        }
-
-        if is_delimiter(p) {
-            items::token_tree(p);
-            return;
-        }
-
-        let m = p.start();
-        while !p.at(EOF) {
-            if is_delimiter(p) {
-                items::token_tree(p);
-                break;
-            } else {
-                // https://doc.rust-lang.org/reference/attributes.html
-                // https://doc.rust-lang.org/reference/paths.html#simple-paths
-                // The start of an meta must be a simple path
-                match p.current() {
-                    IDENT | T![super] | T![self] | T![crate] => p.bump_any(),
-                    T![=] => {
-                        p.bump_any();
-                        match p.current() {
-                            c if c.is_literal() => p.bump_any(),
-                            T![true] | T![false] => p.bump_any(),
-                            _ => {}
-                        }
-                        break;
-                    }
-                    _ if p.at(T![::]) => p.bump(T![::]),
-                    _ => break,
-                }
-            }
-        }
-
-        m.complete(p, TOKEN_TREE);
+        attributes::meta(p);
     }
 
     pub(crate) fn item(p: &mut Parser) {
