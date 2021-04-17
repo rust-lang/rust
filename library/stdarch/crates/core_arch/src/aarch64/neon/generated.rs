@@ -2810,6 +2810,24 @@ pub unsafe fn vfmaq_f64(a: float64x2_t, b: float64x2_t, c: float64x2_t) -> float
     vfmaq_f64_(a, b, c)
 }
 
+/// Floating-point fused Multiply-Add to accumulator(vector)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmadd))]
+pub unsafe fn vfma_n_f64(a: float64x1_t, b: float64x1_t, c: f64) -> float64x1_t {
+    let d: float64x1_t = transmute(f64x1::new(c));
+    vfma_f64(b, transmute(d), a)
+}
+
+/// Floating-point fused Multiply-Add to accumulator(vector)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmla))]
+pub unsafe fn vfmaq_n_f64(a: float64x2_t, b: float64x2_t, c: f64) -> float64x2_t {
+    let d: float64x2_t = transmute(f64x2::new(c, c));
+    vfmaq_f64(b, d, a)
+}
+
 /// Divide
 #[inline]
 #[target_feature(enable = "neon")]
@@ -8229,6 +8247,26 @@ mod test {
         let c: f64x2 = f64x2::new(8.0, 18.0);
         let e: f64x2 = f64x2::new(20.0, 30.0);
         let r: f64x2 = transmute(vfmaq_f64(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfma_n_f64() {
+        let a: f64 = 2.0;
+        let b: f64 = 6.0;
+        let c: f64 = 8.0;
+        let e: f64 = 50.0;
+        let r: f64 = transmute(vfma_n_f64(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfmaq_n_f64() {
+        let a: f64x2 = f64x2::new(2.0, 3.0);
+        let b: f64x2 = f64x2::new(6.0, 4.0);
+        let c: f64 = 8.0;
+        let e: f64x2 = f64x2::new(50.0, 35.0);
+        let r: f64x2 = transmute(vfmaq_n_f64(transmute(a), transmute(b), transmute(c)));
         assert_eq!(r, e);
     }
 
