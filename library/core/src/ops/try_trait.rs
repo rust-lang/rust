@@ -115,6 +115,21 @@ use crate::ops::ControlFlow;
 /// }
 /// ```
 #[unstable(feature = "try_trait_v2", issue = "84277")]
+#[rustc_on_unimplemented(
+    on(
+        all(from_method = "from_output", from_desugaring = "TryBlock"),
+        message = "a `try` block must return `Result` or `Option` \
+                    (or another type that implements `{Try}`)",
+        label = "could not wrap the final value of the block as `{Self}` doesn't implement `Try`",
+    ),
+    on(
+        all(from_method = "branch", from_desugaring = "QuestionMark"),
+        message = "the `?` operator can only be applied to values \
+                    that implement `{Try}`",
+        label = "the `?` operator cannot be applied to type `{Self}`"
+    )
+)]
+#[doc(alias = "?")]
 #[cfg_attr(not(bootstrap), lang = "Try")]
 pub trait Try: FromResidual {
     /// The type of the value produced by `?` when *not* short-circuiting.
@@ -212,6 +227,70 @@ pub trait Try: FromResidual {
 /// Every `Try` type needs to be recreatable from its own associated
 /// `Residual` type, but can also have additional `FromResidual` implementations
 /// to support interconversion with other `Try` types.
+#[rustc_on_unimplemented(
+    on(
+        all(
+            from_method = "from_residual",
+            from_desugaring = "QuestionMark",
+            _Self = "std::result::Result<T, E>",
+            R = "std::option::Option<std::convert::Infallible>"
+        ),
+        message = "the `?` operator can only be used on `Result`s, not `Option`s, \
+            in {ItemContext} that returns `Result`",
+        label = "use `.ok_or(...)?` to provide an error compatible with `{Self}`",
+        enclosing_scope = "this function returns a `Result`"
+    ),
+    on(
+        all(
+            from_method = "from_residual",
+            from_desugaring = "QuestionMark",
+            _Self = "std::result::Result<T, E>",
+        ),
+        // There's a special error message in the trait selection code for
+        // `From` in `?`, so this is not shown for result-in-result errors,
+        // and thus it can be phrased more strongly than `ControlFlow`'s.
+        message = "the `?` operator can only be used on `Result`s \
+            in {ItemContext} that returns `Result`",
+        label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
+        enclosing_scope = "this function returns a `Result`"
+    ),
+    on(
+        all(
+            from_method = "from_residual",
+            from_desugaring = "QuestionMark",
+            _Self = "std::option::Option<T>",
+        ),
+        // `Option`-in-`Option` always works, as there's only one possible
+        // residual, so this can also be phrased strongly.
+        message = "the `?` operator can only be used on `Option`s \
+            in {ItemContext} that returns `Option`",
+        label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
+        enclosing_scope = "this function returns an `Option`"
+    ),
+    on(
+        all(
+            from_method = "from_residual",
+            from_desugaring = "QuestionMark",
+            _Self = "std::ops::ControlFlow<B, C>",
+        ),
+        message = "the `?` operator can only be used on `ControlFlow<B, _>`s \
+            in {ItemContext} that returns `ControlFlow<B, _>`",
+        label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
+        enclosing_scope = "this function returns a `ControlFlow`",
+        note = "unlike `Result`, there's no `From`-conversion performed for `ControlFlow`"
+    ),
+    on(
+        all(
+            from_method = "from_residual",
+            from_desugaring = "QuestionMark"
+        ),
+        message = "the `?` operator can only be used in {ItemContext} \
+                    that returns `Result` or `Option` \
+                    (or another type that implements `{FromResidual}`)",
+        label = "cannot use the `?` operator in {ItemContext} that returns `{Self}`",
+        enclosing_scope = "this function should return `Result` or `Option` to accept `?`"
+    ),
+)]
 #[unstable(feature = "try_trait_v2", issue = "84277")]
 pub trait FromResidual<R = <Self as Try>::Residual> {
     /// Constructs the type from a compatible `Residual` type.

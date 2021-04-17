@@ -4,5 +4,5 @@
 
 fn main() {
     while try { false } {}
-    //~^ ERROR the trait bound `bool: Try` is not satisfied
+    //~^ ERROR a `try` block must
 }

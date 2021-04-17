@@ -1,12 +1,11 @@
 error[E0282]: type annotations needed
-  --> $DIR/cannot-infer-async.rs:11:20
+  --> $DIR/cannot-infer-async.rs:13:9
    |
 LL |     let fut = async {
    |         --- consider giving `fut` a type
-LL |         make_unit()?;
-   |                    ^ cannot infer type of error for `?` operator
-   |
-   = note: `?` implicitly converts the error value into a type implementing `From<std::io::Error>`
+...
+LL |         Ok(())
+   |         ^^ cannot infer type for type parameter `E` declared on the enum `Result`
 
 error: aborting due to previous error
 
