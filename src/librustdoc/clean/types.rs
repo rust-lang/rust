@@ -41,6 +41,7 @@ use crate::core::DocContext;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::render::cache::ExternalLocation;
+use crate::html::render::Context;
 
 use self::FnRetTy::*;
 use self::ItemKind::*;
@@ -193,19 +194,18 @@ impl Item {
         self.attrs.collapsed_doc_value()
     }
 
-    crate fn links(&self, cache: &Cache) -> Vec<RenderedLink> {
+    crate fn links(&self, cx: &Context<'_>) -> Vec<RenderedLink> {
         use crate::html::format::href;
-        use crate::html::render::CURRENT_DEPTH;
 
-        cache
+        cx.cache()
             .intra_doc_links
             .get(&self.def_id)
             .map_or(&[][..], |v| v.as_slice())
             .iter()
-            .filter_map(|ItemLink { link: s, link_text, did, fragment }| {
+            .filter_map(|ItemLink { link: s, link_text, did, ref fragment }| {
                 match *did {
                     Some(did) => {
-                        if let Some((mut href, ..)) = href(did, cache) {
+                        if let Some((mut href, ..)) = href(did, cx) {
                             if let Some(ref fragment) = *fragment {
                                 href.push('#');
                                 href.push_str(fragment);
@@ -219,16 +219,26 @@ impl Item {
                             None
                         }
                     }
+                    // FIXME(83083): using fragments as a side-channel for
+                    // primitive names is very unfortunate
                     None => {
+                        let relative_to = &cx.current;
                         if let Some(ref fragment) = *fragment {
-                            let url = match cache.extern_locations.get(&self.def_id.krate) {
+                            let url = match cx.cache().extern_locations.get(&self.def_id.krate) {
                                 Some(&(_, _, ExternalLocation::Local)) => {
-                                    let depth = CURRENT_DEPTH.with(|l| l.get());
-                                    "../".repeat(depth)
+                                    if relative_to[0] == "std" {
+                                        let depth = relative_to.len() - 1;
+                                        "../".repeat(depth)
+                                    } else {
+                                        let depth = relative_to.len();
+                                        format!("{}std/", "../".repeat(depth))
+                                    }
                                 }
-                                Some(&(_, _, ExternalLocation::Remote(ref s))) => s.to_string(),
+                                Some(&(_, _, ExternalLocation::Remote(ref s))) => {
+                                    format!("{}/std/", s.trim_end_matches('/'))
+                                }
                                 Some(&(_, _, ExternalLocation::Unknown)) | None => format!(
-                                    "https://doc.rust-lang.org/{}",
+                                    "https://doc.rust-lang.org/{}/std/",
                                     crate::doc_rust_lang_org_channel(),
                                 ),
                             };
@@ -238,9 +248,8 @@ impl Item {
                                 original_text: s.clone(),
                                 new_text: link_text.clone(),
                                 href: format!(
-                                    "{}{}std/primitive.{}.html{}",
+                                    "{}primitive.{}.html{}",
                                     url,
-                                    if !url.ends_with('/') { "/" } else { "" },
                                     &fragment[..tail],
                                     &fragment[tail..]
                                 ),

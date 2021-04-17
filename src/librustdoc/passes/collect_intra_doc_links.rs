@@ -1957,20 +1957,28 @@ fn resolution_failure(
 
 /// Report an anchor failure.
 fn anchor_failure(cx: &DocContext<'_>, diag_info: DiagnosticInfo<'_>, failure: AnchorFailure) {
-    let msg = match failure {
+    let (msg, anchor_idx) = match failure {
         AnchorFailure::MultipleAnchors => {
-            format!("`{}` contains multiple anchors", diag_info.ori_link)
+            (format!("`{}` contains multiple anchors", diag_info.ori_link), 1)
         }
-        AnchorFailure::RustdocAnchorConflict(res) => format!(
-            "`{}` contains an anchor, but links to {kind}s are already anchored",
-            diag_info.ori_link,
-            kind = res.descr(),
+        AnchorFailure::RustdocAnchorConflict(res) => (
+            format!(
+                "`{}` contains an anchor, but links to {kind}s are already anchored",
+                diag_info.ori_link,
+                kind = res.descr(),
+            ),
+            0,
         ),
     };
 
     report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, &msg, &diag_info, |diag, sp| {
-        if let Some(sp) = sp {
-            diag.span_label(sp, "contains invalid anchor");
+        if let Some(mut sp) = sp {
+            if let Some((fragment_offset, _)) =
+                diag_info.ori_link.char_indices().filter(|(_, x)| *x == '#').nth(anchor_idx)
+            {
+                sp = sp.with_lo(sp.lo() + rustc_span::BytePos(fragment_offset as _));
+            }
+            diag.span_label(sp, "invalid anchor");
         }
         if let AnchorFailure::RustdocAnchorConflict(Res::Primitive(_)) = failure {
             diag.note("this restriction may be lifted in a future release");

@@ -15,9 +15,8 @@ use super::{
     render_impl, render_stability_since_raw, write_srclink, AssocItemLink, Context,
 };
 use crate::clean::{self, GetDefId};
-use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
-use crate::formats::{AssocItemRender, FormatRenderer, Impl, RenderMode};
+use crate::formats::{AssocItemRender, Impl, RenderMode};
 use crate::html::escape::Escape;
 use crate::html::format::{print_abi_with_space, print_where_clause, Buffer, PrintWithSpace};
 use crate::html::highlight;
@@ -268,15 +267,15 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                     Some(ref src) => write!(
                         w,
                         "<tr><td><code>{}extern crate {} as {};",
-                        myitem.visibility.print_with_space(cx.tcx(), myitem.def_id, cx.cache()),
-                        anchor(myitem.def_id, &*src.as_str(), cx.cache()),
+                        myitem.visibility.print_with_space(myitem.def_id, cx),
+                        anchor(myitem.def_id, &*src.as_str(), cx),
                         myitem.name.as_ref().unwrap(),
                     ),
                     None => write!(
                         w,
                         "<tr><td><code>{}extern crate {};",
-                        myitem.visibility.print_with_space(cx.tcx(), myitem.def_id, cx.cache()),
-                        anchor(myitem.def_id, &*myitem.name.as_ref().unwrap().as_str(), cx.cache()),
+                        myitem.visibility.print_with_space(myitem.def_id, cx),
+                        anchor(myitem.def_id, &*myitem.name.as_ref().unwrap().as_str(), cx),
                     ),
                 }
                 w.write_str("</code></td></tr>");
@@ -286,8 +285,8 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                 write!(
                     w,
                     "<tr><td><code>{}{}</code></td></tr>",
-                    myitem.visibility.print_with_space(cx.tcx(), myitem.def_id, cx.cache()),
-                    import.print(cx.cache(), cx.tcx()),
+                    myitem.visibility.print_with_space(myitem.def_id, cx),
+                    import.print(cx),
                 );
             }
 
@@ -318,7 +317,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                      </tr>",
                     name = *myitem.name.as_ref().unwrap(),
                     stab_tags = extra_info_tags(myitem, item, cx.tcx()),
-                    docs = MarkdownSummaryLine(&doc_value, &myitem.links(&cx.cache)).into_string(),
+                    docs = MarkdownSummaryLine(&doc_value, &myitem.links(cx)).into_string(),
                     class = myitem.type_(),
                     add = add,
                     stab = stab.unwrap_or_else(String::new),
@@ -387,13 +386,13 @@ fn extra_info_tags(item: &clean::Item, parent: &clean::Item, tcx: TyCtxt<'_>) ->
 fn item_function(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, f: &clean::Function) {
     let header_len = format!(
         "{}{}{}{}{:#}fn {}{:#}",
-        it.visibility.print_with_space(cx.tcx(), it.def_id, cx.cache()),
+        it.visibility.print_with_space(it.def_id, cx),
         f.header.constness.print_with_space(),
         f.header.asyncness.print_with_space(),
         f.header.unsafety.print_with_space(),
         print_abi_with_space(f.header.abi),
         it.name.as_ref().unwrap(),
-        f.generics.print(cx.cache(), cx.tcx())
+        f.generics.print(cx),
     )
     .len();
     w.write_str("<pre class=\"rust fn\">");
@@ -402,22 +401,22 @@ fn item_function(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, f: &clean::
         w,
         "{vis}{constness}{asyncness}{unsafety}{abi}fn \
          {name}{generics}{decl}{notable_traits}{where_clause}</pre>",
-        vis = it.visibility.print_with_space(cx.tcx(), it.def_id, cx.cache()),
+        vis = it.visibility.print_with_space(it.def_id, cx),
         constness = f.header.constness.print_with_space(),
         asyncness = f.header.asyncness.print_with_space(),
         unsafety = f.header.unsafety.print_with_space(),
         abi = print_abi_with_space(f.header.abi),
         name = it.name.as_ref().unwrap(),
-        generics = f.generics.print(cx.cache(), cx.tcx()),
-        where_clause = print_where_clause(&f.generics, cx.cache(), cx.tcx(), 0, true),
-        decl = f.decl.full_print(cx.cache(), cx.tcx(), header_len, 0, f.header.asyncness),
-        notable_traits = notable_traits_decl(&f.decl, cx.cache(), cx.tcx()),
+        generics = f.generics.print(cx),
+        where_clause = print_where_clause(&f.generics, cx, 0, true),
+        decl = f.decl.full_print(header_len, 0, f.header.asyncness, cx),
+        notable_traits = notable_traits_decl(&f.decl, cx),
     );
     document(w, cx, it, None)
 }
 
 fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) {
-    let bounds = bounds(&t.bounds, false, cx.cache(), cx.tcx());
+    let bounds = bounds(&t.bounds, false, cx);
     let types = t.items.iter().filter(|m| m.is_associated_type()).collect::<Vec<_>>();
     let consts = t.items.iter().filter(|m| m.is_associated_const()).collect::<Vec<_>>();
     let required = t.items.iter().filter(|m| m.is_ty_method()).collect::<Vec<_>>();
@@ -430,16 +429,16 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         write!(
             w,
             "{}{}{}trait {}{}{}",
-            it.visibility.print_with_space(cx.tcx(), it.def_id, cx.cache()),
+            it.visibility.print_with_space(it.def_id, cx),
             t.unsafety.print_with_space(),
             if t.is_auto { "auto " } else { "" },
             it.name.as_ref().unwrap(),
-            t.generics.print(cx.cache(), cx.tcx()),
+            t.generics.print(cx),
             bounds
         );
 
         if !t.generics.where_predicates.is_empty() {
-            write!(w, "{}", print_where_clause(&t.generics, cx.cache(), cx.tcx(), 0, true));
+            write!(w, "{}", print_where_clause(&t.generics, cx, 0, true));
         } else {
             w.write_str(" ");
         }
@@ -634,8 +633,8 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         let (mut synthetic, mut concrete): (Vec<&&Impl>, Vec<&&Impl>) =
             local.iter().partition(|i| i.inner_impl().synthetic);
 
-        synthetic.sort_by(|a, b| compare_impl(a, b, cx.cache(), cx.tcx()));
-        concrete.sort_by(|a, b| compare_impl(a, b, cx.cache(), cx.tcx()));
+        synthetic.sort_by(|a, b| compare_impl(a, b, cx));
+        concrete.sort_by(|a, b| compare_impl(a, b, cx));
 
         if !foreign.is_empty() {
             write_small_section_header(w, "foreign-impls", "Implementations on Foreign Types", "");
@@ -740,9 +739,9 @@ fn item_trait_alias(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clea
         w,
         "trait {}{}{} = {};</pre>",
         it.name.as_ref().unwrap(),
-        t.generics.print(cx.cache(), cx.tcx()),
-        print_where_clause(&t.generics, cx.cache(), cx.tcx(), 0, true),
-        bounds(&t.bounds, true, cx.cache(), cx.tcx())
+        t.generics.print(cx),
+        print_where_clause(&t.generics, cx, 0, true),
+        bounds(&t.bounds, true, cx)
     );
 
     document(w, cx, it, None);
@@ -761,9 +760,9 @@ fn item_opaque_ty(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean:
         w,
         "type {}{}{where_clause} = impl {bounds};</pre>",
         it.name.as_ref().unwrap(),
-        t.generics.print(cx.cache(), cx.tcx()),
-        where_clause = print_where_clause(&t.generics, cx.cache(), cx.tcx(), 0, true),
-        bounds = bounds(&t.bounds, false, cx.cache(), cx.tcx()),
+        t.generics.print(cx),
+        where_clause = print_where_clause(&t.generics, cx, 0, true),
+        bounds = bounds(&t.bounds, false, cx),
     );
 
     document(w, cx, it, None);
@@ -782,9 +781,9 @@ fn item_typedef(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::T
         w,
         "type {}{}{where_clause} = {type_};</pre>",
         it.name.as_ref().unwrap(),
-        t.generics.print(cx.cache(), cx.tcx()),
-        where_clause = print_where_clause(&t.generics, cx.cache(), cx.tcx(), 0, true),
-        type_ = t.type_.print(cx.cache(), cx.tcx()),
+        t.generics.print(cx),
+        where_clause = print_where_clause(&t.generics, cx, 0, true),
+        type_ = t.type_.print(cx),
     );
 
     document(w, cx, it, None);
@@ -831,7 +830,7 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
                 id = id,
                 name = name,
                 shortty = ItemType::StructField,
-                ty = ty.print(cx.cache(), cx.tcx()),
+                ty = ty.print(cx),
             );
             if let Some(stability_class) = field.stability_class(cx.tcx()) {
                 write!(w, "<span class=\"stab {stab}\"></span>", stab = stability_class);
@@ -849,10 +848,10 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
         write!(
             w,
             "{}enum {}{}{}",
-            it.visibility.print_with_space(cx.tcx(), it.def_id, cx.cache()),
+            it.visibility.print_with_space(it.def_id, cx),
             it.name.as_ref().unwrap(),
-            e.generics.print(cx.cache(), cx.tcx()),
-            print_where_clause(&e.generics, cx.cache(), cx.tcx(), 0, true),
+            e.generics.print(cx),
+            print_where_clause(&e.generics, cx, 0, true),
         );
         if e.variants.is_empty() && !e.variants_stripped {
             w.write_str(" {}");
@@ -874,7 +873,7 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                                 if i > 0 {
                                     w.write_str(",&nbsp;")
                                 }
-                                write!(w, "{}", ty.print(cx.cache(), cx.tcx()));
+                                write!(w, "{}", ty.print(cx));
                             }
                             w.write_str(")");
                         }
@@ -924,7 +923,7 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                     if i > 0 {
                         w.write_str(",&nbsp;");
                     }
-                    write!(w, "{}", ty.print(cx.cache(), cx.tcx()));
+                    write!(w, "{}", ty.print(cx));
                 }
                 w.write_str(")");
             }
@@ -961,7 +960,7 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                              </span>",
                             id = id,
                             f = field.name.as_ref().unwrap(),
-                            t = ty.print(cx.cache(), cx.tcx())
+                            t = ty.print(cx)
                         );
                         document(w, cx, field, Some(variant));
                     }
@@ -1030,9 +1029,9 @@ fn item_constant(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, c: &clean::
     write!(
         w,
         "{vis}const {name}: {typ}",
-        vis = it.visibility.print_with_space(cx.tcx(), it.def_id, cx.cache()),
+        vis = it.visibility.print_with_space(it.def_id, cx),
         name = it.name.as_ref().unwrap(),
-        typ = c.type_.print(cx.cache(), cx.tcx()),
+        typ = c.type_.print(cx),
     );
 
     let value = c.value(cx.tcx());
@@ -1102,7 +1101,7 @@ fn item_struct(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::St
                     item_type = ItemType::StructField,
                     id = id,
                     name = field.name.as_ref().unwrap(),
-                    ty = ty.print(cx.cache(), cx.tcx())
+                    ty = ty.print(cx)
                 );
                 document(w, cx, field, Some(it));
             }
@@ -1117,10 +1116,10 @@ fn item_static(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::St
     write!(
         w,
         "{vis}static {mutability}{name}: {typ}</pre>",
-        vis = it.visibility.print_with_space(cx.tcx(), it.def_id, cx.cache()),
+        vis = it.visibility.print_with_space(it.def_id, cx),
         mutability = s.mutability.print_with_space(),
         name = it.name.as_ref().unwrap(),
-        typ = s.type_.print(cx.cache(), cx.tcx())
+        typ = s.type_.print(cx)
     );
     document(w, cx, it, None)
 }
@@ -1131,7 +1130,7 @@ fn item_foreign_type(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item) {
     write!(
         w,
         "    {}type {};\n}}</pre>",
-        it.visibility.print_with_space(cx.tcx(), it.def_id, cx.cache()),
+        it.visibility.print_with_space(it.def_id, cx),
         it.name.as_ref().unwrap(),
     );
 
@@ -1195,12 +1194,7 @@ pub(super) fn item_path(ty: ItemType, name: &str) -> String {
     }
 }
 
-fn bounds(
-    t_bounds: &[clean::GenericBound],
-    trait_alias: bool,
-    cache: &Cache,
-    tcx: TyCtxt<'_>,
-) -> String {
+fn bounds(t_bounds: &[clean::GenericBound], trait_alias: bool, cx: &Context<'_>) -> String {
     let mut bounds = String::new();
     if !t_bounds.is_empty() {
         if !trait_alias {
@@ -1210,7 +1204,7 @@ fn bounds(
             if i > 0 {
                 bounds.push_str(" + ");
             }
-            bounds.push_str(&p.print(cache, tcx).to_string());
+            bounds.push_str(&p.print(cx).to_string());
         }
     }
     bounds
@@ -1240,17 +1234,12 @@ fn render_stability_since(
     )
 }
 
-fn compare_impl<'a, 'b>(
-    lhs: &'a &&Impl,
-    rhs: &'b &&Impl,
-    cache: &Cache,
-    tcx: TyCtxt<'_>,
-) -> Ordering {
-    let lhs = format!("{}", lhs.inner_impl().print(cache, false, tcx));
-    let rhs = format!("{}", rhs.inner_impl().print(cache, false, tcx));
+fn compare_impl<'a, 'b>(lhs: &'a &&Impl, rhs: &'b &&Impl, cx: &Context<'_>) -> Ordering {
+    let lhss = format!("{}", lhs.inner_impl().print(false, cx));
+    let rhss = format!("{}", rhs.inner_impl().print(false, cx));
 
     // lhs and rhs are formatted as HTML, which may be unnecessary
-    compare_names(&lhs, &rhs)
+    compare_names(&lhss, &rhss)
 }
 
 fn render_implementor(
@@ -1300,13 +1289,13 @@ fn render_union(
     write!(
         w,
         "{}{}{}",
-        it.visibility.print_with_space(cx.tcx(), it.def_id, cx.cache()),
+        it.visibility.print_with_space(it.def_id, cx),
         if structhead { "union " } else { "" },
         it.name.as_ref().unwrap()
     );
     if let Some(g) = g {
-        write!(w, "{}", g.print(cx.cache(), cx.tcx()));
-        write!(w, "{}", print_where_clause(&g, cx.cache(), cx.tcx(), 0, true));
+        write!(w, "{}", g.print(cx));
+        write!(w, "{}", print_where_clause(&g, cx, 0, true));
     }
 
     write!(w, " {{\n{}", tab);
@@ -1322,9 +1311,9 @@ fn render_union(
             write!(
                 w,
                 "    {}{}: {},\n{}",
-                field.visibility.print_with_space(cx.tcx(), field.def_id, cx.cache()),
+                field.visibility.print_with_space(field.def_id, cx),
                 field.name.as_ref().unwrap(),
-                ty.print(cx.cache(), cx.tcx()),
+                ty.print(cx),
                 tab
             );
         }
@@ -1352,17 +1341,17 @@ fn render_struct(
     write!(
         w,
         "{}{}{}",
-        it.visibility.print_with_space(cx.tcx(), it.def_id, cx.cache()),
+        it.visibility.print_with_space(it.def_id, cx),
         if structhead { "struct " } else { "" },
         it.name.as_ref().unwrap()
     );
     if let Some(g) = g {
-        write!(w, "{}", g.print(cx.cache(), cx.tcx()))
+        write!(w, "{}", g.print(cx))
     }
     match ty {
         CtorKind::Fictive => {
             if let Some(g) = g {
-                write!(w, "{}", print_where_clause(g, cx.cache(), cx.tcx(), 0, true),)
+                write!(w, "{}", print_where_clause(g, cx, 0, true),)
             }
             w.write_str(" {");
             let count_fields =
@@ -1378,9 +1367,9 @@ fn render_struct(
                         w,
                         "\n{}    {}{}: {},",
                         tab,
-                        field.visibility.print_with_space(cx.tcx(), field.def_id, cx.cache()),
+                        field.visibility.print_with_space(field.def_id, cx),
                         field.name.as_ref().unwrap(),
-                        ty.print(cx.cache(), cx.tcx()),
+                        ty.print(cx),
                     );
                 }
             }
@@ -1412,8 +1401,8 @@ fn render_struct(
                         write!(
                             w,
                             "{}{}",
-                            field.visibility.print_with_space(cx.tcx(), field.def_id, cx.cache()),
-                            ty.print(cx.cache(), cx.tcx()),
+                            field.visibility.print_with_space(field.def_id, cx),
+                            ty.print(cx),
                         )
                     }
                     _ => unreachable!(),
@@ -1421,14 +1410,14 @@ fn render_struct(
             }
             w.write_str(")");
             if let Some(g) = g {
-                write!(w, "{}", print_where_clause(g, cx.cache(), cx.tcx(), 0, false),)
+                write!(w, "{}", print_where_clause(g, cx, 0, false),)
             }
             w.write_str(";");
         }
         CtorKind::Const => {
             // Needed for PhantomData.
             if let Some(g) = g {
-                write!(w, "{}", print_where_clause(g, cx.cache(), cx.tcx(), 0, false),)
+                write!(w, "{}", print_where_clause(g, cx, 0, false),)
             }
             w.write_str(";");
         }
