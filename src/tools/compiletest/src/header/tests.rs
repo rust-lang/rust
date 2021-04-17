@@ -248,3 +248,10 @@ fn test_extract_version_range() {
     assert_eq!(extract_version_range("   - 4.5.6", extract_llvm_version), None);
     assert_eq!(extract_version_range("0  -", extract_llvm_version), None);
 }
+
+#[test]
+#[should_panic(expected = "Duplicate revision: `rpass1` in line ` rpass1 rpass1`")]
+fn test_duplicate_revisions() {
+    let config = config();
+    parse_rs(&config, "// revisions: rpass1 rpass1");
+}
