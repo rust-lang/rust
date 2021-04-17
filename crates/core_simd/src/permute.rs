@@ -71,9 +71,9 @@ macro_rules! impl_shuffle_lane {
 
             /// Deinterleave two vectors.
             ///
-            /// The first result contains the even lanes of `self` and `other` concatenated.
+            /// The first result contains the even lanes of `self` and then `other`, concatenated.
             ///
-            /// The second result contains the odd lanes of `self` and `other` concatenated.
+            /// The second result contains the odd lanes of `self` and then `other`, concatenated.
             #[inline]
             pub fn deinterleave(self, other: Self) -> (Self, Self) {
                 const fn even() -> [u32; $n] {
