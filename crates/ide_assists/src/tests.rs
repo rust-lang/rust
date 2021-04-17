@@ -84,7 +84,8 @@ fn check_doc_test(assist_id: &str, before: &str, after: &str) {
         });
 
     let actual = {
-        let source_change = assist.source_change.unwrap();
+        let source_change =
+            assist.source_change.expect("Assist did not contain any source changes");
         let mut actual = before;
         if let Some(source_file_edit) = source_change.get_source_edit(file_id) {
             source_file_edit.apply(&mut actual);
@@ -121,7 +122,8 @@ fn check(handler: Handler, before: &str, expected: ExpectedResult, assist_label:
 
     match (assist, expected) {
         (Some(assist), ExpectedResult::After(after)) => {
-            let source_change = assist.source_change.unwrap();
+            let source_change =
+                assist.source_change.expect("Assist did not contain any source changes");
             assert!(!source_change.source_file_edits.is_empty());
             let skip_header = source_change.source_file_edits.len() == 1
                 && source_change.file_system_edits.len() == 0;
