@@ -1055,6 +1055,8 @@ rustc_queries! {
         desc { "checking if the crate is_compiler_builtins" }
     }
     query has_global_allocator(_: CrateNum) -> bool {
+        // This query depends on untracked global state in CStore
+        eval_always
         fatal_cycle
         desc { "checking if the crate has_global_allocator" }
     }
