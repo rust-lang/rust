@@ -261,7 +261,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn fadd_fast(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
         unsafe {
             let instr = llvm::LLVMBuildFAdd(self.llbuilder, lhs, rhs, UNNAMED);
-            llvm::LLVMRustSetHasUnsafeAlgebra(instr);
+            llvm::LLVMRustSetFastMath(instr);
             instr
         }
     }
@@ -269,7 +269,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn fsub_fast(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
         unsafe {
             let instr = llvm::LLVMBuildFSub(self.llbuilder, lhs, rhs, UNNAMED);
-            llvm::LLVMRustSetHasUnsafeAlgebra(instr);
+            llvm::LLVMRustSetFastMath(instr);
             instr
         }
     }
@@ -277,7 +277,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn fmul_fast(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
         unsafe {
             let instr = llvm::LLVMBuildFMul(self.llbuilder, lhs, rhs, UNNAMED);
-            llvm::LLVMRustSetHasUnsafeAlgebra(instr);
+            llvm::LLVMRustSetFastMath(instr);
             instr
         }
     }
@@ -285,7 +285,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn fdiv_fast(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
         unsafe {
             let instr = llvm::LLVMBuildFDiv(self.llbuilder, lhs, rhs, UNNAMED);
-            llvm::LLVMRustSetHasUnsafeAlgebra(instr);
+            llvm::LLVMRustSetFastMath(instr);
             instr
         }
     }
@@ -293,7 +293,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn frem_fast(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
         unsafe {
             let instr = llvm::LLVMBuildFRem(self.llbuilder, lhs, rhs, UNNAMED);
-            llvm::LLVMRustSetHasUnsafeAlgebra(instr);
+            llvm::LLVMRustSetFastMath(instr);
             instr
         }
     }
@@ -1242,14 +1242,14 @@ impl Builder<'a, 'll, 'tcx> {
     pub fn vector_reduce_fadd_fast(&mut self, acc: &'ll Value, src: &'ll Value) -> &'ll Value {
         unsafe {
             let instr = llvm::LLVMRustBuildVectorReduceFAdd(self.llbuilder, acc, src);
-            llvm::LLVMRustSetHasUnsafeAlgebra(instr);
+            llvm::LLVMRustSetFastMath(instr);
             instr
         }
     }
     pub fn vector_reduce_fmul_fast(&mut self, acc: &'ll Value, src: &'ll Value) -> &'ll Value {
         unsafe {
             let instr = llvm::LLVMRustBuildVectorReduceFMul(self.llbuilder, acc, src);
-            llvm::LLVMRustSetHasUnsafeAlgebra(instr);
+            llvm::LLVMRustSetFastMath(instr);
             instr
         }
     }
@@ -1282,7 +1282,7 @@ impl Builder<'a, 'll, 'tcx> {
         unsafe {
             let instr =
                 llvm::LLVMRustBuildVectorReduceFMin(self.llbuilder, src, /*NoNaNs:*/ true);
-            llvm::LLVMRustSetHasUnsafeAlgebra(instr);
+            llvm::LLVMRustSetFastMath(instr);
             instr
         }
     }
@@ -1290,7 +1290,7 @@ impl Builder<'a, 'll, 'tcx> {
         unsafe {
             let instr =
                 llvm::LLVMRustBuildVectorReduceFMax(self.llbuilder, src, /*NoNaNs:*/ true);
-            llvm::LLVMRustSetHasUnsafeAlgebra(instr);
+            llvm::LLVMRustSetFastMath(instr);
             instr
         }
     }

@@ -349,8 +349,10 @@ extern "C" void LLVMRustRemoveFunctionAttributes(LLVMValueRef Fn,
   F->setAttributes(PALNew);
 }
 
-// enable fpmath flag UnsafeAlgebra
-extern "C" void LLVMRustSetHasUnsafeAlgebra(LLVMValueRef V) {
+// Enable a fast-math flag
+//
+// https://llvm.org/docs/LangRef.html#fast-math-flags
+extern "C" void LLVMRustSetFastMath(LLVMValueRef V) {
   if (auto I = dyn_cast<Instruction>(unwrap<Value>(V))) {
     I->setFast(true);
   }
