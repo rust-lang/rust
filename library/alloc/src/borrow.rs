@@ -354,8 +354,8 @@ impl<'a, B: ?Sized + ToOwned> Cow<'a, B> {
         sub: &'b B,
         func: impl FnOnce(&B) -> bool,
     ) -> Option<<B as ToOwned>::Owned> {
-        match this {
-            Owned(o) if func(&o) => Some(core::mem::replace(this, Borrowed(sub)).into_owned()),
+        match *this {
+            Owned(o) if func(ref o) => Some(core::mem::replace(this, Borrowed(sub)).into_owned()),
             _ => None,
         }
     }
