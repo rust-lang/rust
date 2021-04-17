@@ -15,7 +15,12 @@ use rustc_hash::FxHashSet;
 use syntax::{algo, ast, AstNode, TextRange, TextSize};
 use test_utils::extract_annotations;
 
-use crate::{db::DefDatabase, nameres::DefMap, src::HasSource, Lookup, ModuleDefId, ModuleId};
+use crate::{
+    db::DefDatabase,
+    nameres::{DefMap, ModuleSource},
+    src::HasSource,
+    LocalModuleId, Lookup, ModuleDefId, ModuleId,
+};
 
 #[salsa::database(
     base_db::SourceDatabaseExtStorage,
@@ -87,10 +92,11 @@ impl TestDB {
     pub(crate) fn module_at_position(&self, position: FilePosition) -> ModuleId {
         let file_module = self.module_for_file(position.file_id);
         let mut def_map = file_module.def_map(self);
+        let module = self.mod_at_position(&def_map, position);
 
         def_map = match self.block_at_position(&def_map, position) {
             Some(it) => it,
-            None => return file_module,
+            None => return def_map.module_id(module),
         };
         loop {
             let new_map = self.block_at_position(&def_map, position);
@@ -104,6 +110,47 @@ impl TestDB {
                 }
             }
         }
+    }
+
+    /// Finds the smallest/innermost module in `def_map` containing `position`.
+    fn mod_at_position(&self, def_map: &DefMap, position: FilePosition) -> LocalModuleId {
+        let mut size = None;
+        let mut res = def_map.root();
+        for (module, data) in def_map.modules() {
+            let src = data.definition_source(self);
+            if src.file_id != position.file_id.into() {
+                continue;
+            }
+
+            let range = match src.value {
+                ModuleSource::SourceFile(it) => it.syntax().text_range(),
+                ModuleSource::Module(it) => it.syntax().text_range(),
+                ModuleSource::BlockExpr(it) => it.syntax().text_range(),
+            };
+
+            if !range.contains(position.offset) {
+                continue;
+            }
+
+            let new_size = match size {
+                None => range.len(),
+                Some(size) => {
+                    if range.len() < size {
+                        range.len()
+                    } else {
+                        size
+                    }
+                }
+            };
+
+            if size != Some(new_size) {
+                cov_mark::hit!(submodule_in_testdb);
+                size = Some(new_size);
+                res = module;
+            }
+        }
+
+        res
     }
 
     fn block_at_position(&self, def_map: &DefMap, position: FilePosition) -> Option<Arc<DefMap>> {
