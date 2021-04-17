@@ -35,7 +35,7 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
     fn with_position(ra_fixture: &str) -> (Self, FilePosition) {
         let (db, file_id, range_or_offset) = Self::with_range_or_offset(ra_fixture);
         let offset = match range_or_offset {
-            RangeOrOffset::Range(_) => panic!(),
+            RangeOrOffset::Range(_) => panic!("Expected a cursor position, got a range instead"),
             RangeOrOffset::Offset(it) => it,
         };
         (db, FilePosition { file_id, offset })
@@ -45,7 +45,7 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
         let (db, file_id, range_or_offset) = Self::with_range_or_offset(ra_fixture);
         let range = match range_or_offset {
             RangeOrOffset::Range(it) => it,
-            RangeOrOffset::Offset(_) => panic!(),
+            RangeOrOffset::Offset(_) => panic!("Expected a cursor range, got a position instead"),
         };
         (db, FileRange { file_id, range })
     }
