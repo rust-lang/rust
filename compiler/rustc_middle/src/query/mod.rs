@@ -1514,6 +1514,11 @@ rustc_queries! {
     query evaluate_obligation(
         goal: CanonicalPredicateGoal<'tcx>
     ) -> Result<traits::EvaluationResult, traits::OverflowError> {
+        // FIXME(#83538): This queery shouldm't be influenced by any untracked
+        // blobal state, but it currently is. We use `eval_aways` to prevent this
+        // from causing ICEs - when the underlying issue is fixed, the `eval_always`
+        // modifier should be removed.
+        eval_always
         desc { "evaluating trait selection obligation `{}`", goal.value.value }
     }
 
