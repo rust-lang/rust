@@ -185,25 +185,7 @@ macro_rules! impl_op {
             {
                 type Output = Self;
                 fn neg(self) -> Self::Output {
-                    Self::splat(0) - self
-                }
-            }
-        }
-    };
-
-    { impl Neg for $type:ident, $scalar:ty, @float } => {
-        impl_ref_ops! {
-            impl<const LANES: usize> core::ops::Neg for crate::$type<LANES>
-            where
-                crate::$type<LANES>: LanesAtMost32,
-                crate::SimdU32<LANES>: LanesAtMost32,
-                crate::SimdU64<LANES>: LanesAtMost32,
-            {
-                type Output = Self;
-                fn neg(self) -> Self::Output {
-                    // FIXME: Replace this with fneg intrinsic once available.
-                    // https://github.com/rust-lang/stdsimd/issues/32
-                    Self::from_bits(Self::splat(-0.0).to_bits() ^ self.to_bits())
+                    unsafe { crate::intrinsics::simd_neg(self) }
                 }
             }
         }
@@ -318,7 +300,7 @@ macro_rules! impl_float_ops {
                 impl_op! { impl Mul for $vector, $scalar }
                 impl_op! { impl Div for $vector, $scalar }
                 impl_op! { impl Rem for $vector, $scalar }
-                impl_op! { impl Neg for $vector, $scalar, @float }
+                impl_op! { impl Neg for $vector, $scalar }
                 impl_op! { impl Index for $vector, $scalar }
             )*
         )*
