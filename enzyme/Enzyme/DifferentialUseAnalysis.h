@@ -58,6 +58,12 @@ static inline bool is_use_directly_needed_in_reverse(
     return false;
   }
 
+  // If memtransfer, only the size may need preservation for the reverse pass
+  if (auto MTI = dyn_cast<MemTransferInst>(user)) {
+    if (MTI->getArgOperand(2) != val)
+      return false;
+  }
+
   if (isa<CmpInst>(user) || isa<BranchInst>(user) || isa<ReturnInst>(user) ||
       isa<FPExtInst>(user) || isa<FPTruncInst>(user) ||
       (isa<InsertElementInst>(user) &&
@@ -128,7 +134,8 @@ static inline bool is_use_directly_needed_in_reverse(
     return !gutils->isConstantValue(const_cast<SelectInst *>(si));
   }
 
-  return !gutils->isConstantInstruction(user);
+  return !gutils->isConstantInstruction(user) ||
+         !gutils->isConstantValue(const_cast<Instruction *>(user));
 }
 
 template <ValueType VT, bool OneLevel = false>
@@ -163,8 +170,6 @@ static inline bool is_value_needed_in_reverse(
       continue;
 
     const Instruction *user = dyn_cast<Instruction>(use);
-    // llvm::errs() << " considering user: " << *user << " ici: " <<
-    // gutils->isConstantInstruction(const_cast<Instruction *>(user)) << "\n";
 
     // A shadow value is only needed in reverse if it or one of its descendants
     // is used in an active instruction
@@ -172,11 +177,35 @@ static inline bool is_value_needed_in_reverse(
       if (!user)
         return seen[idx] = true;
 
-      // storing an active pointer into a location
-      // doesn't require the shadow pointer for the
-      // reverse pass
       if (auto SI = dyn_cast<StoreInst>(user)) {
+        // storing an active pointer into a location
+        // doesn't require the shadow pointer for the
+        // reverse pass
         if (SI->getPointerOperand() != inst)
+          continue;
+
+        if (!gutils->isConstantValue(
+                const_cast<Value *>(SI->getPointerOperand())))
+          return seen[idx] = true;
+        else
+          continue;
+      }
+
+      if (auto MTI = dyn_cast<MemTransferInst>(user)) {
+        if (MTI->getArgOperand(0) != inst && MTI->getArgOperand(1) != inst)
+          continue;
+
+        if (!gutils->isConstantValue(
+                const_cast<Value *>(MTI->getArgOperand(0))))
+          return seen[idx] = true;
+        else
+          continue;
+      }
+
+      if (isa<ReturnInst>(user)) {
+        if (gutils->ATA->ActiveReturns)
+          return seen[idx] = true;
+        else
           continue;
       }
 
@@ -273,8 +302,9 @@ static inline bool is_value_needed_in_reverse(
         }
       }
 
-    if (!is_use_directly_needed_in_reverse(TR, gutils, inst, user,
-                                           oldUnreachable))
+    bool direct = is_use_directly_needed_in_reverse(TR, gutils, inst, user,
+                                                    oldUnreachable);
+    if (!direct)
       continue;
 
     return seen[idx] = true;
@@ -420,7 +450,8 @@ static inline void minCut(const SmallPtrSetImpl<Value *> &Recomputes,
     auto V = todo.front();
     todo.pop_front();
     auto found = Orig.find(Node(V, true));
-    if (found->second.size() == 1) {
+    if (found->second.size() == 1 &&
+        !isa<PHINode>((*found->second.begin()).V)) {
       MinReq.erase(V);
       MinReq.insert((*found->second.begin()).V);
       todo.push_back((*found->second.begin()).V);

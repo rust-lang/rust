@@ -58,9 +58,12 @@ class ActivityAnalyzer {
   llvm::AAResults &AA;
   /// Library Information
   llvm::TargetLibraryInfo &TLI;
+
+public:
   /// Whether the returns of the function being analyzed are active
   const bool ActiveReturns;
 
+private:
   /// Direction of current analysis
   const uint8_t directions;
   /// Analyze up based off of operands

@@ -1,5 +1,9 @@
 // RUN: %clang++ -ffast-math -O1 -Xclang -disable-llvm-optzns -fno-vectorize -fno-slp-vectorize -fno-unroll-loops -fno-exceptions %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -S | %lli - 
 // RUN: %clang++ -ffast-math -O1 -fno-vectorize -fno-slp-vectorize -fno-unroll-loops -fno-exceptions %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -S | %lli - 
+
+// RUN: %clang++ -ffast-math -O2 -fno-vectorize -fno-slp-vectorize -fno-unroll-loops -fno-exceptions %s -S -emit-llvm -o -
+// RUN: %clang++ -ffast-math -O2 -fno-vectorize -fno-slp-vectorize -fno-unroll-loops -fno-exceptions %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -S
+
 // RUN: %clang++ -ffast-math -O2 -fno-vectorize -fno-slp-vectorize -fno-unroll-loops -fno-exceptions %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -S | %lli - 
 // RUN: %clang++ -ffast-math -O3 -fno-vectorize -fno-slp-vectorize -fno-unroll-loops -fno-exceptions %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -S | %lli - 
 // RUN: if [ %llvmver -ge 8 ]; then %clang++ -ffast-math -O1 -Xclang -disable-llvm-optzns -fno-vectorize -fno-slp-vectorize -fno-unroll-loops -fno-exceptions %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme-inline=1 -S | %lli - ; fi
@@ -48,6 +52,7 @@ int main() {
     for(int i=0; i<5; i++) {
        printf("d_reduce_max(%i)=%f\n", i, d_vec[i]);
     }
+    fflush(0);
 
     double ans[] = {0, 0.5, 0, 0.5, 0};
     for(int i=0; i<5; i++) {

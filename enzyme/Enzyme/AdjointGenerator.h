@@ -276,6 +276,7 @@ public:
         bool needShadow = is_value_needed_in_reverse<ValueType::ShadowPtr>(
             TR, gutils, &I, /*toplevel*/ Mode == DerivativeMode::Both,
             oldUnreachable);
+
         switch (Mode) {
 
         case DerivativeMode::Forward:

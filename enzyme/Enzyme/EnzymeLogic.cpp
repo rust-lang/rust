@@ -470,16 +470,9 @@ void calculateUnusedValuesInFunction(
   calculateUnusedValues(
       func, unnecessaryValues, unnecessaryInstructions, returnValue,
       [&](const Value *val) {
-        bool needed = is_value_needed_in_reverse<ValueType::Primal>(
+        return is_value_needed_in_reverse<ValueType::Primal>(
             TR, gutils, val, /*topLevel*/ mode == DerivativeMode::Both,
             PrimalSeen, oldUnreachable);
-        if (TR.query(const_cast<Value*>(val)).Inner0().isPossiblePointer()) {
-          if (is_value_needed_in_reverse<ValueType::ShadowPtr>(
-                  TR, gutils, val, /*topLevel*/ mode == DerivativeMode::Both, PrimalSeen, oldUnreachable)) {
-            needed = true;
-          }
-        }
-        return needed;
       },
       [&](const Instruction *inst) {
         if (auto II = dyn_cast<IntrinsicInst>(inst)) {
@@ -630,23 +623,27 @@ void calculateUnusedValuesInFunction(
             }
           }
         }
-        return ((mode == DerivativeMode::Forward ||
-                 mode == DerivativeMode::Both) &&
-                inst->mayWriteToMemory()) ||
-               is_value_needed_in_reverse<ValueType::Primal>(
-                   TR, gutils, inst,
-                   /*topLevel*/ mode == DerivativeMode::Both, PrimalSeen,
-                   oldUnreachable);
+        if ((mode == DerivativeMode::Forward || mode == DerivativeMode::Both) &&
+            inst->mayWriteToMemory())
+          return true;
+        if (isa<MemTransferInst>(inst) && mode == DerivativeMode::Reverse)
+          return false;
+        if (isa<CallInst>(inst) && !gutils->isConstantInstruction(inst))
+          return true;
+        return is_value_needed_in_reverse<ValueType::Primal>(
+            TR, gutils, inst,
+            /*topLevel*/ mode == DerivativeMode::Both, PrimalSeen,
+            oldUnreachable);
       });
-#if 1
-      llvm::errs() << "unnecessaryValues of " << func.getName() << ":\n";
-      for(auto a : unnecessaryValues) {
-        llvm::errs() << *a << "\n";
-      }
-      llvm::errs() << "unnecessaryInstructions " << func.getName() << ":\n";
-      for(auto a : unnecessaryInstructions) {
-        llvm::errs() << *a << "\n";
-      }
+#if 0
+  llvm::errs() << "unnecessaryValues of " << func.getName() << ":\n";
+  for (auto a : unnecessaryValues) {
+    llvm::errs() << *a << "\n";
+  }
+  llvm::errs() << "unnecessaryInstructions " << func.getName() << ":\n";
+  for (auto a : unnecessaryInstructions) {
+    llvm::errs() << *a << "\n";
+  }
 #endif
 }
 

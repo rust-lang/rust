@@ -148,13 +148,13 @@ public:
                          ConstantValues, ActiveValues, ActiveReturns);
 
     for (auto &a : F.args()) {
-      bool icv = ATA.isConstantValue(TR, &a);
+      ATA.isConstantValue(TR, &a);
       llvm::errs().flush();
     }
     for (auto &BB : F) {
       for (auto &I : BB) {
-        bool ici = ATA.isConstantInstruction(TR, &I);
-        bool icv = ATA.isConstantValue(TR, &I);
+        ATA.isConstantInstruction(TR, &I);
+        ATA.isConstantValue(TR, &I);
         llvm::errs().flush();
       }
     }

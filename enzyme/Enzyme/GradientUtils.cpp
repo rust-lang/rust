@@ -1411,8 +1411,11 @@ bool GradientUtils::legalRecompute(const Value *val,
         return false;
     }
 
-    if (phi->getNumIncomingValues() == 0)
+    if (phi->getNumIncomingValues() == 0) {
+      llvm::errs() << *oldFunc << "\n";
+      llvm::errs() << *newFunc << "\n";
       llvm::errs() << *phi << "\n";
+    }
     assert(phi->getNumIncomingValues() != 0);
     auto parent = phi->getParent();
     if (parent->getParent() == newFunc) {
