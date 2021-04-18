@@ -13,7 +13,6 @@ pub mod raw;
 #[cfg(all(
     doc,
     not(any(
-        target_os = "hermit",
         all(target_arch = "wasm32", not(target_os = "wasi")),
         all(target_vendor = "fortanix", target_env = "sgx")
     ))
@@ -37,7 +36,6 @@ mod doc {
 #[cfg(all(
     doc,
     any(
-        target_os = "hermit",
         all(target_arch = "wasm32", not(target_os = "wasi")),
         all(target_vendor = "fortanix", target_env = "sgx")
     )

@@ -57,7 +57,6 @@ cfg_if::cfg_if! {
 
 #[cfg(doc)]
 #[cfg(not(any(
-    target_os = "hermit",
     all(target_arch = "wasm32", not(target_os = "wasi")),
     all(target_vendor = "fortanix", target_env = "sgx")
 )))]
