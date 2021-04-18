@@ -283,16 +283,17 @@ Moreover, Miri recognizes some environment variables:
   architecture to test against.  `miri` and `cargo miri` accept the `--target`
   flag for the same purpose.
 
-The following environment variables are internal, but used to communicate between
-different Miri binaries, and as such worth documenting:
+The following environment variables are *internal* and must not be used by
+anyone but Miri itself. They are used to communicate between different Miri
+binaries, and as such worth documenting:
 
 * `MIRI_BE_RUSTC` can be set to `host` or `target`. It tells the Miri driver to
   actually not interpret the code but compile it like rustc would. With `target`, Miri sets
   some compiler flags to prepare the code for interpretation; with `host`, this is not done.
   This environment variable is useful to be sure that the compiled `rlib`s are compatible
   with Miri.
-  When set while running `cargo-miri`, it indicates that we are part of a sysroot
-  build (for which some crates need special treatment).
+* `MIRI_CALLED_FROM_XARGO` is set during the Miri-induced `xargo` sysroot build,
+  which will re-invoke `cargo-miri` as the `rustc` to use for this build.
 * `MIRI_CALLED_FROM_RUSTDOC` when set to any value tells `cargo-miri` that it is
   running as a child process of `rustdoc`, which invokes it twice for each doc-test
   and requires special treatment, most notably a check-only build before interpretation.
