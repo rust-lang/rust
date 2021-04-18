@@ -1,25 +1,24 @@
 //! Types and traits associated with masking lanes of vectors.
+//! Types representing
 #![allow(non_camel_case_types)]
 
-mod full_masks;
-pub use full_masks::*;
-
-mod bitmask;
-pub use bitmask::*;
+#[cfg_attr(not(all(target_arch = "x86_64", target_feature = "avx512f")), path = "full_masks.rs")]
+#[cfg_attr(all(target_arch = "x86_64", target_feature = "avx512f"), path = "bitmask.rs")]
+mod mask_impl;
 
 use crate::{LanesAtMost32, SimdI16, SimdI32, SimdI64, SimdI8, SimdIsize};
 
 macro_rules! define_opaque_mask {
     {
         $(#[$attr:meta])*
-        struct $name:ident<const $lanes:ident: usize>($inner_ty:ident<$lanes2:ident>);
+        struct $name:ident<const $lanes:ident: usize>($inner_ty:ty);
         @bits $bits_ty:ident
     } => {
         $(#[$attr])*
         #[allow(non_camel_case_types)]
-        pub struct $name<const LANES: usize>($inner_ty<LANES>) where $bits_ty<LANES>: LanesAtMost32;
+        pub struct $name<const LANES: usize>($inner_ty) where $bits_ty<LANES>: LanesAtMost32;
 
-        impl_opaque_mask_reductions! { $name, $inner_ty, $bits_ty }
+        impl_opaque_mask_reductions! { $name, $bits_ty }
 
         impl<const LANES: usize> $name<LANES>
         where
@@ -27,7 +26,7 @@ macro_rules! define_opaque_mask {
         {
             /// Construct a mask by setting all lanes to the given value.
             pub fn splat(value: bool) -> Self {
-                Self(<$inner_ty<LANES>>::splat(value))
+                Self(<$inner_ty>::splat(value))
             }
 
             /// Converts an array to a SIMD vector.
@@ -52,6 +51,16 @@ macro_rules! define_opaque_mask {
                 array
             }
 
+            /// Converts a vector of integers to a mask, where 0 represents `false` and -1
+            /// represents `true`.
+            ///
+            /// # Safety
+            /// All lanes must be either 0 or -1.
+            #[inline]
+            pub unsafe fn from_int_unchecked(value: $bits_ty<LANES>) -> Self {
+                Self(<$inner_ty>::from_int_unchecked(value))
+            }
+
             /// Tests the value of the specified lane.
             ///
             /// # Panics
@@ -68,44 +77,6 @@ macro_rules! define_opaque_mask {
             #[inline]
             pub fn set(&mut self, lane: usize, value: bool) {
                 self.0.set(lane, value);
-            }
-        }
-
-        impl<const LANES: usize> From<BitMask<LANES>> for $name<LANES>
-        where
-            $bits_ty<LANES>: LanesAtMost32,
-            BitMask<LANES>: LanesAtMost32,
-        {
-            fn from(value: BitMask<LANES>) -> Self {
-                Self(value.into())
-            }
-        }
-
-        impl<const LANES: usize> From<$name<LANES>> for crate::BitMask<LANES>
-        where
-            $bits_ty<LANES>: LanesAtMost32,
-            BitMask<LANES>: LanesAtMost32,
-        {
-            fn from(value: $name<LANES>) -> Self {
-                value.0.into()
-            }
-        }
-
-        impl<const LANES: usize> From<$inner_ty<LANES>> for $name<LANES>
-        where
-            $bits_ty<LANES>: LanesAtMost32,
-        {
-            fn from(value: $inner_ty<LANES>) -> Self {
-                Self(value)
-            }
-        }
-
-        impl<const LANES: usize> From<$name<LANES>> for $inner_ty<LANES>
-        where
-            $bits_ty<LANES>: LanesAtMost32,
-        {
-            fn from(value: $name<LANES>) -> Self {
-                value.0
             }
         }
 
@@ -130,7 +101,7 @@ macro_rules! define_opaque_mask {
 
         impl<const LANES: usize> Copy for $name<LANES>
         where
-            $inner_ty<LANES>: Copy,
+            $inner_ty: Copy,
             $bits_ty<LANES>: LanesAtMost32,
         {}
 
@@ -359,7 +330,7 @@ define_opaque_mask! {
     /// Mask for vectors with `LANES` 8-bit elements.
     ///
     /// The layout of this type is unspecified.
-    struct Mask8<const LANES: usize>(SimdMask8<LANES>);
+    struct Mask8<const LANES: usize>(mask_impl::Mask8<LANES>);
     @bits SimdI8
 }
 
@@ -367,7 +338,7 @@ define_opaque_mask! {
     /// Mask for vectors with `LANES` 16-bit elements.
     ///
     /// The layout of this type is unspecified.
-    struct Mask16<const LANES: usize>(SimdMask16<LANES>);
+    struct Mask16<const LANES: usize>(mask_impl::Mask16<LANES>);
     @bits SimdI16
 }
 
@@ -375,7 +346,7 @@ define_opaque_mask! {
     /// Mask for vectors with `LANES` 32-bit elements.
     ///
     /// The layout of this type is unspecified.
-    struct Mask32<const LANES: usize>(SimdMask32<LANES>);
+    struct Mask32<const LANES: usize>(mask_impl::Mask32<LANES>);
     @bits SimdI32
 }
 
@@ -383,7 +354,7 @@ define_opaque_mask! {
     /// Mask for vectors with `LANES` 64-bit elements.
     ///
     /// The layout of this type is unspecified.
-    struct Mask64<const LANES: usize>(SimdMask64<LANES>);
+    struct Mask64<const LANES: usize>(mask_impl::Mask64<LANES>);
     @bits SimdI64
 }
 
@@ -391,7 +362,7 @@ define_opaque_mask! {
     /// Mask for vectors with `LANES` pointer-width elements.
     ///
     /// The layout of this type is unspecified.
-    struct MaskSize<const LANES: usize>(SimdMaskSize<LANES>);
+    struct MaskSize<const LANES: usize>(mask_impl::MaskSize<LANES>);
     @bits SimdIsize
 }
 

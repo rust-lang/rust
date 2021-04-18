@@ -1,29 +1,8 @@
-use core::convert::TryFrom;
-use core_simd::{BitMask, Mask8, SimdI8, SimdMask8};
-
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen_test::*;
 
 #[cfg(target_arch = "wasm32")]
 wasm_bindgen_test_configure!(run_in_browser);
-
-#[test]
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-fn mask_format_round_trip() {
-    let ints = SimdI8::from_array([-1, 0, 0, -1]);
-
-    let simd_mask = SimdMask8::try_from(ints).unwrap();
-
-    let bitmask = BitMask::from(simd_mask);
-
-    let opaque_mask = Mask8::from(bitmask);
-
-    let simd_mask_returned = SimdMask8::from(opaque_mask);
-
-    let ints_returned = SimdI8::from(simd_mask_returned);
-
-    assert_eq!(ints_returned, ints);
-}
 
 macro_rules! test_mask_api {
     { $name:ident } => {
@@ -83,6 +62,4 @@ macro_rules! test_mask_api {
 
 mod mask_api {
     test_mask_api! { Mask8 }
-    test_mask_api! { SimdMask8 }
-    test_mask_api! { BitMask }
 }

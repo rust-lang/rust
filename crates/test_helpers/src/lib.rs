@@ -281,7 +281,6 @@ macro_rules! test_lanes {
                     core_simd::SimdIsize<$lanes>: core_simd::LanesAtMost32,
                     core_simd::SimdF32<$lanes>: core_simd::LanesAtMost32,
                     core_simd::SimdF64<$lanes>: core_simd::LanesAtMost32,
-                    core_simd::BitMask<$lanes>: core_simd::LanesAtMost32,
                 $body
 
                 #[cfg(target_arch = "wasm32")]
@@ -351,7 +350,6 @@ macro_rules! test_lanes_panic {
                     core_simd::SimdIsize<$lanes>: core_simd::LanesAtMost32,
                     core_simd::SimdF32<$lanes>: core_simd::LanesAtMost32,
                     core_simd::SimdF64<$lanes>: core_simd::LanesAtMost32,
-                    core_simd::BitMask<$lanes>: core_simd::LanesAtMost32,
                 $body
 
                 #[test]

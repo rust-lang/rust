@@ -4,14 +4,12 @@ use crate::LanesAtMost32;
 #[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Ord, Eq, Hash)]
 #[repr(transparent)]
 pub struct BitMask<const LANES: usize>(u64)
-where
-    BitMask<LANES>: LanesAtMost32;
 
 impl<const LANES: usize> BitMask<LANES>
 where
     Self: LanesAtMost32,
 {
-    /// Construct a mask by setting all lanes to the given value.
+    #[inline]
     pub fn splat(value: bool) -> Self {
         if value {
             Self(u64::MAX >> (64 - LANES))
@@ -20,23 +18,13 @@ where
         }
     }
 
-    /// Tests the value of the specified lane.
-    ///
-    /// # Panics
-    /// Panics if `lane` is greater than or equal to the number of lanes in the vector.
     #[inline]
-    pub fn test(&self, lane: usize) -> bool {
-        assert!(lane < LANES, "lane index out of range");
+    pub unsafe fn test_unchecked(&self, lane: usize) -> bool {
         (self.0 >> lane) & 0x1 > 0
     }
 
-    /// Sets the value of the specified lane.
-    ///
-    /// # Panics
-    /// Panics if `lane` is greater than or equal to the number of lanes in the vector.
     #[inline]
-    pub fn set(&mut self, lane: usize, value: bool) {
-        assert!(lane < LANES, "lane index out of range");
+    pub unsafe fn set_unchecked(&mut self, lane: usize, value: bool) {
         self.0 ^= ((value ^ self.test(lane)) as u64) << lane
     }
 }

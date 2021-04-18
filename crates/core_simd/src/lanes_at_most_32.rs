@@ -1,4 +1,4 @@
-/// Implemented for bitmask sizes that are supported by the implementation.
+/// Implemented for vectors that are supported by the implementation.
 pub trait LanesAtMost32 {}
 
 macro_rules! impl_for {
@@ -28,5 +28,3 @@ impl_for! { SimdIsize }
 
 impl_for! { SimdF32 }
 impl_for! { SimdF64 }
-
-impl_for! { BitMask }
