@@ -1107,6 +1107,11 @@ impl ResolverAstLowering for Resolver<'_> {
         }
     }
 
+    #[inline]
+    fn def_span(&self, id: LocalDefId) -> Span {
+        self.definitions.def_span(id)
+    }
+
     fn item_generics_num_lifetimes(&self, def_id: DefId, sess: &Session) -> usize {
         self.cstore().item_generics_num_lifetimes(def_id, sess)
     }
@@ -1208,6 +1213,11 @@ impl<'a, 'b> rustc_span::HashStableContext for ExpandHasher<'a, 'b> {
     #[inline]
     fn hash_spans(&self) -> bool {
         true
+    }
+
+    #[inline]
+    fn def_span(&self, id: LocalDefId) -> Span {
+        self.resolver.def_span(id)
     }
 
     #[inline]

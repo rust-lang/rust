@@ -22,7 +22,7 @@ use rustc_span::hygiene::{
 };
 use rustc_span::source_map::{SourceMap, StableSourceFileId};
 use rustc_span::CachingSourceMapView;
-use rustc_span::{BytePos, ExpnData, ExpnHash, SourceFile, Span, DUMMY_SP};
+use rustc_span::{BytePos, ExpnData, ExpnHash, Pos, SourceFile, Span};
 use std::collections::hash_map::Entry;
 use std::mem;
 
@@ -32,6 +32,7 @@ const TAG_FILE_FOOTER: u128 = 0xC0FFEE_C0FFEE_C0FFEE_C0FFEE_C0FFEE;
 const TAG_FULL_SPAN: u8 = 0;
 // A partial span with no location information, encoded only with a `SyntaxContext`
 const TAG_PARTIAL_SPAN: u8 = 1;
+const TAG_RELATIVE_SPAN: u8 = 2;
 
 const TAG_SYNTAX_CONTEXT: u8 = 0;
 const TAG_EXPN_DATA: u8 = 1;
@@ -817,11 +818,25 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for ExpnId {
 
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for Span {
     fn decode(decoder: &mut CacheDecoder<'a, 'tcx>) -> Result<Self, String> {
+        let ctxt = SyntaxContext::decode(decoder)?;
+        let parent = Option::<LocalDefId>::decode(decoder)?;
         let tag: u8 = Decodable::decode(decoder)?;
 
         if tag == TAG_PARTIAL_SPAN {
-            let ctxt = SyntaxContext::decode(decoder)?;
-            return Ok(DUMMY_SP.with_ctxt(ctxt));
+            return Ok(Span::new(BytePos(0), BytePos(0), ctxt, parent));
+        } else if tag == TAG_RELATIVE_SPAN {
+            let dlo = u32::decode(decoder)?;
+            let dto = u32::decode(decoder)?;
+
+            let enclosing = decoder.tcx.definitions_untracked().def_span(parent.unwrap()).data();
+            let span = Span::new(
+                enclosing.lo + BytePos::from_u32(dlo),
+                enclosing.lo + BytePos::from_u32(dto),
+                ctxt,
+                parent,
+            );
+
+            return Ok(span);
         } else {
             debug_assert_eq!(tag, TAG_FULL_SPAN);
         }
@@ -830,13 +845,12 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for Span {
         let line_lo = usize::decode(decoder)?;
         let col_lo = BytePos::decode(decoder)?;
         let len = BytePos::decode(decoder)?;
-        let ctxt = SyntaxContext::decode(decoder)?;
 
         let file_lo = decoder.file_index_to_file(file_lo_index);
         let lo = file_lo.lines[line_lo - 1] + col_lo;
         let hi = lo + len;
 
-        Ok(Span::new(lo, hi, ctxt, None))
+        Ok(Span::new(lo, hi, ctxt, parent))
     }
 }
 
@@ -997,9 +1011,21 @@ where
 {
     fn encode(&self, s: &mut CacheEncoder<'a, 'tcx, E>) -> Result<(), E::Error> {
         let span_data = self.data();
-        if self.is_dummy() {
-            TAG_PARTIAL_SPAN.encode(s)?;
-            return span_data.ctxt.encode(s);
+        span_data.ctxt.encode(s)?;
+        span_data.parent.encode(s)?;
+
+        if span_data.is_dummy() {
+            return TAG_PARTIAL_SPAN.encode(s);
+        }
+
+        if let Some(parent) = span_data.parent {
+            let enclosing = s.tcx.definitions_untracked().def_span(parent).data();
+            if enclosing.contains(span_data) {
+                TAG_RELATIVE_SPAN.encode(s)?;
+                (span_data.lo - enclosing.lo).to_u32().encode(s)?;
+                (span_data.hi - enclosing.lo).to_u32().encode(s)?;
+                return Ok(());
+            }
         }
 
         let pos = s.source_map.byte_pos_to_line_and_col(span_data.lo);
@@ -1009,8 +1035,7 @@ where
         };
 
         if partial_span {
-            TAG_PARTIAL_SPAN.encode(s)?;
-            return span_data.ctxt.encode(s);
+            return TAG_PARTIAL_SPAN.encode(s);
         }
 
         let (file_lo, line_lo, col_lo) = pos.unwrap();
@@ -1023,8 +1048,7 @@ where
         source_file_index.encode(s)?;
         line_lo.encode(s)?;
         col_lo.encode(s)?;
-        len.encode(s)?;
-        span_data.ctxt.encode(s)
+        len.encode(s)
     }
 }
 

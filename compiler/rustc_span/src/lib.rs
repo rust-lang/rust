@@ -1981,6 +1981,7 @@ impl InnerSpan {
 pub trait HashStableContext {
     fn def_path_hash(&self, def_id: DefId) -> DefPathHash;
     fn hash_spans(&self) -> bool;
+    fn def_span(&self, def_id: LocalDefId) -> Span;
     fn span_data_to_lines_and_cols(
         &mut self,
         span: &SpanData,
@@ -2004,22 +2005,35 @@ where
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         const TAG_VALID_SPAN: u8 = 0;
         const TAG_INVALID_SPAN: u8 = 1;
+        const TAG_RELATIVE_SPAN: u8 = 2;
 
         if !ctx.hash_spans() {
             return;
         }
 
-        self.ctxt().hash_stable(ctx, hasher);
+        let span = self.data();
+        span.ctxt.hash_stable(ctx, hasher);
+        span.parent.hash_stable(ctx, hasher);
 
-        if self.is_dummy() {
+        if span.is_dummy() {
             Hash::hash(&TAG_INVALID_SPAN, hasher);
             return;
+        }
+
+        if let Some(parent) = span.parent {
+            let def_span = ctx.def_span(parent).data();
+            if def_span.contains(span) {
+                // This span is enclosed in a definition: only hash the relative position.
+                Hash::hash(&TAG_RELATIVE_SPAN, hasher);
+                (span.lo - def_span.lo).to_u32().hash_stable(ctx, hasher);
+                (span.hi - def_span.lo).to_u32().hash_stable(ctx, hasher);
+                return;
+            }
         }
 
         // If this is not an empty or invalid span, we want to hash the last
         // position that belongs to it, as opposed to hashing the first
         // position past it.
-        let span = self.data();
         let (file, line_lo, col_lo, line_hi, col_hi) = match ctx.span_data_to_lines_and_cols(&span)
         {
             Some(pos) => pos,
