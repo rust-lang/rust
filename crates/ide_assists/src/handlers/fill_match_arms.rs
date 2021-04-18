@@ -57,6 +57,8 @@ pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<
             Pat::OrPat(or_pat) => Either::Left(or_pat.pats()),
             _ => Either::Right(iter::once(pat)),
         })
+        // Exclude top level wildcards so that they are expanded by this assist, retains status quo in #8129.
+        .filter(|pat| !matches!(pat, Pat::WildcardPat(_)))
         .collect();
 
     let module = ctx.sema.scope(expr.syntax()).module()?;
