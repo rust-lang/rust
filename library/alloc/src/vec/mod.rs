@@ -2041,7 +2041,7 @@ impl<T, A: Allocator> Vec<T, A> {
 
     /// Safety: changing returned .2 (&mut usize) is considered the same as calling `.set_len(_)`.
     ///
-    /// This method is used to have unique access to all vec parts at once in `extend_from_within`.
+    /// This method provides unique access to all vec parts at once in `extend_from_within`.
     unsafe fn split_at_spare_mut_with_len(
         &mut self,
     ) -> (&mut [T], &mut [MaybeUninit<T>], &mut usize) {
@@ -2279,7 +2279,7 @@ impl<T: Clone, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
         iter::zip(to_clone, spare)
             .map(|(src, dst)| dst.write(src.clone()))
             // Note:
-            // - Element was just initialized with `MaybeUninit::write`, so it's ok to increace len
+            // - Element was just initialized with `MaybeUninit::write`, so it's ok to increase len
             // - len is increased after each element to prevent leaks (see issue #82533)
             .for_each(|_| *len += 1);
     }
