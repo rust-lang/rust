@@ -50,7 +50,7 @@ pub fn unsupported<T>() -> crate::io::Result<T> {
 }
 
 pub fn unsupported_err() -> crate::io::Error {
-    crate::io::Error::new_const(ErrorKind::Other, &"operation not supported on SGX yet")
+    crate::io::Error::new_const(ErrorKind::Unsupported, &"operation not supported on SGX yet")
 }
 
 /// This function is used to implement various functions that doesn't exist,

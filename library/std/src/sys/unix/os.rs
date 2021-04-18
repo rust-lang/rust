@@ -447,7 +447,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
 #[cfg(any(target_os = "fuchsia", target_os = "l4re"))]
 pub fn current_exe() -> io::Result<PathBuf> {
     use crate::io::ErrorKind;
-    Err(io::Error::new_const(ErrorKind::Other, &"Not yet implemented!"))
+    Err(io::Error::new_const(ErrorKind::Unsupported, &"Not yet implemented!"))
 }
 
 #[cfg(target_os = "vxworks")]

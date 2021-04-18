@@ -148,6 +148,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         libc::EINVAL => ErrorKind::InvalidInput,
         libc::ETIMEDOUT => ErrorKind::TimedOut,
         libc::EEXIST => ErrorKind::AlreadyExists,
+        libc::ENOSYS => ErrorKind::Unsupported,
 
         // These two constants can have the same value on some systems,
         // but different values on others, so we can't use a match
