@@ -86,6 +86,7 @@
 #![feature(const_impl_trait)]
 #![feature(const_fn_floating_point_arithmetic)]
 #![feature(const_fn_fn_ptr_basics)]
+#![cfg_attr(not(bootstrap), feature(const_fn_trait_bound))]
 #![feature(const_option)]
 #![feature(const_precise_live_drops)]
 #![feature(const_ptr_offset)]

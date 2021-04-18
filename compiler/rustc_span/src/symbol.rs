@@ -382,6 +382,7 @@ symbols! {
         const_fn,
         const_fn_floating_point_arithmetic,
         const_fn_fn_ptr_basics,
+        const_fn_trait_bound,
         const_fn_transmute,
         const_fn_union,
         const_generic_defaults,

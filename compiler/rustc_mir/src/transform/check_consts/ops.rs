@@ -642,12 +642,17 @@ pub mod ty {
         }
 
         fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
-            mcf_status_in_item(ccx)
+            if ccx.const_kind() != hir::ConstContext::ConstFn {
+                Status::Allowed
+            } else {
+                Status::Unstable(sym::const_fn_trait_bound)
+            }
         }
 
         fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
-            mcf_build_error(
-                ccx,
+            feature_err(
+                &ccx.tcx.sess.parse_sess,
+                sym::const_fn_trait_bound,
                 span,
                 "trait bounds other than `Sized` on const fn parameters are unstable",
             )
