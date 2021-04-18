@@ -113,7 +113,12 @@ pub(crate) fn maybe_create_entry_wrapper(
                 // FIXME do proper abi handling instead of expecting the pass mode to be identical
                 // for returns and arguments.
                 let report_call_inst = bcx.ins().call(report_func_ref, &call_results);
-                bcx.func.dfg.inst_results(report_call_inst)[0]
+                let res = bcx.func.dfg.inst_results(report_call_inst)[0];
+                match m.target_config().pointer_type() {
+                    types::I32 => res,
+                    types::I64 => bcx.ins().sextend(types::I64, res),
+                    _ => unimplemented!("16bit systems are not yet supported"),
+                }
             } else if is_main_fn {
                 let start_def_id = tcx.require_lang_item(LangItem::Start, None);
                 let start_instance = Instance::resolve(
