@@ -1890,7 +1890,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box zero_div_zero::ZeroDiv);
     store.register_late_pass(|| box mutex_atomic::Mutex);
     store.register_late_pass(|| box needless_update::NeedlessUpdate);
-    store.register_late_pass(|| box needless_borrow::NeedlessBorrow::default());
+    store.register_late_pass(|| box needless_borrow::NeedlessBorrow);
     store.register_late_pass(|| box needless_borrowed_ref::NeedlessBorrowedRef);
     store.register_late_pass(|| box no_effect::NoEffect);
     store.register_late_pass(|| box temporary_assignment::TemporaryAssignment);

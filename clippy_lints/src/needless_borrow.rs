@@ -3,16 +3,14 @@
 //! This lint is **warn** by default
 
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::is_automatically_derived;
 use clippy_utils::source::snippet_opt;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{BindingAnnotation, BorrowKind, Expr, ExprKind, Item, Mutability, Pat, PatKind};
+use rustc_hir::{BindingAnnotation, BorrowKind, Expr, ExprKind, Mutability, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::def_id::LocalDefId;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for address of operations (`&`) that are going to
@@ -37,15 +35,13 @@ declare_clippy_lint! {
 }
 
 #[derive(Default)]
-pub struct NeedlessBorrow {
-    derived_item: Option<LocalDefId>,
-}
+pub struct NeedlessBorrow;
 
 impl_lint_pass!(NeedlessBorrow => [NEEDLESS_BORROW]);
 
 impl<'tcx> LateLintPass<'tcx> for NeedlessBorrow {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
-        if e.span.from_expansion() || self.derived_item.is_some() {
+        if e.span.from_expansion() {
             return;
         }
         if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner) = e.kind {
@@ -86,7 +82,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrow {
         }
     }
     fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>) {
-        if pat.span.from_expansion() || self.derived_item.is_some() {
+        if pat.span.from_expansion() {
             return;
         }
         if_chain! {
@@ -113,22 +109,6 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrow {
                         }
                     }
                 )
-            }
-        }
-    }
-
-    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        let attrs = cx.tcx.hir().attrs(item.hir_id());
-        if is_automatically_derived(attrs) {
-            debug_assert!(self.derived_item.is_none());
-            self.derived_item = Some(item.def_id);
-        }
-    }
-
-    fn check_item_post(&mut self, _: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if let Some(id) = self.derived_item {
-            if item.def_id == id {
-                self.derived_item = None;
             }
         }
     }
