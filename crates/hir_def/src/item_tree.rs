@@ -104,10 +104,10 @@ impl ItemTree {
                     // items and expanded during block DefMap computation
                     return Default::default();
                 },
-                ast::Type(_ty) => {
-                    // FIXME: This occurs because macros in type position are treated as inner
-                    // items and expanded during block DefMap computation
-                    return Default::default();
+                ast::Type(ty) => {
+                    // Types can contain inner items. We return an empty item tree in this case, but
+                    // still need to collect inner items.
+                    ctx.lower_inner_items(ty.syntax())
                 },
                 ast::Expr(e) => {
                     // Macros can expand to expressions. We return an empty item tree in this case, but

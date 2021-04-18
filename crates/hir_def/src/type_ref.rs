@@ -1,7 +1,7 @@
 //! HIR for references to types. Paths in these are not yet resolved. They can
 //! be directly created from an ast::TypeRef, without further queries.
 
-use hir_expand::{ast_id_map::FileAstId, name::Name, ExpandResult, InFile};
+use hir_expand::{name::Name, AstId, ExpandResult, InFile};
 use syntax::ast;
 
 use crate::{
@@ -91,7 +91,7 @@ pub enum TypeRef {
     // For
     ImplTrait(Vec<TypeBound>),
     DynTrait(Vec<TypeBound>),
-    Macro(InFile<FileAstId<ast::MacroCall>>),
+    Macro(AstId<ast::MacroCall>),
     Error,
 }
 
