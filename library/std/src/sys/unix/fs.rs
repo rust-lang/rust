@@ -366,7 +366,7 @@ impl FileAttr {
         }
 
         Err(io::Error::new_const(
-            io::ErrorKind::Other,
+            io::ErrorKind::Unsupported,
             &"creation time is not available on this platform \
                             currently",
         ))

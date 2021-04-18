@@ -180,6 +180,12 @@ pub enum ErrorKind {
     /// read.
     #[stable(feature = "read_exact", since = "1.6.0")]
     UnexpectedEof,
+
+    /// This operation is unsupported on this platform.
+    ///
+    /// This means that the operation can never succeed.
+    #[stable(feature = "unsupported_error", since = "1.53.0")]
+    Unsupported,
 }
 
 impl ErrorKind {
@@ -203,6 +209,7 @@ impl ErrorKind {
             ErrorKind::Interrupted => "operation interrupted",
             ErrorKind::Other => "other os error",
             ErrorKind::UnexpectedEof => "unexpected end of file",
+            ErrorKind::Unsupported => "unsupported",
         }
     }
 }

@@ -18,7 +18,10 @@ pub fn unsupported<T>() -> std_io::Result<T> {
 }
 
 pub fn unsupported_err() -> std_io::Error {
-    std_io::Error::new_const(std_io::ErrorKind::Other, &"operation not supported on this platform")
+    std_io::Error::new_const(
+        std_io::ErrorKind::Unsupported,
+        &"operation not supported on this platform",
+    )
 }
 
 pub fn decode_error_kind(_code: i32) -> crate::io::ErrorKind {

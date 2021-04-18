@@ -56,7 +56,7 @@ pub fn unsupported<T>() -> crate::io::Result<T> {
 
 pub fn unsupported_err() -> crate::io::Error {
     crate::io::Error::new_const(
-        crate::io::ErrorKind::Other,
+        crate::io::ErrorKind::Unsupported,
         &"operation not supported on HermitCore yet",
     )
 }
