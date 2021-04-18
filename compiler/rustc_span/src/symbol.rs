@@ -385,6 +385,7 @@ symbols! {
         const_fn_trait_bound,
         const_fn_transmute,
         const_fn_union,
+        const_fn_unsize,
         const_generic_defaults,
         const_generics,
         const_generics_defaults,

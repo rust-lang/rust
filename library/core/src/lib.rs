@@ -81,7 +81,7 @@
 #![feature(const_refs_to_cell)]
 #![feature(const_panic)]
 #![feature(const_pin)]
-#![feature(const_fn)]
+#![cfg_attr(bootstrap, feature(const_fn))]
 #![feature(const_fn_union)]
 #![feature(const_impl_trait)]
 #![feature(const_fn_floating_point_arithmetic)]

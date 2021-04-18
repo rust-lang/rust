@@ -540,14 +540,19 @@ impl NonConstOp for UnionAccess {
 pub struct UnsizingCast;
 impl NonConstOp for UnsizingCast {
     fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
-        mcf_status_in_item(ccx)
+        if ccx.const_kind() != hir::ConstContext::ConstFn {
+            Status::Allowed
+        } else {
+            Status::Unstable(sym::const_fn_unsize)
+        }
     }
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
-        mcf_build_error(
-            ccx,
+        feature_err(
+            &ccx.tcx.sess.parse_sess,
+            sym::const_fn_unsize,
             span,
-            "unsizing casts to types besides slices are not allowed in const fn",
+            "unsizing casts to types besides slices are not allowed in const fn"
         )
     }
 }
@@ -676,22 +681,4 @@ pub mod ty {
             )
         }
     }
-}
-
-fn mcf_status_in_item(ccx: &ConstCx<'_, '_>) -> Status {
-    if ccx.const_kind() != hir::ConstContext::ConstFn {
-        Status::Allowed
-    } else {
-        Status::Unstable(sym::const_fn)
-    }
-}
-
-fn mcf_build_error(ccx: &ConstCx<'_, 'tcx>, span: Span, msg: &str) -> DiagnosticBuilder<'tcx> {
-    let mut err = struct_span_err!(ccx.tcx.sess, span, E0723, "{}", msg);
-    err.note(
-        "see issue #57563 <https://github.com/rust-lang/rust/issues/57563> \
-             for more information",
-    );
-    err.help("add `#![feature(const_fn)]` to the crate attributes to enable");
-    err
 }

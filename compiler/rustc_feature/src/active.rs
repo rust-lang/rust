@@ -579,6 +579,9 @@ declare_features! (
     /// Allows trait bounds in `const fn`.
     (active, const_fn_trait_bound, "1.53.0", Some(57563), None),
 
+    /// Allows unsizing coercions in `const fn`.
+    (active, const_fn_unsize, "1.53.0", Some(64992), None),
+
     /// Allows to use the `#[cmse_nonsecure_entry]` attribute.
     (active, cmse_nonsecure_entry, "1.48.0", Some(75835), None),
 
