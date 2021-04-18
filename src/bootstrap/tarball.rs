@@ -99,6 +99,7 @@ pub(crate) struct Tarball<'a> {
     temp_dir: PathBuf,
     image_dir: PathBuf,
     overlay_dir: PathBuf,
+    bulk_dirs: Vec<PathBuf>,
 
     include_target_in_component_name: bool,
     is_preview: bool,
@@ -137,6 +138,7 @@ impl<'a> Tarball<'a> {
             temp_dir,
             image_dir,
             overlay_dir,
+            bulk_dirs: Vec::new(),
 
             include_target_in_component_name: false,
             is_preview: false,
@@ -201,6 +203,11 @@ impl<'a> Tarball<'a> {
         self.builder.cp_r(src.as_ref(), &dest);
     }
 
+    pub(crate) fn add_bulk_dir(&mut self, src: impl AsRef<Path>, dest: impl AsRef<Path>) {
+        self.bulk_dirs.push(dest.as_ref().to_path_buf());
+        self.add_dir(src, dest);
+    }
+
     pub(crate) fn generate(self) -> GeneratedTarball {
         let mut component_name = self.component.clone();
         if self.is_preview {
@@ -221,6 +228,16 @@ impl<'a> Tarball<'a> {
                 .arg("--image-dir")
                 .arg(&this.image_dir)
                 .arg(format!("--component-name={}", &component_name));
+
+            if let Some((dir, dirs)) = this.bulk_dirs.split_first() {
+                let mut arg = dir.as_os_str().to_os_string();
+                for dir in dirs {
+                    arg.push(",");
+                    arg.push(dir);
+                }
+                cmd.arg("--bulk-dirs").arg(&arg);
+            }
+
             this.non_bare_args(cmd);
         })
     }
